@@ -1,0 +1,12 @@
+{
+    "name": "school-portal-monorepo",
+    "private": true,
+    "workspaces": [
+        "apps/*",
+        "packages/*"
+    ],
+    "resolutions": {
+        "react": "18.2.0",
+        "@types/react": "18.2.0"
+    }
+}
