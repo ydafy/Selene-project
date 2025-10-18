@@ -6,8 +6,10 @@
         "packages/*"
     ],
     "scripts": {
-        "frontend": "cd apps/frontend && bunx expo start",
-        "eas:build": "cd apps/frontend && bunx eas build"
+        "frontend": "cd apps/frontend && bun expo start",
+        "dev:install": "cd apps/frontend && bunx eas build:dev --platform=android",
+        "eas:build": "cd apps/frontend && bunx eas build",
+        "eas:configure": "cd apps/frontend && bunx eas build:configure"
     },
     "dependencies": {
         "@shopify/restyle": "^2.4.5",
