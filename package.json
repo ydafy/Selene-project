@@ -5,8 +5,8 @@
         "apps/*",
         "packages/*"
     ],
-    "resolutions": {
-        "react": "18.2.0",
-        "@types/react": "18.2.0"
+    "scripts": {
+        "frontend": "cd apps/frontend && bunx expo start",
+        "eas:build": "cd apps/frontend && bunx eas build"
     }
 }
