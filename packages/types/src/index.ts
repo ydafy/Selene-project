@@ -1,1 +1,4 @@
-console.log("Hello via Bun!");
+export type SharedUser = {
+  id: string;
+  email: string;
+};
