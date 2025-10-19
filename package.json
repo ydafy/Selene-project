@@ -1,55 +1,52 @@
 {
-  "name": "school-portal-monorepo",
-  "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
-  "scripts": {
-    "frontend": "cd apps/frontend && bun expo start",
-    "backend": "cd apps/backend && bun run dev",
-    "dev:install": "cd apps/frontend && bunx eas build:dev --platform=android",
-    "eas:build": "cd apps/frontend && bunx eas build",
-    "eas:configure": "cd apps/frontend && bunx eas build:configure",
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
-    "format": "prettier --write .",
-    "prepare": "husky"
-  },
-  "dependencies": {
-    "@shopify/restyle": "^2.4.5",
-    "@tanstack/react-query": "^5.90.5",
-    "i18next": "^25.6.0",
-    "react-hook-form": "^7.65.0",
-    "react-i18next": "^16.1.0",
-    "react-native-paper": "^5.14.5",
-    "react-native-vector-icons": "^10.3.0",
-    "zod": "^4.1.12",
-    "zustand": "^5.0.8"
-  },
-  "resolutions": {
-    "react": "19.1.0",
-    "@types/react": "~19.1.10",
-    "react-native": "0.81.4",
-    "expo": "~54.0.13",
-    "@expo/vector-icons": "15.0.2",
-    "expo-constants": "~18.0.9",
-    "expo-font": "~14.0.9",
-    "expo-linking": "~8.0.8"
-  },
-  "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^8.46.1",
-    "@typescript-eslint/parser": "^8.46.1",
-    "eslint": "^9.38.0",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-prettier": "^5.5.4",
-    "husky": "^9.1.7",
-    "lint-staged": "^16.2.4",
-    "prettier": "^3.6.2"
-  },
-  "lint-staged": {
-    "*.{js,jsx,ts,tsx}": [
-      "eslint --fix",
-      "prettier --write"
-    ]
-  }
+    "name": "school-portal-monorepo",
+    "private": true,
+    "workspaces": [
+        "apps/*",
+        "packages/*"
+    ],
+    "scripts": {
+        "frontend": "cd apps/frontend && bun expo start",
+        "backend": "cd apps/backend && bun run dev",
+        "dev:install": "cd apps/frontend && bunx eas build:dev --platform=android",
+        "eas:build": "cd apps/frontend && bunx eas build",
+        "eas:configure": "cd apps/frontend && bunx eas build:configure",
+        "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+        "format": "prettier --write .",
+        "prepare": "husky"
+    },
+    "dependencies": {
+        "@shopify/restyle": "^2.4.5",
+        "@tanstack/react-query": "^5.90.5",
+        "i18next": "^25.6.0",
+        "react-hook-form": "^7.65.0",
+        "react-i18next": "^16.1.0",
+        "react-native-paper": "^5.14.5",
+        "react-native-vector-icons": "^10.3.0",
+        "zod": "^4.1.12",
+        "zustand": "^5.0.8"
+    },
+    "resolutions": {
+        "react": "19.1.0",
+        "@types/react": "~19.1.10",
+        "react-native": "0.81.4",
+        "expo": "~54.0.13",
+        "@expo/vector-icons": "15.0.2",
+        "expo-constants": "~18.0.9",
+        "expo-font": "~14.0.9",
+        "expo-linking": "~8.0.8"
+    },
+    "devDependencies": {
+        "@typescript-eslint/eslint-plugin": "^8.46.1",
+        "@typescript-eslint/parser": "^8.46.1",
+        "eslint": "^9.38.0",
+        "eslint-config-prettier": "^10.1.8",
+        "eslint-plugin-prettier": "^5.5.4",
+        "husky": "^9.1.7",
+        "lint-staged": "^16.2.4",
+        "prettier": "^3.6.2"
+    },
+    "lint-staged": {
+        "*.{js,jsx,ts,tsx}": "eslint --fix"
+    }
 }
