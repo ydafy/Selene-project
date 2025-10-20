@@ -1,59 +1,40 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
+import { ThemeProvider } from '@shopify/restyle';
 import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import React from 'react';
+import { PaperProvider } from 'react-native-paper';
 import 'react-native-reanimated';
+import '../core/i18n';
 
-import { useColorScheme } from '@/components/useColorScheme';
+// Importamos nuestros temas personalizados
+import { paperTheme, theme } from '../core/theme';
 
-export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
-} from 'expo-router';
-
-export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: '(tabs)',
-};
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
+// Opcional: Esto ayuda a prevenir que la splash screen se oculte antes de tiempo
+// import { useFonts } from 'expo-font';
+// import * as SplashScreen from 'expo-splash-screen';
+// SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-    ...FontAwesome.font,
-  });
-
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
-  useEffect(() => {
-    if (error) throw error;
-  }, [error]);
-
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
-
-  if (!loaded) {
-    return null;
-  }
-
-  return <RootLayoutNav />;
-}
-
-function RootLayoutNav() {
-  const colorScheme = useColorScheme();
+  // Opcional: Lógica para cargar fuentes
+  // const [loaded] = useFonts({ ... });
+  // React.useEffect(() => {
+  //   if (loaded) {
+  //     SplashScreen.hideAsync();
+  //   }
+  // }, [loaded]);
+  // if (!loaded) {
+  //   return null;
+  // }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-      </Stack>
+    // 1. Proveedor de Tema de Shopify Restyle
+    <ThemeProvider theme={theme}>
+      {/* 2. Proveedor de Tema de React Native Paper */}
+      <PaperProvider theme={paperTheme}>
+        {/* El resto de tu aplicación vive aquí dentro */}
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        </Stack>
+      </PaperProvider>
     </ThemeProvider>
   );
 }

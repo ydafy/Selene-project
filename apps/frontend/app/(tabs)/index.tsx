@@ -1,31 +1,26 @@
-import { StyleSheet } from 'react-native';
+import { Button } from 'react-native-paper';
+import { Box, Text } from '../../components/base';
 
-import EditScreenInfo from '@/components/EditScreenInfo';
-import { Text, View } from '@/components/Themed';
-
-export default function TabOneScreen() {
+export default function HomeScreen() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Tab One</Text>
-      <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
-      <EditScreenInfo path="app/(tabs)/index.tsx" />
-    </View>
+    <Box
+      flex={1}
+      justifyContent="center"
+      alignItems="center"
+      backgroundColor="background"
+      padding="xl"
+    >
+      {/* CORRECCIÓN #1: Movemos los estilos no temáticos a propiedades de Restyle */}
+      <Text variant="largeHeader" color="primary">
+        ¡El Theming Funciona!
+      </Text>
+
+      {/* CORRECCIÓN #2: Usamos un espaciado del tema para la altura */}
+      <Box height={26} />
+
+      <Button mode="contained" onPress={() => console.log('Pressed')}>
+        Botón de Paper
+      </Button>
+    </Box>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  separator: {
-    marginVertical: 30,
-    height: 1,
-    width: '80%',
-  },
-});
