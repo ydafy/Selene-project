@@ -18,7 +18,6 @@
     "dependencies": {
         "@shopify/restyle": "^2.4.5",
         "@tanstack/react-query": "^5.90.5",
-        "expo-localization": "^17.0.7",
         "i18next": "^25.6.0",
         "react-hook-form": "^7.65.0",
         "react-i18next": "^16.1.0",
