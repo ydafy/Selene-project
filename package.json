@@ -1,5 +1,5 @@
 {
-    "name": "school-portal-monorepo",
+    "name": "selene-monorepo",
     "private": true,
     "workspaces": [
         "apps/*",

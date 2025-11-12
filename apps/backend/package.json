@@ -1,5 +1,5 @@
 {
-    "name": "@school/backend",
+    "name": "@selene/backend",
     "version": "1.0.0",
     "private": true,
     "main": "src/index.ts",
@@ -7,7 +7,7 @@
         "dev": "nodemon src/index.ts"
     },
     "dependencies": {
-        "@school/types": "workspace:*",
+        "@selene/types": "workspace:*",
         "cors": "^2.8.5",
         "express": "^4.19.2"
     },

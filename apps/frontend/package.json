@@ -1,5 +1,5 @@
 {
-    "name": "@school/frontend",
+    "name": "@selene/frontend",
     "main": "expo-router/entry",
     "version": "1.0.0",
     "scripts": {
@@ -11,7 +11,7 @@
     "dependencies": {
         "@expo/vector-icons": "^15.0.2",
         "@react-navigation/native": "^7.1.8",
-        "@school/types": "workspace:*",
+        "@selene/types": "workspace:*",
         "@shopify/restyle": "^2.4.5",
         "@tanstack/react-query": "^5.90.5",
         "expo": "~54.0.13",

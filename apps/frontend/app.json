@@ -23,7 +23,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": true,
-      "package": "com.alvarodev.schoolportal"
+      "package": "com.selene.marketplace"
     },
     "web": {
       "bundler": "metro",
