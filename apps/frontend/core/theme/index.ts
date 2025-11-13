@@ -1,24 +1,36 @@
 import { createTheme } from '@shopify/restyle';
-import { MD3LightTheme as DefaultPaperTheme } from 'react-native-paper';
+// Importamos el tema oscuro de Material Design 3 como base
+import { MD3DarkTheme as DefaultPaperTheme } from 'react-native-paper';
 
-// Paleta de colores. Podemos tener variantes para claro y oscuro.
+// 1. Tu paleta de colores definida.
 const palette = {
-  bluePrimary: '#2196F3',
-  blueLight: '#BBDEFB',
-  white: '#FFFFFF',
-  black: '#000000',
-  gray: '#9E9E9E',
-  lightGray: '#F5F5F5',
+  lion: '#bd9f65',
+  blueLight: '#6f839f',
+  platinum: '#E4E4E4',
+  night: '#121212',
+  stateGray: '#717C89',
+  forest: '#28a745',
+  fire: '#dc3545',
 };
 
-// Definición del tema para @shopify/restyle
+// 2. Mapeamos la paleta a roles semánticos en el tema de Restyle.
 export const theme = createTheme({
   colors: {
-    primary: palette.bluePrimary,
-    background: palette.lightGray,
-    cardBackground: palette.white,
-    text: palette.black,
-    textSecondary: palette.gray,
+    // Roles Base
+    background: palette.night,
+    foreground: palette.platinum,
+    primary: palette.lion,
+
+    // Roles de Texto
+    textPrimary: palette.platinum,
+    textSecondary: palette.blueLight,
+
+    // Roles de Superficie
+    cardBackground: palette.stateGray,
+
+    // Roles de Estado
+    success: palette.forest,
+    error: palette.fire,
   },
   spacing: {
     s: 8,
@@ -32,23 +44,39 @@ export const theme = createTheme({
   },
   textVariants: {
     defaults: {
-      color: 'text',
+      fontFamily: 'System',
+      color: 'textPrimary',
     },
-    largeHeader: {
-      fontSize: 24,
-      fontWeight: 'bold',
+    header: {
+      fontSize: 28,
+      fontWeight: '700',
+      color: 'textPrimary',
+    },
+    body: {
+      fontSize: 16,
+      color: 'textPrimary',
+    },
+    subdued: {
+      fontSize: 14,
+      color: 'textSecondary',
     },
   },
 });
 
-// Definición del tema para React Native Paper
-// Hereda los colores de nuestro tema principal para mantener la consistencia.
+// 3. Configuramos el tema de React Native Paper para que sea 100% coherente.
 export const paperTheme = {
   ...DefaultPaperTheme,
+  dark: true,
+  roundness: 12,
   colors: {
     ...DefaultPaperTheme.colors,
     primary: theme.colors.primary,
     background: theme.colors.background,
+    surface: theme.colors.background, // Hacemos que el fondo de los inputs sea el mismo que el de la pantalla
+    onSurface: theme.colors.textPrimary,
+    placeholder: theme.colors.textSecondary,
+    outline: theme.colors.textSecondary,
+    error: theme.colors.error,
   },
 };
 
