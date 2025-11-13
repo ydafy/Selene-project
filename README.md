@@ -1,4 +1,4 @@
-# school-portal
+# selene-project
 
 To install dependencies:
 
