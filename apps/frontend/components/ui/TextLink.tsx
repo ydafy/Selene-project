@@ -16,7 +16,13 @@ export const TextLink = ({ children, style, ...rest }: TextLinkProps) => {
 
   return (
     <TouchableOpacity {...rest} style={style}>
-      <Text style={{ color: theme.colors.primary, fontWeight: 'bold' }}>
+      <Text
+        style={{
+          color: theme.colors.primary,
+          fontWeight: '600',
+          textDecorationLine: 'underline',
+        }}
+      >
         {children}
       </Text>
     </TouchableOpacity>

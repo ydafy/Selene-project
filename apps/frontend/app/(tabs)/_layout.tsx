@@ -14,9 +14,9 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: theme.colors.primary, // Color del icono activo ('lion')
-        tabBarInactiveTintColor: theme.colors.textSecondary, // Color del icono inactivo
+        tabBarInactiveTintColor: theme.colors.textPrimary, // Color del icono inactivo
         tabBarStyle: {
-          backgroundColor: theme.colors.cardBackground, // Color de fondo de la barra
+          backgroundColor: theme.colors.background, // Color de fondo de la barra
           borderTopColor: theme.colors.cardBackground,
         },
         headerShown: false, // Ocultamos el header por defecto para todas las pestañas
@@ -39,17 +39,20 @@ export default function TabsLayout() {
       {/* --- Pestañas Futuras --- */}
       {/* Para añadir una nueva pestaña, simplemente crea el archivo y añade una nueva entrada aquí. */}
       {/* Por ejemplo, para una pantalla de "Vender": */}
-      {/*
       <Tabs.Screen
         name="sell" // Requeriría un archivo app/(tabs)/sell.tsx
         options={{
           title: 'Vender',
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="plus-circle-outline" color={color} size={size} />
+            <MaterialCommunityIcons
+              name="plus-circle-outline"
+              color={color}
+              size={size}
+            />
           ),
         }}
       />
-      */}
+
       {/*
       <Tabs.Screen
         name="profile" // Requeriría un archivo app/(tabs)/profile.tsx

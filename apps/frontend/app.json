@@ -14,13 +14,27 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.selene.marketplace"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "selene"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": true,
       "package": "com.selene.marketplace"
@@ -31,7 +45,15 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosClientId": "332992495631-gpl4f50ndu6oji4btgtkpohtukuvj622.apps.googleusercontent.com",
+          "webClientId": "332992495631-gnackhq8269n8v4k7e12sefsfs0cj5ep.apps.googleusercontent.com",
+          "iosUrlScheme": "com.googleusercontent.apps.332992495631-gpl4f50ndu6oji4btgtkpohtukuvj622"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

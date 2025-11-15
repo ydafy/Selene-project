@@ -1,37 +1,51 @@
 import { ThemeProvider } from '@shopify/restyle';
 import { PaperProvider } from 'react-native-paper';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Stack } from 'expo-router';
-import '../core/i18n'; // Importa la configuración de i18n
+import { SplashScreen, Stack } from 'expo-router';
+import { useEffect } from 'react';
 
+import '../core/i18n';
 import { paperTheme, theme } from '../core/theme';
+import { useSession } from '../core/hooks/useSession';
+import { useProtectedRoute } from '../core/hooks/useProtectedRoute';
 
-// Creamos una instancia del cliente de React Query
 const queryClient = new QueryClient();
 
-/**
- * RootLayout es el componente principal que envuelve toda la aplicación.
- * Aquí es donde configuramos todos los proveedores globales (Tema, Datos, etc.)
- * y definimos la estructura de navegación principal.
- */
-export default function RootLayout() {
-  // Aquí es donde en el futuro pondremos la lógica para verificar si el usuario está logueado.
-  // Por ahora, definimos la estructura de navegación.
+// Este es el componente que realmente maneja la navegación
+function RootLayoutNav() {
+  const { session, loading } = useSession();
+
+  // El hook se encarga de la lógica de redirección
+  useProtectedRoute(session, loading);
+
+  // Ocultamos la SplashScreen solo cuando la carga ha terminado
+  useEffect(() => {
+    if (!loading) {
+      SplashScreen.hideAsync();
+    }
+  }, [loading]);
+
+  // Mientras carga, no renderizamos el Stack para evitar parpadeos
+  if (loading) {
+    return null;
+  }
 
   return (
-    // 1. Proveedor de Tema de Shopify Restyle
+    <Stack>
+      {/* Ocultamos los headers aquí para que cada grupo los gestione */}
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+    </Stack>
+  );
+}
+
+// Este es el componente principal que exportamos
+export default function RootLayout() {
+  return (
     <ThemeProvider theme={theme}>
-      {/* 2. Proveedor de Tema de React Native Paper */}
       <PaperProvider theme={paperTheme}>
-        {/* 3. Proveedor para React Query (TanStack Query) */}
         <QueryClientProvider client={queryClient}>
-          {/* Stack principal que define los dos flujos de la app */}
-          <Stack>
-            {/* El flujo principal de la app (tabs) no muestra su propio header */}
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            {/* El flujo de autenticación tampoco muestra su propio header de nivel superior */}
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          </Stack>
+          <RootLayoutNav />
         </QueryClientProvider>
       </PaperProvider>
     </ThemeProvider>

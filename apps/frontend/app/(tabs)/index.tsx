@@ -1,23 +1,21 @@
-import { useEffect } from 'react';
 import { Button } from 'react-native-paper';
-import { Link } from 'expo-router'; // NUEVO: Importamos el componente Link
+import { Link, router } from 'expo-router';
 import { Box, Text } from '../../components/base';
 import { supabase } from '../../core/db/supabase';
+import { Alert } from 'react-native';
 
 export default function HomeScreen() {
-  // Mantendremos este código de prueba por ahora para seguir verificando la conexión
-  useEffect(() => {
-    const fetchProfiles = async () => {
-      console.log('Intentando obtener perfiles de Supabase...');
-      const { data, error } = await supabase.from('profiles').select('*');
-      if (error) {
-        console.error('Error al obtener perfiles:', error);
-      } else {
-        console.log('Perfiles obtenidos con éxito:', data);
-      }
-    };
-    fetchProfiles();
-  }, []);
+  // NUEVA FUNCIÓN DE LOGOUT
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      Alert.alert('Error', 'No se pudo cerrar la sesión.');
+    } else {
+      // Si el logout es exitoso, la lógica en nuestro _layout.tsx se encargará
+      // de detectar el cambio de sesión y redirigirnos al login automáticamente.
+      router.replace('/(auth)'); // Añadimos un replace por si acaso
+    }
+  };
 
   return (
     <Box
@@ -28,29 +26,27 @@ export default function HomeScreen() {
       padding="xl"
     >
       <Text variant="header" color="primary">
-        ¡El Theming Funciona!
+        ¡Estás dentro!
       </Text>
-      <Box height={40} />
+      <Text variant="subdued" marginVertical="l">
+        Esta es la pantalla principal de la aplicación.
+      </Text>
 
-      {/* --- NUEVO BOTÓN DE NAVEGACIÓN --- */}
-      {/* El componente Link de Expo Router nos permite navegar a otras pantallas.
-          El 'href' corresponde a la ruta del archivo en tu carpeta 'app'.
-          Lo envolvemos en un componente Button de React Native Paper para que se vea bien. */}
-      <Link href="/(auth)/login" asChild>
-        <Button mode="contained">Ir a la Pantalla de Registro</Button>
-      </Link>
-      {/* --- FIN DEL NUEVO BOTÓN --- */}
-
-      <Box height={40} />
-
+      {/* --- BOTÓN DE LOGOUT --- */}
       <Button
-        mode="contained"
-        buttonColor="#5B85AA"
-        textColor="#E4E4E4"
-        onPress={() => console.log('Pressed')}
+        mode="outlined"
+        onPress={handleLogout}
+        textColor="#E4E4E4" // Hardcodeamos el color para que sea visible
       >
-        COMPRAR
+        Cerrar Sesión
       </Button>
+
+      {/* Mantenemos el link a registro por si necesitamos crear otro usuario */}
+      <Box marginTop="xl">
+        <Link href="/(auth)/register" asChild>
+          <Button mode="contained">Ir a la Pantalla de Registro</Button>
+        </Link>
+      </Box>
     </Box>
   );
 }

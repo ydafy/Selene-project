@@ -14,7 +14,7 @@ export default function AuthLayout() {
       {/* Podemos definir opciones por defecto para todas las pantallas del stack aquí.
           Por ejemplo, si quisiéramos que todas tuvieran un fondo oscuro y texto blanco
           en el header. */}
-      <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="register" options={{ headerShown: false }} />
     </Stack>
   );

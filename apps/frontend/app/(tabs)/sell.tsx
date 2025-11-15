@@ -57,7 +57,7 @@ export default function RegisterScreen() {
         'Registro exitoso',
         'Hemos enviado un enlace de verificación a tu correo electrónico.',
       );
-      router.replace('/(auth)/index'); // Lo mandamos al login para que espere
+      router.replace('/(auth)'); // Lo mandamos al login para que espere
     }
   };
 

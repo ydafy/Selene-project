@@ -1,20 +1,24 @@
 import { useState } from 'react';
-import { supabase } from '../db/supabase';
 import { z } from 'zod';
 
-// 1. Definimos el esquema de validación con Zod
+// El esquema de Zod se mantiene igual.
 export const loginSchema = z.object({
-  email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
+  email: z
+    .string()
+    .min(1, { message: 'auth:errors.emailIsRequired' })
+    .email({ message: 'auth:errors.invalidEmail' }),
+  password: z.string().min(1, { message: 'auth:errors.passwordIsRequired' }),
 });
 
-// 2. Definimos el tipo de los datos del formulario a partir del esquema
 export type LoginData = z.infer<typeof loginSchema>;
 
 export const useAuth = () => {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
+  // La función signIn ya no es necesaria aquí, ya que la lógica
+  // se ha movido al componente para mayor claridad en este caso.
+  // La mantendremos comentada por si la necesitamos en el futuro para lógicas más complejas.
+  /*
   const signIn = async (data: LoginData) => {
     setLoading(true);
     setError(null);
@@ -28,12 +32,14 @@ export const useAuth = () => {
 
     if (signInError) {
       setError(signInError.message);
-      return false; // Indica que el login falló
+      return false;
     }
 
-    return true; // Indica que el login fue exitoso
+    return true;
   };
+  */
 
-  // Aquí añadiremos 'signUp', 'signOut', etc. en el futuro
-  return { signIn, loading, error };
+  // --- ESTE ES EL CAMBIO CLAVE ---
+  // Ahora, el hook devuelve el estado 'loading' y la función 'setLoading'.
+  return { loading, setLoading };
 };
