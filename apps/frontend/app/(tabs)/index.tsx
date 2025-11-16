@@ -3,17 +3,28 @@ import { Link, router } from 'expo-router';
 import { Box, Text } from '../../components/base';
 import { supabase } from '../../core/db/supabase';
 import { Alert } from 'react-native';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 export default function HomeScreen() {
   // NUEVA FUNCIÓN DE LOGOUT
-  const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      Alert.alert('Error', 'No se pudo cerrar la sesión.');
-    } else {
-      // Si el logout es exitoso, la lógica en nuestro _layout.tsx se encargará
-      // de detectar el cambio de sesión y redirigirnos al login automáticamente.
-      router.replace('/(auth)'); // Añadimos un replace por si acaso
+  const handleFullLogout = async () => {
+    try {
+      // 1. Primero, cerramos la sesión de Google.
+      //    Esto es crucial para que la próxima vez nos pida elegir una cuenta.
+      await GoogleSignin.signOut();
+
+      // 2. Luego, cerramos la sesión de Supabase.
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        throw error;
+      }
+
+      // La redirección automática de _layout.tsx se encargará del resto.
+      router.replace('/(auth)');
+    } catch (error) {
+      console.error('Error durante el logout completo:', error);
+      Alert.alert('Error', 'No se pudo cerrar la sesión completamente.');
     }
   };
 
@@ -35,7 +46,7 @@ export default function HomeScreen() {
       {/* --- BOTÓN DE LOGOUT --- */}
       <Button
         mode="outlined"
-        onPress={handleLogout}
+        onPress={handleFullLogout}
         textColor="#E4E4E4" // Hardcodeamos el color para que sea visible
       >
         Cerrar Sesión
