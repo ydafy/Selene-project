@@ -1,10 +1,16 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+//--LOGIN SCREEN WITH GOOGLE SIGN-IN INTEGRATION--//
+
 import { Alert, Image } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTheme } from '@shopify/restyle';
-import * as WebBrowser from 'expo-web-browser';
+import {
+  GoogleSignin,
+  statusCodes,
+} from '@react-native-google-signin/google-signin';
 
 // Importaciones de componentes y lógica
 import { ScreenLayout } from '../../components/layout/ScreenLayout';
@@ -47,41 +53,81 @@ export default function LoginScreen() {
   };
 
   const onGoogleSignIn = async () => {
-    console.log('Iniciando flujo de Google Sign-In...');
-    setLoading(true); // ¡Importante! Activar el estado de carga
-
+    setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: 'selene://',
-        },
+      // 1. Verifica que los servicios de Google Play estén disponibles en Android.
+      await GoogleSignin.hasPlayServices({
+        showPlayServicesUpdateDialog: true,
       });
 
-      console.log('Respuesta de signInWithOAuth:', { data, error });
+      // 2. Inicia el flujo de login nativo y obtiene la información del usuario.
+      const userInfo: any = await GoogleSignin.signIn();
 
-      if (error) {
-        throw error;
-      }
+      console.log('Google Sign-In successful. UserInfo structure:', {
+        hasIdToken: !!userInfo?.idToken,
+        hasDataIdToken: !!userInfo?.data?.idToken,
+        keys: userInfo ? Object.keys(userInfo) : [],
+      });
 
-      if (data.url) {
-        console.log('Abriendo URL de autenticación:', data.url);
-        const result = await WebBrowser.openAuthSessionAsync(data.url);
-        console.log('Resultado de WebBrowser:', result);
+      // 3. Verifica que el idToken, que es crucial para Supabase, exista.
+      const idToken = userInfo?.idToken || userInfo?.data?.idToken;
+
+      if (idToken) {
+        // 4. Si existe, se lo pasamos a Supabase.
+        const { error } = await supabase.auth.signInWithIdToken({
+          provider: 'google',
+          token: idToken,
+        });
+
+        if (error) {
+          // Si Supabase devuelve un error (ej. problema de configuración), lo lanzamos.
+          throw error;
+        }
+
+        // Si no hay error, la sesión se establece y el hook useProtectedRoute
+        // se encargará de la redirección. Forzamos un replace por si acaso.
+        router.replace('/(tabs)');
       } else {
-        throw new Error(
-          'No se recibió una URL de Supabase para el login con Google.',
-        );
+        throw new Error('No se pudo obtener el idToken de Google.');
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      // --- NUEVO BLOQUE CATCH MÁS DETALLADO ---
+      console.error('Error detallado en Google Sign-In:', error);
+
+      // Log additional error details
+      if (error && typeof error === 'object') {
+        console.error('Error code:', (error as any).code);
+        console.error('Error message:', (error as any).message);
+        console.error('Error stack:', (error as any).stack);
+      }
+
       let errorMessage = 'Ocurrió un error inesperado.';
-      if (error instanceof Error) {
+
+      if (error && typeof error === 'object' && 'code' in error) {
+        const googleError = error as { code: string | number };
+        switch (googleError.code) {
+          case statusCodes.SIGN_IN_CANCELLED:
+            // Esto es normal, no mostramos alerta.
+            setLoading(false);
+            return;
+          case statusCodes.IN_PROGRESS:
+            errorMessage = 'Ya hay un inicio de sesión en progreso.';
+            break;
+          case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
+            errorMessage =
+              'Los servicios de Google Play no están disponibles o están desactualizados.';
+            break;
+          default:
+            errorMessage = `Ocurrió un error con Google Sign-In. Código: ${googleError.code}`;
+        }
+      } else if (error instanceof Error) {
         errorMessage = error.message;
       }
-      console.error('Error durante Google Sign-In:', error);
+
       Alert.alert('Error', errorMessage);
+      // --- FIN DEL NUEVO BLOQUE CATCH ---
     } finally {
-      setLoading(false); // ¡Importante! Desactivar el estado de carga al final
+      setLoading(false);
     }
   };
 

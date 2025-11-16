@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "frontend",
-    "slug": "frontend",
+    "name": "Selene",
+    "slug": "selene",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "frontend",
+    "scheme": "selene",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -15,14 +15,16 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.selene.marketplace"
+      "bundleIdentifier": "com.selene.marketplace",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-
       "intentFilters": [
         {
           "action": "VIEW",
@@ -32,7 +34,10 @@
               "scheme": "selene"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
       "edgeToEdgeEnabled": true,
@@ -51,6 +56,7 @@
         {
           "iosClientId": "332992495631-gpl4f50ndu6oji4btgtkpohtukuvj622.apps.googleusercontent.com",
           "webClientId": "332992495631-gnackhq8269n8v4k7e12sefsfs0cj5ep.apps.googleusercontent.com",
+          "androidClientId": "332992495631-tnk4upn2o4e5k2026c5ee8f21ijmi120.apps.googleusercontent.com",
           "iosUrlScheme": "com.googleusercontent.apps.332992495631-gpl4f50ndu6oji4btgtkpohtukuvj622"
         }
       ]
@@ -61,8 +67,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "2329dafb-1a02-4f6e-ae32-f1ca622e9fed"
+        "projectId": "48bbf920-2548-4855-a45e-4031d7a50bc7"
       }
-    }
+    },
+    "owner": "alvaroest19"
   }
 }
