@@ -36,16 +36,23 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* --- Pestañas Futuras --- */}
-      {/* Para añadir una nueva pestaña, simplemente crea el archivo y añade una nueva entrada aquí. */}
-      {/* Por ejemplo, para una pantalla de "Vender": */}
       <Tabs.Screen
-        name="sell" // Requeriría un archivo app/(tabs)/sell.tsx
+        name="search"
         options={{
-          title: 'Vender',
+          title: 'Buscar',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="magnify" color={color} size={size} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="cart"
+        options={{
+          title: 'Carrito',
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons
-              name="plus-circle-outline"
+              name="cart-outline"
               color={color}
               size={size}
             />
@@ -53,17 +60,19 @@ export default function TabsLayout() {
         }}
       />
 
-      {/*
       <Tabs.Screen
-        name="profile" // Requeriría un archivo app/(tabs)/profile.tsx
+        name="profile"
         options={{
           title: 'Perfil',
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="account-outline" color={color} size={size} />
+            <MaterialCommunityIcons
+              name="account-outline"
+              color={color}
+              size={size}
+            />
           ),
         }}
       />
-      */}
     </Tabs>
   );
 }

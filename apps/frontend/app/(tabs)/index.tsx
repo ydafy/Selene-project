@@ -36,10 +36,10 @@ export default function HomeScreen() {
       backgroundColor="background"
       padding="xl"
     >
-      <Text variant="header" color="primary">
+      <Text variant="header-xl" color="primary">
         ¡Estás dentro!
       </Text>
-      <Text variant="subdued" marginVertical="l">
+      <Text variant="body-sm" marginVertical="l">
         Esta es la pantalla principal de la aplicación.
       </Text>
 
@@ -55,7 +55,9 @@ export default function HomeScreen() {
       {/* Mantenemos el link a registro por si necesitamos crear otro usuario */}
       <Box marginTop="xl">
         <Link href="/(auth)/register" asChild>
-          <Button mode="contained">Ir a la Pantalla de Registro</Button>
+          <Button mode="contained" textColor="#020202">
+            Ir a la Pantalla de Registro
+          </Button>
         </Link>
       </Box>
     </Box>

@@ -1,45 +1,43 @@
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import {
   TextInput as PaperTextInput,
   TextInputProps,
 } from 'react-native-paper';
+import type { TextInput as RNTextInput } from 'react-native';
 
 type FormTextInputProps = Omit<TextInputProps, 'theme'> & {
   leftIcon?: string;
 };
 
 /**
- * Componente de TextInput estandarizado para la aplicación.
- * Encapsula React Native Paper TextInput con estilos y funcionalidades por defecto,
- * incluyendo el manejo de visibilidad para campos de contraseña.
+ * Componente de TextInput estandarizado, ahora con soporte para 'ref'.
+ * El tipo de la ref se infiere del TextInput de React Native Paper.
  */
-export const FormTextInput = ({
-  leftIcon,
-  secureTextEntry,
-  ...rest
-}: FormTextInputProps) => {
-  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
-  // Determina si el campo es de tipo contraseña para activar la funcionalidad del "ojo".
-  const isPasswordField = !!secureTextEntry;
+export const FormTextInput = forwardRef<RNTextInput, FormTextInputProps>(
+  ({ leftIcon, secureTextEntry, ...rest }, ref) => {
+    const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+    const isPasswordField = !!secureTextEntry;
 
-  return (
-    <PaperTextInput
-      {...rest}
-      mode="flat"
-      style={[{ backgroundColor: 'transparent' }, rest.style]}
-      left={leftIcon ? <PaperTextInput.Icon icon={leftIcon} /> : undefined}
-      secureTextEntry={isPasswordField ? !isPasswordVisible : false}
-      right={
-        isPasswordField ? (
-          <PaperTextInput.Icon
-            icon={isPasswordVisible ? 'eye-off-outline' : 'eye-outline'}
-            onPress={() => setIsPasswordVisible((prev) => !prev)}
-          />
-        ) : (
-          rest.right
-        )
-      }
-    />
-  );
-};
+    return (
+      <PaperTextInput
+        ref={ref}
+        {...rest}
+        mode="flat"
+        style={[{ backgroundColor: 'transparent' }, rest.style]}
+        left={leftIcon ? <PaperTextInput.Icon icon={leftIcon} /> : undefined}
+        secureTextEntry={isPasswordField ? !isPasswordVisible : false}
+        right={
+          isPasswordField ? (
+            <PaperTextInput.Icon
+              icon={isPasswordVisible ? 'eye-off-outline' : 'eye-outline'}
+              onPress={() => setIsPasswordVisible((prev) => !prev)}
+            />
+          ) : (
+            rest.right
+          )
+        }
+      />
+    );
+  },
+);

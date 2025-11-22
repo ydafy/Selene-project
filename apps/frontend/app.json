@@ -31,13 +31,11 @@
           "autoVerify": true,
           "data": [
             {
-              "scheme": "selene"
+              "scheme": "selene",
+              "host": "auth-verified"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         }
       ],
       "edgeToEdgeEnabled": true,
