@@ -1,7 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-//--LOGIN SCREEN WITH GOOGLE SIGN-IN INTEGRATION--//
-
-import { Alert, Image } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useForm, Controller } from 'react-hook-form';
@@ -11,95 +8,113 @@ import {
   GoogleSignin,
   statusCodes,
 } from '@react-native-google-signin/google-signin';
+import Toast from 'react-native-toast-message'; // <-- Volvemos a Toast
 
 // Importaciones de componentes y lógica
 import { ScreenLayout } from '../../components/layout/ScreenLayout';
 import { FormTextInput } from '../../components/ui/FormTextInput';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
+import { GoogleButton } from '../../components/ui/GoogleButton';
 import { TextLink } from '../../components/ui/TextLink';
 import { Box, Text } from '../../components/base';
 import { useAuth, loginSchema, LoginData } from '../../core/hooks/useAuth';
 import { Theme } from '../../core/theme';
 import { supabase } from '../../core/db/supabase';
+import { AppImage } from '../../components/ui/AppImage';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const logoPath = require('../../assets/images/logo.png');
+const logoPath = require('../../assets/images/selenelogo1.png'); // Asegúrate de que sea el logo correcto
 
 export default function LoginScreen() {
   const { t } = useTranslation('auth');
-  const { loading, setLoading } = useAuth(); // Ajustamos el hook para obtener setLoading
+  // Usamos las funciones centralizadas del hook
+  const { signIn, loading, setLoading, resendSignUpOtp } = useAuth();
   const theme = useTheme<Theme>();
 
-  // --- CAMBIO #1: OBTENER 'isValid' y CONFIGURAR EL MODO ---
   const {
     control,
     handleSubmit,
-    formState: { errors, isValid }, // Obtenemos 'isValid' del estado del formulario
+    formState: { errors, isValid },
   } = useForm<LoginData>({
     resolver: zodResolver(loginSchema),
-    mode: 'onChange', // ¡MUY IMPORTANTE! Esto recalcula la validez en cada cambio.
+    mode: 'onChange',
   });
 
   const onSubmit = async (data: LoginData) => {
-    setLoading(true); // Usamos setLoading del hook
-    const { error } = await supabase.auth.signInWithPassword(data);
-    setLoading(false); // Usamos setLoading del hook
+    setLoading(true);
+    try {
+      const { error } = await signIn({
+        email: data.email,
+        password: data.password,
+      });
 
-    if (error) {
-      Alert.alert('Error', error.message);
-    } else {
+      if (error) {
+        // Manejo especial para email no confirmado
+        if (error.message === 'Email not confirmed') {
+          Toast.show({
+            type: 'info', // Usamos info o nuestro seleneToast
+            text1: 'Verificación requerida',
+            text2: 'Te hemos reenviado el código a tu correo.',
+          });
+
+          await resendSignUpOtp(data.email);
+
+          router.push({
+            pathname: '/(auth)/verify-code',
+            params: { email: data.email },
+          });
+          return;
+        }
+
+        // Error genérico de login
+        Toast.show({
+          type: 'error',
+          text1: t('loginErrorTitle') || 'Error de inicio de sesión',
+          text2: error.message,
+        });
+        return;
+      }
+
+      // Éxito
       router.replace('/(tabs)');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      Toast.show({
+        type: 'error',
+        text1: t('loginErrorTitle') || 'Error',
+        text2: message,
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
   const onGoogleSignIn = async () => {
     setLoading(true);
     try {
-      // 1. Verifica que los servicios de Google Play estén disponibles en Android.
       await GoogleSignin.hasPlayServices({
         showPlayServicesUpdateDialog: true,
       });
 
-      // 2. Inicia el flujo de login nativo y obtiene la información del usuario.
       const userInfo: any = await GoogleSignin.signIn();
 
-      console.log('Google Sign-In successful. UserInfo structure:', {
-        hasIdToken: !!userInfo?.idToken,
-        hasDataIdToken: !!userInfo?.data?.idToken,
-        keys: userInfo ? Object.keys(userInfo) : [],
-      });
-
-      // 3. Verifica que el idToken, que es crucial para Supabase, exista.
+      // Verificación defensiva del idToken
       const idToken = userInfo?.idToken || userInfo?.data?.idToken;
 
       if (idToken) {
-        // 4. Si existe, se lo pasamos a Supabase.
         const { error } = await supabase.auth.signInWithIdToken({
           provider: 'google',
           token: idToken,
         });
 
-        if (error) {
-          // Si Supabase devuelve un error (ej. problema de configuración), lo lanzamos.
-          throw error;
-        }
+        if (error) throw error;
 
-        // Si no hay error, la sesión se establece y el hook useProtectedRoute
-        // se encargará de la redirección. Forzamos un replace por si acaso.
         router.replace('/(tabs)');
       } else {
         throw new Error('No se pudo obtener el idToken de Google.');
       }
     } catch (error: unknown) {
-      // --- NUEVO BLOQUE CATCH MÁS DETALLADO ---
       console.error('Error detallado en Google Sign-In:', error);
-
-      // Log additional error details
-      if (error && typeof error === 'object') {
-        console.error('Error code:', (error as any).code);
-        console.error('Error message:', (error as any).message);
-        console.error('Error stack:', (error as any).stack);
-      }
 
       let errorMessage = 'Ocurrió un error inesperado.';
 
@@ -107,25 +122,26 @@ export default function LoginScreen() {
         const googleError = error as { code: string | number };
         switch (googleError.code) {
           case statusCodes.SIGN_IN_CANCELLED:
-            // Esto es normal, no mostramos alerta.
             setLoading(false);
-            return;
+            return; // Usuario canceló, no hacemos nada
           case statusCodes.IN_PROGRESS:
             errorMessage = 'Ya hay un inicio de sesión en progreso.';
             break;
           case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
-            errorMessage =
-              'Los servicios de Google Play no están disponibles o están desactualizados.';
+            errorMessage = 'Los servicios de Google Play no están disponibles.';
             break;
           default:
-            errorMessage = `Ocurrió un error con Google Sign-In. Código: ${googleError.code}`;
+            errorMessage = `Error de Google: ${googleError.code}`;
         }
       } else if (error instanceof Error) {
         errorMessage = error.message;
       }
 
-      Alert.alert('Error', errorMessage);
-      // --- FIN DEL NUEVO BLOQUE CATCH ---
+      Toast.show({
+        type: 'error',
+        text1: t('googleSignInErrorTitle') || 'Error de Google',
+        text2: errorMessage,
+      });
     } finally {
       setLoading(false);
     }
@@ -137,15 +153,15 @@ export default function LoginScreen() {
 
       <Box flex={1} paddingHorizontal="xl" justifyContent="space-between">
         <Box flex={1} justifyContent="center">
-          <Image
+          <AppImage
             source={logoPath}
             style={{
-              width: 120,
-              height: 120,
+              width: 320, // Ajustado para logo-full horizontal
+              height: 140,
               alignSelf: 'center',
               marginBottom: 40,
             }}
-            resizeMode="contain"
+            contentFit="contain"
           />
 
           <Controller
@@ -166,7 +182,7 @@ export default function LoginScreen() {
           />
           {errors.email && (
             <Text
-              variant="subdued"
+              variant="body-sm"
               style={{ color: theme.colors.error, marginTop: 4, marginLeft: 8 }}
             >
               {t(errors.email.message as string)}
@@ -192,7 +208,7 @@ export default function LoginScreen() {
           />
           {errors.password && (
             <Text
-              variant="subdued"
+              variant="body-sm"
               style={{ color: theme.colors.error, marginTop: 4, marginLeft: 8 }}
             >
               {t(errors.password.message as string)}
@@ -201,33 +217,29 @@ export default function LoginScreen() {
 
           <Box height={24} />
 
-          {/* --- CAMBIO #2: USAR 'isValid' PARA DESHABILITAR EL BOTÓN --- */}
           <PrimaryButton
             onPress={handleSubmit(onSubmit)}
             loading={loading}
-            disabled={!isValid || loading} // El botón está deshabilitado si el formulario NO es válido o si está cargando.
+            disabled={!isValid || loading}
           >
             {t('loginButton')}
           </PrimaryButton>
 
           <Box flexDirection="row" alignItems="center" marginVertical="l">
             <Box flex={1} height={1} backgroundColor="cardBackground" />
-            <Text variant="subdued" marginHorizontal="m">
-              O
+            <Text variant="body-sm" marginHorizontal="m">
+              {t('or')}
             </Text>
             <Box flex={1} height={1} backgroundColor="cardBackground" />
           </Box>
-          {/* --- GOOGLE BUTTON --- */}
-          <PrimaryButton
-            onPress={() => onGoogleSignIn()} // Conectaremos esta función ahora
-            icon="google" // React Native Paper Button puede aceptar un icono
-            variant="outline" // Usaremos nuestro estilo 'outline'
-          >
-            Continuar con Google
-          </PrimaryButton>
+
+          <GoogleButton
+            onPress={onGoogleSignIn}
+            label={t('auth:continueWithGoogle')}
+          />
 
           <TextLink
-            onPress={() => {}}
+            onPress={() => router.push('/(auth)/forgotPassword')}
             style={{ alignSelf: 'center', marginTop: 24 }}
           >
             {t('forgotPassword')}
@@ -240,7 +252,9 @@ export default function LoginScreen() {
           flexDirection="row"
           justifyContent="center"
         >
-          <Text color="textSecondary">{t('noAccount')} </Text>
+          <Text variant="body-md" color="textSecondary">
+            {t('noAccount')}{' '}
+          </Text>
           <TextLink onPress={() => router.push('/(auth)/register')}>
             {t('signUpLink')}
           </TextLink>

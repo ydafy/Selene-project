@@ -28,6 +28,7 @@ export const ScreenLayout = ({ children, style }: ScreenLayoutProps) => {
         <ScrollView
           contentContainerStyle={[{ flexGrow: 1 }, style]}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           {children}
         </ScrollView>

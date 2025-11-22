@@ -39,7 +39,7 @@ export const PrimaryButton = ({
         },
         rest.style,
       ]}
-      labelStyle={{ fontWeight: 'bold', paddingVertical: 8, fontSize: 16 }}
+      labelStyle={{ fontWeight: 'bold', paddingVertical: 5, fontSize: 16 }}
     >
       {children}
     </PaperButton>
