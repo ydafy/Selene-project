@@ -47,6 +47,24 @@ export const toastConfig = {
       }}
     />
   ),
+  info: (props: ToastConfigParams<any>) => (
+    <BaseToast
+      {...props}
+      // Usamos un azul estándar para Info, o tu color primario si prefieres
+      style={{ borderLeftColor: '#2196F3', backgroundColor: '#1E1E1E' }}
+      contentContainerStyle={{ paddingHorizontal: 15 }}
+      text1Style={{
+        fontSize: 16,
+        fontFamily: 'Montserrat-Medium',
+        color: '#E4E4E4',
+      }}
+      text2Style={{
+        fontSize: 14,
+        fontFamily: 'Montserrat-Regular',
+        color: '#A9A9A9',
+      }}
+    />
+  ),
 
   seleneToast: ({ text1 }: ToastConfigParams<any>) => {
     const theme = useTheme<Theme>();
@@ -56,7 +74,7 @@ export const toastConfig = {
         width="90%"
         backgroundColor="cardBackground"
         style={{ borderLeftWidth: 10, borderLeftColor: theme.colors.primary }}
-        borderRadius={theme.spacing.s}
+        borderRadius="s"
         justifyContent="center"
         paddingHorizontal="m"
       >

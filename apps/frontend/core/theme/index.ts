@@ -43,9 +43,11 @@ const palette = {
   blueLight: '#6f839f',
   platinum: '#E4E4E4',
   night: '#121212',
-  stateGray: '#717C89',
+  stateGray: '#1E1E1E',
   forest: '#28a745',
   fire: '#dc3545',
+  blueGray: 'rgba(255, 255, 255, 0.1)',
+  shadow: 'rgba(0,0,0,0.6)',
 };
 
 // 2. Mapeamos la paleta a roles semánticos en el tema de Restyle.
@@ -58,47 +60,56 @@ export const theme = createTheme({
     textPrimary: palette.platinum,
     textSecondary: palette.blueLight,
     cardBackground: palette.stateGray,
+    focus: palette.shadow,
     success: palette.forest,
     error: palette.fire,
+    separator: palette.blueGray,
   },
-  spacing: { s: 8, m: 16, l: 24, xl: 40 },
+  spacing: { xs: 4, s: 8, m: 16, l: 24, xl: 40 },
+  borderRadii: {
+    s: 8,
+    m: 16,
+    l: 24,
+    xl: 40,
+    full: 999, // Para círculos perfectos
+  },
   breakpoints: { phone: 0, tablet: 768 },
   // Tu sección 'textVariants' para Restyle se mantiene igual
   textVariants: {
     'header-2xl': {
-      fontFamily: 'Montserrat-Regular',
+      fontFamily: 'Montserrat-Medium',
       fontSize: 36,
       lineHeight: 40,
       color: 'textPrimary',
     },
     'header-xl': {
-      fontFamily: 'Montserrat-Regular',
+      fontFamily: 'Montserrat-Medium',
       fontSize: 28,
       lineHeight: 36,
       color: 'textPrimary',
     },
     'subheader-lg': {
       fontFamily: 'Montserrat-Medium',
-      fontSize: 20,
-      lineHeight: 28,
+      fontSize: 22,
+      lineHeight: 29,
       color: 'textPrimary',
     },
     'subheader-md': {
       fontFamily: 'Montserrat-Medium',
-      fontSize: 18,
+      fontSize: 16,
       lineHeight: 24,
       color: 'textPrimary',
     },
     'body-lg': {
       fontFamily: 'Montserrat-Regular',
       fontSize: 16,
-      lineHeight: 24,
+      lineHeight: 28,
       color: 'textPrimary',
     },
     'body-md': {
       fontFamily: 'Montserrat-Regular',
       fontSize: 14,
-      lineHeight: 20,
+      lineHeight: 24,
       color: 'textPrimary',
     },
     'body-sm': {

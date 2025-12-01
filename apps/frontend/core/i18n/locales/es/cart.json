@@ -1,0 +1,15 @@
+{
+  "title": "Tu Carrito",
+  "total": "Total Estimado",
+  "checkout": "Proceder al Pago",
+  "emptyTitle": "Tu carrito está vacío",
+  "emptyMsg": "¿Por qué no exploras y añades algo de hardware?",
+
+  "actions": {
+    "remove": "Eliminar del carrito"
+  },
+  "dialog": {
+    "removeItemTitle": "¿Eliminar producto?",
+    "removeItemMsg": "¿Estás seguro de que quieres sacar este artículo de tu carrito?"
+  }
+}

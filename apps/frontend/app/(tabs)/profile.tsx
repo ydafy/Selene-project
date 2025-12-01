@@ -9,6 +9,7 @@ import { AppImage } from '../../components/ui/AppImage';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { TextLink } from '../../components/ui/TextLink';
 import { ScreenLayout } from '../../components/layout/ScreenLayout';
+import { useAuthModal } from '../../core/auth/AuthModalProvider';
 
 // Asumimos que tienes un ícono/ilustración para esta pantalla
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -20,6 +21,7 @@ const logoIconPath = require('../../assets/images/SeleneLunaLogo.png');
  */
 const GuestProfile = () => {
   const { t } = useTranslation('auth');
+  const { present } = useAuthModal();
 
   return (
     <Box flex={1} justifyContent="center" alignItems="center" padding="xl">
@@ -41,8 +43,8 @@ const GuestProfile = () => {
         tus artículos favoritos.
       </Text>
 
-      <PrimaryButton onPress={() => router.push('/login')}>
-        Iniciar Sesión
+      <PrimaryButton onPress={() => present('login')}>
+        Iniciar Sesión (Modal)
       </PrimaryButton>
       <Box height={16} />
       <TextLink onPress={() => router.push('/register')}>Crear Cuenta</TextLink>

@@ -20,7 +20,7 @@ export const useProtectedRoute = (
     // Si NO hay sesión, lo mandamos al login.
     // La comprobación '!inAuthGroup' previene un bucle si ya estamos en (auth).
     else if (!session && !inAuthGroup) {
-      router.replace('/(auth)');
+      //router.replace('/(auth)');
     }
   }, [session, loading, segments]);
 };

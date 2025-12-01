@@ -1,65 +1,129 @@
-import { Button } from 'react-native-paper';
-import { Link, router } from 'expo-router';
+import { FlatList } from 'react-native';
+import { useTheme } from '@shopify/restyle';
+import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+
 import { Box, Text } from '../../components/base';
-import { supabase } from '../../core/db/supabase';
-import { Alert } from 'react-native';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { ProductCard } from '../../components/features/product/ProductCard';
+import { useProducts } from '../../core/hooks/useProducts';
+import { Theme } from '../../core/theme';
+import { Product } from '@selene/types';
+import { ProductCardSkeleton } from '@/components/features/product/ProductCardSkeleton';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GlobalHeader } from '@/components/layout/GlobalHeader';
+import { ScreenHeader } from '../../components/layout/ScreenHeader';
+import { useAuthContext } from '../../components/auth/AuthProvider'; // <-- Importar Contexto Auth
+import { useAuthModal } from '../../core/auth/AuthModalProvider'; // <-- Importar Contexto Modal
+import { useEffect } from 'react';
 
 export default function HomeScreen() {
-  // NUEVA FUNCIÓN DE LOGOUT
-  const handleFullLogout = async () => {
-    try {
-      // 1. Primero, cerramos la sesión de Google.
-      //    Esto es crucial para que la próxima vez nos pida elegir una cuenta.
-      await GoogleSignin.signOut();
+  const theme = useTheme<Theme>();
+  const { t } = useTranslation(['common', 'product']);
+  const insets = useSafeAreaInsets();
 
-      // 2. Luego, cerramos la sesión de Supabase.
-      const { error } = await supabase.auth.signOut();
+  const { session, loading: authLoading } = useAuthContext();
+  const { present } = useAuthModal();
 
-      if (error) {
-        throw error;
-      }
+  const { data: products, isLoading, error, refetch } = useProducts();
 
-      // La redirección automática de _layout.tsx se encargará del resto.
-      router.replace('/(auth)');
-    } catch (error) {
-      console.error('Error durante el logout completo:', error);
-      Alert.alert('Error', 'No se pudo cerrar la sesión completamente.');
-    }
+  const handleProductPress = (product: Product) => {
+    router.push({
+      pathname: '/product/[id]',
+      params: { id: product.id },
+    });
   };
 
+  useEffect(() => {
+    // Si ya terminó de cargar la sesión Y no hay usuario...
+    if (!authLoading && !session) {
+      // ...esperamos 1.5 segundos y mostramos el modal
+      const timer = setTimeout(() => {
+        present('login');
+      }, 1500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [authLoading, session]); // Se ejecuta cuando cambia el estado de la sesión
+
+  // --- ESTADO DE CARGA (Skeletons) ---
+  if (isLoading) {
+    return (
+      <Box flex={1} backgroundColor="background" padding="m">
+        {/* Header Falso para evitar saltos de layout visuales */}
+        <Box marginBottom="l">
+          <Text variant="header-xl">{t('product:feed.title')}</Text>
+          <Text variant="body-md" color="textSecondary">
+            {t('product:feed.subtitle')}
+          </Text>
+        </Box>
+
+        <Box flexDirection="row" flexWrap="wrap" justifyContent="space-between">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <ProductCardSkeleton key={i} />
+          ))}
+        </Box>
+      </Box>
+    );
+  }
+
+  // --- ESTADO DE ERROR ---
+  if (error) {
+    return (
+      <ErrorState
+        message={error.message}
+        onRetry={refetch} // React Query nos da la función refetch
+      />
+    );
+  }
+
+  // --- LISTA DE PRODUCTOS ---
   return (
     <Box
       flex={1}
-      justifyContent="center"
-      alignItems="center"
       backgroundColor="background"
-      padding="xl"
+      style={{ paddingTop: insets.top }}
     >
-      <Text variant="header-xl" color="primary">
-        ¡Estás dentro!
-      </Text>
-      <Text variant="body-sm" marginVertical="l">
-        Esta es la pantalla principal de la aplicación.
-      </Text>
+      <GlobalHeader
+        showBack={true}
+        title={t('product.detailsTitle')}
+        //rightIcon="heart-outline"
+        //onRightPress={() => console.log('Fav')}
+      />
+      <FlatList
+        data={products}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          // flex={0.5} asegura que ocupe la mitad del ancho en 2 columnas
+          <Box flex={0.5} paddingHorizontal="s">
+            <ProductCard product={item} onPress={handleProductPress} />
+          </Box>
+        )}
+        numColumns={2}
+        contentContainerStyle={{
+          padding: theme.spacing.m,
 
-      {/* --- BOTÓN DE LOGOUT --- */}
-      <Button
-        mode="outlined"
-        onPress={handleFullLogout}
-        textColor="#E4E4E4" // Hardcodeamos el color para que sea visible
-      >
-        Cerrar Sesión
-      </Button>
-
-      {/* Mantenemos el link a registro por si necesitamos crear otro usuario */}
-      <Box marginTop="xl">
-        <Link href="/(auth)/register" asChild>
-          <Button mode="contained" textColor="#020202">
-            Ir a la Pantalla de Registro
-          </Button>
-        </Link>
-      </Box>
+          paddingBottom: 80 + insets.bottom + 20,
+        }}
+        columnWrapperStyle={{
+          justifyContent: 'space-between',
+        }}
+        onRefresh={refetch}
+        refreshing={isLoading}
+        // Header real
+        ListHeaderComponent={
+          <ScreenHeader title={t('home.title')} subtitle={t('home.subtitle')} />
+        }
+        // Estado vacío
+        ListEmptyComponent={
+          <EmptyState
+            title={t('home.emptyList')}
+            message="Intenta ajustar tus filtros o busca otra cosa."
+            icon="magnify-remove-outline"
+          />
+        }
+      />
     </Box>
   );
 }
