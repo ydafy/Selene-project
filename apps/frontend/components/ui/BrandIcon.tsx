@@ -113,3 +113,11 @@ export const BrandIcon = ({ name, size = 24, color }: BrandIconProps) => {
     </Box>
   );
 };
+/**
+ * Helper para saber si tenemos icono para una marca específica.
+ * Útil para filtrar listas.
+ */
+export const hasBrandIcon = (name: string): boolean => {
+  const normalizedName = name.toLowerCase().trim();
+  return !!BRAND_MAP[normalizedName];
+};

@@ -57,5 +57,11 @@
     "reportSentMsg": "We will review this listing.",
     "userBlockedTitle": "User blocked",
     "userBlockedMsg": "You won't see their products again."
+  },
+  "search": {
+    "title": "What are you looking for today?",
+    "placeholder": "Search for products (e.g., RTX 3080)",
+    "categories": "Popular Categories",
+    "resultsTitle": "Results"
   }
 }

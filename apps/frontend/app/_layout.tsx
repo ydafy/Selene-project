@@ -9,10 +9,14 @@ import { useEffect } from 'react';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { useFonts } from 'expo-font';
 import Toast from 'react-native-toast-message';
+import {
+  //DefaultTheme,
+  ThemeProvider as NavThemeProvider,
+} from '@react-navigation/native';
 
 import { toastConfig } from '../components/config/ToastConfig';
 import '../core/i18n';
-import { paperTheme, theme } from '../core/theme';
+import { paperTheme, theme, navigationTheme } from '../core/theme';
 
 // IMPORTA AMBOS PROVIDERS
 import { AuthProvider } from '../components/auth/AuthProvider';
@@ -50,22 +54,24 @@ export default function RootLayout() {
       <ThemeProvider theme={theme}>
         <PaperProvider theme={paperTheme as any}>
           <QueryClientProvider client={queryClient}>
-            {/* 1. AuthProvider: Maneja la sesión de Supabase */}
-            <AuthProvider>
-              {/* 2. AuthModalProvider: Maneja la UI del Bottom Sheet */}
-              <AuthModalProvider>
-                <Stack>
-                  <Stack.Screen
-                    name="(tabs)"
-                    options={{ headerShown: false }}
-                  />
-                  <Stack.Screen
-                    name="(auth)"
-                    options={{ headerShown: false }}
-                  />
-                </Stack>
-              </AuthModalProvider>
-            </AuthProvider>
+            <NavThemeProvider value={navigationTheme}>
+              {/* 1. AuthProvider: Maneja la sesión de Supabase */}
+              <AuthProvider>
+                {/* 2. AuthModalProvider: Maneja la UI del Bottom Sheet */}
+                <AuthModalProvider>
+                  <Stack>
+                    <Stack.Screen
+                      name="(tabs)"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="(auth)"
+                      options={{ headerShown: false }}
+                    />
+                  </Stack>
+                </AuthModalProvider>
+              </AuthProvider>
+            </NavThemeProvider>
 
             <Toast config={toastConfig} />
           </QueryClientProvider>

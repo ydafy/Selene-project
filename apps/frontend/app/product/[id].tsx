@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useLocalSearchParams, Stack } from 'expo-router';
-import { ScrollView } from 'react-native';
+import { ScrollView } from 'react-native'; // ScrollView normal
 import { useTheme } from '@shopify/restyle';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -8,13 +7,11 @@ import { IconButton } from 'react-native-paper';
 
 // Componentes Base y UI
 import { Box, Text } from '../../components/base';
-
-import { AppChip } from '../../components/ui/AppChip';
+import { PrimaryButton } from '../../components/ui/PrimaryButton';
 
 // Componentes de Layout
 import { GlobalHeader } from '../../components/layout/GlobalHeader';
 import { BottomActionBar } from '../../components/layout/BottomActionBar';
-import { useAuthContext } from '../../components/auth/AuthProvider';
 
 // Componentes de Feature (Producto)
 import { ProductImageGallery } from '../../components/features/product/ProductImageGallery';
@@ -22,25 +19,27 @@ import { ProductSpecificationsGrid } from '../../components/features/product/Pro
 import { ProductFavoriteButton } from '../../components/features/product/ProductFavoriteButton';
 import { ProductSellerCard } from '../../components/features/product/ProductSellerCard';
 import { ProductDetailSkeleton } from '../../components/features/product/ProductDetailSkeleton';
-import { ProductActionButtons } from '../../components/features/product/ProductActionButtons';
-import { ViewCounter } from '../../components/features/product/ViewCounter';
 import { OptionsMenu } from '../../components/ui/OptionsMenu';
+//import { ViewCounter } from '../../components/features/product/ViewCounter';
+import { AppChip } from '../../components/ui/AppChip';
 
 // Hooks y Utilidades
+import { useProductCart } from '../../components/features/product/hooks/useProductCart';
 import { useProductShare } from '../../components/features/product/hooks/useProductShare';
 import { useProduct } from '../../core/hooks/useProduct';
+import { useAuthContext } from '../../components/auth/AuthProvider';
 import { Theme } from '../../core/theme';
 
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme<Theme>();
-  const { t } = useTranslation(['common', 'product']);
+  const { t } = useTranslation('product');
   const insets = useSafeAreaInsets();
   const { session } = useAuthContext();
 
   const { data: product, isLoading, error } = useProduct(id!);
 
-  // Hook de lógica de acciones (Carrito, Compartir)
+  const { handleAddToCart, isAddingToCart, isAdded } = useProductCart(product);
   const { handleShare } = useProductShare(product);
 
   if (isLoading) {
@@ -56,26 +55,25 @@ export default function ProductDetailScreen() {
         backgroundColor="background"
       >
         <Text variant="body-md" color="error">
-          {t('product:states.productLoadError')}
+          {t('errorLoading')}
         </Text>
       </Box>
     );
   }
 
-  const isOwner = session?.user.id === product?.seller_id;
+  const isOwner = session?.user.id === product.seller_id;
 
   return (
     <Box flex={1} backgroundColor="background">
       <Stack.Screen options={{ headerShown: false }} />
 
+      {/* Header Estático */}
       <GlobalHeader
         showBack={true}
-        title={t('product:details.title')}
+        title={t('details.title')}
         backgroundColor="cardBackground"
-        // --- AQUÍ ESTÁ LA MAGIA DEL SLOT ---
         headerRight={
           <Box flexDirection="row" alignItems="center">
-            {/* Botón Compartir */}
             <IconButton
               icon="share-variant"
               iconColor={theme.colors.textPrimary}
@@ -84,7 +82,6 @@ export default function ProductDetailScreen() {
               style={{ margin: 0 }}
             />
 
-            {/* Menú Genérico Inteligente */}
             <OptionsMenu
               targetId={product.id}
               sellerId={product.seller_id}
@@ -98,11 +95,11 @@ export default function ProductDetailScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingTop: insets.top + 80,
+          paddingTop: insets.top + 90, // Espacio para el header flotante
           paddingBottom: 120,
         }}
       >
-        <ProductImageGallery images={product.images} />
+        <ProductImageGallery images={product.images} productId={product.id} />
 
         <Box
           marginHorizontal="m"
@@ -110,16 +107,15 @@ export default function ProductDetailScreen() {
           backgroundColor="cardBackground"
           borderRadius="l"
         >
-          {/* Cabecera */}
+          {/* Cabecera interna */}
           <Box
             flexDirection="row"
             justifyContent="space-between"
             alignItems="flex-start"
             marginBottom="s"
           >
-            {/* COLUMNA IZQUIERDA: Título, Contador y Tags */}
             <Box flex={1} marginRight="m">
-              {/* Fila: Título + Contador */}
+              {/* Título y Contador */}
               <Box
                 flexDirection="row"
                 alignItems="center"
@@ -129,24 +125,19 @@ export default function ProductDetailScreen() {
                 <Text variant="header-xl" lineHeight={32}>
                   {product.name}
                 </Text>
-
-                {/* Aquí colocamos el contador, justo al terminar el título */}
-
-                {/* ESTE ES EL CONTADOR DE CUANTOS USARIOS VEN EL PRODUCTO, PARA LA VERSION 1.0 LO MANTENDREMOS OCULTO PARA LUEGO SACARLO EN VERSIONES POSTERIORES */}
-
+                {/* ViewCounter (Oculto por ahora según decisión de negocio, pero el código está listo) */}
                 {/* <ViewCounter count={product.views} /> */}
               </Box>
 
-              {/* Etiquetas usando AppChip */}
+              {/* Etiquetas */}
               <Box
                 flexDirection="row"
-                flexWrap="wrap" // Permite que el Status baje si no cabe
+                flexWrap="wrap"
                 gap="s"
+                marginBottom="s"
                 marginTop="s"
                 alignItems="center"
               >
-                {/* GRUPO INSEPARABLE: Categoría y Condición */}
-                {/* Al ponerlos en su propio Box row SIN wrap, siempre estarán juntos */}
                 <Box flexDirection="row" gap="s">
                   <AppChip
                     label={product.category}
@@ -154,7 +145,6 @@ export default function ProductDetailScreen() {
                     backgroundColor="background"
                     onPress={() => console.log('Filtrar por categoría')}
                   />
-
                   <AppChip
                     label={product.condition}
                     textColor="textPrimary"
@@ -162,11 +152,9 @@ export default function ProductDetailScreen() {
                   />
                 </Box>
 
-                {/* EL FLOTANTE: Status Verificado */}
-                {/* Este elemento sí puede hacer wrap y bajar a la siguiente línea si falta espacio */}
                 {product.status === 'VERIFIED' && (
                   <AppChip
-                    label={t('product:details.verifiedStatus')}
+                    label={t('verifiedStatus')}
                     icon="shield-check"
                     textColor="success"
                     backgroundColor="background"
@@ -175,21 +163,25 @@ export default function ProductDetailScreen() {
               </Box>
             </Box>
 
-            {/* COLUMNA DERECHA: Precio */}
             <Box alignItems="flex-end">
-              <Text variant="subheader-md" color="textPrimary">
-                {t('product:details.priceLabel')}
+              <Text variant="subheader-md" color="textSecondary">
+                {t('details.priceLabel')}
               </Text>
-              <Text variant="subheader-lg" color="primary">
+              <Text variant="header-xl" color="primary">
                 ${product.price.toLocaleString('es-MX')}
               </Text>
             </Box>
           </Box>
 
-          {/* Descripción */}
-          <Text variant="subheader-lg" marginBottom="m" color="primary">
+          <Text
+            variant="subheader-lg"
+            color="primary"
+            alignItems="flex-start"
+            marginBottom="s"
+          >
             {t('product:details.description')}
           </Text>
+
           <Text
             variant="body-md"
             color="textPrimary"
@@ -198,10 +190,8 @@ export default function ProductDetailScreen() {
             {product.description}
           </Text>
 
-          {/* Componente del Vendedor (Refactorizado) */}
           <ProductSellerCard product={product} />
 
-          {/* Especificaciones */}
           <ProductSpecificationsGrid specs={product.specifications} />
         </Box>
       </ScrollView>
@@ -214,7 +204,15 @@ export default function ProductDetailScreen() {
           </Box>
 
           <Box flex={1}>
-            <ProductActionButtons product={product} />
+            <PrimaryButton
+              onPress={handleAddToCart}
+              loading={isAddingToCart}
+              disabled={isAddingToCart}
+              variant={isAdded ? 'outline' : 'solid'}
+              icon={isAdded ? 'check' : 'cart-outline'}
+            >
+              {isAdded ? t('actions.added') : t('actions.addToCart')}
+            </PrimaryButton>
           </Box>
         </Box>
       </BottomActionBar>

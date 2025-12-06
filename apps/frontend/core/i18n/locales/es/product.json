@@ -57,5 +57,11 @@
     "reportSentMsg": "Revisaremos esta publicación.",
     "userBlockedTitle": "Usuario bloqueado",
     "userBlockedMsg": "No volverás a ver sus productos."
+  },
+  "search": {
+    "title": "Comprar",
+    "placeholder": "Buscar productos (ej. RTX 3080)",
+    "categories": "Categorías Populares",
+    "resultsTitle": "Resultados"
   }
 }

@@ -119,7 +119,7 @@ export const OptionsMenu = ({
           <TouchableOpacity activeOpacity={1} style={{ width: '100%' }}>
             <Box
               position="absolute"
-              top={insets.top + 75}
+              top={insets.top + 90}
               right={theme.spacing.m}
               width={220}
               backgroundColor="cardBackground"

@@ -25,6 +25,7 @@ export interface Product {
   status: ProductStatus;
   seller_id: string;
   views: number;
+  aspect_ratio: number;
   // JSONB en la base de datos se traduce a un objeto flexible en TS.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   specifications: Record<string, any>;

@@ -10,9 +10,11 @@ import enProduct from './locales/en/product.json';
 import esProduct from './locales/es/product.json';
 import enCart from './locales/en/cart.json';
 import esCart from './locales/es/cart.json';
+import enSearch from './locales/en/search.json';
+import esSearch from './locales/es/search.json';
 
 // ✨ 1. DEFINE LOS NAMESPACES (Nombres de nuestros archivos JSON)
-export const namespaces = ['common', 'auth', 'product', 'cart'];
+export const namespaces = ['common', 'auth', 'product', 'cart', 'search'];
 // Definimos un tipo para asegurar que solo usamos namespaces que existen
 export type Namespace = (typeof namespaces)[number];
 
@@ -33,12 +35,14 @@ const resources = {
     auth: enAuth,
     product: enProduct,
     cart: enCart,
+    search: enSearch,
   },
   es: {
     common: esCommon,
     auth: esAuth,
     product: esProduct,
     cart: esCart,
+    search: esSearch,
   },
 };
 

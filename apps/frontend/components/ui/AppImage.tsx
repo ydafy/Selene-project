@@ -1,21 +1,42 @@
 import { Image, ImageProps } from 'expo-image';
+import Animated from 'react-native-reanimated'; // <-- Importar Reanimated
 
-// Definimos las props, heredando de las props de expo-image.
-type AppImageProps = ImageProps;
+// Creamos una versión animada del componente Image de Expo
+export const AnimatedExpoImage = Animated.createAnimatedComponent(Image);
 
-/**
- * AppImage es nuestro componente de imagen estandarizado.
- * Encapsula <Image> de 'expo-image' para proporcionar un rendimiento optimizado,
- * caché avanzada y un control centralizado de estilos.
- */
-export const AppImage = (props: AppImageProps) => {
+type AppImageProps = ImageProps & {
+  // Añadimos soporte opcional para sharedTransitionTag
+  sharedTransitionTag?: string;
+};
+
+export const AppImage = ({
+  sharedTransitionTag,
+  style,
+  ...props
+}: AppImageProps) => {
+  const imageStyle = [
+    { backgroundColor: 'transparent' }, // <--- ESTO EVITA EL FLASH BLANCO
+    style,
+  ];
+  // Si nos pasan un tag, usamos la versión animada
+  if (sharedTransitionTag) {
+    return (
+      <AnimatedExpoImage
+        style={imageStyle}
+        placeholderContentFit="cover"
+        {...props}
+        transition={300}
+      />
+    );
+  }
+
+  // Si no, usamos la normal (para no sobrecargar donde no se necesita)
   return (
     <Image
-      // Pasamos todas las props (source, style, etc.) al componente interno.
       {...props}
-      // Podemos definir props por defecto aquí para toda la app.
-      // Por ejemplo, una transición de fade-in suave.
       transition={300}
+      cachePolicy="memory-disk"
+      style={imageStyle}
     />
   );
 };

@@ -36,6 +36,10 @@
 
 import { createTheme } from '@shopify/restyle';
 import { MD3DarkTheme as DefaultPaperTheme } from 'react-native-paper';
+import {
+  DarkTheme as NavigationDarkTheme,
+  Theme as NavThemeType,
+} from '@react-navigation/native';
 
 // 1. Tu paleta de colores definida.
 const palette = {
@@ -48,6 +52,7 @@ const palette = {
   fire: '#dc3545',
   blueGray: 'rgba(255, 255, 255, 0.1)',
   shadow: 'rgba(0,0,0,0.6)',
+  transparent: '#00000000',
 };
 
 // 2. Mapeamos la paleta a roles semánticos en el tema de Restyle.
@@ -64,6 +69,7 @@ export const theme = createTheme({
     success: palette.forest,
     error: palette.fire,
     separator: palette.blueGray,
+    transparent: palette.transparent,
   },
   spacing: { xs: 4, s: 8, m: 16, l: 24, xl: 40 },
   borderRadii: {
@@ -223,6 +229,18 @@ export const paperTheme = {
     placeholder: theme.colors.textSecondary,
     outline: theme.colors.textSecondary,
     error: theme.colors.error,
+  },
+};
+export const navigationTheme: NavThemeType = {
+  ...NavigationDarkTheme,
+  colors: {
+    ...NavigationDarkTheme.colors,
+    background: theme.colors.background, // Se sincroniza con 'night'
+    card: theme.colors.cardBackground, // Se sincroniza con 'stateGray'
+    text: theme.colors.textPrimary, // Se sincroniza con 'platinum'
+    border: theme.colors.cardBackground, // Para bordes de headers
+    primary: theme.colors.primary, // Para el tint color activo
+    notification: theme.colors.error, // Para badges
   },
 };
 

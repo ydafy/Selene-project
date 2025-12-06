@@ -1,27 +1,25 @@
 import { Chip as PaperChip } from 'react-native-paper';
 import { useTheme } from '@shopify/restyle';
 import { Theme } from '../../core/theme';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, ViewStyle, StyleProp } from 'react-native'; // Importar tipos de estilo
 
 type AppChipProps = {
   label: string;
-  icon?: string; // Nombre del icono de MaterialCommunityIcons
-
-  // Interacciones
+  icon?: string;
   onPress?: () => void;
-  onClose?: () => void; // Si se pasa, muestra la 'X'
+  onClose?: () => void;
 
-  // Estado
   selected?: boolean;
   disabled?: boolean;
-  showSelectedCheck?: boolean; // Controla si sale el ✔️ al seleccionar
+  showSelectedCheck?: boolean;
 
-  // Personalización de colores
   backgroundColor?: keyof Theme['colors'];
   textColor?: keyof Theme['colors'];
 
-  // Estilo
   variant?: 'outlined' | 'flat';
+
+  // 1. AÑADIMOS LA PROP STYLE
+  style?: StyleProp<ViewStyle>;
 };
 
 export const AppChip = ({
@@ -34,7 +32,8 @@ export const AppChip = ({
   variant = 'flat',
   selected = false,
   disabled = false,
-  showSelectedCheck = false, // Por defecto false para diseño minimalista (solo cambio de color)
+  showSelectedCheck = false,
+  style, // 2. DESESTRUCTURAMOS STYLE
 }: AppChipProps) => {
   const theme = useTheme<Theme>();
 
@@ -47,10 +46,9 @@ export const AppChip = ({
       selected={selected}
       disabled={disabled}
       onPress={onPress}
-      onClose={onClose} // Activa el modo "Input Chip" con botón de cerrar
+      onClose={onClose}
       icon={icon}
-      showSelectedCheck={showSelectedCheck} // Controlamos el icono de check
-      // Estilos del Contenedor
+      showSelectedCheck={showSelectedCheck}
       style={[
         styles.chip,
         {
@@ -58,21 +56,20 @@ export const AppChip = ({
           borderColor: variant === 'outlined' ? textColorHex : 'transparent',
           borderRadius: theme.borderRadii.s,
         },
+        // 3. APLICAMOS EL STYLE EXTERNO AL FINAL
+        // Esto permite que ResultsFilterBar sobrescriba padding, height, etc.
+        style,
       ]}
-      // Estilos del Texto
       textStyle={{
         color: textColorHex,
         fontFamily: 'Montserrat-Bold',
         fontSize: 12,
         lineHeight: 18,
-        // CORRECCIÓN DE ALINEACIÓN:
         textAlign: 'center',
         marginVertical: 0,
-        marginRight: onClose ? 0 : 4, // Ajuste fino si hay botón de cerrar
-        marginLeft: icon ? 0 : 4, // Ajuste fino si hay icono
+        marginRight: onClose ? 0 : 4,
+        marginLeft: icon ? 0 : 4,
       }}
-      // Quitamos 'compact' para tener más control sobre el layout interno
-      // compact
       elevated={false}
     >
       {label}
@@ -82,7 +79,7 @@ export const AppChip = ({
 
 const styles = StyleSheet.create({
   chip: {
-    height: 32, // Un poco más alto para mejor área de toque
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -28,7 +28,7 @@ export const ScreenHeader = ({ title, subtitle }: ScreenHeaderProps) => {
         elevation: 8,
       }}
     >
-      <Text variant="header-xl" lineHeight={32}>
+      <Text variant="header-2xl" lineHeight={32}>
         {title}
       </Text>
       {subtitle && (

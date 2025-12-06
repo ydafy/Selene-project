@@ -11,9 +11,13 @@ import { Theme } from '../../../core/theme';
 
 type ProductImageGalleryProps = {
   images: string[];
+  productId: string;
 };
 
-export const ProductImageGallery = ({ images }: ProductImageGalleryProps) => {
+export const ProductImageGallery = ({
+  images,
+  productId,
+}: ProductImageGalleryProps) => {
   const theme = useTheme<Theme>();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isViewerVisible, setIsViewerVisible] = useState(false);
@@ -101,6 +105,9 @@ export const ProductImageGallery = ({ images }: ProductImageGalleryProps) => {
             source={{ uri: currentImage }}
             style={{ width: '100%', height: '100%' }}
             contentFit="cover"
+            sharedTransitionTag={
+              selectedImageIndex === 0 ? `image-${productId}` : undefined
+            }
           />
         </TouchableOpacity>
 

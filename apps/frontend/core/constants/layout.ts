@@ -2,32 +2,43 @@ import { Dimensions, Platform } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
-// Un ancho base de diseño (ej. el ancho del iPhone 11/12/13/14/15 estándar)
 const BASE_WIDTH = 375;
 
-/**
- * Función simple para escalar elementos horizontalmente si es necesario.
- * Úsala con moderación. Prefiere Flexbox.
- */
 export const scale = (size: number) => (width / BASE_WIDTH) * size;
 
 export const SCREEN_WIDTH = width;
 export const SCREEN_HEIGHT = height;
 
-export const LAYOUT = {
-  // Márgenes estándar
-  screenPadding: 24, // Coincide con nuestro theme.spacing.l o xl
+// Definimos el espaciado del grid aquí para usarlo en toda la app
+const GRID_SPACING = 16;
+const HORIZONTAL_PADDING = 16; // theme.spacing.m
 
-  // Productos
+export const LAYOUT = {
+  screenPadding: HORIZONTAL_PADDING,
+
+  // Cálculo exacto del ancho de columna para Masonry (2 columnas)
+  // (AnchoPantalla - PaddingIzquierdo - PaddingDerecho - EspacioEntreColumnas) / 2
+  masonryColumnWidth: (width - HORIZONTAL_PADDING * 2 - GRID_SPACING) / 2,
+
+  // ... otros valores existentes
   productCardHeight: 260,
   productImageHeight: 160,
   productDetailImageHeight: 300,
-
-  // Cálculos de Grid
-  // (Ancho de pantalla - padding total) / 2 columnas
-  productCardWidth: (width - 24 * 2 - 16) / 2,
-
-  // UI Elements
   buttonHeight: 48,
   headerHeight: Platform.OS === 'ios' ? 44 : 56,
+};
+
+/**
+ * Calcula la altura de una tarjeta basada en el aspect ratio de la imagen.
+ * Incluye límites de seguridad.
+ * @param aspectRatio - Relación ancho/alto de la imagen.
+ */
+export const getMasonryItemHeight = (aspectRatio: number = 1) => {
+  const safeRatio = aspectRatio <= 0 ? 1 : aspectRatio;
+  const height = LAYOUT.masonryColumnWidth / safeRatio;
+
+  const MAX_HEIGHT = 320;
+  const MIN_HEIGHT = 160;
+
+  return Math.max(MIN_HEIGHT, Math.min(height, MAX_HEIGHT));
 };
