@@ -68,6 +68,14 @@ export default function RootLayout() {
                       name="(auth)"
                       options={{ headerShown: false }}
                     />
+                    <Stack.Screen
+                      name="sell"
+                      options={{
+                        headerShown: false,
+                        presentation: 'modal',
+                        animation: 'slide_from_bottom', // Fuerza la animación de subida
+                      }}
+                    />
                   </Stack>
                 </AuthModalProvider>
               </AuthProvider>

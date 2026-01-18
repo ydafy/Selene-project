@@ -17,6 +17,7 @@ type ConfirmDialogProps = {
   isDangerous?: boolean;
   dismissable?: boolean; // Controla si se puede cerrar tocando fuera
   icon?: keyof typeof MaterialCommunityIcons.glyphMap; // Nombre del icono
+  hideCancel?: boolean;
 };
 
 export const ConfirmDialog = ({
@@ -31,6 +32,7 @@ export const ConfirmDialog = ({
   isDangerous = false,
   dismissable = true,
   icon,
+  hideCancel = false,
 }: ConfirmDialogProps) => {
   const theme = useTheme<Theme>();
   const { t } = useTranslation('common');
@@ -84,9 +86,11 @@ export const ConfirmDialog = ({
         </Dialog.Content>
 
         <Dialog.Actions>
-          <Button onPress={onCancel} textColor={theme.colors.textSecondary}>
-            {cancelLabel || t('dialog.cancel')}
-          </Button>
+          {!hideCancel && (
+            <Button onPress={onCancel} textColor={theme.colors.textSecondary}>
+              {cancelLabel || t('dialog.cancel')}
+            </Button>
+          )}
           <Button
             onPress={onConfirm}
             textColor={isDangerous ? theme.colors.error : theme.colors.primary}

@@ -5,17 +5,19 @@ import { IconButton } from 'react-native-paper';
 
 import { ScreenLayout } from '../../components/layout/ScreenLayout';
 import { Box, Text } from '../../components/base';
-import { AppImage } from '../../components/ui/AppImage';
 import { useProfile } from '../../core/hooks/useProfile';
+import { useProfileStats } from '../../core/hooks/useProfileStats';
 import { Theme } from '../../core/theme';
-//import { useAuthModal } from '../../core/auth/AuthModalProvider';
+import { ProfileHeader } from '../../components/features/profile/ProfileHeader';
+import { OptionsMenu } from '../../components/ui/OptionsMenu';
 
 export default function PublicProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme<Theme>();
-  //const { present } = useAuthModal();
 
   const { data: profile, isLoading, error } = useProfile(id!);
+  // También cargamos las estadísticas de este usuario
+  const { data: stats } = useProfileStats(id!);
 
   if (isLoading) {
     return (
@@ -49,9 +51,9 @@ export default function PublicProfileScreen() {
     <ScreenLayout>
       <Stack.Screen
         options={{
-          title: `@${profile.username}`,
+          title: '', // Quitamos título del header nativo
           headerShown: true,
-          headerStyle: { backgroundColor: theme.colors.background },
+          headerTransparent: true, // Hacemos transparente el header nativo
           headerTintColor: theme.colors.textPrimary,
           headerLeft: () => (
             <IconButton
@@ -63,38 +65,30 @@ export default function PublicProfileScreen() {
         }}
       />
 
-      <Box alignItems="center" padding="xl">
-        <AppImage
-          source={
-            profile.avatar_url
-              ? { uri: profile.avatar_url }
-              : // eslint-disable-next-line @typescript-eslint/no-require-imports
-                require('../../assets/images/SeleneLunaLogo.png')
-          }
-          style={{
-            width: 100,
-            height: 100,
-            borderRadius: 50,
-            marginBottom: 16,
-          }}
-        />
-        <Text variant="header-xl">@{profile.username}</Text>
-        <Text variant="body-sm" color="textSecondary" marginTop="s">
-          Miembro desde {new Date(profile.created_at).toLocaleDateString()}
-        </Text>
+      {/* Espacio para compensar el header transparente */}
+      <Box height={60} />
 
-        {/* Aquí irán las pestañas de "Productos en Venta" y "Reseñas" en el futuro */}
-        <Box
-          marginTop="xl"
-          padding="m"
-          backgroundColor="cardBackground"
-          borderRadius="m"
-          width="100%"
-        >
-          <Text variant="body-md" textAlign="center" color="textSecondary">
-            (Placeholder: Lista de productos y reseñas próximamente)
-          </Text>
-        </Box>
+      <ProfileHeader
+        user={null} // No tenemos el objeto User de auth, solo el perfil público
+        profile={profile}
+        stats={stats as undefined}
+        // NO pasamos onEdit ni onLogout -> Se renderiza en modo lectura
+
+        // Inyectamos el menú de reportar en el slot derecho
+        headerRight={
+          <OptionsMenu
+            targetId={profile.id}
+            sellerId={profile.id}
+            context="user"
+          />
+        }
+      />
+
+      {/* Placeholder para lista de productos */}
+      <Box marginTop="xl" padding="m" alignItems="center">
+        <Text variant="body-md" color="textSecondary">
+          (Lista de productos del vendedor próximamente)
+        </Text>
       </Box>
     </ScreenLayout>
   );

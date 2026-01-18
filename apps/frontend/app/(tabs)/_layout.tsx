@@ -1,4 +1,4 @@
-import { Tabs } from 'expo-router';
+import { router, Tabs } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@shopify/restyle';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -63,6 +63,7 @@ export default function TabsLayout() {
           name="sell"
           options={{
             title: 'Vender',
+            //headerShown: false,
             tabBarIcon: ({ color, size }) => (
               <MaterialCommunityIcons
                 name="plus-circle-outline"
@@ -73,8 +74,10 @@ export default function TabsLayout() {
           }}
           listeners={{
             tabPress: (e) => {
+              // Prevenimos la navegación por defecto (que buscaría index dentro de tabs)
               e.preventDefault();
-              console.log('Botón Vender presionado');
+              // Navegamos a nuestra ruta modal externa
+              router.push('/sell');
             },
           }}
         />

@@ -15,7 +15,14 @@
   "dialog": {
     "confirm": "Confirmar",
     "cancel": "Cancelar",
-    "delete": "Eliminar"
+    "delete": "Eliminar",
+    "discardTitle": "¿Descartar publicación?",
+    "discardDescription": "Si sales ahora, perderás todos los avances."
+  },
+
+  "actions": {
+    "discard": "Descartar",
+    "continue": "Continuar"
   },
 
   "globalError": {

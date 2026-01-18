@@ -12,9 +12,24 @@ import enCart from './locales/en/cart.json';
 import esCart from './locales/es/cart.json';
 import enSearch from './locales/en/search.json';
 import esSearch from './locales/es/search.json';
+import enProfile from './locales/en/profile.json';
+import esProfile from './locales/es/profile.json';
+import enSell from './locales/en/sell.json';
+import esSell from './locales/es/sell.json';
+import esVeify from './locales/es/verify.json';
+import enVerify from './locales/en/verify.json';
 
 // ✨ 1. DEFINE LOS NAMESPACES (Nombres de nuestros archivos JSON)
-export const namespaces = ['common', 'auth', 'product', 'cart', 'search'];
+export const namespaces = [
+  'common',
+  'auth',
+  'product',
+  'cart',
+  'search',
+  'profile',
+  'verify',
+  'sell',
+];
 // Definimos un tipo para asegurar que solo usamos namespaces que existen
 export type Namespace = (typeof namespaces)[number];
 
@@ -36,6 +51,9 @@ const resources = {
     product: enProduct,
     cart: enCart,
     search: enSearch,
+    profile: enProfile,
+    sell: enSell,
+    verify: enVerify,
   },
   es: {
     common: esCommon,
@@ -43,6 +61,9 @@ const resources = {
     product: esProduct,
     cart: esCart,
     search: esSearch,
+    profile: esProfile,
+    sell: esSell,
+    verify: esVeify,
   },
 };
 

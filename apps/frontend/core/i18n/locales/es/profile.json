@@ -1,0 +1,48 @@
+{
+  "menu": {
+    "orders": "Mis Pedidos",
+    "listings": "Mis Publicaciones",
+    "addresses": "Direcciones",
+    "payments": "Pagos"
+  },
+  "sections": {
+    "favorites": "Tus Favoritos",
+    "emptyFavorites": "Aún no tienes favoritos.",
+    "viewAll": "Ver todos"
+  },
+  "avatar": {
+    "changeTitle": "Cambiar Foto de Perfil",
+    "chooseOption": "¿Cómo quieres subir tu foto?",
+    "camera": "Tomar Foto",
+    "gallery": "Abrir Galería"
+  },
+  "listings": {
+    "title": "Mis Publicaciones",
+    "emptyTitle": "No has publicado nada",
+    "emptyMsg": "¡Es hora de limpiar tu setup! Vende lo que ya no uses.",
+    "publishedOn": "Publicado el",
+    "lastUpdate": "Última act.",
+    "tabs": {
+      "active": "En Venta",
+      "history": "Historial"
+    },
+    "status": {
+      "VERIFIED": "Activo",
+      "IN_REVIEW": "En Revisión",
+      "PENDING_VERIFICATION": "Sin Verificar",
+      "SOLD": "Vendido",
+      "REJECTED": "Rechazado"
+    },
+    "actions": {
+      "edit": "Editar",
+      "delete": "Borrar"
+    }
+  },
+  "feedback": {
+    "avatarUpdatedTitle": "Foto Actualizada",
+    "avatarUpdatedMsg": "Tu foto de perfil se ha cambiado correctamente.",
+    "avatarErrorTitle": "Error de Subida",
+    "avatarErrorMsg": "No se pudo actualizar la foto. Intenta de nuevo.",
+    "understood": "Entendido"
+  }
+}

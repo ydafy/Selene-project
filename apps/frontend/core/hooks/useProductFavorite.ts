@@ -82,6 +82,7 @@ export const useProductFavorite = (productId: string) => {
       queryClient.invalidateQueries({
         queryKey: ['favorite', productId, userId],
       });
+      queryClient.invalidateQueries({ queryKey: ['my-favorites'] });
     },
   });
 
