@@ -18,6 +18,8 @@ import { isProductHistory } from '../../core/utils/product-status';
 
 import { useMyListings } from '../../core/hooks/useMyListings';
 import { useProductManagement } from '../../core/hooks/useProductManagement';
+import { useSellStore } from '../../core/store/useSellStore';
+
 import { Theme } from '../../core/theme';
 import { Product } from '@selene/types';
 
@@ -30,6 +32,8 @@ export default function MyListingsScreen() {
   // Hooks de Datos
   const { data: listings, isLoading, refetch } = useMyListings();
   const { deleteProduct } = useProductManagement();
+
+  const { loadProductForEdit, resetDraft } = useSellStore();
 
   // Estado Local
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
@@ -58,7 +62,9 @@ export default function MyListingsScreen() {
 
   // Handlers
   const handleEdit = (product: Product) => {
-    console.log('TODO: Navegar a editar', product.id);
+    loadProductForEdit(product);
+
+    router.push('/sell/details');
   };
 
   const handleVerify = (product: Product) => {
@@ -78,7 +84,8 @@ export default function MyListingsScreen() {
   };
 
   const handleCreateNew = () => {
-    console.log('TODO: Navegar a crear publicación');
+    resetDraft();
+    router.push(`/sell`);
   };
 
   return (

@@ -102,5 +102,9 @@
     "cameraButton": "Tomar Foto de Evidencia",
     "uploading": "Subiendo evidencia...",
     "success": "Evidencia enviada. Revisaremos tu publicación pronto."
+  },
+  "dialogs": {
+    "title": "¿Descartar Publicación?",
+    "message": "Has modificado las imágenes o especificaciones. Si continúas, tu producto perderá la insignia de 'Verificado' y tendrás que enviar la prueba nuevamente."
   }
 }

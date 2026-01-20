@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useRef } from 'react'; // <--- 1. Importar useRef
 import {
   Control,
   Controller,
@@ -14,7 +14,6 @@ import { SellFieldConfig } from '../../../core/config/sell-form-config';
 
 type DynamicSpecFieldProps = {
   field: SellFieldConfig;
-
   control: Control<any>;
   errors: any;
   setValue: UseFormSetValue<any>;
@@ -28,22 +27,33 @@ export const DynamicSpecField = ({
 }: DynamicSpecFieldProps) => {
   const { t } = useTranslation(['sell', 'common']);
 
-  // 1. WATCHERS
+  // 2. REF PARA DETECTAR MONTAJE INICIAL
+  const isMounted = useRef(false);
+
+  // Watchers
   const parentValue = field.dependsOn
     ? useWatch({ control, name: field.dependsOn })
     : null;
   const myValue = useWatch({ control, name: field.name });
 
-  // 2. AUTO-RESET LOGIC
+  // 3. AUTO-RESET LOGIC (CORREGIDA)
   useEffect(() => {
-    if (field.dependsOn) {
-      // Si cambia el padre, limpiamos este campo
-      setValue(field.name, '');
-      setValue(`${field.name}_custom`, '');
+    // Si no depende de nadie, no hacemos nada
+    if (!field.dependsOn) return;
+
+    // Si es la primera vez que se renderiza (Carga inicial o Edición),
+    // NO borramos el valor. Solo marcamos que ya se montó.
+    if (!isMounted.current) {
+      isMounted.current = true;
+      return;
     }
+
+    // Si ya estaba montado y cambia el padre, ENTONCES SÍ borramos el hijo.
+    setValue(field.name, '');
+    setValue(`${field.name}_custom`, '');
   }, [parentValue, field.dependsOn, field.name, setValue]);
 
-  // 3. CALCULAR OPCIONES
+  // ... (Resto del componente: currentOptions, renderizado, etc. SE QUEDA IGUAL)
   const currentOptions = useMemo(() => {
     if (!field.dependsOn) return field.options || [];
     if (field.optionsMap && parentValue) {
@@ -52,7 +62,6 @@ export const DynamicSpecField = ({
     return [];
   }, [field, parentValue]);
 
-  // 4. LOGICA UI
   const isOtherSelected = myValue && String(myValue).includes('Other');
   const isDisabled =
     field.dependsOn && (!parentValue || currentOptions.length === 0);
@@ -65,7 +74,6 @@ export const DynamicSpecField = ({
 
   return (
     <Box marginBottom="m">
-      {/* SELECT PRINCIPAL */}
       <Controller
         control={control}
         name={field.name}
@@ -95,9 +103,14 @@ export const DynamicSpecField = ({
         </Text>
       )}
 
-      {/* INPUT CUSTOM */}
       {isOtherSelected && (
-        <Box marginTop="s" marginLeft="m" borderLeftWidth={2} paddingLeft="s">
+        <Box
+          marginTop="s"
+          marginLeft="m"
+          borderLeftWidth={2}
+          borderLeftColor="primary"
+          paddingLeft="s"
+        >
           <Controller
             control={control}
             name={`${field.name}_custom`}
@@ -109,6 +122,7 @@ export const DynamicSpecField = ({
                 onChangeText={onChange}
                 value={value}
                 error={!!errors[`${field.name}_custom`]}
+                labelMode="static" // Aseguramos consistencia visual
               />
             )}
           />

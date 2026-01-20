@@ -1,24 +1,27 @@
 import { useState } from 'react';
 import Toast from 'react-native-toast-message';
 import { useTranslation } from 'react-i18next';
-import { useQueryClient } from '@tanstack/react-query'; // <-- Importar QueryClient
+import { useQueryClient } from '@tanstack/react-query';
 import { Product } from '@selene/types';
 import { useCartStore } from '../../../../core/store/useCartStore';
-import { supabase } from '../../../../core/db/supabase'; // <-- Importar Supabase
+import { supabase } from '../../../../core/db/supabase';
 
 export const useProductCart = (product: Product | undefined) => {
   const { t } = useTranslation('product');
   const { addItem, isInCart } = useCartStore();
-  const queryClient = useQueryClient(); // <-- Para actualizar la UI si cambió el status
-
+  const queryClient = useQueryClient();
   const [isAddingToCart, setIsAddingToCart] = useState(false);
 
   const isAdded = product ? isInCart(product.id) : false;
 
-  const handleAddToCart = async () => {
-    // <-- Ahora es async
-    if (!product) return;
+  // Definimos los posibles resultados de la acción
+  const handleAddToCart = async (): Promise<
+    'SUCCESS' | 'NOT_VERIFIED' | 'SOLD' | 'ERROR'
+  > => {
+    // Validación inicial: Si no hay producto cargado, es un error técnico
+    if (!product) return 'ERROR';
 
+    // Si ya está en el carrito, mostramos el Toast informativo y terminamos como éxito
     if (isAdded) {
       Toast.show({
         type: 'info',
@@ -26,13 +29,13 @@ export const useProductCart = (product: Product | undefined) => {
         text2: t('actions.alreadyInCartMsg'),
         position: 'top',
       });
-      return;
+      return 'SUCCESS';
     }
 
     setIsAddingToCart(true);
 
     try {
-      // 1. CHECK (Verificar): Consultamos el estado MÁS RECIENTE en la DB
+      // 1. CHECK: Consultamos el estado MÁS RECIENTE en la DB (Fuente de verdad)
       const { data: freshProduct, error } = await supabase
         .from('products')
         .select('status')
@@ -41,29 +44,31 @@ export const useProductCart = (product: Product | undefined) => {
 
       if (error) throw error;
 
-      // 2. VALIDAR: ¿Sigue estando VERIFIED?
+      // 2. VALIDAR: ¿El estado permite la compra?
       if (freshProduct.status !== 'VERIFIED') {
-        // CASO: YA SE VENDIÓ (O fue pausado/borrado)
-
-        // A. Avisamos al usuario
-        Toast.show({
-          type: 'error',
-          text1: t('actions.notAvailable'),
-          text2: t('actions.notAvailableMsg'),
-          position: 'top',
-        });
-
-        // B. Actualizamos la UI localmente para reflejar la realidad
-        // Esto hará que el botón cambie a "Vendido" o "Pendiente" automáticamente
+        // A. Actualizamos la caché local de React Query para que la UI se entere del cambio
         queryClient.setQueryData(['product', product.id], (old: Product) => ({
           ...old,
           status: freshProduct.status,
         }));
 
-        return; // Detenemos el flujo, no añadimos al carrito
+        // B. Manejo de casos específicos
+        if (freshProduct.status === 'SOLD') {
+          Toast.show({
+            type: 'error',
+            text1: t('actions.notAvailable'),
+            text2: t('actions.notAvailableMsg'),
+            position: 'top',
+          });
+          return 'SOLD';
+        }
+
+        // Si es PENDING o IN_REVIEW, retornamos este código especial
+        // para que la UI muestre el Diálogo Educativo en lugar de un error.
+        return 'NOT_VERIFIED';
       }
 
-      // 3. ACT (Actuar): Si todo está bien, añadimos al carrito
+      // 3. ACT: Si es VERIFIED, procedemos a añadir al carrito
       addItem(product);
 
       Toast.show({
@@ -73,6 +78,8 @@ export const useProductCart = (product: Product | undefined) => {
         position: 'top',
         visibilityTime: 2000,
       });
+
+      return 'SUCCESS';
     } catch (error) {
       console.error(error);
       Toast.show({
@@ -81,11 +88,11 @@ export const useProductCart = (product: Product | undefined) => {
         text2: 'No se pudo verificar la disponibilidad.',
         position: 'top',
       });
+      return 'ERROR';
     } finally {
       setIsAddingToCart(false);
     }
   };
-
   return {
     handleAddToCart,
     isAddingToCart,

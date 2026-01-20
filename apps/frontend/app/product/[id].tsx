@@ -1,9 +1,10 @@
 import { useLocalSearchParams, Stack } from 'expo-router';
-import { ScrollView } from 'react-native'; // ScrollView normal
+import { ScrollView } from 'react-native';
 import { useTheme } from '@shopify/restyle';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { IconButton } from 'react-native-paper';
+import { useState } from 'react';
 
 // Componentes Base y UI
 import { Box, Text } from '../../components/base';
@@ -22,6 +23,7 @@ import { ProductDetailSkeleton } from '../../components/features/product/Product
 import { OptionsMenu } from '../../components/ui/OptionsMenu';
 //import { ViewCounter } from '../../components/features/product/ViewCounter';
 import { AppChip } from '../../components/ui/AppChip';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 
 // Hooks y Utilidades
 import { useProductCart } from '../../components/features/product/hooks/useProductCart';
@@ -29,6 +31,7 @@ import { useProductShare } from '../../components/features/product/hooks/useProd
 import { useProduct } from '../../core/hooks/useProduct';
 import { useAuthContext } from '../../components/auth/AuthProvider';
 import { Theme } from '../../core/theme';
+import { useProductFavorite } from '../../core/hooks/useProductFavorite';
 
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -37,10 +40,22 @@ export default function ProductDetailScreen() {
   const insets = useSafeAreaInsets();
   const { session } = useAuthContext();
 
+  const [showEducationDialog, setShowEducationDialog] = useState(false);
+
   const { data: product, isLoading, error } = useProduct(id!);
 
   const { handleAddToCart, isAddingToCart, isAdded } = useProductCart(product);
   const { handleShare } = useProductShare(product);
+  const { toggleFavorite, isFavorite } = useProductFavorite(id);
+
+  const onAddToCartPress = async () => {
+    const result = await handleAddToCart();
+
+    if (result === 'NOT_VERIFIED') {
+      // Si el hook nos dice que no está verificado, abrimos el diálogo
+      setShowEducationDialog(true);
+    }
+  };
 
   if (isLoading) {
     return <ProductDetailSkeleton />;
@@ -154,7 +169,7 @@ export default function ProductDetailScreen() {
 
                 {product.status === 'VERIFIED' && (
                   <AppChip
-                    label={t('verifiedStatus')}
+                    label={t('details.verifiedStatus')}
                     icon="shield-check"
                     textColor="success"
                     backgroundColor="background"
@@ -205,7 +220,7 @@ export default function ProductDetailScreen() {
 
           <Box flex={1}>
             <PrimaryButton
-              onPress={handleAddToCart}
+              onPress={onAddToCartPress}
               loading={isAddingToCart}
               disabled={isAddingToCart}
               variant={isAdded ? 'outline' : 'solid'}
@@ -216,6 +231,31 @@ export default function ProductDetailScreen() {
           </Box>
         </Box>
       </BottomActionBar>
+      <ConfirmDialog
+        visible={showEducationDialog}
+        title={
+          product?.status === 'IN_REVIEW'
+            ? t('dialogs.inReviewTitle')
+            : t('dialogs.pendingTitle')
+        }
+        description={
+          product?.status === 'IN_REVIEW'
+            ? t('dialogs.inReviewMsg')
+            : t('dialogs.pendingMsg')
+        }
+        onConfirm={() => {
+          setShowEducationDialog(false);
+          if (!isFavorite) toggleFavorite(); // Acción inteligente: Agrega a favoritos
+        }}
+        onCancel={() => setShowEducationDialog(false)}
+        confirmLabel={
+          isFavorite ? t('dialogs.understood') : t('dialogs.addToFavs')
+        }
+        cancelLabel={t('menu.cancel')}
+        icon="shield-alert-outline"
+        // Si ya es favorito, ocultamos cancelar para que sea solo informativo
+        hideCancel={isFavorite}
+      />
     </Box>
   );
 }

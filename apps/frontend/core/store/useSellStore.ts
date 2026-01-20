@@ -1,37 +1,36 @@
 import { create } from 'zustand';
-import { ProductCategory } from '@selene/types';
+import { Product, ProductCategory } from '@selene/types';
 
 // Definimos la forma del borrador de venta
 type SellDraft = {
+  id?: string; // <--- NUEVO: ID opcional para saber si es edición
   category: ProductCategory | null;
-  // Paso 2: Info Básica
   name: string;
   description: string;
-  price: string; // String para manejar el input, luego convertimos a number
+  price: string;
   condition: string;
   usage: string;
-
-  // Paso 3: Specs Dinámicas
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   specifications: Record<string, any>;
-
-  // Paso 4: Imágenes
-  images: string[]; // URIs locales antes de subir
+  images: string[];
   verificationImage: string | null;
 };
 
 interface SellState {
   draft: SellDraft;
+  originalData: SellDraft | null; // <--- NUEVO: Para comparar cambios
 
   // Actions
   setCategory: (category: ProductCategory) => void;
   updateDraft: (fields: Partial<SellDraft>) => void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   updateSpecs: (key: string, value: any) => void;
+  loadProductForEdit: (product: Product) => void; // <--- NUEVA ACCIÓN
   resetDraft: () => void;
 }
 
 const INITIAL_STATE: SellDraft = {
+  id: undefined,
   category: null,
   name: '',
   description: '',
@@ -45,6 +44,7 @@ const INITIAL_STATE: SellDraft = {
 
 export const useSellStore = create<SellState>((set) => ({
   draft: INITIAL_STATE,
+  originalData: null,
 
   setCategory: (category) =>
     set((state) => ({
@@ -67,5 +67,27 @@ export const useSellStore = create<SellState>((set) => ({
       },
     })),
 
-  resetDraft: () => set({ draft: INITIAL_STATE }),
+  // NUEVA FUNCIÓN: Carga un producto existente en el formulario
+  loadProductForEdit: (product) => {
+    // Mapeamos el producto de la DB al formato del Draft
+    const data: SellDraft = {
+      id: product.id,
+      category: product.category,
+      name: product.name,
+      description: product.description,
+      price: product.price.toString(),
+      condition: product.condition,
+      usage: product.usage,
+      specifications: product.specifications || {},
+      images: product.images || [],
+      verificationImage: null,
+    };
+
+    set(() => ({
+      draft: data,
+      originalData: data, // Guardamos copia para comparar después
+    }));
+  },
+
+  resetDraft: () => set({ draft: INITIAL_STATE, originalData: null }),
 }));

@@ -18,7 +18,6 @@ type MyListingCardProps = {
   onPress: (product: Product) => void;
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
-  // Nueva prop opcional para manejar la verificación
   onVerify?: (product: Product) => void;
 };
 
@@ -35,17 +34,53 @@ export const MyListingCard = ({
   const isHistoryItem = isProductHistory(product.status);
   const statusColor = getStatusColor(product.status);
 
-  // Detectamos si necesita acción de verificación
-  const needsVerification = product.status === 'PENDING_VERIFICATION';
+  // Lógica de Estados de Acción
+  const isPending = product.status === 'PENDING_VERIFICATION';
+  const isRejected = product.status === 'REJECTED';
 
-  // Handler principal: Si necesita verificación, priorizamos esa acción
+  // Si requiere acción (verificar o corregir), priorizamos eso sobre ver el detalle
+  const needsAction = isPending || isRejected;
+
+  // Handler de Navegación Inteligente
   const handlePress = () => {
-    if (needsVerification && onVerify) {
-      onVerify(product);
+    if (needsAction && onVerify) {
+      onVerify(product); // Ir a pantalla de verificación/corrección
     } else {
-      onPress(product);
+      onPress(product); // Ir a detalle público
     }
   };
+
+  // Configuración del Botón de Acción Principal
+  const getActionConfig = () => {
+    if (isRejected) {
+      return {
+        label: t('listings.actions.fix'),
+        icon: 'alert-circle-outline',
+        color: theme.colors.error,
+        textColor: theme.colors.textPrimary, // O background, según contraste
+      };
+    }
+    if (isPending) {
+      return {
+        label: t('listings.actions.verify'),
+        icon: 'shield-check-outline',
+        color: theme.colors.primary,
+        textColor: theme.colors.background,
+      };
+    }
+    return {
+      label: t('listings.actions.edit'),
+      icon: 'pencil-outline',
+      color: theme.colors.primary,
+      textColor: theme.colors.background,
+    };
+  };
+
+  const actionConfig = getActionConfig();
+
+  // Decidimos si mostrar la barra de acciones
+  // Mostramos si NO es historial, O si es rechazado (aunque esté en historial)
+  const showActions = !isHistoryItem || isRejected;
 
   return (
     <TouchableOpacity onPress={handlePress} activeOpacity={0.9}>
@@ -102,12 +137,12 @@ export const MyListingCard = ({
           </Box>
 
           {/* 3. BARRA DE ACCIONES */}
-          {!isHistoryItem && (
+          {showActions ? (
             <Box flexDirection="row" alignItems="center" gap="s" marginTop="s">
-              {/* BOTÓN PRIMARIO (Editar o Verificar) */}
+              {/* BOTÓN DINÁMICO (Editar / Verificar / Corregir) */}
               <TouchableOpacity
                 onPress={() => {
-                  if (needsVerification && onVerify) {
+                  if (needsAction && onVerify) {
                     onVerify(product);
                   } else {
                     onEdit(product);
@@ -119,38 +154,35 @@ export const MyListingCard = ({
                   flexDirection="row"
                   alignItems="center"
                   justifyContent="center"
-                  // Si necesita verificación, usamos un estilo diferente (ej. borde amarillo o primary)
-                  // Aquí mantengo 'primary' pero cambio el icono y texto
-                  backgroundColor="primary"
+                  backgroundColor={isRejected ? undefined : 'primary'} // Si es rejected usamos el estilo del borde
+                  style={{
+                    backgroundColor: actionConfig.color,
+                    borderColor: actionConfig.color,
+                  }}
                   paddingVertical="s"
                   borderRadius="m"
                   borderWidth={1}
-                  borderColor="primary"
                 >
                   <IconButton
-                    icon={
-                      needsVerification
-                        ? 'shield-check-outline'
-                        : 'pencil-outline'
-                    }
+                    icon={actionConfig.icon}
                     size={18}
-                    iconColor={theme.colors.background}
+                    iconColor={actionConfig.textColor}
                     style={{ margin: 0, width: 20, height: 20 }}
                   />
                   <Text
                     variant="caption-lg"
                     marginLeft="xs"
-                    color="background"
-                    fontWeight="bold"
+                    style={{
+                      color: actionConfig.textColor,
+                      fontWeight: 'bold',
+                    }}
                   >
-                    {needsVerification
-                      ? 'Verificar'
-                      : t('listings.actions.edit')}
+                    {actionConfig.label}
                   </Text>
                 </Box>
               </TouchableOpacity>
 
-              {/* BOTÓN BORRAR */}
+              {/* BOTÓN BORRAR (Siempre visible si hay acciones) */}
               <Box
                 width={40}
                 height={40}
@@ -168,9 +200,8 @@ export const MyListingCard = ({
                 />
               </Box>
             </Box>
-          )}
-
-          {isHistoryItem && (
+          ) : (
+            // Si es historial puro (Vendido), solo mostramos fecha
             <Box marginTop="s">
               <Text variant="caption-md" color="textSecondary">
                 {t('listings.publishedOn')} {formatDate(product.created_at)}

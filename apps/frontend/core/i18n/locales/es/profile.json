@@ -22,6 +22,7 @@
     "emptyMsg": "¡Es hora de limpiar tu setup! Vende lo que ya no uses.",
     "publishedOn": "Publicado el",
     "lastUpdate": "Última act.",
+
     "tabs": {
       "active": "En Venta",
       "history": "Historial"
@@ -35,7 +36,9 @@
     },
     "actions": {
       "edit": "Editar",
-      "delete": "Borrar"
+      "delete": "Borrar",
+      "fix": "Corregir",
+      "verify": "Verificar"
     }
   },
   "feedback": {

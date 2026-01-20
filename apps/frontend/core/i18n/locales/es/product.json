@@ -63,5 +63,13 @@
     "placeholder": "Buscar productos (ej. RTX 3080)",
     "categories": "Categorías Populares",
     "resultsTitle": "Resultados"
+  },
+  "dialogs": {
+    "inReviewTitle": "En Revisión",
+    "inReviewMsg": "El equipo Selene está verificando este producto para tu seguridad. Agrégalo a favoritos para recibir una alerta cuando esté aprobado.",
+    "pendingTitle": "Preparando Verificación",
+    "pendingMsg": "El vendedor está preparando las pruebas de funcionamiento. Agrégalo a favoritos para no perderlo de vista.",
+    "addToFavs": "Agregar a Favoritos",
+    "understood": "Entendido"
   }
 }

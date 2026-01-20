@@ -22,6 +22,7 @@
     "emptyMsg": "It's time to clean up your setup! Sell what you no longer use.",
     "publishedOn": "Published on",
     "lastUpdate": "Last update",
+
     "tabs": {
       "active": "Active",
       "history": "History"
@@ -35,7 +36,9 @@
     },
     "actions": {
       "edit": "Edit",
-      "delete": "Delete"
+      "delete": "Delete",
+      "fix": "Fix",
+      "verify": "Verify"
     }
   },
   "feedback": {

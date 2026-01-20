@@ -100,5 +100,9 @@
     "cameraButton": "Take Evidence Photo",
     "uploading": "Uploading evidence...",
     "success": "Evidence submitted. We will review your listing soon."
+  },
+  "dialogs": {
+    "title": "Discard Listing?",
+    "message": "You have altered the images or specifications. If you continue, your product will lose the 'Verified' badge and you will have to submit proof again."
   }
 }
