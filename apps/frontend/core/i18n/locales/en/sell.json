@@ -1,0 +1,108 @@
+{
+  "title": "New Listing",
+  "selectCategory": "What are you going to sell?",
+  "close": "Close",
+  "screen Title": {
+    "details Title": "Basic Information",
+    "details Subtitle": "Define the main details of your sale."
+  },
+  "steps": {
+    "details": "Details"
+  },
+  "fields": {
+    "nameLabel": "Product Title",
+    "namePlaceholder": "Ex. Asus TUF RTX 3080",
+    "priceLabel": "Price (MXN)",
+    "pricePlaceholder": "0.00",
+    "conditionLabel": "Condition",
+    "conditionPlaceholder": "Select the condition",
+    "usageLabel": "Usage time",
+    "usagePlaceholder": "Select usage time",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Provide more details about usage, lifespan, etc...",
+    "next": "Next",
+    "specsTitle": "Technical Specifications",
+    "specsSubtitle": "Defines the exact characteristics of your component.",
+    "chipsetLabel": "Chipset / Manufacturer",
+    "chipsetPlaceholder": "Ex. NVIDIA",
+    "brandLabel": "Brand",
+    "brandPlaceholder": "Ex. ASUS",
+    "modelLabel": "Model",
+    "modelPlaceholder": "Search for your model...",
+    "vramLabel": "VRAM Memory",
+    "vramPlaceholder": "Ex. 12 GB",
+    "familyLabel": "Family",
+    "familyPlaceholder": "Ex. Core i7",
+    "coresLabel": "Cores",
+    "coresPlaceholder": "Ex. 8",
+    "socketLabel": "Socket",
+    "socketPlaceholder": "Ex. AM4",
+    "formFactorLabel": "Format",
+    "formFactorPlaceholder": "Ex. ATX",
+    "typeLabel": "Type",
+    "typePlaceholder": "Ex. DDR4",
+    "capacityLabel": "Capacity",
+    "capacityPlaceholder": "Ex. 16 GB",
+    "speedLabel": "Speed",
+    "speedPlaceholder": "Ex. 3200 MHz",
+    "specifyLabel": "Specify {{field}}",
+    "specifyPlaceholder": "Enter the exact name...",
+    "imagesTitle": "Product Photos",
+
+    "imagesSubtitle": "Upload real photos. Show the ports, the box, and the aesthetic details.",
+    "addPhotos": "Add Photos",
+    "takePhoto": "Take Photo",
+    "imagesTip": "Tip: The first photo will be the cover of your post.",
+    "imagesLimit": "Maximum {{count}} photos",
+    "nameHelpTitle": "How to write a good title",
+    "nameHelpDesc": "Be brief and technical.\nStructure: Brand + Model + Variant.\n\n✅ Good: Asus TUF RTX 3080 10GB\n❌ Bad: Selling a cheap used graphics card urgently",
+    "descriptionHelpTitle": "Tips for a great description",
+
+    "descriptionHelpDesc": "• Mention the actual usage time.\n• Was it used for mining or just gaming?\n• Has it had recent maintenance (thermal paste)?\n• Does it include the original box and accessories?"
+  },
+  "preview": {
+    "title": "Summary",
+    "subtitle": "This is what your listing will look like. Please double-check that everything is correct.",
+    "publish": "Publish Now",
+    "publishing": "Uploading...",
+    "successTitle": "Published!",
+    "successMessage": "Your product has been submitted for review."
+  },
+  "errors": {
+    "nameRequired": "Title is required",
+    "priceRequired": "Price is required",
+    "priceInvalid": "Enter a valid price",
+    "conditionRequired": "The condition is required",
+    "descriptionRequired": "The description is required",
+    "specifyRequired": "Please specify the details.",
+    "minImages": "Upload at least 1 photo to continue",
+    "maxImages": "You have reached the photo limit",
+    "permissionDenied": "Permission denied",
+    "permissionMessage": "We need access to your gallery to upload photos.",
+    "uploadFailed": "Error uploading images. Please try again.",
+    "publishFailed": "Post could not be created.",
+    "usageRequired": "Usage time is required",
+    "descriptionTooLong": "The description cannot exceed 1000 characters."
+  },
+  "success": {
+    "title": "Listing Created!",
+    "subtitle": "Your product is now in the system, but buyers won't be able to see it until you verify that you have it with you.",
+    "verifyNow": "Verify Now",
+    "later": "Go to My Listings"
+  },
+  "verify": {
+    "title": "Trust Verification",
+    "subtitle": "To activate your sale, we need to confirm that you have the product in hand.",
+    "instructionTitle": "Instructions:",
+    "instruction1": "Write your username and today's date on a piece of paper.",
+    "instruction2": "Place the paper next to the product.",
+    "instruction3": "Take a clear photo where both of you are visible.",
+    "cameraButton": "Take Evidence Photo",
+    "uploading": "Uploading evidence...",
+    "success": "Evidence submitted. We will review your listing soon."
+  },
+  "dialogs": {
+    "title": "Discard Listing?",
+    "message": "You have altered the images or specifications. If you continue, your product will lose the 'Verified' badge and you will have to submit proof again."
+  }
+}

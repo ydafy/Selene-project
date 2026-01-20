@@ -1,0 +1,80 @@
+{
+  "screen": {
+    "title": "Technical Verification",
+    "subtitle": "Complete these missions to activate your sale. Verified products sell 3x faster.",
+    "statusPending": "Pending shipment"
+  },
+  "missions": {
+    "physicalTitle": "Mission 1: Physical Evidence",
+    "physicalDesc": "Prove you have the product in hand.",
+    "physicalInstruction": "Take a photo of the actual product next to a piece of paper with your username and today's date.",
+
+    "performanceTitle": "Mission 2: Performance",
+    "performanceDesc": "Prove the graph performs under stress.",
+    "performanceInstruction": "Upload a photo of your monitor showing the 3DMark Time Spy result next to your signature paper.",
+    "performanceScoreLabel": "Graph Score",
+    "performanceScorePlaceholder": "Example: 12500"
+  },
+  "guide": {
+    "buttonLabel": "How do I do this?",
+    "benchmark": {
+      "modalTitle": "Guide: How to use 3DMark",
+      "step1Title": "1. Search on Steam",
+      "step1Desc": "Search for '3DMark' in the Steam store.\n\nDo NOT buy it, it's free.",
+      "step2Title": "2. Download the Demo",
+      "step2Desc": "Look for the 'Download Demo' button.\n\nRemember, you don't need to buy the application.",
+      "step3Title": "3. Go to the Benchmark section",
+      "step3Desc": "In the top right bar of the app, look for a button called 'Benchmark'.\n\nClick it and it will take you to the Benchmark section.",
+      "step4Title": "4. Look for the 'Time Spy' benchmark",
+      "step4Desc": "Scroll down a bit and look for the benchmark called 'Time Spy'.\n\nClick on it.",
+      "step5Title": "5. Run the test",
+      "step5Desc": "When you are on the screen to run the test, it is recommended to close all applications to obtain a better result.",
+      "step6Title": "6. Final Photo (Important)",
+      "step6Desc": "Once the test is finished, take a photo with your cell phone of the monitor showing:\n\n• The '3DMark' result.\n• The taskbar showing the date.\n\nThe 3DMark app should not be in full screen. Try to replicate the example image so that everything is clear.\n\nOtherwise, your verification may be rejected.",
+      "step7Title": "7. Score",
+      "step7Desc": "Write down or save the score of your component that appears in '3DMark' (either CPU or GPU).\n\nYou will be asked that you write it in the 'Graphic Score' box when you upload your verification photo."
+    },
+    "info": {
+      "title": "Guide: Verifying Specs",
+      "step1Title": "1. Download CPU-Z",
+      "step1Desc": "Download CPU-Z (It's safe). The official website is cpuid.com.\n\nInstall the application. It's small and quick to install.",
+      "step2Title": "2. Open CPU-Z",
+      "step2Desc": "Open CPU-Z. It will ask for administrator privileges; accept them.\n\nOnce the application is open, look for the 'SPD' tab. Leave the CPU-Z window open in that section.",
+      "step3Title": "3. Open Task Manager",
+      "step3Desc": "Open Task Manager in Windows by pressing 'Ctrl + Shift + Esc'.\n\nOnce open, go to the 'Performance' section, then 'Memory'.\n\nLeave this window open along with CPU-Z.",
+      "step4Title": "4. Take the Photo",
+      "step4Desc": "With both windows open (CPU-Z and Task Manager), take a photo with your phone where both windows are clearly visible.\n\nMake sure all the information is legible to avoid your verification being rejected."
+    },
+
+    "mobo": {
+      "modalTitle": "Protocol: Motherboard Verification",
+      "step1Title": "1. Download CPU-Z",
+      "step1Desc": "Download CPU-Z (It's safe). The official website is cpuid.com.\n\nDownload and install the application. It's small and quick to install.",
+      "step2Title": "2. Open CPU-Z",
+      "step2Desc": "Open CPU-Z. It will ask for administrator privileges; accept them.\n\nOnce the application is open, find the 'Mainboard' tab. Leave the CPU-Z window open in that section.",
+      "step3Title": "3. Take the Photo",
+      "step3Desc": "Take a clear photo of the monitor showing the 'CPU-Z' information in the 'Mainboard' section.\n\nMake sure all the information is legible to avoid your verification being rejected."
+    }
+  },
+
+  "actions": {
+    "takePhoto": "Take Photo",
+    "changePhoto": "Change Photo",
+    "submit": "Submit for Review",
+    "saveExit": "Save and Exit"
+  },
+
+  "alerts": {
+    "successTitle": "Submitted!",
+    "successMessage": "Your product is under review. We will notify you when it is approved.",
+    "errorTitle": "Error",
+    "errorMessage": "Could not upload the tests. Please try again.",
+    "missingFields": "Please complete all required missions."
+  },
+  "rejection": {
+    "title": "Verification Rejected",
+    "subtitle": "Please correct the problem and resubmit.",
+    "adminLabel": "Reason for Rejection",
+    "adminPlaceholder": "Explain why it was rejected (e.g., blurry photo)..."
+  }
+}

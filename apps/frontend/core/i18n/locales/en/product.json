@@ -1,0 +1,75 @@
+{
+  "details": {
+    "title": "Product Details",
+    "priceLabel": "Price:",
+    "soldBy": "Sold by",
+    "verifiedMember": "Verified Member",
+    "description": "Description",
+    "specifications": "Specifications",
+    "verifiedStatus": "Verified by Selene"
+  },
+  "actions": {
+    "buyNow": "Buy Now",
+    "addToCart": "Add to Cart",
+    "adding": "Adding...",
+    "added": "In Cart",
+    "edit": "Edit Product",
+    "shareTitle": "View {{productName}}",
+    "shareMessage": "Check out this {{productName}} on Selene! {{productLink}}",
+    "notAvailable": "Not available",
+    "notAvailableMsg": "This product is no longer available",
+    "alreadyInCartTitle": "Already in cart",
+    "alreadyInCartMsg": "You can proceed to checkout anytime.",
+    "addedToCartTitle": "Added to cart!",
+    "addedToCartMsg": "{{productName}} is ready for checkout."
+  },
+  "status": {
+    "sold": "Sold",
+    "pending": "Verification Pending",
+    "edit": "Edit publication"
+  },
+  "feed": {
+    "title": "Explore",
+    "subtitle": "Verified hardware for your PC"
+  },
+  "specs": {
+    "brand": "Brand",
+    "model": "Model",
+    "series": "Series",
+    "chipset": "Chipset",
+    "memory_gb": "Memory (GB)",
+    "socket": "Socket",
+    "cores": "Cores",
+    "includes_cooler": "Includes Cooler",
+    "type": "Type",
+    "capacity_gb": "Capacity (GB)",
+    "clock_speed": "Speed (MHz)",
+    "module_count": "Modules",
+    "form_factor": "Form Factor",
+    "memory_type": "Memory Type",
+    "memory_slots": "Memory Slots"
+  },
+  "menu": {
+    "report": "Report listing",
+    "blockSeller": "Block seller",
+    "cancel": "Cancel",
+    "reportSentTitle": "Report sent",
+    "reportSentMsg": "We will review this listing.",
+    "userBlockedTitle": "User blocked",
+    "userBlockedMsg": "You won't see their products again."
+  },
+  "search": {
+    "title": "What are you looking for today?",
+    "placeholder": "Search for products (e.g., RTX 3080)",
+    "categories": "Popular Categories",
+    "resultsTitle": "Results"
+  },
+  "dialogs": {
+    "inReviewTitle": "Under Review",
+    "inReviewMsg": "The Selene team is verifying this product for your safety. Add it to your favorites to receive an alert when it's approved.",
+    "pendingTitle": "Preparing for Verification",
+    "pendingMsg": "The vendor is preparing for functional testing. Add it to your favorites so you don't lose track of it.",
+    "addToFavs": "Add to Favorites",
+    "understood": "Understood"
+  }
+}

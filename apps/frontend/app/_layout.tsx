@@ -1,18 +1,29 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-require-imports */
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ThemeProvider } from '@shopify/restyle';
 import { PaperProvider } from 'react-native-paper';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SplashScreen, Stack } from 'expo-router';
 import { useEffect } from 'react';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { useFonts } from 'expo-font';
+import Toast from 'react-native-toast-message';
+import {
+  //DefaultTheme,
+  ThemeProvider as NavThemeProvider,
+} from '@react-navigation/native';
 
+import { toastConfig } from '../components/config/ToastConfig';
 import '../core/i18n';
-import { paperTheme, theme } from '../core/theme';
-import { useSession } from '../core/hooks/useSession';
-import { useProtectedRoute } from '../core/hooks/useProtectedRoute';
+import { paperTheme, theme, navigationTheme } from '../core/theme';
+
+// IMPORTA AMBOS PROVIDERS
+import { AuthProvider } from '../components/auth/AuthProvider';
+import { AuthModalProvider } from '../core/auth/AuthModalProvider';
 
 const queryClient = new QueryClient();
 
-// Configuración de Google Sign-In. Se ejecuta una sola vez.
 if (!process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID) {
   throw new Error('Missing EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID in .env');
 }
@@ -20,43 +31,60 @@ GoogleSignin.configure({
   webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
 });
 
-// Este es el componente que realmente maneja la navegación
-function RootLayoutNav() {
-  const { session, loading } = useSession();
+export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({
+    'Montserrat-Regular': require('../assets/fonts/Montserrat-Regular.ttf'),
+    'Montserrat-Medium': require('../assets/fonts/Montserrat-Medium.ttf'),
+    'Montserrat-Bold': require('../assets/fonts/Montserrat-Bold.ttf'),
+    'Montserrat-Italic': require('../assets/fonts/Montserrat-Italic.ttf'),
+  });
 
-  // El hook se encarga de la lógica de redirección
-  useProtectedRoute(session, loading);
-
-  // Ocultamos la SplashScreen solo cuando la carga ha terminado
   useEffect(() => {
-    if (!loading) {
+    if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
     }
-  }, [loading]);
+  }, [fontsLoaded, fontError]);
 
-  // Mientras carga, no renderizamos el Stack para evitar parpadeos
-  if (loading) {
+  if (!fontsLoaded && !fontError) {
     return null;
   }
 
   return (
-    <Stack>
-      {/* Ocultamos los headers aquí para que cada grupo los gestione */}
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-    </Stack>
-  );
-}
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider theme={theme}>
+        <PaperProvider theme={paperTheme as any}>
+          <QueryClientProvider client={queryClient}>
+            <NavThemeProvider value={navigationTheme}>
+              {/* 1. AuthProvider: Maneja la sesión de Supabase */}
+              <AuthProvider>
+                {/* 2. AuthModalProvider: Maneja la UI del Bottom Sheet */}
+                <AuthModalProvider>
+                  <Stack>
+                    <Stack.Screen
+                      name="(tabs)"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="(auth)"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="sell"
+                      options={{
+                        headerShown: false,
+                        presentation: 'modal',
+                        animation: 'slide_from_bottom', // Fuerza la animación de subida
+                      }}
+                    />
+                  </Stack>
+                </AuthModalProvider>
+              </AuthProvider>
+            </NavThemeProvider>
 
-// Este es el componente principal que exportamos
-export default function RootLayout() {
-  return (
-    <ThemeProvider theme={theme}>
-      <PaperProvider theme={paperTheme}>
-        <QueryClientProvider client={queryClient}>
-          <RootLayoutNav />
-        </QueryClientProvider>
-      </PaperProvider>
-    </ThemeProvider>
+            <Toast config={toastConfig} />
+          </QueryClientProvider>
+        </PaperProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }

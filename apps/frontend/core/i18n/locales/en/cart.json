@@ -1,0 +1,15 @@
+{
+  "title": "Your Cart",
+  "total": "Estimated Total",
+  "checkout": "Proceed to Checkout",
+  "emptyTitle": "Your cart is empty",
+  "emptyMsg": "Why not explore and add some hardware?",
+
+  "actions": {
+    "remove": "Remove from cart"
+  },
+  "dialog": {
+    "removeItemTitle": "Remove item?",
+    "removeItemMsg": "Are you sure you want to remove this item from your cart?"
+  }
+}

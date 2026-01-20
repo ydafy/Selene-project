@@ -1,3 +1,32 @@
 {
-    "appName": "School Portal"
+  "yes": "Yes",
+  "no": "No",
+  "states": {
+    "errorTitle": "Something went wrong",
+    "errorMessage": "We couldn't load the information.",
+    "retryButton": "Retry",
+    "emptyTitle": "Nothing here,",
+    "emptyMessage": "We couldn't find any data to display.",
+    "productLoadError": "Couldn't load the product.",
+    "feedLoadError": "An error occurred while loading the products.",
+    "feedEmpty": "No products available yet."
+  },
+
+  "dialog": {
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "discardTitle": "Discard Post?",
+    "discardDescription": "If you exit now, you will lose all progress."
+  },
+
+  "actions": {
+    "discard": "Discard",
+    "continue": "Continue"
+  },
+
+  "globalError": {
+    "title": "Oops! Something went wrong",
+    "message": "An unexpected error occurred. Our team has been notified."
+  }
 }

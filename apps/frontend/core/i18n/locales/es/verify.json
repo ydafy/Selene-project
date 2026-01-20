@@ -1,0 +1,85 @@
+{
+  "screen": {
+    "title": "Verificación Técnica",
+    "subtitle": "Completa estas misiones para activar tu venta. Con esto los usuarios querrán comprar tu producto.",
+    "statusPending": "Pendiente de envío"
+  },
+  "missions": {
+    "physicalTitle": "Misión 1: Evidencia Física",
+    "physicalDesc": "Demuestra que tienes el producto en mano.",
+    "physicalInstruction": "Toma una foto clara del producto.",
+
+    "performanceTitle": "Misión 2: Rendimiento",
+    "performanceDesc": "Demuestra que la gráfica funciona bajo estrés.",
+    "performanceInstruction": "Sube una foto de tu monitor mostrando el resultado de 3DMark Time Spy.",
+    "performanceScoreLabel": "Puntaje Gráfico (Score)",
+    "performanceScorePlaceholder": "Ej. 12500",
+
+    "infoTitle": "Misión 2: Especificaciones",
+    "infoDesc": "Valida la autenticidad y capacidad.",
+    "infoInstructionRAM": "Foto a tu monitor: \n1.Mostrar la barra de tareas.\n2. CPU-Z (Pestaña SPD).\n\nToma una foto donde se vean ambas.",
+    "infoInstructionMobo": "Abre CPU-Z en la pestaña 'Mainboard'. Toma una foto donde se vea el Modelo y la BIOS junto a tu papelito."
+  },
+  "guide": {
+    "buttonLabel": "¿Cómo hago esto?",
+
+    "benchmark": {
+      "modalTitle": "Guía: Cómo usar 3DMark",
+      "step1Title": "1. Busca en Steam",
+      "step1Desc": "Busca '3DMark' en la tienda de Steam.\n\nNO lo compres, es gratis.",
+      "step2Title": "2. Descarga la Demo",
+      "step2Desc": "Busca el botón 'Descargar Demo'.\n\nRecuerda, no es necesario comprar la aplicación.",
+      "step3Title": "3. Entra al apartado de Benchmark",
+      "step3Desc": "En la barra superior derecha de la app busca un botón llamado 'Benchmark'.\n\nDa click y te llevara al apartado de los Benchmark.",
+      "step4Title": "4. Busca el benchmark 'Time Spy'",
+      "step4Desc": "Escrollea un poco hacia abajo y busca el benchmark que se llama 'Time Spy'.\n\nDa click en él.",
+      "step5Title": "5. Ejecutar la prueba",
+      "step5Desc": "Cuando estes en la pantalla para ejecutar la prueba, es recomendable cerrar todas y absolutamente todas las aplicaciones, para obtener una mejor resultado.",
+      "step6Title": "6. Foto Final (Importante)",
+      "step6Desc": "Una vez que la prueba finalize, toma una foto con tu celular al monitor mostrando:\n\n• El resultado '3DMark'.\n• La barra de tareas mostrando la fecha.\n\nLa app de 3DMark no debe estar en pantalla completa. Intenta replicar la imagen del ejemplo y que se vea todo claro.\n\nSi no, tu verificación puede ser rechazada.",
+      "step7Title": "7. Puntuación",
+      "step7Desc": "Anota o guarda el puntuaje (Score) de tu componente que aparece en '3DMark' (ya sea CPU o GPU).\n\nSe te pedirá que lo escribas en la casilla de 'Puntaje Gráfico' cuando subas tu foto de verificación."
+    },
+
+    "info": {
+      "title": "Guía: Verificación de Specs",
+      "step1Title": "1. Descarga CPU-Z",
+      "step1Desc": "Descarga CPU-Z (Es seguro). La pagina oficial es cpuid.com.\n\nInstala la aplicación. No pesa y es rapido de instalar.",
+      "step2Title": "2. Abrir CPU-Z",
+      "step2Desc": "Abre CPU-Z, te pedira persimos de administrador, aceptalos.\n\nUna vez abierta la aplicación, busca la pestaña 'SPD'. Deja abierta la ventana de CPU-Z en ese apartado.",
+      "step3Title": "3. Abrir el Administrador de Tareas",
+      "step3Desc": "Abre el Administrador de Tareas (Task Manager) en Windows presionando 'Ctrl + Shift + Esc'.\n\nUna vez abierto, dirigite al apartado de 'Rendimiento' luego 'Memoria'.\n\nDeja esta ventana abierta junto con CPU-Z.",
+      "step4Title": "4. Tomar la Foto",
+      "step4Desc": "Con ambas ventanas abiertas (CPU-Z y Administrador de Tareas), toma una foto con tu celular donde se vean ambas ventanas claramente.\n\nAsegúrate de que toda la información sea legible para evitar que tu verificación sea rechazada."
+    },
+
+    "mobo": {
+      "modalTitle": "Protocolo: Verificación de Motherboard",
+      "step1Title": "1. Descarga CPU-Z",
+      "step1Desc": "Descarga CPU-Z (Es seguro). La pagina oficial es cpuid.com.\n\nDescarga e instala la aplicación. No pesa y es rapido de instalar.",
+      "step2Title": "2. Abrir CPU-Z",
+      "step2Desc": "Abre CPU-Z, te pedira persimos de administrador, aceptalos.\n\nUna vez abierta la aplicación, busca la pestaña 'Mainboard'. Deja abierta la ventana de CPU-Z en ese apartado.",
+      "step3Title": "3. Tomar la Foto",
+      "step3Desc": "Toma una foto clara del monitor mostrando la información de 'CPU-Z' en el apartado 'Mainboard'.\n\nAsegúrate de que toda la información sea legible para evitar que tu verificación sea rechazada."
+    }
+  },
+  "actions": {
+    "takePhoto": "Tomar Foto",
+    "changePhoto": "Cambiar Foto",
+    "submit": "Enviar a Revisión",
+    "saveExit": "Guardar y Salir"
+  },
+  "alerts": {
+    "successTitle": "¡Enviado!",
+    "successMessage": "Tu producto está en revisión. Te notificaremos cuando sea aprobado.",
+    "errorTitle": "Error",
+    "errorMessage": "No se pudieron subir las pruebas. Intenta de nuevo.",
+    "missingFields": "Por favor completa todas las misiones requeridas."
+  },
+  "rejection": {
+    "title": "Verificación Rechazada",
+    "subtitle": "Por favor corrige el problema y envía de nuevo.",
+    "adminLabel": "Motivo del Rechazo",
+    "adminPlaceholder": "Explica por qué se rechaza (ej. Foto borrosa)..."
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "menu": {
+    "orders": "My Orders",
+    "listings": "My Listings",
+    "addresses": "Addresses",
+    "payments": "Payments"
+  },
+  "sections": {
+    "favorites": "Your Favorites",
+    "emptyFavorites": "You don't have any favorites yet.",
+    "viewAll": "View all favorites"
+  },
+  "avatar": {
+    "changeTitle": "Change Profile Picture",
+    "chooseOption": "How do you want to upload your photo?",
+    "camera": "Take Photo",
+    "gallery": "Open Gallery"
+  },
+  "listings": {
+    "title": "My Listings",
+    "emptyTitle": "You haven't listed anything",
+    "emptyMsg": "It's time to clean up your setup! Sell what you no longer use.",
+    "publishedOn": "Published on",
+    "lastUpdate": "Last update",
+
+    "tabs": {
+      "active": "Active",
+      "history": "History"
+    },
+    "status": {
+      "VERIFIED": "Active",
+      "IN_REVIEW": "Under Review",
+      "PENDING_VERIFICATION": "Not Yet Verified",
+      "SOLD": "Sold",
+      "REJECTED": "Rejected"
+    },
+    "actions": {
+      "edit": "Edit",
+      "delete": "Delete",
+      "fix": "Fix",
+      "verify": "Verify"
+    }
+  },
+  "feedback": {
+    "avatarUpdatedTitle": "Photo Updated",
+    "avatarUpdatedMsg": "Your profile picture has been changed successfully.",
+    "avatarErrorTitle": "Upload Error",
+    "avatarErrorMsg": "Could not update photo. Please try again.",
+    "understood": "Understood"
+  }
+}

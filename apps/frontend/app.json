@@ -31,13 +31,11 @@
           "autoVerify": true,
           "data": [
             {
-              "scheme": "selene"
+              "scheme": "selene",
+              "host": "auth-verified"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         }
       ],
       "edgeToEdgeEnabled": true,
@@ -58,6 +56,13 @@
           "webClientId": "332992495631-gnackhq8269n8v4k7e12sefsfs0cj5ep.apps.googleusercontent.com",
           "androidClientId": "332992495631-tnk4upn2o4e5k2026c5ee8f21ijmi120.apps.googleusercontent.com",
           "iosUrlScheme": "com.googleusercontent.apps.332992495631-gpl4f50ndu6oji4btgtkpohtukuvj622"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Selene necesita acceso a tus fotos para que puedas subir tu avatar y publicar productos.",
+          "cameraPermission": "Selene necesita acceso a tu cámara para que puedas tomar fotos de tus productos."
         }
       ]
     ],

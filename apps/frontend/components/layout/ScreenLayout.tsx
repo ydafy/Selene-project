@@ -4,12 +4,13 @@ import {
   ScrollView,
   ViewStyle,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context'; // <-- 1. Importamos el hook
 import { Box } from '../base';
 
-// Definimos las props que nuestro componente aceptará.
 type ScreenLayoutProps = {
-  children: React.ReactNode; // 'children' es el contenido que irá dentro del layout.
-  style?: ViewStyle; // Un 'style' opcional para personalizar el contenedor del scroll.
+  children: React.ReactNode;
+  style?: ViewStyle;
+  disableSafeArea?: boolean; // Opción por si alguna vez queremos control manual
 };
 
 /**
@@ -17,10 +18,27 @@ type ScreenLayoutProps = {
  * Proporciona un comportamiento consistente para el teclado,
  * scroll y padding básico.
  */
-export const ScreenLayout = ({ children, style }: ScreenLayoutProps) => {
+
+export const ScreenLayout = ({
+  children,
+  style,
+  disableSafeArea,
+}: ScreenLayoutProps) => {
+  // 2. Obtenemos las medidas exactas de los bordes seguros del dispositivo
+  const insets = useSafeAreaInsets();
+
   return (
-    // KeyboardAvoidingView ajusta la pantalla para que el teclado no tape los inputs.
-    <Box flex={1} backgroundColor="background">
+    <Box
+      flex={1}
+      backgroundColor="background"
+      // 3. Aplicamos el padding solo si no está deshabilitado
+      style={{
+        paddingTop: disableSafeArea ? 0 : insets.top,
+        paddingBottom: disableSafeArea ? 0 : insets.bottom,
+        paddingLeft: insets.left,
+        paddingRight: insets.right,
+      }}
+    >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -28,6 +46,7 @@ export const ScreenLayout = ({ children, style }: ScreenLayoutProps) => {
         <ScrollView
           contentContainerStyle={[{ flexGrow: 1 }, style]}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           {children}
         </ScrollView>

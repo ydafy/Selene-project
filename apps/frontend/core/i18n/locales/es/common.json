@@ -1,3 +1,32 @@
 {
-    "appName": "Portal Escolar"
+  "yes": "Sí",
+  "no": "No",
+  "states": {
+    "errorTitle": "Algo salió mal",
+    "errorMessage": "No pudimos cargar la información.",
+    "retryButton": "Reintentar",
+    "emptyTitle": "No hay nada aquí",
+    "emptyMessage": "No pudimos encontrar ningún dato para mostrar.",
+    "productLoadError": "No se pudo cargar el producto.",
+    "feedLoadError": "Se produjo un error al cargar los productos.",
+    "feedEmpty": "Aún no hay productos disponibles."
+  },
+
+  "dialog": {
+    "confirm": "Confirmar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "discardTitle": "¿Descartar publicación?",
+    "discardDescription": "Si sales ahora, perderás todos los avances."
+  },
+
+  "actions": {
+    "discard": "Descartar",
+    "continue": "Continuar"
+  },
+
+  "globalError": {
+    "title": "¡Uy! Algo salió mal",
+    "message": "Se produjo un error inesperado. Nuestro equipo ha sido notificado."
+  }
 }

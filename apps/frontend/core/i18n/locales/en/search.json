@@ -1,0 +1,27 @@
+{
+  "title": "Buy",
+  "placeholder": "Search products (e.g. RTX 3080)",
+  "categories": "Categories",
+  "resultsTitle": "Results",
+  "exploreSection": "Explore Products",
+  "backToTop": "Back to top",
+
+  "recentSearches": "Recent Searches",
+  "clearHistory": "Clear all",
+  "typeToSearch": "Type to search...",
+
+  "filters": {
+    "title": "Filters",
+    "clear": "Clear",
+    "apply": "Apply Filters",
+    "priceRange": "Price Range",
+    "condition": "Condition",
+    "min": "Min",
+    "max": "Max",
+    "sortPrice": "Price",
+    "sortNewest": "Recent",
+    "sortPriceLow": "Low price",
+    "sortPriceHigh": "High price",
+    "verifiedOnly": "Verified"
+  }
+}

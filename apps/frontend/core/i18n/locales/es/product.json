@@ -1,0 +1,75 @@
+{
+  "details": {
+    "title": "Detalles del producto",
+    "priceLabel": "Precio:",
+    "soldBy": "Vendido por",
+    "verifiedMember": "Miembro verificado",
+    "description": "Descripción",
+    "specifications": "Especificaciones",
+    "verifiedStatus": "Verificado por Selene"
+  },
+  "actions": {
+    "buyNow": "Comprar ahora",
+    "addToCart": "Añadir al carrito",
+    "adding": "Añadiendo...",
+    "added": "En el carrito",
+    "edit": "Editar producto",
+    "shareTitle": "Ver {{productName}}",
+    "shareMessage": "¡Echa un vistazo a este {{productName}} en Selene! {{productLink}}",
+    "notAvailable": "No disponible",
+    "notAvailableMsg": "Este producto ya no está disponible",
+    "alreadyInCartTitle": "Ya está en tu carrito",
+    "alreadyInCartMsg": "Puedes proceder al pago cuando quieras.",
+    "addedToCartTitle": "¡Añadido al carrito!",
+    "addedToCartMsg": "{{productName}} listo para comprar."
+  },
+  "status": {
+    "sold": "Vendido",
+    "pending": "Verificación pendiente",
+    "edit": "Editar publicacion"
+  },
+  "feed": {
+    "title": "Explorar",
+    "subtitle": "Hardware verificado para tu PC"
+  },
+  "specs": {
+    "brand": "Marca",
+    "model": "Modelo",
+    "series": "Serie",
+    "chipset": "Chipset",
+    "memory_gb": "Memoria (GB)",
+    "socket": "Socket",
+    "cores": "Núcleos",
+    "includes_cooler": "Incluye disipador",
+    "type": "Tipo",
+    "capacity_gb": "Capacidad (GB)",
+    "clock_speed": "Velocidad (MHz)",
+    "module_count": "Módulos",
+    "form_factor": "Factor de forma",
+    "memory_type": "Tipo de memoria",
+    "memory_slots": "Ranuras de memoria"
+  },
+  "menu": {
+    "report": "Reportar anuncio",
+    "blockSeller": "Bloquear vendedor",
+    "cancel": "Cancelar",
+    "reportSentTitle": "Reporte enviado",
+    "reportSentMsg": "Revisaremos esta publicación.",
+    "userBlockedTitle": "Usuario bloqueado",
+    "userBlockedMsg": "No volverás a ver sus productos."
+  },
+  "search": {
+    "title": "Comprar",
+    "placeholder": "Buscar productos (ej. RTX 3080)",
+    "categories": "Categorías Populares",
+    "resultsTitle": "Resultados"
+  },
+  "dialogs": {
+    "inReviewTitle": "En Revisión",
+    "inReviewMsg": "El equipo Selene está verificando este producto para tu seguridad. Agrégalo a favoritos para recibir una alerta cuando esté aprobado.",
+    "pendingTitle": "Preparando Verificación",
+    "pendingMsg": "El vendedor está preparando las pruebas de funcionamiento. Agrégalo a favoritos para no perderlo de vista.",
+    "addToFavs": "Agregar a Favoritos",
+    "understood": "Entendido"
+  }
+}
