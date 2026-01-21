@@ -1,6 +1,7 @@
 {
   "yes": "Yes",
   "no": "No",
+  "successChange": "The changes have been saved.",
   "states": {
     "errorTitle": "Something went wrong",
     "errorMessage": "We couldn't load the information.",
@@ -9,7 +10,8 @@
     "emptyMessage": "We couldn't find any data to display.",
     "productLoadError": "Couldn't load the product.",
     "feedLoadError": "An error occurred while loading the products.",
-    "feedEmpty": "No products available yet."
+    "feedEmpty": "No products available yet.",
+    "updateMessage": "Updated"
   },
 
   "dialog": {

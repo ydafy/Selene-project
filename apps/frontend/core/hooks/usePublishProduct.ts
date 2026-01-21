@@ -2,25 +2,24 @@ import { useState } from 'react';
 import { Image, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
+import Toast from 'react-native-toast-message';
 
 import { supabase } from '../db/supabase';
 import { useSellStore } from '../store/useSellStore';
 import { useAuthContext } from '../../components/auth/AuthProvider';
 import { ProductCategory } from '@selene/types';
+import { normalize } from '../utils/compare';
+import { useTranslation } from 'react-i18next';
 
 export const usePublishProduct = () => {
   const [isPublishing, setIsPublishing] = useState(false);
   const router = useRouter();
-  const { draft } = useSellStore();
+  const { draft, resetDraft } = useSellStore();
   const { session } = useAuthContext();
   const queryClient = useQueryClient();
+  const { t } = useTranslation('common');
 
-  /**
-   * Sube una imagen a Supabase si es local.
-   * Si ya es una URL remota (edición), la devuelve tal cual.
-   */
   const uploadImage = async (uri: string, userId: string) => {
-    // Optimización: Si ya está en la nube, no hacemos nada
     if (uri.startsWith('http')) return uri;
 
     try {
@@ -57,12 +56,12 @@ export const usePublishProduct = () => {
 
     setIsPublishing(true);
     const isEditMode = !!draft.id;
-    console.log(
-      `[Publish] Iniciando ${isEditMode ? 'EDICIÓN' : 'CREACIÓN'}...`,
-    );
+
+    // Variable para saber si debemos mandar a verificar o no
+    let requiresReverification = false;
 
     try {
-      // 1. Calcular Aspect Ratio (Solo si la portada es nueva/local)
+      // 1. Calcular Aspect Ratio
       const coverUri = draft.images[0];
       let aspectRatio = 1;
 
@@ -74,26 +73,17 @@ export const usePublishProduct = () => {
               aspectRatio = width / height;
               resolve();
             },
-            () => {
-              console.warn(
-                '[Publish] No se pudo calcular aspect ratio, usando default 1',
-              );
-              resolve();
-            },
+            () => resolve(),
           );
         });
-      } else {
-        // Si es edición y no cambió la portada, podríamos mantener el ratio anterior,
-        // pero por seguridad recalculamos o usamos 1 si no tenemos acceso fácil al anterior aquí.
-        // (Idealmente el draft debería tener el aspect_ratio original cargado, pero para MVP esto basta).
       }
 
-      // 2. Procesar Imágenes (Subir nuevas, mantener viejas)
+      // 2. Subir Imágenes
       const uploadedUrls = await Promise.all(
         draft.images.map((uri) => uploadImage(uri, session.user.id)),
       );
 
-      // 3. Preparar Payload Base
+      // 3. Preparar Payload
       const productData = {
         name: draft.name,
         description: draft.description,
@@ -103,42 +93,38 @@ export const usePublishProduct = () => {
         usage: draft.usage,
         images: uploadedUrls,
         specifications: draft.specifications,
-        // Solo actualizamos ratio si calculamos uno nuevo (es decir, si subimos foto nueva)
         ...(aspectRatio !== 1 ? { aspect_ratio: aspectRatio } : {}),
       };
 
       let resultData;
 
       if (isEditMode) {
-        // --- LÓGICA DE EDICIÓN (UPDATE) ---
-
-        // Recuperamos el estado original para comparar
+        // --- LÓGICA DE EDICIÓN ---
         const original = useSellStore.getState().originalData;
 
-        // REGLAS DE NEGOCIO: ¿Qué cambios requieren re-verificación?
+        // Usamos normalize para comparar manzanas con manzanas
         const sacredChanges =
-          JSON.stringify(productData.images) !==
-            JSON.stringify(original?.images) ||
-          JSON.stringify(productData.specifications) !==
-            JSON.stringify(original?.specifications) ||
+          JSON.stringify(normalize(productData.images)) !==
+            JSON.stringify(normalize(original?.images)) ||
+          JSON.stringify(normalize(productData.specifications)) !==
+            JSON.stringify(normalize(original?.specifications)) ||
           productData.category !== original?.category;
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const updatePayload: any = {
           ...productData,
-          rejection_reason: null, // Siempre limpiamos el mensaje de rechazo al editar
+          rejection_reason: null,
         };
 
         if (sacredChanges) {
-          // Si tocó algo sagrado (Fotos, Specs, Categoría) -> Castigo: Volver a verificar
+          // CAMBIO PELIGROSO: Reseteamos status
           updatePayload.status = 'PENDING_VERIFICATION';
-          console.log(
-            '[Publish] Cambios sagrados detectados. Status -> PENDING',
-          );
+          requiresReverification = true;
+          console.log('[Publish] Cambios sagrados. Status -> PENDING');
         } else {
-          // Si solo tocó cosméticos (Título, Precio) -> Mantenemos status actual
-          // NO enviamos el campo 'status', Supabase respeta el valor actual.
+          // CAMBIO SEGURO (Precio/Título): No tocamos el status
           console.log('[Publish] Cambios cosméticos. Status mantenido.');
+          requiresReverification = false;
         }
 
         const { data, error } = await supabase
@@ -151,7 +137,8 @@ export const usePublishProduct = () => {
         if (error) throw error;
         resultData = data;
       } else {
-        // --- LÓGICA DE CREACIÓN (INSERT) ---
+        // --- LÓGICA DE CREACIÓN ---
+        requiresReverification = true; // Siempre requiere verificar si es nuevo
         const { data, error } = await supabase
           .from('products')
           .insert({
@@ -168,27 +155,44 @@ export const usePublishProduct = () => {
         resultData = data;
       }
 
-      console.log(`[Publish] ¡Éxito! ID: ${resultData.id}`);
-
       // 4. Invalidación de Caché
       await queryClient.invalidateQueries({ queryKey: ['my-listings'] });
       if (isEditMode) {
-        // Si editamos, invalidamos también la vista de detalle de ese producto específico
         await queryClient.invalidateQueries({
           queryKey: ['product', resultData.id],
         });
       }
 
-      // 5. Navegación a Éxito
-      router.replace({
-        pathname: '/sell/success',
-        params: { productId: resultData.id },
-      });
+      // 5. NAVEGACIÓN INTELIGENTE
+      if (requiresReverification) {
+        // Si es nuevo o cambio peligroso -> Pantalla de Éxito/Verificación
+        router.replace({
+          pathname: '/sell/success',
+          params: { productId: resultData.id },
+        });
+      } else {
+        // Si es edición segura -> Volver al Perfil directo
+        router.dismissAll();
+        router.replace('/(tabs)/profile');
+        Toast.show({
+          type: 'success',
+          text1: t('states.updateMessage'),
+          text2: t('successChange'),
+          position: 'top',
+        });
+      }
 
-      // 6. Limpieza diferida
+      // 6. Limpieza
+      // No usamos setTimeout aquí para evitar race conditions,
+      // dejamos que la navegación ocurra primero.
+      // Si vamos a Success, Success limpia al salir.
+      // Si vamos a Profile, limpiamos aquí.
+      if (!requiresReverification) {
+        resetDraft();
+      }
     } catch (error) {
       console.error('[Publish Failed]', error);
-      Alert.alert('Error', 'Hubo un problema al guardar. Revisa tu conexión.');
+      Alert.alert('Error', 'Hubo un problema al guardar.');
     } finally {
       setIsPublishing(false);
     }
