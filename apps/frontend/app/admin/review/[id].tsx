@@ -1,51 +1,34 @@
-import React, {
-  useEffect,
-  useRef,
-  useState,
-  useMemo,
-  useCallback,
-} from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   ScrollView,
   Alert,
   Image,
   Keyboard,
+  TouchableWithoutFeedback,
   TouchableOpacity,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useTheme } from '@shopify/restyle';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import ImageViewing from 'react-native-image-viewing';
+import { TextInput as PaperInput } from 'react-native-paper';
 
-import {
-  BottomSheetModal,
-  BottomSheetBackdrop,
-  BottomSheetView,
-} from '@gorhom/bottom-sheet';
+import ImageViewing from 'react-native-image-viewing';
 
 import { Box, Text } from '../../../components/base';
 import { PrimaryButton } from '../../../components/ui/PrimaryButton';
 import { GlobalHeader } from '../../../components/layout/GlobalHeader';
 import { ProductImageGallery } from '../../../components/features/product/ProductImageGallery';
+import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { supabase } from '../../../core/db/supabase';
 import { Theme } from '../../../core/theme';
 import { Product } from '@selene/types';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-import { TextInput as PaperInput } from 'react-native-paper';
 
 export default function ReviewProductScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme<Theme>();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
 
-  const [isViewerVisible, setIsViewerVisible] = useState(false);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-
-  const rejectSheetRef = useRef<BottomSheetModal>(null); // <--- 2. REF DEL SHEET
-  const snapPoints = useMemo(() => ['90%'], []); // Altura cómoda para escribir
-
+  // Estado de Datos
   const [product, setProduct] = useState<Product | null>(null);
   const [proofUrls, setProofUrls] = useState<{
     physical?: string;
@@ -54,8 +37,57 @@ export default function ReviewProductScreen() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
 
-  const [rejectReason, setRejectReason] = useState('');
+  // Estado para el Diálogo de Notas (Rechazo o Aprobación con nota)
+  const [dialogVisible, setDialogVisible] = useState(false);
+  const [dialogMode, setDialogMode] = useState<'REJECT' | 'APPROVE_NOTE'>(
+    'REJECT',
+  );
+  const [adminNote, setAdminNote] = useState('');
 
+  // Estado Visor de Imágenes
+  const [isViewerVisible, setIsViewerVisible] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // 1. CARGAR DATOS
+  useEffect(() => {
+    const loadData = async () => {
+      if (!id) return;
+      // Necesitamos el seller_id para enviarle la notificación, asegúrate de traerlo
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error || !data) {
+        Alert.alert('Error', 'No se pudo cargar');
+        return;
+      }
+      setProduct(data as Product);
+
+      const vData = data.verification_data;
+      if (vData) {
+        const urls: { physical?: string; performance?: string } = {};
+        if (vData.proof_physical) {
+          const { data: signed } = await supabase.storage
+            .from('verification')
+            .createSignedUrl(vData.proof_physical, 3600);
+          if (signed) urls.physical = signed.signedUrl;
+        }
+        if (vData.proof_performance) {
+          const { data: signed } = await supabase.storage
+            .from('verification')
+            .createSignedUrl(vData.proof_performance, 3600);
+          if (signed) urls.performance = signed.signedUrl;
+        }
+        setProofUrls(urls);
+      }
+      setLoading(false);
+    };
+    loadData();
+  }, [id]);
+
+  // Preparar imágenes para visor
   const viewerImages = useMemo(() => {
     const imgs = [];
     if (proofUrls.physical) imgs.push({ uri: proofUrls.physical });
@@ -63,7 +95,6 @@ export default function ReviewProductScreen() {
     return imgs;
   }, [proofUrls]);
 
-  // Función para abrir la foto correcta
   const openImage = (uri: string) => {
     const index = viewerImages.findIndex((img) => img.uri === uri);
     if (index >= 0) {
@@ -72,86 +103,73 @@ export default function ReviewProductScreen() {
     }
   };
 
-  // 1. CARGAR DATOS Y GENERAR URLS FIRMADAS
-  useEffect(() => {
-    const loadData = async () => {
-      if (!id) return;
-
-      // A. Obtener producto
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error || !data) {
-        Alert.alert('Error', 'No se pudo cargar el producto');
-        return;
-      }
-
-      setProduct(data as Product);
-
-      // B. Generar URLs firmadas para las pruebas (Bucket Privado)
-      const vData = data.verification_data;
-      if (vData) {
-        const urls: { physical?: string; performance?: string } = {};
-
-        // Foto Física
-        if (vData.proof_physical) {
-          const { data: signed } = await supabase.storage
-            .from('verification')
-            .createSignedUrl(vData.proof_physical, 3600); // Valido por 1 hora
-          if (signed) urls.physical = signed.signedUrl;
-        }
-
-        // Foto Benchmark
-        if (vData.proof_performance) {
-          const { data: signed } = await supabase.storage
-            .from('verification')
-            .createSignedUrl(vData.proof_performance, 3600);
-          if (signed) urls.performance = signed.signedUrl;
-        }
-
-        setProofUrls(urls);
-      }
-      setLoading(false);
-    };
-
-    loadData();
-  }, [id]);
-
-  // 2. LÓGICA DE APROBACIÓN
-  const handleVerdict = async (verdict: 'APPROVE' | 'REJECT') => {
-    // Validación
-    if (verdict === 'REJECT' && !rejectReason.trim()) {
-      Alert.alert('Error', 'Debes escribir un motivo para rechazar.');
-      return;
-    }
+  // 2. LÓGICA CENTRAL DE VEREDICTO + NOTIFICACIÓN
+  const executeVerdict = async (
+    verdict: 'APPROVE' | 'REJECT' | 'APPROVE_NOTE',
+    note?: string,
+  ) => {
+    if (!product) return;
 
     setProcessing(true);
     try {
+      const isRejection = verdict === 'REJECT';
+      const isApproval = verdict === 'APPROVE' || verdict === 'APPROVE_NOTE';
+
+      // A. Actualizar Producto
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const updates: any = {
-        status: verdict === 'APPROVE' ? 'VERIFIED' : 'REJECTED',
-        rejection_reason: verdict === 'REJECT' ? rejectReason : null,
+        status: isRejection ? 'REJECTED' : 'VERIFIED',
+        rejection_reason: isRejection ? note : null, // Guardamos razón si es rechazo
       };
 
-      const { error } = await supabase
+      const { error: prodError } = await supabase
         .from('products')
         .update(updates)
         .eq('id', id);
+      if (prodError) throw prodError;
 
-      if (error) throw error;
+      // B. Crear Notificación (El Feedback Loop)
+      let notifTitle = '';
+      let notifMessage = '';
+      let notifType = 'info';
 
-      // Cerramos el Sheet si estaba abierto
-      rejectSheetRef.current?.dismiss();
+      if (verdict === 'REJECT') {
+        notifTitle = 'Publicación Rechazada';
+        notifMessage = `Tu producto "${product.name}" no pasó la verificación: ${note}`;
+        notifType = 'error';
+      } else if (verdict === 'APPROVE_NOTE') {
+        notifTitle = 'Publicación Aprobada con Observaciones';
+        notifMessage = `Tu producto "${product.name}" fue verificado. Nota de Selene: ${note}`;
+        notifType = 'warning'; // Amarillo para llamar la atención
+      } else {
+        // APPROVE Simple
+        notifTitle = '¡Publicación Verificada!';
+        notifMessage = `Tu producto "${product.name}" ha sido aprobado y ya está visible para compradores.`;
+        notifType = 'success';
+      }
+
+      const { error: notifError } = await supabase
+        .from('notifications')
+        .insert({
+          user_id: product.seller_id, // El dueño del producto
+          title: notifTitle,
+          message: notifMessage,
+          type: notifType,
+          read: false,
+          action_path: `/profile`, // Al tocar, ir al perfil (o al producto)
+        });
+
+      if (notifError) {
+        console.error('Error creando notificación:', notifError);
+        // No detenemos el flujo, el producto ya se actualizó
+      }
+
+      setDialogVisible(false);
 
       Alert.alert(
-        verdict === 'APPROVE' ? '¡Aprobado!' : 'Rechazado',
-        verdict === 'APPROVE'
-          ? 'Producto visible.'
-          : 'Se ha notificado al usuario.',
-        [{ text: 'Volver', onPress: () => router.back() }],
+        isApproval ? '¡Aprobado!' : 'Rechazado',
+        'Se ha actualizado el estado y notificado al usuario.',
+        [{ text: 'Volver al Dashboard', onPress: () => router.back() }],
       );
     } catch (error) {
       console.error(error);
@@ -161,36 +179,25 @@ export default function ReviewProductScreen() {
     }
   };
 
-  const renderBackdrop = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (props: any) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        opacity={0.7}
-        pressBehavior="close"
-        onPress={() => {
-          Keyboard.dismiss();
-          rejectSheetRef.current?.dismiss();
-        }}
-      />
-    ),
-    [],
-  );
+  // Handlers para abrir el diálogo
+  const openRejectDialog = () => {
+    setDialogMode('REJECT');
+    setAdminNote('');
+    setDialogVisible(true);
+  };
 
-  if (loading || !product) {
+  const openApproveNoteDialog = () => {
+    setDialogMode('APPROVE_NOTE');
+    setAdminNote('');
+    setDialogVisible(true);
+  };
+
+  if (loading || !product)
     return (
-      <Box
-        flex={1}
-        backgroundColor="background"
-        justifyContent="center"
-        alignItems="center"
-      >
+      <Box flex={1} backgroundColor="background">
         <Text>Cargando...</Text>
       </Box>
     );
-  }
 
   const vData = product.verification_data;
 
@@ -203,13 +210,8 @@ export default function ReviewProductScreen() {
         backgroundColor="cardBackground"
       />
 
-      <ScrollView
-        contentContainerStyle={{
-          paddingBottom: 150,
-          paddingTop: insets.top + 80,
-        }}
-      >
-        {/* --- SECCIÓN 1: LO PÚBLICO (Contexto) --- */}
+      <ScrollView contentContainerStyle={{ paddingBottom: 150 }}>
+        {/* SECCIÓN 1: PÚBLICO */}
         <Box padding="m">
           <Text variant="subheader-md" color="textSecondary" marginBottom="s">
             LA PROMESA (Público)
@@ -235,19 +237,18 @@ export default function ReviewProductScreen() {
           </Box>
         </Box>
 
-        {/* --- SECCIÓN 2: LA EVIDENCIA (Privado) --- */}
-        <Box padding="m" paddingTop="xs">
+        {/* SECCIÓN 2: EVIDENCIA */}
+        <Box padding="m" paddingTop="xl">
           <Text variant="subheader-md" color="primary" marginBottom="s">
             LA EVIDENCIA (Privado)
           </Text>
-
           <Box
             backgroundColor="cardBackground"
             borderRadius="m"
             padding="m"
             gap="l"
           >
-            {/* Evidencia 1: Física */}
+            {/* Física */}
             <Box>
               <Box flexDirection="row" alignItems="center" marginBottom="s">
                 <MaterialCommunityIcons
@@ -260,38 +261,22 @@ export default function ReviewProductScreen() {
                 </Text>
               </Box>
               {proofUrls.physical ? (
-                // CAMBIO: Envolvemos en TouchableOpacity
                 <TouchableOpacity
                   onPress={() => openImage(proofUrls.physical!)}
                   activeOpacity={0.9}
                 >
                   <Image
                     source={{ uri: proofUrls.physical }}
-                    style={{ width: '100%', height: 350, borderRadius: 8 }}
+                    style={{ width: '100%', height: 300, borderRadius: 8 }}
                     resizeMode="contain"
                   />
-                  {/* Indicador visual de zoom (Opcional pero recomendado) */}
-                  <Box
-                    position="absolute"
-                    bottom={10}
-                    right={10}
-                    backgroundColor="separator"
-                    borderRadius="full"
-                    padding="xs"
-                  >
-                    <MaterialCommunityIcons
-                      name="magnify-plus-outline"
-                      size={20}
-                      color="white"
-                    />
-                  </Box>
                 </TouchableOpacity>
               ) : (
                 <Text color="error">No hay foto física</Text>
               )}
             </Box>
 
-            {/* Evidencia 2: Benchmark (Si existe) */}
+            {/* Benchmark */}
             {proofUrls.performance && (
               <Box>
                 <Box flexDirection="row" alignItems="center" marginBottom="s">
@@ -304,33 +289,16 @@ export default function ReviewProductScreen() {
                     Benchmark
                   </Text>
                 </Box>
-
-                {/* CAMBIO: Envolvemos en TouchableOpacity */}
                 <TouchableOpacity
                   onPress={() => openImage(proofUrls.performance!)}
                   activeOpacity={0.9}
                 >
                   <Image
                     source={{ uri: proofUrls.performance }}
-                    style={{ width: '100%', height: 350, borderRadius: 8 }}
+                    style={{ width: '100%', height: 300, borderRadius: 8 }}
                     resizeMode="contain"
                   />
-                  <Box
-                    position="absolute"
-                    bottom={10}
-                    right={10}
-                    backgroundColor="separator"
-                    borderRadius="full"
-                    padding="xs"
-                  >
-                    <MaterialCommunityIcons
-                      name="magnify-plus-outline"
-                      size={20}
-                      color="white"
-                    />
-                  </Box>
                 </TouchableOpacity>
-
                 {vData?.benchmark_score && (
                   <Text
                     variant="header-xl"
@@ -347,39 +315,103 @@ export default function ReviewProductScreen() {
         </Box>
       </ScrollView>
 
-      {/* --- FOOTER DE ACCIÓN --- */}
+      {/* FOOTER DE ACCIÓN (3 BOTONES) */}
       <Box
         position="absolute"
         bottom={0}
         left={0}
         right={0}
         padding="m"
-        paddingBottom="xl"
+        paddingBottom="l"
         backgroundColor="cardBackground"
-        flexDirection="row"
-        gap="m"
         style={{ borderTopWidth: 1, borderTopColor: '#333' }}
       >
-        <PrimaryButton
-          onPress={() => rejectSheetRef.current?.present()} // <--- ABRE EL SHEET
-          disabled={processing}
-          style={{ flex: 1, backgroundColor: theme.colors.error }}
-          icon="close-circle-outline"
-        >
-          Rechazar
-        </PrimaryButton>
+        <Box flexDirection="row" gap="s" marginBottom="s">
+          {/* Botón Rechazar */}
+          <PrimaryButton
+            onPress={openRejectDialog}
+            disabled={processing}
+            style={{ flex: 1, backgroundColor: theme.colors.error }}
+            icon="close-circle-outline"
+          >
+            Rechazar
+          </PrimaryButton>
 
+          {/* Botón Aprobar Simple */}
+          <PrimaryButton
+            onPress={() => executeVerdict('APPROVE')}
+            disabled={processing}
+            loading={processing}
+            style={{ flex: 1, backgroundColor: theme.colors.success }}
+            icon="check-circle-outline"
+          >
+            Aprobar
+          </PrimaryButton>
+        </Box>
+
+        {/* Botón Aprobar con Nota (Ancho completo abajo) */}
         <PrimaryButton
-          onPress={() => handleVerdict('APPROVE')}
+          onPress={openApproveNoteDialog}
           disabled={processing}
-          loading={processing}
-          style={{ flex: 1, backgroundColor: theme.colors.success }}
-          icon="check-circle-outline"
+          variant="outline"
+          style={{ borderColor: theme.colors.primary }}
+          labelStyle={{ color: theme.colors.primary }}
+          icon="message-draw"
         >
-          Aprobar
+          Aprobar con Nota
         </PrimaryButton>
       </Box>
 
+      {/* DIÁLOGO UNIFICADO (Sirve para Rechazo y Nota) */}
+      <ConfirmDialog
+        visible={dialogVisible}
+        title={
+          dialogMode === 'REJECT' ? 'Rechazar Producto' : 'Aprobar con Nota'
+        }
+        description={
+          dialogMode === 'REJECT'
+            ? 'Explica por qué se rechaza para que el usuario corrija.'
+            : 'El producto será aprobado, pero el usuario recibirá este mensaje.'
+        }
+        onConfirm={() => executeVerdict(dialogMode, adminNote)}
+        onCancel={() => setDialogVisible(false)}
+        confirmLabel={
+          dialogMode === 'REJECT' ? 'Confirmar Rechazo' : 'Confirmar Aprobación'
+        }
+        isDangerous={dialogMode === 'REJECT'}
+        icon={
+          dialogMode === 'REJECT'
+            ? 'alert-circle-outline'
+            : 'information-outline'
+        }
+        dismissable={false}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <Box marginTop="m">
+            <PaperInput
+              mode="outlined"
+              label={dialogMode === 'REJECT' ? 'Motivo' : 'Nota / Observación'}
+              placeholder="Escribe aquí..."
+              value={adminNote}
+              onChangeText={setAdminNote}
+              numberOfLines={3}
+              textColor={theme.colors.textPrimary}
+              style={{ backgroundColor: theme.colors.background }}
+              theme={{
+                colors: {
+                  primary:
+                    dialogMode === 'REJECT'
+                      ? theme.colors.error
+                      : theme.colors.primary,
+                  outline: theme.colors.textSecondary,
+                },
+              }}
+            />
+          </Box>
+        </TouchableWithoutFeedback>
+      </ConfirmDialog>
+
+      {/* Visor de Imágenes */}
       <ImageViewing
         images={viewerImages}
         imageIndex={currentImageIndex}
@@ -388,7 +420,7 @@ export default function ReviewProductScreen() {
         swipeToCloseEnabled={true}
         doubleTapToZoomEnabled={true}
         animationType="fade"
-        backgroundColor="#000000" // Fondo negro para máximo contraste
+        backgroundColor="#000000"
         HeaderComponent={() => (
           <Box position="absolute" top={50} right={20} zIndex={1}>
             <TouchableOpacity
@@ -404,59 +436,6 @@ export default function ReviewProductScreen() {
           </Box>
         )}
       />
-
-      {/* 3. EL NUEVO BOTTOM SHEET DE RECHAZO */}
-      <BottomSheetModal
-        ref={rejectSheetRef}
-        index={0}
-        snapPoints={snapPoints}
-        backdropComponent={renderBackdrop}
-        backgroundStyle={{ backgroundColor: theme.colors.cardBackground }}
-        handleIndicatorStyle={{ backgroundColor: theme.colors.textSecondary }}
-        //keyboardBehavior="interactive"
-        keyboardBlurBehavior="restore"
-        android_keyboardInputMode="adjustResize"
-      >
-        <BottomSheetView style={{ flex: 1, padding: 20 }}>
-          <Text variant="header-xl" marginBottom="xl">
-            Motivo del Rechazo
-          </Text>
-          <Text variant="body-md" color="textSecondary" marginBottom="m">
-            Explica claramente por qué se rechaza para que el usuario pueda
-            corregirlo.
-          </Text>
-
-          <PaperInput
-            mode="outlined"
-            label="Escribe aquí..."
-            value={rejectReason}
-            onChangeText={setRejectReason}
-            multiline
-            numberOfLines={4}
-            textColor={theme.colors.textPrimary}
-            style={{
-              backgroundColor: theme.colors.background,
-              marginBottom: 90,
-            }}
-            theme={{
-              colors: {
-                primary: theme.colors.error,
-                outline: theme.colors.textSecondary,
-              },
-            }}
-            autoFocus
-          />
-
-          <PrimaryButton
-            onPress={() => handleVerdict('REJECT')}
-            disabled={!rejectReason.trim() || processing}
-            style={{ backgroundColor: theme.colors.error }}
-            loading={processing}
-          >
-            Confirmar Rechazo
-          </PrimaryButton>
-        </BottomSheetView>
-      </BottomSheetModal>
     </Box>
   );
 }
