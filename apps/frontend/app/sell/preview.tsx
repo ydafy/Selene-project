@@ -23,28 +23,9 @@ import { ProductSellerCard } from '../../components/features/product/ProductSell
 import { useSellStore } from '../../core/store/useSellStore';
 import { usePublishProduct } from '../../core/hooks/usePublishProduct';
 import { useAuthContext } from '../../components/auth/AuthProvider';
+import { normalize } from '../../core/utils/compare';
 
 import { Product } from '@selene/types';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const normalize = (obj: any) => {
-  if (!obj) return {};
-  if (typeof obj !== 'object') return String(obj);
-
-  return (
-    Object.keys(obj)
-      .sort() // Ordenar llaves
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .reduce((acc: any, key) => {
-        const val = obj[key];
-        // Ignoramos valores vacíos para la comparación
-        if (val !== null && val !== undefined && val !== '') {
-          acc[key] = String(val); // Convertir valor a string
-        }
-        return acc;
-      }, {})
-  );
-};
 
 export default function SellPreviewScreen() {
   const { t } = useTranslation(['sell', 'product', 'common']);

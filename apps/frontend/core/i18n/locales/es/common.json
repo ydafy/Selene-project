@@ -1,6 +1,7 @@
 {
   "yes": "Sí",
   "no": "No",
+  "successChange": "Los cambios se han guardado.",
   "states": {
     "errorTitle": "Algo salió mal",
     "errorMessage": "No pudimos cargar la información.",
@@ -9,12 +10,14 @@
     "emptyMessage": "No pudimos encontrar ningún dato para mostrar.",
     "productLoadError": "No se pudo cargar el producto.",
     "feedLoadError": "Se produjo un error al cargar los productos.",
-    "feedEmpty": "Aún no hay productos disponibles."
+    "feedEmpty": "Aún no hay productos disponibles.",
+    "updateMessage": "Actualizado"
   },
 
   "dialog": {
     "confirm": "Confirmar",
     "cancel": "Cancelar",
+
     "delete": "Eliminar",
     "discardTitle": "¿Descartar publicación?",
     "discardDescription": "Si sales ahora, perderás todos los avances."

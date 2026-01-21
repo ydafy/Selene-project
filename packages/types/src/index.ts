@@ -11,6 +11,21 @@ export type ProductStatus =
 // Definimos las categorías principales (extensible)
 export type ProductCategory = 'GPU' | 'CPU' | 'Motherboard' | 'RAM' | 'Other';
 
+// Definimos la estructura de una notificación
+export type NotificationType = 'info' | 'success' | 'error' | 'warning';
+
+// Estructura de la Notificación
+export interface Notification {
+  id: string;
+  created_at: string;
+  user_id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  read: boolean;
+  action_path?: string;
+}
+
 /**
  * Estructura estricta para los datos de verificación.
  * Esto se guarda como JSONB en la base de datos.
