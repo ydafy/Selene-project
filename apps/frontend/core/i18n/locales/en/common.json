@@ -16,7 +16,12 @@
 
   "dialog": {
     "confirm": "Confirm",
+    "next": "Next",
+    "fixNow": "Fix Now",
+    "goToMyPosts": "Go to My Posts",
+    "skipAll": "Skip All",
     "cancel": "Cancel",
+    "understood": "Understood",
     "delete": "Delete",
     "discardTitle": "Discard Post?",
     "discardDescription": "If you exit now, you will lose all progress."

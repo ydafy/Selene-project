@@ -22,8 +22,8 @@ export default function CartScreen() {
   const theme = useTheme<Theme>();
   const { t } = useTranslation('cart');
   const { t: tCommon } = useTranslation('common');
-  const { session } = useAuthContext(); // 1. Obtener sesión
-  const { present } = useAuthModal(); // 2. Obtener función del modal
+  const { session } = useAuthContext();
+  const { present } = useAuthModal();
   const router = useRouter();
   const {
     unavailableIds,
@@ -80,7 +80,6 @@ export default function CartScreen() {
           paddingBottom: 200,
           flexGrow: 1, // Importante para que el EmptyState se pueda centrar si es necesario
         }}
-        // 1. HEADER: Siempre visible
         ListHeaderComponent={<ScreenHeader title={t('title')} />}
         // 2. ESTADO VACÍO: Se muestra automático si data=[]
         ListEmptyComponent={

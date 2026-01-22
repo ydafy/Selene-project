@@ -39,8 +39,6 @@ export default function MyListingsScreen() {
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  // Definimos las opciones de las pestañas usando i18n
-  // Usamos useMemo para que no se re-calcule en cada render innecesariamente
   const tabOptions = useMemo(
     () => [
       t('profile:listings.tabs.active'),
@@ -49,14 +47,18 @@ export default function MyListingsScreen() {
     [t],
   );
 
+  const hasRejected = !!listings?.some((item) => item.status === 'REJECTED');
+  const showHistoryBadge = hasRejected && selectedIndex !== 1;
+  const badgesConfig = [false, showHistoryBadge];
+
   // Lógica de Filtrado (Client Side - Instantáneo)
   const filteredListings = useMemo(() => {
     return listings?.filter((item) => {
       // Usamos la "Fuente de Verdad"
       const isHistory = isProductHistory(item.status);
 
-      if (selectedIndex === 0) return !isHistory; // Pestaña Activos
-      return isHistory; // Pestaña Historial
+      if (selectedIndex === 0) return !isHistory;
+      return isHistory;
     });
   }, [listings, selectedIndex]);
 
@@ -155,6 +157,7 @@ export default function MyListingsScreen() {
                 options={tabOptions}
                 selectedIndex={selectedIndex}
                 onChange={setSelectedIndex}
+                badges={badgesConfig}
               />
             </Box>
           }

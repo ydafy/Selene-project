@@ -1,0 +1,19 @@
+{
+  "notifications": {
+    "rejectTitle": "Publicación Rechazada",
+    "rejectMessage": "Tu producto \"{{productName}}\" no pasó la verificación. Ve al apartado de \"Mis Publicaciones\" para más detalles:\n\n Motivo: {{note}}",
+
+    "approveNoteTitle": "Publicación Aprobada con Observaciones",
+    "approveNoteMessage": "Tu producto \"{{productName}}\" fue verificado.\n\n Nota de Selene: {{note}}",
+
+    "approveTitle": "¡Publicación Verificada!",
+    "approveMessage": "Tu producto \"{{productName}}\" ya lo pueden comprar los demas usuarios."
+  },
+  "alerts": {
+    "errorLoad": "No se pudo cargar el producto",
+    "successTitle": "¡Aprobado!",
+    "rejectTitle": "Rechazado",
+    "successBody": "Se ha actualizado el estado y notificado al usuario.",
+    "errorUpdate": "No se pudo actualizar."
+  }
+}

@@ -1,17 +1,14 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   ScrollView,
-  Alert,
   Image,
   Keyboard,
   TouchableWithoutFeedback,
   TouchableOpacity,
 } from 'react-native';
-import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useTheme } from '@shopify/restyle';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { TextInput as PaperInput } from 'react-native-paper';
-
 import ImageViewing from 'react-native-image-viewing';
 
 import { Box, Text } from '../../../components/base';
@@ -19,82 +16,34 @@ import { PrimaryButton } from '../../../components/ui/PrimaryButton';
 import { GlobalHeader } from '../../../components/layout/GlobalHeader';
 import { ProductImageGallery } from '../../../components/features/product/ProductImageGallery';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
-import { supabase } from '../../../core/db/supabase';
 import { Theme } from '../../../core/theme';
-import { Product } from '@selene/types';
+import { useAdminReviewLogic } from '../../../core/hooks/useAdminReviewLogic';
+import { FormTextInput } from '../../../components/ui/FormTextInput';
 
 export default function ReviewProductScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme<Theme>();
-  const router = useRouter();
 
-  // Estado de Datos
-  const [product, setProduct] = useState<Product | null>(null);
-  const [proofUrls, setProofUrls] = useState<{
-    physical?: string;
-    performance?: string;
-  }>({});
-  const [loading, setLoading] = useState(true);
-  const [processing, setProcessing] = useState(false);
+  const {
+    product,
+    proofUrls,
+    loading,
+    processing,
+    viewerImages,
+    executeVerdict,
+  } = useAdminReviewLogic(id);
 
-  // Estado para el Diálogo de Notas (Rechazo o Aprobación con nota)
+  // Estados puramente de UI (Modales, Visores)
   const [dialogVisible, setDialogVisible] = useState(false);
   const [dialogMode, setDialogMode] = useState<'REJECT' | 'APPROVE_NOTE'>(
     'REJECT',
   );
   const [adminNote, setAdminNote] = useState('');
 
-  // Estado Visor de Imágenes
   const [isViewerVisible, setIsViewerVisible] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  // 1. CARGAR DATOS
-  useEffect(() => {
-    const loadData = async () => {
-      if (!id) return;
-      // Necesitamos el seller_id para enviarle la notificación, asegúrate de traerlo
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error || !data) {
-        Alert.alert('Error', 'No se pudo cargar');
-        return;
-      }
-      setProduct(data as Product);
-
-      const vData = data.verification_data;
-      if (vData) {
-        const urls: { physical?: string; performance?: string } = {};
-        if (vData.proof_physical) {
-          const { data: signed } = await supabase.storage
-            .from('verification')
-            .createSignedUrl(vData.proof_physical, 3600);
-          if (signed) urls.physical = signed.signedUrl;
-        }
-        if (vData.proof_performance) {
-          const { data: signed } = await supabase.storage
-            .from('verification')
-            .createSignedUrl(vData.proof_performance, 3600);
-          if (signed) urls.performance = signed.signedUrl;
-        }
-        setProofUrls(urls);
-      }
-      setLoading(false);
-    };
-    loadData();
-  }, [id]);
-
-  // Preparar imágenes para visor
-  const viewerImages = useMemo(() => {
-    const imgs = [];
-    if (proofUrls.physical) imgs.push({ uri: proofUrls.physical });
-    if (proofUrls.performance) imgs.push({ uri: proofUrls.performance });
-    return imgs;
-  }, [proofUrls]);
-
+  // Handlers UI
   const openImage = (uri: string) => {
     const index = viewerImages.findIndex((img) => img.uri === uri);
     if (index >= 0) {
@@ -103,83 +52,6 @@ export default function ReviewProductScreen() {
     }
   };
 
-  // 2. LÓGICA CENTRAL DE VEREDICTO + NOTIFICACIÓN
-  const executeVerdict = async (
-    verdict: 'APPROVE' | 'REJECT' | 'APPROVE_NOTE',
-    note?: string,
-  ) => {
-    if (!product) return;
-
-    setProcessing(true);
-    try {
-      const isRejection = verdict === 'REJECT';
-      const isApproval = verdict === 'APPROVE' || verdict === 'APPROVE_NOTE';
-
-      // A. Actualizar Producto
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const updates: any = {
-        status: isRejection ? 'REJECTED' : 'VERIFIED',
-        rejection_reason: isRejection ? note : null, // Guardamos razón si es rechazo
-      };
-
-      const { error: prodError } = await supabase
-        .from('products')
-        .update(updates)
-        .eq('id', id);
-      if (prodError) throw prodError;
-
-      // B. Crear Notificación (El Feedback Loop)
-      let notifTitle = '';
-      let notifMessage = '';
-      let notifType = 'info';
-
-      if (verdict === 'REJECT') {
-        notifTitle = 'Publicación Rechazada';
-        notifMessage = `Tu producto "${product.name}" no pasó la verificación: ${note}`;
-        notifType = 'error';
-      } else if (verdict === 'APPROVE_NOTE') {
-        notifTitle = 'Publicación Aprobada con Observaciones';
-        notifMessage = `Tu producto "${product.name}" fue verificado. Nota de Selene: ${note}`;
-        notifType = 'warning'; // Amarillo para llamar la atención
-      } else {
-        // APPROVE Simple
-        notifTitle = '¡Publicación Verificada!';
-        notifMessage = `Tu producto "${product.name}" ha sido aprobado y ya está visible para compradores.`;
-        notifType = 'success';
-      }
-
-      const { error: notifError } = await supabase
-        .from('notifications')
-        .insert({
-          user_id: product.seller_id, // El dueño del producto
-          title: notifTitle,
-          message: notifMessage,
-          type: notifType,
-          read: false,
-          action_path: `/profile`, // Al tocar, ir al perfil (o al producto)
-        });
-
-      if (notifError) {
-        console.error('Error creando notificación:', notifError);
-        // No detenemos el flujo, el producto ya se actualizó
-      }
-
-      setDialogVisible(false);
-
-      Alert.alert(
-        isApproval ? '¡Aprobado!' : 'Rechazado',
-        'Se ha actualizado el estado y notificado al usuario.',
-        [{ text: 'Volver al Dashboard', onPress: () => router.back() }],
-      );
-    } catch (error) {
-      console.error(error);
-      Alert.alert('Error', 'No se pudo actualizar.');
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  // Handlers para abrir el diálogo
   const openRejectDialog = () => {
     setDialogMode('REJECT');
     setAdminNote('');
@@ -194,7 +66,12 @@ export default function ReviewProductScreen() {
 
   if (loading || !product)
     return (
-      <Box flex={1} backgroundColor="background">
+      <Box
+        flex={1}
+        backgroundColor="background"
+        justifyContent="center"
+        alignItems="center"
+      >
         <Text>Cargando...</Text>
       </Box>
     );
@@ -238,7 +115,7 @@ export default function ReviewProductScreen() {
         </Box>
 
         {/* SECCIÓN 2: EVIDENCIA */}
-        <Box padding="m" paddingTop="xl">
+        <Box padding="m" paddingTop="xs">
           <Text variant="subheader-md" color="primary" marginBottom="s">
             LA EVIDENCIA (Privado)
           </Text>
@@ -315,19 +192,18 @@ export default function ReviewProductScreen() {
         </Box>
       </ScrollView>
 
-      {/* FOOTER DE ACCIÓN (3 BOTONES) */}
+      {/* FOOTER DE ACCIÓN */}
       <Box
         position="absolute"
         bottom={0}
         left={0}
         right={0}
         padding="m"
-        paddingBottom="l"
+        paddingBottom="xl"
         backgroundColor="cardBackground"
         style={{ borderTopWidth: 1, borderTopColor: '#333' }}
       >
         <Box flexDirection="row" gap="s" marginBottom="s">
-          {/* Botón Rechazar */}
           <PrimaryButton
             onPress={openRejectDialog}
             disabled={processing}
@@ -337,7 +213,6 @@ export default function ReviewProductScreen() {
             Rechazar
           </PrimaryButton>
 
-          {/* Botón Aprobar Simple */}
           <PrimaryButton
             onPress={() => executeVerdict('APPROVE')}
             disabled={processing}
@@ -349,7 +224,6 @@ export default function ReviewProductScreen() {
           </PrimaryButton>
         </Box>
 
-        {/* Botón Aprobar con Nota (Ancho completo abajo) */}
         <PrimaryButton
           onPress={openApproveNoteDialog}
           disabled={processing}
@@ -362,7 +236,7 @@ export default function ReviewProductScreen() {
         </PrimaryButton>
       </Box>
 
-      {/* DIÁLOGO UNIFICADO (Sirve para Rechazo y Nota) */}
+      {/* DIÁLOGO UNIFICADO */}
       <ConfirmDialog
         visible={dialogVisible}
         title={
@@ -388,24 +262,24 @@ export default function ReviewProductScreen() {
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <Box marginTop="m">
-            <PaperInput
-              mode="outlined"
+            <FormTextInput
               label={dialogMode === 'REJECT' ? 'Motivo' : 'Nota / Observación'}
+              labelMode="static" // Usamos el estilo "Selene" con título afuera
               placeholder="Escribe aquí..."
               value={adminNote}
               onChangeText={setAdminNote}
-              numberOfLines={3}
-              textColor={theme.colors.textPrimary}
-              style={{ backgroundColor: theme.colors.background }}
-              theme={{
-                colors: {
-                  primary:
-                    dialogMode === 'REJECT'
-                      ? theme.colors.error
-                      : theme.colors.primary,
-                  outline: theme.colors.textSecondary,
-                },
+              // --- EL TRUCO PARA EL TECLADO ---
+              multiline={true} // Permite que el texto baje visualmente
+              blurOnSubmit={true} // <--- CLAVE: Enter cierra el teclado
+              returnKeyType="done" // Muestra "Listo" o "Check" en el teclado
+              // --- ESTILOS PARA QUE SE VEA GRANDE ---
+              style={{
+                height: 120, // Altura fija grande
+                textAlignVertical: 'top', // Texto empieza arriba
+                backgroundColor: theme.colors.cardBackground, // O transparent si prefieres
               }}
+              // Ajuste de padding interno si usas el modo static
+              contentStyle={{ paddingTop: 12, paddingBottom: 12 }}
             />
           </Box>
         </TouchableWithoutFeedback>
