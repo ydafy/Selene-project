@@ -1,6 +1,6 @@
 import { TouchableOpacity, StyleSheet } from 'react-native';
 import { useTheme } from '@shopify/restyle';
-import { MotiView } from 'moti'; // <-- Usamos Moti
+import { MotiView } from 'moti';
 import { Box, Text } from '../base';
 import { Theme } from '../../core/theme';
 
@@ -8,12 +8,16 @@ type SegmentedControlProps = {
   options: string[];
   selectedIndex: number;
   onChange: (index: number) => void;
+  // NUEVA PROP: Array de booleanos para mostrar puntos rojos
+  // Ejemplo: [false, true] -> Muestra punto en la segunda opción
+  badges?: boolean[];
 };
 
 export const SegmentedControl = ({
   options,
   selectedIndex,
   onChange,
+  badges,
 }: SegmentedControlProps) => {
   const theme = useTheme<Theme>();
 
@@ -27,15 +31,15 @@ export const SegmentedControl = ({
     >
       {options.map((option, index) => {
         const isSelected = index === selectedIndex;
+        const showBadge = badges?.[index]; // Verificamos si esta tab lleva badge
 
         return (
           <TouchableOpacity
             key={option}
-            onPress={() => onChange(index)} // Ya no necesitamos LayoutAnimation aquí
+            onPress={() => onChange(index)}
             style={{ flex: 1 }}
             activeOpacity={0.8}
           >
-            {/* Usamos MotiView para el fondo animado */}
             <MotiView
               from={{ backgroundColor: 'transparent' }}
               animate={{
@@ -47,23 +51,41 @@ export const SegmentedControl = ({
                 type: 'timing',
                 duration: 200,
               }}
-              style={[
-                styles.itemContainer,
-                isSelected && styles.shadow, // Solo aplicamos sombra si está seleccionado
-              ]}
+              style={[styles.itemContainer, isSelected && styles.shadow]}
             >
-              <Text
-                variant="body-sm"
-                fontWeight="bold"
-                style={{
-                  // Cambiamos el color del texto instantáneamente (o podrías animarlo también)
-                  color: isSelected
-                    ? theme.colors.primary
-                    : theme.colors.textSecondary,
-                }}
-              >
-                {option}
-              </Text>
+              {/* Contenedor relativo para texto y badge */}
+              <Box flexDirection="row" alignItems="center">
+                <Text
+                  variant="body-sm"
+                  fontWeight="bold"
+                  style={{
+                    color: isSelected
+                      ? theme.colors.primary
+                      : theme.colors.textSecondary,
+                  }}
+                >
+                  {option}
+                </Text>
+
+                {/* EL BADGE (PUNTO ROJO) */}
+                {showBadge && (
+                  <Box
+                    marginLeft="s" // Separación del texto
+                    width={6}
+                    height={6}
+                    borderRadius="full"
+                    backgroundColor="error" // Usa el color de error del tema
+                    style={{
+                      // Si la tab está seleccionada, el punto rojo resalta sobre el dorado
+                      // Si no, resalta sobre el gris.
+                      borderWidth: 1,
+                      borderColor: isSelected
+                        ? theme.colors.primary
+                        : theme.colors.cardBackground,
+                    }}
+                  />
+                )}
+              </Box>
             </MotiView>
           </TouchableOpacity>
         );
@@ -77,7 +99,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 999, // Usamos un número alto para asegurar 'full' en Moti
+    borderRadius: 999,
   },
   shadow: {
     shadowColor: '#000',

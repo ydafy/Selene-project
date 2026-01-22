@@ -10,7 +10,7 @@ import { CartTabIcon } from '../../components/ui/CartTabIcon';
 export default function TabsLayout() {
   const theme = useTheme<Theme>();
 
-  // 2. Obtenemos los items del carrito para contar cuántos hay
+  // Estado del Carrito
   const cartItems = useCartStore((state) => state.items);
   const cartCount = cartItems.length;
 
@@ -58,12 +58,10 @@ export default function TabsLayout() {
           }}
         />
 
-        {/* Placeholder Vender */}
         <Tabs.Screen
           name="sell"
           options={{
             title: 'Vender',
-            //headerShown: false,
             tabBarIcon: ({ color, size }) => (
               <MaterialCommunityIcons
                 name="plus-circle-outline"
@@ -74,9 +72,7 @@ export default function TabsLayout() {
           }}
           listeners={{
             tabPress: (e) => {
-              // Prevenimos la navegación por defecto (que buscaría index dentro de tabs)
               e.preventDefault();
-              // Navegamos a nuestra ruta modal externa
               router.push('/sell');
             },
           }}
@@ -86,11 +82,6 @@ export default function TabsLayout() {
           name="cart"
           options={{
             title: 'Carrito',
-            // 1. ELIMINAMOS ESTAS LÍNEAS (La forma vieja):
-            // tabBarBadge: cartCount > 0 ? cartCount : undefined,
-            // tabBarBadgeStyle: { ... },
-
-            // 2. USAMOS EL NUEVO COMPONENTE EN EL ICONO:
             tabBarIcon: ({ color, size }) => (
               <CartTabIcon color={color} size={size} count={cartCount} />
             ),

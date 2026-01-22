@@ -16,8 +16,10 @@ import enProfile from './locales/en/profile.json';
 import esProfile from './locales/es/profile.json';
 import enSell from './locales/en/sell.json';
 import esSell from './locales/es/sell.json';
-import esVeify from './locales/es/verify.json';
+import esVerify from './locales/es/verify.json';
 import enVerify from './locales/en/verify.json';
+import esAdmin from './locales/es/admin.json';
+import enAdmin from './locales/en/admin.json';
 
 // ✨ 1. DEFINE LOS NAMESPACES (Nombres de nuestros archivos JSON)
 export const namespaces = [
@@ -29,6 +31,7 @@ export const namespaces = [
   'profile',
   'verify',
   'sell',
+  'admin',
 ];
 // Definimos un tipo para asegurar que solo usamos namespaces que existen
 export type Namespace = (typeof namespaces)[number];
@@ -54,6 +57,7 @@ const resources = {
     profile: enProfile,
     sell: enSell,
     verify: enVerify,
+    admin: enAdmin,
   },
   es: {
     common: esCommon,
@@ -63,7 +67,8 @@ const resources = {
     search: esSearch,
     profile: esProfile,
     sell: esSell,
-    verify: esVeify,
+    verify: esVerify,
+    admin: esAdmin,
   },
 };
 

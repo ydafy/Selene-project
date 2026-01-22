@@ -16,9 +16,13 @@
 
   "dialog": {
     "confirm": "Confirmar",
+    "understood": "Entendido",
+    "next": "Siguiente",
+    "goToMyPosts": "Ir a Mis Publicaciones",
+    "fixNow": "Corregir Ahora",
     "cancel": "Cancelar",
-
     "delete": "Eliminar",
+    "skipAll": "Omitir todo",
     "discardTitle": "¿Descartar publicación?",
     "discardDescription": "Si sales ahora, perderás todos los avances."
   },

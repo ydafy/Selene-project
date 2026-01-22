@@ -80,7 +80,7 @@ export default function VerifyProductScreen() {
       setDialogConfig({
         visible: true,
         title: t('alerts.errorTitle'),
-        description: t('alerts.missingFields'), // "Faltan datos..."
+        description: t('alerts.missingFields'),
         isError: true,
         onConfirm: closeDialog,
       });

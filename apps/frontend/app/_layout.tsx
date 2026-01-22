@@ -18,9 +18,10 @@ import { toastConfig } from '../components/config/ToastConfig';
 import '../core/i18n';
 import { paperTheme, theme, navigationTheme } from '../core/theme';
 
-// IMPORTA AMBOS PROVIDERS
 import { AuthProvider } from '../components/auth/AuthProvider';
 import { AuthModalProvider } from '../core/auth/AuthModalProvider';
+
+import { NotificationWatcher } from '../components/features/notifications/NotificationWatcher';
 
 const queryClient = new QueryClient();
 
@@ -78,6 +79,7 @@ export default function RootLayout() {
                     />
                   </Stack>
                 </AuthModalProvider>
+                <NotificationWatcher />
               </AuthProvider>
             </NavThemeProvider>
 

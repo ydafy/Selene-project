@@ -1,0 +1,20 @@
+{
+  "notifications": {
+    "rejectTitle": "Post Rejected",
+    "rejectMessage": "Your product {{productName}}\" did not pass verification. Go to the \"My Posts\" section for more details:\n\n Reason: {{note}}",
+
+    "approveNoteTitle": "Post Approved with Comments",
+    "approveNoteMessage": "Your product {{productName}}\" was verified.\n\n Selene's Note: {{note}}",
+
+    "approveTitle": "Post Verified!",
+    "approveMessage": "Your product {{productName}}\" is now available for purchase by other users."
+  },
+
+  "alerts": {
+    "errorLoad": "Could not load product",
+    "successTitle": "Approved!",
+    "rejectTitle": "Rejected",
+    "successBody": "Status updated and user notified.",
+    "errorUpdate": "Could not update."
+  }
+}
