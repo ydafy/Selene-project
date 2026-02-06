@@ -13,7 +13,7 @@ import { VerificationMissionCard } from '../../components/features/verify/Verifi
 import { BenchmarkGuideModal } from '../../components/features/verify/BenchmarkGuideModal';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 
-import { useVerificationLogic } from '../../core/hooks/useVerificationLogic'; // <--- EL HOOK NUEVO
+import { useVerificationLogic } from '../../core/hooks/useVerificationLogic';
 import { theme } from '@/core/theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 

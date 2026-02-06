@@ -4,7 +4,7 @@
     "private": true,
     "main": "src/index.ts",
     "scripts": {
-        "dev": "nodemon src/index.ts"
+        "dev": "bunx nodemon src/index.ts"
     },
     "dependencies": {
         "@selene/types": "workspace:*",

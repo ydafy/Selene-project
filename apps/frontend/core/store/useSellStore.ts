@@ -3,7 +3,7 @@ import { Product, ProductCategory } from '@selene/types';
 
 // Definimos la forma del borrador de venta
 type SellDraft = {
-  id?: string; // <--- NUEVO: ID opcional para saber si es edición
+  id?: string;
   category: ProductCategory | null;
   name: string;
   description: string;
@@ -14,32 +14,42 @@ type SellDraft = {
   specifications: Record<string, any>;
   images: string[];
   verificationImage: string | null;
+  package_preset: string;
+  shipping_payer: 'seller' | 'buyer';
+  insurance_enabled: boolean;
+  origin_zip: string;
+  shipping_cost: string;
 };
 
 interface SellState {
   draft: SellDraft;
-  originalData: SellDraft | null; // <--- NUEVO: Para comparar cambios
+  originalData: SellDraft | null;
 
   // Actions
   setCategory: (category: ProductCategory) => void;
   updateDraft: (fields: Partial<SellDraft>) => void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   updateSpecs: (key: string, value: any) => void;
-  loadProductForEdit: (product: Product) => void; // <--- NUEVA ACCIÓN
+  loadProductForEdit: (product: Product) => void;
   resetDraft: () => void;
 }
 
 const INITIAL_STATE: SellDraft = {
   id: undefined,
   category: null,
+  package_preset: 'medium',
+  shipping_payer: 'buyer',
   name: '',
   description: '',
   price: '',
   condition: '',
   usage: '',
+  origin_zip: '',
+  shipping_cost: '',
   specifications: {},
   images: [],
   verificationImage: null,
+  insurance_enabled: true,
 };
 
 export const useSellStore = create<SellState>((set) => ({
@@ -81,11 +91,16 @@ export const useSellStore = create<SellState>((set) => ({
       specifications: product.specifications || {},
       images: product.images || [],
       verificationImage: null,
+      package_preset: product.package_preset || 'medium',
+      shipping_payer: product.shipping_payer || 'buyer',
+      insurance_enabled: true,
+      origin_zip: product.origin_zip || '',
+      shipping_cost: product.shipping_cost?.toString() || '',
     };
 
     set(() => ({
       draft: data,
-      originalData: data, // Guardamos copia para comparar después
+      originalData: data,
     }));
   },
 

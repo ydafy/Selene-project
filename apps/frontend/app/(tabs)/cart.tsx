@@ -65,7 +65,8 @@ export default function CartScreen() {
     if (hasUnavailableItems) {
       return;
     }
-    console.log('Iniciando flujo de pago...');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    router.push('/checkout' as any);
     // Aquí iría la navegación a Stripe
   };
 

@@ -9,6 +9,7 @@ import { useEffect } from 'react';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { useFonts } from 'expo-font';
 import Toast from 'react-native-toast-message';
+import { StripeProvider } from '@stripe/stripe-react-native';
 import {
   //DefaultTheme,
   ThemeProvider as NavThemeProvider,
@@ -40,6 +41,8 @@ export default function RootLayout() {
     'Montserrat-Italic': require('../assets/fonts/Montserrat-Italic.ttf'),
   });
 
+  const STRIPE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+
   useEffect(() => {
     if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
@@ -60,24 +63,29 @@ export default function RootLayout() {
               <AuthProvider>
                 {/* 2. AuthModalProvider: Maneja la UI del Bottom Sheet */}
                 <AuthModalProvider>
-                  <Stack>
-                    <Stack.Screen
-                      name="(tabs)"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="(auth)"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="sell"
-                      options={{
-                        headerShown: false,
-                        presentation: 'modal',
-                        animation: 'slide_from_bottom', // Fuerza la animación de subida
-                      }}
-                    />
-                  </Stack>
+                  <StripeProvider
+                    publishableKey={STRIPE_KEY!}
+                    merchantIdentifier="merchant.com.selene.app" // Opcional (para Apple Pay futuro)
+                  >
+                    <Stack>
+                      <Stack.Screen
+                        name="(tabs)"
+                        options={{ headerShown: false }}
+                      />
+                      <Stack.Screen
+                        name="(auth)"
+                        options={{ headerShown: false }}
+                      />
+                      <Stack.Screen
+                        name="sell"
+                        options={{
+                          headerShown: false,
+                          presentation: 'modal',
+                          animation: 'slide_from_bottom', // Fuerza la animación de subida
+                        }}
+                      />
+                    </Stack>
+                  </StripeProvider>
                 </AuthModalProvider>
                 <NotificationWatcher />
               </AuthProvider>

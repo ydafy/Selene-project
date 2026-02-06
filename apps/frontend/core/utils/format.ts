@@ -1,6 +1,6 @@
 import { formatDistanceToNow, format } from 'date-fns';
 import { es, enUS } from 'date-fns/locale';
-import i18n from '../i18n'; // Importamos nuestra config de i18n para saber el idioma actual
+import i18n from '../i18n';
 
 /**
  * Formatea un número como moneda (MXN por defecto).

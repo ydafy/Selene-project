@@ -1,0 +1,61 @@
+{
+  "confirmPurchase": "Confirmar Compra",
+  "orderSummary": "Resumen de tu pedido",
+  "reviewDetails": "Revisa los detalles antes de proceder al pago",
+  "shipTo": "Enviar a",
+  "products": "Productos",
+
+  "address": {
+    "select": "Selecciona una dirección de envío",
+    "missing": "Falta Dirección",
+    "missingMessage": "Por favor selecciona una dirección de envío.",
+    "phone": "Teléfono"
+  },
+
+  "summary": {
+    "subtotal": "Subtotal",
+    "shipping": "Envío",
+    "protection": "Protección Selene",
+    "totalToPay": "Total a Pagar",
+    "free": "Gratis",
+    "toCalculate": "Por Calcular",
+    "calculating": "Calculando envío...",
+    "termsText": "Acepto los Términos de Compra y la Protección Selene.",
+    "validating": "Validando disponibilidad..."
+  },
+
+  "shipping": {
+    "freeWithEstafeta": "Envío Gratis con Estafeta",
+    "estafetaProtected": "Envío Protegido",
+    "includesInsurance": "Incluye seguro por el valor total"
+  },
+
+  "alerts": {
+    "carrierQuoteFailed": "No pudimos cotizar con {{carrier}}. Intenta otra opción."
+  },
+
+  "actions": {
+    "pay": "Pagar",
+    "changeAddress": "Cambiar dirección"
+  },
+
+  "validation": {
+    "invalidProduct": "Producto no disponible",
+    "invalidProductMsg": "El producto seleccionado ya no está disponible."
+  },
+
+  "dialogs": {
+    "title": "Protección Selene",
+    "description": "Tu dinero está seguro. Si el hardware no llega, está dañado o no coincide con la descripción técnica, Selene protege tu pago. Sujeto a Términos y Condiciones."
+  },
+
+  "errors": {
+    "shippingFailed": "No se pudo calcular el envío",
+    "selfPurchase": "No puedes comprar un producto publicado por ti.",
+    "shippingFailedMsg": "Hubo un problema al calcular el costo de envío. Intenta nuevamente.",
+    "itemUnavailable": "El producto \"{{productName}}\" ya no está disponible.",
+    "genericStockError": "Algunos productos en tu carrito ya no están disponibles.",
+    "termsRequired": "Debes aceptar los términos para continuar.",
+    "retry": "Reintentar"
+  }
+}

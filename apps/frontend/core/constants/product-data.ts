@@ -1,5 +1,81 @@
 // --- DATOS GLOBALES ---
 
+/**
+ * Configuración del Seguro de Envío Selene.
+ *
+ * Basado en tarifas de Envia.com (~1.15% - 1.20%).
+ * Cobramos 1.2% para mantener un margen de seguridad (buffer)
+ * que cubra fluctuaciones de precios e impuestos.
+ */
+export const INSURANCE_RATE = 0.012; // 1.5%
+export const INSURANCE_MIN_FEE = 20; // Mínimo para que el proceso sea viable
+
+/**
+ * Calcula el costo del seguro basado en el precio del producto.
+ * @param price - Precio de venta del producto.
+ * @returns Costo del seguro redondeado al peso superior.
+ */
+export const calculateInsurance = (price: number): number => {
+  if (!price || price <= 0) return 0;
+  const fee = price * INSURANCE_RATE;
+  // Redondeo hacia arriba para cubrir el 1.16% + IVA de Envia
+  return Math.max(Math.ceil(fee), 20);
+};
+
+export const PACKAGE_OPTIONS = {
+  CPU: [
+    {
+      id: 'cpu_1',
+      label: 'Caja Cúbica (15cm)',
+      dimensions: { length: 15, width: 15, height: 15 },
+      weight: 1,
+    },
+    {
+      id: 'cpu_2',
+      label: 'Caja Rectangular (20cm)',
+      dimensions: { length: 20, width: 15, height: 10 },
+      weight: 1,
+    },
+  ],
+  RAM: [
+    {
+      id: 'ram_1',
+      label: 'Caja Cúbica (15cm)',
+      dimensions: { length: 15, width: 15, height: 15 },
+      weight: 1,
+    },
+    {
+      id: 'ram_2',
+      label: 'Caja Rectangular (20cm)',
+      dimensions: { length: 20, width: 15, height: 10 },
+      weight: 1,
+    },
+  ],
+  GPU: [
+    {
+      id: 'gpu_1',
+      label: 'GPU Estándar (~30cm)',
+      dimensions: { length: 30, width: 23, height: 15 },
+      weight: 3,
+    },
+    {
+      id: 'gpu_2',
+      label: 'GPU Grande (~40cm)',
+      dimensions: { length: 41, width: 30, height: 20 },
+      weight: 5,
+    },
+  ],
+  Motherboard: [
+    {
+      id: 'mobo_1',
+      label: 'Caja ATX (~46cm)',
+      dimensions: { length: 46, width: 30, height: 15 },
+      weight: 5,
+    },
+    // Dejamos una opción para simplificar
+  ],
+};
+
 export const PRODUCT_CONDITIONS = [
   'Nuevo',
   'Usado - Como Nuevo',

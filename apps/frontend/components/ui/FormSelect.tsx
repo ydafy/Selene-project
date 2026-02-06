@@ -3,7 +3,7 @@ import { TouchableOpacity, Keyboard } from 'react-native';
 import { TextInput } from 'react-native-paper';
 import { BottomSheetModal, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { useTheme } from '@shopify/restyle';
-import { useSafeAreaInsets } from 'react-native-safe-area-context'; // <--- AGREGADO (Igual que FilterModal)
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Box } from '../base';
 import { Theme } from '../../core/theme';

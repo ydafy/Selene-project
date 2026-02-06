@@ -29,7 +29,7 @@ export const FormTextInput = forwardRef<RNTextInput, FormTextInputProps>(
       label,
       helpTitle,
       helpDescription,
-      labelMode = 'floating', // <--- Default: Floating (Para no romper Auth)
+      labelMode = 'floating',
       style,
       ...rest
     },

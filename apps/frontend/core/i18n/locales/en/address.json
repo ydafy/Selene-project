@@ -1,0 +1,25 @@
+{
+  "form": {
+    "title": "New Address",
+    "mapPlaceholder": "Map will appear here",
+    "streetLabel": "Street and Number",
+    "streetPlaceholder": "e.g., Reforma Ave. 222",
+    "detailsLabel": "Interior / Apt. (Optional)",
+    "detailsPlaceholder": "e.g., Tower B, Apt. 401",
+    "instructionsLabel": "Delivery Instructions",
+    "instructionsPlaceholder": "e.g., White facade, leave at reception...",
+    "recipientLabel": "Recipient's Name",
+    "phoneLabel": "Contact Phone Number",
+    "save": "Save Address"
+  },
+  "labels": {
+    "title": "Labels",
+    "home": "Home",
+    "work": "Work",
+    "other": "Other"
+  },
+  "errors": {
+    "required": "This field is required",
+    "phoneInvalid": "Enter a valid phone number (10 digits)"
+  }
+}

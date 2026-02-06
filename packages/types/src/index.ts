@@ -6,13 +6,44 @@ export type ProductStatus =
   | 'IN_REVIEW'
   | 'VERIFIED'
   | 'SOLD'
-  | 'REJECTED';
+  | 'REJECTED'
+  | 'RESERVED';
+
+//Métodos de Pago
+export interface PaymentMethod {
+  id: string;
+  user_id: string;
+  stripe_payment_method_id: string;
+  brand: string;
+  last4: string;
+  exp_month: number;
+  exp_year: number;
+  is_default: boolean;
+  created_at: string;
+}
 
 // Definimos las categorías principales (extensible)
 export type ProductCategory = 'GPU' | 'CPU' | 'Motherboard' | 'RAM' | 'Other';
 
 // Definimos la estructura de una notificación
 export type NotificationType = 'info' | 'success' | 'error' | 'warning';
+
+// Estructura de la Dirección
+export interface Address {
+  id: string;
+  user_id: string;
+  full_name: string;
+  phone: string;
+  street_line1: string;
+  street_line2?: string | null;
+  city: string;
+  state: string;
+  zip_code: string;
+  country: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  is_default: boolean;
+}
 
 // Estructura de la Notificación
 export interface Notification {
@@ -37,6 +68,42 @@ export interface VerificationData {
   submitted_at: string; // Fecha ISO de envío
 }
 
+export type ShippingCarrier = 'dhl' | 'estafeta' | 'paquetexpress' | 'fedex';
+
+export interface ShippingOption {
+  carrier: ShippingCarrier;
+  service: string;
+  price: number;
+  estimated_days?: number;
+}
+
+export type OrderStatus =
+  | 'pending'
+  | 'paid'
+  | 'processing'
+  | 'shipped'
+  | 'delivered'
+  | 'cancelled';
+
+export interface Order {
+  id: string;
+  buyer_id: string;
+  total_amount: number;
+  stripe_payment_intent_id: string;
+  status: OrderStatus;
+  shipping_address: Address;
+  created_at: string;
+}
+
+export interface OrderItem {
+  id: string;
+  order_id: string;
+  product_id: string;
+  seller_id: string;
+  price_at_purchase: number;
+  selected_carrier?: ShippingCarrier;
+}
+
 // Definimos la interfaz principal del Producto
 // Esto debe coincidir con las columnas de tu base de datos Supabase.
 export interface Product {
@@ -51,15 +118,18 @@ export interface Product {
   images: string[];
   status: ProductStatus;
   rejection_reason?: string | null;
+
+  // LOGÍSTICA
+  shipping_cost: number;
+  shipping_payer: 'buyer' | 'seller';
+  package_preset: string;
+  origin_zip: string;
+
   seller_id: string;
   views: number;
   aspect_ratio: number;
-
-  // JSONB en la base de datos se traduce a un objeto flexible en TS.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   specifications: Record<string, any>;
-
-  //Datos de verificación (Puede ser null si no ha subido nada)
   verification_data?: VerificationData | null;
 }
 
@@ -71,4 +141,5 @@ export interface Profile {
   avatar_url?: string;
   created_at: string;
   role: UserRole;
+  stripe_customer_id?: string | null;
 }

@@ -16,6 +16,9 @@ import { HyperXIcon } from '../icons/brands/HyperXIcon';
 import { KingstonIcon } from '../icons/brands/KingstonIcon';
 import { TForceIcon } from '../icons/brands/TForceIcon';
 import { XpgIcon } from '../icons/brands/XpgIcon';
+import { VisaIcon } from '../icons/brands/VisaIcon';
+import { MasterCardIcon } from '../icons/brands/MasterCardIcon';
+import { AmexIcon } from '../icons/brands/AmexIcon';
 
 // 1. Definimos la configuración para cada marca
 type BrandConfig = {
@@ -74,6 +77,22 @@ const BRAND_MAP: Record<string, BrandConfig> = {
 
   xpg: { component: XpgIcon, scale: 1.8, offsetY: 1.6 },
   adata: { component: XpgIcon, scale: 1.8, offsetY: 1.8 },
+  visa: {
+    component: VisaIcon,
+    scale: 1.0,
+  },
+  amex: {
+    component: AmexIcon,
+    scale: 1.2,
+  },
+  'american express': {
+    component: AmexIcon,
+    scale: 1.2,
+  },
+  masterCard: {
+    component: MasterCardIcon,
+    scale: 1.0,
+  },
 };
 
 type BrandIconProps = {

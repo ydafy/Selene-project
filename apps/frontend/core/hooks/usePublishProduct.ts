@@ -20,6 +20,7 @@ export const usePublishProduct = () => {
   const { t } = useTranslation('common');
 
   const uploadImage = async (uri: string, userId: string) => {
+    // Si ya es una URL remota (edición), no la subimos de nuevo
     if (uri.startsWith('http')) return uri;
 
     try {
@@ -57,7 +58,6 @@ export const usePublishProduct = () => {
     setIsPublishing(true);
     const isEditMode = !!draft.id;
 
-    // Variable para saber si debemos mandar a verificar o no
     let requiresReverification = false;
 
     try {
@@ -83,7 +83,7 @@ export const usePublishProduct = () => {
         draft.images.map((uri) => uploadImage(uri, session.user.id)),
       );
 
-      // 3. Preparar Payload
+      // 3. Preparar Payload Base
       const productData = {
         name: draft.name,
         description: draft.description,
@@ -93,6 +93,13 @@ export const usePublishProduct = () => {
         usage: draft.usage,
         images: uploadedUrls,
         specifications: draft.specifications,
+
+        // --- DATOS DE ENVÍO (CRÍTICOS) ---
+        shipping_cost: parseFloat(draft.shipping_cost || '0'),
+        shipping_payer: draft.shipping_payer,
+        origin_zip: draft.origin_zip, // <--- ESTE FALTABA
+        package_preset: draft.package_preset, // <--- ESTE FALTABA
+
         ...(aspectRatio !== 1 ? { aspect_ratio: aspectRatio } : {}),
       };
 
@@ -102,7 +109,6 @@ export const usePublishProduct = () => {
         // --- LÓGICA DE EDICIÓN ---
         const original = useSellStore.getState().originalData;
 
-        // Usamos normalize para comparar manzanas con manzanas
         const sacredChanges =
           JSON.stringify(normalize(productData.images)) !==
             JSON.stringify(normalize(original?.images)) ||
@@ -117,12 +123,10 @@ export const usePublishProduct = () => {
         };
 
         if (sacredChanges) {
-          // CAMBIO PELIGROSO: Reseteamos status
           updatePayload.status = 'PENDING_VERIFICATION';
           requiresReverification = true;
           console.log('[Publish] Cambios sagrados. Status -> PENDING');
         } else {
-          // CAMBIO SEGURO (Precio/Título): No tocamos el status
           console.log('[Publish] Cambios cosméticos. Status mantenido.');
           requiresReverification = false;
         }
@@ -138,7 +142,7 @@ export const usePublishProduct = () => {
         resultData = data;
       } else {
         // --- LÓGICA DE CREACIÓN ---
-        requiresReverification = true; // Siempre requiere verificar si es nuevo
+        requiresReverification = true;
         const { data, error } = await supabase
           .from('products')
           .insert({
@@ -163,30 +167,25 @@ export const usePublishProduct = () => {
         });
       }
 
-      // 5. NAVEGACIÓN INTELIGENTE
+      // 5. Navegación Inteligente
       if (requiresReverification) {
-        // Si es nuevo o cambio peligroso -> Pantalla de Éxito/Verificación
         router.replace({
           pathname: '/sell/success',
           params: { productId: resultData.id },
         });
       } else {
-        // Si es edición segura -> Volver al Perfil directo
+        // Edición segura -> Volver al perfil
         router.dismissAll();
         router.replace('/(tabs)/profile');
         Toast.show({
           type: 'success',
-          text1: t('states.updateMessage'),
-          text2: t('successChange'),
+          text1: t('states.updateMessage') || 'Actualizado', // Fallback por si no tienes la clave
+          text2: t('successChange') || 'Los cambios se han guardado.',
           position: 'top',
         });
       }
 
-      // 6. Limpieza
-      // No usamos setTimeout aquí para evitar race conditions,
-      // dejamos que la navegación ocurra primero.
-      // Si vamos a Success, Success limpia al salir.
-      // Si vamos a Profile, limpiamos aquí.
+      // 6. Limpieza (Solo si no vamos a Success, porque Success limpia al salir)
       if (!requiresReverification) {
         resetDraft();
       }

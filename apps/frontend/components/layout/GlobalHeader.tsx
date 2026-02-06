@@ -8,40 +8,46 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 type GlobalHeaderProps = {
   title?: string;
+  titleComponent?: React.ReactNode;
   showBack?: boolean;
-  // Mantenemos el patrón "Slot" porque es excelente para la flexibilidad
   headerRight?: React.ReactNode;
   backgroundColor?: keyof Theme['colors'];
+  alignTitle?: 'center' | 'flex-start';
+  useSafeArea?: boolean;
 };
 
 export const GlobalHeader = ({
   title,
+  titleComponent,
   showBack = false,
   headerRight,
   backgroundColor = 'cardBackground',
+  alignTitle = 'center',
+  useSafeArea = true,
 }: GlobalHeaderProps) => {
   const theme = useTheme<Theme>();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const topInset = useSafeArea ? insets.top : 0;
   const GRADIENT_HEIGHT = insets.top + 60;
 
   return (
     <>
       <LinearGradient
-        colors={['#121212', 'transparent']} // De oscuro a transparente
+        colors={['#121212', 'transparent']}
         style={{
           position: 'absolute',
           top: 0,
           left: 0,
           right: 0,
           height: GRADIENT_HEIGHT,
-          zIndex: 99, // Debajo de la cápsula, encima del contenido
+          zIndex: 99,
         }}
-        pointerEvents="none" // Importante: deja pasar los clicks a través de él
+        pointerEvents="none"
       />
       <Box
         position="absolute"
-        top={insets.top + 10}
+        top={topInset + 10}
         left={theme.spacing.m}
         right={theme.spacing.m}
         zIndex={100}
@@ -49,40 +55,50 @@ export const GlobalHeader = ({
         justifyContent="space-between"
         alignItems="center"
         backgroundColor={backgroundColor}
-        paddingVertical="m" // Padding cómodo
+        paddingVertical="s" // Reduje un poco a 's' para dar espacio a componentes más altos si es necesario
         paddingHorizontal="s"
         borderRadius="l"
-        // Sombra estática y elegante
         style={{
           elevation: 4,
           shadowColor: '#000',
           shadowOpacity: 0.3,
           shadowRadius: 4,
           shadowOffset: { width: 0, height: 2 },
+          minHeight: 50,
         }}
       >
         {/* --- LADO IZQUIERDO (Atrás) --- */}
-        <Box width={40} alignItems="center">
-          {showBack ? (
-            <IconButton
-              icon="arrow-left"
-              iconColor={theme.colors.textPrimary}
-              size={24}
-              onPress={() => router.back()}
-              style={{ margin: 0 }}
-            />
-          ) : (
-            <Box width={24} />
-          )}
-        </Box>
+        {(showBack || alignTitle === 'center') && (
+          <Box width={40} alignItems="center">
+            {showBack ? (
+              <IconButton
+                icon="arrow-left"
+                iconColor={theme.colors.textPrimary}
+                size={24}
+                onPress={() => router.back()}
+                style={{ margin: 0 }}
+              />
+            ) : (
+              <Box width={24} />
+            )}
+          </Box>
+        )}
 
-        {/* --- CENTRO (Título) --- */}
-        <Box flex={1} alignItems="center">
-          {title && (
-            <Text variant="subheader-md" fontWeight="bold" numberOfLines={1}>
-              {title}
-            </Text>
-          )}
+        {/* --- CENTRO (Título o Componente Custom) --- */}
+        <Box flex={1} alignItems={alignTitle} justifyContent="center">
+          {titleComponent
+            ? // Si hay componente custom (Botón de dirección), lo mostramos
+              titleComponent
+            : // Si no, mostramos el texto estándar
+              title && (
+                <Text
+                  variant="subheader-md"
+                  fontWeight="bold"
+                  numberOfLines={1}
+                >
+                  {title}
+                </Text>
+              )}
         </Box>
 
         {/* --- LADO DERECHO (Slot Dinámico) --- */}

@@ -11,6 +11,7 @@
   },
   "fields": {
     "nameLabel": "Título del producto",
+
     "namePlaceholder": "Ej. RTX 3080 Asus TUF",
     "priceLabel": "Precio (MXN)",
     "pricePlaceholder": "0.00",
@@ -20,6 +21,7 @@
     "usagePlaceholder": "Selecciona el tiempo de uso",
     "descriptionLabel": "Descripción",
     "descriptionPlaceholder": "Cuenta más detalles sobre el uso, tiempo de vida, etc...",
+
     "next": "Siguiente",
     "specsTitle": "Especificaciones Técnicas",
     "specsSubtitle": "Define las características exactas de tu componente.",
@@ -51,16 +53,64 @@
     "speedPlaceholder": "Ej. 3200 MHz",
     "specifyLabel": "Especificar {{field}}",
     "specifyPlaceholder": "Escribe el nombre exacto...",
+
     "imagesTitle": "Fotos del Producto",
     "imagesSubtitle": "Sube fotos reales. Muestra los puertos, la caja y los detalles estéticos.",
     "addPhotos": "Agregar Fotos",
     "takePhoto": "Tomar Foto",
     "imagesTip": "Tip: La primera foto será la portada de tu publicación.",
     "imagesLimit": "Máximo {{count}} fotos",
+
     "nameHelpTitle": "Cómo escribir un buen título",
     "nameHelpDesc": "Sé breve y técnico.\nEstructura: Marca + Modelo + Variante.\n\n✅ Bien: Asus TUF RTX 3080 10GB\n❌ Mal: Vendo tarjeta gráfica usada barata urge",
     "descriptionHelpTitle": "Tips para una gran descripción",
-    "descriptionHelpDesc": "• Menciona el tiempo real de uso.\n• ¿Se usó para minería o solo gaming?\n• ¿Tiene mantenimiento reciente (pasta térmica)?\n• ¿Incluye caja y accesorios originales?"
+    "descriptionHelpDesc": "• Menciona el tiempo real de uso.\n• ¿Se usó para minería o solo gaming?\n• ¿Tiene mantenimiento reciente (pasta térmica)?\n• ¿Incluye caja y accesorios originales?",
+    "insuranceLabel": "Envío Protegido Selene (Incluido)",
+    "insuranceHelpTitle": "¿Por qué es obligatorio el seguro?",
+    "insuranceHelpDesc": "La confianza es nuestra prioridad. El seguro garantiza que si la paquetería pierde o daña tu producto, tú recuperes el 100% de tu dinero.\n\nAl ser obligatorio, eliminamos riesgos para ti y aseguramos una plataforma libre de fraudes.",
+    "insuranceCost": "Costo de protección: ${{cost}} MXN",
+
+    "shippingTitle": "Envío y Ganancias",
+    "originZipLabel": "Tu Código Postal (Origen)",
+    "originZipPlaceholder": "Ej. 64000",
+    "packageSizeLabel": "Tamaño del Paquete",
+    "packageSizeHelpTitle": "¿Qué caja elijo?",
+    "packageSizeHelpDesc": "Intenta usar una caja parecida a este tamaño para facilitar el proceso de envío. Puedes conseguirlas fácilmente en papelerías o tiendas como Office Depot.",
+    "shippingPayerLabel": "¿Quién paga el envío?",
+    "shippingPayerBuyer": "Comprador",
+    "shippingPayerSeller": "Yo (Envío Gratis)",
+    "shippingPayerSellerHighlight": "¡Genial! Tu producto destacará.",
+    "shippingPayerBuyerTip": "Tip: Los productos con envío gratis se venden 2x más rápido.",
+    "insuranceWarning": "⚠️ Advertencia: Si desactivas el seguro, tú serás 100% responsable por pérdidas o daños en el envío.",
+    "shippingInsurance": "Envio seguro",
+    "shippingInsuranceTitle": "¿Qué es el seguro?",
+    "shippingInsuranceDescription": "Selene ofrece reembolso por el valor del comprobante del producto, por si el paquete llega dañado, se pierde o llega incompleto.",
+    "shippingInsurancesText": "Tu envío está asegurado",
+    "productPriceText": "Precio del producto",
+    "youReceiveLabel": "Tú recibes",
+    "youReceiveHelpTitle": "¿Cómo se calcula lo que recibirás?",
+    "youReceiveHelpDescription": "El monto considera la comisión, la logística de envío y la protección del envío."
+  },
+  "sections": {
+    "price": "Define tu Precio",
+    "productDetails": "Detalles del Producto",
+    "shippingOrigin": "Origen del Envío",
+    "salesSummary": "Resumen de Venta"
+  },
+  "tips": {
+    "price": "Tip: Ajusta tu precio estratégicamente para mantenerte competitivo y maximizar tus ganancias."
+  },
+  "earnings": {
+    "title": "Desglose de tu ganancia (Estimado):",
+    "yourPrice": "Tu precio:",
+    "listPrice": "Precio de Lista",
+    "commission": "Comisión Selene (9%)",
+    "shippingInsurance": "Seguro de Envío",
+    "shippingCost": "Envío (Guía Prepagada)",
+    "youWillReceive": "Recibirás:",
+    "youReceive": "Tú recibes (aprox):",
+    "showBreakdown": "Ver desglose de costos",
+    "hideBreakdown": "Ocultar detalles"
   },
   "preview": {
     "title": "Resumen",
@@ -84,7 +134,13 @@
     "uploadFailed": "Error al subir las imágenes. Intenta de nuevo.",
     "publishFailed": "No se pudo crear la publicación.",
     "usageRequired": "El tiempo de uso es obligatorio",
-    "descriptionTooLong": "La descripción no puede exceder los 1000 caracteres."
+    "descriptionTooLong": "La descripción no puede exceder los 1000 caracteres.",
+    "nameTooLong": "El título es muy largo (máx. 80 caracteres).",
+    "zipCodeInvalid": "El CP debe tener 5 dígitos",
+    "packageRequired": "Debes seleccionar un tamaño de paquete",
+    "quoteFailed": "Error al calcular envío. Verifica tu CP.",
+    "cpMissingText": "Falta CP para calcular envío...",
+    "waitingForPriceLabel": "Esperando precio..."
   },
   "success": {
     "title": "¡Publicación Creada!",

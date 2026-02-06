@@ -1,0 +1,25 @@
+{
+  "form": {
+    "title": "Nueva Dirección",
+    "mapPlaceholder": "El mapa aparecerá aquí",
+    "streetLabel": "Calle y Número",
+    "streetPlaceholder": "Ej. Av. Reforma 222",
+    "detailsLabel": "Interior / Depto (Opcional)",
+    "detailsPlaceholder": "Ej. Torre B, Depto 401",
+    "instructionsLabel": "Instrucciones de entrega",
+    "instructionsPlaceholder": "Ej. Fachada blanca, dejar en recepción...",
+    "recipientLabel": "Nombre de quien recibe",
+    "phoneLabel": "Teléfono de contacto",
+    "save": "Guardar Dirección"
+  },
+  "labels": {
+    "title": "Etiquetas",
+    "home": "Casa",
+    "work": "Trabajo",
+    "other": "Otro"
+  },
+  "errors": {
+    "required": "Este campo es obligatorio",
+    "phoneInvalid": "Ingresa un teléfono válido (10 dígitos)"
+  }
+}
