@@ -1,50 +1,58 @@
 import { useMemo } from 'react';
-import { Product, ShippingOption } from '@selene/types';
-
-const SERVICE_FEE_PERCENT = 0.03;
-const SERVICE_FEE_FIXED = 5;
+import { Product } from '@selene/types';
 
 /**
- * @param items - Items en el carrito.
- * @param selectedShippingMethods - Mapa de ID de producto -> ShippingOption seleccionada.
+ * CONFIGURACIÓN DE COMISIONES (Protección Selene)
+ * Basado en: Stripe MX (3.6% + $3) + Margen Selene + IVA sobre comisión.
  */
-export const useOrderCalculations = (
-  items: Product[],
-  selectedShippingMethods: Record<string, ShippingOption> = {},
-) => {
+export const SERVICE_FEE_CONFIG = {
+  PERCENT: 0.05, // Subimos a 5% para cubrir Stripe (3.6%) + IVA + Seguro Selene
+  FIXED_CENTS: 500, // $5.00 MXN en centavos
+};
+
+export const useOrderCalculations = (items: Product[] = []) => {
   return useMemo(() => {
-    // 1. Subtotal
-    const subtotal = items.reduce((sum, item) => sum + (item.price || 0), 0);
+    // 1. Manejo de carrito vacío
+    if (!items || items.length === 0) {
+      return {
+        subtotal: 0,
+        shippingCost: 0,
+        serviceFee: 0,
+        total: 0,
+        totalInCents: 0,
+        itemCount: 0,
+      };
+    }
 
-    // 2. Envío
-    const shippingCost = items.reduce((sum, item) => {
-      // Si el vendedor paga, el comprador paga 0
-      if (item.shipping_payer === 'seller') return sum;
+    // --- CÁLCULOS EN CENTAVOS (Para evitar errores de JS) ---
 
-      // Buscamos la opción seleccionada por el usuario
-      const selectedOption = selectedShippingMethods[item.id];
-      if (selectedOption) {
-        return sum + selectedOption.price;
-      }
-
-      return sum;
+    // 2. Subtotal en centavos
+    const subtotalCents = items.reduce((sum, item) => {
+      const price = Math.round((Number(item.price) || 0) * 100);
+      return sum + price;
     }, 0);
 
-    // 3. Tarifa de Servicio (3% sobre Subtotal + Envío)
-    const rawServiceFee =
-      (subtotal + shippingCost) * SERVICE_FEE_PERCENT + SERVICE_FEE_FIXED;
-    const serviceFee = Math.round(rawServiceFee * 100) / 100;
+    // 3. Envío (Estrategia: Envío Incluido = $0 para el comprador)
+    const shippingCostCents = 0;
 
-    // 4. Total Final
-    const total = subtotal + shippingCost + serviceFee;
+    // 4. Tarifa de Servicio (Protección Selene)
+    // Calculamos: (Subtotal * %) + Fijo
+    const feeFromPercent = Math.round(
+      subtotalCents * SERVICE_FEE_CONFIG.PERCENT,
+    );
+    const serviceFeeCents = feeFromPercent + SERVICE_FEE_CONFIG.FIXED_CENTS;
 
+    // 5. Total Final en centavos
+    const totalCents = subtotalCents + shippingCostCents + serviceFeeCents;
+
+    // --- CONVERSIÓN PARA UI (Pesos) ---
     return {
-      subtotal,
-      shippingCost,
-      serviceFee,
-      total: Math.round(total * 100) / 100,
-      totalInCents: Math.round(total * 100),
+      subtotal: subtotalCents / 100,
+      shippingCost: 0, // Siempre 0 para el comprador
+      serviceFee: serviceFeeCents / 100,
+      total: totalCents / 100,
+      totalInCents: totalCents, // Este es el valor que va a Stripe
       itemCount: items.length,
     };
-  }, [items, selectedShippingMethods]);
+  }, [items]);
 };

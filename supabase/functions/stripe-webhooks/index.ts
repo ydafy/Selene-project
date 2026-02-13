@@ -1,187 +1,150 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import Stripe from 'https://esm.sh/stripe@12.0.0';
+import Stripe from 'https://esm.sh/stripe@17.0.0';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-  apiVersion: '2022-11-15',
+  apiVersion: '2025-12-15.clover',
   httpClient: Stripe.createFetchHttpClient(),
 });
 
-// Configuración
 const APP_NAME = 'selene';
-const RATE_LIMIT_WINDOW = 60000; // 1 minuto
-const MAX_REQUESTS_PER_WINDOW = 100;
-
-// Rate limiting simple en memoria
-const requestCounts = new Map<string, { count: number; resetTime: number }>();
-
-// Helper de logging estructurado
-const log = (
-  level: 'info' | 'error' | 'warn',
-  message: string,
-  meta?: Record<string, unknown>,
-) => {
-  console.log(
-    JSON.stringify({
-      timestamp: new Date().toISOString(),
-      level,
-      message,
-      function: 'stripe-webhooks',
-      ...meta,
-    }),
-  );
-};
-
-// Rate limiting
-const checkRateLimit = (clientIP: string): boolean => {
-  const now = Date.now();
-  const clientData = requestCounts.get(clientIP);
-
-  if (!clientData || now > clientData.resetTime) {
-    requestCounts.set(clientIP, {
-      count: 1,
-      resetTime: now + RATE_LIMIT_WINDOW,
-    });
-    return true;
-  }
-
-  if (clientData.count >= MAX_REQUESTS_PER_WINDOW) {
-    return false;
-  }
-
-  clientData.count++;
-  return true;
-};
 
 serve(async (req) => {
-  const clientIP = req.headers.get('x-forwarded-for') || 'unknown';
-
-  // Rate limiting
-  if (!checkRateLimit(clientIP)) {
-    log('warn', 'Rate limit exceeded', { clientIP });
-    return new Response('Rate limit exceeded', { status: 429 });
-  }
-
   const signature = req.headers.get('stripe-signature');
-  if (!signature) {
-    log('error', 'Missing stripe-signature header');
-    return new Response('No signature', { status: 400 });
-  }
+  if (!signature) return new Response('No signature', { status: 400 });
 
   try {
     const body = await req.text();
-    const event = stripe.webhooks.constructEvent(
+    const event = await stripe.webhooks.constructEventAsync(
       body,
       signature,
       Deno.env.get('STRIPE_WEBHOOK_SECRET') || '',
     );
 
-    log('info', 'Webhook received', {
-      eventType: event.type,
-      eventId: event.id,
-    });
+    // VALIDACIÓN DE CONFIGURACIÓN (Sugerencia IA Local)
+    const serviceRoleKey =
+      Deno.env.get('SELENE_SERVICE_ROLE_KEY') ??
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!serviceRoleKey) {
+      console.error('[CRITICAL] Service role key not configured');
+      return new Response('Server configuration error', { status: 500 });
+    }
 
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      serviceRoleKey,
     );
 
-    // Procesar evento de forma asíncrona (no bloquear respuesta)
     const processEvent = async () => {
-      if (event.type === 'setup_intent.succeeded') {
-        const setupIntent = event.data.object as Stripe.SetupIntent;
-        const userId = setupIntent.metadata?.user_id;
-        const paymentMethodId = setupIntent.payment_method as string;
+      // --- PAGO EXITOSO ---
+      if (event.type === 'payment_intent.succeeded') {
+        const intent = event.data.object as Stripe.PaymentIntent;
+        const { buyer_id, product_ids, address_id, app_name, subtotal } =
+          intent.metadata;
+        if (app_name !== APP_NAME) return;
 
-        // Validar que el webhook viene de nuestra app
-        if (setupIntent.metadata?.app_name !== APP_NAME) {
-          log('warn', 'Invalid app_name in metadata', {
-            received: setupIntent.metadata?.app_name,
-            expected: APP_NAME,
+        const productIdsArray = JSON.parse(product_ids);
+        // 1. OBTENER PRECIOS REALES DE LA DB (Seguridad nivel Pro)
+        const { data: dbProducts } = await supabaseAdmin
+          .from('products')
+          .select('price')
+          .in('id', productIdsArray);
+
+        const realSubtotal =
+          dbProducts?.reduce((sum, p) => sum + Number(p.price), 0) || 0;
+        const realSubtotalCents = Math.round(realSubtotal * 100);
+        const expectedServiceFeeCents =
+          Math.round(realSubtotalCents * 0.05) + 500;
+        const expectedTotalCents = realSubtotalCents + expectedServiceFeeCents;
+
+        // 2. COMPARAR CON LO COBRADO POR STRIPE
+        if (Math.abs(intent.amount - expectedTotalCents) > 1) {
+          // Margen de 1 centavo por redondeo
+          console.error('[FRAUD ALERT] Monto cobrado no coincide con DB', {
+            charged: intent.amount,
+            expected: expectedTotalCents,
           });
-          return;
+          // Liberamos productos y no creamos orden
+          await supabaseAdmin.rpc('fn_release_products', {
+            p_product_ids: productIdsArray,
+          });
+          return new Response('Amount Mismatch', { status: 400 });
         }
 
-        if (userId && paymentMethodId) {
-          try {
-            // Verificar si ya existe
-            const { data: existing } = await supabaseAdmin
-              .from('payment_methods')
-              .select('id')
-              .eq('stripe_payment_method_id', paymentMethodId)
-              .single();
+        const totalAmount = intent.amount / 100;
+        const serviceFee = expectedServiceFeeCents / 100;
 
-            if (!existing) {
-              const pm = await stripe.paymentMethods.retrieve(paymentMethodId);
+        const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc(
+          'fn_complete_order',
+          {
+            p_buyer_id: buyer_id,
+            p_stripe_intent_id: intent.id,
+            p_product_ids: productIdsArray,
+            p_address_id: address_id,
+            p_total_amount: totalAmount,
+            p_service_fee: serviceFee,
+          },
+        );
 
-              const { error } = await supabaseAdmin
-                .from('payment_methods')
-                .insert({
-                  user_id: userId,
-                  stripe_payment_method_id: paymentMethodId,
-                  brand: pm.card?.brand,
-                  last4: pm.card?.last4,
-                  exp_month: pm.card?.exp_month,
-                  exp_year: pm.card?.exp_year,
-                  is_default: false,
-                });
+        if (rpcError || (rpcData && !rpcData[0]?.success)) {
+          console.error(
+            '[CRITICAL] Order failed, rollbacking stock:',
+            rpcError?.message || rpcData[0]?.error_message,
+          );
+          await supabaseAdmin.rpc('fn_release_products', {
+            p_product_ids: productIdsArray,
+          });
+        }
+      }
 
-              if (error) {
-                log('error', 'DB Insert failed', {
-                  error: error.message,
-                  userId,
-                  paymentMethodId,
-                });
-              } else {
-                log('info', 'Payment method saved', {
-                  userId,
-                  paymentMethodId,
-                  brand: pm.card?.brand,
-                });
-              }
-            } else {
-              log('info', 'Payment method already exists, skipping', {
-                paymentMethodId,
-              });
-            }
-          } catch (err) {
-            log('error', 'Error processing setup_intent.succeeded', {
-              error: err.message,
-              userId,
-              paymentMethodId,
+      // --- PAGO FALLIDO / CANCELADO ---
+      if (
+        event.type === 'payment_intent.payment_failed' ||
+        event.type === 'payment_intent.canceled'
+      ) {
+        const intent = event.data.object as Stripe.PaymentIntent;
+        const { product_ids, app_name } = intent.metadata;
+        if (app_name === APP_NAME && product_ids) {
+          await supabaseAdmin.rpc('fn_release_products', {
+            p_product_ids: JSON.parse(product_ids),
+          });
+        }
+      }
+
+      // --- SETUP INTENT (TARJETAS) ---
+      if (event.type === 'setup_intent.succeeded') {
+        const si = event.data.object as Stripe.SetupIntent;
+        const { user_id, app_name } = si.metadata || {};
+        if (app_name === APP_NAME && user_id) {
+          const pmId = si.payment_method as string;
+          const { data: existing } = await supabaseAdmin
+            .from('payment_methods')
+            .select('id')
+            .eq('stripe_payment_method_id', pmId)
+            .maybeSingle();
+          if (!existing) {
+            const pm = await stripe.paymentMethods.retrieve(pmId);
+            await supabaseAdmin.from('payment_methods').insert({
+              user_id,
+              stripe_payment_method_id: pmId,
+              brand: pm.card?.brand,
+              last4: pm.card?.last4,
+              exp_month: pm.card?.exp_month,
+              exp_year: pm.card?.exp_year,
             });
           }
         }
       }
-
-      if (event.type === 'setup_intent.failed') {
-        const setupIntent = event.data.object as Stripe.SetupIntent;
-        const userId = setupIntent.metadata?.user_id;
-        const errorMessage = setupIntent.last_setup_error?.message;
-
-        log('error', 'Setup intent failed', {
-          userId,
-          error: errorMessage,
-          setupIntentId: setupIntent.id,
-        });
-
-        // Métrica de fallo
-        log('info', 'Metric: payment_method_setup_failed', { count: 1 });
-      }
     };
 
-    // Ejecutar sin esperar (asíncrono)
-    processEvent().catch((err) => {
-      log('error', 'Unhandled error in processEvent', { error: err.message });
-    });
-
-    // Responder 200 inmediatamente
+    processEvent().catch((err) =>
+      console.error('[WEBHOOK PROCESS ERROR]', err),
+    );
     return new Response(JSON.stringify({ received: true }), { status: 200 });
   } catch (err) {
-    log('error', 'Webhook processing error', {
-      error: err.message,
-      clientIP,
-    });
-    return new Response(`Webhook Error: ${err.message}`, { status: 400 });
+    // MANEJO DE ERROR ROBUSTO (Sugerencia IA Local)
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[WEBHOOK CRITICAL ERROR] ${message}`);
+    return new Response(`Error: ${message}`, { status: 400 });
   }
 });

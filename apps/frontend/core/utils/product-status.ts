@@ -1,4 +1,4 @@
-import { ProductStatus } from '@selene/types';
+import { ProductStatus } from '../../../../packages/types/src/index';
 import { Theme } from '../theme';
 
 /**

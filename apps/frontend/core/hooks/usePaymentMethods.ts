@@ -1,15 +1,22 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import * as Crypto from 'expo-crypto';
 import { supabase } from '../db/supabase';
 import { PaymentMethod } from '@selene/types';
+import { useAuthContext } from '@/components/auth/AuthProvider'; // Importamos tu contexto
 
-/**
- * Hook Profesional para la gestión de métodos de pago en Selene.
- * Conecta con la Edge Function 'manage-payment-methods'.
- */
+const logDebug = (context: string, data?: unknown, error?: unknown) => {
+  if (__DEV__) {
+    console.log(`--- [PAYMENT METHODS] ${context} ---`);
+    if (data) console.log('Data:', data);
+    if (error) console.error('Error:', error);
+  }
+};
+
 export const usePaymentMethods = () => {
   const queryClient = useQueryClient();
+  const { session } = useAuthContext(); // Obtenemos la sesión
 
-  // 1. Listar métodos de pago guardados en la DB
+  // 1. Listar métodos de pago
   const {
     data: methods = [],
     isLoading: isLoadingMethods,
@@ -17,7 +24,11 @@ export const usePaymentMethods = () => {
     refetch: refreshMethods,
   } = useQuery({
     queryKey: ['paymentMethods'],
+    // Solo se ejecuta si hay un usuario logueado
+    enabled: !!session?.user?.id,
+    retry: 2,
     queryFn: async () => {
+      logDebug('Fetching list');
       const { data, error } = await supabase.functions.invoke(
         'manage-payment-methods',
         {
@@ -30,56 +41,61 @@ export const usePaymentMethods = () => {
     },
   });
 
-  // 2. Obtener configuración para agregar nueva tarjeta (SetupIntent)
+  // 2. Obtener configuración para SetupIntent
   const setupConfigMutation = useMutation({
     mutationFn: async () => {
-      // Generamos una llave de idempotencia para esta sesión de "Agregar Tarjeta"
-      const idempotencyKey = crypto.randomUUID();
-
+      const idempotencyKey = Crypto.randomUUID();
       const { data, error } = await supabase.functions.invoke(
         'manage-payment-methods',
         {
           body: { action: 'get_setup_config' },
-          headers: {
-            'idempotency-key': idempotencyKey,
-          },
+          headers: { 'idempotency-key': idempotencyKey },
         },
       );
 
       if (error) {
-        // Manejo de errores específicos del negocio
-        if (error.message?.includes('PAYMENT_LIMIT_REACHED')) {
+        if (error.message?.includes('PAYMENT_LIMIT_REACHED'))
           throw new Error('limit_reached');
-        }
         throw error;
       }
-
-      return data as {
-        setupIntent: string;
-        ephemeralKey: string;
-        customer: string;
-        publishableKey: string;
-      };
+      return data;
     },
   });
 
-  // 3. Borrar un método de pago
+  // 3. Borrar método de pago (CON UPDATE OPTIMISTA)
   const deleteMethodMutation = useMutation({
     mutationFn: async (paymentMethodId: string) => {
       const { error } = await supabase.functions.invoke(
         'manage-payment-methods',
         {
-          body: {
-            action: 'delete_payment_method',
-            paymentMethodId,
-          },
+          body: { action: 'delete_payment_method', paymentMethodId },
         },
       );
-
       if (error) throw error;
     },
-    onSuccess: () => {
-      // Invalidamos el caché para que la lista se actualice sola
+    // Aquí ocurre la magia: actualizamos la UI antes de que el server responda
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['paymentMethods'] });
+      const previousMethods = queryClient.getQueryData<PaymentMethod[]>([
+        'paymentMethods',
+      ]);
+
+      queryClient.setQueryData(
+        ['paymentMethods'],
+        (old: PaymentMethod[] | undefined) => old?.filter((m) => m.id !== id),
+      );
+
+      return { previousMethods };
+    },
+    // Si algo falla, revertimos al estado anterior
+    onError: (err, id, context) => {
+      if (context?.previousMethods) {
+        queryClient.setQueryData(['paymentMethods'], context.previousMethods);
+      }
+      logDebug('Delete Error', null, err);
+    },
+    // Siempre refrescar al final para asegurar sincronía
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['paymentMethods'] });
     },
   });
@@ -89,7 +105,6 @@ export const usePaymentMethods = () => {
     isLoadingMethods,
     listError,
     refreshMethods,
-    // Acciones
     getSetupConfig: setupConfigMutation.mutateAsync,
     isConfiguring: setupConfigMutation.isPending,
     deleteMethod: deleteMethodMutation.mutateAsync,

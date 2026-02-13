@@ -1,175 +1,188 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import Stripe from 'https://esm.sh/stripe@12.0.0';
+import Stripe from 'https://esm.sh/stripe@17.0.0';
+import { z } from 'https://esm.sh/zod@3.23.8';
+
+// --- CONFIGURATION ---
+const APP_NAME = 'selene';
+const STRIPE_API_VERSION = '2025-12-15.clover';
+const SERVICE_FEE_PERCENT = 0.05;
+const SERVICE_FEE_FIXED_CENTS = 500;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
+    'authorization, x-client-info, apikey, content-type, idempotency-key',
 };
 
-// 1. MAPEO DE DIMENSIONES (Sincronizado con el Frontend)
-const PACKAGE_DIMENSIONS: Record<
-  string,
-  { length: number; width: number; height: number; weight: number }
-> = {
-  ram_1: { length: 15, width: 15, height: 15, weight: 1 },
-  ram_2: { length: 20, width: 15, height: 10, weight: 1 },
-  cpu_1: { length: 15, width: 15, height: 15, weight: 1 },
-  cpu_2: { length: 20, width: 15, height: 10, weight: 1 },
-  gpu_1: { length: 30, width: 23, height: 15, weight: 3 },
-  gpu_2: { length: 41, width: 30, height: 20, weight: 5 },
-  mobo_1: { length: 46, width: 30, height: 15, weight: 5 },
-};
-
-const DEFAULT_DIM = { length: 20, width: 15, height: 10, weight: 1 };
-
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-  apiVersion: '2022-11-15',
-  httpClient: Stripe.createFetchHttpClient(),
+const RequestSchema = z.object({
+  productIds: z.array(z.string().uuid()).min(1),
+  addressId: z.string().uuid(),
+  idempotencyKey: z.string().optional(),
 });
+
+const log = (
+  level: 'info' | 'error' | 'warn',
+  message: string,
+  meta?: Record<string, unknown>,
+) => {
+  console.log(
+    JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level,
+      message,
+      function: 'create-payment-intent',
+      ...meta,
+    }),
+  );
+};
 
 serve(async (req) => {
   if (req.method === 'OPTIONS')
     return new Response('ok', { headers: corsHeaders });
 
   try {
-    // A. Inicializar Supabase y Auth
+    log('info', '--- Starting Payment Intent Creation ---');
+
+    // 1. VALIDATE SECRETS
+    const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY');
+    if (!stripeSecret) throw new Error('MISSING_STRIPE_KEY');
+
+    const stripe = new Stripe(stripeSecret, {
+      apiVersion: STRIPE_API_VERSION,
+      httpClient: Stripe.createFetchHttpClient(),
+    });
+
+    // 2. AUTHENTICATION
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) throw new Error('AUTH_REQUIRED');
+
     const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      },
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } },
     );
 
     const {
       data: { user },
+      error: authError,
     } = await supabaseClient.auth.getUser();
-    if (!user) throw new Error('Usuario no autenticado');
+    if (authError || !user) throw new Error('AUTH_REQUIRED');
 
-    // B. Recibir datos del Checkout
-    const { productIds, shippingAddress, selectedCarriers } = await req.json();
-    const destZip = shippingAddress?.zip_code;
+    // 3. INPUT VALIDATION
+    const body = await req.json();
+    log('info', 'Request body received', { body });
 
-    console.log(`[DEBUG] Iniciando cobro para usuario: ${user.id}`);
-    console.log(
-      `[DEBUG] Destino: ${destZip}, Productos: ${JSON.stringify(productIds)}`,
+    const result = RequestSchema.safeParse(body);
+    if (!result.success) {
+      log('error', 'Zod validation failed', { errors: result.error.format() });
+      throw new Error('INVALID_INPUT');
+    }
+    const { productIds, addressId, idempotencyKey } = result.data;
+
+    // 4. ATOMIC RESERVATION (RPC)
+    const { data: reserveData, error: rpcError } = await supabaseClient.rpc(
+      'fn_reserve_products',
+      {
+        p_product_ids: productIds,
+        p_buyer_id: user.id,
+      },
     );
-    console.log(
-      `[DEBUG] Carriers seleccionados: ${JSON.stringify(selectedCarriers)}`,
-    );
 
-    if (!destZip) throw new Error('Falta el código postal de destino');
-
-    // C. Consultar productos en DB
-    const { data: products, error: dbError } = await supabaseClient
-      .from('products')
-      .select('*')
-      .in('id', productIds);
-
-    if (dbError || !products)
-      throw new Error('Error al buscar productos en DB');
-
-    let subtotal = 0;
-    let totalShipping = 0;
-
-    // D. Recalcular Totales usando selecciones del usuario
-    for (const item of products) {
-      if (item.status !== 'VERIFIED')
-        throw new Error(`Producto ${item.name} no disponible`);
-
-      subtotal += item.price;
-
-      if (item.shipping_payer === 'seller') {
-        console.log(`[DEBUG] Item ${item.id}: Envío pagado por vendedor ($0)`);
-        totalShipping += 0;
-      } else {
-        const selectedCarrier = selectedCarriers?.[item.id];
-        const dim = PACKAGE_DIMENSIONS[item.package_preset] || DEFAULT_DIM;
-
-        if (selectedCarrier) {
-          console.log(
-            `[DEBUG] Item ${item.id}: Usando carrier seleccionado ${selectedCarrier}`,
-          );
-
-          const enviaRes = await fetch(
-            `${Deno.env.get('ENVIA_API_URL')}/ship/rate`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${Deno.env.get('ENVIA_API_KEY')}`,
-              },
-              body: JSON.stringify({
-                origin: { country: 'MX', postalCode: item.origin_zip },
-                destination: { country: 'MX', postalCode: destZip },
-                packages: [
-                  { type: 'box', dimensions: dim, weight: dim.weight },
-                ],
-                shipment: { carrier: selectedCarrier, type: 1 },
-              }),
-            },
-          );
-
-          const enviaData = await enviaRes.json();
-
-          if (enviaData.data && enviaData.data.length > 0) {
-            const cost = Math.ceil(enviaData.data[0].totalPrice + 50);
-            console.log(`[DEBUG] Cotización para ${item.id}: $${cost}`);
-            totalShipping += cost;
-          } else {
-            console.warn(
-              `[DEBUG] Falló Envia para ${item.id}. Usando fallback: ${item.shipping_cost}`,
-            );
-            totalShipping += Number(item.shipping_cost || 250);
-          }
-        } else {
-          console.error(
-            `[FATAL] Item ${item.id} requiere envío pero no se seleccionó carrier.`,
-          );
-          throw new Error(
-            `Falta selección de paquetería para ${item.name}. Por favor regresa al checkout.`,
-          );
-        }
-      }
+    const reservation = reserveData?.[0];
+    if (rpcError || !reservation?.success) {
+      log('warn', 'Inventory lock failed', {
+        error: rpcError?.message || reservation?.error_message,
+      });
+      throw new Error(reservation?.error_message || 'STOCK_UNAVAILABLE');
     }
 
-    // E. Calcular Comisiones (3% + $5)
-    const serviceFee =
-      Math.round(((subtotal + totalShipping) * 0.03 + 5) * 100) / 100;
-    const finalTotal = subtotal + totalShipping + serviceFee;
-    const finalTotalCents = Math.round(finalTotal * 100);
+    // 5. FINANCIAL CALCULATIONS
+    const subtotalFromDB = Number(reservation.total_price);
+    const subtotalCents = Math.round(subtotalFromDB * 100);
+    const serviceFeeCents =
+      Math.round(subtotalCents * SERVICE_FEE_PERCENT) + SERVICE_FEE_FIXED_CENTS;
+    const totalCents = subtotalCents + serviceFeeCents;
 
-    console.log(
-      `[DEBUG] Desglose Final: Subtotal: ${subtotal}, Envío: ${totalShipping}, Fee: ${serviceFee}, Total: ${finalTotal}`,
+    // 6. STRIPE CUSTOMER IDENTITY
+    const { data: profile } = await supabaseClient
+      .from('profiles')
+      .select('stripe_customer_id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const customerId = profile?.stripe_customer_id;
+    if (!customerId) throw new Error('STRIPE_CUSTOMER_NOT_FOUND');
+
+    // 7. EPHEMERAL KEY (Para tarjetas guardadas)
+    const ephemeralKey = await stripe.ephemeralKeys.create(
+      { customer: customerId },
+      { apiVersion: STRIPE_API_VERSION },
     );
 
-    // F. Crear PaymentIntent en Stripe
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: finalTotalCents,
-      currency: 'mxn',
-      automatic_payment_methods: { enabled: true },
-      metadata: {
-        buyer_id: user.id,
-        product_ids: JSON.stringify(productIds),
-        total_shipping: totalShipping.toString(),
+    // 8. CREATE PAYMENT INTENT
+    const paymentIntent = await stripe.paymentIntents.create(
+      {
+        amount: totalCents,
+        currency: 'mxn',
+        customer: customerId,
+        automatic_payment_methods: { enabled: true },
+        metadata: {
+          buyer_id: user.id,
+          product_ids: JSON.stringify(productIds),
+          address_id: addressId,
+          app_name: APP_NAME,
+          subtotal: subtotalFromDB.toString(),
+        },
       },
+      {
+        idempotencyKey: idempotencyKey || crypto.randomUUID(),
+      },
+    );
+
+    log('info', 'PaymentIntent created successfully', {
+      intentId: paymentIntent.id,
     });
 
     return new Response(
       JSON.stringify({
         clientSecret: paymentIntent.client_secret,
-        amount: finalTotal,
+        ephemeralKey: ephemeralKey.secret,
+        customer: customerId,
+        amount: totalCents / 100,
+        subtotal: subtotalFromDB,
+        serviceFee: serviceFeeCents / 100,
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      },
     );
-  } catch (error) {
-    console.error('[FATAL ERROR]', error.message);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 400,
+  } catch (error: any) {
+    const message = error.message || String(error);
+
+    // Stripe specific handling
+    if (message.toLowerCase().includes('stripe')) {
+      log('error', 'Stripe API Error', { error: message });
+      return new Response(JSON.stringify({ error: 'PAYMENT_PROVIDER_ERROR' }), {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const statusMap: Record<string, number> = {
+      AUTH_REQUIRED: 401,
+      INVALID_INPUT: 422,
+      STOCK_UNAVAILABLE: 409,
+      STRIPE_CUSTOMER_NOT_FOUND: 400,
+      MISSING_STRIPE_KEY: 500,
+    };
+
+    const status = statusMap[message] || 400;
+    log('error', 'Request failed', { message, status });
+
+    return new Response(JSON.stringify({ error: message }), {
+      status,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

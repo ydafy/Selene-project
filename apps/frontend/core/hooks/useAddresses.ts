@@ -8,36 +8,34 @@ export const useAddresses = () => {
   const queryClient = useQueryClient();
   const userId = session?.user.id;
 
-  // 1. FETCH (Leer direcciones)
+  // 1. FETCH
   const {
-    data: addresses,
+    data: addresses = [],
     isLoading,
     error,
   } = useQuery({
     queryKey: ['addresses', userId],
     queryFn: async () => {
       if (!userId) return [];
-      const { data, error } = await supabase
+      const { data, error: dbError } = await supabase
         .from('addresses')
         .select('*')
         .eq('user_id', userId)
-        .order('is_default', { ascending: false }); // La default primero
+        .order('is_default', { ascending: false });
 
-      if (error) throw error;
+      if (dbError) throw dbError;
       return data as Address[];
     },
     enabled: !!userId,
   });
 
-  // 2. ADD (Crear dirección)
+  // 2. ADD
   const addAddressMutation = useMutation({
     mutationFn: async (newAddress: Omit<Address, 'id' | 'user_id'>) => {
-      if (!userId) throw new Error('No user');
+      if (!userId) throw new Error('No user authenticated');
 
-      // Si es la primera dirección, la hacemos default automáticamente
-      const isFirst = addresses && addresses.length === 0;
-
-      const { data, error } = await supabase
+      const isFirst = addresses.length === 0;
+      const { data, error: dbError } = await supabase
         .from('addresses')
         .insert({
           ...newAddress,
@@ -47,50 +45,88 @@ export const useAddresses = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (dbError) throw dbError;
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['addresses', userId] });
+    onSuccess: async () => {
+      console.log('[useAddresses] Invalidadndo caché de direcciones...');
+      return await queryClient.invalidateQueries({
+        queryKey: ['addresses', userId],
+      });
     },
   });
 
-  // 3. DELETE (Borrar dirección)
+  // 3. DELETE (WITH OPTIMISTIC UPDATE)
   const deleteAddressMutation = useMutation({
     mutationFn: async (addressId: string) => {
-      const { error } = await supabase
+      const { error: dbError } = await supabase
         .from('addresses')
         .delete()
         .eq('id', addressId);
-      if (error) throw error;
+      if (dbError) throw dbError;
     },
-    onSuccess: () => {
+    onMutate: async (addressId) => {
+      await queryClient.cancelQueries({ queryKey: ['addresses', userId] });
+      const previousAddresses = queryClient.getQueryData(['addresses', userId]);
+
+      queryClient.setQueryData(
+        ['addresses', userId],
+        (old: Address[] | undefined) => old?.filter((a) => a.id !== addressId),
+      );
+
+      return { previousAddresses };
+    },
+    onError: (err, id, context) => {
+      queryClient.setQueryData(
+        ['addresses', userId],
+        context?.previousAddresses,
+      );
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['addresses', userId] });
     },
   });
 
-  // 4. SET DEFAULT (Marcar como principal)
+  // 4. SET DEFAULT (WITH OPTIMISTIC UPDATE)
   const setDefaultMutation = useMutation({
     mutationFn: async (addressId: string) => {
       if (!userId) return;
 
-      // Transacción: Primero quitamos default a todas, luego ponemos a una
-      // Nota: Supabase no soporta transacciones directas en cliente JS fácilmente,
-      // así que hacemos dos updates secuenciales (o usamos una RPC, pero esto basta por ahora).
-
-      await supabase
+      // We perform a simple two-step update.
+      // For high-scale production, a Postgres RPC is recommended.
+      const { error: resetError } = await supabase
         .from('addresses')
         .update({ is_default: false })
         .eq('user_id', userId);
 
-      const { error } = await supabase
+      if (resetError) throw resetError;
+
+      const { error: setError } = await supabase
         .from('addresses')
         .update({ is_default: true })
         .eq('id', addressId);
 
-      if (error) throw error;
+      if (setError) throw setError;
     },
-    onSuccess: () => {
+    onMutate: async (addressId) => {
+      await queryClient.cancelQueries({ queryKey: ['addresses', userId] });
+      const previousAddresses = queryClient.getQueryData(['addresses', userId]);
+
+      queryClient.setQueryData(
+        ['addresses', userId],
+        (old: Address[] | undefined) =>
+          old?.map((a) => ({ ...a, is_default: a.id === addressId })),
+      );
+
+      return { previousAddresses };
+    },
+    onError: (err, id, context) => {
+      queryClient.setQueryData(
+        ['addresses', userId],
+        context?.previousAddresses,
+      );
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['addresses', userId] });
     },
   });
@@ -103,5 +139,6 @@ export const useAddresses = () => {
     deleteAddress: deleteAddressMutation.mutateAsync,
     setDefault: setDefaultMutation.mutateAsync,
     isAdding: addAddressMutation.isPending,
+    isSettingDefault: setDefaultMutation.isPending,
   };
 };

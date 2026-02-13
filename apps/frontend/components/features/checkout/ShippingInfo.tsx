@@ -3,7 +3,12 @@ import { useTheme } from '@shopify/restyle';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Box, Text } from '../../base';
 import { Theme } from '../../../core/theme';
+import { t } from 'i18next';
 import { useTranslation } from 'react-i18next';
+
+type ShippingInfoProps = {
+  type: 'free' | 'protected';
+};
 
 /**
  * Componente que muestra el texto de envío para los productos en el checkout.

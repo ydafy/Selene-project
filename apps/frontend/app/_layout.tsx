@@ -1,5 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-require-imports */
+
+import 'react-native-get-random-values';
+
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ThemeProvider } from '@shopify/restyle';
 import { PaperProvider } from 'react-native-paper';
@@ -24,6 +27,8 @@ import { AuthModalProvider } from '../core/auth/AuthModalProvider';
 
 import { NotificationWatcher } from '../components/features/notifications/NotificationWatcher';
 
+SplashScreen.preventAutoHideAsync();
+
 const queryClient = new QueryClient();
 
 if (!process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID) {
@@ -42,12 +47,21 @@ export default function RootLayout() {
   });
 
   const STRIPE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+  const GOOGLE_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
 
   useEffect(() => {
+    console.log('[DEBUG] RootLayout Mounted');
+    console.log('[DEBUG] Stripe Key exists:', !!STRIPE_KEY);
+
+    if (GOOGLE_ID) {
+      GoogleSignin.configure({ webClientId: GOOGLE_ID });
+    }
+
     if (fontsLoaded || fontError) {
+      console.log('[DEBUG] Hiding SplashScreen');
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError]);
+  }, [fontsLoaded, fontError, STRIPE_KEY, GOOGLE_ID]);
 
   if (!fontsLoaded && !fontError) {
     return null;
@@ -59,42 +73,44 @@ export default function RootLayout() {
         <PaperProvider theme={paperTheme as any}>
           <QueryClientProvider client={queryClient}>
             <NavThemeProvider value={navigationTheme}>
-              {/* 1. AuthProvider: Maneja la sesión de Supabase */}
               <AuthProvider>
-                {/* 2. AuthModalProvider: Maneja la UI del Bottom Sheet */}
                 <AuthModalProvider>
-                  <StripeProvider
-                    publishableKey={STRIPE_KEY!}
-                    merchantIdentifier="merchant.com.selene.app" // Opcional (para Apple Pay futuro)
-                  >
-                    <Stack>
-                      <Stack.Screen
-                        name="(tabs)"
-                        options={{ headerShown: false }}
-                      />
-                      <Stack.Screen
-                        name="(auth)"
-                        options={{ headerShown: false }}
-                      />
-                      <Stack.Screen
-                        name="sell"
-                        options={{
-                          headerShown: false,
-                          presentation: 'modal',
-                          animation: 'slide_from_bottom', // Fuerza la animación de subida
-                        }}
-                      />
-                    </Stack>
-                  </StripeProvider>
+                  {/* PROTECCIÓN: Solo renderizar StripeProvider si hay Key */}
+                  {STRIPE_KEY ? (
+                    <StripeProvider
+                      publishableKey={STRIPE_KEY}
+                      merchantIdentifier="merchant.com.selene.app"
+                    >
+                      <RootStack />
+                    </StripeProvider>
+                  ) : (
+                    <RootStack />
+                  )}
                 </AuthModalProvider>
                 <NotificationWatcher />
               </AuthProvider>
             </NavThemeProvider>
-
             <Toast config={toastConfig} />
           </QueryClientProvider>
         </PaperProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
+  );
+}
+
+function RootStack() {
+  return (
+    <Stack>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="sell"
+        options={{
+          headerShown: false,
+          presentation: 'modal',
+          animation: 'slide_from_bottom',
+        }}
+      />
+    </Stack>
   );
 }

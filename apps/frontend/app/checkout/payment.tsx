@@ -1,241 +1,179 @@
-import React, { useEffect, useState } from 'react';
-import { Alert, ActivityIndicator } from 'react-native';
-import { useStripe } from '@stripe/stripe-react-native';
-import { useRouter, Stack } from 'expo-router';
+import React, { useRef } from 'react';
+import { Alert } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTheme } from '@shopify/restyle';
+import { MotiView } from 'moti';
+import * as Haptics from 'expo-haptics'; // Ya lo tenías, perfecto.
 
 import { Box, Text } from '../../components/base';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { GlobalHeader } from '../../components/layout/GlobalHeader';
-import { ScreenLayout } from '../../components/layout/ScreenLayout';
 
-import { useCartStore } from '../../core/store/useCartStore';
-import { useCheckoutStore } from '../../core/store/useCheckoutStore';
-import { useAuthContext } from '../../components/auth/AuthProvider';
-import { supabase } from '../../core/db/supabase';
-import { useOrderCalculations } from '../../core/hooks/useOrderCalculations';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { Theme } from '../../core/theme';
+import { usePaymentProcess } from '../../core/hooks/usePaymentProcess';
+import { formatCurrency } from '../../core/utils/format';
+import { OrderPreviewStrip } from '../../components/features/checkout/OrderPreviewStrip';
+import { ProductSummaryModal } from '../../components/features/checkout/ProductSummaryModal';
+import { Stack } from 'expo-router';
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import { useCartStore } from '@/core/store/useCartStore';
 
 export default function PaymentScreen() {
-  const { initPaymentSheet, presentPaymentSheet } = useStripe();
-  const [loading, setLoading] = useState(false);
-  const [isReady, setIsReady] = useState(false);
+  const { t } = useTranslation('checkout');
+  const theme = useTheme<Theme>();
 
-  // Estado para guardar el ID de la transacción de Stripe
-  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  const summaryModalRef = useRef<BottomSheetModal>(null);
+  const items = useCartStore((state) => state.items);
 
-  const router = useRouter();
-  const { session } = useAuthContext();
+  const {
+    loading,
+    isReady,
+    isConfirming,
+    error,
+    paymentData,
+    handlePayment,
+    retry,
+  } = usePaymentProcess();
 
-  // Datos del pedido
-  const { items, clearCart } = useCartStore();
-  const { selectedAddress, selectedShippingMethods } = useCheckoutStore();
+  // LÓGICA DE HAPTICS AQUI
+  const onPayPress = async () => {
+    // 1. Feedback físico al presionar el botón
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-  // 2. OBTENER TOTALES (Para guardar en DB)
-  const { total } = useOrderCalculations(items, selectedShippingMethods);
+    const result = await handlePayment();
 
-  // INICIALIZAR STRIPE
-  useEffect(() => {
-    initializePayment();
-  }, []);
-
-  const initializePayment = async () => {
-    if (!session?.user || items.length === 0 || !selectedAddress) {
-      Alert.alert('Error', 'Faltan datos para procesar el pago.');
-      router.back();
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      // Preparar mapa de carriers seleccionados (productId -> carrier)
-      const selectedCarriers: Record<string, string> = {};
-      Object.keys(selectedShippingMethods).forEach((productId) => {
-        selectedCarriers[productId] =
-          selectedShippingMethods[productId].carrier;
-      });
-
-      // A. Llamar a Edge Function
-      const { data, error } = await supabase.functions.invoke(
-        'create-payment-intent',
-        {
-          body: {
-            productIds: items.map((i) => i.id),
-            shippingAddress: selectedAddress,
-            selectedCarriers,
-          },
-        },
-      );
-
-      if (error || !data?.clientSecret) {
-        throw new Error(error?.message || 'No se pudo iniciar el pago.');
-      }
-
-      // Guardamos el ID del intento (El clientSecret se ve como "pi_12345_secret_abcde")
-      // El ID es la primera parte "pi_12345"
-      const pId = data.clientSecret.split('_secret_')[0];
-      setPaymentIntentId(pId);
-
-      // B. Inicializar Hoja de Pago
-      const { error: stripeError } = await initPaymentSheet({
-        merchantDisplayName: 'Selene Marketplace',
-        paymentIntentClientSecret: data.clientSecret,
-        defaultBillingDetails: {
-          name: selectedAddress.full_name,
-          phone: selectedAddress.phone,
-          address: {
-            country: 'MX',
-            city: selectedAddress.city,
-            state: selectedAddress.state,
-            postalCode: selectedAddress.zip_code,
-            line1: selectedAddress.street_line1,
-            line2: selectedAddress.street_line2 || undefined,
-          },
-        },
-        returnURL: 'selene://checkout/success',
-      });
-
-      if (stripeError) throw stripeError;
-
-      setIsReady(true);
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Error desconocido';
-      console.error(e);
-      Alert.alert('Error', message);
-      router.back();
-    } finally {
-      setLoading(false);
+    if (result.success) {
+      // 2. Feedback de Éxito (Vibración positiva) antes de navegar
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // La navegación a /success ocurre dentro del hook
+    } else if (!result.cancelled) {
+      // 3. Feedback de Error (Vibración de advertencia)
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(t('payment.failedTitle'), result.message);
     }
   };
 
-  // ABRIR HOJA DE PAGO
-  const openPaymentSheet = async () => {
-    const { error } = await presentPaymentSheet();
+  const isBusy = loading || isConfirming;
 
-    if (error) {
-      if (error.code === 'Canceled') {
-        return; // Usuario canceló
-      }
-      Alert.alert('Error en el pago', error.message);
-    } else {
-      // ¡PAGO EXITOSO! -> CREAR ORDEN
-      await handleOrderCreation();
-    }
-  };
-
-  // 3. LÓGICA DE CREACIÓN DE ORDEN (DB)
-  const handleOrderCreation = async () => {
-    if (!session?.user.id || !paymentIntentId || !selectedAddress) return;
-
-    setLoading(true);
-    try {
-      // A. Insertar la Orden Principal
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          buyer_id: session.user.id,
-          total_amount: total,
-          stripe_payment_intent_id: paymentIntentId,
-          status: 'paid',
-          shipping_address: selectedAddress, // Se guarda como JSONB snapshot
-        })
-        .select()
-        .single();
-
-      if (orderError) throw orderError;
-
-      // B. Insertar los Items de la Orden
-      const orderItemsData = items.map((item) => ({
-        order_id: orderData.id,
-        product_id: item.id,
-        seller_id: item.seller_id,
-        price_at_purchase: item.price,
-        selected_carrier: selectedShippingMethods[item.id]?.carrier || null,
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItemsData);
-
-      if (itemsError) throw itemsError;
-
-      // C. Marcar Productos como VENDIDOS
-      const productIds = items.map((i) => i.id);
-      const { error: updateError } = await supabase
-        .from('products')
-        .update({ status: 'SOLD' })
-        .in('id', productIds);
-
-      if (updateError) throw updateError;
-
-      // D. Limpieza y Éxito
-      clearCart();
-
-      // Feedback visual
-      Alert.alert(
-        '¡Compra Exitosa!',
-        'Tu pedido ha sido procesado correctamente.',
-        [
-          {
-            text: 'Ir a Mis Pedidos',
-            onPress: () => router.replace('/(tabs)/profile'),
-          },
-        ],
-      );
-    } catch (error) {
-      console.error('Critical Order Error:', error);
-      // Nota: Aquí el pago ya se hizo en Stripe pero falló la DB.
-      // En producción, esto debería enviar una alerta crítica a Sentry/Slack para soporte manual.
-      Alert.alert(
-        'Atención',
-        'El pago fue exitoso pero hubo un error guardando la orden. Contacta a soporte con este ID: ' +
-          paymentIntentId,
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (error) {
+    return (
+      <Box flex={1} backgroundColor="background">
+        <Stack.Screen options={{ headerShown: false }} />
+        <GlobalHeader title={t('payment.securityTitle')} showBack />
+        <ErrorState
+          title={t('payment.errorTitle')}
+          message={error}
+          onRetry={retry}
+        />
+      </Box>
+    );
+  }
 
   return (
     <Box flex={1} backgroundColor="background">
-      <Stack.Screen options={{ title: 'Pago Seguro', headerShown: false }} />
-      <GlobalHeader
-        title="Procesar Pago"
-        showBack={true}
-        backgroundColor="cardBackground"
-      />
+      <Stack.Screen options={{ headerShown: false }} />
+      <GlobalHeader title={t('payment.securityTitle')} showBack={!loading} />
 
-      <ScreenLayout>
-        <Box flex={1} justifyContent="center" alignItems="center" padding="l">
-          <Text variant="header-xl" textAlign="center" marginBottom="m">
-            Estás a un paso
+      <Box flex={1} justifyContent="center" alignItems="center" padding="l">
+        {/* TARJETA DE ESTADO */}
+        <Box
+          backgroundColor="cardBackground"
+          padding="xl"
+          borderRadius="xl"
+          alignItems="center"
+          width="100%"
+          style={{
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.1,
+            shadowRadius: 12,
+            elevation: 5,
+          }}
+        >
+          {/* ICONO ANIMADO */}
+          <MotiView
+            from={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', damping: 15 }}
+          >
+            <Box
+              width={100}
+              height={100}
+              borderRadius="xl"
+              backgroundColor={isReady ? 'success' : 'background'}
+              justifyContent="center"
+              alignItems="center"
+              marginBottom="m"
+              borderWidth={isReady ? 0 : 1}
+              borderColor="separator"
+            >
+              <MaterialCommunityIcons
+                name={isReady ? 'shield-check' : 'shield-sync'}
+                size={50}
+                color={isReady ? 'white' : theme.colors.primary}
+              />
+            </Box>
+          </MotiView>
+
+          <Text variant="header-xl" textAlign="center" marginBottom="s">
+            {isReady ? t('payment.reservedTitle') : t('payment.reservingTitle')}
           </Text>
+
           <Text
             variant="body-md"
             color="textSecondary"
             textAlign="center"
             marginBottom="xl"
           >
-            Tu dinero estará protegido por Selene hasta que recibas el producto.
+            {isReady ? t('payment.reservedDesc') : t('payment.reservingDesc')}
           </Text>
 
-          {loading ? (
-            <Box alignItems="center">
-              <ActivityIndicator size="large" color="#bd9f65" />
-              <Text variant="body-sm" color="textSecondary" marginTop="s">
-                Procesando...
-              </Text>
+          {!loading && isReady && (
+            <Box marginBottom="l" width="100%">
+              <OrderPreviewStrip
+                items={items}
+                onPress={() => summaryModalRef.current?.present()}
+              />
             </Box>
-          ) : (
-            <PrimaryButton
-              onPress={openPaymentSheet}
-              disabled={!isReady}
-              icon="credit-card-check-outline"
-            >
-              Pagar ${total.toLocaleString('es-MX')}
-            </PrimaryButton>
           )}
+
+          {/* BOTÓN DE ACCIÓN */}
+          <Box width="100%" marginTop="m">
+            <PrimaryButton
+              onPress={onPayPress}
+              icon={isBusy ? undefined : 'lock'}
+              loading={isBusy}
+              disabled={isBusy || !isReady}
+            >
+              {isConfirming
+                ? 'Confirmando pago...'
+                : loading
+                  ? t('payment.processing')
+                  : `${t('payment.confirmBtn')} ${formatCurrency(paymentData?.amount || 0)}`}
+            </PrimaryButton>
+          </Box>
         </Box>
-      </ScreenLayout>
+
+        {/* FOOTER DE CONFIANZA (Corregido: Eliminado Box duplicado) */}
+        <Box
+          flexDirection="row"
+          alignItems="center"
+          marginTop="xl"
+          opacity={0.6}
+        >
+          <MaterialCommunityIcons
+            name="lock"
+            size={14}
+            color={theme.colors.textSecondary}
+          />
+          <Text variant="caption-md" color="textSecondary" marginLeft="xs">
+            {t('payment.securePayText')}
+          </Text>
+        </Box>
+      </Box>
+      <ProductSummaryModal innerRef={summaryModalRef} items={items} />
     </Box>
   );
 }

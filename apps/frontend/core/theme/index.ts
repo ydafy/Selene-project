@@ -50,8 +50,8 @@ const palette = {
   stateGray: '#1E1E1E',
   forest: '#28a745',
   fire: '#dc3545',
-  warning: 'rgba(220, 53, 69, 0.1)',
-  blueGray: 'rgba(255, 255, 255, 0.1)',
+  warning: '#dc35451a',
+  blueGray: '#ffffff1a',
   shadow: 'rgba(0,0,0,0.6)',
   transparent: '#00000000',
 };

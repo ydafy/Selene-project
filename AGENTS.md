@@ -143,7 +143,7 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 
 - Use React Query for server state error handling
 - Implement proper error boundaries
-- Use consistent error state components
+- Use consistent error state components like 'components/ui/errorState.tsx'
 - Follow Supabase error patterns
 
 ### Naming Conventions

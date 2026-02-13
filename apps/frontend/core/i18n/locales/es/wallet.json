@@ -1,0 +1,50 @@
+{
+  "screenTitle": "Mi Billetera",
+  "balance": {
+    "availableTitle": "SALDO DISPONIBLE",
+    "pendingTitle": "Saldo Pendiente"
+  },
+  "actions": {
+    "withdraw": "Retirar"
+  },
+  "history": {
+    "title": "Actividad reciente",
+    "balanceAfter": "Saldo final",
+    "emptyTitle": "Sin movimientos",
+    "emptyMessage": "Tus ventas y retiros aparecerán aquí."
+  },
+  "types": {
+    "sale_proceeds": "Venta de Hardware",
+    "payout": "Retiro de fondos",
+    "release": "Fondos liberados",
+    "refund": "Reembolso",
+    "adjustment": "Ajuste de cuenta"
+  },
+  "bankConfiguration": {
+    "configured": "Configurado",
+    "notConfigured": "No configurado",
+    "title": "Configurar Cuenta de Retiro",
+    "description": "Solo tú podrás ver estos datos. Se usan únicamente para depositar tus ganancias.",
+    "inputs": {
+      "holderName": {
+        "label": "Nombre del Titular",
+        "placeholder": "Como en tu cuenta"
+      },
+      "clabe": {
+        "label": "CLABE Interbancaria",
+        "placeholder": "18 dígitos"
+      }
+    },
+    "errors": {
+      "invalidClabe": "La CLABE es incorrecta",
+      "clabeLength": "Ingresa los 18 dígitos",
+      "holderNameLength": "Ingresa el nombre completo del titular"
+    },
+    "saveButton": "Guardar Cuenta",
+    "success": {
+      "title": "Cuenta Guardada",
+      "description": "Tus datos bancarios se han actualizado correctamente.",
+      "confirmButton": "Entendido"
+    }
+  }
+}

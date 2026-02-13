@@ -1,0 +1,25 @@
+{
+  "screenTitle": "My Wallet",
+
+  "balance": {
+    "availableTitle": "AVAILABLE BALANCE",
+
+    "pendingTitle": "Pending Balance"
+  },
+  "actions": {
+    "withdraw": "Withdraw"
+  },
+  "history": {
+    "title": "Recent Activity",
+    "balanceAfter": "Ending Balance",
+    "emptyTitle": "No Transactions",
+    "emptyMessage": "Your sales and withdrawals will appear here."
+  },
+  "types": {
+    "sale_proceeds": "Hardware Sale",
+    "payout": "Withdraw Funds",
+    "release": "Funds Released",
+    "refund": "Refund",
+    "adjustment": "Account Adjustment"
+  }
+}

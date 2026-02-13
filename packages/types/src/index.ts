@@ -80,19 +80,81 @@ export interface ShippingOption {
 export type OrderStatus =
   | 'pending'
   | 'paid'
-  | 'processing'
+  | 'preparing'
   | 'shipped'
   | 'delivered'
-  | 'cancelled';
+  | 'completed'
+  | 'cancelled'
+  | 'dispute'
+  | 'refunded';
+
+  // 2. Nuevas interfaces para la Billetera
+export type WalletTransactionType =
+  | 'sale_proceeds'
+  | 'payout'
+  | 'refund'
+  | 'adjustment'
+  | 'release';
+
+export interface Wallet {
+  id: string;
+  user_id: string;
+  pending_balance: number;
+  available_balance: number;
+  currency: string;
+  updated_at: string;
+}
+
+export interface WalletTransaction {
+  id: string;
+  wallet_id: string;
+  order_id?: string;
+  amount: number;
+  fee_deducted: number;
+  shipping_cost: number;
+  net_amount: number;
+  balance_after: number;
+  type: WalletTransactionType;
+  description?: string;
+  created_at: string;
+}
+export interface PayoutRequest {
+  id: string;
+  user_id: string;
+  wallet_id: string;
+  amount: number;
+  status: 'pending' | 'processing' | 'completed' | 'rejected';
+  bank_account_id: string;
+  requested_at: string;
+  processed_at?: string;
+  notes?: string;
+}
+
+export interface SellerBankAccount {
+  id: string;
+  user_id: string;
+  clabe: string;
+  bank_name?: string;
+  account_holder_name: string;
+  is_verified: boolean;
+  created_at: string;
+}
+
 
 export interface Order {
   id: string;
   buyer_id: string;
   total_amount: number;
+  service_fee_amount: number;
   stripe_payment_intent_id: string;
   status: OrderStatus;
   shipping_address: Address;
+  tracking_number?: string;
+  label_url?: string;
+  currency: string;
   created_at: string;
+  shipped_at?: string;
+  delivered_at?: string;
 }
 
 export interface OrderItem {

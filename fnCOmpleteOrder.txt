@@ -1,0 +1,31 @@
+
+DECLARE
+  v_order_id UUID;
+  v_addr_snapshot JSONB;
+  v_prod RECORD;
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.orders WHERE stripe_payment_intent_id = p_stripe_intent_id) THEN
+    RETURN QUERY SELECT true, 'ALREADY_PROCESSED'::TEXT;
+    RETURN;
+  END IF;
+
+  SELECT to_jsonb(a.*) INTO v_addr_snapshot FROM public.addresses a WHERE id = p_address_id;
+  IF v_addr_snapshot IS NULL THEN
+    RETURN QUERY SELECT false, 'ADDRESS_NOT_FOUND'::TEXT;
+    RETURN;
+  END IF;
+
+  INSERT INTO public.orders (buyer_id, stripe_payment_intent_id, total_amount, status, shipping_address, service_fee_amount)
+  VALUES (p_buyer_id, p_stripe_intent_id, p_total_amount, 'paid', v_addr_snapshot, p_service_fee)
+  RETURNING id INTO v_order_id;
+
+  FOR v_prod IN SELECT id, price, seller_id, shipping_cost FROM public.products WHERE id = ANY(p_product_ids) LOOP
+    INSERT INTO public.order_items (order_id, product_id, seller_id, price_at_purchase, commission_amount, shipping_amount, net_payout)
+    VALUES (v_order_id, v_prod.id, v_prod.seller_id, v_prod.price, (v_prod.price * 0.09), COALESCE(v_prod.shipping_cost, 0), (v_prod.price - (v_prod.price * 0.09) - COALESCE(v_prod.shipping_cost, 0)));
+    UPDATE public.products SET status = 'SOLD', updated_at = now() WHERE id = v_prod.id;
+  END LOOP;
+
+  RETURN QUERY SELECT true, NULL::TEXT;
+EXCEPTION WHEN OTHERS THEN
+  RETURN QUERY SELECT false, SQLERRM;
+END;

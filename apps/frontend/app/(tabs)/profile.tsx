@@ -27,6 +27,8 @@ import { ProfileFavoritesGrid } from '../../components/features/profile/ProfileF
 import { ProfileHeader } from '../../components/features/profile/ProfileHeader';
 import { useState } from 'react';
 import { theme } from '@/core/theme';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Pressable } from 'react-native-gesture-handler';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const logoIconPath = require('../../assets/images/SeleneLunaLogo.png');
@@ -228,6 +230,41 @@ const UserProfile = () => {
           </PrimaryButton>
         </Box>
       )}
+
+      <Box paddingHorizontal="m" marginTop="m">
+        <Pressable onPress={() => router.push('/profile/wallet')}>
+          <Box
+            backgroundColor="cardBackground"
+            padding="m"
+            borderRadius="m"
+            flexDirection="row"
+            alignItems="center"
+            justifyContent="space-between"
+          >
+            <Box flexDirection="row" alignItems="center">
+              <MaterialCommunityIcons
+                name="wallet"
+                size={24}
+                color={theme.colors.primary}
+              />
+              <Text variant="subheader-md" marginLeft="m">
+                Mi Billetera
+              </Text>
+            </Box>
+            <Box flexDirection="row" alignItems="center">
+              <Text variant="body-md" color="primary" marginRight="s">
+                {/* Aquí mostraremos el saldo rápido después */}
+                {/* {formatCurrency(wallet?.available_balance || 0)} */}
+              </Text>
+              <MaterialCommunityIcons
+                name="chevron-right"
+                size={20}
+                color={theme.colors.textSecondary}
+              />
+            </Box>
+          </Box>
+        </Pressable>
+      </Box>
 
       <ProfileActionsBar />
 

@@ -1,85 +1,63 @@
 import React from 'react';
+import { useTheme } from '@shopify/restyle';
 import { Product } from '@selene/types';
-
 import { Box, Text } from '../../base';
 import { AppImage } from '../../ui/AppImage';
 import { AppChip } from '../../ui/AppChip';
+import { Theme } from '../../../core/theme';
 import { formatCurrency } from '../../../core/utils/format';
 
-type CheckoutItemProps = {
+interface CheckoutItemProps {
   product: Product;
-};
+  isUnavailable?: boolean;
+}
 
-export const CheckoutItem = ({ product }: CheckoutItemProps) => {
+export const CheckoutItem = ({ product, isUnavailable }: CheckoutItemProps) => {
+  const theme = useTheme<Theme>();
+
   return (
     <Box
       flexDirection="row"
       backgroundColor="cardBackground"
       borderRadius="m"
       padding="s"
-      marginBottom="s" // Margen más pequeño que en el carrito
+      marginBottom="s"
       alignItems="center"
       borderWidth={1}
-      borderColor="background" // Borde sutil
-      style={{
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 1,
-      }}
+      borderColor={isUnavailable ? 'error' : 'background'}
+      opacity={isUnavailable ? 0.6 : 1}
     >
-      {/* 1. IMAGEN */}
       <Box
-        height={100} // Un poco más chica que en el carrito (100 -> 80)
-        width={100}
+        height={110}
+        width={110}
         borderRadius="s"
         overflow="hidden"
         backgroundColor="background"
         marginRight="m"
       >
         <AppImage
-          source={{ uri: product.images[0] }}
+          source={{
+            uri: product.images?.[0] || 'https://via.placeholder.com/80',
+          }}
           style={{ width: '100%', height: '100%' }}
           contentFit="cover"
         />
       </Box>
 
-      {/* 2. INFORMACIÓN */}
-      <Box
-        flex={1}
-        justifyContent="space-between"
-        minHeight={80}
-        paddingVertical="xs"
-      >
+      <Box flex={1} justifyContent="space-between" minHeight={80}>
         <Box>
-          <Text
-            variant="body-md"
-            fontWeight="bold"
-            numberOfLines={2} // Solo 1 línea para ahorrar espacio vertical
-            marginBottom="xs"
-            style={{ lineHeight: 30 }}
-          >
+          <Text variant="body-md" fontWeight="bold" numberOfLines={2}>
             {product.name}
           </Text>
-
-          {/* Chip más pequeño o solo texto */}
-          <Box flexDirection="row" alignItems="center">
+          <Box flexDirection="row" marginTop="xs">
             <AppChip
-              label={product.condition}
-              textColor="textSecondary"
-              backgroundColor="background"
-              style={{ height: 24, paddingHorizontal: 8 }} // Micro-ajuste
+              label={isUnavailable ? 'No disponible' : product.condition}
+              textColor={isUnavailable ? 'textPrimary' : 'textSecondary'}
+              backgroundColor={isUnavailable ? 'error' : 'background'}
             />
           </Box>
         </Box>
-
-        <Text
-          variant="body-md" // Un poco más chico que subheader
-          color="primary"
-          fontWeight="700"
-          marginTop="s"
-        >
+        <Text variant="body-md" color="primary" fontWeight="700">
           {formatCurrency(product.price)}
         </Text>
       </Box>

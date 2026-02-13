@@ -24,6 +24,8 @@ import esAddress from './locales/es/address.json';
 import enAddress from './locales/en/address.json';
 import esCheckout from './locales/es/checkout.json';
 import enCheckout from './locales/en/checkout.json';
+import esWallet from './locales/es/wallet.json';
+import enWallet from './locales/en/wallet.json';
 
 // ✨ 1. DEFINE LOS NAMESPACES (Nombres de nuestros archivos JSON)
 export const namespaces = [
@@ -38,6 +40,7 @@ export const namespaces = [
   'admin',
   'address',
   'checkout',
+  'wallet',
 ];
 // Definimos un tipo para asegurar que solo usamos namespaces que existen
 export type Namespace = (typeof namespaces)[number];
@@ -66,6 +69,7 @@ const resources = {
     admin: enAdmin,
     address: enAddress,
     checkout: enCheckout,
+    wallet: enWallet,
   },
   es: {
     common: esCommon,
@@ -79,6 +83,7 @@ const resources = {
     admin: esAdmin,
     address: esAddress,
     checkout: esCheckout,
+    wallet: esWallet,
   },
 };
 

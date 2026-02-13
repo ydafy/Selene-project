@@ -89,9 +89,9 @@ const BRAND_MAP: Record<string, BrandConfig> = {
     component: AmexIcon,
     scale: 1.2,
   },
-  masterCard: {
+  mastercard: {
     component: MasterCardIcon,
-    scale: 1.0,
+    scale: 1,
   },
 };
 

@@ -1,1 +1,94 @@
-{}
+{
+  "confirmPurchase": "Confirmar Compra",
+  "orderSummary": "Your order summary",
+  "reviewDetails": "Review the details before proceeding to payment",
+  "shipTo": "Ship to",
+  "products": "Products",
+  "address": {
+    "select": "Select a shipping address",
+    "missing": "Missing address",
+    "missingMessage": "Please select a shipping address.",
+    "phone": "Phone"
+  },
+
+  "summary": {
+    "subtotal": "Subtotal",
+    "shipping": "Shipping",
+    "protection": "Selene Protection",
+    "totalToPay": "Total to Pay",
+
+    "free": "Free",
+    "toCalculate": "To Calculate",
+    "calculating": "Calculating shipping...",
+    "termsText": "I accept the Terms of Purchase and Selene Protection.",
+    "validating": "Validating availability..."
+  },
+
+  "shipping": {
+    "freeWithEstafeta": "Free shipping with Estafeta",
+    "estafetaProtected": "Protected shipping",
+    "includesInsurance": "Includes insurance for the total value"
+  },
+
+  "alerts": {
+    "paymentError": "There was a problem with your payment method.",
+    "deleteConfirm": "Are you sure you want to delete this card?",
+    "carrierQuoteFailed": "Could not quote with {{carrier}}. Please try another option."
+  },
+  "actions": {
+    "pay": "Pay",
+    "changeAddress": "Change address",
+    "validation": {
+      "invalidProduct": "Product not available",
+      "invalidProductMsg": "The selected product is no longer available."
+    },
+
+    "dialogs": {
+      "protectionTitle": "Selene Protection",
+      "protectionDesc": "Your money is safe. If the hardware doesn't arrive, is damaged, or doesn't match the technical description, Selene protects your payment. Subject to Terms and Conditions."
+    }
+  },
+  "payment": {
+    "selectMethod": "Payment Method",
+    "expires": "Expires {{month}}/{{year}}",
+    "limitReached": "3-card limit reached",
+    "endingIn": "Ending in",
+    "securityTitle": "Payment Security",
+    "reservedTitle": "Hardware Reserved",
+    "reservingTitle": "Reserving Hardware...",
+    "reservedDesc": "We have reserved your products. Please complete your payment to finalize.",
+    "reservingDesc": "Checking availability and preparing a secure connection...",
+    "securePayText": "Payments processed securely",
+    "outOfStockTitle": "Out of Stock",
+    "providerErrorTitle": "Gateway Error",
+    "providerErrorMsg": "Stripe is experiencing problems. Please try again in a few minutes.",
+    "criticalError": "An unexpected error occurred while preparing the payment",
+    "failedTitle": "Payment failed",
+    "confirmBtn": "Confirm Payment",
+    "confirmA11y": "Confirm payment of {{amount}}",
+    "errorTitle": "We were unable to initiate the payment",
+    "processing": "Processing...",
+    "noAddressError": "Missing shipping address.",
+    "outOfStockMsg": "Someone else just purchased one of your products.",
+    "genericError": "An error occurred while connecting to the server."
+  },
+  "success": {
+    "title": "Payment Confirmed!",
+    "description": "Your purchase is complete! The seller will receive the shipping label shortly.",
+    "viewOrders": "Go to My Orders",
+    "backHome": "Back to Home",
+    "secureText": "Purchase protected by Selene"
+  },
+
+  "errors": {
+    "shippingFailed": "Shipping could not be calculated.",
+    "selfPurchase": "You cannot purchase a product listed by you.",
+    "shippingFailedMsg": "There was a problem calculating the shipping cost. Please try again.",
+    "itemUnavailable": "The product \"{{productName}}\"} is no longer available.",
+    "genericStockError": "Some products in your cart are no longer available.",
+    "termsRequired": "You must accept the terms to continue.",
+    "incompleteTitle": "Incomplete information.",
+    "incompleteMsg": "By Please complete the missing fields.",
+    "retry": "Retry"
+  }
+}

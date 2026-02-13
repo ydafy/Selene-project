@@ -1,4 +1,5 @@
-import React, { useCallback, useMemo } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import React, { useMemo, useState } from 'react';
 import {
   TouchableOpacity,
   ScrollView,
@@ -20,49 +21,44 @@ import { usePaymentMethods } from '../../../core/hooks/usePaymentMethods';
 import { useCheckoutStore } from '../../../core/store/useCheckoutStore';
 import { PaymentMethod } from '@selene/types';
 import { EmptyState } from '../../ui/EmptyState';
+import { ErrorState } from '../../ui/ErrorState'; // Importado
 import { BrandIcon } from '../../ui/BrandIcon';
+import { ConfirmDialog } from '../../ui/ConfirmDialog';
 
 const MAX_CARDS = 3;
 
-type PaymentMethodPickerModalProps = {
-  innerRef: React.RefObject<BottomSheetModal | null>;
-};
-
 export const PaymentMethodPickerModal = ({
   innerRef,
-}: PaymentMethodPickerModalProps) => {
+}: {
+  innerRef: React.RefObject<BottomSheetModal | null>;
+}) => {
   const theme = useTheme<Theme>();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
-  // Hook de lógica (CRUD y Stripe Config)
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [methodToDelete, setMethodToDelete] = useState<PaymentMethod | null>(
+    null,
+  );
+
   const {
     methods,
     isLoadingMethods,
+    listError, // Detectamos error de carga
     getSetupConfig,
     isConfiguring,
     refreshMethods,
+    deleteMethod,
+    isDeleting,
   } = usePaymentMethods();
+
   const { selectedPaymentMethodId, setSelectedPaymentMethodId } =
     useCheckoutStore();
 
-  // Configuración del Sheet (Copiado de AddressPickerModal)
-  const snapPoints = useMemo(() => ['60%'], []);
+  const snapPoints = useMemo(() => ['65%'], []);
 
-  const renderBackdrop = useCallback(
-    (props: React.ComponentProps<typeof BottomSheetBackdrop>) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        pressBehavior="close"
-      />
-    ),
-    [],
-  );
-
-  // Handler para agregar tarjeta vía Stripe
   const handleAddCard = async () => {
     try {
+      const currentCount = methods.length;
       const config = await getSetupConfig();
 
       const { error: initError } = await initPaymentSheet({
@@ -70,42 +66,71 @@ export const PaymentMethodPickerModal = ({
         setupIntentClientSecret: config.setupIntent,
         customerId: config.customer,
         customerEphemeralKeySecret: config.ephemeralKey,
+        // --- PERSONALIZACIÓN DE DISEÑO ---
         appearance: {
-          colors: { primary: theme.colors.primary },
+          shapes: {
+            borderRadius: 12, // Coincide con tus cardStyles
+            borderWidth: 1,
+          },
+          colors: {
+            primary: theme.colors.primary,
+            background: theme.colors.cardBackground,
+            componentBackground: theme.colors.background,
+            primaryText: theme.colors.textPrimary,
+            secondaryText: theme.colors.textPrimary,
+            componentText: theme.colors.textPrimary,
+            placeholderText: theme.colors.textSecondary,
+            icon: theme.colors.primary,
+            error: theme.colors.error,
+          },
+        },
+        // Opcional: Habilitar Google Pay si lo configuraste en app.json
+        googlePay: {
+          merchantCountryCode: 'MX',
+          testEnv: true, // Cambiar a false en producción
         },
       });
 
       if (initError) throw new Error(initError.message);
-
       const { error: presentError } = await presentPaymentSheet();
+      if (presentError) return;
 
-      if (presentError) {
-        if (presentError.code !== 'Canceled')
-          Alert.alert('Error', presentError.message);
-        return;
-      }
-
-      // Éxito: Esperamos al Webhook y refrescamos
-      Alert.alert('Éxito', 'Tarjeta guardada correctamente.');
-      setTimeout(() => refreshMethods(), 2000);
-    } catch (e: { message?: string }) {
+      // Sincronización optimista
+      setIsSyncing(true);
+      setTimeout(async () => {
+        const { data } = await refreshMethods();
+        if (data && data.length > currentCount) {
+          setSelectedPaymentMethodId(data[0].id);
+        }
+        setIsSyncing(false);
+      }, 2500);
+    } catch (e: any) {
       Alert.alert(
         'Error',
-        e.message === 'limit_reached'
-          ? 'Límite de 3 tarjetas alcanzado'
-          : e.message || 'Error desconocido',
+        e.message === 'limit_reached' ? 'Límite alcanzado' : e.message,
       );
     }
   };
 
-  const handleSelect = (method: PaymentMethod) => {
-    setSelectedPaymentMethodId(method.id);
-    innerRef.current?.dismiss();
+  const handleDelete = async () => {
+    if (!methodToDelete) return;
+    try {
+      // FIX: Si borramos la seleccionada, limpiamos el store antes del borrado físico
+      if (selectedPaymentMethodId === methodToDelete.id) {
+        setSelectedPaymentMethodId(null);
+      }
+
+      await deleteMethod(methodToDelete.id);
+      setMethodToDelete(null);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (e: any) {
+      Alert.alert('Error', 'No se pudo eliminar la tarjeta.');
+    }
   };
 
-  // Renderizado de Contenido (Tu patrón de ScrollView)
   const renderContent = () => {
-    if (isLoadingMethods) {
+    // 1. Estado de Carga
+    if (isLoadingMethods && !isSyncing) {
       return (
         <Box flex={1} justifyContent="center" alignItems="center" padding="xl">
           <ActivityIndicator color={theme.colors.primary} />
@@ -113,6 +138,17 @@ export const PaymentMethodPickerModal = ({
       );
     }
 
+    // 2. Estado de Error (Uso de ErrorState)
+    if (listError) {
+      return (
+        <ErrorState
+          onRetry={() => refreshMethods()}
+          message="No pudimos cargar tus tarjetas. Revisa tu conexión."
+        />
+      );
+    }
+
+    // 3. Estado Vacío
     if (!methods || methods.length === 0) {
       return (
         <Box flex={1} justifyContent="center" padding="xl">
@@ -125,6 +161,7 @@ export const PaymentMethodPickerModal = ({
       );
     }
 
+    // 4. Lista de Tarjetas
     return (
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -133,25 +170,33 @@ export const PaymentMethodPickerModal = ({
         {methods.map((item) => {
           const isSelected = selectedPaymentMethodId === item.id;
           return (
-            <TouchableOpacity
+            <Box
               key={item.id}
-              onPress={() => handleSelect(item)}
-              activeOpacity={0.7}
+              flexDirection="row"
+              alignItems="center"
+              marginBottom="s"
+              backgroundColor="cardBackground"
+              borderRadius="m"
+              borderWidth={1}
+              borderColor={isSelected ? 'primary' : 'separator'}
+              overflow="hidden" // Para que el ripple de selección respete los bordes
             >
-              <Box
-                padding="m"
-                borderRadius="m"
-                marginBottom="s"
-                flexDirection="row"
-                alignItems="center"
-                backgroundColor="cardBackground"
-                borderWidth={1}
-                borderColor={isSelected ? 'primary' : 'background'}
+              <TouchableOpacity
+                onPress={() => {
+                  setSelectedPaymentMethodId(item.id);
+                  innerRef.current?.dismiss();
+                }}
+                style={{
+                  flex: 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  padding: 16,
+                }}
+                activeOpacity={0.6}
               >
                 <Box width={40} alignItems="center">
                   <BrandIcon name={item.brand.toLowerCase()} size={24} />
                 </Box>
-
                 <Box flex={1} marginLeft="m">
                   <Text variant="body-md" fontWeight="bold">
                     •••• {item.last4}
@@ -161,34 +206,41 @@ export const PaymentMethodPickerModal = ({
                     color="textSecondary"
                     style={{ textTransform: 'capitalize' }}
                   >
-                    {item.brand} - Exp: {item.exp_month}/{item.exp_year}
+                    {item.brand} - {item.exp_month}/{item.exp_year}
                   </Text>
                 </Box>
-
                 <MaterialCommunityIcons
                   name={isSelected ? 'radiobox-marked' : 'radiobox-blank'}
-                  size={24}
+                  size={22}
                   color={
                     isSelected
                       ? theme.colors.primary
                       : theme.colors.textSecondary
                   }
                 />
-              </Box>
-            </TouchableOpacity>
+              </TouchableOpacity>
+
+              {/* BOTÓN ELIMINAR INTEGRADO */}
+              <Box
+                width={1}
+                height="60%"
+                backgroundColor="separator"
+                opacity={0.5}
+              />
+              <TouchableOpacity
+                onPress={() => setMethodToDelete(item)}
+                style={{ paddingHorizontal: 16, paddingVertical: 20 }}
+                hitSlop={{ top: 10, bottom: 10, left: 5, right: 10 }}
+              >
+                <MaterialCommunityIcons
+                  name="trash-can-outline"
+                  size={22}
+                  color={theme.colors.error}
+                />
+              </TouchableOpacity>
+            </Box>
           );
         })}
-
-        {methods.length >= MAX_CARDS && (
-          <Text
-            variant="caption-md"
-            textAlign="center"
-            color="textSecondary"
-            marginTop="m"
-          >
-            Límite de {MAX_CARDS} tarjetas alcanzado.
-          </Text>
-        )}
       </ScrollView>
     );
   };
@@ -198,13 +250,17 @@ export const PaymentMethodPickerModal = ({
       ref={innerRef}
       index={0}
       snapPoints={snapPoints}
-      enablePanDownToClose={true}
-      backdropComponent={renderBackdrop}
+      backdropComponent={(props) => (
+        <BottomSheetBackdrop
+          {...props}
+          disappearsOnIndex={-1}
+          appearsOnIndex={0}
+          pressBehavior="close"
+        />
+      )}
       backgroundStyle={{ backgroundColor: theme.colors.cardBackground }}
-      handleIndicatorStyle={{ backgroundColor: theme.colors.textSecondary }}
     >
       <BottomSheetView style={{ flex: 1 }}>
-        {/* 1. HEADER */}
         <Box
           paddingVertical="m"
           borderBottomWidth={1}
@@ -214,10 +270,9 @@ export const PaymentMethodPickerModal = ({
           <Text variant="subheader-md">Mis Métodos de Pago</Text>
         </Box>
 
-        {/* 2. BOTÓN AÑADIR (Fijo arriba como en direcciones) */}
         <TouchableOpacity
           onPress={handleAddCard}
-          disabled={isConfiguring || (methods && methods.length >= MAX_CARDS)}
+          disabled={isConfiguring || isSyncing || methods.length >= MAX_CARDS}
           activeOpacity={0.7}
         >
           <Box
@@ -228,13 +283,25 @@ export const PaymentMethodPickerModal = ({
             borderBottomWidth={1}
             borderBottomColor="background"
             opacity={
-              isConfiguring || (methods && methods.length >= MAX_CARDS)
+              isConfiguring || isSyncing || methods.length >= MAX_CARDS
                 ? 0.5
                 : 1
             }
           >
-            {isConfiguring ? (
-              <ActivityIndicator size="small" color={theme.colors.primary} />
+            {isConfiguring || isSyncing ? (
+              <Box flexDirection="row" alignItems="center">
+                <ActivityIndicator size="small" color={theme.colors.primary} />
+                <Text
+                  variant="body-md"
+                  color="primary"
+                  marginLeft="s"
+                  fontWeight="bold"
+                >
+                  {isSyncing
+                    ? 'Verificando tarjeta...'
+                    : 'Conectando con Stripe...'}
+                </Text>
+              </Box>
             ) : (
               <>
                 <MaterialCommunityIcons
@@ -255,8 +322,19 @@ export const PaymentMethodPickerModal = ({
           </Box>
         </TouchableOpacity>
 
-        {/* 3. LISTA (Flex 1) */}
         <Box flex={1}>{renderContent()}</Box>
+
+        <ConfirmDialog
+          visible={!!methodToDelete}
+          title="Eliminar tarjeta"
+          description={`¿Estás seguro de que quieres eliminar la tarjeta terminada en ${methodToDelete?.last4}?`}
+          icon="alert-circle-outline"
+          isDangerous
+          confirmLabel="Eliminar"
+          loading={isDeleting}
+          onConfirm={handleDelete}
+          onCancel={() => setMethodToDelete(null)}
+        />
       </BottomSheetView>
     </BottomSheetModal>
   );

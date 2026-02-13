@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "selene",
+
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -49,6 +50,13 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.selene.marketplace",
+          "enableGooglePay": true
+        }
+      ],
       [
         "@react-native-google-signin/google-signin",
         {

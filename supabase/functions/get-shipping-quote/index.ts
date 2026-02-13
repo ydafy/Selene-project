@@ -122,22 +122,14 @@ serve(async (req) => {
 
     // Ordenar por precio y tomar el más barato de Estafeta
     const rates = resData.data
-      .map(
-        (rate: {
-          carrier: string;
-          service: string;
-          totalPrice: string | number;
-          currency: string;
-          deliveryEstimate: string;
-        }) => ({
-          carrier: rate.carrier,
-          service: rate.service,
-          price: Math.ceil(Number(rate.totalPrice) + 50),
-          currency: rate.currency,
-          deliveryEstimate: rate.deliveryEstimate,
-        }),
-      )
-      .sort((a: { price: number }, b: { price: number }) => a.price - b.price);
+      .map((rate: any) => ({
+        carrier: rate.carrier,
+        service: rate.service,
+        price: Math.ceil(Number(rate.totalPrice) + 50),
+        currency: rate.currency,
+        deliveryEstimate: rate.deliveryEstimate,
+      }))
+      .sort((a: any, b: any) => a.price - b.price);
 
     return new Response(JSON.stringify({ rates: [rates[0]] }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

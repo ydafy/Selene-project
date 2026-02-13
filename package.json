@@ -5,6 +5,23 @@
     "apps/*",
     "packages/*"
   ],
+  "trustedDependencies": [
+    "supabase"
+  ],
+  "overrides": {
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "expo": "54.0.33",
+    "@expo/vector-icons": "15.0.3",
+    "expo-constants": "18.0.13",
+    "expo-file-system": "19.0.21",
+    "expo-font": "14.0.11",
+    "expo-linking": "8.0.11",
+    "expo-asset": "12.0.12",
+    "expo-modules-core": "3.0.29",
+    "react-native-get-random-values": "~1.11.0",
+    "@stripe/stripe-react-native": "0.50.3"
+  },
   "scripts": {
     "frontend": "cd apps/frontend && bun run start",
     "backend": "cd apps/backend && bun run dev",
@@ -13,7 +30,7 @@
     "eas:configure": "cd apps/frontend && bunx eas build:configure",
     "lint": "bunx eslint . --ext .js,.jsx,.ts,.tsx",
     "format": "bunx prettier --write .",
-    "prepare": "if [ \"$CI\" != \"true\" ]; then bunx husky; fi"
+    "prepare": "bunx husky install || true"
   },
   "dependencies": {
     "@shopify/restyle": "^2.4.5",

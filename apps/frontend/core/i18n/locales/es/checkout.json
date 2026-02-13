@@ -31,7 +31,9 @@
   },
 
   "alerts": {
-    "carrierQuoteFailed": "No pudimos cotizar con {{carrier}}. Intenta otra opción."
+    "paymentError": "Hubo un problema con tu método de pago.",
+    "deleteConfirm": "¿Estás seguro de que quieres eliminar esta tarjeta?",
+    "carrierQuoteFailed": "No se pudo cotizar con {{carrier}}. Intenta otra opción."
   },
 
   "actions": {
@@ -45,8 +47,42 @@
   },
 
   "dialogs": {
-    "title": "Protección Selene",
-    "description": "Tu dinero está seguro. Si el hardware no llega, está dañado o no coincide con la descripción técnica, Selene protege tu pago. Sujeto a Términos y Condiciones."
+    "protectionTitle": "Protección Selene",
+    "protectionDesc": "Tu dinero está seguro. Si el hardware no llega, está dañado o no coincide con la descripción técnica, Selene protege tu pago. Sujeto a Términos y Condiciones."
+  },
+  "payment": {
+    "selectMethod": "Método de pago",
+    "expires": "Expira {{month}}/{{year}}",
+    "limitReached": "Límite de 3 tarjetas alcanzado",
+    "endingIn": "terminada en",
+    "securityTitle": "Seguridad de Pago",
+    "reservedTitle": "Hardware Apartado",
+    "reservingTitle": "Apartando Hardware...",
+    "reservedDesc": "Hemos reservado tus productos. Completa el pago para finalizar.",
+    "reservingDesc": "Verificando disponibilidad y preparando conexión segura...",
+    "securePayText": "Pagos procesados de forma segura",
+    "outOfStockTitle": "Agotado",
+
+    "providerErrorTitle": "Error de Pasarela",
+    "providerErrorMsg": "Stripe está experimentando problemas. Intenta en unos minutos.",
+
+    "criticalError": "Ocurrió un error inesperado al preparar el pago.",
+    "failedTitle": "Pago fallido",
+    "confirmBtn": "Confirmar Pago",
+    "confirmA11y": "Confirmar pago de {{amount}}",
+    "errorTitle": "No pudimos iniciar el pago",
+    "processing": "Procesando...",
+    "noAddressError": "Falta la dirección de envío.",
+    "outOfStockMsg": "Alguien más acaba de comprar uno de tus productos.",
+    "genericError": "Ocurrió un error al conectar con el servidor."
+  },
+
+  "success": {
+    "title": "¡Pago Confirmado!",
+    "description": "Tu compra ha sido completada!. El vendedor recibirá la guía de envío en breve.",
+    "viewOrders": "Ir a Mis Pedidos",
+    "backHome": "Volver al Inicio",
+    "secureText": "Compra protegida por Selene"
   },
 
   "errors": {
@@ -56,6 +92,8 @@
     "itemUnavailable": "El producto \"{{productName}}\" ya no está disponible.",
     "genericStockError": "Algunos productos en tu carrito ya no están disponibles.",
     "termsRequired": "Debes aceptar los términos para continuar.",
+    "incompleteTitle": "Información incompleta",
+    "incompleteMsg": "Por favor, completa los campos faltantes.",
     "retry": "Reintentar"
   }
 }

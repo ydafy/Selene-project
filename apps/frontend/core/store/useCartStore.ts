@@ -9,6 +9,8 @@ interface CartState {
   removeItem: (productId: string) => void;
   clearCart: () => void;
   isInCart: (productId: string) => boolean;
+  // Helper to get item count without recalculating in components
+  getItemCount: () => number;
 }
 
 export const useCartStore = create<CartState>()(
@@ -36,10 +38,12 @@ export const useCartStore = create<CartState>()(
       isInCart: (productId) => {
         return get().items.some((item) => item.id === productId);
       },
+
+      getItemCount: () => get().items.length,
     }),
     {
-      name: 'selene-cart-storage', // Nombre único para guardar en el disco
-      storage: createJSONStorage(() => AsyncStorage), // Usamos el storage nativo
+      name: 'selene-cart-storage',
+      storage: createJSONStorage(() => AsyncStorage),
     },
   ),
 );

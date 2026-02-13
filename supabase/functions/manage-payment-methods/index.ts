@@ -5,96 +5,80 @@ import Stripe from 'https://esm.sh/stripe@12.0.0';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
+    'authorization, x-client-info, apikey, content-type, idempotency-key',
 };
 
-const APP_NAME = 'selene';
-
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-  apiVersion: '2022-11-15',
+  apiVersion: '2025-12-15.clover',
   httpClient: Stripe.createFetchHttpClient(),
 });
 
-// Helper de logging estructurado
-const log = (
-  level: 'info' | 'error' | 'warn',
-  message: string,
-  meta?: Record<string, unknown>,
-) => {
-  console.log(
-    JSON.stringify({
-      timestamp: new Date().toISOString(),
-      level,
-      message,
-      function: 'manage-payment-methods',
-      ...meta,
-    }),
-  );
-};
+const APP_NAME = 'selene';
+
+// FUNCIÓN DE FALLBACK PARA UUID (Universal)
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0,
+      v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS')
     return new Response('ok', { headers: corsHeaders });
 
   try {
+    console.log('[MANAGE-PAYMENT-METHODS] Request received');
+    console.log('[MANAGE-PAYMENT-METHODS] Method:', req.method);
+    console.log(
+      '[MANAGE-PAYMENT-METHODS] Headers:',
+      Object.fromEntries(req.headers.entries()),
+    );
+
+    const authHeader = req.headers.get('Authorization');
+    console.log(
+      '[MANAGE-PAYMENT-METHODS] Auth header:',
+      authHeader ? authHeader.substring(0, 20) + '...' : 'MISSING',
+    );
+    if (!authHeader) throw new Error('MISSING_AUTH_HEADER');
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      },
+      { global: { headers: { Authorization: authHeader } } },
     );
 
     const {
       data: { user },
       error: authError,
     } = await supabaseClient.auth.getUser();
+    console.log('[MANAGE-PAYMENT-METHODS] Auth result:', {
+      user: user?.id,
+      authError: authError?.message,
+    });
+    if (authError || !user) throw new Error('AUTH_REQUIRED');
 
-    if (authError || !user) {
-      log('warn', 'Authentication failed', { error: authError?.message });
-      throw new Error('AUTH_REQUIRED');
+    let requestBody;
+    try {
+      requestBody = await req.json();
+      console.log('[MANAGE-PAYMENT-METHODS] Request body:', requestBody);
+    } catch (jsonError) {
+      console.error('[MANAGE-PAYMENT-METHODS] JSON parse error:', jsonError);
+      throw new Error('INVALID_JSON_BODY');
     }
 
-    const { action, paymentMethodId } = await req.json();
+    const { action, paymentMethodId } = requestBody;
 
-    log('info', 'Action received', { action, userId: user.id });
-
-    // Health check endpoint
-    if (action === 'health') {
-      try {
-        await stripe.customers.list({ limit: 1 });
-        return new Response(JSON.stringify({ status: 'ok' }), { status: 200 });
-      } catch (err) {
-        log('error', 'Health check failed', { error: err.message });
-        return new Response(
-          JSON.stringify({ status: 'error', message: err.message }),
-          { status: 503 },
-        );
-      }
-    }
-
-    // Obtener Perfil
-    const { data: profile, error: profileError } = await supabaseClient
+    let { data: profile } = await supabaseClient
       .from('profiles')
-      .select('stripe_customer_id, username')
+      .select('stripe_customer_id')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
-    if (profileError) {
-      log('error', 'Profile not found', {
-        userId: user.id,
-        error: profileError.message,
-      });
-      throw new Error('PROFILE_NOT_FOUND');
-    }
+    let customerId = profile?.stripe_customer_id;
 
-    let customerId = profile.stripe_customer_id;
-
-    // Crear cliente si no existe
     if (!customerId) {
-      log('info', 'Creating new Stripe customer', { userId: user.id });
       const customer = await stripe.customers.create({
         email: user.email,
         metadata: { supabase_user_id: user.id },
@@ -104,32 +88,38 @@ serve(async (req) => {
         .from('profiles')
         .update({ stripe_customer_id: customerId })
         .eq('id', user.id);
-      log('info', 'Stripe customer created', { userId: user.id, customerId });
     }
 
     switch (action) {
       case 'get_setup_config': {
-        const { count } = await supabaseClient
+        console.log(
+          '[MANAGE-PAYMENT-METHODS] Processing get_setup_config for user:',
+          user.id,
+        );
+
+        const { count, error: countError } = await supabaseClient
           .from('payment_methods')
           .select('*', { count: 'exact', head: true })
           .eq('user_id', user.id);
 
-        if (count && count >= 3) {
-          log('warn', 'Payment method limit reached', {
-            userId: user.id,
-            count,
-          });
-          throw new Error('PAYMENT_LIMIT_REACHED');
-        }
+        console.log(
+          '[MANAGE-PAYMENT-METHODS] Payment methods count:',
+          count,
+          'Error:',
+          countError,
+        );
+
+        if (count && count >= 3) throw new Error('PAYMENT_LIMIT_REACHED');
+
+        // CORRECCIÓN: Usamos nuestro generador universal
+        const idempotencyKey =
+          req.headers.get('idempotency-key') || generateUUID();
 
         const ephemeralKey = await stripe.ephemeralKeys.create(
           { customer: customerId },
           { apiVersion: '2022-11-15' },
         );
-
-        // Idempotencia: usar header del cliente o generar UUID
-        const idempotencyKey =
-          req.headers.get('idempotency-key') || crypto.randomUUID();
+        console.log('[MANAGE-PAYMENT-METHODS] Ephemeral key created');
 
         const setupIntent = await stripe.setupIntents.create(
           {
@@ -139,87 +129,100 @@ serve(async (req) => {
           },
           { idempotencyKey },
         );
+        console.log('[MANAGE-PAYMENT-METHODS] Setup intent created');
 
-        log('info', 'Setup config generated', { userId: user.id, customerId });
+        const responseData = {
+          setupIntent: setupIntent.client_secret,
+          ephemeralKey: ephemeralKey.secret,
+          customer: customerId,
+          publishableKey: Deno.env.get('STRIPE_PUBLISHABLE_KEY'),
+        };
+        console.log('[MANAGE-PAYMENT-METHODS] Returning setup config');
 
-        return new Response(
-          JSON.stringify({
-            setupIntent: setupIntent.client_secret,
-            ephemeralKey: ephemeralKey.secret,
-            customer: customerId,
-            publishableKey: Deno.env.get('STRIPE_PUBLISHABLE_KEY'),
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-        );
+        return new Response(JSON.stringify(responseData), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
 
       case 'list_payment_methods': {
+        console.log(
+          '[MANAGE-PAYMENT-METHODS] Processing list_payment_methods for user:',
+          user.id,
+        );
+
         const { data: methods, error: listError } = await supabaseClient
           .from('payment_methods')
           .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
 
-        if (listError) {
-          log('error', 'Failed to list payment methods', {
-            userId: user.id,
-            error: listError.message,
-          });
-          throw listError;
-        }
+        console.log(
+          '[MANAGE-PAYMENT-METHODS] Payment methods found:',
+          methods?.length || 0,
+          'Error:',
+          listError,
+        );
 
-        log('info', 'Payment methods listed', {
-          userId: user.id,
-          count: methods?.length || 0,
-        });
-
-        return new Response(JSON.stringify({ methods }), {
+        return new Response(JSON.stringify({ methods: methods || [] }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
       case 'delete_payment_method': {
-        if (!paymentMethodId) {
-          throw new Error('PAYMENT_METHOD_ID_REQUIRED');
-        }
-
-        const { data: pm, error: findError } = await supabaseClient
+        const { data: pm } = await supabaseClient
           .from('payment_methods')
           .select('stripe_payment_method_id')
           .eq('id', paymentMethodId)
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
-        if (findError || !pm) {
-          log('warn', 'Payment method not found for deletion', {
-            userId: user.id,
-            paymentMethodId,
-          });
-          throw new Error('PAYMENT_METHOD_NOT_FOUND');
+        if (!pm) {
+          // Si no está en nuestra DB, para nosotros ya está borrada
+          return new Response(
+            JSON.stringify({ success: true, message: 'Already deleted' }),
+            {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            },
+          );
         }
 
-        await stripe.paymentMethods.detach(pm.stripe_payment_method_id);
-        await supabaseClient
+        try {
+          // Intentamos desvincular de Stripe
+          await stripe.paymentMethods.detach(pm.stripe_payment_method_id);
+          console.log(
+            `[STRIPE] Tarjeta ${pm.stripe_payment_method_id} desvinculada.`,
+          );
+        } catch (stripeError) {
+          // Si Stripe da error (ej: la tarjeta ya no existe allá),
+          // logueamos pero NO lanzamos error para poder limpiar nuestra DB.
+          console.warn(
+            `[STRIPE WARNING] No se pudo desvincular en Stripe: ${stripeError.message}`,
+          );
+        }
+
+        // Borramos de nuestra DB pase lo que pase con Stripe
+        const { error: dbError } = await supabaseClient
           .from('payment_methods')
           .delete()
           .eq('id', paymentMethodId);
 
-        log('info', 'Payment method deleted', {
-          userId: user.id,
-          paymentMethodId,
-        });
+        if (dbError) throw new Error(`DB_DELETE_FAILED: ${dbError.message}`);
 
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-
       default:
-        log('warn', 'Invalid action', { action, userId: user.id });
+        console.log('[MANAGE-PAYMENT-METHODS] Invalid action:', action);
         throw new Error('INVALID_ACTION');
     }
   } catch (error) {
-    log('error', 'Request processing error', { error: error.message });
+    console.error(
+      '[MANAGE-PAYMENT-METHODS] ERROR:',
+      error.message,
+      'Stack:',
+      error.stack,
+    );
     return new Response(JSON.stringify({ error: error.message }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
