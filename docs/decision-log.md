@@ -82,3 +82,31 @@ De forma inesperada:
 - `bun run frontend` funciona correctamente.
 - EAS Build deja de fallar en la fase de dependencias.
 - Entorno local y CI quedan sincronizados.
+
+## 2026-02-12: App se cierra después de una EAS Build (Expo + Bun Monorepo)
+
+**Decisión:**
+Si una **EAS build termina bien** pero la app abre en blanco y se cierra sola, **NO** hacer limpieza nuclear. Primero ejecutar:
+
+cd apps/frontend
+bunx expo-doctor
+
+**Contexto:**
+Después de instalar nuevas librerías con `expo install`, Bun + Expo + Monorepo puede dejar el **cache de Metro inconsistente** aunque:
+
+- El lockfile esté bien
+- No haya errores de dependencias
+- `expo doctor` muestre duplicados
+- La EAS build haya sido exitosa
+
+El problema **no es nativo**, es del bundler JS (Metro).
+
+**Consecuencia (flujo correcto):**
+
+1. EAS build pasa pero la app se cierra
+2. Ir a `apps/frontend`
+3. Ejecutar `npx expo start -c`
+4. La app vuelve a abrir normalmente sin tocar nada más
+
+**Nota:**
+La limpieza nuclear solo aplica cuando fallan comandos, plugins, `expo config` o la fase de `Install dependencies` en EAS.

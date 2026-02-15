@@ -1,6 +1,6 @@
 import React from 'react';
 import { Controller } from 'react-hook-form';
-import { ActivityIndicator, TouchableOpacity } from 'react-native';
+import { ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { Box, Text } from '@/components/base';
@@ -16,6 +16,7 @@ import {
 } from '@/core/constants/product-data';
 import { useTheme } from '@shopify/restyle';
 import { Theme } from '@/core/theme';
+import { useSellStore } from '@/core/store/useSellStore';
 
 type SellDetailsFormProps = ReturnType<typeof useSellDetailsForm>;
 
@@ -36,6 +37,25 @@ export const SellDetailsForm: React.FC<SellDetailsFormProps> = ({
 
   const price = watchedValues[0] as string;
   const originZip = watchedValues[3] as string;
+  const { updateDraft } = useSellStore();
+
+  // 2. NUEVA FUNCIÓN WRAPPER
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleFormSubmit = (data: any) => {
+    // A. Guardamos el costo de envío calculado en el draft
+    // earnings.shippingCost es el valor numérico que viene de la API
+    if (earnings?.shippingCost) {
+      updateDraft({
+        shipping_cost: earnings.shippingCost.toString(),
+      });
+      console.log('[SellForm] Shipping cost saved:', earnings.shippingCost);
+    } else {
+      console.warn('[SellForm] No shipping cost available to save');
+    }
+
+    // B. Ejecutamos la lógica original (guardar resto de datos y navegar)
+    onSubmit(data);
+  };
 
   return (
     <>
@@ -410,7 +430,7 @@ export const SellDetailsForm: React.FC<SellDetailsFormProps> = ({
       {/* BOTÓN DE ACCIÓN FINAL */}
       <Box height={30} />
       <PrimaryButton
-        onPress={handleSubmit(onSubmit)}
+        onPress={handleSubmit(handleFormSubmit)}
         disabled={!isValid || isQuoting}
       >
         {t('fields.next')}

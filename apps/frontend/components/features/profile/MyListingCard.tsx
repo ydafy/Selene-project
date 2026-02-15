@@ -174,7 +174,6 @@ export const MyListingCard = ({
                     marginLeft="xs"
                     style={{
                       color: actionConfig.textColor,
-                      fontWeight: 'bold',
                     }}
                   >
                     {actionConfig.label}

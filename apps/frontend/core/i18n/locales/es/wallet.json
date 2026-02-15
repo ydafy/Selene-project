@@ -2,7 +2,9 @@
   "screenTitle": "Mi Billetera",
   "balance": {
     "availableTitle": "SALDO DISPONIBLE",
-    "pendingTitle": "Saldo Pendiente"
+    "pendingTitle": "Saldo Pendiente",
+    "infoEscrowTitle": "Sobre tu saldo pendiente",
+    "infoEscrow": "Este dinero está protegido por Selene. Se liberará automáticamente 48 horas después de que el comprador reciba su producto, siempre y cuando no haya una disputa abierta."
   },
   "actions": {
     "withdraw": "Retirar"
@@ -19,6 +21,14 @@
     "release": "Fondos liberados",
     "refund": "Reembolso",
     "adjustment": "Ajuste de cuenta"
+  },
+  "transactionDetail": {
+    "salePrice": "Precio de Venta",
+    "commission": "Comisión Selene (9%)",
+    "shipping": "Envío",
+    "netReceived": "Total Recibido",
+    "shippingFee": "Seguro de Envío",
+    "totalAmount": "Monto Total"
   },
   "bankConfiguration": {
     "configured": "Configurado",

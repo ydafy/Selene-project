@@ -1,108 +1,8 @@
--- ==========================================
--- 1. TIPOS Y ENUMS
--- ==========================================
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'order_status_enum') THEN
-        CREATE TYPE order_status_enum AS ENUM (
-            'pending', 'paid', 'preparing', 'shipped', 'delivered', 'completed', 'cancelled', 'dispute', 'refunded'
-        );
-    END IF;
+-- A. Añadir columna de seguro al Ledger para transparencia total
+ALTER TABLE public.wallet_transactions
+ADD COLUMN IF NOT EXISTS insurance_amount NUMERIC(12, 2) DEFAULT 0.00;
 
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'wallet_transaction_type') THEN
-        CREATE TYPE wallet_transaction_type AS ENUM (
-            'sale_proceeds', 'payout', 'refund', 'adjustment', 'release'
-        );
-    END IF;
-END $$;
-
--- ==========================================
--- 2. REPARACIÓN DE TABLA ORDERS
--- ==========================================
-ALTER TABLE public.orders ALTER COLUMN status DROP DEFAULT;
-
-ALTER TABLE public.orders
-    ALTER COLUMN status TYPE order_status_enum
-    USING (
-        CASE
-            WHEN status IS NULL OR status::text = '' THEN 'pending'::order_status_enum
-            ELSE status::text::order_status_enum
-        END
-    );
-
-ALTER TABLE public.orders ALTER COLUMN status SET DEFAULT 'pending'::order_status_enum;
-
-ALTER TABLE public.orders
-    ADD COLUMN IF NOT EXISTS tracking_number TEXT,
-    ADD COLUMN IF NOT EXISTS label_url TEXT,
-    ADD COLUMN IF NOT EXISTS shipped_at TIMESTAMP WITH TIME ZONE,
-    ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMP WITH TIME ZONE;
-
--- ==========================================
--- 3. NUEVAS TABLAS FINANCIERAS
--- ==========================================
-CREATE TABLE IF NOT EXISTS public.wallets (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL UNIQUE,
-    pending_balance NUMERIC(12, 2) DEFAULT 0.00 CHECK (pending_balance >= 0),
-    available_balance NUMERIC(12, 2) DEFAULT 0.00 CHECK (available_balance >= 0),
-    currency TEXT DEFAULT 'MXN',
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
-);
-
-CREATE TABLE IF NOT EXISTS public.seller_bank_accounts (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL UNIQUE,
-    clabe VARCHAR(18) NOT NULL CHECK (clabe ~ '^\d{18}$'),
-    bank_name TEXT,
-    account_holder_name TEXT NOT NULL,
-    is_verified BOOLEAN DEFAULT false,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
-);
-
-CREATE TABLE IF NOT EXISTS public.payout_requests (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES public.profiles(id) NOT NULL,
-    wallet_id UUID REFERENCES public.wallets(id) NOT NULL,
-    amount NUMERIC(12, 2) NOT NULL CHECK (amount > 0),
-    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'rejected')),
-    bank_account_id UUID REFERENCES public.seller_bank_accounts(id) NOT NULL,
-    requested_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
-    processed_at TIMESTAMP WITH TIME ZONE,
-    processed_by UUID REFERENCES auth.users(id),
-    notes TEXT
-);
-
-CREATE TABLE IF NOT EXISTS public.wallet_transactions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    wallet_id UUID REFERENCES public.wallets(id) NOT NULL,
-    order_id UUID REFERENCES public.orders(id),
-    amount NUMERIC(12, 2) NOT NULL,
-    fee_deducted NUMERIC(12, 2) DEFAULT 0.00,
-    shipping_cost NUMERIC(12, 2) DEFAULT 0.00,
-    net_amount NUMERIC(12, 2) NOT NULL,
-    balance_after NUMERIC(12, 2) NOT NULL,
-    type wallet_transaction_type NOT NULL,
-    description TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
-);
-
--- ==========================================
--- 4. ÍNDICES Y SEGURIDAD
--- ==========================================
-CREATE INDEX IF NOT EXISTS idx_orders_status ON public.orders(status);
-CREATE INDEX IF NOT EXISTS idx_orders_delivered_at ON public.orders(delivered_at) WHERE status = 'delivered';
-CREATE INDEX IF NOT EXISTS idx_wallets_user_id ON public.wallets(user_id);
-CREATE INDEX IF NOT EXISTS idx_wallet_transactions_wallet_id ON public.wallet_transactions(wallet_id);
-
-ALTER TABLE public.wallets ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.wallet_transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.payout_requests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.seller_bank_accounts ENABLE ROW LEVEL SECURITY;
-
--- ==========================================
--- 5. FUNCIÓN MAESTRA: fn_complete_order (v2.0)
--- ==========================================
+-- B. Actualizar la función Maestra
 CREATE OR REPLACE FUNCTION public.fn_complete_order(
   p_buyer_id UUID,
   p_stripe_intent_id TEXT,
@@ -119,9 +19,10 @@ DECLARE
   v_wallet_id UUID;
   v_net_payout NUMERIC;
   v_commission NUMERIC;
+  v_insurance NUMERIC;
   v_new_pending_balance NUMERIC;
 BEGIN
-  -- 1. Evitar duplicados (Idempotencia)
+  -- 1. Idempotencia
   IF EXISTS (SELECT 1 FROM public.orders WHERE stripe_payment_intent_id = p_stripe_intent_id) THEN
     RETURN QUERY SELECT true, 'ALREADY_PROCESSED'::TEXT;
     RETURN;
@@ -134,32 +35,31 @@ BEGIN
     RETURN;
   END IF;
 
-  -- 3. Crear la Orden
+  -- 3. Crear Orden
   INSERT INTO public.orders (buyer_id, stripe_payment_intent_id, total_amount, status, shipping_address, service_fee_amount)
   VALUES (p_buyer_id, p_stripe_intent_id, p_total_amount, 'paid', v_addr_snapshot, p_service_fee)
   RETURNING id INTO v_order_id;
 
-  -- 4. Procesar cada producto
+  -- 4. Repartir dinero por cada producto
   FOR v_prod IN SELECT id, price, seller_id, shipping_cost FROM public.products WHERE id = ANY(p_product_ids) LOOP
 
-    -- Cálculos financieros
-    v_commission := v_prod.price * 0.09;
-    v_net_payout := v_prod.price - v_commission - COALESCE(v_prod.shipping_cost, 0);
+    -- LÓGICA DE NEGOCIO SELENE
+    v_commission := v_prod.price * 0.09;      -- 9% Comisión
+    v_insurance  := v_prod.price * 0.012;     -- 1.2% Seguro
+    v_net_payout := v_prod.price - v_commission - COALESCE(v_prod.shipping_cost, 0) - v_insurance;
 
-    -- A. Insertar Item
+    -- A. Guardar en Order Items (Auditoría de Venta)
     INSERT INTO public.order_items (
         order_id, product_id, seller_id, price_at_purchase,
-        commission_amount, shipping_amount, net_payout
+        commission_amount, shipping_amount, insurance_amount, net_payout
     )
     VALUES (
         v_order_id, v_prod.id, v_prod.seller_id, v_prod.price,
-        v_commission, COALESCE(v_prod.shipping_cost, 0), v_net_payout
+        v_commission, COALESCE(v_prod.shipping_cost, 0), v_insurance, v_net_payout
     );
 
-    -- B. Actualizar Billetera del Vendedor
-    -- Buscamos la wallet (o la creamos si por algo no existe)
-    INSERT INTO public.wallets (user_id)
-    VALUES (v_prod.seller_id)
+    -- B. Asegurar Wallet y actualizar saldo
+    INSERT INTO public.wallets (user_id) VALUES (v_prod.seller_id)
     ON CONFLICT (user_id) DO UPDATE SET updated_at = now()
     RETURNING id INTO v_wallet_id;
 
@@ -169,18 +69,18 @@ BEGIN
     WHERE id = v_wallet_id
     RETURNING pending_balance INTO v_new_pending_balance;
 
-    -- C. Registrar en el Ledger (wallet_transactions)
+    -- C. Crear registro en el Ledger con DESGLOSE TOTAL
     INSERT INTO public.wallet_transactions (
         wallet_id, order_id, amount, fee_deducted,
-        shipping_cost, net_amount, balance_after, type, description
+        shipping_cost, insurance_amount, net_amount, balance_after, type, description
     )
     VALUES (
         v_wallet_id, v_order_id, v_prod.price, v_commission,
-        COALESCE(v_prod.shipping_cost, 0), v_net_payout, v_new_pending_balance,
-        'sale_proceeds', 'Venta de producto: ' || v_prod.id
+        COALESCE(v_prod.shipping_cost, 0), v_insurance, v_net_payout,
+        v_new_pending_balance, 'sale_proceeds', 'Venta Hardware: ' || v_prod.id
     );
 
-    -- D. Marcar producto como vendido
+    -- D. Marcar como vendido
     UPDATE public.products SET status = 'SOLD', updated_at = now() WHERE id = v_prod.id;
 
   END LOOP;

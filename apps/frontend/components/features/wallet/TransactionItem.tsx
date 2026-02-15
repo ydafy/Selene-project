@@ -6,14 +6,16 @@ import { Box, Text } from '../../base';
 import { Theme } from '../../../core/theme';
 import { WalletTransaction } from '../../../../../packages/types/src/index';
 import { formatCurrency } from '../../../core/utils/format';
+import { TouchableOpacity } from 'react-native';
 
 type IconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 interface Props {
   transaction: WalletTransaction;
+  onPress: (transaction: WalletTransaction) => void;
 }
 
-export const TransactionItem = ({ transaction }: Props) => {
+export const TransactionItem = ({ transaction, onPress }: Props) => {
   const { t } = useTranslation('wallet');
   const theme = useTheme<Theme>();
   const isPositive = ['sale_proceeds', 'release', 'adjustment'].includes(
@@ -36,49 +38,56 @@ export const TransactionItem = ({ transaction }: Props) => {
   const icon = getIconConfig();
 
   return (
-    <Box
-      flexDirection="row"
-      alignItems="center"
-      paddingVertical="m"
-      borderBottomWidth={1}
-      borderBottomColor="separator"
-    >
+    <TouchableOpacity onPress={() => onPress(transaction)} activeOpacity={0.7}>
       <Box
-        width={44}
-        height={44}
-        borderRadius="m"
-        backgroundColor="cardBackground"
-        justifyContent="center"
+        flexDirection="row"
         alignItems="center"
+        paddingVertical="m"
+        paddingHorizontal="m"
+        borderBottomWidth={1}
+        borderBottomColor="separator"
       >
-        <MaterialCommunityIcons name={icon.name} size={22} color={icon.color} />
-      </Box>
-      <Box flex={1} marginLeft="m">
-        <Text variant="body-md" fontWeight="600">
-          {t(`types.${transaction.type}`)}
-        </Text>
-        <Text variant="caption-md" color="textSecondary">
-          {new Date(transaction.created_at).toLocaleDateString(undefined, {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-          })}
-        </Text>
-      </Box>
-      <Box alignItems="flex-end">
-        <Text
-          variant="body-lg"
-          color={isPositive ? 'success' : 'textPrimary'}
-          fontWeight="700"
+        <Box
+          width={44}
+          height={44}
+          borderRadius="m"
+          backgroundColor="cardBackground"
+          justifyContent="center"
+          alignItems="center"
         >
-          {isPositive ? '+' : ''}
-          {formatCurrency(transaction.net_amount)}
-        </Text>
-        <Text variant="caption-md" color="textSecondary">
-          {t('history.balanceAfter')}:{' '}
-          {formatCurrency(transaction.balance_after)}
-        </Text>
+          <MaterialCommunityIcons
+            name={icon.name}
+            size={22}
+            color={icon.color}
+          />
+        </Box>
+        <Box flex={1} marginLeft="m">
+          <Text variant="body-md" fontWeight="600">
+            {t(`types.${transaction.type}`)}
+          </Text>
+          <Text variant="caption-md" color="textSecondary">
+            {new Date(transaction.created_at).toLocaleDateString(undefined, {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+            })}
+          </Text>
+        </Box>
+        <Box alignItems="flex-end">
+          <Text
+            variant="body-lg"
+            color={isPositive ? 'success' : 'textPrimary'}
+            fontWeight="700"
+          >
+            {isPositive ? '+' : ''}
+            {formatCurrency(transaction.net_amount)}
+          </Text>
+          <Text variant="caption-md" color="textSecondary">
+            {t('history.balanceAfter')}:{' '}
+            {formatCurrency(transaction.balance_after)}
+          </Text>
+        </Box>
       </Box>
-    </Box>
+    </TouchableOpacity>
   );
 };

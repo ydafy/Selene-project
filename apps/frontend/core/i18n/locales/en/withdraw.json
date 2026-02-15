@@ -1,0 +1,19 @@
+{
+  "title": "Withdraw Funds",
+  "destinationLabel": "Will be sent to your account",
+  "amountToWithdraw": "AMOUNT TO WITHDRAW",
+  "available": "Available",
+  "maxBtn": "MAX",
+  "disclaimer": "Withdrawals may take 24 to 72 business hours to appear in your bank account.",
+  "confirmBtn": "Confirm Secure Withdrawal",
+  "security": {
+    "reason": "Confirm your identity to authorize the withdrawal of funds."
+  },
+  "success": {
+    "title": "Request Received",
+    "message": "Your withdrawal is being processed. We will notify you when the money is on its way."
+  },
+  "errors": {
+    "insufficient": "You do not have enough funds to withdraw that amount."
+  }
+}

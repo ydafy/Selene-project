@@ -209,13 +209,15 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     setupSubscription();
   },
 
-  requestPayout: async (amount, bankAccountId) => {
+  requestPayout: async (amount: number, bankAccountId: string) => {
     const { wallet } = get();
+
+    // 1. Validación previa en cliente (UX)
     if (!wallet || wallet.available_balance < amount) {
       return { success: false, error: 'INSUFFICIENT_FUNDS' };
     }
 
-    // --- OPTIMISTIC UPDATE ---
+    // 2. Optimistic Update: Bajamos el saldo en la UI para feedback instantáneo
     const previousBalance = wallet.available_balance;
     set({
       isActionLoading: true,
@@ -223,22 +225,30 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     });
 
     try {
-      const { error } = await supabase.from('payout_requests').insert({
-        user_id: wallet.user_id,
-        wallet_id: wallet.id,
-        amount,
-        bank_account_id: bankAccountId,
-        status: 'pending',
+      // 3. LLAMADA RPC (La verdad está en el servidor)
+      const { data, error } = await supabase.rpc('fn_request_payout', {
+        p_user_id: wallet.user_id,
+        p_wallet_id: wallet.id,
+        p_amount: amount,
+        p_bank_account_id: bankAccountId,
       });
 
       if (error) throw error;
 
+      // 4. Verificar respuesta de la función SQL
+      // Nota: Supabase RPC devuelve un array o el tipo de retorno de la función
+      const result = Array.isArray(data) ? data[0] : data;
+
+      if (!result?.success) {
+        throw new Error(result?.error_message || 'ERROR_IN_DATABASE');
+      }
+
       set({ isActionLoading: false });
       return { success: true };
     } catch (err) {
-      // --- ROLLBACK EN CASO DE ERROR ---
-      const message =
-        err instanceof Error ? err.message : 'Error al solicitar retiro';
+      const message = err instanceof Error ? err.message : 'Error en el retiro';
+      console.error('--- PAYOUT CRITICAL ERROR ---', err);
+
       set({
         isActionLoading: false,
         wallet: { ...wallet, available_balance: previousBalance },

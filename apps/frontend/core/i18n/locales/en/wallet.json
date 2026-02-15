@@ -3,8 +3,9 @@
 
   "balance": {
     "availableTitle": "AVAILABLE BALANCE",
-
-    "pendingTitle": "Pending Balance"
+    "pendingTitle": "Pending Balance",
+    "infoEscrowTitle": "Regarding your outstanding balance",
+    "infoEscrow": "This money is protected by Selene. It will be automatically released 48 hours after the buyer receives their product, provided there is no open dispute."
   },
   "actions": {
     "withdraw": "Withdraw"
@@ -21,5 +22,40 @@
     "release": "Funds Released",
     "refund": "Refund",
     "adjustment": "Account Adjustment"
+  },
+  "transactionDetail": {
+    "salePrice": "Sale Price",
+    "commission": "Selene Commission (9%)",
+    "shipping": "Shipping",
+    "netReceived": "Total Received",
+    "requestedAmount": "Requested Amount",
+    "totalAmount": "Total Amount"
+  },
+  "bankConfiguration": {
+    "configured": "Configured",
+    "notConfigured": "Not configured",
+    "title": "Configure Withdrawal Account",
+    "description": "Only you can see this information. It is used solely for depositing your earnings.",
+    "inputs": {
+      "holderName": {
+        "label": "Account Holder's Name",
+        "placeholder": "As in your account"
+      },
+      "clabe": {
+        "label": "Interbank CLABE",
+        "placeholder": "18 digits"
+      }
+    },
+    "errors": {
+      "invalidClabe": "The CLABE is incorrect",
+      "clabeLength": "Enter the 18 digits",
+      "holderNameLength": "Enter the account holder's full name"
+    },
+    "saveButton": "Save Account",
+    "success": {
+      "title": "Account Saved",
+      "description": "Your bank details have been successfully updated.",
+      "confirmButton": "Understood"
+    }
   }
 }

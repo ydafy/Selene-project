@@ -88,7 +88,7 @@ export type OrderStatus =
   | 'dispute'
   | 'refunded';
 
-  // 2. Nuevas interfaces para la Billetera
+// 2. Nuevas interfaces para la Billetera
 export type WalletTransactionType =
   | 'sale_proceeds'
   | 'payout'
@@ -112,6 +112,7 @@ export interface WalletTransaction {
   amount: number;
   fee_deducted: number;
   shipping_cost: number;
+  insurance_amount: number;
   net_amount: number;
   balance_after: number;
   type: WalletTransactionType;
@@ -139,7 +140,6 @@ export interface SellerBankAccount {
   is_verified: boolean;
   created_at: string;
 }
-
 
 export interface Order {
   id: string;

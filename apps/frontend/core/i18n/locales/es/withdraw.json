@@ -1,0 +1,40 @@
+{
+  "title": "Retirar Fondos",
+  "subtitle": "Transfiere tus ganancias de forma segura.",
+  "destinationLabel": "Se enviará a tu cuenta",
+  "amountToWithdraw": "MONTO A RETIRAR",
+  "available": "Disponible",
+  "maxBtn": "MÁX",
+  "disclaimer": "Los retiros pueden tardar de 24 a 72 horas hábiles en reflejarse en tu cuenta bancaria.",
+  "confirmBtn": "Confirmar Retiro",
+  "security": {
+    "reason": "Confirma tu identidad para autorizar el retiro de fondos."
+  },
+  "success": {
+    "title": "Solicitud Recibida",
+    "message": "Tu retiro está siendo procesado. Te notificaremos cuando el dinero esté en camino."
+  },
+  "source": {
+    "label": "Desde Billetera Selene"
+  },
+  "destination": "Hacia",
+  "fees": {
+    "withdrawal": "Comisión por retiro",
+    "free": "Gratis"
+  },
+  "timing": {
+    "label": "Tiempo de llegada",
+    "value": "24-72h hábiles"
+  },
+  "insufficientButton": "Saldo Insuficiente",
+  "securityFooter": "Transacción protegida por Selene",
+
+  "dialog": {
+    "confirm": "Entendido",
+    "errorTitle": "Error",
+    "ok": "OK"
+  },
+  "errors": {
+    "insufficient": "No tienes fondos suficientes para retirar esa cantidad."
+  }
+}

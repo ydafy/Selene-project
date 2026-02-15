@@ -13,12 +13,14 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+
 # =============================================================================
-# Variables de Entorno (MUY IMPORTANTE)
+# Variables de Entorno (MUY IMPORTANTE) y .txt
 # =============================================================================
 .env
 .env.*
 !.env.example
+*.txt
 
 # =============================================================================
 # Dependencias

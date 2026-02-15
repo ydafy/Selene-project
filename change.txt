@@ -1,0 +1,48 @@
+// 1. Asegúrate de importar useSellStore
+import { useSellStore } from '@/core/store/useSellStore';
+
+// ... (dentro del componente)
+
+export const SellDetailsForm: React.FC<SellDetailsFormProps> = ({
+  // ... props existentes
+  onSubmit, // Esta es la función original que navega
+  earnings, // Aquí vive el costo de envío calculado
+  // ...
+}) => {
+  const theme = useTheme<Theme>();
+  const { updateDraft } = useSellStore(); // <--- Hook del store
+
+  // 2. NUEVA FUNCIÓN WRAPPER
+  const handleFormSubmit = (data: any) => {
+    // A. Guardamos el costo de envío calculado en el draft
+    // earnings.shippingCost es el valor numérico que viene de la API
+    if (earnings?.shippingCost) {
+      updateDraft({
+        shipping_cost: earnings.shippingCost.toString()
+      });
+      console.log('[SellForm] Shipping cost saved:', earnings.shippingCost);
+    } else {
+      console.warn('[SellForm] No shipping cost available to save');
+    }
+
+    // B. Ejecutamos la lógica original (guardar resto de datos y navegar)
+    onSubmit(data);
+  };
+
+  // ... (resto del render)
+
+  // 3. CAMBIO EN EL BOTÓN FINAL
+  return (
+    <>
+      {/* ... todo el formulario ... */}
+
+      <Box height={30} />
+      <PrimaryButton
+        onPress={handleSubmit(handleFormSubmit)} // <--- USAR EL WRAPPER AQUÍ
+        disabled={!isValid || isQuoting}
+      >
+        {t('fields.next')}
+      </PrimaryButton>
+    </>
+  );
+};
