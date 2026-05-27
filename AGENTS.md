@@ -132,6 +132,8 @@ Before writing ANY code that touches the database, queries a table, or reference
 | `kpi-dashboard-design` | Best kpi-dashboard practices for metric selection, data visualization, and real-time monitoring | When working with the dashboard to implement metric selection, data visualization or more | [SKILL.md](.agents/skills/kpi-dashboard-design/SKILL.md) |
 | `upgrade-stripe`       | Migration and versioning strategies for Stripe SDKs and API versions                            | When performing maintenance or upgrading legacy Stripe implementations to the latest API  | [SKILL.md](.agents/skills/upgrade-stripe/SKILL.md)       |
 | `stripe-projects`      | Provisioning and initialization of third-party services via projects.dev providers              | When working with service API keys, tokens, or setting up new provider integrations       | [SKILL.md](.agents/skills/stripe-projects/SKILL.md)      |
+| `caveman-commit`       | Commit message behavior. Fully independent skill.                                               | When working with git enviorement                                                         | [SKILL.md](.agents/skills/caveman-commit/SKILL.md)       |
+| `webapp-testing`       | Debugging UI behavior, capturing browser screenshots, and viewing browser logs                  | When working on dashboard web testing                                                     | [SKILL.md](.agents/skills/webapp-testing/SKILL.md)       |
 
 ## Auto-Invoke Rules
 
@@ -155,6 +157,8 @@ Before writing ANY code that touches the database, queries a table, or reference
 | Database schema or Auth changes       | `supabase`                                  | Handle migrations and RLS policies correctly                 |
 | Adding charts or SaaS metrics         | `kpi-dashboard-design`                      | Follow visualization best practices and calculation accuracy |
 | Hardcoded strings or new languages    | `i18n-localization`                         | Maintain clean localization files and internationalization   |
+| Using git commands                    | `caveman-commit`                            | Maintain clean git commits and git commands                  |
+| Dashboard web testing or debugging    | `webapp-testing`                            | Test and debug admin panel features with Playwright          |
 
 ---
 
