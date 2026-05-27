@@ -1,33 +1,25 @@
-import { ProductStatus } from '../../../../packages/types/src/index';
 import { Theme } from '../theme';
 
 /**
- * Mapea el estado del producto a un color del tema.
- * @param status - El estado del producto (VERIFIED, SOLD, etc.)
- * @returns El nombre del color en el tema (primary, success, error, etc.)
+ * Devuelve el color del tema asociado al estado del producto.
+ * Acepta string para sincronía con la DB.
  */
 export const getStatusColor = (
-  status: ProductStatus,
+  status: string | null | undefined,
 ): keyof Theme['colors'] => {
-  switch (status) {
-    case 'VERIFIED':
-      return 'success'; // Verde: Aprobado y seguro
+  if (!status) return 'textSecondary';
 
-    case 'IN_REVIEW':
-      return 'primary'; // Dorado: En proceso activo (Atención)
+  const statusMap: Record<string, keyof Theme['colors']> = {
+    VERIFIED: 'success',
+    PENDING_VERIFICATION: 'warning',
+    REJECTED: 'error',
+    SOLD: 'primary',
+    RESERVED: 'warning',
+    HIDDEN: 'textSecondary',
+    IN_REVIEW: 'warning',
+  };
 
-    case 'PENDING_VERIFICATION':
-      return 'textSecondary'; // Gris/Azul: Falta acción del usuario (Estado pasivo)
-
-    case 'SOLD':
-      return 'cardBackground'; // Gris Oscuro: Ya no está disponible (Discreto)
-
-    case 'REJECTED':
-      return 'error'; // Rojo: Hubo un problema
-
-    default:
-      return 'textSecondary'; // Fallback seguro
-  }
+  return statusMap[status] || 'textSecondary';
 };
 
 /**
@@ -38,9 +30,13 @@ export const getStatusTranslationKey = (status: string) => {
 };
 
 /**
- * Determina si un producto pertenece al historial (ya no está activo).
- * Se considera historial si está Vendido o Rechazado.
+ * Determina si un estado de producto pertenece al historial (no activo).
  */
-export const isProductHistory = (status: ProductStatus): boolean => {
-  return status === 'SOLD' || status === 'REJECTED';
+export const isProductHistory = (
+  status: string | null | undefined,
+): boolean => {
+  if (!status) return false;
+  // Los estados que ya no están a la venta pero se guardan para registro
+  const historyStatuses = ['SOLD', 'REJECTED', 'HIDDEN'];
+  return historyStatuses.includes(status);
 };

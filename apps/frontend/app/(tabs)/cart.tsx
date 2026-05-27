@@ -17,6 +17,7 @@ import { useState } from 'react';
 import { useAuthContext } from '../../components/auth/AuthProvider';
 import { useAuthModal } from '../../core/auth/AuthModalProvider';
 import { useCartValidation } from '../../components/features/cart/hooks/useCartValidation';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function CartScreen() {
   const theme = useTheme<Theme>();
@@ -24,6 +25,7 @@ export default function CartScreen() {
   const { t: tCommon } = useTranslation('common');
   const { session } = useAuthContext();
   const { present } = useAuthModal();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const {
     unavailableIds,
@@ -78,6 +80,7 @@ export default function CartScreen() {
         // Estilos del contenedor
         contentContainerStyle={{
           padding: theme.spacing.m,
+          paddingTop: insets.top + 10,
           paddingBottom: 200,
           flexGrow: 1, // Importante para que el EmptyState se pueda centrar si es necesario
         }}

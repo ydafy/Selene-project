@@ -11,7 +11,17 @@
     "productLoadError": "No se pudo cargar el producto.",
     "feedLoadError": "Se produjo un error al cargar los productos.",
     "feedEmpty": "Aún no hay productos disponibles.",
-    "updateMessage": "Actualizado"
+    "feedEmptyMessage": "Intenta explorar otras categorías o vuelve más tarde.",
+    "updateMessage": "Actualizado",
+    "noImage": "Sin imagen",
+    "unknownProduct": "Producto desconocido",
+    "loading": "Cargando..."
+  },
+
+  "errors": {
+    "generic": "Ocurrió un problema. Intenta de nuevo.",
+    "connection": "Error de conexión con el servidor.",
+    "noPackages": "No hay opciones de empaque"
   },
 
   "dialog": {
@@ -19,6 +29,8 @@
     "understood": "Entendido",
     "next": "Siguiente",
     "goToMyPosts": "Ir a Mis Publicaciones",
+    "viewOrder": "Ver Pedido",
+    "viewPost": "Ver Publicación",
     "fixNow": "Corregir Ahora",
     "cancel": "Cancelar",
     "delete": "Eliminar",
@@ -31,9 +43,24 @@
     "discard": "Descartar",
     "continue": "Continuar"
   },
+  "home": {
+    "title": "Bienvenido a Selene",
+    "subtitle": "Explora el mejor hardware usado, verificado por expertos.",
+    "heroTitle": "Estándar de Oro del Hardware Usado",
+    "heroSubtitle": "Verificación técnica real y protección total en cada compra."
+  },
+  "time": {
+    "justNow": "Justo ahora"
+  },
+  "units": {
+    "item_count_one": "{{count}} Item",
+    "item_count_other": "{{count}} Items"
+  },
 
   "globalError": {
-    "title": "¡Uy! Algo salió mal",
-    "message": "Se produjo un error inesperado. Nuestro equipo ha sido notificado."
+    "systemAnomaly": "SYSTEM_ANOMALY_DETECTED",
+    "title": "Falla en el Núcleo",
+    "message": "Selene ha detenido un proceso para proteger la integridad de tus datos. El reporte técnico ha sido enviado a los NetRunners.",
+    "retryButton": "REINICIAR SISTEMA"
   }
 }

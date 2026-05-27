@@ -5,7 +5,7 @@ type AuthResult =
   | { success: false; method?: undefined; error: string };
 
 export const authenticateAsync = async (
-  reason: string = 'Confirma tu identidad',
+  reason: string = 'Confirm your identity',
 ): Promise<AuthResult> => {
   try {
     const hasHardware = await LocalAuthentication.hasHardwareAsync();
@@ -17,16 +17,18 @@ export const authenticateAsync = async (
 
     const result = await LocalAuthentication.authenticateAsync({
       promptMessage: reason,
-      fallbackLabel: 'Usar código',
+      fallbackLabel: 'Use Passcode',
       disableDeviceFallback: false,
     });
 
     if (result.success) {
       return { success: true, method: 'biometric' };
-    } else {
-      return { success: false, error: result.error };
     }
-  } catch (error) {
-    return { success: false, error: 'UNKNOWN_ERROR' };
+    return { success: false, error: result.error };
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : 'UNKNOWN_ERROR';
+    console.error('[BIOMETRICS]', error);
+    return { success: false, error: message };
   }
 };

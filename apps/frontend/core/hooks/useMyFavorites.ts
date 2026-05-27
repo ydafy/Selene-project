@@ -8,26 +8,26 @@ export const useMyFavorites = (userId: string | undefined) => {
     queryFn: async () => {
       if (!userId) return [];
 
-      // Hacemos un JOIN para traer los datos del producto asociado al favorito
       const { data, error } = await supabase
         .from('favorites')
         .select(
           `
-          product:products (*)
+          product:products!inner (*)
         `,
         )
         .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(6); // Solo traemos los últimos 6 para la vista previa
 
+        .is('products.deleted_at', null)
+        .order('created_at', { ascending: false })
+        .limit(6);
       if (error) throw error;
 
-      // Mapeamos la respuesta para devolver una lista limpia de Productos
-      // (Filtrando posibles nulos si un producto se borró)
+      // El !inner garantiza que item.product nunca sea nulo, pero mantenemos el filtro por sanidad
       return data
         .map((item) => item.product)
         .filter(Boolean) as unknown as Product[];
     },
+    staleTime: 1000 * 60 * 5,
     enabled: !!userId,
   });
 };

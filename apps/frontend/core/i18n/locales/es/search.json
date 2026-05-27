@@ -5,10 +5,19 @@
   "resultsTitle": "Resultados",
   "exploreSection": "Explorar Productos",
   "backToTop": "Volver arriba",
-
+  "resultsFound": "resultados encontrados",
   "recentSearches": "Búsquedas Recientes",
   "clearHistory": "Borrar todo",
   "typeToSearch": "Escribe para buscar...",
+  "verifiedBySelene": "Verificado por Selene",
+  "buttonTextViewProduct": "VER PRODUCTO",
+
+  "categoriesList": {
+    "GPU": "GPU",
+    "CPU": "CPU",
+    "RAM": "RAM",
+    "MOTHERBOARD": "MOBO"
+  },
 
   "filters": {
     "title": "Filtros",
@@ -23,5 +32,18 @@
     "sortPriceLow": "Menor precio",
     "sortPriceHigh": "Mayor precio",
     "verifiedOnly": "Verificados"
+  },
+  "conditions": {
+    "Nuevo": "Nuevo",
+    "Usado - Como Nuevo": "Usado - Como nuevo"
+  },
+
+  "shellTrustSnap": {
+    "trustMsg": "Cada componente pasa por benchmarks y prubas antes de que sepueda comprar.",
+    "trustButton": "VER PROCESO"
+  },
+  "shellFotter": {
+    "title": "Has visto lo último",
+    "description": "Nuestro inventario completo te espera con cientos de piezas verificadas por NetRunners."
   }
 }

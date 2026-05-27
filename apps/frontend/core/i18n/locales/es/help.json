@@ -1,0 +1,19 @@
+{
+  "verification": {
+    "title": "Protocolo Selene",
+    "subtitle": "Cómo garantizamos la verdad técnica",
+    "step1": {
+      "title": "CAPTURA",
+      "desc": "El vendedor sube benchmarks y fotos del producto."
+    },
+    "step2": {
+      "title": "AUDITORÍA",
+      "desc": "Nuestros NetRunners validan los benchmarks y las fotos."
+    },
+    "step3": {
+      "title": "CERTIFICACIÓN",
+      "desc": "Solo el hardware aprobado recibe el sello de confianza."
+    },
+    "footer": "SISTEMA DE VERIFICACIÓN ACTIVO // SEN-2077"
+  }
+}

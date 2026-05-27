@@ -24,7 +24,6 @@ import { PrimaryButton } from '../../ui/PrimaryButton';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import { validateClabe } from '../../../core/utils/clabeValidator';
 import { useWalletStore } from '../../../core/store/useWalletStore';
-import { useAuthContext } from '../../auth/AuthProvider';
 
 export type BankSheetRef = BottomSheetModal;
 
@@ -33,7 +32,7 @@ export const BankConfigurationSheet = forwardRef<BottomSheetModal, {}>(
   ({}, ref) => {
     const theme = useTheme<Theme>();
     const { t } = useTranslation('wallet');
-    const { session } = useAuthContext();
+
     const { bankAccount, saveBankAccount, isActionLoading } = useWalletStore();
 
     const [clabe, setClabe] = useState('');
@@ -86,7 +85,6 @@ export const BankConfigurationSheet = forwardRef<BottomSheetModal, {}>(
     };
 
     const handleSave = async () => {
-      if (!session?.user.id) return;
       Keyboard.dismiss();
 
       if (holderName.length < 3) {
@@ -94,6 +92,7 @@ export const BankConfigurationSheet = forwardRef<BottomSheetModal, {}>(
         return;
       }
 
+      // UX Check (Rápido)
       const validation = validateClabe(clabe);
       if (!validation.isValid) {
         setError(
@@ -102,15 +101,23 @@ export const BankConfigurationSheet = forwardRef<BottomSheetModal, {}>(
         return;
       }
 
-      const result = await saveBankAccount(
-        session.user.id,
-        clabe,
-        holderName,
-        validation.bankName || 'OTRO',
-      );
+      // FIX: Nueva firma de 2 parámetros
+      const result = await saveBankAccount(clabe, holderName);
 
       if (result.success) {
+        // La RPC en Supabase calculó el checksum, identificó el banco y lo marcó is_verified = true
         setShowSuccess(true);
+      } else {
+        // FIX: Manejo de errores de la base de datos
+        let errorMessage = t('bankConfiguration.errors.invalidClabe');
+        if (result.error?.includes('CLABE_CHECKSUM_FAILED'))
+          errorMessage =
+            'La CLABE no pasó la validación de seguridad del banco.';
+        if (result.error?.includes('CLABE_INVALID_LENGTH'))
+          errorMessage = 'La CLABE debe tener 18 dígitos.';
+
+        setError(errorMessage);
+        setBankName(null);
       }
     };
 

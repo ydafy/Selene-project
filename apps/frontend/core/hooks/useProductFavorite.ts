@@ -7,32 +7,33 @@ export const useProductFavorite = (productId: string) => {
   const queryClient = useQueryClient();
   const userId = session?.user.id;
 
-  // 1. Query: ¿Es este producto favorito del usuario actual?
+  //  ¿Es favorito? (Filtrando por integridad del producto)
   const { data: isFavorite, isLoading } = useQuery({
     queryKey: ['favorite', productId, userId],
     queryFn: async () => {
-      if (!userId) return false;
+      if (!userId || !productId) return false;
 
       const { data, error } = await supabase
         .from('favorites')
         .select('id')
         .eq('product_id', productId)
         .eq('user_id', userId)
-        .maybeSingle(); // Devuelve null si no existe, en lugar de error
+        .maybeSingle();
 
       if (error) throw error;
-      return !!data; // Devuelve true si existe, false si no
+      return !!data;
     },
-    enabled: !!userId, // Solo se ejecuta si hay usuario logueado
+    enabled: !!userId && !!productId,
   });
 
-  // 2. Mutation: Poner o Quitar favorito
+  //  Toggle con validación de "Vida" del producto
   const mutation = useMutation({
     mutationFn: async () => {
-      if (!userId) throw new Error('User not logged in');
+      if (!userId) throw new Error('AUTH_REQUIRED');
 
       if (isFavorite) {
-        // Si ya es favorito, lo borramos
+        // DELETE FÍSICO: Los favoritos no necesitan soft delete,
+        // son solo una relación muchos-a-muchos.
         const { error } = await supabase
           .from('favorites')
           .delete()
@@ -40,44 +41,44 @@ export const useProductFavorite = (productId: string) => {
           .eq('user_id', userId);
         if (error) throw error;
       } else {
-        // Si no es favorito, lo creamos
+        //  ¿El producto sigue existiendo?
+        const { data: product, error: checkError } = await supabase
+          .from('products')
+          .select('id')
+          .eq('id', productId)
+          .is('deleted_at', null)
+          .single();
+
+        if (checkError || !product) throw new Error('PRODUCT_NOT_AVAILABLE');
+
         const { error } = await supabase
           .from('favorites')
           .insert({ product_id: productId, user_id: userId });
         if (error) throw error;
       }
     },
-    // Optimistic Update: Actualizamos la UI antes de que termine la red
     onMutate: async () => {
-      // Cancelamos queries pendientes para que no sobrescriban nuestro cambio
       await queryClient.cancelQueries({
         queryKey: ['favorite', productId, userId],
       });
-
-      // Guardamos el valor anterior por si hay error
       const previousValue = queryClient.getQueryData([
         'favorite',
         productId,
         userId,
       ]);
-
-      // Actualizamos la caché manualmente (invertimos el valor actual)
       queryClient.setQueryData(
         ['favorite', productId, userId],
         (old: boolean) => !old,
       );
-
       return { previousValue };
     },
-    // Si falla, revertimos al valor anterior
-    onError: (err, newTodo, context) => {
+    onError: (err, _, context) => {
       queryClient.setQueryData(
         ['favorite', productId, userId],
         context?.previousValue,
       );
-      console.error('Error al cambiar favorito:', err);
+      console.error('[FAVORITES] Error toggling:', err);
     },
-    // Al terminar (éxito o fallo), invalidamos para asegurar datos frescos
     onSettled: () => {
       queryClient.invalidateQueries({
         queryKey: ['favorite', productId, userId],
@@ -87,8 +88,8 @@ export const useProductFavorite = (productId: string) => {
   });
 
   return {
-    isFavorite: !!isFavorite, // Aseguramos que sea booleano
+    isFavorite: !!isFavorite,
     isLoading,
-    toggleFavorite: mutation.mutate, // La función para llamar al hacer click
+    toggleFavorite: mutation.mutate,
   };
 };

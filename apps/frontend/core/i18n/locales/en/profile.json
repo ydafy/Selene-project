@@ -32,7 +32,8 @@
       "IN_REVIEW": "Under Review",
       "PENDING_VERIFICATION": "Not Yet Verified",
       "SOLD": "Sold",
-      "REJECTED": "Rejected"
+      "REJECTED": "Rejected",
+      "HIDDEN": "Hidden"
     },
     "actions": {
       "edit": "Edit",
@@ -40,6 +41,14 @@
       "fix": "Fix",
       "verify": "Verify"
     }
+  },
+  "review": {
+    "title": "Submit Verdict",
+    "subtitle": "Rate your experience with this seller",
+    "commentPlaceholder": "Write a comment (optional)...",
+    "confirmButton": "CONFIRM VERDICT",
+    "successTitle": "Review submitted",
+    "successMsg": "Thanks for your rating."
   },
   "feedback": {
     "avatarUpdatedTitle": "Photo Updated",

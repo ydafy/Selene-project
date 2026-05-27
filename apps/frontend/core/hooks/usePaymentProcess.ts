@@ -74,9 +74,9 @@ export const usePaymentProcess = () => {
       );
 
       if (funcError) {
-        const status = (funcError as any).status;
+        const errorStatus = (funcError as { status?: number }).status;
         // Si el error es stock, intentamos liberar por si acaso quedó algo trabado
-        if (status === 409) {
+        if (errorStatus === 409) {
           await releaseProducts();
           setError(t('payment.outOfStockMsg'));
         } else {
@@ -114,8 +114,10 @@ export const usePaymentProcess = () => {
 
       if (stripeError) throw new Error(stripeError.message);
       setIsReady(true);
-    } catch (e: any) {
-      console.error('[PAYMENT HOOK ERROR]', e);
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : String(e);
+
+      console.error('[PAYMENT_HOOK_ERROR]', errorMessage);
       setError(t('payment.criticalError'));
     } finally {
       setLoading(false);
@@ -140,10 +142,10 @@ export const usePaymentProcess = () => {
     const { error: sheetError } = await presentPaymentSheet();
 
     if (sheetError) {
-      if (sheetError.code !== 'Canceled') {
-        return { success: false, message: sheetError.message };
+      if (sheetError.code === 'Canceled') {
+        return { success: false, cancelled: true };
       }
-      return { success: false, cancelled: true };
+      return { success: false, message: sheetError.message };
     }
 
     // MARCAR COMO ÉXITO ANTES DE NAVEGAR
@@ -152,7 +154,7 @@ export const usePaymentProcess = () => {
     setStatus('success');
     clearCart();
     setTimeout(() => {
-      router.replace('/checkout/success' as never);
+      router.replace('/checkout/success');
     }, 500);
     return { success: true };
   };

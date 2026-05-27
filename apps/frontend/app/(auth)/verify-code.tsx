@@ -1,14 +1,18 @@
-import { useState } from 'react';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { Alert } from 'react-native'; // Mantenemos Alert por si acaso, aunque usaremos Toast
-import { Stack, router, useLocalSearchParams } from 'expo-router';
+/**
+ * @file apps/frontend/app/(auth)/verify-code.tsx
+ * @description Pantalla de verificación de cuenta (OTP).
+ * Procesa la validación final del registro por correo electrónico.
+ */
+
+import React, { useState, useEffect } from 'react';
+import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
 import { IconButton } from 'react-native-paper';
 import OTPTextInput from 'react-native-otp-textinput';
-import Toast from 'react-native-toast-message'; // <-- Usamos Toast
+import Toast from 'react-native-toast-message';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// Importaciones de componentes y lógica
 import { ScreenLayout } from '../../components/layout/ScreenLayout';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { TextLink } from '../../components/ui/TextLink';
@@ -17,69 +21,97 @@ import { useAuth } from '../../core/hooks/useAuth';
 import { Theme } from '../../core/theme';
 
 export default function VerifyCodeScreen() {
-  const { t } = useTranslation('auth');
+  const { t } = useTranslation(['auth', 'common']);
   const theme = useTheme<Theme>();
-  // Usamos las funciones centralizadas
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+
   const { verifyOtp, resendSignUpOtp, loading } = useAuth();
-
   const { email } = useLocalSearchParams<{ email: string }>();
-  const [otpCode, setOtpCode] = useState('');
 
+  const [otpCode, setOtpCode] = useState('');
+  const [isResending, setIsResending] = useState(false);
+
+  // --- 1. GUARDIÁN DE DATOS ---
+  useEffect(() => {
+    if (!email) {
+      Toast.show({
+        type: 'error',
+        text1: t('common:errors.errorTitle'),
+        text2: 'Falta información de correo.',
+      });
+      router.replace('/(auth)/register');
+    }
+  }, [email]);
+
+  /**
+   * Procesa la verificación del código contra Supabase.
+   */
   const handleVerifyCode = async () => {
     if (!email || otpCode.length < 6) {
       Toast.show({
         type: 'error',
-        text1: t('verificationErrorTitle'),
-        text2: t('enter6DigitCode'),
+        text1: t('auth:verificationErrorTitle'),
+        text2: t('auth:enter6DigitCode'),
       });
       return;
     }
 
-    const { error, session } = await verifyOtp(email, otpCode);
+    const result = await verifyOtp(email, otpCode);
 
-    if (error) {
-      Toast.show({
-        type: 'error',
-        text1: t('verificationErrorTitle'),
-        text2: error.message,
-      });
-    } else if (session) {
+    if (result.success && result.session) {
       Toast.show({
         type: 'success',
-        text1: t('accountVerifiedTitle'),
-        text2: t('welcomeMessage'),
+        text1: t('auth:accountVerifiedTitle'),
+        text2: t('auth:welcomeMessage'),
       });
       router.replace('/(tabs)');
+    } else {
+      Toast.show({
+        type: 'error',
+        text1: t('auth:verificationErrorTitle'),
+        text2: result.error?.message || t('common:errors.generic'),
+      });
     }
   };
 
+  /**
+   * Solicita un nuevo código de registro.
+   */
   const handleResendCode = async () => {
-    if (!email) return;
+    if (!email || isResending) return;
 
-    const { error } = await resendSignUpOtp(email);
+    setIsResending(true);
+    const result = await resendSignUpOtp(email);
+    setIsResending(false);
 
-    if (error) {
+    if (!result.success) {
       Toast.show({
         type: 'error',
-        text1: t('verificationErrorTitle'),
-        text2: error.message,
+        text1: t('auth:verificationErrorTitle'),
+        text2: result.error?.message || t('common:errors.generic'),
       });
     } else {
       Toast.show({
-        type: 'success', // O 'info' / 'seleneToast'
-        text1: 'Código reenviado',
-        text2:
-          t('resendCodeSuccess') ||
-          'Se ha enviado un nuevo código a tu correo.',
+        type: 'success',
+        text1: t('auth:resendCodeSuccessTitle', 'Código reenviado'),
+        text2: t('auth:resendCodeSuccessMsg', 'Revisa tu bandeja de entrada.'),
       });
     }
   };
 
   return (
     <ScreenLayout>
+      {/* gestureEnabled: false evita que el usuario regrese por accidente sin verificar */}
       <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
 
-      <Box position="absolute" top={40} left={4} zIndex={1}>
+      {/* BOTÓN DE ATRÁS DINÁMICO */}
+      <Box
+        position="absolute"
+        top={insets.top > 0 ? insets.top : 20}
+        left={theme.spacing.s}
+        zIndex={10}
+      >
         <IconButton
           icon="arrow-left"
           iconColor={theme.colors.textPrimary}
@@ -90,34 +122,30 @@ export default function VerifyCodeScreen() {
 
       <Box flex={1} justifyContent="center" paddingHorizontal="xl">
         <Box alignItems="center" marginBottom="xl">
-          <Text variant="header-2xl" marginBottom="m">
-            {t('verifyYourEmailTitle')}
+          <Text variant="header-2xl" marginBottom="m" textAlign="center">
+            {t('auth:verifyYourEmailTitle')}
           </Text>
           <Text variant="body-md" color="textSecondary" textAlign="center">
-            {t('enterCodeSentTo')}{' '}
-            <Text
-              variant="body-md"
-              style={{ fontWeight: 'bold', color: theme.colors.textPrimary }}
-            >
+            {t('auth:enterCodeSentTo')}{' '}
+            <Text variant="body-md" fontWeight="bold" color="textPrimary">
               {email}
             </Text>
           </Text>
         </Box>
 
         <OTPTextInput
-          handleTextChange={setOtpCode}
+          handleTextChange={(val) => setOtpCode(val.trim())}
           inputCount={6}
           tintColor={theme.colors.primary}
           offTintColor={theme.colors.textSecondary}
           textInputStyle={
             {
               width: 35,
-              height: 54,
+              height: 50,
               color: theme.colors.textPrimary,
               fontFamily: 'Montserrat-Medium',
               borderBottomWidth: 2,
               borderWidth: 0,
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any
           }
           containerStyle={{
@@ -130,7 +158,7 @@ export default function VerifyCodeScreen() {
           loading={loading}
           disabled={loading || otpCode.length < 6}
         >
-          {t('verifyButton')}
+          {t('auth:verifyButton')}
         </PrimaryButton>
 
         <Box
@@ -139,8 +167,12 @@ export default function VerifyCodeScreen() {
           flexDirection="row"
           justifyContent="center"
         >
-          <Text color="textSecondary">{t('didNotReceiveCode')} </Text>
-          <TextLink onPress={handleResendCode}>{t('resendCodeLink')}</TextLink>
+          <Text color="textSecondary">{t('auth:didNotReceiveCode')} </Text>
+          <TextLink onPress={handleResendCode} disabled={isResending}>
+            {isResending
+              ? t('common:states.loading')
+              : t('auth:resendCodeLink')}
+          </TextLink>
         </Box>
       </Box>
     </ScreenLayout>

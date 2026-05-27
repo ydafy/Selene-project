@@ -1,3 +1,4 @@
+import React, { memo } from 'react';
 import { Box, Text } from '../../../base';
 import { AppChip } from '../../../ui/AppChip';
 
@@ -8,7 +9,7 @@ type FilterSectionProps = {
   onToggle: (value: string) => void;
 };
 
-export const FilterSection = ({
+const FilterSectionComponent = ({
   title,
   options,
   selectedValues,
@@ -43,3 +44,5 @@ export const FilterSection = ({
     </Box>
   );
 };
+
+export const FilterSection = memo(FilterSectionComponent);

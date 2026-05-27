@@ -17,8 +17,8 @@
 
     "infoTitle": "Misión 2: Especificaciones",
     "infoDesc": "Valida la autenticidad y capacidad.",
-    "infoInstructionRAM": "Foto a tu monitor: \n1.Mostrar la barra de tareas.\n2. CPU-Z (Pestaña SPD).\n\nToma una foto donde se vean ambas.",
-    "infoInstructionMobo": "Abre CPU-Z en la pestaña 'Mainboard'. Toma una foto donde se vea el Modelo y la BIOS junto a tu papelito."
+    "infoInstructionRAM": "Foto a tu monitor: \n1.Mostrando el benchmark terminado.",
+    "infoInstructionMobo": "Foto a tu monitor: \n1.Mostrando el benchmark terminado.\n2.Mostrando la pestaña 'Mainboard' de CPU-Z."
   },
   "guide": {
     "buttonLabel": "¿Cómo hago esto?",
@@ -43,24 +43,34 @@
 
     "info": {
       "title": "Guía: Verificación de Specs",
-      "step1Title": "1. Descarga CPU-Z",
-      "step1Desc": "Descarga CPU-Z (Es seguro). La pagina oficial es cpuid.com.\n\nInstala la aplicación. No pesa y es rapido de instalar.",
-      "step2Title": "2. Abrir CPU-Z",
-      "step2Desc": "Abre CPU-Z, te pedira persimos de administrador, aceptalos.\n\nUna vez abierta la aplicación, busca la pestaña 'SPD'. Deja abierta la ventana de CPU-Z en ese apartado.",
-      "step3Title": "3. Abrir el Administrador de Tareas",
-      "step3Desc": "Abre el Administrador de Tareas (Task Manager) en Windows presionando 'Ctrl + Shift + Esc'.\n\nUna vez abierto, dirigite al apartado de 'Rendimiento' luego 'Memoria'.\n\nDeja esta ventana abierta junto con CPU-Z.",
-      "step4Title": "4. Tomar la Foto",
-      "step4Desc": "Con ambas ventanas abiertas (CPU-Z y Administrador de Tareas), toma una foto con tu celular donde se vean ambas ventanas claramente.\n\nAsegúrate de que toda la información sea legible para evitar que tu verificación sea rechazada."
+      "step1Title": "1. Visita la pagina AIDA64",
+      "step1Desc": "Entra a la pagina y dirigete al apartado 'Descargas' AIDA64 (Es seguro).No pesa y es rapido de instalar.",
+      "step2Title": "2. Seleccionar la version Extreme",
+      "step2Desc": "Busca la versión 'Extreme' la que dice 'Portable ZIP' no la 'EXE package'. Descárgala, no es necesario comprar la aplicación, puedes usar la versión de prueba.",
+      "step3Title": "3. Descargar y abrir AIDA64",
+      "step3Desc": "Dirigete un poco hacia abajo y veras los links de descarga, descraga el primero que es un archivo ZIP, descomprímelo (click derecho a la carpeta que descragaste y luego extraer todo) y abre la aplicación AIDA64.exe",
+      "step4Title": "4. Abre el programa",
+      "step4Desc": "Cuando abras el programa te aparecera un anuncio, dale a 'Ok'. En el menu superior da click a la imagen de una 'Ram', y despues darle a 'Start Benchmark' \n\nOjo, cirra todos los programas que tenags abiertos para que el programa no falle. Necesitas tener solo el programa del benchmark abierto.",
+      "step5Title": "5. Tomar la Foto",
+      "step5Desc": "Una vez que el benchmark finalize(Cuando los campos memory, L1 cashe, L2 cashe, L3 cache esten rellenados), toma una foto con tu celular al monitor mostrando:\n\n• El resultado del benchmark de RAM.\n \nIntenta replicar la imagen del ejemplo y que se vea todo claro si no, tu verificación puede ser rechazada."
     },
 
     "mobo": {
-      "modalTitle": "Protocolo: Verificación de Motherboard",
-      "step1Title": "1. Descarga CPU-Z",
-      "step1Desc": "Descarga CPU-Z (Es seguro). La pagina oficial es cpuid.com.\n\nDescarga e instala la aplicación. No pesa y es rapido de instalar.",
-      "step2Title": "2. Abrir CPU-Z",
-      "step2Desc": "Abre CPU-Z, te pedira persimos de administrador, aceptalos.\n\nUna vez abierta la aplicación, busca la pestaña 'Mainboard'. Deja abierta la ventana de CPU-Z en ese apartado.",
-      "step3Title": "3. Tomar la Foto",
-      "step3Desc": "Toma una foto clara del monitor mostrando la información de 'CPU-Z' en el apartado 'Mainboard'.\n\nAsegúrate de que toda la información sea legible para evitar que tu verificación sea rechazada."
+      "title": "Guía: Verificación de Specs",
+      "step1Title": "1. Visita la pagina AIDA64",
+      "step1Desc": "Entra a la pagina y dirigete al apartado 'Descargas' AIDA64 (Es seguro).No pesa y es rapido de instalar.",
+      "step2Title": "2. Seleccionar la version Extreme",
+      "step2Desc": "Busca la versión 'Extreme' la que dice 'Portable ZIP' no la 'EXE package'. Descárgala, no es necesario comprar la aplicación, puedes usar la versión de prueba.",
+      "step3Title": "3. Descargar y abrir AIDA64",
+      "step3Desc": "Dirigete un poco hacia abajo y veras los links de descarga, descraga el primero que es un archivo ZIP, descomprímelo (click derecho a la carpeta que descragaste y luego extraer todo) y abre la aplicación AIDA64.exe",
+      "step4Title": "4. Abre el programa",
+      "step4Desc": "Cuando abras el programa te aparecera un anuncio, dale a 'Ok'. En el menu superior da click a la imagen de una 'Ram', y despues darle a 'Start Benchmark' \n\nOjo, cirra todos los programas que tenags abiertos para que el programa no falle. Necesitas tener solo el programa del benchmark abierto.",
+
+      "step5Title": "5. Descargar CPU-Z",
+      "step5Desc": "Descarga cpu-z desde su pagina oficial (Es seguro). Es un programa ligero y rápido de instalar. Abrelo y dirigete a la pestaña 'Mainboard'.",
+
+      "step6Title": "6. Tomar la Foto",
+      "step6Desc": "Una vez que el benchmark finalize(Cuando los campos memory, L1 cashe, L2 cashe, L3 cache esten rellenados), toma una foto con tu celular al monitor mostrando:\n\n• El resultado del benchmark de RAM.\n\n• La pestana de CPU-Z en el apartado Mainboard. \n\n•La barra de tareas (Que salga la hora y fecha).\n\nIntenta replicar la imagen del ejemplo y que se vea todo claro si no, tu verificación puede ser rechazada."
     }
   },
   "actions": {

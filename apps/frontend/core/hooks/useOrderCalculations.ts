@@ -1,18 +1,15 @@
 import { useMemo } from 'react';
 import { Product } from '@selene/types';
-
-/**
- * CONFIGURACIÓN DE COMISIONES (Protección Selene)
- * Basado en: Stripe MX (3.6% + $3) + Margen Selene + IVA sobre comisión.
- */
-export const SERVICE_FEE_CONFIG = {
-  PERCENT: 0.05, // Subimos a 5% para cubrir Stripe (3.6%) + IVA + Seguro Selene
-  FIXED_CENTS: 500, // $5.00 MXN en centavos
-};
+import { useSystemConfig } from './useSystemConfig';
 
 export const useOrderCalculations = (items: Product[] = []) => {
+  const { data: config } = useSystemConfig();
+
   return useMemo(() => {
-    // 1. Manejo de carrito vacío
+    // Fallbacks sincronizados con la DB
+    const PCT = config?.service_fee_pct ?? 0.05;
+    const FIXED = config?.service_fee_fixed_cents ?? 500;
+
     if (!items || items.length === 0) {
       return {
         subtotal: 0,
@@ -24,35 +21,25 @@ export const useOrderCalculations = (items: Product[] = []) => {
       };
     }
 
-    // --- CÁLCULOS EN CENTAVOS (Para evitar errores de JS) ---
-
-    // 2. Subtotal en centavos
-    const subtotalCents = items.reduce((sum, item) => {
-      const price = Math.round((Number(item.price) || 0) * 100);
-      return sum + price;
-    }, 0);
-
-    // 3. Envío (Estrategia: Envío Incluido = $0 para el comprador)
-    const shippingCostCents = 0;
-
-    // 4. Tarifa de Servicio (Protección Selene)
-    // Calculamos: (Subtotal * %) + Fijo
-    const feeFromPercent = Math.round(
-      subtotalCents * SERVICE_FEE_CONFIG.PERCENT,
+    // Calculamos subtotal en centavos
+    const subtotalCents = items.reduce(
+      (sum, item) => sum + Math.round((Number(item.price) || 0) * 100),
+      0,
     );
-    const serviceFeeCents = feeFromPercent + SERVICE_FEE_CONFIG.FIXED_CENTS;
 
-    // 5. Total Final en centavos
-    const totalCents = subtotalCents + shippingCostCents + serviceFeeCents;
+    // Cálculo de comisión
+    const feeFromPercent = Math.round(subtotalCents * PCT);
+    const serviceFeeCents = feeFromPercent + FIXED;
 
-    // --- CONVERSIÓN PARA UI (Pesos) ---
+    const totalCents = subtotalCents + serviceFeeCents;
+
     return {
       subtotal: subtotalCents / 100,
-      shippingCost: 0, // Siempre 0 para el comprador
+      shippingCost: 0,
       serviceFee: serviceFeeCents / 100,
       total: totalCents / 100,
-      totalInCents: totalCents, // Este es el valor que va a Stripe
+      totalInCents: totalCents,
       itemCount: items.length,
     };
-  }, [items]);
+  }, [items, config]);
 };

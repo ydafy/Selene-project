@@ -1,3 +1,4 @@
+import React, { memo, useCallback } from 'react';
 import { TextInput } from 'react-native';
 import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
@@ -5,7 +6,48 @@ import { Slider } from '@miblanchard/react-native-slider';
 
 import { Box, Text } from '../../../base';
 import { Theme } from '../../../../core/theme';
-//import { formatCurrency } from '../../../../core/utils/format';
+
+const CURRENCY_SYMBOL = '$';
+
+type PriceInputProps = {
+  label: string;
+  value: number;
+  onChangeText: (text: string) => void;
+};
+
+const PriceInput = memo(({ label, value, onChangeText }: PriceInputProps) => {
+  const theme = useTheme<Theme>();
+
+  return (
+    <Box
+      backgroundColor="background"
+      padding="s"
+      borderRadius="s"
+      width="45%"
+      borderWidth={1}
+      borderColor="cardBackground"
+    >
+      <Text variant="caption-md" color="textSecondary" marginBottom="xs">
+        {label}
+      </Text>
+      <Box flexDirection="row" alignItems="center">
+        <Text color="textPrimary">{CURRENCY_SYMBOL}</Text>
+        <TextInput
+          value={String(value)}
+          onChangeText={onChangeText}
+          keyboardType="numeric"
+          style={{
+            color: theme.colors.textPrimary,
+            fontFamily: 'Montserrat-Bold',
+            fontSize: 16,
+            flex: 1,
+            marginLeft: 4,
+          }}
+        />
+      </Box>
+    </Box>
+  );
+});
 
 type PriceRangeFilterProps = {
   currentRange: [number, number];
@@ -14,7 +56,7 @@ type PriceRangeFilterProps = {
   max: number;
 };
 
-export const PriceRangeFilter = ({
+const PriceRangeFilterComponent = ({
   currentRange,
   onChange,
   min,
@@ -23,18 +65,23 @@ export const PriceRangeFilter = ({
   const theme = useTheme<Theme>();
   const { t } = useTranslation('search');
 
-  const handleManualChange = (type: 'min' | 'max', text: string) => {
-    const numericValue = parseInt(text.replace(/[^0-9]/g, ''), 10) || 0;
-    const [currentMin, currentMax] = currentRange;
+  const handleMinChange = useCallback(
+    (text: string) => {
+      const numericValue = parseInt(text.replace(/[^0-9]/g, ''), 10) || 0;
+      const [currentMax] = currentRange;
+      onChange([Math.min(numericValue, currentMax), currentMax]);
+    },
+    [currentRange, onChange],
+  );
 
-    if (type === 'min') {
-      const newMin = Math.min(numericValue, currentMax);
-      onChange([newMin, currentMax]);
-    } else {
-      const newMax = Math.max(numericValue, currentMin);
-      onChange([currentMin, newMax]);
-    }
-  };
+  const handleMaxChange = useCallback(
+    (text: string) => {
+      const numericValue = parseInt(text.replace(/[^0-9]/g, ''), 10) || 0;
+      const [currentMin] = currentRange;
+      onChange([currentMin, Math.max(numericValue, currentMin)]);
+    },
+    [currentRange, onChange],
+  );
 
   return (
     <Box marginBottom="xl">
@@ -47,74 +94,27 @@ export const PriceRangeFilter = ({
         {t('filters.priceRange')}
       </Text>
 
-      {/* Inputs Editables */}
       <Box
         flexDirection="row"
         justifyContent="space-between"
         alignItems="center"
         marginBottom="s"
       >
-        {/* Input MIN */}
-        <Box
-          backgroundColor="background"
-          padding="s"
-          borderRadius="s"
-          width="45%"
-          borderWidth={1}
-          borderColor="cardBackground"
-        >
-          <Text variant="caption-md" color="textSecondary" marginBottom="xs">
-            {t('filters.min')}
-          </Text>
-          <Box flexDirection="row" alignItems="center">
-            <Text color="textPrimary">$</Text>
-            <TextInput
-              value={String(currentRange[0])}
-              onChangeText={(text) => handleManualChange('min', text)}
-              keyboardType="numeric"
-              style={{
-                color: theme.colors.textPrimary,
-                fontFamily: 'Montserrat-Bold',
-                fontSize: 16,
-                flex: 1,
-                marginLeft: 4,
-              }}
-            />
-          </Box>
-        </Box>
+        <PriceInput
+          label={t('filters.min')}
+          value={currentRange[0]}
+          onChangeText={handleMinChange}
+        />
 
         <Text variant="body-md" color="textSecondary">
           -
         </Text>
 
-        {/* Input MAX */}
-        <Box
-          backgroundColor="background"
-          padding="s"
-          borderRadius="s"
-          width="45%"
-          borderWidth={1}
-          borderColor="cardBackground"
-        >
-          <Text variant="caption-md" color="textSecondary" marginBottom="xs">
-            {t('filters.max')}
-          </Text>
-          <Box flexDirection="row" alignItems="center">
-            <Text color="textPrimary">$</Text>
-            <TextInput
-              value={String(currentRange[1])}
-              onChangeText={(text) => handleManualChange('max', text)}
-              keyboardType="numeric"
-              style={{
-                color: theme.colors.textPrimary,
-                fontFamily: 'Montserrat-Bold',
-                fontSize: 16,
-                flex: 1,
-                marginLeft: 4,
-              }}
-            />
-          </Box>
-        </Box>
+        <PriceInput
+          label={t('filters.max')}
+          value={currentRange[1]}
+          onChangeText={handleMaxChange}
+        />
       </Box>
 
       <Box paddingHorizontal="m" marginTop="s">
@@ -125,39 +125,34 @@ export const PriceRangeFilter = ({
           maximumValue={max}
           step={100}
           animateTransitions
-          // --- ESTILOS PREMIUM ---
-
-          // 1. Colores
-          minimumTrackTintColor={theme.colors.primary} // Parte activa (Lion)
-          maximumTrackTintColor={theme.colors.cardBackground} // Parte inactiva (Gris oscuro)
+          minimumTrackTintColor={theme.colors.primary}
+          maximumTrackTintColor={theme.colors.cardBackground}
           thumbTintColor={theme.colors.primary}
-          // 2. Estilo de la Línea (Track)
           trackStyle={{
-            height: 6, // Más gruesa
-            borderRadius: 3, // Puntas redondeadas
-            backgroundColor: theme.colors.cardBackground, // Asegura que el fondo se vea bien
+            height: 6,
+            borderRadius: 3,
+            backgroundColor: theme.colors.cardBackground,
           }}
-          // 3. Estilo del Botón (Thumb)
           thumbStyle={{
-            width: 28, // Grande y fácil de tocar
+            width: 28,
             height: 28,
             borderRadius: 14,
             backgroundColor: theme.colors.primary,
-            borderWidth: 4, // Borde grueso
-            borderColor: theme.colors.background, // El borde es del color del fondo para crear "espacio"
-            // Sombra para elevación
+            borderWidth: 4,
+            borderColor: theme.colors.background,
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.5,
             shadowRadius: 4,
             elevation: 5,
           }}
-          // 4. Área de toque expandida (Hit Slop invisible)
           containerStyle={{
-            height: 40, // Altura del contenedor invisible para facilitar el agarre
+            height: 40,
           }}
         />
       </Box>
     </Box>
   );
 };
+
+export const PriceRangeFilter = memo(PriceRangeFilterComponent);

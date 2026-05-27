@@ -12,8 +12,8 @@ import { useTranslation } from 'react-i18next';
 
 import { Box, Text } from '../../base';
 import { Theme } from '../../../core/theme';
-import { WalletTransaction } from '../../../../../packages/types/src/index';
-import { formatCurrency } from '../../../core/utils/format';
+import { WalletTransaction } from '@selene/types';
+import { formatCurrency, formatDate } from '../../../core/utils/format';
 
 export type TransactionDetailRef = BottomSheetModal;
 
@@ -25,7 +25,7 @@ export const TransactionDetailSheet = forwardRef<BottomSheetModal, Props>(
   ({ transaction }, ref) => {
     const theme = useTheme<Theme>();
     const { t } = useTranslation('wallet');
-    const snapPoints = useMemo(() => ['55%'], []); // Un poco más alto para que quepa todo
+    const snapPoints = useMemo(() => ['55%'], []);
 
     // 1. OPTIMIZACIÓN: Renderizado de filas memorizado
     const renderRow = useCallback(
@@ -109,7 +109,7 @@ export const TransactionDetailSheet = forwardRef<BottomSheetModal, Props>(
               {t(`types.${transaction.type}`)}
             </Text>
             <Text variant="caption-md" color="textSecondary">
-              {new Date(transaction.created_at).toLocaleString()}
+              {formatDate(transaction.created_at)}
             </Text>
           </Box>
 

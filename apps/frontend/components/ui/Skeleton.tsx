@@ -5,7 +5,9 @@ import { Theme } from '../../core/theme';
 type SkeletonProps = {
   width?: number | string;
   height?: number | string;
-  borderRadius?: number;
+  marginBottom?: number | string;
+  marginTop?: number | string;
+  borderRadius?: number | string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   style?: any;
 };
@@ -15,6 +17,8 @@ export const Skeleton = ({
   height,
   borderRadius,
   style,
+  marginBottom,
+  marginTop,
 }: SkeletonProps) => {
   const theme = useTheme<Theme>();
 
@@ -38,6 +42,8 @@ export const Skeleton = ({
         {
           width: width,
           height: height,
+          marginBottom: marginBottom,
+          marginTop: marginTop,
           // Usamos un color base. En modo oscuro, un gris claro con opacidad funciona mejor.
           // Si cardBackground es #1E1E1E, al bajarle la opacidad se verá sutil.
           backgroundColor: 'rgba(255, 255, 255, 0.50)',

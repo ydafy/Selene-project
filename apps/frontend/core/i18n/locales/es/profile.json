@@ -22,7 +22,10 @@
     "emptyMsg": "¡Es hora de limpiar tu setup! Vende lo que ya no uses.",
     "publishedOn": "Publicado el",
     "lastUpdate": "Última act.",
-
+    "toast": {
+      "deleteSuccessTitle": "Producto eliminado",
+      "deleteSuccessMsg": "Tu publicación ha sido retirada."
+    },
     "tabs": {
       "active": "En Venta",
       "history": "Historial"
@@ -32,7 +35,8 @@
       "IN_REVIEW": "En Revisión",
       "PENDING_VERIFICATION": "Sin Verificar",
       "SOLD": "Vendido",
-      "REJECTED": "Rechazado"
+      "REJECTED": "Rechazado",
+      "HIDDEN": "Oculto"
     },
     "actions": {
       "edit": "Editar",
@@ -40,6 +44,14 @@
       "fix": "Corregir",
       "verify": "Verificar"
     }
+  },
+  "review": {
+    "title": "Emitir Reseña",
+    "subtitle": "Califica tu experiencia con este vendedor",
+    "commentPlaceholder": "Escribe un comentario (opcional)...",
+    "confirmButton": "Enviar Calificacion",
+    "successTitle": "Reseña enviada",
+    "successMsg": "Gracias por tu calificación."
   },
   "feedback": {
     "avatarUpdatedTitle": "Foto Actualizada",

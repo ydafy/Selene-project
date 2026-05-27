@@ -1,11 +1,7 @@
 import { create } from 'zustand';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '../../core/db/supabase';
-import {
-  Wallet,
-  WalletTransaction,
-  SellerBankAccount,
-} from '../../../../packages/types/src/index';
+import { Wallet, WalletTransaction, SellerBankAccount } from '@selene/types';
 
 interface WalletState {
   wallet: Wallet | null;
@@ -27,10 +23,8 @@ interface WalletState {
   clearWallet: () => void;
   fetchBankAccount: (userId: string) => Promise<void>;
   saveBankAccount: (
-    userId: string,
     clabe: string,
     holderName: string,
-    bankName: string,
   ) => Promise<{ success: boolean; error?: string }>;
 }
 
@@ -50,6 +44,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
         .from('seller_bank_accounts')
         .select('*')
         .eq('user_id', userId)
+        .is('deleted_at', null)
         .maybeSingle();
 
       if (error) throw error;
@@ -60,34 +55,32 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       console.error('Error fetching bank account:', message);
     }
   },
-
-  saveBankAccount: async (userId, clabe, holderName, bankName) => {
+  saveBankAccount: async (clabe, holderName) => {
     set({ isActionLoading: true });
     try {
-      // Upsert: Si ya existe, actualiza. Si no, crea.
-      const { data, error } = await supabase
-        .from('seller_bank_accounts')
-        .upsert(
-          {
-            user_id: userId,
-            clabe,
-            account_holder_name: holderName,
-            bank_name: bankName,
-            is_verified: true, // Asumimos verificado por algoritmo por ahora
-          },
-          { onConflict: 'user_id' },
-        )
-        .select()
-        .single();
+      // Llamamos a la RPC que contiene la verdad matemática
+      const { data, error } = await supabase.rpc('fn_save_bank_account', {
+        p_clabe: clabe,
+        p_holder_name: holderName,
+      });
 
       if (error) throw error;
 
-      set({ bankAccount: data as SellerBankAccount, isActionLoading: false });
+      const result = Array.isArray(data) ? data[0] : data;
+
+      if (!result?.success) {
+        throw new Error(result?.error_message || 'INVALID_CLABE');
+      }
+
+      // Refrescamos la cuenta en el estado local para que la UI se actualice
+      await get().fetchBankAccount(get().wallet?.user_id || '');
+
+      set({ isActionLoading: false });
       return { success: true };
     } catch (err) {
       set({ isActionLoading: false });
       const message =
-        err instanceof Error ? err.message : 'Error al guardar cuenta bancaria';
+        err instanceof Error ? err.message : 'Error al guardar cuenta';
       return { success: false, error: message };
     }
   },
@@ -212,31 +205,32 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   requestPayout: async (amount: number, bankAccountId: string) => {
     const { wallet } = get();
 
-    // 1. Validación previa en cliente (UX)
+    // Validación previa en cliente (UX)
     if (!wallet || wallet.available_balance < amount) {
       return { success: false, error: 'INSUFFICIENT_FUNDS' };
     }
 
-    // 2. Optimistic Update: Bajamos el saldo en la UI para feedback instantáneo
-    const previousBalance = wallet.available_balance;
+    // Optimistic Update: Bajamos el saldo en la UI para feedback instantáneo
+    const previousBalance = wallet.available_balance ?? 0;
+    if (previousBalance < amount) {
+      return { success: false, error: 'INSUFFICIENT_FUNDS' };
+    }
     set({
       isActionLoading: true,
       wallet: { ...wallet, available_balance: previousBalance - amount },
     });
 
     try {
-      // 3. LLAMADA RPC (La verdad está en el servidor)
+      // LLAMADA RPC (Firma v2.0: Solo monto y cuenta bancaria)
+      // El servidor identifica al usuario y su wallet mediante el JWT automáticamente
       const { data, error } = await supabase.rpc('fn_request_payout', {
-        p_user_id: wallet.user_id,
-        p_wallet_id: wallet.id,
         p_amount: amount,
         p_bank_account_id: bankAccountId,
       });
 
       if (error) throw error;
 
-      // 4. Verificar respuesta de la función SQL
-      // Nota: Supabase RPC devuelve un array o el tipo de retorno de la función
+      //Verificar respuesta estructurada TABLE(success, error_message)
       const result = Array.isArray(data) ? data[0] : data;
 
       if (!result?.success) {

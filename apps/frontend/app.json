@@ -6,7 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "selene",
-
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -72,7 +71,8 @@
           "photosPermission": "Selene necesita acceso a tus fotos para que puedas subir tu avatar y publicar productos.",
           "cameraPermission": "Selene necesita acceso a tu cámara para que puedas tomar fotos de tus productos."
         }
-      ]
+      ],
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true

@@ -22,12 +22,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // Usamos nuestro hook 'useSession' para obtener el estado de la sesión.
   const { session, loading } = useSession();
 
-  console.log('AuthProvider State:', {
-    loading,
-    hasSession: !!session,
-    userId: session?.user?.id,
-  });
-
   return (
     // Proporcionamos el valor de 'session' y 'loading' a todos los componentes hijos.
     <AuthContext.Provider value={{ session, loading }}>

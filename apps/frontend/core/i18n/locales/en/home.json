@@ -1,0 +1,110 @@
+{
+  "hero": {
+    "titlePart1": "Selene",
+    "titleHighlight": "Trust",
+    "titlePart2": "Used Hardware",
+    "subtitle": "Technical verification of each component.",
+    "cta": "BROWSE STORE",
+    "systemStatus": "ACTIVE VERIFICATION SYSTEM"
+  },
+  "categories": {
+    "header": "HARDWARE_DIRECTORY // SELECT_MODULE",
+    "title": "Find your component",
+    "classLabel": "CLASS:",
+    "unitType": "CORE_UNIT",
+    "modPrefix": "MOD_0"
+  },
+  "trust": {
+    "payments": {
+      "title": "Your money is protected",
+      "subtitle": "We use Stripe to process your payments securely. The money stays in a vault and is only released when you confirm that the hardware works.",
+      "item1": "Processed by Stripe",
+      "item2": "Funds in Escrow",
+      "item3": "Problem report"
+    },
+    "benchmarks": {
+      "title": "Verified Hardware",
+      "subtitle": "Each product went through software such as 3DMark, CPU-Z and Aida-64 to ensure the gold standard.",
+      "item1": "Stress Benchmarks",
+      "item2": "Hardware Validation",
+      "item3": "Verification by NetRunners"
+    }
+  },
+  "shipping": {
+    "line1": "Shipping",
+    "badge": "Nationals",
+    "line2": "insured by Selene"
+  },
+  "pipeline": {
+    "header": "FLOW_SYSTEM // 01-03",
+    "title": "Trust Cycle",
+    "step1": "Publish",
+    "step2": "Verify",
+    "step3": "Sell",
+    "footer": "Each product is audited by our NetRunners before being released. We maintain the highest quality standard in the community."
+  },
+  "logistics": {
+    "header": "INFRASTRUCTURE_LIVE // MX_NETWORK",
+    "title": "National Shipping",
+    "items": {
+      "coverage": { "label": "COVERAGE", "value": "All of Mexico" },
+      "protection": { "label": "PROTECTION", "value": "Insurance Included" },
+      "tracking": { "label": "TRACKING", "value": "Live 24/7" },
+      "delivery": { "label": "DELIVERY", "value": "2-5 Business Days" }
+    }
+  },
+  "recentDrops": {
+    "header": "INVENTORY_FLUX // 04",
+    "title": "Newly Verified",
+    "cta": "VIEW THE ENTIRE AVAILABLE CATALOG"
+  },
+  "recentlyViewed": {
+    "header": "USER_HISTORY // RECENTLY_VIEWED",
+    "title": "Continue your search"
+  },
+  "publisher": {
+    "card1Tag": "MARKET_TREND",
+    "card2Tag": "NETRUNNER_GUIDE",
+    "card3Tag": "COMMUNITY"
+  },
+
+  "editorial": {
+    "header": "SELENE_BRIEFINGS // TRENDS",
+    "title": "Market Trends",
+    "actionLabel": "SEARCH IN STORE",
+
+    "cards": [
+      {
+        "id": "1",
+        "tag": "MARKET_TREND",
+        "title": "The RTX 3060 still reigns",
+        "desc": "It's the most searched GPU at Selene this month. See its current price.",
+        "query": "RTX 3060",
+        "icon": "chart-line-variant"
+      },
+
+      {
+        "id": "2",
+        "tag": "NETRUNNER_GUIDE",
+        "title": "Prepare your hardware",
+        "desc": "Tips to make sure your component passes the audit the first time.",
+        "query": "GPU",
+        "icon": "tools"
+      },
+      {
+        "id": "3",
+        "tag": "COMMUNITY",
+        "title": "Trust Report",
+        "desc": "+500 components successfully certified by 2025.",
+        "query": "",
+        "icon": "shield-check-outline"
+      }
+    ]
+  },
+
+  "footer": {
+    "brandName": "SELENE",
+    "thanks": "Thank you for trusting the gold standard of hardware in Mexico.",
+    "telemetry": "[ SELENE_OS_v2.0.77 ] // [ STATUS: OPERATIONAL ] // [ REGION: MX ]"
+  }
+}

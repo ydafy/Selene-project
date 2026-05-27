@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as Crypto from 'expo-crypto';
 import { supabase } from '../db/supabase';
 import { PaymentMethod } from '@selene/types';
-import { useAuthContext } from '@/components/auth/AuthProvider'; // Importamos tu contexto
+import { useAuthContext } from '@/components/auth/AuthProvider';
 
 const logDebug = (context: string, data?: unknown, error?: unknown) => {
   if (__DEV__) {
@@ -24,9 +24,9 @@ export const usePaymentMethods = () => {
     refetch: refreshMethods,
   } = useQuery({
     queryKey: ['paymentMethods'],
-    // Solo se ejecuta si hay un usuario logueado
     enabled: !!session?.user?.id,
     retry: 2,
+    staleTime: 1000 * 60 * 5,
     queryFn: async () => {
       logDebug('Fetching list');
       const { data, error } = await supabase.functions.invoke(

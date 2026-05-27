@@ -5,10 +5,19 @@
   "resultsTitle": "Results",
   "exploreSection": "Explore Products",
   "backToTop": "Back to top",
-
+  "resultsFound": "results found",
   "recentSearches": "Recent Searches",
   "clearHistory": "Clear all",
   "typeToSearch": "Type to search...",
+  "verifiedBySelene": "Verified by Selene",
+  "buttonTextViewProduct": "VIEW PRODUCT",
+
+  "categoriesList": {
+    "GPU": "GPU",
+    "CPU": "CPU",
+    "RAM": "RAM",
+    "MOTHERBOARD": "Motherboard"
+  },
 
   "filters": {
     "title": "Filters",
@@ -23,5 +32,13 @@
     "sortPriceLow": "Low price",
     "sortPriceHigh": "High price",
     "verifiedOnly": "Verified"
+  },
+  "conditions": {
+    "Nuevo": "New",
+    "Usado - Como Nuevo": "Used - Like New"
+  },
+  "shellTrustSnap": {
+    "trustMsg": "Each component goes through benchmarks and tests before it can be purchased.",
+    "trustButton": "VER PROCESO"
   }
 }

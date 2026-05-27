@@ -1,4 +1,10 @@
-import { useMemo, useEffect, useState, useRef } from 'react';
+/**
+ * @file core/hooks/useSellDetailsForm.ts
+ * @description Orquestador del formulario de detalles de venta.
+ * Maneja validación Zod, cotización JIT (Just-In-Time) y calculadora de ganancias.
+ */
+
+import { useMemo, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -7,10 +13,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useSellStore } from '@/core/store/useSellStore';
 import { useShippingQuote } from '@/core/hooks/useShippingQuote';
-import {
-  calculateInsurance,
-  PACKAGE_OPTIONS,
-} from '@/core/constants/product-data';
+import { useSystemConfig } from './useSystemConfig';
 
 const getDetailsSchema = (t: (key: string) => string) =>
   z.object({
@@ -33,11 +36,7 @@ const getDetailsSchema = (t: (key: string) => string) =>
       .max(1000, t('sell:errors.descriptionTooLong')),
     origin_zip: z.string().length(5, t('sell:errors.zipCodeInvalid')),
     package_preset: z.string().min(1, t('sell:errors.packageRequired')),
-
-    // CORRECCIÓN: Quitamos .default('seller')
-    // El valor por defecto ya lo maneja useForm abajo
-    shipping_payer: z.enum(['seller', 'buyer']),
-
+    shipping_payer: z.literal('seller'),
     insurance_enabled: z.boolean(),
   });
 
@@ -46,12 +45,12 @@ export type DetailsFormData = z.infer<ReturnType<typeof getDetailsSchema>>;
 export const useSellDetailsForm = () => {
   const { t } = useTranslation(['sell']);
   const router = useRouter();
+  const { data: systemConfig } = useSystemConfig();
+  const { draft, updateDraft } = useSellStore();
+  const category = draft.category;
 
-  const updateDraft = useSellStore((state) => state.updateDraft);
-  const category = useSellStore((state) => state.draft.category);
-  const initialDraft = useRef(useSellStore.getState().draft).current;
-
-  const detailsSchema = getDetailsSchema(t);
+  // 1. Memoización del Schema para performance
+  const detailsSchema = useMemo(() => getDetailsSchema(t), [t]);
 
   const {
     control,
@@ -63,130 +62,115 @@ export const useSellDetailsForm = () => {
     resolver: zodResolver(detailsSchema),
     mode: 'onChange',
     defaultValues: {
-      name: initialDraft.name ?? '',
-      price: initialDraft.price ?? '',
-      condition: initialDraft.condition ?? '',
-      usage: initialDraft.usage ?? '',
-      description: initialDraft.description ?? '',
-      origin_zip: initialDraft.origin_zip ?? '',
-      package_preset: initialDraft.package_preset || 'cpu_1',
-      // ESTRATEGIA: Siempre paga el vendedor
+      name: draft.name || '',
+      price: draft.price || '',
+      condition: draft.condition || '',
+      usage: draft.usage || '',
+      description: draft.description || '',
+      origin_zip: draft.origin_zip || '',
+      package_preset: draft.package_preset || 'gpu_1',
       shipping_payer: 'seller',
-      insurance_enabled: initialDraft.insurance_enabled ?? true,
+      insurance_enabled: draft.insurance_enabled ?? true,
     },
   });
 
   const { getQuote, isQuoting, error: quoteError } = useShippingQuote();
   const [shippingCost, setShippingCost] = useState(0);
 
-  // NOTA: Quitamos shipping_payer del watch para optimizar rendereo
-  const watchedValues = watch([
-    'price',
-    'package_preset',
-    'origin_zip',
-    'insurance_enabled',
-  ]);
-  const [price, packagePresetId, originZip, insuranceEnabled] = watchedValues;
+  // 2. Watcher como objeto (Senior Pattern)
+  const watched = watch();
+  const { price, package_preset, origin_zip } = watched;
 
-  // Efecto para preset por categoría
+  // Efecto: Auto-selección de caja por categoría
   useEffect(() => {
-    if (category) {
+    if (draft.category && systemConfig?.package_presets) {
+      const categoryToPrefix: Record<string, string> = {
+        GPU: 'gpu',
+        CPU: 'cpu',
+        RAM: 'ram',
+        Motherboard: 'mobo',
+      };
+      const prefix = categoryToPrefix[draft.category] || 'cpu';
+      const availableKeys = Object.keys(systemConfig.package_presets);
       const defaultPackage =
-        PACKAGE_OPTIONS[category as keyof typeof PACKAGE_OPTIONS]?.[0]?.id ||
-        'cpu_1';
+        availableKeys.find((key) => key.startsWith(prefix)) || 'cpu_1';
       setValue('package_preset', defaultPackage);
     }
-  }, [category, setValue]);
+  }, [draft.category, systemConfig, setValue]);
 
-  // Efecto de Cotización Estafeta (Seller)
+  // Efecto: Cotización con Debounce
   useEffect(() => {
     const priceNum = parseFloat(price) || 0;
 
-    if (originZip?.length === 5 && packagePresetId && priceNum > 0) {
+    if (origin_zip?.length === 5 && package_preset && priceNum > 0) {
       const fetchQuote = async () => {
-        // Usamos CDMX (06500) como destino pivote para el estimado
         const rates = await getQuote(
-          originZip,
-          packagePresetId,
+          origin_zip,
+          package_preset,
           priceNum,
           '06500',
         );
-
         if (rates && rates.length > 0) {
-          setShippingCost(rates[0].price);
-        } else {
-          setShippingCost(0);
+          const rawCost = rates[0].price;
+          setShippingCost(rawCost);
+          // Sincronizamos el costo en el Store para el Preview
+          updateDraft({ shipping_cost: rawCost.toString() });
         }
       };
 
       const timer = setTimeout(fetchQuote, 600);
       return () => clearTimeout(timer);
-    } else {
-      setShippingCost(0);
     }
-  }, [originZip, packagePresetId, price, getQuote]);
+  }, [origin_zip, package_preset, price, getQuote, updateDraft]);
 
   /**
-   * Calculadora de Ganancias (Lógica Simplificada)
-   * Ahora siempre resta el envío porque es "Envío Incluido"
+   * Calculadora de Ganancias
+   * Sincronizada con las reglas de negocio del Backend (system_settings)
    */
   const earnings = useMemo(() => {
     const priceNum = parseFloat(price) || 0;
-    if (priceNum === 0)
-      return {
-        commission: '0.00',
-        final: '0.00',
-        insurance: '0.00',
-        shippingCost: '0.00',
-      };
+    // FIX: Fallbacks para evitar el error de "possibly null"
+    if (priceNum === 0 || !systemConfig) {
+      return { commission: '0.00', shipping: '0.00', final: '0.00' };
+    }
 
-    // 1. Comisión Selene (9%)
-    const commission = priceNum * 0.09;
+    const subtotalCents = Math.round(priceNum * 100);
+    // Aplicamos ?? para asegurar que siempre haya un número
+    const commissionCents = Math.round(
+      subtotalCents * (systemConfig.service_fee_pct ?? 0.05),
+    );
 
-    // 2. Seguro Selene (1.3%)
-    const insurance = insuranceEnabled ? calculateInsurance(priceNum) : 0;
+    const enviaCents = Math.round(shippingCost * 100);
+    const logisticsTotalCents =
+      enviaCents > 0
+        ? enviaCents + (systemConfig.shipping_buffer_cents ?? 5000)
+        : 0;
 
-    // 3. Envío Estimado (Siempre se cobra al vendedor)
-    const currentShipping = shippingCost || 0;
-
-    // Cálculo Final
-    const final = priceNum - commission - insurance - currentShipping;
+    const finalCents = subtotalCents - commissionCents - logisticsTotalCents;
 
     return {
-      commission: commission.toFixed(2),
-      final: Math.max(0, final).toFixed(2),
-      shippingCost: currentShipping.toFixed(2),
-      insurance: insurance.toFixed(2),
+      commission: (commissionCents / 100).toFixed(2),
+      shipping: (logisticsTotalCents / 100).toFixed(2), // Renombrado para consistencia
+      final: (Math.max(0, finalCents) / 100).toFixed(2),
     };
-  }, [price, insuranceEnabled, shippingCost]);
+  }, [price, shippingCost, systemConfig]);
 
   const onSubmit = (data: DetailsFormData) => {
-    // Aseguramos que se guarde como seller
-    updateDraft({ ...data, shipping_payer: 'seller' });
+    updateDraft(data);
     router.push('/sell/specs');
   };
 
   return {
     t,
-    router,
-    category,
     control,
     handleSubmit,
     errors,
     isValid,
-    // Devolvemos watchedValues incluyendo un placeholder para shipping_payer
-    // para mantener compatibilidad con la UI si lo desestructura por índice
-    watchedValues: [
-      price,
-      packagePresetId,
-      'seller',
-      originZip,
-      insuranceEnabled,
-    ],
+    watched, // Enviamos el objeto
+    category,
     isQuoting,
     quoteError,
     earnings,
-    shippingCost,
     onSubmit,
   };
 };

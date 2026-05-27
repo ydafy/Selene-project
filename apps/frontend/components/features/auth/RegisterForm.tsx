@@ -1,14 +1,17 @@
-import { useRef } from 'react';
+/**
+ * @file components/features/auth/RegisterForm.tsx
+ * @description Formulario de registro refinado.
+ * Utiliza hooks centralizados para Auth y Google Sign-In para garantizar consistencia.
+ */
+
+import React, { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTheme } from '@shopify/restyle';
-import { type TextInput as RNTextInput } from 'react-native';
+import { TextInput as RNTextInput } from 'react-native'; // <--- IMPORTANTE
 import Toast from 'react-native-toast-message';
-import {
-  GoogleSignin,
-  statusCodes,
-} from '@react-native-google-signin/google-signin';
+import { router } from 'expo-router';
 
 import { Box, Text } from '../../base';
 import { FormTextInput } from '../../ui/FormTextInput';
@@ -21,12 +24,11 @@ import {
   registerSchema,
   RegisterData,
 } from '../../../core/hooks/useAuth';
+import { useGoogleAuth } from '../../../core/hooks/useGoogleAuth';
 import { Theme } from '../../../core/theme';
-import { supabase } from '../../../core/db/supabase';
-import { router } from 'expo-router';
 
 type RegisterFormProps = {
-  onSuccess: (email: string) => void; // Pasamos el email para la verificación
+  onSuccess: (email: string) => void;
   onLoginPress: () => void;
 };
 
@@ -35,12 +37,18 @@ export const RegisterForm = ({
   onLoginPress,
 }: RegisterFormProps) => {
   const { t } = useTranslation('auth');
-  const { signUp, loading, setLoading } = useAuth();
   const theme = useTheme<Theme>();
+  const { signUp, loading } = useAuth();
 
+  // 1. RESTAURACIÓN DE REFS (Para navegación de teclado)
   const emailInputRef = useRef<RNTextInput>(null);
   const passwordInputRef = useRef<RNTextInput>(null);
   const confirmPasswordInputRef = useRef<RNTextInput>(null);
+
+  // 2. MOTOR DE GOOGLE
+  const { signInWithGoogle, isGoogleLoading } = useGoogleAuth(() => {
+    router.replace('/(tabs)');
+  });
 
   const {
     control,
@@ -59,114 +67,34 @@ export const RegisterForm = ({
   });
 
   const onSubmit = async (data: RegisterData) => {
-    const { success, error, session, user } = await signUp(data);
-
-    if (!success || error) {
+    const result = await signUp(data);
+    if (!result.success) {
       Toast.show({
         type: 'error',
         text1: t('registerErrorTitle'),
-        text2: error?.message || 'Error',
+        text2: result.error?.message || 'Error',
       });
       return;
     }
-
-    // Éxito: Usuario creado, necesita verificación
-    if (user || session) {
-      // Llamamos al callback con el email para que el padre decida qué hacer (ir a OTP)
-      onSuccess(data.email);
-    }
+    if (result.user || result.session) onSuccess(data.email);
   };
 
-  // ... (Lógica de onGoogleSignIn idéntica a LoginForm, omitida por brevedad pero DEBE ir aquí)
-  // Puedes copiarla del LoginForm o crear un hook useGoogleLogin para no repetir.
-  const onGoogleSignIn = async () => {
-    setLoading(true);
-    try {
-      await GoogleSignin.hasPlayServices({
-        showPlayServicesUpdateDialog: true,
-      });
+  const isBusy = loading || isGoogleLoading;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const userInfo: any = await GoogleSignin.signIn();
-      const idToken = userInfo?.idToken || userInfo?.data?.idToken;
-
-      if (idToken) {
-        const { error } = await supabase.auth.signInWithIdToken({
-          provider: 'google',
-          token: idToken,
-        });
-
-        if (error) throw error;
-
-        // Si es exitoso, redirigimos directamente al home
-        router.replace('/(tabs)');
-      } else {
-        throw new Error('No se pudo obtener el idToken de Google.');
-      }
-    } catch (error: unknown) {
-      console.error('Error detallado en Google Sign-In:', error);
-      let errorMessage = 'Ocurrió un error inesperado.';
-
-      if (error && typeof error === 'object' && 'code' in error) {
-        const googleError = error as { code: string | number };
-        switch (googleError.code) {
-          case statusCodes.SIGN_IN_CANCELLED:
-            setLoading(false);
-            return;
-          case statusCodes.IN_PROGRESS:
-            errorMessage = 'Ya hay un inicio de sesión en progreso.';
-            break;
-          case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
-            errorMessage = 'Los servicios de Google Play no están disponibles.';
-            break;
-          default:
-            errorMessage = `Error de Google: ${googleError.code}`;
-        }
-      } else if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-
-      Toast.show({
-        type: 'error',
-        text1: t('googleSignInErrorTitle') || 'Error',
-        text2: errorMessage,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Helper para renderizar el label de términos (Asumo que ya lo tienes)
   const renderTermsLabel = () => (
-    <Text
-      variant="body-md"
-      style={{ flexShrink: 1, color: theme.colors.textSecondary }}
-    >
-      {t('iHaveReadAndAccept')}{' '}
-      <TextLink
-        onPress={() => {
-          /* Navegar a Términos */
-        }}
-      >
+    <Text variant="body-sm" color="textSecondary">
+      {t('acceptTerms')}{' '}
+      <Text color="primary" fontWeight="bold">
         {t('termsAndConditions')}
-      </TextLink>{' '}
-      {t('andThe')}{' '}
-      <TextLink
-        onPress={() => {
-          /* Navegar a Privacidad */
-        }}
-      >
-        {t('privacyPolicy')}
-      </TextLink>
-      .
+      </Text>
     </Text>
   );
 
   return (
     <Box width="100%">
-      {/* ... (Todos los Controllers del formulario: Username, Email, Password, Confirm, Checkbox) ... */}
-      {/* Copia el JSX de los inputs de tu register.tsx original y pégalos aquí */}
-
       <Box>
+        {/* USERNAME */}
         <Controller
           control={control}
           name="username"
@@ -181,7 +109,7 @@ export const RegisterForm = ({
               error={!!errors.username}
               autoFocus
               returnKeyType="next"
-              onSubmitEditing={() => emailInputRef.current?.focus()}
+              onSubmitEditing={() => emailInputRef.current?.focus()} // <--- SALTO 1
             />
           )}
         />
@@ -193,14 +121,16 @@ export const RegisterForm = ({
             {t(errors.username.message as string)}
           </Text>
         )}
+
         <Box height={16} />
 
+        {/* EMAIL */}
         <Controller
           control={control}
           name="email"
           render={({ field: { onChange, onBlur, value } }) => (
             <FormTextInput
-              ref={emailInputRef}
+              ref={emailInputRef} // <--- ASIGNACIÓN 1
               label={t('emailLabel')}
               onBlur={onBlur}
               onChangeText={onChange}
@@ -210,7 +140,7 @@ export const RegisterForm = ({
               leftIcon="email-outline"
               error={!!errors.email}
               returnKeyType="next"
-              onSubmitEditing={() => passwordInputRef.current?.focus()}
+              onSubmitEditing={() => passwordInputRef.current?.focus()} // <--- SALTO 2
             />
           )}
         />
@@ -222,14 +152,16 @@ export const RegisterForm = ({
             {t(errors.email.message as string)}
           </Text>
         )}
+
         <Box height={16} />
 
+        {/* PASSWORD */}
         <Controller
           control={control}
           name="password"
           render={({ field: { onChange, onBlur, value } }) => (
             <FormTextInput
-              ref={passwordInputRef}
+              ref={passwordInputRef} // <--- ASIGNACIÓN 2
               label={t('passwordLabel')}
               onBlur={onBlur}
               onChangeText={onChange}
@@ -238,7 +170,7 @@ export const RegisterForm = ({
               leftIcon="lock-outline"
               error={!!errors.password}
               returnKeyType="next"
-              onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
+              onSubmitEditing={() => confirmPasswordInputRef.current?.focus()} // <--- SALTO 3
             />
           )}
         />
@@ -250,14 +182,16 @@ export const RegisterForm = ({
             {t(errors.password.message as string)}
           </Text>
         )}
+
         <Box height={16} />
 
+        {/* CONFIRM PASSWORD */}
         <Controller
           control={control}
           name="confirmPassword"
           render={({ field: { onChange, onBlur, value } }) => (
             <FormTextInput
-              ref={confirmPasswordInputRef}
+              ref={confirmPasswordInputRef} // <--- ASIGNACIÓN 3
               label={t('confirmPasswordLabel')}
               onBlur={onBlur}
               onChangeText={onChange}
@@ -280,6 +214,8 @@ export const RegisterForm = ({
         )}
 
         <Box height={24} />
+
+        {/* TERMS */}
         <Controller
           control={control}
           name="termsAccepted"
@@ -291,28 +227,19 @@ export const RegisterForm = ({
             />
           )}
         />
-        {errors.termsAccepted && (
-          <Text
-            variant="body-sm"
-            style={{ color: theme.colors.error, marginTop: 4 }}
-          >
-            {t(errors.termsAccepted.message as string)}
-          </Text>
-        )}
       </Box>
 
-      {/* Botón Principal */}
+      {/* BOTONES DE ACCIÓN */}
       <Box paddingVertical="m">
         <PrimaryButton
           onPress={handleSubmit(onSubmit)}
           loading={loading}
-          disabled={!isValid || loading}
+          disabled={!isValid || isBusy}
         >
           {t('createAccountButton')}
         </PrimaryButton>
       </Box>
 
-      {/* Google y Login Link */}
       <Box flexDirection="row" alignItems="center" marginBottom="l">
         <Box flex={1} height={1} backgroundColor="cardBackground" />
         <Text variant="body-sm" marginHorizontal="m">
@@ -321,7 +248,14 @@ export const RegisterForm = ({
         <Box flex={1} height={1} backgroundColor="cardBackground" />
       </Box>
 
-      <GoogleButton onPress={onGoogleSignIn} label={t('continueWithGoogle')} />
+      {/* FIX: GoogleButton sin la prop loading si no la soporta */}
+      <GoogleButton
+        onPress={() => !isBusy && signInWithGoogle()} // Protección manual
+        label={
+          isGoogleLoading ? t('common:states.loading') : t('continueWithGoogle')
+        }
+        disabled={isBusy}
+      />
 
       <Box
         paddingVertical="l"
@@ -332,7 +266,6 @@ export const RegisterForm = ({
         <Text variant="body-md" color="textSecondary">
           {t('alreadyHaveAccount')}{' '}
         </Text>
-        {/* Asegúrate de tener la traducción 'alreadyHaveAccount' ("¿Ya tienes cuenta?") */}
         <TextLink onPress={onLoginPress}>{t('loginButton')}</TextLink>
       </Box>
     </Box>

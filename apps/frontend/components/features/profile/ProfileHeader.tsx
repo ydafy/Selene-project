@@ -8,14 +8,15 @@ import { Box, Text } from '../../base';
 import { AppImage } from '../../ui/AppImage';
 import { Theme } from '../../../core/theme';
 import { ProfileStats } from '../../../core/hooks/useProfileStats';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 type ProfileHeaderProps = {
-  // Datos (Siempre necesarios)
-  user?: User | null; // Opcional porque en perfil público tal vez no tengamos el objeto User completo de Supabase
+  user?: User | null;
   profile: {
-    username: string;
+    username: string | null;
     avatar_url: string | null;
-    created_at?: string;
+    created_at?: string | null;
+    is_verified_seller?: boolean | null;
   } | null;
   stats?: ProfileStats;
   isUploading?: boolean;
@@ -79,9 +80,9 @@ export const ProfileHeader = ({
     <Box
       marginHorizontal="m"
       padding="l"
-      marginTop="l"
+      marginTop="xl"
       backgroundColor="cardBackground"
-      borderRadius="xl"
+      borderRadius="l"
       style={{
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
@@ -184,12 +185,42 @@ export const ProfileHeader = ({
         </TouchableOpacity>
 
         {/* Info de Texto */}
-        <Text variant="header-xl" marginTop="m">
-          @{profile?.username || 'Usuario'}
-        </Text>
-        <Text variant="caption-md" color="textSecondary">
-          Miembro desde {joinDate}
-        </Text>
+        <Box alignItems="center" marginTop="m">
+          {/* FILA DEL NOMBRE + ICONO */}
+          <Box flexDirection="row" alignItems="center">
+            <Text variant="header-xl">@{profile?.username || 'Usuario'}</Text>
+
+            {/* SELLO DE VERIFICACIÓN (MVP++) */}
+            {profile?.is_verified_seller && (
+              <MaterialCommunityIcons
+                name="check-decagram"
+                size={22}
+                color={theme.colors.primary}
+                style={{ marginLeft: 8 }}
+              />
+            )}
+          </Box>
+
+          {/* TEXTO DE RESPALDO (Solo si es VIP) */}
+          {profile?.is_verified_seller && (
+            <Text
+              variant="caption-md"
+              color="primary"
+              fontWeight="bold"
+              marginTop="xs"
+            >
+              Vendedor Verificado por Selene
+            </Text>
+          )}
+
+          <Text
+            variant="caption-md"
+            color="textSecondary"
+            marginTop={profile?.is_verified_seller ? 'xs' : 's'}
+          >
+            Miembro desde {joinDate}
+          </Text>
+        </Box>
       </Box>
 
       {/* --- ESTADÍSTICAS --- */}

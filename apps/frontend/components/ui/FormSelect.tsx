@@ -18,6 +18,7 @@ type FormSelectProps = {
   error?: boolean;
   leftIcon?: string;
   searchable?: boolean;
+  disabled?: boolean;
 };
 
 export const FormSelect = ({
@@ -28,10 +29,11 @@ export const FormSelect = ({
   placeholder,
   error,
   leftIcon,
+  disabled = false,
   searchable = false,
 }: FormSelectProps) => {
   const theme = useTheme<Theme>();
-  const insets = useSafeAreaInsets(); // <--- AGREGADO
+  const insets = useSafeAreaInsets();
   const bottomSheetRef = useRef<BottomSheetModal>(null);
 
   // 1. SNAP POINTS: Idéntico a FilterModal (Fijo al 85%)
@@ -58,8 +60,12 @@ export const FormSelect = ({
 
   return (
     <>
-      <TouchableOpacity onPress={handlePresentModal} activeOpacity={0.8}>
-        <Box pointerEvents="none">
+      <TouchableOpacity
+        onPress={handlePresentModal}
+        activeOpacity={0.8}
+        disabled={disabled}
+      >
+        <Box pointerEvents="none" opacity={disabled ? 0.5 : 1}>
           <TextInput
             mode="flat"
             label={label}

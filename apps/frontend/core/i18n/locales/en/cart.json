@@ -8,6 +8,10 @@
   "actions": {
     "remove": "Remove from cart"
   },
+  "item": {
+    "unavailableShort": "NOT AVAILABLE",
+    "unavailableMsg": "Product no longer available"
+  },
   "dialog": {
     "removeItemTitle": "Remove item?",
     "removeItemMsg": "Are you sure you want to remove this item from your cart?"

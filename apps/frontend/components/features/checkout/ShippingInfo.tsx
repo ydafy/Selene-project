@@ -3,12 +3,8 @@ import { useTheme } from '@shopify/restyle';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Box, Text } from '../../base';
 import { Theme } from '../../../core/theme';
-import { t } from 'i18next';
-import { useTranslation } from 'react-i18next';
 
-type ShippingInfoProps = {
-  type: 'free' | 'protected';
-};
+import { useTranslation } from 'react-i18next';
 
 /**
  * Componente que muestra el texto de envío para los productos en el checkout.
@@ -44,11 +40,7 @@ export const ShippingInfo = ({ type }: { type: 'free' | 'protected' }) => {
         />
       </Box>
       <Box marginLeft="m" flex={1}>
-        <Text
-          variant="body-sm"
-          fontWeight="bold"
-          color={isFree ? 'success' : 'textPrimary'}
-        >
+        <Text variant="body-sm" color={isFree ? 'success' : 'textPrimary'}>
           {isFree
             ? t('shipping.freeWithEstafeta')
             : t('shipping.estafetaProtected')}

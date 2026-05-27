@@ -7,60 +7,78 @@ type PrimaryButtonProps = Omit<ButtonProps, 'theme'> & {
   variant?: 'solid' | 'outline';
 };
 
+const PILL_RADIUS = 30;
+const BORDER_WIDTH = 2;
+
+const getBackgroundColor = (
+  loading: boolean,
+  disabled: boolean,
+  variant: 'solid' | 'outline',
+  buttonColor: string | undefined,
+  theme: Theme,
+): string => {
+  if (loading) return buttonColor || theme.colors.primary;
+  if (disabled) return theme.colors.background;
+  if (variant === 'outline') return theme.colors.background;
+  return buttonColor || theme.colors.primary;
+};
+
+const getTextColor = (
+  loading: boolean,
+  variant: 'solid' | 'outline',
+  theme: Theme,
+): string => {
+  if (loading) return '#FFFFFF';
+  if (variant === 'outline') return theme.colors.primary;
+  return theme.colors.background;
+};
+
+const getOpacity = (loading: boolean, disabled: boolean): number => {
+  if (loading) return 0.9;
+  if (disabled) return 0.5;
+  return 1;
+};
+
 export const PrimaryButton = ({
   children,
   variant = 'solid',
-  disabled,
-  loading,
+  disabled = false,
+  loading = false,
   buttonColor,
   ...rest
 }: PrimaryButtonProps) => {
   const theme = useTheme<Theme>();
 
-  // 1. Determinamos si debe verse como "Outline" (Borde y fondo transparente)
-  //    Solo si es variante 'outline' O si está deshabilitado PERO NO cargando.
-  const isOutlined = variant === 'outline' || (disabled && !loading);
-
-  // 2. Calculamos el color de fondo exacto según el estado
-  let backgroundColor;
-
-  if (loading) {
-    // ESTADO CARGANDO (CLICK): Usamos textSecondary (Gris)
-    backgroundColor = theme.colors.background;
-  } else if (isOutlined) {
-    // ESTADO OUTLINE/DISABLED: Transparente
-    backgroundColor = theme.colors.background;
-  } else {
-    // ESTADO NORMAL: Usamos el color pasado o el Primario (Lion)
-    backgroundColor = buttonColor || theme.colors.primary;
-  }
-
-  // 3. Calculamos el color del texto
-  const textColor = isOutlined ? theme.colors.primary : theme.colors.background;
+  const isOutlineVariant = variant === 'outline';
+  const mode = isOutlineVariant ? 'outlined' : 'contained';
 
   return (
     <PaperButton
       {...rest}
       disabled={disabled}
       loading={loading}
-      mode={isOutlined ? 'outlined' : 'contained'}
-      // Forzamos el color del texto
-      textColor={textColor}
+      mode={mode}
+      textColor={getTextColor(loading, variant, theme)}
       style={[
         {
-          borderRadius: 30,
-          borderWidth: 2,
+          borderRadius: PILL_RADIUS,
+          borderWidth: BORDER_WIDTH,
           borderColor: theme.colors.primary,
-
-          // --- AQUÍ ESTÁ LA SOLUCIÓN ---
-          // Inyectamos el color de fondo calculado directamente en el estilo.
-          // Esto anula el comportamiento por defecto de Paper al estar disabled.
-          backgroundColor: backgroundColor,
-          // -----------------------------
+          backgroundColor: getBackgroundColor(
+            loading,
+            disabled,
+            variant,
+            buttonColor,
+            theme,
+          ),
+          opacity: getOpacity(loading, disabled),
         },
         rest.style,
       ]}
-      labelStyle={{ fontWeight: 'bold', paddingVertical: 8, fontSize: 16 }}
+      labelStyle={{
+        fontWeight: 'bold',
+        fontSize: 16,
+      }}
     >
       {children}
     </PaperButton>

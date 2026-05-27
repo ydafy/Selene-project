@@ -1,25 +1,62 @@
 {
   "form": {
     "title": "New Address",
-    "mapPlaceholder": "Map will appear here",
+    "subtitle": "Add a new address for your orders",
+    "zipLabel": "Postal Code",
+    "zipPlaceholder": "00000",
+    "districtLabel": "Neighborhood",
+    "districtPlaceholder": "Select your neighborhood",
+    "cityLabel": "City",
+    "stateLabel": "State",
     "streetLabel": "Street and Number",
-    "streetPlaceholder": "e.g., Reforma Ave. 222",
-    "detailsLabel": "Interior / Apt. (Optional)",
-    "detailsPlaceholder": "e.g., Tower B, Apt. 401",
-    "instructionsLabel": "Delivery Instructions",
-    "instructionsPlaceholder": "e.g., White facade, leave at reception...",
+    "streetPlaceholder": "e.g., Reforma Ave. 123",
     "recipientLabel": "Recipient's Name",
+    "recipientPlaceholder": "e.g., Juan Pérez",
     "phoneLabel": "Contact Phone Number",
-    "save": "Save Address"
+    "phonePlaceholder": "10 digits",
+    "isDefaultLabel": "Set as Primary Address",
+    "save": "Save Address",
+    "searching": "Searching...",
+    "zipNotFound": "Postal Code not found in our database.",
+    "sections": {
+      "location": "Location",
+      "address": "Address",
+      "contact": "Contact",
+      "label": "Label"
+    }
   },
+
+  "feedback": {
+    "saveSuccess": "Address Saved",
+    "saveSuccessMsg": "Your address has been added successfully.",
+    "saveError": "Error saving",
+    "saveErrorMsg": "Could not save. Please try again."
+  },
+
   "labels": {
     "title": "Labels",
     "home": "Home",
     "work": "Work",
+    "default": "Default",
     "other": "Other"
   },
+  "modal": {
+    "title": "Select Address",
+    "addBtn": "Add New Address"
+  },
+
+  "dialogs": {
+    "deleteTitle": "¿Eliminar dirección?",
+    "deleteMsg": "Esta acción no se puede deshacer. ¿Estás seguro?"
+  },
   "errors": {
-    "required": "This field is required",
-    "phoneInvalid": "Enter a valid phone number (10 digits)"
+    "nameShort": "The name must be at least 3 letters long.",
+    "phoneInvalid": "The phone number must be 10 digits.",
+    "streetRequired": "Please enter the street and exterior number.",
+    "zipInvalid": "The postal code must be 5 digits.",
+    "stateRequired": "The state is required.",
+    "cityRequired": "The city is required.",
+    "districtRequired": "Please select your neighborhood.",
+    "labelRequired": "Please select a label."
   }
 }

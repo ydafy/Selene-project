@@ -1,7 +1,5 @@
 import { Box } from '../../base';
 import { Skeleton } from '../../ui/Skeleton';
-//import { useTheme } from '@shopify/restyle';
-//import { Theme } from '../../../core/theme';
 
 type ProductCardSkeletonProps = {
   height?: number; // Altura dinámica
@@ -14,7 +12,7 @@ export const ProductCardSkeleton = ({
 
   return (
     <Box
-      width="100%" // Ocupa el ancho de la columna
+      width="100%"
       marginBottom="m"
       backgroundColor="cardBackground"
       borderRadius="m"

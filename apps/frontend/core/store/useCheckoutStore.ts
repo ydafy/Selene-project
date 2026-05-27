@@ -39,8 +39,18 @@ export const useCheckoutStore = create<CheckoutState>()(
       error: null,
 
       setSelectedAddress: (address) => {
-        // Validación: No permitir guardar si falta información crítica
-        if (address && (!address.id || !address.zip_code)) return;
+        if (
+          address &&
+          (!address.street_line1 ||
+            !address.city ||
+            !address.state ||
+            !address.zip_code)
+        ) {
+          console.warn(
+            '[CHECKOUT] Dirección incompleta rechazada por seguridad.',
+          );
+          return;
+        }
         set({ selectedAddress: address, error: null });
       },
 

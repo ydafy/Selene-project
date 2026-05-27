@@ -1,13 +1,17 @@
+import React from 'react';
 import { TouchableOpacity } from 'react-native';
 import { IconButton } from 'react-native-paper';
 import { useTheme } from '@shopify/restyle';
-//import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next'; // <--- AGREGADO
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+
 import { Product } from '@selene/types';
 
 import { Box, Text } from '../../base';
 import { AppImage } from '../../ui/AppImage';
 import { AppChip } from '../../ui/AppChip';
 import { Theme } from '../../../core/theme';
+import { formatCurrency } from '../../../core/utils/format'; // <--- AGREGADO
 
 type CartItemProps = {
   product: Product;
@@ -23,13 +27,13 @@ export const CartItem = ({
   isUnavailable,
 }: CartItemProps) => {
   const theme = useTheme<Theme>();
-  //const { t } = useTranslation('common');
+  const { t } = useTranslation(['cart', 'common']);
 
   return (
     <TouchableOpacity
       onPress={() => onPress(product)}
       activeOpacity={0.7}
-      disabled={isUnavailable} // Deshabilitamos el click si no está disponible
+      disabled={isUnavailable}
     >
       <Box
         flexDirection="row"
@@ -39,12 +43,11 @@ export const CartItem = ({
         marginBottom="m"
         alignItems="center"
         borderWidth={1}
-        // Si no está disponible, borde rojo y opacidad reducida
         borderColor={isUnavailable ? 'error' : 'background'}
         opacity={isUnavailable ? 0.6 : 1}
         style={{ elevation: 2 }}
       >
-        {/* 1. IMAGEN */}
+        {/* 1. IMAGEN CON FALLBACK */}
         <Box
           height={100}
           width={100}
@@ -52,14 +55,23 @@ export const CartItem = ({
           overflow="hidden"
           backgroundColor="background"
           marginRight="m"
+          justifyContent="center"
+          alignItems="center"
         >
-          <AppImage
-            source={{ uri: product.images[0] }}
-            style={{ width: '100%', height: '100%' }}
-            contentFit="cover"
-          />
+          {product.images && product.images.length > 0 ? (
+            <AppImage
+              source={{ uri: product.images[0] }}
+              style={{ width: '100%', height: '100%' }}
+              contentFit="cover"
+            />
+          ) : (
+            <MaterialCommunityIcons
+              name="image-off-outline"
+              size={32}
+              color={theme.colors.textSecondary}
+            />
+          )}
 
-          {/* Overlay de "AGOTADO" sobre la imagen */}
           {isUnavailable && (
             <Box
               position="absolute"
@@ -72,7 +84,7 @@ export const CartItem = ({
               alignItems="center"
             >
               <Text variant="caption-md" color="error" fontWeight="bold">
-                NO DISP.
+                {t('cart:item.unavailableShort', 'NO DISP.')}
               </Text>
             </Box>
           )}
@@ -95,10 +107,9 @@ export const CartItem = ({
               {product.name}
             </Text>
 
-            {/* Mensaje de error si no está disponible */}
             {isUnavailable ? (
               <Text variant="caption-md" color="error" fontWeight="bold">
-                Producto ya no disponible
+                {t('cart:item.unavailableMsg', 'Producto ya no disponible')}
               </Text>
             ) : (
               <Box flexDirection="row">
@@ -116,11 +127,11 @@ export const CartItem = ({
             color={isUnavailable ? 'textSecondary' : 'primary'}
             fontWeight="700"
           >
-            ${product.price.toLocaleString('es-MX')}
+            {formatCurrency(product.price)}
           </Text>
         </Box>
 
-        {/* 3. ACCIONES (Siempre permitimos borrar) */}
+        {/* 3. ACCIONES */}
         <Box
           height={90}
           justifyContent="center"

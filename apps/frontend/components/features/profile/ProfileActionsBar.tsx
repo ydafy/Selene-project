@@ -18,7 +18,7 @@ export const ProfileActionsBar = () => {
     {
       label: t('menu.orders'),
       icon: 'package-variant-closed',
-      onPress: () => console.log('Ir a Pedidos'),
+      onPress: () => router.push('/profile/orders'),
     },
     {
       label: t('menu.listings'),

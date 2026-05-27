@@ -1,28 +1,38 @@
 {
   "yes": "Yes",
   "no": "No",
-  "successChange": "The changes have been saved.",
+  "successChange": "Changes saved.",
   "states": {
-    "errorTitle": "Something went wrong",
+    "errorTitle": "Something went wrong.",
     "errorMessage": "We couldn't load the information.",
-    "retryButton": "Retry",
-    "emptyTitle": "Nothing here,",
+    "retryButton": "Retry.",
+    "emptyTitle": "Nothing here.",
     "emptyMessage": "We couldn't find any data to display.",
     "productLoadError": "Couldn't load the product.",
     "feedLoadError": "An error occurred while loading the products.",
     "feedEmpty": "No products available yet.",
-    "updateMessage": "Updated"
+    "feedEmptyMessage": "Try browsing other categories or come back later.",
+    "updateMessage": "Updated.",
+    "noImage": "No image.",
+    "unknownProduct": "Unknown product.",
+    "loading": "Loading..."
   },
-
+  "errors": {
+    "generic": "A problem occurred. Please try again.",
+    "connection": "Connection to the server failed.",
+    "noPackages": "No packaging options available"
+  },
   "dialog": {
     "confirm": "Confirm",
-    "next": "Next",
-    "fixNow": "Fix Now",
-    "goToMyPosts": "Go to My Posts",
-    "skipAll": "Skip All",
-    "cancel": "Cancel",
     "understood": "Understood",
+    "next": "Next",
+    "goToMyPosts": "Go to My Posts",
+    "viewOrder": "View Order",
+    "viewPost": "View Post",
+    "fixNow": "Fix Now",
+    "cancel": "Cancel",
     "delete": "Delete",
+    "skipAll": "Skip All",
     "discardTitle": "Discard Post?",
     "discardDescription": "If you exit now, you will lose all progress."
   },
@@ -32,8 +42,26 @@
     "continue": "Continue"
   },
 
+  "home": {
+    "title": "Welcome to Selene",
+    "subtitle": "Explore the best used hardware, verified by experts.",
+    "heroTitle": "The Gold Standard of Used Hardware",
+    "heroSubtitle": "Real technical verification and full protection on every purchase."
+  },
+
+  "time": {
+    "justNow": "Just now"
+  },
+
+  "units": {
+    "item_count_one": "{{count}} Item",
+    "item_count_other": "{{count}} Items"
+  },
+
   "globalError": {
-    "title": "Oops! Something went wrong",
-    "message": "An unexpected error occurred. Our team has been notified."
+    "systemAnomaly": "SYSTEM_ANOMALY_DETECTED",
+    "title": "Kernel Failure",
+    "message": "Selene has stopped a process to protect the integrity of your data. The technical report has been sent to the NetRunners.",
+    "retryButton": "REBOOT SYSTEM"
   }
 }

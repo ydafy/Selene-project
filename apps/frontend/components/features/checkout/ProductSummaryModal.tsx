@@ -22,6 +22,7 @@ export const ProductSummaryModal = ({ innerRef, items }: Props) => {
   const snapPoints = useMemo(() => ['65%'], []);
 
   const renderBackdrop = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (props: any) => (
       <BottomSheetBackdrop
         {...props}

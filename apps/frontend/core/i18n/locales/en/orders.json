@@ -1,0 +1,186 @@
+{
+  "screenTitle": "My Orders",
+  "tabs": {
+    "purchases": "My Purchases",
+    "sales": "My Sales"
+  },
+  "detail": {
+    "title": "Your Order",
+    "subTitle": "Your Purchase Summary",
+    "orderId": "Order",
+    "shippingAddress": "Shipping Address",
+    "summary": "Purchase Summary",
+    "total": "Total Paid",
+    "contactBuyer": "Contact Buyer",
+    "contactSeller": "Contact Seller",
+    "cancelDisclaimer": "You can only cancel before the seller prepares the shipment.",
+
+    "trackTitle": "Package Tracking",
+    "trackSub": "Track your hardware in real time",
+    "copyTracking": "Copy Tracking",
+    "reportProblem": "Report a Problem",
+    "trustTitle": "Buyer Protection",
+    "trustMsg": "Your money is safe. Selene holds it until you confirm the hardware is working perfectly.",
+
+    "itemsCount": "Shipping Specifications",
+
+    "itemsTitlePurchased": "Products Purchased",
+
+    "itemsTitleSold": "Products Sold",
+
+    "addressTitle": "Shipping Address",
+
+    "trackingTitle": "Tracking Number",
+
+    "paymentTitle": "Payment Summary",
+
+    "trackingProvider": "Express Parcel",
+
+    "cancelledMsg": "Order has been canceled. If payment has already been made, the refund will be processed automatically.",
+
+    "disputeMsgBuyer": "Your funds are protected by Selene. We are reviewing the case and will issue a verdict within 72 hours.",
+
+    "disputeMsgSeller": "Buyer reported an issue. Funds are temporarily frozen while our team reviews the case. We will notify you of any updates.",
+
+    "refundedMsg": "The money has been refunded to the buyer.",
+
+    "videoWarningTitle": "Record your unboxing.",
+    "videoWarningMsg": "We recommend recording a continuous video showing you opening the package for the first time. Without this video, Selene will not be able to process claims for physical damage or missing parts.",
+    "returnTitle": "RETURN IN PROGRESS",
+    "WaitingReturnBuyerMsg": "Your money is protected by the Selene Shield. We are waiting for the seller to provide the return shipping label. If they don't do so within 48 hours, you will automatically receive your refund and the case will be closed.",
+    "WaitingReturnSellerMsg": "You have 48 hours to pay for the return shipping label if you wish to recover your hardware. If payment is not received within this timeframe, the system will issue a final refund to the buyer, and you will forfeit your right to claim the product.",
+    "deliverySuccessTitle": "DELIVERY CONFIRMED!",
+    "deliverySuccessMsg": "The package has arrived. Your funds will be released automatically within 48 hours if there are no reports."
+  },
+
+  "status": {
+    "statusTitle": "Status",
+    "pending": "Payment pending",
+    "paid": "Paid",
+    "preparing": "Preparing shipment",
+    "shipped": "Shipped",
+    "delivered": "Delivered",
+    "completed": "Completed",
+    "cancelled": "Cancelled",
+    "refunded": "Refunded",
+    "dispute": "Disputed"
+  },
+
+  "card": {
+    "moreItems": "more",
+    "viewDetail": "View details"
+  },
+  "empty": {
+    "purchasesTitle": "No purchases yet",
+    "purchasesMsg": "Your hardware purchases will appear here once you place an order.",
+    "salesTitle": "No sales yet",
+    "salesMsg": "When you sell a component, you can manage shipping and your profit here."
+  },
+  "errors": {
+    "cannotCancel": "An order that is already being prepared cannot be canceled."
+  },
+
+  "stepper": {
+    "paid_desc": "Selene has securely received your payment.",
+    "preparing_desc": "The seller is packing your hardware.",
+    "shipped_desc": "Your package is with the courier.",
+    "delivered_desc": "Enjoy your new hardware!"
+  },
+  "actions": {
+    "generateLabel": "Generate Shipping Label",
+    "cancelOrder": "Cancel Order",
+    "confirmDelivery": "Confirm Delivery",
+    "viewPdf": "View PDF Shipping Label",
+    "trackOrder": "Track Package",
+    "confirmCancel": "Yes, cancel order",
+    "shareLabel": "Share Shipping Label",
+    "findBranch": "View Branches",
+    "cancelReasonDefault": "Cancellation requested by the user",
+    "payReturnLabel": "Pay Return Guide",
+    "prepareReturnLabel": "Prepare Return Label",
+    "reportProblem": "Report a Problem"
+  },
+  "return": {
+    "successToastMsgTitle": "Evidence saved",
+    "successToastDesc": "You can now download your shipping label.",
+    "globalHeaderTitle": "Prepare Return",
+    "screenHeaderTitle": "Shipping Evidence",
+    "screenHeaderSubtitle": "Prepare your shipment.",
+    "photoMessage": "Make sure the photos are clear. It's important that all sides of the box are visible: top, bottom, and side.",
+    "buttonText": "Confirm and generate label"
+  },
+
+  "dialogs": {
+    "cancelTitle": "Do you want to cancel this order?",
+    "deliveryTitle": "Did you receive your package?",
+    "deliveryMsg": "Please confirm only if the product is in your hands and in good condition. This will release the payment to the seller."
+  },
+  "prepare": {
+    "title": "Prepare Shipment",
+    "subtitle": "Confirm the details to generate your shipping label.",
+    "originLabel": "Pickup Point",
+    "totalSale": "Total Sale",
+    "originPlaceholder": "Select your shipping location",
+    "summaryTitle": "Earnings Summary",
+    "confirmBtn": "Generate Shipping Label and Confirm",
+    "disclaimer": "By generating the shipping label, you confirm that your product is ready and packaged.",
+    "successTitle": "Shipping Label Generated!",
+    "successMsg": "The delivery truck knows you're on your way. Print your shipping label and attach it to the package.",
+    "shareLabelTitle": "Share Your Shipping Label",
+    "shareLabelMsg": "Share your shipping label so others can download it if they don't already have it.",
+    "instructionsTitle": "Shipping Instructions",
+    "step1": "Download and print the complete guide (3 pages).",
+    "step2": "Attach the first page to your box with clear tape around the edges (without covering the code).",
+    "step3": "Keep the other two pages and take your package to the Paquete Express branch. Provide the other two pages if requested.",
+    "evidenceTitle": "Packaging Certificate",
+    "evidenceSubtitle": "Upload 3 photos to protect your sale against potential claims.",
+    "photoHardware": "Product and S/N",
+    "photoProtection": "Protection",
+    "photoSealed": "Sealed Box",
+    "uploading": "Uploading...",
+    "errorUpload": "Error uploading image",
+    "requirements": {
+      "common": {
+        "sealed": "Sealed box with guide attached"
+      },
+      "mobo": {
+        "socket": "Close-up of the socket (pins)",
+        "full": "Overall photo of the board"
+      },
+      "gpu": {
+        "pcie": "Close-up of PCIe connector (pins)",
+        "back": "Complete rear photo of the PCB"
+      },
+
+      "cpu": {
+        "pins": "Close-up of pins/contacts",
+        "ihs": "Front photo (Legible model)"
+      },
+      "ram": {
+        "label": "Photo of the label (Specs)",
+        "contacts": "Close-up of gold connector"
+      },
+      "other": {
+        "front": "Front photo of the product",
+        "extras": "Photo of included accessories"
+      }
+    }
+  },
+  "dispute": {
+    "wizardTitle": "Report a Problem",
+    "triageTitle": "Technical Validation",
+    "triageSubtitle": "Most problems are resolved by checking these points:",
+    "checkPSU": "My power supply is sufficient for this component.",
+    "checkCables": "I already tried different cables and ports.",
+    "checkPhysical": "The damage is internal/technical (not caused by a fall).",
+    "reasonTitle": "What happened?",
+    "reasonPlaceholder": "Select the reason",
+    "descLabel": "Tell us more",
+    "descPlaceholder": "Describe the failure in detail...",
+    "evidenceTitle": "Visual Evidence",
+    "evidenceSubtitle": "Upload at least 2 photos showing the problem.",
+    "submitBtn": "Open Dispute and Freeze Payment",
+    "successTitle": "Report Sent,",
+    "successMsg": "Selene is reviewing your case. Payment to the seller has been frozen until further notice."
+  }
+}

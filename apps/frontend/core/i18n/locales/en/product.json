@@ -5,8 +5,9 @@
     "soldBy": "Sold by",
     "verifiedMember": "Verified Member",
     "description": "Description",
+    "noDescription": "Empty Desctiption",
     "specifications": "Specifications",
-    "verifiedStatus": "Verified by Selene"
+    "verifiedSeller": "Verified by Selene"
   },
   "actions": {
     "buyNow": "Buy Now",

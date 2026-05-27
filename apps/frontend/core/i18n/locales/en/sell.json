@@ -11,7 +11,7 @@
   },
   "fields": {
     "nameLabel": "Product Title",
-
+    "noSpecs": "There are no additional specifications for this category.",
     "namePlaceholder": "E.g. RTX 3080 Asus TUF",
     "priceLabel": "Price (MXN)",
     "pricePlaceholder": "0.00",

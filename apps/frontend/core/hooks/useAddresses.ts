@@ -21,7 +21,8 @@ export const useAddresses = () => {
         .from('addresses')
         .select('*')
         .eq('user_id', userId)
-        .order('is_default', { ascending: false });
+        .order('is_default', { ascending: false })
+        .is('deleted_at', null);
 
       if (dbError) throw dbError;
       return data as Address[];
@@ -61,7 +62,7 @@ export const useAddresses = () => {
     mutationFn: async (addressId: string) => {
       const { error: dbError } = await supabase
         .from('addresses')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', addressId);
       if (dbError) throw dbError;
     },
@@ -140,5 +141,6 @@ export const useAddresses = () => {
     setDefault: setDefaultMutation.mutateAsync,
     isAdding: addAddressMutation.isPending,
     isSettingDefault: setDefaultMutation.isPending,
+    isDeleting: deleteAddressMutation.isPending,
   };
 };

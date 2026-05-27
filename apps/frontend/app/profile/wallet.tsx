@@ -26,7 +26,7 @@ import {
   TransactionDetailRef,
 } from '../../components/features/wallet/TransactionDetailSheet';
 
-import { WalletTransaction } from '../../../../packages/types/src/index';
+import { WalletTransaction } from '@selene/types';
 
 export default function WalletScreen() {
   const { t } = useTranslation(['wallet', 'common']);
@@ -60,7 +60,7 @@ export default function WalletScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         <GlobalHeader title={t('screenTitle')} showBack />
         <ErrorState
-          title={t('errors.title')}
+          title={t('common:errors.generic')}
           message={error}
           onRetry={loadData}
         />
@@ -94,7 +94,9 @@ export default function WalletScreen() {
               onConfigureBank={() => bankSheetRef.current?.present()}
             />
             <Box marginTop="xl" marginBottom="m">
-              <Text variant="subheader-lg">{t('history.title')}</Text>
+              <Text variant="subheader-lg" color="primary">
+                {t('history.title')}
+              </Text>
             </Box>
           </Box>
         }

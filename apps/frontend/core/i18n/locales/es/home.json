@@ -1,0 +1,111 @@
+{
+  "notifications": {},
+  "hero": {
+    "titlePart1": "Selene",
+    "titleHighlight": "La confianza",
+    "titlePart2": "del Hardware",
+    "subtitle": "Verificación técnica en cada componente.",
+    "cta": "EXPLORAR TIENDA",
+    "systemStatus": "SISTEMA DE VERIFICACIÓN ACTIVO"
+  },
+  "categories": {
+    "header": "HARDWARE_DIRECTORY // SELECT_MODULE",
+    "title": "Encuentra tu componente",
+    "classLabel": "CLASS:",
+    "unitType": "CORE_UNIT",
+    "modPrefix": "MOD_0"
+  },
+  "trust": {
+    "payments": {
+      "title": "Tu dinero está protegido",
+      "subtitle": "Usamos Stripe para procesar tus pagos de forma segura. El dinero se queda en una cámara acorazada y solo se libera cuando confirmas que el hardware funciona.",
+      "item1": "Procesado por Stripe",
+      "item2": "Fondos en Escrow",
+      "item3": "Reporte de problemas"
+    },
+    "benchmarks": {
+      "title": "Hardware Verificado",
+      "subtitle": "Cada producto pasó por softwares como 3DMark, CPU-Z y Aida-64 para garantizar el estándar de oro.",
+      "item1": "Benchmarks de Estrés",
+      "item2": "Validación del Hardware",
+      "item3": "Verificación por NetRunners"
+    }
+  },
+  "shipping": {
+    "line1": "Envíos",
+    "badge": "Nacionales",
+    "line2": "asegurados por Selene"
+  },
+  "pipeline": {
+    "header": "SISTEMA_DE_FLUJO // 01-03",
+    "title": "Ciclo de Confianza",
+    "step1": "Publicar",
+    "step2": "Verificar",
+    "step3": "Vender",
+    "footer": "Cada producto es auditado por nuestros NetRunners antes de ser liberado. Mantenemos el estándar de calidad más alto de la comunidad."
+  },
+  "logistics": {
+    "header": "INFRASTRUCTURE_LIVE // MX_NETWORK",
+    "title": "Envios Nacionales",
+    "items": {
+      "coverage": { "label": "COBERTURA", "value": "Todo México" },
+      "protection": { "label": "PROTECCIÓN", "value": "Seguro incluido" },
+      "tracking": { "label": "RASTREO", "value": "Live 24/7" },
+      "delivery": { "label": "ENTREGA", "value": "2-5 días hábiles" }
+    }
+  },
+  "recentDrops": {
+    "header": "INVENTORY_FLUX // 04",
+    "title": "Recién verificados",
+    "cta": "VER TODO EL CATÁLOGO DISPONIBLE"
+  },
+  "recentlyViewed": {
+    "header": "USER_HISTORY // RECENTLY_VIEWED",
+    "title": "Vistos Recientemente"
+  },
+  "editorial": {
+    "header": "SELENE_BRIEFINGS // MARKET_INTELLIGENCE",
+    "title": "Tendencias de Hardware",
+    "actionLabel": "BUSCAR EN TIENDA",
+    "cards": [
+      {
+        "id": "1",
+        "tag": "TENDENCIA_GPU",
+        "title": "RTX 3070: El punto dulce",
+        "desc": "Sigue siendo la reina del 1440p. Mira las unidades verificadas por nuestros NetRunners.",
+        "params": {
+          "query": "3070",
+          "category": "GPU"
+        },
+        "icon": "chart-line-variant"
+      },
+      {
+        "id": "2",
+        "tag": "TOP_PERFORMANCE",
+        "title": "Ryzen 7 7800X3D",
+        "desc": "El procesador más rápido para gaming ha llegado al laboratorio. Stock limitado.",
+        "params": {
+          "query": "7800X3D",
+          "category": "CPU"
+        },
+        "icon": "cpu-64-bit"
+      },
+      {
+        "id": "3",
+        "tag": "GUÍA_TÉCNICA",
+        "title": "Salto a DDR5",
+        "desc": "¿Vale la pena el cambio? Analizamos la estabilidad de los módulos de 6000MHz.",
+        "params": {
+          "query": "DDR4",
+          "category": "RAM"
+        },
+        "icon": "memory"
+      }
+    ]
+  },
+  "footer": {
+    "brandName": "SELENE",
+    "thanks": "Gracias por creer en el hardware confiable.",
+    "telemetry": "[ SELENE_OS_v2.0.77 ] // [ STATUS: OPERATIONAL ] // [ REGION: MX ]"
+  }
+}

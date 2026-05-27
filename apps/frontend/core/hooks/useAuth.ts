@@ -1,8 +1,15 @@
+/**
+ * @file core/hooks/useAuth.ts
+ * @description Hook de orquestación para procesos de autenticación (Email/Password, OTP, Password Reset).
+ * Implementa validación con Zod y tipado estricto con Supabase Auth.
+ */
+
 import { useState } from 'react';
 import { z } from 'zod';
+import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../db/supabase';
 
-// --- Esquemas de Validación ---
+// --- 1. ESQUEMAS DE VALIDACIÓN (ZOD) ---
 
 export const loginSchema = z.object({
   email: z
@@ -24,59 +31,68 @@ export const registerSchema = z
     message: 'auth:errors.passwordsDoNotMatch',
     path: ['confirmPassword'],
   })
-  // 2. Reintroducimos la regla que obliga a que sea TRUE
   .refine((data) => data.termsAccepted === true, {
     message: 'auth:errors.termsMustBeAccepted',
     path: ['termsAccepted'],
   });
 
-// --- Tipos Inferidos ---
+// --- 2. TIPOS E INTERFACES ---
+
 export type LoginData = z.infer<typeof loginSchema>;
 export type RegisterData = z.infer<typeof registerSchema>;
 
 export type AuthResult = {
   success: boolean;
-  session: unknown | null;
-  user: unknown | null;
+  session: Session | null;
+  user: User | null;
   error: { message: string } | null;
 };
+
+/**
+ * Helper interno para estandarizar las respuestas de Supabase Auth.
+ */
+const formatAuthResponse = (data: any, error: any): AuthResult => {
+  if (error) {
+    return {
+      success: false,
+      session: null,
+      user: null,
+      error: { message: error.message },
+    };
+  }
+  return {
+    success: true,
+    session: data.session,
+    user: data.user,
+    error: null,
+  };
+};
+
+// --- 3. HOOK PRINCIPAL ---
 
 export const useAuth = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * Registro de nuevo usuario con metadata.
+   */
   const signUp = async (data: RegisterData): Promise<AuthResult> => {
     setLoading(true);
     setError(null);
     try {
-      const { data: signUpData, error: signUpError } =
-        await supabase.auth.signUp({
-          email: data.email.trim(),
-          password: data.password,
-          options: {
-            data: {
-              username: data.username.trim(),
-            },
+      const result = await supabase.auth.signUp({
+        email: data.email.trim(),
+        password: data.password,
+        options: {
+          data: {
+            username: data.username.trim(),
           },
-        });
-
-      if (signUpError) {
-        setError(signUpError.message);
-        return {
-          success: false,
-          session: null,
-          user: null,
-          error: { message: signUpError.message },
-        };
-      }
-
-      return {
-        success: true,
-        session:
-          (signUpData as unknown as Record<string, unknown>)?.session ?? null,
-        user: (signUpData as unknown as Record<string, unknown>)?.user ?? null,
-        error: null,
-      };
+        },
+      });
+      const formatted = formatAuthResponse(result.data, result.error);
+      if (formatted.error) setError(formatted.error.message);
+      return formatted;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
@@ -86,36 +102,20 @@ export const useAuth = () => {
     }
   };
 
-  const signIn = async (data: {
-    email: string;
-    password: string;
-  }): Promise<AuthResult> => {
+  /**
+   * Inicio de sesión tradicional.
+   */
+  const signIn = async (data: LoginData): Promise<AuthResult> => {
     setLoading(true);
     setError(null);
     try {
-      const { data: signInData, error: signInError } =
-        await supabase.auth.signInWithPassword({
-          email: data.email.trim(),
-          password: data.password,
-        });
-
-      if (signInError) {
-        setError(signInError.message);
-        return {
-          success: false,
-          session: null,
-          user: null,
-          error: { message: signInError.message },
-        };
-      }
-
-      return {
-        success: true,
-        session:
-          (signInData as unknown as Record<string, unknown>)?.session ?? null,
-        user: (signInData as unknown as Record<string, unknown>)?.user ?? null,
-        error: null,
-      };
+      const result = await supabase.auth.signInWithPassword({
+        email: data.email.trim(),
+        password: data.password,
+      });
+      const formatted = formatAuthResponse(result.data, result.error);
+      if (formatted.error) setError(formatted.error.message);
+      return formatted;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
@@ -125,6 +125,9 @@ export const useAuth = () => {
     }
   };
 
+  /**
+   * Cierre de sesión.
+   */
   const signOut = async (): Promise<{
     success: boolean;
     error: { message: string } | null;
@@ -133,13 +136,10 @@ export const useAuth = () => {
     setError(null);
     try {
       const { error: signOutError } = await supabase.auth.signOut();
-      if (signOutError) {
-        setError(signOutError.message);
-        return { success: false, error: { message: signOutError.message } };
-      }
+      if (signOutError) throw signOutError;
       return { success: true, error: null };
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+    } catch (err: any) {
+      const message = err.message || String(err);
       setError(message);
       return { success: false, error: { message } };
     } finally {
@@ -147,97 +147,72 @@ export const useAuth = () => {
     }
   };
 
-  const verifyOtp = async (email: string, token: string) => {
+  /**
+   * Verificación de código OTP para registro.
+   */
+  const verifyOtp = async (
+    email: string,
+    token: string,
+  ): Promise<AuthResult> => {
     setLoading(true);
     setError(null);
     try {
-      const { data: verifyData, error: verifyError } =
-        await supabase.auth.verifyOtp({
-          email,
-          token,
-          type: 'signup',
-        });
-
-      if (verifyError) {
-        setError(verifyError.message);
-        return {
-          success: false,
-          session: null,
-          user: null,
-          error: { message: verifyError.message },
-        };
-      }
-
-      return {
-        success: true,
-        session:
-          (verifyData as unknown as Record<string, unknown>)?.session ?? null,
-        user: (verifyData as unknown as Record<string, unknown>)?.user ?? null,
-        error: null,
-      };
+      const result = await supabase.auth.verifyOtp({
+        email: email.trim(),
+        token,
+        type: 'signup',
+      });
+      return formatAuthResponse(result.data, result.error);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      setError(message);
       return { success: false, session: null, user: null, error: { message } };
     } finally {
       setLoading(false);
     }
   };
 
+  /**
+   * Reenvío de código de confirmación.
+   */
   const resendSignUpOtp = async (email: string) => {
     setLoading(true);
     setError(null);
     try {
       const { error: resendError } = await supabase.auth.resend({
         type: 'signup',
-        email,
+        email: email.trim(),
       });
-      if (resendError) {
-        setError(resendError.message);
-        return { success: false, error: { message: resendError.message } };
-      }
+      if (resendError) throw resendError;
       return { success: true, error: null };
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setError(message);
-      return { success: false, error: { message } };
+    } catch (err: any) {
+      return { success: false, error: { message: err.message } };
     } finally {
       setLoading(false);
     }
   };
 
   /**
-   * Envía un código OTP al correo del usuario para restablecer la contraseña.
-   * @param email - El correo del usuario.
+   * Inicia flujo de recuperación de contraseña enviando OTP.
    */
   const sendPasswordResetOtp = async (email: string) => {
     setLoading(true);
     setError(null);
     try {
-      // Usamos resetPasswordForEmail.
-      // IMPORTANTE: La plantilla de email en Supabase debe usar {{ .Token }}
-      // para que envíe un código y no un link.
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(
         email.trim(),
       );
-
       if (resetError) throw resetError;
-
       return { success: true, error: null };
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      setError(message);
-      return { success: false, error: { message } };
+    } catch (err: any) {
+      setError(err.message);
+      return { success: false, error: { message: err.message } };
     } finally {
       setLoading(false);
     }
   };
 
   /**
-   * Verifica el código de recuperación y establece la nueva contraseña.
-   * @param email - El correo del usuario.
-   * @param code - El código OTP de 6 dígitos.
-   * @param newPassword - La nueva contraseña deseada.
+   * Paso final de recuperación: Valida OTP y actualiza contraseña.
    */
   const resetPassword = async (
     email: string,
@@ -247,29 +222,27 @@ export const useAuth = () => {
     setLoading(true);
     setError(null);
     try {
-      // Paso 1: Verificar el código OTP de tipo 'recovery'.
-      // Esto iniciará una sesión válida para el usuario.
+      // 1. Validar OTP (Esto ya crea una sesión activa)
       const { data: verifyData, error: verifyError } =
         await supabase.auth.verifyOtp({
-          email,
+          email: email.trim(),
           token: code,
           type: 'recovery',
         });
 
       if (verifyError) throw verifyError;
 
-      // Paso 2: Una vez autenticado, actualizamos la contraseña.
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { data: updateData, error: updateError } =
-        await supabase.auth.updateUser({
-          password: newPassword,
-        });
+      // 2. Actualizar contraseña
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
 
       if (updateError) throw updateError;
 
+      // FIX: Devolvemos la sesión del paso 1, ya que updateUser solo devuelve el User
       return { success: true, session: verifyData.session, error: null };
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
+    } catch (err: any) {
+      const message = err.message || String(err);
       setError(message);
       return { success: false, session: null, error: { message } };
     } finally {

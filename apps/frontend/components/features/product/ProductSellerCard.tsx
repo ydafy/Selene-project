@@ -2,34 +2,25 @@ import { TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@shopify/restyle';
 import { IconButton } from 'react-native-paper';
-import { useTranslation } from 'react-i18next';
-import { Product } from '@selene/types';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+
+// Importamos el tipo enriquecido que creamos en index.ts
+import { ProductWithSeller } from '@selene/types';
 
 import { Box, Text } from '../../base';
 import { AppImage } from '../../ui/AppImage';
 import { Theme } from '../../../core/theme';
 
 type ProductSellerCardProps = {
-  /**
-   * Recibimos el producto completo porque la información del vendedor
-   * viene adjunta (JOIN) en una propiedad que no está en el tipo base.
-   */
-  product: Product;
+  product: ProductWithSeller;
 };
 
 export const ProductSellerCard = ({ product }: ProductSellerCardProps) => {
   const theme = useTheme<Theme>();
   const router = useRouter();
-  const { t } = useTranslation(['common', 'product']);
 
-  // Lógica de extracción de datos encapsulada aquí
-  // (product as any) es necesario porque 'profiles' es un dato unido por Supabase
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const seller = (product as any).profiles as {
-    id: string;
-    username?: string;
-    avatar_url?: string;
-  } | null;
+  // FIX: Ahora leemos 'seller' directamente sin usar 'any'
+  const seller = product.seller;
   const sellerName = seller?.username ?? 'Usuario';
 
   const handlePress = () => {
@@ -40,6 +31,17 @@ export const ProductSellerCard = ({ product }: ProductSellerCardProps) => {
       });
     }
   };
+
+  // Si por alguna razón el vendedor ya no existe en la DB, mostramos un fallback inactivo
+  if (!seller) {
+    return (
+      <Box flexDirection="row" alignItems="center" marginTop="l" padding="s">
+        <Text variant="body-md" color="textSecondary">
+          Vendedor no disponible
+        </Text>
+      </Box>
+    );
+  }
 
   return (
     <TouchableOpacity activeOpacity={0.7} onPress={handlePress}>
@@ -54,7 +56,7 @@ export const ProductSellerCard = ({ product }: ProductSellerCardProps) => {
         style={{ borderStyle: 'solid' }}
       >
         <Box marginRight="m">
-          {seller?.avatar_url ? (
+          {seller.avatar_url ? (
             <AppImage
               source={{ uri: seller.avatar_url }}
               style={{ width: 40, height: 40, borderRadius: 20 }}
@@ -76,14 +78,35 @@ export const ProductSellerCard = ({ product }: ProductSellerCardProps) => {
         </Box>
 
         <Box flex={1}>
-          <Text variant="body-md" fontWeight="bold">
-            @{sellerName}
-          </Text>
-          <Text variant="caption-md" color="success">
-            {t('product:details.verifiedMember')}
-          </Text>
-        </Box>
+          {/* FILA 1: NOMBRE + ICONO (Solo si es VIP) */}
+          <Box flexDirection="row" alignItems="center">
+            <Text variant="body-md" fontWeight="bold">
+              @{sellerName}
+            </Text>
 
+            {/* EL ICONO: Solo aparece si es verificado */}
+            {seller.is_verified_seller && (
+              <MaterialCommunityIcons
+                name="check-decagram"
+                size={16}
+                color={theme.colors.primary}
+                style={{ marginLeft: 4 }}
+              />
+            )}
+          </Box>
+
+          {/* FILA 2: TEXTO DE RESPALDO (Solo si es VIP) */}
+          {seller.is_verified_seller && (
+            <Text
+              variant="caption-md"
+              color="primary"
+              marginTop="xs"
+              fontWeight="600"
+            >
+              Verificado por Selene
+            </Text>
+          )}
+        </Box>
         <IconButton
           icon="chevron-right"
           iconColor={theme.colors.textPrimary}

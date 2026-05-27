@@ -25,7 +25,7 @@ import { usePublishProduct } from '../../core/hooks/usePublishProduct';
 import { useAuthContext } from '../../components/auth/AuthProvider';
 import { normalize } from '../../core/utils/compare';
 
-import { Product } from '@selene/types';
+import { ProductCategory, ProductWithSeller, Profile } from '@selene/types';
 
 export default function SellPreviewScreen() {
   const { t } = useTranslation(['sell', 'product', 'common']);
@@ -41,23 +41,52 @@ export default function SellPreviewScreen() {
   const [showWarning, setShowWarning] = useState(false);
 
   // Construimos el objeto "Fake Product" para la vista previa
-  const previewProduct: Product = {
+  const previewProduct: ProductWithSeller = {
+    // Datos del Draft
     id: draft.id || 'preview_mode',
-    created_at: new Date().toISOString(),
     name: draft.name,
     description: draft.description,
     price: Number(draft.price),
-    category: draft.category!,
+    category: draft.category as ProductCategory,
     condition: draft.condition,
     usage: draft.usage,
     images: draft.images,
+    specifications: draft.specifications,
+
+    // Metadatos de la DB (Mocks)
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
     status: 'PENDING_VERIFICATION',
-    seller_id: session?.user.id || 'me',
+    seller_id: session?.user.id || 'yo',
     views: 0,
     aspect_ratio: 1,
-    specifications: draft.specifications,
-  };
+    deleted_at: null,
+    fts: null,
+    locked_at: null,
+    locked_by: null,
+    origin_zip: draft.origin_zip || '',
+    package_preset: draft.package_preset || '',
+    rejection_reason: null,
+    reserved_at: null,
+    shipping_cost: Number(draft.shipping_cost || 0),
+    shipping_payer: draft.shipping_payer || 'buyer',
+    verification_data: null,
+    verified_at: null,
 
+    // --- 🚀 MOCK DEL SELLER (Para que ProductSellerCard funcione) ---
+    seller: {
+      id: session?.user.id || 'me',
+      username: session?.user.user_metadata.username || 'Tú',
+      avatar_url: session?.user.user_metadata.avatar_url || null,
+      is_verified_seller: false,
+      created_at: session?.user.created_at || new Date().toISOString(),
+      role: 'user',
+      average_rating: 0,
+      total_reviews: 0,
+      total_sales: 0,
+      status: 'active',
+    } as Profile,
+  };
   // 3. NUEVA LÓGICA DEL BOTÓN
   const handlePublishPress = () => {
     // Si no es edición (es nuevo), publicamos directo

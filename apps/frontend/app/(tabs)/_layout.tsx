@@ -1,11 +1,12 @@
 import { router, Tabs } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@shopify/restyle';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Theme } from '../../core/theme';
 import { useCartStore } from '../../core/store/useCartStore';
 import { CartTabIcon } from '../../components/ui/CartTabIcon';
+import { Box } from '@/components/base';
+import { Platform } from 'react-native';
 
 export default function TabsLayout() {
   const theme = useTheme<Theme>();
@@ -15,17 +16,16 @@ export default function TabsLayout() {
   const cartCount = cartItems.length;
 
   return (
-    <SafeAreaView
-      edges={['top']}
-      style={{ flex: 1, backgroundColor: theme.colors.background }}
-    >
+    <Box flex={1} backgroundColor="background">
       <Tabs
         screenOptions={{
           tabBarActiveTintColor: theme.colors.primary,
-          tabBarInactiveTintColor: theme.colors.textSecondary,
+          tabBarInactiveTintColor: theme.colors.textPrimary,
           tabBarStyle: {
             backgroundColor: theme.colors.cardBackground,
             borderTopColor: theme.colors.cardBackground,
+            height: Platform.OS === 'ios' ? 80 : 60,
+            paddingBottom: Platform.OS === 'ios' ? 20 : 10,
           },
           headerShown: false,
         }}
@@ -102,6 +102,6 @@ export default function TabsLayout() {
           }}
         />
       </Tabs>
-    </SafeAreaView>
+    </Box>
   );
 }

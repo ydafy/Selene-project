@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@shopify/restyle';
 import { MotiView } from 'moti';
-import * as Haptics from 'expo-haptics'; // Ya lo tenías, perfecto.
+import * as Haptics from 'expo-haptics';
 
 import { Box, Text } from '../../components/base';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';

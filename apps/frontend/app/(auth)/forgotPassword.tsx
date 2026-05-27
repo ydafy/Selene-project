@@ -1,4 +1,11 @@
-import { Stack, router } from 'expo-router';
+/**
+ * @file apps/frontend/app/(auth)/forgotPassword.tsx
+ * @description Pantalla de solicitud de recuperación de contraseña.
+ * Implementa validación estricta y diseño resiliente a diferentes áreas seguras (Safe Areas).
+ */
+
+import React, { useMemo } from 'react';
+import { Stack, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -6,6 +13,7 @@ import { useTheme } from '@shopify/restyle';
 import { IconButton } from 'react-native-paper';
 import Toast from 'react-native-toast-message';
 import { z } from 'zod';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScreenLayout } from '../../components/layout/ScreenLayout';
 import { FormTextInput } from '../../components/ui/FormTextInput';
@@ -15,51 +23,57 @@ import { Box, Text } from '../../components/base';
 import { useAuth } from '../../core/hooks/useAuth';
 import { Theme } from '../../core/theme';
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const logoIconPath = require('../../assets/images/SeleneLunaLogo.png');
 
-// Esquema simple solo para el email
-const forgotPasswordSchema = z.object({
-  email: z
-    .string()
-    .min(1, { message: 'auth:errors.emailIsRequired' })
-    .email({ message: 'auth:errors.invalidEmail' }),
-});
+// --- 1. ESQUEMA DE VALIDACIÓN BLINDADO ---
+const getForgotPasswordSchema = (t: any) =>
+  z.object({
+    email: z
+      .string()
+      .min(1, { message: t('auth:errors.emailIsRequired') })
+      .email({ message: t('auth:errors.invalidEmail') })
+      .trim()
+      .toLowerCase(), // Normalización de datos Senior
+  });
 
-type ForgotPasswordData = z.infer<typeof forgotPasswordSchema>;
+type ForgotPasswordData = z.infer<ReturnType<typeof getForgotPasswordSchema>>;
 
 export default function ForgotPasswordScreen() {
-  const { t } = useTranslation('auth');
+  const { t } = useTranslation(['auth', 'common']);
   const { sendPasswordResetOtp, loading } = useAuth();
   const theme = useTheme<Theme>();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+
+  const schema = useMemo(() => getForgotPasswordSchema(t), [t]);
 
   const {
     control,
     handleSubmit,
     formState: { errors, isValid },
   } = useForm<ForgotPasswordData>({
-    resolver: zodResolver(forgotPasswordSchema),
+    resolver: zodResolver(schema),
     mode: 'onChange',
     defaultValues: { email: '' },
   });
 
   const onSubmit = async (data: ForgotPasswordData) => {
-    const { error } = await sendPasswordResetOtp(data.email);
+    const result = await sendPasswordResetOtp(data.email);
 
-    if (error) {
+    if (!result.success) {
       Toast.show({
         type: 'error',
-        text1: t('registerErrorTitle'), // Reutilizamos título de error
-        text2: error.message,
+        text1: t('auth:forgotPassword'),
+        text2: result.error?.message || t('common:errors.generic'),
       });
     } else {
       Toast.show({
         type: 'success',
-        text1: t('emailSentSuccess'),
-        text2: t('checkYourEmail'), // Asegúrate de añadir esta clave o usar un texto fijo
+        text1: t('auth:emailSentSuccess'),
+        text2: t('auth:checkYourEmail'),
       });
 
-      // Navegamos a la pantalla de reset, pasando el email
+      // Transición suave a la siguiente fase
       router.push({
         pathname: '/(auth)/resetPassword',
         params: { email: data.email },
@@ -71,7 +85,13 @@ export default function ForgotPasswordScreen() {
     <ScreenLayout>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <Box position="absolute" top={40} left={4} zIndex={1}>
+      {/* BOTÓN DE ATRÁS: Posicionamiento Senior basado en insets */}
+      <Box
+        position="absolute"
+        top={insets.top > 0 ? insets.top : 20}
+        left={theme.spacing.s}
+        zIndex={10}
+      >
         <IconButton
           icon="arrow-left"
           iconColor={theme.colors.textPrimary}
@@ -88,7 +108,7 @@ export default function ForgotPasswordScreen() {
             contentFit="contain"
           />
           <Text variant="header-xl" marginTop="m" textAlign="center">
-            {t('forgotPasswordTitle')}
+            {t('auth:forgotPasswordTitle')}
           </Text>
           <Text
             variant="body-md"
@@ -96,7 +116,7 @@ export default function ForgotPasswordScreen() {
             textAlign="center"
             marginTop="s"
           >
-            {t('forgotPasswordSubtitle')}
+            {t('auth:forgotPasswordSubtitle')}
           </Text>
         </Box>
 
@@ -105,7 +125,7 @@ export default function ForgotPasswordScreen() {
           name="email"
           render={({ field: { onChange, onBlur, value } }) => (
             <FormTextInput
-              label={t('emailLabel')}
+              label={t('auth:emailLabel')}
               onBlur={onBlur}
               onChangeText={onChange}
               value={value}
@@ -117,10 +137,7 @@ export default function ForgotPasswordScreen() {
           )}
         />
         {errors.email && (
-          <Text
-            variant="body-sm"
-            style={{ color: theme.colors.error, marginTop: 4 }}
-          >
+          <Text variant="body-sm" color="error" marginTop="s" marginLeft="s">
             {t(errors.email.message as string)}
           </Text>
         )}
@@ -132,7 +149,7 @@ export default function ForgotPasswordScreen() {
           loading={loading}
           disabled={!isValid || loading}
         >
-          {t('sendCodeButton')}
+          {t('auth:sendCodeButton')}
         </PrimaryButton>
       </Box>
     </ScreenLayout>

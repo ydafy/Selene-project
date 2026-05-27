@@ -12,6 +12,7 @@ import {
   getStatusColor,
   isProductHistory,
 } from '../../../core/utils/product-status';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 type MyListingCardProps = {
   product: Product;
@@ -101,26 +102,44 @@ export const MyListingCard = ({
       >
         {/* 1. IMAGEN */}
         <Box width={130} height="100%" backgroundColor="background">
-          <AppImage
-            source={{ uri: product.images?.[0] }}
-            style={{ width: '100%', height: '100%' }}
-            contentFit="cover"
-          />
-          {/* Badge de Estado */}
-          <Box
-            position="absolute"
-            top={8}
-            left={8}
-            backgroundColor={statusColor}
-            paddingHorizontal="s"
-            paddingVertical="xs"
-            borderRadius="s"
-          >
-            <Text
-              variant="caption-md"
-              style={{ color: 'white', fontWeight: 'bold', fontSize: 10 }}
-            >
-              {t(`listings.status.${product.status}`)}
+          {product.images && product.images.length > 0 ? (
+            <AppImage
+              source={{ uri: product.images[0] }}
+              style={{ width: '100%', height: '100%' }}
+            />
+          ) : (
+            <Box flex={1} justifyContent="center" alignItems="center">
+              <MaterialCommunityIcons
+                name="image-off-outline"
+                size={24}
+                color={theme.colors.textSecondary}
+              />
+            </Box>
+          )}
+        </Box>
+
+        {/* INFO DEL PRODUCTO */}
+        <Box flex={1} marginLeft="m" justifyContent="center">
+          <Text variant="body-md" fontWeight="bold" numberOfLines={1}>
+            {product.name}
+          </Text>
+
+          {/* PRECIO SEGURO */}
+          <Text variant="body-sm" color="primary" marginTop="xs">
+            {formatCurrency(product.price)}
+          </Text>
+
+          {/* BADGE DE ESTADO */}
+          <Box flexDirection="row" alignItems="center" marginTop="s">
+            <Box
+              width={8}
+              height={8}
+              borderRadius="full"
+              backgroundColor={statusColor}
+              marginRight="xs"
+            />
+            <Text variant="caption-md" color="textSecondary">
+              {t(`listings.status.${product.status?.toLowerCase()}`)}
             </Text>
           </Box>
         </Box>
@@ -128,7 +147,7 @@ export const MyListingCard = ({
         {/* 2. CONTENIDO */}
         <Box flex={1} padding="s" justifyContent="space-between">
           <Box>
-            <Text variant="body-md" fontWeight="bold" numberOfLines={2}>
+            <Text variant="body-md" numberOfLines={2}>
               {product.name}
             </Text>
             <Text variant="header-xl" color="primary" marginTop="xs">

@@ -28,7 +28,17 @@ import esWallet from './locales/es/wallet.json';
 import enWallet from './locales/en/wallet.json';
 import esWithdraw from './locales/es/withdraw.json';
 import enWithdraw from './locales/en/withdraw.json';
-// ✨ 1. DEFINE LOS NAMESPACES (Nombres de nuestros archivos JSON)
+import esOrders from './locales/es/orders.json';
+import enOrders from './locales/en/orders.json';
+import esNotifications from './locales/es/notifications.json';
+import enNotifications from './locales/en/notifications.json';
+import esDisputes from './locales/es/disputes.json';
+import enDisputes from './locales/en/disputes.json';
+import esHome from './locales/es/home.json';
+import enHome from './locales/en/home.json';
+import esHelp from './locales/es/help.json';
+import enHelp from './locales/en/help.json';
+
 export const namespaces = [
   'common',
   'auth',
@@ -43,6 +53,11 @@ export const namespaces = [
   'checkout',
   'wallet',
   'withdraw',
+  'orders',
+  'notifications',
+  'disputes',
+  'home',
+  'help',
 ];
 // Definimos un tipo para asegurar que solo usamos namespaces que existen
 export type Namespace = (typeof namespaces)[number];
@@ -73,6 +88,11 @@ const resources = {
     checkout: enCheckout,
     wallet: enWallet,
     withdraw: enWithdraw,
+    orders: enOrders,
+    notifications: enNotifications,
+    disputes: enDisputes,
+    home: enHome,
+    help: enHelp,
   },
   es: {
     common: esCommon,
@@ -88,6 +108,11 @@ const resources = {
     checkout: esCheckout,
     wallet: esWallet,
     withdraw: esWithdraw,
+    orders: esOrders,
+    notifications: esNotifications,
+    disputes: esDisputes,
+    home: esHome,
+    help: esHelp,
   },
 };
 

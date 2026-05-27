@@ -17,7 +17,6 @@ type FormTextInputProps = Omit<TextInputProps, 'theme'> & {
   label?: string;
   helpTitle?: string;
   helpDescription?: string;
-  // NUEVA PROP: Controla dónde se renderiza el label
   labelMode?: 'floating' | 'static';
 };
 

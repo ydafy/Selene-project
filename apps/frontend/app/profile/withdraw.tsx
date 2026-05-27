@@ -48,7 +48,7 @@ export default function WithdrawScreen() {
     };
   }, []);
 
-  // --- LÓGICA DE CÁLCULO OPTIMIZADA (IA Local Fix) ---
+  // --- LÓGICA DE CÁLCULO OPTIMIZADA  ---
   const availableBalance = wallet?.available_balance || 0;
   const numericAmount = useMemo(() => parseFloat(amount) || 0, [amount]);
   const isOverLimit = numericAmount > availableBalance;
@@ -98,7 +98,7 @@ export default function WithdrawScreen() {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setErrorDialog({
         visible: true,
-        message: result.error || t('common:errors.generic'), // i18n Fix
+        message: result.error || t('common:errors.generic'),
       });
     }
   };

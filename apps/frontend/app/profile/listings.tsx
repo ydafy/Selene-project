@@ -22,6 +22,7 @@ import { useSellStore } from '../../core/store/useSellStore';
 
 import { Theme } from '../../core/theme';
 import { Product } from '@selene/types';
+import { useSeleneRefresh } from '@/core/hooks/useSeleneRefresh';
 
 export default function MyListingsScreen() {
   const theme = useTheme<Theme>();
@@ -30,7 +31,8 @@ export default function MyListingsScreen() {
   const insets = useSafeAreaInsets();
 
   // Hooks de Datos
-  const { data: listings, isLoading, refetch } = useMyListings();
+  const { data: listings, isLoading, isRefetching, refetch } = useMyListings();
+  const { isRefreshing, onRefresh } = useSeleneRefresh(refetch);
   const { deleteProduct } = useProductManagement();
 
   const { loadProductForEdit, resetDraft } = useSellStore();
@@ -50,6 +52,7 @@ export default function MyListingsScreen() {
   const hasRejected = !!listings?.some((item) => item.status === 'REJECTED');
   const showHistoryBadge = hasRejected && selectedIndex !== 1;
   const badgesConfig = [false, showHistoryBadge];
+  const showSkeleton = isLoading || isRefetching;
 
   // Lógica de Filtrado (Client Side - Instantáneo)
   const filteredListings = useMemo(() => {
@@ -139,7 +142,7 @@ export default function MyListingsScreen() {
       />
 
       {/* 4. CONTENIDO PRINCIPAL */}
-      {isLoading ? (
+      {showSkeleton ? (
         <Box padding="m" style={{ paddingTop: insets.top + 90 }}>
           <ProductCardSkeleton height={130} />
           <ProductCardSkeleton height={130} />
@@ -187,8 +190,8 @@ export default function MyListingsScreen() {
           }
           refreshControl={
             <RefreshControl
-              refreshing={isLoading}
-              onRefresh={refetch}
+              refreshing={isRefreshing}
+              onRefresh={onRefresh}
               tintColor={theme.colors.primary}
             />
           }
@@ -199,7 +202,7 @@ export default function MyListingsScreen() {
       <ConfirmDialog
         visible={!!productToDelete}
         title={t('common:dialog.delete')}
-        description={t('cart:dialog.removeItemMsg')} // Reutilizamos mensaje o creamos uno específico
+        description={t('cart:dialog.removeItemMsg')}
         onConfirm={confirmDelete}
         onCancel={() => setProductToDelete(null)}
         isDangerous

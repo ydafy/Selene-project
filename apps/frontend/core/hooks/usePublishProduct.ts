@@ -97,8 +97,8 @@ export const usePublishProduct = () => {
         // --- DATOS DE ENVÍO (CRÍTICOS) ---
         shipping_cost: parseFloat(draft.shipping_cost || '0'),
         shipping_payer: draft.shipping_payer,
-        origin_zip: draft.origin_zip, // <--- ESTE FALTABA
-        package_preset: draft.package_preset, // <--- ESTE FALTABA
+        origin_zip: draft.origin_zip,
+        package_preset: draft.package_preset,
 
         ...(aspectRatio !== 1 ? { aspect_ratio: aspectRatio } : {}),
       };
@@ -125,12 +125,11 @@ export const usePublishProduct = () => {
         if (sacredChanges) {
           updatePayload.status = 'PENDING_VERIFICATION';
           requiresReverification = true;
-          console.log('[Publish] Cambios sagrados. Status -> PENDING');
         } else {
-          console.log('[Publish] Cambios cosméticos. Status mantenido.');
           requiresReverification = false;
         }
-
+        if (!draft.id)
+          throw new Error('ID de producto no encontrado para actualizar');
         const { data, error } = await supabase
           .from('products')
           .update(updatePayload)

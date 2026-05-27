@@ -1,0 +1,9 @@
+{
+  "notifications": {
+    "title": "Notification Center",
+    "markAll": "Mark all as read",
+    "emptyTitle": "Empty Inbox",
+    "emptyMsg": "Your sales, purchase, and verification updates will appear here.",
+    "justNow": "Right now"
+  }
+}

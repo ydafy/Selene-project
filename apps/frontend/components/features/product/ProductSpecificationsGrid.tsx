@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
 import { Box, Text } from '../../base';
 import { Theme } from '../../../core/theme';
-import { BrandIcon } from '../../ui/BrandIcon'; // <-- Importamos la fábrica
+import { BrandIcon } from '../../ui/BrandIcon';
 
 type ProductSpecificationsProps = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

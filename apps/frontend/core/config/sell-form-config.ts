@@ -23,8 +23,6 @@ import {
   RAM_TYPE,
   RAM_CAPACITY,
   RAM_SPEEDS,
-  STORAGE_TYPE,
-  STORAGE_CAPACITY,
 } from '../constants/product-data';
 
 export type SellFieldConfig = {
@@ -32,10 +30,10 @@ export type SellFieldConfig = {
   label: string;
   placeholder: string;
   type: 'select';
-  options?: string[] | number[];
+  options?: (string | number)[];
   searchable?: boolean;
   dependsOn?: string; // Nombre del campo padre
-  optionsMap?: Record<string, string[]>; // Mapa Padre -> Hijos
+  optionsMap?: Record<string, (string | number)[]>;
 };
 
 export const SELL_FORM_CONFIG: Record<string, SellFieldConfig[]> = {
@@ -97,7 +95,7 @@ export const SELL_FORM_CONFIG: Record<string, SellFieldConfig[]> = {
       placeholder: 'sell:fields.modelPlaceholder',
       type: 'select',
       searchable: true,
-      dependsOn: 'brand', // <--- CASCADA PARA CPU
+      dependsOn: 'brand',
       optionsMap: {
         Intel: CPU_MODELS_INTEL,
         AMD: CPU_MODELS_AMD,
@@ -195,21 +193,4 @@ export const SELL_FORM_CONFIG: Record<string, SellFieldConfig[]> = {
       options: RAM_SPEEDS,
     },
   ],
-  Storage: [
-    {
-      name: 'type',
-      label: 'sell:fields.typeLabel',
-      placeholder: 'sell:fields.typePlaceholder',
-      type: 'select',
-      options: STORAGE_TYPE,
-    },
-    {
-      name: 'capacity',
-      label: 'sell:fields.capacityLabel',
-      placeholder: 'sell:fields.capacityPlaceholder',
-      type: 'select',
-      options: STORAGE_CAPACITY,
-    },
-  ],
-  Other: [],
 };

@@ -8,7 +8,7 @@ import * as Haptics from 'expo-haptics';
 import { Box, Text } from '../../base';
 import { Skeleton } from '../../ui/Skeleton';
 import { PrimaryButton } from '../../ui/PrimaryButton';
-import { AnimatedCounter } from '../../ui/AnimatedCounter'; // Importar nuevo componente
+import { AnimatedCounter } from '../../ui/AnimatedCounter';
 import { Theme } from '../../../core/theme';
 import { MotiView } from 'moti';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';

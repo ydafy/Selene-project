@@ -1,0 +1,108 @@
+{
+  "title": "Reportar Problema",
+  "titleSeller": "Impugnar Retorno",
+  "subtitle": "Cuéntanos qué salió mal",
+  "subtitleSeller": "Evidencia de Retorno",
+
+  "steps": {
+    "triage": "Triage",
+    "details": "Detalles",
+    "evidence": "Evidencia",
+    "finish": "Enviar"
+  },
+
+  "triage": {
+    "title": "Validación Técnica",
+    "description": "Por favor, confirma que has realizado estas pruebas básicas. Muchas veces el hardware solo necesita un ajuste.",
+    "footer": "Debes marcar todos los puntos para continuar.",
+    "gpu": {
+      "power": "¿Conectaste todos los cables de alimentación PCIe (8/6 pines)?",
+      "port": "¿El cable de video está conectado a la GPU y no a la tarjeta madre?",
+      "drivers": "¿Desinstalaste drivers anteriores usando DDU (Display Driver Uninstaller)?",
+      "psu": "¿Tu fuente de poder cumple con los Watts recomendados para esta tarjeta?"
+    },
+    "cpu": {
+      "socket": "¿Confirmaste que tu tarjeta madre soporta este chipset/generación?",
+      "pins": "¿Revisaste que no hubiera pines doblados en el socket o procesador?",
+      "bios": "¿Actualizaste la BIOS de tu tarjeta madre a la versión compatible?",
+      "cooler": "¿El disipador está bien montado y tiene pasta térmica fresca?"
+    },
+    "ram": {
+      "click": "¿Escuchaste el 'click' de seguridad al insertar los módulos?",
+      "clean": "¿Limpiaste los contactos de la RAM con una goma de borrar blanca?",
+      "single": "¿Probaste los módulos uno por uno en diferentes slots de la placa?",
+      "xmp": "¿Desactivaste el perfil XMP/DOCP en la BIOS para probar estabilidad?"
+    },
+    "mobo": {
+      "standoffs": "¿Instalaste los separadores (standoffs) metálicos en el gabinete?",
+      "cpu_power": "¿Conectaste el cable de alimentación de CPU (8 pines) arriba a la izquierda?",
+      "pins": "¿Verificaste que el socket no tenga pines doblados o quemados?",
+      "flashback": "¿Intentaste actualizar la BIOS mediante el botón Flashback si está disponible?"
+    },
+    "other": {
+      "manual": "¿Consultaste el manual del fabricante para la instalación?",
+      "compat": "¿Verificaste compatibilidad total con el resto de tus componentes?",
+      "cables": "¿Revisaste que todos los cables de datos y poder estén bien sentados?"
+    }
+  },
+
+  "reasons": {
+    "label": "Motivo del reporte",
+    "placeholder": "Selecciona un motivo",
+    "damaged": "El producto llegó dañado físicamente",
+    "not_working": "El producto no funciona o no da imagen",
+    "wrong_item": "Recibí un producto diferente al comprado",
+    "incomplete": "Faltan piezas o accesorios incluidos",
+    "other": "Otro motivo (especificar abajo)"
+  },
+
+  "form": {
+    "descriptionLabel": "Descripción detallada",
+    "descriptionHelpTitle": "¿Qué incluir en tu descripción?",
+    "descriptionHelpDesc": "Explica qué pruebas hiciste (ej. probé otros cables), qué componentes tiene tu PC y el comportamiento exacto del fallo. Entre más detalle des, más rápido Selene resolverá el caso.",
+    "descriptionPlaceholder": "Escribe aquí los detalles del problema...",
+    "minChars": "Mínimo {{count}} caracteres requeridos",
+    "helperText": "Sé lo más específico posible para agilizar la mediación."
+  },
+
+  "evidence": {
+    "title": "Pruebas visuales",
+    "subtitle": "Sube fotos claras del problema (etiquetas, daños físicos o errores en pantalla).",
+    "photoError": "Foto del fallo",
+    "photoLabel": "Foto de etiqueta/S/N",
+    "photoPackage": "Foto del empaque recibido",
+    "uploading": "Subiendo evidencia...",
+    "videoTitle": "Video de Unboxing (Obligatorio)",
+    "videoDesc": "Graba un video continuo mostrando la etiqueta de la caja y el fallo del producto.",
+    "uploadingVideo": "Subiendo video pesado...",
+    "videoReady": "¡Video de Unboxing listo!",
+    "changeVideo": "Toca para cambiar el video",
+    "uploadBtn": "Subir Video de Unboxing",
+    "videoLimits": "Máximo 2 minutos / 50MB",
+    "extraPhotos": "Fotos adicionales",
+    "requiredPhoto": "1 obligatoria",
+    "slots": {
+      "defect": "Foto del fallo",
+      "label": "Etiqueta/SN",
+      "package": "Empaque"
+    }
+  },
+  "errors": {
+    "noActiveDispute": "No hay disputa activa para impugnar",
+    "videoUploadFailed": "No se pudo subir el video. Intenta de nuevo."
+  },
+
+  "actions": {
+    "submit": "Enviar Reporte",
+    "submitSeller": "Enviar Evidencia",
+    "cancel": "Cancelar reporte",
+    "back": "Anterior",
+    "next": "Siguiente"
+  },
+
+  "success": {
+    "title": "Reporte enviado",
+    "message": "Selene ha congelado los fondos de la orden. Un mediador revisará tu caso en menos de 48 horas.",
+    "button": "Ir a mis pedidos"
+  }
+}

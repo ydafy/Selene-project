@@ -1,123 +1,164 @@
-import React, { useEffect, useState } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'expo-router';
-import { useAuthContext } from '../../auth/AuthProvider';
+import Toast from 'react-native-toast-message';
+import * as Haptics from 'expo-haptics';
+
+import { useAuthContext } from '../../../components/auth/AuthProvider';
 import { supabase } from '../../../core/db/supabase';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import { Notification } from '@selene/types';
 import { useTranslation } from 'react-i18next';
+import { useNotifications } from '../../../core/hooks/useNotifications';
+import { Box, Text } from '../../base';
 
 export const NotificationWatcher = () => {
   const { session } = useAuthContext();
+  const userId = session?.user.id;
   const router = useRouter();
   const { t } = useTranslation('common');
 
-  // ESTADO: Ahora es un Array (Cola)
+  const { markAsRead } = useNotifications(userId);
   const [queue, setQueue] = useState<Notification[]>([]);
+  const [isProcessingAction, setIsProcessingAction] = useState(false);
+  const isInitialLoadDone = useRef(false);
 
-  // Obtenemos la notificación actual (la primera de la fila)
   const currentNotification = queue.length > 0 ? queue[0] : null;
   const isLast = queue.length === 1;
 
-  const checkNotifications = async () => {
-    if (!session?.user.id) return;
+  const processIncoming = useCallback(
+    async (notif: Notification, isSilent = false) => {
+      const title = (notif.title || '').toLowerCase(); // Null safety
+      const path = (notif.action_path || '').toLowerCase();
 
-    // 1. Traemos TODAS las no leídas
-    const { data } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .eq('read', false)
-      .order('created_at', { ascending: false }); // Las más nuevas primero
+      const needsDialog =
+        notif.type === 'error' ||
+        notif.type === 'warning' ||
+        title.includes('verific') ||
+        title.includes('vendido') ||
+        title.includes('compra') ||
+        title.includes('pago') ||
+        path.includes('orders') ||
+        path.includes('wallet');
 
-    if (data && data.length > 0) {
-      setQueue(data as Notification[]);
-    }
-  };
+      if (needsDialog) {
+        if (!isSilent)
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        setQueue((prev) => {
+          if (prev.find((item) => item.id === notif.id)) return prev;
+          return [...prev, notif];
+        });
+      } else {
+        if (!isSilent) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          Toast.show({
+            type: notif.type === 'success' ? 'success' : 'info',
+            text1: notif.title ?? '',
+            text2: notif.message ?? '',
+            onPress: () => {
+              if (notif.action_path) router.push(notif.action_path as any);
+              Toast.hide();
+            },
+          });
+          await markAsRead(notif.id);
+        }
+      }
+    },
+    [markAsRead, router],
+  );
 
   useEffect(() => {
-    if (session) {
-      checkNotifications();
+    if (userId && !isInitialLoadDone.current) {
+      const fetchUnread = async () => {
+        const { data } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('read', false)
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false });
+
+        if (data && data.length > 0) {
+          processIncoming(data[0] as Notification, true);
+          isInitialLoadDone.current = true;
+        }
+      };
+      fetchUnread();
     }
-  }, [session]);
+  }, [userId, processIncoming]);
 
-  // Lógica para avanzar en la cola
-  const handleNext = async () => {
-    if (!currentNotification) return;
+  useEffect(() => {
+    if (!userId) return;
+    const channel = supabase
+      .channel(`notifications_realtime_watcher_${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => processIncoming(payload.new as Notification),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, processIncoming]);
 
-    // A. Marcar la actual como leída en DB
-    await supabase
-      .from('notifications')
-      .update({ read: true })
-      .eq('id', currentNotification.id);
+  const handleAction = async () => {
+    if (!currentNotification || isProcessingAction) return;
 
-    // B. Actualizar estado local (Quitar la primera)
-    setQueue((prev) => prev.slice(1));
-  };
+    setIsProcessingAction(true);
+    try {
+      await markAsRead(currentNotification.id);
 
-  // Lógica para el último elemento (Navegar)
-  const handleFinalAction = async () => {
-    if (!currentNotification) return;
-
-    // 1. Marcar como leída
-    await supabase
-      .from('notifications')
-      .update({ read: true })
-      .eq('id', currentNotification.id);
-
-    // 2. Navegar
-    if (currentNotification.action_path) {
-      if (currentNotification.action_path === '/profile') {
-        router.push('/profile/listings');
-      } else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        router.push(currentNotification.action_path as any);
+      if (currentNotification.action_path) {
+        const path =
+          currentNotification.action_path === '/profile'
+            ? '/profile/listings'
+            : currentNotification.action_path;
+        router.push(path as any);
       }
+      setQueue((prev) => prev.slice(1));
+    } finally {
+      setIsProcessingAction(false);
     }
-
-    // 3. Limpiar cola
-    setQueue([]);
-  };
-
-  // Handler Principal del Botón
-  const onConfirmPress = () => {
-    if (isLast) {
-      handleFinalAction();
-    } else {
-      handleNext();
-    }
-  };
-
-  // Handler para "Cerrar Todo" (Botón secundario)
-  const handleDismissAll = async () => {
-    // Opcional: Podríamos marcar todas como leídas, o solo cerrar el dialog visualmente.
-    // Por ahora solo cerramos visualmente para no perder info si el usuario se arrepiente.
-    setQueue([]);
   };
 
   if (!currentNotification) return null;
 
-  // Lógica de UI Dinámica
   const isError = currentNotification.type === 'error';
+  const path = (currentNotification.action_path || '').toLowerCase();
 
-  // Texto del botón
-  let buttonLabel = t('dialog.next');
+  let confirmLabel = t('dialog.next');
   if (isLast) {
-    buttonLabel = isError ? t('dialog.fixNow') : t('dialog.goToMyPosts');
+    if (isError) confirmLabel = t('dialog.fixNow');
+    else if (path.includes('orders')) confirmLabel = t('dialog.viewOrder');
+    else confirmLabel = t('dialog.understood');
   }
 
   return (
     <ConfirmDialog
       visible={!!currentNotification}
-      title={currentNotification.title}
-      description={currentNotification.message}
-      onConfirm={onConfirmPress}
-      onCancel={handleDismissAll}
-      confirmLabel={buttonLabel}
+      title={currentNotification?.title ?? ''}
+      description={currentNotification?.message ?? ''}
+      onConfirm={handleAction}
+      onCancel={() => setQueue([])}
+      confirmLabel={confirmLabel}
       cancelLabel={isLast ? t('dialog.cancel') : t('dialog.skipAll')}
-      hideCancel={false}
-      // El icono y color cambian según el mensaje actual
       icon={isError ? 'alert-circle-outline' : 'check-circle-outline'}
       isDangerous={isError}
-    />
+      loading={isProcessingAction} // Pasamos el estado de carga al botón
+    >
+      {queue.length > 1 && (
+        <Box marginTop="m" alignItems="center">
+          <Text variant="caption-md" color="textSecondary">
+            {`+${queue.length - 1} mensajes más`}
+          </Text>
+        </Box>
+      )}
+    </ConfirmDialog>
   );
 };

@@ -4,8 +4,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Box, Text } from '../../base';
 import { Theme } from '../../../core/theme';
-import { WalletTransaction } from '../../../../../packages/types/src/index';
-import { formatCurrency } from '../../../core/utils/format';
+import { WalletTransaction } from '@selene/types';
+import { formatCurrency, formatRelativeTime } from '../../../core/utils/format';
 import { TouchableOpacity } from 'react-native';
 
 type IconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
@@ -66,11 +66,7 @@ export const TransactionItem = ({ transaction, onPress }: Props) => {
             {t(`types.${transaction.type}`)}
           </Text>
           <Text variant="caption-md" color="textSecondary">
-            {new Date(transaction.created_at).toLocaleDateString(undefined, {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-            })}
+            {formatRelativeTime(transaction.created_at)}
           </Text>
         </Box>
         <Box alignItems="flex-end">

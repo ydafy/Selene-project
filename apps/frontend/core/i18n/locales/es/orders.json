@@ -1,0 +1,182 @@
+{
+  "screenTitle": "Mis Pedidos",
+  "tabs": {
+    "purchases": "Mis Compras",
+    "sales": "Mis Ventas"
+  },
+  "detail": {
+    "title": "Tu Pedido",
+    "subTitle": "Resumen de tu compra",
+    "orderId": "Pedido",
+    "shippingAddress": "Dirección de Envío",
+    "summary": "Resumen de compra",
+    "total": "Total pagado",
+    "contactBuyer": "Contactar Comprador",
+    "contactSeller": "Contactar Vendedor",
+    "cancelDisclaimer": "Solo puedes cancelar antes de que el vendedor prepare el envío.",
+
+    "trackTitle": "Rastreo de Paquete",
+    "trackSub": "Sigue tu hardware en tiempo real",
+    "copyTracking": "Copiar Guía",
+    "reportProblem": "Reportar un problema",
+    "trustTitle": "Compra Protegida",
+    "trustMsg": "Tu dinero está seguro. Selene lo retiene hasta que confirmes que el hardware funciona perfectamente.",
+    "itemsCount": "Especificaciones del envío",
+
+    "itemsTitlePurchased": "Productos comprados",
+    "itemsTitleSold": "Productos vendidos",
+    "addressTitle": "Dirección de envío",
+    "trackingTitle": "Numero de guia",
+    "paymentTitle": "Resumen de pago",
+
+    "trackingProvider": "Paquetería express",
+    "cancelledMsg": "El pedido ha sido cancelado. Si ya se había realizado un pago, el reembolso se procesará automáticamente.",
+    "disputeMsgBuyer": "Tus fondos están protegidos por Selene. Estamos revisando el caso y emitiremos un veredicto en menos de 72 horas.",
+    "disputeMsgSeller": "El comprador reportó un problema. Los fondos están congelados temporalmente mientras nuestro equipo revisa el caso. Te notificaremos cada vez que haya una actualización.",
+    "refundedMsg": "El dinero ha sido devuelto al comprador.",
+    "videoWarningTitle": "Graba tu Unboxing",
+    "videoWarningMsg": "Te recomendamos grabar un video continuo donde se vea que estas abriendo el paquete por primera vez. Sin este video, Selene no podrá procesar reclamos por daños físicos o piezas faltantes.",
+    "returnTitle": "DEVOLUCIÓN EN CURSO",
+    "WaitingReturnBuyerMsg": "Tu dinero está resguardado por el Escudo Selene. Estamos esperando que el vendedor pague la guía de retorno. Si no lo hace en menos de 48h, recibirás tu reembolso automáticamente y el caso se cerrará.",
+    "WaitingReturnSellerMsg": "Tienes 48 horas para pagar la guía de retorno si deseas recuperar tu hardware. Si el plazo expira sin pago, el sistema reembolsará al comprador de forma definitiva y perderás el derecho a reclamar el producto.",
+    "deliverySuccessTitle": "¡ENTREGA CONFIRMADA!",
+    "deliverySuccessMsg": "El paquete ha llegado. Tus fondos se liberarán automáticamente en 48 horas si no hay reportes.",
+    "routeTitleReturn": "Ruta de Retorno",
+    "routeFromSeller": "Desde (Vendedor)",
+    "routeFromBuyer": "Desde (Tu ubicación)",
+    "routeToSeller": "Hacia (Vendedor)",
+    "routeToBuyer": "Hacia (Comprador)",
+    "routePending": "La ruta de envío se mostrará cuando el vendedor prepare el paquete.",
+    "routeOriginVerified": "Origen verificado",
+    "routeDestVerified": "Destino verificado"
+  },
+  "status": {
+    "statusTitle": "Estado",
+    "pending": "Pendiente de pago",
+    "paid": "Pagado",
+    "preparing": "Preparando envío",
+    "shipped": "En camino",
+    "delivered": "Entregado",
+    "completed": "Completado",
+    "cancelled": "Cancelado",
+    "refunded": "Reembolsado",
+    "dispute": "En disputa"
+  },
+  "card": {
+    "moreItems": "más",
+    "viewDetail": "Ver detalle"
+  },
+  "empty": {
+    "purchasesTitle": "Sin compras aún",
+    "purchasesMsg": "Tus adquisiciones de hardware aparecerán aquí una vez que realices un pedido.",
+    "salesTitle": "Sin ventas aún",
+    "salesMsg": "Cuando vendas un componente, aquí podrás gestionar el envío y tu ganancia."
+  },
+  "errors": {
+    "cannotCancel": "No se puede cancelar una orden que ya está en preparación"
+  },
+
+  "stepper": {
+    "paid_desc": "Selene ha recibido tu pago de forma segura.",
+    "preparing_desc": "El vendedor está empacando tu hardware.",
+    "shipped_desc": "Tu paquete ya está con la paquetería.",
+    "delivered_desc": "¡Disfruta tu nuevo hardware!"
+  },
+  "actions": {
+    "generateLabel": "Generar Guía de Envío",
+    "cancelOrder": "Cancelar Pedido",
+    "confirmDelivery": "Confirmar Recepción",
+    "viewPdf": "Ver Guía PDF",
+    "trackOrder": "Rastrear Paquete",
+    "confirmCancel": "Sí, cancelar pedido",
+    "shareLabel": "Compartir Guía",
+    "findBranch": "Ver Sucursales",
+    "cancelReasonDefault": "Cancelación solicitada por el usuario",
+    "payReturnLabel": "Pagar Guía de Retorno ($200.00)",
+    "prepareReturnLabel": "Preparar Guía de Retorno",
+    "reportProblem": "Reportar un problema"
+  },
+  "dialogs": {
+    "cancelTitle": "¿Deseas cancelar este pedido?",
+    "deliveryTitle": "¿Recibiste tu paquete?",
+    "deliveryMsg": "Confirma solo si el producto está en tus manos y en buen estado. Esto liberará el pago al vendedor."
+  },
+  "return": {
+    "succesToastMsgTitle": "Evidencia guardada",
+    "succesToastDesc": "Ya puedes descargar tu guía de envío.",
+    "globalHeaderTitle": "Preparar Retorno",
+    "screenHeaderTitle": "Evidencia de Envío",
+    "screenHeaderSubtitle": "Prepara tu envio.",
+    "photoMessage": "Asegúrate de que se vean bien las fotos. Lo importante es que se vean todos los lados de la caja, superior, inferior y de lado.",
+    "buttonText": "Confirmar y generar guia"
+  },
+  "prepare": {
+    "title": "Preparar Envío",
+    "subtitle": "Confirma los detalles para generar tu guía.",
+    "originLabel": "Punto de recolección",
+    "totalSale": "Venta Total",
+    "originPlaceholder": "Selecciona desde dónde envías",
+    "summaryTitle": "Resumen de ganancias",
+    "confirmBtn": "Generar Guía y Confirmar",
+    "disclaimer": "Al generar la guía, confirmas que tienes el producto listo y empacado.",
+    "successTitle": "¡Guía Generada!",
+    "successMsg": "El camioncito de la paqueteria ya sabe que vas en camino. Imprime tu guía y pégala en el paquete.",
+    "shareLabelTitle": "Comparte tu Guía",
+    "shareLabelMsg": "Comparte tu guia para que la puedas descargar si es que no la tienes",
+    "instructionsTitle": "Instrucciones de Envío",
+    "step1": "Descarga e imprime la guía completa (son 3 hojas).",
+    "step2": "Pega la primera hoja en tu caja con cinta transparente en los bordes (sin tapar el código).",
+    "step3": "Guarda las otras 2 hojas y lleva tu paquete a la sucursal de Paquete Express. Entréga las otras dos hojas si te las solicitan.",
+
+    "evidenceTitle": "Certificado de Empaque",
+    "evidenceSubtitle": "Sube 3 fotos para proteger tu venta ante posibles reclamos.",
+    "photoHardware": "Producto y S/N",
+    "photoProtection": "Protección",
+    "photoSealed": "Caja Sellada",
+    "uploading": "Subiendo...",
+    "errorUpload": "Error al subir imagen",
+    "requirements": {
+      "common": {
+        "sealed": "Caja sellada con guía pegada"
+      },
+      "mobo": {
+        "socket": "Close-up del socket (pines)",
+        "full": "Foto global de la placa"
+      },
+      "gpu": {
+        "pcie": "Close-up conector PCIe (pines)",
+        "back": "Foto trasera del PCB completa"
+      },
+      "cpu": {
+        "pins": "Close-up de los pines/contactos",
+        "ihs": "Foto frontal (Modelo legible)"
+      },
+      "ram": {
+        "label": "Foto de la etiqueta (Specs)",
+        "contacts": "Close-up conector dorado"
+      },
+      "other": {
+        "front": "Foto frontal del producto",
+        "extras": "Foto de accesorios incluidos"
+      }
+    }
+  },
+
+  "dispute": {
+    "wizardTitle": "Reportar un problema",
+    "triageTitle": "Validación Técnica",
+    "triageSubtitle": "La mayoría de los problemas se resuelven revisando estos puntos:",
+    "checkPSU": "Mi fuente de poder es suficiente para este componente.",
+    "checkCables": "Ya probé con cables y puertos diferentes.",
+    "checkPhysical": "El daño es interno/técnico (no causado por caída).",
+    "reasonTitle": "¿Qué sucedió?",
+    "reasonPlaceholder": "Selecciona el motivo",
+    "descLabel": "Cuéntanos más",
+    "descPlaceholder": "Describe detalladamente la falla...",
+    "evidenceTitle": "Pruebas visuales",
+    "evidenceSubtitle": "Sube al menos 2 fotos donde se aprecie el problema.",
+    "submitBtn": "Abrir Disputa y Congelar Pago",
+    "successTitle": "Reporte Enviado",
+    "successMsg": "Selene está revisando tu caso. El pago al vendedor ha sido congelado hasta nuevo aviso."
+  }
+}

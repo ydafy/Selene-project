@@ -1,40 +1,52 @@
-import { supabase } from '../db/supabase';
-import { Product } from '@selene/types';
-
 /**
- * Servicios relacionados con las órdenes y productos para el checkout.
+ * @file core/services/OrderService.ts
+ * @description Servicios de orquestación para el ciclo de vida de las órdenes.
+ * Incluye validaciones de integridad de stock antes de iniciar procesos de pago.
  */
+
+import { supabase } from '../db/supabase';
+
 export class OrderService {
   /**
-   * Valida que todos los productos del carrito estén disponibles (VERIFIED)
-   * @param productIds - Array de IDs de productos a validar
-   * @returns Promise<boolean> - true si todos están disponibles
+   * Valida la disponibilidad de una lista de productos.
+   * Devuelve los IDs de los productos que ya no están disponibles para venta.
    */
   static async validateProductStock(productIds: string[]): Promise<{
     isValid: boolean;
-    unavailableItem?: Product['name'];
+    unavailableIds: string[];
+    errorCode?: 'EMPTY_CART' | 'DATABASE_ERROR' | 'STOCK_CONFLICT';
   }> {
     try {
+      if (!productIds || productIds.length === 0)
+        return { isValid: false, unavailableIds: [], errorCode: 'EMPTY_CART' };
+
       const { data: products, error } = await supabase
         .from('products')
-        .select('id, name, status')
-        .in('id', productIds);
+        .select('id, status')
+        .in('id', productIds)
+        .is('deleted_at', null);
 
       if (error) throw error;
 
-      const unavailableItem = products?.find((p) => p.status !== 'VERIFIED');
+      // Detectamos cuáles IDs del carrito no están en la respuesta (borrados)
+      // o no están en estado VERIFIED.
+      const validIds = new Set(
+        products?.filter((p) => p.status === 'VERIFIED').map((p) => p.id) || [],
+      );
+      const unavailableIds = productIds.filter((id) => !validIds.has(id));
 
-      if (unavailableItem) {
-        return {
-          isValid: false,
-          unavailableItem: unavailableItem.name,
-        };
-      }
-
-      return { isValid: true };
+      return {
+        isValid: unavailableIds.length === 0,
+        unavailableIds,
+        errorCode: unavailableIds.length > 0 ? 'STOCK_CONFLICT' : undefined,
+      };
     } catch (error) {
-      console.error('Error en validateProductStock:', error);
-      throw new Error('No se pudo validar la disponibilidad de los productos.');
+      console.error('[OrderService] Error en validateProductStock:', error);
+      return {
+        isValid: false,
+        unavailableIds: [],
+        errorCode: 'DATABASE_ERROR',
+      };
     }
   }
 }

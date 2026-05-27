@@ -16,6 +16,7 @@ import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { useSellStore } from '../../core/store/useSellStore';
 import { SELL_FORM_CONFIG } from '../../core/config/sell-form-config';
 import { DynamicSpecField } from '../../components/features/sell/DynamicSpecField';
+import { checkIfOther } from '@/core/utils/form-helpers';
 
 export default function SellSpecsScreen() {
   const { t } = useTranslation(['sell', 'common']);
@@ -32,18 +33,20 @@ export default function SellSpecsScreen() {
   }, [category]);
 
   const dynamicSchema = useMemo(() => {
-    const shape: Record<string, any> = {};
+    const shape: Record<string, z.ZodString | z.ZodOptional<z.ZodString>> = {};
+
     formConfig.forEach((field) => {
-      shape[field.name] = z.string().min(1, 'sell:errors.conditionRequired');
+      shape[field.name] = z.string().min(1, 'sell:errors.required');
       shape[`${field.name}_custom`] = z.string().optional();
     });
-    return z.object(shape).superRefine((data, ctx) => {
+    return z.object(shape).superRefine((data: any, ctx) => {
       formConfig.forEach((field) => {
-        const value = data[field.name] as string | undefined;
-        const customValue = data[`${field.name}_custom`] as string | undefined;
+        const value = data[field.name];
+        const customValue = data[`${field.name}_custom`];
+
+        // FIX: Usamos el mismo helper que el componente UI
         if (
-          value &&
-          value.includes('Other') &&
+          checkIfOther(value) &&
           (!customValue || customValue.trim().length < 2)
         ) {
           ctx.addIssue({
@@ -71,13 +74,16 @@ export default function SellSpecsScreen() {
   //     if (!category) router.replace('/sell');
   //   }, [category, router]);
 
-  const onSubmit = (data: Record<string, any>) => {
-    // Limpieza de datos (igual que antes)
-    const cleanData: Record<string, any> = {};
+  const onSubmit = (data: Record<string, string | undefined>) => {
+    const cleanData: Record<string, string> = {};
+
     Object.entries(data).forEach(([key, value]) => {
+      // Solo procesamos si el valor existe (no es undefined)
+      if (value === undefined) return;
+
       if (key.endsWith('_custom')) {
         const parentKey = key.replace('_custom', '');
-        if (data[parentKey]?.includes('Other')) {
+        if (checkIfOther(data[parentKey])) {
           cleanData[key] = value;
         }
       } else {
@@ -85,11 +91,7 @@ export default function SellSpecsScreen() {
       }
     });
 
-    // 2. CORRECCIÓN CRÍTICA:
-    // En lugar de updateSpecs('all', ...), actualizamos el draft completo.
     updateDraft({ specifications: cleanData });
-
-    console.log('Specs Saved:', cleanData);
     router.push('/sell/images');
   };
 
@@ -156,7 +158,10 @@ export default function SellSpecsScreen() {
                   color="textSecondary"
                   paddingVertical="l"
                 >
-                  No hay especificaciones adicionales para esta categoría.
+                  {t(
+                    'sell:fields.noSpecs',
+                    'No hay especificaciones adicionales para esta categoría.',
+                  )}
                 </Text>
               )}
             </Box>

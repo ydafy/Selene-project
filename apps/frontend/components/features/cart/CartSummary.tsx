@@ -11,7 +11,7 @@ type CartSummaryProps = {
   total: number;
   onCheckout: () => void;
   itemCount: number;
-  disabled?: boolean; // <-- 1. NUEVA PROP
+  disabled?: boolean;
 };
 
 export const CartSummary = ({
@@ -55,7 +55,7 @@ export const CartSummary = ({
           </Text>
           <Text
             variant="header-xl"
-            color={disabled ? 'primary' : 'textPrimary'}
+            color={disabled ? 'textSecondary' : 'primary'}
             style={{ fontFamily: 'Montserrat-Bold' }}
           >
             {formatCurrency(total)}
@@ -67,7 +67,7 @@ export const CartSummary = ({
       <PrimaryButton
         onPress={onCheckout}
         icon="credit-card-outline"
-        disabled={disabled} // <-- Aquí bloqueamos la acción
+        disabled={disabled}
       >
         {t('checkout')}
       </PrimaryButton>

@@ -1,5 +1,11 @@
-import { useState } from 'react';
-import { Stack, router, useLocalSearchParams } from 'expo-router';
+/**
+ * @file apps/frontend/app/(auth)/resetPassword.tsx
+ * @description Pantalla final de recuperación de contraseña.
+ * Valida el código OTP y permite establecer la nueva credencial de forma segura.
+ */
+
+import React, { useState, useEffect, useMemo } from 'react';
+import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -8,8 +14,8 @@ import { IconButton } from 'react-native-paper';
 import OTPTextInput from 'react-native-otp-textinput';
 import Toast from 'react-native-toast-message';
 import { z } from 'zod';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// Importaciones de componentes y lógica
 import { ScreenLayout } from '../../components/layout/ScreenLayout';
 import { FormTextInput } from '../../components/ui/FormTextInput';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
@@ -18,86 +24,84 @@ import { Box, Text } from '../../components/base';
 import { useAuth } from '../../core/hooks/useAuth';
 import { Theme } from '../../core/theme';
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const logoIconPath = require('../../assets/images/SeleneLunaLogo.png');
 
-// --- ESQUEMA DE VALIDACIÓN ---
-const resetPasswordSchema = z
-  .object({
-    password: z.string().min(8, { message: 'auth:errors.passwordTooShort' }),
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: 'auth:errors.passwordsDoNotMatch',
-    path: ['confirmPassword'],
-  });
+// --- 1. ESQUEMA DE VALIDACIÓN ---
+const getResetPasswordSchema = (t: any) =>
+  z
+    .object({
+      password: z
+        .string()
+        .min(8, { message: t('auth:errors.passwordTooShort') }),
+      confirmPassword: z.string(),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      message: t('auth:errors.passwordsDoNotMatch'),
+      path: ['confirmPassword'],
+    });
 
-type ResetPasswordData = z.infer<typeof resetPasswordSchema>;
+type ResetPasswordData = z.infer<ReturnType<typeof getResetPasswordSchema>>;
 
 export default function ResetPasswordScreen() {
-  const { t } = useTranslation('auth');
+  const { t } = useTranslation(['auth', 'common']);
   const theme = useTheme<Theme>();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { resetPassword, loading } = useAuth();
-
-  // Obtenemos el email de los parámetros de navegación
   const { email } = useLocalSearchParams<{ email: string }>();
 
-  // Estado local para el código OTP (separado del hook form para usar la librería OTP)
   const [otpCode, setOtpCode] = useState('');
+
+  // --- 2. GUARDIÁN DE DATOS ---
+  useEffect(() => {
+    if (!email) {
+      Toast.show({
+        type: 'error',
+        text1: t('common:errors.errorTitle'),
+        text2: 'Falta información de correo.',
+      });
+      router.replace('/(auth)/forgotPassword');
+    }
+  }, [email]);
+
+  const schema = useMemo(() => getResetPasswordSchema(t), [t]);
 
   const {
     control,
     handleSubmit,
     formState: { errors, isValid },
   } = useForm<ResetPasswordData>({
-    resolver: zodResolver(resetPasswordSchema),
+    resolver: zodResolver(schema),
     mode: 'onChange',
-    defaultValues: {
-      password: '',
-      confirmPassword: '',
-    },
+    defaultValues: { password: '', confirmPassword: '' },
   });
 
   const onSubmit = async (data: ResetPasswordData) => {
-    if (!email) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Email no encontrado.',
-      });
-      return;
-    }
+    if (!email) return;
 
     if (otpCode.length < 6) {
       Toast.show({
         type: 'error',
-        text1: t('verificationErrorTitle'),
-        text2: t('enter6DigitCode'),
+        text1: t('auth:verificationErrorTitle'),
+        text2: t('auth:enter6DigitCode'),
       });
       return;
     }
 
-    // Llamamos a la función de nuestro hook
-    const { success, error } = await resetPassword(
-      email,
-      otpCode,
-      data.password,
-    );
+    const result = await resetPassword(email, otpCode, data.password);
 
-    if (success) {
+    if (result.success) {
       Toast.show({
         type: 'success',
-        text1: t('passwordResetSuccess'),
-        text2: t('welcomeMessage'),
+        text1: t('auth:passwordResetSuccess'),
+        text2: t('auth:welcomeMessage'),
       });
-      // Al resetear la contraseña, Supabase inicia sesión automáticamente.
-      // Redirigimos a la app principal.
       router.replace('/(tabs)');
     } else {
       Toast.show({
         type: 'error',
-        text1: t('registerErrorTitle'),
-        text2: error?.message || 'Error al restablecer contraseña',
+        text1: t('auth:forgotPassword.errorTitle'),
+        text2: result.error?.message || t('common:errors.generic'),
       });
     }
   };
@@ -106,7 +110,13 @@ export default function ResetPasswordScreen() {
     <ScreenLayout>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <Box position="absolute" top={40} left={4} zIndex={1}>
+      {/* BOTÓN DE ATRÁS DINÁMICO */}
+      <Box
+        position="absolute"
+        top={insets.top > 0 ? insets.top : 20}
+        left={theme.spacing.s}
+        zIndex={10}
+      >
         <IconButton
           icon="arrow-left"
           iconColor={theme.colors.textPrimary}
@@ -123,7 +133,7 @@ export default function ResetPasswordScreen() {
             contentFit="contain"
           />
           <Text variant="header-xl" marginTop="m" textAlign="center">
-            {t('resetPasswordTitle')}
+            {t('auth:resetPasswordTitle')}
           </Text>
           <Text
             variant="body-md"
@@ -131,20 +141,16 @@ export default function ResetPasswordScreen() {
             textAlign="center"
             marginTop="s"
           >
-            {t('resetPasswordSubtitle')}
+            {t('auth:resetPasswordSubtitle')}
           </Text>
         </Box>
 
-        {/* --- SECCIÓN DEL CÓDIGO OTP --- */}
-        <Text
-          variant="body-md"
-          marginBottom="s"
-          style={{ fontWeight: 'regular' }}
-        >
-          {t('codeLabel')}
+        <Text variant="body-md" marginBottom="s">
+          {t('auth:codeLabel')}
         </Text>
+
         <OTPTextInput
-          handleTextChange={setOtpCode}
+          handleTextChange={(val) => setOtpCode(val.trim())} // Sanitización básica
           inputCount={6}
           tintColor={theme.colors.primary}
           offTintColor={theme.colors.textSecondary}
@@ -156,19 +162,17 @@ export default function ResetPasswordScreen() {
               fontFamily: 'Montserrat-Medium',
               borderBottomWidth: 2,
               borderWidth: 0,
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any
           }
           containerStyle={{ marginBottom: 24 }}
         />
 
-        {/* --- SECCIÓN DE NUEVA CONTRASEÑA --- */}
         <Controller
           control={control}
           name="password"
           render={({ field: { onChange, onBlur, value } }) => (
             <FormTextInput
-              label={t('newPasswordLabel')}
+              label={t('auth:newPasswordLabel')}
               onBlur={onBlur}
               onChangeText={onChange}
               value={value}
@@ -179,13 +183,11 @@ export default function ResetPasswordScreen() {
           )}
         />
         {errors.password && (
-          <Text
-            variant="body-sm"
-            style={{ color: theme.colors.error, marginTop: 4 }}
-          >
+          <Text variant="body-sm" color="error" marginTop="s" marginLeft="s">
             {t(errors.password.message as string)}
           </Text>
         )}
+
         <Box height={16} />
 
         <Controller
@@ -193,7 +195,7 @@ export default function ResetPasswordScreen() {
           name="confirmPassword"
           render={({ field: { onChange, onBlur, value } }) => (
             <FormTextInput
-              label={t('confirmPasswordLabel')}
+              label={t('auth:confirmPasswordLabel')}
               onBlur={onBlur}
               onChangeText={onChange}
               value={value}
@@ -204,10 +206,7 @@ export default function ResetPasswordScreen() {
           )}
         />
         {errors.confirmPassword && (
-          <Text
-            variant="body-sm"
-            style={{ color: theme.colors.error, marginTop: 4 }}
-          >
+          <Text variant="body-sm" color="error" marginTop="s" marginLeft="s">
             {t(errors.confirmPassword.message as string)}
           </Text>
         )}
@@ -217,10 +216,9 @@ export default function ResetPasswordScreen() {
         <PrimaryButton
           onPress={handleSubmit(onSubmit)}
           loading={loading}
-          // Deshabilitamos si el formulario es inválido, si está cargando O si el código OTP está incompleto
           disabled={!isValid || loading || otpCode.length < 6}
         >
-          {t('resetButton')}
+          {t('auth:resetButton')}
         </PrimaryButton>
       </Box>
     </ScreenLayout>

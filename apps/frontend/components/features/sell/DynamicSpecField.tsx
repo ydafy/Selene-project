@@ -1,59 +1,71 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useMemo, useEffect, useRef } from 'react'; // <--- 1. Importar useRef
+/**
+ * @file components/features/sell/DynamicSpecField.tsx
+ * @description Componente de formulario dinámico que gestiona campos dependientes,
+ * lógica de valores "Otros" y resets automáticos en cascada.
+ * Nivel: Senior / Industrial.
+ */
+
+import React, { useMemo, useEffect, useRef, memo } from 'react';
 import {
   Control,
   Controller,
   useWatch,
   UseFormSetValue,
+  FieldValues,
+  Path,
+  FieldErrors,
 } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Box, Text } from '../../base';
 import { FormSelect } from '../../ui/FormSelect';
 import { FormTextInput } from '../../ui/FormTextInput';
 import { SellFieldConfig } from '../../../core/config/sell-form-config';
+import { checkIfOther } from '../../../core/utils/form-helpers';
 
-type DynamicSpecFieldProps = {
+interface DynamicSpecFieldProps<T extends FieldValues> {
   field: SellFieldConfig;
-  control: Control<any>;
-  errors: any;
-  setValue: UseFormSetValue<any>;
-};
+  control: Control<T>;
+  errors: FieldErrors<T>;
+  setValue: UseFormSetValue<T>;
+}
 
-export const DynamicSpecField = ({
+const DynamicSpecFieldComponent = <T extends FieldValues>({
   field,
   control,
   errors,
   setValue,
-}: DynamicSpecFieldProps) => {
+}: DynamicSpecFieldProps<T>) => {
   const { t } = useTranslation(['sell', 'common']);
-
-  // 2. REF PARA DETECTAR MONTAJE INICIAL
   const isMounted = useRef(false);
 
-  // Watchers
+  // Observamos el valor del campo padre (si existe) y el valor actual
   const parentValue = field.dependsOn
-    ? useWatch({ control, name: field.dependsOn })
+    ? useWatch({ control, name: field.dependsOn as Path<T> })
     : null;
-  const myValue = useWatch({ control, name: field.name });
 
-  // 3. AUTO-RESET LOGIC (CORREGIDA)
+  const myValue = useWatch({ control, name: field.name as Path<T> });
+
+  /**
+   * Lógica de Reset en Cascada:
+   * Si el padre cambia, el hijo se limpia automáticamente, excepto en el montaje inicial (Edición).
+   */
   useEffect(() => {
-    // Si no depende de nadie, no hacemos nada
     if (!field.dependsOn) return;
 
-    // Si es la primera vez que se renderiza (Carga inicial o Edición),
-    // NO borramos el valor. Solo marcamos que ya se montó.
     if (!isMounted.current) {
       isMounted.current = true;
       return;
     }
 
-    // Si ya estaba montado y cambia el padre, ENTONCES SÍ borramos el hijo.
-    setValue(field.name, '');
-    setValue(`${field.name}_custom`, '');
+    // Reset de valores en el store de react-hook-form
+    setValue(field.name as Path<T>, '' as any);
+    setValue(`${field.name}_custom` as Path<T>, '' as any);
   }, [parentValue, field.dependsOn, field.name, setValue]);
 
-  // ... (Resto del componente: currentOptions, renderizado, etc. SE QUEDA IGUAL)
+  /**
+   * Resolución de opciones disponibles basada en la dependencia del padre.
+   */
   const currentOptions = useMemo(() => {
     if (!field.dependsOn) return field.options || [];
     if (field.optionsMap && parentValue) {
@@ -62,7 +74,7 @@ export const DynamicSpecField = ({
     return [];
   }, [field, parentValue]);
 
-  const isOtherSelected = myValue && String(myValue).includes('Other');
+  const isOtherSelected = checkIfOther(myValue);
   const isDisabled =
     field.dependsOn && (!parentValue || currentOptions.length === 0);
 
@@ -72,11 +84,15 @@ export const DynamicSpecField = ({
       })
     : t(field.placeholder);
 
+  // Extraemos el error específico de este campo
+  const fieldError = errors[field.name];
+  const customFieldError = errors[`${field.name}_custom`];
+
   return (
     <Box marginBottom="m">
       <Controller
         control={control}
-        name={field.name}
+        name={field.name as Path<T>}
         render={({ field: { onChange, value } }) => (
           <FormSelect
             label={t(field.label)}
@@ -84,25 +100,28 @@ export const DynamicSpecField = ({
             value={value ? String(value) : ''}
             onChange={(val) => {
               onChange(val);
-              if (!val.includes('Other')) {
-                setValue(`${field.name}_custom`, '');
+              // Si el usuario cambia de "Other" a una opción real, limpiamos el campo manual
+              if (!checkIfOther(val)) {
+                setValue(`${field.name}_custom` as Path<T>, '' as any);
               }
             }}
             options={currentOptions.map(String)}
-            error={!!errors[field.name]}
+            error={!!fieldError}
             searchable={field.searchable}
           />
         )}
       />
 
-      {errors[field.name] && (
+      {/* Renderizado de Error del Selector */}
+      {fieldError && (
         <Text variant="body-sm" color="error" marginTop="xs">
-          {errors[field.name]?.message
-            ? t(errors[field.name]?.message as string)
+          {fieldError.message
+            ? t(fieldError.message as string)
             : t('common:errors.required')}
         </Text>
       )}
 
+      {/* Campo de especificación manual (Solo si es "Other") */}
       {isOtherSelected && (
         <Box
           marginTop="s"
@@ -113,7 +132,7 @@ export const DynamicSpecField = ({
         >
           <Controller
             control={control}
-            name={`${field.name}_custom`}
+            name={`${field.name}_custom` as Path<T>}
             render={({ field: { onChange, onBlur, value } }) => (
               <FormTextInput
                 label={t('sell:fields.specifyLabel', { field: t(field.label) })}
@@ -121,14 +140,14 @@ export const DynamicSpecField = ({
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
-                error={!!errors[`${field.name}_custom`]}
-                labelMode="static" // Aseguramos consistencia visual
+                error={!!customFieldError}
+                labelMode="static"
               />
             )}
           />
-          {errors[`${field.name}_custom`] && (
+          {customFieldError && (
             <Text variant="body-sm" color="error" marginTop="xs">
-              {t(errors[`${field.name}_custom`]?.message as string)}
+              {t(customFieldError.message as string)}
             </Text>
           )}
         </Box>
@@ -136,3 +155,8 @@ export const DynamicSpecField = ({
     </Box>
   );
 };
+
+// Exportamos con memo para optimizar el Wizard
+export const DynamicSpecField = memo(
+  DynamicSpecFieldComponent,
+) as typeof DynamicSpecFieldComponent;

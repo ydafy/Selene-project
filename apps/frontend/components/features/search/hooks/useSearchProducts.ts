@@ -1,15 +1,19 @@
+/**
+ * @file core/hooks/useSearchProducts.ts
+ * @description Motor de búsqueda principal de Selene. Maneja paginación infinita,
+ * Full Text Search y filtrado avanzado sobre columnas JSONB.
+ */
+
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { supabase } from '../../../../core/db/supabase';
 import { Product } from '@selene/types';
 
-// Definición completa de todos los filtros posibles
 export type SearchFilters = {
   query?: string;
   category?: string;
   priceRange?: [number, number];
   conditions?: string[];
   specs?: Record<string, string[]>;
-  // --- NUEVOS ---
   orderBy?: 'newest' | 'price_asc' | 'price_desc';
   verifiedOnly?: boolean;
 };
@@ -18,21 +22,24 @@ const PAGE_SIZE = 20;
 
 export const useSearchProducts = (filters: SearchFilters) => {
   return useInfiniteQuery({
-    // La key incluye TODOS los filtros. Si cambia algo (ej. orden), recarga.
-    queryKey: ['search-products', filters],
+    /**
+     * Usamos una representación estable de los filtros en la key.
+     * Si pasas un objeto nuevo con los mismos valores, React Query no re-lanzará la petición.
+     */
+    queryKey: ['search-products', JSON.stringify(filters)],
 
     queryFn: async ({ pageParam = 0 }) => {
       let queryBuilder = supabase
         .from('products')
-        .select('*', { count: 'exact' });
+        .select('*', { count: 'exact' })
+        .is('deleted_at', null)
+        .neq('status', 'HIDDEN');
 
-      // 1. Filtro de Texto (Full Text Search)
-      if (filters.query) {
-        const cleanQuery = filters.query.trim();
-        const formattedQuery = cleanQuery.split(/\s+/).join(' & ');
-        queryBuilder = queryBuilder.textSearch('fts', formattedQuery, {
-          config: 'english',
-          type: 'plain',
+      // 1. Full Text Search
+      if (filters.query?.trim()) {
+        queryBuilder = queryBuilder.textSearch('fts', filters.query.trim(), {
+          config: 'simple',
+          type: 'websearch',
         });
       }
 
@@ -56,36 +63,38 @@ export const useSearchProducts = (filters: SearchFilters) => {
       // 5. Filtros de Especificaciones (JSONB)
       if (filters.specs) {
         Object.entries(filters.specs).forEach(([key, values]) => {
-          if (values && values.length > 0) {
-            const formattedValues = `(${values.map((v) => `"${v}"`).join(',')})`;
-            queryBuilder = queryBuilder.filter(
-              `specifications->>${key}`,
-              'in',
-              formattedValues,
-            );
-          }
+          if (!values || values.length === 0) return;
+
+          const arr = Array.isArray(values) ? values : [values];
+          /**
+           * FIX SEGURIDAD: Sanitizamos los valores para evitar errores con comillas
+           * y construimos el filtro PostgREST 'in'.
+           */
+          const sanitizedValues = arr
+            .map((v) => `"${String(v).replace(/"/g, '')}"`)
+            .join(',');
+          queryBuilder = queryBuilder.filter(
+            `specifications->>${key}`,
+            'in',
+            `(${sanitizedValues})`,
+          );
         });
       }
 
-      // 6. NUEVO: Filtro de Verificados
+      // 6. Filtro de Verificados
       if (filters.verifiedOnly) {
         queryBuilder = queryBuilder.eq('status', 'VERIFIED');
       }
 
-      // 7. NUEVO: Ordenamiento
-      switch (filters.orderBy) {
-        case 'price_asc':
-          queryBuilder = queryBuilder.order('price', { ascending: true });
-          break;
-        case 'price_desc':
-          queryBuilder = queryBuilder.order('price', { ascending: false });
-          break;
-        case 'newest':
-        default:
-          // Por defecto, los más nuevos primero
-          queryBuilder = queryBuilder.order('created_at', { ascending: false });
-          break;
-      }
+      // 7. Ordenamiento
+      const sortMap = {
+        price_asc: { col: 'price', asc: true },
+        price_desc: { col: 'price', asc: false },
+        newest: { col: 'created_at', asc: false },
+      };
+
+      const sort = sortMap[filters.orderBy || 'newest'] || sortMap.newest;
+      queryBuilder = queryBuilder.order(sort.col, { ascending: sort.asc });
 
       // 8. Paginación
       const from = pageParam * PAGE_SIZE;
@@ -93,7 +102,7 @@ export const useSearchProducts = (filters: SearchFilters) => {
 
       const { data, error, count } = await queryBuilder.range(from, to);
 
-      if (error) throw new Error(error.message);
+      if (error) throw error;
 
       return {
         data: data as Product[],

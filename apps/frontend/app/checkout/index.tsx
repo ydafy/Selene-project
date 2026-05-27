@@ -30,9 +30,9 @@ import { useAddresses } from '../../core/hooks/useAddresses';
 import { useOrderCalculations } from '../../core/hooks/useOrderCalculations';
 import { usePaymentMethods } from '../../core/hooks/usePaymentMethods';
 import { formatCurrency } from '../../core/utils/format';
-import { supabase } from '../../core/db/supabase';
 import { Address } from '@selene/types';
 import { useAuthContext } from '../../components/auth/AuthProvider';
+import { OrderService } from '../../core/services/order';
 
 export default function CheckoutSummaryScreen() {
   const { t } = useTranslation('checkout');
@@ -115,7 +115,6 @@ export default function CheckoutSummaryScreen() {
   };
 
   const onProceedToPayment = async () => {
-    // 1. Validación de UI
     if (!isReady() || !isTermsAccepted) {
       setShowErrors(true);
       setIsValidationDialogVisible(true);
@@ -123,45 +122,37 @@ export default function CheckoutSummaryScreen() {
     }
 
     if (isSelfPurchase) {
-      Alert.alert('Error', t('errors.selfPurchase'));
+      Alert.alert(t('errors.selfPurchaseTitle'), t('errors.selfPurchaseMsg'));
       return;
     }
 
-    // 2. Validación de Stock JIT
+    // LÓGICA DE VALIDACIÓN BLINDADA---
     setIsValidatingStock(true);
     setStatus('validating');
+    setUnavailableItems([]);
+
     try {
-      const { data: products, error: dbError } = await supabase
-        .from('products')
-        .select('id, status')
-        .in(
-          'id',
-          cartItems.map((i) => i.id),
-        );
+      const validation = await OrderService.validateProductStock(
+        cartItems.map((i) => i.id),
+      );
 
-      if (dbError) throw dbError;
-
-      const outOfStock =
-        products?.filter((p) => p.status !== 'VERIFIED').map((p) => p.id) || [];
-
-      if (outOfStock.length > 0) {
-        setUnavailableItems(outOfStock);
+      if (!validation.isValid) {
         setStatus('idle');
+        setUnavailableItems(validation.unavailableIds);
         Alert.alert(t('errors.stockTitle'), t('errors.stockMsg'));
         return;
       }
 
-      // 3. Navegar al Pago
+      //  Navegar al Pago (Si todo es válido)
       setStatus('processing');
-      router.push('/checkout/payment' as never);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      setError(err.message);
+      router.push('/checkout/payment');
+    } catch (err: unknown) {
+      // ELIMINAMOS ANY: Manejo de error robusto
+      const errorMessage =
+        err instanceof Error ? err.message : t('errors.genericMsg');
+      setError(errorMessage);
       setStatus('error');
-      Alert.alert(
-        t('errors.genericTitle'),
-        err.message || t('errors.genericMsg'),
-      );
+      Alert.alert(t('errors.genericTitle'), errorMessage);
     } finally {
       setIsValidatingStock(false);
     }
@@ -226,7 +217,7 @@ export default function CheckoutSummaryScreen() {
           method={selectedPaymentMethod}
           onPress={() => paymentModalRef.current?.present()}
           showError={showErrors}
-          label={t('payment.selectMethod')} // Asegúrate de que esta llave exista o usa un string
+          label={t('payment.selectMethod')}
         />
 
         <Box marginBottom="l">

@@ -41,14 +41,25 @@ const info3 = require('../../../assets/images/ramStep3.jpg');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const info4 = require('../../../assets/images/ramStep4.jpg'); // Placeholder
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const info5 = require('../../../assets/images/ramStep5.jpg'); // Placeholder
+
 // --- 2. ASSETS: INFO (MOBO) ---
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const mobo1 = require('../../../assets/images/ramStep1.jpg');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const mobo2 = require('../../../assets/images/moboStep2.jpg');
+const mobo2 = require('../../../assets/images/ramStep2.jpg');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const mobo3 = require('../../../assets/images/moboStep3.jpg');
+const mobo3 = require('../../../assets/images/ramStep3.jpg');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const mobo4 = require('../../../assets/images/ramStep4.jpg');
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const mobo5 = require('../../../assets/images/moboStep5.jpg');
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const mobo6 = require('../../../assets/images/moboStep6.jpg');
 
 export type GuideType = 'benchmark' | 'info' | 'mobo';
 
@@ -138,6 +149,11 @@ export const BenchmarkGuideModal = ({
             desc: t('guide.info.step4Desc'),
             img: info4,
           },
+          {
+            title: t('guide.info.step5Title'),
+            desc: t('guide.info.step5Desc'),
+            img: info5,
+          },
         ],
       };
     } else {
@@ -158,6 +174,22 @@ export const BenchmarkGuideModal = ({
             title: t('guide.mobo.step3Title'),
             desc: t('guide.mobo.step3Desc'),
             img: mobo3,
+          },
+
+          {
+            title: t('guide.mobo.step4Title'),
+            desc: t('guide.mobo.step4Desc'),
+            img: mobo4,
+          },
+          {
+            title: t('guide.mobo.step5Title'),
+            desc: t('guide.mobo.step5Desc'),
+            img: mobo5,
+          },
+          {
+            title: t('guide.mobo.step6Title'),
+            desc: t('guide.mobo.step6Desc'),
+            img: mobo6,
           },
         ],
       };

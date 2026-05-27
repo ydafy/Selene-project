@@ -8,6 +8,10 @@
   "actions": {
     "remove": "Eliminar del carrito"
   },
+  "item": {
+    "unavailableShort": "NO DISP.",
+    "unavailableMsg": "Producto ya no disponible"
+  },
   "dialog": {
     "removeItemTitle": "¿Eliminar producto?",
     "removeItemMsg": "¿Estás seguro de que quieres sacar este artículo de tu carrito?"

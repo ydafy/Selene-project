@@ -1,0 +1,19 @@
+{
+  "verification": {
+    "title": "Selene Protocol",
+    "subtitle": "How we guarantee technical accuracy",
+    "step1": {
+      "title": "CAPTURE",
+      "desc": "The vendor uploads mandatory benchmarks and stock photos."
+    },
+    "step2": {
+      "title": "AUDIT",
+      "desc": "Our NetRunners validate the integrity of each component."
+    },
+    "step3": {
+      "title": "CERTIFICATION",
+      "desc": "Only approved hardware receives the seal of trust."
+    },
+    "footer": "ACTIVE VERIFICATION SYSTEM // SEN-2077"
+  }
+}

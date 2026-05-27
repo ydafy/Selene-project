@@ -1,195 +1,217 @@
-import { useRef } from 'react';
-import { ScrollView, RefreshControl } from 'react-native';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useState, useRef, useMemo, useCallback } from 'react';
+import { FlatList, Dimensions, Platform, TouchableOpacity } from 'react-native';
+
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useScrollToTop } from '@react-navigation/native';
+import { MotiView } from 'moti';
+import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
-import { useTranslation } from 'react-i18next';
-import { useTheme } from '@shopify/restyle';
-// Eliminamos useSafeAreaInsets porque ya lo maneja el _layout global
 
 import { Box, Text } from '../../components/base';
-import { ScreenHeader } from '../../components/layout/ScreenHeader';
-import { CategoryCard } from '../../components/features/search/CategoryCard';
-import { SearchBar } from '../../components/ui/SearchBar';
-import { ProductCard } from '../../components/features/product/ProductCard';
-import { PrimaryButton } from '../../components/ui/PrimaryButton';
-import { EmptyState } from '../../components/ui/EmptyState';
-import { ProductCardSkeleton } from '../../components/features/product/ProductCardSkeleton';
-
+import {
+  CategorySnapCard,
+  BrandSnapCard,
+  ShellTrustSnap,
+} from '../../components/features/shop/index';
+import { ShopSkeleton } from '../../components/features/shop/ShopSkeleton';
 import { useProducts } from '../../core/hooks/useProducts';
-import { useMasonryColumns } from '../../core/hooks/useMasonryColumns';
-import { getMasonryItemHeight } from '../../core/constants/layout';
-import { Theme } from '../../core/theme';
-import { Product } from '@selene/types';
+import { Theme } from '../../core/theme/index';
+import { useTheme } from '@shopify/restyle';
+import { ProductSnapCard } from '../../components/features/shop/sections/ProductSnapCard';
+
+import { ShellEndFeedCard2 } from '@/components/features/shop/sections/ShellEndFeedCard2';
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function SearchScreen() {
-  const { t } = useTranslation(['search', 'common']);
-
-  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const theme = useTheme<Theme>();
+  const router = useRouter();
+  const listRef = useRef<FlatList>(null);
 
-  const scrollRef = useRef<ScrollView>(null);
+  const {
+    data: products,
+    isLoading,
+    error,
+  } = useProducts({
+    verifiedOnly: true,
+    limit: 10,
+  });
 
-  const { data: products, isLoading, refetch } = useProducts();
-  const limitedProducts = products?.slice(0, 20);
+  const [activeId, setActiveId] = useState('categories');
 
-  const { leftColumn, rightColumn } = useMasonryColumns(limitedProducts);
+  const viewConfigRef = useRef({ viewAreaCoveragePercentThreshold: 80 });
+  const onViewRef = useRef(({ viewableItems }: any) => {
+    if (viewableItems.length > 0) {
+      setActiveId(viewableItems[0].item.id);
+    }
+  });
 
-  const handleProductPress = (product: Product) => {
-    router.push({
-      pathname: '/product/[id]',
-      params: { id: product.id },
-    });
-  };
+  const TAB_BAR_APPROX = Platform.OS === 'ios' ? 88 : 60;
+  const VISIBLE_HEIGHT = SCREEN_HEIGHT - TAB_BAR_APPROX;
 
-  const handleCategoryPress = (category: string) => {
-    router.push({
-      pathname: '/store/results',
-      params: { category },
-    });
-  };
+  useScrollToTop(listRef);
 
-  const handleSearchPress = () => {
-    router.push({
-      pathname: '/store/query',
-    });
-  };
+  // DATA MEMOIZADA
+  const feedData = useMemo(() => {
+    const base = [
+      { id: 'categories', type: 'CATEGORIES' },
+      { id: 'brands', type: 'BRANDS' },
+      { id: 'trust', type: 'TRUST' },
+    ];
+    const prods = (products || []).map((p) => ({
+      id: `prod-${p.id}`,
+      type: 'PRODUCT',
+      data: p,
+    }));
+    return [...base, ...prods, { id: 'end-feed', type: 'END_FEED' }];
+  }, [products]);
 
-  const scrollToTop = () => {
-    scrollRef.current?.scrollTo({ y: 0, animated: true });
-  };
+  //RENDERITEM ESTABLE
+  const renderItem = useCallback(
+    ({ item }: any) => {
+      const isActive = activeId === item.id;
+
+      switch (item.type) {
+        case 'CATEGORIES':
+          return <CategorySnapCard visibleHeight={VISIBLE_HEIGHT} />;
+        case 'BRANDS':
+          return <BrandSnapCard visibleHeight={VISIBLE_HEIGHT} />;
+        case 'TRUST':
+          return (
+            <ShellTrustSnap
+              visibleHeight={VISIBLE_HEIGHT}
+              isActive={isActive}
+            />
+          );
+        case 'PRODUCT':
+          return (
+            <ProductSnapCard
+              product={item.data}
+              visibleHeight={VISIBLE_HEIGHT}
+            />
+          );
+        case 'END_FEED':
+          return (
+            <ShellEndFeedCard2
+              visibleHeight={VISIBLE_HEIGHT}
+              isActive={activeId === item.id}
+            />
+          );
+        default:
+          return null;
+      }
+    },
+    [activeId, VISIBLE_HEIGHT],
+  );
 
   return (
-    // CORRECCIÓN: Quitamos el style={{ paddingTop: insets.top }}
     <Box flex={1} backgroundColor="background">
-      <ScrollView
-        ref={scrollRef}
-        contentContainerStyle={{
-          padding: theme.spacing.m,
-          paddingBottom: 100,
-        }}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={isLoading}
-            onRefresh={refetch}
-            tintColor={theme.colors.primary}
-          />
-        }
+      {/* --- CONTROL CENTER (Lupa + Catálogo) --- */}
+      <Box
+        position="absolute"
+        top={insets.top + 10}
+        right={16}
+        zIndex={100}
+        flexDirection="row"
+        gap="s"
       >
-        {/* --- HEADER Y BÚSQUEDA --- */}
-        <ScreenHeader title={t('title')} />
-
-        <Box marginBottom="l">
-          <SearchBar
-            placeholder={t('placeholder')}
-            readOnly
-            onPress={handleSearchPress}
-          />
-        </Box>
-
-        {/* --- CATEGORÍAS --- */}
-        <Text variant="subheader-lg" marginBottom="m" color="primary">
-          {t('categories')}
-        </Text>
-
-        <Box
-          flexDirection="row"
-          flexWrap="wrap"
-          justifyContent="space-between"
-          marginBottom="l"
+        {/* 1. BOTÓN VER CATÁLOGO */}
+        <TouchableOpacity
+          onPress={() => router.push('/store/results' as any)}
+          activeOpacity={0.7}
         >
-          <CategoryCard
-            label="GPU"
-            icon="expansion-card-variant"
-            color="primary"
-            onPress={() => handleCategoryPress('GPU')}
-          />
-          <CategoryCard
-            label="CPU"
-            icon="cpu-64-bit"
-            color="primary"
-            onPress={() => handleCategoryPress('CPU')}
-          />
-          <CategoryCard
-            label="Motherboard"
-            icon="developer-board"
-            color="primary"
-            onPress={() => handleCategoryPress('Motherboard')}
-          />
-          <CategoryCard
-            label="RAM"
-            icon="memory"
-            color="primary"
-            onPress={() => handleCategoryPress('RAM')}
-          />
-        </Box>
-
-        {/* --- FEED DE EXPLORACIÓN (MASONRY) --- */}
-        <Text variant="subheader-lg" marginBottom="m" color="primary">
-          {t('exploreSection')}
-        </Text>
-
-        {isLoading ? (
-          <Box flexDirection="row" justifyContent="space-between">
-            <Box style={{ width: '48%' }}>
-              <ProductCardSkeleton height={200} />
-              <ProductCardSkeleton height={280} />
-            </Box>
-            <Box style={{ width: '48%' }}>
-              <ProductCardSkeleton height={260} />
-              <ProductCardSkeleton height={190} />
-            </Box>
-          </Box>
-        ) : (
-          <>
-            {limitedProducts && limitedProducts.length > 0 ? (
-              <Box flexDirection="row" justifyContent="space-between">
-                <Box style={{ width: '48%' }}>
-                  {leftColumn.map((item, index) => (
-                    <ProductCard
-                      key={item.id}
-                      product={item}
-                      onPress={handleProductPress}
-                      imageHeight={getMasonryItemHeight(item.aspect_ratio)}
-                      index={index}
-                    />
-                  ))}
-                </Box>
-
-                <Box style={{ width: '48%' }}>
-                  {rightColumn.map((item, index) => (
-                    <ProductCard
-                      key={item.id}
-                      product={item}
-                      onPress={handleProductPress}
-                      imageHeight={getMasonryItemHeight(item.aspect_ratio)}
-                      index={index}
-                    />
-                  ))}
-                </Box>
-              </Box>
-            ) : (
-              <EmptyState
-                icon="magnify"
-                title="Sin resultados"
-                message="No hay productos recientes para mostrar."
+          <Box
+            borderRadius="full"
+            overflow="hidden"
+            borderWidth={0.5}
+            borderColor="blurBackground"
+          >
+            <BlurView
+              intensity={80}
+              tint="dark"
+              style={{
+                paddingHorizontal: 16,
+                paddingVertical: 10,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              <MaterialCommunityIcons
+                name="view-grid-outline"
+                size={22}
+                color={theme.colors.textPrimary}
               />
-            )}
+              {/* <Text
+                variant="caption-md"
+                color="textPrimary"
+                fontWeight="bold"
+                style={{ fontSize: 11, letterSpacing: 1 }}
+              >
+                VER CATÁLOGO
+              </Text> */}
+            </BlurView>
+          </Box>
+        </TouchableOpacity>
 
-            {limitedProducts && limitedProducts.length > 10 && (
-              <Box marginTop="xl" alignItems="center">
-                <PrimaryButton
-                  onPress={scrollToTop}
-                  variant="outline"
-                  icon="arrow-up"
-                  style={{ width: 200 }}
-                >
-                  {t('backToTop')}
-                </PrimaryButton>
-              </Box>
-            )}
-          </>
-        )}
-      </ScrollView>
+        {/* 2. BOTÓN BUSCAR (Lupa) */}
+        <TouchableOpacity
+          onPress={() => router.push('/store/query' as any)}
+          activeOpacity={0.7}
+        >
+          <Box
+            borderRadius="full"
+            overflow="hidden"
+            borderWidth={0.5}
+            borderColor="blurBackground"
+          >
+            <BlurView intensity={80} tint="dark" style={{ padding: 10 }}>
+              <MaterialCommunityIcons
+                name="magnify"
+                size={22}
+                color={theme.colors.textPrimary}
+              />
+            </BlurView>
+          </Box>
+        </TouchableOpacity>
+      </Box>
+
+      {error ? (
+        <Box flex={1} alignItems="center" justifyContent="center" padding="xl">
+          <Text variant="body-lg" color="textSecondary">
+            {error.message}
+          </Text>
+        </Box>
+      ) : isLoading ? (
+        <ShopSkeleton visibleHeight={VISIBLE_HEIGHT} />
+      ) : (
+        <MotiView
+          from={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ type: 'timing', duration: 500 }}
+          style={{ flex: 1 }}
+        >
+          <FlatList
+            data={feedData}
+            ref={listRef}
+            renderItem={renderItem}
+            keyExtractor={(item) => item.id}
+            // --- CONFIGURACIÓN DE SNAP ---
+            pagingEnabled
+            // VITAL: Le dice a FlashList el alto exacto
+            showsVerticalScrollIndicator={false}
+            snapToInterval={VISIBLE_HEIGHT}
+            snapToAlignment="start"
+            decelerationRate="fast"
+            bounces={false}
+            // --- OPTIMIZACIÓN DE MEMORIA ---
+            onViewableItemsChanged={onViewRef.current}
+            viewabilityConfig={viewConfigRef.current}
+          />
+        </MotiView>
+      )}
     </Box>
   );
 }

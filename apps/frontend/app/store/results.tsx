@@ -1,9 +1,20 @@
-import { useState, useRef, useEffect } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * @file app/store/results.tsx
+ * Versión 2.0: Optimización de flujo de carga y anclaje de filtros.
+ */
+
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useMemo,
+  useCallback,
+} from 'react';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { ActivityIndicator } from 'react-native';
 import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
-import { FlashList, type FlashListRef } from '@shopify/flash-list'; // Importamos la clase
+import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton } from 'react-native-paper';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
@@ -14,13 +25,11 @@ import { GlobalHeader } from '../../components/layout/GlobalHeader';
 import { ProductCard } from '../../components/features/product/ProductCard';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ProductCardSkeleton } from '../../components/features/product/ProductCardSkeleton';
-
 import {
   FilterModal,
   FilterState,
 } from '../../components/features/search/FilterModal';
 import { ResultsFilterBar } from '../../components/features/search/filters/ResultsFilterBar';
-
 import {
   useSearchProducts,
   SearchFilters,
@@ -29,20 +38,31 @@ import { getMasonryItemHeight } from '../../core/constants/layout';
 import { Theme } from '../../core/theme';
 import { Product } from '@selene/types';
 
+const RESULTS_ANCHOR = 0; // Punto donde el header desaparece y los filtros quedan arriba
+
 export default function SearchResultsScreen() {
-  const { category, query } = useLocalSearchParams<{
-    category?: string;
-    query?: string;
-  }>();
+  const FlashListV2 = FlashList as any;
+  const rawParams = useLocalSearchParams();
+  const category = rawParams.category as string | undefined;
+  const query = rawParams.query as string | undefined;
+  const specsRaw = rawParams.specs as string | undefined;
+  const specs = useMemo(() => {
+    if (!specsRaw) return {};
+    // Si ya es un objeto (porque useLocalSearchParams lo parseó), lo devolvemos
+    if (typeof specsRaw === 'object') return specsRaw;
+    // Si es un string (JSON), lo parseamos
+    try {
+      return JSON.parse(decodeURIComponent(specsRaw));
+    } catch {
+      return {};
+    }
+  }, [specsRaw]);
   const theme = useTheme<Theme>();
-  const { t } = useTranslation('search');
+  const { t } = useTranslation(['search', 'common']);
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
   const filterModalRef = useRef<BottomSheetModal>(null);
-
-  // --- CORRECCIÓN AQUÍ ---
-  // Usamos 'FlashList<Product>' directamente. No 'FlashListType'.
   const listRef = useRef<FlashListRef<Product> | null>(null);
 
   const [filters, setFilters] = useState<SearchFilters>({
@@ -50,86 +70,160 @@ export default function SearchResultsScreen() {
     category: category || undefined,
     priceRange: [0, 50000],
     conditions: [],
-    specs: {},
+    specs: specs || {},
     orderBy: 'newest',
     verifiedOnly: false,
   });
 
+  // Sincronizar filtros cuando cambia la URL
   useEffect(() => {
     setFilters((prev) => ({
       ...prev,
       query: query || '',
       category: category || undefined,
+      specs: specs || {},
     }));
-  }, [query, category]);
-
-  // Efecto para Scroll to Top cuando cambian los filtros
-  useEffect(() => {
-    // Solo scrolleamos si la lista tiene contenido y la referencia existe
-    if (listRef.current) {
-      listRef.current.scrollToOffset({ offset: 0, animated: true });
-    }
-  }, [filters]); // Se dispara al cambiar filtros
+  }, [query, category, specsRaw]);
 
   const {
     data,
     isLoading,
-
+    isRefetching,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
   } = useSearchProducts(filters);
+  const products = useMemo(
+    () => data?.pages.flatMap((page) => page.data) || [],
+    [data],
+  );
 
-  const products = data?.pages.flatMap((page) => page.data) || [];
+  // --- 1. LÓGICA DE DATA HÍBRIDA (Evita el desmontaje) ---
+  const displayData = useMemo(() => {
+    // Si está cargando (inicial o por filtro) y no hay productos previos, mostramos skeletons
+    if ((isLoading || isRefetching) && products.length === 0) {
+      return Array(6).fill({ isSkeleton: true });
+    }
+    return products;
+  }, [isLoading, isRefetching, products]);
 
-  const handleProductPress = (product: Product) => {
-    router.push({
-      pathname: '/product/[id]',
-      params: { id: product.id },
+  // --- 2. ANCLAJE DE SCROLL QUIRÚRGICO ---
+  useEffect(() => {
+    const scrollTask = requestAnimationFrame(() => {
+      if (listRef.current && displayData.length > 0) {
+        listRef.current.scrollToOffset({
+          offset: RESULTS_ANCHOR,
+          animated: true,
+        });
+      }
     });
-  };
+    return () => cancelAnimationFrame(scrollTask);
+  }, [filters]);
 
-  const handleFilterModalOpen = () => {
-    filterModalRef.current?.present();
-  };
+  const handleProductPress = useCallback(
+    (product: Product) => {
+      router.push(`/product/${product.id}` as any);
+    },
+    [router],
+  );
 
-  const handleBarUpdate = (newPart: Partial<SearchFilters>) => {
+  const renderItem = useCallback(
+    ({ item, index }: any) => {
+      if (item.isSkeleton) {
+        return (
+          <Box
+            paddingHorizontal="s"
+            paddingBottom="s"
+            style={{ width: '100%' }}
+          >
+            <ProductCardSkeleton height={200 + (index % 2) * 40} />
+          </Box>
+        );
+      }
+      return (
+        <Box paddingHorizontal="s" paddingBottom="s" style={{ width: '100%' }}>
+          <ProductCard
+            product={item}
+            onPress={handleProductPress}
+            imageHeight={getMasonryItemHeight(item.aspect_ratio)}
+            index={index}
+          />
+        </Box>
+      );
+    },
+    [handleProductPress],
+  );
+
+  const getItemType = useCallback(
+    (item: any) => (item.isSkeleton ? 'skeleton' : 'product'),
+    [],
+  );
+
+  const handleBarUpdate = useCallback((newPart: Partial<SearchFilters>) => {
     setFilters((prev) => ({ ...prev, ...newPart }));
-  };
+  }, []);
 
-  const handleModalApply = (modalFilters: FilterState) => {
-    setFilters((prev) => ({
-      ...prev,
-      priceRange: modalFilters.priceRange,
-      conditions: modalFilters.conditions,
-      specs: modalFilters.specs,
-    }));
-  };
+  const handleModalApply = useCallback((modalFilters: FilterState) => {
+    setFilters((prev) => ({ ...prev, ...modalFilters }));
+  }, []);
 
-  const screenTitle = category
-    ? `${t('resultsTitle')}: ${category}`
-    : query
-      ? `"${query}"`
-      : t('resultsTitle');
+  const screenTitle = useMemo(() => {
+    const resultsLabel = t('search:resultsTitle');
 
-  const headerTitle = category || query || t('resultsTitle');
+    // 1. Intentamos obtener el término de búsqueda
+    // Si no hay 'query' (texto), buscamos el primer valor de 'specs' (ej: "6000 MHz")
+    const firstSpecValue = filters.specs
+      ? Object.values(filters.specs).flat()[0]
+      : null;
+    const activeSearchTerm = query || firstSpecValue;
 
-  const hasActiveFilters =
-    (filters.conditions && filters.conditions.length > 0) ||
-    (filters.specs && Object.keys(filters.specs).length > 0) ||
-    (filters.priceRange &&
-      (filters.priceRange[0] > 0 || filters.priceRange[1] < 50000));
+    // Caso A: Categoría + Algún filtro (Texto o Spec)
+    if (category && activeSearchTerm) {
+      return `${category}: ${activeSearchTerm}`;
+    }
+
+    // Caso B: Solo categoría
+    if (category) {
+      return `${resultsLabel}: ${category}`;
+    }
+
+    // Caso C: Solo búsqueda de texto
+    if (query) {
+      return `"${query}"`;
+    }
+
+    // Caso D: Catálogo General
+    return resultsLabel;
+  }, [category, query, filters.specs, t]);
+
+  // El título del header superior (más corto)
+  const headerTitle = query || category || t('search:resultsTitle');
+
+  const hasActiveFilters = useMemo(() => {
+    //  Desestructuramos con valores por defecto para evitar 'undefined'
+    const { priceRange = [0, 50000], conditions = [], specs = {} } = filters;
+
+    // Verificamos Precio (¿Es diferente al rango inicial?)
+    const isPriceActive = priceRange[0] > 0 || priceRange[1] < 50000;
+
+    // Verificamos Condiciones (¿Hay algún chip seleccionado?)
+    const hasConditions = conditions.length > 0;
+
+    // Verificamos Specs (¿Alguna llave del JSONB tiene valores?)
+    // Usamos Object.values para ver si hay arrays con contenido
+    const hasSpecs = Object.values(specs).some(
+      (val) => Array.isArray(val) && val.length > 0,
+    );
+
+    return isPriceActive || hasConditions || hasSpecs;
+  }, [filters]);
 
   return (
-    <Box
-      flex={1}
-      backgroundColor="background"
-      style={{ paddingTop: insets.top }}
-    >
+    <Box flex={1} backgroundColor="background">
       <Stack.Screen options={{ headerShown: false }} />
 
       <GlobalHeader
-        showBack={true}
+        showBack
         title={headerTitle}
         backgroundColor="cardBackground"
         headerRight={
@@ -138,114 +232,99 @@ export default function SearchResultsScreen() {
               icon="magnify"
               iconColor={theme.colors.textPrimary}
               size={24}
-              onPress={() => router.push('/store/query')}
-              style={{ margin: 0, marginRight: 4 }}
+              style={{ margin: 0 }}
+              onPress={() => router.push('/store/query' as any)}
             />
-            <Box>
-              <IconButton
-                icon="filter-variant"
-                iconColor={theme.colors.textPrimary}
-                size={24}
-                onPress={handleFilterModalOpen}
-                style={{ margin: 0 }}
+            <IconButton
+              icon="filter-variant"
+              iconColor={theme.colors.textPrimary}
+              size={24}
+              style={{ margin: 0 }}
+              onPress={() => filterModalRef.current?.present()}
+            />
+            {hasActiveFilters && (
+              <Box
+                position="absolute"
+                top={6}
+                right={6}
+                width={10}
+                height={10}
+                borderRadius="full"
+                backgroundColor="error" // Tu color rojo del tema
+                borderWidth={2}
+                borderColor="cardBackground" // Crea el efecto de recorte pro
               />
-              {hasActiveFilters && (
-                <Box
-                  position="absolute"
-                  top={8}
-                  right={8}
-                  width={8}
-                  height={8}
-                  borderRadius="full"
-                  backgroundColor="error"
-                />
-              )}
-            </Box>
+            )}
           </Box>
         }
       />
 
-      {isLoading ? (
-        <Box padding="m" style={{ paddingTop: insets.top + 80 }}>
-          <ScreenHeader title={screenTitle} />
-          <Box flexDirection="row" justifyContent="space-between" marginTop="m">
-            <Box style={{ width: '48%' }}>
-              <ProductCardSkeleton height={200} />
-              <ProductCardSkeleton height={280} />
+      <Box flex={1} paddingHorizontal="s">
+        <FlashListV2
+          ref={listRef}
+          data={displayData}
+          getItemType={getItemType}
+          renderItem={renderItem}
+          keyExtractor={(item: any, index: number) =>
+            item.isSkeleton ? `skel-${index}` : item.id
+          }
+          masonry
+          numColumns={2}
+          estimatedItemSize={260}
+          drawDistance={500}
+          onEndReached={() => {
+            if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+          }}
+          onEndReachedThreshold={0.8}
+          maintainVisibleContentPosition={null}
+          contentContainerStyle={{
+            paddingTop: insets.top + 80,
+            paddingBottom: 100,
+          }}
+          ListHeaderComponent={
+            <Box marginBottom="m" paddingHorizontal="xs">
+              <ScreenHeader
+                title={screenTitle}
+                subtitle={`${products.length} ${t('search:resultsFound')}`}
+              />
+              <ResultsFilterBar
+                filters={filters}
+                onUpdate={handleBarUpdate}
+                category={category}
+              />
             </Box>
-            <Box style={{ width: '48%' }}>
-              <ProductCardSkeleton height={260} />
-              <ProductCardSkeleton height={190} />
-            </Box>
-          </Box>
-        </Box>
-      ) : (
-        <Box flex={1} paddingHorizontal="s">
-          <FlashList
-            ref={listRef} // Conectamos la ref aquí
-            data={products}
-            masonry
-            numColumns={2}
-            optimizeItemArrangement={false}
-            drawDistance={950}
-            contentContainerStyle={{
-              paddingTop: insets.top + 80,
-              paddingBottom: 100,
-            }}
-            ListHeaderComponent={
-              <Box marginBottom="m" paddingHorizontal="xs">
-                <ScreenHeader
-                  title={screenTitle}
-                  subtitle={`${products.length} resultados encontrados`}
-                />
-
-                <ResultsFilterBar
-                  filters={filters}
-                  onUpdate={handleBarUpdate}
-                  category={category}
-                />
-              </Box>
-            }
-            renderItem={({ item, index }) => (
+          }
+          ListFooterComponent={
+            isFetchingNextPage ? (
               <Box
+                flexDirection="row"
+                justifyContent="space-between"
                 paddingHorizontal="s"
-                paddingBottom="s"
-                style={{ width: '100%' }}
               >
-                <ProductCard
-                  product={item}
-                  onPress={handleProductPress}
-                  imageHeight={getMasonryItemHeight(item.aspect_ratio)}
-                  index={index}
-                />
-              </Box>
-            )}
-            onEndReached={() => {
-              if (hasNextPage) fetchNextPage();
-            }}
-            onEndReachedThreshold={0.5}
-            keyExtractor={(item) => item.id}
-            ListFooterComponent={
-              isFetchingNextPage ? (
-                <Box padding="m" alignItems="center">
-                  <ActivityIndicator color={theme.colors.primary} />
+                <Box style={{ width: '48%' }}>
+                  <ProductCardSkeleton height={200} />
                 </Box>
-              ) : (
-                <Box height={50} />
-              )
-            }
-            ListEmptyComponent={
+                <Box style={{ width: '48%' }}>
+                  <ProductCardSkeleton height={240} />
+                </Box>
+              </Box>
+            ) : (
+              <Box height={50} />
+            )
+          }
+          ListEmptyComponent={
+            !isLoading && !isRefetching ? (
               <Box marginTop="xl">
                 <EmptyState
                   icon="magnify-remove-outline"
-                  title="Sin resultados"
-                  message="No encontramos lo que buscas. Intenta ajustar tus filtros."
+                  title={t('common:states.feedEmpty')}
+                  message={t('common:states.feedEmptyMessage')}
                 />
               </Box>
-            }
-          />
-        </Box>
-      )}
+            ) : null
+          }
+        />
+      </Box>
 
       <FilterModal
         ref={filterModalRef}

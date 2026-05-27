@@ -59,10 +59,10 @@ export const AddressSection = ({
               size={24}
               color={theme.colors.primary}
             />
-            <Box marginLeft="m">
+            <Box marginLeft="m" flex={1}>
               {address ? (
                 <>
-                  <Text variant="body-md" fontWeight="bold">
+                  <Text variant="body-md" fontWeight="bold" color="textPrimary">
                     {address.full_name}
                   </Text>
                   <Text
@@ -70,7 +70,10 @@ export const AddressSection = ({
                     color="textSecondary"
                     numberOfLines={1}
                   >
-                    {address.street_line1}, {address.city}
+                    {address.street_line1}, Col. {address.district}
+                  </Text>
+                  <Text variant="caption-md" color="textSecondary">
+                    {address.city}, {address.state} CP {address.zip_code}
                   </Text>
                 </>
               ) : (

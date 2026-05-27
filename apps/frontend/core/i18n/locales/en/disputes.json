@@ -1,0 +1,110 @@
+{
+  "title": "Report a Problem",
+  "titleSeller": "Dispute Return",
+  "subtitle": "Tell us what went wrong",
+  "subtitleSeller": "Return Evidence",
+
+  "steps": {
+    "triage": "Triage",
+    "details": "Details",
+    "evidence": "Evidence",
+    "finish": "Submit"
+  },
+  "triage": {
+    "title": "Technical Validation",
+    "description": "Please confirm that you have performed these basic tests. Often, the hardware only needs an adjustment.",
+    "footer": "You must check all items to continue.",
+    "gpu": {
+      "power": "Did you connect all the PCIe (8/6-pin) power cables?",
+      "port": "Is the video cable connected to the GPU and not the motherboard?",
+      "drivers": "Did you uninstall previous drivers using DDU (Display Driver Uninstaller)?",
+      "psu": "Does your power supply meet the recommended wattage for this card?"
+    },
+
+    "cpu": {
+      "socket": "Did you confirm that your motherboard supports this chipset/generation?",
+      "pins": "Did you check that there are no bent pins on the socket or processor?",
+      "bios": "Did you update your motherboard's BIOS to the compatible version?",
+      "cooler": "Is the heatsink properly installed and does it have fresh thermal paste?"
+    },
+
+    "ram": {
+      "click": "Did you hear the secure 'click' when inserting the modules?",
+      "clean": "Did you clean the RAM contacts with a white eraser?",
+      "single": "Did you test the modules one by one in different slots on the motherboard?",
+      "xmp": "Did you disable the XMP/DOCP profile in the BIOS to test stability?"
+    },
+
+    "mobo": {
+      "standoffs": "Did you install the metal standoffs in the case?",
+      "cpu_power": "Did you connect the CPU power cable (8-pin) in the top left corner?",
+      "pins": "Did you check that the socket doesn't have any bent or burned pins?",
+      "flashback": "Did you try to update the BIOS using the Flashback button if available?"
+    },
+
+    "other": {
+      "manual": "Did you consult the manufacturer's manual for installation?",
+      "compat": "Did you verify full compatibility with the rest of your components?",
+      "cables": "Did you check that all data and power cables are properly connected?"
+    }
+  },
+  "reasons": {
+    "label": "Reason for report",
+    "placeholder": "Select a reason",
+    "damaged": "The product arrived physically damaged",
+    "not_working": "The product is not working or displaying an image",
+    "wrong_item": "I received a different product than the one ordered",
+    "incomplete": "Missing parts or included accessories",
+    "other": "Other reason (specify below)"
+  },
+
+  "form": {
+    "descriptionLabel": "Detailed description",
+    "descriptionHelpTitle": "What to include in your description?",
+    "descriptionHelpDesc": "Explain what tests you did (e.g. I tried other cables), what components your PC has and the exact behavior of the failure. The more detail you give, the faster Selene will solve the case.",
+    "descriptionPlaceholder": "Write the details of the problem here...",
+    "minChars": "Minimum {{count}} characters required",
+    "helperText": "Be as specific as possible to expedite the mediation."
+  },
+
+  "evidence": {
+    "title": "Visual Evidence",
+    "subtitle": "Upload clear photos of the problem (labels, physical damage, or on-screen errors).",
+    "photoError": "Photo of the error",
+    "photoLabel": "Photo of label/Y/N",
+    "photoPackage": "Photo of the received packaging",
+    "uploading": "Uploading evidence...",
+    "videoTitle": "Unboxing Video (Required)",
+    "videoDesc": "Record a continuous video showing the box label and the product defect.",
+    "uploadingVideo": "Uploading large video...",
+    "videoReady": "Unboxing video ready!",
+    "changeVideo": "Tap to change video",
+    "uploadBtn": "Upload Unboxing Video",
+    "videoLimits": "Maximum 2 minutes / 50MB",
+    "extraPhotos": "Additional photos",
+    "requiredPhoto": "1 required",
+    "slots": {
+      "defect": "Photo of the defect",
+      "label": "Label/SN",
+      "package": "Packaging"
+    }
+  },
+  "errors": {
+    "noActiveDispute": "No active dispute to contest",
+    "videoUploadFailed": "Video could not be uploaded. Please try again."
+  },
+
+  "actions": {
+    "submit": "Submit Report",
+    "submitSeller": "Submit Evidence",
+    "cancel": "Cancel Report",
+    "back": "Previous",
+    "next": "Next"
+  },
+
+  "success": {
+    "title": "Report submitted",
+    "message": "Selene has frozen the funds for the order. A mediator will review your case within 48 hours.",
+    "button": "Go to my orders"
+  }
+}

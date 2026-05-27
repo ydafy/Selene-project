@@ -2,8 +2,8 @@ import { Stack, router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator } from 'react-native-paper';
 import { Alert } from 'react-native';
-import { useQueryClient } from '@tanstack/react-query';
-import { useProfile } from '../../core/hooks/useProfile';
+
+import { useProfile, useUpdateAvatar } from '../../core/hooks/useProfile';
 
 // Hooks y Contextos
 import { useAuthContext } from '../../components/auth/AuthProvider';
@@ -12,6 +12,7 @@ import { useProfileStats } from '../../core/hooks/useProfileStats';
 import { supabase } from '../../core/db/supabase';
 import { useMyFavorites } from '../../core/hooks/useMyFavorites';
 import { useImageUpload } from '../../core/hooks/useImageUpload';
+import { useWalletStore } from '../../core/store/useWalletStore';
 
 // Componentes UI y Base
 import { Box, Text } from '../../components/base';
@@ -22,13 +23,15 @@ import { ScreenLayout } from '../../components/layout/ScreenLayout';
 import { ProfileActionsBar } from '../../components/features/profile/ProfileActionsBar';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { ProfileFavoritesGrid } from '../../components/features/profile/ProfileFavoritesGrid';
+import { ProfileSkeleton } from '../../components/features/profile/ProfileSkeleton';
 
 // Componentes de Feature (Perfil)
 import { ProfileHeader } from '../../components/features/profile/ProfileHeader';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { theme } from '@/core/theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Pressable } from 'react-native-gesture-handler';
+import { formatCurrency } from '@/core/utils/format';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const logoIconPath = require('../../assets/images/SeleneLunaLogo.png');
@@ -37,7 +40,6 @@ const logoIconPath = require('../../assets/images/SeleneLunaLogo.png');
  * Componente de UI para la pantalla de bienvenida a usuarios invitados.
  */
 const GuestProfile = () => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { t } = useTranslation('auth');
   const { present } = useAuthModal();
 
@@ -49,7 +51,7 @@ const GuestProfile = () => {
         contentFit="contain"
       />
       <Text variant="header-xl" textAlign="center" marginBottom="m">
-        Únete a la Comunidad Selene
+        {t('auth:guestScreen.joinSelene')}
       </Text>
       <Text
         variant="body-md"
@@ -57,15 +59,16 @@ const GuestProfile = () => {
         textAlign="center"
         marginBottom="xl"
       >
-        Crea una cuenta para vender tu hardware, comprar con seguridad y guardar
-        tus artículos favoritos.
+        {t('auth:guestScreen.joinMsg')}
       </Text>
 
       <PrimaryButton onPress={() => present('login')}>
-        Iniciar Sesión (Modal)
+        {t('auth:guestScreen.loginText')}
       </PrimaryButton>
       <Box height={16} />
-      <TextLink onPress={() => router.push('/register')}>Crear Cuenta</TextLink>
+      <TextLink onPress={() => router.push('/register')}>
+        {t('auth:guestScreen.createAccountText')}
+      </TextLink>
     </Box>
   );
 };
@@ -78,20 +81,20 @@ const UserProfile = () => {
   // 1. Hooks y Contextos
   const { t } = useTranslation(['profile', 'common', 'auth']);
   const { session } = useAuthContext();
-  const queryClient = useQueryClient();
+  const { wallet, fetchWallet } = useWalletStore();
 
   // Datos del perfil
-  const { data: stats } = useProfileStats(session?.user.id);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { data: profileData, isLoading: loadingProfile } = useProfile(
+  const { data: stats, isLoading: isLoadingStats } = useProfileStats(
+    session?.user.id,
+  );
+  const { data: profileData, isLoading: isLoadingProfile } = useProfile(
     session?.user.id || '',
   );
   const { data: favorites, isLoading: loadingFavs } = useMyFavorites(
     session?.user.id,
   );
-
-  // Hook de imágenes (asegúrate de que useImageUpload exporte takePhoto)
-  const { pickImage, takePhoto, uploadAvatar, uploading } = useImageUpload();
+  const updateAvatar = useUpdateAvatar();
+  const { pickImage, takePhoto } = useImageUpload();
 
   // 2. Estado para el Diálogo de Feedback (Éxito/Error)
   const [dialogState, setDialogState] = useState({
@@ -101,15 +104,18 @@ const UserProfile = () => {
     isError: false,
   });
 
+  useEffect(() => {
+    if (session?.user.id) {
+      fetchWallet(session.user.id);
+    }
+  }, [session?.user.id, fetchWallet]);
+
+  if (isLoadingProfile || isLoadingStats || !profileData) {
+    return <ProfileSkeleton />;
+  }
+
   const closeDialog = () =>
     setDialogState((prev) => ({ ...prev, visible: false }));
-
-  // Objeto de perfil para la UI
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const profile = {
-    username: session?.user.user_metadata.username || 'Usuario',
-    avatar_url: session?.user.user_metadata.avatar_url || null,
-  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -122,37 +128,22 @@ const UserProfile = () => {
 
     try {
       const ext = imageAsset.uri.split('.').pop()?.toLowerCase() || 'jpg';
-      const publicUrl = await uploadAvatar(
-        session.user.id,
-        imageAsset.base64!,
+
+      // Llamamos a la mutación (Toda la lógica de Supabase ya no está aquí)
+      await updateAvatar.mutateAsync({
+        userId: session.user.id,
+        base64: imageAsset.base64!,
         ext,
-      );
+      });
 
-      if (publicUrl) {
-        // A. Actualizamos la tabla 'profiles'
-        const { error: dbError } = await supabase
-          .from('profiles')
-          .update({ avatar_url: publicUrl })
-          .eq('id', session.user.id);
-
-        if (dbError) throw dbError;
-
-        // B. ELIMINADO: Ya no actualizamos auth.updateUser. No es necesario y causa conflictos.
-
-        // C. Refrescamos la caché para ver la foto nueva inmediatamente
-        await queryClient.invalidateQueries({
-          queryKey: ['profile', session.user.id],
-        });
-
-        setDialogState({
-          visible: true,
-          title: t('profile:feedback.avatarUpdatedTitle'),
-          message: t('profile:feedback.avatarUpdatedMsg'),
-          isError: false,
-        });
-      }
+      setDialogState({
+        visible: true,
+        title: t('profile:feedback.avatarUpdatedTitle'),
+        message: t('profile:feedback.avatarUpdatedMsg'),
+        isError: false,
+      });
     } catch (error) {
-      console.error('Error subiendo avatar:', error);
+      console.error('Error en la subida de avatar:', error);
       setDialogState({
         visible: true,
         title: t('profile:feedback.avatarErrorTitle'),
@@ -198,9 +189,8 @@ const UserProfile = () => {
     avatar_url: session?.user.user_metadata.avatar_url || null,
     created_at: session?.user.created_at || new Date().toISOString(),
     id: session?.user.id || '',
+    is_verified_seller: false,
   };
-
-  const isAdmin = profileData?.role === 'admin';
 
   return (
     <Box flex={1} backgroundColor="background">
@@ -209,27 +199,11 @@ const UserProfile = () => {
       <ProfileHeader
         user={session?.user || null}
         profile={displayProfile}
-        stats={stats as undefined}
+        stats={stats ?? undefined}
         onEditAvatar={handleEditAvatar}
         onLogout={handleLogout}
-        isUploading={uploading}
+        isUploading={updateAvatar.isPending}
       />
-      {isAdmin && (
-        <Box paddingHorizontal="m" marginTop="m">
-          <PrimaryButton
-            onPress={() => router.push('/admin/dashboard')} // Ruta que crearemos luego
-            icon="shield-account"
-            style={{
-              backgroundColor: theme.colors.primary, // Un gris oscuro distintivo
-              borderWidth: 1,
-              borderColor: theme.colors.primary,
-            }}
-            labelStyle={{ color: theme.colors.primary }} // Texto dorado
-          >
-            Panel de Administración
-          </PrimaryButton>
-        </Box>
-      )}
 
       <Box paddingHorizontal="m" marginTop="m">
         <Pressable onPress={() => router.push('/profile/wallet')}>
@@ -248,13 +222,12 @@ const UserProfile = () => {
                 color={theme.colors.primary}
               />
               <Text variant="subheader-md" marginLeft="m">
-                Mi Billetera
+                {t('auth:screenText.walletText')}
               </Text>
             </Box>
             <Box flexDirection="row" alignItems="center">
               <Text variant="body-md" color="primary" marginRight="s">
-                {/* Aquí mostraremos el saldo rápido después */}
-                {/* {formatCurrency(wallet?.available_balance || 0)} */}
+                {formatCurrency(wallet?.available_balance || 0)}
               </Text>
               <MaterialCommunityIcons
                 name="chevron-right"

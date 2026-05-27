@@ -1,205 +1,198 @@
-import { memo } from 'react';
+/**
+ * @file components/features/product/ProductCard.tsx
+ * @description Versión 2.0: Pinterest Style Card con desactivación técnica.
+ * Aplica el lenguaje visual del Monolito al estado "Vendido".
+ */
+
+import React, { memo } from 'react';
 import { TouchableOpacity, StyleSheet } from 'react-native';
 import { useTheme } from '@shopify/restyle';
 import { IconButton } from 'react-native-paper';
-import { MotiView } from 'moti'; // Animaciones
+import { MotiView } from 'moti';
 import { Product } from '@selene/types';
-import { BlurView } from 'expo-blur';
-// Componentes Base y UI
+
 import { Box, Text } from '../../base';
 import { AppImage } from '../../ui/AppImage';
 import { ProductFavoriteButton } from './ProductFavoriteButton';
-
-// Utilidades y Tema
 import { Theme } from '../../../core/theme';
 import { formatCurrency } from '../../../core/utils/format';
+import { getSharedStyles } from '../home/sharedStyles';
 
 type ProductCardProps = {
   product: Product;
   onPress: (product: Product) => void;
   imageHeight: number;
-  index?: number; // Para escalonar la animación
+  index?: number;
 };
 
-// Usamos memo para evitar re-renderizados si las props no cambian
 export const ProductCard = memo(
   ({ product, onPress, imageHeight, index = 0 }: ProductCardProps) => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const theme = useTheme<Theme>();
+    const sharedStyles = getSharedStyles(theme);
     const isSold = product.status === 'SOLD';
 
     return (
       <MotiView
         from={{ opacity: 0, translateY: 20 }}
         animate={{ opacity: 1, translateY: 0 }}
-        transition={{
-          type: 'timing',
-          duration: 500,
-          delay: index * 100, // Efecto cascada: carga uno tras otro
-        }}
+        transition={{ type: 'timing', duration: 500, delay: index * 100 }}
         style={styles.container}
       >
         <TouchableOpacity
           onPress={() => onPress(product)}
-          activeOpacity={0.9}
-          // Accesibilidad para lectores de pantalla
-          accessibilityLabel={`${product.name}, precio ${formatCurrency(product.price)}, condición ${product.condition}`}
-          accessibilityRole="button"
+          activeOpacity={isSold ? 1 : 0.9}
         >
-          {/* --- CONTENEDOR FLOTANTE --- */}
           <Box
             backgroundColor="cardBackground"
             borderRadius="m"
             overflow="hidden"
             style={styles.shadow}
-            opacity={isSold ? 0.8 : 1} // Un poco más apagado si está vendido
+            opacity={isSold ? 0.7 : 1}
           >
-            {/* 1. IMAGEN (Altura Dinámica) */}
-            <Box
-              height={imageHeight}
-              width="100%"
-              backgroundColor="background"
-              position="relative"
-            >
+            {/* 1. AREA VISUAL (Altura Dinámica) */}
+            <Box height={imageHeight} width="100%" backgroundColor="background">
               <AppImage
                 source={{ uri: product.images[0] }}
                 style={{
                   width: '100%',
                   height: '100%',
-                  opacity: isSold ? 0.5 : 1,
-                }} // Imagen atenuada si vendido
+                  opacity: isSold ? 0.3 : 1,
+                }}
                 sharedTransitionTag={`image-${product.id}`}
+                priority="normal"
+                cachePolicy="memory-disk"
+                memoryKey={`prod-img-${product.id}`}
                 contentFit="cover"
-                transition={200}
               />
 
-              {/* OVERLAY DE VENDIDO */}
+              {/* OVERLAY TÉCNICO PARA VENDIDO */}
               {isSold && (
                 <Box
-                  position="absolute"
-                  top={0}
-                  left={0}
-                  right={0}
-                  bottom={0}
-                  backgroundColor="background"
-                  opacity={0.4}
+                  style={StyleSheet.absoluteFill}
                   justifyContent="center"
                   alignItems="center"
                 >
+                  {/* Líneas diagonales (Hatching) */}
                   <Box
-                    borderWidth={2}
-                    borderColor="textPrimary"
+                    position="absolute"
+                    top={0}
+                    left={0}
+                    right={0}
+                    bottom={0}
+                    opacity={0.1}
+                    style={{ transform: [{ rotate: '45deg' }, { scale: 3 }] }}
+                  >
+                    {[...Array(15)].map((_, i) => (
+                      <Box
+                        key={i}
+                        height={1}
+                        backgroundColor="foreground"
+                        marginBottom="m"
+                      />
+                    ))}
+                  </Box>
+
+                  {/* Tag de Estado Monospace */}
+                  <Box
+                    backgroundColor="background"
                     paddingHorizontal="m"
-                    paddingVertical="s"
+                    paddingVertical="xs"
                     borderRadius="s"
-                    style={{ transform: [{ rotate: '-15deg' }] }} // Estilo "sello"
+                    borderWidth={1}
+                    borderColor="textSecondary"
                   >
                     <Text
-                      variant="header-xl"
-                      color="textPrimary"
-                      style={{ fontSize: 18 }}
+                      style={[
+                        sharedStyles.monoText,
+                        {
+                          fontSize: 12,
+                          color: theme.colors.textSecondary as string,
+                        },
+                      ]}
                     >
-                      VENDIDO
+                      [ VENDIDO ]
                     </Text>
                   </Box>
                 </Box>
               )}
 
-              {/* Badge de Precio (Ocultar si vendido para limpiar ruido, o mantener) */}
+              {/* Elementos Activos (Solo si NO está vendido) */}
               {!isSold && (
-                <Box
-                  position="absolute"
-                  bottom={8}
-                  left={8}
-                  backgroundColor="cardBackground"
-                  opacity={0.95}
-                  paddingHorizontal="s"
-                  paddingVertical="xs"
-                  borderRadius="s"
-                  overflow="hidden"
-                >
-                  <BlurView
-                    intensity={20}
-                    tint="dark"
-                    style={StyleSheet.absoluteFill} // Llena el contenedor
-                  />
-
+                <>
+                  {/* Badge de Precio */}
                   <Box
+                    position="absolute"
+                    bottom={8}
+                    left={8}
+                    backgroundColor="background"
                     paddingHorizontal="s"
                     paddingVertical="xs"
-                    //backgroundColor=""
-                    opacity={1}
+                    borderRadius="s"
                   >
                     <Text variant="body-sm" fontWeight="bold" color="primary">
                       {formatCurrency(product.price)}
                     </Text>
                   </Box>
-                </Box>
-              )}
 
-              {/* Badge de Verificado */}
-              {product.status === 'VERIFIED' && !isSold && (
-                <Box
-                  position="absolute"
-                  top={8}
-                  left={8}
-                  backgroundColor="success"
-                  paddingHorizontal="xs"
-                  paddingVertical="xs"
-                  borderRadius="s"
-                  flexDirection="row"
-                  alignItems="center"
-                >
-                  <IconButton
-                    icon="shield-check"
-                    size={10}
-                    iconColor="white"
-                    style={{ margin: 0, width: 10, height: 10 }}
-                  />
-                </Box>
-              )}
+                  {/* Badge de Verificado */}
+                  {product.status === 'VERIFIED' && (
+                    <Box
+                      position="absolute"
+                      top={8}
+                      left={8}
+                      backgroundColor="success"
+                      borderRadius="s"
+                    >
+                      <IconButton
+                        icon="shield-check"
+                        size={10}
+                        iconColor="white"
+                        style={{ margin: 0, width: 18, height: 18 }}
+                      />
+                    </Box>
+                  )}
 
-              {/* Botón de Favoritos */}
-              <Box position="absolute" top={4} right={4}>
-                <Box
-                  backgroundColor="cardBackground"
-                  borderRadius="full"
-                  opacity={0.8}
-                  width={28}
-                  height={28}
-                  justifyContent="center"
-                  alignItems="center"
-                >
-                  <ProductFavoriteButton productId={product.id} size={16} />
-                </Box>
-              </Box>
+                  {/* Botón de Favoritos */}
+                  <Box position="absolute" top={4} right={4}>
+                    <Box
+                      backgroundColor="cardBackground"
+                      borderRadius="full"
+                      opacity={0.8}
+                      width={28}
+                      height={28}
+                      justifyContent="center"
+                      alignItems="center"
+                    >
+                      <ProductFavoriteButton productId={product.id} size={16} />
+                    </Box>
+                  </Box>
+                </>
+              )}
             </Box>
 
             {/* 2. INFORMACIÓN */}
             <Box padding="s">
               <Text
                 variant="body-md"
-                //fontWeight="bold"
                 numberOfLines={2}
+                color={isSold ? 'textPrimary' : 'textPrimary'}
                 style={{
                   lineHeight: 18,
                   textDecorationLine: isSold ? 'line-through' : 'none',
-                }} // Tachado si vendido
-                color={isSold ? 'textSecondary' : 'textPrimary'}
-                marginBottom="xs"
+                  opacity: isSold ? 0.6 : 1,
+                }}
               >
-                {product.name}
+                {product.name.toUpperCase()}
               </Text>
 
               <Text
                 variant="caption-md"
                 color="textSecondary"
-                style={{ fontSize: 10 }}
+                style={{ fontSize: 10, marginTop: 4 }}
               >
-                {product.category} •{' '}
-                {product.condition === 'Usado - Como Nuevo'
-                  ? 'Como Nuevo'
-                  : 'Usado'}
+                {isSold
+                  ? 'Offline'
+                  : `${product.category} • ${product.condition}`}
               </Text>
             </Box>
           </Box>
@@ -210,15 +203,12 @@ export const ProductCard = memo(
 );
 
 const styles = StyleSheet.create({
-  container: {
-    width: '100%',
-    marginBottom: 16,
-  },
+  container: { width: '100%', marginBottom: 16 },
   shadow: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+    elevation: 8,
   },
 });

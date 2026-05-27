@@ -1,4 +1,5 @@
-import { useLocalSearchParams, Stack } from 'expo-router';
+import { useLocalSearchParams, Stack, router } from 'expo-router';
+import { useEffect } from 'react';
 import { ScrollView } from 'react-native';
 import { useTheme } from '@shopify/restyle';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,6 +33,9 @@ import { useProduct } from '../../core/hooks/useProduct';
 import { useAuthContext } from '../../components/auth/AuthProvider';
 import { Theme } from '../../core/theme';
 import { useProductFavorite } from '../../core/hooks/useProductFavorite';
+import { useProductHistoryStore } from '../../core/store/useProductHistoryStore';
+import { formatCurrency } from '@/core/utils/format';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -42,11 +46,18 @@ export default function ProductDetailScreen() {
 
   const [showEducationDialog, setShowEducationDialog] = useState(false);
 
-  const { data: product, isLoading, error } = useProduct(id!);
-
+  const { data: product, isLoading, error } = useProduct(id || '');
   const { handleAddToCart, isAddingToCart, isAdded } = useProductCart(product);
   const { handleShare } = useProductShare(product);
   const { toggleFavorite, isFavorite } = useProductFavorite(id);
+  const { addProductToHistory } = useProductHistoryStore();
+
+  useEffect(() => {
+    if (id) {
+      addProductToHistory(id);
+      // Aquí es donde en el futuro se podria poner: trackEvent('product_view', id)
+    }
+  }, [id]);
 
   const onAddToCartPress = async () => {
     const result = await handleAddToCart();
@@ -68,10 +79,32 @@ export default function ProductDetailScreen() {
         justifyContent="center"
         alignItems="center"
         backgroundColor="background"
+        padding="l"
       >
-        <Text variant="body-md" color="error">
-          {t('errorLoading')}
+        <MaterialCommunityIcons
+          name="package-variant-remove"
+          size={64}
+          color={theme.colors.textSecondary}
+        />
+        <Text
+          variant="subheader-lg"
+          color="textPrimary"
+          marginTop="m"
+          textAlign="center"
+        >
+          {t('details.notFoundTitle')}
         </Text>
+        <Text
+          variant="body-md"
+          color="textSecondary"
+          textAlign="center"
+          marginTop="s"
+        >
+          {t('details.notFoundMessage')}
+        </Text>
+        <PrimaryButton onPress={() => router.back()}>
+          {t('common:actions.goBack')}
+        </PrimaryButton>
       </Box>
     );
   }
@@ -155,13 +188,13 @@ export default function ProductDetailScreen() {
               >
                 <Box flexDirection="row" gap="s">
                   <AppChip
-                    label={product.category}
+                    label={product.category ?? t('common:states.unknown')}
                     textColor="primary"
                     backgroundColor="background"
                     onPress={() => console.log('Filtrar por categoría')}
                   />
                   <AppChip
-                    label={product.condition}
+                    label={product.condition ?? ''}
                     textColor="textPrimary"
                     backgroundColor="background"
                   />
@@ -169,7 +202,7 @@ export default function ProductDetailScreen() {
 
                 {product.status === 'VERIFIED' && (
                   <AppChip
-                    label={t('details.verifiedStatus')}
+                    label={t('details.verifiedSeller')}
                     icon="shield-check"
                     textColor="success"
                     backgroundColor="background"
@@ -183,7 +216,7 @@ export default function ProductDetailScreen() {
                 {t('details.priceLabel')}
               </Text>
               <Text variant="header-xl" color="primary">
-                ${product.price.toLocaleString('es-MX')}
+                {formatCurrency(product.price)}
               </Text>
             </Box>
           </Box>
@@ -202,12 +235,15 @@ export default function ProductDetailScreen() {
             color="textPrimary"
             style={{ lineHeight: 24 }}
           >
-            {product.description}
+            {product.description || t('details.noDescription')}
           </Text>
 
           <ProductSellerCard product={product} />
 
-          <ProductSpecificationsGrid specs={product.specifications} />
+          <ProductSpecificationsGrid
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            specs={(product.specifications as Record<string, any>) || {}}
+          />
         </Box>
       </ScrollView>
 

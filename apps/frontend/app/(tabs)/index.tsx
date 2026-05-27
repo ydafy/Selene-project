@@ -1,95 +1,135 @@
-import { ScrollView, RefreshControl } from 'react-native';
+/**
+ * @file app/(tabs)/index.tsx
+ * @description Orquestador de la HomeScreen.
+ * Gestiona la experiencia dinámica (Explorer vs Veteran) y la persistencia de sesión.
+ */
+
+import React, { useEffect, useRef, useCallback, useMemo } from 'react';
+import { ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { useTheme } from '@shopify/restyle';
 import { useRouter } from 'expo-router';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { useTranslation } from 'react-i18next';
+
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { IconButton } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { Box } from '../../components/base';
-import { ProductCard } from '../../components/features/product/ProductCard';
-import { ScreenHeader } from '../../components/layout/ScreenHeader';
-import { EmptyState } from '../../components/ui/EmptyState';
-import { ErrorState } from '../../components/ui/ErrorState';
-import { ProductCardSkeleton } from '../../components/features/product/ProductCardSkeleton';
 import { GlobalHeader } from '../../components/layout/GlobalHeader';
 import { LocationHeaderButton } from '../../components/features/address/LocationHeaderButton';
 import { AddressPickerModal } from '../../components/features/address/AddressPickerModal';
+import { GridShell } from '../../components/features/home/GridShell';
+import { HomeSkeleton } from '../../components/features/home/HomeSkeleton';
 
-import { useCheckoutStore } from '../../core/store/useCheckoutStore'; // <--- 1. IMPORTAR STORE
-import { useAddresses } from '../../core/hooks/useAddresses'; // <--- 2. IMPORTAR HOOK
+import {
+  ShellHero,
+  ShellLogistics,
+  ShellCategoriesV2,
+  ShellRecentDrops,
+  ShellBenchmarksFeature,
+  ShellTrustPipeline,
+  ShellRecentlyViewed,
+  ShellEditorial,
+  ShellFooter,
+  ShellShippingLine,
+  ShellPaymentsFeature,
+} from '../../components/features/home/sections';
 
+import { useCheckoutStore } from '../../core/store/useCheckoutStore';
+import { useAddresses } from '../../core/hooks/useAddresses';
 import { useProducts } from '../../core/hooks/useProducts';
-import { useMasonryColumns } from '../../core/hooks/useMasonryColumns';
-import { getMasonryItemHeight } from '../../core/constants/layout';
+import { useExperienceStore } from '@/core/store/useExperienceStore';
+import { useUnreadNotifications } from '@/core/hooks/useUnreadNotifications';
 import { Theme } from '../../core/theme';
-import { Address, Product } from '@selene/types';
-import { useRef } from 'react';
-import { IconButton } from 'react-native-paper';
+import { Address } from '@selene/types';
+import { MotiView } from 'moti';
+import { useSeleneRefresh } from '@/core/hooks/useSeleneRefresh';
+import { useNetInfo } from '@react-native-community/netinfo';
+import { useAuthContext } from '@/components/auth/AuthProvider';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { useTranslation } from 'react-i18next';
+
+// --- RUTAS DEL APP ---
+const ROUTES = {
+  FAVORITES: '/profile/favorites',
+  NOTIFICATIONS: '/profile/notifications',
+} as const;
 
 export default function HomeScreen() {
-  const theme = useTheme<Theme>();
+  //throw new Error('SELENE PRUEBA');
+
   const { t } = useTranslation('common');
+  const theme = useTheme<Theme>();
+  const { isConnected } = useNetInfo();
   const router = useRouter();
-
-  const { data: products, isLoading, error, refetch } = useProducts();
+  const insets = useSafeAreaInsets();
   const addressModalRef = useRef<BottomSheetModal>(null);
-  // Lógica de UI extraída a un hook
-  const { leftColumn, rightColumn } = useMasonryColumns(products);
 
+  // --- STORES & HOOKS ---
+  const { getRank, incrementSessions } = useExperienceStore();
+  const rank = useMemo(() => getRank(), [getRank]); // Memoizamos el rank para evitar saltos
+  const { isLoading, isRefetching, error, refetch, data } = useProducts();
+  const { isRefreshing, onRefresh } = useSeleneRefresh(refetch);
+  const { session } = useAuthContext();
+  const { data: unreadCount = 0 } = useUnreadNotifications(session?.user.id);
   const { setSelectedAddress } = useCheckoutStore();
   const { setDefault } = useAddresses();
 
-  const handleOpenAddressPicker = () => {
+  // --- LIFE CYCLE ---
+  useEffect(() => {
+    incrementSessions();
+    // Nota: El cleanup no es necesario aquí ya que es una acción de "fuego y olvido"
+  }, [incrementSessions]);
+
+  // --- HANDLERS MEMOIZADOS ---
+  const handleOpenAddressPicker = useCallback(() => {
     addressModalRef.current?.present();
-  };
+  }, []);
 
-  const handleGoToFavorites = () => {
-    console.log('Navegar a Favoritos');
-  };
+  const handleGoToFavorites = useCallback(() => {
+    router.push(ROUTES.FAVORITES);
+  }, [router]);
 
-  const handleProductPress = (product: Product) => {
-    router.push({
-      pathname: '/product/[id]',
-      params: { id: product.id },
-    });
-  };
+  const handleAddressChange = useCallback(
+    (address: Address) => {
+      setDefault(address.id);
+      setSelectedAddress(address);
+      addressModalRef.current?.dismiss();
+    },
+    [setDefault, setSelectedAddress],
+  );
 
-  const handleAddressChange = (address: Address) => {
-    // A. Actualizamos la Base de Datos (Para que el Header del Home cambie)
-    setDefault(address.id);
-
-    // B. Actualizamos el Store del Checkout (Para que el Carrito sepa a dónde enviar)
-    setSelectedAddress(address);
-
-    // C. Cerramos el modal (aunque el componente lo hace, es bueno ser explícito si cambiamos lógica)
-    addressModalRef.current?.dismiss();
-  };
-
-  if (isLoading) {
+  // --- RENDER CONDICIONAL ---
+  // Carga inicial — skeleton
+  if (isLoading && !data) {
     return (
-      <Box flex={1} backgroundColor="background" padding="m">
-        <ScreenHeader title={t('home.title')} subtitle={t('home.subtitle')} />
-
-        {/* Layout Masonry Simulado para Skeletons */}
-        <Box flexDirection="row" justifyContent="space-between">
-          {/* Columna Izq */}
-          <Box style={{ width: '48%' }}>
-            <ProductCardSkeleton height={200} />
-            <ProductCardSkeleton height={280} />
-            <ProductCardSkeleton height={180} />
-          </Box>
-          {/* Columna Der */}
-          <Box style={{ width: '48%' }}>
-            <ProductCardSkeleton height={260} />
-            <ProductCardSkeleton height={190} />
-            <ProductCardSkeleton height={240} />
-          </Box>
-        </Box>
+      <Box flex={1} backgroundColor="background">
+        <GlobalHeader
+          titleComponent={
+            <LocationHeaderButton onPress={handleOpenAddressPicker} />
+          }
+          alignTitle="flex-start"
+          useSafeArea={true}
+        />
+        <HomeSkeleton rank={rank} />
       </Box>
     );
   }
 
-  if (error) {
-    return <ErrorState message={error.message} onRetry={refetch} />;
+  // Error sin data previa — pantalla de error con retry
+  if (error && !data) {
+    return (
+      <Box flex={1} backgroundColor="background">
+        <GlobalHeader
+          titleComponent={
+            <LocationHeaderButton onPress={handleOpenAddressPicker} />
+          }
+          alignTitle="flex-start"
+          useSafeArea={true}
+        />
+        <ErrorState onRetry={refetch} />
+      </Box>
+    );
   }
 
   return (
@@ -99,74 +139,126 @@ export default function HomeScreen() {
           <LocationHeaderButton onPress={handleOpenAddressPicker} />
         }
         alignTitle="flex-start"
-        // LA SOLUCIÓN:
-        useSafeArea={false}
+        useSafeArea={true}
         headerRight={
-          <IconButton
-            icon="heart-outline"
-            iconColor={theme.colors.textPrimary}
-            size={24}
-            onPress={handleGoToFavorites}
-            style={{ margin: 0 }}
-          />
+          <Box flexDirection="row" alignItems="center">
+            <IconButton
+              icon="heart-outline"
+              iconColor={theme.colors.textPrimary}
+              size={24}
+              onPress={handleGoToFavorites}
+              style={{ margin: 0 }}
+            />
+            <TouchableOpacity
+              onPress={() => router.push(ROUTES.NOTIFICATIONS)}
+              activeOpacity={0.7}
+              style={{ marginLeft: theme.spacing.s }}
+            >
+              <Box padding="xs">
+                <MaterialCommunityIcons
+                  name="bell-outline"
+                  size={24}
+                  color={theme.colors.textPrimary}
+                />
+                {unreadCount > 0 && (
+                  <Box
+                    position="absolute"
+                    top={2}
+                    right={2}
+                    backgroundColor="error"
+                    minWidth={16}
+                    height={16}
+                    borderRadius="full"
+                    justifyContent="center"
+                    alignItems="center"
+                    borderWidth={2}
+                    borderColor="cardBackground"
+                  />
+                )}
+              </Box>
+            </TouchableOpacity>
+          </Box>
         }
       />
+
       <ScrollView
         contentContainerStyle={{
           padding: theme.spacing.m,
-          paddingBottom: 100,
-          paddingTop: 80,
+          paddingTop: insets.top + 90,
+          paddingBottom: 120,
         }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={isLoading}
-            onRefresh={refetch}
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
             tintColor={theme.colors.primary}
           />
         }
       >
-        <ScreenHeader title={t('home.title')} subtitle={t('home.subtitle')} />
-
-        {products && products.length === 0 ? (
-          <Box marginTop="xl">
-            <EmptyState
-              icon="magnify-remove-outline"
-              title={t('home.emptyList')}
-              message="Intenta recargar o vuelve más tarde."
-            />
-          </Box>
-        ) : (
-          /* Layout Masonry Limpio */
-          <Box flexDirection="row" justifyContent="space-between">
-            {/* Columna Izquierda */}
-            <Box style={{ width: '49%' }}>
-              {leftColumn.map((item, index) => (
-                <ProductCard
-                  key={item.id}
-                  product={item}
-                  onPress={handleProductPress}
-                  imageHeight={getMasonryItemHeight(item.aspect_ratio)}
-                  index={index}
-                />
-              ))}
-            </Box>
-
-            {/* Columna Derecha */}
-            <Box style={{ width: '49%' }}>
-              {rightColumn.map((item, index) => (
-                <ProductCard
-                  key={item.id}
-                  product={item}
-                  onPress={handleProductPress}
-                  imageHeight={getMasonryItemHeight(item.aspect_ratio)}
-                  index={index}
-                />
-              ))}
-            </Box>
+        {/* Inline error banner durante refetch fallido con data existente */}
+        {isRefetching && error && (
+          <Box
+            backgroundColor="error"
+            padding="s"
+            borderRadius="s"
+            marginBottom="s"
+          >
+            <Text variant="caption-sm" style={{ color: 'white' }} textAlign="center">
+              {t('states.feedLoadError')}
+            </Text>
           </Box>
         )}
+
+        {isLoading ? (
+          /* 1. ESTADO DE CARGA: Skeleton sincronizado con el rango */
+          <HomeSkeleton rank={rank} />
+        ) : (
+          /* 2. ESTADO ACTIVO: Contenido con transición suave */
+          <MotiView
+            from={{ opacity: 0, translateY: 15 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{
+              type: 'timing',
+              duration: 500,
+            }}
+          >
+            <GridShell>
+              {rank === 'EXPLORER' ? (
+                /* --- LAYOUT: EXPLORER --- */
+                <>
+                  <ShellHero />
+                  <ShellCategoriesV2 />
+                  <ShellPaymentsFeature />
+                  <ShellShippingLine />
+                  <ShellBenchmarksFeature />
+                  <ShellTrustPipeline />
+                  <ShellRecentDrops />
+                  <ShellLogistics />
+                  <ShellRecentlyViewed />
+                </>
+              ) : (
+                /* --- LAYOUT: VETERAN --- */
+                <>
+                  <ShellRecentlyViewed />
+                  <ShellEditorial />
+                  <ShellRecentDrops />
+                  <ShellCategoriesV2 />
+                  <ShellHero />
+                  <ShellPaymentsFeature />
+                  <ShellShippingLine />
+                  <ShellBenchmarksFeature />
+                  <ShellTrustPipeline />
+                  <ShellLogistics />
+                </>
+              )}
+              {/* Footer común para ambos perfiles */}
+              <ShellFooter />
+            </GridShell>
+          </MotiView>
+        )}
       </ScrollView>
+
       <AddressPickerModal
         innerRef={addressModalRef}
         onSelect={handleAddressChange}

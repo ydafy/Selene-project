@@ -35,25 +35,38 @@
       "step7Desc": "Write down or save the score of your component that appears in '3DMark' (either CPU or GPU).\n\nYou will be asked that you write it in the 'Graphic Score' box when you upload your verification photo."
     },
     "info": {
-      "title": "Guide: Verifying Specs",
-      "step1Title": "1. Download CPU-Z",
-      "step1Desc": "Download CPU-Z (It's safe). The official website is cpuid.com.\n\nInstall the application. It's small and quick to install.",
-      "step2Title": "2. Open CPU-Z",
-      "step2Desc": "Open CPU-Z. It will ask for administrator privileges; accept them.\n\nOnce the application is open, look for the 'SPD' tab. Leave the CPU-Z window open in that section.",
-      "step3Title": "3. Open Task Manager",
-      "step3Desc": "Open Task Manager in Windows by pressing 'Ctrl + Shift + Esc'.\n\nOnce open, go to the 'Performance' section, then 'Memory'.\n\nLeave this window open along with CPU-Z.",
-      "step4Title": "4. Take the Photo",
-      "step4Desc": "With both windows open (CPU-Z and Task Manager), take a photo with your phone where both windows are clearly visible.\n\nMake sure all the information is legible to avoid your verification being rejected."
+      "title": "Guide: Specs Verification",
+      "step1Title": "1. Visit the AIDA64 website",
+      "step1Desc": "Go to the website and navigate to the 'Downloads' section for AIDA64 (It's safe). It's lightweight and quick to install.",
+      "step2Title": "2. Select the Extreme version",
+      "step2Desc": "Look for the 'Extreme' version, the one labeled 'Portable ZIP,' not the 'EXE package.' Download it; you don't need to buy the application, you can use the trial version.",
+      "step3Title": "3. Download and open AIDA64",
+      "step3Desc": "Scroll down a bit and you'll see the download links. Download the first one, which is a ZIP file. Unzip it (right-click on the folder you downloaded and then select 'Extract All') and open the AIDA64.exe application.",
+      "step4Title": "4. Open the program",
+      "step4Desc": "When you open the program, an ad will appear; click 'OK'. In the top menu, click on the 'RAM' icon, and then click 'Start Benchmark'. Note: Close all other open programs to prevent the program from crashing. You only need to have the benchmark program open.",
+      "step5Title": "5. Take the Photo",
+      "step5Desc": "Once the benchmark finishes (when the memory, L1 cache, L2 cache, and L3 cache fields are filled), take a photo with your phone of the monitor showing: • The RAM benchmark result. Try to replicate the example image and make sure everything is clear; otherwise, your verification may be rejected."
     },
 
     "mobo": {
-      "modalTitle": "Protocol: Motherboard Verification",
-      "step1Title": "1. Download CPU-Z",
-      "step1Desc": "Download CPU-Z (It's safe). The official website is cpuid.com.\n\nDownload and install the application. It's small and quick to install.",
-      "step2Title": "2. Open CPU-Z",
-      "step2Desc": "Open CPU-Z. It will ask for administrator privileges; accept them.\n\nOnce the application is open, find the 'Mainboard' tab. Leave the CPU-Z window open in that section.",
-      "step3Title": "3. Take the Photo",
-      "step3Desc": "Take a clear photo of the monitor showing the 'CPU-Z' information in the 'Mainboard' section.\n\nMake sure all the information is legible to avoid your verification being rejected."
+      "title": "Guide: Specs Verification",
+      "step1Title": "1. Visit the AIDA64 website",
+      "step1Desc": "Go to the website and navigate to the 'Downloads' section. AIDA64 (It's safe). It's lightweight and quick to install.",
+      "step2Title": "2. Select the Extreme version",
+      "step2Desc": "Look for the 'Extreme' version, the one that says 'Portable ZIP', not the 'EXE package'. Download it; you don't need to buy the application, you can use the trial version.",
+      "step3Title": "3. Download and open AIDA64",
+      "step3Desc": "Scroll down a bit and you'll see the download links. Download the first one, which is a ZIP file. Unzip it (right-click on the folder you downloaded and then extract everything) and open the AIDA64.exe application",
+      "step4Title": "4. Open the program",
+
+      "step4Desc": "When you open the program, an ad will appear; click 'OK'. In the top menu, click on the 'RAM' icon, and then click 'Start Benchmark'. Note: Close all other open programs to prevent the program from crashing. You only need to have the benchmark program open.",
+
+      "step5Title": "5. Download CPU-Z",
+
+      "step5Desc": "Download CPU-Z from its official website (it's safe). It's a lightweight program and quick to install. Open it and go to the 'Mainboard' tab.",
+
+      "step6Title": "6. Take the Screenshot",
+
+      "step6Desc": "Once the benchmark finishes (when the memory, L1 cache, L2 cache, and L3 cache fields are filled), take a picture with your phone of the monitor showing:\n\n• The RAM benchmark result.\n\n• The CPU-Z tab in the Mainboard section. • The taskbar (The time and date should be displayed). Try to replicate the example image and make sure everything is clear; otherwise, your verification may be rejected"
     }
   },
 

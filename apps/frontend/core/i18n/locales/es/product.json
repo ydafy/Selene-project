@@ -5,8 +5,9 @@
     "soldBy": "Vendido por",
     "verifiedMember": "Miembro verificado",
     "description": "Descripción",
+    "noDescription": "Sin descripcion",
     "specifications": "Especificaciones",
-    "verifiedStatus": "Verificado por Selene"
+    "verifiedSeller": "Verificado por Selene"
   },
   "actions": {
     "buyNow": "Comprar ahora",

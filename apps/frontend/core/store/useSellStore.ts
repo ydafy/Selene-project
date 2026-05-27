@@ -1,7 +1,12 @@
-import { create } from 'zustand';
-import { Product, ProductCategory } from '@selene/types';
+/**
+ * @file core/store/useSellStore.ts
+ * @description Gestión de estado global para el flujo de publicación de productos (Sell Wizard).
+ * Mantiene un borrador (draft) y los datos originales para detectar cambios críticos en edición.
+ */
 
-// Definimos la forma del borrador de venta
+import { create } from 'zustand';
+import { Product, ProductCategory, ShippingPayer } from '@selene/types';
+
 type SellDraft = {
   id?: string;
   category: ProductCategory | null;
@@ -10,12 +15,11 @@ type SellDraft = {
   price: string;
   condition: string;
   usage: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   specifications: Record<string, any>;
   images: string[];
   verificationImage: string | null;
   package_preset: string;
-  shipping_payer: 'seller' | 'buyer';
+  shipping_payer: ShippingPayer; // 'seller' | 'buyer'
   insurance_enabled: boolean;
   origin_zip: string;
   shipping_cost: string;
@@ -28,7 +32,6 @@ interface SellState {
   // Actions
   setCategory: (category: ProductCategory) => void;
   updateDraft: (fields: Partial<SellDraft>) => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   updateSpecs: (key: string, value: any) => void;
   loadProductForEdit: (product: Product) => void;
   resetDraft: () => void;
@@ -37,15 +40,15 @@ interface SellState {
 const INITIAL_STATE: SellDraft = {
   id: undefined,
   category: null,
-  package_preset: 'medium',
-  shipping_payer: 'buyer',
+  package_preset: 'gpu_1', // Preset neutro inicial
+  shipping_payer: 'seller', // REGLA SELENE: El vendedor siempre paga el envío
   name: '',
   description: '',
   price: '',
   condition: '',
   usage: '',
   origin_zip: '',
-  shipping_cost: '',
+  shipping_cost: '0',
   specifications: {},
   images: [],
   verificationImage: null,
@@ -77,25 +80,27 @@ export const useSellStore = create<SellState>((set) => ({
       },
     })),
 
-  // NUEVA FUNCIÓN: Carga un producto existente en el formulario
-  loadProductForEdit: (product) => {
-    // Mapeamos el producto de la DB al formato del Draft
+  /**
+   * Carga la información de un producto existente para entrar en modo edición.
+   * Mapea tipos de DB a tipos de Formulario (strings).
+   */
+  loadProductForEdit: (product: Product) => {
     const data: SellDraft = {
       id: product.id,
-      category: product.category,
-      name: product.name,
-      description: product.description,
-      price: product.price.toString(),
-      condition: product.condition,
-      usage: product.usage,
-      specifications: product.specifications || {},
+      category: product.category as ProductCategory,
+      name: product.name || '',
+      description: product.description || '',
+      price: (product.price || 0).toString(),
+      condition: product.condition || '',
+      usage: product.usage || '',
+      specifications: (product.specifications as Record<string, any>) || {},
       images: product.images || [],
       verificationImage: null,
-      package_preset: product.package_preset || 'medium',
-      shipping_payer: product.shipping_payer || 'buyer',
+      package_preset: product.package_preset || 'gpu_1',
+      shipping_payer: (product.shipping_payer as ShippingPayer) || 'seller',
       insurance_enabled: true,
       origin_zip: product.origin_zip || '',
-      shipping_cost: product.shipping_cost?.toString() || '',
+      shipping_cost: (product.shipping_cost || 0).toString(),
     };
 
     set(() => ({

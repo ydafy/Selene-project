@@ -2,7 +2,7 @@ import { Share } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Product } from '@selene/types';
 
-export const useProductShare = (product: Product | undefined) => {
+export const useProductShare = (product: Product | null | undefined) => {
   const { t } = useTranslation('product');
 
   const handleShare = async () => {

@@ -1,10 +1,10 @@
 import React from 'react';
-import { useTheme } from '@shopify/restyle';
+
 import { Product } from '@selene/types';
 import { Box, Text } from '../../base';
 import { AppImage } from '../../ui/AppImage';
 import { AppChip } from '../../ui/AppChip';
-import { Theme } from '../../../core/theme';
+
 import { formatCurrency } from '../../../core/utils/format';
 
 interface CheckoutItemProps {
@@ -13,8 +13,6 @@ interface CheckoutItemProps {
 }
 
 export const CheckoutItem = ({ product, isUnavailable }: CheckoutItemProps) => {
-  const theme = useTheme<Theme>();
-
   return (
     <Box
       flexDirection="row"
