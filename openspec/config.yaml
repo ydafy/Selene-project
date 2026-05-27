@@ -1,0 +1,55 @@
+strict_tdd: false
+context: |
+  selene-monorepo is a Node.js/TypeScript, Node.js/TypeScript ESM, React project.
+  Detected markers: package.json, bun package manager, .agents\skills\expo-cicd-workflows\scripts/package.json, .agents\skills\expo-cicd-workflows\scripts/npm package manager, apps\admin-web/package.json, apps\admin-web/tsconfig.json, apps\admin-web/npm package manager, apps\backend/package.json, apps\backend/tsconfig.json, apps\backend/npm package manager, apps\frontend/package.json, apps\frontend/tsconfig.json, apps\frontend/npm package manager, packages\types/package.json, packages\types/tsconfig.json, packages\types/npm package manager.
+  Package managers: bun, npm.
+  Additional evidence: Test-like files detected (1); examples: apps\frontend\core\utils\init.test.ts.
+  No reliable test runner was detected; verify testing manually before enabling strict TDD.
+  Unit tests: none.
+  Integration tests: none.
+  E2E tests: none.
+rules:
+  proposal:
+    require_problem_statement: true
+  spec:
+    require_acceptance_criteria: true
+  design:
+    require_tradeoffs: true
+  tasks:
+    protect_review_workload: true
+  apply:
+    test_command: ''
+  verify:
+    test_command: ''
+testing:
+  detected: '2026-05-25'
+  runner:
+    command: ''
+    framework: ''
+  layers:
+    unit: ''
+    integration: ''
+    e2e: ''
+  commands:
+    unit: []
+    integration: []
+    e2e: []
+  coverage:
+    command: ''
+    commands: []
+quality:
+  lint: 'bun run lint'
+  lint_commands:
+    - scope: '.'
+      command: 'bun run lint'
+      framework: 'linter'
+    - scope: "apps\\admin-web"
+      command: "cd apps\\admin-web && npm run lint"
+      framework: 'linter'
+  typecheck: ''
+  typecheck_commands: []
+  format: 'bun run format'
+  format_commands:
+    - scope: '.'
+      command: 'bun run format'
+      framework: 'formatter'
