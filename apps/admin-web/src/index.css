@@ -1,0 +1,33 @@
+@import 'tailwindcss';
+
+@theme {
+  /* Al ponerlas aquí, Tailwind genera automáticamente: text-lion, bg-lion, border-lion, etc. */
+  --color-night: #121212;
+  --color-state-gray: #1e1e1e;
+  --color-lion: #bd9f65;
+  --color-platinum: #e4e4e4;
+  --color-blue-light: #6f839f;
+  --color-fire: #dc3545;
+  --color-forest: #28a745;
+
+  /* Colores de Estado Selene (Sincronizados con App) */
+  --color-status-pending: #a9924c;
+  --color-status-paid: #5c85ad;
+  --color-status-preparing: #7866a3;
+  --color-status-shipped: #336084;
+  --color-status-delivered: #478560;
+  --color-status-completed: #319b5b;
+  --color-status-cancelled: #6a3939;
+  --color-status-refunded: #6a4d39;
+  --color-status-dispute: #782b2b;
+
+  /* Tipografía */
+  --font-montserrat: 'Montserrat', sans-serif;
+}
+
+@layer base {
+  body {
+    /* Usamos @apply para aplicar los estilos base al body */
+    @apply bg-night text-platinum font-montserrat antialiased;
+  }
+}

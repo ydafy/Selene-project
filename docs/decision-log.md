@@ -8,105 +8,160 @@
 
 **Consequence:** Moving the project to a simple path like `C:\dev\` resolved all Metro resolution issues. This is a non-negotiable rule for developing this project on Windows.
 
-## 2025-10-18: Instalación de Dependencias de Expo en Monorepo
+## 2025-10-18: Installing Expo Dependencies in a Monorepo
 
-**Decisión:** Todos los comandos `expo install` (o `bun expo install`) DEBEN ejecutarse desde dentro del directorio del workspace de la aplicación (ej. `apps/frontend`), no desde la raíz del Monorepo.
+**Decision:** All `expo install` (or `bun expo install`) commands MUST be executed from within the application's workspace directory (e.g., `apps/frontend`), not from the Monorepo root.
 
-**Contexto:** Se observó que al ejecutar `bun expo install <package>` desde la raíz, el paquete se añadía incorrectamente al `package.json` de la raíz en lugar del `package.json` del workspace del frontend. Esto causaba fallos en el "autolinking" nativo durante el `prebuild` de EAS, resultando en errores de "Cannot find native module".
+**Context:** It was observed that when executing `bun expo install <package>` from the root, the package was incorrectly added to the root `package.json` instead of the frontend workspace's `package.json`. This caused native autolinking failures during the EAS prebuild, resulting in "Cannot find native module" errors.
 
-**Consecuencia:** El flujo de trabajo estándar para añadir una dependencia de Expo al frontend será:
+**Consequence:** The standard workflow for adding an Expo dependency to the frontend will be:
 
 1. `cd apps/frontend`
-2. `bun expo install <nombre-del-paquete>`
-3. `cd ../..`
-4. `bun install` (para actualizar el lockfile de la raíz)
+2. `bun expo install <package-name>`
 
-## 2025-11-09: Ubicación de Dependencias del Workspace
+## 2025-11-09: Workspace Dependency Location
 
-**Decisión:** Las dependencias compartidas y del frontend (`zustand`, `react-query`, etc.) se mantendrán en el `package.json` de la raíz del monorepo.
+**Decision:** Shared and frontend dependencies (`zustand`, `react-query`, etc.) will remain in the `package.json` file in the monorepo root.
 
-**Contexto:** Aunque la práctica ideal es aislar las dependencias por workspace, la configuración actual es estable después de una compleja configuración inicial. Para priorizar la estabilidad del entorno de desarrollo, se decide no mover estas dependencias en este momento.
+**Context:** While the ideal practice is to isolate dependencies by workspace, the current configuration is stable after a complex initial setup. To prioritize the stability of the development environment, it was decided not to move these dependencies at this time.
 
-**Consecuencia:** Esto simplifica la gestión de versiones por ahora. Se revisará esta decisión en el futuro si se añade un nuevo workspace (ej. una app web) que no comparta estas dependencias.
+**Consequence:** This simplifies version management for now. This decision will be reviewed in the future if a new workspace (e.g., a web app) that does not share these dependencies is added.
 
-## 2026-01-27: Inestabilidad con Bun, Expo y EAS en monorepo
+## 2026-01-27: Instability with Bun, Expo, and EAS in a Monorepo
 
-**Contexto**
-Monorepo con Bun como package manager, Expo para frontend y EAS Build para Android.
-El proyecto funcionaba correctamente con:
+**Context** A monorepo with Bun as the package manager, Expo for the frontend, and EAS Build for Android.
 
-- Node `22.13.1`
+The project was working correctly with:
+
+- Node.js `22.13.1`
 - Bun `1.3.0`
 - Expo SDK `~54.0.13`
 
 ---
 
-**Problema**
+**Problem**
 
-De forma inesperada:
+Unexpectedly:
 
-- `bun run frontend` dejó de funcionar.
-- `bun install` fallaba por un `postinstall` de **Supabase**.
-- Expo no detectaba la versión del SDK (`expo` aparentemente no instalado).
-- EAS Build fallaba con:
-  bun install --frozen-lockfile exited with code 127
-  bunx: command not found
+- `bun run frontend` stopped working.
 
-- Bun se actualizó automáticamente a otra versión, causando diferencias entre local y CI.
+- `bun install` failed due to a `postinstall` error from **Supabase**.
 
----
+- Expo did not detect the SDK version (`expo` apparently was not installed).
 
-**Causas**
+- EAS Build failed with:
 
-- Desalineación de versiones (Bun local ≠ Bun en EAS).
-- Bun bloqueando scripts `postinstall` (Supabase).
-- Script `prepare` ejecutando `bunx husky` en CI.
-- Comportamiento distinto entre entorno local y EAS.
+bun install --frozen-lockfile exited with code 127
+
+bunx: command not found
+
+- Bun automatically updated to a different version, causing discrepancies between the local and CI versions.
 
 ---
 
-**Decisiones**
+**Causes**
 
-- Fijar versiones:
+- Version misalignment (local Bun ≠ Bun in EAS).
+
+- Bun blocking `postinstall` scripts (Supabase).
+
+- `prepare` script running `bunx husky` in CI.
+
+- Different behavior between local environment and EAS.
+
+--
+**Decisions**
+
+- Fix versions:
 - Node `22.13.1`
 - Bun `1.3.0`
-- Mantener Bun como package manager (no migrar a npm/yarn).
-- Evitar ejecutar Husky en CI.
-- Alinear entorno local con `eas.json`.
+- Keep Bun as package manager (do not migrate to npm/yarn).
+
+- Avoid running Husky in CI.
+
+- Align local environment with `eas.json`.
+
+--
+**Result**
+
+- `bun install` is stable again.
+
+- `bun run frontend` works correctly.
+
+- EAS Build no longer fails during the dependency phase.
+
+- Local environment and CI are now synchronized.
+
+## 2026-02-19: Nuclear Cleanup Strategy in Monorepo (Expo + Bun)
+
+**Problem**
+
+Intermittent errors in the project: - Cannot find module - Expo SDK not detected - App opens and closes on its own - Expo doctor reports duplicate native libraries - Metro launches but the app crashes - Duplicates within .bun files
+
+**Context**
+
+The combined use of: - Expo - Bun - Monorepo with workspaces - EAS Build
+
+Can generate multiple internal instances of native modules.
+
+Expo does NOT allow duplicates in native modules.
 
 ---
 
-**Resultado**
+**Decision**
 
-- `bun install` vuelve a ser estable.
-- `bun run frontend` funciona correctamente.
-- EAS Build deja de fallar en la fase de dependencias.
-- Entorno local y CI quedan sincronizados.
+When structural errors or native duplicates exist or any type of **node modules errors**, apply Nuclear Cleanup.
 
-## 2026-02-12: App se cierra después de una EAS Build (Expo + Bun Monorepo)
+---
 
-**Decisión:**
-Si una **EAS build termina bien** pero la app abre en blanco y se cierra sola, **NO** hacer limpieza nuclear. Primero ejecutar:
+**Nuclear Cleanup Procedure**
+
+From the monorepo root:
+
+    rm -rf node_modules
+    rm -rf bun.lock
+    rm -rf apps/frontend/node_modules
+    rm -rf apps/frontend/bun.lock
+    rm -rf apps/frontend/.expo
+    rm -rf apps/frontend/.expo-shared
+    rm -rf apps/admin-web/node_modules
+    rm -rf packages/types/node_modules
+    rm -rf apps/backend/node_modules
+
+    bun pm cache clean
+    bun pm cache rm
+
+    bun install.
+
+
+Validate status:
+
+    cd apps/frontend
+
+    bunx expo config --json
+
+    bunx expo-doctor
+
+    If it returns JSON + expo doctor without complaints = Healthy project.
+
+    If the bunx expo config --json keep failing, do the Nuclear Cleanup Procedure, then restart the pc and then bun install. Some times the pc keeps cache files even if the Nuclear Cleanup has been done.
+
+---
+
+**Golden Rule**
+
+Always install Expo dependencies from:
 
 cd apps/frontend
-bunx expo-doctor
 
-**Contexto:**
-Después de instalar nuevas librerías con `expo install`, Bun + Expo + Monorepo puede dejar el **cache de Metro inconsistente** aunque:
+bun expo install <package>
 
-- El lockfile esté bien
-- No haya errores de dependencias
-- `expo doctor` muestre duplicados
-- La EAS build haya sido exitosa
+Avoid running the manual `bun install` command unnecessarily afterward in 'main'.
 
-El problema **no es nativo**, es del bundler JS (Metro).
+---
 
-**Consecuencia (flujo correcto):**
+**Results**
 
-1. EAS build pasa pero la app se cierra
-2. Ir a `apps/frontend`
-3. Ejecutar `npx expo start -c`
-4. La app vuelve a abrir normalmente sin tocar nada más
+Nuclear Cleanup has consistently resolved: - Version conflicts - Native duplicates - EAS failures - Undetected SDK - Unexpected app crashes
 
-**Nota:**
-La limpieza nuclear solo aplica cuando fallan comandos, plugins, `expo config` o la fase de `Install dependencies` en EAS.
+It is established as the standard procedure for structural inconsistencies.

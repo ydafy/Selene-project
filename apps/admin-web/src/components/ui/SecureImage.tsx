@@ -1,0 +1,53 @@
+import React, { useEffect, useState } from 'react';
+import { supabase } from '../../lib/supabase';
+import { Maximize2 } from 'lucide-react';
+import { getStoragePath } from '../../lib/utils/StoragePath';
+
+interface Props {
+  path: string;
+  alt: string;
+  className?: string;
+  onClick?: (url: string) => void;
+  bucket?: string; // <--- Propiedad opcional
+}
+
+// FIX: Pasamos 'bucket' como prop con un default
+export const SecureImage = ({
+  path,
+  alt,
+  className,
+  onClick,
+  bucket = 'verification',
+}: Props) => {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!path) return;
+    const getSignedUrl = async () => {
+      const cleanPath = getStoragePath(path, bucket);
+      const { data } = await supabase.storage
+        .from(bucket)
+        .createSignedUrl(cleanPath, 3600);
+      if (data) setUrl(data.signedUrl);
+    };
+    getSignedUrl();
+  }, [path, bucket]);
+
+  if (!url) return <div className={`animate-pulse bg-white/5 ${className}`} />;
+
+  return (
+    <div className="relative group w-full h-full">
+      <img src={url} alt={alt} className={className} />
+
+      {/* Overlay sutil que indica que es clickeable */}
+      <button
+        onClick={() => onClick?.(url)}
+        className="absolute inset-0 bg-lion/10 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all cursor-zoom-in"
+      >
+        <div className="bg-night/80 p-3 rounded-full border border-lion/50 shadow-2xl transform scale-90 group-hover:scale-100 transition-transform">
+          <Maximize2 className="text-lion" size={24} />
+        </div>
+      </button>
+    </div>
+  );
+};

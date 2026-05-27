@@ -12,34 +12,15 @@
     "frontend": "cd apps/frontend && bun run start",
     "backend": "cd apps/backend && bun run dev",
     "dev:install": "cd apps/frontend && bunx eas build:dev --platform=android",
+    "db:types": "bunx supabase gen types typescript --project-id acoiclkeymgtlwcxilun --schema public > packages/types/src/database.types.ts",
     "eas:build": "cd apps/frontend && bunx eas build",
     "eas:configure": "cd apps/frontend && bunx eas build:configure",
     "lint": "bunx eslint . --ext .js,.jsx,.ts,.tsx",
     "format": "bunx prettier --write .",
-    "prepare": "bunx husky install || true"
-  },
-  "dependencies": {
-    "@shopify/restyle": "^2.4.5",
-    "@supabase/supabase-js": "^2.93.2",
-    "@tanstack/react-query": "^5.90.5",
-    "i18next": "^25.6.0",
-    "react-hook-form": "^7.65.0",
-    "react-i18next": "^16.1.0",
-    "react-native-google-places-autocomplete": "^2.6.4",
-    "react-native-paper": "^5.14.5",
-    "react-native-vector-icons": "^10.3.0",
-    "zod": "^4.1.12",
-    "zustand": "^5.0.8"
-  },
-  "resolutions": {
-    "react": "19.1.0",
-    "@types/react": "~19.1.10",
-    "react-native": "0.81.4",
-    "expo": "~54.0.13",
-    "@expo/vector-icons": "15.0.2",
-    "expo-constants": "~18.0.9",
-    "expo-font": "~14.0.9",
-    "expo-linking": "~8.0.8"
+    "prepare": "bunx husky install || true",
+    "clean:all": "bun scripts/clean-all.ts",
+    "doctor:frontend": "cd apps/frontend && bunx expo-doctor",
+    "fix:frontend": "cd apps/frontend && bunx expo install --fix"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.46.1",
@@ -47,7 +28,6 @@
     "eslint": "^9.38.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.4",
-    "husky": "^9.1.7",
     "lint-staged": "^16.2.4",
     "prettier": "^3.6.2"
   },
@@ -56,5 +36,8 @@
       "prettier --write",
       "eslint --fix"
     ]
+  },
+  "dependencies": {
+    "gentle-engram": "0.1.4"
   }
 }

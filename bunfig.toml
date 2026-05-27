@@ -1,0 +1,3 @@
+[install]
+# Bloquea paquetes muy nuevos (recomendado 3-7 días)
+minimumReleaseAge = 259200   # 3 días en segundos (puedes poner 604800 = 7 días)
