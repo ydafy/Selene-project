@@ -1,18 +1,22 @@
+/**
+ * @file supabase/functions/create-payment-intent/index.ts
+ * Versión 4.0: Producción Final.
+ * Arquitectura híbrida, manejo de errores exhaustivo e integridad financiera.
+ */
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import Stripe from 'https://esm.sh/stripe@17.0.0';
 import { z } from 'https://esm.sh/zod@3.23.8';
 
-// --- CONFIGURATION ---
 const APP_NAME = 'selene';
 const STRIPE_API_VERSION = '2025-12-15.clover';
-const SERVICE_FEE_PERCENT = 0.05;
-const SERVICE_FEE_FIXED_CENTS = 500;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
     'authorization, x-client-info, apikey, content-type, idempotency-key',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 const RequestSchema = z.object({
@@ -21,6 +25,9 @@ const RequestSchema = z.object({
   idempotencyKey: z.string().optional(),
 });
 
+/**
+ * Logger estructurado para auditoría en Supabase Logs
+ */
 const log = (
   level: 'info' | 'error' | 'warn',
   message: string,
@@ -38,49 +45,68 @@ const log = (
 };
 
 serve(async (req) => {
+  // 1. MANEJO DE CORS PRE-FLIGHT
   if (req.method === 'OPTIONS')
     return new Response('ok', { headers: corsHeaders });
 
   try {
     log('info', '--- Starting Payment Intent Creation ---');
 
-    // 1. VALIDATE SECRETS
+    // 2. VALIDACIÓN DE SECRETOS
     const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY');
-    if (!stripeSecret) throw new Error('MISSING_STRIPE_KEY');
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!stripeSecret || !serviceRoleKey)
+      throw new Error('MISSING_SERVER_CONFIG');
 
     const stripe = new Stripe(stripeSecret, {
       apiVersion: STRIPE_API_VERSION,
       httpClient: Stripe.createFetchHttpClient(),
     });
 
-    // 2. AUTHENTICATION
+    // 3. INICIALIZAR CLIENTES (Arquitectura Híbrida)
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) throw new Error('AUTH_REQUIRED');
 
+    // Cliente para el usuario (Respeta RLS en la reserva)
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
       { global: { headers: { Authorization: authHeader } } },
     );
 
+    // Cliente para el sistema (Acceso a system_settings)
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      serviceRoleKey,
+    );
+
+    // 4. AUTENTICACIÓN
     const {
       data: { user },
       error: authError,
     } = await supabaseClient.auth.getUser();
     if (authError || !user) throw new Error('AUTH_REQUIRED');
 
-    // 3. INPUT VALIDATION
-    const body = await req.json();
-    log('info', 'Request body received', { body });
+    // 5. OBTENER CONFIGURACIÓN DINÁMICA
+    const { data: sysSettings, error: configError } = await supabaseAdmin
+      .from('system_settings')
+      .select('service_fee_pct, service_fee_fixed_cents')
+      .eq('id', 1)
+      .single();
 
+    if (configError || !sysSettings)
+      throw new Error('SYSTEM_SETTINGS_NOT_FOUND');
+
+    // 6. VALIDACIÓN DE INPUT (Zod)
+    const body = await req.json();
     const result = RequestSchema.safeParse(body);
     if (!result.success) {
-      log('error', 'Zod validation failed', { errors: result.error.format() });
+      log('error', 'Validation failed', { errors: result.error.format() });
       throw new Error('INVALID_INPUT');
     }
     const { productIds, addressId, idempotencyKey } = result.data;
 
-    // 4. ATOMIC RESERVATION (RPC)
+    // 7. RESERVA ATÓMICA DE STOCK (Vía Client - Respeta RLS)
     const { data: reserveData, error: rpcError } = await supabaseClient.rpc(
       'fn_reserve_products',
       {
@@ -97,30 +123,32 @@ serve(async (req) => {
       throw new Error(reservation?.error_message || 'STOCK_UNAVAILABLE');
     }
 
-    // 5. FINANCIAL CALCULATIONS
+    // 8. CÁLCULOS FINANCIEROS DINÁMICOS
     const subtotalFromDB = Number(reservation.total_price);
     const subtotalCents = Math.round(subtotalFromDB * 100);
     const serviceFeeCents =
-      Math.round(subtotalCents * SERVICE_FEE_PERCENT) + SERVICE_FEE_FIXED_CENTS;
+      Math.round(subtotalCents * sysSettings.service_fee_pct) +
+      sysSettings.service_fee_fixed_cents;
     const totalCents = subtotalCents + serviceFeeCents;
 
-    // 6. STRIPE CUSTOMER IDENTITY
+    // 9. IDENTIDAD STRIPE
     const { data: profile } = await supabaseClient
-      .from('profiles')
+      .from('profiles_private')
       .select('stripe_customer_id')
       .eq('id', user.id)
-      .maybeSingle();
+      .single();
 
     const customerId = profile?.stripe_customer_id;
     if (!customerId) throw new Error('STRIPE_CUSTOMER_NOT_FOUND');
 
-    // 7. EPHEMERAL KEY (Para tarjetas guardadas)
+    // 10. LLAVES Y PAYMENT INTENT
     const ephemeralKey = await stripe.ephemeralKeys.create(
       { customer: customerId },
       { apiVersion: STRIPE_API_VERSION },
     );
 
-    // 8. CREATE PAYMENT INTENT
+    const serviceFeeTotal = serviceFeeCents / 100;
+
     const paymentIntent = await stripe.paymentIntents.create(
       {
         amount: totalCents,
@@ -133,6 +161,8 @@ serve(async (req) => {
           address_id: addressId,
           app_name: APP_NAME,
           subtotal: subtotalFromDB.toString(),
+          service_fee: serviceFeeTotal.toString(), // <--- MEJORA DE AUDITORÍA
+          total_expected: (totalCents / 100).toString(), // <--- MEJORA DE AUDITORÍA
         },
       },
       {
@@ -140,9 +170,7 @@ serve(async (req) => {
       },
     );
 
-    log('info', 'PaymentIntent created successfully', {
-      intentId: paymentIntent.id,
-    });
+    log('info', 'PaymentIntent created', { intentId: paymentIntent.id });
 
     return new Response(
       JSON.stringify({
@@ -160,26 +188,27 @@ serve(async (req) => {
     );
   } catch (error: any) {
     const message = error.message || String(error);
+    log('error', 'Request failed', { message });
 
-    // Stripe specific handling
+    // Manejo específico de errores de Stripe
     if (message.toLowerCase().includes('stripe')) {
-      log('error', 'Stripe API Error', { error: message });
       return new Response(JSON.stringify({ error: 'PAYMENT_PROVIDER_ERROR' }), {
         status: 503,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    // Mapeo de códigos de estado
     const statusMap: Record<string, number> = {
       AUTH_REQUIRED: 401,
       INVALID_INPUT: 422,
       STOCK_UNAVAILABLE: 409,
+      SYSTEM_SETTINGS_NOT_FOUND: 500,
       STRIPE_CUSTOMER_NOT_FOUND: 400,
-      MISSING_STRIPE_KEY: 500,
+      MISSING_SERVER_CONFIG: 500,
     };
 
     const status = statusMap[message] || 400;
-    log('error', 'Request failed', { message, status });
 
     return new Response(JSON.stringify({ error: message }), {
       status,
