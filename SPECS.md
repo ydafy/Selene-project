@@ -47,7 +47,7 @@
 - [x] `fn_release_shipment_funds(p_shipment_id)` — cron auto-release 48h
 - [x] `fn_cancel_shipment(p_shipment_id, p_cancelled_by_role, p_reason)`
 - [x] `fn_create_order_from_payment` modificada (crea order + N shipments)
-- [x] `fn_seller_initiate_return_label(p_shipment_id)` — seller paga return shipping
+- [x] `fn_seller_initiate_return_label(p_dispute_id, p_caller_id)` — validación centralizada + auditoría
 - [x] `fn_complete_shipment_refund(p_shipment_id)` — refund por shipment + status guard
 - [x] `fn_seller_confirm_return_shipment(p_shipment_id)` — **admin override** (no flujo principal)
 - [x] `fn_mark_return_delivered(p_dispute_id)` — track-returns: marca dispute `return_delivered` + notifica

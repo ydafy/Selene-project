@@ -84,14 +84,24 @@ serve(async (req) => {
       throw new ApiError(404, 'Disputa no encontrada');
     const dispute = disputeRes.data;
 
-    if (dispute.seller_id !== user.id)
-      throw new ApiError(403, 'No tienes permiso para pagar esta guía');
-    if (dispute.status !== 'waiting_return')
-      throw new ApiError(422, 'La disputa no está en fase de retorno');
+    // 3. Validación centralizada via RPC (evita duplicar lógica)
+    const { data: initResult, error: initError } = await supabaseAdmin.rpc(
+      'fn_seller_initiate_return_label',
+      {
+        p_dispute_id: disputeId,
+        p_caller_id: user.id,
+      },
+    );
+
+    if (initError || !initResult?.[0]?.success) {
+      const errMsg = initResult?.[0]?.error_message || initError?.message ||
+        'Operación no permitida';
+      throw new ApiError(400, errMsg);
+    }
 
     const returnFeeCents = settingsRes.data?.return_label_fee_cents || 30000; // Fallback $300
 
-    // 3. Obtener Stripe Customer
+    // 4. Obtener Stripe Customer
     const { data: profile } = await supabaseAdmin
       .from('profiles_private')
       .select('stripe_customer_id')
@@ -103,7 +113,7 @@ serve(async (req) => {
         'El usuario no tiene un perfil de Stripe configurado',
       );
 
-    // 4. Generar Ephemeral Key y Payment Intent
+    // 5. Generar Ephemeral Key y Payment Intent
     log('INFO', 'Creando Payment Intent para retorno', {
       disputeId,
       sellerId: user.id,

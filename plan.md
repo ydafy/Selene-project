@@ -111,7 +111,7 @@ CREATE TRIGGER trg_shipments_status
 | `fn_release_shipment_funds`                 | `fn_release_order_funds` | Libera fondos de pending a available (usa cron 48h)      |
 | `fn_cancel_shipment`                        | Cancelación vieja        | Cancela un shipment individual                           |
 | `fn_create_order_from_payment` (modificada) | —                        | Crea 1 order + N shipments por seller                    |
-| `fn_seller_initiate_return_label`           | —                        | Seller paga return shipping (nuevo flujo)                |
+| `fn_seller_initiate_return_label`           | —                        | Guard + auditoría: seller inicia pago de return shipping |
 | `fn_complete_shipment_refund`               | —                        | Refund por shipment con status guard                     |
 | `fn_seller_confirm_return_shipment`         | —                        | ⚠️ Admin override SOLO (no flujo principal)              |
 | `fn_mark_return_delivered`                  | —                        | Track-returns: marca dispute como `return_delivered`     |

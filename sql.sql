@@ -927,3 +927,62 @@ SELECT cron.schedule(
   '0 * * * *',
   'SELECT * FROM public.fn_cron_return_delivery_timeout()'
 );
+
+-- =========================================================================
+-- FASE 4.10 — Init return label: validación centralizada + auditoría
+-- =========================================================================
+
+CREATE OR REPLACE FUNCTION public.fn_seller_initiate_return_label(
+  p_dispute_id UUID,
+  p_caller_id UUID
+)
+RETURNS TABLE(success BOOLEAN, error_message TEXT)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO public, pg_temp
+AS $$
+DECLARE
+  v_seller_id   UUID;
+  v_status      TEXT;
+  v_shipment_id UUID;
+BEGIN
+  -- 1. Validar dispute existe
+  SELECT d.seller_id, d.status::TEXT, d.shipment_id
+  INTO v_seller_id, v_status, v_shipment_id
+  FROM public.disputes d WHERE d.id = p_dispute_id;
+
+  IF NOT FOUND THEN
+    RETURN QUERY SELECT false, 'DISPUTE_NOT_FOUND'::TEXT; RETURN;
+  END IF;
+
+  -- 2. Validar caller es el seller
+  IF v_seller_id IS DISTINCT FROM p_caller_id THEN
+    RETURN QUERY SELECT false, 'UNAUTHORIZED'::TEXT; RETURN;
+  END IF;
+
+  -- 3. Validar dispute en estado correcto
+  IF v_status IS DISTINCT FROM 'waiting_return' THEN
+    RETURN QUERY SELECT false,
+      format('INVALID_DISPUTE_STATUS: %s', v_status)::TEXT;
+    RETURN;
+  END IF;
+
+  -- 4. Auditoría (idempotente — siempre loguea, no hay side effect)
+  INSERT INTO public.system_logs (level, message, metadata)
+  VALUES ('INFO', 'Return label initiated by seller',
+    jsonb_build_object(
+      'dispute_id', p_dispute_id,
+      'shipment_id', v_shipment_id,
+      'seller_id', v_seller_id
+    ));
+
+  RETURN QUERY SELECT true, NULL::TEXT;
+
+EXCEPTION WHEN OTHERS THEN
+  RETURN QUERY SELECT false, SQLERRM;
+END;
+$$;
+
+-- API hardening
+REVOKE EXECUTE ON FUNCTION public.fn_seller_initiate_return_label(UUID, UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.fn_seller_initiate_return_label(UUID, UUID) TO service_role;
