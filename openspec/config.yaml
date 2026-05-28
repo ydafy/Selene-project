@@ -1,13 +1,10 @@
-strict_tdd: false
+strict_tdd: true
 context: |
-  selene-monorepo is a Node.js/TypeScript, Node.js/TypeScript ESM, React project.
-  Detected markers: package.json, bun package manager, .agents\skills\expo-cicd-workflows\scripts/package.json, .agents\skills\expo-cicd-workflows\scripts/npm package manager, apps\admin-web/package.json, apps\admin-web/tsconfig.json, apps\admin-web/npm package manager, apps\backend/package.json, apps\backend/tsconfig.json, apps\backend/npm package manager, apps\frontend/package.json, apps\frontend/tsconfig.json, apps\frontend/npm package manager, packages\types/package.json, packages\types/tsconfig.json, packages\types/npm package manager.
-  Package managers: bun, npm.
-  Additional evidence: Test-like files detected (1); examples: apps\frontend\core\utils\init.test.ts.
-  No reliable test runner was detected; verify testing manually before enabling strict TDD.
-  Unit tests: none.
-  Integration tests: none.
-  E2E tests: none.
+  Selene monorepo — marketplace for used PC hardware in Mexico.
+  Runtime: Bun v1.3.11. TypeScript strict across all packages.
+  Monorepo with workspaces: apps/frontend (Expo RN), apps/admin-web (React+Vite+Tailwind),
+  apps/backend (Express), packages/types (shared), supabase/functions (Edge Functions).
+  External services: Stripe (payments, Connect), Envia (shipping), Supabase (BaaS).
 rules:
   proposal:
     require_problem_statement: true
@@ -18,38 +15,54 @@ rules:
   tasks:
     protect_review_workload: true
   apply:
-    test_command: ''
+    test_command: bun test
   verify:
-    test_command: ''
+    test_command: bun test
 testing:
-  detected: '2026-05-25'
+  detected: '2026-05-27'
+  strict_tdd: true
   runner:
-    command: ''
-    framework: ''
+    command: bun test
+    framework: bun:test
   layers:
-    unit: ''
+    unit: bun:test
     integration: ''
     e2e: ''
   commands:
-    unit: []
+    unit:
+      - scope: '.'
+        command: bun test
+        framework: bun:test
     integration: []
     e2e: []
   coverage:
-    command: ''
-    commands: []
+    available: true
+    command: bun test --coverage
 quality:
-  lint: 'bun run lint'
+  lint: bun run lint
   lint_commands:
     - scope: '.'
-      command: 'bun run lint'
-      framework: 'linter'
-    - scope: "apps\\admin-web"
-      command: "cd apps\\admin-web && npm run lint"
-      framework: 'linter'
-  typecheck: ''
-  typecheck_commands: []
-  format: 'bun run format'
+      command: bun run lint
+      framework: eslint
+    - scope: apps/admin-web
+      command: cd apps/admin-web && npm run lint
+      framework: eslint
+  typecheck: tsc -b (per workspace, no root command)
+  typecheck_commands:
+    - scope: apps/frontend
+      command: cd apps/frontend && bunx tsc --noEmit
+      framework: typescript
+    - scope: apps/admin-web
+      command: cd apps/admin-web && bunx tsc -b
+      framework: typescript
+    - scope: apps/backend
+      command: cd apps/backend && bunx tsc --noEmit
+      framework: typescript
+    - scope: packages/types
+      command: cd packages/types && bunx tsc --noEmit
+      framework: typescript
+  format: bun run format
   format_commands:
     - scope: '.'
-      command: 'bun run format'
-      framework: 'formatter'
+      command: bun run format
+      framework: prettier

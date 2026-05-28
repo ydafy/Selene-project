@@ -12,6 +12,7 @@
     "frontend": "cd apps/frontend && bun run start",
     "backend": "cd apps/backend && bun run dev",
     "dev:install": "cd apps/frontend && bunx eas build:dev --platform=android",
+    "dashboard": "cd apps/admin-web && bun run dev",
     "db:types": "bunx supabase gen types typescript --project-id acoiclkeymgtlwcxilun --schema public > packages/types/src/database.types.ts",
     "eas:build": "cd apps/frontend && bunx eas build",
     "eas:configure": "cd apps/frontend && bunx eas build:configure",

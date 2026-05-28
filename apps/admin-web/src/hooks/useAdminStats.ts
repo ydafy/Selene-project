@@ -5,50 +5,37 @@ export const useAdminStats = () => {
   return useQuery({
     queryKey: ['admin-stats'],
     queryFn: async () => {
-      // 1. Productos pendientes de verificación
-      const { count: pendingProducts } = await supabase
-        .from('products')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'IN_REVIEW');
-
-      // 2. Disputas activas (Abiertas o en revisión)
-      const { count: activeDisputes } = await supabase
-        .from('disputes')
-        .select('*', { count: 'exact', head: true })
-        .in('status', ['open', 'under_review']);
-
-      // 3. Dinero por dispersar (Suma de balances disponibles en wallets)
-      const { data: wallets } = await supabase
-        .from('wallets')
-        .select('available_balance');
-
-      const totalToPay =
-        wallets?.reduce((acc, w) => acc + w.available_balance, 0) || 0;
-
-      // 4. Ventas del mes actual
-
       const now = new Date();
       const startOfMonth = new Date(
         Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0),
       );
 
-      const { data: monthlyOrders, error: salesError } = await supabase
-        .from('orders')
-        .select('id') // Solo necesitamos contar registros, no traer toda la data
-        .gte('created_at', startOfMonth.toISOString())
-        // Filtro más limpio: excluimos cancelados y reembolsados individualmente
-        .not('status', 'eq', 'cancelled')
-        .not('status', 'eq', 'refunded');
+      const [pendingResult, disputeResult, walletResult, salesResult] =
+        await Promise.all([
+          supabase
+            .from('products')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'IN_REVIEW'),
+          supabase
+            .from('disputes')
+            .select('*', { count: 'exact', head: true })
+            .in('status', ['open', 'under_review']),
+          supabase.from('wallets').select('sum:available_balance'),
+          supabase
+            .from('orders')
+            .select('id', { count: 'exact', head: true })
+            .gte('created_at', startOfMonth.toISOString())
+            .not('status', 'eq', 'cancelled')
+            .not('status', 'eq', 'refunded'),
+        ]);
 
-      if (salesError) console.error('Error en Ventas:', salesError.message);
-
-      const monthlySalesCount = monthlyOrders?.length || 0;
+      const totalToPay = walletResult.data?.[0]?.sum ?? 0;
 
       return {
-        pendingProducts: pendingProducts || 0,
-        activeDisputes: activeDisputes || 0,
+        pendingProducts: pendingResult.count || 0,
+        activeDisputes: disputeResult.count || 0,
         totalToPay,
-        monthlySalesCount,
+        monthlySalesCount: salesResult.count || 0,
       };
     },
     refetchInterval: 1000 * 60 * 2, // Auto-refrescar cada 2 min

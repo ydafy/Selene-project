@@ -1,27 +1,12 @@
-import { ShieldCheck, Gavel, Wallet, TrendingUp } from 'lucide-react';
+import { ShieldCheck, Gavel, Wallet, TrendingUp, AlertCircle } from 'lucide-react';
 import { useAdminStats } from '../hooks/useAdminStats';
 import { ActivityFeed } from '../components/features/verify/ActivityFeed';
-
-const StatCard = ({ title, value, icon: Icon, color, isLoading }: any) => (
-  <div className="bg-state-gray p-6 rounded-2xl border border-white/5">
-    <div className="flex justify-between items-start">
-      <div>
-        <p className="text-blue-light text-sm font-medium">{title}</p>
-        {isLoading ? (
-          <div className="h-8 w-24 bg-white/5 animate-pulse rounded mt-2" />
-        ) : (
-          <h3 className="text-3xl font-bold mt-2">{value}</h3>
-        )}
-      </div>
-      <div className={`p-3 rounded-xl ${color}`}>
-        <Icon size={24} />
-      </div>
-    </div>
-  </div>
-);
+import { StatCard } from '../components/ui/StatCard';
+import { formatCurrency } from '../lib/utils/formatCurrency';
 
 export const DashboardHome = () => {
-  const { data: stats, isLoading } = useAdminStats();
+  const { data: stats, isLoading, isError, refetch } = useAdminStats();
+
   return (
     <div className="space-y-8">
       <div>
@@ -29,33 +14,48 @@ export const DashboardHome = () => {
         <p className="text-blue-light mt-1">Datos reales de la plataforma.</p>
       </div>
 
+      {isError && (
+        <div className="flex items-center gap-3 bg-fire/10 border border-fire/20 text-fire p-4 rounded-xl">
+          <AlertCircle size={20} />
+          <p className="text-sm flex-1">
+            Error al cargar las estadísticas. Intenta de nuevo.
+          </p>
+          <button
+            onClick={() => refetch()}
+            className="text-sm font-semibold underline underline-offset-2 hover:text-platinum transition-colors"
+          >
+            Reintentar
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Pendientes de Verificación"
-          value={stats?.pendingProducts}
+          value={stats?.pendingProducts ?? 0}
           icon={ShieldCheck}
-          color="bg-lion/10 text-lion"
+          color="text-lion"
           isLoading={isLoading}
         />
         <StatCard
           title="Disputas Activas"
-          value={stats?.activeDisputes}
+          value={stats?.activeDisputes ?? 0}
           icon={Gavel}
-          color="bg-fire/10 text-fire"
+          color="text-fire"
           isLoading={isLoading}
         />
         <StatCard
           title="Por Dispersar (Vendedores)"
-          value={`$${stats?.totalToPay.toLocaleString()}`}
+          value={formatCurrency(stats?.totalToPay ?? 0)}
           icon={Wallet}
-          color="bg-forest/10 text-forest"
+          color="text-forest"
           isLoading={isLoading}
         />
         <StatCard
           title="Ventas del Mes"
-          value={stats?.monthlySalesCount}
+          value={stats?.monthlySalesCount ?? 0}
           icon={TrendingUp}
-          color="bg-blue-light/10 text-blue-light"
+          color="text-blue-light"
           isLoading={isLoading}
         />
       </div>
@@ -65,9 +65,6 @@ export const DashboardHome = () => {
           <p className="text-blue-light italic">
             [Gráfica de Actividad Próximamente]
           </p>
-        </div>
-        <div className="bg-state-gray p-6 rounded-2xl border border-white/5 h-64 flex items-center justify-center">
-          <p className="text-blue-light italic">[Últimas Acciones de Admin]</p>
         </div>
         <ActivityFeed />
       </div>

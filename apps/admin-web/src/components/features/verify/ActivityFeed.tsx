@@ -1,8 +1,22 @@
-import { CheckCircle2, XCircle, User, Clock } from 'lucide-react';
+import { CheckCircle2, XCircle, User, Clock, AlertCircle } from 'lucide-react';
 import { useAuditLogs } from '../../../hooks/useAuditLogs';
 
 export const ActivityFeed = () => {
-  const { data: logs, isLoading } = useAuditLogs();
+  const { data: logs, isLoading, isError, refetch } = useAuditLogs();
+
+  if (isError)
+    return (
+      <div className="bg-state-gray rounded-2xl border border-white/5 p-6 flex flex-col items-center justify-center gap-3 text-center">
+        <AlertCircle size={24} className="text-fire" />
+        <p className="text-sm text-blue-light">Error al cargar la actividad.</p>
+        <button
+          onClick={() => refetch()}
+          className="text-xs font-semibold text-fire underline underline-offset-2 hover:text-platinum transition-colors"
+        >
+          Reintentar
+        </button>
+      </div>
+    );
 
   if (isLoading)
     return (

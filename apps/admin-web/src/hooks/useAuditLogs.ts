@@ -9,8 +9,8 @@ export const useAuditLogs = () => {
         .from('admin_audit_logs')
         .select(
           `
-          *,
-         admin:profiles(username, avatar_url)
+          id, action_type, details, created_at, admin_id,
+          admin:profiles(username, avatar_url)
         `,
         )
         .order('created_at', { ascending: false })
