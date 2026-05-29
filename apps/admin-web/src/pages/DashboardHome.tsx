@@ -39,6 +39,8 @@ export const DashboardHome = () => {
         </div>
       )}
 
+      {!isError && (
+        <>
       {/* ── Operational KPIs ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
@@ -48,6 +50,8 @@ export const DashboardHome = () => {
           color="text-lion"
           isLoading={isLoading}
           trend={stats?.trends.pendingProducts ?? null}
+          href="/verify"
+          goal={{ value: 0, label: 'ideal: 0', lowerIsBetter: true }}
         />
         <StatCard
           title="Disputas Activas"
@@ -56,6 +60,8 @@ export const DashboardHome = () => {
           color="text-fire"
           isLoading={isLoading}
           trend={stats?.trends.activeDisputes ?? null}
+          href="/disputes"
+          goal={{ value: 0, label: 'ideal: 0', lowerIsBetter: true }}
         />
         <StatCard
           title="Por Dispersar (Vendedores)"
@@ -63,6 +69,7 @@ export const DashboardHome = () => {
           icon={Wallet}
           color="text-forest"
           isLoading={isLoading}
+          href="/payments"
         />
         <StatCard
           title="Ventas del Mes"
@@ -71,6 +78,7 @@ export const DashboardHome = () => {
           color="text-blue-light"
           isLoading={isLoading}
           trend={stats?.trends.monthlySales ?? null}
+          goal={{ value: stats?.trends.monthlySales.percentage ?? 0, label: 'vs mes ant.' }}
         />
       </div>
 
@@ -101,8 +109,11 @@ export const DashboardHome = () => {
           />
         </div>
       </div>
+        </>
+      )}
 
       {/* ── Activity & Chart ── */}
+      {!isError && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-state-gray p-6 rounded-2xl border border-white/5">
           <h3 className="text-sm font-bold text-platinum uppercase tracking-widest flex items-center gap-2 mb-4">
@@ -137,6 +148,7 @@ export const DashboardHome = () => {
         </div>
         <ActivityFeed />
       </div>
+      )}
     </div>
   );
 };

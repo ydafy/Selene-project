@@ -102,7 +102,10 @@ export const UsersPage = () => {
         {/* SELECTOR DE ORDEN */}
         <select
           value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
+          onChange={(e) => {
+            setSortBy(e.target.value);
+            setPage(0);
+          }}
           className="bg-state-gray border border-white/10 text-platinum text-xs font-bold rounded-xl px-4 py-2 outline-none focus:border-lion transition-all focus:ring-2 focus:ring-lion/50"
         >
           <option value="newest">Más recientes</option>

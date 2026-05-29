@@ -96,6 +96,20 @@ export const usePendingProducts = () => {
       const { user } = useAuthStore.getState();
       const isRejection = verdict === 'REJECT';
 
+      //  Verificar que el lock sigue siendo nuestro
+      const { data: lockCheck, error: lockError } = await supabase
+        .rpc('fn_lock_product', {
+          p_product_id: id,
+          p_admin_id: user?.id,
+        });
+
+      if (lockError) throw lockError;
+
+      const lockResult = lockCheck?.[0];
+      if (!lockResult?.success) {
+        throw new Error('Tu sesión de revisión expiró. Selecciona el producto nuevamente.');
+      }
+
       //  Actualizar Producto
       const { error: prodError } = await supabase
         .from('products')
@@ -125,7 +139,8 @@ export const usePendingProducts = () => {
         });
 
       if (logError) {
-        // Audit log insertion was non-critical; product already updated
+        console.error('Error registrando auditoría:', logError);
+        toast.warning('Audit log no registrado. Contacta a soporte.');
       }
 
       //  Crear Notificación
@@ -161,7 +176,8 @@ export const usePendingProducts = () => {
         });
 
       if (notifError) {
-        // Notification delivery non-critical; product already updated
+        console.error('Error notificando al vendedor:', notifError);
+        toast.warning('Notificación no enviada al vendedor.');
       }
     },
     onSuccess: () => {

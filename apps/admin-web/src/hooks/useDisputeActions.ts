@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/useAuthStore';
@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 // --- HOOK 1: GESTIÓN DE BLOQUEO (SOFT LOCK) ---
 export const useDisputeLock = () => {
   const { user } = useAuthStore();
+  const adminIdRef = useRef<string | null>(null);
   const [lockStatus, setLockStatus] = useState({
     isLockedByOther: false,
     lockerName: null as string | null,
@@ -26,15 +27,16 @@ export const useDisputeLock = () => {
         const result = data[0];
 
         if (result.success) {
+          adminIdRef.current = user.id;
           setLockStatus({ isLockedByOther: false, lockerName: null });
-          return true; // <--- VITAL: Informar éxito
+          return true;
         } else {
           setLockStatus({
             isLockedByOther: true,
-            lockerName: result.current_locker_name,
+            lockerName: result.locker_name,
           });
-          toast.warning(`Caso en revisión por ${result.current_locker_name}`);
-          return false; // <--- VITAL: Informar bloqueo
+          toast.warning(`Caso en revisión por ${result.locker_name}`);
+          return false;
         }
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Unknown error';
@@ -49,19 +51,20 @@ export const useDisputeLock = () => {
 
   const releaseLock = useCallback(
     async (disputeId: string) => {
-      if (!user?.id || !disputeId) return;
+      if (!adminIdRef.current || !disputeId) return;
       try {
         await supabase.rpc('fn_unlock_dispute', {
           p_dispute_id: disputeId,
-          p_admin_id: user.id,
+          p_admin_id: adminIdRef.current,
         });
         setLockStatus({ isLockedByOther: false, lockerName: null });
+        adminIdRef.current = null;
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Unknown error';
         console.error('Error unlock:', message);
       }
     },
-    [user?.id],
+    [],
   );
 
   return { acquireLock, releaseLock, lockStatus, isLocking };

@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface Props {
   title: string;
@@ -17,6 +18,15 @@ interface Props {
     current: number;
     max: number;
     label?: string;
+  } | null;
+  /** Click navigates to this route */
+  href?: string;
+  /** Trend goal comparison (e.g. "▲12% goal: 0%") */
+  goal?: {
+    value: number;
+    label: string;
+    /** When true, a lower trend value is better (e.g. disputes, pending) */
+    lowerIsBetter?: boolean;
   } | null;
   /** 7-point sparkline via inline SVG */
   sparklineData?: number[];
@@ -48,6 +58,32 @@ function TrendBadge({ trend }: { trend: NonNullable<Props['trend']> }) {
   return (
     <span className={`text-xs font-semibold ${color}`}>
       {arrow} {trend.percentage}%
+    </span>
+  );
+}
+
+function GoalBadge({
+  trend,
+  goal,
+}: {
+  trend: NonNullable<Props['trend']>;
+  goal: NonNullable<Props['goal']>;
+}) {
+  // Para métricas donde lowerIsBetter (disputas, pendientes):
+  //   meeting goal = trend.percentage <= goal.value
+  //   otherwise:   meeting goal = trend.percentage >= goal.value
+  const isMeeting = goal.lowerIsBetter
+    ? trend.percentage <= goal.value
+    : trend.percentage >= goal.value;
+
+  const color = isMeeting ? 'text-forest' : 'text-fire';
+
+  // No mostrar comparación si direction es 'neutral'
+  if (trend.direction === 'neutral') return null;
+
+  return (
+    <span className={`text-[10px] ml-1.5 font-medium ${color}`}>
+      {isMeeting ? '✓' : '✗'} goal: {goal.value}%
     </span>
   );
 }
@@ -115,9 +151,22 @@ export const StatCard = ({
   children,
   trend,
   target,
+  href,
+  goal,
   sparklineData,
-}: Props) => (
-  <div className="bg-state-gray p-5 rounded-2xl border border-white/5 flex flex-col justify-between h-full transition-all duration-200 hover:border-lion/30 hover:shadow-[0_0_20px_rgba(189,159,101,0.05)]">
+}: Props) => {
+  const navigate = useNavigate();
+
+  return (
+  <div
+    className={`bg-state-gray p-5 rounded-2xl border border-white/5 flex flex-col justify-between h-full transition-all duration-200 hover:border-lion/30 hover:shadow-[0_0_20px_rgba(189,159,101,0.05)] ${
+      href ? 'cursor-pointer' : ''
+    }`}
+    onClick={() => href && navigate(href)}
+    role={href ? 'button' : undefined}
+    tabIndex={href ? 0 : undefined}
+    onKeyDown={href ? (e) => { if (e.key === 'Enter' || e.key === ' ') navigate(href); } : undefined}
+  >
     <div className="flex justify-between items-start">
       <div className="min-w-0 flex-1">
         <p className="text-[10px] text-blue-light font-bold uppercase tracking-widest">
@@ -134,10 +183,11 @@ export const StatCard = ({
       </div>
     </div>
 
-    {/* Trend indicator */}
+    {/* Trend indicator + goal comparison */}
     {!isLoading && trend && (
-      <div className="mt-1">
+      <div className="mt-1 flex items-center">
         <TrendBadge trend={trend} />
+        {goal && <GoalBadge trend={trend} goal={goal} />}
       </div>
     )}
 
@@ -154,3 +204,4 @@ export const StatCard = ({
     {children && <div className="mt-3">{children}</div>}
   </div>
 );
+};

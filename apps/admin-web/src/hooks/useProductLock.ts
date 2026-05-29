@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/useAuthStore';
 import { toast } from 'sonner';
@@ -11,6 +11,7 @@ interface LockStatus {
 
 export const useProductLock = () => {
   const { user } = useAuthStore();
+  const adminIdRef = useRef<string | null>(null);
   const [lockStatus, setLockStatus] = useState<LockStatus>({
     isLockedByOther: false,
     lockerName: null,
@@ -42,6 +43,7 @@ export const useProductLock = () => {
         const result = data[0];
 
         if (result.success) {
+          adminIdRef.current = user.id;
           setLockStatus({
             isLockedByOther: false,
             lockerName: null,
@@ -51,11 +53,11 @@ export const useProductLock = () => {
         } else {
           setLockStatus({
             isLockedByOther: true,
-            lockerName: result.current_locker_name,
-            lockedSince: result.locked_since,
+            lockerName: result.locker_name,
+            lockedSince: result.locked_at,
           });
           toast.warning(
-            `Acceso denegado: Producto en revisión por ${result.current_locker_name}`,
+            `Acceso denegado: Producto en revisión por ${result.locker_name}`,
           );
           return false;
         }
@@ -72,11 +74,11 @@ export const useProductLock = () => {
 
   const releaseLock = useCallback(
     async (productId: string) => {
-      if (!user?.id || !productId) return;
+      if (!adminIdRef.current || !productId) return;
       try {
         await supabase.rpc('fn_unlock_product', {
           p_product_id: productId,
-          p_admin_id: user.id,
+          p_admin_id: adminIdRef.current,
         });
 
         setLockStatus({
@@ -84,11 +86,12 @@ export const useProductLock = () => {
           lockerName: null,
           lockedSince: null,
         });
+        adminIdRef.current = null;
       } catch {
         // Lock release failed silently — lock will expire after 10 min
       }
     },
-    [user?.id],
+    [],
   );
 
   return {

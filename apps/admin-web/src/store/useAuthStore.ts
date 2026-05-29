@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { User } from '@supabase/supabase-js';
 
-interface AdminProfile {
+export interface AdminProfile {
   id: string;
   username: string | null;
   avatar_url: string | null;

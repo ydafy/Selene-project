@@ -1982,18 +1982,18 @@ export type Database = {
         }[]
       }
       fn_lock_dispute: {
-        Args: { p_dispute_id: string; p_admin_id: string }
+        Args: { p_dispute_id: string }
         Returns: {
-          current_locker_name: string
-          locked_since: string
+          locked_at: string
+          locker_name: string
           success: boolean
         }[]
       }
       fn_lock_product: {
-        Args: { p_product_id: string; p_admin_id: string }
+        Args: { p_product_id: string }
         Returns: {
-          current_locker_name: string
-          locked_since: string
+          locked_at: string
+          locker_name: string
           success: boolean
         }[]
       }
