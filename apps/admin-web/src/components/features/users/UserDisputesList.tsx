@@ -1,16 +1,33 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Gavel, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { StatusBadge } from '../../ui/StatusBadge';
+
+type DisputeStatus =
+  | 'open'
+  | 'under_review'
+  | 'waiting_return'
+  | 'resolved'
+  | 'rejected'
+  | 'return_shipped'
+  | 'return_delivered';
+
+interface DisputeWithOutcome {
+  id: string;
+  resolution_type: string | null;
+  seller_id: string;
+  reason: string;
+  status: DisputeStatus | null;
+  created_at: string | null;
+}
 
 export const UserDisputesList = ({
   disputes,
   currentUserId,
 }: {
-  disputes: any[];
+  disputes: DisputeWithOutcome[];
   currentUserId: string;
 }) => {
   // Lógica para determinar el resultado relativo al usuario que estamos viendo
-  const getUserOutcome = (d: any) => {
+  const getUserOutcome = (d: DisputeWithOutcome) => {
     if (!d.resolution_type)
       return {
         label: 'En Revisión',
@@ -54,7 +71,7 @@ export const UserDisputesList = ({
 
       <div className="p-6 space-y-4 max-h-[500px] overflow-y-auto">
         {disputes.length > 0 ? (
-          disputes.map((d) => {
+          disputes.map((d: DisputeWithOutcome) => {
             const outcome = getUserOutcome(d);
             const OutcomeIcon = outcome.icon;
             const isSeller = d.seller_id === currentUserId;
@@ -78,7 +95,7 @@ export const UserDisputesList = ({
                       ID: {d.id.slice(0, 18)}...
                     </p>
                   </div>
-                  <StatusBadge status={d.status} />
+                  <StatusBadge status={d.status ?? 'open'} />
                 </div>
 
                 {/* RESULTADO DEL CASO PARA ESTE USUARIO */}
@@ -91,9 +108,9 @@ export const UserDisputesList = ({
                   </div>
 
                   <span className="text-[10px] text-blue-light/40 font-medium">
-                    {new Date(d.created_at).toLocaleDateString(undefined, {
+                    {d.created_at ? new Date(d.created_at).toLocaleDateString(undefined, {
                       dateStyle: 'medium',
-                    })}
+                    }) : ''}
                   </span>
                 </div>
               </div>

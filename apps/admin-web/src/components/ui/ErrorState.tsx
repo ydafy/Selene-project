@@ -24,7 +24,7 @@ export const ErrorState = ({
 
       <button
         onClick={onRetry}
-        className="flex items-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-platinum font-semibold transition-all active:scale-95 group"
+        className="flex items-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-platinum font-semibold transition-all active:scale-95 group outline-none focus:ring-2 focus:ring-lion/50 cursor-pointer"
       >
         <RefreshCcw
           size={18}

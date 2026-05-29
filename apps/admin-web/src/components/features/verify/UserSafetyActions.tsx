@@ -4,10 +4,14 @@ import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { toast } from 'sonner';
 import { InputModal } from '../../ui/InputModal';
+import type { AccountStatus } from '@selene/types';
 
 interface Props {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  user: any;
+  user: {
+    id: string;
+    status: AccountStatus;
+    is_verified_seller: boolean | null;
+  };
   onUpdate: () => void;
 }
 
@@ -70,7 +74,7 @@ export const UserSafetyActions = ({ user, onUpdate }: Props) => {
       <button
         onClick={toggleVerified}
         disabled={loading}
-        className={`p-2 rounded-lg transition-all ${user.is_verified_seller ? 'bg-blue-500/20 text-blue-400' : 'bg-white/5 text-blue-light'}`}
+        className={`p-2 rounded-lg transition-all outline-none focus:ring-2 focus:ring-lion/50 ${user.is_verified_seller ? 'bg-blue-500/20 text-blue-400' : 'bg-white/5 text-blue-light'}`}
       >
         <ShieldCheck size={18} />
       </button>
@@ -82,7 +86,7 @@ export const UserSafetyActions = ({ user, onUpdate }: Props) => {
           onClick={() => handleOpenModal('suspended')} // <--- Ahora sí abre el modal correcto
           disabled={loading}
           title="Suspender Usuario"
-          className="p-2 rounded-lg bg-white/5 text-blue-light hover:bg-fire/20 hover:text-fire transition-all"
+          className="p-2 rounded-lg bg-white/5 text-blue-light hover:bg-fire/20 hover:text-fire transition-all outline-none focus:ring-2 focus:ring-lion/50"
         >
           <UserX size={18} />
         </button>
@@ -92,7 +96,7 @@ export const UserSafetyActions = ({ user, onUpdate }: Props) => {
           onClick={() => handleOpenModal('active')} // <--- VITAL: Ahora pasa por el modal para definir el status
           disabled={loading}
           title="Reactivar Usuario e Inventario"
-          className="p-2 rounded-lg bg-forest/20 text-forest hover:bg-forest/30 transition-all"
+          className="p-2 rounded-lg bg-forest/20 text-forest hover:bg-forest/30 transition-all outline-none focus:ring-2 focus:ring-lion/50"
         >
           <RefreshCcw size={18} />
         </button>
@@ -103,7 +107,7 @@ export const UserSafetyActions = ({ user, onUpdate }: Props) => {
         onClick={() => handleOpenModal('banned')}
         disabled={loading || user.status === 'banned'}
         title="Banear Permanentemente"
-        className={`p-2 rounded-lg transition-all ${user.status === 'banned' ? 'bg-fire text-night opacity-50' : 'bg-white/5 text-blue-light hover:bg-fire hover:text-night'}`}
+        className={`p-2 rounded-lg transition-all outline-none focus:ring-2 focus:ring-lion/50 ${user.status === 'banned' ? 'bg-fire text-night opacity-50' : 'bg-white/5 text-blue-light hover:bg-fire hover:text-night'}`}
       >
         <Ban size={18} />
       </button>

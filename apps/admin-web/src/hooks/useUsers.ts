@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import type { AccountStatus } from '@selene/types';
 
 export const useUsers = (
   search: string,
@@ -40,7 +41,7 @@ export const useUsers = (
         if (status === 'vip') {
           query = query.eq('is_verified_seller', true).neq('status', 'banned');
         } else {
-          query = query.eq('status', status);
+          query = query.eq('status', status as NonNullable<AccountStatus>);
         }
       }
 

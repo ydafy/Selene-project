@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -11,12 +11,10 @@ import {
   History,
   ShieldCheck,
   Zap,
-  Wallet,
   Star,
   TrendingUp,
   Gavel,
   Clock,
-  MapPin,
 } from 'lucide-react';
 import { useUserDetail } from '../hooks/useUserDetail';
 import { UserAvatar } from '../components/ui/UserAvatar';
@@ -24,6 +22,7 @@ import { UserSafetyActions } from '../components/features/verify/UserSafetyActio
 import { getRank } from '../lib/utils/ranks';
 import { ErrorState } from '../components/ui/ErrorState';
 import { StatCard } from '../components/ui/StatCard';
+import { Skeleton } from '../components/ui/Skeleton';
 import { InventoryTable } from '../components/features/users/InventoryTable';
 import { PurchasesTable } from '../components/features/users/PurchasesTable';
 import { UserReviewsList } from '../components/features/users/UserReviewsList';
@@ -45,7 +44,65 @@ export const UserDetailPage = () => {
 
   if (isLoading)
     return (
-      <div className="p-8 animate-pulse text-lion">Cargando expediente...</div>
+      <div className="space-y-6">
+        {/* Back button skeleton */}
+        <Skeleton className="w-32 h-5" />
+
+        {/* Header card skeleton */}
+        <div className="bg-state-gray border border-white/5 rounded-3xl overflow-hidden">
+          <div className="h-2 bg-white/5" />
+          <div className="p-8 flex flex-col lg:flex-row gap-8">
+            <div className="flex items-center gap-6">
+              <Skeleton variant="circular" width={80} height={80} />
+              <div className="space-y-3">
+                <Skeleton className="w-48 h-7" />
+                <Skeleton className="w-64 h-4" />
+                <Skeleton className="w-56 h-4" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs skeleton */}
+        <div className="flex gap-4 border-b border-white/5">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="w-28 h-10" />
+          ))}
+        </div>
+
+        {/* Stat cards skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="bg-state-gray rounded-2xl border border-white/5 p-5"
+            >
+              <Skeleton className="w-20 h-3 mb-2" />
+              <Skeleton className="w-16 h-8" />
+            </div>
+          ))}
+        </div>
+
+        {/* Content panels skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="bg-state-gray rounded-2xl border border-white/5 p-6">
+            <Skeleton className="w-32 h-5 mb-4" />
+            <div className="space-y-3">
+              <Skeleton className="h-4" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+            </div>
+          </div>
+          <div className="bg-state-gray rounded-2xl border border-white/5 p-6">
+            <Skeleton className="w-32 h-5 mb-4" />
+            <div className="space-y-3">
+              <Skeleton className="h-4" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+            </div>
+          </div>
+        </div>
+      </div>
     );
   if (isError) return <ErrorState onRetry={() => refetch()} />;
   if (!data?.profile)
@@ -57,22 +114,19 @@ export const UserDetailPage = () => {
     addresses,
     metrics,
     disputes,
-    products,
-    purchasedItems,
     internalNotes,
     auditLogs,
-    reviews,
-    avgRating,
     reports,
-    reportsCount,
   } = data;
 
+  const processedCount = profile.processed_count ?? 0;
+  const verifiedCount = profile.verified_count ?? 0;
   const displayRatio =
-    profile.processed_count > 0
-      ? Math.round((profile.verified_count / profile.processed_count) * 100)
+    processedCount > 0
+      ? Math.round((verifiedCount / processedCount) * 100)
       : 0;
 
-  const rank = getRank(profile.sold_count, displayRatio);
+  const rank = getRank(profile.sold_count ?? 0, displayRatio);
 
   return (
     <div className="space-y-6">
@@ -100,8 +154,8 @@ export const UserDetailPage = () => {
           <div className="flex items-center gap-6">
             <div className="relative">
               <UserAvatar
-                path={profile.avatar_url}
-                fallback={profile.username}
+                path={profile.avatar_url ?? undefined}
+                fallback={profile.username ?? ''}
                 size="md"
               />
               {profile.is_verified_seller && (
@@ -141,7 +195,7 @@ export const UserDetailPage = () => {
                   <Calendar size={14} className="text-lion" />
                   <span>
                     Miembro desde{' '}
-                    {new Date(profile.created_at).toLocaleDateString()}
+                    {profile.created_at ? new Date(profile.created_at).toLocaleDateString() : 'Desconocido'}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-blue-light text-sm">
@@ -163,7 +217,14 @@ export const UserDetailPage = () => {
 
           {/* ACCIONES RÁPIDAS */}
           <div className="flex items-center gap-3 bg-night/40 p-3 rounded-2xl border border-white/5">
-            <UserSafetyActions user={profile} onUpdate={() => refetch()} />
+            <UserSafetyActions
+              user={{
+                id: profile.id!,
+                status: profile.status ?? 'active',
+                is_verified_seller: profile.is_verified_seller,
+              }}
+              onUpdate={() => refetch()}
+            />
           </div>
         </div>
       </div>
@@ -323,7 +384,7 @@ export const UserDetailPage = () => {
               {/* LISTA DE PRODUCTOS (Lo que ya tenías) */}
               <InventoryTable
                 products={data.products}
-                total={profile.total_listings}
+                total={profile.total_listings ?? 0}
               />
               <PurchasesTable items={data.purchasedItems} />
             </div>
@@ -341,8 +402,8 @@ export const UserDetailPage = () => {
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
             {/* RESUMEN FINANCIERO */}
             <UserWalletCard
-              available={profile.available_balance}
-              pending={profile.pending_balance}
+              available={profile.available_balance ?? 0}
+              pending={profile.pending_balance ?? 0}
             />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">

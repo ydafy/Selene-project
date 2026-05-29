@@ -1,11 +1,11 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useUsers } from '../hooks/useUsers';
 import { useDebounce } from '../hooks/useDebounce';
 import { UserCard } from '../components/features/users/UserCard';
-
+import { Skeleton } from '../components/ui/Skeleton';
+import type { AdminUser } from '@selene/types';
 import { ErrorState } from '../components/ui/ErrorState';
 
 export const UsersPage = () => {
@@ -88,7 +88,7 @@ export const UsersPage = () => {
                 setStatusFilter(tab.id);
                 setPage(0);
               }}
-              className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+              className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap outline-none focus:ring-2 focus:ring-lion/50 cursor-pointer ${
                 statusFilter === tab.id
                   ? 'bg-lion text-night shadow-lg'
                   : 'text-blue-light hover:text-platinum'
@@ -103,7 +103,7 @@ export const UsersPage = () => {
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value)}
-          className="bg-state-gray border border-white/10 text-platinum text-xs font-bold rounded-xl px-4 py-2 outline-none focus:border-lion transition-all"
+          className="bg-state-gray border border-white/10 text-platinum text-xs font-bold rounded-xl px-4 py-2 outline-none focus:border-lion transition-all focus:ring-2 focus:ring-lion/50"
         >
           <option value="newest">Más recientes</option>
           <option value="oldest">Más antiguos</option>
@@ -114,21 +114,41 @@ export const UsersPage = () => {
 
       {/* GRID DE CARDS (MVP++) */}
       <div className="relative min-h-[400px]">
-        {isLoading && (
-          <div className="absolute inset-0 bg-night/20 backdrop-blur-sm z-10 flex items-center justify-center rounded-2xl">
-            <div className="w-10 h-10 border-2 border-lion border-t-transparent animate-spin rounded-full" />
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {Array.from({ length: 8 }, (_, i) => (
+              <div
+                key={`skeleton-${i}`}
+                className="bg-state-gray rounded-3xl border border-white/5 p-6"
+              >
+                <div className="flex flex-col items-center">
+                  <Skeleton variant="circular" width={64} height={64} className="mb-4" />
+                  <Skeleton className="w-28 h-5 mb-2" />
+                  <Skeleton className="w-20 h-3 mb-6" />
+
+                  <div className="w-full space-y-2">
+                    <Skeleton className="h-10 rounded-xl" />
+                    <Skeleton className="h-10 rounded-xl" />
+                  </div>
+
+                  <div className="w-full mt-6 pt-4 border-t border-white/5">
+                    <Skeleton className="w-20 h-5" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {data?.users?.map((u) => (
+              <UserCard
+                key={(u as AdminUser).id}
+                user={u as AdminUser}
+                onClick={() => navigate(`/users/${(u as AdminUser).id}`)}
+              />
+            ))}
           </div>
         )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {data?.users?.map((user: any) => (
-            <UserCard
-              key={user.id}
-              user={user}
-              onClick={() => navigate(`/users/${user.id}`)}
-            />
-          ))}
-        </div>
 
         {/* ESTADOS VACÍOS */}
         {data?.users?.length === 0 && !isLoading && (
@@ -151,14 +171,14 @@ export const UsersPage = () => {
           <button
             disabled={page === 0 || isLoading}
             onClick={() => setPage((p) => p - 1)}
-            className="flex items-center gap-2 px-4 py-2 bg-state-gray rounded-xl disabled:opacity-30 hover:bg-white/10 transition-all border border-white/5 text-sm"
+            className="flex items-center gap-2 px-4 py-2 bg-state-gray rounded-xl disabled:opacity-30 hover:bg-white/10 transition-all border border-white/5 text-sm outline-none focus:ring-2 focus:ring-lion/50 cursor-pointer"
           >
             <ChevronLeft size={16} /> Anterior
           </button>
           <button
             disabled={page >= totalPages - 1 || isLoading}
             onClick={() => setPage((p) => p + 1)}
-            className="flex items-center gap-2 px-4 py-2 bg-state-gray rounded-xl disabled:opacity-30 hover:bg-white/10 transition-all border border-white/5 text-sm"
+            className="flex items-center gap-2 px-4 py-2 bg-state-gray rounded-xl disabled:opacity-30 hover:bg-white/10 transition-all border border-white/5 text-sm outline-none focus:ring-2 focus:ring-lion/50 cursor-pointer"
           >
             Siguiente <ChevronRight size={16} />
           </button>

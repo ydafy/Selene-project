@@ -1,8 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { MapPin, Phone } from 'lucide-react';
+import type { Address } from '@selene/types';
 
 interface Props {
-  addresses: any[];
+  addresses: Address[];
 }
 
 export const UserAddressesList = ({ addresses }: Props) => {
@@ -14,7 +14,7 @@ export const UserAddressesList = ({ addresses }: Props) => {
 
       {addresses.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {addresses.map((addr: any) => (
+          {addresses.map((addr: Address) => (
             <div
               key={addr.id}
               className={`p-5 rounded-2xl border transition-all ${

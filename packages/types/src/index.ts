@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { Database } from './database.types';
+import type { Database, Json } from './database.types';
 
 // --- 1. UTILIDADES CORE ---
 // Extrae el tipo de una fila de la tabla X
@@ -124,6 +124,69 @@ export interface EnrichedOrder extends Omit<
     showSellerDeliveredBanner: boolean;
     canReview: boolean;
   };
+}
+
+// --- 6. INTERFACES ENRIQUECIDAS PARA ADMIN (Phase 2) ---
+
+export interface PendingProduct extends Omit<Product, 'verification_data'> {
+  seller: Profile | null;
+  seller_stats: {
+    verified: number;
+    rejected: number;
+    sold: number;
+    ratio: number;
+  };
+  verification_data: VerificationData;
+  internal_notes: Array<{
+    content: string;
+    created_at: string;
+    admin: { username: string } | null;
+  }>;
+}
+
+export interface AdminUser {
+  id: string | null;
+  username: string | null;
+  email: string | null;
+  role: string | null;
+  status: AccountStatus | null;
+  avatar_url: string | null;
+  available_balance: number | null;
+  pending_balance: number | null;
+  sold_count: number | null;
+  verified_count: number | null;
+  processed_count: number | null;
+  total_listings: number | null;
+  phone_number: string | null;
+  last_sign_in_at: string | null;
+  created_at: string | null;
+  is_verified_seller: boolean | null;
+}
+
+export interface DisputeSummary {
+  dispute_id: string | null;
+  dispute_date: string | null;
+  order_id: string | null;
+  total_amount: number | null;
+  buyer_username: string | null;
+  seller_username: string | null;
+  dispute_description_preview: string | null;
+  dispute_status: Enums<'dispute_status'> | null;
+}
+
+export interface OrderItemWithProduct extends Tables<'order_items'> {
+  product: Pick<Product, 'name' | 'images' | 'price'>;
+  orders: Pick<Order, 'status'> | null;
+}
+
+export interface AdminAuditLog {
+  id: string;
+  action_type: string;
+  target_id: string | null;
+  admin_id: string | null;
+  details: Json | null;
+  created_at: string | null;
+  admin: { username: string | null } | null;
 }
 
 // Exportamos todo lo de database.types por si acaso

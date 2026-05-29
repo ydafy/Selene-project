@@ -1,13 +1,19 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import { MessageSquare, Clock, AlertCircle } from 'lucide-react';
+import type { AdminAuditLog } from '@selene/types';
+
+interface AdminNote {
+  id: string;
+  content: string;
+  created_at: string | null;
+  admin: { username: string | null } | null;
+}
 
 export const UserAdminHistory = ({
   logs,
   notes,
 }: {
-  logs: any[];
-  notes: any[];
+  logs: AdminAuditLog[];
+  notes: AdminNote[];
 }) => {
   // 1. Traductor de Acciones (MVP++)
   const getActionLabel = (type: string) => {
@@ -33,13 +39,13 @@ export const UserAdminHistory = ({
         </div>
         <div className="p-4 space-y-3 max-h-[300px] overflow-y-auto">
           {logs.length > 0 ? (
-            logs.map((log) => (
+            logs.map((log: AdminAuditLog) => (
               <div
                 key={log.id}
                 className="flex gap-3 text-xs p-3 bg-night/30 rounded-xl border border-white/5 transition-colors"
               >
                 <span className="text-blue-light/50 font-mono whitespace-nowrap">
-                  {new Date(log.created_at).toLocaleDateString()}
+                  {new Date(log.created_at!).toLocaleDateString()}
                 </span>
                 <p className="text-platinum">
                   <span className="font-bold text-lion">
@@ -67,7 +73,7 @@ export const UserAdminHistory = ({
         </div>
         <div className="p-6 space-y-4 max-h-[400px] overflow-y-auto">
           {notes.length > 0 ? (
-            notes.map((note) => (
+            notes.map((note: AdminNote) => (
               <div
                 key={note.id}
                 className="bg-night/30 p-4 rounded-2xl border-l-4 border-lion/40"
@@ -80,7 +86,7 @@ export const UserAdminHistory = ({
                     Admin: {note.admin?.username || 'Staff'}
                   </span>
                   <span className="text-[9px] text-blue-light">
-                    {new Date(note.created_at).toLocaleDateString()}
+                    {note.created_at ? new Date(note.created_at).toLocaleDateString() : ''}
                   </span>
                 </div>
               </div>

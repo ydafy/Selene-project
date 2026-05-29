@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Maximize2 } from 'lucide-react';
 import { getStoragePath } from '../../lib/utils/StoragePath';

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
@@ -37,8 +36,9 @@ export const useDisputeLock = () => {
           toast.warning(`Caso en revisión por ${result.current_locker_name}`);
           return false; // <--- VITAL: Informar bloqueo
         }
-      } catch (err: any) {
-        console.error('Error lock:', err.message);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        console.error('Error lock:', message);
         return false;
       } finally {
         setIsLocking(false);
@@ -56,8 +56,9 @@ export const useDisputeLock = () => {
           p_admin_id: user.id,
         });
         setLockStatus({ isLockedByOther: false, lockerName: null });
-      } catch (err: any) {
-        console.error('Error unlock:', err.message);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        console.error('Error unlock:', message);
       }
     },
     [user?.id],
@@ -98,7 +99,7 @@ export const useDisputeActions = (disputeId: string) => {
       queryClient.invalidateQueries({ queryKey: ['admin-disputes'] });
       toast.success('Veredicto emitido con éxito.');
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(`Error al resolver: ${error.message}`);
     },
   });

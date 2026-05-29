@@ -1,8 +1,19 @@
 import { Star, MessageSquare, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 
+interface Review {
+  id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  reviewer: {
+    username: string | null;
+    avatar_url?: string | null;
+  } | null;
+}
+
 interface Props {
-  reviews: any[];
+  reviews: Review[];
   avgRating: number;
 }
 
@@ -56,7 +67,7 @@ export const UserReviewsList = ({ reviews, avgRating }: Props) => {
         {reviews.length > 0 ? (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {currentReviews.map((rev: any) => (
+              {currentReviews.map((rev: Review) => (
                 <div
                   key={rev.id}
                   className="bg-night/40 p-5 rounded-2xl border border-white/5 hover:border-white/10 transition-colors"

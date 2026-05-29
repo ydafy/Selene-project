@@ -1,7 +1,16 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { AlertTriangle, User } from 'lucide-react';
 
-export const UserReportsList = ({ reports }: { reports: any[] }) => (
+interface Report {
+  id: string;
+  reason: string | null;
+  status: string;
+  created_at: string;
+  reporter: {
+    username: string | null;
+  } | null;
+}
+
+export const UserReportsList = ({ reports }: { reports: Report[] }) => (
   <div className="bg-state-gray rounded-3xl border border-white/5 overflow-hidden shadow-xl">
     <div className="p-6 border-b border-white/5 bg-fire/5 flex justify-between items-center">
       <h3 className="font-bold text-fire flex items-center gap-2 text-sm uppercase tracking-wider">
@@ -12,7 +21,7 @@ export const UserReportsList = ({ reports }: { reports: any[] }) => (
       </span>
     </div>
     <div className="p-6 space-y-4 max-h-[500px] overflow-y-auto">
-      {reports.map((r) => (
+      {reports.map((r: Report) => (
         <div
           key={r.id}
           className="bg-night/40 p-4 rounded-2xl border border-white/5"

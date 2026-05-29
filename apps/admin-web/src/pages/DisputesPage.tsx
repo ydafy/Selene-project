@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useActiveDisputes } from '../hooks/useActiveDisputes';
@@ -41,8 +40,8 @@ export const DisputesPage = () => {
         {['open', 'resolved', 'all'].map((id) => (
           <button
             key={id}
-            onClick={() => setFilter(id as any)}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all capitalize ${
+            onClick={() => setFilter(id as 'open' | 'resolved' | 'all')}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all capitalize outline-none focus:ring-2 focus:ring-lion/50 cursor-pointer ${
               filter === id
                 ? 'bg-lion text-night shadow-lg'
                 : 'text-blue-light hover:text-platinum'
@@ -65,7 +64,7 @@ export const DisputesPage = () => {
           <input
             type="text"
             placeholder="Buscar por ID, Comprador o Vendedor..."
-            className="w-full bg-state-gray border border-white/10 rounded-xl py-2 pl-10 pr-4 text-sm text-platinum focus:border-lion outline-none transition-all"
+            className="w-full bg-state-gray border border-white/10 rounded-xl py-2 pl-10 pr-4 text-sm text-platinum focus:border-lion outline-none transition-all focus:ring-2 focus:ring-lion/50"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -75,7 +74,7 @@ export const DisputesPage = () => {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className="bg-state-gray border border-white/10 text-platinum text-xs font-bold rounded-xl px-4 py-2 outline-none focus:border-lion"
+            className="bg-state-gray border border-white/10 text-platinum text-xs font-bold rounded-xl px-4 py-2 outline-none focus:border-lion focus:ring-2 focus:ring-lion/50"
           >
             <option value="newest">Más recientes</option>
             <option value="oldest">Más antiguas (Urgentes)</option>

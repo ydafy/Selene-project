@@ -1798,10 +1798,16 @@ export type Database = {
           email: string | null
           id: string | null
           is_verified_seller: boolean | null
+          last_sign_in_at: string | null
           pending_balance: number | null
+          phone_number: string | null
+          processed_count: number | null
           role: string | null
+          sold_count: number | null
           status: Database["public"]["Enums"]["account_status"] | null
+          total_listings: number | null
           username: string | null
+          verified_count: number | null
         }
         Relationships: []
       }
@@ -1976,18 +1982,18 @@ export type Database = {
         }[]
       }
       fn_lock_dispute: {
-        Args: { p_dispute_id: string }
+        Args: { p_dispute_id: string; p_admin_id: string }
         Returns: {
-          locked_at: string
-          locker_name: string
+          current_locker_name: string
+          locked_since: string
           success: boolean
         }[]
       }
       fn_lock_product: {
-        Args: { p_product_id: string }
+        Args: { p_product_id: string; p_admin_id: string }
         Returns: {
-          locked_at: string
-          locker_name: string
+          current_locker_name: string
+          locked_since: string
           success: boolean
         }[]
       }
@@ -2004,6 +2010,20 @@ export type Database = {
       }
       fn_mark_return_as_delivered: {
         Args: { p_dispute_id: string }
+        Returns: {
+          error_message: string
+          success: boolean
+        }[]
+      }
+      fn_mark_return_delivered: {
+        Args: { p_dispute_id: string }
+        Returns: {
+          error_message: string
+          success: boolean
+        }[]
+      }
+      fn_mark_shipment_delivered: {
+        Args: { p_shipment_id: string }
         Returns: {
           error_message: string
           success: boolean
@@ -2072,6 +2092,13 @@ export type Database = {
       }
       fn_seller_confirm_return_shipment: {
         Args: { p_shipment_id: string }
+        Returns: {
+          error_message: string
+          success: boolean
+        }[]
+      }
+      fn_seller_initiate_return_label: {
+        Args: { p_caller_id: string; p_dispute_id: string }
         Returns: {
           error_message: string
           success: boolean

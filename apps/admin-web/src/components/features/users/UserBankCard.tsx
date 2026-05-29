@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { CreditCard, Copy, Check, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import type { SellerBankAccount } from '@selene/types';
 
 interface Props {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  bank: any;
+  bank: SellerBankAccount | null;
 }
 
 export const UserBankCard = ({ bank }: Props) => {

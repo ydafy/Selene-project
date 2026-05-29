@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { Mail, ChevronRight, Copy, Check, Fingerprint } from 'lucide-react';
 import { UserAvatar } from '../../ui/UserAvatar';
 import { getRank } from '../../../lib/utils/ranks';
+import type { AdminUser } from '@selene/types';
 
 export const UserCard = ({
   user,
   onClick,
 }: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  user: any;
+  user: AdminUser;
   onClick: () => void;
 }) => {
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -27,7 +27,7 @@ export const UserCard = ({
   // 2. LÓGICA DE ROLES Y TIEMPO
   const isAdmin = user.role === 'admin';
   const isNew =
-    new Date().getTime() - new Date(user.created_at).getTime() <
+    new Date().getTime() - new Date(user.created_at ?? new Date().toISOString()).getTime() <
     72 * 60 * 60 * 1000;
 
   const handleCopy = (e: React.MouseEvent, text: string, field: string) => {
@@ -82,7 +82,7 @@ export const UserCard = ({
       <div className="flex flex-col items-center w-full">
         <div className="relative mb-4">
           <UserAvatar
-            path={user.avatar_url}
+            path={user.avatar_url ?? undefined}
             fallback={user.username || 'U'}
             size="md"
           />
@@ -108,7 +108,7 @@ export const UserCard = ({
         {/* SECCIÓN DE COPIADOS (Productividad) */}
         <div className="w-full mt-6 space-y-2">
           <button
-            onClick={(e) => handleCopy(e, user.email, 'email')}
+            onClick={(e) => handleCopy(e, user.email ?? '', 'email')}
             className="w-full flex items-center justify-between p-3 bg-night/40 rounded-xl border border-white/5 hover:border-white/20 transition-all group/btn"
           >
             <div className="flex items-center gap-2 overflow-hidden">
@@ -128,7 +128,7 @@ export const UserCard = ({
           </button>
 
           <button
-            onClick={(e) => handleCopy(e, user.id, 'id')}
+            onClick={(e) => handleCopy(e, user.id ?? '', 'id')}
             className="w-full flex items-center justify-between p-3 bg-night/40 rounded-xl border border-white/5 hover:border-white/20 transition-all group/btn"
           >
             <div className="flex items-center gap-2 overflow-hidden">

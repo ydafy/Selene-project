@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/useAuthStore';
 import type { User } from '@supabase/supabase-js';
+import type { AdminProfile } from '../store/useAuthStore';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -49,7 +50,7 @@ function Login() {
         );
       }
 
-      setUser(data.user as User, profile);
+      setUser(data.user as User, profile as AdminProfile);
       navigate('/');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Error inesperado al iniciar sesión.');
@@ -78,7 +79,7 @@ function Login() {
                 type="email"
                 required
                 disabled={loading}
-                className="w-full rounded-lg bg-night border border-white/10 p-3 text-platinum focus:border-lion focus:outline-none transition-colors disabled:opacity-50"
+                className="w-full rounded-lg bg-night border border-white/10 p-3 text-platinum focus:border-lion focus:outline-none focus:ring-2 focus:ring-lion/50 transition-colors disabled:opacity-50"
                 placeholder="admin@selene.mx"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -109,7 +110,7 @@ function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="group relative flex w-full justify-center rounded-lg bg-lion py-3 px-4 text-sm font-semibold text-night hover:bg-lion/90 focus:outline-none disabled:opacity-50 transition-all active:scale-95"
+            className="group relative flex w-full justify-center rounded-lg bg-lion py-3 px-4 text-sm font-semibold text-night hover:bg-lion/90 focus:outline-none focus:ring-2 focus:ring-lion/50 disabled:opacity-50 transition-all active:scale-95 cursor-pointer"
           >
             {loading ? 'Autenticando...' : 'Entrar al Sistema'}
           </button>

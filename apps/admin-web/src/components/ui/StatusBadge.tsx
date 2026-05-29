@@ -1,4 +1,4 @@
-type StatusType =
+export type StatusType =
   | 'pending'
   | 'paid'
   | 'preparing'
@@ -13,13 +13,36 @@ type StatusType =
   | 'REJECTED'
   | 'IN_REVIEW'
   | 'PENDING_VERIFICATION'
-  | 'HIDDEN';
+  | 'HIDDEN'
+  // Dispute statuses
+  | 'open'
+  | 'under_review'
+  | 'waiting_return'
+  | 'resolved'
+  | 'return_shipped'
+  | 'return_delivered'
+  // Payout statuses
+  | 'processing'
+  | 'rejected';
 
 interface Props {
-  status: StatusType | string;
+  status: StatusType;
 }
 
 export const StatusBadge = ({ status }: Props) => {
+  // Subtle pulse for statuses that indicate active/in-progress states
+  const activeStatuses = new Set([
+    'pending',
+    'open',
+    'under_review',
+    'PENDING_VERIFICATION',
+    'IN_REVIEW',
+    'waiting_return',
+    'return_shipped',
+    'processing',
+  ]);
+  const isActive = activeStatuses.has(status);
+
   // Mapeo de colores (Órdenes y Productos)
   const config: Record<string, string> = {
     // Órdenes
@@ -71,7 +94,9 @@ export const StatusBadge = ({ status }: Props) => {
 
   return (
     <span
-      className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${style} whitespace-nowrap`}
+      className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${style} whitespace-nowrap ${
+        isActive ? 'motion-safe:animate-pulse' : ''
+      }`}
     >
       {status.replace(/_/g, ' ')}
     </span>

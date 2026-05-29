@@ -21,6 +21,7 @@ import { SecureVideo } from '../components/ui/SecureVideo';
 import { ErrorState } from '../components/ui/ErrorState';
 import { ImageModal } from '../components/ui/ImageModal';
 import { InputModal } from '../components/ui/InputModal';
+import { Skeleton } from '../components/ui/Skeleton';
 
 export const DisputeDetailPage = () => {
   const { id } = useParams();
@@ -80,11 +81,49 @@ export const DisputeDetailPage = () => {
   // 3. Estados de Carga y Error
   if (isLoading) {
     return (
-      <div className="h-[calc(100vh-100px)] flex flex-col items-center justify-center gap-4">
-        <div className="w-12 h-12 border-4 border-lion/20 border-t-lion animate-spin rounded-full" />
-        <p className="text-blue-light font-medium animate-pulse">
-          Abriendo expediente judicial...
-        </p>
+      <div className="space-y-6">
+        {/* Back button skeleton */}
+        <Skeleton className="w-48 h-5" />
+
+        {/* Evidence panels skeleton */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+          <div className="bg-state-gray p-6 rounded-3xl border border-white/5">
+            <Skeleton className="w-32 h-5 mb-6" />
+            <div className="grid grid-cols-2 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton
+                  key={i}
+                  variant="rectangular"
+                  className="aspect-square rounded-2xl"
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-state-gray p-6 rounded-3xl border border-white/5">
+            <Skeleton className="w-32 h-5 mb-6" />
+            <Skeleton
+              variant="rectangular"
+              className="aspect-video rounded-2xl mb-6"
+            />
+            <div className="grid grid-cols-3 gap-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton
+                  key={i}
+                  variant="rectangular"
+                  className="aspect-square rounded-xl"
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Description panel skeleton */}
+        <div className="bg-state-gray p-8 rounded-3xl border border-white/5">
+          <Skeleton className="w-40 h-4 mb-4" />
+          <Skeleton className="h-6 w-full mb-2" />
+          <Skeleton className="h-6 w-3/4" />
+        </div>
       </div>
     );
   }
@@ -105,7 +144,7 @@ export const DisputeDetailPage = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <button
           onClick={() => navigate('/disputes')}
-          className="flex items-center gap-2 text-blue-light hover:text-platinum transition-colors group"
+          className="flex items-center gap-2 text-blue-light hover:text-platinum transition-colors group outline-none focus:ring-2 focus:ring-lion/50 rounded cursor-pointer"
         >
           <ArrowLeft
             size={18}
@@ -321,7 +360,7 @@ export const DisputeDetailPage = () => {
         )}
       </div>
       {/* BARRA DE ACCIONES FIJA (EL MARTILLO DEL JUEZ) */}
-      <div className="fixed bottom-0 left-64 right-0 bg-night/80 backdrop-blur-xl border-t border-white/10 p-6 flex justify-center gap-6 z-40 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+      <div className="fixed bottom-0 left-0 lg:left-64 right-0 bg-night/80 backdrop-blur-xl border-t border-white/10 p-6 flex justify-center gap-6 z-40 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
         {/* BOTÓN: VALIDAR COMPRADOR */}
         <button
           disabled={
@@ -333,7 +372,7 @@ export const DisputeDetailPage = () => {
             setVerdictTarget('buyer');
             setShowResolveModal(true);
           }}
-          className="px-8 py-3 rounded-xl bg-fire/10 text-fire font-bold hover:bg-fire/20 transition-all border border-fire/20 disabled:opacity-30 flex items-center gap-2"
+          className="px-8 py-3 rounded-xl bg-fire/10 text-fire font-bold hover:bg-fire/20 transition-all border border-fire/20 disabled:opacity-30 flex items-center gap-2 outline-none focus:ring-2 focus:ring-lion/50 cursor-pointer"
         >
           <XCircle size={18} /> Validar Comprador
         </button>
@@ -349,7 +388,7 @@ export const DisputeDetailPage = () => {
             setVerdictTarget('seller');
             setShowResolveModal(true);
           }}
-          className="px-8 py-3 rounded-xl bg-forest text-night font-bold hover:bg-forest/90 transition-all shadow-lg shadow-forest/20 disabled:opacity-30 flex items-center gap-2"
+          className="px-8 py-3 rounded-xl bg-forest text-night font-bold hover:bg-forest/90 transition-all shadow-lg shadow-forest/20 disabled:opacity-30 flex items-center gap-2 outline-none focus:ring-2 focus:ring-lion/50 cursor-pointer"
         >
           <CheckCircle2 size={18} /> Validar Vendedor
         </button>
