@@ -78,7 +78,7 @@ export const DashboardHome = () => {
           color="text-blue-light"
           isLoading={isLoading}
           trend={stats?.trends.monthlySales ?? null}
-          goal={{ value: stats?.trends.monthlySales.percentage ?? 0, label: 'vs mes ant.' }}
+          goal={{ value: stats?.trends.monthlySales?.percentage ?? 0, label: 'vs mes ant.', lowerIsBetter: false }}
         />
       </div>
 

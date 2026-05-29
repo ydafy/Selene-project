@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useActiveDisputes } from '../hooks/useActiveDisputes';
 import { DisputesTable } from '../components/features/disputes/DisputesTable';
 import { useDebounce } from '../hooks/useDebounce';
-import { Search, AlertCircle } from 'lucide-react';
+import { Search } from 'lucide-react';
+import { ErrorState } from '../components/ui/ErrorState';
 
 export const DisputesPage = () => {
   const [filter, setFilter] = useState<'open' | 'resolved' | 'all'>('open');
@@ -35,20 +36,7 @@ export const DisputesPage = () => {
         </div>
       </div>
 
-      {isError && (
-        <div className="flex items-center gap-3 bg-fire/10 border border-fire/20 text-fire p-4 rounded-xl">
-          <AlertCircle size={20} />
-          <p className="text-sm flex-1">
-            Error al cargar las disputas. Intenta de nuevo.
-          </p>
-          <button
-            onClick={() => refetch()}
-            className="text-sm font-semibold underline underline-offset-2 hover:text-platinum transition-colors"
-          >
-            Reintentar
-          </button>
-        </div>
-      )}
+      {isError && <ErrorState onRetry={() => refetch()} />}
 
       {/* TABS DE FILTRADO */}
       <div className="flex gap-2 p-1 bg-white/5 w-fit rounded-xl border border-white/5">
