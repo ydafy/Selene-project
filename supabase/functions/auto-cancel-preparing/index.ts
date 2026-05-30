@@ -10,7 +10,7 @@ const log = (
   console.log(
     JSON.stringify({
       timestamp: new Date().toISOString(),
-      function: 'auto-cancel-orders',
+      function: 'auto-cancel-preparing',
       level,
       msg,
       ...data,
@@ -29,18 +29,18 @@ serve(async (req) => {
   });
 
   try {
-    log('INFO', 'Iniciando proceso de auto-cancelación');
+    log('INFO', 'Iniciando proceso de auto-cancelación de preparing');
 
     // 0. Evitar ejecución concurrente — lock por 10 minutos
     const { data: lock } = await supabaseAdmin
       .from('system_settings')
-      .select('auto_cancel_orders_running')
+      .select('auto_cancel_preparing_running')
       .single();
 
-    if (lock?.auto_cancel_orders_running) {
+    if (lock?.auto_cancel_preparing_running) {
       log(
         'WARN',
-        'Otro proceso de auto-cancel-orders está corriendo, saliendo',
+        'Otro proceso de auto-cancel-preparing está corriendo, saliendo',
       );
       return new Response(JSON.stringify({ message: 'Already running' }), {
         status: 200,
@@ -49,48 +49,55 @@ serve(async (req) => {
 
     await supabaseAdmin
       .from('system_settings')
-      .update({ auto_cancel_orders_running: true })
+      .update({ auto_cancel_preparing_running: true })
       .eq('id', 1);
 
-    // 1. Obtener configuración
+    // 1. Obtener configuración — preparing usa timeout separado (72h default)
+    //    72h balancea experiencia del buyer (no esperar demasiado) con la realidad
+    //    del seller (carrier scan delays). Si se detectan cancelaciones injustas
+    //    en producción, subir a 96h desde el dashboard sin deploy.
     const { data: settings } = await supabaseAdmin
       .from('system_settings')
-      .select('order_expiration_hours')
+      .select('preparing_expiration_hours')
       .single();
 
-    const hours = settings?.order_expiration_hours || 48;
+    const hours = settings?.preparing_expiration_hours || 72;
     const expirationLimit = new Date(
       Date.now() - hours * 60 * 60 * 1000,
     ).toISOString();
 
-    // 2. Buscar shipments expirados sin tracking_number
+    // 2. Buscar shipments atascados en 'preparing' sin escaneo de paquetería
+    //    Usamos updated_at (no created_at) porque el timer empieza desde
+    //    que se generó la guía, no desde que se creó la orden.
+    //    No filtramos por tracking_number IS NULL: incluso las guías generadas
+    //    que nunca recibieron escaneo deben cancelarse por seguridad.
     const { data: expiredShipments, error: fetchError } = await supabaseAdmin
       .from('shipments')
       .select('id, order_id, seller_id')
-      .eq('status', 'paid')
-      .is('tracking_number', null)
-      .lt('created_at', expirationLimit)
+      .eq('status', 'preparing')
+      .lt('updated_at', expirationLimit)
       .limit(50);
 
     if (fetchError) throw fetchError;
     if (!expiredShipments || expiredShipments.length === 0) {
-      log('INFO', 'No hay shipments para cancelar');
+      log('INFO', 'No hay shipments en preparing para cancelar');
 
       // Liberar lock antes de salir
       await supabaseAdmin
         .from('system_settings')
-        .update({ auto_cancel_orders_running: false })
+        .update({ auto_cancel_preparing_running: false })
         .eq('id', 1);
 
       return new Response(
-        JSON.stringify({ message: 'No shipments to cancel' }),
-        {
-          status: 200,
-        },
+        JSON.stringify({ message: 'No preparing shipments to cancel' }),
+        { status: 200 },
       );
     }
 
-    log('INFO', `Procesando ${expiredShipments.length} shipments expirados`);
+    log(
+      'INFO',
+      `Procesando ${expiredShipments.length} shipments atascados en preparing`,
+    );
 
     let successCount = 0;
 
@@ -127,10 +134,10 @@ serve(async (req) => {
                 metadata: {
                   shipment_id: shipment.id,
                   order_id: shipment.order_id,
-                  type: 'auto_cancel',
+                  type: 'auto_cancel_preparing',
                 },
               },
-              { idempotencyKey: `auto_cancel_${shipment.id}` },
+              { idempotencyKey: `auto_cancel_preparing_${shipment.id}` },
             );
           } catch (stripeError: unknown) {
             if (
@@ -155,7 +162,7 @@ serve(async (req) => {
           {
             p_shipment_id: shipment.id,
             p_cancelled_by_role: 'system',
-            p_reason: `Cancelación automática: Excedió el límite de ${hours} horas para envío.`,
+            p_reason: `Cancelación automática: Envío en preparación por más de ${hours} horas sin escaneo del carrier.`,
           },
         );
 
@@ -183,7 +190,7 @@ serve(async (req) => {
           }
         } else {
           successCount++;
-          log('INFO', 'Shipment cancelado exitosamente', {
+          log('INFO', 'Shipment en preparing cancelado exitosamente', {
             shipmentId: shipment.id,
             orderId: shipment.order_id,
             refundAmountCents,
@@ -200,7 +207,7 @@ serve(async (req) => {
       }
     }
 
-    log('INFO', 'Proceso finalizado', {
+    log('INFO', 'Proceso de auto-cancelación de preparing finalizado', {
       total: expiredShipments.length,
       success: successCount,
     });
@@ -208,7 +215,7 @@ serve(async (req) => {
     // 7. Liberar lock
     await supabaseAdmin
       .from('system_settings')
-      .update({ auto_cancel_orders_running: false })
+      .update({ auto_cancel_preparing_running: false })
       .eq('id', 1);
 
     return new Response(
@@ -225,10 +232,10 @@ serve(async (req) => {
     // Liberar lock en caso de error crítico
     await supabaseAdmin
       .from('system_settings')
-      .update({ auto_cancel_orders_running: false })
+      .update({ auto_cancel_preparing_running: false })
       .eq('id', 1);
 
-    log('ERROR', 'Fallo crítico en auto-cancel-orders', {
+    log('ERROR', 'Fallo crítico en auto-cancel-preparing', {
       error: error.message,
     });
     return new Response(JSON.stringify({ error: error.message }), {

@@ -13,7 +13,8 @@ export const useDisputeDetail = (id: string) => {
           buyer:profiles!buyer_id (username, avatar_url, id),
           seller:profiles!seller_id (username, avatar_url, id),
           resolved_admin:profiles!resolved_by (username),
-          order:orders!order_id (*)
+          order:orders!order_id (*, shipping_address),
+          shipment:shipments!shipment_id (id, shipping_evidence, origin_address, tracking_number)
         `,
         )
         .eq('id', id)

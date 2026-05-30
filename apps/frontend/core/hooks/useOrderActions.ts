@@ -6,6 +6,7 @@ import { Address } from '@selene/types';
 interface GenerateLabelParams {
   originAddress: Address;
   shippingEvidence: { images: string[] };
+  shipmentId?: string; // shipment-level label generation
 }
 
 export const useOrderActions = (orderId: string) => {
@@ -16,7 +17,9 @@ export const useOrderActions = (orderId: string) => {
         'generate-shipping-label',
         {
           body: {
-            orderId,
+            ...(params.shipmentId
+              ? { shipmentId: params.shipmentId }
+              : { orderId }),
             originAddress: params.originAddress,
             shippingEvidence: params.shippingEvidence,
           },
@@ -37,12 +40,26 @@ export const useOrderActions = (orderId: string) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['order', orderId] });
       queryClient.invalidateQueries({ queryKey: ['my-sales'] });
+      queryClient.invalidateQueries({ queryKey: ['shipments', orderId] });
     },
   });
 
   // 2. Confirmar Entrega (Comprador)
   const confirmDelivery = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (params?: { shipmentId?: string }) => {
+      if (params?.shipmentId) {
+        // Shipment-level confirm delivery
+        const { data, error } = await supabase.rpc(
+          'fn_confirm_shipment_delivery',
+          {
+            p_shipment_id: params.shipmentId,
+          },
+        );
+        if (error) throw error;
+        if (data && !data[0]?.success) throw new Error(data[0]?.error_message);
+        return data;
+      }
+      // Fallback: order-level (backward compat)
       const { data, error } = await supabase.rpc('fn_confirm_delivery', {
         p_order_id: orderId,
       });
@@ -53,6 +70,7 @@ export const useOrderActions = (orderId: string) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['order', orderId] });
       queryClient.invalidateQueries({ queryKey: ['my-purchases'] });
+      queryClient.invalidateQueries({ queryKey: ['shipments', orderId] });
     },
   });
 
@@ -160,22 +178,9 @@ export const useOrderActions = (orderId: string) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['order', orderId] });
-      // Aquí podrías disparar un Toast de éxito
+      queryClient.invalidateQueries({ queryKey: ['my-sales'] });
     },
   });
-  const confirmReturnReceipt = useMutation({
-    mutationFn: async (params: { disputeId: string }) => {
-      const { data, error } = await supabase.rpc('fn_confirm_return_receipt', {
-        p_dispute_id: params.disputeId,
-      });
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['order', orderId] });
-    },
-  });
-
   const resolveDisputeRefund = useMutation({
     mutationFn: async (params: { orderId: string; disputeId: string }) => {
       const { data, error } = await supabase.functions.invoke(
@@ -241,10 +246,6 @@ export const useOrderActions = (orderId: string) => {
     submitReturnEvidence: {
       execute: submitReturnEvidence.mutateAsync,
       isLoading: submitReturnEvidence.isPending,
-    },
-    confirmReturnReceipt: {
-      execute: confirmReturnReceipt.mutateAsync,
-      isLoading: confirmReturnReceipt.isPending,
     },
     resolveDisputeRefund: {
       execute: resolveDisputeRefund.mutateAsync,

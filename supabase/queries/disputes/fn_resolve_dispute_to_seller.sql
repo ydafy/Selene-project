@@ -4,7 +4,8 @@ DECLARE
     v_order_id UUID;
     v_seller_id UUID;
     v_buyer_id UUID;
-    v_status public.dispute_status; -- Ajustar si tu enum se llama diferente
+    v_shipment_id UUID;
+    v_status public.dispute_status;
     v_total_payout NUMERIC;
     v_new_balance NUMERIC;
     v_wallet_id UUID;
@@ -17,13 +18,13 @@ BEGIN
     END IF;
 
     -- B. VALIDACIÓN DE ROL: Solo Admins
-    IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = v_auth_user_id AND role = 'admin') THEN
+    IF NOT EXISTS (SELECT 1 FROM public.profiles_private WHERE id = v_auth_user_id AND role = 'admin') THEN
         RETURN QUERY SELECT false, 'UNAUTHORIZED_ADMIN_ONLY'::TEXT; RETURN;
     END IF;
 
     -- C. BLOQUEO Y ESTADO: Bloqueamos la fila
-    SELECT order_id, seller_id, buyer_id, status
-    INTO v_order_id, v_seller_id, v_buyer_id, v_status
+    SELECT order_id, seller_id, buyer_id, status, shipment_id
+    INTO v_order_id, v_seller_id, v_buyer_id, v_status, v_shipment_id
     FROM public.disputes
     WHERE id = p_dispute_id
     FOR UPDATE;
@@ -37,11 +38,18 @@ BEGIN
         RETURN QUERY SELECT false, 'INVALID_DISPUTE_STATUS'::TEXT; RETURN;
     END IF;
 
-    -- D. LÓGICA FINANCIERA: Liberar el dinero al vendedor
-    -- Calculamos el total a pagar según los items de esta orden para este vendedor
-    SELECT SUM(net_payout) INTO v_total_payout
-    FROM public.order_items
-    WHERE order_id = v_order_id AND seller_id = v_seller_id;
+    -- D. LÓGICA FINANCIERA: Liberar el dinero al vendedor de forma aislada
+    -- FIX Double Payout: si hay shipment_id, sumamos solo los items de ESE shipment
+    IF v_shipment_id IS NOT NULL THEN
+        SELECT COALESCE(SUM(net_payout), 0) INTO v_total_payout
+        FROM public.order_items
+        WHERE shipment_id = v_shipment_id;
+    ELSE
+        -- Fallback pre-migration (históricos sin shipment_id)
+        SELECT COALESCE(SUM(net_payout), 0) INTO v_total_payout
+        FROM public.order_items
+        WHERE order_id = v_order_id AND seller_id = v_seller_id;
+    END IF;
 
     -- Mover dinero de Pending a Available con precisión absoluta
     UPDATE public.wallets
@@ -53,9 +61,9 @@ BEGIN
 
     -- E. LEDGER: Registro inmutable del movimiento
     INSERT INTO public.wallet_transactions (
-        wallet_id, order_id, amount, net_amount, balance_after, type, description
+        wallet_id, order_id, shipment_id, amount, net_amount, balance_after, type, description
     ) VALUES (
-        v_wallet_id, v_order_id, v_total_payout, v_total_payout, v_new_balance,
+        v_wallet_id, v_order_id, v_shipment_id, v_total_payout, v_total_payout, v_new_balance,
         'release', 'Resolución de disputa a favor del vendedor'
     );
 
@@ -68,7 +76,12 @@ BEGIN
         updated_at = now()
     WHERE id = p_dispute_id;
 
-    UPDATE public.orders SET status = 'completed', updated_at = now() WHERE id = v_order_id;
+    -- F.1 Actualizar a nivel shipment (post-migration) u order (pre-migration)
+    IF v_shipment_id IS NOT NULL THEN
+        UPDATE public.shipments SET status = 'completed', completed_at = now(), updated_at = now() WHERE id = v_shipment_id;
+    ELSE
+        UPDATE public.orders SET status = 'completed', updated_at = now() WHERE id = v_order_id;
+    END IF;
 
     -- G. AUDITORÍA: Rastro del Admin
     INSERT INTO public.admin_audit_logs (admin_id, action_type, target_id, details)

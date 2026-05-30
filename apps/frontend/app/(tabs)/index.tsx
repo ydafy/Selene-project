@@ -204,7 +204,11 @@ export default function HomeScreen() {
             borderRadius="s"
             marginBottom="s"
           >
-            <Text variant="caption-sm" style={{ color: 'white' }} textAlign="center">
+            <Text
+              variant="caption-sm"
+              style={{ color: 'white' }}
+              textAlign="center"
+            >
               {t('states.feedLoadError')}
             </Text>
           </Box>

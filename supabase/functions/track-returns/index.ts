@@ -41,7 +41,7 @@ serve(async (req) => {
     const { data: disputes, error: fetchError } = await supabaseAdmin
       .from('disputes')
       .select('id, return_tracking_number, status')
-      .eq('status', 'waiting_return')
+      .in('status', ['waiting_return', 'return_shipped'])
       .not('return_tracking_number', 'is', null)
       .order('return_last_tracked_at', { ascending: true, nullsFirst: true })
       .limit(BATCH_SIZE);
@@ -65,7 +65,9 @@ serve(async (req) => {
         ? 'https://api-test.envia.com'
         : 'https://api.envia.com';
 
-    const trackingNumbers = disputes.map((d) => d.return_tracking_number);
+    const trackingNumbers = [
+      ...new Set(disputes.map((d) => d.return_tracking_number)),
+    ];
 
     // 3. Consulta masiva a Envia.com
     const response = await fetch(`${apiUrl}/ship/generaltrack/`, {
@@ -83,40 +85,48 @@ serve(async (req) => {
     }
 
     let deliveredCount = 0;
+    const processedIds: string[] = [];
 
     // 4. Procesar resultados
     for (const trackInfo of resData.data) {
-      const dispute = disputes.find(
+      const matchingDisputes = disputes.filter(
         (d) => d.return_tracking_number === trackInfo.trackingNumber,
       );
-      if (!dispute) continue;
+      if (matchingDisputes.length === 0) continue;
 
-      // Actualizar timestamp de rastreo siempre para rotar la cola
+      for (const dispute of matchingDisputes) {
+        // Acumular ID para bulk update de return_last_tracked_at (evita N+1)
+        processedIds.push(dispute.id);
+
+        // Si el estado es entregado, disparamos la RPC
+        if (trackInfo.status?.toLowerCase() === 'delivered') {
+          log('INFO', `Retorno entregado detectado`, { disputeId: dispute.id });
+
+          const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc(
+            'fn_mark_return_delivered',
+            {
+              p_dispute_id: dispute.id,
+            },
+          );
+
+          if (rpcError || (rpcData && !rpcData[0]?.success)) {
+            log('ERROR', `Fallo al ejecutar fn_mark_return_delivered`, {
+              disputeId: dispute.id,
+              error: rpcError?.message || rpcData?.[0]?.error_message,
+            });
+          } else {
+            deliveredCount++;
+          }
+        }
+      }
+    }
+
+    // 5. Bulk update: un solo viaje a DB para actualizar return_last_tracked_at
+    if (processedIds.length > 0) {
       await supabaseAdmin
         .from('disputes')
         .update({ return_last_tracked_at: new Date().toISOString() })
-        .eq('id', dispute.id);
-
-      // Si el estado es entregado, disparamos la RPC
-      if (trackInfo.status?.toLowerCase() === 'delivered') {
-        log('INFO', `Retorno entregado detectado`, { disputeId: dispute.id });
-
-        const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc(
-          'fn_mark_return_as_delivered',
-          {
-            p_dispute_id: dispute.id,
-          },
-        );
-
-        if (rpcError || (rpcData && !rpcData[0]?.success)) {
-          log('ERROR', `Fallo al ejecutar fn_mark_return_as_delivered`, {
-            disputeId: dispute.id,
-            error: rpcError?.message || rpcData?.[0]?.error_message,
-          });
-        } else {
-          deliveredCount++;
-        }
-      }
+        .in('id', processedIds);
     }
 
     log('INFO', 'Rastreo de retornos finalizado', {
@@ -130,9 +140,11 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       },
     );
-  } catch (error: any) {
-    log('ERROR', 'Fallo crítico en track-returns', { error: error.message });
-    return new Response(JSON.stringify({ error: error.message }), {
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : 'Error desconocido';
+    log('ERROR', 'Fallo crítico en track-returns', { error: message });
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
     });
   }

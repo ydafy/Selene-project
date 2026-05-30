@@ -1,6 +1,7 @@
 /**
  * @file components/features/orders/ShippingRouteCard.tsx
  * Muestra la ruta logística real (Origen -> Destino) con soporte para inversión en retornos.
+ * Migrado a shipment-level — origin_address viene del shipment, no del order.
  */
 
 import React from 'react';
@@ -9,23 +10,25 @@ import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
 import { Box, Text } from '../../base';
 import { Theme } from '../../../core/theme';
-import { EnrichedOrder, Address } from '@selene/types';
+import { Address, EnrichedShipment } from '@selene/types';
 
 interface Props {
-  order: EnrichedOrder;
+  shipment: EnrichedShipment;
+  shippingAddress: Address;
+  orderStatus: string;
 }
 
-export const ShippingRouteCard = ({ order }: Props) => {
+export const ShippingRouteCard = ({ shipment, shippingAddress, orderStatus }: Props) => {
   const theme = useTheme<Theme>();
   const { t } = useTranslation('orders');
 
   // 1. Detectar si estamos en un flujo de retorno
   const isReturn =
-    order.status === 'dispute' && !!order.dispute?.return_label_url;
+    orderStatus === 'dispute' && !!shipment.dispute?.return_label_url;
 
   // 2. Extraer direcciones (con fallbacks de seguridad)
-  const buyerAddr = order.shipping_address as unknown as Address;
-  const sellerAddr = order.origin_address as unknown as Address;
+  const buyerAddr = shippingAddress;
+  const sellerAddr = shipment.origin_address as unknown as Address | null;
 
   // 3. LÓGICA DE RUTA (Simetría de Direcciones)
   // Si es retorno: El paquete va del Comprador al Vendedor.

@@ -1,33 +1,92 @@
 # ANÁLISIS INICIAL
 
 **Resumen:**
-La arquitectura del coordinador por lotes (`fn_cron_release_shipment_funds`) está sumamente bien pensada. El uso de un bloque `BEGIN ... EXCEPTION ... END` interno dentro del bucle `FOR` es la decisión técnica correcta: aísla la transaccionalidad de cada paquete de forma independiente. Si el paquete 1 falla por un problema en la wallet, Postgres realiza un rollback únicamente de la sub-transacción de ese paquete y continúa procesando el paquete 2 de forma fluida.
+La función `auto-cancel-preparing` es una pieza de seguridad indispensable para evitar que vendedores flojos retengan el inventario del marketplace imprimiendo etiquetas que nunca enviarán.
 
-Sin embargo, he detectado **un bug lógico crítico de silenciado de fallos (Silent Failure)** que corrompería las estadísticas y el registro de auditoría de tu cron en producción:
+Sin embargo, tras realizar una auditoría de rendimiento y operación real de logística, **TE DENIEGO LA LUZ VERDE (RED LIGHT / DETENIDO)** en este batch. He detectado **una vulnerabilidad de lógica operativa (la trampa del fin de semana en México)** y **un embotellamiento de red grave por invocación HTTP redundante**:
 
 ---
 
-### Análisis del Bug de Silenciado Lógico en el Bucle
+### Análisis de Gaps y Diffs (Fase 4.10)
+
+#### 1. El Embudo de Rendimiento (Llamadas HTTP redundantes entre Edge Functions)
+
+- **El problema (Línea 65-75):**
+  Para cancelar cada envío atascado, tu código realiza una llamada HTTP externa invocando a otra Edge Function de Supabase: `supabaseAdmin.functions.invoke('cancel-order')`.
+  - _El cuello de botella:_ Si tienes 50 paquetes para cancelar en un lote, tu Edge Function levantará 50 instancias de Deno en paralelo/secuencia, incurriendo en retardos de inicio en frío (_cold starts_), sobrecostos de red y duplicando tu factura de ejecución de Supabase.
+  - _La Solución de Nivel Senior:_ No necesitas invocar una Edge Function externa por HTTP. En la **Fase 4.3** ya construimos y blindamos la función de base de datos **`fn_cancel_shipment`** (que maneja las wallets, transacciones, productos y notificaciones de forma atómica). La Edge Function de tu Cron puede simplemente llamar a este RPC directo en base de datos. Esto colapsará el tiempo de ejecución de 30 segundos (con sus delays de 500ms) a **menos de 200 milisegundos en total**, reduciendo tu consumo de recursos a cero.
+
+#### 2. La Trampa del Fin de Semana (UX Mutilada - Línea 28)
 
 - **El problema:**
-  En tu bucle, ejecutas la liberación del envío de la siguiente forma:
-  ```sql
-  BEGIN
-    PERFORM public.fn_release_shipment_funds(v_shipment_id);
-    v_processed := v_processed + 1;
-  EXCEPTION WHEN OTHERS THEN
-    ...
-  ```
+  Si un comprador paga el viernes por la noche, y el vendedor genera la etiqueta el sábado en la mañana (estado `'preparing'`), las paqueterías en México cierran el sábado por la tarde y todo el domingo. El lunes a las 11:00 AM (49 horas después), mientras el vendedor está parado en la fila de DHL para entregar el paquete, **este cron se activará y auto-cancelará la orden** porque ya pasaron más de 48 horas.
+  - _La Solución:_ Generar una etiqueta es digital (toma 2 minutos desde el celular, por lo que 48 horas para hacerlo está perfecto). Pero **llevar el paquete físico requiere días hábiles**. Una vez que el envío pasa a `'preparing'`, el tiempo de gracia de auto-cancelación física debe ser más holgado. Recomiendo duplicar el tiempo de gracia de empaque a mostrador a **96 horas (4 días calendario)**, garantizando que absorba fines de semana enteros y retrasos de escaneo del transportista.
 
-  - _El fallo:_ La función `fn_release_shipment_funds` tiene como tipo de retorno `RETURNS TABLE(success BOOLEAN, error_message TEXT)`. Al ocurrir un error lógico dentro de ella (por ejemplo, `SELLER_WALLET_NOT_FOUND`), la función **no lanza un error de Postgres**; en su lugar, retorna exitosamente una fila de datos que contiene `(false, 'SELLER_WALLET_NOT_FOUND...')`.
-  - En PL/pgSQL, la sentencia `PERFORM` ejecuta la función y **desecha el resultado**. Como la función retornó datos de forma exitosa (no hubo excepción física de Postgres), la sección `EXCEPTION WHEN OTHERS` **jamás se activará**.
-  - _El desastre:_ La función sumará `v_processed := v_processed + 1` como si el paquete se hubiera procesado con éxito, el sistema registrará un log informativo diciendo _"Procesado exitosamente"_, pero en realidad **el dinero nunca se movió** porque la función interna retornó `success = false`.
-- **La Solución de Grado de Producción:**
-  En lugar de hacer un `PERFORM` a ciegas, debemos capturar el retorno de la función de liberación mediante un `SELECT ... INTO` con dos variables temporales (`v_success` y `v_err_msg`). De esta forma, evaluamos el booleano: si es `true` sumamos un éxito, y si es `false` sumamos un error y registramos el warning específico en los logs del sistema.
+---
 
-**Opciones Técnicas:**
+# Parches posibles
 
-- **Captura de Retorno de Tabla en PL/pgSQL:** Declarar variables `v_success` y `v_error_message` e inyectar el resultado de la función para procesar la estadística de forma fidedigna.
+Aquí tienes los dos micro-parches de TypeScript para optimizar tu cron eliminando el cuello de botella HTTP y aplicando la protección de fin de semana:
 
-**Recomendaciónes:**
-El diseño es fantástico, pero este bug del `PERFORM` desestabilizaría el monitoreo del Cron. Otorgo una **Luz Verde Condicional** a la Fase 4.7 una vez que se implemente la captura del resultado de la tabla.
+### 1. Parche del Reloj de Gracia de Empaque (Reemplazar Líneas 27-31):
+
+_Duplicamos el tiempo de gracia de entrega física para absorber sábados y domingos en México:_
+
+```typescript
+// FIX: Damos 4 días calendario (96h) para la entrega física a paquetería, absorbiendo fines de semana y retrasos de escaneo
+const hours = (settings?.order_expiration_hours || 48) * 2;
+const expirationLimit = new Date(
+  Date.now() - hours * 60 * 60 * 1000,
+).toISOString();
+```
+
+### 2. Parche de Invocación Atómica por RPC (Reemplazar Líneas 61-83):
+
+_Eliminamos la llamada HTTP a 'cancel-order' y llamamos directamente a nuestro RPC transaccional de base de datos:_
+
+```typescript
+log(
+  'INFO',
+  `Procesando ${expiredShipments.length} shipments atascados en preparing`,
+);
+
+let successCount = 0;
+
+for (const shipment of expiredShipments) {
+  try {
+    // FIX: Llamamos directo al RPC transaccional 'fn_cancel_shipment' en base de datos.
+    // Evita latencia de red, cold starts de Deno y cargos duplicados de facturación de Supabase.
+    const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc(
+      'fn_cancel_shipment',
+      {
+        p_shipment_id: shipment.id,
+        p_cancelled_by_role: 'system',
+        p_reason: `Cancelación automática: Envío en preparación por más de ${hours} horas sin entrega física.`,
+      },
+    );
+
+    const success = rpcData?.[0]?.success ?? false;
+    const errMsg = rpcData?.[0]?.error_message ?? null;
+
+    if (!rpcError && success) {
+      successCount++;
+      log('INFO', 'Shipment en preparing cancelado exitosamente', {
+        shipmentId: shipment.id,
+        orderId: shipment.order_id,
+      });
+    } else {
+      log('ERROR', `Fallo al cancelar shipment ${shipment.id}`, {
+        orderId: shipment.order_id,
+        error: rpcError?.message || errMsg,
+      });
+    }
+  } catch (err: any) {
+    log('ERROR', `Excepción en loop para shipment ${shipment.id}`, {
+      orderId: shipment.order_id,
+      error: err.message,
+    });
+  }
+}
+```
+
+---

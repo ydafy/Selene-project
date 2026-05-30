@@ -71,15 +71,28 @@ export default function OrdersScreen() {
     );
   }
 
-  const renderItem = ({ item }: { item: EnrichedOrder }) => (
-    <Box marginBottom="m" paddingHorizontal="m">
-      <OrderCard
-        order={item}
-        isSeller={activeTab === 1}
-        onPress={() => router.push(`/profile/orders/${item.id}`)}
-      />
-    </Box>
-  );
+  const renderItem = ({ item }: { item: EnrichedOrder }) => {
+    // Detecta multi-seller: si hay items de diferentes seller_id → ruta intermedia
+    const rawItems = (item as any).items ?? [];
+    const sellerIds = new Set(rawItems.map((i: any) => i.seller_id));
+    const isMultiSeller = sellerIds.size > 1;
+
+    return (
+      <Box marginBottom="m" paddingHorizontal="m">
+        <OrderCard
+          order={item}
+          isSeller={activeTab === 1}
+          onPress={() =>
+            router.push(
+              isMultiSeller
+                ? `/profile/orders/summary/${item.id}`
+                : `/profile/orders/${item.id}`,
+            )
+          }
+        />
+      </Box>
+    );
+  };
 
   // 3. DEFINICIÓN DE HEADER DE LISTA (Contiene las Tabs)
   const renderListHeader = () => (

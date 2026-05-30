@@ -3,10 +3,14 @@
  * @file app/profile/orders/[id].tsx
  * @description Pantalla orquestadora del detalle de una orden.
  * Centraliza la visualización de estados, logística, productos y acciones críticas.
+ * Adaptada para el modelo multi-envío (shipments) v3.1+.
  * Aplica el patrón de "Slots" delegando la lógica compleja a componentes especializados.
+ *
+ * NOTA DE MIGRACIÓN 3.3: La screen opera sobre `currentShipment` (EnrichedShipment)
+ * en lugar de propiedades directas de la orden. OrderActionCard conectado en 3.6.
  */
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useMemo } from 'react';
 import {
   ScrollView,
   RefreshControl,
@@ -24,8 +28,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Box, Text } from '../../../components/base';
 import { GlobalHeader } from '../../../components/layout/GlobalHeader';
 import { ScreenHeader } from '../../../components/layout/ScreenHeader';
-import { OrderStepper } from '../../../components/features/orders/OrderStepper';
 import { OrderActionCard } from '../../../components/features/orders/OrderActionCard';
+import { OrderStepper } from '../../../components/features/orders/OrderStepper';
 import { ShippingInstructions } from '../../../components/features/orders/ShippingInstructions';
 import { ShippingRouteCard } from '../../../components/features/orders/ShippingRouteCard';
 import { PrimaryButton } from '../../../components/ui/PrimaryButton';
@@ -33,6 +37,7 @@ import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { AppImage } from '../../../components/ui/AppImage';
 import { useOrderById } from '../../../core/hooks/useOrders';
+import { useShipmentsByOrder } from '../../../core/hooks/useShipments';
 import { useOrderActions } from '../../../core/hooks/useOrderActions';
 import { useReturnPayment } from '../../../core/hooks/useReturnPayment';
 import { useShareLabel } from '../../../core/hooks/useShareLabel';
@@ -41,34 +46,86 @@ import { Theme } from '../../../core/theme';
 import { ReviewModal } from '@/components/features/profile/ReviewModal';
 import { ReviewCard } from '@/components/ui/ReviewCard';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import { EnrichedOrder, EnrichedShipment } from '@selene/types';
+
+// --- TIPO AUXILIAR PARA REVIEW (viene en la query de useOrderById pero no en EnrichedOrder) ---
+type ReviewData = {
+  id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+}[];
+
+type OrderWithReview = EnrichedOrder & { review?: ReviewData };
 
 export default function OrderDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // --- 1. PARAMS ---
+  const { id, shipment_id } = useLocalSearchParams<{
+    id: string;
+    shipment_id?: string;
+  }>();
   const { t } = useTranslation(['orders', 'common']);
   const theme = useTheme<Theme>();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { shareLabel, isSharing } = useShareLabel();
 
   const reviewModalRef = useRef<BottomSheetModal>(null);
 
-  // --- 1. DATA HOOKS ---
-  const { data: order, isLoading, refetch } = useOrderById(id);
+  // --- 2. DATA HOOKS ---
+  const {
+    data: order,
+    isLoading: isOrderLoading,
+    refetch: refetchOrder,
+  } = useOrderById(id);
+  const {
+    data: shipments,
+    isLoading: isShipmentsLoading,
+    refetch: refetchShipments,
+  } = useShipmentsByOrder(id);
   const actions = useOrderActions(id as string);
-  const returnPayment = useReturnPayment(order?.dispute?.id || '');
 
-  // --- 2. LOCAL STATE ---
+  // Combinamos refresco: orden + shipments
+  const handleRefresh = async () => {
+    await Promise.all([refetchOrder(), refetchShipments()]);
+  };
+  const isLoading = isOrderLoading || isShipmentsLoading;
+
+  // --- 2b. HOOK COMPARTIDO ---
+  const { shareLabel, isSharing } = useShareLabel();
+
+  // --- 3. LOCAL STATE ---
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showDeliveryConfirm, setShowDeliveryConfirm] = useState(false);
 
-  // --- 3. COMPUTED PROPERTIES ---
-  const activeTrackingNumber = order?.permissions?.showReturnTracking
-    ? order?.dispute?.return_tracking_number
-    : order?.permissions?.showOriginalTracking
-      ? order?.tracking_number
-      : null;
+  // --- 4. COMPUTED PROPERTIES ---
 
-  // --- 4. HANDLERS ---
+  /** Envío actual según `shipment_id` o el primero de la orden.
+   *  - Si el hook `useOrderById` aún no puebla `order.shipments`,
+   *    se usa `useShipmentsByOrder` como fallback (task 3.8 unificará). */
+  const currentShipment = useMemo<EnrichedShipment | null>(() => {
+    const source = order?.shipments ?? shipments;
+    if (!source || source.length === 0) return null;
+    if (shipment_id)
+      return source.find((s) => s.id === shipment_id) ?? source[0];
+    return source[0];
+  }, [order, shipments, shipment_id]);
+
+  /** Número de rastreo activo: prioriza retorno si aplica, sino el tracking original. */
+  const activeTrackingNumber = useMemo<string | null>(() => {
+    if (!currentShipment) return null;
+    const p = currentShipment.permissions;
+    if (p.showReturnTracking)
+      return currentShipment.dispute?.return_tracking_number ?? null;
+    if (p.showOriginalTracking) return currentShipment.tracking_number;
+    return null;
+  }, [currentShipment]);
+
+  /** Hook de pago de retorno — depende de currentShipment (hook de arriba). */
+  const returnPayment = useReturnPayment(
+    currentShipment?.dispute?.id ?? '',
+  );
+
+  // --- 5. HANDLERS ---
   const handleCopyTracking = useCallback((tracking: string) => {
     Clipboard.setString(tracking);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -84,7 +141,7 @@ export default function OrderDetailScreen() {
     );
   }, []);
 
-  // --- 5. EARLY RETURNS (SKELETON) ---
+  // --- 6. EARLY RETURN (SKELETON) ---
   if (isLoading || !order) {
     return (
       <Box flex={1} backgroundColor="background">
@@ -104,6 +161,12 @@ export default function OrderDetailScreen() {
     marginBottom: 'm' as const,
   };
 
+  // --- REVIEW DATA (seguro: order no es null acá) ---
+  const orderWithReview = order as OrderWithReview;
+  const reviewData = orderWithReview.review;
+  const canReview =
+    order.status === 'completed' && order.isBuyer && !reviewData?.length;
+
   return (
     <Box flex={1} backgroundColor="background">
       <Stack.Screen options={{ headerShown: false }} />
@@ -121,7 +184,7 @@ export default function OrderDetailScreen() {
         refreshControl={
           <RefreshControl
             refreshing={isLoading}
-            onRefresh={refetch}
+            onRefresh={handleRefresh}
             tintColor={theme.colors.primary}
           />
         }
@@ -131,17 +194,115 @@ export default function OrderDetailScreen() {
           subtitle={t('orders:detail.subTitle')}
         />
 
-        {/* SLOT A: ACCIONES CRÍTICAS (Escudo Selene / Banners) */}
-        <OrderActionCard
-          order={order}
-          returnPayment={returnPayment}
-          onRefresh={refetch}
-          shareLabel={shareLabel}
-          isSharing={isSharing}
-        />
+        {/* ─────────────────────────────────────────────── */}
+        {/* BANNER MULTI-VENDEDOR                           */}
+        {/* Solo cuando hay más de un shipment y no hay     */}
+        {/* shipment_id en la URL (vista global).           */}
+        {/* ─────────────────────────────────────────────── */}
+        {order.shipments && order.shipments.length > 1 && !shipment_id && (
+          <Box
+            backgroundColor="cardBackground"
+            padding="m"
+            borderRadius="l"
+            borderWidth={1}
+            borderColor="primary"
+            marginBottom="m"
+          >
+            <Box
+              flexDirection="row"
+              alignItems="center"
+              gap="m"
+              marginBottom="m"
+            >
+              <MaterialCommunityIcons
+                name="account-group"
+                size={24}
+                color={theme.colors.primary}
+              />
+              <Box flex={1}>
+                <Text variant="body-md" fontWeight="bold" color="primary">
+                  {t('orders:detail.multiSellerTitle', {
+                    count: order.shipments.length,
+                    defaultValue: `Esta orden tiene ${order.shipments.length} vendedores`,
+                  })}
+                </Text>
+              </Box>
+            </Box>
 
-        {/* SLOT B: ADVERTENCIA DE UNBOXING (Solo Comprador en flujo normal) */}
-        {order.permissions.showUnboxingWarning && (
+            {order.shipments.map((shipment) => (
+              <Box
+                key={shipment.id}
+                flexDirection="row"
+                alignItems="center"
+                paddingVertical="s"
+                borderBottomWidth={1}
+                borderBottomColor="separator"
+              >
+                <Box flex={1}>
+                  <Text variant="body-sm" color="textPrimary">
+                    {shipment.items.length}{' '}
+                    {t('orders:detail.items', {
+                      count: shipment.items.length,
+                      defaultValue: 'producto(s)',
+                    })}
+                  </Text>
+                  <Text variant="caption-md" color="textSecondary">
+                    {t(`orders:status.${shipment.status}`)}
+                  </Text>
+                </Box>
+                <TouchableOpacity
+                  onPress={() =>
+                    router.setParams({ shipment_id: shipment.id })
+                  }
+                >
+                  <Text
+                    variant="caption-md"
+                    color="primary"
+                    textDecorationLine="underline"
+                  >
+                    {t('orders:detail.viewShipment', {
+                      defaultValue: 'Ver envío',
+                    })}
+                  </Text>
+                </TouchableOpacity>
+              </Box>
+            ))}
+
+            <PrimaryButton
+              variant="outline"
+              onPress={() =>
+                router.push(`/profile/orders/summary/${order.id}` as any)
+              }
+              style={{ marginTop: 12, borderColor: theme.colors.primary }}
+              icon="truck-delivery-outline"
+            >
+              {t('orders:detail.viewShippingSummary', {
+                defaultValue: 'Ver resumen de envíos',
+              })}
+            </PrimaryButton>
+          </Box>
+        )}
+
+        {/* ─────────────────────────────────────────────── */}
+        {/* SLOT A: BANNER DE ESTADO CRÍTICO                 */}
+        {/* OrderActionCard con shipment actual.            */}
+        {/* ─────────────────────────────────────────────── */}
+        {currentShipment && (
+          <OrderActionCard
+            order={order}
+            shipment={currentShipment}
+            returnPayment={returnPayment}
+            onRefresh={refetchOrder}
+            shareLabel={shareLabel}
+            isSharing={isSharing}
+          />
+        )}
+
+        {/* ─────────────────────────────────────────────── */}
+        {/* SLOT B: ADVERTENCIA DE UNBOXING                  */}
+        {/* Solo para comprador en flujo normal (sin disputa)*/}
+        {/* ─────────────────────────────────────────────── */}
+        {currentShipment?.permissions.showUnboxingWarning && (
           <Box
             {...cardStyles}
             borderColor="error"
@@ -167,7 +328,10 @@ export default function OrderDetailScreen() {
           </Box>
         )}
 
-        {/* SLOT C: STEPPER DE PROGRESO (Virtualizado para Disputas) */}
+        {/* ─────────────────────────────────────────────── */}
+        {/* SLOT C: STEPPER DE PROGRESO                      */}
+        {/* Virtualizado para disputas (visualStatus).      */}
+        {/* ─────────────────────────────────────────────── */}
         <Box {...cardStyles}>
           <Text variant="header-xl" color="primary" marginBottom="m">
             {t('orders:detail.trackTitle')}
@@ -175,12 +339,18 @@ export default function OrderDetailScreen() {
           <OrderStepper status={order.visualStatus} />
         </Box>
 
-        {/* SLOT D: RASTREO LOGÍSTICO */}
+        {/* ─────────────────────────────────────────────── */}
+        {/* SLOT D: RASTREO LOGÍSTICO                        */}
+        {/* Lee desde currentShipment (tracking original o  */}
+        {/* return_tracking_number según permisos).         */}
+        {/* ─────────────────────────────────────────────── */}
         {!!activeTrackingNumber && (
           <Box {...cardStyles} borderColor="primary" borderWidth={1}>
             <Text variant="header-xl" color="primary" marginBottom="m">
-              {order.permissions.showReturnTracking
-                ? 'Rastreo de Retorno'
+              {currentShipment?.permissions.showReturnTracking
+                ? t('orders:detail.returnTrackingTitle', {
+                    defaultValue: 'Rastreo de Retorno',
+                  })
                 : t('orders:detail.trackingTitle')}
             </Text>
             <Box
@@ -220,24 +390,42 @@ export default function OrderDetailScreen() {
           </Box>
         )}
 
-        {/* SLOT E: INSTRUCCIONES DE ENVÍO */}
-        {order.permissions.showInstructions && (
+        {/* ─────────────────────────────────────────────── */}
+        {/* SLOT E: INSTRUCCIONES DE ENVÍO                   */}
+        {/* Controlado por permissions.showInstructions     */}
+        {/* ─────────────────────────────────────────────── */}
+        {currentShipment?.permissions.showInstructions && (
           <Box marginBottom="m">
-            <ShippingInstructions carrierName="Paquetexpress" />
+            <ShippingInstructions
+              carrierName="Paquetexpress"
+              labelUrl={currentShipment.label_url ?? undefined}
+              orderId={order.id}
+            />
           </Box>
         )}
 
-        {/* SLOT F: RUTA LOGÍSTICA (Nuevo Componente) */}
-        <ShippingRouteCard order={order} />
+        {/* ─────────────────────────────────────────────── */}
+        {/* SLOT F: RUTA LOGÍSTICA — origin_address ahora viene del shipment */}
+        {currentShipment && (
+          <ShippingRouteCard
+            shipment={currentShipment}
+            shippingAddress={order.shipping_address as any}
+            orderStatus={order.status}
+          />
+        )}
 
-        {/* SLOT G: LISTADO DE PRODUCTOS */}
+        {/* ─────────────────────────────────────────────── */}
+        {/* SLOT G: LISTADO DE PRODUCTOS                     */}
+        {/* Lee items desde currentShipment en lugar de      */}
+        {/* order.items (que fue removido de EnrichedOrder).*/}
+        {/* ─────────────────────────────────────────────── */}
         <Box {...cardStyles} overflow="hidden">
           <Text variant="header-xl" color="primary" marginBottom="m">
             {order.isBuyer
               ? t('orders:detail.itemsTitlePurchased')
               : t('orders:detail.itemsTitleSold')}
           </Text>
-          {order.items.map((item, index) => (
+          {currentShipment?.items.map((item, index) => (
             <TouchableOpacity
               key={item.id}
               onPress={() => router.push(`/product/${item.product_id}` as any)}
@@ -246,7 +434,9 @@ export default function OrderDetailScreen() {
                 padding="m"
                 flexDirection="row"
                 alignItems="center"
-                borderBottomWidth={index === order.items.length - 1 ? 0 : 1}
+                borderBottomWidth={
+                  index === currentShipment.items.length - 1 ? 0 : 1
+                }
                 borderBottomColor="separator"
               >
                 <Box
@@ -279,7 +469,13 @@ export default function OrderDetailScreen() {
                 />
               </Box>
             </TouchableOpacity>
-          ))}
+          )) ?? (
+            <Text variant="body-md" color="textSecondary" padding="m">
+              {t('orders:detail.noItems', {
+                defaultValue: 'No hay productos disponibles.',
+              })}
+            </Text>
+          )}
           <Box
             padding="m"
             flexDirection="row"
@@ -295,20 +491,28 @@ export default function OrderDetailScreen() {
           </Box>
         </Box>
 
-        {/* SLOT H: ACCIONES SECUNDARIAS (Botones de Pie) */}
+        {/* ─────────────────────────────────────────────── */}
+        {/* SLOT H: ACCIONES SECUNDARIAS                     */}
+        {/* Botones de pie: generar guía, confirmar entrega, */}
+        {/* cancelar, reportar problema.                    */}
+        {/* ─────────────────────────────────────────────── */}
         <Box gap="m" marginTop="m">
-          {order.isSeller && order.status === 'paid' && !order.label_url && (
-            <PrimaryButton
-              onPress={() =>
-                router.push(`/profile/orders/prepare/${order.id}` as any)
-              }
-              icon="package-variant-closed"
-              loading={actions.generateLabel.isLoading}
-            >
-              {t('orders:actions.generateLabel')}
-            </PrimaryButton>
-          )}
-          {order.permissions.canConfirmDelivery && (
+          {order.isSeller &&
+            currentShipment?.status === 'paid' &&
+            !currentShipment?.label_url && (
+              <PrimaryButton
+                onPress={() =>
+                  router.push(
+                    `/profile/orders/prepare/${order.id}?shipment_id=${currentShipment.id}` as any,
+                  )
+                }
+                icon="package-variant-closed"
+                loading={actions.generateLabel.isLoading}
+              >
+                {t('orders:actions.generateLabel')}
+              </PrimaryButton>
+            )}
+          {currentShipment?.permissions.canConfirmDelivery && (
             <PrimaryButton
               onPress={() => setShowDeliveryConfirm(true)}
               loading={actions.confirmDelivery.isLoading}
@@ -317,7 +521,7 @@ export default function OrderDetailScreen() {
               {t('orders:actions.confirmDelivery')}
             </PrimaryButton>
           )}
-          {order.permissions.canCancel && (
+          {currentShipment?.permissions.canCancel && (
             <PrimaryButton
               variant="outline"
               onPress={() => setShowCancelConfirm(true)}
@@ -328,10 +532,12 @@ export default function OrderDetailScreen() {
               {t('orders:actions.cancelOrder')}
             </PrimaryButton>
           )}
-          {order.permissions.canReport && (
+          {currentShipment?.permissions.canReport && (
             <TouchableOpacity
               onPress={() =>
-                router.push(`/profile/orders/report/${order.id}` as any)
+                router.push(
+                  `/profile/orders/report/${order.id}?shipment_id=${currentShipment.id}` as any,
+                )
               }
               style={{ alignSelf: 'center', marginTop: 15 }}
             >
@@ -345,26 +551,35 @@ export default function OrderDetailScreen() {
             </TouchableOpacity>
           )}
         </Box>
-        {/* BOTÓN DE CALIFICAR / REVIEW CARD */}
-        {order.review && order.review.length > 0 ? (
+
+        {/* ─────────────────────────────────────────────── */}
+        {/* SECCIÓN DE CALIFICACIÓN (Review)                 */}
+        {/* Muestra ReviewCard si ya calificó, o botón si   */}
+        {/* puede calificar. canReview se deriva inline.    */}
+        {/* ─────────────────────────────────────────────── */}
+        {reviewData && reviewData.length > 0 ? (
           <ReviewCard
-            rating={order.review[0].rating}
-            comment={order.review[0].comment}
-            createdAt={order.review[0].created_at}
+            rating={reviewData[0].rating}
+            comment={reviewData[0].comment}
+            createdAt={reviewData[0].created_at}
           />
-        ) : order.permissions.canReview ? (
+        ) : canReview ? (
           <PrimaryButton
             onPress={() => reviewModalRef.current?.present()}
             icon="star-outline"
             variant="outline"
             style={{ borderColor: theme.colors.primary }}
           >
-            CALIFICAR VENDEDOR
+            {t('orders:actions.rateSeller', {
+              defaultValue: 'CALIFICAR VENDEDOR',
+            })}
           </PrimaryButton>
         ) : null}
       </ScrollView>
 
-      {/* DIÁLOGOS DE CONFIRMACIÓN */}
+      {/* ─────────────────────────────────────────────── */}
+      {/* DIÁLOGOS DE CONFIRMACIÓN                         */}
+      {/* ─────────────────────────────────────────────── */}
       <ConfirmDialog
         visible={showCancelConfirm}
         title={t('orders:dialogs.cancelTitle')}
@@ -384,7 +599,9 @@ export default function OrderDetailScreen() {
         title={t('orders:dialogs.deliveryTitle')}
         description={t('orders:dialogs.deliveryMsg')}
         onConfirm={async () => {
-          await actions.confirmDelivery.execute();
+          await actions.confirmDelivery.execute({
+            shipmentId: currentShipment?.id,
+          });
           setShowDeliveryConfirm(false);
         }}
         onCancel={() => setShowDeliveryConfirm(false)}
@@ -392,10 +609,11 @@ export default function OrderDetailScreen() {
         loading={actions.confirmDelivery.isLoading}
         icon="package-variant"
       />
+
       <ReviewModal
         ref={reviewModalRef}
-        order={order}
-        onSuccess={() => refetch()}
+        order={order as any}
+        onSuccess={() => refetchOrder()}
       />
     </Box>
   );

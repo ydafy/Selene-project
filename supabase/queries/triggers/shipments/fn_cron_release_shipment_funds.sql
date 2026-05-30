@@ -16,6 +16,7 @@ BEGIN
         WHERE d.shipment_id = s.id
           AND d.status NOT IN ('resolved', 'rejected')
       )
+    FOR UPDATE SKIP LOCKED
   LOOP
     BEGIN
       SELECT * INTO v_success, v_error_message

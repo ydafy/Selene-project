@@ -69,14 +69,12 @@ const enrichOrder = (
       isDispute &&
       dispute?.status === 'waiting_return' &&
       !!dispute?.return_tracking_number,
-    isInTransit: isDispute && dispute?.status === 'return_shipped',
     isDelivered: isDispute && dispute?.status === 'return_delivered',
   };
 
   let visualStatus: OrderStatus = order.status;
   if (isDispute) {
     if (phase.isDelivered) visualStatus = 'delivered';
-    else if (phase.isInTransit) visualStatus = 'shipped';
     else if (dispute?.return_payout_status === 'paid')
       visualStatus = 'preparing';
   }
@@ -106,20 +104,16 @@ const enrichOrder = (
     canUploadReturnEvidence: isBuyer && phase.isWaitingShipment,
     showDisputeBanner: phase.isOpen,
     showReturnBanner: isDispute && !phase.isOpen,
-    canConfirmReturnReceipt:
-      isSeller && (phase.isInTransit || phase.isDelivered),
     canGenerateReturnLabel: isBuyer && phase.isWaitingShipment,
     showInstructions:
-      (isSeller &&
-        order.label_url &&
-        ['paid', 'preparing'].includes(order.status)) ||
+      (isSeller && ['paid', 'preparing'].includes(order.status)) ||
       (isBuyer && phase.isWaitingShipment),
     showUnboxingWarning:
       isBuyer &&
       ['paid', 'preparing', 'shipped', 'delivered'].includes(order.status) &&
       !isDispute,
     showReturnTracking: !!dispute?.return_tracking_number,
-    showOriginalTracking: !!order.tracking_number && !isDispute,
+    showOriginalTracking: !isDispute,
     canReview:
       order.status === 'completed' &&
       isBuyer &&

@@ -79,6 +79,7 @@ Before generating or modifying code:
 3. **Invoke appropriate skill** - Use the skill matching your task
 4. **Scalable and maintainable architecture** - Never temporary patches, always solid code from line 0
 5. **Propose ideas and discuss ideas/code** - Propose ideas for the project/code
+6. **TypeScrip** - Use typescrip best practices always
 
 ---
 
@@ -91,6 +92,17 @@ Before writing ANY code that touches the database, queries a table, or reference
 3. **Never guess a column name, table name, or type** — if it's not in the types file, it doesn't exist yet.
 
 ---
+
+# Agent Skills Index
+
+When working on this project, load the relevant skill(s) BEFORE writing any code.
+
+## How to Use
+
+1. Check the **Auto-Invoke Rules** to find skills that match your current task
+2. Load the skill by reading the SKILL.md file at the listed path from **Core Skills** or **Supporting Skills**
+3. Follow ALL patterns and rules from the loaded skill
+4. Multiple skills can apply simultaneously
 
 ## Available Skills
 

@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 const log = (
-  level: 'INFO' | 'WARN' | 'ERROR',
+  level: 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL',
   msg: string,
   data?: Record<string, unknown>,
 ) => {
@@ -24,7 +24,7 @@ const log = (
   );
 };
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === 'OPTIONS')
     return new Response('ok', { headers: corsHeaders });
 
@@ -38,7 +38,7 @@ serve(async (req) => {
       httpClient: Stripe.createFetchHttpClient(),
     });
 
-    // 1. Validar Admin
+    // 1. Autenticar usuario
     const authHeader = req.headers.get('Authorization');
     const {
       data: { user },
@@ -57,58 +57,178 @@ serve(async (req) => {
       .select('role')
       .eq('id', user.id)
       .single();
-    if (profile?.role !== 'admin')
+
+    // 2. Validar input — solo disputeId
+    const { disputeId } = await req.json();
+    if (!disputeId)
+      return new Response(JSON.stringify({ error: 'disputeId es requerido' }), {
+        status: 422,
+        headers: corsHeaders,
+      });
+
+    // 3. Leer dispute + order (determina seller, shipment, status, PI)
+    const { data: dispute, error: disputeError } = await supabaseAdmin
+      .from('disputes')
+      .select(
+        `
+        seller_id,
+        shipment_id,
+        order_id,
+        status,
+        orders!inner(stripe_payment_intent_id)
+      `,
+      )
+      .eq('id', disputeId)
+      .single();
+
+    if (disputeError || !dispute)
+      return new Response(JSON.stringify({ error: 'Disputa no encontrada' }), {
+        status: 404,
+        headers: corsHeaders,
+      });
+
+    // 4. Auth: admin O seller de la disputa
+    const isAdmin = profile?.role === 'admin';
+    const isSeller = dispute.seller_id === user.id;
+    if (!isAdmin && !isSeller)
       return new Response(
         JSON.stringify({
-          error: 'Solo administradores pueden ejecutar reembolsos',
+          error:
+            'Solo administradores o el vendedor de la disputa pueden ejecutar reembolsos',
         }),
         { status: 403, headers: corsHeaders },
       );
 
-    const { orderId, disputeId } = await req.json();
+    // 5. Validar status de la disputa
+    const validStatuses = ['return_delivered', 'waiting_return'];
+    if (!validStatuses.includes(dispute.status!))
+      return new Response(
+        JSON.stringify({
+          error: `Estado inválido: ${dispute.status}. Debe ser return_delivered o waiting_return.`,
+        }),
+        { status: 422, headers: corsHeaders },
+      );
 
-    // 2. Obtener Intent de Stripe
-    const { data: order, error: orderError } = await supabaseAdmin
-      .from('orders')
-      .select('stripe_payment_intent_id, status')
-      .eq('id', orderId)
-      .single();
-    if (orderError || !order) throw new Error('Orden no encontrada');
+    const stripeIntentId = (
+      dispute.orders as unknown as { stripe_payment_intent_id: string }
+    ).stripe_payment_intent_id;
 
-    // 3. Ejecutar Reembolso en Stripe
+    // =========================================================================
+    // FIX CRÍTICO: Calcular monto exacto del shipment (en centavos)
+    // Sin esto, Stripe reembolsa el 100% del PaymentIntent → en multi-seller
+    // devuelve también el dinero de otros vendedores no disputados.
+    // =========================================================================
+    let refundAmountCents: number | null = null;
+
+    if (dispute.shipment_id) {
+      const { data: orderItems, error: itemsError } = await supabaseAdmin
+        .from('order_items')
+        .select('price_at_purchase, shipping_amount')
+        .eq('shipment_id', dispute.shipment_id);
+
+      if (itemsError || !orderItems || orderItems.length === 0) {
+        log(
+          'ERROR',
+          'Error al consultar items para calcular reembolso parcial',
+          {
+            error: itemsError?.message,
+          },
+        );
+        return new Response(
+          JSON.stringify({
+            error:
+              'No se pudieron recuperar los artículos del envío para calcular el monto del reembolso.',
+          }),
+          { status: 500, headers: corsHeaders },
+        );
+      }
+
+      const refundItems = orderItems as Array<{
+        price_at_purchase: number;
+        shipping_amount: number | null;
+      }>;
+
+      const totalRefundAmount = refundItems.reduce<number>(
+        (sum, item) =>
+          sum + item.price_at_purchase + (item.shipping_amount ?? 0),
+        0,
+      );
+
+      refundAmountCents = Math.round(totalRefundAmount * 100);
+      log('INFO', 'Monto de reembolso calculado', {
+        shipmentId: dispute.shipment_id,
+        totalRefundAmount,
+        refundAmountCents,
+      });
+    }
+
+    // 6. Ejecutar Reembolso en Stripe (idempotente + monto parcial)
     log('INFO', 'Iniciando reembolso en Stripe', {
-      orderId,
-      intent: order.stripe_payment_intent_id,
+      disputeId,
+      intent: stripeIntentId,
+      amountCents: refundAmountCents,
     });
 
     try {
-      await stripe.refunds.create(
-        {
-          payment_intent: order.stripe_payment_intent_id!,
-          reason: 'requested_by_customer',
-          metadata: { order_id: orderId, dispute_id: disputeId },
+      const refundParams: Stripe.RefundCreateParams = {
+        payment_intent: stripeIntentId,
+        reason: 'requested_by_customer' as const,
+        metadata: {
+          dispute_id: disputeId,
+          shipment_id: dispute.shipment_id ?? '',
         },
-        { idempotencyKey: `refund_dispute_${disputeId}` },
-      );
-    } catch (stripeError: any) {
-      if (stripeError.code !== 'charge_already_refunded') throw stripeError;
+      };
+
+      if (refundAmountCents !== null) {
+        refundParams.amount = refundAmountCents;
+      }
+
+      await stripe.refunds.create(refundParams, {
+        idempotencyKey: `refund_dispute_${disputeId}`,
+      });
+    } catch (stripeError: unknown) {
+      if (
+        typeof stripeError === 'object' &&
+        stripeError !== null &&
+        'code' in stripeError &&
+        (stripeError as { code: string }).code === 'charge_already_refunded'
+      ) {
+        log('INFO', 'Stripe refund idempotente — ya reembolsado', {
+          disputeId,
+        });
+      } else {
+        throw stripeError;
+      }
     }
 
-    // 4. Sincronizar con DB
+    // 7. Sincronizar DB — shipment-level si existe shipment_id
+    let rpcSuccess = false;
+    let rpcErrorMsg: string | null = null;
+
     const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc(
-      'fn_complete_dispute_refund',
-      {
-        p_order_id: orderId,
-        p_dispute_id: disputeId,
-      },
+      'fn_complete_shipment_refund',
+      { p_shipment_id: dispute.shipment_id },
     );
 
-    if (rpcError || (rpcData && !rpcData[0]?.success)) {
-      log('ERROR', 'REEMBOLSO HECHO PERO FALLO DB', {
-        error: rpcError?.message || rpcData?.[0]?.error_message,
+    if (rpcError) {
+      rpcErrorMsg = rpcError.message;
+    } else {
+      rpcSuccess = rpcData?.[0]?.success ?? false;
+      rpcErrorMsg = rpcData?.[0]?.error_message ?? null;
+    }
+
+    if (!rpcSuccess) {
+      log('CRITICAL', 'REEMBOLSO STRIPE HECHO PERO FALLO DB', {
+        disputeId,
+        error: rpcErrorMsg,
       });
-      throw new Error(
-        'Dinero devuelto en Stripe, pero falló la actualización en Selene. Contacta a soporte.',
+      return new Response(
+        JSON.stringify({
+          error:
+            'Dinero devuelto en Stripe, pero falló la actualización en Selene. Contacta a soporte.',
+          dbError: rpcErrorMsg,
+        }),
+        { status: 500, headers: corsHeaders },
       );
     }
 
@@ -116,9 +236,11 @@ serve(async (req) => {
       status: 200,
       headers: corsHeaders,
     });
-  } catch (error: any) {
-    log('ERROR', 'Fallo en resolución de reembolso', { error: error.message });
-    return new Response(JSON.stringify({ error: error.message }), {
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : 'Error desconocido';
+    log('ERROR', 'Fallo en resolución de reembolso', { error: message });
+    return new Response(JSON.stringify({ error: message }), {
       status: 400,
       headers: corsHeaders,
     });

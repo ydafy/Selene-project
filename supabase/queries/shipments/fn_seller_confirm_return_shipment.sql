@@ -1,3 +1,10 @@
+-- =========================================================================
+-- Confirmación de retorno por parte del vendedor (admin override ONLY)
+-- El flujo principal es: return_delivered trigger → fn_complete_shipment_refund.
+-- Esta función es SOLO para que el admin fuerce la confirmación cuando hay
+-- contention (e.g., el trigger automático falló, evidence insuficiente, etc.)
+-- El vendedor NO debe llamar esto; el trigger automático lo maneja.
+-- =========================================================================
 
 DECLARE
   v_seller_id UUID;

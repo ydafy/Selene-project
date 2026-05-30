@@ -136,7 +136,7 @@ export const DisputeDetailPage = () => {
   const seller = dispute?.seller || {}; // <--- Ahora vienen de aquí
 
   const buyerEvidence = dispute?.buyer_evidence || {};
-  const sellerEvidence = order?.shipping_evidence || {};
+  const sellerEvidence = dispute?.shipment?.shipping_evidence || {};
 
   return (
     <div className="space-y-6 pb-32">

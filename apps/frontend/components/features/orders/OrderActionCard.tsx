@@ -9,13 +9,14 @@ import { useTheme } from '@shopify/restyle';
 import { Box, Text } from '../../base';
 import { PrimaryButton } from '../../ui/PrimaryButton';
 import { ShippingLabelCard } from './ShippingLabelCard';
-import { EnrichedOrder } from '@selene/types';
+import { EnrichedOrder, EnrichedShipment } from '@selene/types';
 import { useOrderActions } from '@/core/hooks/useOrderActions';
 import { useOrderCountdown } from '@/core/hooks/useOrderCountdown';
 import { Theme } from '@/core/theme';
 
 interface Props {
   order: EnrichedOrder;
+  shipment: EnrichedShipment;
   returnPayment: any;
   onRefresh: () => void;
   shareLabel: (url: string, id: string) => void;
@@ -24,6 +25,7 @@ interface Props {
 
 export const OrderActionCard = ({
   order,
+  shipment,
   returnPayment,
   onRefresh,
   shareLabel,
@@ -32,7 +34,7 @@ export const OrderActionCard = ({
   const { t } = useTranslation(['orders']);
   const theme = useTheme<Theme>();
   const router = useRouter();
-  const { permissions, dispute, isSeller, isBuyer } = order;
+  const { permissions, dispute, isSeller, isBuyer } = shipment;
   const actions = useOrderActions(order.id);
 
   // --- 1. LÓGICA DEL RELOJ DINÁMICO ---
@@ -167,8 +169,7 @@ export const OrderActionCard = ({
           gap="m"
           marginBottom={
             permissions.canPayReturn ||
-            permissions.canUploadReturnEvidence ||
-            permissions.canConfirmReturnReceipt
+            permissions.canUploadReturnEvidence
               ? 'm'
               : undefined
           }
@@ -224,23 +225,7 @@ export const OrderActionCard = ({
             </PrimaryButton>
           )}
 
-          {isSeller && permissions.canConfirmReturnReceipt && (
-            <PrimaryButton
-              onPress={async () => {
-                await actions.resolveDisputeRefund.execute({
-                  orderId: order.id,
-                  disputeId: dispute?.id || '',
-                });
-                onRefresh();
-              }}
-              loading={actions.resolveDisputeRefund.isLoading}
-              icon="package-variant-closed-check"
-            >
-              {t('orders:actions.confirmDelivery')}
-            </PrimaryButton>
-          )}
-
-          {/* NUEVO BOTÓN: EL VENDEDOR IMPUGNA EL RETORNO */}
+          {/* EL VENDEDOR IMPUGNA EL RETORNO */}
           {isSeller && dispute?.status === 'return_delivered' && (
             <PrimaryButton
               variant="outline"

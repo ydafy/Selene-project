@@ -37,19 +37,19 @@ serve(async (req) => {
 
     log('INFO', 'Iniciando rastreo de paquetes');
 
-    // 1. Obtener órdenes activas (priorizando las menos rastreadas recientemente)
-    const { data: orders, error: fetchError } = await supabaseAdmin
-      .from('orders')
-      .select('id, tracking_number, status')
+    // 1. Obtener shipments activos (priorizando los menos rastreados recientemente)
+    const { data: shipments, error: fetchError } = await supabaseAdmin
+      .from('shipments')
+      .select('id, order_id, tracking_number, status')
       .in('status', ['preparing', 'shipped'])
       .not('tracking_number', 'is', null)
       .order('last_tracked_at', { ascending: true, nullsFirst: true })
       .limit(BATCH_SIZE);
 
     if (fetchError) throw fetchError;
-    if (!orders || orders.length === 0) {
+    if (!shipments || shipments.length === 0) {
       return new Response(
-        JSON.stringify({ message: 'No hay órdenes para rastrear' }),
+        JSON.stringify({ message: 'No hay shipments para rastrear' }),
         { status: 200 },
       );
     }
@@ -65,9 +65,12 @@ serve(async (req) => {
         ? 'https://api-test.envia.com'
         : 'https://api.envia.com';
 
-    const trackingNumbers = orders.map((o) => o.tracking_number);
+    // 3. Deduplicar tracking numbers para consulta masiva
+    const trackingNumbers = [
+      ...new Set(shipments.map((s) => s.tracking_number)),
+    ];
 
-    // 3. Consulta masiva a Envia.com
+    // 4. Consulta masiva a Envia.com
     const response = await fetch(`${apiUrl}/ship/generaltrack/`, {
       method: 'POST',
       headers: {
@@ -82,56 +85,101 @@ serve(async (req) => {
       throw new Error(`Envia API Error: ${resData.message || 'Unknown'}`);
     }
 
+    // Estados de Envia que confirman que el paquete ya está en manos de la paquetería
+    const CARRIER_IN_TRANSIT_STATUSES = new Set([
+      'recibido en oficina',
+      'recolectado',
+      'en tránsito',
+      'in-store pickup',
+      'in transit',
+      'picked up',
+    ]);
+
     let deliveredCount = 0;
+    const processedIds: string[] = [];
 
-    // 4. Procesar resultados
+    // 5. Procesar resultados
     for (const trackInfo of resData.data) {
-      const order = orders.find(
-        (o) => o.tracking_number === trackInfo.trackingNumber,
+      // Encontrar todos los shipments que coincidan con este tracking number
+      const matchingShipments = shipments.filter(
+        (s) => s.tracking_number === trackInfo.trackingNumber,
       );
-      if (!order) continue;
+      if (matchingShipments.length === 0) continue;
 
-      // Siempre actualizamos el timestamp de rastreo para el Cron
-      await supabaseAdmin
-        .from('orders')
-        .update({ last_tracked_at: new Date().toISOString() })
-        .eq('id', order.id);
+      const normalizedStatus = trackInfo.status?.toLowerCase() || '';
 
-      // Si el estado es entregado, disparamos la RPC atómica
-      if (trackInfo.status?.toLowerCase() === 'delivered') {
-        log('INFO', `Paquete entregado detectado`, { orderId: order.id });
-        const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc(
-          'fn_mark_as_delivered',
-          {
-            p_order_id: order.id,
-          },
-        );
+      for (const shipment of matchingShipments) {
+        // Acumular ID para bulk update de last_tracked_at (evita N+1)
+        processedIds.push(shipment.id);
 
-        if (rpcError || (rpcData && !rpcData[0]?.success)) {
-          log('ERROR', `Fallo al ejecutar fn_mark_as_delivered`, {
-            orderId: order.id,
-            error: rpcError?.message || rpcData[0]?.error_message,
+        // 5a. Si el shipment sigue en 'preparing' y Envia ya lo recibió → shipped
+        if (
+          shipment.status === 'preparing' &&
+          CARRIER_IN_TRANSIT_STATUSES.has(normalizedStatus)
+        ) {
+          log('INFO', `Paquete recibido por paquetería`, {
+            shipmentId: shipment.id,
+            orderId: shipment.order_id,
+            enviaStatus: trackInfo.status,
           });
-        } else {
-          deliveredCount++;
+          await supabaseAdmin
+            .from('shipments')
+            .update({ status: 'shipped', shipped_at: new Date().toISOString() })
+            .eq('id', shipment.id);
+        }
+
+        // 5b. Si el estado es entregado, disparamos la RPC atómica
+        if (normalizedStatus === 'delivered') {
+          log('INFO', `Paquete entregado detectado`, {
+            shipmentId: shipment.id,
+            orderId: shipment.order_id,
+          });
+          const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc(
+            'fn_mark_shipment_delivered',
+            {
+              p_shipment_id: shipment.id,
+            },
+          );
+
+          if (rpcError || (rpcData && !rpcData[0]?.success)) {
+            log('ERROR', `Fallo al ejecutar fn_mark_shipment_delivered`, {
+              shipmentId: shipment.id,
+              orderId: shipment.order_id,
+              error: rpcError?.message || rpcData[0]?.error_message,
+            });
+          } else {
+            deliveredCount++;
+          }
         }
       }
     }
 
+    // 6. Bulk update: un solo viaje a DB para actualizar last_tracked_at de todos los procesados
+    if (processedIds.length > 0) {
+      await supabaseAdmin
+        .from('shipments')
+        .update({ last_tracked_at: new Date().toISOString() })
+        .in('id', processedIds);
+    }
+
     log('INFO', 'Rastreo finalizado', {
-      total: orders.length,
+      total: shipments.length,
       delivered: deliveredCount,
     });
 
     return new Response(
-      JSON.stringify({ processed: orders.length, delivered: deliveredCount }),
+      JSON.stringify({
+        processed: shipments.length,
+        delivered: deliveredCount,
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       },
     );
-  } catch (error: any) {
-    log('ERROR', 'Fallo crítico en track-shipments', { error: error.message });
-    return new Response(JSON.stringify({ error: error.message }), {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Error desconocido';
+    log('ERROR', 'Fallo crítico en track-shipments', { error: message });
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
     });
   }

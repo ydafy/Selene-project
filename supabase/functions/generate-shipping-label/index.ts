@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { z } from 'https://esm.sh/zod@3.23.8';
 
 const corsHeaders = {
@@ -56,26 +56,30 @@ interface Address {
   zip_code: string;
 }
 
-interface OrderItem {
-  seller_id: string;
+interface ShipmentItem {
   product: {
     package_preset: string;
+    price: number;
   };
 }
 
-interface Order {
+interface ShipmentData {
   id: string;
+  seller_id: string;
   status: string;
   tracking_number: string | null;
-  total_amount: number;
-  shipping_address: Address;
-  items: OrderItem[];
+  order: {
+    id: string;
+    total_amount: number;
+    shipping_address: Address;
+  };
+  items: ShipmentItem[];
 }
 
 // --- 3. ESQUEMAS DE VALIDACIÓN ---
 
 const RequestSchema = z.object({
-  orderId: z.string().uuid('ID de orden inválido'),
+  shipmentId: z.string().uuid('ID de envío inválido'),
   originAddress: z.object({
     full_name: z.string().min(3, 'Nombre es obligatorio'),
     phone: z.string().min(10, 'Teléfono inválido'),
@@ -94,7 +98,7 @@ const RequestSchema = z.object({
 
 // --- 4. FUNCIÓN PRINCIPAL ---
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === 'OPTIONS')
     return new Response('ok', { headers: corsHeaders });
 
@@ -115,8 +119,8 @@ serve(async (req) => {
       throw new ApiError(400, `Datos inválidos: ${errorDetails}`);
     }
 
-    const { orderId, originAddress, shippingEvidence } = parseResult.data;
-    log('INFO', 'Iniciando generación de guía', { orderId });
+    const { shipmentId, originAddress, shippingEvidence } = parseResult.data;
+    log('INFO', 'Iniciando generación de guía', { shipmentId });
 
     // B. Autenticación
     const supabaseAdmin = createClient(
@@ -134,54 +138,57 @@ serve(async (req) => {
 
     if (authError || !user) throw new ApiError(401, 'No autorizado');
 
-    // C. Fetch Paralelo (Orden + Settings)
-    const [orderRes, settingsRes] = await Promise.all([
+    // C. Fetch Paralelo (Shipment + Padre Order + Settings)
+    const [shipmentRes, settingsRes] = await Promise.all([
       supabaseAdmin
-        .from('orders')
+        .from('shipments')
         .select(
-          `*, items:order_items(seller_id, product:products(package_preset))`,
+          `
+          id, seller_id, status, tracking_number,
+          order:order_id(id, total_amount, shipping_address),
+          items:order_items!shipment_id(product:products(package_preset, price))
+        `,
         )
-        .eq('id', orderId)
+        .eq('id', shipmentId)
         .single(),
       supabaseAdmin.from('system_settings').select('package_presets').single(),
     ]);
 
-    if (orderRes.error || !orderRes.data)
-      throw new ApiError(404, 'Orden no encontrada');
+    if (shipmentRes.error || !shipmentRes.data)
+      throw new ApiError(404, 'Envío no encontrado');
     if (settingsRes.error || !settingsRes.data)
       throw new ApiError(500, 'Error cargando configuración del sistema');
 
-    const order = orderRes.data as Order;
+    const shipment = shipmentRes.data as unknown as ShipmentData;
     const packagePresets = settingsRes.data.package_presets as Record<
       string,
       PackageDimensions
     >;
 
     // D. Validaciones de Negocio
-    if (order.tracking_number)
+    if (shipment.tracking_number)
       throw new ApiError(409, 'La guía ya existe. No se puede duplicar.');
-    if (order.status !== 'paid')
+    if (shipment.status !== 'paid')
       throw new ApiError(
         422,
-        'Solo se pueden generar guías de órdenes pagadas.',
+        'Solo se pueden generar guías de envíos pagados.',
       );
 
-    const isOwner = order.items.some((item) => item.seller_id === user.id);
-    if (!isOwner)
-      throw new ApiError(403, 'No tienes permiso para gestionar esta orden');
+    if (shipment.seller_id !== user.id)
+      throw new ApiError(403, 'No tienes permiso para gestionar este envío');
 
-    // E. Regla Anti-Fraude (Fetch Paralelo)
+    // E. Regla Anti-Fraude (Shipments del seller)
     const [completedRes, activeRes] = await Promise.all([
       supabaseAdmin
-        .from('order_items')
-        .select('id, orders!inner(status)', { count: 'exact', head: true })
+        .from('shipments')
+        .select('id', { count: 'exact', head: true })
         .eq('seller_id', user.id)
-        .eq('orders.status', 'completed'),
+        .eq('status', 'completed'),
       supabaseAdmin
-        .from('order_items')
-        .select('id, orders!inner(status)', { count: 'exact', head: true })
+        .from('shipments')
+        .select('id', { count: 'exact', head: true })
         .eq('seller_id', user.id)
-        .in('orders.status', ['preparing', 'shipped']),
+        .in('status', ['preparing', 'shipped', 'delivered']),
     ]);
 
     const completedCount = completedRes.count || 0;
@@ -196,13 +203,13 @@ serve(async (req) => {
       );
     }
 
-    // F. Cálculo de Dimensiones Dinámico
+    // F. Cálculo de Dimensiones Dinámico (solo items de este shipment)
     let totalWeight = 0,
       maxL = 0,
       maxW = 0,
       totalH = 0;
 
-    order.items.forEach((item) => {
+    shipment.items.forEach((item) => {
       const presetKey = item.product.package_preset;
       const dim = packagePresets[presetKey];
 
@@ -210,7 +217,7 @@ serve(async (req) => {
         log(
           'WARN',
           `Preset no encontrado: ${presetKey}. Usando fallback seguro.`,
-          { orderId },
+          { shipmentId },
         );
       }
 
@@ -254,24 +261,24 @@ serve(async (req) => {
         postalCode: originAddress.zip_code,
       },
       destination: {
-        name: order.shipping_address.full_name || 'Comprador Selene',
-        phone: cleanPhone(order.shipping_address.phone),
-        street: order.shipping_address.street_line1,
+        name: shipment.order.shipping_address.full_name || 'Comprador Selene',
+        phone: cleanPhone(shipment.order.shipping_address.phone),
+        street: shipment.order.shipping_address.street_line1,
         number: 'SN',
-        district: order.shipping_address.district || 'Centro',
-        city: order.shipping_address.city,
-        state: (originAddress.state_code || originAddress.state || 'DF')
+        district: shipment.order.shipping_address.district || 'Centro',
+        city: shipment.order.shipping_address.city,
+        state: (shipment.order.shipping_address.state_code || shipment.order.shipping_address.state || 'DF')
           .substring(0, 2)
           .toUpperCase(),
         country: 'MX',
-        postalCode: order.shipping_address.zip_code,
+        postalCode: shipment.order.shipping_address.zip_code,
       },
       packages: [
         {
           type: 'box',
-          content: `Hardware: ${orderId.slice(0, 8)}`,
+          content: `Hardware: ${shipment.order.id.slice(0, 8)}`,
           amount: 1,
-          declaredValue: order.total_amount,
+          declaredValue: shipment.order.total_amount,
           lengthUnit: 'CM',
           weightUnit: 'KG',
           weight: totalWeight,
@@ -284,7 +291,7 @@ serve(async (req) => {
 
     // H. Llamada a Envia
     log('INFO', 'Solicitando guía a Envia', {
-      orderId,
+      shipmentId,
       carrier: 'paquetexpress',
     });
 
@@ -303,7 +310,7 @@ serve(async (req) => {
     const resData = await response.json();
 
     if (!response.ok || resData.meta === 'error' || resData.code >= 400) {
-      log('ERROR', 'Error de Envia.com', { orderId, enviaError: resData });
+      log('ERROR', 'Error de Envia.com', { shipmentId, enviaError: resData });
       throw new ApiError(
         422,
         resData.description || resData.message || 'Error de paquetería',
@@ -313,21 +320,24 @@ serve(async (req) => {
     // I. Persistencia Atómica
     const trackingNumber = resData.data[0].trackingNumber;
     const labelUrl = resData.data[0].label;
+    const enviaShipmentId = resData.data[0].shipmentId?.toString() || null;
 
     const { error: updateError } = await supabaseAdmin
-      .from('orders')
+      .from('shipments')
       .update({
         status: 'preparing',
         tracking_number: trackingNumber,
         label_url: labelUrl,
+        carrier: 'paquetexpress',
+        envia_shipment_id: enviaShipmentId,
         shipping_evidence: shippingEvidence.images,
         origin_address: originAddress,
       })
-      .eq('id', orderId);
+      .eq('id', shipmentId);
 
     if (updateError) {
       log('ERROR', '[CRITICAL] Guía huérfana generada', {
-        orderId,
+        shipmentId,
         trackingNumber,
         dbError: updateError,
       });
@@ -337,7 +347,7 @@ serve(async (req) => {
       );
     }
 
-    log('INFO', 'Guía generada exitosamente', { orderId, trackingNumber });
+    log('INFO', 'Guía generada exitosamente', { shipmentId, trackingNumber });
 
     return new Response(
       JSON.stringify({ success: true, labelUrl, trackingNumber }),

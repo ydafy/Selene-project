@@ -21,6 +21,7 @@ export type Profile = Tables<'profiles'>;
 export type Product = Tables<'products'>;
 export type Order = Tables<'orders'>;
 export type Dispute = Tables<'disputes'>;
+export type Shipment = Tables<'shipments'>;
 
 // --- 3. ENUMS (Sincronizados con Postgres) ---
 // Si cambias el Enum en la DB y corres la CLI, estos se actualizan solos
@@ -82,18 +83,11 @@ export interface ProductWithSeller extends EnrichedProduct {
 }
 
 /**
- * Orden Enriquecida para la UI.
- * Combina la tabla Order con cálculos de permisos y joins.
+ * Envío Enriquecido para la UI (Contenedor Logístico Hijo).
+ * Maneja el tracking, timestepper, acciones y disputas aisladas por vendedor.
  */
-export interface EnrichedOrder extends Omit<
-  Order,
-  'shipping_address' | 'origin_address'
-> {
-  // Sobreescribimos con el tipo Address real en lugar de Json
-  shipping_address: Address;
-  origin_address: Address | null;
-
-  // Joins
+export interface EnrichedShipment extends Shipment {
+  // Joins aislados por paquete
   items: (Tables<'order_items'> & { product: Product })[];
   dispute?:
     | (Dispute & {
@@ -102,11 +96,11 @@ export interface EnrichedOrder extends Omit<
       })
     | null;
 
-  // Helpers de UI
+  // Helpers de UI del paquete
   isBuyer: boolean;
   isSeller: boolean;
-  visualStatus: OrderStatus;
 
+  // Permisos estrictos calculados por paquete (basados en shipment.status)
   permissions: {
     canCancel: boolean;
     canReport: boolean;
@@ -120,10 +114,30 @@ export interface EnrichedOrder extends Omit<
     showReturnTracking: boolean;
     showDisputeBanner: boolean;
     showReturnBanner: boolean;
-    canConfirmReturnReceipt: boolean;
     showSellerDeliveredBanner: boolean;
     canReview: boolean;
   };
+}
+
+/**
+ * Orden Enriquecida para la UI (Contenedor Financiero Padre).
+ * Vincula el pago global con sus múltiples envíos fraccionados (shipments).
+ * NOTA: origin_address, tracking_number, label_url, shipping_evidence, last_tracked_at
+ * se migraron a shipments. EnrichedOrder ya no los tiene.
+ */
+export interface EnrichedOrder extends Omit<
+  Order,
+  'shipping_address'
+> {
+  shipping_address: Address;
+
+  // Colección de paquetes divididos por vendedor
+  shipments: EnrichedShipment[];
+
+  // Helpers de UI globales
+  isBuyer: boolean;
+  isSeller: boolean;
+  visualStatus: OrderStatus;
 }
 
 // --- 6. INTERFACES ENRIQUECIDAS PARA ADMIN (Phase 2) ---

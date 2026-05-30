@@ -745,17 +745,11 @@ export type Database = {
           currency: string | null
           delivered_at: string | null
           id: string
-          label_url: string | null
-          last_tracked_at: string | null
-          origin_address: Json | null
           service_fee_amount: number | null
-          shipped_at: string | null
           shipping_address: Json
-          shipping_evidence: Json | null
           status: Database["public"]["Enums"]["order_status_enum"]
           stripe_payment_intent_id: string
           total_amount: number
-          tracking_number: string | null
           updated_at: string | null
         }
         Insert: {
@@ -765,17 +759,11 @@ export type Database = {
           currency?: string | null
           delivered_at?: string | null
           id?: string
-          label_url?: string | null
-          last_tracked_at?: string | null
-          origin_address?: Json | null
           service_fee_amount?: number | null
-          shipped_at?: string | null
           shipping_address: Json
-          shipping_evidence?: Json | null
           status?: Database["public"]["Enums"]["order_status_enum"]
           stripe_payment_intent_id: string
           total_amount: number
-          tracking_number?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -785,17 +773,11 @@ export type Database = {
           currency?: string | null
           delivered_at?: string | null
           id?: string
-          label_url?: string | null
-          last_tracked_at?: string | null
-          origin_address?: Json | null
           service_fee_amount?: number | null
-          shipped_at?: string | null
           shipping_address?: Json
-          shipping_evidence?: Json | null
           status?: Database["public"]["Enums"]["order_status_enum"]
           stripe_payment_intent_id?: string
           total_amount?: number
-          tracking_number?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -1523,6 +1505,8 @@ export type Database = {
       }
       system_settings: {
         Row: {
+          auto_cancel_orders_running: boolean | null
+          auto_cancel_preparing_running: boolean | null
           currency: string | null
           id: number
           insurance_rate: number | null
@@ -1533,6 +1517,9 @@ export type Database = {
           order_expiration_hours: number | null
           package_presets: Json | null
           payout_fee_fixed_cents: number | null
+          preparing_expiration_hours: number | null
+          release_funds_running: boolean | null
+          return_delivery_timeout_running: boolean | null
           return_label_fee_cents: number | null
           service_fee_fixed_cents: number | null
           service_fee_pct: number | null
@@ -1540,6 +1527,8 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          auto_cancel_orders_running?: boolean | null
+          auto_cancel_preparing_running?: boolean | null
           currency?: string | null
           id: number
           insurance_rate?: number | null
@@ -1550,6 +1539,9 @@ export type Database = {
           order_expiration_hours?: number | null
           package_presets?: Json | null
           payout_fee_fixed_cents?: number | null
+          preparing_expiration_hours?: number | null
+          release_funds_running?: boolean | null
+          return_delivery_timeout_running?: boolean | null
           return_label_fee_cents?: number | null
           service_fee_fixed_cents?: number | null
           service_fee_pct?: number | null
@@ -1557,6 +1549,8 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          auto_cancel_orders_running?: boolean | null
+          auto_cancel_preparing_running?: boolean | null
           currency?: string | null
           id?: number
           insurance_rate?: number | null
@@ -1567,6 +1561,9 @@ export type Database = {
           order_expiration_hours?: number | null
           package_presets?: Json | null
           payout_fee_fixed_cents?: number | null
+          preparing_expiration_hours?: number | null
+          release_funds_running?: boolean | null
+          return_delivery_timeout_running?: boolean | null
           return_label_fee_cents?: number | null
           service_fee_fixed_cents?: number | null
           service_fee_pct?: number | null
@@ -1798,16 +1795,10 @@ export type Database = {
           email: string | null
           id: string | null
           is_verified_seller: boolean | null
-          last_sign_in_at: string | null
           pending_balance: number | null
-          phone_number: string | null
-          processed_count: number | null
           role: string | null
-          sold_count: number | null
           status: Database["public"]["Enums"]["account_status"] | null
-          total_listings: number | null
           username: string | null
-          verified_count: number | null
         }
         Relationships: []
       }
@@ -1895,13 +1886,6 @@ export type Database = {
           success: boolean
         }[]
       }
-      fn_complete_dispute_refund: {
-        Args: { p_dispute_id: string; p_order_id: string }
-        Returns: {
-          error_message: string
-          success: boolean
-        }[]
-      }
       fn_complete_shipment_refund: {
         Args: { p_shipment_id: string }
         Returns: {
@@ -1911,13 +1895,6 @@ export type Database = {
       }
       fn_confirm_delivery: {
         Args: { p_order_id: string }
-        Returns: {
-          error_message: string
-          success: boolean
-        }[]
-      }
-      fn_confirm_return_receipt: {
-        Args: { p_dispute_id: string }
         Returns: {
           error_message: string
           success: boolean
@@ -1968,6 +1945,13 @@ export type Database = {
           total_processed: number
         }[]
       }
+      fn_cron_return_delivery_timeout: {
+        Args: never
+        Returns: {
+          total_errors: number
+          total_processed: number
+        }[]
+      }
       fn_derive_order_status: {
         Args: { p_order_id: string }
         Returns: Database["public"]["Enums"]["order_status_enum"]
@@ -2001,20 +1985,6 @@ export type Database = {
         Args: { p_amount: number; p_dispute_id: string; p_stripe_id: string }
         Returns: undefined
       }
-      fn_mark_as_delivered: {
-        Args: { p_order_id: string }
-        Returns: {
-          error_message: string
-          success: boolean
-        }[]
-      }
-      fn_mark_return_as_delivered: {
-        Args: { p_dispute_id: string }
-        Returns: {
-          error_message: string
-          success: boolean
-        }[]
-      }
       fn_mark_return_delivered: {
         Args: { p_dispute_id: string }
         Returns: {
@@ -2032,13 +2002,6 @@ export type Database = {
       fn_refresh_seller_stats: {
         Args: { p_seller_id: string }
         Returns: undefined
-      }
-      fn_release_order_funds: {
-        Args: { p_order_id: string }
-        Returns: {
-          error_message: string
-          success: boolean
-        }[]
       }
       fn_release_products: {
         Args: { p_product_ids: string[] }

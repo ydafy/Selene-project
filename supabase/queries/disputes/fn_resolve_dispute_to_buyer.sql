@@ -14,7 +14,7 @@ BEGIN
     END IF;
 
     -- B. VALIDACIÓN DE ROL: Solo Admins
-    IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = v_auth_user_id AND role = 'admin') THEN
+    IF NOT EXISTS (SELECT 1 FROM public.profiles_private WHERE id = v_auth_user_id AND role = 'admin') THEN
         RETURN QUERY SELECT false, 'UNAUTHORIZED_ADMIN_ONLY'::TEXT; RETURN;
     END IF;
 
@@ -49,8 +49,8 @@ BEGIN
     -- F. NOTIFICACIONES: Avisar a ambas partes
     INSERT INTO public.notifications (user_id, type, title, message, action_path)
     VALUES
-        (v_buyer_id, 'warning', 'Retorno Aprobado', 'El administrador aprobó la devolución. Tienes 48h para enviar el producto.', '/profile/orders/' || v_order_id),
-        (v_seller_id, 'info', 'Veredicto: Retorno', 'Se ha ordenado la devolución del producto por disputa.', '/profile/orders/' || v_order_id);
+        (v_buyer_id, 'success', 'Retorno Aprobado', 'El administrador aprobó la devolución. Te notificaremos en cuanto el vendedor genere tu guía de retorno.', '/profile/orders/' || v_order_id),
+        (v_seller_id, 'warning', 'Veredicto: Generar Guía', 'Se ha ordenado la devolución. Tienes 48h para pagar y generar la guía de retorno de tu comprador, o se reembolsará automáticamente.', '/profile/orders/' || v_order_id);
 
     RETURN QUERY SELECT true, NULL::TEXT;
 
