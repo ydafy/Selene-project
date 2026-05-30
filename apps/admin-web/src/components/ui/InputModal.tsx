@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface Props {
   isOpen: boolean;
@@ -22,6 +22,10 @@ export const InputModal = ({
   isLoading,
 }: Props) => {
   const [value, setValue] = useState('');
+
+  useEffect(() => {
+    if (!isOpen) setValue('');
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

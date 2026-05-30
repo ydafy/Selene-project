@@ -182,11 +182,11 @@ export function DataTable<TData>({
           </thead>
 
           <tbody className="divide-y divide-white/5">
-            {isLoading ? (
+            {isLoading || data === undefined ? (
               Array.from({ length: skeletonRowCount }, (_, i) => (
                 <SkeletonRow key={`skeleton-${i}`} columns={columnCount} />
               ))
-            ) : data && data.length > 0 ? (
+            ) : data.length > 0 ? (
               table.getRowModel().rows.map((row) => (
                 <tr
                   key={row.id}

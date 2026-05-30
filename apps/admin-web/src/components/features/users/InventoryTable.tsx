@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Package } from 'lucide-react';
 import { StatusBadge } from '../../ui/StatusBadge';
 import { DataTable } from '../../ui/DataTable';
+import { SecureImage } from '../../ui/SecureImage';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { StatusType } from '../../ui/StatusBadge';
 import type { Product } from '@selene/types';
@@ -19,10 +20,10 @@ export const InventoryTable = ({ products, total }: Props) => {
         header: 'Producto',
         cell: ({ row }) => (
           <div className="flex items-center gap-3">
-            <img
-              src={row.original.images?.[0]}
-              className="w-10 h-10 rounded-lg object-cover bg-night border border-white/5"
+            <SecureImage
+              path={row.original.images?.[0] ?? ''}
               alt={row.original.name}
+              className="w-10 h-10 rounded-lg object-cover bg-night border border-white/5"
             />
             <p className="text-sm font-medium text-platinum truncate max-w-[200px]">
               {row.original.name}

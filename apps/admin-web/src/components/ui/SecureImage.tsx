@@ -20,24 +20,36 @@ export const SecureImage = ({
   bucket = 'verification',
 }: Props) => {
   const [url, setUrl] = useState<string | null>(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (!path) return;
+    if (!path) { setError(true); return; }
     const getSignedUrl = async () => {
       const cleanPath = getStoragePath(path, bucket);
       const { data } = await supabase.storage
         .from(bucket)
         .createSignedUrl(cleanPath, 3600);
-      if (data) setUrl(data.signedUrl);
+      if (data) {
+        setUrl(data.signedUrl);
+      } else {
+        setError(true);
+      }
     };
     getSignedUrl();
   }, [path, bucket]);
 
+  if (error) {
+    return (
+      <div className={`flex items-center justify-center bg-white/5 ${className}`}>
+        <span className="text-blue-light text-xs">No disponible</span>
+      </div>
+    );
+  }
   if (!url) return <div className={`animate-pulse bg-white/5 ${className}`} />;
 
   return (
     <div className="relative group w-full h-full">
-      <img src={url} alt={alt} className={className} />
+      <img src={url} alt={alt} className={className} onError={() => setError(true)} />
 
       {/* Overlay sutil que indica que es clickeable */}
       <button

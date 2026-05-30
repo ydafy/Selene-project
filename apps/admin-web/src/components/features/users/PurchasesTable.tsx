@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { ShoppingBag } from 'lucide-react';
 import { StatusBadge } from '../../ui/StatusBadge';
 import { DataTable } from '../../ui/DataTable';
+import { SecureImage } from '../../ui/SecureImage';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { StatusType } from '../../ui/StatusBadge';
 import type { OrderItemWithProduct } from '@selene/types';
@@ -18,10 +19,10 @@ export const PurchasesTable = ({ items }: Props) => {
         header: 'Producto',
         cell: ({ row }) => (
           <div className="flex items-center gap-3">
-            <img
-              src={row.original.product?.images?.[0]}
-              className="w-8 h-8 rounded bg-night"
+            <SecureImage
+              path={row.original.product?.images?.[0] ?? ''}
               alt=""
+              className="w-8 h-8 rounded bg-night"
             />
             <p className="text-sm text-platinum truncate max-w-[150px]">
               {row.original.product?.name}

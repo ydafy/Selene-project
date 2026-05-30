@@ -71,8 +71,8 @@ export const EvidenceViewer = ({
               key={index}
               className="w-24 h-24 flex-shrink-0 bg-night rounded-xl overflow-hidden border border-white/5 relative group"
             >
-              <img
-                src={img}
+              <SecureImage
+                path={img}
                 className="w-full h-full object-cover"
                 alt={`Venta ${index}`}
               />
