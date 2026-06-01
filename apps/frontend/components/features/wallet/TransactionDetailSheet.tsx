@@ -1,5 +1,5 @@
 import React, { useMemo, forwardRef, useCallback } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import {
   BottomSheetModal,
   BottomSheetBackdrop,
@@ -30,7 +30,7 @@ export const TransactionDetailSheet = forwardRef<BottomSheetModal, Props>(
     // 1. OPTIMIZACIÓN: Renderizado de filas memorizado
     const renderRow = useCallback(
       (
-        label: string,
+        label: string | React.ReactNode,
         amount: number | null | undefined,
         isDeduction = false,
         isTotal = false,
@@ -43,12 +43,18 @@ export const TransactionDetailSheet = forwardRef<BottomSheetModal, Props>(
             justifyContent="space-between"
             marginBottom="s"
           >
-            <Text
-              variant={isTotal ? 'subheader-md' : 'body-md'}
-              color="textSecondary"
-            >
-              {label}
-            </Text>
+            <Box flexDirection="row" alignItems="center">
+              {typeof label === 'string' ? (
+                <Text
+                  variant={isTotal ? 'subheader-md' : 'body-md'}
+                  color="textSecondary"
+                >
+                  {label}
+                </Text>
+              ) : (
+                label
+              )}
+            </Box>
             <Text
               variant={isTotal ? 'subheader-md' : 'body-md'}
               color={
@@ -129,6 +135,58 @@ export const TransactionDetailSheet = forwardRef<BottomSheetModal, Props>(
                 {renderRow(
                   t('transactionDetail.commission'),
                   transaction.fee_deducted,
+                  true,
+                )}
+                {renderRow(
+                  <Box flexDirection="row" alignItems="center">
+                    <Text variant="body-md" color="textSecondary">
+                      {t('transactionDetail.taxWithholdingISR')}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() =>
+                        Alert.alert(
+                          t('transactionDetail.taxWithholdingISR'),
+                          t('transactionDetail.taxWithholdingTooltip'),
+                        )
+                      }
+                      style={{ marginLeft: 4 }}
+                    >
+                      <MaterialCommunityIcons
+                        name="information-outline"
+                        size={14}
+                        color={theme.colors.textSecondary}
+                      />
+                    </TouchableOpacity>
+                  </Box>,
+                  transaction.tax_withholding
+                    ? transaction.tax_withholding * (1 / 9)
+                    : null,
+                  true,
+                )}
+                {renderRow(
+                  <Box flexDirection="row" alignItems="center">
+                    <Text variant="body-md" color="textSecondary">
+                      {t('transactionDetail.taxWithholdingIVA')}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() =>
+                        Alert.alert(
+                          t('transactionDetail.taxWithholdingIVA'),
+                          t('transactionDetail.taxWithholdingTooltip'),
+                        )
+                      }
+                      style={{ marginLeft: 4 }}
+                    >
+                      <MaterialCommunityIcons
+                        name="information-outline"
+                        size={14}
+                        color={theme.colors.textSecondary}
+                      />
+                    </TouchableOpacity>
+                  </Box>,
+                  transaction.tax_withholding
+                    ? transaction.tax_withholding * (8 / 9)
+                    : null,
                   true,
                 )}
                 {renderRow(

@@ -673,6 +673,7 @@ export type Database = {
           order_id: string
           price_at_purchase: number
           product_id: string
+          sat_tax_withholding: number | null
           seller_id: string
           shipment_id: string | null
           shipping_amount: number | null
@@ -687,6 +688,7 @@ export type Database = {
           order_id: string
           price_at_purchase: number
           product_id: string
+          sat_tax_withholding?: number | null
           seller_id: string
           shipment_id?: string | null
           shipping_amount?: number | null
@@ -701,6 +703,7 @@ export type Database = {
           order_id?: string
           price_at_purchase?: number
           product_id?: string
+          sat_tax_withholding?: number | null
           seller_id?: string
           shipment_id?: string | null
           shipping_amount?: number | null
@@ -1511,6 +1514,8 @@ export type Database = {
           id: number
           insurance_rate: number | null
           is_maintenance: boolean | null
+          isr_withholding_pct: number | null
+          iva_withholding_pct: number | null
           min_payout_amount_cents: number | null
           min_version_android: string | null
           min_version_ios: string | null
@@ -1533,6 +1538,8 @@ export type Database = {
           id: number
           insurance_rate?: number | null
           is_maintenance?: boolean | null
+          isr_withholding_pct?: number | null
+          iva_withholding_pct?: number | null
           min_payout_amount_cents?: number | null
           min_version_android?: string | null
           min_version_ios?: string | null
@@ -1555,6 +1562,8 @@ export type Database = {
           id?: number
           insurance_rate?: number | null
           is_maintenance?: boolean | null
+          isr_withholding_pct?: number | null
+          iva_withholding_pct?: number | null
           min_payout_amount_cents?: number | null
           min_version_android?: string | null
           min_version_ios?: string | null
@@ -1585,6 +1594,7 @@ export type Database = {
           order_id: string | null
           shipment_id: string | null
           shipping_cost: number | null
+          tax_withholding: number | null
           type: Database["public"]["Enums"]["wallet_transaction_type"]
           wallet_id: string
         }
@@ -1600,6 +1610,7 @@ export type Database = {
           order_id?: string | null
           shipment_id?: string | null
           shipping_cost?: number | null
+          tax_withholding?: number | null
           type: Database["public"]["Enums"]["wallet_transaction_type"]
           wallet_id: string
         }
@@ -1615,6 +1626,7 @@ export type Database = {
           order_id?: string | null
           shipment_id?: string | null
           shipping_cost?: number | null
+          tax_withholding?: number | null
           type?: Database["public"]["Enums"]["wallet_transaction_type"]
           wallet_id?: string
         }
@@ -1907,35 +1919,20 @@ export type Database = {
           success: boolean
         }[]
       }
-      fn_create_order_from_payment:
-        | {
-            Args: {
-              p_address_id: string
-              p_buyer_id: string
-              p_product_ids: string[]
-              p_service_fee: number
-              p_stripe_intent_id: string
-              p_total_amount: number
-            }
-            Returns: {
-              error_message: string
-              success: boolean
-            }[]
-          }
-        | {
-            Args: {
-              p_address_id: string
-              p_buyer_id: string
-              p_product_ids: string[]
-              p_service_fee: number
-              p_stripe_intent_id: string
-              p_total_amount: number
-            }
-            Returns: {
-              error_message: string
-              success: boolean
-            }[]
-          }
+      fn_create_order_from_payment: {
+        Args: {
+          p_address_id: string
+          p_buyer_id: string
+          p_product_ids: string[]
+          p_service_fee: number
+          p_stripe_intent_id: string
+          p_total_amount: number
+        }
+        Returns: {
+          error_message: string
+          success: boolean
+        }[]
+      }
       fn_cron_dispute_payout_timeout: { Args: never; Returns: undefined }
       fn_cron_dispute_shipping_timeout: { Args: never; Returns: undefined }
       fn_cron_release_shipment_funds: {

@@ -9,6 +9,7 @@ import type { LucideIcon } from 'lucide-react';
 import { DataTable } from '../../ui/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { WalletTransaction } from '@selene/types';
+import { TaxWithholdingCell } from './TaxWithholdingCell';
 
 interface Props {
   transactions: WalletTransaction[];
@@ -121,6 +122,14 @@ export const UserTransactionsTable = ({ transactions }: Props) => {
           ) : (
             <span className="text-blue-light/30">—</span>
           );
+        },
+      },
+      {
+        accessorKey: 'tax_withholding',
+        header: 'Retención SAT',
+        cell: ({ getValue }) => {
+          const tax = getValue() as number | null;
+          return <TaxWithholdingCell tax={tax} />;
         },
       },
       {

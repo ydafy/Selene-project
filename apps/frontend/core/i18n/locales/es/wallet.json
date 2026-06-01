@@ -25,6 +25,9 @@
   "transactionDetail": {
     "salePrice": "Precio de Venta",
     "commission": "Comisión Selene (9%)",
+    "taxWithholdingISR": "Retención ISR 1% (acreditable en declaración anual)",
+    "taxWithholdingIVA": "Retención IVA 8% (acreditable en declaración anual)",
+    "taxWithholdingTooltip": "Esta retención es acreditable en tu declaración anual. No es dinero perdido — el SAT te lo descuenta al declarar.",
     "shipping": "Envío",
     "netReceived": "Total Recibido",
     "shippingFee": "Seguro de Envío",

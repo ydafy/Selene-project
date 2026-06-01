@@ -26,6 +26,9 @@
   "transactionDetail": {
     "salePrice": "Sale Price",
     "commission": "Selene Commission (9%)",
+    "taxWithholdingISR": "ISR Withholding 1% (creditable on annual tax filing)",
+    "taxWithholdingIVA": "IVA Withholding 8% (creditable on annual tax filing)",
+    "taxWithholdingTooltip": "This withholding is creditable on your annual tax filing. It's not lost money — the SAT deducts it when you file.",
     "shipping": "Shipping",
     "netReceived": "Total Received",
     "requestedAmount": "Requested Amount",

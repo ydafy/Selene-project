@@ -90,7 +90,7 @@ serve(async (req) => {
     // 5. OBTENER CONFIGURACIÓN DINÁMICA
     const { data: sysSettings, error: configError } = await supabaseAdmin
       .from('system_settings')
-      .select('service_fee_pct, service_fee_fixed_cents')
+      .select('service_fee_pct, service_fee_fixed_cents, isr_withholding_pct, iva_withholding_pct')
       .eq('id', 1)
       .single();
 
@@ -154,6 +154,12 @@ serve(async (req) => {
       sysSettings.service_fee_fixed_cents;
     const totalCents = subtotalCents + serviceFeeCents;
 
+    const isrPct = sysSettings.isr_withholding_pct ?? 0.01;
+    const ivaPct = sysSettings.iva_withholding_pct ?? 0.08;
+    const satIsrWithholding = subtotalFromDB * isrPct;
+    const satIvaWithholding = subtotalFromDB * ivaPct;
+    const satTotalWithholding = satIsrWithholding + satIvaWithholding;
+
     // 10. IDENTIDAD STRIPE
     const { data: profile } = await supabaseClient
       .from('profiles_private')
@@ -188,6 +194,9 @@ serve(async (req) => {
           total_expected: (totalCents / 100).toString(), // <--- MEJORA DE AUDITORÍA
           seller_ids: JSON.stringify(uniqueSellerIds),
           seller_shipping: JSON.stringify(sellerShipping),
+          sat_isr_withholding: satIsrWithholding.toString(),
+          sat_iva_withholding: satIvaWithholding.toString(),
+          sat_total_withholding: satTotalWithholding.toString(),
         },
       },
       {

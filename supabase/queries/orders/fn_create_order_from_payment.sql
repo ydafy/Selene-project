@@ -8,6 +8,9 @@ DECLARE
   v_wallet_pending NUMERIC;
   v_net_payout NUMERIC;
   v_commission_pct NUMERIC;
+  v_isr_pct NUMERIC;
+  v_iva_pct NUMERIC;
+  v_sat_withholding NUMERIC;
   v_shipment_id UUID;
   v_shipments_cache JSONB := '{}'::JSONB; -- {seller_id: shipment_id}
   v_wallet_available NUMERIC;
@@ -18,7 +21,9 @@ BEGIN
   END IF;
 
   -- 2. Config
-  SELECT service_fee_pct INTO v_commission_pct FROM public.system_settings LIMIT 1;
+  SELECT service_fee_pct, isr_withholding_pct, iva_withholding_pct
+    INTO v_commission_pct, v_isr_pct, v_iva_pct
+  FROM public.system_settings LIMIT 1;
 
   -- 3. Snapshot de dirección
   SELECT to_jsonb(a.*) INTO v_addr_snapshot FROM public.addresses a
@@ -59,19 +64,20 @@ BEGIN
       RETURN QUERY SELECT false, format('PRODUCT_NOT_AVAILABLE: %s (status: %s)', v_prod.name, v_prod.status); RETURN;
     END IF;
 
-    v_net_payout := v_prod.price - (v_prod.price * v_commission_pct) - COALESCE(v_prod.shipping_cost, 0);
+    v_sat_withholding := v_prod.price * (v_isr_pct + v_iva_pct);
+    v_net_payout := v_prod.price - (v_prod.price * v_commission_pct) - v_sat_withholding - COALESCE(v_prod.shipping_cost, 0);
 
     -- Asignar shipment_id según el seller
     v_shipment_id := (v_shipments_cache ->> v_prod.seller_id::TEXT)::UUID;
 
     INSERT INTO public.order_items (
       order_id, product_id, seller_id, price_at_purchase,
-      commission_amount, shipping_amount, net_payout, shipment_id
+      commission_amount, shipping_amount, net_payout, shipment_id, sat_tax_withholding
     )
     VALUES (
       v_order_id, v_prod.id, v_prod.seller_id, v_prod.price,
       (v_prod.price * v_commission_pct), COALESCE(v_prod.shipping_cost, 0),
-      v_net_payout, v_shipment_id
+      v_net_payout, v_shipment_id, v_sat_withholding
     );
 
     -- Wallet
@@ -85,13 +91,14 @@ BEGIN
     WHERE id = v_wallet_id;
 
     INSERT INTO public.wallet_transactions (
-      wallet_id, order_id, shipment_id, amount, net_amount, balance_after, type, description
+      wallet_id, order_id, shipment_id, amount, net_amount, balance_after, type, description, tax_withholding
     )
     VALUES (
       v_wallet_id, v_order_id, v_shipment_id, v_prod.price, v_net_payout,
       v_wallet_available,  -- available_balance intacto (el cobro entra a pending)
       'sale_proceeds',
-      'Venta: ' || v_prod.name
+      'Venta: ' || v_prod.name,
+      v_sat_withholding
     );
 
     -- Marcar vendido
