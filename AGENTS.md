@@ -93,61 +93,11 @@ Before writing ANY code that touches the database, queries a table, or reference
 
 ---
 
-# Agent Skills Index
+# Skill Auto-Invoke Rules
 
-When working on this project, load the relevant skill(s) BEFORE writing any code.
+**The single source of truth for all skills is `.atl/skill-registry.md`.** That file is the authoritative index — do not duplicate it here. When installing or updating a skill, refresh the registry with `gentle-ai skill-registry refresh --force`.
 
-## How to Use
-
-1. Check the **Auto-Invoke Rules** to find skills that match your current task
-2. Load the skill by reading the SKILL.md file at the listed path from **Core Skills** or **Supporting Skills**
-3. Follow ALL patterns and rules from the loaded skill
-4. Multiple skills can apply simultaneously
-
-## Available Skills
-
-### Core Skills
-
-| Skill                              | Description                                                                                                                                | When to Use                                                                               | File                                                                 |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `accessibility`                    | Best practices for web and mobile accessibility (WCAG, ARIA, contrast, screen readers)                                                     | When creating or modifying any user interface (mobile or web)                             | [SKILL.md](.agents/skills/accessibility/SKILL.md)                    |
-| `building-native-ui`               | Complete guide for building beautiful apps with Expo Router. Fundamentals, styling, components, navigation, animations and native patterns | When creating, modifying or refactoring components and screens of the mobile app          | [SKILL.md](.agents/skills/building-native-ui/SKILL.md)               |
-| `design-mobile-apps`               | Principles of mobile app design and UX/UI. Includes complete flows, interfaces and navigation                                              | When designing user flows, creating new screens or improving mobile UX/UI                 | [SKILL.md](.agents/skills/design-mobile-apps/SKILL.md)               |
-| `expo-api-routes`                  | Guidelines for creating API routes in Expo Router with EAS Hosting                                                                         | When creating or modifying API routes in the Expo project                                 | [SKILL.md](.agents/skills/expo-api-routes/SKILL.md)                  |
-| `expo-deployment`                  | Deploying Expo apps to iOS App Store, Android Play Store, web hosting, and API routes                                                      | When preparing builds, releases, updates or production deployments                        | [SKILL.md](.agents/skills/expo-deployment/SKILL.md)                  |
-| `native-data-fetching`             | Implementing or debugging any network request, API call or data fetching (React Query, SWR, Expo Router loaders, etc.)                     | When implementing fetching, caching, error handling or data synchronization               | [SKILL.md](.agents/skills/native-data-fetching/SKILL.md)             |
-| `react-hook-form`                  | Advanced form handling and validation with React Hook Form                                                                                 | When creating or modifying any form in the mobile app or dashboard                        | [SKILL.md](.agents/skills/react-hook-form/SKILL.md)                  |
-| `supabase-postgres-best-practices` | Postgres performance optimization and best practices from Supabase                                                                         | When working with queries, schema design, RLS, auth or database operations                | [SKILL.md](.agents/skills/supabase-postgres-best-practices/SKILL.md) |
-| `tailwind-css-patterns`            | Comprehensive Tailwind CSS utility-first styling patterns (responsive, layout, design systems)                                             | When creating or modifying styles, components and maintaining visual consistency          | [SKILL.md](.agents/skills/tailwind-css-patterns/SKILL.md)            |
-| `typescript-advanced-types`        | Master TypeScript advanced type system (generics, conditional, mapped types, utility types)                                                | When working with complex logic or improving type safety in TypeScript                    | [SKILL.md](.agents/skills/typescript-advanced-types/SKILL.md)        |
-| `zod`                              | Zod schema validation best practices for type safety, parsing and error handling                                                           | When defining validation schemas for forms, APIs and external data                        | [SKILL.md](.agents/skills/zod/SKILL.md)                              |
-| `zustand`                          | State management patterns including slice composition, optimistic updates, and class-based action migration                                | When working in src/store/\*\*, adding slices, or refactoring store actions and selectors | [SKILL.md](.agents/skills/zustand/SKILL.md)                          |
-| `supabase`                         | Backend-as-a-Service integration covering Auth, Database, RLS, Edge Functions, and Realtime                                                | When managing database schemas, migrations, authentication flows, or serverless functions | [SKILL.md](.agents/skills/supabase/SKILL.md)                         |
-| `stripe-best-practices`            | Strategic integration of Stripe APIs (Checkout, Connect, Billing) and secure key management                                                | When architecting payment flows, subscriptions, or marketplace connected accounts         | [SKILL.md](.agents/skills/stripe-best-practices/SKILL.md)            |
-
-### Supporting Skills
-
-| Skill                  | Description                                                                                     | When to Use                                                                               | File                                                     |
-| ---------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| `bun`                  | Use Bun when building, testing, and deploying JavaScript/TypeScript applications                | When installing dependencies, running scripts, bundling or testing                        | [SKILL.md](.agents/skills/bun/SKILL.md)                  |
-| `composition-patterns` | React composition patterns that scale (compound components, render props, context, etc.)        | When refactoring components to improve reusability and architecture                       | [SKILL.md](.agents/skills/composition-patterns/SKILL.md) |
-| `expo-cicd-workflows`  | Helps write EAS workflow YAML files for Expo projects                                           | When configuring CI/CD, EAS Build pipelines or deployment workflows                       | [SKILL.md](.agents/skills/expo-cicd-workflows/SKILL.md)  |
-| `expo-dev-client`      | Build and distribute Expo development clients locally or via TestFlight                         | When working with custom native code or Dev Client                                        | [SKILL.md](.agents/skills/expo-dev-client/SKILL.md)      |
-| `expo-tailwind-setup`  | Set up Tailwind CSS v4 in Expo with NativeWind v5                                               | When configuring, updating or fixing Tailwind in Expo                                     | [SKILL.md](.agents/skills/expo-tailwind-setup/SKILL.md)  |
-| `frontend-design`      | Create distinctive, production-grade frontend interfaces with high design quality               | When improving UI/UX or creating visual components and dashboards                         | [SKILL.md](.agents/skills/frontend-design/SKILL.md)      |
-| `react-best-practices` | React and Next.js performance optimization guidelines from Vercel                               | When refactoring or improving React code and performance                                  | [SKILL.md](.agents/skills/react-best-practices/SKILL.md) |
-| `seo`                  | Optimize for search engine visibility and ranking (meta tags, structured data, sitemaps)        | When improving SEO on the web dashboard                                                   | [SKILL.md](.agents/skills/seo/SKILL.md)                  |
-| `upgrading-expo`       | Guidelines for upgrading Expo SDK versions and fixing dependency issues                         | When performing Expo SDK upgrades                                                         | [SKILL.md](.agents/skills/upgrading-expo/SKILL.md)       |
-| `use-dom`              | Use Expo DOM components to run web code in a webview on native                                  | When migrating web code to native incrementally                                           | [SKILL.md](.agents/skills/use-dom/SKILL.md)              |
-| `vite`                 | Vite build tool configuration, plugins, SSR and optimization                                    | When working with the web dashboard configuration                                         | [SKILL.md](.agents/skills/vite/SKILL.md)                 |
-| `i18n-localization`    | Internationalization patterns, translation management, and RTL support                          | When localizing UI text or managing multi-language locale files and assets                | [SKILL.md](.agents/skills/i18n-localization/SKILL.md)    |
-| `kpi-dashboard-design` | Best kpi-dashboard practices for metric selection, data visualization, and real-time monitoring | When working with the dashboard to implement metric selection, data visualization or more | [SKILL.md](.agents/skills/kpi-dashboard-design/SKILL.md) |
-| `upgrade-stripe`       | Migration and versioning strategies for Stripe SDKs and API versions                            | When performing maintenance or upgrading legacy Stripe implementations to the latest API  | [SKILL.md](.agents/skills/upgrade-stripe/SKILL.md)       |
-| `stripe-projects`      | Provisioning and initialization of third-party services via projects.dev providers              | When working with service API keys, tokens, or setting up new provider integrations       | [SKILL.md](.agents/skills/stripe-projects/SKILL.md)      |
-| `caveman-commit`       | Commit message behavior. Fully independent skill.                                               | When working with git enviorement                                                         | [SKILL.md](.agents/skills/caveman-commit/SKILL.md)       |
-| `webapp-testing`       | Debugging UI behavior, capturing browser screenshots, and viewing browser logs                  | When working on dashboard web testing                                                     | [SKILL.md](.agents/skills/webapp-testing/SKILL.md)       |
-
-## Auto-Invoke Rules
+## When to Load Skills
 
 **When performing these actions, **ALWAYS** invoke the corresponding skill FIRST:**
 
