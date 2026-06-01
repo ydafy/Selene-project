@@ -101,26 +101,31 @@ Before writing ANY code that touches the database, queries a table, or reference
 
 **When performing these actions, **ALWAYS** invoke the corresponding skill FIRST:**
 
-| Trigger                               | Invoke First                                | Reason                                                       |
-| ------------------------------------- | ------------------------------------------- | ------------------------------------------------------------ |
-| Create or modify mobile UI/components | `building-native-ui` + `design-mobile-apps` | Follow native patterns and good UX                           |
-| Create or edit forms                  | `react-hook-form` + `zod`                   | Robust validation                                            |
-| Work with styles or visual design     | `tailwind-css-patterns`                     | Visual consistency across the project                        |
-| Work with Supabase / Postgres         | `supabase-postgres-best-practices`          | Best practices and security                                  |
-| Any data fetching or API calls        | `native-data-fetching`                      | Professional data handling                                   |
-| Create/modify API routes              | `expo-api-routes`                           | Correct structure                                            |
-| Improve accessibility                 | `accessibility`                             | Meet WCAG standards                                          |
-| Deployment, builds or releases        | `expo-deployment`                           | Official Expo flow                                           |
-| Update Expo SDK                       | `upgrading-expo`                            | Avoid common issues                                          |
-| Complex logic or advanced types       | `typescript-advanced-types`                 | Better type safety                                           |
-| Configure CI/CD or workflows          | `expo-cicd-workflows`                       | Recommended pipelines                                        |
-| Modify state slices or store logic    | `zustand`                                   | Ensure consistent action patterns and performance            |
-| Implementation of payments or billing | `stripe-best-practices`                     | Enforce security and correct API selection                   |
-| Database schema or Auth changes       | `supabase`                                  | Handle migrations and RLS policies correctly                 |
-| Adding charts or SaaS metrics         | `kpi-dashboard-design`                      | Follow visualization best practices and calculation accuracy |
-| Hardcoded strings or new languages    | `i18n-localization`                         | Maintain clean localization files and internationalization   |
-| Using git commands                    | `caveman-commit`                            | Maintain clean git commits and git commands                  |
-| Dashboard web testing or debugging    | `webapp-testing`                            | Test and debug admin panel features with Playwright          |
+| Trigger                                      | Invoke First                                | Reason                                                       |
+| -------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------ |
+| Create or modify mobile UI/components        | `building-native-ui` + `design-mobile-apps` | Follow native patterns and good UX                           |
+| Create or edit forms                         | `react-hook-form` + `zod`                   | Robust validation                                            |
+| Work with styles or visual design            | `tailwind-css-patterns`                     | Visual consistency across the project                        |
+| Work with Supabase / Postgres                | `supabase-postgres-best-practices`          | Best practices and security                                  |
+| Any data fetching or API calls               | `native-data-fetching`                      | Professional data handling                                   |
+| Create/modify API routes                     | `expo-api-routes`                           | Correct structure                                            |
+| Improve accessibility                        | `accessibility`                              | Meet WCAG standards                                          |
+| Deployment, builds or releases               | `expo-deployment`                           | Official Expo flow                                           |
+| Build dev client with custom native code     | `expo-dev-client`                           | Correct dev client setup and distribution                    |
+| Update Expo SDK                              | `upgrading-expo`                            | Avoid common issues                                          |
+| Complex logic or advanced types              | `typescript-advanced-types`                 | Better type safety                                           |
+| Configure CI/CD or workflows                 | `expo-cicd-workflows`                       | Recommended pipelines                                        |
+| Modify state slices or store logic           | `zustand`                                   | Ensure consistent action patterns and performance            |
+| Implementation of payments or billing        | `stripe-best-practices`                     | Enforce security and correct API selection                   |
+| Database schema or Auth changes              | `supabase`                                  | Handle migrations and RLS policies correctly                 |
+| Adding charts or SaaS metrics                | `kpi-dashboard-design`                      | Follow visualization best practices and calculation accuracy |
+| Hardcoded strings or new languages           | `i18n-localization`                         | Maintain clean localization files and internationalization   |
+| Refactor components with boolean prop spread | `vercel-composition-patterns`               | Reduce prop proliferation, improve component API             |
+| Optimize React rendering or bundle size     | `vercel-react-best-practices`               | Avoid anti-patterns, improve performance                     |
+| Modify admin-web build config or plugins     | `vite`                                      | Correct Vite configuration and plugin usage                 |
+| Create or review pull requests               | `branch-pr`                                 | Issue-first PR flow with checks                              |
+| Dashboard web testing or debugging          | `webapp-testing`                            | Test and debug admin panel features with Playwright          |
+| Using git commands                           | `caveman-commit`                             | Maintain clean git commits and git commands                  |
 
 ---
 
