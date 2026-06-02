@@ -16,6 +16,16 @@
     "camera": "Tomar Foto",
     "gallery": "Abrir Galería"
   },
+  "favorites": {
+    "title": "Mis Favoritos",
+    "emptyTitle": "Sin favoritos aún",
+    "emptyMsg": "Explora productos y guarda los que te gusten aquí.",
+    "cta": "Explorar productos",
+    "dialog": {
+      "unfavoriteTitle": "¿Quitar de favoritos?",
+      "unfavoriteMsg": "Este producto se eliminará de tu lista de favoritos."
+    }
+  },
   "listings": {
     "title": "Mis Publicaciones",
     "emptyTitle": "No has publicado nada",

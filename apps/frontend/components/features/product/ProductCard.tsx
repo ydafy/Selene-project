@@ -23,10 +23,12 @@ type ProductCardProps = {
   onPress: (product: Product) => void;
   imageHeight: number;
   index?: number;
+  onFavoriteToggle?: (productId: string, willBeFavorite: boolean) => void;
+  onBeforeUnfavorite?: (productId: string) => boolean | Promise<boolean>;
 };
 
 export const ProductCard = memo(
-  ({ product, onPress, imageHeight, index = 0 }: ProductCardProps) => {
+  ({ product, onPress, imageHeight, index = 0, onFavoriteToggle, onBeforeUnfavorite }: ProductCardProps) => {
     const theme = useTheme<Theme>();
     const sharedStyles = getSharedStyles(theme);
     const isSold = product.status === 'SOLD';
@@ -163,7 +165,12 @@ export const ProductCard = memo(
                       justifyContent="center"
                       alignItems="center"
                     >
-                      <ProductFavoriteButton productId={product.id} size={16} />
+                      <ProductFavoriteButton
+                        productId={product.id}
+                        size={16}
+                        onFavoriteToggle={onFavoriteToggle}
+                        onBeforeUnfavorite={onBeforeUnfavorite}
+                      />
                     </Box>
                   </Box>
                 </>

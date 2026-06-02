@@ -16,6 +16,16 @@
     "camera": "Take Photo",
     "gallery": "Open Gallery"
   },
+  "favorites": {
+    "title": "My Favorites",
+    "emptyTitle": "No favorites yet",
+    "emptyMsg": "Browse products and save the ones you like here.",
+    "cta": "Browse products",
+    "dialog": {
+      "unfavoriteTitle": "Remove from favorites?",
+      "unfavoriteMsg": "This product will be removed from your favorites list."
+    }
+  },
   "listings": {
     "title": "My Listings",
     "emptyTitle": "You haven't listed anything",

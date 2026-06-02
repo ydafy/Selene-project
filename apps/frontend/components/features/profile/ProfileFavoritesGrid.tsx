@@ -83,7 +83,9 @@ export const ProfileFavoritesGrid = ({
           {t('sections.favorites') || 'Tus Favoritos'}
         </Text>
         {/* Botón Ver Todos (Visual por ahora) */}
-        <TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => router.push('/profile/favorites')}
+        >
           <Text variant="body-sm" color="textSecondary">
             {t('sections.viewAll')}
           </Text>

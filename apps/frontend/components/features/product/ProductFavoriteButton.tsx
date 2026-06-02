@@ -9,6 +9,9 @@ import { useAuthModal } from '../../../core/auth/AuthModalProvider';
 type ProductFavoriteButtonProps = {
   productId: string;
   size?: number;
+  onFavoriteToggle?: (productId: string, willBeFavorite: boolean) => void;
+  /** Called BEFORE unfavoriting. Return false to cancel the toggle. */
+  onBeforeUnfavorite?: (productId: string) => boolean | Promise<boolean>;
 };
 
 /**
@@ -17,6 +20,8 @@ type ProductFavoriteButtonProps = {
 export const ProductFavoriteButton = ({
   productId,
   size = 24,
+  onFavoriteToggle,
+  onBeforeUnfavorite,
 }: ProductFavoriteButtonProps) => {
   //const { t } = useTranslation(['common', 'auth']); // Usamos el namespace common
   const { session } = useAuthContext();
@@ -25,14 +30,21 @@ export const ProductFavoriteButton = ({
   // 1. Hook del Modal
   const { present } = useAuthModal();
 
-  const handlePress = () => {
+  const handlePress = async () => {
     if (!session) {
       // 2. REEMPLAZO: En lugar de Toast, abrimos el Modal
       present('login');
       return;
     }
 
+    // If unfavoriting and an onBeforeUnfavorite gate is provided, call it first
+    if (isFavorite && onBeforeUnfavorite) {
+      const proceed = await onBeforeUnfavorite(productId);
+      if (!proceed) return;
+    }
+
     toggleFavorite();
+    onFavoriteToggle?.(productId, !isFavorite);
   };
 
   return (
