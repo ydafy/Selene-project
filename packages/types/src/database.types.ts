@@ -828,36 +828,45 @@ export type Database = {
         Row: {
           amount: number
           bank_account_id: string
+          completed_at: string | null
           id: string
           notes: string | null
           processed_at: string | null
           processed_by: string | null
+          rejected_at: string | null
+          rejected_reason: string | null
           requested_at: string | null
-          status: string | null
+          status: Database["public"]["Enums"]["payout_status"] | null
           user_id: string
           wallet_id: string
         }
         Insert: {
           amount: number
           bank_account_id: string
+          completed_at?: string | null
           id?: string
           notes?: string | null
           processed_at?: string | null
           processed_by?: string | null
+          rejected_at?: string | null
+          rejected_reason?: string | null
           requested_at?: string | null
-          status?: string | null
+          status?: Database["public"]["Enums"]["payout_status"] | null
           user_id: string
           wallet_id: string
         }
         Update: {
           amount?: number
           bank_account_id?: string
+          completed_at?: string | null
           id?: string
           notes?: string | null
           processed_at?: string | null
           processed_by?: string | null
+          rejected_at?: string | null
+          rejected_reason?: string | null
           requested_at?: string | null
-          status?: string | null
+          status?: Database["public"]["Enums"]["payout_status"] | null
           user_id?: string
           wallet_id?: string
         }
@@ -1799,6 +1808,56 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_payments_overview: {
+        Row: {
+          account_holder_name: string | null
+          amount: number | null
+          bank_name: string | null
+          clabe: string | null
+          completed_at: string | null
+          id: string | null
+          is_verified: boolean | null
+          processed_at: string | null
+          processed_by: string | null
+          processed_by_name: string | null
+          rejected_at: string | null
+          rejected_reason: string | null
+          requested_at: string | null
+          seller_name: string | null
+          status: Database["public"]["Enums"]["payout_status"] | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payout_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_disputes_monitor_view"
+            referencedColumns: ["buyer_id"]
+          },
+          {
+            foreignKeyName: "payout_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_disputes_monitor_view"
+            referencedColumns: ["seller_id"]
+          },
+          {
+            foreignKeyName: "payout_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_directory_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payout_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_user_directory_view: {
         Row: {
           available_balance: number | null
@@ -2102,6 +2161,7 @@ export type Database = {
         | "cancelled"
         | "dispute"
         | "refunded"
+      payout_status: "pending" | "processing" | "completed" | "rejected"
       wallet_transaction_type:
         | "sale_proceeds"
         | "payout"
@@ -2263,6 +2323,7 @@ export const Constants = {
         "dispute",
         "refunded",
       ],
+      payout_status: ["pending", "processing", "completed", "rejected"],
       wallet_transaction_type: [
         "sale_proceeds",
         "payout",

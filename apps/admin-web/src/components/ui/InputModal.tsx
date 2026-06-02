@@ -9,6 +9,7 @@ interface Props {
   placeholder: string;
   confirmLabel: string;
   isLoading?: boolean;
+  minLength?: number;
 }
 
 export const InputModal = ({
@@ -20,12 +21,17 @@ export const InputModal = ({
   placeholder,
   confirmLabel,
   isLoading,
+  minLength,
 }: Props) => {
   const [value, setValue] = useState('');
 
   useEffect(() => {
     if (!isOpen) setValue('');
   }, [isOpen]);
+
+  const trimmed = value.trim();
+  const isTooShort = minLength !== undefined && trimmed.length > 0 && trimmed.length < minLength;
+  const isValid = trimmed.length > 0 && (minLength === undefined || trimmed.length >= minLength);
 
   if (!isOpen) return null;
 
@@ -44,13 +50,21 @@ export const InputModal = ({
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder={placeholder}
-          className="w-full bg-night border border-white/10 rounded-xl p-4 text-sm text-platinum focus:border-lion outline-none mb-6 min-h-[100px]"
+          className={`w-full bg-night border rounded-xl p-4 text-sm text-platinum focus:border-lion outline-none mb-2 min-h-[100px] ${
+            isTooShort ? 'border-fire' : 'border-white/10'
+          }`}
         />
+
+        {isTooShort && (
+          <p className="text-xs text-fire mb-4">
+            El motivo debe tener al menos {minLength} caracteres.
+          </p>
+        )}
 
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2 rounded-xl bg-white/5 text-platinum font-semibold"
+            className="flex-1 px-4 py-2 rounded-xl bg-white/5 text-platinum font-semibold cursor-pointer"
           >
             Cancelar
           </button>
@@ -59,8 +73,8 @@ export const InputModal = ({
               onConfirm(value);
               setValue('');
             }}
-            disabled={isLoading || !value.trim()}
-            className="flex-1 px-4 py-2 rounded-xl bg-lion text-night font-bold disabled:opacity-50"
+            disabled={isLoading || !isValid}
+            className="flex-1 px-4 py-2 rounded-xl bg-lion text-night font-bold disabled:opacity-50 cursor-pointer"
           >
             {isLoading ? 'Procesando...' : confirmLabel}
           </button>

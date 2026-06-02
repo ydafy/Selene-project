@@ -28,6 +28,7 @@ export type Shipment = Tables<'shipments'>;
 
 export type OrderStatus = Enums<'order_status_enum'>;
 export type AccountStatus = Enums<'account_status'>;
+export type PayoutStatus = Enums<'payout_status'>;
 
 export type ProductStatus =
   | 'PENDING_VERIFICATION'

@@ -237,7 +237,7 @@ export function DataTable<TData>({
                 className="flex items-center gap-2 px-4 py-2 bg-state-gray rounded-xl border border-white/5 text-sm disabled:opacity-30 hover:bg-white/10 transition-all outline-none focus:ring-2 focus:ring-lion/50 cursor-pointer"
               >
                 <ChevronLeft size={14} />
-                Previous
+                Anterior
               </button>
 
               <button
@@ -246,7 +246,7 @@ export function DataTable<TData>({
                 aria-label="Next page"
                 className="flex items-center gap-2 px-4 py-2 bg-state-gray rounded-xl border border-white/5 text-sm disabled:opacity-30 hover:bg-white/10 transition-all outline-none focus:ring-2 focus:ring-lion/50 cursor-pointer"
               >
-                Next
+                Siguiente
                 <ChevronRight size={14} />
               </button>
             </div>
@@ -273,7 +273,7 @@ export function DataTable<TData>({
               className="flex items-center gap-2 px-4 py-2 bg-state-gray rounded-xl border border-white/5 text-sm disabled:opacity-30 hover:bg-white/10 transition-all outline-none focus:ring-2 focus:ring-lion/50 cursor-pointer"
             >
               <ChevronLeft size={14} />
-              Previous
+              Anterior
             </button>
 
             <button
@@ -290,7 +290,7 @@ export function DataTable<TData>({
               aria-label="Next page"
               className="flex items-center gap-2 px-4 py-2 bg-state-gray rounded-xl border border-white/5 text-sm disabled:opacity-30 hover:bg-white/10 transition-all outline-none focus:ring-2 focus:ring-lion/50 cursor-pointer"
             >
-              Next
+              Siguiente
               <ChevronRight size={14} />
             </button>
           </div>

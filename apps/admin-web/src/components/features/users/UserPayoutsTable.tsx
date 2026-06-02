@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { History } from 'lucide-react';
 import { StatusBadge } from '../../ui/StatusBadge';
 import { DataTable } from '../../ui/DataTable';
+import { formatCurrency } from '../../../lib/utils/formatCurrency';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { StatusType } from '../../ui/StatusBadge';
 import type { PayoutRequest } from '@selene/types';
@@ -20,7 +21,7 @@ export const UserPayoutsTable = ({ payouts }: Props) => {
           const amount = (getValue() as number) || 0;
           return (
             <span className="font-bold text-platinum">
-              ${amount.toLocaleString()}
+              {formatCurrency(amount)}
             </span>
           );
         },
