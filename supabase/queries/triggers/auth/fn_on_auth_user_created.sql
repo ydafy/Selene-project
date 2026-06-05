@@ -1,8 +1,8 @@
 
 BEGIN
-  -- A. Crear Perfil con valores por defecto
+  -- A. Crear perfil público (solo datos visibles)
   INSERT INTO public.profiles (
-    id, username, avatar_url, email, role, status, is_verified_seller
+    id, username, avatar_url, is_verified_seller
   )
   VALUES (
     NEW.id,
@@ -12,20 +12,28 @@ BEGIN
       split_part(NEW.email, '@', 1)
     ),
     NEW.raw_user_meta_data->>'avatar_url',
-    NEW.email,
-    'user',
-    'active',
     false
   )
   ON CONFLICT (id) DO NOTHING;
 
-  -- B. Crear Wallet
+  -- B. Crear perfil privado (email, role, status — Zero Trust)
+  INSERT INTO public.profiles_private (
+    id, email, role, status
+  )
+  VALUES (
+    NEW.id,
+    NEW.email,
+    'user',
+    'active'
+  )
+  ON CONFLICT (id) DO NOTHING;
+
+  -- C. Crear Wallet
   INSERT INTO public.wallets (user_id, available_balance, pending_balance)
   VALUES (NEW.id, 0, 0)
   ON CONFLICT (user_id) DO NOTHING;
 
   RETURN NEW;
 EXCEPTION WHEN OTHERS THEN
-  -- BLOQUE CRÍTICO: Si falla, revertimos el registro en Auth para evitar usuarios huérfanos
   RAISE EXCEPTION 'FALLO CRÍTICO EN SETUP DE USUARIO: %', SQLERRM;
 END;
