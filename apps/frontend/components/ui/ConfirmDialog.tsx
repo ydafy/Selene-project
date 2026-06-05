@@ -19,6 +19,7 @@ type ConfirmDialogProps = {
   icon?: keyof typeof MaterialCommunityIcons.glyphMap; // Nombre del icono
   hideCancel?: boolean;
   loading?: boolean;
+  disabled?: boolean; // Disables confirm button (e.g., phrase mismatch)
 };
 
 export const ConfirmDialog = ({
@@ -35,6 +36,7 @@ export const ConfirmDialog = ({
   icon,
   hideCancel = false,
   loading = false,
+  disabled = false,
 }: ConfirmDialogProps) => {
   const theme = useTheme<Theme>();
   const { t } = useTranslation('common');
@@ -101,7 +103,7 @@ export const ConfirmDialog = ({
             onPress={onConfirm}
             textColor={isDangerous ? theme.colors.error : theme.colors.primary}
             loading={loading}
-            disabled={loading}
+            disabled={loading || disabled}
           >
             {confirmLabel || t('dialog.confirm')}
           </Button>

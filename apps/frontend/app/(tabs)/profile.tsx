@@ -9,7 +9,6 @@ import { useProfile, useUpdateAvatar } from '../../core/hooks/useProfile';
 import { useAuthContext } from '../../components/auth/AuthProvider';
 import { useAuthModal } from '../../core/auth/AuthModalProvider';
 import { useProfileStats } from '../../core/hooks/useProfileStats';
-import { supabase } from '../../core/db/supabase';
 import { useMyFavorites } from '../../core/hooks/useMyFavorites';
 import { useImageUpload } from '../../core/hooks/useImageUpload';
 import { useWalletStore } from '../../core/store/useWalletStore';
@@ -117,8 +116,8 @@ const UserProfile = () => {
   const closeDialog = () =>
     setDialogState((prev) => ({ ...prev, visible: false }));
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
+  const handleOpenSettings = () => {
+    router.push('/profile/settings');
   };
 
   // 3. Lógica Central de Subida
@@ -201,7 +200,7 @@ const UserProfile = () => {
         profile={displayProfile}
         stats={stats ?? undefined}
         onEditAvatar={handleEditAvatar}
-        onLogout={handleLogout}
+        onSettingsPress={handleOpenSettings}
         isUploading={updateAvatar.isPending}
       />
 

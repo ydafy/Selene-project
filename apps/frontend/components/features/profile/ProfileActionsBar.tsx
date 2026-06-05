@@ -28,7 +28,7 @@ export const ProfileActionsBar = () => {
     {
       label: t('menu.addresses'),
       icon: 'map-marker-outline',
-      onPress: () => console.log('Abrir Modal Direcciones'),
+      onPress: () => router.push('/address/form'),
     },
     {
       label: t('menu.payments'),

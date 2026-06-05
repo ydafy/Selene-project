@@ -38,6 +38,8 @@ import esHome from './locales/es/home.json';
 import enHome from './locales/en/home.json';
 import esHelp from './locales/es/help.json';
 import enHelp from './locales/en/help.json';
+import esSettings from './locales/es/settings.json';
+import enSettings from './locales/en/settings.json';
 
 export const namespaces = [
   'common',
@@ -58,6 +60,7 @@ export const namespaces = [
   'disputes',
   'home',
   'help',
+  'settings',
 ];
 // Definimos un tipo para asegurar que solo usamos namespaces que existen
 export type Namespace = (typeof namespaces)[number];
@@ -93,6 +96,7 @@ const resources = {
     disputes: enDisputes,
     home: enHome,
     help: enHelp,
+    settings: enSettings,
   },
   es: {
     common: esCommon,
@@ -113,6 +117,7 @@ const resources = {
     disputes: esDisputes,
     home: esHome,
     help: esHelp,
+    settings: esSettings,
   },
 };
 

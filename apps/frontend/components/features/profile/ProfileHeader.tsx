@@ -23,7 +23,11 @@ type ProfileHeaderProps = {
 
   // Acciones (Opcionales - Si existen, es "Mi Perfil")
   onEditAvatar?: () => void;
-  onLogout?: () => void;
+  /**
+   * Tap on the cog icon. Used to open the Settings screen.
+   * Replaces the previous `onLogout` behavior which was misleading UX.
+   */
+  onSettingsPress?: () => void;
 
   // Slot para acciones extras (Ej. Menú de Reportar en perfil público)
   headerRight?: React.ReactNode;
@@ -34,7 +38,7 @@ export const ProfileHeader = ({
   profile,
   stats,
   onEditAvatar,
-  onLogout,
+  onSettingsPress,
   headerRight,
   isUploading = false,
 }: ProfileHeaderProps) => {
@@ -102,12 +106,13 @@ export const ProfileHeader = ({
         {/* Slot dinámico (para menú de reportar) */}
         {headerRight}
 
-        {/* Botón de Logout (Solo si se pasa la función) */}
-        {onLogout && (
+        {/* Botón de Ajustes (Solo si se pasa la función) */}
+        {onSettingsPress && (
           <IconButton
             icon="cog-outline"
             iconColor={theme.colors.textSecondary}
-            onPress={onLogout}
+            onPress={onSettingsPress}
+            accessibilityLabel="settings"
           />
         )}
       </Box>

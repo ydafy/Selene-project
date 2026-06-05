@@ -1,0 +1,66 @@
+{
+  "title": "Settings",
+  "sections": {
+    "account": "Account",
+    "general": "General",
+    "security": "Security",
+    "privacy": "Privacy"
+  },
+  "account": {
+    "usernameLabel": "Username",
+    "usernameHelp": "Only letters, numbers, underscore and dot.",
+    "edit": "Edit",
+    "save": "Save",
+    "cancel": "Cancel",
+    "loading": "Loading profile..."
+  },
+  "general": {
+    "addresses": "Addresses",
+    "addressesDescription": "Manage your shipping addresses",
+    "notifications": "Notifications",
+    "notificationsDescription": "Review your alerts and updates"
+  },
+  "security": {
+    "logout": "Sign out",
+    "logoutConfirmTitle": "Sign out?",
+    "logoutConfirmMessage": "You'll need to sign in again to access your account.",
+    "logoutConfirm": "Yes, sign out"
+  },
+  "privacy": {
+    "deleteAccount": "Delete account",
+    "deleteAccountDescription": "Permanently erase your account and all your data.",
+    "firstConfirmTitle": "Delete your account?",
+    "firstConfirmMessage": "This is irreversible. You will lose access to your history, favorites, balance, and personal data.",
+    "firstConfirmAction": "Continue",
+    "secondConfirmTitle": "Final confirmation",
+    "secondConfirmMessage": "Type the word ELIMINAR to confirm you want to delete your account.",
+    "typedPhrasePlaceholder": "Type ELIMINAR",
+    "secondConfirmAction": "Delete my account"
+  },
+  "toasts": {
+    "usernameUpdatedTitle": "Username updated",
+    "usernameUpdatedMessage": "Your username was changed successfully.",
+    "deleteSuccessTitle": "Account deleted",
+    "deleteSuccessMessage": "Your account has been removed. Thanks for using Selene.",
+    "routeErrorTitle": "Route unavailable",
+    "routeErrorMessage": "We couldn't open this section. Please try again later."
+  },
+  "errors": {
+    "usernameInvalid": "Only letters, numbers, underscore and dot are allowed.",
+    "usernameTaken": "That username is already taken.",
+    "usernameRequired": "We need a username.",
+    "updateFailed": "We couldn't save your changes. Please try again.",
+    "deleteFailed": "We couldn't delete your account. Please try again later.",
+    "authRequired": "Your session expired. Please sign in again.",
+    "phraseMismatch": "Text does not match. Type ELIMINAR to continue.",
+    "usernameTooShort": "Minimum 3 characters.",
+    "usernameTooLong": "Maximum 20 characters."
+  },
+  "blockedReasons": {
+    "active_shipments": "You have active shipments. Wait until they are completed or cancelled.",
+    "active_orders": "You have active purchases. Wait until they are completed or cancelled.",
+    "open_disputes": "You have open disputes. Resolve them before deleting your account.",
+    "pending_payouts": "You have pending payouts. Wait until they are processed.",
+    "available_balance": "Your wallet is not empty. Withdraw your available and escrow balance before continuing."
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "title": "Ajustes",
+  "sections": {
+    "account": "Cuenta",
+    "general": "General",
+    "security": "Seguridad",
+    "privacy": "Privacidad"
+  },
+  "account": {
+    "usernameLabel": "Nombre de usuario",
+    "usernameHelp": "Solo letras, números, guion bajo y punto.",
+    "edit": "Editar",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "loading": "Cargando perfil..."
+  },
+  "general": {
+    "addresses": "Direcciones",
+    "addressesDescription": "Administra tus direcciones de envío",
+    "notifications": "Notificaciones",
+    "notificationsDescription": "Revisa tus alertas y avisos"
+  },
+  "security": {
+    "logout": "Cerrar sesión",
+    "logoutConfirmTitle": "¿Cerrar sesión?",
+    "logoutConfirmMessage": "Tendrás que iniciar sesión otra vez para usar tu cuenta.",
+    "logoutConfirm": "Sí, cerrar sesión"
+  },
+  "privacy": {
+    "deleteAccount": "Eliminar cuenta",
+    "deleteAccountDescription": "Borra de forma permanente tu cuenta y todos tus datos.",
+    "firstConfirmTitle": "¿Eliminar tu cuenta?",
+    "firstConfirmMessage": "Esta acción es irreversible. Perderás acceso a tu historial, favoritos, saldo y datos personales.",
+    "firstConfirmAction": "Continuar",
+    "secondConfirmTitle": "Confirmación final",
+    "secondConfirmMessage": "Escribe la palabra ELIMINAR para confirmar que quieres borrar tu cuenta.",
+    "typedPhrasePlaceholder": "Escribe ELIMINAR",
+    "secondConfirmAction": "Eliminar mi cuenta"
+  },
+  "toasts": {
+    "usernameUpdatedTitle": "Nombre actualizado",
+    "usernameUpdatedMessage": "Tu nombre de usuario ha cambiado correctamente.",
+    "deleteSuccessTitle": "Cuenta eliminada",
+    "deleteSuccessMessage": "Tu cuenta ha sido borrada. Gracias por usar Selene.",
+    "routeErrorTitle": "Ruta no disponible",
+    "routeErrorMessage": "No pudimos abrir esta sección. Intenta de nuevo más tarde."
+  },
+  "errors": {
+    "usernameInvalid": "Solo se permiten letras, números, guion bajo y punto.",
+    "usernameTaken": "Ese nombre de usuario ya está en uso.",
+    "usernameRequired": "Necesitamos un nombre de usuario.",
+    "updateFailed": "No pudimos guardar los cambios. Intenta de nuevo.",
+    "deleteFailed": "No pudimos eliminar tu cuenta. Intenta más tarde.",
+    "authRequired": "Tu sesión expiró. Vuelve a iniciar sesión.",
+    "phraseMismatch": "El texto no coincide. Escribe ELIMINAR para continuar.",
+    "usernameTooShort": "Mínimo 3 caracteres.",
+    "usernameTooLong": "Máximo 20 caracteres."
+  },
+  "blockedReasons": {
+    "active_shipments": "Tienes envíos activos. Espera a que se completen o se cancelen.",
+    "active_orders": "Tienes compras activas. Espera a que se completen o se cancelen.",
+    "open_disputes": "Tienes disputas abiertas. Resuélvelas antes de eliminar tu cuenta.",
+    "pending_payouts": "Tienes retiros pendientes. Espera a que se procesen.",
+    "available_balance": "Tu billetera no está vacía. Retira tu saldo disponible y en garantía antes de continuar."
+  }
+}
