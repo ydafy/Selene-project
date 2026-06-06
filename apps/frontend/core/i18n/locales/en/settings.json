@@ -4,7 +4,9 @@
     "account": "Account",
     "general": "General",
     "security": "Security",
-    "privacy": "Privacy"
+    "privacy": "Privacy",
+    "legal": "Legal",
+    "support": "Support"
   },
   "account": {
     "usernameLabel": "Username",
@@ -12,7 +14,17 @@
     "edit": "Edit",
     "save": "Save",
     "cancel": "Cancel",
-    "loading": "Loading profile..."
+    "loading": "Loading profile...",
+    "emailLabel": "Email",
+    "emailChangeTitle": "Change email",
+    "emailChangeMessage": "We'll send a confirmation email. Your address won't change until you open the link we send you.",
+    "emailChangeAction": "Send confirmation"
+  },
+  "editProfile": {
+    "title": "Edit profile",
+    "usernameLabel": "Username",
+    "save": "Save",
+    "cancel": "Cancel"
   },
   "general": {
     "addresses": "Addresses",
@@ -24,7 +36,14 @@
     "logout": "Sign out",
     "logoutConfirmTitle": "Sign out?",
     "logoutConfirmMessage": "You'll need to sign in again to access your account.",
-    "logoutConfirm": "Yes, sign out"
+    "logoutConfirm": "Yes, sign out",
+    "passwordTitle": "Change password",
+    "passwordCurrent": "Current password",
+    "passwordNew": "New password",
+    "passwordConfirm": "Confirm new password",
+    "passwordChangeAction": "Update password",
+    "passwordMismatch": "New passwords do not match.",
+    "passwordTooShort": "Password must be at least 8 characters."
   },
   "privacy": {
     "deleteAccount": "Delete account",
@@ -37,13 +56,30 @@
     "typedPhrasePlaceholder": "Type ELIMINAR",
     "secondConfirmAction": "Delete my account"
   },
+  "legales": {
+    "sectionTitle": "Legal",
+    "terms": "Terms and conditions",
+    "privacy": "Privacy policy",
+    "versionLabel": "Version"
+  },
+  "support": {
+    "title": "Support",
+    "description": "Chat with our support team.",
+    "unavailable": "Support is currently unavailable. Please try again later."
+  },
   "toasts": {
     "usernameUpdatedTitle": "Username updated",
     "usernameUpdatedMessage": "Your username was changed successfully.",
     "deleteSuccessTitle": "Account deleted",
     "deleteSuccessMessage": "Your account has been removed. Thanks for using Selene.",
     "routeErrorTitle": "Route unavailable",
-    "routeErrorMessage": "We couldn't open this section. Please try again later."
+    "routeErrorMessage": "We couldn't open this section. Please try again later.",
+    "emailSentTitle": "Confirmation email sent",
+    "emailSentMessage": "Check your new inbox and tap the link to confirm the change.",
+    "passwordUpdatedTitle": "Password updated",
+    "passwordUpdatedMessage": "Your password was changed successfully.",
+    "profileUpdatedTitle": "Profile updated",
+    "profileUpdatedMessage": "Your profile changes were saved."
   },
   "errors": {
     "usernameInvalid": "Only letters, numbers, underscore and dot are allowed.",
@@ -54,7 +90,10 @@
     "authRequired": "Your session expired. Please sign in again.",
     "phraseMismatch": "Text does not match. Type ELIMINAR to continue.",
     "usernameTooShort": "Minimum 3 characters.",
-    "usernameTooLong": "Maximum 20 characters."
+    "usernameTooLong": "Maximum 20 characters.",
+    "invalidEmail": "Enter a valid email address.",
+    "wrongPassword": "Current password is incorrect.",
+    "browserNotFound": "We couldn't open the browser. Please try again later."
   },
   "blockedReasons": {
     "active_shipments": "You have active shipments. Wait until they are completed or cancelled.",

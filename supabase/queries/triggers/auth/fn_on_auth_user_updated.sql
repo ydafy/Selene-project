@@ -1,13 +1,15 @@
-
+-- Source body for public.fn_on_auth_user_updated().
+-- Migration: supabase/migrations/*_on_auth_user_updated*.sql
+-- Syncs auth.users.email -> public.profiles_private.email after confirmed updates.
 BEGIN
-  UPDATE public.profiles
+  UPDATE public.profiles_private
   SET email = NEW.email,
-      last_sign_in_at = NEW.last_sign_in_at
+      updated_at = now()
   WHERE id = NEW.id;
 
-  -- Auditoría si falta el perfil (Sugerencia IA Local)
+  -- Audit if the private row is missing (should never happen if signup trigger ran).
   IF NOT FOUND THEN
-    RAISE WARNING 'Intento de actualizar perfil inexistente para usuario %', NEW.id;
+    RAISE WARNING 'profiles_private row missing for user %', NEW.id;
   END IF;
 
   RETURN NEW;

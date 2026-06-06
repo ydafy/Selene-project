@@ -4,7 +4,9 @@
     "account": "Cuenta",
     "general": "General",
     "security": "Seguridad",
-    "privacy": "Privacidad"
+    "privacy": "Privacidad",
+    "legal": "Legales",
+    "support": "Soporte"
   },
   "account": {
     "usernameLabel": "Nombre de usuario",
@@ -12,7 +14,17 @@
     "edit": "Editar",
     "save": "Guardar",
     "cancel": "Cancelar",
-    "loading": "Cargando perfil..."
+    "loading": "Cargando perfil...",
+    "emailLabel": "Correo electrónico",
+    "emailChangeTitle": "Cambiar correo",
+    "emailChangeMessage": "Te enviaremos un correo de confirmación. Tu email no cambia hasta que abras el enlace que te mandamos.",
+    "emailChangeAction": "Enviar confirmación"
+  },
+  "editProfile": {
+    "title": "Editar perfil",
+    "usernameLabel": "Nombre de usuario",
+    "save": "Guardar",
+    "cancel": "Cancelar"
   },
   "general": {
     "addresses": "Direcciones",
@@ -24,7 +36,14 @@
     "logout": "Cerrar sesión",
     "logoutConfirmTitle": "¿Cerrar sesión?",
     "logoutConfirmMessage": "Tendrás que iniciar sesión otra vez para usar tu cuenta.",
-    "logoutConfirm": "Sí, cerrar sesión"
+    "logoutConfirm": "Sí, cerrar sesión",
+    "passwordTitle": "Cambiar contraseña",
+    "passwordCurrent": "Contraseña actual",
+    "passwordNew": "Contraseña nueva",
+    "passwordConfirm": "Confirmar nueva contraseña",
+    "passwordChangeAction": "Actualizar contraseña",
+    "passwordMismatch": "Las contraseñas nuevas no coinciden.",
+    "passwordTooShort": "La contraseña debe tener al menos 8 caracteres."
   },
   "privacy": {
     "deleteAccount": "Eliminar cuenta",
@@ -37,13 +56,30 @@
     "typedPhrasePlaceholder": "Escribe ELIMINAR",
     "secondConfirmAction": "Eliminar mi cuenta"
   },
+  "legales": {
+    "sectionTitle": "Legales",
+    "terms": "Términos y condiciones",
+    "privacy": "Aviso de privacidad",
+    "versionLabel": "Versión"
+  },
+  "support": {
+    "title": "Soporte",
+    "description": "Chatea con nuestro equipo de soporte.",
+    "unavailable": "El soporte no está disponible por ahora. Intenta más tarde."
+  },
   "toasts": {
     "usernameUpdatedTitle": "Nombre actualizado",
     "usernameUpdatedMessage": "Tu nombre de usuario ha cambiado correctamente.",
     "deleteSuccessTitle": "Cuenta eliminada",
     "deleteSuccessMessage": "Tu cuenta ha sido borrada. Gracias por usar Selene.",
     "routeErrorTitle": "Ruta no disponible",
-    "routeErrorMessage": "No pudimos abrir esta sección. Intenta de nuevo más tarde."
+    "routeErrorMessage": "No pudimos abrir esta sección. Intenta de nuevo más tarde.",
+    "emailSentTitle": "Correo de confirmación enviado",
+    "emailSentMessage": "Revisa tu nuevo correo y toca el enlace para confirmar el cambio.",
+    "passwordUpdatedTitle": "Contraseña actualizada",
+    "passwordUpdatedMessage": "Tu contraseña fue cambiada correctamente.",
+    "profileUpdatedTitle": "Perfil actualizado",
+    "profileUpdatedMessage": "Los cambios de tu perfil se guardaron."
   },
   "errors": {
     "usernameInvalid": "Solo se permiten letras, números, guion bajo y punto.",
@@ -54,7 +90,10 @@
     "authRequired": "Tu sesión expiró. Vuelve a iniciar sesión.",
     "phraseMismatch": "El texto no coincide. Escribe ELIMINAR para continuar.",
     "usernameTooShort": "Mínimo 3 caracteres.",
-    "usernameTooLong": "Máximo 20 caracteres."
+    "usernameTooLong": "Máximo 20 caracteres.",
+    "invalidEmail": "Ingresa un correo electrónico válido.",
+    "wrongPassword": "La contraseña actual es incorrecta.",
+    "browserNotFound": "No pudimos abrir el navegador. Intenta más tarde."
   },
   "blockedReasons": {
     "active_shipments": "Tienes envíos activos. Espera a que se completen o se cancelen.",
