@@ -66,10 +66,10 @@ describe('on_auth_user_updated migration', () => {
     expect(sql).toMatch(/AFTER\s+UPDATE\s+ON\s+auth\.users/i);
   });
 
-  test('uses SECURITY DEFINER + search_path = empty', () => {
+  test('uses SECURITY DEFINER + search_path = public, pg_temp', () => {
     const sql = findMigration();
-    expect(sql).toMatch(/SECURITY\s+DEFINER/i);
-    expect(sql).toMatch(/search_path\s*=\s*['"]{2}/i);
+    expect(sql).toContain('SECURITY DEFINER');
+    expect(sql).toContain('search_path = public, pg_temp');
   });
 });
 

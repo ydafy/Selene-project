@@ -19,12 +19,12 @@ BEGIN;
 DROP TRIGGER IF EXISTS on_auth_user_updated ON auth.users;
 
 -- 2. Replace the function body. Uses profiles_private (NOT profiles.email
---    which no longer exists). Locked search_path for SECURITY DEFINER hygiene.
+--    which no longer exists). search_path = public, pg_temp for SECURITY DEFINER hygiene.
 CREATE OR REPLACE FUNCTION public.fn_on_auth_user_updated()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = ''
+SET search_path = public, pg_temp
 AS $$
 BEGIN
   UPDATE public.profiles_private

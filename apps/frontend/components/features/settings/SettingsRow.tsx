@@ -47,53 +47,60 @@ export const SettingsRow = ({
     ? theme.colors.error
     : theme.colors.textSecondary;
 
+  const content = (
+    <Box
+      flexDirection="row"
+      alignItems="center"
+      paddingVertical="m"
+      paddingHorizontal="m"
+      opacity={disabled ? 0.5 : 1}
+    >
+      {icon && (
+        <Box marginRight="m">
+          <MaterialCommunityIcons name={icon} size={22} color={iconColor} />
+        </Box>
+      )}
+
+      <Box flex={1}>
+        <Text variant="body-md" color={labelColor}>
+          {label}
+        </Text>
+        {description && (
+          <Text variant="caption-md" color="textSecondary" marginTop="xs">
+            {description}
+          </Text>
+        )}
+      </Box>
+
+      {rightSlot ? (
+        <Box marginLeft="s">{rightSlot}</Box>
+      ) : value ? (
+        <Text variant="body-md" color="textSecondary" marginLeft="s">
+          {value}
+        </Text>
+      ) : (
+        showChevron &&
+        onPress && (
+          <MaterialCommunityIcons
+            name="chevron-right"
+            size={20}
+            color={theme.colors.textSecondary}
+          />
+        )
+      )}
+    </Box>
+  );
+
+  // Static rows — no touch wrapper, better accessibility + perf.
+  if (!onPress) return content;
+
   return (
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.7}
-      disabled={disabled || !onPress}
+      disabled={disabled}
     >
-      <Box
-        flexDirection="row"
-        alignItems="center"
-        paddingVertical="m"
-        paddingHorizontal="m"
-        opacity={disabled ? 0.5 : 1}
-      >
-        {icon && (
-          <Box marginRight="m">
-            <MaterialCommunityIcons name={icon} size={22} color={iconColor} />
-          </Box>
-        )}
-
-        <Box flex={1}>
-          <Text variant="body-md" color={labelColor}>
-            {label}
-          </Text>
-          {description && (
-            <Text variant="caption-md" color="textSecondary" marginTop="xs">
-              {description}
-            </Text>
-          )}
-        </Box>
-
-        {rightSlot ? (
-          <Box marginLeft="s">{rightSlot}</Box>
-        ) : value ? (
-          <Text variant="body-md" color="textSecondary" marginLeft="s">
-            {value}
-          </Text>
-        ) : (
-          showChevron &&
-          onPress && (
-            <MaterialCommunityIcons
-              name="chevron-right"
-              size={20}
-              color={theme.colors.textSecondary}
-            />
-          )
-        )}
-      </Box>
+      {content}
     </TouchableOpacity>
   );
 };

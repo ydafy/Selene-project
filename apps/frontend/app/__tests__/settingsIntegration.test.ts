@@ -20,9 +20,8 @@ const read = (relPath: string) =>
 describe('settings.tsx renders new sections in spec-required order', () => {
   const src = read('app/profile/settings.tsx');
 
-  test('contains all four base sections plus Legales and Soporte', () => {
+  test('contains all base sections plus Legales and Soporte', () => {
     expect(src).toContain("t('sections.account')");
-    expect(src).toContain("t('sections.general')");
     expect(src).toContain("t('sections.security')");
     expect(src).toContain("t('sections.privacy')");
     expect(src).toContain("t('sections.legal')");

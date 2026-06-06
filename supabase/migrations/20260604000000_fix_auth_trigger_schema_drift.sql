@@ -13,7 +13,7 @@ CREATE OR REPLACE FUNCTION public.fn_on_auth_user_created()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = ''
+SET search_path = public, pg_temp
 AS $$
 BEGIN
   -- A. Public profile (visible data only)
