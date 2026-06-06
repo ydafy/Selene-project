@@ -14,6 +14,7 @@ import { GeneralSection } from '../../components/features/settings/GeneralSectio
 import { SecuritySection } from '../../components/features/settings/SecuritySection';
 import { DeleteAccountSection } from '../../components/features/settings/DeleteAccountSection';
 import { LegalesSection } from '../../components/features/settings/LegalesSection';
+import { SoporteSection } from '../../components/features/settings/SoporteSection';
 import { SettingsSection } from '../../components/features/settings/SettingsSection';
 
 export default function SettingsScreen() {
@@ -53,6 +54,7 @@ export default function SettingsScreen() {
               userId={userId}
               username={profile.username}
               isLoading={isLoadingProfile}
+              email={session.user.email}
             />
           )}
         </SettingsSection>
@@ -71,6 +73,10 @@ export default function SettingsScreen() {
 
         <SettingsSection title={t('sections.legal')}>
           <LegalesSection />
+        </SettingsSection>
+
+        <SettingsSection title={t('sections.support')}>
+          <SoporteSection />
         </SettingsSection>
       </ScrollView>
     </ScreenLayout>

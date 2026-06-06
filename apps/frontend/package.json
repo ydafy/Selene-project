@@ -9,6 +9,7 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@chatwoot/react-native-widget": "*",
     "@expo/vector-icons": "^15.0.3",
     "@gorhom/bottom-sheet": "^5.2.7",
     "@hookform/resolvers": "^5.2.2",

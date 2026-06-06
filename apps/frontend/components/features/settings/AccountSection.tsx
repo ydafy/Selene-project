@@ -3,17 +3,27 @@ import { TouchableOpacity } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator } from 'react-native-paper';
 import { useTheme } from '@shopify/restyle';
+import Toast from 'react-native-toast-message';
 
 import { Box, Text } from '../../base';
 import { FormTextInput } from '../../ui/FormTextInput';
+import { ConfirmDialog } from '../../ui/ConfirmDialog';
+import { SettingsRow } from './SettingsRow';
 import { Theme } from '../../../core/theme';
 import { useUpdateProfile } from '../../../core/hooks/useProfile';
 import { stripSettingsNamespace } from '../../../core/hooks/deleteAccountHelpers';
+import { supabase } from '../../../core/db/supabase';
+import {
+  validateEmail,
+  buildEmailUpdatePayload,
+} from '../../../core/utils/emailChange';
 
 type AccountSectionProps = {
   userId: string;
   username: string | null | undefined;
   isLoading?: boolean;
+  /** Current user email, used as initial value for the email-change dialog. */
+  email?: string | null;
 };
 
 // Letters, digits, underscore, dot. Matches spec CONF-002.
@@ -23,6 +33,7 @@ export const AccountSection = ({
   userId,
   username,
   isLoading = false,
+  email,
 }: AccountSectionProps) => {
   const { t } = useTranslation('settings');
   const theme = useTheme<Theme>();
@@ -31,6 +42,43 @@ export const AccountSection = ({
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(username ?? '');
   const [localError, setLocalError] = useState<string | null>(null);
+
+  // Email-change dialog state (CONF-016 / EXTD-TASK-007).
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [emailDraft, setEmailDraft] = useState(email ?? '');
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [isEmailSubmitting, setIsEmailSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!emailDialogOpen) setEmailDraft(email ?? '');
+  }, [email, emailDialogOpen]);
+
+  const handleEmailConfirm = async () => {
+    const validation = validateEmail(emailDraft);
+    if (!validation.ok) {
+      setEmailError(t(validation.errorKey));
+      return;
+    }
+    setEmailError(null);
+    setIsEmailSubmitting(true);
+    try {
+      const payload = buildEmailUpdatePayload(emailDraft);
+      const { error } = await supabase.auth.updateUser(payload);
+      if (error) throw error;
+      setEmailDialogOpen(false);
+      Toast.show({
+        type: 'success',
+        text1: t('toasts.emailSentTitle'),
+        text2: t('toasts.emailSentMessage'),
+      });
+    } catch (err) {
+      const msg =
+        (err as { message?: string })?.message ?? t('errors.updateFailed');
+      setEmailError(msg);
+    } finally {
+      setIsEmailSubmitting(false);
+    }
+  };
 
   // Sync local draft when the canonical username changes (e.g. cache refresh).
   useEffect(() => {
@@ -90,6 +138,49 @@ export const AccountSection = ({
 
   return (
     <Box>
+      {/* Email-change row (CONF-016) */}
+      <SettingsRow
+        icon="email-outline"
+        label={t('account.emailLabel')}
+        description={email ?? undefined}
+        onPress={() => setEmailDialogOpen(true)}
+      />
+
+      <ConfirmDialog
+        visible={emailDialogOpen}
+        title={t('account.emailChangeTitle')}
+        description={t('account.emailChangeMessage')}
+        onCancel={() => {
+          setEmailDialogOpen(false);
+          setEmailError(null);
+        }}
+        onConfirm={handleEmailConfirm}
+        confirmLabel={t('account.emailChangeAction')}
+        loading={isEmailSubmitting}
+        icon="email-edit-outline"
+      >
+        <Box marginTop="s">
+          <FormTextInput
+            label={t('account.emailLabel')}
+            value={emailDraft}
+            onChangeText={(text) => {
+              setEmailDraft(text);
+              if (emailError) setEmailError(null);
+            }}
+            labelMode="static"
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            editable={!isEmailSubmitting}
+          />
+          {emailError && (
+            <Text variant="caption-md" color="error" marginTop="xs">
+              {emailError}
+            </Text>
+          )}
+        </Box>
+      </ConfirmDialog>
+
       {isEditing ? (
         <Box paddingHorizontal="m" paddingVertical="m">
           <FormTextInput
