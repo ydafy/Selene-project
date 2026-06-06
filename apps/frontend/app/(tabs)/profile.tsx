@@ -120,6 +120,10 @@ const UserProfile = () => {
     router.push('/profile/settings');
   };
 
+  const handleEditProfile = () => {
+    router.push('/profile/edit');
+  };
+
   // 3. Lógica Central de Subida
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const processImageUpload = async (imageAsset: any) => {
@@ -201,6 +205,7 @@ const UserProfile = () => {
         stats={stats ?? undefined}
         onEditAvatar={handleEditAvatar}
         onSettingsPress={handleOpenSettings}
+        onEditProfile={handleEditProfile}
         isUploading={updateAvatar.isPending}
       />
 

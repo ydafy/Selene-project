@@ -28,6 +28,11 @@ type ProfileHeaderProps = {
    * Replaces the previous `onLogout` behavior which was misleading UX.
    */
   onSettingsPress?: () => void;
+  /**
+   * Opens the `/profile/edit` modal. Only rendered for "Mi Perfil"
+   * (i.e. when defined). Covers CONF-015 entry point.
+   */
+  onEditProfile?: () => void;
 
   // Slot para acciones extras (Ej. Menú de Reportar en perfil público)
   headerRight?: React.ReactNode;
@@ -39,6 +44,7 @@ export const ProfileHeader = ({
   stats,
   onEditAvatar,
   onSettingsPress,
+  onEditProfile,
   headerRight,
   isUploading = false,
 }: ProfileHeaderProps) => {
@@ -225,6 +231,40 @@ export const ProfileHeader = ({
           >
             Miembro desde {joinDate}
           </Text>
+
+          {/* Editar perfil CTA (only on "Mi Perfil") */}
+          {onEditProfile && (
+            <TouchableOpacity
+              onPress={onEditProfile}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="edit-profile"
+              style={{ marginTop: 12 }}
+            >
+              <Box
+                flexDirection="row"
+                alignItems="center"
+                paddingVertical="s"
+                paddingHorizontal="m"
+                borderRadius="m"
+                backgroundColor="background"
+              >
+                <MaterialCommunityIcons
+                  name="pencil-outline"
+                  size={16}
+                  color={theme.colors.primary}
+                />
+                <Text
+                  variant="body-md"
+                  color="primary"
+                  marginLeft="s"
+                  fontWeight="bold"
+                >
+                  Editar perfil
+                </Text>
+              </Box>
+            </TouchableOpacity>
+          )}
         </Box>
       </Box>
 

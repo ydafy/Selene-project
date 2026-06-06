@@ -14,11 +14,20 @@ type SettingsRowProps = {
   destructive?: boolean;
   rightSlot?: React.ReactNode;
   showChevron?: boolean;
+  /**
+   * Optional static value displayed on the right (e.g. app version).
+   * When provided and `onPress` is omitted, the row renders as a
+   * non-tappable info row (no chevron, no press affordance).
+   */
+  value?: string;
 };
 
 /**
  * Single tappable row inside a settings section. Designed to match the
  * cardBackground + chevron pattern used across the Profile tab.
+ *
+ * Supports a non-tappable variant: pass `value` without `onPress` to render
+ * a static info row (used by the Legales > Versión row).
  */
 export const SettingsRow = ({
   icon,
@@ -29,6 +38,7 @@ export const SettingsRow = ({
   destructive = false,
   rightSlot,
   showChevron = true,
+  value,
 }: SettingsRowProps) => {
   const theme = useTheme<Theme>();
 
@@ -69,6 +79,10 @@ export const SettingsRow = ({
 
         {rightSlot ? (
           <Box marginLeft="s">{rightSlot}</Box>
+        ) : value ? (
+          <Text variant="body-md" color="textSecondary" marginLeft="s">
+            {value}
+          </Text>
         ) : (
           showChevron &&
           onPress && (

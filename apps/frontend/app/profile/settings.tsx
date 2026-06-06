@@ -13,6 +13,7 @@ import { AccountSection } from '../../components/features/settings/AccountSectio
 import { GeneralSection } from '../../components/features/settings/GeneralSection';
 import { SecuritySection } from '../../components/features/settings/SecuritySection';
 import { DeleteAccountSection } from '../../components/features/settings/DeleteAccountSection';
+import { LegalesSection } from '../../components/features/settings/LegalesSection';
 import { SettingsSection } from '../../components/features/settings/SettingsSection';
 
 export default function SettingsScreen() {
@@ -66,6 +67,10 @@ export default function SettingsScreen() {
 
         <SettingsSection title={t('sections.privacy')}>
           <DeleteAccountSection />
+        </SettingsSection>
+
+        <SettingsSection title={t('sections.legal')}>
+          <LegalesSection />
         </SettingsSection>
       </ScrollView>
     </ScreenLayout>
