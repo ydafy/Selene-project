@@ -79,7 +79,7 @@ export const theme = createTheme({
     textPrimary: palette.platinum,
     textSecondary: palette.blueLight,
     cardBackground: palette.stateGray,
-    preseableShadow: palette.shadowDark,
+    pressableShadow: palette.shadowDark,
     blurBackground: palette.glassGray,
 
     warning: palette.warning,

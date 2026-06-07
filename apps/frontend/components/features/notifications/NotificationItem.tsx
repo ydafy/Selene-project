@@ -44,7 +44,7 @@ export const NotificationItem = ({ notification, onPress }: Props) => {
         <Box
           flexDirection="row"
           padding="m"
-          backgroundColor={pressed ? 'preseableShadow' : 'transparent'}
+          backgroundColor={pressed ? 'pressableShadow' : 'transparent'}
           opacity={isUnread ? 1 : 0.6}
           borderBottomWidth={1}
           borderBottomColor="separator"

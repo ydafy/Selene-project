@@ -44,7 +44,7 @@ export const ShellTrust = () => {
       <Box
         paddingHorizontal="l"
         paddingVertical="s"
-        backgroundColor="preseableShadow"
+        backgroundColor="pressableShadow"
         borderBottomWidth={1}
         borderBottomColor="separator"
       >

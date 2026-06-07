@@ -109,7 +109,7 @@ export default function VerificationHelpScreen() {
             <Box
               padding="l"
               alignItems="center"
-              backgroundColor="preseableShadow"
+              backgroundColor="pressableShadow"
             >
               <Text
                 style={[sharedStyles.monoText, { fontSize: 8, opacity: 0.5 }]}
