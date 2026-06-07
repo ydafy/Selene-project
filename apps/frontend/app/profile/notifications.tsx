@@ -1,6 +1,6 @@
 import React from 'react';
-import { RefreshControl, TouchableOpacity } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { RefreshControl, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { FlashList } from '@shopify/flash-list';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -10,67 +10,48 @@ import { Box, Text } from '../../components/base';
 import { GlobalHeader } from '../../components/layout/GlobalHeader';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { NotificationItem } from '../../components/features/notifications/NotificationItem';
-import { useNotifications } from '../../core/hooks/useNotifications';
+import { useNotificationsList } from '../../core/hooks/useNotificationsList';
+import { useNotificationMutations } from '../../core/hooks/useNotificationMutations';
+import { NotificationLinking } from '../../core/services/notification';
 import { useAuthContext } from '../../components/auth/AuthProvider';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { useTheme } from '@shopify/restyle';
 import { Theme } from '../../core/theme';
+import { Notification } from '@selene/types';
 
 export default function NotificationsScreen() {
   const { t } = useTranslation(['orders', 'common', 'notifications']);
   const theme = useTheme<Theme>();
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const { session } = useAuthContext();
+  const userId = session?.user.id;
 
   const {
     data: notifications,
     isLoading,
     isRefetching,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
     refetch,
-    markAsRead,
-    markAllAsRead,
-  } = useNotifications(session?.user.id);
+  } = useNotificationsList(userId);
 
-  const showSkeletons = isLoading || isRefetching;
+  const { markAsRead, markAllAsRead } = useNotificationMutations(userId);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleNotificationPress = async (notif: any) => {
+  const handleNotificationPress = async (notif: Notification) => {
     await markAsRead(notif.id);
-    if (notif.action_path) {
-      router.push(notif.action_path as never);
-    }
+    NotificationLinking.navigate(notif.action_path);
   };
 
-  return (
-    <Box flex={1} backgroundColor="background">
-      <Stack.Screen options={{ headerShown: false }} />
+  const handleMarkAllAsRead = async () => {
+    await markAllAsRead();
+  };
 
-      <GlobalHeader
-        title={t('notifications:title')}
-        showBack
-        headerRight={
-          notifications && notifications.some((n) => !n.read) ? (
-            <TouchableOpacity
-              onPress={markAllAsRead}
-              style={{ flexDirection: 'row', alignItems: 'center' }}
-            >
-              {/* Mostramos el texto sutilmente al lado del icono */}
-              <Text variant="caption-md" color="primary" marginRight="xs">
-                {t('notifications:markAll')}
-              </Text>
-              <MaterialCommunityIcons
-                name="email-open-outline"
-                size={20}
-                color={theme.colors.primary}
-              />
-            </TouchableOpacity>
-          ) : undefined
-        }
-      />
-
-      {showSkeletons ? (
-        // --- SKELETONS DURANTE CARGA Y REFRESH ---
+  if (isLoading) {
+    return (
+      <Box flex={1} backgroundColor="background">
+        <Stack.Screen options={{ headerShown: false }} />
+        <GlobalHeader title={t('notifications:title')} showBack />
         <Box paddingHorizontal="m" style={{ paddingTop: insets.top + 90 }}>
           {[1, 2, 3, 4, 5].map((i) => (
             <Box
@@ -87,22 +68,61 @@ export default function NotificationsScreen() {
             </Box>
           ))}
         </Box>
-      ) : (
-        <FlashList
-          data={notifications}
-          keyExtractor={(item) => item.id}
-          drawDistance={500}
-          contentContainerStyle={{
-            paddingTop: insets.top + 80,
-            paddingBottom: insets.bottom + 20,
-          }}
-          renderItem={({ item }) => (
-            <NotificationItem
-              notification={item}
-              onPress={handleNotificationPress}
-            />
-          )}
-          ListEmptyComponent={
+      </Box>
+    );
+  }
+
+  return (
+    <Box flex={1} backgroundColor="background">
+      <Stack.Screen options={{ headerShown: false }} />
+
+      <GlobalHeader
+        title={t('notifications:title')}
+        showBack
+        headerRight={
+          notifications && notifications.some((n) => !n.read) ? (
+            <TouchableOpacity
+              onPress={handleMarkAllAsRead}
+              style={{ flexDirection: 'row', alignItems: 'center' }}
+            >
+              <Text variant="caption-md" color="primary" marginRight="xs">
+                {t('notifications:markAll')}
+              </Text>
+              <MaterialCommunityIcons
+                name="email-open-outline"
+                size={20}
+                color={theme.colors.primary}
+              />
+            </TouchableOpacity>
+          ) : undefined
+        }
+      />
+
+      <FlashList
+        data={notifications}
+        keyExtractor={(item) => item.id}
+        drawDistance={500}
+        contentContainerStyle={{
+          paddingTop: insets.top + 80,
+          paddingBottom: insets.bottom + 20,
+        }}
+        renderItem={({ item }) => (
+          <NotificationItem
+            notification={item}
+            onPress={handleNotificationPress}
+          />
+        )}
+        onEndReached={hasNextPage ? fetchNextPage : undefined}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          isFetchingNextPage ? (
+            <Box paddingVertical="m" alignItems="center">
+              <ActivityIndicator color={theme.colors.primary} />
+            </Box>
+          ) : null
+        }
+        ListEmptyComponent={
+          !isLoading ? (
             <Box marginTop="xl">
               <EmptyState
                 icon="bell-off-outline"
@@ -110,17 +130,17 @@ export default function NotificationsScreen() {
                 message={t('notifications:emptyMsg')}
               />
             </Box>
-          }
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefetching}
-              onRefresh={refetch}
-              tintColor={theme.colors.primary}
-              progressViewOffset={insets.top + 70}
-            />
-          }
-        />
-      )}
+          ) : null
+        }
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refetch}
+            tintColor={theme.colors.primary}
+            progressViewOffset={insets.top + 70}
+          />
+        }
+      />
     </Box>
   );
 }
