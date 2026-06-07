@@ -1,24 +1,27 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import * as Haptics from 'expo-haptics';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { useAuthContext } from '../../../components/auth/AuthProvider';
 import { supabase } from '../../../core/db/supabase';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import { Notification } from '@selene/types';
 import { useTranslation } from 'react-i18next';
-import { useNotifications } from '../../../core/hooks/useNotifications';
+import { useNotificationMutations } from '../../../core/hooks/useNotificationMutations';
+import {
+  NotificationService,
+  NotificationLinking,
+} from '../../../core/services/notification';
 import { Box, Text } from '../../base';
 
 export const NotificationWatcher = () => {
   const { session } = useAuthContext();
   const userId = session?.user.id;
-  const router = useRouter();
   const { t } = useTranslation('common');
+  const queryClient = useQueryClient();
 
-  const { markAsRead } = useNotifications(userId);
+  const { markAsRead } = useNotificationMutations(userId);
   const [queue, setQueue] = useState<Notification[]>([]);
   const [isProcessingAction, setIsProcessingAction] = useState(false);
   const isInitialLoadDone = useRef(false);
@@ -26,10 +29,18 @@ export const NotificationWatcher = () => {
   const currentNotification = queue.length > 0 ? queue[0] : null;
   const isLast = queue.length === 1;
 
+  const invalidateNotificationKeys = useCallback(() => {
+    if (!userId) return;
+    queryClient.invalidateQueries({ queryKey: ['notifications', userId] });
+    queryClient.invalidateQueries({
+      queryKey: ['unread-notifications', userId],
+    });
+  }, [userId, queryClient]);
+
   const processIncoming = useCallback(
     async (notif: Notification, isSilent = false) => {
-      const title = (notif.title || '').toLowerCase(); // Null safety
-      const path = (notif.action_path || '').toLowerCase();
+      const title = (notif.title ?? '').toLowerCase();
+      const path = (notif.action_path ?? '').toLowerCase();
 
       const needsDialog =
         notif.type === 'error' ||
@@ -56,7 +67,7 @@ export const NotificationWatcher = () => {
             text1: notif.title ?? '',
             text2: notif.message ?? '',
             onPress: () => {
-              if (notif.action_path) router.push(notif.action_path as any);
+              NotificationLinking.navigate(notif.action_path);
               Toast.hide();
             },
           });
@@ -64,7 +75,7 @@ export const NotificationWatcher = () => {
         }
       }
     },
-    [markAsRead, router],
+    [markAsRead],
   );
 
   useEffect(() => {
@@ -80,8 +91,8 @@ export const NotificationWatcher = () => {
 
         if (data && data.length > 0) {
           processIncoming(data[0] as Notification, true);
-          isInitialLoadDone.current = true;
         }
+        isInitialLoadDone.current = true;
       };
       fetchUnread();
     }
@@ -94,18 +105,28 @@ export const NotificationWatcher = () => {
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'notifications',
           filter: `user_id=eq.${userId}`,
         },
-        (payload) => processIncoming(payload.new as Notification),
+        (payload) => {
+          const eventType = payload.eventType;
+          if (eventType === 'INSERT') {
+            const notif = payload.new as Notification;
+            NotificationService.dispatch(notif);
+            processIncoming(notif);
+            invalidateNotificationKeys();
+          } else if (eventType === 'UPDATE') {
+            invalidateNotificationKeys();
+          }
+        },
       )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, processIncoming]);
+  }, [userId, processIncoming, invalidateNotificationKeys]);
 
   const handleAction = async () => {
     if (!currentNotification || isProcessingAction) return;
@@ -113,14 +134,7 @@ export const NotificationWatcher = () => {
     setIsProcessingAction(true);
     try {
       await markAsRead(currentNotification.id);
-
-      if (currentNotification.action_path) {
-        const path =
-          currentNotification.action_path === '/profile'
-            ? '/profile/listings'
-            : currentNotification.action_path;
-        router.push(path as any);
-      }
+      NotificationLinking.navigate(currentNotification.action_path);
       setQueue((prev) => prev.slice(1));
     } finally {
       setIsProcessingAction(false);
