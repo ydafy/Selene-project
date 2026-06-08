@@ -1,4 +1,3 @@
-
 DECLARE
     v_auth_user_id UUID;
     v_rows_affected INTEGER;
@@ -41,12 +40,14 @@ BEGIN
 
     ELSIF p_new_status = 'active' THEN
         -- Si lo perdonamos, regresamos a VERIFIED solo lo que estaba oculto
+        -- y NO fue soft-deleted (deleted_at IS NULL).
         -- (Nota: No regresamos a VERIFIED lo que estaba en revisión por seguridad)
         UPDATE public.products
         SET status = 'VERIFIED',
             updated_at = now()
         WHERE seller_id = p_target_user_id
-        AND status = 'HIDDEN';
+        AND status = 'HIDDEN'
+        AND deleted_at IS NULL;            -- FIX: exclude soft-deleted products
     END IF;
 
     -- E. REGISTRO EN BITÁCORA DE ADMINISTRACIÓN
