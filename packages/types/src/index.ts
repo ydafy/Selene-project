@@ -37,7 +37,8 @@ export type ProductStatus =
   | 'SOLD'
   | 'REJECTED'
   | 'HIDDEN'
-  | 'RESERVED';
+  | 'RESERVED'
+  | 'IN_DISPUTE';
 
 export type UserRole = 'user' | 'admin' | 'moderator';
 export type ShippingPayer = 'buyer' | 'seller';
