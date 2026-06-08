@@ -11,6 +11,7 @@
   "account": {
     "usernameLabel": "Username",
     "usernameHelp": "Only letters, numbers, underscore and dot.",
+    "googleProviderHint": "You signed in with Google. Manage your credentials from your Google Account.",
     "edit": "Edit",
     "save": "Save",
     "cancel": "Cancel",
@@ -18,7 +19,10 @@
     "emailLabel": "Email",
     "emailChangeTitle": "Change email",
     "emailChangeMessage": "We'll send a confirmation email. Your address won't change until you open the link we send you.",
-    "emailChangeAction": "Send confirmation"
+    "emailChangeAction": "Send confirmation",
+    "biometricPrompt": "Confirm your identity",
+    "biometricFallback": "Use password",
+    "biometricFailed": "Authentication failed. Please try again."
   },
   "editProfile": {
     "title": "Edit profile",
@@ -38,12 +42,15 @@
     "logoutConfirmMessage": "You'll need to sign in again to access your account.",
     "logoutConfirm": "Yes, sign out",
     "passwordTitle": "Change password",
-    "passwordCurrent": "Current password",
+    "googleProviderHint": "You signed in with Google. Credentials are managed from your Google Account.",
     "passwordNew": "New password",
-    "passwordConfirm": "Confirm new password",
+    "passwordConfirm": "Confirm password",
     "passwordChangeAction": "Update password",
     "passwordMismatch": "New passwords do not match.",
-    "passwordTooShort": "Password must be at least 8 characters."
+    "passwordTooShort": "Password must be at least 8 characters.",
+    "biometricPrompt": "Confirm your identity",
+    "biometricFallback": "Use password",
+    "biometricFailed": "Authentication failed. Please try again."
   },
   "privacy": {
     "deleteAccount": "Delete account",
@@ -93,7 +100,8 @@
     "usernameTooLong": "Maximum 20 characters.",
     "invalidEmail": "Enter a valid email address.",
     "wrongPassword": "Current password is incorrect.",
-    "browserNotFound": "We couldn't open the browser. Please try again later."
+    "browserNotFound": "We couldn't open the browser. Please try again later.",
+    "emailAlreadyTaken": "That email is already taken."
   },
   "blockedReasons": {
     "active_shipments": "You have active shipments. Wait until they are completed or cancelled.",

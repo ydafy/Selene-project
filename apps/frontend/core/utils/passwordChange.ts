@@ -6,11 +6,9 @@
  *   falls back to crypto.getRandomValues, then to Math.random as last resort)
  * - buildPasswordUpdatePayload: payload for supabase.auth.updateUser
  *
- * NOTE on supabase-js: the `currentPassword` argument is supported from
- * @supabase/supabase-js ^2.102.0. The installed version is ^2.81.1, so the
- * payload only carries `password` + `nonce`. When supabase-js is upgraded
- * separately, callers should pass `currentPassword` alongside this payload.
+ * `currentPassword` is supported from @supabase/supabase-js ^2.102.0.
  */
+
 
 const MIN_LENGTH = 8;
 
@@ -19,13 +17,9 @@ export type PasswordValidation =
   | { ok: false; errorKey: string };
 
 export const validatePasswordChange = (
-  current: string,
   next: string,
   confirm: string,
 ): PasswordValidation => {
-  if (current.length === 0) {
-    return { ok: false, errorKey: 'errors.usernameRequired' };
-  }
   if (next.length < MIN_LENGTH) {
     return { ok: false, errorKey: 'security.passwordTooShort' };
   }
@@ -77,9 +71,11 @@ export const generatePasswordNonce = (): string => {
 export type PasswordUpdatePayload = {
   password: string;
   nonce: string;
+  currentPassword?: string;
 };
 
 export const buildPasswordUpdatePayload = (
   password: string,
   nonce: string,
-): PasswordUpdatePayload => ({ password, nonce });
+  currentPassword?: string,
+): PasswordUpdatePayload => ({ password, nonce, ...(currentPassword ? { currentPassword } : {}) });

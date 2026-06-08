@@ -11,14 +11,18 @@
   "account": {
     "usernameLabel": "Nombre de usuario",
     "usernameHelp": "Solo letras, números, guion bajo y punto.",
+    "googleProviderHint": "Tu cuenta usa Google. Administra tus credenciales desde tu cuenta de Google.",
     "edit": "Editar",
     "save": "Guardar",
     "cancel": "Cancelar",
     "loading": "Cargando perfil...",
     "emailLabel": "Correo electrónico",
     "emailChangeTitle": "Cambiar correo",
-    "emailChangeMessage": "Te enviaremos un correo de confirmación. Tu email no cambia hasta que abras el enlace que te mandamos.",
-    "emailChangeAction": "Enviar confirmación"
+    "emailChangeMessage": "Te enviaremos un correo de confirmación a tu nuevo email.",
+    "emailChangeAction": "Enviar confirmación",
+    "biometricPrompt": "Confirma tu identidad",
+    "biometricFallback": "Usar contraseña",
+    "biometricFailed": "Autenticación fallida. Intenta de nuevo."
   },
   "editProfile": {
     "title": "Editar perfil",
@@ -38,12 +42,15 @@
     "logoutConfirmMessage": "Tendrás que iniciar sesión otra vez para usar tu cuenta.",
     "logoutConfirm": "Sí, cerrar sesión",
     "passwordTitle": "Cambiar contraseña",
-    "passwordCurrent": "Contraseña actual",
-    "passwordNew": "Contraseña nueva",
-    "passwordConfirm": "Confirmar nueva contraseña",
+    "googleProviderHint": "Tu cuenta usa Google. Las credenciales se administran desde tu cuenta de Google.",
+    "passwordNew": "Nueva contraseña",
+    "passwordConfirm": "Confirmar contraseña",
     "passwordChangeAction": "Actualizar contraseña",
     "passwordMismatch": "Las contraseñas nuevas no coinciden.",
-    "passwordTooShort": "La contraseña debe tener al menos 8 caracteres."
+    "passwordTooShort": "La contraseña debe tener al menos 8 caracteres.",
+    "biometricPrompt": "Confirma tu identidad",
+    "biometricFallback": "Usar contraseña",
+    "biometricFailed": "Autenticación fallida. Intenta de nuevo."
   },
   "privacy": {
     "deleteAccount": "Eliminar cuenta",
@@ -93,7 +100,8 @@
     "usernameTooLong": "Máximo 20 caracteres.",
     "invalidEmail": "Ingresa un correo electrónico válido.",
     "wrongPassword": "La contraseña actual es incorrecta.",
-    "browserNotFound": "No pudimos abrir el navegador. Intenta más tarde."
+    "browserNotFound": "No pudimos abrir el navegador. Intenta más tarde.",
+    "emailAlreadyTaken": "Ese correo electrónico ya está en uso."
   },
   "blockedReasons": {
     "active_shipments": "Tienes envíos activos. Espera a que se completen o se cancelen.",

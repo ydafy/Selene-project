@@ -70,6 +70,17 @@ export const useSession = () => {
       console.log(`[AUTH_EVENT] ${event}`);
 
       if (isMounted.current) {
+        // USER_UPDATED fires after email confirmation / password change.
+        // The cached session may still have stale user data — force a server
+        // round-trip so session.user.email is guaranteed fresh.
+        if (event === 'USER_UPDATED' && newSession) {
+          const { data: fresh } = await supabase.auth.getUser();
+          if (fresh.user) {
+            setSession({ ...newSession, user: fresh.user });
+            return;
+          }
+        }
+
         setSession(newSession);
 
         /**

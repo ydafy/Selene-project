@@ -1,57 +1,36 @@
-import { useState, useEffect } from 'react';
-import { TouchableOpacity } from 'react-native';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator } from 'react-native-paper';
-import { useTheme } from '@shopify/restyle';
 import Toast from 'react-native-toast-message';
+import * as LocalAuthentication from 'expo-local-authentication';
 
 import { Box, Text } from '../../base';
 import { FormTextInput } from '../../ui/FormTextInput';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import { SettingsRow } from './SettingsRow';
-import { Theme } from '../../../core/theme';
-import { useUpdateProfile } from '../../../core/hooks/useProfile';
-import { stripSettingsNamespace } from '../../../core/hooks/deleteAccountHelpers';
+import { useAuthContext } from '../../../components/auth/AuthProvider';
 import { supabase } from '../../../core/db/supabase';
 import {
   validateEmail,
   buildEmailUpdatePayload,
+  EMAIL_REDIRECT_URL,
 } from '../../../core/utils/emailChange';
 
 type AccountSectionProps = {
   userId: string;
-  username: string | null | undefined;
-  isLoading?: boolean;
-  /** Current user email, used as initial value for the email-change dialog. */
+  /** Current user email, used as display value on the row. */
   email?: string | null;
 };
 
-// Letters, digits, underscore, dot. Matches spec CONF-002.
-const USERNAME_REGEX = /^[A-Za-z0-9_.]+$/;
-
-export const AccountSection = ({
-  userId,
-  username,
-  isLoading = false,
-  email,
-}: AccountSectionProps) => {
+export const AccountSection = ({ email }: AccountSectionProps) => {
   const { t } = useTranslation('settings');
-  const theme = useTheme<Theme>();
-  const updateProfile = useUpdateProfile(userId);
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [draft, setDraft] = useState(username ?? '');
-  const [localError, setLocalError] = useState<string | null>(null);
-
-  // Email-change dialog state (CONF-016 / EXTD-TASK-007).
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailDraft, setEmailDraft] = useState(email ?? '');
   const [emailError, setEmailError] = useState<string | null>(null);
   const [isEmailSubmitting, setIsEmailSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (!emailDialogOpen) setEmailDraft(email ?? '');
-  }, [email, emailDialogOpen]);
+  const { session } = useAuthContext();
+  const isGoogleUser = session?.user?.app_metadata?.provider === 'google';
 
   const handleEmailConfirm = async () => {
     const validation = validateEmail(emailDraft);
@@ -62,8 +41,24 @@ export const AccountSection = ({
     setEmailError(null);
     setIsEmailSubmitting(true);
     try {
-      const payload = buildEmailUpdatePayload(emailDraft);
-      const { error } = await supabase.auth.updateUser(payload);
+      // Biometric gate — same pattern as password change.
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      if (hasHardware && isEnrolled) {
+        const auth = await LocalAuthentication.authenticateAsync({
+          promptMessage: t('account.biometricPrompt'),
+          fallbackLabel: t('account.biometricFallback'),
+        });
+        if (!auth.success) {
+          setEmailError(t('account.biometricFailed'));
+          return;
+        }
+      }
+
+      const { error } = await supabase.auth.updateUser(
+        buildEmailUpdatePayload(emailDraft),
+        { emailRedirectTo: EMAIL_REDIRECT_URL },
+      );
       if (error) throw error;
       setEmailDialogOpen(false);
       Toast.show({
@@ -72,79 +67,38 @@ export const AccountSection = ({
         text2: t('toasts.emailSentMessage'),
       });
     } catch (err) {
-      const msg =
-        (err as { message?: string })?.message ?? t('errors.updateFailed');
-      setEmailError(msg);
+      const message = (err as { message?: string })?.message ?? '';
+      if (message.includes('already')) {
+        setEmailError(t('errors.emailAlreadyTaken'));
+      } else {
+        setEmailError(t('errors.updateFailed'));
+      }
     } finally {
       setIsEmailSubmitting(false);
     }
   };
 
-  // Sync local draft when the canonical username changes (e.g. cache refresh).
-  useEffect(() => {
-    if (!isEditing) {
-      setDraft(username ?? '');
-    }
-  }, [username, isEditing]);
-
-  const closeEditor = () => {
-    setIsEditing(false);
-    setDraft(username ?? '');
-    setLocalError(null);
-  };
-
-  const handleSave = async () => {
-    const trimmed = draft.trim();
-
-    if (trimmed.length === 0) {
-      setLocalError(t('errors.usernameRequired'));
-      return;
-    }
-    if (trimmed.length < 3) {
-      setLocalError(
-        t('errors.usernameTooShort', { defaultValue: 'Mínimo 3 caracteres' }),
-      );
-      return;
-    }
-    if (trimmed.length > 20) {
-      setLocalError(
-        t('errors.usernameTooLong', { defaultValue: 'Máximo 20 caracteres' }),
-      );
-      return;
-    }
-    if (!USERNAME_REGEX.test(trimmed)) {
-      setLocalError(t('errors.usernameInvalid'));
-      return;
-    }
-    if (trimmed === username) {
-      closeEditor();
-      return;
-    }
-
-    setLocalError(null);
-    try {
-      await updateProfile.mutateAsync({ username: trimmed });
-      setIsEditing(false);
-    } catch (error) {
-      const key =
-        (error as { errorKey?: string })?.errorKey ?? 'errors.updateFailed';
-      // Use shared namespace-stripping helper.
-      const trimmedKey = stripSettingsNamespace(key);
-      setLocalError(t(trimmedKey));
-    }
-  };
-
-  const isSaving = updateProfile.isPending;
-
   return (
     <Box>
-      {/* Email-change row (CONF-016) */}
+      {/* Email row — disabled for Google sign-ins to prevent OAuth breakage */}
       <SettingsRow
         icon="email-outline"
         label={t('account.emailLabel')}
         description={email ?? undefined}
-        onPress={() => setEmailDialogOpen(true)}
+        onPress={isGoogleUser ? undefined : () => setEmailDialogOpen(true)}
       />
+      {isGoogleUser && (
+        <Box paddingHorizontal="l" paddingBottom="s">
+          <Text
+            variant="caption-md"
+            color="textSecondary"
+            opacity={0.6}
+            fontStyle="italic"
+          >
+            {t('account.googleProviderHint')}
+          </Text>
+        </Box>
+      )}
 
       <ConfirmDialog
         visible={emailDialogOpen}
@@ -180,81 +134,6 @@ export const AccountSection = ({
           )}
         </Box>
       </ConfirmDialog>
-
-      {isEditing ? (
-        <Box paddingHorizontal="m" paddingVertical="m">
-          <FormTextInput
-            label={t('account.usernameLabel')}
-            value={draft}
-            onChangeText={setDraft}
-            labelMode="static"
-            autoCapitalize="none"
-            autoCorrect={false}
-            editable={!isSaving}
-            helpTitle={t('account.usernameLabel')}
-            helpDescription={t('account.usernameHelp')}
-          />
-          {localError && (
-            <Text variant="caption-md" color="error" marginTop="xs">
-              {localError}
-            </Text>
-          )}
-          <Box flexDirection="row" justifyContent="flex-end" marginTop="m">
-            <TouchableOpacity
-              onPress={closeEditor}
-              disabled={isSaving}
-              activeOpacity={0.7}
-              style={{ marginRight: 16 }}
-            >
-              <Text variant="body-md" color="textSecondary">
-                {t('account.cancel')}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleSave}
-              disabled={isSaving}
-              activeOpacity={0.7}
-            >
-              {isSaving ? (
-                <ActivityIndicator size="small" color={theme.colors.primary} />
-              ) : (
-                <Text variant="body-md" color="primary" fontWeight="bold">
-                  {t('account.save')}
-                </Text>
-              )}
-            </TouchableOpacity>
-          </Box>
-        </Box>
-      ) : (
-        <TouchableOpacity
-          onPress={() => setIsEditing(true)}
-          disabled={isLoading}
-          activeOpacity={0.7}
-        >
-          <Box
-            flexDirection="row"
-            alignItems="center"
-            paddingVertical="m"
-            paddingHorizontal="m"
-          >
-            <Box flex={1}>
-              <Text variant="caption-md" color="textSecondary">
-                {t('account.usernameLabel')}
-              </Text>
-              <Text variant="body-md" color="textPrimary" marginTop="xs">
-                {isLoading
-                  ? t('account.loading')
-                  : username
-                    ? `@${username}`
-                    : '—'}
-              </Text>
-            </Box>
-            <Text variant="body-md" color="primary">
-              {t('account.edit')}
-            </Text>
-          </Box>
-        </TouchableOpacity>
-      )}
     </Box>
   );
 };

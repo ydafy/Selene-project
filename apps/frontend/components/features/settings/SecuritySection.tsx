@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
+import * as LocalAuthentication from 'expo-local-authentication';
 
 import { Box, Text } from '../../base';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import { FormTextInput } from '../../ui/FormTextInput';
 import { SettingsRow } from './SettingsRow';
 import { supabase } from '../../../core/db/supabase';
+import { useAuthContext } from '../../../components/auth/AuthProvider';
 import {
   validatePasswordChange,
   generatePasswordNonce,
@@ -19,21 +21,21 @@ type SecuritySectionProps = {
 
 export const SecuritySection = ({ disabled = false }: SecuritySectionProps) => {
   const { t } = useTranslation('settings');
+  const { session } = useAuthContext();
+  const isGoogleUser = session?.user?.app_metadata?.provider === 'google';
 
   // Logout dialog
   const [dialogOpen, setDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Password change dialog (CONF-017 / EXTD-TASK-009)
+  // Password change dialog
   const [pwOpen, setPwOpen] = useState(false);
-  const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
   const [pwError, setPwError] = useState<string | null>(null);
   const [pwSubmitting, setPwSubmitting] = useState(false);
 
   const resetPwForm = () => {
-    setCurrentPw('');
     setNewPw('');
     setConfirmPw('');
     setPwError(null);
@@ -50,7 +52,7 @@ export const SecuritySection = ({ disabled = false }: SecuritySectionProps) => {
   };
 
   const handlePwConfirm = async () => {
-    const validation = validatePasswordChange(currentPw, newPw, confirmPw);
+    const validation = validatePasswordChange(newPw, confirmPw);
     if (!validation.ok) {
       setPwError(t(validation.errorKey));
       return;
@@ -58,12 +60,29 @@ export const SecuritySection = ({ disabled = false }: SecuritySectionProps) => {
     setPwError(null);
     setPwSubmitting(true);
     try {
+      // Biometric gate — proves physical possession, session alone is not enough
+      // for destructive account mutations. Supabase ignores currentPassword in
+      // updateUser, so biometric replaces re-typing.
+
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+
+      if (hasHardware && isEnrolled) {
+        const auth = await LocalAuthentication.authenticateAsync({
+          promptMessage: t('security.biometricPrompt'),
+          fallbackLabel: t('security.biometricFallback'),
+        });
+
+        if (!auth.success) {
+          setPwError(t('security.biometricFailed'));
+          return;
+        }
+      }
       const nonce = generatePasswordNonce();
       const payload = buildPasswordUpdatePayload(newPw, nonce);
-      // NOTE: `currentPassword` is supported from @supabase/supabase-js ^2.102.0.
-      // Installed version is ^2.81.1 — when upgraded, pass `currentPassword: currentPw`.
       const { error } = await supabase.auth.updateUser(payload);
       if (error) throw error;
+
       setPwOpen(false);
       resetPwForm();
       Toast.show({
@@ -73,8 +92,6 @@ export const SecuritySection = ({ disabled = false }: SecuritySectionProps) => {
       });
     } catch (err) {
       const code = (err as { message?: string })?.message ?? '';
-      // Heuristic: Supabase returns "Invalid login credentials" / "wrong" for
-      // password reauth failures. Map anything else to a generic error.
       const isWrong = /invalid|wrong|incorrect/i.test(code);
       setPwError(t(isWrong ? 'errors.wrongPassword' : 'errors.updateFailed'));
     } finally {
@@ -88,9 +105,21 @@ export const SecuritySection = ({ disabled = false }: SecuritySectionProps) => {
       <SettingsRow
         icon="lock-reset"
         label={t('security.passwordTitle')}
-        onPress={() => setPwOpen(true)}
+        onPress={isGoogleUser ? undefined : () => setPwOpen(true)}
         disabled={disabled}
       />
+      {isGoogleUser && (
+        <Box paddingHorizontal="l" paddingBottom="s">
+          <Text
+            variant="caption-md"
+            color="textSecondary"
+            opacity={0.6}
+            fontStyle="italic"
+          >
+            {t('security.googleProviderHint')}
+          </Text>
+        </Box>
+      )}
 
       <SettingsRow
         icon="logout"
@@ -125,17 +154,6 @@ export const SecuritySection = ({ disabled = false }: SecuritySectionProps) => {
         icon="lock-reset"
       >
         <Box marginTop="s">
-          <FormTextInput
-            label={t('security.passwordCurrent')}
-            value={currentPw}
-            onChangeText={setCurrentPw}
-            labelMode="static"
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-            editable={!pwSubmitting}
-          />
-          <Box height={12} />
           <FormTextInput
             label={t('security.passwordNew')}
             value={newPw}

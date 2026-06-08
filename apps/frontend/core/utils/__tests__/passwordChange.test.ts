@@ -7,42 +7,40 @@ import {
 
 /**
  * Covers EXTD-TASK-009 + CONF-017: validation, nonce generation, payload.
+ * Updated: biometric gate replaces currentPassword field — validatePasswordChange
+ * now takes (new, confirm) only.
  */
 describe('validatePasswordChange', () => {
   test('accepts when new === confirm and >= 8 chars', () => {
-    expect(
-      validatePasswordChange('oldpw1234', 'newpw1234', 'newpw1234'),
-    ).toEqual({ ok: true });
-  });
-
-  test('rejects missing current password', () => {
-    expect(
-      validatePasswordChange('', 'newpw1234', 'newpw1234'),
-    ).toEqual({ ok: false, errorKey: 'errors.usernameRequired' });
+    expect(validatePasswordChange('newpw1234', 'newpw1234')).toEqual({
+      ok: true,
+    });
   });
 
   test('rejects new password shorter than 8', () => {
-    expect(
-      validatePasswordChange('oldpw1234', 'short', 'short'),
-    ).toEqual({ ok: false, errorKey: 'security.passwordTooShort' });
+    expect(validatePasswordChange('short', 'short')).toEqual({
+      ok: false,
+      errorKey: 'security.passwordTooShort',
+    });
   });
 
   test('rejects new !== confirm', () => {
     expect(
-      validatePasswordChange('oldpw1234', 'newpw1234', 'differentpw'),
+      validatePasswordChange('newpw1234', 'differentpw'),
     ).toEqual({ ok: false, errorKey: 'security.passwordMismatch' });
   });
 
   test('rejects exactly 7 chars (boundary)', () => {
-    expect(
-      validatePasswordChange('oldpw1234', '1234567', '1234567'),
-    ).toEqual({ ok: false, errorKey: 'security.passwordTooShort' });
+    expect(validatePasswordChange('1234567', '1234567')).toEqual({
+      ok: false,
+      errorKey: 'security.passwordTooShort',
+    });
   });
 
   test('accepts exactly 8 chars (boundary)', () => {
-    expect(
-      validatePasswordChange('oldpw1234', '12345678', '12345678'),
-    ).toEqual({ ok: true });
+    expect(validatePasswordChange('12345678', '12345678')).toEqual({
+      ok: true,
+    });
   });
 });
 
@@ -69,5 +67,18 @@ describe('buildPasswordUpdatePayload', () => {
   test('includes password and nonce', () => {
     const payload = buildPasswordUpdatePayload('newpw1234', 'nonce-abc');
     expect(payload).toEqual({ password: 'newpw1234', nonce: 'nonce-abc' });
+  });
+
+  test('includes currentPassword when provided', () => {
+    const payload = buildPasswordUpdatePayload(
+      'newpw1234',
+      'nonce-abc',
+      'oldpw',
+    );
+    expect(payload).toEqual({
+      password: 'newpw1234',
+      nonce: 'nonce-abc',
+      currentPassword: 'oldpw',
+    });
   });
 });

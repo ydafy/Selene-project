@@ -94,8 +94,9 @@ describe('AccountSection email-change wiring (CONF-016)', () => {
     expect(src).toContain('buildEmailUpdatePayload');
   });
 
-  test('calls supabase.auth.updateUser with buildEmailUpdatePayload result', () => {
-    expect(src).toMatch(/supabase\.auth\.updateUser\(payload\)/);
+  test('calls supabase.auth.updateUser with email change result', () => {
+    expect(src).toMatch(/supabase\.auth\.updateUser\(/);
+    expect(src).toContain('buildEmailUpdatePayload');
   });
 
   test('shows confirmation-flow toast (emailSentTitle / Message)', () => {
@@ -117,8 +118,7 @@ describe('SecuritySection password-change wiring (CONF-017)', () => {
     expect(src).toContain('buildPasswordUpdatePayload');
   });
 
-  test('renders 3 password fields (current, new, confirm)', () => {
-    expect(src).toContain('security.passwordCurrent');
+  test('renders 2 password fields (new, confirm) — biometric gate replaces current', () => {
     expect(src).toContain('security.passwordNew');
     expect(src).toContain('security.passwordConfirm');
   });
@@ -132,7 +132,7 @@ describe('SecuritySection password-change wiring (CONF-017)', () => {
 
   test('uses secureTextEntry on password fields', () => {
     const matches = src.match(/secureTextEntry/g) ?? [];
-    expect(matches.length).toBeGreaterThanOrEqual(3);
+    expect(matches.length).toBeGreaterThanOrEqual(2);
   });
 
   test('generates nonce + calls supabase.auth.updateUser with payload', () => {
