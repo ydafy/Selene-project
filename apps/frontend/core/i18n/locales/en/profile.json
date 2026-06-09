@@ -33,6 +33,17 @@
     "publishedOn": "Published on",
     "lastUpdate": "Last update",
 
+    "toast": {
+      "deleteSuccessTitle": "Product deleted",
+      "deleteSuccessMsg": "Your listing has been removed.",
+      "deleteForbiddenTitle": "Not authorized",
+      "deleteForbiddenMsg": "You can only delete your own listings.",
+      "deleteBlockedStatusTitle": "Cannot delete",
+      "deleteBlockedStatusMsg": "Sold or reserved products cannot be deleted.",
+      "deleteBlockedDisputeTitle": "Listing in dispute",
+      "deleteBlockedDisputeMsg": "You cannot delete a product with an active dispute."
+    },
+
     "tabs": {
       "active": "Active",
       "history": "History"
@@ -43,13 +54,24 @@
       "PENDING_VERIFICATION": "Not Yet Verified",
       "SOLD": "Sold",
       "REJECTED": "Rejected",
-      "HIDDEN": "Hidden"
+      "HIDDEN": "Hidden",
+      "IN_DISPUTE": "In Dispute"
     },
     "actions": {
       "edit": "Edit",
       "delete": "Delete",
       "fix": "Fix",
       "verify": "Verify"
+    },
+    "dialog": {
+      "deleteTitle": "Delete Listing",
+      "deleteMsg": "Are you sure you want to delete this listing?."
+    },
+    "a11y": {
+      "cardHint": "Tap to view details",
+      "deleteLabel": "Delete listing",
+      "deleteHint": "Opens confirmation dialog",
+      "inDisputeBadge": "This listing has an active dispute"
     }
   },
   "review": {

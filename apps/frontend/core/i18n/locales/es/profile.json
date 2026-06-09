@@ -34,7 +34,13 @@
     "lastUpdate": "Última act.",
     "toast": {
       "deleteSuccessTitle": "Producto eliminado",
-      "deleteSuccessMsg": "Tu publicación ha sido retirada."
+      "deleteSuccessMsg": "Tu publicación ha sido retirada.",
+      "deleteForbiddenTitle": "No autorizado",
+      "deleteForbiddenMsg": "Solo puedes eliminar tus propias publicaciones.",
+      "deleteBlockedStatusTitle": "No se puede eliminar",
+      "deleteBlockedStatusMsg": "Los productos vendidos o reservados no se pueden eliminar.",
+      "deleteBlockedDisputeTitle": "Publicación en disputa",
+      "deleteBlockedDisputeMsg": "No puedes eliminar un producto con una disputa activa."
     },
     "tabs": {
       "active": "En Venta",
@@ -46,13 +52,24 @@
       "PENDING_VERIFICATION": "Sin Verificar",
       "SOLD": "Vendido",
       "REJECTED": "Rechazado",
-      "HIDDEN": "Oculto"
+      "HIDDEN": "Oculto",
+      "IN_DISPUTE": "En Disputa"
     },
     "actions": {
       "edit": "Editar",
       "delete": "Borrar",
       "fix": "Corregir",
       "verify": "Verificar"
+    },
+    "dialog": {
+      "deleteTitle": "Eliminar publicación",
+      "deleteMsg": "¿Estás seguro de que quieres eliminar esta publicación?"
+    },
+    "a11y": {
+      "cardHint": "Toca para ver detalle",
+      "deleteLabel": "Eliminar publicación",
+      "deleteHint": "Abre diálogo de confirmación",
+      "inDisputeBadge": "Esta publicación tiene una disputa activa"
     }
   },
   "review": {

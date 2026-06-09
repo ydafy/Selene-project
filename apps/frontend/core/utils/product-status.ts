@@ -17,6 +17,7 @@ export const getStatusColor = (
     RESERVED: 'warning',
     HIDDEN: 'textSecondary',
     IN_REVIEW: 'warning',
+    IN_DISPUTE: 'warning',
   };
 
   return statusMap[status] || 'textSecondary';

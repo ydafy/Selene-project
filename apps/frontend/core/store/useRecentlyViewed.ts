@@ -16,7 +16,7 @@ export const useRecentlyViewed = () => {
         .select('*')
         .in('id', viewedIds)
 
-        .not('status', 'in', '("HIDDEN", "REJECTED")');
+        .not('status', 'in', '(HIDDEN,REJECTED)');
 
       if (error) throw error;
 
