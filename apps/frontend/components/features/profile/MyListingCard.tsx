@@ -1,7 +1,8 @@
-import { TouchableOpacity } from 'react-native';
+import { TouchableOpacity, Platform, View } from 'react-native';
 import { useTheme } from '@shopify/restyle';
 import { IconButton } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
+import { useRouter } from 'expo-router';
 import { Product } from '@selene/types';
 
 import { Box, Text } from '../../base';
@@ -20,6 +21,9 @@ type MyListingCardProps = {
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
   onVerify?: (product: Product) => void;
+  isDeleting?: boolean;
+  isInDispute?: boolean;
+  orderId?: string;
 };
 
 export const MyListingCard = ({
@@ -28,37 +32,45 @@ export const MyListingCard = ({
   onEdit,
   onDelete,
   onVerify,
+  isDeleting = false,
+  isInDispute = false,
+  orderId,
 }: MyListingCardProps) => {
   const theme = useTheme<Theme>();
   const { t } = useTranslation('profile');
+  const router = useRouter();
 
   const isHistoryItem = isProductHistory(product.status);
   const statusColor = getStatusColor(product.status);
 
-  // Lógica de Estados de Acción
+  // Status action states
   const isPending = product.status === 'PENDING_VERIFICATION';
   const isRejected = product.status === 'REJECTED';
 
-  // Si requiere acción (verificar o corregir), priorizamos eso sobre ver el detalle
+  // If action required (verify or fix), prioritize over detail view
   const needsAction = isPending || isRejected;
 
-  // Handler de Navegación Inteligente
+  // Smart navigation: IN_DISPUTE → order detail, else normal flow
   const handlePress = () => {
+    if (isInDispute && orderId) {
+      router.push(`/profile/orders/${orderId}`);
+      return;
+    }
     if (needsAction && onVerify) {
-      onVerify(product); // Ir a pantalla de verificación/corrección
+      onVerify(product);
     } else {
-      onPress(product); // Ir a detalle público
+      onPress(product);
     }
   };
 
-  // Configuración del Botón de Acción Principal
+  // Action button config
   const getActionConfig = () => {
     if (isRejected) {
       return {
         label: t('listings.actions.fix'),
         icon: 'alert-circle-outline',
         color: theme.colors.error,
-        textColor: theme.colors.textPrimary, // O background, según contraste
+        textColor: theme.colors.textPrimary,
       };
     }
     if (isPending) {
@@ -79,28 +91,31 @@ export const MyListingCard = ({
 
   const actionConfig = getActionConfig();
 
-  // Decidimos si mostrar la barra de acciones
-  // Mostramos si NO es historial, O si es rechazado (aunque esté en historial)
+  // Show actions if NOT history, or if rejected (actionable from history)
+  // Hide trash when IN_DISPUTE
   const showActions = !isHistoryItem || isRejected;
+  const showTrash = !isInDispute;
 
   return (
-    <TouchableOpacity onPress={handlePress} activeOpacity={0.9}>
+    <TouchableOpacity
+      onPress={handlePress}
+      activeOpacity={0.9}
+      accessibilityRole="button"
+      accessibilityLabel={`${product.name}, ${formatCurrency(product.price)}`}
+      accessibilityHint={t('listings.a11y.cardHint')}
+    >
       <Box
         flexDirection="row"
         backgroundColor="cardBackground"
         borderRadius="m"
         overflow="hidden"
         marginBottom="m"
-        height={160}
+        height={180}
         style={{
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.2,
-          shadowRadius: 3,
-          elevation: 3,
+          boxShadow: '0 2px 3px rgba(0, 0, 0, 0.2)',
         }}
       >
-        {/* 1. IMAGEN */}
+        {/* 1. IMAGE */}
         <Box width={130} height="100%" backgroundColor="background">
           {product.images && product.images.length > 0 ? (
             <AppImage
@@ -118,18 +133,18 @@ export const MyListingCard = ({
           )}
         </Box>
 
-        {/* INFO DEL PRODUCTO */}
-        <Box flex={1} marginLeft="m" justifyContent="center">
-          <Text variant="body-md" fontWeight="bold" numberOfLines={1}>
-            {product.name}
-          </Text>
+        {/* 2. CONTENT */}
+        <Box flex={1} padding="s" justifyContent="space-between">
+          <Box>
+            <Text variant="body-md" numberOfLines={2}>
+              {product.name}
+            </Text>
+            <Text variant="subheader-lg" color="primary" marginTop="xs">
+              {formatCurrency(product.price)}
+            </Text>
+          </Box>
 
-          {/* PRECIO SEGURO */}
-          <Text variant="body-sm" color="primary" marginTop="xs">
-            {formatCurrency(product.price)}
-          </Text>
-
-          {/* BADGE DE ESTADO */}
+          {/* STATUS BADGE */}
           <Box flexDirection="row" alignItems="center" marginTop="s">
             <Box
               width={8}
@@ -139,26 +154,46 @@ export const MyListingCard = ({
               marginRight="xs"
             />
             <Text variant="caption-md" color="textSecondary">
-              {t(`listings.status.${product.status?.toLowerCase()}`)}
-            </Text>
-          </Box>
-        </Box>
-
-        {/* 2. CONTENIDO */}
-        <Box flex={1} padding="s" justifyContent="space-between">
-          <Box>
-            <Text variant="body-md" numberOfLines={2}>
-              {product.name}
-            </Text>
-            <Text variant="header-xl" color="primary" marginTop="xs">
-              {formatCurrency(product.price)}
+              {t(`listings.status.${product.status}`)}
             </Text>
           </Box>
 
-          {/* 3. BARRA DE ACCIONES */}
+          {/* IN_DISPUTE BADGE — rendered before action bar */}
+          {isInDispute && (
+            <View
+              accessibilityLiveRegion="polite"
+              accessibilityLabel={t('listings.a11y.inDisputeBadge')}
+            >
+              <Box
+                flexDirection="row"
+                alignItems="center"
+                marginTop="xs"
+                paddingVertical="xs"
+                paddingHorizontal="s"
+                backgroundColor="warning"
+                borderRadius="s"
+                style={{ borderWidth: 1, borderColor: theme.colors.warning }}
+              >
+                <MaterialCommunityIcons
+                  name="alert-circle-outline"
+                  size={14}
+                  color={theme.colors.error}
+                />
+                <Text
+                  variant="caption-md"
+                  color="error"
+                  marginLeft="xs"
+                >
+                  {t('listings.status.IN_DISPUTE')}
+                </Text>
+              </Box>
+            </View>
+          )}
+
+          {/* 3. ACTION BAR */}
           {showActions ? (
             <Box flexDirection="row" alignItems="center" gap="s" marginTop="s">
-              {/* BOTÓN DINÁMICO (Editar / Verificar / Corregir) */}
+              {/* DYNAMIC BUTTON (Edit / Verify / Fix) */}
               <TouchableOpacity
                 onPress={() => {
                   if (needsAction && onVerify) {
@@ -173,14 +208,11 @@ export const MyListingCard = ({
                   flexDirection="row"
                   alignItems="center"
                   justifyContent="center"
-                  backgroundColor={isRejected ? undefined : 'primary'} // Si es rejected usamos el estilo del borde
-                  style={{
-                    backgroundColor: actionConfig.color,
-                    borderColor: actionConfig.color,
-                  }}
+                  backgroundColor={actionConfig.color as any}
                   paddingVertical="s"
                   borderRadius="m"
                   borderWidth={1}
+                  style={{ borderColor: actionConfig.color }}
                 >
                   <IconButton
                     icon={actionConfig.icon}
@@ -191,35 +223,38 @@ export const MyListingCard = ({
                   <Text
                     variant="caption-lg"
                     marginLeft="xs"
-                    style={{
-                      color: actionConfig.textColor,
-                    }}
+                    style={{ color: actionConfig.textColor }}
                   >
                     {actionConfig.label}
                   </Text>
                 </Box>
               </TouchableOpacity>
 
-              {/* BOTÓN BORRAR (Siempre visible si hay acciones) */}
-              <Box
-                width={40}
-                height={40}
-                justifyContent="center"
-                alignItems="center"
-                borderRadius="m"
-                backgroundColor="background"
-              >
-                <IconButton
-                  icon="trash-can-outline"
-                  size={22}
-                  iconColor={theme.colors.error}
-                  onPress={() => onDelete(product)}
-                  style={{ margin: 0 }}
-                />
-              </Box>
+              {/* DELETE BUTTON — hidden when IN_DISPUTE */}
+              {showTrash && (
+                <Box
+                  width={40}
+                  height={40}
+                  justifyContent="center"
+                  alignItems="center"
+                  borderRadius="m"
+                  backgroundColor="background"
+                >
+                  <IconButton
+                    icon="trash-can-outline"
+                    size={22}
+                    iconColor={theme.colors.error}
+                    onPress={() => onDelete(product)}
+                    style={{ margin: 0 }}
+                    accessibilityLabel={t('listings.a11y.deleteLabel')}
+                    accessibilityHint={t('listings.a11y.deleteHint')}
+                    accessibilityState={{ busy: isDeleting, disabled: isDeleting }}
+                  />
+                </Box>
+              )}
             </Box>
           ) : (
-            // Si es historial puro (Vendido), solo mostramos fecha
+            // History-only (sold) — show date
             <Box marginTop="s">
               <Text variant="caption-md" color="textSecondary">
                 {t('listings.publishedOn')} {formatDate(product.created_at)}

@@ -30,14 +30,14 @@ export default function MyListingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  // Hooks de Datos
+  // Data hooks
   const { data: listings, isLoading, isRefetching, refetch } = useMyListings();
   const { isRefreshing, onRefresh } = useSeleneRefresh(refetch);
-  const { deleteProduct } = useProductManagement();
+  const { deleteProduct, deletingProductId, isDeleting } = useProductManagement();
 
   const { loadProductForEdit, resetDraft } = useSellStore();
 
-  // Estado Local
+  // Local state
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
 
@@ -52,12 +52,13 @@ export default function MyListingsScreen() {
   const hasRejected = !!listings?.some((item) => item.status === 'REJECTED');
   const showHistoryBadge = hasRejected && selectedIndex !== 1;
   const badgesConfig = [false, showHistoryBadge];
-  const showSkeleton = isLoading || isRefetching;
 
-  // Lógica de Filtrado (Client Side - Instantáneo)
+  // Show skeleton on initial load, or refetch after optimistic removal
+  const showSkeleton = isLoading || (isRefetching && !listings);
+
+  // Filtering logic (client-side — instant)
   const filteredListings = useMemo(() => {
     return listings?.filter((item) => {
-      // Usamos la "Fuente de Verdad"
       const isHistory = isProductHistory(item.status);
 
       if (selectedIndex === 0) return !isHistory;
@@ -68,12 +69,10 @@ export default function MyListingsScreen() {
   // Handlers
   const handleEdit = (product: Product) => {
     loadProductForEdit(product);
-
     router.push('/sell/details');
   };
 
   const handleVerify = (product: Product) => {
-    // Navegamos a la pantalla de verificación
     router.push(`/verify/${product.id}`);
   };
 
@@ -83,7 +82,7 @@ export default function MyListingsScreen() {
 
   const confirmDelete = () => {
     if (productToDelete) {
-      deleteProduct(productToDelete.id);
+      deleteProduct(productToDelete);
       setProductToDelete(null);
     }
   };
@@ -97,7 +96,7 @@ export default function MyListingsScreen() {
     <Box flex={1} backgroundColor="background">
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* 1. GRADIENTE DE STATUS BAR */}
+      {/* 1. STATUS BAR GRADIENT */}
       <LinearGradient
         colors={[theme.colors.background, 'transparent']}
         style={{
@@ -111,7 +110,7 @@ export default function MyListingsScreen() {
         pointerEvents="none"
       />
 
-      {/* 2. HEADER GLOBAL */}
+      {/* 2. GLOBAL HEADER */}
       <GlobalHeader
         title={t('profile:listings.title')}
         showBack={true}
@@ -127,7 +126,7 @@ export default function MyListingsScreen() {
         }
       />
 
-      {/* 3. GRADIENTE DE "NIEBLA" (Debajo del Header) */}
+      {/* 3. MIST GRADIENT (below header) */}
       <LinearGradient
         colors={[theme.colors.background, 'transparent']}
         style={{
@@ -141,7 +140,7 @@ export default function MyListingsScreen() {
         pointerEvents="none"
       />
 
-      {/* 4. CONTENIDO PRINCIPAL */}
+      {/* 4. MAIN CONTENT */}
       {showSkeleton ? (
         <Box padding="m" style={{ paddingTop: insets.top + 90 }}>
           <ProductCardSkeleton height={130} />
@@ -153,7 +152,7 @@ export default function MyListingsScreen() {
           data={filteredListings}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
-          // Header de la lista (El control de pestañas)
+          // List header (tab control)
           ListHeaderComponent={
             <Box paddingHorizontal="m" paddingBottom="m">
               <SegmentedControl
@@ -176,6 +175,8 @@ export default function MyListingsScreen() {
                 onEdit={handleEdit}
                 onDelete={handleDeletePress}
                 onVerify={handleVerify}
+                isDeleting={deletingProductId === item.id}
+                isInDispute={item.status === 'IN_DISPUTE'}
               />
             </Box>
           )}
@@ -198,16 +199,17 @@ export default function MyListingsScreen() {
         />
       )}
 
-      {/* 5. DIÁLOGO DE BORRADO */}
+      {/* 5. DELETE CONFIRMATION DIALOG */}
       <ConfirmDialog
         visible={!!productToDelete}
-        title={t('common:dialog.delete')}
-        description={t('cart:dialog.removeItemMsg')}
+        title={t('profile:listings.dialog.deleteTitle')}
+        description={t('profile:listings.dialog.deleteMsg')}
         onConfirm={confirmDelete}
         onCancel={() => setProductToDelete(null)}
         isDangerous
         icon="trash-can-outline"
         confirmLabel={t('common:dialog.delete')}
+        loading={isDeleting}
       />
     </Box>
   );
