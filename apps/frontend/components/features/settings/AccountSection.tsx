@@ -16,7 +16,6 @@ import {
 } from '../../../core/utils/emailChange';
 
 type AccountSectionProps = {
-  userId: string;
   /** Current user email, used as display value on the row. */
   email?: string | null;
 };

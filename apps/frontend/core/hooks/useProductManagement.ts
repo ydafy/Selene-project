@@ -46,45 +46,42 @@ export const useProductManagement = () => {
       if (product.seller_id !== currentUserId) {
         Toast.show({
           type: 'error',
-          text1: t('profile:listings.toast.deleteForbiddenTitle', 'No autorizado'),
-          text2: t('profile:listings.toast.deleteForbiddenMsg', 'Solo puedes eliminar tus propias publicaciones.'),
+          text1: t(
+            'profile:listings.toast.deleteForbiddenTitle',
+            'No autorizado',
+          ),
+          text2: t(
+            'profile:listings.toast.deleteForbiddenMsg',
+            'Solo puedes eliminar tus propias publicaciones.',
+          ),
         });
         throw new Error('FORBIDDEN_NOT_OWNER');
       }
 
-      // 2. Status guard — SOLD or RESERVED cannot be deleted
-      if (product.status === 'SOLD' || product.status === 'RESERVED') {
+      // 2. Status guard — SOLD, RESERVED, or IN_DISPUTE cannot be deleted.
+      //    IN_DISPUTE is set by the DB trigger — no network probe needed.
+      if (
+        product.status === 'SOLD' ||
+        product.status === 'RESERVED' ||
+        product.status === 'IN_DISPUTE'
+      ) {
         Toast.show({
           type: 'error',
-          text1: t('profile:listings.toast.deleteBlockedStatusTitle', 'No se puede eliminar'),
-          text2: t('profile:listings.toast.deleteBlockedStatusMsg', 'Los productos vendidos o reservados no se pueden eliminar.'),
+          text1: t(
+            'profile:listings.toast.deleteBlockedStatusTitle',
+            'No se puede eliminar',
+          ),
+          text2: t(
+            'profile:listings.toast.deleteBlockedStatusMsg',
+            'Los productos vendidos o reservados no se pueden eliminar.',
+          ),
         });
         throw new Error('BLOCKED_STATUS');
       }
 
-      // 3. Dispute guard — check for open disputes
-      const { data: disputeItems } = await supabase
-        .from('order_items')
-        .select('shipment_id')
-        .eq('product_id', product.id);
-
-      if (disputeItems && disputeItems.length > 0) {
-        const shipmentIds = disputeItems.map((di) => di.shipment_id);
-
-        const { data: openDisputes } = await supabase
-          .from('disputes')
-          .select('id')
-          .in('shipment_id', shipmentIds);
-
-        if (openDisputes && openDisputes.length > 0) {
-          Toast.show({
-            type: 'error',
-            text1: t('profile:listings.toast.deleteBlockedDisputeTitle', 'Publicación en disputa'),
-            text2: t('profile:listings.toast.deleteBlockedDisputeMsg', 'No puedes eliminar un producto con una disputa activa.'),
-          });
-          throw new Error('BLOCKED_DISPUTE');
-        }
-      }
+      // 3. Dispute guard — trust local status (IN_DISPUTE caught by guard #2).
+      //    No network probe needed: the DB trigger syncs status on dispute open.
+      //    If product is IN_DISPUTE, guard #2 already blocked it.
 
       // ── Optimistic update ──
       await queryClient.cancelQueries({ queryKey: ['my-listings'] });
@@ -124,11 +121,17 @@ export const useProductManagement = () => {
       }
 
       // Only show network error toast — guard errors already toasted above
-      if (error.message !== 'FORBIDDEN_NOT_OWNER' && error.message !== 'BLOCKED_STATUS' && error.message !== 'BLOCKED_DISPUTE') {
+      if (
+        error.message !== 'FORBIDDEN_NOT_OWNER' &&
+        error.message !== 'BLOCKED_STATUS' &&
+        error.message !== 'BLOCKED_DISPUTE'
+      ) {
         Toast.show({
           type: 'error',
           text1: t('common:errors.errorTitle', 'Error'),
-          text2: error.message || t('common:errors.generic', 'Ocurrió un error inesperado.'),
+          text2:
+            error.message ||
+            t('common:errors.generic', 'Ocurrió un error inesperado.'),
         });
       }
     },
@@ -145,8 +148,14 @@ export const useProductManagement = () => {
 
       Toast.show({
         type: 'success',
-        text1: t('profile:listings.toast.deleteSuccessTitle', 'Producto eliminado'),
-        text2: t('profile:listings.toast.deleteSuccessMsg', 'Tu publicación ha sido retirada.'),
+        text1: t(
+          'profile:listings.toast.deleteSuccessTitle',
+          'Producto eliminado',
+        ),
+        text2: t(
+          'profile:listings.toast.deleteSuccessMsg',
+          'Tu publicación ha sido retirada.',
+        ),
       });
 
       queryClient.invalidateQueries({ queryKey: ['my-listings'] });
@@ -157,7 +166,7 @@ export const useProductManagement = () => {
   return {
     deleteProduct: deleteMutation.mutate,
     deletingProductId: deleteMutation.isPending
-      ? (deleteMutation.variables as Product | undefined)?.id ?? null
+      ? ((deleteMutation.variables as Product | undefined)?.id ?? null)
       : null,
     isDeleting: deleteMutation.isPending,
   };

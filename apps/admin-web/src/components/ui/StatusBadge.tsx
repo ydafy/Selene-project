@@ -14,6 +14,8 @@ export type StatusType =
   | 'IN_REVIEW'
   | 'PENDING_VERIFICATION'
   | 'HIDDEN'
+  | 'IN_DISPUTE'
+  | 'RESERVED'
   // Dispute statuses
   | 'open'
   | 'under_review'
@@ -37,6 +39,7 @@ export const StatusBadge = ({ status }: Props) => {
     'under_review',
     'PENDING_VERIFICATION',
     'IN_REVIEW',
+    'IN_DISPUTE',
     'waiting_return',
     'return_shipped',
     'processing',
@@ -74,6 +77,10 @@ export const StatusBadge = ({ status }: Props) => {
       'bg-status-pending/10 text-status-pending border-status-pending/20',
     HIDDEN:
       'bg-status-cancelled/10 text-status-cancelled border-status-cancelled/20',
+    IN_DISPUTE:
+      'bg-status-dispute/10 text-status-dispute border-status-dispute/20',
+    RESERVED:
+      'bg-status-preparing/10 text-status-preparing border-status-preparing/20',
 
     //Disputas
     open: 'bg-status-pending/10 text-status-pending border-status-pending/20',

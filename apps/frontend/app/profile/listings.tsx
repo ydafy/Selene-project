@@ -33,7 +33,8 @@ export default function MyListingsScreen() {
   // Data hooks
   const { data: listings, isLoading, isRefetching, refetch } = useMyListings();
   const { isRefreshing, onRefresh } = useSeleneRefresh(refetch);
-  const { deleteProduct, deletingProductId, isDeleting } = useProductManagement();
+  const { deleteProduct, deletingProductId, isDeleting } =
+    useProductManagement();
 
   const { loadProductForEdit, resetDraft } = useSellStore();
 
@@ -98,7 +99,7 @@ export default function MyListingsScreen() {
 
       {/* 1. STATUS BAR GRADIENT */}
       <LinearGradient
-        colors={[theme.colors.background, 'transparent']}
+        colors={[theme.colors.transparent, 'transparent']}
         style={{
           position: 'absolute',
           top: 0,
@@ -124,20 +125,6 @@ export default function MyListingsScreen() {
             style={{ margin: 0 }}
           />
         }
-      />
-
-      {/* 3. MIST GRADIENT (below header) */}
-      <LinearGradient
-        colors={[theme.colors.background, 'transparent']}
-        style={{
-          position: 'absolute',
-          top: insets.top + 60,
-          left: 0,
-          right: 0,
-          height: 40,
-          zIndex: 10,
-        }}
-        pointerEvents="none"
       />
 
       {/* 4. MAIN CONTENT */}

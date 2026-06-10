@@ -1,4 +1,4 @@
-import { TouchableOpacity, Platform, View } from 'react-native';
+import { TouchableOpacity, View } from 'react-native';
 import { useTheme } from '@shopify/restyle';
 import { IconButton } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -24,6 +24,7 @@ type MyListingCardProps = {
   isDeleting?: boolean;
   isInDispute?: boolean;
   orderId?: string;
+  shipmentId?: string;
 };
 
 export const MyListingCard = ({
@@ -35,6 +36,7 @@ export const MyListingCard = ({
   isDeleting = false,
   isInDispute = false,
   orderId,
+  shipmentId,
 }: MyListingCardProps) => {
   const theme = useTheme<Theme>();
   const { t } = useTranslation('profile');
@@ -50,10 +52,11 @@ export const MyListingCard = ({
   // If action required (verify or fix), prioritize over detail view
   const needsAction = isPending || isRejected;
 
-  // Smart navigation: IN_DISPUTE → order detail, else normal flow
+  // Smart navigation: IN_DISPUTE → order detail with shipment focus
   const handlePress = () => {
     if (isInDispute && orderId) {
-      router.push(`/profile/orders/${orderId}`);
+      const query = shipmentId ? `?shipment_id=${shipmentId}` : '';
+      router.push(`/profile/orders/${orderId}${query}`);
       return;
     }
     if (needsAction && onVerify) {
@@ -112,7 +115,11 @@ export const MyListingCard = ({
         marginBottom="m"
         height={180}
         style={{
-          boxShadow: '0 2px 3px rgba(0, 0, 0, 0.2)',
+          shadowColor: theme.colors.pressableShadow,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.2,
+          shadowRadius: 3,
+          elevation: 3,
         }}
       >
         {/* 1. IMAGE */}
@@ -179,11 +186,7 @@ export const MyListingCard = ({
                   size={14}
                   color={theme.colors.error}
                 />
-                <Text
-                  variant="caption-md"
-                  color="error"
-                  marginLeft="xs"
-                >
+                <Text variant="caption-md" color="error" marginLeft="xs">
                   {t('listings.status.IN_DISPUTE')}
                 </Text>
               </Box>
@@ -208,11 +211,13 @@ export const MyListingCard = ({
                   flexDirection="row"
                   alignItems="center"
                   justifyContent="center"
-                  backgroundColor={actionConfig.color as any}
                   paddingVertical="s"
                   borderRadius="m"
                   borderWidth={1}
-                  style={{ borderColor: actionConfig.color }}
+                  style={{
+                    backgroundColor: actionConfig.color,
+                    borderColor: actionConfig.color,
+                  }}
                 >
                   <IconButton
                     icon={actionConfig.icon}
@@ -248,7 +253,10 @@ export const MyListingCard = ({
                     style={{ margin: 0 }}
                     accessibilityLabel={t('listings.a11y.deleteLabel')}
                     accessibilityHint={t('listings.a11y.deleteHint')}
-                    accessibilityState={{ busy: isDeleting, disabled: isDeleting }}
+                    accessibilityState={{
+                      busy: isDeleting,
+                      disabled: isDeleting,
+                    }}
                   />
                 </Box>
               )}

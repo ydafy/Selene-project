@@ -1,0 +1,345 @@
+[
+  {
+    "tablename": "addresses",
+    "policyname": "addresses_manage",
+    "cmd": "ALL",
+    "qual": "(( SELECT auth.uid() AS uid) = user_id)",
+    "with_check": null
+  },
+  {
+    "tablename": "admin_audit_logs",
+    "policyname": "admin_audit_logs_read",
+    "cmd": "SELECT",
+    "qual": "( SELECT is_admin() AS is_admin)",
+    "with_check": null
+  },
+  {
+    "tablename": "admin_user_notes",
+    "policyname": "admin_user_notes_all",
+    "cmd": "ALL",
+    "qual": "( SELECT is_admin() AS is_admin)",
+    "with_check": null
+  },
+  {
+    "tablename": "blocked_users",
+    "policyname": "blocked_users_all",
+    "cmd": "ALL",
+    "qual": "(( SELECT auth.uid() AS uid) = blocker_id)",
+    "with_check": null
+  },
+  {
+    "tablename": "category_configurations",
+    "policyname": "category_config_select",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "tablename": "disputes",
+    "policyname": "disputes_insert",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(( SELECT auth.uid() AS uid) = buyer_id)"
+  },
+  {
+    "tablename": "disputes",
+    "policyname": "disputes_select",
+    "cmd": "SELECT",
+    "qual": "((( SELECT auth.uid() AS uid) = buyer_id) OR (( SELECT auth.uid() AS uid) = seller_id) OR ( SELECT is_admin() AS is_admin))",
+    "with_check": null
+  },
+  {
+    "tablename": "disputes",
+    "policyname": "disputes_update",
+    "cmd": "UPDATE",
+    "qual": "((( SELECT auth.uid() AS uid) = buyer_id) OR (( SELECT auth.uid() AS uid) = seller_id) OR ( SELECT is_admin() AS is_admin))",
+    "with_check": null
+  },
+  {
+    "tablename": "favorites",
+    "policyname": "favorites_all",
+    "cmd": "ALL",
+    "qual": "(( SELECT auth.uid() AS uid) = user_id)",
+    "with_check": null
+  },
+  {
+    "tablename": "mexico_banks",
+    "policyname": "mexico_banks_read",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "tablename": "mexico_zips",
+    "policyname": "mexico_zips_read",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "tablename": "notifications",
+    "policyname": "notifications_all",
+    "cmd": "ALL",
+    "qual": "(( SELECT auth.uid() AS uid) = user_id)",
+    "with_check": null
+  },
+  {
+    "tablename": "order_items",
+    "policyname": "order_items_select_v4",
+    "cmd": "SELECT",
+    "qual": "internal.fn_check_order_access(order_id, ( SELECT auth.uid() AS uid))",
+    "with_check": null
+  },
+  {
+    "tablename": "orders",
+    "policyname": "orders_insert",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(( SELECT auth.role() AS role) = 'authenticated'::text)"
+  },
+  {
+    "tablename": "orders",
+    "policyname": "orders_select_v4",
+    "cmd": "SELECT",
+    "qual": "internal.fn_check_order_access(id, ( SELECT auth.uid() AS uid))",
+    "with_check": null
+  },
+  {
+    "tablename": "payment_methods",
+    "policyname": "payment_methods_manage",
+    "cmd": "ALL",
+    "qual": "(( SELECT auth.uid() AS uid) = user_id)",
+    "with_check": null
+  },
+  {
+    "tablename": "payout_requests",
+    "policyname": "admin_payments_select",
+    "cmd": "SELECT",
+    "qual": "is_admin()",
+    "with_check": null
+  },
+  {
+    "tablename": "payout_requests",
+    "policyname": "admin_payments_update",
+    "cmd": "UPDATE",
+    "qual": "is_admin()",
+    "with_check": "is_admin()"
+  },
+  {
+    "tablename": "payout_requests",
+    "policyname": "payouts_select",
+    "cmd": "SELECT",
+    "qual": "((( SELECT auth.uid() AS uid) = user_id) OR ( SELECT is_admin() AS is_admin))",
+    "with_check": null
+  },
+  {
+    "tablename": "products",
+    "policyname": "products_delete_block",
+    "cmd": "DELETE",
+    "qual": "false",
+    "with_check": null
+  },
+  {
+    "tablename": "products",
+    "policyname": "products_insert",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(( SELECT auth.uid() AS uid) = seller_id)"
+  },
+  {
+    "tablename": "products",
+    "policyname": "products_select_admin",
+    "cmd": "SELECT",
+    "qual": "is_admin()",
+    "with_check": null
+  },
+  {
+    "tablename": "products",
+    "policyname": "products_select_owner",
+    "cmd": "SELECT",
+    "qual": "(seller_id = ( SELECT auth.uid() AS uid))",
+    "with_check": null
+  },
+  {
+    "tablename": "products",
+    "policyname": "products_select_public",
+    "cmd": "SELECT",
+    "qual": "((deleted_at IS NULL) AND (status = ANY (ARRAY['VERIFIED'::product_status_enum, 'SOLD'::product_status_enum])))",
+    "with_check": null
+  },
+  {
+    "tablename": "products",
+    "policyname": "products_update_admin",
+    "cmd": "UPDATE",
+    "qual": "is_admin()",
+    "with_check": null
+  },
+  {
+    "tablename": "products",
+    "policyname": "products_update_owner",
+    "cmd": "UPDATE",
+    "qual": "((seller_id = ( SELECT auth.uid() AS uid)) AND (deleted_at IS NULL) AND (status = ANY (ARRAY['PENDING_VERIFICATION'::product_status_enum, 'VERIFIED'::product_status_enum, 'HIDDEN'::product_status_enum])))",
+    "with_check": "((seller_id = ( SELECT auth.uid() AS uid)) AND (status = ANY (ARRAY['PENDING_VERIFICATION'::product_status_enum, 'HIDDEN'::product_status_enum])))"
+  },
+  {
+    "tablename": "profiles",
+    "policyname": "admin_payments_select",
+    "cmd": "SELECT",
+    "qual": "is_admin()",
+    "with_check": null
+  },
+  {
+    "tablename": "profiles",
+    "policyname": "profiles_public_read",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "tablename": "profiles",
+    "policyname": "profiles_update",
+    "cmd": "UPDATE",
+    "qual": "(( SELECT auth.uid() AS uid) = id)",
+    "with_check": null
+  },
+  {
+    "tablename": "profiles_private",
+    "policyname": "profiles_private_access",
+    "cmd": "SELECT",
+    "qual": "((( SELECT auth.uid() AS uid) = id) OR is_admin())",
+    "with_check": null
+  },
+  {
+    "tablename": "reports",
+    "policyname": "reports_insert",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(( SELECT auth.uid() AS uid) = reporter_id)"
+  },
+  {
+    "tablename": "reviews",
+    "policyname": "reviews_insert",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((( SELECT auth.uid() AS uid) = reviewer_id) AND (EXISTS ( SELECT 1\n   FROM orders\n  WHERE ((orders.id = reviews.order_id) AND (orders.buyer_id = ( SELECT auth.uid() AS uid))))))"
+  },
+  {
+    "tablename": "reviews",
+    "policyname": "reviews_select",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "tablename": "seller_bank_accounts",
+    "policyname": "admin_payments_select",
+    "cmd": "SELECT",
+    "qual": "is_admin()",
+    "with_check": null
+  },
+  {
+    "tablename": "seller_bank_accounts",
+    "policyname": "bank_accounts_all",
+    "cmd": "ALL",
+    "qual": "(( SELECT auth.uid() AS uid) = user_id)",
+    "with_check": null
+  },
+  {
+    "tablename": "shipments",
+    "policyname": "shipments_delete_block",
+    "cmd": "DELETE",
+    "qual": "false",
+    "with_check": null
+  },
+  {
+    "tablename": "shipments",
+    "policyname": "shipments_insert_block",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "false"
+  },
+  {
+    "tablename": "shipments",
+    "policyname": "shipments_select_admin",
+    "cmd": "SELECT",
+    "qual": "is_admin()",
+    "with_check": null
+  },
+  {
+    "tablename": "shipments",
+    "policyname": "shipments_select_buyer",
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM orders o\n  WHERE ((o.id = shipments.order_id) AND (o.buyer_id = ( SELECT auth.uid() AS uid)))))",
+    "with_check": null
+  },
+  {
+    "tablename": "shipments",
+    "policyname": "shipments_select_policy",
+    "cmd": "SELECT",
+    "qual": "((( SELECT auth.uid() AS uid) = ( SELECT orders.buyer_id\n   FROM orders\n  WHERE (orders.id = shipments.order_id))) OR (( SELECT auth.uid() AS uid) = seller_id) OR is_admin())",
+    "with_check": null
+  },
+  {
+    "tablename": "shipments",
+    "policyname": "shipments_select_seller",
+    "cmd": "SELECT",
+    "qual": "(seller_id = ( SELECT auth.uid() AS uid))",
+    "with_check": null
+  },
+  {
+    "tablename": "shipments",
+    "policyname": "shipments_update_admin",
+    "cmd": "UPDATE",
+    "qual": "is_admin()",
+    "with_check": null
+  },
+  {
+    "tablename": "shipments",
+    "policyname": "shipments_update_seller",
+    "cmd": "UPDATE",
+    "qual": "((seller_id = ( SELECT auth.uid() AS uid)) AND (status = ANY (ARRAY['paid'::order_status_enum, 'preparing'::order_status_enum, 'shipped'::order_status_enum])))",
+    "with_check": "((seller_id = ( SELECT auth.uid() AS uid)) AND (status = ANY (ARRAY['paid'::order_status_enum, 'preparing'::order_status_enum, 'shipped'::order_status_enum])))"
+  },
+  {
+    "tablename": "system_logs",
+    "policyname": "system_logs_insert",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(( SELECT auth.role() AS role) = 'authenticated'::text)"
+  },
+  {
+    "tablename": "system_logs",
+    "policyname": "system_logs_read",
+    "cmd": "SELECT",
+    "qual": "( SELECT is_admin() AS is_admin)",
+    "with_check": null
+  },
+  {
+    "tablename": "system_settings",
+    "policyname": "system_settings_read",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "tablename": "wallet_transactions",
+    "policyname": "transactions_select",
+    "cmd": "SELECT",
+    "qual": "((EXISTS ( SELECT 1\n   FROM wallets\n  WHERE ((wallets.id = wallet_transactions.wallet_id) AND (wallets.user_id = ( SELECT auth.uid() AS uid))))) OR ( SELECT is_admin() AS is_admin))",
+    "with_check": null
+  },
+  {
+    "tablename": "wallets",
+    "policyname": "wallets_select",
+    "cmd": "SELECT",
+    "qual": "((( SELECT auth.uid() AS uid) = user_id) OR ( SELECT is_admin() AS is_admin))",
+    "with_check": null
+  },
+  {
+    "tablename": "webhook_dlq",
+    "policyname": "dlq_admin_select",
+    "cmd": "SELECT",
+    "qual": "( SELECT is_admin() AS is_admin)",
+    "with_check": null
+  }
+]

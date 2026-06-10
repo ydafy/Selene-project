@@ -8,6 +8,7 @@ import {
   Gavel,
   Wallet,
   Users,
+  Package,
   LogOut,
   ChevronRight,
   Menu,
@@ -32,6 +33,7 @@ export const Layout = () => {
     { name: 'Verificación', path: '/verify', icon: ShieldCheck },
     { name: 'Usuarios', path: '/users', icon: Users },
     { name: 'Disputas', path: '/disputes', icon: Gavel },
+    { name: 'Productos', path: '/products', icon: Package },
     { name: 'Pagos/Dispersión', path: '/payments', icon: Wallet },
   ];
 

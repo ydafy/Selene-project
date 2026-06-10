@@ -549,6 +549,13 @@ export type Database = {
             foreignKeyName: "favorites_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "admin_product_queue_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "favorites_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
@@ -722,6 +729,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "admin_product_queue_view"
             referencedColumns: ["id"]
           },
           {
@@ -938,7 +952,7 @@ export type Database = {
           shipping_cost: number | null
           shipping_payer: string | null
           specifications: Json
-          status: string
+          status: Database["public"]["Enums"]["product_status_enum"]
           updated_at: string | null
           usage: string
           verification_data: Json | null
@@ -967,7 +981,7 @@ export type Database = {
           shipping_cost?: number | null
           shipping_payer?: string | null
           specifications?: Json
-          status?: string
+          status?: Database["public"]["Enums"]["product_status_enum"]
           updated_at?: string | null
           usage: string
           verification_data?: Json | null
@@ -996,7 +1010,7 @@ export type Database = {
           shipping_cost?: number | null
           shipping_payer?: string | null
           specifications?: Json
-          status?: string
+          status?: Database["public"]["Enums"]["product_status_enum"]
           updated_at?: string | null
           usage?: string
           verification_data?: Json | null
@@ -1246,6 +1260,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: true
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "admin_product_queue_view"
             referencedColumns: ["id"]
           },
           {
@@ -1858,6 +1879,153 @@ export type Database = {
           },
         ]
       }
+      admin_product_queue_view: {
+        Row: {
+          aspect_ratio: number | null
+          category: string | null
+          condition: string | null
+          created_at: string | null
+          deleted_at: string | null
+          description: string | null
+          fts: unknown
+          id: string | null
+          images: string[] | null
+          locked_at: string | null
+          locked_by: string | null
+          name: string | null
+          origin_zip: string | null
+          package_preset: string | null
+          price: number | null
+          rejection_reason: string | null
+          reserved_at: string | null
+          seller_id: string | null
+          shipping_cost: number | null
+          shipping_payer: string | null
+          specifications: Json | null
+          status: Database["public"]["Enums"]["product_status_enum"] | null
+          updated_at: string | null
+          usage: string | null
+          verification_data: Json | null
+          verified_at: string | null
+          views: number | null
+        }
+        Insert: {
+          aspect_ratio?: number | null
+          category?: string | null
+          condition?: string | null
+          created_at?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          fts?: unknown
+          id?: string | null
+          images?: string[] | null
+          locked_at?: string | null
+          locked_by?: string | null
+          name?: string | null
+          origin_zip?: string | null
+          package_preset?: string | null
+          price?: number | null
+          rejection_reason?: string | null
+          reserved_at?: string | null
+          seller_id?: string | null
+          shipping_cost?: number | null
+          shipping_payer?: string | null
+          specifications?: Json | null
+          status?: Database["public"]["Enums"]["product_status_enum"] | null
+          updated_at?: string | null
+          usage?: string | null
+          verification_data?: Json | null
+          verified_at?: string | null
+          views?: number | null
+        }
+        Update: {
+          aspect_ratio?: number | null
+          category?: string | null
+          condition?: string | null
+          created_at?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          fts?: unknown
+          id?: string | null
+          images?: string[] | null
+          locked_at?: string | null
+          locked_by?: string | null
+          name?: string | null
+          origin_zip?: string | null
+          package_preset?: string | null
+          price?: number | null
+          rejection_reason?: string | null
+          reserved_at?: string | null
+          seller_id?: string | null
+          shipping_cost?: number | null
+          shipping_payer?: string | null
+          specifications?: Json | null
+          status?: Database["public"]["Enums"]["product_status_enum"] | null
+          updated_at?: string | null
+          usage?: string | null
+          verification_data?: Json | null
+          verified_at?: string | null
+          views?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_locked_by_fkey"
+            columns: ["locked_by"]
+            isOneToOne: false
+            referencedRelation: "admin_disputes_monitor_view"
+            referencedColumns: ["buyer_id"]
+          },
+          {
+            foreignKeyName: "products_locked_by_fkey"
+            columns: ["locked_by"]
+            isOneToOne: false
+            referencedRelation: "admin_disputes_monitor_view"
+            referencedColumns: ["seller_id"]
+          },
+          {
+            foreignKeyName: "products_locked_by_fkey"
+            columns: ["locked_by"]
+            isOneToOne: false
+            referencedRelation: "admin_user_directory_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_locked_by_fkey"
+            columns: ["locked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "admin_disputes_monitor_view"
+            referencedColumns: ["buyer_id"]
+          },
+          {
+            foreignKeyName: "products_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "admin_disputes_monitor_view"
+            referencedColumns: ["seller_id"]
+          },
+          {
+            foreignKeyName: "products_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_directory_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_user_directory_view: {
         Row: {
           available_balance: number | null
@@ -1916,18 +2084,31 @@ export type Database = {
       }
     }
     Functions: {
+      fn_admin_soft_delete_product: {
+        Args: { p_product_id: string; p_reason: string }
+        Returns: boolean
+      }
       fn_admin_toggle_verified_seller: {
         Args: { p_is_verified: boolean; p_target_user_id: string }
         Returns: boolean
       }
-      fn_admin_update_user_status: {
-        Args: {
-          p_new_status: Database["public"]["Enums"]["account_status"]
-          p_reason: string
-          p_target_user_id: string
-        }
-        Returns: boolean
-      }
+      fn_admin_update_user_status:
+        | {
+            Args: {
+              p_new_status: Database["public"]["Enums"]["account_status"]
+              p_reason: string
+              p_target_user_id: string
+            }
+            Returns: boolean
+          }
+        | {
+            Args: {
+              p_new_status: string
+              p_reason: string
+              p_target_user_id: string
+            }
+            Returns: boolean
+          }
       fn_buyer_submit_return_evidence: {
         Args: { p_dispute_id: string; p_images: string[] }
         Returns: {
@@ -2162,6 +2343,15 @@ export type Database = {
         | "dispute"
         | "refunded"
       payout_status: "pending" | "processing" | "completed" | "rejected"
+      product_status_enum:
+        | "PENDING_VERIFICATION"
+        | "IN_REVIEW"
+        | "VERIFIED"
+        | "SOLD"
+        | "REJECTED"
+        | "HIDDEN"
+        | "RESERVED"
+        | "IN_DISPUTE"
       wallet_transaction_type:
         | "sale_proceeds"
         | "payout"
@@ -2324,6 +2514,16 @@ export const Constants = {
         "refunded",
       ],
       payout_status: ["pending", "processing", "completed", "rejected"],
+      product_status_enum: [
+        "PENDING_VERIFICATION",
+        "IN_REVIEW",
+        "VERIFIED",
+        "SOLD",
+        "REJECTED",
+        "HIDDEN",
+        "RESERVED",
+        "IN_DISPUTE",
+      ],
       wallet_transaction_type: [
         "sale_proceeds",
         "payout",

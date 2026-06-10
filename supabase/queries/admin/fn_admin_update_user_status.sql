@@ -1,3 +1,4 @@
+
 DECLARE
     v_auth_user_id UUID;
     v_rows_affected INTEGER;
@@ -9,8 +10,8 @@ BEGIN
         RAISE EXCEPTION 'UNAUTHORIZED_NO_SESSION';
     END IF;
 
-    -- B. VALIDACIÓN DE ROL: Solo Admins pueden banear
-    IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = v_auth_user_id AND role = 'admin') THEN
+    -- B. VALIDACIÓN DE ROL: Solo Admins (usa is_admin() — roles en profiles_private)
+    IF NOT is_admin() THEN
         RAISE EXCEPTION 'UNAUTHORIZED_ADMIN_ONLY';
     END IF;
 
@@ -18,35 +19,30 @@ BEGIN
     UPDATE public.profiles
     SET status = p_new_status,
         status_reason = p_reason,
-        status_updated_by = v_auth_user_id::text, -- Guardamos quién lo hizo
+        status_updated_by = v_auth_user_id::text,
         status_updated_at = now()
     WHERE id = p_target_user_id;
 
-    -- Capturamos si el usuario realmente existía
     GET DIAGNOSTICS v_rows_affected = ROW_COUNT;
 
     IF v_rows_affected = 0 THEN
         RETURN false;
     END IF;
 
-    -- D. EFECTO DOMINÓ (MVP++): Gestión de Inventario
+    -- D. EFECTO DOMINÓ: Gestión de Inventario
     IF p_new_status IN ('suspended', 'banned') THEN
-        -- Si sancionamos, ocultamos TODO su hardware activo o en revisión
         UPDATE public.products
-        SET status = 'HIDDEN',
+        SET status = 'HIDDEN'::public.product_status_enum,
             updated_at = now()
         WHERE seller_id = p_target_user_id
-        AND status IN ('VERIFIED', 'PENDING_VERIFICATION', 'IN_REVIEW');
+        AND status = ANY(ARRAY['VERIFIED','PENDING_VERIFICATION','IN_REVIEW']::public.product_status_enum[]);
 
     ELSIF p_new_status = 'active' THEN
-        -- Si lo perdonamos, regresamos a VERIFIED solo lo que estaba oculto
-        -- y NO fue soft-deleted (deleted_at IS NULL).
-        -- (Nota: No regresamos a VERIFIED lo que estaba en revisión por seguridad)
         UPDATE public.products
-        SET status = 'VERIFIED',
+        SET status = 'VERIFIED'::public.product_status_enum,
             updated_at = now()
         WHERE seller_id = p_target_user_id
-        AND status = 'HIDDEN'
+        AND status = 'HIDDEN'::public.product_status_enum
         AND deleted_at IS NULL;            -- FIX: exclude soft-deleted products
     END IF;
 
@@ -58,7 +54,6 @@ BEGIN
     RETURN true;
 
 EXCEPTION WHEN OTHERS THEN
-    -- Registro de error crítico en logs del sistema
     INSERT INTO public.system_logs (level, message, metadata)
     VALUES ('ERROR', 'Fallo en fn_admin_update_user_status', jsonb_build_object('target_id', p_target_user_id, 'admin_id', v_auth_user_id, 'error', SQLERRM));
     RAISE;

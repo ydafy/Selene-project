@@ -58,7 +58,7 @@ BEGIN
   VALUES (
     v_auth_user_id,
     'PRODUCT_SOFT_DELETE',
-    p_product_id::text,
+    p_product_id,
     jsonb_build_object('reason', p_reason, 'previous_status', v_previous_status::text)
   );
 
