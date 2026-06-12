@@ -5,14 +5,17 @@ import { useAuthStore } from '../store/useAuthStore';
 
 export const usePendingProducts = () => {
   const queryClient = useQueryClient();
+  const { user, profile, initialized } = useAuthStore();
+
   const query = useQuery({
     queryKey: ['pending-products'],
     queryFn: async () => {
+      // QUERY 1: Productos + Vendedor (testing join)
       // QUERY 1: Productos + Vendedor
       const { data: rawProducts, error: pError } = await supabase
         .from('products')
         .select(
-          '*, seller:profiles!products_seller_id_fkey(username, avatar_url, id, status, is_verified_seller )',
+          'id, name, price, category, condition, images, description, specifications, verification_data, status, created_at, seller_id, locked_by, aspect_ratio, views, seller:profiles!products_seller_id_fkey(username, avatar_url, id, is_verified_seller)',
         )
         .eq('status', 'IN_REVIEW')
         .order('created_at', { ascending: false });
@@ -20,7 +23,6 @@ export const usePendingProducts = () => {
       if (pError) throw pError;
       if (!rawProducts?.length) return [];
 
-      // Cast para evitar errores de tipo por columnas no reflejadas en generated types
       const products = rawProducts as any[];
 
       // QUERY 2: Stats de vendedores (vista)

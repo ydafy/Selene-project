@@ -33,7 +33,6 @@ export const useProductLock = () => {
       try {
         const { data, error } = await supabase.rpc('fn_lock_product', {
           p_product_id: productId,
-          p_admin_id: user.id,
         });
 
         if (error) {
@@ -53,7 +52,7 @@ export const useProductLock = () => {
         } else {
           setLockStatus({
             isLockedByOther: true,
-            lockerName: result.locker_name,
+            lockerName: result.locked_by_username,
             lockedSince: result.locked_at,
           });
           toast.warning(
@@ -62,8 +61,12 @@ export const useProductLock = () => {
           return false;
         }
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Unknown error';
+        const message =
+          (err as { message?: string })?.message ??
+          (err as { error_description?: string })?.error_description ??
+          'Error desconocido';
         toast.error(`Error de conexión: ${message}`);
+        console.error('[useProductLock]', err);
         return false;
       } finally {
         setIsLocking(false);
@@ -78,7 +81,6 @@ export const useProductLock = () => {
       try {
         await supabase.rpc('fn_unlock_product', {
           p_product_id: productId,
-          p_admin_id: adminIdRef.current,
         });
 
         setLockStatus({

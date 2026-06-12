@@ -1,11 +1,27 @@
-import { useState } from 'react';
-import { Package, Trash2, Lock, Search } from 'lucide-react';
-import { useAdminProduct } from '../hooks/useAdminProduct';
+import { useState, useCallback } from 'react';
+import { Package, Trash2, Lock, Search, Archive } from 'lucide-react';
+import { useAdminProduct, type ProductTab } from '../hooks/useAdminProduct';
+import { useAdminProductCounts } from '../hooks/useAdminProductCounts';
+import { useDebounce } from '../hooks/useDebounce';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { InputModal } from '../components/ui/InputModal';
 import { ErrorState } from '../components/ui/ErrorState';
 
+const TABS: { id: ProductTab; label: string }[] = [
+  { id: 'active', label: 'Activos' },
+  { id: 'history', label: 'Historial' },
+];
+
 export const ProductManagementPage = () => {
+  const [tab, setTab] = useState<ProductTab>('active');
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
+  const [modalProduct, setModalProduct] = useState<{
+    id: string;
+    name: string;
+    status: string;
+  } | null>(null);
+
   const {
     products,
     isLoading,
@@ -19,19 +35,9 @@ export const ProductManagementPage = () => {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useAdminProduct();
-  const [search, setSearch] = useState('');
-  const [modalProduct, setModalProduct] = useState<{
-    id: string;
-    name: string;
-    status: string;
-  } | null>(null);
+  } = useAdminProduct(tab, debouncedSearch);
 
-  const filtered = products?.filter(
-    (p) =>
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.id.toLowerCase().includes(search.toLowerCase()),
-  );
+  const counts = useAdminProductCounts();
 
   const handleSoftDelete = async (reason: string) => {
     if (!modalProduct) return;
@@ -42,6 +48,39 @@ export const ProductManagementPage = () => {
       // Error handled by mutation onError
     }
   };
+
+  const handleTabKeyDown = useCallback(
+    (
+      e: React.KeyboardEvent<HTMLButtonElement>,
+      index: number,
+    ) => {
+      const tabIds = TABS.map((t) => t.id);
+      let nextIndex: number | null = null;
+
+      switch (e.key) {
+        case 'ArrowRight':
+          nextIndex = (index + 1) % tabIds.length;
+          break;
+        case 'ArrowLeft':
+          nextIndex = (index - 1 + tabIds.length) % tabIds.length;
+          break;
+        case 'Home':
+          nextIndex = 0;
+          break;
+        case 'End':
+          nextIndex = tabIds.length - 1;
+          break;
+        default:
+          return;
+      }
+
+      e.preventDefault();
+      setTab(tabIds[nextIndex]);
+      const nextBtn = document.getElementById(`tab-${tabIds[nextIndex]}`);
+      nextBtn?.focus();
+    },
+    [],
+  );
 
   if (isLoading) {
     return (
@@ -74,44 +113,96 @@ export const ProductManagementPage = () => {
             Administrar publicaciones y soft-delete.
           </p>
         </div>
-        <div className="bg-white/5 px-4 py-2 rounded-2xl border border-white/5 text-right">
-          <p className="text-[10px] text-blue-light font-bold uppercase tracking-widest">
-            Total Productos
-          </p>
-          <p className="text-xl font-bold text-lion">{total}</p>
+      </div>
+
+      {/* Tab strip + Search */}
+      <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+        <div
+          role="tablist"
+          aria-label="Estado de productos"
+          className="flex gap-2 p-1 bg-white/5 rounded-2xl border border-white/5"
+        >
+          {TABS.map((t, i) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              id={`tab-${t.id}`}
+              aria-selected={tab === t.id}
+              aria-controls="product-panel"
+              tabIndex={tab === t.id ? 0 : -1}
+              onClick={() => setTab(t.id)}
+              onKeyDown={(e) => handleTabKeyDown(e, i)}
+              className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap outline-none focus:ring-2 focus:ring-lion/50 cursor-pointer ${
+                tab === t.id
+                  ? 'bg-lion text-night shadow-lg'
+                  : 'text-blue-light hover:text-platinum'
+              }`}
+            >
+              {t.label}
+              <span className="ml-2 px-1.5 py-0.5 rounded-full bg-white/10 text-[10px]">
+                {t.id === 'active'
+                  ? (counts.activeCount ?? '—')
+                  : (counts.historyCount ?? '—')}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Search input */}
+        <div className="relative w-full md:w-96">
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-light"
+            size={18}
+          />
+          <input
+            type="text"
+            placeholder="Buscar por nombre o ID..."
+            className="w-full bg-state-gray border border-white/10 rounded-xl py-2 pl-10 pr-4 text-sm text-platinum focus:border-lion outline-none transition-all focus:ring-2 focus:ring-lion/50"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Buscar productos"
+          />
         </div>
       </div>
 
-      {/* Search */}
-      <div className="relative w-full md:w-96">
-        <Search
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-light"
-          size={18}
-        />
-        <input
-          type="text"
-          placeholder="Buscar por nombre o ID..."
-          className="w-full bg-state-gray border border-white/10 rounded-xl py-2 pl-10 pr-4 text-sm text-platinum focus:border-lion outline-none transition-all focus:ring-2 focus:ring-lion/50"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
+      {/* Live region for count announcement */}
+      <div
+        id="product-panel"
+        role="tabpanel"
+        aria-labelledby={`tab-${tab}`}
+        aria-live="polite"
+      >
+        <span className="sr-only">
+          Mostrando {products?.length ?? 0} de {total} productos
+        </span>
 
-      {/* Empty state */}
-      {filtered?.length === 0 ? (
+        {/* Table / Empty state */}
+        {products?.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 bg-state-gray/30 rounded-3xl border border-dashed border-white/10">
           <div className="p-6 bg-white/5 rounded-full mb-4">
-            <Package size={48} className="opacity-20 text-blue-light" />
+            {search.trim() ? (
+              <Search size={48} className="opacity-20 text-blue-light" />
+            ) : tab === 'active' ? (
+              <Package size={48} className="opacity-20 text-blue-light" />
+            ) : (
+              <Archive size={48} className="opacity-20 text-blue-light" />
+            )}
           </div>
           <p className="font-medium text-blue-light">
-            No se encontraron productos.
+            {search.trim()
+              ? `No se encontraron resultados para "${search}"`
+              : tab === 'active'
+                ? 'No hay productos activos'
+                : 'No hay productos en historial'}
           </p>
-          <p className="text-xs opacity-50 mt-1 text-blue-light">
-            Intenta con otro término de búsqueda.
-          </p>
+          {search.trim() && (
+            <p className="text-xs opacity-50 mt-1 text-blue-light">
+              Intenta con otro término de búsqueda.
+            </p>
+          )}
         </div>
       ) : (
-        /* Table */
         <div className="bg-state-gray rounded-2xl border border-white/10 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -138,7 +229,7 @@ export const ProductManagementPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {filtered?.map((product) => {
+                {products.map((product) => {
                   const isLocked = product.locked_by !== null;
                   const isDeleted = product.deleted_at !== null;
                   return (
@@ -225,12 +316,15 @@ export const ProductManagementPage = () => {
                 disabled={isFetchingNextPage}
                 className="px-6 py-2.5 bg-white/5 text-blue-light rounded-xl border border-white/10 hover:bg-white/10 hover:text-platinum transition-all outline-none focus:ring-2 focus:ring-lion/50 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium"
               >
-                {isFetchingNextPage ? 'Cargando...' : `Cargar más (${products.length} de ${total})`}
+                {isFetchingNextPage
+                  ? 'Cargando...'
+                  : `Cargar más (${products.length} de ${total})`}
               </button>
             </div>
           )}
         </div>
       )}
+      </div>
 
       {/* Soft-delete confirmation modal */}
       {modalProduct && (

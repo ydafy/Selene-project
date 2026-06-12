@@ -24,6 +24,16 @@ export const SecureImage = ({
 
   useEffect(() => {
     if (!path) { setError(true); return; }
+
+    // External URLs or Supabase public URLs — load directly, no signing needed
+    if (
+      path.startsWith('http') &&
+      (!path.includes('supabase.co') || path.includes('/object/public/'))
+    ) {
+      setUrl(path);
+      return;
+    }
+
     const getSignedUrl = async () => {
       const cleanPath = getStoragePath(path, bucket);
       const { data } = await supabase.storage
