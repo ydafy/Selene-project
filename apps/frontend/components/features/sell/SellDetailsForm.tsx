@@ -25,7 +25,8 @@ export const SellDetailsForm: React.FC<SellDetailsFormProps> = ({
   handleSubmit,
   errors,
   isValid,
-  watched,
+  price,
+  originZip,
   isQuoting,
   quoteError,
   earnings,
@@ -34,8 +35,8 @@ export const SellDetailsForm: React.FC<SellDetailsFormProps> = ({
 }) => {
   const theme = useTheme<Theme>();
 
-  const price = watched.price || '0';
-  const originZip = watched.origin_zip || '';
+  const priceValue = price || '0';
+  const originZipValue = originZip || '';
 
   /**
    * Nota: Eliminamos el handleFormSubmit manual porque
@@ -339,11 +340,11 @@ export const SellDetailsForm: React.FC<SellDetailsFormProps> = ({
             <Text variant="body-md" color="textSecondary">
               {t('fields.productPriceText')}
             </Text>
-            <Text
-              variant="body-md"
-              color={parseFloat(price) > 0 ? 'textPrimary' : 'textSecondary'}
-            >
-              {parseFloat(price) > 0 ? `$${parseFloat(price)}` : '$ --'}
+              <Text
+                variant="body-md"
+                color={parseFloat(priceValue) > 0 ? 'textPrimary' : 'textSecondary'}
+              >
+                {parseFloat(priceValue) > 0 ? `$${parseFloat(priceValue)}` : '$ --'}
             </Text>
           </Box>
 
@@ -365,18 +366,18 @@ export const SellDetailsForm: React.FC<SellDetailsFormProps> = ({
             <Box alignItems="flex-end">
               {isQuoting ? (
                 <ActivityIndicator size="small" color={theme.colors.primary} />
-              ) : parseFloat(price) > 0 ? (
+              ) : parseFloat(priceValue) > 0 ? (
                 <>
                   <Text
                     variant="header-xl"
                     color={
-                      originZip?.length === 5 ? 'textPrimary' : 'textSecondary'
+                      originZipValue?.length === 5 ? 'textPrimary' : 'textSecondary'
                     }
                   >
                     ${earnings.final}
                   </Text>
                   {/* AVISO DE CP FALTANTE */}
-                  {originZip?.length !== 5 && (
+                  {originZipValue?.length !== 5 && (
                     <Text variant="body-sm" color="textPrimary">
                       {t('errors.cpMissingText')}
                     </Text>

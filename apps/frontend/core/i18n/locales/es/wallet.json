@@ -31,6 +31,7 @@
     "shipping": "Envío",
     "netReceived": "Total Recibido",
     "shippingFee": "Seguro de Envío",
+    "requestedAmount": "Monto solicitado",
     "totalAmount": "Monto Total"
   },
   "bankConfiguration": {
@@ -58,6 +59,81 @@
       "title": "Cuenta Guardada",
       "description": "Tus datos bancarios se han actualizado correctamente.",
       "confirmButton": "Entendido"
+    }
+  },
+  "onboarding": {
+    "header": {
+      "title": "Activa tus cobros con Stripe",
+      "subtitle": "Para recibir el dinero de tus ventas, necesitas completar tu registro seguro en Stripe Connect. Es gratis y suele tomar pocos minutos."
+    },
+    "guidance": {
+      "cardLabel": "Consejo {{index}} de {{total}}: {{title}}. {{description}}",
+      "tip1_title": "Ten tu identificación lista",
+      "tip1_desc": "Ten a la mano tu INE. Stripe puede pedir fotos para verificar tu <resaltar>identidad</resaltar> de forma segura.",
+      "accountType_desc": "Si Stripe te pregunta por tu tipo de cuenta, elige la opción que corresponda a tu situación fiscal, como persona física o empresa, según aplique.",
+      "tip2_title": "Datos de negocio y categoría",
+      "tip2_desc": "Si Stripe te pide el tipo de cuenta o sector, elige la opción que mejor describa tu actividad. Para ventas de hardware, puede aparecer como <resaltar>electrónica, computación u otras mercancías</resaltar>.",
+      "tip3_title": "Ten lista tu CLABE bancaria",
+      "tip3_desc": "Necesitarás ingresar los 18 dígitos de tu <resaltar>CLABE bancaria</resaltar> para que Stripe pueda enviar tus ganancias según la configuración y disponibilidad de pagos.",
+      "ready_desc": "Todo listo. Al tocar el botón de abajo, se abrirá el navegador seguro de Stripe Connect. Una vez completado tu registro, regresarás automáticamente a Selene."
+    },
+    "status": {
+      "complete": "Onboarding completo",
+      "pending": "En proceso — completa los pasos restantes",
+      "rejected": "Stripe rechazó tu información — revisa tu cuenta",
+      "rejectedTitle": "Stripe necesita revisar tu información",
+      "rejectedDesc": "Abre Stripe para ver qué datos faltan o qué documentos necesitan corrección.",
+      "new": "Sin iniciar"
+    },
+    "statusGuidance": {
+      "newTitle": "Listo para iniciar en Stripe",
+      "newDesc": "Abre el flujo seguro de Stripe para crear tu cuenta de cobros como vendedor. Puedes regresar a Selene después del registro.",
+      "pendingTitle": "Stripe necesita un poco más de información",
+      "pendingDesc": "Tu cuenta está en proceso. Continúa en Stripe para terminar los pasos pendientes o espera mientras Stripe revisa tus datos.",
+      "rejectedTitle": "Revisa tu información en Stripe",
+      "rejectedDesc": "Stripe necesita datos o documentos corregidos. Abre Stripe para revisar la solicitud y enviar la información faltante."
+    },
+    "success": {
+      "title": "¡Todo listo para vender!",
+      "subtitle": "Tu cuenta de Stripe Connect está activa y configurada de forma segura. Ya puedes imprimir tus guías de envío y recibir pagos según tu calendario de depósitos.",
+      "cta": "Ir a mis ventas"
+    },
+    "actions": {
+      "back": "Atrás",
+      "next": "Siguiente",
+      "start": "Comenzar registro en Stripe",
+      "continue": "Continuar en Stripe",
+      "review": "Revisar en Stripe",
+      "checking": "Verificando estado..."
+    },
+    "loading": {
+      "title": "Verificando tu estado de Stripe",
+      "subtitle": "Estamos confirmando si ya puedes recibir pagos antes de mostrar los pasos."
+    },
+    "errors": {
+      "authRequired": "Inicia sesión",
+      "statusUnavailable": "No pudimos verificar tu estado de Stripe. Intenta de nuevo en unos minutos.",
+      "refreshFailed": "No pudimos actualizar tu estado de Stripe. Mostramos la información guardada.",
+      "onboardingUrlUnavailable": "Stripe no devolvió un enlace de registro. Intenta de nuevo.",
+      "unknown": "Ocurrió un error inesperado. Intenta de nuevo."
+    },
+    "image": {
+      "openLabel": "Agrandar captura de pantalla de Stripe",
+      "viewScreen": "Ver pantalla",
+      "closeLabel": "Cerrar visor de imagen",
+      "counterLabel": "Imagen {{current}} de {{total}}"
+    },
+    "steps": {
+      "intro": "Intro",
+      "type": "Perfil",
+      "details": "Datos",
+      "done": "Listo",
+      "typeTitle": "Paso 1: Tu perfil",
+      "typeDesc": "Si Stripe te pregunta por tu tipo de cuenta, elige la opción que corresponda a tu situación fiscal.",
+      "detailsTitle": "Paso 2: Datos de venta",
+      "detailsDesc": "Completa los campos de Stripe con información real y selecciona la categoría que mejor represente tus productos.",
+      "doneTitle": "Paso 3: Listo para iniciar",
+      "doneDesc": "Se abrirá el navegador seguro de Stripe Connect para continuar con el registro."
     }
   }
 }

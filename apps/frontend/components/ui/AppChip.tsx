@@ -1,7 +1,7 @@
 import { Chip as PaperChip } from 'react-native-paper';
 import { useTheme } from '@shopify/restyle';
 import { Theme } from '../../core/theme';
-import { StyleSheet, ViewStyle, StyleProp } from 'react-native'; // Importar tipos de estilo
+import { StyleSheet, ViewStyle, StyleProp } from 'react-native';
 
 type AppChipProps = {
   label: string;

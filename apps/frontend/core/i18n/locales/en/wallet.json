@@ -1,6 +1,5 @@
 {
   "screenTitle": "My Wallet",
-
   "balance": {
     "availableTitle": "AVAILABLE BALANCE",
     "pendingTitle": "Pending Balance",
@@ -32,6 +31,7 @@
     "shipping": "Shipping",
     "netReceived": "Total Received",
     "requestedAmount": "Requested Amount",
+    "shippingFee": "Shipping Insurance",
     "totalAmount": "Total Amount"
   },
   "bankConfiguration": {
@@ -59,6 +59,81 @@
       "title": "Account Saved",
       "description": "Your bank details have been successfully updated.",
       "confirmButton": "Understood"
+    }
+  },
+  "onboarding": {
+    "header": {
+      "title": "Activate your payouts with Stripe",
+      "subtitle": "To receive money from your sales, you need to complete your secure registration on Stripe Connect. It's free and usually takes a few minutes."
+    },
+    "guidance": {
+      "cardLabel": "Tip {{index}} of {{total}}: {{title}}. {{description}}",
+      "tip1_title": "Keep your ID ready",
+      "tip1_desc": "Have your ID ready. Stripe may ask for photos to securely verify your <resaltar>identity</resaltar>.",
+      "accountType_desc": "If Stripe asks for your account type, choose the option that matches your tax situation, such as individual or business, when applicable.",
+      "tip2_title": "Business and category details",
+      "tip2_desc": "If Stripe asks for your account type or business category, choose the option that best describes your activity. For hardware sales, it may appear as <resaltar>electronics, computing, or other merchandise</resaltar>.",
+      "tip3_title": "Have your CLABE bank account ready",
+      "tip3_desc": "You will need to input your 18-digit CLABE so Stripe can send earnings according to your payout configuration and availability.",
+      "ready_desc": "You're ready. When you tap below, the secure Stripe Connect browser flow will open. After completing registration, you will return to Selene."
+    },
+    "status": {
+      "complete": "Onboarding complete",
+      "pending": "In progress — complete the remaining steps",
+      "rejected": "Stripe rejected your information — check your account",
+      "rejectedTitle": "Stripe needs to review your information",
+      "rejectedDesc": "Open Stripe to see which details are missing or which documents need correction.",
+      "new": "Not started"
+    },
+    "statusGuidance": {
+      "newTitle": "Ready to start on Stripe",
+      "newDesc": "Open Stripe's secure flow to create your seller payout account. You can return to Selene after registration.",
+      "pendingTitle": "Stripe needs a little more information",
+      "pendingDesc": "Your account is in progress. Continue in Stripe to finish any remaining steps or wait while Stripe reviews your details.",
+      "rejectedTitle": "Review your Stripe information",
+      "rejectedDesc": "Stripe needs corrected details or documents. Open Stripe to review the request and submit the missing information."
+    },
+    "success": {
+      "title": "All set to sell!",
+      "subtitle": "Your Stripe Connect account is active and securely configured. You can now print shipping labels and receive payouts according to your deposit schedule.",
+      "cta": "Go to my sales"
+    },
+    "actions": {
+      "back": "Back",
+      "next": "Next",
+      "start": "Start registration on Stripe",
+      "continue": "Continue on Stripe",
+      "review": "Review in Stripe",
+      "checking": "Checking status..."
+    },
+    "loading": {
+      "title": "Checking your Stripe status",
+      "subtitle": "We're confirming whether you can already receive payments before showing the steps."
+    },
+    "errors": {
+      "authRequired": "Sign in",
+      "statusUnavailable": "We couldn't check your Stripe status. Try again in a few minutes.",
+      "refreshFailed": "We couldn't refresh your Stripe status. Showing the saved information.",
+      "onboardingUrlUnavailable": "Stripe did not return a registration link. Try again.",
+      "unknown": "An unexpected error occurred. Try again."
+    },
+    "image": {
+      "openLabel": "Enlarge Stripe screenshot",
+      "viewScreen": "View screen",
+      "closeLabel": "Close image viewer",
+      "counterLabel": "Image {{current}} of {{total}}"
+    },
+    "steps": {
+      "intro": "Intro",
+      "type": "Profile",
+      "details": "Details",
+      "done": "Ready",
+      "typeTitle": "Step 1: Your profile",
+      "typeDesc": "If Stripe asks for your account type, choose the option that matches your tax situation.",
+      "detailsTitle": "Step 2: Sales details",
+      "detailsDesc": "Complete Stripe's fields with accurate information and choose the category that best represents your products.",
+      "doneTitle": "Step 3: Ready to start",
+      "doneDesc": "The secure Stripe Connect browser flow will open so you can continue registration."
     }
   }
 }

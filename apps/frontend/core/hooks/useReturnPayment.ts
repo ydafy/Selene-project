@@ -3,13 +3,15 @@ import { useStripe } from '@stripe/stripe-react-native';
 import { useTheme } from '@shopify/restyle';
 import * as Crypto from 'expo-crypto';
 import Toast from 'react-native-toast-message';
-import { supabase } from '../db/supabase';
+import { invokeEdge } from '../services/edge-client';
 import { Theme } from '../theme';
+import { useTranslation } from 'react-i18next';
 
 export const useReturnPayment = (disputeId: string) => {
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const theme = useTheme<Theme>();
   const [loading, setLoading] = useState(false);
+  const { t } = useTranslation('checkout');
 
   const handleReturnPayment = async () => {
     if (!disputeId) return { success: false, error: 'No dispute ID' };
@@ -21,15 +23,13 @@ export const useReturnPayment = (disputeId: string) => {
       const idempotencyKey = Crypto.randomUUID();
 
       // 2. Llamar a la Edge Function
-      const { data, error: funcError } = await supabase.functions.invoke(
-        'create-return-intent',
-        {
-          body: { disputeId, idempotencyKey },
-        },
-      );
+      const data = await invokeEdge('create-return-intent', {
+        disputeId,
+        idempotencyKey,
+      });
 
-      if (funcError || !data?.clientSecret) {
-        throw new Error(funcError?.message || 'Error al inicializar el pago');
+      if (!data?.clientSecret) {
+        throw new Error('Error al inicializar el pago');
       }
 
       // 3. Configurar el Payment Sheet (Estética Selene)
@@ -63,7 +63,7 @@ export const useReturnPayment = (disputeId: string) => {
         if (presentError.code !== 'Canceled') {
           Toast.show({
             type: 'error',
-            text1: 'Pago fallido',
+            text1: t('payments.failedTitle') || 'Pago fallido',
             text2: presentError.message,
           });
         }
@@ -73,7 +73,7 @@ export const useReturnPayment = (disputeId: string) => {
       // 5. Éxito
       Toast.show({
         type: 'success',
-        text1: '¡Pago exitoso!',
+        text1: t('success.title') || '¡Pago exitoso!',
         text2: 'La guía de retorno se está generando.',
       });
 

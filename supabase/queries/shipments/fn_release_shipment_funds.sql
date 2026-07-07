@@ -19,6 +19,18 @@ BEGIN
     RETURN QUERY SELECT false, 'SHIPMENT_NOT_FOUND'::TEXT; RETURN;
   END IF;
 
+  -- Connect guard: if shipment was paid via Stripe Connect, skip wallet release.
+  -- Stripe Connect handles fund routing and automatic payouts. Wallet operations
+  -- only apply to legacy (pre-Connect) orders.
+  IF EXISTS (
+    SELECT 1 FROM public.shipments
+    WHERE id = p_shipment_id AND stripe_payment_intent_id IS NOT NULL
+  ) THEN
+    -- Mark shipment as completed without touching wallets
+    UPDATE public.shipments SET status = 'completed' WHERE id = p_shipment_id;
+    RETURN QUERY SELECT true, 'CONNECT_SHIPMENT_SKIPPED_WALLET'::TEXT; RETURN;
+  END IF;
+
   -- 2. Solo shipments entregados
   IF v_status != 'delivered' THEN
     RETURN QUERY SELECT false, 'SHIPMENT_NOT_DELIVERED'::TEXT; RETURN;

@@ -2,6 +2,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import Stripe from 'https://esm.sh/stripe@17.0.0';
 
+const STRIPE_API_VERSION = '2026-04-22.dahlia';
+
 const log = (
   level: 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL',
   msg: string,
@@ -24,7 +26,7 @@ serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
   );
   const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
-    apiVersion: '2025-12-15.clover',
+    apiVersion: STRIPE_API_VERSION,
     httpClient: Stripe.createFetchHttpClient(),
   });
 
@@ -73,7 +75,7 @@ serve(async (req) => {
     //    que nunca recibieron escaneo deben cancelarse por seguridad.
     const { data: expiredShipments, error: fetchError } = await supabaseAdmin
       .from('shipments')
-      .select('id, order_id, seller_id')
+      .select('id, order_id, seller_id, stripe_payment_intent_id')
       .eq('status', 'preparing')
       .lt('updated_at', expirationLimit)
       .limit(50);
@@ -109,36 +111,57 @@ serve(async (req) => {
           .select('price_at_purchase, shipping_amount')
           .eq('shipment_id', shipment.id);
 
-        const refundAmount = (orderItems ?? []).reduce<number>(
-          (sum, item) =>
-            sum + item.price_at_purchase + (item.shipping_amount ?? 0),
-          0,
-        );
-        const refundAmountCents = Math.round(refundAmount * 100);
+        const refundItems = (orderItems ?? []) as Array<{
+          price_at_purchase: number;
+          shipping_amount: number | null;
+        }>;
 
-        // 4. Obtener PaymentIntent de la orden
-        const { data: order } = await supabaseAdmin
-          .from('orders')
-          .select('stripe_payment_intent_id')
-          .eq('id', shipment.order_id)
-          .single();
+        const refundAmountCents = Math.round(
+          refundItems.reduce(
+            (sum, item) =>
+              sum + item.price_at_purchase + (item.shipping_amount ?? 0),
+            0,
+          ) * 100,
+        );
+
+        // 4. Resolve PaymentIntent ID: Connect uses shipment-level PI,
+        // legacy uses order-level PI (NULL for Connect per T-001).
+        const stripePaymentIntentId = shipment.stripe_payment_intent_id ?? null;
+        let orderStripeIntentId: string | null = null;
+
+        if (!stripePaymentIntentId) {
+          const { data: order } = await supabaseAdmin
+            .from('orders')
+            .select('stripe_payment_intent_id')
+            .eq('id', shipment.order_id)
+            .single();
+          orderStripeIntentId = order?.stripe_payment_intent_id ?? null;
+        }
+
+        const finalStripeIntentId =
+          stripePaymentIntentId ?? orderStripeIntentId;
 
         // 5. Stripe refund parcial (solo el monto de este shipment)
-        if (order?.stripe_payment_intent_id && refundAmountCents > 0) {
+        if (finalStripeIntentId && refundAmountCents > 0) {
           try {
-            await stripe.refunds.create(
-              {
-                payment_intent: order.stripe_payment_intent_id,
-                amount: refundAmountCents,
-                reason: 'requested_by_customer' as const,
-                metadata: {
-                  shipment_id: shipment.id,
-                  order_id: shipment.order_id,
-                  type: 'auto_cancel_preparing',
-                },
+            const refundParams: Stripe.RefundCreateParams = {
+              payment_intent: finalStripeIntentId,
+              amount: refundAmountCents,
+              reason: 'requested_by_customer' as const,
+              metadata: {
+                shipment_id: shipment.id,
+                order_id: shipment.order_id,
+                type: 'auto_cancel_preparing',
               },
-              { idempotencyKey: `auto_cancel_preparing_${shipment.id}` },
-            );
+            };
+
+            if (stripePaymentIntentId) {
+              refundParams.reverse_transfer = true;
+            }
+
+            await stripe.refunds.create(refundParams, {
+              idempotencyKey: `auto_cancel_preparing_${shipment.id}`,
+            });
           } catch (stripeError: unknown) {
             if (
               typeof stripeError === 'object' &&
@@ -228,17 +251,18 @@ serve(async (req) => {
         headers: { 'Content-Type': 'application/json' },
       },
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Liberar lock en caso de error crítico
     await supabaseAdmin
       .from('system_settings')
       .update({ auto_cancel_preparing_running: false })
       .eq('id', 1);
 
+    const message = error instanceof Error ? error.message : String(error);
     log('ERROR', 'Fallo crítico en auto-cancel-preparing', {
-      error: error.message,
+      error: message,
     });
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
     });
   }

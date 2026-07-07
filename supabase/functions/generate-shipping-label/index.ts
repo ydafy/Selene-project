@@ -1,6 +1,12 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { z } from 'https://esm.sh/zod@3.23.8';
+import {
+  buildSanitizedEnviaDiagnostics,
+  buildSanitizedEnviaResponseMetadata,
+  extractEnviaErrorMetadata,
+  extractEnviaLabelCostCents,
+} from './diagnostics.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -77,7 +83,6 @@ interface ShipmentData {
 }
 
 // --- 3. ESQUEMAS DE VALIDACIÓN ---
-
 const RequestSchema = z.object({
   shipmentId: z.string().uuid('ID de envío inválido'),
   originAddress: z.object({
@@ -151,7 +156,12 @@ serve(async (req: Request) => {
         )
         .eq('id', shipmentId)
         .single(),
-      supabaseAdmin.from('system_settings').select('package_presets').single(),
+      supabaseAdmin
+        .from('system_settings')
+        .select(
+          'package_presets, novice_completed_threshold, novice_active_limit, trusted_active_limit',
+        )
+        .single(),
     ]);
 
     if (shipmentRes.error || !shipmentRes.data)
@@ -188,13 +198,26 @@ serve(async (req: Request) => {
         .from('shipments')
         .select('id', { count: 'exact', head: true })
         .eq('seller_id', user.id)
-        .in('status', ['preparing', 'shipped', 'delivered']),
+        .in('status', [
+          'preparing',
+          'shipped',
+          'delivered',
+          'dispute',
+          'waiting_return',
+          'return_shipped',
+        ]),
     ]);
 
     const completedCount = completedRes.count || 0;
     const activeCount = activeRes.count || 0;
-    const isNovice = completedCount < 5;
-    const limit = isNovice ? 2 : 10;
+
+    // Extraer límites dinámicos desde la respuesta de system_settings con fallbacks seguros
+    const noviceThreshold = settingsRes.data.novice_completed_threshold ?? 3;
+    const noviceLimit = settingsRes.data.novice_active_limit ?? 3;
+    const trustedLimit = settingsRes.data.trusted_active_limit ?? 10;
+
+    const isNovice = completedCount < noviceThreshold;
+    const limit = isNovice ? noviceLimit : trustedLimit;
 
     if (activeCount >= limit) {
       throw new ApiError(
@@ -208,6 +231,10 @@ serve(async (req: Request) => {
       maxL = 0,
       maxW = 0,
       totalH = 0;
+
+    const presetKeys = shipment.items.map(
+      (item) => item.product.package_preset,
+    );
 
     shipment.items.forEach((item) => {
       const presetKey = item.product.package_preset;
@@ -267,7 +294,11 @@ serve(async (req: Request) => {
         number: 'SN',
         district: shipment.order.shipping_address.district || 'Centro',
         city: shipment.order.shipping_address.city,
-        state: (shipment.order.shipping_address.state_code || shipment.order.shipping_address.state || 'DF')
+        state: (
+          shipment.order.shipping_address.state_code ||
+          shipment.order.shipping_address.state ||
+          'DF'
+        )
           .substring(0, 2)
           .toUpperCase(),
         country: 'MX',
@@ -285,15 +316,20 @@ serve(async (req: Request) => {
           dimensions: { length: maxL, width: maxW, height: totalH },
         },
       ],
-      shipment: { carrier: 'paquetexpress', service: 'ground', type: 1 },
+      shipment: { carrier: 'estafeta', service: 'ground', type: 1 },
       settings: { currency: 'MXN', printFormat: 'PDF', printSize: 'STOCK_4X6' },
     };
 
-    // H. Llamada a Envia
-    log('INFO', 'Solicitando guía a Envia', {
+    const enviaDiagnostics = buildSanitizedEnviaDiagnostics(payload, {
       shipmentId,
-      carrier: 'paquetexpress',
+      endpointBaseUrl: apiUrl,
+      mode,
+      itemCount: shipment.items.length,
+      presetKeys,
     });
+
+    // H. Llamada a Envia
+    log('INFO', 'Prepared Envia label request', { enviaDiagnostics });
 
     const response = await fetch(
       `${apiUrl}/ship/generate/`.replace(/([^:]\/)\/+/g, '$1'),
@@ -310,7 +346,11 @@ serve(async (req: Request) => {
     const resData = await response.json();
 
     if (!response.ok || resData.meta === 'error' || resData.code >= 400) {
-      log('ERROR', 'Error de Envia.com', { shipmentId, enviaError: resData });
+      log('ERROR', 'Error de Envia.com', {
+        shipmentId,
+        enviaDiagnostics,
+        enviaError: extractEnviaErrorMetadata(resData),
+      });
       throw new ApiError(
         422,
         resData.description || resData.message || 'Error de paquetería',
@@ -321,18 +361,37 @@ serve(async (req: Request) => {
     const trackingNumber = resData.data[0].trackingNumber;
     const labelUrl = resData.data[0].label;
     const enviaShipmentId = resData.data[0].shipmentId?.toString() || null;
+    const labelCost = extractEnviaLabelCostCents(resData);
+    const enviaResponseMetadata = buildSanitizedEnviaResponseMetadata(
+      resData,
+      labelCost,
+    );
+
+    if (!labelCost) {
+      log('WARN', 'Envia label response did not include a usable cost', {
+        shipmentId,
+        enviaResponseMetadata,
+      });
+    } else {
+      log('INFO', 'Extracted Envia label cost', {
+        shipmentId,
+        enviaResponseMetadata,
+      });
+    }
+
+    const shipmentUpdate = {
+      status: 'preparing',
+      tracking_number: trackingNumber,
+      label_url: labelUrl,
+      carrier: 'estafeta',
+      envia_shipment_id: enviaShipmentId,
+      shipping_evidence: shippingEvidence.images,
+      origin_address: originAddress,
+    };
 
     const { error: updateError } = await supabaseAdmin
       .from('shipments')
-      .update({
-        status: 'preparing',
-        tracking_number: trackingNumber,
-        label_url: labelUrl,
-        carrier: 'paquetexpress',
-        envia_shipment_id: enviaShipmentId,
-        shipping_evidence: shippingEvidence.images,
-        origin_address: originAddress,
-      })
+      .update(shipmentUpdate)
       .eq('id', shipmentId);
 
     if (updateError) {

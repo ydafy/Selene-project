@@ -12,6 +12,9 @@ import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { ImageGridPicker } from '../../components/features/sell/ImageGridPicker';
 import { useSellStore } from '../../core/store/useSellStore';
 import { useProductImages } from '../../core/hooks/useProductImages';
+import { SELL_STEP_DEFINITIONS } from '@/core/constants/sellSteps';
+import { triggerHaptic } from '../../core/utils/haptics';
+import { reorderImages } from '../../core/utils/imageReorder';
 
 const MAX_IMAGES = 5;
 
@@ -42,6 +45,7 @@ export default function SellImagesScreen() {
         const uri = await takePhoto();
         if (uri) {
           updateDraft({ images: [...images, uri] });
+          triggerHaptic();
         }
       } else if (index === 1) {
         // Galería (Múltiple)
@@ -50,6 +54,7 @@ export default function SellImagesScreen() {
         if (newUris.length > 0) {
           const updated = [...images, ...newUris].slice(0, MAX_IMAGES);
           updateDraft({ images: updated });
+          triggerHaptic();
         }
       }
     };
@@ -76,6 +81,13 @@ export default function SellImagesScreen() {
   const handleRemovePhoto = (index: number) => {
     const updated = images.filter((_, i) => i !== index);
     updateDraft({ images: updated });
+    triggerHaptic();
+  };
+
+  const handleReorderPhoto = (index: number, direction: 'up' | 'down') => {
+    const updated = reorderImages(images, index, direction);
+    updateDraft({ images: updated });
+    triggerHaptic();
   };
 
   const onNext = () => {
@@ -88,7 +100,7 @@ export default function SellImagesScreen() {
       <Stack.Screen options={{ headerShown: false }} />
 
       <GlobalHeader
-        title={t('sell:steps.details')}
+        title={t('sell:title')}
         showBack={true}
         backgroundColor="cardBackground"
       />
@@ -108,7 +120,10 @@ export default function SellImagesScreen() {
         />
 
         {/* Línea de Progreso (Paso 2) */}
-        <WizardSteps currentStep={2} />
+        <WizardSteps
+          currentStep={2}
+          steps={SELL_STEP_DEFINITIONS.map((s) => t(s.labelKey as string))}
+        />
 
         {/* Tarjeta Contenedora */}
         <Box
@@ -126,6 +141,7 @@ export default function SellImagesScreen() {
             images={images}
             onAdd={handleAddPhotos}
             onRemove={handleRemovePhoto}
+            onReorder={handleReorderPhoto}
           />
 
           {/* Mensaje de error visual si está vacío */}

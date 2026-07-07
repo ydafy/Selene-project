@@ -46,7 +46,9 @@ export function useUpdatePayoutStatus() {
 
       if (error) throw error;
 
-      const updatedIds = (updatedRows || []).map((row: { id: string }) => row.id);
+      const updatedIds = (updatedRows || []).map(
+        (row: { id: string }) => row.id,
+      );
       const updated = updatedIds.length;
       const skipped = ids.length - updated;
 
@@ -155,7 +157,8 @@ export function useUpdatePayoutStatus() {
           await supabase
             .from('wallets')
             .update({
-              pending_balance: wallet.pending_balance + payout.amount,
+              //  --> FIX CONTABLE (Verificar si esta bien): Devolvemos el dinero al available_balance (disponible líquido), no al pending (escrow)
+              available_balance: wallet.available_balance + payout.amount,
             })
             .eq('id', wallet.id);
         } else {

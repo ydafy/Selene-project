@@ -7,7 +7,9 @@
 import { create } from 'zustand';
 import { Product, ProductCategory, ShippingPayer } from '@selene/types';
 
-type SellDraft = {
+import { getCategoryResetFields } from '../utils/sellCategoryReset';
+
+export type SellDraft = {
   id?: string;
   category: ProductCategory | null;
   name: string;
@@ -15,7 +17,7 @@ type SellDraft = {
   price: string;
   condition: string;
   usage: string;
-  specifications: Record<string, any>;
+  specifications: Record<string, unknown>;
   images: string[];
   verificationImage: string | null;
   package_preset: string;
@@ -32,8 +34,9 @@ interface SellState {
   // Actions
   setCategory: (category: ProductCategory) => void;
   updateDraft: (fields: Partial<SellDraft>) => void;
-  updateSpecs: (key: string, value: any) => void;
+  updateSpecs: (key: string, value: unknown) => void;
   loadProductForEdit: (product: Product) => void;
+  resetCategoryFields: () => void;
   resetDraft: () => void;
 }
 
@@ -60,9 +63,18 @@ export const useSellStore = create<SellState>((set) => ({
   originalData: null,
 
   setCategory: (category) =>
-    set((state) => ({
-      draft: { ...state.draft, category },
-    })),
+    set((state) => {
+      if (state.draft.category === category) {
+        return { draft: { ...state.draft, category } };
+      }
+      return {
+        draft: {
+          ...state.draft,
+          category,
+          ...getCategoryResetFields(),
+        },
+      };
+    }),
 
   updateDraft: (fields) =>
     set((state) => ({
@@ -93,7 +105,7 @@ export const useSellStore = create<SellState>((set) => ({
       price: (product.price || 0).toString(),
       condition: product.condition || '',
       usage: product.usage || '',
-      specifications: (product.specifications as Record<string, any>) || {},
+      specifications: (product.specifications as Record<string, unknown>) || {},
       images: product.images || [],
       verificationImage: null,
       package_preset: product.package_preset || 'gpu_1',
@@ -108,6 +120,11 @@ export const useSellStore = create<SellState>((set) => ({
       originalData: data,
     }));
   },
+
+  resetCategoryFields: () =>
+    set((state) => ({
+      draft: { ...state.draft, ...getCategoryResetFields() },
+    })),
 
   resetDraft: () => set({ draft: INITIAL_STATE, originalData: null }),
 }));

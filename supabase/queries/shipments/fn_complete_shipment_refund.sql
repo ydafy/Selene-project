@@ -4,20 +4,31 @@ DECLARE
   v_seller_id UUID;
   v_buyer_id UUID;
   v_shipment_status TEXT;
+  v_stripe_payment_intent_id TEXT;
   v_net_payout NUMERIC;
   v_wallet_id UUID;
   v_wallet_available NUMERIC;
   v_dispute_id UUID;
 BEGIN
-  -- 1. Validar shipment y obtener datos
-  SELECT s.order_id, s.seller_id, s.status::TEXT, o.buyer_id
-  INTO v_order_id, v_seller_id, v_shipment_status, v_buyer_id
+  -- 1. Validar shipment y obtener datos (Usa public.shipments y public.orders)
+  SELECT s.order_id, s.seller_id, s.status::TEXT, s.stripe_payment_intent_id, o.buyer_id
+  INTO v_order_id, v_seller_id, v_shipment_status, v_stripe_payment_intent_id, v_buyer_id
   FROM public.shipments s
   JOIN public.orders o ON o.id = s.order_id
   WHERE s.id = p_shipment_id FOR UPDATE;
 
   IF NOT FOUND THEN
     RETURN QUERY SELECT false, 'SHIPMENT_NOT_FOUND'::TEXT; RETURN;
+  END IF;
+
+  -- Connect guard: Connect refunds are handled by Stripe reverse_transfer in
+  -- resolve-dispute-refund. This legacy wallet rollback function must not write
+  -- wallets or wallet_transactions for Connect-era shipments.
+  IF v_stripe_payment_intent_id IS NOT NULL THEN
+    UPDATE public.shipments
+    SET status = 'refunded', updated_at = now()
+    WHERE id = p_shipment_id;
+    RETURN QUERY SELECT true, 'CONNECT_SHIPMENT_SKIPPED_WALLET_REFUND'::TEXT; RETURN;
   END IF;
 
   -- 1b. No reembolsar shipments ya refunded o completed (fondos ya liberados)

@@ -7,6 +7,8 @@ import {
   ShieldCheck,
   Gavel,
   Wallet,
+  BadgeCheck,
+  CircleDollarSign,
   Users,
   Package,
   LogOut,
@@ -34,7 +36,9 @@ export const Layout = () => {
     { name: 'Usuarios', path: '/users', icon: Users },
     { name: 'Disputas', path: '/disputes', icon: Gavel },
     { name: 'Productos', path: '/products', icon: Package },
-    { name: 'Pagos/Dispersión', path: '/payments', icon: Wallet },
+    { name: 'Connect Earnings', path: '/payments', icon: Wallet },
+    { name: 'Seller Onboarding', path: '/seller-onboarding', icon: BadgeCheck },
+    { name: 'Legacy Drain', path: '/drain-legacy-wallets', icon: CircleDollarSign },
   ];
 
   return (
@@ -54,9 +58,9 @@ export const Layout = () => {
         }`}
       >
         <div className="p-6">
-          <h1 className="text-2xl font-bold text-lion tracking-tighter">
+          <span className="block text-2xl font-bold text-lion tracking-tighter">
             SELENE
-          </h1>
+          </span>
           <p className="text-[10px] text-blue-light uppercase tracking-widest mt-1">
             Admin Panel
           </p>

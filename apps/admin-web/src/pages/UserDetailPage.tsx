@@ -27,8 +27,7 @@ import { InventoryTable } from '../components/features/users/InventoryTable';
 import { PurchasesTable } from '../components/features/users/PurchasesTable';
 import { UserReviewsList } from '../components/features/users/UserReviewsList';
 import { UserWalletCard } from '../components/features/users/UserWalletCard';
-import { UserBankCard } from '../components/features/users/UserBankCard';
-import { UserPayoutsTable } from '../components/features/users/UserPayoutsTable';
+
 import { UserTransactionsTable } from '../components/features/users/UserTransactionsTable';
 import { UserAddressesList } from '../components/features/users/UserAddressesList';
 import { UserReportsList } from '../components/features/users/UserReportsList';
@@ -110,23 +109,26 @@ export const UserDetailPage = () => {
 
   const {
     profile,
-    bank,
+
     addresses,
     metrics,
     disputes,
     internalNotes,
     auditLogs,
     reports,
+    sellerTrustStats,
+    phoneNumber,
+    lastSignInAt,
   } = data;
 
-  const processedCount = profile.processed_count ?? 0;
-  const verifiedCount = profile.verified_count ?? 0;
+  const processedCount = sellerTrustStats?.processed_count ?? 0;
+  const verifiedCount = sellerTrustStats?.verified_count ?? 0;
+  const soldCount = metrics.sales;
+  const totalListings = data.products.length;
   const displayRatio =
-    processedCount > 0
-      ? Math.round((verifiedCount / processedCount) * 100)
-      : 0;
+    processedCount > 0 ? Math.round((verifiedCount / processedCount) * 100) : 0;
 
-  const rank = getRank(profile.sold_count ?? 0, displayRatio);
+  const rank = getRank(soldCount, displayRatio);
 
   return (
     <div className="space-y-6">
@@ -167,9 +169,9 @@ export const UserDetailPage = () => {
 
             <div>
               <div className="flex items-center gap-3 flex-wrap">
-                <h2 className="text-3xl font-bold text-platinum tracking-tight">
+                <h1 className="text-3xl font-bold text-platinum tracking-tight">
                   @{profile.username}
-                </h2>
+                </h1>
                 <span
                   className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border ${rank.color}`}
                 >
@@ -195,19 +197,21 @@ export const UserDetailPage = () => {
                   <Calendar size={14} className="text-lion" />
                   <span>
                     Miembro desde{' '}
-                    {profile.created_at ? new Date(profile.created_at).toLocaleDateString() : 'Desconocido'}
+                    {profile.created_at
+                      ? new Date(profile.created_at).toLocaleDateString()
+                      : 'Desconocido'}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-blue-light text-sm">
                   <Phone size={14} className="text-lion" />
-                  <span>{profile.phone_number || 'Sin teléfono'}</span>
+                  <span>{phoneNumber || 'Sin teléfono'}</span>
                 </div>
                 <div className="flex items-center gap-2 text-blue-light text-sm">
                   <Clock size={14} className="text-lion" />
                   <span>
                     Última conexión:{' '}
-                    {profile.last_sign_in_at
-                      ? new Date(profile.last_sign_in_at).toLocaleString()
+                    {lastSignInAt
+                      ? new Date(lastSignInAt).toLocaleString()
                       : 'N/A'}
                   </span>
                 </div>
@@ -382,10 +386,7 @@ export const UserDetailPage = () => {
             {/* NIVEL 3: ACTIVIDAD DETALLADA */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
               {/* LISTA DE PRODUCTOS (Lo que ya tenías) */}
-              <InventoryTable
-                products={data.products}
-                total={profile.total_listings ?? 0}
-              />
+              <InventoryTable products={data.products} total={totalListings} />
               <PurchasesTable items={data.purchasedItems} />
             </div>
             {/* ÚLTIMAS RESEÑAS (MVP++) */}
@@ -406,10 +407,45 @@ export const UserDetailPage = () => {
               pending={profile.pending_balance ?? 0}
             />
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-              <UserBankCard bank={bank} />
-              <UserPayoutsTable payouts={data.payouts} />
-            </div>
+            {/* Stripe Connect Onboarding Status */}
+            {data.stripeAccountId && (
+              <div className="bg-state-gray border border-white/5 rounded-2xl p-5 space-y-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium text-blue-light">
+                    Stripe Connect
+                  </span>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                      data.stripeOnboardingStatus === 'complete'
+                        ? 'bg-forest/10 text-forest'
+                        : data.stripeOnboardingStatus === 'rejected'
+                          ? 'bg-fire/10 text-fire'
+                          : 'bg-sand/10 text-sand-dark'
+                    }`}
+                  >
+                    {data.stripeOnboardingStatus === 'complete'
+                      ? 'Onboarding completo'
+                      : data.stripeOnboardingStatus === 'rejected'
+                        ? 'Rechazado'
+                        : 'Pendiente'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <code className="text-xs bg-night/40 px-2 py-1 rounded font-mono text-blue-light truncate max-w-[260px]">
+                    {data.stripeAccountId}
+                  </code>
+                  <button
+                    onClick={() =>
+                      navigator.clipboard.writeText(data.stripeAccountId!)
+                    }
+                    className="text-xs text-lion hover:underline shrink-0"
+                    title="Copiar ID"
+                  >
+                    Copiar
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* LIBRETA DE DIRECCIONES (MVP++ COMPONENTE) */}
             <UserAddressesList addresses={addresses} />

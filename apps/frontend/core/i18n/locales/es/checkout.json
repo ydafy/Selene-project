@@ -15,12 +15,12 @@
   "summary": {
     "subtotal": "Subtotal",
     "shipping": "Envío",
-    "protection": "Protección Selene",
+    "protection": "Seguro Selene",
     "totalToPay": "Total a Pagar",
     "free": "Gratis",
     "toCalculate": "Por Calcular",
     "calculating": "Calculando envío...",
-    "termsText": "Acepto los Términos de Compra y la Protección Selene.",
+    "termsText": "Acepto los Términos de Compra y el Seguro Selene.",
     "validating": "Validando disponibilidad..."
   },
 
@@ -47,8 +47,8 @@
   },
 
   "dialogs": {
-    "protectionTitle": "Protección Selene",
-    "protectionDesc": "Tu dinero está seguro. Si el hardware no llega, está dañado o no coincide con la descripción técnica, Selene protege tu pago. Sujeto a Términos y Condiciones."
+    "protectionTitle": "Seguro Selene",
+    "protectionDesc": "Seguro Selene cubre el procesamiento del pago y mantiene tu compra protegida si el hardware no llega, está dañado o no coincide con la descripción técnica. Sujeto a Términos y Condiciones."
   },
   "payment": {
     "selectMethod": "Método de pago",

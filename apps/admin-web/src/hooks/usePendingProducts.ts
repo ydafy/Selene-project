@@ -1,11 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
-import { useAuthStore } from '../store/useAuthStore';
 
 export const usePendingProducts = () => {
   const queryClient = useQueryClient();
-  const { user, profile, initialized } = useAuthStore();
 
   const query = useQuery({
     queryKey: ['pending-products'],
@@ -88,98 +86,31 @@ export const usePendingProducts = () => {
       id,
       verdict,
       note,
-      product,
     }: {
       id: string;
       verdict: string;
       note?: string;
-      product: any;
     }) => {
-      const { user } = useAuthStore.getState();
-      const isRejection = verdict === 'REJECT';
+      // Llamada atómica y segura a la base de datos que orquesta toda la aprobación
+      const { data, error } = await supabase.rpc('fn_resolve_product_verdict', {
+        p_product_id: id,
+        p_verdict: verdict,
+        p_public_note: note || undefined, // Satisface el tipo 'string | undefined' de Supabase
+        p_private_note: undefined, // Satisface el tipo 'string | undefined' de Supabase
+      });
 
-      //  Verificar que el lock sigue siendo nuestro
-      const { data: lockCheck, error: lockError } = await supabase
-        .rpc('fn_lock_product', {
-          p_product_id: id,
-          p_admin_id: user?.id,
-        });
-
-      if (lockError) throw lockError;
-
-      const lockResult = lockCheck?.[0];
-      if (!lockResult?.success) {
-        throw new Error('Tu sesión de revisión expiró. Selecciona el producto nuevamente.');
+      if (error) {
+        // Mapeo amigable de errores de negocio que devuelve Postgres
+        if (error.message.includes('LOCK_EXPIRED_OR_STOLEN')) {
+          throw new Error(
+            'Tu sesión de revisión expiró o el producto fue bloqueado por otro administrador.',
+          );
+        }
+        throw error;
       }
 
-      //  Actualizar Producto
-      const { error: prodError } = await supabase
-        .from('products')
-        .update({
-          status: isRejection ? 'REJECTED' : 'VERIFIED',
-          rejection_reason: isRejection ? note : null,
-          verified_at: !isRejection ? new Date().toISOString() : null,
-        })
-        .eq('id', id);
-
-      if (prodError) throw prodError;
-
-      //  INSERTAR EN AUDIT LOG (MVP++)
-      const { error: logError } = await supabase
-        .from('admin_audit_logs')
-        .insert({
-          admin_id: user?.id,
-          action_type:
-            verdict === 'REJECT' ? 'PRODUCT_REJECT' : 'PRODUCT_APPROVE',
-          target_id: id,
-          details: {
-            product_name: product.name,
-            seller_name: product.seller?.username,
-            admin_note: note,
-            verdict: verdict,
-          },
-        });
-
-      if (logError) {
-        console.error('Error registrando auditoría:', logError);
-        toast.warning('Audit log no registrado. Contacta a soporte.');
-      }
-
-      //  Crear Notificación
-      const notifications: any = {
-        REJECT: {
-          title: 'Producto Rechazado',
-          type: 'error',
-          msg: `Tu producto "${product.name}" ha sido rechazado. Motivo: ${note}`,
-        },
-        APPROVE_NOTE: {
-          title: 'Producto Verificado',
-          type: 'warning',
-          msg: `¡Listo! Tu producto "${product.name}" ya está a la venta. Nota: ${note}`,
-        },
-        APPROVE: {
-          title: 'Producto Verificado',
-          type: 'success',
-          msg: `¡Felicidades! Tu producto "${product.name}" ha sido aprobado.`,
-        },
-      };
-
-      const config = notifications[verdict];
-
-      const { error: notifError } = await supabase
-        .from('notifications')
-        .insert({
-          user_id: product.seller_id,
-          title: config.title,
-          message: config.msg,
-          type: config.type,
-          read: false,
-          action_path: isRejection ? `/verify/${id}` : '/profile/listings',
-        });
-
-      if (notifError) {
-        console.error('Error notificando al vendedor:', notifError);
-        toast.warning('Notificación no enviada al vendedor.');
+      if (!data) {
+        throw new Error('No se pudo completar el veredicto del producto.');
       }
     },
     onSuccess: () => {

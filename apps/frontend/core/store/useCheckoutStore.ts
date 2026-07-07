@@ -10,10 +10,23 @@ export type CheckoutStatus =
   | 'success'
   | 'error';
 
+interface PaymentSession {
+  clientSecret: string;
+  orderId: string;
+  amount: number;
+  transferGroup: string;
+}
+
 interface CheckoutState {
   // Datos
   selectedAddress: Address | null;
   selectedPaymentMethodId: string | null;
+
+  // Single-connect-payment fields
+  clientSecret: string | null;
+  orderId: string | null;
+  amount: number | null;
+  transferGroup: string | null;
 
   // Estado del proceso
   status: CheckoutStatus;
@@ -22,6 +35,8 @@ interface CheckoutState {
   // Acciones
   setSelectedAddress: (address: Address | null) => void;
   setSelectedPaymentMethodId: (id: string | null) => void;
+  setPaymentSession: (session: PaymentSession) => void;
+  clearPaymentSession: () => void;
   setStatus: (status: CheckoutStatus) => void;
   setError: (error: string | null) => void;
   resetCheckout: () => void;
@@ -35,6 +50,10 @@ export const useCheckoutStore = create<CheckoutState>()(
     (set, get) => ({
       selectedAddress: null,
       selectedPaymentMethodId: null,
+      clientSecret: null,
+      orderId: null,
+      amount: null,
+      transferGroup: null,
       status: 'idle',
       error: null,
 
@@ -57,16 +76,30 @@ export const useCheckoutStore = create<CheckoutState>()(
       setSelectedPaymentMethodId: (id) =>
         set({ selectedPaymentMethodId: id, error: null }),
 
+      setPaymentSession: (session) =>
+        set({
+          amount: session.amount,
+          clientSecret: session.clientSecret,
+          orderId: session.orderId,
+          transferGroup: session.transferGroup,
+        }),
+
+      clearPaymentSession: () =>
+        set({ amount: null, clientSecret: null, orderId: null, transferGroup: null }),
+
       setStatus: (status) => set({ status }),
 
       setError: (error) => set({ error, status: error ? 'error' : 'idle' }),
 
       resetCheckout: () =>
         set({
-          selectedAddress: null,
-          selectedPaymentMethodId: null,
+          amount: null,
+          clientSecret: null,
+          orderId: null,
+          transferGroup: null,
           status: 'idle',
           error: null,
+          // Preserve address and payment method for one-tap next purchase
         }),
 
       // Lógica centralizada de validación

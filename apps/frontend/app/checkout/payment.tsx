@@ -151,7 +151,7 @@ export default function PaymentScreen() {
                 ? 'Confirmando pago...'
                 : loading
                   ? t('payment.processing')
-                  : `${t('payment.confirmBtn')} ${formatCurrency(paymentData?.amount || 0)}`}
+              : `${t('payment.confirmBtn')} ${formatCurrency((paymentData?.amount || 0) / 100)}`}
             </PrimaryButton>
           </Box>
         </Box>

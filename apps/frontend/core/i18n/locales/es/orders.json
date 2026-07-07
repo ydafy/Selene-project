@@ -94,7 +94,9 @@
     "cancelReasonDefault": "Cancelación solicitada por el usuario",
     "payReturnLabel": "Pagar Guía de Retorno ($200.00)",
     "prepareReturnLabel": "Preparar Guía de Retorno",
-    "reportProblem": "Reportar un problema"
+    "reportProblem": "Reportar un problema",
+    "rateProduct": "Calificar pedido",
+    "reviewed": "Calificado"
   },
   "dialogs": {
     "cancelTitle": "¿Deseas cancelar este pedido?",

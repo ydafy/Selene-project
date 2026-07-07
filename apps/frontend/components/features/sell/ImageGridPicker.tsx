@@ -8,6 +8,15 @@ import ImageViewing from 'react-native-image-viewing';
 import { Box, Text } from '../../base';
 import { AppImage } from '../../ui/AppImage';
 import { Theme } from '../../../core/theme';
+import {
+  buildAddPhotosA11yLabel,
+  buildCloseViewerA11yLabel,
+  buildCoverBadgeA11yLabel,
+  buildMovePhotoDownA11yLabel,
+  buildMovePhotoUpA11yLabel,
+  buildPhotoCounterA11yLabel,
+  buildRemovePhotoA11yLabel,
+} from './imageGridA11y';
 
 const MAX_IMAGES = 5;
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -17,12 +26,14 @@ type ImageGridPickerProps = {
   images: string[];
   onAdd: () => void;
   onRemove: (index: number) => void;
+  onReorder?: (index: number, direction: 'up' | 'down') => void;
 };
 
 export const ImageGridPicker = ({
   images,
   onAdd,
   onRemove,
+  onReorder,
 }: ImageGridPickerProps) => {
   const theme = useTheme<Theme>();
   const { t } = useTranslation('sell');
@@ -58,6 +69,8 @@ export const ImageGridPicker = ({
           <Box position="absolute" top={50} right={20} zIndex={1}>
             <TouchableOpacity
               onPress={() => setVisible(false)}
+              accessibilityRole="button"
+              accessibilityLabel={buildCloseViewerA11yLabel(t)}
               style={{
                 backgroundColor: 'rgba(0,0,0,0.5)',
                 padding: 8,
@@ -101,6 +114,12 @@ export const ImageGridPicker = ({
             <TouchableOpacity
               onPress={() => openViewer(index)}
               activeOpacity={0.9}
+              accessibilityRole="button"
+              accessibilityLabel={buildPhotoCounterA11yLabel(
+                index + 1,
+                images.length,
+                t,
+              )}
               style={{ flex: 1 }}
             >
               <AppImage
@@ -113,6 +132,8 @@ export const ImageGridPicker = ({
             {/* Botón Eliminar (Z-Index superior para que funcione el toque) */}
             <TouchableOpacity
               onPress={() => onRemove(index)}
+              accessibilityRole="button"
+              accessibilityLabel={buildRemovePhotoA11yLabel(index + 1, t)}
               style={{
                 position: 'absolute',
                 top: 4,
@@ -126,6 +147,58 @@ export const ImageGridPicker = ({
               <MaterialCommunityIcons name="close" size={14} color="white" />
             </TouchableOpacity>
 
+            {/* Botones de reordenamiento */}
+            {onReorder && images.length > 1 && (
+              <Box
+                position="absolute"
+                bottom={4}
+                right={4}
+                flexDirection="row"
+                gap="xs"
+                zIndex={10}
+              >
+                <TouchableOpacity
+                  onPress={() => onReorder(index, 'up')}
+                  disabled={index === 0}
+                  accessibilityRole="button"
+                  accessibilityLabel={buildMovePhotoUpA11yLabel(index + 1, t)}
+                  style={{
+                    backgroundColor: 'rgba(0,0,0,0.6)',
+                    borderRadius: 12,
+                    padding: 4,
+                    opacity: index === 0 ? 0.4 : 1,
+                  }}
+                >
+                  <MaterialCommunityIcons
+                    name="chevron-up"
+                    size={14}
+                    color="white"
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => onReorder(index, 'down')}
+                  disabled={index === images.length - 1}
+                  accessibilityRole="button"
+                  accessibilityLabel={buildMovePhotoDownA11yLabel(
+                    index + 1,
+                    t,
+                  )}
+                  style={{
+                    backgroundColor: 'rgba(0,0,0,0.6)',
+                    borderRadius: 12,
+                    padding: 4,
+                    opacity: index === images.length - 1 ? 0.4 : 1,
+                  }}
+                >
+                  <MaterialCommunityIcons
+                    name="chevron-down"
+                    size={14}
+                    color="white"
+                  />
+                </TouchableOpacity>
+              </Box>
+            )}
+
             {/* Badge de Portada */}
             {index === 0 && (
               <Box
@@ -137,6 +210,8 @@ export const ImageGridPicker = ({
                 paddingVertical="xs"
                 alignItems="center"
                 pointerEvents="none" // Para que no bloquee toques si fuera necesario
+                accessible={true}
+                accessibilityLabel={buildCoverBadgeA11yLabel(t)}
               >
                 <Text
                   variant="caption-md"
@@ -144,7 +219,7 @@ export const ImageGridPicker = ({
                   fontWeight="bold"
                   fontSize={10}
                 >
-                  PORTADA
+                  {t('a11y.coverBadge')}
                 </Text>
               </Box>
             )}
@@ -153,7 +228,12 @@ export const ImageGridPicker = ({
 
         {/* Botón Agregar */}
         {canAddMore && (
-          <TouchableOpacity onPress={onAdd} activeOpacity={0.7}>
+          <TouchableOpacity
+            onPress={onAdd}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={buildAddPhotosA11yLabel(t)}
+          >
             <Box
               width={ITEM_SIZE}
               height={ITEM_SIZE}

@@ -82,6 +82,36 @@
     "successTitle": "Review submitted",
     "successMsg": "Thanks for your rating."
   },
+  "public": {
+    "tabProducts": "Listings",
+    "tabReviews": "Reviews",
+    "reviewDatePrefix": "Reviewed on",
+    "verifiedPurchase": "Verified purchase: {{product}}",
+    "reviewItemFallback": "Item",
+    "empty": {
+      "products": "This seller has no active listings right now.",
+      "reviews": "This seller has not received buyer reviews yet."
+    },
+    "errors": {
+      "invalidProfile": "This public profile link is invalid.",
+      "products": "Could not load listings.",
+      "reviews": "Could not load reviews."
+    },
+    "actions": {
+      "retry": "Try again",
+      "goBack": "Go back"
+    },
+    "a11y": {
+      "productCard": "Open listing {{name}}",
+      "reviewUserFallback": "User",
+      "reviewNoComment": "No comment.",
+      "reviewFrom": "Review from",
+      "reviewRating": "Rating",
+      "reviewOutOfFive": "out of 5",
+      "reviewComment": "Comment",
+      "reviewVerifiedPurchase": "Verified purchase"
+    }
+  },
   "feedback": {
     "avatarUpdatedTitle": "Photo Updated",
     "avatarUpdatedMsg": "Your profile picture has been changed successfully.",

@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-import { Box } from '../../components/base';
+import { Box, Text } from '../../components/base';
 import { GlobalHeader } from '../../components/layout/GlobalHeader';
 import { LocationHeaderButton } from '../../components/features/address/LocationHeaderButton';
 import { AddressPickerModal } from '../../components/features/address/AddressPickerModal';
@@ -205,7 +205,7 @@ export default function HomeScreen() {
             marginBottom="s"
           >
             <Text
-              variant="caption-sm"
+              variant="caption-md"
               style={{ color: 'white' }}
               textAlign="center"
             >
@@ -247,8 +247,8 @@ export default function HomeScreen() {
                   <ShellRecentlyViewed />
                   <ShellEditorial />
                   <ShellRecentDrops />
-                  <ShellCategoriesV2 />
                   <ShellHero />
+                  <ShellCategoriesV2 />
                   <ShellPaymentsFeature />
                   <ShellShippingLine />
                   <ShellBenchmarksFeature />

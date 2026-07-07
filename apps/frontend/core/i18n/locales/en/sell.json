@@ -2,12 +2,37 @@
   "title": "New Listing",
   "selectCategory": "What are you selling?",
   "close": "Close",
+  "categories": {
+    "gpu": "GPU",
+    "cpu": "CPU",
+    "motherboard": "Motherboard",
+    "ram": "RAM"
+  },
+  "a11y": {
+    "wizardProgress": "Wizard progress: step {{current}} of {{total}}",
+    "stepCompleted": "completed",
+    "stepCurrent": "current step",
+    "stepPending": "pending",
+    "categoryButton": "{{category}} category",
+    "removePhoto": "Remove photo {{index}}",
+    "coverBadge": "Cover photo",
+    "addPhotos": "Add photos",
+    "photoCounter": "Photo {{current}} of {{total}}",
+    "closeViewer": "Close viewer",
+    "movePhotoUp": "Move photo {{index}} up",
+    "movePhotoDown": "Move photo {{index}} down",
+    "packageOption": "{{label}} package, {{dimensions}}",
+    "selected": "selected"
+  },
   "screenTitle": {
     "detailsTitle": "Basic Information",
     "detailsSubtitle": "Define the main details of your sale."
   },
   "steps": {
-    "details": "Details"
+    "info": "Info",
+    "specs": "Specs",
+    "photos": "Photos",
+    "done": "End"
   },
   "fields": {
     "nameLabel": "Product Title",
@@ -60,6 +85,7 @@
     "takePhoto": "Take Photo",
     "imagesTip": "Tip: First photo will be your listing cover.",
     "imagesLimit": "Maximum {{count}} photos",
+    "selectParentFirst": "Select {{parent}} first",
 
     "nameHelpTitle": "How to write a good title",
     "nameHelpDesc": "Be brief and technical.\nStructure: Brand + Model + Variant.\n\n✅ Good: Asus TUF RTX 3080 10GB\n❌ Bad: Selling used cheap graphics card urgent",
@@ -117,6 +143,14 @@
     "subtitle": "This is how your listing will look. Verify everything is correct.",
     "publish": "Publish Now",
     "publishing": "Uploading...",
+    "uploadCount": "Uploading {{completed}} of {{total}} images",
+    "imagePending": "Pending",
+    "imageUploading": "Uploading...",
+    "imageDone": "Done",
+    "imageError": "Failed",
+    "editing": "Editing",
+    "draft": "Draft",
+    "saveChanges": "Save Changes",
     "successTitle": "Published!",
     "successMessage": "Your product has been sent for review."
   },
@@ -131,14 +165,21 @@
     "maxImages": "You have reached the photo limit",
     "permissionDenied": "Permission denied",
     "permissionMessage": "We need access to your gallery to upload photos.",
+    "imageTooLargeTitle": "Photo too large",
+    "imageTooLargeMessage": "One or more photos exceed {{maxSize}} MB and were not added.",
     "uploadFailed": "Error uploading images. Please try again.",
     "publishFailed": "Could not create the listing.",
+    "noSession": "No active user session.",
     "usageRequired": "Usage time is required",
     "descriptionTooLong": "Description cannot exceed 1000 characters.",
     "nameTooLong": "Title is too long (max. 80 characters).",
     "zipCodeInvalid": "Zip code must have 5 digits",
     "packageRequired": "You must select a package size",
     "quoteFailed": "Error calculating shipping. Check your zip code.",
+    "noCoverage": "No coverage available for this route right now.",
+    "noConnection": "No connection. Please check your internet.",
+    "quoteCalculationFailed": "Error calculating shipping.",
+    "offline": "No internet connection. Please connect and try again.",
     "cpMissingText": "Missing zip code to calculate shipping...",
     "waitingForPriceLabel": "Waiting for price..."
   },

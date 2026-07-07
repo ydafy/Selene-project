@@ -8,6 +8,103 @@
 
 Shipments are the central entity for multi-seller orders. Each order can have N shipments (one per seller). Every shipment has its own tracking, label, carrier, and dispute lifecycle. The order status is **derived** from its shipments via `fn_shipments_status_trigger`.
 
+## Requirements
+
+### Requirement: Shipment-Scoped Dispute and Report Context
+
+The system MUST preserve `shipment_id` through order/report navigation and dispute creation flows for multi-seller safety.
+
+#### Scenario: Buyer opens dispute from shipment context
+
+- GIVEN an order with multiple seller shipments
+- WHEN buyer starts dispute/report from a shipment action
+- THEN the request includes `order_id` and `shipment_id`
+
+#### Scenario: Missing shipment context
+
+- GIVEN dispute/report request contains only `order_id`
+- WHEN validation executes
+- THEN the system SHALL reject the request as invalid context
+
+### Requirement: Seller Resolution Uses Shipment Ownership
+
+The system MUST derive dispute seller context from `shipments.seller_id` for the provided `shipment_id` and MUST NOT infer seller from `order.items[0]`.
+
+#### Scenario: Correct seller is selected in multi-seller order
+
+- GIVEN one order containing shipments from seller A and seller B
+- WHEN a dispute is created for seller B shipment
+- THEN seller B is recorded as dispute seller
+
+#### Scenario: Shipment does not belong to order
+
+- GIVEN `shipment_id` does not belong to the provided `order_id`
+- WHEN dispute creation is requested
+- THEN the system SHALL reject creation and MUST NOT persist dispute data
+
+### Requirement: Verified Review Identity Contract
+
+The system MUST preserve shipment-safe review identity as `(reviewer_id, shipment_id, product_id)`. A valid verified-purchase attribution MUST reference a product that belongs to the shipment being reviewed.
+
+#### Scenario: Shipment-safe identity for a completed purchase
+
+- GIVEN a buyer completed delivery for a shipment item
+- WHEN a review is created for that item
+- THEN review identity is represented by `(reviewer_id, shipment_id, product_id)`
+- AND verified attribution is tied to that shipment-product linkage
+
+#### Scenario: Invalid or missing linkage
+
+- GIVEN a review record lacks valid shipment-product linkage
+- WHEN profile trust badges are evaluated
+- THEN the record MUST NOT be treated as a verified purchase
+
+### Requirement: Public-Profile Dependency and Eligibility Guard
+
+Shipment-level `canReview` remains the eligibility source for buyer review flows. Until the separate orders/multi-seller review-creation fix is complete, consumers SHOULD treat this identity contract as the target dependency and MUST NOT introduce fallback attribution logic that can mis-assign seller trust signals.
+
+#### Scenario: Current dependency state
+
+- GIVEN the orders/multi-seller creation fix is not yet complete
+- WHEN a capability documents verified-purchase behavior
+- THEN it references shipment-level `canReview` and the target identity tuple as the contract-safe dependency
+
+#### Scenario: Unsafe fallback attempt
+
+- GIVEN an implementation attempts order-first fallback attribution
+- WHEN shipment-safe linkage cannot be proven
+- THEN the behavior is rejected for verified-purchase trust signaling
+
+### Requirement: V1 Shipment-Scoped Identity vs V2 Per-Product Reviews
+
+The current V1 implementation ships ONE review per shipment, scoped to the shipment's first product (`currentShipment.items[0].product_id`). This is intentionally narrower than the long-term V2 contract, which will allow ONE review per product within a shipment. Both versions MUST preserve the `(reviewer_id, shipment_id, product_id)` identity tuple and MUST NOT fall back to `order.items[0]` attribution, which is the multi-seller mis-assignment bug.
+
+#### Scenario: V1 single review per shipment
+
+- GIVEN a completed shipment with one or more products
+- WHEN the buyer submits a review from the order detail
+- THEN the review is scoped to `currentShipment.id` and `currentShipment.items[0].product_id`
+- AND only ONE review may be created per shipment for that buyer
+
+#### Scenario: V2 one review per product within a shipment
+
+- GIVEN the per-product review expansion is delivered
+- WHEN a shipment contains multiple products
+- THEN the buyer may submit one review per `(shipment_id, product_id)` pair
+- AND the verified-purchase badge continues to require the full identity tuple
+
+#### Scenario: No order-first fallback
+
+- GIVEN any review-creation flow (V1 or V2)
+- WHEN shipment-safe product identity is unavailable
+- THEN the implementation MUST NOT substitute `order.items[0]` and MUST leave `shipment_id`/`product_id` null
+
+## Acceptance Criteria
+
+- `openDispute` contract includes `shipment_id`.
+- Report and dispute routes reject missing/invalid shipment scope.
+- Dispute seller mapping is shipment-based, not order-first-item based.
+
 ## Core Design
 
 ### Order ↔ Shipment Relationship

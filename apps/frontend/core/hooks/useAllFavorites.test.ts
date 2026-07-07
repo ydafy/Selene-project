@@ -19,8 +19,12 @@ function createMockClient(response: {
   data?: any[];
   count?: number;
   error?: any;
-}): MockSupabaseQuery & { range: (from: number, to: number) => MockSupabaseQuery } {
-  const chain: MockSupabaseQuery & { range: (from: number, to: number) => MockSupabaseQuery } = {
+}): MockSupabaseQuery & {
+  range: (from: number, to: number) => MockSupabaseQuery;
+} {
+  const chain: MockSupabaseQuery & {
+    range: (from: number, to: number) => MockSupabaseQuery;
+  } = {
     from: () => chain,
     select: () => chain,
     eq: () => chain,

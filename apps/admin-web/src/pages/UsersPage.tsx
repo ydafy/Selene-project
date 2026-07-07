@@ -41,7 +41,7 @@ export const UsersPage = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-end">
         <div>
-          <h2 className="text-3xl font-bold text-platinum">Comunidad Selene</h2>
+          <h1 className="text-3xl font-bold text-platinum">Comunidad Selene</h1>
           <p className="text-blue-light">
             Explora y gestiona los perfiles de los usuarios.
           </p>
@@ -125,7 +125,12 @@ export const UsersPage = () => {
                 className="bg-state-gray rounded-3xl border border-white/5 p-6"
               >
                 <div className="flex flex-col items-center">
-                  <Skeleton variant="circular" width={64} height={64} className="mb-4" />
+                  <Skeleton
+                    variant="circular"
+                    width={64}
+                    height={64}
+                    className="mb-4"
+                  />
                   <Skeleton className="w-28 h-5 mb-2" />
                   <Skeleton className="w-20 h-3 mb-6" />
 

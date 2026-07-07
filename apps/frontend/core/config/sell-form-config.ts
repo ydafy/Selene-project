@@ -1,3 +1,5 @@
+import { ProductCategory } from '@selene/types';
+
 import {
   GPU_CHIPSETS,
   GPU_BRANDS,
@@ -36,7 +38,7 @@ export type SellFieldConfig = {
   optionsMap?: Record<string, (string | number)[]>;
 };
 
-export const SELL_FORM_CONFIG: Record<string, SellFieldConfig[]> = {
+export const SELL_FORM_CONFIG: Record<ProductCategory, SellFieldConfig[]> = {
   GPU: [
     {
       name: 'chipset',

@@ -6,6 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 // Importamos el tipo enriquecido que creamos en index.ts
 import { ProductWithSeller } from '@selene/types';
+import { useTranslation } from 'react-i18next';
 
 import { Box, Text } from '../../base';
 import { AppImage } from '../../ui/AppImage';
@@ -18,10 +19,11 @@ type ProductSellerCardProps = {
 export const ProductSellerCard = ({ product }: ProductSellerCardProps) => {
   const theme = useTheme<Theme>();
   const router = useRouter();
+  const { t } = useTranslation('product');
 
   // FIX: Ahora leemos 'seller' directamente sin usar 'any'
   const seller = product.seller;
-  const sellerName = seller?.username ?? 'Usuario';
+  const sellerName = seller?.username ?? t('seller.fallbackName');
 
   const handlePress = () => {
     if (seller?.id) {
@@ -37,7 +39,7 @@ export const ProductSellerCard = ({ product }: ProductSellerCardProps) => {
     return (
       <Box flexDirection="row" alignItems="center" marginTop="l" padding="s">
         <Text variant="body-md" color="textSecondary">
-          Vendedor no disponible
+          {t('seller.unavailable')}
         </Text>
       </Box>
     );
@@ -103,7 +105,7 @@ export const ProductSellerCard = ({ product }: ProductSellerCardProps) => {
               marginTop="xs"
               fontWeight="600"
             >
-              Verificado por Selene
+              {t('details.verifiedSeller')}
             </Text>
           )}
         </Box>

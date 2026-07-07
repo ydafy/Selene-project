@@ -41,7 +41,10 @@ export const mapDeleteAccountResponse = (
     return { ok: true };
   }
   // Auth failures — session expired or invalid token.
-  if ('error' in data && (data.error === 'UNAUTHORIZED' || data.error === 'AUTH_REQUIRED')) {
+  if (
+    'error' in data &&
+    (data.error === 'UNAUTHORIZED' || data.error === 'AUTH_REQUIRED')
+  ) {
     return { ok: false, errorKey: 'settings:errors.authRequired' };
   }
   if ('blocked_reason' in data && isKnownReason(data.blocked_reason)) {

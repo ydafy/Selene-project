@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { supabase } from '../db/supabase';
+import { invokeEdge } from '../services/edge-client';
 
 /**
  * Hook exclusivo para el flujo de venta.
@@ -16,18 +16,13 @@ export const useSellerShippingQuote = () => {
     setError(null);
     try {
       console.log('[SELLER QUOTE] Solicitando cotización...');
-      const { data, error: funcError } = await supabase.functions.invoke(
-        'get-shipping-quote-seller',
-        {
-          body: {
-            originZip,
-            packageId,
-          },
-        },
-      );
+      const data = await invokeEdge('get-shipping-quote-seller', {
+        originZip,
+        packageId,
+      });
 
-      if (funcError) throw funcError;
-      return data?.price || null;
+      if (!data?.price) throw new Error('No se pudo obtener la cotización');
+      return data.price;
     } catch (e: unknown) {
       console.error('[SELLER QUOTE] Error:', e);
       setError(

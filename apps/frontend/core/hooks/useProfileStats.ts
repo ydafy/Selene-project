@@ -1,7 +1,9 @@
 /**
+ * @deprecated Este hook ya no se usa. Todo recaen en el hook useProfile que ahora incluye las stats directamente.
  * @file core/hooks/useProfileStats.ts
  * @description Obtiene las estadísticas de reputación directamente del perfil.
  * Optimizado para usar las columnas pre-calculadas por Triggers.
+ *
  */
 
 import { useQuery } from '@tanstack/react-query';

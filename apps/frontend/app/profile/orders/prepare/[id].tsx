@@ -1,6 +1,11 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { ScrollView, Linking } from 'react-native';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import {
+  Stack,
+  useLocalSearchParams,
+  useRouter,
+  RelativePathString,
+} from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -26,6 +31,7 @@ import { Address } from '@selene/types';
 import { Theme } from '../../../../core/theme';
 import { EvidenceUploadSection } from '@/components/features/orders/EvidenceUploadSection';
 import { useAuthContext } from '@/components/auth/AuthProvider';
+import { useConnectOnboarding } from '../../../../core/hooks/useConnectOnboarding';
 
 export default function PrepareShipmentScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -41,6 +47,23 @@ export default function PrepareShipmentScreen() {
 
   const { session } = useAuthContext();
   const userId = session?.user.id;
+
+  console.log('[DEBUG SELLER SCREEN]', {
+    orderId: id,
+    userId,
+    hasOrder: Boolean(order),
+    shipmentsCount: order?.shipments?.length,
+    shipments: order?.shipments,
+  });
+
+  const sellerShipment = useMemo(() => {
+    return order?.shipments?.find((s) => s.seller_id === userId) ?? null;
+  }, [order?.shipments, userId]);
+
+  const targetShipmentId = sellerShipment?.id;
+
+  const { isComplete: onboardingDone, isLoading: onboardingLoading } =
+    useConnectOnboarding(userId);
 
   const addressModalRef = useRef<BottomSheetModal>(null);
   const [selectedOrigin, setSelectedOrigin] = useState<Address | null>(null);
@@ -60,6 +83,7 @@ export default function PrepareShipmentScreen() {
 
     try {
       const result = await actions.generateLabel.execute({
+        shipmentId: targetShipmentId || undefined,
         originAddress: selectedOrigin,
         shippingEvidence: { images: evidenceUrls },
       });
@@ -189,18 +213,58 @@ export default function PrepareShipmentScreen() {
           </Box>
         )}
 
-        <PrimaryButton
-          onPress={handleConfirm}
-          loading={actions.generateLabel.isLoading}
-          disabled={
-            !selectedOrigin ||
-            actions.generateLabel.isLoading ||
-            evidenceUrls.length < 3
-          }
-          icon="printer-check"
-        >
-          {t('orders:prepare.confirmBtn')}
-        </PrimaryButton>
+        {!onboardingLoading && !onboardingDone && (
+          <Box
+            backgroundColor="cardBackground"
+            padding="m"
+            borderRadius="l"
+            marginBottom="m"
+            borderWidth={1}
+            borderColor="warning"
+          >
+            <Box flexDirection="row" alignItems="flex-start" gap="s">
+              <MaterialCommunityIcons
+                name="alert-circle-outline"
+                size={20}
+                color={theme.colors.warning}
+              />
+              <Box flex={1}>
+                <Text variant="body-md" fontWeight="bold" marginBottom="xs">
+                  Completá tu registro de pagos
+                </Text>
+                <Text variant="body-sm" color="textSecondary" marginBottom="m">
+                  Para recibir pagos de tus ventas, necesitás completar tu
+                  registro en Stripe Connect. Es gratis y toma 5 minutos.
+                </Text>
+                <PrimaryButton
+                  onPress={() =>
+                    router.push('/sell/onboarding' as RelativePathString)
+                  }
+                  icon="bank-outline"
+                >
+                  Registrarme en Stripe
+                </PrimaryButton>
+              </Box>
+            </Box>
+          </Box>
+        )}
+
+        {onboardingLoading ? (
+          <Skeleton height={48} borderRadius="m" />
+        ) : onboardingDone ? (
+          <PrimaryButton
+            onPress={handleConfirm}
+            loading={actions.generateLabel.isLoading}
+            disabled={
+              !selectedOrigin ||
+              actions.generateLabel.isLoading ||
+              evidenceUrls.length < 3
+            }
+            icon="printer-check"
+          >
+            {t('orders:prepare.confirmBtn')}
+          </PrimaryButton>
+        ) : null}
       </ScrollView>
 
       <AddressPickerModal

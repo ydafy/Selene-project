@@ -1,0 +1,7 @@
+# Supabase project configuration tracked for deployment-critical function flags.
+# `connect-onboarding-return` is a public HTTPS redirect bridge used by Stripe
+# Account Links. Stripe cannot send Supabase JWT headers to return_url/refresh_url,
+# so JWT verification must stay disabled for this function only.
+
+[functions.connect-onboarding-return]
+verify_jwt = false

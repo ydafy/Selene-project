@@ -1,0 +1,496 @@
+[
+  {
+    "grantee": "anon",
+    "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+    "table_name": "addresses",
+    "rls_policies": [
+      {
+        "cmd": "ALL",
+        "qual": "(( SELECT auth.uid() AS uid) = user_id)",
+        "policyname": "addresses_manage",
+        "with_check": null
+      }
+    ]
+  },
+  {
+    "grantee": "authenticated",
+    "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+    "table_name": "addresses",
+    "rls_policies": [
+      {
+        "cmd": "ALL",
+        "qual": "(( SELECT auth.uid() AS uid) = user_id)",
+        "policyname": "addresses_manage",
+        "with_check": null
+      }
+    ]
+  },
+  {
+    "grantee": "anon",
+    "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+    "table_name": "admin_audit_logs",
+    "rls_policies": [
+      {
+        "cmd": "SELECT",
+        "qual": "( SELECT is_admin() AS is_admin)",
+        "policyname": "admin_audit_logs_read",
+        "with_check": null
+      }
+    ]
+  },
+  {
+    "grantee": "authenticated",
+    "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+    "table_name": "admin_audit_logs",
+    "rls_policies": [
+      {
+        "cmd": "SELECT",
+        "qual": "( SELECT is_admin() AS is_admin)",
+        "policyname": "admin_audit_logs_read",
+        "with_check": null
+      }
+    ]
+  },
+  {
+    "grantee": "anon",
+    "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+    "table_name": "admin_user_notes",
+    "rls_policies": [
+      {
+        "cmd": "ALL",
+        "qual": "( SELECT is_admin() AS is_admin)",
+        "policyname": "admin_user_notes_all",
+        "with_check": null
+      }
+    ]
+  },
+  {
+    "grantee": "authenticated",
+    "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+    "table_name": "admin_user_notes",
+    "rls_policies": [
+      {
+        "cmd": "ALL",
+        "qual": "( SELECT is_admin() AS is_admin)",
+        "policyname": "admin_user_notes_all",
+        "with_check": null
+      }
+    ]
+  },
+  {
+    "grantee": "anon",
+    "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+    "table_name": "disputes",
+    "rls_policies": [
+      {
+        "cmd": "INSERT",
+        "qual": null,
+        "policyname": "disputes_insert",
+        "with_check": "(( SELECT auth.uid() AS uid) = buyer_id)"
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "((( SELECT auth.uid() AS uid) = buyer_id) OR (( SELECT auth.uid() AS uid) = seller_id) OR ( SELECT is_admin() AS is_admin))",
+        "policyname": "disputes_select",
+        "with_check": null
+      },
+      {
+        "cmd": "UPDATE",
+        "qual": "((( SELECT auth.uid() AS uid) = buyer_id) OR (( SELECT auth.uid() AS uid) = seller_id) OR ( SELECT is_admin() AS is_admin))",
+        "policyname": "disputes_update",
+        "with_check": null
+      }
+    ]
+  },
+  {
+    "grantee": "authenticated",
+    "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+    "table_name": "disputes",
+    "rls_policies": [
+      {
+        "cmd": "INSERT",
+        "qual": null,
+        "policyname": "disputes_insert",
+        "with_check": "(( SELECT auth.uid() AS uid) = buyer_id)"
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "((( SELECT auth.uid() AS uid) = buyer_id) OR (( SELECT auth.uid() AS uid) = seller_id) OR ( SELECT is_admin() AS is_admin))",
+        "policyname": "disputes_select",
+        "with_check": null
+      },
+      {
+        "cmd": "UPDATE",
+        "qual": "((( SELECT auth.uid() AS uid) = buyer_id) OR (( SELECT auth.uid() AS uid) = seller_id) OR ( SELECT is_admin() AS is_admin))",
+        "policyname": "disputes_update",
+        "with_check": null
+      }
+    ]
+  },
+  {
+    "grantee": "anon",
+    "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+    "table_name": "order_items",
+    "rls_policies": [
+      {
+        "cmd": "SELECT",
+        "qual": "internal.fn_check_order_access(order_id, ( SELECT auth.uid() AS uid))",
+        "policyname": "order_items_select_v4",
+        "with_check": null
+      }
+    ]
+  },
+  {
+    "grantee": "authenticated",
+    "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+    "table_name": "order_items",
+    "rls_policies": [
+      {
+        "cmd": "SELECT",
+        "qual": "internal.fn_check_order_access(order_id, ( SELECT auth.uid() AS uid))",
+        "policyname": "order_items_select_v4",
+        "with_check": null
+      }
+    ]
+  },
+  {
+    "grantee": "anon",
+    "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+    "table_name": "orders",
+    "rls_policies": [
+      {
+        "cmd": "INSERT",
+        "qual": null,
+        "policyname": "orders_insert",
+        "with_check": "(( SELECT auth.role() AS role) = 'authenticated'::text)"
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "internal.fn_check_order_access(id, ( SELECT auth.uid() AS uid))",
+        "policyname": "orders_select_v4",
+        "with_check": null
+      }
+    ]
+  },
+  {
+    "grantee": "authenticated",
+    "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+    "table_name": "orders",
+    "rls_policies": [
+      {
+        "cmd": "INSERT",
+        "qual": null,
+        "policyname": "orders_insert",
+        "with_check": "(( SELECT auth.role() AS role) = 'authenticated'::text)"
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "internal.fn_check_order_access(id, ( SELECT auth.uid() AS uid))",
+        "policyname": "orders_select_v4",
+        "with_check": null
+      }
+    ]
+  },
+  {
+    "grantee": "anon",
+    "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+    "table_name": "payment_methods",
+    "rls_policies": [
+      {
+        "cmd": "ALL",
+        "qual": "(( SELECT auth.uid() AS uid) = user_id)",
+        "policyname": "payment_methods_manage",
+        "with_check": null
+      }
+    ]
+  },
+  {
+    "grantee": "authenticated",
+    "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+    "table_name": "payment_methods",
+    "rls_policies": [
+      {
+        "cmd": "ALL",
+        "qual": "(( SELECT auth.uid() AS uid) = user_id)",
+        "policyname": "payment_methods_manage",
+        "with_check": null
+      }
+    ]
+  },
+  {
+    "grantee": "anon",
+    "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+    "table_name": "payout_requests",
+    "rls_policies": [
+      {
+        "cmd": "SELECT",
+        "qual": "is_admin()",
+        "policyname": "admin_payments_select",
+        "with_check": null
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "((( SELECT auth.uid() AS uid) = user_id) OR ( SELECT is_admin() AS is_admin))",
+        "policyname": "payouts_select",
+        "with_check": null
+      },
+      {
+        "cmd": "UPDATE",
+        "qual": "is_admin()",
+        "policyname": "admin_payments_update",
+        "with_check": "is_admin()"
+      }
+    ]
+  },
+  {
+    "grantee": "authenticated",
+    "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+    "table_name": "payout_requests",
+    "rls_policies": [
+      {
+        "cmd": "SELECT",
+        "qual": "is_admin()",
+        "policyname": "admin_payments_select",
+        "with_check": null
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "((( SELECT auth.uid() AS uid) = user_id) OR ( SELECT is_admin() AS is_admin))",
+        "policyname": "payouts_select",
+        "with_check": null
+      },
+      {
+        "cmd": "UPDATE",
+        "qual": "is_admin()",
+        "policyname": "admin_payments_update",
+        "with_check": "is_admin()"
+      }
+    ]
+  },
+  {
+    "grantee": "anon",
+    "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+    "table_name": "profiles_private",
+    "rls_policies": [
+      {
+        "cmd": "SELECT",
+        "qual": "((( SELECT auth.uid() AS uid) = id) OR is_admin())",
+        "policyname": "profiles_private_access",
+        "with_check": null
+      }
+    ]
+  },
+  {
+    "grantee": "authenticated",
+    "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+    "table_name": "profiles_private",
+    "rls_policies": [
+      {
+        "cmd": "SELECT",
+        "qual": "((( SELECT auth.uid() AS uid) = id) OR is_admin())",
+        "policyname": "profiles_private_access",
+        "with_check": null
+      }
+    ]
+  },
+  {
+    "grantee": "anon",
+    "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+    "table_name": "seller_bank_accounts",
+    "rls_policies": [
+      {
+        "cmd": "ALL",
+        "qual": "(( SELECT auth.uid() AS uid) = user_id)",
+        "policyname": "bank_accounts_all",
+        "with_check": null
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "is_admin()",
+        "policyname": "admin_payments_select",
+        "with_check": null
+      }
+    ]
+  },
+  {
+    "grantee": "authenticated",
+    "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+    "table_name": "seller_bank_accounts",
+    "rls_policies": [
+      {
+        "cmd": "ALL",
+        "qual": "(( SELECT auth.uid() AS uid) = user_id)",
+        "policyname": "bank_accounts_all",
+        "with_check": null
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "is_admin()",
+        "policyname": "admin_payments_select",
+        "with_check": null
+      }
+    ]
+  },
+  {
+    "grantee": "anon",
+    "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+    "table_name": "shipments",
+    "rls_policies": [
+      {
+        "cmd": "DELETE",
+        "qual": "false",
+        "policyname": "shipments_delete_block",
+        "with_check": null
+      },
+      {
+        "cmd": "INSERT",
+        "qual": null,
+        "policyname": "shipments_insert_block",
+        "with_check": "false"
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "is_admin()",
+        "policyname": "shipments_select_admin",
+        "with_check": null
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "(EXISTS ( SELECT 1\n   FROM orders o\n  WHERE ((o.id = shipments.order_id) AND (o.buyer_id = ( SELECT auth.uid() AS uid)))))",
+        "policyname": "shipments_select_buyer",
+        "with_check": null
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "((( SELECT auth.uid() AS uid) = ( SELECT orders.buyer_id\n   FROM orders\n  WHERE (orders.id = shipments.order_id))) OR (( SELECT auth.uid() AS uid) = seller_id) OR is_admin())",
+        "policyname": "shipments_select_policy",
+        "with_check": null
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "(seller_id = ( SELECT auth.uid() AS uid))",
+        "policyname": "shipments_select_seller",
+        "with_check": null
+      },
+      {
+        "cmd": "UPDATE",
+        "qual": "is_admin()",
+        "policyname": "shipments_update_admin",
+        "with_check": null
+      },
+      {
+        "cmd": "UPDATE",
+        "qual": "((seller_id = ( SELECT auth.uid() AS uid)) AND (status = ANY (ARRAY['paid'::order_status_enum, 'preparing'::order_status_enum, 'shipped'::order_status_enum])))",
+        "policyname": "shipments_update_seller",
+        "with_check": "((seller_id = ( SELECT auth.uid() AS uid)) AND (status = ANY (ARRAY['paid'::order_status_enum, 'preparing'::order_status_enum, 'shipped'::order_status_enum])))"
+      }
+    ]
+  },
+  {
+    "grantee": "authenticated",
+    "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+    "table_name": "shipments",
+    "rls_policies": [
+      {
+        "cmd": "DELETE",
+        "qual": "false",
+        "policyname": "shipments_delete_block",
+        "with_check": null
+      },
+      {
+        "cmd": "INSERT",
+        "qual": null,
+        "policyname": "shipments_insert_block",
+        "with_check": "false"
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "is_admin()",
+        "policyname": "shipments_select_admin",
+        "with_check": null
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "(EXISTS ( SELECT 1\n   FROM orders o\n  WHERE ((o.id = shipments.order_id) AND (o.buyer_id = ( SELECT auth.uid() AS uid)))))",
+        "policyname": "shipments_select_buyer",
+        "with_check": null
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "((( SELECT auth.uid() AS uid) = ( SELECT orders.buyer_id\n   FROM orders\n  WHERE (orders.id = shipments.order_id))) OR (( SELECT auth.uid() AS uid) = seller_id) OR is_admin())",
+        "policyname": "shipments_select_policy",
+        "with_check": null
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "(seller_id = ( SELECT auth.uid() AS uid))",
+        "policyname": "shipments_select_seller",
+        "with_check": null
+      },
+      {
+        "cmd": "UPDATE",
+        "qual": "is_admin()",
+        "policyname": "shipments_update_admin",
+        "with_check": null
+      },
+      {
+        "cmd": "UPDATE",
+        "qual": "((seller_id = ( SELECT auth.uid() AS uid)) AND (status = ANY (ARRAY['paid'::order_status_enum, 'preparing'::order_status_enum, 'shipped'::order_status_enum])))",
+        "policyname": "shipments_update_seller",
+        "with_check": "((seller_id = ( SELECT auth.uid() AS uid)) AND (status = ANY (ARRAY['paid'::order_status_enum, 'preparing'::order_status_enum, 'shipped'::order_status_enum])))"
+      }
+    ]
+  },
+  {
+    "grantee": "anon",
+    "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+    "table_name": "wallet_transactions",
+    "rls_policies": [
+      {
+        "cmd": "SELECT",
+        "qual": "((EXISTS ( SELECT 1\n   FROM wallets\n  WHERE ((wallets.id = wallet_transactions.wallet_id) AND (wallets.user_id = ( SELECT auth.uid() AS uid))))) OR ( SELECT is_admin() AS is_admin))",
+        "policyname": "transactions_select",
+        "with_check": null
+      }
+    ]
+  },
+  {
+    "grantee": "authenticated",
+    "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+    "table_name": "wallet_transactions",
+    "rls_policies": [
+      {
+        "cmd": "SELECT",
+        "qual": "((EXISTS ( SELECT 1\n   FROM wallets\n  WHERE ((wallets.id = wallet_transactions.wallet_id) AND (wallets.user_id = ( SELECT auth.uid() AS uid))))) OR ( SELECT is_admin() AS is_admin))",
+        "policyname": "transactions_select",
+        "with_check": null
+      }
+    ]
+  },
+  {
+    "grantee": "anon",
+    "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+    "table_name": "wallets",
+    "rls_policies": [
+      {
+        "cmd": "SELECT",
+        "qual": "((( SELECT auth.uid() AS uid) = user_id) OR ( SELECT is_admin() AS is_admin))",
+        "policyname": "wallets_select",
+        "with_check": null
+      }
+    ]
+  },
+  {
+    "grantee": "authenticated",
+    "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+    "table_name": "wallets",
+    "rls_policies": [
+      {
+        "cmd": "SELECT",
+        "qual": "((( SELECT auth.uid() AS uid) = user_id) OR ( SELECT is_admin() AS is_admin))",
+        "policyname": "wallets_select",
+        "with_check": null
+      }
+    ]
+  }
+]

@@ -1,36 +1,48 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../db/supabase';
-
-type ReviewMutationInput = {
-  rating: number;
-  comment: string;
-  sellerId: string;
-  reviewerId: string;
-};
+import {
+  buildReviewInsertPayload,
+  ReviewMutationInput,
+} from './useReviewAction.helpers';
 
 export const useReviewAction = (orderId: string) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      rating,
-      comment,
-      sellerId,
-      reviewerId,
-    }: ReviewMutationInput) => {
+    mutationFn: async (input: ReviewMutationInput) => {
+      const payload = buildReviewInsertPayload(input);
+      console.log(
+        '[useReviewAction] insert payload:',
+        JSON.stringify(payload, null, 2),
+      );
+
       const { data, error } = await supabase
         .from('reviews')
-        .insert({
-          order_id: orderId,
-          seller_id: sellerId,
-          reviewer_id: reviewerId,
-          rating,
-          comment,
-        })
+        .insert(payload)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error(
+          '[useReviewAction] Supabase error:',
+          JSON.stringify(
+            {
+              code: error.code,
+              message: error.message,
+              details: error.details,
+              hint: error.hint,
+            },
+            null,
+            2,
+          ),
+        );
+        throw error;
+      }
+
+      console.log(
+        '[useReviewAction] success:',
+        JSON.stringify(data, null, 2),
+      );
       return data;
     },
     onMutate: async () => {
@@ -51,6 +63,9 @@ export const useReviewAction = (orderId: string) => {
       queryClient.invalidateQueries({ queryKey: ['order', orderId] });
       queryClient.invalidateQueries({
         queryKey: ['profile-stats', variables.sellerId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['seller-reviews', variables.sellerId],
       });
     },
   });

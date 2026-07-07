@@ -98,7 +98,9 @@
     "cancelReasonDefault": "Cancellation requested by the user",
     "payReturnLabel": "Pay Return Guide",
     "prepareReturnLabel": "Prepare Return Label",
-    "reportProblem": "Report a Problem"
+    "reportProblem": "Report a Problem",
+    "rateProduct": "Rate product",
+    "reviewed": "Reviewed"
   },
   "return": {
     "successToastMsgTitle": "Evidence saved",

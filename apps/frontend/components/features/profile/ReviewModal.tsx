@@ -20,11 +20,38 @@ import { EnrichedOrder } from '@selene/types';
 
 interface Props {
   order: EnrichedOrder;
+  /**
+   * Vendedor objetivo de la reseña. En órdenes multi-vendedor el detalle
+   * pasa el `seller_id` del envío actual (`currentShipment.seller_id`) para
+   * calificar al vendedor correcto en lugar de siempre `order.items[0]`.
+   * Si se omite, se conserva el comportamiento previo (primer item).
+   */
+  sellerId?: string;
+  /**
+   * Shipment being reviewed. Threads the shipment-safe identity tuple
+   * `(reviewer_id, shipment_id, product_id)` through `useReviewAction` so the
+   * resulting review can earn the verified-purchase badge. `null`/omitted for
+   * legacy order-first reviews (no verified-purchase attribution).
+   */
+  shipmentId?: string;
+  /**
+   * Product within the shipment being reviewed. Pairs with `shipmentId` to
+   * prove verified-purchase linkage. `null`/omitted for legacy reviews.
+   * V1 ships ONE review per shipment scoped to the shipment's first product;
+   * V2 will expand to one review per product within a shipment.
+   */
+  productId?: string;
+  /**
+   * Optional product name to render under the subtitle so the buyer sees
+   * exactly which product they are rating in a multi-product shipment (V2).
+   * Dynamic data — NOT a translatable string. Omitted for legacy reviews.
+   */
+  productName?: string;
   onSuccess?: () => void;
 }
 
 export const ReviewModal = forwardRef<BottomSheetModal, Props>(
-  ({ order, onSuccess }, ref) => {
+  ({ order, sellerId, shipmentId, productId, productName, onSuccess }, ref) => {
     const theme = useTheme<Theme>();
     const { t } = useTranslation(['profile', 'common']);
     const { session } = useAuthContext();
@@ -35,15 +62,25 @@ export const ReviewModal = forwardRef<BottomSheetModal, Props>(
 
     const { mutateAsync: submitReview, isPending } = useReviewAction(order.id);
 
+    const reviewSellerId = sellerId || order.shipments[0]?.seller_id || '';
+
     const handleSend = async () => {
       if (rating === 0) return;
       try {
-        await submitReview({
+        const reviewInput = {
+          orderId: order.id,
           rating,
           comment,
-          sellerId: order.items[0]?.seller_id ?? '',
+          sellerId: reviewSellerId,
           reviewerId: session?.user.id ?? '',
-        });
+          shipmentId: shipmentId,
+          productId: productId,
+        };
+        console.log(
+          '[ReviewModal] submitReview input:',
+          JSON.stringify(reviewInput, null, 2),
+        );
+        await submitReview(reviewInput);
         onSuccess?.();
         Toast.show({
           type: 'success',
@@ -54,10 +91,30 @@ export const ReviewModal = forwardRef<BottomSheetModal, Props>(
           ref.current.dismiss();
         }
       } catch (e) {
+        console.error(
+          '[ReviewModal] submitReview error:',
+          e,
+          // PostgREST errors carry code/details/hint on the error object
+          e instanceof Error
+            ? JSON.stringify(
+                {
+                  name: e.name,
+                  message: e.message,
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  ...(e as any),
+                },
+                null,
+                2,
+              )
+            : e,
+        );
         Toast.show({
           type: 'error',
           text1: t('common:states.errorTitle'),
-          text2: e instanceof Error ? e.message : t('common:errors.generic'),
+          text2:
+            e instanceof Error
+              ? `[${(e as any).code || 'ERROR'}] ${e.message}`
+              : t('common:errors.generic'),
         });
         if (typeof ref !== 'function' && ref?.current) {
           ref.current.dismiss();
@@ -98,6 +155,17 @@ export const ReviewModal = forwardRef<BottomSheetModal, Props>(
                 <Text variant="body-sm" color="textSecondary" marginTop="xs">
                   {t('review.subtitle')}
                 </Text>
+                {productName && (
+                  <Text
+                    variant="body-sm"
+                    color="textPrimary"
+                    marginTop="xs"
+                    fontWeight="bold"
+                    numberOfLines={1}
+                  >
+                    {productName}
+                  </Text>
+                )}
               </Box>
 
               <StarRating

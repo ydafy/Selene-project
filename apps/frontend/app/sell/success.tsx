@@ -10,6 +10,7 @@ import { Box, Text } from '../../components/base';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { Theme } from '../../core/theme';
 import { useSellStore } from '../../core/store/useSellStore'; // <--- 1. Importamos el Store
+import { triggerHaptic } from '../../core/utils/haptics';
 
 export default function SellSuccessScreen() {
   const { t } = useTranslation('sell');
@@ -33,6 +34,11 @@ export default function SellSuccessScreen() {
       onBackPress,
     );
     return () => subscription.remove();
+  }, []);
+
+  // 4. HAPTIC DE ÉXITO AL MONTAR LA PANTALLA
+  useEffect(() => {
+    triggerHaptic();
   }, []);
 
   const handleVerifyNow = () => {

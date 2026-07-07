@@ -23,32 +23,14 @@ export const useUserDetail = (userId: string) => {
   return useQuery({
     queryKey: ['user-detail', userId],
     queryFn: async () => {
-      // VITAL: El orden en el array de abajo DEBE coincidir con el orden de arriba
-      const [
-        profileRes,
-        bankRes,
-        addressRes,
-        purchasesRes,
-        productsRes,
-        notesRes,
-        logsRes,
-        payoutsRes,
-        reportsRes,
-        reviewsRes,
-        cancelledSalesRes,
-        cancelledPurchasesRes,
-        purchasedItemsRes,
-        volumeRes,
-        disputeDetailsRes,
-        transactionsRes,
-      ] = await Promise.all([
-        /* 0  - CRITICAL */ supabase
+      const results = await Promise.all([
+        /* profile */ supabase
           .from('admin_user_directory_view')
           .select('*')
           .eq('id', userId)
           .single(),
 
-        /* 1 */ safeQuery(
+        /* bank */ safeQuery(
           supabase
             .from('seller_bank_accounts')
             .select('*')
@@ -56,7 +38,7 @@ export const useUserDetail = (userId: string) => {
             .maybeSingle(),
           null,
         ),
-        /* 2 */ safeQuery(
+        /* addresses */ safeQuery(
           supabase
             .from('addresses')
             .select('*')
@@ -64,7 +46,7 @@ export const useUserDetail = (userId: string) => {
             .order('is_default', { ascending: false }),
           [],
         ),
-        /* 3 */ safeQuery(
+        /* purchases */ safeQuery(
           supabase
             .from('orders')
             .select('id', { count: 'exact', head: true })
@@ -73,7 +55,7 @@ export const useUserDetail = (userId: string) => {
             .neq('status', 'refunded'),
           [],
         ),
-        /* 4 */ safeQuery(
+        /* products */ safeQuery(
           supabase
             .from('products')
             .select('*')
@@ -82,7 +64,7 @@ export const useUserDetail = (userId: string) => {
             .limit(20),
           [],
         ),
-        /* 5 */ safeQuery(
+        /* notes */ safeQuery(
           supabase
             .from('admin_user_notes')
             .select('*, admin:profiles!admin_id(username)')
@@ -91,7 +73,7 @@ export const useUserDetail = (userId: string) => {
             .limit(20),
           [],
         ),
-        /* 6 */ safeQuery(
+        /* auditLogs */ safeQuery(
           supabase
             .from('admin_audit_logs')
             .select('*, admin:profiles(username)')
@@ -100,7 +82,7 @@ export const useUserDetail = (userId: string) => {
             .limit(20),
           [],
         ),
-        /* 7 */ safeQuery(
+        /* payouts */ safeQuery(
           supabase
             .from('payout_requests')
             .select('*')
@@ -109,7 +91,7 @@ export const useUserDetail = (userId: string) => {
             .limit(20),
           [],
         ),
-        /* 8 */ safeQuery(
+        /* reports */ safeQuery(
           supabase
             .from('reports')
             .select(
@@ -123,17 +105,15 @@ export const useUserDetail = (userId: string) => {
             .limit(20),
           [],
         ),
-        /* 9 */ safeQuery(
+        /* reviews */ safeQuery(
           supabase
             .from('reviews')
-            .select(
-              '*, reviewer:profiles!reviews_reviewer_id_fkey(username)',
-            )
+            .select('*, reviewer:profiles!reviews_reviewer_id_fkey(username)')
             .eq('seller_id', userId)
             .order('created_at', { ascending: false }),
           [],
         ),
-        /* 10 */ safeQuery(
+        /* cancelledSales */ safeQuery(
           supabase
             .from('order_items')
             .select('id, orders!inner(status)', {
@@ -144,7 +124,7 @@ export const useUserDetail = (userId: string) => {
             .eq('orders.status', 'cancelled'),
           [],
         ),
-        /* 11 */ safeQuery(
+        /* cancelledPurchases */ safeQuery(
           supabase
             .from('orders')
             .select('id', { count: 'exact', head: true })
@@ -152,7 +132,7 @@ export const useUserDetail = (userId: string) => {
             .eq('status', 'cancelled'),
           [],
         ),
-        /* 12 */ safeQuery(
+        /* purchasedItems */ safeQuery(
           supabase
             .from('order_items')
             .select(
@@ -163,7 +143,7 @@ export const useUserDetail = (userId: string) => {
             .limit(20),
           [],
         ),
-        /* 13 */ safeQuery(
+        /* volume */ safeQuery(
           supabase
             .from('order_items')
             .select('price_at_purchase, orders!inner(status)')
@@ -171,7 +151,7 @@ export const useUserDetail = (userId: string) => {
             .eq('orders.status', 'completed'),
           [],
         ),
-        /* 14 */ safeQuery(
+        /* disputeDetails */ safeQuery(
           supabase
             .from('disputes')
             .select(
@@ -191,7 +171,7 @@ export const useUserDetail = (userId: string) => {
             .limit(10),
           [],
         ),
-        /* 15 */ safeQuery(
+        /* transactions */ safeQuery(
           supabase
             .from('wallet_transactions')
             .select(
@@ -205,7 +185,42 @@ export const useUserDetail = (userId: string) => {
             .limit(20),
           [],
         ),
+        /* profilesPrivate */ safeQuery(
+          supabase
+            .from('profiles_private')
+            .select('stripe_account_id, stripe_onboarding_status, phone_number, last_sign_in_at')
+            .eq('id', userId)
+            .maybeSingle(),
+          null,
+        ),
+        /* sellerTrustStats */ safeQuery(
+          supabase
+            .from('seller_trust_stats')
+            .select('*')
+            .eq('seller_id', userId)
+            .maybeSingle(),
+          null,
+        ),
       ]);
+
+      const profileRes = results[0];
+      const bankRes = results[1];
+      const addressRes = results[2];
+      const purchasesRes = results[3];
+      const productsRes = results[4];
+      const notesRes = results[5];
+      const logsRes = results[6];
+      const payoutsRes = results[7];
+      const reportsRes = results[8];
+      const reviewsRes = results[9];
+      const cancelledSalesRes = results[10];
+      const cancelledPurchasesRes = results[11];
+      const purchasedItemsRes = results[12];
+      const volumeRes = results[13];
+      const disputeDetailsRes = results[14];
+      const transactionsRes = results[15];
+      const profilesPrivateRes = results[16];
+      const sellerTrustStatsRes = results[17];
 
       if (profileRes.error) throw profileRes.error;
 
@@ -237,7 +252,8 @@ export const useUserDetail = (userId: string) => {
       const reviews: any[] = reviewsRes.data || [];
       const avgRating =
         reviews.length > 0
-          ? reviews.reduce((acc: number, r: any) => acc + r.rating, 0) / reviews.length
+          ? reviews.reduce((acc: number, r: any) => acc + r.rating, 0) /
+            reviews.length
           : 0;
 
       return {
@@ -253,10 +269,16 @@ export const useUserDetail = (userId: string) => {
         reports: reportsRes.data || [],
         disputes: disputeDetailsRes.data || [],
         transactions: transactionsRes.data || [],
+        stripeAccountId: profilesPrivateRes.data?.stripe_account_id ?? null,
+        stripeOnboardingStatus:
+          profilesPrivateRes.data?.stripe_onboarding_status ?? null,
+        phoneNumber: profilesPrivateRes.data?.phone_number ?? null,
+        lastSignInAt: profilesPrivateRes.data?.last_sign_in_at ?? null,
+        sellerTrustStats: sellerTrustStatsRes.data,
         reviews,
         avgRating,
         metrics: {
-          sales: profileRes.data.sold_count || 0,
+          sales: (volumeRes.data as any[])?.length || 0,
           purchases: purchasesRes.count || 0,
           cancelledSales: cancelledSalesRes.count || 0,
           cancelledPurchases: cancelledPurchasesRes.count || 0,

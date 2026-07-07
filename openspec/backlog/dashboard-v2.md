@@ -59,7 +59,9 @@ Bugs visuales/no-críticos detectados durante el audit.
 - [ ] DataTable: flash de "No data" antes del primer fetch
 - [ ] InputModal: form state persiste entre open/close
 
-#### 1. Evitar el Doble Gasto del Vendedor (Wallet Lock on Request)
+# Pequena intro.
+
+## 1. Evitar el Doble Gasto del Vendedor (Wallet Lock on Request)
 
 - _El Riesgo:_ Si un vendedor tiene $10,000 MXN en su `available_balance` e ingresa una solicitud de retiro (`payout_requests`), y el sistema no descuenta el dinero de su billetera inmediatamente:
   - El vendedor solicita el retiro de $10,000 MXN (el estado se queda en `'pending'`).

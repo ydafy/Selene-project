@@ -1,3 +1,5 @@
+// ** DECAPRITED **: Este store está siendo reemplazado por el store de wallet en el backend CON STRIPE CONNECT. Mantenerlo solo para compatibilidad con código legacy. No agregar nuevas funcionalidades aquí.
+
 import { create } from 'zustand';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '../../core/db/supabase';

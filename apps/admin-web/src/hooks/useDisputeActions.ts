@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import { invokeEdge } from '../services/edge-client';
 import { useAuthStore } from '../store/useAuthStore';
 import { toast } from 'sonner';
 
@@ -46,26 +47,23 @@ export const useDisputeLock = () => {
         setIsLocking(false);
       }
     },
-    [user?.id],
+    [user],
   );
 
-  const releaseLock = useCallback(
-    async (disputeId: string) => {
-      if (!adminIdRef.current || !disputeId) return;
-      try {
-        await supabase.rpc('fn_unlock_dispute', {
-          p_dispute_id: disputeId,
-          p_admin_id: adminIdRef.current,
-        });
-        setLockStatus({ isLockedByOther: false, lockerName: null });
-        adminIdRef.current = null;
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Unknown error';
-        console.error('Error unlock:', message);
-      }
-    },
-    [],
-  );
+  const releaseLock = useCallback(async (disputeId: string) => {
+    if (!adminIdRef.current || !disputeId) return;
+    try {
+      await supabase.rpc('fn_unlock_dispute', {
+        p_dispute_id: disputeId,
+        p_admin_id: adminIdRef.current,
+      });
+      setLockStatus({ isLockedByOther: false, lockerName: null });
+      adminIdRef.current = null;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      console.error('Error unlock:', message);
+    }
+  }, []);
 
   return { acquireLock, releaseLock, lockStatus, isLocking };
 };
@@ -79,21 +77,11 @@ export const useDisputeActions = (disputeId: string) => {
       verdict: 'seller' | 'buyer' | 'insurance';
       adminNote: string;
     }) => {
-      const { data, error } = await supabase.functions.invoke(
-        'resolve-dispute',
-        {
-          body: {
-            disputeId,
-            verdict: params.verdict,
-            adminNote: params.adminNote,
-          },
-        },
-      );
-
-      if (error) throw error;
-      if (!data.success)
-        throw new Error(data.error || 'Error en la resolución');
-      return data;
+      return invokeEdge('resolve-dispute', {
+        disputeId,
+        verdict: params.verdict,
+        adminNote: params.adminNote,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({

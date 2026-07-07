@@ -2,12 +2,37 @@
   "title": "Nueva Publicación",
   "selectCategory": "¿Qué vas a vender?",
   "close": "Cerrar",
+  "categories": {
+    "gpu": "GPU",
+    "cpu": "CPU",
+    "motherboard": "Tarjeta Madre",
+    "ram": "RAM"
+  },
+  "a11y": {
+    "wizardProgress": "Progreso del asistente: paso {{current}} de {{total}}",
+    "stepCompleted": "completado",
+    "stepCurrent": "paso actual",
+    "stepPending": "pendiente",
+    "categoryButton": "Categoría {{category}}",
+    "removePhoto": "Eliminar foto {{index}}",
+    "coverBadge": "Foto de portada",
+    "addPhotos": "Agregar fotos",
+    "photoCounter": "Foto {{current}} de {{total}}",
+    "closeViewer": "Cerrar visor",
+    "movePhotoUp": "Mover foto {{index}} arriba",
+    "movePhotoDown": "Mover foto {{index}} abajo",
+    "packageOption": "Paquete {{label}}, {{dimensions}}",
+    "selected": "seleccionado"
+  },
   "screenTitle": {
     "detailsTitle": "Información Básica",
     "detailsSubtitle": "Define los datos principales de tu venta."
   },
   "steps": {
-    "details": "Detalles"
+    "info": "Info",
+    "specs": "Specs",
+    "photos": "Fotos",
+    "done": "Fin"
   },
   "fields": {
     "nameLabel": "Título del producto",
@@ -60,6 +85,7 @@
     "takePhoto": "Tomar Foto",
     "imagesTip": "Tip: La primera foto será la portada de tu publicación.",
     "imagesLimit": "Máximo {{count}} fotos",
+    "selectParentFirst": "Selecciona {{parent}} primero",
 
     "nameHelpTitle": "Cómo escribir un buen título",
     "nameHelpDesc": "Sé breve y técnico.\nEstructura: Marca + Modelo + Variante.\n\n✅ Bien: Asus TUF RTX 3080 10GB\n❌ Mal: Vendo tarjeta gráfica usada barata urge",
@@ -117,6 +143,14 @@
     "subtitle": "Así se verá tu publicación. Verifica que todo esté correcto.",
     "publish": "Publicar Ahora",
     "publishing": "Subiendo...",
+    "uploadCount": "Subiendo {{completed}} de {{total}} imágenes",
+    "imagePending": "Pendiente",
+    "imageUploading": "Subiendo...",
+    "imageDone": "Listo",
+    "imageError": "Error",
+    "editing": "Editando",
+    "draft": "Borrador",
+    "saveChanges": "Guardar Cambios",
     "successTitle": "¡Publicado!",
     "successMessage": "Tu producto ha sido enviado a revisión."
   },
@@ -131,14 +165,21 @@
     "maxImages": "Has alcanzado el límite de fotos",
     "permissionDenied": "Permiso denegado",
     "permissionMessage": "Necesitamos acceso a tu galería para subir fotos.",
+    "imageTooLargeTitle": "Foto muy grande",
+    "imageTooLargeMessage": "Una o más fotos superan los {{maxSize}} MB y no se agregaron.",
     "uploadFailed": "Error al subir las imágenes. Intenta de nuevo.",
     "publishFailed": "No se pudo crear la publicación.",
+    "noSession": "No hay sesión de usuario activa.",
     "usageRequired": "El tiempo de uso es obligatorio",
     "descriptionTooLong": "La descripción no puede exceder los 1000 caracteres.",
     "nameTooLong": "El título es muy largo (máx. 80 caracteres).",
     "zipCodeInvalid": "El CP debe tener 5 dígitos",
     "packageRequired": "Debes seleccionar un tamaño de paquete",
     "quoteFailed": "Error al calcular envío. Verifica tu CP.",
+    "noCoverage": "No hay cobertura para esta ruta actualmente.",
+    "noConnection": "Sin conexión. Revisa tu internet.",
+    "quoteCalculationFailed": "Error al calcular el envío.",
+    "offline": "Sin conexión a internet. Conéctate e intenta de nuevo.",
     "cpMissingText": "Falta CP para calcular envío...",
     "waitingForPriceLabel": "Esperando precio..."
   },

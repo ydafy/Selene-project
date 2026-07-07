@@ -42,6 +42,5 @@ export const useProduct = (id: string) => {
         ? (foundProduct as unknown as ProductWithSeller)
         : undefined;
     },
-    // --------------------------------------------------------
   });
 };

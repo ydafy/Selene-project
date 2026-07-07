@@ -39,6 +39,9 @@ export const SegmentedControl = ({
             onPress={() => onChange(index)}
             style={{ flex: 1 }}
             activeOpacity={0.8}
+            accessibilityRole="tab"
+            accessibilityLabel={option}
+            accessibilityState={{ selected: isSelected }}
           >
             <MotiView
               from={{ backgroundColor: 'transparent' }}
@@ -60,7 +63,7 @@ export const SegmentedControl = ({
                   fontWeight="bold"
                   style={{
                     color: isSelected
-                      ? theme.colors.primary
+                      ? theme.colors.textPrimary
                       : theme.colors.textSecondary,
                   }}
                 >

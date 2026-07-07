@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ScrollView } from 'react-native';
 import { Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -24,8 +24,12 @@ import { useSellStore } from '../../core/store/useSellStore';
 import { usePublishProduct } from '../../core/hooks/usePublishProduct';
 import { useAuthContext } from '../../components/auth/AuthProvider';
 import { normalize } from '../../core/utils/compare';
+import { formatCurrency } from '../../core/utils/format';
+import { buildPreviewProduct } from '../../core/utils/previewProductBuilder';
+import { describeUploadState } from '../../core/utils/describeUploadState';
+import { countUploadState } from '../../core/utils/countUploadState';
 
-import { ProductCategory, ProductWithSeller, Profile } from '@selene/types';
+import { ProductWithSeller } from '@selene/types';
 
 export default function SellPreviewScreen() {
   const { t } = useTranslation(['sell', 'product', 'common']);
@@ -33,60 +37,38 @@ export default function SellPreviewScreen() {
   const insets = useSafeAreaInsets();
 
   // Hooks de Lógica
-  const { draft, originalData } = useSellStore(); // <--- 2. TRAEMOS originalData
-  const { publish, isPublishing } = usePublishProduct();
+  const draft = useSellStore((state) => state.draft);
+  const originalData = useSellStore((state) => state.originalData);
+  const { publish, isPublishing, uploadProgress } = usePublishProduct();
   const { session } = useAuthContext();
 
   // Estado para el diálogo de advertencia
   const [showWarning, setShowWarning] = useState(false);
 
-  // Construimos el objeto "Fake Product" para la vista previa
-  const previewProduct: ProductWithSeller = {
-    // Datos del Draft
-    id: draft.id || 'preview_mode',
-    name: draft.name,
-    description: draft.description,
-    price: Number(draft.price),
-    category: draft.category as ProductCategory,
-    condition: draft.condition,
-    usage: draft.usage,
-    images: draft.images,
-    specifications: draft.specifications,
-
-    // Metadatos de la DB (Mocks)
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    status: 'PENDING_VERIFICATION',
-    seller_id: session?.user.id || 'yo',
-    views: 0,
-    aspect_ratio: 1,
-    deleted_at: null,
-    fts: null,
-    locked_at: null,
-    locked_by: null,
-    origin_zip: draft.origin_zip || '',
-    package_preset: draft.package_preset || '',
-    rejection_reason: null,
-    reserved_at: null,
-    shipping_cost: Number(draft.shipping_cost || 0),
-    shipping_payer: draft.shipping_payer || 'buyer',
-    verification_data: null,
-    verified_at: null,
-
-    // --- 🚀 MOCK DEL SELLER (Para que ProductSellerCard funcione) ---
-    seller: {
+  // Memoize the preview mock so unrelated store changes do not rebuild it.
+  const previewProduct: ProductWithSeller = useMemo(() => {
+    const seller = {
       id: session?.user.id || 'me',
-      username: session?.user.user_metadata.username || 'Tú',
-      avatar_url: session?.user.user_metadata.avatar_url || null,
-      is_verified_seller: false,
+      username: session?.user.user_metadata?.username || null,
+      avatar_url: session?.user.user_metadata?.avatar_url || null,
+      is_verified_seller:
+        session?.user.user_metadata?.is_verified_seller ?? false,
       created_at: session?.user.created_at || new Date().toISOString(),
-      role: 'user',
+      updated_at: session?.user.updated_at || null,
       average_rating: 0,
       total_reviews: 0,
       total_sales: 0,
-      status: 'active',
-    } as Profile,
-  };
+    };
+
+    return buildPreviewProduct(draft, seller);
+  }, [draft, session]);
+
+  // Deterministic aggregate count: Supabase Storage onUploadProgress is unproven,
+  // so we only count images that have reached `done`.
+  const { completed: uploadedCount, total: imageTotal } = countUploadState(
+    uploadProgress,
+    draft.images,
+  );
   // 3. NUEVA LÓGICA DEL BOTÓN
   const handlePublishPress = () => {
     // Si no es edición (es nuevo), publicamos directo
@@ -168,7 +150,7 @@ export default function SellPreviewScreen() {
                   backgroundColor="background"
                 />
                 <AppChip
-                  label={draft.id ? 'Editando' : 'Borrador'} // Feedback visual
+                  label={draft.id ? t('sell:preview.editing') : t('sell:preview.draft')}
                   icon="eye"
                   textColor="textSecondary"
                   backgroundColor="background"
@@ -181,7 +163,7 @@ export default function SellPreviewScreen() {
                 {t('product:details.priceLabel')}
               </Text>
               <Text variant="header-xl" color="primary">
-                ${previewProduct.price.toLocaleString('es-MX')}
+                {formatCurrency(previewProduct.price)}
               </Text>
             </Box>
           </Box>
@@ -211,6 +193,42 @@ export default function SellPreviewScreen() {
 
       <BottomActionBar>
         <Box flex={1}>
+          {isPublishing && (
+            <>
+              {imageTotal > 0 && (
+                <Text
+                  variant="body-sm"
+                  color="textSecondary"
+                  textAlign="center"
+                  marginBottom="s"
+                >
+                  {t('sell:preview.uploadCount', {
+                    completed: uploadedCount,
+                    total: imageTotal,
+                  })}
+                </Text>
+              )}
+              <Box marginBottom="s">
+                {draft.images.map((uri) => {
+                  const { labelKey, progress } = describeUploadState(
+                    uploadProgress[uri],
+                  );
+                  return (
+                    <Text
+                      key={uri}
+                      variant="caption-md"
+                      color="textSecondary"
+                      textAlign="center"
+                    >
+                      {progress !== undefined
+                        ? t(labelKey, { progress })
+                        : t(labelKey)}
+                    </Text>
+                  );
+                })}
+              </Box>
+            </>
+          )}
           <PrimaryButton
             onPress={handlePublishPress} // <--- Usamos el nuevo handler
             loading={isPublishing}
@@ -221,7 +239,7 @@ export default function SellPreviewScreen() {
             {isPublishing
               ? t('sell:preview.publishing')
               : draft.id
-                ? 'Guardar Cambios'
+                ? t('sell:preview.saveChanges')
                 : t('sell:preview.publish')}
           </PrimaryButton>
         </Box>

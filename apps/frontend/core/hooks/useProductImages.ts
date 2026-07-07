@@ -3,6 +3,11 @@ import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useTranslation } from 'react-i18next';
 
+import {
+  formatMaxImageSizeMB,
+  isImageTooLarge,
+} from '../utils/imageSizeGuard';
+
 export const useProductImages = () => {
   const { t } = useTranslation('sell');
   const [loading, setLoading] = useState(false);
@@ -15,7 +20,24 @@ export const useProductImages = () => {
   // Función genérica para procesar resultados
   const processResult = (result: ImagePicker.ImagePickerResult): string[] => {
     if (result.canceled || !result.assets) return [];
-    return result.assets.map((asset) => asset.uri);
+
+    const oversized = result.assets.filter((asset) =>
+      isImageTooLarge(asset.fileSize),
+    );
+
+    if (oversized.length > 0) {
+      Alert.alert(
+        t('errors.imageTooLargeTitle'),
+        t('errors.imageTooLargeMessage', {
+          count: oversized.length,
+          maxSize: formatMaxImageSizeMB(),
+        }),
+      );
+    }
+
+    return result.assets
+      .filter((asset) => !isImageTooLarge(asset.fileSize))
+      .map((asset) => asset.uri);
   };
 
   const pickImages = async (maxAllowed: number) => {

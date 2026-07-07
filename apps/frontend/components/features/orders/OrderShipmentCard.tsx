@@ -146,6 +146,7 @@ export const OrderShipmentCard = ({
         backgroundColor="primary"
         justifyContent="center"
         alignItems="center"
+        marginRight="s"
       >
         {firstLetter ? (
           <Text variant="body-md" color="background" fontWeight="bold">
@@ -184,12 +185,7 @@ export const OrderShipmentCard = ({
   );
 
   const renderItemRow = (item: EnrichedShipment['items'][number]) => (
-    <Box
-      key={item.id}
-      flexDirection="row"
-      alignItems="center"
-      marginBottom="xs"
-    >
+    <Box key={item.id} flexDirection="row" alignItems="center" marginBottom="m">
       {/* Thumbnail */}
       <Box
         width={THUMBNAIL_SIZE}
@@ -238,7 +234,7 @@ export const OrderShipmentCard = ({
     if (!hasManageOption) return null;
 
     return (
-      <Box marginBottom="s">
+      <Box marginBottom="m" marginTop="m" width="100%">
         <PrimaryButton
           onPress={() => onPress?.(shipment.id)}
           style={{ width: '100%' }}

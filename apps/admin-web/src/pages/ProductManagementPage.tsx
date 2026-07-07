@@ -108,7 +108,7 @@ export const ProductManagementPage = () => {
       {/* Header */}
       <div className="flex justify-between items-end">
         <div>
-          <h2 className="text-3xl font-bold">Gestión de Productos</h2>
+          <h1 className="text-3xl font-bold">Gestión de Productos</h1>
           <p className="text-blue-light text-sm">
             Administrar publicaciones y soft-delete.
           </p>

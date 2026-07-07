@@ -83,7 +83,7 @@ function GoalBadge({
 
   return (
     <span className={`text-[10px] ml-1.5 font-medium ${color}`}>
-      {isMeeting ? '✓' : '✗'} goal: {goal.value}%
+      {isMeeting ? '✓' : '✗'} {goal.label}: {goal.value}%
     </span>
   );
 }
@@ -165,7 +165,12 @@ export const StatCard = ({
     onClick={() => href && navigate(href)}
     role={href ? 'button' : undefined}
     tabIndex={href ? 0 : undefined}
-    onKeyDown={href ? (e) => { if (e.key === 'Enter' || e.key === ' ') navigate(href); } : undefined}
+    onKeyDown={href ? (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        navigate(href);
+      }
+    } : undefined}
   >
     <div className="flex justify-between items-start">
       <div className="min-w-0 flex-1">

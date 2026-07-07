@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../db/supabase';
+import { invokeEdge } from '../services/edge-client';
 import {
   mapDeleteAccountResponse,
   type DeleteAccountResult,
@@ -20,18 +21,18 @@ export const useDeleteAccount = () => {
 
   return useMutation<DeleteAccountResult, Error, void>({
     mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke('delete-account');
-
-      if (error) {
-        // Network / non-2xx error → return a UI-friendly failure object.
-        // Try to recover blocked_reason from the response body when present.
-        const ctx = (error as { context?: { body?: string } }).context;
+      try {
+        const data = await invokeEdge('delete-account', {});
+        return mapDeleteAccountResponse(data);
+      } catch (err) {
+        // Preservamos el comportamiento original: intentar recuperar blocked_reason
+        const ctx = (err as { context?: { body?: string } }).context;
         if (ctx?.body) {
           try {
             const parsed = JSON.parse(ctx.body);
             return mapDeleteAccountResponse(parsed);
           } catch {
-            // fall through to generic failure
+            // fall through
           }
         }
         return {
@@ -39,8 +40,6 @@ export const useDeleteAccount = () => {
           errorKey: 'settings:errors.deleteFailed',
         };
       }
-
-      return mapDeleteAccountResponse(data);
     },
     onSuccess: async (result) => {
       if (result.ok) {

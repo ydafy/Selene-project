@@ -1,270 +1,410 @@
-import { useState, useCallback } from 'react';
-import { Search, FileDown, RefreshCw } from 'lucide-react';
-import { toast } from 'sonner';
-import { usePayoutRequests, type PayoutStatus } from '../hooks/usePayoutRequests';
-import { useUpdatePayoutStatus } from '../hooks/useUpdatePayoutStatus';
-import { generateBBVAFile } from '../lib/bbva/generateBBVAFile';
-import { KPIPaymentsCards } from '../components/features/payments/KPIPaymentsCards';
-import { PayoutsTable } from '../components/features/payments/PayoutsTable';
-import { PreExportModal } from '../components/features/payments/PreExportModal';
+/**
+ * @file apps/admin-web/src/pages/PaymentsPage.tsx
+ * @description Admin Dashboard Page for monitoring Stripe Connect Earnings and transaction volume.
+ *
+ * Implements:
+ * 1. Financial summary cards: Gross processed volume, Selene Application Fees (revenue), and succeeded payment counts.
+ * 2. Searchable directory of Connect-era PaymentIntents loaded through the admin get-connect-earnings Edge Function.
+ * 3. Performance optimizations: Debounced search input (300ms) to prevent repeated admin data requests while typing.
+ *
+ * Fully styled using Selene's high-contrast dark theme.
+ *
+ * @version 1.0
+ * @domain admin-finance-pages
+ */
+
+import { useState } from 'react';
+import { AlertTriangle, CheckCircle2, RefreshCw, Search } from 'lucide-react';
+import { useConnectEarnings } from '../hooks/useConnectEarnings';
+import { useConnectPayoutReleaseQueue } from '../hooks/useConnectPayoutReleaseQueue';
+import { summarizeConnectEarnings, centsToMoney } from '../lib/connectEarnings';
+import { getSelectedEligibleShipmentIds } from '../lib/connectPayoutReleaseQueue';
 import { useDebounce } from '../hooks/useDebounce';
 import { ErrorState } from '../components/ui/ErrorState';
 
-function downloadFile(content: string, filename: string) {
-  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
+const formatCurrency = (amount: number) =>
+  new Intl.NumberFormat('es-MX', {
+    style: 'currency',
+    currency: 'MXN',
+  }).format(amount);
 
-const statusFilters: { id: PayoutStatus | 'all'; label: string }[] = [
-  { id: 'pending', label: 'Pendientes' },
-  { id: 'processing', label: 'En Proceso' },
-  { id: 'completed', label: 'Completados' },
-  { id: 'rejected', label: 'Rechazados' },
-  { id: 'all', label: 'Todos' },
-];
+const formatReason = (reason: string | null) =>
+  reason ? reason.replaceAll('_', ' ').toLowerCase() : 'Not eligible';
+
+const PaymentsPageSkeleton = () => (
+  <div className="space-y-6 animate-pulse">
+    <div className="flex justify-between items-end">
+      <div className="space-y-3">
+        <div className="h-9 w-64 rounded-lg bg-white/10" />
+        <div className="h-4 w-96 max-w-full rounded bg-white/10" />
+      </div>
+      <div className="h-10 w-28 rounded-xl bg-white/10" />
+    </div>
+
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {[0, 1, 2].map((item) => (
+        <div
+          key={item}
+          className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3"
+        >
+          <div className="h-3 w-32 rounded bg-white/10" />
+          <div className="h-8 w-40 rounded bg-white/10" />
+        </div>
+      ))}
+    </div>
+
+    <div className="h-10 w-full md:w-96 rounded-xl bg-white/10" />
+    <div className="bg-state-gray border border-white/10 rounded-2xl overflow-hidden p-4 space-y-3">
+      {[0, 1, 2, 3, 4].map((item) => (
+        <div key={item} className="h-10 rounded-lg bg-white/5" />
+      ))}
+    </div>
+  </div>
+);
 
 export const PaymentsPage = () => {
-  const [statusFilter, setStatusFilter] = useState<PayoutStatus | 'all'>('pending');
   const [search, setSearch] = useState('');
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [sortBy, setSortBy] = useState<'amount' | 'requested_at'>('requested_at');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-  const [preExportOpen, setPreExportOpen] = useState(false);
-
+  const [selectedShipmentsBySeller, setSelectedShipmentsBySeller] = useState<
+    Record<string, string[]>
+  >({});
   const debouncedSearch = useDebounce(search, 300);
+  const {
+    data = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useConnectEarnings(debouncedSearch);
+  const {
+    batches,
+    isLoading: isQueueLoading,
+    isError: isQueueError,
+    refetch: refetchQueue,
+    releaseSelectedShipments,
+    isReleasing,
+  } = useConnectPayoutReleaseQueue(debouncedSearch);
+  const summary = summarizeConnectEarnings(data);
 
-  const { data: payouts, isLoading, isError, refetch } = usePayoutRequests({
-    status: statusFilter,
-    search: debouncedSearch,
-    sortBy,
-    sortDir,
-  });
+  const toggleShipmentSelection = (sellerId: string, shipmentId: string) => {
+    setSelectedShipmentsBySeller((current) => {
+      const currentSellerSelection = current[sellerId] ?? [];
+      const exists = currentSellerSelection.includes(shipmentId);
 
-  const { markAsProcessing } = useUpdatePayoutStatus();
-
-  const handleStatusChange = useCallback(() => {
-    refetch();
-    setSelectedIds(new Set());
-  }, [refetch]);
-
-  const handleGenerateFile = () => {
-    if (selectedIds.size === 0) {
-      toast.error('Selecciona al menos un retiro para generar el archivo');
-      return;
-    }
-
-    const selectedPayouts = (payouts ?? []).filter((p) => selectedIds.has(p.id));
-    if (selectedPayouts.length === 0) {
-      toast.error('No se encontraron retiros seleccionados');
-      return;
-    }
-
-    // Open pre-export validation modal
-    setPreExportOpen(true);
+      return {
+        ...current,
+        [sellerId]: exists
+          ? currentSellerSelection.filter((id) => id !== shipmentId)
+          : [...currentSellerSelection, shipmentId],
+      };
+    });
   };
 
-  const handleConfirmExport = async () => {
-    setPreExportOpen(false);
-
-    const selectedPayouts = (payouts ?? []).filter((p) => selectedIds.has(p.id));
-    if (selectedPayouts.length === 0) return;
-
-    try {
-      // DB-first: mark as processing
-      const { updated, skipped, updatedIds } = await markAsProcessing([
-        ...selectedIds,
-      ]);
-      if (updated === 0) {
-        toast.warning(
-          'Ningún retiro pudo ser procesado. Es posible que ya no estén en estado pendiente.',
-        );
-        return;
-      }
-      if (skipped > 0) {
-        toast.info(
-          `${skipped} retiro(s) no estaban en estado pendiente y fueron omitidos.`,
-        );
-      }
-
-      // Generate BBVA file only for successfully updated rows
-      const successfulPayouts = selectedPayouts.filter((p) =>
-        updatedIds.includes(p.id),
-      );
-      if (successfulPayouts.length === 0) {
-        toast.warning('No hay retiros válidos para exportar después de la actualización.');
-        handleStatusChange();
-        return;
-      }
-
-      const bbvaRows = successfulPayouts.map((p) => ({
-        bankName: p.bank_name,
-        clabe: p.clabe,
-        amount: p.amount,
-        beneficiaryName: p.account_holder_name,
-        reference: p.id,
-      }));
-
-      const file = generateBBVAFile(bbvaRows);
-      downloadFile(file.content, file.filename);
-      toast.success(`Archivo BBVA generado: ${file.filename}`);
-
-      handleStatusChange();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error desconocido';
-      toast.error(`Error al generar archivo: ${message}`);
-    }
+  const selectEligibleBatch = (sellerId: string, shipmentIds: string[]) => {
+    setSelectedShipmentsBySeller((current) => ({
+      ...current,
+      [sellerId]: shipmentIds,
+    }));
   };
 
-  const handleRegenerateFile = () => {
-    const visiblePayouts = payouts ?? [];
-    if (visiblePayouts.length === 0) {
-      toast.error('No hay retiros en proceso para regenerar el archivo');
-      return;
-    }
+  const handleRelease = async (sellerId: string) => {
+    const batch = batches.find((item) => item.sellerId === sellerId);
+    if (!batch) return;
 
-    try {
-      const bbvaRows = visiblePayouts.map((p) => ({
-        bankName: p.bank_name,
-        clabe: p.clabe,
-        amount: p.amount,
-        beneficiaryName: p.account_holder_name,
-        reference: p.id,
-      }));
+    const selectedShipmentIds = getSelectedEligibleShipmentIds(
+      batch,
+      selectedShipmentsBySeller[sellerId] ?? [],
+    );
 
-      const file = generateBBVAFile(bbvaRows);
-      downloadFile(file.content, file.filename);
-      toast.success(`Archivo BBVA re-generado: ${file.filename}`);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error desconocido';
-      toast.error(`Error al regenerar archivo: ${message}`);
-    }
+    await releaseSelectedShipments({ batch, shipmentIds: selectedShipmentIds });
+    setSelectedShipmentsBySeller((current) => ({ ...current, [sellerId]: [] }));
   };
+
+  if (isLoading || isQueueLoading) {
+    return <PaymentsPageSkeleton />;
+  }
+
+  if (isError || isQueueError) {
+    return (
+      <ErrorState
+        onRetry={() => {
+          void refetch();
+          void refetchQueue();
+        }}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-end">
         <div>
-          <h2 className="text-3xl font-bold">Pagos a Vendedores</h2>
+          <h1 className="text-3xl font-bold">Connect Earnings</h1>
           <p className="text-blue-light text-sm">
-            Gestión de retiros y dispersiones bancarias.
+            Stripe Connect application fees and seller-routed payment activity.
           </p>
-        </div>
-        <div className="bg-white/5 px-4 py-2 rounded-2xl border border-white/5 text-right">
-          <p className="text-[10px] text-blue-light font-bold uppercase tracking-widest">
-            Retiros en Pantalla
-          </p>
-          <p className="text-xl font-bold text-lion">{payouts?.length || 0}</p>
         </div>
       </div>
 
-      {isError && <ErrorState onRetry={() => refetch()} />}
-
-      <KPIPaymentsCards payouts={payouts ?? []} />
-
-      {/* Filter tabs */}
-      <div className="flex gap-2 p-1 bg-white/5 w-fit rounded-xl border border-white/5">
-        {statusFilters.map((f) => (
-          <button
-            key={f.id}
-            onClick={() => {
-              setStatusFilter(f.id);
-              setSelectedIds(new Set());
-            }}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all outline-none focus:ring-2 focus:ring-lion/50 cursor-pointer ${
-              statusFilter === f.id
-                ? 'bg-lion text-night shadow-lg'
-                : 'text-blue-light hover:text-platinum'
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+          <p className="text-xs text-blue-light uppercase font-bold">
+            Gross processed
+          </p>
+          <p className="text-2xl font-bold text-platinum">
+            {formatCurrency(centsToMoney(summary.grossCents))}
+          </p>
+        </div>
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+          <p className="text-xs text-blue-light uppercase font-bold">
+            Application fees
+          </p>
+          <p className="text-2xl font-bold text-lion">
+            {formatCurrency(centsToMoney(summary.applicationFeesCents))}
+          </p>
+        </div>
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+          <p className="text-xs text-blue-light uppercase font-bold">
+            Succeeded payments
+          </p>
+          <p className="text-2xl font-bold text-emerald-400">
+            {summary.succeededCount}
+          </p>
+        </div>
       </div>
 
-      {/* Search + sort + batch actions */}
-      <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
-        <div className="relative w-full md:w-96">
-          <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-light"
-            size={18}
-          />
-          <input
-            type="text"
-            placeholder="Buscar por nombre..."
-            className="w-full bg-state-gray border border-white/10 rounded-xl py-2 pl-10 pr-4 text-sm text-platinum focus:border-lion outline-none transition-all focus:ring-2 focus:ring-lion/50"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
+      <div className="relative w-full md:w-96">
+        <Search
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-light"
+          size={18}
+        />
+        <input
+          type="text"
+          placeholder="Search by seller name..."
+          className="w-full bg-state-gray border border-white/10 rounded-xl py-2 pl-10 pr-4 text-sm text-platinum focus:border-lion outline-none transition-all focus:ring-2 focus:ring-lion/50"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+      </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <select
-            value={`${sortBy}_${sortDir}`}
-            onChange={(e) => {
-              const [field, dir] = e.target.value.split('_') as [typeof sortBy, typeof sortDir];
-              setSortBy(field);
-              setSortDir(dir);
-            }}
-            className="bg-state-gray border border-white/10 text-platinum text-xs font-bold rounded-xl px-4 py-2 outline-none focus:border-lion focus:ring-2 focus:ring-lion/50 cursor-pointer"
-          >
-            <option value="requested_at_desc">Más recientes</option>
-            <option value="requested_at_asc">Más antiguos</option>
-            <option value="amount_desc">Monto: Mayor a menor</option>
-            <option value="amount_asc">Monto: Menor a mayor</option>
-          </select>
-
-          <div className="flex gap-2">
-            <button
-              onClick={handleGenerateFile}
-              disabled={selectedIds.size === 0 || isLoading}
-              title={
-                selectedIds.size === 0
-                  ? 'Selecciona al menos un retiro'
-                  : 'Generar archivo BBVA para los seleccionados'
-              }
-              className="flex items-center gap-2 px-4 py-2 bg-lion text-night rounded-xl text-sm font-bold hover:bg-lion/90 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-            >
-              <FileDown size={16} />
-              Generar Archivo BBVA
-            </button>
-
-            {statusFilter === 'processing' && (
-              <button
-                onClick={handleRegenerateFile}
-                disabled={isLoading || (payouts ?? []).length === 0}
-                className="flex items-center gap-2 px-4 py-2 bg-state-gray border border-white/10 text-platinum rounded-xl text-sm font-bold hover:bg-white/10 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
-              >
-                <RefreshCw size={16} />
-                Re-generar Archivo
-              </button>
-            )}
+      <section className="bg-state-gray border border-white/10 rounded-2xl overflow-hidden">
+        <div className="flex flex-col gap-2 border-b border-white/10 p-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-platinum">
+              Manual payout release queue
+            </h2>
+            <p className="text-sm text-blue-light">
+              Select completed, dispute-free shipments and release only the
+              shipment-scoped seller amount.
+            </p>
           </div>
+          <button
+            type="button"
+            onClick={() => void refetchQueue()}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-sm text-platinum transition-colors hover:border-lion hover:text-lion"
+          >
+            <RefreshCw size={16} />
+            Refresh
+          </button>
         </div>
+
+        {batches.length === 0 ? (
+          <div className="p-6 text-sm text-blue-light">
+            No payout release candidates found.
+          </div>
+        ) : (
+          <div className="divide-y divide-white/10">
+            {batches.map((batch) => {
+              const eligibleShipmentIds = batch.shipments
+                .filter((shipment) => shipment.isEligible)
+                .map((shipment) => shipment.shipmentId);
+              const selectedShipmentIds = getSelectedEligibleShipmentIds(
+                batch,
+                selectedShipmentsBySeller[batch.sellerId] ?? [],
+              );
+              const selectedAmountCents = batch.shipments
+                .filter((shipment) =>
+                  selectedShipmentIds.includes(shipment.shipmentId),
+                )
+                .reduce(
+                  (total, shipment) => total + shipment.releaseAmountCents,
+                  0,
+                );
+              const canRelease = selectedShipmentIds.length > 0 && !isReleasing;
+
+              return (
+                <article key={batch.sellerId} className="p-4 space-y-4">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-semibold text-platinum">
+                          {batch.sellerName ?? batch.sellerId}
+                        </h3>
+                        <span className="rounded-full bg-white/5 px-2 py-1 text-xs uppercase text-blue-light">
+                          {batch.releaseState}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-blue-light">
+                        {batch.eligibleShipmentCount} eligible /{' '}
+                        {batch.ineligibleShipmentCount} blocked · Account{' '}
+                        {batch.stripeAccountId ?? 'missing'}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                      <div className="text-sm text-blue-light sm:text-right">
+                        <p>Selected release</p>
+                        <p className="font-bold text-lion">
+                          {formatCurrency(centsToMoney(selectedAmountCents))}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          selectEligibleBatch(
+                            batch.sellerId,
+                            eligibleShipmentIds,
+                          )
+                        }
+                        disabled={
+                          eligibleShipmentIds.length === 0 || isReleasing
+                        }
+                        className="rounded-xl border border-white/10 px-3 py-2 text-sm text-platinum transition-colors hover:border-lion disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Select eligible
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleRelease(batch.sellerId)}
+                        disabled={!canRelease}
+                        className="rounded-xl bg-lion px-4 py-2 text-sm font-bold text-state-black transition-colors hover:bg-lion-light disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isReleasing ? 'Releasing…' : 'Release selected'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-xl border border-white/10">
+                    <table className="w-full text-sm">
+                      <thead className="bg-white/5 text-blue-light uppercase text-xs">
+                        <tr>
+                          <th className="text-left p-3">Select</th>
+                          <th className="text-left p-3">Shipment</th>
+                          <th className="text-left p-3">Order</th>
+                          <th className="text-left p-3">Amount</th>
+                          <th className="text-left p-3">Eligibility</th>
+                          <th className="text-left p-3">Reconciliation</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {batch.shipments.map((shipment) => {
+                          const selected = selectedShipmentIds.includes(
+                            shipment.shipmentId,
+                          );
+
+                          return (
+                            <tr
+                              key={shipment.shipmentId}
+                              className="border-t border-white/5"
+                            >
+                              <td className="p-3">
+                                <input
+                                  type="checkbox"
+                                  aria-label={`Select shipment ${shipment.shipmentId}`}
+                                  checked={selected}
+                                  disabled={!shipment.isEligible || isReleasing}
+                                  onChange={() =>
+                                    toggleShipmentSelection(
+                                      batch.sellerId,
+                                      shipment.shipmentId,
+                                    )
+                                  }
+                                  className="h-4 w-4 rounded border-white/20 bg-state-black accent-lion disabled:cursor-not-allowed disabled:opacity-40"
+                                />
+                              </td>
+                              <td className="p-3 font-mono text-xs text-platinum">
+                                {shipment.shipmentId}
+                              </td>
+                              <td className="p-3 font-mono text-xs text-blue-light">
+                                {shipment.orderId}
+                              </td>
+                              <td className="p-3 text-lion">
+                                {formatCurrency(
+                                  centsToMoney(shipment.releaseAmountCents),
+                                )}
+                              </td>
+                              <td className="p-3">
+                                {shipment.isEligible ? (
+                                  <span className="inline-flex items-center gap-2 text-emerald-400">
+                                    <CheckCircle2 size={16} /> Eligible
+                                  </span>
+                                ) : (
+                                  <span
+                                    className="inline-flex items-center gap-2 text-amber-300"
+                                    title={formatReason(
+                                      shipment.ineligibleReason,
+                                    )}
+                                  >
+                                    <AlertTriangle size={16} />
+                                    {formatReason(shipment.ineligibleReason)}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-3 capitalize text-blue-light">
+                                {shipment.reconciliationIndicator.replaceAll(
+                                  '_',
+                                  ' ',
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <div className="bg-state-gray border border-white/10 rounded-2xl overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-white/5 text-blue-light uppercase text-xs">
+            <tr>
+              <th className="text-left p-4">Seller</th>
+              <th className="text-left p-4">PaymentIntent</th>
+              <th className="text-left p-4">Gross</th>
+              <th className="text-left p-4">Application fee</th>
+              <th className="text-left p-4">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.length === 0 ? (
+              <tr>
+                <td className="p-6 text-blue-light" colSpan={5}>
+                  No Connect payments found.
+                </td>
+              </tr>
+            ) : (
+              data.map((row) => (
+                <tr key={row.id} className="border-t border-white/5">
+                  <td className="p-4">{row.seller_name ?? row.seller_id}</td>
+                  <td className="p-4 font-mono text-xs">
+                    {row.stripe_payment_intent_id}
+                  </td>
+                  <td className="p-4">
+                    {formatCurrency(centsToMoney(row.amount))}
+                  </td>
+                  <td className="p-4 text-lion">
+                    {formatCurrency(centsToMoney(row.application_fee_amount))}
+                  </td>
+                  <td className="p-4 capitalize">{row.status}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
-
-      <PayoutsTable
-        payouts={payouts ?? []}
-        selectedIds={selectedIds}
-        onSelectedChange={setSelectedIds}
-        isLoading={isLoading}
-        onStatusChange={handleStatusChange}
-      />
-
-      <PreExportModal
-        isOpen={preExportOpen}
-        onClose={() => setPreExportOpen(false)}
-        onConfirm={handleConfirmExport}
-        payouts={payouts ?? []}
-        selectedIds={selectedIds}
-        isLoading={isLoading}
-      />
     </div>
   );
 };

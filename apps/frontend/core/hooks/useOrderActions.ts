@@ -1,6 +1,12 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../db/supabase';
+import { invokeEdge } from '../services/edge-client';
 import { Address } from '@selene/types';
+import {
+  buildOpenDisputeRequest,
+  getOpenDisputeInvalidationKeys,
+} from '../utils/disputeShipmentContext';
+import type { OpenDisputeParams } from '../utils/disputeShipmentContext';
 
 // Definimos la interfaz de lo que recibe la función
 interface GenerateLabelParams {
@@ -13,29 +19,13 @@ export const useOrderActions = (orderId: string) => {
   const queryClient = useQueryClient();
   const generateLabel = useMutation({
     mutationFn: async (params: GenerateLabelParams) => {
-      const { data, error } = await supabase.functions.invoke(
-        'generate-shipping-label',
-        {
-          body: {
-            ...(params.shipmentId
-              ? { shipmentId: params.shipmentId }
-              : { orderId }),
-            originAddress: params.originAddress,
-            shippingEvidence: params.shippingEvidence,
-          },
-        },
-      );
-
-      if (error) {
-        // Extraemos el mensaje real del body de la respuesta
-        const errorBody = await error.context.json();
-        throw new Error(errorBody?.error || error.message);
-      }
-      return data as {
-        success: boolean;
-        trackingNumber: string;
-        labelUrl: string;
-      };
+      return invokeEdge('generate-shipping-label', {
+        ...(params.shipmentId
+          ? { shipmentId: params.shipmentId }
+          : { orderId }),
+        originAddress: params.originAddress,
+        shippingEvidence: params.shippingEvidence,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['order', orderId] });
@@ -77,20 +67,10 @@ export const useOrderActions = (orderId: string) => {
   // 3. Cancelar Orden (Comprador)
   const cancelOrder = useMutation({
     mutationFn: async (params: { reason?: string }) => {
-      // LLAMADA A LA EDGE FUNCTION (Orquestador de Reembolso)
-      const { data, error } = await supabase.functions.invoke('cancel-order', {
-        body: {
-          orderId,
-          reason: params.reason || 'Cancelación solicitada por el usuario',
-        },
+      return invokeEdge('cancel-order', {
+        orderId,
+        reason: params.reason || 'Cancelación solicitada por el usuario',
       });
-
-      if (error) {
-        // Extraemos el mensaje real del body de la respuesta
-        const errorBody = await error.context.json();
-        throw new Error(errorBody?.error || error.message);
-      }
-      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['order', orderId] });
@@ -101,42 +81,15 @@ export const useOrderActions = (orderId: string) => {
 
   // 4. Abrir Disputa (Comprador)
   const openDispute = useMutation({
-    mutationFn: async (params: {
-      reason: string;
-      description: string;
-      images: string[];
-      checklist: Record<string, boolean>;
-      videoUrl: string | null;
-    }) => {
-      const { data, error } = await supabase.functions.invoke(
-        'create-dispute',
-        {
-          body: {
-            orderId,
-            reason: params.reason,
-            description: params.description,
-            evidence: {
-              images: params.images,
-              tech_checklist: params.checklist,
-              video_url: params.videoUrl,
-            },
-          },
+    mutationFn: async (params: OpenDisputeParams) => {
+      return invokeEdge('create-dispute', buildOpenDisputeRequest(orderId, params));
+    },
+    onSuccess: (_data, params) => {
+      getOpenDisputeInvalidationKeys(orderId, params.shipmentId).forEach(
+        (queryKey) => {
+          queryClient.invalidateQueries({ queryKey });
         },
       );
-
-      if (error) {
-        // Extraemos el mensaje real del body de la respuesta
-        const errorBody = await error.context.json();
-        throw new Error(errorBody?.error || error.message);
-      }
-      if (!data.success)
-        throw new Error(data.error || 'Failed to open dispute');
-
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['order', orderId] });
-      queryClient.invalidateQueries({ queryKey: ['my-purchases'] });
     },
   });
 
@@ -163,18 +116,9 @@ export const useOrderActions = (orderId: string) => {
   // 6. Generar Guía de Retorno (Vendedor - Tras pagar)
   const generateReturnLabel = useMutation({
     mutationFn: async (params: { disputeId: string }) => {
-      const { data, error } = await supabase.functions.invoke(
-        'generate-return-label',
-        {
-          body: { disputeId: params.disputeId },
-        },
-      );
-      if (error) {
-        // Extraemos el mensaje real del body de la respuesta
-        const errorBody = await error.context.json();
-        throw new Error(errorBody?.error || error.message);
-      }
-      return data;
+      return invokeEdge('generate-return-label', {
+        disputeId: params.disputeId,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['order', orderId] });
@@ -183,14 +127,10 @@ export const useOrderActions = (orderId: string) => {
   });
   const resolveDisputeRefund = useMutation({
     mutationFn: async (params: { orderId: string; disputeId: string }) => {
-      const { data, error } = await supabase.functions.invoke(
-        'resolve-dispute-refund',
-        {
-          body: { orderId: params.orderId, disputeId: params.disputeId },
-        },
-      );
-      if (error) throw error;
-      return data;
+      return invokeEdge('resolve-dispute-refund', {
+        orderId: params.orderId,
+        disputeId: params.disputeId,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['order', orderId] });

@@ -3,9 +3,10 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@shopify/restyle';
 import { Box, Text } from '../../base';
 import { Theme } from '../../../core/theme';
+import { buildCategoryCardA11yProps } from './categoryA11y';
 
 const { width } = Dimensions.get('window');
-// Calculamos el ancho para 2 columnas con espaciado
+// We calculate the width for 2 columns with spacing.
 const CARD_WIDTH = (width - 48) / 2;
 
 type CategoryCardProps = {
@@ -24,7 +25,11 @@ export const CategoryCard = ({
   const theme = useTheme<Theme>();
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.8}
+      {...buildCategoryCardA11yProps(label)}
+    >
       <Box
         width={CARD_WIDTH}
         height={120}

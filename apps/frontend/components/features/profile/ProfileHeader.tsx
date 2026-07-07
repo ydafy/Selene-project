@@ -7,18 +7,13 @@ import { User } from '@supabase/supabase-js';
 import { Box, Text } from '../../base';
 import { AppImage } from '../../ui/AppImage';
 import { Theme } from '../../../core/theme';
-import { ProfileStats } from '../../../core/hooks/useProfileStats';
+
+import { Profile } from '@selene/types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 type ProfileHeaderProps = {
   user?: User | null;
-  profile: {
-    username: string | null;
-    avatar_url: string | null;
-    created_at?: string | null;
-    is_verified_seller?: boolean | null;
-  } | null;
-  stats?: ProfileStats;
+  profile: Profile | null;
   isUploading?: boolean;
 
   // Acciones (Opcionales - Si existen, es "Mi Perfil")
@@ -41,7 +36,6 @@ type ProfileHeaderProps = {
 export const ProfileHeader = ({
   user,
   profile,
-  stats,
   onEditAvatar,
   onSettingsPress,
   onEditProfile,
@@ -276,7 +270,7 @@ export const ProfileHeader = ({
         borderTopWidth={1}
         borderTopColor="background"
       >
-        <StatBox label="Ventas" value={stats?.sales_count || 0} icon="tag" />
+        <StatBox label="Ventas" value={profile?.total_sales ?? 0} icon="tag" />
         <Box
           width={1}
           height="80%"
@@ -285,7 +279,11 @@ export const ProfileHeader = ({
         />
         <StatBox
           label="Rating"
-          value={stats?.rating_average?.toFixed(1) || 'N/A'}
+          value={
+            profile?.average_rating
+              ? Number(profile.average_rating).toFixed(1)
+              : 'N/A'
+          }
           icon="star"
         />
         <Box
@@ -296,7 +294,7 @@ export const ProfileHeader = ({
         />
         <StatBox
           label="Reseñas"
-          value={stats?.reviews_count || 0}
+          value={profile?.total_reviews ?? 0}
           icon="message"
         />
       </Box>

@@ -13,6 +13,8 @@ import { DisputesPage } from './pages/DisputesPage';
 import { DisputeDetailPage } from './pages/DisputeDetailPage';
 import { PaymentsPage } from './pages/PaymentsPage';
 import { ProductManagementPage } from './pages/ProductManagementPage';
+import { SellerOnboardingPage } from './pages/SellerOnboardingPage';
+import { DrainLegacyWalletsPage } from './pages/DrainLegacyWalletsPage';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, profile, loading, initialized } = useAuthStore();
@@ -77,6 +79,8 @@ function App() {
           <Route path="disputes" element={<DisputesPage />} />
           <Route path="disputes/:id" element={<DisputeDetailPage />} />
           <Route path="payments" element={<PaymentsPage />} />
+          <Route path="seller-onboarding" element={<SellerOnboardingPage />} />
+          <Route path="drain-legacy-wallets" element={<DrainLegacyWalletsPage />} />
           <Route path="products" element={<ProductManagementPage />} />
         </Route>
       </Routes>

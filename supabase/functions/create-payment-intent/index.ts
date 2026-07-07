@@ -10,7 +10,7 @@ import Stripe from 'https://esm.sh/stripe@17.0.0';
 import { z } from 'https://esm.sh/zod@3.23.8';
 
 const APP_NAME = 'selene';
-const STRIPE_API_VERSION = '2025-12-15.clover';
+const STRIPE_API_VERSION = '2026-04-22.dahlia';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

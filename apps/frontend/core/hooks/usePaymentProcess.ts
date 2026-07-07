@@ -1,22 +1,49 @@
+/**
+ * @file apps/frontend/core/hooks/usePaymentProcess.ts
+ * @description Core Custom React Hook for orchestrating sequential multi-seller Stripe Connect payments.
+ *
+ * Implements:
+ * 1. Single-modal Stripe PaymentSheet checkout using one platform PaymentIntent.
+ * 2. Cleanup via rollback-connect-payment when the prepared session becomes stale.
+ * 3. Race condition prevention using an asynchronous queue (lifecycleQueue) to serialize DB reservations and releases.
+ * 4. Stale API response prevention using an atomic versioning counter (prepareVersion) for rapid checkout input changes.
+ * 5. Automatic cleanup releasing reserved products upon screen unmounting.
+ *
+ * @version 1.3
+ * @domain mobile-checkout-hooks
+ */
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useStripe } from '@stripe/stripe-react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import * as Crypto from 'expo-crypto';
-import { z } from 'zod';
 import { useTheme } from '@shopify/restyle';
 import { Theme } from '../../core/theme';
 
 import { useCartStore } from '../store/useCartStore';
 import { useCheckoutStore } from '../store/useCheckoutStore';
 import { supabase } from '../db/supabase';
+import { invokeEdge } from '../services/edge-client';
+import {
+  buildConnectPaymentRequest,
+  ConnectPaymentResponseSchema,
+  normalizeConnectPaymentResponse,
+  paymentIntentIdFromClientSecret,
+  type NormalizedConnectPayment,
+} from '../utils/connectPayment';
+import { presentSinglePaymentSheet } from '../utils/checkoutPaymentFlow';
 
-const PaymentResponseSchema = z.object({
-  clientSecret: z.string(),
-  ephemeralKey: z.string(),
-  customer: z.string(),
-  amount: z.number(),
-});
+interface CheckoutInputSnapshot {
+  addressId: string | null;
+  productIds: string[];
+}
+
+interface CheckoutSessionSnapshot {
+  productIds: string[];
+  orderId: string | null;
+  paymentIntentId: string | null;
+}
 
 export const usePaymentProcess = () => {
   const { t } = useTranslation('checkout');
@@ -28,129 +55,288 @@ export const usePaymentProcess = () => {
   const [loading, setLoading] = useState(true);
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [paymentData, setPaymentData] = useState<z.infer<
-    typeof PaymentResponseSchema
-  > | null>(null);
+  const [paymentData, setPaymentData] = useState<NormalizedConnectPayment | null>(
+    null,
+  );
 
   const items = useCartStore((state) => state.items);
   const clearCart = useCartStore((state) => state.clearCart);
-  const { selectedAddress, setStatus } = useCheckoutStore();
+  const { selectedAddress, setStatus, setPaymentSession, clearPaymentSession } =
+    useCheckoutStore();
 
-  // Ref para saber si el pago fue exitoso y evitar liberar stock por error al desmontar
   const isPaymentSuccessful = useRef(false);
+  const isMounted = useRef(true);
+  const prepareVersion = useRef(0);
+  const lifecycleQueue = useRef<Promise<void>>(Promise.resolve());
+  const activeSession = useRef<CheckoutSessionSnapshot | null>(null);
 
-  // FUNCIÓN PARA LIBERAR PRODUCTOS (Rollback)
-  const releaseProducts = useCallback(async () => {
+  const enqueueLifecycle = useCallback(<T>(operation: () => Promise<T>) => {
+    const queued = lifecycleQueue.current.then(operation, operation);
+
+    lifecycleQueue.current = queued.then(
+      () => undefined,
+      () => undefined,
+    );
+
+    return queued;
+  }, []);
+
+  const canWriteState = useCallback((version: number) => {
+    return isMounted.current && version === prepareVersion.current;
+  }, []);
+
+  const releaseProductIds = useCallback(async (productIds: string[]) => {
+    if (productIds.length === 0 || isPaymentSuccessful.current) return;
+
     try {
-      const productIds = items.map((i) => i.id);
       await supabase.rpc('fn_release_products', { p_product_ids: productIds });
-      if (__DEV__) console.log('[PAYMENT] Productos liberados con éxito');
+      if (__DEV__) console.log('[PAYMENT] Products released successfully');
     } catch (e) {
-      console.error('[PAYMENT] Error al liberar productos:', e);
+      console.error('[PAYMENT] Error releasing products:', e);
     }
-  }, [items]);
+  }, []);
 
-  const preparePayment = useCallback(async () => {
-    if (!selectedAddress?.id) {
-      setError(t('payment.noAddressError'));
-      setLoading(false);
-      return;
-    }
+  const rollbackOrReleaseSession = useCallback(
+    async (session: CheckoutSessionSnapshot) => {
+      if (isPaymentSuccessful.current) return;
 
-    try {
-      setLoading(true);
-      setError(null);
+      if (session.orderId && session.paymentIntentId) {
+        try {
+          const { data: rollbackData, error: rollbackError } = await supabase
+            .functions.invoke('rollback-connect-payment', {
+              body: {
+                orderId: session.orderId,
+                paymentIntentIds: [session.paymentIntentId],
+              },
+            });
 
-      const idempotencyKey = Crypto.randomUUID();
-      const { data, error: funcError } = await supabase.functions.invoke(
-        'create-payment-intent',
-        {
-          body: {
-            productIds: items.map((i) => i.id),
-            addressId: selectedAddress.id,
-            idempotencyKey,
-          },
-        },
-      );
+          if (rollbackError) {
+            throw rollbackError;
+          }
 
-      if (funcError) {
-        const errorStatus = (funcError as { status?: number }).status;
-        // Si el error es stock, intentamos liberar por si acaso quedó algo trabado
-        if (errorStatus === 409) {
-          await releaseProducts();
-          setError(t('payment.outOfStockMsg'));
-        } else {
-          setError(t('payment.genericError'));
+          const rolledBack =
+            (rollbackData as { rolledBack?: number } | null)?.rolledBack ?? 0;
+
+          if (rolledBack > 0) {
+            return;
+          }
+        } catch (rollbackError) {
+          console.error('[PAYMENT_ROLLBACK_ERROR]', rollbackError);
         }
+      }
+
+      await releaseProductIds(session.productIds);
+    },
+    [releaseProductIds],
+  );
+
+  const disposeActiveSession = useCallback(async () => {
+    const session = activeSession.current;
+    activeSession.current = null;
+
+    if (!session || isPaymentSuccessful.current) return;
+
+    await rollbackOrReleaseSession(session);
+  }, [rollbackOrReleaseSession]);
+
+  const preparePayment = useCallback(
+    async (snapshot: CheckoutInputSnapshot, version: number) => {
+      await disposeActiveSession();
+
+      if (!canWriteState(version)) return;
+
+      if (!snapshot.addressId) {
+        setError(t('payment.noAddressError'));
+        setLoading(false);
         return;
       }
 
-      const validatedData = PaymentResponseSchema.parse(data);
-      setPaymentData(validatedData);
+      if (snapshot.productIds.length === 0) {
+        setError(t('payment.genericError'));
+        setLoading(false);
+        return;
+      }
 
-      const { error: stripeError } = await initPaymentSheet({
-        merchantDisplayName: 'Selene Marketplace',
-        paymentIntentClientSecret: validatedData.clientSecret,
-        customerId: validatedData.customer,
-        customerEphemeralKeySecret: validatedData.ephemeralKey,
-        allowsDelayedPaymentMethods: false,
-        appearance: {
-          shapes: { borderRadius: 12 },
-          colors: {
-            primary: theme.colors.primary,
-            background: theme.colors.cardBackground,
-            componentBackground: theme.colors.background,
-            componentBorder: theme.colors.separator,
-            componentDivider: theme.colors.separator,
-            primaryText: theme.colors.textPrimary,
-            secondaryText: theme.colors.textSecondary,
-            componentText: theme.colors.textPrimary,
-            placeholderText: theme.colors.textSecondary,
-            icon: theme.colors.primary,
-            error: theme.colors.error,
-          },
-        },
-      });
+      try {
+        setLoading(true);
+        setError(null);
 
-      if (stripeError) throw new Error(stripeError.message);
-      setIsReady(true);
-    } catch (e: unknown) {
-      const errorMessage = e instanceof Error ? e.message : String(e);
+        const idempotencyKey = Crypto.randomUUID();
 
-      console.error('[PAYMENT_HOOK_ERROR]', errorMessage);
-      setError(t('payment.criticalError'));
-    } finally {
-      setLoading(false);
-    }
-  }, [items, selectedAddress, t, initPaymentSheet, releaseProducts, theme]);
+        let data: Awaited<
+          ReturnType<typeof invokeEdge<'create-connect-payment'>>
+        >;
+        try {
+          data = await invokeEdge(
+            'create-connect-payment',
+            buildConnectPaymentRequest({
+              items: snapshot.productIds.map((id) => ({ id })),
+              addressId: snapshot.addressId,
+              idempotencyKey,
+            }),
+          );
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          if (errorMessage === 'RESERVATION_FAILED') {
+            await releaseProductIds(snapshot.productIds);
+            if (canWriteState(version)) setError(t('payment.outOfStockMsg'));
+          } else if (errorMessage === 'SELLER_NOT_ONBOARDED') {
+            await releaseProductIds(snapshot.productIds);
+            if (canWriteState(version)) {
+              setError(
+                'Seller onboarding is required before checkout for one or more items.',
+              );
+            }
+          } else if (canWriteState(version)) {
+            setError(t('payment.genericError'));
+          }
 
-  // EFECTO DE LIMPIEZA (CLEANUP)
+          return;
+        }
+
+        const validatedData = normalizeConnectPaymentResponse(
+          ConnectPaymentResponseSchema.parse(data),
+        );
+        const preparedSession: CheckoutSessionSnapshot = {
+          productIds: [...snapshot.productIds],
+          orderId: validatedData.orderId,
+          paymentIntentId: paymentIntentIdFromClientSecret(
+            validatedData.clientSecret,
+          ),
+        };
+
+        if (!canWriteState(version)) {
+          await rollbackOrReleaseSession(preparedSession);
+          return;
+        }
+
+        activeSession.current = preparedSession;
+        setPaymentData(validatedData);
+        setPaymentSession({
+          amount: validatedData.amount,
+          clientSecret: validatedData.clientSecret,
+          orderId: validatedData.orderId,
+          transferGroup: validatedData.transferGroup,
+        });
+        setIsReady(true);
+      } catch (e: unknown) {
+        await releaseProductIds(snapshot.productIds);
+
+        if (!canWriteState(version)) return;
+
+        const errorMessage = e instanceof Error ? e.message : String(e);
+
+        console.error('[PAYMENT_HOOK_ERROR]', errorMessage);
+        setError(t('payment.criticalError'));
+      } finally {
+        if (canWriteState(version)) setLoading(false);
+      }
+    },
+    [
+      canWriteState,
+      disposeActiveSession,
+      releaseProductIds,
+      rollbackOrReleaseSession,
+      setPaymentSession,
+      t,
+    ],
+  );
+
+  const queuePreparePayment = useCallback(
+    async (snapshot: CheckoutInputSnapshot) => {
+      if (isPaymentSuccessful.current) return;
+
+      const version = prepareVersion.current + 1;
+      prepareVersion.current = version;
+
+      if (isMounted.current) {
+        setLoading(true);
+        setError(null);
+        setIsReady(false);
+        setPaymentData(null);
+        clearPaymentSession();
+      }
+
+      await enqueueLifecycle(() => preparePayment(snapshot, version));
+    },
+    [clearPaymentSession, enqueueLifecycle, preparePayment],
+  );
+
   useEffect(() => {
-    preparePayment();
+    isMounted.current = true;
 
     return () => {
-      // Si el usuario sale de la pantalla y NO ha pagado, liberamos el stock
+      isMounted.current = false;
+      prepareVersion.current += 1;
+
       if (!isPaymentSuccessful.current) {
-        releaseProducts();
-        setStatus('idle');
-        if (__DEV__) console.log('[PAYMENT] Estado global reseteado a IDLE');
+        void enqueueLifecycle(async () => {
+          await disposeActiveSession();
+          setStatus('idle');
+          if (__DEV__) console.log('[PAYMENT] Global state reset to IDLE');
+        });
       }
     };
-  }, [preparePayment, releaseProducts, setStatus]); // Solo al montar y desmontar
+  }, [disposeActiveSession, enqueueLifecycle, setStatus]);
+
+  useEffect(() => {
+    const snapshot: CheckoutInputSnapshot = {
+      addressId: selectedAddress?.id ?? null,
+      productIds: items.map((item) => item.id),
+    };
+
+    void queuePreparePayment(snapshot);
+
+    return () => {
+      prepareVersion.current += 1;
+    };
+  }, [items, selectedAddress?.id, queuePreparePayment]);
 
   const handlePayment = async () => {
-    const { error: sheetError } = await presentPaymentSheet();
+    const paymentSnapshot = paymentData;
 
-    if (sheetError) {
-      if (sheetError.code === 'Canceled') {
-        return { success: false, cancelled: true };
-      }
-      return { success: false, message: sheetError.message };
+    if (!paymentSnapshot) {
+      return { success: false, message: t('payment.criticalError') };
     }
 
-    // MARCAR COMO ÉXITO ANTES DE NAVEGAR
-    setIsConfirming(true);
+    const result = await presentSinglePaymentSheet({
+      allowsDelayedPaymentMethods: false,
+      appearance: {
+        shapes: { borderRadius: 12 },
+        colors: {
+          primary: theme.colors.primary,
+          background: theme.colors.cardBackground,
+          componentBackground: theme.colors.background,
+          componentBorder: theme.colors.separator,
+          componentDivider: theme.colors.separator,
+          primaryText: theme.colors.textPrimary,
+          secondaryText: theme.colors.textSecondary,
+          componentText: theme.colors.textPrimary,
+          placeholderText: theme.colors.textSecondary,
+          icon: theme.colors.primary,
+          error: theme.colors.error,
+        },
+      },
+      customerEphemeralKeySecret: paymentSnapshot.ephemeralKey,
+      customerId: paymentSnapshot.customer,
+      initPaymentSheet,
+      merchantDisplayName: 'Selene Marketplace',
+      paymentIntentClientSecret: paymentSnapshot.clientSecret,
+      presentPaymentSheet,
+    });
+
+    if (!result.success) {
+      if (result.cancelled) {
+        return { success: false, cancelled: true };
+      }
+
+      return { success: false, message: result.message };
+    }
+
     isPaymentSuccessful.current = true;
+    activeSession.current = null;
+    clearPaymentSession();
+    setIsConfirming(true);
     setStatus('success');
     clearCart();
     setTimeout(() => {
@@ -160,9 +346,10 @@ export const usePaymentProcess = () => {
   };
 
   const handleRetry = async () => {
-    // Para reintentar, primero nos aseguramos de que el stock esté libre
-    await releaseProducts();
-    preparePayment();
+    await queuePreparePayment({
+      addressId: selectedAddress?.id ?? null,
+      productIds: items.map((item) => item.id),
+    });
   };
 
   return {
@@ -172,6 +359,6 @@ export const usePaymentProcess = () => {
     error,
     paymentData,
     handlePayment,
-    retry: handleRetry, // Usamos la versión con liberación
+    retry: handleRetry,
   };
 };

@@ -4,8 +4,8 @@
  * Maneja validación Zod, cotización JIT (Just-In-Time) y calculadora de ganancias.
  */
 
-import { useMemo, useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useMemo, useEffect, useState, useRef } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'expo-router';
@@ -14,6 +14,11 @@ import { useTranslation } from 'react-i18next';
 import { useSellStore } from '@/core/store/useSellStore';
 import { useShippingQuote } from '@/core/hooks/useShippingQuote';
 import { useSystemConfig } from './useSystemConfig';
+import {
+  calculateSellerProceedsEstimate,
+  formatCentsAsMx,
+} from '@/core/utils/sellerProceedsEstimate';
+import { getCategoryResetFields } from '@/core/utils/sellCategoryReset';
 
 const getDetailsSchema = (t: (key: string) => string) =>
   z.object({
@@ -46,7 +51,7 @@ export const useSellDetailsForm = () => {
   const { t } = useTranslation(['sell']);
   const router = useRouter();
   const { data: systemConfig } = useSystemConfig();
-  const { draft, updateDraft } = useSellStore();
+  const { draft, updateDraft, resetCategoryFields } = useSellStore();
   const category = draft.category;
 
   // 1. Memoización del Schema para performance
@@ -55,7 +60,6 @@ export const useSellDetailsForm = () => {
   const {
     control,
     handleSubmit,
-    watch,
     setValue,
     formState: { errors, isValid },
   } = useForm<DetailsFormData>({
@@ -77,9 +81,24 @@ export const useSellDetailsForm = () => {
   const { getQuote, isQuoting, error: quoteError } = useShippingQuote();
   const [shippingCost, setShippingCost] = useState(0);
 
-  // 2. Watcher como objeto (Senior Pattern)
-  const watched = watch();
-  const { price, package_preset, origin_zip } = watched;
+  // 2. Per-field watchers to isolate re-renders
+  const price = useWatch({ control, name: 'price' });
+  const package_preset = useWatch({ control, name: 'package_preset' });
+  const origin_zip = useWatch({ control, name: 'origin_zip' });
+
+  // Efecto: Reset condition/usage/specs when category changes
+  const previousCategoryRef = useRef(category);
+  useEffect(() => {
+    const previousCategory = previousCategoryRef.current;
+    previousCategoryRef.current = category;
+
+    if (category && previousCategory && previousCategory !== category) {
+      const resetFields = getCategoryResetFields();
+      setValue('condition', resetFields.condition);
+      setValue('usage', resetFields.usage);
+      resetCategoryFields();
+    }
+  }, [category, setValue, resetCategoryFields]);
 
   // Efecto: Auto-selección de caja por categoría
   useEffect(() => {
@@ -135,23 +154,30 @@ export const useSellDetailsForm = () => {
     }
 
     const subtotalCents = Math.round(priceNum * 100);
-    // Aplicamos ?? para asegurar que siempre haya un número
-    const commissionCents = Math.round(
-      subtotalCents * (systemConfig.service_fee_pct ?? 0.05),
-    );
-
     const enviaCents = Math.round(shippingCost * 100);
-    const logisticsTotalCents =
-      enviaCents > 0
-        ? enviaCents + (systemConfig.shipping_buffer_cents ?? 5000)
-        : 0;
+    const estimate = calculateSellerProceedsEstimate({
+      priceCents: subtotalCents,
+      quoteCents: enviaCents,
+      settings: systemConfig,
+    });
 
-    const finalCents = subtotalCents - commissionCents - logisticsTotalCents;
+    if (__DEV__) {
+      console.info('[seller-proceeds-estimate]', {
+        priceCents: subtotalCents,
+        quoteCents: enviaCents,
+        serviceFeePct: systemConfig.service_fee_pct ?? 0.05,
+        shippingBufferCents: systemConfig.shipping_buffer_cents ?? 5000,
+        insuranceRate: systemConfig.insurance_rate,
+        normalizedInsuranceRate: estimate.normalizedInsuranceRate,
+        insuranceCents: estimate.insuranceCents,
+        finalCents: estimate.finalCents,
+      });
+    }
 
     return {
-      commission: (commissionCents / 100).toFixed(2),
-      shipping: (logisticsTotalCents / 100).toFixed(2), // Renombrado para consistencia
-      final: (Math.max(0, finalCents) / 100).toFixed(2),
+      commission: formatCentsAsMx(estimate.commissionCents),
+      shipping: formatCentsAsMx(estimate.shippingCents), // Renombrado para consistencia
+      final: formatCentsAsMx(estimate.finalCents),
     };
   }, [price, shippingCost, systemConfig]);
 
@@ -166,7 +192,9 @@ export const useSellDetailsForm = () => {
     handleSubmit,
     errors,
     isValid,
-    watched, // Enviamos el objeto
+    price,
+    originZip: origin_zip,
+    packagePreset: package_preset,
     category,
     isQuoting,
     quoteError,

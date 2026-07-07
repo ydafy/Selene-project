@@ -44,16 +44,25 @@ import { useShareLabel } from '../../../core/hooks/useShareLabel';
 import { formatCurrency } from '../../../core/utils/format';
 import { Theme } from '../../../core/theme';
 import { ReviewModal } from '@/components/features/profile/ReviewModal';
-import { ReviewCard } from '@/components/ui/ReviewCard';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { EnrichedOrder, EnrichedShipment } from '@selene/types';
+import {
+  canReviewProduct,
+  type CanReviewProductContext,
+} from './canReviewProduct';
 
 // --- TIPO AUXILIAR PARA REVIEW (viene en la query de useOrderById pero no en EnrichedOrder) ---
+// V2: adds product_id / shipment_id / seller_id so the review gate can match
+// existing reviews per product instead of by array length (the V1 single-review
+// gate that hid the button for every product once any review landed).
 type ReviewData = {
   id: string;
   rating: number;
   comment: string | null;
   created_at: string;
+  product_id: string | null;
+  shipment_id: string | null;
+  seller_id: string;
 }[];
 
 type OrderWithReview = EnrichedOrder & { review?: ReviewData };
@@ -64,6 +73,14 @@ export default function OrderDetailScreen() {
     id: string;
     shipment_id?: string;
   }>();
+  // Expo Router surfaces `useLocalSearchParams` values as `string | string[]`.
+  // Comparing `s.id === shipment_id` against an array is always false and
+  // silently falls back to `source[0]` (the PAID shipment), hiding the
+  // per-product review button on the COMPLETED shipment. Normalize to a scalar
+  // and use `shipmentId` everywhere downstream.
+  const shipmentId = Array.isArray(shipment_id)
+    ? shipment_id[0]
+    : (shipment_id ?? undefined);
   const { t } = useTranslation(['orders', 'common']);
   const theme = useTheme<Theme>();
   const insets = useSafeAreaInsets();
@@ -96,34 +113,82 @@ export default function OrderDetailScreen() {
   // --- 3. LOCAL STATE ---
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showDeliveryConfirm, setShowDeliveryConfirm] = useState(false);
+  // V2 per-product reviews: the product the buyer tapped "Calificar producto"
+  // for. Drives ReviewModal.productId so the modal scopes the review to the
+  // tapped product instead of always the first item in the shipment.
+  const [activeReviewProductId, setActiveReviewProductId] = useState<
+    string | null
+  >(null);
+  // Surfaced when the review mutation's `onSuccess` refetch fails, or when the
+  // refetch itself rejects. Pre-3.x the screen silently swallowed the error
+  // (`onSuccess={() => refetchOrder()}`) so the buyer never learned their
+  // rating was saved but the local cache was stale. The dialog offers a retry
+  // that re-runs the refetch instead of forcing a full app reload.
+  const [reviewError, setReviewError] = useState<string | null>(null);
 
   // --- 4. COMPUTED PROPERTIES ---
 
   /** Envío actual según `shipment_id` o el primero de la orden.
-   *  - Si el hook `useOrderById` aún no puebla `order.shipments`,
-   *    se usa `useShipmentsByOrder` como fallback (task 3.8 unificará). */
+   *  - Se PREFIERE `useShipmentsByOrder` porque enriquece cada envío con
+   *    `isBuyer`, `isSeller` y `permissions` calculados por envío (no a
+   *    nivel orden). `order.shipments` sólo trae columnas crudas + items +
+   *    dispute, por lo que se reserva como fallback transitorio (y en ese
+   *    caso se toman prestados los permisos de la orden para evitar crashes). */
   const currentShipment = useMemo<EnrichedShipment | null>(() => {
-    const source = order?.shipments ?? shipments;
+    const source = shipments ?? order?.shipments;
     if (!source || source.length === 0) return null;
-    if (shipment_id)
-      return source.find((s) => s.id === shipment_id) ?? source[0];
-    return source[0];
-  }, [order, shipments, shipment_id]);
 
-  /** Número de rastreo activo: prioriza retorno si aplica, sino el tracking original. */
+    const rawShipment = shipmentId
+      ? source.find((s) => s.id === shipmentId)
+      : source[0];
+
+    // When a specific shipment was requested but isn't in the loaded rows yet,
+    // short-circuit instead of inventing one via source[0] (which would render
+    // the wrong shipment — e.g. the PAID one — and break the per-product review
+    // gate that depends on currentShipment.status === 'completed').
+    if (shipmentId && !rawShipment) return null;
+
+    if (!rawShipment) return null;
+
+    return {
+      ...rawShipment,
+      permissions: rawShipment.permissions ?? order?.permissions ?? {},
+    } as EnrichedShipment;
+  }, [order, shipments, shipmentId]);
+
+  /** Número de rastreo activo: prioriza retorno si aplica, sino el tracking original.
+   *  Los permisos se leen desde el envío actual (per-shipment) en lugar del
+   *  nivel orden: si otra shipment entra en dispute, ésta aún puede mostrar
+   *  su tracking original. */
   const activeTrackingNumber = useMemo<string | null>(() => {
     if (!currentShipment) return null;
     const p = currentShipment.permissions;
-    if (p.showReturnTracking)
+    if (p?.showReturnTracking)
       return currentShipment.dispute?.return_tracking_number ?? null;
-    if (p.showOriginalTracking) return currentShipment.tracking_number;
+    if (p?.showOriginalTracking) return currentShipment.tracking_number;
     return null;
   }, [currentShipment]);
 
   /** Hook de pago de retorno — depende de currentShipment (hook de arriba). */
-  const returnPayment = useReturnPayment(
-    currentShipment?.dispute?.id ?? '',
-  );
+  const returnPayment = useReturnPayment(currentShipment?.dispute?.id ?? '');
+
+  /** Subtotal del envío actual: suma de price_at_purchase de sus items.
+   *  Se usa como total mostrado al pie del listado de productos cuando hay
+   *  multiples envios (cada card lista sólo los items de su shipment).
+   *  En ordenes single-seller se conserva `order.total_amount` (que incluye
+   *  envio/fee) para no alterar el comportamiento existente. */
+  const shipmentSubtotal = useMemo(() => {
+    if (!currentShipment) return 0;
+    return currentShipment.items.reduce(
+      (sum, i) => sum + Number(i.price_at_purchase ?? 0),
+      0,
+    );
+  }, [currentShipment]);
+
+  const isMultiShipment = (order?.shipments?.length ?? 0) > 1;
+  const displayedTotal = isMultiShipment
+    ? shipmentSubtotal
+    : (order?.total_amount ?? 0);
 
   // --- 5. HANDLERS ---
   const handleCopyTracking = useCallback((tracking: string) => {
@@ -162,10 +227,35 @@ export default function OrderDetailScreen() {
   };
 
   // --- REVIEW DATA (seguro: order no es null acá) ---
+  // `enrichOrder` normalizes `review` to always be an array (PostgREST returns
+  // a single object for 1:1 FKs), so the `?? []` here is a belt-and-suspenders
+  // fallback for the `CompatEnrichedOrder → OrderWithReview` cast — at runtime
+  // `review` is always a `ReviewData` array. Typing `reviewData` as non-optional
+  // lets callers drop the defensive `?.` chaining and the per-call `?? []`.
   const orderWithReview = order as OrderWithReview;
-  const reviewData = orderWithReview.review;
-  const canReview =
-    order.status === 'completed' && order.isBuyer && !reviewData?.length;
+  const reviewData: ReviewData = orderWithReview.review ?? [];
+
+  // V2: per-product review gate. Replaces the V1 single boolean that gated the
+  // review button on whether ANY review existed on the whole order, which hid
+  // the button for every product once a single review landed. The gate logic
+  // lives in a pure helper (`canReviewProduct`) so it is testable without
+  // rendering the React Native screen.
+  const canReviewProductFn = useCallback(
+    (productId: string) => {
+      const ctx: CanReviewProductContext = {
+        shipmentStatus: currentShipment?.status ?? '',
+        isBuyer: order.isBuyer,
+        reviews: reviewData,
+      };
+      return canReviewProduct(productId, ctx);
+    },
+    [currentShipment?.status, order.isBuyer, reviewData],
+  );
+
+  const openReviewFor = useCallback((productId: string) => {
+    setActiveReviewProductId(productId);
+    reviewModalRef.current?.present();
+  }, []);
 
   return (
     <Box flex={1} backgroundColor="background">
@@ -199,7 +289,7 @@ export default function OrderDetailScreen() {
         {/* Solo cuando hay más de un shipment y no hay     */}
         {/* shipment_id en la URL (vista global).           */}
         {/* ─────────────────────────────────────────────── */}
-        {order.shipments && order.shipments.length > 1 && !shipment_id && (
+        {order.shipments && order.shipments.length > 1 && !shipmentId && (
           <Box
             backgroundColor="cardBackground"
             padding="m"
@@ -251,9 +341,7 @@ export default function OrderDetailScreen() {
                   </Text>
                 </Box>
                 <TouchableOpacity
-                  onPress={() =>
-                    router.setParams({ shipment_id: shipment.id })
-                  }
+                  onPress={() => router.setParams({ shipment_id: shipment.id })}
                 >
                   <Text
                     variant="caption-md"
@@ -336,7 +424,10 @@ export default function OrderDetailScreen() {
           <Text variant="header-xl" color="primary" marginBottom="m">
             {t('orders:detail.trackTitle')}
           </Text>
-          <OrderStepper status={order.visualStatus} />
+          {/* El stepper refleja el progreso logístico del envío actual (per-shipment). */}
+          <OrderStepper
+            status={currentShipment?.status ?? order.visualStatus}
+          />
         </Box>
 
         {/* ─────────────────────────────────────────────── */}
@@ -461,6 +552,32 @@ export default function OrderDetailScreen() {
                   <Text variant="body-sm" color="primary" marginTop="xs">
                     {formatCurrency(item.price_at_purchase)}
                   </Text>
+                  {/* V2: per-product reviewed badge.
+                      Shows "Calificado" checkmark when buyer already reviewed
+                      this product. The review CTA button is rendered as a
+                      PrimaryButton at the bottom of this card instead of
+                      inline to meet sizing and accessibility targets. */}
+                  {reviewData.some(
+                    (r: ReviewData[number]) => r.product_id === item.product_id,
+                  ) ? (
+                    <Box
+                      flexDirection="row"
+                      alignItems="center"
+                      gap="xs"
+                      marginTop="xs"
+                    >
+                      <MaterialCommunityIcons
+                        name="check-decagram"
+                        size={16}
+                        color={theme.colors.success}
+                      />
+                      <Text variant="caption-md" color="success">
+                        {t('orders:actions.reviewed', {
+                          defaultValue: 'Calificado',
+                        })}
+                      </Text>
+                    </Box>
+                  ) : null}
                 </Box>
                 <MaterialCommunityIcons
                   name="chevron-right"
@@ -486,7 +603,7 @@ export default function OrderDetailScreen() {
               {t('orders:detail.total')}
             </Text>
             <Text variant="subheader-lg" color="primary">
-              {formatCurrency(order.total_amount)}
+              {formatCurrency(displayedTotal)}
             </Text>
           </Box>
         </Box>
@@ -497,7 +614,10 @@ export default function OrderDetailScreen() {
         {/* cancelar, reportar problema.                    */}
         {/* ─────────────────────────────────────────────── */}
         <Box gap="m" marginTop="m">
-          {order.isSeller &&
+          {/* El gate de generar guía debe leerse por envío: en una orden
+              multi-vendedor, `order.isSeller` es true si el viewer es seller
+              de CUALQUIER item, lo que mostraría el botón sobre un envío ajeno. */}
+          {currentShipment?.isSeller &&
             currentShipment?.status === 'paid' &&
             !currentShipment?.label_url && (
               <PrimaryButton
@@ -553,28 +673,27 @@ export default function OrderDetailScreen() {
         </Box>
 
         {/* ─────────────────────────────────────────────── */}
-        {/* SECCIÓN DE CALIFICACIÓN (Review)                 */}
-        {/* Muestra ReviewCard si ya calificó, o botón si   */}
-        {/* puede calificar. canReview se deriva inline.    */}
-        {/* ─────────────────────────────────────────────── */}
-        {reviewData && reviewData.length > 0 ? (
-          <ReviewCard
-            rating={reviewData[0].rating}
-            comment={reviewData[0].comment}
-            createdAt={reviewData[0].created_at}
-          />
-        ) : canReview ? (
-          <PrimaryButton
-            onPress={() => reviewModalRef.current?.present()}
-            icon="star-outline"
-            variant="outline"
-            style={{ borderColor: theme.colors.primary }}
-          >
-            {t('orders:actions.rateSeller', {
-              defaultValue: 'CALIFICAR VENDEDOR',
-            })}
-          </PrimaryButton>
-        ) : null}
+        {/* V2: REVIEWS */}
+        {currentShipment?.items
+          .filter((item) => canReviewProductFn(item.product_id))
+          .map((item) => (
+            <PrimaryButton
+              key={`review-${item.id}`}
+              onPress={() => openReviewFor(item.product_id)}
+              icon="star-outline"
+              style={{ marginTop: 8 }}
+              accessibilityLabel={t('orders:actions.rateProduct', {
+                defaultValue: 'Calificar pedido',
+              })}
+              accessibilityHint={t('orders:actions.rateProductHint', {
+                defaultValue: 'Abre el formulario para calificar este producto',
+              })}
+            >
+              {t('orders:actions.rateProduct', {
+                defaultValue: 'Calificar pedido',
+              })}
+            </PrimaryButton>
+          ))}
       </ScrollView>
 
       {/* ─────────────────────────────────────────────── */}
@@ -613,7 +732,40 @@ export default function OrderDetailScreen() {
       <ReviewModal
         ref={reviewModalRef}
         order={order as any}
-        onSuccess={() => refetchOrder()}
+        sellerId={currentShipment?.seller_id}
+        shipmentId={currentShipment?.id}
+        productId={activeReviewProductId ?? undefined}
+        productName={
+          activeReviewProductId
+            ? currentShipment?.items?.find(
+                (i) => i.product_id === activeReviewProductId,
+              )?.product?.name
+            : undefined
+        }
+        onSuccess={async () => {
+          try {
+            await refetchOrder();
+          } catch (e) {
+            setReviewError(
+              e instanceof Error
+                ? e.message
+                : 'No pudimos guardar tu calificación. Intenta de nuevo.',
+            );
+          }
+        }}
+      />
+
+      <ConfirmDialog
+        visible={!!reviewError}
+        title="Error al guardar"
+        description={reviewError ?? ''}
+        onConfirm={async () => {
+          setReviewError(null);
+          await refetchOrder();
+        }}
+        onCancel={() => setReviewError(null)}
+        confirmLabel="Reintentar"
+        cancelLabel="Cerrar"
       />
     </Box>
   );

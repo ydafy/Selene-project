@@ -9,6 +9,8 @@ const corsHeaders = {
     'authorization, x-client-info, apikey, content-type',
 };
 
+const STRIPE_API_VERSION = '2026-04-22.dahlia';
+
 class ApiError extends Error {
   constructor(
     public status: number,
@@ -58,7 +60,7 @@ serve(async (req) => {
     );
 
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-      apiVersion: '2025-12-15.clover',
+      apiVersion: STRIPE_API_VERSION,
       httpClient: Stripe.createFetchHttpClient(),
     });
 
@@ -85,7 +87,11 @@ serve(async (req) => {
 
     let role: 'buyer' | 'seller' | 'system' = 'system';
     if (user.id === order.buyer_id) role = 'buyer';
-    else if (order.items.some((item: any) => item.seller_id === user.id))
+    else if (
+      order.items.some(
+        (item: { seller_id: string }) => item.seller_id === user.id,
+      )
+    )
       role = 'seller';
     else throw new ApiError(403, 'No tienes permiso para cancelar esta orden');
 
@@ -109,42 +115,106 @@ serve(async (req) => {
       );
     }
 
-    if (!order.stripe_payment_intent_id) {
-      throw new ApiError(
-        422,
-        'La orden no tiene un pago asociado para reembolsar',
-      );
+    // 4. Reembolso en Stripe — per-shipment para Connect, orden única para legacy
+    log('INFO', 'Iniciando reembolso en Stripe', { orderId });
+
+    // Fetch shipments with their PaymentIntent IDs (Connect-era) or fallback
+    // to single order-level PI for legacy orders.
+    const { data: orderShipments } = await supabaseAdmin
+      .from('shipments')
+      .select('id, stripe_payment_intent_id, status')
+      .eq('order_id', orderId)
+      .neq('status', 'cancelled');
+
+    const shipmentsToRefund = (orderShipments ?? []).filter(
+      (s) => s.stripe_payment_intent_id || order.stripe_payment_intent_id,
+    );
+
+    if (shipmentsToRefund.length === 0 && !order.stripe_payment_intent_id) {
+      // No Connect PIs and no legacy PI — nothing to refund, just cancel in DB
+      log('WARN', 'No Stripe payment to refund, cancelling in DB only', {
+        orderId,
+      });
     }
 
-    // 4. Reembolso en Stripe
-    log('INFO', 'Iniciando reembolso en Stripe', {
-      orderId,
-      paymentIntent: order.stripe_payment_intent_id,
-    });
+    let refundCount = 0;
+    for (const shipment of shipmentsToRefund) {
+      const piId =
+        shipment.stripe_payment_intent_id ?? order.stripe_payment_intent_id;
+      if (!piId) continue;
 
-    let refundId: string | null = null;
-    try {
-      const refund = await stripe.refunds.create(
-        {
-          payment_intent: order.stripe_payment_intent_id,
+      try {
+        const refundParams: Stripe.RefundCreateParams = {
+          payment_intent: piId,
           reason: 'requested_by_customer',
-          metadata: { order_id: orderId, cancelled_by: user.id, role },
-        },
-        { idempotencyKey: `refund_v2_${orderId}` },
-      );
+          metadata: {
+            order_id: orderId,
+            shipment_id: shipment.id,
+            cancelled_by: user.id,
+            role,
+          },
+        };
 
-      refundId = refund.id;
-    } catch (stripeError: any) {
-      // Si ya fue reembolsado, Stripe lanzará un error que debemos manejar
-      if (stripeError.code === 'charge_already_refunded') {
-        log('WARN', 'El cargo ya había sido reembolsado en Stripe', {
-          orderId,
+        // Connect: reverse the transfer from seller's account
+        if (shipment.stripe_payment_intent_id) {
+          refundParams.reverse_transfer = true;
+        }
+
+        const refund = await stripe.refunds.create(refundParams, {
+          idempotencyKey: `cancel_order_${shipment.id}`,
         });
-      } else {
-        log('ERROR', 'Fallo al crear reembolso en Stripe', {
-          error: stripeError.message,
+        refundCount++;
+        log('INFO', 'Refund processed', {
+          shipmentId: shipment.id,
+          refundId: refund.id,
         });
-        throw new ApiError(500, `Error de Stripe: ${stripeError.message}`);
+      } catch (stripeError: unknown) {
+        const code =
+          typeof stripeError === 'object' && stripeError !== null
+            ? (stripeError as { code: string }).code
+            : null;
+        if (code === 'charge_already_refunded') {
+          log('WARN', 'Charge already refunded', { shipmentId: shipment.id });
+        } else {
+          const msg =
+            stripeError instanceof Error
+              ? stripeError.message
+              : String(stripeError);
+          log('ERROR', 'Stripe refund failed', {
+            shipmentId: shipment.id,
+            error: msg,
+          });
+          throw new ApiError(500, `Error de Stripe: ${msg}`);
+        }
+      }
+    }
+
+    // If no shipments with PIs, try legacy single-order refund
+    if (refundCount === 0 && order.stripe_payment_intent_id) {
+      try {
+        await stripe.refunds.create(
+          {
+            payment_intent: order.stripe_payment_intent_id,
+            reason: 'requested_by_customer',
+            metadata: { order_id: orderId, cancelled_by: user.id, role },
+          },
+          { idempotencyKey: `refund_v2_${orderId}` },
+        );
+        log('INFO', 'Legacy refund processed', { orderId });
+      } catch (stripeError: unknown) {
+        const code =
+          typeof stripeError === 'object' && stripeError !== null
+            ? (stripeError as { code: string }).code
+            : null;
+        if (code === 'charge_already_refunded') {
+          log('WARN', 'Legacy charge already refunded', { orderId });
+        } else {
+          const msg =
+            stripeError instanceof Error
+              ? stripeError.message
+              : String(stripeError);
+          throw new ApiError(500, `Error de Stripe: ${msg}`);
+        }
       }
     }
 
@@ -161,7 +231,7 @@ serve(async (req) => {
     if (rpcError || !rpcData?.[0]?.success) {
       log('CRITICAL', 'REEMBOLSO EXITOSO PERO FALLO EN DB', {
         orderId,
-        refundId,
+        refundsProcessed: refundCount,
         dbError: rpcError?.message || rpcData?.[0]?.error_message,
       });
       throw new ApiError(
@@ -170,7 +240,10 @@ serve(async (req) => {
       );
     }
 
-    log('INFO', 'Cancelación completada con éxito', { orderId, refundId });
+    log('INFO', 'Cancelación completada con éxito', {
+      orderId,
+      refunds: refundCount,
+    });
 
     return new Response(
       JSON.stringify({
@@ -181,10 +254,11 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       },
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     const status = error instanceof ApiError ? error.status : 400;
-    log('ERROR', 'Fallo en proceso de cancelación', { error: error.message });
-    return new Response(JSON.stringify({ error: error.message }), {
+    const message = error instanceof Error ? error.message : String(error);
+    log('ERROR', 'Fallo en proceso de cancelación', { error: message });
+    return new Response(JSON.stringify({ error: message }), {
       status,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

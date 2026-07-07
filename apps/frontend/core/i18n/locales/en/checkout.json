@@ -14,13 +14,13 @@
   "summary": {
     "subtotal": "Subtotal",
     "shipping": "Shipping",
-    "protection": "Selene Protection",
+    "protection": "Seguro Selene",
     "totalToPay": "Total to Pay",
 
     "free": "Free",
     "toCalculate": "To Calculate",
     "calculating": "Calculating shipping...",
-    "termsText": "I accept the Terms of Purchase and Selene Protection.",
+    "termsText": "I accept the Terms of Purchase and Seguro Selene.",
     "validating": "Validating availability..."
   },
 
@@ -44,8 +44,8 @@
     },
 
     "dialogs": {
-      "protectionTitle": "Selene Protection",
-      "protectionDesc": "Your money is safe. If the hardware doesn't arrive, is damaged, or doesn't match the technical description, Selene protects your payment. Subject to Terms and Conditions."
+      "protectionTitle": "Seguro Selene",
+      "protectionDesc": "Seguro Selene covers payment processing and keeps your purchase protected if the hardware doesn't arrive, is damaged, or doesn't match the technical description. Subject to Terms and Conditions."
     }
   },
   "payment": {

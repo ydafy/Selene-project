@@ -72,10 +72,11 @@ export default function OrdersScreen() {
   }
 
   const renderItem = ({ item }: { item: EnrichedOrder }) => {
-    // Detecta multi-seller: si hay items de diferentes seller_id → ruta intermedia
-    const rawItems = (item as any).items ?? [];
-    const sellerIds = new Set(rawItems.map((i: any) => i.seller_id));
-    const isMultiSeller = sellerIds.size > 1;
+    // Detecta multi-seller desde la fuente canónica: en SCT cada shipment es
+    // de un vendedor, por lo que `shipments.length > 1` implica multi-vendedor.
+    // Antes se deducía vía el array legacy de order_items casteado a any, lo
+    // cual era frágil y dependía del compat-layer de EnrichedOrder.
+    const isMultiSeller = (item.shipments?.length ?? 0) > 1;
 
     return (
       <Box marginBottom="m" paddingHorizontal="m">

@@ -2,6 +2,15 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import Stripe from 'https://esm.sh/stripe@17.0.0';
 
+import { normalizeAccountStatus } from '../_shared/connect-status.ts';
+import { reconcileConnectPayoutEvent } from './connect-payout-reconciliation.ts';
+import {
+  SINGLE_MODAL_FLOW,
+  buildSettlementOutcome,
+  resolvePaymentIntentSucceededAction,
+  type SingleModalSettlementInput,
+} from './single-modal-settlement.ts';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '\*',
   'Access-Control-Allow-Headers':
@@ -26,13 +35,251 @@ const log = (
 };
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-  apiVersion: '2025-12-15.clover',
+  apiVersion: '2026-04-22.dahlia',
   httpClient: Stripe.createFetchHttpClient(),
 });
 
 const APP_NAME = 'selene';
+const RECOVERABLE_MISSING_PAYOUT_ID_STATUSES = [
+  'pending_reconciliation',
+  'reconciliation_needed',
+];
 
-serve(async (req) => {
+const extractStripeChargeId = (intent: Stripe.PaymentIntent): string | null => {
+  const latestCharge = intent.latest_charge;
+  if (typeof latestCharge === 'string' && latestCharge.length > 0) {
+    return latestCharge;
+  }
+
+  if (
+    latestCharge &&
+    typeof latestCharge === 'object' &&
+    'id' in latestCharge &&
+    typeof latestCharge.id === 'string' &&
+    latestCharge.id.length > 0
+  ) {
+    return latestCharge.id;
+  }
+
+  const firstCharge = intent.charges?.data?.[0];
+  if (firstCharge && typeof firstCharge.id === 'string' && firstCharge.id.length > 0) {
+    return firstCharge.id;
+  }
+
+  return null;
+};
+
+const buildSingleModalAllocationPayload = (
+  input: SingleModalSettlementInput,
+) => ({
+  buyer_id: input.buyerId,
+  address_id: input.addressId,
+  order_id: input.orderId,
+  order_group_id: input.orderId,
+  total_amount: input.totalsCents.buyerTotal / 100,
+  rows: input.rows.map((row) => ({
+    seller_id: row.sellerId,
+    shipment_id: row.shipmentId,
+    product_ids: row.productIds,
+    gross_cents: row.grossCents,
+    commission_cents: row.commissionCents,
+    shipping_cents: row.shippingCents,
+    seguro_cents: row.seguroCents,
+    net_cents: row.netCents,
+  })),
+});
+
+type ConnectPayoutRunRow = {
+  id: string;
+  status: string;
+  stripe_payout_id: string | null;
+};
+
+async function findConnectPayoutRun(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  input: { payoutId: string; metadataRunId?: string | null },
+): Promise<ConnectPayoutRunRow | null> {
+  const { data: payoutRun, error: payoutRunError } = await supabaseAdmin
+    .from('connect_payout_runs')
+    .select('id, status, stripe_payout_id')
+    .eq('stripe_payout_id', input.payoutId)
+    .maybeSingle();
+  if (payoutRunError)
+    throw new Error(`PAYOUT_RUN_LOOKUP_FAILED: ${payoutRunError.message}`);
+  if (payoutRun) return payoutRun as ConnectPayoutRunRow;
+
+  if (input.metadataRunId) {
+    const { data, error } = await supabaseAdmin
+      .from('connect_payout_runs')
+      .select('id, status, stripe_payout_id')
+      .eq('id', input.metadataRunId)
+      .maybeSingle();
+    if (error) throw new Error(`PAYOUT_RUN_LOOKUP_FAILED: ${error.message}`);
+    if (data) {
+      const run = data as ConnectPayoutRunRow;
+      if (
+        run.stripe_payout_id ||
+        RECOVERABLE_MISSING_PAYOUT_ID_STATUSES.includes(run.status)
+      ) {
+        return run;
+      }
+    }
+  }
+
+  return null;
+}
+
+async function attachConnectPayoutRunPayoutId(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  input: { runId: string; stripePayoutId: string },
+) {
+  const { data, error } = await supabaseAdmin
+    .from('connect_payout_runs')
+    .update({
+      stripe_payout_id: input.stripePayoutId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', input.runId)
+    .is('stripe_payout_id', null)
+    .in('status', RECOVERABLE_MISSING_PAYOUT_ID_STATUSES)
+    .select('id');
+  if (error) throw new Error(`PAYOUT_RUN_ATTACH_FAILED: ${error.message}`);
+  if (((data as Array<{ id: string }> | null) ?? []).length !== 1) {
+    throw new Error('PAYOUT_RUN_ATTACH_CONFLICT');
+  }
+}
+
+async function markConnectPayoutRunStatus(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  input: {
+    runId: string;
+    status: 'paid' | 'failed' | 'canceled';
+    occurredAt: string;
+    failureReason?: string | null;
+  },
+) {
+  const update = {
+    status: input.status,
+    updated_at: input.occurredAt,
+    ...(input.status === 'paid' ? { paid_at: input.occurredAt } : {}),
+    ...(input.status === 'failed' || input.status === 'canceled'
+      ? {
+          failed_at: input.occurredAt,
+          failure_reason: input.failureReason ?? input.status,
+        }
+      : {}),
+  };
+
+  const { error } = await supabaseAdmin
+    .from('connect_payout_runs')
+    .update(update)
+    .eq('id', input.runId);
+  if (error) throw new Error(`PAYOUT_RUN_UPDATE_FAILED: ${error.message}`);
+}
+
+async function markConnectPayoutRunShipmentsStatus(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  input: { runId: string; status: 'paid' | 'failed' | 'canceled' },
+) {
+  const { error } = await supabaseAdmin
+    .from('connect_payout_run_shipments')
+    .update({ status: input.status, updated_at: new Date().toISOString() })
+    .eq('run_id', input.runId);
+  if (error) throw new Error(`PAYOUT_MAPPING_UPDATE_FAILED: ${error.message}`);
+}
+
+async function listConnectPayoutRunShipmentIds(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  runId: string,
+): Promise<string[]> {
+  const { data, error } = await supabaseAdmin
+    .from('connect_payout_run_shipments')
+    .select('shipment_id')
+    .eq('run_id', runId);
+  if (error) throw new Error(`PAYOUT_MAPPING_LOOKUP_FAILED: ${error.message}`);
+
+  return ((data as Array<{ shipment_id: string | null }> | null) ?? [])
+    .map((row) => row.shipment_id)
+    .filter((shipmentId): shipmentId is string => Boolean(shipmentId));
+}
+
+async function markConnectShipmentsReleased(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  input: { shipmentIds: string[]; stripePayoutId: string },
+) {
+  if (input.shipmentIds.length === 0) {
+    throw new Error('PAYOUT_RUN_HAS_NO_SHIPMENTS');
+  }
+
+  const { data: shipments, error: loadError } = await supabaseAdmin
+    .from('shipments')
+    .select('id, stripe_payout_id')
+    .in('id', input.shipmentIds);
+  if (loadError)
+    throw new Error(`SHIPMENT_LOOKUP_FAILED: ${loadError.message}`);
+
+  const rows =
+    (shipments as Array<{
+      id: string;
+      stripe_payout_id: string | null;
+    }> | null) ?? [];
+  if (rows.length !== input.shipmentIds.length) {
+    throw new Error('PAYOUT_SHIPMENT_LOOKUP_INCOMPLETE');
+  }
+
+  const conflicting = rows.find(
+    (row) =>
+      row.stripe_payout_id !== null &&
+      row.stripe_payout_id !== input.stripePayoutId,
+  );
+  if (conflicting) {
+    throw new Error(`SHIPMENT_ALREADY_RELEASED:${conflicting.id}`);
+  }
+
+  const pendingIds = rows
+    .filter((row) => row.stripe_payout_id === null)
+    .map((row) => row.id);
+  if (pendingIds.length === 0) return;
+
+  const { data: updated, error: updateError } = await supabaseAdmin
+    .from('shipments')
+    .update({
+      stripe_payout_id: input.stripePayoutId,
+      updated_at: new Date().toISOString(),
+    })
+    .in('id', pendingIds)
+    .is('stripe_payout_id', null)
+    .select('id');
+  if (updateError) {
+    throw new Error(`SHIPMENT_RELEASE_UPDATE_FAILED: ${updateError.message}`);
+  }
+
+  if (
+    ((updated as Array<{ id: string }> | null) ?? []).length !==
+    pendingIds.length
+  ) {
+    throw new Error('SHIPMENT_RELEASE_PARTIAL_UPDATE');
+  }
+}
+
+async function markConnectPayoutRunReconciliationNeeded(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  input: { runId: string; failureReason: string },
+) {
+  const { error } = await supabaseAdmin
+    .from('connect_payout_runs')
+    .update({
+      status: 'reconciliation_needed',
+      failure_reason: input.failureReason,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', input.runId);
+  if (error) {
+    throw new Error(`PAYOUT_RECONCILIATION_MARK_FAILED: ${error.message}`);
+  }
+}
+
+serve(async (req: Request) => {
   if (req.method === 'OPTIONS')
     return new Response('ok', { headers: corsHeaders });
 
@@ -43,11 +290,21 @@ serve(async (req) => {
 
   try {
     rawBody = await req.text();
-    const event = await stripe.webhooks.constructEventAsync(
-      rawBody,
-      signature,
-      Deno.env.get('STRIPE_WEBHOOK_SECRET') || '',
-    );
+    let event;
+    try {
+      event = await stripe.webhooks.constructEventAsync(
+        rawBody,
+        signature,
+        Deno.env.get('STRIPE_WEBHOOK_SECRET') || '',
+      );
+    } catch {
+      // Fallback: Si falla, intentar descifrar con el secreto de Connect
+      event = await stripe.webhooks.constructEventAsync(
+        rawBody,
+        signature,
+        Deno.env.get('STRIPE_CONNECT_WEBHOOK_SECRET') || '',
+      );
+    }
 
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -76,6 +333,102 @@ serve(async (req) => {
         });
       }
 
+      const action = resolvePaymentIntentSucceededAction({
+        metadata: intent.metadata as Record<string, string>,
+        amount: intent.amount,
+      });
+
+      if (action.kind === 'single_modal') {
+        const chargeId = extractStripeChargeId(intent);
+        if (!chargeId) {
+          throw new Error('MISSING_STRIPE_CHARGE_ID');
+        }
+
+        log('INFO', 'Procesando single-modal settlement', {
+          intentId: intent.id,
+          flow: SINGLE_MODAL_FLOW,
+          transferGroup: action.payload.transferGroup,
+          chargeId,
+        });
+
+        const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc(
+          'fn_create_shipments_from_single_payment',
+          {
+            p_stripe_payment_intent_id: intent.id,
+            p_stripe_charge_id: chargeId,
+            p_amount_received: intent.amount,
+            p_transfer_group: action.payload.transferGroup,
+            p_allocation: buildSingleModalAllocationPayload(action.payload),
+          },
+        );
+
+        const outcome = buildSettlementOutcome({
+          rpcResult: rpcData,
+          rpcError,
+        });
+
+        if (outcome.kind === 'ok') {
+          return new Response(JSON.stringify(outcome.body), { status: 200 });
+        }
+
+        if (outcome.kind === 'recovered') {
+          log('WARN', 'Single-modal settlement recovered for ops retry', {
+            intentId: intent.id,
+            reason: outcome.reason,
+          });
+          return new Response(JSON.stringify({ received: true }), {
+            status: 200,
+          });
+        }
+
+        if (outcome.kind === 'fatal_error') {
+          log('ERROR', 'Single-modal settlement fatal_error', {
+            intentId: intent.id,
+            message: outcome.message,
+          });
+        }
+
+        throw new Error(outcome.message);
+      }
+
+      // Connect path: PaymentIntent has seller_id metadata → per-seller PI
+      if (action.kind === 'connect_per_seller' || intent.metadata.seller_id) {
+        log('INFO', 'Procesando Connect PaymentIntent', {
+          intentId: intent.id,
+          seller_id: intent.metadata.seller_id,
+          order_group_id: intent.metadata.order_group_id,
+        });
+
+        const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc(
+          'fn_create_shipment_from_payment',
+          {
+            p_stripe_payment_intent_id: intent.id,
+            p_amount_received: intent.amount,
+            p_metadata: intent.metadata,
+          },
+        );
+
+        if (rpcError) {
+          log('ERROR', 'Connect shipment creation failed', {
+            error: rpcError.message,
+            intentId: intent.id,
+          });
+          throw new Error(
+            `Connect shipment creation failed: ${rpcError.message}`,
+          );
+        }
+
+        log('INFO', 'Connect shipment created', {
+          intentId: intent.id,
+          result: rpcData,
+        });
+
+        return new Response(JSON.stringify({ received: true }), {
+          status: 200,
+        });
+      }
+
+      // Legacy path: single PaymentIntent for entire order (pre-Connect)
       if (app_name === APP_NAME) {
         const productIdsArray = JSON.parse(product_ids || '[]');
         log('INFO', 'Procesando compra exitosa', {
@@ -95,7 +448,10 @@ serve(async (req) => {
           throw new Error('Configuración o productos no encontrados');
 
         const realSubtotalCents = Math.round(
-          dbProducts.reduce((sum, p) => sum + Number(p.price), 0) * 100,
+          dbProducts.reduce(
+            (sum: number, p: { price: number }) => sum + Number(p.price),
+            0,
+          ) * 100,
         );
         const expectedServiceFeeCents =
           Math.round(realSubtotalCents * settings.service_fee_pct) +
@@ -161,6 +517,77 @@ serve(async (req) => {
       }
     }
 
+    if (
+      event.type === 'payout.paid' ||
+      event.type === 'payout.failed' ||
+      event.type === 'payout.canceled'
+    ) {
+      const payout = event.data.object as Stripe.Payout;
+      const occurredAt = new Date(
+        (payout.created ?? event.created) * 1000,
+      ).toISOString();
+      const result = await reconcileConnectPayoutEvent(
+        {
+          eventType: event.type,
+          payoutId: payout.id,
+          metadataRunId: payout.metadata?.run_id ?? null,
+          occurredAt,
+          failureReason: payout.failure_message ?? payout.failure_code ?? null,
+        },
+        {
+          findRunForPayout: (input) =>
+            findConnectPayoutRun(supabaseAdmin, input),
+          listRunShipmentIds: (runId) =>
+            listConnectPayoutRunShipmentIds(supabaseAdmin, runId),
+          markRunStatus: (input) =>
+            markConnectPayoutRunStatus(supabaseAdmin, input),
+          markRunShipmentsStatus: (input) =>
+            markConnectPayoutRunShipmentsStatus(supabaseAdmin, input),
+          markShipmentsReleased: (input) =>
+            markConnectShipmentsReleased(supabaseAdmin, input),
+          markRunReconciliationNeeded: (input) =>
+            markConnectPayoutRunReconciliationNeeded(supabaseAdmin, input),
+          attachRunPayoutId: (input) =>
+            attachConnectPayoutRunPayoutId(supabaseAdmin, input),
+        },
+      );
+
+      log('INFO', 'Connect payout reconciliation processed', {
+        payoutId: payout.id,
+        eventType: event.type,
+        result: result.status,
+        ...(result.status !== 'ignored' ? { runId: result.runId } : {}),
+      });
+    }
+
+    if (event.type === 'account.updated') {
+      const account = event.data.object as Stripe.Account;
+      const normalized = normalizeAccountStatus(account);
+      const refreshedAt = new Date().toISOString();
+
+      log('INFO', 'account.updated received', {
+        accountId: account.id,
+        chargesEnabled: normalized.chargesEnabled,
+        payoutsEnabled: normalized.payoutsEnabled,
+        nextStatus: normalized.status,
+      });
+
+      const { error: updErr } = await supabaseAdmin
+        .from('profiles_private')
+        .update({
+          stripe_onboarding_status: normalized.status,
+          stripe_onboarding_refreshed_at: refreshedAt,
+          updated_at: refreshedAt,
+        })
+        .eq('stripe_account_id', account.id);
+      if (updErr) {
+        log('ERROR', 'Failed to update onboarding status', {
+          error: updErr.message,
+        });
+        throw new Error(`PROFILE_UPDATE_FAILED: ${updErr.message}`);
+      }
+    }
+
     if (event.type === 'setup_intent.succeeded') {
       const si = event.data.object as Stripe.SetupIntent;
       const { user_id, app_name } = si.metadata || {};
@@ -182,8 +609,9 @@ serve(async (req) => {
     }
 
     return new Response(JSON.stringify({ received: true }), { status: 200 });
-  } catch (err: any) {
-    log('ERROR', 'Fallo crítico en Webhook', { error: err.message });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    log('ERROR', 'Fallo crítico en Webhook', { error: message });
 
     try {
       const supabaseAdmin = createClient(
@@ -191,24 +619,26 @@ serve(async (req) => {
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       );
 
-      let payloadObj = {};
+      let payloadObj: Record<string, unknown> = {};
       try {
         payloadObj = JSON.parse(rawBody || '{}');
-      } catch (e) {}
+      } catch {
+        // Silencioso por seguridad: si falla el parseo, cae en el fallback de objeto vacío.
+      }
 
       await supabaseAdmin.from('webhook_dlq').insert({
-        event_type: (payloadObj as any).type || 'unknown_parse_error',
+        event_type: (payloadObj.type as string) || 'unknown_parse_error',
         payload: payloadObj,
-        error_message: err.message || String(err),
+        error_message: message,
       });
       log('INFO', 'Evento fallido guardado en DLQ exitosamente');
-    } catch (dlqErr) {
+    } catch (dlqErr: unknown) {
       log('CRITICAL', 'Fallo catastrófico: No se pudo guardar en DLQ', {
         error: String(dlqErr),
       });
     }
 
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
     });
   }

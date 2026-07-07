@@ -35,7 +35,7 @@ export const PackageSelector = ({
 }: PackageSelectorProps) => {
   const theme = useTheme<Theme>();
   const { data: settings, isLoading } = useSystemConfig();
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['common', 'sell']);
 
   // Filtramos los presets que corresponden a la categoría actual
   const options = useMemo(() => {
@@ -66,7 +66,7 @@ export const PackageSelector = ({
       >
         <ActivityIndicator color={theme.colors.primary} />
         <Text variant="caption-md" color="textSecondary" marginTop="s">
-          {t('states.loading', 'Cargando...')}
+          {t('common:states.loading')}
         </Text>
       </Box>
     );
@@ -77,10 +77,7 @@ export const PackageSelector = ({
     return (
       <Box padding="m" backgroundColor="error" borderRadius="m">
         <Text variant="body-md" color="error">
-          {t(
-            'errors.noPackages',
-            'No hay opciones de empaque para esta categoría.',
-          )}
+          {t('common:errors.noPackages')}
         </Text>
       </Box>
     );
@@ -96,6 +93,12 @@ export const PackageSelector = ({
           <TouchableOpacity
             key={preset.id}
             onPress={() => onSelect(preset.id)}
+            accessibilityRole="button"
+            accessibilityLabel={t('sell:a11y.packageOption', {
+              label: preset.label,
+              dimensions: `${preset.length}x${preset.width}x${preset.height} cm`,
+            })}
+            accessibilityState={{ selected: isSelected }}
             style={{ flex: 1 }}
           >
             <Box

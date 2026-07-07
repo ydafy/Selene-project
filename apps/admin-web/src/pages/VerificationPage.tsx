@@ -20,9 +20,8 @@ export const VerificationPage = () => {
 
   const selectedProduct = useMemo(
     () =>
-      (products?.find((p: any) => p.id === selectedId) || null) as
-        | PendingProduct
-        | null,
+      (products?.find((p: any) => p.id === selectedId) ||
+        null) as PendingProduct | null,
     [products, selectedId],
   );
 
@@ -70,7 +69,7 @@ export const VerificationPage = () => {
       {/* HEADER */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-3xl font-bold">Verificación de Hardware</h2>
+          <h1 className="text-3xl font-bold">Verificación de Hardware</h1>
           <p className="text-blue-light">
             Revisa la legitimidad de los productos antes de publicarlos.
           </p>

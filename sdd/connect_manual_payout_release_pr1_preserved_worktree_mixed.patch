@@ -1,0 +1,376 @@
+diff --git a/packages/types/src/database.types.ts b/packages/types/src/database.types.ts
+index 00e3bd6..115d77d 100644
+--- a/packages/types/src/database.types.ts
++++ b/packages/types/src/database.types.ts
+@@ -327,6 +327,181 @@ export type Database = {
+           },
+         ]
+       }
++      connect_payout_run_shipments: {
++        Row: {
++          created_at: string
++          id: string
++          net_payout: number
++          run_id: string
++          shipment_id: string
++          status: string
++          updated_at: string
++        }
++        Insert: {
++          created_at?: string
++          id?: string
++          net_payout: number
++          run_id: string
++          shipment_id: string
++          status?: string
++          updated_at?: string
++        }
++        Update: {
++          created_at?: string
++          id?: string
++          net_payout?: number
++          run_id?: string
++          shipment_id?: string
++          status?: string
++          updated_at?: string
++        }
++        Relationships: [
++          {
++            foreignKeyName: "connect_payout_run_shipments_run_id_fkey"
++            columns: ["run_id"]
++            isOneToOne: false
++            referencedRelation: "connect_payout_runs"
++            referencedColumns: ["id"]
++          },
++          {
++            foreignKeyName: "connect_payout_run_shipments_shipment_id_fkey"
++            columns: ["shipment_id"]
++            isOneToOne: false
++            referencedRelation: "admin_connect_earnings_view"
++            referencedColumns: ["id"]
++          },
++          {
++            foreignKeyName: "connect_payout_run_shipments_shipment_id_fkey"
++            columns: ["shipment_id"]
++            isOneToOne: false
++            referencedRelation: "admin_connect_payout_release_view"
++            referencedColumns: ["shipment_id"]
++          },
++          {
++            foreignKeyName: "connect_payout_run_shipments_shipment_id_fkey"
++            columns: ["shipment_id"]
++            isOneToOne: false
++            referencedRelation: "shipments"
++            referencedColumns: ["id"]
++          },
++        ]
++      }
++      connect_payout_runs: {
++        Row: {
++          actor_id: string
++          amount: number
++          created_at: string
++          failed_at: string | null
++          failure_reason: string | null
++          id: string
++          idempotency_key: string
++          paid_at: string | null
++          seller_id: string
++          status: string
++          stripe_payout_id: string | null
++          updated_at: string
++        }
++        Insert: {
++          actor_id: string
++          amount: number
++          created_at?: string
++          failed_at?: string | null
++          failure_reason?: string | null
++          id?: string
++          idempotency_key: string
++          paid_at?: string | null
++          seller_id: string
++          status?: string
++          stripe_payout_id?: string | null
++          updated_at?: string
++        }
++        Update: {
++          actor_id?: string
++          amount?: number
++          created_at?: string
++          failed_at?: string | null
++          failure_reason?: string | null
++          id?: string
++          idempotency_key?: string
++          paid_at?: string | null
++          seller_id?: string
++          status?: string
++          stripe_payout_id?: string | null
++          updated_at?: string
++        }
++        Relationships: [
++          {
++            foreignKeyName: "connect_payout_runs_actor_id_fkey"
++            columns: ["actor_id"]
++            isOneToOne: false
++            referencedRelation: "admin_disputes_monitor_view"
++            referencedColumns: ["buyer_id"]
++          },
++          {
++            foreignKeyName: "connect_payout_runs_actor_id_fkey"
++            columns: ["actor_id"]
++            isOneToOne: false
++            referencedRelation: "admin_disputes_monitor_view"
++            referencedColumns: ["seller_id"]
++          },
++          {
++            foreignKeyName: "connect_payout_runs_actor_id_fkey"
++            columns: ["actor_id"]
++            isOneToOne: false
++            referencedRelation: "admin_seller_onboarding_view"
++            referencedColumns: ["id"]
++          },
++          {
++            foreignKeyName: "connect_payout_runs_actor_id_fkey"
++            columns: ["actor_id"]
++            isOneToOne: false
++            referencedRelation: "admin_user_directory_view"
++            referencedColumns: ["id"]
++          },
++          {
++            foreignKeyName: "connect_payout_runs_actor_id_fkey"
++            columns: ["actor_id"]
++            isOneToOne: false
++            referencedRelation: "profiles"
++            referencedColumns: ["id"]
++          },
++          {
++            foreignKeyName: "connect_payout_runs_seller_id_fkey"
++            columns: ["seller_id"]
++            isOneToOne: false
++            referencedRelation: "admin_disputes_monitor_view"
++            referencedColumns: ["buyer_id"]
++          },
++          {
++            foreignKeyName: "connect_payout_runs_seller_id_fkey"
++            columns: ["seller_id"]
++            isOneToOne: false
++            referencedRelation: "admin_disputes_monitor_view"
++            referencedColumns: ["seller_id"]
++          },
++          {
++            foreignKeyName: "connect_payout_runs_seller_id_fkey"
++            columns: ["seller_id"]
++            isOneToOne: false
++            referencedRelation: "admin_seller_onboarding_view"
++            referencedColumns: ["id"]
++          },
++          {
++            foreignKeyName: "connect_payout_runs_seller_id_fkey"
++            columns: ["seller_id"]
++            isOneToOne: false
++            referencedRelation: "admin_user_directory_view"
++            referencedColumns: ["id"]
++          },
++          {
++            foreignKeyName: "connect_payout_runs_seller_id_fkey"
++            columns: ["seller_id"]
++            isOneToOne: false
++            referencedRelation: "profiles"
++            referencedColumns: ["id"]
++          },
++        ]
++      }
+       category_configurations: {
+         Row: {
+           category_name: string
+@@ -2003,6 +2178,25 @@ export type Database = {
+       }
+     }
+     Views: {
++      admin_connect_payout_release_view: {
++        Row: {
++          completed_at: string | null
++          ineligible_reason: string | null
++          is_eligible: boolean | null
++          order_id: string | null
++          release_amount_cents: number | null
++          seller_id: string | null
++          seller_name: string | null
++          shipment_id: string | null
++          status: Database["public"]["Enums"]["order_status_enum"] | null
++          stripe_account_id: string | null
++          stripe_onboarding_status:
++            | Database["public"]["Enums"]["stripe_onboarding_status"]
++            | null
++          stripe_payment_intent_id: string | null
++        }
++        Relationships: []
++      }
+       admin_connect_earnings_view: {
+         Row: {
+           amount: number | null
+diff --git a/packages/types/src/index.ts b/packages/types/src/index.ts
+index 75a4608..2d5657c 100644
+--- a/packages/types/src/index.ts
++++ b/packages/types/src/index.ts
+@@ -3,8 +3,9 @@ import type { Database, Json } from './database.types';
+ 
+ // --- 1. UTILIDADES CORE ---
+ // Extrae el tipo de una fila de la tabla X
+-export type Tables<T extends keyof Database['public']['Tables']> =
+-  Database['public']['Tables'][T]['Row'];
++export type Tables<
++  T extends keyof (Database['public']['Tables'] & Database['public']['Views']),
++> = (Database['public']['Tables'] & Database['public']['Views'])[T]['Row'];
+ // Extrae el tipo de un Enum de la base de datos
+ export type Enums<T extends keyof Database['public']['Enums']> =
+   Database['public']['Enums'][T];
+@@ -22,6 +23,9 @@ export type Product = Tables<'products'>;
+ export type Order = Tables<'orders'>;
+ export type Dispute = Tables<'disputes'>;
+ export type Shipment = Tables<'shipments'>;
++export type ConnectPayoutRun = Tables<'connect_payout_runs'>;
++export type ConnectPayoutRunShipment = Tables<'connect_payout_run_shipments'>;
++export type ConnectPayoutReleaseQueueRow = Tables<'admin_connect_payout_release_view'>;
+ 
+ // --- 3. ENUMS (Sincronizados con Postgres) ---
+ // Si cambias el Enum en la DB y corres la CLI, estos se actualizan solos
+@@ -36,6 +40,65 @@ export type ProductStatus = Enums<'product_status_enum'>;
+ export type UserRole = 'user' | 'admin' | 'moderator';
+ export type ShippingPayer = 'buyer' | 'seller';
+ 
++export type ConnectPayoutRunStatus =
++  | 'pending_reconciliation'
++  | 'paid'
++  | 'failed'
++  | 'canceled'
++  | 'reconciliation_needed';
++
++export interface ConnectPayoutReleaseRequest {
++  sellerId: string;
++  shipmentIds: string[];
++  idempotencyKey: string;
++}
++
++export type ReleaseConnectPayoutResponse =
++  | {
++      success: true;
++      runId: string;
++      stripePayoutId?: string;
++      status: ConnectPayoutRunStatus;
++      amount: number;
++    }
++  | { success: false; error: string };
++
++export type ConnectPayoutReleaseQueueRequest = { search?: string };
++
++export type ConnectPayoutReleaseQueueResponse = {
++  success: boolean;
++  rows?: ConnectPayoutReleaseQueueRow[];
++  error?: string;
++};
++
++export interface CreateDisputeRequest {
++  orderId: string;
++  shipmentId: string;
++  reason: string;
++  description: string;
++  evidence: {
++    images: string[];
++    tech_checklist: Record<string, boolean>;
++    video_url: string | null;
++  };
++}
++
++export type SellerOnboardingSelfResponse = {
++  success: true;
++  has_stripe_account: boolean;
++  stripe_onboarding_status: StripeOnboardingStatus | null;
++};
++
++export type SellerOnboardingAdminResponse = {
++  success: true;
++  rows: Database['public']['Views']['admin_seller_onboarding_view']['Row'][];
++};
++
++export type SellerOnboardingErrorResponse = {
++  success: false;
++  error: string;
++};
++
+ // --- EDGE FUNCTION REGISTRY (Contratos tipados para invokeEdge) ---
+ export interface EdgeFunctionRegistry {
+   'resolve-dispute': {
+@@ -51,16 +114,7 @@ export interface EdgeFunctionRegistry {
+     response: { success: boolean; error?: string };
+   };
+   'create-dispute': {
+-    payload: {
+-      orderId: string;
+-      reason: string;
+-      description: string;
+-      evidence: {
+-        images: string[];
+-        tech_checklist: Record<string, boolean>;
+-        video_url: string | null;
+-      };
+-    };
++    payload: CreateDisputeRequest;
+     response: { success: boolean; error?: string };
+   };
+   'cancel-order': {
+@@ -127,13 +181,13 @@ export interface EdgeFunctionRegistry {
+   };
+   'create-connect-account': {
+     payload: { refreshUrl?: string; returnUrl?: string };
+-    response: { url: string; accountId: string };
++    response: { url: string };
+   };
+   'refresh-connect-account-status': {
+     payload: { force?: boolean; sellerId?: string };
+     response: {
+       status: StripeOnboardingStatus;
+-      accountId: string;
++      hasStripeAccount: boolean;
+       chargesEnabled: boolean;
+       payoutsEnabled: boolean;
+       refreshedAt: string;
+@@ -196,13 +250,20 @@ export interface EdgeFunctionRegistry {
+       error?: string;
+     };
+   };
++  'get-connect-payout-release-queue': {
++    payload: ConnectPayoutReleaseQueueRequest;
++    response: ConnectPayoutReleaseQueueResponse;
++  };
++  'release-connect-payout': {
++    payload: ConnectPayoutReleaseRequest;
++    response: ReleaseConnectPayoutResponse;
++  };
+   'get-seller-onboarding': {
+     payload: Record<string, never>;
+-    response: {
+-      success: boolean;
+-      rows?: Database['public']['Views']['admin_seller_onboarding_view']['Row'][];
+-      error?: string;
+-    };
++    response:
++      | SellerOnboardingSelfResponse
++      | SellerOnboardingAdminResponse
++      | SellerOnboardingErrorResponse;
+   };
+   'get-shipping-quote': {
+     payload: {
+diff --git a/packages/types/tsconfig.json b/packages/types/tsconfig.json
+index bfa0fea..b2e7497 100644
+--- a/packages/types/tsconfig.json
++++ b/packages/types/tsconfig.json
+@@ -7,6 +7,7 @@
+     "moduleDetection": "force",
+     "jsx": "react-jsx",
+     "allowJs": true,
++    "types": ["bun"],
+ 
+     // Bundler mode
+     "moduleResolution": "bundler",

@@ -56,7 +56,7 @@ export const useProductLock = () => {
             lockedSince: result.locked_at,
           });
           toast.warning(
-            `Acceso denegado: Producto en revisión por ${result.locker_name}`,
+            `Acceso denegado: Producto en revisión por ${result.locked_by_username}`,
           );
           return false;
         }
@@ -72,29 +72,26 @@ export const useProductLock = () => {
         setIsLocking(false);
       }
     },
-    [user?.id],
+    [user],
   );
 
-  const releaseLock = useCallback(
-    async (productId: string) => {
-      if (!adminIdRef.current || !productId) return;
-      try {
-        await supabase.rpc('fn_unlock_product', {
-          p_product_id: productId,
-        });
+  const releaseLock = useCallback(async (productId: string) => {
+    if (!adminIdRef.current || !productId) return;
+    try {
+      await supabase.rpc('fn_unlock_product', {
+        p_product_id: productId,
+      });
 
-        setLockStatus({
-          isLockedByOther: false,
-          lockerName: null,
-          lockedSince: null,
-        });
-        adminIdRef.current = null;
-      } catch {
-        // Lock release failed silently — lock will expire after 10 min
-      }
-    },
-    [],
-  );
+      setLockStatus({
+        isLockedByOther: false,
+        lockerName: null,
+        lockedSince: null,
+      });
+      adminIdRef.current = null;
+    } catch {
+      // Lock release failed silently — lock will expire after 10 min
+    }
+  }, []);
 
   return {
     acquireLock,

@@ -4,6 +4,7 @@ import { useNavigation, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'; // Ajusta la ruta si es necesario
 import { useSellStore } from '../store/useSellStore';
+import { subscribeBeforeRemove } from '../utils/navigationGuard';
 
 export const useExitGuard = (enabled: boolean = true) => {
   const [showDialog, setShowDialog] = useState(false);
@@ -19,7 +20,7 @@ export const useExitGuard = (enabled: boolean = true) => {
   useEffect(() => {
     if (!enabled) return;
 
-    const beforeRemoveListener = navigation.addListener('beforeRemove', (e) => {
+    const unsubscribe = subscribeBeforeRemove(navigation, (e) => {
       // Si es una acción de "Replace" (como cuando publicamos exitosamente), dejamos pasar
       if (e.data.action.type === 'REPLACE') return;
 
@@ -31,9 +32,7 @@ export const useExitGuard = (enabled: boolean = true) => {
       setShowDialog(true);
     });
 
-    return () => {
-      navigation.removeListener('beforeRemove', beforeRemoveListener);
-    };
+    return unsubscribe;
   }, [navigation, enabled]);
 
   const handleConfirm = useCallback(() => {

@@ -121,6 +121,13 @@ export type Database = {
             foreignKeyName: "admin_audit_logs_admin_id_fkey"
             columns: ["admin_id"]
             isOneToOne: false
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_audit_logs_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
             referencedRelation: "admin_user_directory_view"
             referencedColumns: ["id"]
           },
@@ -174,6 +181,13 @@ export type Database = {
             foreignKeyName: "admin_user_notes_admin_id_fkey"
             columns: ["admin_id"]
             isOneToOne: false
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_user_notes_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
             referencedRelation: "admin_user_directory_view"
             referencedColumns: ["id"]
           },
@@ -197,6 +211,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "admin_disputes_monitor_view"
             referencedColumns: ["seller_id"]
+          },
+          {
+            foreignKeyName: "admin_user_notes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "admin_user_notes_user_id_fkey"
@@ -252,6 +273,13 @@ export type Database = {
             foreignKeyName: "blocked_users_blocked_id_fkey"
             columns: ["blocked_id"]
             isOneToOne: false
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blocked_users_blocked_id_fkey"
+            columns: ["blocked_id"]
+            isOneToOne: false
             referencedRelation: "admin_user_directory_view"
             referencedColumns: ["id"]
           },
@@ -275,6 +303,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "admin_disputes_monitor_view"
             referencedColumns: ["seller_id"]
+          },
+          {
+            foreignKeyName: "blocked_users_blocker_id_fkey"
+            columns: ["blocker_id"]
+            isOneToOne: false
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "blocked_users_blocker_id_fkey"
@@ -312,6 +347,181 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      connect_payout_run_shipments: {
+        Row: {
+          created_at: string
+          id: string
+          net_payout: number
+          run_id: string
+          shipment_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          net_payout: number
+          run_id: string
+          shipment_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          net_payout?: number
+          run_id?: string
+          shipment_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "connect_payout_run_shipments_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "connect_payout_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "connect_payout_run_shipments_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "admin_connect_earnings_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "connect_payout_run_shipments_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "admin_connect_payout_release_view"
+            referencedColumns: ["shipment_id"]
+          },
+          {
+            foreignKeyName: "connect_payout_run_shipments_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      connect_payout_runs: {
+        Row: {
+          actor_id: string
+          amount: number
+          created_at: string
+          failed_at: string | null
+          failure_reason: string | null
+          id: string
+          idempotency_key: string
+          paid_at: string | null
+          seller_id: string
+          status: string
+          stripe_payout_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          actor_id: string
+          amount: number
+          created_at?: string
+          failed_at?: string | null
+          failure_reason?: string | null
+          id?: string
+          idempotency_key: string
+          paid_at?: string | null
+          seller_id: string
+          status?: string
+          stripe_payout_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          actor_id?: string
+          amount?: number
+          created_at?: string
+          failed_at?: string | null
+          failure_reason?: string | null
+          id?: string
+          idempotency_key?: string
+          paid_at?: string | null
+          seller_id?: string
+          status?: string
+          stripe_payout_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "connect_payout_runs_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "admin_disputes_monitor_view"
+            referencedColumns: ["buyer_id"]
+          },
+          {
+            foreignKeyName: "connect_payout_runs_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "admin_disputes_monitor_view"
+            referencedColumns: ["seller_id"]
+          },
+          {
+            foreignKeyName: "connect_payout_runs_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "connect_payout_runs_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_directory_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "connect_payout_runs_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "connect_payout_runs_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "admin_disputes_monitor_view"
+            referencedColumns: ["buyer_id"]
+          },
+          {
+            foreignKeyName: "connect_payout_runs_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "admin_disputes_monitor_view"
+            referencedColumns: ["seller_id"]
+          },
+          {
+            foreignKeyName: "connect_payout_runs_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "connect_payout_runs_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_directory_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "connect_payout_runs_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       disputes: {
         Row: {
@@ -408,6 +618,13 @@ export type Database = {
             foreignKeyName: "disputes_buyer_id_fkey"
             columns: ["buyer_id"]
             isOneToOne: false
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disputes_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
             referencedRelation: "admin_user_directory_view"
             referencedColumns: ["id"]
           },
@@ -436,6 +653,13 @@ export type Database = {
             foreignKeyName: "disputes_locked_by_fkey"
             columns: ["locked_by"]
             isOneToOne: false
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disputes_locked_by_fkey"
+            columns: ["locked_by"]
+            isOneToOne: false
             referencedRelation: "admin_user_directory_view"
             referencedColumns: ["id"]
           },
@@ -449,14 +673,14 @@ export type Database = {
           {
             foreignKeyName: "disputes_order_id_fkey"
             columns: ["order_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "admin_disputes_monitor_view"
             referencedColumns: ["order_id"]
           },
           {
             foreignKeyName: "disputes_order_id_fkey"
             columns: ["order_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -478,6 +702,13 @@ export type Database = {
             foreignKeyName: "disputes_resolved_by_fkey"
             columns: ["resolved_by"]
             isOneToOne: false
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disputes_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
             referencedRelation: "admin_user_directory_view"
             referencedColumns: ["id"]
           },
@@ -506,6 +737,13 @@ export type Database = {
             foreignKeyName: "disputes_seller_id_fkey"
             columns: ["seller_id"]
             isOneToOne: false
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disputes_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
             referencedRelation: "admin_user_directory_view"
             referencedColumns: ["id"]
           },
@@ -519,7 +757,21 @@ export type Database = {
           {
             foreignKeyName: "disputes_shipment_id_fkey"
             columns: ["shipment_id"]
-            isOneToOne: false
+            isOneToOne: true
+            referencedRelation: "admin_connect_earnings_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disputes_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: true
+            referencedRelation: "admin_connect_payout_release_view"
+            referencedColumns: ["shipment_id"]
+          },
+          {
+            foreignKeyName: "disputes_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: true
             referencedRelation: "shipments"
             referencedColumns: ["id"]
           },
@@ -572,6 +824,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "admin_disputes_monitor_view"
             referencedColumns: ["seller_id"]
+          },
+          {
+            foreignKeyName: "favorites_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "favorites_user_id_fkey"
@@ -749,6 +1008,20 @@ export type Database = {
             foreignKeyName: "order_items_shipment_id_fkey"
             columns: ["shipment_id"]
             isOneToOne: false
+            referencedRelation: "admin_connect_earnings_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "admin_connect_payout_release_view"
+            referencedColumns: ["shipment_id"]
+          },
+          {
+            foreignKeyName: "order_items_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
             referencedRelation: "shipments"
             referencedColumns: ["id"]
           },
@@ -762,10 +1035,14 @@ export type Database = {
           currency: string | null
           delivered_at: string | null
           id: string
+          payment_processing: boolean
+          payment_processing_reason: string | null
           service_fee_amount: number | null
           shipping_address: Json
           status: Database["public"]["Enums"]["order_status_enum"]
-          stripe_payment_intent_id: string
+          stripe_charge_id: string | null
+          stripe_payment_intent_id: string | null
+          stripe_transfer_group: string | null
           total_amount: number
           updated_at: string | null
         }
@@ -776,10 +1053,14 @@ export type Database = {
           currency?: string | null
           delivered_at?: string | null
           id?: string
+          payment_processing?: boolean
+          payment_processing_reason?: string | null
           service_fee_amount?: number | null
           shipping_address: Json
           status?: Database["public"]["Enums"]["order_status_enum"]
-          stripe_payment_intent_id: string
+          stripe_charge_id?: string | null
+          stripe_payment_intent_id?: string | null
+          stripe_transfer_group?: string | null
           total_amount: number
           updated_at?: string | null
         }
@@ -790,10 +1071,14 @@ export type Database = {
           currency?: string | null
           delivered_at?: string | null
           id?: string
+          payment_processing?: boolean
+          payment_processing_reason?: string | null
           service_fee_amount?: number | null
           shipping_address?: Json
           status?: Database["public"]["Enums"]["order_status_enum"]
-          stripe_payment_intent_id?: string
+          stripe_charge_id?: string | null
+          stripe_payment_intent_id?: string | null
+          stripe_transfer_group?: string | null
           total_amount?: number
           updated_at?: string | null
         }
@@ -905,6 +1190,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "admin_disputes_monitor_view"
             referencedColumns: ["seller_id"]
+          },
+          {
+            foreignKeyName: "payout_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "payout_requests_user_id_fkey"
@@ -1036,6 +1328,13 @@ export type Database = {
             foreignKeyName: "products_locked_by_fkey"
             columns: ["locked_by"]
             isOneToOne: false
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_locked_by_fkey"
+            columns: ["locked_by"]
+            isOneToOne: false
             referencedRelation: "admin_user_directory_view"
             referencedColumns: ["id"]
           },
@@ -1059,6 +1358,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "admin_disputes_monitor_view"
             referencedColumns: ["seller_id"]
+          },
+          {
+            foreignKeyName: "products_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "products_seller_id_fkey"
@@ -1123,7 +1429,12 @@ export type Database = {
           status_reason: string | null
           status_updated_at: string | null
           status_updated_by: string | null
+          stripe_account_id: string | null
           stripe_customer_id: string | null
+          stripe_onboarding_refreshed_at: string | null
+          stripe_onboarding_status:
+            | Database["public"]["Enums"]["stripe_onboarding_status"]
+            | null
           updated_at: string | null
         }
         Insert: {
@@ -1136,7 +1447,12 @@ export type Database = {
           status_reason?: string | null
           status_updated_at?: string | null
           status_updated_by?: string | null
+          stripe_account_id?: string | null
           stripe_customer_id?: string | null
+          stripe_onboarding_refreshed_at?: string | null
+          stripe_onboarding_status?:
+            | Database["public"]["Enums"]["stripe_onboarding_status"]
+            | null
           updated_at?: string | null
         }
         Update: {
@@ -1149,7 +1465,12 @@ export type Database = {
           status_reason?: string | null
           status_updated_at?: string | null
           status_updated_by?: string | null
+          stripe_account_id?: string | null
           stripe_customer_id?: string | null
+          stripe_onboarding_refreshed_at?: string | null
+          stripe_onboarding_status?:
+            | Database["public"]["Enums"]["stripe_onboarding_status"]
+            | null
           updated_at?: string | null
         }
         Relationships: []
@@ -1196,6 +1517,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "admin_disputes_monitor_view"
             referencedColumns: ["seller_id"]
+          },
+          {
+            foreignKeyName: "reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "reports_reporter_id_fkey"
@@ -1294,6 +1622,13 @@ export type Database = {
             foreignKeyName: "reviews_reviewer_id_fkey"
             columns: ["reviewer_id"]
             isOneToOne: false
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
             referencedRelation: "admin_user_directory_view"
             referencedColumns: ["id"]
           },
@@ -1322,6 +1657,13 @@ export type Database = {
             foreignKeyName: "reviews_seller_id_fkey"
             columns: ["seller_id"]
             isOneToOne: false
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
             referencedRelation: "admin_user_directory_view"
             referencedColumns: ["id"]
           },
@@ -1331,6 +1673,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "admin_connect_earnings_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "admin_connect_payout_release_view"
+            referencedColumns: ["shipment_id"]
           },
           {
             foreignKeyName: "reviews_shipment_id_fkey"
@@ -1391,6 +1747,13 @@ export type Database = {
             foreignKeyName: "seller_bank_accounts_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: true
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seller_bank_accounts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
             referencedRelation: "admin_user_directory_view"
             referencedColumns: ["id"]
           },
@@ -1419,7 +1782,12 @@ export type Database = {
           return_tracking_number: string | null
           seller_id: string
           shipped_at: string | null
+          shipping_cost: number | null
+          shipping_evidence: Json | null
           status: Database["public"]["Enums"]["order_status_enum"]
+          stripe_payment_intent_id: string | null
+          stripe_payout_id: string | null
+          stripe_transfer_id: string | null
           tracking_number: string | null
           updated_at: string | null
         }
@@ -1438,7 +1806,12 @@ export type Database = {
           return_tracking_number?: string | null
           seller_id: string
           shipped_at?: string | null
+          shipping_cost?: number | null
+          shipping_evidence?: Json | null
           status?: Database["public"]["Enums"]["order_status_enum"]
+          stripe_payment_intent_id?: string | null
+          stripe_payout_id?: string | null
+          stripe_transfer_id?: string | null
           tracking_number?: string | null
           updated_at?: string | null
         }
@@ -1457,7 +1830,12 @@ export type Database = {
           return_tracking_number?: string | null
           seller_id?: string
           shipped_at?: string | null
+          shipping_cost?: number | null
+          shipping_evidence?: Json | null
           status?: Database["public"]["Enums"]["order_status_enum"]
+          stripe_payment_intent_id?: string | null
+          stripe_payout_id?: string | null
+          stripe_transfer_id?: string | null
           tracking_number?: string | null
           updated_at?: string | null
         }
@@ -1489,6 +1867,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "admin_disputes_monitor_view"
             referencedColumns: ["seller_id"]
+          },
+          {
+            foreignKeyName: "shipments_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "shipments_seller_id_fkey"
@@ -1540,6 +1925,7 @@ export type Database = {
         Row: {
           auto_cancel_orders_running: boolean | null
           auto_cancel_preparing_running: boolean | null
+          connect_enabled: boolean | null
           currency: string | null
           id: number
           insurance_rate: number | null
@@ -1549,6 +1935,8 @@ export type Database = {
           min_payout_amount_cents: number | null
           min_version_android: string | null
           min_version_ios: string | null
+          novice_active_limit: number | null
+          novice_completed_threshold: number | null
           order_expiration_hours: number | null
           package_presets: Json | null
           payout_fee_fixed_cents: number | null
@@ -1559,11 +1947,13 @@ export type Database = {
           service_fee_fixed_cents: number | null
           service_fee_pct: number | null
           shipping_buffer_cents: number | null
+          trusted_active_limit: number | null
           updated_at: string | null
         }
         Insert: {
           auto_cancel_orders_running?: boolean | null
           auto_cancel_preparing_running?: boolean | null
+          connect_enabled?: boolean | null
           currency?: string | null
           id: number
           insurance_rate?: number | null
@@ -1573,6 +1963,8 @@ export type Database = {
           min_payout_amount_cents?: number | null
           min_version_android?: string | null
           min_version_ios?: string | null
+          novice_active_limit?: number | null
+          novice_completed_threshold?: number | null
           order_expiration_hours?: number | null
           package_presets?: Json | null
           payout_fee_fixed_cents?: number | null
@@ -1583,11 +1975,13 @@ export type Database = {
           service_fee_fixed_cents?: number | null
           service_fee_pct?: number | null
           shipping_buffer_cents?: number | null
+          trusted_active_limit?: number | null
           updated_at?: string | null
         }
         Update: {
           auto_cancel_orders_running?: boolean | null
           auto_cancel_preparing_running?: boolean | null
+          connect_enabled?: boolean | null
           currency?: string | null
           id?: number
           insurance_rate?: number | null
@@ -1597,6 +1991,8 @@ export type Database = {
           min_payout_amount_cents?: number | null
           min_version_android?: string | null
           min_version_ios?: string | null
+          novice_active_limit?: number | null
+          novice_completed_threshold?: number | null
           order_expiration_hours?: number | null
           package_presets?: Json | null
           payout_fee_fixed_cents?: number | null
@@ -1607,6 +2003,7 @@ export type Database = {
           service_fee_fixed_cents?: number | null
           service_fee_pct?: number | null
           shipping_buffer_cents?: number | null
+          trusted_active_limit?: number | null
           updated_at?: string | null
         }
         Relationships: []
@@ -1679,6 +2076,20 @@ export type Database = {
             foreignKeyName: "wallet_transactions_shipment_id_fkey"
             columns: ["shipment_id"]
             isOneToOne: false
+            referencedRelation: "admin_connect_earnings_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_transactions_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "admin_connect_payout_release_view"
+            referencedColumns: ["shipment_id"]
+          },
+          {
+            foreignKeyName: "wallet_transactions_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
             referencedRelation: "shipments"
             referencedColumns: ["id"]
           },
@@ -1730,6 +2141,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "admin_disputes_monitor_view"
             referencedColumns: ["seller_id"]
+          },
+          {
+            foreignKeyName: "wallets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "wallets_user_id_fkey"
@@ -1797,6 +2215,13 @@ export type Database = {
             foreignKeyName: "webhook_dlq_resolved_by_fkey"
             columns: ["resolved_by"]
             isOneToOne: false
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webhook_dlq_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
             referencedRelation: "admin_user_directory_view"
             referencedColumns: ["id"]
           },
@@ -1811,6 +2236,126 @@ export type Database = {
       }
     }
     Views: {
+      admin_connect_earnings_view: {
+        Row: {
+          amount: number | null
+          application_fee_amount: number | null
+          created_at: string | null
+          id: string | null
+          seller_id: string | null
+          seller_name: string | null
+          status: string | null
+          stripe_payment_intent_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipments_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "admin_disputes_monitor_view"
+            referencedColumns: ["buyer_id"]
+          },
+          {
+            foreignKeyName: "shipments_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "admin_disputes_monitor_view"
+            referencedColumns: ["seller_id"]
+          },
+          {
+            foreignKeyName: "shipments_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipments_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_directory_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipments_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_connect_payout_release_view: {
+        Row: {
+          completed_at: string | null
+          ineligible_reason: string | null
+          is_eligible: boolean | null
+          order_id: string | null
+          release_amount_cents: number | null
+          seller_id: string | null
+          seller_name: string | null
+          shipment_id: string | null
+          status: Database["public"]["Enums"]["order_status_enum"] | null
+          stripe_account_id: string | null
+          stripe_onboarding_status:
+            | Database["public"]["Enums"]["stripe_onboarding_status"]
+            | null
+          stripe_payment_intent_id: string | null
+          stripe_transfer_id: string | null
+          transfer_group: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "admin_disputes_monitor_view"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "shipments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipments_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "admin_disputes_monitor_view"
+            referencedColumns: ["buyer_id"]
+          },
+          {
+            foreignKeyName: "shipments_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "admin_disputes_monitor_view"
+            referencedColumns: ["seller_id"]
+          },
+          {
+            foreignKeyName: "shipments_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipments_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_directory_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipments_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_disputes_monitor_view: {
         Row: {
           buyer_id: string | null
@@ -1862,6 +2407,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "admin_disputes_monitor_view"
             referencedColumns: ["seller_id"]
+          },
+          {
+            foreignKeyName: "payout_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "payout_requests_user_id_fkey"
@@ -1986,6 +2538,13 @@ export type Database = {
             foreignKeyName: "products_locked_by_fkey"
             columns: ["locked_by"]
             isOneToOne: false
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_locked_by_fkey"
+            columns: ["locked_by"]
+            isOneToOne: false
             referencedRelation: "admin_user_directory_view"
             referencedColumns: ["id"]
           },
@@ -2014,6 +2573,13 @@ export type Database = {
             foreignKeyName: "products_seller_id_fkey"
             columns: ["seller_id"]
             isOneToOne: false
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
             referencedRelation: "admin_user_directory_view"
             referencedColumns: ["id"]
           },
@@ -2025,6 +2591,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      admin_seller_onboarding_view: {
+        Row: {
+          charges_enabled: boolean | null
+          created_at: string | null
+          email: string | null
+          id: string | null
+          stripe_account_id: string | null
+          stripe_onboarding_status:
+            | Database["public"]["Enums"]["stripe_onboarding_status"]
+            | null
+          username: string | null
+        }
+        Relationships: []
       }
       admin_user_directory_view: {
         Row: {
@@ -2070,6 +2650,13 @@ export type Database = {
             foreignKeyName: "products_seller_id_fkey"
             columns: ["seller_id"]
             isOneToOne: false
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
             referencedRelation: "admin_user_directory_view"
             referencedColumns: ["id"]
           },
@@ -2084,6 +2671,10 @@ export type Database = {
       }
     }
     Functions: {
+      fn_admin_restore_product: {
+        Args: { p_product_id: string }
+        Returns: boolean
+      }
       fn_admin_soft_delete_product: {
         Args: { p_product_id: string; p_reason: string }
         Returns: boolean
@@ -2092,23 +2683,14 @@ export type Database = {
         Args: { p_is_verified: boolean; p_target_user_id: string }
         Returns: boolean
       }
-      fn_admin_update_user_status:
-        | {
-            Args: {
-              p_new_status: Database["public"]["Enums"]["account_status"]
-              p_reason: string
-              p_target_user_id: string
-            }
-            Returns: boolean
-          }
-        | {
-            Args: {
-              p_new_status: string
-              p_reason: string
-              p_target_user_id: string
-            }
-            Returns: boolean
-          }
+      fn_admin_update_user_status: {
+        Args: {
+          p_new_status: string
+          p_reason: string
+          p_target_user_id: string
+        }
+        Returns: boolean
+      }
       fn_buyer_submit_return_evidence: {
         Args: { p_dispute_id: string; p_images: string[] }
         Returns: {
@@ -2173,6 +2755,24 @@ export type Database = {
           success: boolean
         }[]
       }
+      fn_create_shipment_from_payment: {
+        Args: {
+          p_amount_received: number
+          p_metadata: Json
+          p_stripe_payment_intent_id: string
+        }
+        Returns: Json
+      }
+      fn_create_shipments_from_single_payment: {
+        Args: {
+          p_allocation: Json
+          p_amount_received: number
+          p_stripe_charge_id: string
+          p_stripe_payment_intent_id: string
+          p_transfer_group: string
+        }
+        Returns: Json
+      }
       fn_cron_dispute_payout_timeout: { Args: never; Returns: undefined }
       fn_cron_dispute_shipping_timeout: { Args: never; Returns: undefined }
       fn_cron_release_shipment_funds: {
@@ -2214,7 +2814,7 @@ export type Database = {
         Args: { p_product_id: string }
         Returns: {
           locked_at: string
-          locker_name: string
+          locked_by_username: string
           success: boolean
         }[]
       }
@@ -2236,6 +2836,14 @@ export type Database = {
           success: boolean
         }[]
       }
+      fn_reconcile_connect_payments: {
+        Args: never
+        Returns: {
+          action: string
+          shipment_id: string
+          status: string
+        }[]
+      }
       fn_refresh_seller_stats: {
         Args: { p_seller_id: string }
         Returns: undefined
@@ -2251,6 +2859,12 @@ export type Database = {
         Returns: {
           error_message: string
           success: boolean
+        }[]
+      }
+      fn_release_stale_reservations: {
+        Args: { p_product_ids?: string[] }
+        Returns: {
+          released_id: string
         }[]
       }
       fn_request_payout: {
@@ -2281,6 +2895,15 @@ export type Database = {
           error_message: string
           success: boolean
         }[]
+      }
+      fn_resolve_product_verdict: {
+        Args: {
+          p_private_note?: string
+          p_product_id: string
+          p_public_note?: string
+          p_verdict: string
+        }
+        Returns: boolean
       }
       fn_save_bank_account: {
         Args: { p_clabe: string; p_holder_name: string }
@@ -2352,6 +2975,7 @@ export type Database = {
         | "HIDDEN"
         | "RESERVED"
         | "IN_DISPUTE"
+      stripe_onboarding_status: "pending" | "complete" | "rejected"
       wallet_transaction_type:
         | "sale_proceeds"
         | "payout"
@@ -2524,6 +3148,7 @@ export const Constants = {
         "RESERVED",
         "IN_DISPUTE",
       ],
+      stripe_onboarding_status: ["pending", "complete", "rejected"],
       wallet_transaction_type: [
         "sale_proceeds",
         "payout",

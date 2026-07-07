@@ -1,0 +1,583 @@
+diff --git a/packages/types/src/database.types.ts b/packages/types/src/database.types.ts
+index 2fd6283..00e3bd6 100644
+--- a/packages/types/src/database.types.ts
++++ b/packages/types/src/database.types.ts
+@@ -117,6 +117,13 @@ export type Database = {
+             referencedRelation: "admin_disputes_monitor_view"
+             referencedColumns: ["seller_id"]
+           },
++          {
++            foreignKeyName: "admin_audit_logs_admin_id_fkey"
++            columns: ["admin_id"]
++            isOneToOne: false
++            referencedRelation: "admin_seller_onboarding_view"
++            referencedColumns: ["id"]
++          },
+           {
+             foreignKeyName: "admin_audit_logs_admin_id_fkey"
+             columns: ["admin_id"]
+@@ -170,6 +177,13 @@ export type Database = {
+             referencedRelation: "admin_disputes_monitor_view"
+             referencedColumns: ["seller_id"]
+           },
++          {
++            foreignKeyName: "admin_user_notes_admin_id_fkey"
++            columns: ["admin_id"]
++            isOneToOne: false
++            referencedRelation: "admin_seller_onboarding_view"
++            referencedColumns: ["id"]
++          },
+           {
+             foreignKeyName: "admin_user_notes_admin_id_fkey"
+             columns: ["admin_id"]
+@@ -198,6 +212,13 @@ export type Database = {
+             referencedRelation: "admin_disputes_monitor_view"
+             referencedColumns: ["seller_id"]
+           },
++          {
++            foreignKeyName: "admin_user_notes_user_id_fkey"
++            columns: ["user_id"]
++            isOneToOne: false
++            referencedRelation: "admin_seller_onboarding_view"
++            referencedColumns: ["id"]
++          },
+           {
+             foreignKeyName: "admin_user_notes_user_id_fkey"
+             columns: ["user_id"]
+@@ -248,6 +269,13 @@ export type Database = {
+             referencedRelation: "admin_disputes_monitor_view"
+             referencedColumns: ["seller_id"]
+           },
++          {
++            foreignKeyName: "blocked_users_blocked_id_fkey"
++            columns: ["blocked_id"]
++            isOneToOne: false
++            referencedRelation: "admin_seller_onboarding_view"
++            referencedColumns: ["id"]
++          },
+           {
+             foreignKeyName: "blocked_users_blocked_id_fkey"
+             columns: ["blocked_id"]
+@@ -276,6 +304,13 @@ export type Database = {
+             referencedRelation: "admin_disputes_monitor_view"
+             referencedColumns: ["seller_id"]
+           },
++          {
++            foreignKeyName: "blocked_users_blocker_id_fkey"
++            columns: ["blocker_id"]
++            isOneToOne: false
++            referencedRelation: "admin_seller_onboarding_view"
++            referencedColumns: ["id"]
++          },
+           {
+             foreignKeyName: "blocked_users_blocker_id_fkey"
+             columns: ["blocker_id"]
+@@ -404,6 +439,13 @@ export type Database = {
+             referencedRelation: "admin_disputes_monitor_view"
+             referencedColumns: ["seller_id"]
+           },
++          {
++            foreignKeyName: "disputes_buyer_id_fkey"
++            columns: ["buyer_id"]
++            isOneToOne: false
++            referencedRelation: "admin_seller_onboarding_view"
++            referencedColumns: ["id"]
++          },
+           {
+             foreignKeyName: "disputes_buyer_id_fkey"
+             columns: ["buyer_id"]
+@@ -432,6 +474,13 @@ export type Database = {
+             referencedRelation: "admin_disputes_monitor_view"
+             referencedColumns: ["seller_id"]
+           },
++          {
++            foreignKeyName: "disputes_locked_by_fkey"
++            columns: ["locked_by"]
++            isOneToOne: false
++            referencedRelation: "admin_seller_onboarding_view"
++            referencedColumns: ["id"]
++          },
+           {
+             foreignKeyName: "disputes_locked_by_fkey"
+             columns: ["locked_by"]
+@@ -474,6 +523,13 @@ export type Database = {
+             referencedRelation: "admin_disputes_monitor_view"
+             referencedColumns: ["seller_id"]
+           },
++          {
++            foreignKeyName: "disputes_resolved_by_fkey"
++            columns: ["resolved_by"]
++            isOneToOne: false
++            referencedRelation: "admin_seller_onboarding_view"
++            referencedColumns: ["id"]
++          },
+           {
+             foreignKeyName: "disputes_resolved_by_fkey"
+             columns: ["resolved_by"]
+@@ -502,6 +558,13 @@ export type Database = {
+             referencedRelation: "admin_disputes_monitor_view"
+             referencedColumns: ["seller_id"]
+           },
++          {
++            foreignKeyName: "disputes_seller_id_fkey"
++            columns: ["seller_id"]
++            isOneToOne: false
++            referencedRelation: "admin_seller_onboarding_view"
++            referencedColumns: ["id"]
++          },
+           {
+             foreignKeyName: "disputes_seller_id_fkey"
+             columns: ["seller_id"]
+@@ -516,6 +579,13 @@ export type Database = {
+             referencedRelation: "profiles"
+             referencedColumns: ["id"]
+           },
++          {
++            foreignKeyName: "disputes_shipment_id_fkey"
++            columns: ["shipment_id"]
++            isOneToOne: false
++            referencedRelation: "admin_connect_earnings_view"
++            referencedColumns: ["id"]
++          },
+           {
+             foreignKeyName: "disputes_shipment_id_fkey"
+             columns: ["shipment_id"]
+@@ -573,6 +643,13 @@ export type Database = {
+             referencedRelation: "admin_disputes_monitor_view"
+             referencedColumns: ["seller_id"]
+           },
++          {
++            foreignKeyName: "favorites_user_id_fkey"
++            columns: ["user_id"]
++            isOneToOne: false
++            referencedRelation: "admin_seller_onboarding_view"
++            referencedColumns: ["id"]
++          },
+           {
+             foreignKeyName: "favorites_user_id_fkey"
+             columns: ["user_id"]
+@@ -745,6 +822,13 @@ export type Database = {
+             referencedRelation: "products"
+             referencedColumns: ["id"]
+           },
++          {
++            foreignKeyName: "order_items_shipment_id_fkey"
++            columns: ["shipment_id"]
++            isOneToOne: false
++            referencedRelation: "admin_connect_earnings_view"
++            referencedColumns: ["id"]
++          },
+           {
+             foreignKeyName: "order_items_shipment_id_fkey"
+             columns: ["shipment_id"]
+@@ -906,6 +990,13 @@ export type Database = {
+             referencedRelation: "admin_disputes_monitor_view"
+             referencedColumns: ["seller_id"]
+           },
++          {
++            foreignKeyName: "payout_requests_user_id_fkey"
++            columns: ["user_id"]
++            isOneToOne: false
++            referencedRelation: "admin_seller_onboarding_view"
++            referencedColumns: ["id"]
++          },
+           {
+             foreignKeyName: "payout_requests_user_id_fkey"
+             columns: ["user_id"]
+@@ -1032,6 +1123,13 @@ export type Database = {
+             referencedRelation: "admin_disputes_monitor_view"
+             referencedColumns: ["seller_id"]
+           },
++          {
++            foreignKeyName: "products_locked_by_fkey"
++            columns: ["locked_by"]
++            isOneToOne: false
++            referencedRelation: "admin_seller_onboarding_view"
++            referencedColumns: ["id"]
++          },
+           {
+             foreignKeyName: "products_locked_by_fkey"
+             columns: ["locked_by"]
+@@ -1060,6 +1158,13 @@ export type Database = {
+             referencedRelation: "admin_disputes_monitor_view"
+             referencedColumns: ["seller_id"]
+           },
++          {
++            foreignKeyName: "products_seller_id_fkey"
++            columns: ["seller_id"]
++            isOneToOne: false
++            referencedRelation: "admin_seller_onboarding_view"
++            referencedColumns: ["id"]
++          },
+           {
+             foreignKeyName: "products_seller_id_fkey"
+             columns: ["seller_id"]
+@@ -1125,6 +1230,7 @@ export type Database = {
+           status_updated_by: string | null
+           stripe_account_id: string | null
+           stripe_customer_id: string | null
++          stripe_onboarding_refreshed_at: string | null
+           stripe_onboarding_status:
+             | Database["public"]["Enums"]["stripe_onboarding_status"]
+             | null
+@@ -1142,6 +1248,7 @@ export type Database = {
+           status_updated_by?: string | null
+           stripe_account_id?: string | null
+           stripe_customer_id?: string | null
++          stripe_onboarding_refreshed_at?: string | null
+           stripe_onboarding_status?:
+             | Database["public"]["Enums"]["stripe_onboarding_status"]
+             | null
+@@ -1159,6 +1266,7 @@ export type Database = {
+           status_updated_by?: string | null
+           stripe_account_id?: string | null
+           stripe_customer_id?: string | null
++          stripe_onboarding_refreshed_at?: string | null
+           stripe_onboarding_status?:
+             | Database["public"]["Enums"]["stripe_onboarding_status"]
+             | null
+@@ -1209,6 +1317,13 @@ export type Database = {
+             referencedRelation: "admin_disputes_monitor_view"
+             referencedColumns: ["seller_id"]
+           },
++          {
++            foreignKeyName: "reports_reporter_id_fkey"
++            columns: ["reporter_id"]
++            isOneToOne: false
++            referencedRelation: "admin_seller_onboarding_view"
++            referencedColumns: ["id"]
++          },
+           {
+             foreignKeyName: "reports_reporter_id_fkey"
+             columns: ["reporter_id"]
+@@ -1302,6 +1417,13 @@ export type Database = {
+             referencedRelation: "admin_disputes_monitor_view"
+             referencedColumns: ["seller_id"]
+           },
++          {
++            foreignKeyName: "reviews_reviewer_id_fkey"
++            columns: ["reviewer_id"]
++            isOneToOne: false
++            referencedRelation: "admin_seller_onboarding_view"
++            referencedColumns: ["id"]
++          },
+           {
+             foreignKeyName: "reviews_reviewer_id_fkey"
+             columns: ["reviewer_id"]
+@@ -1330,6 +1452,13 @@ export type Database = {
+             referencedRelation: "admin_disputes_monitor_view"
+             referencedColumns: ["seller_id"]
+           },
++          {
++            foreignKeyName: "reviews_seller_id_fkey"
++            columns: ["seller_id"]
++            isOneToOne: false
++            referencedRelation: "admin_seller_onboarding_view"
++            referencedColumns: ["id"]
++          },
+           {
+             foreignKeyName: "reviews_seller_id_fkey"
+             columns: ["seller_id"]
+@@ -1344,6 +1473,13 @@ export type Database = {
+             referencedRelation: "profiles"
+             referencedColumns: ["id"]
+           },
++          {
++            foreignKeyName: "reviews_shipment_id_fkey"
++            columns: ["shipment_id"]
++            isOneToOne: false
++            referencedRelation: "admin_connect_earnings_view"
++            referencedColumns: ["id"]
++          },
+           {
+             foreignKeyName: "reviews_shipment_id_fkey"
+             columns: ["shipment_id"]
+@@ -1399,6 +1535,13 @@ export type Database = {
+             referencedRelation: "admin_disputes_monitor_view"
+             referencedColumns: ["seller_id"]
+           },
++          {
++            foreignKeyName: "seller_bank_accounts_user_id_fkey"
++            columns: ["user_id"]
++            isOneToOne: true
++            referencedRelation: "admin_seller_onboarding_view"
++            referencedColumns: ["id"]
++          },
+           {
+             foreignKeyName: "seller_bank_accounts_user_id_fkey"
+             columns: ["user_id"]
+@@ -1508,6 +1651,13 @@ export type Database = {
+             referencedRelation: "admin_disputes_monitor_view"
+             referencedColumns: ["seller_id"]
+           },
++          {
++            foreignKeyName: "shipments_seller_id_fkey"
++            columns: ["seller_id"]
++            isOneToOne: false
++            referencedRelation: "admin_seller_onboarding_view"
++            referencedColumns: ["id"]
++          },
+           {
+             foreignKeyName: "shipments_seller_id_fkey"
+             columns: ["seller_id"]
+@@ -1696,6 +1846,13 @@ export type Database = {
+             referencedRelation: "orders"
+             referencedColumns: ["id"]
+           },
++          {
++            foreignKeyName: "wallet_transactions_shipment_id_fkey"
++            columns: ["shipment_id"]
++            isOneToOne: false
++            referencedRelation: "admin_connect_earnings_view"
++            referencedColumns: ["id"]
++          },
+           {
+             foreignKeyName: "wallet_transactions_shipment_id_fkey"
+             columns: ["shipment_id"]
+@@ -1752,6 +1909,13 @@ export type Database = {
+             referencedRelation: "admin_disputes_monitor_view"
+             referencedColumns: ["seller_id"]
+           },
++          {
++            foreignKeyName: "wallets_user_id_fkey"
++            columns: ["user_id"]
++            isOneToOne: true
++            referencedRelation: "admin_seller_onboarding_view"
++            referencedColumns: ["id"]
++          },
+           {
+             foreignKeyName: "wallets_user_id_fkey"
+             columns: ["user_id"]
+@@ -1814,6 +1978,13 @@ export type Database = {
+             referencedRelation: "admin_disputes_monitor_view"
+             referencedColumns: ["seller_id"]
+           },
++          {
++            foreignKeyName: "webhook_dlq_resolved_by_fkey"
++            columns: ["resolved_by"]
++            isOneToOne: false
++            referencedRelation: "admin_seller_onboarding_view"
++            referencedColumns: ["id"]
++          },
+           {
+             foreignKeyName: "webhook_dlq_resolved_by_fkey"
+             columns: ["resolved_by"]
+@@ -1832,6 +2003,55 @@ export type Database = {
+       }
+     }
+     Views: {
++      admin_connect_earnings_view: {
++        Row: {
++          amount: number | null
++          application_fee_amount: number | null
++          created_at: string | null
++          id: string | null
++          seller_id: string | null
++          seller_name: string | null
++          status: string | null
++          stripe_payment_intent_id: string | null
++        }
++        Relationships: [
++          {
++            foreignKeyName: "shipments_seller_id_fkey"
++            columns: ["seller_id"]
++            isOneToOne: false
++            referencedRelation: "admin_disputes_monitor_view"
++            referencedColumns: ["buyer_id"]
++          },
++          {
++            foreignKeyName: "shipments_seller_id_fkey"
++            columns: ["seller_id"]
++            isOneToOne: false
++            referencedRelation: "admin_disputes_monitor_view"
++            referencedColumns: ["seller_id"]
++          },
++          {
++            foreignKeyName: "shipments_seller_id_fkey"
++            columns: ["seller_id"]
++            isOneToOne: false
++            referencedRelation: "admin_seller_onboarding_view"
++            referencedColumns: ["id"]
++          },
++          {
++            foreignKeyName: "shipments_seller_id_fkey"
++            columns: ["seller_id"]
++            isOneToOne: false
++            referencedRelation: "admin_user_directory_view"
++            referencedColumns: ["id"]
++          },
++          {
++            foreignKeyName: "shipments_seller_id_fkey"
++            columns: ["seller_id"]
++            isOneToOne: false
++            referencedRelation: "profiles"
++            referencedColumns: ["id"]
++          },
++        ]
++      }
+       admin_disputes_monitor_view: {
+         Row: {
+           buyer_id: string | null
+@@ -1884,6 +2104,13 @@ export type Database = {
+             referencedRelation: "admin_disputes_monitor_view"
+             referencedColumns: ["seller_id"]
+           },
++          {
++            foreignKeyName: "payout_requests_user_id_fkey"
++            columns: ["user_id"]
++            isOneToOne: false
++            referencedRelation: "admin_seller_onboarding_view"
++            referencedColumns: ["id"]
++          },
+           {
+             foreignKeyName: "payout_requests_user_id_fkey"
+             columns: ["user_id"]
+@@ -2003,6 +2230,13 @@ export type Database = {
+             referencedRelation: "admin_disputes_monitor_view"
+             referencedColumns: ["seller_id"]
+           },
++          {
++            foreignKeyName: "products_locked_by_fkey"
++            columns: ["locked_by"]
++            isOneToOne: false
++            referencedRelation: "admin_seller_onboarding_view"
++            referencedColumns: ["id"]
++          },
+           {
+             foreignKeyName: "products_locked_by_fkey"
+             columns: ["locked_by"]
+@@ -2031,6 +2265,13 @@ export type Database = {
+             referencedRelation: "admin_disputes_monitor_view"
+             referencedColumns: ["seller_id"]
+           },
++          {
++            foreignKeyName: "products_seller_id_fkey"
++            columns: ["seller_id"]
++            isOneToOne: false
++            referencedRelation: "admin_seller_onboarding_view"
++            referencedColumns: ["id"]
++          },
+           {
+             foreignKeyName: "products_seller_id_fkey"
+             columns: ["seller_id"]
+@@ -2047,6 +2288,20 @@ export type Database = {
+           },
+         ]
+       }
++      admin_seller_onboarding_view: {
++        Row: {
++          charges_enabled: boolean | null
++          created_at: string | null
++          email: string | null
++          id: string | null
++          stripe_account_id: string | null
++          stripe_onboarding_status:
++            | Database["public"]["Enums"]["stripe_onboarding_status"]
++            | null
++          username: string | null
++        }
++        Relationships: []
++      }
+       admin_user_directory_view: {
+         Row: {
+           available_balance: number | null
+@@ -2087,6 +2342,13 @@ export type Database = {
+             referencedRelation: "admin_disputes_monitor_view"
+             referencedColumns: ["seller_id"]
+           },
++          {
++            foreignKeyName: "products_seller_id_fkey"
++            columns: ["seller_id"]
++            isOneToOne: false
++            referencedRelation: "admin_seller_onboarding_view"
++            referencedColumns: ["id"]
++          },
+           {
+             foreignKeyName: "products_seller_id_fkey"
+             columns: ["seller_id"]
+diff --git a/packages/types/src/index.ts b/packages/types/src/index.ts
+index aba24d9..75a4608 100644
+--- a/packages/types/src/index.ts
++++ b/packages/types/src/index.ts
+@@ -129,6 +129,18 @@ export interface EdgeFunctionRegistry {
+     payload: { refreshUrl?: string; returnUrl?: string };
+     response: { url: string; accountId: string };
+   };
++  'refresh-connect-account-status': {
++    payload: { force?: boolean; sellerId?: string };
++    response: {
++      status: StripeOnboardingStatus;
++      accountId: string;
++      chargesEnabled: boolean;
++      payoutsEnabled: boolean;
++      refreshedAt: string;
++      cached: boolean;
++      error?: 'STRIPE_REFRESH_FAILED';
++    };
++  };
+   'create-connect-payment': {
+     payload: {
+       productIds: string[];
+@@ -148,6 +160,50 @@ export interface EdgeFunctionRegistry {
+       }>;
+     };
+   };
++  'rollback-connect-payment': {
++    payload: {
++      orderId: string;
++      paymentIntentIds: string[];
++    };
++    response: { success: boolean; rolledBack: number; error?: string };
++  };
++  'drain-legacy-wallets': {
++    payload: { dryRun?: boolean };
++    response: {
++      success: boolean;
++      dryRun?: boolean;
++      transferredCount?: number;
++      transferredCents?: number;
++      failedCount?: number;
++      skippedCount?: number;
++      error?: string;
++    };
++  };
++  'reconcile-connect-payments': {
++    payload: { paymentIntentIds?: string[] };
++    response: {
++      success: boolean;
++      reconciled?: number;
++      skipped?: number;
++      error?: string;
++    };
++  };
++  'get-connect-earnings': {
++    payload: { search?: string };
++    response: {
++      success: boolean;
++      rows?: Database['public']['Views']['admin_connect_earnings_view']['Row'][];
++      error?: string;
++    };
++  };
++  'get-seller-onboarding': {
++    payload: Record<string, never>;
++    response: {
++      success: boolean;
++      rows?: Database['public']['Views']['admin_seller_onboarding_view']['Row'][];
++      error?: string;
++    };
++  };
+   'get-shipping-quote': {
+     payload: {
+       originZip: string;
+@@ -247,10 +303,7 @@ export interface EnrichedShipment extends Shipment {
+  * NOTA: origin_address, tracking_number, label_url, shipping_evidence, last_tracked_at
+  * se migraron a shipments. EnrichedOrder ya no los tiene.
+  */
+-export interface EnrichedOrder extends Omit<
+-  Order,
+-  'shipping_address'
+-> {
++export interface EnrichedOrder extends Omit<Order, 'shipping_address'> {
+   shipping_address: Address;
+ 
+   // Colección de paquetes divididos por vendedor

@@ -34,7 +34,7 @@
 The project was working correctly with:
 
 - Node.js `22.13.1`
-- Bun `1.3.0`
+- Bun `1.3.11`
 - Expo SDK `~54.0.13`
 
 ---
@@ -74,7 +74,7 @@ bunx: command not found
 
 - Fix versions:
 - Node `22.13.1`
-- Bun `1.3.0`
+- Bun `1.3.11`
 - Keep Bun as package manager (do not migrate to npm/yarn).
 
 - Avoid running Husky in CI.
@@ -116,23 +116,33 @@ When structural errors or native duplicates exist or any type of **node modules 
 
 **Nuclear Cleanup Procedure**
 
-From the monorepo root:
+**Decaprited**
 
-    rm -rf node_modules
-    rm -rf bun.lock
-    rm -rf apps/frontend/node_modules
-    rm -rf apps/frontend/bun.lock
-    rm -rf apps/frontend/.expo
-    rm -rf apps/frontend/.expo-shared
-    rm -rf apps/admin-web/node_modules
-    rm -rf packages/types/node_modules
-    rm -rf apps/backend/node_modules
+It was shown that using only `bun npm cache clean` and `bun pm cache rm` solves the entire problem. This section is not deleted because it may be useful if, for some reason, the cleaning with `bun` is not sufficient.
 
-    bun pm cache clean
-    bun pm cache rm
+    From the monorepo root:
 
-    bun install.
+        rm -rf node_modules
+        rm -rf bun.lock
+        rm -rf apps/frontend/node_modules
+        rm -rf apps/frontend/bun.lock
+        rm -rf apps/frontend/.expo
+        rm -rf apps/frontend/.expo-shared
+        rm -rf apps/admin-web/node_modules
+        rm -rf packages/types/node_modules
+        rm -rf apps/backend/node_modules
 
+        bun pm cache clean
+        bun pm cache rm
+
+        bun install.
+
+**New way**
+
+        bun pm cache clean
+        bun pm cache rm
+        
+Only right this comands in the main root of the project and start de server whit 'bun run frontend --clear'
 
 Validate status:
 

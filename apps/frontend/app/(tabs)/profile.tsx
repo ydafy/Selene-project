@@ -8,10 +8,9 @@ import { useProfile, useUpdateAvatar } from '../../core/hooks/useProfile';
 // Hooks y Contextos
 import { useAuthContext } from '../../components/auth/AuthProvider';
 import { useAuthModal } from '../../core/auth/AuthModalProvider';
-import { useProfileStats } from '../../core/hooks/useProfileStats';
+
 import { useMyFavorites } from '../../core/hooks/useMyFavorites';
 import { useImageUpload } from '../../core/hooks/useImageUpload';
-import { useWalletStore } from '../../core/store/useWalletStore';
 
 // Componentes UI y Base
 import { Box, Text } from '../../components/base';
@@ -26,11 +25,7 @@ import { ProfileSkeleton } from '../../components/features/profile/ProfileSkelet
 
 // Componentes de Feature (Perfil)
 import { ProfileHeader } from '../../components/features/profile/ProfileHeader';
-import { useEffect, useState } from 'react';
-import { theme } from '@/core/theme';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Pressable } from 'react-native-gesture-handler';
-import { formatCurrency } from '@/core/utils/format';
+import { useState } from 'react';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const logoIconPath = require('../../assets/images/SeleneLunaLogo.png');
@@ -80,12 +75,9 @@ const UserProfile = () => {
   // 1. Hooks y Contextos
   const { t } = useTranslation(['profile', 'common', 'auth']);
   const { session } = useAuthContext();
-  const { wallet, fetchWallet } = useWalletStore();
 
   // Datos del perfil
-  const { data: stats, isLoading: isLoadingStats } = useProfileStats(
-    session?.user.id,
-  );
+
   const { data: profileData, isLoading: isLoadingProfile } = useProfile(
     session?.user.id || '',
   );
@@ -103,13 +95,7 @@ const UserProfile = () => {
     isError: false,
   });
 
-  useEffect(() => {
-    if (session?.user.id) {
-      fetchWallet(session.user.id);
-    }
-  }, [session?.user.id, fetchWallet]);
-
-  if (isLoadingProfile || isLoadingStats || !profileData) {
+  if (isLoadingProfile || !profileData) {
     return <ProfileSkeleton />;
   }
 
@@ -202,46 +188,11 @@ const UserProfile = () => {
       <ProfileHeader
         user={session?.user || null}
         profile={displayProfile}
-        stats={stats ?? undefined}
         onEditAvatar={handleEditAvatar}
         onSettingsPress={handleOpenSettings}
         onEditProfile={handleEditProfile}
         isUploading={updateAvatar.isPending}
       />
-
-      <Box paddingHorizontal="m" marginTop="m">
-        <Pressable onPress={() => router.push('/profile/wallet')}>
-          <Box
-            backgroundColor="cardBackground"
-            padding="m"
-            borderRadius="m"
-            flexDirection="row"
-            alignItems="center"
-            justifyContent="space-between"
-          >
-            <Box flexDirection="row" alignItems="center">
-              <MaterialCommunityIcons
-                name="wallet"
-                size={24}
-                color={theme.colors.primary}
-              />
-              <Text variant="subheader-md" marginLeft="m">
-                {t('auth:screenText.walletText')}
-              </Text>
-            </Box>
-            <Box flexDirection="row" alignItems="center">
-              <Text variant="body-md" color="primary" marginRight="s">
-                {formatCurrency(wallet?.available_balance || 0)}
-              </Text>
-              <MaterialCommunityIcons
-                name="chevron-right"
-                size={20}
-                color={theme.colors.textSecondary}
-              />
-            </Box>
-          </Box>
-        </Pressable>
-      </Box>
 
       <ProfileActionsBar />
 

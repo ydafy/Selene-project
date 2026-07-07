@@ -1,0 +1,1032 @@
+[
+  "grants de profiles_private",
+  [
+    {
+      "grantee": "anon",
+      "table_schema": "public",
+      "table_name": "profiles_private",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "grantee": "anon",
+      "table_schema": "public",
+      "table_name": "profiles_private",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "grantee": "anon",
+      "table_schema": "public",
+      "table_name": "profiles_private",
+      "privilege_type": "REFERENCES",
+      "is_grantable": "NO"
+    },
+    {
+      "grantee": "anon",
+      "table_schema": "public",
+      "table_name": "profiles_private",
+      "privilege_type": "SELECT",
+      "is_grantable": "NO"
+    },
+    {
+      "grantee": "anon",
+      "table_schema": "public",
+      "table_name": "profiles_private",
+      "privilege_type": "TRIGGER",
+      "is_grantable": "NO"
+    },
+    {
+      "grantee": "anon",
+      "table_schema": "public",
+      "table_name": "profiles_private",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "grantee": "anon",
+      "table_schema": "public",
+      "table_name": "profiles_private",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "grantee": "authenticated",
+      "table_schema": "public",
+      "table_name": "profiles_private",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "grantee": "authenticated",
+      "table_schema": "public",
+      "table_name": "profiles_private",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "grantee": "authenticated",
+      "table_schema": "public",
+      "table_name": "profiles_private",
+      "privilege_type": "REFERENCES",
+      "is_grantable": "NO"
+    },
+    {
+      "grantee": "authenticated",
+      "table_schema": "public",
+      "table_name": "profiles_private",
+      "privilege_type": "SELECT",
+      "is_grantable": "NO"
+    },
+    {
+      "grantee": "authenticated",
+      "table_schema": "public",
+      "table_name": "profiles_private",
+      "privilege_type": "TRIGGER",
+      "is_grantable": "NO"
+    },
+    {
+      "grantee": "authenticated",
+      "table_schema": "public",
+      "table_name": "profiles_private",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "grantee": "authenticated",
+      "table_schema": "public",
+      "table_name": "profiles_private",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    },
+    {
+      "grantee": "postgres",
+      "table_schema": "public",
+      "table_name": "profiles_private",
+      "privilege_type": "DELETE",
+      "is_grantable": "YES"
+    },
+    {
+      "grantee": "postgres",
+      "table_schema": "public",
+      "table_name": "profiles_private",
+      "privilege_type": "INSERT",
+      "is_grantable": "YES"
+    },
+    {
+      "grantee": "postgres",
+      "table_schema": "public",
+      "table_name": "profiles_private",
+      "privilege_type": "REFERENCES",
+      "is_grantable": "YES"
+    },
+    {
+      "grantee": "postgres",
+      "table_schema": "public",
+      "table_name": "profiles_private",
+      "privilege_type": "SELECT",
+      "is_grantable": "YES"
+    },
+    {
+      "grantee": "postgres",
+      "table_schema": "public",
+      "table_name": "profiles_private",
+      "privilege_type": "TRIGGER",
+      "is_grantable": "YES"
+    },
+    {
+      "grantee": "postgres",
+      "table_schema": "public",
+      "table_name": "profiles_private",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "YES"
+    },
+    {
+      "grantee": "postgres",
+      "table_schema": "public",
+      "table_name": "profiles_private",
+      "privilege_type": "UPDATE",
+      "is_grantable": "YES"
+    },
+    {
+      "grantee": "service_role",
+      "table_schema": "public",
+      "table_name": "profiles_private",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "grantee": "service_role",
+      "table_schema": "public",
+      "table_name": "profiles_private",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "grantee": "service_role",
+      "table_schema": "public",
+      "table_name": "profiles_private",
+      "privilege_type": "REFERENCES",
+      "is_grantable": "NO"
+    },
+    {
+      "grantee": "service_role",
+      "table_schema": "public",
+      "table_name": "profiles_private",
+      "privilege_type": "SELECT",
+      "is_grantable": "NO"
+    },
+    {
+      "grantee": "service_role",
+      "table_schema": "public",
+      "table_name": "profiles_private",
+      "privilege_type": "TRIGGER",
+      "is_grantable": "NO"
+    },
+    {
+      "grantee": "service_role",
+      "table_schema": "public",
+      "table_name": "profiles_private",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "NO"
+    },
+    {
+      "grantee": "service_role",
+      "table_schema": "public",
+      "table_name": "profiles_private",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    }
+  ],
+  "Column grants",
+  [
+    [
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "email",
+        "privilege_type": "INSERT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "email",
+        "privilege_type": "REFERENCES",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "email",
+        "privilege_type": "SELECT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "email",
+        "privilege_type": "UPDATE",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "id",
+        "privilege_type": "INSERT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "id",
+        "privilege_type": "REFERENCES",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "id",
+        "privilege_type": "SELECT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "id",
+        "privilege_type": "UPDATE",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "last_sign_in_at",
+        "privilege_type": "INSERT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "last_sign_in_at",
+        "privilege_type": "REFERENCES",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "last_sign_in_at",
+        "privilege_type": "SELECT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "last_sign_in_at",
+        "privilege_type": "UPDATE",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "phone_number",
+        "privilege_type": "INSERT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "phone_number",
+        "privilege_type": "REFERENCES",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "phone_number",
+        "privilege_type": "SELECT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "phone_number",
+        "privilege_type": "UPDATE",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "role",
+        "privilege_type": "INSERT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "role",
+        "privilege_type": "REFERENCES",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "role",
+        "privilege_type": "SELECT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "role",
+        "privilege_type": "UPDATE",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status",
+        "privilege_type": "INSERT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status",
+        "privilege_type": "REFERENCES",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status",
+        "privilege_type": "SELECT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status",
+        "privilege_type": "UPDATE",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status_reason",
+        "privilege_type": "INSERT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status_reason",
+        "privilege_type": "REFERENCES",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status_reason",
+        "privilege_type": "SELECT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status_reason",
+        "privilege_type": "UPDATE",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status_updated_at",
+        "privilege_type": "INSERT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status_updated_at",
+        "privilege_type": "REFERENCES",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status_updated_at",
+        "privilege_type": "SELECT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status_updated_at",
+        "privilege_type": "UPDATE",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status_updated_by",
+        "privilege_type": "INSERT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status_updated_by",
+        "privilege_type": "REFERENCES",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status_updated_by",
+        "privilege_type": "SELECT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status_updated_by",
+        "privilege_type": "UPDATE",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "stripe_account_id",
+        "privilege_type": "INSERT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "stripe_account_id",
+        "privilege_type": "REFERENCES",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "stripe_account_id",
+        "privilege_type": "SELECT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "stripe_account_id",
+        "privilege_type": "UPDATE",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "stripe_customer_id",
+        "privilege_type": "INSERT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "stripe_customer_id",
+        "privilege_type": "REFERENCES",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "stripe_customer_id",
+        "privilege_type": "SELECT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "stripe_customer_id",
+        "privilege_type": "UPDATE",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "stripe_onboarding_refreshed_at",
+        "privilege_type": "INSERT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "stripe_onboarding_refreshed_at",
+        "privilege_type": "REFERENCES",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "stripe_onboarding_refreshed_at",
+        "privilege_type": "SELECT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "stripe_onboarding_refreshed_at",
+        "privilege_type": "UPDATE",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "stripe_onboarding_status",
+        "privilege_type": "INSERT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "stripe_onboarding_status",
+        "privilege_type": "REFERENCES",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "stripe_onboarding_status",
+        "privilege_type": "SELECT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "stripe_onboarding_status",
+        "privilege_type": "UPDATE",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "updated_at",
+        "privilege_type": "INSERT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "updated_at",
+        "privilege_type": "REFERENCES",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "updated_at",
+        "privilege_type": "SELECT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "anon",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "updated_at",
+        "privilege_type": "UPDATE",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "email",
+        "privilege_type": "INSERT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "email",
+        "privilege_type": "REFERENCES",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "email",
+        "privilege_type": "SELECT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "email",
+        "privilege_type": "UPDATE",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "id",
+        "privilege_type": "INSERT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "id",
+        "privilege_type": "REFERENCES",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "id",
+        "privilege_type": "SELECT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "id",
+        "privilege_type": "UPDATE",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "last_sign_in_at",
+        "privilege_type": "INSERT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "last_sign_in_at",
+        "privilege_type": "REFERENCES",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "last_sign_in_at",
+        "privilege_type": "SELECT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "last_sign_in_at",
+        "privilege_type": "UPDATE",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "phone_number",
+        "privilege_type": "INSERT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "phone_number",
+        "privilege_type": "REFERENCES",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "phone_number",
+        "privilege_type": "SELECT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "phone_number",
+        "privilege_type": "UPDATE",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "role",
+        "privilege_type": "INSERT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "role",
+        "privilege_type": "REFERENCES",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "role",
+        "privilege_type": "SELECT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "role",
+        "privilege_type": "UPDATE",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status",
+        "privilege_type": "INSERT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status",
+        "privilege_type": "REFERENCES",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status",
+        "privilege_type": "SELECT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status",
+        "privilege_type": "UPDATE",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status_reason",
+        "privilege_type": "INSERT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status_reason",
+        "privilege_type": "REFERENCES",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status_reason",
+        "privilege_type": "SELECT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status_reason",
+        "privilege_type": "UPDATE",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status_updated_at",
+        "privilege_type": "INSERT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status_updated_at",
+        "privilege_type": "REFERENCES",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status_updated_at",
+        "privilege_type": "SELECT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status_updated_at",
+        "privilege_type": "UPDATE",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status_updated_by",
+        "privilege_type": "INSERT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status_updated_by",
+        "privilege_type": "REFERENCES",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status_updated_by",
+        "privilege_type": "SELECT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "status_updated_by",
+        "privilege_type": "UPDATE",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "stripe_account_id",
+        "privilege_type": "INSERT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "stripe_account_id",
+        "privilege_type": "REFERENCES",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "stripe_account_id",
+        "privilege_type": "SELECT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "stripe_account_id",
+        "privilege_type": "UPDATE",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "stripe_customer_id",
+        "privilege_type": "INSERT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "stripe_customer_id",
+        "privilege_type": "REFERENCES",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "stripe_customer_id",
+        "privilege_type": "SELECT",
+        "is_grantable": "NO"
+      },
+      {
+        "grantee": "authenticated",
+        "table_schema": "public",
+        "table_name": "profiles_private",
+        "column_name": "stripe_customer_id",
+        "privilege_type": "UPDATE",
+        "is_grantable": "NO"
+      }
+    ]
+  ],
+  "Functions/RPC grants",
+  [
+    [
+      {
+        "schema": "public",
+        "function_name": "get_profile_stats",
+        "args": "target_user_id uuid",
+        "grantee": "anon",
+        "can_execute": true
+      },
+      {
+        "schema": "public",
+        "function_name": "get_profile_stats",
+        "args": "target_user_id uuid",
+        "grantee": "authenticated",
+        "can_execute": true
+      },
+      {
+        "schema": "public",
+        "function_name": "get_profile_stats",
+        "args": "target_user_id uuid",
+        "grantee": "service_role",
+        "can_execute": true
+      }
+    ]
+  ]
+]

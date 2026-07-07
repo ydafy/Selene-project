@@ -80,6 +80,36 @@
     "successTitle": "Reseña enviada",
     "successMsg": "Gracias por tu calificación."
   },
+  "public": {
+    "tabProducts": "Publicaciones",
+    "tabReviews": "Reseñas",
+    "reviewDatePrefix": "Reseña del",
+    "verifiedPurchase": "Compra verificada: {{product}}",
+    "reviewItemFallback": "Artículo",
+    "empty": {
+      "products": "Este vendedor no tiene publicaciones activas actualmente.",
+      "reviews": "Este vendedor aún no ha recibido reseñas de compradores."
+    },
+    "errors": {
+      "invalidProfile": "Este enlace de perfil público no es válido.",
+      "products": "No se pudieron cargar las publicaciones.",
+      "reviews": "No se pudieron cargar las reseñas."
+    },
+    "actions": {
+      "retry": "Intentar de nuevo",
+      "goBack": "Volver"
+    },
+    "a11y": {
+      "productCard": "Abrir publicación {{name}}",
+      "reviewUserFallback": "Usuario",
+      "reviewNoComment": "Sin comentario.",
+      "reviewFrom": "Reseña de",
+      "reviewRating": "Calificación",
+      "reviewOutOfFive": "de 5",
+      "reviewComment": "Comentario",
+      "reviewVerifiedPurchase": "Compra verificada"
+    }
+  },
   "feedback": {
     "avatarUpdatedTitle": "Foto Actualizada",
     "avatarUpdatedMsg": "Tu foto de perfil se ha cambiado correctamente.",

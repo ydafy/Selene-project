@@ -11,7 +11,7 @@ const corsHeaders = {
 };
 
 const APP_NAME = 'selene';
-const STRIPE_API_VERSION = '2025-12-15.clover';
+const STRIPE_API_VERSION = '2026-04-22.dahlia';
 
 const log = (
   level: 'INFO' | 'WARN' | 'ERROR',
@@ -102,7 +102,7 @@ serve(async (req) => {
         const [ephemeralKey, setupIntent] = await Promise.all([
           stripe.ephemeralKeys.create(
             { customer: customerId },
-            { apiVersion: '2022-11-15' },
+            { apiVersion: STRIPE_API_VERSION },
           ),
           stripe.setupIntents.create(
             {

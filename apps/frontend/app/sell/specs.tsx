@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -17,13 +17,14 @@ import { useSellStore } from '../../core/store/useSellStore';
 import { SELL_FORM_CONFIG } from '../../core/config/sell-form-config';
 import { DynamicSpecField } from '../../components/features/sell/DynamicSpecField';
 import { checkIfOther } from '@/core/utils/form-helpers';
+import { SELL_STEP_DEFINITIONS } from '@/core/constants/sellSteps';
 
 export default function SellSpecsScreen() {
   const { t } = useTranslation(['sell', 'common']);
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const { draft, updateDraft } = useSellStore();
+  const { draft, updateDraft, resetCategoryFields } = useSellStore();
   const category = draft.category;
 
   // Configuración y Schema (Lógica existente)
@@ -63,12 +64,26 @@ export default function SellSpecsScreen() {
     control,
     handleSubmit,
     setValue,
+    reset,
     formState: { errors, isValid },
   } = useForm({
     resolver: zodResolver(dynamicSchema),
     mode: 'onChange',
-    defaultValues: draft.specifications || {},
+    defaultValues:
+      (draft.specifications as Record<string, string | undefined>) || {},
   });
+
+  // Reset category-dependent fields when the category changes mid-draft.
+  const previousCategoryRef = useRef(category);
+  useEffect(() => {
+    const previousCategory = previousCategoryRef.current;
+    previousCategoryRef.current = category;
+
+    if (category && previousCategory && previousCategory !== category) {
+      resetCategoryFields();
+      reset({});
+    }
+  }, [category, reset, resetCategoryFields]);
 
   //   useEffect(() => {
   //     if (!category) router.replace('/sell');
@@ -102,7 +117,7 @@ export default function SellSpecsScreen() {
       <Stack.Screen options={{ headerShown: false }} />
 
       <GlobalHeader
-        title={t('sell:steps.details')}
+        title={t('sell:title')}
         showBack={true}
         backgroundColor="cardBackground"
       />
@@ -127,7 +142,10 @@ export default function SellSpecsScreen() {
             />
 
             {/* PASO 2: Specs (Paso 1 completado se verá con check) */}
-            <WizardSteps currentStep={1} />
+            <WizardSteps
+              currentStep={1}
+              steps={SELL_STEP_DEFINITIONS.map((s) => t(s.labelKey as string))}
+            />
 
             {/* TARJETA DE ESPECIFICACIONES */}
             <Box
@@ -158,10 +176,7 @@ export default function SellSpecsScreen() {
                   color="textSecondary"
                   paddingVertical="l"
                 >
-                  {t(
-                    'sell:fields.noSpecs',
-                    'No hay especificaciones adicionales para esta categoría.',
-                  )}
+              {t('sell:fields.noSpecs')}
                 </Text>
               )}
             </Box>

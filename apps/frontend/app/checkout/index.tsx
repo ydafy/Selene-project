@@ -1,4 +1,20 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+/**
+ * @file apps/frontend/app/checkout/index.tsx
+ * @description Buyer-facing Checkout Summary and Order Review Screen.
+ *
+ * Implements:
+ * 1. Sequential review of cart items grouped by seller (multi-seller checkout preview).
+ * 2. Strict client-side validation gates: terms acceptance, self-purchase blocking, and address/payment completeness.
+ * 3. Pre-payment atomic stock validation via OrderService.validateProductStock.
+ * 4. Renders pricing breakdown (Subtotal, Seguro Selene, and shipping cost) aligned with backend cents math.
+ *
+ * Uses Shopify Restyle for responsive dark/light theme tokens and safe-area notch padding.
+ *
+ * @version 1.2
+ * @domain mobile-checkout-screens
+ */
+
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, Alert } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -60,7 +76,6 @@ export default function CheckoutSummaryScreen() {
   const { addresses, isLoading: loadingAddresses } = useAddresses();
   const { methods, isLoadingMethods } = usePaymentMethods();
   const { subtotal, serviceFee, total } = useOrderCalculations(cartItems);
-
   // UI Local State
   const [showErrors, setShowErrors] = useState(false);
   const [isProtectionDialogVisible, setIsProtectionDialogVisible] =
@@ -242,7 +257,7 @@ export default function CheckoutSummaryScreen() {
 
         <Box
           marginTop="l"
-          padding="s"
+          padding="l"
           borderRadius="s"
           borderWidth={showErrors && !isTermsAccepted ? 1 : 0}
           borderColor="error"
@@ -272,9 +287,8 @@ export default function CheckoutSummaryScreen() {
         right={0}
         padding="m"
         paddingBottom="xl"
-        borderTopWidth={1}
         borderTopColor="background"
-        backgroundColor="background"
+        backgroundColor="transparent"
       >
         <PrimaryButton
           onPress={onProceedToPayment}

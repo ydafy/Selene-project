@@ -116,7 +116,7 @@ export const useShipmentsByOrder = (orderId: string | undefined) => {
   const userId = session?.user.id || '';
 
   const query = useQuery({
-    queryKey: ['shipments', orderId],
+    queryKey: ['shipments', orderId, userId],
     queryFn: async () => {
       if (!orderId) throw new Error('Order ID required');
 

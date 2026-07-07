@@ -1,0 +1,156 @@
+{
+  "version": "5",
+  "remote": {
+    "https://deno.land/std@0.168.0/async/abortable.ts": "80b2ac399f142cc528f95a037a7d0e653296352d95c681e284533765961de409",
+    "https://deno.land/std@0.168.0/async/deadline.ts": "2c2deb53c7c28ca1dda7a3ad81e70508b1ebc25db52559de6b8636c9278fd41f",
+    "https://deno.land/std@0.168.0/async/debounce.ts": "60301ffb37e730cd2d6f9dadfd0ecb2a38857681bd7aaf6b0a106b06e5210a98",
+    "https://deno.land/std@0.168.0/async/deferred.ts": "77d3f84255c3627f1cc88699d8472b664d7635990d5358c4351623e098e917d6",
+    "https://deno.land/std@0.168.0/async/delay.ts": "5a9bfba8de38840308a7a33786a0155a7f6c1f7a859558ddcec5fe06e16daf57",
+    "https://deno.land/std@0.168.0/async/mod.ts": "7809ad4bb223e40f5fdc043e5c7ca04e0e25eed35c32c3c32e28697c553fa6d9",
+    "https://deno.land/std@0.168.0/async/mux_async_iterator.ts": "770a0ff26c59f8bbbda6b703a2235f04e379f73238e8d66a087edc68c2a2c35f",
+    "https://deno.land/std@0.168.0/async/pool.ts": "6854d8cd675a74c73391c82005cbbe4cc58183bddcd1fbbd7c2bcda42b61cf69",
+    "https://deno.land/std@0.168.0/async/retry.ts": "e8e5173623915bbc0ddc537698fa418cf875456c347eda1ed453528645b42e67",
+    "https://deno.land/std@0.168.0/async/tee.ts": "3a47cc4e9a940904fd4341f0224907e199121c80b831faa5ec2b054c6d2eff5e",
+    "https://deno.land/std@0.168.0/http/server.ts": "e99c1bee8a3f6571ee4cdeb2966efad465b8f6fe62bec1bdb59c1f007cc4d155",
+    "https://esm.sh/@supabase/supabase-js@2.39.3": "832d7714491bd1c8a9008a332b35cb099f24b451ad79e755ecf4d71985fd6610"
+  },
+  "workspace": {
+    "packageJson": {
+      "dependencies": [
+        "npm:@supabase/supabase-js@^2.107.0",
+        "npm:@typescript-eslint/eslint-plugin@^8.46.1",
+        "npm:@typescript-eslint/parser@^8.46.1",
+        "npm:eslint-config-prettier@^10.1.8",
+        "npm:eslint-plugin-prettier@^5.5.4",
+        "npm:eslint@^9.38.0",
+        "npm:gentle-engram@0.1.4",
+        "npm:lint-staged@^16.2.4",
+        "npm:prettier@^3.6.2"
+      ]
+    },
+    "members": {
+      "apps/admin-web": {
+        "packageJson": {
+          "dependencies": [
+            "npm:@eslint/js@^9.39.1",
+            "npm:@supabase/supabase-js@^2.105.3",
+            "npm:@tailwindcss/vite@^4.2.1",
+            "npm:@tanstack/react-query@^5.90.21",
+            "npm:@tanstack/react-table@^8.21.3",
+            "npm:@types/node@^24.10.1",
+            "npm:@types/react-dom@^19.2.3",
+            "npm:@types/react@^19.1.17",
+            "npm:@vitejs/plugin-react@6",
+            "npm:autoprefixer@^10.4.27",
+            "npm:clsx@^2.1.1",
+            "npm:eslint-plugin-react-hooks@^7.0.1",
+            "npm:eslint-plugin-react-refresh@~0.4.24",
+            "npm:eslint@^9.39.1",
+            "npm:globals@^16.5.0",
+            "npm:lucide-react@0.577",
+            "npm:postcss@^8.5.8",
+            "npm:react-dom@19.1.0",
+            "npm:react-router-dom@^7.13.1",
+            "npm:react@19.1.0",
+            "npm:sonner@^2.0.7",
+            "npm:tailwind-merge@^3.5.0",
+            "npm:tailwindcss@^4.2.1",
+            "npm:typescript-eslint@^8.48.0",
+            "npm:typescript@~5.9.3",
+            "npm:vite@8",
+            "npm:zustand@^5.0.11"
+          ]
+        }
+      },
+      "apps/backend": {
+        "packageJson": {
+          "dependencies": [
+            "npm:@types/bun@latest",
+            "npm:@types/cors@^2.8.17",
+            "npm:@types/express@^4.17.21",
+            "npm:cors@^2.8.5",
+            "npm:express@^4.19.2",
+            "npm:nodemon@^3.1.0",
+            "npm:ts-node@^10.9.2",
+            "npm:typescript@5"
+          ]
+        }
+      },
+      "apps/frontend": {
+        "packageJson": {
+          "dependencies": [
+            "npm:@chatwoot/react-native-widget@*",
+            "npm:@expo/vector-icons@^15.0.3",
+            "npm:@gorhom/bottom-sheet@^5.2.7",
+            "npm:@hookform/resolvers@^5.2.2",
+            "npm:@miblanchard/react-native-slider@^2.6.0",
+            "npm:@react-native-async-storage/async-storage@2.2.0",
+            "npm:@react-native-community/netinfo@11.4.1",
+            "npm:@react-native-google-signin/google-signin@16",
+            "npm:@react-navigation/native@^7.1.8",
+            "npm:@shopify/flash-list@2.0.2",
+            "npm:@shopify/restyle@^2.4.5",
+            "npm:@stripe/stripe-react-native@0.50.3",
+            "npm:@supabase/supabase-js@^2.81.1",
+            "npm:@tanstack/react-query@^5.90.5",
+            "npm:@types/react@19.1",
+            "npm:base64-arraybuffer@^1.0.2",
+            "npm:date-fns@^4.1.0",
+            "npm:expo-blur@~15.0.7",
+            "npm:expo-constants@~18.0.9",
+            "npm:expo-crypto@^15.0.8",
+            "npm:expo-dev-client@~6.0.15",
+            "npm:expo-file-system@~19.0.21",
+            "npm:expo-font@~14.0.9",
+            "npm:expo-haptics@^15.0.8",
+            "npm:expo-image-picker@~17.0.9",
+            "npm:expo-image@~3.0.10",
+            "npm:expo-linear-gradient@~15.0.7",
+            "npm:expo-linking@~8.0.8",
+            "npm:expo-local-authentication@~17.0.8",
+            "npm:expo-localization@^17.0.7",
+            "npm:expo-router@~6.0.11",
+            "npm:expo-sharing@~14.0.8",
+            "npm:expo-splash-screen@~31.0.10",
+            "npm:expo-status-bar@~3.0.8",
+            "npm:expo-video@~3.0.16",
+            "npm:expo-web-browser@~15.0.8",
+            "npm:expo@54.0.33",
+            "npm:i18next@^25.6.0",
+            "npm:moti@0.30",
+            "npm:react-dom@19.1.0",
+            "npm:react-hook-form@^7.65.0",
+            "npm:react-i18next@^16.1.0",
+            "npm:react-native-gesture-handler@2.28",
+            "npm:react-native-get-random-values@1.11",
+            "npm:react-native-image-viewing@~0.2.2",
+            "npm:react-native-otp-textinput@^1.1.7",
+            "npm:react-native-paper@^5.14.5",
+            "npm:react-native-reanimated@~4.1.1",
+            "npm:react-native-safe-area-context@5.6",
+            "npm:react-native-screens@4.16",
+            "npm:react-native-svg@15.12.1",
+            "npm:react-native-toast-message@^2.3.3",
+            "npm:react-native-url-polyfill@3",
+            "npm:react-native-vector-icons@^10.3.0",
+            "npm:react-native-web@0.21",
+            "npm:react-native-worklets@0.5.1",
+            "npm:react-native@0.81.5",
+            "npm:react-test-renderer@19.1.0",
+            "npm:react@19.1.0",
+            "npm:typescript@~5.9.2",
+            "npm:zod@^4.1.12",
+            "npm:zustand@^5.0.8"
+          ]
+        }
+      },
+      "packages/types": {
+        "packageJson": {
+          "dependencies": [
+            "npm:@types/bun@latest"
+          ]
+        }
+      }
+    }
+  }
+}

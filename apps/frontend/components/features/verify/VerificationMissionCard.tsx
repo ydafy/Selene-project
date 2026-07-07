@@ -126,7 +126,6 @@ export const VerificationMissionCard = ({
               <PrimaryButton
                 onPress={onPressCamera}
                 labelStyle={{ fontSize: 12 }}
-                style={{ height: 60, paddingHorizontal: 16 }}
                 icon="camera-retake-outline"
               >
                 {t('actions.changePhoto')}

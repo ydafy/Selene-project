@@ -13,6 +13,11 @@ import { useSellStore } from '../../core/store/useSellStore';
 import { ProductCategory } from '@selene/types';
 import { useAuthContext } from '../../components/auth/AuthProvider';
 import { useAuthModal } from '../../core/auth/AuthModalProvider';
+import { triggerHaptic } from '../../core/utils/haptics';
+import {
+  SELL_CATEGORIES,
+  SELL_CATEGORY_META,
+} from '../../core/config/sellCategories';
 
 export default function SelectCategoryScreen() {
   const { t } = useTranslation(['sell', 'product']);
@@ -22,16 +27,19 @@ export default function SelectCategoryScreen() {
   const { present } = useAuthModal();
   const setCategory = useSellStore((state) => state.setCategory);
 
-  const handleCategorySelect = (category: string) => {
+  const handleCategorySelect = (category: ProductCategory) => {
     if (!session) {
       // Si no hay usuario, mostramos el Login y detenemos todo.
       present('login');
       return;
     }
-    // 1. Guardamos en el estado global
-    setCategory(category as ProductCategory);
+    // 1. Feedback táctil ligero al seleccionar categoría
+    triggerHaptic();
 
-    // 2. Navegamos al siguiente paso
+    // 2. Guardamos en el estado global
+    setCategory(category);
+
+    // 3. Navegamos al siguiente paso
     router.push('/sell/details');
   };
 
@@ -59,32 +67,20 @@ export default function SelectCategoryScreen() {
           subtitle={t('sell:selectCategory')}
         />
 
-        {/* Grid de Categorías (Solo las 4 principales) */}
+        {/* Grid de Categorías derivadas de la config */}
         <Box flexDirection="row" flexWrap="wrap" justifyContent="space-between">
-          <CategoryCard
-            label="GPU"
-            icon="expansion-card-variant"
-            color="primary"
-            onPress={() => handleCategorySelect('GPU')}
-          />
-          <CategoryCard
-            label="CPU"
-            icon="cpu-64-bit"
-            color="primary"
-            onPress={() => handleCategorySelect('CPU')}
-          />
-          <CategoryCard
-            label="Motherboard"
-            icon="developer-board"
-            color="primary"
-            onPress={() => handleCategorySelect('Motherboard')}
-          />
-          <CategoryCard
-            label="RAM"
-            icon="memory"
-            color="primary"
-            onPress={() => handleCategorySelect('RAM')}
-          />
+          {SELL_CATEGORIES.map((category) => {
+            const meta = SELL_CATEGORY_META[category];
+            return (
+              <CategoryCard
+                key={category}
+                label={t(meta.labelKey)}
+                icon={meta.icon}
+                color="primary"
+                onPress={() => handleCategorySelect(category)}
+              />
+            );
+          })}
         </Box>
       </Box>
     </Box>

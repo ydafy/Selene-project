@@ -1,15 +1,24 @@
+/**
+ * @file apps/frontend/core/hooks/useOrderCalculations.ts
+ * @description Custom React Hook for computing real-time order breakdown figures in the client-side cart.
+ *
+ * Implements:
+ * 1. Thread-safe mathematical subtotal calculations in integer cents to prevent JS float precision loss.
+ * 2. Buyer-facing transaction fees ("Seguro Selene") using the shared calculateSeguroSelene utility.
+ * 3. Enforces the buyer-facing shipping cost as $0 (free shipping) as shipping costs are seller-side deductions.
+ *
+ * Uses React useMemo to prevent redundant calculations on UI state changes.
+ *
+ * @version 1.0
+ * @domain checkout-math-hooks
+ */
+
 import { useMemo } from 'react';
 import { Product } from '@selene/types';
-import { useSystemConfig } from './useSystemConfig';
+import { calculateSeguroSelene } from '../utils/connectPayment';
 
 export const useOrderCalculations = (items: Product[] = []) => {
-  const { data: config } = useSystemConfig();
-
   return useMemo(() => {
-    // Fallbacks sincronizados con la DB
-    const PCT = config?.service_fee_pct ?? 0.05;
-    const FIXED = config?.service_fee_fixed_cents ?? 500;
-
     if (!items || items.length === 0) {
       return {
         subtotal: 0,
@@ -21,15 +30,17 @@ export const useOrderCalculations = (items: Product[] = []) => {
       };
     }
 
-    // Calculamos subtotal en centavos
+    // Calculate subtotal in centavos.
     const subtotalCents = items.reduce(
       (sum, item) => sum + Math.round((Number(item.price) || 0) * 100),
       0,
     );
 
-    // Cálculo de comisión
-    const feeFromPercent = Math.round(subtotalCents * PCT);
-    const serviceFeeCents = feeFromPercent + FIXED;
+    // Buyer-facing Seguro Selene. Seller shipping and Selene commission are
+    // seller-side deductions in the Connect flow, not buyer charges.
+    const serviceFeeCents = Math.round(
+      calculateSeguroSelene(subtotalCents / 100) * 100,
+    );
 
     const totalCents = subtotalCents + serviceFeeCents;
 
@@ -41,5 +52,5 @@ export const useOrderCalculations = (items: Product[] = []) => {
       totalInCents: totalCents,
       itemCount: items.length,
     };
-  }, [items, config]);
+  }, [items]);
 };

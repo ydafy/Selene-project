@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Image, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
+import { useNetInfo } from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
 
 import { supabase } from '../db/supabase';
@@ -10,18 +11,47 @@ import { useAuthContext } from '../../components/auth/AuthProvider';
 import { ProductCategory } from '@selene/types';
 import { normalize } from '../utils/compare';
 import { useTranslation } from 'react-i18next';
+import {
+  checkPublishGuard,
+  buildInitialUploadProgress,
+  ImageUploadState,
+} from '../utils/publishGuard';
 
 export const usePublishProduct = () => {
   const [isPublishing, setIsPublishing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, ImageUploadState>>({});
+  const publishingLockRef = useRef(false);
   const router = useRouter();
-  const { draft, resetDraft } = useSellStore();
+  const draft = useSellStore((state) => state.draft);
+  const resetDraft = useSellStore((state) => state.resetDraft);
   const { session } = useAuthContext();
   const queryClient = useQueryClient();
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['common', 'sell']);
+  const { isConnected } = useNetInfo();
+
+  const buildImageUploadState = (
+    current: ImageUploadState | undefined,
+    patch: Partial<ImageUploadState>,
+  ): ImageUploadState => ({
+    status: patch.status ?? current?.status ?? 'pending',
+    progress: patch.progress ?? current?.progress ?? 0,
+  });
+
+  const setImageProgress = useCallback((uri: string, patch: Partial<ImageUploadState>) => {
+    setUploadProgress((prev) => ({
+      ...prev,
+      [uri]: buildImageUploadState(prev[uri], patch),
+    }));
+  }, []);
 
   const uploadImage = async (uri: string, userId: string) => {
     // Si ya es una URL remota (edición), no la subimos de nuevo
-    if (uri.startsWith('http')) return uri;
+    if (uri.startsWith('http')) {
+      setImageProgress(uri, { status: 'done', progress: 100 });
+      return uri;
+    }
+
+    setImageProgress(uri, { status: 'uploading', progress: 0 });
 
     try {
       console.log(`[Upload] Iniciando subida para: ${uri}`);
@@ -31,31 +61,60 @@ export const usePublishProduct = () => {
       const fileExt = uri.split('.').pop()?.toLowerCase() || 'jpg';
       const fileName = `${userId}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
 
+      const uploadOptions = {
+        contentType: `image/${fileExt}`,
+        upsert: false,
+      };
+
       const { error: uploadError } = await supabase.storage
         .from('products')
-        .upload(fileName, arrayBuffer, {
-          contentType: `image/${fileExt}`,
-          upsert: false,
-        });
+        .upload(fileName, arrayBuffer, uploadOptions);
 
       if (uploadError) throw uploadError;
 
+      setImageProgress(uri, { status: 'done', progress: 100 });
       const { data } = supabase.storage.from('products').getPublicUrl(fileName);
       return data.publicUrl;
     } catch (error) {
+      setImageProgress(uri, { status: 'error', progress: 0 });
       console.error('[Upload Error]', error);
       throw error;
     }
   };
 
   const publish = async () => {
-    if (!session?.user.id) {
-      Alert.alert('Error', 'No hay sesión de usuario activa.');
+    const guard = checkPublishGuard({
+      isPublishing,
+      publishingLocked: publishingLockRef.current,
+      isOffline: isConnected === false,
+      hasImages: draft.images.length > 0,
+      hasSession: !!session?.user.id,
+    });
+
+    if (guard.type === 'blocked') {
+      if (guard.reason === 'no_session') {
+        Alert.alert(
+          t('common:states.errorTitle'),
+          t('sell:errors.noSession'),
+        );
+      }
+      if (guard.reason === 'offline') {
+        Alert.alert(
+          t('common:states.errorTitle'),
+          t('sell:errors.offline'),
+        );
+      }
       return;
     }
-    if (draft.images.length === 0) return;
 
+    if (!session?.user.id) return;
+
+    publishingLockRef.current = true;
     setIsPublishing(true);
+
+    const uris = draft.images;
+    setUploadProgress(buildInitialUploadProgress(uris));
+
     const isEditMode = !!draft.id;
 
     let requiresReverification = false;
@@ -80,7 +139,7 @@ export const usePublishProduct = () => {
 
       // 2. Subir Imágenes
       const uploadedUrls = await Promise.all(
-        draft.images.map((uri) => uploadImage(uri, session.user.id)),
+        uris.map((uri) => uploadImage(uri, session.user.id)),
       );
 
       // 3. Preparar Payload Base
@@ -92,7 +151,7 @@ export const usePublishProduct = () => {
         condition: draft.condition,
         usage: draft.usage,
         images: uploadedUrls,
-        specifications: draft.specifications,
+        specifications: draft.specifications as Record<string, string>,
 
         // --- DATOS DE ENVÍO (CRÍTICOS) ---
         shipping_cost: parseFloat(draft.shipping_cost || '0'),
@@ -178,8 +237,8 @@ export const usePublishProduct = () => {
         router.replace('/(tabs)/profile');
         Toast.show({
           type: 'success',
-          text1: t('states.updateMessage') || 'Actualizado', // Fallback por si no tienes la clave
-          text2: t('successChange') || 'Los cambios se han guardado.',
+          text1: t('common:states.updateMessage'),
+          text2: t('common:successChange'),
           position: 'top',
         });
       }
@@ -190,11 +249,20 @@ export const usePublishProduct = () => {
       }
     } catch (error) {
       console.error('[Publish Failed]', error);
-      Alert.alert('Error', 'Hubo un problema al guardar.');
+      Alert.alert(
+        t('common:states.errorTitle'),
+        t('sell:errors.publishFailed'),
+      );
     } finally {
+      publishingLockRef.current = false;
       setIsPublishing(false);
     }
   };
 
-  return { publish, isPublishing };
+  return {
+    publish,
+    isPublishing,
+    uploadProgress,
+    isOffline: isConnected === false,
+  };
 };

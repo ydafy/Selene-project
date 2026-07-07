@@ -1,26 +1,29 @@
 import { formatDistanceToNow, format, isValid } from 'date-fns';
 import { es, enUS } from 'date-fns/locale';
 import i18n from '../i18n';
+import { formatCurrencyWithLocale } from './formatCurrency';
 
 // Helper interno para obtener el locale actual
 const getLocale = () => (i18n.language === 'es' ? es : enUS);
 
 /**
- * Formatea un número como moneda (MXN).
+ * Mapa de códigos de idioma soportados a etiquetas BCP 47 reconocidas
+ * por `Intl.NumberFormat`. Fallback al código original si no está mapeado.
+ */
+const supportedNumberLocales: Record<string, string> = {
+  en: 'en-US',
+  es: 'es-MX',
+};
+
+/**
+ * Formatea un número como moneda (MXN) usando el locale activo de i18n.
  * Acepta string o number porque Postgres numeric llega a veces como string a JS.
  */
 export const formatCurrency = (
   amount: number | string | null | undefined,
 ): string => {
-  const value = typeof amount === 'string' ? parseFloat(amount) : amount;
-  if (value === null || value === undefined || isNaN(value)) return '$0.00';
-
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
+  const locale = supportedNumberLocales[i18n.language] ?? i18n.language;
+  return formatCurrencyWithLocale(amount, locale);
 };
 
 /**

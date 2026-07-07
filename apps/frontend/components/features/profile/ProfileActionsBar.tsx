@@ -8,11 +8,33 @@ import { useRouter } from 'expo-router';
 import { Box } from '../../base';
 import { ProfileActionButton } from './ProfileActionButton';
 import { Theme } from '../../../core/theme';
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import { useCallback, useRef } from 'react';
+import { AddressPickerModal } from '../../../components/features/address/AddressPickerModal';
+import { Address } from '@selene/types';
+import { useAddresses } from '@/core/hooks/useAddresses';
+import { useCheckoutStore } from '@/core/store/useCheckoutStore';
 
 export const ProfileActionsBar = () => {
   const theme = useTheme<Theme>();
   const { t } = useTranslation('profile');
   const router = useRouter();
+  const addressModalRef = useRef<BottomSheetModal>(null);
+  const { setDefault } = useAddresses();
+  const { setSelectedAddress } = useCheckoutStore();
+
+  const handleOpenAddressPicker = useCallback(() => {
+    addressModalRef.current?.present();
+  }, []);
+
+  const handleAddressChange = useCallback(
+    (address: Address) => {
+      setDefault(address.id);
+      setSelectedAddress(address);
+      addressModalRef.current?.dismiss();
+    },
+    [setDefault, setSelectedAddress],
+  );
 
   const actions = [
     {
@@ -28,12 +50,12 @@ export const ProfileActionsBar = () => {
     {
       label: t('menu.addresses'),
       icon: 'map-marker-outline',
-      onPress: () => router.push('/address/form'),
+      onPress: () => handleOpenAddressPicker(),
     },
     {
       label: t('menu.payments'),
       icon: 'credit-card-outline',
-      onPress: () => console.log('Ir a Pagos'),
+      onPress: () => router.push('/sell/onboarding'),
     },
   ];
 
@@ -83,6 +105,10 @@ export const ProfileActionsBar = () => {
           borderBottomRightRadius: theme.borderRadii.l,
         }}
         pointerEvents="none"
+      />
+      <AddressPickerModal
+        innerRef={addressModalRef}
+        onSelect={handleAddressChange}
       />
     </Box>
   );

@@ -23,7 +23,7 @@ export const DisputesPage = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-end">
         <div>
-          <h2 className="text-3xl font-bold">Centro de Disputas</h2>
+          <h1 className="text-3xl font-bold">Centro de Disputas</h1>
           <p className="text-blue-light text-sm">
             Gestión de reclamos y mediación técnica.
           </p>

@@ -3,6 +3,10 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import Stripe from 'https://esm.sh/stripe@17.0.0';
 import { z } from 'https://esm.sh/zod@3.23.8';
 
+import { buildReturnShippingPaymentIntentParams } from './create-return-intent.ts';
+
+const STRIPE_API_VERSION = '2026-04-22.dahlia';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
@@ -53,7 +57,7 @@ serve(async (req) => {
     );
 
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-      apiVersion: '2025-12-15.clover',
+      apiVersion: STRIPE_API_VERSION,
       httpClient: Stripe.createFetchHttpClient(),
     });
 
@@ -71,7 +75,7 @@ serve(async (req) => {
     const [disputeRes, settingsRes] = await Promise.all([
       supabaseAdmin
         .from('disputes')
-        .select('id, seller_id, status, order_id')
+        .select('id, seller_id, status, order_id, shipment_id')
         .eq('id', disputeId)
         .single(),
       supabaseAdmin
@@ -94,52 +98,61 @@ serve(async (req) => {
     );
 
     if (initError || !initResult?.[0]?.success) {
-      const errMsg = initResult?.[0]?.error_message || initError?.message ||
+      const errMsg =
+        initResult?.[0]?.error_message ||
+        initError?.message ||
         'Operación no permitida';
       throw new ApiError(400, errMsg);
     }
 
     const returnFeeCents = settingsRes.data?.return_label_fee_cents || 30000; // Fallback $300
 
-    // 4. Obtener Stripe Customer
+    if (!dispute.shipment_id) {
+      throw new ApiError(400, 'Dispute is not linked to a shipment');
+    }
+
+    // 4. Load seller Stripe customer and connected account.
     const { data: profile } = await supabaseAdmin
       .from('profiles_private')
-      .select('stripe_customer_id')
-      .eq('id', user.id)
+      .select('stripe_customer_id, stripe_account_id')
+      .eq('id', dispute.seller_id)
       .single();
     if (!profile?.stripe_customer_id)
       throw new ApiError(
         400,
-        'El usuario no tiene un perfil de Stripe configurado',
+        'Seller does not have a Stripe customer configured',
+      );
+    if (!profile?.stripe_account_id)
+      throw new ApiError(
+        400,
+        'Seller does not have a Stripe Connect account configured',
       );
 
     // 5. Generar Ephemeral Key y Payment Intent
     log('INFO', 'Creando Payment Intent para retorno', {
       disputeId,
-      sellerId: user.id,
+      sellerId: dispute.seller_id,
+      stripeAccountId: profile.stripe_account_id,
       amount: returnFeeCents,
     });
+
+    const { params: paymentIntentParams, options: paymentIntentOptions } =
+      buildReturnShippingPaymentIntentParams({
+        amountCents: returnFeeCents,
+        customerId: profile.stripe_customer_id,
+        disputeId,
+        orderId: dispute.order_id,
+        sellerId: dispute.seller_id,
+        shipmentId: dispute.shipment_id,
+        stripeAccountId: profile.stripe_account_id,
+      });
 
     const [ephemeralKey, paymentIntent] = await Promise.all([
       stripe.ephemeralKeys.create(
         { customer: profile.stripe_customer_id },
-        { apiVersion: '2022-11-15' },
+        { apiVersion: STRIPE_API_VERSION },
       ),
-      stripe.paymentIntents.create(
-        {
-          amount: returnFeeCents,
-          currency: 'mxn',
-          customer: profile.stripe_customer_id,
-          automatic_payment_methods: { enabled: true },
-          metadata: {
-            type: 'return_shipping',
-            dispute_id: disputeId,
-            order_id: dispute.order_id,
-            seller_id: user.id,
-          },
-        },
-        { idempotencyKey: `return_pay_${disputeId}` },
-      ),
+      stripe.paymentIntents.create(paymentIntentParams, paymentIntentOptions),
     ]);
 
     return new Response(

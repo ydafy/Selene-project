@@ -5,12 +5,11 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../db/supabase';
-import { Product } from '@selene/types';
-
-interface UseProductsOptions {
-  verifiedOnly?: boolean; // Si es true, solo trae VERIFIED (excluye SOLD, HIDDEN, etc.)
-  limit?: number;
-}
+import type { Product } from '@selene/types';
+import {
+  resolveProductsQueryEnabled,
+  type UseProductsOptions,
+} from './useProducts.helpers';
 
 const fetchProducts = async (
   options?: UseProductsOptions,
@@ -22,6 +21,10 @@ const fetchProducts = async (
       .is('deleted_at', null) // Integridad: No mostrar borrados
       .neq('status', 'HIDDEN')
       .order('created_at', { ascending: false });
+
+    if (options?.sellerId) {
+      query = query.eq('seller_id', options.sellerId);
+    }
 
     if (options?.verifiedOnly) {
       query = query.eq('status', 'VERIFIED');
@@ -49,6 +52,7 @@ export const useProducts = (options?: UseProductsOptions) => {
     // La queryKey debe incluir las opciones para que React Query sepa que es una lista diferente
     queryKey: ['products', options],
     queryFn: () => fetchProducts(options),
+    enabled: resolveProductsQueryEnabled(options),
     staleTime: 1000 * 60 * 5,
   });
 };

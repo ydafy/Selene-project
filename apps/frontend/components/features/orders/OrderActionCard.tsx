@@ -39,9 +39,13 @@ export const OrderActionCard = ({
 
   // --- 1. LÓGICA DEL RELOJ DINÁMICO ---
   const timerConfig = useMemo(() => {
-    // Escenario A: Esperando liberación normal
-    if (permissions.showSellerDeliveredBanner && order.delivered_at) {
-      return { startTime: order.delivered_at, limit: 48 };
+    // Escenario A: Esperando liberación normal.
+    // La ventana de revisión de 48h arranca cuando ESTE envío se entrega
+    // (shipment.delivered_at), no cuando la orden completa se entrega — en
+    // órdenes multi-vendedor, order.delivered_at se setea con el último envío
+    // y adelantaría/retrasaría el countdown de cada vendedor.
+    if (permissions.showSellerDeliveredBanner && shipment.delivered_at) {
+      return { startTime: shipment.delivered_at, limit: 48 };
     }
     // Escenario B: Esperando pago de retorno
     if (
@@ -59,7 +63,7 @@ export const OrderActionCard = ({
       return { startTime: dispute.updated_at, limit: 48 };
     }
     return null;
-  }, [order, dispute, permissions]);
+  }, [shipment, dispute, permissions]);
 
   const { timeLeft, isExpired } = useOrderCountdown(
     timerConfig?.startTime,

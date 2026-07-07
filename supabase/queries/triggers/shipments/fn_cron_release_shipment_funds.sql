@@ -6,10 +6,12 @@ DECLARE
   v_success       BOOLEAN;
   v_error_message TEXT;
 BEGIN
+  -- Find legacy (pre-Connect) shipments in 'delivered' status older than 48 hours without active disputes
   FOR v_shipment_id IN
     SELECT s.id
     FROM public.shipments s
     WHERE s.status = 'delivered'
+      AND s.stripe_payment_intent_id IS NULL -- Connect Guard: ignore new orders
       AND s.delivered_at < now() - interval '48 hours'
       AND NOT EXISTS (
         SELECT 1 FROM public.disputes d
@@ -19,7 +21,8 @@ BEGIN
     FOR UPDATE SKIP LOCKED
   LOOP
     BEGIN
-      SELECT * INTO v_success, v_error_message
+      -- We call the release function which is now fully schema-qualified and protected
+      SELECT success, error_message INTO v_success, v_error_message
       FROM public.fn_release_shipment_funds(v_shipment_id);
 
       IF v_success THEN

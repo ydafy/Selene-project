@@ -9,6 +9,10 @@
     "specifications": "Specifications",
     "verifiedSeller": "Verified by Selene"
   },
+  "seller": {
+    "fallbackName": "User",
+    "unavailable": "Seller unavailable"
+  },
   "actions": {
     "buyNow": "Buy Now",
     "addToCart": "Add to Cart",

@@ -1,3 +1,4 @@
+CREATE OR REPLACE FUNCTION public.fn_request_payout(p_amount NUMERIC, p_bank_account_id UUID)
 
 DECLARE
     v_auth_user_id UUID;
@@ -7,6 +8,12 @@ DECLARE
     v_min_amount_cents INTEGER;
     v_min_amount_pesos NUMERIC;
 BEGIN
+    -- Connect cutover guard: manual payout requests are disabled once Connect is enabled.
+    -- Legacy tables remain read-only historical audit records after wallet drain.
+    IF EXISTS (SELECT 1 FROM public.system_settings WHERE connect_enabled = true) THEN
+        RETURN QUERY SELECT false, 'CONNECT_PAYOUTS_MANAGED_BY_STRIPE'::TEXT; RETURN;
+    END IF;
+
     -- A. SEGURIDAD: Obtener ID del usuario desde el JWT
     v_auth_user_id := (current_setting('request.jwt.claims', true)::json->>'sub')::UUID;
     IF v_auth_user_id IS NULL THEN

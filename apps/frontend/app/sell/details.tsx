@@ -9,6 +9,7 @@ import { GlobalHeader } from '@/components/layout/GlobalHeader';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { WizardSteps } from '@/components/features/sell/WizardSteps';
 import { SellDetailsForm } from '@/components/features/sell/SellDetailsForm';
+import { SELL_STEP_DEFINITIONS } from '@/core/constants/sellSteps';
 
 import { useSellDetailsForm } from '@/core/hooks/useSellDetailsForm';
 import { useSellStore } from '@/core/store/useSellStore';
@@ -42,7 +43,7 @@ export default function SellDetailsScreen() {
     <Box flex={1} backgroundColor="background">
       <Stack.Screen options={{ headerShown: false }} />
       <GlobalHeader
-        title={t('sell:steps.details')}
+        title={t('sell:title')}
         showBack={true}
         backgroundColor="cardBackground"
       />
@@ -64,7 +65,10 @@ export default function SellDetailsScreen() {
             title={t('sell:screenTitle.detailsTitle')}
             subtitle={t('sell:screenTitle.detailsSubtitle')}
           />
-          <WizardSteps currentStep={0} />
+          <WizardSteps
+            currentStep={0}
+            steps={SELL_STEP_DEFINITIONS.map((s) => t(s.labelKey as string))}
+          />
 
           {/* El componente de UI puro recibe todos los props del hook */}
           <SellDetailsForm {...formProps} />

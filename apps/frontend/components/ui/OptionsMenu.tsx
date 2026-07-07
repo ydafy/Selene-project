@@ -30,12 +30,11 @@ export const OptionsMenu = ({
   const insets = useSafeAreaInsets();
   const { session } = useAuthContext();
   const { reportEntity, blockUser } = useModeration();
+  const [visible, setVisible] = useState(false);
 
   if (isOwner) {
     return null;
   }
-
-  const [visible, setVisible] = useState(false);
 
   const openMenu = () => setVisible(true);
   const closeMenu = () => setVisible(false);

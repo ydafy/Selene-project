@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../db/supabase';
-import { decode } from 'base64-arraybuffer';
 
 const MAX_VIDEO_SIZE_BYTES = 50 * 1024 * 1024; // 50MB (Límite Supabase Free)
 const MAX_VIDEO_DURATION_MS = 120000; // 2 Minutos
@@ -65,34 +64,20 @@ export const useVideoUpload = () => {
     try {
       console.log('[Video Upload] URI:', uri);
 
-      // Convertir a base64 como las imágenes
+      // 1. Obtenemos el Blob nativo directo del archivo físico (sin Base64 ni ArrayBuffers)
       const response = await fetch(uri);
       const blob = await response.blob();
 
-      // Convertir blob a base64
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve) => {
-        reader.onloadend = () => {
-          const base64 = (reader.result as string).split(',')[1];
-          resolve(base64);
-        };
-      });
-      reader.readAsDataURL(blob);
-      const base64 = await base64Promise;
-
-      console.log('[Video Upload] Base64 length:', base64.length);
-
-      // Decodificar a arrayBuffer (igual que imágenes)
-      const arrayBuffer = decode(base64);
-      console.log('[Video Upload] ArrayBuffer size:', arrayBuffer.byteLength);
+      console.log('[Video Upload] Native Blob size (bytes):', blob.size);
 
       const fileName = `unboxing_${Date.now()}.mp4`;
       const path = `disputes/${orderId}/${userId}/${fileName}`;
-      console.log('[Video Upload] Uploading to path:', path);
+      console.log('[Video Upload] Uploading directly to path:', path);
 
+      // 2. Le pasamos el 'blob' crudo al SDK de Supabase
       const { error } = await supabase.storage
         .from('evidence')
-        .upload(path, arrayBuffer, {
+        .upload(path, blob, {
           contentType: 'video/mp4',
           upsert: true,
         });

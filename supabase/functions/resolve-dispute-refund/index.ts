@@ -34,7 +34,7 @@ serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
-      apiVersion: '2025-12-15.clover',
+      apiVersion: '2026-04-22.dahlia',
       httpClient: Stripe.createFetchHttpClient(),
     });
 
@@ -162,22 +162,49 @@ serve(async (req: Request) => {
       });
     }
 
-    // 6. Ejecutar Reembolso en Stripe (idempotente + monto parcial)
+    // 6. Resolve PI ID: Connect uses shipments.stripe_payment_intent_id,
+    // Legacy uses orders.stripe_payment_intent_id (per T-001).
+    // Also detect Connect for reverse_transfer + skip-wallet-rollback.
+    let isConnectPayment = false;
+    let connectStripeIntentId: string | null = null;
+    if (dispute.shipment_id) {
+      const { data: shipment } = await supabaseAdmin
+        .from('shipments')
+        .select('stripe_payment_intent_id')
+        .eq('id', dispute.shipment_id)
+        .maybeSingle();
+      if (shipment?.stripe_payment_intent_id) {
+        isConnectPayment = true;
+        connectStripeIntentId = shipment.stripe_payment_intent_id;
+      }
+    }
+
+    const finalStripeIntentId = isConnectPayment
+      ? connectStripeIntentId!
+      : stripeIntentId;
+
+    // 7. Ejecutar Reembolso en Stripe (idempotente + monto parcial)
     log('INFO', 'Iniciando reembolso en Stripe', {
       disputeId,
-      intent: stripeIntentId,
+      intent: finalStripeIntentId,
       amountCents: refundAmountCents,
     });
 
     try {
       const refundParams: Stripe.RefundCreateParams = {
-        payment_intent: stripeIntentId,
+        payment_intent: finalStripeIntentId,
         reason: 'requested_by_customer' as const,
         metadata: {
           dispute_id: disputeId,
           shipment_id: dispute.shipment_id ?? '',
         },
       };
+
+      // Connect refund: reverse the transfer back from the seller's account
+      if (isConnectPayment) {
+        refundParams.reverse_transfer = true;
+        log('INFO', 'Connect refund — reversing transfer', { disputeId });
+      }
 
       if (refundAmountCents !== null) {
         refundParams.amount = refundAmountCents;
@@ -205,16 +232,42 @@ serve(async (req: Request) => {
     let rpcSuccess = false;
     let rpcErrorMsg: string | null = null;
 
-    const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc(
-      'fn_complete_shipment_refund',
-      { p_shipment_id: dispute.shipment_id },
-    );
+    if (isConnectPayment) {
+      // Connect refund: reverse_transfer already handled by Stripe.
+      // Do NOT call fn_complete_shipment_refund (it would double-write wallets).
+      // Just update the shipment status directly.
+      log(
+        'INFO',
+        'Connect refund — skipping wallet RPC, updating shipment directly',
+        {
+          disputeId,
+          shipmentId: dispute.shipment_id,
+        },
+      );
 
-    if (rpcError) {
-      rpcErrorMsg = rpcError.message;
+      const { error: updateErr } = await supabaseAdmin
+        .from('shipments')
+        .update({ status: 'refunded' })
+        .eq('id', dispute.shipment_id);
+      if (updateErr) {
+        rpcErrorMsg = updateErr.message;
+        rpcSuccess = false;
+      } else {
+        rpcSuccess = true;
+      }
     } else {
-      rpcSuccess = rpcData?.[0]?.success ?? false;
-      rpcErrorMsg = rpcData?.[0]?.error_message ?? null;
+      // Legacy refund: wallet rollback needed
+      const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc(
+        'fn_complete_shipment_refund',
+        { p_shipment_id: dispute.shipment_id },
+      );
+
+      if (rpcError) {
+        rpcErrorMsg = rpcError.message;
+      } else {
+        rpcSuccess = rpcData?.[0]?.success ?? false;
+        rpcErrorMsg = rpcData?.[0]?.error_message ?? null;
+      }
     }
 
     if (!rpcSuccess) {

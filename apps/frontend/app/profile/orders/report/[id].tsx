@@ -42,9 +42,13 @@ import { useOrderActions } from '@/core/hooks/useOrderActions';
 import { WizardSteps } from '@/components/features/sell/WizardSteps';
 import { FormTextInput } from '@/components/ui/FormTextInput';
 import { useAuthContext } from '@/components/auth/AuthProvider';
+import { resolveShipmentContext } from '@/core/utils/disputeShipmentContext';
 
 export default function ReportProblemScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, shipment_id } = useLocalSearchParams<{
+    id: string;
+    shipment_id?: string | string[];
+  }>();
   const { t } = useTranslation(['disputes', 'common', 'orders']);
   const theme = useTheme<Theme>();
   const router = useRouter();
@@ -61,11 +65,22 @@ export default function ReportProblemScreen() {
   const actions = useOrderActions(id || '');
   const store = useDisputeStore();
 
-  const isSeller = session?.user.id === order?.items?.[0]?.seller_id;
+  const shipmentContext = useMemo(() => {
+    return resolveShipmentContext(shipment_id);
+  }, [shipment_id]);
 
-  // Triage Logic
-  // Obtenemos la categoría con fallback seguro
-  const firstProduct = order?.items?.[0]?.product;
+  const targetShipmentId =
+    'shipmentId' in shipmentContext ? shipmentContext.shipmentId : null;
+
+  // Encontrar el paquete (shipment) activo que se está disputando
+  const activeShipment = useMemo(() => {
+    return order?.shipments?.find((s) => s.id === targetShipmentId) ?? null;
+  }, [order, targetShipmentId]);
+
+  const isSeller = session?.user.id === activeShipment?.seller_id;
+
+  // Triage Logic leyendo desde el activeShipment relacional
+  const firstProduct = activeShipment?.items?.[0]?.product;
   const category = (firstProduct?.category as ProductCategory) || null;
   const questions = useMemo(
     () => getChecklistForCategory(category),
@@ -96,18 +111,20 @@ export default function ReportProblemScreen() {
 
     try {
       if (isSeller) {
-        // EL VENDEDOR IMPUGNA (Contra-disputa)
-        if (!order.dispute?.id)
+        // EL VENDEDOR IMPUGNA leyendo el ID desde el activeShipment
+        if (!activeShipment?.dispute?.id)
           throw new Error(t('disputes:errors.noActiveDispute'));
 
         await actions.submitSellerReturnEvidence.execute({
-          disputeId: order.dispute.id,
+          disputeId: activeShipment.dispute.id,
           images: store.images,
           videoUrl: store.videoUrl,
         });
       } else {
+        if ('error' in shipmentContext) throw new Error(shipmentContext.error);
         if (!store.reason) throw new Error(t('disputes:reasons.required'));
         await actions.openDispute.execute({
+          shipmentId: shipmentContext.shipmentId,
           reason: store.reason,
           description: store.description,
           images: store.images,
