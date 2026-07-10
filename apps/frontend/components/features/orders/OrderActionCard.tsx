@@ -10,8 +10,9 @@ import { Box, Text } from '../../base';
 import { PrimaryButton } from '../../ui/PrimaryButton';
 import { ShippingLabelCard } from './ShippingLabelCard';
 import { EnrichedOrder, EnrichedShipment } from '@selene/types';
-import { useOrderActions } from '@/core/hooks/useOrderActions';
 import { useOrderCountdown } from '@/core/hooks/useOrderCountdown';
+import { useCancellationSettings } from '@/core/hooks/useCancellationSettings';
+import { resolveShipmentPreparingWindowMessage } from '@/core/utils/shipment-cancel-safety';
 import { Theme } from '@/core/theme';
 
 interface Props {
@@ -35,10 +36,25 @@ export const OrderActionCard = ({
   const theme = useTheme<Theme>();
   const router = useRouter();
   const { permissions, dispute, isSeller, isBuyer } = shipment;
-  const actions = useOrderActions(order.id);
+  const { orderExpirationHours, preparingExpirationHours } =
+    useCancellationSettings();
 
   // --- 1. LÓGICA DEL RELOJ DINÁMICO ---
   const timerConfig = useMemo(() => {
+    if (permissions.canCancel && shipment.created_at) {
+      return {
+        startTime: shipment.created_at,
+        limit: orderExpirationHours,
+      };
+    }
+
+    if (shipment.status === 'preparing' && shipment.updated_at) {
+      return {
+        startTime: shipment.updated_at,
+        limit: preparingExpirationHours,
+      };
+    }
+
     // Escenario A: Esperando liberación normal.
     // La ventana de revisión de 48h arranca cuando ESTE envío se entrega
     // (shipment.delivered_at), no cuando la orden completa se entrega — en
@@ -63,7 +79,13 @@ export const OrderActionCard = ({
       return { startTime: dispute.updated_at, limit: 48 };
     }
     return null;
-  }, [shipment, dispute, permissions]);
+  }, [
+    shipment,
+    dispute,
+    permissions,
+    orderExpirationHours,
+    preparingExpirationHours,
+  ]);
 
   const { timeLeft, isExpired } = useOrderCountdown(
     timerConfig?.startTime,
@@ -74,23 +96,39 @@ export const OrderActionCard = ({
   const isCriticalStatus = order.status
     ? ['cancelled', 'dispute', 'refunded'].includes(order.status)
     : false;
-  const shouldShow = isCriticalStatus || permissions.showSellerDeliveredBanner;
+  const shouldShow =
+    isCriticalStatus ||
+    permissions.showSellerDeliveredBanner ||
+    permissions.canCancel ||
+    shipment.status === 'preparing';
 
   if (!shouldShow) return null;
 
   // --- 3. CONFIGURACIÓN VISUAL ---
   const isWaitingReturn = dispute?.status === 'waiting_return';
+  const isManualCancelWindow = permissions.canCancel || shipment.status === 'preparing';
   const bannerColor =
-    isWaitingReturn || permissions.showSellerDeliveredBanner
+    isManualCancelWindow || isWaitingReturn || permissions.showSellerDeliveredBanner
       ? theme.colors.primary
       : theme.colors.error;
+  const bannerBorderColor = isManualCancelWindow
+    ? 'primary'
+    : isWaitingReturn
+      ? 'error'
+      : permissions.showSellerDeliveredBanner
+        ? 'success'
+        : 'error';
   const iconName = isWaitingReturn
     ? 'truck-delivery'
+    : isManualCancelWindow
+      ? 'clock-alert-outline'
     : permissions.showSellerDeliveredBanner
       ? 'clock-check'
       : 'alert-octagon';
 
   const getBannerTitle = () => {
+    if (permissions.canCancel) return 'CANCELLATION WINDOW';
+    if (shipment.status === 'preparing') return 'PREPARING SHIPMENT';
     if (permissions.showSellerDeliveredBanner) return 'ENTREGA CONFIRMADA';
     if (order.status === 'dispute') {
       if (dispute?.status === 'return_delivered' && isSeller)
@@ -102,6 +140,24 @@ export const OrderActionCard = ({
 
   // --- 4. MENSAJES DINÁMICOS (CON RELOJ) ---
   const getBannerMessage = () => {
+    if (permissions.canCancel) {
+      return isExpired
+        ? 'The manual cancellation window has closed.'
+        : `You can still cancel this shipment for ${timeLeft}.`;
+    }
+
+    if (shipment.status === 'preparing') {
+      return isExpired
+        ? isSeller
+          ? 'Your carrier scan window has closed.'
+          : 'The seller\'s shipping window has closed.'
+        : resolveShipmentPreparingWindowMessage({
+            isBuyer,
+            isSeller,
+            timeLeft,
+          });
+    }
+
     if (permissions.showSellerDeliveredBanner) {
       return isExpired
         ? 'El tiempo de revisión ha terminado. Tus fondos se están procesando.'
@@ -153,20 +209,14 @@ export const OrderActionCard = ({
       from={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
     >
-      <Box
-        backgroundColor="warning"
-        padding="m"
-        borderRadius="l"
-        borderWidth={1}
-        borderColor={
-          isWaitingReturn
-            ? 'error'
-            : permissions.showSellerDeliveredBanner
-              ? 'success'
-              : 'error'
-        }
-        marginBottom="m"
-      >
+        <Box
+          backgroundColor="warning"
+          padding="m"
+          borderRadius="l"
+          borderWidth={1}
+          borderColor={bannerBorderColor}
+          marginBottom="m"
+        >
         <Box
           flexDirection="row"
           alignItems="center"

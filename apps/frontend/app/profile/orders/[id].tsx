@@ -206,6 +206,42 @@ export default function OrderDetailScreen() {
     );
   }, []);
 
+  // V2 Compat: `enrichOrder` normaliza `review` para que siempre sea un array.
+  // Al mover este bloque arriba del Skeleton de carga para cumplir con las reglas de React,
+  // 'order' puede ser temporalmente nulo. Usamos un retorno defensivo de array vacío '[]'
+  // mientras la consulta está en vuelo, asegurando que TypeScript compile y evitando crashes de nulos.
+
+  const reviewData = useMemo<ReviewData>(() => {
+    if (!order) return [];
+    return (order as OrderWithReview).review ?? [];
+  }, [order]);
+
+  // V2: per-product review gate. Replaces the V1 single boolean that gated the
+  // review button on whether ANY review existed on the whole order, which hid
+  // the button for every product once a single review landed. The gate logic
+  // lives in a pure helper (`canReviewProduct`) so it is testable without
+  // rendering the React Native screen.
+  // NOTA DE ARQUITECTURA: Se declara arriba del Skeleton para respetar el orden constante de Hooks.
+  // Retorna 'false' preventivamente si la orden de base de datos todavía no terminó de cargar.
+
+  const canReviewProductFn = useCallback(
+    (productId: string) => {
+      if (!order) return false;
+      const ctx: CanReviewProductContext = {
+        shipmentStatus: currentShipment?.status ?? '',
+        isBuyer: order.isBuyer,
+        reviews: reviewData,
+      };
+      return canReviewProduct(productId, ctx);
+    },
+    [currentShipment?.status, order?.isBuyer, reviewData],
+  );
+
+  const openReviewFor = useCallback((productId: string) => {
+    setActiveReviewProductId(productId);
+    reviewModalRef.current?.present();
+  }, []);
+
   // --- 6. EARLY RETURN (SKELETON) ---
   if (isLoading || !order) {
     return (
@@ -225,37 +261,6 @@ export default function OrderDetailScreen() {
     borderRadius: 'l' as const,
     marginBottom: 'm' as const,
   };
-
-  // --- REVIEW DATA (seguro: order no es null acá) ---
-  // `enrichOrder` normalizes `review` to always be an array (PostgREST returns
-  // a single object for 1:1 FKs), so the `?? []` here is a belt-and-suspenders
-  // fallback for the `CompatEnrichedOrder → OrderWithReview` cast — at runtime
-  // `review` is always a `ReviewData` array. Typing `reviewData` as non-optional
-  // lets callers drop the defensive `?.` chaining and the per-call `?? []`.
-  const orderWithReview = order as OrderWithReview;
-  const reviewData: ReviewData = orderWithReview.review ?? [];
-
-  // V2: per-product review gate. Replaces the V1 single boolean that gated the
-  // review button on whether ANY review existed on the whole order, which hid
-  // the button for every product once a single review landed. The gate logic
-  // lives in a pure helper (`canReviewProduct`) so it is testable without
-  // rendering the React Native screen.
-  const canReviewProductFn = useCallback(
-    (productId: string) => {
-      const ctx: CanReviewProductContext = {
-        shipmentStatus: currentShipment?.status ?? '',
-        isBuyer: order.isBuyer,
-        reviews: reviewData,
-      };
-      return canReviewProduct(productId, ctx);
-    },
-    [currentShipment?.status, order.isBuyer, reviewData],
-  );
-
-  const openReviewFor = useCallback((productId: string) => {
-    setActiveReviewProductId(productId);
-    reviewModalRef.current?.present();
-  }, []);
 
   return (
     <Box flex={1} backgroundColor="background">
@@ -704,8 +709,18 @@ export default function OrderDetailScreen() {
         title={t('orders:dialogs.cancelTitle')}
         description={t('orders:detail.cancelDisclaimer')}
         onConfirm={async () => {
-          await actions.cancelOrder.execute({});
-          setShowCancelConfirm(false);
+          if (!currentShipment) {
+            setShowCancelConfirm(false);
+            return;
+          }
+
+          try {
+            await actions.cancelOrder.execute({ shipmentId: currentShipment.id });
+            setShowCancelConfirm(false);
+          } catch {
+            // The hook surfaces the friendly toast; keep the dialog open so the
+            // buyer can retry or dismiss without a hard crash.
+          }
         }}
         onCancel={() => setShowCancelConfirm(false)}
         isDangerous

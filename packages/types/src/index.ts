@@ -155,7 +155,7 @@ export interface EdgeFunctionRegistry {
     response: { success: boolean; error?: string };
   };
   'cancel-order': {
-    payload: { orderId: string; reason: string };
+    payload: { orderId: string; shipmentId: string; reason?: string };
     response: { success: boolean; error?: string };
   };
   'generate-shipping-label': {

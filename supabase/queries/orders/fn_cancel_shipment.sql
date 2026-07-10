@@ -26,20 +26,12 @@ BEGIN
    RETURN QUERY SELECT false, 'CANNOT_CANCEL_IN_THIS_STATUS'::TEXT; RETURN;
  END IF;
 
- -- 2. Autorización según rol declarado (estructura estricta: solo roles explícitos pasan)
- IF p_cancelled_by_role = 'admin' THEN
-   IF NOT is_admin() THEN
-     RETURN QUERY SELECT false, 'UNAUTHORIZED'::TEXT; RETURN;
-   END IF;
- ELSIF p_cancelled_by_role = 'seller' THEN
-   IF auth.uid() IS DISTINCT FROM v_seller_id THEN
-     RETURN QUERY SELECT false, 'UNAUTHORIZED'::TEXT; RETURN;
-   END IF;
- ELSIF p_cancelled_by_role = 'system' THEN
-   -- cron/service_role, sin check adicional
-   NULL;
- ELSE
-   -- cualquier rol no reconocido (buyer, hacker, etc.) → rechazar
+ -- 2. Service-role-only mutation; Edge Function/crons validate actor before RPC
+ IF auth.role() IS DISTINCT FROM 'service_role' THEN
+   RETURN QUERY SELECT false, 'UNAUTHORIZED'::TEXT; RETURN;
+ END IF;
+
+ IF p_cancelled_by_role NOT IN ('buyer', 'seller', 'system') THEN
    RETURN QUERY SELECT false, 'UNAUTHORIZED'::TEXT; RETURN;
  END IF;
 
@@ -110,6 +102,11 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN
  INSERT INTO public.system_logs (level, message, metadata)
  VALUES ('CRITICAL', 'Fallo en fn_cancel_shipment',
-         jsonb_build_object('shipment_id', p_shipment_id, 'error', SQLERRM));
+          jsonb_build_object('shipment_id', p_shipment_id, 'error', SQLERRM));
  RETURN QUERY SELECT false, 'INTERNAL_SERVER_ERROR'::TEXT;
 END;
+
+-- Manual deploy hardening: keep this RPC executable only by service_role.
+-- Apply these privileges with the function body so production deploys remain explicit.
+REVOKE EXECUTE ON FUNCTION public.fn_cancel_shipment(UUID, TEXT, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.fn_cancel_shipment(UUID, TEXT, TEXT) TO service_role;

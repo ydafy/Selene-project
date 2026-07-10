@@ -15,6 +15,7 @@ import {
   Product,
 } from '@selene/types';
 import { useAuthContext } from '../../components/auth/AuthProvider';
+import { canCancelShipment } from '../utils/shipment-cancel-safety';
 
 const DISPUTE_WINDOW_MS = 48 * 60 * 60 * 1000;
 
@@ -68,7 +69,11 @@ const enrichShipment = (
     shipment.status === 'delivered' && now - deliveredAt < DISPUTE_WINDOW_MS;
 
   const permissions = {
-    canCancel: shipment.status === 'paid',
+    canCancel: canCancelShipment({
+      isBuyer,
+      isSeller,
+      status: shipment.status,
+    }),
     canReport:
       isBuyer &&
       !['dispute', 'cancelled', 'refunded', 'completed'].includes(
@@ -183,8 +188,7 @@ export const useShipmentById = (shipmentId: string | undefined) => {
     if (!query.data) return null;
     const raw = query.data;
     const buyerId = raw.order?.buyer_id || '';
-    const { order: _order, ...shipment } = raw;
-    return enrichShipment(shipment as RawShipment, userId, buyerId);
+    return enrichShipment(raw as RawShipment, userId, buyerId);
   }, [query.data, userId]);
 
   return { ...query, data: enrichedData };

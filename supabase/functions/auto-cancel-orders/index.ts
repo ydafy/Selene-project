@@ -2,6 +2,9 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import Stripe from 'https://esm.sh/stripe@17.0.0';
 
+import { resolveAutoCancelShipmentCancellationGate } from '../_shared/auto-cancel-safety.ts';
+import { computeShipmentRefundAmountCents } from '../_shared/refund-basis.ts';
+
 const STRIPE_API_VERSION = '2026-04-22.dahlia';
 
 const log = (
@@ -20,7 +23,7 @@ const log = (
   );
 };
 
-serve(async (req) => {
+serve(async () => {
   const supabaseAdmin = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -101,22 +104,45 @@ serve(async (req) => {
         // 3. Calcular monto del shipment para refund parcial en Stripe
         const { data: orderItems } = await supabaseAdmin
           .from('order_items')
-          .select('price_at_purchase, shipping_amount')
-          .eq('shipment_id', shipment.id);
+          .select('price_at_purchase, shipping_amount, shipment_id')
+          .eq('order_id', shipment.order_id);
 
         // Explicit shape assertion for Supabase dashboard editor compatibility
         const refundItems = (orderItems ?? []) as Array<{
           price_at_purchase: number;
           shipping_amount: number | null;
+          shipment_id: string | null;
         }>;
 
-        const refundAmountCents = Math.round(
-          refundItems.reduce(
-            (sum, item) =>
-              sum + item.price_at_purchase + (item.shipping_amount ?? 0),
-            0,
-          ) * 100,
+        const shipmentItems = refundItems.filter(
+          (item) => item.shipment_id === shipment.id,
         );
+
+        const { data: order } = await supabaseAdmin
+          .from('orders')
+          .select('stripe_charge_id, total_amount, stripe_payment_intent_id')
+          .eq('id', shipment.order_id)
+          .single();
+
+        let refundCharge: Stripe.Charge | null = null;
+        if (order?.stripe_charge_id) {
+          try {
+            refundCharge = await stripe.charges.retrieve(order.stripe_charge_id);
+          } catch {
+            throw new Error('STRIPE_CHARGE_NOT_FOUND');
+          }
+        }
+
+        const refundAmountCents = computeShipmentRefundAmountCents({
+          shipmentItems,
+          orderItems: refundItems,
+          orderChargeCents: refundCharge?.amount
+            ? refundCharge.amount
+            : Math.round(Number(order?.total_amount ?? 0) * 100),
+          remainingRefundableCents: refundCharge?.amount
+            ? refundCharge.amount - refundCharge.amount_refunded
+            : null,
+        });
 
         // 4. Resolve PaymentIntent ID: Connect orders use shipment-level PI,
         // legacy orders use order-level PI (which is NULL for Connect per T-001).
@@ -125,55 +151,57 @@ serve(async (req) => {
 
         if (!stripePaymentIntentId) {
           // Legacy: PI ID lives on the order
-          const { data: order } = await supabaseAdmin
-            .from('orders')
-            .select('stripe_payment_intent_id')
-            .eq('id', shipment.order_id)
-            .single();
           orderStripeIntentId = order?.stripe_payment_intent_id ?? null;
         }
 
         const finalStripeIntentId =
           stripePaymentIntentId ?? orderStripeIntentId;
 
+        const refundGate = resolveAutoCancelShipmentCancellationGate({
+          finalStripeIntentId,
+          refundAmountCents,
+        });
+
+        if (!refundGate.shouldCancelShipment) {
+          log(refundGate.level, refundGate.message, {
+            shipmentId: shipment.id,
+            orderId: shipment.order_id,
+            refundAmountCents,
+            hasStripePaymentIntent: Boolean(finalStripeIntentId),
+            errorCode: refundGate.code,
+          });
+          continue;
+        }
+
         // 5. Stripe refund parcial (solo el monto de este shipment)
-        if (finalStripeIntentId && refundAmountCents > 0) {
-          try {
-            const refundParams: Stripe.RefundCreateParams = {
-              payment_intent: finalStripeIntentId,
-              amount: refundAmountCents,
-              reason: 'requested_by_customer' as const,
-              metadata: {
-                shipment_id: shipment.id,
-                order_id: shipment.order_id,
-                type: 'auto_cancel',
-              },
-            };
+        try {
+          const refundParams: Stripe.RefundCreateParams = {
+            payment_intent: finalStripeIntentId!,
+            amount: refundAmountCents,
+            reason: 'requested_by_customer' as const,
+            metadata: {
+              shipment_id: shipment.id,
+              order_id: shipment.order_id,
+              type: 'auto_cancel',
+            },
+          };
 
-            // Connect refund: reverse the transfer from the seller's account.
-            // Without this, Stripe refunds from Selene's platform balance
-            // and the seller keeps the money.
-            if (stripePaymentIntentId) {
-              refundParams.reverse_transfer = true;
-            }
-
-            await stripe.refunds.create(refundParams, {
-              idempotencyKey: `auto_cancel_${shipment.id}`,
+          await stripe.refunds.create(refundParams, {
+            idempotencyKey: `auto_cancel_${shipment.id}`,
+          });
+        } catch (stripeError: unknown) {
+          if (
+            typeof stripeError === 'object' &&
+            stripeError !== null &&
+            'code' in stripeError &&
+            (stripeError as { code: string }).code ===
+              'charge_already_refunded'
+          ) {
+            log('INFO', 'Stripe refund idempotente — ya reembolsado', {
+              shipmentId: shipment.id,
             });
-          } catch (stripeError: unknown) {
-            if (
-              typeof stripeError === 'object' &&
-              stripeError !== null &&
-              'code' in stripeError &&
-              (stripeError as { code: string }).code ===
-                'charge_already_refunded'
-            ) {
-              log('INFO', 'Stripe refund idempotente — ya reembolsado', {
-                shipmentId: shipment.id,
-              });
-            } else {
-              throw stripeError;
-            }
+          } else {
+            throw stripeError;
           }
         }
 

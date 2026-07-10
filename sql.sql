@@ -256,7 +256,7 @@ $$;
 REVOKE EXECUTE ON FUNCTION public.fn_release_shipment_funds(UUID) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.fn_release_shipment_funds(UUID) TO service_role;
 
--- 4.3 Cancelar un shipment individual (admin, seller o sistema)
+-- 4.3 Cancelar un shipment individual (service_role only; audit role explicit)
 DROP FUNCTION IF EXISTS public.fn_cancel_shipment;
 CREATE OR REPLACE FUNCTION public.fn_cancel_shipment(
   p_shipment_id UUID,
@@ -295,20 +295,12 @@ BEGIN
     RETURN QUERY SELECT false, 'CANNOT_CANCEL_IN_THIS_STATUS'::TEXT; RETURN;
   END IF;
 
-  -- 2. Autorización según rol declarado (estructura estricta: solo roles explícitos pasan)
-  IF p_cancelled_by_role = 'admin' THEN
-    IF NOT is_admin() THEN
-      RETURN QUERY SELECT false, 'UNAUTHORIZED'::TEXT; RETURN;
-    END IF;
-  ELSIF p_cancelled_by_role = 'seller' THEN
-    IF auth.uid() IS DISTINCT FROM v_seller_id THEN
-      RETURN QUERY SELECT false, 'UNAUTHORIZED'::TEXT; RETURN;
-    END IF;
-  ELSIF p_cancelled_by_role = 'system' THEN
-    -- cron/service_role, sin check adicional
-    NULL;
-  ELSE
-    -- cualquier rol no reconocido (buyer, hacker, etc.) → rechazar
+  -- 2. Service-role-only mutation; Edge Function/crons validate actor before RPC
+  IF auth.role() IS DISTINCT FROM 'service_role' THEN
+    RETURN QUERY SELECT false, 'UNAUTHORIZED'::TEXT; RETURN;
+  END IF;
+
+  IF p_cancelled_by_role NOT IN ('buyer', 'seller', 'system') THEN
     RETURN QUERY SELECT false, 'UNAUTHORIZED'::TEXT; RETURN;
   END IF;
 
@@ -386,7 +378,7 @@ $$;
 
 -- API hardening
 REVOKE EXECUTE ON FUNCTION public.fn_cancel_shipment(UUID, TEXT, TEXT) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.fn_cancel_shipment(UUID, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_cancel_shipment(UUID, TEXT, TEXT) TO service_role;
 
 -- 4.4 fn_create_order_from_payment modificada (crea 1 order + N shipments)
 CREATE OR REPLACE FUNCTION public.fn_create_order_from_payment(

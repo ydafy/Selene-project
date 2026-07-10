@@ -1,4 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+import Toast from 'react-native-toast-message';
 import { supabase } from '../db/supabase';
 import { invokeEdge } from '../services/edge-client';
 import { Address } from '@selene/types';
@@ -7,6 +9,10 @@ import {
   getOpenDisputeInvalidationKeys,
 } from '../utils/disputeShipmentContext';
 import type { OpenDisputeParams } from '../utils/disputeShipmentContext';
+import {
+  buildCancelOrderPayload,
+  resolveCancelOrderFailureToast,
+} from '../utils/shipment-cancel-safety';
 
 // Definimos la interfaz de lo que recibe la función
 interface GenerateLabelParams {
@@ -17,6 +23,7 @@ interface GenerateLabelParams {
 
 export const useOrderActions = (orderId: string) => {
   const queryClient = useQueryClient();
+  const { t } = useTranslation('common');
   const generateLabel = useMutation({
     mutationFn: async (params: GenerateLabelParams) => {
       return invokeEdge('generate-shipping-label', {
@@ -66,16 +73,28 @@ export const useOrderActions = (orderId: string) => {
 
   // 3. Cancelar Orden (Comprador)
   const cancelOrder = useMutation({
-    mutationFn: async (params: { reason?: string }) => {
-      return invokeEdge('cancel-order', {
-        orderId,
-        reason: params.reason || 'Cancelación solicitada por el usuario',
+    mutationFn: async (params: { shipmentId: string; reason?: string }) => {
+      return invokeEdge('cancel-order',
+        buildCancelOrderPayload({
+          orderId,
+          shipmentId: params.shipmentId,
+          reason: params.reason,
+        }),
+      );
+    },
+    onError: (error) => {
+      const toast = resolveCancelOrderFailureToast(error);
+      Toast.show({
+        type: 'error',
+        text1: t('errors.errorTitle', toast.title),
+        text2: toast.message,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['order', orderId] });
       queryClient.invalidateQueries({ queryKey: ['my-purchases'] });
       queryClient.invalidateQueries({ queryKey: ['my-sales'] });
+      queryClient.invalidateQueries({ queryKey: ['shipments', orderId] });
     },
   });
 

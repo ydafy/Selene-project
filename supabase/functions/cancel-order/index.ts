@@ -1,7 +1,13 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import Stripe from 'https://esm.sh/stripe@17.0.0';
-import { z } from 'https://esm.sh/zod@3.23.8';
+
+import {
+  ApiError,
+  parseCancelOrderRequestBody,
+  resolveManualShipmentCancelPlan,
+  type ShipmentCancelItem,
+} from './cancel-order.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,16 +16,6 @@ const corsHeaders = {
 };
 
 const STRIPE_API_VERSION = '2026-04-22.dahlia';
-
-class ApiError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-  ) {
-    super(message);
-    this.name = 'ApiError';
-  }
-}
 
 const log = (
   level: 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL',
@@ -37,201 +33,162 @@ const log = (
   );
 };
 
-const RequestSchema = z.object({
-  orderId: z.string().uuid('ID de orden inválido'),
-  reason: z
-    .string()
-    .max(255, 'La razón es demasiado larga')
-    .optional()
-    .default('Cancelación solicitada por el usuario'),
-});
-
+// Legacy deployed name kept for compatibility.
+// Manual cancellations are shipment-scoped and never whole-order here.
 serve(async (req) => {
   if (req.method === 'OPTIONS')
     return new Response('ok', { headers: corsHeaders });
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { orderId, reason } = RequestSchema.parse(body);
+    const { orderId, shipmentId, reason } = parseCancelOrderRequestBody(body);
 
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
 
-    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-      apiVersion: STRIPE_API_VERSION,
-      httpClient: Stripe.createFetchHttpClient(),
-    });
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) throw new ApiError(401, 'AUTH_REQUIRED');
 
     // 1. Autenticación
-    const authHeader = req.headers.get('Authorization');
     const {
       data: { user },
       error: authError,
     } = await supabaseAdmin.auth.getUser(
-      authHeader?.replace('Bearer ', '') || '',
+      authHeader.replace('Bearer ', ''),
     );
     if (authError || !user) throw new ApiError(401, 'No autorizado');
 
-    // 2. Obtener Orden y Validar Roles
+    const { data: systemSettings, error: settingsError } = await supabaseAdmin
+      .from('system_settings')
+      .select('is_maintenance')
+      .eq('id', 1)
+      .single();
+
+    if (settingsError || !systemSettings) {
+      throw new ApiError(500, 'SYSTEM_SETTINGS_NOT_FOUND');
+    }
+
+    if (systemSettings.is_maintenance) {
+      throw new ApiError(503, 'MAINTENANCE_MODE');
+    }
+
+    const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY');
+    if (!stripeSecret) throw new ApiError(500, 'MISSING_STRIPE_SECRET_KEY');
+
+    const stripe = new Stripe(stripeSecret, {
+      apiVersion: STRIPE_API_VERSION,
+      httpClient: Stripe.createFetchHttpClient(),
+    });
+
     const { data: order, error: orderError } = await supabaseAdmin
       .from('orders')
-      .select(
-        `id, buyer_id, status, stripe_payment_intent_id, items:order_items(seller_id)`,
-      )
+      .select('buyer_id, total_amount, stripe_charge_id')
       .eq('id', orderId)
       .single();
 
-    if (orderError || !order) throw new ApiError(404, 'Orden no encontrada');
-
-    let role: 'buyer' | 'seller' | 'system' = 'system';
-    if (user.id === order.buyer_id) role = 'buyer';
-    else if (
-      order.items.some(
-        (item: { seller_id: string }) => item.seller_id === user.id,
-      )
-    )
-      role = 'seller';
-    else throw new ApiError(403, 'No tienes permiso para cancelar esta orden');
-
-    // 3. Validar Estado de la Orden
-    if (order.status === 'cancelled') {
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: 'La orden ya estaba cancelada',
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        },
-      );
+    if (orderError || !order) {
+      throw new ApiError(422, 'ORDER_NOT_FOUND');
     }
 
-    if (!['paid'].includes(order.status)) {
-      throw new ApiError(
-        422,
-        `No se puede cancelar una orden en estado: ${order.status}`,
-      );
-    }
-
-    // 4. Reembolso en Stripe — per-shipment para Connect, orden única para legacy
-    log('INFO', 'Iniciando reembolso en Stripe', { orderId });
-
-    // Fetch shipments with their PaymentIntent IDs (Connect-era) or fallback
-    // to single order-level PI for legacy orders.
-    const { data: orderShipments } = await supabaseAdmin
+    const { data: shipment, error: shipmentError } = await supabaseAdmin
       .from('shipments')
-      .select('id, stripe_payment_intent_id, status')
+      .select(
+        'id, order_id, seller_id, status, stripe_payment_intent_id, stripe_transfer_id',
+      )
+      .eq('id', shipmentId)
       .eq('order_id', orderId)
-      .neq('status', 'cancelled');
+      .single();
 
-    const shipmentsToRefund = (orderShipments ?? []).filter(
-      (s) => s.stripe_payment_intent_id || order.stripe_payment_intent_id,
-    );
-
-    if (shipmentsToRefund.length === 0 && !order.stripe_payment_intent_id) {
-      // No Connect PIs and no legacy PI — nothing to refund, just cancel in DB
-      log('WARN', 'No Stripe payment to refund, cancelling in DB only', {
-        orderId,
-      });
+    if (shipmentError || !shipment) {
+      throw new ApiError(422, 'SHIPMENT_ORDER_MISMATCH');
     }
 
-    let refundCount = 0;
-    for (const shipment of shipmentsToRefund) {
-      const piId =
-        shipment.stripe_payment_intent_id ?? order.stripe_payment_intent_id;
-      if (!piId) continue;
+    const isBuyer = !!order.buyer_id && order.buyer_id === user.id;
+    const isSeller = shipment.seller_id === user.id;
 
+    if (!isBuyer && !isSeller) {
+      throw new ApiError(403, 'UNAUTHORIZED');
+    }
+
+    const { data: orderItems, error: itemsError } = await supabaseAdmin
+      .from('order_items')
+      .select('price_at_purchase, shipping_amount, shipment_id')
+      .eq('order_id', orderId);
+
+    if (itemsError) {
+      throw new ApiError(500, 'ORDER_ITEMS_NOT_FOUND');
+    }
+
+    let refundCharge: Stripe.Charge | null = null;
+    if (order.stripe_charge_id) {
       try {
-        const refundParams: Stripe.RefundCreateParams = {
-          payment_intent: piId,
-          reason: 'requested_by_customer',
-          metadata: {
-            order_id: orderId,
-            shipment_id: shipment.id,
-            cancelled_by: user.id,
-            role,
-          },
-        };
-
-        // Connect: reverse the transfer from seller's account
-        if (shipment.stripe_payment_intent_id) {
-          refundParams.reverse_transfer = true;
-        }
-
-        const refund = await stripe.refunds.create(refundParams, {
-          idempotencyKey: `cancel_order_${shipment.id}`,
-        });
-        refundCount++;
-        log('INFO', 'Refund processed', {
-          shipmentId: shipment.id,
-          refundId: refund.id,
-        });
-      } catch (stripeError: unknown) {
-        const code =
-          typeof stripeError === 'object' && stripeError !== null
-            ? (stripeError as { code: string }).code
-            : null;
-        if (code === 'charge_already_refunded') {
-          log('WARN', 'Charge already refunded', { shipmentId: shipment.id });
-        } else {
-          const msg =
-            stripeError instanceof Error
-              ? stripeError.message
-              : String(stripeError);
-          log('ERROR', 'Stripe refund failed', {
-            shipmentId: shipment.id,
-            error: msg,
-          });
-          throw new ApiError(500, `Error de Stripe: ${msg}`);
-        }
+        refundCharge = await stripe.charges.retrieve(order.stripe_charge_id);
+      } catch {
+        throw new ApiError(500, 'STRIPE_CHARGE_NOT_FOUND');
       }
     }
 
-    // If no shipments with PIs, try legacy single-order refund
-    if (refundCount === 0 && order.stripe_payment_intent_id) {
-      try {
-        await stripe.refunds.create(
-          {
-            payment_intent: order.stripe_payment_intent_id,
-            reason: 'requested_by_customer',
-            metadata: { order_id: orderId, cancelled_by: user.id, role },
-          },
-          { idempotencyKey: `refund_v2_${orderId}` },
-        );
-        log('INFO', 'Legacy refund processed', { orderId });
-      } catch (stripeError: unknown) {
-        const code =
-          typeof stripeError === 'object' && stripeError !== null
-            ? (stripeError as { code: string }).code
-            : null;
-        if (code === 'charge_already_refunded') {
-          log('WARN', 'Legacy charge already refunded', { orderId });
-        } else {
-          const msg =
-            stripeError instanceof Error
-              ? stripeError.message
-              : String(stripeError);
-          throw new ApiError(500, `Error de Stripe: ${msg}`);
-        }
+    const orderChargeCents = refundCharge?.amount
+      ? refundCharge.amount
+      : Math.round(Number(order.total_amount) * 100);
+    const remainingRefundableCents = refundCharge?.amount
+      ? refundCharge.amount - refundCharge.amount_refunded
+      : null;
+
+    const plan = resolveManualShipmentCancelPlan({
+      isMaintenance: false,
+      callerRole: isSeller ? 'seller' : 'buyer',
+      callerId: user.id,
+      orderId,
+      orderBuyerId: order.buyer_id,
+      shipmentSellerId: shipment.seller_id,
+      shipmentId,
+      shipmentOrderId: shipment.order_id,
+      shipmentStatus: shipment.status,
+      shipmentStripePaymentIntentId: shipment.stripe_payment_intent_id,
+      shipmentStripeTransferId: shipment.stripe_transfer_id,
+      shipmentItems: (orderItems ?? []).filter(
+        (item) => item.shipment_id === shipmentId,
+      ) as ShipmentCancelItem[],
+      orderItems: (orderItems ?? []) as ShipmentCancelItem[],
+      orderChargeCents,
+      remainingRefundableCents,
+      reason,
+      onCritical: (message, metadata) => log('CRITICAL', message, metadata),
+    });
+
+    try {
+      await stripe.refunds.create(plan.refundParams.params, plan.refundParams.options);
+    } catch (stripeError: unknown) {
+      const code =
+        typeof stripeError === 'object' && stripeError !== null
+          ? (stripeError as { code?: string }).code
+          : null;
+
+      if (code === 'charge_already_refunded') {
+        log('WARN', 'Charge already refunded', { shipmentId });
+      } else {
+        const msg =
+          stripeError instanceof Error ? stripeError.message : String(stripeError);
+        log('ERROR', 'Stripe refund failed', {
+          shipmentId,
+          error: msg,
+        });
+        throw new ApiError(500, `Error de Stripe: ${msg}`);
       }
     }
 
-    // 5. Actualización Atómica en DB
     const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc(
-      'fn_cancel_order',
-      {
-        p_order_id: orderId,
-        p_reason: reason,
-        p_cancelled_by_role: role,
-      },
+      'fn_cancel_shipment',
+      plan.rpcInput,
     );
 
     if (rpcError || !rpcData?.[0]?.success) {
-      log('CRITICAL', 'REEMBOLSO EXITOSO PERO FALLO EN DB', {
+      log('CRITICAL', 'Refund processed but shipment cancel RPC failed', {
         orderId,
-        refundsProcessed: refundCount,
+        shipmentId,
         dbError: rpcError?.message || rpcData?.[0]?.error_message,
       });
       throw new ApiError(
@@ -240,15 +197,15 @@ serve(async (req) => {
       );
     }
 
-    log('INFO', 'Cancelación completada con éxito', {
+    log('INFO', 'Cancelación de shipment completada con éxito', {
       orderId,
-      refunds: refundCount,
+      shipmentId,
     });
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'Orden cancelada y dinero reembolsado',
+        message: 'Shipment canceled and refund processed',
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
