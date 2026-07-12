@@ -16,6 +16,9 @@ describe('shipment cancel source guards', () => {
     expect(indexTs).not.toContain('SUPABASE_ANON_KEY');
     expect(indexTs).not.toContain('supabaseActor');
     expect(indexTs).toContain("fn_cancel_shipment");
+    expect(indexTs).toContain('actual_stripe_fee_cents');
+    expect(indexTs).toContain('stripe_fee_reconciled_at');
+    expect(indexTs).toContain('balance_transaction');
   });
 
   it('does not enable reverse_transfer for platform-held auto-cancel refunds', () => {
@@ -37,5 +40,9 @@ describe('shipment cancel source guards', () => {
     expect(autoCancelPreparing).toContain('continue;');
     expect(safetyGate).toContain('AUTO_CANCEL_MISSING_PAYMENT_INTENT');
     expect(safetyGate).toContain('AUTO_CANCEL_INVALID_REFUND_AMOUNT');
+    expect(autoCancelOrders).toContain('p_cancellation_loss_cents');
+    expect(autoCancelPreparing).toContain('p_cancellation_loss_cents');
+    expect(autoCancelOrders).toContain('seguro_share_cents');
+    expect(autoCancelPreparing).toContain('seguro_share_cents');
   });
 });

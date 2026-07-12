@@ -414,6 +414,8 @@ export function buildSinglePaymentIntentParams(
     address_id: addressId,
     total_sellers: String(rows.length),
     buyer_total_cents: String(allocation.buyerTotalCents),
+    grossed_up_total_cents: String(allocation.buyerTotalCents),
+    domestic_seguro_cents: String(allocation.totalSeguroCents),
     total_gross_cents: String(allocation.totalGrossCents),
     total_commission_cents: String(allocation.totalCommissionCents),
     total_shipping_cents: String(allocation.totalShippingCents),

@@ -15,42 +15,37 @@
 
 import { useMemo } from 'react';
 import { Product } from '@selene/types';
-import { calculateSeguroSelene } from '../utils/connectPayment';
+import { grossUpDomesticMx } from '../utils/stripeFeeGrossUp';
+
+export const calculateOrderCalculations = (items: Product[] = []) => {
+  if (!items || items.length === 0) {
+    return {
+      subtotal: 0,
+      shippingCost: 0,
+      serviceFee: 0,
+      total: 0,
+      totalInCents: 0,
+      itemCount: 0,
+    };
+  }
+
+  const subtotalCents = items.reduce(
+    (sum, item) => sum + Math.round((Number(item.price) || 0) * 100),
+    0,
+  );
+
+  const { buyerTotalCents, seguroCents } = grossUpDomesticMx(subtotalCents);
+
+  return {
+    subtotal: subtotalCents / 100,
+    shippingCost: 0,
+    serviceFee: seguroCents / 100,
+    total: buyerTotalCents / 100,
+    totalInCents: buyerTotalCents,
+    itemCount: items.length,
+  };
+};
 
 export const useOrderCalculations = (items: Product[] = []) => {
-  return useMemo(() => {
-    if (!items || items.length === 0) {
-      return {
-        subtotal: 0,
-        shippingCost: 0,
-        serviceFee: 0,
-        total: 0,
-        totalInCents: 0,
-        itemCount: 0,
-      };
-    }
-
-    // Calculate subtotal in centavos.
-    const subtotalCents = items.reduce(
-      (sum, item) => sum + Math.round((Number(item.price) || 0) * 100),
-      0,
-    );
-
-    // Buyer-facing Seguro Selene. Seller shipping and Selene commission are
-    // seller-side deductions in the Connect flow, not buyer charges.
-    const serviceFeeCents = Math.round(
-      calculateSeguroSelene(subtotalCents / 100) * 100,
-    );
-
-    const totalCents = subtotalCents + serviceFeeCents;
-
-    return {
-      subtotal: subtotalCents / 100,
-      shippingCost: 0,
-      serviceFee: serviceFeeCents / 100,
-      total: totalCents / 100,
-      totalInCents: totalCents,
-      itemCount: items.length,
-    };
-  }, [items]);
+  return useMemo(() => calculateOrderCalculations(items), [items]);
 };

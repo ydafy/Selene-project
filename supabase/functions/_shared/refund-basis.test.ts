@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'bun:test';
 
-import { computeShipmentRefundAmountCents } from './refund-basis';
+import {
+  allocateCancellationLossCents,
+  computeShipmentRefundAmountCents,
+} from './refund-basis';
 
 describe('computeShipmentRefundAmountCents', () => {
   it('keeps the buyer-paid refund basis for a real paid-shipment example', () => {
@@ -37,5 +40,38 @@ describe('computeShipmentRefundAmountCents', () => {
         orderChargeCents: 220_000,
       }),
     ).toBe(132_000);
+  });
+});
+
+describe('allocateCancellationLossCents', () => {
+  it('returns null when the actual Stripe fee is unreconciled', () => {
+    expect(
+      allocateCancellationLossCents(null, [
+        { shipmentId: 'ship-a', refundCents: 10_000 },
+      ]),
+    ).toBeNull();
+  });
+
+  it('allocates the actual fee proportionally and keeps the sum exact', () => {
+    const allocation = allocateCancellationLossCents(20_000, [
+      { shipmentId: 'ship-a', refundCents: 10_000 },
+      { shipmentId: 'ship-b', refundCents: 10_000 },
+    ]);
+
+    expect(allocation?.get('ship-a')).toBe(10_000);
+    expect(allocation?.get('ship-b')).toBe(10_000);
+    expect(Array.from(allocation?.values() ?? []).reduce((sum, value) => sum + value, 0)).toBe(20_000);
+  });
+
+  it('breaks equal remainders by shipment id for deterministic partial allocations', () => {
+    const allocation = allocateCancellationLossCents(2, [
+      { shipmentId: 'ship-b', refundCents: 1 },
+      { shipmentId: 'ship-a', refundCents: 1 },
+      { shipmentId: 'ship-c', refundCents: 1 },
+    ]);
+
+    expect(allocation?.get('ship-a')).toBe(1);
+    expect(allocation?.get('ship-b')).toBe(1);
+    expect(allocation?.get('ship-c')).toBe(0);
   });
 });

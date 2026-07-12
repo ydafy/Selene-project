@@ -79,6 +79,51 @@ export interface SingleModalSettlementInput {
   totalsCents: SingleModalTotalsCents;
 }
 
+export interface StripeChargeBalanceTransactionLike {
+  fee?: number | null;
+}
+
+export interface StripeChargeLike {
+  id: string;
+  balance_transaction?: string | StripeChargeBalanceTransactionLike | null;
+}
+
+export type StripeFeeReconciliationPlan =
+  | {
+      kind: 'ready';
+      actualStripeFeeCents: number;
+      stripeFeeReconciledAt: string;
+    }
+  | { kind: 'already_reconciled' }
+  | { kind: 'missing_balance_transaction' };
+
+export function buildStripeFeeReconciliationPlan(input: {
+  existingActualStripeFeeCents: number | null;
+  charge: StripeChargeLike;
+  reconciledAt: string;
+}): StripeFeeReconciliationPlan {
+  if (input.existingActualStripeFeeCents !== null) {
+    return { kind: 'already_reconciled' };
+  }
+
+  const balanceTransaction = input.charge.balance_transaction;
+  if (
+    !balanceTransaction ||
+    typeof balanceTransaction === 'string' ||
+    typeof balanceTransaction.fee !== 'number' ||
+    !Number.isInteger(balanceTransaction.fee) ||
+    balanceTransaction.fee < 0
+  ) {
+    return { kind: 'missing_balance_transaction' };
+  }
+
+  return {
+    kind: 'ready',
+    actualStripeFeeCents: balanceTransaction.fee,
+    stripeFeeReconciledAt: input.reconciledAt,
+  };
+}
+
 type MetadataLike = Record<string, string>;
 
 const requiredStr = (meta: MetadataLike, key: string): string => {

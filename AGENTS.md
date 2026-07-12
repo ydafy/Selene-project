@@ -1,269 +1,152 @@
 # Repository Guidelines
 
-## Project Overview
+## Project Snapshot
 
-**Selene** is a startup specialized Marketplace for used PC Hardware (GPUs, CPUs, RAMs, Motherboards) in Mexico with a focus on trust and verification through technical validation.
+Selene is a Mexican peer-to-peer marketplace for used PC hardware, focused on trust and technical verification.
 
-### Monorepo Structure
-
-```
-├── apps/
-│   ├── frontend/     # Expo React Native App (Mobile)
-│   ├── admin-web/   # Admin Web Dashboard (React + Vite + Tailwind)
-│   └── backend/     # Express API (if used)
-├── packages/
-│   └── types/       # Shared TypeScript types
-└── supabase/
-    └── functions/    # Edge Functions (Stripe, Envia, Disputes)
+```text
+apps/frontend/       Expo React Native app
+apps/admin-web/      React + Vite admin dashboard
+apps/backend/        Express API (limited use)
+packages/types/      Shared TypeScript and generated Supabase types
+supabase/functions/  Supabase Edge Functions
+supabase/migrations/ Database migrations
+supabase/queries/    Canonical SQL source copies and operational queries
+openspec/            Product and technical contracts
 ```
 
-### Tech Stack
+Core stack: Bun, strict TypeScript, Expo Router, Zustand, TanStack Query, Shopify Restyle, Tailwind CSS, Supabase/Postgres, Stripe Connect, and Envia.com.
 
-- **Runtime**: Bun
-- **Frontend (Mobile)**: React Native (Expo Managed), TypeScript (strict)
-- **Frontend (Admin)**: React + Vite + TypeScript + Tailwind CSS
-- **Backend**: Supabase BaaS (Postgres + Edge Functions)
-- **Navigation (Mobile)**: Expo Router (file-based routing)
-- **State Management**: Zustand (client), TanStack Query (server)
-- **Styling (Mobile)**: Shopify Restyle (theme tokens, Box/Text components)
-- **Styling (Admin)**: Tailwind CSS (custom dark theme)
-- **External Services**: Stripe (payments), Envia.com (shipping/tracking)
-- **Database**: Postgres via Supabase
+## Sources of Truth
 
----
+Use the narrowest authoritative source instead of guessing:
 
-## Development Commands
+1. Current product behavior: `openspec/specs/`
+2. Active change intent: `openspec/changes/<change>/`
+3. Database schema and relationships: `packages/types/src/database.types.ts`
+4. Shared DB aliases: `packages/types/src/index.ts`
+5. Project skills: `.atl/skill-registry.md`
+6. Executable behavior: current implementation and tests
 
-### Root Level Commands
+Archived OpenSpec changes explain history, not necessarily current behavior.
+
+## Working Rules
+
+Before modifying code:
+
+1. Read related contracts, implementation, and tests.
+2. Reuse existing patterns before introducing abstractions.
+3. Prefer the smallest complete change that preserves established invariants.
+4. Keep technical artifacts, code, identifiers, comments, tests, and UI copy in English unless the existing target context clearly uses another language.
+5. Add JSDoc only for public APIs or non-obvious invariants.
+
+### Scope Discipline
+
+- Do not modify files outside the requested change because they look improvable.
+- Do not fix unrelated warnings, formatting, generated files, or baseline failures opportunistically.
+- Never modify ESLint, TypeScript, formatter, test-runner, build, Git hook, or CI configuration merely to make a feature pass. Configuration changes require explicit scope or maintainer approval.
+- When unrelated failures block verification, report the exact command and evidence, then stop for a decision.
+- Preserve unrelated worktree changes. Never discard or overwrite them.
+
+## Supabase Deployment Workflow (MANDATORY)
+
+Files under `supabase/` are deployment sources. Their presence in the repository does **not** prove the remote Supabase project contains those changes.
+
+The maintainer deploys Supabase changes manually through the Supabase Dashboard. Agents must:
+
+1. Create or update the required migration/query/function files in the repository.
+2. Stop before remote synchronization and report:
+   - exact SQL file(s) to execute;
+   - execution order;
+   - affected Edge Functions to deploy;
+   - required secrets, cron, webhook, or Dashboard configuration;
+   - post-deployment verification steps.
+3. Wait for maintainer confirmation that SQL was applied remotely.
+4. Run `bun db:types` only after that confirmation.
+5. Verify generated types contain the expected schema changes before continuing.
+6. Treat SQL, Edge Function deployment, secrets, cron jobs, webhooks, and generated types as separate deployment steps.
+
+Do not apply remote migrations, deploy Edge Functions, change secrets, or configure cron/webhooks unless the maintainer explicitly requests it.
+
+### Type First (MANDATORY)
+
+Before code reads or writes database data:
+
+1. Read `packages/types/src/database.types.ts`.
+2. Read `packages/types/src/index.ts`.
+3. Use exported aliases such as `Tables<'orders'>` and `Enums<'order_status_enum'>`.
+4. Never guess table, column, enum, or relationship names.
+
+For a new schema change, the migration defines the intended future schema. Existing generated types remain authoritative for the deployed schema until the maintainer applies SQL and regenerates them.
+
+## Financial and Security Invariants
+
+- Store and calculate money in integer cents at application boundaries. Convert to decimal currency only for database/display contracts that require it.
+- Orders are multi-seller; `shipments` are the seller-scoped fulfillment, cancellation, dispute, payout, and audit boundary.
+- Never release, refund, cancel, or transfer money using client-provided amounts without server-side reconstruction and validation.
+- Stripe refunds must succeed before the corresponding database cancellation is committed.
+- Stripe processing fees are not assumed from estimates after payment; Stripe transaction data is authoritative for actual fees.
+- Privileged financial mutations belong in Edge Functions using server credentials and narrowly granted database RPCs.
+- Never expose `SUPABASE_SERVICE_ROLE_KEY`, Stripe secret keys, Envia keys, or webhook secrets to clients or logs.
+- Roles live in `profiles_private.role`, not JWT custom claims. Frontends never write directly to `profiles_private`.
+- Preserve RLS and explicit authorization boundaries. `SECURITY DEFINER` functions require explicit privilege review and revoked `PUBLIC` execution unless public access is intentional.
+- External callbacks and cron handlers must be authenticated, idempotent, retry-safe, and observable.
+
+## Folder Boundaries
+
+### Mobile (`apps/frontend`)
+
+- `app/`: Expo Router screens and navigation
+- `components/ui/`: generic reusable UI
+- `components/features/`: feature-specific UI
+- `core/hooks/`: hooks
+- `core/store/`: Zustand stores
+- `core/`: domain utilities, clients, theme, auth, and i18n
+
+### Admin (`apps/admin-web/src`)
+
+- `pages/`: routed pages
+- `components/ui/`: generic UI
+- `components/features/`: feature-specific UI
+- `hooks/`: TanStack Query and reusable hooks
+- `lib/`: clients and utilities
+- `store/`: Zustand stores
+
+### Supabase (`supabase/functions`)
+
+- Each deployable Edge Function uses `<function-name>/index.ts`.
+- Cross-function pure helpers belong in `_shared/`.
+- Keep service-role operations server-only.
+
+## Skills
+
+`.atl/skill-registry.md` is the only project skill index. Resolve and load matching skills before work. Do not duplicate the registry in this file.
+
+Refresh after installing or updating skills:
 
 ```bash
-bun install              # Install dependencies
-bun run frontend        # Run React Native app
-bun run admin-web      # Run Admin Web Dashboard
-bun run lint            # ESLint for all files
-bun run format          # Prettier formatting
-bun db:types            # Updates supabase types
+gentle-ai skill-registry refresh --force
 ```
 
-### Frontend Specific (apps/frontend)
+## Verification
+
+Use Bun unless a package explicitly requires another tool.
 
 ```bash
-bun run start           # Start Expo dev server
-bun run android         # Run on Android
-bun run ios             # Run on iOS
-bun run web             # Run on Web
+bun test
+bun run lint
+bun db:types
 ```
 
-### Admin Web Specific (apps/admin-web)
+- Start with focused tests, then run the relevant broader suite.
+- Follow strict TDD when the active OpenSpec configuration enables it.
+- Distinguish change-caused failures from verified baseline failures.
+- Do not weaken tests or tooling to obtain a green result.
+- A Supabase change is incomplete until repository artifacts, remote deployment, generated types, and focused verification agree.
 
-```bash
-bun run dev             # Start Vite dev server
-bun run build           # Production build
-```
+## Git
 
-### Supabase Functions
-
-```bash
-supabase functions serve    # Local development
-supabase functions deploy   # Deploy to production
-```
-
----
-
-## How to Work in This Repository
-
-Before generating or modifying code:
-
-1. **Explore existing codebase** - Read related files
-2. **Identify reusable patterns** - Components, hooks, utilities
-3. **Invoke appropriate skill** - Use the skill matching your task
-4. **Scalable and maintainable architecture** - Never temporary patches, always solid code from line 0
-5. **Propose ideas and discuss ideas/code** - Propose ideas for the project/code
-6. **TypeScrip** - Use typescrip best practices always
-7. **JSDOC** - Always 'JSDOC' in the files if is needed
-
----
-
-## Type First (MANDATORY)
-
-Before writing ANY code that touches the database, queries a table, or references a DB column or type ALWAYS:
-
-1. **Read `packages/types/src/database.types.ts`** — verify the column exists, the type is correct, and the FK relationship is defined.
-2. **Read `packages/types/src/index.ts`** — use the exported aliases (`Tables<'orders'>`, `Enums<'order_status_enum'>`) instead of raw type lookups.
-3. **Never guess a column name, table name, or type** — if it's not in the types file, it doesn't exist yet.
-
----
-
-# Skill Auto-Invoke Rules
-
-**The single source of truth for all skills is `.atl/skill-registry.md`.** That file is the authoritative index — do not duplicate it here. When installing or updating a skill, refresh the registry with `gentle-ai skill-registry refresh --force`.
-
-## When to Load Skills
-
-**When performing these actions, **ALWAYS** invoke the corresponding skill FIRST:**
-
-| Trigger                                       | Invoke First                                | Reason                                                       |
-| --------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------ |
-| Create or modify mobile UI/components         | `building-native-ui` + `design-mobile-apps` | Follow native patterns and good UX                           |
-| Create or edit forms                          | `react-hook-form` + `zod`                   | Robust validation                                            |
-| Work with styles or visual design             | `tailwind-css-patterns`                     | Visual consistency across the project                        |
-| Work with Supabase / Postgres                 | `supabase-postgres-best-practices`          | Best practices and security                                  |
-| Any data fetching or API calls                | `native-data-fetching`                      | Professional data handling                                   |
-| Create/modify API routes                      | `expo-api-routes`                           | Correct structure                                            |
-| Improve accessibility                         | `accessibility`                             | Meet WCAG standards                                          |
-| Deployment, builds or releases                | `expo-deployment`                           | Official Expo flow                                           |
-| Build dev client with custom native code      | `expo-dev-client`                           | Correct dev client setup and distribution                    |
-| Update Expo SDK                               | `upgrading-expo`                            | Avoid common issues                                          |
-| Complex logic or advanced types               | `typescript-advanced-types`                 | Better type safety                                           |
-| Configure CI/CD or workflows                  | `expo-cicd-workflows`                       | Recommended pipelines                                        |
-| Modify state slices or store logic            | `zustand`                                   | Ensure consistent action patterns and performance            |
-| Implementation of payments or billing         | `stripe-best-practices`                     | Enforce security and correct API selection                   |
-| Database schema or Auth changes               | `supabase`                                  | Handle migrations and RLS policies correctly                 |
-| Adding charts or SaaS metrics                 | `kpi-dashboard-design`                      | Follow visualization best practices and calculation accuracy |
-| Hardcoded strings or new languages            | `i18n-localization`                         | Maintain clean localization files and internationalization   |
-| Refactor components with boolean prop spread  | `vercel-composition-patterns`               | Reduce prop proliferation, improve component API             |
-| Optimize React rendering or bundle size       | `vercel-react-best-practices`               | Avoid anti-patterns, improve performance                     |
-| Modify admin-web build config or plugins      | `vite`                                      | Correct Vite configuration and plugin usage                  |
-| Create or review pull requests                | `branch-pr`                                 | Issue-first PR flow with checks                              |
-| Dashboard web testing or debugging            | `webapp-testing`                            | Test and debug admin panel features with Playwright          |
-| Ultra-compressed responses / token efficiency | `caveman`                                   | Cut token usage ~75% while keeping full technical accuracy   |
-| Using git commands                            | `caveman-commit`                            | Maintain clean git commits and git commands                  |
-
----
-
-## Folder Responsibilities
-
-### Frontend (apps/frontend)
-
-- `app/` → Screens and navigation (Expo Router)
-- `components/` → Reusable UI components only
-- `components/ui/` → Generic UI components (buttons, inputs, cards)
-- `components/features/` → Feature-specific components
-- `core/` → Logic (auth, db, stores, theme, i18n)
-- `core/hooks/` → Custom React hooks
-- `core/store/` → Zustand state stores
-- `packages/types` → Shared types across the entire repo
-
-### Admin Web (apps/admin-web)
-
-- `src/pages/` → Page components (file-based routing via React Router)
-- `src/components/ui/` → Reusable UI components (Tailwind)
-- `src/components/features/` → Feature-specific components
-- `src/hooks/` → Custom React hooks (TanStack Query)
-- `src/lib/` → Utilities (Supabase client, helpers)
-- `src/store/` → Zustand stores
-- `src/types/` → Local TypeScript types
-
-### Supabase Functions (supabase/functions)
-
-- `*/index.ts` → Edge Function handlers
-- Naming: `create-return-intent`, `resolve-dispute`, `track-returns`, etc.
-
----
-
-### Git Hooks
-
-- Husky for pre-commit hooks
-- lint-staged runs Prettier and ESLint on staged files
-- Automatic formatting on commit
-
----
-
-### Database Schema
-
-**Core Tables:**
-
-- `products` - Items with status ('PENDING_VERIFICATION', 'IN_REVIEW', 'VERIFIED', 'SOLD', 'REJECTED', 'HIDDEN')
-- `orders` - Purchase orders with status tracking. `completed_at`, `shipped_at` timestamps.
-- `order_items` - Individual items in orders. `shipment_id` FK to shipments.
-- `profiles` - Public user profile (name, avatar, bio, verification badge only)
-- `profiles_private` - Sensitive data (email, role, phone, stripe_customer_id). Zero Trust: read-only via Edge Functions (service_role), frontend never writes directly.
-- `shipments` - Per-seller shipment within an order. Tracks status, carrier, tracking, Envia ID, origin address, return tracking.
-- `wallets` - User balances (available_balance, pending_balance)
-- `wallet_transactions` - Financial ledger. `shipment_id` FK for multi-seller audit.
-- `addresses` - User shipping info with `is_default` flag
-- `notifications` - In-app alerts with `read`, `type`, `action_path`
-
-**Order Status Flow (via `shipments` trigger):**
-
-```
-order.shipments → fn_derive_order_status() → order.status
-Priority matrix:
-  1. Exceptions: dispute > refunded > cancelled
-  2. Progress (least advanced): paid > preparing > shipped > delivered
-  3. All completed → completed
-```
-
-**Auth:**
-
-- Roles live in `profiles_private.role`, NOT in JWT Custom Claims (DB source of truth)
-- `is_admin()` STABLE function reads from `profiles_private`, SECURITY DEFINER, executable by PUBLIC
-- Auth trigger functions write to `profiles_private` on user creation/update
-
-**Dispute System:**
-
-- `disputes` - Dispute cases with status, evidence, resolution. `shipment_id` FK.
-- `locked_by`, `locked_at` - Soft-lock columns to prevent concurrent admin editing
-- `return_tracking_number`, `return_label_url` - Return logistics tracking
-- `return_payout_id`, `return_payout_status` - Return shipping payment tracking
-
-**Admin System:**
-
-- `admin_user_notes` - Internal notes per user
-- `admin_audit_logs` - Audit trail for admin actions
-- `seller_trust_stats` - Pre-computed seller statistics (view)
-
-**Admin Views:**
-
-- `admin_user_directory_view` - User list with wallet + stats joined
-- `admin_disputes_monitor_view` - Disputes list for admin dashboard
-- `admin_product_queue_view` - Products pending verification
-
-### Soft-Lock Pattern
-
-For preventing concurrent admin editing of products/disputes:
-
-```sql
--- Lock acquisition (10 min expiry)
-fn_lock_product(p_product_id, p_admin_id)
-fn_lock_dispute(p_dispute_id, p_admin_id)
-
--- Lock release
-fn_unlock_product(p_product_id, p_admin_id)
-fn_unlock_dispute(p_dispute_id, p_admin_id)
-```
-
-### Dispute Resolution Flow
-
-1. **Admin decides buyer wins** → Status: `waiting_return` → Seller pays return shipping
-2. **Buyer submits return evidence** → Seller generate de shiping label → Status: `return_shipped`
-3. **Track-returns cron** → Detects delivery → Status: `return_delivered`
-4. **Admin triggers refund** → Stripe refund + wallet update (per shipment)
-
----
-
-### Key Edge Functions
-
-| Function                 | Purpose                                                 |
-| ------------------------ | ------------------------------------------------------- |
-| `create-payment-intent`  | Dual client: anon for customer + service_role for admin |
-| `stripe-webhooks`        | Handle Stripe payment events                            |
-| `resolve-dispute`        | Admin verdict (seller/buyer wins)                       |
-| `resolve-dispute-refund` | Admin triggers refund per shipment                      |
-| `create-return-intent`   | Seller pays return shipping via Stripe                  |
-| `generate-return-label`  | Generate return shipping label. Sellers always pay      |
-| `track-shipments`        | Cron: Track outgoing shipments                          |
-| `track-returns`          | Cron: Track return packages                             |
-| `manage-payment-methods` | Payment method management                               |
-
----
-
-## Environment Setup
-
-- Use Bun as runtime and package manager
-- Configure `.env` with required variables:
-  - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
-  - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
-  - `ENVIA_API_KEY_SANDBOX`, `ENVIA_API_KEY_PROD`, `ENVIA_MODE`
-- Expo CLI for mobile development
-- EAS CLI for builds and deployments
+- Husky and lint-staged run on commit.
+- Keep commits scoped and reviewable; code, tests, migration, and relevant contract updates belong together.
+- Never commit, push, deploy, or create a PR unless explicitly requested.
+- Never add AI attribution or `Co-Authored-By` metadata.

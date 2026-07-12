@@ -68,10 +68,10 @@ describe('connect payment helpers', () => {
   });
 
   it('calculates Seguro Selene as Stripe fee approximation', () => {
-    expect(calculateSeguroSelene(1_000)).toBe(39);
+    expect(calculateSeguroSelene(1_000)).toBe(47.22);
   });
 
   it('keeps Seguro Selene calculation stable for order summary totals', () => {
-    expect(calculateSeguroSelene(1_000)).toBe(39);
+    expect(calculateSeguroSelene(1_000)).toBe(47.22);
   });
 });

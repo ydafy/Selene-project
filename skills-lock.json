@@ -153,6 +153,12 @@
       "sourceType": "autoskills-registry",
       "computedHash": "77b56e964db680ac3efc8e11bba139d199285b08ecc5d94a6c433069537251d3"
     },
+    "vercel-react-native-skills": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-native-skills/SKILL.md",
+      "computedHash": "41d24eafa7c3d82e270439808f7cfbc4d51aeb2d14f2809a2267c16275784d06"
+    },
     "vite": {
       "source": "antfu/skills",
       "sourceType": "autoskills-registry",

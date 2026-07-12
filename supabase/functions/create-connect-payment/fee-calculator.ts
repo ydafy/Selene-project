@@ -1,3 +1,5 @@
+import { allocateCents, grossUpDomesticMx } from '../_shared/stripe-fee-gross-up.ts';
+
 export const CONNECT_COMMISSION_RATE = 0.06;
 export const SEGURO_SELENE_RATE = 0.036;
 export const SEGURO_SELENE_FIXED_CENTS = 300;
@@ -70,7 +72,7 @@ export function calculateSeguroSeleneCents(
     throw new Error('INVALID_MONEY_FLOW_INPUT:seguroRate');
   }
 
-  return Math.ceil(subtotalCents * rate) + fixedCents;
+  return grossUpDomesticMx(subtotalCents).seguroCents;
 }
 
 export function normalizeEnviaInsuranceRate(value: number | null): number {
@@ -117,8 +119,6 @@ export function calculateConnectMoneyFlow({
   subtotalCents,
   shippingCents,
   commissionRate = CONNECT_COMMISSION_RATE,
-  seguroRate = SEGURO_SELENE_RATE,
-  seguroFixedCents = SEGURO_SELENE_FIXED_CENTS,
 }: ConnectMoneyFlowInput): ConnectMoneyFlow {
   assertCents('subtotalCents', subtotalCents);
   assertCents('shippingCents', shippingCents);
@@ -128,12 +128,8 @@ export function calculateConnectMoneyFlow({
   }
 
   const commissionCents = Math.round(subtotalCents * commissionRate);
-  const seguroCents = calculateSeguroSeleneCents(
-    subtotalCents,
-    seguroRate,
-    seguroFixedCents,
-  );
-  const buyerChargeCents = subtotalCents + seguroCents;
+  const { buyerTotalCents: buyerChargeCents, seguroCents } =
+    grossUpDomesticMx(subtotalCents);
   const applicationFeeCents = commissionCents + shippingCents + seguroCents;
   const sellerNetCents = buyerChargeCents - applicationFeeCents;
 
@@ -247,8 +243,6 @@ export function calculateCheckoutAllocation(
       subtotalCents: input.subtotalCents,
       shippingCents: input.shippingCents,
       commissionRate: options.commissionRate,
-      seguroRate: options.seguroRate,
-      seguroFixedCents: options.seguroFixedCents,
     });
 
     // Reuse the legacy validator so a seller with shipping larger than gross
@@ -266,37 +260,54 @@ export function calculateCheckoutAllocation(
     });
   }
 
-  return reduceCheckoutAllocation(rows);
+  const totalGrossCents = rows.reduce((sum, row) => sum + row.grossCents, 0);
+  const { buyerTotalCents, seguroCents: totalSeguroCents } =
+    grossUpDomesticMx(totalGrossCents);
+  const seguroAllocations = allocateCents(
+    totalSeguroCents,
+    rows.map((row) => ({ id: row.sellerId, cents: row.grossCents })),
+  );
+
+  return reduceCheckoutAllocation(
+    rows.map((row) => ({
+      ...row,
+      seguroCents: seguroAllocations.get(row.sellerId) ?? 0,
+    })),
+    buyerTotalCents,
+    totalSeguroCents,
+  );
 }
 
 /** Aggregate per-row allocation rows into a reconciled CheckoutAllocation. */
 export function reduceCheckoutAllocation(
   rows: AllocationRow[],
+  buyerTotalCentsOverride?: number,
+  totalSeguroCentsOverride?: number,
 ): CheckoutAllocation {
-  let buyerTotalCents = 0;
+  let calculatedBuyerTotalCents = 0;
   let totalGrossCents = 0;
   let totalCommissionCents = 0;
   let totalShippingCents = 0;
-  let totalSeguroCents = 0;
+  let calculatedTotalSeguroCents = 0;
   let totalReleaseCents = 0;
 
   for (const row of rows) {
     totalGrossCents += row.grossCents;
     totalCommissionCents += row.commissionCents;
     totalShippingCents += row.shippingCents;
-    totalSeguroCents += row.seguroCents;
+    calculatedTotalSeguroCents += row.seguroCents;
     // Buyer pays gross + seguro per seller; shipping is seller-paid.
-    buyerTotalCents += row.grossCents + row.seguroCents;
+    calculatedBuyerTotalCents += row.grossCents + row.seguroCents;
     totalReleaseCents += row.netCents;
   }
 
   return {
     rows,
-    buyerTotalCents,
+    buyerTotalCents: buyerTotalCentsOverride ?? calculatedBuyerTotalCents,
     totalGrossCents,
     totalCommissionCents,
     totalShippingCents,
-    totalSeguroCents,
+    totalSeguroCents: totalSeguroCentsOverride ?? calculatedTotalSeguroCents,
     totalReleaseCents,
   };
 }

@@ -1,8 +1,13 @@
-export { ApiError, computeShipmentRefundAmountCents } from '../_shared/refund-basis.ts';
+export {
+  ApiError,
+  allocateCancellationLossCents,
+  computeShipmentRefundAmountCents,
+} from '../_shared/refund-basis.ts';
 export type { ShipmentCancelItem } from '../_shared/refund-basis.ts';
 
 import {
   ApiError,
+  allocateCancellationLossCents,
   computeShipmentRefundAmountCents as computeShipmentRefundAmountCentsShared,
   type ShipmentCancelItem,
 } from '../_shared/refund-basis.ts';
@@ -20,6 +25,7 @@ export interface CancelShipmentRefundParamsInput {
   shipmentId: string;
   callerRole: 'buyer' | 'seller';
   reason: string;
+  seguroShareCents: number;
 }
 
 export interface ManualShipmentCancelPlanInput {
@@ -37,6 +43,7 @@ export interface ManualShipmentCancelPlanInput {
   shipmentItems: ShipmentCancelItem[];
   orderItems: ShipmentCancelItem[];
   orderChargeCents: number;
+  actualStripeFeeCents: number | null;
   remainingRefundableCents?: number | null;
   reason: string;
   onCritical?: (message: string, metadata: Record<string, unknown>) => void;
@@ -49,6 +56,7 @@ export interface ManualShipmentCancelPlan {
     p_shipment_id: string;
     p_cancelled_by_role: 'buyer' | 'seller';
     p_reason: string;
+    p_cancellation_loss_cents: number | null;
   };
 }
 
@@ -91,27 +99,29 @@ export function buildCancelShipmentRefundParams(
     payment_intent: string;
     amount: number;
     reason: 'requested_by_customer';
-    metadata: {
-      shipment_id: string;
-      order_id: string;
-      caller_role: 'buyer' | 'seller';
-      reason: string;
+      metadata: {
+        shipment_id: string;
+        order_id: string;
+        caller_role: 'buyer' | 'seller';
+        reason: string;
+        seguro_share_cents: number;
+      };
     };
-  };
-  options: { idempotencyKey: string };
-} {
+    options: { idempotencyKey: string };
+  } {
   return {
     params: {
       payment_intent: input.paymentIntentId,
       amount: input.amountCents,
       reason: 'requested_by_customer',
-      metadata: {
-        shipment_id: input.shipmentId,
-        order_id: input.orderId,
-        caller_role: input.callerRole,
-        reason: input.reason,
+        metadata: {
+          shipment_id: input.shipmentId,
+          order_id: input.orderId,
+          caller_role: input.callerRole,
+          reason: input.reason,
+          seguro_share_cents: input.seguroShareCents,
+        },
       },
-    },
     options: {
       idempotencyKey: `cancel_shipment_${input.shipmentId}`,
     },
@@ -165,6 +175,47 @@ export function resolveManualShipmentCancelPlan(
     remainingRefundableCents: input.remainingRefundableCents,
   });
 
+  const orderShipmentGroups = new Map<string, ShipmentCancelItem[]>();
+  for (const item of input.orderItems) {
+    if (typeof item.shipment_id !== 'string' || item.shipment_id.length === 0) {
+      continue;
+    }
+
+    const group = orderShipmentGroups.get(item.shipment_id) ?? [];
+    group.push(item);
+    orderShipmentGroups.set(item.shipment_id, group);
+  }
+
+  const cancellationLossWeights =
+    orderShipmentGroups.size > 0
+      ? Array.from(orderShipmentGroups.entries()).map(
+          ([shipmentId, shipmentItems]) => ({
+            shipmentId,
+            refundCents: computeShipmentRefundAmountCentsShared({
+              shipmentItems,
+              orderItems: input.orderItems,
+              orderChargeCents: input.orderChargeCents,
+            }),
+          }),
+        )
+      : [
+          {
+            shipmentId: input.shipmentId,
+            refundCents: amountCents,
+          },
+        ];
+
+  const cancellationLossAllocations = allocateCancellationLossCents(
+    input.actualStripeFeeCents,
+    cancellationLossWeights,
+  );
+
+  const cancellationLossCents =
+    cancellationLossAllocations?.get(input.shipmentId) ?? null;
+
+  const seguroShareCents = amountCents -
+    input.shipmentItems.reduce((sum, item) => sum + item.price_at_purchase, 0) * 100;
+
   const refundParams = buildCancelShipmentRefundParams({
     paymentIntentId: input.shipmentStripePaymentIntentId,
     amountCents,
@@ -172,6 +223,7 @@ export function resolveManualShipmentCancelPlan(
     shipmentId: input.shipmentId,
     callerRole: input.callerRole,
     reason: input.reason,
+    seguroShareCents,
   });
 
   return {
@@ -181,6 +233,7 @@ export function resolveManualShipmentCancelPlan(
       p_shipment_id: input.shipmentId,
       p_cancelled_by_role: input.callerRole,
       p_reason: input.reason,
+      p_cancellation_loss_cents: cancellationLossCents,
     },
   };
 }

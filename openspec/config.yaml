@@ -19,7 +19,7 @@ rules:
   verify:
     test_command: bun test
 testing:
-  detected: '2026-05-27'
+  detected: '2026-07-10'
   strict_tdd: true
   runner:
     command: bun test

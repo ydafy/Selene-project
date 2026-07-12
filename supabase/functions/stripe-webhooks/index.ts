@@ -7,6 +7,7 @@ import { reconcileConnectPayoutEvent } from './connect-payout-reconciliation.ts'
 import {
   SINGLE_MODAL_FLOW,
   buildSettlementOutcome,
+  buildStripeFeeReconciliationPlan,
   resolvePaymentIntentSucceededAction,
   type SingleModalSettlementInput,
 } from './single-modal-settlement.ts';
@@ -368,6 +369,74 @@ serve(async (req: Request) => {
         });
 
         if (outcome.kind === 'ok') {
+          const { data: orderRow, error: orderError } = await supabaseAdmin
+            .from('orders')
+            .select('actual_stripe_fee_cents, stripe_fee_reconciled_at')
+            .eq('id', action.payload.orderId)
+            .single();
+
+          if (orderError || !orderRow) {
+            throw new Error(
+              `ORDER_STRIPE_FEE_LOOKUP_FAILED: ${orderError?.message || 'not_found'}`,
+            );
+          }
+
+          const charge = (await stripe.charges.retrieve(chargeId, {
+            expand: ['balance_transaction'],
+          })) as Stripe.Charge;
+
+          const feePlan = buildStripeFeeReconciliationPlan({
+            existingActualStripeFeeCents:
+              orderRow.actual_stripe_fee_cents ?? null,
+            charge: charge as unknown as {
+              id: string;
+              balance_transaction?:
+                | string
+                | { fee?: number | null }
+                | null;
+            },
+            reconciledAt: new Date().toISOString(),
+          });
+
+          if (feePlan.kind === 'missing_balance_transaction') {
+            throw new Error('MISSING_BALANCE_TRANSACTION_FEE');
+          }
+
+          if (feePlan.kind === 'ready') {
+            const { data: updatedRows, error: updateError } = await supabaseAdmin
+              .from('orders')
+              .update({
+                actual_stripe_fee_cents: feePlan.actualStripeFeeCents,
+                stripe_fee_reconciled_at: feePlan.stripeFeeReconciledAt,
+                updated_at: feePlan.stripeFeeReconciledAt,
+              })
+              .eq('id', action.payload.orderId)
+              .is('actual_stripe_fee_cents', null)
+              .select('id');
+
+            if (updateError) {
+              throw new Error(`ORDER_STRIPE_FEE_UPDATE_FAILED: ${updateError.message}`);
+            }
+
+            if (((updatedRows as Array<{ id: string }> | null) ?? []).length !== 1) {
+              const { data: refreshedOrder, error: refreshError } = await supabaseAdmin
+                .from('orders')
+                .select('actual_stripe_fee_cents')
+                .eq('id', action.payload.orderId)
+                .single();
+
+              if (refreshError) {
+                throw new Error(
+                  `ORDER_STRIPE_FEE_REFRESH_FAILED: ${refreshError.message}`,
+                );
+              }
+
+              if (refreshedOrder?.actual_stripe_fee_cents == null) {
+                throw new Error('ORDER_STRIPE_FEE_UPDATE_CONFLICT');
+              }
+            }
+          }
+
           return new Response(JSON.stringify(outcome.body), { status: 200 });
         }
 

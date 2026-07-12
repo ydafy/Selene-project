@@ -8,6 +8,7 @@ import {
   resolveManualShipmentCancelPlan,
   type ShipmentCancelItem,
 } from './cancel-order.ts';
+import { buildStripeFeeReconciliationPlan } from '../stripe-webhooks/single-modal-settlement.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -84,7 +85,9 @@ serve(async (req) => {
 
     const { data: order, error: orderError } = await supabaseAdmin
       .from('orders')
-      .select('buyer_id, total_amount, stripe_charge_id')
+      .select(
+        'buyer_id, total_amount, stripe_charge_id, actual_stripe_fee_cents, stripe_fee_reconciled_at',
+      )
       .eq('id', orderId)
       .single();
 
@@ -124,9 +127,48 @@ serve(async (req) => {
     let refundCharge: Stripe.Charge | null = null;
     if (order.stripe_charge_id) {
       try {
-        refundCharge = await stripe.charges.retrieve(order.stripe_charge_id);
+        refundCharge = (await stripe.charges.retrieve(order.stripe_charge_id, {
+          expand: ['balance_transaction'],
+        })) as Stripe.Charge;
       } catch {
         throw new ApiError(500, 'STRIPE_CHARGE_NOT_FOUND');
+      }
+    }
+
+    let actualStripeFeeCents = order.actual_stripe_fee_cents ?? null;
+    if (actualStripeFeeCents === null && refundCharge) {
+      const feePlan = buildStripeFeeReconciliationPlan({
+        existingActualStripeFeeCents: order.actual_stripe_fee_cents ?? null,
+        charge: refundCharge as unknown as {
+          id: string;
+          balance_transaction?: string | { fee?: number | null } | null;
+        },
+        reconciledAt: new Date().toISOString(),
+      });
+
+      if (feePlan.kind === 'ready') {
+        actualStripeFeeCents = feePlan.actualStripeFeeCents;
+        const { error: feeUpdateError } = await supabaseAdmin
+          .from('orders')
+          .update({
+            actual_stripe_fee_cents: feePlan.actualStripeFeeCents,
+            stripe_fee_reconciled_at: feePlan.stripeFeeReconciledAt,
+            updated_at: feePlan.stripeFeeReconciledAt,
+          })
+          .eq('id', orderId)
+          .is('actual_stripe_fee_cents', null);
+
+        if (feeUpdateError) {
+          log('WARN', 'Could not persist on-demand Stripe fee reconciliation', {
+            orderId,
+            error: feeUpdateError.message,
+          });
+        }
+      } else {
+        log('WARN', 'Stripe fee reconciliation unavailable during cancel', {
+          orderId,
+          chargeId: order.stripe_charge_id,
+        });
       }
     }
 
@@ -155,6 +197,7 @@ serve(async (req) => {
       orderItems: (orderItems ?? []) as ShipmentCancelItem[],
       orderChargeCents,
       remainingRefundableCents,
+      actualStripeFeeCents,
       reason,
       onCritical: (message, metadata) => log('CRITICAL', message, metadata),
     });

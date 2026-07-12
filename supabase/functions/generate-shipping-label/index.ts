@@ -314,6 +314,14 @@ serve(async (req: Request) => {
           weightUnit: 'KG',
           weight: totalWeight,
           dimensions: { length: maxL, width: maxW, height: totalH },
+          additionalServices: [
+            {
+              data: {
+                amount: shipment.order.total_amount,
+              },
+              service: 'envia_insurance',
+            },
+          ],
         },
       ],
       shipment: { carrier: 'estafeta', service: 'ground', type: 1 },

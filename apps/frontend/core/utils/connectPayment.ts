@@ -15,6 +15,7 @@ import type {
   CreateConnectPaymentResponse,
   EdgeFunctionRegistry,
 } from '@selene/types';
+import { grossUpDomesticMx } from './stripeFeeGrossUp';
 
 export const SEGURO_SELENE_RATE = 0.036;
 export const SEGURO_SELENE_FIXED_CENTS = 300;
@@ -100,8 +101,7 @@ const centsToMoney = (cents: number) => cents / 100;
 
 export function calculateSeguroSelene(subtotal: number): number {
   const subtotalCents = Math.round(subtotal * 100);
-  const seguroCents =
-    Math.ceil(subtotalCents * SEGURO_SELENE_RATE) + SEGURO_SELENE_FIXED_CENTS;
+  const seguroCents = grossUpDomesticMx(subtotalCents).seguroCents;
 
   return centsToMoney(seguroCents);
 }

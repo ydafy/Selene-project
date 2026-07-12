@@ -20,9 +20,9 @@ describe('create-connect-payment fee calculator', () => {
       subtotalCents: 100_000,
       commissionCents: 6_000,
       shippingCents: 20_000,
-      seguroCents: 3_900,
-      buyerChargeCents: 103_900,
-      applicationFeeCents: 29_900,
+      seguroCents: 4_722,
+      buyerChargeCents: 104_722,
+      applicationFeeCents: 30_722,
       sellerNetCents: 74_000,
     });
   });
@@ -33,8 +33,8 @@ describe('create-connect-payment fee calculator', () => {
       shippingCents: 50_000,
     });
 
-    expect(flow.seguroCents).toBe(3_900);
-    expect(flow.buyerChargeCents).toBe(103_900);
+    expect(flow.seguroCents).toBe(4_722);
+    expect(flow.buyerChargeCents).toBe(104_722);
   });
 
   it('calculates estimate-first seller shipping deduction from quote, buffer, and Envia insurance', () => {
@@ -94,7 +94,7 @@ describe('create-connect-payment checkout allocation (single-modal)', () => {
       grossCents: 100_000,
       commissionCents: 6_000,
       shippingCents: 20_000,
-      seguroCents: 3_900,
+      seguroCents: 4_722,
       netCents: 74_000,
     });
   });
@@ -142,15 +142,17 @@ describe('create-connect-payment checkout allocation (single-modal)', () => {
     expect(allocation.rows[0].sellerId).toBe('seller-a');
     expect(allocation.rows[1].sellerId).toBe('seller-b');
 
-    // Buyer pays subtotal + Seguro per seller; shipping is seller-paid and
-    // invisible to the buyer.
-    expect(allocation.buyerTotalCents).toBe(156_000);
-    expect(allocation.totalSeguroCents).toBe(6_000);
+    // Buyer pays one grossed-up total; shipping is seller-paid and invisible
+    // to the buyer.
+    expect(allocation.buyerTotalCents).toBe(156_901);
+    expect(allocation.totalSeguroCents).toBe(6_901);
     expect(allocation.totalShippingCents).toBe(30_000);
 
     // Sum of seller-facing release amounts equals the total to be transferred
     // later during manual admin release.
     expect(allocation.totalReleaseCents).toBe(111_000);
+    expect(allocation.rows[0].seguroCents).toBe(4_601);
+    expect(allocation.rows[1].seguroCents).toBe(2_300);
     expect(allocation.rows[0].netCents).toBe(74_000);
     expect(allocation.rows[1].netCents).toBe(37_000);
   });
@@ -179,16 +181,16 @@ describe('create-connect-payment checkout allocation (single-modal)', () => {
   it('rounds commission down and seguro up without breaking the per-row reconciliation', () => {
     const allocation = calculateCheckoutAllocation([
       // 1_005 * 0.06 = 60.3 -> round to 60 (commission)
-      // 1_005 * 0.036 = 36.18 -> ceil to 37, + 300 = 337 (seguro)
+      // Gross-up formula returns 407 cents of buyer fee for a 1_005-cent subtotal.
       // net = 1_005 - 60 - 0 = 945
       { sellerId: 'seller-round', shipmentId: 'ship-round', subtotalCents: 1_005, shippingCents: 0 },
     ]);
 
     const row = allocation.rows[0];
     expect(row.commissionCents).toBe(60);
-    expect(row.seguroCents).toBe(337);
+    expect(row.seguroCents).toBe(407);
     expect(row.netCents).toBe(945);
-    expect(allocation.buyerTotalCents).toBe(1_342);
+    expect(allocation.buyerTotalCents).toBe(1_412);
 
     // Per-row invariant: commission + shipping + net == gross.
     expect(row.commissionCents + row.shippingCents + row.netCents).toBe(

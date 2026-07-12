@@ -25,4 +25,15 @@ describe('fn_cancel_shipment SQL guards', () => {
     expect(sql).toContain("IF v_status NOT IN ('paid', 'preparing') THEN");
     expect(sql).toContain("RETURN QUERY SELECT false, 'CANNOT_CANCEL_IN_THIS_STATUS'::TEXT;");
   });
+
+  it('adds cancellation loss persistence with an optional RPC argument', () => {
+    const sql = read('fn_cancel_shipment.sql');
+
+    expect(sql).toContain('p_cancellation_loss_cents BIGINT DEFAULT NULL');
+    expect(sql).toContain('actual_stripe_fee_cents');
+    expect(sql).toContain('cancellation_loss_cents');
+    expect(sql).toContain('LEAST(');
+    expect(sql).toContain('COALESCE(v_actual_stripe_fee_cents, 0)');
+    expect(sql).toContain('COALESCE(v_cancellation_loss_cents, 0) + v_loss_update_cents');
+  });
 });

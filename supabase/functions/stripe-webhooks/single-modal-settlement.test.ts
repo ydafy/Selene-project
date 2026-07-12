@@ -3,10 +3,10 @@ import { describe, expect, it } from 'bun:test';
 import { SINGLE_MODAL_FLOW } from '../create-connect-payment/single-payment-builder.ts';
 import {
   buildSettlementOutcome,
+  buildStripeFeeReconciliationPlan,
   parseSingleModalPayload,
   reassembleAllocationMetadata,
   resolvePaymentIntentSucceededAction,
-  type SingleModalSettlementInput,
 } from './single-modal-settlement.ts';
 
 /**
@@ -391,6 +391,48 @@ describe('single-modal-settlement > parseSingleModalPayload', () => {
     expect(() => parseSingleModalPayload(intent)).toThrow(
       'INVALID_ALLOCATION_METADATA:missing_chunk_count',
     );
+  });
+});
+
+describe('single-modal-settlement > buildStripeFeeReconciliationPlan', () => {
+  it('returns missing when the expanded balance transaction is unavailable', () => {
+    expect(
+      buildStripeFeeReconciliationPlan({
+        existingActualStripeFeeCents: null,
+        charge: { id: 'ch_1', balance_transaction: null },
+        reconciledAt: '2026-07-10T00:00:00.000Z',
+      }),
+    ).toEqual({ kind: 'missing_balance_transaction' });
+  });
+
+  it('returns already_reconciled when the order already has an actual fee', () => {
+    expect(
+      buildStripeFeeReconciliationPlan({
+        existingActualStripeFeeCents: 21_992,
+        charge: {
+          id: 'ch_1',
+          balance_transaction: { fee: 21_992 },
+        },
+        reconciledAt: '2026-07-10T00:00:00.000Z',
+      }),
+    ).toEqual({ kind: 'already_reconciled' });
+  });
+
+  it('returns the authoritative BalanceTransaction fee when reconciliation is needed', () => {
+    expect(
+      buildStripeFeeReconciliationPlan({
+        existingActualStripeFeeCents: null,
+        charge: {
+          id: 'ch_1',
+          balance_transaction: { fee: 21_992 },
+        },
+        reconciledAt: '2026-07-10T00:00:00.000Z',
+      }),
+    ).toEqual({
+      kind: 'ready',
+      actualStripeFeeCents: 21_992,
+      stripeFeeReconciledAt: '2026-07-10T00:00:00.000Z',
+    });
   });
 });
 

@@ -65,19 +65,21 @@ describe('buildCancelShipmentRefundParams', () => {
       shipmentId: '22222222-2222-4222-8222-222222222222',
       callerRole: 'buyer',
       reason: 'Cancelación solicitada por el usuario',
+      seguroShareCents: 1_700,
     });
 
     expect(params).toEqual({
       payment_intent: 'pi_123',
       amount: 21_700,
       reason: 'requested_by_customer',
-      metadata: {
-        shipment_id: '22222222-2222-4222-8222-222222222222',
-        order_id: '11111111-1111-4111-8111-111111111111',
-        caller_role: 'buyer',
-        reason: 'Cancelación solicitada por el usuario',
-      },
-    });
+        metadata: {
+          shipment_id: '22222222-2222-4222-8222-222222222222',
+          order_id: '11111111-1111-4111-8111-111111111111',
+          caller_role: 'buyer',
+          reason: 'Cancelación solicitada por el usuario',
+          seguro_share_cents: 1_700,
+        },
+      });
     expect(params).not.toHaveProperty('reverse_transfer');
     expect(options).toEqual({
       idempotencyKey: 'cancel_shipment_22222222-2222-4222-8222-222222222222',
@@ -86,6 +88,49 @@ describe('buildCancelShipmentRefundParams', () => {
 });
 
 describe('resolveManualShipmentCancelPlan', () => {
+  it('supports sequential shipment cancellations without exceeding the actual fee', () => {
+    const orderItems = [
+      { price_at_purchase: 3_000, shipping_amount: 110, shipment_id: 'shipment-a' },
+      { price_at_purchase: 2_000, shipping_amount: 75, shipment_id: 'shipment-b' },
+    ];
+    const baseInput = {
+      isMaintenance: false,
+      callerRole: 'buyer' as const,
+      callerId: 'buyer-1',
+      orderId: 'order-1',
+      orderBuyerId: 'buyer-1',
+      shipmentSellerId: 'seller-1',
+      shipmentOrderId: 'order-1',
+      shipmentStatus: 'paid',
+      shipmentStripePaymentIntentId: 'pi_123',
+      shipmentStripeTransferId: null,
+      orderItems,
+      orderChargeCents: 510_000,
+      actualStripeFeeCents: 18_000,
+      reason: 'Cancelled',
+    };
+
+    const first = resolveManualShipmentCancelPlan({
+      ...baseInput,
+      shipmentId: 'shipment-a',
+      shipmentItems: [orderItems[0]],
+      remainingRefundableCents: 510_000,
+    });
+    const second = resolveManualShipmentCancelPlan({
+      ...baseInput,
+      shipmentId: 'shipment-b',
+      shipmentItems: [orderItems[1]],
+      remainingRefundableCents: 204_000,
+    });
+
+    expect(first.amountCents).toBe(306_000);
+    expect(second.amountCents).toBe(204_000);
+    expect(
+      first.rpcInput.p_cancellation_loss_cents! +
+        second.rpcInput.p_cancellation_loss_cents!,
+    ).toBe(18_000);
+  });
+
   it('builds a seller refund plan for a paid shipment', () => {
     expect(
       resolveManualShipmentCancelPlan({
@@ -103,6 +148,7 @@ describe('resolveManualShipmentCancelPlan', () => {
         shipmentItems: [{ price_at_purchase: 10_000, shipping_amount: 1_000 }],
         orderItems: [{ price_at_purchase: 10_000, shipping_amount: 1_000 }],
         orderChargeCents: 1_050_000,
+        actualStripeFeeCents: 20_000,
         reason: 'Cancelación solicitada por el usuario',
       }),
     ).toEqual({
@@ -117,6 +163,7 @@ describe('resolveManualShipmentCancelPlan', () => {
             order_id: '11111111-1111-4111-8111-111111111111',
             caller_role: 'seller',
             reason: 'Cancelación solicitada por el usuario',
+            seguro_share_cents: 50_000,
           },
         },
         options: {
@@ -127,6 +174,7 @@ describe('resolveManualShipmentCancelPlan', () => {
         p_shipment_id: '22222222-2222-4222-8222-222222222222',
         p_cancelled_by_role: 'seller',
         p_reason: 'Cancelación solicitada por el usuario',
+        p_cancellation_loss_cents: 20_000,
       },
     });
   });
@@ -148,6 +196,7 @@ describe('resolveManualShipmentCancelPlan', () => {
         shipmentItems: [{ price_at_purchase: 10_000, shipping_amount: 1_000 }],
         orderItems: [{ price_at_purchase: 10_000, shipping_amount: 1_000 }],
         orderChargeCents: 1_050_000,
+        actualStripeFeeCents: null,
         reason: 'Cancelación solicitada por el usuario',
       }),
     ).toThrow(ApiError);
@@ -171,6 +220,7 @@ describe('resolveManualShipmentCancelPlan', () => {
         orderItems: [{ price_at_purchase: 10_000, shipping_amount: 1_000 }],
         orderChargeCents: 1_050_000,
         reason: 'Cancelación solicitada por el usuario',
+        actualStripeFeeCents: null,
       }),
     ).toThrow(ApiError);
   });
@@ -285,6 +335,7 @@ describe('resolveManualShipmentCancelPlan', () => {
         shipmentItems: [{ price_at_purchase: 3_500, shipping_amount: 242 }],
         orderItems: [{ price_at_purchase: 3_500, shipping_amount: 242 }],
         orderChargeCents: 362_900,
+        actualStripeFeeCents: null,
         reason: 'Cancelación solicitada por el usuario',
       }),
     ).toEqual({
@@ -299,6 +350,7 @@ describe('resolveManualShipmentCancelPlan', () => {
             order_id: '11111111-1111-4111-8111-111111111111',
             caller_role: 'buyer',
             reason: 'Cancelación solicitada por el usuario',
+            seguro_share_cents: 12_900,
           },
         },
         options: {
@@ -309,6 +361,7 @@ describe('resolveManualShipmentCancelPlan', () => {
         p_shipment_id: '22222222-2222-4222-8222-222222222222',
         p_cancelled_by_role: 'buyer',
         p_reason: 'Cancelación solicitada por el usuario',
+        p_cancellation_loss_cents: null,
       },
     });
   });

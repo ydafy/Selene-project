@@ -18,6 +18,7 @@ import {
   calculateCheckoutAllocation,
   type CheckoutAllocation,
 } from './fee-calculator.ts';
+import { calculateOrderCalculations } from '../../../apps/frontend/core/hooks/useOrderCalculations.ts';
 
 /**
  * Strict TDD tests for the Phase 3 single-modal multi-seller checkout
@@ -239,10 +240,8 @@ describe('single-payment-builder > buildSinglePaymentIntentParams', () => {
 
     const params = buildSinglePaymentIntentParams({ allocation, ...ctx });
 
-    // Buyer total = sum(gross + seguro) per seller.
-    // seller_0: seguro = ceil(100000*0.036)+300 = 3900 -> 103900
-    // seller_1: seguro = ceil(80000*0.036)+300  = 3180 ->  83180
-    expect(params.amount).toBe(103_900 + 83_180);
+    // Buyer total = one order-level gross-up shared across sellers.
+    expect(params.amount).toBe(188_208);
     expect(params.currency).toBe('mxn');
     expect(params.customer).toBe('cus_1');
   });
@@ -291,6 +290,8 @@ describe('single-payment-builder > buildSinglePaymentIntentParams', () => {
     expect(m.address_id).toBe('a_1');
     expect(m.total_sellers).toBe('2');
     expect(m.buyer_total_cents).toBe(String(allocation.buyerTotalCents));
+    expect(m.grossed_up_total_cents).toBe(String(allocation.buyerTotalCents));
+    expect(m.domestic_seguro_cents).toBe(String(allocation.totalSeguroCents));
     expect(m.total_gross_cents).toBe(String(allocation.totalGrossCents));
     expect(m.total_commission_cents).toBe(String(allocation.totalCommissionCents));
     expect(m.total_shipping_cents).toBe(String(allocation.totalShippingCents));
@@ -332,8 +333,8 @@ describe('single-payment-builder > buildSinglePaymentIntentParams', () => {
 
     const params = buildSinglePaymentIntentParams({ allocation, ...ctx });
 
-    // seguro = ceil(60000*0.036)+300 = 2460 -> buyer total 62460
-    expect(params.amount).toBe(62_460); // gross + seguro
+    // Buyer total follows the shared gross-up helper.
+    expect(params.amount).toBe(62_978);
     expect(params.metadata.total_sellers).toBe('1');
     // Single-seller shape: the chunked allocation blob carries the one
     // shipment + its product ids (no top-level shipment_ids metadata key).
@@ -349,6 +350,22 @@ describe('single-payment-builder > buildSinglePaymentIntentParams', () => {
     const paramsRecord = params as unknown as Record<string, unknown>;
     expect(paramsRecord.transfer_data).toBeUndefined();
     expect(paramsRecord.application_fee_amount).toBeUndefined();
+  });
+
+  it('matches the frontend order summary total for the same cart', () => {
+    const allocation = buildAllocation([
+      { shipmentId: 'ship_a', subtotalCents: 100_000, shippingCents: 20_000 },
+      { shipmentId: 'ship_b', subtotalCents: 80_000, shippingCents: 15_000 },
+    ]);
+    const ctx = baseCtx();
+    const params = buildSinglePaymentIntentParams({ allocation, ...ctx });
+    const frontendSummary = calculateOrderCalculations([
+      { id: 'item-a', price: 1_000 },
+      { id: 'item-b', price: 800 },
+    ] as never);
+
+    expect(params.amount).toBe(frontendSummary.totalInCents);
+    expect(frontendSummary.totalInCents).toBe(allocation.buyerTotalCents);
   });
 
   it('produces BYTE-DETERMINISTIC metadata regardless of allocation row input order', () => {

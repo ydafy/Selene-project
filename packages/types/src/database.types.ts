@@ -1029,7 +1029,9 @@ export type Database = {
       }
       orders: {
         Row: {
+          actual_stripe_fee_cents: number | null
           buyer_id: string
+          cancellation_loss_cents: number | null
           completed_at: string | null
           created_at: string | null
           currency: string | null
@@ -1041,13 +1043,16 @@ export type Database = {
           shipping_address: Json
           status: Database["public"]["Enums"]["order_status_enum"]
           stripe_charge_id: string | null
+          stripe_fee_reconciled_at: string | null
           stripe_payment_intent_id: string | null
           stripe_transfer_group: string | null
           total_amount: number
           updated_at: string | null
         }
         Insert: {
+          actual_stripe_fee_cents?: number | null
           buyer_id: string
+          cancellation_loss_cents?: number | null
           completed_at?: string | null
           created_at?: string | null
           currency?: string | null
@@ -1059,13 +1064,16 @@ export type Database = {
           shipping_address: Json
           status?: Database["public"]["Enums"]["order_status_enum"]
           stripe_charge_id?: string | null
+          stripe_fee_reconciled_at?: string | null
           stripe_payment_intent_id?: string | null
           stripe_transfer_group?: string | null
           total_amount: number
           updated_at?: string | null
         }
         Update: {
+          actual_stripe_fee_cents?: number | null
           buyer_id?: string
+          cancellation_loss_cents?: number | null
           completed_at?: string | null
           created_at?: string | null
           currency?: string | null
@@ -1077,6 +1085,7 @@ export type Database = {
           shipping_address?: Json
           status?: Database["public"]["Enums"]["order_status_enum"]
           stripe_charge_id?: string | null
+          stripe_fee_reconciled_at?: string | null
           stripe_payment_intent_id?: string | null
           stripe_transfer_group?: string | null
           total_amount?: number
@@ -2711,6 +2720,7 @@ export type Database = {
       }
       fn_cancel_shipment: {
         Args: {
+          p_cancellation_loss_cents?: number
           p_cancelled_by_role: string
           p_reason: string
           p_shipment_id: string
