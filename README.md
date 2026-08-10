@@ -6,7 +6,7 @@
 
 **A marketplace designed to make buying and selling used PC hardware safer, simpler, and more trustworthy.**
 
-<img src="https://example.com/selene-cover.png" alt="Selene — P2P Marketplace" width="900"/>
+<img src="[https://example.com/selene-cover.png](https://res.cloudinary.com/do9waay3o/image/upload/v1786334790/Cover_3_w0yvzp.png)" alt="Selene — P2P Marketplace" width="900"/>
 
 </div>
 
