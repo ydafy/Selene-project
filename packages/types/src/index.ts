@@ -23,6 +23,7 @@ export type Product = Tables<'products'>;
 export type Order = Tables<'orders'>;
 export type Dispute = Tables<'disputes'>;
 export type Shipment = Tables<'shipments'>;
+export type ShipmentTrackingEvent = Tables<'shipment_tracking_events'>;
 export type ConnectPayoutRun = Tables<'connect_payout_runs'>;
 export type ConnectPayoutRunShipment = Tables<'connect_payout_run_shipments'>;
 export type ConnectPayoutReleaseQueueRow =
