@@ -1775,6 +1775,58 @@ export type Database = {
           },
         ]
       }
+      shipment_tracking_events: {
+        Row: {
+          carrier_name: string | null
+          dispute_id: string | null
+          event_at: string
+          event_type: Database["public"]["Enums"]["shipment_tracking_event_type"]
+          id: string
+          location: string | null
+          polling_run_id: string | null
+          raw_status: string
+          received_at: string
+          shipment_id: string
+          status_description: string | null
+          webhook_delivery_id: string | null
+        }
+        Insert: {
+          carrier_name?: string | null
+          dispute_id?: string | null
+          event_at: string
+          event_type: Database["public"]["Enums"]["shipment_tracking_event_type"]
+          id?: string
+          location?: string | null
+          polling_run_id?: string | null
+          raw_status: string
+          received_at?: string
+          shipment_id: string
+          status_description?: string | null
+          webhook_delivery_id?: string | null
+        }
+        Update: {
+          carrier_name?: string | null
+          dispute_id?: string | null
+          event_at?: string
+          event_type?: Database["public"]["Enums"]["shipment_tracking_event_type"]
+          id?: string
+          location?: string | null
+          polling_run_id?: string | null
+          raw_status?: string
+          received_at?: string
+          shipment_id?: string
+          status_description?: string | null
+          webhook_delivery_id?: string | null
+        }
+        Relationships: [
+          { foreignKeyName: "shipment_tracking_events_dispute_id_fkey"; columns: ["dispute_id"]; isOneToOne: false; referencedRelation: "admin_disputes_monitor_view"; referencedColumns: ["dispute_id"] },
+          { foreignKeyName: "shipment_tracking_events_dispute_id_fkey"; columns: ["dispute_id"]; isOneToOne: false; referencedRelation: "disputes"; referencedColumns: ["id"] },
+          { foreignKeyName: "shipment_tracking_events_shipment_id_fkey"; columns: ["shipment_id"]; isOneToOne: false; referencedRelation: "admin_connect_earnings_view"; referencedColumns: ["id"] },
+          { foreignKeyName: "shipment_tracking_events_shipment_id_fkey"; columns: ["shipment_id"]; isOneToOne: false; referencedRelation: "admin_connect_payout_release_view"; referencedColumns: ["shipment_id"] },
+          { foreignKeyName: "shipment_tracking_events_shipment_id_fkey"; columns: ["shipment_id"]; isOneToOne: false; referencedRelation: "shipments"; referencedColumns: ["id"] },
+          { foreignKeyName: "shipment_tracking_events_webhook_delivery_id_fkey"; columns: ["webhook_delivery_id"]; isOneToOne: false; referencedRelation: "webhook_deliveries"; referencedColumns: ["id"] },
+        ]
+      }
       shipments: {
         Row: {
           carrier: string | null
@@ -2173,6 +2225,12 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      webhook_deliveries: {
+        Row: { delivery_id: string; error_code: string | null; event_name: string; id: string; payload_sha256: string; processed_at: string | null; provider: string; received_at: string; state: string }
+        Insert: { delivery_id: string; error_code?: string | null; event_name: string; id?: string; payload_sha256: string; processed_at?: string | null; provider: string; received_at?: string; state?: string }
+        Update: { delivery_id?: string; error_code?: string | null; event_name?: string; id?: string; payload_sha256?: string; processed_at?: string | null; provider?: string; received_at?: string; state?: string }
+        Relationships: []
       }
       webhook_dlq: {
         Row: {
@@ -2854,6 +2912,10 @@ export type Database = {
           status: string
         }[]
       }
+      fn_record_tracking_event: {
+        Args: { p_carrier_name: string; p_dispute_id: string; p_event_at: string; p_event_type: Database["public"]["Enums"]["shipment_tracking_event_type"]; p_location: string; p_polling_run_id: string; p_raw_status: string; p_shipment_id: string; p_status_description: string; p_transition: Database["public"]["Enums"]["order_status_enum"]; p_webhook_delivery_id: string }
+        Returns: Json
+      }
       fn_refresh_seller_stats: {
         Args: { p_seller_id: string }
         Returns: undefined
@@ -2985,6 +3047,7 @@ export type Database = {
         | "HIDDEN"
         | "RESERVED"
         | "IN_DISPUTE"
+      shipment_tracking_event_type: "created" | "information" | "in_transit" | "delivered" | "exception" | "returned"
       stripe_onboarding_status: "pending" | "complete" | "rejected"
       wallet_transaction_type:
         | "sale_proceeds"
@@ -3158,6 +3221,7 @@ export const Constants = {
         "RESERVED",
         "IN_DISPUTE",
       ],
+      shipment_tracking_event_type: ["created", "information", "in_transit", "delivered", "exception", "returned"],
       stripe_onboarding_status: ["pending", "complete", "rejected"],
       wallet_transaction_type: [
         "sale_proceeds",
