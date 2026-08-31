@@ -2,7 +2,7 @@
 /**
  * @file app/_layout.tsx
  * @description Punto de entrada principal de la App.
- * Configura proveedores globales, inicializa servicios y gestiona el estado del sistema.
+ * Configura proveedores globales, inicializa servicios, maneja la Splash Animada y gestiona el estado del sistema.
  */
 
 import 'react-native-get-random-values';
@@ -11,14 +11,13 @@ import { ThemeProvider } from '@shopify/restyle';
 import { PaperProvider } from 'react-native-paper';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { SplashScreen, Stack } from 'expo-router';
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { useFonts } from 'expo-font';
 import Toast from 'react-native-toast-message';
 import { StripeProvider } from '@stripe/stripe-react-native';
 import { ThemeProvider as NavThemeProvider } from '@react-navigation/native';
-import { Platform, AppState } from 'react-native';
-import Constants from 'expo-constants';
+import { Platform, AppState, Animated, StyleSheet } from 'react-native';
 import { onlineManager, focusManager } from '@tanstack/react-query';
 import NetInfo from '@react-native-community/netinfo';
 
@@ -31,14 +30,12 @@ import { paperTheme, theme, navigationTheme } from '../core/theme';
 import { AuthProvider } from '../components/auth/AuthProvider';
 import { AuthModalProvider } from '../core/auth/AuthModalProvider';
 import { NotificationWatcher } from '../components/features/notifications/NotificationWatcher';
-import { useSystemConfig } from '../core/hooks/useSystemConfig';
-import { isVersionLower } from '../core/utils/version';
-import { MaintenanceScreen } from '../components/ui/MaintenanceScreen';
-import { Box, Text } from '../components/base';
-import { PrimaryButton } from '../components/ui/PrimaryButton';
+
 import { OfflineNotice } from '../components/ui/OfflineNotice';
-import { ErrorState } from '@/components/ui/ErrorState';
+
 import { queryClient } from '../core/db/queryClient';
+
+import { SystemGuard } from '../components/auth/SystemGuard';
 
 // --- 1. BOOTSTRAP (Configuración Global Permanente - FUERA DEL COMPONENTE) ---
 SplashScreen.preventAutoHideAsync();
@@ -52,65 +49,67 @@ onlineManager.setEventListener((setOnline) => {
 
 // C. Configuración de Google
 const GOOGLE_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
-if (!GOOGLE_ID) {
-  throw new Error('Missing EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID in .env');
+if (GOOGLE_ID) {
+  GoogleSignin.configure({ webClientId: GOOGLE_ID });
 }
-GoogleSignin.configure({ webClientId: GOOGLE_ID });
 
 const STRIPE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 
-//  COMPONENTE GUARDIA (Lógica de Mantenimiento y Versión) ---
-function SystemGuard({ children }: { children: React.ReactNode }) {
-  const { data: config, isLoading, isError, refetch } = useSystemConfig();
-  const currentVersion = Constants.expoConfig?.version || '1.0.0';
+// --- COMPONENTE SPLASH SCREEN ANIMADA (Transición fluida sin parpadeos) ---
+function AnimatedSplashOverlay({
+  isReady,
+  onAnimationComplete,
+}: {
+  isReady: boolean;
+  onAnimationComplete: () => void;
+}) {
+  const opacity = useRef(new Animated.Value(1)).current;
+  const scale = useRef(new Animated.Value(1)).current;
 
-  if (isLoading && !config) return null;
+  useEffect(() => {
+    if (isReady) {
+      // 1. Ocultamos la splash nativa estática del OS
+      SplashScreen.hideAsync();
 
-  if (isError && !config) {
-    return <ErrorState onRetry={refetch} />;
-  }
+      // 2. Disparamos la animación suave de salida del logo
+      Animated.parallel([
+        Animated.timing(opacity, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scale, {
+          toValue: 1.08,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        onAnimationComplete();
+      });
+    }
+  }, [isReady]);
 
-  if (config?.is_maintenance) {
-    return <MaintenanceScreen />;
-  }
-
-  const minVersion =
-    Platform.OS === 'ios'
-      ? config?.min_version_ios
-      : config?.min_version_android;
-  if (minVersion && isVersionLower(currentVersion, minVersion)) {
-    return (
-      <Box
-        flex={1}
-        backgroundColor="background"
-        justifyContent="center"
-        alignItems="center"
-        padding="xl"
-      >
-        <Text variant="header-xl" color="primary">
-          ACTUALIZACIÓN REQUERIDA
-        </Text>
-        <Text variant="body-md" textAlign="center" marginTop="m">
-          La versión {currentVersion} ha sido deprecada. Por favor instala la
-          {minVersion}.
-        </Text>
-        <PrimaryButton
-          style={{ marginTop: 24 }}
-          onPress={() => {
-            /* Link a Store */
-          }}
-        >
-          ACTUALIZAR AHORA
-        </PrimaryButton>
-      </Box>
-    );
-  }
-
-  return <>{children}</>;
+  return (
+    <Animated.View
+      style={[
+        StyleSheet.absoluteFillObject,
+        styles.splashContainer,
+        { opacity, transform: [{ scale }] },
+      ]}
+      pointerEvents="none"
+    >
+      <Animated.Image
+        source={require('../assets/images/splash-icon.png')}
+        style={styles.splashLogo}
+        resizeMode="contain"
+      />
+    </Animated.View>
+  );
 }
 
 // --- 3. COMPONENTE PRINCIPAL ---
 export default function RootLayout() {
+  const [splashFinished, setSplashFinished] = useState(false);
   const [fontsLoaded, fontError] = useFonts({
     'Montserrat-Regular': require('../assets/fonts/Montserrat-Regular.ttf'),
     'Montserrat-Medium': require('../assets/fonts/Montserrat-Medium.ttf'),
@@ -119,27 +118,18 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    // A. CONFIGURACIÓN DE FOCO (AppState)
-    // Se registra al montar y se limpia al desmontar
     const subscription = AppState.addEventListener('change', (status) => {
       if (Platform.OS !== 'web') {
         focusManager.setFocused(status === 'active');
       }
     });
 
-    // B. CONTROL DE SPLASH SCREEN
-    // Ocultamos el splash solo cuando las fuentes están listas
-    if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
-    }
-
-    // --- CLEANUP ---
     return () => {
       subscription.remove();
     };
-  }, [fontsLoaded, fontError]);
+  }, []);
 
-  if (!fontsLoaded && !fontError) return null;
+  const isAppReady = fontsLoaded || !!fontError;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -154,7 +144,7 @@ export default function RootLayout() {
                     {STRIPE_KEY ? (
                       <StripeProvider
                         publishableKey={STRIPE_KEY}
-                        merchantIdentifier="merchant.com.selene.app"
+                        merchantIdentifier="merchant.com.selene.marketplace"
                       >
                         <RootStack />
                       </StripeProvider>
@@ -170,6 +160,14 @@ export default function RootLayout() {
           </QueryClientProvider>
         </PaperProvider>
       </ThemeProvider>
+
+      {/* OVERLAY DE ANIMACIÓN: Se desmonta al completar para liberar memoria */}
+      {!splashFinished && (
+        <AnimatedSplashOverlay
+          isReady={isAppReady}
+          onAnimationComplete={() => setSplashFinished(true)}
+        />
+      )}
     </GestureHandlerRootView>
   );
 }
@@ -206,3 +204,16 @@ function RootStack() {
     </Stack>
   );
 }
+
+const styles = StyleSheet.create({
+  splashContainer: {
+    backgroundColor: '#121212',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 99999,
+  },
+  splashLogo: {
+    width: 180,
+    height: 180,
+  },
+});

@@ -5,6 +5,7 @@ import {
   buildSanitizedEnviaResponseMetadata,
   extractEnviaErrorMetadata,
   extractEnviaLabelCostCents,
+  sanitizeLabelLogMetadata,
 } from './diagnostics';
 
 describe('generate-shipping-label Envia diagnostics', () => {
@@ -107,10 +108,8 @@ describe('generate-shipping-label Envia diagnostics', () => {
         data: [{ label: 'https://example.com/private-label.pdf' }],
       }),
     ).toEqual({
-      meta: 'error',
+      topLevelKeys: ['data', 'error', 'meta'],
       code: 1170,
-      message: 'Invalid operation',
-      description: 'Invalid Option',
     });
   });
 
@@ -133,6 +132,12 @@ describe('generate-shipping-label Envia diagnostics', () => {
         data: [{ shipment: { cost: '250.50', currency: 'MXN' } }],
       }),
     ).toEqual({ shippingCostCents: 25_050, sourcePath: '$.shipment.cost' });
+  });
+
+  it('exposes integer cents for provider persistence', () => {
+    const extraction = extractEnviaLabelCostCents({ data: [{ totalPrice: '168.75' }] });
+    expect(extraction?.shippingCostCents).toBe(16_875);
+    expect(Number.isInteger(extraction?.shippingCostCents)).toBe(true);
   });
 
   it('prefers explicit Envia price fields over generic amount fields', () => {
@@ -189,5 +194,19 @@ describe('generate-shipping-label Envia diagnostics', () => {
     const serialized = JSON.stringify(metadata);
     expect(serialized).not.toContain('TRACK-SECRET');
     expect(serialized).not.toContain('private-label.pdf');
+  });
+
+  it('drops request bodies, provider errors, tokens, and label URLs from label log metadata', () => {
+    expect(sanitizeLabelLogMetadata({
+      shipmentId: 'shipment-1',
+      errorClass: 'provider_rejected',
+      body: { originAddress: { street_line1: 'Private street' } },
+      stack: 'private provider response',
+      authorization: 'Bearer secret',
+      labelUrl: 'https://labels.example/private.pdf',
+    })).toEqual({
+      shipmentId: 'shipment-1',
+      errorClass: 'provider_rejected',
+    });
   });
 });

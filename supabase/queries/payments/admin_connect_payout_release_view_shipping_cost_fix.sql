@@ -33,7 +33,7 @@ WITH shipment_amounts AS (
     s.completed_at,
     s.stripe_payment_intent_id,
     s.stripe_payout_id,
-    s.shipping_cost,
+    s.label_provider_cost_cents,
     pp.stripe_account_id,
     pp.stripe_onboarding_status,
     p.username AS seller_name,
@@ -42,14 +42,15 @@ WITH shipment_amounts AS (
     s.stripe_payment_intent_id IS NOT NULL AS has_connect_payment_intent,
     GREATEST(
       CASE
-        WHEN o.stripe_transfer_group IS NOT NULL THEN
-          ROUND(COALESCE(SUM(oi.net_payout), 0) * 100)::INTEGER
-        ELSE
-          ROUND(COALESCE(SUM(oi.net_payout), 0) * 100)::INTEGER - COALESCE(s.shipping_cost, 0)
+        WHEN s.label_provider_cost_cents IS NOT NULL
+          AND s.label_provider_cost_cents >= 0 THEN
+          ROUND(COALESCE(SUM(oi.net_payout), 0) * 100)::INTEGER - s.label_provider_cost_cents
+        ELSE 0
       END,
       0
-    ) AS release_amount_cents,
-    s.shipping_cost IS NOT NULL AND s.shipping_cost > 0 AS has_shipping_cost_cents,
+    )::INTEGER AS release_amount_cents,
+    s.label_provider_cost_cents IS NOT NULL
+      AND s.label_provider_cost_cents >= 0 AS has_valid_label_provider_cost_cents,
     EXISTS (
       SELECT 1
       FROM public.disputes d
@@ -77,7 +78,7 @@ WITH shipment_amounts AS (
     s.completed_at,
     s.stripe_payment_intent_id,
     s.stripe_payout_id,
-    s.shipping_cost,
+    s.label_provider_cost_cents,
     pp.stripe_account_id,
     pp.stripe_onboarding_status,
     p.username,
@@ -101,7 +102,7 @@ SELECT
     AND has_connect_payment_intent
     AND NOT has_active_dispute
     AND NOT has_active_release
-    AND has_shipping_cost_cents
+    AND has_valid_label_provider_cost_cents
     AND stripe_account_id IS NOT NULL
     AND stripe_onboarding_status = 'complete'
     AND release_amount_cents > 0
@@ -112,7 +113,7 @@ SELECT
     WHEN NOT has_connect_payment_intent THEN 'missing_connect_payment_intent'
     WHEN has_active_dispute THEN 'active_dispute'
     WHEN has_active_release THEN 'already_released'
-    WHEN NOT has_shipping_cost_cents THEN 'missing_shipping_cost'
+    WHEN NOT has_valid_label_provider_cost_cents THEN 'invalid_label_provider_cost'
     WHEN stripe_account_id IS NULL THEN 'missing_stripe_account'
     WHEN stripe_onboarding_status <> 'complete' OR stripe_onboarding_status IS NULL THEN 'seller_not_payout_ready'
     WHEN release_amount_cents <= 0 THEN 'missing_release_amount'

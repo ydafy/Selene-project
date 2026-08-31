@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -32,6 +32,7 @@ export type Database = {
           state: string
           street_line1: string
           street_line2: string | null
+          street_number: string | null
           user_id: string
           zip_code: string
         }
@@ -52,6 +53,7 @@ export type Database = {
           state: string
           street_line1: string
           street_line2?: string | null
+          street_number?: string | null
           user_id: string
           zip_code: string
         }
@@ -72,6 +74,7 @@ export type Database = {
           state?: string
           street_line1?: string
           street_line2?: string | null
+          street_number?: string | null
           user_id?: string
           zip_code?: string
         }
@@ -345,6 +348,54 @@ export type Database = {
           filter_fields?: Json
           sell_fields?: Json
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      checkout_recovery_shells: {
+        Row: {
+          charged_amount_cents: number | null
+          compensation_attempt_count: number
+          compensation_last_error: string | null
+          compensation_lease_expires_at: string | null
+          compensation_state: string
+          created_at: string
+          next_compensation_retry_at: string | null
+          reason: string
+          source_metadata: Json
+          stripe_charge_id: string | null
+          stripe_payment_intent_id: string
+          stripe_refund_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          charged_amount_cents?: number | null
+          compensation_attempt_count?: number
+          compensation_last_error?: string | null
+          compensation_lease_expires_at?: string | null
+          compensation_state?: string
+          created_at?: string
+          next_compensation_retry_at?: string | null
+          reason: string
+          source_metadata?: Json
+          stripe_charge_id?: string | null
+          stripe_payment_intent_id: string
+          stripe_refund_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          charged_amount_cents?: number | null
+          compensation_attempt_count?: number
+          compensation_last_error?: string | null
+          compensation_lease_expires_at?: string | null
+          compensation_state?: string
+          created_at?: string
+          next_compensation_retry_at?: string | null
+          reason?: string
+          source_metadata?: Json
+          stripe_charge_id?: string | null
+          stripe_payment_intent_id?: string
+          stripe_refund_id?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1032,11 +1083,16 @@ export type Database = {
           actual_stripe_fee_cents: number | null
           buyer_id: string
           cancellation_loss_cents: number | null
+          compensation_attempt_count: number
+          compensation_last_error: string | null
+          compensation_lease_expires_at: string | null
+          compensation_state: string | null
           completed_at: string | null
           created_at: string | null
           currency: string | null
           delivered_at: string | null
           id: string
+          next_compensation_retry_at: string | null
           payment_processing: boolean
           payment_processing_reason: string | null
           service_fee_amount: number | null
@@ -1045,6 +1101,7 @@ export type Database = {
           stripe_charge_id: string | null
           stripe_fee_reconciled_at: string | null
           stripe_payment_intent_id: string | null
+          stripe_refund_id: string | null
           stripe_transfer_group: string | null
           total_amount: number
           updated_at: string | null
@@ -1053,11 +1110,16 @@ export type Database = {
           actual_stripe_fee_cents?: number | null
           buyer_id: string
           cancellation_loss_cents?: number | null
+          compensation_attempt_count?: number
+          compensation_last_error?: string | null
+          compensation_lease_expires_at?: string | null
+          compensation_state?: string | null
           completed_at?: string | null
           created_at?: string | null
           currency?: string | null
           delivered_at?: string | null
           id?: string
+          next_compensation_retry_at?: string | null
           payment_processing?: boolean
           payment_processing_reason?: string | null
           service_fee_amount?: number | null
@@ -1066,6 +1128,7 @@ export type Database = {
           stripe_charge_id?: string | null
           stripe_fee_reconciled_at?: string | null
           stripe_payment_intent_id?: string | null
+          stripe_refund_id?: string | null
           stripe_transfer_group?: string | null
           total_amount: number
           updated_at?: string | null
@@ -1074,11 +1137,16 @@ export type Database = {
           actual_stripe_fee_cents?: number | null
           buyer_id?: string
           cancellation_loss_cents?: number | null
+          compensation_attempt_count?: number
+          compensation_last_error?: string | null
+          compensation_lease_expires_at?: string | null
+          compensation_state?: string | null
           completed_at?: string | null
           created_at?: string | null
           currency?: string | null
           delivered_at?: string | null
           id?: string
+          next_compensation_retry_at?: string | null
           payment_processing?: boolean
           payment_processing_reason?: string | null
           service_fee_amount?: number | null
@@ -1087,6 +1155,7 @@ export type Database = {
           stripe_charge_id?: string | null
           stripe_fee_reconciled_at?: string | null
           stripe_payment_intent_id?: string | null
+          stripe_refund_id?: string | null
           stripe_transfer_group?: string | null
           total_amount?: number
           updated_at?: string | null
@@ -1775,6 +1844,55 @@ export type Database = {
           },
         ]
       }
+      shipment_label_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json
+          shipment_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json
+          shipment_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json
+          shipment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_label_events_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "admin_connect_earnings_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_label_events_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "admin_connect_payout_release_view"
+            referencedColumns: ["shipment_id"]
+          },
+          {
+            foreignKeyName: "shipment_label_events_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shipment_tracking_events: {
         Row: {
           carrier_name: string | null
@@ -1819,29 +1937,80 @@ export type Database = {
           webhook_delivery_id?: string | null
         }
         Relationships: [
-          { foreignKeyName: "shipment_tracking_events_dispute_id_fkey"; columns: ["dispute_id"]; isOneToOne: false; referencedRelation: "admin_disputes_monitor_view"; referencedColumns: ["dispute_id"] },
-          { foreignKeyName: "shipment_tracking_events_dispute_id_fkey"; columns: ["dispute_id"]; isOneToOne: false; referencedRelation: "disputes"; referencedColumns: ["id"] },
-          { foreignKeyName: "shipment_tracking_events_shipment_id_fkey"; columns: ["shipment_id"]; isOneToOne: false; referencedRelation: "admin_connect_earnings_view"; referencedColumns: ["id"] },
-          { foreignKeyName: "shipment_tracking_events_shipment_id_fkey"; columns: ["shipment_id"]; isOneToOne: false; referencedRelation: "admin_connect_payout_release_view"; referencedColumns: ["shipment_id"] },
-          { foreignKeyName: "shipment_tracking_events_shipment_id_fkey"; columns: ["shipment_id"]; isOneToOne: false; referencedRelation: "shipments"; referencedColumns: ["id"] },
-          { foreignKeyName: "shipment_tracking_events_webhook_delivery_id_fkey"; columns: ["webhook_delivery_id"]; isOneToOne: false; referencedRelation: "webhook_deliveries"; referencedColumns: ["id"] },
+          {
+            foreignKeyName: "shipment_tracking_events_dispute_id_fkey"
+            columns: ["dispute_id"]
+            isOneToOne: false
+            referencedRelation: "admin_disputes_monitor_view"
+            referencedColumns: ["dispute_id"]
+          },
+          {
+            foreignKeyName: "shipment_tracking_events_dispute_id_fkey"
+            columns: ["dispute_id"]
+            isOneToOne: false
+            referencedRelation: "disputes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_tracking_events_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "admin_connect_earnings_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_tracking_events_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "admin_connect_payout_release_view"
+            referencedColumns: ["shipment_id"]
+          },
+          {
+            foreignKeyName: "shipment_tracking_events_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_tracking_events_webhook_delivery_id_fkey"
+            columns: ["webhook_delivery_id"]
+            isOneToOne: false
+            referencedRelation: "webhook_deliveries"
+            referencedColumns: ["id"]
+          },
         ]
       }
       shipments: {
         Row: {
           carrier: string | null
+          claim_expires_at: string | null
+          claim_token: string | null
           completed_at: string | null
           created_at: string | null
           delivered_at: string | null
           envia_shipment_id: string | null
           id: string
+          label_generated_at: string | null
+          label_generation_state: string
+          label_provider_cost_cents: number | null
+          label_quote_carrier: string | null
+          label_quote_cost_cents: number | null
+          label_quote_input_hash: string | null
+          label_quote_rated_at: string | null
+          label_quote_reference: string | null
+          label_quote_service: string | null
           label_url: string | null
           last_tracked_at: string | null
           order_id: string
           origin_address: Json | null
+          origin_address_id: string | null
+          print_format: string | null
+          print_size: string | null
           return_label_url: string | null
           return_tracking_number: string | null
           seller_id: string
+          service: string | null
           shipped_at: string | null
           shipping_cost: number | null
           shipping_evidence: Json | null
@@ -1854,18 +2023,33 @@ export type Database = {
         }
         Insert: {
           carrier?: string | null
+          claim_expires_at?: string | null
+          claim_token?: string | null
           completed_at?: string | null
           created_at?: string | null
           delivered_at?: string | null
           envia_shipment_id?: string | null
           id?: string
+          label_generated_at?: string | null
+          label_generation_state?: string
+          label_provider_cost_cents?: number | null
+          label_quote_carrier?: string | null
+          label_quote_cost_cents?: number | null
+          label_quote_input_hash?: string | null
+          label_quote_rated_at?: string | null
+          label_quote_reference?: string | null
+          label_quote_service?: string | null
           label_url?: string | null
           last_tracked_at?: string | null
           order_id: string
           origin_address?: Json | null
+          origin_address_id?: string | null
+          print_format?: string | null
+          print_size?: string | null
           return_label_url?: string | null
           return_tracking_number?: string | null
           seller_id: string
+          service?: string | null
           shipped_at?: string | null
           shipping_cost?: number | null
           shipping_evidence?: Json | null
@@ -1878,18 +2062,33 @@ export type Database = {
         }
         Update: {
           carrier?: string | null
+          claim_expires_at?: string | null
+          claim_token?: string | null
           completed_at?: string | null
           created_at?: string | null
           delivered_at?: string | null
           envia_shipment_id?: string | null
           id?: string
+          label_generated_at?: string | null
+          label_generation_state?: string
+          label_provider_cost_cents?: number | null
+          label_quote_carrier?: string | null
+          label_quote_cost_cents?: number | null
+          label_quote_input_hash?: string | null
+          label_quote_rated_at?: string | null
+          label_quote_reference?: string | null
+          label_quote_service?: string | null
           label_url?: string | null
           last_tracked_at?: string | null
           order_id?: string
           origin_address?: Json | null
+          origin_address_id?: string | null
+          print_format?: string | null
+          print_size?: string | null
           return_label_url?: string | null
           return_tracking_number?: string | null
           seller_id?: string
+          service?: string | null
           shipped_at?: string | null
           shipping_cost?: number | null
           shipping_evidence?: Json | null
@@ -1913,6 +2112,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipments_origin_address_id_fkey"
+            columns: ["origin_address_id"]
+            isOneToOne: false
+            referencedRelation: "addresses"
             referencedColumns: ["id"]
           },
           {
@@ -1986,13 +2192,20 @@ export type Database = {
         Row: {
           auto_cancel_orders_running: boolean | null
           auto_cancel_preparing_running: boolean | null
+          checkout_recovery_enabled: boolean
+          checkout_recovery_running: boolean
           connect_enabled: boolean | null
           currency: string | null
+          envia_carrier: string | null
+          envia_print_format: string | null
+          envia_print_size: string | null
+          envia_service: string | null
           id: number
           insurance_rate: number | null
           is_maintenance: boolean | null
           isr_withholding_pct: number | null
           iva_withholding_pct: number | null
+          listing_quote_reference_destination: Json | null
           min_payout_amount_cents: number | null
           min_version_android: string | null
           min_version_ios: string | null
@@ -2014,13 +2227,20 @@ export type Database = {
         Insert: {
           auto_cancel_orders_running?: boolean | null
           auto_cancel_preparing_running?: boolean | null
+          checkout_recovery_enabled?: boolean
+          checkout_recovery_running?: boolean
           connect_enabled?: boolean | null
           currency?: string | null
+          envia_carrier?: string | null
+          envia_print_format?: string | null
+          envia_print_size?: string | null
+          envia_service?: string | null
           id: number
           insurance_rate?: number | null
           is_maintenance?: boolean | null
           isr_withholding_pct?: number | null
           iva_withholding_pct?: number | null
+          listing_quote_reference_destination?: Json | null
           min_payout_amount_cents?: number | null
           min_version_android?: string | null
           min_version_ios?: string | null
@@ -2042,13 +2262,20 @@ export type Database = {
         Update: {
           auto_cancel_orders_running?: boolean | null
           auto_cancel_preparing_running?: boolean | null
+          checkout_recovery_enabled?: boolean
+          checkout_recovery_running?: boolean
           connect_enabled?: boolean | null
           currency?: string | null
+          envia_carrier?: string | null
+          envia_print_format?: string | null
+          envia_print_size?: string | null
+          envia_service?: string | null
           id?: number
           insurance_rate?: number | null
           is_maintenance?: boolean | null
           isr_withholding_pct?: number | null
           iva_withholding_pct?: number | null
+          listing_quote_reference_destination?: Json | null
           min_payout_amount_cents?: number | null
           min_version_android?: string | null
           min_version_ios?: string | null
@@ -2227,9 +2454,39 @@ export type Database = {
         ]
       }
       webhook_deliveries: {
-        Row: { delivery_id: string; error_code: string | null; event_name: string; id: string; payload_sha256: string; processed_at: string | null; provider: string; received_at: string; state: string }
-        Insert: { delivery_id: string; error_code?: string | null; event_name: string; id?: string; payload_sha256: string; processed_at?: string | null; provider: string; received_at?: string; state?: string }
-        Update: { delivery_id?: string; error_code?: string | null; event_name?: string; id?: string; payload_sha256?: string; processed_at?: string | null; provider?: string; received_at?: string; state?: string }
+        Row: {
+          delivery_id: string
+          error_code: string | null
+          event_name: string
+          id: string
+          payload_sha256: string
+          processed_at: string | null
+          provider: string
+          received_at: string
+          state: string
+        }
+        Insert: {
+          delivery_id: string
+          error_code?: string | null
+          event_name: string
+          id?: string
+          payload_sha256: string
+          processed_at?: string | null
+          provider: string
+          received_at?: string
+          state?: string
+        }
+        Update: {
+          delivery_id?: string
+          error_code?: string | null
+          event_name?: string
+          id?: string
+          payload_sha256?: string
+          processed_at?: string | null
+          provider?: string
+          received_at?: string
+          state?: string
+        }
         Relationships: []
       }
       webhook_dlq: {
@@ -2788,6 +3045,25 @@ export type Database = {
           success: boolean
         }[]
       }
+      fn_claim_checkout_recovery_shells: {
+        Args: {
+          p_claim_scope?: string
+          p_limit?: number
+          p_stripe_payment_intent_id?: string
+        }
+        Returns: {
+          stripe_charge_id: string
+          stripe_payment_intent_id: string
+        }[]
+      }
+      fn_claim_shipment_label: {
+        Args: {
+          p_origin_address_id: string
+          p_seller_id: string
+          p_shipment_id: string
+        }
+        Returns: Json
+      }
       fn_complete_shipment_refund: {
         Args: { p_shipment_id: string }
         Returns: {
@@ -2861,6 +3137,25 @@ export type Database = {
         Args: { p_order_id: string }
         Returns: Database["public"]["Enums"]["order_status_enum"]
       }
+      fn_finalize_checkout_recovery: {
+        Args: { p_stripe_payment_intent_id: string; p_stripe_refund_id: string }
+        Returns: Json
+      }
+      fn_finalize_shipment_label: {
+        Args: {
+          p_carrier: string
+          p_claim_token: string
+          p_envia_shipment_id: string
+          p_label_url: string
+          p_print_format: string
+          p_print_size: string
+          p_provider_cost_cents: number
+          p_service: string
+          p_shipment_id: string
+          p_tracking_number: string
+        }
+        Returns: boolean
+      }
       fn_get_location_by_zip: {
         Args: { p_zip: string }
         Returns: {
@@ -2890,6 +3185,14 @@ export type Database = {
         Args: { p_amount: number; p_dispute_id: string; p_stripe_id: string }
         Returns: undefined
       }
+      fn_mark_checkout_recovery_reconciliation_needed: {
+        Args: { p_error: string; p_stripe_payment_intent_id: string }
+        Returns: undefined
+      }
+      fn_mark_checkout_recovery_retry: {
+        Args: { p_error: string; p_stripe_payment_intent_id: string }
+        Returns: undefined
+      }
       fn_mark_return_delivered: {
         Args: { p_dispute_id: string }
         Returns: {
@@ -2904,6 +3207,38 @@ export type Database = {
           success: boolean
         }[]
       }
+      fn_mark_shipment_label_orphan: {
+        Args: {
+          p_claim_token: string
+          p_error_class: string
+          p_shipment_id: string
+        }
+        Returns: boolean
+      }
+      fn_mark_shipment_label_rejected: {
+        Args: {
+          p_claim_token: string
+          p_error_class: string
+          p_shipment_id: string
+        }
+        Returns: boolean
+      }
+      fn_mark_shipment_label_sent: {
+        Args: { p_claim_token: string; p_shipment_id: string }
+        Returns: boolean
+      }
+      fn_persist_shipment_label_quote: {
+        Args: {
+          p_carrier: string
+          p_claim_token: string
+          p_input_hash: string
+          p_quote_cost_cents: number
+          p_quote_reference: string
+          p_service: string
+          p_shipment_id: string
+        }
+        Returns: boolean
+      }
       fn_reconcile_connect_payments: {
         Args: never
         Returns: {
@@ -2912,8 +3247,35 @@ export type Database = {
           status: string
         }[]
       }
+      fn_reconcile_shipment_label: {
+        Args: {
+          p_actor_id: string
+          p_carrier: string
+          p_envia_shipment_id: string
+          p_label_url: string
+          p_print_format: string
+          p_print_size: string
+          p_provider_cost_cents: number
+          p_service: string
+          p_shipment_id: string
+          p_tracking_number: string
+        }
+        Returns: boolean
+      }
       fn_record_tracking_event: {
-        Args: { p_carrier_name: string; p_dispute_id: string; p_event_at: string; p_event_type: Database["public"]["Enums"]["shipment_tracking_event_type"]; p_location: string; p_polling_run_id: string; p_raw_status: string; p_shipment_id: string; p_status_description: string; p_transition: Database["public"]["Enums"]["order_status_enum"]; p_webhook_delivery_id: string }
+        Args: {
+          p_carrier_name: string
+          p_dispute_id: string
+          p_event_at: string
+          p_event_type: Database["public"]["Enums"]["shipment_tracking_event_type"]
+          p_location: string
+          p_polling_run_id: string
+          p_raw_status: string
+          p_shipment_id: string
+          p_status_description: string
+          p_transition: Database["public"]["Enums"]["order_status_enum"]
+          p_webhook_delivery_id: string
+        }
         Returns: Json
       }
       fn_refresh_seller_stats: {
@@ -3006,8 +3368,22 @@ export type Database = {
           success: boolean
         }[]
       }
+      fn_set_checkout_recovery_charge_evidence: {
+        Args: { p_stripe_charge_id: string; p_stripe_payment_intent_id: string }
+        Returns: string
+      }
       fn_unlock_dispute: { Args: { p_dispute_id: string }; Returns: boolean }
       fn_unlock_product: { Args: { p_product_id: string }; Returns: boolean }
+      fn_upsert_checkout_recovery_shell: {
+        Args: {
+          p_charged_amount_cents: number
+          p_reason: string
+          p_source_metadata: Json
+          p_stripe_charge_id?: string
+          p_stripe_payment_intent_id: string
+        }
+        Returns: Json
+      }
       get_profile_stats: { Args: { target_user_id: string }; Returns: Json }
       is_admin: { Args: never; Returns: boolean }
     }
@@ -3047,7 +3423,13 @@ export type Database = {
         | "HIDDEN"
         | "RESERVED"
         | "IN_DISPUTE"
-      shipment_tracking_event_type: "created" | "information" | "in_transit" | "delivered" | "exception" | "returned"
+      shipment_tracking_event_type:
+        | "created"
+        | "information"
+        | "in_transit"
+        | "delivered"
+        | "exception"
+        | "returned"
       stripe_onboarding_status: "pending" | "complete" | "rejected"
       wallet_transaction_type:
         | "sale_proceeds"
@@ -3221,7 +3603,14 @@ export const Constants = {
         "RESERVED",
         "IN_DISPUTE",
       ],
-      shipment_tracking_event_type: ["created", "information", "in_transit", "delivered", "exception", "returned"],
+      shipment_tracking_event_type: [
+        "created",
+        "information",
+        "in_transit",
+        "delivered",
+        "exception",
+        "returned",
+      ],
       stripe_onboarding_status: ["pending", "complete", "rejected"],
       wallet_transaction_type: [
         "sale_proceeds",

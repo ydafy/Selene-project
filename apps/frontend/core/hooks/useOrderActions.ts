@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import { supabase } from '../db/supabase';
 import { invokeEdge } from '../services/edge-client';
-import { Address } from '@selene/types';
 import {
   buildOpenDisputeRequest,
   getOpenDisputeInvalidationKeys,
@@ -16,9 +15,9 @@ import {
 
 // Definimos la interfaz de lo que recibe la función
 interface GenerateLabelParams {
-  originAddress: Address;
+  originAddressId: string;
   shippingEvidence: { images: string[] };
-  shipmentId?: string; // shipment-level label generation
+  shipmentId: string;
 }
 
 export const useOrderActions = (orderId: string) => {
@@ -27,10 +26,8 @@ export const useOrderActions = (orderId: string) => {
   const generateLabel = useMutation({
     mutationFn: async (params: GenerateLabelParams) => {
       return invokeEdge('generate-shipping-label', {
-        ...(params.shipmentId
-          ? { shipmentId: params.shipmentId }
-          : { orderId }),
-        originAddress: params.originAddress,
+        shipmentId: params.shipmentId,
+        originAddressId: params.originAddressId,
         shippingEvidence: params.shippingEvidence,
       });
     },

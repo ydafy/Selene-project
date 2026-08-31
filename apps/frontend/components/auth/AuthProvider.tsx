@@ -1,38 +1,56 @@
-import { createContext, useContext } from 'react';
+import React, { createContext, useContext } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { useSession } from '../../core/hooks/useSession';
+import { AccountStatus } from '@selene/types';
 
-// 1. Definimos la "forma" de los datos que nuestro contexto proporcionará.
+// 1. Definimos la forma de los datos expuestos
 type AuthContextType = {
   session: Session | null;
   loading: boolean;
+  accountStatus: AccountStatus;
+  statusReason: string | null;
+  isBanned: boolean;
+  isSuspended: boolean;
 };
 
-// 2. Creamos el Contexto de React.
-//    Le damos un valor inicial, que se usará si un componente intenta acceder
-//    al contexto sin estar envuelto en el proveedor.
+// 2. Creamos el Contexto con valores seguros por defecto
 const AuthContext = createContext<AuthContextType>({
   session: null,
   loading: true,
+  accountStatus: 'active',
+  statusReason: null,
+  isBanned: false,
+  isSuspended: false,
 });
 
-// 3. Creamos el componente Proveedor (Provider).
-//    Este es el componente que envolverá nuestra aplicación.
+// 3. Proveedor Global
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  // Usamos nuestro hook 'useSession' para obtener el estado de la sesión.
-  const { session, loading } = useSession();
+  const {
+    session,
+    loading,
+    accountStatus,
+    statusReason,
+    isBanned,
+    isSuspended,
+  } = useSession();
 
   return (
-    // Proporcionamos el valor de 'session' y 'loading' a todos los componentes hijos.
-    <AuthContext.Provider value={{ session, loading }}>
+    <AuthContext.Provider
+      value={{
+        session,
+        loading,
+        accountStatus,
+        statusReason,
+        isBanned,
+        isSuspended,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
 
-// Creamos un hook personalizado para consumir el contexto.
-//    En lugar de usar 'useContext(AuthContext)' en cada componente,
-//    simplemente llamaremos a 'useAuthContext()'. Es más limpio y seguro.
+// Hook personalizado para consumir el contexto
 export const useAuthContext = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {

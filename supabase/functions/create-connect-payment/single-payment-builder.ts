@@ -143,13 +143,61 @@ export function normalizeCreateConnectPaymentRequest(
 ): NormalizedCreateConnectPaymentRequest {
   const productIds = body.items?.length
     ? body.items.map((item) => item.productId)
-    : body.productIds ?? [];
+    : (body.productIds ?? []);
 
   return {
     addressId: body.addressId,
     idempotencyKey: body.idempotencyKey,
     productIds: uniqueProductIds(productIds),
   };
+}
+
+export interface AllocationValidationRow {
+  shipmentId: string;
+  productIds: string[];
+}
+
+/**
+ * Prevent a charged checkout from reaching settlement with grouped, missing, or
+ * ambiguous product allocations. This is intentionally independent of Stripe
+ * and Supabase so it can execute immediately before PaymentIntent creation.
+ */
+export function assertValidAllocationRows(input: {
+  requestedProductIds: string[];
+  rows: AllocationValidationRow[];
+}): void {
+  const requested = new Set(input.requestedProductIds);
+  const allocated = new Set<string>();
+  const shipmentIds = new Set<string>();
+
+  if (
+    requested.size !== input.requestedProductIds.length ||
+    requested.size === 0
+  ) {
+    throw new Error('PRODUCT_ID_NOT_FOUND_OR_NOT_OWNED');
+  }
+
+  for (const row of input.rows) {
+    if (
+      row.productIds.length !== 1 ||
+      row.shipmentId.length === 0 ||
+      shipmentIds.has(row.shipmentId)
+    ) {
+      throw new Error('ONE_PRODUCT_PER_SHIPMENT_REQUIRED');
+    }
+
+    const [productId] = row.productIds;
+    if (!requested.has(productId) || allocated.has(productId)) {
+      throw new Error('PRODUCT_ID_NOT_FOUND_OR_NOT_OWNED');
+    }
+
+    shipmentIds.add(row.shipmentId);
+    allocated.add(productId);
+  }
+
+  if (allocated.size !== requested.size) {
+    throw new Error('ONE_PRODUCT_PER_SHIPMENT_REQUIRED');
+  }
 }
 
 /**
@@ -183,36 +231,38 @@ export function deriveOrderGroupId(idempotencyKey: string): string {
 }
 
 /**
- * Derive a deterministic, UUID-format shipment id for a (idempotency key,
- * seller) pair. Stable per seller on retrial so the webhook persists the same
- * shipment id across retries without duplicating shipments.
+ * Derive a deterministic, UUID-format shipment id for an (idempotency key,
+ * product) pair. Stable per purchased listing on retry so the webhook persists
+ * the same product shipment without collapsing listings from one seller.
  */
 export function deriveShipmentId(
   idempotencyKey: string,
-  sellerId: string,
+  productId: string,
 ): string {
   if (typeof idempotencyKey !== 'string' || idempotencyKey.length === 0) {
     throw new Error('INVALID_CHECKOUT_INPUT:missing_idempotency_key');
   }
-  if (typeof sellerId !== 'string' || sellerId.length === 0) {
-    throw new Error('INVALID_CHECKOUT_INPUT:missing_seller_id');
+  if (typeof productId !== 'string' || productId.length === 0) {
+    throw new Error('INVALID_CHECKOUT_INPUT:missing_product_id');
   }
-  return hexToUuid(sha256Hex(`selene_shipment:${idempotencyKey}:${sellerId}`));
+  return hexToUuid(
+    sha256Hex(`selene_shipment:${idempotencyKey}:product:${productId}`),
+  );
 }
 
 export interface CheckoutIdentifiers {
   orderGroupId: string;
   transferGroup: string;
-  /** Returns one stable shipment id per seller (deterministic in idempotent mode). */
-  shipmentIdFor: (sellerId: string) => string;
+  /** Returns one stable shipment id per product (deterministic in idempotent mode). */
+  shipmentIdFor: (productId: string) => string;
 }
 
 /**
- * Build the checkout identifiers (order-group id, transfer_group, per-seller
+ * Build the checkout identifiers (order-group id, transfer_group, per-product
  * shipment ids).
  *
  * - When `idempotencyKey` is provided, ALL identifiers are DETERMINISTIC
- *   functions of the idempotency key (+ seller id). A retry of the same
+ *   functions of the idempotency key (+ product id). A retry of the same
  *   checkout produces an identical Stripe PaymentIntent create request body
  *   so Stripe's request idempotency returns the existing PaymentIntent — the
  *   unsafe "same idempotency key, different body" rejection is impossible.
@@ -243,7 +293,8 @@ export function buildCheckoutIdentifiers(
   return {
     orderGroupId,
     transferGroup: buildTransferGroup(orderGroupId),
-    shipmentIdFor: (sellerId: string) => deriveShipmentId(idempotencyKey, sellerId),
+    shipmentIdFor: (productId: string) =>
+      deriveShipmentId(idempotencyKey, productId),
   };
 }
 
@@ -284,7 +335,7 @@ export function chunkAllocationJson(
  */
 export function buildAllocationMetadata(
   allocation: CheckoutAllocation,
-  sellerProductIds: Record<string, string[]>,
+  shipmentProductIds: Record<string, string[]>,
 ): Record<string, string> {
   // Compact allocation representation: only the durable, webhook/release-relevant
   // fields. Aggregate totals also travel as individual metadata keys below.
@@ -306,7 +357,11 @@ export function buildAllocationMetadata(
     rows: allocation.rows.map((r) => ({
       sellerId: r.sellerId,
       shipmentId: r.shipmentId,
-      productIds: [...(sellerProductIds[r.sellerId] ?? [])].sort(),
+      productIds: [
+        ...(shipmentProductIds[r.shipmentId] ??
+          shipmentProductIds[r.sellerId] ??
+          []),
+      ].sort(),
       grossCents: r.grossCents,
       commissionCents: r.commissionCents,
       shippingCents: r.shippingCents,
@@ -333,8 +388,10 @@ export interface SinglePaymentIntentParamsInput {
   customerId: string;
   addressId: string;
   transferGroup: string;
-  /** sellerId -> productIds for that seller, aligned with allocation.rows. */
-  sellerProductIds: Record<string, string[]>;
+  /** shipmentId -> one purchased listing, aligned with allocation.rows. */
+  shipmentProductIds?: Record<string, string[]>;
+  /** @deprecated Only supports legacy one-shipment-per-seller metadata. */
+  sellerProductIds?: Record<string, string[]>;
 }
 
 export interface SinglePaymentIntentParams {
@@ -372,6 +429,7 @@ export function buildSinglePaymentIntentParams(
     addressId,
     transferGroup,
     sellerProductIds,
+    shipmentProductIds = sellerProductIds ?? {},
   } = input;
 
   if (typeof orderId !== 'string' || orderId.length === 0) {
@@ -399,8 +457,10 @@ export function buildSinglePaymentIntentParams(
   // deterministic for a given cart, so retry idempotency is safe.
   const normalizedAllocation: CheckoutAllocation = {
     ...allocation,
-    rows: [...rows].sort((a, b) =>
-      a.sellerId < b.sellerId ? -1 : a.sellerId > b.sellerId ? 1 : 0,
+    rows: [...rows].sort(
+      (a, b) =>
+        a.sellerId.localeCompare(b.sellerId) ||
+        a.shipmentId.localeCompare(b.shipmentId),
     ),
   };
 
@@ -428,7 +488,10 @@ export function buildSinglePaymentIntentParams(
     // via the single reassembled allocation blob.
   };
 
-  Object.assign(metadata, buildAllocationMetadata(normalizedAllocation, sellerProductIds));
+  Object.assign(
+    metadata,
+    buildAllocationMetadata(normalizedAllocation, shipmentProductIds),
+  );
 
   return {
     amount: allocation.buyerTotalCents,

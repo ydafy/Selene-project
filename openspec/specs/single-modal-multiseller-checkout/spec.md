@@ -2,7 +2,7 @@
 
 ## Purpose
 
-One buyer-facing Stripe PaymentSheet and one platform charge for multi-seller orders, with internal seller-scoped settlement allocation.
+One buyer-facing Stripe PaymentSheet and one platform charge for multi-seller orders, with internal product-shipment-scoped settlement allocation.
 
 ## Requirements
 
@@ -59,17 +59,25 @@ The system MUST create one platform-account PaymentIntent in MXN for the grossed
 - WHEN the PaymentIntent is created
 - THEN the amount equals the grossed-up total of the combined item subtotal and buyer-paid shipping
 
-### Requirement: Durable Per-Shipment Allocation
+### Requirement: Durable Per-Product Shipment Allocation
 
-The system MUST persist per-shipment/per-item allocation before marking the order `paid`, including gross amount, service fee, seller-paid shipping, seller net, the shipment's proportional share of the grossed-up buyer fee (`seguro_cents`), `payment_intent_id`, and `transfer_group`.
+The system MUST persist one allocation row, one deterministic shipment ID, and one `order_item` for each purchased product/listing before marking the order `paid`. The deterministic shipment ID MUST be keyed by `(idempotencyKey, productId)`, not seller identity. Each row includes gross amount, service fee, seller-paid shipping, seller net, the product shipment's cent-exact proportional share of the grossed-up buyer fee (`seguro_cents`), `payment_intent_id`, and `transfer_group`.
 (Previously: allocation did not include the grossed-up buyer fee share.)
 
 #### Scenario: Payment succeeds
 
-- GIVEN the platform PaymentIntent succeeds
+- GIVEN the platform PaymentIntent succeeds for two products from the same seller
 - WHEN the order and shipments are created
-- THEN each `order_item` stores `commission_amount`, `shipping_amount`, `shipping_payer='seller'`, and `net_payout`
-- AND each `shipment` stores the platform `stripe_payment_intent_id` and its `seguro_cents`
+- THEN two distinct product shipments and two 1:1 linked `order_items` are created
+- AND each `order_item` stores `commission_amount`, `shipping_amount`, `shipping_payer='seller'`, and `net_payout`
+- AND each `shipment` stores the platform `stripe_payment_intent_id` and its own `seguro_cents`
+
+#### Scenario: Payment webhook retry
+
+- GIVEN a retry for the same successful PaymentIntent and idempotency key
+- WHEN settlement runs again
+- THEN the `(idempotencyKey, productId)` shipment IDs and order items are reused
+- AND no duplicate product shipment or order item is created
 
 #### Scenario: Allocation write fails
 
@@ -111,7 +119,7 @@ The system MUST store Stripe identifiers needed for future refund, dispute, canc
 - One PaymentSheet modal and one platform charge for any checkout.
 - Buyer summary displays the grossed-up processing line.
 - Backend and frontend totals agree within 1 cent.
-- Allocation records include per-shipment `seguro_cents`.
+- Allocation records include per-product-shipment `seguro_cents`.
 - `service_fee_amount` remains seller commission only.
 
 ## Non-Goals

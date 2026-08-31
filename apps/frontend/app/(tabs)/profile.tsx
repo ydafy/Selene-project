@@ -26,6 +26,8 @@ import { ProfileSkeleton } from '../../components/features/profile/ProfileSkelet
 // Componentes de Feature (Perfil)
 import { ProfileHeader } from '../../components/features/profile/ProfileHeader';
 import { useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getTabDockMetrics } from '../../core/constants/layout';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const logoIconPath = require('../../assets/images/SeleneLunaLogo.png');
@@ -215,9 +217,6 @@ const UserProfile = () => {
         }
         isDangerous={dialogState.isError}
       />
-
-      {/* Espacio extra al final */}
-      <Box height={100} />
     </Box>
   );
 };
@@ -227,6 +226,8 @@ const UserProfile = () => {
  */
 export default function ProfileScreen() {
   const { session, loading } = useAuthContext();
+  const insets = useSafeAreaInsets();
+  const dockMetrics = getTabDockMetrics(insets.bottom);
 
   if (loading) {
     return (
@@ -239,7 +240,10 @@ export default function ProfileScreen() {
   }
 
   return (
-    <ScreenLayout disableSafeArea>
+    <ScreenLayout
+      disableSafeArea
+      style={{ paddingBottom: dockMetrics.contentBottomClearance }}
+    >
       <Stack.Screen options={{ headerShown: false }} />
       {session ? <UserProfile /> : <GuestProfile />}
     </ScreenLayout>

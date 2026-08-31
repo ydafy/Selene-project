@@ -66,7 +66,7 @@ export const EvidenceUploadSection = ({
   };
 
   return (
-    <Box gap="s" flexDirection="row">
+    <Box gap="s" flexDirection="row" marginBottom="m">
       {photos.map((photo, index) => (
         <Box key={index} flex={1} alignItems="center">
           <TouchableOpacity

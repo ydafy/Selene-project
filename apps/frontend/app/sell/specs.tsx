@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useMemo, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -27,7 +26,18 @@ export default function SellSpecsScreen() {
   const { draft, updateDraft, resetCategoryFields } = useSellStore();
   const category = draft.category;
 
-  // Configuración y Schema (Lógica existente)
+  // Guarda de ruta: si no hay categoría, redirigimos de forma segura
+  useEffect(() => {
+    if (!category) {
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/sell');
+      }
+    }
+  }, [category, router]);
+
+  // Configuración y Schema Dinámico
   const formConfig = useMemo(() => {
     if (!category || !SELL_FORM_CONFIG[category]) return [];
     return SELL_FORM_CONFIG[category];
@@ -40,15 +50,16 @@ export default function SellSpecsScreen() {
       shape[field.name] = z.string().min(1, 'sell:errors.required');
       shape[`${field.name}_custom`] = z.string().optional();
     });
-    return z.object(shape).superRefine((data: any, ctx) => {
+
+    return z.object(shape).superRefine((data: Record<string, unknown>, ctx) => {
       formConfig.forEach((field) => {
         const value = data[field.name];
         const customValue = data[`${field.name}_custom`];
 
-        // FIX: Usamos el mismo helper que el componente UI
         if (
           checkIfOther(value) &&
-          (!customValue || customValue.trim().length < 2)
+          (!customValue ||
+            (typeof customValue === 'string' && customValue.trim().length < 2))
         ) {
           ctx.addIssue({
             code: 'custom',
@@ -73,7 +84,7 @@ export default function SellSpecsScreen() {
       (draft.specifications as Record<string, string | undefined>) || {},
   });
 
-  // Reset category-dependent fields when the category changes mid-draft.
+  // Reset de campos dependientes si la categoría cambia en caliente
   const previousCategoryRef = useRef(category);
   useEffect(() => {
     const previousCategory = previousCategoryRef.current;
@@ -85,15 +96,10 @@ export default function SellSpecsScreen() {
     }
   }, [category, reset, resetCategoryFields]);
 
-  //   useEffect(() => {
-  //     if (!category) router.replace('/sell');
-  //   }, [category, router]);
-
   const onSubmit = (data: Record<string, string | undefined>) => {
     const cleanData: Record<string, string> = {};
 
     Object.entries(data).forEach(([key, value]) => {
-      // Solo procesamos si el valor existe (no es undefined)
       if (value === undefined) return;
 
       if (key.endsWith('_custom')) {
@@ -123,31 +129,29 @@ export default function SellSpecsScreen() {
       />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
         <Box flex={1}>
           <ScrollView
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
             contentContainerStyle={{
-              paddingTop: insets.top + 100,
+              paddingTop: insets.top + 80,
               paddingBottom: insets.bottom + 40,
               paddingHorizontal: 16,
             }}
           >
-            {/* Header dinámico con i18n */}
             <ScreenHeader
               title={t('sell:fields.specsTitle')}
               subtitle={t('sell:fields.specsSubtitle')}
             />
 
-            {/* PASO 2: Specs (Paso 1 completado se verá con check) */}
             <WizardSteps
               currentStep={1}
               steps={SELL_STEP_DEFINITIONS.map((s) => t(s.labelKey as string))}
             />
 
-            {/* TARJETA DE ESPECIFICACIONES */}
             <Box
               backgroundColor="cardBackground"
               borderRadius="l"
@@ -176,7 +180,7 @@ export default function SellSpecsScreen() {
                   color="textSecondary"
                   paddingVertical="l"
                 >
-              {t('sell:fields.noSpecs')}
+                  {t('sell:fields.noSpecs')}
                 </Text>
               )}
             </Box>

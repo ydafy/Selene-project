@@ -3,8 +3,6 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import Stripe from 'https://esm.sh/stripe@17.0.0';
 import { z } from 'https://esm.sh/zod@3.23.8';
 
-import { shouldReconcilePaymentIntent } from './reconcile-connect-payments.ts';
-
 const STRIPE_API_VERSION = '2026-04-22.dahlia';
 
 const corsHeaders = {
@@ -68,49 +66,18 @@ serve(async (req) => {
           })
         ).data;
 
-    let reconciled = 0;
-    let skipped = 0;
-    for (const intent of intents) {
-      const { data: existingShipment } = await supabaseAdmin
-        .from('shipments')
-        .select('id, status')
-        .eq('stripe_payment_intent_id', intent.id)
-        .maybeSingle();
-
-      const shouldReconcile = shouldReconcilePaymentIntent({
-        status: intent.status,
-        metadata: intent.metadata,
-        localShipmentStatus: existingShipment ? 'paid' : 'draft',
-      });
-
-      if (!shouldReconcile) {
-        skipped += 1;
-        continue;
-      }
-
-      const { error } = await supabaseAdmin.rpc(
-        'fn_create_shipment_from_payment',
-        {
-          p_stripe_payment_intent_id: intent.id,
-          p_amount_received: intent.amount_received,
-          p_metadata: intent.metadata,
-        },
-      );
-
-      if (error) {
-        await supabaseAdmin.from('webhook_dlq').insert({
-          event_type: 'reconcile-connect-payments',
-          payload: intent as unknown as Record<string, unknown>,
-          error_message: error.message,
-        });
-        skipped += 1;
-      } else {
-        reconciled += 1;
-      }
-    }
+    // The only target of this worker was the retired seller-grouped settlement
+    // RPC. Do not replay those PaymentIntents into a grouped shipment model.
+    const reconciled = 0;
+    const skipped = intents.length;
 
     return new Response(
-      JSON.stringify({ success: true, reconciled, skipped }),
+      JSON.stringify({
+        success: true,
+        reconciled,
+        skipped,
+        retired: 'LEGACY_GROUPED_SHIPMENT_SETTLEMENT_RETIRED',
+      }),
       {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -1,6 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useRef, useMemo, useCallback } from 'react';
-import { FlatList, Dimensions, Platform, TouchableOpacity } from 'react-native';
+import {
+  FlatList,
+  LayoutChangeEvent,
+  TouchableOpacity,
+  useWindowDimensions,
+} from 'react-native';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -22,13 +27,18 @@ import { useTheme } from '@shopify/restyle';
 import { ProductSnapCard } from '../../components/features/shop/sections/ProductSnapCard';
 
 import { ShellEndFeedCard2 } from '@/components/features/shop/sections/ShellEndFeedCard2';
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+import { getTabDockMetrics } from '../../core/constants/layout';
 
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
+  const { bottom } = useSafeAreaInsets();
+  const { height: screenHeight } = useWindowDimensions();
   const theme = useTheme<Theme>();
   const router = useRouter();
   const listRef = useRef<FlatList>(null);
+
+  const TAB_BAR_HEIGHT = 40;
+  const PADDING_BOTTOM = TAB_BAR_HEIGHT + bottom + 12;
 
   const {
     data: products,
@@ -40,6 +50,7 @@ export default function SearchScreen() {
   });
 
   const [activeId, setActiveId] = useState('categories');
+  const [pageHeight, setPageHeight] = useState(screenHeight);
 
   const viewConfigRef = useRef({ viewAreaCoveragePercentThreshold: 80 });
   const onViewRef = useRef(({ viewableItems }: any) => {
@@ -48,8 +59,18 @@ export default function SearchScreen() {
     }
   });
 
-  const TAB_BAR_APPROX = Platform.OS === 'ios' ? 88 : 60;
-  const VISIBLE_HEIGHT = SCREEN_HEIGHT - TAB_BAR_APPROX;
+  const dockMetrics = getTabDockMetrics(insets.bottom);
+  const contentBottomClearance = dockMetrics.contentBottomClearance;
+  const visibleHeight = pageHeight;
+
+  const handleListLayout = useCallback(
+    ({ nativeEvent: { layout } }: LayoutChangeEvent) => {
+      if (layout.height > 0 && layout.height !== pageHeight) {
+        setPageHeight(layout.height);
+      }
+    },
+    [pageHeight],
+  );
 
   useScrollToTop(listRef);
 
@@ -73,37 +94,49 @@ export default function SearchScreen() {
     ({ item }: any) => {
       const isActive = activeId === item.id;
 
+      let content;
+
       switch (item.type) {
         case 'CATEGORIES':
-          return <CategorySnapCard visibleHeight={VISIBLE_HEIGHT} />;
+          content = <CategorySnapCard visibleHeight={visibleHeight} />;
+          break;
         case 'BRANDS':
-          return <BrandSnapCard visibleHeight={VISIBLE_HEIGHT} />;
+          content = <BrandSnapCard visibleHeight={visibleHeight} />;
+          break;
         case 'TRUST':
-          return (
+          content = (
             <ShellTrustSnap
-              visibleHeight={VISIBLE_HEIGHT}
+              visibleHeight={visibleHeight}
               isActive={isActive}
+              contentBottomClearance={PADDING_BOTTOM}
             />
           );
+          break;
         case 'PRODUCT':
-          return (
+          content = (
             <ProductSnapCard
               product={item.data}
-              visibleHeight={VISIBLE_HEIGHT}
+              visibleHeight={visibleHeight}
+              contentBottomClearance={PADDING_BOTTOM}
             />
           );
+          break;
         case 'END_FEED':
-          return (
+          content = (
             <ShellEndFeedCard2
-              visibleHeight={VISIBLE_HEIGHT}
+              visibleHeight={visibleHeight}
               isActive={activeId === item.id}
+              contentBottomClearance={contentBottomClearance}
             />
           );
+          break;
         default:
           return null;
       }
+
+      return <Box height={pageHeight}>{content}</Box>;
     },
-    [activeId, VISIBLE_HEIGHT],
+    [activeId, contentBottomClearance, pageHeight, visibleHeight],
   );
 
   return (
@@ -185,7 +218,7 @@ export default function SearchScreen() {
           </Text>
         </Box>
       ) : isLoading ? (
-        <ShopSkeleton visibleHeight={VISIBLE_HEIGHT} />
+        <ShopSkeleton visibleHeight={visibleHeight} />
       ) : (
         <MotiView
           from={{ opacity: 0 }}
@@ -198,11 +231,12 @@ export default function SearchScreen() {
             ref={listRef}
             renderItem={renderItem}
             keyExtractor={(item) => item.id}
+            onLayout={handleListLayout}
             // --- CONFIGURACIÓN DE SNAP ---
             pagingEnabled
             // VITAL: Le dice a FlashList el alto exacto
             showsVerticalScrollIndicator={false}
-            snapToInterval={VISIBLE_HEIGHT}
+            snapToInterval={pageHeight}
             snapToAlignment="start"
             decelerationRate="fast"
             bounces={false}

@@ -13,6 +13,34 @@ export const SCREEN_HEIGHT = height;
 const GRID_SPACING = 16;
 const HORIZONTAL_PADDING = 16; // theme.spacing.m
 
+/** Shared geometry for the floating bottom navigation dock and its overlays. */
+export const TAB_DOCK = {
+  height: 64,
+  sideGutter: HORIZONTAL_PADDING,
+  borderRadius: 24,
+  minimumBottomSeparation: 8,
+  contentGap: 16,
+  gradientHeight: -60,
+  cartSummaryReserve: 128,
+  contentOffsetY: 2,
+} as const;
+
+export const getTabDockMetrics = (bottomInset: number) => {
+  const bottomSeparation = Math.max(
+    bottomInset,
+    TAB_DOCK.minimumBottomSeparation,
+  );
+  const contentBottomClearance =
+    bottomSeparation + TAB_DOCK.height + TAB_DOCK.contentGap;
+
+  return {
+    bottomSeparation,
+    contentBottomClearance,
+    cartContentBottomClearance:
+      contentBottomClearance + TAB_DOCK.cartSummaryReserve,
+  };
+};
+
 export const LAYOUT = {
   screenPadding: HORIZONTAL_PADDING,
 

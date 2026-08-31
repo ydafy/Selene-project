@@ -1,6 +1,7 @@
 import { expect, test, describe } from 'bun:test';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 /**
  * Structural integration tests for the account-settings-extended change.
@@ -12,10 +13,9 @@ import { join } from 'node:path';
  * They prevent regressions where a wiring step is silently removed.
  */
 
-const FRONTEND = join(import.meta.dir, '..', '..');
+const FRONTEND = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
-const read = (relPath: string) =>
-  readFileSync(join(FRONTEND, relPath), 'utf8');
+const read = (relPath: string) => readFileSync(join(FRONTEND, relPath), 'utf8');
 
 describe('settings.tsx renders new sections in spec-required order', () => {
   const src = read('app/profile/settings.tsx');
@@ -74,9 +74,7 @@ describe('modal route registration in app/_layout.tsx', () => {
   const src = read('app/_layout.tsx');
 
   test('registers profile/edit as modal presentation', () => {
-    expect(src).toMatch(
-      /name="profile\/edit"[\s\S]*presentation:\s*'modal'/,
-    );
+    expect(src).toMatch(/name="profile\/edit"[\s\S]*presentation:\s*'modal'/);
   });
 
   test('registers profile/support as modal presentation', () => {
@@ -142,7 +140,7 @@ describe('SecuritySection password-change wiring (CONF-017)', () => {
   });
 
   test('shows wrongPassword error toast on invalid credentials', () => {
-    expect(src).toContain("errors.wrongPassword");
+    expect(src).toContain('errors.wrongPassword');
   });
 });
 

@@ -106,11 +106,26 @@ BEGIN
   END IF;
 
   INSERT INTO public.shipment_tracking_events (
-    shipment_id, dispute_id, event_type, event_at, raw_status, location,
-    status_description, carrier_name, webhook_delivery_id, polling_run_id
+    shipment_id,
+    dispute_id,
+    event_type,
+    event_at,
+    raw_status,
+    location,
+    status_description,
+    carrier_name,
+    webhook_delivery_id,
+    polling_run_id
   ) VALUES (
-    p_shipment_id, p_dispute_id, p_event_type, p_event_at, p_raw_status,
-    p_location, p_status_description, p_carrier_name, p_webhook_delivery_id,
+    p_shipment_id,
+    p_dispute_id,
+    p_event_type,
+    p_event_at,
+    p_raw_status,
+    p_location,
+    p_status_description,
+    p_carrier_name,
+    p_webhook_delivery_id,
     p_polling_run_id
   ) ON CONFLICT DO NOTHING
   RETURNING id INTO v_event_id;
@@ -120,11 +135,13 @@ BEGIN
   END IF;
 
   IF p_dispute_id IS NULL AND v_status = 'preparing' AND p_transition = 'shipped' THEN
-    UPDATE public.shipments SET status = 'shipped', shipped_at = p_event_at, updated_at = now()
+    UPDATE public.shipments
+    SET status = 'shipped', shipped_at = p_event_at, updated_at = now()
     WHERE id = p_shipment_id;
     v_status := 'shipped';
   ELSIF p_dispute_id IS NULL AND v_status = 'shipped' AND p_transition = 'delivered' THEN
-    UPDATE public.shipments SET status = 'delivered', delivered_at = p_event_at, updated_at = now()
+    UPDATE public.shipments
+    SET status = 'delivered', delivered_at = p_event_at, updated_at = now()
     WHERE id = p_shipment_id;
     v_status := 'delivered';
   ELSIF v_status = 'cancelled' THEN

@@ -1,4 +1,3 @@
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
 
@@ -6,6 +5,8 @@ import { Box, Text } from '../../base';
 import { PrimaryButton } from '../../ui/PrimaryButton';
 import { Theme } from '../../../core/theme';
 import { formatCurrency } from '../../../core/utils/format';
+import { getTabDockMetrics } from '../../../core/constants/layout';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type CartSummaryProps = {
   total: number;
@@ -29,7 +30,7 @@ export const CartSummary = ({
   return (
     <Box
       position="absolute"
-      bottom={insets.bottom + theme.spacing.s}
+      bottom={getTabDockMetrics(insets.bottom).contentBottomClearance}
       left={theme.spacing.m}
       right={theme.spacing.m}
       backgroundColor="cardBackground"

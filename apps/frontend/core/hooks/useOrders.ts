@@ -30,6 +30,10 @@ type ReviewRow = {
 };
 
 type RawOrder = Tables<'orders'> & {
+  // These fields arrive after the paid-checkout-recovery migration is applied.
+  // They remain optional until the maintainer regenerates database types.
+  compensation_state?: string | null;
+  payment_processing?: boolean | null;
   items: (Tables<'order_items'> & { product: Tables<'products'> })[];
   dispute: Tables<'disputes'> | null;
   // PostgREST returns `review` as a SINGLE object when the FK is detected as

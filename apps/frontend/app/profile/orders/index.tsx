@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-import { Stack, useRouter } from 'expo-router';
+import { Stack, type Href, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,6 +19,7 @@ import { Theme } from '@/core/theme';
 import { RefreshControl } from 'react-native';
 import { useSeleneRefresh } from '../../../core/hooks/useSeleneRefresh';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { resolveRoleAwareOrderView } from './order-view-routing';
 
 export default function OrdersScreen() {
   const { t } = useTranslation('orders');
@@ -72,24 +73,27 @@ export default function OrdersScreen() {
   }
 
   const renderItem = ({ item }: { item: EnrichedOrder }) => {
-    // Detecta multi-seller desde la fuente canónica: en SCT cada shipment es
-    // de un vendedor, por lo que `shipments.length > 1` implica multi-vendedor.
-    // Antes se deducía vía el array legacy de order_items casteado a any, lo
-    // cual era frágil y dependía del compat-layer de EnrichedOrder.
-    const isMultiSeller = (item.shipments?.length ?? 0) > 1;
+    const view = resolveRoleAwareOrderView(
+      {
+        id: item.id,
+        buyerId: item.buyer_id,
+        shipments: item.shipments.map((shipment) => ({
+          id: shipment.id,
+          sellerId: shipment.seller_id,
+        })),
+      },
+      userId,
+    );
 
     return (
       <Box marginBottom="m" paddingHorizontal="m">
         <OrderCard
           order={item}
           isSeller={activeTab === 1}
-          onPress={() =>
-            router.push(
-              isMultiSeller
-                ? `/profile/orders/summary/${item.id}`
-                : `/profile/orders/${item.id}`,
-            )
-          }
+          onPress={() => {
+            if (view.kind === 'unavailable') return;
+            router.push(view.href as Href);
+          }}
         />
       </Box>
     );

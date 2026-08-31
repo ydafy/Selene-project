@@ -18,6 +18,7 @@ import { useAuthContext } from '../../components/auth/AuthProvider';
 import { useAuthModal } from '../../core/auth/AuthModalProvider';
 import { useCartValidation } from '../../components/features/cart/hooks/useCartValidation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getTabDockMetrics } from '../../core/constants/layout';
 
 export default function CartScreen() {
   const theme = useTheme<Theme>();
@@ -26,6 +27,7 @@ export default function CartScreen() {
   const { session } = useAuthContext();
   const { present } = useAuthModal();
   const insets = useSafeAreaInsets();
+  const dockMetrics = getTabDockMetrics(insets.bottom);
   const router = useRouter();
   const {
     unavailableIds,
@@ -81,7 +83,7 @@ export default function CartScreen() {
         contentContainerStyle={{
           padding: theme.spacing.m,
           paddingTop: insets.top + 10,
-          paddingBottom: 200,
+          paddingBottom: dockMetrics.cartContentBottomClearance,
           flexGrow: 1, // Importante para que el EmptyState se pueda centrar si es necesario
         }}
         ListHeaderComponent={<ScreenHeader title={t('title')} />}

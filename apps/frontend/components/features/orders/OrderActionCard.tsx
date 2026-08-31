@@ -127,12 +127,12 @@ export const OrderActionCard = ({
       : 'alert-octagon';
 
   const getBannerTitle = () => {
-    if (permissions.canCancel) return 'CANCELLATION WINDOW';
-    if (shipment.status === 'preparing') return 'PREPARING SHIPMENT';
-    if (permissions.showSellerDeliveredBanner) return 'ENTREGA CONFIRMADA';
+    if (permissions.canCancel) return t('actionCard.cancellationWindowTitle');
+    if (shipment.status === 'preparing') return t('actionCard.preparingShipmentTitle');
+    if (permissions.showSellerDeliveredBanner) return t('actionCard.deliveredTitle');
     if (order.status === 'dispute') {
       if (dispute?.status === 'return_delivered' && isSeller)
-        return 'GRABA TU UNBOXING';
+        return t('actionCard.recordUnboxingTitle');
       return t('orders:detail.returnTitle');
     }
     return t(`orders:status.${order.status}`).toUpperCase();
@@ -142,15 +142,15 @@ export const OrderActionCard = ({
   const getBannerMessage = () => {
     if (permissions.canCancel) {
       return isExpired
-        ? 'The manual cancellation window has closed.'
-        : `You can still cancel this shipment for ${timeLeft}.`;
+        ? t('actionCard.cancellationWindowClosed')
+        : t('actionCard.cancellationWindowOpen', { timeLeft });
     }
 
     if (shipment.status === 'preparing') {
       return isExpired
         ? isSeller
-          ? 'Your carrier scan window has closed.'
-          : 'The seller\'s shipping window has closed.'
+          ? t('actionCard.carrierScanWindowClosed')
+          : t('actionCard.sellerShippingWindowClosed')
         : resolveShipmentPreparingWindowMessage({
             isBuyer,
             isSeller,
@@ -160,8 +160,8 @@ export const OrderActionCard = ({
 
     if (permissions.showSellerDeliveredBanner) {
       return isExpired
-        ? 'El tiempo de revisión ha terminado. Tus fondos se están procesando.'
-        : `El paquete ha llegado. Tus fondos se liberarán en: ${timeLeft}`;
+        ? t('actionCard.reviewWindowClosed')
+        : t('actionCard.fundsReleaseCountdown', { timeLeft });
     }
 
     if (order.status === 'dispute') {
@@ -174,32 +174,32 @@ export const OrderActionCard = ({
       if (dispute?.status === 'waiting_return') {
         if (dispute.return_payout_status === 'pending') {
           return isBuyer
-            ? `Veredicto a tu favor. El vendedor tiene ${timeLeft} para pagar la guía o ganarás el caso automáticamente.`
-            : `Debes pagar la guía de retorno en ${timeLeft} para recuperar tu producto o perderás el caso.`;
+            ? t('actionCard.returnPayoutPendingBuyer', { timeLeft })
+            : t('actionCard.returnPayoutPendingSeller', { timeLeft });
         }
         if (!dispute.return_label_url) {
           return isBuyer
-            ? `¡Pago confirmado! Tienes ${timeLeft} para generar tu guía y enviar el paquete.`
-            : `Pago confirmado. El comprador tiene ${timeLeft} para generar la guía y enviar el paquete.`;
+            ? t('actionCard.returnLabelPendingBuyer', { timeLeft })
+            : t('actionCard.returnLabelPendingSeller', { timeLeft });
         }
         return isBuyer
-          ? `Guía lista. Tienes ${timeLeft} para entregar el paquete en la sucursal o perderás el caso.`
-          : `Guía generada. El comprador tiene ${timeLeft} para enviar el paquete.`;
+          ? t('actionCard.returnShipmentPendingBuyer', { timeLeft })
+          : t('actionCard.returnShipmentPendingSeller', { timeLeft });
       }
 
       if (dispute?.status === 'return_shipped')
-        return 'El paquete de retorno ya está con la paquetería.';
+        return t('actionCard.returnShipmentInTransit');
       if (dispute?.status === 'return_delivered') {
         return isSeller
           ? t('orders:detail.videoWarningMsg')
-          : 'El vendedor ya recibió el paquete. Tu reembolso se procesará tras la inspección.';
+          : t('actionCard.returnDeliveredBuyer');
       }
     }
 
     if (order.status === 'refunded') {
       return isBuyer
-        ? 'Tu reembolso ha sido procesado con éxito. El dinero se verá reflejado en tu cuenta en un plazo de 5 a 10 días hábiles.'
-        : 'Disputa cerrada. El dinero ha sido devuelto al comprador.';
+        ? t('actionCard.refundProcessedBuyer')
+        : t('actionCard.refundProcessedSeller');
     }
     return t(`orders:detail.${order.status}Msg`);
   };
@@ -290,7 +290,7 @@ export const OrderActionCard = ({
               style={{ borderColor: theme.colors.error, marginTop: 8 }}
               labelStyle={{ color: theme.colors.error }}
             >
-              Reportar Problema con el Retorno
+              {t('actionCard.reportReturnProblem')}
             </PrimaryButton>
           )}
         </Box>

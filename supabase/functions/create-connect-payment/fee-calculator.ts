@@ -151,7 +151,7 @@ export function assertValidConnectMoneyFlow(flow: ConnectMoneyFlow) {
 }
 
 /**
- * Per-seller allocation row for the single-modal multi-seller checkout.
+ * Per-product allocation row for the single-modal multi-seller checkout.
  *
  * The buyer authorizes one platform PaymentIntent for `buyerTotalCents` across
  * all sellers; seller economics stay internal and are released later via a
@@ -159,7 +159,7 @@ export function assertValidConnectMoneyFlow(flow: ConnectMoneyFlow) {
  * take before platform deductions). The buyer never sees `shippingCents`,
  * `commissionCents`, or the per-seller net split.
  *
- * `shipmentId` is the durable correlation to the per-seller shipment that will
+ * `shipmentId` is the durable correlation to the per-product shipment that will
  * receive this row's net release during manual admin release. It MUST be
  * present and unique across rows so the release step can address each shipment
  * unambiguously instead of inferring correlation from `sellerId` alone.
@@ -177,7 +177,7 @@ export interface AllocationRow {
 export interface SellerAllocationInput {
   sellerId: string;
   /**
-   * Durable id of the per-seller shipment this allocation row settles. Required
+   * Durable id of the per-product shipment this allocation row settles. Required
    * and unique across the input set so release can correlate each net amount to
    * exactly one shipment.
    */
@@ -220,7 +220,6 @@ export function calculateCheckoutAllocation(
     throw new Error('INVALID_CHECKOUT_INPUT:empty_sellers');
   }
 
-  const seenSellerIds = new Set<string>();
   const seenShipmentIds = new Set<string>();
   const rows: AllocationRow[] = [];
 
@@ -228,11 +227,6 @@ export function calculateCheckoutAllocation(
     if (!input || typeof input.sellerId !== 'string' || !input.sellerId) {
       throw new Error('INVALID_CHECKOUT_INPUT:missing_seller_id');
     }
-    if (seenSellerIds.has(input.sellerId)) {
-      throw new Error('INVALID_CHECKOUT_INPUT:duplicate_seller_id');
-    }
-    seenSellerIds.add(input.sellerId);
-
     assertUniqueShipmentId(
       input.shipmentId,
       seenShipmentIds,
@@ -265,13 +259,13 @@ export function calculateCheckoutAllocation(
     grossUpDomesticMx(totalGrossCents);
   const seguroAllocations = allocateCents(
     totalSeguroCents,
-    rows.map((row) => ({ id: row.sellerId, cents: row.grossCents })),
+    rows.map((row) => ({ id: row.shipmentId, cents: row.grossCents })),
   );
 
   return reduceCheckoutAllocation(
     rows.map((row) => ({
       ...row,
-      seguroCents: seguroAllocations.get(row.sellerId) ?? 0,
+      seguroCents: seguroAllocations.get(row.shipmentId) ?? 0,
     })),
     buyerTotalCents,
     totalSeguroCents,

@@ -161,9 +161,8 @@ export interface EdgeFunctionRegistry {
   };
   'generate-shipping-label': {
     payload: {
-      orderId?: string;
-      shipmentId?: string;
-      originAddress: Address;
+      shipmentId: string;
+      originAddressId: string;
       shippingEvidence: { images: string[] };
     };
     response: { success: boolean; trackingNumber: string; labelUrl: string };
@@ -310,6 +309,7 @@ export interface ProductWithSeller extends EnrichedProduct {
 export interface EnrichedShipment extends Shipment {
   // Joins aislados por paquete
   items: (Tables<'order_items'> & { product: Product })[];
+  seller: Profile | null;
   dispute?:
     | (Dispute & {
         buyer_evidence: BuyerEvidence;

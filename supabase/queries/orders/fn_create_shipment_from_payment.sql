@@ -1,9 +1,8 @@
 BEGIN;
 
 -- RPC: fn_create_shipment_from_payment
--- Description: Creates or updates a shipment record when a Connect PaymentIntent succeeds.
--- Handles multi-seller orders: the first PI creates the order, subsequent PIs
--- update the existing order totals and add seller-scoped shipments/items.
+-- Description: Retired seller-grouped settlement entrypoint. The active
+-- single-modal checkout persists one shipment per purchased product.
 --
 -- Args:
 --   p_stripe_payment_intent_id: Stripe PI ID from webhook
@@ -44,6 +43,9 @@ DECLARE
   v_commission_amount NUMERIC;
   v_is_new_order BOOLEAN := false;
 BEGIN
+  RAISE EXCEPTION 'LEGACY_GROUPED_SHIPMENT_SETTLEMENT_RETIRED'
+    USING HINT = 'Use the single-modal per-product settlement flow.';
+
   -- Extract and validate metadata.
   v_seller_id := (p_metadata ->> 'seller_id')::UUID;
   v_buyer_id := (p_metadata ->> 'buyer_id')::UUID;

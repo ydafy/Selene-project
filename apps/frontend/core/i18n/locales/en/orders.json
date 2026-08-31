@@ -68,7 +68,39 @@
 
   "card": {
     "moreItems": "more",
-    "viewDetail": "View details"
+    "viewDetail": "View details",
+    "unknownProduct": "Product",
+    "unknownSeller": "Seller",
+    "disputeStatus": {
+      "open": "Dispute opened",
+      "waiting_return": "Awaiting return",
+      "return_shipped": "Return in transit",
+      "return_delivered": "Return delivered",
+      "resolved": "Dispute resolved"
+    }
+  },
+  "summary": {
+    "title": "Shipment Summary",
+    "orderId": "Order {{id}}",
+    "shippingAddress": "Shipping Address",
+    "total": "Total",
+    "items": "Items",
+    "articles_one": "item",
+    "articles_other": "items",
+    "date": "Date",
+    "status": "Status",
+    "shipmentCount_one": "{{count}} shipment",
+    "shipmentCount_other": "{{count}} shipments"
+  },
+  "notFound": {
+    "title": "Shipment unavailable",
+    "message": "This shipment no longer exists or you do not have access to it.",
+    "backToOrders": "Back to orders"
+  },
+  "recovery": {
+    "pending": "We're resolving a payment issue—your refund is pending.",
+    "contactSupport": "Contact support",
+    "confirmed": "Your refund has been confirmed."
   },
   "empty": {
     "purchasesTitle": "No purchases yet",
@@ -100,7 +132,31 @@
     "prepareReturnLabel": "Prepare Return Label",
     "reportProblem": "Report a Problem",
     "rateProduct": "Rate product",
-    "reviewed": "Reviewed"
+    "reviewed": "Reviewed",
+    "managePackage": "Manage package"
+  },
+  "actionCard": {
+    "cancellationWindowTitle": "CANCELLATION WINDOW",
+    "preparingShipmentTitle": "PREPARING SHIPMENT",
+    "deliveredTitle": "DELIVERY CONFIRMED",
+    "recordUnboxingTitle": "RECORD YOUR UNBOXING",
+    "cancellationWindowClosed": "The manual cancellation window has closed.",
+    "cancellationWindowOpen": "You can still cancel this shipment for {{timeLeft}}.",
+    "carrierScanWindowClosed": "Your carrier scan window has closed.",
+    "sellerShippingWindowClosed": "The seller's shipping window has closed.",
+    "reviewWindowClosed": "The review period has ended. Your funds are being processed.",
+    "fundsReleaseCountdown": "The package has arrived. Your funds will be released in: {{timeLeft}}",
+    "returnPayoutPendingBuyer": "Verdict in your favor. The seller has {{timeLeft}} to pay for the return label or you will win the case automatically.",
+    "returnPayoutPendingSeller": "You must pay for the return label within {{timeLeft}} to recover your product or lose the case.",
+    "returnLabelPendingBuyer": "Payment confirmed! You have {{timeLeft}} to create your label and ship the package.",
+    "returnLabelPendingSeller": "Payment confirmed. The buyer has {{timeLeft}} to create the label and ship the package.",
+    "returnShipmentPendingBuyer": "Label ready. You have {{timeLeft}} to drop off the package or lose the case.",
+    "returnShipmentPendingSeller": "Label created. The buyer has {{timeLeft}} to ship the package.",
+    "returnShipmentInTransit": "The return package is already with the carrier.",
+    "returnDeliveredBuyer": "The seller has received the package. Your refund will be processed after inspection.",
+    "refundProcessedBuyer": "Your refund has been processed successfully. The funds will appear in your account within 5 to 10 business days.",
+    "refundProcessedSeller": "Dispute closed. The funds have been returned to the buyer.",
+    "reportReturnProblem": "Report a return problem"
   },
   "return": {
     "successToastMsgTitle": "Evidence saved",

@@ -214,23 +214,30 @@ describe('create-connect-payment checkout allocation (single-modal)', () => {
     );
   });
 
-  it('rejects duplicate seller ids in the allocation input', () => {
-    expect(() =>
-      calculateCheckoutAllocation([
-        {
-          sellerId: 'seller-a',
-          shipmentId: 'ship-a',
-          subtotalCents: 100_000,
-          shippingCents: 0,
-        },
-        {
-          sellerId: 'seller-a',
-          shipmentId: 'ship-a2',
-          subtotalCents: 50_000,
-          shippingCents: 0,
-        },
-      ]),
-    ).toThrow('INVALID_CHECKOUT_INPUT');
+  it('allocates independent shipments and cent-exact seguro to two products from one seller', () => {
+    const allocation = calculateCheckoutAllocation([
+      {
+        sellerId: 'seller-a',
+        shipmentId: 'ship-product-a',
+        subtotalCents: 100_000,
+        shippingCents: 0,
+      },
+      {
+        sellerId: 'seller-a',
+        shipmentId: 'ship-product-b',
+        subtotalCents: 50_000,
+        shippingCents: 0,
+      },
+    ]);
+
+    expect(allocation.rows.map((row) => row.shipmentId)).toEqual([
+      'ship-product-a',
+      'ship-product-b',
+    ]);
+    expect(allocation.rows.map((row) => row.seguroCents)).toEqual([
+      4_601,
+      2_300,
+    ]);
   });
 
   it('rejects negative seller nets during allocation', () => {

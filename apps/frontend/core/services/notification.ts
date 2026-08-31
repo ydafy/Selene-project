@@ -18,6 +18,7 @@ export const NotificationService = {
    * Used by NotificationWatcher (realtime INSERT) and by future push handlers.
    */
   dispatch(notification: Notification): void {
+    console.info('[NotificationService] Dispatching notification:', notification.id, notification.type);
     listeners.forEach((listener) => {
       try {
         listener(notification);
@@ -132,13 +133,17 @@ export const NotificationLinking = {
    * Navigate to the notification's action_path, validated against the route map.
    * Falls back to /profile/notifications for invalid or null paths.
    */
-  navigate(actionPath: string | null | undefined): void {
+  async navigate(actionPath: string | null | undefined): Promise<void> {
     if (!actionPath) {
       router.push('/profile/notifications');
       return;
     }
 
     const resolved = resolvePath(actionPath);
-    router.push(resolved as Parameters<typeof router.push>[0]);
+    try {
+      await router.push(resolved as Parameters<typeof router.push>[0]);
+    } catch {
+      router.push('/profile/notifications');
+    }
   },
 };

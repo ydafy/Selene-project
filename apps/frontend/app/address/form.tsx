@@ -51,6 +51,7 @@ export default function AddressFormScreen() {
       state_code: '',
       district: '',
       street_line1: '',
+      street_number: '',
       street_line2: '',
       full_name: '',
       phone: '',
@@ -119,7 +120,7 @@ export default function AddressFormScreen() {
       />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
       >
         <ScrollView
@@ -173,6 +174,27 @@ export default function AddressFormScreen() {
               {errors.zip_code && (
                 <Text variant="body-sm" color="error" marginTop="xs">
                   {getErrorMessage(errors.zip_code.message)}
+                </Text>
+              )}
+            </Box>
+            <Box marginBottom="m">
+              <Controller
+                control={control}
+                name="street_number"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <FormTextInput
+                    label="Street number"
+                    placeholder="123"
+                    onBlur={onBlur}
+                    onChangeText={onChange}
+                    value={value}
+                    error={!!errors.street_number}
+                  />
+                )}
+              />
+              {errors.street_number && (
+                <Text variant="body-sm" color="error" marginTop="xs">
+                  {getErrorMessage(errors.street_number.message)}
                 </Text>
               )}
             </Box>

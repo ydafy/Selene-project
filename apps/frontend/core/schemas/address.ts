@@ -4,6 +4,7 @@ export const addressSchema = z.object({
   full_name: z.string().min(3, 'address:errors.nameShort'),
   phone: z.string().regex(/^\d{10}$/, 'address:errors.phoneInvalid'),
   street_line1: z.string().min(5, 'address:errors.streetRequired'),
+  street_number: z.string().trim().min(1, 'address:errors.streetNumberRequired'),
 
   street_line2: z
     .string()

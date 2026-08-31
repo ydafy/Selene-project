@@ -103,8 +103,8 @@ describe('Connect money-flow SQL guards', () => {
 
     expect(indexSource).toContain("select('shipping_buffer_cents, insurance_rate')");
     expect(indexSource).toContain('calculateEstimatedSellerShippingDeductionCents');
-    // Per-seller shipping deduction flows into allocation rows as shippingCents.
-    expect(indexSource).toContain('shippingCents: group.shippingCents');
+    // Each product allocation carries its own shipping deduction.
+    expect(indexSource).toContain('shippingCents: product.shippingCents');
     // The compact allocation row the webhook reassembles keeps shippingCents.
     expect(builderSource).toContain('shippingCents: r.shippingCents');
     // Legacy moneyFlow-based single-seller metadata layout is gone.
@@ -152,24 +152,21 @@ describe('Connect money-flow SQL guards', () => {
     );
   });
 
-  it('manual Connect payout release uses allocation net for SCT rows and keeps legacy shipping subtraction', () => {
+  it('manual Connect payout release deducts the validated actual label cost', () => {
     const sql = readSql(
       'supabase/queries/payments/admin_connect_payout_release_view_shipping_cost_fix.sql',
     );
 
-    expect(sql).toContain('o.stripe_transfer_group IS NOT NULL');
     expect(sql).toContain(
       'ROUND(COALESCE(SUM(oi.net_payout), 0) * 100)::INTEGER',
     );
-    expect(sql).toContain(
-      'ELSE ROUND(COALESCE(SUM(oi.net_payout), 0) * 100)::INTEGER - COALESCE(s.shipping_cost, 0)',
-    );
+    expect(sql).toContain('- s.label_provider_cost_cents');
     expect(sql).toContain('GREATEST(');
     expect(sql).toContain(
-      's.shipping_cost IS NOT NULL AND s.shipping_cost > 0 AS has_shipping_cost_cents',
+      's.label_provider_cost_cents IS NOT NULL',
     );
     expect(sql).toContain(
-      "WHEN NOT has_shipping_cost_cents THEN 'missing_shipping_cost'",
+      "WHEN NOT has_valid_label_provider_cost_cents THEN 'invalid_label_provider_cost'",
     );
   });
 

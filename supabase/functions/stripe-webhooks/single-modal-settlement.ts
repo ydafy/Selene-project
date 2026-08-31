@@ -25,7 +25,7 @@
  *    unique shipmentId correlation, per-row gross==commission+shipping+net)
  *  - top-level totals metadata cross-reconcile against the reassembled rows
  *  - webhook routing precedence: return_shipping > single_modal >
- *    connect_per_seller > legacy_app > ignore
+ *    retired_grouped_settlement > ignore
  *  - settlement outcome: ok -> 200; recovered (allocation write failed but an
  *    order shell with payment_processing=true persists) -> 200 retry-safe;
  *    fatal_error (transport/precondition failure, no shell) -> 500 + DLQ
@@ -38,9 +38,9 @@ export { SINGLE_MODAL_FLOW };
 /** Compact allocation row carried inside the chunked `allocation_json` blob. */
 export interface AllocationMetadataRow {
   sellerId: string;
-  /** Durable per-seller shipment id. Unique across rows. */
+  /** Durable per-product shipment id. Unique across rows. */
   shipmentId: string;
-  /** Product ids belonging to this seller/shipment, sorted before embed. */
+  /** One product id belonging to this shipment. */
   productIds: string[];
   grossCents: number;
   commissionCents: number;
@@ -125,6 +125,25 @@ export function buildStripeFeeReconciliationPlan(input: {
 }
 
 type MetadataLike = Record<string, string>;
+
+/** Data retained when a charged PaymentIntent cannot be settled into an order. */
+export interface RecoveryShellInput {
+  sourceMetadata: MetadataLike;
+  chargedAmountCents: number | null;
+}
+
+export function buildRecoveryShellInput(input: {
+  metadata: MetadataLike;
+  amount: number | undefined;
+}): RecoveryShellInput {
+  return {
+    sourceMetadata: { ...input.metadata },
+    chargedAmountCents:
+      Number.isSafeInteger(input.amount) && (input.amount ?? -1) >= 0
+        ? input.amount
+        : null,
+  };
+}
 
 const requiredStr = (meta: MetadataLike, key: string): string => {
   const v = meta[key];
@@ -216,13 +235,19 @@ export function reassembleAllocationMetadata(
       throw new Error('INVALID_ALLOCATION_METADATA:missing_row_field:sellerId');
     }
     if (typeof shipmentId !== 'string' || shipmentId.length === 0) {
-      throw new Error('INVALID_ALLOCATION_METADATA:missing_row_field:shipmentId');
+      throw new Error(
+        'INVALID_ALLOCATION_METADATA:missing_row_field:shipmentId',
+      );
     }
     if (!Array.isArray(productIds) || productIds.length === 0) {
-      throw new Error('INVALID_ALLOCATION_METADATA:missing_row_field:productIds');
+      throw new Error(
+        'INVALID_ALLOCATION_METADATA:missing_row_field:productIds',
+      );
     }
     if (!productIds.every((p) => typeof p === 'string' && p.length > 0)) {
-      throw new Error('INVALID_ALLOCATION_METADATA:missing_row_field:productIds');
+      throw new Error(
+        'INVALID_ALLOCATION_METADATA:missing_row_field:productIds',
+      );
     }
     const cents = [
       ['grossCents', grossCents],
@@ -233,7 +258,9 @@ export function reassembleAllocationMetadata(
     ] as const;
     for (const [name, v] of cents) {
       if (!Number.isInteger(v) || (v as number) < 0) {
-        throw new Error(`INVALID_ALLOCATION_METADATA:missing_row_field:${name}`);
+        throw new Error(
+          `INVALID_ALLOCATION_METADATA:missing_row_field:${name}`,
+        );
       }
     }
     if (seenShipmentIds.has(shipmentId)) {
@@ -241,7 +268,9 @@ export function reassembleAllocationMetadata(
     }
     seenShipmentIds.add(shipmentId);
     if (
-      (commissionCents as number) + (shippingCents as number) + (netCents as number) !==
+      (commissionCents as number) +
+        (shippingCents as number) +
+        (netCents as number) !==
       grossCents
     ) {
       throw new Error('INVALID_ALLOCATION_METADATA:row_breakdown');
@@ -339,10 +368,9 @@ export function parseSingleModalPayload(intent: {
     throw new Error('INVALID_SINGLE_MODAL_METADATA:amount_mismatch');
   }
 
-  const declaredTotals: Array<[
-    key: keyof SingleModalTotalsCents,
-    metaKey: string,
-  ]> = [
+  const declaredTotals: Array<
+    [key: keyof SingleModalTotalsCents, metaKey: string]
+  > = [
     ['gross', 'total_gross_cents'],
     ['commission', 'total_commission_cents'],
     ['shipping', 'total_shipping_cents'],
@@ -360,7 +388,10 @@ export function parseSingleModalPayload(intent: {
     }
   }
 
-  if (Number.isInteger(totalSellers) && reassembled.rows.length !== totalSellers) {
+  if (
+    Number.isInteger(totalSellers) &&
+    reassembled.rows.length !== totalSellers
+  ) {
     throw new Error('INVALID_SINGLE_MODAL_METADATA:total_sellers_mismatch');
   }
 
@@ -379,23 +410,30 @@ export function parseSingleModalPayload(intent: {
 
 /**
  * Pure webhook routing decision for `payment_intent.succeeded`. Returns a
- * discriminated union describing which legacy/single-modal body `index.ts`
+ * discriminated union describing which settlement body `index.ts`
  * should run. Routing precedence:
  *   1. metadata.type === 'return_shipping'  -> return_shipping
  *   2. metadata.flow === SINGLE_MODAL_FLOW  -> single_modal (payload validated)
- *   3. metadata.seller_id present            -> connect_per_seller
- *   4. metadata.app_name === 'selene'       -> legacy_app
- *   5. otherwise                            -> ignore
+ *   3. legacy seller-grouped metadata        -> retired_grouped_settlement
+ *   4. otherwise                             -> ignore
  *
- * For the single-modal route the payload is parsed/validated HERE so a
- * metadata-corrupt PI never reaches the DB; the webhook maps the thrown
- * `INVALID_*` error to a fatal 500 + DLQ.
+ * For the single-modal route the payload is parsed/validated HERE. Metadata
+ * failures stay on the semantic recovery route so the webhook can compensate
+ * a charged intent instead of acknowledging it without a refund attempt.
  */
 export type WebhookAction =
   | { kind: 'return_shipping' }
   | { kind: 'single_modal'; payload: SingleModalSettlementInput }
-  | { kind: 'connect_per_seller' }
-  | { kind: 'legacy_app' }
+  | {
+      kind: 'invalid_single_modal_metadata';
+      reason: string;
+      recoveryShell: RecoveryShellInput;
+    }
+  | {
+      kind: 'retired_grouped_settlement';
+      reason: 'LEGACY_GROUPED_SETTLEMENT_METADATA';
+      recoveryShell: RecoveryShellInput;
+    }
   | { kind: 'ignore' };
 
 export function resolvePaymentIntentSucceededAction(intent: {
@@ -409,16 +447,39 @@ export function resolvePaymentIntentSucceededAction(intent: {
   }
 
   if (meta.flow === SINGLE_MODAL_FLOW) {
-    const payload = parseSingleModalPayload(intent);
-    return { kind: 'single_modal', payload };
+    try {
+      const payload = parseSingleModalPayload(intent);
+      return { kind: 'single_modal', payload };
+    } catch (error) {
+      const reason =
+        error instanceof Error
+          ? error.message
+          : 'INVALID_SINGLE_MODAL_METADATA';
+      if (reason.startsWith('INVALID_')) {
+        return {
+          kind: 'invalid_single_modal_metadata',
+          reason,
+          recoveryShell: buildRecoveryShellInput(intent),
+        };
+      }
+      throw error;
+    }
   }
 
   if (typeof meta.seller_id === 'string' && meta.seller_id.length > 0) {
-    return { kind: 'connect_per_seller' };
+    return {
+      kind: 'retired_grouped_settlement',
+      reason: 'LEGACY_GROUPED_SETTLEMENT_METADATA',
+      recoveryShell: buildRecoveryShellInput(intent),
+    };
   }
 
   if (meta.app_name === 'selene') {
-    return { kind: 'legacy_app' };
+    return {
+      kind: 'retired_grouped_settlement',
+      reason: 'LEGACY_GROUPED_SETTLEMENT_METADATA',
+      recoveryShell: buildRecoveryShellInput(intent),
+    };
   }
 
   return { kind: 'ignore' };
@@ -435,9 +496,38 @@ export function resolvePaymentIntentSucceededAction(intent: {
  *     records the event in the DLQ and returns 500 (Stripe retries the
  *     webhook, which is idempotent).
  */
+export type SettlementFailureClassification =
+  | { kind: 'semantic'; refundRequired: true }
+  | { kind: 'transient'; refundRequired: false };
+
+const SEMANTIC_SETTLEMENT_FAILURE_CODES = new Set([
+  'ONE_PRODUCT_PER_SHIPMENT_REQUIRED',
+  'PRODUCT_ID_NOT_FOUND_OR_NOT_OWNED',
+  'PRODUCT_NOT_RESERVED',
+  'LEGACY_GROUPED_SETTLEMENT_METADATA',
+]);
+
+export function classifySettlementFailure(
+  reason: string,
+): SettlementFailureClassification {
+  if (
+    SEMANTIC_SETTLEMENT_FAILURE_CODES.has(reason) ||
+    reason.startsWith('INVALID_')
+  ) {
+    return { kind: 'semantic', refundRequired: true };
+  }
+
+  return { kind: 'transient', refundRequired: false };
+}
+
 export type SettlementOutcome =
-  | { kind: 'ok'; body: { received: true } }
-  | { kind: 'recovered'; reason: string }
+  | { kind: 'ok'; body: { received: true }; runtimeVersion: string | null }
+  | {
+      kind: 'recovered';
+      reason: string;
+      classification: SettlementFailureClassification;
+      runtimeVersion: string | null;
+    }
   | { kind: 'fatal_error'; message: string };
 
 export function buildSettlementOutcome(input: {
@@ -450,25 +540,45 @@ export function buildSettlementOutcome(input: {
     return { kind: 'fatal_error', message: rpcError.message };
   }
 
-  const r = rpcResult as { success?: unknown; error?: unknown } | null;
-  if (
-    !r ||
-    typeof r !== 'object' ||
-    typeof r.success !== 'boolean'
-  ) {
+  const r = rpcResult as {
+    success?: unknown;
+    error?: unknown;
+    failure_code?: unknown;
+    runtime_version?: unknown;
+  } | null;
+  if (!r || typeof r !== 'object' || typeof r.success !== 'boolean') {
     return { kind: 'fatal_error', message: 'UNEXPECTED_RPC_RESPONSE' };
   }
 
   if (r.success === true) {
-    return { kind: 'ok', body: { received: true } };
+    return {
+      kind: 'ok',
+      body: { received: true },
+      runtimeVersion:
+        typeof r.runtime_version === 'string' && r.runtime_version.length > 0
+          ? r.runtime_version
+          : null,
+    };
   }
 
   const reason =
     typeof r.error === 'string'
       ? r.error
-      : r.error && typeof (r.error as { message?: unknown }).message === 'string'
+      : r.error &&
+          typeof (r.error as { message?: unknown }).message === 'string'
         ? (r.error as { message: string }).message
         : 'UNKNOWN_RECOVERY_REASON';
 
-  return { kind: 'recovered', reason };
+  const failureCode =
+    typeof r.failure_code === 'string' ? r.failure_code : reason;
+
+  return {
+    kind: 'recovered',
+    reason,
+    classification: classifySettlementFailure(failureCode),
+    runtimeVersion:
+      typeof r.runtime_version === 'string' && r.runtime_version.length > 0
+        ? r.runtime_version
+        : null,
+  };
 }

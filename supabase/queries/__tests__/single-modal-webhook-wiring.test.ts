@@ -28,6 +28,7 @@ const readSource = (relativePath: string) =>
 
 const INDEX_PATH = 'supabase/functions/stripe-webhooks/index.ts';
 const BUILDER_PATH = 'supabase/functions/stripe-webhooks/single-modal-settlement.ts';
+const STRIPE_CHARGE_PATH = 'supabase/functions/_shared/stripe-charge.ts';
 
 describe('single-modal webhook wiring guards', () => {
   const index = readSource(INDEX_PATH);
@@ -47,11 +48,15 @@ describe('single-modal webhook wiring guards', () => {
   });
 
   it('extracts the Stripe charge id from the succeeded PaymentIntent', () => {
-    // pi.charges.data[0].id OR latest_charge; the webhook must persist the
-    // platform charge id onto orders.stripe_charge_id via the new RPC.
-    expect(
-      index.includes('charges.data') || index.includes('latest_charge'),
-    ).toBe(true);
+    const stripeCharge = readSource(STRIPE_CHARGE_PATH);
+
+    // The shared helper supports both modern latest_charge and legacy charges
+    // data, while the webhook remains explicitly wired to that tested contract.
+    expect(index).toContain(
+      "import { extractStripeChargeId } from '../_shared/stripe-charge.ts';",
+    );
+    expect(stripeCharge).toContain('latest_charge');
+    expect(stripeCharge).toContain('charges?.data?.[0]');
     expect(index).toContain('MISSING_STRIPE_CHARGE_ID');
   });
 
@@ -76,6 +81,30 @@ describe('single-modal webhook wiring guards', () => {
     expect(index).toContain('recovered');
   });
 
+  it('compensates semantic failures refund-first with recovery RPC idempotency', () => {
+    expect(index).toContain("from '../checkout-recovery-worker/recovery.ts'");
+    expect(index).toContain('fn_upsert_checkout_recovery_shell');
+    expect(index).toContain('fn_claim_checkout_recovery_shells');
+    expect(index).toContain('stripe.refunds.create');
+    expect(index).toContain('fn_finalize_checkout_recovery');
+    expect(index).toContain('refundRequired');
+  });
+
+  it('forwards the Stripe charge id when it upserts a standalone recovery shell', () => {
+    const upsertStart = index.indexOf('fn_upsert_checkout_recovery_shell');
+    const claimStart = index.indexOf('fn_claim_checkout_recovery_shells', upsertStart);
+    const shellUpsert = index.slice(upsertStart, claimStart);
+
+    expect(shellUpsert).toContain('p_stripe_charge_id: chargeId');
+  });
+
+  it('logs recovery diagnostics from executed RPC responses rather than hardcoded versions', () => {
+    expect(index).toContain('outcome.runtimeVersion');
+    expect(index).toContain('recoveryRuntimeVersion');
+    expect(index).not.toContain("runtimeSettlementVersion: 'single_modal_settlement_v2'");
+    expect(index).not.toContain("sqlMigrationVersion: 'paid_checkout_recovery_v1'");
+  });
+
   it('throws into the DLQ path for fatal_error outcomes (transport/precondition failures)', () => {
     // fatal_error must surface via an inline throw so the existing catch writes
     // the webhook_dlq row + returns 500.
@@ -83,7 +112,7 @@ describe('single-modal webhook wiring guards', () => {
   });
 });
 
-describe('single-modal webhook preserves legacy flows', () => {
+describe('single-modal webhook preserves supported flows', () => {
   const index = readSource(INDEX_PATH);
 
   it('keeps the return_shipping metadata branch intact', () => {
@@ -91,9 +120,10 @@ describe('single-modal webhook preserves legacy flows', () => {
     expect(index).toContain('fn_log_return_payment');
   });
 
-  it('keeps the per-seller Connect metadata.branch intact (seller_id metadata)', () => {
-    expect(index).toContain('fn_create_shipment_from_payment');
-    expect(index).toContain("intent.metadata.seller_id");
+  it('acknowledges retired grouped settlement metadata without calling its RPC', () => {
+    expect(index).toContain('retired_grouped_settlement');
+    expect(index).toContain('LEGACY_GROUPED_SHIPMENT_SETTLEMENT_RETIRED');
+    expect(index).not.toContain('fn_create_shipment_from_payment');
   });
 
   it('keeps the legacy app_name path intact (fn_create_order_from_payment + fraud + release)', () => {

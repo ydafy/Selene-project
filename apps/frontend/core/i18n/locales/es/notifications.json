@@ -3,5 +3,11 @@
   "markAll": "Marcar todo como leído",
   "emptyTitle": "Buzón vacío",
   "emptyMsg": "Aquí aparecerán tus actualizaciones de ventas, compras y verificaciones.",
-  "justNow": "Ahora mismo"
+  "justNow": "Ahora mismo",
+  "dismissLabel": "Descartar aviso",
+  "dismissConfirm": "¿Descartar este aviso?",
+  "clearAllLabel": "Limpiar todo",
+  "clearAllConfirm": "¿Estás seguro de que querés limpiar todos los avisos?",
+  "moreCount": "+{{count}} más",
+  "openLabel": "Abrir avisos"
 }

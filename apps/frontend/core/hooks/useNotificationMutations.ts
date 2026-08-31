@@ -1,58 +1,53 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../db/supabase';
+import { useTranslation } from 'react-i18next';
+
+import {
+  invalidateNotificationKeys,
+  createMarkAsReadMutationOptions,
+  createMarkAllAsReadMutationOptions,
+  createDismissNotificationMutationOptions,
+  createDismissAllMutationOptions,
+} from './useNotificationMutations.logic';
+
+export { invalidateNotificationKeys };
 
 export const useNotificationMutations = (userId: string | undefined) => {
   const queryClient = useQueryClient();
+  const { t } = useTranslation(['common', 'notifications']);
 
-  const invalidateNotificationKeys = () => {
-    if (!userId) return;
-    queryClient.invalidateQueries({ queryKey: ['notifications', userId] });
-    queryClient.invalidateQueries({
-      queryKey: ['unread-notifications', userId],
+  const showError = async () => {
+    const { default: Toast } = await import('react-native-toast-message');
+    Toast.show({
+      type: 'error',
+      text1: t('common:states.errorTitle'),
+      text2: t('common:errors.generic'),
     });
   };
 
-  const markAsReadMutation = useMutation({
-    mutationFn: async (id: string) => {
-      if (!userId) throw new Error('AUTH_REQUIRED');
+  const markAsReadMutation = useMutation(
+    createMarkAsReadMutationOptions(queryClient, userId, t, showError),
+  );
 
-      const { error } = await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('id', id)
-        .eq('user_id', userId);
+  const markAllAsReadMutation = useMutation(
+    createMarkAllAsReadMutationOptions(queryClient, userId, t, showError),
+  );
 
-      if (error) throw error;
-    },
-    onSuccess: invalidateNotificationKeys,
-    onError: (error) => {
-      console.error('[NOTIFICATIONS] Error marking as read:', error);
-    },
-  });
+  const dismissNotificationMutation = useMutation(
+    createDismissNotificationMutationOptions(queryClient, userId, t, showError),
+  );
 
-  const markAllAsReadMutation = useMutation({
-    mutationFn: async () => {
-      if (!userId) throw new Error('AUTH_REQUIRED');
-
-      const { error } = await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('user_id', userId)
-        .eq('read', false)
-        .is('deleted_at', null);
-
-      if (error) throw error;
-    },
-    onSuccess: invalidateNotificationKeys,
-    onError: (error) => {
-      console.error('[NOTIFICATIONS] Error marking all as read:', error);
-    },
-  });
+  const dismissAllMutation = useMutation(
+    createDismissAllMutationOptions(queryClient, userId, t, showError),
+  );
 
   return {
-    markAsRead: markAsReadMutation.mutateAsync,
-    markAllAsRead: markAllAsReadMutation.mutateAsync,
+    markAsRead: (id: string) => markAsReadMutation.mutateAsync(id),
+    markAllAsRead: () => markAllAsReadMutation.mutateAsync(undefined),
+    dismissNotification: (id: string) => dismissNotificationMutation.mutateAsync(id),
+    dismissAll: () => dismissAllMutation.mutateAsync(undefined),
     isMarkingRead: markAsReadMutation.isPending,
     isMarkingAllRead: markAllAsReadMutation.isPending,
+    isDismissing: dismissNotificationMutation.isPending,
+    isClearingAll: dismissAllMutation.isPending,
   };
 };

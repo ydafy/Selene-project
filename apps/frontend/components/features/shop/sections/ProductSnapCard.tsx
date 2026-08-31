@@ -18,9 +18,14 @@ import { Product } from '@selene/types';
 interface Props {
   product: Product;
   visibleHeight: number;
+  contentBottomClearance?: number;
 }
 
-const ProductSnapCardComponent = ({ product, visibleHeight }: Props) => {
+const ProductSnapCardComponent = ({
+  product,
+  visibleHeight,
+  contentBottomClearance = 20,
+}: Props) => {
   const router = useRouter();
   const { t } = useTranslation('search');
 
@@ -69,7 +74,7 @@ const ProductSnapCardComponent = ({ product, visibleHeight }: Props) => {
       </Box>
 
       {/* 3. INFO ETIQUETA (Side Label Style) */}
-      <Box paddingBottom="xl" style={{ marginBottom: 20 }}>
+      <Box paddingBottom="xl" style={{ marginBottom: contentBottomClearance }}>
         <Box
           alignSelf="flex-start"
           maxWidth="85%"

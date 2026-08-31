@@ -37,6 +37,7 @@ import {
 } from './fee-calculator.ts';
 import {
   assertReservationSucceeded,
+  assertValidAllocationRows,
   buildCheckoutIdentifiers,
   buildCreateConnectPaymentResponse,
   buildSinglePaymentIntentParams,
@@ -95,13 +96,17 @@ const summarizeProductIds = (productIds: string[]) =>
   productIds.slice(0, 6).map((productId) => productId.slice(0, 8));
 
 const describeReservationRpcData = (data: ReservationRpcData) => ({
-  rpcShape: Array.isArray(data) ? 'array' : data === null ? 'null' : typeof data,
+  rpcShape: Array.isArray(data)
+    ? 'array'
+    : data === null
+      ? 'null'
+      : typeof data,
   rpcSuccess: Array.isArray(data)
-    ? data[0]?.success ?? null
-    : data?.success ?? null,
+    ? (data[0]?.success ?? null)
+    : (data?.success ?? null),
   rpcErrorMessage: Array.isArray(data)
-    ? data[0]?.error_message ?? null
-    : data?.error_message ?? null,
+    ? (data[0]?.error_message ?? null)
+    : (data?.error_message ?? null),
 });
 
 serve(async (req: Request) => {
@@ -240,48 +245,44 @@ serve(async (req: Request) => {
       );
     }
 
-    // 6. Group reserved products by seller. Pre-generate one durable shipmentId
-    // per seller — the SAME ids the webhook/settlement RPC will persist on the
-    // per-seller shipments — so allocation rows correlate to exactly one
-    // shipment without relying on implicit ordering.
-    const sellerGroups = new Map<
-      string,
-      {
-        productIds: string[];
-        subtotalCents: number;
-        shippingCents: number;
-        stripeAccountId: string | null;
-      }
-    >();
+    // 6. Build one allocation for every purchased listing. A seller can own
+    // multiple listings in an order, but each keeps an independent shipment,
+    // label, tracking, and payout boundary.
+    const productAllocations: Array<{
+      productId: string;
+      sellerId: string;
+      subtotalCents: number;
+      shippingCents: number;
+    }> = [];
 
     for (const product of products) {
       const item = items.find((i) => i.productId === product.id);
       if (!item) continue;
 
-      const group = sellerGroups.get(product.seller_id) || {
-        productIds: [],
-        subtotalCents: 0,
-        shippingCents: 0,
-        stripeAccountId: null,
-      };
-      group.productIds.push(product.id);
-      group.subtotalCents += Math.round(product.price * 100) * item.quantity;
+      const subtotalCents = Math.round(product.price * 100) * item.quantity;
       const shippingBufferCents =
         systemSettings?.shipping_buffer_cents == null
           ? undefined
           : systemSettings.shipping_buffer_cents * item.quantity;
-      group.shippingCents += calculateEstimatedSellerShippingDeductionCents({
-        priceCents: Math.round(product.price * 100) * item.quantity,
+      const shippingCents = calculateEstimatedSellerShippingDeductionCents({
+        priceCents: subtotalCents,
         quotedShippingCents:
           Math.round((product.shipping_cost ?? 0) * 100) * item.quantity,
         shippingBufferCents,
         insuranceRate: systemSettings?.insurance_rate ?? undefined,
       });
-      sellerGroups.set(product.seller_id, group);
+      productAllocations.push({
+        productId: product.id,
+        sellerId: product.seller_id,
+        subtotalCents,
+        shippingCents,
+      });
     }
 
     // 7. Load Connect accounts for all sellers
-    const sellerIds = Array.from(sellerGroups.keys());
+    const sellerIds = [
+      ...new Set(productAllocations.map((row) => row.sellerId)),
+    ];
     const { data: sellerProfiles, error: profilesError } = await supabaseAdmin
       .from('profiles_private')
       .select('id, stripe_account_id')
@@ -291,18 +292,18 @@ serve(async (req: Request) => {
       throw new Error('PROFILES_LOAD_FAILED');
     }
 
-    for (const sp of sellerProfiles || []) {
-      const group = sellerGroups.get(sp.id);
-      if (group) {
-        group.stripeAccountId = sp.stripe_account_id;
-      }
-    }
+    const stripeAccountBySellerId = new Map(
+      (sellerProfiles || []).map((profile) => [
+        profile.id,
+        profile.stripe_account_id,
+      ]),
+    );
 
     // 8. Validate all sellers are onboarded (manual release needs Connect
     // accounts; fail fast before charging the buyer).
     const notOnboarded: string[] = [];
-    for (const [sellerId, group] of sellerGroups) {
-      if (!group.stripeAccountId) {
+    for (const sellerId of sellerIds) {
+      if (!stripeAccountBySellerId.get(sellerId)) {
         notOnboarded.push(sellerId);
       }
     }
@@ -338,29 +339,38 @@ serve(async (req: Request) => {
       { apiVersion: STRIPE_API_VERSION },
     );
 
-    // 10. Build the per-seller allocation inputs with durable shipment ids, then
+    // 10. Build the per-product allocation inputs with durable shipment ids, then
     // compute + validate the single-modal allocation. `shipmentId` correlation
     // is required by the allocation contract so manual release can address each
     // seller net to exactly one shipment.
     const allocationInputs: SellerAllocationInput[] = [];
-    const sellerProductIds: Record<string, string[]> = {};
-    for (const [sellerId, group] of sellerGroups) {
-      // Deterministic per (idempotencyKey, sellerId) when an idempotency key
+    const shipmentProductIds: Record<string, string[]> = {};
+    for (const product of productAllocations) {
+      // Deterministic per (idempotencyKey, productId) when an idempotency key
       // was supplied; random (via the injected crypto.randomUUID) otherwise.
       // Stable-on-retry shipment ids correlate the per-seller allocation row
       // to the shipment the webhook will persist — no implicit ordering reliance.
-      const shipmentId = shipmentIdFor(sellerId);
+      const shipmentId = shipmentIdFor(product.productId);
       allocationInputs.push({
-        sellerId,
+        sellerId: product.sellerId,
         shipmentId,
-        subtotalCents: group.subtotalCents,
-        shippingCents: group.shippingCents,
+        subtotalCents: product.subtotalCents,
+        shippingCents: product.shippingCents,
       });
-      sellerProductIds[sellerId] = group.productIds;
+      shipmentProductIds[shipmentId] = [product.productId];
     }
 
     let allocation;
     try {
+      assertValidAllocationRows({
+        requestedProductIds: productIds,
+        rows: Object.entries(shipmentProductIds).map(
+          ([shipmentId, allocatedProductIds]) => ({
+            shipmentId,
+            productIds: allocatedProductIds,
+          }),
+        ),
+      });
       allocation = calculateCheckoutAllocation(allocationInputs);
       assertValidCheckoutAllocation(allocation);
     } catch (economicsError) {
@@ -387,7 +397,7 @@ serve(async (req: Request) => {
       customerId,
       addressId: normalizedRequest.addressId,
       transferGroup,
-      sellerProductIds,
+      shipmentProductIds,
     });
 
     const requestParams: Stripe.PaymentIntentCreateParams = {
@@ -402,9 +412,10 @@ serve(async (req: Request) => {
     // Stripe request idempotency: when the client retries the same checkout
     // attempt, reuse the same key so Stripe returns the existing PI instead of
     // minting a duplicate. This preserves the legacy retry-safety guarantee.
-    const idempotencyOptions: Stripe.RequestOptions = normalizedRequest.idempotencyKey
-      ? { idempotencyKey: `selene_pi_${normalizedRequest.idempotencyKey}` }
-      : {};
+    const idempotencyOptions: Stripe.RequestOptions =
+      normalizedRequest.idempotencyKey
+        ? { idempotencyKey: `selene_pi_${normalizedRequest.idempotencyKey}` }
+        : {};
 
     let pi: Stripe.PaymentIntent;
     try {
@@ -459,6 +470,8 @@ serve(async (req: Request) => {
       PI_CREATION_FAILED: 500,
       MISSING_SERVER_CONFIG: 500,
       INVALID_CONNECT_ECONOMICS: 422,
+      ONE_PRODUCT_PER_SHIPMENT_REQUIRED: 422,
+      PRODUCT_ID_NOT_FOUND_OR_NOT_OWNED: 422,
       'INVALID_CHECKOUT_INPUT:missing_shipment_id': 422,
       'INVALID_CHECKOUT_INPUT:duplicate_shipment_id': 422,
       'INVALID_CHECKOUT_INPUT:missing_order_id': 422,

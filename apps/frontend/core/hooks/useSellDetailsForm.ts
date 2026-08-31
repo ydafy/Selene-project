@@ -1,13 +1,12 @@
 /**
  * @file core/hooks/useSellDetailsForm.ts
  * @description Orquestador del formulario de detalles de venta.
- * Maneja validación Zod, cotización JIT (Just-In-Time) y calculadora de ganancias.
+ * Maneja validación Zod centralizada, cotización JIT (Just-In-Time) y calculadora de ganancias.
  */
 
 import { useMemo, useEffect, useState, useRef } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
@@ -19,33 +18,10 @@ import {
   formatCentsAsMx,
 } from '@/core/utils/sellerProceedsEstimate';
 import { getCategoryResetFields } from '@/core/utils/sellCategoryReset';
-
-const getDetailsSchema = (t: (key: string) => string) =>
-  z.object({
-    name: z
-      .string()
-      .min(10, t('sell:errors.nameRequired'))
-      .max(80, t('sell:errors.nameTooLong')),
-    price: z
-      .string()
-      .min(1, t('sell:errors.priceRequired'))
-      .refine(
-        (val) => !isNaN(Number(val)) && Number(val) > 0,
-        t('sell:errors.priceInvalid'),
-      ),
-    condition: z.string().min(1, t('sell:errors.conditionRequired')),
-    usage: z.string().min(1, t('sell:errors.usageRequired')),
-    description: z
-      .string()
-      .min(20, t('sell:errors.descriptionRequired'))
-      .max(1000, t('sell:errors.descriptionTooLong')),
-    origin_zip: z.string().length(5, t('sell:errors.zipCodeInvalid')),
-    package_preset: z.string().min(1, t('sell:errors.packageRequired')),
-    shipping_payer: z.literal('seller'),
-    insurance_enabled: z.boolean(),
-  });
-
-export type DetailsFormData = z.infer<ReturnType<typeof getDetailsSchema>>;
+import {
+  sellDetailsSchema,
+  SellDetailsInput,
+} from '@/core/schemas/sell.schema';
 
 export const useSellDetailsForm = () => {
   const { t } = useTranslation(['sell']);
@@ -54,16 +30,13 @@ export const useSellDetailsForm = () => {
   const { draft, updateDraft, resetCategoryFields } = useSellStore();
   const category = draft.category;
 
-  // 1. Memoización del Schema para performance
-  const detailsSchema = useMemo(() => getDetailsSchema(t), [t]);
-
   const {
     control,
     handleSubmit,
     setValue,
     formState: { errors, isValid },
-  } = useForm<DetailsFormData>({
-    resolver: zodResolver(detailsSchema),
+  } = useForm<SellDetailsInput>({
+    resolver: zodResolver(sellDetailsSchema),
     mode: 'onChange',
     defaultValues: {
       name: draft.name || '',
@@ -79,14 +52,18 @@ export const useSellDetailsForm = () => {
   });
 
   const { getQuote, isQuoting, error: quoteError } = useShippingQuote();
-  const [shippingCost, setShippingCost] = useState(0);
 
-  // 2. Per-field watchers to isolate re-renders
+  // Inicializamos con el valor previo del borrador para evitar el flash de 0.00
+  const [shippingCost, setShippingCost] = useState(() =>
+    parseFloat(draft.shipping_cost || '0'),
+  );
+
+  // Watchers aislados
   const price = useWatch({ control, name: 'price' });
   const package_preset = useWatch({ control, name: 'package_preset' });
   const origin_zip = useWatch({ control, name: 'origin_zip' });
 
-  // Efecto: Reset condition/usage/specs when category changes
+  // Reset de campos al cambiar de categoría
   const previousCategoryRef = useRef(category);
   useEffect(() => {
     const previousCategory = previousCategoryRef.current;
@@ -100,7 +77,7 @@ export const useSellDetailsForm = () => {
     }
   }, [category, setValue, resetCategoryFields]);
 
-  // Efecto: Auto-selección de caja por categoría
+  // Auto-selección de caja por categoría
   useEffect(() => {
     if (draft.category && systemConfig?.package_presets) {
       const categoryToPrefix: Record<string, string> = {
@@ -117,7 +94,7 @@ export const useSellDetailsForm = () => {
     }
   }, [draft.category, systemConfig, setValue]);
 
-  // Efecto: Cotización con Debounce
+  // Cotización JIT con Debounce
   useEffect(() => {
     const priceNum = parseFloat(price) || 0;
 
@@ -132,7 +109,6 @@ export const useSellDetailsForm = () => {
         if (rates && rates.length > 0) {
           const rawCost = rates[0].price;
           setShippingCost(rawCost);
-          // Sincronizamos el costo en el Store para el Preview
           updateDraft({ shipping_cost: rawCost.toString() });
         }
       };
@@ -142,13 +118,9 @@ export const useSellDetailsForm = () => {
     }
   }, [origin_zip, package_preset, price, getQuote, updateDraft]);
 
-  /**
-   * Calculadora de Ganancias
-   * Sincronizada con las reglas de negocio del Backend (system_settings)
-   */
+  // Calculadora de Ganancias
   const earnings = useMemo(() => {
     const priceNum = parseFloat(price) || 0;
-    // FIX: Fallbacks para evitar el error de "possibly null"
     if (priceNum === 0 || !systemConfig) {
       return { commission: '0.00', shipping: '0.00', final: '0.00' };
     }
@@ -161,27 +133,14 @@ export const useSellDetailsForm = () => {
       settings: systemConfig,
     });
 
-    if (__DEV__) {
-      console.info('[seller-proceeds-estimate]', {
-        priceCents: subtotalCents,
-        quoteCents: enviaCents,
-        serviceFeePct: systemConfig.service_fee_pct ?? 0.05,
-        shippingBufferCents: systemConfig.shipping_buffer_cents ?? 5000,
-        insuranceRate: systemConfig.insurance_rate,
-        normalizedInsuranceRate: estimate.normalizedInsuranceRate,
-        insuranceCents: estimate.insuranceCents,
-        finalCents: estimate.finalCents,
-      });
-    }
-
     return {
       commission: formatCentsAsMx(estimate.commissionCents),
-      shipping: formatCentsAsMx(estimate.shippingCents), // Renombrado para consistencia
+      shipping: formatCentsAsMx(estimate.shippingCents),
       final: formatCentsAsMx(estimate.finalCents),
     };
   }, [price, shippingCost, systemConfig]);
 
-  const onSubmit = (data: DetailsFormData) => {
+  const onSubmit = (data: SellDetailsInput) => {
     updateDraft(data);
     router.push('/sell/specs');
   };

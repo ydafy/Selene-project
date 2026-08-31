@@ -19,7 +19,6 @@ export const WizardSteps = ({ currentStep, steps }: WizardStepsProps) => {
   const theme = useTheme<Theme>();
   const { t } = useTranslation('sell');
 
-  // Defensive check: if no steps are provided, render nothing safely
   if (!steps || steps.length === 0) return null;
 
   return (
@@ -44,7 +43,7 @@ export const WizardSteps = ({ currentStep, steps }: WizardStepsProps) => {
 
         return (
           <Box
-            key={step}
+            key={`${step}-${index}`}
             flexDirection="row"
             alignItems="center"
             flex={1}
@@ -68,7 +67,6 @@ export const WizardSteps = ({ currentStep, steps }: WizardStepsProps) => {
                 }
                 marginBottom="xs"
                 style={{
-                  // El paso activo tiene un brillo (glow) cyberpunk
                   shadowColor: isActive ? theme.colors.primary : 'transparent',
                   shadowOpacity: isActive ? 0.8 : 0,
                   shadowRadius: isActive ? 4 : 0,
@@ -76,7 +74,11 @@ export const WizardSteps = ({ currentStep, steps }: WizardStepsProps) => {
                 }}
               />
 
-              <Box flexDirection="row" alignItems="center">
+              <Box
+                flexDirection="row"
+                alignItems="center"
+                justifyContent="center"
+              >
                 {/* Icono de Check si está completado */}
                 {isCompleted && (
                   <MaterialCommunityIcons
@@ -87,10 +89,12 @@ export const WizardSteps = ({ currentStep, steps }: WizardStepsProps) => {
                   />
                 )}
 
+                {/* Jerarquía visual perfecta: Activo/Completado resaltan, Futuros quedan tenues */}
                 <Text
                   variant={isActive ? 'body-sm' : 'caption-md'}
-                  color={isActive || isCompleted ? 'primary' : 'textPrimary'}
+                  color={isActive || isCompleted ? 'primary' : 'textSecondary'}
                   fontWeight={isActive ? 'bold' : 'normal'}
+                  numberOfLines={1}
                 >
                   {step}
                 </Text>

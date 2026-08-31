@@ -3,6 +3,8 @@ import { supabase } from '../db/supabase';
 import { useAuthContext } from '../../components/auth/AuthProvider';
 import { Address } from '@selene/types';
 
+type PendingAddress = Omit<Address, 'id' | 'user_id'> & { street_number: string };
+
 export const useAddresses = () => {
   const { session } = useAuthContext();
   const queryClient = useQueryClient();
@@ -32,7 +34,7 @@ export const useAddresses = () => {
 
   // 2. ADD
   const addAddressMutation = useMutation({
-    mutationFn: async (newAddress: Omit<Address, 'id' | 'user_id'>) => {
+    mutationFn: async (newAddress: PendingAddress) => {
       if (!userId) throw new Error('No user authenticated');
 
       const isFirst = addresses.length === 0;
@@ -42,7 +44,7 @@ export const useAddresses = () => {
           ...newAddress,
           user_id: userId,
           is_default: isFirst ? true : newAddress.is_default,
-        })
+        } as never)
         .select()
         .single();
 

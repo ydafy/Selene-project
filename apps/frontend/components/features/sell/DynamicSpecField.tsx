@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * @file components/features/sell/DynamicSpecField.tsx
  * @description Componente de formulario dinámico que gestiona campos dependientes,
@@ -14,6 +13,7 @@ import {
   UseFormSetValue,
   FieldValues,
   Path,
+  PathValue,
   FieldErrors,
 } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -59,8 +59,8 @@ const DynamicSpecFieldComponent = <T extends FieldValues>({
     }
 
     // Reset de valores en el store de react-hook-form
-    setValue(field.name as Path<T>, '' as any);
-    setValue(`${field.name}_custom` as Path<T>, '' as any);
+    setValue(field.name as Path<T>, '' as PathValue<T, Path<T>>);
+    setValue(`${field.name}_custom` as Path<T>, '' as PathValue<T, Path<T>>);
   }, [parentValue, field.dependsOn, field.name, setValue]);
 
   /**
@@ -102,7 +102,10 @@ const DynamicSpecFieldComponent = <T extends FieldValues>({
               onChange(val);
               // Si el usuario cambia de "Other" a una opción real, limpiamos el campo manual
               if (!checkIfOther(val)) {
-                setValue(`${field.name}_custom` as Path<T>, '' as any);
+                setValue(
+                  `${field.name}_custom` as Path<T>,
+                  '' as PathValue<T, Path<T>>,
+                );
               }
             }}
             options={currentOptions.map(String)}
@@ -142,6 +145,7 @@ const DynamicSpecFieldComponent = <T extends FieldValues>({
                 value={value}
                 error={!!customFieldError}
                 labelMode="static"
+                maxLength={50}
               />
             )}
           />

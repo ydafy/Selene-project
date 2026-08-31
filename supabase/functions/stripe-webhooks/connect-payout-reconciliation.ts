@@ -6,9 +6,7 @@ export type ConnectPayoutRunStatus =
   | 'reconciliation_needed';
 
 export type ConnectPayoutEventType =
-  | 'payout.paid'
-  | 'payout.failed'
-  | 'payout.canceled';
+  'payout.paid' | 'payout.failed' | 'payout.canceled';
 
 export interface ConnectPayoutRunForReconciliation {
   id: string;
@@ -83,7 +81,9 @@ function toFailureReason(error: unknown): string {
 }
 
 function isRecoverableMissingPayoutIdStatus(status: string): boolean {
-  return status === 'pending_reconciliation' || status === 'reconciliation_needed';
+  return (
+    status === 'pending_reconciliation' || status === 'reconciliation_needed'
+  );
 }
 
 export async function reconcileConnectPayoutEvent(

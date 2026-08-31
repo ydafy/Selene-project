@@ -135,6 +135,22 @@ export const buildSanitizedEnviaDiagnostics = (
   presetKeys: context.presetKeys ?? [],
 });
 
+const SAFE_LABEL_LOG_FIELDS = new Set([
+  'shipmentId',
+  'errorClass',
+  'resultStatus',
+  'isApiError',
+  'enviaDiagnostics',
+  'enviaError',
+  'enviaResponseMetadata',
+]);
+
+/** Restrict log metadata to values built by the explicit diagnostic sanitizers. */
+export const sanitizeLabelLogMetadata = (metadata: Record<string, unknown>) =>
+  Object.fromEntries(
+    Object.entries(metadata).filter(([key]) => SAFE_LABEL_LOG_FIELDS.has(key)),
+  );
+
 export const extractEnviaErrorMetadata = (enviaResponse: unknown) => {
   if (!enviaResponse || typeof enviaResponse !== 'object') return null;
 
@@ -145,10 +161,8 @@ export const extractEnviaErrorMetadata = (enviaResponse: unknown) => {
       : {};
 
   return {
-    meta: response.meta ?? null,
+    topLevelKeys: Object.keys(response).sort(),
     code: response.code ?? nestedError.code ?? null,
-    message: response.message ?? nestedError.message ?? null,
-    description: response.description ?? nestedError.description ?? null,
   };
 };
 
@@ -213,7 +227,7 @@ const collectAmountCandidates = (
                     priority: 2,
                   },
                 ]
-            : []
+              : []
         : [];
 
     if (nestedValue && typeof nestedValue === 'object') {

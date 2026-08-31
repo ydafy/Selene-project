@@ -2,12 +2,13 @@
  * @file core/hooks/useSession.ts
  * @description Motor de gestión de sesiones de Selene.
  * Implementa el patrón "Identity Anchor" para asegurar sincronización entre
- * Supabase Auth y la tabla Profiles de la base de datos.
+ * Supabase Auth y la tabla profiles_private (estados de baneo y suspensión).
  */
 
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../db/supabase';
 import { Session } from '@supabase/supabase-js';
+import { AccountStatus } from '@selene/types';
 
 const INITIALIZATION_TIMEOUT = 10000;
 
@@ -15,7 +16,36 @@ export const useSession = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [accountStatus, setAccountStatus] = useState<AccountStatus>('active');
+  const [statusReason, setStatusReason] = useState<string | null>(null);
   const isMounted = useRef(true);
+
+  // Función auxiliar para cargar el status de profiles_private
+  const fetchAccountStatus = async (userId: string) => {
+    try {
+      const { data: privateProfile, error: profileError } = await supabase
+        .from('profiles_private')
+        .select('status, status_reason')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (profileError) {
+        console.error(
+          '[AUTH] Error consultando profiles_private:',
+          profileError.message,
+        );
+        return;
+      }
+
+      if (privateProfile && isMounted.current) {
+        console.log('[AUTH STATUS CARGADO]', privateProfile.status);
+        setAccountStatus(privateProfile.status || 'active');
+        setStatusReason(privateProfile.status_reason || null);
+      }
+    } catch (e) {
+      console.error('[AUTH] Fallo al consultar status:', e);
+    }
+  };
 
   useEffect(() => {
     isMounted.current = true;
@@ -37,15 +67,7 @@ export const useSession = () => {
 
         if (currentSession && isMounted.current) {
           setSession(currentSession);
-
-          // Pre-vuelo de Perfil (Mantenemos tu lógica Senior)
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('id', currentSession.user.id)
-            .maybeSingle();
-
-          if (!profile) console.warn('[AUTH] Perfil no encontrado.');
+          await fetchAccountStatus(currentSession.user.id);
         }
       } catch (err) {
         if (isMounted.current) {
@@ -56,7 +78,6 @@ export const useSession = () => {
           setError(normalizedError);
         }
       } finally {
-        // apagamos el loading. Este es el único lugar donde loading pasa a false.
         clearTimeout(timeoutId);
         if (isMounted.current) setLoading(false);
       }
@@ -67,30 +88,27 @@ export const useSession = () => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-      console.log(`[AUTH_EVENT] ${event}`);
-
       if (isMounted.current) {
-        // USER_UPDATED fires after email confirmation / password change.
-        // The cached session may still have stale user data — force a server
-        // round-trip so session.user.email is guaranteed fresh.
         if (event === 'USER_UPDATED' && newSession) {
           const { data: fresh } = await supabase.auth.getUser();
           if (fresh.user) {
             setSession({ ...newSession, user: fresh.user });
+            await fetchAccountStatus(fresh.user.id);
             return;
           }
         }
 
         setSession(newSession);
 
-        /**
-         * CAMBIO CRÍTICO:
-         * Si el evento es SIGNED_IN (login exitoso), NO tocamos el loading.
-         * El loading ya es 'false' desde que la app arrancó.
-         * Esto evita que el AuthProvider parpadee y RootLayout reinicie la app.
-         */
+        if (newSession?.user) {
+          // 🚀 VITAL: Consultamos el status cada vez que hay una sesión activa
+          await fetchAccountStatus(newSession.user.id);
+        }
+
         if (event === 'SIGNED_OUT') {
           setLoading(false);
+          setAccountStatus('active');
+          setStatusReason(null);
         }
       }
     });
@@ -101,5 +119,13 @@ export const useSession = () => {
     };
   }, []);
 
-  return { session, loading, error };
+  return {
+    session,
+    loading,
+    error,
+    accountStatus,
+    statusReason,
+    isBanned: accountStatus === 'banned',
+    isSuspended: accountStatus === 'suspended',
+  };
 };

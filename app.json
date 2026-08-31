@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "f5f38257-7ffd-48a3-a6e7-3254013a0e89"
+      }
+    },
+    "android": {
+      "package": "com.alvaroest19.selenemonorepo"
+    }
+  }
+}

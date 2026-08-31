@@ -1,14 +1,25 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import {
+  createClient,
+  type SupabaseClient,
+} from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import Stripe from 'https://esm.sh/stripe@17.0.0';
 
+import type {
+  Database,
+  Json,
+} from '../../../packages/types/src/database.types.ts';
 import { normalizeAccountStatus } from '../_shared/connect-status.ts';
+import { extractStripeChargeId } from '../_shared/stripe-charge.ts';
+import { compensateRecoveryShell } from '../checkout-recovery-worker/recovery.ts';
 import { reconcileConnectPayoutEvent } from './connect-payout-reconciliation.ts';
 import {
   SINGLE_MODAL_FLOW,
   buildSettlementOutcome,
+  buildRecoveryShellInput,
   buildStripeFeeReconciliationPlan,
   resolvePaymentIntentSucceededAction,
+  type RecoveryShellInput,
   type SingleModalSettlementInput,
 } from './single-modal-settlement.ts';
 
@@ -46,28 +57,36 @@ const RECOVERABLE_MISSING_PAYOUT_ID_STATUSES = [
   'reconciliation_needed',
 ];
 
-const extractStripeChargeId = (intent: Stripe.PaymentIntent): string | null => {
-  const latestCharge = intent.latest_charge;
-  if (typeof latestCharge === 'string' && latestCharge.length > 0) {
-    return latestCharge;
-  }
+type SupabaseAdminClient = SupabaseClient<Database>;
 
+const isJson = (value: unknown): value is Json => {
   if (
-    latestCharge &&
-    typeof latestCharge === 'object' &&
-    'id' in latestCharge &&
-    typeof latestCharge.id === 'string' &&
-    latestCharge.id.length > 0
+    value === null ||
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
   ) {
-    return latestCharge.id;
+    return true;
   }
 
-  const firstCharge = intent.charges?.data?.[0];
-  if (firstCharge && typeof firstCharge.id === 'string' && firstCharge.id.length > 0) {
-    return firstCharge.id;
+  if (Array.isArray(value)) {
+    return value.every(isJson);
   }
 
-  return null;
+  if (typeof value === 'object') {
+    return Object.values(value).every(isJson);
+  }
+
+  return false;
+};
+
+const getWebhookEventType = (payload: Json): string => {
+  if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+    const eventType = payload.type;
+    if (typeof eventType === 'string') return eventType;
+  }
+
+  return 'unknown_parse_error';
 };
 
 const buildSingleModalAllocationPayload = (
@@ -90,6 +109,111 @@ const buildSingleModalAllocationPayload = (
   })),
 });
 
+async function compensateSemanticCheckoutRecovery(
+  supabaseAdmin: SupabaseAdminClient,
+  intent: Stripe.PaymentIntent,
+  chargeId: string,
+  reason: string,
+  recoveryShell: RecoveryShellInput,
+) {
+  const { data: shellData, error: shellError } = await supabaseAdmin.rpc(
+    'fn_upsert_checkout_recovery_shell' as never,
+    {
+      p_stripe_payment_intent_id: intent.id,
+      p_reason: reason,
+      p_source_metadata: recoveryShell.sourceMetadata,
+      p_charged_amount_cents: recoveryShell.chargedAmountCents,
+      p_stripe_charge_id: chargeId,
+    } as never,
+  );
+  if (shellError)
+    throw new Error(`CHECKOUT_RECOVERY_SHELL_FAILED: ${shellError.message}`);
+  const recoveryRuntimeVersion =
+    shellData &&
+    typeof shellData === 'object' &&
+    'runtime_version' in shellData &&
+    typeof shellData.runtime_version === 'string'
+      ? shellData.runtime_version
+      : null;
+
+  const charge = (await stripe.charges.retrieve(chargeId)) as Stripe.Charge & {
+    transfer?: string | { id?: string } | null;
+  };
+  const hasDestinationTransfer = Boolean(charge.transfer);
+
+  const result = await compensateRecoveryShell(
+    { paymentIntentId: intent.id, hasDestinationTransfer },
+    {
+      claim: async () => {
+        const { data, error } = await supabaseAdmin.rpc(
+          'fn_claim_checkout_recovery_shells' as never,
+          { p_limit: 1, p_stripe_payment_intent_id: intent.id } as never,
+        );
+        if (error)
+          throw new Error(`CHECKOUT_RECOVERY_CLAIM_FAILED: ${error.message}`);
+        const claims = (data ?? []) as Array<{
+          stripe_payment_intent_id: string;
+        }>;
+        return claims.some(
+          (claim) => claim.stripe_payment_intent_id === intent.id,
+        )
+          ? { kind: 'claimed' as const }
+          : { kind: 'busy' as const };
+      },
+      createRefund: async (params) => {
+        const refund = await stripe.refunds.create(
+          {
+            payment_intent: params.paymentIntentId,
+            ...(params.reverseTransfer ? { reverse_transfer: true } : {}),
+          },
+          { idempotencyKey: params.idempotencyKey },
+        );
+        if (!refund.id || refund.status !== 'succeeded') {
+          throw new Error(
+            `STRIPE_REFUND_NOT_CONFIRMED:${refund.status ?? 'unknown'}`,
+          );
+        }
+        return { id: refund.id };
+      },
+      finalize: async ({ refundId }) => {
+        const { error } = await supabaseAdmin.rpc(
+          'fn_finalize_checkout_recovery' as never,
+          {
+            p_stripe_payment_intent_id: intent.id,
+            p_stripe_refund_id: refundId,
+          } as never,
+        );
+        if (error)
+          throw new Error(
+            `CHECKOUT_RECOVERY_FINALIZE_FAILED: ${error.message}`,
+          );
+      },
+      queueRetry: async ({ error: retryError }) => {
+        const { error } = await supabaseAdmin.rpc(
+          'fn_mark_checkout_recovery_retry' as never,
+          {
+            p_stripe_payment_intent_id: intent.id,
+            p_error: retryError,
+          } as never,
+        );
+        if (error)
+          throw new Error(
+            `CHECKOUT_RECOVERY_RETRY_QUEUE_FAILED: ${error.message}`,
+          );
+      },
+    },
+  );
+
+  log('WARN', 'Checkout recovery compensation result', {
+    intentId: intent.id,
+    reason,
+    result: result.kind,
+    recoveryRuntimeVersion,
+  });
+
+  return { recoveryRuntimeVersion };
+}
+
 type ConnectPayoutRunRow = {
   id: string;
   status: string;
@@ -97,7 +221,7 @@ type ConnectPayoutRunRow = {
 };
 
 async function findConnectPayoutRun(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: SupabaseAdminClient,
   input: { payoutId: string; metadataRunId?: string | null },
 ): Promise<ConnectPayoutRunRow | null> {
   const { data: payoutRun, error: payoutRunError } = await supabaseAdmin
@@ -131,7 +255,7 @@ async function findConnectPayoutRun(
 }
 
 async function attachConnectPayoutRunPayoutId(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: SupabaseAdminClient,
   input: { runId: string; stripePayoutId: string },
 ) {
   const { data, error } = await supabaseAdmin
@@ -151,7 +275,7 @@ async function attachConnectPayoutRunPayoutId(
 }
 
 async function markConnectPayoutRunStatus(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: SupabaseAdminClient,
   input: {
     runId: string;
     status: 'paid' | 'failed' | 'canceled';
@@ -179,7 +303,7 @@ async function markConnectPayoutRunStatus(
 }
 
 async function markConnectPayoutRunShipmentsStatus(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: SupabaseAdminClient,
   input: { runId: string; status: 'paid' | 'failed' | 'canceled' },
 ) {
   const { error } = await supabaseAdmin
@@ -190,7 +314,7 @@ async function markConnectPayoutRunShipmentsStatus(
 }
 
 async function listConnectPayoutRunShipmentIds(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: SupabaseAdminClient,
   runId: string,
 ): Promise<string[]> {
   const { data, error } = await supabaseAdmin
@@ -205,7 +329,7 @@ async function listConnectPayoutRunShipmentIds(
 }
 
 async function markConnectShipmentsReleased(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: SupabaseAdminClient,
   input: { shipmentIds: string[]; stripePayoutId: string },
 ) {
   if (input.shipmentIds.length === 0) {
@@ -264,7 +388,7 @@ async function markConnectShipmentsReleased(
 }
 
 async function markConnectPayoutRunReconciliationNeeded(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: SupabaseAdminClient,
   input: { runId: string; failureReason: string },
 ) {
   const { error } = await supabaseAdmin
@@ -307,7 +431,7 @@ serve(async (req: Request) => {
       );
     }
 
-    const supabaseAdmin = createClient(
+    const supabaseAdmin = createClient<Database>(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
@@ -390,10 +514,7 @@ serve(async (req: Request) => {
               orderRow.actual_stripe_fee_cents ?? null,
             charge: charge as unknown as {
               id: string;
-              balance_transaction?:
-                | string
-                | { fee?: number | null }
-                | null;
+              balance_transaction?: string | { fee?: number | null } | null;
             },
             reconciledAt: new Date().toISOString(),
           });
@@ -403,27 +524,33 @@ serve(async (req: Request) => {
           }
 
           if (feePlan.kind === 'ready') {
-            const { data: updatedRows, error: updateError } = await supabaseAdmin
-              .from('orders')
-              .update({
-                actual_stripe_fee_cents: feePlan.actualStripeFeeCents,
-                stripe_fee_reconciled_at: feePlan.stripeFeeReconciledAt,
-                updated_at: feePlan.stripeFeeReconciledAt,
-              })
-              .eq('id', action.payload.orderId)
-              .is('actual_stripe_fee_cents', null)
-              .select('id');
+            const { data: updatedRows, error: updateError } =
+              await supabaseAdmin
+                .from('orders')
+                .update({
+                  actual_stripe_fee_cents: feePlan.actualStripeFeeCents,
+                  stripe_fee_reconciled_at: feePlan.stripeFeeReconciledAt,
+                  updated_at: feePlan.stripeFeeReconciledAt,
+                })
+                .eq('id', action.payload.orderId)
+                .is('actual_stripe_fee_cents', null)
+                .select('id');
 
             if (updateError) {
-              throw new Error(`ORDER_STRIPE_FEE_UPDATE_FAILED: ${updateError.message}`);
+              throw new Error(
+                `ORDER_STRIPE_FEE_UPDATE_FAILED: ${updateError.message}`,
+              );
             }
 
-            if (((updatedRows as Array<{ id: string }> | null) ?? []).length !== 1) {
-              const { data: refreshedOrder, error: refreshError } = await supabaseAdmin
-                .from('orders')
-                .select('actual_stripe_fee_cents')
-                .eq('id', action.payload.orderId)
-                .single();
+            if (
+              ((updatedRows as Array<{ id: string }> | null) ?? []).length !== 1
+            ) {
+              const { data: refreshedOrder, error: refreshError } =
+                await supabaseAdmin
+                  .from('orders')
+                  .select('actual_stripe_fee_cents')
+                  .eq('id', action.payload.orderId)
+                  .single();
 
               if (refreshError) {
                 throw new Error(
@@ -441,9 +568,23 @@ serve(async (req: Request) => {
         }
 
         if (outcome.kind === 'recovered') {
+          let recoveryRuntimeVersion: string | null = null;
+          if (outcome.classification.refundRequired) {
+            ({ recoveryRuntimeVersion } =
+              await compensateSemanticCheckoutRecovery(
+                supabaseAdmin,
+                intent,
+                chargeId,
+                outcome.reason,
+                buildRecoveryShellInput(intent),
+              ));
+          }
           log('WARN', 'Single-modal settlement recovered for ops retry', {
             intentId: intent.id,
             reason: outcome.reason,
+            classification: outcome.classification.kind,
+            runtimeSettlementVersion: outcome.runtimeVersion,
+            recoveryRuntimeVersion,
           });
           return new Response(JSON.stringify({ received: true }), {
             status: 200,
@@ -460,38 +601,51 @@ serve(async (req: Request) => {
         throw new Error(outcome.message);
       }
 
-      // Connect path: PaymentIntent has seller_id metadata → per-seller PI
-      if (action.kind === 'connect_per_seller' || intent.metadata.seller_id) {
-        log('INFO', 'Procesando Connect PaymentIntent', {
+      if (action.kind === 'retired_grouped_settlement') {
+        const chargeId = extractStripeChargeId(intent);
+        if (!chargeId) throw new Error('MISSING_STRIPE_CHARGE_ID');
+        const { recoveryRuntimeVersion } =
+          await compensateSemanticCheckoutRecovery(
+            supabaseAdmin,
+            intent,
+            chargeId,
+            action.reason,
+            action.recoveryShell,
+          );
+        log('WARN', 'Rejected retired seller-grouped settlement', {
           intentId: intent.id,
-          seller_id: intent.metadata.seller_id,
-          order_group_id: intent.metadata.order_group_id,
+          reason: action.reason,
+          classification: 'semantic',
+          recoveryRuntimeVersion,
         });
-
-        const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc(
-          'fn_create_shipment_from_payment',
+        return new Response(
+          JSON.stringify({
+            received: true,
+            retired: 'LEGACY_GROUPED_SHIPMENT_SETTLEMENT_RETIRED',
+          }),
           {
-            p_stripe_payment_intent_id: intent.id,
-            p_amount_received: intent.amount,
-            p_metadata: intent.metadata,
+            status: 200,
           },
         );
+      }
 
-        if (rpcError) {
-          log('ERROR', 'Connect shipment creation failed', {
-            error: rpcError.message,
-            intentId: intent.id,
-          });
-          throw new Error(
-            `Connect shipment creation failed: ${rpcError.message}`,
+      if (action.kind === 'invalid_single_modal_metadata') {
+        const chargeId = extractStripeChargeId(intent);
+        if (!chargeId) throw new Error('MISSING_STRIPE_CHARGE_ID');
+        const { recoveryRuntimeVersion } =
+          await compensateSemanticCheckoutRecovery(
+            supabaseAdmin,
+            intent,
+            chargeId,
+            action.reason,
+            action.recoveryShell,
           );
-        }
-
-        log('INFO', 'Connect shipment created', {
+        log('WARN', 'Single-modal metadata requires checkout recovery', {
           intentId: intent.id,
-          result: rpcData,
+          reason: action.reason,
+          classification: 'semantic',
+          recoveryRuntimeVersion,
         });
-
         return new Response(JSON.stringify({ received: true }), {
           status: 200,
         });
@@ -513,7 +667,12 @@ serve(async (req: Request) => {
             .in('id', productIdsArray),
         ]);
 
-        if (!settings || !dbProducts)
+        if (
+          !settings ||
+          !dbProducts ||
+          settings.service_fee_pct === null ||
+          settings.service_fee_fixed_cents === null
+        )
           throw new Error('Configuración o productos no encontrados');
 
         const realSubtotalCents = Math.round(
@@ -683,21 +842,22 @@ serve(async (req: Request) => {
     log('ERROR', 'Fallo crítico en Webhook', { error: message });
 
     try {
-      const supabaseAdmin = createClient(
+      const supabaseAdmin = createClient<Database>(
         Deno.env.get('SUPABASE_URL') ?? '',
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       );
 
-      let payloadObj: Record<string, unknown> = {};
+      let payload: Json = {};
       try {
-        payloadObj = JSON.parse(rawBody || '{}');
+        const parsed: unknown = JSON.parse(rawBody || '{}');
+        if (isJson(parsed)) payload = parsed;
       } catch {
         // Silencioso por seguridad: si falla el parseo, cae en el fallback de objeto vacío.
       }
 
       await supabaseAdmin.from('webhook_dlq').insert({
-        event_type: (payloadObj.type as string) || 'unknown_parse_error',
-        payload: payloadObj,
+        event_type: getWebhookEventType(payload),
+        payload,
         error_message: message,
       });
       log('INFO', 'Evento fallido guardado en DLQ exitosamente');

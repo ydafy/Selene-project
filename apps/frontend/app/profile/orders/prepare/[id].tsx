@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useMemo } from 'react';
-import { ScrollView, Linking } from 'react-native';
+import { ScrollView, Linking, TouchableOpacity } from 'react-native';
 import {
   Stack,
   useLocalSearchParams,
@@ -34,7 +34,13 @@ import { useAuthContext } from '@/components/auth/AuthProvider';
 import { useConnectOnboarding } from '../../../../core/hooks/useConnectOnboarding';
 
 export default function PrepareShipmentScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, shipment_id } = useLocalSearchParams<{
+    id: string;
+    shipment_id?: string;
+  }>();
+  const selectedShipmentId = Array.isArray(shipment_id)
+    ? shipment_id[0]
+    : shipment_id;
   const { t } = useTranslation(['orders', 'common']);
   const theme = useTheme<Theme>();
   const router = useRouter();
@@ -56,11 +62,27 @@ export default function PrepareShipmentScreen() {
     shipments: order?.shipments,
   });
 
-  const sellerShipment = useMemo(() => {
-    return order?.shipments?.find((s) => s.seller_id === userId) ?? null;
+  const sellerShipments = useMemo(() => {
+    return (
+      order?.shipments?.filter((shipment) => shipment.seller_id === userId) ??
+      []
+    );
   }, [order?.shipments, userId]);
 
-  const targetShipmentId = sellerShipment?.id;
+  const selectedShipment = useMemo(() => {
+    if (!selectedShipmentId) return null;
+    return (
+      sellerShipments.find((shipment) => shipment.id === selectedShipmentId) ??
+      null
+    );
+  }, [selectedShipmentId, sellerShipments]);
+
+  const targetShipmentId = selectedShipment?.id;
+  const selectedShipmentTotal =
+    selectedShipment?.items.reduce(
+      (total, item) => total + Number(item.price_at_purchase),
+      0,
+    ) ?? 0;
 
   const { isComplete: onboardingDone, isLoading: onboardingLoading } =
     useConnectOnboarding(userId);
@@ -75,7 +97,12 @@ export default function PrepareShipmentScreen() {
   }, []);
 
   const handleConfirm = async () => {
-    if (!selectedOrigin || order?.status !== 'paid' || evidenceUrls.length < 3)
+    if (
+      !selectedOrigin ||
+      !targetShipmentId ||
+      selectedShipment?.status !== 'paid' ||
+      evidenceUrls.length < 3
+    )
       return;
 
     const auth = await authenticateAsync(t('orders:prepare.securityReason'));
@@ -83,8 +110,8 @@ export default function PrepareShipmentScreen() {
 
     try {
       const result = await actions.generateLabel.execute({
-        shipmentId: targetShipmentId || undefined,
-        originAddress: selectedOrigin,
+        shipmentId: targetShipmentId,
+        originAddressId: selectedOrigin.id,
         shippingEvidence: { images: evidenceUrls },
       });
       console.log('[DEBUG] Sending evidenceUrls:', evidenceUrls);
@@ -140,6 +167,50 @@ export default function PrepareShipmentScreen() {
           subtitle={t('orders:prepare.subtitle')}
         />
 
+        <Box
+          backgroundColor="cardBackground"
+          padding="m"
+          borderRadius="l"
+          marginTop="l"
+          marginBottom="l"
+          borderWidth={1}
+          borderColor="separator"
+        >
+          {sellerShipments.map((shipment) => (
+            <TouchableOpacity
+              key={shipment.id}
+              onPress={() => router.setParams({ shipment_id: shipment.id })}
+            >
+              <Box
+                flexDirection="row"
+                alignItems="center"
+                justifyContent="space-between"
+                paddingVertical="s"
+                borderBottomWidth={1}
+                borderBottomColor="separator"
+              >
+                <Box flex={1}>
+                  <Text variant="body-md">
+                    {shipment.items[0]?.product?.name ?? 'Producto'}
+                  </Text>
+                  <Text variant="caption-md" color="textSecondary">
+                    {shipment.status}
+                  </Text>
+                </Box>
+                <MaterialCommunityIcons
+                  name={
+                    selectedShipment?.id === shipment.id
+                      ? 'check-circle'
+                      : 'chevron-right'
+                  }
+                  size={20}
+                  color={theme.colors.primary}
+                />
+              </Box>
+            </TouchableOpacity>
+          ))}
+        </Box>
+
         <Box marginTop="l">
           <AddressSection
             label={t('orders:prepare.originLabel')}
@@ -150,6 +221,32 @@ export default function PrepareShipmentScreen() {
           />
         </Box>
 
+        <Box>
+          <Text variant="subheader-lg" marginBottom="m" color="primary">
+            Evidecia de envío
+          </Text>
+        </Box>
+        <Box
+          backgroundColor="cardBackground"
+          padding="m"
+          borderRadius="l"
+          marginBottom="l"
+        >
+          <Text
+            style={{ lineHeight: 20 }}
+            variant="body-sm"
+            color="textSecondary"
+          >
+            Deves subir al menos 3 fotos de evidencia del paquete y su contenido
+            para poder generar la etiqueta de envío.
+          </Text>
+        </Box>
+
+        <EvidenceUploadSection
+          orderId={id || ''}
+          userId={userId || ''}
+          onEvidenceComplete={(urls) => setEvidenceUrls(urls)}
+        />
         <Box
           backgroundColor="cardBackground"
           padding="m"
@@ -170,7 +267,9 @@ export default function PrepareShipmentScreen() {
             <Text variant="body-md" color="textSecondary">
               {t('orders:prepare.totalSale')}
             </Text>
-            <Text variant="body-md">{formatCurrency(order.total_amount)}</Text>
+            <Text variant="body-md">
+              {formatCurrency(selectedShipmentTotal)}
+            </Text>
           </Box>
 
           <Box
@@ -191,12 +290,6 @@ export default function PrepareShipmentScreen() {
             </Text>
           </Box>
         </Box>
-
-        <EvidenceUploadSection
-          orderId={id || ''}
-          userId={userId || ''}
-          onEvidenceComplete={(urls) => setEvidenceUrls(urls)}
-        />
 
         {errorMsg && (
           <Box
@@ -257,6 +350,8 @@ export default function PrepareShipmentScreen() {
             loading={actions.generateLabel.isLoading}
             disabled={
               !selectedOrigin ||
+              !targetShipmentId ||
+              selectedShipment?.status !== 'paid' ||
               actions.generateLabel.isLoading ||
               evidenceUrls.length < 3
             }

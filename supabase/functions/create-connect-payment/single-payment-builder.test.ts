@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'bun:test';
+import { createHash } from 'node:crypto';
 
 import {
   STRIPE_ALLOCATION_VALUE_MAX_LEN,
   SINGLE_MODAL_FLOW,
+  assertValidAllocationRows,
   assertReservationSucceeded,
   buildAllocationMetadata,
   buildCheckoutIdentifiers,
@@ -10,6 +12,7 @@ import {
   buildSinglePaymentIntentParams,
   buildTransferGroup,
   chunkAllocationJson,
+  deriveShipmentId,
   normalizeCreateConnectPaymentRequest,
   type ReservationResult,
 } from './single-payment-builder.ts';
@@ -606,13 +609,30 @@ describe('single-payment-builder > buildCheckoutIdentifiers', () => {
     expect(a.transferGroup).not.toBe(b.transferGroup);
   });
 
-  it('produces collision-free shipment ids per seller for the same idempotency key', () => {
+  it('produces collision-free shipment ids per product for the same idempotency key', () => {
     const ids = buildCheckoutIdentifiers('shared-key', dummyRandomUuid);
-    expect(ids.shipmentIdFor('seller_a')).not.toBe(ids.shipmentIdFor('seller_b'));
-    // Stable on retrial per seller — required so the webhook persists the same
-    // shipment id on a retry without duplicating shipments.
+    expect(ids.shipmentIdFor('product_a')).not.toBe(ids.shipmentIdFor('product_b'));
+    // Stable on retrial per product — required so the webhook persists the same
+    // shipment id on a retry without duplicating product shipments.
     const again = buildCheckoutIdentifiers('shared-key', dummyRandomUuid);
-    expect(again.shipmentIdFor('seller_a')).toBe(ids.shipmentIdFor('seller_a'));
+    expect(again.shipmentIdFor('product_a')).toBe(ids.shipmentIdFor('product_a'));
+  });
+
+  it('does not collapse two listings from the same seller into one shipment id', () => {
+    const ids = buildCheckoutIdentifiers('shared-key', dummyRandomUuid);
+
+    expect(ids.shipmentIdFor('product_gpu')).not.toBe(
+      ids.shipmentIdFor('product_cpu'),
+    );
+  });
+
+  it('namespaces the deterministic shipment hash with the product identity', () => {
+    const expectedHex = createHash('sha256')
+      .update('selene_shipment:shared-key:product:product_gpu', 'utf8')
+      .digest('hex');
+    const expected = `${expectedHex.slice(0, 8)}-${expectedHex.slice(8, 12)}-${expectedHex.slice(12, 16)}-${expectedHex.slice(16, 20)}-${expectedHex.slice(20, 32)}`;
+
+    expect(deriveShipmentId('shared-key', 'product_gpu')).toBe(expected);
   });
 
   it('emits RFC-4122-formatted 36-char ids derived from the idempotency key', () => {
@@ -681,5 +701,43 @@ describe('single-payment-builder > buildCreateConnectPaymentResponse', () => {
     expect(response).not.toHaveProperty('paymentIntents');
     expect((response as unknown as Record<string, unknown>).paymentIntents).toBeUndefined();
     expect(response.clientSecret).toBe('cs_1');
+  });
+});
+
+describe('single-payment-builder > assertValidAllocationRows', () => {
+  it('accepts one deterministic shipment row for each requested product', () => {
+    expect(() =>
+      assertValidAllocationRows({
+        requestedProductIds: ['product_gpu', 'product_cpu'],
+        rows: [
+          { shipmentId: 'shipment_gpu', productIds: ['product_gpu'] },
+          { shipmentId: 'shipment_cpu', productIds: ['product_cpu'] },
+        ],
+      }),
+    ).not.toThrow();
+  });
+
+  it('rejects a grouped or duplicate shipment allocation before Stripe is charged', () => {
+    expect(() =>
+      assertValidAllocationRows({
+        requestedProductIds: ['product_gpu', 'product_cpu'],
+        rows: [
+          {
+            shipmentId: 'shipment_shared',
+            productIds: ['product_gpu', 'product_cpu'],
+          },
+        ],
+      }),
+    ).toThrow('ONE_PRODUCT_PER_SHIPMENT_REQUIRED');
+
+    expect(() =>
+      assertValidAllocationRows({
+        requestedProductIds: ['product_gpu', 'product_cpu'],
+        rows: [
+          { shipmentId: 'shipment_shared', productIds: ['product_gpu'] },
+          { shipmentId: 'shipment_shared', productIds: ['product_cpu'] },
+        ],
+      }),
+    ).toThrow('ONE_PRODUCT_PER_SHIPMENT_REQUIRED');
   });
 });

@@ -12,7 +12,7 @@ import { useTheme } from '@shopify/restyle';
 import { Box, Text } from '../../base';
 import { AppImage } from '../../ui/AppImage';
 import { PrimaryButton } from '../../ui/PrimaryButton';
-import { EnrichedShipment, Profile } from '@selene/types';
+import { EnrichedShipment } from '@selene/types';
 import { Theme } from '@/core/theme';
 import { formatCurrency } from '@/core/utils/format';
 import {
@@ -36,16 +36,6 @@ interface OrderShipmentCardProps {
 
 const AVATAR_SIZE = 36;
 const THUMBNAIL_SIZE = 40;
-const VISIBLE_ITEMS_LIMIT = 2;
-
-/** Inline dispute status labels (no existing i18n keys for these values). */
-const DISPUTE_STATUS_LABELS: Record<string, string> = {
-  open: 'Disputa abierta',
-  waiting_return: 'Esperando devolución',
-  return_shipped: 'Devolución en tránsito',
-  return_delivered: 'Devolución entregada',
-  resolved: 'Disputa resuelta',
-};
 
 // ---------------------------------------------------------------------------
 // Component
@@ -62,21 +52,18 @@ export const OrderShipmentCard = ({
   const theme = useTheme<Theme>();
   const { t } = useTranslation(['orders', 'common']);
 
-  // Runtime seller join (EnrichedShipment extends Shipment, but the hook
-  // spreads a `seller` join from the raw Supabase query).
-  const s = shipment as EnrichedShipment & { seller: Profile | null };
-
   // --- Derived data ---
   const statusColorKey = getOrderStatusColor(shipment.status);
   const statusColor = theme.colors[statusColorKey] as string;
   const statusLabel = t(getOrderStatusLabel(shipment.status));
 
-  const visibleItems = shipment.items.slice(0, VISIBLE_ITEMS_LIMIT);
-  const remainingCount = shipment.items.length - VISIBLE_ITEMS_LIMIT;
-
+  const item = shipment.items[0];
   const totalAmount = shipment.items.reduce(
-    (sum, item) => sum + Number(item.price_at_purchase),
+    (sum, shipmentItem) => sum + Number(shipmentItem.price_at_purchase),
     0,
+  );
+  const [failedAvatarUrl, setFailedAvatarUrl] = React.useState<string | null>(
+    null,
   );
 
   // Whether the card has interactive content (always true — manage button)
@@ -85,9 +72,8 @@ export const OrderShipmentCard = ({
   // Pre-compute status line so we only render it once
   const statusLineContent = (() => {
     if (shipment.dispute) {
-      const disputeLabel =
-        DISPUTE_STATUS_LABELS[shipment.dispute.status ?? ''] ??
-        shipment.dispute.status;
+      const disputeStatus = shipment.dispute.status ?? 'open';
+      const disputeLabel = t(`card.disputeStatus.${disputeStatus}`);
       return (
         <Box flexDirection="row" alignItems="center">
           <MaterialCommunityIcons
@@ -136,7 +122,9 @@ export const OrderShipmentCard = ({
   // --- Render helpers ---
 
   const renderAvatar = () => {
-    const firstLetter = s.seller?.username?.charAt(0).toUpperCase();
+    const avatarUrl = shipment.seller?.avatar_url?.trim();
+    const firstLetter = shipment.seller?.username?.charAt(0).toUpperCase();
+    const hasAvatar = !!avatarUrl && failedAvatarUrl !== avatarUrl;
 
     return (
       <Box
@@ -147,8 +135,16 @@ export const OrderShipmentCard = ({
         justifyContent="center"
         alignItems="center"
         marginRight="s"
+        overflow="hidden"
       >
-        {firstLetter ? (
+        {hasAvatar ? (
+          <AppImage
+            source={{ uri: avatarUrl }}
+            style={{ width: AVATAR_SIZE, height: AVATAR_SIZE }}
+            contentFit="cover"
+            onError={() => setFailedAvatarUrl(avatarUrl ?? null)}
+          />
+        ) : firstLetter ? (
           <Text variant="body-md" color="background" fontWeight="bold">
             {firstLetter}
           </Text>
@@ -169,6 +165,8 @@ export const OrderShipmentCard = ({
         backgroundColor: 'rgba(0, 0, 0, 0.6)',
         borderColor: statusColor,
         borderWidth: 1,
+        alignSelf: 'flex-start',
+        flexShrink: 0,
       }}
       paddingHorizontal="s"
       paddingVertical="xs"
@@ -185,7 +183,14 @@ export const OrderShipmentCard = ({
   );
 
   const renderItemRow = (item: EnrichedShipment['items'][number]) => (
-    <Box key={item.id} flexDirection="row" alignItems="center" marginBottom="m">
+    <Box
+      key={item.id}
+      flexDirection="row"
+      alignItems="center"
+
+      paddingVertical="s"
+      gap="s"
+    >
       {/* Thumbnail */}
       <Box
         width={THUMBNAIL_SIZE}
@@ -193,6 +198,7 @@ export const OrderShipmentCard = ({
         borderRadius="s"
         backgroundColor="background"
         overflow="hidden"
+        style={{ flexShrink: 0 }}
       >
         {item.product?.images?.[0] ? (
           <AppImage
@@ -217,14 +223,14 @@ export const OrderShipmentCard = ({
       </Box>
 
       {/* Name */}
-      <Box flex={1} marginLeft="s">
-        <Text variant="body-md" numberOfLines={1}>
-          {item.product?.name || 'Producto'}
+      <Box flex={1} style={{ minWidth: 0 }}>
+        <Text variant="body-md" numberOfLines={2} style={{ flexShrink: 1 }}>
+          {item.product?.name || t('card.unknownProduct')}
         </Text>
       </Box>
 
       {/* Price */}
-      <Text variant="caption-md" marginLeft="s">
+      <Text variant="caption-md" style={{ flexShrink: 0 }}>
         {formatCurrency(item.price_at_purchase)}
       </Text>
     </Box>
@@ -239,9 +245,7 @@ export const OrderShipmentCard = ({
           onPress={() => onPress?.(shipment.id)}
           style={{ width: '100%' }}
         >
-          {t('actions.managePackage', {
-            defaultValue: 'Gestionar Paquete',
-          })}
+          {t('actions.managePackage')}
         </PrimaryButton>
       </Box>
     );
@@ -263,28 +267,24 @@ export const OrderShipmentCard = ({
         marginBottom="m"
       >
         {/* -- Header Row -- */}
-        <Box flexDirection="row" alignItems="center" marginBottom="s">
+        <Box
+          flexDirection="row"
+          alignItems="center"
+          marginBottom="s"
+          flexWrap="wrap"
+          gap="xs"
+        >
           {renderAvatar()}
-          <Box flex={1} marginLeft="s">
-            <Text variant="body-md" numberOfLines={1}>
-              {s.seller?.username || 'Vendedor'}
+          <Box flex={1} style={{ minWidth: 96, flexShrink: 1 }}>
+            <Text variant="body-md" numberOfLines={1} style={{ flexShrink: 1 }}>
+              {shipment.seller?.username || t('card.unknownSeller')}
             </Text>
           </Box>
           {renderStatusBadge()}
         </Box>
 
-        {/* -- Items List -- */}
-        <Box marginBottom="s">
-          {visibleItems.map(renderItemRow)}
-
-          {remainingCount > 0 && (
-            <Box alignItems="flex-start" paddingTop="xs">
-              <Text variant="caption-md">
-                +{remainingCount} {t('card.moreItems')}
-              </Text>
-            </Box>
-          )}
-        </Box>
+        {/* -- Product -- */}
+        <Box marginBottom="s">{item ? renderItemRow(item) : null}</Box>
 
         {/* -- Status Line -- */}
         {statusLineContent && <Box marginBottom="s">{statusLineContent}</Box>}
@@ -294,7 +294,11 @@ export const OrderShipmentCard = ({
 
         {/* -- Total Price -- */}
         <Box flexDirection="row" justifyContent="flex-end">
-          <Text variant="header-xl" color="primary">
+          <Text
+            variant="header-xl"
+            color="primary"
+            style={{ flexShrink: 1, textAlign: 'right' }}
+          >
             {formatCurrency(totalAmount)}
           </Text>
         </Box>

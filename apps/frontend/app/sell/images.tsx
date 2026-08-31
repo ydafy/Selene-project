@@ -84,7 +84,7 @@ export default function SellImagesScreen() {
     triggerHaptic();
   };
 
-  const handleReorderPhoto = (index: number, direction: 'up' | 'down') => {
+  const handleReorderPhoto = (index: number, direction: 'left' | 'right') => {
     const updated = reorderImages(images, index, direction);
     updateDraft({ images: updated });
     triggerHaptic();

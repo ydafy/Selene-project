@@ -64,7 +64,39 @@
   },
   "card": {
     "moreItems": "más",
-    "viewDetail": "Ver detalle"
+    "viewDetail": "Ver detalle",
+    "unknownProduct": "Producto",
+    "unknownSeller": "Vendedor",
+    "disputeStatus": {
+      "open": "Disputa abierta",
+      "waiting_return": "Esperando devolución",
+      "return_shipped": "Devolución en tránsito",
+      "return_delivered": "Devolución entregada",
+      "resolved": "Disputa resuelta"
+    }
+  },
+  "summary": {
+    "title": "Resumen de envíos",
+    "orderId": "Pedido {{id}}",
+    "shippingAddress": "Dirección de envío",
+    "total": "Total",
+    "items": "Productos",
+    "articles_one": "artículo",
+    "articles_other": "artículos",
+    "date": "Fecha",
+    "status": "Estado",
+    "shipmentCount_one": "{{count}} envío",
+    "shipmentCount_other": "{{count}} envíos"
+  },
+  "notFound": {
+    "title": "Envío no disponible",
+    "message": "Este envío ya no existe o no tienes acceso a él.",
+    "backToOrders": "Volver a pedidos"
+  },
+  "recovery": {
+    "pending": "Estamos resolviendo un problema de pago; tu reembolso está pendiente.",
+    "contactSupport": "Contactar a soporte",
+    "confirmed": "Tu reembolso ha sido confirmado."
   },
   "empty": {
     "purchasesTitle": "Sin compras aún",
@@ -96,7 +128,31 @@
     "prepareReturnLabel": "Preparar Guía de Retorno",
     "reportProblem": "Reportar un problema",
     "rateProduct": "Calificar pedido",
-    "reviewed": "Calificado"
+    "reviewed": "Calificado",
+    "managePackage": "Gestionar paquete"
+  },
+  "actionCard": {
+    "cancellationWindowTitle": "VENTANA DE CANCELACIÓN",
+    "preparingShipmentTitle": "PREPARANDO ENVÍO",
+    "deliveredTitle": "ENTREGA CONFIRMADA",
+    "recordUnboxingTitle": "GRABA TU UNBOXING",
+    "cancellationWindowClosed": "La ventana de cancelación manual ha cerrado.",
+    "cancellationWindowOpen": "Aún puedes cancelar este envío durante {{timeLeft}}.",
+    "carrierScanWindowClosed": "La ventana de escaneo del transportista ha cerrado.",
+    "sellerShippingWindowClosed": "La ventana de envío del vendedor ha cerrado.",
+    "reviewWindowClosed": "El periodo de revisión terminó. Tus fondos se están procesando.",
+    "fundsReleaseCountdown": "El paquete ha llegado. Tus fondos se liberarán en: {{timeLeft}}",
+    "returnPayoutPendingBuyer": "Veredicto a tu favor. El vendedor tiene {{timeLeft}} para pagar la guía de retorno o ganarás el caso automáticamente.",
+    "returnPayoutPendingSeller": "Debes pagar la guía de retorno en {{timeLeft}} para recuperar tu producto o perderás el caso.",
+    "returnLabelPendingBuyer": "¡Pago confirmado! Tienes {{timeLeft}} para generar tu guía y enviar el paquete.",
+    "returnLabelPendingSeller": "Pago confirmado. El comprador tiene {{timeLeft}} para generar la guía y enviar el paquete.",
+    "returnShipmentPendingBuyer": "Guía lista. Tienes {{timeLeft}} para entregar el paquete en la sucursal o perderás el caso.",
+    "returnShipmentPendingSeller": "Guía generada. El comprador tiene {{timeLeft}} para enviar el paquete.",
+    "returnShipmentInTransit": "El paquete de retorno ya está con la paquetería.",
+    "returnDeliveredBuyer": "El vendedor ya recibió el paquete. Tu reembolso se procesará tras la inspección.",
+    "refundProcessedBuyer": "Tu reembolso ha sido procesado con éxito. El dinero se verá reflejado en tu cuenta en un plazo de 5 a 10 días hábiles.",
+    "refundProcessedSeller": "Disputa cerrada. El dinero ha sido devuelto al comprador.",
+    "reportReturnProblem": "Reportar problema con el retorno"
   },
   "dialogs": {
     "cancelTitle": "¿Deseas cancelar este pedido?",

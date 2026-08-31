@@ -45,7 +45,10 @@ import { SearchFilters } from '../../../components/features/search/hooks/useSear
 import { AppImage } from '../../../components/ui/AppImage';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { useSearchProducts } from '../../../components/features/search/hooks/useSearchProducts';
-import { getMasonryItemHeight } from '../../../core/constants/layout';
+import {
+  getMasonryItemHeight,
+  getTabDockMetrics,
+} from '../../../core/constants/layout';
 import { Theme } from '../../../core/theme';
 import { Product } from '@selene/types';
 
@@ -201,6 +204,7 @@ export default function ShowroomScreen() {
   const theme = useTheme<Theme>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const dockMetrics = getTabDockMetrics(insets.bottom);
   const { t } = useTranslation(['search', 'home']);
 
   const listRef = useRef<FlashListRef<any>>(null);
@@ -437,7 +441,9 @@ export default function ShowroomScreen() {
         numColumns={2}
         onScroll={scrollHandler}
         drawDistance={500}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{
+          paddingBottom: dockMetrics.contentBottomClearance,
+        }}
         onEndReached={() => {
           if (hasNextPage) fetchNextPage();
         }}

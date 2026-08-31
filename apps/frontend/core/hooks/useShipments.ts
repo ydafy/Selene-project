@@ -109,6 +109,7 @@ const enrichShipment = (
   return {
     ...shipment,
     items: shipment.items as (Tables<'order_items'> & { product: Product })[],
+    seller: shipment.seller,
     dispute,
     isBuyer,
     isSeller,

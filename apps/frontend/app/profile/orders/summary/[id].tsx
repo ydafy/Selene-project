@@ -5,9 +5,9 @@
  * Linked from the multi-seller banner in the order detail screen.
  */
 
-import React, { useMemo } from 'react';
-import { ScrollView, RefreshControl } from 'react-native';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useMemo } from 'react';
+import { ScrollView, RefreshControl, Linking } from 'react-native';
+import { Stack, type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@shopify/restyle';
@@ -15,12 +15,19 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Box, Text } from '../../../../components/base';
 import { GlobalHeader } from '../../../../components/layout/GlobalHeader';
+import { PrimaryButton } from '../../../../components/ui/PrimaryButton';
 import { Skeleton } from '../../../../components/ui/Skeleton';
 import { OrderShipmentCard } from '../../../../components/features/orders/OrderShipmentCard';
 import { useOrderById } from '../../../../core/hooks/useOrders';
 import { useShipmentsByOrder } from '../../../../core/hooks/useShipments';
 import { formatCurrency, formatDate } from '../../../../core/utils/format';
 import { Theme } from '../../../../core/theme';
+import { useAuthContext } from '../../../../components/auth/AuthProvider';
+import { resolveRoleAwareOrderView } from '../order-view-routing';
+import {
+  resolveBuyerCheckoutRecoveryView,
+  shouldSuppressShipmentActionsForBuyerRecovery,
+} from '../order-recovery-view';
 
 export default function OrderSummaryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -28,6 +35,7 @@ export default function OrderSummaryScreen() {
   const theme = useTheme<Theme>();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { session } = useAuthContext();
 
   // ── Data hooks ────────────────────────────────────────────────────────
   const {
@@ -60,6 +68,29 @@ export default function OrderSummaryScreen() {
     }
     return shipments ?? [];
   }, [order, shipments]);
+  const view = useMemo(
+    () =>
+      order
+        ? resolveRoleAwareOrderView(
+            {
+              id: order.id,
+              buyerId: order.buyer_id,
+              shipments: shipmentsSource.map((shipment) => ({
+                id: shipment.id,
+                sellerId: shipment.seller_id,
+              })),
+            },
+            session?.user.id,
+          )
+        : null,
+    [order, session?.user.id, shipmentsSource],
+  );
+
+  useEffect(() => {
+    if (view?.kind === 'detail') {
+      router.replace(view.href as Href);
+    }
+  }, [router, view]);
 
   // ── Loading skeleton ──────────────────────────────────────────────────
   // Mostramos skeleton hasta que orden + shipments tengan data inicial
@@ -77,6 +108,44 @@ export default function OrderSummaryScreen() {
     );
   }
 
+  const checkoutRecoveryView = resolveBuyerCheckoutRecoveryView({
+    isBuyer: order.isBuyer,
+    paymentProcessing: (order as typeof order & { payment_processing?: boolean | null })
+      .payment_processing,
+    compensationState: (order as typeof order & { compensation_state?: string | null })
+      .compensation_state,
+    orderStatus: order.status,
+  });
+
+  if (!view || view.kind !== 'summary') return null;
+
+  if (shouldSuppressShipmentActionsForBuyerRecovery(checkoutRecoveryView)) {
+    return (
+      <Box flex={1} backgroundColor="background">
+        <Stack.Screen options={{ headerShown: false }} />
+        <GlobalHeader showBack />
+        <Box padding="m" style={{ paddingTop: insets.top + 100 }}>
+          <Box backgroundColor="cardBackground" padding="m" borderRadius="l">
+            <Text variant="header-xl" color="primary" marginBottom="s">
+              {checkoutRecoveryView.kind === 'refunded'
+                ? t('recovery.confirmed')
+                : t('recovery.pending')}
+            </Text>
+            {checkoutRecoveryView.kind === 'pending_refund' && (
+              <PrimaryButton
+                variant="outline"
+                onPress={() => Linking.openURL('mailto:support@selene.mx')}
+                icon="help-circle-outline"
+              >
+                {t('recovery.contactSupport')}
+              </PrimaryButton>
+            )}
+          </Box>
+        </Box>
+      </Box>
+    );
+  }
+
   // ── Derived data ───
   const cardStyles = {
     backgroundColor: 'cardBackground' as const,
@@ -85,28 +154,43 @@ export default function OrderSummaryScreen() {
     marginBottom: 'm' as const,
   };
 
-  const totalItems = shipmentsSource.reduce(
+  const visibleShipments = shipmentsSource.filter((shipment) =>
+    view.visibleShipmentIds.includes(shipment.id),
+  );
+  const totalItems = visibleShipments.reduce(
     (sum, s) => sum + s.items.length,
     0,
   );
 
   // Shipping address is stored as JSON in the orders table
-  const addr = order.shipping_address as Record<string, any> | null;
+  const addr = order.shipping_address as Record<string, unknown> | null;
   const addressLines = [
-    addr?.street_line1,
-    addr?.street_line2,
-    addr?.district,
-    addr?.city,
-    addr?.state,
+    addr?.['street_line1'],
+    addr?.['street_line2'],
+    addr?.['district'],
+    addr?.['city'],
+    addr?.['state'],
   ].filter(Boolean) as string[];
 
-  const orderCount = shipmentsSource.length;
+  const orderCount = visibleShipments.length;
+  const visibleTotal =
+    view.role === 'seller'
+      ? visibleShipments.reduce(
+          (sum, shipment) =>
+            sum +
+            shipment.items.reduce(
+              (itemSum, item) => itemSum + Number(item.price_at_purchase),
+              0,
+            ),
+          0,
+        )
+      : order.total_amount;
 
   // ── Render ──
   return (
     <Box flex={1} backgroundColor="background">
       <Stack.Screen options={{ headerShown: false }} />
-      <GlobalHeader title="Resumen de envíos" showBack />
+      <GlobalHeader title={t('summary.title')} showBack />
 
       <ScrollView
         contentContainerStyle={{
@@ -122,10 +206,17 @@ export default function OrderSummaryScreen() {
           />
         }
       >
+        {checkoutRecoveryView.kind === 'refunded' && (
+          <Box {...cardStyles} borderColor="success" borderWidth={1}>
+            <Text variant="header-xl" color="success">
+              {t('recovery.confirmed')}
+            </Text>
+          </Box>
+        )}
         {/* ── Order overview card ── */}
         <Box {...cardStyles}>
           <Text variant="header-xl" color="primary" marginBottom="m">
-            {`Orden #${order.id.slice(0, 8).toUpperCase()}`}
+            {t('summary.orderId', { id: order.id.slice(0, 8).toUpperCase() })}
           </Text>
 
           <Box
@@ -134,10 +225,10 @@ export default function OrderSummaryScreen() {
             marginBottom="s"
           >
             <Text variant="body-md" color="textSecondary">
-              {t('orders:detail.total', { defaultValue: 'Total' })}
+              {t('summary.total')}
             </Text>
             <Text variant="subheader-lg" color="primary">
-              {formatCurrency(order.total_amount)}
+              {formatCurrency(visibleTotal)}
             </Text>
           </Box>
 
@@ -147,14 +238,11 @@ export default function OrderSummaryScreen() {
             marginBottom="s"
           >
             <Text variant="body-md" color="textSecondary">
-              {t('orders:detail.items', { defaultValue: 'Productos' })}
+              {t('summary.items')}
             </Text>
             <Text variant="body-md">
               {totalItems}{' '}
-              {t('orders:detail.articles', {
-                defaultValue: 'artículos',
-                count: totalItems,
-              })}
+              {t('summary.articles', { count: totalItems })}
             </Text>
           </Box>
 
@@ -164,14 +252,14 @@ export default function OrderSummaryScreen() {
             marginBottom="s"
           >
             <Text variant="body-md" color="textSecondary">
-              {t('orders:detail.date', { defaultValue: 'Fecha' })}
+              {t('summary.date')}
             </Text>
             <Text variant="body-md">{formatDate(order.created_at)}</Text>
           </Box>
 
           <Box flexDirection="row" justifyContent="space-between">
             <Text variant="body-md" color="textSecondary">
-              {t('orders:detail.status', { defaultValue: 'Estado' })}
+              {t('summary.status')}
             </Text>
             <Text variant="body-md" color="primary">
               {order.visualStatus?.toUpperCase()}
@@ -191,16 +279,14 @@ export default function OrderSummaryScreen() {
                 color="textSecondary"
                 marginBottom="xs"
               >
-                {t('orders:summary.shippingAddress', {
-                  defaultValue: 'Dirección de envío',
-                })}
+                {t('summary.shippingAddress')}
               </Text>
               <Text variant="body-md">{addressLines.join(', ')}</Text>
             </Box>
           )}
         </Box>
 
-        {/* ── Multi-seller divider ── */}
+        {/* ── Divisor de envíos por producto ── */}
         {orderCount > 0 && (
           <Box flexDirection="row" alignItems="center" marginBottom="m" gap="m">
             <Box flex={1} height={1} backgroundColor="separator" />
@@ -210,24 +296,21 @@ export default function OrderSummaryScreen() {
               color={theme.colors.primary}
             />
             <Text variant="body-sm" color="textSecondary">
-              {t('orders:summary.sellerCount', {
-                defaultValue: `${orderCount} ${orderCount === 1 ? 'vendedor' : 'vendedores'}`,
-                count: orderCount,
-              })}
+              {t('summary.shipmentCount', { count: orderCount })}
             </Text>
             <Box flex={1} height={1} backgroundColor="separator" />
           </Box>
         )}
 
         {/* ── Shipment cards ── */}
-        {shipmentsSource.map((shipment) => (
+        {visibleShipments.map((shipment) => (
           <OrderShipmentCard
             key={shipment.id}
             shipment={shipment}
             orderId={order.id}
             onPress={(shipmentId) =>
               router.push(
-                `/profile/orders/${order.id}?shipment_id=${shipmentId}` as any,
+                `/profile/orders/${order.id}?shipment_id=${shipmentId}` as Href,
               )
             }
           />

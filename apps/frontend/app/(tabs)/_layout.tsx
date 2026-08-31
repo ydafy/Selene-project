@@ -6,10 +6,14 @@ import { Theme } from '../../core/theme';
 import { useCartStore } from '../../core/store/useCartStore';
 import { CartTabIcon } from '../../components/ui/CartTabIcon';
 import { Box } from '@/components/base';
-import { Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { getTabDockMetrics, TAB_DOCK } from '../../core/constants/layout';
 
 export default function TabsLayout() {
   const theme = useTheme<Theme>();
+  const insets = useSafeAreaInsets();
+  const dockMetrics = getTabDockMetrics(insets.bottom);
 
   // Estado del Carrito
   const cartItems = useCartStore((state) => state.items);
@@ -22,11 +26,50 @@ export default function TabsLayout() {
           tabBarActiveTintColor: theme.colors.primary,
           tabBarInactiveTintColor: theme.colors.textPrimary,
           tabBarStyle: {
+            position: 'absolute',
             backgroundColor: theme.colors.cardBackground,
-            borderTopColor: theme.colors.cardBackground,
-            height: Platform.OS === 'ios' ? 80 : 60,
-            paddingBottom: Platform.OS === 'ios' ? 20 : 10,
+            borderTopWidth: 0,
+
+            left: TAB_DOCK.sideGutter,
+            right: TAB_DOCK.sideGutter,
+            bottom: dockMetrics.bottomSeparation,
+
+            height: TAB_DOCK.height,
+            borderRadius: TAB_DOCK.borderRadius,
+            marginHorizontal: theme.spacing.m,
+
+            elevation: 8,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 5,
           },
+          tabBarItemStyle: {
+            minHeight: 44,
+          },
+          tabBarIconStyle: {
+            transform: [{ translateY: TAB_DOCK.contentOffsetY }],
+          },
+
+          tabBarLabelStyle: {
+            transform: [{ translateY: TAB_DOCK.contentOffsetY }],
+          },
+          tabBarBackground: () => (
+            <LinearGradient
+              colors={['transparent', '#121212']}
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                left: -TAB_DOCK.sideGutter,
+                right: -TAB_DOCK.sideGutter,
+                bottom: -dockMetrics.bottomSeparation,
+                height:
+                  TAB_DOCK.height +
+                  TAB_DOCK.gradientHeight +
+                  dockMetrics.bottomSeparation,
+              }}
+            />
+          ),
           headerShown: false,
         }}
       >
@@ -48,6 +91,7 @@ export default function TabsLayout() {
           name="search"
           options={{
             title: 'Buscar',
+
             tabBarIcon: ({ color, size }) => (
               <MaterialCommunityIcons
                 name="magnify"

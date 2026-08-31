@@ -1,20 +1,29 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@shopify/restyle';
+import { useTranslation } from 'react-i18next';
 
 import { Box, Text } from '../../base';
 import { Theme } from '../../../core/theme';
 import { Notification } from '@selene/types';
 import { formatSmartTime } from '../../../core/utils/format';
+import { ConfirmDialog } from '../../ui/ConfirmDialog';
 
 interface Props {
   notification: Notification;
   onPress: (notification: Notification) => void;
+  onDismiss?: (id: string) => void | Promise<void>;
 }
 
-export const NotificationItem = ({ notification, onPress }: Props) => {
+export const NotificationItem = ({
+  notification,
+  onPress,
+  onDismiss,
+}: Props) => {
   const theme = useTheme<Theme>();
+  const { t } = useTranslation(['notifications', 'common']);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const isUnread = !notification.read;
 
@@ -38,65 +47,93 @@ export const NotificationItem = ({ notification, onPress }: Props) => {
         ? theme.colors.success
         : theme.colors.primary;
 
-  return (
-    <Pressable onPress={() => onPress(notification)}>
-      {({ pressed }) => (
-        <Box
-          flexDirection="row"
-          padding="m"
-          backgroundColor={pressed ? 'pressableShadow' : 'transparent'}
-          opacity={isUnread ? 1 : 0.6}
-          borderBottomWidth={1}
-          borderBottomColor="separator"
-        >
-          {/* ICONO */}
-          <Box
-            width={40}
-            height={40}
-            borderRadius="full"
-            backgroundColor="cardBackground"
-            justifyContent="center"
-            alignItems="center"
-          >
-            <MaterialCommunityIcons
-              name={getIcon()}
-              size={22}
-              color={iconColor}
-            />
-          </Box>
+  const handleLongPress = () => {
+    if (!onDismiss) return;
+    setShowConfirm(true);
+  };
 
-          {/* TEXTO */}
-          <Box flex={1} marginLeft="m">
+  const handleConfirmDismiss = async () => {
+    setShowConfirm(false);
+    await onDismiss?.(notification.id);
+  };
+
+  return (
+    <>
+      <Pressable
+        onPress={() => onPress(notification)}
+        onLongPress={handleLongPress}
+        accessibilityLabel={t('notifications:dismissLabel')}
+        accessibilityRole="button"
+      >
+        {({ pressed }) => (
+          <Box
+            flexDirection="row"
+            padding="m"
+            backgroundColor={pressed ? 'pressableShadow' : 'transparent'}
+            opacity={isUnread ? 1 : 0.6}
+            borderBottomWidth={1}
+            borderBottomColor="separator"
+          >
+            {/* ICONO */}
             <Box
-              flexDirection="row"
-              justifyContent="space-between"
+              width={40}
+              height={40}
+              borderRadius="full"
+              backgroundColor="cardBackground"
+              justifyContent="center"
               alignItems="center"
             >
-              <Text
-                variant="body-md"
-                fontWeight={isUnread ? 'bold' : 'regular'}
-                color="textPrimary"
-              >
-                {notification.title}
-              </Text>
-              {isUnread && (
-                <Box
-                  width={8}
-                  height={8}
-                  borderRadius="full"
-                  backgroundColor="error"
-                />
-              )}
+              <MaterialCommunityIcons
+                name={getIcon()}
+                size={22}
+                color={iconColor}
+              />
             </Box>
-            <Text variant="caption-md" color="textSecondary" marginTop="xs">
-              {notification.message}
-            </Text>
-            <Text variant="caption-md" color="textSecondary" marginTop="s">
-              {formatSmartTime(notification.created_at)}
-            </Text>
+
+            {/* TEXTO */}
+            <Box flex={1} marginLeft="m">
+              <Box
+                flexDirection="row"
+                justifyContent="space-between"
+                alignItems="center"
+              >
+                <Text
+                  variant="body-md"
+                  fontWeight={isUnread ? 'bold' : 'regular'}
+                  color="textPrimary"
+                >
+                  {notification.title}
+                </Text>
+                {isUnread && (
+                  <Box
+                    width={8}
+                    height={8}
+                    borderRadius="full"
+                    backgroundColor="error"
+                  />
+                )}
+              </Box>
+              <Text variant="caption-md" color="textSecondary" marginTop="xs">
+                {notification.message}
+              </Text>
+              <Text variant="caption-md" color="textSecondary" marginTop="s">
+                {formatSmartTime(notification.created_at)}
+              </Text>
+            </Box>
           </Box>
-        </Box>
-      )}
-    </Pressable>
+        )}
+      </Pressable>
+
+      <ConfirmDialog
+        visible={showConfirm}
+        title={notification.title}
+        description={t('notifications:dismissConfirm')}
+        onConfirm={handleConfirmDismiss}
+        onCancel={() => setShowConfirm(false)}
+        confirmLabel={t('common:dialog.delete')}
+        cancelLabel={t('common:dialog.cancel')}
+        isDangerous={notification.type === 'error'}
+      />
+    </>
   );
 };

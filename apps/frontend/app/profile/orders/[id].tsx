@@ -10,7 +10,7 @@
  * en lugar de propiedades directas de la orden. OrderActionCard conectado en 3.6.
  */
 
-import React, { useState, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import {
   ScrollView,
   RefreshControl,
@@ -36,6 +36,8 @@ import { PrimaryButton } from '../../../components/ui/PrimaryButton';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { AppImage } from '../../../components/ui/AppImage';
+import { ShipmentNotFoundState } from '../../../components/features/orders/ShipmentNotFoundState';
+import { useAuthContext } from '../../../components/auth/AuthProvider';
 import { useOrderById } from '../../../core/hooks/useOrders';
 import { useShipmentsByOrder } from '../../../core/hooks/useShipments';
 import { useOrderActions } from '../../../core/hooks/useOrderActions';
@@ -50,6 +52,11 @@ import {
   canReviewProduct,
   type CanReviewProductContext,
 } from './canReviewProduct';
+import { resolveRoleAwareOrderView } from './order-view-routing';
+import {
+  resolveBuyerCheckoutRecoveryView,
+  shouldSuppressShipmentActionsForBuyerRecovery,
+} from './order-recovery-view';
 
 // --- TIPO AUXILIAR PARA REVIEW (viene en la query de useOrderById pero no en EnrichedOrder) ---
 // V2: adds product_id / shipment_id / seller_id so the review gate can match
@@ -85,6 +92,7 @@ export default function OrderDetailScreen() {
   const theme = useTheme<Theme>();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { session } = useAuthContext();
 
   const reviewModalRef = useRef<BottomSheetModal>(null);
 
@@ -106,6 +114,35 @@ export default function OrderDetailScreen() {
     await Promise.all([refetchOrder(), refetchShipments()]);
   };
   const isLoading = isOrderLoading || isShipmentsLoading;
+  const orderView = useMemo(
+    () =>
+      order
+        ? resolveRoleAwareOrderView(
+            {
+              id: order.id,
+              buyerId: order.buyer_id,
+              shipments: (shipments ?? order.shipments).map((shipment) => ({
+                id: shipment.id,
+                sellerId: shipment.seller_id,
+              })),
+            },
+            session?.user.id,
+            shipmentId,
+          )
+        : null,
+    [order, session?.user.id, shipmentId, shipments],
+  );
+
+  useEffect(() => {
+    if (
+      !isLoading &&
+      !shipmentId &&
+      orderView &&
+      orderView.kind !== 'unavailable'
+    ) {
+      router.replace(orderView.href as any);
+    }
+  }, [isLoading, orderView, router, shipmentId]);
 
   // --- 2b. HOOK COMPARTIDO ---
   const { shareLabel, isSharing } = useShareLabel();
@@ -136,11 +173,9 @@ export default function OrderDetailScreen() {
    *    caso se toman prestados los permisos de la orden para evitar crashes). */
   const currentShipment = useMemo<EnrichedShipment | null>(() => {
     const source = shipments ?? order?.shipments;
-    if (!source || source.length === 0) return null;
+    if (!source || source.length === 0 || !shipmentId) return null;
 
-    const rawShipment = shipmentId
-      ? source.find((s) => s.id === shipmentId)
-      : source[0];
+    const rawShipment = shipmentId ? source.find((s) => s.id === shipmentId) : source[0];
 
     // When a specific shipment was requested but isn't in the loaded rows yet,
     // short-circuit instead of inventing one via source[0] (which would render
@@ -189,6 +224,14 @@ export default function OrderDetailScreen() {
   const displayedTotal = isMultiShipment
     ? shipmentSubtotal
     : (order?.total_amount ?? 0);
+  const checkoutRecoveryView = resolveBuyerCheckoutRecoveryView({
+    isBuyer: order?.isBuyer ?? false,
+    paymentProcessing: (order as OrderWithReview & { payment_processing?: boolean | null } | null)
+      ?.payment_processing,
+    compensationState: (order as OrderWithReview & { compensation_state?: string | null } | null)
+      ?.compensation_state,
+    orderStatus: order?.status,
+  });
 
   // --- 5. HANDLERS ---
   const handleCopyTracking = useCallback((tracking: string) => {
@@ -251,6 +294,49 @@ export default function OrderDetailScreen() {
           <Skeleton width="100%" height={100} borderRadius={16} />
           <Skeleton width="100%" height={300} borderRadius={16} />
         </Box>
+      </Box>
+    );
+  }
+
+  if (shouldSuppressShipmentActionsForBuyerRecovery(checkoutRecoveryView)) {
+    return (
+      <Box flex={1} backgroundColor="background">
+        <Stack.Screen options={{ headerShown: false }} />
+        <GlobalHeader showBack />
+        <Box padding="m" style={{ paddingTop: insets.top + 100 }}>
+          <Box backgroundColor="cardBackground" padding="m" borderRadius="l">
+            <Text variant="header-xl" color="primary" marginBottom="s">
+              {checkoutRecoveryView.kind === 'refunded'
+                ? t('recovery.confirmed')
+                : t('recovery.pending')}
+            </Text>
+            {checkoutRecoveryView.kind === 'pending_refund' && (
+              <PrimaryButton
+                variant="outline"
+                onPress={() => Linking.openURL('mailto:support@selene.mx')}
+                icon="help-circle-outline"
+              >
+                {t('recovery.contactSupport')}
+              </PrimaryButton>
+            )}
+          </Box>
+        </Box>
+      </Box>
+    );
+  }
+
+  if (!orderView) return null;
+
+  if (!shipmentId && orderView.kind !== 'unavailable') {
+    return null;
+  }
+
+  if (!shipmentId || orderView.kind === 'unavailable' || !currentShipment) {
+    return (
+      <Box flex={1} backgroundColor="background">
+        <Stack.Screen options={{ headerShown: false }} />
+        <GlobalHeader showBack />
+        <ShipmentNotFoundState onBack={() => router.replace('/profile/orders')} />
       </Box>
     );
   }

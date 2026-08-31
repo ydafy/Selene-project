@@ -119,6 +119,7 @@ export const SellDetailsForm: React.FC<SellDetailsFormProps> = ({
                 helpTitle={t('fields.nameHelpTitle')}
                 helpDescription={t('fields.nameHelpDesc')}
                 placeholder={t('fields.namePlaceholder')}
+                maxLength={80} // <--- AGREGAR ESTA LÍNEA
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
@@ -138,9 +139,9 @@ export const SellDetailsForm: React.FC<SellDetailsFormProps> = ({
                 )}
                 <Text
                   variant="caption-md"
-                  color={value.length > 80 ? 'error' : 'textSecondary'}
+                  color={(value?.length || 0) > 80 ? 'error' : 'textSecondary'}
                 >
-                  {value.length} / 80
+                  {value?.length || 0} / 80
                 </Text>
               </Box>
             </Box>
@@ -205,6 +206,7 @@ export const SellDetailsForm: React.FC<SellDetailsFormProps> = ({
                 value={value}
                 error={!!errors.description}
                 multiline
+                maxLength={1500}
                 numberOfLines={5}
                 textAlignVertical="top"
                 style={{ height: 120, backgroundColor: 'transparent' }}
@@ -228,9 +230,11 @@ export const SellDetailsForm: React.FC<SellDetailsFormProps> = ({
                 )}
                 <Text
                   variant="caption-md"
-                  color={value.length > 1000 ? 'error' : 'textSecondary'}
+                  color={
+                    (value?.length || 0) > 1500 ? 'error' : 'textSecondary'
+                  }
                 >
-                  {value.length} / 1000
+                  {value?.length || 0} / 1500
                 </Text>
               </Box>
             </Box>
@@ -340,11 +344,15 @@ export const SellDetailsForm: React.FC<SellDetailsFormProps> = ({
             <Text variant="body-md" color="textSecondary">
               {t('fields.productPriceText')}
             </Text>
-              <Text
-                variant="body-md"
-                color={parseFloat(priceValue) > 0 ? 'textPrimary' : 'textSecondary'}
-              >
-                {parseFloat(priceValue) > 0 ? `$${parseFloat(priceValue)}` : '$ --'}
+            <Text
+              variant="body-md"
+              color={
+                parseFloat(priceValue) > 0 ? 'textPrimary' : 'textSecondary'
+              }
+            >
+              {parseFloat(priceValue) > 0
+                ? `$${parseFloat(priceValue)}`
+                : '$ --'}
             </Text>
           </Box>
 
@@ -371,7 +379,9 @@ export const SellDetailsForm: React.FC<SellDetailsFormProps> = ({
                   <Text
                     variant="header-xl"
                     color={
-                      originZipValue?.length === 5 ? 'textPrimary' : 'textSecondary'
+                      originZipValue?.length === 5
+                        ? 'textPrimary'
+                        : 'textSecondary'
                     }
                   >
                     ${earnings.final}

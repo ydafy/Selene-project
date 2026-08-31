@@ -31,8 +31,8 @@ const readSql = (relativePath: string) =>
  *  - Marks the previously-RESERVED products SOLD only after allocation writes.
  *  - SECURITY DEFINER + revoke from PUBLIC/anon/authenticated, grant to
  *    service_role ONLY (admin settlement runs server-side via the webhook).
- *  - Legacy `fn_create_shipment_from_payment` (per-seller connect) is left
- *    UNTOUCHED — the new RPC is a separate function.
+ *  - Legacy `fn_create_shipment_from_payment` is retired so it cannot create
+ *    seller-grouped shipments.
  */
 
 const RPC_PATH = 'supabase/queries/orders/fn_create_shipments_from_single_payment.sql';
@@ -148,6 +148,11 @@ describe('single-modal shipment RPC SQL guards', () => {
     expect(sql).toContain('array_length(v_product_ids, 1)');
   });
 
+  it('rejects allocation rows containing more than one product before creating a shipment', () => {
+    expect(sql).toContain('ONE_PRODUCT_PER_SHIPMENT_REQUIRED');
+    expect(sql).toContain('array_length(v_product_ids, 1) <> 1');
+  });
+
   it('advances shipment status and derives the order status only on success', () => {
     expect(sql).toContain("'paid'");
     expect(sql).toContain('fn_derive_order_status');
@@ -159,6 +164,12 @@ describe('single-modal shipment RPC SQL guards', () => {
     expect(sql).toContain('payment_processing_reason');
     expect(sql).toContain("'status', 'payment_processing'");
     expect(sql).toContain("'success', false");
+  });
+
+  it('returns a typed failure code and settlement version for recovery classification', () => {
+    expect(sql).toContain('v_failure_code');
+    expect(sql).toContain("'failure_code', v_failure_code");
+    expect(sql).toContain("'runtime_version', 'single_modal_settlement_v2'");
   });
 
   it('returns a typed JSONB result on both created and duplicate outcomes', () => {
@@ -176,15 +187,16 @@ describe('single-modal shipment RPC SQL guards', () => {
   });
 });
 
-describe('single-modal settlement preserves the legacy connect per-seller RPC', () => {
-  it('legacy fn_create_shipment_from_payment SQL is unchanged by this batch', () => {
+describe('single-modal settlement retires the legacy seller-grouped RPC', () => {
+  it('legacy fn_create_shipment_from_payment rejects before reaching grouped writes', () => {
     const legacy = readSql(
       'supabase/queries/orders/fn_create_shipment_from_payment.sql',
     );
     expect(legacy).toContain(
       'CREATE OR REPLACE FUNCTION public.fn_create_shipment_from_payment(',
     );
-    expect(legacy).toContain("p_metadata ->> 'seller_id'");
-    expect(legacy).toContain("'paid'"); // legacy still marks shipments paid immediately
+    expect(legacy).toMatch(
+      /BEGIN\s+RAISE EXCEPTION 'LEGACY_GROUPED_SHIPMENT_SETTLEMENT_RETIRED'/,
+    );
   });
 });

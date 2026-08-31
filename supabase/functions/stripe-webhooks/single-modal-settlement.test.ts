@@ -4,6 +4,7 @@ import { SINGLE_MODAL_FLOW } from '../create-connect-payment/single-payment-buil
 import {
   buildSettlementOutcome,
   buildStripeFeeReconciliationPlan,
+  classifySettlementFailure,
   parseSingleModalPayload,
   reassembleAllocationMetadata,
   resolvePaymentIntentSucceededAction,
@@ -142,10 +143,7 @@ const sampleRows = () => [
   {
     sellerId: 'cccccccc-0000-0000-0000-000000000002',
     shipmentId: 'dddddddd-0000-0000-0000-000000000012',
-    productIds: [
-      'eeeeeeee-0000-0000-0000-000000000002',
-      'eeeeeeee-0000-0000-0000-000000000003',
-    ],
+    productIds: ['eeeeeeee-0000-0000-0000-000000000002'],
     grossCents: 80_000,
     commissionCents: 4_800,
     shippingCents: 15_000,
@@ -155,6 +153,10 @@ const sampleRows = () => [
 ];
 
 describe('single-modal-settlement > reassembleAllocationMetadata', () => {
+  it('uses a one-product-per-shipment fixture for settlement recovery scenarios', () => {
+    expect(sampleRows().every((row) => row.productIds.length === 1)).toBe(true);
+  });
+
   it('reassembles chunked allocation JSON into a typed allocation row set', () => {
     const rows = sampleRows();
     const meta = buildFullMetadata(rows);
@@ -454,7 +456,7 @@ describe('single-modal-settlement > resolvePaymentIntentSucceededAction', () => 
     expect(action.kind).toBe('return_shipping');
   });
 
-  it('routes to connect_per_seller when seller_id metadata is present and flow is not single-modal', () => {
+  it('retires seller-grouped settlement when seller_id metadata is present and flow is not single-modal', () => {
     const meta = buildFullMetadata(sampleRows(), {
       flow: 'per_seller',
       seller_id: 'cccccccc-0000-0000-0000-000000000099',
@@ -462,10 +464,13 @@ describe('single-modal-settlement > resolvePaymentIntentSucceededAction', () => 
     delete meta.allocation_chunk_count;
     delete meta.allocation_json_0;
     const action = resolvePaymentIntentSucceededAction({ metadata: meta });
-    expect(action.kind).toBe('connect_per_seller');
+    expect(action.kind).toBe('retired_grouped_settlement');
+    if (action.kind === 'retired_grouped_settlement') {
+      expect(action.reason).toBe('LEGACY_GROUPED_SETTLEMENT_METADATA');
+    }
   });
 
-  it('routes to legacy_app when app_name=selene and no seller_id and no flow marker', () => {
+  it('retires the legacy app settlement when no single-modal flow marker is present', () => {
     const meta: Record<string, string> = {
       app_name: 'selene',
       buyer_id: VALID_BUYER_ID,
@@ -473,7 +478,7 @@ describe('single-modal-settlement > resolvePaymentIntentSucceededAction', () => 
       address_id: VALID_ADDRESS_ID,
     };
     const action = resolvePaymentIntentSucceededAction({ metadata: meta });
-    expect(action.kind).toBe('legacy_app');
+    expect(action.kind).toBe('retired_grouped_settlement');
   });
 
   it('routes to ignore when no known metadata marker is present', () => {
@@ -481,12 +486,34 @@ describe('single-modal-settlement > resolvePaymentIntentSucceededAction', () => 
     expect(action.kind).toBe('ignore');
   });
 
-  it('throws when routed to single_modal but the allocation metadata is corrupt', () => {
+  it('preserves the charged metadata and amount for a malformed single-modal recovery shell', () => {
     const meta = buildFullMetadata(sampleRows());
     delete meta.allocation_chunk_count;
-    expect(() => resolvePaymentIntentSucceededAction({ metadata: meta })).toThrow(
-      'INVALID_ALLOCATION_METADATA:missing_chunk_count',
-    );
+    expect(resolvePaymentIntentSucceededAction({ metadata: meta, amount: 187_080 })).toEqual({
+      kind: 'invalid_single_modal_metadata',
+      reason: 'INVALID_ALLOCATION_METADATA:missing_chunk_count',
+      recoveryShell: {
+        sourceMetadata: meta,
+        chargedAmountCents: 187_080,
+      },
+    });
+  });
+
+  it('preserves legacy grouped metadata for durable refund compensation', () => {
+    const meta: Record<string, string> = {
+      seller_id: 'cccccccc-0000-0000-0000-000000000099',
+      buyer_id: VALID_BUYER_ID,
+      product_ids: '[]',
+    };
+
+    expect(resolvePaymentIntentSucceededAction({ metadata: meta, amount: 12_345 })).toEqual({
+      kind: 'retired_grouped_settlement',
+      reason: 'LEGACY_GROUPED_SETTLEMENT_METADATA',
+      recoveryShell: {
+        sourceMetadata: meta,
+        chargedAmountCents: 12_345,
+      },
+    });
   });
 });
 
@@ -516,6 +543,37 @@ describe('single-modal-settlement > buildSettlementOutcome', () => {
     if (outcome.kind === 'recovered') {
       expect(outcome.reason).toBe('ALLOCATION_WRITE_FAILED');
     }
+  });
+
+  it('preserves the settlement runtime version returned by the executed RPC for recovery diagnostics', () => {
+    const outcome = buildSettlementOutcome({
+      rpcResult: {
+        success: false,
+        error: 'ALLOCATION_WRITE_FAILED',
+        runtime_version: 'single_modal_settlement_v2',
+      },
+      rpcError: null,
+    });
+
+    expect(outcome).toEqual({
+      kind: 'recovered',
+      reason: 'ALLOCATION_WRITE_FAILED',
+      classification: { kind: 'transient', refundRequired: false },
+      runtimeVersion: 'single_modal_settlement_v2',
+    });
+  });
+
+  it('reports no runtime version when the RPC response does not observe one', () => {
+    const outcome = buildSettlementOutcome({
+      rpcResult: { success: true },
+      rpcError: null,
+    });
+
+    expect(outcome).toEqual({
+      kind: 'ok',
+      body: { received: true },
+      runtimeVersion: null,
+    });
   });
 
   it('triangulates: recovered path also surfaces duplicate-PI idempotent success reason', () => {
@@ -557,5 +615,38 @@ describe('single-modal-settlement > buildSettlementOutcome', () => {
       rpcError: null,
     });
     expect(outcome.kind).toBe('ok');
+  });
+
+  it('marks specified allocation failures as semantic and refund-required', () => {
+    expect(classifySettlementFailure('ONE_PRODUCT_PER_SHIPMENT_REQUIRED')).toEqual({
+      kind: 'semantic',
+      refundRequired: true,
+    });
+
+    const outcome = buildSettlementOutcome({
+      rpcResult: {
+        success: false,
+        error: 'shipment allocation rejected',
+        failure_code: 'PRODUCT_NOT_RESERVED',
+      },
+      rpcError: null,
+    });
+    expect(outcome).toEqual({
+      kind: 'recovered',
+      reason: 'shipment allocation rejected',
+      classification: { kind: 'semantic', refundRequired: true },
+      runtimeVersion: null,
+    });
+  });
+
+  it('treats unknown and malformed metadata failures as transient or semantic respectively', () => {
+    expect(classifySettlementFailure('ETIMEDOUT')).toEqual({
+      kind: 'transient',
+      refundRequired: false,
+    });
+    expect(classifySettlementFailure('INVALID_ALLOCATION_METADATA:missing_chunk_0')).toEqual({
+      kind: 'semantic',
+      refundRequired: true,
+    });
   });
 });

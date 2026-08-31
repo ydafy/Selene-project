@@ -16,7 +16,6 @@ type PackageSelectorProps = {
   onSelect: (value: string) => void;
 };
 
-// Íconos visuales basados en la categoría o ID
 const getIconForPreset = (
   presetId: string,
 ): keyof typeof MaterialCommunityIcons.glyphMap => {
@@ -37,22 +36,19 @@ export const PackageSelector = ({
   const { data: settings, isLoading } = useSystemConfig();
   const { t } = useTranslation(['common', 'sell']);
 
-  // Filtramos los presets que corresponden a la categoría actual
   const options = useMemo(() => {
     if (!settings?.package_presets) return [];
 
-    // Casting seguro del JSONB
     const presets = settings.package_presets as unknown as PackagePresetsMap;
 
     return Object.keys(presets)
       .filter((key) => presets[key].category === category)
       .map((key) => ({
-        id: key, // La llave del JSON se convierte en el ID para React
+        id: key,
         ...presets[key],
       }));
   }, [settings?.package_presets, category]);
 
-  // Estado de carga
   if (isLoading) {
     return (
       <Box
@@ -72,11 +68,16 @@ export const PackageSelector = ({
     );
   }
 
-  // Fallback si la categoría no tiene cajas configuradas en la DB
+  // Fallback corregido: Texto legible sobre fondo de error
   if (options.length === 0) {
     return (
       <Box padding="m" backgroundColor="error" borderRadius="m">
-        <Text variant="body-md" color="error">
+        <Text
+          variant="body-md"
+          color="textPrimary"
+          fontWeight="bold"
+          textAlign="center"
+        >
           {t('common:errors.noPackages')}
         </Text>
       </Box>
@@ -84,7 +85,7 @@ export const PackageSelector = ({
   }
 
   return (
-    <Box flexDirection="row" gap="m">
+    <Box flexDirection="row" flexWrap="wrap" gap="m">
       {options.map((preset) => {
         const isSelected = preset.id === selectedValue;
         const iconName = getIconForPreset(preset.id);
@@ -99,14 +100,14 @@ export const PackageSelector = ({
               dimensions: `${preset.length}x${preset.width}x${preset.height} cm`,
             })}
             accessibilityState={{ selected: isSelected }}
-            style={{ flex: 1 }}
+            style={{ flex: options.length > 2 ? 0 : 1, minWidth: '45%' }}
           >
             <Box
               padding="m"
               borderRadius="m"
               alignItems="center"
               borderWidth={2}
-              borderColor={isSelected ? 'primary' : 'cardBackground'}
+              borderColor={isSelected ? 'primary' : 'background'}
               backgroundColor={isSelected ? 'background' : 'cardBackground'}
               height={120}
               justifyContent="center"
@@ -131,6 +132,7 @@ export const PackageSelector = ({
                 variant="caption-md"
                 color="textSecondary"
                 textAlign="center"
+                marginTop="xs"
               >
                 {`${preset.length}x${preset.width}x${preset.height} cm`}
               </Text>

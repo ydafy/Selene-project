@@ -295,8 +295,8 @@ Tests MUST verify frontend scope wiring, backend unsafe state rejection, Stripe 
 
 ### Order ↔ Shipment Relationship
 
-- One `order` → N `shipments` (one per distinct seller)
-- Each `order_item` belongs to exactly one `shipment`
+- One `order` → N `shipments` (one per purchased product/listing)
+- Each `order_item` belongs to exactly one distinct `shipment`
 - Order status is computed: lowest-priority exception → highest-progress shipment
   - Priority: `dispute > refunded > cancelled > refunded_cancelled`
   - Progress: `paid < preparing < shipped < delivered`
@@ -364,9 +364,9 @@ Returns:
 // key = sellerId, null = Envia API failed for that origin
 ```
 
-- Groups by `(originZip, sellerId)`. Same seller + same zip = one package.
-- Calls Envia `/rate/` per group.
-- Partial failure model: if one origin fails, other sellers still get rates.
+- Rates one package per product shipment using that shipment's origin, immutable buyer destination, dimensions, and declared value.
+- Accepts only exactly one Paquetexpress ground MXN option; no cheapest-rate or carrier/service fallback is permitted.
+- Partial failure model: a failed product shipment rate does not authorize label generation for that shipment or any other shipment.
 
 ### generate-shipping-label
 
@@ -380,8 +380,9 @@ Validates:
 - `tracking_number IS NULL`
 - Caller is seller (`shipment.seller_id = auth.uid()`) or admin
 - Anti-fraud: seller has < 10 shipments in `preparing`/`shipped` (counted in shipments table)
+- Exact Envia rate evidence exists or is persisted before generation, and is solely Paquetexpress ground in MXN
 
-Updates: `shipments.status = 'preparing'`, `tracking_number`, `label_url`, `carrier`, `origin_address`
+Updates atomically: `shipments.status = 'preparing'`, `tracking_number`, `label_url`, `carrier`, accepted quote evidence, immutable input hash, and non-negative integer `label_provider_cost_cents`
 
 ### track-shipments
 

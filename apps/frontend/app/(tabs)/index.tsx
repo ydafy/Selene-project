@@ -48,6 +48,8 @@ import { useNetInfo } from '@react-native-community/netinfo';
 import { useAuthContext } from '@/components/auth/AuthProvider';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { useTranslation } from 'react-i18next';
+import { getTabDockMetrics } from '../../core/constants/layout';
+import { formatNotificationBadgeCount } from '../../core/utils/notificationBadge';
 
 // --- RUTAS DEL APP ---
 const ROUTES = {
@@ -58,11 +60,12 @@ const ROUTES = {
 export default function HomeScreen() {
   //throw new Error('SELENE PRUEBA');
 
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['common', 'notifications']);
   const theme = useTheme<Theme>();
   const { isConnected } = useNetInfo();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const dockMetrics = getTabDockMetrics(insets.bottom);
   const addressModalRef = useRef<BottomSheetModal>(null);
 
   // --- STORES & HOOKS ---
@@ -153,6 +156,8 @@ export default function HomeScreen() {
               onPress={() => router.push(ROUTES.NOTIFICATIONS)}
               activeOpacity={0.7}
               style={{ marginLeft: theme.spacing.s }}
+              accessibilityLabel={t('notifications:openLabel')}
+              accessibilityRole="button"
             >
               <Box padding="xs">
                 <MaterialCommunityIcons
@@ -173,7 +178,15 @@ export default function HomeScreen() {
                     alignItems="center"
                     borderWidth={2}
                     borderColor="cardBackground"
-                  />
+                    paddingHorizontal="xs"
+                  >
+                    <Text
+                      variant="caption-md"
+                      style={{ color: 'white', fontSize: 10, lineHeight: 12 }}
+                    >
+                      {formatNotificationBadgeCount(unreadCount)}
+                    </Text>
+                  </Box>
                 )}
               </Box>
             </TouchableOpacity>
@@ -185,7 +198,7 @@ export default function HomeScreen() {
         contentContainerStyle={{
           padding: theme.spacing.m,
           paddingTop: insets.top + 90,
-          paddingBottom: 120,
+          paddingBottom: dockMetrics.contentBottomClearance,
         }}
         showsVerticalScrollIndicator={false}
         refreshControl={

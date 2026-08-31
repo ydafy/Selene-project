@@ -153,6 +153,7 @@ DECLARE
   v_residual_net NUMERIC := 0;
   v_order_amount NUMERIC;
   v_service_fee_amount NUMERIC := 0;
+  v_failure_code TEXT;
 BEGIN
   -- 1. Validate + extract structured allocation payload fields.
   v_buyer_id := (p_allocation ->> 'buyer_id')::UUID;
@@ -278,6 +279,10 @@ BEGIN
 
       IF v_product_ids IS NULL OR array_length(v_product_ids, 1) IS NULL THEN
         RAISE EXCEPTION 'PRODUCT_IDS_REQUIRED';
+      END IF;
+
+      IF array_length(v_product_ids, 1) <> 1 THEN
+        RAISE EXCEPTION 'ONE_PRODUCT_PER_SHIPMENT_REQUIRED';
       END IF;
 
       v_expected_product_count := array_length(v_product_ids, 1);
@@ -432,9 +437,18 @@ BEGIN
     -- Allocation write failed. The inner block is rolled back (no shipment/
     -- order_item/SOLD writes persist); the shell above survives. Surface it
     -- to admin ops recovery: status stays 'pending' with payment_processing.
+    v_failure_code := CASE
+      WHEN SQLERRM IN (
+        'ONE_PRODUCT_PER_SHIPMENT_REQUIRED',
+        'PRODUCT_ID_NOT_FOUND_OR_NOT_OWNED',
+        'PRODUCT_NOT_RESERVED'
+      ) OR SQLERRM LIKE 'INVALID_%' THEN SQLERRM
+      ELSE 'SETTLEMENT_TRANSIENT_FAILURE'
+    END;
+
     UPDATE public.orders
     SET payment_processing = true,
-        payment_processing_reason = SQLERRM,
+        payment_processing_reason = v_failure_code,
         stripe_charge_id = COALESCE(p_stripe_charge_id, stripe_charge_id),
         stripe_transfer_group = COALESCE(p_transfer_group, stripe_transfer_group),
         updated_at = now()
@@ -444,7 +458,9 @@ BEGIN
       'success', false,
       'order_id', v_existing_order_id,
       'status', 'payment_processing',
-      'error', SQLERRM
+      'error', SQLERRM,
+      'failure_code', v_failure_code,
+      'runtime_version', 'single_modal_settlement_v2'
     );
   END;
 END;

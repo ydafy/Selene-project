@@ -66,6 +66,24 @@ export const toastConfig = {
     />
   ),
 
+  warning: (props: ToastConfigParams<any>) => (
+    <BaseToast
+      {...props}
+      style={{ borderLeftColor: '#f59e0b', backgroundColor: '#1E1E1E' }}
+      contentContainerStyle={{ paddingHorizontal: 15 }}
+      text1Style={{
+        fontSize: 16,
+        fontFamily: 'Montserrat-Medium',
+        color: '#E4E4E4',
+      }}
+      text2Style={{
+        fontSize: 14,
+        fontFamily: 'Montserrat-Regular',
+        color: '#A9A9A9',
+      }}
+    />
+  ),
+
   seleneToast: ({ text1 }: ToastConfigParams<any>) => {
     const theme = useTheme<Theme>();
     return (

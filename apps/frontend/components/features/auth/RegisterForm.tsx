@@ -83,8 +83,8 @@ export const RegisterForm = ({
 
   // Helper para renderizar el label de términos (Asumo que ya lo tienes)
   const renderTermsLabel = () => (
-    <Text variant="body-sm" color="textSecondary">
-      {t('acceptTerms')}{' '}
+    <Text variant="body-md" color="textSecondary">
+      {t('iHaveReadAndAccept')}{' '}
       <Text color="primary" fontWeight="bold">
         {t('termsAndConditions')}
       </Text>

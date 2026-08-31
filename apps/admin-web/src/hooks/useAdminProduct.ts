@@ -7,6 +7,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/useAuthStore';
 import { toast } from 'sonner';
+import type { ProductStatus } from '@selene/types';
 
 export interface AdminProduct {
   id: string;
@@ -25,15 +26,11 @@ export interface AdminProduct {
 
 export type ProductTab = 'active' | 'history';
 
-export const ACTIVE_STATUSES = [
-  'VERIFIED',
-  'RESERVED',
-  'IN_DISPUTE',
-] as const;
+export const ACTIVE_STATUSES = ['VERIFIED', 'RESERVED', 'IN_DISPUTE'] as const;
 
 export const HISTORY_STATUSES = ['SOLD', 'REJECTED', 'HIDDEN'] as const;
 
-const STATUS_GROUPS: Record<ProductTab, readonly string[]> = {
+const STATUS_GROUPS: Record<ProductTab, readonly ProductStatus[]> = {
   active: ACTIVE_STATUSES,
   history: HISTORY_STATUSES,
 };
@@ -55,6 +52,7 @@ export const useAdminProduct = (tab: ProductTab, search: string) => {
     queryFn: async ({ pageParam = 0 }) => {
       const from = pageParam * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
+      const filterStatuses = STATUS_GROUPS[tab];
 
       let queryBuilder = supabase
         .from('products')
@@ -62,7 +60,7 @@ export const useAdminProduct = (tab: ProductTab, search: string) => {
           '*, seller:profiles!products_seller_id_fkey(username), locker:profiles!products_locked_by_fkey(username)',
           { count: 'exact' },
         )
-        .in('status', STATUS_GROUPS[tab])
+        .in('status', filterStatuses)
         .order('created_at', { ascending: false });
 
       const safeSearch = sanitizeSearch(search);
@@ -132,10 +130,9 @@ export const useAdminProduct = (tab: ProductTab, search: string) => {
 
   const restoreMutation = useMutation({
     mutationFn: async (productId: string) => {
-      const { data, error } = await supabase.rpc(
-        'fn_admin_restore_product',
-        { p_product_id: productId },
-      );
+      const { data, error } = await supabase.rpc('fn_admin_restore_product', {
+        p_product_id: productId,
+      });
 
       if (error) throw error;
       if (data === false) {

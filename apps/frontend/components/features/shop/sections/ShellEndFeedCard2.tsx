@@ -27,9 +27,11 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 export const ShellEndFeedCard2 = ({
   visibleHeight,
   isActive,
+  contentBottomClearance,
 }: {
   visibleHeight: number;
   isActive: boolean;
+  contentBottomClearance: number;
 }) => {
   const theme = useTheme<Theme>();
   const router = useRouter();
@@ -72,7 +74,7 @@ export const ShellEndFeedCard2 = ({
       height={visibleHeight}
       backgroundColor="background"
       justifyContent="center"
-      paddingBottom={'xl'}
+      style={{ paddingBottom: contentBottomClearance }}
     >
       {/* 1. CONTENIDO CENTRAL (Mensaje y Botón) */}
       <Box

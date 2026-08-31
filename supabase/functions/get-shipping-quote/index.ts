@@ -137,7 +137,7 @@ serve(async (req: Request) => {
           },
         },
       ],
-      shipment: { type: 1, carrier: 'estafeta', service: 'ground' },
+      shipment: { type: 1, carrier: 'paquetexpress', service: 'ground' },
       settings: { currency: 'MXN' },
     };
 

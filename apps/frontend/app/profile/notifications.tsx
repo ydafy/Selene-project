@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { RefreshControl, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -15,6 +15,7 @@ import { useNotificationMutations } from '../../core/hooks/useNotificationMutati
 import { NotificationLinking } from '../../core/services/notification';
 import { useAuthContext } from '../../components/auth/AuthProvider';
 import { Skeleton } from '../../components/ui/Skeleton';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { useTheme } from '@shopify/restyle';
 import { Theme } from '../../core/theme';
 import { Notification } from '@selene/types';
@@ -25,6 +26,7 @@ export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const { session } = useAuthContext();
   const userId = session?.user.id;
+  const [showClearAll, setShowClearAll] = useState(false);
 
   const {
     data: notifications,
@@ -36,16 +38,28 @@ export default function NotificationsScreen() {
     refetch,
   } = useNotificationsList(userId);
 
-  const { markAsRead, markAllAsRead } = useNotificationMutations(userId);
+  const {
+    markAsRead,
+    markAllAsRead,
+    dismissNotification,
+    dismissAll,
+  } = useNotificationMutations(userId);
 
   const handleNotificationPress = async (notif: Notification) => {
     await markAsRead(notif.id);
-    NotificationLinking.navigate(notif.action_path);
+    await NotificationLinking.navigate(notif.action_path);
   };
 
   const handleMarkAllAsRead = async () => {
     await markAllAsRead();
   };
+
+  const handleClearAll = async () => {
+    setShowClearAll(false);
+    await dismissAll();
+  };
+
+  const hasNotifications = notifications && notifications.length > 0;
 
   if (isLoading) {
     return (
@@ -80,21 +94,38 @@ export default function NotificationsScreen() {
         title={t('notifications:title')}
         showBack
         headerRight={
-          notifications && notifications.some((n) => !n.read) ? (
-            <TouchableOpacity
-              onPress={handleMarkAllAsRead}
-              style={{ flexDirection: 'row', alignItems: 'center' }}
-            >
-              <Text variant="caption-md" color="primary" marginRight="xs">
-                {t('notifications:markAll')}
-              </Text>
-              <MaterialCommunityIcons
-                name="email-open-outline"
-                size={20}
-                color={theme.colors.primary}
-              />
-            </TouchableOpacity>
-          ) : undefined
+          <Box flexDirection="row" alignItems="center" gap="s">
+            {notifications && notifications.some((n) => !n.read) && (
+              <TouchableOpacity
+                onPress={handleMarkAllAsRead}
+                style={{ flexDirection: 'row', alignItems: 'center' }}
+              >
+                <Text variant="caption-md" color="primary" marginRight="xs">
+                  {t('notifications:markAll')}
+                </Text>
+                <MaterialCommunityIcons
+                  name="email-open-outline"
+                  size={20}
+                  color={theme.colors.primary}
+                />
+              </TouchableOpacity>
+            )}
+            {hasNotifications && (
+              <TouchableOpacity
+                onPress={() => setShowClearAll(true)}
+                style={{ flexDirection: 'row', alignItems: 'center' }}
+              >
+                <Text variant="caption-md" color="error" marginRight="xs">
+                  {t('notifications:clearAllLabel')}
+                </Text>
+                <MaterialCommunityIcons
+                  name="notification-clear-all"
+                  size={20}
+                  color={theme.colors.error}
+                />
+              </TouchableOpacity>
+            )}
+          </Box>
         }
       />
 
@@ -110,6 +141,7 @@ export default function NotificationsScreen() {
           <NotificationItem
             notification={item}
             onPress={handleNotificationPress}
+            onDismiss={dismissNotification}
           />
         )}
         onEndReached={hasNextPage ? fetchNextPage : undefined}
@@ -140,6 +172,17 @@ export default function NotificationsScreen() {
             progressViewOffset={insets.top + 70}
           />
         }
+      />
+
+      <ConfirmDialog
+        visible={showClearAll}
+        title={t('notifications:clearAllLabel')}
+        description={t('notifications:clearAllConfirm')}
+        onConfirm={handleClearAll}
+        onCancel={() => setShowClearAll(false)}
+        confirmLabel={t('common:dialog.delete')}
+        cancelLabel={t('common:dialog.cancel')}
+        isDangerous
       />
     </Box>
   );

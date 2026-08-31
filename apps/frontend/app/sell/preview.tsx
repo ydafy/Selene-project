@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Box, Text } from '../../components/base';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { AppChip } from '../../components/ui/AppChip';
-import { ConfirmDialog } from '../../components/ui/ConfirmDialog'; // <--- 1. NUEVO IMPORT
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 
 // Componentes de Layout
 import { GlobalHeader } from '../../components/layout/GlobalHeader';
@@ -94,11 +94,13 @@ export default function SellPreviewScreen() {
 
   return (
     <Box flex={1} backgroundColor="background">
-      <Stack.Screen options={{ headerShown: false }} />
+      <Stack.Screen
+        options={{ headerShown: false, gestureEnabled: !isPublishing }}
+      />
 
       <GlobalHeader
         title={t('sell:preview.title')}
-        showBack={true}
+        showBack={!isPublishing}
         backgroundColor="cardBackground"
       />
 
@@ -150,7 +152,11 @@ export default function SellPreviewScreen() {
                   backgroundColor="background"
                 />
                 <AppChip
-                  label={draft.id ? t('sell:preview.editing') : t('sell:preview.draft')}
+                  label={
+                    draft.id
+                      ? t('sell:preview.editing')
+                      : t('sell:preview.draft')
+                  }
                   icon="eye"
                   textColor="textSecondary"
                   backgroundColor="background"

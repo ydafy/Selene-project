@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
+import { useState } from 'react';
 
 import { Box } from '../../components/base';
 // Usamos GlobalHeader en lugar de ScreenHeader + IconButton manual
@@ -14,32 +15,35 @@ import { ProductCategory } from '@selene/types';
 import { useAuthContext } from '../../components/auth/AuthProvider';
 import { useAuthModal } from '../../core/auth/AuthModalProvider';
 import { triggerHaptic } from '../../core/utils/haptics';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import {
   SELL_CATEGORIES,
   SELL_CATEGORY_META,
 } from '../../core/config/sellCategories';
 
 export default function SelectCategoryScreen() {
-  const { t } = useTranslation(['sell', 'product']);
+  const { t } = useTranslation(['sell', 'product', 'auth', 'common']);
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { session } = useAuthContext();
+  const { session, isSuspended, statusReason } = useAuthContext();
+  const [showSuspendedDialog, setShowSuspendedDialog] = useState(false);
   const { present } = useAuthModal();
   const setCategory = useSellStore((state) => state.setCategory);
 
   const handleCategorySelect = (category: ProductCategory) => {
     if (!session) {
-      // Si no hay usuario, mostramos el Login y detenemos todo.
       present('login');
       return;
     }
-    // 1. Feedback táctil ligero al seleccionar categoría
+
+    // ── GUARDIA DE SUSPENSIÓN CON CONFIRM DIALOG ──
+    if (isSuspended) {
+      setShowSuspendedDialog(true);
+      return;
+    }
+
     triggerHaptic();
-
-    // 2. Guardamos en el estado global
     setCategory(category);
-
-    // 3. Navegamos al siguiente paso
     router.push('/sell/details');
   };
 
@@ -51,7 +55,7 @@ export default function SelectCategoryScreen() {
       {/* 1. GLOBAL HEADER */}
       {/* showBack={true} en un modal actúa como botón de "Cerrar/Cancelar" */}
       <GlobalHeader
-        title={t('sell:title')}
+        title={t('sell:headerTitle')}
         showBack={true}
         backgroundColor="cardBackground"
       />
@@ -83,6 +87,20 @@ export default function SelectCategoryScreen() {
           })}
         </Box>
       </Box>
+      <ConfirmDialog
+        visible={showSuspendedDialog}
+        title={t('auth:suspendedDialog.title')}
+        description={
+          t('auth:suspendedDialog.message') +
+          ' ' +
+          (statusReason || t('auth:suspendedDialog.noReason'))
+        }
+        confirmLabel={t('common:dialog.understood')}
+        onConfirm={() => setShowSuspendedDialog(false)}
+        onCancel={() => setShowSuspendedDialog(false)}
+        isDangerous={true}
+        icon="alert-circle-outline"
+      />
     </Box>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Toast from 'react-native-toast-message';
 import * as Haptics from 'expo-haptics';
 import { useQueryClient } from '@tanstack/react-query';
@@ -8,53 +8,47 @@ import { supabase } from '../../../core/db/supabase';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import { Notification } from '@selene/types';
 import { useTranslation } from 'react-i18next';
-import { useNotificationMutations } from '../../../core/hooks/useNotificationMutations';
 import {
-  NotificationService,
-  NotificationLinking,
-} from '../../../core/services/notification';
+  invalidateNotificationKeys,
+  useNotificationMutations,
+} from '../../../core/hooks/useNotificationMutations';
+import { NotificationLinking } from '../../../core/services/notification';
+import { classify } from './classify';
+import { resolveDialogControls } from './dialogActions';
 import { Box, Text } from '../../base';
+
+const TOAST_VISIBILITY_MS = 4000;
 
 export const NotificationWatcher = () => {
   const { session } = useAuthContext();
   const userId = session?.user.id;
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['common', 'notifications']);
   const queryClient = useQueryClient();
 
   const { markAsRead } = useNotificationMutations(userId);
   const [queue, setQueue] = useState<Notification[]>([]);
   const [isProcessingAction, setIsProcessingAction] = useState(false);
-  const isInitialLoadDone = useRef(false);
 
   const currentNotification = queue.length > 0 ? queue[0] : null;
   const isLast = queue.length === 1;
+  const hasMore = queue.length > 1;
 
-  const invalidateNotificationKeys = useCallback(() => {
-    if (!userId) return;
-    queryClient.invalidateQueries({ queryKey: ['notifications', userId] });
-    queryClient.invalidateQueries({
-      queryKey: ['unread-notifications', userId],
+  const showErrorToast = useCallback(() => {
+    Toast.show({
+      type: 'error',
+      text1: t('common:states.errorTitle'),
+      text2: t('common:errors.generic'),
     });
-  }, [userId, queryClient]);
+  }, [t]);
 
   const processIncoming = useCallback(
     async (notif: Notification, isSilent = false) => {
-      const title = (notif.title ?? '').toLowerCase();
-      const path = (notif.action_path ?? '').toLowerCase();
+      const kind = classify(notif);
 
-      const needsDialog =
-        notif.type === 'error' ||
-        notif.type === 'warning' ||
-        title.includes('verific') ||
-        title.includes('vendido') ||
-        title.includes('compra') ||
-        title.includes('pago') ||
-        path.includes('orders') ||
-        path.includes('wallet');
-
-      if (needsDialog) {
-        if (!isSilent)
+      if (kind === 'dialog') {
+        if (!isSilent) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        }
         setQueue((prev) => {
           if (prev.find((item) => item.id === notif.id)) return prev;
           return [...prev, notif];
@@ -62,13 +56,19 @@ export const NotificationWatcher = () => {
       } else {
         if (!isSilent) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          const toastType =
+            notif.type === 'success' ||
+            notif.type === 'warning' ||
+            notif.type === 'error'
+              ? notif.type
+              : 'info';
           Toast.show({
-            type: notif.type === 'success' ? 'success' : 'info',
+            type: toastType,
+            visibilityTime: TOAST_VISIBILITY_MS,
             text1: notif.title ?? '',
             text2: notif.message ?? '',
             onPress: () => {
               NotificationLinking.navigate(notif.action_path);
-              Toast.hide();
             },
           });
           await markAsRead(notif.id);
@@ -79,27 +79,8 @@ export const NotificationWatcher = () => {
   );
 
   useEffect(() => {
-    if (userId && !isInitialLoadDone.current) {
-      const fetchUnread = async () => {
-        const { data } = await supabase
-          .from('notifications')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('read', false)
-          .is('deleted_at', null)
-          .order('created_at', { ascending: false });
-
-        if (data && data.length > 0) {
-          processIncoming(data[0] as Notification, true);
-        }
-        isInitialLoadDone.current = true;
-      };
-      fetchUnread();
-    }
-  }, [userId, processIncoming]);
-
-  useEffect(() => {
     if (!userId) return;
+
     const channel = supabase
       .channel(`notifications_realtime_watcher_${userId}`)
       .on(
@@ -111,22 +92,32 @@ export const NotificationWatcher = () => {
           filter: `user_id=eq.${userId}`,
         },
         (payload) => {
-          const eventType = payload.eventType;
-          if (eventType === 'INSERT') {
-            const notif = payload.new as Notification;
-            NotificationService.dispatch(notif);
-            processIncoming(notif);
-            invalidateNotificationKeys();
-          } else if (eventType === 'UPDATE') {
-            invalidateNotificationKeys();
+          try {
+            const eventType = payload.eventType;
+            if (eventType === 'INSERT') {
+              const notif = payload.new as Notification;
+              processIncoming(notif);
+              invalidateNotificationKeys(queryClient, userId);
+            } else if (eventType === 'UPDATE') {
+              invalidateNotificationKeys(queryClient, userId);
+            }
+          } catch (error) {
+            console.error('[NotificationWatcher] Payload handler error:', error);
+            showErrorToast();
           }
         },
       )
-      .subscribe();
+      .subscribe((status, error) => {
+        if (error) {
+          console.error('[NotificationWatcher] Subscription error:', error);
+          showErrorToast();
+        }
+      });
+
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, processIncoming, invalidateNotificationKeys]);
+  }, [userId, processIncoming, queryClient, showErrorToast]);
 
   const handleAction = async () => {
     if (!currentNotification || isProcessingAction) return;
@@ -134,11 +125,22 @@ export const NotificationWatcher = () => {
     setIsProcessingAction(true);
     try {
       await markAsRead(currentNotification.id);
-      NotificationLinking.navigate(currentNotification.action_path);
+      await NotificationLinking.navigate(currentNotification.action_path);
       setQueue((prev) => prev.slice(1));
+    } catch (error) {
+      console.error('[NotificationWatcher] Action error:', error);
+      showErrorToast();
     } finally {
       setIsProcessingAction(false);
     }
+  };
+
+  const handleSkip = () => {
+    setQueue((prev) => prev.slice(1));
+  };
+
+  const handleSkipAll = () => {
+    setQueue([]);
   };
 
   if (!currentNotification) return null;
@@ -146,30 +148,43 @@ export const NotificationWatcher = () => {
   const isError = currentNotification.type === 'error';
   const path = (currentNotification.action_path || '').toLowerCase();
 
-  let confirmLabel = t('dialog.next');
-  if (isLast) {
-    if (isError) confirmLabel = t('dialog.fixNow');
-    else if (path.includes('orders')) confirmLabel = t('dialog.viewOrder');
-    else confirmLabel = t('dialog.understood');
-  }
+  const actionLabel = isError
+    ? t('common:dialog.fixNow')
+    : path.startsWith('/orders')
+      ? t('common:dialog.viewOrder')
+      : t('common:dialog.understood');
+
+  const controls = resolveDialogControls(isLast);
+  const confirmLabel =
+    controls.confirmAction === 'action'
+      ? actionLabel
+      : t('common:dialog.skipAll');
+  const cancelLabel =
+    controls.cancelAction === 'cancel'
+      ? t('common:dialog.cancel')
+      : t('common:dialog.skip');
+  const confirmAction =
+    controls.confirmAction === 'action' ? handleAction : handleSkipAll;
+  const cancelAction =
+    controls.cancelAction === 'cancel' ? () => setQueue([]) : handleSkip;
 
   return (
     <ConfirmDialog
       visible={!!currentNotification}
       title={currentNotification?.title ?? ''}
       description={currentNotification?.message ?? ''}
-      onConfirm={handleAction}
-      onCancel={() => setQueue([])}
+      onConfirm={confirmAction}
+      onCancel={cancelAction}
       confirmLabel={confirmLabel}
-      cancelLabel={isLast ? t('dialog.cancel') : t('dialog.skipAll')}
+      cancelLabel={cancelLabel}
       icon={isError ? 'alert-circle-outline' : 'check-circle-outline'}
       isDangerous={isError}
-      loading={isProcessingAction} // Pasamos el estado de carga al botón
+      loading={isProcessingAction}
     >
-      {queue.length > 1 && (
+      {hasMore && (
         <Box marginTop="m" alignItems="center">
           <Text variant="caption-md" color="textSecondary">
-            {`+${queue.length - 1} mensajes más`}
+            {t('notifications:moreCount', { count: queue.length - 1 })}
           </Text>
         </Box>
       )}

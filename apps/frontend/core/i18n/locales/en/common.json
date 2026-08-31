@@ -32,6 +32,7 @@
     "fixNow": "Fix Now",
     "cancel": "Cancel",
     "delete": "Delete",
+    "skip": "Skip",
     "skipAll": "Skip All",
     "discardTitle": "Discard Post?",
     "discardDescription": "If you exit now, you will lose all progress."

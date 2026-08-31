@@ -1,4 +1,4 @@
-export type ReorderDirection = 'up' | 'down';
+export type ReorderDirection = 'left' | 'right';
 
 /**
  * Reorders an image array by moving the item at `fromIndex` one position
@@ -9,7 +9,7 @@ export const reorderImages = (
   fromIndex: number,
   direction: ReorderDirection,
 ): string[] => {
-  const toIndex = direction === 'up' ? fromIndex - 1 : fromIndex + 1;
+  const toIndex = direction === 'left' ? fromIndex - 1 : fromIndex + 1;
 
   if (toIndex < 0 || toIndex >= images.length) {
     return images;

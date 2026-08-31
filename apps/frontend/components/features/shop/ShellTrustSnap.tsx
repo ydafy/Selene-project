@@ -22,9 +22,11 @@ import rtx from '../../../assets/images/shop/5090.jpg';
 const ShellTrustSnapComponent = ({
   visibleHeight,
   isActive,
+  contentBottomClearance = 20,
 }: {
   visibleHeight: number;
   isActive: boolean;
+  contentBottomClearance?: number;
 }) => {
   const theme = useTheme<Theme>();
   const router = useRouter();
@@ -36,7 +38,12 @@ const ShellTrustSnapComponent = ({
       <AppVideo source={TrustVideo} posterSource={rtx} shouldPlay={isActive} />
 
       {/* 3. CONTENIDO FLOTANTE (Estilo Etiqueta Lateral Snapped) */}
-      <Box flex={1} justifyContent="flex-end" paddingBottom="xl">
+      <Box
+        flex={1}
+        justifyContent="flex-end"
+        paddingBottom="xl"
+        style={{ marginBottom: contentBottomClearance }}
+      >
         <Box
           alignSelf="flex-start"
           maxWidth="85%"

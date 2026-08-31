@@ -5,6 +5,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useNetInfo } from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
 
+import { publishProductSchema } from '../schemas/sell.schema';
+
 import { supabase } from '../db/supabase';
 import { useSellStore } from '../store/useSellStore';
 import { useAuthContext } from '../../components/auth/AuthProvider';
@@ -19,7 +21,9 @@ import {
 
 export const usePublishProduct = () => {
   const [isPublishing, setIsPublishing] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<Record<string, ImageUploadState>>({});
+  const [uploadProgress, setUploadProgress] = useState<
+    Record<string, ImageUploadState>
+  >({});
   const publishingLockRef = useRef(false);
   const router = useRouter();
   const draft = useSellStore((state) => state.draft);
@@ -37,12 +41,15 @@ export const usePublishProduct = () => {
     progress: patch.progress ?? current?.progress ?? 0,
   });
 
-  const setImageProgress = useCallback((uri: string, patch: Partial<ImageUploadState>) => {
-    setUploadProgress((prev) => ({
-      ...prev,
-      [uri]: buildImageUploadState(prev[uri], patch),
-    }));
-  }, []);
+  const setImageProgress = useCallback(
+    (uri: string, patch: Partial<ImageUploadState>) => {
+      setUploadProgress((prev) => ({
+        ...prev,
+        [uri]: buildImageUploadState(prev[uri], patch),
+      }));
+    },
+    [],
+  );
 
   const uploadImage = async (uri: string, userId: string) => {
     // Si ya es una URL remota (edición), no la subimos de nuevo
@@ -93,22 +100,30 @@ export const usePublishProduct = () => {
 
     if (guard.type === 'blocked') {
       if (guard.reason === 'no_session') {
-        Alert.alert(
-          t('common:states.errorTitle'),
-          t('sell:errors.noSession'),
-        );
+        Alert.alert(t('common:states.errorTitle'), t('sell:errors.noSession'));
       }
       if (guard.reason === 'offline') {
-        Alert.alert(
-          t('common:states.errorTitle'),
-          t('sell:errors.offline'),
-        );
+        Alert.alert(t('common:states.errorTitle'), t('sell:errors.offline'));
       }
       return;
     }
 
     if (!session?.user.id) return;
 
+    // --- PASO 0: VALIDACIÓN ESTRICTA CON ZOD (En memoria, 0 consumo de red) ---
+    const validation = publishProductSchema.safeParse(draft);
+
+    if (!validation.success) {
+      // En Zod moderno, el array de errores se llama .issues
+      const firstErrorMessage =
+        validation.error.issues[0]?.message ||
+        'Por favor revisa los campos del formulario.';
+
+      Alert.alert(t('common:states.errorTitle'), firstErrorMessage);
+      return; // ⛔️ FRENAMOS ACÁ: 0 consumo de almacenamiento
+    }
+
+    // --- PASO 1: CONTINÚA EL FLUJO SEGURO ---
     publishingLockRef.current = true;
     setIsPublishing(true);
 

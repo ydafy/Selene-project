@@ -1,14 +1,15 @@
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   resolvePublicProfileCollectionState,
   resolvePublicProfileSellerId,
   shouldHidePublicProfileModerationActions,
-} from '../profile/publicProfile.helpers';
+} from '../../app/profile/publicProfile.helpers';
 
-const FRONTEND = join(import.meta.dir, '..', '..');
+const FRONTEND = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 const read = (relPath: string) => readFileSync(join(FRONTEND, relPath), 'utf8');
 
@@ -24,15 +25,15 @@ describe('public profile route hardening', () => {
   });
 
   test('hides owner moderation actions on public profiles', () => {
-    expect(shouldHidePublicProfileModerationActions('seller-1', 'seller-1')).toBe(
-      true,
-    );
-    expect(shouldHidePublicProfileModerationActions('buyer-1', 'seller-1')).toBe(
-      false,
-    );
-    expect(shouldHidePublicProfileModerationActions(undefined, 'seller-1')).toBe(
-      false,
-    );
+    expect(
+      shouldHidePublicProfileModerationActions('seller-1', 'seller-1'),
+    ).toBe(true);
+    expect(
+      shouldHidePublicProfileModerationActions('buyer-1', 'seller-1'),
+    ).toBe(false);
+    expect(
+      shouldHidePublicProfileModerationActions(undefined, 'seller-1'),
+    ).toBe(false);
     expect(src).toContain('isOwner={isOwner}');
   });
 
