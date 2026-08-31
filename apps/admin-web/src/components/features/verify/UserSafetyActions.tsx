@@ -63,27 +63,35 @@ export const UserSafetyActions = ({ user, onUpdate }: Props) => {
     } else {
       toast.success(`Usuario marcado como ${modalConfig.status}`);
       onUpdate();
-      setModalConfig({ isOpen: false }); // Cerramos el modal al éxito
+      setModalConfig({ isOpen: false });
     }
     setLoading(false);
   };
 
   return (
     <div className="flex items-center gap-2 border-l border-white/10 pl-4 ml-4">
-      {/* 1. BOTÓN SELLO AZUL (Se queda igual) */}
       <button
         onClick={toggleVerified}
         disabled={loading}
-        className={`p-2 rounded-lg transition-all outline-none focus:ring-2 focus:ring-lion/50 ${user.is_verified_seller ? 'bg-blue-500/20 text-blue-400' : 'bg-white/5 text-blue-light'}`}
+        title={
+          user.is_verified_seller
+            ? 'Remover Sello de Verificación VIP'
+            : 'Otorgar Sello de Verificación VIP'
+        }
+        className={`p-2 rounded-lg transition-all outline-none focus:ring-2 focus:ring-lion/50 cursor-pointer disabled:opacity-50 ${
+          user.is_verified_seller
+            ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
+            : 'bg-white/5 text-blue-light hover:bg-blue-500/20 hover:text-blue-400'
+        }`}
       >
         <ShieldCheck size={18} />
       </button>
 
-      {/* 2. BOTÓN DINÁMICO: SUSPENDER O REACTIVAR (FIXED) */}
+      {/* 2. BOTÓN DINÁMICO: SUSPENDER O REACTIVAR  */}
       {user.status === 'active' ? (
         /* Si está activo, mostramos botón para SUSPENDER */
         <button
-          onClick={() => handleOpenModal('suspended')} // <--- Ahora sí abre el modal correcto
+          onClick={() => handleOpenModal('suspended')}
           disabled={loading}
           title="Suspender Usuario"
           className="p-2 rounded-lg bg-white/5 text-blue-light hover:bg-fire/20 hover:text-fire transition-all outline-none focus:ring-2 focus:ring-lion/50"

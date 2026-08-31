@@ -22,6 +22,7 @@ import { ErrorState } from '../components/ui/ErrorState';
 import { ImageModal } from '../components/ui/ImageModal';
 import { InputModal } from '../components/ui/InputModal';
 import { Skeleton } from '../components/ui/Skeleton';
+import { formatTime } from '../lib/utils/formatDate';
 
 export const DisputeDetailPage = () => {
   const { id } = useParams();
@@ -47,8 +48,7 @@ export const DisputeDetailPage = () => {
       });
       setShowResolveModal(false);
       navigate('/disputes'); // Opcional: volver a la lista tras cerrar el caso
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (error) {
+    } catch {
       // El error ya lo maneja el toast del hook
     }
   };
@@ -61,7 +61,7 @@ export const DisputeDetailPage = () => {
         // YA NO ENVIAMOS tracking ni url desde aquí
       });
       setShowResolveModal(false); // Usamos el mismo modal de "Sentencia"
-    } catch (error) {
+    } catch {
       // Error manejado por el hook
     }
   };
@@ -131,9 +131,8 @@ export const DisputeDetailPage = () => {
   if (isError || !dispute) return <ErrorState onRetry={() => refetch()} />;
 
   // 4. Extracción Segura de Evidencias
-  const order = dispute?.order || {};
-  const buyer = dispute?.buyer || {}; // <--- Ahora vienen de aquí
-  const seller = dispute?.seller || {}; // <--- Ahora vienen de aquí
+  const buyer = dispute?.buyer || {};
+  const seller = dispute?.seller || {};
 
   const buyerEvidence = dispute?.buyer_evidence || {};
   const sellerEvidence = dispute?.shipment?.shipping_evidence || {};
@@ -214,8 +213,8 @@ export const DisputeDetailPage = () => {
                 Sentenciado por: @{dispute.resolved_admin?.username || 'Staff'}
               </span>
               <span className="text-[10px] text-blue-light/50">
-                Resolución emitida el{' '}
-                {new Date(dispute.updated_at).toLocaleString()}
+                Resolución emitida el Resolución emitida el{' '}
+                {formatTime(dispute.updated_at)}
               </span>
             </div>
           </div>

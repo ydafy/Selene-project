@@ -1,10 +1,5 @@
 import { useState } from 'react';
-import {
-  Lock,
-  AlertCircle,
-  ShieldAlert,
-  Cpu,
-} from 'lucide-react';
+import { Lock, AlertCircle, ShieldAlert, Cpu } from 'lucide-react';
 import { UserAvatar } from '../../ui/UserAvatar';
 import { UserSafetyActions } from './UserSafetyActions';
 import { RankInfoPanel } from './RankInfoPanel';
@@ -15,7 +10,8 @@ import { getRank } from '../../../lib/utils/ranks';
 import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { toast } from 'sonner';
-import type { PendingProduct } from '@selene/types';
+import type { PendingProduct, AccountStatus } from '@selene/types';
+import { formatTime } from '../../../lib/utils/formatDate';
 
 interface LockStatus {
   isLockedByOther: boolean;
@@ -23,11 +19,24 @@ interface LockStatus {
   lockedSince: string | null;
 }
 
+export interface ResolveProductVariables {
+  id: string;
+  verdict: 'APPROVE' | 'REJECT' | 'APPROVE_NOTE';
+  note?: string;
+  product: PendingProduct;
+}
+
 interface VerificationDetailProps {
   product: PendingProduct;
   lockStatus: LockStatus;
   isLocking: boolean;
-  resolve: { mutate: (vars: any, options?: any) => void; isPending: boolean };
+  resolve: {
+    mutate: (
+      vars: ResolveProductVariables,
+      options?: { onSuccess?: () => void; onError?: (error: Error) => void },
+    ) => void;
+    isPending: boolean;
+  };
   refetch: () => void;
   onImageClick: (url: string) => void;
   onVerdictComplete: () => void;
@@ -54,10 +63,7 @@ export const VerificationDetail = ({
     ? product.verification_data
     : null;
 
-  const rank = getRank(
-    product.seller_stats.sold,
-    product.seller_stats.ratio,
-  );
+  const rank = getRank(product.seller_stats.sold, product.seller_stats.ratio);
 
   const saveInternalNote = async () => {
     if (!internalNote.trim()) return;
@@ -182,9 +188,10 @@ export const VerificationDetail = ({
           <UserSafetyActions
             user={{
               id: product.seller_id,
-              status: (product.seller as any)?.status || 'active',
-              is_verified_seller:
-                product.seller?.is_verified_seller ?? null,
+              status:
+                (product.seller as { status?: AccountStatus })?.status ||
+                'active',
+              is_verified_seller: product.seller?.is_verified_seller ?? null,
             }}
             onUpdate={refetch}
           />
@@ -253,7 +260,7 @@ export const VerificationDetail = ({
             specs={
               (isRecord(product.specifications)
                 ? product.specifications
-                : {}) as Record<string, any>
+                : {}) as Record<string, unknown>
             }
           />
         </div>
@@ -265,44 +272,50 @@ export const VerificationDetail = ({
           </h5>
           <textarea
             value={internalNote}
+            disabled={lockStatus.isLockedByOther || isLocking}
             onChange={(e) => setInternalNote(e.target.value)}
-            placeholder="Escribe una nota interna sobre este vendedor..."
-            className="w-full bg-night/40 border border-fire/10 rounded-lg p-3 text-xs text-platinum outline-none focus:border-fire/30"
+            placeholder={
+              lockStatus.isLockedByOther
+                ? 'Modo solo lectura: no puedes agregar notas en este momento.'
+                : 'Escribe una nota interna sobre este vendedor...'
+            }
+            className="w-full bg-night/40 border border-fire/10 rounded-lg p-3 text-xs text-platinum outline-none focus:border-fire/30 disabled:opacity-50 disabled:cursor-not-allowed"
             rows={2}
           />
           <button
             onClick={saveInternalNote}
-            className="text-[10px] bg-fire/20 text-fire px-3 py-1 rounded-md hover:bg-fire/30 transition-all font-bold uppercase outline-none focus:ring-2 focus:ring-lion/50"
+            disabled={
+              lockStatus.isLockedByOther || isLocking || !internalNote.trim()
+            }
+            className="text-[10px] bg-fire/20 text-fire px-3 py-1 rounded-md hover:bg-fire/30 transition-all font-bold uppercase outline-none focus:ring-2 focus:ring-lion/50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
             Guardar Nota Privada
           </button>
 
           {/* HISTORIAL DE NOTAS INTERNAS */}
-          {(product as any).internal_notes?.length > 0 && (
+          {product.internal_notes && product.internal_notes.length > 0 && (
             <div className="mt-4 space-y-2 border-t border-fire/10 pt-3">
               <p className="text-[10px] font-bold text-fire/60 uppercase tracking-widest">
                 Historial de notas:
               </p>
-              {(product as any).internal_notes.map(
-                (note: any, idx: number) => (
-                  <div
-                    key={idx}
-                    className="bg-night/30 p-2 rounded-lg border border-white/5"
-                  >
-                    <p className="text-[11px] text-platinum leading-tight">
-                      {note.content}
-                    </p>
-                    <div className="flex justify-between mt-1">
-                      <span className="text-[9px] text-blue-light">
-                        Por: {note.admin?.username || 'Admin'}
-                      </span>
-                      <span className="text-[9px] text-blue-light">
-                        {new Date(note.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
+              {product.internal_notes.map((note, idx) => (
+                <div
+                  key={idx}
+                  className="bg-night/30 p-2 rounded-lg border border-white/5"
+                >
+                  <p className="text-[11px] text-platinum leading-tight">
+                    {note.content}
+                  </p>
+                  <div className="flex justify-between mt-1">
+                    <span className="text-[9px] text-blue-light">
+                      Por: {note.admin?.username || 'Admin'}
+                    </span>
+                    <span className="text-[9px] text-blue-light">
+                      {formatTime(note.created_at)}
+                    </span>
                   </div>
-                ),
-              )}
+                </div>
+              ))}
             </div>
           )}
         </div>

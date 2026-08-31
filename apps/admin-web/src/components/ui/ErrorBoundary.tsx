@@ -11,7 +11,10 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+export class ErrorBoundary extends Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null };
@@ -32,7 +35,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       }
 
       return (
-        <div className="flex items-center justify-center h-full min-h-[400px] p-8">
+        <div className="flex items-center justify-center h-full min-h-100 p-8">
           <div className="text-center space-y-4 max-w-md">
             <div className="p-4 bg-fire/10 rounded-full inline-flex mx-auto">
               <AlertCircle className="text-fire" size={36} />
