@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMemo, useState } from 'react';
 import { Search, Clock } from 'lucide-react';
 import { UserAvatar } from '../../ui/UserAvatar';
@@ -128,21 +129,19 @@ export const VerificationList = ({
         ))}
 
         {/* ESTADOS VACÍOS */}
-        {products &&
-          products.length > 0 &&
-          filteredProducts.length === 0 && (
-            <div className="text-center py-12 bg-state-gray/50 rounded-2xl border border-dashed border-white/10">
-              <p className="text-sm text-blue-light">
-                No se encontraron resultados.
-              </p>
-              <button
-                onClick={clearFilters}
-                className="mt-2 text-xs text-lion hover:underline"
-              >
-                Limpiar filtros
-              </button>
-            </div>
-          )}
+        {products && products.length > 0 && filteredProducts.length === 0 && (
+          <div className="text-center py-12 bg-state-gray/50 rounded-2xl border border-dashed border-white/10">
+            <p className="text-sm text-blue-light">
+              No se encontraron resultados.
+            </p>
+            <button
+              onClick={clearFilters}
+              className="mt-2 text-xs text-lion hover:underline"
+            >
+              Limpiar filtros
+            </button>
+          </div>
+        )}
 
         {products?.length === 0 && (
           <div className="text-center py-12 bg-state-gray rounded-2xl border border-dashed border-white/10">

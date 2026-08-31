@@ -5,6 +5,7 @@ interface Props {
   title: string;
   value: string | number;
   icon: LucideIcon;
+  children?: React.ReactNode;
   color?: string;
   isLoading?: boolean;
   href?: string;
@@ -41,6 +42,7 @@ export const StatCard = ({
   isLoading = false,
   href,
   trend,
+  children,
 }: Props) => {
   const content = (
     <div
@@ -65,6 +67,7 @@ export const StatCard = ({
       </div>
 
       {!isLoading && trend && <TrendBadge trend={trend} />}
+      {children && <div className="mt-3">{children}</div>}
     </div>
   );
 

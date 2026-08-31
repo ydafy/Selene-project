@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Receipt } from 'lucide-react';
 import { formatCurrency } from '../../../lib/utils/formatCurrency';
 import { centsToMoney } from '../../../lib/connectEarnings';

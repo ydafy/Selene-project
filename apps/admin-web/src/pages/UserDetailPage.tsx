@@ -292,6 +292,7 @@ export const UserDetailPage = () => {
               {/* 1. RATING */}
               <StatCard
                 title="Rating Promedio"
+
                 value={data.avgRating.toFixed(1)}
                 icon={Star}
               >

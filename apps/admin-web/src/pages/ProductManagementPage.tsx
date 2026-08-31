@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useCallback } from 'react';
 import { Package, Trash2, Lock, Search, Archive } from 'lucide-react';
 import { useAdminProduct, type ProductTab } from '../hooks/useAdminProduct';
@@ -50,10 +51,7 @@ export const ProductManagementPage = () => {
   };
 
   const handleTabKeyDown = useCallback(
-    (
-      e: React.KeyboardEvent<HTMLButtonElement>,
-      index: number,
-    ) => {
+    (e: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
       const tabIds = TABS.map((t) => t.id);
       let nextIndex: number | null = null;
 
@@ -179,151 +177,151 @@ export const ProductManagementPage = () => {
 
         {/* Table / Empty state */}
         {products?.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 bg-state-gray/30 rounded-3xl border border-dashed border-white/10">
-          <div className="p-6 bg-white/5 rounded-full mb-4">
-            {search.trim() ? (
-              <Search size={48} className="opacity-20 text-blue-light" />
-            ) : tab === 'active' ? (
-              <Package size={48} className="opacity-20 text-blue-light" />
-            ) : (
-              <Archive size={48} className="opacity-20 text-blue-light" />
+          <div className="flex flex-col items-center justify-center py-20 bg-state-gray/30 rounded-3xl border border-dashed border-white/10">
+            <div className="p-6 bg-white/5 rounded-full mb-4">
+              {search.trim() ? (
+                <Search size={48} className="opacity-20 text-blue-light" />
+              ) : tab === 'active' ? (
+                <Package size={48} className="opacity-20 text-blue-light" />
+              ) : (
+                <Archive size={48} className="opacity-20 text-blue-light" />
+              )}
+            </div>
+            <p className="font-medium text-blue-light">
+              {search.trim()
+                ? `No se encontraron resultados para "${search}"`
+                : tab === 'active'
+                  ? 'No hay productos activos'
+                  : 'No hay productos en historial'}
+            </p>
+            {search.trim() && (
+              <p className="text-xs opacity-50 mt-1 text-blue-light">
+                Intenta con otro término de búsqueda.
+              </p>
             )}
           </div>
-          <p className="font-medium text-blue-light">
-            {search.trim()
-              ? `No se encontraron resultados para "${search}"`
-              : tab === 'active'
-                ? 'No hay productos activos'
-                : 'No hay productos en historial'}
-          </p>
-          {search.trim() && (
-            <p className="text-xs opacity-50 mt-1 text-blue-light">
-              Intenta con otro término de búsqueda.
-            </p>
-          )}
-        </div>
-      ) : (
-        <div className="bg-state-gray rounded-2xl border border-white/10 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/10">
-                  <th className="text-left p-4 text-blue-light font-semibold">
-                    Producto
-                  </th>
-                  <th className="text-left p-4 text-blue-light font-semibold">
-                    Vendedor
-                  </th>
-                  <th className="text-left p-4 text-blue-light font-semibold">
-                    Estado
-                  </th>
-                  <th className="text-right p-4 text-blue-light font-semibold">
-                    Precio
-                  </th>
-                  <th className="text-left p-4 text-blue-light font-semibold">
-                    Fecha
-                  </th>
-                  <th className="text-right p-4 text-blue-light font-semibold">
-                    Acción
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {products.map((product) => {
-                  const isLocked = product.locked_by !== null;
-                  const isDeleted = product.deleted_at !== null;
-                  return (
-                    <tr
-                      key={product.id}
-                      className={`border-b border-white/5 hover:bg-white/5 transition-colors ${
-                        isDeleted ? 'opacity-60' : ''
-                      }`}
-                    >
-                      <td className="p-4">
-                        <div className="flex items-center gap-2">
-                          {isDeleted && (
-                            <span className="text-fire text-[10px] font-bold uppercase">
-                              Eliminado
+        ) : (
+          <div className="bg-state-gray rounded-2xl border border-white/10 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/10">
+                    <th className="text-left p-4 text-blue-light font-semibold">
+                      Producto
+                    </th>
+                    <th className="text-left p-4 text-blue-light font-semibold">
+                      Vendedor
+                    </th>
+                    <th className="text-left p-4 text-blue-light font-semibold">
+                      Estado
+                    </th>
+                    <th className="text-right p-4 text-blue-light font-semibold">
+                      Precio
+                    </th>
+                    <th className="text-left p-4 text-blue-light font-semibold">
+                      Fecha
+                    </th>
+                    <th className="text-right p-4 text-blue-light font-semibold">
+                      Acción
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {products.map((product) => {
+                    const isLocked = product.locked_by !== null;
+                    const isDeleted = product.deleted_at !== null;
+                    return (
+                      <tr
+                        key={product.id}
+                        className={`border-b border-white/5 hover:bg-white/5 transition-colors ${
+                          isDeleted ? 'opacity-60' : ''
+                        }`}
+                      >
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                            {isDeleted && (
+                              <span className="text-fire text-[10px] font-bold uppercase">
+                                Eliminado
+                              </span>
+                            )}
+                            <span className="font-medium text-platinum truncate max-w-[200px]">
+                              {product.name}
                             </span>
+                          </div>
+                        </td>
+                        <td className="p-4 text-blue-light">
+                          {product.seller?.username ?? '—'}
+                        </td>
+                        <td className="p-4">
+                          <StatusBadge status={product.status as any} />
+                        </td>
+                        <td className="p-4 text-right text-platinum">
+                          ${product.price.toLocaleString()}
+                        </td>
+                        <td className="p-4 text-blue-light text-xs">
+                          {new Date(product.created_at).toLocaleDateString(
+                            'es-MX',
                           )}
-                          <span className="font-medium text-platinum truncate max-w-[200px]">
-                            {product.name}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-4 text-blue-light">
-                        {product.seller?.username ?? '—'}
-                      </td>
-                      <td className="p-4">
-                        <StatusBadge status={product.status as any} />
-                      </td>
-                      <td className="p-4 text-right text-platinum">
-                        ${product.price.toLocaleString()}
-                      </td>
-                      <td className="p-4 text-blue-light text-xs">
-                        {new Date(product.created_at).toLocaleDateString(
-                          'es-MX',
-                        )}
-                      </td>
-                      <td className="p-4 text-right">
-                        {isDeleted ? (
-                          <button
-                            onClick={() => restoreProduct(product.id)}
-                            disabled={isRestoring}
-                            className="inline-flex items-center gap-1 text-xs text-forest hover:text-forest/80 transition-all outline-none focus:ring-2 focus:ring-lion/50 disabled:opacity-40"
-                            aria-label={`Restaurar producto ${product.name}`}
-                          >
-                            <Package size={14} />
-                            Restaurar
-                          </button>
-                        ) : isLocked ? (
-                          <span
-                            className="inline-flex items-center gap-1 text-xs text-blue-light opacity-60"
-                            title={`Bloqueado por ${product.locker?.username ?? 'otro admin'}`}
-                          >
-                            <Lock size={14} />
-                            Bloqueado
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() =>
-                              setModalProduct({
-                                id: product.id,
-                                name: product.name,
-                                status: product.status,
-                              })
-                            }
-                            disabled={isDeleting}
-                            aria-label={`Ocultar producto ${product.name} (${product.status})`}
-                            className="p-2 rounded-lg bg-white/5 text-blue-light hover:bg-fire/20 hover:text-fire transition-all outline-none focus:ring-2 focus:ring-lion/50 cursor-pointer"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          {hasNextPage && (
-            <div className="flex justify-center py-4">
-              <button
-                onClick={() => fetchNextPage()}
-                disabled={isFetchingNextPage}
-                className="px-6 py-2.5 bg-white/5 text-blue-light rounded-xl border border-white/10 hover:bg-white/10 hover:text-platinum transition-all outline-none focus:ring-2 focus:ring-lion/50 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium"
-              >
-                {isFetchingNextPage
-                  ? 'Cargando...'
-                  : `Cargar más (${products.length} de ${total})`}
-              </button>
+                        </td>
+                        <td className="p-4 text-right">
+                          {isDeleted ? (
+                            <button
+                              onClick={() => restoreProduct(product.id)}
+                              disabled={isRestoring}
+                              className="inline-flex items-center gap-1 text-xs text-forest hover:text-forest/80 transition-all outline-none focus:ring-2 focus:ring-lion/50 disabled:opacity-40"
+                              aria-label={`Restaurar producto ${product.name}`}
+                            >
+                              <Package size={14} />
+                              Restaurar
+                            </button>
+                          ) : isLocked ? (
+                            <span
+                              className="inline-flex items-center gap-1 text-xs text-blue-light opacity-60"
+                              title={`Bloqueado por ${product.locker?.username ?? 'otro admin'}`}
+                            >
+                              <Lock size={14} />
+                              Bloqueado
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() =>
+                                setModalProduct({
+                                  id: product.id,
+                                  name: product.name,
+                                  status: product.status,
+                                })
+                              }
+                              disabled={isDeleting}
+                              aria-label={`Ocultar producto ${product.name} (${product.status})`}
+                              className="p-2 rounded-lg bg-white/5 text-blue-light hover:bg-fire/20 hover:text-fire transition-all outline-none focus:ring-2 focus:ring-lion/50 cursor-pointer"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-          )}
-        </div>
-      )}
+
+            {/* Pagination */}
+            {hasNextPage && (
+              <div className="flex justify-center py-4">
+                <button
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                  className="px-6 py-2.5 bg-white/5 text-blue-light rounded-xl border border-white/10 hover:bg-white/10 hover:text-platinum transition-all outline-none focus:ring-2 focus:ring-lion/50 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium"
+                >
+                  {isFetchingNextPage
+                    ? 'Cargando...'
+                    : `Cargar más (${products.length} de ${total})`}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Soft-delete confirmation modal */}
