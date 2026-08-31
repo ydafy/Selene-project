@@ -3,28 +3,61 @@ import { useNavigate } from 'react-router-dom';
 import { useActiveDisputes } from '../hooks/useActiveDisputes';
 import { DisputesTable } from '../components/features/disputes/DisputesTable';
 import { useDebounce } from '../hooks/useDebounce';
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { ErrorState } from '../components/ui/ErrorState';
 
-export const DisputesPage = () => {
-  const [filter, setFilter] = useState<'open' | 'resolved' | 'all'>('open');
+export type DisputeFilter = 'open' | 'resolved' | 'all';
+export type DisputeSortOption =
+  'newest' | 'oldest' | 'amount_desc' | 'amount_asc';
 
+export const DisputesPage = () => {
+  const [filter, setFilter] = useState<DisputeFilter>('open');
   const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState('newest');
+  const [sortBy, setSortBy] = useState<DisputeSortOption>('newest');
+
   const debouncedSearch = useDebounce(search, 300);
-  const { data: disputes, isLoading, isError, refetch } = useActiveDisputes(
-    filter,
-    debouncedSearch,
-    sortBy,
-  );
+  const {
+    data: disputes,
+    isLoading,
+    isError,
+    refetch,
+  } = useActiveDisputes(filter, debouncedSearch, sortBy);
   const navigate = useNavigate();
+
+  // 1. RETORNO TEMPRANO EN CASO DE ERROR
+  if (isError) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-end">
+          <div>
+            <h1 className="text-3xl font-bold text-platinum">
+              Centro de Disputas
+            </h1>
+            <p className="text-blue-light text-sm mt-1">
+              Gestión de reclamos y mediación técnica.
+            </p>
+          </div>
+        </div>
+        <ErrorState
+          title="Error al cargar disputas"
+          message="No pudimos obtener la lista de reclamos. Por favor, reintenta la conexión."
+          onRetry={refetch}
+        />
+      </div>
+    );
+  }
+
+  const activeCasesCount = disputes?.length || 0;
 
   return (
     <div className="space-y-6">
+      {/* ── HEADER ── */}
       <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-3xl font-bold">Centro de Disputas</h1>
-          <p className="text-blue-light text-sm">
+          <h1 className="text-3xl font-bold text-platinum">
+            Centro de Disputas
+          </h1>
+          <p className="text-blue-light text-sm mt-1">
             Gestión de reclamos y mediación técnica.
           </p>
         </div>
@@ -32,18 +65,17 @@ export const DisputesPage = () => {
           <p className="text-[10px] text-blue-light font-bold uppercase tracking-widest">
             Casos en Pantalla
           </p>
-          <p className="text-xl font-bold text-lion">{disputes?.length || 0}</p>
+          <p className="text-xl font-bold text-lion">{activeCasesCount}</p>
         </div>
       </div>
 
-      {isError && <ErrorState onRetry={() => refetch()} />}
-
-      {/* TABS DE FILTRADO */}
+      {/* ── TABS DE FILTRADO ── */}
       <div className="flex gap-2 p-1 bg-white/5 w-fit rounded-xl border border-white/5">
-        {['open', 'resolved', 'all'].map((id) => (
+        {(['open', 'resolved', 'all'] as DisputeFilter[]).map((id) => (
           <button
             key={id}
-            onClick={() => setFilter(id as 'open' | 'resolved' | 'all')}
+            type="button"
+            onClick={() => setFilter(id)}
             className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all capitalize outline-none focus:ring-2 focus:ring-lion/50 cursor-pointer ${
               filter === id
                 ? 'bg-lion text-night shadow-lg'
@@ -58,6 +90,8 @@ export const DisputesPage = () => {
           </button>
         ))}
       </div>
+
+      {/* ── BARRA DE BÚSQUEDA Y ORDENAMIENTO ── */}
       <div className="flex flex-col md:flex-row gap-4 justify-between items-center mb-6">
         <div className="relative w-full md:w-96">
           <Search
@@ -67,17 +101,30 @@ export const DisputesPage = () => {
           <input
             type="text"
             placeholder="Buscar por ID, Comprador o Vendedor..."
-            className="w-full bg-state-gray border border-white/10 rounded-xl py-2 pl-10 pr-4 text-sm text-platinum focus:border-lion outline-none transition-all focus:ring-2 focus:ring-lion/50"
+            aria-label="Buscar disputas"
+            className="w-full bg-state-gray border border-white/10 rounded-xl py-2 pl-10 pr-10 text-sm text-platinum focus:border-lion outline-none transition-all focus:ring-2 focus:ring-lion/50"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+          {/* Botón rápido para limpiar texto */}
+          {search.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              aria-label="Limpiar búsqueda"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-light hover:text-platinum cursor-pointer"
+            >
+              <X size={16} />
+            </button>
+          )}
         </div>
 
         <div className="flex gap-4 w-full md:w-auto">
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="bg-state-gray border border-white/10 text-platinum text-xs font-bold rounded-xl px-4 py-2 outline-none focus:border-lion focus:ring-2 focus:ring-lion/50"
+            aria-label="Ordenar lista de disputas"
+            onChange={(e) => setSortBy(e.target.value as DisputeSortOption)}
+            className="bg-state-gray border border-white/10 text-platinum text-xs font-bold rounded-xl px-4 py-2 outline-none focus:border-lion focus:ring-2 focus:ring-lion/50 cursor-pointer"
           >
             <option value="newest">Más recientes</option>
             <option value="oldest">Más antiguas (Urgentes)</option>
@@ -86,7 +133,8 @@ export const DisputesPage = () => {
           </select>
         </div>
       </div>
-      {/* COMPONENTE EXTRAÍDO (MVP++ CLEAN) */}
+
+      {/* ── TABLA DE DISPUTAS ── */}
       <DisputesTable
         disputes={disputes}
         isLoading={isLoading}

@@ -1,5 +1,7 @@
-import { CheckCircle2, XCircle, User, Clock, AlertCircle, Inbox } from 'lucide-react';
+import { Clock, AlertCircle, Inbox, User } from 'lucide-react';
 import { useAuditLogs } from '../../../hooks/useAuditLogs';
+import { getActionMeta } from '../../../lib/constants/auditActions';
+import { formatTime } from '../../../lib/utils/formatDate';
 import type { Json } from '@selene/types';
 
 function isRecord(value: Json): value is Record<string, Json> {
@@ -15,7 +17,7 @@ function SkeletonRow() {
           <div className="h-3 bg-white/10 rounded w-3/4" />
           <div className="h-2 bg-white/5 rounded w-1/2" />
         </div>
-        <div className="h-2 bg-white/5 rounded w-8" />
+        <div className="h-2 bg-white/5 rounded w-16" />
       </div>
     </div>
   );
@@ -26,7 +28,7 @@ export const ActivityFeed = () => {
 
   if (isError) {
     return (
-      <div className="bg-state-gray rounded-2xl border border-white/5 p-6 flex flex-col items-center justify-center gap-3 text-center min-h-[200px]">
+      <div className="bg-state-gray rounded-2xl border border-white/5 p-6 flex flex-col items-center justify-center gap-3 text-center min-h-75">
         <AlertCircle size={24} className="text-fire" />
         <p className="text-sm text-blue-light">Error al cargar la actividad.</p>
         <button
@@ -64,55 +66,53 @@ export const ActivityFeed = () => {
         </h3>
       </div>
 
-      <div className="divide-y divide-white/5 max-h-[400px] overflow-y-auto">
+      <div className="divide-y divide-white/5 max-h-100 overflow-y-auto">
         {logs?.map((log) => {
           const details = isRecord(log.details) ? log.details : null;
-          const productName = typeof details?.product_name === 'string' ? details.product_name : '';
-          const sellerName = typeof details?.seller_name === 'string' ? details.seller_name : '';
+          const productName =
+            typeof details?.product_name === 'string'
+              ? details.product_name
+              : '';
+          const sellerName =
+            typeof details?.seller_name === 'string' ? details.seller_name : '';
+
+          const action = getActionMeta(log.action_type);
+          const ActionIcon = action.icon;
 
           return (
-          <div
-            key={log.id}
-            className="p-4 hover:bg-white/[0.02] transition-colors"
-          >
-            <div className="flex items-start gap-3">
-              {/* Icono de Acción */}
-              <div
-                className={`mt-1 ${log.action_type === 'PRODUCT_APPROVE' ? 'text-forest' : 'text-fire'}`}
-              >
-                {log.action_type === 'PRODUCT_APPROVE' ? (
-                  <CheckCircle2 size={16} />
-                ) : (
-                  <XCircle size={16} />
-                )}
-              </div>
+            <div
+              key={log.id}
+              className="p-4 hover:bg-white/2 transition-colors"
+            >
+              <div className="flex items-start gap-3">
+                <div className={`mt-1 ${action.color} shrink-0`}>
+                  <ActionIcon size={16} />
+                </div>
 
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-platinum leading-relaxed">
-                  <span className="font-bold text-lion">
-                    {log.admin?.username || 'Sistema/Admin'}
-                  </span>
-                  {log.action_type === 'PRODUCT_APPROVE'
-                    ? ' aprobó '
-                    : ' rechazó '}
-                  <span className="font-medium text-platinum">
-                    &ldquo;{productName}&rdquo;
-                  </span>
-                </p>
-                <p className="text-[10px] text-blue-light mt-1 flex items-center gap-1">
-                  <User size={10} /> Vendedor:{' '}
-                  {sellerName || 'Usuario de Google'}
-                </p>
-              </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-platinum leading-relaxed">
+                    <span className="font-bold text-lion">
+                      {log.admin?.username || 'Sistema/Admin'}
+                    </span>{' '}
+                    {action.verb}{' '}
+                    {productName && (
+                      <span className="font-medium text-platinum">
+                        &ldquo;{productName}&rdquo;
+                      </span>
+                    )}
+                  </p>
+                  {sellerName && (
+                    <p className="text-[10px] text-blue-light mt-1 flex items-center gap-1">
+                      <User size={10} /> Vendedor: {sellerName}
+                    </p>
+                  )}
+                </div>
 
-              <span className="text-[10px] text-blue-light whitespace-nowrap">
-                {new Date(log.created_at ?? '').toLocaleTimeString([], {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </span>
+                <span className="text-[10px] text-blue-light whitespace-nowrap ml-2">
+                  {formatTime(log.created_at)}
+                </span>
+              </div>
             </div>
-          </div>
           );
         })}
 

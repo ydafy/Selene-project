@@ -12,7 +12,7 @@ export const ImageModal = ({ url, onClose }: Props) => {
   if (!url) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col bg-night/98 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-100 flex flex-col bg-night/98 animate-in fade-in duration-200">
       {/* BARRA DE HERRAMIENTAS SUPERIOR */}
       <div className="flex justify-between items-center p-4 border-b border-white/5 bg-state-gray/50">
         <div className="flex items-center gap-4">

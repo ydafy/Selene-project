@@ -37,7 +37,7 @@ export const UserAdminHistory = ({
             <Clock size={18} className="text-lion" /> Historial de Auditoría
           </h3>
         </div>
-        <div className="p-4 space-y-3 max-h-[300px] overflow-y-auto">
+        <div className="p-4 space-y-3 max-h-75 overflow-y-auto">
           {logs.length > 0 ? (
             logs.map((log: AdminAuditLog) => (
               <div
@@ -71,7 +71,7 @@ export const UserAdminHistory = ({
             Inteligencia
           </h3>
         </div>
-        <div className="p-6 space-y-4 max-h-[400px] overflow-y-auto">
+        <div className="p-6 space-y-4 max-h-100 overflow-y-auto">
           {notes.length > 0 ? (
             notes.map((note: AdminNote) => (
               <div
@@ -86,7 +86,9 @@ export const UserAdminHistory = ({
                     Admin: {note.admin?.username || 'Staff'}
                   </span>
                   <span className="text-[9px] text-blue-light">
-                    {note.created_at ? new Date(note.created_at).toLocaleDateString() : ''}
+                    {note.created_at
+                      ? new Date(note.created_at).toLocaleDateString()
+                      : ''}
                   </span>
                 </div>
               </div>

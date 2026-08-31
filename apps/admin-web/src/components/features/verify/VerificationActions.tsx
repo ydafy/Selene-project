@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { CheckCircle, XCircle } from 'lucide-react';
 import { ConfirmModal } from '../../ui/ConfirmModal';
 import type { PendingProduct } from '@selene/types';
+import type { ResolveProductVariables } from './VerificationDetail';
 
 interface LockStatus {
   isLockedByOther: boolean;
@@ -13,7 +15,13 @@ interface VerificationActionsProps {
   product: PendingProduct;
   lockStatus: LockStatus;
   isLocking: boolean;
-  resolve: { mutate: (vars: any, options?: any) => void; isPending: boolean };
+  resolve: {
+    mutate: (
+      vars: ResolveProductVariables,
+      options?: { onSuccess?: () => void; onError?: (error: Error) => void },
+    ) => void;
+    isPending: boolean;
+  };
   onVerdictComplete: () => void;
 }
 
@@ -50,7 +58,18 @@ export const VerificationActions = ({
     );
   };
 
-  const isDisabled = resolve.isPending || lockStatus.isLockedByOther || isLocking;
+  const handleRejectClick = () => {
+    if (!adminNote.trim() || adminNote.trim().length < 10) {
+      toast.error(
+        'Debes escribir un motivo de rechazo claro (mínimo 10 caracteres) en la nota antes de continuar.',
+      );
+      return;
+    }
+    setConfirmData({ show: true, verdict: 'REJECT' });
+  };
+
+  const isDisabled =
+    resolve.isPending || lockStatus.isLockedByOther || isLocking;
 
   return (
     <>
@@ -63,16 +82,14 @@ export const VerificationActions = ({
             value={adminNote}
             onChange={(e) => setAdminNote(e.target.value)}
             placeholder="Escribe aquí el motivo del rechazo o sugerencias de mejora..."
-            className="w-full bg-night border border-white/10 rounded-xl p-4 text-sm text-platinum focus:border-lion outline-none transition-all min-h-[100px]"
+            className="w-full bg-night border border-white/10 rounded-xl p-4 text-sm text-platinum focus:border-lion outline-none transition-all min-h-25"
           />
         </div>
 
         <div className="flex gap-4">
           <button
             disabled={isDisabled}
-            onClick={() =>
-              setConfirmData({ show: true, verdict: 'REJECT' })
-            }
+            onClick={handleRejectClick}
             className="flex-1 flex items-center justify-center gap-2 px-4 py-4 rounded-xl bg-fire/10 text-fire hover:bg-fire/20 transition-all font-bold disabled:opacity-50 outline-none focus:ring-2 focus:ring-lion/50 cursor-pointer"
           >
             <XCircle size={20} /> Rechazar Producto

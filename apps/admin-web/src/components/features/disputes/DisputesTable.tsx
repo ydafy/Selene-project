@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
-import { Gavel, ChevronRight, DollarSign, Calendar } from 'lucide-react';
+import { Gavel, ChevronRight, Calendar } from 'lucide-react';
 import { StatusBadge } from '../../ui/StatusBadge';
 import { DataTable } from '../../ui/DataTable';
+import { formatCurrency } from '../../../lib/utils/formatCurrency';
+import { formatTime } from '../../../lib/utils/formatDate';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { StatusType } from '../../ui/StatusBadge';
 import type { DisputeSummary } from '@selene/types';
@@ -26,10 +28,8 @@ export const DisputesTable = ({
           const date = getValue() as string | null;
           return (
             <div className="flex items-center gap-2 text-blue-light">
-              <Calendar size={12} />
-              <span className="text-xs">
-                {date ? new Date(date).toLocaleDateString() : '—'}
-              </span>
+              <Calendar size={13} className="text-lion shrink-0" />
+              <span className="text-xs">{formatTime(date)}</span>
             </div>
           );
         },
@@ -45,10 +45,9 @@ export const DisputesTable = ({
               <p className="text-sm font-bold text-platinum">
                 #{orderId.slice(0, 8).toUpperCase()}
               </p>
-              <div className="flex items-center gap-1 text-forest font-bold text-xs mt-0.5">
-                <DollarSign size={10} />
-                {amount.toLocaleString()}
-              </div>
+              <p className="text-xs font-bold text-forest mt-0.5">
+                {formatCurrency(amount)}
+              </p>
             </div>
           );
         },
@@ -79,8 +78,8 @@ export const DisputesTable = ({
         cell: ({ getValue }) => {
           const reason = getValue() as string | null;
           return (
-            <p className="text-xs text-platinum truncate max-w-[200px] capitalize">
-              {reason?.replace(/_/g, ' ') || 'Sin motivo'}
+            <p className="text-xs text-platinum truncate max-w-55 capitalize">
+              {reason?.replace(/_/g, ' ') || 'Sin motivo especificado'}
             </p>
           );
         },
@@ -89,9 +88,7 @@ export const DisputesTable = ({
         accessorKey: 'dispute_status',
         header: 'Estatus',
         cell: ({ getValue }) => (
-          <StatusBadge
-            status={(getValue() ?? 'open') as StatusType}
-          />
+          <StatusBadge status={(getValue() ?? 'open') as StatusType} />
         ),
       },
       {
@@ -100,12 +97,15 @@ export const DisputesTable = ({
         cell: ({ row }) => (
           <div className="text-right">
             <button
+              type="button"
+              aria-label={`Ver detalles de la disputa ${row.original.dispute_id}`}
               onClick={(e) => {
                 e.stopPropagation();
-                if (row.original.dispute_id)
+                if (row.original.dispute_id) {
                   onViewDetails(row.original.dispute_id);
+                }
               }}
-              className="p-2 bg-lion/10 text-lion rounded-xl hover:bg-lion hover:text-night transition-all active:scale-95"
+              className="p-2 bg-lion/10 text-lion rounded-xl hover:bg-lion hover:text-night transition-all active:scale-95 cursor-pointer"
             >
               <ChevronRight size={18} />
             </button>
@@ -116,7 +116,6 @@ export const DisputesTable = ({
     [onViewDetails],
   );
 
-  // Loading state: render DataTable with isLoading
   if (isLoading) {
     return (
       <DataTable<DisputeSummary>
@@ -128,20 +127,20 @@ export const DisputesTable = ({
     );
   }
 
-  // Empty state: custom with Gavel icon
   if (!disputes || disputes.length === 0) {
-    void columns;
     return (
       <div className="p-20 text-center flex flex-col items-center bg-state-gray rounded-3xl border border-white/5">
         <Gavel size={48} className="text-blue-light/10 mb-4" />
-        <p className="text-sm text-blue-light italic">
-          Bandeja de entrada vacía. No hay casos pendientes.
+        <h3 className="text-base font-bold text-platinum mb-1">
+          Bandeja de entrada al día
+        </h3>
+        <p className="text-xs text-blue-light italic">
+          No hay disputas pendientes de mediación en este momento.
         </p>
       </div>
     );
   }
 
-  // Data state
   return (
     <DataTable<DisputeSummary>
       columns={columns}
