@@ -2221,6 +2221,10 @@ export type Database = {
           service_fee_fixed_cents: number | null
           service_fee_pct: number | null
           shipping_buffer_cents: number | null
+          track_shipments_preparing_lease_expires_at: string | null
+          track_shipments_preparing_lease_id: string | null
+          track_shipments_shipped_lease_expires_at: string | null
+          track_shipments_shipped_lease_id: string | null
           trusted_active_limit: number | null
           updated_at: string | null
         }
@@ -2256,6 +2260,10 @@ export type Database = {
           service_fee_fixed_cents?: number | null
           service_fee_pct?: number | null
           shipping_buffer_cents?: number | null
+          track_shipments_preparing_lease_expires_at?: string | null
+          track_shipments_preparing_lease_id?: string | null
+          track_shipments_shipped_lease_expires_at?: string | null
+          track_shipments_shipped_lease_id?: string | null
           trusted_active_limit?: number | null
           updated_at?: string | null
         }
@@ -2291,6 +2299,10 @@ export type Database = {
           service_fee_fixed_cents?: number | null
           service_fee_pct?: number | null
           shipping_buffer_cents?: number | null
+          track_shipments_preparing_lease_expires_at?: string | null
+          track_shipments_preparing_lease_id?: string | null
+          track_shipments_shipped_lease_expires_at?: string | null
+          track_shipments_shipped_lease_id?: string | null
           trusted_active_limit?: number | null
           updated_at?: string | null
         }
@@ -2995,6 +3007,14 @@ export type Database = {
       }
     }
     Functions: {
+      fn_acquire_track_shipments_lease: {
+        Args: { p_lane: string }
+        Returns: {
+          acquired: boolean
+          lease_expires_at: string
+          lease_id: string
+        }[]
+      }
       fn_admin_restore_product: {
         Args: { p_product_id: string }
         Returns: boolean
@@ -3004,12 +3024,17 @@ export type Database = {
         Returns: boolean
       }
       fn_admin_toggle_verified_seller: {
-        Args: { p_is_verified: boolean; p_target_user_id: string }
+        Args: {
+          p_admin_id: string
+          p_is_verified: boolean
+          p_target_user_id: string
+        }
         Returns: boolean
       }
       fn_admin_update_user_status: {
         Args: {
-          p_new_status: string
+          p_admin_id: string
+          p_new_status: Database["public"]["Enums"]["account_status"]
           p_reason: string
           p_target_user_id: string
         }
@@ -3300,6 +3325,10 @@ export type Database = {
         Returns: {
           released_id: string
         }[]
+      }
+      fn_release_track_shipments_lease: {
+        Args: { p_lane: string; p_lease_id: string }
+        Returns: boolean
       }
       fn_request_payout: {
         Args: { p_amount: number; p_bank_account_id: string }
