@@ -5,3 +5,6 @@
 
 [functions.connect-onboarding-return]
 verify_jwt = false
+
+[functions.envia-webhook]
+verify_jwt = false

@@ -27,7 +27,8 @@ export const UserCard = ({
   // 2. LÓGICA DE ROLES Y TIEMPO
   const isAdmin = user.role === 'admin';
   const isNew =
-    new Date().getTime() - new Date(user.created_at ?? new Date().toISOString()).getTime() <
+    new Date().getTime() -
+      new Date(user.created_at ?? new Date().toISOString()).getTime() <
     72 * 60 * 60 * 1000;
 
   const handleCopy = (e: React.MouseEvent, text: string, field: string) => {

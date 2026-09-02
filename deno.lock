@@ -150,9 +150,11 @@
         "npm:eslint-config-prettier@^10.1.8",
         "npm:eslint-plugin-prettier@^5.5.4",
         "npm:eslint@^9.38.0",
+        "npm:expo-system-ui@^57.0.2",
         "npm:gentle-engram@0.1.4",
         "npm:lint-staged@^16.2.4",
-        "npm:prettier@^3.6.2"
+        "npm:prettier@^3.6.2",
+        "npm:zod@4.1.12"
       ]
     },
     "members": {

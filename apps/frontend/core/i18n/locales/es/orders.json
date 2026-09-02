@@ -169,8 +169,9 @@
     "buttonText": "Confirmar y generar guia"
   },
   "prepare": {
+    "headerTitle": "Generar Guía",
     "title": "Preparar Envío",
-    "subtitle": "Confirma los detalles para generar tu guía.",
+    "subtitle": "Prepara tu paquete y confirma los detalles para generar tu guía de envío.",
     "originLabel": "Punto de recolección",
     "totalSale": "Venta Total",
     "originPlaceholder": "Selecciona desde dónde envías",

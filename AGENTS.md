@@ -2,7 +2,7 @@
 
 ## Project Snapshot
 
-Selene is a Mexican peer-to-peer marketplace for used PC hardware, focused on trust and technical verification.
+Selene is a Mexican peer-to-peer marketplace for used PC hardware, focused on trust and technical verification. The app is in currend develoment
 
 ```text
 apps/frontend/       Expo React Native app

@@ -3,13 +3,13 @@ import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@shopify/restyle';
-import { TouchableOpacity, BackHandler } from 'react-native'; // Importamos BackHandler
+import { TouchableOpacity, BackHandler } from 'react-native';
 import { useEffect } from 'react';
 
 import { Box, Text } from '../../components/base';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { Theme } from '../../core/theme';
-import { useSellStore } from '../../core/store/useSellStore'; // <--- 1. Importamos el Store
+import { useSellStore } from '../../core/store/useSellStore';
 import { triggerHaptic } from '../../core/utils/haptics';
 
 export default function SellSuccessScreen() {

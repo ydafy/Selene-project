@@ -66,18 +66,20 @@ export const useVideoUpload = () => {
 
       // 1. Obtenemos el Blob nativo directo del archivo físico (sin Base64 ni ArrayBuffers)
       const response = await fetch(uri);
-      const blob = await response.blob();
+      const arrayBuffer = await response.arrayBuffer();
 
-      console.log('[Video Upload] Native Blob size (bytes):', blob.size);
-
+      console.log(
+        '[Video Upload] ArrayBuffer size (bytes):',
+        arrayBuffer.byteLength,
+      );
       const fileName = `unboxing_${Date.now()}.mp4`;
       const path = `disputes/${orderId}/${userId}/${fileName}`;
-      console.log('[Video Upload] Uploading directly to path:', path);
+      console.log('[Video Upload] Uploading to path:', path);
 
-      // 2. Le pasamos el 'blob' crudo al SDK de Supabase
+      // Le pasamos el 'arrayBuffer' directamente a Supabase
       const { error } = await supabase.storage
         .from('evidence')
-        .upload(path, blob, {
+        .upload(path, arrayBuffer, {
           contentType: 'video/mp4',
           upsert: true,
         });

@@ -1,6 +1,12 @@
 import React, { useEffect } from 'react';
 import { Toaster, toast } from 'sonner';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+} from 'react-router-dom';
 import { useAuthStore } from './store/useAuthStore';
 import { supabase } from './lib/supabase';
 import { Layout } from './components/layout/Layout';
@@ -35,7 +41,10 @@ function AuthListener() {
         // Ignorar INITIAL_SESSION — initialize() ya lo maneja
         if (event === 'INITIAL_SESSION') return;
 
-        if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
+        if (
+          event === 'SIGNED_OUT' ||
+          (event === 'TOKEN_REFRESHED' && !session)
+        ) {
           useAuthStore.getState().setUser(null, null);
           toast.warning('Sesión expirada. Redirigiendo al login...');
           navigate('/login');
@@ -80,7 +89,10 @@ function App() {
           <Route path="disputes/:id" element={<DisputeDetailPage />} />
           <Route path="payments" element={<PaymentsPage />} />
           <Route path="seller-onboarding" element={<SellerOnboardingPage />} />
-          <Route path="drain-legacy-wallets" element={<DrainLegacyWalletsPage />} />
+          <Route
+            path="drain-legacy-wallets"
+            element={<DrainLegacyWalletsPage />}
+          />
           <Route path="products" element={<ProductManagementPage />} />
         </Route>
       </Routes>

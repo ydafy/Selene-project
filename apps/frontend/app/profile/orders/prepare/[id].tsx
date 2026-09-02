@@ -153,7 +153,7 @@ export default function PrepareShipmentScreen() {
   return (
     <Box flex={1} backgroundColor="background">
       <Stack.Screen options={{ headerShown: false }} />
-      <GlobalHeader showBack />
+      <GlobalHeader showBack title={t('orders:prepare.headerTitle')} />
 
       <ScrollView
         contentContainerStyle={{

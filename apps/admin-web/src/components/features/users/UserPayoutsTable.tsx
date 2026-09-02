@@ -31,7 +31,9 @@ export const UserPayoutsTable = ({ payouts }: Props) => {
         header: 'Estatus',
         cell: ({ getValue }) => {
           const status = getValue() as string | null;
-          return <StatusBadge status={(status ?? 'processing') as StatusType} />;
+          return (
+            <StatusBadge status={(status ?? 'processing') as StatusType} />
+          );
         },
       },
       {

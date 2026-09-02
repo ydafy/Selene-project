@@ -174,8 +174,9 @@
     "deliveryMsg": "Please confirm only if the product is in your hands and in good condition. This will release the payment to the seller."
   },
   "prepare": {
+    "headerTitle": "Generate Label",
     "title": "Prepare Shipment",
-    "subtitle": "Confirm the details to generate your shipping label.",
+    "subtitle": "Prepare your shipment.",
     "originLabel": "Pickup Point",
     "totalSale": "Total Sale",
     "originPlaceholder": "Select your shipping location",
