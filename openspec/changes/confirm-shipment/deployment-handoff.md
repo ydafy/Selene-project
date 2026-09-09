@@ -2,6 +2,8 @@
 
 ## Release Status
 
+> **Evidence boundary (updated 2026-09-08):** The statuses below preserve maintainer-reported remote observations recorded when this handoff was written. Repository files and local/unit tests are local evidence only; they do not prove current deployed function, fixture, provider, or cron state. Before any new remote check, the maintainer must explicitly confirm the deployed function revision and cron configuration/state. Use `supabase/functions/confirm-shipment-delivery/DEPLOYED_HARNESS.md` only with newly prepared disposable fixtures.
+
 | Item | Status | Evidence / constraint |
 |---|---|---|
 | Remote migration | Confirmed by maintainer | `supabase/migrations/20260903002546_confirm_shipment_hardening.sql` was manually applied. |
@@ -107,7 +109,7 @@ This schedule is intentionally bounded by the function: it selects at most 100 `
 
 Run these only in a sandbox or with dedicated, safe fixtures. Do not use a production shipment merely to test the mutation.
 
-1. **Buyer function gateway and authorization:** POST to `/functions/v1/confirm-shipment-delivery` with a real buyer access JWT in `Authorization: Bearer <buyer-access-token>` and JSON `{ "orderId", "shipmentId", "idempotencyKey": "confirm_shipment_<shipmentId>" }`. Confirm a delivered shipment succeeds, a shipped shipment is rejected, an active-dispute shipment is rejected, and a retry returns idempotent success.
+1. **Buyer function gateway and authorization:** After explicitly confirming the deployed function revision, use the disposable-fixture HTTP harness at `supabase/functions/confirm-shipment-delivery/DEPLOYED_HARNESS.md`. It proves only the maintainer-run request outcomes that are recorded from that run; local harness tests do not substitute for remote evidence.
 2. **Connect accounting:** for a delivered Connect fixture, confirm completion; verify no `wallets` or `wallet_transactions` write occurred and the expected INFO `system_logs` event was written.
 3. **Scheduler authentication:** POST to `/functions/v1/complete-delivered-shipments` with `Authorization: Bearer <project-anon-jwt>`, `apikey: <project-anon-jwt>`, and `x-cron-secret: <cron-secret>`. A missing or incorrect `x-cron-secret` must return `CRON_UNAUTHORIZED` before any shipment access. A non-POST request must return `INVALID_REQUEST`.
 4. **Automatic completion:** use a fixture delivered at least 48 hours ago with `buyer_confirmed_at IS NULL`; verify it completes with one `shipment_completion_events` row sourced as `auto`, preserves `buyer_confirmed_at` as NULL, and retries are idempotent. Verify a 47h59m fixture remains excluded.

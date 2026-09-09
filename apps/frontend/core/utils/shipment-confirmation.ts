@@ -58,7 +58,10 @@ export function resolveShipmentConfirmationFailureToast(
     };
   }
 
-  if (message.includes('SHIPMENT_NOT_DELIVERED')) {
+  if (
+    message.includes('SHIPMENT_NOT_IN_CONFIRMABLE_STATE') ||
+    message.includes('SHIPMENT_NOT_DELIVERED')
+  ) {
     return {
       title: 'No pudimos confirmar la entrega',
       message: 'Solo puedes confirmar un envío después de que sea entregado.',

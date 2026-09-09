@@ -102,6 +102,18 @@ describe('shipment confirmation', () => {
       title: 'No pudimos confirmar la entrega',
       message: 'Estamos haciendo mantenimiento. Intenta nuevamente en unos minutos.',
     });
+    expect(
+      resolveShipmentConfirmationFailureToast(
+        new Error('SHIPMENT_NOT_IN_CONFIRMABLE_STATE'),
+      ),
+    ).toEqual({
+      title: 'No pudimos confirmar la entrega',
+      message: 'Solo puedes confirmar un envío después de que sea entregado.',
+    });
+    expect(resolveShipmentConfirmationFailureToast(new Error('unexpected'))).toEqual({
+      title: 'No pudimos confirmar la entrega',
+      message: 'Inténtalo de nuevo. Si sigue fallando, contacta soporte.',
+    });
   });
 
   it('routes confirmation through the shipment Edge Function without the retired fallback', () => {
