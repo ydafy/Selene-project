@@ -36,6 +36,10 @@ export const STRIPE_ALLOCATION_VALUE_MAX_LEN = 500;
 /** Stripe transfer_group max length. */
 const STRIPE_TRANSFER_GROUP_MAX_LEN = 100;
 
+/** Immutable namespace for deterministic checkout order and shipment IDs. */
+export const CHECKOUT_UUID_NAMESPACE =
+  '7b0f4a20-5c30-4e0f-8f84-9a9f4b2e19c1';
+
 /**
  * Build a stable, Stripe-safe `transfer_group` for an order. Used as the
  * grouping key for per-shipment platform->seller Transfers on manual release.
@@ -200,23 +204,30 @@ export function assertValidAllocationRows(input: {
   }
 }
 
-/**
- * Format a 32-hex-char (128-bit) string as an RFC-4122-style UUID
- * (8-4-4-4-12). The Postgres `uuid` column type validates FORMAT only, not
- * version/variant bits, so a deterministic hash-derived 128-bit value is
- * accepted. Deterministic: identical input always yields identical output.
- */
-function hexToUuid(hex32: string): string {
-  return `${hex32.slice(0, 8)}-${hex32.slice(8, 12)}-${hex32.slice(12, 16)}-${hex32.slice(16, 20)}-${hex32.slice(20, 32)}`;
+function uuidBytes(uuid: string): Uint8Array {
+  const hex = uuid.replaceAll('-', '');
+  return Uint8Array.from({ length: 16 }, (_, index) =>
+    Number.parseInt(hex.slice(index * 2, index * 2 + 2), 16),
+  );
 }
 
-/** Deterministic SHA-256 hex digest of a UTF-8 string. */
-function sha256Hex(input: string): string {
-  return createHash('sha256').update(input, 'utf8').digest('hex');
+/** Build an RFC 9562 UUID v5 from a namespace UUID and exact UTF-8 name. */
+function uuidV5(namespace: string, name: string): string {
+  const digest = createHash('sha1')
+    .update(uuidBytes(namespace))
+    .update(name, 'utf8')
+    .digest();
+  const bytes = Uint8Array.from(digest.subarray(0, 16));
+
+  bytes[6] = (bytes[6] & 0x0f) | 0x50;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
 /**
- * Derive a deterministic, UUID-format order-group id from a stable checkout
+ * Derive a deterministic UUID v5 order-group id from a stable checkout
  * idempotency key. Two retries carrying the same idempotency key produce the
  * SAME orderGroupId — hence the same `transfer_group` and the same shipment
  * ids — so the Stripe PaymentIntent create request body is identical and
@@ -227,11 +238,14 @@ export function deriveOrderGroupId(idempotencyKey: string): string {
   if (typeof idempotencyKey !== 'string' || idempotencyKey.length === 0) {
     throw new Error('INVALID_CHECKOUT_INPUT:missing_idempotency_key');
   }
-  return hexToUuid(sha256Hex(`selene_order_group:${idempotencyKey}`));
+  return uuidV5(
+    CHECKOUT_UUID_NAMESPACE,
+    `selene_order_group:${idempotencyKey}`,
+  );
 }
 
 /**
- * Derive a deterministic, UUID-format shipment id for an (idempotency key,
+ * Derive a deterministic UUID v5 shipment id for an (idempotency key,
  * product) pair. Stable per purchased listing on retry so the webhook persists
  * the same product shipment without collapsing listings from one seller.
  */
@@ -245,8 +259,9 @@ export function deriveShipmentId(
   if (typeof productId !== 'string' || productId.length === 0) {
     throw new Error('INVALID_CHECKOUT_INPUT:missing_product_id');
   }
-  return hexToUuid(
-    sha256Hex(`selene_shipment:${idempotencyKey}:product:${productId}`),
+  return uuidV5(
+    CHECKOUT_UUID_NAMESPACE,
+    `selene_shipment:${idempotencyKey}:product:${productId}`,
   );
 }
 
@@ -513,6 +528,32 @@ export interface CreateConnectPaymentResponseBuilderInput {
 export interface StripePaymentIntentLike {
   client_secret: string;
   amount: number;
+}
+
+export interface StripePaymentIntentClient<TParams, TResult> {
+  paymentIntents: {
+    create(
+      params: TParams,
+      options: { idempotencyKey?: string },
+    ): Promise<TResult>;
+  };
+}
+
+/**
+ * Keep the Stripe idempotency boundary local and testable without invoking the
+ * Deno Edge Function or making a remote request.
+ */
+export function createSinglePaymentIntent<TParams, TResult>(input: {
+  stripe: StripePaymentIntentClient<TParams, TResult>;
+  params: TParams;
+  idempotencyKey?: string;
+}): Promise<TResult> {
+  return input.stripe.paymentIntents.create(
+    input.params,
+    input.idempotencyKey
+      ? { idempotencyKey: `selene_pi_${input.idempotencyKey}` }
+      : {},
+  );
 }
 
 /**

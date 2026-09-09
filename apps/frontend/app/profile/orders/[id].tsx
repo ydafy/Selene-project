@@ -819,10 +819,20 @@ export default function OrderDetailScreen() {
         title={t('orders:dialogs.deliveryTitle')}
         description={t('orders:dialogs.deliveryMsg')}
         onConfirm={async () => {
-          await actions.confirmDelivery.execute({
-            shipmentId: currentShipment?.id,
-          });
-          setShowDeliveryConfirm(false);
+          if (!currentShipment) {
+            setShowDeliveryConfirm(false);
+            return;
+          }
+
+          try {
+            await actions.confirmDelivery.execute({
+              shipmentId: currentShipment.id,
+            });
+            setShowDeliveryConfirm(false);
+          } catch {
+            // The hook surfaces the friendly toast; keep the dialog open so the
+            // buyer can retry or dismiss without a hard crash.
+          }
         }}
         onCancel={() => setShowDeliveryConfirm(false)}
         confirmLabel={t('orders:actions.confirmDelivery')}

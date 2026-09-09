@@ -57,3 +57,4 @@ apps/backend/build/
 *.tsbuildinfo
 # Local Pi runtime state
 .atl/
+/.local/

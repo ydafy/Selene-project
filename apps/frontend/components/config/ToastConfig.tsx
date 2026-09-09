@@ -1,103 +1,148 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import React from 'react';
+import { TouchableOpacity } from 'react-native';
 import {
   BaseToast,
   ErrorToast,
-  ToastConfigParams,
+  BaseToastProps,
+  ToastConfig,
 } from 'react-native-toast-message';
-import { useTheme } from '@shopify/restyle';
+import { theme } from '../../core/theme';
 import { Box, Text } from '../base';
-import { Theme } from '../../core/theme'; // Ruta de importación corregida
 
-/*
-  Definimos nuestra configuración de Toast personalizada.
-*/
-export const toastConfig = {
-  success: (props: ToastConfigParams<any>) => (
+// 1. Estilos base compartidos (100% DRY y apoyados en tus tokens de Restyle)
+const baseToastStyle = {
+  backgroundColor: theme.colors.cardBackground,
+  width: '90%' as const,
+  height: 'auto' as const,
+  minHeight: 65,
+  borderRadius: theme.borderRadii.m,
+  borderLeftWidth: 6,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.3,
+  shadowRadius: 8,
+  elevation: 8,
+};
+
+const contentContainerStyle = {
+  paddingHorizontal: 16,
+  paddingVertical: 10, // Da aire arriba y abajo para mensajes de 2 a 4 renglones
+};
+
+const text1Style = {
+  fontSize: 15,
+  fontFamily: 'Montserrat-Bold',
+  color: theme.colors.textPrimary,
+};
+
+const text2Style = {
+  fontSize: 13,
+  fontFamily: 'Montserrat-Regular',
+  color: theme.colors.textSecondary,
+  marginTop: 4,
+  lineHeight: 18,
+};
+
+// 2. Configuración Oficial con Tipado Estricto de ToastConfig
+export const toastConfig: ToastConfig = {
+  // Éxito (Verde Forest)
+  success: (props: BaseToastProps) => (
     <BaseToast
       {...props}
-      style={{ borderLeftColor: '#28a745', backgroundColor: '#1E1E1E' }}
-      contentContainerStyle={{ paddingHorizontal: 15 }}
-      text1Style={{
-        fontSize: 16,
-        fontFamily: 'Montserrat-Medium',
-        color: '#E4E4E4',
-      }}
-      text2Style={{
-        fontSize: 14,
-        fontFamily: 'Montserrat-Regular',
-        color: '#A9A9A9',
-      }}
+      style={[
+        baseToastStyle,
+        { borderLeftColor: theme.colors.success || '#28a745' },
+      ]}
+      contentContainerStyle={contentContainerStyle}
+      text1Style={text1Style}
+      text2Style={text2Style}
+      text1NumberOfLines={2}
+      text2NumberOfLines={4}
     />
   ),
 
-  error: (props: ToastConfigParams<any>) => (
+  // Error (Rojo Fire)
+  error: (props: BaseToastProps) => (
     <ErrorToast
       {...props}
-      style={{ borderLeftColor: '#dc3545', backgroundColor: '#1E1E1E' }}
-      contentContainerStyle={{ paddingHorizontal: 15 }}
-      text1Style={{
-        fontSize: 16,
-        fontFamily: 'Montserrat-Medium',
-        color: '#E4E4E4',
-      }}
-      text2Style={{
-        fontSize: 14,
-        fontFamily: 'Montserrat-Regular',
-        color: '#A9A9A9',
-      }}
-    />
-  ),
-  info: (props: ToastConfigParams<any>) => (
-    <BaseToast
-      {...props}
-      // Usamos un azul estándar para Info, o tu color primario si prefieres
-      style={{ borderLeftColor: '#2196F3', backgroundColor: '#1E1E1E' }}
-      contentContainerStyle={{ paddingHorizontal: 15 }}
-      text1Style={{
-        fontSize: 16,
-        fontFamily: 'Montserrat-Medium',
-        color: '#E4E4E4',
-      }}
-      text2Style={{
-        fontSize: 14,
-        fontFamily: 'Montserrat-Regular',
-        color: '#A9A9A9',
-      }}
+      style={[
+        baseToastStyle,
+        { borderLeftColor: theme.colors.error || '#dc3545' },
+      ]}
+      contentContainerStyle={contentContainerStyle}
+      text1Style={text1Style}
+      text2Style={text2Style}
+      text1NumberOfLines={2}
+      text2NumberOfLines={4}
     />
   ),
 
-  warning: (props: ToastConfigParams<any>) => (
+  // Info (Azul)
+  info: (props: BaseToastProps) => (
     <BaseToast
       {...props}
-      style={{ borderLeftColor: '#f59e0b', backgroundColor: '#1E1E1E' }}
-      contentContainerStyle={{ paddingHorizontal: 15 }}
-      text1Style={{
-        fontSize: 16,
-        fontFamily: 'Montserrat-Medium',
-        color: '#E4E4E4',
-      }}
-      text2Style={{
-        fontSize: 14,
-        fontFamily: 'Montserrat-Regular',
-        color: '#A9A9A9',
-      }}
+      style={[baseToastStyle, { borderLeftColor: '#2196F3' }]}
+      contentContainerStyle={contentContainerStyle}
+      text1Style={text1Style}
+      text2Style={text2Style}
+      text1NumberOfLines={2}
+      text2NumberOfLines={4}
     />
   ),
 
-  seleneToast: ({ text1 }: ToastConfigParams<any>) => {
-    const theme = useTheme<Theme>();
-    return (
+  // Warning (Ámbar)
+  warning: (props: BaseToastProps) => (
+    <BaseToast
+      {...props}
+      style={[baseToastStyle, { borderLeftColor: '#f59e0b' }]}
+      contentContainerStyle={contentContainerStyle}
+      text1Style={text1Style}
+      text2Style={text2Style}
+      text1NumberOfLines={2}
+      text2NumberOfLines={4}
+    />
+  ),
+
+  // Selene Brand Toast (Dorado de Selene interactivo y multilínea)
+  seleneToast: (props: BaseToastProps) => (
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={props.onPress}
+      style={{ width: '100%', alignItems: 'center' }}
+    >
       <Box
-        height={80}
         width="90%"
         backgroundColor="cardBackground"
-        style={{ borderLeftWidth: 10, borderLeftColor: theme.colors.primary }}
-        borderRadius="s"
+        borderLeftWidth={6}
+        borderLeftColor="primary"
+        borderRadius="m"
+        padding="m"
+        minHeight={65}
         justifyContent="center"
-        paddingHorizontal="m"
+        style={{
+          shadowColor: theme.colors.primary,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.2,
+          shadowRadius: 6,
+          elevation: 6,
+        }}
       >
-        <Text variant="body-md">{text1}</Text>
+        {props.text1 && (
+          <Text variant="body-md" fontWeight="bold" color="textPrimary">
+            {props.text1}
+          </Text>
+        )}
+        {props.text2 && (
+          <Text
+            variant="body-sm"
+            color="textSecondary"
+            marginTop="xs"
+            style={{ lineHeight: 18 }}
+          >
+            {props.text2}
+          </Text>
+        )}
       </Box>
-    );
-  },
+    </TouchableOpacity>
+  ),
 };

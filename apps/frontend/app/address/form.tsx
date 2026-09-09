@@ -120,15 +120,17 @@ export default function AddressFormScreen() {
       />
 
       <KeyboardAvoidingView
+        style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
       >
         <ScrollView
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
           contentContainerStyle={{
             paddingHorizontal: theme.spacing.m,
             paddingTop: insets.top + 80,
-            paddingBottom: insets.bottom,
+            paddingBottom: insets.bottom + 100,
           }}
           bounces={false}
         >

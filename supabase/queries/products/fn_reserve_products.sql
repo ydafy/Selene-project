@@ -28,6 +28,7 @@ CREATE OR REPLACE FUNCTION public.fn_reserve_products(
 )
 RETURNS TABLE(total_price NUMERIC, success BOOLEAN, error_message TEXT)
 LANGUAGE plpgsql
+SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
@@ -35,10 +36,13 @@ DECLARE
   v_sum NUMERIC;
   v_reserved_ids UUID[];
 BEGIN
-  -- 1. Reclaim expired reservations for the requested products so they can be
-  --    re-reserved by this checkout attempt (safe even if a caller already
-  --    pre-cleaned via fn_release_stale_reservations; the UPDATE is idempotent).
-  --    This legitimate stale release is applied regardless of reserve success.
+  -- 0. DEFENSA: Carrito nulo o vacío (retorno inmediato en 0ms)
+  IF p_product_ids IS NULL OR cardinality(p_product_ids) = 0 THEN
+    RETURN QUERY SELECT 0::NUMERIC, false, 'EMPTY_CART'::TEXT;
+    RETURN;
+  END IF;
+
+  -- 1. LIMPIEZA IDEMPOTENTE: Recuperar reservas vencidas (> 10 min) de este carrito
   UPDATE public.products
   SET status = 'VERIFIED',
       updated_at = now(),
@@ -47,9 +51,14 @@ BEGIN
     AND status = 'RESERVED'
     AND reserved_at < now() - interval '10 minutes';
 
-  -- 2. Tentatively reserve only VERIFIED products not owned by the buyer,
-  --    capturing reserved ids so a partial reservation can be rolled back when
-  --    the full cart could not be reserved. Fresh reserved_at resets the TTL.
+  -- 2. SEGURO ANTI-DEADLOCK: Bloqueo determinístico en orden alfabético de UUID
+  PERFORM 1
+  FROM public.products
+  WHERE id = ANY(p_product_ids)
+  ORDER BY id
+  FOR UPDATE;
+
+  -- 3. RESERVA ATÓMICA: Solo productos VERIFIED que no sean del comprador
   WITH reserved AS (
     UPDATE public.products
     SET status = 'RESERVED',
@@ -64,10 +73,8 @@ BEGIN
     INTO v_reserved_ids, v_count, v_sum
   FROM reserved;
 
-  -- 3. All-or-nothing. If not every requested product was reserved, undo the
-  --    tentative reservation made by this call so no partial reservation is
-  --    left behind, then report failure.
-  IF v_count = array_length(p_product_ids, 1) THEN
+  -- 4. ALL-OR-NOTHING: Si no se reservó el 100% del carrito, revertir lo parcial
+  IF v_count = cardinality(p_product_ids) THEN
     RETURN QUERY SELECT v_sum, true, NULL::TEXT;
   ELSE
     IF v_count > 0 THEN
@@ -83,11 +90,6 @@ BEGIN
 END;
 $$;
 
--- These RPCs are invoked only by Edge Functions / cron with the service role
--- (which bypasses RLS). Revoke the default PUBLIC execute first so anon and
--- authenticated (which inherit from PUBLIC) cannot release/reserve other users'
--- inventory, then grant only to service_role.
-REVOKE EXECUTE ON FUNCTION public.fn_reserve_products(UUID, UUID[])
-  FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.fn_reserve_products(UUID, UUID[])
-  TO service_role;
+-- Permisos de red estrictos
+REVOKE EXECUTE ON FUNCTION public.fn_reserve_products(UUID, UUID[]) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_reserve_products(UUID, UUID[]) TO service_role;

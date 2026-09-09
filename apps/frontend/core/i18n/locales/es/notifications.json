@@ -9,5 +9,7 @@
   "clearAllLabel": "Limpiar todo",
   "clearAllConfirm": "¿Estás seguro de que querés limpiar todos los avisos?",
   "moreCount": "+{{count}} más",
-  "openLabel": "Abrir avisos"
+  "openLabel": "Abrir avisos",
+  "markAllConfirm": "¿Marcar todas como leídas?",
+  "markAllDesc": "Todas las notificaciones pendientes se marcarán como revisadas."
 }

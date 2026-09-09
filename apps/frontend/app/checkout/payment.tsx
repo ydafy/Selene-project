@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { Alert } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Alert, BackHandler } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@shopify/restyle';
@@ -19,6 +19,7 @@ import { ProductSummaryModal } from '../../components/features/checkout/ProductS
 import { Stack } from 'expo-router';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useCartStore } from '@/core/store/useCartStore';
+import { supabase } from '@/core/db/supabase';
 
 export default function PaymentScreen() {
   const { t } = useTranslation('checkout');
@@ -26,6 +27,9 @@ export default function PaymentScreen() {
 
   const summaryModalRef = useRef<BottomSheetModal>(null);
   const items = useCartStore((state) => state.items);
+
+  const isPaidRef = useRef(false);
+  const productIdsRef = useRef(items.map((i) => i.id));
 
   const {
     loading,
@@ -37,30 +41,49 @@ export default function PaymentScreen() {
     retry,
   } = usePaymentProcess();
 
-  // LÓGICA DE HAPTICS AQUI
-  const onPayPress = async () => {
-    // 1. Feedback físico al presionar el botón
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  const isBusy = loading || isConfirming;
 
+  const onPayPress = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const result = await handlePayment();
 
     if (result.success) {
-      // 2. Feedback de Éxito (Vibración positiva) antes de navegar
+      isPaidRef.current = true;
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      // La navegación a /success ocurre dentro del hook
     } else if (!result.cancelled) {
-      // 3. Feedback de Error (Vibración de advertencia)
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert(t('payment.failedTitle'), result.message);
     }
   };
 
-  const isBusy = loading || isConfirming;
+  useEffect(() => {
+    const onBackPress = () => isBusy; // Si isBusy es true, Android ignora el botón físico de atrás
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, [isBusy]);
+
+  useEffect(() => {
+    return () => {
+      if (!isPaidRef.current && productIdsRef.current.length > 0) {
+        supabase
+          .rpc('fn_release_products', {
+            p_product_ids: productIdsRef.current,
+          })
+          .then(({ error }) => {
+            if (error && __DEV__) {
+              console.error('[RELEASE_ERROR]:', error.message);
+            }
+          });
+      }
+    };
+  }, []);
 
   if (error) {
     return (
       <Box flex={1} backgroundColor="background">
-        <Stack.Screen options={{ headerShown: false }} />
+        <Stack.Screen
+          options={{ headerShown: false, gestureEnabled: !isBusy }}
+        />
         <GlobalHeader title={t('payment.securityTitle')} showBack />
         <ErrorState
           title={t('payment.errorTitle')}
@@ -73,8 +96,8 @@ export default function PaymentScreen() {
 
   return (
     <Box flex={1} backgroundColor="background">
-      <Stack.Screen options={{ headerShown: false }} />
-      <GlobalHeader title={t('payment.securityTitle')} showBack={!loading} />
+      <Stack.Screen options={{ headerShown: false, gestureEnabled: !isBusy }} />
+      <GlobalHeader title={t('payment.securityTitle')} showBack={!isBusy} />
 
       <Box flex={1} justifyContent="center" alignItems="center" padding="l">
         {/* TARJETA DE ESTADO */}
@@ -151,7 +174,7 @@ export default function PaymentScreen() {
                 ? 'Confirmando pago...'
                 : loading
                   ? t('payment.processing')
-              : `${t('payment.confirmBtn')} ${formatCurrency((paymentData?.amount || 0) / 100)}`}
+                  : `${t('payment.confirmBtn')} ${formatCurrency((paymentData?.amount || 0) / 100)}`}
             </PrimaryButton>
           </Box>
         </Box>

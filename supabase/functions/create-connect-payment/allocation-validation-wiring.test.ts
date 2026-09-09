@@ -10,9 +10,10 @@ describe('create-connect-payment allocation validation wiring', () => {
     );
 
     const validation = source.indexOf('assertValidAllocationRows({');
-    const paymentIntent = source.indexOf('stripe.paymentIntents.create');
+    const paymentIntent = source.indexOf('createSinglePaymentIntent({');
 
     expect(source).toContain('assertValidAllocationRows');
+    expect(source).toContain('createSinglePaymentIntent');
     expect(validation).toBeGreaterThan(-1);
     expect(paymentIntent).toBeGreaterThan(validation);
     expect(source).toContain('quantity: 1 as const');

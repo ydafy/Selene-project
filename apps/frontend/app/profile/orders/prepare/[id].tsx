@@ -377,7 +377,11 @@ export default function PrepareShipmentScreen() {
               console.error("Couldn't load page", err),
             );
           }
-          router.replace(`/profile/orders/${id}`);
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace(`/profile/orders/${id}`);
+          }
         }}
         onCancel={() => {}}
         confirmLabel={t('orders:actions.viewPdf')}

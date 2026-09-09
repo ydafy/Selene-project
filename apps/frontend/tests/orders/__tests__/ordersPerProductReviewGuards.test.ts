@@ -12,7 +12,7 @@ import { join } from 'node:path';
  * edit cannot silently regress the per-product review behavior.
  */
 
-const FRONTEND = join(import.meta.dir, '..', '..', '..', '..');
+const FRONTEND = join(import.meta.dir, '..', '..', '..');
 
 const read = (relPath: string) =>
   readFileSync(join(FRONTEND, relPath), 'utf8').replace(/\s+/g, ' ');

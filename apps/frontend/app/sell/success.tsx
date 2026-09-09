@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -16,6 +16,7 @@ export default function SellSuccessScreen() {
   const { t } = useTranslation('sell');
   const router = useRouter();
   const theme = useTheme<Theme>();
+  const [isNavigating, setIsNavigating] = useState(false);
 
   // 2. Obtenemos la función para limpiar el borrador
   const { resetDraft } = useSellStore();
@@ -42,18 +43,23 @@ export default function SellSuccessScreen() {
   }, []);
 
   const handleVerifyNow = () => {
-    if (!productId) return;
+    if (!productId || isNavigating) return;
 
-    // 4. Limpiamos datos AHORA, justo antes de irnos
+    setIsNavigating(true);
     resetDraft();
 
-    router.push({
-      pathname: '/verify/[id]',
-      params: { id: productId },
-    });
+    router.dismissAll();
+    setTimeout(() => {
+      router.push({
+        pathname: '/verify/[id]',
+        params: { id: productId },
+      });
+    }, 150);
   };
 
   const handleLater = () => {
+    if (isNavigating) return;
+    setIsNavigating(true);
     resetDraft();
 
     router.dismissAll();

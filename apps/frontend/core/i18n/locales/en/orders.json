@@ -121,7 +121,7 @@
   "actions": {
     "generateLabel": "Generate Shipping Label",
     "cancelOrder": "Cancel Order",
-    "confirmDelivery": "Confirm Delivery",
+    "confirmDelivery": "Confirm Delivered Package",
     "viewPdf": "View PDF Shipping Label",
     "trackOrder": "Track Package",
     "confirmCancel": "Yes, cancel order",
@@ -170,8 +170,8 @@
 
   "dialogs": {
     "cancelTitle": "Do you want to cancel this order?",
-    "deliveryTitle": "Did you receive your package?",
-    "deliveryMsg": "Please confirm only if the product is in your hands and in good condition. This will release the payment to the seller."
+    "deliveryTitle": "Did you receive your delivered package?",
+    "deliveryMsg": "Confirm only after the carrier marks this shipment delivered and you have received it. Seller payout is released by Selene's admin process, not by this confirmation."
   },
   "prepare": {
     "headerTitle": "Generate Label",

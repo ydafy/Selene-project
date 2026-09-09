@@ -117,7 +117,7 @@
   "actions": {
     "generateLabel": "Generar Guía de Envío",
     "cancelOrder": "Cancelar Pedido",
-    "confirmDelivery": "Confirmar Recepción",
+    "confirmDelivery": "Confirmar paquete entregado",
     "viewPdf": "Ver Guía PDF",
     "trackOrder": "Rastrear Paquete",
     "confirmCancel": "Sí, cancelar pedido",
@@ -156,8 +156,8 @@
   },
   "dialogs": {
     "cancelTitle": "¿Deseas cancelar este pedido?",
-    "deliveryTitle": "¿Recibiste tu paquete?",
-    "deliveryMsg": "Confirma solo si el producto está en tus manos y en buen estado. Esto liberará el pago al vendedor."
+    "deliveryTitle": "¿Recibiste tu paquete entregado?",
+    "deliveryMsg": "Confirma solo después de que la paquetería marque este envío como entregado y lo hayas recibido. El pago al vendedor lo libera el proceso administrativo de Selene, no esta confirmación."
   },
   "return": {
     "succesToastMsgTitle": "Evidencia guardada",

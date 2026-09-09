@@ -159,6 +159,22 @@ export interface EdgeFunctionRegistry {
     payload: { orderId: string; shipmentId: string; reason?: string };
     response: { success: boolean; error?: string };
   };
+  'confirm-shipment-delivery': {
+    payload: {
+      orderId: string;
+      shipmentId: string;
+      idempotencyKey: string;
+    };
+    response:
+      | {
+          success: true;
+          shipmentId: string;
+          status: 'completed';
+          completionSource: 'buyer' | 'auto';
+          idempotent: boolean;
+        }
+      | { success: false; error: string };
+  };
   'generate-shipping-label': {
     payload: {
       shipmentId: string;

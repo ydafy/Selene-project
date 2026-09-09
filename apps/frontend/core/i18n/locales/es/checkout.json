@@ -86,6 +86,8 @@
   },
 
   "errors": {
+    "stockTitle": "Producto agotado",
+    "stockMsg": "Alguien más acaba de comprar uno de tus productos.",
     "shippingFailed": "No se pudo calcular el envío",
     "selfPurchase": "No puedes comprar un producto publicado por ti.",
     "shippingFailedMsg": "Hubo un problema al calcular el costo de envío. Intenta nuevamente.",

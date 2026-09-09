@@ -5,7 +5,7 @@
       "source": "addyosmani/web-quality-skills",
       "sourceType": "github",
       "skillPath": "skills/accessibility/SKILL.md",
-      "computedHash": "ebfa09617a2ac4fd64afd73267726b787145a8d14294df3f8802b462c91594ab"
+      "computedHash": "88c64dead9bb55925c7b983f5fd95cfecf30bd8c076fd384cdb17019d1becd87"
     },
     "building-native-ui": {
       "source": "expo/skills",
@@ -21,18 +21,53 @@
       "source": "juliusbrussee/caveman",
       "sourceType": "github",
       "skillPath": "skills/caveman/SKILL.md",
-      "computedHash": "7935e83f9c6a8b7cbb5404d144b0d19e3ba93583f4388301c3dada37cd25adf8"
+      "computedHash": "fa7c0951349ae3782a20e55c6d1e72e4c23585b7932bb5e021c17c4f8f055a07"
     },
     "caveman-commit": {
       "source": "juliusbrussee/caveman",
       "sourceType": "github",
       "skillPath": "skills/caveman-commit/SKILL.md",
-      "computedHash": "1dd642480aee47934d6c202fd471e41922c7dc312e92a6e38059442b39bb0795"
+      "computedHash": "b416cf134b0f33ddadeca7977aebdbb2d3db79a166d0fce2e1aabeec98132766"
     },
     "composition-patterns": {
       "source": "vercel-labs/agent-skills",
       "sourceType": "autoskills-registry",
       "computedHash": "c124390cc3441844903ada94cb5820b23d922f2d0ad34e01e029e410197c8a32"
+    },
+    "deno-deploy": {
+      "source": "denoland/skills",
+      "sourceType": "autoskills-registry",
+      "computedHash": "523df063b451119113ac0e089e6aea20b7ac382ab8e75b772739392e67abbad0"
+    },
+    "deno-expert": {
+      "source": "denoland/skills",
+      "sourceType": "autoskills-registry",
+      "computedHash": "733217b1686ca7f0cefdf5a9a2263a0c4f3681a4856b10236f93d7ebe5d1a0f0"
+    },
+    "deno-frontend": {
+      "source": "denoland/skills",
+      "sourceType": "autoskills-registry",
+      "computedHash": "1ae8efc5afb169d6f8555554fd810917313045b5cb1222a767c6d51b31677e74"
+    },
+    "deno-guidance": {
+      "source": "denoland/skills",
+      "sourceType": "autoskills-registry",
+      "computedHash": "05ed1347ae9bdef61f25d859205c60802f4dcd4a4f675a1b17920a23d14ca52c"
+    },
+    "deno-sandbox": {
+      "source": "denoland/skills",
+      "sourceType": "autoskills-registry",
+      "computedHash": "99782766dd71d4c2f47d83b5c5934eba70f382ed2a1db86be48ae08b3c8b39e0"
+    },
+    "deno-typescript": {
+      "source": "mindrally/skills",
+      "sourceType": "autoskills-registry",
+      "computedHash": "957c08b371827e2d0446fea12d2a58df4cdb6500c96c0782d15811b0e2eb8b4c"
+    },
+    "deploy-to-vercel": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "autoskills-registry",
+      "computedHash": "698dfb0ec0cf3e8d97c3f181e13b37b3b8fbc872a4b031d812adb4193f66035e"
     },
     "design-mobile-apps": {
       "source": "sleekdotdesign/agent-skills",
@@ -73,7 +108,7 @@
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/productivity/grill-me/SKILL.md",
-      "computedHash": "daf64ca15f4fa081a6747766db538e2dbd1131725ed4fcdd3d538dc62c7035ba"
+      "computedHash": "5e0c683385eafd83f106ac6c9d67dfbbfe5aa4b3fe65aad114eb1055a99c818f"
     },
     "i18n-localization": {
       "source": "sickn33/antigravity-awesome-skills",
@@ -121,7 +156,7 @@
       "source": "supabase/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/supabase/SKILL.md",
-      "computedHash": "2df21087c49ef5d9cc1189ea24d41d67e4b06b64009e580f44d0e89b1a8b079b"
+      "computedHash": "a6260582f48df8ba53380bb9b9e870ed2ae5fe147799e90ed783b8aa25167d50"
     },
     "supabase-postgres-best-practices": {
       "source": "supabase/agent-skills",
@@ -179,7 +214,7 @@
       "source": "lobehub/lobehub",
       "sourceType": "github",
       "skillPath": ".agents/skills/zustand/SKILL.md",
-      "computedHash": "7d89ae14703873084fc7188f2d3504a62cf946686fb29363d6521a5451d24af4"
+      "computedHash": "a30e48757fc553094deb207307474391cb54152010aa9af1baf078c22c679d7d"
     }
   }
 }

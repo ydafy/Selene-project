@@ -1,30 +1,19 @@
 /**
  * @file apps/frontend/app/checkout/index.tsx
- * @description Buyer-facing Checkout Summary and Order Review Screen.
- *
- * Implements:
- * 1. Sequential review of cart items grouped by seller (multi-seller checkout preview).
- * 2. Strict client-side validation gates: terms acceptance, self-purchase blocking, and address/payment completeness.
- * 3. Pre-payment atomic stock validation via OrderService.validateProductStock.
- * 4. Renders pricing breakdown (Subtotal, Seguro Selene, and shipping cost) aligned with backend cents math.
- *
- * Uses Shopify Restyle for responsive dark/light theme tokens and safe-area notch padding.
- *
- * @version 1.2
- * @domain mobile-checkout-screens
+ * @description Pantalla de Resumen de Compra y Validación Zod del Checkout de Selene.
+ * @version 2.0 (Clean Architecture & Inline Validation)
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, Alert } from 'react-native';
+import { ScrollView } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import Toast from 'react-native-toast-message';
 
-// FIX: Renombramos Text para evitar conflicto con la interfaz Text del DOM
+// Componentes Base
 import { Box, Text as ThemedText } from '../../components/base';
-
 import { GlobalHeader } from '../../components/layout/GlobalHeader';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { ScreenHeader } from '../../components/layout/ScreenHeader';
@@ -33,13 +22,13 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { AddressPickerModal } from '../../components/features/address/AddressPickerModal';
 import { PaymentMethodPickerModal } from '../../components/features/checkout/PaymentMethodPickerModal';
 
-// Componentes Fragmentados
+// Componentes de Checkout
 import { CheckoutItem } from '../../components/features/checkout/CheckoutItem';
 import { AddressSection } from '../../components/features/checkout/AddressSection';
 import { PaymentSection } from '../../components/features/checkout/PaymentSection';
 import { SummaryBreakdown } from '../../components/features/checkout/SummaryBreakdown';
 
-// Hooks y Stores
+// Stores, Hooks y Servicios
 import { useCartStore } from '../../core/store/useCartStore';
 import { useCheckoutStore } from '../../core/store/useCheckoutStore';
 import { useAddresses } from '../../core/hooks/useAddresses';
@@ -49,18 +38,18 @@ import { formatCurrency } from '../../core/utils/format';
 import { Address } from '@selene/types';
 import { useAuthContext } from '../../components/auth/AuthProvider';
 import { OrderService } from '../../core/services/order';
+import { checkoutValidationSchema } from '../../core/schemas/checkout.schema';
 
 export default function CheckoutSummaryScreen() {
   const { t } = useTranslation('checkout');
-
   const router = useRouter();
   const { session } = useAuthContext();
 
-  // Refs
+  // Modales
   const addressModalRef = useRef<BottomSheetModal>(null);
   const paymentModalRef = useRef<BottomSheetModal>(null);
 
-  // Stores & Hooks
+  // Stores
   const cartItems = useCartStore((state) => state.items);
   const {
     selectedAddress,
@@ -70,24 +59,19 @@ export default function CheckoutSummaryScreen() {
     status,
     setStatus,
     setError,
-    isReady,
   } = useCheckoutStore();
 
   const { addresses, isLoading: loadingAddresses } = useAddresses();
   const { methods, isLoadingMethods } = usePaymentMethods();
   const { subtotal, serviceFee, total } = useOrderCalculations(cartItems);
-  // UI Local State
+
+  // Estados Locales
   const [showErrors, setShowErrors] = useState(false);
   const [isProtectionDialogVisible, setIsProtectionDialogVisible] =
     useState(false);
-  const [isValidationDialogVisible, setIsValidationDialogVisible] =
-    useState(false);
   const [unavailableItems, setUnavailableItems] = useState<string[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [isValidatingStock, setIsValidatingStock] = useState(false);
   const [isTermsAccepted, setIsTermsAccepted] = useState(false);
 
-  // Memoized Data
   const selectedPaymentMethod = useMemo(
     () => methods.find((m) => m.id === selectedPaymentMethodId),
     [methods, selectedPaymentMethodId],
@@ -98,11 +82,12 @@ export default function CheckoutSummaryScreen() {
     [cartItems, session?.user.id],
   );
 
-  // --- EFFECTS ---
+  // --- EFECTOS DE INICIALIZACIÓN ---
   useEffect(() => {
     setStatus('idle');
     setError(null);
-  }, []);
+    setShowErrors(false);
+  }, [setStatus, setError]);
 
   useEffect(() => {
     if (!loadingAddresses && addresses.length > 0 && !selectedAddress) {
@@ -123,55 +108,76 @@ export default function CheckoutSummaryScreen() {
     setSelectedPaymentMethodId,
   ]);
 
-  // --- HANDLERS ---
+  // --- MANEJADORES ---
   const handleAddressSelect = (address: Address) => {
     setSelectedAddress(address);
     addressModalRef.current?.dismiss();
   };
 
   const onProceedToPayment = async () => {
-    if (!isReady() || !isTermsAccepted) {
+    // 1. VALIDACIÓN DECLARATIVA CON ZOD
+    const validation = checkoutValidationSchema.safeParse({
+      addressId: selectedAddress?.id,
+      paymentMethodId: selectedPaymentMethodId,
+      isTermsAccepted,
+    });
+
+    if (!validation.success) {
+      // Ilumina los campos en rojo en pantalla de forma visual sin popups molestos
       setShowErrors(true);
-      setIsValidationDialogVisible(true);
       return;
     }
 
+    // 2. BLOQUEO DE AUTO-COMPRA
     if (isSelfPurchase) {
-      Alert.alert(t('errors.selfPurchaseTitle'), t('errors.selfPurchaseMsg'));
+      Toast.show({
+        type: 'error',
+        text1: t('errors.selfPurchaseTitle'),
+        text2: t('errors.selfPurchaseMsg'),
+        position: 'top',
+      });
       return;
     }
 
-    // LÓGICA DE VALIDACIÓN BLINDADA---
-    setIsValidatingStock(true);
+    // 3. VALIDACIÓN ATÓMICA DE STOCK
     setStatus('validating');
     setUnavailableItems([]);
 
     try {
-      const validation = await OrderService.validateProductStock(
+      const stockCheck = await OrderService.validateProductStock(
         cartItems.map((i) => i.id),
       );
 
-      if (!validation.isValid) {
+      if (!stockCheck.isValid) {
         setStatus('idle');
-        setUnavailableItems(validation.unavailableIds);
-        Alert.alert(t('errors.stockTitle'), t('errors.stockMsg'));
+        setUnavailableItems(stockCheck.unavailableIds);
+        Toast.show({
+          type: 'error',
+          text1: t('errors.stockTitle'),
+          text2: t('errors.stockMsg'),
+          position: 'top',
+        });
         return;
       }
 
-      //  Navegar al Pago (Si todo es válido)
+      // Navegación segura al flujo de pago
       setStatus('processing');
       router.push('/checkout/payment');
     } catch (err: unknown) {
-      // ELIMINAMOS ANY: Manejo de error robusto
       const errorMessage =
         err instanceof Error ? err.message : t('errors.genericMsg');
       setError(errorMessage);
       setStatus('error');
-      Alert.alert(t('errors.genericTitle'), errorMessage);
-    } finally {
-      setIsValidatingStock(false);
+      Toast.show({
+        type: 'error',
+        text1: t('errors.genericTitle'),
+        text2: errorMessage,
+        position: 'top',
+      });
     }
   };
+
+  const isBusy = status === 'processing' || status === 'validating';
 
   return (
     <Box flex={1} backgroundColor="background">
@@ -192,7 +198,7 @@ export default function CheckoutSummaryScreen() {
       >
         <ScreenHeader title={t('orderSummary')} subtitle={t('reviewDetails')} />
 
-        {/* ALERTA AUTO-COMPRA */}
+        {/* ALERTA DE AUTO-COMPRA */}
         {isSelfPurchase && (
           <Box
             backgroundColor="error"
@@ -219,22 +225,26 @@ export default function CheckoutSummaryScreen() {
           </Box>
         )}
 
+        {/* SECCIÓN DIRECCIÓN (Ilumina en rojo si falta) */}
         <AddressSection
           address={selectedAddress}
           onPress={() => addressModalRef.current?.present()}
-          showError={showErrors}
+          showError={showErrors && !selectedAddress}
           label={t('shipTo')}
           placeholder={t('address.select')}
           isLoading={loadingAddresses}
         />
 
+        {/* SECCIÓN MÉTODO DE PAGO (Ilumina en rojo si falta) */}
         <PaymentSection
           method={selectedPaymentMethod}
           onPress={() => paymentModalRef.current?.present()}
-          showError={showErrors}
+          showError={showErrors && !selectedPaymentMethodId}
+          isLoading={isLoadingMethods}
           label={t('payment.selectMethod')}
         />
 
+        {/* LISTADO DE PRODUCTOS */}
         <Box marginBottom="l">
           <ThemedText variant="subheader-lg" marginBottom="s" color="primary">
             {t('products')} ({cartItems.length})
@@ -248,6 +258,7 @@ export default function CheckoutSummaryScreen() {
           ))}
         </Box>
 
+        {/* DESGLOSE FINANCIERO */}
         <SummaryBreakdown
           subtotal={subtotal}
           serviceFee={serviceFee}
@@ -255,6 +266,7 @@ export default function CheckoutSummaryScreen() {
           onHelpPress={() => setIsProtectionDialogVisible(true)}
         />
 
+        {/* TÉRMINOS Y CONDICIONES (Ilumina en rojo si falta) */}
         <Box
           marginTop="l"
           padding="l"
@@ -280,6 +292,7 @@ export default function CheckoutSummaryScreen() {
         </Box>
       </ScrollView>
 
+      {/* BOTÓN INFERIOR DE PAGO */}
       <Box
         position="absolute"
         bottom={0}
@@ -292,12 +305,8 @@ export default function CheckoutSummaryScreen() {
       >
         <PrimaryButton
           onPress={onProceedToPayment}
-          disabled={
-            cartItems.length === 0 ||
-            status === 'processing' ||
-            status === 'validating'
-          }
-          loading={status === 'processing' || status === 'validating'}
+          disabled={cartItems.length === 0 || isBusy || isSelfPurchase}
+          loading={isBusy}
         >
           {status === 'validating'
             ? t('summary.validating')
@@ -305,27 +314,16 @@ export default function CheckoutSummaryScreen() {
         </PrimaryButton>
       </Box>
 
-      {/* DIÁLOGOS */}
+      {/* DIÁLOGO INFORMATIVO DE PROTECCIÓN AL COMPRADOR */}
       <ConfirmDialog
         visible={isProtectionDialogVisible}
         title={t('dialogs.protectionTitle')}
         description={t('dialogs.protectionDesc')}
         icon="shield-check"
-        confirmLabel={t('common:understand')}
+        confirmLabel={t('common:dialog.understood')}
         hideCancel
         onConfirm={() => setIsProtectionDialogVisible(false)}
         onCancel={() => setIsProtectionDialogVisible(false)}
-      />
-
-      <ConfirmDialog
-        visible={isValidationDialogVisible}
-        title={t('errors.incompleteTitle')}
-        description={t('errors.incompleteMsg')}
-        icon="alert-circle-outline"
-        confirmLabel={t('common:understand')}
-        hideCancel
-        onConfirm={() => setIsValidationDialogVisible(false)}
-        onCancel={() => setIsValidationDialogVisible(false)}
       />
 
       <PaymentMethodPickerModal innerRef={paymentModalRef} />

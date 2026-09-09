@@ -27,5 +27,5 @@ test('checks buyer destination before seller throughput guards can mask the corr
 
   expect(buyerDestination).toBeGreaterThan(-1);
   expect(activeShipmentQuery).toBeGreaterThan(buyerDestination);
-  expect(source).toContain("throw new ApiError(422, 'BUYER_DESTINATION_ADDRESS_INVALID')");
+  expect(source).toContain('if (preflightError) throw new ApiError(422, preflightError)');
 });

@@ -28,7 +28,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import Stripe from 'https://esm.sh/stripe@17.0.0';
-import { z } from 'https://esm.sh/zod@3.23.8';
+import { z } from '../_shared/zod-runtime.ts';
 import {
   assertValidCheckoutAllocation,
   calculateCheckoutAllocation,
@@ -40,6 +40,7 @@ import {
   assertValidAllocationRows,
   buildCheckoutIdentifiers,
   buildCreateConnectPaymentResponse,
+  createSinglePaymentIntent,
   buildSinglePaymentIntentParams,
   normalizeCreateConnectPaymentRequest,
   type ReservationRpcData,
@@ -412,17 +413,13 @@ serve(async (req: Request) => {
     // Stripe request idempotency: when the client retries the same checkout
     // attempt, reuse the same key so Stripe returns the existing PI instead of
     // minting a duplicate. This preserves the legacy retry-safety guarantee.
-    const idempotencyOptions: Stripe.RequestOptions =
-      normalizedRequest.idempotencyKey
-        ? { idempotencyKey: `selene_pi_${normalizedRequest.idempotencyKey}` }
-        : {};
-
     let pi: Stripe.PaymentIntent;
     try {
-      pi = await stripe.paymentIntents.create(
-        requestParams,
-        idempotencyOptions,
-      );
+      pi = await createSinglePaymentIntent({
+        stripe,
+        params: requestParams,
+        idempotencyKey: normalizedRequest.idempotencyKey,
+      });
       log('info', 'Single platform PaymentIntent created', {
         piId: pi.id,
         amount: pi.amount,

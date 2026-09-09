@@ -264,6 +264,6 @@ describe('reservation lifecycle hardening query source — all-or-nothing reserv
       /UPDATE\s+public\.products[\s\S]*?SET\s+status\s*=\s*'VERIFIED'[\s\S]*?reserved_at\s*=\s*NULL[\s\S]*?WHERE\s+id\s*=\s*ANY\(\s*v_reserved_ids\s*\)\s*AND\s+status\s*=\s*'RESERVED'/i,
     );
     // Count-mismatch check against the full requested array gates the rollback.
-    expect(sql).toMatch(/v_count\s*=\s*array_length\(\s*p_product_ids\s*,\s*1\s*\)/i);
+    expect(sql).toMatch(/v_count\s*=\s*cardinality\(\s*p_product_ids\s*\)/i);
   });
 });

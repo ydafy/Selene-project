@@ -76,7 +76,7 @@ describe('shipment cancel safety frontend helpers', () => {
         timeLeft: '47h',
       }),
     ).toBe(
-      'The seller has 47h to ship it. If it does not ship in time, the shipment auto-cancels and your refund is triggered.',
+      'El vendedor tiene 47h para realizar el envío. Si no lo envía a tiempo, el envío se cancela automáticamente y se procesa tu reembolso.',
     );
 
     expect(
@@ -86,7 +86,7 @@ describe('shipment cancel safety frontend helpers', () => {
         timeLeft: '47h',
       }),
     ).toBe(
-      'You have 47h to get a carrier scan. If it does not happen, the shipment auto-cancels.',
+      'Dispones de 47h para que se realice el escaneo por parte del transportista. Si esto no ocurre, el envío se cancelará automáticamente.',
     );
   });
 });

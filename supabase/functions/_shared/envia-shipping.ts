@@ -1,4 +1,4 @@
-import { z } from 'npm:zod@3.23.8';
+import { z } from './zod-runtime.ts';
 import { normalizeEnviaMexicoStateCode } from './envia-mexico-states.ts';
 
 const requiredAddressField = z.string().trim().min(1);

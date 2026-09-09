@@ -10,7 +10,7 @@ test('requires a selected seller-owned product shipment before generating a labe
   expect(source).toContain('const { id, shipment_id } = useLocalSearchParams');
   expect(source).toContain('const sellerShipments = useMemo');
   expect(source).toContain('const selectedShipment = useMemo');
-  expect(source).toContain('if (!selectedOrigin || !targetShipmentId');
+  expect(source).toMatch(/if\s*\(\s*!selectedOrigin\s*\|\|\s*!targetShipmentId/);
   expect(source).toContain('shipmentId: targetShipmentId');
 });
 

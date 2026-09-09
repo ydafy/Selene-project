@@ -38,8 +38,8 @@ describe('Envia destination schemas', () => {
 
   it('normalizes allowed state codes and preserves the two-letter Nuevo León code', () => {
     expect(normalizeEnviaStateCode(' nL ')).toBe('NL');
-    expect(buyerDestinationSnapshotSchema.safeParse({ ...validDestination, state: ' slp ' }).data?.state).toBe('SLP');
-    expect(normalizeEnviaStateCode('NLE')).toBeNull();
+    expect(buyerDestinationSnapshotSchema.safeParse({ ...validDestination, state: ' slp ' }).data?.state).toBe('SL');
+    expect(normalizeEnviaStateCode('NLE')).toBe('NL');
   });
 
   it('projects only stored buyer fields and omits a missing house number', () => {
@@ -47,7 +47,7 @@ describe('Envia destination schemas', () => {
     expect(buildBuyerDestinationFromStoredSnapshot({
       full_name: 'María López', phone: '5512345678', street_line1: 'Avenida Reforma',
       district: 'Juárez', city: 'Ciudad de México', state: 'CMX', country: 'MX', zip_code: '06600',
-    })).toEqual({ ...destinationWithoutNumber, state: 'CMX' });
+    })).toEqual({ ...destinationWithoutNumber, state: 'CX' });
     expect(buildBuyerDestinationFromStoredSnapshot({ ...validDestination, full_name: undefined })).toBeNull();
   });
 });

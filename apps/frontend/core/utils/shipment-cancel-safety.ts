@@ -1,6 +1,7 @@
 import type { Shipment } from '@selene/types';
 
-export const DEFAULT_CANCEL_ORDER_REASON = 'Cancelación solicitada por el usuario';
+export const DEFAULT_CANCEL_ORDER_REASON =
+  'Cancelación solicitada por el usuario';
 
 type ShipmentStatus = Shipment['status'];
 
@@ -99,8 +100,7 @@ export function resolveCancelOrderFailureToast(
   if (message.includes('STRIPE_TRANSFER_ALREADY_RELEASED')) {
     return {
       title: 'No pudimos cancelar el envío',
-      message:
-        'Ese envío ya liberó fondos. Contacta soporte para continuar.',
+      message: 'Ese envío ya liberó fondos. Contacta soporte para continuar.',
     };
   }
 
@@ -116,15 +116,15 @@ export function resolveShipmentPreparingWindowMessage(
   if (input.isExpired) {
     return input.isSeller
       ? 'Your carrier scan window has closed.'
-      : 'The seller\'s shipping window has closed.';
+      : "The seller's shipping window has closed.";
   }
 
   if (input.isBuyer) {
-    return `The seller has ${input.timeLeft} to ship it. If it does not ship in time, the shipment auto-cancels and your refund is triggered.`;
+    return `El vendedor tiene ${input.timeLeft} para realizar el envío. Si no lo envía a tiempo, el envío se cancela automáticamente y se procesa tu reembolso.`;
   }
 
   if (input.isSeller) {
-    return `You have ${input.timeLeft} to get a carrier scan. If it does not happen, the shipment auto-cancels.`;
+    return `Dispones de ${input.timeLeft} para que se realice el escaneo por parte del transportista. Si esto no ocurre, el envío se cancelará automáticamente.`;
   }
 
   return `The seller has ${input.timeLeft} before the shipment is locked for auto-cancel.`;

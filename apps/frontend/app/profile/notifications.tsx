@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
-import { RefreshControl, TouchableOpacity, ActivityIndicator } from 'react-native';
+import {
+  RefreshControl,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
 import { Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { FlashList } from '@shopify/flash-list';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Box, Text } from '../../components/base';
+import { Box } from '../../components/base';
 import { GlobalHeader } from '../../components/layout/GlobalHeader';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { NotificationItem } from '../../components/features/notifications/NotificationItem';
@@ -27,6 +31,8 @@ export default function NotificationsScreen() {
   const { session } = useAuthContext();
   const userId = session?.user.id;
   const [showClearAll, setShowClearAll] = useState(false);
+  const [showMarkAll, setShowMarkAll] = useState(false);
+  const [isActionLoading, setIsActionLoading] = useState(false);
 
   const {
     data: notifications,
@@ -38,12 +44,8 @@ export default function NotificationsScreen() {
     refetch,
   } = useNotificationsList(userId);
 
-  const {
-    markAsRead,
-    markAllAsRead,
-    dismissNotification,
-    dismissAll,
-  } = useNotificationMutations(userId);
+  const { markAsRead, markAllAsRead, dismissNotification, dismissAll } =
+    useNotificationMutations(userId);
 
   const handleNotificationPress = async (notif: Notification) => {
     await markAsRead(notif.id);
@@ -51,12 +53,23 @@ export default function NotificationsScreen() {
   };
 
   const handleMarkAllAsRead = async () => {
-    await markAllAsRead();
+    setIsActionLoading(true);
+    try {
+      await markAllAsRead();
+      setShowMarkAll(false);
+    } finally {
+      setIsActionLoading(false);
+    }
   };
 
   const handleClearAll = async () => {
-    setShowClearAll(false);
-    await dismissAll();
+    setIsActionLoading(true);
+    try {
+      await dismissAll();
+      setShowClearAll(false);
+    } finally {
+      setIsActionLoading(false);
+    }
   };
 
   const hasNotifications = notifications && notifications.length > 0;
@@ -94,33 +107,34 @@ export default function NotificationsScreen() {
         title={t('notifications:title')}
         showBack
         headerRight={
-          <Box flexDirection="row" alignItems="center" gap="s">
+          <Box flexDirection="row" alignItems="center" gap="m">
+            {/* 1. ÍCONO MARCAR TODAS COMO LEÍDAS */}
             {notifications && notifications.some((n) => !n.read) && (
               <TouchableOpacity
-                onPress={handleMarkAllAsRead}
-                style={{ flexDirection: 'row', alignItems: 'center' }}
+                onPress={() => setShowMarkAll(true)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityRole="button"
+                accessibilityLabel={t('notifications:markAll')}
               >
-                <Text variant="caption-md" color="primary" marginRight="xs">
-                  {t('notifications:markAll')}
-                </Text>
                 <MaterialCommunityIcons
                   name="email-open-outline"
-                  size={20}
+                  size={22}
                   color={theme.colors.primary}
                 />
               </TouchableOpacity>
             )}
+
+            {/* 2. ÍCONO LIMPIAR TODO */}
             {hasNotifications && (
               <TouchableOpacity
                 onPress={() => setShowClearAll(true)}
-                style={{ flexDirection: 'row', alignItems: 'center' }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityRole="button"
+                accessibilityLabel={t('notifications:clearAllLabel')}
               >
-                <Text variant="caption-md" color="error" marginRight="xs">
-                  {t('notifications:clearAllLabel')}
-                </Text>
                 <MaterialCommunityIcons
-                  name="notification-clear-all"
-                  size={20}
+                  name="trash-can-outline"
+                  size={22}
                   color={theme.colors.error}
                 />
               </TouchableOpacity>
@@ -175,9 +189,30 @@ export default function NotificationsScreen() {
       />
 
       <ConfirmDialog
+        visible={showMarkAll}
+        title={t('notifications:markAllConfirm') || 'Marcar todas como leídas'}
+        description={
+          t('notifications:markAllDesc') ||
+          'Todas las notificaciones pendientes se marcarán como revisadas.'
+        }
+        icon="email-open-outline"
+        loading={isActionLoading}
+        onConfirm={async () => {
+          setShowMarkAll(false);
+          await handleMarkAllAsRead();
+        }}
+        onCancel={() => setShowMarkAll(false)}
+        confirmLabel="Marcar Leídas"
+        cancelLabel={t('common:dialog.cancel')}
+      />
+
+      {/* Diálogo de Confirmación: Limpiar todo (Peligroso) */}
+      <ConfirmDialog
         visible={showClearAll}
         title={t('notifications:clearAllLabel')}
         description={t('notifications:clearAllConfirm')}
+        icon="trash-can-outline"
+        loading={isActionLoading}
         onConfirm={handleClearAll}
         onCancel={() => setShowClearAll(false)}
         confirmLabel={t('common:dialog.delete')}

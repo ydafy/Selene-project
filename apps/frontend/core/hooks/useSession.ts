@@ -10,6 +10,10 @@ import { supabase } from '../db/supabase';
 import { Session } from '@supabase/supabase-js';
 import { AccountStatus } from '@selene/types';
 
+import { queryClient } from '../db/queryClient';
+import { useCheckoutStore } from '../store/useCheckoutStore';
+import { useCartStore } from '../store/useCartStore';
+
 const INITIALIZATION_TIMEOUT = 10000;
 
 export const useSession = () => {
@@ -109,6 +113,10 @@ export const useSession = () => {
           setLoading(false);
           setAccountStatus('active');
           setStatusReason(null);
+
+          queryClient.clear();
+          useCheckoutStore.getState().resetCheckout();
+          useCartStore.getState().clearCart();
         }
       }
     });

@@ -12,7 +12,7 @@ import { join } from 'node:path';
  * future edit cannot silently regress the shipment-aware behavior.
  */
 
-const FRONTEND = join(import.meta.dir, '..', '..', '..', '..');
+const FRONTEND = join(import.meta.dir, '..', '..', '..');
 
 const read = (relPath: string) =>
   readFileSync(join(FRONTEND, relPath), 'utf8').replace(/\s+/g, ' ');
@@ -86,14 +86,13 @@ describe('OrderActionCard shipment-level timing guard', () => {
   });
 });
 
-describe('orders index multi-seller detection guard', () => {
+describe('orders index role-aware navigation guard', () => {
   const index = read('app/profile/orders/index.tsx');
 
-  it('detects multi-seller from the canonical shipments count, not legacy items', () => {
-    expect(index).toContain(
-      'const isMultiSeller = (item.shipments?.length ?? 0) > 1;',
-    );
-    expect(index).not.toContain("(item as any).items");
+  it('delegates navigation to the canonical shipment-aware resolver', () => {
+    expect(index).toContain("from './order-view-routing'");
+    expect(index).toContain('const view = resolveRoleAwareOrderView(');
+    expect(index).toContain('shipments: item.shipments.map((shipment) => ({');
   });
 });
 
@@ -195,6 +194,6 @@ describe('orders summary canonical shipment source guard', () => {
     // summary is order-scoped, not shipment-scoped).
     expect(summary).toContain('if (order?.shipments && order.shipments.length > 0)');
     expect(summary).toContain('return shipments ?? [];');
-    expect(summary).toContain('formatCurrency(order.total_amount)');
+    expect(summary).toContain('formatCurrency(visibleTotal)');
   });
 });

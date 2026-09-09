@@ -13,11 +13,20 @@ import {
   SellerEvidence,
   Tables,
   Product,
+  Enums,
 } from '@selene/types';
 import { useAuthContext } from '../../components/auth/AuthProvider';
 import { canCancelShipment } from '../utils/shipment-cancel-safety';
+import { canConfirmShipmentDelivery } from '../utils/shipment-confirmation';
 
 const DISPUTE_WINDOW_MS = 48 * 60 * 60 * 1000;
+const ACTIVE_DISPUTE_STATUSES: readonly Enums<'dispute_status'>[] = [
+  'open',
+  'under_review',
+  'waiting_return',
+  'return_shipped',
+  'return_delivered',
+];
 
 type RawShipment = Tables<'shipments'> & {
   items: (Tables<'order_items'> & { product: Tables<'products'> })[];
@@ -41,6 +50,10 @@ const enrichShipment = (
   const isSeller = shipment.seller_id === userId;
 
   const isDispute = !!dispute;
+  const activeDispute =
+    dispute !== null &&
+    dispute.status !== null &&
+    ACTIVE_DISPUTE_STATUSES.includes(dispute.status);
 
   const phase = {
     isOpen: isDispute && dispute?.status === 'open',
@@ -82,8 +95,11 @@ const enrichShipment = (
       (shipment.status === 'shipped' || isWithinDisputeWindow),
     showSellerDeliveredBanner:
       isSeller && shipment.status === 'delivered' && !isDispute,
-    canConfirmDelivery:
-      isBuyer && ['shipped', 'delivered'].includes(shipment.status) && !isDispute,
+    canConfirmDelivery: canConfirmShipmentDelivery({
+      isBuyer,
+      status: shipment.status,
+      activeDispute,
+    }),
     canPayReturn: isSeller && phase.isWaitingPayment,
     canUploadReturnEvidence: isBuyer && phase.isWaitingShipment,
     showDisputeBanner: phase.isOpen,

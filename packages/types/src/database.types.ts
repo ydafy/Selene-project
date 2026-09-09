@@ -1844,6 +1844,113 @@ export type Database = {
           },
         ]
       }
+      shipment_completion_events: {
+        Row: {
+          actor_id: string | null
+          completed_at: string
+          created_at: string
+          id: string
+          idempotency_key: string
+          is_connect: boolean
+          order_id: string
+          shipment_id: string
+          source: string
+        }
+        Insert: {
+          actor_id?: string | null
+          completed_at?: string
+          created_at?: string
+          id?: string
+          idempotency_key: string
+          is_connect: boolean
+          order_id: string
+          shipment_id: string
+          source: string
+        }
+        Update: {
+          actor_id?: string | null
+          completed_at?: string
+          created_at?: string
+          id?: string
+          idempotency_key?: string
+          is_connect?: boolean
+          order_id?: string
+          shipment_id?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_completion_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "admin_disputes_monitor_view"
+            referencedColumns: ["buyer_id"]
+          },
+          {
+            foreignKeyName: "shipment_completion_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "admin_disputes_monitor_view"
+            referencedColumns: ["seller_id"]
+          },
+          {
+            foreignKeyName: "shipment_completion_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_completion_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_directory_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_completion_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_completion_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "admin_disputes_monitor_view"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "shipment_completion_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_completion_events_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: true
+            referencedRelation: "admin_connect_earnings_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_completion_events_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: true
+            referencedRelation: "admin_connect_payout_release_view"
+            referencedColumns: ["shipment_id"]
+          },
+          {
+            foreignKeyName: "shipment_completion_events_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: true
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shipment_label_events: {
         Row: {
           actor_id: string | null
@@ -1983,6 +2090,7 @@ export type Database = {
       }
       shipments: {
         Row: {
+          buyer_confirmed_at: string | null
           carrier: string | null
           claim_expires_at: string | null
           claim_token: string | null
@@ -2022,6 +2130,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          buyer_confirmed_at?: string | null
           carrier?: string | null
           claim_expires_at?: string | null
           claim_token?: string | null
@@ -2061,6 +2170,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          buyer_confirmed_at?: string | null
           carrier?: string | null
           claim_expires_at?: string | null
           claim_token?: string | null
@@ -3096,17 +3206,17 @@ export type Database = {
           success: boolean
         }[]
       }
-      fn_confirm_delivery: {
-        Args: { p_order_id: string }
-        Returns: {
-          error_message: string
-          success: boolean
-        }[]
-      }
       fn_confirm_shipment_delivery: {
-        Args: { p_shipment_id: string }
+        Args: {
+          p_actor_id: string
+          p_idempotency_key: string
+          p_shipment_id: string
+          p_source: string
+        }
         Returns: {
-          error_message: string
+          completion_source: string
+          error: string
+          idempotent: boolean
           success: boolean
         }[]
       }
@@ -3481,12 +3591,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3510,11 +3620,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3535,11 +3645,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3560,11 +3670,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3577,11 +3687,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

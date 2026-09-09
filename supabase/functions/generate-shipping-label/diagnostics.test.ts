@@ -6,7 +6,7 @@ import {
   extractEnviaErrorMetadata,
   extractEnviaLabelCostCents,
   sanitizeLabelLogMetadata,
-} from './diagnostics';
+} from './diagnostics.ts';
 
 describe('generate-shipping-label Envia diagnostics', () => {
   it('keeps request diagnostics useful without leaking PII or secrets', () => {
@@ -135,7 +135,9 @@ describe('generate-shipping-label Envia diagnostics', () => {
   });
 
   it('exposes integer cents for provider persistence', () => {
-    const extraction = extractEnviaLabelCostCents({ data: [{ totalPrice: '168.75' }] });
+    const extraction = extractEnviaLabelCostCents({
+      data: [{ totalPrice: '168.75' }],
+    });
     expect(extraction?.shippingCostCents).toBe(16_875);
     expect(Number.isInteger(extraction?.shippingCostCents)).toBe(true);
   });
@@ -197,14 +199,16 @@ describe('generate-shipping-label Envia diagnostics', () => {
   });
 
   it('drops request bodies, provider errors, tokens, and label URLs from label log metadata', () => {
-    expect(sanitizeLabelLogMetadata({
-      shipmentId: 'shipment-1',
-      errorClass: 'provider_rejected',
-      body: { originAddress: { street_line1: 'Private street' } },
-      stack: 'private provider response',
-      authorization: 'Bearer secret',
-      labelUrl: 'https://labels.example/private.pdf',
-    })).toEqual({
+    expect(
+      sanitizeLabelLogMetadata({
+        shipmentId: 'shipment-1',
+        errorClass: 'provider_rejected',
+        body: { originAddress: { street_line1: 'Private street' } },
+        stack: 'private provider response',
+        authorization: 'Bearer secret',
+        labelUrl: 'https://labels.example/private.pdf',
+      }),
+    ).toEqual({
       shipmentId: 'shipment-1',
       errorClass: 'provider_rejected',
     });

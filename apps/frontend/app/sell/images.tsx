@@ -35,7 +35,7 @@ export default function SellImagesScreen() {
     const options = [
       t('fields.takePhoto'),
       t('fields.addPhotos'),
-      t('common:actions.cancel'),
+      t('common:actions.discard'),
     ];
     const cancelButtonIndex = 2;
 

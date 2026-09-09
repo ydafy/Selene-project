@@ -42,7 +42,7 @@ describe('useCheckoutStore', () => {
     expect(useCheckoutStore.getState().transferGroup).toBe('grp_order-1');
   });
 
-  it('clears the payment session on reset without dropping address or method selections', async () => {
+  it('resets checkout state including address and payment method selections', async () => {
     const { useCheckoutStore } = await loadStore();
 
     const address = {
@@ -79,8 +79,8 @@ describe('useCheckoutStore', () => {
     expect(useCheckoutStore.getState().orderId).toBeNull();
     expect(useCheckoutStore.getState().amount).toBeNull();
     expect(useCheckoutStore.getState().transferGroup).toBeNull();
-    expect(useCheckoutStore.getState().selectedAddress).toEqual(address);
-    expect(useCheckoutStore.getState().selectedPaymentMethodId).toBe('pm_1');
+    expect(useCheckoutStore.getState().selectedAddress).toBeNull();
+    expect(useCheckoutStore.getState().selectedPaymentMethodId).toBeNull();
     expect(useCheckoutStore.getState().status).toBe('idle');
   });
 });

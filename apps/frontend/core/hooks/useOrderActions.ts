@@ -12,6 +12,10 @@ import {
   buildCancelOrderPayload,
   resolveCancelOrderFailureToast,
 } from '../utils/shipment-cancel-safety';
+import {
+  buildShipmentConfirmationPayload,
+  resolveShipmentConfirmationFailureToast,
+} from '../utils/shipment-confirmation';
 
 // Definimos la interfaz de lo que recibe la función
 interface GenerateLabelParams {
@@ -40,26 +44,21 @@ export const useOrderActions = (orderId: string) => {
 
   // 2. Confirmar Entrega (Comprador)
   const confirmDelivery = useMutation({
-    mutationFn: async (params?: { shipmentId?: string }) => {
-      if (params?.shipmentId) {
-        // Shipment-level confirm delivery
-        const { data, error } = await supabase.rpc(
-          'fn_confirm_shipment_delivery',
-          {
-            p_shipment_id: params.shipmentId,
-          },
-        );
-        if (error) throw error;
-        if (data && !data[0]?.success) throw new Error(data[0]?.error_message);
-        return data;
-      }
-      // Fallback: order-level (backward compat)
-      const { data, error } = await supabase.rpc('fn_confirm_delivery', {
-        p_order_id: orderId,
+    mutationFn: async (params: { shipmentId: string }) => {
+      return invokeEdge('confirm-shipment-delivery',
+        buildShipmentConfirmationPayload({
+          orderId,
+          shipmentId: params.shipmentId,
+        }),
+      );
+    },
+    onError: (error) => {
+      const toast = resolveShipmentConfirmationFailureToast(error);
+      Toast.show({
+        type: 'error',
+        text1: toast.title,
+        text2: toast.message,
       });
-      if (error) throw error;
-      if (data && !data[0]?.success) throw new Error(data[0]?.error_message);
-      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['order', orderId] });

@@ -1,18 +1,22 @@
 import { describe, expect, it } from 'bun:test';
 import { createHash } from 'node:crypto';
+import { z } from 'zod';
 
 import {
-  STRIPE_ALLOCATION_VALUE_MAX_LEN,
-  SINGLE_MODAL_FLOW,
+	CHECKOUT_UUID_NAMESPACE,
+	STRIPE_ALLOCATION_VALUE_MAX_LEN,
+	SINGLE_MODAL_FLOW,
   assertValidAllocationRows,
   assertReservationSucceeded,
   buildAllocationMetadata,
-  buildCheckoutIdentifiers,
-  buildCreateConnectPaymentResponse,
-  buildSinglePaymentIntentParams,
-  buildTransferGroup,
-  chunkAllocationJson,
-  deriveShipmentId,
+   buildCheckoutIdentifiers,
+   buildCreateConnectPaymentResponse,
+   createSinglePaymentIntent,
+   buildSinglePaymentIntentParams,
+	buildTransferGroup,
+	chunkAllocationJson,
+	deriveOrderGroupId,
+	deriveShipmentId,
   normalizeCreateConnectPaymentRequest,
   type ReservationResult,
 } from './single-payment-builder.ts';
@@ -588,7 +592,9 @@ describe('single-payment-builder > normalizeCreateConnectPaymentRequest', () => 
 });
 
 describe('single-payment-builder > buildCheckoutIdentifiers', () => {
-  const dummyRandomUuid = (): string => '00000000-0000-4000-8000-000000000000';
+	const dummyRandomUuid = (): string => '00000000-0000-4000-8000-000000000000';
+	const strictUuidPattern =
+		/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
   it('derives DETERMINISTIC identifiers from the idempotency key (no randomness)', () => {
     const a = buildCheckoutIdentifiers('checkout-key-abc', dummyRandomUuid);
@@ -626,14 +632,79 @@ describe('single-payment-builder > buildCheckoutIdentifiers', () => {
     );
   });
 
-  it('namespaces the deterministic shipment hash with the product identity', () => {
-    const expectedHex = createHash('sha256')
-      .update('selene_shipment:shared-key:product:product_gpu', 'utf8')
-      .digest('hex');
-    const expected = `${expectedHex.slice(0, 8)}-${expectedHex.slice(8, 12)}-${expectedHex.slice(12, 16)}-${expectedHex.slice(16, 20)}-${expectedHex.slice(20, 32)}`;
 
-    expect(deriveShipmentId('shared-key', 'product_gpu')).toBe(expected);
-  });
+	it('derives the pinned UUID v5 golden vectors with the checkout namespace', () => {
+		expect(CHECKOUT_UUID_NAMESPACE).toBe(
+			'7b0f4a20-5c30-4e0f-8f84-9a9f4b2e19c1',
+		);
+		expect(deriveOrderGroupId('checkout-key-abc')).toBe(
+			'b0b46a0e-4242-5b5f-85c8-2ff0581dd65a',
+		);
+		expect(deriveShipmentId('shared-key', 'product_gpu')).toBe(
+			'5f43fc9e-ec3b-5072-82a1-ce531a0280c9',
+		);
+
+		const buildParams = () => {
+			const orderId = deriveOrderGroupId('checkout-key-abc');
+			const shipmentId = deriveShipmentId('checkout-key-abc', 'product_gpu');
+			const allocation = buildAllocation([
+				{ shipmentId, subtotalCents: 100_000, shippingCents: 20_000 },
+			]);
+			return buildSinglePaymentIntentParams({
+				allocation,
+				orderId,
+				buyerId: 'buyer_1',
+				customerId: 'cus_1',
+				addressId: 'address_1',
+				transferGroup: buildTransferGroup(orderId),
+				shipmentProductIds: { [shipmentId]: ['product_gpu'] },
+			});
+		};
+
+		expect(buildParams()).toEqual(buildParams());
+	});
+
+	it('triangulates UUID v5 canonical UTF-8 names without normalizing them', () => {
+		expect(deriveOrderGroupId('checkout-ñ-😀')).toBe(
+			'42d33f19-6cf4-5c35-a0bd-94ac1bf7afc5',
+		);
+		expect(deriveShipmentId('shared-key', 'product_gpu')).not.toBe(
+			deriveShipmentId('shared-key', 'product_CPU'),
+		);
+	});
+
+	it('emits UUID v5 identifiers accepted by Zod and the strict consumer regex', () => {
+		const ids = [
+			deriveOrderGroupId('checkout-key-abc'),
+			deriveShipmentId('shared-key', 'product_gpu'),
+		];
+
+		for (const id of ids) {
+			expect(id[14]).toBe('5');
+			expect(id[19]).toMatch(/[89ab]/);
+			expect(z.string().uuid().safeParse(id).success).toBe(true);
+			expect(id).toMatch(strictUuidPattern);
+		}
+	});
+
+	it('keeps the per-product shipment bijection stable for a retry', () => {
+		const gpu = deriveShipmentId('shared-key', 'product_gpu');
+		const cpu = deriveShipmentId('shared-key', 'product_cpu');
+
+		expect(gpu).not.toBe(cpu);
+		expect(deriveShipmentId('shared-key', 'product_gpu')).toBe(gpu);
+	});
+
+	it('changes from the known invalid legacy SHA-256 fixture at cutover', () => {
+		const legacyHex = createHash('sha256')
+			.update('selene_order_group:checkout-key-abc', 'utf8')
+			.digest('hex');
+		const legacyId = `${legacyHex.slice(0, 8)}-${legacyHex.slice(8, 12)}-${legacyHex.slice(12, 16)}-${legacyHex.slice(16, 20)}-${legacyHex.slice(20, 32)}`;
+
+		expect(legacyId).toBe('8f84755c-131b-d742-9c52-ea720d94f264');
+		expect(legacyId).not.toMatch(strictUuidPattern);
+		expect(deriveOrderGroupId('checkout-key-abc')).not.toBe(legacyId);
+	});
 
   it('emits RFC-4122-formatted 36-char ids derived from the idempotency key', () => {
     const ids = buildCheckoutIdentifiers('checkout-key-1', dummyRandomUuid);
@@ -701,6 +772,62 @@ describe('single-payment-builder > buildCreateConnectPaymentResponse', () => {
     expect(response).not.toHaveProperty('paymentIntents');
     expect((response as unknown as Record<string, unknown>).paymentIntents).toBeUndefined();
     expect(response.clientSecret).toBe('cs_1');
+  });
+});
+
+describe('single-payment-builder > createSinglePaymentIntent', () => {
+  it('reuses the exact Stripe idempotency key and byte-identical parameters for a checkout retry', async () => {
+    const calls: Array<{
+      params: Record<string, unknown>;
+      options: { idempotencyKey?: string };
+    }> = [];
+    const createdByKey = new Map<string, { client_secret: string; amount: number }>();
+    const stripe = {
+      paymentIntents: {
+        create: async (
+          params: Record<string, unknown>,
+          options: { idempotencyKey?: string },
+        ) => {
+          calls.push({ params, options });
+          const key = options.idempotencyKey;
+          if (!key) throw new Error('missing test idempotency key');
+          const existing = createdByKey.get(key);
+          if (existing) return existing;
+
+          const paymentIntent = { client_secret: 'pi_secret_retry', amount: 188_208 };
+          createdByKey.set(key, paymentIntent);
+          return paymentIntent;
+        },
+      },
+    };
+    const params = {
+      amount: 188_208,
+      currency: 'mxn',
+      customer: 'cus_retry',
+      transfer_group: 'selene_order_retry',
+      automatic_payment_methods: { enabled: true },
+      metadata: { order_id: 'order_retry', flow: SINGLE_MODAL_FLOW },
+    };
+
+    const first = await createSinglePaymentIntent({
+      stripe,
+      params,
+      idempotencyKey: 'checkout-retry-key',
+    });
+    const second = await createSinglePaymentIntent({
+      stripe,
+      params: { ...params, metadata: { ...params.metadata } },
+      idempotencyKey: 'checkout-retry-key',
+    });
+
+    expect(first).toBe(second);
+    expect(createdByKey).toHaveLength(1);
+    expect(calls).toHaveLength(2);
+    expect(calls.map((call) => call.options)).toEqual([
+      { idempotencyKey: 'selene_pi_checkout-retry-key' },
+      { idempotencyKey: 'selene_pi_checkout-retry-key' },
+    ]);
+    expect(JSON.stringify(calls[0].params)).toBe(JSON.stringify(calls[1].params));
   });
 });
 

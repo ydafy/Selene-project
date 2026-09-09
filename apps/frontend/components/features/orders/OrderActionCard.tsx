@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -106,9 +105,12 @@ export const OrderActionCard = ({
 
   // --- 3. CONFIGURACIÓN VISUAL ---
   const isWaitingReturn = dispute?.status === 'waiting_return';
-  const isManualCancelWindow = permissions.canCancel || shipment.status === 'preparing';
+  const isManualCancelWindow =
+    permissions.canCancel || shipment.status === 'preparing';
   const bannerColor =
-    isManualCancelWindow || isWaitingReturn || permissions.showSellerDeliveredBanner
+    isManualCancelWindow ||
+    isWaitingReturn ||
+    permissions.showSellerDeliveredBanner
       ? theme.colors.primary
       : theme.colors.error;
   const bannerBorderColor = isManualCancelWindow
@@ -122,14 +124,16 @@ export const OrderActionCard = ({
     ? 'truck-delivery'
     : isManualCancelWindow
       ? 'clock-alert-outline'
-    : permissions.showSellerDeliveredBanner
-      ? 'clock-check'
-      : 'alert-octagon';
+      : permissions.showSellerDeliveredBanner
+        ? 'clock-check'
+        : 'alert-octagon';
 
   const getBannerTitle = () => {
     if (permissions.canCancel) return t('actionCard.cancellationWindowTitle');
-    if (shipment.status === 'preparing') return t('actionCard.preparingShipmentTitle');
-    if (permissions.showSellerDeliveredBanner) return t('actionCard.deliveredTitle');
+    if (shipment.status === 'preparing')
+      return t('actionCard.preparingShipmentTitle');
+    if (permissions.showSellerDeliveredBanner)
+      return t('actionCard.deliveredTitle');
     if (order.status === 'dispute') {
       if (dispute?.status === 'return_delivered' && isSeller)
         return t('actionCard.recordUnboxingTitle');
@@ -209,21 +213,20 @@ export const OrderActionCard = ({
       from={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
     >
-        <Box
-          backgroundColor="warning"
-          padding="m"
-          borderRadius="l"
-          borderWidth={1}
-          borderColor={bannerBorderColor}
-          marginBottom="m"
-        >
+      <Box
+        backgroundColor="warning"
+        padding="m"
+        borderRadius="l"
+        borderWidth={1}
+        borderColor={bannerBorderColor}
+        marginBottom="m"
+      >
         <Box
           flexDirection="row"
           alignItems="center"
           gap="m"
           marginBottom={
-            permissions.canPayReturn ||
-            permissions.canUploadReturnEvidence
+            permissions.canPayReturn || permissions.canUploadReturnEvidence
               ? 'm'
               : undefined
           }

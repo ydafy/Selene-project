@@ -1,0 +1,36 @@
+schema: gentle-ai.sdd-preproposal/v1
+revision: 2
+change: confirm-shipment
+exploration:
+  outcome: done
+  reference: openspec/changes/confirm-shipment/exploration.md
+research:
+  selected: false
+  request:
+    status: historical
+    classes:
+      - documentation
+      - open-web
+    lanes:
+      - Stripe Connect transfer/payout/reconciliation semantics
+      - Envia tracking delivery semantics
+  admission:
+    status: historical
+    documentation: []
+    open-web: []
+    outcome: denied
+  outcome: unselected
+  reference: openspec/changes/confirm-shipment/research.md
+product_decisions: confirmed
+confirmed_decisions:
+  buyer_confirmation_requires: delivered
+  automatic_completion: 48 hours after carrier-recorded delivery
+  buyer_confirmed_at: explicit buyer action only
+  automatic_completion_audit: separate evidence required
+  post_dispute_reconfirmation: deferred
+  quote_economics_and_mxn_30_buffer: excluded
+proposal_ready: true
+recovery: >-
+  Formal research was explicitly deselected by the maintainer. Provider
+  uncertainties must remain visible in the proposal and verification, with
+  bounded sandbox and manual validation required before production readiness.

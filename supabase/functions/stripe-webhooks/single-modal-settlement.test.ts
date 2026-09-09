@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'bun:test';
 
-import { SINGLE_MODAL_FLOW } from '../create-connect-payment/single-payment-builder.ts';
+import {
+	buildSinglePaymentIntentParams,
+	deriveOrderGroupId,
+	deriveShipmentId,
+	SINGLE_MODAL_FLOW,
+} from '../create-connect-payment/single-payment-builder.ts';
+import { calculateCheckoutAllocation } from '../create-connect-payment/fee-calculator.ts';
 import {
   buildSettlementOutcome,
   buildStripeFeeReconciliationPlan,
@@ -153,8 +159,33 @@ const sampleRows = () => [
 ];
 
 describe('single-modal-settlement > reassembleAllocationMetadata', () => {
-  it('uses a one-product-per-shipment fixture for settlement recovery scenarios', () => {
-    expect(sampleRows().every((row) => row.productIds.length === 1)).toBe(true);
+  it('reassembles one-product-per-shipment metadata produced by the checkout builder', () => {
+    const idempotencyKey = 'settlement-reassembly-contract-key';
+    const orderId = deriveOrderGroupId(idempotencyKey);
+    const shipmentId = deriveShipmentId(idempotencyKey, 'product_gpu');
+    const allocation = calculateCheckoutAllocation([
+      {
+        sellerId: 'cccccccc-0000-0000-0000-000000000001',
+        shipmentId,
+        subtotalCents: 100_000,
+        shippingCents: 20_000,
+      },
+    ]);
+    const params = buildSinglePaymentIntentParams({
+      allocation,
+      orderId,
+      buyerId: VALID_BUYER_ID,
+      customerId: 'cus_reassembly_contract',
+      addressId: VALID_ADDRESS_ID,
+      transferGroup: `selene_order_${orderId}`,
+      shipmentProductIds: { [shipmentId]: ['product_gpu'] },
+    });
+
+    const reassembled = reassembleAllocationMetadata(params.metadata);
+
+    expect(reassembled.rows).toEqual([
+      expect.objectContaining({ shipmentId, productIds: ['product_gpu'] }),
+    ]);
   });
 
   it('reassembles chunked allocation JSON into a typed allocation row set', () => {
@@ -298,7 +329,56 @@ describe('single-modal-settlement > reassembleAllocationMetadata', () => {
 });
 
 describe('single-modal-settlement > parseSingleModalPayload', () => {
-  it('returns a structured settlement input with the full allocation and ids', () => {
+	it('accepts producer-built UUID v5 metadata and preserves it through recovery', () => {
+		const idempotencyKey = 'settlement-contract-key';
+		const orderId = deriveOrderGroupId(idempotencyKey);
+		const shipmentId = deriveShipmentId(idempotencyKey, 'product_gpu');
+		const allocation = calculateCheckoutAllocation([
+			{
+				sellerId: 'cccccccc-0000-0000-0000-000000000001',
+				shipmentId,
+				subtotalCents: 100_000,
+				shippingCents: 20_000,
+			},
+		]);
+		const params = buildSinglePaymentIntentParams({
+			allocation,
+			orderId,
+			buyerId: VALID_BUYER_ID,
+			customerId: 'cus_contract',
+			addressId: VALID_ADDRESS_ID,
+			transferGroup: `selene_order_${orderId}`,
+			shipmentProductIds: { [shipmentId]: ['product_gpu'] },
+		});
+		const action = resolvePaymentIntentSucceededAction({
+			metadata: params.metadata,
+			amount: params.amount,
+		});
+
+		expect(orderId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+		expect(shipmentId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+		expect(action).toMatchObject({
+			kind: 'single_modal',
+			payload: { orderId, transferGroup: `selene_order_${orderId}` },
+		});
+		if (action.kind !== 'single_modal') return;
+		expect(action.payload.rows).toEqual([
+			expect.objectContaining({ shipmentId, productIds: ['product_gpu'] }),
+		]);
+		expect(
+			buildSettlementOutcome({
+				rpcResult: {
+					success: false,
+					order_id: orderId,
+					error: 'ALLOCATION_WRITE_FAILED',
+					status: 'payment_processing',
+				},
+				rpcError: null,
+			}),
+		).toMatchObject({ kind: 'recovered', reason: 'ALLOCATION_WRITE_FAILED' });
+	});
+
+	it('returns a structured settlement input with the full allocation and ids', () => {
     const rows = sampleRows();
     const meta = buildFullMetadata(rows);
     const intent = { metadata: meta, amount: 100_000 + 80_000 + 3_900 + 3_180 };
