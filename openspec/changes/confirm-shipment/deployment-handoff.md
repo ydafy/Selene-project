@@ -9,9 +9,11 @@
 | Remote migration | Confirmed by maintainer | `supabase/migrations/20260903002546_confirm_shipment_hardening.sql` was manually applied. |
 | Generated database types | Confirmed by maintainer and structurally inspected | `packages/types/src/database.types.ts` includes `shipments.buyer_confirmed_at`, `shipment_completion_events`, and `fn_confirm_shipment_delivery`. |
 | Live SQL verification | Confirmed by maintainer | The exact read-only query in [Post-deployment validation](#post-deployment-validation) was executed; all eight structural/grant checks returned `true`. |
-| Edge Function deployment | Pending maintainer action | Structural SQL verification is complete; deploy only through the maintainer workflow. |
-| Cron schedule | Pending maintainer action | Do not enable it before both functions and cron secrets are configured. |
-| Provider validation | Pending maintainer action | Envia delivery timestamps and Stripe payout-queue behavior require sandbox/manual validation before go-live. |
+| Edge Function deployment | Confirmed by maintainer | `confirm-shipment-delivery` was deployed before the core harness run below. |
+| Buyer confirmation core harness | Confirmed by maintainer | Fresh disposable Connect fixtures returned `PASS shipped rejection`, `PASS delivered confirmation`, and `PASS idempotent retry`. Core mode intentionally excludes the unavailable active-dispute case. |
+| Cron schedule and overdue automatic completion | Functionally confirmed by maintainer | The active five-minute job completed a disposable Connect fixture prepared as delivered 49 hours earlier. The resulting row was `completed`, retained `buyer_confirmed_at = null`, and recorded completion source `auto`. |
+| Envia tracking validation | Confirmed by maintainer in its tracking module | Existing E2E evidence is not reproduced by this confirmation harness. |
+| Stripe payout-queue behavior | Pending maintainer action | Requires separate sandbox/manual validation before go-live. |
 
 ## Required Deployment Order
 
@@ -175,7 +177,7 @@ select
   ) as service_role_rpc_execution_granted;
 ```
 
-All result columns are `true`. This structural query does not replace the functional sandbox smoke checks above; no function deployment, cron setup, live RPC smoke result, or provider validation has been claimed or recorded.
+All result columns are `true`. This structural query does not replace the functional sandbox smoke checks above. The buyer confirmation core harness and Envia tracking validation are separately recorded as confirmed; cron setup, automatic completion, race behavior, active-dispute rejection, and payout checks remain separate evidence items.
 
 ## Rollback
 

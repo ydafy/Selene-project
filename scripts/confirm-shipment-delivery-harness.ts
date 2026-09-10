@@ -4,14 +4,23 @@ const REQUIRED_APPROVAL = 'I_CONFIRM_DISPOSABLE_FIXTURES';
 const FUNCTION_PATH = '/functions/v1/confirm-shipment-delivery';
 
 type HarnessEnvironment = Record<string, string | undefined>;
+type HarnessMode = 'core' | 'full';
 
-export type ConfirmationHarnessConfig = {
+type CommonConfirmationHarnessConfig = {
   endpoint: string;
   buyerAccessToken: string;
   delivered: Fixture;
   shipped: Fixture;
-  activeDispute: Fixture;
 };
+
+export type ConfirmationHarnessConfig =
+  | (CommonConfirmationHarnessConfig & {
+      mode: 'core';
+    })
+  | (CommonConfirmationHarnessConfig & {
+      mode: 'full';
+      activeDispute: Fixture;
+    });
 
 type Fixture = {
   orderId: string;
@@ -52,6 +61,20 @@ function requireEnvironmentValue(
   return value;
 }
 
+function parseHarnessMode(environment: HarnessEnvironment): HarnessMode {
+  if (environment.CONFIRMATION_HARNESS_MODE === undefined) {
+    return 'full';
+  }
+
+  const mode = environment.CONFIRMATION_HARNESS_MODE.trim();
+  if (mode !== 'core' && mode !== 'full') {
+    throw new HarnessValidationError(
+      'CONFIRMATION_HARNESS_MODE must be either core or full',
+    );
+  }
+  return mode;
+}
+
 function parseFixture(
   environment: HarnessEnvironment,
   prefix: string,
@@ -80,6 +103,8 @@ export function parseConfirmationHarnessConfig(
     );
   }
 
+  const mode = parseHarnessMode(environment);
+
   const endpoint = requireEnvironmentValue(
     environment,
     'CONFIRM_SHIPMENT_DELIVERY_URL',
@@ -106,7 +131,7 @@ export function parseConfirmationHarnessConfig(
     );
   }
 
-  const config = {
+  const commonConfig = {
     endpoint: parsedEndpoint.toString(),
     buyerAccessToken: requireEnvironmentValue(
       environment,
@@ -114,13 +139,21 @@ export function parseConfirmationHarnessConfig(
     ),
     delivered: parseFixture(environment, 'CONFIRMATION_DELIVERED'),
     shipped: parseFixture(environment, 'CONFIRMATION_SHIPPED'),
-    activeDispute: parseFixture(environment, 'CONFIRMATION_ACTIVE_DISPUTE'),
   };
+
+  const config: ConfirmationHarnessConfig =
+    mode === 'full'
+      ? {
+          ...commonConfig,
+          mode,
+          activeDispute: parseFixture(environment, 'CONFIRMATION_ACTIVE_DISPUTE'),
+        }
+      : { ...commonConfig, mode };
 
   const shipmentIds = [
     config.delivered.shipmentId,
     config.shipped.shipmentId,
-    config.activeDispute.shipmentId,
+    ...(config.mode === 'full' ? [config.activeDispute.shipmentId] : []),
   ];
   if (new Set(shipmentIds).size !== shipmentIds.length) {
     throw new HarnessValidationError(
@@ -208,12 +241,14 @@ export async function runConfirmationHarness(
   );
   report('PASS shipped rejection');
 
-  assertRejected(
-    'Active-dispute fixture',
-    await invokeConfirmation(config, config.activeDispute, fetchImpl),
-    'SHIPMENT_HAS_ACTIVE_DISPUTE',
-  );
-  report('PASS active-dispute rejection');
+  if (config.mode === 'full') {
+    assertRejected(
+      'Active-dispute fixture',
+      await invokeConfirmation(config, config.activeDispute, fetchImpl),
+      'SHIPMENT_HAS_ACTIVE_DISPUTE',
+    );
+    report('PASS active-dispute rejection');
+  }
 
   assertSuccess(
     'Delivered fixture',

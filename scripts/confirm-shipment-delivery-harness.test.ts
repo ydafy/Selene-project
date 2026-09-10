@@ -53,6 +53,63 @@ describe('deployed confirmation harness configuration', () => {
     }
   });
 
+  it('defaults to full mode and requires the active-dispute fixture', () => {
+    expect(parseConfirmationHarnessConfig(fixtureEnvironment).mode).toBe('full');
+    expect(() =>
+      parseConfirmationHarnessConfig({
+        ...fixtureEnvironment,
+        CONFIRMATION_ACTIVE_DISPUTE_SHIPMENT_ID: undefined,
+      }),
+    ).toThrow(
+      new HarnessValidationError(
+        'Missing required environment variable: CONFIRMATION_ACTIVE_DISPUTE_SHIPMENT_ID',
+      ),
+    );
+  });
+
+  it('accepts core mode without active-dispute environment variables', () => {
+    const config = parseConfirmationHarnessConfig({
+      ...fixtureEnvironment,
+      CONFIRMATION_HARNESS_MODE: 'core',
+      CONFIRMATION_ACTIVE_DISPUTE_ORDER_ID: undefined,
+      CONFIRMATION_ACTIVE_DISPUTE_SHIPMENT_ID: undefined,
+    });
+
+    expect(config.mode).toBe('core');
+    expect('activeDispute' in config).toBe(false);
+
+    expect(() =>
+      parseConfirmationHarnessConfig({
+        ...fixtureEnvironment,
+        CONFIRMATION_HARNESS_MODE: 'core',
+        CONFIRMATION_SHIPPED_SHIPMENT_ID:
+          fixtureEnvironment.CONFIRMATION_DELIVERED_SHIPMENT_ID,
+        CONFIRMATION_ACTIVE_DISPUTE_ORDER_ID: undefined,
+        CONFIRMATION_ACTIVE_DISPUTE_SHIPMENT_ID: undefined,
+      }),
+    ).toThrow(
+      new HarnessValidationError(
+        'Each scenario must use a different shipment fixture',
+      ),
+    );
+  });
+
+  it('rejects invalid harness modes before fixture validation', () => {
+    for (const mode of ['unsupported', ' ']) {
+      expect(() =>
+        parseConfirmationHarnessConfig({
+          ...fixtureEnvironment,
+          CONFIRMATION_HARNESS_MODE: mode,
+          CONFIRMATION_SHIPPED_SHIPMENT_ID: undefined,
+        }),
+      ).toThrow(
+        new HarnessValidationError(
+          'CONFIRMATION_HARNESS_MODE must be either core or full',
+        ),
+      );
+    }
+  });
+
   it('rejects missing required values, malformed fixture IDs, and reused shipments', () => {
     expect(() =>
       parseConfirmationHarnessConfig({
@@ -155,6 +212,65 @@ describe('deployed confirmation harness assertions', () => {
     expect(reports).toEqual([
       'PASS shipped rejection',
       'PASS active-dispute rejection',
+      'PASS delivered confirmation',
+      'PASS idempotent retry',
+    ]);
+  });
+
+  it('issues only the core requests when active disputes are unavailable', async () => {
+    const config = parseConfirmationHarnessConfig({
+      ...fixtureEnvironment,
+      CONFIRMATION_HARNESS_MODE: 'core',
+      CONFIRMATION_ACTIVE_DISPUTE_ORDER_ID: undefined,
+      CONFIRMATION_ACTIVE_DISPUTE_SHIPMENT_ID: undefined,
+    });
+    const requests: Array<{ body: Record<string, string> }> = [];
+    const responses = [
+      {
+        status: 409,
+        body: { success: false, error: 'SHIPMENT_NOT_IN_CONFIRMABLE_STATE' },
+      },
+      {
+        status: 200,
+        body: {
+          success: true,
+          shipmentId: config.delivered.shipmentId,
+          status: 'completed',
+          completionSource: 'buyer',
+          idempotent: false,
+        },
+      },
+      {
+        status: 200,
+        body: {
+          success: true,
+          shipmentId: config.delivered.shipmentId,
+          status: 'completed',
+          completionSource: 'buyer',
+          idempotent: true,
+        },
+      },
+    ];
+    const reports: string[] = [];
+
+    await runConfirmationHarness(
+      config,
+      async (_url, init) => {
+        requests.push({ body: JSON.parse(init?.body as string) });
+        const response = responses.shift();
+        if (!response) throw new Error('Unexpected request');
+        return new Response(JSON.stringify(response.body), { status: response.status });
+      },
+      (message) => reports.push(message),
+    );
+
+    expect(requests.map((request) => request.body.shipmentId)).toEqual([
+      config.shipped.shipmentId,
+      config.delivered.shipmentId,
+      config.delivered.shipmentId,
+    ]);
+    expect(reports).toEqual([
+      'PASS shipped rejection',
       'PASS delivered confirmation',
       'PASS idempotent retry',
     ]);
