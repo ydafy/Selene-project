@@ -23,7 +23,9 @@ export interface ShipmentRefundBasisInput {
 
 export interface CancellationLossWeightInput {
   shipmentId: string;
-  refundCents: number;
+  buyerRefundCents: number;
+  /** Persisted seller reserve is intentionally never part of the fee-loss basis. */
+  shippingReserveCents?: number;
 }
 
 export function computeShipmentRefundAmountCents(
@@ -97,9 +99,13 @@ export function allocateCancellationLossCents(
       !shipment ||
       typeof shipment.shipmentId !== 'string' ||
       shipment.shipmentId.length === 0 ||
-      !Number.isFinite(shipment.refundCents) ||
-      !Number.isInteger(shipment.refundCents) ||
-      shipment.refundCents < 0
+      !Number.isFinite(shipment.buyerRefundCents) ||
+      !Number.isInteger(shipment.buyerRefundCents) ||
+      shipment.buyerRefundCents < 0 ||
+      (shipment.shippingReserveCents !== undefined &&
+        (!Number.isFinite(shipment.shippingReserveCents) ||
+          !Number.isInteger(shipment.shippingReserveCents) ||
+          shipment.shippingReserveCents < 0))
     ) {
       throw new ApiError(422, 'CANCELLATION_LOSS_INPUT_INVALID');
     }
@@ -107,18 +113,19 @@ export function allocateCancellationLossCents(
     return shipment;
   });
 
-  const totalRefundCents = normalized.reduce(
-    (sum, shipment) => sum + shipment.refundCents,
+  const totalBuyerRefundCents = normalized.reduce(
+    (sum, shipment) => sum + shipment.buyerRefundCents,
     0,
   );
 
-  if (totalRefundCents <= 0) {
+  if (totalBuyerRefundCents <= 0) {
     throw new ApiError(422, 'CANCELLATION_LOSS_INPUT_INVALID');
   }
 
   const allocations = normalized.map((shipment) => {
     const exact =
-      (actualStripeFeeCents * shipment.refundCents) / totalRefundCents;
+      (actualStripeFeeCents * shipment.buyerRefundCents) /
+      totalBuyerRefundCents;
     const base = Math.floor(exact);
     return {
       shipmentId: shipment.shipmentId,

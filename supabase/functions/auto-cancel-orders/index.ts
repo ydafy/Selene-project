@@ -218,7 +218,7 @@ serve(async () => {
             ? Array.from(orderShipmentGroups.entries()).map(
                 ([shipmentId, items]) => ({
                   shipmentId,
-                  refundCents: computeShipmentRefundAmountCents({
+                  buyerRefundCents: computeShipmentRefundAmountCents({
                     shipmentItems: items.filter(
                       (item) => item.shipment_id === shipmentId,
                     ),
@@ -235,7 +235,7 @@ serve(async () => {
             : [
                 {
                   shipmentId: shipment.id,
-                  refundCents: refundAmountCents,
+                  buyerRefundCents: refundAmountCents,
                 },
               ];
 

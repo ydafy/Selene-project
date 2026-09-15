@@ -191,7 +191,7 @@ export function resolveManualShipmentCancelPlan(
       ? Array.from(orderShipmentGroups.entries()).map(
           ([shipmentId, shipmentItems]) => ({
             shipmentId,
-            refundCents: computeShipmentRefundAmountCentsShared({
+            buyerRefundCents: computeShipmentRefundAmountCentsShared({
               shipmentItems,
               orderItems: input.orderItems,
               orderChargeCents: input.orderChargeCents,
@@ -201,7 +201,7 @@ export function resolveManualShipmentCancelPlan(
       : [
           {
             shipmentId: input.shipmentId,
-            refundCents: amountCents,
+            buyerRefundCents: amountCents,
           },
         ];
 

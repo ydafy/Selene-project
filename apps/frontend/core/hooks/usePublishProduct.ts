@@ -8,7 +8,10 @@ import Toast from 'react-native-toast-message';
 import { publishProductSchema } from '../schemas/sell.schema';
 
 import { supabase } from '../db/supabase';
-import { useSellStore } from '../store/useSellStore';
+import {
+  buildPublicationEconomicsSnapshot,
+  useSellStore,
+} from '../store/useSellStore';
 import { useAuthContext } from '../../components/auth/AuthProvider';
 import { ProductCategory } from '@selene/types';
 import { normalize } from '../utils/compare';
@@ -28,6 +31,9 @@ export const usePublishProduct = () => {
   const router = useRouter();
   const draft = useSellStore((state) => state.draft);
   const resetDraft = useSellStore((state) => state.resetDraft);
+  const setPublicationEconomics = useSellStore(
+    (state) => state.setPublicationEconomics,
+  );
   const { session } = useAuthContext();
   const queryClient = useQueryClient();
   const { t } = useTranslation(['common', 'sell']);
@@ -135,6 +141,26 @@ export const usePublishProduct = () => {
     let requiresReverification = false;
 
     try {
+      let publicationEconomics = draft.publicationEconomics;
+      if (!isEditMode && !publicationEconomics) {
+        const { data: settings, error: settingsError } = await supabase
+          .from('system_settings')
+          .select('service_fee_pct, shipping_buffer_cents, insurance_rate')
+          .eq('id', 1)
+          .single();
+
+        if (settingsError || !settings) {
+          throw new Error('PUBLICATION_ECONOMICS_ACCEPTANCE_REQUIRED');
+        }
+
+        publicationEconomics = buildPublicationEconomicsSnapshot({
+          priceCents: Math.round(parseFloat(draft.price) * 100),
+          quoteCents: Math.round(parseFloat(draft.shipping_cost) * 100),
+          settings,
+        });
+        setPublicationEconomics(publicationEconomics);
+      }
+
       // 1. Calcular Aspect Ratio
       const coverUri = draft.images[0];
       let aspectRatio = 1;
@@ -216,15 +242,24 @@ export const usePublishProduct = () => {
       } else {
         // --- LÓGICA DE CREACIÓN ---
         requiresReverification = true;
+        if (!publicationEconomics) {
+          throw new Error('PUBLICATION_ECONOMICS_ACCEPTANCE_REQUIRED');
+        }
         const { data, error } = await supabase
           .from('products')
-          .insert({
-            ...productData,
-            seller_id: session.user.id,
-            status: 'PENDING_VERIFICATION',
-            views: 0,
-            aspect_ratio: aspectRatio,
-          })
+          .insert(
+            {
+              ...productData,
+              publication_shipping_reserve_cents:
+                publicationEconomics.shippingReserveCents,
+              publication_commission_rate: publicationEconomics.commissionRate,
+              publication_insurance_rate: publicationEconomics.insuranceRate,
+              seller_id: session.user.id,
+              status: 'PENDING_VERIFICATION',
+              views: 0,
+              aspect_ratio: aspectRatio,
+            } as never,
+          )
           .select()
           .single();
 

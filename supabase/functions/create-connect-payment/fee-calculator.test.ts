@@ -208,6 +208,58 @@ describe('create-connect-payment checkout allocation (single-modal)', () => {
     expect(allocation.rows[0].netCents).toBe(90_000);
   });
 
+  it('uses the publication snapshot reserve and commission before current settings', () => {
+    const allocation = calculateCheckoutAllocation(
+      [
+        {
+          sellerId: 'seller-snapshot',
+          shipmentId: '018f8b5e-89b5-7cc7-9c89-5d4df4b79e1f',
+          subtotalCents: 100_000,
+          shippingCents: 99_999,
+          publicationSnapshot: {
+            publication_shipping_reserve_cents: 18_200,
+            publication_commission_rate: 0.08,
+            publication_insurance_rate: 0.012,
+          },
+        },
+      ],
+      { commissionRate: 0.06 },
+    );
+
+    expect(allocation.rows[0]).toMatchObject({
+      commissionCents: 8_000,
+      shippingCents: 18_200,
+      netCents: 73_800,
+    });
+  });
+
+  it('uses trusted legacy economics only when every snapshot field is absent', () => {
+    const allocation = calculateCheckoutAllocation([
+      {
+        sellerId: 'seller-legacy',
+        shipmentId: '018f8b5e-89b5-5cc7-9c89-5d4df4b79e1f',
+        subtotalCents: 100_000,
+        shippingCents: 0,
+        publicationSnapshot: {
+          publication_shipping_reserve_cents: null,
+          publication_commission_rate: null,
+          publication_insurance_rate: null,
+        },
+        legacyEconomics: {
+          shippingReserveCents: 20_000,
+          commissionRate: 0.07,
+          insuranceRate: 0.012,
+        },
+      },
+    ]);
+
+    expect(allocation.rows[0]).toMatchObject({
+      commissionCents: 7_000,
+      shippingCents: 20_000,
+      netCents: 73_000,
+    });
+  });
+
   it('rejects an empty seller set as an invalid checkout input', () => {
     expect(() => calculateCheckoutAllocation([])).toThrow(
       'INVALID_CHECKOUT_INPUT',

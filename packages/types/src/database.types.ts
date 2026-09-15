@@ -1316,6 +1316,9 @@ export type Database = {
           origin_zip: string | null
           package_preset: string | null
           price: number
+          publication_commission_rate: number | null
+          publication_insurance_rate: number | null
+          publication_shipping_reserve_cents: number | null
           rejection_reason: string | null
           reserved_at: string | null
           seller_id: string
@@ -1345,6 +1348,9 @@ export type Database = {
           origin_zip?: string | null
           package_preset?: string | null
           price: number
+          publication_commission_rate?: number | null
+          publication_insurance_rate?: number | null
+          publication_shipping_reserve_cents?: number | null
           rejection_reason?: string | null
           reserved_at?: string | null
           seller_id: string
@@ -1374,6 +1380,9 @@ export type Database = {
           origin_zip?: string | null
           package_preset?: string | null
           price?: number
+          publication_commission_rate?: number | null
+          publication_insurance_rate?: number | null
+          publication_shipping_reserve_cents?: number | null
           rejection_reason?: string | null
           reserved_at?: string | null
           seller_id?: string
@@ -3117,6 +3126,14 @@ export type Database = {
       }
     }
     Functions: {
+      backfill_product_publication_economics: {
+        Args: { p_product_id: string }
+        Returns: {
+          publication_commission_rate: number
+          publication_insurance_rate: number
+          publication_shipping_reserve_cents: number
+        }[]
+      }
       fn_acquire_track_shipments_lease: {
         Args: { p_lane: string }
         Returns: {
@@ -3525,6 +3542,7 @@ export type Database = {
       }
       get_profile_stats: { Args: { target_user_id: string }; Returns: Json }
       is_admin: { Args: never; Returns: boolean }
+      normalize_publication_rate: { Args: { p_rate: number }; Returns: number }
     }
     Enums: {
       account_status: "active" | "suspended" | "banned"

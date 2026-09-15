@@ -240,6 +240,23 @@ export const SellDetailsForm: React.FC<SellDetailsFormProps> = ({
             </Box>
           )}
         />
+        <Box
+          backgroundColor="background"
+          padding="s"
+          borderRadius="s"
+          marginTop="m"
+          flexDirection="row"
+          alignItems="flex-start"
+        >
+          <MaterialCommunityIcons
+            name="package-variant-closed"
+            size={20}
+            color={theme.colors.primary}
+          />
+          <Text variant="caption-md" color="textSecondary" marginLeft="s" flex={1}>
+            {t('fields.packagePresetNotice')}
+          </Text>
+        </Box>
       </Box>
 
       {/* 3. SECCIÓN: ORIGEN DE ENVÍO */}

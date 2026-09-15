@@ -1,6 +1,9 @@
-import { describe, expect, it, beforeEach } from 'bun:test';
+import { beforeEach, describe, expect, it } from 'bun:test';
 
-import { useSellStore } from './useSellStore';
+import {
+  buildPublicationEconomicsSnapshot,
+  useSellStore,
+} from './useSellStore';
 
 describe('useSellStore', () => {
   beforeEach(() => {
@@ -71,6 +74,29 @@ describe('useSellStore', () => {
       expect(draft.images).toEqual(['file://photo.jpg']);
       expect(draft.condition).toBe('');
       expect(draft.specifications).toEqual({});
+    });
+  });
+});
+
+describe('publication economics draft snapshot', () => {
+  it('preserves the accepted quote, commission, and insurance inputs for publication', () => {
+    const snapshot = buildPublicationEconomicsSnapshot({
+      priceCents: 800_000,
+      quoteCents: 18_600,
+      settings: {
+        service_fee_pct: 0.06,
+        shipping_buffer_cents: 3_000,
+        insurance_rate: 0.012,
+      },
+    });
+
+    useSellStore.getState().resetDraft();
+    useSellStore.getState().updateDraft({ publicationEconomics: snapshot });
+
+    expect(useSellStore.getState().draft.publicationEconomics).toEqual({
+      shippingReserveCents: 31_200,
+      commissionRate: 0.06,
+      insuranceRate: 0.012,
     });
   });
 });

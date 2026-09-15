@@ -47,15 +47,15 @@ describe('allocateCancellationLossCents', () => {
   it('returns null when the actual Stripe fee is unreconciled', () => {
     expect(
       allocateCancellationLossCents(null, [
-        { shipmentId: 'ship-a', refundCents: 10_000 },
+        { shipmentId: 'ship-a', buyerRefundCents: 10_000 },
       ]),
     ).toBeNull();
   });
 
   it('allocates the actual fee proportionally and keeps the sum exact', () => {
     const allocation = allocateCancellationLossCents(20_000, [
-      { shipmentId: 'ship-a', refundCents: 10_000 },
-      { shipmentId: 'ship-b', refundCents: 10_000 },
+      { shipmentId: 'ship-a', buyerRefundCents: 10_000 },
+      { shipmentId: 'ship-b', buyerRefundCents: 10_000 },
     ]);
 
     expect(allocation?.get('ship-a')).toBe(10_000);
@@ -63,11 +63,29 @@ describe('allocateCancellationLossCents', () => {
     expect(Array.from(allocation?.values() ?? []).reduce((sum, value) => sum + value, 0)).toBe(20_000);
   });
 
+  it('weights the actual fee by buyer refunds and excludes seller shipping reserve', () => {
+    const allocation = allocateCancellationLossCents(10_000, [
+      {
+        shipmentId: 'ship-a',
+        buyerRefundCents: 10_000,
+        shippingReserveCents: 90_000,
+      },
+      {
+        shipmentId: 'ship-b',
+        buyerRefundCents: 30_000,
+        shippingReserveCents: 1_000,
+      },
+    ]);
+
+    expect(allocation?.get('ship-a')).toBe(2_500);
+    expect(allocation?.get('ship-b')).toBe(7_500);
+  });
+
   it('breaks equal remainders by shipment id for deterministic partial allocations', () => {
     const allocation = allocateCancellationLossCents(2, [
-      { shipmentId: 'ship-b', refundCents: 1 },
-      { shipmentId: 'ship-a', refundCents: 1 },
-      { shipmentId: 'ship-c', refundCents: 1 },
+      { shipmentId: 'ship-b', buyerRefundCents: 1 },
+      { shipmentId: 'ship-a', buyerRefundCents: 1 },
+      { shipmentId: 'ship-c', buyerRefundCents: 1 },
     ]);
 
     expect(allocation?.get('ship-a')).toBe(1);

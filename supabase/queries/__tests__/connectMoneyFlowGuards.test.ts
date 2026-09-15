@@ -101,7 +101,9 @@ describe('Connect money-flow SQL guards', () => {
       'supabase/functions/create-connect-payment/single-payment-builder.ts',
     );
 
-    expect(indexSource).toContain("select('shipping_buffer_cents, insurance_rate')");
+    expect(indexSource).toContain(
+      "select('shipping_buffer_cents, insurance_rate, service_fee_pct')",
+    );
     expect(indexSource).toContain('calculateEstimatedSellerShippingDeductionCents');
     // Each product allocation carries its own shipping deduction.
     expect(indexSource).toContain('shippingCents: product.shippingCents');

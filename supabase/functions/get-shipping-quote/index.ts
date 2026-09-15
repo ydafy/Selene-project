@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { z } from 'https://esm.sh/zod@3.23.8';
+import { selectPaquetexpressGroundRate } from './quote-contract.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,13 +22,6 @@ interface PackagePreset {
   length: string;
   width: string;
   height: string;
-}
-
-interface EnviaRawRate {
-  carrier: string;
-  service: string;
-  totalPrice: string;
-  currency: string;
 }
 
 const log = (level: string, message: string, meta?: unknown) => {
@@ -126,7 +120,7 @@ serve(async (req: Request) => {
           content: 'Hardware de PC',
           amount: 1,
           name: packageId,
-          declaredValue: 0,
+          declaredValue: price,
           lengthUnit: 'CM',
           weightUnit: 'KG',
           weight: Number(dim.weight),
@@ -156,12 +150,7 @@ serve(async (req: Request) => {
       throw new Error(resData.message || 'CARRIER_ERROR');
     }
 
-    const rates = (resData.data as EnviaRawRate[]).map((rate) => ({
-      carrier: rate.carrier,
-      service: rate.service,
-      price: Number(rate.totalPrice),
-      estimated_days: 3,
-    }));
+    const rates = [selectPaquetexpressGroundRate(resData.data, originZip)];
 
     log('info', 'Tarifas estimadas por Envia.com en la publicación', {
       originZip,
