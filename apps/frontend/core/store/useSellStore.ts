@@ -9,6 +9,71 @@ import { Product, ProductCategory, ShippingPayer } from '@selene/types';
 
 import { getCategoryResetFields } from '../utils/sellCategoryReset';
 
+type PublicationEconomicsSettings = Pick<
+  ProductPublicationSettings,
+  'service_fee_pct' | 'shipping_buffer_cents' | 'insurance_rate'
+>;
+
+type ProductPublicationSettings = {
+  service_fee_pct: number | null;
+  shipping_buffer_cents: number | null;
+  insurance_rate: number | null;
+};
+
+export type PublicationEconomicsSnapshot = {
+  shippingReserveCents: number;
+  commissionRate: number;
+  insuranceRate: number;
+};
+
+const normalizePublicationRate = (value: number | null): number => {
+  if (value === null || !Number.isFinite(value) || value < 0) {
+    throw new Error('PUBLICATION_ECONOMICS_ACCEPTANCE_REQUIRED');
+  }
+
+  const normalized = value <= 1 ? value : value <= 100 ? value / 100 : value / 10_000;
+  if (normalized > 1) {
+    throw new Error('PUBLICATION_ECONOMICS_ACCEPTANCE_REQUIRED');
+  }
+
+  return normalized;
+};
+
+export const buildPublicationEconomicsSnapshot = ({
+  priceCents,
+  quoteCents,
+  settings,
+}: {
+  priceCents: number;
+  quoteCents: number;
+  settings: PublicationEconomicsSettings;
+}): PublicationEconomicsSnapshot => {
+  const shippingBufferCents = settings.shipping_buffer_cents;
+  if (
+    !Number.isSafeInteger(priceCents) ||
+    priceCents < 0 ||
+    !Number.isSafeInteger(quoteCents) ||
+    quoteCents <= 0 ||
+    typeof shippingBufferCents !== 'number' ||
+    !Number.isSafeInteger(shippingBufferCents) ||
+    shippingBufferCents < 0
+  ) {
+    throw new Error('PUBLICATION_ECONOMICS_ACCEPTANCE_REQUIRED');
+  }
+
+  const commissionRate = normalizePublicationRate(settings.service_fee_pct);
+  const insuranceRate = normalizePublicationRate(settings.insurance_rate);
+
+  return {
+    shippingReserveCents:
+      quoteCents +
+       shippingBufferCents +
+      Math.ceil(priceCents * insuranceRate),
+    commissionRate,
+    insuranceRate,
+  };
+};
+
 export type SellDraft = {
   id?: string;
   category: ProductCategory | null;
@@ -25,6 +90,7 @@ export type SellDraft = {
   insurance_enabled: boolean;
   origin_zip: string;
   shipping_cost: string;
+  publicationEconomics?: PublicationEconomicsSnapshot | null;
 };
 
 interface SellState {
@@ -34,6 +100,7 @@ interface SellState {
   // Actions
   setCategory: (category: ProductCategory) => void;
   updateDraft: (fields: Partial<SellDraft>) => void;
+  setPublicationEconomics: (snapshot: PublicationEconomicsSnapshot) => void;
   updateSpecs: (key: string, value: unknown) => void;
   loadProductForEdit: (product: Product) => void;
   resetCategoryFields: () => void;
@@ -52,6 +119,7 @@ const INITIAL_STATE: SellDraft = {
   usage: '',
   origin_zip: '',
   shipping_cost: '0',
+  publicationEconomics: null,
   specifications: {},
   images: [],
   verificationImage: null,
@@ -79,6 +147,11 @@ export const useSellStore = create<SellState>((set) => ({
   updateDraft: (fields) =>
     set((state) => ({
       draft: { ...state.draft, ...fields },
+    })),
+
+  setPublicationEconomics: (publicationEconomics) =>
+    set((state) => ({
+      draft: { ...state.draft, publicationEconomics },
     })),
 
   updateSpecs: (key, value) =>
@@ -113,6 +186,7 @@ export const useSellStore = create<SellState>((set) => ({
       insurance_enabled: true,
       origin_zip: product.origin_zip || '',
       shipping_cost: (product.shipping_cost || 0).toString(),
+      publicationEconomics: null,
     };
 
     set(() => ({

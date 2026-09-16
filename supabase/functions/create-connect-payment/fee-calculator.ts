@@ -1,4 +1,9 @@
 import { allocateCents, grossUpDomesticMx } from '../_shared/stripe-fee-gross-up.ts';
+import {
+  resolvePublicationEconomics,
+  type PublicationEconomics,
+  type PublicationEconomicsSnapshot,
+} from '../_shared/publication-economics.ts';
 
 export const CONNECT_COMMISSION_RATE = 0.06;
 export const SEGURO_SELENE_RATE = 0.036;
@@ -185,6 +190,10 @@ export interface SellerAllocationInput {
   subtotalCents: number;
   /** Seller-paid shipping deduction. Free-to-buyer: never added to buyerTotal. */
   shippingCents: number;
+  /** Immutable publication inputs. Partial snapshots are rejected. */
+  publicationSnapshot?: PublicationEconomicsSnapshot;
+  /** Trusted server-side settings resolved only for an all-null legacy snapshot. */
+  legacyEconomics?: PublicationEconomics;
 }
 
 export interface CheckoutAllocationOptions {
@@ -233,10 +242,22 @@ export function calculateCheckoutAllocation(
       'INVALID_CHECKOUT_INPUT',
     );
 
+    const economics = input.publicationSnapshot
+      ? resolvePublicationEconomics(
+        input.publicationSnapshot,
+        () => {
+          if (!input.legacyEconomics) {
+            throw new Error('LEGACY_PUBLICATION_ECONOMICS_UNAVAILABLE');
+          }
+          return input.legacyEconomics;
+        },
+      )
+      : null;
+
     const moneyFlow = calculateConnectMoneyFlow({
       subtotalCents: input.subtotalCents,
-      shippingCents: input.shippingCents,
-      commissionRate: options.commissionRate,
+      shippingCents: economics?.shippingReserveCents ?? input.shippingCents,
+      commissionRate: economics?.commissionRate ?? options.commissionRate,
     });
 
     // Reuse the legacy validator so a seller with shipping larger than gross

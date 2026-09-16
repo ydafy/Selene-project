@@ -172,6 +172,19 @@ export default function PrepareShipmentScreen() {
           padding="m"
           borderRadius="l"
           marginTop="l"
+          borderWidth={1}
+          borderColor="separator"
+        >
+          <Text variant="body-sm" color="textSecondary">
+            {t('orders:prepare.packagingGuidance')}
+          </Text>
+        </Box>
+
+        <Box
+          backgroundColor="cardBackground"
+          padding="m"
+          borderRadius="l"
+          marginTop="l"
           marginBottom="l"
           borderWidth={1}
           borderColor="separator"

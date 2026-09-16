@@ -9,43 +9,58 @@ export function normalizeEnviaStateCode(value: unknown): string | null {
 const mexicanStateCodeSchema = z.string().transform((value, context) => {
   const normalized = normalizeEnviaStateCode(value);
   if (normalized) return normalized;
-  context.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid Mexican state code' });
+  context.addIssue({
+    code: z.ZodIssueCode.custom,
+    message: 'Invalid Mexican state code',
+  });
   return z.NEVER;
 });
 
-const providerDestinationSchema = z.object({
-  name: requiredAddressField,
-  phone: requiredAddressField,
-  street: requiredAddressField,
-  number: requiredAddressField.optional(),
-  district: requiredAddressField,
-  city: requiredAddressField,
-  state: mexicanStateCodeSchema,
-  country: z.literal('MX'),
-  postalCode: z.string().regex(/^\d{5}$/),
-}).strict();
+const providerDestinationSchema = z
+  .object({
+    name: requiredAddressField,
+    phone: requiredAddressField,
+    street: requiredAddressField,
+    number: requiredAddressField.optional(),
+    district: requiredAddressField,
+    city: requiredAddressField,
+    state: mexicanStateCodeSchema,
+    country: z.literal('MX'),
+    postalCode: z.string().regex(/^\d{5}$/),
+  })
+  .strict();
 
 export const listingReferenceDestinationSchema = providerDestinationSchema;
 export const buyerDestinationSnapshotSchema = providerDestinationSchema;
 
-export const enviaShipmentConfigurationSchema = z.object({
-  envia_carrier: requiredAddressField,
-  envia_service: requiredAddressField,
-  envia_print_format: requiredAddressField,
-  envia_print_size: requiredAddressField,
-}).strict();
+export const enviaShipmentConfigurationSchema = z
+  .object({
+    envia_carrier: requiredAddressField,
+    envia_service: requiredAddressField,
+    envia_print_format: requiredAddressField,
+    envia_print_size: requiredAddressField,
+  })
+  .strict();
 
 export type EnviaDestination = z.infer<typeof providerDestinationSchema>;
 export type EnviaGenerateOutcome = 'retryable_rejected' | 'orphan_pending';
 
-export function buildBuyerDestinationFromStoredSnapshot(snapshot: unknown): EnviaDestination | null {
-  if (typeof snapshot !== 'object' || snapshot === null || Array.isArray(snapshot)) return null;
+export function buildBuyerDestinationFromStoredSnapshot(
+  snapshot: unknown,
+): EnviaDestination | null {
+  if (
+    typeof snapshot !== 'object' ||
+    snapshot === null ||
+    Array.isArray(snapshot)
+  )
+    return null;
   const source = snapshot as Record<string, unknown>;
   const candidate = {
     name: source.full_name,
     phone: source.phone,
     street: source.street_line1,
-    ...(typeof source.street_number === 'string' && source.street_number.trim() !== ''
+    ...(typeof source.street_number === 'string' &&
+    source.street_number.trim() !== ''
       ? { number: source.street_number }
       : {}),
     district: source.district,
@@ -58,8 +73,11 @@ export function buildBuyerDestinationFromStoredSnapshot(snapshot: unknown): Envi
   return parsed.success ? parsed.data : null;
 }
 
-export function buildSellerOriginFromStoredAddress(address: unknown): EnviaDestination | null {
-  if (typeof address !== 'object' || address === null || Array.isArray(address)) return null;
+export function buildSellerOriginFromStoredAddress(
+  address: unknown,
+): EnviaDestination | null {
+  if (typeof address !== 'object' || address === null || Array.isArray(address))
+    return null;
   const source = address as Record<string, unknown>;
   const candidate = {
     name: source.full_name,
@@ -80,7 +98,10 @@ export function buildSellerOriginFromStoredAddress(address: unknown): EnviaDesti
 export function runPaquetexpressAddressPreflight(
   origin: EnviaDestination | null,
   destination: EnviaDestination | null,
-): 'SELLER_ORIGIN_CORRECTION_REQUIRED' | 'BUYER_DESTINATION_CORRECTION_REQUIRED' | null {
+):
+  | 'SELLER_ORIGIN_CORRECTION_REQUIRED'
+  | 'BUYER_DESTINATION_CORRECTION_REQUIRED'
+  | null {
   const complete = (address: EnviaDestination | null) =>
     address !== null && requiredAddressField.safeParse(address.number).success;
   if (!complete(origin)) return 'SELLER_ORIGIN_CORRECTION_REQUIRED';
@@ -88,18 +109,36 @@ export function runPaquetexpressAddressPreflight(
   return null;
 }
 
+type EnviaRuntimeEnvironment =
+  Record<string, string | undefined> | ((name: string) => string | undefined);
+
+const readEnviaRuntimeVariable = (
+  environment: EnviaRuntimeEnvironment,
+  name: string,
+): string | undefined =>
+  typeof environment === 'function' ? environment(name) : environment[name];
+
 export function resolveEnviaRuntimeConfiguration(
-  environment: Record<string, string | undefined>,
+  environment: EnviaRuntimeEnvironment,
   options: { allowInsecureLocalhost?: boolean } = {},
 ): { mode: 'sandbox' | 'production'; apiKey: string; apiUrl: string } | null {
-  const mode = environment.ENVIA_MODE;
+  const mode = readEnviaRuntimeVariable(environment, 'ENVIA_MODE');
   if (mode !== 'sandbox' && mode !== 'production') return null;
-  const apiKey = environment[mode === 'sandbox' ? 'ENVIA_API_KEY_SANDBOX' : 'ENVIA_API_KEY_PROD']?.trim();
-  const rawUrl = environment[mode === 'sandbox' ? 'ENVIA_API_URL_SANDBOX' : 'ENVIA_API_URL_PROD']?.trim();
+  const apiKey = readEnviaRuntimeVariable(
+    environment,
+    mode === 'sandbox' ? 'ENVIA_API_KEY_SANDBOX' : 'ENVIA_API_KEY_PROD',
+  )?.trim();
+  const rawUrl = readEnviaRuntimeVariable(
+    environment,
+    mode === 'sandbox' ? 'ENVIA_API_URL_SANDBOX' : 'ENVIA_API_URL_PROD',
+  )?.trim();
   if (!apiKey || !rawUrl) return null;
   try {
     const url = new URL(rawUrl);
-    const localTestSeam = options.allowInsecureLocalhost && url.protocol === 'http:' && url.hostname === 'localhost';
+    const localTestSeam =
+      options.allowInsecureLocalhost &&
+      url.protocol === 'http:' &&
+      url.hostname === 'localhost';
     return url.protocol === 'https:' || localTestSeam
       ? { mode, apiKey, apiUrl: url.toString() }
       : null;
@@ -108,7 +147,9 @@ export function resolveEnviaRuntimeConfiguration(
   }
 }
 
-export function projectEnviaShipmentConfiguration(settings: Record<string, unknown>) {
+export function projectEnviaShipmentConfiguration(
+  settings: Record<string, unknown>,
+) {
   return {
     envia_carrier: settings.envia_carrier,
     envia_service: settings.envia_service,
@@ -117,22 +158,38 @@ export function projectEnviaShipmentConfiguration(settings: Record<string, unkno
   };
 }
 
+export function buildEnviaQuoteConfiguration() {
+  return {
+    shipment: { carrier: 'paquetexpress', service: 'ground', type: 1 },
+    settings: { currency: 'MXN' },
+  };
+}
+
 export function buildEnviaShipmentConfiguration(settings: unknown) {
   const parsed = enviaShipmentConfigurationSchema.safeParse(settings);
   if (!parsed.success) return null;
 
-  const { envia_carrier, envia_service, envia_print_format, envia_print_size } = parsed.data;
+  const { envia_carrier, envia_service, envia_print_format, envia_print_size } =
+    parsed.data;
   if (
     envia_carrier.trim().toLowerCase() !== 'paquetexpress' ||
-    envia_service.trim().toLowerCase().replace(/\s+/g, ' ') !==
-      'ground'
+    envia_service.trim().toLowerCase().replace(/\s+/g, ' ') !== 'ground'
   ) {
     return null;
   }
 
+  const quoteConfiguration = buildEnviaQuoteConfiguration();
   return {
-    shipment: { carrier: envia_carrier, service: envia_service, type: 1 },
-    settings: { currency: 'MXN', printFormat: envia_print_format, printSize: envia_print_size },
+    shipment: {
+      ...quoteConfiguration.shipment,
+      carrier: envia_carrier,
+      service: envia_service,
+    },
+    settings: {
+      ...quoteConfiguration.settings,
+      printFormat: envia_print_format,
+      printSize: envia_print_size,
+    },
   };
 }
 
@@ -154,14 +211,24 @@ export function classifyEnviaGenerateOutcome(
     typeof result.body.trackingNumber === 'string' ||
     typeof result.body.labelUrl === 'string' ||
     typeof result.body.shipmentId === 'string';
-  const code = typeof result.body.code === 'string' ? result.body.code.toUpperCase() : null;
-  const hasProviderError = typeof result.body.error === 'string' || code !== null;
+  const code =
+    typeof result.body.code === 'string'
+      ? result.body.code.toUpperCase()
+      : null;
+  const hasProviderError =
+    typeof result.body.error === 'string' || code !== null;
   const deterministicValidationCodes = new Set([
-    'VALIDATION_ERROR', 'INVALID_ADDRESS', 'INVALID_DESTINATION', 'INVALID_ORIGIN',
+    'VALIDATION_ERROR',
+    'INVALID_ADDRESS',
+    'INVALID_DESTINATION',
+    'INVALID_ORIGIN',
   ]);
 
   if (
-    result.status >= 400 && result.status < 500 && hasProviderError && !hasLabelIdentifier &&
+    result.status >= 400 &&
+    result.status < 500 &&
+    hasProviderError &&
+    !hasLabelIdentifier &&
     (code === null || deterministicValidationCodes.has(code))
   ) {
     return 'retryable_rejected';
@@ -179,7 +246,11 @@ export function toMxnCents(totalPrice: unknown): number | null {
   }
 
   const amount = Number(totalPrice);
-  if (!Number.isFinite(amount) || amount < 0 || amount > Number.MAX_SAFE_INTEGER / 100) {
+  if (
+    !Number.isFinite(amount) ||
+    amount < 0 ||
+    amount > Number.MAX_SAFE_INTEGER / 100
+  ) {
     return null;
   }
 
@@ -221,7 +292,11 @@ export function selectPaquetexpressGroundRate(
   if (!Array.isArray(rates)) return null;
 
   const matches = rates.flatMap((candidate) => {
-    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
+    if (
+      !candidate ||
+      typeof candidate !== 'object' ||
+      Array.isArray(candidate)
+    ) {
       return [];
     }
 
@@ -239,15 +314,38 @@ export function selectPaquetexpressGroundRate(
     );
     if (quotedCostCents === null) return [];
 
-    return [{
-      carrier: rate.carrier as string,
-      service: rate.service as string,
-      quoteReference: rateQuoteReference(rate),
-      quotedCostCents,
-    }];
+    return [
+      {
+        carrier: rate.carrier as string,
+        service: rate.service as string,
+        quoteReference: rateQuoteReference(rate),
+        quotedCostCents,
+      },
+    ];
   });
 
   return matches.length === 1 ? matches[0] : null;
+}
+
+export type ShippingQuoteRate = {
+  carrier: string;
+  service: string;
+  price: number;
+  estimated_days: number;
+};
+
+export function buildPaquetexpressGroundQuote(
+  rates: unknown,
+): ShippingQuoteRate | null {
+  const acceptedRate = selectPaquetexpressGroundRate(rates);
+  if (!acceptedRate) return null;
+
+  return {
+    carrier: acceptedRate.carrier,
+    service: acceptedRate.service,
+    price: acceptedRate.quotedCostCents / 100,
+    estimated_days: 3,
+  };
 }
 
 const safeDiagnosticFields = new Set([
@@ -263,7 +361,9 @@ const safeDiagnosticFields = new Set([
   'errorClass',
 ]);
 
-export function redactEnviaDiagnostics(input: Record<string, unknown>): Record<string, unknown> {
+export function redactEnviaDiagnostics(
+  input: Record<string, unknown>,
+): Record<string, unknown> {
   return Object.fromEntries(
     Object.entries(input).filter(([key]) => safeDiagnosticFields.has(key)),
   );
@@ -292,22 +392,24 @@ export type LabelProviderResult<T = never> =
 
 type LabelClaimOrchestrationResult<T> =
   | {
-    status:
-      | Exclude<LabelClaimStatus, 'generated'>
-      | 'retryable_rejected'
-      | 'rate_evidence_rejected'
-      | 'rate_evidence_state_persistence_failed'
-      | 'mark_sent_released'
-      | 'mark_sent_failed'
-      | 'configuration_invalid'
-      | 'buyer_destination_invalid'
-      | 'rejected_state_persistence_failed'
-      | 'orphan_state_persistence_failed';
-  }
+      status:
+        | Exclude<LabelClaimStatus, 'generated'>
+        | 'retryable_rejected'
+        | 'rate_evidence_rejected'
+        | 'rate_evidence_state_persistence_failed'
+        | 'mark_sent_released'
+        | 'mark_sent_failed'
+        | 'configuration_invalid'
+        | 'buyer_destination_invalid'
+        | 'rejected_state_persistence_failed'
+        | 'orphan_state_persistence_failed';
+    }
   | { status: 'generated'; accepted?: T };
 
 export async function runLabelClaimOrchestration<T>(dependencies: {
-  preflight?: () => Promise<'configuration_invalid' | 'buyer_destination_invalid' | null>;
+  preflight?: () => Promise<
+    'configuration_invalid' | 'buyer_destination_invalid' | null
+  >;
   claim: () => Promise<LabelClaimResult>;
   /** Rate exact shipment inputs and atomically persist the accepted evidence. */
   rateAndPersist?: (claimToken: string) => Promise<boolean>;
@@ -320,18 +422,19 @@ export async function runLabelClaimOrchestration<T>(dependencies: {
   const preflight = await dependencies.preflight?.();
   if (preflight) return { status: preflight };
   const claim = await dependencies.claim();
-  if (claim.status !== 'claimed' || !claim.claimToken) return { status: claim.status };
+  if (claim.status !== 'claimed' || !claim.claimToken)
+    return { status: claim.status };
 
   if (dependencies.rateAndPersist) {
     try {
-      if (!await dependencies.rateAndPersist(claim.claimToken)) {
-        return await dependencies.rejected(claim.claimToken)
+      if (!(await dependencies.rateAndPersist(claim.claimToken))) {
+        return (await dependencies.rejected(claim.claimToken))
           ? { status: 'rate_evidence_rejected' }
           : { status: 'rate_evidence_state_persistence_failed' };
       }
     } catch {
       try {
-        return await dependencies.rejected(claim.claimToken)
+        return (await dependencies.rejected(claim.claimToken))
           ? { status: 'rate_evidence_rejected' }
           : { status: 'rate_evidence_state_persistence_failed' };
       } catch {
@@ -340,8 +443,9 @@ export async function runLabelClaimOrchestration<T>(dependencies: {
     }
   }
 
-  if (!await dependencies.markSent(claim.claimToken)) {
-    if (await dependencies.rejected(claim.claimToken)) return { status: 'mark_sent_released' };
+  if (!(await dependencies.markSent(claim.claimToken))) {
+    if (await dependencies.rejected(claim.claimToken))
+      return { status: 'mark_sent_released' };
     return { status: 'mark_sent_failed' };
   }
 
@@ -350,7 +454,7 @@ export async function runLabelClaimOrchestration<T>(dependencies: {
     typeof providerResult === 'string' ? providerResult : providerResult.status;
   if (providerStatus === 'rejected') {
     try {
-      return await dependencies.rejected(claim.claimToken)
+      return (await dependencies.rejected(claim.claimToken))
         ? { status: 'retryable_rejected' }
         : { status: 'rejected_state_persistence_failed' };
     } catch {
@@ -359,7 +463,7 @@ export async function runLabelClaimOrchestration<T>(dependencies: {
   }
   if (providerStatus === 'ambiguous') {
     try {
-      return await dependencies.orphan(claim.claimToken)
+      return (await dependencies.orphan(claim.claimToken))
         ? { status: 'orphan_pending' }
         : { status: 'orphan_state_persistence_failed' };
     } catch {
@@ -381,7 +485,7 @@ export async function runLabelClaimOrchestration<T>(dependencies: {
     // A failed finalization leaves provider acceptance unproven until orphan persistence succeeds.
   }
   try {
-    return await dependencies.orphan(claim.claimToken)
+    return (await dependencies.orphan(claim.claimToken))
       ? { status: 'orphan_pending' }
       : { status: 'orphan_state_persistence_failed' };
   } catch {

@@ -33,6 +33,7 @@ import {
   assertValidCheckoutAllocation,
   calculateCheckoutAllocation,
   calculateEstimatedSellerShippingDeductionCents,
+  normalizeEnviaInsuranceRate,
   type SellerAllocationInput,
 } from './fee-calculator.ts';
 import {
@@ -48,6 +49,17 @@ import {
 
 const STRIPE_API_VERSION = '2026-04-22.dahlia';
 const APP_NAME = 'selene';
+
+type ProductPublicationEconomicsRow = {
+  publication_shipping_reserve_cents: number | null;
+  publication_commission_rate: number | null;
+  publication_insurance_rate: number | null;
+};
+
+const hasNoPublicationEconomics = (row: ProductPublicationEconomicsRow) =>
+  row.publication_shipping_reserve_cents === null &&
+  row.publication_commission_rate === null &&
+  row.publication_insurance_rate === null;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -225,7 +237,7 @@ serve(async (req: Request) => {
     // 5. Load product details for the reserved items
     const { data: products, error: productsError } = await supabaseAdmin
       .from('products')
-      .select('id, seller_id, price, name, shipping_cost')
+      .select('id, seller_id, price, name, shipping_cost, publication_shipping_reserve_cents, publication_commission_rate, publication_insurance_rate')
       .in('id', productIds);
     if (productsError || !products?.length) {
       await releaseReserved('PRODUCTS_NOT_FOUND');
@@ -234,7 +246,7 @@ serve(async (req: Request) => {
 
     const { data: systemSettings, error: settingsError } = await supabaseAdmin
       .from('system_settings')
-      .select('shipping_buffer_cents, insurance_rate')
+      .select('shipping_buffer_cents, insurance_rate, service_fee_pct')
       .eq('id', 1)
       .maybeSingle();
 
@@ -254,29 +266,88 @@ serve(async (req: Request) => {
       sellerId: string;
       subtotalCents: number;
       shippingCents: number;
+      publicationSnapshot: ProductPublicationEconomicsRow;
+      legacyEconomics?: {
+        shippingReserveCents: number;
+        commissionRate: number;
+        insuranceRate: number;
+      };
     }> = [];
 
     for (const product of products) {
       const item = items.find((i) => i.productId === product.id);
       if (!item) continue;
 
+      const productEconomics = product as typeof product &
+        ProductPublicationEconomicsRow;
       const subtotalCents = Math.round(product.price * 100) * item.quantity;
       const shippingBufferCents =
         systemSettings?.shipping_buffer_cents == null
           ? undefined
           : systemSettings.shipping_buffer_cents * item.quantity;
-      const shippingCents = calculateEstimatedSellerShippingDeductionCents({
-        priceCents: subtotalCents,
-        quotedShippingCents:
-          Math.round((product.shipping_cost ?? 0) * 100) * item.quantity,
-        shippingBufferCents,
-        insuranceRate: systemSettings?.insurance_rate ?? undefined,
-      });
+      let publicationSnapshot: ProductPublicationEconomicsRow = {
+        publication_shipping_reserve_cents:
+          productEconomics.publication_shipping_reserve_cents,
+        publication_commission_rate:
+          productEconomics.publication_commission_rate,
+        publication_insurance_rate:
+          productEconomics.publication_insurance_rate,
+      };
+      let legacyEconomics:
+        | {
+          shippingReserveCents: number;
+          commissionRate: number;
+          insuranceRate: number;
+        }
+        | undefined;
+
+      if (hasNoPublicationEconomics(publicationSnapshot)) {
+        const insuranceRate = normalizeEnviaInsuranceRate(
+          systemSettings?.insurance_rate ?? null,
+        );
+        legacyEconomics = {
+          shippingReserveCents:
+            calculateEstimatedSellerShippingDeductionCents({
+              priceCents: subtotalCents,
+              quotedShippingCents:
+                Math.round((product.shipping_cost ?? 0) * 100) * item.quantity,
+              shippingBufferCents,
+              insuranceRate,
+            }),
+          commissionRate: normalizeEnviaInsuranceRate(
+            systemSettings?.service_fee_pct ?? null,
+          ),
+          insuranceRate,
+        };
+
+        const { data: backfilledSnapshot, error: backfillError } =
+          await supabaseAdmin.rpc('backfill_product_publication_economics', {
+            p_product_id: product.id,
+          });
+        const backfilled = Array.isArray(backfilledSnapshot)
+          ? backfilledSnapshot[0]
+          : backfilledSnapshot;
+        if (
+          backfillError ||
+          !backfilled ||
+          typeof backfilled !== 'object'
+        ) {
+          await releaseReserved('LEGACY_PUBLICATION_ECONOMICS_UNAVAILABLE');
+          throw new Error('LEGACY_PUBLICATION_ECONOMICS_UNAVAILABLE');
+        }
+
+        publicationSnapshot = backfilled as ProductPublicationEconomicsRow;
+        legacyEconomics = undefined;
+      }
+
       productAllocations.push({
         productId: product.id,
         sellerId: product.seller_id,
         subtotalCents,
-        shippingCents,
+        shippingCents:
+          publicationSnapshot.publication_shipping_reserve_cents ?? 0,
+        publicationSnapshot,
+        legacyEconomics,
       });
     }
 
@@ -357,6 +428,8 @@ serve(async (req: Request) => {
         shipmentId,
         subtotalCents: product.subtotalCents,
         shippingCents: product.shippingCents,
+        publicationSnapshot: product.publicationSnapshot,
+        legacyEconomics: product.legacyEconomics,
       });
       shipmentProductIds[shipmentId] = [product.productId];
     }

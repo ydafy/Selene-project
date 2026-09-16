@@ -177,6 +177,7 @@
     "headerTitle": "Generate Label",
     "title": "Prepare Shipment",
     "subtitle": "Prepare your shipment.",
+    "packagingGuidance": "Pack the item securely in the selected preset-sized box, attach the label after it is generated, and take it to the Paquetexpress branch for handoff. Keep the branch receipt and first tracking scan.",
     "originLabel": "Pickup Point",
     "totalSale": "Total Sale",
     "originPlaceholder": "Select your shipping location",

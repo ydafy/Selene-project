@@ -172,6 +172,7 @@
     "headerTitle": "Generar Guía",
     "title": "Preparar Envío",
     "subtitle": "Prepara tu paquete y confirma los detalles para generar tu guía de envío.",
+    "packagingGuidance": "Empaca el artículo de forma segura en una caja cercana al preset seleccionado, pega la guía después de generarla y llévalo a la sucursal de Paquetexpress. Conserva el comprobante de la sucursal y el primer movimiento de rastreo.",
     "originLabel": "Punto de recolección",
     "totalSale": "Venta Total",
     "originPlaceholder": "Selecciona desde dónde envías",
