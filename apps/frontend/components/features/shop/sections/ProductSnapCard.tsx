@@ -50,26 +50,29 @@ const ProductSnapCardComponent = ({
 
       {/* 2. IMAGEN PRINCIPAL (Área Clickeable) */}
       <Box flex={1} justifyContent="center" alignItems="center" padding="m">
-        <Pressable onPress={handleNavigate} style={styles.imagePressable}>
-          {({ pressed }) => (
-            <Box
-              style={{
-                width: '100%',
-                height: '100%',
-                borderRadius: 24, // Suaviza el look cuadrado
-                overflow: 'hidden',
-                transform: [{ scale: pressed ? 0.98 : 1 }], // Feedback sutil
-                opacity: pressed ? 0.9 : 1,
-              }}
-            >
-              <AppImage
-                source={{ uri: product.images[0] }}
-                style={StyleSheet.absoluteFill}
-                contentFit="contain"
-                sharedTransitionTag={`image-${product.id}`}
-              />
-            </Box>
-          )}
+        <Pressable
+          onPress={handleNavigate}
+          style={({ pressed }) => [
+            {
+              width: '100%',
+              height: '85%',
+              justifyContent: 'center',
+              alignItems: 'center',
+              transform: [{ scale: pressed ? 0.98 : 1 }],
+              opacity: pressed ? 0.9 : 1,
+            },
+          ]}
+        >
+          <AppImage
+            source={{ uri: product.images[0] }}
+            style={{
+              width: '100%',
+              height: '70%',
+              borderRadius: 24,
+            }}
+            contentFit="cover"
+            sharedTransitionTag={`image-${product.id}`}
+          />
         </Pressable>
       </Box>
 

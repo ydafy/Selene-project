@@ -24,6 +24,7 @@ import { formatCurrency, formatDate } from '../../../../core/utils/format';
 import { Theme } from '../../../../core/theme';
 import { useAuthContext } from '../../../../components/auth/AuthProvider';
 import { resolveRoleAwareOrderView } from '../order-view-routing';
+import { getOrderStatusLabel } from '@/core/utils/order-status';
 import {
   resolveBuyerCheckoutRecoveryView,
   shouldSuppressShipmentActionsForBuyerRecovery,
@@ -110,10 +111,12 @@ export default function OrderSummaryScreen() {
 
   const checkoutRecoveryView = resolveBuyerCheckoutRecoveryView({
     isBuyer: order.isBuyer,
-    paymentProcessing: (order as typeof order & { payment_processing?: boolean | null })
-      .payment_processing,
-    compensationState: (order as typeof order & { compensation_state?: string | null })
-      .compensation_state,
+    paymentProcessing: (
+      order as typeof order & { payment_processing?: boolean | null }
+    ).payment_processing,
+    compensationState: (
+      order as typeof order & { compensation_state?: string | null }
+    ).compensation_state,
     orderStatus: order.status,
   });
 
@@ -241,8 +244,7 @@ export default function OrderSummaryScreen() {
               {t('summary.items')}
             </Text>
             <Text variant="body-md">
-              {totalItems}{' '}
-              {t('summary.articles', { count: totalItems })}
+              {totalItems} {t('summary.articles', { count: totalItems })}
             </Text>
           </Box>
 
@@ -262,7 +264,9 @@ export default function OrderSummaryScreen() {
               {t('summary.status')}
             </Text>
             <Text variant="body-md" color="primary">
-              {order.visualStatus?.toUpperCase()}
+              {order.visualStatus
+                ? t(getOrderStatusLabel(order.visualStatus)).toUpperCase()
+                : ''}
             </Text>
           </Box>
 

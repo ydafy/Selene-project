@@ -80,8 +80,8 @@ export const MyListingCard = ({
       return {
         label: t('listings.actions.verify'),
         icon: 'shield-check-outline',
-        color: theme.colors.primary,
-        textColor: theme.colors.background,
+        color: theme.colors.error,
+        textColor: theme.colors.textPrimary,
       };
     }
     return {

@@ -102,7 +102,7 @@
     "originZipPlaceholder": "E.g. 64000",
     "packageSizeLabel": "Package Size",
     "packageSizeHelpTitle": "Which box should I choose?",
-    "packageSizeHelpDesc": "Try to use a box similar to this size to facilitate the shipping process. You can easily find them at stationery stores or shops like Office Depot.",
+    "packageSizeHelpDesc": "📦 You don't need to have a box ready just yet.\n\nSimply choose the option that best fits your product to calculate the shipping cost. When your product sells, you can use a box of approximately that size.\n\n✨ Don't worry about packaging right now: Selene will guide you step-by-step once the sale is finalized.",
     "shippingPayerLabel": "Who pays for shipping?",
     "shippingPayerBuyer": "Buyer",
     "shippingPayerSeller": "Me (Free Shipping)",
@@ -186,7 +186,7 @@
   },
   "success": {
     "title": "Listing Created!",
-    "subtitle": "Your product is already in the system, but buyers won't be able to see it until you verify you have it with you.",
+    "subtitle": "Your product is already published, but users won't be able to buy it until you verify it.",
     "verifyNow": "Verify Now",
     "later": "Go to My Listings"
   },

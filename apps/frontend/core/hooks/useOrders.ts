@@ -190,7 +190,7 @@ export const useOrderById = (orderId: string | undefined) => {
           `*,
           items:order_items(*, product:products(*)),
           dispute:disputes(*),
-          shipments:shipments(*, items:order_items(*, product:products(*)), dispute:disputes(*)),
+          shipments:shipments(*, seller:profiles(username, avatar_url), items:order_items(*, product:products(*)), dispute:disputes(*)),
           review:reviews(id, rating, comment, created_at, product_id, shipment_id, seller_id)`,
         )
         .eq('id', orderId)
@@ -219,7 +219,7 @@ export const useMyPurchases = (userId: string | undefined) => {
       const { data, error } = await supabase
         .from('orders')
         .select(
-          '*, items:order_items(*, product:products(*)), dispute:disputes(*), shipments:shipments(*, items:order_items(*, product:products(*)), dispute:disputes(*)), review:reviews(id, rating, comment, created_at, product_id, shipment_id, seller_id)',
+          '*, items:order_items(*, product:products(*)), dispute:disputes(*), shipments:shipments(*,seller:profiles(username, avatar_url),  items:order_items(*, product:products(*)), dispute:disputes(*)), review:reviews(id, rating, comment, created_at, product_id, shipment_id, seller_id)',
         )
         .eq('buyer_id', userId)
         .order('created_at', { ascending: false });
@@ -241,7 +241,7 @@ export const useMySales = (userId: string | undefined) => {
       const { data, error } = await supabase
         .from('order_items')
         .select(
-          '*, order:orders(*, dispute:disputes(*), shipments:shipments(*, items:order_items(*, product:products(*)), dispute:disputes(*)), review:reviews(id, rating, comment, created_at)), product:products(*)',
+          '*, order:orders(*, dispute:disputes(*), shipments:shipments(*, seller:profiles(username, avatar_url), items:order_items(*, product:products(*)), dispute:disputes(*)), review:reviews(id, rating, comment, created_at)), product:products(*)',
         )
         .eq('seller_id', userId)
         .order('created_at', { ascending: false });

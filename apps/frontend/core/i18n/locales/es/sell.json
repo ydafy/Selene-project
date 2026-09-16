@@ -101,8 +101,8 @@
     "originZipLabel": "Tu Código Postal (Origen)",
     "originZipPlaceholder": "Ej. 64000",
     "packageSizeLabel": "Tamaño del Paquete",
-    "packageSizeHelpTitle": "¿Qué caja elijo?",
-    "packageSizeHelpDesc": "Intenta usar una caja parecida a este tamaño para facilitar el proceso de envío. Puedes conseguirlas fácilmente en papelerías o tiendas como Office Depot.",
+    "packageSizeHelpTitle": "¿Necesito una caja ya?",
+    "packageSizeHelpDesc": "📦 No necesitas tener una caja lista todavía.\n\nSolo elige una de las opciones que sean las que mas se ajusten a tu producto para calcular el costo de envío. Cuando tu producto se venda, podrás usar una caja de aproximado ese tamaño.\n\n✨ No te preocupes por el empaque ahora: Selene te guiará paso a paso cuando se concrete la venta.",
     "shippingPayerLabel": "¿Quién paga el envío?",
     "shippingPayerBuyer": "Comprador",
     "shippingPayerSeller": "Yo (Envío Gratis)",
@@ -186,7 +186,7 @@
   },
   "success": {
     "title": "¡Publicación Creada!",
-    "subtitle": "Tu producto ya está en el sistema, pero los compradores no podrán verlo hasta que verifiques que lo tienes contigo.",
+    "subtitle": "Tu producto ya está publicado, pero los usuarios no podrán comprarlo hasta que verifiques tu producto.",
     "verifyNow": "Verificar Ahora",
     "later": "Ir a Mis Publicaciones"
   },

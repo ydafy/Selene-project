@@ -35,7 +35,7 @@ interface OrderShipmentCardProps {
 // ---------------------------------------------------------------------------
 
 const AVATAR_SIZE = 36;
-const THUMBNAIL_SIZE = 40;
+const THUMBNAIL_SIZE = 48;
 
 // ---------------------------------------------------------------------------
 // Component
@@ -62,6 +62,11 @@ export const OrderShipmentCard = ({
     (sum, shipmentItem) => sum + Number(shipmentItem.price_at_purchase),
     0,
   );
+
+  const carrierName = shipment.carrier
+    ? shipment.carrier.charAt(0).toUpperCase() + shipment.carrier.slice(1)
+    : 'Paquetexpress';
+
   const [failedAvatarUrl, setFailedAvatarUrl] = React.useState<string | null>(
     null,
   );
@@ -107,7 +112,7 @@ export const OrderShipmentCard = ({
             numberOfLines={1}
             style={{ flex: 1 }}
           >
-            {shipment.tracking_number}
+            {carrierName} • {shipment.tracking_number}
           </Text>
           <Text variant="caption-md" color="primary" fontWeight="bold">
             {t('actions.trackOrder')}
@@ -228,11 +233,6 @@ export const OrderShipmentCard = ({
           {item.product?.name || t('card.unknownProduct')}
         </Text>
       </Box>
-
-      {/* Price */}
-      <Text variant="caption-md" style={{ flexShrink: 0 }}>
-        {formatCurrency(item.price_at_purchase)}
-      </Text>
     </Box>
   );
 
