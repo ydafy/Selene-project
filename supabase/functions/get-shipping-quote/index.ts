@@ -1,34 +1,28 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import { z } from 'https://esm.sh/zod@3.23.8';
-import { selectPaquetexpressGroundRate } from './quote-contract.ts';
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { z } from "https://esm.sh/zod@3.23.8";
+import { QuoteContractError, quoteListingShipment } from "./quote-contract.ts";
+import { resolveProductionQuoteRuntime } from "./runtime.ts";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 const RequestSchema = z.object({
-  originZip: z.string().min(4).max(5),
-  packageId: z.string(),
-  price: z.number().positive(),
-  destinationZip: z.string().optional(),
+  originZip: z.string().regex(/^\d{4,5}$/),
+  packageId: z.string().trim().min(1).max(100),
+  price: z.number().finite().positive(),
+  destinationZip: z.string().regex(/^\d{4,5}$/).optional(),
 });
-
-interface PackagePreset {
-  weight: string;
-  length: string;
-  width: string;
-  height: string;
-}
 
 const log = (level: string, message: string, meta?: unknown) => {
   console.log(
     JSON.stringify({
       timestamp: new Date().toISOString(),
-      function: 'get-shipping-quote',
+      function: "get-shipping-quote",
       level,
       message,
       ...((meta as Record<string, unknown>) || {}),
@@ -37,141 +31,95 @@ const log = (level: string, message: string, meta?: unknown) => {
 };
 
 serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const enviaKey = Deno.env.get('ENVIA_API_KEY');
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    if (!enviaKey || !serviceRoleKey) {
-      throw new Error('MISSING_SERVER_CONFIG');
+    const runtimeConfiguration = resolveProductionQuoteRuntime((name) =>
+      Deno.env.get(name)
+    );
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    if (!runtimeConfiguration || !serviceRoleKey || !supabaseUrl) {
+      throw new Error("MISSING_SERVER_CONFIG");
     }
 
-    const body = await req.json();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      throw new Error("INVALID_INPUT");
+    }
     const result = RequestSchema.safeParse(body);
     if (!result.success) {
-      log('error', 'INVALID_INPUT', { issues: result.error.issues });
-      throw new Error('INVALID_INPUT');
+      log("error", "INVALID_INPUT");
+      throw new Error("INVALID_INPUT");
     }
 
     const { originZip, packageId, price, destinationZip } = result.data;
-    const destZip = destinationZip || '06500';
+    const destZip = destinationZip || "06500";
 
-    log('info', '--- Starting Single Shipping Quote ---', {
-      originZip,
-      packageId,
-      price,
-    });
-
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      serviceRoleKey,
-    );
-    const { data: sys } = await supabaseAdmin
-      .from('system_settings')
-      .select('package_presets')
-      .eq('id', 1)
-      .single();
-
-    if (!sys || !sys.package_presets) {
-      throw new Error('SYSTEM_CONFIG_NOT_FOUND');
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+    let sys: { package_presets: unknown } | null = null;
+    try {
+      const { data, error: systemSettingsError } = await supabaseAdmin
+        .from("system_settings")
+        .select("package_presets")
+        .eq("id", 1)
+        .single();
+      if (systemSettingsError || !data) {
+        throw new Error("SYSTEM_CONFIG_NOT_FOUND");
+      }
+      sys = data;
+    } catch {
+      throw new Error("SYSTEM_CONFIG_NOT_FOUND");
     }
 
-    const presets = sys.package_presets as Record<string, PackagePreset>;
-    const dim = presets[packageId] ||
-      presets['cpu_1'] || {
-        weight: '1',
-        length: '20',
-        width: '20',
-        height: '10',
-      };
-
-    const enviaPayload = {
-      origin: {
-        name: 'Selene Seller',
-        company: 'Selene Marketplace',
-        email: 'soporte@selene.com',
-        phone: '5512345678',
-        street: 'Av. Principal',
-        number: '123',
-        district: 'Centro',
-        city: 'Mexico',
-        state: 'MX',
-        country: 'MX',
-        postalCode: originZip.padStart(5, '0'),
-      },
-      destination: {
-        name: 'Selene Buyer',
-        company: 'Particular',
-        email: 'comprador@selene.com',
-        phone: '5512345678',
-        street: 'Av. Destino',
-        number: '456',
-        district: 'Centro',
-        city: 'Mexico',
-        state: 'MX',
-        country: 'MX',
-        postalCode: destZip.padStart(5, '0'),
-      },
-      packages: [
-        {
-          type: 'box',
-          content: 'Hardware de PC',
-          amount: 1,
-          name: packageId,
-          declaredValue: price,
-          lengthUnit: 'CM',
-          weightUnit: 'KG',
-          weight: Number(dim.weight),
-          dimensions: {
-            length: Number(dim.length),
-            width: Number(dim.width),
-            height: Number(dim.height),
-          },
-        },
-      ],
-      shipment: { type: 1, carrier: 'paquetexpress', service: 'ground' },
-      settings: { currency: 'MXN' },
-    };
-
-    const enviaRes = await fetch('https://api.envia.com/ship/rate/', {
-      method: 'POST',
-      headers: {
-        accept: 'application/json',
-        'content-type': 'application/json',
-        authorization: `Bearer ${enviaKey}`,
-      },
-      body: JSON.stringify(enviaPayload),
-    });
-
-    const resData = await enviaRes.json();
-    if (!enviaRes.ok || !resData.data || resData.data.length === 0) {
-      throw new Error(resData.message || 'CARRIER_ERROR');
+    if (!sys.package_presets) {
+      throw new Error("SYSTEM_CONFIG_NOT_FOUND");
     }
 
-    const rates = [selectPaquetexpressGroundRate(resData.data, originZip)];
-
-    log('info', 'Tarifas estimadas por Envia.com en la publicación', {
+    const { rates } = await quoteListingShipment({
+      requestedPackageId: packageId,
+      packagePresets: sys.package_presets,
       originZip,
-      packageId,
-      price,
       destinationZip: destZip,
-      ratesCount: rates.length,
-      winningRate: rates[0],
+      price,
+      runtimeMode: runtimeConfiguration.mode,
+      apiUrl: runtimeConfiguration.apiUrl,
+      apiKey: runtimeConfiguration.apiKey,
+      fetch,
+      log: (event) => log("info", String(event.event), event),
     });
 
     return new Response(JSON.stringify({ rates }), {
       status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    const status = message === 'INVALID_INPUT' ? 422 : 400;
-    log('error', message);
-    return new Response(JSON.stringify({ error: message }), {
+    const code = err instanceof QuoteContractError
+      ? err.code
+      : err instanceof Error && [
+          "INVALID_INPUT",
+          "MISSING_SERVER_CONFIG",
+          "SYSTEM_CONFIG_NOT_FOUND",
+        ].includes(err.message)
+      ? err.message
+      : "PROVIDER_NETWORK_ERROR";
+    const status = code === "INVALID_INPUT" ||
+        code === "UNKNOWN_PACKAGE_PRESET" ||
+        code === "INVALID_PACKAGE_PRESET"
+      ? 422
+      : code === "PROVIDER_TIMEOUT"
+      ? 504
+      : code.startsWith("PROVIDER_")
+      ? 502
+      : 500;
+    log("error", code);
+    return new Response(JSON.stringify({ error: code }), {
       status,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

@@ -248,17 +248,25 @@ serve(async (req: Request) => {
     const buyerDestination = buildBuyerDestinationFromStoredSnapshot(
       shipment.order.shipping_address,
     );
-    const { data: originAddress, error: originAddressError } = await supabaseAdmin
-      .from('addresses')
-      .select('full_name, phone, street_line1, street_number, district, city, state, country, zip_code')
-      .eq('id', originAddressId)
-      .eq('user_id', shipment.seller_id)
-      .is('deleted_at', null)
-      .single();
+    const { data: originAddress, error: originAddressError } =
+      await supabaseAdmin
+        .from('addresses')
+        .select(
+          'full_name, phone, street_line1, street_number, district, city, state, country, zip_code',
+        )
+        .eq('id', originAddressId)
+        .eq('user_id', shipment.seller_id)
+        .is('deleted_at', null)
+        .single();
     const sellerOrigin = originAddressError
       ? null
-      : buildSellerOriginFromStoredAddress(shipment.origin_address ?? originAddress);
-    const preflightError = runPaquetexpressAddressPreflight(sellerOrigin, buyerDestination);
+      : buildSellerOriginFromStoredAddress(
+          shipment.origin_address ?? originAddress,
+        );
+    const preflightError = runPaquetexpressAddressPreflight(
+      sellerOrigin,
+      buyerDestination,
+    );
     if (preflightError) throw new ApiError(422, preflightError);
 
     // E. Regla Anti-Fraude (Shipments del seller)
@@ -332,13 +340,9 @@ serve(async (req: Request) => {
     });
 
     // G. Validate Envia configuration and the server-loaded buyer snapshot before claim.
-    const runtimeConfiguration = resolveEnviaRuntimeConfiguration({
-      ENVIA_MODE: Deno.env.get('ENVIA_MODE'),
-      ENVIA_API_KEY_SANDBOX: Deno.env.get('ENVIA_API_KEY_SANDBOX'),
-      ENVIA_API_KEY_PROD: Deno.env.get('ENVIA_API_KEY_PROD'),
-      ENVIA_API_URL_SANDBOX: Deno.env.get('ENVIA_API_URL_SANDBOX'),
-      ENVIA_API_URL_PROD: Deno.env.get('ENVIA_API_URL_PROD'),
-    });
+    const runtimeConfiguration = resolveEnviaRuntimeConfiguration((name) =>
+      Deno.env.get(name),
+    );
     if (!runtimeConfiguration)
       throw new ApiError(503, 'ENVIA_CONFIGURATION_INVALID');
 
@@ -404,8 +408,8 @@ serve(async (req: Request) => {
       claim: async () => {
         const { data, error } = await rpc('fn_claim_shipment_label', {
           p_shipment_id: shipmentId,
-           p_seller_id: user.id,
-           p_origin_address_id: originAddressId,
+          p_seller_id: user.id,
+          p_origin_address_id: originAddressId,
         });
         if (error || !data) return { status: 'ineligible' as const };
         return { status: data.status, claimToken: data.claim_token };
