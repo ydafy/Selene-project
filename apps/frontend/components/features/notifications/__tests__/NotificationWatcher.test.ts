@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 
-// classify remains for later cleanup; the legacy digest never uses it.
+// The legacy digest no longer uses the obsolete classifier or dialog controls.
 
 // ─── Source-grep contracts ────────────────────────────────────────────────
 
@@ -62,6 +62,14 @@ const LINKING_PATH = join(import.meta.dir, '..', '..', '..', '..', 'core', 'serv
 const linkingSource = () => readFileSync(LINKING_PATH, 'utf8');
 
 describe('NotificationLinking source contract', () => {
+  test('removes unused pub/sub without changing validated navigation', () => {
+    const source = linkingSource();
+    expect(source).not.toContain('NotificationService');
+    expect(source).toContain('export const NotificationLinking = {');
+    expect(source).toContain("{ pattern: '/profile', params: [], redirectTo: '/profile/listings' }");
+    expect(source).toContain("return '/profile/notifications';");
+  });
+
   test('navigate awaits router.push', () => {
     expect(linkingSource()).toContain('await router.push');
   });
