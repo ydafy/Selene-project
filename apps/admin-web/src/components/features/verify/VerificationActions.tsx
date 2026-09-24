@@ -4,6 +4,7 @@ import { CheckCircle, XCircle } from 'lucide-react';
 import { ConfirmModal } from '../../ui/ConfirmModal';
 import type { PendingProduct } from '@selene/types';
 import type { ResolveProductVariables } from './VerificationDetail';
+import { isValidRejectionReason, type ProductVerdict } from './resolveVerdict';
 
 interface LockStatus {
   isLockedByOther: boolean;
@@ -35,17 +36,23 @@ export const VerificationActions = ({
   const [adminNote, setAdminNote] = useState('');
   const [confirmData, setConfirmData] = useState<{
     show: boolean;
-    verdict?: 'APPROVE' | 'REJECT' | 'APPROVE_NOTE';
+    verdict?: ProductVerdict;
   } | null>(null);
 
   const handleConfirm = () => {
     if (!confirmData?.verdict) return;
+    if (confirmData.verdict === 'REJECT' && !isValidRejectionReason(adminNote)) {
+      toast.error(
+        'Debes escribir un motivo de rechazo claro (mínimo 10 caracteres) en la nota antes de continuar.',
+      );
+      return;
+    }
 
     resolve.mutate(
       {
         id: product.id,
         verdict: confirmData.verdict,
-        note: adminNote,
+        note: adminNote.trim() || undefined,
         product,
       },
       {
@@ -59,7 +66,7 @@ export const VerificationActions = ({
   };
 
   const handleRejectClick = () => {
-    if (!adminNote.trim() || adminNote.trim().length < 10) {
+    if (!isValidRejectionReason(adminNote)) {
       toast.error(
         'Debes escribir un motivo de rechazo claro (mínimo 10 caracteres) en la nota antes de continuar.',
       );
@@ -70,6 +77,7 @@ export const VerificationActions = ({
 
   const isDisabled =
     resolve.isPending || lockStatus.isLockedByOther || isLocking;
+  const publicNote = adminNote.trim();
 
   return (
     <>
@@ -97,14 +105,9 @@ export const VerificationActions = ({
 
           <button
             disabled={isDisabled}
-            onClick={() =>
-              setConfirmData({
-                show: true,
-                verdict: adminNote ? 'APPROVE_NOTE' : 'APPROVE',
-              })
-            }
+            onClick={() => setConfirmData({ show: true, verdict: 'APPROVE' })}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-4 rounded-xl font-bold text-night transition-all disabled:opacity-50 outline-none focus:ring-2 focus:ring-lion/50 cursor-pointer ${
-              adminNote
+              publicNote
                 ? 'bg-lion hover:bg-lion/90'
                 : 'bg-forest hover:bg-forest/90'
             }`}
@@ -114,7 +117,7 @@ export const VerificationActions = ({
             ) : (
               <>
                 <CheckCircle size={20} />
-                {adminNote ? 'Aprobar con Nota' : 'Aprobar Producto'}
+                {publicNote ? 'Aprobar con Nota' : 'Aprobar Producto'}
               </>
             )}
           </button>
@@ -133,8 +136,8 @@ export const VerificationActions = ({
         }
         description={
           confirmData?.verdict === 'REJECT'
-            ? `Estás a punto de rechazar "${product.name}". Se le notificará al vendedor con el motivo: "${adminNote || 'No cumple requisitos'}".`
-            : `Vas a publicar "${product.name}" en el marketplace. ${adminNote ? `Se enviará la nota: "${adminNote}"` : ''}`
+            ? `Estás a punto de rechazar "${product.name}". Se le notificará al vendedor con el motivo: "${publicNote || 'No cumple requisitos'}".`
+            : `Vas a publicar "${product.name}" en el marketplace. ${publicNote ? `Se enviará la nota: "${publicNote}"` : ''}`
         }
         confirmLabel={
           confirmData?.verdict === 'REJECT'

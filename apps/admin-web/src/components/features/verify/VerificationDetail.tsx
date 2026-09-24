@@ -12,6 +12,7 @@ import { useAuthStore } from '../../../store/useAuthStore';
 import { toast } from 'sonner';
 import type { PendingProduct, AccountStatus } from '@selene/types';
 import { formatTime } from '../../../lib/utils/formatDate';
+import type { ProductVerdict } from './resolveVerdict';
 
 interface LockStatus {
   isLockedByOther: boolean;
@@ -21,7 +22,7 @@ interface LockStatus {
 
 export interface ResolveProductVariables {
   id: string;
-  verdict: 'APPROVE' | 'REJECT' | 'APPROVE_NOTE';
+  verdict: ProductVerdict;
   note?: string;
   product: PendingProduct;
 }
