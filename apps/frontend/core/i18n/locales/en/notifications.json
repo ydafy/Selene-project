@@ -1,6 +1,7 @@
 {
   "title": "Notification Center",
   "markAll": "Mark all as read",
+  "markReadLabel": "Mark notification as read: {{title}}",
   "emptyTitle": "Empty Inbox",
   "emptyMsg": "Your sales, purchase, and verification updates will appear here.",
   "justNow": "Right now",

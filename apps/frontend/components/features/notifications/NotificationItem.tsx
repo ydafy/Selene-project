@@ -14,12 +14,14 @@ interface Props {
   notification: Notification;
   onPress: (notification: Notification) => void;
   onDismiss?: (id: string) => void | Promise<void>;
+  onMarkRead?: (id: string) => void | Promise<void>;
 }
 
 export const NotificationItem = ({
   notification,
   onPress,
   onDismiss,
+  onMarkRead,
 }: Props) => {
   const theme = useTheme<Theme>();
   const { t } = useTranslation(['notifications', 'common']);
@@ -47,11 +49,6 @@ export const NotificationItem = ({
         ? theme.colors.success
         : theme.colors.primary;
 
-  const handleLongPress = () => {
-    if (!onDismiss) return;
-    setShowConfirm(true);
-  };
-
   const handleConfirmDismiss = async () => {
     setShowConfirm(false);
     await onDismiss?.(notification.id);
@@ -61,8 +58,7 @@ export const NotificationItem = ({
     <>
       <Pressable
         onPress={() => onPress(notification)}
-        onLongPress={handleLongPress}
-        accessibilityLabel={t('notifications:dismissLabel')}
+        accessibilityLabel={notification.title}
         accessibilityRole="button"
       >
         {({ pressed }) => (
@@ -123,6 +119,30 @@ export const NotificationItem = ({
           </Box>
         )}
       </Pressable>
+      <Box flexDirection="row" justifyContent="flex-end" gap="m" paddingHorizontal="m">
+        {isUnread && onMarkRead && (
+          <Pressable
+            onPress={() => onMarkRead(notification.id)}
+            accessibilityRole="button"
+            accessibilityLabel={t('notifications:markReadLabel', { title: notification.title })}
+            hitSlop={10}
+            style={{ padding: 10 }}
+          >
+            <MaterialCommunityIcons name="email-open-outline" size={22} color={theme.colors.primary} />
+          </Pressable>
+        )}
+        {onDismiss && (
+          <Pressable
+            onPress={() => setShowConfirm(true)}
+            accessibilityRole="button"
+            accessibilityLabel={`${t('notifications:dismissLabel')}: ${notification.title}`}
+            hitSlop={10}
+            style={{ padding: 10 }}
+          >
+            <MaterialCommunityIcons name="close" size={22} color={theme.colors.error} />
+          </Pressable>
+        )}
+      </Box>
 
       <ConfirmDialog
         visible={showConfirm}

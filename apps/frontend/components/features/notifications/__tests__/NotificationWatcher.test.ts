@@ -152,8 +152,15 @@ describe('NotificationItem source contracts', () => {
     expect(itemSource()).toContain('dismissLabel');
   });
 
-  test('uses onLongPress for dismiss trigger', () => {
-    expect(itemSource()).toContain('onLongPress');
+  test('exposes a labeled dismiss button that opens confirmation before invoking dismiss', () => {
+    const source = itemSource();
+    // Structural source contract only: this does not exercise the rendered RN accessibility tree.
+    expect(source).toMatch(/\{onDismiss && \(\s*<Pressable\s+onPress=\{\(\) => setShowConfirm\(true\)\}/);
+    expect(source).toContain('accessibilityRole="button"');
+    expect(source).toContain("accessibilityLabel={`${t('notifications:dismissLabel')}: ${notification.title}`}");
+    expect(source).toContain('onConfirm={handleConfirmDismiss}');
+    expect(source).toContain('await onDismiss?.(notification.id)');
+    expect(source).not.toContain('onLongPress');
   });
 
   test('shows ConfirmDialog before dismiss', () => {

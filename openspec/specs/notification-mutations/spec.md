@@ -51,7 +51,7 @@ The system SHALL use the `Notification` type from `@selene/types` for all notifi
 **ID**: CONF-003-MOD
 **Priority**: P0
 
-The `markAllAsRead` mutation SHALL invalidate both `['notifications', userId]` and `['unread-notifications', userId]` query keys after successful completion through the shared invalidation helper. The mutation SHALL include the `.eq('read', false)` filter to avoid unnecessary writes.
+The `markAllAsRead` mutation SHALL invalidate both `['notifications', userId]` and `['unread-notifications', userId]` query keys after successful completion through the shared invalidation helper. The mutation SHALL target owner-owned, non-dismissed rows with `(read = false OR read IS NULL)` to include legacy null unread rows without rewriting already-read rows.
 
 #### Scenario: markAllAsRead clears badge and list
 
@@ -63,7 +63,7 @@ The `markAllAsRead` mutation SHALL invalidate both `['notifications', userId]` a
 
 - GIVEN some notifications are already marked as read
 - WHEN `markAllAsRead()` executes
-- THEN only unread notifications are updated (`.eq('read', false)`) — no redundant writes
+- THEN only owner-owned, non-dismissed unread notifications are updated (`read = false OR read IS NULL`) — no redundant writes
 
 ### Requirement: dismissNotification Mutation
 
@@ -140,7 +140,7 @@ The system SHALL surface a localized error toast when any notification mutation 
 **ID**: CONF-205
 **Priority**: P1
 
-The system SHALL optimistically decrement the visible unread badge when the dismissed item is known to be unread and not already dismissed; otherwise it SHALL leave the count unchanged. If the item's read state is unknown, it SHALL NOT guess or decrement before server confirmation. A failed mutation SHALL restore the prior count. Successful mutations SHALL reconcile both caches against owner-visible rows (`deleted_at IS NULL`), including rows not loaded in the list.
+The system SHALL optimistically decrement the visible unread badge when the dismissed item is known to be unread and not already dismissed; otherwise it SHALL leave the count unchanged. If the item's read state is unknown, it SHALL NOT guess or decrement before server confirmation. A failed mutation SHALL restore the prior count provisionally and invalidate both caches for server reconciliation, since another overlapping dismissal may have succeeded after the snapshot. Successful mutations SHALL reconcile both caches against owner-visible rows (`deleted_at IS NULL`), including rows not loaded in the list.
 
 #### Scenario: Dismiss unread notification
 

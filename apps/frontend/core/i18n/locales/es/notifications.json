@@ -1,6 +1,7 @@
 {
   "title": "Centro de Avisos",
   "markAll": "Marcar todo como leído",
+  "markReadLabel": "Marcar aviso como leído: {{title}}",
   "emptyTitle": "Buzón vacío",
   "emptyMsg": "Aquí aparecerán tus actualizaciones de ventas, compras y verificaciones.",
   "justNow": "Ahora mismo",
