@@ -2,7 +2,12 @@
 
 ## Scope and authority
 
-This is the launch catalogue for persistent in-app notices, not a declaration that its future schema or producers are deployed. A trusted server transaction/RPC or server-credential Edge boundary SHALL derive each recipient and event from committed business state; clients SHALL NOT insert business-event notices or supply recipients, amounts, verdicts, or event identities. Publishing failure must be observable and retryable without duplicating an inbox row. Expo push and unconfirmed timeout, payout, generic tracking, and legacy cancellation alerts are outside this catalogue pending separate evidence. Do not assert a refund until its authoritative refund outcome is committed.
+This is the launch catalogue for persistent in-app notices, not a declaration that its future schema or producers are deployed. A trusted server transaction/RPC SHALL derive recipients and persist each notice atomically with its business transition; a server-credential Edge boundary SHALL first persist a durable event/outbox record in that same business transaction and retry its idempotent notice projection from that record. A standalone post-commit Edge insert without durable recovery is prohibited. Clients SHALL NOT insert business-event notices or supply recipients, amounts, verdicts, or event identities. Publication failures SHALL remain observable and retryable without duplicating an inbox row. Expo push and unconfirmed timeout, payout, generic tracking, and legacy cancellation alerts are outside this catalogue pending separate evidence. Do not assert a refund until its authoritative refund outcome is committed.
+
+#### Scenario: Edge projection fails after business commit
+- GIVEN a business transition and its durable event commit together
+- WHEN the Edge notice projection fails
+- THEN a retry uses that event's stable identity and creates at most one inbox row per recipient
 
 ## Stable identity and compatibility
 
