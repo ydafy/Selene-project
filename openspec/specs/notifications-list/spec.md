@@ -32,7 +32,7 @@ The system SHALL provide two separate hooks: `useNotificationsList` (query-only,
 **ID**: CONF-009
 **Priority**: P0
 
-The system SHALL implement cursor-based infinite scroll pagination using `useInfiniteQuery` with a page size of 20 items. The cursor SHALL be derived from `(created_at, id)` to ensure stable ordering.
+The system SHALL implement cursor-based infinite scroll pagination using `useInfiniteQuery` with a page size of 20 items. The cursor SHALL be derived from `(created_at, id)` with the grouped tuple predicate defined in `notification-pagination/spec.md`; a timestamp-only filter drops ties.
 
 #### Scenario: Initial page loads 20 items
 
@@ -133,7 +133,7 @@ The system SHALL provide a "Clear all" action on the notifications screen. The a
 **ID**: CONF-103
 **Priority**: P1
 
-The system SHALL render the unread notification count inside the bell badge. The displayed count SHALL clip to `9+` when the count is 10 or greater.
+The system SHALL render the count of owner-visible, non-dismissed unread notifications inside the bell badge. The displayed count SHALL clip to `9+` when the count is 10 or greater. Opening the inbox, displaying a toast, or showing a digest SHALL NOT change the count; explicit mark-read or dismiss SHALL refresh it.
 
 #### Scenario: Few unread notifications
 
@@ -168,7 +168,7 @@ The system SHALL provide localized accessibility labels for the bell button and 
 
 ### Requirement: Notification Screen Integration
 
-The screen SHALL consume `useNotificationsList` for data and `useNotificationMutations` for actions, including `markAsRead`, `markAllAsRead`, `dismissNotification`, and `dismissAll`.
+The screen SHALL consume `useNotificationsList` for owner-visible data and `useNotificationMutations` for actions, including `markAsRead`, `markAllAsRead`, `dismissNotification`, and `dismissAll`. It SHALL expose a global mark-all-read action distinct from confirmed clear-all. Unread items have a visible read action; dismiss hides an item without falsely marking it read. Read state and dismiss state remain independent.
 
 #### Scenario: Screen renders with split hooks
 

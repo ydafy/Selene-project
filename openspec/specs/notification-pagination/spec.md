@@ -11,7 +11,7 @@ Cursor-based infinite scroll pagination for the notification list, enabling effi
 **ID**: CONF-009-A
 **Priority**: P0
 
-The system SHALL use `useInfiniteQuery` from `@tanstack/react-query` with a page size of 20 items. The cursor SHALL be derived from the last item's `(created_at, id)` tuple to ensure stable ordering across pages.
+The system SHALL use `useInfiniteQuery` from `@tanstack/react-query` with a page size of 20 items. Order by `created_at DESC, id DESC`; the next-page predicate SHALL be the grouped tuple `(created_at < cursor.created_at) OR (created_at = cursor.created_at AND id < cursor.id)`, applied alongside the owner and `deleted_at IS NULL` filters. The cursor SHALL be derived from the last visible item's `(created_at, id)` tuple; a separate lookahead row determines whether another page exists.
 
 #### Scenario: First page fetches 20 most recent
 
@@ -23,7 +23,8 @@ The system SHALL use `useInfiniteQuery` from `@tanstack/react-query` with a page
 
 - GIVEN page 1 returned items with last item `(created_at: '2024-01-15', id: 'uuid-abc')`
 - WHEN `fetchNextPage()` is called
-- THEN the query uses `.lt('created_at', '2024-01-15').or('created_at.eq.2024-01-15,id.lt.uuid-abc')` and returns the next 20 items
+- THEN the query groups both sides of the tuple OR in one filter, rather than chaining `.lt('created_at', ...)` with `.or(...)` (which incorrectly intersects the equal-timestamp branch)
+- AND rows with the same timestamp and smaller IDs appear exactly once
 
 #### Scenario: No more pages when cursor reaches end
 

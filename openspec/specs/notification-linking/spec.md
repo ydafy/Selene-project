@@ -11,13 +11,25 @@ Deep-link handler that maps notification `action_path` strings to validated Expo
 **ID**: CONF-011-A
 **Priority**: P0
 
-The system SHALL validate `action_path` strings against known Expo Router routes before navigation. Paths that do not match any registered route SHALL be rejected and trigger fallback navigation.
+The system SHALL validate `action_path` strings against known Expo Router routes before navigation. New business-event producers SHALL target `/product/{productId}`, `/verify/{productId}`, or `/profile/orders/{orderId}` as specified by the event catalogue. The client SHALL continue accepting safe, registered legacy routes such as `/profile/listings`, `/profile/orders`, and `/profile/wallet` for existing persisted rows. The legacy `/profile` target SHALL redirect to `/profile/listings` rather than falling back or opening `/profile`. Dynamic routes require one nonempty, well-formed ID segment; arbitrary suffixes, queries, external URLs, and schemes SHALL fall back to `/profile/notifications`. Navigation does not grant authorization to view a resource; destination screens enforce access independently.
 
 #### Scenario: Known route passes validation
 
 - GIVEN `action_path` is `/profile/orders/123`
 - WHEN the path is validated against the route map
 - THEN validation passes — the route exists in the app
+
+#### Scenario: Legacy profile redirect remains valid
+
+- GIVEN an existing notification has `action_path: '/profile'`
+- WHEN its destination is resolved
+- THEN the app navigates to `/profile/listings`
+
+#### Scenario: Registered legacy destination remains valid
+
+- GIVEN an existing notification has `action_path: '/profile/wallet'`
+- WHEN its destination is validated
+- THEN navigation is allowed without admitting unregistered paths
 
 #### Scenario: Unknown route fails validation
 
@@ -36,7 +48,7 @@ The system SHALL validate `action_path` strings against known Expo Router routes
 **ID**: CONF-011-B
 **Priority**: P0
 
-The system SHALL execute navigation via `await router.push(path)` from `expo-router` after path validation. Navigation calls SHALL be wrapped in `try/catch`; any thrown error SHALL trigger fallback navigation to `/profile/notifications`.
+The system SHALL execute navigation via `router.push(path)` from `expo-router` after path validation. Catch synchronous errors and, if navigation returns a promise, asynchronous rejection; fallback to `/profile/notifications` without a recursive fallback loop. Missing, unsafe, or unregistered legacy paths also fall back.
 
 #### Scenario: Navigation succeeds
 

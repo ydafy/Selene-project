@@ -140,7 +140,7 @@ The system SHALL surface a localized error toast when any notification mutation 
 **ID**: CONF-205
 **Priority**: P1
 
-The system SHALL optimistically decrement the unread badge count when a dismiss mutation is invoked. If the mutation fails, the badge count SHALL revert to the server value.
+The system SHALL optimistically decrement the visible unread badge when the dismissed item is known to be unread and not already dismissed; otherwise it SHALL leave the count unchanged. If the item's read state is unknown, it SHALL NOT guess or decrement before server confirmation. A failed mutation SHALL restore the prior count. Successful mutations SHALL reconcile both caches against owner-visible rows (`deleted_at IS NULL`), including rows not loaded in the list.
 
 #### Scenario: Dismiss unread notification
 
@@ -153,3 +153,15 @@ The system SHALL optimistically decrement the unread badge count when a dismiss 
 - GIVEN the badge was optimistically decremented to "4"
 - WHEN the dismiss mutation fails
 - THEN the badge reverts to "5"
+
+#### Scenario: Dismiss read notification
+
+- GIVEN the badge shows "5" and a read item is dismissed
+- WHEN the mutation starts
+- THEN the badge remains "5"
+
+#### Scenario: Dismiss item with unknown read state
+
+- GIVEN the item is not in the loaded list and its read state is unknown
+- WHEN the mutation starts
+- THEN the badge remains unchanged until server-backed cache reconciliation

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The admin dashboard SHALL handle session expiry, surface silent errors, prevent lock leaks, and provide navigable KPI cards with trend goals. All fixes are client-side — no schema or RPC changes.
+The admin dashboard SHALL handle session expiry, surface silent errors, prevent lock leaks, and provide navigable KPI cards with trend goals. Notification emission follows the trusted producer contract in `notification-events/spec.md`; this specification does not declare any new schema or RPC deployed.
 
 ## Requirements
 
@@ -28,9 +28,9 @@ The system SHALL subscribe to `supabase.auth.onAuthStateChange` at app mount. On
 - WHEN `onAuthStateChange` fires `INITIAL_SESSION`
 - THEN the handler returns early and does NOT trigger a redirect
 
-### Requirement: Audit and Notification Error Surfacing
+### Requirement: Audit Error Surfacing and Trusted Verdict Notification
 
-The system SHALL log audit trail and notification insertion errors to `console.error` and display a `toast.warning`. These errors SHALL NOT block the mutation success flow.
+The existing admin audit trail insertion error SHALL be logged to `console.error` and surfaced with a `toast.warning` without concealing a successfully committed verdict. Product verdict notices SHALL instead be persisted by the trusted verdict transaction with recipients and stable event identity derived as specified in `notification-events/spec.md`. The admin client SHALL NOT perform a fire-and-forget `notifications` insert. If notification persistence fails, the verdict transaction SHALL fail rather than claim success without a notice; retrying an accepted transition SHALL NOT duplicate recipient rows.
 
 #### Scenario: Audit log insert fails
 
@@ -38,17 +38,17 @@ The system SHALL log audit trail and notification insertion errors to `console.e
 - WHEN the `admin_audit_logs` insert returns an error
 - THEN `console.error` prints the full error and a warning toast appears
 
-#### Scenario: Notification insert fails
+#### Scenario: Product verdict notification persistence fails
 
-- GIVEN a product verdict mutation succeeds
-- WHEN the `notifications` insert returns an error
-- THEN `console.error` prints the full error and a warning toast appears
+- GIVEN an admin submits a product verdict
+- WHEN the trusted verdict transaction cannot persist its notification
+- THEN the transaction fails without committing the verdict and the client does not claim success
 
-#### Scenario: Both audit and notification fail
+#### Scenario: Verdict and audit outcomes differ
 
-- GIVEN both fire-and-forget inserts fail
-- WHEN the mutation completes
-- THEN two warning toasts appear AND the success toast still fires
+- GIVEN the verdict and its notification commit but the separate client-side audit insert fails
+- WHEN the client receives the result
+- THEN the audit failure warning is surfaced without creating a client-authored notification or misreporting the verdict outcome
 
 ### Requirement: Dashboard Error State Isolation
 
