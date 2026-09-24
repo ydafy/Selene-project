@@ -1,37 +1,30 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Pressable } from 'react-native';
 import Toast from 'react-native-toast-message';
-import * as Haptics from 'expo-haptics';
 import { useQueryClient } from '@tanstack/react-query';
+import type { Notification } from '@selene/types';
+import { useTranslation } from 'react-i18next';
 
 import { useAuthContext } from '../../../components/auth/AuthProvider';
 import { supabase } from '../../../core/db/supabase';
-import { ConfirmDialog } from '../../ui/ConfirmDialog';
-import { Notification } from '@selene/types';
-import { useTranslation } from 'react-i18next';
-import {
-  invalidateNotificationKeys,
-  useNotificationMutations,
-} from '../../../core/hooks/useNotificationMutations';
+import { invalidateNotificationKeys } from '../../../core/hooks/useNotificationMutations';
 import { NotificationLinking } from '../../../core/services/notification';
-import { classify } from './classify';
-import { resolveDialogControls } from './dialogActions';
+import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import { Box, Text } from '../../base';
+import { createLaunchDigestGate, selectLaunchDigest } from './launchDigest';
 
-const TOAST_VISIBILITY_MS = 4000;
+const LAUNCH_LIMIT = 20;
 
 export const NotificationWatcher = () => {
   const { session } = useAuthContext();
   const userId = session?.user.id;
   const { t } = useTranslation(['common', 'notifications']);
   const queryClient = useQueryClient();
-
-  const { markAsRead } = useNotificationMutations(userId);
-  const [queue, setQueue] = useState<Notification[]>([]);
-  const [isProcessingAction, setIsProcessingAction] = useState(false);
-
-  const currentNotification = queue.length > 0 ? queue[0] : null;
-  const isLast = queue.length === 1;
-  const hasMore = queue.length > 1;
+  const [digest, setDigest] = useState<{ owner: string; notice: Notification; hasMore: boolean } | null>(null);
+  const gate = useRef(createLaunchDigestGate());
+  const launchOwner = useRef<string | undefined>(undefined);
+  const currentOwner = useRef(userId);
+  currentOwner.current = userId;
 
   const showErrorToast = useCallback(() => {
     Toast.show({
@@ -41,153 +34,93 @@ export const NotificationWatcher = () => {
     });
   }, [t]);
 
-  const processIncoming = useCallback(
-    async (notif: Notification, isSilent = false) => {
-      const kind = classify(notif);
-
-      if (kind === 'dialog') {
-        if (!isSilent) {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        }
-        setQueue((prev) => {
-          if (prev.find((item) => item.id === notif.id)) return prev;
-          return [...prev, notif];
-        });
-      } else {
-        if (!isSilent) {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          const toastType =
-            notif.type === 'success' ||
-            notif.type === 'warning' ||
-            notif.type === 'error'
-              ? notif.type
-              : 'info';
-          Toast.show({
-            type: toastType,
-            visibilityTime: TOAST_VISIBILITY_MS,
-            text1: notif.title ?? '',
-            text2: notif.message ?? '',
-            onPress: () => {
-              NotificationLinking.navigate(notif.action_path);
-            },
-          });
-          await markAsRead(notif.id);
-        }
-      }
-    },
-    [markAsRead],
-  );
-
   useEffect(() => {
+    if (launchOwner.current !== userId) {
+      gate.current.reset();
+      launchOwner.current = userId;
+      setDigest(null);
+    }
     if (!userId) return;
-
-    const channel = supabase
-      .channel(`notifications_realtime_watcher_${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload) => {
-          try {
-            const eventType = payload.eventType;
-            if (eventType === 'INSERT') {
-              const notif = payload.new as Notification;
-              processIncoming(notif);
-              invalidateNotificationKeys(queryClient, userId);
-            } else if (eventType === 'UPDATE') {
-              invalidateNotificationKeys(queryClient, userId);
-            }
-          } catch (error) {
-            console.error('[NotificationWatcher] Payload handler error:', error);
+    let active = true;
+    const attempt = gate.current.begin(userId);
+    if (attempt) {
+      void (async () => {
+        try {
+          const { data, error } = await supabase.from('notifications')
+            .select('id,user_id,created_at,deleted_at,read,title,message,type,action_path')
+            .eq('user_id', userId).is('deleted_at', null).or('read.is.null,read.eq.false')
+            .order('created_at', { ascending: false })
+            .order('id', { ascending: false })
+            .limit(LAUNCH_LIMIT);
+          if (error) throw error;
+          if (!active || currentOwner.current !== userId || !gate.current.complete(attempt)) return;
+          const rows = data ?? [];
+          const notice = selectLaunchDigest(rows, userId);
+          if (notice) setDigest({ owner: userId, notice, hasMore: rows.filter((row) => row.user_id === userId && row.deleted_at === null && row.read !== true).length > 1 });
+        } catch (error) {
+          if (active && currentOwner.current === userId && gate.current.complete(attempt)) {
+            console.error('[NotificationWatcher] Launch fetch error:', error);
             showErrorToast();
           }
-        },
-      )
-      .subscribe((status, error) => {
-        if (error) {
-          console.error('[NotificationWatcher] Subscription error:', error);
+        }
+      })();
+    }
+
+    const channel = supabase.channel(`notifications_realtime_watcher_${userId}`)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}`,
+      }, (payload) => {
+        if (!active || currentOwner.current !== userId) return;
+        try {
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            invalidateNotificationKeys(queryClient, userId);
+          }
+        } catch (error) {
+          console.error('[NotificationWatcher] Payload handler error:', error);
+          showErrorToast();
+        }
+      }).subscribe((status, error) => {
+        if (!active || currentOwner.current !== userId) return;
+        if (error || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error('[NotificationWatcher] Subscription error:', error ?? status);
           showErrorToast();
         }
       });
-
     return () => {
+      active = false;
+      if (attempt) gate.current.cancel(attempt);
       supabase.removeChannel(channel);
     };
-  }, [userId, processIncoming, queryClient, showErrorToast]);
+  }, [userId, queryClient, showErrorToast]);
 
-  const handleAction = async () => {
-    if (!currentNotification || isProcessingAction) return;
-
-    setIsProcessingAction(true);
-    try {
-      await markAsRead(currentNotification.id);
-      await NotificationLinking.navigate(currentNotification.action_path);
-      setQueue((prev) => prev.slice(1));
-    } catch (error) {
-      console.error('[NotificationWatcher] Action error:', error);
+  const current = digest?.owner === userId ? digest : null;
+  const dismiss = () => setDigest(null);
+  const navigate = (path: string | null) => {
+    setDigest(null);
+    void NotificationLinking.navigate(path).catch((error) => {
+      console.error('[NotificationWatcher] Navigation error:', error);
       showErrorToast();
-    } finally {
-      setIsProcessingAction(false);
-    }
+    });
   };
 
-  const handleSkip = () => {
-    setQueue((prev) => prev.slice(1));
-  };
-
-  const handleSkipAll = () => {
-    setQueue([]);
-  };
-
-  if (!currentNotification) return null;
-
-  const isError = currentNotification.type === 'error';
-  const path = (currentNotification.action_path || '').toLowerCase();
-
-  const actionLabel = isError
-    ? t('common:dialog.fixNow')
-    : path.startsWith('/orders')
-      ? t('common:dialog.viewOrder')
-      : t('common:dialog.understood');
-
-  const controls = resolveDialogControls(isLast);
-  const confirmLabel =
-    controls.confirmAction === 'action'
-      ? actionLabel
-      : t('common:dialog.skipAll');
-  const cancelLabel =
-    controls.cancelAction === 'cancel'
-      ? t('common:dialog.cancel')
-      : t('common:dialog.skip');
-  const confirmAction =
-    controls.confirmAction === 'action' ? handleAction : handleSkipAll;
-  const cancelAction =
-    controls.cancelAction === 'cancel' ? () => setQueue([]) : handleSkip;
-
+  if (!current) return null;
   return (
     <ConfirmDialog
-      visible={!!currentNotification}
-      title={currentNotification?.title ?? ''}
-      description={currentNotification?.message ?? ''}
-      onConfirm={confirmAction}
-      onCancel={cancelAction}
-      confirmLabel={confirmLabel}
-      cancelLabel={cancelLabel}
-      icon={isError ? 'alert-circle-outline' : 'check-circle-outline'}
-      isDangerous={isError}
-      loading={isProcessingAction}
+      visible title={t('notifications:digestTitle')}
+      description={t('notifications:digestDescription')}
+      onConfirm={() => navigate(current.notice.action_path)}
+      onCancel={dismiss}
+      confirmLabel={t('notifications:digestOpen')}
+      cancelLabel={t('notifications:digestSkip')}
+      icon="bell-outline"
     >
-      {hasMore && (
-        <Box marginTop="m" alignItems="center">
-          <Text variant="caption-md" color="textSecondary">
-            {t('notifications:moreCount', { count: queue.length - 1 })}
-          </Text>
-        </Box>
-      )}
+      <Box marginTop="m">
+        <Text variant="caption-md" color="textSecondary">{current.notice.title}</Text>
+        {current.hasMore && <Text variant="caption-md" color="textSecondary">{t('notifications:digestMore')}</Text>}
+        <Pressable accessibilityRole="button" accessible focusable accessibilityLabel={t('notifications:digestInbox')} onPress={() => navigate('/profile/notifications')}>
+          <Text color="primary">{t('notifications:digestInbox')}</Text>
+        </Pressable>
+      </Box>
     </ConfirmDialog>
   );
 };

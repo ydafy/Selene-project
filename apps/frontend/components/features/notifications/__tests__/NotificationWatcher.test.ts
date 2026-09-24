@@ -1,48 +1,9 @@
 import { expect, test, describe } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { classify, type NotificationKind } from '../classify';
 
-// ─── classify() table ─────────────────────────────────────────────────────
 
-describe('classify', () => {
-  const dialog = (type: string, action_path: string | null): NotificationKind =>
-    classify({ type, action_path } as Parameters<typeof classify>[0]);
-
-  test('error type always produces dialog', () => {
-    expect(dialog('error', '/product/abc')).toBe('dialog');
-    expect(dialog('error', null)).toBe('dialog');
-  });
-
-  test('warning type always produces dialog', () => {
-    expect(dialog('warning', '/profile/wallet')).toBe('dialog');
-    expect(dialog('warning', '')).toBe('dialog');
-  });
-
-  test('/orders prefix produces dialog', () => {
-    expect(dialog('info', '/orders/123')).toBe('dialog');
-  });
-
-  test('/wallet prefix produces dialog', () => {
-    expect(dialog('info', '/wallet')).toBe('dialog');
-  });
-
-  test('/verify prefix produces dialog', () => {
-    expect(dialog('info', '/verify/abc')).toBe('dialog');
-  });
-
-  test('generic info notification produces toast', () => {
-    expect(dialog('info', '/product/abc')).toBe('toast');
-  });
-
-  test('success notification produces toast', () => {
-    expect(dialog('success', '/profile/favorites')).toBe('toast');
-  });
-
-  test('null action_path falls back to toast when type is not error/warning', () => {
-    expect(dialog('info', null)).toBe('toast');
-  });
-});
+// classify remains for later cleanup; the legacy digest never uses it.
 
 // ─── Source-grep contracts ────────────────────────────────────────────────
 
@@ -58,21 +19,36 @@ describe('NotificationWatcher source contracts', () => {
     expect(watcherSource()).not.toContain('isInitialLoadDone');
   });
 
-  test('does not perform initial fetchUnread effect', () => {
-    expect(watcherSource()).not.toContain('fetchUnread');
+  test('fetches bounded owner-scoped legacy rows and never marks read', () => {
+    const source = watcherSource();
+    expect(source).toContain(".eq('user_id', userId)");
+    expect(source).toMatch(/\.order\('created_at', \{ ascending: false \}\)\s*\.order\('id', \{ ascending: false \}\)\s*\.limit\(LAUNCH_LIMIT\)/);
+    expect(source).toContain('selectLaunchDigest(rows, userId)');
+    expect(source).toContain('gate.current.cancel(attempt)');
+    expect(source).toContain('gate.current.complete(attempt)');
+    expect(source).not.toContain('markAsRead');
   });
 
-  test('uses localized moreCount key', () => {
-    expect(watcherSource()).toContain("notifications:moreCount");
-    expect(watcherSource()).not.toContain('mensajes más');
+  test('uses a generic bounded-sample message and a focusable inbox button', () => {
+    const source = watcherSource();
+    expect(source).toContain("notifications:digestMore");
+    expect(source).not.toContain("notifications:moreCount");
+    expect(source).toMatch(/<Pressable\s+accessibilityRole="button"\s+accessible\s+focusable/);
+    expect(source).toContain("onPress={() => navigate('/profile/notifications')}");
+    for (const path of [EN_I18N_PATH, ES_I18N_PATH]) {
+      expect(JSON.parse(readFileSync(path, 'utf8')).digestMore).toBeTypeOf('string');
+    }
   });
 
   test('shows error toast on subscription catch', () => {
     expect(watcherSource()).toContain("type: 'error'");
   });
 
-  test('uses visibilityTime for toast lifecycle', () => {
-    expect(watcherSource()).toContain('visibilityTime');
+  test('retains one owner subscription and cache invalidation without queueing', () => {
+    const source = watcherSource();
+    expect(source).toContain('invalidateNotificationKeys(queryClient, userId)');
+    expect(source).toContain('supabase.removeChannel(channel)');
+    expect(source).not.toContain('setQueue');
   });
 
   test('does not call static Toast.hide()', () => {

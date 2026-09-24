@@ -11,6 +11,12 @@
   "clearAllConfirm": "¿Estás seguro de que querés limpiar todos los avisos?",
   "moreCount": "+{{count}} más",
   "openLabel": "Abrir avisos",
+  "digestTitle": "Avisos nuevos",
+  "digestDescription": "Tenés novedades sin leer. Mirá la más reciente o abrí el buzón para ver las demás.",
+  "digestOpen": "Ver novedad",
+  "digestSkip": "Ahora no",
+  "digestInbox": "Abrir buzón de avisos",
+  "digestMore": "Hay más novedades en tu buzón",
   "markAllConfirm": "¿Marcar todas como leídas?",
   "markAllDesc": "Todas las notificaciones pendientes se marcarán como revisadas."
 }
