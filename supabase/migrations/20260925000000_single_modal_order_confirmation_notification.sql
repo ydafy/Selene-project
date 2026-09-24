@@ -1,69 +1,72 @@
+-- N5a: apply only after 20260924000000_notification_event_metadata.sql.
+-- N4a only adds metadata; it does not establish server-authoritative identity.
+-- REQUIRED BEFORE N5a: inventory deployed notification grants/RLS, index definition,
+-- function ACL, and every privileged client-callable RPC that can insert legacy
+-- notices. Apply a separate N4b restrictive grant/RLS cutover after checking
+-- older client and RPC compatibility; do not guess REVOKEs or disable legacy
+-- writers until the deployed inventory is reviewed. Preflight below rejects
+-- effective client write privileges even if RLS currently denies their rows.
+-- Whole-file transaction required; verify Dashboard transaction semantics
+-- before manual execution. CREATE OR REPLACE retains the existing function ACL.
 BEGIN;
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '60s';
 
--- ============================================================================
--- RPC: fn_create_shipments_from_single_payment
--- Created: 2026-07-03
--- Description: Phase 4 single-modal multi-seller checkout settlement.
---              When the webhook receives `payment_intent.succeeded` with
---              metadata.flow='single_modal_connect_checkout', it calls this
---              function to persist the order + ALL per-seller shipments +
---              order_items from the platform PaymentIntent's embedded
---              (chunked) allocation JSON in ONE transaction, idempotent on
---              `stripe_payment_intent_id`.
---
---              Seller funds are NOT routed at payment success: no Stripe
---              Transfer/Payout is created here. `shipments.stripe_transfer_id`
---              stays NULL until the Phase 5 manual admin release creates the
---              per-shipment Transfer under `orders.stripe_transfer_group`.
---
---              Failure rule: the order shell is persisted (`status='pending'`,
---              `payment_processing=false`) BEFORE the allocation write attempt.
---              If any allocation write (shipment / order_item / product SOLD /
---              status advance) raises, that inner block is caught and rolled
---              back, then the order shell is surfaced for ops recovery with
---              `payment_processing=true` + `payment_processing_reason`. The
---              function returns `{success:false, status:'payment_processing'}`
---              so the webhook can reply 200 (retry-safe) — Stripe is NOT asked
---              to retry the webhook for an allocation-write failure; admin
---              ops re-runs settlement against the existing shell.
---
--- Args:
---   p_stripe_payment_intent_id TEXT  -- Stripe platform PaymentIntent id
---   p_stripe_charge_id         TEXT  -- Stripe Charge id (latest_charge)
---   p_amount_received          BIGINT -- total amount captured, in centavos
---   p_transfer_group           TEXT   -- Stripe transfer_group
---   p_allocation JSONB -- structured payload built by the webhook:
---     {
---       "buyer_id": UUID,
---       "address_id": UUID,
---       "order_id": UUID,           -- deterministic id (orders.id)
---       "total_amount": NUMERIC,    -- p_amount_received / 100 (pesos)
---       "rows": [
---         {
---           "seller_id": UUID,
---           "shipment_id": UUID,      -- deterministic, durable
---           "product_ids": UUID[],   -- this seller's products
---           "gross_cents": BIGINT,
---           "commission_cents": BIGINT,
---           "shipping_cents": BIGINT, -- seller-paid, stored as CENTS
---           "seguro_cents": BIGINT,    -- buyer-paid (kept by platform)
---           "net_cents": BIGINT        -- release amount later
---         }, ...
---       ]
---     }
---
--- Returns:
---   success:true  -> {success:true,  order_id, status:'created'|'duplicate'}
---   success:false -> {success:false, order_id, status:'payment_processing',
---                     error:'<SQLERRM>'}
---
--- Idempotency: keyed on orders.stripe_payment_intent_id. A retry whose prior
---   attempt fully settled returns {status:'duplicate'} WITHOUT re-doing any
---   write. A retry whose prior attempt crashed mid-allocation finds the shell
---   (payment_processing=true, no shipments) and RE-ATTEMPTS allocation into the
---   same order id — shipment inserts use ON CONFLICT DO NOTHING on the
---   deterministic shipment id so a partial shipment write cannot duplicate.
--- ============================================================================
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_proc p
+    JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname = 'fn_create_shipments_from_single_payment'
+      AND p.oid = 'public.fn_create_shipments_from_single_payment(text,text,bigint,text,jsonb)'::regprocedure
+      AND p.prosecdef
+      AND has_function_privilege('service_role', p.oid, 'EXECUTE')
+      AND NOT has_function_privilege('anon', p.oid, 'EXECUTE')
+      AND NOT has_function_privilege('authenticated', p.oid, 'EXECUTE')
+  ) THEN
+    RAISE EXCEPTION 'Settlement RPC ACL or SECURITY DEFINER differs from expected baseline';
+  END IF;
+  IF has_table_privilege('anon', 'public.notifications', 'INSERT')
+     OR has_table_privilege('authenticated', 'public.notifications', 'INSERT')
+     OR has_table_privilege('anon', 'public.notifications', 'UPDATE')
+     OR has_table_privilege('authenticated', 'public.notifications', 'UPDATE')
+     OR has_column_privilege('anon', 'public.notifications', 'event_kind', 'INSERT')
+     OR has_column_privilege('authenticated', 'public.notifications', 'event_kind', 'INSERT')
+     OR has_column_privilege('anon', 'public.notifications', 'source_event_key', 'INSERT')
+     OR has_column_privilege('authenticated', 'public.notifications', 'source_event_key', 'INSERT')
+     OR has_column_privilege('anon', 'public.notifications', 'event_payload', 'INSERT')
+     OR has_column_privilege('authenticated', 'public.notifications', 'event_payload', 'INSERT')
+     OR has_column_privilege('anon', 'public.notifications', 'event_kind', 'UPDATE')
+     OR has_column_privilege('authenticated', 'public.notifications', 'event_kind', 'UPDATE')
+     OR has_column_privilege('anon', 'public.notifications', 'source_event_key', 'UPDATE')
+     OR has_column_privilege('authenticated', 'public.notifications', 'source_event_key', 'UPDATE')
+     OR has_column_privilege('anon', 'public.notifications', 'event_payload', 'UPDATE')
+     OR has_column_privilege('authenticated', 'public.notifications', 'event_payload', 'UPDATE') THEN
+    RAISE EXCEPTION 'N4b restrictive notification grants required before N5a producer cutover';
+  END IF;
+
+  -- Verify arbiter identity, not just the name: ON CONFLICT inference requires
+  -- precisely these two simple key columns and the same partial predicate.
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_index i
+    JOIN pg_catalog.pg_class c ON c.oid = i.indexrelid
+    JOIN pg_catalog.pg_attribute key_column
+      ON key_column.attrelid = i.indrelid AND key_column.attnum = i.indkey[0]
+    JOIN pg_catalog.pg_attribute recipient_column
+      ON recipient_column.attrelid = i.indrelid AND recipient_column.attnum = i.indkey[1]
+    WHERE i.indrelid = 'public.notifications'::regclass
+      AND c.relname = 'notifications_source_event_key_user_id_uidx'
+      AND i.indisunique AND i.indisvalid AND i.indisready AND i.indimmediate
+      AND i.indnkeyatts = 2 AND i.indnatts = 2
+      AND key_column.attname = 'source_event_key'
+      AND recipient_column.attname = 'user_id'
+      AND pg_catalog.pg_get_expr(i.indpred, i.indrelid) = '(source_event_key IS NOT NULL)'
+  ) THEN
+    RAISE EXCEPTION 'Expected N4a partial unique notification arbiter is absent or incompatible';
+  END IF;
+END;
+$$;
 
 CREATE OR REPLACE FUNCTION public.fn_create_shipments_from_single_payment(
   p_stripe_payment_intent_id TEXT,
@@ -463,8 +466,5 @@ BEGIN
   END;
 END;
 $$;
-
-REVOKE EXECUTE ON FUNCTION public.fn_create_shipments_from_single_payment(TEXT, TEXT, BIGINT, TEXT, JSONB) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.fn_create_shipments_from_single_payment(TEXT, TEXT, BIGINT, TEXT, JSONB) TO service_role;
 
 COMMIT;

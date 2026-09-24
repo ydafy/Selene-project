@@ -154,7 +154,35 @@ describe('single-modal settlement RPC migration', () => {
     expect(sql).toContain('TO service_role');
   });
 
-  test('the migration body is byte-identical to the canonical queries/ RPC source (no drift)', () => {
+  test('forward cutover fails closed on client identity writes and requires N4b inventory', () => {
+    const sql = readFileSync(join(MIGRATIONS_DIR, '20260925000000_single_modal_order_confirmation_notification.sql'), 'utf8');
+    for (const role of ['anon', 'authenticated']) {
+      expect(sql).toContain(`has_table_privilege('${role}', 'public.notifications', 'INSERT')`);
+      expect(sql).toContain(`has_table_privilege('${role}', 'public.notifications', 'UPDATE')`);
+      for (const field of ['event_kind', 'source_event_key', 'event_payload']) {
+        expect(sql).toContain(`has_column_privilege('${role}', 'public.notifications', '${field}', 'UPDATE')`);
+        expect(sql).toContain(`has_column_privilege('${role}', 'public.notifications', '${field}', 'INSERT')`);
+      }
+    }
+    expect(sql).toContain('N4b');
+    expect(sql).toContain('privileged client-callable RPC');
+    expect(sql.replace(/^--.*$/gm, '')).not.toMatch(/\bREVOKE\s/);
+  });
+
+  test('forward cutover checks exact valid unique partial index keys and predicate', () => {
+    const sql = readFileSync(join(MIGRATIONS_DIR, '20260925000000_single_modal_order_confirmation_notification.sql'), 'utf8');
+    expect(sql).toContain('i.indnkeyatts = 2');
+    expect(sql).toContain('i.indnatts = 2');
+    expect(sql).toContain('i.indkey[0]');
+    expect(sql).toContain('i.indkey[1]');
+    expect(sql).toContain("key_column.attname = 'source_event_key'");
+    expect(sql).toContain("recipient_column.attname = 'user_id'");
+    expect(sql).toContain("pg_catalog.pg_get_expr(i.indpred, i.indrelid) = '(source_event_key IS NOT NULL)'");
+    expect(sql).toContain('i.indisready');
+    expect(sql).toContain('i.indimmediate');
+  });
+
+  test('the latest forward replacement matches canonical while the original remains intact', () => {
     // Blocker 2 requires the deployable migration path to contain the RPC.
     // We embed the exact CREATE OR REPLACE FUNCTION block from
     // supabase/queries/orders/fn_create_shipments_from_single_payment.sql and
@@ -162,20 +190,29 @@ describe('single-modal settlement RPC migration', () => {
     // (from `CREATE OR REPLACE FUNCTION` to the final `TO service_role;` grant)
     // from BOTH files and asserting equality catches any future edit that
     // updates only one copy.
-    const migrationSql = readFileSync(findRpcMigrationPath(), 'utf8');
+    const originalSql = readFileSync(findRpcMigrationPath(), 'utf8');
+    const replacementName = '20260925000000_single_modal_order_confirmation_notification.sql';
+    const migrationSql = readFileSync(join(MIGRATIONS_DIR, replacementName), 'utf8');
     const queriesSql = readFileSync(QUERIES_RPC_PATH, 'utf8');
+    expect(replacementName.localeCompare(findRpcMigrationName())).toBeGreaterThan(0);
+    expect(originalSql).toContain('CREATE OR REPLACE FUNCTION public.fn_create_shipments_from_single_payment');
+    expect(originalSql).not.toContain('order.payment_confirmed');
+    expect(migrationSql).toContain('BEGIN;');
+    expect(migrationSql).toContain('COMMIT;');
+    expect(migrationSql).toContain('SECURITY DEFINER');
+    expect(migrationSql).toContain("has_function_privilege('service_role'");
 
     const extractFunctionBlock = (src: string): string => {
       const start = src.indexOf(
         'CREATE OR REPLACE FUNCTION public.fn_create_shipments_from_single_payment',
       );
       expect(start).toBeGreaterThan(-1);
-      const end = src.lastIndexOf('TO service_role;');
+      const end = src.indexOf('$$;', start);
       expect(end).toBeGreaterThan(start);
       // Normalize line endings so CRLF/LF differences between the two files
       // do not cause a false drift failure.
       return src
-        .slice(start, end + 'TO service_role;'.length)
+        .slice(start, end + '$$;'.length)
         .replace(/\r\n/g, '\n');
     };
 
