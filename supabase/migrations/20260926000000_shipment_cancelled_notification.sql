@@ -1,6 +1,64 @@
+-- N5b: apply only after N4b, N4a, and N5a. Verify deployed privileged
+-- writers and older-client compatibility independently before Dashboard cutover.
+-- Submit this entire file as one transaction; do not retry uncertain execution.
 BEGIN;
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '60s';
 
-DROP FUNCTION IF EXISTS public.fn_cancel_shipment(UUID, TEXT, TEXT);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_proc p
+    JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname = 'fn_cancel_shipment'
+      AND p.oid = 'public.fn_cancel_shipment(uuid,text,text,bigint)'::regprocedure
+      AND p.prosecdef
+      AND has_function_privilege('service_role', p.oid, 'EXECUTE')
+      AND NOT has_function_privilege('anon', p.oid, 'EXECUTE')
+      AND NOT has_function_privilege('authenticated', p.oid, 'EXECUTE')
+  ) THEN
+    RAISE EXCEPTION 'Shipment cancellation RPC ACL or SECURITY DEFINER differs from expected baseline';
+  END IF;
+  IF NOT has_table_privilege('service_role', 'public.notifications', 'INSERT')
+     OR has_table_privilege('anon', 'public.notifications', 'INSERT')
+     OR has_table_privilege('authenticated', 'public.notifications', 'INSERT')
+     OR has_table_privilege('anon', 'public.notifications', 'UPDATE')
+     OR has_table_privilege('authenticated', 'public.notifications', 'UPDATE')
+     OR has_column_privilege('anon', 'public.notifications', 'event_kind', 'INSERT')
+     OR has_column_privilege('authenticated', 'public.notifications', 'event_kind', 'INSERT')
+     OR has_column_privilege('anon', 'public.notifications', 'source_event_key', 'INSERT')
+     OR has_column_privilege('authenticated', 'public.notifications', 'source_event_key', 'INSERT')
+     OR has_column_privilege('anon', 'public.notifications', 'event_payload', 'INSERT')
+     OR has_column_privilege('authenticated', 'public.notifications', 'event_payload', 'INSERT')
+     OR has_column_privilege('anon', 'public.notifications', 'event_kind', 'UPDATE')
+     OR has_column_privilege('authenticated', 'public.notifications', 'event_kind', 'UPDATE')
+     OR has_column_privilege('anon', 'public.notifications', 'source_event_key', 'UPDATE')
+     OR has_column_privilege('authenticated', 'public.notifications', 'source_event_key', 'UPDATE')
+     OR has_column_privilege('anon', 'public.notifications', 'event_payload', 'UPDATE')
+     OR has_column_privilege('authenticated', 'public.notifications', 'event_payload', 'UPDATE') THEN
+    RAISE EXCEPTION 'N4b restrictive notification grants required before N5b producer cutover';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_index i
+    JOIN pg_catalog.pg_class c ON c.oid = i.indexrelid
+    JOIN pg_catalog.pg_attribute key_column
+      ON key_column.attrelid = i.indrelid AND key_column.attnum = i.indkey[0]
+    JOIN pg_catalog.pg_attribute recipient_column
+      ON recipient_column.attrelid = i.indrelid AND recipient_column.attnum = i.indkey[1]
+    WHERE i.indrelid = 'public.notifications'::regclass
+      AND c.relname = 'notifications_source_event_key_user_id_uidx'
+      AND i.indisunique AND i.indisvalid AND i.indisready AND i.indimmediate
+      AND i.indnkeyatts = 2 AND i.indnatts = 2
+      AND key_column.attname = 'source_event_key'
+      AND recipient_column.attname = 'user_id'
+      AND pg_catalog.pg_get_expr(i.indpred, i.indrelid) = '(source_event_key IS NOT NULL)'
+  ) THEN
+    RAISE EXCEPTION 'Expected N4a partial unique notification arbiter is absent or incompatible';
+  END IF;
+END;
+$$;
 
 CREATE OR REPLACE FUNCTION public.fn_cancel_shipment(
   p_shipment_id UUID,
@@ -181,8 +239,5 @@ EXCEPTION WHEN OTHERS THEN
   RETURN QUERY SELECT false, 'INTERNAL_SERVER_ERROR'::TEXT;
 END;
 $$;
-
-REVOKE EXECUTE ON FUNCTION public.fn_cancel_shipment(UUID, TEXT, TEXT, BIGINT) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.fn_cancel_shipment(UUID, TEXT, TEXT, BIGINT) TO service_role;
 
 COMMIT;
