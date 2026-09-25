@@ -1,10 +1,11 @@
--- N5a: apply only after 20260924000000_notification_event_metadata.sql.
--- N4a only adds metadata; it does not establish server-authoritative identity.
--- REQUIRED BEFORE N5a: inventory deployed notification grants/RLS, index definition,
+-- N5a: apply only after N4b (20260923000000_notification_client_authority.sql)
+-- and N4a (20260924000000_notification_event_metadata.sql), in that order.
+-- N4a only adds metadata; N4b restricts client authority, but deployed
+-- privileged RPC bodies and older-client compatibility need separate review.
+-- REQUIRED BEFORE N5a: verify deployed notification grants/RLS, index definition,
 -- function ACL, and every privileged client-callable RPC that can insert legacy
--- notices. Apply a separate N4b restrictive grant/RLS cutover after checking
--- older client and RPC compatibility; do not guess REVOKEs or disable legacy
--- writers until the deployed inventory is reviewed. Preflight below rejects
+-- notices. Confirm older client and RPC compatibility before applying N4b;
+-- source-only function definitions are not deployed-body evidence. Preflight below rejects
 -- effective client write privileges even if RLS currently denies their rows.
 -- Whole-file transaction required; verify Dashboard transaction semantics
 -- before manual execution. CREATE OR REPLACE retains the existing function ACL.

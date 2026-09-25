@@ -1,6 +1,8 @@
--- N4a additive expansion only. Apply after the existing notifications table migration.
+-- N4a additive expansion only. Apply after N4b client authority cutover
+-- (20260923000000_notification_client_authority.sql) and its compatibility gate.
 -- Metadata is NOT trustworthy for privileged presentation until producer cutover
--- and RLS/grants lockdown. Existing client write privileges may forge these fields;
+-- and deployed writer compatibility verification (RLS/grants lockdown).
+-- Without N4b, existing client write privileges may forge these fields;
 -- neither this migration nor the unique index proves secure event provenance.
 -- Payload is a non-sensitive presentation object; producers must whitelist fields.
 -- Before deployment inventory table size and write rate (ALTER and non-concurrent
