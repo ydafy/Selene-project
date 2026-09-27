@@ -1,5 +1,17 @@
 {
   "title": "Centro de Avisos",
+  "itemLabel": "{{readState}}, {{state}}: {{title}}. {{message}}",
+  "readState": "Leído",
+  "unreadState": "Sin leer",
+  "states": {
+    "generic": "Aviso",
+    "purchase": "Novedad de compra",
+    "sale": "Novedad de venta",
+    "cancellation": "Novedad de cancelación",
+    "dispute": "Novedad de disputa",
+    "listing": "Novedad de publicación",
+    "return": "Novedad de devolución"
+  },
   "markAll": "Marcar todo como leído",
   "markReadLabel": "Marcar aviso como leído: {{title}}",
   "emptyTitle": "Buzón vacío",

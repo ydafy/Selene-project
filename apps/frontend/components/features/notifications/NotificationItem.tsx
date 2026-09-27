@@ -9,6 +9,7 @@ import { Theme } from '../../../core/theme';
 import { Notification } from '@selene/types';
 import { formatSmartTime } from '../../../core/utils/format';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
+import { getNotificationPresentation } from './notificationPresentation';
 
 interface Props {
   notification: Notification;
@@ -28,26 +29,8 @@ export const NotificationItem = ({
   const [showConfirm, setShowConfirm] = useState(false);
 
   const isUnread = !notification.read;
-
-  const getIcon = () => {
-    switch (notification.type) {
-      case 'success':
-        return 'check-circle-outline';
-      case 'error':
-        return 'alert-circle-outline';
-      case 'warning':
-        return 'alert-outline';
-      default:
-        return 'bell-outline';
-    }
-  };
-
-  const iconColor =
-    notification.type === 'error'
-      ? theme.colors.error
-      : notification.type === 'success'
-        ? theme.colors.success
-        : theme.colors.primary;
+  const presentation = getNotificationPresentation(notification);
+  const iconColor = theme.colors[presentation.accent];
 
   const handleConfirmDismiss = async () => {
     setShowConfirm(false);
@@ -58,7 +41,12 @@ export const NotificationItem = ({
     <>
       <Pressable
         onPress={() => onPress(notification)}
-        accessibilityLabel={notification.title}
+        accessibilityLabel={t('notifications:itemLabel', {
+          state: t(`notifications:states.${presentation.state}`),
+          readState: t(isUnread ? 'notifications:unreadState' : 'notifications:readState'),
+          title: notification.title,
+          message: notification.message || '',
+        })}
         accessibilityRole="button"
       >
         {({ pressed }) => (
@@ -80,7 +68,7 @@ export const NotificationItem = ({
               alignItems="center"
             >
               <MaterialCommunityIcons
-                name={getIcon()}
+                name={presentation.icon}
                 size={22}
                 color={iconColor}
               />

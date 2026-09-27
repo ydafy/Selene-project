@@ -1,5 +1,17 @@
 {
   "title": "Notification Center",
+  "itemLabel": "{{readState}}, {{state}}: {{title}}. {{message}}",
+  "readState": "Read",
+  "unreadState": "Unread",
+  "states": {
+    "generic": "Notification",
+    "purchase": "Purchase update",
+    "sale": "Sale update",
+    "cancellation": "Cancellation update",
+    "dispute": "Dispute update",
+    "listing": "Listing update",
+    "return": "Return update"
+  },
   "markAll": "Mark all as read",
   "markReadLabel": "Mark notification as read: {{title}}",
   "emptyTitle": "Empty Inbox",
