@@ -404,7 +404,8 @@ BEGIN
     SELECT recipients.user_id,
            'order.payment_confirmed',
            'order.payment_confirmed:' || v_existing_order_id::text,
-           jsonb_build_object('order_id', v_existing_order_id),
+           jsonb_build_object('order_id', v_existing_order_id, 'recipient_role',
+             CASE WHEN recipients.user_id = o.buyer_id THEN 'buyer' ELSE 'seller' END),
            'success',
            CASE WHEN recipients.user_id = o.buyer_id THEN 'Compra confirmada'
                 ELSE 'Nueva venta confirmada' END,

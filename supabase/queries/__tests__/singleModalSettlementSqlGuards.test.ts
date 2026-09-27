@@ -229,6 +229,7 @@ describe('confirmed-payment notification producer', () => {
   it('writes typed identity and legacy presentation per recipient with partial-index conflict', () => {
     expect(sql).toContain("'order.payment_confirmed:' || v_existing_order_id::text");
     expect(sql).toContain("'order.payment_confirmed'");
+    expect(sql).toMatch(/jsonb_build_object\('order_id', v_existing_order_id, 'recipient_role',\s*CASE WHEN recipients\.user_id = o\.buyer_id THEN 'buyer' ELSE 'seller' END\)/);
     expect(sql).toContain('ON CONFLICT (source_event_key, user_id) WHERE source_event_key IS NOT NULL DO NOTHING');
     for (const column of ['user_id', 'event_kind', 'source_event_key', 'event_payload', 'type', 'title', 'message', 'action_path']) {
       expect(sql.slice(notice, success)).toContain(column);
