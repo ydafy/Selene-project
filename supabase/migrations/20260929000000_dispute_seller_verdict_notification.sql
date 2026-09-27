@@ -1,4 +1,77 @@
+-- N5e: apply after N5d, N4b and N4a. Compare the deployed seller RPC body
+-- and search_path before manual cutover; source alone cannot establish parity.
+-- Submit the whole file in one transaction. Inspect deployed state before retrying.
+BEGIN;
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '60s';
 
+DO $preflight$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_proc p
+    JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = 'fn_resolve_dispute_to_seller'
+      AND p.oid = 'public.fn_resolve_dispute_to_seller(uuid,text)'::regprocedure
+      AND p.prosecdef
+      AND has_function_privilege('service_role', p.oid, 'EXECUTE')
+      AND NOT has_function_privilege('anon', p.oid, 'EXECUTE')
+      AND NOT has_function_privilege('authenticated', p.oid, 'EXECUTE')
+      AND p.proconfig = ARRAY['search_path=public, pg_temp']::text[]
+  ) THEN
+    RAISE EXCEPTION 'Seller dispute RPC signature, authority or security settings differ';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_attribute a
+    JOIN pg_catalog.pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
+    WHERE a.attrelid = 'public.admin_audit_logs'::regclass
+      AND a.attname = 'id' AND a.atttypid = 'uuid'::regtype
+      AND a.attnotnull AND NOT a.attisdropped
+      AND pg_catalog.pg_get_expr(d.adbin, d.adrelid) = 'gen_random_uuid()'
+  ) THEN
+    RAISE EXCEPTION 'Expected UUID audit occurrence identity is absent';
+  END IF;
+  IF NOT has_table_privilege('service_role', 'public.notifications', 'INSERT')
+     OR has_table_privilege('anon', 'public.notifications', 'INSERT')
+     OR has_table_privilege('authenticated', 'public.notifications', 'INSERT')
+     OR has_table_privilege('anon', 'public.notifications', 'UPDATE')
+     OR has_table_privilege('authenticated', 'public.notifications', 'UPDATE')
+     OR EXISTS (
+       SELECT 1 FROM (VALUES ('anon'), ('authenticated')) AS roles(name)
+       CROSS JOIN (VALUES ('event_kind'), ('source_event_key'), ('event_payload')) AS columns(name)
+       WHERE has_column_privilege(roles.name, 'public.notifications', columns.name, 'INSERT')
+          OR has_column_privilege(roles.name, 'public.notifications', columns.name, 'UPDATE')
+     ) THEN
+    RAISE EXCEPTION 'N4b restrictive notification grants required before N5e';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_index i
+    JOIN pg_catalog.pg_class c ON c.oid = i.indexrelid
+    JOIN pg_catalog.pg_attribute key_column
+      ON key_column.attrelid = i.indrelid AND key_column.attnum = i.indkey[0]
+    JOIN pg_catalog.pg_attribute recipient_column
+      ON recipient_column.attrelid = i.indrelid AND recipient_column.attnum = i.indkey[1]
+    WHERE i.indrelid = 'public.notifications'::regclass
+      AND c.relname = 'notifications_source_event_key_user_id_uidx'
+      AND i.indisunique AND i.indisvalid AND i.indisready AND i.indimmediate
+      AND i.indnkeyatts = 2 AND i.indnatts = 2
+      AND key_column.attname = 'source_event_key'
+      AND recipient_column.attname = 'user_id'
+      AND pg_catalog.pg_get_expr(i.indpred, i.indrelid) = '(source_event_key IS NOT NULL)'
+  ) THEN
+    RAISE EXCEPTION 'Expected N4a partial unique notification arbiter is absent or incompatible';
+  END IF;
+END;
+$preflight$;
+
+CREATE OR REPLACE FUNCTION public.fn_resolve_dispute_to_seller(
+  p_dispute_id UUID,
+  p_admin_note TEXT
+)
+RETURNS TABLE(success BOOLEAN, error_message TEXT)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
 DECLARE
     v_auth_user_id UUID;
     v_order_id UUID;
@@ -130,3 +203,6 @@ EXCEPTION WHEN OTHERS THEN
 
     RETURN QUERY SELECT false, 'INTERNAL_SERVER_ERROR'::TEXT;
 END;
+$$;
+
+COMMIT;
