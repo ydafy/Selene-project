@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'bun:test';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import {
   ApiError,
@@ -61,6 +63,14 @@ describe('validateShipmentDisputeContext', () => {
         shipment,
       }),
     ).toThrow(new ApiError(403, 'ORDER_BUYER_MISMATCH'));
+  });
+});
+
+describe('Edge notice cutover', () => {
+  it('does not insert post-commit notifications', () => {
+    const source = readFileSync(join(import.meta.dir, 'index.ts'), 'utf8');
+    expect(source).toContain(".from('disputes')");
+    expect(source).not.toMatch(/\.from\('notifications'\)|const notifications =/);
   });
 });
 
