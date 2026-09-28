@@ -11,7 +11,7 @@ import { invalidateNotificationKeys } from '../../../core/hooks/useNotificationM
 import { NotificationLinking } from '../../../core/services/notification';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import { Box, Text } from '../../base';
-import { createLaunchDigestGate, selectLaunchDigest } from './launchDigest';
+import { createLaunchDigestGate, scanLaunchDigest } from './launchDigest';
 
 const LAUNCH_LIMIT = 20;
 
@@ -46,17 +46,25 @@ export const NotificationWatcher = () => {
     if (attempt) {
       void (async () => {
         try {
-          const { data, error } = await supabase.from('notifications')
-            .select('id,user_id,created_at,deleted_at,read,title,message,type,action_path')
-            .eq('user_id', userId).is('deleted_at', null).or('read.is.null,read.eq.false')
-            .order('created_at', { ascending: false })
-            .order('id', { ascending: false })
-            .limit(LAUNCH_LIMIT);
-          if (error) throw error;
-          if (!active || currentOwner.current !== userId || !gate.current.complete(attempt)) return;
-          const rows = data ?? [];
-          const notice = selectLaunchDigest(rows, userId);
-          if (notice) setDigest({ owner: userId, notice, hasMore: rows.filter((row) => row.user_id === userId && row.deleted_at === null && row.read !== true).length > 1 });
+          const result = await scanLaunchDigest(userId, async (cursor) => {
+            let query = supabase.from('notifications')
+              .select('*')
+              .eq('user_id', userId).is('deleted_at', null);
+            if (cursor) {
+              const older = `created_at.lt.${cursor.created_at},and(created_at.eq.${cursor.created_at},id.lt.${cursor.id})`;
+              query = query.or(`and(read.is.null,or(${older})),and(read.eq.false,or(${older}))`);
+            } else {
+              query = query.or('read.is.null,read.eq.false');
+            }
+            const { data, error } = await query
+              .order('created_at', { ascending: false })
+              .order('id', { ascending: false })
+              .limit(LAUNCH_LIMIT);
+            if (error) throw error;
+            return data ?? [];
+          }, LAUNCH_LIMIT, () => !active || currentOwner.current !== userId);
+          if (!active || currentOwner.current !== userId || !result || !gate.current.complete(attempt)) return;
+          if (result.notice) setDigest({ owner: userId, notice: result.notice, hasMore: result.hasMore });
         } catch (error) {
           if (active && currentOwner.current === userId && gate.current.complete(attempt)) {
             console.error('[NotificationWatcher] Launch fetch error:', error);

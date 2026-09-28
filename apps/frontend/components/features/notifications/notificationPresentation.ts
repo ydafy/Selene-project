@@ -17,21 +17,26 @@ const catalogue = {
   'return.delivered': { buyer: ['package-variant-closed-check', 'primary', 'return'], seller: ['package-variant-closed-check', 'primary', 'return'] },
 } as const;
 
+// Only catalogue kind/role pairs with a stable source key qualify as typed events.
+export function getVerifiedEventIdentity(notification: Notification): { kind: keyof typeof catalogue; role: 'buyer' | 'seller' } | null {
+  const row: Record<string, unknown> = notification;
+  const { event_kind: kind, source_event_key: key, event_payload: payload } = row;
+  if (typeof kind !== 'string' || !Object.prototype.hasOwnProperty.call(catalogue, kind) ||
+    typeof key !== 'string' || !key.startsWith(`${kind}:`) || !key.slice(kind.length + 1).trim() ||
+    payload === null || typeof payload !== 'object' || Array.isArray(payload)) return null;
+  const role = (payload as Record<string, unknown>).recipient_role;
+  if (role !== 'buyer' && role !== 'seller') return null;
+  const approved = catalogue[kind as keyof typeof catalogue] as Partial<Record<'buyer' | 'seller', unknown>>;
+  return approved[role] ? { kind: kind as keyof typeof catalogue, role } : null;
+}
+
 /** Runtime metadata is optional until the deployed notification schema is regenerated. */
 export function getNotificationPresentation(notification: Notification): Presentation {
-  const row: Record<string, unknown> = notification;
-  const kind = row.event_kind;
-  const key = row.source_event_key;
-  const payload = row.event_payload;
-  if (typeof kind === 'string' && Object.prototype.hasOwnProperty.call(catalogue, kind) &&
-    typeof key === 'string' && key.startsWith(`${kind}:`) && key.slice(kind.length + 1).trim().length > 0 &&
-    payload !== null && typeof payload === 'object' && !Array.isArray(payload)) {
-    const role = (payload as Record<string, unknown>).recipient_role;
-    if (role === 'buyer' || role === 'seller') {
-      const entry = catalogue[kind as keyof typeof catalogue] as Partial<Record<'buyer' | 'seller', readonly [Icon, Presentation['accent'], Presentation['state']]>>;
-      const match = entry[role];
-      if (match) return { icon: match[0], accent: match[1], state: match[2] };
-    }
+  const identity = getVerifiedEventIdentity(notification);
+  if (identity) {
+    const entry = catalogue[identity.kind] as Partial<Record<'buyer' | 'seller', readonly [Icon, Presentation['accent'], Presentation['state']]>>;
+    const match = entry[identity.role]!;
+    return { icon: match[0], accent: match[1], state: match[2] };
   }
   if (notification.type === 'error') return { icon: 'alert-circle-outline', accent: 'error', state: 'generic' };
   if (notification.type === 'success') return { icon: 'check-circle-outline', accent: 'success', state: 'generic' };

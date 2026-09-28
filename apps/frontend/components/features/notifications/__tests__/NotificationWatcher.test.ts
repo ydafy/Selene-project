@@ -19,11 +19,20 @@ describe('NotificationWatcher source contracts', () => {
     expect(watcherSource()).not.toContain('isInitialLoadDone');
   });
 
-  test('fetches bounded owner-scoped legacy rows and never marks read', () => {
+  test('paginates owner-scoped rows with optional typed metadata and never marks read', () => {
     const source = watcherSource();
+    expect(source).toContain(".select('*')");
     expect(source).toContain(".eq('user_id', userId)");
+    expect(source).toContain(".is('deleted_at', null)");
+    expect(source).toContain("query.or('read.is.null,read.eq.false')");
+    expect(source).toContain('and(read.is.null,or(${older})),and(read.eq.false,or(${older}))');
+    expect(source).toContain('id.lt.${cursor.id}');
+    expect(source).toContain('current.notice.title');
+    expect(source).not.toContain('internal_note');
     expect(source).toMatch(/\.order\('created_at', \{ ascending: false \}\)\s*\.order\('id', \{ ascending: false \}\)\s*\.limit\(LAUNCH_LIMIT\)/);
-    expect(source).toContain('selectLaunchDigest(rows, userId)');
+    expect(source).toContain('scanLaunchDigest(userId');
+    expect(source).toContain('currentOwner.current !== userId');
+    expect(source).not.toContain('.range(');
     expect(source).toContain('gate.current.cancel(attempt)');
     expect(source).toContain('gate.current.complete(attempt)');
     expect(source).not.toContain('markAsRead');
