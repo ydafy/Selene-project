@@ -1,15 +1,9 @@
 -- ============================================================================
--- Canonical operational SQL: Connect payout release amount + retry contract
+-- Migration: add_connect_payout_failed_retry_contract
 -- ----------------------------------------------------------------------------
--- Apply the matching deployable migrations in order. This copy preserves the
--- first-phase amount rules while adding failed-run retry and canceled-run
--- manual-review fields to the admin release view.
--- Units:
---   - order_items.net_payout is the checkout-fixed seller allocation.
---   - release_amount_cents is clamped to 0 to prevent negative Stripe payouts.
---   - single-modal rows (transfer_group present) use allocation net only.
---   - legacy rows retain the shipment shipping-cost deduction and eligibility
---     requirement.
+-- Models a failed payout retry as a child run while preserving the parent run
+-- as immutable history. The admin release view keeps ordinary release batches
+-- separate from run-scoped failed retries and canceled manual-review cases.
 -- ============================================================================
 
 BEGIN;
@@ -20,8 +14,6 @@ ALTER TABLE public.connect_payout_runs
   REFERENCES public.connect_payout_runs (id)
   ON DELETE RESTRICT;
 
-COMMENT ON COLUMN public.connect_payout_runs.amount IS
-  'Total payout amount in cents. Single-modal orders use the checkout-fixed sum of order_items.net_payout; legacy orders retain the shipment shipping_cost deduction.';
 COMMENT ON COLUMN public.connect_payout_runs.retry_of_run_id IS
   'Failed payout run retried by this child run. The parent remains immutable audit history.';
 

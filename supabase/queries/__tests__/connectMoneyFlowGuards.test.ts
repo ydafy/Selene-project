@@ -7,6 +7,71 @@ const root = process.cwd();
 const readSql = (relativePath: string) =>
   readFileSync(join(root, relativePath), 'utf8').replace(/\s+/g, ' ');
 
+/**
+ * Split a SELECT projection into its top-level comma-separated column
+ * expressions. Parenthesis- and string-aware: commas nested inside function
+ * calls (e.g. `COALESCE(x, FALSE)`) or SQL string literals do not split
+ * columns; only depth-0 commas outside literals do.
+ */
+const splitTopLevelProjectionColumns = (projection: string): string[] => {
+  const columns: string[] = [];
+  let depth = 0;
+  let inString = false;
+  let current = '';
+  for (let i = 0; i < projection.length; i++) {
+    const char = projection[i];
+    if (char === "'") {
+      // SQL escapes a literal quote by doubling it ('').
+      if (inString && projection[i + 1] === "'") {
+        current += "''";
+        i++;
+        continue;
+      }
+      inString = !inString;
+    } else if (!inString) {
+      if (char === '(') {
+        depth++;
+      } else if (char === ')') {
+        depth--;
+      } else if (char === ',' && depth === 0) {
+        columns.push(current.trim());
+        current = '';
+        continue;
+      }
+    }
+    current += char;
+  }
+  const lastColumn = current.trim();
+  if (lastColumn.length > 0) {
+    columns.push(lastColumn);
+  }
+  return columns;
+};
+
+/**
+ * Isolate the outer projection of the admin payout release view: the
+ * top-level `SELECT` immediately preceding the outer `FROM shipment_amounts`
+ * (the operational copy aliases the CTE as `sa`, so no trailing semicolon is
+ * required). Returns the top-level column expressions in source order.
+ */
+const getOuterViewProjectionColumns = (sql: string): string[] => {
+  const viewStart = sql.indexOf(
+    'CREATE OR REPLACE VIEW public.admin_connect_payout_release_view',
+  );
+  expect(viewStart).toBeGreaterThan(-1);
+  const fromShipmentAmounts = sql.indexOf('FROM shipment_amounts', viewStart);
+  expect(fromShipmentAmounts).toBeGreaterThan(-1);
+  // The nearest SELECT before the outer FROM is the outer projection's
+  // SELECT; inner CTE/subquery SELECTs all sit further back.
+  const outerSelectStart = sql.lastIndexOf('SELECT', fromShipmentAmounts);
+  expect(outerSelectStart).toBeGreaterThan(-1);
+  const projection = sql.slice(
+    outerSelectStart + 'SELECT'.length,
+    fromShipmentAmounts,
+  );
+  return splitTopLevelProjectionColumns(projection);
+};
+
 describe('Connect money-flow SQL guards', () => {
   it('Connect shipment RPC parses product_ids JSON string metadata', () => {
     const sql = readSql(
@@ -154,7 +219,12 @@ describe('Connect money-flow SQL guards', () => {
     );
   });
 
-  it('manual Connect payout release deducts the validated actual label cost', () => {
+  it('manual Connect payout release deducts the legacy shipping cost and gates eligibility on it', () => {
+    // Canonical contract (approved specs + migration 20260915): single-modal
+    // rows release the checkout-fixed ROUND(SUM(order_items.net_payout) * 100)
+    // only; legacy rows deduct COALESCE(s.shipping_cost, 0) and require a
+    // valid shipping cost. label_provider_cost_cents is evidence-only and
+    // must never appear in the operational payout expectation.
     const sql = readSql(
       'supabase/queries/payments/admin_connect_payout_release_view_shipping_cost_fix.sql',
     );
@@ -162,95 +232,147 @@ describe('Connect money-flow SQL guards', () => {
     expect(sql).toContain(
       'ROUND(COALESCE(SUM(oi.net_payout), 0) * 100)::INTEGER',
     );
-    expect(sql).toContain('- s.label_provider_cost_cents');
+    expect(sql).toContain('- COALESCE(s.shipping_cost, 0)');
     expect(sql).toContain('GREATEST(');
     expect(sql).toContain(
-      's.label_provider_cost_cents IS NOT NULL',
+      's.shipping_cost IS NOT NULL AND s.shipping_cost > 0 AS has_shipping_cost_cents',
     );
     expect(sql).toContain(
-      "WHEN NOT has_valid_label_provider_cost_cents THEN 'invalid_label_provider_cost'",
+      '(sa.transfer_group IS NOT NULL OR sa.has_shipping_cost_cents)',
     );
+    expect(sql).toContain(
+      "WHEN sa.transfer_group IS NULL AND NOT sa.has_shipping_cost_cents THEN 'missing_shipping_cost'",
+    );
+    expect(sql).not.toContain('label_provider_cost_cents');
   });
 
-  it('manual Connect payout release repair preserves the 14-column admin view shape and appends settlement identifiers at the tail', () => {
+  it('manual Connect payout release repair preserves the 22-column admin view shape and appends settlement/retry columns at the tail', () => {
     const sql = readSql(
       'supabase/queries/payments/admin_connect_payout_release_view_shipping_cost_fix.sql',
     );
     const viewStart = sql.indexOf(
       'CREATE OR REPLACE VIEW public.admin_connect_payout_release_view',
     );
-    const fromShipmentAmounts = sql.indexOf('FROM shipment_amounts;', viewStart);
+    // The operational copy aliases the CTE reference
+    // (`FROM shipment_amounts sa`), so locate the outer FROM without
+    // requiring a trailing semicolon right after the CTE name.
+    const fromShipmentAmounts = sql.indexOf('FROM shipment_amounts', viewStart);
+    expect(fromShipmentAmounts).toBeGreaterThan(-1);
     const outerSelectStart = sql.lastIndexOf('SELECT', fromShipmentAmounts);
-    const outerColumns = sql.slice(
-      outerSelectStart + 'SELECT'.length,
-      fromShipmentAmounts,
-    );
+    expect(outerSelectStart).toBeGreaterThan(-1);
+    const outerColumns = sql.slice(outerSelectStart, fromShipmentAmounts);
 
-    const columnIndex = (column: string) => {
-      const match = new RegExp(`\\b${column}\\b`).exec(outerColumns);
-      return match ? match.index : -1;
-    };
-
-    const originalColumns = [
-      'shipment_id',
-      'seller_id',
-      'seller_name',
-      'order_id',
-      'status',
-      'completed_at',
-      'stripe_payment_intent_id',
-      'stripe_account_id',
-      'stripe_onboarding_status',
-      'release_amount_cents',
-      'is_eligible',
-      'ineligible_reason',
+    // The 12 original columns keep their relative order; `transfer_group` and
+    // `stripe_transfer_id` follow as the first-phase append; the 8 retry-era
+    // columns are appended at the tail. Expression columns are anchored by
+    // their trailing `AS` alias (expressions contain internal commas, e.g.
+    // COALESCE in `is_retryable`), and CTE-passthrough columns by their
+    // `sa.`-qualified reference. This preserves the append-at-tail regression
+    // guard while validating the current 22-column retry-era shape.
+    const orderedColumns = [
+      'sa.shipment_id',
+      'sa.seller_id',
+      'sa.seller_name',
+      'sa.order_id',
+      'sa.status,',
+      'sa.completed_at',
+      'sa.stripe_payment_intent_id',
+      'sa.stripe_account_id',
+      'sa.stripe_onboarding_status',
+      'sa.release_amount_cents',
+      'AS is_eligible',
+      'AS ineligible_reason',
+      'sa.transfer_group,',
+      'sa.stripe_transfer_id,',
+      'AS payout_run_id',
+      'AS payout_run_status',
+      'AS payout_run_amount_cents',
+      'AS payout_run_failure_reason',
+      'AS payout_run_failed_at',
+      'payout_run.retry_of_run_id,',
+      'AS is_retryable',
+      'AS requires_manual_review',
     ];
+    expect(orderedColumns).toHaveLength(22);
 
     let previousIndex = -1;
-    for (const column of originalColumns) {
-      const currentIndex = columnIndex(column);
+    for (const column of orderedColumns) {
+      const currentIndex = outerColumns.indexOf(column);
       expect(currentIndex).toBeGreaterThan(-1);
       expect(currentIndex).toBeGreaterThan(previousIndex);
       previousIndex = currentIndex;
     }
+  });
 
-    expect(columnIndex('transfer_group')).toBeGreaterThan(
-      columnIndex('ineligible_reason'),
+  it('admin payout release view outer SELECT projects exactly 22 top-level columns', () => {
+    // The token-order check above only proves expected tokens appear in
+    // order; it silently accepts EXTRA outer columns. This guard proves the
+    // actual projection cardinality by isolating the outer
+    // `SELECT ... FROM shipment_amounts` span and counting top-level
+    // comma-separated column expressions (parenthesis- and string-aware, so
+    // commas inside COALESCE/CASE do not split columns).
+    const sql = readSql(
+      'supabase/queries/payments/admin_connect_payout_release_view_shipping_cost_fix.sql',
     );
-    expect(columnIndex('stripe_transfer_id')).toBeGreaterThan(
-      columnIndex('transfer_group'),
+
+    const columns = getOuterViewProjectionColumns(sql);
+    expect(columns).toHaveLength(22);
+
+    // Ordered original/tail aliases: each top-level column must match its
+    // expected signature at its exact position (whitespace-normalized).
+    const signatures = columns.map((column) => column.replace(/\s+/g, ' '));
+    const expectedSignatures = [
+      'sa.shipment_id',
+      'sa.seller_id',
+      'sa.seller_name',
+      'sa.order_id',
+      'sa.status',
+      'sa.completed_at',
+      'sa.stripe_payment_intent_id',
+      'sa.stripe_account_id',
+      'sa.stripe_onboarding_status',
+      'sa.release_amount_cents',
+      ') AS is_eligible',
+      'END AS ineligible_reason',
+      'sa.transfer_group',
+      'sa.stripe_transfer_id',
+      'payout_run.id AS payout_run_id',
+      'payout_run.status AS payout_run_status',
+      'payout_run.amount AS payout_run_amount_cents',
+      'payout_run.failure_reason AS payout_run_failure_reason',
+      'payout_run.failed_at AS payout_run_failed_at',
+      'payout_run.retry_of_run_id',
+      ') AS is_retryable',
+      ') AS requires_manual_review',
+    ];
+    expect(signatures).toHaveLength(expectedSignatures.length);
+    signatures.forEach((signature, index) => {
+      // Simple passthrough columns match exactly; expression columns are
+      // anchored by their trailing `AS` alias / qualified ref tail.
+      expect(signature.endsWith(expectedSignatures[index])).toBe(true);
+    });
+  });
+
+  it('admin payout release view guard rejects an extra appended outer column', () => {
+    // Regression for the guard weakness: the previous ordered-token check
+    // accepted a mutated projection with an extra appended column because it
+    // only verified expected tokens appear in order. The cardinality guard
+    // must reject it.
+    const sql = readSql(
+      'supabase/queries/payments/admin_connect_payout_release_view_shipping_cost_fix.sql',
     );
-    expect(columnIndex('transfer_group')).not.toBe(-1);
-    expect(columnIndex('stripe_transfer_id')).not.toBe(-1);
-    const outerSelectAliases = outerColumns
-      .split(',')
-      .map((part) => part.trim())
-      .filter(Boolean)
-      .map((part) => {
-        const aliasMatch = /\bAS\s+([a-z_][a-z0-9_]*)$/i.exec(part);
-        if (aliasMatch) {
-          return aliasMatch[1];
-        }
+    const viewStart = sql.indexOf(
+      'CREATE OR REPLACE VIEW public.admin_connect_payout_release_view',
+    );
+    const fromShipmentAmounts = sql.indexOf('FROM shipment_amounts', viewStart);
+    const mutatedSql =
+      sql.slice(0, fromShipmentAmounts) +
+      ', sa.extra_unauthorized_column ' +
+      sql.slice(fromShipmentAmounts);
 
-        return part;
-      });
-
-    expect(outerSelectAliases).toEqual([
-      'shipment_id',
-      'seller_id',
-      'seller_name',
-      'order_id',
-      'status',
-      'completed_at',
-      'stripe_payment_intent_id',
-      'stripe_account_id',
-      'stripe_onboarding_status',
-      'release_amount_cents',
-      'is_eligible',
-      'ineligible_reason',
-      'transfer_group',
-      'stripe_transfer_id',
-    ]);
+    expect(() => {
+      expect(getOuterViewProjectionColumns(mutatedSql)).toHaveLength(22);
+    }).toThrow();
   });
 
   it('documents a rollback-first manual repair for verified no-payout stuck Connect runs', () => {
