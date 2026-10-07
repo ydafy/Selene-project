@@ -76,6 +76,14 @@ describe('connect payout shared contracts', () => {
       release_amount_cents: 10_000,
       is_eligible: true,
       ineligible_reason: null,
+      is_retryable: false,
+      requires_manual_review: false,
+      payout_run_amount_cents: null,
+      payout_run_failed_at: null,
+      payout_run_failure_reason: null,
+      payout_run_id: null,
+      payout_run_status: null,
+      retry_of_run_id: null,
       // New SCT (Stripe Connect Transfer) contract fields surfaced by the view.
       // null until the manual release step creates the per-shipment Transfer.
       stripe_transfer_id: null,
