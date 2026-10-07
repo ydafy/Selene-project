@@ -37,7 +37,9 @@ const findRpc = (name: string): string =>
       ),
     )?.[0] ?? '';
 
-describe('deferred Stripe fee reconciliation recovery migration', () => {
+// Historical migration characterization. Current lease/cutover contracts are
+// asserted separately in stripe_fee_reconciliation_lease.test.ts.
+describe('historical deferred Stripe fee reconciliation migrations', () => {
   test('defines an idempotent, retryable, server-only financial job ledger', () => {
     const sql = findReconciliationJobMigration();
 
