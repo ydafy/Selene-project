@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 const root = join(import.meta.dir, '..', '..', '..');
 const source = readFileSync(join(root, 'supabase/queries/disputes/fn_resolve_dispute_to_seller.sql'), 'utf8');
-const migration = readFileSync(join(root, 'supabase/migrations/20260929000000_dispute_seller_verdict_notification.sql'), 'utf8');
+const migration = readFileSync(join(root, 'supabase/migrations/20260929000000_dispute_seller_verdict_notification.sql'), 'utf8').replace(/\r\n/g, '\n');
 const normalize = (sql: string) => sql.replace(/\s+/g, ' ').trim();
 
 describe('seller dispute verdict cutover', () => {

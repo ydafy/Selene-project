@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 const root = join(import.meta.dir, '..', '..', '..');
 const source = readFileSync(join(root, 'supabase/queries/products/fn_resolve_product_verdict.sql'), 'utf8');
-const migration = readFileSync(join(root, 'supabase/migrations/20260927000000_product_verdict_notification.sql'), 'utf8');
+const migration = readFileSync(join(root, 'supabase/migrations/20260927000000_product_verdict_notification.sql'), 'utf8').replace(/\r\n/g, '\n');
 const normalize = (sql: string) => sql.replace(/\s+/g, ' ').trim();
 const body = migration.match(/AS \$\$([\s\S]*?)\$\$;/)?.[1];
 

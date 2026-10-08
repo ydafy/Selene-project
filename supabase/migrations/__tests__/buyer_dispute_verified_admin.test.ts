@@ -8,7 +8,7 @@ const signature = 'public.fn_resolve_dispute_to_buyer_as_admin(uuid,text,uuid)';
 test('transaction installs exact body and only service-role execution without replacing legacy RPC', () => {
   const files = readdirSync(dir).filter(name => name.endsWith('_buyer_dispute_verified_admin.sql'));
   expect(files).toHaveLength(1);
-  const sql = readFileSync(new URL(files[0], dir), 'utf8');
+  const sql = readFileSync(new URL(files[0], dir), 'utf8').replace(/\r\n/g, '\n');
   const body = readFileSync(new URL('../../queries/disputes/fn_resolve_dispute_to_buyer_as_admin.sql', import.meta.url), 'utf8');
   const installed = sql.match(/AS \$\$([\s\S]*?)\$\$;/)![1].replace(/\r\n/g, '\n');
   const legacy = readFileSync(new URL('../../queries/disputes/fn_resolve_dispute_to_buyer.sql', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
