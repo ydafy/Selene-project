@@ -8,6 +8,7 @@ type OrdersLocale = {
   notFound: Record<string, unknown>;
   card: Record<string, unknown>;
   actionCard: Record<string, unknown>;
+  prepare: Record<string, unknown>;
 };
 const readJson = (locale: string) =>
   JSON.parse(
@@ -107,5 +108,11 @@ describe('role-aware orders localization', () => {
     expect(actionCard).not.toContain('PREPARING SHIPMENT');
     expect(actionCard).not.toContain('ENTREGA CONFIRMADA');
     expect(actionCard).not.toContain('Reportar Problema con el Retorno');
+  });
+
+  it('keeps the prepare block with an identical key set in both locales', () => {
+    expect(en.prepare).toBeDefined();
+    expect(es.prepare).toBeDefined();
+    expectMatchingKeys(en.prepare, es.prepare);
   });
 });

@@ -177,6 +177,15 @@ function RootStack() {
     <Stack>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+
+      <Stack.Screen
+        name="checkout"
+        options={{
+          headerShown: false,
+          presentation: 'modal',
+          animation: 'slide_from_bottom',
+        }}
+      />
       <Stack.Screen
         name="sell"
         options={{
@@ -185,22 +194,7 @@ function RootStack() {
           animation: 'slide_from_bottom',
         }}
       />
-      <Stack.Screen
-        name="profile/edit"
-        options={{
-          headerShown: false,
-          presentation: 'modal',
-          animation: 'slide_from_bottom',
-        }}
-      />
-      <Stack.Screen
-        name="profile/support"
-        options={{
-          headerShown: false,
-          presentation: 'modal',
-          animation: 'slide_from_bottom',
-        }}
-      />
+      <Stack.Screen name="profile" options={{ headerShown: false }} />
     </Stack>
   );
 }

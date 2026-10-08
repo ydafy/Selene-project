@@ -10,11 +10,18 @@
  * en lugar de propiedades directas de la orden. OrderActionCard conectado en 3.6.
  */
 
-import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import React, {
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  useMemo,
+} from 'react';
 import {
   ScrollView,
   RefreshControl,
   Linking,
+  Share,
   Clipboard,
   TouchableOpacity,
 } from 'react-native';
@@ -57,6 +64,7 @@ import {
   resolveBuyerCheckoutRecoveryView,
   shouldSuppressShipmentActionsForBuyerRecovery,
 } from './order-recovery-view';
+import Toast from 'react-native-toast-message';
 
 // --- TIPO AUXILIAR PARA REVIEW (viene en la query de useOrderById pero no en EnrichedOrder) ---
 // V2: adds product_id / shipment_id / seller_id so the review gate can match
@@ -175,7 +183,9 @@ export default function OrderDetailScreen() {
     const source = shipments ?? order?.shipments;
     if (!source || source.length === 0 || !shipmentId) return null;
 
-    const rawShipment = shipmentId ? source.find((s) => s.id === shipmentId) : source[0];
+    const rawShipment = shipmentId
+      ? source.find((s) => s.id === shipmentId)
+      : source[0];
 
     // When a specific shipment was requested but isn't in the loaded rows yet,
     // short-circuit instead of inventing one via source[0] (which would render
@@ -226,10 +236,13 @@ export default function OrderDetailScreen() {
     : (order?.total_amount ?? 0);
   const checkoutRecoveryView = resolveBuyerCheckoutRecoveryView({
     isBuyer: order?.isBuyer ?? false,
-    paymentProcessing: (order as OrderWithReview & { payment_processing?: boolean | null } | null)
-      ?.payment_processing,
-    compensationState: (order as OrderWithReview & { compensation_state?: string | null } | null)
-      ?.compensation_state,
+    paymentProcessing: (
+      order as
+        (OrderWithReview & { payment_processing?: boolean | null }) | null
+    )?.payment_processing,
+    compensationState: (
+      order as (OrderWithReview & { compensation_state?: string | null }) | null
+    )?.compensation_state,
     orderStatus: order?.status,
   });
 
@@ -238,6 +251,45 @@ export default function OrderDetailScreen() {
     Clipboard.setString(tracking);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }, []);
+
+  const handleOpenLabel = async () => {
+    if (!currentShipment?.label_url) return;
+
+    try {
+      await Linking.openURL(currentShipment.label_url);
+    } catch {
+      Toast.show({
+        type: 'error',
+        text1: t('common:errors.generic', {
+          defaultValue: 'No se pudo abrir el navegador',
+        }),
+      });
+    }
+  };
+
+  const handleShareLabel = async () => {
+    if (!currentShipment?.label_url) return;
+
+    try {
+      await Share.share({
+        title: t('orders:actions.shareTitle', {
+          defaultValue: 'Guía de envío - Selene',
+        }),
+        message: t('orders:actions.shareMessage', {
+          url: currentShipment.label_url,
+          defaultValue: `Guía de envío para imprimir: ${currentShipment.label_url}`,
+        }),
+        url: currentShipment.label_url,
+      });
+    } catch {
+      Toast.show({
+        type: 'error',
+        text1: t('common:errors.generic', {
+          defaultValue: 'No se pudo compartir la guía',
+        }),
+      });
+    }
+  };
 
   const handleTrack = useCallback((tracking: string) => {
     const baseUrl = __DEV__
@@ -336,7 +388,9 @@ export default function OrderDetailScreen() {
       <Box flex={1} backgroundColor="background">
         <Stack.Screen options={{ headerShown: false }} />
         <GlobalHeader showBack />
-        <ShipmentNotFoundState onBack={() => router.replace('/profile/orders')} />
+        <ShipmentNotFoundState
+          onBack={() => router.replace('/profile/orders')}
+        />
       </Box>
     );
   }
@@ -372,7 +426,9 @@ export default function OrderDetailScreen() {
       >
         <ScreenHeader
           title={t('orders:detail.title')}
-          subtitle={t('orders:detail.subTitle')}
+          subtitle={
+            order.isSeller ? 'Resumen de tu venta' : 'Resumen de tu compra'
+          }
         />
 
         {/* ─────────────────────────────────────────────── */}
@@ -518,6 +574,7 @@ export default function OrderDetailScreen() {
           {/* El stepper refleja el progreso logístico del envío actual (per-shipment). */}
           <OrderStepper
             status={currentShipment?.status ?? order.visualStatus}
+            isSeller={order.isSeller}
           />
         </Box>
 
@@ -723,6 +780,36 @@ export default function OrderDetailScreen() {
                 {t('orders:actions.generateLabel')}
               </PrimaryButton>
             )}
+          {/* SECCIÓN DE GUÍA: VER, COMPARTIR Y TIP */}
+          {currentShipment?.isSeller && Boolean(currentShipment?.label_url) && (
+            <Box gap="s">
+              <PrimaryButton onPress={handleOpenLabel} icon="printer-check">
+                {t('orders:actions.viewPdf')}
+              </PrimaryButton>
+
+              <PrimaryButton
+                variant="outline"
+                onPress={handleShareLabel}
+                icon="share-variant"
+              >
+                {t('orders:actions.shareLabel', {
+                  defaultValue: 'Compartir guía (WhatsApp / Imprimir)',
+                })}
+              </PrimaryButton>
+
+              <Text
+                variant="caption-md"
+                color="textSecondary"
+                textAlign="center"
+                marginTop="xs"
+              >
+                {t('orders:actions.printHint', {
+                  defaultValue:
+                    '💡 ¿No tienes impresora? Compártela para imprimirla en tu papelería más cercana.',
+                })}
+              </Text>
+            </Box>
+          )}
           {currentShipment?.permissions.canConfirmDelivery && (
             <PrimaryButton
               onPress={() => setShowDeliveryConfirm(true)}
@@ -801,7 +888,9 @@ export default function OrderDetailScreen() {
           }
 
           try {
-            await actions.cancelOrder.execute({ shipmentId: currentShipment.id });
+            await actions.cancelOrder.execute({
+              shipmentId: currentShipment.id,
+            });
             setShowCancelConfirm(false);
           } catch {
             // The hook surfaces the friendly toast; keep the dialog open so the

@@ -10,13 +10,15 @@ import { OrderStatus } from '@selene/types';
 
 interface Props {
   status: OrderStatus;
+  isSeller?: boolean;
 }
 
 const STEPS = ['paid', 'preparing', 'shipped', 'delivered'];
 
-export const OrderStepper = ({ status }: Props) => {
+export const OrderStepper = ({ status, isSeller = false }: Props) => {
   const theme = useTheme<Theme>();
   const { t } = useTranslation('orders');
+  const descriptionSuffix = isSeller ? '_seller' : '';
 
   // --- FIX 1: Lógica de índice segura ---
   const currentStepIndex = useMemo(() => {
@@ -139,7 +141,7 @@ export const OrderStepper = ({ status }: Props) => {
                     color="textSecondary"
                     marginTop="xs"
                   >
-                    {t(`orders:stepper.${step}_desc`)}
+                    {t(`orders:stepper.${step}_desc${descriptionSuffix}`)}
                   </Text>
                 </MotiView>
               )}

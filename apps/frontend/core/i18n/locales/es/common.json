@@ -19,6 +19,7 @@
   },
 
   "errors": {
+    "title": "Algo salió mal",
     "generic": "Ocurrió un problema. Intenta de nuevo.",
     "connection": "Error de conexión con el servidor.",
     "noPackages": "No hay opciones de empaque"
@@ -42,7 +43,8 @@
 
   "actions": {
     "discard": "Descartar",
-    "continue": "Continuar"
+    "continue": "Continuar",
+    "goBack": "Regresar"
   },
   "home": {
     "title": "Bienvenido a Selene",

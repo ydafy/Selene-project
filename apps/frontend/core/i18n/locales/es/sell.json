@@ -102,7 +102,7 @@
     "originZipPlaceholder": "Ej. 64000",
     "packageSizeLabel": "Tamaño del Paquete",
     "packageSizeHelpTitle": "¿Necesito una caja ya?",
-    "packageSizeHelpDesc": "📦 No necesitas tener una caja lista todavía. Elige el preset más cercano a tu artículo ya empacado para calcular el costo de envío. Cuando tu producto se venda, usa una caja de tamaño aproximado; la tarifa puede cambiar si el paquete final difiere mucho.",
+    "packageSizeHelpDesc": "📦 No necesitas tener una caja lista todavía. Elige el preset más cercano a tu artículo ya empacado para calcular el costo de envío.\n\nCuando tu producto se venda, Selene te guiara en el proceso de empaquetar y enviar el producto.",
     "packagePresetNotice": "Usa una caja cercana al preset seleccionado. Un paquete final muy distinto puede requerir una nueva cotización de la paquetería.",
     "shippingPayerLabel": "¿Quién paga el envío?",
     "shippingPayerBuyer": "Comprador",

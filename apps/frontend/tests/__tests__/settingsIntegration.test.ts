@@ -70,17 +70,23 @@ describe('LegalesSection row order (Terms → Privacy → Version)', () => {
   });
 });
 
-describe('modal route registration in app/_layout.tsx', () => {
-  const src = read('app/_layout.tsx');
+describe('modal configuration within the profile stack', () => {
+  const rootSrc = read('app/_layout.tsx');
+  const profileSrc = read('app/profile/_layout.tsx');
 
-  test('registers profile/edit as modal presentation', () => {
-    expect(src).toMatch(/name="profile\/edit"[\s\S]*presentation:\s*'modal'/);
+  test('profile/edit declares modal presentation in its own screen', () => {
+    const editSrc = read('app/profile/edit.tsx');
+    expect(rootSrc).toMatch(/<Stack\.Screen\s+name="profile"\s+options=\{\{\s*headerShown:\s*false\s*\}\}\s*\/>/);
+    expect(profileSrc).toContain('<Stack screenOptions={{ headerShown: false }}>');
+    expect(editSrc).toMatch(/<Stack\.Screen\s+options=\{\{[^}]*presentation:\s*'modal'[^}]*\}\}\s*\/>/);
   });
 
-  test('registers profile/support as modal presentation', () => {
-    expect(src).toMatch(
-      /name="profile\/support"[\s\S]*presentation:\s*'modal'/,
+  test('profile/support is registered as modal in the nested profile layout', () => {
+    expect(rootSrc).toMatch(/<Stack\.Screen\s+name="profile"\s+options=\{\{\s*headerShown:\s*false\s*\}\}\s*\/>/);
+    expect(profileSrc).toMatch(
+      /<Stack\.Screen\s+name="support"\s+options=\{\{[^}]*presentation:\s*'modal'[^}]*\}\}\s*\/>/,
     );
+    expect(read('app/profile/support.tsx')).toMatch(/<Stack\.Screen\s+options=\{\{[^}]*presentation:\s*'modal'[^}]*\}\}\s*\/>/);
   });
 });
 

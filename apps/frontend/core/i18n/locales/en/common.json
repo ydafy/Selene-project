@@ -18,6 +18,7 @@
     "loading": "Loading..."
   },
   "errors": {
+    "title": "Something went wrong.",
     "generic": "A problem occurred. Please try again.",
     "connection": "Connection to the server failed.",
     "noPackages": "No packaging options available"

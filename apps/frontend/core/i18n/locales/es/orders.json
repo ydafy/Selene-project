@@ -112,7 +112,11 @@
     "paid_desc": "Selene ha recibido tu pago de forma segura.",
     "preparing_desc": "El vendedor está empacando tu hardware.",
     "shipped_desc": "Tu paquete ya está con la paquetería.",
-    "delivered_desc": "¡Disfruta tu nuevo hardware!"
+    "delivered_desc": "¡Disfruta tu nuevo hardware!",
+    "paid_desc_seller": "Pago confirmado por Selene",
+    "preparing_desc_seller": "Empaca el producto y entrégalo a paquetería",
+    "shipped_desc_seller": "El paquete va en tránsito hacia el comprador",
+    "delivered_desc_seller": "Paquete entregado al comprador."
   },
   "actions": {
     "generateLabel": "Generar Guía de Envío",
@@ -156,8 +160,8 @@
   },
   "dialogs": {
     "cancelTitle": "¿Deseas cancelar este pedido?",
-    "deliveryTitle": "¿Recibiste tu paquete entregado?",
-    "deliveryMsg": "Confirma solo después de que la paquetería marque este envío como entregado y lo hayas recibido. El pago al vendedor lo libera el proceso administrativo de Selene, no esta confirmación."
+    "deliveryTitle": "¿Confirmas entrega?",
+    "deliveryMsg": "Confirma solo después de que la paquetería marque este envío como entregado y hayas recibido el paquete, revisado que el producto sea el que compraste y probado que funcione correctamente. Esta confirmación no libera de inmediato el pago al vendedor; la liberación depende del proceso administrativo de Selene.\n\nSi no estás seguro de que el hardware funciona correctamente, no confirmes la entrega y reporta un problema."
   },
   "return": {
     "succesToastMsgTitle": "Evidencia guardada",
@@ -171,14 +175,14 @@
   "prepare": {
     "headerTitle": "Generar Guía",
     "title": "Preparar Envío",
-    "subtitle": "Prepara tu paquete y confirma los detalles para generar tu guía de envío.",
-    "packagingGuidance": "Empaca el artículo de forma segura en una caja cercana al preset seleccionado, pega la guía después de generarla y llévalo a la sucursal de Paquetexpress. Conserva el comprobante de la sucursal y el primer movimiento de rastreo.",
-    "originLabel": "Punto de recolección",
-    "totalSale": "Venta Total",
+    "originLabel": "De dónde envías",
+    "originTitle": "Tu dirección de envío",
+    "boxSectionTitle": "Tu caja",
+    "yourProduct": "Tu producto",
+    "boxUnavailable": "No pudimos cargar los datos de la caja",
+    "boxWarning": "Si usas una caja más grande o muy distinta a esta, la paquetería puede cobrarte cargos extra y eso altera tu pago.",
     "originPlaceholder": "Selecciona desde dónde envías",
-    "summaryTitle": "Resumen de ganancias",
     "confirmBtn": "Generar Guía y Confirmar",
-    "disclaimer": "Al generar la guía, confirmas que tienes el producto listo y empacado.",
     "successTitle": "¡Guía Generada!",
     "successMsg": "El camioncito de la paqueteria ya sabe que vas en camino. Imprime tu guía y pégala en el paquete.",
     "shareLabelTitle": "Comparte tu Guía",
@@ -188,38 +192,61 @@
     "step2": "Pega la primera hoja en tu caja con cinta transparente en los bordes (sin tapar el código).",
     "step3": "Guarda las otras 2 hojas y lleva tu paquete a la sucursal de Paquete Express. Entréga las otras dos hojas si te las solicitan.",
 
-    "evidenceTitle": "Certificado de Empaque",
-    "evidenceSubtitle": "Sube 3 fotos para proteger tu venta ante posibles reclamos.",
-    "photoHardware": "Producto y S/N",
-    "photoProtection": "Protección",
-    "photoSealed": "Caja Sellada",
-    "uploading": "Subiendo...",
-    "errorUpload": "Error al subir imagen",
-    "requirements": {
-      "common": {
-        "sealed": "Caja sellada con guía pegada"
+    "contextLine": "Pedido #{{reference}} · Aún no se envía",
+    "packTitle": "Empácalo así",
+    "packSteps": [
+      {
+        "title": "Elige la caja",
+        "hint": "Que sea rígida y del tamaño del producto. Si sobra mucho espacio, se mueve y se golpea."
       },
-      "mobo": {
-        "socket": "Close-up del socket (pines)",
-        "full": "Foto global de la placa"
+      {
+        "title": "Protege el producto",
+        "hint": "Envuélvelo con plástico de burbujas o espuma por todos lados."
       },
-      "gpu": {
-        "pcie": "Close-up conector PCIe (pines)",
-        "back": "Foto trasera del PCB completa"
+      {
+        "title": "Rellena los huecos",
+        "hint": "Papel, espuma o chips hasta que no quede espacio libre."
       },
-      "cpu": {
-        "pins": "Close-up de los pines/contactos",
-        "ihs": "Foto frontal (Modelo legible)"
+      {
+        "title": "Sella la caja",
+        "hint": "Cinta resistente en todas las aberturas. Nunca cinta adhesiva fina."
       },
-      "ram": {
-        "label": "Foto de la etiqueta (Specs)",
-        "contacts": "Close-up conector dorado"
-      },
-      "other": {
-        "front": "Foto frontal del producto",
-        "extras": "Foto de accesorios incluidos"
+      {
+        "title": "Pega la guía",
+        "hint": "Imprímela y pégala con cinta transparente arriba de la caja, sin tapar el código."
       }
-    }
+    ],
+    "packConsequence": "Un empaque inadecuado anula cualquier reclamo ante la paquetería.",
+    "whereTitle": "¿Dónde consigo el material?",
+    "whereItems": [
+      "Tiendas como Home Depot, Office Depot, Office Max. También puedes buscar en línea."
+    ],
+    "whereCta": "Buscar material en línea",
+    "whyLabel": "¿Por qué estas fotos?",
+    "whyTitle": "Por qué pedimos estas fotos",
+    "whyBullet1": "Si el comprador reclama que llegó otra cosa, estas fotos son tu respaldo.",
+    "whyBullet2": "Son lo que nos permite poder dar seguimiento a la situación si ocurre un problema.",
+    "whyBullet3": "Estas fotos no prueban qué hay dentro de la caja; eso lo demuestra el video del comprador al abrir el paquete.",
+    "whyClose": "Entendido",
+    "slotProduct": "Producto y empaque",
+    "slotBox": "Caja cerrada",
+    "slotSealing": "Caja completa",
+    "slotProductDesc": "Queremos ver tu producto acomodado dentro de la caja, con el relleno puesto. Que se note que no se va a mover.",
+    "slotBoxDesc": "La caja cerrada, que se vean las flechas hacia arriba.",
+    "slotSealingDesc": "La caja entera desde otro ángulo, con la cinta visible.",
+    "photoCta": "Tomar foto",
+    "statusMissingPhotos_one": "Te falta {{count}} foto para generar la guía",
+    "statusMissingPhotos_other": "Te faltan {{count}} fotos para generar la guía",
+    "statusMissingOrigin": "Elige de dónde envías para continuar",
+    "statusNotReady": "Este envío todavía no está listo para generar la guía",
+    "generateWarning": "Se va a generar una guía real con costo y no se puede deshacer.",
+    "connectTitle": "Completa tu registro de pagos",
+    "connectBody": "Para recibir los pagos de tus ventas, necesitas completar tu registro en Stripe Connect. Es gratis y toma 5 minutos.",
+    "connectCta": "Registrarme en Stripe",
+    "securityReason": "Autoriza para generar la guía de envío",
+    "evidenceTitle": "Prueba de empaque",
+    "slotPhotoAdded": "Foto lista. Toma otra.",
+    "slotPhotoEmpty": "Todavía no hay foto. Toma una."
   },
 
   "dispute": {

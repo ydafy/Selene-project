@@ -116,7 +116,11 @@
     "paid_desc": "Selene has securely received your payment.",
     "preparing_desc": "The seller is packing your hardware.",
     "shipped_desc": "Your package is with the courier.",
-    "delivered_desc": "Enjoy your new hardware!"
+    "delivered_desc": "Enjoy your new hardware!",
+    "paid_desc_seller": "Payment confirmed by Selene",
+    "preparing_desc_seller": "Pack the product and hand it over to the courier",
+    "shipped_desc_seller": "The package is in transit to the buyer",
+    "delivered_desc_seller": "Package delivered to the buyer."
   },
   "actions": {
     "generateLabel": "Generate Shipping Label",
@@ -176,14 +180,14 @@
   "prepare": {
     "headerTitle": "Generate Label",
     "title": "Prepare Shipment",
-    "subtitle": "Prepare your shipment.",
-    "packagingGuidance": "Pack the item securely in the selected preset-sized box, attach the label after it is generated, and take it to the Paquetexpress branch for handoff. Keep the branch receipt and first tracking scan.",
-    "originLabel": "Pickup Point",
-    "totalSale": "Total Sale",
+    "originLabel": "Where you ship from",
+    "originTitle": "Your shipping address",
+    "boxSectionTitle": "Your box",
+    "yourProduct": "Your product",
+    "boxUnavailable": "We couldn't load the box details",
+    "boxWarning": "If you use a bigger or very different box than this one, the carrier may charge extra fees and that changes your payout.",
     "originPlaceholder": "Select your shipping location",
-    "summaryTitle": "Earnings Summary",
     "confirmBtn": "Generate Shipping Label and Confirm",
-    "disclaimer": "By generating the shipping label, you confirm that your product is ready and packaged.",
     "successTitle": "Shipping Label Generated!",
     "successMsg": "The delivery truck knows you're on your way. Print your shipping label and attach it to the package.",
     "shareLabelTitle": "Share Your Shipping Label",
@@ -192,39 +196,61 @@
     "step1": "Download and print the complete guide (3 pages).",
     "step2": "Attach the first page to your box with clear tape around the edges (without covering the code).",
     "step3": "Keep the other two pages and take your package to the Paquete Express branch. Provide the other two pages if requested.",
-    "evidenceTitle": "Packaging Certificate",
-    "evidenceSubtitle": "Upload 3 photos to protect your sale against potential claims.",
-    "photoHardware": "Product and S/N",
-    "photoProtection": "Protection",
-    "photoSealed": "Sealed Box",
-    "uploading": "Uploading...",
-    "errorUpload": "Error uploading image",
-    "requirements": {
-      "common": {
-        "sealed": "Sealed box with guide attached"
+    "contextLine": "Order #{{reference}} · Not shipped yet",
+    "packTitle": "Pack it like this",
+    "packSteps": [
+      {
+        "title": "Choose the box",
+        "hint": "Rigid cardboard, sized to your product. If there is too much empty space it moves and gets hit."
       },
-      "mobo": {
-        "socket": "Close-up of the socket (pins)",
-        "full": "Overall photo of the board"
+      {
+        "title": "Protect the product",
+        "hint": "Wrap it in bubble wrap or foam on every side."
       },
-      "gpu": {
-        "pcie": "Close-up of PCIe connector (pins)",
-        "back": "Complete rear photo of the PCB"
+      {
+        "title": "Fill the gaps",
+        "hint": "Paper, foam or packing chips until no free space is left."
       },
-
-      "cpu": {
-        "pins": "Close-up of pins/contacts",
-        "ihs": "Front photo (Legible model)"
+      {
+        "title": "Seal the box",
+        "hint": "Strong tape over every opening. Never thin office tape."
       },
-      "ram": {
-        "label": "Photo of the label (Specs)",
-        "contacts": "Close-up of gold connector"
-      },
-      "other": {
-        "front": "Front photo of the product",
-        "extras": "Photo of included accessories"
+      {
+        "title": "Attach the label",
+        "hint": "Print it and tape it on top of the box with clear tape, without covering the code."
       }
-    }
+    ],
+    "packConsequence": "Inadequate packaging voids any claim against the carrier.",
+    "whereTitle": "Where do I get the materials?",
+    "whereItems": [
+      "Stores such as Home Depot, Office Depot, or Office Max. You can also search online."
+    ],
+    "whereCta": "Search for materials online",
+    "whyLabel": "Why these photos?",
+    "whyTitle": "Why we ask for these photos",
+    "whyBullet1": "If the buyer claims something else arrived, these photos are your backup.",
+    "whyBullet2": "They are what lets us file a claim against the carrier.",
+    "whyBullet3": "They do not prove what is inside the box — the buyer's unboxing video does.",
+    "whyClose": "Got it",
+    "slotProduct": "Product & packaging",
+    "slotBox": "Closed box",
+    "slotSealing": "Whole box",
+    "slotProductDesc": "We want to see your product sitting inside the box with the padding in place, so it clearly cannot move.",
+    "slotBoxDesc": "The whole box, closed, with the up arrows visible.",
+    "slotSealingDesc": "The whole box from another angle, with the tape visible.",
+    "photoCta": "Take photo",
+    "statusMissingPhotos_one": "{{count}} photo left to generate the label",
+    "statusMissingPhotos_other": "{{count}} photos left to generate the label",
+    "statusMissingOrigin": "Choose where you ship from to continue",
+    "statusNotReady": "This shipment is not ready for a label yet",
+    "generateWarning": "This creates a real shipping label. It costs money and cannot be undone.",
+    "connectTitle": "Complete your payment setup",
+    "connectBody": "To receive payments from your sales, you need to finish your Stripe Connect registration. It is free and takes 5 minutes.",
+    "connectCta": "Register with Stripe",
+    "securityReason": "Authorize to generate the shipping label",
+    "evidenceTitle": "Packaging Proof",
+    "slotPhotoAdded": "Photo added. Take another.",
+    "slotPhotoEmpty": "No photo yet. Take one."
   },
   "dispute": {
     "wizardTitle": "Report a Problem",

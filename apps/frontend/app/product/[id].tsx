@@ -79,7 +79,7 @@ export default function ProductDetailScreen() {
         justifyContent="center"
         alignItems="center"
         backgroundColor="background"
-        padding="l"
+        padding="xl"
       >
         <MaterialCommunityIcons
           name="package-variant-remove"
@@ -89,7 +89,7 @@ export default function ProductDetailScreen() {
         <Text
           variant="subheader-lg"
           color="textPrimary"
-          marginTop="m"
+          marginTop="s"
           textAlign="center"
         >
           {t('details.notFoundTitle')}
@@ -102,9 +102,11 @@ export default function ProductDetailScreen() {
         >
           {t('details.notFoundMessage')}
         </Text>
-        <PrimaryButton onPress={() => router.back()}>
-          {t('common:actions.goBack')}
-        </PrimaryButton>
+        <Box marginVertical="m">
+          <PrimaryButton onPress={() => router.back()}>
+            {t('common:actions.goBack')}
+          </PrimaryButton>
+        </Box>
       </Box>
     );
   }

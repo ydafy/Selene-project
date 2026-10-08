@@ -12,6 +12,8 @@ type LabelWithHelpProps = {
   helpTitle: string;
   helpDescription: string;
   color?: 'textPrimary' | 'textSecondary' | 'primary';
+  /** Optional translated label for the modal confirm button. Defaults to the legacy hardcoded label. */
+  confirmLabel?: string;
 };
 
 export const LabelWithHelp = ({
@@ -19,6 +21,7 @@ export const LabelWithHelp = ({
   helpTitle,
   helpDescription,
   color = 'textSecondary',
+  confirmLabel,
 }: LabelWithHelpProps) => {
   const theme = useTheme<Theme>();
   const [visible, setVisible] = useState(false);
@@ -49,7 +52,7 @@ export const LabelWithHelp = ({
         description={helpDescription}
         onConfirm={() => setVisible(false)}
         onCancel={() => setVisible(false)}
-        confirmLabel="Entendido"
+        confirmLabel={confirmLabel ?? 'Entendido'}
         hideCancel={true} // ¡Truco! Solo mostramos "Entendido"
         icon="lightbulb-on-outline" // Icono de "Idea"
       />

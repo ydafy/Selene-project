@@ -43,14 +43,11 @@ export default function SuccessScreen() {
   }, [router, resetCheckout]);
 
   const handleGoToOrders = () => {
-    // Usamos replace para matar el stack de navegación del checkout
-    router.replace('/(tabs)/profile');
-    // Nota: Aquí idealmente navegarías a una ruta específica como '/orders'
-    // si existiera, o al tab de perfil donde están las órdenes.
+    router.replace('/profile/orders');
   };
 
   const handleGoHome = () => {
-    router.replace('/');
+    router.dismiss();
   };
 
   return (

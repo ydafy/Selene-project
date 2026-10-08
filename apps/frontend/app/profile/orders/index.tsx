@@ -113,7 +113,11 @@ export default function OrdersScreen() {
   return (
     <Box flex={1} backgroundColor="background">
       <Stack.Screen options={{ headerShown: false }} />
-      <GlobalHeader title={t('screenTitle')} showBack />
+      <GlobalHeader
+        title={t('screenTitle')}
+        showBack
+        onBack={() => router.back()}
+      />
 
       <Box flex={1}>
         {/* 1. ESTADO DE CARGA (SKELETONS) */}

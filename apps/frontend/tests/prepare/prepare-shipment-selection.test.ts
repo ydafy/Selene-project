@@ -10,7 +10,14 @@ test('requires a selected seller-owned product shipment before generating a labe
   expect(source).toContain('const { id, shipment_id } = useLocalSearchParams');
   expect(source).toContain('const sellerShipments = useMemo');
   expect(source).toContain('const selectedShipment = useMemo');
-  expect(source).toMatch(/if\s*\(\s*!selectedOrigin\s*\|\|\s*!targetShipmentId/);
+  expect(source).toContain('shipment.seller_id === userId');
+  expect(source).toContain('if (!selectedShipmentId) return null;');
+  expect(source).toContain('sellerShipments.find((shipment) => shipment.id === selectedShipmentId)');
+  expect(source).toContain('const targetShipmentId = selectedShipment?.id;');
+  expect(source).toContain('const EVIDENCE_MIN_PHOTOS = 3;');
+  expect(source).toMatch(
+    /const handleConfirm = async \(\) => \{\s*if\s*\(\s*isProcessing\s*\|\|\s*!selectedOrigin\s*\|\|\s*!targetShipmentId\s*\|\|\s*selectedShipment\?\.status !== 'paid'\s*\|\|\s*evidenceUrls\.length < EVIDENCE_MIN_PHOTOS\s*\)\s*return;/,
+  );
   expect(source).toContain('shipmentId: targetShipmentId');
 });
 

@@ -7,7 +7,10 @@
     "description": "Descripción",
     "noDescription": "Sin descripcion",
     "specifications": "Especificaciones",
-    "verifiedSeller": "Verificado por Selene"
+    "verifiedSeller": "Verificado por Selene",
+
+    "notFoundTitle": "Producto no encontrado",
+    "notFoundMessage": "Este Producto no disponible o ha sido eliminado."
   },
   "seller": {
     "fallbackName": "Usuario",

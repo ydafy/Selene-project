@@ -14,12 +14,14 @@ type GlobalHeaderProps = {
   backgroundColor?: keyof Theme['colors'];
   alignTitle?: 'center' | 'flex-start';
   useSafeArea?: boolean;
+  onBack?: () => void;
 };
 
 export const GlobalHeader = ({
   title,
   titleComponent,
   showBack = false,
+  onBack,
   headerRight,
   backgroundColor = 'cardBackground',
   alignTitle = 'center',
@@ -75,7 +77,7 @@ export const GlobalHeader = ({
                 icon="arrow-left"
                 iconColor={theme.colors.textPrimary}
                 size={24}
-                onPress={() => router.back()}
+                onPress={onBack ? onBack : () => router.back()}
                 style={{ margin: 0 }}
               />
             ) : (
