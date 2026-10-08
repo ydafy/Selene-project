@@ -59,8 +59,8 @@ BEGIN
             user_id, type, title, message, action_path,
             event_kind, source_event_key, event_payload
         ) VALUES (
-            v_buyer_id, 'info', 'Evidencia del retorno recibida',
-            'El vendedor presentó evidencia del retorno. Consulta el estado de tu caso.',
+            v_buyer_id, 'info', 'Tu disputa se reabrió para revisión',
+            'El vendedor reportó un problema con el producto devuelto y presentó evidencia. La misma disputa se reabrió para revisar esa evidencia. Consulta los detalles del caso en tu pedido.',
             '/profile/orders/' || v_order_id::text,
             'return.seller_evidence_submitted',
             'return.seller_evidence_submitted:' || p_dispute_id::text || ':' || v_occurrence_id,

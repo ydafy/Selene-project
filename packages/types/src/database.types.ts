@@ -399,6 +399,153 @@ export type Database = {
         }
         Relationships: []
       }
+      connect_account_actionability: {
+        Row: {
+          blocked_reason: string | null
+          current_currency: string | null
+          current_default_for_currency: boolean | null
+          current_external_account_id: string | null
+          current_mxn_default_count: number | null
+          current_observed_at: string | null
+          external_account_status: string | null
+          is_actionable: boolean
+          payouts_enabled: boolean | null
+          refresh_generation: number
+          refresh_pending: boolean
+          source_event_id: string | null
+          stripe_account_id: string
+          stripe_created: string
+          updated_at: string
+        }
+        Insert: {
+          blocked_reason?: string | null
+          current_currency?: string | null
+          current_default_for_currency?: boolean | null
+          current_external_account_id?: string | null
+          current_mxn_default_count?: number | null
+          current_observed_at?: string | null
+          external_account_status?: string | null
+          is_actionable: boolean
+          payouts_enabled?: boolean | null
+          refresh_generation?: number
+          refresh_pending?: boolean
+          source_event_id?: string | null
+          stripe_account_id: string
+          stripe_created: string
+          updated_at?: string
+        }
+        Update: {
+          blocked_reason?: string | null
+          current_currency?: string | null
+          current_default_for_currency?: boolean | null
+          current_external_account_id?: string | null
+          current_mxn_default_count?: number | null
+          current_observed_at?: string | null
+          external_account_status?: string | null
+          is_actionable?: boolean
+          payouts_enabled?: boolean | null
+          refresh_generation?: number
+          refresh_pending?: boolean
+          source_event_id?: string | null
+          stripe_account_id?: string
+          stripe_created?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      connect_account_events: {
+        Row: {
+          event_type: string
+          external_account_id: string | null
+          external_account_status: string | null
+          id: string
+          payouts_enabled: boolean | null
+          received_at: string
+          stripe_account_id: string
+          stripe_created: string
+          stripe_event_id: string
+        }
+        Insert: {
+          event_type: string
+          external_account_id?: string | null
+          external_account_status?: string | null
+          id?: string
+          payouts_enabled?: boolean | null
+          received_at?: string
+          stripe_account_id: string
+          stripe_created: string
+          stripe_event_id: string
+        }
+        Update: {
+          event_type?: string
+          external_account_id?: string | null
+          external_account_status?: string | null
+          id?: string
+          payouts_enabled?: boolean | null
+          received_at?: string
+          stripe_account_id?: string
+          stripe_created?: string
+          stripe_event_id?: string
+        }
+        Relationships: []
+      }
+      connect_payout_events: {
+        Row: {
+          connect_payout_run_id: string | null
+          event_type: string
+          failure_balance_transaction: string | null
+          failure_code: string | null
+          failure_message: string | null
+          id: string
+          observed_payout_status: string
+          received_at: string
+          stripe_created: string
+          stripe_event_id: string
+          stripe_payout_id: string
+        }
+        Insert: {
+          connect_payout_run_id?: string | null
+          event_type: string
+          failure_balance_transaction?: string | null
+          failure_code?: string | null
+          failure_message?: string | null
+          id?: string
+          observed_payout_status: string
+          received_at?: string
+          stripe_created: string
+          stripe_event_id: string
+          stripe_payout_id: string
+        }
+        Update: {
+          connect_payout_run_id?: string | null
+          event_type?: string
+          failure_balance_transaction?: string | null
+          failure_code?: string | null
+          failure_message?: string | null
+          id?: string
+          observed_payout_status?: string
+          received_at?: string
+          stripe_created?: string
+          stripe_event_id?: string
+          stripe_payout_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "connect_payout_events_connect_payout_run_id_fkey"
+            columns: ["connect_payout_run_id"]
+            isOneToOne: false
+            referencedRelation: "admin_connect_payout_release_view"
+            referencedColumns: ["payout_run_id"]
+          },
+          {
+            foreignKeyName: "connect_payout_events_connect_payout_run_id_fkey"
+            columns: ["connect_payout_run_id"]
+            isOneToOne: false
+            referencedRelation: "connect_payout_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       connect_payout_run_shipments: {
         Row: {
           created_at: string
@@ -432,6 +579,13 @@ export type Database = {
             foreignKeyName: "connect_payout_run_shipments_run_id_fkey"
             columns: ["run_id"]
             isOneToOne: false
+            referencedRelation: "admin_connect_payout_release_view"
+            referencedColumns: ["payout_run_id"]
+          },
+          {
+            foreignKeyName: "connect_payout_run_shipments_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
             referencedRelation: "connect_payout_runs"
             referencedColumns: ["id"]
           },
@@ -460,42 +614,72 @@ export type Database = {
       }
       connect_payout_runs: {
         Row: {
+          action_required_reason: string | null
           actor_id: string
           amount: number
+          attempt_count: number
           created_at: string
           failed_at: string | null
           failure_reason: string | null
           id: string
           idempotency_key: string
+          last_error: string | null
+          next_attempt_at: string | null
           paid_at: string | null
+          payout_claim_expires_at: string | null
+          payout_claim_token: string | null
+          payout_create_attempted_at: string | null
+          release_stage: string | null
+          release_stage_version: number
+          retry_of_run_id: string | null
           seller_id: string
           status: string
           stripe_payout_id: string | null
           updated_at: string
         }
         Insert: {
+          action_required_reason?: string | null
           actor_id: string
           amount: number
+          attempt_count?: number
           created_at?: string
           failed_at?: string | null
           failure_reason?: string | null
           id?: string
           idempotency_key: string
+          last_error?: string | null
+          next_attempt_at?: string | null
           paid_at?: string | null
+          payout_claim_expires_at?: string | null
+          payout_claim_token?: string | null
+          payout_create_attempted_at?: string | null
+          release_stage?: string | null
+          release_stage_version?: number
+          retry_of_run_id?: string | null
           seller_id: string
           status?: string
           stripe_payout_id?: string | null
           updated_at?: string
         }
         Update: {
+          action_required_reason?: string | null
           actor_id?: string
           amount?: number
+          attempt_count?: number
           created_at?: string
           failed_at?: string | null
           failure_reason?: string | null
           id?: string
           idempotency_key?: string
+          last_error?: string | null
+          next_attempt_at?: string | null
           paid_at?: string | null
+          payout_claim_expires_at?: string | null
+          payout_claim_token?: string | null
+          payout_create_attempted_at?: string | null
+          release_stage?: string | null
+          release_stage_version?: number
+          retry_of_run_id?: string | null
           seller_id?: string
           status?: string
           stripe_payout_id?: string | null
@@ -535,6 +719,20 @@ export type Database = {
             columns: ["actor_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "connect_payout_runs_retry_of_run_id_fkey"
+            columns: ["retry_of_run_id"]
+            isOneToOne: false
+            referencedRelation: "admin_connect_payout_release_view"
+            referencedColumns: ["payout_run_id"]
+          },
+          {
+            foreignKeyName: "connect_payout_runs_retry_of_run_id_fkey"
+            columns: ["retry_of_run_id"]
+            isOneToOne: false
+            referencedRelation: "connect_payout_runs"
             referencedColumns: ["id"]
           },
           {
@@ -949,9 +1147,12 @@ export type Database = {
           action_path: string | null
           created_at: string
           deleted_at: string | null
+          event_kind: string | null
+          event_payload: Json
           id: string
           message: string | null
           read: boolean | null
+          source_event_key: string | null
           title: string
           type: string | null
           user_id: string
@@ -960,9 +1161,12 @@ export type Database = {
           action_path?: string | null
           created_at?: string
           deleted_at?: string | null
+          event_kind?: string | null
+          event_payload?: Json
           id?: string
           message?: string | null
           read?: boolean | null
+          source_event_key?: string | null
           title: string
           type?: string | null
           user_id: string
@@ -971,9 +1175,12 @@ export type Database = {
           action_path?: string | null
           created_at?: string
           deleted_at?: string | null
+          event_kind?: string | null
+          event_payload?: Json
           id?: string
           message?: string | null
           read?: boolean | null
+          source_event_key?: string | null
           title?: string
           type?: string | null
           user_id?: string
@@ -2277,6 +2484,57 @@ export type Database = {
           },
         ]
       }
+      stripe_fee_reconciliation_jobs: {
+        Row: {
+          attempt_count: number
+          created_at: string
+          id: string
+          last_error: string | null
+          next_retry_at: string | null
+          order_id: string
+          status: string
+          stripe_payment_intent_id: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          next_retry_at?: string | null
+          order_id: string
+          status?: string
+          stripe_payment_intent_id: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          next_retry_at?: string | null
+          order_id?: string
+          status?: string
+          stripe_payment_intent_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stripe_fee_reconciliation_jobs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "admin_disputes_monitor_view"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "stripe_fee_reconciliation_jobs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_logs: {
         Row: {
           created_at: string | null
@@ -2745,8 +3003,16 @@ export type Database = {
           completed_at: string | null
           ineligible_reason: string | null
           is_eligible: boolean | null
+          is_retryable: boolean | null
           order_id: string | null
+          payout_run_amount_cents: number | null
+          payout_run_failed_at: string | null
+          payout_run_failure_reason: string | null
+          payout_run_id: string | null
+          payout_run_status: string | null
           release_amount_cents: number | null
+          requires_manual_review: boolean | null
+          retry_of_run_id: string | null
           seller_id: string | null
           seller_name: string | null
           shipment_id: string | null
@@ -2760,6 +3026,20 @@ export type Database = {
           transfer_group: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "connect_payout_runs_retry_of_run_id_fkey"
+            columns: ["retry_of_run_id"]
+            isOneToOne: false
+            referencedRelation: "admin_connect_payout_release_view"
+            referencedColumns: ["payout_run_id"]
+          },
+          {
+            foreignKeyName: "connect_payout_runs_retry_of_run_id_fkey"
+            columns: ["retry_of_run_id"]
+            isOneToOne: false
+            referencedRelation: "connect_payout_runs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "shipments_order_id_fkey"
             columns: ["order_id"]
@@ -3134,6 +3414,19 @@ export type Database = {
           publication_shipping_reserve_cents: number
         }[]
       }
+      fn_abort_payout_create_to_action_required: {
+        Args: {
+          p_claim_token?: string
+          p_expected_stage_version: number
+          p_reason: string
+          p_run_id: string
+        }
+        Returns: boolean
+      }
+      fn_acquire_connect_account_refresh: {
+        Args: { p_source_event_id: string; p_stripe_account_id: string }
+        Returns: number
+      }
       fn_acquire_track_shipments_lease: {
         Args: { p_lane: string }
         Returns: {
@@ -3167,6 +3460,53 @@ export type Database = {
         }
         Returns: boolean
       }
+      fn_append_connect_payout_event: {
+        Args: {
+          p_connect_payout_run_id: string
+          p_event_type: string
+          p_failure_balance_transaction?: string
+          p_failure_code?: string
+          p_failure_message?: string
+          p_observed_payout_status: string
+          p_stripe_created: string
+          p_stripe_event_id: string
+          p_stripe_payout_id: string
+        }
+        Returns: boolean
+      }
+      fn_apply_connect_account_actionability: {
+        Args: {
+          p_blocked_reason: string
+          p_external_account_status?: string
+          p_is_actionable: boolean
+          p_payouts_enabled?: boolean
+          p_source_event_id?: string
+          p_stripe_account_id: string
+          p_stripe_created: string
+        }
+        Returns: number
+      }
+      fn_begin_manual_payout_create_fence: {
+        Args: { p_run_id: string }
+        Returns: number
+      }
+      fn_begin_payout_create_fence: {
+        Args: {
+          p_claim_token: string
+          p_expected_stage_version: number
+          p_run_id: string
+        }
+        Returns: number
+      }
+      fn_block_payout_run_for_account_actionability: {
+        Args: {
+          p_blocked_reason: string
+          p_claim_token: string
+          p_expected_stage_version: number
+          p_run_id: string
+        }
+        Returns: boolean
+      }
       fn_buyer_submit_return_evidence: {
         Args: { p_dispute_id: string; p_images: string[] }
         Returns: {
@@ -3197,6 +3537,20 @@ export type Database = {
           success: boolean
         }[]
       }
+      fn_claim_awaiting_balance_payout_run: {
+        Args: { p_lease_seconds?: number }
+        Returns: {
+          actor_id: string
+          amount_cents: number
+          claim_expires_at: string
+          claim_token: string
+          idempotency_key: string
+          run_id: string
+          seller_id: string
+          shipment_ids: string[]
+          stage_version: number
+        }[]
+      }
       fn_claim_checkout_recovery_shells: {
         Args: {
           p_claim_scope?: string
@@ -3208,6 +3562,21 @@ export type Database = {
           stripe_payment_intent_id: string
         }[]
       }
+      fn_claim_payout_create_reconciliation: {
+        Args: { p_grace_seconds?: number }
+        Returns: {
+          actor_id: string
+          amount_cents: number
+          claim_expires_at: string
+          claim_token: string
+          idempotency_key: string
+          payout_create_attempted_at: string
+          run_id: string
+          seller_id: string
+          stage_version: number
+          stripe_account_id: string
+        }[]
+      }
       fn_claim_shipment_label: {
         Args: {
           p_origin_address_id: string
@@ -3216,12 +3585,81 @@ export type Database = {
         }
         Returns: Json
       }
+      fn_claim_stripe_fee_reconciliation_jobs: {
+        Args: { p_limit?: number }
+        Returns: {
+          attempt_count: number
+          created_at: string
+          id: string
+          last_error: string | null
+          next_retry_at: string | null
+          order_id: string
+          status: string
+          stripe_payment_intent_id: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "stripe_fee_reconciliation_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      fn_commit_connect_account_refresh: {
+        Args: {
+          p_blocked_reason: string
+          p_current_currency: string
+          p_current_default_for_currency: boolean
+          p_current_external_account_id: string
+          p_current_external_account_status: string
+          p_expected_generation: number
+          p_is_actionable: boolean
+          p_mxn_default_count: number
+          p_payouts_enabled: boolean
+          p_source_event_id: string
+          p_stripe_account_id: string
+        }
+        Returns: boolean
+      }
+      fn_complete_payout_create_fence: {
+        Args: {
+          p_claim_token?: string
+          p_expected_stage_version: number
+          p_run_id: string
+          p_stripe_payout_id: string
+        }
+        Returns: boolean
+      }
       fn_complete_shipment_refund: {
         Args: { p_shipment_id: string }
         Returns: {
           error_message: string
           success: boolean
         }[]
+      }
+      fn_complete_stripe_fee_reconciliation_job: {
+        Args: {
+          p_actual_stripe_fee_cents: number
+          p_job_id: string
+          p_reconciled_at: string
+        }
+        Returns: {
+          attempt_count: number
+          created_at: string
+          id: string
+          last_error: string | null
+          next_retry_at: string | null
+          order_id: string
+          status: string
+          stripe_payment_intent_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "stripe_fee_reconciliation_jobs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       fn_confirm_shipment_delivery: {
         Args: {
@@ -3285,9 +3723,36 @@ export type Database = {
           total_processed: number
         }[]
       }
+      fn_decide_rejected_payout_stage_park: {
+        Args: {
+          p_failure_reason: string
+          p_payout_id: string
+          p_run_id: string
+          p_target_stage: string
+        }
+        Returns: string
+      }
+      fn_defer_awaiting_balance_run: {
+        Args: {
+          p_backoff_seconds: number
+          p_claim_token: string
+          p_expected_stage_version: number
+          p_run_id: string
+        }
+        Returns: boolean
+      }
       fn_derive_order_status: {
         Args: { p_order_id: string }
         Returns: Database["public"]["Enums"]["order_status_enum"]
+      }
+      fn_fail_payout_create_from_fence: {
+        Args: {
+          p_claim_token?: string
+          p_expected_stage_version: number
+          p_failure_reason: string
+          p_run_id: string
+        }
+        Returns: boolean
       }
       fn_finalize_checkout_recovery: {
         Args: { p_stripe_payment_intent_id: string; p_stripe_refund_id: string }
@@ -3307,6 +3772,13 @@ export type Database = {
           p_tracking_number: string
         }
         Returns: boolean
+      }
+      fn_get_connect_account_actionability: {
+        Args: { p_stripe_account_id: string }
+        Returns: {
+          blocked_reason: string
+          is_actionable: boolean
+        }[]
       }
       fn_get_location_by_zip: {
         Args: { p_zip: string }
@@ -3344,6 +3816,18 @@ export type Database = {
       fn_mark_checkout_recovery_retry: {
         Args: { p_error: string; p_stripe_payment_intent_id: string }
         Returns: undefined
+      }
+      fn_mark_payout_run_reconciliation_needed: {
+        Args: { p_failure_reason: string; p_run_id: string }
+        Returns: boolean
+      }
+      fn_mark_payout_run_sync_failed: {
+        Args: {
+          p_failure_reason: string
+          p_run_id: string
+          p_stripe_payout_id: string
+        }
+        Returns: boolean
       }
       fn_mark_return_delivered: {
         Args: { p_dispute_id: string }
@@ -3391,6 +3875,20 @@ export type Database = {
         }
         Returns: boolean
       }
+      fn_project_payout_run_stage: {
+        Args: { p_payout_id: string; p_run_id: string; p_target_stage: string }
+        Returns: boolean
+      }
+      fn_project_payout_run_terminal: {
+        Args: {
+          p_failure_reason?: string
+          p_occurred_at: string
+          p_payout_id: string
+          p_run_id: string
+          p_target_status: string
+        }
+        Returns: boolean
+      }
       fn_reconcile_connect_payments: {
         Args: never
         Returns: {
@@ -3414,6 +3912,18 @@ export type Database = {
         }
         Returns: boolean
       }
+      fn_record_connect_account_event: {
+        Args: {
+          p_event_type: string
+          p_external_account_id?: string
+          p_external_account_status?: string
+          p_payouts_enabled?: boolean
+          p_stripe_account_id: string
+          p_stripe_created: string
+          p_stripe_event_id: string
+        }
+        Returns: boolean
+      }
       fn_record_tracking_event: {
         Args: {
           p_carrier_name: string
@@ -3433,6 +3943,10 @@ export type Database = {
       fn_refresh_seller_stats: {
         Args: { p_seller_id: string }
         Returns: undefined
+      }
+      fn_release_payout_claim: {
+        Args: { p_claim_token: string; p_run_id: string }
+        Returns: boolean
       }
       fn_release_products: {
         Args: { p_product_ids: string[] }
@@ -3479,8 +3993,22 @@ export type Database = {
           success: boolean
         }[]
       }
+      fn_resolve_dispute_to_buyer_as_admin: {
+        Args: { p_admin_id: string; p_admin_note: string; p_dispute_id: string }
+        Returns: {
+          error_message: string
+          success: boolean
+        }[]
+      }
       fn_resolve_dispute_to_seller: {
         Args: { p_admin_note: string; p_dispute_id: string }
+        Returns: {
+          error_message: string
+          success: boolean
+        }[]
+      }
+      fn_resolve_dispute_to_seller_as_admin: {
+        Args: { p_admin_id: string; p_admin_note: string; p_dispute_id: string }
         Returns: {
           error_message: string
           success: boolean
@@ -3528,6 +4056,41 @@ export type Database = {
         Args: { p_stripe_charge_id: string; p_stripe_payment_intent_id: string }
         Returns: string
       }
+      fn_transition_payout_release_stage: {
+        Args: {
+          p_claim_token?: string
+          p_expected_stage_version: number
+          p_last_error?: string
+          p_run_id: string
+          p_target_stage: string
+        }
+        Returns: number
+      }
+      fn_transition_stripe_fee_reconciliation_job: {
+        Args: {
+          p_job_id: string
+          p_last_error?: string
+          p_next_retry_at?: string
+          p_outcome: string
+        }
+        Returns: {
+          attempt_count: number
+          created_at: string
+          id: string
+          last_error: string | null
+          next_retry_at: string | null
+          order_id: string
+          status: string
+          stripe_payment_intent_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "stripe_fee_reconciliation_jobs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       fn_unlock_dispute: { Args: { p_dispute_id: string }; Returns: boolean }
       fn_unlock_product: { Args: { p_product_id: string }; Returns: boolean }
       fn_upsert_checkout_recovery_shell: {
@@ -3539,6 +4102,14 @@ export type Database = {
           p_stripe_payment_intent_id: string
         }
         Returns: Json
+      }
+      fn_verify_payout_claim: {
+        Args: {
+          p_claim_token: string
+          p_expected_stage_version: number
+          p_run_id: string
+        }
+        Returns: boolean
       }
       get_profile_stats: { Args: { target_user_id: string }; Returns: Json }
       is_admin: { Args: never; Returns: boolean }

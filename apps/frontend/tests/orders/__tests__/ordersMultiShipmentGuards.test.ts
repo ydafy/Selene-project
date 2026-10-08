@@ -86,6 +86,48 @@ describe('OrderActionCard shipment-level timing guard', () => {
   });
 });
 
+describe('OrderActionCard dispute banner title guard', () => {
+  const card = read('components/features/orders/OrderActionCard.tsx');
+  const title = card.slice(
+    card.indexOf('const getBannerTitle ='),
+    card.indexOf('const getBannerMessage ='),
+  );
+
+  it('uses the localized open title for either role before the return fallback', () => {
+    expect(title).toContain(
+      "if (order.status === 'dispute') { if (dispute?.status === 'return_delivered' && isSeller) return t('actionCard.recordUnboxingTitle'); if (dispute?.status === 'open') return t('orders:card.disputeStatus.open').toUpperCase(); return t('orders:detail.returnTitle'); }",
+    );
+  });
+
+  it('keeps waiting_return and return_shipped on the unconditional return title fallback', () => {
+    expect(title).not.toContain("dispute?.status === 'waiting_return'");
+    expect(title).not.toContain("dispute?.status === 'return_shipped'");
+    expect(title).toContain(
+      "return t('orders:detail.returnTitle'); } return t(`orders:status.${order.status}`).toUpperCase();",
+    );
+  });
+});
+
+describe('OrderActionCard seller return problem navigation guard', () => {
+  const card = read('components/features/orders/OrderActionCard.tsx');
+  const action = card.slice(
+    card.indexOf("{isSeller && dispute?.status === 'return_delivered' && ("),
+    card.indexOf("{t('actionCard.reportReturnProblem')}"),
+  );
+
+  it('keeps the order report route and carries the selected shipment context', () => {
+    expect(action).toContain(
+      "{isSeller && dispute?.status === 'return_delivered' && (",
+    );
+    expect(action).toContain(
+      'router.push(`/profile/orders/report/${order.id}?shipment_id=${shipment.id}` as any)',
+    );
+    expect(action).not.toContain(
+      'router.push(`/profile/orders/report/${order.id}` as any)',
+    );
+  });
+});
+
 describe('orders index role-aware navigation guard', () => {
   const index = read('app/profile/orders/index.tsx');
 

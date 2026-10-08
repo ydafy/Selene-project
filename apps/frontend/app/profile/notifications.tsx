@@ -46,7 +46,7 @@ export default function NotificationsScreen() {
   } = useNotificationsList(userId);
 
   const { data: unreadCount } = useUnreadNotifications(userId);
-  const { markAsRead, markAllAsRead, dismissNotification, dismissAll } =
+  const { markAsRead, markAllAsRead, dismissAll } =
     useNotificationMutations(userId);
 
   const handleNotificationPress = async (notif: Notification) => {
@@ -157,8 +157,6 @@ export default function NotificationsScreen() {
           <NotificationItem
             notification={item}
             onPress={handleNotificationPress}
-            onDismiss={dismissNotification}
-            onMarkRead={markAsRead}
           />
         )}
         onEndReached={hasNextPage ? fetchNextPage : undefined}

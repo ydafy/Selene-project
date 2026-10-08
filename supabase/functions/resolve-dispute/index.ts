@@ -2,6 +2,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { z } from 'https://esm.sh/zod@3.23.8';
 
+import { buildVerdictRpc } from './verdictRpc.ts';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
@@ -74,17 +76,10 @@ serve(async (req) => {
     log('INFO', 'Procesando veredicto', { disputeId, verdict, admin: user.id });
 
     // 3. Ejecutar RPC correspondiente
-    const rpcName =
-      verdict === 'seller'
-        ? 'fn_resolve_dispute_to_seller'
-        : 'fn_resolve_dispute_to_buyer';
+    const rpc = buildVerdictRpc({ disputeId, verdict, adminNote }, user.id);
 
     const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc(
-      rpcName,
-      {
-        p_dispute_id: disputeId,
-        p_admin_note: adminNote,
-      },
+      rpc.name, rpc.args,
     );
 
     if (rpcError || (rpcData && !rpcData[0]?.success)) {

@@ -33,30 +33,30 @@ if (process.env.SELENE_NOTIFICATION_MOUNT_CHILD !== 'item') {
   mock.module('../../../ui/ConfirmDialog', () => ({ ConfirmDialog: host('ConfirmDialog') }));
 
   const { NotificationItem } = await import('../NotificationItem');
-  const notification: Notification = { id: 'n', user_id: 'u', created_at: '2026-01-01', deleted_at: null, title: 'Title', message: 'Message', type: 'error', read: false, action_path: null };
+  const notification: Notification = { id: 'n', user_id: 'u', created_at: '2026-01-01', deleted_at: null, title: 'Title', message: 'Message', type: 'error', read: false, action_path: null, event_kind: null, source_event_key: null, event_payload: {} };
 
-  test('mounted item separates navigation, explicit read, and confirmed dismissal', async () => {
+  test('mounted item keeps one accessible tap without per-card controls', async () => {
     const onPress = mock(() => {});
-    const onMarkRead = mock(() => {});
-    const onDismiss = mock(() => {});
     let tree: ReturnType<typeof create>;
-    await act(async () => { tree = create(<NotificationItem notification={notification} onPress={onPress} onMarkRead={onMarkRead} onDismiss={onDismiss} />); });
+    await act(async () => { tree = create(<NotificationItem notification={notification} onPress={onPress} />); });
     const buttons = () => tree!.root.findAllByType('Pressable');
     expect(buttons()[0].props.accessibilityLabel).toContain('notifications:unreadState');
     expect(buttons()[0].props.accessibilityLabel).toContain('notifications:states.generic');
     await act(async () => { buttons()[0].props.onPress(); });
     expect(onPress).toHaveBeenCalledWith(notification);
-    expect(onMarkRead).not.toHaveBeenCalled();
-    await act(async () => { buttons()[1].props.onPress(); });
-    expect(onMarkRead).toHaveBeenCalledWith('n');
-    await act(async () => { buttons()[2].props.onPress(); });
-    expect(onDismiss).not.toHaveBeenCalled();
-    expect(tree!.root.findByType('ConfirmDialog').props.visible).toBe(true);
-    await act(async () => { await tree!.root.findByType('ConfirmDialog').props.onConfirm(); });
-    expect(onDismiss).toHaveBeenCalledWith('n');
-    expect(tree!.root.findByType('ConfirmDialog').props.visible).toBe(false);
-    await act(async () => { tree!.update(<NotificationItem notification={{ ...notification, read: true }} onPress={onPress} onMarkRead={onMarkRead} onDismiss={onDismiss} />); });
+    expect(buttons()).toHaveLength(1);
+    expect(tree!.root.findAllByType('ConfirmDialog')).toHaveLength(0);
+    await act(async () => { tree!.update(<NotificationItem notification={{ ...notification, read: true }} onPress={onPress} />); });
     expect(buttons()[0].props.accessibilityLabel).toContain('notifications:readState');
-    expect(buttons()).toHaveLength(2);
+    expect(buttons()).toHaveLength(1);
+    for (const kind of ['product.approved_with_note', 'product.rejected', 'product.approved', 'dispute.verdict']) {
+      const typed = { ...notification, event_kind: kind, source_event_key: `${kind}:audit`, event_payload: { recipient_role: 'seller' } };
+      await act(async () => { tree!.update(<NotificationItem notification={typed} onPress={onPress} />); });
+      const message = tree!.root.findAllByType('Text').find((node: { props: { children: unknown } }) => node.props.children === notification.message);
+      expect(message!.props.fontStyle).toBe(kind === 'product.approved_with_note' || kind === 'product.rejected' ? 'italic' : 'normal');
+    }
+    await act(async () => { tree!.update(<NotificationItem notification={{ ...notification, event_kind: 'product.rejected', source_event_key: 'invalid' }} onPress={onPress} />); });
+    const message = tree!.root.findAllByType('Text').find((node: { props: { children: unknown } }) => node.props.children === notification.message);
+    expect(message!.props.fontStyle).toBe('normal');
   });
 }

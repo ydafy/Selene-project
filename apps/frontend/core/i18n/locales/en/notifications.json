@@ -24,8 +24,8 @@
   "moreCount": "+{{count}} more",
   "openLabel": "Open notifications",
   "digestTitle": "New notifications",
-  "digestDescription": "You have unread updates. View the latest or open your inbox for the rest.",
-  "digestOpen": "View update",
+  "digestDescription": "You have unread notifications. Open your inbox to review them.",
+  "digestOpen": "Open notification inbox",
   "digestSkip": "Not now",
   "digestInbox": "Open notification inbox",
   "digestMore": "More updates are in your inbox"

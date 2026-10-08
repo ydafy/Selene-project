@@ -19,7 +19,7 @@ BEGIN
     SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
     WHERE c.oid = relation_oid AND n.nspname = 'public' AND c.relname = 'notifications'
       AND c.relkind = 'r' AND c.relrowsecurity AND NOT c.relforcerowsecurity
-  ) OR (SELECT array_agg(a.attname ORDER BY a.attnum) FROM pg_catalog.pg_attribute a
+  ) OR (SELECT array_agg(a.attname::text ORDER BY a.attnum) FROM pg_catalog.pg_attribute a
         WHERE a.attrelid = relation_oid AND a.attnum > 0 AND NOT a.attisdropped)
      IS DISTINCT FROM expected_columns THEN
     RAISE EXCEPTION 'Unexpected legacy notifications relation or column shape';

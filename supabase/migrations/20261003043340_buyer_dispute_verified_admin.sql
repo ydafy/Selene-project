@@ -1,25 +1,33 @@
--- N5d: apply only after N4b, N4a, N5a, N5b and N5c. Confirm deployed
--- buyer RPC body and search_path match before manual cutover; this preflight
--- rejects unexpected function settings. Submit whole file in one transaction;
--- on uncertain execution inspect the deployed state before retrying.
+-- Buyer-only verified actor boundary. Apply after N5d, before deploying resolve-dispute.
 BEGIN;
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '60s';
 
 DO $preflight$
 BEGIN
-  IF NOT EXISTS (
+  IF EXISTS (
     SELECT 1 FROM pg_catalog.pg_proc p
     JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
-    WHERE n.nspname = 'public' AND p.proname = 'fn_resolve_dispute_to_buyer'
-      AND p.oid = 'public.fn_resolve_dispute_to_buyer(uuid,text)'::regprocedure
-      AND p.prosecdef
+    WHERE n.nspname = 'public' AND p.proname = 'fn_resolve_dispute_to_buyer_as_admin'
+  ) THEN
+    RAISE EXCEPTION 'Verified-admin RPC name already exists; inspect before retrying';
+  END IF;
+  -- Exact N5d body fingerprint also requires its audited notification flow.
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_proc p
+    WHERE p.oid = 'public.fn_resolve_dispute_to_buyer(uuid,text)'::regprocedure
+      AND p.prosecdef AND p.pronargdefaults = 0
+      AND p.proconfig = ARRAY['search_path=public, pg_temp']::text[]
+      AND md5(replace(p.prosrc, E'\r\n', E'\n')) = '342deb0887202475426c266b0f12a9a4'
       AND has_function_privilege('service_role', p.oid, 'EXECUTE')
       AND NOT has_function_privilege('anon', p.oid, 'EXECUTE')
       AND NOT has_function_privilege('authenticated', p.oid, 'EXECUTE')
-      AND p.proconfig = ARRAY['search_path=public']::text[]
+      AND NOT EXISTS (
+        SELECT 1 FROM pg_catalog.aclexplode(COALESCE(p.proacl, pg_catalog.acldefault('f', p.proowner))) acl
+        WHERE acl.grantee = 0 AND acl.privilege_type = 'EXECUTE'
+      )
   ) THEN
-    RAISE EXCEPTION 'Buyer dispute RPC signature, authority or security settings differ';
+    RAISE EXCEPTION 'Expected hardened service-only N5d buyer RPC is absent or differs';
   END IF;
   IF NOT EXISTS (
     SELECT 1 FROM pg_catalog.pg_attribute a
@@ -42,7 +50,7 @@ BEGIN
        WHERE has_column_privilege(roles.name, 'public.notifications', columns.name, 'INSERT')
           OR has_column_privilege(roles.name, 'public.notifications', columns.name, 'UPDATE')
      ) THEN
-    RAISE EXCEPTION 'N4b restrictive notification grants required before N5d';
+    RAISE EXCEPTION 'N4b restrictive notification grants required';
   END IF;
   IF NOT EXISTS (
     SELECT 1 FROM pg_catalog.pg_index i
@@ -64,9 +72,10 @@ BEGIN
 END;
 $preflight$;
 
-CREATE OR REPLACE FUNCTION public.fn_resolve_dispute_to_buyer(
+CREATE FUNCTION public.fn_resolve_dispute_to_buyer_as_admin(
   p_dispute_id UUID,
-  p_admin_note TEXT
+  p_admin_note TEXT,
+  p_admin_id UUID
 )
 RETURNS TABLE(success BOOLEAN, error_message TEXT)
 LANGUAGE plpgsql
@@ -81,11 +90,11 @@ DECLARE
     v_seller_id UUID;
     v_audit_id UUID;
 BEGIN
-    -- A. SEGURIDAD: Obtener ID desde JWT y validar sesión
-    v_auth_user_id := (current_setting('request.jwt.claims', true)::json->>'sub')::UUID;
+    -- A. SECURITY: Actor supplied only by the verified-admin service boundary
+    v_auth_user_id := p_admin_id;
 
     IF v_auth_user_id IS NULL THEN
-        RAISE EXCEPTION 'UNAUTHORIZED_NO_SESSION';
+        RAISE EXCEPTION 'UNAUTHORIZED_NO_ACTOR';
     END IF;
 
     -- B. VALIDACIÓN DE ROL: Solo Admins
@@ -150,4 +159,6 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
+REVOKE ALL ON FUNCTION public.fn_resolve_dispute_to_buyer_as_admin(uuid,text,uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_resolve_dispute_to_buyer_as_admin(uuid,text,uuid) TO service_role;
 COMMIT;

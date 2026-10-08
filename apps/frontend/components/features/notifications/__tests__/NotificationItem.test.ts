@@ -8,6 +8,10 @@ test('item uses presentation policy and localized read state without implicit ma
   expect(source).toContain("notifications:itemLabel");
   expect(source).toContain("notifications:unreadState");
   expect(source).toContain("notifications:readState");
-  expect(source).toContain('onPress={() => onMarkRead(notification.id)}');
+  expect(source).not.toContain('onMarkRead');
+  expect(source).not.toContain('onDismiss');
+  expect(source).not.toContain('ConfirmDialog');
+  expect(source).toContain('getVerifiedEventIdentity(notification)');
+  expect(source).toContain("fontStyle={emphasizeMessage ? 'italic' : 'normal'}");
   expect(source).toContain('onPress={() => onPress(notification)}');
 });

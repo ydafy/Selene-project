@@ -90,24 +90,18 @@ The system SHALL use the correct theme token `pressableShadow` (not `preseableSh
 - WHEN the user presses a notification item
 - THEN the background color uses `theme.colors.pressableShadow` — no undefined token fallback
 
-### Requirement: Dismiss Notification Action
+### Requirement: Notification Item Presentation
 
 **ID**: CONF-101
 **Priority**: P1
 
-The system SHALL expose a dismiss action on every notification list item. Activating the action SHALL invoke `dismissNotification(id)` and remove the item from the visible list after server confirmation.
+Each item SHALL retain its semantic event icon, unread indicator, title, message, timestamp, and accessible tap callback. Items SHALL NOT expose separate mark-read or dismiss controls or a per-item confirmation dialog. Only safely validated typed `product.approved_with_note` and `product.rejected` events SHALL italicize the whole message. No message parsing, extracted note, new public payload field, or blanket dispute emphasis is permitted; invalid or legacy metadata uses ordinary message styling.
 
-#### Scenario: User dismisses a single notification
+#### Scenario: User taps a notification
 
-- GIVEN the notifications list renders a visible item
-- WHEN the user activates the item's dismiss affordance (swipe, long-press, or context menu)
-- THEN `dismissNotification(id)` is called AND the item disappears after the mutation succeeds
-
-#### Scenario: Dismiss failure leaves item in place
-
-- GIVEN `dismissNotification(id)` returns an error
-- WHEN the mutation fails
-- THEN the item remains visible AND an error toast is shown
+- GIVEN a visible notification item
+- WHEN the user taps it
+- THEN the screen marks it read and navigates to its validated destination
 
 ### Requirement: Clear All Notifications
 
@@ -152,7 +146,7 @@ The system SHALL render the count of owner-visible, non-dismissed unread notific
 **ID**: CONF-104
 **Priority**: P2
 
-The system SHALL provide localized accessibility labels for the bell button and all dismiss/clear-all actions.
+The system SHALL provide localized accessibility labels for the bell button, notification item taps, and header mark-all/clear-all actions.
 
 #### Scenario: Screen reader focuses bell
 
@@ -160,15 +154,15 @@ The system SHALL provide localized accessibility labels for the bell button and 
 - WHEN the user focuses the notifications bell
 - THEN it announces `notifications:openLabel`
 
-#### Scenario: Screen reader focuses dismiss action
+#### Scenario: Screen reader focuses a notification item
 
 - GIVEN a screen reader is active
-- WHEN the user focuses a notification's dismiss action
-- THEN it announces `notifications:dismissLabel`
+- WHEN the user focuses a notification item
+- THEN it announces the localized read state, event state, title, and message
 
 ### Requirement: Notification Screen Integration
 
-The screen SHALL consume `useNotificationsList` for owner-visible data and `useNotificationMutations` for actions, including `markAsRead`, `markAllAsRead`, `dismissNotification`, and `dismissAll`. It SHALL expose a global mark-all-read action distinct from confirmed clear-all. Unread items have a visible read action; dismiss hides an item without falsely marking it read. Read state and dismiss state remain independent.
+The screen SHALL consume `useNotificationsList` for owner-visible data and `useNotificationMutations` for actions, including `markAsRead`, `markAllAsRead`, and `dismissAll`. It SHALL expose a global mark-all-read action distinct from confirmed clear-all. Item taps mark read and navigate; no separate per-card read/dismiss actions are exposed. Clear-all hides items without falsely marking them read. Read state and dismiss state remain independent.
 
 #### Scenario: Screen renders with split hooks
 
@@ -182,8 +176,8 @@ The screen SHALL consume `useNotificationsList` for owner-visible data and `useN
 - WHEN `handleNotificationPress(notification: Notification)` is called
 - THEN the notification is marked as read and deep-link navigation is triggered — NO `any` cast
 
-#### Scenario: Dismiss and clear-all actions are wired
+#### Scenario: Header clear-all is wired
 
 - GIVEN the notifications screen renders
-- WHEN the user invokes dismiss on an item or clear-all from the header
-- THEN the corresponding mutation from `useNotificationMutations` is called
+- WHEN the user confirms clear-all from the header
+- THEN `dismissAll` from `useNotificationMutations` is called

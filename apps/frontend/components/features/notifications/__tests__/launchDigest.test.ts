@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'bun:test';
+import type { Notification } from '@selene/types';
 import { selectLaunchDigest, createLaunchDigestGate, scanLaunchDigest } from '../launchDigest';
 
-const row = (id: string, created_at: string, overrides = {}) => ({
+const row = (id: string, created_at: string, overrides: Partial<Notification> = {}): Notification => ({
   id, created_at, user_id: 'owner', read: false, deleted_at: null,
+  event_kind: null, source_event_key: null, event_payload: {},
   title: 'Notice', message: null, type: 'info', action_path: '/product/abc', ...overrides,
 });
 

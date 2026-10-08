@@ -27,7 +27,9 @@ describe('NotificationWatcher source contracts', () => {
     expect(source).toContain("query.or('read.is.null,read.eq.false')");
     expect(source).toContain('and(read.is.null,or(${older})),and(read.eq.false,or(${older}))');
     expect(source).toContain('id.lt.${cursor.id}');
-    expect(source).toContain('current.notice.title');
+    expect(source).not.toContain('current.notice.title');
+    expect(source).not.toContain('current.notice.message');
+    expect(source).not.toContain('current.notice.action_path');
     expect(source).not.toContain('internal_note');
     expect(source).toMatch(/\.order\('created_at', \{ ascending: false \}\)\s*\.order\('id', \{ ascending: false \}\)\s*\.limit\(LAUNCH_LIMIT\)/);
     expect(source).toContain('scanLaunchDigest(userId');
@@ -38,14 +40,16 @@ describe('NotificationWatcher source contracts', () => {
     expect(source).not.toContain('markAsRead');
   });
 
-  test('uses a generic bounded-sample message and a focusable inbox button', () => {
+  test('uses a generic reminder with one inbox CTA and defer', () => {
     const source = watcherSource();
-    expect(source).toContain("notifications:digestMore");
-    expect(source).not.toContain("notifications:moreCount");
-    expect(source).toMatch(/<Pressable\s+accessibilityRole="button"\s+accessible\s+focusable/);
-    expect(source).toContain("onPress={() => navigate('/profile/notifications')}");
+    expect(source).not.toContain('notifications:digestMore');
+    expect(source).not.toContain('notifications:moreCount');
+    expect(source).not.toContain('<Pressable');
+    expect(source).toContain("onConfirm={() => navigate('/profile/notifications')}");
+    expect(source).toContain("confirmLabel={t('notifications:digestOpen')}");
+    expect(source).toContain("cancelLabel={t('notifications:digestSkip')}");
     for (const path of [EN_I18N_PATH, ES_I18N_PATH]) {
-      expect(JSON.parse(readFileSync(path, 'utf8')).digestMore).toBeTypeOf('string');
+      expect(JSON.parse(readFileSync(path, 'utf8')).digestOpen).toBeTypeOf('string');
     }
   });
 
@@ -140,25 +144,14 @@ const ITEM_PATH = join(import.meta.dir, '..', 'NotificationItem.tsx');
 const itemSource = () => readFileSync(ITEM_PATH, 'utf8');
 
 describe('NotificationItem source contracts', () => {
-  test('uses accessibilityLabel for dismiss', () => {
-    expect(itemSource()).toContain('accessibilityLabel');
-    expect(itemSource()).toContain('dismissLabel');
-  });
-
-  test('exposes a labeled dismiss button that opens confirmation before invoking dismiss', () => {
+  test('keeps the accessible item tap without per-card mutation controls or dialog', () => {
     const source = itemSource();
-    // Structural source contract only: this does not exercise the rendered RN accessibility tree.
-    expect(source).toMatch(/\{onDismiss && \(\s*<Pressable\s+onPress=\{\(\) => setShowConfirm\(true\)\}/);
+    expect(source).toContain('accessibilityLabel');
     expect(source).toContain('accessibilityRole="button"');
-    expect(source).toContain("accessibilityLabel={`${t('notifications:dismissLabel')}: ${notification.title}`}");
-    expect(source).toContain('onConfirm={handleConfirmDismiss}');
-    expect(source).toContain('await onDismiss?.(notification.id)');
-    expect(source).not.toContain('onLongPress');
-  });
-
-  test('shows ConfirmDialog before dismiss', () => {
-    expect(itemSource()).toContain('ConfirmDialog');
-    expect(itemSource()).toContain('showConfirm');
+    expect(source).toContain('onPress={() => onPress(notification)}');
+    expect(source).not.toContain('onDismiss');
+    expect(source).not.toContain('onMarkRead');
+    expect(source).not.toContain('ConfirmDialog');
   });
 });
 

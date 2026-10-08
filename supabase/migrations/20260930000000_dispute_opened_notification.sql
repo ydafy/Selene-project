@@ -9,7 +9,7 @@ SET LOCAL statement_timeout = '60s';
 DO $preflight$
 DECLARE
   relation_name text;
-  column_name text;
+  v_column_name text;
   expected_type text;
 BEGIN
   IF NOT has_table_privilege('service_role', 'public.notifications', 'INSERT')
@@ -39,7 +39,7 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'Expected N4a partial unique notification arbiter is absent or incompatible';
   END IF;
-  FOR relation_name, column_name, expected_type IN
+  FOR relation_name, v_column_name, expected_type IN
     SELECT * FROM (VALUES
       ('disputes', 'id', 'uuid'), ('disputes', 'order_id', 'uuid'),
       ('disputes', 'shipment_id', 'uuid'), ('disputes', 'buyer_id', 'uuid'),
@@ -54,9 +54,9 @@ BEGIN
     IF NOT EXISTS (
       SELECT 1 FROM information_schema.columns c
       WHERE c.table_schema = 'public' AND c.table_name = relation_name
-        AND c.column_name = column_name AND c.udt_name = expected_type
+        AND c.column_name = v_column_name AND c.udt_name = expected_type
     ) THEN
-      RAISE EXCEPTION 'Required column %.% with type % is absent', relation_name, column_name, expected_type;
+      RAISE EXCEPTION 'Required column %.% with type % is absent', relation_name, v_column_name, expected_type;
     END IF;
   END LOOP;
   IF NOT EXISTS (

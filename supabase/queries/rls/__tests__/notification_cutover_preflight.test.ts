@@ -17,7 +17,8 @@ test('supplemental cutover diagnostic is a bounded read-only catalog SELECT', as
   for (const signature of ['fn_cancel_order(uuid,text,text)', 'fn_cancel_shipment(uuid,text,text,bigint)', 'fn_complete_shipment_refund(uuid)', 'fn_create_order_from_payment(uuid,text,numeric,numeric,uuid,uuid[])', 'fn_create_shipments_from_single_payment(text,text,bigint,text,jsonb)', 'fn_cron_dispute_payout_timeout()', 'fn_cron_dispute_shipping_timeout()', 'fn_cron_return_delivery_timeout()', 'fn_mark_return_delivered(uuid)', 'fn_request_payout(numeric,uuid)', 'fn_resolve_dispute_to_buyer(uuid,text)', 'fn_resolve_dispute_to_seller(uuid,text)', 'fn_resolve_product_verdict(uuid,text,text,text)', 'fn_seller_submit_return_evidence(uuid,text[],text)']) {
     expect(sql).toContain(signature);
   }
-  expect(sql).toContain('search_path=public, pg_temp');
+  expect(sql).toMatch(/'n5h_exact_search_path'\s*,\s*CASE WHEN v\.signature='fn_seller_submit_return_evidence\(uuid,text\[\],text\)' THEN p\.proconfig = ARRAY\['search_path=public'\]::text\[\] END/);
+  expect(sql).not.toMatch(/'n5h_exact_search_path'\s*,\s*CASE WHEN v\.signature='fn_seller_submit_return_evidence\(uuid,text\[\],text\)' THEN p\.proconfig = ARRAY\['search_path=public, pg_temp'\]::text\[\] END/);
   expect(sql).toContain('pronargdefaults = 1');
   expect(sql).toMatch(/'triggers'[\s\S]*?tgrelid=to_regclass\('public\.disputes'\)/);
   for (const name of ['set_product_in_dispute', 'notify_dispute_opened', 'tr_on_dispute_opened']) expect(sql).toContain(`'${name}'`);

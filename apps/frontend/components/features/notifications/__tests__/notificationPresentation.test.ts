@@ -2,8 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import type { Notification } from '@selene/types';
 import { getNotificationPresentation } from '../notificationPresentation';
 
-const legacy: Notification = { id: 'n', user_id: 'u', created_at: '2026-01-01', deleted_at: null, title: 'Server title', message: 'Server message', type: 'error', read: false, action_path: '/profile/orders/123' };
-// The deployed generated row is legacy-only; Object.assign models future runtime metadata without regenerating it.
+const legacy: Notification = { id: 'n', user_id: 'u', created_at: '2026-01-01', deleted_at: null, title: 'Server title', message: 'Server message', type: 'error', read: false, action_path: '/profile/orders/123', event_kind: null, source_event_key: null, event_payload: {} };
 
 describe('notification presentation', () => {
   test('uses verified catalogue identity and recipient role without replacing server copy', () => {

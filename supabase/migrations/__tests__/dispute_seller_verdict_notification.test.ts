@@ -16,8 +16,17 @@ describe('seller dispute verdict cutover', () => {
     expect(migration).toContain('SET search_path = public, pg_temp');
     expect(migration).not.toMatch(/DROP FUNCTION|GRANT EXECUTE|REVOKE EXECUTE/i);
   });
+  it('requires the exact quoted-empty prior config independently of the hardened replacement', () => {
+    const priorRpcGuard = migration.match(/IF NOT EXISTS \(([\s\S]*?)\) THEN/)?.[1] ?? '';
+    expect(priorRpcGuard).toContain(`AND p.proconfig = ARRAY['search_path=""']::text[]`);
+    expect(priorRpcGuard.match(/p\.proconfig/g)).toHaveLength(1);
+    expect(priorRpcGuard).not.toMatch(/@>|<@|\bOR\b/i);
+    expect(priorRpcGuard).not.toContain("ARRAY['search_path=']::text[]");
+    expect(priorRpcGuard).not.toContain("ARRAY['search_path=public, pg_temp']::text[]");
+    expect(migration).toMatch(/SECURITY DEFINER\s+SET search_path = public, pg_temp\s+AS \$\$/);
+  });
   it('fails closed on deployed RPC, UUID audit identity, N4b grants and N4a arbiter', () => {
-    for (const marker of ["'public.fn_resolve_dispute_to_seller(uuid,text)'::regprocedure", 'p.prosecdef', "has_function_privilege('service_role', p.oid, 'EXECUTE')", "NOT has_function_privilege('anon', p.oid, 'EXECUTE')", "NOT has_function_privilege('authenticated', p.oid, 'EXECUTE')", "p.proconfig = ARRAY['search_path=public, pg_temp']::text[]", 'gen_random_uuid()', 'notifications_source_event_key_user_id_uidx', 'i.indnkeyatts = 2 AND i.indnatts = 2']) expect(migration).toContain(marker);
+    for (const marker of ["'public.fn_resolve_dispute_to_seller(uuid,text)'::regprocedure", 'p.prosecdef', "has_function_privilege('service_role', p.oid, 'EXECUTE')", "NOT has_function_privilege('anon', p.oid, 'EXECUTE')", "NOT has_function_privilege('authenticated', p.oid, 'EXECUTE')", 'gen_random_uuid()', 'notifications_source_event_key_user_id_uidx', 'i.indnkeyatts = 2 AND i.indnatts = 2']) expect(migration).toContain(marker);
     expect(migration).toContain("pg_catalog.pg_get_expr(i.indpred, i.indrelid) = '(source_event_key IS NOT NULL)'");
     expect(migration).toMatch(/BEGIN;\s*SET LOCAL lock_timeout = '5s';\s*SET LOCAL statement_timeout = '60s';/);
     expect(migration.trimEnd()).toEndWith('COMMIT;');

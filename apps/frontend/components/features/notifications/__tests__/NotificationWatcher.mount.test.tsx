@@ -25,6 +25,7 @@ if (process.env.SELENE_NOTIFICATION_MOUNT_CHILD !== 'watcher') {
     id: 'notice-1', user_id: 'owner-1', created_at: '2026-01-01', deleted_at: null,
     title: 'Unread launch notice', message: 'Details', type: 'error', read: false,
     action_path: '/profile/orders/123',
+    event_kind: null, source_event_key: null, event_payload: {},
   };
   const from = mock(() => ({
     select: () => ({
@@ -59,9 +60,10 @@ if (process.env.SELENE_NOTIFICATION_MOUNT_CHILD !== 'watcher') {
     expect(from).toHaveBeenCalledWith('notifications');
     const dialog = tree!.root.findByType('ConfirmDialog');
     expect(dialog.props.title).toBe('notifications:digestTitle');
-    expect(tree!.root.findAllByType('Text').some((node: { props: { children: unknown } }) => node.props.children === notice.title)).toBe(true);
-    const inbox = tree!.root.findByType('Pressable');
-    expect(inbox.props.accessibilityLabel).toBe('notifications:digestInbox');
+    expect(tree!.root.findAllByType('Text').some((node: { props: { children: unknown } }) => node.props.children === notice.title || node.props.children === notice.message)).toBe(false);
+    expect(tree!.root.findAllByType('Pressable')).toHaveLength(0);
+    expect(dialog.props.confirmLabel).toBe('notifications:digestOpen');
+    expect(dialog.props.cancelLabel).toBe('notifications:digestSkip');
     expect(navigate).not.toHaveBeenCalled();
     expect(from).toHaveBeenCalledTimes(1);
     await act(async () => { dialog.props.onCancel(); });
@@ -74,15 +76,11 @@ if (process.env.SELENE_NOTIFICATION_MOUNT_CHILD !== 'watcher') {
     await act(async () => { tree = create(<NotificationWatcher />); });
     const open = tree!.root.findByType('ConfirmDialog');
     await act(async () => { open.props.onConfirm(); });
-    expect(navigate).toHaveBeenCalledWith('/profile/orders/123');
+    expect(navigate).toHaveBeenCalledWith('/profile/notifications');
     expect(tree!.root.findAllByType('ConfirmDialog')).toHaveLength(0);
     await act(async () => { tree!.unmount(); });
 
-    await act(async () => { tree = create(<NotificationWatcher />); });
-    await act(async () => { tree!.root.findByType('Pressable').props.onPress(); });
-    expect(navigate).toHaveBeenCalledWith('/profile/notifications');
     expect(queryClient.invalidateQueries).not.toHaveBeenCalled();
-    expect(from).toHaveBeenCalledTimes(3);
-    await act(async () => { tree!.unmount(); });
+    expect(from).toHaveBeenCalledTimes(2);
   });
 }

@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Notification } from '@selene/types';
@@ -10,7 +9,6 @@ import { supabase } from '../../../core/db/supabase';
 import { invalidateNotificationKeys } from '../../../core/hooks/useNotificationMutations';
 import { NotificationLinking } from '../../../core/services/notification';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
-import { Box, Text } from '../../base';
 import { createLaunchDigestGate, scanLaunchDigest } from './launchDigest';
 
 const LAUNCH_LIMIT = 20;
@@ -116,19 +114,11 @@ export const NotificationWatcher = () => {
     <ConfirmDialog
       visible title={t('notifications:digestTitle')}
       description={t('notifications:digestDescription')}
-      onConfirm={() => navigate(current.notice.action_path)}
+      onConfirm={() => navigate('/profile/notifications')}
       onCancel={dismiss}
       confirmLabel={t('notifications:digestOpen')}
       cancelLabel={t('notifications:digestSkip')}
       icon="bell-outline"
-    >
-      <Box marginTop="m">
-        <Text variant="caption-md" color="textSecondary">{current.notice.title}</Text>
-        {current.hasMore && <Text variant="caption-md" color="textSecondary">{t('notifications:digestMore')}</Text>}
-        <Pressable accessibilityRole="button" accessible focusable accessibilityLabel={t('notifications:digestInbox')} onPress={() => navigate('/profile/notifications')}>
-          <Text color="primary">{t('notifications:digestInbox')}</Text>
-        </Pressable>
-      </Box>
-    </ConfirmDialog>
+    />
   );
 };

@@ -1,6 +1,6 @@
 -- N5h: after N5g, N4b, N4a. Before Dashboard execution compare deployed
--- pg_get_functiondef and proconfig with the assumed canonical signature/body/settings.
--- Inventory confirms service-only EXECUTE, not deployed body or exact search_path.
+-- pg_get_functiondef and proconfig with the observed deployed legacy signature/body/settings.
+-- Deployed legacy function has service-only EXECUTE and search_path=public.
 -- Submit this entire transaction; preflight must fail closed on configuration drift.
 BEGIN;
 SET LOCAL lock_timeout = '5s';
@@ -18,7 +18,7 @@ BEGIN
       AND has_function_privilege('service_role', p.oid, 'EXECUTE')
       AND NOT has_function_privilege('anon', p.oid, 'EXECUTE')
       AND NOT has_function_privilege('authenticated', p.oid, 'EXECUTE')
-      AND p.proconfig = ARRAY['search_path=public, pg_temp']::text[]
+      AND p.proconfig = ARRAY['search_path=public']::text[]
   ) THEN
     RAISE EXCEPTION 'Seller return evidence RPC signature, authority or security settings differ';
   END IF;

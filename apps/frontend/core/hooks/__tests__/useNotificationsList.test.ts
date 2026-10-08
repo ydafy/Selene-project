@@ -47,6 +47,7 @@ function fakeInbox(rows: Notification[]) {
 
 const row = (id: string, created_at = '2024-01-15T00:00:00Z', user_id = 'owner', deleted_at: string | null = null): Notification => ({
   id, created_at, user_id, deleted_at, read: false, title: id, message: null, type: null, action_path: null,
+  event_kind: null, source_event_key: null, event_payload: {},
 });
 
 test('query returns exactly 20 visible rows, then all tied and older rows without repeats', async () => {

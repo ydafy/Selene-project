@@ -7,6 +7,16 @@ const migration = readFileSync(join(root, 'supabase/migrations/20260930000000_di
 const edge = readFileSync(join(root, 'supabase/functions/create-dispute/index.ts'), 'utf8');
 
 describe('dispute.opened transactional producer', () => {
+  it('uses an unambiguous preflight column variable without conflict overrides', () => {
+    const preflight = migration.match(/DO \$preflight\$([\s\S]*?)\$preflight\$;/)?.[1];
+    expect(preflight).toBeDefined();
+    expect(preflight).toContain('v_column_name text;');
+    expect(preflight).toContain('FOR relation_name, v_column_name, expected_type IN');
+    expect(preflight).toContain('AND c.column_name = v_column_name AND c.udt_name = expected_type');
+    expect(preflight).toContain("RAISE EXCEPTION 'Required column %.% with type % is absent', relation_name, v_column_name, expected_type;");
+    expect(preflight?.replace(/\bc\.column_name\b/g, '')).not.toMatch(/\bcolumn_name\b/);
+    expect(migration).not.toMatch(/#\s*variable_conflict|\b(?:SET|set_config)\b[^;]*variable_conflict/i);
+  });
   it('fails closed on notification authority, schema, and existing trigger', () => {
     expect(migration).toMatch(/^-- N5f:[\s\S]*?BEGIN;\s*SET LOCAL lock_timeout = '5s';/);
     expect(migration.trimEnd()).toEndWith('COMMIT;');

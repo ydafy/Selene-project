@@ -35,7 +35,7 @@ SELECT jsonb_build_object(
   'rpcs', (SELECT coalesce(jsonb_agg(jsonb_build_object('expected_signature',v.signature,
     'missing',p.oid IS NULL,'security_definer',p.prosecdef,'default_count',p.pronargdefaults,
     'n5h_default_one',CASE WHEN v.signature='fn_seller_submit_return_evidence(uuid,text[],text)' THEN p.pronargdefaults = 1 END,
-    'n5h_exact_search_path',CASE WHEN v.signature='fn_seller_submit_return_evidence(uuid,text[],text)' THEN p.proconfig = ARRAY['search_path=public, pg_temp']::text[] END,
+    'n5h_exact_search_path',CASE WHEN v.signature='fn_seller_submit_return_evidence(uuid,text[],text)' THEN p.proconfig = ARRAY['search_path=public']::text[] END,
     'anon_execute',CASE WHEN p.oid IS NOT NULL THEN has_function_privilege('anon',p.oid,'EXECUTE') END,
     'authenticated_execute',CASE WHEN p.oid IS NOT NULL THEN has_function_privilege('authenticated',p.oid,'EXECUTE') END,
     'service_execute',CASE WHEN p.oid IS NOT NULL THEN has_function_privilege('service_role',p.oid,'EXECUTE') END)

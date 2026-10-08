@@ -16,6 +16,12 @@ describe('N4b notification client authority (static guards only)', () => {
     expect(text.indexOf('RAISE EXCEPTION')).toBeLessThan(text.indexOf('REVOKE ALL'));
     expect(text).toContain('attacl');
   });
+  it('compares ordered catalog column names as text[] with the exact fail-closed guard', () => {
+    const text = sql();
+    expect(text).toMatch(/expected_columns text\[\]/);
+    expect(text).toMatch(/array_agg\(a\.attname::text ORDER BY a\.attnum\) FROM pg_catalog\.pg_attribute a\s+WHERE a\.attrelid = relation_oid AND a\.attnum > 0 AND NOT a\.attisdropped\)\s+IS DISTINCT FROM expected_columns THEN\s+RAISE EXCEPTION 'Unexpected legacy notifications relation or column shape'/);
+    expect(text).not.toMatch(/array_agg\(a\.attname ORDER BY a\.attnum\)/);
+  });
   it('limits client mutation and retains server insert and RPC execution', () => {
     const text = sql();
     expect(text).toMatch(/REVOKE ALL ON TABLE public\.notifications FROM PUBLIC, anon, authenticated/i);
