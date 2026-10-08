@@ -1,6 +1,19 @@
 {
   "title": "Notification Center",
+  "itemLabel": "{{readState}}, {{state}}: {{title}}. {{message}}",
+  "readState": "Read",
+  "unreadState": "Unread",
+  "states": {
+    "generic": "Notification",
+    "purchase": "Purchase update",
+    "sale": "Sale update",
+    "cancellation": "Cancellation update",
+    "dispute": "Dispute update",
+    "listing": "Listing update",
+    "return": "Return update"
+  },
   "markAll": "Mark all as read",
+  "markReadLabel": "Mark notification as read: {{title}}",
   "emptyTitle": "Empty Inbox",
   "emptyMsg": "Your sales, purchase, and verification updates will appear here.",
   "justNow": "Right now",
@@ -9,5 +22,11 @@
   "clearAllLabel": "Clear all",
   "clearAllConfirm": "Are you sure you want to clear all notifications?",
   "moreCount": "+{{count}} more",
-  "openLabel": "Open notifications"
+  "openLabel": "Open notifications",
+  "digestTitle": "New notifications",
+  "digestDescription": "You have unread notifications. Open your inbox to review them.",
+  "digestOpen": "Open notification inbox",
+  "digestSkip": "Not now",
+  "digestInbox": "Open notification inbox",
+  "digestMore": "More updates are in your inbox"
 }

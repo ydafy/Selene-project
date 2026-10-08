@@ -5,6 +5,9 @@ DECLARE
   v_lock_time TIMESTAMPTZ;
   v_seller_id UUID;
   v_product_name TEXT;
+  v_status public.product_status_enum;
+  v_audit_id UUID;
+  v_event_kind TEXT;
   v_notif_title TEXT;
   v_notif_msg TEXT;
   v_notif_type TEXT;
@@ -23,8 +26,8 @@ BEGIN
   END IF;
 
   -- 3. Cargar datos del producto y bloquear la fila para actualización
-  SELECT p.locked_by, p.locked_at, p.seller_id, p.name
-  INTO v_locked_by, v_lock_time, v_seller_id, v_product_name
+  SELECT p.locked_by, p.locked_at, p.seller_id, p.name, p.status
+  INTO v_locked_by, v_lock_time, v_seller_id, v_product_name, v_status
   FROM public.products p
   WHERE p.id = p_product_id
   FOR UPDATE;
@@ -32,6 +35,15 @@ BEGIN
   -- 4. Validar concurrencia: que el bloqueo siga perteneciendo al administrador y no haya expirado (10 min)
   IF v_locked_by IS NULL OR v_locked_by IS DISTINCT FROM v_auth_user_id OR v_lock_time < (now() - interval '10 minutes') THEN
     RAISE EXCEPTION 'LOCK_EXPIRED_OR_STOLEN';
+  END IF;
+
+  IF (p_verdict = 'APPROVE' AND v_status = 'VERIFIED')
+     OR (p_verdict = 'REJECT' AND v_status = 'REJECTED') THEN
+    UPDATE public.products
+    SET locked_by = NULL,
+        locked_at = NULL
+    WHERE id = p_product_id;
+    RETURN true;
   END IF;
 
   -- 5. Insertar Nota Privada de Inteligencia del Admin (Solo si fue proporcionada)
@@ -74,36 +86,46 @@ BEGIN
       'admin_note', trim(p_public_note),
       'verdict', p_verdict
     )
-  );
+  )
+  RETURNING id INTO v_audit_id;
 
   -- 8. Resolver textos dinámicos de la Notificación para el vendedor
   IF p_verdict = 'REJECT' THEN
     v_notif_title := 'Producto Rechazado';
+    v_event_kind := 'product.rejected';
     v_notif_type := 'error';
     v_notif_msg := 'Tu producto "' || v_product_name || '" ha sido rechazado. Motivo: ' || COALESCE(trim(p_public_note), 'No especificado por el administrador.');
     v_action_path := '/verify/' || p_product_id::text;
   ELSE
     v_notif_title := 'Producto Verificado';
-    v_action_path := '/profile/listings';
+    v_action_path := '/product/' || p_product_id::text;
     IF p_public_note IS NOT NULL AND trim(p_public_note) <> '' THEN
+      v_event_kind := 'product.approved_with_note';
       v_notif_type := 'warning';
       v_notif_msg := '¡Listo! Tu producto "' || v_product_name || '" ya está a la venta. Nota del administrador: ' || trim(p_public_note);
     ELSE
+      v_event_kind := 'product.approved';
       v_notif_type := 'success';
       v_notif_msg := '¡Felicidades! Tu producto "' || v_product_name || '" ha sido aprobado por moderación.';
     END IF;
   END IF;
 
   -- 9. Insertar Notificación para el vendedor (Bypass seguro de RLS)
-  INSERT INTO public.notifications (user_id, title, message, type, read, action_path)
-  VALUES (
+  INSERT INTO public.notifications (
+    user_id, event_kind, source_event_key, event_payload,
+    title, message, type, read, action_path
+  ) VALUES (
     v_seller_id,
+    v_event_kind,
+    v_event_kind || ':' || p_product_id::text || ':' || v_audit_id::text,
+    jsonb_build_object('product_id', p_product_id, 'recipient_role', 'seller'),
     v_notif_title,
     v_notif_msg,
     v_notif_type,
     false,
     v_action_path
-  );
+  )
+  ON CONFLICT (source_event_key, user_id) WHERE source_event_key IS NOT NULL DO NOTHING;
 
   RETURN true;
 END;

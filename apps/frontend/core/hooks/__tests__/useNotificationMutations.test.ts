@@ -10,6 +10,7 @@ import {
   dismissAllNotifications,
   createDismissNotificationMutationOptions,
   createDismissAllMutationOptions,
+  countUnreadNotifications,
 } from '../useNotificationMutations.logic';
 
 // ─── Fakes ────────────────────────────────────────────────────────────────
@@ -50,6 +51,10 @@ function createChainableClient(result: { error: Error | null } = { error: null }
     },
     limit: (...args: unknown[]) => {
       calls.push({ method: 'limit', args });
+      return chain;
+    },
+    or: (...args: unknown[]) => {
+      calls.push({ method: 'or', args });
       return chain;
     },
     then: (resolve: (value: { error: Error | null }) => unknown) => {
@@ -182,8 +187,8 @@ describe('markAllNotificationsAsRead', () => {
     const userEq = calls.find((c) => c.method === 'eq' && c.args[0] === 'user_id');
     expect(userEq?.args).toEqual(['user_id', 'user-1']);
 
-    const readEq = calls.find((c) => c.method === 'eq' && c.args[0] === 'read');
-    expect(readEq?.args).toEqual(['read', false]);
+    expect(calls.find((c) => c.method === 'eq' && c.args[0] === 'read')).toBeUndefined();
+    expect(calls.find((c) => c.method === 'or')?.args).toEqual(['read.eq.false,read.is.null']);
 
     const isCall = calls.find((c) => c.method === 'is');
     expect(isCall?.args).toEqual(['deleted_at', null]);
@@ -193,6 +198,15 @@ describe('markAllNotificationsAsRead', () => {
     const { client } = createChainableClient({ error: new Error('db fail') });
     await expect(markAllNotificationsAsRead(client, 'user-1')).rejects.toThrow('db fail');
   });
+});
+
+test('unread count includes nullable legacy rows under owner and visible filters', async () => {
+  const { client, calls } = createChainableClient();
+  await countUnreadNotifications(client, 'user-1');
+  expect(calls.find((c) => c.method === 'select')?.args).toEqual(['*', { count: 'exact', head: true }]);
+  expect(calls.find((c) => c.method === 'eq' && c.args[0] === 'user_id')?.args).toEqual(['user_id', 'user-1']);
+  expect(calls.find((c) => c.method === 'is')?.args).toEqual(['deleted_at', null]);
+  expect(calls.find((c) => c.method === 'or')?.args).toEqual(['read.eq.false,read.is.null']);
 });
 
 // ─── dismissAll mutationFn ────────────────────────────────────────────────
@@ -229,12 +243,40 @@ describe('dismissNotification optimistic badge update', () => {
 
   test('onMutate decrements unread count and snapshots previous value', async () => {
     qc.setQueryData(['unread-notifications', 'user-1'], 5);
+    qc.setQueryData(['notifications', 'user-1'], { pages: [{ items: [{ id: 'notif-1', read: false, deleted_at: null }] }] });
     const showError = createShowErrorSpy();
     const options = createDismissNotificationMutationOptions(qc, 'user-1', t, showError.fn);
     const context = await options.onMutate!('notif-1');
 
     expect(qc.getQueryData(['unread-notifications', 'user-1']) as number).toBe(4);
     expect(context).toEqual({ previousUnread: 5 });
+  });
+
+  test('read and unloaded items leave badge unchanged until server reconciliation', async () => {
+    qc.setQueryData(['unread-notifications', 'user-1'], 5);
+    qc.setQueryData(['notifications', 'user-1'], { pages: [{ items: [{ id: 'read', read: true, deleted_at: null }] }] });
+    const options = createDismissNotificationMutationOptions(qc, 'user-1', t, () => {});
+    await options.onMutate('read');
+    expect(qc.getQueryData<number>(['unread-notifications', 'user-1'])).toBe(5);
+    await options.onMutate('unloaded');
+    expect(qc.getQueryData<number>(['unread-notifications', 'user-1'])).toBe(5);
+    options.onSuccess();
+    expect((qc as unknown as { __invalidated: unknown[][] }).__invalidated).toEqual([
+      ['notifications', 'user-1'], ['unread-notifications', 'user-1'],
+    ]);
+  });
+
+  test('nullable unread row decrements but already dismissed row does not', async () => {
+    qc.setQueryData(['unread-notifications', 'user-1'], 5);
+    qc.setQueryData(['notifications', 'user-1'], { pages: [{ items: [
+      { id: 'legacy', read: null, deleted_at: null },
+      { id: 'deleted', read: false, deleted_at: '2024-01-01' },
+    ] }] });
+    const options = createDismissNotificationMutationOptions(qc, 'user-1', t, () => {});
+    await options.onMutate('deleted');
+    expect(qc.getQueryData<number>(['unread-notifications', 'user-1'])).toBe(5);
+    await options.onMutate('legacy');
+    expect(qc.getQueryData<number>(['unread-notifications', 'user-1'])).toBe(4);
   });
 
   test('onMutate clamps count at zero', async () => {
@@ -255,6 +297,27 @@ describe('dismissNotification optimistic badge update', () => {
 
     expect(qc.getQueryData(['unread-notifications', 'user-1']) as number).toBe(5);
     expect(showError.called).toBe(true);
+  });
+
+  test('overlapping dismiss failure reconciles after another dismiss succeeds', async () => {
+    qc.setQueryData(['unread-notifications', 'user-1'], 6);
+    qc.setQueryData(['notifications', 'user-1'], { pages: [{ items: [
+      { id: 'a', read: false, deleted_at: null },
+      { id: 'b', read: false, deleted_at: null },
+    ] }] });
+    const options = createDismissNotificationMutationOptions(qc, 'user-1', t, () => {});
+    const a = await options.onMutate('a');
+    await options.onMutate('b');
+    options.onSuccess();
+    // B's successful server-backed refresh arrives before A's failure.
+    qc.setQueryData(['unread-notifications', 'user-1'], 5);
+    const invalidated = (qc as unknown as { __invalidated: unknown[][] }).__invalidated;
+    const beforeFailure = invalidated.length;
+    options.onError(new Error('a failed'), 'a', a);
+    expect(qc.getQueryData<number>(['unread-notifications', 'user-1'])).toBe(6);
+    expect(invalidated.slice(beforeFailure)).toEqual([
+      ['notifications', 'user-1'], ['unread-notifications', 'user-1'],
+    ]);
   });
 
   test('onError ignores missing context', () => {
@@ -284,6 +347,27 @@ describe('dismissAll optimistic badge update', () => {
 
     expect(qc.getQueryData(['unread-notifications', 'user-1']) as number).toBe(0);
     expect(context).toEqual({ previousUnread: 12 });
+  });
+
+  test('failed clear-all reconciles after a concurrent individual dismiss succeeds', async () => {
+    qc.setQueryData(['unread-notifications', 'user-1'], 6);
+    qc.setQueryData(['notifications', 'user-1'], { pages: [{ items: [
+      { id: 'single', read: false, deleted_at: null },
+    ] }] });
+    const clear = createDismissAllMutationOptions(qc, 'user-1', t, () => {});
+    const single = createDismissNotificationMutationOptions(qc, 'user-1', t, () => {});
+    const snapshot = await clear.onMutate();
+    await single.onMutate('single');
+    single.onSuccess();
+    // A successful single-dismiss refetch observes 5 before clear-all fails.
+    qc.setQueryData(['unread-notifications', 'user-1'], 5);
+    const invalidated = (qc as unknown as { __invalidated: unknown[][] }).__invalidated;
+    const beforeFailure = invalidated.length;
+    clear.onError(new Error('clear failed'), undefined, snapshot);
+    expect(qc.getQueryData<number>(['unread-notifications', 'user-1'])).toBe(6);
+    expect(invalidated.slice(beforeFailure)).toEqual([
+      ['notifications', 'user-1'], ['unread-notifications', 'user-1'],
+    ]);
   });
 
   test('onError restores previous unread count and shows error toast', () => {

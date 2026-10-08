@@ -114,9 +114,9 @@ BEGIN
     );
   END IF;
 
-  -- 6. Release products and notify the seller.
+  -- 6. Release products before publishing the shipment transition.
   FOR v_item IN
-    SELECT oi.product_id, p.name AS prod_name
+    SELECT oi.product_id
     FROM public.order_items oi
     JOIN public.products p ON p.id = oi.product_id
     WHERE oi.shipment_id = p_shipment_id
@@ -124,21 +124,6 @@ BEGIN
     UPDATE public.products
     SET status = 'VERIFIED', reserved_at = NULL, updated_at = now()
     WHERE id = v_item.product_id;
-
-    INSERT INTO public.notifications (
-      user_id,
-      type,
-      title,
-      message,
-      action_path
-    )
-    VALUES (
-      v_seller_id,
-      'warning',
-      'Venta Cancelada',
-      'Tu producto "' || v_item.prod_name || '" ha regresado a tu inventario por cancelación.',
-      '/profile/listings'
-    );
   END LOOP;
 
   -- 7. Mark the shipment cancelled and persist any reconciled loss.
@@ -159,20 +144,30 @@ BEGIN
     WHERE id = v_order_id;
   END IF;
 
+  -- One notice per distinct recipient for this committed shipment transition.
   INSERT INTO public.notifications (
-    user_id,
-    type,
-    title,
-    message,
-    action_path
+    user_id, event_kind, source_event_key, event_payload,
+    type, title, message, action_path
   )
-  VALUES (
-    v_buyer_id,
-    'info',
-    'Pedido Cancelado',
-    'Tu reembolso ha sido procesado. El dinero regresará a tu cuenta según los tiempos de tu banco.',
-    '/profile/orders'
-  );
+  SELECT recipients.user_id,
+         'shipment.cancelled',
+         'shipment.cancelled:' || p_shipment_id::text,
+         jsonb_build_object('order_id', v_order_id, 'shipment_id', p_shipment_id,
+                            'recipient_role', recipients.recipient_role),
+         CASE WHEN recipients.recipient_role = 'buyer' THEN 'info' ELSE 'warning' END,
+         CASE WHEN recipients.recipient_role = 'buyer' THEN 'Pedido cancelado'
+              ELSE 'Venta cancelada' END,
+         CASE WHEN recipients.recipient_role = 'buyer' THEN 'Se canceló un envío de tu pedido.'
+              ELSE 'Se canceló tu envío; los productos regresaron a tu inventario.' END,
+         '/profile/orders/' || v_order_id::text
+  -- WHERE true disambiguates INSERT ... SELECT from JOIN ON before ON CONFLICT.
+  FROM (
+    SELECT v_buyer_id AS user_id, 'buyer' AS recipient_role
+    UNION ALL
+    SELECT v_seller_id, 'seller' WHERE v_seller_id IS DISTINCT FROM v_buyer_id
+  ) recipients
+  WHERE true
+  ON CONFLICT (source_event_key, user_id) WHERE source_event_key IS NOT NULL DO NOTHING;
 
   RETURN QUERY SELECT true, NULL::TEXT;
 

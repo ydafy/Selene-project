@@ -20,6 +20,17 @@ export function invalidateNotificationKeys(
   });
 }
 
+export async function countUnreadNotifications(
+  client: SupabaseClient<Database>, userId: string,
+): Promise<number> {
+  const { count, error } = await client.from('notifications')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId).is('deleted_at', null)
+    .or('read.eq.false,read.is.null');
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function markNotificationAsRead(
   client: SupabaseClient<Database>,
   userId: string,
@@ -29,7 +40,8 @@ export async function markNotificationAsRead(
     .from('notifications')
     .update({ read: true })
     .eq('id', id)
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    .is('deleted_at', null);
 
   if (error) throw error;
 }
@@ -42,8 +54,8 @@ export async function markAllNotificationsAsRead(
     .from('notifications')
     .update({ read: true })
     .eq('user_id', userId)
-    .eq('read', false)
-    .is('deleted_at', null);
+    .is('deleted_at', null)
+    .or('read.eq.false,read.is.null');
 
   if (error) throw error;
 }
@@ -57,7 +69,8 @@ export async function dismissNotification(
     .from('notifications')
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', id)
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    .is('deleted_at', null);
 
   if (error) throw error;
 }
@@ -69,7 +82,8 @@ export async function dismissAllNotifications(
   const { error } = await client
     .from('notifications')
     .update({ deleted_at: new Date().toISOString() })
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    .is('deleted_at', null);
 
   if (error) throw error;
 }
@@ -152,18 +166,24 @@ export function createDismissNotificationMutationOptions(
       await dismissNotification(supabase, userId, id);
     },
     onMutate: async (id: string): Promise<BadgeContext> => {
-      void id;
       const ctx = await snapshotBadge(queryClient, userId);
-      queryClient.setQueryData(
-        ['unread-notifications', userId],
-        Math.max(0, ctx.previousUnread - 1),
-      );
+      const pages = queryClient.getQueryData<{ pages: { items: { id: string; read: boolean | null; deleted_at: string | null }[] }[] }>(['notifications', userId]);
+      const item = pages?.pages.flatMap((page) => page.items).find((row) => row.id === id);
+      if (item && !item.read && item.deleted_at === null) {
+        queryClient.setQueryData(
+          ['unread-notifications', userId],
+          Math.max(0, ctx.previousUnread - 1),
+        );
+      }
       return ctx;
     },
     onError: (error: Error, id: string, context?: BadgeContext) => {
       void id;
       console.error('[NOTIFICATIONS] Error dismissing notification:', error);
       rollbackBadge(queryClient, userId, context);
+      // Another dismiss may have succeeded since this snapshot was taken.
+      // The restored count is provisional until both owner-scoped caches refetch.
+      invalidateNotificationKeys(queryClient, userId);
       showError();
     },
     onSuccess: () => invalidateNotificationKeys(queryClient, userId),
@@ -191,6 +211,8 @@ export function createDismissAllMutationOptions(
       void vars;
       console.error('[NOTIFICATIONS] Error clearing all notifications:', error);
       rollbackBadge(queryClient, userId, context);
+      // A concurrent individual dismiss can make this snapshot stale.
+      invalidateNotificationKeys(queryClient, userId);
       showError();
     },
     onSuccess: () => invalidateNotificationKeys(queryClient, userId),

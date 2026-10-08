@@ -2,47 +2,20 @@
 
 ## Purpose
 
-Ensure admin-web dispute resolution flows insert notifications for affected users with correct `user_id`, `action_path`, and `type` fields.
+A dispute verdict is a trusted business transition, not an admin-browser insert. See `notification-events/spec.md` for event identity, recipients, and destination.
 
 ## Requirements
 
-### Requirement: Dispute Verdict Notification Insertion
+### Requirement: Committed verdict produces one notice per affected recipient (CONF-012)
 
-**ID**: CONF-012
-**Priority**: P1
+After a final verdict is committed, the trusted resolution boundary SHALL derive the affected buyer and shipment seller from the dispute and emit `dispute.verdict` for each with the same stable source-event key and distinct recipient identity. A retry of the same verdict revision SHALL NOT duplicate a recipient row; a genuinely new committed revision MAY produce a new event without deleting the historical one. The admin web client SHALL NOT insert directly into `notifications`. Messaging SHALL distinguish verdict from eventual refund or payout; use `/profile/orders/{orderId}` as validated destination.
 
-The system SHALL insert a notification record into the `notifications` table when an admin resolves a dispute verdict. The notification SHALL include: `user_id` (affected buyer or seller), `type` ('info', 'warning', or 'error' based on verdict), `action_path` (deep link to the disputed order/shipment), `title`, and `message`.
+#### Scenario: Repeated resolution request
+- GIVEN the same committed verdict revision is processed twice
+- WHEN the producer retries
+- THEN each affected recipient has one row for that source event
 
-#### Scenario: Buyer-wins verdict notifies seller
-
-- GIVEN an admin resolves a dispute with buyer-wins verdict
-- WHEN the verdict is processed
-- THEN a notification is inserted for the seller with `type: 'warning'` and `action_path` pointing to the order
-
-#### Scenario: Seller-wins verdict notifies buyer
-
-- GIVEN an admin resolves a dispute with seller-wins verdict
-- WHEN the verdict is processed
-- THEN a notification is inserted for the buyer with `type: 'info'` and `action_path` pointing to the order
-
-#### Scenario: Notification includes correct deep link
-
-- GIVEN a dispute is linked to `shipment_id` belonging to `order_id`
-- WHEN the notification is inserted
-- THEN `action_path` is `/profile/orders/{order_id}` — valid Expo Router route
-
-#### Scenario: No duplicate notifications on re-verdict
-
-- GIVEN a dispute is re-evaluated with the same verdict
-- WHEN the verdict is processed again
-- THEN a new notification is inserted — previous notification remains (audit trail preserved)
-
-### Requirement: Existing Product Notification Pattern Reused
-
-The admin-web SHALL use the existing `supabase.from('notifications').insert(...)` pattern for dispute notifications, matching the pattern already used for product verification notifications.
-
-#### Scenario: Insert pattern matches product notifications
-
-- GIVEN the codebase has a working product notification insert
-- WHEN dispute notification code is written
-- THEN it uses the same `supabase.from('notifications').insert()` call structure — consistent pattern
+#### Scenario: Buyer verdict before refund
+- GIVEN a verdict favors the buyer but a refund is not confirmed
+- WHEN the verdict notice is authored
+- THEN it reports the verdict without claiming a refund has succeeded

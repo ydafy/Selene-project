@@ -5,6 +5,7 @@ DECLARE
     v_status public.dispute_status;
     v_buyer_id UUID;
     v_seller_id UUID;
+    v_audit_id UUID;
 BEGIN
     -- A. SEGURIDAD: Obtener ID desde JWT y validar sesión
     v_auth_user_id := (current_setting('request.jwt.claims', true)::json->>'sub')::UUID;
@@ -44,13 +45,25 @@ BEGIN
 
     -- E. AUDITORÍA: Rastro del Admin
     INSERT INTO public.admin_audit_logs (admin_id, action_type, target_id, details)
-    VALUES (v_auth_user_id, 'DISPUTE_APPROVE_RETURN', p_dispute_id, jsonb_build_object('note', p_admin_note, 'order_id', v_order_id));
+    VALUES (v_auth_user_id, 'DISPUTE_APPROVE_RETURN', p_dispute_id, jsonb_build_object('note', p_admin_note, 'order_id', v_order_id))
+    RETURNING id INTO v_audit_id;
 
-    -- F. NOTIFICACIONES: Avisar a ambas partes
-    INSERT INTO public.notifications (user_id, type, title, message, action_path)
-    VALUES
-        (v_buyer_id, 'success', 'Retorno Aprobado', 'El administrador aprobó la devolución. Te notificaremos en cuanto el vendedor genere tu guía de retorno.', '/profile/orders/' || v_order_id),
-        (v_seller_id, 'warning', 'Veredicto: Generar Guía', 'Se ha ordenado la devolución. Tienes 48h para pagar y generar la guía de retorno de tu comprador, o se reembolsará automáticamente.', '/profile/orders/' || v_order_id);
+    -- One notice per distinct participant, bound to this audited verdict occurrence.
+    INSERT INTO public.notifications (
+        user_id, type, title, message, action_path,
+        event_kind, source_event_key, event_payload
+    )
+    SELECT recipients.user_id, recipients.type, recipients.title,
+           recipients.message, '/profile/orders/' || v_order_id::text,
+           'dispute.verdict',
+           'dispute.verdict:' || p_dispute_id::text || ':' || v_audit_id::text,
+           jsonb_build_object('dispute_id', p_dispute_id, 'order_id', v_order_id, 'recipient_role', recipients.recipient_role)
+    FROM (VALUES
+        (v_buyer_id, 'buyer', 'success', 'Devolución aprobada', 'Tu devolución fue aprobada. Consulta el pedido para conocer los próximos pasos y la guía de retorno.'),
+        (v_seller_id, 'seller', 'warning', 'Veredicto: Generar Guía', 'Se aprobó la devolución. Consulta el pedido para generar la guía de retorno y continuar el proceso.')
+    ) AS recipients(user_id, recipient_role, type, title, message)
+    WHERE true AND (recipients.recipient_role = 'buyer' OR v_seller_id IS DISTINCT FROM v_buyer_id)
+    ON CONFLICT (source_event_key, user_id) WHERE source_event_key IS NOT NULL DO NOTHING;
 
     RETURN QUERY SELECT true, NULL::TEXT;
 

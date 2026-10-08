@@ -1,6 +1,19 @@
 {
   "title": "Centro de Avisos",
+  "itemLabel": "{{readState}}, {{state}}: {{title}}. {{message}}",
+  "readState": "Leído",
+  "unreadState": "Sin leer",
+  "states": {
+    "generic": "Aviso",
+    "purchase": "Novedad de compra",
+    "sale": "Novedad de venta",
+    "cancellation": "Novedad de cancelación",
+    "dispute": "Novedad de disputa",
+    "listing": "Novedad de publicación",
+    "return": "Novedad de devolución"
+  },
   "markAll": "Marcar todo como leído",
+  "markReadLabel": "Marcar aviso como leído: {{title}}",
   "emptyTitle": "Buzón vacío",
   "emptyMsg": "Aquí aparecerán tus actualizaciones de ventas, compras y verificaciones.",
   "justNow": "Ahora mismo",
@@ -10,6 +23,12 @@
   "clearAllConfirm": "¿Estás seguro de que querés limpiar todos los avisos?",
   "moreCount": "+{{count}} más",
   "openLabel": "Abrir avisos",
+  "digestTitle": "Avisos nuevos",
+  "digestDescription": "Tienes avisos sin leer. Abre tu buzón para revisarlos.",
+  "digestOpen": "Abrir buzón de avisos",
+  "digestSkip": "Ahora no",
+  "digestInbox": "Abrir buzón de avisos",
+  "digestMore": "Hay más novedades en tu buzón",
   "markAllConfirm": "¿Marcar todas como leídas?",
   "markAllDesc": "Todas las notificaciones pendientes se marcarán como revisadas."
 }

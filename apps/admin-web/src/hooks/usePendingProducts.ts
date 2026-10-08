@@ -2,6 +2,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
+import {
+  resolveVerdictPayload,
+  type ProductVerdict,
+} from '../components/features/verify/resolveVerdict';
 
 export const usePendingProducts = () => {
   const queryClient = useQueryClient();
@@ -89,15 +93,14 @@ export const usePendingProducts = () => {
       note,
     }: {
       id: string;
-      verdict: string;
+      verdict: ProductVerdict;
       note?: string;
     }) => {
       // Llamada atómica y segura a la base de datos que orquesta toda la aprobación
       const { data, error } = await supabase.rpc('fn_resolve_product_verdict', {
         p_product_id: id,
-        p_verdict: verdict,
-        p_public_note: note || undefined, // Satisface el tipo 'string | undefined' de Supabase
-        p_private_note: undefined, // Satisface el tipo 'string | undefined' de Supabase
+        ...resolveVerdictPayload(verdict, note),
+        p_private_note: undefined,
       });
 
       if (error) {

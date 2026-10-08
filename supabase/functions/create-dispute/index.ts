@@ -124,26 +124,6 @@ serve(async (req) => {
       throw new ApiError(500, `Error al crear disputa: ${insertError.message}`);
     }
 
-    // 6. Notificaciones
-    const notifications = [
-      {
-        user_id: shipment.seller_id,
-        type: 'warning',
-        title: 'Disputa Abierta',
-        message: `El comprador reportó un problema con la orden #${orderId.slice(0, 8)}. Selene está revisando el caso.`,
-        action_path: `/profile/orders/${orderId}`,
-      },
-      {
-        user_id: user.id,
-        type: 'info',
-        title: 'Disputa Iniciada',
-        message: `Tu reporte ha sido recibido. El equipo Selene revisará la evidencia.`,
-        action_path: `/profile/orders/${orderId}`,
-      },
-    ];
-
-    await supabaseAdmin.from('notifications').insert(notifications);
-
     log('INFO', 'Disputa creada exitosamente', {
       disputeId: dispute.id,
       orderId,

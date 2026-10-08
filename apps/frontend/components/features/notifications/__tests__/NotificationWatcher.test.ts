@@ -1,48 +1,9 @@
 import { expect, test, describe } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { classify, type NotificationKind } from '../classify';
 
-// ─── classify() table ─────────────────────────────────────────────────────
 
-describe('classify', () => {
-  const dialog = (type: string, action_path: string | null): NotificationKind =>
-    classify({ type, action_path } as Parameters<typeof classify>[0]);
-
-  test('error type always produces dialog', () => {
-    expect(dialog('error', '/product/abc')).toBe('dialog');
-    expect(dialog('error', null)).toBe('dialog');
-  });
-
-  test('warning type always produces dialog', () => {
-    expect(dialog('warning', '/profile/wallet')).toBe('dialog');
-    expect(dialog('warning', '')).toBe('dialog');
-  });
-
-  test('/orders prefix produces dialog', () => {
-    expect(dialog('info', '/orders/123')).toBe('dialog');
-  });
-
-  test('/wallet prefix produces dialog', () => {
-    expect(dialog('info', '/wallet')).toBe('dialog');
-  });
-
-  test('/verify prefix produces dialog', () => {
-    expect(dialog('info', '/verify/abc')).toBe('dialog');
-  });
-
-  test('generic info notification produces toast', () => {
-    expect(dialog('info', '/product/abc')).toBe('toast');
-  });
-
-  test('success notification produces toast', () => {
-    expect(dialog('success', '/profile/favorites')).toBe('toast');
-  });
-
-  test('null action_path falls back to toast when type is not error/warning', () => {
-    expect(dialog('info', null)).toBe('toast');
-  });
-});
+// The legacy digest no longer uses the obsolete classifier or dialog controls.
 
 // ─── Source-grep contracts ────────────────────────────────────────────────
 
@@ -58,21 +19,49 @@ describe('NotificationWatcher source contracts', () => {
     expect(watcherSource()).not.toContain('isInitialLoadDone');
   });
 
-  test('does not perform initial fetchUnread effect', () => {
-    expect(watcherSource()).not.toContain('fetchUnread');
+  test('paginates owner-scoped rows with optional typed metadata and never marks read', () => {
+    const source = watcherSource();
+    expect(source).toContain(".select('*')");
+    expect(source).toContain(".eq('user_id', userId)");
+    expect(source).toContain(".is('deleted_at', null)");
+    expect(source).toContain("query.or('read.is.null,read.eq.false')");
+    expect(source).toContain('and(read.is.null,or(${older})),and(read.eq.false,or(${older}))');
+    expect(source).toContain('id.lt.${cursor.id}');
+    expect(source).not.toContain('current.notice.title');
+    expect(source).not.toContain('current.notice.message');
+    expect(source).not.toContain('current.notice.action_path');
+    expect(source).not.toContain('internal_note');
+    expect(source).toMatch(/\.order\('created_at', \{ ascending: false \}\)\s*\.order\('id', \{ ascending: false \}\)\s*\.limit\(LAUNCH_LIMIT\)/);
+    expect(source).toContain('scanLaunchDigest(userId');
+    expect(source).toContain('currentOwner.current !== userId');
+    expect(source).not.toContain('.range(');
+    expect(source).toContain('gate.current.cancel(attempt)');
+    expect(source).toContain('gate.current.complete(attempt)');
+    expect(source).not.toContain('markAsRead');
   });
 
-  test('uses localized moreCount key', () => {
-    expect(watcherSource()).toContain("notifications:moreCount");
-    expect(watcherSource()).not.toContain('mensajes más');
+  test('uses a generic reminder with one inbox CTA and defer', () => {
+    const source = watcherSource();
+    expect(source).not.toContain('notifications:digestMore');
+    expect(source).not.toContain('notifications:moreCount');
+    expect(source).not.toContain('<Pressable');
+    expect(source).toContain("onConfirm={() => navigate('/profile/notifications')}");
+    expect(source).toContain("confirmLabel={t('notifications:digestOpen')}");
+    expect(source).toContain("cancelLabel={t('notifications:digestSkip')}");
+    for (const path of [EN_I18N_PATH, ES_I18N_PATH]) {
+      expect(JSON.parse(readFileSync(path, 'utf8')).digestOpen).toBeTypeOf('string');
+    }
   });
 
   test('shows error toast on subscription catch', () => {
     expect(watcherSource()).toContain("type: 'error'");
   });
 
-  test('uses visibilityTime for toast lifecycle', () => {
-    expect(watcherSource()).toContain('visibilityTime');
+  test('retains one owner subscription and cache invalidation without queueing', () => {
+    const source = watcherSource();
+    expect(source).toContain('invalidateNotificationKeys(queryClient, userId)');
+    expect(source).toContain('supabase.removeChannel(channel)');
+    expect(source).not.toContain('setQueue');
   });
 
   test('does not call static Toast.hide()', () => {
@@ -86,6 +75,14 @@ const LINKING_PATH = join(import.meta.dir, '..', '..', '..', '..', 'core', 'serv
 const linkingSource = () => readFileSync(LINKING_PATH, 'utf8');
 
 describe('NotificationLinking source contract', () => {
+  test('removes unused pub/sub without changing validated navigation', () => {
+    const source = linkingSource();
+    expect(source).not.toContain('NotificationService');
+    expect(source).toContain('export const NotificationLinking = {');
+    expect(source).toContain("{ pattern: '/profile', params: [], redirectTo: '/profile/listings' }");
+    expect(source).toContain("return '/profile/notifications';");
+  });
+
   test('navigate awaits router.push', () => {
     expect(linkingSource()).toContain('await router.push');
   });
@@ -147,18 +144,14 @@ const ITEM_PATH = join(import.meta.dir, '..', 'NotificationItem.tsx');
 const itemSource = () => readFileSync(ITEM_PATH, 'utf8');
 
 describe('NotificationItem source contracts', () => {
-  test('uses accessibilityLabel for dismiss', () => {
-    expect(itemSource()).toContain('accessibilityLabel');
-    expect(itemSource()).toContain('dismissLabel');
-  });
-
-  test('uses onLongPress for dismiss trigger', () => {
-    expect(itemSource()).toContain('onLongPress');
-  });
-
-  test('shows ConfirmDialog before dismiss', () => {
-    expect(itemSource()).toContain('ConfirmDialog');
-    expect(itemSource()).toContain('showConfirm');
+  test('keeps the accessible item tap without per-card mutation controls or dialog', () => {
+    const source = itemSource();
+    expect(source).toContain('accessibilityLabel');
+    expect(source).toContain('accessibilityRole="button"');
+    expect(source).toContain('onPress={() => onPress(notification)}');
+    expect(source).not.toContain('onDismiss');
+    expect(source).not.toContain('onMarkRead');
+    expect(source).not.toContain('ConfirmDialog');
   });
 });
 

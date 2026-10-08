@@ -211,16 +211,16 @@ BEGIN
     v_order_id := v_existing_order_id;
   END IF;
 
-  -- Aggregate commission (service_fee_amount) from the allocation rows for the
-  -- shell; written once here before the allocation block.
-  SELECT COALESCE(SUM((r->>'commission_cents')::BIGINT), 0)
-    INTO v_service_fee_amount
-  FROM jsonb_array_elements(p_allocation -> 'rows') AS r;
-
   -- 5. Allocation block: shipments + order_items + product SOLD. Any failure
   --    here rolls back ONLY this block (the shell above survives) and is
   --    caught, marking the shell payment_processing=true for admin recovery.
   BEGIN
+    -- Include numeric aggregation in the recovery boundary: malformed
+    -- commission data must leave a durable payment_processing shell too.
+    SELECT COALESCE(SUM((r->>'commission_cents')::BIGINT), 0)
+      INTO v_service_fee_amount
+    FROM jsonb_array_elements(p_allocation -> 'rows') AS r;
+
     FOR v_row IN
       SELECT * FROM jsonb_array_elements(p_allocation -> 'rows')
     LOOP
@@ -376,6 +376,48 @@ BEGIN
     WHERE id = v_existing_order_id;
 
     PERFORM fn_derive_order_status(v_existing_order_id);
+
+    -- Derivation alone is not proof of full allocation: check every persisted
+    -- shipment and the expected row count before publishing the paid event.
+    SELECT COUNT(*) INTO v_settled_shipment_count
+    FROM public.shipments s
+    WHERE s.order_id = v_existing_order_id;
+    IF v_settled_shipment_count = 0
+       OR v_settled_shipment_count <> jsonb_array_length(p_allocation -> 'rows')
+       OR EXISTS (
+         SELECT 1 FROM public.shipments s
+         WHERE s.order_id = v_existing_order_id AND s.status <> 'paid'
+       ) THEN
+      RAISE EXCEPTION 'INCOMPLETE_PAID_ALLOCATION';
+    END IF;
+
+    -- Union deduplicates the buyer if they are also a shipment seller.
+    -- Both the recipients and the order identity come from persisted rows.
+    INSERT INTO public.notifications (
+      user_id, event_kind, source_event_key, event_payload,
+      type, title, message, action_path
+    )
+    SELECT recipients.user_id,
+           'order.payment_confirmed',
+           'order.payment_confirmed:' || v_existing_order_id::text,
+           jsonb_build_object('order_id', v_existing_order_id, 'recipient_role',
+             CASE WHEN recipients.user_id = o.buyer_id THEN 'buyer' ELSE 'seller' END),
+           'success',
+           CASE WHEN recipients.user_id = o.buyer_id THEN 'Compra confirmada'
+                ELSE 'Nueva venta confirmada' END,
+           CASE WHEN recipients.user_id = o.buyer_id THEN 'Tu pago fue confirmado.'
+                ELSE 'Recibiste una nueva venta.' END,
+           '/profile/orders/' || o.id::text
+    FROM public.orders o
+    CROSS JOIN LATERAL (
+      SELECT o.buyer_id AS user_id
+      UNION
+      SELECT DISTINCT s.seller_id AS user_id
+      FROM public.shipments s
+      WHERE s.order_id = v_existing_order_id
+    ) recipients
+    WHERE o.id = v_existing_order_id
+    ON CONFLICT (source_event_key, user_id) WHERE source_event_key IS NOT NULL DO NOTHING;
 
     -- Clear any prior recovery flag: this attempt fully settled.
     UPDATE public.orders

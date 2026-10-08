@@ -187,6 +187,56 @@ describe('single-modal shipment RPC SQL guards', () => {
   });
 });
 
+describe('settlement recovery shell', () => {
+  it('catches malformed commission amounts inside allocation subtransaction', () => {
+    const sql = readSql(RPC_PATH);
+    const shell = sql.indexOf('INSERT INTO public.orders');
+    const block = sql.indexOf('BEGIN -- Include numeric aggregation');
+    const aggregate = sql.indexOf("SUM((r->>'commission_cents')::BIGINT)");
+    const handler = sql.indexOf('EXCEPTION WHEN OTHERS THEN');
+    expect(block).toBeGreaterThan(shell);
+    expect(aggregate).toBeGreaterThan(block);
+    expect(aggregate).toBeLessThan(sql.indexOf('FOR v_row IN', block));
+    expect(aggregate).toBeLessThan(handler);
+    expect(sql.slice(handler)).toContain('payment_processing = true');
+  });
+});
+
+describe('confirmed-payment notification producer', () => {
+  const sql = readSql(RPC_PATH);
+  const success = sql.indexOf("'status', 'created'");
+  const duplicate = sql.indexOf("'status', 'duplicate'");
+  const failure = sql.indexOf('EXCEPTION WHEN OTHERS THEN');
+  const notice = sql.indexOf('INSERT INTO public.notifications');
+
+  it('emits only inside successful allocation, after persisted paid shipments are checked', () => {
+    expect(notice).toBeGreaterThan(sql.indexOf('PERFORM fn_derive_order_status'));
+    expect(notice).toBeLessThan(success);
+    expect(notice).toBeLessThan(failure);
+    expect(duplicate).toBeLessThan(notice);
+    expect(sql).toMatch(/OR EXISTS \( SELECT 1 FROM public\.shipments[\s\S]*?status <> 'paid'/);
+    expect(sql).toContain('COUNT(*)');
+  });
+
+  it('derives buyer and distinct sellers from persisted order and shipments', () => {
+    expect(sql).toContain('FROM public.orders o');
+    expect(sql).toContain('SELECT DISTINCT s.seller_id');
+    expect(sql).toContain('FROM public.shipments s');
+    expect(sql).toContain('s.order_id = v_existing_order_id');
+    expect(sql).toContain('o.id = v_existing_order_id');
+  });
+
+  it('writes typed identity and legacy presentation per recipient with partial-index conflict', () => {
+    expect(sql).toContain("'order.payment_confirmed:' || v_existing_order_id::text");
+    expect(sql).toContain("'order.payment_confirmed'");
+    expect(sql).toMatch(/jsonb_build_object\('order_id', v_existing_order_id, 'recipient_role',\s*CASE WHEN recipients\.user_id = o\.buyer_id THEN 'buyer' ELSE 'seller' END\)/);
+    expect(sql).toContain('ON CONFLICT (source_event_key, user_id) WHERE source_event_key IS NOT NULL DO NOTHING');
+    for (const column of ['user_id', 'event_kind', 'source_event_key', 'event_payload', 'type', 'title', 'message', 'action_path']) {
+      expect(sql.slice(notice, success)).toContain(column);
+    }
+  });
+});
+
 describe('single-modal settlement retires the legacy seller-grouped RPC', () => {
   it('legacy fn_create_shipment_from_payment rejects before reaching grouped writes', () => {
     const legacy = readSql(

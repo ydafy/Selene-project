@@ -9,6 +9,7 @@ DECLARE
     v_total_payout NUMERIC;
     v_new_balance NUMERIC;
     v_wallet_id UUID;
+    v_audit_id UUID;
 BEGIN
     -- A. SEGURIDAD: Obtener ID desde JWT y validar sesión
     v_auth_user_id := (current_setting('request.jwt.claims', true)::json->>'sub')::UUID;
@@ -81,7 +82,7 @@ BEGIN
           'release', 'Resolución de disputa a favor del vendedor'
       );
 
-    END IF
+    END IF;
 
     -- F. ACTUALIZAR ESTADOS: Cerrar caso
     UPDATE public.disputes
@@ -101,13 +102,25 @@ BEGIN
 
     -- G. AUDITORÍA: Rastro del Admin
     INSERT INTO public.admin_audit_logs (admin_id, action_type, target_id, details)
-    VALUES (v_auth_user_id, 'DISPUTE_RESOLVE_SELLER', p_dispute_id, jsonb_build_object('order_id', v_order_id, 'note', p_admin_note));
+    VALUES (v_auth_user_id, 'DISPUTE_RESOLVE_SELLER', p_dispute_id, jsonb_build_object('order_id', v_order_id, 'note', p_admin_note))
+    RETURNING id INTO v_audit_id;
 
-    -- H. NOTIFICACIONES: Avisar a ambas partes
-    INSERT INTO public.notifications (user_id, type, title, message, action_path)
-    VALUES
-        (v_seller_id, 'success', 'Disputa Ganada', 'El administrador resolvió a tu favor tras revisar la evidencia. Fondos liberados.', '/profile/orders/' || v_order_id),
-        (v_buyer_id, 'error', 'Disputa Cerrada', 'La revisión de la orden ha concluido a favor del vendedor. El caso ha sido cerrado.', '/profile/orders/' || v_order_id);
+    -- One notice per distinct participant, bound to this audited verdict occurrence.
+    INSERT INTO public.notifications (
+        user_id, type, title, message, action_path,
+        event_kind, source_event_key, event_payload
+    )
+    SELECT recipients.user_id, recipients.type, recipients.title,
+           recipients.message, '/profile/orders/' || v_order_id::text,
+           'dispute.verdict',
+           'dispute.verdict:' || p_dispute_id::text || ':' || v_audit_id::text,
+           jsonb_build_object('dispute_id', p_dispute_id, 'order_id', v_order_id, 'recipient_role', recipients.recipient_role)
+    FROM (VALUES
+        (v_seller_id, 'seller', 'success', 'Disputa resuelta a tu favor', 'La disputa se resolvió a tu favor. Consulta el pedido para conocer el estado del pago.'),
+        (v_buyer_id, 'buyer', 'warning', 'Disputa resuelta', 'La disputa se resolvió a favor del vendedor. Consulta el pedido para conocer los detalles.')
+    ) AS recipients(user_id, recipient_role, type, title, message)
+    WHERE true AND (recipients.recipient_role = 'seller' OR v_seller_id IS DISTINCT FROM v_buyer_id)
+    ON CONFLICT (source_event_key, user_id) WHERE source_event_key IS NOT NULL DO NOTHING;
 
     RETURN QUERY SELECT true, NULL::TEXT;
 

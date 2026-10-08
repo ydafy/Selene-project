@@ -137,6 +137,8 @@ export const OrderActionCard = ({
     if (order.status === 'dispute') {
       if (dispute?.status === 'return_delivered' && isSeller)
         return t('actionCard.recordUnboxingTitle');
+      if (dispute?.status === 'open')
+        return t('orders:card.disputeStatus.open').toUpperCase();
       return t('orders:detail.returnTitle');
     }
     return t(`orders:status.${order.status}`).toUpperCase();
@@ -287,7 +289,7 @@ export const OrderActionCard = ({
             <PrimaryButton
               variant="outline"
               onPress={() =>
-                router.push(`/profile/orders/report/${order.id}` as any)
+                router.push(`/profile/orders/report/${order.id}?shipment_id=${shipment.id}` as any)
               }
               icon="shield-alert"
               style={{ borderColor: theme.colors.error, marginTop: 8 }}

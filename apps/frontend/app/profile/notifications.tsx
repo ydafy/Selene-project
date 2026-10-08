@@ -16,6 +16,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { NotificationItem } from '../../components/features/notifications/NotificationItem';
 import { useNotificationsList } from '../../core/hooks/useNotificationsList';
 import { useNotificationMutations } from '../../core/hooks/useNotificationMutations';
+import { useUnreadNotifications } from '../../core/hooks/useUnreadNotifications';
 import { NotificationLinking } from '../../core/services/notification';
 import { useAuthContext } from '../../components/auth/AuthProvider';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -44,7 +45,8 @@ export default function NotificationsScreen() {
     refetch,
   } = useNotificationsList(userId);
 
-  const { markAsRead, markAllAsRead, dismissNotification, dismissAll } =
+  const { data: unreadCount } = useUnreadNotifications(userId);
+  const { markAsRead, markAllAsRead, dismissAll } =
     useNotificationMutations(userId);
 
   const handleNotificationPress = async (notif: Notification) => {
@@ -109,7 +111,7 @@ export default function NotificationsScreen() {
         headerRight={
           <Box flexDirection="row" alignItems="center" gap="m">
             {/* 1. ÍCONO MARCAR TODAS COMO LEÍDAS */}
-            {notifications && notifications.some((n) => !n.read) && (
+            {(unreadCount ?? 0) > 0 && (
               <TouchableOpacity
                 onPress={() => setShowMarkAll(true)}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -155,7 +157,6 @@ export default function NotificationsScreen() {
           <NotificationItem
             notification={item}
             onPress={handleNotificationPress}
-            onDismiss={dismissNotification}
           />
         )}
         onEndReached={hasNextPage ? fetchNextPage : undefined}
