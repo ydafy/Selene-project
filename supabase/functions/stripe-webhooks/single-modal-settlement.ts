@@ -95,7 +95,7 @@ export type StripeFeeReconciliationPlan =
       stripeFeeReconciledAt: string;
     }
   | { kind: 'already_reconciled' }
-  | { kind: 'missing_balance_transaction' };
+  | { kind: 'deferred'; reason: 'missing_balance_transaction' };
 
 export function buildStripeFeeReconciliationPlan(input: {
   existingActualStripeFeeCents: number | null;
@@ -114,7 +114,7 @@ export function buildStripeFeeReconciliationPlan(input: {
     !Number.isInteger(balanceTransaction.fee) ||
     balanceTransaction.fee < 0
   ) {
-    return { kind: 'missing_balance_transaction' };
+    return { kind: 'deferred', reason: 'missing_balance_transaction' };
   }
 
   return {
@@ -139,7 +139,8 @@ export function buildRecoveryShellInput(input: {
   return {
     sourceMetadata: { ...input.metadata },
     chargedAmountCents:
-      Number.isSafeInteger(input.amount) && (input.amount ?? -1) >= 0
+      typeof input.amount === 'number' &&
+      Number.isSafeInteger(input.amount) && input.amount >= 0
         ? input.amount
         : null,
   };
