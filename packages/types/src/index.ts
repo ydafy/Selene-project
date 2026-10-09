@@ -49,11 +49,19 @@ export type ConnectPayoutRunStatus =
   | 'canceled'
   | 'reconciliation_needed';
 
-export interface ConnectPayoutReleaseRequest {
-  sellerId: string;
-  shipmentIds: string[];
-  idempotencyKey: string;
-}
+export type ConnectPayoutReleaseRequest =
+  | {
+      sellerId: string;
+      shipmentIds: string[];
+      idempotencyKey: string;
+      retryRunId?: never;
+    }
+  | {
+      retryRunId: string;
+      sellerId?: never;
+      shipmentIds?: never;
+      idempotencyKey?: never;
+    };
 
 export type ReleaseConnectPayoutResponse =
   | {

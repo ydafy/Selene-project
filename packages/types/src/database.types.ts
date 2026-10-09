@@ -3492,6 +3492,20 @@ export type Database = {
         }
         Returns: number
       }
+      fn_atomic_payout_resume_mapping: {
+        Args: {
+          p_expected_parent_payout_id: string
+          p_expected_parent_version: number
+          p_expected_stage: string
+          p_expected_status: string
+          p_expected_version: number
+          p_mode: string
+          p_parent_run_id: string
+          p_run_id: string
+          p_shipment_ids: string[]
+        }
+        Returns: number
+      }
       fn_begin_manual_payout_create_fence: {
         Args: { p_run_id: string }
         Returns: number
