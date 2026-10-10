@@ -6,7 +6,7 @@ Clarify seller delivery/release messages without changing fulfillment or payment
 ## Scope and constraints
 - OrderActionCard, English/Spanish order translations and existing i18n source guard aligned to new copy only.
 - Delivered message stays anchored to shipment.status; countdown expiration never implies completion.
-- Completed is the real enum name; show pending release only when payment is actually pending, not already paid/processing/failed.
+- Completed is the real enum name; use neutral completion copy without claiming any financial status (user selected reduced scope).
 - No database/backend changes, TDD or RDD (explicitly declined for this candidate).
 - Preserve unrelated .pi/gentle-ai/profile.json.
 - Feature branch: fix/shipment-status-messaging. Commit and push explicitly authorized.
@@ -17,7 +17,7 @@ Clarify seller delivery/release messages without changing fulfillment or payment
 ## Acceptance and checks
 - Delivered before/after countdown expiry retains delivered messaging.
 - Completed early or after expiry uses shipment status, not local timer.
-- Already released funds and disputes do not claim pending release.
+- Completed never claims pending release; shipment disputes retain established behavior.
 - English/Spanish interpolation parity.
 - Manual emulator check required when available; report unavailable rather than inventing evidence.
 
