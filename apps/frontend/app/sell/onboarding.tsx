@@ -25,6 +25,7 @@ import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { WizardSteps } from '../../components/features/sell/WizardSteps';
+import { SellerPaymentExplanation } from '../../components/features/payments/SellerPaymentExplanation';
 import { AppImageViewer } from '../../components/ui/AppImageViewer';
 import { useAuthContext } from '../../components/auth/AuthProvider';
 import { useConnectOnboarding } from '../../core/hooks/useConnectOnboarding';
@@ -280,6 +281,20 @@ export default function SellerOnboardingScreen() {
           >
             {t('wallet:onboarding.success.subtitle')}
           </Text>
+
+          <Box
+            width="100%"
+            backgroundColor="cardBackground"
+            padding="m"
+            borderRadius="m"
+            marginBottom="l"
+            gap="m"
+          >
+            <Text variant="subheader-md" color="textPrimary">
+              {t('wallet:onboarding.paymentExplanation.title')}
+            </Text>
+            <SellerPaymentExplanation />
+          </Box>
 
           <Box width="100%">
             <PrimaryButton

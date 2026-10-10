@@ -146,6 +146,8 @@
     "deliveredTitle": "Paquete entregado",
     "deliveredReviewMessage": "El comprador cuenta con un plazo de 48 horas desde la entrega para revisar el producto y confirmar la recepción. Si no reporta un problema, la compra se completará automáticamente al finalizar este plazo. Después, Selene gestionará la liberación de tu pago. Tiempo restante del plazo de revisión: {{timeLeft}}.",
     "completedMessage": "La compra se completó.",
+    "paymentExplanationHelp": "¿Cuándo recibiré mi dinero?",
+    "paymentExplanationClose": "Cerrar",
     "recordUnboxingTitle": "GRABA TU UNBOXING",
     "cancellationWindowClosed": "La ventana de cancelación manual ha cerrado.",
     "cancellationWindowOpen": "Aún puedes cancelar este envío durante {{timeLeft}}.",

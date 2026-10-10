@@ -91,6 +91,7 @@ describe('role-aware orders localization', () => {
       'sellerShippingWindowClosed',
       'deliveredReviewMessage',
       'completedMessage',
+      'paymentExplanationHelp',
       'returnPayoutPendingBuyer',
       'returnPayoutPendingSeller',
       'returnLabelPendingBuyer',
@@ -104,6 +105,14 @@ describe('role-aware orders localization', () => {
       'reportReturnProblem',
     ]) {
       expect(actionCard).toContain(`t('actionCard.${key}'`);
+    }
+    expect(actionCard).toContain("t('actionCard.paymentExplanationClose')");
+    for (const key of ['paymentExplanationHelp', 'paymentExplanationClose']) {
+      expect(en.actionCard[key]).toBeString();
+      expect(es.actionCard[key]).toBeString();
+      expect(String(en.actionCard[key]).match(/{{[^}]+}}/g) ?? []).toEqual(
+        String(es.actionCard[key]).match(/{{[^}]+}}/g) ?? [],
+      );
     }
     expect(actionCard).not.toContain('CANCELLATION WINDOW');
     expect(actionCard).not.toContain('PREPARING SHIPMENT');

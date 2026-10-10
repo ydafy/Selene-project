@@ -93,9 +93,16 @@
       "rejectedTitle": "Revisa tu información en Stripe",
       "rejectedDesc": "Stripe necesita datos o documentos corregidos. Abre Stripe para revisar la solicitud y enviar la información faltante."
     },
+    "paymentExplanation": {
+      "title": "Cómo funcionan los pagos al vendedor",
+      "buyerReview": "1. Después de la entrega, el comprador tiene hasta 48 horas para revisar el producto y puede confirmar antes. Las compras elegibles se completan automáticamente si no se reporta un problema.",
+      "release": "2. Selene revisa diariamente las compras completadas elegibles para gestionar la liberación del pago. Completar una compra no es un depósito bancario, y la revisión diaria no asegura la liberación ese mismo día.",
+      "bank": "3. El procesamiento bancario normalmente toma 1–4 días hábiles después de que se inicia el depósito, no desde la compra ni su finalización. Es una estimación, no una fecha de llegada asegurada.",
+      "delays": "Los primeros pagos pueden tardar más por el período de espera inicial de Stripe. Los fondos no disponibles o las solicitudes de información adicional también pueden retrasar el pago."
+    },
     "success": {
       "title": "¡Todo listo para vender!",
-      "subtitle": "Tu cuenta de Stripe Connect está activa y configurada de forma segura. Ya puedes imprimir tus guías de envío y recibir pagos según tu calendario de depósitos.",
+      "subtitle": "Tu cuenta de Stripe Connect está activa y configurada de forma segura. Ya puedes imprimir tus guías de envío. Selene gestiona la liberación del pago de las compras completadas elegibles.",
       "cta": "Ir a mis ventas"
     },
     "actions": {

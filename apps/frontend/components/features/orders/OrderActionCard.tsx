@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
+import { ScrollView, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -7,6 +8,8 @@ import { useTheme } from '@shopify/restyle';
 
 import { Box, Text } from '../../base';
 import { PrimaryButton } from '../../ui/PrimaryButton';
+import { ConfirmDialog } from '../../ui/ConfirmDialog';
+import { SellerPaymentExplanation } from '../payments/SellerPaymentExplanation';
 import { ShippingLabelCard } from './ShippingLabelCard';
 import { EnrichedOrder, EnrichedShipment } from '@selene/types';
 import { useOrderCountdown } from '@/core/hooks/useOrderCountdown';
@@ -31,7 +34,9 @@ export const OrderActionCard = ({
   shareLabel,
   isSharing,
 }: Props) => {
-  const { t } = useTranslation(['orders']);
+  const { t } = useTranslation(['orders', 'wallet']);
+  const { height } = useWindowDimensions();
+  const [isPaymentExplanationVisible, setIsPaymentExplanationVisible] = useState(false);
   const theme = useTheme<Theme>();
   const router = useRouter();
   const { permissions, dispute, isSeller, isBuyer } = shipment;
@@ -266,6 +271,16 @@ export const OrderActionCard = ({
 
         {/* --- 5. ACCIONES --- */}
         <Box gap="s">
+          {showSellerCompletedBanner && (
+            <PrimaryButton
+              variant="outline"
+              icon="help-circle-outline"
+              style={{ marginTop: theme.spacing.m }}
+              onPress={() => setIsPaymentExplanationVisible(true)}
+            >
+              {t('actionCard.paymentExplanationHelp')}
+            </PrimaryButton>
+          )}
           {isSeller && permissions.canPayReturn && (
             <PrimaryButton
               onPress={async () => {
@@ -308,6 +323,22 @@ export const OrderActionCard = ({
           )}
         </Box>
       </Box>
+
+      <ConfirmDialog
+        visible={showSellerCompletedBanner && isPaymentExplanationVisible}
+        title={t('wallet:onboarding.paymentExplanation.title')}
+        onConfirm={() => setIsPaymentExplanationVisible(false)}
+        onCancel={() => setIsPaymentExplanationVisible(false)}
+        confirmLabel={t('actionCard.paymentExplanationClose')}
+        hideCancel
+      >
+        <ScrollView
+          style={{ maxHeight: height * 0.45 }}
+          contentContainerStyle={{ paddingBottom: theme.spacing.s }}
+        >
+          <SellerPaymentExplanation />
+        </ScrollView>
+      </ConfirmDialog>
 
       {/* --- 6. GUÍA --- */}
       {dispute?.return_label_url && (

@@ -93,9 +93,16 @@
       "rejectedTitle": "Review your Stripe information",
       "rejectedDesc": "Stripe needs corrected details or documents. Open Stripe to review the request and submit the missing information."
     },
+    "paymentExplanation": {
+      "title": "How seller payments work",
+      "buyerReview": "1. After delivery, the buyer has up to 48 hours to review the product and can confirm early. Eligible purchases complete automatically if no problem is reported.",
+      "release": "2. Selene reviews eligible completed purchases daily to manage payment release. Completion is not a bank deposit, and daily review does not promise a specific release date.",
+      "bank": "3. Bank processing normally takes 1–4 business days after the deposit is initiated, not from purchase or completion. This is an estimate; arrival dates may vary.",
+      "delays": "First payments may take longer due to Stripe's initial waiting period. Unavailable funds or requests for additional information may also delay payment."
+    },
     "success": {
       "title": "All set to sell!",
-      "subtitle": "Your Stripe Connect account is active and securely configured. You can now print shipping labels and receive payouts according to your deposit schedule.",
+      "subtitle": "Your Stripe Connect account is active and securely configured. You can now print shipping labels. Selene manages payment release for eligible completed purchases.",
       "cta": "Go to my sales"
     },
     "actions": {
