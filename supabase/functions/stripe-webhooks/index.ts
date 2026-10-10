@@ -9,10 +9,21 @@ import type {
   Database,
   Json,
 } from '../../../packages/types/src/database.types.ts';
-import { normalizeAccountStatus } from '../_shared/connect-status.ts';
+import { normalizeAccountStatus, type ConnectAccountLike } from '../_shared/connect-status.ts';
 import { extractStripeChargeId } from '../_shared/stripe-charge.ts';
 import { compensateRecoveryShell } from '../checkout-recovery-worker/recovery.ts';
-import { reconcileConnectPayoutEvent } from './connect-payout-reconciliation.ts';
+import {
+  applyConnectAccountActionability,
+  extractSignedAccountEventData,
+  parseAccountRefreshGeneration,
+  reconcileConnectPayoutEvent,
+  type ConnectAccountCurrentSnapshot,
+  resolveAccountActionability,
+  type ConnectPayoutAuthorityState,
+  type ConnectPayoutEventEvidenceInput,
+  type ConnectPayoutEventType,
+  type StripePayoutStatus,
+} from './connect-payout-reconciliation.ts';
 import {
   SINGLE_MODAL_FLOW,
   buildSettlementOutcome,
@@ -56,6 +67,51 @@ const RECOVERABLE_MISSING_PAYOUT_ID_STATUSES = [
   'pending_reconciliation',
   'reconciliation_needed',
 ];
+
+const CONNECT_PAYOUT_EVENT_TYPES = [
+  'payout.created',
+  'payout.updated',
+  'payout.paid',
+  'payout.failed',
+  'payout.canceled',
+] as const;
+
+// Phase 2B: signed account evidence events (previously excluded).
+const CONNECT_ACCOUNT_EVENT_TYPES = [
+  'account.updated',
+  'account.external_account.created',
+  'account.external_account.updated',
+  'account.external_account.deleted',
+] as const;
+
+const normalizeStripePayoutStatus = (
+  status: string | null | undefined,
+): StripePayoutStatus | null => {
+  switch (status) {
+    case 'pending':
+    case 'in_transit':
+    case 'paid':
+    case 'failed':
+    case 'canceled':
+      return status;
+    default:
+      return null;
+  }
+};
+
+const normalizeFailureBalanceTransaction = (
+  value: unknown,
+): string | null => {
+  if (typeof value === 'string') return value;
+  if (
+    value &&
+    typeof value === 'object' &&
+    typeof (value as { id?: unknown }).id === 'string'
+  ) {
+    return (value as { id: string }).id;
+  }
+  return null;
+};
 
 type SupabaseAdminClient = SupabaseClient<Database>;
 
@@ -128,12 +184,13 @@ async function compensateSemanticCheckoutRecovery(
   );
   if (shellError)
     throw new Error(`CHECKOUT_RECOVERY_SHELL_FAILED: ${shellError.message}`);
+  const shellPayload: unknown = shellData;
   const recoveryRuntimeVersion =
-    shellData &&
-    typeof shellData === 'object' &&
-    'runtime_version' in shellData &&
-    typeof shellData.runtime_version === 'string'
-      ? shellData.runtime_version
+    shellPayload &&
+    typeof shellPayload === 'object' &&
+    'runtime_version' in shellPayload &&
+    typeof shellPayload.runtime_version === 'string'
+      ? shellPayload.runtime_version
       : null;
 
   const charge = (await stripe.charges.retrieve(chargeId)) as Stripe.Charge & {
@@ -218,6 +275,8 @@ type ConnectPayoutRunRow = {
   id: string;
   status: string;
   stripe_payout_id: string | null;
+  seller_id: string | null;
+  paid_at: string | null;
 };
 
 async function findConnectPayoutRun(
@@ -226,7 +285,7 @@ async function findConnectPayoutRun(
 ): Promise<ConnectPayoutRunRow | null> {
   const { data: payoutRun, error: payoutRunError } = await supabaseAdmin
     .from('connect_payout_runs')
-    .select('id, status, stripe_payout_id')
+    .select('id, status, stripe_payout_id, seller_id, paid_at')
     .eq('stripe_payout_id', input.payoutId)
     .maybeSingle();
   if (payoutRunError)
@@ -236,7 +295,7 @@ async function findConnectPayoutRun(
   if (input.metadataRunId) {
     const { data, error } = await supabaseAdmin
       .from('connect_payout_runs')
-      .select('id, status, stripe_payout_id')
+      .select('id, status, stripe_payout_id, seller_id, paid_at')
       .eq('id', input.metadataRunId)
       .maybeSingle();
     if (error) throw new Error(`PAYOUT_RUN_LOOKUP_FAILED: ${error.message}`);
@@ -256,8 +315,9 @@ async function findConnectPayoutRun(
 
 async function attachConnectPayoutRunPayoutId(
   supabaseAdmin: SupabaseAdminClient,
-  input: { runId: string; stripePayoutId: string },
+  input: { runId: string; stripePayoutId: string; sellerId: string | null },
 ) {
+  if (!input.sellerId) throw new Error('PAYOUT_RUN_ATTACH_CONFLICT');
   const { data, error } = await supabaseAdmin
     .from('connect_payout_runs')
     .update({
@@ -265,12 +325,22 @@ async function attachConnectPayoutRunPayoutId(
       updated_at: new Date().toISOString(),
     })
     .eq('id', input.runId)
+    .eq('seller_id', input.sellerId)
     .is('stripe_payout_id', null)
     .in('status', RECOVERABLE_MISSING_PAYOUT_ID_STATUSES)
     .select('id');
   if (error) throw new Error(`PAYOUT_RUN_ATTACH_FAILED: ${error.message}`);
   if (((data as Array<{ id: string }> | null) ?? []).length !== 1) {
-    throw new Error('PAYOUT_RUN_ATTACH_CONFLICT');
+    const { data: current, error: lookupError } = await supabaseAdmin
+      .from('connect_payout_runs')
+      .select('id, seller_id, stripe_payout_id')
+      .eq('id', input.runId)
+      .maybeSingle();
+    if (lookupError || !current || current.id !== input.runId ||
+      current.seller_id !== input.sellerId ||
+      !(current.stripe_payout_id === input.stripePayoutId)) {
+      throw new Error('PAYOUT_RUN_ATTACH_CONFLICT');
+    }
   }
 }
 
@@ -278,130 +348,266 @@ async function markConnectPayoutRunStatus(
   supabaseAdmin: SupabaseAdminClient,
   input: {
     runId: string;
+    payoutId: string;
     status: 'paid' | 'failed' | 'canceled';
     occurredAt: string;
     failureReason?: string | null;
+    failureBalanceTransaction?: string | null;
   },
-) {
-  const update = {
-    status: input.status,
-    updated_at: input.occurredAt,
-    ...(input.status === 'paid' ? { paid_at: input.occurredAt } : {}),
-    ...(input.status === 'failed' || input.status === 'canceled'
-      ? {
-          failed_at: input.occurredAt,
-          failure_reason: input.failureReason ?? input.status,
-        }
-      : {}),
-  };
+): Promise<boolean> {
+  const failureReasonParts = [
+    input.failureReason ?? input.status,
+    ...(input.failureBalanceTransaction
+      ? [
+          `failure_balance_transaction: ${input.failureBalanceTransaction}`,
+        ]
+      : []),
+  ];
 
-  const { error } = await supabaseAdmin
-    .from('connect_payout_runs')
-    .update(update)
-    .eq('id', input.runId);
-  if (error) throw new Error(`PAYOUT_RUN_UPDATE_FAILED: ${error.message}`);
-}
-
-async function markConnectPayoutRunShipmentsStatus(
-  supabaseAdmin: SupabaseAdminClient,
-  input: { runId: string; status: 'paid' | 'failed' | 'canceled' },
-) {
-  const { error } = await supabaseAdmin
-    .from('connect_payout_run_shipments')
-    .update({ status: input.status, updated_at: new Date().toISOString() })
-    .eq('run_id', input.runId);
-  if (error) throw new Error(`PAYOUT_MAPPING_UPDATE_FAILED: ${error.message}`);
-}
-
-async function listConnectPayoutRunShipmentIds(
-  supabaseAdmin: SupabaseAdminClient,
-  runId: string,
-): Promise<string[]> {
-  const { data, error } = await supabaseAdmin
-    .from('connect_payout_run_shipments')
-    .select('shipment_id')
-    .eq('run_id', runId);
-  if (error) throw new Error(`PAYOUT_MAPPING_LOOKUP_FAILED: ${error.message}`);
-
-  return ((data as Array<{ shipment_id: string | null }> | null) ?? [])
-    .map((row) => row.shipment_id)
-    .filter((shipmentId): shipmentId is string => Boolean(shipmentId));
-}
-
-async function markConnectShipmentsReleased(
-  supabaseAdmin: SupabaseAdminClient,
-  input: { shipmentIds: string[]; stripePayoutId: string },
-) {
-  if (input.shipmentIds.length === 0) {
-    throw new Error('PAYOUT_RUN_HAS_NO_SHIPMENTS');
-  }
-
-  const { data: shipments, error: loadError } = await supabaseAdmin
-    .from('shipments')
-    .select('id, stripe_payout_id')
-    .in('id', input.shipmentIds);
-  if (loadError)
-    throw new Error(`SHIPMENT_LOOKUP_FAILED: ${loadError.message}`);
-
-  const rows =
-    (shipments as Array<{
-      id: string;
-      stripe_payout_id: string | null;
-    }> | null) ?? [];
-  if (rows.length !== input.shipmentIds.length) {
-    throw new Error('PAYOUT_SHIPMENT_LOOKUP_INCOMPLETE');
-  }
-
-  const conflicting = rows.find(
-    (row) =>
-      row.stripe_payout_id !== null &&
-      row.stripe_payout_id !== input.stripePayoutId,
+  // Phase 2B final slice: the terminal projection is ONE atomic SECURITY
+  // DEFINER RPC that conditionally projects the run, the shipment mappings
+  // (monotonic filter), and the shipment payout-id set/clear in the same
+  // transaction, so a webhook terminal event can never regress to pending
+  // behind an in-flight worker and a paid handler that resumes after a failed
+  // handler can never restore shipment payout ids behind a failed run.
+  // A FALSE result means the run does not match the payout id, a concurrent
+  // writer already consumed the run, or the outcome would regress terminal
+  // authority: the raised conflict parks the run and NO dependent write
+  // exists for the webhook to apply.
+  const { data: projected, error } = await supabaseAdmin.rpc(
+    'fn_project_payout_run_terminal' as never,
+    {
+      p_run_id: input.runId,
+      p_payout_id: input.payoutId,
+      p_target_status: input.status,
+      p_occurred_at: input.occurredAt,
+      p_failure_reason: failureReasonParts.join(' | '),
+    } as never,
   );
-  if (conflicting) {
-    throw new Error(`SHIPMENT_ALREADY_RELEASED:${conflicting.id}`);
+  if (error) throw new Error(`PAYOUT_RUN_UPDATE_FAILED: ${error.message}`);
+  if (projected !== true) {
+    throw new Error('PAYOUT_RUN_TERMINAL_PROJECTION_CONFLICT');
   }
+  return projected;
+}
 
-  const pendingIds = rows
-    .filter((row) => row.stripe_payout_id === null)
-    .map((row) => row.id);
-  if (pendingIds.length === 0) return;
-
-  const { data: updated, error: updateError } = await supabaseAdmin
-    .from('shipments')
-    .update({
-      stripe_payout_id: input.stripePayoutId,
-      updated_at: new Date().toISOString(),
-    })
-    .in('id', pendingIds)
-    .is('stripe_payout_id', null)
-    .select('id');
-  if (updateError) {
-    throw new Error(`SHIPMENT_RELEASE_UPDATE_FAILED: ${updateError.message}`);
+async function projectConnectPayoutRunStage(
+  supabaseAdmin: SupabaseAdminClient,
+  input: {
+    runId: string;
+    targetStage: 'payout_pending' | 'payout_in_transit';
+    payoutId: string;
+  },
+): Promise<boolean> {
+  // Phase 2B: the stage projection is monotonic inside the RPC — it refuses a
+  // terminal run and never regresses payout_in_transit back to
+  // payout_pending. TRUE covers both a fresh write and an idempotent no-op
+  // (the run already sits at the target stage); FALSE is an observed refusal,
+  // never treated as a successful projection.
+  const { data: projected, error } = await supabaseAdmin.rpc(
+    'fn_project_payout_run_stage' as never,
+    {
+      p_run_id: input.runId,
+      p_payout_id: input.payoutId,
+      p_target_stage: input.targetStage,
+    } as never,
+  );
+  if (error) throw new Error(`PAYOUT_STAGE_UPDATE_FAILED: ${error.message}`);
+  if (projected !== true) {
+    throw new Error('PAYOUT_STAGE_PROJECTION_CONFLICT');
   }
+  return true;
+}
 
-  if (
-    ((updated as Array<{ id: string }> | null) ?? []).length !==
-    pendingIds.length
-  ) {
-    throw new Error('SHIPMENT_RELEASE_PARTIAL_UPDATE');
+async function decideRejectedPayoutStagePark(
+  supabaseAdmin: SupabaseAdminClient,
+  input: { runId: string; payoutId: string; targetStage: 'payout_pending' | 'payout_in_transit'; failureReason: string; eventId: string },
+): Promise<'superseded_paid' | 'superseded_failed' | 'parked' | 'identity_conflict'> {
+  const { data, error } = await supabaseAdmin.rpc(
+    'fn_decide_rejected_payout_stage_park' as never,
+    {
+      p_run_id: input.runId,
+      p_payout_id: input.payoutId,
+      p_target_stage: input.targetStage,
+      p_failure_reason: input.failureReason,
+    } as never,
+  );
+  if (error) throw new Error(`PAYOUT_STAGE_PARK_FAILED: ${error.message}`);
+  if (data !== 'superseded_paid' && data !== 'superseded_failed' && data !== 'parked' && data !== 'identity_conflict') {
+    throw new Error('PAYOUT_STAGE_PARK_INVALID_DECISION');
   }
+  log('INFO', 'Payout stage conflict decision', { eventId: input.eventId, category: data });
+  return data;
 }
 
 async function markConnectPayoutRunReconciliationNeeded(
   supabaseAdmin: SupabaseAdminClient,
   input: { runId: string; failureReason: string },
 ) {
-  const { error } = await supabaseAdmin
-    .from('connect_payout_runs')
-    .update({
-      status: 'reconciliation_needed',
-      failure_reason: input.failureReason,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', input.runId);
+  // Phase 2B slice 5: the reconciliation park is a guarded RPC, never a
+  // direct UPDATE. It refuses nothing on the status side (a genuine conflict
+  // or a failed dependent write legitimately parks a terminal run) but it is
+  // still fenced: it bumps the monotonic stage version, moves the aggregate
+  // to action_required, clears the executor claim and lease, and never
+  // touches paid_at / failed_at terminal evidence.
+  const { data: parked, error } = await supabaseAdmin.rpc(
+    'fn_mark_payout_run_reconciliation_needed' as never,
+    {
+      p_run_id: input.runId,
+      p_failure_reason: input.failureReason,
+    } as never,
+  );
   if (error) {
     throw new Error(`PAYOUT_RECONCILIATION_MARK_FAILED: ${error.message}`);
   }
+  // FALSE is the idempotent no-op (already parked with the same recorded
+  // reason): the run stays parked and the version stays monotonic.
+  if (parked !== true) {
+    log('INFO', 'Connect payout reconciliation park was a no-op', {
+      runId: input.runId,
+    });
+  }
+}
+
+async function appendConnectPayoutEventEvidence(
+  supabaseAdmin: SupabaseAdminClient,
+  input: ConnectPayoutEventEvidenceInput,
+): Promise<boolean> {
+  const { data, error } = await supabaseAdmin.rpc(
+    'fn_append_connect_payout_event' as never,
+    {
+      p_stripe_event_id: input.eventId,
+      p_event_type: input.eventType,
+      p_stripe_payout_id: input.payoutId,
+      p_connect_payout_run_id: input.runId,
+      p_stripe_created: input.stripeCreatedAt,
+      p_observed_payout_status: input.observedStatus,
+      p_failure_code: input.failureCode ?? null,
+      p_failure_message: input.failureMessage ?? null,
+      p_failure_balance_transaction: input.failureBalanceTransaction ?? null,
+    } as never,
+  );
+  if (error) {
+    throw new Error(`PAYOUT_EVENT_APPEND_FAILED: ${error.message}`);
+  }
+  if (data !== true && data !== false) {
+    throw new Error('PAYOUT_EVENT_APPEND_INVALID_RESULT');
+  }
+  return data;
+}
+
+async function recordConnectAccountEvent(
+  supabaseAdmin: SupabaseAdminClient,
+  input: {
+    eventId: string;
+    accountId: string;
+    eventType: string;
+    occurredAt: string;
+    externalAccountId: string | null;
+    payoutsEnabled: boolean | null;
+    externalAccountStatus: string | null;
+  },
+): Promise<boolean> {
+  const { data, error } = await supabaseAdmin.rpc(
+    'fn_record_connect_account_event' as never,
+    {
+      p_stripe_event_id: input.eventId,
+      p_stripe_account_id: input.accountId,
+      p_event_type: input.eventType,
+      p_stripe_created: input.occurredAt,
+      p_external_account_id: input.externalAccountId,
+      p_payouts_enabled: input.payoutsEnabled,
+      p_external_account_status: input.externalAccountStatus,
+    } as never,
+  );
+  if (error) throw new Error('ACCOUNT_EVENT_APPEND_FAILED');
+  if (data !== true && data !== false) throw new Error('ACCOUNT_EVENT_APPEND_INVALID_RESULT');
+  return data === true;
+}
+
+async function acquireConnectAccountRefreshRpc(
+  supabaseAdmin: SupabaseAdminClient,
+  input: { accountId: string; sourceEventId: string },
+): Promise<number> {
+  const { data, error } = await supabaseAdmin.rpc(
+    'fn_acquire_connect_account_refresh' as never,
+    { p_stripe_account_id: input.accountId, p_source_event_id: input.sourceEventId } as never,
+  );
+  if (error) throw new Error('ACCOUNT_REFRESH_ACQUIRE_FAILED');
+  return parseAccountRefreshGeneration(data);
+}
+
+async function commitConnectAccountRefreshRpc(
+  supabaseAdmin: SupabaseAdminClient,
+  input: ConnectAccountCurrentSnapshot,
+): Promise<boolean> {
+  const { data, error } = await supabaseAdmin.rpc(
+    'fn_commit_connect_account_refresh' as never,
+    {
+      p_stripe_account_id: input.accountId,
+      p_expected_generation: input.generation,
+      p_source_event_id: input.sourceEventId,
+      p_is_actionable: input.actionable,
+      p_blocked_reason: input.blockedReason,
+      p_payouts_enabled: input.payoutsEnabled,
+      p_current_external_account_id: input.externalAccountId,
+      p_current_external_account_status: input.externalAccountStatus,
+      p_current_currency: input.currency,
+      p_current_default_for_currency: input.defaultForCurrency,
+      p_mxn_default_count: input.mxnDefaultCount,
+    } as never,
+  );
+  if (error) throw new Error('ACCOUNT_REFRESH_COMMIT_FAILED');
+  if (data !== true && data !== false) throw new Error('ACCOUNT_REFRESH_COMMIT_INVALID_RESULT');
+  return data === true;
+}
+
+async function getSellerConnectAccountId(
+  supabaseAdmin: SupabaseAdminClient,
+  sellerId: string | null,
+): Promise<string | null> {
+  if (!sellerId) return null;
+  const { data, error } = await supabaseAdmin
+    .from('profiles_private')
+    .select('stripe_account_id')
+    .eq('id', sellerId)
+    .maybeSingle();
+  if (error) {
+    throw new Error(`SELLER_ACCOUNT_LOOKUP_FAILED: ${error.message}`);
+  }
+  const row = data as { stripe_account_id: string | null } | null;
+  return row?.stripe_account_id ?? null;
+}
+
+async function retrieveAuthoritativeConnectPayout(
+  input: {
+    payoutId: string;
+    stripeAccountId: string | null;
+  },
+): Promise<ConnectPayoutAuthorityState> {
+  if (!input.stripeAccountId) {
+    throw new Error('CONNECT_ACCOUNT_LOOKUP_MISSING');
+  }
+
+  // Stripe Payout state is authoritative when evidence conflicts or arrives
+  // out of order; the connected-account context is derived server-side.
+  const payout = await stripe.payouts.retrieve(input.payoutId, {
+    stripeAccount: input.stripeAccountId,
+  });
+
+  const status = normalizeStripePayoutStatus(payout.status);
+  if (!status) {
+    throw new Error(`UNEXPECTED_PAYOUT_STATUS:${String(payout.status)}`);
+  }
+
+  return {
+    status,
+    failureCode: payout.failure_code ?? null,
+    failureMessage: payout.failure_message ?? null,
+    failureBalanceTransaction: normalizeFailureBalanceTransaction(
+      payout.failure_balance_transaction,
+    ),
+  };
 }
 
 serve(async (req: Request) => {
@@ -519,8 +725,31 @@ serve(async (req: Request) => {
             reconciledAt: new Date().toISOString(),
           });
 
-          if (feePlan.kind === 'missing_balance_transaction') {
-            throw new Error('MISSING_BALANCE_TRANSACTION_FEE');
+          if (feePlan.kind === 'deferred') {
+            const enqueuedAt = new Date().toISOString();
+            const { error: enqueueError } = await supabaseAdmin
+              .from('stripe_fee_reconciliation_jobs')
+              .upsert(
+                {
+                  order_id: action.payload.orderId,
+                  stripe_payment_intent_id: intent.id,
+                  status: 'pending',
+                  attempt_count: 0,
+                  next_retry_at: enqueuedAt,
+                  last_error: null,
+                  updated_at: enqueuedAt,
+                },
+                {
+                  onConflict: 'order_id,stripe_payment_intent_id',
+                  ignoreDuplicates: true,
+                },
+              );
+
+            if (enqueueError) {
+              throw new Error(
+                `STRIPE_FEE_RECONCILIATION_JOB_UPSERT_FAILED: ${enqueueError.message}`,
+              );
+            }
           }
 
           if (feePlan.kind === 'ready') {
@@ -745,38 +974,53 @@ serve(async (req: Request) => {
       }
     }
 
-    if (
-      event.type === 'payout.paid' ||
-      event.type === 'payout.failed' ||
-      event.type === 'payout.canceled'
-    ) {
+    if (CONNECT_PAYOUT_EVENT_TYPES.includes(event.type as never)) {
+      const eventType = event.type as ConnectPayoutEventType;
       const payout = event.data.object as Stripe.Payout;
-      const occurredAt = new Date(
-        (payout.created ?? event.created) * 1000,
-      ).toISOString();
+      const observedStatus = normalizeStripePayoutStatus(payout.status);
+      if (!observedStatus) {
+        throw new Error(`UNEXPECTED_PAYOUT_STATUS:${String(payout.status)}`);
+      }
+      // Stripe event timestamps are the occurrence order; webhook arrival
+      // order is not occurrence order.
+      const occurredAt = new Date((event.created ?? 0) * 1000).toISOString();
       const result = await reconcileConnectPayoutEvent(
         {
-          eventType: event.type,
+          eventId: event.id,
+          eventType,
           payoutId: payout.id,
           metadataRunId: payout.metadata?.run_id ?? null,
           occurredAt,
+          observedStatus,
           failureReason: payout.failure_message ?? payout.failure_code ?? null,
+          failureCode: payout.failure_code ?? null,
+          failureMessage: payout.failure_message ?? null,
+          failureBalanceTransaction: normalizeFailureBalanceTransaction(
+            payout.failure_balance_transaction,
+          ),
         },
         {
           findRunForPayout: (input) =>
             findConnectPayoutRun(supabaseAdmin, input),
-          listRunShipmentIds: (runId) =>
-            listConnectPayoutRunShipmentIds(supabaseAdmin, runId),
+          appendEventEvidence: (input) =>
+            appendConnectPayoutEventEvidence(supabaseAdmin, input),
           markRunStatus: (input) =>
             markConnectPayoutRunStatus(supabaseAdmin, input),
-          markRunShipmentsStatus: (input) =>
-            markConnectPayoutRunShipmentsStatus(supabaseAdmin, input),
-          markShipmentsReleased: (input) =>
-            markConnectShipmentsReleased(supabaseAdmin, input),
+          projectPayoutStage: (input) =>
+            projectConnectPayoutRunStage(supabaseAdmin, {
+              ...input,
+              payoutId: payout.id,
+            }),
+          decideRejectedPayoutStagePark: (input) =>
+            decideRejectedPayoutStagePark(supabaseAdmin, input),
           markRunReconciliationNeeded: (input) =>
             markConnectPayoutRunReconciliationNeeded(supabaseAdmin, input),
           attachRunPayoutId: (input) =>
             attachConnectPayoutRunPayoutId(supabaseAdmin, input),
+          getSellerStripeAccountId: (sellerId) =>
+            getSellerConnectAccountId(supabaseAdmin, sellerId),
+          resolveAuthoritativePayout: (input) =>
+            retrieveAuthoritativeConnectPayout(input),
         },
       );
 
@@ -788,31 +1032,88 @@ serve(async (req: Request) => {
       });
     }
 
-    if (event.type === 'account.updated') {
-      const account = event.data.object as Stripe.Account;
-      const normalized = normalizeAccountStatus(account);
-      const refreshedAt = new Date().toISOString();
-
-      log('INFO', 'account.updated received', {
-        accountId: account.id,
-        chargesEnabled: normalized.chargesEnabled,
-        payoutsEnabled: normalized.payoutsEnabled,
-        nextStatus: normalized.status,
+    if (CONNECT_ACCOUNT_EVENT_TYPES.includes(event.type as never)) {
+      // Historical evidence stays separate from the authoritative snapshot.
+      // Bind object/envelope identity before onboarding or actionability writes.
+      const extraction = extractSignedAccountEventData({
+        eventType: event.type,
+        dataObject: event.data.object,
+        // The signed envelope account is ONLY the identity fallback; it never
+        // contributes actionability evidence.
+        eventAccount: event.account ?? null,
       });
+      const accountId = extraction?.accountId ?? null;
+      if (!accountId || !extraction) {
+        log('WARN', 'Account event identity refused', { eventId: event.id, eventType: event.type });
+        throw new Error('ACCOUNT_EVENT_IDENTITY_INVALID');
+      } else {
+        const occurredAt = new Date((event.created ?? 0) * 1000).toISOString();
 
-      const { error: updErr } = await supabaseAdmin
-        .from('profiles_private')
-        .update({
-          stripe_onboarding_status: normalized.status,
-          stripe_onboarding_refreshed_at: refreshedAt,
-          updated_at: refreshedAt,
-        })
-        .eq('stripe_account_id', account.id);
-      if (updErr) {
-        log('ERROR', 'Failed to update onboarding status', {
-          error: updErr.message,
-        });
-        throw new Error(`PROFILE_UPDATE_FAILED: ${updErr.message}`);
+        if (event.type === 'account.updated') {
+          const normalized = normalizeAccountStatus(
+            event.data.object as ConnectAccountLike,
+          );
+          const refreshedAt = new Date().toISOString();
+
+          log('INFO', 'account.updated received', {
+            accountId,
+            chargesEnabled: normalized.chargesEnabled,
+            payoutsEnabled: normalized.payoutsEnabled,
+            nextStatus: normalized.status,
+          });
+
+          const { error: updErr } = await supabaseAdmin
+            .from('profiles_private')
+            .update({
+              stripe_onboarding_status: normalized.status,
+              stripe_onboarding_refreshed_at: refreshedAt,
+              updated_at: refreshedAt,
+            })
+            .eq('stripe_account_id', accountId);
+          if (updErr) {
+            log('ERROR', 'Failed to update onboarding status', {
+              error: updErr.message,
+            });
+            throw new Error(`PROFILE_UPDATE_FAILED: ${updErr.message}`);
+          }
+        }
+
+        try {
+          const snapshot = await applyConnectAccountActionability(
+            {
+              eventId: event.id,
+              eventType: event.type,
+              accountId,
+              occurredAt,
+              externalAccountId: extraction.externalAccountId,
+              payoutsEnabled: extraction.payoutsEnabled,
+              externalAccountStatus: extraction.externalAccountStatus,
+              resolution: resolveAccountActionability(extraction), // historical classification only
+            },
+            {
+              recordAccountEvent: (input) => recordConnectAccountEvent(supabaseAdmin, input),
+              acquireAccountRefresh: (input) => acquireConnectAccountRefreshRpc(supabaseAdmin, input),
+              retrieveCurrentAccount: (input) => stripe.accounts.retrieve(input.accountId).catch(() => {
+                throw new Error('ACCOUNT_REFRESH_RETRIEVAL_FAILED');
+              }),
+              listCurrentBankAccounts: (input) => stripe.accounts.listExternalAccounts(input.accountId, {
+                object: 'bank_account', limit: 100,
+                ...(input.startingAfter ? { starting_after: input.startingAfter } : {}),
+              }).catch(() => { throw new Error('ACCOUNT_REFRESH_BANK_LIST_FAILED'); }),
+              commitAccountRefresh: (input) => commitConnectAccountRefreshRpc(supabaseAdmin, input),
+            },
+          );
+          log('INFO', 'Connect account refresh committed', {
+            eventId: event.id, accountId, generation: snapshot.generation,
+            actionable: snapshot.actionable, blockedReason: snapshot.blockedReason,
+          });
+        } catch (error) {
+          // Bounded categories only: never log Stripe bank objects or raw SDK errors.
+          const category = error instanceof Error && /^ACCOUNT_[A-Z_]+$/.test(error.message)
+            ? error.message : 'ACCOUNT_REFRESH_FAILED';
+          log('ERROR', 'Connect account refresh refused', { eventId: event.id, accountId, category });
+          throw error; // Existing webhook retry/DLQ path; never successful refresh logging.
+        }
       }
     }
 

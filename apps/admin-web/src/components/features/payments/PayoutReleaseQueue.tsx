@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   Wallet,
   Building2,
@@ -10,7 +9,10 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '../../../lib/utils/formatCurrency';
 import { centsToMoney } from '../../../lib/connectEarnings';
-import { getSelectedEligibleShipmentIds } from '../../../lib/connectPayoutReleaseQueue';
+import {
+  getSelectedEligibleShipmentIds,
+  type ReleaseQueueBatch,
+} from '../../../lib/connectPayoutReleaseQueue';
 
 const TABLE_HEADERS = [
   { label: 'Seleccionar', align: 'text-left' },
@@ -25,7 +27,7 @@ const formatReason = (reason: string | null) =>
   reason ? reason.replaceAll('_', ' ').toLowerCase() : 'En proceso';
 
 interface PayoutReleaseQueueProps {
-  batches: any[];
+  batches: ReleaseQueueBatch[];
   isLoading: boolean;
   isReleasing: boolean;
   selectedShipmentsBySeller: Record<string, string[]>;
@@ -76,7 +78,7 @@ export const PayoutReleaseQueue = ({
   }
 
   const totalEligibleCount = batches.reduce(
-    (sum, b) => sum + (b.eligibleShipmentCount || 0),
+    (sum, batch) => sum + batch.eligibleShipmentCount,
     0,
   );
   const hasSelections = Object.values(selectedShipmentsBySeller).some(
@@ -93,8 +95,8 @@ export const PayoutReleaseQueue = ({
             de Escrow
           </h2>
           <p className="text-xs text-blue-light mt-0.5">
-            {batches.length} {batches.length === 1 ? 'vendedor' : 'vendedores'}{' '}
-            con saldo retenido en Stripe
+            {batches.length}{' '}
+            {batches.length === 1 ? 'vendedor listo' : 'vendedores listos'}
           </p>
         </div>
 
@@ -127,19 +129,18 @@ export const PayoutReleaseQueue = ({
       <div className="space-y-6">
         {batches.map((batch) => {
           const eligibleShipmentIds = batch.shipments
-            .filter((shipment: any) => shipment.isEligible)
-            .map((shipment: any) => shipment.shipmentId);
+            .filter((shipment) => shipment.isEligible)
+            .map((shipment) => shipment.shipmentId);
           const selectedShipmentIds = getSelectedEligibleShipmentIds(
             batch,
             selectedShipmentsBySeller[batch.sellerId] ?? [],
           );
           const selectedAmountCents = batch.shipments
-            .filter((shipment: any) =>
+            .filter((shipment) =>
               selectedShipmentIds.includes(shipment.shipmentId),
             )
             .reduce(
-              (total: number, shipment: any) =>
-                total + shipment.releaseAmountCents,
+              (total, shipment) => total + shipment.releaseAmountCents,
               0,
             );
           const canRelease = selectedShipmentIds.length > 0 && !isReleasing;
@@ -212,7 +213,7 @@ export const PayoutReleaseQueue = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                    {batch.shipments.map((shipment: any) => {
+                    {batch.shipments.map((shipment) => {
                       const selected = selectedShipmentIds.includes(
                         shipment.shipmentId,
                       );

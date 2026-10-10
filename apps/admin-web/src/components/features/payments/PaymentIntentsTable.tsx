@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Receipt } from 'lucide-react';
+import { CreditCard } from 'lucide-react';
 import { formatCurrency } from '../../../lib/utils/formatCurrency';
 import { centsToMoney } from '../../../lib/connectEarnings';
 
@@ -8,6 +8,12 @@ interface PaymentIntentsTableProps {
   isLoading: boolean;
 }
 
+/**
+ * Buyer-charge axis of the History frame: Connect-era PaymentIntents made by
+ * buyers. This is a separate data axis from the seller payout runs above it
+ * in the same frame; it stays read-only and search-filtered like the rest of
+ * the dashboard.
+ */
 export const PaymentIntentsTable = ({
   data,
   isLoading,
@@ -16,9 +22,15 @@ export const PaymentIntentsTable = ({
     <section className="bg-state-gray border border-white/5 rounded-3xl overflow-hidden shadow-xl">
       <div className="border-b border-white/5 p-5 bg-night/30">
         <h2 className="text-sm font-bold text-platinum uppercase tracking-widest flex items-center gap-2">
-          <Receipt size={16} className="text-lion" /> Historial de Transacciones
+          <CreditCard size={16} className="text-lion" /> Cargos de Compradores —
           Stripe Connect
         </h2>
+        <p className="text-xs text-blue-light mt-1 normal-case tracking-normal font-medium">
+          {data.length}{' '}
+          {data.length === 1 ? 'cargo registrado' : 'cargos registrados'} de
+          compra en la era Connect (eje de transacciones, distinto de las
+          dispersiones a vendedores).
+        </p>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
@@ -37,7 +49,7 @@ export const PaymentIntentsTable = ({
                 <td className="p-8 text-center text-blue-light" colSpan={5}>
                   <div className="flex items-center justify-center gap-2">
                     <div className="w-4 h-4 border-2 border-lion border-t-transparent animate-spin rounded-full" />
-                    Cargando transacciones de Stripe...
+                    Cargando cargos de compra de Stripe...
                   </div>
                 </td>
               </tr>
@@ -47,7 +59,7 @@ export const PaymentIntentsTable = ({
                   className="p-8 text-center text-blue-light italic"
                   colSpan={5}
                 >
-                  No se encontraron transacciones registradas.
+                  No se encontraron cargos de compra registrados.
                 </td>
               </tr>
             ) : (
@@ -70,12 +82,12 @@ export const PaymentIntentsTable = ({
                   </td>
                   <td className="p-4">
                     <span
-                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                      className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${
                         row.status === 'succeeded'
-                          ? 'bg-forest/10 text-forest border border-forest/20'
+                          ? 'bg-forest/10 text-forest border-forest/20'
                           : row.status === 'canceled'
-                            ? 'bg-fire/10 text-fire border border-fire/20'
-                            : 'bg-amber-400/10 text-amber-400 border border-amber-400/20'
+                            ? 'bg-fire/10 text-fire border-fire/20'
+                            : 'bg-amber-400/10 text-amber-400 border-amber-400/20'
                       }`}
                     >
                       {row.status}

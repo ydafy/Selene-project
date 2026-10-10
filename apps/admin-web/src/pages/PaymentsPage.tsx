@@ -36,13 +36,22 @@ import { useDebounce } from '../hooks/useDebounce';
 import { ErrorState } from '../components/ui/ErrorState';
 import { formatCurrency } from '../lib/utils/formatCurrency';
 import { PayoutReleaseQueue } from '../components/features/payments/PayoutReleaseQueue';
+import { PayoutProcessingBucket } from '../components/features/payments/PayoutProcessingBucket';
+import { PayoutActionRequiredBucket } from '../components/features/payments/PayoutActionRequiredBucket';
+import { PayoutHistoryBucket } from '../components/features/payments/PayoutHistoryBucket';
 import { PaymentIntentsTable } from '../components/features/payments/PaymentIntentsTable';
 
-export type PaymentTab = 'queue' | 'history';
+/**
+ * Operator-visible payout lifecycle buckets. Every queue row is presented in
+ * exactly one of them. History is one cohesive frame with two named sibling
+ * axes: paid seller payout runs and buyer Connect charges; every count on
+ * the page labels exactly the list it sits above.
+ */
+export type PaymentTab = 'ready' | 'processing' | 'action-required' | 'history';
 export type FinancialPeriod = 'month' | 'all';
 
 export const PaymentsPage = () => {
-  const [activeTab, setActiveTab] = useState<PaymentTab>('queue');
+  const [activeTab, setActiveTab] = useState<PaymentTab>('ready');
   const [period, setPeriod] = useState<FinancialPeriod>('month');
   const [search, setSearch] = useState('');
   const [selectedShipmentsBySeller, setSelectedShipmentsBySeller] = useState<
@@ -60,12 +69,24 @@ export const PaymentsPage = () => {
 
   const {
     batches = [],
+    processingRuns = [],
+    actionRequiredRuns = [],
+    historyRuns = [],
     isLoading: isQueueLoading,
     isError: isQueueError,
     refetch: refetchQueue,
     releaseSelectedShipments,
     isReleasing,
+    retryFailedPayout,
+    isRetrying,
   } = useConnectPayoutReleaseQueue(debouncedSearch);
+
+  const bucketCounts = {
+    ready: batches.length,
+    processing: processingRuns.length,
+    'action-required': actionRequiredRuns.length,
+    history: historyRuns.length,
+  } as const;
 
   const isSyncing = isFetching || isQueueLoading;
 
@@ -163,6 +184,10 @@ export const PaymentsPage = () => {
     setSelectedShipmentsBySeller((current) => ({ ...current, [sellerId]: [] }));
   };
 
+  const handleRetryFailedPayout = async (retryRunId: string) => {
+    await retryFailedPayout({ retryRunId });
+  };
+
   const handleRefresh = async () => {
     await Promise.all([refetch(), refetchQueue()]);
     toast.success('Datos financieros actualizados');
@@ -191,6 +216,20 @@ export const PaymentsPage = () => {
 
   const isCardsLoading =
     (isLoading || isQueueLoading) && data.length === 0 && batches.length === 0;
+
+  const payoutQueue = (
+    <PayoutReleaseQueue
+      batches={batches}
+      isLoading={isQueueLoading}
+      isReleasing={isReleasing}
+      selectedShipmentsBySeller={selectedShipmentsBySeller}
+      onToggleShipment={toggleShipmentSelection}
+      onSelectEligibleBatch={selectEligibleBatch}
+      onSelectAllEligibleGlobally={selectAllEligibleGlobally}
+      onClearAllSelections={clearAllSelections}
+      onRelease={handleRelease}
+    />
+  );
 
   return (
     <div className="space-y-8">
@@ -329,31 +368,39 @@ export const PaymentsPage = () => {
         </div>
       </div>
 
-      {/* ── NAVEGACIÓN POR SUB-PESTAÑAS (TABS) ── */}
-      <div className="flex gap-2 p-1 bg-white/5 w-fit rounded-xl border border-white/5">
-        <button
-          type="button"
-          onClick={() => setActiveTab('queue')}
-          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-            activeTab === 'queue'
-              ? 'bg-lion text-night shadow-lg'
-              : 'text-blue-light hover:text-platinum'
-          }`}
-        >
-          <Wallet size={15} /> Cola de Dispersión ({batches.length})
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('history')}
-          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-            activeTab === 'history'
-              ? 'bg-lion text-night shadow-lg'
-              : 'text-blue-light hover:text-platinum'
-          }`}
-        >
-          <Receipt size={15} /> Historial de Transacciones ({data.length})
-        </button>
-      </div>
+      {/* ── NAVEGACIÓN POR CUBETAS DEL CICLO DE DISPERSIÓN ── */}
+      <nav
+        aria-label="Ciclo de dispersión de pagos"
+        className="flex flex-wrap gap-2 p-1 bg-white/5 w-fit rounded-xl border border-white/5"
+      >
+        {(
+          [
+            { id: 'ready', label: 'Listos para Liberar', icon: Wallet },
+            { id: 'processing', label: 'En Proceso', icon: RefreshCw },
+            {
+              id: 'action-required',
+              label: 'Requieren Atención',
+              icon: ShieldCheck,
+            },
+            { id: 'history', label: 'Historial', icon: Receipt },
+          ] as const
+        ).map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setActiveTab(id)}
+            aria-current={activeTab === id ? 'page' : undefined}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              activeTab === id
+                ? 'bg-lion text-night shadow-lg'
+                : 'text-blue-light hover:text-platinum'
+            }`}
+          >
+            <Icon size={15} /> {label}
+            {id !== 'history' ? ` (${bucketCounts[id]})` : null}
+          </button>
+        ))}
+      </nav>
 
       {/* ── BUSCADOR CONTEXTUAL CON BOTÓN DE LIMPIEZA ── */}
       <div className="relative w-full md:w-96">
@@ -364,9 +411,11 @@ export const PaymentsPage = () => {
         <input
           type="text"
           placeholder={
-            activeTab === 'queue'
+            activeTab === 'ready'
               ? 'Buscar por nombre de vendedor en la cola...'
-              : 'Buscar en el historial de transacciones...'
+              : activeTab === 'history'
+                ? 'Buscar en dispersiones pagadas y cargos de compradores...'
+                : 'Buscar por nombre de vendedor...'
           }
           className="w-full bg-state-gray border border-white/10 rounded-xl py-2 pl-10 pr-10 text-sm text-platinum focus:border-lion outline-none transition-all focus:ring-2 focus:ring-lion/50"
           value={search}
@@ -383,22 +432,56 @@ export const PaymentsPage = () => {
         )}
       </div>
 
-      {/* ── CONTENIDO DINÁMICO POR PESTAÑA ── */}
-      {activeTab === 'queue' ? (
-        <PayoutReleaseQueue
-          batches={batches}
-          isLoading={isQueueLoading}
-          isReleasing={isReleasing}
-          selectedShipmentsBySeller={selectedShipmentsBySeller}
-          onToggleShipment={toggleShipmentSelection}
-          onSelectEligibleBatch={selectEligibleBatch}
-          onSelectAllEligibleGlobally={selectAllEligibleGlobally}
-          onClearAllSelections={clearAllSelections}
-          onRelease={handleRelease}
-        />
-      ) : (
-        <PaymentIntentsTable data={data} isLoading={isLoading} />
-      )}
+      {/* ── CONTENIDO DINÁMICO POR CUBETA ── */}
+      {activeTab === 'ready' ? payoutQueue : null}
+      {activeTab === 'processing' ? (
+        isQueueLoading ? (
+          payoutQueue
+        ) : (
+          <PayoutProcessingBucket runs={processingRuns} />
+        )
+      ) : null}
+      {activeTab === 'action-required' ? (
+        isQueueLoading ? (
+          payoutQueue
+        ) : (
+          <PayoutActionRequiredBucket
+            runs={actionRequiredRuns}
+            isReleasing={isReleasing}
+            isRetrying={isRetrying}
+            onRetryFailedPayout={handleRetryFailedPayout}
+          />
+        )
+      ) : null}
+      {activeTab === 'history' ? (
+        <section className="space-y-6" aria-labelledby="history-frame-title">
+          <header>
+            <h2
+              id="history-frame-title"
+              className="text-lg font-bold text-platinum flex items-center gap-2"
+            >
+              <Receipt size={20} className="text-blue-light" /> Historial
+            </h2>
+            <p className="text-xs text-blue-light mt-0.5 max-w-2xl">
+              Dos vistas de solo lectura con ejes de datos distintos:{' '}
+              <span className="font-bold text-platinum">
+                dispersiones pagadas a vendedores
+              </span>{' '}
+              y{' '}
+              <span className="font-bold text-platinum">
+                cargos de compradores Connect
+              </span>
+              . Ninguna admite acciones.
+            </p>
+          </header>
+          {isQueueLoading ? (
+            payoutQueue
+          ) : (
+            <PayoutHistoryBucket runs={historyRuns} />
+          )}
+          <PaymentIntentsTable data={data} isLoading={isLoading} />
+        </section>
+      ) : null}
     </div>
   );
 };

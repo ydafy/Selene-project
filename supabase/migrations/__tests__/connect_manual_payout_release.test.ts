@@ -4,19 +4,24 @@ import { join } from 'node:path';
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..');
 
-const findMigration = (): string => {
-  const files = readdirSync(MIGRATIONS_DIR).filter(
-    (file) =>
-      file.endsWith('.sql') && file.includes('connect_manual_payout_release'),
-  );
-
-  if (files.length === 0) {
-    throw new Error(
-      'Migration file matching *connect_manual_payout_release*.sql not found',
+const readPayoutMigrations = (): string => {
+  const migrations = readdirSync(MIGRATIONS_DIR)
+    .filter((file) => file.endsWith('.sql'))
+    .map((file) => ({
+      file,
+      sql: readFileSync(join(MIGRATIONS_DIR, file), 'utf8'),
+    }))
+    .filter(
+      ({ file, sql }) =>
+        file.includes('connect_manual_payout_release') ||
+        sql.includes('retry_of_run_id'),
     );
+
+  if (migrations.length === 0) {
+    throw new Error('Connect payout release migrations not found');
   }
 
-  return readFileSync(join(MIGRATIONS_DIR, files[0]), 'utf8');
+  return migrations.map(({ sql }) => sql).join('\n');
 };
 
 interface PayoutViewSemanticsInput {
@@ -86,7 +91,7 @@ const mirrorPayoutViewSemantics = ({
 
 describe('connect manual payout release migration', () => {
   test('creates payout run ledger with idempotency and reconciliation fields', () => {
-    const sql = findMigration();
+    const sql = readPayoutMigrations();
 
     expect(sql).toMatch(
       /CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+public\.connect_payout_runs/i,
@@ -98,8 +103,37 @@ describe('connect manual payout release migration', () => {
     expect(sql).toMatch(/stripe_payout_id\s+TEXT/i);
   });
 
+  test('models a retry as one child run per failed parent', () => {
+    const sql = readPayoutMigrations();
+
+    expect(sql).toMatch(/retry_of_run_id\s+UUID/i);
+    expect(sql).toMatch(
+      /retry_of_run_id\s+UUID(?:\s+CONSTRAINT\s+\w+)?\s+REFERENCES\s+public\.connect_payout_runs\s*\(\s*id\s*\)\s+ON\s+DELETE\s+RESTRICT/i,
+    );
+    expect(sql).toMatch(
+      /CREATE\s+UNIQUE\s+INDEX[\s\S]+ON\s+public\.connect_payout_runs\s*\(\s*retry_of_run_id\s*\)[\s\S]+WHERE\s+retry_of_run_id\s+IS\s+NOT\s+NULL/i,
+    );
+  });
+
+  test('surfaces failed runs as retry candidates and canceled runs for manual review only', () => {
+    const sql = readPayoutMigrations();
+
+    expect(sql).toMatch(/\bpayout_run_id\b/i);
+    expect(sql).toMatch(/\bpayout_run_status\b/i);
+    expect(sql).toMatch(/\bpayout_run_amount_cents\b/i);
+    expect(sql).toMatch(/\bpayout_run_failure_reason\b/i);
+    expect(sql).toMatch(/\bis_retryable\b/i);
+    expect(sql).toMatch(/\brequires_manual_review\b/i);
+    expect(sql).toMatch(
+      /(?:payout_run_status|\w+\.status)\s*=\s*'failed'[\s\S]{0,300}AS\s+is_retryable/i,
+    );
+    expect(sql).toMatch(
+      /(?:payout_run_status|\w+\.status)\s*=\s*'canceled'[\s\S]{0,300}AS\s+requires_manual_review/i,
+    );
+  });
+
   test('creates shipment mapping with FK indexes and active shipment uniqueness', () => {
-    const sql = findMigration();
+    const sql = readPayoutMigrations();
 
     expect(sql).toMatch(
       /CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+public\.connect_payout_run_shipments/i,
@@ -122,7 +156,7 @@ describe('connect manual payout release migration', () => {
   });
 
   test('creates admin payout release view with eligibility gates and release amount', () => {
-    const sql = findMigration();
+    const sql = readPayoutMigrations();
 
     expect(sql).toMatch(
       /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.admin_connect_payout_release_view/i,
@@ -190,7 +224,7 @@ describe('connect manual payout release migration', () => {
   });
 
   test('marks active pending or reconciliation-needed shipment mappings ineligible before paid reconciliation', () => {
-    const sql = findMigration();
+    const sql = readPayoutMigrations();
 
     expect(sql).toContain('has_active_release');
     expect(sql).toContain('AND NOT has_active_release');
@@ -198,7 +232,7 @@ describe('connect manual payout release migration', () => {
   });
 
   test('limits finance tables and view to service role access', () => {
-    const sql = findMigration();
+    const sql = readPayoutMigrations();
 
     expect(sql).toMatch(
       /ALTER\s+TABLE\s+public\.connect_payout_runs\s+ENABLE\s+ROW\s+LEVEL\s+SECURITY/i,

@@ -2487,6 +2487,8 @@ export type Database = {
       stripe_fee_reconciliation_jobs: {
         Row: {
           attempt_count: number
+          claim_expires_at: string | null
+          claim_token: string | null
           created_at: string
           id: string
           last_error: string | null
@@ -2498,6 +2500,8 @@ export type Database = {
         }
         Insert: {
           attempt_count?: number
+          claim_expires_at?: string | null
+          claim_token?: string | null
           created_at?: string
           id?: string
           last_error?: string | null
@@ -2509,6 +2513,8 @@ export type Database = {
         }
         Update: {
           attempt_count?: number
+          claim_expires_at?: string | null
+          claim_token?: string | null
           created_at?: string
           id?: string
           last_error?: string | null
@@ -3486,6 +3492,20 @@ export type Database = {
         }
         Returns: number
       }
+      fn_atomic_payout_resume_mapping: {
+        Args: {
+          p_expected_parent_payout_id: string
+          p_expected_parent_version: number
+          p_expected_stage: string
+          p_expected_status: string
+          p_expected_version: number
+          p_mode: string
+          p_parent_run_id: string
+          p_run_id: string
+          p_shipment_ids: string[]
+        }
+        Returns: number
+      }
       fn_begin_manual_payout_create_fence: {
         Args: { p_run_id: string }
         Returns: number
@@ -3589,6 +3609,30 @@ export type Database = {
         Args: { p_limit?: number }
         Returns: {
           attempt_count: number
+          claim_expires_at: string | null
+          claim_token: string | null
+          created_at: string
+          id: string
+          last_error: string | null
+          next_retry_at: string | null
+          order_id: string
+          status: string
+          stripe_payment_intent_id: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "stripe_fee_reconciliation_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      fn_claim_stripe_fee_reconciliation_jobs_leased: {
+        Args: { p_limit?: number; p_max_attempts?: number }
+        Returns: {
+          attempt_count: number
+          claim_expires_at: string | null
+          claim_token: string | null
           created_at: string
           id: string
           last_error: string | null
@@ -3645,6 +3689,8 @@ export type Database = {
         }
         Returns: {
           attempt_count: number
+          claim_expires_at: string | null
+          claim_token: string | null
           created_at: string
           id: string
           last_error: string | null
@@ -3660,6 +3706,15 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      fn_complete_stripe_fee_reconciliation_job_leased: {
+        Args: {
+          p_actual_stripe_fee_cents: number
+          p_claim_token: string
+          p_job_id: string
+          p_reconciled_at: string
+        }
+        Returns: boolean
       }
       fn_confirm_shipment_delivery: {
         Args: {
@@ -4075,6 +4130,8 @@ export type Database = {
         }
         Returns: {
           attempt_count: number
+          claim_expires_at: string | null
+          claim_token: string | null
           created_at: string
           id: string
           last_error: string | null
@@ -4090,6 +4147,16 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      fn_transition_stripe_fee_reconciliation_job_leased: {
+        Args: {
+          p_claim_token: string
+          p_job_id: string
+          p_last_error?: string
+          p_next_retry_at?: string
+          p_outcome: string
+        }
+        Returns: boolean
       }
       fn_unlock_dispute: { Args: { p_dispute_id: string }; Returns: boolean }
       fn_unlock_product: { Args: { p_product_id: string }; Returns: boolean }

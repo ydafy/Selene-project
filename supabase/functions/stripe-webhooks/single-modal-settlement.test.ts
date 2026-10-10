@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import {
 	buildSinglePaymentIntentParams,
@@ -8,6 +9,7 @@ import {
 } from '../create-connect-payment/single-payment-builder.ts';
 import { calculateCheckoutAllocation } from '../create-connect-payment/fee-calculator.ts';
 import {
+  buildRecoveryShellInput,
   buildSettlementOutcome,
   buildStripeFeeReconciliationPlan,
   classifySettlementFailure,
@@ -53,6 +55,37 @@ import {
  *   { rows: [{ sellerId, shipmentId, productIds[], grossCents,
  *              commissionCents, shippingCents, seguroCents, netCents }] }
  */
+
+describe('single-modal-settlement > buildRecoveryShellInput', () => {
+  const cases: Array<[string, number | undefined, number | null]> = [
+    ['zero', 0, 0],
+    ['positive cents', 1234, 1234],
+    ['maximum safe integer', Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
+    ['undefined', undefined, null],
+    ['negative', -1, null],
+    ['fraction', 1.5, null],
+    ['NaN', Number.NaN, null],
+    ['positive infinity', Number.POSITIVE_INFINITY, null],
+    ['negative infinity', Number.NEGATIVE_INFINITY, null],
+    ['unsafe integer', Number.MAX_SAFE_INTEGER + 1, null],
+  ];
+
+  for (const [label, amount, expected] of cases) {
+    it(`preserves safe nonnegative cents or returns null for ${label}`, () => {
+      const metadata = { order_id: 'order_1', buyer_id: 'buyer_1' };
+      const input = { metadata, amount };
+      const original = { metadata: { ...metadata }, amount };
+
+      const result = buildRecoveryShellInput(input);
+
+      expect(result.chargedAmountCents).toBe(expected);
+      expect(result.sourceMetadata).toEqual(metadata);
+      expect(result.sourceMetadata).not.toBe(metadata);
+      expect(input).toEqual(original);
+      expect(input.metadata).toBe(metadata);
+    });
+  }
+});
 
 const VALID_ORDER_ID = '11111111-2222-3333-4444-555555555555';
 const VALID_BUYER_ID = 'aaaaaaaa-0000-0000-0000-000000000001';
@@ -477,14 +510,39 @@ describe('single-modal-settlement > parseSingleModalPayload', () => {
 });
 
 describe('single-modal-settlement > buildStripeFeeReconciliationPlan', () => {
-  it('returns missing when the expanded balance transaction is unavailable', () => {
-    expect(
-      buildStripeFeeReconciliationPlan({
-        existingActualStripeFeeCents: null,
-        charge: { id: 'ch_1', balance_transaction: null },
-        reconciledAt: '2026-07-10T00:00:00.000Z',
-      }),
-    ).toEqual({ kind: 'missing_balance_transaction' });
+  it('defers reconciliation when the settled charge has no expanded balance transaction', () => {
+    const plan = buildStripeFeeReconciliationPlan({
+      existingActualStripeFeeCents: null,
+      charge: { id: 'ch_1', balance_transaction: null },
+      reconciledAt: '2026-07-10T00:00:00.000Z',
+    });
+
+    expect(plan).toEqual({
+      kind: 'deferred',
+      reason: 'missing_balance_transaction',
+    });
+    expect(plan.kind).not.toBe('fatal_error');
+  });
+
+  it('wires deferred reconciliation to one idempotent server-side job without failing settlement', () => {
+    const source = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
+    const deferredStart = source.indexOf("if (feePlan.kind === 'deferred')");
+    const settlementResponse = source.indexOf(
+      'return new Response(JSON.stringify(outcome.body), { status: 200 });',
+      deferredStart,
+    );
+    const deferredBranch = source.slice(deferredStart, settlementResponse);
+
+    expect(deferredStart).toBeGreaterThan(-1);
+    expect(settlementResponse).toBeGreaterThan(deferredStart);
+    expect(deferredBranch).toContain(".from('stripe_fee_reconciliation_jobs')");
+    expect(deferredBranch).toContain(
+      "onConflict: 'order_id,stripe_payment_intent_id'",
+    );
+    expect(deferredBranch).toContain('ignoreDuplicates: true');
+    expect(deferredBranch).toContain('order_id: action.payload.orderId');
+    expect(deferredBranch).toContain('stripe_payment_intent_id: intent.id');
+    expect(deferredBranch).not.toContain('MISSING_BALANCE_TRANSACTION_FEE');
   });
 
   it('returns already_reconciled when the order already has an actual fee', () => {
@@ -500,7 +558,7 @@ describe('single-modal-settlement > buildStripeFeeReconciliationPlan', () => {
     ).toEqual({ kind: 'already_reconciled' });
   });
 
-  it('returns the authoritative BalanceTransaction fee when reconciliation is needed', () => {
+  it('returns ready with the authoritative fee when reconciliation is needed', () => {
     expect(
       buildStripeFeeReconciliationPlan({
         existingActualStripeFeeCents: null,

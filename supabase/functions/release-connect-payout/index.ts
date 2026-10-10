@@ -20,6 +20,8 @@ import {
   type ReleaseQueueRow,
 } from './release-connect-payout.ts';
 
+import { createAtomicResumeAdapters } from './atomic-resume-adapter.ts';
+
 const STRIPE_API_VERSION = '2026-04-22.dahlia';
 
 const corsHeaders = {
@@ -122,6 +124,7 @@ serve(async (req: Request) => {
     const response = await releaseConnectPayout(
       { actorId: user.id, ...request },
       {
+        ...createAtomicResumeAdapters((name, args) => supabaseAdmin.rpc(name, args)),
         getActorProfile: async (actorId) => {
           const { data, error } = await supabaseAdmin
             .from('profiles_private')
@@ -137,7 +140,7 @@ serve(async (req: Request) => {
           const { data, error } = await supabaseAdmin
             .from('connect_payout_runs')
             .select(
-              'id, seller_id, amount, status, stripe_payout_id, connect_payout_run_shipments(shipment_id)',
+              'id, seller_id, amount, status, stripe_payout_id, release_stage, release_stage_version, payout_claim_token, payout_claim_expires_at, connect_payout_run_shipments(shipment_id)',
             )
             .eq('idempotency_key', idempotencyKey)
             .maybeSingle();
@@ -164,6 +167,75 @@ serve(async (req: Request) => {
             amount: data.amount,
             status: data.status as ConnectPayoutRunStatus,
             stripe_payout_id: data.stripe_payout_id,
+            release_stage: data.release_stage,
+            release_stage_version: data.release_stage_version,
+            payout_claim_token: data.payout_claim_token,
+            payout_claim_expires_at: data.payout_claim_expires_at,
+          };
+        },
+        findRunById: async (runId) => {
+          const { data, error } = await supabaseAdmin
+            .from('connect_payout_runs')
+            .select(
+              'id, seller_id, amount, status, stripe_payout_id, release_stage, release_stage_version, payout_claim_token, payout_claim_expires_at, connect_payout_run_shipments(shipment_id)',
+            )
+            .eq('id', runId)
+            .maybeSingle();
+          if (error) {
+            throw new ConnectPayoutReleaseError('RUN_LOOKUP_FAILED', 500);
+          }
+          if (!data) return null;
+          return {
+            id: data.id,
+            seller_id: data.seller_id,
+            shipment_ids: (
+              data.connect_payout_run_shipments ?? []
+            )
+              .map((mapping) => mapping.shipment_id)
+              .filter((shipmentId): shipmentId is string =>
+                Boolean(shipmentId),
+              ),
+            amount: data.amount,
+            status: data.status as ConnectPayoutRunStatus,
+            stripe_payout_id: data.stripe_payout_id,
+            release_stage: data.release_stage,
+            release_stage_version: data.release_stage_version,
+            payout_claim_token: data.payout_claim_token,
+            payout_claim_expires_at: data.payout_claim_expires_at,
+          };
+        },
+        findRetryChildByParentRunId: async (parentRunId) => {
+          const { data, error } = await supabaseAdmin
+            .from('connect_payout_runs')
+            .select(
+              'id, seller_id, amount, status, stripe_payout_id, release_stage, release_stage_version, payout_claim_token, payout_claim_expires_at, connect_payout_run_shipments(shipment_id)',
+            )
+            .eq('retry_of_run_id', parentRunId)
+            .maybeSingle();
+          if (error) {
+            throw new ConnectPayoutReleaseError(
+              'RETRY_CHILD_LOOKUP_FAILED',
+              500,
+            );
+          }
+          if (!data) return null;
+          return {
+            id: data.id,
+            seller_id: data.seller_id,
+            shipment_ids: (
+              data.connect_payout_run_shipments ?? []
+            )
+              .map((mapping) => mapping.shipment_id)
+              .filter((shipmentId): shipmentId is string =>
+                Boolean(shipmentId),
+              ),
+            amount: data.amount,
+            status: data.status as ConnectPayoutRunStatus,
+            stripe_payout_id: data.stripe_payout_id,
+            release_stage: data.release_stage,
+            release_stage_version: data.release_stage_version,
+            payout_claim_token: data.payout_claim_token,
+            payout_claim_expires_at: data.payout_claim_expires_at,
           };
         },
         findActiveShipmentMappings: async (shipmentIds) => {
@@ -223,14 +295,17 @@ serve(async (req: Request) => {
               seller_id: input.sellerId,
               amount: input.amount,
               idempotency_key: input.idempotencyKey,
+              retry_of_run_id: input.retryOfRunId ?? null,
               status: 'pending_reconciliation',
+              // Phase 2B: the admin acceptance is the release_accepted stage.
+              release_stage: 'release_accepted',
             })
-            .select('id')
+            .select('id, status, release_stage, release_stage_version')
             .single();
           if (error || !data) {
             throw new ConnectPayoutReleaseError('RUN_CREATE_FAILED', 500);
           }
-          return { id: data.id };
+          return { id: data.id, status: data.status as ConnectPayoutRunStatus, release_stage: data.release_stage, release_stage_version: data.release_stage_version };
         },
         createRunShipments: async (input) => {
           const { error } = await supabaseAdmin
@@ -290,6 +365,19 @@ serve(async (req: Request) => {
             );
           }
         },
+        retrieveStripePayout: async (input) => {
+          const payout = await stripe.payouts.retrieve(
+            input.payoutId,
+            { stripeAccount: input.stripeAccountId },
+          );
+          return {
+            id: payout.id,
+            status: payout.status,
+            failure_balance_transaction: payout.failure_balance_transaction,
+            amount: payout.amount,
+            currency: payout.currency,
+          };
+        },
         retrieveConnectedBalance: async (input) => {
           const balance = await stripe.balance.retrieve(
             {},
@@ -297,10 +385,36 @@ serve(async (req: Request) => {
           );
 
           return {
-            available: balance.available.map((entry) => ({
+            available: balance.available.map((entry: Stripe.Balance.Available) => ({
               amount: entry.amount,
               currency: entry.currency,
             })),
+          };
+        },
+        getConnectAccountActionability: async (input) => {
+          // Phase 2B: actionability is read only through the service-role
+          // RPC; the projection tables are revoked from every role and are
+          // never direct-selected by this endpoint.
+          const { data, error } = await supabaseAdmin.rpc(
+            'fn_get_connect_account_actionability',
+            {
+              p_stripe_account_id: input.stripeAccountId,
+            },
+          );
+          if (error) {
+            log('ERROR', 'Connect account actionability RPC failed', {
+              stripeAccountId: input.stripeAccountId,
+              ...getSupabaseErrorLogMeta(error),
+            });
+            throw new ConnectPayoutReleaseError(
+              'ACCOUNT_ACTIONABILITY_LOOKUP_FAILED',
+              500,
+            );
+          }
+          const row = Array.isArray(data) ? data[0] : data;
+          return {
+            isActionable: row?.is_actionable ?? true,
+            blockedReason: row?.blocked_reason ?? null,
           };
         },
         createStripePayout: async (input) => {
@@ -342,192 +456,153 @@ serve(async (req: Request) => {
             throw error;
           }
         },
-        markRunRetrying: async (input) => {
-          const now = new Date().toISOString();
-          const { error: runError } = await supabaseAdmin
-            .from('connect_payout_runs')
-            .update({
-              status: 'pending_reconciliation',
-              failure_reason: null,
-              failed_at: null,
-              updated_at: now,
-            })
-            .eq('id', input.runId);
-          if (runError) {
-            log('ERROR', 'Failed to mark Connect payout run retrying', {
-              runId: input.runId,
-              ...getSupabaseErrorLogMeta(runError),
-            });
-            throw new ConnectPayoutReleaseError('RUN_RETRY_MARK_FAILED', 500);
-          }
 
-          const { error: shipmentError } = await supabaseAdmin
-            .from('connect_payout_run_shipments')
-            .update({ status: 'pending_reconciliation', updated_at: now })
-            .eq('run_id', input.runId);
-          if (shipmentError) {
-            log(
-              'ERROR',
-              'Failed to mark Connect payout run shipments retrying',
-              {
-                runId: input.runId,
-                ...getSupabaseErrorLogMeta(shipmentError),
-              },
-            );
-            throw new ConnectPayoutReleaseError(
-              'RUN_SHIPMENTS_RETRY_MARK_FAILED',
-              500,
-            );
-          }
-        },
-        markRunStripePayoutFailed: async (input) => {
-          const now = new Date().toISOString();
-          const { error: shipmentError } = await supabaseAdmin
-            .from('connect_payout_run_shipments')
-            .update({ status: 'failed', updated_at: now })
-            .eq('run_id', input.runId);
-          if (shipmentError) {
-            log('ERROR', 'Failed to mark Connect payout run shipments failed', {
+        beginPayoutCreateFence: async (input) => {
+          // Phase 2B: the durable write-ahead fence is opened BEFORE the
+          // Stripe payouts.create call; the manual path owns the run through
+          // the version-conditioned fence stage (no executor claim token).
+          const version = await supabaseAdmin.rpc(
+            'fn_begin_manual_payout_create_fence',
+            { p_run_id: input.runId },
+          );
+          if (version.error) {
+            log('ERROR', 'Manual payout create fence RPC failed', {
               runId: input.runId,
-              failureReason: input.failureReason,
-              ...getSupabaseErrorLogMeta(shipmentError),
+              ...getSupabaseErrorLogMeta(version.error),
             });
-            throw new ConnectPayoutReleaseError(
-              'RUN_SHIPMENTS_FAILURE_MARK_FAILED',
-              500,
+            throw new Error(
+              `${version.error.code ?? ''} ${version.error.message}`.trim(),
             );
           }
-
-          const { error: runError } = await supabaseAdmin
-            .from('connect_payout_runs')
-            .update({
-              status: 'failed',
-              failure_reason: input.failureReason,
-              failed_at: now,
-              updated_at: now,
-            })
-            .eq('id', input.runId);
-          if (runError) {
-            log('ERROR', 'Failed to mark Connect payout run failed', {
-              runId: input.runId,
-              failureReason: input.failureReason,
-              ...getSupabaseErrorLogMeta(runError),
-            });
-            throw new ConnectPayoutReleaseError('RUN_FAILURE_MARK_FAILED', 500);
-          }
+          return Number(version.data);
         },
-        markRunStripePayoutAmbiguous: async (input) => {
-          const now = new Date().toISOString();
-          const { error: shipmentError } = await supabaseAdmin
-            .from('connect_payout_run_shipments')
-            .update({ status: 'reconciliation_needed', updated_at: now })
-            .eq('run_id', input.runId);
-          if (shipmentError) {
-            log(
-              'ERROR',
-              'Failed to mark Connect payout run shipments for reconciliation',
-              {
-                runId: input.runId,
-                failureReason: input.failureReason,
-                ...getSupabaseErrorLogMeta(shipmentError),
-              },
-            );
-            throw new ConnectPayoutReleaseError(
-              'RUN_SHIPMENTS_RECONCILIATION_MARK_FAILED',
-              500,
-            );
-          }
-
-          const { error: runError } = await supabaseAdmin
-            .from('connect_payout_runs')
-            .update({
-              status: 'reconciliation_needed',
-              failure_reason: input.failureReason,
-              failed_at: null,
-              updated_at: now,
-            })
-            .eq('id', input.runId);
-          if (runError) {
-            log('ERROR', 'Failed to mark Connect payout run for reconciliation', {
+        completePayoutCreateFence: async (input) => {
+          const completed = await supabaseAdmin.rpc(
+            'fn_complete_payout_create_fence',
+            {
+              p_run_id: input.runId,
+              p_claim_token: null,
+              p_expected_stage_version: input.stageVersion,
+              p_stripe_payout_id: input.stripePayoutId,
+            },
+          );
+          if (completed.error) {
+            log('ERROR', 'Manual payout create fence completion RPC failed', {
               runId: input.runId,
-              failureReason: input.failureReason,
-              ...getSupabaseErrorLogMeta(runError),
+              ...getSupabaseErrorLogMeta(completed.error),
             });
-            throw new ConnectPayoutReleaseError(
-              'RUN_RECONCILIATION_MARK_FAILED',
-              500,
+            throw new Error(
+              `${completed.error.code ?? ''} ${completed.error.message}`.trim(),
             );
           }
+          return completed.data === true;
         },
-        markRunPendingReconciliation: async (input) => {
-          const now = new Date().toISOString();
-          const { error } = await supabaseAdmin
-            .from('connect_payout_runs')
-            .update({
-              stripe_payout_id: input.stripePayoutId ?? null,
-              status: 'pending_reconciliation',
-              failure_reason: null,
-              failed_at: null,
-              updated_at: now,
-            })
-            .eq('id', input.runId);
+        failPayoutCreateFromFence: async (input) => {
+          const failed = await supabaseAdmin.rpc(
+            'fn_fail_payout_create_from_fence',
+            {
+              p_run_id: input.runId,
+              p_claim_token: null,
+              p_expected_stage_version: input.stageVersion,
+              p_failure_reason: input.failureReason,
+            },
+          );
+          if (failed.error) {
+            log('ERROR', 'Manual payout create fence failure RPC failed', {
+              runId: input.runId,
+              ...getSupabaseErrorLogMeta(failed.error),
+            });
+            throw new Error(
+              `${failed.error.code ?? ''} ${failed.error.message}`.trim(),
+            );
+          }
+          return failed.data === true;
+        },
+        abortPayoutCreateToActionRequired: async (input) => {
+          const aborted = await supabaseAdmin.rpc(
+            'fn_abort_payout_create_to_action_required',
+            {
+              p_run_id: input.runId,
+              p_claim_token: null,
+              p_expected_stage_version: input.stageVersion,
+              p_reason: input.reason,
+            },
+          );
+          if (aborted.error) {
+            log('ERROR', 'Manual payout create fence abort RPC failed', {
+              runId: input.runId,
+              ...getSupabaseErrorLogMeta(aborted.error),
+            });
+            throw new Error(
+              `${aborted.error.code ?? ''} ${aborted.error.message}`.trim(),
+            );
+          }
+          return aborted.data === true;
+        },
+        markRunPayoutSyncFailed: async (input) => {
+          // Phase 2B final slice: the post-Stripe sync fallback is a guarded
+          // RPC, never a direct UPDATE by run id. fn_mark_payout_run_sync_failed
+          // refuses a terminal status (paid/failed/canceled) so webhook
+          // terminal authority is never regressed, keeps the durable
+          // payout_create_in_progress fence so the executor reconciliation
+          // claim (never a second create) recovers the run, and is an
+          // idempotent no-op for an already-parked run with the same recorded
+          // reason. FALSE = refused (terminal/newer state preserved): the
+          // caller performs no further write.
+          const { data: parked, error } = await supabaseAdmin.rpc(
+            'fn_mark_payout_run_sync_failed',
+            {
+              p_run_id: input.runId,
+              p_stripe_payout_id: input.stripePayoutId,
+              p_failure_reason: input.failureReason,
+            },
+          );
           if (error) {
-            log('ERROR', 'Failed to store Stripe payout id on run', {
+            log('ERROR', 'Post-Stripe payout sync fallback RPC failed', {
               runId: input.runId,
               stripePayoutId: input.stripePayoutId,
               ...getSupabaseErrorLogMeta(error),
             });
-            throw new ConnectPayoutReleaseError('RUN_UPDATE_FAILED', 500);
-          }
-
-          const { error: shipmentError } = await supabaseAdmin
-            .from('connect_payout_run_shipments')
-            .update({ status: 'pending_reconciliation', updated_at: now })
-            .eq('run_id', input.runId);
-          if (shipmentError) {
-            log('ERROR', 'Failed to mark run shipments pending', {
-              runId: input.runId,
-              stripePayoutId: input.stripePayoutId,
-              ...getSupabaseErrorLogMeta(shipmentError),
-            });
-            throw new ConnectPayoutReleaseError(
-              'RUN_SHIPMENTS_UPDATE_FAILED',
-              500,
-            );
-          }
-        },
-        markRunPayoutSyncFailed: async (input) => {
-          const { error } = await supabaseAdmin
-            .from('connect_payout_runs')
-            .update({
-              stripe_payout_id: input.stripePayoutId,
-              status: 'reconciliation_needed',
-              failure_reason: input.failureReason,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', input.runId);
-          if (error) {
             throw new ConnectPayoutReleaseError(
               'RUN_RECONCILIATION_MARK_FAILED',
               500,
             );
           }
+          return parked === true;
         },
+
       },
     );
 
+    const requestLogMeta =
+      'retryRunId' in request
+        ? { retryRunId: request.retryRunId }
+        : {
+            sellerId: request.sellerId,
+            shipmentCount: request.shipmentIds.length,
+          };
+
     if (!response.success && response.code === 'stripe_balance_insufficient') {
       log('WARN', 'Connect payout release blocked by insufficient Stripe balance', {
-        ...getStripeBalanceInsufficientLogMeta({
-          sellerId: request.sellerId,
-          shipmentCount: request.shipmentIds.length,
-          response,
-        }),
+        ...requestLogMeta,
+        ...('retryRunId' in request
+          ? {
+              code: response.code,
+              required_amount_cents: response.required_amount_cents,
+              available_amount_cents: response.available_amount_cents,
+              currency: response.currency,
+              retryable: response.retryable,
+            }
+          : getStripeBalanceInsufficientLogMeta({
+              sellerId: request.sellerId,
+              shipmentCount: request.shipmentIds.length,
+              response,
+            })),
       });
     } else {
       log('INFO', 'Connect payout release accepted', {
+        ...requestLogMeta,
         runId: response.success ? response.runId : null,
-        shipmentCount: request.shipmentIds.length,
       });
     }
     return jsonResponse(response, 200);
