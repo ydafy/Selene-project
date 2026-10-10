@@ -10,7 +10,7 @@ import { supabase } from '../lib/supabase';
 import {
   buildReleasePayload,
   createReleaseIdempotencyKey,
-  groupConnectPayoutReleaseQueue,
+  mapConnectPayoutReleaseQueue,
   type ReleaseQueueBatch,
 } from '../lib/connectPayoutReleaseQueue';
 import { formatConnectPayoutReleaseError } from '../lib/connectPayoutReleaseErrors';
@@ -37,7 +37,7 @@ async function fetchConnectPayoutReleaseQueue(search: string) {
     throw new Error(data?.error ?? 'CONNECT_PAYOUT_RELEASE_QUEUE_FAILED');
   }
 
-  return groupConnectPayoutReleaseQueue(data.rows ?? []);
+  return mapConnectPayoutReleaseQueue(data.rows ?? []);
 }
 
 async function releaseConnectPayout(payload: ConnectPayoutReleaseRequest) {
@@ -97,13 +97,33 @@ export function useConnectPayoutReleaseQueue(search: string) {
     },
   });
 
+  const retryMutation = useMutation({
+    mutationFn: ({ retryRunId }: { retryRunId: string }) =>
+      releaseConnectPayout({ retryRunId }),
+    onSuccess: async (result) => {
+      toast.success(`Payout retry queued: ${result.runId}`);
+      await queryClient.invalidateQueries({
+        queryKey: CONNECT_PAYOUT_RELEASE_QUEUE_KEY,
+      });
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Payout retry failed: ${message}`);
+    },
+  });
+
   return {
-    batches: queueQuery.data ?? [],
+    batches: queueQuery.data?.releaseBatches ?? [],
+    processingRuns: queueQuery.data?.processingRuns ?? [],
+    actionRequiredRuns: queueQuery.data?.actionRequiredRuns ?? [],
+    historyRuns: queueQuery.data?.historyRuns ?? [],
     isLoading: queueQuery.isLoading,
     isError: queueQuery.isError,
     error: queueQuery.error,
     refetch: queueQuery.refetch,
     releaseSelectedShipments: releaseMutation.mutateAsync,
     isReleasing: releaseMutation.isPending,
+    retryFailedPayout: retryMutation.mutateAsync,
+    isRetrying: retryMutation.isPending,
   };
 }
