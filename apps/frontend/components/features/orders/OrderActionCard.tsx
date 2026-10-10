@@ -35,6 +35,12 @@ export const OrderActionCard = ({
   const theme = useTheme<Theme>();
   const router = useRouter();
   const { permissions, dispute, isSeller, isBuyer } = shipment;
+  const showSellerDeliveredBanner =
+    isSeller && shipment.status === 'delivered' && !dispute;
+  const showSellerCompletedBanner =
+    isSeller && shipment.status === 'completed' && !dispute;
+  const showSellerStatusBanner =
+    showSellerDeliveredBanner || showSellerCompletedBanner;
   const { orderExpirationHours, preparingExpirationHours } =
     useCancellationSettings();
 
@@ -84,6 +90,7 @@ export const OrderActionCard = ({
     permissions,
     orderExpirationHours,
     preparingExpirationHours,
+    showSellerDeliveredBanner,
   ]);
 
   const { timeLeft, isExpired } = useOrderCountdown(
@@ -97,7 +104,7 @@ export const OrderActionCard = ({
     : false;
   const shouldShow =
     isCriticalStatus ||
-    permissions.showSellerDeliveredBanner ||
+    showSellerStatusBanner ||
     permissions.canCancel ||
     shipment.status === 'preparing';
 
@@ -110,21 +117,21 @@ export const OrderActionCard = ({
   const bannerColor =
     isManualCancelWindow ||
     isWaitingReturn ||
-    permissions.showSellerDeliveredBanner
+    showSellerStatusBanner
       ? theme.colors.primary
       : theme.colors.error;
   const bannerBorderColor = isManualCancelWindow
     ? 'primary'
     : isWaitingReturn
       ? 'error'
-      : permissions.showSellerDeliveredBanner
+      : showSellerStatusBanner
         ? 'success'
         : 'error';
   const iconName = isWaitingReturn
     ? 'truck-delivery'
     : isManualCancelWindow
       ? 'clock-alert-outline'
-      : permissions.showSellerDeliveredBanner
+      : showSellerStatusBanner
         ? 'clock-check'
         : 'alert-octagon';
 
@@ -132,8 +139,8 @@ export const OrderActionCard = ({
     if (permissions.canCancel) return t('actionCard.cancellationWindowTitle');
     if (shipment.status === 'preparing')
       return t('actionCard.preparingShipmentTitle');
-    if (permissions.showSellerDeliveredBanner)
-      return t('actionCard.deliveredTitle');
+    if (showSellerDeliveredBanner) return t('actionCard.deliveredTitle');
+    if (showSellerCompletedBanner) return t('orders:status.completed');
     if (order.status === 'dispute') {
       if (dispute?.status === 'return_delivered' && isSeller)
         return t('actionCard.recordUnboxingTitle');
@@ -164,10 +171,11 @@ export const OrderActionCard = ({
           });
     }
 
-    if (permissions.showSellerDeliveredBanner) {
-      return isExpired
-        ? t('actionCard.reviewWindowClosed')
-        : t('actionCard.fundsReleaseCountdown', { timeLeft });
+    if (showSellerDeliveredBanner) {
+      return t('actionCard.deliveredReviewMessage', { timeLeft });
+    }
+    if (showSellerCompletedBanner) {
+      return t('actionCard.completedMessage');
     }
 
     if (order.status === 'dispute') {
@@ -243,7 +251,7 @@ export const OrderActionCard = ({
               variant="body-md"
               fontWeight="bold"
               color={
-                isWaitingReturn || permissions.showSellerDeliveredBanner
+                isWaitingReturn || showSellerStatusBanner
                   ? 'primary'
                   : 'error'
               }
