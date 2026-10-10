@@ -60,7 +60,8 @@ describe('role-aware orders localization', () => {
   it('uses translation keys without fallback strings for scoped orders copy', () => {
     const summary = read('app/profile/orders/summary/[id].tsx');
     expect(summary).toContain("t('summary.title')");
-    expect(summary).toContain("t('summary.total')");
+    expect(summary).toContain("t('summary.subtotal')");
+    expect(summary).toContain("t('summary.totalPaid')");
     expect(summary).toContain("t('summary.items')");
     expect(summary).toContain("t('summary.articles'");
     expect(summary).toContain("t('summary.date')");

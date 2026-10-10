@@ -30,6 +30,8 @@ import {
   shouldSuppressShipmentActionsForBuyerRecovery,
 } from '../order-recovery-view';
 
+import { resolveSummaryState, summaryAmounts } from '../../../../core/utils/order-summary-state';
+
 export default function OrderSummaryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { t } = useTranslation(['orders', 'common']);
@@ -41,17 +43,29 @@ export default function OrderSummaryScreen() {
   // ── Data hooks ────────────────────────────────────────────────────────
   const {
     data: order,
-    isLoading: isOrderLoading,
+    isPending: isOrderPending,
+    isError: isOrderError,
+    isFetching: isOrderFetching,
     refetch: refetchOrder,
   } = useOrderById(id);
   const {
     data: shipments,
-    isLoading: isShipmentsLoading,
+    isPending: isShipmentsPending,
+    isError: isShipmentsError,
+    isFetching: isShipmentsFetching,
     refetch: refetchShipments,
   } = useShipmentsByOrder(id);
 
   // Combinamos loading para evitar pop-in de shipments después del render
-  const isAnyLoading = isOrderLoading || isShipmentsLoading;
+  const isAnyLoading = isOrderFetching || isShipmentsFetching;
+  const summaryState = resolveSummaryState({
+    hasOrder: !!order,
+    orderPending: isOrderPending && !!id && !!session?.user.id,
+    orderError: isOrderError,
+    hasShipments: !!order?.shipments?.length || shipments != null,
+    shipmentsPending: isShipmentsPending && !!id && !!session?.user.id,
+    shipmentsError: isShipmentsError,
+  });
 
   // Handler de refresco concurrente: actualiza orden + shipments
   const handleRefresh = async () => {
@@ -95,7 +109,7 @@ export default function OrderSummaryScreen() {
 
   // ── Loading skeleton ──────────────────────────────────────────────────
   // Mostramos skeleton hasta que orden + shipments tengan data inicial
-  if (isAnyLoading || !order) {
+  if (summaryState === 'loading') {
     return (
       <Box flex={1} backgroundColor="background">
         <Stack.Screen options={{ headerShown: false }} />
@@ -104,6 +118,23 @@ export default function OrderSummaryScreen() {
           <Skeleton width="100%" height={120} borderRadius={16} />
           <Skeleton width="100%" height={200} borderRadius={16} />
           <Skeleton width="100%" height={200} borderRadius={16} />
+        </Box>
+      </Box>
+    );
+  }
+
+  if (summaryState !== 'ready' || !order) {
+    return (
+      <Box flex={1} backgroundColor="background">
+        <Stack.Screen options={{ headerShown: false }} />
+        <GlobalHeader showBack />
+        <Box padding="m" gap="m" style={{ paddingTop: insets.top + 100 }}>
+          <Text variant="body-md" color="textSecondary" textAlign="center">
+            {t(summaryState === 'missing' ? 'summary.missing' : 'summary.loadError')}
+          </Text>
+          <PrimaryButton onPress={handleRefresh} disabled={isAnyLoading}>
+            {t('summary.retry')}
+          </PrimaryButton>
         </Box>
       </Box>
     );
@@ -176,18 +207,8 @@ export default function OrderSummaryScreen() {
   ].filter(Boolean) as string[];
 
   const orderCount = visibleShipments.length;
-  const visibleTotal =
-    view.role === 'seller'
-      ? visibleShipments.reduce(
-          (sum, shipment) =>
-            sum +
-            shipment.items.reduce(
-              (itemSum, item) => itemSum + Number(item.price_at_purchase),
-              0,
-            ),
-          0,
-        )
-      : order.total_amount;
+  const amounts = summaryAmounts(view.role, visibleShipments.flatMap((shipment) => shipment.items), order.total_amount);
+  const visibleTotal = (amounts.totalPaidCents ?? 0) / 100;
 
   // ── Render ──
   return (
@@ -228,12 +249,23 @@ export default function OrderSummaryScreen() {
             marginBottom="s"
           >
             <Text variant="body-md" color="textSecondary">
-              {t('summary.total')}
+              {t('summary.subtotal')}
             </Text>
             <Text variant="subheader-lg" color="primary">
-              {formatCurrency(visibleTotal)}
+              {formatCurrency(amounts.subtotalCents / 100)}
             </Text>
           </Box>
+
+          {view.role === 'buyer' && (
+            <Box flexDirection="row" justifyContent="space-between" marginBottom="s">
+              <Text variant="body-md" color="textSecondary">
+                {t('summary.totalPaid')}
+              </Text>
+              <Text variant="subheader-lg" color="primary">
+                {formatCurrency(visibleTotal)}
+              </Text>
+            </Box>
+          )}
 
           <Box
             flexDirection="row"
