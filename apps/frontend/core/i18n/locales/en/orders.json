@@ -142,7 +142,9 @@
   "actionCard": {
     "cancellationWindowTitle": "CANCELLATION WINDOW",
     "preparingShipmentTitle": "PREPARING SHIPMENT",
-    "deliveredTitle": "DELIVERY CONFIRMED",
+    "deliveredTitle": "Package delivered",
+    "deliveredReviewMessage": "The buyer has a 48-hour window from delivery to review the product and confirm receipt. If they do not report a problem, the purchase will complete automatically at the end of this period. Selene will then manage the release of your payment. Time remaining in the review window: {{timeLeft}}.",
+    "completedMessage": "The purchase is complete.",
     "recordUnboxingTitle": "RECORD YOUR UNBOXING",
     "cancellationWindowClosed": "The manual cancellation window has closed.",
     "cancellationWindowOpen": "You can still cancel this shipment for {{timeLeft}}.",
