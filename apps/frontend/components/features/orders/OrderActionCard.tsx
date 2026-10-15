@@ -220,6 +220,9 @@ export const OrderActionCard = ({
         ? t('actionCard.refundProcessedBuyer')
         : t('actionCard.refundProcessedSeller');
     }
+    if (isBuyer && shipment.status === 'cancelled' && order.status !== 'dispute') {
+      return t('actionCard.cancelledBuyer');
+    }
     return t(`orders:detail.${order.status}Msg`);
   };
 
