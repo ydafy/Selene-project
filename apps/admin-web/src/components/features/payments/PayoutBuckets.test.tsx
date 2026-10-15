@@ -108,13 +108,49 @@ if (process.env.A65_SSR_CHILD !== '1') {
       populated = true;
       try {
         const html = renderTab(tab);
-        expect(html).toContain(runId);
+        if (tab !== 'processing') {
+          expect(html).toContain('aria-haspopup="dialog"');
+          expect(html).toContain(tab === 'history' ? 'Pago observado' : 'Fallo sin reintento disponible');
+          expect(html).not.toContain('aria-label="Detalle de dispersión"');
+          expect(html).not.toContain(runId);
+        } else {
+          expect(html).toContain(runId);
+        }
         expect(html).toContain('SSR Seller');
         expect(html).not.toContain(empty);
         expect(html).not.toContain('Consultando cola de dispersión en Stripe Connect...');
       } finally { populated = false; }
     });
   }
+  it('starts in Por liberar and replaces treasury cards with operational navigation', () => {
+    loading = false;
+    const html = renderTab('ready');
+    expect(html).toContain('aria-label="Áreas de trabajo financiero"');
+    expect(html).toContain('role="tablist"');
+    expect(html).toMatch(/id="payments-tab-ready"[^>]*aria-selected="true"/);
+    expect(html).toContain('Por liberar');
+    expect(html).not.toContain('Resumen de Tesorería');
+    expect(html).not.toContain('En Custodia (Tránsito)');
+  });
+  it('sizes lifecycle navigation to its content while bounding narrow-screen overflow', () => {
+    loading = false;
+    const html = renderTab('ready');
+    const navigation = html.match(/<nav\b[^>]*role="tablist"[^>]*>/)?.[0];
+    expect(navigation).toBeDefined();
+    expect(navigation).toContain('w-fit');
+    expect(navigation).toContain('max-w-full');
+    expect(navigation).toContain('overflow-x-auto');
+    expect(html.match(/role="tab"/g)).toHaveLength(4);
+    expect(html).toMatch(/id="payments-tab-ready"[^>]*aria-selected="true"/);
+    expect(html).toContain('aria-controls="payments-workspace"');
+  });
+  it('keeps buyer charges out of seller payout history', () => {
+    loading = false;
+    const html = renderTab('history');
+    expect(html).not.toContain('Cargos de Compradores —');
+    expect(html).not.toContain('PaymentIntent ID');
+    expect(html).not.toContain('Cobros de compradores');
+  });
   it('retains the shared page error guard for a queue failure', () => {
     queueError = true;
     loading = false;

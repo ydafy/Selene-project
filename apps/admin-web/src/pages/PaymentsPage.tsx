@@ -1,72 +1,41 @@
-/**
- * @file apps/admin-web/src/pages/PaymentsPage.tsx
- * @description Admin Dashboard Page for monitoring Stripe Connect Earnings and transaction volume.
- *
- * Implements:
- * 1. Financial summary cards: Gross processed volume, Selene Application Fees (revenue), and succeeded payment counts.
- * 2. Searchable directory of Connect-era PaymentIntents loaded through the admin get-connect-earnings Edge Function.
- * 3. Performance optimizations: Debounced search input (300ms) to prevent repeated admin data requests while typing.
- *
- * Fully styled using Selene's high-contrast dark theme.
- *
- * @version 1.0
- * @domain admin-finance-pages
- */
-
-import { useState, useMemo } from 'react';
+import { useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import {
+  AlertTriangle,
+  Clock3,
   RefreshCw,
   Search,
-  X,
-  DollarSign,
-  TrendingUp,
-  Receipt,
-  Wallet,
   ShieldCheck,
-  Calendar,
-  Globe,
+  Wallet,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
-
-import { useConnectEarnings } from '../hooks/useConnectEarnings';
 import { useConnectPayoutReleaseQueue } from '../hooks/useConnectPayoutReleaseQueue';
-import { summarizeConnectEarnings, centsToMoney } from '../lib/connectEarnings';
-import { getSelectedEligibleShipmentIds } from '../lib/connectPayoutReleaseQueue';
 import { useDebounce } from '../hooks/useDebounce';
+import { getSelectedEligibleShipmentIds } from '../lib/connectPayoutReleaseQueue';
 import { ErrorState } from '../components/ui/ErrorState';
-import { formatCurrency } from '../lib/utils/formatCurrency';
-import { PayoutReleaseQueue } from '../components/features/payments/PayoutReleaseQueue';
-import { PayoutProcessingBucket } from '../components/features/payments/PayoutProcessingBucket';
-import { PayoutActionRequiredBucket } from '../components/features/payments/PayoutActionRequiredBucket';
-import { PayoutHistoryBucket } from '../components/features/payments/PayoutHistoryBucket';
-import { PaymentIntentsTable } from '../components/features/payments/PaymentIntentsTable';
+import { PayoutReleaseWorkbench } from '../components/features/payments/PayoutReleaseWorkbench';
+import { PayoutRunsWorkbench } from '../components/features/payments/PayoutRunsWorkbench';
+import { workbenchFocus } from '../components/features/payments/PayoutWorkbenchLayout';
 
-/**
- * Operator-visible payout lifecycle buckets. Every queue row is presented in
- * exactly one of them. History is one cohesive frame with two named sibling
- * axes: paid seller payout runs and buyer Connect charges; every count on
- * the page labels exactly the list it sits above.
- */
 export type PaymentTab = 'ready' | 'processing' | 'action-required' | 'history';
-export type FinancialPeriod = 'month' | 'all';
+
+const WORKSPACES = [
+  { id: 'ready', label: 'Por liberar', icon: Wallet },
+  { id: 'action-required', label: 'Necesita atención', icon: AlertTriangle },
+  { id: 'processing', label: 'En proceso', icon: Clock3 },
+  { id: 'history', label: 'Historial', icon: ShieldCheck },
+] as const;
 
 export const PaymentsPage = () => {
   const [activeTab, setActiveTab] = useState<PaymentTab>('ready');
-  const [period, setPeriod] = useState<FinancialPeriod>('month');
   const [search, setSearch] = useState('');
   const [selectedShipmentsBySeller, setSelectedShipmentsBySeller] = useState<
     Record<string, string[]>
   >({});
+  const [refreshing, setRefreshing] = useState(false);
+  const [workbenchBusy, setWorkbenchBusy] = useState(false);
+  const requestInFlight = useRef(false);
   const debouncedSearch = useDebounce(search, 300);
-
-  const {
-    data = [],
-    isLoading,
-    isFetching,
-    isError,
-    refetch,
-  } = useConnectEarnings(debouncedSearch);
-
   const {
     batches = [],
     processingRuns = [],
@@ -80,408 +49,311 @@ export const PaymentsPage = () => {
     retryFailedPayout,
     isRetrying,
   } = useConnectPayoutReleaseQueue(debouncedSearch);
-
-  const bucketCounts = {
+  const financialBusy = isReleasing || isRetrying || workbenchBusy;
+  const queueUnresolved = isQueueLoading || search !== debouncedSearch;
+  const isSyncing = refreshing || isQueueLoading;
+  const current = useRef({
+    batches,
+    actionRequiredRuns,
+    selectedShipmentsBySeller,
+    queueUnresolved,
+    isQueueError,
+    releaseSelectedShipments,
+    retryFailedPayout,
+  });
+  useLayoutEffect(() => {
+    current.current = {
+      batches,
+      actionRequiredRuns,
+      selectedShipmentsBySeller,
+      queueUnresolved,
+      isQueueError,
+      releaseSelectedShipments,
+      retryFailedPayout,
+    };
+  }, [
+    batches,
+    actionRequiredRuns,
+    selectedShipmentsBySeller,
+    queueUnresolved,
+    isQueueError,
+    releaseSelectedShipments,
+    retryFailedPayout,
+  ]);
+  const counts = {
     ready: batches.length,
-    processing: processingRuns.length,
     'action-required': actionRequiredRuns.length,
+    processing: processingRuns.length,
     history: historyRuns.length,
-  } as const;
+  };
 
-  const isSyncing = isFetching || isQueueLoading;
-
-  // ── 1. CÁLCULO DINÁMICO POR PERÍODO (Sin 'any') ──
-  const filteredEarningsData = useMemo(() => {
-    if (period === 'all') return data;
-
-    const startOfMonth = new Date(
-      Date.UTC(
-        new Date().getUTCFullYear(),
-        new Date().getUTCMonth(),
-        1,
-        0,
-        0,
-        0,
-      ),
-    );
-    return data.filter((row) => {
-      const createdAt = row.created_at ? new Date(row.created_at) : null;
-      return (
-        createdAt && !isNaN(createdAt.getTime()) && createdAt >= startOfMonth
-      );
-    });
-  }, [data, period]);
-
-  const summary = summarizeConnectEarnings(filteredEarningsData);
-
-  // ── 2. CÁLCULO DE DINERO EN ESCROW (Listo vs En Tránsito) ──
-  const { readyToPayoutCents, inTransitCents } = useMemo(() => {
-    let ready = 0;
-    let inTransit = 0;
-
-    batches.forEach((batch) => {
-      batch.shipments.forEach((s) => {
-        if (s.isEligible) {
-          ready += s.releaseAmountCents || 0;
-        } else {
-          inTransit += s.releaseAmountCents || 0;
-        }
-      });
-    });
-
-    return { readyToPayoutCents: ready, inTransitCents: inTransit };
-  }, [batches]);
-
-  // ── 3. HANDLERS DE SELECCIÓN Y DISPERSIÓN ──
-  const toggleShipmentSelection = (sellerId: string, shipmentId: string) => {
-    setSelectedShipmentsBySeller((current) => {
-      const currentSellerSelection = current[sellerId] ?? [];
-      const exists = currentSellerSelection.includes(shipmentId);
-
+  const toggleShipment = (sellerId: string, shipmentId: string) => {
+    if (financialBusy || queueUnresolved || isQueueError) return;
+    setSelectedShipmentsBySeller((selection) => {
+      const selected = selection[sellerId] ?? [];
       return {
-        ...current,
-        [sellerId]: exists
-          ? currentSellerSelection.filter((id) => id !== shipmentId)
-          : [...currentSellerSelection, shipmentId],
+        ...selection,
+        [sellerId]: selected.includes(shipmentId)
+          ? selected.filter((id) => id !== shipmentId)
+          : [...selected, shipmentId],
       };
     });
   };
-
-  const selectEligibleBatch = (sellerId: string, shipmentIds: string[]) => {
-    setSelectedShipmentsBySeller((current) => ({
-      ...current,
-      [sellerId]: shipmentIds,
-    }));
-  };
-
-  const selectAllEligibleGlobally = () => {
-    const allSelected: Record<string, string[]> = {};
-    batches.forEach((batch) => {
-      const eligibleIds = batch.shipments
-        .filter((s) => s.isEligible)
-        .map((s) => s.shipmentId);
-      if (eligibleIds.length > 0) {
-        allSelected[batch.sellerId] = eligibleIds;
-      }
-    });
-    setSelectedShipmentsBySeller(allSelected);
-  };
-
-  const clearAllSelections = () => {
-    setSelectedShipmentsBySeller({});
-  };
-
   const handleRelease = async (sellerId: string) => {
-    const batch = batches.find((item) => item.sellerId === sellerId);
-    if (!batch) return;
-
-    const selectedShipmentIds = getSelectedEligibleShipmentIds(
+    const source = current.current;
+    // A batch locks navigation between requests, but must still execute the next
+    // reviewed seller. This synchronous request guard prevents overlapping calls.
+    if (
+      requestInFlight.current ||
+      source.queueUnresolved ||
+      source.isQueueError
+    )
+      throw new Error('Espera a que se actualice la cola antes de autorizar.');
+    const batch = source.batches.find((item) => item.sellerId === sellerId);
+    if (!batch)
+      throw new Error(
+        'Este vendedor ya no está en la cola. Actualiza los datos.',
+      );
+    const shipmentIds = getSelectedEligibleShipmentIds(
       batch,
-      selectedShipmentsBySeller[sellerId] ?? [],
+      source.selectedShipmentsBySeller[sellerId] ?? [],
     );
-
-    await releaseSelectedShipments({ batch, shipmentIds: selectedShipmentIds });
-    setSelectedShipmentsBySeller((current) => ({ ...current, [sellerId]: [] }));
+    if (shipmentIds.length === 0)
+      throw new Error('No hay envíos elegibles seleccionados.');
+    requestInFlight.current = true;
+    try {
+      await source.releaseSelectedShipments({ batch, shipmentIds });
+      setSelectedShipmentsBySeller((selection) => ({
+        ...selection,
+        [sellerId]: [],
+      }));
+    } finally {
+      requestInFlight.current = false;
+    }
   };
-
-  const handleRetryFailedPayout = async (retryRunId: string) => {
-    await retryFailedPayout({ retryRunId });
+  const handleRetry = async (runId: string) => {
+    const source = current.current;
+    const run = source.actionRequiredRuns.find((item) => item.runId === runId);
+    if (
+      requestInFlight.current ||
+      source.queueUnresolved ||
+      source.isQueueError ||
+      !run?.canRetry ||
+      run.status !== 'failed' ||
+      run.reason !== 'retryable_failed'
+    ) {
+      throw new Error(
+        'La cola no permite reintentar esta ejecución. Actualiza los datos.',
+      );
+    }
+    requestInFlight.current = true;
+    try {
+      await source.retryFailedPayout({ retryRunId: runId });
+    } finally {
+      requestInFlight.current = false;
+    }
   };
-
   const handleRefresh = async () => {
-    await Promise.all([refetch(), refetchQueue()]);
-    toast.success('Datos financieros actualizados');
+    if (financialBusy || refreshing) return;
+    setRefreshing(true);
+    try {
+      const result = await refetchQueue();
+      if (result.isError) toast.error('No se pudieron actualizar los datos.');
+      else toast.success('Consulta actualizada');
+    } catch {
+      toast.error('No se pudieron actualizar los datos.');
+    } finally {
+      setRefreshing(false);
+    }
   };
-
-  if (isError || isQueueError) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-platinum">
-            Finanzas y Dispersión
-          </h1>
-          <p className="text-blue-light text-sm mt-1">
-            Gestión de pagos a vendedores y comisiones de Stripe Connect.
-          </p>
-        </div>
-        <ErrorState
-          title="Error al cargar datos financieros"
-          message="No pudimos conectar con la cola de pagos de Stripe Connect. Por favor, reintenta."
-          onRetry={handleRefresh}
-          isRetrying={isSyncing}
-        />
-      </div>
-    );
-  }
-
-  const isCardsLoading =
-    (isLoading || isQueueLoading) && data.length === 0 && batches.length === 0;
-
-  const payoutQueue = (
-    <PayoutReleaseQueue
-      batches={batches}
-      isLoading={isQueueLoading}
-      isReleasing={isReleasing}
-      selectedShipmentsBySeller={selectedShipmentsBySeller}
-      onToggleShipment={toggleShipmentSelection}
-      onSelectEligibleBatch={selectEligibleBatch}
-      onSelectAllEligibleGlobally={selectAllEligibleGlobally}
-      onClearAllSelections={clearAllSelections}
-      onRelease={handleRelease}
-    />
-  );
+  const changeSearch = (value: string) => {
+    if (financialBusy) return;
+    setSelectedShipmentsBySeller({});
+    setSearch(value);
+  };
+  const navigateTab = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    index: number,
+  ) => {
+    if (financialBusy) return;
+    let next: number;
+    switch (event.key) {
+      case 'ArrowRight':
+        next = (index + 1) % WORKSPACES.length;
+        break;
+      case 'ArrowLeft':
+        next = (index + WORKSPACES.length - 1) % WORKSPACES.length;
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = WORKSPACES.length - 1;
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+    setActiveTab(WORKSPACES[next].id);
+    const tabs =
+      event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>(
+        '[role="tab"]',
+      );
+    tabs?.[next]?.focus();
+  };
+  const currentRuns =
+    activeTab === 'processing'
+      ? processingRuns
+      : activeTab === 'action-required'
+        ? actionRequiredRuns
+        : historyRuns;
 
   return (
-    <div className="space-y-8">
-      {/* ── HEADER CON BOTÓN DE REFRESH ── */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+    <div className="min-w-0 space-y-4">
+      <header className="flex flex-col justify-between gap-4 pb-2 sm:flex-row sm:items-end">
         <div>
-          <h1 className="text-3xl font-bold text-platinum">
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.24em] text-lion">
+            Selene · Operación financiera
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-platinum sm:text-3xl">
             Finanzas y Dispersión
           </h1>
-          <p className="text-blue-light text-sm mt-1">
-            Control de tesorería, dinero en custodia (Escrow) y pagos de Stripe
-            Connect.
+          <p className="mt-2 text-sm text-blue-light">
+            Libera pagos a vendedores y atiende las dispersiones que requieren
+            seguimiento.
           </p>
         </div>
         <button
           type="button"
           onClick={handleRefresh}
-          disabled={isSyncing}
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-platinum transition-all hover:border-lion hover:text-lion cursor-pointer disabled:opacity-50"
+          disabled={isSyncing || financialBusy}
+          className={`inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-xl border border-white/10 bg-state-gray px-4 py-2.5 text-xs font-semibold text-platinum transition-colors hover:border-lion/40 disabled:opacity-40 ${workbenchFocus}`}
         >
-          <RefreshCw
-            size={14}
-            className={isSyncing ? 'animate-spin text-lion' : ''}
-          />
-          {isSyncing ? 'Sincronizando...' : 'Actualizar Datos'}
+          <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
+          {isSyncing ? 'Actualizando...' : 'Actualizar consulta'}
         </button>
-      </div>
-
-      {/* ── SELECTOR DE PERÍODO & 4 TARJETAS FINANCIERAS ── */}
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h3 className="text-xs font-bold text-blue-light uppercase tracking-widest">
-            Resumen de Tesorería
-          </h3>
-
-          {/* Toggle de Período */}
-          <div className="flex gap-1 p-1 bg-white/5 rounded-xl border border-white/5">
-            <button
-              type="button"
-              onClick={() => setPeriod('month')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                period === 'month'
-                  ? 'bg-lion text-night shadow-md'
-                  : 'text-blue-light hover:text-platinum'
-              }`}
-            >
-              <Calendar size={13} /> Este Mes
-            </button>
-            <button
-              type="button"
-              onClick={() => setPeriod('all')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                period === 'all'
-                  ? 'bg-lion text-night shadow-md'
-                  : 'text-blue-light hover:text-platinum'
-              }`}
-            >
-              <Globe size={13} /> Histórico (All-Time)
-            </button>
-          </div>
-        </div>
-
-        {/* Las 4 Tarjetas */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-state-gray border border-white/5 rounded-2xl p-5 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] text-blue-light uppercase font-bold tracking-widest">
-                Volumen Procesado
-              </p>
-              {isCardsLoading ? (
-                <div className="h-8 w-28 bg-white/5 animate-pulse rounded mt-1" />
-              ) : (
-                <p className="text-2xl font-bold text-platinum mt-1">
-                  {formatCurrency(centsToMoney(summary.grossCents))}
-                </p>
-              )}
-            </div>
-            <div className="p-3 bg-white/5 rounded-xl text-blue-light">
-              <DollarSign size={20} />
-            </div>
-          </div>
-
-          <div className="bg-state-gray border border-white/5 rounded-2xl p-5 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] text-blue-light uppercase font-bold tracking-widest">
-                Comisiones Selene
-              </p>
-              {isCardsLoading ? (
-                <div className="h-8 w-24 bg-white/5 animate-pulse rounded mt-1" />
-              ) : (
-                <p className="text-2xl font-bold text-lion mt-1">
-                  {formatCurrency(centsToMoney(summary.applicationFeesCents))}
-                </p>
-              )}
-            </div>
-            <div className="p-3 bg-lion/10 rounded-xl text-lion">
-              <TrendingUp size={20} />
-            </div>
-          </div>
-
-          <div className="bg-state-gray border border-white/5 rounded-2xl p-5 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] text-blue-light uppercase font-bold tracking-widest">
-                Listo para Dispersar
-              </p>
-              {isCardsLoading ? (
-                <div className="h-8 w-28 bg-white/5 animate-pulse rounded mt-1" />
-              ) : (
-                <p className="text-2xl font-bold text-forest mt-1">
-                  {formatCurrency(centsToMoney(readyToPayoutCents))}
-                </p>
-              )}
-            </div>
-            <div className="p-3 bg-forest/10 rounded-xl text-forest">
-              <Wallet size={20} />
-            </div>
-          </div>
-
-          <div className="bg-state-gray border border-white/5 rounded-2xl p-5 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] text-blue-light uppercase font-bold tracking-widest">
-                En Custodia (Tránsito)
-              </p>
-              {isCardsLoading ? (
-                <div className="h-8 w-28 bg-white/5 animate-pulse rounded mt-1" />
-              ) : (
-                <p className="text-2xl font-bold text-amber-400 mt-1">
-                  {formatCurrency(centsToMoney(inTransitCents))}
-                </p>
-              )}
-            </div>
-            <div className="p-3 bg-amber-400/10 rounded-xl text-amber-400">
-              <ShieldCheck size={20} />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── NAVEGACIÓN POR CUBETAS DEL CICLO DE DISPERSIÓN ── */}
+      </header>
       <nav
-        aria-label="Ciclo de dispersión de pagos"
-        className="flex flex-wrap gap-2 p-1 bg-white/5 w-fit rounded-xl border border-white/5"
+        role="tablist"
+        aria-label="Áreas de trabajo financiero"
+        className="flex w-fit min-w-0 max-w-full gap-1 overflow-x-auto rounded-2xl border border-white/5 bg-state-gray p-1.5"
       >
-        {(
-          [
-            { id: 'ready', label: 'Listos para Liberar', icon: Wallet },
-            { id: 'processing', label: 'En Proceso', icon: RefreshCw },
-            {
-              id: 'action-required',
-              label: 'Requieren Atención',
-              icon: ShieldCheck,
-            },
-            { id: 'history', label: 'Historial', icon: Receipt },
-          ] as const
-        ).map(({ id, label, icon: Icon }) => (
+        {WORKSPACES.map(({ id, label, icon: Icon }, index) => (
           <button
             key={id}
+            id={`payments-tab-${id}`}
             type="button"
-            onClick={() => setActiveTab(id)}
-            aria-current={activeTab === id ? 'page' : undefined}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === id
-                ? 'bg-lion text-night shadow-lg'
-                : 'text-blue-light hover:text-platinum'
-            }`}
+            role="tab"
+            aria-selected={activeTab === id}
+            aria-controls="payments-workspace"
+            tabIndex={activeTab === id ? 0 : -1}
+            disabled={financialBusy}
+            onClick={() => {
+              if (!financialBusy) setActiveTab(id);
+            }}
+            onKeyDown={(event) => navigateTab(event, index)}
+            className={`flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-4 py-3 text-xs font-semibold transition-colors disabled:opacity-40 ${workbenchFocus} ${activeTab === id ? 'bg-lion/10 text-lion' : 'text-blue-light hover:bg-white/5 hover:text-platinum'}`}
           >
-            <Icon size={15} /> {label}
-            {id !== 'history' ? ` (${bucketCounts[id]})` : null}
+            <Icon
+              size={16}
+              className={
+                id === 'action-required' && actionRequiredRuns.length > 0
+                  ? 'text-amber-400'
+                  : ''
+              }
+            />
+            <span>{label}</span>
+            <span
+              aria-label={`${id === 'ready' ? 'Vendedores en cola' : 'Ejecuciones'}: ${queueUnresolved || isQueueError ? 'consultando' : counts[id]}`}
+              className={`rounded-md px-1.5 py-0.5 text-[10px] tabular-nums ${id === 'action-required' && counts[id] > 0 ? 'bg-amber-400/10 text-amber-400' : 'bg-white/5'}`}
+            >
+              {queueUnresolved || isQueueError ? '—' : counts[id]}
+            </span>
           </button>
         ))}
       </nav>
-
-      {/* ── BUSCADOR CONTEXTUAL CON BOTÓN DE LIMPIEZA ── */}
-      <div className="relative w-full md:w-96">
+      <div className="relative">
         <Search
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-light"
-          size={18}
+          size={17}
+          className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-blue-light"
         />
         <input
-          type="text"
-          placeholder={
-            activeTab === 'ready'
-              ? 'Buscar por nombre de vendedor en la cola...'
-              : activeTab === 'history'
-                ? 'Buscar en dispersiones pagadas y cargos de compradores...'
-                : 'Buscar por nombre de vendedor...'
-          }
-          className="w-full bg-state-gray border border-white/10 rounded-xl py-2 pl-10 pr-10 text-sm text-platinum focus:border-lion outline-none transition-all focus:ring-2 focus:ring-lion/50"
+          type="search"
+          aria-label="Buscar vendedor en dispersiones"
+          placeholder="Buscar vendedor en la cola..."
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          disabled={financialBusy}
+          onChange={(event) => changeSearch(event.target.value)}
+          className={`w-full rounded-2xl border border-white/10 bg-state-gray py-3 pl-11 pr-12 text-sm text-platinum placeholder:text-blue-light/70 disabled:opacity-40 ${workbenchFocus}`}
         />
-        {search.length > 0 && (
+        {search ? (
           <button
             type="button"
-            onClick={() => setSearch('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-light hover:text-platinum cursor-pointer"
+            aria-label="Limpiar búsqueda"
+            disabled={financialBusy}
+            onClick={() => changeSearch('')}
+            className={`absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-blue-light hover:text-platinum ${workbenchFocus}`}
           >
-            <X size={16} />
+            <X size={15} />
           </button>
-        )}
+        ) : null}
       </div>
-
-      {/* ── CONTENIDO DINÁMICO POR CUBETA ── */}
-      {activeTab === 'ready' ? payoutQueue : null}
-      {activeTab === 'processing' ? (
-        isQueueLoading ? (
-          payoutQueue
+      <section
+        id="payments-workspace"
+        role="tabpanel"
+        aria-labelledby={`payments-tab-${activeTab}`}
+        aria-label="Mesa operativa de pagos"
+        className="min-w-0"
+      >
+        {isQueueError ? (
+          <ErrorState
+            title="Error al cargar datos financieros"
+            message="No pudimos cargar la cola. No autorices ni reintentes hasta actualizar los datos."
+            onRetry={handleRefresh}
+            isRetrying={isSyncing || financialBusy}
+          />
+        ) : null}
+        {activeTab === 'ready' ? (
+          <PayoutReleaseWorkbench
+            key={`ready:${debouncedSearch}`}
+            batches={isQueueError ? [] : batches}
+            isLoading={queueUnresolved || isQueueError}
+            isReleasing={isReleasing || isRetrying}
+            selectedShipmentsBySeller={selectedShipmentsBySeller}
+            onToggleShipment={toggleShipment}
+            onSelectEligibleBatch={(sellerId, shipmentIds) => {
+              if (financialBusy || queueUnresolved || isQueueError) return;
+              setSelectedShipmentsBySeller((selection) => ({
+                ...selection,
+                [sellerId]: shipmentIds,
+              }));
+            }}
+            onClearAllSelections={() => {
+              if (!financialBusy) setSelectedShipmentsBySeller({});
+            }}
+            onBusyChange={setWorkbenchBusy}
+            onRelease={handleRelease}
+          />
         ) : (
-          <PayoutProcessingBucket runs={processingRuns} />
-        )
-      ) : null}
-      {activeTab === 'action-required' ? (
-        isQueueLoading ? (
-          payoutQueue
-        ) : (
-          <PayoutActionRequiredBucket
-            runs={actionRequiredRuns}
+          <PayoutRunsWorkbench
+            key={`${activeTab}:${debouncedSearch}`}
+            mode={activeTab}
+            runs={isQueueError ? [] : currentRuns}
+            isLoading={queueUnresolved || isQueueError}
             isReleasing={isReleasing}
             isRetrying={isRetrying}
-            onRetryFailedPayout={handleRetryFailedPayout}
+            onBusyChange={setWorkbenchBusy}
+            onRetryFailedPayout={handleRetry}
           />
-        )
-      ) : null}
-      {activeTab === 'history' ? (
-        <section className="space-y-6" aria-labelledby="history-frame-title">
-          <header>
-            <h2
-              id="history-frame-title"
-              className="text-lg font-bold text-platinum flex items-center gap-2"
-            >
-              <Receipt size={20} className="text-blue-light" /> Historial
-            </h2>
-            <p className="text-xs text-blue-light mt-0.5 max-w-2xl">
-              Dos vistas de solo lectura con ejes de datos distintos:{' '}
-              <span className="font-bold text-platinum">
-                dispersiones pagadas a vendedores
-              </span>{' '}
-              y{' '}
-              <span className="font-bold text-platinum">
-                cargos de compradores Connect
-              </span>
-              . Ninguna admite acciones.
-            </p>
-          </header>
-          {isQueueLoading ? (
-            payoutQueue
-          ) : (
-            <PayoutHistoryBucket runs={historyRuns} />
-          )}
-          <PaymentIntentsTable data={data} isLoading={isLoading} />
-        </section>
-      ) : null}
+        )}
+      </section>
+      <p className="text-[10px] leading-relaxed text-blue-light">
+        {search.trim()
+          ? 'Resultados de la búsqueda.'
+          : 'Resultados de la consulta.'}{' '}
+        Actualización automática cada 30 segundos. Los importes de la cola no
+        representan un saldo Stripe.
+      </p>
     </div>
   );
 };
