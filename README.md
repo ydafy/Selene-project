@@ -176,6 +176,42 @@ The mobile application brings together the main buyer and seller experiences, fr
 
 ---
 
+## Browser Tests (Playwright)
+
+Run from the repository root with Bun:
+
+```bash
+bun install
+bunx --no-install playwright install chromium
+bun run test:e2e
+bun run test:e2e:ui
+```
+
+Playwright is installed once at the root. `playwright.config.ts` owns the
+configuration; browser tests live under `e2e/`, initially `e2e/admin-web/`.
+Only Chromium is enabled. Add future web targets as projects in the same config
+and directories under `e2e/`, without installing Playwright in each workspace.
+This setup does not test native Android/iOS apps.
+
+Tests start the existing admin Vite dev server at `http://127.0.0.1:5173`, or reuse
+an existing local server at that address (not in CI). The port is strict to avoid
+silently testing a different address. To start it yourself with matching options:
+
+```bash
+bun run dashboard --host 127.0.0.1 --port 5173 --strictPort
+```
+
+The admin app requires `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in
+`apps/admin-web/.env` (or the server environment). Use only the public anon key,
+never a service-role key. The smoke opens `/login` and checks the rendered Selene
+heading and login button; it does not sign in or write data. No backend or mobile
+server is needed.
+
+Use `*.e2e.ts` for browser tests so `bun test` continues to discover only the
+existing unit/integration tests. Playwright results and failure traces are ignored
+by Git. Open a retained trace with
+`bunx --no-install playwright show-trace <path-to-trace.zip>`.
+
 ## Development Status
 
 Selene is in the final development and testing stage.
