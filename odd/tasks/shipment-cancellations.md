@@ -1,10 +1,12 @@
 # Shipment cancellations: audit and safe continuation
 
-**Status: initial E0 baseline closed with mixed results; second-cancellation source audit completed and post-redeploy regression in progress. No new source fixes authorized.**
+**Status: B1.1 repository preparation and local verification complete; maintainer authorized its scoped local commit. No deployment. B1 remains incomplete until B1.2–B1.4 integration/verification. Historical E0 and post-redeploy results retain their recorded limits.**
 
 ## Latest handoff — authoritative current state
 
 This section supersedes historical instructions and intermediate pending states below.
+- Latest implementation scope: the maintainer authorized B1.1 only: "okey dicho esto en esta seison podemos empezar por b1.1 te principio a fin." After a separate infrastructure session committed `9b69ba0`, the maintainer resumed with "okey dale master." B1.1 repository artifacts and local verification are complete (see work-unit Log); maintainer authorized its scoped local commit. Not deployed. B1.2–B1.4/B2–B5, remote deployment and money movement remain out of scope. Preserve unrelated `bun.lock`.
+- Current Git checkpoint confirmed during the B1 audit: commits `482f672` and `e97e9a9` are present on `feat/shipment-cancellations`; the buyer banner and this task document are committed. At audit entry, only unrelated `bun.lock` was modified and preserved. Historical uncommitted-file statements below do not describe the current checkpoint.
 - Current scope: maintainer authorized second-cancellation audit and post-redeploy sandbox regressions. Initial baseline-only restrictions are historical. No agent money movement, remote writes/deployment or new source fixes authorized.
 - M1 passed within recorded human Dashboard/DB/product/notification/UI evidence limits.
 - Original M2 (two same-seller shipments) and M3 (two different-seller shipments) failed on the second cancellation with `REFUND_AMOUNT_EXCEEDS_CAP`. Fresh M2 comparison passed separately; it does not erase the original failure.
@@ -62,7 +64,7 @@ Do not substitute estimated processing fees for authoritative transaction data.
 | A0 | Complete | Audit: 52 pass, 0 fail, 9 files, 125 assertions. |
 | P0 | Complete | Plan read back, independently verified, and mirrored in Engram. |
 | E0 | Closed with mixed results | Sequential M1–M4 baseline: M1, fresh M2 comparison and M4 passed within evidence limits; original M2 and M3 failed on second cancellation (REFUND_AMOUNT_EXCEEDS_CAP). No retries/root cause/fixes. Extended tests and remediation deferred. |
-| B1 | Pending | Shared pre-money coordination for manual/cron/label; transfer guard. |
+| B1 | Partial, not active | B1.1 foundation locally verified; not committed/deployed. Manual/cron integration (B1.2), symmetric label/transfer coordination (B1.3) and integrated verification (B1.4) remain pending. |
 | B2 | Pending | Durable refund ID/status and DB recovery; depends on B1 boundary. |
 | B3 | Pending | Paid timeout E2E, atomic/expiring job coordination; depends on B1/B2. |
 | B4 | Pending | Preparing evidence, label outcome, guarded tracking; depends on B1/B2. |
@@ -72,9 +74,59 @@ A0 covered pure tests/source guards, **not** handler, SQL, or provider E2E.
 E0 does not authorize fixes; passing a manual baseline does not prove race safety.
 Each B block has tests and docs with its behavior and relevant E2E in that block.
 Do not postpone all integration validation until B5.
-One session per block; exact edit-surface sizing may split coherent review units.
+Blocks may span sessions; prefer one coherent substep per session and scoped commits when explicitly authorized. Session boundaries are a guide, not a reason to leave unsafe partially integrated behavior enabled.
 B1 and B2 share operation-boundary design: agree that boundary before either fix.
 Avoid a giant rewrite or a permanent database lock held over network calls.
+
+### B1 session guide — adaptable, not exhaustive
+
+| Substep | Intended outcome | Boundary |
+|---|---|---|
+| B1.1 | Coordination foundation: atomic shipment reservation, stable cancellation identity, conditional ownership writes and a durable fence for uncertain external outcomes; focused local tests. | Preparatory only: this alone does not protect existing handlers. Design for B2 extension without implementing refund reconciliation. |
+| B1.2 | Integrate manual cancellation and both cancellation cron paths with the same reservation before refund calls; test concurrent and repeated attempts. | Preserve existing financial allocation and authorization rules. No redesign of global cron scheduling/locks (B3). |
+| B1.3 | Symmetric exclusion with label generation and transfer creation, including operations in flight; focused tests. | Reuse existing claim/fencing patterns. No carrier cancellation policy (B4) or payout redesign. |
+| B1.4 | Integrated verification of incompatible operations, rejection without business side effects, and sibling-shipment isolation; document evidence and remaining limits. | Each earlier substep already includes its own tests; this is not a deferred testing phase or production certification. |
+
+Recommended first implementation session: B1.1 only, after explicit implementation authorization. Do not activate or describe B1 as complete until its participating paths are integrated and verified. Repository SQL preparation, maintainer application, regenerated types and function deployment remain separate gates under the existing deployment policy. No remote operations are authorized by this guide.
+
+The guide may change when concrete bugs, cases or dependencies are discovered. Record evidence and revise affected scope; do not silently absorb B2–B5 or unrelated work. B2 retains refund ID/status and recovery of incomplete financial operations on the same operation identity.
+
+### MVP++ proportionality constraint
+
+Build a clean, professional and understandable cancellation flow, not an advanced-security showcase or a generic workflow framework. Use ordinary financial correctness controls where justified: short atomic database arbitration before external effects, stable idempotency, and no automatic second refund after an ambiguous outcome. Reuse existing patterns and prefer the smallest complete solution; introduce an abstraction only when the concrete flow needs it. Do not trade away money safety for fewer lines, or add speculative infrastructure, checkout/payout redesigns or unrelated hardening.
+
+Maintainer clarification (verbatim):
+> okey ahora si MAS claro, guarda esto en engram y repo, obvioamenet esolo como guia, ay que siempre nos podemos encontrar con mas bugs o mas casos que no guardamos explicitamente. Ahroa quiero pensar que etsamos aplicando un sistema que sigue como que las reglas estandar de las apps no? tienes qeu recordar que estamos contriyendo una mvp++, osea no quiero un sistema ultra complejos ni que la app se destaque por su seguridad vanguardista ni anda de eso, pero tapco que este contruida mal o que cancelaciones sea un codigo spagguiethi propenso a fallar. Solo aclaro esto, quiero un sistema limpio y de un nivel pro sin sobreingenieria.
+
+## B1.1 work unit
+
+### Specs
+
+- S1 — "okey dicho esto en esta seison podemos empezar por b1.1 te principio a fin." Implement only the coordination foundation described in the B1 session guide, not handler integration.
+- S2 — "Solo aclaro esto, quiero un sistema limpio y de un nivel pro sin sobreingenieria." Reuse short SQL transactions and opaque ownership tokens; no generic workflow engine.
+- S3 — "Sin despliegues, mutaciones remotas, refunds ni retries de fixtures fallidos. No amplíes a B2–B5." All executable SQL checks use a new synthetic local database, never application database credentials. Preserve `bun.lock`; do not regenerate deployed types.
+
+### Tasks
+
+- B1.1-A | S1–S3 | inline | Complete: SQL claim/start contract and isolated public-RPC harness; RED observed. Commit: authorized local B1.1 work unit; resulting identity recorded in Engram.
+- B1.1-B | S1–S3 | inline | Complete: CLI migration and matching canonical SQL implemented; local PostgreSQL GREEN observed, docs/CLI guards checked. Commit: same authorized B1.1 work unit.
+- B1.1-C | S1–S3 | independent verifier | Complete: S1–S3 pass, including independent real PostgreSQL probes; writer suite 1692/0. Native assessment unavailable; its required independent-verifier fallback passed, no native review approval claimed. Commit: same authorized B1.1 work unit.
+
+### Design boundary
+
+Use one `shipment_cancellation_operations` row per shipment and two service-only RPCs. Claim locks the shipment, checks scope/actor/state and persisted label/transfer blockers, then returns a stable operation key and a fresh owner token. A fixed 15-minute lease can be reclaimed only before `external_started_at` exists; original source/actor/reason remain unchanged. Start locks the same shipment and checks token, live lease and current blockers before durably setting `external_started_at`. Replays cannot grant another external call. No financial amount, provider refund result, shipment cancellation, product release or notification is written here. B1.2 must freeze the reconstructed provider request before using this foundation; B2 owns refund status/identity and recovery. B1.3 must make label/transfer writers join the same arbitration; current stored guards alone do not claim exclusion of their in-flight work. Preparing carrier safety remains B4.
+
+### Log
+
+- L1 — Original B1.1 authorization, verbatim: "okey dicho esto en esta seison podemos empezar por b1.1 te principio a fin."
+- L2 — Resume, verbatim: "okey dale master."
+- L3 — Infrastructure `9b69ba0` inspected; local Docker named pipe and healthy PostgreSQL 17.6 on loopback confirmed. No infrastructure edits needed. Existing guide edits and `bun.lock` preserved.
+- L4 — RED: `bun scripts/test-shipment-cancellation-coordination.ts`, exit 1. Actual isolated PostgreSQL call rejected because `public.fn_claim_shipment_cancellation(uuid, uuid, uuid, unknown, unknown)` does not exist. Generated database/owned role stubs removed; no remote or provider calls. Harness covers public RPC contention, fixed context, lease fencing, state/ownership/privilege rejection and no business mutation; remaining cases await GREEN.
+- L5 — GREEN: same live harness exit 0 after implementing migration `20261016011954_shipment_cancellation_coordination.sql` and identical canonical SQL. Nine PASS groups: stable claim, repeated/sibling isolation, pre-call expiry/stale token, external fence, authorization, state blockers, actual RPC contention, business isolation and cleanup. Offline CLI/mirror suite: 6 pass, 0 fail, 19 assertions. First scoped ESLint found one unused type; removed it, scoped ESLint/Prettier and `git diff --check` then exit 0. Docs: `docs/shipment-cancellation-coordination.md` includes exact deployment/type gates. No generated type edits or runtime handler edits. Independent verification, broader suite and enabled native RDD were pending at this checkpoint.
+- L6 — Broader `bun test`: exit 0, 1692 pass, 0 fail, 5867 assertions across 188 files. Native `gentle_review assess` attempted once: `unassessable` because untracked files require explicit declaration; no candidate, `reviewDue`, continuation or review authority was issued. The returned high-risk fallback requires writer checks plus an independent verifier, which is running; no native approval is claimed. The migration CLI also updated tracked `supabase/.temp/cli-latest` from `v2.116.0` to `v2.121.0`; restored that incidental parent-generated cache change to its observed baseline. No tooling/configuration change is part of B1.1.
+- L7 — Independent `gentle-ai-verify` verdict: S1/S2/S3 pass, no reproduced blocker. In its isolated scratch copy: live B1.1 harness exit 0 (nine PASS groups); focused offline suite 6/6; separate probes for RLS/grants/search path, real service-role claim, start rechecks, null token, concurrent starts, sibling lock independence, live-clock lease expiration and preparing context all exit 0. Scratch copy timed out/incomplete dependency copy; independent lint/format commands exit 1 because runner files were absent, not candidate failures. Writer's scoped lint/format passed separately; do not claim independent lint passed. Minimal auth/schema fixtures remain non-Supabase integration proof. Proposed additional probe persistence is optional follow-up, not a reproduced source defect.
+- L8 — Final status: only the intended B1.1 SQL/script/docs files and this existing guide edit, plus preserved unrelated `bun.lock`. `supabase/.temp/cli-latest` is status-clean. Lockfile SHA256 matches verifier: `c27c0f1ec570142f227b15d996348c1d6338ba96db51b67102e97b8d793ebfce`. No commit, push, remote SQL, Edge deployment, refund, fixture retry or generated-type edit occurred. Exact future SQL/type/deployment gates are in `docs/shipment-cancellation-coordination.md`. B1.1 is complete as locally verified repository preparation only; B1.2 is the next separately scoped integration. Risk: items 1/2/4 (future financial authority, service-only privileged SQL, concurrency); independent functional verification passed. Native assessment remains unavailable, no review lineage/approval exists.
+- L9 — Maintainer accepted the recommendation to commit B1.1 first without applying SQL: "okey, dale master, quedo a tu espera". Authorized only the scoped local work-unit commit (SQL, tests, docs and this guide); exclude `bun.lock`, no push or deployment. The resulting commit identity and hook outcome are recorded in Engram to avoid a second tracker-only commit.
 
 ## Code-supported audit, not deployed incident claims
 
