@@ -128,6 +128,44 @@ Refresh after installing or updating skills:
 gentle-ai skill-registry refresh --force
 ```
 
+## Project Commands
+
+Run from the repository/worktree root. `package.json` is the executable source of truth; check that the command exists in the current checkout.
+
+| Command                   | Purpose                                                                                                      |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `bun run frontend`        | Start the Expo app.                                                                                          |
+| `bun run dashboard`       | Start the admin dashboard.                                                                                   |
+| `bun run backend`         | Start the Express development server.                                                                        |
+| `bun run dev:install`     | Run the configured Android development-build command.                                                        |
+| `bun run eas:build`       | Run the configured EAS build command.                                                                        |
+| `bun run eas:configure`   | Configure EAS builds.                                                                                        |
+| `bun run doctor:frontend` | Check Expo project health.                                                                                   |
+| `bun run fix:frontend`    | Align Expo dependencies; modifies the project.                                                               |
+| `bun test`                | Run the Bun test suite.                                                                                      |
+| `bun run lint`            | Run ESLint.                                                                                                  |
+| `bun run format`          | Format the project; modifies files.                                                                          |
+| `bun run db:types`        | Regenerate remote Supabase types, only after maintainer deployment confirmation.                             |
+| `bun run clean:all`       | Run the cleanup utility; inspect `scripts/clean-all.ts` and obtain authorization before destructive cleanup. |
+
+`prepare` is the dependency-install lifecycle hook for Husky, not a development server command. Build, deployment, dependency-change and destructive commands still require the applicable authorization; listing them here does not grant it.
+
+### Local PostgreSQL Tests
+
+The following aliases are currently implemented in `C:/dev/School-portal-worktrees/shipment-cancellations` on `feat/shipment-cancellations`, not yet in the main checkout. Run them from that worktree until the infrastructure and aliases are integrated into the target branch.
+
+| Command                 | Purpose                                                                                                   |
+| ----------------------- | --------------------------------------------------------------------------------------------------------- |
+| `bun run db:test:up`    | Start the disposable PostgreSQL stack and wait until healthy.                                             |
+| `bun run db:test:check` | Verify readiness, independent connections, real row-lock contention, recovery and synthetic-data cleanup. |
+| `bun run db:test:stop`  | Stop the test stack without deleting its container or data volume.                                        |
+
+- Docker Desktop must be running with a local Linux engine selected; never use a remote Docker context for these commands.
+- Aliases target Compose project `selene-pg-shipment-cancellations` and `docker-compose.postgres-test.yml`. Default endpoint: `127.0.0.1:55432`; `SELENE_TEST_PG_PORT` overrides the port for both startup and checks.
+- Run `up` before `check`. Another simultaneous environment needs its own project name and available port; use the explicit Compose commands in that worktree's `docs/postgres-test-harness.md`.
+- No frontend, backend, full Supabase stack or business migrations are started. The smoke check proves infrastructure behavior, not shipment cancellation rules.
+- Data deletion is intentionally not a shortcut. Follow the guide's explicit cleanup instructions only for your own disposable stack; never prune existing Docker resources.
+
 ## Verification
 
 Use Bun unless a package explicitly requires another tool.
