@@ -16,6 +16,7 @@ import type {
   ReleaseQueueRun,
 } from '../../../lib/connectPayoutReleaseQueue';
 import { formatCurrency } from '../../../lib/utils/formatCurrency';
+import { formatTime } from '../../../lib/utils/formatDate';
 
 import {
   PAYOUT_PAGE_SIZE,
@@ -30,14 +31,24 @@ export type PayoutRunsMode = 'processing' | 'action-required' | 'history';
 interface PayoutRunsWorkbenchProps {
   mode: PayoutRunsMode;
   runs: (ReleaseQueueRun | ReleaseQueueActionRequiredRun)[];
+  pagination?: { page: number; totalGroups: number };
+  pageRevision?: string;
+  onPageChange?: (page: number) => void;
+  onSelectAll?: () => Promise<ReleaseQueueActionRequiredRun[]>;
   onBusyChange?: (busy: boolean) => void;
   isLoading?: boolean;
   isRetrying: boolean;
   isReleasing: boolean;
-  onRetryFailedPayout: (runId: string) => Promise<void>;
+  onRetryFailedPayout: (runId: string, expected?: ReleaseQueueRun | ReleaseQueueActionRequiredRun) => Promise<void>;
 }
 const batchControl = `rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-platinum transition-colors hover:border-lion/50 disabled:opacity-40 ${focus}`;
 const money = (cents: number) => formatCurrency(centsToMoney(cents));
+const paymentTime = (run: ReleaseQueueRun) =>
+  run.paidAt && Number.isFinite(Date.parse(run.paidAt)) ? (
+    <time dateTime={run.paidAt}>{formatTime(run.paidAt)}</time>
+  ) : (
+    'No disponible'
+  );
 const sellerLabel = (run: ReleaseQueueRun) =>
   run.sellerName
     ? `@${run.sellerName}`
@@ -64,6 +75,10 @@ function attentionRun(
 export const PayoutRunsWorkbench = ({
   mode,
   runs,
+  pagination,
+  pageRevision = JSON.stringify(runs),
+  onPageChange,
+  onSelectAll,
   isRetrying,
   isReleasing,
   onRetryFailedPayout,
@@ -76,12 +91,18 @@ export const PayoutRunsWorkbench = ({
   >(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [page, setPage] = useState(0);
+  const [retainedRuns, setRetainedRuns] = useState<(ReleaseQueueRun | ReleaseQueueActionRequiredRun)[]>([]);
+  const [selecting, setSelecting] = useState(false);
+  const [retainedPageRevision, setRetainedPageRevision] = useState<string | null>(null);
+  const allRuns = !pagination ? runs : retainedPageRevision === pageRevision
+    ? [...retainedRuns, ...runs.filter((item) => !retainedRuns.some((next) => next.runId === item.runId))]
+    : [...retainedRuns.filter((item) => !runs.some((next) => next.runId === item.runId)), ...runs];
   const [outcome, setOutcome] = useState<string | null>(null);
   const [retryError, setRetryError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const inFlight = useRef(false);
   const confirmationRef = useRef<HTMLElement>(null);
-  const latest = useRef({ runs, mode, isLoading, isRetrying, isReleasing });
+  const latest = useRef({ runs: allRuns, mode, isLoading, isRetrying, isReleasing });
   const activeReview = useRef<typeof review>(null);
   const setReview = (next: typeof review) => {
     activeReview.current = next;
@@ -95,7 +116,7 @@ export const PayoutRunsWorkbench = ({
       item.status === 'failed' &&
       details?.reason === 'retryable_failed' &&
       details.canRetry &&
-      runs.filter((other) => other.runId === item.runId).length === 1
+      allRuns.filter((other) => other.runId === item.runId).length === 1
     );
   };
   const signature = (item: ReleaseQueueRun | ReleaseQueueActionRequiredRun) =>
@@ -106,38 +127,38 @@ export const PayoutRunsWorkbench = ({
       attentionRun(item)?.reason,
       attentionRun(item)?.canRetry,
     ]);
-  const selectedRuns = runs.filter(
+  const selectedRuns = allRuns.filter(
     (item) => selected.includes(item.runId) && eligible(item),
   );
-  const currentPage = Math.min(
+  const currentPage = pagination?.page ?? Math.min(
     page,
     Math.max(0, Math.ceil(runs.length / PAYOUT_PAGE_SIZE) - 1),
   );
-  const visible = runs.slice(
+  const visible = pagination ? runs : runs.slice(
     currentPage * PAYOUT_PAGE_SIZE,
     (currentPage + 1) * PAYOUT_PAGE_SIZE,
   );
   const usesModal = mode !== 'processing';
   const run = usesModal
-    ? runs.find((item) => item.runId === focusedRunId)
+    ? allRuns.find((item) => item.runId === focusedRunId)
     : (runs.find((item) => item.runId === focusedRunId) ?? visible[0]);
   const isReviewed =
     review !== null &&
     review.length > 0 &&
     review.every((item) =>
-      runs.some(
+      allRuns.some(
         (next) => eligible(next) && signature(next) === signature(item),
       ),
     );
   useLayoutEffect(() => {
-    latest.current = { runs, mode, isLoading, isRetrying, isReleasing };
+    latest.current = { runs: allRuns, mode, isLoading, isRetrying, isReleasing };
     if (!isReviewed) activeReview.current = null;
-  }, [runs, mode, isLoading, isRetrying, isReleasing, isReviewed]);
+  }, [allRuns, mode, isLoading, isRetrying, isReleasing, isReviewed]);
   useLayoutEffect(() => {
     if (isReviewed && focusedRunId === null) confirmationRef.current?.focus();
   }, [isReviewed, focusedRunId]);
   if (review && !isReviewed && !submitting) setReviewState(null);
-  const busy = isLoading || isRetrying || isReleasing || submitting;
+  const busy = isLoading || isRetrying || isReleasing || submitting || selecting;
   const Icon =
     mode === 'action-required'
       ? AlertTriangle
@@ -188,7 +209,7 @@ export const PayoutRunsWorkbench = ({
         )
           throw new Error('La cola cambió; revisa las condiciones actuales.');
         setOutcome(`${accepted} aceptadas · solicitando ${item.runId}`);
-        await onRetryFailedPayout(item.runId);
+        await onRetryFailedPayout(item.runId, item);
         accepted++;
         setSelected((ids) => ids.filter((id) => id !== item.runId));
         stopped = null;
@@ -279,6 +300,12 @@ export const PayoutRunsWorkbench = ({
             : `${workbenchScroll} space-y-5 p-5 sm:p-6`
         }
       >
+        {mode === 'history' ? (
+          <div className="text-sm text-platinum">
+            <p className="mb-1 text-xs text-blue-light">Fecha de pago observada</p>
+            {paymentTime(run)}
+          </div>
+        ) : null}
         {mode === 'action-required' ? (
           <section
             aria-label="Motivo reportado"
@@ -420,6 +447,8 @@ export const PayoutRunsWorkbench = ({
               checked={selectedRuns.some((item) => item.runId === run.runId)}
               onChange={() => {
                 if (busy || !eligible(run)) return;
+                setRetainedRuns(allRuns);
+                setRetainedPageRevision(pageRevision);
                 setSelected((ids) =>
                   ids.includes(run.runId)
                     ? ids.filter((id) => id !== run.runId)
@@ -479,8 +508,10 @@ export const PayoutRunsWorkbench = ({
           selection={
             <>
               {selectedRuns.length} seleccionadas ·{' '}
-              {runs.filter(eligible).length} reintentables ·{' '}
-              {runs.filter((item) => !eligible(item)).length} requieren revisión
+              {pagination ? `${pagination.totalGroups} ejecuciones en la consulta` : <>
+                {runs.filter(eligible).length} reintentables ·{' '}
+                {runs.filter((item) => !eligible(item)).length} requieren revisión
+              </>}
             </>
           }
           description="Solo se incluyen dispersiones con reintento disponible en esta consulta. El servidor verifica el fallo y el retorno de fondos; reintentar no confirma la llegada al banco."
@@ -489,10 +520,23 @@ export const PayoutRunsWorkbench = ({
               <button
                 type="button"
                 className={batchControl}
-                disabled={busy || !runs.some(eligible)}
-                onClick={() => {
-                  setSelected(runs.filter(eligible).map((item) => item.runId));
+                disabled={busy || (!pagination && !runs.some(eligible))}
+                onClick={async () => {
+                  if (busy || inFlight.current) return;
                   setReview(null);
+                  if (!onSelectAll) { setSelected(runs.filter(eligible).map((item) => item.runId)); return; }
+                  inFlight.current = true;
+                  setSelecting(true);
+                  onBusyChange?.(true);
+                  try {
+                    const complete = await onSelectAll();
+                    setRetainedRuns(complete);
+                    setRetainedPageRevision(pageRevision);
+                    setSelected(complete.map((item) => item.runId));
+                    setRetryError(null);
+                  } catch (error) {
+                    setRetryError(error instanceof Error ? error.message : 'No se pudo completar la selección.');
+                  } finally { inFlight.current = false; setSelecting(false); onBusyChange?.(false); }
                 }}
               >
                 Seleccionar todos los reintentables
@@ -503,6 +547,7 @@ export const PayoutRunsWorkbench = ({
                 disabled={busy || !selectedRuns.length}
                 onClick={() => {
                   setSelected([]);
+                  setRetainedRuns([]);
                   setReview(null);
                 }}
               >
@@ -557,7 +602,7 @@ export const PayoutRunsWorkbench = ({
             <div className="flex items-center justify-between border-b border-white/5 px-5 py-4">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-light">
                 Ejecuciones{' '}
-                <span className="ml-2 text-platinum">{runs.length}</span>
+                <span className="ml-2 text-platinum">{pagination?.totalGroups ?? runs.length}</span>
               </p>
               <Icon size={16} className={tone} />
             </div>
@@ -591,6 +636,11 @@ export const PayoutRunsWorkbench = ({
                       <span className={`mt-2 block text-xs ${tone}`}>
                         {statusLabel(item)}
                       </span>
+                      {mode === 'history' ? (
+                        <span className="mt-2 block text-xs text-blue-light">
+                          Fecha de pago observada: {paymentTime(item)}
+                        </span>
+                      ) : null}
                       {mode === 'action-required' &&
                       attentionRun(item)?.failureReason ? (
                         <span className="mt-2 line-clamp-2 break-words text-xs text-amber-400">
@@ -637,12 +687,13 @@ export const PayoutRunsWorkbench = ({
             </div>
             <PayoutPagination
               page={currentPage}
-              total={runs.length}
+              total={pagination?.totalGroups ?? runs.length}
               label="dispersiones"
               display={usesModal ? 'pages' : 'range'}
               disabled={busy}
               onPageChange={(next) => {
-                setPage(next);
+                (onPageChange ?? setPage)(next);
+                setReview(null);
                 setFocusedRunId(
                   usesModal
                     ? null

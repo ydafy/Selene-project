@@ -104,6 +104,60 @@ function harness(overrides: Record<string, unknown> = {}) {
 }
 afterEach(() => mock.restore());
 
+it('loads all 21 retry groups independently of the page and retains off-page selection', async () => {
+  const all = Array.from({ length: 21 }, (_, i) => ({ ...run, runId: `run-${i}` }));
+  const h = harness({ runs: [all[20]], pagination: { page: 1, totalGroups: 21 },
+    onPageChange: () => undefined, onSelectAll: async () => all });
+  expect(renderToStaticMarkup(h.render())).toContain('Página 2 de 2');
+  await h.click('Seleccionar todos los reintentables');
+  expect(h.calls).toEqual([]);
+  h.openDetail();
+  const checkbox = nodes(h.render()).find((node) => node.type === 'input' && node.props.type === 'checkbox')!;
+  expect(checkbox.props.checked).toBe(true);
+  (checkbox.props.onChange as () => void)();
+  expect(renderToStaticMarkup(h.render())).toContain('20 seleccionadas');
+  (nodes(h.render()).find((node) => node.type === 'input' && node.props.type === 'checkbox')!.props.onChange as () => void)();
+  await h.click('Reintentar');
+  await h.click('Confirmar reintento');
+  expect(h.calls).toEqual(all.map((item) => item.runId));
+});
+
+it('reviews all 21 fresh retry selections despite an older visible nonretryable run', async () => {
+  const all = Array.from({ length: 21 }, (_, i) => ({ ...run, runId: `run-${i}` }));
+  const h = harness({ runs: [{ ...all[0], canRetry: false, reason: 'failed' }],
+    pagination: { page: 0, totalGroups: 21 }, pageRevision: 'old-page', onSelectAll: async () => all });
+  await h.click('Seleccionar todos los reintentables');
+  expect(renderToStaticMarkup(h.render())).toContain('21 seleccionadas');
+  expect(h.calls).toEqual([]);
+  h.openDetail();
+  const checkbox = () => nodes(h.render()).find((node) => node.type === 'input' && node.props.type === 'checkbox')!;
+  expect(checkbox().props.disabled).not.toBe(true);
+  (checkbox().props.onChange as () => void)();
+  expect(renderToStaticMarkup(h.render())).toContain('20 seleccionadas');
+  (checkbox().props.onChange as () => void)();
+  await h.click('Reintentar'); await h.click('Confirmar reintento');
+  expect(h.calls).toEqual(all.map((item) => item.runId));
+});
+
+it('a later page drift revokes a fresh complete-selection confirmation', async () => {
+  const h = harness({ runs: [run], pagination: { page: 0, totalGroups: 1 },
+    pageRevision: 'old-page', onSelectAll: async () => [run] });
+  await h.click('Seleccionar todos los reintentables'); await h.click('Reintentar');
+  const confirm = nodes(h.render()).find((node) => node.type === 'button' && label(node) === 'Confirmar reintento')!;
+  Object.assign(h.props, { runs: [{ ...run, amountCents: 999 }], pageRevision: 'later-page' });
+  expect(renderToStaticMarkup(h.render())).not.toContain('Confirmar reintento');
+  await (confirm.props.onClick as () => Promise<void>)();
+  expect(h.calls).toEqual([]);
+});
+
+it('a failed complete-selection fetch installs no partial retry selection', async () => {
+  const h = harness({ onSelectAll: async () => { throw new Error('Consulta incompleta'); } });
+  await h.click('Seleccionar todos los reintentables');
+  expect(renderToStaticMarkup(h.render())).toContain('Consulta incompleta');
+  expect(h.calls).toEqual([]);
+  expect(nodes(h.render()).find((n) => n.type === 'button' && label(n) === 'Reintentar')?.props.disabled).toBe(true);
+});
+
 it('uses the shared prominent summary and only reviews eligible retries before confirmation', async () => {
   const h = harness({
     runs: [
@@ -248,7 +302,7 @@ it('opens and closes existing read-only history details only through its card mo
   expect(renderToStaticMarkup(h.render())).not.toContain('<dialog');
   expect(h.calls).toEqual([]);
 });
-it('uses tall twenty-row page-scroll history cards and preserves supplied order without inventing paid dates', () => {
+it('uses tall twenty-row page-scroll history cards and preserves supplied order with unavailable dates', () => {
   const h = harness({
     mode: 'history',
     runs: Array.from({ length: 21 }, (_, i) => ({
@@ -270,7 +324,8 @@ it('uses tall twenty-row page-scroll history cards and preserves supplied order 
   expect(html).not.toContain('lg:grid-cols-2');
   expect(html).not.toContain('overflow-y-auto');
   expect(html).not.toContain('Detalle de dispersión');
-  expect(html).not.toContain('Fecha de pago');
+  expect(html).toContain('Fecha de pago observada');
+  expect(html).toContain('No disponible');
   const pagination = nodes(tree).find((n) => n.props.label === 'dispersiones')!;
   expect(pagination.props.display).toBe('pages');
   (cards[0].props.onClick as () => void)();
@@ -638,4 +693,47 @@ it('keeps missing seller attribution readable and retry rejection visible', asyn
   expect(html).toContain('Vendedor no identificado');
   expect(html).not.toContain('@null');
   expect(html).toContain('RETURNED_FUNDS_PENDING');
+});
+
+
+it('shows the observed payment timestamp in History cards and details without money actions', () => {
+  const paidAt = '2026-10-15T12:34:00Z';
+  const h = harness({ mode: 'history', runs: [{ ...run, status: 'paid', paidAt }] });
+  const cardTree = h.render();
+  const cardTime = nodes(cardTree).find((node) => node.type === 'time');
+  expect(cardTime).toBeDefined();
+  expect(cardTime!.props.dateTime).toBe(paidAt);
+  expect(label(cardTree)).toContain('Fecha de pago observada');
+  expect(label(cardTime)).toMatch(/15\/10\/2026/);
+  h.openDetail();
+  const detailTree = h.render();
+  const detail = nodes(detailTree).find((node) => node.props['aria-label'] === 'Detalle de dispersión')!;
+  expect(detail).toBeDefined();
+  expect(label(detail)).toContain('Fecha de pago observada');
+  expect(nodes(detail).some((node) => node.type === 'time' && node.props.dateTime === paidAt)).toBe(true);
+  const html = renderToStaticMarkup(detailTree);
+  expect(html).toContain('no es una garantía irreversible');
+  expect(html).not.toContain('Confirmar reintento');
+  expect(html).not.toContain('Seleccionar para reintentar');
+  expect(h.calls).toEqual([]);
+});
+
+it('shows unavailable payment dates without using failure or retry dates and leaves other modes unchanged', () => {
+  for (const paidAt of [null, 'invalid']) {
+    const h = harness({ mode: 'history', runs: [{ ...run, status: 'paid', paidAt }] });
+    expect(label(h.render())).toContain('Fecha de pago observada');
+    expect(label(h.render())).toContain('No disponible');
+    expect(nodes(h.render()).some((node) => node.type === 'time')).toBe(false);
+    h.openDetail();
+    const detail = nodes(h.render()).find((node) => node.props['aria-label'] === 'Detalle de dispersión')!;
+    expect(label(detail)).toContain('No disponible');
+    expect(nodes(detail).some((node) => node.type === 'time')).toBe(false);
+    expect(h.calls).toEqual([]);
+  }
+  for (const mode of ['processing', 'action-required']) {
+    const h = harness({ mode, runs: [{ ...run, paidAt: '2026-10-15T12:34:00Z' }] });
+    if (mode === 'action-required') h.openDetail();
+    expect(label(h.render())).not.toContain('Fecha de pago observada');
+    expect(h.calls).toEqual([]);
+  }
 });

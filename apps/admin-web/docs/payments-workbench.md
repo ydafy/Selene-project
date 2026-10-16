@@ -6,7 +6,7 @@ The admin `/payments` route starts in **Por liberar**. Horizontal lifecycle tabs
 
 ### Release payments
 
-1. Choose **Seleccionar todos los elegibles** for the current queried results, including other visual pages. Alternatively open a seller card and choose its eligible shipments in the detail modal; blocked shipments cannot be authorized. Opening a card never selects shipments or releases money.
+1. Choose **Seleccionar todos los elegibles** to fetch every selectable seller matching the current search, including unloaded server pages. A loading or incomplete/error result never installs partial selection. Alternatively open a seller card and choose its eligible shipments in the detail modal; blocked shipments cannot be authorized. Opening a card never selects shipments or releases money.
 2. Check the selected seller count, shipment count and prominent **Total a liberar** in the content-sized action surface, then choose **Liberar** and **Confirmar liberación** once for the batch. The first action opens review; only explicit confirmation submits requests.
 3. Requests execute serially, one seller at a time, through the existing release callback. Selecting or reviewing never moves money.
 4. Accepted seller selections clear. On a rejected or unconfirmed request, the batch stops; failed and unattempted selections remain. Inspect accepted and unattempted counts and refresh before deciding what to do next.
@@ -25,25 +25,36 @@ A bank rejection may require correcting account details rather than repeating an
 ### Monitor and investigate
 
 - **En proceso:** already-authorized runs, without another manual gate. The queue does not identify an exact processing stage or bank-arrival date.
-- **Historial:** observed paid runs, strictly read-only. Click a card to open the existing seller, amount, observed-result explanation and technical references in the shared native modal; opening/closing never selects or retries anything. **Fue un reintento** is a compact badge; the parent execution ID remains under **Referencias técnicas**. A late reversal may move a run back to attention; if a refreshed query removes the focused run, its details disappear. Current query ordering is preserved: payment-date chronology is deferred until authoritative `paid_at` is exposed, not approximated from shipment or attempt dates.
+- **Historial:** observed paid runs, strictly read-only. Click a card to open the existing seller, amount, observed-result explanation and technical references in the shared native modal; opening/closing never selects or retries anything. **Fue un reintento** is a compact badge; the parent execution ID remains under **Referencias técnicas**. A late reversal may move a run back to attention; if a refreshed query removes the focused run, its details disappear. Cards and the detail modal show **Fecha de pago observada** from the selected run's authoritative `paid_at`, formatted in the viewer's local time. History is ordered by payment instant newest first, with run ID descending for equal instants. Missing/invalid dates show **No disponible** and sort last, also by run ID descending; shipment completion, failure, retry creation and arrival estimates are never substituted. This date is an observed event time, not irreversible bank receipt.
 - Buyer charges are deliberately removed from this payout workbench. The previous earnings view exposed shipment subtotals and shipment-derived status, not authoritative full buyer charges. Neither that legacy hook nor its polling subscription is mounted by this page; the underlying backend is unchanged.
 
 ## Selection, layout and safety
 
-- Each visual list renders at most **20 seller/run rows per page**. Selection spans current queried pages, not unseen records in the database. Changing the search clears release selection and remounts the query-specific inspector/retry selection.
+- Each server page contains at most **20 complete seller/run groups**, with every matching shipment detail for those groups. The frontend does not slice those pages again. Counts come from backend group totals, not shipment rows or the visible page. Select-all explicitly retrieves the complete selectable set for the active search and Ready/Attention bucket, including unloaded pages; it never dispatches money. Individual selection, deselection and clear remain meaningful across pages. Changing search resets the page and selections; refreshed server bounds clamp an obsolete page.
 - **Por liberar:** taller seller cards have no lateral checkbox. Actual eligible selection is shown with a subtle green surface/border and a trailing check; selected/eligible counts identify partial selections. Neutral hover never implies selection. The list scrolls with the page, not inside its own body, and renders at most20sellers per visual page. Its footer shows **Página N de M**. Clicking a seller opens the existing **Revisión por vendedor** content in a native dialog; close/Escape retain selection. The dialog owns keyboard focus containment/restoration and can scroll if its details exceed the viewport. These browser behaviors still require manual verification.
 - **Necesita atención** uses the same page-scroll/20-row/page-number interaction and shared native modal shell as release, with selection controls inside the modal and explicit retry/investigation labels. **Historial** uses the same taller page-scroll/20-row/page-number list and native modal shell without selection or money actions; changing its visual page closes details. **En proceso** alone keeps bounded desktop list/inspector panels with independent content scrolling; narrow layouts stack its panels. Its existing row-range pagination is unchanged.
-- Confirmation binds reviewed eligible shipment IDs, seller/Connect account and integer-cent amounts, or retry run IDs/status/authority/amounts. Relevant drift invalidates review; restoring old values cannot revive authorization. Remaining rows are checked again before each serial callback.
-- Page tabs, search, refresh and selection controls remain locked throughout a batch, including gaps between requests. Request-level guards also prevent overlapping page callbacks.
+- Confirmation binds reviewed eligible shipment IDs, seller/Connect account and integer-cent amounts, or retry run IDs/status/authority/amounts. Relevant drift invalidates review; restoring old values cannot revive authorization. Remaining rows are checked again before each serial callback. Each callback performs a new complete server selection read, resolves even off-page sellers/runs, and compares eligibility, reviewed IDs/account and integer-cent amounts (or retry status/authority/amount) before dispatch. It never silently replaces the reviewed amount with a refreshed amount. Retained selected details are review data, not freshness evidence. Complete selections retain their reviewed details over the page that was already committed when the read began. A later page commit reconciles overlapping groups and actual financial drift invalidates review. Every page read carries an opaque identity; a committed page/query change or loading/error interval advances an authorization epoch. A dispatch validation read is rejected if that epoch changes while awaiting it, even if flags or amounts later recover. Overlapping reads are rejected rather than ordered using wall-clock timestamps or assumed server snapshot timing. Read/validation failure stops the serial batch without submitting that action.
+- Page tabs, search, refresh and selection controls remain locked during complete-selection loading and throughout a batch, including gaps between requests. Request-level guards also prevent overlapping page callbacks.
 - Queue errors and pending searches must not authorize stale results. Counts describe the current query: seller groups in Por liberar and executions in other tabs. Refresh and the existing 30-second polling concern the payout queue only.
 - All calculations stay in integer cents. Queue totals are not Stripe balances; Connect account IDs are not bank destination details.
-- No financial hooks, mapper, backend API, SQL, database types, dependency versions or deployment configuration are changed.
+- The original redesign did not change financial hooks, backend APIs or money authority. The B4/B5 follow-up adds the nullable selected-run payment date to the admin SQL view/generated types and maps/sorts it only for History. Processing/attention order, release/retry callbacks, amounts and authority remain unchanged; no event timeline is added. See [deployment and verification boundaries](payments-history-deployment.md).
 
-## Deferred scope: real server pagination
+## Grouped-pagination deployment boundary
 
-The maintainer explicitly deferred this until accepting the design. **Visual pagination limits DOM/rendering work, not the initial network payload.** The current endpoint has no explicit pagination contract; its deployed result cap is not established here.
+The frontend now sends explicit `bucket`, zero-based `page` and `scope: 'page'`
+requests. Select-all and dispatch revalidation use `scope: 'selection'` for the
+active search/bucket. Missing, inconsistent, truncated, wrong-bucket or
+wrong-scope metadata fails closed; there is no legacy fallback in paginated mode.
+The existing legacy search-only wire remains available to other callers.
 
-A later, separately authorized design should cover server-side seller/run grouping and page boundaries, stable ordering/cursors, complete seller detail retrieval, authoritative total counts, and what selecting all means across unloaded pages. Do not paginate raw shipment rows in a way that silently splits a seller's release batch or a payout run. No backend changes, remote SQL or deployment are authorized by this follow-up note.
+Each read is a fresh snapshot, not a stable cursor under concurrent queue changes.
+Complete selection intentionally loads all selectable group details and may exceed
+resource/time limits; errors must not be interpreted as partial success. The UI
+does not add a bulk monetary endpoint or automatic mutation retries.
+See [manual deployment and read-contract checks](payments-pagination-deployment.md).
+The maintainer must deploy the read Edge Function separately before using this
+frontend. Repository tests do not prove remote deployment, effective privileges,
+PostgreSQL behavior, browser focus, or Stripe behavior.
 
 ## Verification
 

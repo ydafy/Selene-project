@@ -32,7 +32,7 @@ if (process.env.A65_SSR_CHILD !== '1') {
   const row: ConnectPayoutReleaseQueueRow = {
     completed_at: null, ineligible_reason: null, is_eligible: false, is_retryable: false,
     order_id: 'order-1', payout_run_amount_cents: 12500, payout_run_failed_at: null,
-    payout_run_failure_reason: null, payout_run_id: 'run-1', payout_run_status: 'paid',
+    payout_run_failure_reason: null, payout_run_id: 'run-1', payout_run_paid_at: null, payout_run_status: 'paid',
     release_amount_cents: 12500, requires_manual_review: false, retry_of_run_id: null,
     seller_id: 'seller-1', seller_name: 'SSR Seller', shipment_id: 'shipment-1',
     status: 'completed', stripe_account_id: 'acct_123', stripe_onboarding_status: 'complete',

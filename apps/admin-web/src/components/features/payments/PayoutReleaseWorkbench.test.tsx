@@ -133,6 +133,25 @@ function harness(overrides: Record<string, unknown> = {}) {
   };
   return { render, click, calls, props, openDetail };
 }
+it('uses server page bounds without double slicing and reviews selected off-page sellers', async () => {
+  const offPage = { ...batch, sellerId: 'seller-off' };
+  let selections = 0;
+  const h = harness({
+    batches: [batch], selectionBatches: [batch, offPage],
+    pagination: { page: 1, totalGroups: 21 }, onPageChange: () => undefined,
+    selectedShipmentsBySeller: { 'seller-off': ['shipment-ready'] },
+    onSelectAll: async () => { selections++; },
+  });
+  expect(renderToStaticMarkup(h.render())).toContain('Aurora');
+  expect(renderToStaticMarkup(h.render())).toContain('Página 2 de 2');
+  await h.click('Seleccionar todos los elegibles');
+  expect(selections).toBe(1);
+  expect(h.calls).toEqual([]);
+  await h.click('Liberar');
+  await h.click('Confirmar liberación');
+  expect(h.calls).toEqual(['seller-off']);
+});
+
 // Restore spies after each example; no client modules or financial requests are loaded.
 afterEach(() => mock.restore());
 

@@ -64,13 +64,17 @@ const snapshotFor = (
 
 interface PayoutReleaseWorkbenchProps {
   batches: ReleaseQueueBatch[];
+  selectionBatches?: ReleaseQueueBatch[];
+  pagination?: { page: number; totalGroups: number };
+  onPageChange?: (page: number) => void;
+  onSelectAll?: () => Promise<void>;
   isLoading: boolean;
   isReleasing: boolean;
   selectedShipmentsBySeller: Record<string, string[]>;
   onToggleShipment: (sellerId: string, shipmentId: string) => void;
   onSelectEligibleBatch: (sellerId: string, shipmentIds: string[]) => void;
   onClearAllSelections: () => void;
-  onRelease: (sellerId: string) => Promise<void>;
+  onRelease: (sellerId: string, expected?: ReturnType<typeof snapshotFor>[number]) => Promise<void>;
   onBusyChange?: (busy: boolean) => void;
 }
 
@@ -82,6 +86,10 @@ const reasonLabel = (reason: string | null) =>
 
 export const PayoutReleaseWorkbench = ({
   batches,
+  selectionBatches = batches,
+  pagination,
+  onPageChange,
+  onSelectAll,
   isLoading,
   isReleasing,
   selectedShipmentsBySeller,
@@ -97,6 +105,7 @@ export const PayoutReleaseWorkbench = ({
   const [submitting, setSubmitting] = useState(false);
   const inFlight = useRef(false);
   const [page, setPage] = useState(0);
+  const [selecting, setSelecting] = useState(false);
   const [progress, setProgress] = useState<{
     accepted: number;
     stopped: string | null;
@@ -104,7 +113,7 @@ export const PayoutReleaseWorkbench = ({
   } | null>(null);
   const reviewedSnapshot = useRef<ReturnType<typeof snapshotFor>>([]);
   const latest = useRef({
-    batches,
+    batches: selectionBatches,
     selectedShipmentsBySeller,
     isLoading,
     isReleasing,
@@ -112,14 +121,14 @@ export const PayoutReleaseWorkbench = ({
   // Publish only committed props before any post-commit confirmation can run.
   useLayoutEffect(() => {
     latest.current = {
-      batches,
+      batches: selectionBatches,
       selectedShipmentsBySeller,
       isLoading,
       isReleasing,
     };
-  }, [batches, selectedShipmentsBySeller, isLoading, isReleasing]);
+  }, [selectionBatches, selectedShipmentsBySeller, isLoading, isReleasing]);
   // Review and dispatch share the same integer-cents, account-bound snapshot.
-  const snapshot = snapshotFor(batches, selectedShipmentsBySeller);
+  const snapshot = snapshotFor(selectionBatches, selectedShipmentsBySeller);
   const currentKey = JSON.stringify(snapshot);
   const isReviewed =
     reviewKey === currentKey && snapshot.length > 0 && !isLoading;
@@ -128,11 +137,11 @@ export const PayoutReleaseWorkbench = ({
     activeReview.current = isReviewed ? reviewKey : null;
   }, [isReviewed, reviewKey]);
   if (reviewKey !== null && !isReviewed) setReviewKey(null);
-  const currentPage = Math.min(
+  const currentPage = pagination?.page ?? Math.min(
     page,
     Math.max(0, Math.ceil(batches.length / PAYOUT_PAGE_SIZE) - 1),
   );
-  const visible = batches.slice(
+  const visible = pagination ? batches : batches.slice(
     currentPage * PAYOUT_PAGE_SIZE,
     (currentPage + 1) * PAYOUT_PAGE_SIZE,
   );
@@ -151,10 +160,10 @@ export const PayoutReleaseWorkbench = ({
         ? ` · ${releaseError}. Actualiza la cola antes de volver a actuar.`
         : ''}
     </p>
-  ) : null;
+  ) : releaseError ? <p role="alert" className="mb-3 text-sm text-blue-light">{releaseError}</p> : null;
   const batch = batches[0];
-  const detailBatch = batches.find((item) => item.sellerId === focusedSellerId);
-  const busy = isReleasing || submitting;
+  const detailBatch = selectionBatches.find((item) => item.sellerId === focusedSellerId);
+  const busy = isReleasing || submitting || selecting;
 
   if (isLoading)
     return (
@@ -235,7 +244,7 @@ export const PayoutReleaseWorkbench = ({
               'La selección, importe o cuenta cambió; revisa la cola.',
             );
           }
-          await onRelease(item.sellerId);
+          await onRelease(item.sellerId, item);
           accepted++;
           setProgress({
             accepted,
@@ -284,10 +293,19 @@ export const PayoutReleaseWorkbench = ({
               type="button"
               disabled={busy}
               className={secondaryAction}
-              onClick={() => {
-                for (const item of batches)
-                  onSelectEligibleBatch(item.sellerId, eligibleIdsFor(item));
+              onClick={async () => {
+                if (busy || inFlight.current) return;
                 setReviewKey(null);
+                if (!onSelectAll) {
+                  for (const item of batches) onSelectEligibleBatch(item.sellerId, eligibleIdsFor(item));
+                  return;
+                }
+                inFlight.current = true;
+                setSelecting(true);
+                onBusyChange?.(true);
+                try { await onSelectAll(); setReleaseError(null); }
+                catch (error) { setReleaseError(error instanceof Error ? error.message : 'No se pudo completar la selección.'); }
+                finally { inFlight.current = false; setSelecting(false); onBusyChange?.(false); }
               }}
             >
               Seleccionar todos los elegibles
@@ -351,7 +369,7 @@ export const PayoutReleaseWorkbench = ({
         <div className="flex items-center justify-between border-b border-white/5 px-5 py-4">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-light">
             Vendedores{' '}
-            <span className="ml-2 text-platinum">{batches.length}</span>
+            <span className="ml-2 text-platinum">{pagination?.totalGroups ?? batches.length}</span>
           </p>
           <Wallet size={16} className="text-lion" />
         </div>
@@ -420,12 +438,13 @@ export const PayoutReleaseWorkbench = ({
         </div>
         <PayoutPagination
           page={currentPage}
-          total={batches.length}
+          total={pagination?.totalGroups ?? batches.length}
           label="vendedores"
           display="pages"
           disabled={busy}
           onPageChange={(next) => {
-            setPage(next);
+            (onPageChange ?? setPage)(next);
+            setReviewKey(null);
             setFocusedSellerId(null);
           }}
         />

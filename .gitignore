@@ -55,6 +55,11 @@ apps/backend/build/
 # TypeScript
 # =============================================================================
 *.tsbuildinfo
+
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
 # Local Pi runtime state
 .atl/
 /.local/
