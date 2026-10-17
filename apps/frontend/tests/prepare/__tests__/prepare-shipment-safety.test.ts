@@ -29,9 +29,10 @@ describe('prepare shipment safety & resilience policy', () => {
 
   test('protects handleConfirm against concurrent executions & network drops', () => {
     // Guard clause (ignora saltos de línea CRLF/LF)
-    expect(src).toMatch(/if\s*\(\s*isProcessing/);
+    expect(src).toMatch(/if\s*\(\s*submissionInFlight\.current\s*\|\|\s*isProcessing/);
+    expect(src).toMatch(/submissionInFlight\.current = true;[\s\S]*?await authenticateAsync/);
     // Finally block cleanup
-    expect(src).toMatch(/finally\s*\{[\s\S]*?setIsAuthenticating\(false\);/);
+    expect(src).toMatch(/finally\s*\{\s*submissionInFlight\.current = false;\s*setIsAuthenticating\(false\);/);
     // Resilience: refetch in catch block
     expect(src).toContain('await refetch();');
   });

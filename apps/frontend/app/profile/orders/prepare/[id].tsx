@@ -115,6 +115,7 @@ export default function PrepareShipmentScreen() {
 
   const targetShipmentId = selectedShipment?.id;
 
+  const submissionInFlight = useRef(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const isProcessing = isAuthenticating || actions.generateLabel.isLoading;
   const hasExistingLabel = Boolean(selectedShipment?.label_url);
@@ -182,6 +183,7 @@ export default function PrepareShipmentScreen() {
 
   const handleConfirm = async () => {
     if (
+      submissionInFlight.current ||
       isProcessing ||
       !selectedOrigin ||
       !targetShipmentId ||
@@ -190,15 +192,13 @@ export default function PrepareShipmentScreen() {
     )
       return;
 
+    submissionInFlight.current = true;
     setIsAuthenticating(true);
     setErrorMsg(null);
 
     try {
       const auth = await authenticateAsync(t('orders:prepare.securityReason'));
-      if (!auth.success) {
-        setIsAuthenticating(false);
-        return;
-      }
+      if (!auth.success) return;
 
       const result = await generateLabelWithRecovery({
         generate: () =>
@@ -233,6 +233,7 @@ export default function PrepareShipmentScreen() {
       reportLabelDiagnostic('generation_unconfirmed');
       setErrorMsg(t('orders:prepare.errors.resultUnconfirmed'));
     } finally {
+      submissionInFlight.current = false;
       setIsAuthenticating(false);
     }
   };
