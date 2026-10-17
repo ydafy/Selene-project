@@ -7,10 +7,10 @@ Clarify only the monetary overview of the order summary and fix loading/error ha
 No shipment-card edits, backend, checkout, historical-price changes, cancellations or disputes. Preserve existing uncommitted changes, especially en/es orders.json and i18nOrdersParity.test.ts. User now explicitly requests simple commit, push and merge without PR. Stage only this feature's hunks and files; preserve unrelated work. Start from main and use a short feature branch before integrating back to main.
 
 ## Tasks
-- [x] T1 (done; no commit authorized): Implement scoped summary amounts and terminal loading/error/absent-order handling with test-first evidence and matching EN/ES labels. Preserve cached-data refresh behavior and role visibility.
+- [x] T1 (done; commit 84fd27aa7797c8cddd4efb222bd1ba0d28ef7321): Implement scoped summary amounts and terminal loading/error/absent-order handling with test-first evidence and matching EN/ES labels. Preserve cached-data refresh behavior and role visibility.
 - [x] T2 (done, scoped checks): Independently verify focused tests, scoped ESLint and diff review; recheck helper relocation.
-- [ ] T3 (pending): Global TypeScript check remains failed outside candidate files, baseline unknown; no unrelated fixes authorized. User confirmed visual result looks good.
-- [ ] T4 (in_progress): Create scoped work-unit commit, inspect native review for isolated committed range, integrate into main and push without PR under explicit user delivery authorization.
+- [ ] T3 (in_progress; deferred outside-scope verification): Global TypeScript check remains failed outside candidate files, baseline unknown; no unrelated fixes authorized. User confirmed visual result looks good.
+- [x] T4 (done): Commit 84fd27aa7797c8cddd4efb222bd1ba0d28ef7321 (`fix(orders): clarify summary totals and loading`), fast-forward integrated into main and pushed to origin/main without PR. Only candidate hunks committed, unrelated changes preserved. Commit hooks ran 1677 tests: all passed. Native committed-range inspection isolated seven paths; host consent declined this candidate, no lineage created. Independent verification previously completed; no native approval claimed.
 
 ## Acceptance and checks
 - Buyer subtotal is calculated from saved purchase prices in integer cents, total paid remains persisted order amount.
