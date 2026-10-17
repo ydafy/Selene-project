@@ -1,12 +1,82 @@
-# Shipment cancellation coordination — B1.1
+# Shipment cancellation coordination — B1.1/B1.2
+
+## Current deployment checkpoint
+
+The maintainer confirmed both B1.1 and B1.2 SQL application and regenerated types. Local type readback includes the table, frozen request/loss columns and new start RPC. This is human deployment evidence plus local type evidence, not an independent remote inspection. Handler integration is implemented in the repository; no Edge Function deployment has occurred. The maintainer explicitly accepted LOCAL repository completion with the verification limitations below. This does not approve deployment, native review or production readiness.
+
+### SQL/type gate (maintainer confirmed complete)
+
+1. B1.1 `20261016011954_shipment_cancellation_coordination.sql` must already be applied; do not replay it.
+2. B1.2 `supabase/migrations/20261016051001_shipment_cancellation_refund_request.sql` was subsequently applied. Do not replay it or its identical canonical reference copy `supabase/queries/orders/shipment_cancellation_refund_request.sql`.
+3. Confirm application before regenerating types with `bun db:types`. Check `refund_request`, `cancellation_loss_cents`, and `fn_start_shipment_cancellation_refund` (shipment UUID, token UUID, request JSONB, optional loss BIGINT; result JSON).
+4. Verify RLS/direct-table denial remains intact, the new RPC grants execution only to `service_role`, and `service_role` no longer has direct execution of bare `fn_start_shipment_cancellation`. Remote runtime probes require separately authorized disposable fixtures.
+5. No Edge Functions, secrets, cron jobs or webhooks were deployed/changed in this SQL step. After the satisfied SQL/type gate, B1.2 integrates `cancel-order`, `auto-cancel-orders` and `auto-cancel-preparing` in the repository. Their deployment remains a separate maintainer action.
+
+## B1.2 frozen-request start
+
+`fn_start_shipment_cancellation_refund` is the only service-callable start after B1.2 SQL. It reuses B1.1 start's ownership, lease, state and persisted label/transfer guards, then saves the request and proportional actual fee loss in that **same transaction**. An invalid request rolls back the start too. This avoids another preparation RPC or a second state machine.
+
+The server caller must reconstruct the refund from trusted shipment/order/Stripe data first; SQL validates its shape and context, **not the financial entitlement calculation**. Never forward a client-provided amount. The stored request is exactly:
+
+```json
+{
+  "payment_intent": "pi_server_resolved",
+  "amount": 11000,
+  "reason": "requested_by_customer",
+  "metadata": {
+    "shipment_id": "shipment-uuid",
+    "order_id": "order-uuid",
+    "caller_role": "buyer",
+    "reason": "original winning reason",
+    "seguro_share_cents": 1000
+  }
+}
+```
+
+Only those keys are accepted. Amount is positive integer cents within JavaScript's safe-integer range; buyer-fee share is an integer between zero and amount. PaymentIntent must match the shipment reference, falling back to the order reference only when the shipment reference is null. Metadata must match the operation's original reason, shipment/order and role (`buyer`/`seller`, or `system` for either cron). `cancellation_loss_cents` is a nonnegative safe integer or null when unavailable; null is not silently converted to zero.
+
+The RPC returns `{operation_key, refund_request, cancellation_loss_cents}`. The caller must wait for a confirmed successful response/commit and use the returned request/key, not reconstruct another payload. An error, timeout or uncertain response forbids a Stripe call. The fence survives lease expiry; neither replay nor another caller can change the request or start again. Existing B1.1 started operations without snapshots remain fenced; there is no backfill/reopen/retry.
+
+New validation errors: `INVALID_CANCELLATION_REFUND_REQUEST`, `INVALID_CANCELLATION_LOSS`. B1.1 guard errors still apply. Direct bare-start execution is now denied to `service_role`; the new definer RPC invokes it internally. Table access is still denied to client/service roles.
+
+This is not durable refund status/identity/recovery (B2), label/transfer writer exclusion (B1.3), preparing carrier safety (B4), or evidence that deployed handlers use the new path.
+
+## Repository verification checkpoint
+
+- Final parent `bun test`: **1752 pass, 0 fail, 6278 assertions, 193 files**. Scoped ESLint/Prettier and diff checks passed.
+- Independent deterministic adapter probes passed arbitration, preflight rejection, losing-attempt isolation, winning context and refund fencing. Two differential output regressions were corrected in one batch; targeted independent recheck confirmed the original manual provider-error HTTP500/body/logging and both cron reason/success-log contracts are restored. New preservation regressions: 9 pass, 0 fail, 43 assertions.
+- The production-helper/live-SQL seam passed 14 groups in the parent's local synthetic database. The later independent live SQL run **failed to connect**; it is not an independent pass and was not retried.
+- Endpoint `deno check --no-remote` remained unavailable because remote imports were uncached. Pure-helper typechecking passed; that does not prove the three endpoints typecheck.
+- Native assessment was unavailable for undeclared untracked scope; no native review authority or approval exists for B1.2. No HTTP/Supabase gateway, actual Stripe, real cron or remote deployment proof is claimed.
+
+The maintainer selected "Aceptar cierre local con esas limitaciones": B1.2 is closed as LOCAL repository implementation with these explicit proof limits, not as a deployed or fully certified module. No unavailable check is counted as a pass. No additional checks, provider attempts, commits or deployment follow automatically from acceptance.
+
+## Handler orchestration and failure boundary
+
+The shared `supabase/functions/_shared/shipment-cancellation.ts` orchestrates claim → trusted financial reconstruction → atomic frozen-request start → Stripe → existing business cancellation. Manual preflight must still reject maintenance, unauthenticated/nonowner/non-paid requests before claiming; cron selection still uses the existing settings/timeouts and authorization. Per-shipment reconstruction and fee persistence occur only for a successful claim owner, not a competing loser.
+
+- `busy`: manual responds with a conflict; cron skips/logs the shipment. No refund or business cancellation.
+- `recovery_required`: no provider call or automatic DB retry. A previous external outcome may exist; inspect through a separately authorized recovery process (B2 remains pending).
+- Invalid/failed/uncertain claim or start: no Stripe call. The helper rejects malformed responses with `CANCELLATION_RESERVATION_INVALID` or `CANCELLATION_START_INVALID` rather than invent ownership.
+- Original winning source/actor/reason survive a pre-start lease takeover. All callers use `cancel_shipment_{shipmentId}`, exact five-field metadata and persisted loss, including null versus zero.
+- Provider errors, including `charge_already_refunded`, never authorize business cancellation. A resolved provider result must explicitly have `status: succeeded`; otherwise `CANCELLATION_REFUND_UNCONFIRMED` stops completion with the durable fence intact. This minimal refund-before-cancellation guard does not persist refund IDs/status, reconcile asynchronous changes, poll or implement B2 recovery.
+- Stripe success followed by business DB failure remains fenced; no automatic second refund or completion retry is added. Existing operational logging remains the escalation surface.
+
+The helper's deterministic tests cover callback order/effects and response validation. The live local SQL harness also calls this production helper against actual claim/start RPCs, with **fake** provider and business ports, to check competing manual/cron attempts, repeated claims and sibling independence. This seam is not HTTP/gateway, actual Stripe, inventory, notification or remote-cron end-to-end proof.
+
+### Future Edge deployment handoff (not authorized here)
+
+After repository verification and maintainer acceptance, affected deployment sources are `cancel-order`, `auto-cancel-orders`, and `auto-cancel-preparing` plus their imported `_shared/shipment-cancellation.ts` and existing shared dependencies. No new migration beyond the two already confirmed, new secrets, cron schedules or webhooks are required by the adapter integration.
+
+Coordinate a quiet deployment window and let old cancellation invocations finish before enabling all updated paths: old cron versions used different idempotency keys and did not participate in this reservation. Do not mix old/new active callers and call that safe. Pausing jobs/configuration or deploying functions requires separate maintainer action/authorization; the agent does neither automatically. Label/transfer writers still do not join this lock (B1.3), durable refund recovery remains B2, and preparing carrier policy remains B4. This is not full-module or production safety certification.
 
 ## Scope and current state
 
-This is a dormant SQL foundation, not an enabled cancellation fix. Existing manual/cron handlers, label generation and Connect release do not call these RPCs yet. B1.2 integrates cancellation callers; B1.3 makes label/transfer writers participate in the same shipment lock; B1.4 verifies the integrated behavior. Stored label/transfer checks alone do not exclude another writer's in-flight provider call.
+B1.1 was a dormant foundation; B1.2 adds cancellation caller integration separately. No deployed handler integration is claimed. Label generation and Connect release do not join this arbitration yet. B1.3 makes those writers participate in the same shipment lock; B1.4 verifies the integrated behavior. Stored label/transfer checks alone do not exclude another writer's in-flight provider call.
 
 No refund is created or recorded here. No shipment/order status, inventory, notification, allocation or loss is changed. Preparing-timeout acquisition does not prove carrier cancellation is safe (B4). B2 extends this same operation with refund identity/status and recovery; do not create a second refund subsystem.
 
-## Small SQL contract
+## B1.1 foundation contract (before the B1.2 extension)
 
 `shipment_cancellation_operations` contains one row per shipment, protected by RLS and without direct grants to client or service roles. Two `SECURITY DEFINER` functions have an empty search path, check `auth.role()`, and grant execution only to `service_role`:
 
@@ -29,7 +99,7 @@ Both functions lock the shipment first, reject persisted transfer/payout referen
 
 The write-ahead mark proves only that a call **might** start, not Stripe success. A crash before sending still needs recovery, rather than blindly reopening the attempt. The caller must not call Stripe after a failed or uncertain start response. Start must commit before the provider call; do not hold a database transaction open over the network. Never log tokens.
 
-B1.2 must persist/freeze the reconstructed provider request (including amount and payment identity) before using this foundation for money movement. A shared Stripe key with changing parameters is not sufficient. B1.1 does not claim that persistence or B2 recovery is implemented. There is intentionally no release, completion or refund-status RPC yet.
+B1.2's extension above adds request persistence (including amount and payment identity) atomically with start, without enabling handlers. A shared Stripe key with changing parameters is not sufficient. There is still no release, completion or refund-status RPC; B2 recovery remains unimplemented.
 
 ### Errors
 
@@ -46,13 +116,13 @@ bun scripts/test-shipment-cancellation-coordination.ts
 bun test scripts/test-shipment-cancellation-coordination.test.ts
 ```
 
-The executable harness only accepts a port override (`SELENE_TEST_PG_PORT`, default 55432), pins host/database credentials to the local test environment, and ignores application connection variables. It creates a uniquely named `b11_<uuid>` database, a minimal shipment/order schema and an `auth.role()` stub. It applies the exact migration/canonical SQL, not a TypeScript reimplementation. It creates non-login `anon`, `authenticated`, `service_role` stubs only when absent; a local advisory lock serializes ownership across runs. It removes only its generated database and roles it created. Never point a proxy at this loopback port to a remote database.
+The executable harness only accepts a port override (`SELENE_TEST_PG_PORT`, default 55432), pins host/database credentials to the local test environment, and ignores application connection variables. It creates a uniquely named `b11_<uuid>` database, a minimal shipment/order schema and an `auth.role()` stub. It first applies the exact B1.1 migration/canonical SQL and proves its original contract, then applies B1.2 SQL and proves atomic request/start, changed-request/replay rejection, validation rollback, privilege revocation, seller/cron contexts and real start contention. It is not a TypeScript reimplementation. It creates non-login `anon`, `authenticated`, `service_role` stubs only when absent; a local advisory lock serializes ownership across runs. It removes only its generated database and roles it created. Never point a proxy at this loopback port to a remote database.
 
 The tests exercise public RPC ownership, frozen context, expired pre-call takeover, stale tokens, post-start uncertainty, state/role guards, service-role execution, denied direct writes and sibling isolation. For real contention A calls claim inside a transaction and keeps its shipment lock; B must receive SQLSTATE `55P03` under a bounded lock timeout. After A commits, B returns `busy` without a second owner. The lease-expiry tests use explicit synthetic timestamp fixtures, not a 15-minute sleep. No provider calls are made.
 
 Plain `bun test` runs only offline CLI/mirror checks and does not require Docker. The standalone live harness fails with nonzero exit on unavailable PostgreSQL, assertion failure or cleanup failure; it never turns unavailable execution into a passing skip. Its minimal schema/auth stub is not proof of the full deployed schema, Supabase JWT/gateway behavior, real cron, Envia or Stripe behavior. Integrated and deployed checks remain separate.
 
-## Deployment handoff — maintainer only
+## Historical B1.1 deployment handoff — maintainer only
 
 Repository verification does not establish remote deployment. No remote operation is authorized by this document.
 

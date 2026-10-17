@@ -7,12 +7,12 @@ const script = 'scripts/test-shipment-cancellation-coordination.ts';
 
 // These tests never connect to a database. Execute the standalone harness for
 // PostgreSQL behavior; a plain `bun test` must remain safe without Docker.
-test('B1.1 help describes the local-only scope without starting a database', () => {
+test('B1.1/B1.2 help describes the local-only scope without starting a database', () => {
   const result = Bun.spawnSync(['bun', script, '--help'], { cwd: root });
   expect(result.exitCode).toBe(0);
   expect(result.stdout.toString()).toBe(
     `Usage: bun ${script} [--help]\n` +
-      'B1.1 only: real SQL claim/start, ownership, expiry and contention in a new disposable local database.\n' +
+      'B1.1/B1.2 SQL: claim/start, frozen refund request, ownership and contention in a new disposable local database.\n' +
       'Uses only 127.0.0.1, selene_test credentials and SELENE_TEST_PG_PORT (default 55432).\n',
   );
   expect(result.stderr.toString()).toBe('');
@@ -41,6 +41,29 @@ test.each(['0', '65536', 'abc'])(
     );
   },
 );
+
+test('canonical refund-request SQL matches exactly one additive migration', () => {
+  const migrations = readdirSync(`${root}supabase/migrations`).filter((name) =>
+    name.endsWith('_shipment_cancellation_refund_request.sql'),
+  );
+  expect(migrations).toHaveLength(1);
+  const sql = readFileSync(
+    `${root}supabase/migrations/${migrations[0]}`,
+    'utf8',
+  );
+  expect(sql).toBe(
+    readFileSync(
+      `${root}supabase/queries/orders/shipment_cancellation_refund_request.sql`,
+      'utf8',
+    ),
+  );
+  expect(sql.match(/CREATE OR REPLACE FUNCTION public\.[a-z_]+/g)).toEqual([
+    'CREATE OR REPLACE FUNCTION public.fn_start_shipment_cancellation_refund',
+  ]);
+  expect(sql).not.toMatch(
+    /UPDATE\s+public\.(?:shipments|orders|products|notifications)\b/i,
+  );
+});
 
 test('canonical coordination SQL matches exactly one additive migration', () => {
   const migrations = readdirSync(`${root}supabase/migrations`).filter((name) =>

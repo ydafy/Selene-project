@@ -2,6 +2,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import Stripe from 'https://esm.sh/stripe@17.0.0';
 
+import type { Tables } from '../../../packages/types/src/index.ts';
+import { runShipmentCancellation } from '../_shared/shipment-cancellation.ts';
 import { resolveAutoCancelShipmentCancellationGate } from '../_shared/auto-cancel-safety.ts';
 import {
   allocateCancellationLossCents,
@@ -107,246 +109,272 @@ serve(async () => {
 
     for (const shipment of expiredShipments) {
       try {
-        // 3. Calcular monto del shipment para refund parcial en Stripe
-        const { data: orderItems } = await supabaseAdmin
-          .from('order_items')
-          .select('price_at_purchase, shipping_amount, shipment_id')
-          .eq('order_id', shipment.order_id);
-
-        // Explicit shape assertion for Supabase dashboard editor compatibility
-        const refundItems = (orderItems ?? []) as Array<{
-          price_at_purchase: number;
-          shipping_amount: number | null;
-          shipment_id: string | null;
-        }>;
-
-        const shipmentItems = refundItems.filter(
-          (item) => item.shipment_id === shipment.id,
-        );
-
-        const { data: order } = await supabaseAdmin
-          .from('orders')
-          .select(
-            'stripe_charge_id, total_amount, stripe_payment_intent_id, actual_stripe_fee_cents, stripe_fee_reconciled_at',
-          )
-          .eq('id', shipment.order_id)
-          .single();
-
-        let refundCharge: Stripe.Charge | null = null;
-        if (order?.stripe_charge_id) {
-          try {
-            refundCharge = (await stripe.charges.retrieve(order.stripe_charge_id, {
-              expand: ['balance_transaction'],
-            })) as Stripe.Charge;
-          } catch {
-            throw new Error('STRIPE_CHARGE_NOT_FOUND');
-          }
-        }
-
-        let actualStripeFeeCents = order?.actual_stripe_fee_cents ?? null;
-        if (actualStripeFeeCents === null && refundCharge) {
-          const feePlan = buildStripeFeeReconciliationPlan({
-            existingActualStripeFeeCents: order?.actual_stripe_fee_cents ?? null,
-            charge: refundCharge as unknown as {
-              id: string;
-              balance_transaction?:
-                | string
-                | { fee?: number | null }
-                | null;
-            },
-            reconciledAt: new Date().toISOString(),
-          });
-
-          if (feePlan.kind === 'ready') {
-            actualStripeFeeCents = feePlan.actualStripeFeeCents;
-            const { error: feeUpdateError } = await supabaseAdmin
-              .from('orders')
-              .update({
-                actual_stripe_fee_cents: feePlan.actualStripeFeeCents,
-                stripe_fee_reconciled_at: feePlan.stripeFeeReconciledAt,
-                updated_at: feePlan.stripeFeeReconciledAt,
-              })
-              .eq('id', shipment.order_id)
-              .is('actual_stripe_fee_cents', null);
-
-            if (feeUpdateError) {
-              log('WARN', 'Could not persist on-demand Stripe fee reconciliation', {
-                shipmentId: shipment.id,
-                orderId: shipment.order_id,
-                error: feeUpdateError.message,
-              });
-            }
-          } else {
-            log('WARN', 'Stripe fee reconciliation unavailable during auto-cancel', {
-              shipmentId: shipment.id,
-              orderId: shipment.order_id,
-              chargeId: order?.stripe_charge_id,
-            });
-          }
-        }
-
-        const refundAmountCents = computeShipmentRefundAmountCents({
-          shipmentItems,
-          orderItems: refundItems,
-          orderChargeCents: refundCharge?.amount
-            ? refundCharge.amount
-            : Math.round(Number(order?.total_amount ?? 0) * 100),
-          remainingRefundableCents: refundCharge?.amount
-            ? refundCharge.amount - refundCharge.amount_refunded
-            : null,
-        });
-
-        const shipmentSubtotalCents = Math.round(
-          shipmentItems.reduce((sum, item) => sum + item.price_at_purchase, 0) *
-            100,
-        );
-        const seguroShareCents = refundAmountCents - shipmentSubtotalCents;
-
-        const orderShipmentGroups = new Map<string, typeof refundItems>();
-        for (const item of refundItems) {
-          if (typeof item.shipment_id !== 'string' || item.shipment_id.length === 0) {
-            continue;
-          }
-
-          const group = orderShipmentGroups.get(item.shipment_id) ?? [];
-          group.push(item);
-          orderShipmentGroups.set(item.shipment_id, group);
-        }
-
-        const cancellationLossWeights =
-          orderShipmentGroups.size > 0
-            ? Array.from(orderShipmentGroups.entries()).map(
-                ([shipmentId, items]) => ({
-                  shipmentId,
-                  buyerRefundCents: computeShipmentRefundAmountCents({
-                    shipmentItems: items.filter(
-                      (item) => item.shipment_id === shipmentId,
-                    ),
-                    orderItems: refundItems,
-                    orderChargeCents: refundCharge?.amount
-                      ? refundCharge.amount
-                      : Math.round(Number(order?.total_amount ?? 0) * 100),
-                    remainingRefundableCents: refundCharge?.amount
-                      ? refundCharge.amount - refundCharge.amount_refunded
-                      : null,
-                  }),
-                }),
-              )
-            : [
-                {
-                  shipmentId: shipment.id,
-                  buyerRefundCents: refundAmountCents,
-                },
-              ];
-
-        const cancellationLossAllocations = allocateCancellationLossCents(
-          actualStripeFeeCents,
-          cancellationLossWeights,
-        );
-        const cancellationLossCents =
-          cancellationLossAllocations?.get(shipment.id) ?? null;
-
-        // 4. Resolve PaymentIntent ID: Connect orders use shipment-level PI,
-        // legacy orders use order-level PI (which is NULL for Connect per T-001).
-        const stripePaymentIntentId = shipment.stripe_payment_intent_id ?? null;
-        let orderStripeIntentId: string | null = null;
-
-        if (!stripePaymentIntentId) {
-          // Legacy: PI ID lives on the order
-          orderStripeIntentId = order?.stripe_payment_intent_id ?? null;
-        }
-
-        const finalStripeIntentId =
-          stripePaymentIntentId ?? orderStripeIntentId;
-
-        const refundGate = resolveAutoCancelShipmentCancellationGate({
-          finalStripeIntentId,
-          refundAmountCents,
-        });
-
-        if (!refundGate.shouldCancelShipment) {
-          log(refundGate.level, refundGate.message, {
+        const result = await runShipmentCancellation({
+          context: {
             shipmentId: shipment.id,
             orderId: shipment.order_id,
-            refundAmountCents,
-            hasStripePaymentIntent: Boolean(finalStripeIntentId),
-            errorCode: refundGate.code,
-          });
-          continue;
-        }
-
-        // 5. Stripe refund parcial (solo el monto de este shipment)
-        try {
-          const refundParams: Stripe.RefundCreateParams = {
-            payment_intent: finalStripeIntentId!,
-            amount: refundAmountCents,
-            reason: 'requested_by_customer' as const,
-            metadata: {
-              shipment_id: shipment.id,
-              order_id: shipment.order_id,
-              type: 'auto_cancel',
-              seguro_share_cents: seguroShareCents,
-            },
-          };
-
-          await stripe.refunds.create(refundParams, {
-            idempotencyKey: `auto_cancel_${shipment.id}`,
-          });
-        } catch (stripeError: unknown) {
-          if (
-            typeof stripeError === 'object' &&
-            stripeError !== null &&
-            'code' in stripeError &&
-            (stripeError as { code: string }).code ===
-              'charge_already_refunded'
-          ) {
-            log('INFO', 'Stripe refund idempotente — ya reembolsado', {
-              shipmentId: shipment.id,
-            });
-          } else {
-            throw stripeError;
-          }
-        }
-
-        // 6. Cancelar shipment vía RPC atómica (wallet, products, status, notifications)
-        const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc(
-          'fn_cancel_shipment',
-          {
-            p_shipment_id: shipment.id,
-            p_cancelled_by_role: 'system',
-            p_reason: `Cancelación automática: Excedió el límite de ${hours} horas para envío.`,
-            p_cancellation_loss_cents: cancellationLossCents,
+            source: 'paid_timeout',
+            actorId: null,
+            reason: `Cancelación automática: Excedió el límite de ${hours} horas para envío.`,
           },
-        );
-
-        const success = rpcData?.[0]?.success ?? false;
-
-        if (rpcError || !success) {
-          const errorMsg = rpcError?.message || rpcData?.[0]?.error_message;
-
-          // Stripe refund already processed but DB failed → flag for admin review
-          if (errorMsg === 'ALREADY_CANCELLED') {
-            log('INFO', `Shipment ${shipment.id} already cancelled, skipping`, {
-              shipmentId: shipment.id,
-            });
-          } else {
-            log(
-              'CRITICAL',
-              `Stripe refund OK pero DB cancel falló — requiere revision manual`,
+          claim: async (context) => {
+            const { data, error } = await supabaseAdmin.rpc(
+              'fn_claim_shipment_cancellation',
               {
+                p_shipment_id: context.shipmentId,
+                p_order_id: context.orderId,
+                p_actor_id: context.actorId,
+                p_source: context.source,
+                p_reason: context.reason,
+              },
+            );
+            if (error) throw error;
+            return data;
+          },
+          prepare: async () => {
+            // Reconstruct and persist fees only after winning the reservation.
+            const { data: orderItems } = await supabaseAdmin
+              .from('order_items')
+              .select('price_at_purchase, shipping_amount, shipment_id')
+              .eq('order_id', shipment.order_id);
+
+            // Explicit shape assertion for Supabase dashboard editor compatibility
+            const refundItems = (orderItems ?? []) as Pick<
+              Tables<'order_items'>,
+              'price_at_purchase' | 'shipping_amount' | 'shipment_id'
+            >[];
+
+            const shipmentItems = refundItems.filter(
+              (item) => item.shipment_id === shipment.id,
+            );
+
+            const { data: order } = await supabaseAdmin
+              .from('orders')
+              .select(
+                'stripe_charge_id, total_amount, stripe_payment_intent_id, actual_stripe_fee_cents, stripe_fee_reconciled_at',
+              )
+              .eq('id', shipment.order_id)
+              .single();
+
+            let refundCharge: Stripe.Charge | null = null;
+            if (order?.stripe_charge_id) {
+              try {
+                refundCharge = (await stripe.charges.retrieve(
+                  order.stripe_charge_id,
+                  {
+                    expand: ['balance_transaction'],
+                  },
+                )) as Stripe.Charge;
+              } catch {
+                throw new Error('STRIPE_CHARGE_NOT_FOUND');
+              }
+            }
+
+            let actualStripeFeeCents = order?.actual_stripe_fee_cents ?? null;
+            if (actualStripeFeeCents === null && refundCharge) {
+              const feePlan = buildStripeFeeReconciliationPlan({
+                existingActualStripeFeeCents:
+                  order?.actual_stripe_fee_cents ?? null,
+                charge: refundCharge as unknown as {
+                  id: string;
+                  balance_transaction?: string | { fee?: number | null } | null;
+                },
+                reconciledAt: new Date().toISOString(),
+              });
+
+              if (feePlan.kind === 'ready') {
+                actualStripeFeeCents = feePlan.actualStripeFeeCents;
+                const { error: feeUpdateError } = await supabaseAdmin
+                  .from('orders')
+                  .update({
+                    actual_stripe_fee_cents: feePlan.actualStripeFeeCents,
+                    stripe_fee_reconciled_at: feePlan.stripeFeeReconciledAt,
+                    updated_at: feePlan.stripeFeeReconciledAt,
+                  })
+                  .eq('id', shipment.order_id)
+                  .is('actual_stripe_fee_cents', null);
+
+                if (feeUpdateError) {
+                  log(
+                    'WARN',
+                    'Could not persist on-demand Stripe fee reconciliation',
+                    {
+                      shipmentId: shipment.id,
+                      orderId: shipment.order_id,
+                      error: feeUpdateError.message,
+                    },
+                  );
+                }
+              } else {
+                log(
+                  'WARN',
+                  'Stripe fee reconciliation unavailable during auto-cancel',
+                  {
+                    shipmentId: shipment.id,
+                    orderId: shipment.order_id,
+                    chargeId: order?.stripe_charge_id,
+                  },
+                );
+              }
+            }
+
+            const refundAmountCents = computeShipmentRefundAmountCents({
+              shipmentItems,
+              orderItems: refundItems,
+              orderChargeCents: refundCharge?.amount
+                ? refundCharge.amount
+                : Math.round(Number(order?.total_amount ?? 0) * 100),
+              remainingRefundableCents: refundCharge?.amount
+                ? refundCharge.amount - refundCharge.amount_refunded
+                : null,
+            });
+
+            const shipmentSubtotalCents = Math.round(
+              shipmentItems.reduce(
+                (sum, item) => sum + item.price_at_purchase,
+                0,
+              ) * 100,
+            );
+            const seguroShareCents = refundAmountCents - shipmentSubtotalCents;
+
+            const orderShipmentGroups = new Map<string, typeof refundItems>();
+            for (const item of refundItems) {
+              if (
+                typeof item.shipment_id !== 'string' ||
+                item.shipment_id.length === 0
+              ) {
+                continue;
+              }
+
+              const group = orderShipmentGroups.get(item.shipment_id) ?? [];
+              group.push(item);
+              orderShipmentGroups.set(item.shipment_id, group);
+            }
+
+            const cancellationLossWeights =
+              orderShipmentGroups.size > 0
+                ? Array.from(orderShipmentGroups.entries()).map(
+                    ([shipmentId, items]) => ({
+                      shipmentId,
+                      buyerRefundCents: computeShipmentRefundAmountCents({
+                        shipmentItems: items.filter(
+                          (item) => item.shipment_id === shipmentId,
+                        ),
+                        orderItems: refundItems,
+                        orderChargeCents: refundCharge?.amount
+                          ? refundCharge.amount
+                          : Math.round(Number(order?.total_amount ?? 0) * 100),
+                        // Entitlement weights use the original charge, not residual headroom.
+                      }),
+                    }),
+                  )
+                : [
+                    {
+                      shipmentId: shipment.id,
+                      buyerRefundCents: refundAmountCents,
+                    },
+                  ];
+
+            const cancellationLossAllocations = allocateCancellationLossCents(
+              actualStripeFeeCents,
+              cancellationLossWeights,
+            );
+            const cancellationLossCents =
+              cancellationLossAllocations?.get(shipment.id) ?? null;
+
+            // 4. Resolve PaymentIntent ID: Connect orders use shipment-level PI,
+            // legacy orders use order-level PI (which is NULL for Connect per T-001).
+            const stripePaymentIntentId =
+              shipment.stripe_payment_intent_id ?? null;
+            let orderStripeIntentId: string | null = null;
+
+            if (!stripePaymentIntentId) {
+              // Legacy: PI ID lives on the order
+              orderStripeIntentId = order?.stripe_payment_intent_id ?? null;
+            }
+
+            const finalStripeIntentId =
+              stripePaymentIntentId ?? orderStripeIntentId;
+
+            const refundGate = resolveAutoCancelShipmentCancellationGate({
+              finalStripeIntentId,
+              refundAmountCents,
+            });
+
+            if (!refundGate.shouldCancelShipment) {
+              log(refundGate.level, refundGate.message, {
                 shipmentId: shipment.id,
                 orderId: shipment.order_id,
                 refundAmountCents,
-                error: errorMsg,
+                hasStripePaymentIntent: Boolean(finalStripeIntentId),
+                errorCode: refundGate.code,
+              });
+              throw new Error(refundGate.code);
+            }
+
+            return {
+              paymentIntentId: finalStripeIntentId!,
+              amountCents: refundAmountCents,
+              seguroShareCents,
+              cancellationLossCents,
+            };
+          },
+          start: async (input) => {
+            const { data, error } = await supabaseAdmin.rpc(
+              'fn_start_shipment_cancellation_refund',
+              {
+                p_shipment_id: input.shipmentId,
+                p_claim_token: input.claimToken,
+                p_refund_request: input.refundRequest,
+                p_cancellation_loss_cents: input.cancellationLossCents,
               },
             );
-          }
-        } else {
+            if (error) throw error;
+            return data;
+          },
+          refund: (request, options) => stripe.refunds.create(request, options),
+          complete: async (winner, frozen) => {
+            const { data, error } = await supabaseAdmin.rpc(
+              'fn_cancel_shipment',
+              {
+                p_shipment_id: winner.shipmentId,
+                p_cancelled_by_role:
+                  winner.source === 'buyer' || winner.source === 'seller'
+                    ? winner.source
+                    : 'system',
+                p_reason: winner.reason,
+                p_cancellation_loss_cents: frozen.cancellationLossCents,
+              },
+            );
+            if (error || !data?.[0]?.success) {
+              log(
+                'CRITICAL',
+                'Refund succeeded but database cancellation failed; manual review required',
+                {
+                  shipmentId: winner.shipmentId,
+                  error: error?.message ?? data?.[0]?.error_message,
+                },
+              );
+              throw new Error(
+                error?.message ??
+                  data?.[0]?.error_message ??
+                  'CANCELLATION_FAILED',
+              );
+            }
+            return frozen.refundRequest.amount;
+          },
+        });
+        if (result.status === 'cancelled') {
           successCount++;
           log('INFO', 'Shipment cancelado exitosamente', {
             shipmentId: shipment.id,
             orderId: shipment.order_id,
-            refundAmountCents,
+            refundAmountCents: result.value,
+          });
+        } else {
+          log('WARN', 'Shipment cancellation skipped', {
+            shipmentId: shipment.id,
+            status: result.status,
           });
         }
 
