@@ -39,6 +39,11 @@ import {
   useSystemConfig,
 } from '../../../../core/hooks/useSystemConfig';
 import { authenticateAsync } from '../../../../core/utils/biometrics';
+import {
+  generateLabelWithRecovery,
+  openGeneratedLabel,
+  type LabelDiagnostic,
+} from '../../../../core/utils/shipping-label-outcome';
 import { Address } from '@selene/types';
 import { Theme } from '../../../../core/theme';
 import { EvidenceUploadSection } from '@/components/features/orders/EvidenceUploadSection';
@@ -126,6 +131,25 @@ export default function PrepareShipmentScreen() {
   const [selectedOrigin, setSelectedOrigin] = useState<Address | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [labelUrl, setLabelUrl] = useState<string | null>(null);
+  const [labelOpenError, setLabelOpenError] = useState(false);
+
+  const reportLabelDiagnostic = (event: LabelDiagnostic) => {
+    console.warn('[PREPARE_SHIPMENT]', { event, shipmentId: targetShipmentId });
+  };
+
+  const handleOpenLabel = async (url: string) => {
+    setLabelOpenError(false);
+    const opened = await openGeneratedLabel(
+      url,
+      (value) => Linking.openURL(value),
+      reportLabelDiagnostic,
+    );
+    if (!opened) {
+      setLabelOpenError(true);
+      setErrorMsg(t('orders:prepare.errors.labelOpenFailed'));
+    }
+    return opened;
+  };
 
   const handleAddressSelect = useCallback((addr: Address) => {
     setSelectedOrigin(addr);
@@ -156,23 +180,38 @@ export default function PrepareShipmentScreen() {
         return;
       }
 
-      const result = await actions.generateLabel.execute({
-        shipmentId: targetShipmentId,
-        originAddressId: selectedOrigin.id,
-        shippingEvidence: { images: evidenceUrls },
+      const result = await generateLabelWithRecovery({
+        generate: () =>
+          actions.generateLabel.execute({
+            shipmentId: targetShipmentId,
+            originAddressId: selectedOrigin.id,
+            shippingEvidence: { images: evidenceUrls },
+          }),
+        recover: async () => {
+          const refreshed = await refetch();
+          if (refreshed.error) throw refreshed.error;
+          return (
+            refreshed.data?.shipments?.find(
+              (shipment) =>
+                shipment.id === targetShipmentId && shipment.seller_id === userId,
+            )?.label_url ?? null
+          );
+        },
+        feedback: () =>
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success),
+        report: reportLabelDiagnostic,
       });
 
-      if (result && result.labelUrl) {
+      if (result.kind === 'generated') {
         setLabelUrl(result.labelUrl);
-        await Haptics.notificationAsync(
-          Haptics.NotificationFeedbackType.Success,
-        );
+        setLabelOpenError(false);
         setShowSuccess(true);
+      } else {
+        setErrorMsg(t(`orders:${result.errorKey}`));
       }
-    } catch (e: any) {
-      // Si falló por red/timeout, refrescamos por si el backend sí llegó a generarla
-      await refetch();
-      setErrorMsg(e.message || t('common:errors.generic'));
+    } catch {
+      reportLabelDiagnostic('generation_unconfirmed');
+      setErrorMsg(t('orders:prepare.errors.resultUnconfirmed'));
     } finally {
       setIsAuthenticating(false);
     }
@@ -577,9 +616,7 @@ export default function PrepareShipmentScreen() {
             <PrimaryButton
               onPress={() => {
                 if (selectedShipment?.label_url) {
-                  Linking.openURL(selectedShipment.label_url).catch((err) =>
-                    console.error("Couldn't open URL", err),
-                  );
+                  void handleOpenLabel(selectedShipment.label_url);
                 }
               }}
               icon="printer-check"
@@ -624,13 +661,9 @@ export default function PrepareShipmentScreen() {
       <ConfirmDialog
         visible={showSuccess}
         title={t('orders:prepare.successTitle')}
-        onConfirm={() => {
+        onConfirm={async () => {
+          if (!labelUrl || !(await handleOpenLabel(labelUrl))) return;
           setShowSuccess(false);
-          if (labelUrl) {
-            Linking.openURL(labelUrl).catch((err) =>
-              console.error("Couldn't load page", err),
-            );
-          }
           if (router.canGoBack()) {
             router.back();
           } else {
@@ -656,6 +689,11 @@ export default function PrepareShipmentScreen() {
           <Text variant="body-md" textAlign="center" marginTop="m">
             {t('orders:prepare.successMsg')}
           </Text>
+          {labelOpenError && (
+            <Text variant="body-sm" color="error" textAlign="center" marginTop="m">
+              {t('orders:prepare.errors.labelOpenFailed')}
+            </Text>
+          )}
         </Box>
       </ConfirmDialog>
     </Box>

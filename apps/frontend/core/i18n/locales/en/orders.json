@@ -259,7 +259,13 @@
     "securityReason": "Authorize to generate the shipping label",
     "evidenceTitle": "Packaging Proof",
     "slotPhotoAdded": "Photo added. Take another.",
-    "slotPhotoEmpty": "No photo yet. Take one."
+    "slotPhotoEmpty": "No photo yet. Take one.",
+    "errors": {
+      "sessionExpired": "Your session expired. Sign in again to continue.",
+      "serviceUnavailable": "The carrier is unavailable for this shipment. Try later or contact support.",
+      "resultUnconfirmed": "We could not confirm your label result. Reopen the shipment to check its status before trying again.",
+      "labelOpenFailed": "Your label is still saved. We could not open the PDF; try opening it again."
+    }
   },
   "dispute": {
     "wizardTitle": "Report a Problem",

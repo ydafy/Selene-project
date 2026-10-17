@@ -255,7 +255,13 @@
     "securityReason": "Autoriza para generar la guía de envío",
     "evidenceTitle": "Prueba de empaque",
     "slotPhotoAdded": "Foto lista. Toma otra.",
-    "slotPhotoEmpty": "Todavía no hay foto. Toma una."
+    "slotPhotoEmpty": "Todavía no hay foto. Toma una.",
+    "errors": {
+      "sessionExpired": "Tu sesión venció. Inicia sesión de nuevo para continuar.",
+      "serviceUnavailable": "La paquetería no está disponible para este envío. Intenta más tarde o contacta a soporte.",
+      "resultUnconfirmed": "No pudimos confirmar el resultado de tu guía. Vuelve a abrir el envío para consultar su estado antes de intentar de nuevo.",
+      "labelOpenFailed": "Tu guía sigue guardada. No pudimos abrir el PDF; intenta abrirlo nuevamente."
+    }
   },
 
   "dispute": {
