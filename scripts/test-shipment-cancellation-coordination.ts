@@ -11,7 +11,7 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const canonical = `${root}supabase/queries/orders/shipment_cancellation_coordination.sql`;
 const help =
   'Usage: bun scripts/test-shipment-cancellation-coordination.ts [--help]\n' +
-  'B1.1/B1.2 SQL: claim/start, frozen refund request, ownership and contention in a new disposable local database.\n' +
+  'B1.1/B1.2/B1.3 SQL: cancellation/label arbitration, frozen refund request, ownership and contention in a new disposable local database.\n' +
   'Uses only 127.0.0.1, selene_test credentials and SELENE_TEST_PG_PORT (default 55432).';
 
 type Claim = {
@@ -810,6 +810,323 @@ async function run() {
       assert.deepEqual(businessAfter.orders, businessBefore.orders);
       console.log(
         'PASS orchestration seam: production helper with real RPC race/repeat/sibling arbitration; fake provider/business ports only',
+      );
+
+      // Latest deployed label bodies, not the obsolete two-argument foundation.
+      const definition = (file: string, name: string) => {
+        const source = readFileSync(
+          `${root}supabase/migrations/${file}`,
+          'utf8',
+        );
+        const match = source.match(
+          new RegExp(
+            `CREATE (?:OR REPLACE )?FUNCTION public\\.${name}\\([\\s\\S]*?\\$\\$;`,
+            'i',
+          ),
+        );
+        assert.ok(match, `Missing production definition: ${name}`);
+        return match[0];
+      };
+      const previousClaim = definition(
+        '20260824020000_envia_address_origin_remediation.sql',
+        'fn_claim_shipment_label',
+      );
+      const previousSent = definition(
+        '20260824001426_post_purchase_label_generation_foundation.sql',
+        'fn_mark_shipment_label_sent',
+      );
+      await a.unsafe(`
+        ALTER TABLE public.shipments ADD COLUMN origin_address_id uuid, ADD COLUMN origin_address jsonb,
+          ADD COLUMN updated_at timestamptz, ADD COLUMN label_quote_carrier text,
+          ADD COLUMN label_quote_service text, ADD COLUMN label_quote_cost_cents bigint,
+          ADD COLUMN label_quote_input_hash text;
+        CREATE TABLE public.addresses (id uuid PRIMARY KEY, user_id uuid, deleted_at timestamptz,
+          full_name text, phone text, street_line1 text, street_number text, district text,
+          city text, state text, country text, zip_code text);
+        INSERT INTO public.addresses (id, user_id, street_number) VALUES ('${ids.seller}', '${ids.seller}', '10');
+        CREATE TABLE public.shipment_label_events (id uuid DEFAULT gen_random_uuid(), shipment_id uuid,
+          event_type text, actor_id uuid, metadata jsonb DEFAULT '{}');
+        ${previousClaim}
+        ${previousSent}
+        REVOKE EXECUTE ON FUNCTION public.fn_claim_shipment_label(uuid,uuid,uuid) FROM PUBLIC, anon, authenticated;
+        REVOKE EXECUTE ON FUNCTION public.fn_mark_shipment_label_sent(uuid,uuid) FROM PUBLIC, anon, authenticated;
+        GRANT EXECUTE ON FUNCTION public.fn_claim_shipment_label(uuid,uuid,uuid) TO service_role;
+        GRANT EXECUTE ON FUNCTION public.fn_mark_shipment_label_sent(uuid,uuid) TO service_role;
+      `);
+      const labelClaim = async (
+        connection = a,
+        shipment = ids.shipment,
+        seller = ids.seller,
+        origin = ids.seller,
+      ) => {
+        const [row] =
+          await connection`SELECT public.fn_claim_shipment_label(${shipment}::uuid, ${seller}::uuid, ${origin}::uuid) AS result`;
+        return row.result;
+      };
+      const sent = async (token: string | null, connection = a) => {
+        const [row] =
+          await connection`SELECT public.fn_mark_shipment_label_sent(${ids.shipment}::uuid, ${token}::uuid) AS result`;
+        return row.result;
+      };
+      const labelSnapshot = async () => ({
+        ...(await snapshot()),
+        events: await a`SELECT * FROM public.shipment_label_events ORDER BY id`,
+        addresses: await a`SELECT * FROM public.addresses ORDER BY id`,
+      });
+      const labelReset = async () => {
+        await reset();
+        await a`TRUNCATE public.shipment_label_events`;
+        await a`UPDATE public.shipments SET origin_address = NULL, origin_address_id = NULL,
+          claim_token = NULL, claim_expires_at = NULL, updated_at = NULL, stripe_payment_intent_id = NULL,
+          label_quote_carrier = 'paquetexpress', label_quote_service = 'ground',
+          label_quote_cost_cents = 100, label_quote_input_hash = 'fixture'`;
+      };
+      const unchanged = async (
+        action: () => Promise<unknown>,
+        expected: unknown,
+      ) => {
+        const before = await labelSnapshot();
+        assert.deepEqual(await action(), expected);
+        assert.deepEqual(await labelSnapshot(), before);
+      };
+      const labelReject = async (
+        action: () => Promise<unknown>,
+        message: string,
+        code = 'P0001',
+      ) => {
+        const before = await labelSnapshot();
+        await assert.rejects(action, (e: unknown) => {
+          assert.ok(
+            e && typeof e === 'object' && 'message' in e && 'errno' in e,
+          );
+          assert.equal(e.message, message);
+          assert.equal(e.errno, code);
+          return true;
+        });
+        assert.deepEqual(await labelSnapshot(), before);
+      };
+      // Run identical public-interface preservation probes on the actual previous
+      // definitions and replacement. Compare observable results, not git history.
+      const preservation = async () => {
+        const observed: unknown[] = [];
+        await labelReset();
+        await labelReject(
+          () => labelClaim(a, ids.shipment, ids.stranger),
+          'UNAUTHORIZED',
+        );
+        await labelReject(() => labelClaim(a, ids.stranger), 'UNAUTHORIZED');
+        await labelReject(
+          () => labelClaim(a, ids.shipment, ids.seller, ids.stranger),
+          'SELLER_ORIGIN_CORRECTION_REQUIRED',
+        );
+        for (const role of ['anon', 'authenticated']) {
+          const before = await labelSnapshot();
+          await a.unsafe(`SET ROLE ${role}`);
+          try {
+            for (const action of [() => labelClaim(), () => sent(null)])
+              await assert.rejects(
+                action,
+                (e: unknown) =>
+                  !!e &&
+                  typeof e === 'object' &&
+                  'errno' in e &&
+                  e.errno === '42501',
+              );
+          } finally {
+            await a`RESET ROLE`;
+          }
+          assert.deepEqual(await labelSnapshot(), before);
+        }
+        await a`SELECT set_config('request.jwt.claim.role', 'authenticated', false)`;
+        await labelReject(() => labelClaim(), 'UNAUTHORIZED');
+        await labelReject(() => sent(null), 'UNAUTHORIZED');
+        await a`SELECT set_config('request.jwt.claim.role', 'service_role', false)`;
+        const label = await labelClaim();
+        assert.equal(label.status, 'claimed');
+        assert.match(label.claim_token, /^[0-9a-f-]{36}$/);
+        assert.equal(label.origin_address.street_number, '10');
+        observed.push(label.status, label.origin_address);
+        await unchanged(() => labelClaim(), { status: 'claimed_conflict' });
+        await unchanged(() => sent(crypto.randomUUID()), false);
+        await unchanged(() => sent(null), false);
+        for (const [field, value] of [
+          ['label_quote_carrier', 'other'],
+          ['label_quote_service', 'express'],
+          ['label_quote_cost_cents', null],
+          ['label_quote_input_hash', null],
+        ] as const) {
+          await a`BEGIN`;
+          try {
+            await a.unsafe(
+              `UPDATE public.shipments SET ${field} = ${value === null ? 'NULL' : `'${value}'`} WHERE id = '${ids.shipment}'`,
+            );
+            await unchanged(() => sent(label.claim_token), false);
+          } finally {
+            await a`ROLLBACK`;
+          }
+        }
+        observed.push(await sent(label.claim_token));
+        await unchanged(() => sent(label.claim_token), false);
+        await unchanged(() => labelClaim(), { status: 'claimed_conflict' });
+        await a`UPDATE public.shipments SET claim_expires_at = '-infinity' WHERE id = ${ids.shipment}::uuid`;
+        observed.push(await labelClaim());
+        await unchanged(() => labelClaim(), { status: 'orphan_pending' });
+        await unchanged(() => sent(label.claim_token), false);
+        await a`UPDATE public.shipments SET label_generation_state = 'generated' WHERE id = ${ids.shipment}::uuid`;
+        await unchanged(() => labelClaim(), { status: 'generated' });
+        await labelReset();
+        await a`UPDATE public.shipments SET status = 'shipped', origin_address = '{}'::jsonb WHERE id = ${ids.shipment}::uuid`;
+        await unchanged(() => labelClaim(), { status: 'ineligible' });
+        await labelReset();
+        await a`UPDATE public.shipments SET label_generation_state = 'retryable_rejected' WHERE id = ${ids.shipment}::uuid`;
+        observed.push((await labelClaim()).status);
+        observed.push(
+          (
+            await a`SELECT event_type FROM public.shipment_label_events ORDER BY event_type`
+          ).map((row) => row.event_type),
+        );
+        return observed;
+      };
+      const baselineLabels = await preservation();
+      const labelMigrations = readdirSync(`${root}supabase/migrations`).filter(
+        (name) =>
+          name.endsWith('_shipment_cancellation_label_coordination.sql'),
+      );
+      assert.ok(labelMigrations.length <= 1);
+      if (labelMigrations.length)
+        await a.unsafe(
+          readFileSync(
+            `${root}supabase/migrations/${labelMigrations[0]}`,
+            'utf8',
+          ),
+        );
+      assert.deepEqual(await preservation(), baselineLabels);
+      console.log(
+        'PASS label differential: latest previous/replacement public RPC auth/origin/rate/token/state behavior identical',
+      );
+
+      await labelReset();
+      owner = await claim();
+      // Behavioral RED: baseline wrongly grants a label claim after cancellation.
+      await labelReject(
+        () => labelClaim(),
+        'SHIPMENT_CANCELLATION_OPERATION_ACTIVE',
+      );
+      await a`UPDATE public.shipment_cancellation_operations SET claim_expires_at = '-infinity' WHERE shipment_id = ${ids.shipment}::uuid`;
+      const expiredCancellation = (await snapshot()).operations;
+      const label = await labelClaim();
+      assert.equal(label.status, 'claimed');
+      assert.deepEqual((await snapshot()).operations, expiredCancellation);
+      await labelReject(() => claim(), 'SHIPMENT_LABEL_OPERATION_ACTIVE');
+      await labelReject(
+        () => startRefund(owner.claim_token!),
+        'CANCELLATION_CLAIM_EXPIRED',
+      );
+      assert.equal(await sent(label.claim_token), true);
+      await labelReject(() => claim(), 'SHIPMENT_LABEL_OPERATION_ACTIVE');
+      console.log(
+        'PASS expired cancellation: label wins without erasing context; cancellation cannot reclaim/start',
+      );
+
+      await labelReset();
+      owner = await claim();
+      await startRefund(owner.claim_token!);
+      await a`UPDATE public.shipment_cancellation_operations SET claim_expires_at = '-infinity' WHERE shipment_id = ${ids.shipment}::uuid`;
+      await labelReject(
+        () => labelClaim(),
+        'SHIPMENT_CANCELLATION_OPERATION_ACTIVE',
+      );
+      // Simulate a legacy overlap: mark-sent must recheck even after claim.
+      await a`UPDATE public.shipments SET label_generation_state = 'claimed', claim_token = ${label.claim_token}::uuid, claim_expires_at = clock_timestamp() + interval '15 minutes' WHERE id = ${ids.shipment}::uuid`;
+      await unchanged(() => sent(label.claim_token), false);
+      await a`UPDATE public.shipment_cancellation_operations SET external_started_at = NULL, claim_expires_at = clock_timestamp() + interval '15 minutes' WHERE shipment_id = ${ids.shipment}::uuid`;
+      await unchanged(() => sent(label.claim_token), false);
+      console.log(
+        'PASS cancellation fences: durable start after TTL and live pre-start claim block label send unchanged',
+      );
+
+      await labelReset();
+      const freshLabel = await labelClaim();
+      await labelReject(() => claim(), 'SHIPMENT_LABEL_OPERATION_ACTIVE');
+      // Live clock must win over transaction-start time, not renew a stale owner.
+      await a`BEGIN`;
+      try {
+        await a`UPDATE public.shipments SET claim_expires_at = clock_timestamp() + interval '80 milliseconds' WHERE id = ${ids.shipment}::uuid`;
+        await a`SELECT pg_sleep(0.12)`;
+        await unchanged(() => sent(freshLabel.claim_token), false);
+        assert.deepEqual(await labelClaim(), {
+          status: 'orphan_pending',
+          reconciliation_required: true,
+        });
+      } finally {
+        await a`COMMIT`;
+      }
+      await labelReject(() => claim(), 'SHIPMENT_LABEL_OPERATION_ACTIVE');
+      await unchanged(() => sent(freshLabel.claim_token), false);
+      console.log(
+        'PASS stale label: live-clock expiry cannot send; orphan uncertainty continues excluding cancellation',
+      );
+
+      // Both race orders really contend on the same row; siblings remain free.
+      for (const first of ['cancellation', 'label']) {
+        await labelReset();
+        await a`BEGIN`;
+        try {
+          if (first === 'cancellation') await claim();
+          else await labelClaim();
+          assert.equal((await labelClaim(b, ids.sibling)).status, 'claimed');
+          await b`SET lock_timeout = '150ms'`;
+          await assert.rejects(
+            first === 'cancellation' ? () => labelClaim(b) : () => claim(b),
+            (e: unknown) =>
+              !!e &&
+              typeof e === 'object' &&
+              'errno' in e &&
+              e.errno === '55P03',
+          );
+          await a`COMMIT`;
+        } catch (error) {
+          await a`ROLLBACK`;
+          throw error;
+        }
+        await b`SET lock_timeout = '0'`;
+        await labelReject(
+          first === 'cancellation' ? () => labelClaim(b) : () => claim(b),
+          first === 'cancellation'
+            ? 'SHIPMENT_CANCELLATION_OPERATION_ACTIVE'
+            : 'SHIPMENT_LABEL_OPERATION_ACTIVE',
+        );
+      }
+      console.log(
+        'PASS symmetric contention: both RPC race orders serialize; independent sibling succeeds',
+      );
+      await labelReset();
+      const sendOwner = await labelClaim();
+      await a`BEGIN`;
+      try {
+        assert.equal(await sent(sendOwner.claim_token), true);
+        await b`SET lock_timeout = '150ms'`;
+        await assert.rejects(
+          () => claim(b),
+          (e: unknown) =>
+            !!e && typeof e === 'object' && 'errno' in e && e.errno === '55P03',
+        );
+        await a`COMMIT`;
+      } catch (error) {
+        await a`ROLLBACK`;
+        throw error;
+      }
+      await b`SET lock_timeout = '0'`;
+      await labelReject(() => claim(b), 'SHIPMENT_LABEL_OPERATION_ACTIVE');
+      await a`UPDATE public.shipments SET claim_expires_at = '-infinity' WHERE id = ${ids.shipment}::uuid`;
+      await labelReject(() => claim(), 'SHIPMENT_LABEL_OPERATION_ACTIVE');
+      assert.deepEqual(await labelClaim(), {
+        status: 'orphan_pending',
+        reconciliation_required: true,
+      });
+      await labelReject(() => claim(), 'SHIPMENT_LABEL_OPERATION_ACTIVE');
+      console.log(
+        'PASS sent uncertainty: actual send/cancel contention; sent/orphan fences survive TTL',
       );
     } finally {
       try {
