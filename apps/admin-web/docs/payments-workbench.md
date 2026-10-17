@@ -1,6 +1,6 @@
 # Payments operational workbench
 
-The admin `/payments` route starts in **Por liberar**. Horizontal lifecycle tabs sit below the title in a content-sized surface, capped at the available width with horizontal scrolling on narrow screens, followed by seller search. **Por liberar**, **Necesita atención** and **Historial** use taller, full-width lists and open details in a shared native modal shell. **En proceso** retains its list/inspector panels. Release and attention share a presentation-only selection/amount/action summary; financial eligibility and dispatch stay in their feature owners. Selene colors, floating dark surfaces and Montserrat are retained. This iteration is frontend-only: existing server permissions, eligibility, amounts, idempotency and retry limits remain authoritative.
+The admin `/payments` route starts in **Por liberar**. Horizontal lifecycle tabs sit below the title in a content-sized surface, capped at the available width with horizontal scrolling on narrow screens, followed by seller search. **Por liberar**, **Necesita atención** and **Historial** use taller, full-width lists and open details in a shared native modal shell. **En proceso** retains its list/inspector panels. Release and attention share a presentation-only selection/amount/action summary; financial eligibility and dispatch stay in their feature owners. Selene colors, floating dark surfaces and Montserrat are retained. The original redesign was frontend-only; later accepted read-path increments add authoritative History dates and grouped server pagination. Existing server permissions, financial eligibility, amounts, idempotency and retry limits remain authoritative.
 
 ## Daily operator flow
 
@@ -53,8 +53,9 @@ Complete selection intentionally loads all selectable group details and may exce
 resource/time limits; errors must not be interpreted as partial success. The UI
 does not add a bulk monetary endpoint or automatic mutation retries.
 See [manual deployment and read-contract checks](payments-pagination-deployment.md).
-The maintainer must deploy the read Edge Function separately before using this
-frontend. Repository tests do not prove remote deployment, effective privileges,
+The maintainer confirmed SQL application, generated types and deployment of the
+read Edge Function; do not repeat those steps for this closeout. Repository tests
+do not independently prove remote deployment, effective privileges,
 PostgreSQL behavior, browser focus, or Stripe behavior.
 
 ## Verification
@@ -66,6 +67,6 @@ cd apps/admin-web && bun run build
 
 Component tests exercise public rendered controls and mocked callbacks offline. Page/hook module mocks use isolated Bun subprocesses; page probes stub child rendering, while dedicated component tests exercise the workbenches themselves. No tests call financial endpoints. SSR/control-tree checks do not replace browser layout, keyboard focus or real DOM interaction proof.
 
-Payment-date chronology and broader historical traceability are separately deferred in `odd/tasks/admin-payments-redesign.md` (B4/B5); the current success-only view is not an immutable audit ledger or a guarantee of irreversible bank receipt.
+Payment-date chronology (B5) and the accepted current-paid History increment (B4) are delivered. Existing late-failure reconciliation is not reopened. Proactive missed-event monitoring (B4.2) is an optional, unconfirmed resilience extension requiring separate scope, not a confirmed defect or a redesign-closure blocker. A broader all-attempt admin timeline is not included; the current success-only view is not an immutable audit ledger or a guarantee of irreversible bank receipt. See `odd/tasks/admin-payments-redesign.md` for the current backlog disposition.
 
 For visual review, run `cd apps/admin-web && bun run dev` with normal local Supabase public URL/anon configuration and an authorized admin session. Review desktop/narrow layouts, page scrolling of the seller list, green full/partial selection indicators, seller page numbers, dialog opening/closing/Escape/focus return, tabs, search/loading/empty/error states, cross-page selection and confirmation placement. Do not confirm real releases or retries merely to review the design; money-moving checks require a separately approved sandbox.

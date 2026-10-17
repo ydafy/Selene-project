@@ -2,7 +2,15 @@
 
 B2 adds a read-only database contract. List pages contain up to20 complete seller/run groups; **Select all** retrieves all available matching groups, including unloaded pages. It never submits payouts or retries by itself. Existing search still defines the matching query.
 
-## SQL step — maintainer only
+## Current deployment status
+
+The maintainer confirmed SQL application, generated types and deployment of
+`get-connect-payout-release-queue`. The steps below preserve deployment order and
+read-contract checks as a reference, not as a request to repeat deployment.
+Mocked Chromium checks passed; independent deployed SQL/privilege and provider
+verification remain distinct evidence limits, not newly observed failures.
+
+## SQL step — maintainer only (completed; reference)
 
 After the agent finishes the bounded review, execute exactly one complete migration in the intended Supabase Dashboard SQL Editor:
 
@@ -117,7 +125,7 @@ is a separate gate and is not established by those confirmations.
 Structural SQL tests are not PostgreSQL execution. No local PostgreSQL runner was available for this increment; remote checks remain maintainer-owned; SQL application was subsequently confirmed, but independent runtime boundary and effective-privilege evidence is not supplied by these source tests. Existing History changes, generated output and unrelated worktree edits must be preserved. No commit, push, function deployment or remote mutation is authorized by creating these files.
 
 
-## Current handoff: manual Edge deployment and read-only UI checks
+## Deployment handoff history and read-only UI checks
 
 Local implementation and source rechecks are complete. The final F1/F2 source recheck closed both blockers; it did not execute tests or establish deployed behavior. Parent-observed post-correction checks:107 frontend-process tests plus57 isolated child tests, no failures; app-local TypeScript and production build passed. The Edge handler's28 tests also passed. Scoped lint passed as writer evidence. The production build retains a bundle-size advisory; no tooling or dependency changes were made. Native assessment was unavailable, not approved. Automated Chromium verification with mocked reads was subsequently added and passed; see the browser evidence section below.
 
