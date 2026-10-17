@@ -46,11 +46,11 @@ const errorMessages: string[] = [];
 let invocationResult: InvocationResult;
 type QueryOptions = { queryKey: readonly unknown[]; queryFn: () => Promise<unknown>; refetchInterval: number };
 let queryOptions: QueryOptions;
-let queryState = { data: undefined, error: null as Error | null, isError: false, isLoading: false };
+let queryState = { data: undefined, error: null as Error | null, isError: false, isLoading: false, dataUpdatedAt: 0 };
 const queueRow: ConnectPayoutReleaseQueueRow = {
   completed_at: null, ineligible_reason: null, is_eligible: false, is_retryable: false,
   order_id: 'order-1', payout_run_amount_cents: 12500, payout_run_failed_at: null,
-  payout_run_failure_reason: null, payout_run_id: 'run-1', payout_run_status: 'paid',
+  payout_run_failure_reason: null, payout_run_id: 'run-1', payout_run_paid_at: null, payout_run_status: 'paid',
   release_amount_cents: 12500, requires_manual_review: false, retry_of_run_id: null,
   seller_id: 'seller-1', seller_name: 'Selene Seller', shipment_id: 'shipment-1',
   status: 'completed', stripe_account_id: 'acct_123', stripe_onboarding_status: 'complete',
@@ -129,7 +129,7 @@ const releaseBatch: ReleaseQueueBatch = {
 };
 
 beforeEach(() => {
-  queryState = { data: undefined, error: null, isError: false, isLoading: false };
+  queryState = { data: undefined, error: null, isError: false, isLoading: false, dataUpdatedAt: 0 };
   invokeCalls.length = 0;
   invalidationCalls.length = 0;
   successMessages.length = 0;
@@ -217,6 +217,75 @@ describe('useConnectPayoutReleaseQueue query pipeline', () => {
     await expect(queryOptions.queryFn()).rejects.toThrow('Queue denied');
     invocationResult = { data: null, error: null };
     await expect(queryOptions.queryFn()).rejects.toThrow('CONNECT_PAYOUT_RELEASE_QUEUE_FAILED');
+  });
+});
+
+describe('server group pages and complete selection', () => {
+  const envelope = (scope: 'page' | 'selection', size: number) => ({
+    success: true, bucket: 'ready' as const, scope, page: 0, pageSize: 20,
+    totalGroups: 21, totalPages: 2, selectedGroupCount: scope === 'selection' ? 21 : 0,
+    selectionComplete: scope === 'selection',
+    counts: { ready: 21, processing: 0, 'action-required': 0, history: 0 },
+    rows: Array.from({ length: size }, (_, i) => ({ ...queueRow,
+      seller_id: `seller-${i}`, shipment_id: `shipment-${i}`, payout_run_id: null,
+      payout_run_status: null, is_eligible: true })),
+  });
+  it('uses explicit page metadata and fetches all 21 selectable groups independently', async () => {
+    const { useConnectPayoutReleaseQueue } = await loadHook();
+    const hook = useConnectPayoutReleaseQueue(' Seller ', { bucket: 'ready', page: 0 });
+    invocationResult = { data: envelope('page', 20), error: null };
+    const page = await queryOptions.queryFn() as { releaseBatches: unknown[]; pagination: { totalGroups: number } };
+    expect(page.releaseBatches).toHaveLength(20);
+    expect(page.pagination.totalGroups).toBe(21);
+    expect(queryOptions.queryKey).toEqual(['connect-payout-release-queue', ' Seller ', 'ready', 0]);
+    invocationResult = { data: envelope('selection', 21), error: null };
+    expect((await hook.fetchSelection()).releaseBatches).toHaveLength(21);
+    expect(invokeCalls.map((call) => call.body)).toEqual([
+      { search: 'Seller', bucket: 'ready', page: 0, scope: 'page' },
+      { search: 'Seller', bucket: 'ready', page: 0, scope: 'selection' },
+    ]);
+    expect(invokeCalls.every((call) => call.functionName === 'get-connect-payout-release-queue')).toBe(true);
+  });
+  it('assigns distinct page read identities even when server values repeat', async () => {
+    const { useConnectPayoutReleaseQueue } = await loadHook();
+    useConnectPayoutReleaseQueue('', { bucket: 'ready', page: 0 });
+    invocationResult = { data: envelope('page', 20), error: null };
+    const first = await queryOptions.queryFn() as { revision: number; releaseBatches: unknown[] };
+    const second = await queryOptions.queryFn() as typeof first;
+    expect(typeof first.revision).toBe('number');
+    expect(second.revision).not.toBe(first.revision);
+    expect(second.releaseBatches).toEqual(first.releaseBatches);
+    expect(invokeCalls.every((call) => call.functionName === 'get-connect-payout-release-queue')).toBe(true);
+  });
+  it('rejects old, incomplete and wrong-scope selection responses without monetary calls', async () => {
+    const { useConnectPayoutReleaseQueue } = await loadHook();
+    const hook = useConnectPayoutReleaseQueue('', { bucket: 'ready', page: 0 });
+    for (const data of [{ success: true, rows: [] }, { ...envelope('selection', 21), selectionComplete: false }, envelope('page', 20)]) {
+      invocationResult = { data, error: null };
+      await expect(hook.fetchSelection()).rejects.toThrow();
+    }
+    expect(invokeCalls.every((call) => call.functionName === 'get-connect-payout-release-queue')).toBe(true);
+  });
+});
+
+describe('queue last successful query metadata', () => {
+  it('reports no success initially, then the query timestamp and retains it after a failed refresh', async () => {
+    const { useConnectPayoutReleaseQueue } = await loadHook();
+    expect(useConnectPayoutReleaseQueue('').lastSuccessfulFetchAt).toBeNull();
+    queryState.dataUpdatedAt = Date.parse('2026-01-01T12:34:56.000Z');
+    expect(useConnectPayoutReleaseQueue('').lastSuccessfulFetchAt).toBe(queryState.dataUpdatedAt);
+    queryState.isError = true;
+    queryState.error = new Error('Refresh failed');
+    expect(useConnectPayoutReleaseQueue('').lastSuccessfulFetchAt).toBe(queryState.dataUpdatedAt);
+    expect(invokeCalls).toEqual([]);
+  });
+  it('uses the active query metadata rather than retaining a timestamp from another search', async () => {
+    const { useConnectPayoutReleaseQueue } = await loadHook();
+    queryState.dataUpdatedAt = Date.parse('2026-01-01T12:34:56.000Z');
+    expect(useConnectPayoutReleaseQueue('Ada').lastSuccessfulFetchAt).toBe(queryState.dataUpdatedAt);
+    queryState.dataUpdatedAt = 0;
+    expect(useConnectPayoutReleaseQueue('Other').lastSuccessfulFetchAt).toBeNull();
+    expect(invokeCalls).toEqual([]);
   });
 });
 

@@ -3,7 +3,9 @@
 -- ----------------------------------------------------------------------------
 -- Apply the matching deployable migrations in order. This copy preserves the
 -- first-phase amount rules while adding failed-run retry and canceled-run
--- manual-review fields to the admin release view.
+-- manual-review fields and observed paid_at to the admin release view.
+-- Existing installations: apply the incremental paid_at migration, NOT this
+-- combined historical script (which adds the retry column/index).
 -- Units:
 --   - order_items.net_payout is the checkout-fixed seller allocation.
 --   - release_amount_cents is clamped to 0 to prevent negative Stripe payouts.
@@ -146,7 +148,8 @@ SELECT
   COALESCE(
     payout_run.status = 'canceled',
     FALSE
-  ) AS requires_manual_review
+  ) AS requires_manual_review,
+  payout_run.paid_at AS payout_run_paid_at
 FROM shipment_amounts sa
 LEFT JOIN LATERAL (
   SELECT
@@ -155,6 +158,7 @@ LEFT JOIN LATERAL (
     pr.amount,
     pr.failure_reason,
     pr.failed_at,
+    pr.paid_at,
     pr.retry_of_run_id,
     EXISTS (
       SELECT 1
@@ -176,7 +180,7 @@ LEFT JOIN LATERAL (
   LIMIT 1
 ) payout_run ON TRUE;
 
-REVOKE ALL ON public.admin_connect_payout_release_view FROM anon, authenticated;
+REVOKE ALL ON public.admin_connect_payout_release_view FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.admin_connect_payout_release_view TO service_role;
 
 COMMIT;

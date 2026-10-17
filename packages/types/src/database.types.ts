@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "13.0.5"
   }
   public: {
     Tables: {
@@ -3015,6 +3015,7 @@ export type Database = {
           payout_run_failed_at: string | null
           payout_run_failure_reason: string | null
           payout_run_id: string | null
+          payout_run_paid_at: string | null
           payout_run_status: string | null
           release_amount_cents: number | null
           requires_manual_review: boolean | null
@@ -3827,6 +3828,15 @@ export type Database = {
           p_tracking_number: string
         }
         Returns: boolean
+      }
+      fn_get_admin_payout_queue: {
+        Args: {
+          p_bucket?: string
+          p_page?: number
+          p_scope?: string
+          p_search?: string
+        }
+        Returns: Json
       }
       fn_get_connect_account_actionability: {
         Args: { p_stripe_account_id: string }
