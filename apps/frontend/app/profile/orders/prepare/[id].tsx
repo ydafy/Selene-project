@@ -34,6 +34,7 @@ import { PackagingGuideCard } from '../../../../components/features/orders/Packa
 import { ShipmentLabelRecoveryCard } from '../../../../components/features/orders/ShipmentLabelRecoveryCard';
 import { useOrderById } from '../../../../core/hooks/useOrders';
 import { useOrderActions } from '../../../../core/hooks/useOrderActions';
+import { useShipmentLabelRefresh } from '../../../../core/hooks/useShipmentLabelRefresh';
 import {
   PackagePreset,
   PackagePresetsMap,
@@ -140,11 +141,11 @@ export default function PrepareShipmentScreen() {
   const [labelUrl, setLabelUrl] = useState<string | null>(null);
   const [labelOpenError, setLabelOpenError] = useState(false);
 
-  const reportLabelDiagnostic = (event: LabelDiagnostic) => {
+  const reportLabelDiagnostic = useCallback((event: LabelDiagnostic) => {
     console.warn('[PREPARE_SHIPMENT]', { event, shipmentId: targetShipmentId });
-  };
+  }, [targetShipmentId]);
 
-  const handleRefreshLabelStatus = async () => {
+  const handleRefreshLabelStatus = useCallback(async () => {
     setErrorMsg(null);
     try {
       const refreshed = await refetch({ cancelRefetch: false });
@@ -152,7 +153,9 @@ export default function PrepareShipmentScreen() {
     } catch {
       reportLabelDiagnostic('status_refresh_failed');
     }
-  };
+  }, [refetch, reportLabelDiagnostic]);
+
+  useShipmentLabelRefresh(targetShipmentId, handleRefreshLabelStatus);
 
   const handleOpenLabel = async (url: string) => {
     setLabelOpenError(false);
