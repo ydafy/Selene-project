@@ -123,6 +123,7 @@ export function useConnectPayoutReleaseQueue(search: string, options?: { bucket:
   });
 
   return {
+    lastSuccessfulFetchAt: queueQuery.dataUpdatedAt > 0 ? queueQuery.dataUpdatedAt : null,
     pageRevision: queueQuery.data?.revision,
     pagination: queueQuery.data?.pagination,
     counts: queueQuery.data?.pagination?.counts,

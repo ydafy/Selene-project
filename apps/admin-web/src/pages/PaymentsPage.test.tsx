@@ -36,6 +36,7 @@ if (process.env.PAYOUT_PAGING_PAGE_CHILD !== '1') {
   let queryError = false;
   let queryLoading = false;
   let pageRevision = 1;
+  let queryLastSuccess: number | null = null;
   let visibleOverride: ReleaseQueueBatch[] | null = null;
   mock.module('../hooks/useDebounce', () => ({ useDebounce: (value: string) => value }));
   mock.module('../hooks/useConnectPayoutReleaseQueue', () => ({
@@ -43,6 +44,7 @@ if (process.env.PAYOUT_PAGING_PAGE_CHILD !== '1') {
       lastSearch = search; lastOptions = options;
       return { batches: visibleOverride ?? [batch(serverPage === 0 ? 0 : 20)], processingRuns: [], actionRequiredRuns: [], historyRuns: [],
         pageRevision,
+        lastSuccessfulFetchAt: queryLastSuccess,
         pagination: { page: Math.min(options.page, serverPage), totalGroups: 21 },
         counts: { ready: 21, processing: 0, 'action-required': 1, history: 0 },
         isLoading: queryLoading, isFetching: false, isError: queryError, isReleasing: false, isRetrying: false,
@@ -60,6 +62,7 @@ if (process.env.PAYOUT_PAGING_PAGE_CHILD !== '1') {
   mock.module('../components/features/payments/PayoutReleaseWorkbench', () => ({ PayoutReleaseWorkbench: () => null }));
   mock.module('../components/features/payments/PayoutRunsWorkbench', () => ({ PayoutRunsWorkbench: () => null }));
   const { PaymentsPage } = await import('./PaymentsPage');
+  const { renderToStaticMarkup } = await import('react-dom/server');
   const { PayoutReleaseWorkbench } = await import('../components/features/payments/PayoutReleaseWorkbench');
   const { PayoutRunsWorkbench } = await import('../components/features/payments/PayoutRunsWorkbench');
   type Element = React.ReactElement<Record<string, unknown>>;
@@ -84,8 +87,29 @@ if (process.env.PAYOUT_PAGING_PAGE_CHILD !== '1') {
   }
   beforeEach(() => { freshBatches = Array.from({ length: 21 }, (_, i) => batch(i)); freshRuns = [run];
     selectionReads = 0; releaseCalls = []; retryCalls = []; selectionError = null; selectionWait = null; serverPage = 0; queryError = false;
-    queryLoading = false; pageRevision = 1; visibleOverride = null; });
+    queryLoading = false; pageRevision = 1; queryLastSuccess = null; visibleOverride = null; });
   afterEach(() => mock.restore());
+  it('renders the active page last successful query without claiming Stripe synchronization', () => {
+    const h = harness();
+    expect(renderToStaticMarkup(h.render())).toContain('Sin consulta exitosa todavía.');
+    queryLastSuccess = Date.parse('2026-01-01T12:34:56.000Z');
+    let markup = renderToStaticMarkup(h.render());
+    expect(markup).toContain('Última consulta exitosa de esta página:');
+    expect(markup).toMatch(/datetime="2026-01-01T12:34:56\.000Z"/i);
+    expect(markup).toContain('No indica sincronización con Stripe.');
+    queryError = true;
+    markup = renderToStaticMarkup(h.render());
+    expect(markup).toMatch(/datetime="2026-01-01T12:34:56\.000Z"/i);
+    expect(releaseCalls).toEqual([]); expect(retryCalls).toEqual([]);
+  });
+  it('explains backend counter units and the current query scope even when filtered', () => {
+    const h = harness(); h.search('Ada');
+    const markup = renderToStaticMarkup(h.render());
+    expect(markup).toContain('Resultados de la búsqueda.');
+    expect(markup).toContain('Contadores de la consulta actual, no totales globales:');
+    expect(markup).toContain('vendedores en Por liberar; ejecuciones en las demás pestañas.');
+    expect(releaseCalls).toEqual([]); expect(retryCalls).toEqual([]);
+  });
   it('selects unloaded sellers, preserves deselection across pages and refreshes complete details for dispatch', async () => {
     const h = harness();
     await h.release().onSelectAll!();

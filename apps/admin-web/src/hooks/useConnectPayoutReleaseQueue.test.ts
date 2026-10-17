@@ -46,7 +46,7 @@ const errorMessages: string[] = [];
 let invocationResult: InvocationResult;
 type QueryOptions = { queryKey: readonly unknown[]; queryFn: () => Promise<unknown>; refetchInterval: number };
 let queryOptions: QueryOptions;
-let queryState = { data: undefined, error: null as Error | null, isError: false, isLoading: false };
+let queryState = { data: undefined, error: null as Error | null, isError: false, isLoading: false, dataUpdatedAt: 0 };
 const queueRow: ConnectPayoutReleaseQueueRow = {
   completed_at: null, ineligible_reason: null, is_eligible: false, is_retryable: false,
   order_id: 'order-1', payout_run_amount_cents: 12500, payout_run_failed_at: null,
@@ -129,7 +129,7 @@ const releaseBatch: ReleaseQueueBatch = {
 };
 
 beforeEach(() => {
-  queryState = { data: undefined, error: null, isError: false, isLoading: false };
+  queryState = { data: undefined, error: null, isError: false, isLoading: false, dataUpdatedAt: 0 };
   invokeCalls.length = 0;
   invalidationCalls.length = 0;
   successMessages.length = 0;
@@ -265,6 +265,27 @@ describe('server group pages and complete selection', () => {
       await expect(hook.fetchSelection()).rejects.toThrow();
     }
     expect(invokeCalls.every((call) => call.functionName === 'get-connect-payout-release-queue')).toBe(true);
+  });
+});
+
+describe('queue last successful query metadata', () => {
+  it('reports no success initially, then the query timestamp and retains it after a failed refresh', async () => {
+    const { useConnectPayoutReleaseQueue } = await loadHook();
+    expect(useConnectPayoutReleaseQueue('').lastSuccessfulFetchAt).toBeNull();
+    queryState.dataUpdatedAt = Date.parse('2026-01-01T12:34:56.000Z');
+    expect(useConnectPayoutReleaseQueue('').lastSuccessfulFetchAt).toBe(queryState.dataUpdatedAt);
+    queryState.isError = true;
+    queryState.error = new Error('Refresh failed');
+    expect(useConnectPayoutReleaseQueue('').lastSuccessfulFetchAt).toBe(queryState.dataUpdatedAt);
+    expect(invokeCalls).toEqual([]);
+  });
+  it('uses the active query metadata rather than retaining a timestamp from another search', async () => {
+    const { useConnectPayoutReleaseQueue } = await loadHook();
+    queryState.dataUpdatedAt = Date.parse('2026-01-01T12:34:56.000Z');
+    expect(useConnectPayoutReleaseQueue('Ada').lastSuccessfulFetchAt).toBe(queryState.dataUpdatedAt);
+    queryState.dataUpdatedAt = 0;
+    expect(useConnectPayoutReleaseQueue('Other').lastSuccessfulFetchAt).toBeNull();
+    expect(invokeCalls).toEqual([]);
   });
 });
 

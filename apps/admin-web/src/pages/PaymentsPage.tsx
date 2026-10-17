@@ -13,6 +13,7 @@ import { useConnectPayoutReleaseQueue } from '../hooks/useConnectPayoutReleaseQu
 import { useDebounce } from '../hooks/useDebounce';
 import { getSelectedEligibleShipmentIds, type ReleaseQueueBatch, type ReleaseQueueRun, type ReleaseQueueActionRequiredRun } from '../lib/connectPayoutReleaseQueue';
 import { ErrorState } from '../components/ui/ErrorState';
+import { formatTime } from '../lib/utils/formatDate';
 import { PayoutReleaseWorkbench } from '../components/features/payments/PayoutReleaseWorkbench';
 import { PayoutRunsWorkbench } from '../components/features/payments/PayoutRunsWorkbench';
 import { workbenchFocus } from '../components/features/payments/PayoutWorkbenchLayout';
@@ -42,6 +43,7 @@ export const PaymentsPage = () => {
   const {
     pageRevision,
     pagination,
+    lastSuccessfulFetchAt = null,
     counts: serverCounts,
     fetchSelection,
     batches = [],
@@ -381,13 +383,25 @@ export const PaymentsPage = () => {
           />
         )}
       </section>
-      <p className="text-[10px] leading-relaxed text-blue-light">
-        {search.trim()
-          ? 'Resultados de la búsqueda.'
-          : 'Resultados de la consulta.'}{' '}
-        Actualización automática cada 30 segundos. Los importes de la cola no
-        representan un saldo Stripe.
-      </p>
+      <div className="space-y-1 text-[10px] leading-relaxed text-blue-light">
+        <p>
+          {lastSuccessfulFetchAt ? (
+            <>
+              Última consulta exitosa de esta página:{' '}
+              <time dateTime={new Date(lastSuccessfulFetchAt).toISOString()}>
+                {formatTime(new Date(lastSuccessfulFetchAt).toISOString())}
+              </time>.
+            </>
+          ) : 'Sin consulta exitosa todavía.'}{' '}
+          Actualización automática cada 30 segundos. No indica sincronización con Stripe.
+        </p>
+        <p>
+          {search.trim() ? 'Resultados de la búsqueda.' : 'Resultados de la consulta.'}{' '}
+          Contadores de la consulta actual, no totales globales:{' '}
+          vendedores en Por liberar; ejecuciones en las demás pestañas.
+          {' '}Los importes de la cola no representan un saldo Stripe.
+        </p>
+      </div>
     </div>
   );
 };

@@ -1,6 +1,6 @@
 # Payments history reliability — B4/B5
 Expose authoritative payment chronology without adding an admin event timeline. Branch: `feat/admin-payments-redesign`; runner: Bun, strict TDD.
-Delivery: local closure commit now explicitly authorized; no push/PR authority. Manual Supabase deployment and confirmation gate precedes generated types and dependent frontend work.
+Delivery: local closure commit `52ab67f7ff3990629d8fbfc91f94c5d11878bb0d` observed; no push/PR authority. Manual Supabase deployment and confirmation gate precedes generated types and dependent frontend work.
 
 ## Specs
 
@@ -12,9 +12,9 @@ Delivery: local closure commit now explicitly authorized; no push/PR authority. 
 
 ## Tasks
 
-- T1 [done] S1-S5 | route: inline then independent source review | incremental SQL, canonical parity, exact23-column guards and deployment guide prepared;194parent+10isolatedhook/0fail, scoped ESLint/diff0; final4SQLguards/0fail. Verifier mv8x8inp-2-x9y4 favorable source verdict, no concrete blocker; independent test execution unavailable (scratch/no-copy conflict), NOT passed. No PostgreSQL/native approval claim | commit: not authorized.
-- T2 [done] S2,S4 | route: maintainer deployment/type generation then parent structural readback | user confirms SQL applied without errors and types regenerated; generated view row now includes `payout_run_paid_at: string | null`. No independent remote postcheck claim | commit: not authorized.
-- T3 [done] S3-S5 | route: inline then independent source review and human visual acceptance | implementation/docs and own proof complete: RED40/5→GREEN45/0; admin+payout310parent+42child/0fail, scoped lint/diff0, build/tsc0. Verifier mv948814-1-452c found no source blocker; independent executable proof remains unavailable, NOT passed. User explicitly accepts visible result and moving forward after limitation explanation (L12); browser acceptance is human-reported, not automated/remote/native proof | commit: not authorized.
+- T1 [done] S1-S5 | route: inline then independent source review | incremental SQL, canonical parity, exact23-column guards and deployment guide prepared;194parent+10isolatedhook/0fail, scoped ESLint/diff0; final4SQLguards/0fail. Verifier mv8x8inp-2-x9y4 favorable source verdict, no concrete blocker; independent test execution unavailable (scratch/no-copy conflict), NOT passed. No PostgreSQL/native approval claim | commit: 52ab67f7ff3990629d8fbfc91f94c5d11878bb0d.
+- T2 [done] S2,S4 | route: maintainer deployment/type generation then parent structural readback | user confirms SQL applied without errors and types regenerated; generated view row now includes `payout_run_paid_at: string | null`. No independent remote postcheck claim | commit: 52ab67f7ff3990629d8fbfc91f94c5d11878bb0d.
+- T3 [done] S3-S5 | route: inline then independent source review and human visual acceptance | implementation/docs and own proof complete: RED40/5→GREEN45/0; admin+payout310parent+42child/0fail, scoped lint/diff0, build/tsc0. Verifier mv948814-1-452c found no source blocker; independent executable proof remains unavailable, NOT passed. User explicitly accepts visible result and moving forward after limitation explanation (L12); browser acceptance is human-reported, not automated/remote/native proof | commit: 52ab67f7ff3990629d8fbfc91f94c5d11878bb0d.
 
 ## Log
 

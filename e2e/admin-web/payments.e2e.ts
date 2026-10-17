@@ -225,6 +225,22 @@ test('failed complete selection cannot install a partial selection', async ({ pa
   expect(audit.unexpected).toEqual([]);
 });
 
+test('labels the current query time and counter units without claiming Stripe freshness', async ({ page, context, baseURL }, testInfo) => {
+  const audit = await openPayments(page, context, baseURL!);
+  await page.getByRole('searchbox', { name: 'Buscar vendedor en dispersiones', exact: true }).fill('Vendedor 045');
+  await expect(sellerCards(page)).toHaveCount(1);
+  await expect(page.getByText('Última consulta exitosa de esta página:', { exact: false })).toBeVisible();
+  const timestamp = await page.locator('time[datetime]').getAttribute('datetime');
+  expect(Number.isFinite(Date.parse(timestamp!))).toBe(true);
+  await expect(page.getByText('No indica sincronización con Stripe.', { exact: false })).toBeVisible();
+  const counterScope = page.getByText('Contadores de la consulta actual, no totales globales:', { exact: false });
+  await expect(counterScope).toContainText('vendedores en Por liberar; ejecuciones en las demás pestañas.');
+  await counterScope.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath('query-status-and-count-units.png'), fullPage: true });
+  expect(audit.mutations).toEqual([]);
+  expect(audit.unexpected).toEqual([]);
+});
+
 test('financial requests are denied before any connection, even when explicitly attempted', async ({ page, context, baseURL }) => {
   const audit = await openPayments(page, context, baseURL!);
   const result = await page.evaluate(async (url) => {
