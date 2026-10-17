@@ -260,6 +260,16 @@
     "evidenceTitle": "Packaging Proof",
     "slotPhotoAdded": "Photo added. Take another.",
     "slotPhotoEmpty": "No photo yet. Take one.",
+    "recovery": {
+      "processingTitle": "Your label is in progress",
+      "processingBody": "This shipment has a label request in progress. Check its status before continuing; do not generate another label.",
+      "reconciliationTitle": "Your label needs verification",
+      "reconciliationBody": "We could not confirm this label's outcome. To avoid a duplicate purchase, check its status or contact support.",
+      "unavailableTitle": "We could not check your label status",
+      "unavailableBody": "Check the shipment status again before trying to generate a label. If the problem continues, contact support.",
+      "refresh": "Check status",
+      "support": "Contact support"
+    },
     "errors": {
       "sessionExpired": "Your session expired. Sign in again to continue.",
       "serviceUnavailable": "The carrier is unavailable for this shipment. Try later or contact support.",

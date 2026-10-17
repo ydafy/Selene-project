@@ -256,6 +256,16 @@
     "evidenceTitle": "Prueba de empaque",
     "slotPhotoAdded": "Foto lista. Toma otra.",
     "slotPhotoEmpty": "Todavía no hay foto. Toma una.",
+    "recovery": {
+      "processingTitle": "Tu guía está en proceso",
+      "processingBody": "Este envío tiene una solicitud de guía en curso. Consulta su estado antes de continuar; no generes otra.",
+      "reconciliationTitle": "Necesitamos verificar tu guía",
+      "reconciliationBody": "No pudimos confirmar el resultado de esta guía. Para evitar una compra duplicada, consulta su estado o contacta a soporte.",
+      "unavailableTitle": "No pudimos comprobar el estado de tu guía",
+      "unavailableBody": "Consulta de nuevo el estado del envío antes de intentar generar una guía. Si el problema continúa, contacta a soporte.",
+      "refresh": "Consultar estado",
+      "support": "Contactar a soporte"
+    },
     "errors": {
       "sessionExpired": "Tu sesión venció. Inicia sesión de nuevo para continuar.",
       "serviceUnavailable": "La paquetería no está disponible para este envío. Intenta más tarde o contacta a soporte.",

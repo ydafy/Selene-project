@@ -31,6 +31,7 @@ import { ErrorState } from '../../../../components/ui/ErrorState';
 import { Skeleton } from '../../../../components/ui/Skeleton';
 import { LabelWithHelp } from '../../../../components/ui/LabelWithHelp';
 import { PackagingGuideCard } from '../../../../components/features/orders/PackagingGuideCard';
+import { ShipmentLabelRecoveryCard } from '../../../../components/features/orders/ShipmentLabelRecoveryCard';
 import { useOrderById } from '../../../../core/hooks/useOrders';
 import { useOrderActions } from '../../../../core/hooks/useOrderActions';
 import {
@@ -44,6 +45,10 @@ import {
   openGeneratedLabel,
   type LabelDiagnostic,
 } from '../../../../core/utils/shipping-label-outcome';
+import {
+  isLabelRecoveryState,
+  resolveShipmentLabelState,
+} from '../../../../core/utils/shipment-label-state';
 import { Address } from '@selene/types';
 import { Theme } from '../../../../core/theme';
 import { EvidenceUploadSection } from '@/components/features/orders/EvidenceUploadSection';
@@ -84,7 +89,7 @@ export default function PrepareShipmentScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const { data: order, isLoading, error, refetch } = useOrderById(id);
+  const { data: order, isLoading, isFetching, error, refetch } = useOrderById(id);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [evidenceUrls, setEvidenceUrls] = useState<string[]>([]);
   const actions = useOrderActions(id || '');
@@ -112,6 +117,8 @@ export default function PrepareShipmentScreen() {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const isProcessing = isAuthenticating || actions.generateLabel.isLoading;
   const hasExistingLabel = Boolean(selectedShipment?.label_url);
+  const labelState = resolveShipmentLabelState(selectedShipment, Boolean(error));
+  const canGenerateLabel = labelState === 'ready' && !isFetching;
 
   // Bloquea hardware back (Android) y swipe de borde (iOS) mientras procesa:
   usePreventRemove(isProcessing, () => {});
@@ -135,6 +142,16 @@ export default function PrepareShipmentScreen() {
 
   const reportLabelDiagnostic = (event: LabelDiagnostic) => {
     console.warn('[PREPARE_SHIPMENT]', { event, shipmentId: targetShipmentId });
+  };
+
+  const handleRefreshLabelStatus = async () => {
+    setErrorMsg(null);
+    try {
+      const refreshed = await refetch({ cancelRefetch: false });
+      if (refreshed.error) reportLabelDiagnostic('status_refresh_failed');
+    } catch {
+      reportLabelDiagnostic('status_refresh_failed');
+    }
   };
 
   const handleOpenLabel = async (url: string) => {
@@ -165,7 +182,7 @@ export default function PrepareShipmentScreen() {
       isProcessing ||
       !selectedOrigin ||
       !targetShipmentId ||
-      selectedShipment?.status !== 'paid' ||
+      !canGenerateLabel ||
       evidenceUrls.length < EVIDENCE_MIN_PHOTOS
     )
       return;
@@ -217,7 +234,7 @@ export default function PrepareShipmentScreen() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading && !order) {
     return (
       <Box flex={1} backgroundColor="background">
         <GlobalHeader showBack />
@@ -229,7 +246,7 @@ export default function PrepareShipmentScreen() {
     );
   }
 
-  if (error || !order) {
+  if (!order) {
     return (
       <Box flex={1} backgroundColor="background">
         <GlobalHeader showBack />
@@ -626,6 +643,14 @@ export default function PrepareShipmentScreen() {
               })}
             </PrimaryButton>
           </Box>
+        ) : selectedShipment && isLabelRecoveryState(labelState) ? (
+          <ShipmentLabelRecoveryCard
+            state={labelState}
+            isRefreshing={isFetching}
+            disabled={isProcessing}
+            onRefresh={() => void handleRefreshLabelStatus()}
+            onSupport={() => router.push('/profile/support')}
+          />
         ) : (
           /* SI NO EXISTE, MUESTRA EL FORMULARIO NORMAL CON EL BOTÓN BLINDADO */
           <>
@@ -641,7 +666,7 @@ export default function PrepareShipmentScreen() {
                   isProcessing ||
                   !selectedOrigin ||
                   !targetShipmentId ||
-                  selectedShipment?.status !== 'paid' ||
+                  !canGenerateLabel ||
                   evidenceUrls.length < EVIDENCE_MIN_PHOTOS
                 }
                 icon="printer-check"

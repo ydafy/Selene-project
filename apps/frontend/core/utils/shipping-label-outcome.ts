@@ -7,7 +7,8 @@ export type LabelDiagnostic =
   | 'generation_unconfirmed'
   | 'recovery_unavailable'
   | 'feedback_unavailable'
-  | 'label_open_failed';
+  | 'label_open_failed'
+  | 'status_refresh_failed';
 
 type LabelOutcome =
   | { kind: 'generated'; labelUrl: string }

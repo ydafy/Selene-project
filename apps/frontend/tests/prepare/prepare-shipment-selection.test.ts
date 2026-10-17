@@ -16,9 +16,10 @@ test('requires a selected seller-owned product shipment before generating a labe
   expect(source).toContain('const targetShipmentId = selectedShipment?.id;');
   expect(source).toContain('const EVIDENCE_MIN_PHOTOS = 3;');
   expect(source).toMatch(
-    /const handleConfirm = async \(\) => \{\s*if\s*\(\s*isProcessing\s*\|\|\s*!selectedOrigin\s*\|\|\s*!targetShipmentId\s*\|\|\s*selectedShipment\?\.status !== 'paid'\s*\|\|\s*evidenceUrls\.length < EVIDENCE_MIN_PHOTOS\s*\)\s*return;/,
+    /const handleConfirm = async \(\) => \{\s*if\s*\(\s*isProcessing\s*\|\|\s*!selectedOrigin\s*\|\|\s*!targetShipmentId\s*\|\|\s*!canGenerateLabel\s*\|\|\s*evidenceUrls\.length < EVIDENCE_MIN_PHOTOS\s*\)\s*return;/,
   );
   expect(source).toContain('shipmentId: targetShipmentId');
+  expect(source).toContain("const canGenerateLabel = labelState === 'ready' && !isFetching;");
 });
 
 test('lists each seller-owned shipment and does not fall back to the first one', () => {
