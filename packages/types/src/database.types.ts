@@ -554,6 +554,8 @@ export type Database = {
           run_id: string
           shipment_id: string
           status: string
+          transfer_started_at: string | null
+          transfer_token: string | null
           updated_at: string
         }
         Insert: {
@@ -563,6 +565,8 @@ export type Database = {
           run_id: string
           shipment_id: string
           status?: string
+          transfer_started_at?: string | null
+          transfer_token?: string | null
           updated_at?: string
         }
         Update: {
@@ -572,6 +576,8 @@ export type Database = {
           run_id?: string
           shipment_id?: string
           status?: string
+          transfer_started_at?: string | null
+          transfer_token?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -3600,6 +3606,14 @@ export type Database = {
         }
         Returns: number
       }
+      fn_begin_shipment_transfer: {
+        Args: {
+          p_expected_stage_version: number
+          p_run_id: string
+          p_shipment_id: string
+        }
+        Returns: Json
+      }
       fn_block_payout_run_for_account_actionability: {
         Args: {
           p_blocked_reason: string
@@ -3772,6 +3786,16 @@ export type Database = {
           error_message: string
           success: boolean
         }[]
+      }
+      fn_complete_shipment_transfer: {
+        Args: {
+          p_expected_stage_version: number
+          p_run_id: string
+          p_shipment_id: string
+          p_stripe_transfer_id: string
+          p_transfer_token: string
+        }
+        Returns: boolean
       }
       fn_complete_stripe_fee_reconciliation_job: {
         Args: {
