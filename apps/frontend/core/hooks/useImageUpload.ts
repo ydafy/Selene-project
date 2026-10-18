@@ -118,9 +118,7 @@ export const useImageUpload = () => {
       // Cache-busting: Añadimos un timestamp a la URL para forzar a la UI a recargar la imagen
       return `${urlData.publicUrl}?t=${Date.now()}`;
     } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : JSON.stringify(error);
-      console.error(`[Upload Error - ${bucket}]`, message);
+      console.error('[IMAGE_UPLOAD]', { event: 'upload_failed' });
       throw error;
     } finally {
       setUploading(false);
