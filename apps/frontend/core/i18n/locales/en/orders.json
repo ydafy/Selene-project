@@ -274,6 +274,7 @@
       "sessionExpired": "Your session expired. Sign in again to continue.",
       "serviceUnavailable": "The carrier is unavailable for this shipment. Try later or contact support.",
       "resultUnconfirmed": "We could not confirm your label result. Reopen the shipment to check its status before trying again.",
+      "evidenceFailed": "We could not save this photo. Your saved photos are unchanged. Please try taking it again.",
       "labelOpenFailed": "Your label is still saved. We could not open the PDF; try opening it again."
     }
   },

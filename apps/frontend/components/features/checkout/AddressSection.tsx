@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@shopify/restyle';
@@ -14,6 +14,7 @@ interface AddressSectionProps {
   label: string;
   placeholder: string;
   isLoading?: boolean;
+  disabled?: boolean;
 }
 
 export const AddressSection = ({
@@ -23,7 +24,10 @@ export const AddressSection = ({
   label,
   placeholder,
   isLoading,
+  disabled = false,
 }: AddressSectionProps) => {
+  const disabledRef = useRef(disabled);
+  disabledRef.current = disabled;
   const theme = useTheme<Theme>();
 
   if (isLoading) {
@@ -42,7 +46,7 @@ export const AddressSection = ({
       <Text variant="subheader-lg" marginBottom="s" color="primary">
         {label}
       </Text>
-      <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+      <TouchableOpacity disabled={disabled} accessibilityState={{ disabled }} onPress={() => { if (!disabledRef.current) onPress(); }} activeOpacity={0.7}>
         <Box
           backgroundColor="cardBackground"
           padding="m"

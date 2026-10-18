@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@shopify/restyle';
@@ -14,6 +14,8 @@ type LabelWithHelpProps = {
   color?: 'textPrimary' | 'textSecondary' | 'primary';
   /** Optional translated label for the modal confirm button. Defaults to the legacy hardcoded label. */
   confirmLabel?: string;
+  disabled?: boolean;
+  canInteract?: () => boolean;
 };
 
 export const LabelWithHelp = ({
@@ -22,9 +24,16 @@ export const LabelWithHelp = ({
   helpDescription,
   color = 'textSecondary',
   confirmLabel,
+  disabled = false,
+  canInteract,
 }: LabelWithHelpProps) => {
+  const disabledRef = useRef(disabled);
+  disabledRef.current = disabled;
+  const canInteractRef = useRef(canInteract);
+  canInteractRef.current = canInteract;
   const theme = useTheme<Theme>();
   const [visible, setVisible] = useState(false);
+  useEffect(() => { if (disabled) setVisible(false); }, [disabled]);
 
   return (
     <>
@@ -34,7 +43,9 @@ export const LabelWithHelp = ({
         </Text>
 
         <TouchableOpacity
-          onPress={() => setVisible(true)}
+          disabled={disabled}
+          accessibilityState={{ disabled }}
+          onPress={() => { if (!disabledRef.current && canInteractRef.current?.() !== false) setVisible(true); }}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <MaterialCommunityIcons
@@ -47,11 +58,11 @@ export const LabelWithHelp = ({
 
       {/* Reutilizamos tu ConfirmDialog como Modal de Información */}
       <ConfirmDialog
-        visible={visible}
+        visible={visible && !disabled}
         title={helpTitle}
         description={helpDescription}
-        onConfirm={() => setVisible(false)}
-        onCancel={() => setVisible(false)}
+        onConfirm={() => { if (!disabledRef.current && canInteractRef.current?.() !== false) setVisible(false); }}
+        onCancel={() => { if (!disabledRef.current && canInteractRef.current?.() !== false) setVisible(false); }}
         confirmLabel={confirmLabel ?? 'Entendido'}
         hideCancel={true} // ¡Truco! Solo mostramos "Entendido"
         icon="lightbulb-on-outline" // Icono de "Idea"

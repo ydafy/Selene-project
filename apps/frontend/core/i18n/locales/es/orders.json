@@ -270,6 +270,7 @@
       "sessionExpired": "Tu sesión venció. Inicia sesión de nuevo para continuar.",
       "serviceUnavailable": "La paquetería no está disponible para este envío. Intenta más tarde o contacta a soporte.",
       "resultUnconfirmed": "No pudimos confirmar el resultado de tu guía. Vuelve a abrir el envío para consultar su estado antes de intentar de nuevo.",
+      "evidenceFailed": "No pudimos guardar esta foto. Tus fotos guardadas no cambiaron. Intenta tomarla de nuevo.",
       "labelOpenFailed": "Tu guía sigue guardada. No pudimos abrir el PDF; intenta abrirlo nuevamente."
     }
   },

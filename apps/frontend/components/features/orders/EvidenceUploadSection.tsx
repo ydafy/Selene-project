@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   TouchableOpacity,
   ActivityIndicator,
@@ -37,6 +37,11 @@ interface Props {
   captureLabel?: string;
   /** Already-translated suffixes appended to a slot's accessibility label. */
   photoStateLabels?: { added: string; empty: string };
+  disabled?: boolean;
+  /** Synchronous preparing-screen exclusion before disabled props rerender. */
+  canCapture?: () => boolean;
+  onBusyChange?: (busy: boolean) => void;
+  onFailure?: () => void;
 }
 
 export const EvidenceUploadSection = ({
@@ -49,6 +54,10 @@ export const EvidenceUploadSection = ({
   folder = 'shipments',
   captureLabel,
   photoStateLabels,
+  disabled = false,
+  canCapture,
+  onBusyChange,
+  onFailure,
 }: Props) => {
   const theme = useTheme<Theme>();
   const { takePhoto, uploadFile, uploading } = useImageUpload();
@@ -61,29 +70,57 @@ export const EvidenceUploadSection = ({
   // Index of the slot whose intro dialog is open, or null when none.
   const [slotDialogIndex, setSlotDialogIndex] = useState<number | null>(null);
 
+  const mounted = useRef(true);
+  const busyRef = useRef(false);
+  const disabledRef = useRef(disabled);
+  disabledRef.current = disabled;
+  const canCaptureRef = useRef(canCapture);
+  canCaptureRef.current = canCapture;
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { if (disabled) setSlotDialogIndex(null); }, [disabled]);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+
   const capture = async (index: number) => {
-    const result = await takePhoto({ allowsEditing: false, quality: 0.8 });
-    if (!result) return;
-
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
+    if (!mounted.current || disabledRef.current || busyRef.current || uploading) return;
+    if (canCaptureRef.current?.() === false) return;
+    busyRef.current = true;
+    setBusy(true);
+    onBusyChange?.(true);
     try {
+      const result = await takePhoto({ allowsEditing: false, quality: 0.8 });
+      if (!result || !mounted.current || disabledRef.current) return;
+
       const path = `${folder}/${orderId}/${userId}/slot_${index}_${Date.now()}.jpg`;
       const url = await uploadFile(bucket, path, result.base64!, 'jpg');
+      if (!mounted.current || disabledRef.current) return;
 
       const newPhotos = [...photos];
       newPhotos[index] = url;
       setPhotos(newPhotos);
-
-      // Filtramos nulos para enviar solo las URLs válidas al padre
-      const validPhotos = newPhotos.filter((p): p is string => p !== null);
-      onEvidenceComplete(validPhotos);
-    } catch (error) {
-      console.error('Upload failed', error);
+      onEvidenceComplete(newPhotos.filter((p): p is string => p !== null));
+      // Feedback cannot turn a saved upload into a failed capture.
+      try {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      } catch { /* Optional feedback only. */ }
+    } catch {
+      console.warn('[EVIDENCE_UPLOAD]', { event: 'capture_or_upload_failed' });
+      if (mounted.current) onFailure?.();
+    } finally {
+      busyRef.current = false;
+      if (mounted.current) {
+        setBusy(false);
+        onBusyChange?.(false);
+      }
     }
   };
 
   const handlePickImage = async (index: number) => {
+    if (!mounted.current || disabledRef.current || busyRef.current || uploading) return;
+    if (canCaptureRef.current?.() === false) return;
     const slot = slotsConfig?.[index];
     // Slots with an intro description always show the dialog first; the
     // camera opens only after confirmation (every tap, not just the first).
@@ -104,7 +141,7 @@ export const EvidenceUploadSection = ({
           <Box key={index} flex={1} alignItems="center">
             <TouchableOpacity
               onPress={() => handlePickImage(index)}
-              disabled={uploading}
+              disabled={disabled || busy || uploading}
               accessibilityRole="button"
               accessibilityLabel={
                 slotsConfig?.[index]
@@ -116,7 +153,7 @@ export const EvidenceUploadSection = ({
                       .join('. ')
                   : undefined
               }
-              accessibilityState={{ selected: Boolean(photo) }}
+              accessibilityState={{ selected: Boolean(photo), disabled: disabled || busy || uploading, busy: busy || uploading }}
               style={{
                 width: '100%',
                 aspectRatio: 1,
@@ -169,12 +206,14 @@ export const EvidenceUploadSection = ({
         ))}
       </Box>
 
-      {activeSlot && (
+      {activeSlot && !disabled && !busy && (
         <ConfirmDialog
           visible={slotDialogIndex !== null}
           title={activeSlot.label}
           description={activeSlot.description}
           onConfirm={() => {
+            if (!mounted.current || disabledRef.current || busyRef.current || uploading) return;
+            if (canCaptureRef.current?.() === false) return;
             const index = slotDialogIndex;
             setSlotDialogIndex(null);
             if (index !== null) {

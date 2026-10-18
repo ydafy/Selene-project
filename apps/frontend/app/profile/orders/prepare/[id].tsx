@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import {
   ScrollView,
   Linking,
@@ -78,6 +78,13 @@ const PACK_STEP_ICONS = [
 ] as const;
 
 export default function PrepareShipmentScreen() {
+  const { id, shipment_id } = useLocalSearchParams<{ id: string; shipment_id?: string }>();
+  const { session } = useAuthContext();
+  const selection = Array.isArray(shipment_id) ? shipment_id[0] : shipment_id;
+  return <PrepareShipmentContent key={JSON.stringify([id, selection, session?.user.id])} />;
+}
+
+function PrepareShipmentContent() {
   const { id, shipment_id } = useLocalSearchParams<{
     id: string;
     shipment_id?: string;
@@ -115,9 +122,20 @@ export default function PrepareShipmentScreen() {
 
   const targetShipmentId = selectedShipment?.id;
 
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
   const submissionInFlight = useRef(false);
+  const evidenceBusy = useRef(false);
+  const [isEvidenceBusy, setIsEvidenceBusy] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const isProcessing = isAuthenticating || actions.generateLabel.isLoading;
+  const canInteract = useCallback(
+    () => mounted.current && !submissionInFlight.current && !isProcessing,
+    [isProcessing],
+  );
   const hasExistingLabel = Boolean(selectedShipment?.label_url);
   const labelState = resolveShipmentLabelState(selectedShipment, Boolean(error));
   const canGenerateLabel = labelState === 'ready' && !isFetching;
@@ -159,12 +177,14 @@ export default function PrepareShipmentScreen() {
   useShipmentLabelRefresh(targetShipmentId, handleRefreshLabelStatus);
 
   const handleOpenLabel = async (url: string) => {
+    if (!canInteract()) return false;
     setLabelOpenError(false);
     const opened = await openGeneratedLabel(
       url,
       (value) => Linking.openURL(value),
       reportLabelDiagnostic,
     );
+    if (!mounted.current) return false;
     if (!opened) {
       setLabelOpenError(true);
       setErrorMsg(t('orders:prepare.errors.labelOpenFailed'));
@@ -173,6 +193,7 @@ export default function PrepareShipmentScreen() {
   };
 
   const handleAddressSelect = useCallback((addr: Address) => {
+    if (!mounted.current || submissionInFlight.current) return;
     setSelectedOrigin(addr);
   }, []);
 
@@ -183,7 +204,9 @@ export default function PrepareShipmentScreen() {
 
   const handleConfirm = async () => {
     if (
+      !mounted.current ||
       submissionInFlight.current ||
+      evidenceBusy.current ||
       isProcessing ||
       !selectedOrigin ||
       !targetShipmentId ||
@@ -197,8 +220,9 @@ export default function PrepareShipmentScreen() {
     setErrorMsg(null);
 
     try {
+      addressModalRef.current?.dismiss();
       const auth = await authenticateAsync(t('orders:prepare.securityReason'));
-      if (!auth.success) return;
+      if (!auth.success || !mounted.current) return;
 
       const result = await generateLabelWithRecovery({
         generate: () =>
@@ -222,6 +246,7 @@ export default function PrepareShipmentScreen() {
         report: reportLabelDiagnostic,
       });
 
+      if (!mounted.current) return;
       if (result.kind === 'generated') {
         setLabelUrl(result.labelUrl);
         setLabelOpenError(false);
@@ -231,10 +256,10 @@ export default function PrepareShipmentScreen() {
       }
     } catch {
       reportLabelDiagnostic('generation_unconfirmed');
-      setErrorMsg(t('orders:prepare.errors.resultUnconfirmed'));
+      if (mounted.current) setErrorMsg(t('orders:prepare.errors.resultUnconfirmed'));
     } finally {
       submissionInFlight.current = false;
-      setIsAuthenticating(false);
+      if (mounted.current) setIsAuthenticating(false);
     }
   };
 
@@ -362,7 +387,12 @@ export default function PrepareShipmentScreen() {
             {sellerShipments.map((shipment) => (
               <TouchableOpacity
                 key={shipment.id}
-                onPress={() => router.setParams({ shipment_id: shipment.id })}
+                disabled={isProcessing}
+                accessibilityState={{ disabled: isProcessing }}
+                onPress={() => {
+                  if (canInteract())
+                    router.setParams({ shipment_id: shipment.id });
+                }}
               >
                 <Box
                   flexDirection="row"
@@ -474,12 +504,17 @@ export default function PrepareShipmentScreen() {
             label={t('orders:prepare.originLabel')}
             placeholder={t('orders:prepare.originPlaceholder')}
             address={selectedOrigin}
-            onPress={() => addressModalRef.current?.present()}
+            disabled={isProcessing}
+            onPress={() => {
+              if (canInteract()) addressModalRef.current?.present();
+            }}
             showError
           />
         </Box>
 
         <PackagingGuideCard
+          disabled={isProcessing}
+          canInteract={canInteract}
           title={t('orders:prepare.packTitle')}
           steps={(
             t('orders:prepare.packSteps', {
@@ -513,12 +548,25 @@ export default function PrepareShipmentScreen() {
           borderColor="separator"
         >
           <LabelWithHelp
+            disabled={isProcessing}
+            canInteract={canInteract}
             label={t('orders:prepare.whyLabel')}
             helpTitle={t('orders:prepare.whyTitle')}
             helpDescription={whyDescription}
             confirmLabel={t('orders:prepare.whyClose')}
           />
           <EvidenceUploadSection
+            disabled={isProcessing}
+            canCapture={canInteract}
+            onBusyChange={(busy) => {
+              if (!mounted.current) return;
+              evidenceBusy.current = busy;
+              setIsEvidenceBusy(busy);
+            }}
+            onFailure={() => {
+              if (mounted.current && !submissionInFlight.current)
+                setErrorMsg(t('orders:prepare.errors.evidenceFailed'));
+            }}
             orderId={id || ''}
             userId={userId || ''}
             maxPhotos={EVIDENCE_MIN_PHOTOS}
@@ -547,7 +595,9 @@ export default function PrepareShipmentScreen() {
                 image: EVIDENCE_SLOT_IMAGES[2],
               },
             ]}
-            onEvidenceComplete={(urls) => setEvidenceUrls(urls)}
+            onEvidenceComplete={(urls) => {
+              if (mounted.current && !submissionInFlight.current) setEvidenceUrls(urls);
+            }}
           />
         </Box>
 
@@ -589,9 +639,11 @@ export default function PrepareShipmentScreen() {
                   {t('orders:prepare.connectBody')}
                 </Text>
                 <PrimaryButton
-                  onPress={() =>
-                    router.push('/sell/onboarding' as RelativePathString)
-                  }
+                  disabled={isProcessing}
+                  onPress={() => {
+                    if (canInteract())
+                      router.push('/sell/onboarding' as RelativePathString);
+                  }}
                   icon="bank-outline"
                 >
                   {t('orders:prepare.connectCta')}
@@ -635,6 +687,7 @@ export default function PrepareShipmentScreen() {
               })}
             </Text>
             <PrimaryButton
+              disabled={isProcessing}
               onPress={() => {
                 if (selectedShipment?.label_url) {
                   void handleOpenLabel(selectedShipment.label_url);
@@ -652,8 +705,12 @@ export default function PrepareShipmentScreen() {
             state={labelState}
             isRefreshing={isFetching}
             disabled={isProcessing}
-            onRefresh={() => void handleRefreshLabelStatus()}
-            onSupport={() => router.push('/profile/support')}
+            onRefresh={() => {
+              if (canInteract()) void handleRefreshLabelStatus();
+            }}
+            onSupport={() => {
+              if (canInteract()) router.push('/profile/support');
+            }}
           />
         ) : (
           /* SI NO EXISTE, MUESTRA EL FORMULARIO NORMAL CON EL BOTÓN BLINDADO */
@@ -668,6 +725,7 @@ export default function PrepareShipmentScreen() {
                 loading={isProcessing}
                 disabled={
                   isProcessing ||
+                  isEvidenceBusy ||
                   !selectedOrigin ||
                   !targetShipmentId ||
                   !canGenerateLabel ||
@@ -688,10 +746,11 @@ export default function PrepareShipmentScreen() {
       />
 
       <ConfirmDialog
-        visible={showSuccess}
+        visible={showSuccess && !isProcessing}
         title={t('orders:prepare.successTitle')}
         onConfirm={async () => {
           if (!labelUrl || !(await handleOpenLabel(labelUrl))) return;
+          if (!mounted.current || submissionInFlight.current) return;
           setShowSuccess(false);
           if (router.canGoBack()) {
             router.back();

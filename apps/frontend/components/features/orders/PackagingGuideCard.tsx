@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { ImageSourcePropType, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@shopify/restyle';
@@ -53,6 +53,8 @@ type PackagingGuideCardProps = {
   where: WhereInfo;
   /** Already-translated consequence line shown once at the bottom. */
   consequence: string;
+  disabled?: boolean;
+  canInteract?: () => boolean;
 };
 
 /**
@@ -66,13 +68,20 @@ export const PackagingGuideCard = ({
   steps,
   where,
   consequence,
+  disabled = false,
+  canInteract,
 }: PackagingGuideCardProps) => {
+  const disabledRef = useRef(disabled);
+  disabledRef.current = disabled;
+  const canInteractRef = useRef(canInteract);
+  canInteractRef.current = canInteract;
   const theme = useTheme<Theme>();
   // Index of the expanded row: 0..steps.length-1 for steps, steps.length for
   // the "where" row. Row 1 is expanded by default.
   const [expanded, setExpanded] = useState(0);
 
   const toggle = (index: number) => {
+    if (disabledRef.current || canInteractRef.current?.() === false) return;
     setExpanded((current) => (current === index ? -1 : index));
   };
 
@@ -112,9 +121,10 @@ export const PackagingGuideCard = ({
           <Box key={row.key}>
             <TouchableOpacity
               onPress={() => toggle(row.index)}
+              disabled={disabled}
               activeOpacity={0.7}
               accessibilityRole="button"
-              accessibilityState={{ expanded: expanded === row.index }}
+              accessibilityState={{ expanded: expanded === row.index, disabled }}
             >
               <Box
                 flexDirection="row"
