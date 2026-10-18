@@ -144,7 +144,11 @@
     "cancellationWindowTitle": "VENTANA DE CANCELACIÓN",
     "preparingShipmentTitle": "PREPARANDO ENVÍO",
     "deliveredTitle": "Paquete entregado",
-    "deliveredReviewMessage": "El comprador cuenta con un plazo de 48 horas desde la entrega para revisar el producto y confirmar la recepción. Si no reporta un problema, la compra se completará automáticamente al finalizar este plazo. Después, Selene gestionará la liberación de tu pago. Tiempo restante del plazo de revisión: {{timeLeft}}.",
+    "deliveredReviewMessage": "El comprador puede confirmar antes de que termine el plazo. Si no reporta un problema, la compra se completará automáticamente. Después, Selene gestionará tu pago.",
+    "buyerDeliveredTitle": "Revisa tu producto",
+    "buyerDeliveredMessage": "Comprueba que recibiste el producto correcto y que funciona antes de confirmar.",
+    "sellerReviewCountdown": "Tiempo de revisión restante: {{timeLeft}}",
+    "buyerReviewCountdown": "Tiempo para reportar un problema: {{timeLeft}}",
     "completedMessage": "La compra se completó.",
     "paymentExplanationHelp": "¿Cuándo recibiré mi dinero?",
     "paymentExplanationClose": "Cerrar",
@@ -153,7 +157,7 @@
     "cancellationWindowOpen": "Aún puedes cancelar este envío durante {{timeLeft}}.",
     "carrierScanWindowClosed": "La ventana de escaneo del transportista ha cerrado.",
     "sellerShippingWindowClosed": "La ventana de envío del vendedor ha cerrado.",
-    "reviewWindowClosed": "El periodo de revisión terminó. Tus fondos se están procesando.",
+    "reviewWindowClosed": "El plazo de revisión terminó. La compra está pendiente de actualizarse.",
     "fundsReleaseCountdown": "El paquete ha llegado. Tus fondos se liberarán en: {{timeLeft}}",
     "returnPayoutPendingBuyer": "Veredicto a tu favor. El vendedor tiene {{timeLeft}} para pagar la guía de retorno o ganarás el caso automáticamente.",
     "returnPayoutPendingSeller": "Debes pagar la guía de retorno en {{timeLeft}} para recuperar tu producto o perderás el caso.",
@@ -169,8 +173,10 @@
   },
   "dialogs": {
     "cancelTitle": "¿Deseas cancelar este pedido?",
-    "deliveryTitle": "¿Confirmas entrega?",
-    "deliveryMsg": "Confirma solo después de que la paquetería marque este envío como entregado y hayas recibido el paquete, revisado que el producto sea el que compraste y probado que funcione correctamente. Esta confirmación no libera de inmediato el pago al vendedor; la liberación depende del proceso administrativo de Selene.\n\nSi no estás seguro de que el hardware funciona correctamente, no confirmes la entrega y reporta un problema."
+    "deliveryTitle": "¿Recibiste y revisaste tu producto?",
+    "deliveryMsg": "Al confirmar, la compra se completa. Si el producto no es el correcto o no funciona, no confirmes: reporta un problema.",
+    "deliveryConfirm": "Sí, confirmar",
+    "deliveryCancel": "Volver"
   },
   "return": {
     "succesToastMsgTitle": "Evidencia guardada",

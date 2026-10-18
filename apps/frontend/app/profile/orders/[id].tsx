@@ -247,6 +247,63 @@ export default function OrderDetailScreen() {
   });
 
   // --- 5. HANDLERS ---
+  const handleConfirmDelivery = async () => {
+    if (!currentShipment) {
+      setShowDeliveryConfirm(false);
+      return;
+    }
+
+    try {
+      await actions.confirmDelivery.execute({
+        shipmentId: currentShipment.id,
+      });
+      setShowDeliveryConfirm(false);
+
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      Toast.show({
+        type: 'success',
+        text1: t('orders:dialogs.deliverySuccessTitle', {
+          defaultValue: '¡Entrega confirmada!',
+        }),
+        text2: t('orders:dialogs.deliverySuccessMsg', {
+          defaultValue:
+            'Gracias por tu compra. Los fondos han sido liberados al vendedor.',
+        }),
+      });
+    } catch {
+      // El hook dispara el toast de error; el diálogo queda abierto para reintentar
+    }
+  };
+
+  const handleCancelOrder = async () => {
+    if (!currentShipment) {
+      setShowCancelConfirm(false);
+      return;
+    }
+
+    try {
+      await actions.cancelOrder.execute({
+        shipmentId: currentShipment.id,
+      });
+      setShowCancelConfirm(false);
+
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      Toast.show({
+        type: 'info',
+        text1: t('orders:dialogs.cancelSuccessTitle', {
+          defaultValue: 'Pedido cancelado',
+        }),
+        text2: t('orders:dialogs.cancelSuccessMsg', {
+          defaultValue:
+            'Tu reembolso será procesado a tu método de pago original.',
+        }),
+      });
+    } catch {
+      // El hook dispara el toast de error; el diálogo queda abierto para reintentar
+    }
+  };
   const handleCopyTracking = useCallback((tracking: string) => {
     Clipboard.setString(tracking);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -881,22 +938,7 @@ export default function OrderDetailScreen() {
         visible={showCancelConfirm}
         title={t('orders:dialogs.cancelTitle')}
         description={t('orders:detail.cancelDisclaimer')}
-        onConfirm={async () => {
-          if (!currentShipment) {
-            setShowCancelConfirm(false);
-            return;
-          }
-
-          try {
-            await actions.cancelOrder.execute({
-              shipmentId: currentShipment.id,
-            });
-            setShowCancelConfirm(false);
-          } catch {
-            // The hook surfaces the friendly toast; keep the dialog open so the
-            // buyer can retry or dismiss without a hard crash.
-          }
-        }}
+        onConfirm={handleCancelOrder}
         onCancel={() => setShowCancelConfirm(false)}
         isDangerous
         confirmLabel={t('orders:actions.confirmCancel')}
@@ -907,24 +949,10 @@ export default function OrderDetailScreen() {
         visible={showDeliveryConfirm}
         title={t('orders:dialogs.deliveryTitle')}
         description={t('orders:dialogs.deliveryMsg')}
-        onConfirm={async () => {
-          if (!currentShipment) {
-            setShowDeliveryConfirm(false);
-            return;
-          }
-
-          try {
-            await actions.confirmDelivery.execute({
-              shipmentId: currentShipment.id,
-            });
-            setShowDeliveryConfirm(false);
-          } catch {
-            // The hook surfaces the friendly toast; keep the dialog open so the
-            // buyer can retry or dismiss without a hard crash.
-          }
-        }}
+        onConfirm={handleConfirmDelivery}
         onCancel={() => setShowDeliveryConfirm(false)}
-        confirmLabel={t('orders:actions.confirmDelivery')}
+        confirmLabel={t('orders:dialogs.deliveryConfirm')}
+        cancelLabel={t('orders:dialogs.deliveryCancel')}
         loading={actions.confirmDelivery.isLoading}
         icon="package-variant"
       />

@@ -148,7 +148,11 @@
     "cancellationWindowTitle": "CANCELLATION WINDOW",
     "preparingShipmentTitle": "PREPARING SHIPMENT",
     "deliveredTitle": "Package delivered",
-    "deliveredReviewMessage": "The buyer has a 48-hour window from delivery to review the product and confirm receipt. If they do not report a problem, the purchase will complete automatically at the end of this period. Selene will then manage the release of your payment. Time remaining in the review window: {{timeLeft}}.",
+    "deliveredReviewMessage": "The buyer can confirm before the review window ends. If they do not report a problem, the purchase will complete automatically. Selene will then manage your payment.",
+    "buyerDeliveredTitle": "Check your product",
+    "buyerDeliveredMessage": "Check that you received the correct product and that it works before confirming.",
+    "sellerReviewCountdown": "Review time remaining: {{timeLeft}}",
+    "buyerReviewCountdown": "Time to report a problem: {{timeLeft}}",
     "completedMessage": "The purchase is complete.",
     "paymentExplanationHelp": "When will I receive my money?",
     "paymentExplanationClose": "Close",
@@ -157,7 +161,7 @@
     "cancellationWindowOpen": "You can still cancel this shipment for {{timeLeft}}.",
     "carrierScanWindowClosed": "Your carrier scan window has closed.",
     "sellerShippingWindowClosed": "The seller's shipping window has closed.",
-    "reviewWindowClosed": "The review period has ended. Your funds are being processed.",
+    "reviewWindowClosed": "The review window has ended. The purchase is awaiting a status update.",
     "fundsReleaseCountdown": "The package has arrived. Your funds will be released in: {{timeLeft}}",
     "returnPayoutPendingBuyer": "Verdict in your favor. The seller has {{timeLeft}} to pay for the return label or you will win the case automatically.",
     "returnPayoutPendingSeller": "You must pay for the return label within {{timeLeft}} to recover your product or lose the case.",
@@ -183,8 +187,10 @@
 
   "dialogs": {
     "cancelTitle": "Do you want to cancel this order?",
-    "deliveryTitle": "Did you receive your delivered package?",
-    "deliveryMsg": "Confirm only after the carrier marks this shipment delivered and you have received it. Seller payout is released by Selene's admin process, not by this confirmation."
+    "deliveryTitle": "Did you receive and check your product?",
+    "deliveryMsg": "Confirming completes the purchase. If the product is incorrect or does not work, do not confirm: report a problem.",
+    "deliveryConfirm": "Yes, confirm",
+    "deliveryCancel": "Go back"
   },
   "prepare": {
     "headerTitle": "Generate Label",

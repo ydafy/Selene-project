@@ -40,12 +40,22 @@ export const OrderActionCard = ({
   const theme = useTheme<Theme>();
   const router = useRouter();
   const { permissions, dispute, isSeller, isBuyer } = shipment;
+  // Raw fallback shipments can inherit order-level permissions; scope this
+  // presentation hint to the selected shipment before showing review UI.
   const showSellerDeliveredBanner =
-    isSeller && shipment.status === 'delivered' && !dispute;
+    permissions.showSellerDeliveredBanner &&
+    isSeller &&
+    shipment.status === 'delivered' &&
+    !dispute;
+  const showBuyerDeliveredBanner =
+    isBuyer && shipment.status === 'delivered' && !dispute;
+  const showDeliveredReviewBanner =
+    showSellerDeliveredBanner || showBuyerDeliveredBanner;
   const showSellerCompletedBanner =
     isSeller && shipment.status === 'completed' && !dispute;
   const showSellerStatusBanner =
     showSellerDeliveredBanner || showSellerCompletedBanner;
+  const showStatusBanner = showSellerStatusBanner || showBuyerDeliveredBanner;
   const { orderExpirationHours, preparingExpirationHours } =
     useCancellationSettings();
 
@@ -65,12 +75,12 @@ export const OrderActionCard = ({
       };
     }
 
-    // Escenario A: Esperando liberación normal.
-    // La ventana de revisión de 48h arranca cuando ESTE envío se entrega
-    // (shipment.delivered_at), no cuando la orden completa se entrega — en
-    // órdenes multi-vendedor, order.delivered_at se setea con el último envío
-    // y adelantaría/retrasaría el countdown de cada vendedor.
-    if (permissions.showSellerDeliveredBanner && shipment.delivered_at) {
+    // Each shipment owns its buyer review deadline, not the whole order.
+    if (
+      showDeliveredReviewBanner &&
+      shipment.delivered_at &&
+      Number.isFinite(new Date(shipment.delivered_at).getTime())
+    ) {
       return { startTime: shipment.delivered_at, limit: 48 };
     }
     // Escenario B: Esperando pago de retorno
@@ -95,7 +105,7 @@ export const OrderActionCard = ({
     permissions,
     orderExpirationHours,
     preparingExpirationHours,
-    showSellerDeliveredBanner,
+    showDeliveredReviewBanner,
   ]);
 
   const { timeLeft, isExpired } = useOrderCountdown(
@@ -110,6 +120,7 @@ export const OrderActionCard = ({
   const shouldShow =
     isCriticalStatus ||
     showSellerStatusBanner ||
+    showBuyerDeliveredBanner ||
     permissions.canCancel ||
     shipment.status === 'preparing';
 
@@ -122,21 +133,21 @@ export const OrderActionCard = ({
   const bannerColor =
     isManualCancelWindow ||
     isWaitingReturn ||
-    showSellerStatusBanner
+    showStatusBanner
       ? theme.colors.primary
       : theme.colors.error;
   const bannerBorderColor = isManualCancelWindow
     ? 'primary'
     : isWaitingReturn
       ? 'error'
-      : showSellerStatusBanner
+      : showStatusBanner
         ? 'success'
         : 'error';
   const iconName = isWaitingReturn
     ? 'truck-delivery'
     : isManualCancelWindow
       ? 'clock-alert-outline'
-      : showSellerStatusBanner
+      : showStatusBanner
         ? 'clock-check'
         : 'alert-octagon';
 
@@ -145,6 +156,10 @@ export const OrderActionCard = ({
     if (shipment.status === 'preparing')
       return t('actionCard.preparingShipmentTitle');
     if (showSellerDeliveredBanner) return t('actionCard.deliveredTitle');
+    if (showBuyerDeliveredBanner)
+      return isExpired
+        ? t('actionCard.deliveredTitle')
+        : t('actionCard.buyerDeliveredTitle');
     if (showSellerCompletedBanner) return t('orders:status.completed');
     if (order.status === 'dispute') {
       if (dispute?.status === 'return_delivered' && isSeller)
@@ -176,8 +191,14 @@ export const OrderActionCard = ({
           });
     }
 
+    if (showDeliveredReviewBanner && isExpired) {
+      return t('actionCard.reviewWindowClosed');
+    }
     if (showSellerDeliveredBanner) {
-      return t('actionCard.deliveredReviewMessage', { timeLeft });
+      return t('actionCard.deliveredReviewMessage');
+    }
+    if (showBuyerDeliveredBanner) {
+      return t('actionCard.buyerDeliveredMessage');
     }
     if (showSellerCompletedBanner) {
       return t('actionCard.completedMessage');
@@ -256,14 +277,31 @@ export const OrderActionCard = ({
               variant="body-md"
               fontWeight="bold"
               color={
-                isWaitingReturn || showSellerStatusBanner
+                isWaitingReturn || showStatusBanner
                   ? 'primary'
                   : 'error'
               }
             >
               {getBannerTitle()}
             </Text>
-            <Text variant="caption-md" color="textPrimary">
+            {showDeliveredReviewBanner && timerConfig && !isExpired && (
+              <Text
+                variant="caption-md"
+                color="textPrimary"
+                fontWeight="bold"
+                marginTop="s"
+                style={{ fontVariant: ['tabular-nums'] }}
+              >
+                {showSellerDeliveredBanner
+                  ? t('actionCard.sellerReviewCountdown', { timeLeft })
+                  : t('actionCard.buyerReviewCountdown', { timeLeft })}
+              </Text>
+            )}
+            <Text
+              variant="caption-md"
+              color="textPrimary"
+              marginTop={showDeliveredReviewBanner ? 's' : undefined}
+            >
               {getBannerMessage()}
             </Text>
           </Box>
@@ -271,7 +309,7 @@ export const OrderActionCard = ({
 
         {/* --- 5. ACCIONES --- */}
         <Box gap="s">
-          {showSellerCompletedBanner && (
+          {showSellerStatusBanner && (
             <PrimaryButton
               variant="outline"
               icon="help-circle-outline"
@@ -325,7 +363,7 @@ export const OrderActionCard = ({
       </Box>
 
       <ConfirmDialog
-        visible={showSellerCompletedBanner && isPaymentExplanationVisible}
+        visible={showSellerStatusBanner && isPaymentExplanationVisible}
         title={t('wallet:onboarding.paymentExplanation.title')}
         onConfirm={() => setIsPaymentExplanationVisible(false)}
         onCancel={() => setIsPaymentExplanationVisible(false)}

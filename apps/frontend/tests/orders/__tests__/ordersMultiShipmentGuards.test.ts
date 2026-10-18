@@ -74,12 +74,12 @@ describe('orders detail screen shipment-aware source guards', () => {
 describe('OrderActionCard shipment-level timing guard', () => {
   const card = read('components/features/orders/OrderActionCard.tsx');
 
-  it('starts the release countdown from the shipment delivered_at, not the order', () => {
+  it('starts the review countdown from the shipment delivered_at, not the order', () => {
     // In multi-seller orders, order.delivered_at is set when the LAST shipment
     // delivers; using it would mis-anchor each seller's 48h window. The
     // cleanup reads shipment.delivered_at instead.
     expect(card).toContain(
-      'if (permissions.showSellerDeliveredBanner && shipment.delivered_at)',
+      'if ( showDeliveredReviewBanner && shipment.delivered_at && Number.isFinite(new Date(shipment.delivered_at).getTime()) )',
     );
     expect(card).toContain("return { startTime: shipment.delivered_at, limit: 48 };");
     expect(card).not.toContain('return { startTime: order.delivered_at');

@@ -137,10 +137,12 @@ describe('shipment confirmation', () => {
 
     expect(detail).toContain("t('orders:dialogs.deliveryMsg')");
     expect(english.actions.confirmDelivery).toBe('Confirm Delivered Package');
-    expect(english.dialogs.deliveryMsg).toContain('after the carrier marks');
-    expect(english.dialogs.deliveryMsg).toContain('admin process');
+    expect(english.dialogs.deliveryMsg).toContain('Confirming completes the purchase');
+    expect(english.dialogs.deliveryMsg).toContain('report a problem');
+    expect(english.dialogs.deliveryMsg).not.toContain('releases');
     expect(spanish.actions.confirmDelivery).toBe('Confirmar paquete entregado');
-    expect(spanish.dialogs.deliveryMsg).toContain('después de que la paquetería');
-    expect(spanish.dialogs.deliveryMsg).toContain('proceso administrativo');
+    expect(spanish.dialogs.deliveryMsg).toContain('Al confirmar, la compra se completa');
+    expect(spanish.dialogs.deliveryMsg).toContain('reporta un problema');
+    expect(spanish.dialogs.deliveryMsg).not.toContain('libera');
   });
 });

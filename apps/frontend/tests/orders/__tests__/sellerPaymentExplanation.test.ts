@@ -7,7 +7,7 @@ const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8').replac
 
 // Native imports are unavailable in Bun; pin the UI wiring with source guards.
 describe('shared seller payment explanation', () => {
-  it('uses one shared body only in onboarding success and the completed seller dialog', () => {
+  it('uses one shared body in onboarding success and the seller payment dialog', () => {
     const component = 'components/features/payments/SellerPaymentExplanation.tsx';
     expect(existsSync(join(FRONTEND, component))).toBe(true);
     const shared = read(component);
@@ -22,12 +22,12 @@ describe('shared seller payment explanation', () => {
     expect(success).toContain('CONNECT_ONBOARDING_SUCCESS_CTA_ROUTE');
   });
 
-  it('gates help and visibility on the selected completed, dispute-free seller shipment', () => {
+  it('gates help and visibility on the selected delivered or completed, dispute-free seller shipment', () => {
     const card = read('components/features/orders/OrderActionCard.tsx');
     expect(card).toContain("const showSellerCompletedBanner = isSeller && shipment.status === 'completed' && !dispute;");
-    expect(card).toContain('{showSellerCompletedBanner && ( <PrimaryButton');
+    expect(card).toContain('{showSellerStatusBanner && ( <PrimaryButton');
     expect(card).toContain('onPress={() => setIsPaymentExplanationVisible(true)}');
-    expect(card).toContain('visible={showSellerCompletedBanner && isPaymentExplanationVisible}');
+    expect(card).toContain('visible={showSellerStatusBanner && isPaymentExplanationVisible}');
     expect(card).toContain('<SellerPaymentExplanation />');
     expect(card).not.toContain("order.status === 'completed'");
   });
