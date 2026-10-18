@@ -12,6 +12,7 @@ import Stripe from 'https://esm.sh/stripe@17.0.0';
 
 import {
   ConnectPayoutReleaseError,
+  createShipmentTransferAdapters,
   getConnectPayoutReleaseErrorStatus,
   getStripeBalanceInsufficientLogMeta,
   parseReleaseRequestBody,
@@ -125,6 +126,11 @@ serve(async (req: Request) => {
       { actorId: user.id, ...request },
       {
         ...createAtomicResumeAdapters((name, args) => supabaseAdmin.rpc(name, args)),
+        ...createShipmentTransferAdapters({
+          begin: (args) => supabaseAdmin.rpc('fn_begin_shipment_transfer', args),
+          complete: (args) =>
+            supabaseAdmin.rpc('fn_complete_shipment_transfer', args),
+        }),
         getActorProfile: async (actorId) => {
           const { data, error } = await supabaseAdmin
             .from('profiles_private')
@@ -351,18 +357,6 @@ serve(async (req: Request) => {
               ...getStripeErrorLogMeta(error),
             });
             throw error;
-          }
-        },
-        markShipmentStripeTransferId: async (input) => {
-          const { error } = await supabaseAdmin
-            .from('shipments')
-            .update({ stripe_transfer_id: input.stripeTransferId })
-            .eq('id', input.shipmentId);
-          if (error) {
-            throw new ConnectPayoutReleaseError(
-              'SHIPMENT_TRANSFER_UPDATE_FAILED',
-              500,
-            );
           }
         },
         retrieveStripePayout: async (input) => {

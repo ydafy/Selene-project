@@ -1,14 +1,42 @@
 # Shipment cancellation coordination — B1.1/B1.2/B1.3
 
-## B1.3-T0 transfer SQL checkpoint (maintainer-applied; no Edge wiring)
+## B1.3-T Edge adapter (repository sources only; not deployed)
 
-The maintainer confirmed the transfer migration applied without errors and regenerated types. Local readback adds exactly the two nullable mapping columns and the begin/complete RPC signatures (+24 generated lines). This is human application evidence plus local generated-type evidence, not independent remote inspection. The deployment order below is historical/reference; do not replay the migration. Edge integration and deployment remain pending.
+`release-connect-payout` now calls the maintainer-applied begin RPC after creating/resuming the existing mapping and immediately before each new Transfer. Both RPC argument types come from the regenerated `Database` contract. The original new-run stage version, or the version returned by atomic resume, is passed unchanged to begin and completion. Begin does not increment that epoch.
+
+The helper validates the returned envelope against its trusted run/shipment/seller/order context, positive safe-integer allocation, MXN currency, destination, charge, group and existing idempotency key. It sends only the exact validated server-returned values to the existing Stripe port. It then requires a nonblank Transfer ID and an exactly-true conditional completion before balance checks or payout progression. The old direct shipment Transfer-ID update is removed. Errors, malformed/lost responses and provider uncertainty never trigger retries, marker cleanup or an unfenced fallback. Stored Transfer IDs and the legacy destination-charge branch bypass both new RPCs.
+
+New fail-closed errors use the existing `{success: false, error}` response and endpoint error-log pattern:
+
+- HTTP 500 `SHIPMENT_TRANSFER_BEGIN_FAILED`: begin RPC returned an error (including arbitration refusal); no provider call is authorized.
+- HTTP 409 `SHIPMENT_TRANSFER_BEGIN_INVALID`: malformed or mismatched committed begin envelope; the possible-effect marker may already exist.
+- HTTP 409 `SHIPMENT_TRANSFER_RESULT_INVALID`: no confirmed nonblank provider identity; no completion.
+- HTTP 409 `SHIPMENT_TRANSFER_COMPLETION_CONFLICT`: completion did not confirm exactly `true`; no balance/payout progression.
+- HTTP 500 `SHIPMENT_TRANSFER_UPDATE_FAILED`: completion RPC error, retaining the prior identity-persistence error contract. Provider and transport exceptions retain existing endpoint handling; none authorizes a retry.
+
+Unchanged allocation, admin authorization, completed-only eligibility, actionability, payout fencing, resume ownership and response/log behavior remain separately guarded. The old test expecting an automatic second Transfer after identity-write ambiguity is intentionally replaced by a durable-fence refusal test. Deterministic tests execute the production helper and typed RPC adapters with fake provider/RPC ports; they do not prove live SQL contention, HTTP gateway/JWT or actual Stripe outcomes. Parent-owned integrated and independent verification remain separate gates. This covers B13-S1/S3/S4's transfer adapter scope and preserves B13-S2's deployment boundary, not all of B1.3/B1.
+
+### Local adapter evidence and limits
+
+Focused Bun tests passed 112/0 with 706 assertions, including adjacent existing tests. A genuine behavioral RED first showed missing begin/completion ordering and forbidden provider progression (76 pass/36 fail); two earlier RED attempts timed out due to the pending-provider test setup, which was corrected before implementation. Scoped ESLint passed. An in-memory comparison with baseline `23bacdd` passed 12 unchanged helper scenarios, comparing exact results/errors and ordered provider/business effects while excluding the intentionally added arbitration RPCs; no committed test reads Git history and no filesystem scratch was created.
+
+The required offline endpoint Deno check failed on uncached `https://deno.land/std@0.168.0/http/server.ts` with `--no-remote`; no fetch or retry was attempted. Required Prettier checking reports the helper, endpoint and test file; each also fails on the baseline revision. New blocks received scoped formatting without a whole-file cosmetic rewrite. These checks are not passes. The parent full Bun suite passed 1795 tests with 6614 assertions across 194 files (zero failures); parent focused spot-check also passed 112/0/706. Independent adapter/concurrency verification, endpoint type proof and deployed/provider proof remain outstanding; the SQL checkpoint's independent/native approval cannot substitute for them.
+
+### Deployment sources and caller drain — maintainer action only
+
+No new SQL or type generation is required: `20261017233608_shipment_transfer_coordination.sql` and its prerequisite migrations are already maintainer-confirmed applied. Do not replay them. Future deployment source for this unit is `supabase/functions/release-connect-payout/index.ts`, importing `release-connect-payout.ts` and the unchanged `atomic-resume-adapter.ts`. Existing cancellation sources `cancel-order`, `auto-cancel-orders`, `auto-cancel-preparing` and label participant `generate-shipping-label` must be coordinated with their shared dependencies; no deployment has been performed here.
+
+Before rollout, separately pause/drain all old release and cancellation invocations, including jobs and any old in-flight provider attempts. Old release writers lack the start marker and old cancellation callers may bypass claims. Inspect unresolved historical runs before resumption: absence of the marker is not evidence of no old provider effect. Drain old callers before enabling the coordinated callers; do not claim mixed-version safety. No new secrets, cron schedules or webhooks are required. After separately authorized deployment, verify service-role begin/complete permissions, old-caller drain, loser/no-provider behavior and normal/stored-ID/legacy releases with disposable controlled fixtures. Remote inspection, provider operations, deployment and resumption require maintainer authorization and are not performed by these local tests.
+
+## B1.3-T0 transfer SQL checkpoint (historical SQL-only scope)
+
+The maintainer confirmed the transfer migration applied without errors and regenerated types. Local readback adds exactly the two nullable mapping columns and the begin/complete RPC signatures (+24 generated lines). This is human application evidence plus local generated-type evidence, not independent remote inspection. The deployment order below is historical/reference; do not replay the migration. Edge repository integration is described above; deployment remains pending.
 
 ### Verified local checkpoint
 
 Writer and independent verifier passed 13 transfer SQL groups, 20 existing cancellation/label SQL groups and six offline transfer tests (20 assertions). Parent full Bun suite: 1759 pass, 0 fail, 6304 assertions across 194 files. Independent scoped ESLint/Prettier and public-RPC baseline differential passed; independent probes also confirmed actual role/privilege boundaries, write-free replay (including tuple identity), decimal allocation and preservation of transfer markers through existing resume/terminal projections. No product blocker or correction was reported. The transfer verifier's authorized temporary copy was cleaned successfully.
 
-Native assessment was unavailable for the untracked candidate, so no native review authority or approval exists. These are local synthetic PostgreSQL and test results, not gateway/JWT, actual Stripe, deployed-schema or separate TypeScript-build proof. Maintainer application and generated-type synchronization were subsequently confirmed as recorded above; Edge integration still requires its own implementation and verification. Do not deploy functions or replay earlier migrations based on this checkpoint.
+Native assessment was initially unavailable for the untracked SQL candidate. The subsequent isolated SQL checkpoint `23bacdd` received native approval and its acknowledgement was completed; that approval does not extend to this Edge adapter or deployment. These functional checks are local synthetic PostgreSQL and test results, not gateway/JWT, actual Stripe, deployed-schema or separate TypeScript-build proof. Maintainer application and generated-type synchronization were subsequently confirmed as recorded above; Edge integration still requires its own implementation and verification. Do not deploy functions or replay earlier migrations based on this checkpoint.
 
 This unit prepares the transfer half of B13-S1/S3/S4; B13-S2's SQL/type/deployment boundary remains intact. It does not complete B1.3 or establish a deployed incident. Release is still completed-only, whereas cancellation is paid/preparing-only. Normal business eligibility is disjoint; explicit legacy-corruption fixtures test defensive overlap without allowing paid transfers.
 
@@ -26,7 +54,7 @@ Both new service-only definer RPCs pin an empty search path and check the servic
 
 A confirmed committed begin response is the ONLY authority for one Transfer call. Use its exact returned parameters/key, removing `transfer_token` and `idempotency_key` from the Stripe params. On failed, malformed, timed-out or lost begin response, do not call Stripe. A provider error/unknown result or identity-persistence failure leaves the marker intact and requires investigation; no automatic retry, expiry release, second create or recovery protocol is introduced. A false/uncertain completion must stop the adapter before balance/payout progression; never fall back to direct shipment updates. The marker records possibility, not success. Legacy rows with stored Transfer IDs continue to reuse them without calling begin. The legacy destination-charge/no-Transfer branch must not call either new RPC.
 
-### Maintainer SQL/type gate — pending, not deployment approval
+### Maintainer SQL/type gate — confirmed complete, not deployment approval
 
 1. Prerequisites: already applied current payout release/read-model, actionability, stage/executor and `20261008090000_atomic_payout_resume_mapping.sql`; B1.1/B1.2 cancellation SQL and the separately confirmed label coordination migration. Do not replay those migrations or canonical body copies.
 2. After independent verification and separate maintainer acceptance, apply **only** `supabase/migrations/20261017233608_shipment_transfer_coordination.sql`. Its full canonical reference `supabase/queries/payments/shipment_transfer_coordination.sql` is identical, not a second script to execute. No backfill guesses old provider outcomes.

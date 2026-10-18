@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import * as releaseModule from './release-connect-payout';
 
 import {
   ConnectPayoutReleaseError,
@@ -76,7 +77,14 @@ const failedParentRun = (
 });
 
 function createDeps(overrides: Partial<RetryReleaseDependencies> = {}) {
+  let releaseRows: ReleaseQueueRow[] = [];
+  let releaseOrders: Awaited<
+    ReturnType<ConnectPayoutReleaseDependencies['loadReleaseOrders']>
+  > = [];
+  let releaseKey = '';
   const calls = {
+    transferBegins: [] as unknown[],
+    transferCompletions: [] as unknown[],
     createdRuns: [] as unknown[],
     mappings: [] as unknown[],
     transfers: [] as unknown[],
@@ -136,8 +144,38 @@ function createDeps(overrides: Partial<RetryReleaseDependencies> = {}) {
       calls.transfers.push(input);
       return { id: 'tr_123' };
     },
-    markShipmentStripeTransferId: async (input) => {
-      calls.transferUpdates.push(input);
+    beginShipmentTransfer: async (input) => {
+      calls.sequence.push('beginShipmentTransfer');
+      calls.transferBegins.push(input);
+      const row = releaseRows.find(
+        (row) => row.shipment_id === input.p_shipment_id,
+      )!;
+      const order = releaseOrders.find((order) => order.id === row.order_id)!;
+      return {
+        transfer_token: `token-${input.p_shipment_id}`,
+        amount: row.release_amount_cents,
+        currency: 'mxn',
+        destination: row.stripe_account_id,
+        source_transaction: order.stripe_charge_id,
+        transfer_group: order.stripe_transfer_group,
+        idempotency_key: `${releaseKey}:${input.p_run_id}:${input.p_shipment_id}`,
+        metadata: {
+          app_name: 'selene',
+          run_id: input.p_run_id,
+          shipment_id: input.p_shipment_id,
+          seller_id: row.seller_id,
+          order_id: row.order_id,
+        },
+      };
+    },
+    completeShipmentTransfer: async (input) => {
+      calls.sequence.push('completeShipmentTransfer');
+      calls.transferCompletions.push(input);
+      calls.transferUpdates.push({
+        shipmentId: input.p_shipment_id,
+        stripeTransferId: input.p_stripe_transfer_id,
+      });
+      return true;
     },
     retrieveConnectedBalance: async (input) => {
       calls.sequence.push('retrieveConnectedBalance');
@@ -186,14 +224,372 @@ function createDeps(overrides: Partial<RetryReleaseDependencies> = {}) {
     ...overrides,
   };
 
+  const loadRows = deps.loadReleaseRows;
+  deps.loadReleaseRows = async (ids) => (releaseRows = await loadRows(ids));
+  const loadOrders = deps.loadReleaseOrders;
+  deps.loadReleaseOrders = async (ids) => (releaseOrders = await loadOrders(ids));
+  const createRun = deps.createRun;
+  deps.createRun = async (input) => {
+    releaseKey = input.idempotencyKey;
+    return createRun(input);
+  };
   // Existing fixtures predate the version column; model its deployed default.
   const lookup = deps.findRunByIdempotencyKey;
   deps.findRunByIdempotencyKey = async (key) => {
+    releaseKey = key;
     const row = await lookup(key);
     return row ? { release_stage_version: 1, ...row } : null;
   };
   return deps;
 }
+
+describe('shipment transfer arbitration', () => {
+  const request = {
+    actorId: 'admin-1',
+    sellerId: 'seller-1',
+    shipmentIds: ['shipment-1'],
+    idempotencyKey: 'transfer-key',
+  };
+  const envelope = () => ({
+    transfer_token: 'opaque-token',
+    amount: 12_500,
+    currency: 'mxn',
+    destination: 'acct_seller_1',
+    source_transaction: 'ch_server',
+    transfer_group: 'group_server',
+    idempotency_key: 'transfer-key:run-1:shipment-1',
+    metadata: {
+      app_name: 'selene',
+      run_id: 'run-1',
+      shipment_id: 'shipment-1',
+      seller_id: 'seller-1',
+      order_id: 'order-1',
+    },
+  });
+  const transferDeps = (overrides: Partial<RetryReleaseDependencies> = {}) =>
+    createDeps({
+      loadReleaseOrders: async () => [
+        {
+          id: 'order-1',
+          stripe_charge_id: 'ch_server',
+          stripe_transfer_group: 'group_server',
+        },
+      ],
+      ...overrides,
+    });
+  const assertStopped = (
+    deps: ReturnType<typeof createDeps>,
+    transfers = 0,
+  ) => {
+    expect(deps.calls.transfers).toHaveLength(transfers);
+    expect(deps.calls.transferUpdates).toEqual([]);
+    expect(deps.calls.balanceRetrievals).toEqual([]);
+    expect(deps.calls.payouts).toEqual([]);
+    expect(deps.calls.fenceBegins).toEqual([]);
+    expect(deps.calls.updates).toEqual([]);
+    expect(deps.calls.syncFailures).toEqual([]);
+  };
+
+  it('orders mapping, committed begin, exact provider request, conditional identity, then payout', async () => {
+    const deps = transferDeps();
+    expect(await releaseConnectPayout(request, deps)).toEqual({
+      success: true,
+      runId: 'run-1',
+      stripePayoutId: 'po_123',
+      status: 'pending_reconciliation',
+      amount: 12_500,
+    });
+    expect(deps.calls.sequence).toEqual([
+      'createRun',
+      'createRunShipments',
+      'beginShipmentTransfer',
+      'createStripeTransfer',
+      'completeShipmentTransfer',
+      'retrieveConnectedBalance',
+      'beginPayoutCreateFence',
+      'createStripePayout',
+      'completePayoutCreateFence',
+    ]);
+    expect(deps.calls.transferBegins).toEqual([
+      {
+        p_run_id: 'run-1',
+        p_shipment_id: 'shipment-1',
+        p_expected_stage_version: 1,
+      },
+    ]);
+    expect(deps.calls.transfers).toEqual([
+      {
+        stripeAccountId: 'acct_seller_1',
+        amount: 12_500,
+        currency: 'mxn',
+        sourceTransaction: 'ch_server',
+        transferGroup: 'group_server',
+        idempotencyKey: 'transfer-key:run-1:shipment-1',
+        metadata: envelope().metadata,
+      },
+    ]);
+    expect(deps.calls.transferCompletions).toEqual([
+      {
+        p_run_id: 'run-1',
+        p_shipment_id: 'shipment-1',
+        p_expected_stage_version: 1,
+        p_transfer_token: 'token-shipment-1',
+        p_stripe_transfer_id: 'tr_123',
+      },
+    ]);
+  });
+
+  for (const reason of [
+    'SHIPMENT_CANCELLATION_OPERATION_ACTIVE',
+    'SHIPMENT_TRANSFER_RECONCILIATION_REQUIRED',
+    'SHIPMENT_TRANSFER_OWNERSHIP_CONFLICT',
+    'begin response lost',
+  ]) {
+    it(`stops a failed/uncertain begin: ${reason}`, async () => {
+      const error = new Error(reason);
+      const deps = transferDeps({
+        beginShipmentTransfer: async () => {
+          throw error;
+        },
+      });
+      await expect(releaseConnectPayout(request, deps)).rejects.toBe(error);
+      assertStopped(deps);
+      expect(deps.calls.transferCompletions).toEqual([]);
+    });
+  }
+  const malformed = [
+    null,
+    false,
+    [],
+    {},
+    { transfer_token: '' },
+    { amount: 0 },
+    { amount: 1.5 },
+    { amount: Number.MAX_SAFE_INTEGER + 1 },
+    { amount: 12_499 },
+    { currency: 'usd' },
+    { destination: 'acct_other' },
+    { source_transaction: '' },
+    { source_transaction: 'ch_other' },
+    { transfer_group: 'other' },
+    { idempotency_key: '' },
+    { idempotency_key: 'other' },
+    { metadata: { ...envelope().metadata, run_id: 'other' } },
+    { metadata: { ...envelope().metadata, shipment_id: 'other' } },
+    { metadata: { ...envelope().metadata, seller_id: 'other' } },
+    { metadata: { ...envelope().metadata, order_id: 'other' } },
+    { metadata: { ...envelope().metadata, app_name: 'other' } },
+  ];
+  for (const [index, invalid] of malformed.entries()) {
+    it(`rejects malformed or wrong-context begin ${index} without effects`, async () => {
+      const value =
+        invalid &&
+        !Array.isArray(invalid) &&
+        typeof invalid === 'object' &&
+        Object.keys(invalid).length > 0
+          ? { ...envelope(), ...invalid }
+          : invalid;
+      const deps = transferDeps({ beginShipmentTransfer: async () => value });
+      await expect(releaseConnectPayout(request, deps)).rejects.toEqual(
+        new ConnectPayoutReleaseError('SHIPMENT_TRANSFER_BEGIN_INVALID', 409),
+      );
+      assertStopped(deps);
+      expect(deps.calls.transferCompletions).toEqual([]);
+    });
+  }
+  it('waits for the provider and retains the start fence on uncertainty without completion or retry', async () => {
+    let marked = false;
+    const deps = transferDeps({
+      beginShipmentTransfer: async () => {
+        marked = true;
+        return envelope();
+      },
+      createStripeTransfer: async (input) => {
+        deps.calls.transfers.push(input);
+        await Promise.resolve();
+        expect(deps.calls.transferCompletions).toEqual([]);
+        expect(deps.calls.payouts).toEqual([]);
+        expect(marked).toBe(true);
+        throw new Error('provider unavailable');
+      },
+    });
+    await expect(releaseConnectPayout(request, deps)).rejects.toThrow(
+      'provider unavailable',
+    );
+    expect(marked).toBe(true);
+    assertStopped(deps, 1);
+    expect(deps.calls.transferCompletions).toEqual([]);
+  });
+  for (const result of [false, null, 'true', 'error']) {
+    it(`stops before balance/payout on refused or uncertain completion ${result}`, async () => {
+      const deps = transferDeps({
+        completeShipmentTransfer: async () => {
+          if (result === 'error')
+            throw new ConnectPayoutReleaseError(
+              'SHIPMENT_TRANSFER_UPDATE_FAILED',
+              500,
+            );
+          return result as boolean;
+        },
+      });
+      await expect(releaseConnectPayout(request, deps)).rejects.toEqual(
+        new ConnectPayoutReleaseError(
+          result === 'error'
+            ? 'SHIPMENT_TRANSFER_UPDATE_FAILED'
+            : 'SHIPMENT_TRANSFER_COMPLETION_CONFLICT',
+          result === 'error' ? 500 : 409,
+        ),
+      );
+      assertStopped(deps, 1);
+    });
+  }
+  it('refuses an unconfirmed provider identity without completing or releasing the marker', async () => {
+    const deps = transferDeps({
+      createStripeTransfer: async (input) => {
+        deps.calls.transfers.push(input);
+        return { id: '' };
+      },
+    });
+    await expect(releaseConnectPayout(request, deps)).rejects.toEqual(
+      new ConnectPayoutReleaseError('SHIPMENT_TRANSFER_RESULT_INVALID', 409),
+    );
+    assertStopped(deps, 1);
+    expect(deps.calls.transferCompletions).toEqual([]);
+  });
+  it('uses the successful resume epoch for every shipment and isolates completion tokens', async () => {
+    const deps = transferDeps({
+      findRunByIdempotencyKey: async () => ({
+        ...failedParentRun({
+          id: 'run-1',
+          amount: 20_000,
+          shipment_ids: ['shipment-1', 'shipment-2'],
+          stripe_payout_id: null,
+        }),
+        release_stage_version: 7,
+      }),
+      loadReleaseRows: async () => [
+        completedShipment(),
+        completedShipment({
+          shipment_id: 'shipment-2',
+          release_amount_cents: 7_500,
+        }),
+      ],
+    });
+    await releaseConnectPayout(
+      { ...request, shipmentIds: ['shipment-1', 'shipment-2'] },
+      deps,
+    );
+    expect(deps.calls.transferBegins).toEqual(
+      ['shipment-1', 'shipment-2'].map((id) => ({
+        p_run_id: 'run-1',
+        p_shipment_id: id,
+        p_expected_stage_version: 8,
+      })),
+    );
+    expect(deps.calls.transferCompletions).toEqual(
+      ['shipment-1', 'shipment-2'].map((id) => ({
+        p_run_id: 'run-1',
+        p_shipment_id: id,
+        p_expected_stage_version: 8,
+        p_transfer_token: `token-${id}`,
+        p_stripe_transfer_id: 'tr_123',
+      })),
+    );
+    expect(deps.calls.transfers).toMatchObject([
+      { amount: 12_500, idempotencyKey: 'transfer-key:run-1:shipment-1' },
+      { amount: 7_500, idempotencyKey: 'transfer-key:run-1:shipment-2' },
+    ]);
+  });
+  it('carries the captured epoch into SQL instead of refreshing stale ownership', async () => {
+    const deps = transferDeps({
+      createRun: async () => ({
+        id: 'run-1',
+        status: 'pending_reconciliation',
+        release_stage: 'release_accepted',
+        release_stage_version: 11,
+      }),
+      beginShipmentTransfer: async (args) => {
+        expect(args.p_expected_stage_version).toBe(11);
+        throw new Error('SHIPMENT_TRANSFER_OWNERSHIP_CONFLICT');
+      },
+    });
+    await expect(releaseConnectPayout(request, deps)).rejects.toThrow(
+      'SHIPMENT_TRANSFER_OWNERSHIP_CONFLICT',
+    );
+    assertStopped(deps);
+  });
+  it('does not invoke arbitration for stored identities or the legacy destination-charge path', async () => {
+    for (const legacy of [false, true]) {
+      const deps = transferDeps({
+        ...(legacy
+          ? {
+              loadReleaseOrders: async () => [
+                {
+                  id: 'order-1',
+                  stripe_charge_id: null,
+                  stripe_transfer_group: null,
+                },
+              ],
+            }
+          : {
+              loadReleaseRows: async () => [
+                completedShipment({ stripe_transfer_id: 'tr_stored' }),
+              ],
+            }),
+      });
+      await releaseConnectPayout(request, deps);
+      expect(deps.calls.transferBegins).toEqual([]);
+      expect(deps.calls.transferCompletions).toEqual([]);
+      expect(deps.calls.transfers).toEqual([]);
+      expect(deps.calls.payouts).toHaveLength(1);
+    }
+  });
+  it('executes the typed RPC adapters with exact args and fails closed on RPC errors', async () => {
+    const calls: unknown[] = [];
+    const begin = {
+      p_run_id: 'run-1',
+      p_shipment_id: 'shipment-1',
+      p_expected_stage_version: 7,
+    };
+    const complete = {
+      ...begin,
+      p_transfer_token: 'opaque-token',
+      p_stripe_transfer_id: 'tr_1',
+    };
+    const ports = releaseModule.createShipmentTransferAdapters({
+      begin: async (args) => {
+        calls.push(['begin', args]);
+        return { data: envelope(), error: null };
+      },
+      complete: async (args) => {
+        calls.push(['complete', args]);
+        return { data: false, error: null };
+      },
+    });
+    expect(await ports.beginShipmentTransfer(begin)).toEqual(envelope());
+    expect(await ports.completeShipmentTransfer(complete)).toBe(false);
+    expect(calls).toEqual([
+      ['begin', begin],
+      ['complete', complete],
+    ]);
+    const failed = releaseModule.createShipmentTransferAdapters({
+      begin: async () => ({
+        data: envelope(),
+        error: { message: 'response uncertain' },
+      }),
+      complete: async () => ({
+        data: true,
+        error: { message: 'response uncertain' },
+      }),
+    });
+    await expect(failed.beginShipmentTransfer(begin)).rejects.toEqual(
+      new ConnectPayoutReleaseError('SHIPMENT_TRANSFER_BEGIN_FAILED', 500),
+    );
+    await expect(failed.completeShipmentTransfer(complete)).rejects.toEqual(
+      new ConnectPayoutReleaseError('SHIPMENT_TRANSFER_UPDATE_FAILED', 500),
+    );
+  });
+});
 
 describe('atomic pre-payout transition refusal', () => {
   const request = { actorId: 'admin-1', sellerId: 'seller-1', shipmentIds: ['shipment-1'], idempotencyKey: 'cas-key' };
@@ -775,7 +1171,7 @@ describe('releaseConnectPayout', () => {
     );
   });
 
-  it('retries a single-modal release after shipment transfer persistence fails without manual DB repair', async () => {
+  it('refuses a second transfer after ambiguous identity persistence without manual repair', async () => {
     let firstTransferWrite = true;
     const deps = createDeps({
       loadReleaseRows: async () => [
@@ -792,12 +1188,35 @@ describe('releaseConnectPayout', () => {
           stripe_transfer_group: 'selene_order_order-1',
         },
       ],
-      markShipmentStripeTransferId: async (input) => {
-        deps.calls.transferUpdates.push(input);
-        if (firstTransferWrite) {
-          firstTransferWrite = false;
-          throw new ConnectPayoutReleaseError('SHIPMENT_TRANSFER_UPDATE_FAILED', 500);
-        }
+      beginShipmentTransfer: async (input) => {
+        if (!firstTransferWrite)
+          throw new ConnectPayoutReleaseError(
+            'SHIPMENT_TRANSFER_BEGIN_FAILED',
+            500,
+          );
+        return {
+          transfer_token: 'token-1',
+          amount: 12_500,
+          currency: 'mxn',
+          destination: 'acct_seller_1',
+          source_transaction: 'ch_123',
+          transfer_group: 'selene_order_order-1',
+          idempotency_key: `release-key-transfer-retry:${input.p_run_id}:shipment-1`,
+          metadata: {
+            app_name: 'selene',
+            run_id: input.p_run_id,
+            shipment_id: 'shipment-1',
+            seller_id: 'seller-1',
+            order_id: 'order-1',
+          },
+        };
+      },
+      completeShipmentTransfer: async () => {
+        firstTransferWrite = false;
+        throw new ConnectPayoutReleaseError(
+          'SHIPMENT_TRANSFER_UPDATE_FAILED',
+          500,
+        );
       },
       findRunByIdempotencyKey: async (idempotencyKey) => {
         if (idempotencyKey !== 'release-key-transfer-retry') return null;
@@ -812,7 +1231,11 @@ describe('releaseConnectPayout', () => {
         };
       },
       findActiveShipmentMappings: async () => [
-        { shipmentId: 'shipment-1', runId: 'run-1', status: 'pending_reconciliation' },
+        {
+          shipmentId: 'shipment-1',
+          runId: 'run-1',
+          status: 'pending_reconciliation',
+        },
       ],
     });
 
@@ -840,22 +1263,30 @@ describe('releaseConnectPayout', () => {
         },
         deps,
       ),
-    ).resolves.toEqual({
-      success: true,
-      runId: 'run-1',
-      stripePayoutId: 'po_123',
-      status: 'pending_reconciliation',
-      amount: 12_500,
-    });
+    ).rejects.toEqual(
+      new ConnectPayoutReleaseError('SHIPMENT_TRANSFER_BEGIN_FAILED', 500),
+    );
 
-    expect(deps.calls.transfers).toHaveLength(2);
-    expect(deps.calls.transferUpdates).toEqual([
-      { shipmentId: 'shipment-1', stripeTransferId: 'tr_123' },
-      { shipmentId: 'shipment-1', stripeTransferId: 'tr_123' },
-    ]);
+    expect(deps.calls.transfers).toHaveLength(1);
+    expect(deps.calls.transferUpdates).toEqual([]);
+    expect(deps.calls.payouts).toEqual([]);
     expect(deps.calls.retries).toEqual([
-      { runId: 'run-1', expectedStatus: 'pending_reconciliation', expectedStage: null, expectedVersion: 1, shipmentIds: ['shipment-1'], parent: null },
-      { runId: 'run-1', expectedStatus: 'pending_reconciliation', expectedStage: null, expectedVersion: 1, shipmentIds: ['shipment-1'], parent: null },
+      {
+        runId: 'run-1',
+        expectedStatus: 'pending_reconciliation',
+        expectedStage: null,
+        expectedVersion: 1,
+        shipmentIds: ['shipment-1'],
+        parent: null,
+      },
+      {
+        runId: 'run-1',
+        expectedStatus: 'pending_reconciliation',
+        expectedStage: null,
+        expectedVersion: 1,
+        shipmentIds: ['shipment-1'],
+        parent: null,
+      },
     ]);
   });
 
