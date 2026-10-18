@@ -1,5 +1,7 @@
 import { expect, test } from 'bun:test';
-import { projectEnviaShipmentConfiguration, resolveEnviaRuntimeConfiguration, runLabelClaimOrchestration } from '../envia-shipping.ts';
+import './zod-runtime.bun.preload.ts';
+
+const { projectEnviaShipmentConfiguration, resolveEnviaRuntimeConfiguration, runLabelClaimOrchestration } = await import('../envia-shipping.ts');
 
 function harness(claimStatus = 'claimed') {
   const calls = { markSent: 0, provider: 0, finalize: 0, rejected: 0, orphan: 0 };

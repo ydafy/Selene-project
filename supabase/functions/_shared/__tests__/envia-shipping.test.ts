@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
+import './zod-runtime.bun.preload.ts';
 
-import {
+const {
   buyerDestinationSnapshotSchema,
   buildBuyerDestinationFromStoredSnapshot,
   buildEnviaQuoteConfiguration,
@@ -13,7 +14,7 @@ import {
   resolveEnviaRuntimeConfiguration,
   selectPaquetexpressGroundRate,
   toMxnCents,
-} from '../envia-shipping.ts';
+} = await import('../envia-shipping.ts');
 
 const validDestination = {
   name: 'María López',

@@ -1,6 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import { z } from 'https://esm.sh/zod@3.23.8';
 import {
   buildSanitizedEnviaDiagnostics,
   buildSanitizedEnviaResponseMetadata,
@@ -19,6 +18,7 @@ import {
   runLabelClaimOrchestration,
   selectPaquetexpressGroundRate,
 } from '../_shared/envia-shipping.ts';
+import { LabelRequestSchema } from './request-contract.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -122,15 +122,6 @@ const hashRateInput = async (payload: Record<string, unknown>) => {
   ).join('');
 };
 
-// --- 3. ESQUEMAS DE VALIDACIÓN ---
-const RequestSchema = z.object({
-  shipmentId: z.string().uuid('ID de envío inválido'),
-  originAddressId: z.string().uuid('ID de origen inválido'),
-  shippingEvidence: z.object({
-    images: z.array(z.string().url()),
-  }),
-});
-
 // --- 4. FUNCIÓN PRINCIPAL ---
 
 serve(async (req: Request) => {
@@ -142,11 +133,11 @@ serve(async (req: Request) => {
     const body = await req.json().catch(() => ({}));
     log('INFO', 'Label request received');
 
-    const parseResult = RequestSchema.safeParse(body);
+    const parseResult = LabelRequestSchema.safeParse(body);
 
     if (!parseResult.success) {
       // Esto te dirá exactamente qué campo falla: ej. "originAddress.state_code: Required"
-      const errorDetails = parseResult.error.errors
+      const errorDetails = parseResult.error.issues
         .map((e) => `${e.path.join('.')}: ${e.message}`)
         .join(', ');
 

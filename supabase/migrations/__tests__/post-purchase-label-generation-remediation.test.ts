@@ -5,7 +5,9 @@ import { join } from 'node:path';
 import {
   resolvePaymentIntentSucceededAction,
 } from '../../functions/stripe-webhooks/single-modal-settlement.ts';
-import { selectPaquetexpressGroundRate } from '../../functions/_shared/envia-shipping.ts';
+import '../../functions/_shared/__tests__/zod-runtime.bun.preload.ts';
+
+const { selectPaquetexpressGroundRate } = await import('../../functions/_shared/envia-shipping.ts');
 
 const root = process.cwd();
 const readSql = (path: string) => readFileSync(join(root, path), 'utf8');
