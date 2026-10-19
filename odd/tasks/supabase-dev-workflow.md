@@ -27,8 +27,8 @@ Remote project `acoiclkeymgtlwcxilun` holds only fake data but is treated as pro
 - [x] T11: AGENTS.md rewrite (a660c74, 738fa9e).
 - [x] A1: ESLint ignores nested `dist`/`build`/`.expo`; lint 1582 -> 95 errors. Commit 8f2db18.
 - [x] A2: `bun run typecheck` across workspaces. Commit 9a286d5.
-- [ ] A3: `apps/admin-web/.env.example`. Blocked: gentle safety policy forbids agent writes to `.env*`; maintainer creates it.
-- [x] A4: `sql.sql` kept until the T3 baseline; it is the only repo copy of live `fn_shipments_status_trigger` and `fn_cron_release_shipment_funds`. Delete after baseline.
+- [x] A3: `apps/admin-web/.env.example`, created by the maintainer (gentle safety policy blocks agent writes to `.env*`).
+- [x] A4: removed stale `sql.sql` scratch log. Commit f0cfd59. The T3 baseline dumps from the remote, so the old copy added no value and risked misleading agents.
 - [x] A5: pruned 2 stale worktree entries (no commit).
 - [ ] A6: push, PR, branch protection. Blocked: maintainer will decide when.
 
@@ -52,4 +52,5 @@ Remote project `acoiclkeymgtlwcxilun` holds only fake data but is treated as pro
 - L9: Evidence. `is_admin()` must keep PUBLIC execute: 16 PUBLIC-role RLS policies call it. `fn_reconcile_connect_payments` cron job runs as `postgres`. Lint baseline: 1486 errors from ignored `apps/admin-web/dist` build output + ~95 in source; hooks ran 1812 tests, 0 fail.
 - L10: Open findings needing decisions (not fixed): `fn_release_products` lets any signed-in user release any reserved product (checkout; own feature); `track-shipments` on `main` has `verify_jwt = false` and no caller check (tracking worktrees rewrite it); cron jobs `auto-cancel-orders-job` and `track-shipments-every-6-hours` embed literal JWTs; `evidence` bucket is public; legacy `fn_request_payout`/`fn_save_bank_account` still granted and referenced by `useWalletStore`; leaked password protection off; `pg_net` in `public`; orphan function `dynamic-api`.
 - L11: Block B (security items above) deferred by maintainer; investigate worktrees first when reached. Order: A setup -> B security -> C lint/tsc baselines + strict CI -> D baseline/local stack -> Sentry, Bruno/.http, Dependabot.
+- L13: Maintainer: "sql.sql deveria irse, ese archivo era como un log pero es de hace mucho tiempo, quitalo." Keep recording incidental findings (counts, likely causes) in this Log for later blocks.
 - L12: Typecheck baseline: frontend 56 errors, backend 145 (mostly duplicate `@types/node` 24 and 26 conflict), types 1, admin-web 0.
