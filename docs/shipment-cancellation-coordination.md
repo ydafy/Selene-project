@@ -1,12 +1,38 @@
-# Shipment cancellation coordination — B1.1/B1.2/B1.3
+# Shipment cancellation coordination — B1
+
+## B1 status (closed by B1.4)
+
+B1 is complete. Manual cancellation, both cancellation crons, label generation and Connect transfer creation share one shipment-scoped reservation: at most one of them owns a shipment at a time, losers are rejected before any provider call, and sibling shipments in the same order stay independent. All SQL is maintainer-applied, types are regenerated, and the four Edge Functions below are deployed to sandbox.
+
+### B1.4 integrated verification evidence
+
+| Area | Evidence |
+|---|---|
+| cancel × cancel | Live SQL: claim, repeat, expiry, start fence, row-lock contention, caller contexts and production-helper race (`scripts/test-shipment-cancellation-coordination.ts`). |
+| cancel × label | Live SQL on both race orders, expiry, sent/orphan uncertainty and siblings; B1.4 added the deployed final claim/start label fences (`scripts/test-shipment-transfer-coordination.ts`, "final label fences"). |
+| cancel × transfer | Live SQL on both orders, transfer uncertainty, historical fence, contention, sibling progress and authorization with unchanged ten-table snapshots. |
+| label × transfer | Structurally exclusive: labels need `paid`/`preparing`, transfers need `completed`. |
+| Sandbox cron | Paid-timeout cron (2026-10-19 23:00Z): two `paid` shipments with `orphan_pending` labels rejected with `SHIPMENT_LABEL_OPERATION_ACTIVE`; one legacy order rejected with `REFUND_AMOUNT_EXCEEDS_CAP`; no refund issued. |
+
+B1.4 also fixed a B1.2 defect: both crons rethrew Supabase RPC errors as plain objects, logged as `[object Object]`. They now throw `Error(error.message)`; verified in sandbox after deploy.
+
+### Remaining limits and follow-ups
+
+- Loser inventory and notification effects are proven by construction (only `fn_cancel_shipment` produces them and losers never reach it), not by a live fixture.
+- Not proven: HTTP gateway/JWT, real Envia carriers, concurrent manual sandbox E2E with fresh purchases (FU3).
+- FU1: legacy order `2514c6e9…` third shipment hits `REFUND_AMOUNT_EXCEEDS_CAP`; likely pre-fix test data, unverified against Stripe refunds.
+- FU2 (B4): `paid` shipments with `orphan_pending` labels are rejected on every hourly run; they need an orphan reconciliation policy.
+- FU4 (B3): `auto-cancel-orders` uses a global boolean lock (`system_settings.auto_cancel_orders_running`); a wall-clock kill leaves it set and later runs return `Already running`.
+- `auto-cancel-preparing` has no cron job on purpose until B4.
+- B2 owns durable refund identity and recovery of uncertain refunds.
 
 ## B1.3 status and Edge deployment inventory
 
-B1.3 is complete as a locally verified repository change. Label and transfer arbitration SQL is maintainer-applied and generated types are synchronized. No Edge Function from B1.2 or B1.3 has been deployed. B1 is not complete: B1.4 integrated verification remains.
+B1.3 is complete as a locally verified repository change. Label and transfer arbitration SQL is maintainer-applied and generated types are synchronized. The four functions below were deployed to sandbox after B1.3; `auto-cancel-orders` and `auto-cancel-preparing` were redeployed with the B1.4 log fix.
 
 Local checkpoints: label SQL `bb759c2`, transfer SQL `23bacdd` (native review approved), transfer adapter `cb96844`. Independent verification passed for each unit. The final suite passed 1795 tests (0 failures). Unproven: offline endpoint Deno type checks (uncached remote imports), HTTP gateway/JWT, live cron, actual Stripe/Envia and deployed behavior.
 
-Edge Functions changed on this branch and pending deployment:
+Edge Functions changed on this branch (deployed to sandbox):
 
 | Function | Change | Shared imports |
 |---|---|---|
