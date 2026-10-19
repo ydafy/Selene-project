@@ -29,6 +29,7 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         status?: string;
         reservation?: { claimed: boolean; started: boolean };
         failStart?: boolean;
+        rpcErrorAt?: string;
         missingPI?: boolean;
         shipmentPI?: string;
         invalid?: boolean;
@@ -76,6 +77,16 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         },
         async rpc(name: string, args: Record<string, unknown>) {
           events.push(name);
+          // supabase-js returns PostgrestError as a plain object, not an Error.
+          if (options.rpcErrorAt === name)
+            return {
+              error: {
+                message: 'SHIPMENT_LABEL_OPERATION_ACTIVE',
+                code: 'P0001',
+                details: null,
+                hint: null,
+              },
+            };
           if (name === 'fn_claim_shipment_cancellation') {
             if (options.reservation) {
               if (options.reservation.started)
@@ -234,6 +245,20 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         expect(result.completions).toEqual([]);
         expect(JSON.stringify(result.logs)).toContain(status);
         expect(result.count).toBe(0);
+      });
+    for (const rpcErrorAt of [
+      'fn_claim_shipment_cancellation',
+      'fn_start_shipment_cancellation_refund',
+    ])
+      test(`${rpcErrorAt} rejection surfaces its SQL reason without effects`, async () => {
+        const result = await run({ rpcErrorAt });
+        expect(result.error).toBeInstanceOf(Error);
+        expect((result.error as Error).message).toBe(
+          'SHIPMENT_LABEL_OPERATION_ACTIVE',
+        );
+        expect(result.refunds).toEqual([]);
+        expect(result.completions).toEqual([]);
+        expect(result.count).toBeUndefined();
       });
     test('failed start cannot refund or cancel', async () => {
       const result = await run({ failStart: true });

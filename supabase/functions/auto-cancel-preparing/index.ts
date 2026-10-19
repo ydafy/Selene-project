@@ -135,7 +135,7 @@ serve(async () => {
                 p_reason: context.reason,
               },
             );
-            if (error) throw error;
+            if (error) throw new Error(error.message);
             return data;
           },
           prepare: async () => {
@@ -333,7 +333,7 @@ serve(async () => {
                 p_cancellation_loss_cents: input.cancellationLossCents,
               },
             );
-            if (error) throw error;
+            if (error) throw new Error(error.message);
             return data;
           },
           refund: (request, options) => stripe.refunds.create(request, options),

@@ -1,6 +1,34 @@
 # Shipment cancellations: audit and safe continuation
 
-## B1.3 active work unit
+## B1.4 active work unit
+
+Objective: integrated verification of incompatible operations, rejection without business side effects and sibling-shipment isolation; document evidence and remaining limits, then close B1. Baseline: `4c5c118`, branch `feat/shipment-cancellations`. Test/docs only unless verification reproduces a candidate-caused bug. No remote mutation, Edge deployment or commit without explicit request.
+
+### Specs
+
+- B14-S1 — "Retomemos shipment cancellations, ahora B1.4: verificación integrada."
+- B14-S2 — "Primero revisemos la corrida del cron y el alcance de B1.4."
+- B14-S3 — "sobre el alcanze, eso decidelo tu master, tu tienes el workflow ideal yo no te sabria decir, entonces analiza todo y tu decides como dividir las tareas para que quede un workflow limpio y profsional."
+
+### Tasks
+
+- B1.4-M | B14-S2 | maintainer (separate setup) | Pending: user-level Supabase hosted MCP, scoped to the sandbox project, `read_only=true`, `features=database`; not a repository change. Optional: without it the maintainer runs the read-only queries manually.
+- B1.4-F | B14-S1 | parent inline | Fix found by B1.4-0: both cron adapters rethrew supabase-js `PostgrestError` plain objects (`if (error) throw error`), logged as `[object Object]`; now `throw new Error(error.message)` like cancel-order. Test-only mock previously used `new Error`, hiding it. RED 4 fail (claim/start × 2 crons) → GREEN 36/0/216. Risk: none (log/exception shape only; no money path, SQL or contract change). Deploy later: auto-cancel-orders, auto-cancel-preparing. Commit: not authorized.
+- B1.4-0 | B14-S2 | parent / maintainer | Complete (diagnosis): see B14-L5. First cron run evidence — `net._http_response` status and body, `system_settings.auto_cancel_orders_running`, the 14 `paid_timeout` operations and residual expired paid shipments.
+- B1.4-1 | B14-S1/S3 | parent, read-only | Pending: coverage map of existing pairwise tests (cancel×label, cancel×transfer, cancel×cancel, siblings, loser side effects) and gap table; only gaps become tests.
+- B1.4-2 | B14-S1/S3 | parent or bounded writer | Pending: integrated local matrix on the disposable Postgres harness for the gaps only (one order, two shipments, three participants). Risk: item 4 (concurrency) → independent verifier. Own commit.
+- B1.4-3 | B14-S1/S2 | maintainer actions + read-only evidence | Deferred to a dedicated session by maintainer (B14-L5, FU3): sandbox E2E — cron result for the 14, manual cancel with sibling, cancel after label rejected without refund, repeated cancel idempotent.
+- B1.4-C | B14-S1/S3 | parent | Pending: docs and tracker evidence/limits (gateway/JWT, real carriers, B2 recovery, B3 global lock), B1 marked complete. Own commit.
+
+### Log
+
+- B14-L1 — Original request, verbatim: "Retomemos shipment cancellations, ahora B1.4: verificación integrada.\n\n Worktree: C:/dev/School-portal-worktrees/shipment-cancellations\n Branch: feat/shipment-cancellations\n\n Recuperá Engram de selene-project, resumen 2491, y leé odd/tasks/shipment-cancellations.md.\n B1.3 quedó en 4c5c118, desplegado en sandbox.\n Primero revisemos la corrida del cron y el alcance de B1.4."
+- B14-L2 — Read-only finding: `auto-cancel-orders/index.ts:46-64` uses a global boolean `system_settings.auto_cancel_orders_running` as lock, released only on normal return or caught error. A wall-clock kill during a long first run (14 Stripe refunds) would leave it `true`, after which every run returns 200 `{"message":"Already running"}` without work. Pre-existing, B3 scope; check body and flag, not only status code.
+- B14-L3 — Maintainer asks for remote Supabase access and delegates B1.4 task split (S3). Decision: hosted Supabase MCP configured at user/agent level (not main, not worktree), sandbox project only, `project_ref` + `read_only=true` + `features=database`, OAuth, manual approval kept on. Remote writes remain maintainer-only per AGENTS.md. Task split above.
+- B14-L4 — Maintainer reports first 200 run of auto-cancel-orders (2026-10-19T02:00Z): "Procesando 3 shipments expirados", success 0. Shipments 1e2e4e5e… (order de4909d5…) and 8330e1c1… (order b3b865de…) failed with `error":"[object Object]"` ~0.1s apart (fast, before Stripe: consistent with an RPC `PostgrestError` thrown by `if (error) throw error` in claim/start and logged via `String(err)`). fe983adf… (order 2514c6e9…) failed `REFUND_AMOUNT_EXCEEDS_CAP` in prepare after charge retrieval (same code as E0 M2/M3). No refund issued per logs. Expected 14 vs observed 3: function also filters `tracking_number IS NULL`, limit 50. Candidate defect (B1.2): RPC error objects lose their code in cron logs — observability only, no money effect. Diagnosis needs DB state of the three shipments before any fix.
+- B14-L5 — Maintainer SQL output (C:\Temp\log.json): 1e2e4e5e… and 8330e1c1… are `paid` + `label_generation_state = orphan_pending`, no operation row → claim correctly raised SHIPMENT_LABEL_OPERATION_ACTIVE (orphan fence); only the log was wrong (B1.4-F). fe983adf… is the third shipment of order 2514c6e9… (created 2026-10-02, charge ch_3ULxnSACloWdhaxv1ujCyzT2, total 16700.92, fee 70091 cents); its two siblings are already cancelled; operation row exists from a 01:00:28 run, external_started_at null, no refund requested. Cap was fixed and verified in sandbox 2026-10-15, so a legacy pre-fix sibling over-refund is the leading hypothesis — unproven. Lock flag false. Maintainer verbatim: "muchas de estas coprar pueden ser compras viejas o corrumpidas, osea de testeo que se hizieron pero antes de refactorizaciones garndes a modulo pagos" and "no quiero meter los e2e a esta sesion, si esta seisoin no tiene anda que ver con lo que ocmmnetamos no lo trabajos aqui, nomas lo anotan en engram y odd para trabajarlo cuando tu me diigas." Decision: B1.4-3 sandbox E2E moved out of this session. Follow-ups (not this session): FU1 verify fe983adf CAP against Stripe refunds of ch_3ULxnSAC… (legacy data vs bug), then decide manual cleanup; FU2 orphan_pending paid shipments are retried and rejected every hourly run forever — orphan reconciliation/expiry policy is B4; FU3 fresh-purchase sandbox E2E (former B1.4-3) in a dedicated session; FU4 global boolean cron lock (B14-L2) is B3.
+
+## B1.3 prior work unit
 
 Objective: symmetric shipment-scoped exclusion between cancellation, label generation and Connect transfer creation, including in-flight external effects. Baseline: `b3d4dff`, branch `feat/shipment-cancellations`. No Edge deployment, remote mutation or commit without explicit request.
 
