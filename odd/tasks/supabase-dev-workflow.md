@@ -55,4 +55,5 @@ Remote project `acoiclkeymgtlwcxilun` holds only fake data but is treated as pro
 - L13: Maintainer: "sql.sql deveria irse, ese archivo era como un log pero es de hace mucho tiempo, quitalo." Keep recording incidental findings (counts, likely causes) in this Log for later blocks.
 - L14: For block C: root `tests/` holds two loose files (`shipment-cancel-safety.test.ts`, `test-only-guard.test.ts`) while other tests sit next to their code; decide placement. Playwright `e2e/` (admin-web, mocked Supabase) stays at root and is not in CI yet; decide whether CI runs it.
 - L15: Regenerated `database.types.ts` (138 lines, all shipment-cancellations objects) left out of PR #8; it belongs to `feat/shipment-cancellations`.
+- L16: First CI run failed (4 test files): `_shared/zod-runtime.ts` imports Deno `npm:zod@4.1.12`; the Bun mock `zod-runtime.bun.preload.ts` was imported by only one test, so other files passed locally only by load order. Fixed by `[test] preload` in `bunfig.toml` (bce8ab8). CI green: 1812 tests, 0 fail.
 - L12: Typecheck baseline: frontend 56 errors, backend 145 (mostly duplicate `@types/node` 24 and 26 conflict), types 1, admin-web 0.
