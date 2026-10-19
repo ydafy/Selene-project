@@ -624,6 +624,70 @@ async function run() {
         'PASS live sibling isolation: cancellation progresses during another shipment transfer transaction',
       );
 
+      // Final deployed claim/start bodies keep the label fences: in-flight or
+      // orphan labels exclude cancellation; a preparing generated label does not.
+      const label = (state: string, shipment = ids.shipment) =>
+        a`UPDATE public.shipments SET label_generation_state = ${state} WHERE id = ${shipment}::uuid`;
+      const claimPreparing = async () => {
+        const [row] =
+          await a`SELECT public.fn_claim_shipment_cancellation(${ids.shipment}::uuid, ${ids.order}::uuid, NULL::uuid, 'preparing_timeout', 'reason') AS result`;
+        return row.result;
+      };
+      for (const state of [
+        'claimed',
+        'generation_sent',
+        'orphan_pending',
+        'generated',
+      ]) {
+        await reset();
+        await a`UPDATE public.shipments SET status = 'paid'`;
+        await label(state);
+        await rejects(() => claim(), 'SHIPMENT_LABEL_OPERATION_ACTIVE');
+      }
+      await reset();
+      await a`UPDATE public.shipments SET status = 'paid'`;
+      assert.equal((await claim()).status, 'claimed');
+      for (const state of ['orphan_pending', 'claimed']) {
+        await reset();
+        await a`UPDATE public.shipments SET status = 'preparing'`;
+        await label(state);
+        await rejects(
+          () => claimPreparing(),
+          'SHIPMENT_LABEL_OPERATION_ACTIVE',
+        );
+      }
+      await reset();
+      await a`UPDATE public.shipments SET status = 'preparing'`;
+      await label('generated');
+      assert.equal((await claimPreparing()).status, 'claimed');
+      for (const state of ['generation_sent', 'orphan_pending']) {
+        await reset();
+        await a`UPDATE public.shipments SET status = 'paid'`;
+        const owner = await claim();
+        assert.equal(owner.status, 'claimed');
+        await label(state);
+        await rejects(
+          () => startCancellation(owner.claim_token),
+          'SHIPMENT_LABEL_OPERATION_ACTIVE',
+        );
+        const [operation] =
+          await a`SELECT external_started_at FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}::uuid`;
+        assert.equal(operation.external_started_at, null);
+      }
+      await reset();
+      await a`UPDATE public.shipments SET status = 'paid'`;
+      await label('orphan_pending');
+      const [targetBefore] =
+        await a`SELECT to_jsonb(s) AS row FROM public.shipments s WHERE id = ${ids.shipment}::uuid`;
+      await rejects(() => claim(), 'SHIPMENT_LABEL_OPERATION_ACTIVE');
+      assert.equal((await claim(b, ids.sibling)).status, 'claimed');
+      const [targetAfter] =
+        await a`SELECT to_jsonb(s) AS row FROM public.shipments s WHERE id = ${ids.shipment}::uuid`;
+      assert.deepEqual(targetAfter.row, targetBefore.row);
+      console.log(
+        'PASS final label fences: deployed claim/start reject in-flight or orphan labels without effects; preparing generated allowed; sibling independent',
+      );
+
       await reset();
       const authOwner = await begin();
       for (const role of ['anon', 'authenticated']) {
