@@ -19,6 +19,7 @@ import {
   selectPaquetexpressGroundRate,
 } from '../_shared/envia-shipping.ts';
 import { LabelRequestSchema } from './request-contract.ts';
+import { declaredContentForCategories } from './shipment-package.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -79,6 +80,7 @@ interface ShipmentItem {
   price_at_purchase: number;
   product: {
     package_preset: string;
+    category: string;
   };
 }
 
@@ -178,7 +180,7 @@ serve(async (req: Request) => {
           order:order_id(id, total_amount, shipping_address),
           items:order_items!shipment_id(
             price_at_purchase,
-            product:products(package_preset)
+            product:products(package_preset, category)
           )
         `,
         )
@@ -347,7 +349,9 @@ serve(async (req: Request) => {
       packages: [
         {
           type: 'box',
-          content: `Hardware: ${shipment.order.id.slice(0, 8)}`,
+          content: declaredContentForCategories(
+            shipment.items.map((item) => item.product.category),
+          ),
           amount: 1,
           declaredValue,
           lengthUnit: 'CM',
