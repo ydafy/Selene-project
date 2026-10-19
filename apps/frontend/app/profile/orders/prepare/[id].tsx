@@ -35,6 +35,7 @@ import { ShipmentLabelRecoveryCard } from '../../../../components/features/order
 import { useOrderById } from '../../../../core/hooks/useOrders';
 import { useOrderActions } from '../../../../core/hooks/useOrderActions';
 import { useShipmentLabelRefresh } from '../../../../core/hooks/useShipmentLabelRefresh';
+import { resolvePreparingBox } from '../../../../core/utils/preparing-box';
 import {
   PackagePreset,
   PackagePresetsMap,
@@ -147,9 +148,11 @@ function PrepareShipmentContent() {
   const packagePresets = systemConfig?.package_presets as unknown as
     PackagePresetsMap | undefined;
   const presetId = selectedShipment?.items[0]?.product?.package_preset ?? null;
-  const boxPreset: PackagePreset | undefined = presetId
-    ? packagePresets?.[presetId]
-    : undefined;
+  const preparingBox = resolvePreparingBox(presetId, packagePresets);
+  const boxPreset: PackagePreset | undefined =
+    'preset' in preparingBox ? preparingBox.preset : undefined;
+  // Mirrors the server: without a usable box no label can be generated.
+  const boxBlocked = preparingBox.status === 'unavailable';
 
   const { isComplete: onboardingDone, isLoading: onboardingLoading } =
     useConnectOnboarding(userId);
@@ -210,6 +213,7 @@ function PrepareShipmentContent() {
       isProcessing ||
       !selectedOrigin ||
       !targetShipmentId ||
+      boxBlocked ||
       !canGenerateLabel ||
       evidenceUrls.length < EVIDENCE_MIN_PHOTOS
     )
@@ -310,11 +314,17 @@ function PrepareShipmentContent() {
               color: theme.colors.primary,
               message: t('orders:prepare.statusNotReady'),
             }
-          : {
-              icon: 'alert-outline' as const,
-              color: theme.colors.warning,
-              message: t('orders:prepare.generateWarning'),
-            };
+          : boxBlocked
+            ? {
+                icon: 'information-outline' as const,
+                color: theme.colors.primary,
+                message: t('orders:prepare.statusBoxUnavailable'),
+              }
+            : {
+                icon: 'alert-outline' as const,
+                color: theme.colors.warning,
+                message: t('orders:prepare.generateWarning'),
+              };
 
   const statusCard = (
     <Box
@@ -461,6 +471,11 @@ function PrepareShipmentContent() {
                 <Text variant="caption-md" color="textSecondary">
                   {`${boxPreset.length} × ${boxPreset.width} × ${boxPreset.height} cm · ${boxPreset.weight} kg`}
                 </Text>
+                {preparingBox.status === 'fallback' ? (
+                  <Text variant="caption-md" color="textSecondary" marginTop="xs">
+                    {t('orders:prepare.boxFallbackNote')}
+                  </Text>
+                ) : null}
               </Box>
             </Box>
           ) : (
@@ -728,6 +743,7 @@ function PrepareShipmentContent() {
                   isEvidenceBusy ||
                   !selectedOrigin ||
                   !targetShipmentId ||
+                  boxBlocked ||
                   !canGenerateLabel ||
                   evidenceUrls.length < EVIDENCE_MIN_PHOTOS
                 }
