@@ -1,3 +1,8 @@
 [install]
 # Bloquea paquetes muy nuevos (recomendado 3-7 días)
 minimumReleaseAge = 259200   # 3 días en segundos (puedes poner 604800 = 7 días)
+
+[test]
+# Edge Functions import Deno `npm:` specifiers; map them for Bun in every test file,
+# so results do not depend on which test file happens to load first.
+preload = ["./supabase/functions/_shared/__tests__/zod-runtime.bun.preload.ts"]
