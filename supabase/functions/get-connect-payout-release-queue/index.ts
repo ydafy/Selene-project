@@ -2,12 +2,12 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 import {
-  assertAdminProfile,
-  buildConnectPayoutReleaseQueue,
   escapeIlikePattern,
   getQueueErrorStatus,
   type ConnectPayoutReleaseQueueRow,
 } from './get-connect-payout-release-queue.ts';
+
+import { createQueueHandler } from './handler.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -41,39 +41,38 @@ serve(async (req: Request) => {
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
-    const token = authHeader.slice('Bearer '.length);
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseAdmin.auth.getUser(token);
-    if (authError || !user) throw new Error('AUTH_REQUIRED');
+    return await createQueueHandler({
+      getUser: async (token) => {
+        const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+        return error ? null : user;
+      },
+      getProfile: async (id) => {
+        const { data, error } = await supabaseAdmin.from('profiles_private')
+          .select('role').eq('id', id).maybeSingle();
+        if (error) throw new Error('PROFILE_LOOKUP_FAILED');
+        return data;
+      },
+      rpc: async (args) => {
+        const { data, error } = await supabaseAdmin.rpc('fn_get_admin_payout_queue', args);
+        if (error) throw new Error('QUEUE_RPC_FAILED');
+        return data;
+      },
+      legacy: async (search) => {
+        let query = supabaseAdmin
+          .from('admin_connect_payout_release_view')
+          .select('*')
+          .order('seller_name', { ascending: true })
+          .order('completed_at', { ascending: true });
 
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from('profiles_private')
-      .select('role')
-      .eq('id', user.id)
-      .maybeSingle();
-    if (profileError) throw new Error('PROFILE_LOOKUP_FAILED');
-    assertAdminProfile(profile ?? null);
+        if (search) {
+          query = query.ilike('seller_name', `%${escapeIlikePattern(search)}%`);
+        }
 
-    const body = (await req.json().catch(() => ({}))) as { search?: unknown };
-    const search = typeof body.search === 'string' ? body.search.trim() : '';
-
-    let query = supabaseAdmin
-      .from('admin_connect_payout_release_view')
-      .select('*')
-      .order('seller_name', { ascending: true })
-      .order('completed_at', { ascending: true });
-
-    if (search) {
-      query = query.ilike('seller_name', `%${escapeIlikePattern(search)}%`);
-    }
-
-    const { data, error } = await query;
-    if (error) throw new Error('RELEASE_QUEUE_LOOKUP_FAILED');
-
-    const rows = (data ?? []) as ConnectPayoutReleaseQueueRow[];
-    return jsonResponse({ ...buildConnectPayoutReleaseQueue(rows), rows }, 200);
+        const { data, error } = await query;
+        if (error) throw new Error('RELEASE_QUEUE_LOOKUP_FAILED');
+        return (data ?? []) as ConnectPayoutReleaseQueueRow[];
+      },
+    })(req);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     return jsonResponse(

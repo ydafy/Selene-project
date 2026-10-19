@@ -1539,6 +1539,9 @@ export type Database = {
           shipping_payer: string | null
           specifications: Json
           status: Database["public"]["Enums"]["product_status_enum"]
+          status_before_account_hold:
+            | Database["public"]["Enums"]["product_status_enum"]
+            | null
           updated_at: string | null
           usage: string
           verification_data: Json | null
@@ -1571,6 +1574,9 @@ export type Database = {
           shipping_payer?: string | null
           specifications?: Json
           status?: Database["public"]["Enums"]["product_status_enum"]
+          status_before_account_hold?:
+            | Database["public"]["Enums"]["product_status_enum"]
+            | null
           updated_at?: string | null
           usage: string
           verification_data?: Json | null
@@ -1603,6 +1609,9 @@ export type Database = {
           shipping_payer?: string | null
           specifications?: Json
           status?: Database["public"]["Enums"]["product_status_enum"]
+          status_before_account_hold?:
+            | Database["public"]["Enums"]["product_status_enum"]
+            | null
           updated_at?: string | null
           usage?: string
           verification_data?: Json | null
@@ -3894,6 +3903,7 @@ export type Database = {
           total_processed: number
         }[]
       }
+      fn_current_account_is_active: { Args: never; Returns: boolean }
       fn_decide_rejected_payout_stage_park: {
         Args: {
           p_failure_reason: string

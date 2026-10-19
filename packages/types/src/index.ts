@@ -88,12 +88,34 @@ export type ReleaseConnectPayoutResponse =
       currency?: 'mxn';
     };
 
-export type ConnectPayoutReleaseQueueRequest = { search?: string };
+export type ConnectPayoutQueueBucket =
+  | 'ready'
+  | 'processing'
+  | 'action-required'
+  | 'history';
+export type ConnectPayoutQueueScope = 'page' | 'selection';
+export type ConnectPayoutQueueCounts = Record<ConnectPayoutQueueBucket, number>;
+
+export type ConnectPayoutReleaseQueueRequest = {
+  search?: string;
+  bucket?: ConnectPayoutQueueBucket;
+  page?: number;
+  scope?: ConnectPayoutQueueScope;
+};
 
 export type ConnectPayoutReleaseQueueResponse = {
   success: boolean;
   rows?: ConnectPayoutReleaseQueueRow[];
   error?: string;
+  counts?: ConnectPayoutQueueCounts;
+  bucket?: ConnectPayoutQueueBucket;
+  scope?: ConnectPayoutQueueScope;
+  page?: number;
+  pageSize?: number;
+  totalGroups?: number;
+  totalPages?: number;
+  selectedGroupCount?: number;
+  selectionComplete?: boolean;
 };
 
 export type ConnectPaymentErrorCode =

@@ -31,6 +31,7 @@ const row = (overrides: Partial<QueueRow>): QueueRow => ({
   payout_run_failed_at: null,
   payout_run_failure_reason: null,
   payout_run_id: null,
+  payout_run_paid_at: null,
   payout_run_status: null,
   release_amount_cents: 12500,
   requires_manual_review: false,
@@ -193,7 +194,7 @@ describe('connect payout release queue bucket classification', () => {
     ]);
 
     expect(queue.historyRuns).toEqual([
-      { ...runIdentity, status: 'paid' } satisfies ReleaseQueueRun,
+      { ...runIdentity, status: 'paid', paidAt: null } satisfies ReleaseQueueRun,
     ]);
     expect(queue.processingRuns).toEqual([]);
     expect(queue.actionRequiredRuns).toEqual([]);
@@ -421,6 +422,7 @@ describe('connect payout release queue bucket classification', () => {
         sellerId: null,
         sellerName: null,
         status: 'paid',
+        paidAt: null,
         amountCents: 12_500,
       } satisfies ReleaseQueueRun,
     ]);
@@ -474,9 +476,70 @@ describe('connect payout release queue bucket classification', () => {
         ...runIdentity,
         amountCents: 9_000,
         status: 'paid',
+        paidAt: null,
       } satisfies ReleaseQueueRun,
     ]);
     expect(queue.processingRuns).toEqual([]);
     expect(queue.actionRequiredRuns).toEqual([]);
+  });
+});
+
+
+describe('observed-paid History chronology', () => {
+  it('maps only the selected paid run timestamp and sorts newest first with deterministic ties and unknown dates last', () => {
+    const inputs = [
+      runRow({ payout_run_id: 'run-old', payout_run_status: 'paid', payout_run_paid_at: '2026-10-01T10:00:00Z' }),
+      runRow({ payout_run_id: 'run-unknown', payout_run_status: 'paid' }),
+      runRow({ payout_run_id: 'run-a', payout_run_status: 'paid', payout_run_paid_at: '2026-10-02T10:00:00Z' }),
+      runRow({ payout_run_id: 'run-z', payout_run_status: 'paid', payout_run_paid_at: '2026-10-02T04:00:00-06:00' }),
+      runRow({ payout_run_id: 'run-invalid', payout_run_status: 'paid', payout_run_paid_at: 'invalid' }),
+      runRow({ payout_run_id: 'run-new', payout_run_status: 'paid', payout_run_paid_at: '2026-10-03T10:00:00Z' }),
+    ];
+    const snapshot = structuredClone(inputs);
+    const result = mapConnectPayoutReleaseQueue(inputs);
+    expect(result.historyRuns.map((run) => run.runId)).toEqual([
+      'run-new', 'run-z', 'run-a', 'run-old', 'run-unknown', 'run-invalid',
+    ]);
+    expect(result.historyRuns[0]).toMatchObject({ paidAt: '2026-10-03T10:00:00Z' });
+    expect(result.historyRuns.find((run) => run.runId === 'run-unknown')).toMatchObject({ paidAt: null });
+    expect(inputs).toEqual(snapshot);
+    const reversed = mapConnectPayoutReleaseQueue([...inputs].reverse());
+    expect(reversed.historyRuns).toEqual(result.historyRuns);
+    expect(result.releaseBatches).toEqual([]);
+    expect(result.processingRuns).toEqual([]);
+    expect(result.actionRequiredRuns).toEqual([]);
+  });
+
+  it('moves a later failed payout out of History despite retained paid_at, without release or automatic retry authority', () => {
+    const paid = runRow({ payout_run_status: 'paid', payout_run_paid_at: '2026-10-01T10:00:00Z', is_eligible: false });
+    expect(mapConnectPayoutReleaseQueue([paid]).historyRuns).toHaveLength(1);
+    const failed = { ...paid, payout_run_status: 'failed', payout_run_failed_at: '2026-10-02T10:00:00Z', payout_run_failure_reason: 'bank_return', is_retryable: false };
+    for (const rows of [[failed], [paid, failed], [failed, paid]]) {
+      const result = mapConnectPayoutReleaseQueue(rows);
+      expect(result.historyRuns).toEqual([]);
+      expect(result.processingRuns).toEqual([]);
+      expect(result.releaseBatches).toEqual([]);
+      expect(result.actionRequiredRuns).toHaveLength(1);
+      expect(result.actionRequiredRuns[0]).toMatchObject({
+        runId: 'run-1', status: 'failed', canRetry: false, reason: 'failed',
+        failureReason: 'bank_return', failedAt: '2026-10-02T10:00:00Z', amountCents: 12_500,
+      });
+    }
+  });
+
+  it('keeps Processing and Attention input order and authority unchanged when History is sorted', () => {
+    const result = mapConnectPayoutReleaseQueue([
+      runRow({ payout_run_id: 'p-z', payout_run_status: 'pending_reconciliation', payout_run_paid_at: '2026-10-01T10:00:00Z' }),
+      runRow({ payout_run_id: 'h', payout_run_status: 'paid', payout_run_paid_at: '2026-10-02T10:00:00Z' }),
+      runRow({ payout_run_id: 'a-z', payout_run_status: 'failed', is_retryable: true }),
+      runRow({ payout_run_id: 'p-a', payout_run_status: 'pending_reconciliation' }),
+      runRow({ payout_run_id: 'a-a', payout_run_status: 'canceled', requires_manual_review: true }),
+    ]);
+    expect(result.processingRuns.map((run) => run.runId)).toEqual(['p-z', 'p-a']);
+    expect(result.actionRequiredRuns.map((run) => [run.runId, run.canRetry, run.reason])).toEqual([
+      ['a-z', true, 'retryable_failed'], ['a-a', false, 'manual_review'],
+    ]);
+    expect(result.historyRuns).toHaveLength(1);
+    expect(result.historyRuns[0]).toMatchObject({ runId: 'h', paidAt: '2026-10-02T10:00:00Z' });
   });
 });

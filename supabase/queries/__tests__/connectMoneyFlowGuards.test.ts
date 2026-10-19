@@ -246,7 +246,7 @@ describe('Connect money-flow SQL guards', () => {
     expect(sql).not.toContain('label_provider_cost_cents');
   });
 
-  it('manual Connect payout release repair preserves the 22-column admin view shape and appends settlement/retry columns at the tail', () => {
+  it('manual Connect payout release repair preserves the original view shape and appends settlement/retry/payment-date columns at the tail', () => {
     const sql = readSql(
       'supabase/queries/payments/admin_connect_payout_release_view_shipping_cost_fix.sql',
     );
@@ -264,11 +264,11 @@ describe('Connect money-flow SQL guards', () => {
 
     // The 12 original columns keep their relative order; `transfer_group` and
     // `stripe_transfer_id` follow as the first-phase append; the 8 retry-era
-    // columns are appended at the tail. Expression columns are anchored by
+    // columns follow, then the observed payment date. Expression columns are anchored by
     // their trailing `AS` alias (expressions contain internal commas, e.g.
     // COALESCE in `is_retryable`), and CTE-passthrough columns by their
     // `sa.`-qualified reference. This preserves the append-at-tail regression
-    // guard while validating the current 22-column retry-era shape.
+    // guard while validating the current 23-column payment-date shape.
     const orderedColumns = [
       'sa.shipment_id',
       'sa.seller_id',
@@ -292,8 +292,9 @@ describe('Connect money-flow SQL guards', () => {
       'payout_run.retry_of_run_id,',
       'AS is_retryable',
       'AS requires_manual_review',
+      'payout_run.paid_at AS payout_run_paid_at',
     ];
-    expect(orderedColumns).toHaveLength(22);
+    expect(orderedColumns).toHaveLength(23);
 
     let previousIndex = -1;
     for (const column of orderedColumns) {
@@ -304,7 +305,7 @@ describe('Connect money-flow SQL guards', () => {
     }
   });
 
-  it('admin payout release view outer SELECT projects exactly 22 top-level columns', () => {
+  it('admin payout release view outer SELECT projects exactly 23 top-level columns', () => {
     // The token-order check above only proves expected tokens appear in
     // order; it silently accepts EXTRA outer columns. This guard proves the
     // actual projection cardinality by isolating the outer
@@ -316,7 +317,7 @@ describe('Connect money-flow SQL guards', () => {
     );
 
     const columns = getOuterViewProjectionColumns(sql);
-    expect(columns).toHaveLength(22);
+    expect(columns).toHaveLength(23);
 
     // Ordered original/tail aliases: each top-level column must match its
     // expected signature at its exact position (whitespace-normalized).
@@ -344,6 +345,7 @@ describe('Connect money-flow SQL guards', () => {
       'payout_run.retry_of_run_id',
       ') AS is_retryable',
       ') AS requires_manual_review',
+      'payout_run.paid_at AS payout_run_paid_at',
     ];
     expect(signatures).toHaveLength(expectedSignatures.length);
     signatures.forEach((signature, index) => {
@@ -371,7 +373,7 @@ describe('Connect money-flow SQL guards', () => {
       sql.slice(fromShipmentAmounts);
 
     expect(() => {
-      expect(getOuterViewProjectionColumns(mutatedSql)).toHaveLength(22);
+      expect(getOuterViewProjectionColumns(mutatedSql)).toHaveLength(23);
     }).toThrow();
   });
 
