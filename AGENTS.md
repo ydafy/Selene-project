@@ -45,7 +45,7 @@ Use the typed aliases (`Tables<'orders'>`, `Enums<'order_status_enum'>`). Never 
 Run from the repository or worktree root. `package.json` is the source of truth.
 
 - `bun test`: full suite (`bun:test`). The pre-commit hook and CI run it. Run one file with `bun test <path>`.
-- `bun run lint`: ESLint. It fails on `main` today: most errors come from the ignored `apps/admin-web/dist` build output, plus about 95 real errors in source. Only lint the files you changed and do not fix unrelated errors.
+- `bun run lint`: ESLint. It fails on `main` today with about 95 pre-existing errors in source. Only lint the files you changed and do not fix unrelated errors.
 - The TypeScript check also fails on `main` today. Judge only the diagnostics in files you touched.
 - `bun run db:types`: regenerates types from the remote project. Run it only after the maintainer confirms the SQL was applied.
 - Run `expo install` from `apps/frontend`, never from the root, or native autolinking breaks.

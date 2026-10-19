@@ -7,9 +7,9 @@ module.exports = [
     // Aplica a todos los archivos
     ignores: [
       'node_modules/',
-      '.expo/',
-      'dist/',
-      'build/',
+      '**/.expo/',
+      '**/dist/',
+      '**/build/',
       'apps/frontend/ios/',
       'apps/frontend/android/',
       // AÑADE ESTAS LÍNEAS:
