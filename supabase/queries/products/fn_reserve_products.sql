@@ -1,6 +1,7 @@
 -- ============================================================================
 -- Source of truth for fn_reserve_products.
--- Registered by migration 20260701000000_reservation_lifecycle_hardening.sql.
+-- Registered by migration 20260701000000_reservation_lifecycle_hardening.sql;
+-- account-status gates added by 20261018130000_account_trust_boundaries.sql.
 -- Deployable as a standalone CREATE OR REPLACE FUNCTION statement.
 -- ============================================================================
 
@@ -10,8 +11,11 @@
 --    stale inventory (app kill, abandoned checkout, TTL passed) becomes
 --    VERIFIED and available again before we attempt to reserve. This is a
 --    legitimate stale release and is applied regardless of reserve outcome.
--- 2. Tentatively reserve only VERIFIED products not owned by the buyer,
---    capturing their ids/prices so a partial reservation can be undone.
+-- 0. Banned buyers are rejected with 'ACCOUNT_RESTRICTED' before any write;
+--    suspended buyers keep their own purchases.
+-- 2. Tentatively reserve only VERIFIED products not owned by the buyer and
+--    not sold by a suspended or banned seller (those fall into the
+--    all-or-nothing 'SOME_PRODUCTS_UNAVAILABLE' path), capturing their ids/prices so a partial reservation can be undone.
 -- 3. All-or-nothing: only succeed when EVERY requested product was reserved.
 --    If not, roll back the tentative reservation made by THIS call (release
 --    only the rows we just reserved, no TTL condition) so no subset of the cart
@@ -42,6 +46,15 @@ BEGIN
     RETURN;
   END IF;
 
+  -- Banned buyers cannot purchase; suspended buyers keep their own purchases
+  IF EXISTS (
+    SELECT 1 FROM public.profiles_private pp
+    WHERE pp.id = p_buyer_id AND pp.status = 'banned'
+  ) THEN
+    RETURN QUERY SELECT 0::NUMERIC, false, 'ACCOUNT_RESTRICTED'::TEXT;
+    RETURN;
+  END IF;
+
   -- 1. LIMPIEZA IDEMPOTENTE: Recuperar reservas vencidas (> 10 min) de este carrito
   UPDATE public.products
   SET status = 'VERIFIED',
@@ -59,6 +72,7 @@ BEGIN
   FOR UPDATE;
 
   -- 3. RESERVA ATÓMICA: Solo productos VERIFIED que no sean del comprador
+  --    ni de vendedores suspendidos o baneados
   WITH reserved AS (
     UPDATE public.products
     SET status = 'RESERVED',
@@ -67,6 +81,11 @@ BEGIN
     WHERE id = ANY(p_product_ids)
       AND status = 'VERIFIED'
       AND seller_id <> p_buyer_id
+      AND NOT EXISTS (
+        SELECT 1 FROM public.profiles_private pp
+        WHERE pp.id = products.seller_id
+          AND pp.status IN ('suspended', 'banned')
+      )
     RETURNING id, price
   )
   SELECT array_agg(id), COUNT(*), COALESCE(SUM(price), 0)
