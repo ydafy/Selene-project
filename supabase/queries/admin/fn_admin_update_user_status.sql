@@ -1,21 +1,45 @@
 
 DECLARE
     v_auth_user_id UUID;
-    v_rows_affected INTEGER;
+    v_previous_status public.account_status;
 BEGIN
-    -- A. SEGURIDAD: Obtener ID desde JWT autenticado
+    -- A. SECURITY: actor comes from the authenticated JWT; the client-supplied admin id is ignored
     v_auth_user_id := (current_setting('request.jwt.claims', true)::json->>'sub')::UUID;
 
     IF v_auth_user_id IS NULL THEN
         RAISE EXCEPTION 'UNAUTHORIZED_NO_SESSION';
     END IF;
 
-    -- B. VALIDACIÓN DE ROL: Solo Admins
+    -- B. ROLE CHECK: active admins only
     IF NOT is_admin() THEN
         RAISE EXCEPTION 'UNAUTHORIZED_ADMIN_ONLY';
     END IF;
 
-    -- C. ACTUALIZAR TABLA PRIVADA CORRECTA (profiles_private)
+    IF p_target_user_id = v_auth_user_id THEN
+        RAISE EXCEPTION 'CANNOT_CHANGE_OWN_STATUS';
+    END IF;
+
+    -- A NULL status reads as active everywhere, so it would silently lift bans and holds
+    IF p_new_status IS NULL THEN
+        RAISE EXCEPTION 'INVALID_ACCOUNT_STATUS';
+    END IF;
+
+    -- C. LOCK TARGET: serialize concurrent status changes for the same account
+    SELECT COALESCE(status, 'active')
+    INTO v_previous_status
+    FROM public.profiles_private
+    WHERE id = p_target_user_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN false;
+    END IF;
+
+    -- Banned is final; same-status updates only refresh reason and audit
+    IF v_previous_status = 'banned' AND p_new_status <> 'banned' THEN
+        RAISE EXCEPTION 'BANNED_IS_FINAL';
+    END IF;
+
     UPDATE public.profiles_private
     SET status = p_new_status,
         status_reason = p_reason,
@@ -23,33 +47,39 @@ BEGIN
         status_updated_at = now()
     WHERE id = p_target_user_id;
 
-    GET DIAGNOSTICS v_rows_affected = ROW_COUNT;
-
-    IF v_rows_affected = 0 THEN
-        RETURN false;
-    END IF;
-
-    -- D. EFECTO DOMINÓ: Gestión de Inventario
+    -- D. INVENTORY: hold listings and remember their prior status
     IF p_new_status IN ('suspended', 'banned') THEN
         UPDATE public.products
-        SET status = 'HIDDEN'::public.product_status_enum,
+        SET status_before_account_hold = COALESCE(status_before_account_hold, status),
+            status = 'HIDDEN'::public.product_status_enum,
             updated_at = now()
         WHERE seller_id = p_target_user_id
-        AND status = ANY(ARRAY['VERIFIED','PENDING_VERIFICATION','IN_REVIEW']::public.product_status_enum[]);
+        AND deleted_at IS NULL
+        AND status = ANY(ARRAY['VERIFIED', 'PENDING_VERIFICATION', 'IN_REVIEW']::public.product_status_enum[]);
 
-    ELSIF p_new_status = 'active' THEN
+    -- Lifting a suspension restores only listings this hold hid; other HIDDEN listings stay hidden
+    ELSIF p_new_status = 'active' AND v_previous_status = 'suspended' THEN
         UPDATE public.products
-        SET status = 'VERIFIED'::public.product_status_enum,
+        SET status = status_before_account_hold,
+            status_before_account_hold = NULL,
             updated_at = now()
         WHERE seller_id = p_target_user_id
         AND status = 'HIDDEN'::public.product_status_enum
+        AND status_before_account_hold IS NOT NULL
         AND deleted_at IS NULL;
+
+        -- Listings an admin moved out of HIDDEN during the suspension keep no stale hold
+        UPDATE public.products
+        SET status_before_account_hold = NULL
+        WHERE seller_id = p_target_user_id
+        AND status_before_account_hold IS NOT NULL
+        AND status <> 'HIDDEN'::public.product_status_enum;
     END IF;
 
-    -- E. REGISTRO EN BITÁCORA DE ADMINISTRACIÓN (Auditoría)
+    -- E. ADMIN AUDIT LOG
     INSERT INTO public.admin_audit_logs (admin_id, action_type, target_id, details)
     VALUES (v_auth_user_id, 'USER_STATUS_UPDATE', p_target_user_id,
-           jsonb_build_object('new_status', p_new_status::text, 'reason', p_reason));
+           jsonb_build_object('previous_status', v_previous_status::text, 'new_status', p_new_status::text, 'reason', p_reason));
 
     RETURN true;
 
