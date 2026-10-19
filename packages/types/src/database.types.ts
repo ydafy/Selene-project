@@ -554,6 +554,8 @@ export type Database = {
           run_id: string
           shipment_id: string
           status: string
+          transfer_started_at: string | null
+          transfer_token: string | null
           updated_at: string
         }
         Insert: {
@@ -563,6 +565,8 @@ export type Database = {
           run_id: string
           shipment_id: string
           status?: string
+          transfer_started_at?: string | null
+          transfer_token?: string | null
           updated_at?: string
         }
         Update: {
@@ -572,6 +576,8 @@ export type Database = {
           run_id?: string
           shipment_id?: string
           status?: string
+          transfer_started_at?: string | null
+          transfer_token?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1533,15 +1539,15 @@ export type Database = {
           shipping_payer: string | null
           specifications: Json
           status: Database["public"]["Enums"]["product_status_enum"]
+          status_before_account_hold:
+            | Database["public"]["Enums"]["product_status_enum"]
+            | null
           updated_at: string | null
           usage: string
           verification_data: Json | null
           verified_at: string | null
           views: number
         }
-          status_before_account_hold:
-            | Database["public"]["Enums"]["product_status_enum"]
-            | null
         Insert: {
           aspect_ratio?: number
           category: string
@@ -1568,15 +1574,15 @@ export type Database = {
           shipping_payer?: string | null
           specifications?: Json
           status?: Database["public"]["Enums"]["product_status_enum"]
+          status_before_account_hold?:
+            | Database["public"]["Enums"]["product_status_enum"]
+            | null
           updated_at?: string | null
           usage: string
           verification_data?: Json | null
           verified_at?: string | null
           views?: number
         }
-          status_before_account_hold?:
-            | Database["public"]["Enums"]["product_status_enum"]
-            | null
         Update: {
           aspect_ratio?: number
           category?: string
@@ -1603,15 +1609,15 @@ export type Database = {
           shipping_payer?: string | null
           specifications?: Json
           status?: Database["public"]["Enums"]["product_status_enum"]
+          status_before_account_hold?:
+            | Database["public"]["Enums"]["product_status_enum"]
+            | null
           updated_at?: string | null
           usage?: string
           verification_data?: Json | null
           verified_at?: string | null
           views?: number
         }
-          status_before_account_hold?:
-            | Database["public"]["Enums"]["product_status_enum"]
-            | null
         Relationships: [
           {
             foreignKeyName: "products_locked_by_fkey"
@@ -2065,6 +2071,87 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: true
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipment_cancellation_operations: {
+        Row: {
+          actor_id: string | null
+          cancellation_loss_cents: number | null
+          claim_expires_at: string
+          claim_token: string
+          created_at: string
+          external_started_at: string | null
+          operation_key: string | null
+          order_id: string
+          reason: string
+          refund_request: Json | null
+          shipment_id: string
+          source: string
+        }
+        Insert: {
+          actor_id?: string | null
+          cancellation_loss_cents?: number | null
+          claim_expires_at: string
+          claim_token: string
+          created_at?: string
+          external_started_at?: string | null
+          operation_key?: string | null
+          order_id: string
+          reason: string
+          refund_request?: Json | null
+          shipment_id: string
+          source: string
+        }
+        Update: {
+          actor_id?: string | null
+          cancellation_loss_cents?: number | null
+          claim_expires_at?: string
+          claim_token?: string
+          created_at?: string
+          external_started_at?: string | null
+          operation_key?: string | null
+          order_id?: string
+          reason?: string
+          refund_request?: Json | null
+          shipment_id?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_cancellation_operations_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "admin_disputes_monitor_view"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "shipment_cancellation_operations_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_cancellation_operations_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: true
+            referencedRelation: "admin_connect_earnings_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_cancellation_operations_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: true
+            referencedRelation: "admin_connect_payout_release_view"
+            referencedColumns: ["shipment_id"]
+          },
+          {
+            foreignKeyName: "shipment_cancellation_operations_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: true
+            referencedRelation: "shipments"
             referencedColumns: ["id"]
           },
         ]
@@ -3528,6 +3615,14 @@ export type Database = {
         }
         Returns: number
       }
+      fn_begin_shipment_transfer: {
+        Args: {
+          p_expected_stage_version: number
+          p_run_id: string
+          p_shipment_id: string
+        }
+        Returns: Json
+      }
       fn_block_payout_run_for_account_actionability: {
         Args: {
           p_blocked_reason: string
@@ -3606,6 +3701,16 @@ export type Database = {
           stage_version: number
           stripe_account_id: string
         }[]
+      }
+      fn_claim_shipment_cancellation: {
+        Args: {
+          p_actor_id: string
+          p_order_id: string
+          p_reason: string
+          p_shipment_id: string
+          p_source: string
+        }
+        Returns: Json
       }
       fn_claim_shipment_label: {
         Args: {
@@ -3690,6 +3795,16 @@ export type Database = {
           error_message: string
           success: boolean
         }[]
+      }
+      fn_complete_shipment_transfer: {
+        Args: {
+          p_expected_stage_version: number
+          p_run_id: string
+          p_shipment_id: string
+          p_stripe_transfer_id: string
+          p_transfer_token: string
+        }
+        Returns: boolean
       }
       fn_complete_stripe_fee_reconciliation_job: {
         Args: {
@@ -3788,6 +3903,7 @@ export type Database = {
           total_processed: number
         }[]
       }
+      fn_current_account_is_active: { Args: never; Returns: boolean }
       fn_decide_rejected_payout_stage_park: {
         Args: {
           p_failure_reason: string
@@ -3903,7 +4019,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      fn_current_account_is_active: { Args: never; Returns: boolean }
       fn_mark_return_delivered: {
         Args: { p_dispute_id: string }
         Returns: {
@@ -4130,6 +4245,19 @@ export type Database = {
       fn_set_checkout_recovery_charge_evidence: {
         Args: { p_stripe_charge_id: string; p_stripe_payment_intent_id: string }
         Returns: string
+      }
+      fn_start_shipment_cancellation: {
+        Args: { p_claim_token: string; p_shipment_id: string }
+        Returns: boolean
+      }
+      fn_start_shipment_cancellation_refund: {
+        Args: {
+          p_cancellation_loss_cents?: number
+          p_claim_token: string
+          p_refund_request: Json
+          p_shipment_id: string
+        }
+        Returns: Json
       }
       fn_transition_payout_release_stage: {
         Args: {

@@ -2,6 +2,7 @@ import type {
   ConnectPayoutReleaseQueueRow,
   ConnectPayoutReleaseRequest,
   ConnectPayoutRun,
+  Database,
 } from '../../../packages/types/src/index.ts';
 
 export type ConnectPayoutRunStatus =
@@ -164,10 +165,12 @@ export interface ConnectPayoutReleaseDependencies {
       order_id: string;
     };
   }) => Promise<{ id: string }>;
-  markShipmentStripeTransferId: (input: {
-    shipmentId: string;
-    stripeTransferId: string;
-  }) => Promise<void>;
+  beginShipmentTransfer: (
+    input: Database['public']['Functions']['fn_begin_shipment_transfer']['Args'],
+  ) => Promise<unknown>;
+  completeShipmentTransfer: (
+    input: Database['public']['Functions']['fn_complete_shipment_transfer']['Args'],
+  ) => Promise<boolean>;
   retrieveConnectedBalance: (input: {
     stripeAccountId: string;
   }) => Promise<{ available: ConnectedBalanceEntry[] }>;
@@ -569,6 +572,91 @@ function normalizeOrderIds(rows: ReleaseQueueRow[]): string[] {
   );
 }
 
+/** Unwrap only confirmed RPC responses; no retry or direct-write fallback. */
+export function createShipmentTransferAdapters(rpc: {
+  begin: (
+    args: Database['public']['Functions']['fn_begin_shipment_transfer']['Args'],
+  ) => PromiseLike<{ data: unknown; error: unknown }>;
+  complete: (
+    args: Database['public']['Functions']['fn_complete_shipment_transfer']['Args'],
+  ) => PromiseLike<{ data: unknown; error: unknown }>;
+}): Pick<
+  ConnectPayoutReleaseDependencies,
+  'beginShipmentTransfer' | 'completeShipmentTransfer'
+> {
+  return {
+    beginShipmentTransfer: async (args) => {
+      const { data, error } = await rpc.begin(args);
+      if (error) {
+        throw new ConnectPayoutReleaseError(
+          'SHIPMENT_TRANSFER_BEGIN_FAILED',
+          500,
+        );
+      }
+      return data;
+    },
+    completeShipmentTransfer: async (args) => {
+      const { data, error } = await rpc.complete(args);
+      if (error) {
+        throw new ConnectPayoutReleaseError(
+          'SHIPMENT_TRANSFER_UPDATE_FAILED',
+          500,
+        );
+      }
+      return data === true;
+    },
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isNonBlank(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function assertTransferEnvelope(
+  value: unknown,
+  expected: Parameters<
+    ConnectPayoutReleaseDependencies['createStripeTransfer']
+  >[0],
+): asserts value is {
+  transfer_token: string;
+  amount: number;
+  currency: 'mxn';
+  destination: string;
+  source_transaction: string;
+  transfer_group: string;
+  idempotency_key: string;
+  metadata: typeof expected.metadata;
+} {
+  const metadata = isRecord(value) ? value.metadata : null;
+  if (
+    !isRecord(value) ||
+    !isNonBlank(value.transfer_token) ||
+    !Number.isSafeInteger(value.amount) ||
+    value.amount !== expected.amount ||
+    expected.amount <= 0 ||
+    value.currency !== 'mxn' ||
+    !isNonBlank(value.destination) ||
+    value.destination !== expected.stripeAccountId ||
+    !isNonBlank(value.source_transaction) ||
+    value.source_transaction !== expected.sourceTransaction ||
+    !isNonBlank(value.transfer_group) ||
+    value.transfer_group !== expected.transferGroup ||
+    !isNonBlank(value.idempotency_key) ||
+    value.idempotency_key !== expected.idempotencyKey ||
+    !isRecord(metadata) ||
+    Object.keys(metadata).length !== 5 ||
+    Object.entries(expected.metadata).some(
+      ([key, entry]) => metadata[key] !== entry,
+    )
+  ) {
+    throw new ConnectPayoutReleaseError('SHIPMENT_TRANSFER_BEGIN_INVALID', 409);
+  }
+}
+
 function buildTransferIdempotencyKey(input: {
   idempotencyKey: string;
   runId: string;
@@ -839,7 +927,15 @@ export async function releaseConnectPayout(
         throw new ConnectPayoutReleaseError('MISSING_SETTLEMENT_CONTEXT', 400);
       }
 
-      const transfer = await deps.createStripeTransfer({
+      const transferContext = {
+        p_run_id: run.id,
+        p_shipment_id: row.shipment_id,
+        p_expected_stage_version: resumeIntent.expectedVersion,
+      };
+      // SQL revalidates ownership under the shared shipment lock and commits
+      // the possible-effect marker before returning authority for one call.
+      const started = await deps.beginShipmentTransfer(transferContext);
+      assertTransferEnvelope(started, {
         stripeAccountId: row.stripe_account_id,
         amount: row.release_amount_cents,
         currency: 'mxn',
@@ -859,10 +955,34 @@ export async function releaseConnectPayout(
         },
       });
 
-      await deps.markShipmentStripeTransferId({
-        shipmentId: row.shipment_id,
-        stripeTransferId: transfer.id,
+      const transfer = await deps.createStripeTransfer({
+        stripeAccountId: started.destination,
+        amount: started.amount,
+        currency: started.currency,
+        sourceTransaction: started.source_transaction,
+        transferGroup: started.transfer_group,
+        idempotencyKey: started.idempotency_key,
+        metadata: started.metadata,
       });
+      if (!isNonBlank(transfer?.id)) {
+        throw new ConnectPayoutReleaseError(
+          'SHIPMENT_TRANSFER_RESULT_INVALID',
+          409,
+        );
+      }
+      // A false/uncertain completion leaves the marker intact. Never advance
+      // to balance/payout work or substitute an unfenced shipment update.
+      const completed = await deps.completeShipmentTransfer({
+        ...transferContext,
+        p_transfer_token: started.transfer_token,
+        p_stripe_transfer_id: transfer.id,
+      });
+      if (completed !== true) {
+        throw new ConnectPayoutReleaseError(
+          'SHIPMENT_TRANSFER_COMPLETION_CONFLICT',
+          409,
+        );
+      }
     }
 
     const balancePreflight = await preflightConnectedBalance({

@@ -71,7 +71,8 @@ export function parseCancelOrderRequestBody(
 
   const record = body as Record<string, unknown>;
   const orderId = typeof record.orderId === 'string' ? record.orderId : '';
-  const shipmentId = typeof record.shipmentId === 'string' ? record.shipmentId : '';
+  const shipmentId =
+    typeof record.shipmentId === 'string' ? record.shipmentId : '';
   const reason =
     typeof record.reason === 'string' && record.reason.trim().length > 0
       ? record.reason.trim()
@@ -99,29 +100,29 @@ export function buildCancelShipmentRefundParams(
     payment_intent: string;
     amount: number;
     reason: 'requested_by_customer';
-      metadata: {
-        shipment_id: string;
-        order_id: string;
-        caller_role: 'buyer' | 'seller';
-        reason: string;
-        seguro_share_cents: number;
-      };
+    metadata: {
+      shipment_id: string;
+      order_id: string;
+      caller_role: 'buyer' | 'seller';
+      reason: string;
+      seguro_share_cents: number;
     };
-    options: { idempotencyKey: string };
-  } {
+  };
+  options: { idempotencyKey: string };
+} {
   return {
     params: {
       payment_intent: input.paymentIntentId,
       amount: input.amountCents,
       reason: 'requested_by_customer',
-        metadata: {
-          shipment_id: input.shipmentId,
-          order_id: input.orderId,
-          caller_role: input.callerRole,
-          reason: input.reason,
-          seguro_share_cents: input.seguroShareCents,
-        },
+      metadata: {
+        shipment_id: input.shipmentId,
+        order_id: input.orderId,
+        caller_role: input.callerRole,
+        reason: input.reason,
+        seguro_share_cents: input.seguroShareCents,
       },
+    },
     options: {
       idempotencyKey: `cancel_shipment_${input.shipmentId}`,
     },
@@ -143,7 +144,10 @@ export function resolveManualShipmentCancelPlan(
     throw new ApiError(403, 'ORDER_BUYER_MISMATCH');
   }
 
-  if (input.callerRole === 'seller' && input.callerId !== input.shipmentSellerId) {
+  if (
+    input.callerRole === 'seller' &&
+    input.callerId !== input.shipmentSellerId
+  ) {
     throw new ApiError(403, 'SHIPMENT_SELLER_MISMATCH');
   }
 
@@ -213,8 +217,14 @@ export function resolveManualShipmentCancelPlan(
   const cancellationLossCents =
     cancellationLossAllocations?.get(input.shipmentId) ?? null;
 
-  const seguroShareCents = amountCents -
-    input.shipmentItems.reduce((sum, item) => sum + item.price_at_purchase, 0) * 100;
+  const seguroShareCents =
+    amountCents -
+    Math.round(
+      input.shipmentItems.reduce(
+        (sum, item) => sum + item.price_at_purchase,
+        0,
+      ) * 100,
+    );
 
   const refundParams = buildCancelShipmentRefundParams({
     paymentIntentId: input.shipmentStripePaymentIntentId,

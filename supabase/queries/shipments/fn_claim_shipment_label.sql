@@ -6,9 +6,16 @@ BEGIN
     INTO v_seller_id, v_state, v_origin, v_claim_expires_at
     FROM public.shipments WHERE id = p_shipment_id FOR UPDATE;
   IF NOT FOUND OR v_seller_id IS DISTINCT FROM p_seller_id THEN RAISE EXCEPTION 'UNAUTHORIZED'; END IF;
+  -- Cancellation writers hold this same shipment lock before touching their row.
+  -- Keep expired pre-start context: its owner cannot start while a label owns it.
+  IF EXISTS (SELECT 1 FROM public.shipment_cancellation_operations
+    WHERE shipment_id = p_shipment_id
+      AND (external_started_at IS NOT NULL OR claim_expires_at > clock_timestamp())) THEN
+    RAISE EXCEPTION 'SHIPMENT_CANCELLATION_OPERATION_ACTIVE';
+  END IF;
   IF v_state = 'generated' THEN RETURN jsonb_build_object('status', 'generated'); END IF;
   IF v_state = 'orphan_pending' THEN RETURN jsonb_build_object('status', 'orphan_pending'); END IF;
-  IF v_state IN ('claimed', 'generation_sent') AND v_claim_expires_at <= now() THEN
+  IF v_state IN ('claimed', 'generation_sent') AND v_claim_expires_at <= clock_timestamp() THEN
     UPDATE public.shipments SET label_generation_state = 'orphan_pending', claim_expires_at = NULL,
       updated_at = now() WHERE id = p_shipment_id;
     INSERT INTO public.shipment_label_events (shipment_id, event_type, actor_id, metadata)
@@ -32,7 +39,7 @@ BEGIN
   END IF;
   v_token := gen_random_uuid();
   UPDATE public.shipments SET label_generation_state = 'claimed', claim_token = v_token,
-    claim_expires_at = now() + interval '15 minutes', updated_at = now()
+    claim_expires_at = clock_timestamp() + interval '15 minutes', updated_at = now()
     WHERE id = p_shipment_id AND status = 'paid'
       AND label_generation_state IN ('unclaimed', 'retryable_rejected');
   IF NOT FOUND THEN RETURN jsonb_build_object('status', 'ineligible'); END IF;

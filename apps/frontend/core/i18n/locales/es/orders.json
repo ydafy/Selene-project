@@ -163,6 +163,7 @@
     "returnShipmentPendingSeller": "Guía generada. El comprador tiene {{timeLeft}} para enviar el paquete.",
     "returnShipmentInTransit": "El paquete de retorno ya está con la paquetería.",
     "returnDeliveredBuyer": "El vendedor ya recibió el paquete. Tu reembolso se procesará tras la inspección.",
+    "cancelledBuyer": "Tu envío fue cancelado. El reembolso se procesa al método de pago original. Una vez confirmado, tu banco puede tardar entre 5 y 10 días hábiles en reflejarlo.",
     "refundProcessedBuyer": "Tu reembolso ha sido procesado con éxito. El dinero se verá reflejado en tu cuenta en un plazo de 5 a 10 días hábiles.",
     "refundProcessedSeller": "Disputa cerrada. El dinero ha sido devuelto al comprador.",
     "reportReturnProblem": "Reportar problema con el retorno"
