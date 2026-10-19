@@ -1539,6 +1539,9 @@ export type Database = {
           verified_at: string | null
           views: number
         }
+          status_before_account_hold:
+            | Database["public"]["Enums"]["product_status_enum"]
+            | null
         Insert: {
           aspect_ratio?: number
           category: string
@@ -1571,6 +1574,9 @@ export type Database = {
           verified_at?: string | null
           views?: number
         }
+          status_before_account_hold?:
+            | Database["public"]["Enums"]["product_status_enum"]
+            | null
         Update: {
           aspect_ratio?: number
           category?: string
@@ -1603,6 +1609,9 @@ export type Database = {
           verified_at?: string | null
           views?: number
         }
+          status_before_account_hold?:
+            | Database["public"]["Enums"]["product_status_enum"]
+            | null
         Relationships: [
           {
             foreignKeyName: "products_locked_by_fkey"
@@ -3894,6 +3903,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      fn_current_account_is_active: { Args: never; Returns: boolean }
       fn_mark_return_delivered: {
         Args: { p_dispute_id: string }
         Returns: {
