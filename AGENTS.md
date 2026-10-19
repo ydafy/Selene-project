@@ -17,7 +17,8 @@ Bun monorepo with strict TypeScript.
 - `packages/types/`: shared types, including generated Supabase types.
 - `supabase/functions/`: Edge Functions (Deno). Shared pure helpers live in `_shared/`.
 - `supabase/migrations/`: deployable SQL deltas. `supabase/queries/`: canonical current SQL of functions, by domain.
-- `openspec/`: product and technical contracts.
+- `odd/tasks/`: one tracking document per feature (specs quoted from the maintainer, tasks, decision log).
+- `openspec/`, `sdd/`: older planning artifacts. Historical reference only.
 
 External services: Supabase/Postgres, Stripe Connect (payments and seller payouts), Envia.com (shipping labels and tracking).
 
@@ -25,14 +26,17 @@ External services: Supabase/Postgres, Stripe Connect (payments and seller payout
 
 Check these instead of guessing:
 
-| Question                                | Source                                                                                             |
-| --------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| How should the product behave?          | `openspec/specs/`; active work in `openspec/changes/<change>/` (archived changes are history only) |
-| Which tables, columns, and enums exist? | `packages/types/src/database.types.ts` and aliases in `packages/types/src/index.ts`                |
-| What is deployed right now?             | The Supabase MCP (see below), not the repository                                                   |
-| Why was a setup decision made?          | `docs/decision-log.md`                                                                             |
-| What does production need?              | `docs/go-live.md`                                                                                  |
-| Which skills apply?                     | `.atl/skill-registry.md`                                                                           |
+| Question                                | Source                                                                                                |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| How does the product behave today?      | The code and its tests                                                                                |
+| What is the current feature asking for? | `odd/tasks/<feature>.md`, especially its `## Specs` and `## Log`                                      |
+| What was decided before, and why?       | Engram memory for project `school-portal`, when your harness has it; `docs/decision-log.md` for setup |
+| Which tables, columns, and enums exist? | `packages/types/src/database.types.ts` and aliases in `packages/types/src/index.ts`                   |
+| What is deployed right now?             | The Supabase MCP (see below), not the repository                                                      |
+| What does production need?              | `docs/go-live.md`                                                                                     |
+| Which skills apply?                     | `.atl/skill-registry.md`                                                                              |
+
+`openspec/` and `sdd/` describe intent at the time they were written and are often outdated. Use them for background, verify against the code, and never treat them as binding.
 
 Use the typed aliases (`Tables<'orders'>`, `Enums<'order_status_enum'>`). Never invent table, column, enum, or relationship names.
 
@@ -49,13 +53,21 @@ Run from the repository or worktree root. `package.json` is the source of truth.
 
 ## How we work
 
-- `openspec/config.yaml` enables strict TDD: write the failing test first, watch it fail, then implement.
+- Test first: write the failing test, watch it fail, then implement.
 - Make the smallest complete change. Do not refactor, reformat, or "improve" files outside the request.
 - Do not change ESLint, TypeScript, formatter, test runner, Git hook, build, or CI configuration to make a change pass. Configuration changes need explicit maintainer approval.
 - If an unrelated failure blocks verification, report the command and output and stop for a decision. Never weaken a test to get green.
 - Preserve uncommitted changes you did not make.
 - Code, identifiers, comments, tests, commits, and docs are in English. User-facing strings go through i18n with both English and Spanish (`apps/frontend/core/i18n/locales`); locale parity tests enforce it.
 - Several features are developed in parallel worktrees under `C:/dev/School-portal-worktrees/`. Stay inside the worktree you were given.
+
+## How money moves
+
+- The buyer pays the product price plus "Seguro Selene", which covers the Stripe processing fee. The seller absorbs shipping and the Selene marketplace fee. Rates live in `supabase/functions/create-connect-payment/fee-calculator.ts`; do not hardcode them elsewhere.
+- Payments go through Stripe Connect with manual payouts. Selene holds the seller's funds until the shipment is completed, then an admin releases them. Never enable automatic payouts: they would pay sellers before delivery or before disputes and refunds are resolved.
+- A payout releases the full shipment amount or nothing. Partial payouts would make the database ledger diverge from Stripe.
+- Refunds and disputes are only possible before a shipment is completed, and they always target one `shipment_id`, never a whole multi-seller order.
+- `wallets`, `wallet_transactions`, `payout_requests`, and `seller_bank_accounts` are deprecated by the Stripe Connect migration. They stay as read-only audit history; never build on them.
 
 ## Money and security invariants
 
@@ -86,6 +98,8 @@ When a change touches Supabase:
 4. After the maintainer confirms, run `bun run db:types` and check that the expected changes appear.
 5. When a change adds a secret, cron job, bucket, webhook, or Dashboard setting, update `docs/go-live.md` in the same commit.
 6. `supabase/config.toml` mirrors the deployed `verify_jwt` flags. Keep it in sync when a function's auth changes.
+
+Edge Functions run on Deno. An untyped `createClient` infers selected rows as `{}`; pass the generated `Database` type or declare a local row type.
 
 Known state: remote migration history is empty, and the repository migrations lack a base schema, so `supabase db reset` cannot rebuild the database yet. A schema baseline is planned after the active worktrees merge (`odd/tasks/supabase-dev-workflow.md`).
 
