@@ -395,6 +395,8 @@ type LabelClaimOrchestrationResult<T> =
       status:
         | Exclude<LabelClaimStatus, 'generated'>
         | 'retryable_rejected'
+        | 'evidence_persistence_released'
+        | 'evidence_state_persistence_failed'
         | 'rate_evidence_rejected'
         | 'rate_evidence_state_persistence_failed'
         | 'mark_sent_released'
@@ -411,12 +413,14 @@ export async function runLabelClaimOrchestration<T>(dependencies: {
     'configuration_invalid' | 'buyer_destination_invalid' | null
   >;
   claim: () => Promise<LabelClaimResult>;
+  /** Persist seller packing evidence; runs only while this request owns the claim. */
+  persistEvidence?: (claimToken: string) => Promise<boolean>;
   /** Rate exact shipment inputs and atomically persist the accepted evidence. */
   rateAndPersist?: (claimToken: string) => Promise<boolean>;
   markSent: (claimToken: string) => Promise<boolean>;
   provider: () => Promise<LabelProviderResult<T>>;
   finalize: (claimToken: string, accepted: T | null) => Promise<boolean>;
-  rejected: (claimToken: string) => Promise<boolean>;
+  rejected: (claimToken: string, reason?: 'evidence_persistence_failed') => Promise<boolean>;
   orphan: (claimToken: string) => Promise<boolean>;
 }): Promise<LabelClaimOrchestrationResult<T>> {
   const preflight = await dependencies.preflight?.();
@@ -424,6 +428,27 @@ export async function runLabelClaimOrchestration<T>(dependencies: {
   const claim = await dependencies.claim();
   if (claim.status !== 'claimed' || !claim.claimToken)
     return { status: claim.status };
+
+  if (dependencies.persistEvidence) {
+    let persisted = false;
+    try {
+      persisted = await dependencies.persistEvidence(claim.claimToken);
+    } catch {
+      persisted = false;
+    }
+    if (!persisted) {
+      try {
+        return (await dependencies.rejected(
+          claim.claimToken,
+          'evidence_persistence_failed',
+        ))
+          ? { status: 'evidence_persistence_released' }
+          : { status: 'evidence_state_persistence_failed' };
+      } catch {
+        return { status: 'evidence_state_persistence_failed' };
+      }
+    }
+  }
 
   if (dependencies.rateAndPersist) {
     try {

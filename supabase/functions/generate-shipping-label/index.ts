@@ -376,15 +376,6 @@ serve(async (req: Request) => {
       presetKeys,
     });
 
-    const { error: evidenceError } = await supabaseAdmin
-      .from('shipments')
-      .update({
-        shipping_evidence: shippingEvidence.images,
-      })
-      .eq('id', shipmentId);
-    if (evidenceError)
-      throw new ApiError(500, 'No se pudo guardar la evidencia de envío');
-
     // H. Claim, send, provider, and token-guarded persistence
     log('INFO', 'Prepared Envia label request', { enviaDiagnostics });
     let acceptedRate: {
@@ -404,6 +395,17 @@ serve(async (req: Request) => {
         });
         if (error || !data) return { status: 'ineligible' as const };
         return { status: data.status, claimToken: data.claim_token };
+      },
+      persistEvidence: async (token) => {
+        // Only the request holding the active claim may replace stored evidence.
+        const { data, error } = await supabaseAdmin
+          .from('shipments')
+          .update({ shipping_evidence: shippingEvidence.images })
+          .eq('id', shipmentId)
+          .eq('claim_token', token)
+          .eq('label_generation_state', 'claimed')
+          .select('id');
+        return !error && data?.length === 1;
       },
       rateAndPersist: async (token) => {
         const reusableEvidence =
@@ -550,12 +552,12 @@ serve(async (req: Request) => {
             p_provider_cost_cents: accepted.labelCost,
           })
         ).data === true,
-      rejected: async (token) =>
+      rejected: async (token, reason) =>
         (
           await rpc('fn_mark_shipment_label_rejected', {
             p_shipment_id: shipmentId,
             p_claim_token: token,
-            p_error_class: 'deterministic_provider_rejection',
+            p_error_class: reason ?? 'deterministic_provider_rejection',
           })
         ).data === true,
       orphan: async (token) =>
@@ -598,6 +600,11 @@ serve(async (req: Request) => {
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
     }
+    if (
+      result.status === 'evidence_persistence_released' ||
+      result.status === 'evidence_state_persistence_failed'
+    )
+      throw new ApiError(500, 'No se pudo guardar la evidencia de envío');
     if (
       result.status === 'retryable_rejected' ||
       result.status === 'rate_evidence_rejected'

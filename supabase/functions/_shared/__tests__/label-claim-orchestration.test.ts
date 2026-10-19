@@ -86,6 +86,78 @@ test('persists accepted rate evidence after claim and before marking generation 
   expect(calls).toEqual(['rate', 'mark-sent', 'provider', 'finalize']);
 });
 
+test('persists packing evidence only after a successful claim and before rating or sending', async () => {
+  const calls: string[] = [];
+  const result = await runLabelClaimOrchestration({
+    claim: async () => { calls.push('claim'); return { status: 'claimed', claimToken: 'claim-token' }; },
+    persistEvidence: async (token) => { calls.push(`evidence:${token}`); return true; },
+    rateAndPersist: async () => { calls.push('rate'); return true; },
+    markSent: async () => { calls.push('mark-sent'); return true; },
+    provider: async () => { calls.push('provider'); return 'accepted'; },
+    finalize: async () => { calls.push('finalize'); return true; },
+    rejected: async () => true,
+    orphan: async () => true,
+  });
+
+  expect(result.status).toBe('generated');
+  expect(calls).toEqual(['claim', 'evidence:claim-token', 'rate', 'mark-sent', 'provider', 'finalize']);
+});
+
+test('never writes packing evidence when another request owns or settled the claim', async () => {
+  for (const status of ['claimed_conflict', 'generated', 'orphan_pending', 'ineligible', 'not_found']) {
+    let evidenceWrites = 0;
+    const result = await runLabelClaimOrchestration({
+      claim: async () => ({ status, claimToken: 'claim-token' }),
+      persistEvidence: async () => { evidenceWrites++; return true; },
+      markSent: async () => true,
+      provider: async () => 'accepted',
+      finalize: async () => true,
+      rejected: async () => true,
+      orphan: async () => true,
+    });
+
+    expect(result.status).toBe(status);
+    expect(evidenceWrites).toBe(0);
+  }
+});
+
+test('releases the claim without rating or calling Envia when evidence cannot be persisted', async () => {
+  for (const persistEvidence of [async () => false, async () => { throw new Error('write failed'); }]) {
+    const calls: string[] = [];
+    const reasons: (string | undefined)[] = [];
+    const result = await runLabelClaimOrchestration({
+      claim: async () => ({ status: 'claimed', claimToken: 'claim-token' }),
+      persistEvidence,
+      rateAndPersist: async () => { calls.push('rate'); return true; },
+      markSent: async () => { calls.push('mark-sent'); return true; },
+      provider: async () => { calls.push('provider'); return 'accepted'; },
+      finalize: async () => true,
+      rejected: async (_token, reason) => { reasons.push(reason); return true; },
+      orphan: async () => true,
+    });
+
+    expect(result.status).toBe('evidence_persistence_released');
+    expect(calls).toEqual([]);
+    expect(reasons).toEqual(['evidence_persistence_failed']);
+  }
+
+  for (const rejected of [async () => false, async () => { throw new Error('rpc failure'); }]) {
+    let providerCalls = 0;
+    const result = await runLabelClaimOrchestration({
+      claim: async () => ({ status: 'claimed', claimToken: 'claim-token' }),
+      persistEvidence: async () => false,
+      markSent: async () => true,
+      provider: async () => { providerCalls++; return 'accepted'; },
+      finalize: async () => true,
+      rejected,
+      orphan: async () => true,
+    });
+
+    expect(result.status).toBe('evidence_state_persistence_failed');
+    expect(providerCalls).toBe(0);
+  }
+});
+
 test('releases a claimed shipment when rating cannot persist accepted evidence', async () => {
   let providerCalls = 0;
   const result = await runLabelClaimOrchestration({
