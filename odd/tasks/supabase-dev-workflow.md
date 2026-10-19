@@ -14,15 +14,16 @@ Remote project `acoiclkeymgtlwcxilun` holds only fake data but is treated as pro
 
 ## Tasks
 
-- T1 (S1, S2, S4; inline; no repo commit — user-level config): Configure read-only, project-scoped Supabase MCP in `~/.gentle-shell/agent/mcp.json` with OAuth; user signs in; verify with `list_tables` and a `pg_policies` query.
-- T2 (S2, S6; inline; report only): Drift diagnosis — compare remote schema/migration history against `supabase/migrations/`; report before deciding.
-- T3 (S5; inline): Baseline migration that closes drift (decision after T2).
-- T4 (S3; inline): Local stack via `supabase start` + `supabase/seed.sql`; `db reset` replays all migrations.
-- T5 (S3, S4): Move the `shipment-cancellations` bare-Postgres harness onto the local Supabase stack (decision required; that worktree has its own branch).
-- T6 (S6): pgTAP tests for money and authorization invariants via `supabase test db`.
-- T7 (S5): `docs/go-live.md` runbook and config-as-code in `supabase/config.toml`.
-- T8 (S6): Minimal CI (lint, typecheck, `bun test`).
-- T9 (S2): Update `AGENTS.md` so agents use the MCP for remote state instead of asking the maintainer.
+- [x] T1 (S1, S2, S4; inline; user-level config, no repo commit): read-only, project-scoped Supabase MCP in `~/.gentle-shell/agent/mcp.json` with OAuth; verified.
+- [x] T2 (S2, S6; inline; report only): drift diagnosis (L7). Commit 184f184 (this document).
+- [ ] T3 (S5): baseline migration. Blocked: after active worktrees merge into `main` (L8).
+- [ ] T4 (S3): `supabase start` + `supabase/seed.sql`. Blocked on T3.
+- [ ] T5 (S3, S4): move `shipment-cancellations` harness to local stack. Blocked on T4 and that branch merging.
+- [ ] T6 (S6): pgTAP money/authorization invariants. Blocked on T4.
+- [x] T7 (S5): `docs/go-live.md` runbook + deployed `verify_jwt` flags in `supabase/config.toml`. Commit 7d255a5.
+- [x] T8 (S6): minimal CI, `bun test` only (lint and tsc baselines red). Commit ed8b44f. Not yet observed on GitHub.
+- [x] T9 (S2): `AGENTS.md` remote inspection rule. Commit 8119d69.
+- [x] T10 (S6): revoke API execute on `fn_reconcile_connect_payments` and anon execute on `fn_lock_product`. Commit 7f14730. Pending maintainer SQL apply.
 
 ## Log
 
@@ -40,3 +41,6 @@ Remote project `acoiclkeymgtlwcxilun` holds only fake data but is treated as pro
   5. Edge Functions deployed from unmerged worktrees: `cancel-order`, `auto-cancel-orders`, `auto-cancel-preparing`, `release-connect-payout` (shipment-cancellations), `generate-shipping-label` (mobile-ui-polish), `get-connect-payout-release-queue` (admin-payments-redesign). Orphan deployed function `dynamic-api` (name `get-shipping-quote-seller`) has no repo source.
   6. Security advisors: `SECURITY DEFINER` executable by `anon`: `fn_lock_product`, `fn_reconcile_connect_payments`, `is_admin`; by `authenticated`: 13 incl. legacy `fn_request_payout`, `fn_save_bank_account`, and admin RPCs taking client `p_admin_id`. `pg_net` in `public`. Leaked password protection disabled. 10 tables RLS-on/no-policy (likely intentional server-only; to confirm).
   T2 done; T3 needs maintainer decision on baseline strategy.
+- L8: User: findings 4-5 come from worktree deploys; baseline waits until worktrees merge. "has todo lo que se deba hacer intependientemente de los woktree". User asked to commit first ("master commtea primero").
+- L9: Evidence. `is_admin()` must keep PUBLIC execute: 16 PUBLIC-role RLS policies call it. `fn_reconcile_connect_payments` cron job runs as `postgres`. Lint baseline: 1486 errors from ignored `apps/admin-web/dist` build output + ~95 in source; hooks ran 1812 tests, 0 fail.
+- L10: Open findings needing decisions (not fixed): `fn_release_products` lets any signed-in user release any reserved product (checkout; own feature); `track-shipments` on `main` has `verify_jwt = false` and no caller check (tracking worktrees rewrite it); cron jobs `auto-cancel-orders-job` and `track-shipments-every-6-hours` embed literal JWTs; `evidence` bucket is public; legacy `fn_request_payout`/`fn_save_bank_account` still granted and referenced by `useWalletStore`; leaked password protection off; `pg_net` in `public`; orphan function `dynamic-api`.
