@@ -1,5 +1,22 @@
 # Shipment cancellation coordination — B1.1/B1.2/B1.3
 
+## B1.3 status and Edge deployment inventory
+
+B1.3 is complete as a locally verified repository change. Label and transfer arbitration SQL is maintainer-applied and generated types are synchronized. No Edge Function from B1.2 or B1.3 has been deployed. B1 is not complete: B1.4 integrated verification remains.
+
+Local checkpoints: label SQL `bb759c2`, transfer SQL `23bacdd` (native review approved), transfer adapter `cb96844`. Independent verification passed for each unit. The final suite passed 1795 tests (0 failures). Unproven: offline endpoint Deno type checks (uncached remote imports), HTTP gateway/JWT, live cron, actual Stripe/Envia and deployed behavior.
+
+Edge Functions changed on this branch and pending deployment:
+
+| Function | Change | Shared imports |
+|---|---|---|
+| `cancel-order` | B1.2 manual cancellation reservation | `_shared/shipment-cancellation.ts` |
+| `auto-cancel-orders` | B1.2 paid-timeout reservation | `_shared/shipment-cancellation.ts` |
+| `auto-cancel-preparing` | B1.2 preparing-timeout reservation | `_shared/shipment-cancellation.ts` |
+| `release-connect-payout` | B1.3 transfer begin/complete arbitration | `release-connect-payout.ts`, `atomic-resume-adapter.ts` |
+
+`generate-shipping-label` is unchanged; label exclusion lives entirely in the applied SQL. No SQL replay, new secrets, cron schedules or webhooks are required. Deploy the four functions together in a quiet window: pause or let finish all cancellation crons and release invocations first, deploy, then resume. Mixed old/new callers are not covered by these guarantees.
+
 ## B1.3-T Edge adapter (repository sources only; not deployed)
 
 `release-connect-payout` now calls the maintainer-applied begin RPC after creating/resuming the existing mapping and immediately before each new Transfer. Both RPC argument types come from the regenerated `Database` contract. The original new-run stage version, or the version returned by atomic resume, is passed unchanged to begin and completion. Begin does not increment that epoch.
@@ -20,11 +37,11 @@ Unchanged allocation, admin authorization, completed-only eligibility, actionabi
 
 Focused Bun tests passed 112/0 with 706 assertions, including adjacent existing tests. A genuine behavioral RED first showed missing begin/completion ordering and forbidden provider progression (76 pass/36 fail); two earlier RED attempts timed out due to the pending-provider test setup, which was corrected before implementation. Scoped ESLint passed. An in-memory comparison with baseline `23bacdd` passed 12 unchanged helper scenarios, comparing exact results/errors and ordered provider/business effects while excluding the intentionally added arbitration RPCs; no committed test reads Git history and no filesystem scratch was created.
 
-The required offline endpoint Deno check failed on uncached `https://deno.land/std@0.168.0/http/server.ts` with `--no-remote`; no fetch or retry was attempted. Required Prettier checking reports the helper, endpoint and test file; each also fails on the baseline revision. New blocks received scoped formatting without a whole-file cosmetic rewrite. These checks are not passes. The parent full Bun suite passed 1795 tests with 6614 assertions across 194 files (zero failures); parent focused spot-check also passed 112/0/706. Independent adapter/concurrency verification, endpoint type proof and deployed/provider proof remain outstanding; the SQL checkpoint's independent/native approval cannot substitute for them.
+The required offline endpoint Deno check failed on uncached `https://deno.land/std@0.168.0/http/server.ts` with `--no-remote`; no fetch or retry was attempted. Required Prettier checking reports the helper, endpoint and test file; each also fails on the baseline revision. New blocks received scoped formatting without a whole-file cosmetic rewrite. These checks are not passes. The parent full Bun suite passed 1795 tests with 6614 assertions across 194 files (zero failures); parent focused spot-check also passed 112/0/706. Independent adapter verification later passed with no blockers: 112/0 candidate tests, 45 additional probes and three caught mutants; after line-ending normalization only two new line-width formatting lines remained, which commit hooks rewrite. Endpoint type proof and deployed/provider proof remain outstanding; the SQL checkpoint's native approval does not cover this adapter.
 
 ### Deployment sources and caller drain — maintainer action only
 
-No new SQL or type generation is required: `20261017233608_shipment_transfer_coordination.sql` and its prerequisite migrations are already maintainer-confirmed applied. Do not replay them. Future deployment source for this unit is `supabase/functions/release-connect-payout/index.ts`, importing `release-connect-payout.ts` and the unchanged `atomic-resume-adapter.ts`. Existing cancellation sources `cancel-order`, `auto-cancel-orders`, `auto-cancel-preparing` and label participant `generate-shipping-label` must be coordinated with their shared dependencies; no deployment has been performed here.
+No new SQL or type generation is required: `20261017233608_shipment_transfer_coordination.sql` and its prerequisite migrations are already maintainer-confirmed applied. Do not replay them. Future deployment source for this unit is `supabase/functions/release-connect-payout/index.ts`, importing `release-connect-payout.ts` and the unchanged `atomic-resume-adapter.ts`. Existing cancellation sources `cancel-order`, `auto-cancel-orders` and `auto-cancel-preparing` must be deployed in the same window with their shared dependencies. `generate-shipping-label` is unchanged and needs no deployment. No deployment has been performed here.
 
 Before rollout, separately pause/drain all old release and cancellation invocations, including jobs and any old in-flight provider attempts. Old release writers lack the start marker and old cancellation callers may bypass claims. Inspect unresolved historical runs before resumption: absence of the marker is not evidence of no old provider effect. Drain old callers before enabling the coordinated callers; do not claim mixed-version safety. No new secrets, cron schedules or webhooks are required. After separately authorized deployment, verify service-role begin/complete permissions, old-caller drain, loser/no-provider behavior and normal/stored-ID/legacy releases with disposable controlled fixtures. Remote inspection, provider operations, deployment and resumption require maintainer authorization and are not performed by these local tests.
 
