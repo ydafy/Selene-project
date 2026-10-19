@@ -19,6 +19,7 @@
     "eas:build": "cd apps/frontend && bunx eas build",
     "eas:configure": "cd apps/frontend && bunx eas build:configure",
     "lint": "bunx eslint . --ext .js,.jsx,.ts,.tsx",
+    "typecheck": "bun run --filter '*' typecheck",
     "format": "bunx prettier --write .",
     "prepare": "bunx husky install || true",
     "clean:all": "bun scripts/clean-all.ts",
