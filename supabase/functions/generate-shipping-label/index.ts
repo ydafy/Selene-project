@@ -19,7 +19,11 @@ import {
   selectPaquetexpressGroundRate,
 } from '../_shared/envia-shipping.ts';
 import { LabelRequestSchema } from './request-contract.ts';
-import { declaredContentForCategories } from './shipment-package.ts';
+import {
+  declaredContentForCategories,
+  FALLBACK_PACKAGE_PRESET,
+  resolveShipmentPackage,
+} from './shipment-package.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -56,13 +60,6 @@ const log = (
 };
 
 // --- 2. TIPOS E INTERFACES ---
-
-interface PackageDimensions {
-  length: number;
-  width: number;
-  height: number;
-  weight: number;
-}
 
 interface Address {
   full_name?: string;
@@ -208,10 +205,6 @@ serve(async (req: Request) => {
     if (!Number.isFinite(declaredValue) || declaredValue <= 0)
       throw new ApiError(422, 'El envío no tiene un valor asegurable válido.');
 
-    const packagePresets = settingsRes.data.package_presets as Record<
-      string,
-      PackageDimensions
-    >;
     const enviaShipmentConfiguration = buildEnviaShipmentConfiguration(
       projectEnviaShipmentConfiguration(settingsRes.data),
     );
@@ -301,36 +294,26 @@ serve(async (req: Request) => {
       );
     }
 
-    // F. Cálculo de Dimensiones Dinámico (solo items de este shipment)
-    let totalWeight = 0,
-      maxL = 0,
-      maxW = 0,
-      totalH = 0;
-
+    // F. Package dimensions from the configured presets of this shipment's items
     const presetKeys = shipment.items.map(
       (item) => item.product.package_preset,
     );
-
-    shipment.items.forEach((item) => {
-      const presetKey = item.product.package_preset;
-      const dim = packagePresets[presetKey];
-
-      if (!dim) {
-        log(
-          'WARN',
-          `Preset no encontrado: ${presetKey}. Usando fallback seguro.`,
-          { shipmentId },
-        );
-      }
-
-      // Fallback seguro a un paquete estándar si el preset no existe en la DB
-      const safeDim = dim || { length: 20, width: 20, height: 15, weight: 1 };
-
-      totalWeight += safeDim.weight;
-      maxL = Math.max(maxL, safeDim.length);
-      maxW = Math.max(maxW, safeDim.width);
-      totalH += safeDim.height;
-    });
+    const shipmentPackage = resolveShipmentPackage(
+      presetKeys,
+      settingsRes.data.package_presets,
+    );
+    if (!shipmentPackage) {
+      log('ERROR', 'No usable package preset for label', {
+        shipmentId,
+        errorClass: 'package_preset_unavailable',
+      });
+      throw new ApiError(422, 'PACKAGE_PRESET_UNAVAILABLE');
+    }
+    if (shipmentPackage.fallbackPresetKeys.length > 0)
+      log('WARN', `Preset no encontrado. Usando ${FALLBACK_PACKAGE_PRESET}.`, {
+        shipmentId,
+        presetKeys: shipmentPackage.fallbackPresetKeys,
+      });
 
     // G. Validate Envia configuration and the server-loaded buyer snapshot before claim.
     const runtimeConfiguration = resolveEnviaRuntimeConfiguration((name) =>
@@ -356,8 +339,12 @@ serve(async (req: Request) => {
           declaredValue,
           lengthUnit: 'CM',
           weightUnit: 'KG',
-          weight: totalWeight,
-          dimensions: { length: maxL, width: maxW, height: totalH },
+          weight: shipmentPackage.weight,
+          dimensions: {
+            length: shipmentPackage.length,
+            width: shipmentPackage.width,
+            height: shipmentPackage.height,
+          },
           additionalServices: [
             {
               data: {
