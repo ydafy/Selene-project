@@ -23,7 +23,14 @@ Remote project `acoiclkeymgtlwcxilun` holds only fake data but is treated as pro
 - [x] T7 (S5): `docs/go-live.md` runbook + deployed `verify_jwt` flags in `supabase/config.toml`. Commit 7d255a5.
 - [x] T8 (S6): minimal CI, `bun test` only (lint and tsc baselines red). Commit ed8b44f. Not yet observed on GitHub.
 - [x] T9 (S2): `AGENTS.md` remote inspection rule. Commit 8119d69.
-- [x] T10 (S6): revoke API execute on `fn_reconcile_connect_payments` and anon execute on `fn_lock_product`. Commit 7f14730. Pending maintainer SQL apply.
+- [x] T10 (S6): revoke API execute on `fn_reconcile_connect_payments` and anon execute on `fn_lock_product`. Commit 7f14730. Applied and verified by MCP.
+- [x] T11: AGENTS.md rewrite (a660c74, 738fa9e).
+- [x] A1: ESLint ignores nested `dist`/`build`/`.expo`; lint 1582 -> 95 errors. Commit 8f2db18.
+- [x] A2: `bun run typecheck` across workspaces. Commit 9a286d5.
+- [ ] A3: `apps/admin-web/.env.example`. Blocked: gentle safety policy forbids agent writes to `.env*`; maintainer creates it.
+- [x] A4: `sql.sql` kept until the T3 baseline; it is the only repo copy of live `fn_shipments_status_trigger` and `fn_cron_release_shipment_funds`. Delete after baseline.
+- [x] A5: pruned 2 stale worktree entries (no commit).
+- [ ] A6: push, PR, branch protection. Blocked: maintainer will decide when.
 
 ## Log
 
@@ -44,3 +51,5 @@ Remote project `acoiclkeymgtlwcxilun` holds only fake data but is treated as pro
 - L8: User: findings 4-5 come from worktree deploys; baseline waits until worktrees merge. "has todo lo que se deba hacer intependientemente de los woktree". User asked to commit first ("master commtea primero").
 - L9: Evidence. `is_admin()` must keep PUBLIC execute: 16 PUBLIC-role RLS policies call it. `fn_reconcile_connect_payments` cron job runs as `postgres`. Lint baseline: 1486 errors from ignored `apps/admin-web/dist` build output + ~95 in source; hooks ran 1812 tests, 0 fail.
 - L10: Open findings needing decisions (not fixed): `fn_release_products` lets any signed-in user release any reserved product (checkout; own feature); `track-shipments` on `main` has `verify_jwt = false` and no caller check (tracking worktrees rewrite it); cron jobs `auto-cancel-orders-job` and `track-shipments-every-6-hours` embed literal JWTs; `evidence` bucket is public; legacy `fn_request_payout`/`fn_save_bank_account` still granted and referenced by `useWalletStore`; leaked password protection off; `pg_net` in `public`; orphan function `dynamic-api`.
+- L11: Block B (security items above) deferred by maintainer; investigate worktrees first when reached. Order: A setup -> B security -> C lint/tsc baselines + strict CI -> D baseline/local stack -> Sentry, Bruno/.http, Dependabot.
+- L12: Typecheck baseline: frontend 56 errors, backend 145 (mostly duplicate `@types/node` 24 and 26 conflict), types 1, admin-web 0.
