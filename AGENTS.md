@@ -127,6 +127,7 @@ Agents read the Stripe sandbox (`Selene sandbox`, test mode) through the officia
 - Use it instead of asking the maintainer for Dashboard screenshots: payment intents, charges, refunds, balance, payouts, transfers, and events. Cross-check webhook events with Edge Function logs from the Supabase MCP.
 - Always pass `livemode: false`. Never request live-mode access or try to reach hidden write tools.
 - Create test scenarios with the Stripe CLI, not through the MCP.
+- Local payments loop, with the local Supabase stack running: `bun run functions:serve` (reads `supabase/functions/.env`, maintainer-owned and gitignored), then `bun run stripe:listen` to forward sandbox webhooks to the local `stripe-webhooks`, then `stripe trigger <event>`. When `stripe-webhooks` handles a new event type, add it to the `--events` list in `stripe:listen` and in `docs/go-live.md`.
 - OAuth does not cover connected (seller) accounts.
 
 ## Git
