@@ -30,7 +30,7 @@ Remote project `acoiclkeymgtlwcxilun` holds only fake data but is treated as pro
 - [x] A3: `apps/admin-web/.env.example`, created by the maintainer (gentle safety policy blocks agent writes to `.env*`).
 - [x] A4: removed stale `sql.sql` scratch log. Commit f0cfd59. The T3 baseline dumps from the remote, so the old copy added no value and risked misleading agents.
 - [x] A5: pruned 2 stale worktree entries (no commit).
-- [ ] A6: push, PR, branch protection. Blocked: maintainer will decide when.
+- [x] A6: PR #8 merged (d300a2e); branch protection dropped (solo dev, free plan).
 
 ## Log
 
