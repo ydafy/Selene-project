@@ -264,6 +264,10 @@ export interface EdgeFunctionRegistry {
     payload: { refreshUrl?: string; returnUrl?: string };
     response: { url: string; accountId: string };
   };
+  'resolve-shipment-tracking-url': {
+    payload: { shipmentId: string };
+    response: { url: string | null };
+  };
   'refresh-connect-account-status': {
     payload: { sellerId?: string; force?: boolean };
     response: {

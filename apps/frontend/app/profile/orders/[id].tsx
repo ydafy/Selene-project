@@ -44,6 +44,11 @@ import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { AppImage } from '../../../components/ui/AppImage';
 import { ShipmentNotFoundState } from '../../../components/features/orders/ShipmentNotFoundState';
+import { ShipmentTrackingTimeline } from '../../../components/features/orders/ShipmentTrackingTimeline';
+import {
+  useShipmentTrackingEvents,
+  useShipmentTrackingUrl,
+} from '../../../core/hooks/useShipmentTracking';
 import { useAuthContext } from '../../../components/auth/AuthProvider';
 import { useOrderById } from '../../../core/hooks/useOrders';
 import { useShipmentsByOrder } from '../../../core/hooks/useShipments';
@@ -200,6 +205,8 @@ export default function OrderDetailScreen() {
       permissions: rawShipment.permissions ?? order?.permissions ?? {},
     } as EnrichedShipment;
   }, [order, shipments, shipmentId]);
+  const trackingEvents = useShipmentTrackingEvents(currentShipment?.id);
+  const trackingUrl = useShipmentTrackingUrl(currentShipment?.id);
 
   /** Número de rastreo activo: prioriza retorno si aplica, sino el tracking original.
    *  Los permisos se leen desde el envío actual (per-shipment) en lugar del
@@ -291,11 +298,7 @@ export default function OrderDetailScreen() {
     }
   };
 
-  const handleTrack = useCallback((tracking: string) => {
-    const baseUrl = __DEV__
-      ? 'https://test.envia.com'
-      : 'https://api.envia.com';
-    const url = `${baseUrl}/rastreo?label=${tracking}&cntry_code=mx`;
+  const handleTrack = useCallback((url: string) => {
     Linking.openURL(url).catch(() =>
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error),
     );
@@ -578,6 +581,19 @@ export default function OrderDetailScreen() {
           />
         </Box>
 
+        {currentShipment && (
+          <Box {...cardStyles}>
+            <Text variant="header-xl" color="primary" marginBottom="m">
+              {t('orders:tracking.title')}
+            </Text>
+            <ShipmentTrackingTimeline
+              events={trackingEvents.data ?? []}
+              isLoading={trackingEvents.isLoading}
+              error={trackingEvents.error}
+            />
+          </Box>
+        )}
+
         {/* ─────────────────────────────────────────────── */}
         {/* SLOT D: RASTREO LOGÍSTICO                        */}
         {/* Lee desde currentShipment (tracking original o  */}
@@ -618,14 +634,16 @@ export default function OrderDetailScreen() {
                 />
               </TouchableOpacity>
             </Box>
-            <PrimaryButton
-              variant="outline"
-              onPress={() => handleTrack(activeTrackingNumber)}
-              style={{ marginTop: 16, borderColor: theme.colors.primary }}
-              icon="truck-delivery"
-            >
-              {t('orders:actions.trackOrder')}
-            </PrimaryButton>
+            {trackingUrl.data?.url ? (
+              <PrimaryButton
+                variant="outline"
+                onPress={() => handleTrack(trackingUrl.data.url!)}
+                style={{ marginTop: 16, borderColor: theme.colors.primary }}
+                icon="truck-delivery"
+              >
+                {t('orders:actions.trackOrder')}
+              </PrimaryButton>
+            ) : null}
           </Box>
         )}
 

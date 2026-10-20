@@ -14,36 +14,23 @@
     "contactBuyer": "Contact Buyer",
     "contactSeller": "Contact Seller",
     "cancelDisclaimer": "You can only cancel before the seller prepares the shipment.",
-
     "trackTitle": "Package Tracking",
     "trackSub": "Track your hardware in real time",
     "copyTracking": "Copy Tracking",
     "reportProblem": "Report a Problem",
     "trustTitle": "Buyer Protection",
     "trustMsg": "Your money is safe. Selene holds it until you confirm the hardware is working perfectly.",
-
     "itemsCount": "Shipping Specifications",
-
     "itemsTitlePurchased": "Products Purchased",
-
     "itemsTitleSold": "Products Sold",
-
     "addressTitle": "Shipping Address",
-
     "trackingTitle": "Tracking Number",
-
     "paymentTitle": "Payment Summary",
-
     "trackingProvider": "Express Parcel",
-
     "cancelledMsg": "Order has been canceled. If payment has already been made, the refund will be processed automatically.",
-
     "disputeMsgBuyer": "Your funds are protected by Selene. We are reviewing the case and will issue a verdict within 72 hours.",
-
     "disputeMsgSeller": "Buyer reported an issue. Funds are temporarily frozen while our team reviews the case. We will notify you of any updates.",
-
     "refundedMsg": "The money has been refunded to the buyer.",
-
     "videoWarningTitle": "Record your unboxing.",
     "videoWarningMsg": "We recommend recording a continuous video showing you opening the package for the first time. Without this video, Selene will not be able to process claims for physical damage or missing parts.",
     "returnTitle": "RETURN IN PROGRESS",
@@ -52,7 +39,6 @@
     "deliverySuccessTitle": "DELIVERY CONFIRMED!",
     "deliverySuccessMsg": "The package has arrived. Your funds will be released automatically within 48 hours if there are no reports."
   },
-
   "status": {
     "statusTitle": "Status",
     "pending": "Payment pending",
@@ -65,7 +51,6 @@
     "refunded": "Refunded",
     "dispute": "Disputed"
   },
-
   "card": {
     "moreItems": "more",
     "viewDetail": "View details",
@@ -116,7 +101,6 @@
   "errors": {
     "cannotCancel": "An order that is already being prepared cannot be canceled."
   },
-
   "stepper": {
     "paid_desc": "Selene has securely received your payment.",
     "preparing_desc": "The seller is packing your hardware.",
@@ -181,7 +165,6 @@
     "photoMessage": "Make sure the photos are clear. It's important that all sides of the box are visible: top, bottom, and side.",
     "buttonText": "Confirm and generate label"
   },
-
   "dialogs": {
     "cancelTitle": "Do you want to cancel this order?",
     "deliveryTitle": "Did you receive your delivered package?",
@@ -278,5 +261,19 @@
     "submitBtn": "Open Dispute and Freeze Payment",
     "successTitle": "Report Sent,",
     "successMsg": "Selene is reviewing your case. Payment to the seller has been frozen until further notice."
+  },
+  "tracking": {
+    "title": "Tracking updates",
+    "loading": "Loading tracking updates…",
+    "empty": "Tracking updates will appear once the carrier reports them.",
+    "error": "Tracking updates could not be loaded. Please try again.",
+    "events": {
+      "created": "Shipping label created",
+      "information": "Carrier update",
+      "in_transit": "In transit",
+      "delivered": "Delivered",
+      "exception": "Delivery exception",
+      "returned": "Returned to sender"
+    }
   }
 }
