@@ -6,13 +6,7 @@ Inventory below was read from project `acoiclkeymgtlwcxilun` through the read-on
 
 ## Status
 
-Not runnable yet. The repository cannot rebuild the database:
-
-- Repository migrations start at `20260528000000_drop_legacy_columns` and lack a base schema.
-- Remote migration history is empty; SQL was applied through the Dashboard.
-- Migration version `20260923000000` is used by two files.
-
-Prerequisite: after active worktrees merge into `main`, dump the remote schema into one baseline migration and verify `supabase db reset` rebuilds it locally.
+The repository rebuilds the database schema: `supabase/migrations/` starts with the baseline `20261020100000_remote_schema_baseline.sql`, verified on 2026-10-20 to match the development project (functions, policies, triggers, columns, indexes, constraints, enums, views and grants). Pre-baseline history lives in `supabase/migrations/archive/` and is never applied.
 
 ## 1. Project
 
@@ -30,7 +24,7 @@ Install `pg_net` in the `extensions` schema, not `public` (security advisor `ext
 
 ## 3. Database
 
-1. Apply the baseline migration, then every later migration in version order.
+1. Link the new project and run `supabase db push`: it applies the baseline and every later migration in version order and records them in the remote migration history.
 2. Run `get_advisors` (security and performance) and resolve new findings.
 3. Regenerate types and confirm they match `packages/types/src/database.types.ts`.
 

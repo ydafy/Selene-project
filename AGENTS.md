@@ -92,8 +92,8 @@ The maintainer applies SQL and deploys Edge Functions manually. A file in `supab
 
 When a change touches Supabase:
 
-1. Add a migration in `supabase/migrations/` and update the matching canonical file in `supabase/queries/<domain>/`.
-2. Tests in `supabase/migrations/__tests__/` and `supabase/queries/**/__tests__/` read SQL text. They prove structure, not behavior in PostgreSQL. Say so when you report verification.
+1. Add a migration with `supabase migration new <name>` and update the matching canonical file in `supabase/queries/<domain>/`.
+2. Apply it locally with `supabase db reset` (see below). Tests in `supabase/migrations/__tests__/` and `supabase/queries/**/__tests__/` only read SQL text; the local reset is what proves the SQL runs in PostgreSQL. Report which of the two you ran.
 3. Stop and report: SQL files in execution order, Edge Functions to deploy, and any secrets, cron jobs, webhooks, or Dashboard settings.
 4. After the maintainer confirms, run `bun run db:types` and check that the expected changes appear.
 5. When a change adds a secret, cron job, bucket, webhook, or Dashboard setting, update `docs/go-live.md` in the same commit.
@@ -101,7 +101,13 @@ When a change touches Supabase:
 
 Edge Functions run on Deno. An untyped `createClient` infers selected rows as `{}`; pass the generated `Database` type or declare a local row type.
 
-Known state: remote migration history is empty, and the repository migrations lack a base schema, so `supabase db reset` cannot rebuild the database yet. A schema baseline is planned after the active worktrees merge (`odd/tasks/supabase-dev-workflow.md`).
+### Local Supabase
+
+`supabase start` runs the full stack in Docker (Docker Desktop must be running); Studio is at `http://127.0.0.1:54323`. `supabase db reset` rebuilds the local database from `supabase/migrations/`: the schema baseline `20261020100000_remote_schema_baseline.sql` plus every later migration. Test data-mutating SQL here, never on the remote project.
+
+- Never edit or replay `supabase/migrations/archive/`; it is pre-baseline history.
+- The baseline does not include pg_cron jobs, Vault secrets, Auth settings, or Edge Function secrets (`docs/go-live.md` lists them).
+- Never put secrets in schema objects (trigger arguments, function bodies, foreign server options); `schema_baseline.test.ts` fails if a migration contains one.
 
 ### Reading the remote project
 
