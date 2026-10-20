@@ -18,8 +18,8 @@ describe('shipment tracking frontend boundaries', () => {
 
   it('keeps Envia mode server-side and integrates the URL and timeline into order detail', () => {
     const hook = read('hooks/useShipmentTracking.ts');
-    const detail = read('..\\app\\profile\\orders\\[id].tsx');
-    const timeline = read('..\\components\\features\\orders\\ShipmentTrackingTimeline.tsx');
+    const detail = read('../app/profile/orders/[id].tsx');
+    const timeline = read('../components/features/orders/ShipmentTrackingTimeline.tsx');
     const english = read('i18n/locales/en/orders.json');
     const spanish = read('i18n/locales/es/orders.json');
 
