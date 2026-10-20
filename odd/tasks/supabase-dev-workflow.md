@@ -31,8 +31,8 @@ Remote project `acoiclkeymgtlwcxilun` holds only fake data but is treated as pro
 - [x] A4: removed stale `sql.sql` scratch log. Commit f0cfd59. The T3 baseline dumps from the remote, so the old copy added no value and risked misleading agents.
 - [x] A5: pruned 2 stale worktree entries (no commit).
 - [x] A6: PR #8 merged (d300a2e); branch protection dropped (solo dev, free plan).
-- [ ] A7 (L23, L24): untrack leaked Android keystore + `credentials.json`, ignore them; maintainer rotates to an EAS-managed keystore and updates the Google Sign-In SHA-1.
-- [ ] A8 (L23): remove stale root `app.json`/`eas.json` and dead `apps/frontend/expo.config.js`.
+- [x] A7 (L23, L24): untrack leaked Android keystore + `credentials.json`, ignore them. Commit 95e1deb. Maintainer rotates to an EAS-managed keystore and updates the Google Sign-In SHA-1 (`docs/go-live.md` section 11).
+- [x] A8 (L23): remove stale root `app.json`/`eas.json` and dead `apps/frontend/expo.config.js`. Verified: `expo config --type public` in `apps/frontend` byte-identical before and after.
 - [ ] A9 (L23): pin Bun (`packageManager`, CI, EAS profiles) and declare the Edge Runtime Deno major in `supabase/config.toml`.
 - [ ] A10 (L23): Dependabot recommendation (alerts + security updates only).
 
