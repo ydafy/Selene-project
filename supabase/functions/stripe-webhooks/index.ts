@@ -11,6 +11,7 @@ import type {
 } from '../../../packages/types/src/database.types.ts';
 import { normalizeAccountStatus, type ConnectAccountLike } from '../_shared/connect-status.ts';
 import { extractStripeChargeId } from '../_shared/stripe-charge.ts';
+import { verifyStripeWebhookSignature } from './signature.ts';
 import { compensateRecoveryShell } from '../checkout-recovery-worker/recovery.ts';
 import {
   applyConnectAccountActionability,
@@ -617,25 +618,34 @@ serve(async (req: Request) => {
   const signature = req.headers.get('stripe-signature');
   if (!signature) return new Response('No signature', { status: 400 });
 
-  let rawBody = '';
+  const rawBody = await req.text();
+
+  // Verify before any database access: unauthenticated payloads must never
+  // reach the DLQ or any other table.
+  const verification = await verifyStripeWebhookSignature({
+    rawBody,
+    signature,
+    secrets: [
+      Deno.env.get('STRIPE_WEBHOOK_SECRET') ?? '',
+      Deno.env.get('STRIPE_CONNECT_WEBHOOK_SECRET') ?? '',
+    ],
+    construct: (body, header, secret) =>
+      stripe.webhooks.constructEventAsync(body, header, secret),
+  });
+  if (!verification.ok) {
+    log(
+      verification.reason === 'missing_secret' ? 'CRITICAL' : 'ERROR',
+      'Rejected Stripe webhook with unverifiable signature',
+      { reason: verification.reason },
+    );
+    if (verification.reason === 'missing_secret') {
+      return new Response('Webhook secret not configured', { status: 500 });
+    }
+    return new Response('Invalid signature', { status: 400 });
+  }
 
   try {
-    rawBody = await req.text();
-    let event;
-    try {
-      event = await stripe.webhooks.constructEventAsync(
-        rawBody,
-        signature,
-        Deno.env.get('STRIPE_WEBHOOK_SECRET') || '',
-      );
-    } catch {
-      // Fallback: Si falla, intentar descifrar con el secreto de Connect
-      event = await stripe.webhooks.constructEventAsync(
-        rawBody,
-        signature,
-        Deno.env.get('STRIPE_CONNECT_WEBHOOK_SECRET') || '',
-      );
-    }
+    const event = verification.event;
 
     const supabaseAdmin = createClient<Database>(
       Deno.env.get('SUPABASE_URL') ?? '',
