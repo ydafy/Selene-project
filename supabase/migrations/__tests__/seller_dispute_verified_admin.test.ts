@@ -2,9 +2,9 @@ import { expect, test } from 'bun:test';
 import { readFileSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 
-const dir = new URL('../', import.meta.url);
+const dir = new URL('../archive/', import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
-const prior = read('../20260929000000_dispute_seller_verdict_notification.sql').match(/AS \$\$([\s\S]*?)\$\$;/)![1];
+const prior = read('../archive/20260929000000_dispute_seller_verdict_notification.sql').match(/AS \$\$([\s\S]*?)\$\$;/)![1];
 const fingerprint = '0617e9508ed1e6387a382df3940899b0';
 const signature = 'public.fn_resolve_dispute_to_seller_as_admin(uuid,text,uuid)';
 
@@ -12,7 +12,7 @@ test('installs mandatory verified actor with exact complete legacy body parity',
   const files = readdirSync(dir).filter(name => name.endsWith('_seller_dispute_verified_admin.sql'));
   expect(files).toHaveLength(1);
   expect(files[0] > '20261003043340_buyer_dispute_verified_admin.sql').toBe(true);
-  const sql = read(`../${files[0]}`);
+  const sql = read(`../archive/${files[0]}`);
   const canonical = read('../../queries/disputes/fn_resolve_dispute_to_seller_as_admin.sql');
   const legacy = read('../../queries/disputes/fn_resolve_dispute_to_seller.sql');
   const expected = legacy
@@ -21,7 +21,7 @@ test('installs mandatory verified actor with exact complete legacy body parity',
     .replace('UNAUTHORIZED_NO_SESSION', 'UNAUTHORIZED_NO_ACTOR');
   const installed = sql.match(/AS \$\$([\s\S]*?)\$\$;/)![1];
   expect(installed).toBe(expected);
-  const forward = read('../20261008013951_notification_copy_polish.sql');
+  const forward = read('../archive/20261008013951_notification_copy_polish.sql');
   expect(forward.split(`('${signature}',`)).toHaveLength(2);
   for (const guard of ["md5(btrim(replace(body, E'\\r\\n', E'\\n'), E'\\n'))", 'IS DISTINCT FROM target.expected_body_md5', 'pg_catalog.quote_literal(target.old_copy[i])', 'pg_catalog.quote_literal(target.new_copy[i])', '/ length(old_literal) <> 1', 'strpos(definition, new_literal) <> 0', "after_catalog - 'prosrc' - 'proargdefaults'", 'after_defaults IS DISTINCT FROM before_defaults', "(after_catalog->>'prosrc') IS DISTINCT FROM patched_body", 'pg_catalog.to_regprocedure(target.identity)::oid IS DISTINCT FROM function_oid']) expect(forward).toContain(guard);
   const target = forward.split(`('${signature}',`)[1]?.split(/\n      \('public\.|\) AS targets/)[0] ?? '';

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const sql = () => readFileSync(join(import.meta.dir, '..', '20260924000000_notification_event_metadata.sql'), 'utf8');
+const sql = () => readFileSync(join(import.meta.dir, '..', 'archive', '20260924000000_notification_event_metadata.sql'), 'utf8');
 
 const kinds = [
   'order.payment_confirmed', 'shipment.cancelled', 'dispute.opened',

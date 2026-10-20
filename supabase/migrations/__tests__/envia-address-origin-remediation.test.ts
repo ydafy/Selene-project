@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 const migration = () =>
   readFileSync(
-    join(import.meta.dir, '..', '20260824020000_envia_address_origin_remediation.sql'),
+    join(import.meta.dir, '..', 'archive', '20260824020000_envia_address_origin_remediation.sql'),
     'utf8',
   );
 

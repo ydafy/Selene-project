@@ -5,6 +5,7 @@ import { join } from 'node:path';
 const migrationPath = join(
   import.meta.dir,
   '..',
+  'archive',
   '20260828030000_shipment_tracking_foundation.sql',
 );
 

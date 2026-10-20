@@ -103,7 +103,7 @@ async function run() {
       `);
       await a.unsafe(
         source(
-          'supabase/migrations/20260621000000_connect_manual_payout_release.sql',
+          'supabase/migrations/archive/20260621000000_connect_manual_payout_release.sql',
         ),
       );
       await a.unsafe(
@@ -115,11 +115,11 @@ async function run() {
         ADD COLUMN release_stage text, ADD COLUMN release_stage_version integer NOT NULL DEFAULT 1,
         ADD COLUMN payout_claim_token text, ADD COLUMN payout_claim_expires_at timestamptz,
         ADD COLUMN payout_create_attempted_at timestamptz, ADD COLUMN action_required_reason text;
-        ${definition('supabase/migrations/20260919100000_connect_account_actionability.sql', 'fn_get_connect_account_actionability')}
-        ${definition('supabase/migrations/20260919090000_connect_payout_stage_fencing.sql', 'fn_begin_manual_payout_create_fence')}
+        ${definition('supabase/migrations/archive/20260919100000_connect_account_actionability.sql', 'fn_get_connect_account_actionability')}
+        ${definition('supabase/migrations/archive/20260919090000_connect_payout_stage_fencing.sql', 'fn_begin_manual_payout_create_fence')}
       `);
       const resumeSql = source(
-        'supabase/migrations/20261008090000_atomic_payout_resume_mapping.sql',
+        'supabase/migrations/archive/20261008090000_atomic_payout_resume_mapping.sql',
       );
       await a.unsafe(resumeSql);
       const cancellationSql = source(
@@ -270,13 +270,13 @@ async function run() {
       const canonical =
         'supabase/queries/payments/shipment_transfer_coordination.sql';
       if (existsSync(`${root}${canonical}`)) {
-        const migrations = readdirSync(`${root}supabase/migrations`).filter(
+        const migrations = readdirSync(`${root}supabase/migrations/archive`).filter(
           (name) => name.endsWith('_shipment_transfer_coordination.sql'),
         );
         assert.equal(migrations.length, 1);
         assert.equal(
           source(canonical),
-          source(`supabase/migrations/${migrations[0]}`),
+          source(`supabase/migrations/archive/${migrations[0]}`),
         );
         await a.unsafe(source(canonical));
       }

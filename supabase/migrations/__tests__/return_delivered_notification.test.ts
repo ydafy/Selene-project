@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 const root = join(import.meta.dir, '..', '..', '..');
 const source = readFileSync(join(root, 'supabase/queries/return/fn_mark_return_delivered.sql'), 'utf8');
-const migration = () => readFileSync(join(root, 'supabase/migrations/20261001000000_return_delivered_notification.sql'), 'utf8');
+const migration = () => readFileSync(join(root, 'supabase/migrations/archive/20261001000000_return_delivered_notification.sql'), 'utf8');
 const normalize = (s: string) => s.replace(/\s+/g, ' ').trim();
 describe('return delivered cutover', () => {
   it('wraps the full canonical body with unchanged service-only signature', () => {

@@ -17,7 +17,7 @@ const read = (path: string) => {
 };
 const normalize = (sql: string) => sql.replace(/\s+/g, ' ').trim();
 
-const migration = read('supabase/migrations/20261018120000_account_status_lifecycle.sql');
+const migration = read('supabase/migrations/archive/20261018120000_account_status_lifecycle.sql');
 const statusSource = read('supabase/queries/admin/fn_admin_update_user_status.sql');
 const isAdminSource = read('supabase/queries/auth/is_admin.sql');
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-const migrationsDirectory = join(import.meta.dir, '..');
+const migrationsDirectory = join(import.meta.dir, '..', 'archive');
 const queriesDirectory = join(import.meta.dir, '..', '..', 'queries', 'tracking');
 
 const findLeaseMigration = (): string => {

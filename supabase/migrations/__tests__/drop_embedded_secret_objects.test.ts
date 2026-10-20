@@ -5,6 +5,7 @@ import { join } from 'node:path';
 const file = join(
   import.meta.dir,
   '..',
+  'archive',
   '20261020000000_drop_embedded_secret_objects.sql',
 );
 const sql = readFileSync(file, 'utf8').replace(/\s+/g, ' ');

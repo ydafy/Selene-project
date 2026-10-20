@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-const migrations = join(import.meta.dir, '..');
+const migrations = join(import.meta.dir, '..', 'archive');
 const readMigration = () => {
   const filename = readdirSync(migrations).find((name) =>
     name.endsWith('_paginate_admin_payout_queue.sql'),
@@ -66,7 +66,7 @@ describe('admin payout group pagination (SQL structural guards, not DB execution
   });
 
   test('canonical read RPC and incremental migration are identical', () => {
-    const canonical = readFileSync(join(migrations, '../queries/payments/admin_payout_queue_pagination.sql'), 'utf8').replace(/\r\n/g, '\n');
+    const canonical = readFileSync(join(migrations, '../../queries/payments/admin_payout_queue_pagination.sql'), 'utf8').replace(/\r\n/g, '\n');
     expect(readMigration()).toBe(canonical);
   });
 });

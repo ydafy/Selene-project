@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { readFileSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 
-const dir = new URL('../', import.meta.url);
+const dir = new URL('../archive/', import.meta.url);
 const signature = 'public.fn_resolve_dispute_to_buyer_as_admin(uuid,text,uuid)';
 
 test('transaction installs exact body and only service-role execution without replacing legacy RPC', () => {
@@ -17,7 +17,7 @@ test('transaction installs exact body and only service-role execution without re
     .replace("v_auth_user_id := (current_setting('request.jwt.claims', true)::json->>'sub')::UUID;", 'v_auth_user_id := p_admin_id;')
     .replace('UNAUTHORIZED_NO_SESSION', 'UNAUTHORIZED_NO_ACTOR');
   expect(installed).toBe(expected);
-  const forward = readFileSync(new URL('../20261008013951_notification_copy_polish.sql', import.meta.url), 'utf8');
+  const forward = readFileSync(new URL('../archive/20261008013951_notification_copy_polish.sql', import.meta.url), 'utf8');
   expect(forward.split(`('${signature}',`)).toHaveLength(2);
   for (const guard of ["md5(btrim(replace(body, E'\\r\\n', E'\\n'), E'\\n'))", 'IS DISTINCT FROM target.expected_body_md5', 'pg_catalog.quote_literal(target.old_copy[i])', 'pg_catalog.quote_literal(target.new_copy[i])', '/ length(old_literal) <> 1', 'strpos(definition, new_literal) <> 0', "after_catalog - 'prosrc' - 'proargdefaults'", 'after_defaults IS DISTINCT FROM before_defaults', "(after_catalog->>'prosrc') IS DISTINCT FROM patched_body", 'pg_catalog.to_regprocedure(target.identity)::oid IS DISTINCT FROM function_oid']) expect(forward).toContain(guard);
   const target = forward.split(`('${signature}',`)[1]?.split(/\n      \('public\.|\) AS targets/)[0] ?? '';
@@ -55,7 +55,7 @@ test('transaction installs exact body and only service-role execution without re
     'notifications_source_event_key_user_id_uidx', 'i.indisvalid', 'has_column_privilege']) {
     expect(preflight).toContain(marker);
   }
-  const n5d = readFileSync(new URL('../20260928000000_dispute_buyer_verdict_notification.sql', import.meta.url), 'utf8');
+  const n5d = readFileSync(new URL('../archive/20260928000000_dispute_buyer_verdict_notification.sql', import.meta.url), 'utf8');
   const priorBody = n5d.match(/AS \$\$([\s\S]*?)\$\$;/)![1];
   const fingerprint = createHash('md5').update(priorBody.replace(/\r\n/g, '\n')).digest('hex');
   expect(fingerprint).toBe('342deb0887202475426c266b0f12a9a4');
@@ -65,7 +65,7 @@ test('transaction installs exact body and only service-role execution without re
 });
 
 test('N5d fingerprint tolerates only CRLF pairs, not body or other whitespace changes', () => {
-  const n5d = readFileSync(new URL('../20260928000000_dispute_buyer_verdict_notification.sql', import.meta.url), 'utf8');
+  const n5d = readFileSync(new URL('../archive/20260928000000_dispute_buyer_verdict_notification.sql', import.meta.url), 'utf8');
   const body = n5d.match(/AS \$\$([\s\S]*?)\$\$;/)![1];
   const lf = body.replace(/\r\n/g, '\n');
   const crlf = lf.replace(/\n/g, '\r\n');

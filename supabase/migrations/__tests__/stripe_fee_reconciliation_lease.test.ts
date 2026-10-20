@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const root = join(import.meta.dir, '..');
+const root = join(import.meta.dir, '..', 'archive');
 const historical = (name: string): string => readFileSync(join(root, name), 'utf8');
 const forwardPath = join(root, '20261007000000_stripe_fee_reconciliation_leases.sql');
 const forward = existsSync(forwardPath) ? readFileSync(forwardPath, 'utf8') : '';

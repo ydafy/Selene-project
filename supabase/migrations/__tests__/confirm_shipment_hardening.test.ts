@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { readdir, readFile } from 'node:fs/promises';
 
-const migrationDirectory = 'supabase/migrations';
+const migrationDirectory = 'supabase/migrations/archive';
 const canonicalFunctionPath =
   'supabase/queries/orders/fn_confirm_shipment_delivery.sql';
 const legacyFunctionPath = 'supabase/queries/orders/fn_confirm_delivery.sql';

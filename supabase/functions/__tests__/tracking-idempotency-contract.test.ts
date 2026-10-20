@@ -77,7 +77,7 @@ describe('tracking ingestion idempotency contract', () => {
   });
 
   it('uses one null-safe event key for webhook and polling collisions before monotonic transitions', () => {
-    const migration = read('supabase/migrations/20260828030000_shipment_tracking_foundation.sql');
+    const migration = read('supabase/migrations/archive/20260828030000_shipment_tracking_foundation.sql');
     const webhook = read('supabase/functions/envia-webhook/index.ts');
     const polling = read('supabase/functions/track-shipments/index.ts');
     const rpc = migration.match(

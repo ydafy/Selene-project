@@ -3,8 +3,8 @@ import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-const migrations = join(import.meta.dir, '..');
-const canonical = join(migrations, '..', 'queries', 'payments');
+const migrations = join(import.meta.dir, '..', 'archive');
+const canonical = join(migrations, '..', '..', 'queries', 'payments');
 const cases = [
   {
     name: 'fn_begin_payout_create_fence',

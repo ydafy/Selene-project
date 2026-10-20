@@ -2,13 +2,13 @@ import { describe, expect, test } from 'bun:test';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-const migrationsDir = join(import.meta.dir, '..');
+const migrationsDir = join(import.meta.dir, '..', 'archive');
 const previous = readFileSync(
   join(migrationsDir, '20260917032655_add_connect_payout_failed_retry_contract.sql'),
   'utf8',
 );
 const canonical = () => readFileSync(
-  join(migrationsDir, '../queries/payments/admin_connect_payout_release_view_shipping_cost_fix.sql'),
+  join(migrationsDir, '../../queries/payments/admin_connect_payout_release_view_shipping_cost_fix.sql'),
   'utf8',
 );
 const migration = () => {

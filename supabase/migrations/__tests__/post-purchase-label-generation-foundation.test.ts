@@ -5,6 +5,7 @@ import { join } from 'node:path';
 const migrationPath = join(
   import.meta.dir,
   '..',
+  'archive',
   '20260824001426_post_purchase_label_generation_foundation.sql',
 );
 

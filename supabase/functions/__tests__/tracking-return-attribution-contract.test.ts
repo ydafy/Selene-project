@@ -64,7 +64,7 @@ describe('tracking return attribution contract', () => {
   });
 
   it('keeps return webhook and polling events ledger-only for the outbound shipment', () => {
-    const migration = read('supabase/migrations/20260828030000_shipment_tracking_foundation.sql');
+    const migration = read('supabase/migrations/archive/20260828030000_shipment_tracking_foundation.sql');
     const rpc = migration
       .match(
         /CREATE OR REPLACE FUNCTION public\.fn_record_tracking_event\([\s\S]*?\n\$\$;/,

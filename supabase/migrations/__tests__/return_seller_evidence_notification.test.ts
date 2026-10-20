@@ -4,13 +4,13 @@ import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 const root = join(import.meta.dir, '..', '..', '..');
 const source = readFileSync(join(root, 'supabase/queries/return/fn_seller_submit_return_evidence.sql'), 'utf8');
-const migration = () => readFileSync(join(root, 'supabase/migrations/20261002000000_return_seller_evidence_notification.sql'), 'utf8');
+const migration = () => readFileSync(join(root, 'supabase/migrations/archive/20261002000000_return_seller_evidence_notification.sql'), 'utf8');
 const normalize = (s: string) => s.replace(/\s+/g, ' ').trim();
 describe('seller evidence cutover', () => {
   it('embeds the full canonical body and grants authenticated only after replacement', () => {
     const sql = migration();
     const installed = sql.match(/AS \$function\$([\s\S]*?)\$function\$;/)![1].replace(/\r\n/g, '\n');
-    const forward = readFileSync(join(root, 'supabase/migrations/20261008013951_notification_copy_polish.sql'), 'utf8');
+    const forward = readFileSync(join(root, 'supabase/migrations/archive/20261008013951_notification_copy_polish.sql'), 'utf8');
     const signature = 'public.fn_seller_submit_return_evidence(uuid,text[],text)';
     expect(forward.split(`('${signature}',`)).toHaveLength(2);
     for (const guard of ["md5(btrim(replace(body, E'\\r\\n', E'\\n'), E'\\n'))", 'IS DISTINCT FROM target.expected_body_md5', 'pg_catalog.quote_literal(target.old_copy[i])', 'pg_catalog.quote_literal(target.new_copy[i])', '/ length(old_literal) <> 1', 'strpos(definition, new_literal) <> 0', "after_catalog - 'prosrc' - 'proargdefaults'", 'after_defaults IS DISTINCT FROM before_defaults', "(after_catalog->>'prosrc') IS DISTINCT FROM patched_body", 'pg_catalog.to_regprocedure(target.identity)::oid IS DISTINCT FROM function_oid']) expect(forward).toContain(guard);

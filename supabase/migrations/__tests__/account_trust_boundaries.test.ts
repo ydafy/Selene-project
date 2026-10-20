@@ -14,7 +14,7 @@ const read = (path: string) => {
 };
 const normalize = (sql: string) => sql.replace(/\s+/g, ' ').trim();
 
-const migration = read('supabase/migrations/20261018130000_account_trust_boundaries.sql');
+const migration = read('supabase/migrations/archive/20261018130000_account_trust_boundaries.sql');
 const helperSource = read('supabase/queries/auth/fn_current_account_is_active.sql');
 const reserveSource = read('supabase/queries/products/fn_reserve_products.sql');
 const payoutSource = read('supabase/queries/payments/fn_request_payout.sql');

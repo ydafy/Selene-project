@@ -21,7 +21,7 @@ import { join } from 'node:path';
  * contract for the queries/ file.
  */
 
-const MIGRATIONS_DIR = join(import.meta.dir, '..');
+const MIGRATIONS_DIR = join(import.meta.dir, '..', 'archive');
 const QUERIES_RPC_PATH = join(
   import.meta.dir,
   '..',
@@ -63,7 +63,7 @@ const findRpcMigrationName = (): string => {
 };
 
 describe('single-modal settlement RPC migration', () => {
-  test('migration file exists in supabase/migrations', () => {
+  test('migration file exists in supabase/migrations/archive', () => {
     expect(() => findRpcMigrationPath()).not.toThrow();
   });
 

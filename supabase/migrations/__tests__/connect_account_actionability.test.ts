@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-const MIGRATIONS_DIR = join(import.meta.dir, '..');
+const MIGRATIONS_DIR = join(import.meta.dir, '..', 'archive');
 
 const readActionabilityMigration = (): string => {
   const migrationFile = readdirSync(MIGRATIONS_DIR)
@@ -71,7 +71,7 @@ describe('current account refresh additive migration (SQL structural only)', () 
   test('new canonical current-state SQL matches the additive deployment source', () => {
     const sql = readCurrentStateMigration();
     expect(sql.length, 'Additive migration must exist before canonical equality is meaningful').toBeGreaterThan(0);
-    const canonicalPath = join(MIGRATIONS_DIR, '..', 'queries', 'payments', 'connect_account_current_state.sql');
+    const canonicalPath = join(MIGRATIONS_DIR, '..', '..', 'queries', 'payments', 'connect_account_current_state.sql');
     // No file-open RED: absent proposed canonical is represented as empty text.
     const canonical = Bun.file(canonicalPath);
     return canonical.exists().then(async (exists) => {

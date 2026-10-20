@@ -5,6 +5,7 @@ import { join } from 'node:path';
 const file = join(
   import.meta.dir,
   '..',
+  'archive',
   '20261019000000_revoke_public_definer_execute.sql',
 );
 const sql = readFileSync(file, 'utf8').replace(/\s+/g, ' ');

@@ -41,12 +41,12 @@ test.each(['0', '65536', 'abc'])(
 );
 
 test('full canonical SQL equals exactly one CLI migration; no extra workflow table', () => {
-  const migrations = readdirSync(`${root}supabase/migrations`).filter((name) =>
+  const migrations = readdirSync(`${root}supabase/migrations/archive`).filter((name) =>
     name.endsWith('_shipment_transfer_coordination.sql'),
   );
   expect(migrations).toHaveLength(1);
   const sql = readFileSync(
-    `${root}supabase/migrations/${migrations[0]}`,
+    `${root}supabase/migrations/archive/${migrations[0]}`,
     'utf8',
   );
   expect(sql).toBe(

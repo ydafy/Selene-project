@@ -98,7 +98,7 @@ async function run() {
           ('${ids.shipment}','${ids.order}','${ids.seller}','paid'),
           ('${ids.sibling}','${ids.order}','${ids.seller}','paid');
       `);
-      const migration = readdirSync(`${root}supabase/migrations`).find((name) =>
+      const migration = readdirSync(`${root}supabase/migrations/archive`).find((name) =>
         name.endsWith('_shipment_cancellation_coordination.sql'),
       );
       if (existsSync(canonical)) {
@@ -106,7 +106,7 @@ async function run() {
         const source = readFileSync(canonical, 'utf8');
         assert.equal(
           source,
-          readFileSync(`${root}supabase/migrations/${migration}`, 'utf8'),
+          readFileSync(`${root}supabase/migrations/archive/${migration}`, 'utf8'),
           'canonical SQL and migration must be identical',
         );
         await a.unsafe(source);
@@ -428,7 +428,7 @@ async function run() {
       const requestCanonical = `${root}supabase/queries/orders/shipment_cancellation_refund_request.sql`;
       if (existsSync(requestCanonical)) {
         const requestMigration = readdirSync(
-          `${root}supabase/migrations`,
+          `${root}supabase/migrations/archive`,
         ).filter((name) =>
           name.endsWith('_shipment_cancellation_refund_request.sql'),
         );
@@ -437,7 +437,7 @@ async function run() {
         assert.equal(
           source,
           readFileSync(
-            `${root}supabase/migrations/${requestMigration[0]}`,
+            `${root}supabase/migrations/archive/${requestMigration[0]}`,
             'utf8',
           ),
         );
@@ -815,7 +815,7 @@ async function run() {
       // Latest deployed label bodies, not the obsolete two-argument foundation.
       const definition = (file: string, name: string) => {
         const source = readFileSync(
-          `${root}supabase/migrations/${file}`,
+          `${root}supabase/migrations/archive/${file}`,
           'utf8',
         );
         const match = source.match(
@@ -988,7 +988,7 @@ async function run() {
         return observed;
       };
       const baselineLabels = await preservation();
-      const labelMigrations = readdirSync(`${root}supabase/migrations`).filter(
+      const labelMigrations = readdirSync(`${root}supabase/migrations/archive`).filter(
         (name) =>
           name.endsWith('_shipment_cancellation_label_coordination.sql'),
       );
@@ -996,7 +996,7 @@ async function run() {
       if (labelMigrations.length)
         await a.unsafe(
           readFileSync(
-            `${root}supabase/migrations/${labelMigrations[0]}`,
+            `${root}supabase/migrations/archive/${labelMigrations[0]}`,
             'utf8',
           ),
         );
