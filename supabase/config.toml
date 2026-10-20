@@ -24,3 +24,9 @@ verify_jwt = false
 # Cron-invoked tracking poller. Deployed without JWT verification.
 [functions.track-shipments]
 verify_jwt = false
+
+# Per-worktree local projects: `supabase start` assigns each worktree (and
+# branch) its own ports and data, so several worktrees can run at once.
+# Experimental in the CLI; set SUPABASE_EXPERIMENTAL_STACK=0 to fall back.
+[experimental]
+stack = true

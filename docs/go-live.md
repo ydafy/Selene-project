@@ -91,7 +91,7 @@ The remote project also runs `dynamic-api` (name `get-shipping-quote-seller`), w
 - Stripe (live mode): platform and Connect endpoints → `stripe-webhooks`; copy each signing secret into `STRIPE_WEBHOOK_SECRET` and `STRIPE_CONNECT_WEBHOOK_SECRET`. Each endpoint has its own secret, unlike the single local `stripe listen` secret.
   - Platform events: `payment_intent.succeeded`, `payment_intent.payment_failed`, `payment_intent.canceled`, `setup_intent.succeeded`.
   - Connect events: `account.updated`, `account.external_account.created`, `account.external_account.updated`, `account.external_account.deleted`, `payout.created`, `payout.updated`, `payout.paid`, `payout.failed`, `payout.canceled`.
-  - Keep this list in sync with the `stripe:listen` script in `package.json`.
+  - Keep this list in sync with `STRIPE_WEBHOOK_EVENTS` in `scripts/stripe-listen.ts`.
 - Stripe Account Links return/refresh URLs → `connect-onboarding-return`.
 - Envia tracking webhook → `envia-webhook`; secret into `ENVIA_WEBHOOK_SECRET_PROD`.
 

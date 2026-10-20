@@ -103,7 +103,7 @@ Edge Functions run on Deno. An untyped `createClient` infers selected rows as `{
 
 ### Local Supabase
 
-`supabase start` runs the full stack in Docker (Docker Desktop must be running); Studio is at `http://127.0.0.1:54323`. `supabase db reset` rebuilds the local database from `supabase/migrations/`: the schema baseline `20261020100000_remote_schema_baseline.sql` plus every later migration. Test data-mutating SQL here, never on the remote project.
+`supabase start` runs the full stack in Docker (Docker Desktop must be running). The experimental stack mode is on (`[experimental] stack = true` in `supabase/config.toml`): every worktree and branch gets its own local project with its own ports and data, so worktrees run in parallel. Ports are assigned automatically and stay stable; read them with `supabase status --env` (JSON), never assume `54321`. Idle services sleep and start on the next request. `supabase db reset` rebuilds the local database from `supabase/migrations/`: the schema baseline `20261020100000_remote_schema_baseline.sql` plus every later migration. Test data-mutating SQL here, never on the remote project.
 
 - `supabase/seed.sql` loads on every reset: admin, seller, and buyer accounts at `@selene.local` (password `password123`, local only), four published listings, and the configuration rows. Extend it when a feature needs more data; never point it at a remote project.
 - Never edit or replay `supabase/migrations/archive/`; it is pre-baseline history.
@@ -127,7 +127,7 @@ Agents read the Stripe sandbox (`Selene sandbox`, test mode) through the officia
 - Use it instead of asking the maintainer for Dashboard screenshots: payment intents, charges, refunds, balance, payouts, transfers, and events. Cross-check webhook events with Edge Function logs from the Supabase MCP.
 - Always pass `livemode: false`. Never request live-mode access or try to reach hidden write tools.
 - Create test scenarios with the Stripe CLI, not through the MCP.
-- Local payments loop, with the local Supabase stack running: `bun run functions:serve` (reads `supabase/functions/.env`, maintainer-owned and gitignored), then `bun run stripe:listen` to forward sandbox webhooks to the local `stripe-webhooks`, then `stripe trigger <event>`. When `stripe-webhooks` handles a new event type, add it to the `--events` list in `stripe:listen` and in `docs/go-live.md`.
+- Local payments loop, with the local Supabase stack running: `bun run functions:serve` (reads `supabase/functions/.env`, maintainer-owned and gitignored), then `bun run stripe:listen` to forward sandbox webhooks to the local `stripe-webhooks`, then `stripe trigger <event>`. `stripe:listen` (`scripts/stripe-listen.ts`) reads the current worktree's API URL and refuses non-local targets. When `stripe-webhooks` handles a new event type, add it to `STRIPE_WEBHOOK_EVENTS` in that script and to `docs/go-live.md`.
 - OAuth does not cover connected (seller) accounts.
 
 ## Git

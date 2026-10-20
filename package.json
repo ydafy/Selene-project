@@ -17,7 +17,7 @@
     "db:test:check": "bun scripts/postgres-smoke.ts",
     "db:test:stop": "docker compose -f docker-compose.postgres-test.yml -p selene-pg-shipment-cancellations stop",
     "functions:serve": "supabase functions serve --env-file supabase/functions/.env",
-    "stripe:listen": "stripe listen --events payment_intent.succeeded,payment_intent.payment_failed,payment_intent.canceled,setup_intent.succeeded,account.updated,account.external_account.created,account.external_account.updated,account.external_account.deleted,payout.created,payout.updated,payout.paid,payout.failed,payout.canceled --forward-to http://127.0.0.1:54321/functions/v1/stripe-webhooks --forward-connect-to http://127.0.0.1:54321/functions/v1/stripe-webhooks",
+    "stripe:listen": "bun scripts/stripe-listen.ts",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "db:types": "bunx supabase gen types typescript --project-id acoiclkeymgtlwcxilun --schema public > packages/types/src/database.types.ts",
