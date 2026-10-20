@@ -17,7 +17,7 @@ Remote project `acoiclkeymgtlwcxilun` holds only fake data but is treated as pro
 - [x] T1 (S1, S2, S4; inline; user-level config, no repo commit): read-only, project-scoped Supabase MCP in `~/.gentle-shell/agent/mcp.json` with OAuth; verified.
 - [x] T2 (S2, S6; inline; report only): drift diagnosis (L7). Commit 184f184 (this document).
 - [x] T3 (S5): schema baseline. Commits 153af64 (archive), 0737792 (baseline + storage + privilege alignment + test), a2110bc (docs). Remote history repair pending maintainer.
-- [ ] T4 (S3): `supabase start` works (verified); `supabase/seed.sql` still pending.
+- [x] T4 (S3): local stack + seed. Commits b85e114 (types barrel `.ts` fix for CLI 2.121), 0b38b4e (auth.users triggers), 892ed86 (seed). Verified: reset loads 3 accounts that log in via Auth API, 4 VERIFIED listings visible to anon, wrong password rejected. Remote repair of 20261020100003 pending maintainer.
 - [ ] T5 (S3, S4): move `shipment-cancellations` harness to local stack. Blocked on T4 and that branch merging.
 - [ ] T6 (S6): pgTAP money/authorization invariants. Blocked on T4.
 - [x] T7 (S5): `docs/go-live.md` runbook + deployed `verify_jwt` flags in `supabase/config.toml`. Commit 7d255a5.
@@ -60,4 +60,5 @@ Remote project `acoiclkeymgtlwcxilun` holds only fake data but is treated as pro
 - L18: First schema dump exposed a service_role JWT in trigger `tr_webhook_order_completed` (dead target `order-automation`) and a Stripe sk_test key in FDW `stripe_server`. Dropped by 35116e7 (applied by maintainer, verified). Key rotation deferred to go-live (new project with sb_ keys).
 - L19: Baseline verification after `supabase db reset`: hashes equal to remote for functions (code; 4 differ only by CLI-stripped column-0 comments and CRLF), policies (68), triggers, columns (8 differ only by `extensions.` display qualification), indexes (136), constraints (160), enums (50), views (8), table and column grants. Local default privileges added REFERENCES/TRIGGER/TRUNCATE on server-only tables; fixed by 20261020100002 (no-op on remote).
 - L20: For block B, storage policies mirrored as-is: any authenticated user can read every `verification` file ("Allow Select Own Files"), `evidence` bucket public, evidence delete matches `name LIKE %uid%`.
+- L21: Supabase CLI 2.121 turned a long-standing WARN into a fatal error: the CLI walks Edge Function imports by regex and followed `packages/types/src/index.ts` -> `./database.types` (no extension). Fixed with `.ts` specifiers and `export type *`; typecheck counts unchanged. The dump also omitted the 3 custom triggers on auth.users (one duplicate update trigger mirrored as-is). Remote oddities to review: `system_settings.connect_enabled = false` (legacy wallet RPCs not gated) and `checkout_recovery_running = true` stuck.
 - L12: Typecheck baseline: frontend 56 errors, backend 145 (mostly duplicate `@types/node` 24 and 26 conflict), types 1, admin-web 0.
