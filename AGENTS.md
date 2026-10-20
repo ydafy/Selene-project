@@ -105,6 +105,7 @@ Edge Functions run on Deno. An untyped `createClient` infers selected rows as `{
 
 `supabase start` runs the full stack in Docker (Docker Desktop must be running); Studio is at `http://127.0.0.1:54323`. `supabase db reset` rebuilds the local database from `supabase/migrations/`: the schema baseline `20261020100000_remote_schema_baseline.sql` plus every later migration. Test data-mutating SQL here, never on the remote project.
 
+- `supabase/seed.sql` loads on every reset: admin, seller, and buyer accounts at `@selene.local` (password `password123`, local only), four published listings, and the configuration rows. Extend it when a feature needs more data; never point it at a remote project.
 - Never edit or replay `supabase/migrations/archive/`; it is pre-baseline history.
 - The baseline does not include pg_cron jobs, Vault secrets, Auth settings, or Edge Function secrets (`docs/go-live.md` lists them).
 - Never put secrets in schema objects (trigger arguments, function bodies, foreign server options); `schema_baseline.test.ts` fails if a migration contains one.
