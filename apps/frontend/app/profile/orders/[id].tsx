@@ -217,6 +217,9 @@ export default function OrderDetailScreen() {
   /** Hook de pago de retorno — depende de currentShipment (hook de arriba). */
   const returnPayment = useReturnPayment(currentShipment?.dispute?.id ?? '');
 
+  /** Both buyer and seller may cancel a `paid` shipment; copy follows the viewer's role. */
+  const isSellerCancel = currentShipment?.isSeller ?? false;
+
   /** Subtotal del envío actual: suma de price_at_purchase de sus items.
    *  Se usa como total mostrado al pie del listado de productos cuando hay
    *  multiples envios (cada card lista sólo los items de su shipment).
@@ -292,13 +295,12 @@ export default function OrderDetailScreen() {
 
       Toast.show({
         type: 'info',
-        text1: t('orders:dialogs.cancelSuccessTitle', {
-          defaultValue: 'Pedido cancelado',
-        }),
-        text2: t('orders:dialogs.cancelSuccessMsg', {
-          defaultValue:
-            'Tu reembolso será procesado a tu método de pago original.',
-        }),
+        text1: t('orders:dialogs.cancelSuccessTitle'),
+        text2: t(
+          isSellerCancel
+            ? 'orders:dialogs.cancelSuccessMsgSeller'
+            : 'orders:dialogs.cancelSuccessMsgBuyer',
+        ),
       });
     } catch {
       // El hook dispara el toast de error; el diálogo queda abierto para reintentar
@@ -937,7 +939,11 @@ export default function OrderDetailScreen() {
       <ConfirmDialog
         visible={showCancelConfirm}
         title={t('orders:dialogs.cancelTitle')}
-        description={t('orders:detail.cancelDisclaimer')}
+        description={t(
+          isSellerCancel
+            ? 'orders:dialogs.cancelMsgSeller'
+            : 'orders:dialogs.cancelMsgBuyer',
+        )}
         onConfirm={handleCancelOrder}
         onCancel={() => setShowCancelConfirm(false)}
         isDangerous

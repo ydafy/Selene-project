@@ -13,8 +13,6 @@
     "total": "Total pagado",
     "contactBuyer": "Contactar Comprador",
     "contactSeller": "Contactar Vendedor",
-    "cancelDisclaimer": "Solo puedes cancelar antes de que el vendedor prepare el envío.",
-
     "trackTitle": "Rastreo de Paquete",
     "trackSub": "Sigue tu hardware en tiempo real",
     "copyTracking": "Copiar Guía",
@@ -173,6 +171,11 @@
   },
   "dialogs": {
     "cancelTitle": "¿Deseas cancelar este pedido?",
+    "cancelMsgBuyer": "Recibirás un reembolso completo a tu método de pago original. Solo puedes cancelar antes de que el vendedor prepare el envío.",
+    "cancelMsgSeller": "El comprador recibirá un reembolso completo y tus productos volverán a estar disponibles. Solo puedes cancelar antes de preparar el envío.",
+    "cancelSuccessTitle": "Pedido cancelado",
+    "cancelSuccessMsgBuyer": "Tu reembolso será procesado a tu método de pago original.",
+    "cancelSuccessMsgSeller": "El comprador recibirá su reembolso y tus productos vuelven a estar disponibles.",
     "deliveryTitle": "¿Recibiste y revisaste tu producto?",
     "deliveryMsg": "Al confirmar, la compra se completa. Si el producto no es el correcto o no funciona, no confirmes: reporta un problema.",
     "deliveryConfirm": "Sí, confirmar",

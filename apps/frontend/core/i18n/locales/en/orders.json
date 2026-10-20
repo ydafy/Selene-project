@@ -13,8 +13,6 @@
     "total": "Total Paid",
     "contactBuyer": "Contact Buyer",
     "contactSeller": "Contact Seller",
-    "cancelDisclaimer": "You can only cancel before the seller prepares the shipment.",
-
     "trackTitle": "Package Tracking",
     "trackSub": "Track your hardware in real time",
     "copyTracking": "Copy Tracking",
@@ -187,6 +185,11 @@
 
   "dialogs": {
     "cancelTitle": "Do you want to cancel this order?",
+    "cancelMsgBuyer": "You will receive a full refund to your original payment method. You can only cancel before the seller prepares the shipment.",
+    "cancelMsgSeller": "The buyer will receive a full refund and your products will be available again. You can only cancel before preparing the shipment.",
+    "cancelSuccessTitle": "Order cancelled",
+    "cancelSuccessMsgBuyer": "Your refund will be processed to your original payment method.",
+    "cancelSuccessMsgSeller": "The buyer will receive their refund and your products are available again.",
     "deliveryTitle": "Did you receive and check your product?",
     "deliveryMsg": "Confirming completes the purchase. If the product is incorrect or does not work, do not confirm: report a problem.",
     "deliveryConfirm": "Yes, confirm",
