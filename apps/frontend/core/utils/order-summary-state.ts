@@ -14,6 +14,16 @@ export function summaryAmounts(
   };
 }
 
+/** Amount shown on an orders list card: buyers see what they paid, sellers only their own items. */
+export function orderCardAmountCents(
+  role: 'buyer' | 'seller',
+  visibleItems: readonly Pick<Tables<'order_items'>, 'price_at_purchase'>[],
+  persistedTotal: Tables<'orders'>['total_amount'],
+): number {
+  const amounts = summaryAmounts(role, visibleItems, persistedTotal);
+  return amounts.totalPaidCents ?? amounts.subtotalCents;
+}
+
 export function resolveSummaryState(input: {
   hasOrder: boolean;
   orderPending: boolean;

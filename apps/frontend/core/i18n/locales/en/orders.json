@@ -11,6 +11,7 @@
     "shippingAddress": "Shipping Address",
     "summary": "Purchase Summary",
     "total": "Total Paid",
+    "totalSold": "Total Sold",
     "contactBuyer": "Contact Buyer",
     "contactSeller": "Contact Seller",
     "trackTitle": "Package Tracking",

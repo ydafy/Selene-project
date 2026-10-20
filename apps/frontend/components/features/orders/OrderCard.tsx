@@ -20,6 +20,7 @@ import { AppImage } from '../../ui/AppImage';
 import { Theme } from '../../../core/theme';
 
 import { formatCurrency, formatDate } from '../../../core/utils/format';
+import { orderCardAmountCents } from '../../../core/utils/order-summary-state';
 import {
   getOrderStatusColor,
   getOrderStatusLabel,
@@ -92,6 +93,12 @@ export const OrderCard = ({ order, isSeller, onPress }: Props) => {
   const statusLabel = t(getOrderStatusLabel(safeStatus)).toUpperCase();
   const showPulse = ['paid', 'shipped'].includes(safeStatus);
   const hasMultipleItems = order.items.length > 1;
+  // Sales lists only carry the seller's own items; order.total_amount is the buyer's payment.
+  const cardAmountCents = orderCardAmountCents(
+    isSeller ? 'seller' : 'buyer',
+    order.items,
+    order.total_amount,
+  );
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const x = event.nativeEvent.contentOffset.x;
@@ -286,7 +293,7 @@ export const OrderCard = ({ order, isSeller, onPress }: Props) => {
                 textShadowRadius: 4,
               }}
             >
-              {formatCurrency(order.total_amount)}
+              {formatCurrency(cardAmountCents / 100)}
             </Text>
           </Box>
         </Box>

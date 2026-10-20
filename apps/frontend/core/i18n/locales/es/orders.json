@@ -11,6 +11,7 @@
     "shippingAddress": "Dirección de Envío",
     "summary": "Resumen de compra",
     "total": "Total pagado",
+    "totalSold": "Total vendido",
     "contactBuyer": "Contactar Comprador",
     "contactSeller": "Contactar Vendedor",
     "trackTitle": "Rastreo de Paquete",

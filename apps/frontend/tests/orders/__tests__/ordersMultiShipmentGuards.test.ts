@@ -50,7 +50,7 @@ describe('orders detail screen shipment-aware source guards', () => {
     expect(detail).toContain('const shipmentSubtotal = useMemo(');
     expect(detail).toContain('const isMultiShipment =');
     expect(detail).toContain(
-      'const displayedTotal = isMultiShipment ? shipmentSubtotal : (order?.total_amount ?? 0);',
+      'const displayedTotal = isMultiShipment || currentShipment?.isSeller ? shipmentSubtotal : (order?.total_amount ?? 0);',
     );
     expect(detail).toContain('formatCurrency(displayedTotal)');
   });

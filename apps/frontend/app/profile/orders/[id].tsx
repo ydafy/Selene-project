@@ -234,9 +234,11 @@ export default function OrderDetailScreen() {
   }, [currentShipment]);
 
   const isMultiShipment = (order?.shipments?.length ?? 0) > 1;
-  const displayedTotal = isMultiShipment
-    ? shipmentSubtotal
-    : (order?.total_amount ?? 0);
+  // Sellers never see order.total_amount: it is the buyer's payment (all items, shipping and fees).
+  const displayedTotal =
+    isMultiShipment || currentShipment?.isSeller
+      ? shipmentSubtotal
+      : (order?.total_amount ?? 0);
   const checkoutRecoveryView = resolveBuyerCheckoutRecoveryView({
     isBuyer: order?.isBuyer ?? false,
     paymentProcessing: (
@@ -807,7 +809,9 @@ export default function OrderDetailScreen() {
             alignItems="center"
           >
             <Text variant="body-md" color="textSecondary">
-              {t('orders:detail.total')}
+              {currentShipment?.isSeller
+                ? t('orders:detail.totalSold')
+                : t('orders:detail.total')}
             </Text>
             <Text variant="subheader-lg" color="primary">
               {formatCurrency(displayedTotal)}
