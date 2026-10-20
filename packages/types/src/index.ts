@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { Database, Json } from './database.types';
+import type { Database, Json } from './database.types.ts';
 
 // --- 1. UTILIDADES CORE ---
 // Extrae el tipo de una fila de la tabla X
@@ -472,4 +472,4 @@ export interface AdminAuditLog {
 }
 
 // Exportamos todo lo de database.types por si acaso
-export * from './database.types';
+export type * from './database.types.ts';
