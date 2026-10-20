@@ -16,8 +16,8 @@ Remote project `acoiclkeymgtlwcxilun` holds only fake data but is treated as pro
 
 - [x] T1 (S1, S2, S4; inline; user-level config, no repo commit): read-only, project-scoped Supabase MCP in `~/.gentle-shell/agent/mcp.json` with OAuth; verified.
 - [x] T2 (S2, S6; inline; report only): drift diagnosis (L7). Commit 184f184 (this document).
-- [ ] T3 (S5): baseline migration. Blocked: after active worktrees merge into `main` (L8).
-- [ ] T4 (S3): `supabase start` + `supabase/seed.sql`. Blocked on T3.
+- [x] T3 (S5): schema baseline. Commits 153af64 (archive), 0737792 (baseline + storage + privilege alignment + test), a2110bc (docs). Remote history repair pending maintainer.
+- [ ] T4 (S3): `supabase start` works (verified); `supabase/seed.sql` still pending.
 - [ ] T5 (S3, S4): move `shipment-cancellations` harness to local stack. Blocked on T4 and that branch merging.
 - [ ] T6 (S6): pgTAP money/authorization invariants. Blocked on T4.
 - [x] T7 (S5): `docs/go-live.md` runbook + deployed `verify_jwt` flags in `supabase/config.toml`. Commit 7d255a5.
@@ -56,4 +56,8 @@ Remote project `acoiclkeymgtlwcxilun` holds only fake data but is treated as pro
 - L14: For block C: root `tests/` holds two loose files (`shipment-cancel-safety.test.ts`, `test-only-guard.test.ts`) while other tests sit next to their code; decide placement. Playwright `e2e/` (admin-web, mocked Supabase) stays at root and is not in CI yet; decide whether CI runs it.
 - L15: Regenerated `database.types.ts` (138 lines, all shipment-cancellations objects) left out of PR #8; it belongs to `feat/shipment-cancellations`.
 - L16: First CI run failed (4 test files): `_shared/zod-runtime.ts` imports Deno `npm:zod@4.1.12`; the Bun mock `zod-runtime.bun.preload.ts` was imported by only one test, so other files passed locally only by load order. Fixed by `[test] preload` in `bunfig.toml` (bce8ab8). CI green: 1812 tests, 0 fail.
+- L17: Worktree tracking-foundation-pr2 held finished, deployed tracking work never committed (lost in the 2026-08-30 consolidation). Rescued into main: c27676b, d2bc103, cd3cfe1. Worktree and branch removed.
+- L18: First schema dump exposed a service_role JWT in trigger `tr_webhook_order_completed` (dead target `order-automation`) and a Stripe sk_test key in FDW `stripe_server`. Dropped by 35116e7 (applied by maintainer, verified). Key rotation deferred to go-live (new project with sb_ keys).
+- L19: Baseline verification after `supabase db reset`: hashes equal to remote for functions (code; 4 differ only by CLI-stripped column-0 comments and CRLF), policies (68), triggers, columns (8 differ only by `extensions.` display qualification), indexes (136), constraints (160), enums (50), views (8), table and column grants. Local default privileges added REFERENCES/TRIGGER/TRUNCATE on server-only tables; fixed by 20261020100002 (no-op on remote).
+- L20: For block B, storage policies mirrored as-is: any authenticated user can read every `verification` file ("Allow Select Own Files"), `evidence` bucket public, evidence delete matches `name LIKE %uid%`.
 - L12: Typecheck baseline: frontend 56 errors, backend 145 (mostly duplicate `@types/node` 24 and 26 conflict), types 1, admin-web 0.
