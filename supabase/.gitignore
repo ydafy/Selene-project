@@ -1,0 +1,6 @@
+# Supabase CLI local state (linked project cache, branches, local env files)
+.branches
+.temp
+.env.keys
+.env.local
+.env.*.local
