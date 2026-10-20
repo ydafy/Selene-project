@@ -49,6 +49,18 @@ describe('schema baseline (SQL structural only)', () => {
     expect(storage).toContain('ON CONFLICT (id) DO NOTHING;');
   });
 
+  test('auth triggers provision profiles for every new auth user', () => {
+    const auth = read('20261020100003_auth_user_triggers.sql').replace(
+      /\s+/g,
+      ' ',
+    );
+    expect(auth).toContain(
+      'CREATE TRIGGER tr_on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.fn_on_auth_user_created();',
+    );
+    expect(auth.match(/CREATE TRIGGER /g)).toHaveLength(3);
+    expect(auth.match(/DROP TRIGGER IF EXISTS /g)).toHaveLength(3);
+  });
+
   test('privilege alignment revokes TRUNCATE from API roles on server-only tables', () => {
     const alignment = read(
       '20261020100002_baseline_privilege_alignment.sql',
