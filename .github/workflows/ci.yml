@@ -20,8 +20,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      # Bun version comes from "packageManager" in package.json.
       - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.2
       - run: bun install --frozen-lockfile
       - run: bun test

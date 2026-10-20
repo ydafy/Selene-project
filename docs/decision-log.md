@@ -175,3 +175,16 @@ Avoid running the manual `bun install` command unnecessarily afterward in 'main'
 Nuclear Cleanup has consistently resolved: - Version conflicts - Native duplicates - EAS failures - Undetected SDK - Unexpected app crashes
 
 It is established as the standard procedure for structural inconsistencies.
+
+## 2026-10-20: Bun 1.4.2 Everywhere, Pinned in package.json
+
+**Context:** The 2026-01-27 decision pinned Bun `1.3.11` in `eas.json` and asked to keep the local environment aligned with it. Local development and CI had since moved to Bun `1.4.2`, which also wrote `bun.lock`, so EAS was the only place still on `1.3.11`.
+
+**Decision:**
+
+- Bun `1.4.2` is the single version: `packageManager` in the root `package.json` is the source of truth.
+- CI (`oven-sh/setup-bun`) reads it from `package.json`; every `apps/frontend/eas.json` build profile sets `bun` and `node` explicitly.
+- Node stays at `22.13.1` for EAS.
+- When bumping Bun, change `packageManager` and the `eas.json` profiles in the same commit, then run a development EAS build.
+
+**Deno:** Edge Functions do not run on the local Deno CLI. `supabase functions serve` and deploys use the Supabase Edge Runtime, whose Deno major is declared in `supabase/config.toml` (`[edge_runtime] deno_version`). The local Deno CLI only serves the editor (LSP) and `deno check`, so its exact version is not pinned. On 2026-10-20 the runtime reported "supabase-edge-runtime-0.1.0 (compatible with Deno v2.1.4)" while the local CLI was 2.6.6: a local `deno check` can accept APIs the runtime lacks, so `supabase functions serve` is the real check.
