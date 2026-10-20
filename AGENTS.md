@@ -120,6 +120,15 @@ The project `acoiclkeymgtlwcxilun` holds only test data but is treated as produc
 - After preparing a schema change, run `get_advisors` for security and performance and report new findings.
 - Never run data-mutating tests against it, and never try to bypass read-only mode.
 
+## Stripe
+
+Agents read the Stripe sandbox (`Selene sandbox`, test mode) through the official Stripe MCP (`mcp__stripe__*`). It is authorized by OAuth for the sandbox only, and write and money-moving tools are hidden in the user-level `mcp.json`.
+
+- Use it instead of asking the maintainer for Dashboard screenshots: payment intents, charges, refunds, balance, payouts, transfers, and events. Cross-check webhook events with Edge Function logs from the Supabase MCP.
+- Always pass `livemode: false`. Never request live-mode access or try to reach hidden write tools.
+- Create test scenarios with the Stripe CLI, not through the MCP.
+- OAuth does not cover connected (seller) accounts.
+
 ## Git
 
 - Commit, push, open PRs, or merge only when asked.
