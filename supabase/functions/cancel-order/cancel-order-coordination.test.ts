@@ -14,6 +14,15 @@ const context: CancellationContext = {
   source: 'buyer',
   reason: 'Current reason',
 };
+function refundResult(status: string) {
+  return {
+    id: 're_1',
+    payment_intent: 'pi_1',
+    amount: 35,
+    status,
+    failure_reason: null,
+  };
+}
 function fixture() {
   const effects: string[] = [];
   let started = false;
@@ -58,7 +67,14 @@ function fixture() {
       });
       expect(options).toEqual({ idempotencyKey: 'cancel_shipment_shipment' });
       effects.push('refund');
-      return { status: 'succeeded' };
+      return refundResult('succeeded');
+    },
+    recordRefund: async (input) => {
+      effects.push('record');
+      return {
+        refund_id: input.refundId,
+        refund_status: input.status,
+      };
     },
     complete: async (winner, frozen) => {
       expect(winner).toEqual({
@@ -87,6 +103,7 @@ it('keeps takeover context and fences repeated manual attempts', async () => {
     'prepare:Original reason',
     'start',
     'refund',
+    'record',
     'complete',
   ]);
 });
@@ -110,6 +127,7 @@ it('allows only one concurrent manual contender to reconstruct and refund', asyn
     'prepare:Original reason',
     'start',
     'refund',
+    'record',
     'complete',
   ]);
 });
@@ -127,7 +145,7 @@ it('never completes after an uncertain refund or already-refunded error', async 
     ports.refund = async () => {
       effects.push('refund');
       if (outcome === 'charge_already_refunded') throw new Error(outcome);
-      return { status: outcome };
+      return refundResult(outcome);
     };
     await expect(runShipmentCancellation(ports)).rejects.toThrow(
       outcome === 'pending' ? 'CANCELLATION_REFUND_UNCONFIRMED' : outcome,
@@ -135,7 +153,11 @@ it('never completes after an uncertain refund or already-refunded error', async 
     expect(await runShipmentCancellation(ports)).toEqual({
       status: 'recovery_required',
     });
-    expect(effects).toEqual(['prepare:Original reason', 'start', 'refund']);
+    expect(effects).toEqual(
+      outcome === 'pending'
+        ? ['prepare:Original reason', 'start', 'refund', 'record']
+        : ['prepare:Original reason', 'start', 'refund'],
+    );
   }
 });
 
@@ -144,6 +166,7 @@ it('wires reservation before financial reconstruction and preserves preclaim gua
   expect(source).toContain('runShipmentCancellation({');
   expect(source).toContain("'fn_claim_shipment_cancellation'");
   expect(source).toContain("'fn_start_shipment_cancellation_refund'");
+  expect(source).toContain("'fn_record_shipment_cancellation_refund'");
   const prepare = source.indexOf('prepare: async (winner)');
   expect(prepare).toBeGreaterThan(source.indexOf("'UNAUTHORIZED'"));
   expect(prepare).toBeGreaterThan(

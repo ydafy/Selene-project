@@ -44,6 +44,7 @@ async function invoke(
   const events: string[] = [];
   const refunds: unknown[][] = [];
   const completions: unknown[] = [];
+  const recordings: unknown[] = [];
   const logs: Record<string, unknown>[] = [];
   const supabase = {
     auth: { getUser: async () => ({ data: { user: { id: 'buyer' } } }) },
@@ -92,6 +93,17 @@ async function invoke(
             cancellation_loss_cents: args.p_cancellation_loss_cents,
           },
         };
+      if (name === 'fn_record_shipment_cancellation_refund') {
+        recordings.push(args);
+        return {
+          data: {
+            refund_id: args.p_refund_id,
+            refund_status: args.p_status,
+            refund_failure_reason: args.p_failure_reason,
+            changed: true,
+          },
+        };
+      }
       if (name === 'fn_cancel_shipment') {
         completions.push(args);
         return { data: [{ success: true }] };
@@ -107,7 +119,13 @@ async function invoke(
       create: async (...args: unknown[]) => {
         refunds.push(args);
         if (options.providerError) throw new Error(options.providerError);
-        return { status: options.refundStatus ?? 'succeeded' };
+        return {
+          id: 're_target',
+          payment_intent: 'pi_target',
+          amount: 11000,
+          status: options.refundStatus ?? 'succeeded',
+          failure_reason: null,
+        };
       },
     };
   }
@@ -162,6 +180,7 @@ async function invoke(
     events,
     refunds,
     completions,
+    recordings,
     logs,
     before,
     after: hash(),
@@ -236,6 +255,7 @@ describe('manual cancellation HTTP preservation', () => {
           : '{"error":"CANCELLATION_REFUND_UNCONFIRMED"}',
       );
       expect(result.refunds).toHaveLength(1);
+      expect(result.recordings).toHaveLength(options.providerError ? 0 : 1);
       expect(result.completions).toEqual([]);
       expect(result.after).toBe(result.before);
     });
@@ -247,6 +267,24 @@ describe('manual cancellation HTTP preservation', () => {
       '{"success":true,"message":"Shipment canceled and refund processed"}',
     );
     expect(result.refunds).toHaveLength(1);
+    expect(result.recordings).toEqual([
+      {
+        p_shipment_id: 'target',
+        p_refund_id: 're_target',
+        p_payment_intent_id: 'pi_target',
+        p_amount_cents: 11000,
+        p_status: 'succeeded',
+        p_failure_reason: null,
+      },
+    ]);
+    expect(
+      result.events.indexOf('fn_record_shipment_cancellation_refund'),
+    ).toBeGreaterThan(
+      result.events.indexOf('fn_start_shipment_cancellation_refund'),
+    );
+    expect(result.events.indexOf('fn_cancel_shipment')).toBeGreaterThan(
+      result.events.indexOf('fn_record_shipment_cancellation_refund'),
+    );
     expect(result.completions).toEqual([
       {
         p_shipment_id: 'target',

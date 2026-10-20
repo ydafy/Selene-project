@@ -27,6 +27,7 @@ DECLARE
   v_cancellation_loss_cents BIGINT;
   v_loss_update_cents BIGINT;
   v_next_cancellation_loss_cents BIGINT;
+  v_refund_status TEXT;
 BEGIN
   -- 1. Lock shipment and validate eligibility.
   SELECT order_id, seller_id, status
@@ -58,6 +59,17 @@ BEGIN
 
   IF p_cancelled_by_role NOT IN ('buyer', 'seller', 'system') THEN
     RETURN QUERY SELECT false, 'UNAUTHORIZED'::TEXT;
+    RETURN;
+  END IF;
+
+  -- A recorded refund must have succeeded before the business cancellation.
+  -- NULL is still accepted while pre-B2.1 handlers, which never record, run.
+  SELECT refund_status INTO v_refund_status
+  FROM public.shipment_cancellation_operations
+  WHERE shipment_id = p_shipment_id;
+
+  IF v_refund_status IS NOT NULL AND v_refund_status <> 'succeeded' THEN
+    RETURN QUERY SELECT false, 'REFUND_NOT_SUCCEEDED'::TEXT;
     RETURN;
   END IF;
 

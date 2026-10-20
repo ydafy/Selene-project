@@ -37,6 +37,7 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         refundStatus?: string;
         providerError?: boolean;
         source?: string;
+        recordings?: unknown[];
       } = {},
     ) {
       const expectedSource =
@@ -44,6 +45,7 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
       const events: string[] = [];
       const refunds: unknown[] = [];
       const completions: Record<string, unknown>[] = [];
+      const recordings: Record<string, unknown>[] = [];
       const logs: unknown[] = [];
       const order = {
         stripe_charge_id: 'ch',
@@ -124,6 +126,17 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
                   },
                 };
           }
+          if (name === 'fn_record_shipment_cancellation_refund') {
+            recordings.push(args);
+            return {
+              data: {
+                refund_id: args.p_refund_id,
+                refund_status: args.p_status,
+                refund_failure_reason: args.p_failure_reason,
+                changed: true,
+              },
+            };
+          }
           completions.push(args);
           return { data: [{ success: true }] };
         },
@@ -144,7 +157,13 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
             refunds.push(args);
             if (options.providerError)
               throw new Error('charge_already_refunded');
-            return { status: options.refundStatus ?? 'succeeded' };
+            return {
+              id: 're_target',
+              payment_intent: 'pi_order',
+              amount: 339326,
+              status: options.refundStatus ?? 'succeeded',
+              failure_reason: null,
+            };
           },
         },
       };
@@ -168,7 +187,7 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
       } catch (caught) {
         error = caught;
       }
-      return { events, refunds, completions, logs, error, count };
+      return { events, refunds, completions, recordings, logs, error, count };
     }
 
     test('claims before reconstruction; second target uses order PI and uncapped sibling loss weights', async () => {
@@ -200,6 +219,34 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         p_cancelled_by_role: 'system',
         p_cancellation_loss_cents: 14326,
       });
+      expect(result.recordings).toEqual([
+        {
+          p_shipment_id: 'target',
+          p_refund_id: 're_target',
+          p_payment_intent_id: 'pi_order',
+          p_amount_cents: 339326,
+          p_status: 'succeeded',
+          p_failure_reason: null,
+        },
+      ]);
+      const at = (rpc: string) => result.events.indexOf(rpc);
+      expect(at('fn_record_shipment_cancellation_refund')).toBeGreaterThan(
+        at('fn_start_shipment_cancellation_refund'),
+      );
+      expect(at('fn_cancel_shipment')).toBeGreaterThan(
+        at('fn_record_shipment_cancellation_refund'),
+      );
+    });
+    test('a pending refund is recorded once and never cancels the shipment', async () => {
+      const result = await run({ refundStatus: 'pending' });
+      expect(result.refunds).toHaveLength(1);
+      expect(result.recordings).toHaveLength(1);
+      expect(result.recordings[0]).toMatchObject({
+        p_refund_id: 're_target',
+        p_status: 'pending',
+      });
+      expect(result.events).not.toContain('fn_cancel_shipment');
+      expect(result.completions).toEqual([]);
     });
     test('concurrent and repeated adapters do not issue another refund', async () => {
       const reservation = { claimed: false, started: false };

@@ -36,9 +36,12 @@ describe('shipment cancel source guards', () => {
       orchestration.indexOf('await ports.refund('),
     );
     expect(orchestration.indexOf('await ports.refund(')).toBeLessThan(
+      orchestration.indexOf('await ports.recordRefund('),
+    );
+    expect(orchestration.indexOf('await ports.recordRefund(')).toBeLessThan(
       orchestration.indexOf('await ports.complete('),
     );
-    expect(orchestration).toContain("refund.status !== 'succeeded'");
+    expect(orchestration).toContain("recorded.refund_status !== 'succeeded'");
   });
   it('uses the service-role RPC path after refund in cancel-order', () => {
     const indexTs = read('supabase/functions/cancel-order/index.ts');

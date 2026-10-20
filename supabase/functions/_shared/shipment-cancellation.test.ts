@@ -18,6 +18,13 @@ const plan: CancellationPlan = {
   seguroShareCents: 1000,
   cancellationLossCents: 400,
 };
+const stripeRefund = {
+  id: 're_a',
+  payment_intent: 'pi_a',
+  amount: 11000,
+  status: 'succeeded',
+  failure_reason: null,
+};
 const claim = {
   status: 'claimed',
   operation_key: 'cancel_shipment_shipment-a',
@@ -29,6 +36,7 @@ const claim = {
 function harness(overrides: Record<string, unknown> = {}) {
   const calls: string[] = [];
   const effects = { refunds: 0, cancellations: 0 };
+  const recorded: unknown[] = [];
   const dependencies = {
     context,
     claim: async () => {
@@ -53,7 +61,17 @@ function harness(overrides: Record<string, unknown> = {}) {
     refund: async () => {
       calls.push('refund');
       effects.refunds++;
-      return { status: 'succeeded' };
+      return { ...stripeRefund };
+    },
+    recordRefund: async (input: { refundId: string; status: string }) => {
+      calls.push('record');
+      recorded.push(input);
+      return {
+        refund_id: input.refundId,
+        refund_status: input.status,
+        refund_failure_reason: null,
+        changed: true,
+      };
     },
     complete: async () => {
       calls.push('complete');
@@ -64,6 +82,7 @@ function harness(overrides: Record<string, unknown> = {}) {
   return {
     calls,
     effects,
+    recorded,
     run: () => runShipmentCancellation({ ...dependencies, ...overrides }),
   };
 }
@@ -80,9 +99,20 @@ describe('shipment cancellation reservation orchestration', () => {
       'prepare',
       'start',
       'refund',
+      'record',
       'complete',
     ]);
     expect(subject.effects).toEqual({ refunds: 1, cancellations: 1 });
+    expect(subject.recorded).toEqual([
+      {
+        shipmentId: 'shipment-a',
+        refundId: 're_a',
+        paymentIntentId: 'pi_a',
+        amountCents: 11000,
+        status: 'succeeded',
+        failureReason: null,
+      },
+    ]);
   });
 
   test.each(['busy', 'recovery_required'] as const)(
@@ -134,8 +164,12 @@ describe('shipment cancellation reservation orchestration', () => {
       },
       refund: async (params, options) => {
         sent.push(params, options);
-        return { status: 'succeeded' };
+        return { ...stripeRefund };
       },
+      recordRefund: async (input) => ({
+        refund_id: input.refundId,
+        refund_status: input.status,
+      }),
       complete: async (winner, frozen) => {
         completedContext = [winner, frozen];
         return 'done';
@@ -178,7 +212,7 @@ describe('shipment cancellation reservation orchestration', () => {
           prepare: async () => ({ ...plan, cancellationLossCents: loss }),
           refund: async (params: unknown) => {
             sent = params;
-            return { status: 'succeeded' };
+            return { ...stripeRefund };
           },
         });
         expect((await subject.run()).status).toBe('cancelled');
@@ -301,24 +335,106 @@ describe('shipment cancellation reservation orchestration', () => {
     }
   });
 
-  test('only an explicitly succeeded refund may complete the business cancellation', async () => {
-    for (const result of [
-      undefined,
-      null,
-      {},
-      { status: 'pending' },
-      { status: 'requires_action' },
-      { status: 'failed' },
-      { status: 'canceled' },
-      { status: 'unknown' },
-    ]) {
+  test.each(['pending', 'requires_action', 'failed', 'canceled'] as const)(
+    'a %s refund is recorded once and never completes',
+    async (status: string) => {
+      const sent = { refunds: 0 };
+      const subject = harness({
+        refund: async () => {
+          sent.refunds++;
+          return {
+            ...stripeRefund,
+            status,
+            failure_reason:
+              status === 'failed' ? 'expired_or_canceled_card' : null,
+          };
+        },
+      });
+      await expect(subject.run()).rejects.toMatchObject({
+        status: 409,
+        message: 'CANCELLATION_REFUND_UNCONFIRMED',
+      });
+      expect(subject.calls).toEqual(['claim', 'prepare', 'start', 'record']);
+      expect(subject.recorded).toEqual([
+        {
+          shipmentId: 'shipment-a',
+          refundId: 're_a',
+          paymentIntentId: 'pi_a',
+          amountCents: 11000,
+          status,
+          failureReason:
+            status === 'failed' ? 'expired_or_canceled_card' : null,
+        },
+      ]);
+      expect(sent.refunds).toBe(1);
+      expect(subject.effects.cancellations).toBe(0);
+    },
+  );
+
+  test('Stripe succeeded but recorded state not succeeded never completes', async () => {
+    const subject = harness({
+      recordRefund: async (input: { refundId: string }) => ({
+        refund_id: input.refundId,
+        refund_status: 'failed',
+      }),
+    });
+    await expect(subject.run()).rejects.toMatchObject({
+      status: 409,
+      message: 'CANCELLATION_REFUND_UNCONFIRMED',
+    });
+    expect(subject.effects).toEqual({ refunds: 1, cancellations: 0 });
+  });
+
+  test.each([
+    undefined,
+    null,
+    {},
+    { status: 'succeeded' },
+    { id: '  ', status: 'succeeded' },
+    { id: 're_a' },
+    { id: 're_a', status: 1 },
+    { id: 're_a', status: null, payment_intent: 'pi_a', amount: 11000 },
+    { id: 're_a', status: 'succeeded', payment_intent: null, amount: 11000 },
+    { id: 're_a', status: 'succeeded', payment_intent: { id: 'pi_a' }, amount: 11000 },
+    { id: 're_a', status: 'succeeded', payment_intent: 'pi_a', amount: 110.5 },
+    { id: 're_a', status: 'succeeded', payment_intent: 'pi_a', amount: '11000' },
+  ])(
+    'unusable refund response %p is not recorded or completed',
+    async (result) => {
       const subject = harness({ refund: async () => result });
-      await expect(subject.run()).rejects.toThrow(
-        'CANCELLATION_REFUND_UNCONFIRMED',
-      );
-      expect(subject.effects).toEqual({ refunds: 0, cancellations: 0 });
+      await expect(subject.run()).rejects.toMatchObject({
+        status: 409,
+        message: 'CANCELLATION_REFUND_UNCONFIRMED',
+      });
       expect(subject.calls).toEqual(['claim', 'prepare', 'start']);
-    }
+      expect(subject.recorded).toEqual([]);
+      expect(subject.effects).toEqual({ refunds: 0, cancellations: 0 });
+    },
+  );
+
+  test('a recordRefund failure never completes or retries the refund', async () => {
+    const subject = harness({
+      recordRefund: async () => {
+        throw new Error('record unavailable');
+      },
+    });
+    await expect(subject.run()).rejects.toThrow('record unavailable');
+    expect(subject.effects).toEqual({ refunds: 1, cancellations: 0 });
+  });
+
+  test.each([
+    null,
+    {},
+    { refund_id: 'other', refund_status: 'succeeded' },
+    { refund_id: 're_a' },
+    { refund_id: 're_a', refund_status: 1 },
+  ])('invalid record envelope %p fails closed', async (envelope) => {
+    const subject = harness({ recordRefund: async () => envelope });
+    await expect(subject.run()).rejects.toMatchObject({
+      status: 500,
+      message: 'CANCELLATION_REFUND_RECORD_INVALID',
+    });
+    expect(subject.effects).toEqual({ refunds: 1, cancellations: 0 });
   });
 
   test('DB failure after provider does not retry provider within invocation', async () => {
@@ -367,8 +483,12 @@ describe('shipment cancellation reservation orchestration', () => {
         },
         refund: async () => {
           effects.push(`refund:${shipmentId}`);
-          return { status: 'succeeded' };
+          return { ...stripeRefund };
         },
+        recordRefund: async (input) => ({
+          refund_id: input.refundId,
+          refund_status: input.status,
+        }),
         complete: async () => {
           effects.push(`complete:${shipmentId}`);
           return true;

@@ -333,6 +333,21 @@ serve(async () => {
             return data;
           },
           refund: (request, options) => stripe.refunds.create(request, options),
+          recordRefund: async (input) => {
+            const { data, error } = await supabaseAdmin.rpc(
+              'fn_record_shipment_cancellation_refund',
+              {
+                p_shipment_id: input.shipmentId,
+                p_refund_id: input.refundId,
+                p_payment_intent_id: input.paymentIntentId,
+                p_amount_cents: input.amountCents,
+                p_status: input.status,
+                p_failure_reason: input.failureReason,
+              },
+            );
+            if (error) throw new Error(error.message);
+            return data;
+          },
           complete: async (winner, frozen) => {
             const { data, error } = await supabaseAdmin.rpc(
               'fn_cancel_shipment',
