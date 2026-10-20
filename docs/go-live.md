@@ -100,7 +100,13 @@ The remote project also runs `dynamic-api` (name `get-shipping-quote-seller`), w
 - Enable leaked password protection (currently disabled).
 - Site URL, redirect URLs, providers, and email templates: not yet inventoried. Record them here.
 
-## 11. Verification
+## 11. Mobile app signing
+
+- Android: the keystore committed before 2026-10-20 (`apps/frontend/credentials/android/keystore.jks`) is public in Git history and must never sign a build. Let EAS generate and hold the upload keystore (`eas credentials` in `apps/frontend`, Android, build credentials), and enroll in Play App Signing on the first upload.
+- Google Sign-In: register the SHA-1 of the EAS keystore (and of the Play App Signing key once it exists) on the Android OAuth client used by `@react-native-google-signin/google-signin` in `apps/frontend/app.json`.
+- Signing files stay out of the repository: `credentials.json` and `credentials/` are gitignored.
+
+## 12. Verification
 
 1. `get_advisors` security and performance: no new findings.
 2. A real end-to-end purchase, label, delivery, and payout with live keys and a small amount.

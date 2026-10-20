@@ -51,6 +51,12 @@ apps/backend/build/
 *.ipa
 *.mobileprovision
 
+# Signing credentials: EAS holds them remotely; never commit keystores or their passwords
+*.jks
+*.keystore
+apps/frontend/credentials.json
+apps/frontend/credentials/
+
 # =============================================================================
 # TypeScript
 # =============================================================================

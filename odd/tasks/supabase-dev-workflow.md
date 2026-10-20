@@ -31,6 +31,10 @@ Remote project `acoiclkeymgtlwcxilun` holds only fake data but is treated as pro
 - [x] A4: removed stale `sql.sql` scratch log. Commit f0cfd59. The T3 baseline dumps from the remote, so the old copy added no value and risked misleading agents.
 - [x] A5: pruned 2 stale worktree entries (no commit).
 - [x] A6: PR #8 merged (d300a2e); branch protection dropped (solo dev, free plan).
+- [ ] A7 (L23, L24): untrack leaked Android keystore + `credentials.json`, ignore them; maintainer rotates to an EAS-managed keystore and updates the Google Sign-In SHA-1.
+- [ ] A8 (L23): remove stale root `app.json`/`eas.json` and dead `apps/frontend/expo.config.js`.
+- [ ] A9 (L23): pin Bun (`packageManager`, CI, EAS profiles) and declare the Edge Runtime Deno major in `supabase/config.toml`.
+- [ ] A10 (L23): Dependabot recommendation (alerts + security updates only).
 
 ## Log
 
@@ -62,4 +66,6 @@ Remote project `acoiclkeymgtlwcxilun` holds only fake data but is treated as pro
 - L20: For block B, storage policies mirrored as-is: any authenticated user can read every `verification` file ("Allow Select Own Files"), `evidence` bucket public, evidence delete matches `name LIKE %uid%`.
 - L21: Supabase CLI 2.121 turned a long-standing WARN into a fatal error: the CLI walks Edge Function imports by regex and followed `packages/types/src/index.ts` -> `./database.types` (no extension). Fixed with `.ts` specifiers and `export type *`; typecheck counts unchanged. The dump also omitted the 3 custom triggers on auth.users (one duplicate update trigger mirrored as-is). Remote oddities to review: `system_settings.connect_enabled = false` (legacy wallet RPCs not gated) and `checkout_recovery_running = true` stuck.
 - L12: Typecheck baseline: frontend 56 errors, backend 145 (mostly duplicate `@types/node` 24 and 26 conflict), types 1, admin-web 0.
+- L23: "Ahora quiero seguir con la limpieza del repo que habíamos elegido: 1. el app.json y eas.json duplicados (raíz vs apps/frontend), 2. fijar las versiones de Bun y Deno en el repo, 3. ver si conviene Dependabot solo para alertas de seguridad. Después de eso arrancamos con fn_release_products (bloque B). Commits acotados, como siempre."
+- L24: Found while auditing A8: public repo `ydafy/Selene-project` tracks `apps/frontend/credentials/android/keystore.jks` and `apps/frontend/credentials.json` (alias and both passwords) since 2a4f97b (2025-11-15). Maintainer confirmed no build was ever uploaded to Google Play, so the key is discarded, not reset. Root `app.json` holds a second EAS projectId `f5f38257-...` and package `com.alvaroest19.selenemonorepo` from the 2026-08-30 consolidation; `expo config` in `apps/frontend` resolves `48bbf920-...` / `com.selene.marketplace` without it. GitHub: secret scanning + push protection on, no open alerts; Dependabot alerts and security updates off. Supabase CLI serves functions with its own Edge Runtime, not the local Deno CLI (2.6.6). Stray root `deno.lock` noted for block C.
 - L22: Maintainer works in parallel worktrees; default local stacks collided on fixed ports. Enabled CLI 2.121 experimental stack mode (`[experimental] stack = true`): per-worktree/branch local projects with auto ports. Verified two stacks side by side (API 22319 and 20397), migrations + seed applied on first start. `stripe:listen` now `scripts/stripe-listen.ts` (reads `supabase status --env` JSON, refuses non-local URLs); e2e on stack: real event 200, forged 400. Fallback: `SUPABASE_EXPERIMENTAL_STACK=0`. Old default-mode containers are stopped, not deleted.
