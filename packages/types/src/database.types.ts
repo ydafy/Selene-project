@@ -2086,7 +2086,11 @@ export type Database = {
           operation_key: string | null
           order_id: string
           reason: string
+          refund_failure_reason: string | null
+          refund_id: string | null
           refund_request: Json | null
+          refund_status: string | null
+          refund_status_updated_at: string | null
           shipment_id: string
           source: string
         }
@@ -2100,7 +2104,11 @@ export type Database = {
           operation_key?: string | null
           order_id: string
           reason: string
+          refund_failure_reason?: string | null
+          refund_id?: string | null
           refund_request?: Json | null
+          refund_status?: string | null
+          refund_status_updated_at?: string | null
           shipment_id: string
           source: string
         }
@@ -2114,7 +2122,11 @@ export type Database = {
           operation_key?: string | null
           order_id?: string
           reason?: string
+          refund_failure_reason?: string | null
+          refund_id?: string | null
           refund_request?: Json | null
+          refund_status?: string | null
+          refund_status_updated_at?: string | null
           shipment_id?: string
           source?: string
         }
@@ -4113,6 +4125,17 @@ export type Database = {
           p_stripe_event_id: string
         }
         Returns: boolean
+      }
+      fn_record_shipment_cancellation_refund: {
+        Args: {
+          p_amount_cents: number
+          p_failure_reason?: string
+          p_payment_intent_id: string
+          p_refund_id: string
+          p_shipment_id: string
+          p_status: string
+        }
+        Returns: Json
       }
       fn_record_tracking_event: {
         Args: {
