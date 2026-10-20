@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-const MIGRATIONS_DIR = join(import.meta.dir, '..');
+const MIGRATIONS_DIR = join(import.meta.dir, '..', 'archive');
 
 const readEventLedgerMigration = (): string => {
   const migrationFile = readdirSync(MIGRATIONS_DIR)

@@ -43,6 +43,8 @@ export interface ReleaseQueueRun {
   sellerName: string | null;
   status: string;
   amountCents: number;
+  /** Observed Stripe payment time, exposed only for History; never bank finality. */
+  paidAt?: string | null;
 }
 
 /**
@@ -186,7 +188,7 @@ export function classifyPayoutRunRow(row: ConnectPayoutReleaseQueueRow): {
 
   switch (run.status) {
     case 'paid':
-      return { history: run };
+      return { history: { ...run, paidAt: row.payout_run_paid_at ?? null } };
     case 'pending_reconciliation':
       return { processing: run };
     case 'reconciliation_needed':
@@ -286,6 +288,17 @@ export function mapConnectPayoutReleaseQueue(
       historyRuns.push(destination.history);
     }
   }
+
+  const paymentTime = (run: ReleaseQueueRun) => {
+    const timestamp = run.paidAt ? Date.parse(run.paidAt) : NaN;
+    return Number.isFinite(timestamp) ? timestamp : -Infinity;
+  };
+  historyRuns.sort((left, right) => {
+    const leftTime = paymentTime(left);
+    const rightTime = paymentTime(right);
+    if (leftTime !== rightTime) return leftTime > rightTime ? -1 : 1;
+    return left.runId === right.runId ? 0 : left.runId > right.runId ? -1 : 1;
+  });
 
   return {
     releaseBatches: groupConnectPayoutReleaseQueue(

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 
 const migrationPath = new URL(
-  './20260911000000_product_publication_economics.sql',
+  './archive/20260911000000_product_publication_economics.sql',
   import.meta.url,
 );
 

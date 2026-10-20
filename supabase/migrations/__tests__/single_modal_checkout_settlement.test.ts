@@ -24,7 +24,7 @@ import { join } from 'node:path';
  *   - service_role-only access preserved.
  */
 
-const MIGRATIONS_DIR = join(import.meta.dir, '..');
+const MIGRATIONS_DIR = join(import.meta.dir, '..', 'archive');
 
 const findMigration = (): string => {
   const files = readdirSync(MIGRATIONS_DIR).filter(
@@ -37,7 +37,7 @@ const findMigration = (): string => {
 };
 
 describe('single-modal checkout settlement migration', () => {
-  test('migration file exists in supabase/migrations', () => {
+  test('migration file exists in supabase/migrations/archive', () => {
     expect(() => findMigration()).not.toThrow();
   });
 

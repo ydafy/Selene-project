@@ -1,10 +1,26 @@
 # Supabase project configuration tracked for deployment-critical function flags.
-# `connect-onboarding-return` is a public HTTPS redirect bridge used by Stripe
-# Account Links. Stripe cannot send Supabase JWT headers to return_url/refresh_url,
-# so JWT verification must stay disabled for this function only.
+# Each entry mirrors the deployed `verify_jwt` value of project acoiclkeymgtlwcxilun.
+# Functions not listed here keep the default (`verify_jwt = true`). A CLI deploy
+# without these entries would re-enable JWT verification and break the callers.
 
+# Public HTTPS redirect bridge used by Stripe Account Links. Stripe cannot send
+# Supabase JWT headers to return_url/refresh_url, so JWT verification must stay
+# disabled for this function only.
 [functions.connect-onboarding-return]
 verify_jwt = false
 
+# Envia tracking webhook; Envia does not send Supabase JWTs.
 [functions.envia-webhook]
+verify_jwt = false
+
+# Stripe webhook endpoint; authenticated by the `stripe-signature` header.
+[functions.stripe-webhooks]
+verify_jwt = false
+
+# Cron-invoked worker; authenticated by the `x-cron-secret` header.
+[functions.resume-pending-payouts]
+verify_jwt = false
+
+# Cron-invoked tracking poller. Deployed without JWT verification.
+[functions.track-shipments]
 verify_jwt = false

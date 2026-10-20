@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { Database, Json } from './database.types';
+import type { Database, Json } from './database.types.ts';
 
 // --- 1. UTILIDADES CORE ---
 // Extrae el tipo de una fila de la tabla X
@@ -88,12 +88,34 @@ export type ReleaseConnectPayoutResponse =
       currency?: 'mxn';
     };
 
-export type ConnectPayoutReleaseQueueRequest = { search?: string };
+export type ConnectPayoutQueueBucket =
+  | 'ready'
+  | 'processing'
+  | 'action-required'
+  | 'history';
+export type ConnectPayoutQueueScope = 'page' | 'selection';
+export type ConnectPayoutQueueCounts = Record<ConnectPayoutQueueBucket, number>;
+
+export type ConnectPayoutReleaseQueueRequest = {
+  search?: string;
+  bucket?: ConnectPayoutQueueBucket;
+  page?: number;
+  scope?: ConnectPayoutQueueScope;
+};
 
 export type ConnectPayoutReleaseQueueResponse = {
   success: boolean;
   rows?: ConnectPayoutReleaseQueueRow[];
   error?: string;
+  counts?: ConnectPayoutQueueCounts;
+  bucket?: ConnectPayoutQueueBucket;
+  scope?: ConnectPayoutQueueScope;
+  page?: number;
+  pageSize?: number;
+  totalGroups?: number;
+  totalPages?: number;
+  selectedGroupCount?: number;
+  selectionComplete?: boolean;
 };
 
 export type ConnectPaymentErrorCode =
@@ -241,6 +263,10 @@ export interface EdgeFunctionRegistry {
   'create-connect-account': {
     payload: { refreshUrl?: string; returnUrl?: string };
     response: { url: string; accountId: string };
+  };
+  'resolve-shipment-tracking-url': {
+    payload: { shipmentId: string };
+    response: { url: string | null };
   };
   'refresh-connect-account-status': {
     payload: { sellerId?: string; force?: boolean };
@@ -446,4 +472,4 @@ export interface AdminAuditLog {
 }
 
 // Exportamos todo lo de database.types por si acaso
-export * from './database.types';
+export type * from './database.types.ts';

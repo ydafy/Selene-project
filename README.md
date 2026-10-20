@@ -176,6 +176,40 @@ The mobile application brings together the main buyer and seller experiences, fr
 
 ---
 
+## Browser Tests (Playwright)
+
+Run from the repository root:
+
+```bash
+bun install
+bunx --no-install playwright install chromium  # Only if Chromium is not installed
+bun run test:e2e
+bun run test:e2e:ui
+```
+
+Playwright is installed once at the root. Chromium tests live under `e2e/admin-web/`
+with the `*.e2e.ts` suffix, separate from Bun unit tests. The configuration starts
+this worktree's Vite server at `http://127.0.0.1:5187` with a strict port and no
+server reuse, preventing accidental tests against another worktree. It supplies
+fictional public Supabase settings; no real credentials are needed.
+
+The login smoke and Payments tests block external requests and WebSockets. Payments
+uses a fictitious admin session and intercepted read responses for45 sellers with
+90 shipments. Financial requests are denied, including an explicit denial canary.
+No remote records, financial confirmations or production auth bypass are involved.
+These tests prove browser behavior against mocked reads, not deployed SQL or RLS.
+
+```bash
+bun run test:e2e e2e/admin-web/payments.e2e.ts --workers=1
+bun run test:e2e e2e/admin-web/payments.e2e.ts --headed --workers=1
+```
+
+Use accessible roles/names and web-first assertions instead of fixed sleeps.
+Screenshots and failure traces are written under ignored `test-results/`; inspect
+traces with `bunx --no-install playwright show-trace <trace.zip>`. Keep mocks and
+network denial in place when adding tests; never use live payment credentials.
+This setup tests web applications, not native Android/iOS screens.
+
 ## Development Status
 
 Selene is in the final development and testing stage.

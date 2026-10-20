@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 const root = join(import.meta.dir, '..', '..', '..');
 const source = readFileSync(join(root, 'supabase/queries/orders/fn_cancel_shipment.sql'), 'utf8');
-const migration = readFileSync(join(root, 'supabase/migrations/20260926000000_shipment_cancelled_notification.sql'), 'utf8');
+const migration = readFileSync(join(root, 'supabase/migrations/archive/20260926000000_shipment_cancelled_notification.sql'), 'utf8');
 const normalize = (sql: string) => sql.replace(/\s+/g, ' ').trim();
 const body = (sql: string) => sql.match(/CREATE OR REPLACE FUNCTION public\.fn_cancel_shipment\([\s\S]*?\$\$;/)?.[0];
 

@@ -19,7 +19,7 @@ import { join } from 'node:path';
  *   - No AVAILABLE status, no checkout_sessions table (out-of-scope hard guards)
  */
 
-const MIGRATIONS_DIR = join(import.meta.dir, '..');
+const MIGRATIONS_DIR = join(import.meta.dir, '..', 'archive');
 const QUERIES_DIR = join(
   import.meta.dir,
   '..',
@@ -44,7 +44,7 @@ const readQuery = (name: string): string =>
   readFileSync(join(QUERIES_DIR, name), 'utf8');
 
 describe('reservation lifecycle hardening migration', () => {
-  test('migration file exists in supabase/migrations', () => {
+  test('migration file exists in supabase/migrations/archive', () => {
     expect(() => findMigration()).not.toThrow();
   });
 

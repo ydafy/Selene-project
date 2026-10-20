@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-const migrationsDirectory = join(import.meta.dir, '..');
+const migrationsDirectory = join(import.meta.dir, '..', 'archive');
 
 function migrationSql(): string {
   const file = readdirSync(migrationsDirectory).find((entry) =>

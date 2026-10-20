@@ -14,7 +14,7 @@ const readSql = (path: string) => readFileSync(join(root, path), 'utf8');
 
 test('requires a maintainer-owned clean reset before adding the one-item shipment index', () => {
   const sql = readSql(
-    'supabase/migrations/20260824001426_post_purchase_label_generation_foundation.sql',
+    'supabase/migrations/archive/20260824001426_post_purchase_label_generation_foundation.sql',
   );
 
   expect(sql).toContain('PRELAUNCH_RESET_REQUIRED:LEGACY_GROUPED_SHIPMENTS');

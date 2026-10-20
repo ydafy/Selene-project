@@ -55,6 +55,7 @@ export function assertAdminProfile(
 }
 
 export function getQueueErrorStatus(message: string): number {
+  if (message === 'QUEUE_RPC_FAILED' || message === 'INVALID_QUEUE_RESPONSE') return 502;
   if (message === 'AUTH_REQUIRED') return 401;
   if (message === 'ADMIN_REQUIRED') return 403;
   if (message === 'MISSING_SERVER_CONFIG') return 500;

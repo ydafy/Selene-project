@@ -7,7 +7,7 @@ import { join } from 'node:path';
  * Covers CONF-019 + EXTD-TASK-001 acceptance criteria.
  */
 
-const MIGRATIONS_DIR = join(import.meta.dir, '..');
+const MIGRATIONS_DIR = join(import.meta.dir, '..', 'archive');
 const TRIGGERS_DIR = join(
   import.meta.dir,
   '..',
@@ -30,7 +30,7 @@ const findMigration = (): string => {
 };
 
 describe('on_auth_user_updated migration', () => {
-  test('migration file exists in supabase/migrations', () => {
+  test('migration file exists in supabase/migrations/archive', () => {
     expect(() => findMigration()).not.toThrow();
   });
 

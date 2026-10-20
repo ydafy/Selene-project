@@ -1,151 +1,97 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
-};
-
-const log = (
-  level: 'INFO' | 'WARN' | 'ERROR',
-  msg: string,
-  data?: Record<string, unknown>,
-) => {
-  console.log(
-    JSON.stringify({
-      timestamp: new Date().toISOString(),
-      function: 'track-returns',
-      level,
-      msg,
-      ...data,
-    }),
-  );
-};
+import {
+  buildPollingTrackingEvents,
+  extractEnviaPollingObservations,
+  successfulPollingTargetIds,
+} from '../_shared/envia-tracking-ingestion.ts';
 
 const BATCH_SIZE = 50;
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS')
-    return new Response('ok', { headers: corsHeaders });
-
+  if (req.method === 'OPTIONS') return new Response('ok');
   try {
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
-
-    log('INFO', 'Iniciando rastreo de retornos');
-
-    // 1. Obtener disputas en fase de retorno (priorizando las menos rastreadas)
     const { data: disputes, error: fetchError } = await supabaseAdmin
       .from('disputes')
-      .select('id, return_tracking_number, status')
+      .select('id, shipment_id, return_tracking_number')
       .in('status', ['waiting_return', 'return_shipped'])
       .not('return_tracking_number', 'is', null)
+      .not('shipment_id', 'is', null)
       .order('return_last_tracked_at', { ascending: true, nullsFirst: true })
       .limit(BATCH_SIZE);
-
     if (fetchError) throw fetchError;
-    if (!disputes || disputes.length === 0) {
-      log('INFO', 'No hay retornos activos para rastrear');
-      return new Response(JSON.stringify({ message: 'No returns to track' }), {
-        status: 200,
-      });
-    }
 
-    // 2. Configuración API Envia
-    const mode = Deno.env.get('ENVIA_MODE') || 'sandbox';
-    const apiKey =
-      mode === 'sandbox'
-        ? Deno.env.get('ENVIA_API_KEY_SANDBOX')
-        : Deno.env.get('ENVIA_API_KEY_PROD');
-    const apiUrl =
-      mode === 'sandbox'
-        ? 'https://api-test.envia.com'
-        : 'https://api.envia.com';
+    const targets = (disputes ?? []).flatMap((dispute) =>
+      dispute.return_tracking_number && dispute.shipment_id
+        ? [{ id: dispute.id, trackingNumber: dispute.return_tracking_number, shipmentId: dispute.shipment_id }]
+        : [],
+    );
+    if (!targets.length) return json({ processed: 0, recorded: 0 });
 
-    const trackingNumbers = [
-      ...new Set(disputes.map((d) => d.return_tracking_number)),
-    ];
+    const mode = Deno.env.get('ENVIA_MODE') ?? 'sandbox';
+    const apiKey = mode === 'production'
+      ? Deno.env.get('ENVIA_API_KEY_PROD')
+      : Deno.env.get('ENVIA_API_KEY_SANDBOX');
+    const apiUrl = mode === 'production' ? 'https://api.envia.com' : 'https://api-test.envia.com';
+    if (!apiKey) throw new Error('MISSING_ENVIA_API_KEY');
 
-    // 3. Consulta masiva a Envia.com
     const response = await fetch(`${apiUrl}/ship/generaltrack/`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({ trackingNumbers }),
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({ trackingNumbers: [...new Set(targets.map((target) => target.trackingNumber))] }),
     });
-
-    const resData = await response.json();
-    if (!response.ok || resData.meta === 'error') {
-      throw new Error(`Envia API Error: ${resData.message || 'Unknown'}`);
+    const payload = await response.json();
+    if (!response.ok || payload?.meta === 'error' || !Array.isArray(payload?.data)) {
+      throw new Error('ENVIA_TRACKING_REQUEST_FAILED');
     }
 
-    let deliveredCount = 0;
-    const processedIds: string[] = [];
-
-    // 4. Procesar resultados
-    for (const trackInfo of resData.data) {
-      const matchingDisputes = disputes.filter(
-        (d) => d.return_tracking_number === trackInfo.trackingNumber,
-      );
-      if (matchingDisputes.length === 0) continue;
-
-      for (const dispute of matchingDisputes) {
-        // Acumular ID para bulk update de return_last_tracked_at (evita N+1)
-        processedIds.push(dispute.id);
-
-        // Si el estado es entregado, disparamos la RPC
-        if (trackInfo.status?.toLowerCase() === 'delivered') {
-          log('INFO', `Retorno entregado detectado`, { disputeId: dispute.id });
-
-          const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc(
-            'fn_mark_return_delivered',
-            {
-              p_dispute_id: dispute.id,
-            },
-          );
-
-          if (rpcError || (rpcData && !rpcData[0]?.success)) {
-            log('ERROR', `Fallo al ejecutar fn_mark_return_delivered`, {
-              disputeId: dispute.id,
-              error: rpcError?.message || rpcData?.[0]?.error_message,
-            });
-          } else {
-            deliveredCount++;
-          }
-        }
-      }
-    }
-
-    // 5. Bulk update: un solo viaje a DB para actualizar return_last_tracked_at
-    if (processedIds.length > 0) {
-      await supabaseAdmin
-        .from('disputes')
-        .update({ return_last_tracked_at: new Date().toISOString() })
-        .in('id', processedIds);
-    }
-
-    log('INFO', 'Rastreo de retornos finalizado', {
-      total: disputes.length,
-      delivered: deliveredCount,
-    });
-
-    return new Response(
-      JSON.stringify({ processed: disputes.length, delivered: deliveredCount }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      },
+    const polledAt = new Date().toISOString();
+    const events = buildPollingTrackingEvents(
+      targets,
+      payload.data.flatMap(extractEnviaPollingObservations),
+      polledAt,
     );
-  } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : 'Error desconocido';
-    log('ERROR', 'Fallo crítico en track-returns', { error: message });
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
-    });
+    const pollingRunId = crypto.randomUUID();
+    let recorded = 0;
+    for (const event of events) {
+      const dispute = targets.find((target) => target.id === event.targetId);
+      if (!dispute) continue;
+      const { data, error } = await supabaseAdmin.rpc('fn_record_tracking_event', {
+        p_shipment_id: dispute.shipmentId,
+        p_dispute_id: dispute.id,
+        p_event_type: event.eventType,
+        p_event_at: event.eventAt,
+        p_raw_status: event.rawStatus,
+        p_location: event.location,
+        p_status_description: event.statusDescription,
+        p_carrier_name: event.carrierName,
+        p_webhook_delivery_id: null,
+        p_polling_run_id: pollingRunId,
+        p_transition: event.transition,
+      });
+      if (error) throw error;
+      if ((data as { inserted?: boolean } | null)?.inserted) recorded += 1;
+    }
+    const trackedIds = successfulPollingTargetIds(targets);
+    if (trackedIds.length) {
+      const { error } = await supabaseAdmin
+        .from('disputes')
+        .update({ return_last_tracked_at: polledAt })
+        .in('id', trackedIds);
+      if (error) throw error;
+    }
+    return json({ processed: targets.length, recorded });
+  } catch (error) {
+    return json({ error: error instanceof Error ? error.message : 'TRACKING_RECONCILIATION_FAILED' }, 500);
   }
 });

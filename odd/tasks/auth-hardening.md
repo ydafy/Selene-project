@@ -1,0 +1,210 @@
+# Auth MVP++ hardening
+Objective: audit and harden the existing auth system end to end, reusing Supabase rather than rewriting it.
+Branch: `audit/auth` | Delivery: separate sessions and scoped block commits; no push/PR/deployment authorization | Runner: Bun, plus isolated PostgreSQL and device/environment checks where applicable.
+
+## Specs
+
+### S1 — Product target and audit standard
+User requirement (verbatim): "Obvio no quereos un sistema ultra vanguardista, simplemente uno MVP++, sencillo, profesional, y escalable."
+User requirement (verbatim): "quiero que indagues y idenifiques posibles bugs, bad practices, code smell, DRY, etc etc, osea literalmente que me digas si esta lsito para producion o no."
+Acceptance: distinguish confirmed defects, hypotheses and unavailable deployment evidence. Correct only in-scope confirmed problems; do not rewrite auth or add enterprise features merely for abstraction/DRY.
+
+### S2 — Session and commit boundaries
+User requirement (verbatim): "ya que cada bloque lo trabajare en una seison diferente con sus commits propios para llevar un trabajo ordenado y mas facil."
+Current authorization (verbatim): "perefcto guarda el plan, y en esta sesion empezaremos por el bloqque 1 por asi decirlo, y cada bloque con su commit respectuvo."
+Acceptance: this session owns block 1. Blocks 2–6 are deliberately reserved for later sessions, not implicitly authorized for execution now. Keep a block's tests and relevant docs with its behavior; if a block needs multiple coherent commits, explain the split instead of mixing unrelated changes.
+
+### S3 — Scoped end-to-end audit in every block
+User requirement (verbatim): "puedes hacer otra auditoria pero ya mas acotada que cuvbra desde backend hasta forntedn ya que cuando tienes un scoop definido es mas facil identificar los bugs o errores"
+Acceptance: establish rules and executable outcomes, inspect the full affected path, reproduce confirmed issues where runnable, apply minimal fixes, verify expected behavior and rejections, and record evidence plus a next-session handoff. A repository SQL file does not prove remote deployment.
+
+### S4 — Block 1: identity, permissions and account states
+Accepted roadmap: identity and relationships across `auth.users`, `profiles`, `profiles_private`; trusted role/status source; relevant RLS, grants, views and RPCs; admin authorization; Edge identity validation; server enforcement of account-state rules; inconsistent account-status RPC definitions.
+Exit: clients cannot elevate privileges or access other users' protected data; account restrictions are enforced server-side according to an explicitly agreed action matrix, not just screen guards.
+Accepted policy (user approval in L8; detailed clarification in L7): suspension is temporary seller-risk containment, not a fraud verdict. Opening a dispute alone does not automatically suspend the account; an administrator decides account suspension. Apply the existing disputed-operation fund protections without assuming that a dispute freezes the entire account.
+Suspended users cannot publish new listings, receive new sales (including purchases through existing links/carts), or request new withdrawals. Their own purchases remain allowed under the recommended seller-scoped policy accepted in L8. Reading existing orders, submitting evidence, and fulfilling existing shipments/returns remain available subject to each operation's normal authorization and state. Server/admin-controlled refunds and dispute resolution must continue. Do not automatically cancel operations, move funds or interrupt already-started financial processes on suspension.
+Banned is the final account state for established fraud or clear attempted fraud. Preserve login to the dedicated blocked-account screen with reason/support contact; no ordinary application operations or routine admin reactivation. Existing obligations are resolved through controlled server/admin processes, not by granting normal app access.
+Only authorized administrators may lift a suspension, with reason and audit. Lifting a suspension must not indiscriminately mark every HIDDEN product VERIFIED; unrelated hiding/moderation reasons must remain intact. The exact restoration mechanism requires source/deployed-state reconciliation, not a new assumed publication rule.
+Deployment evidence: the baseline deployed authorization inventory (L15–L16) and the supplemental reserve/payout/trigger result (L17–L18) were received and validated; they are provenance for those captures, not automatically current future state. Do not claim live security based on snapshots.
+Implementation decisions derived from the accepted policy (L18): suspended/banned accounts lose admin authority and an admin cannot change their own status; restore products on suspension lift only to the status each product had before the account hold; gate direct product inserts/owner edits, new-sale reservation and legacy payout requests on an active seller account; restrict client profile writes to user-editable columns.
+
+### S5 — Block 2: mobile and admin session engine
+Accepted roadmap: native persistence/restore, refresh/expiry, cold start/background/resume, listener lifecycle, stale responses and rapid user changes, logout/failure handling, user-scoped cache cleanup and navigation guards.
+Exit: restoring, expiring, closing or switching a session cannot mix identities, retain old privileges or expose previous-user data. Logout implementation belongs here.
+
+### S6 — Block 3: login and account creation
+Accepted roadmap: email/password login, signup, OTP verification/resend, Google first/subsequent login, consistent dependent-record provisioning, partial/duplicate registration and retries, validation/errors, and same-email provider-linking policy.
+Exit: each supported entry path produces the intended identity and usable account without duplicate provisioning or unrecoverable partial state. Provider-linking rules must be established, not invented in the client.
+
+### S7 — Block 4: recovery and credential changes
+Accepted roadmap: forgot/reset password, actual OTP/link mechanism, invalid/expired/reused credentials, partial recovery sessions, authenticated password/email changes, confirmation/synchronization, reauthentication and Google-only accounts.
+Exit: changes meet the agreed security conditions; UI reflects the actual result and failures permit safe recovery. Reconcile existing contracts with installed SDK behavior before changing either.
+
+### S8 — Block 5: account deletion
+Accepted roadmap: confirmation/actor authorization, blockers for existing obligations, deletion versus retention, existing external dependencies, retries/partial failures, session and access after deletion.
+Exit: denied deletion does not partially delete the account; accepted deletion has a consistent verifiable outcome. Do not redesign payments beyond necessary deletion boundaries.
+
+### S9 — Block 6: production readiness and integrated validation
+Accepted roadmap: deployed Auth settings, providers/SMTP, redirect URLs and links where applicable, expiry/rate limits/proportionate abuse protection, secret-free logs, actual SQL/function deployment evidence and integrated mobile/admin smoke tests.
+Exit: critical journeys pass in the intended environment with no unresolved critical configuration unknowns. Check prerequisites in each earlier block; do not defer discovering configuration failures until block 6.
+
+### S10 — Scope and deployment constraints
+Preserve existing work and repository tooling. Cosmetic profile/avatar redesign, unrelated business hardening, new auth providers/frameworks and auth rewrites are excluded.
+Follow repository manual Supabase workflow: supply SQL/function/config handoff, wait for maintainer application confirmation, then regenerate types and verify them. No remote SQL execution, deployment, secret changes, push or PR is authorized by this roadmap.
+
+## Tasks
+
+- T0 | S1–S10 | inline | done | Save accepted roadmap and initial block-1 investigation | Commit: tracker in the T1c commit; proof: document readback and source-only investigation.
+- T1 | S1–S4,S10 | parent orchestration | done | Audit and harden identity, permissions and account states | Deployed, catalog-verified, types committed (1a8450a), dashboard and mobile smoke checks passed (L24–L25). Follow-ups F1 and the L22 advisory findings remain open.
+- T1b | S4,S10 | delegated writer | done | Account-status lifecycle: final bans, prior-status product restore, active-only admin authority, no self status change, admin UI | Implemented; worker RED 2 pass/21 fail exit 1, GREEN 40 pass/0 fail; parent rerun 40 pass/0 fail; independent verify blocker (NULL un-ban) fixed; commit 502c72f (high risk: data/security); runtime proof pending deployment.
+- T1c | S4,S10 | delegated writer | done | Trust-boundary gates: profile column grants, product insert/edit policies, reservation and legacy payout seller-status gates | Forecast ~250 authored lines; own commit (high risk: security/RLS). Must also forbid client writes of `products.status_before_account_hold` (otherwise an owner could pre-set VERIFIED and bypass review on suspension lift). Implemented, verified and committed together with this tracker (see git log); runtime proof pending deployment.
+- T1a | S3–S4,S10 | delegated preparation; inline bounded bugfix | done | Correct inventory and obtain PostgreSQL execution proof | Dashboard 42725 and 22023 source defects corrected; static history GREEN 5 pass/0 fail exit 0; latest corrected SELECT executed successfully by maintainer and complete output parsed/validated by parent (L15–L16); no local Docker needed or authorized; commit 7211f8c.
+- F1 | S4 | route on resume | pending | Mobile "Mis publicaciones": listings held by an account suspension (`status_before_account_hold IS NOT NULL`) must not be shown as history; root cause `apps/frontend/core/utils/product-status.ts:41` classifies every HIDDEN as history | Commit: not created.
+- T2 | S1–S3,S5,S10 | route on resume | pending, future session by explicit user request | Harden mobile/admin session lifecycle | Commit: not created.
+- T3 | S1–S3,S6,S10 | route on resume | pending, future session by explicit user request | Harden login, signup, OTP and Google provisioning | Commit: not created.
+- T4 | S1–S3,S7,S10 | route on resume | pending, future session by explicit user request | Harden recovery and credential changes | Commit: not created.
+- T5 | S1–S3,S8,S10 | route on resume | pending, future session by explicit user request | Harden account deletion | Commit: not created.
+- T6 | S1–S3,S9,S10 | route on resume | pending, future session by explicit user request | Verify production configuration and integrated journeys | Commit: not created.
+
+## Log
+
+### L1 — Original request (verbatim)
+MSATER EL porposito de este woltree es auditoriar el sistema de auth que esta implementado en el proyecto, quiero que indagues y idenifiques posibles bugs, bad practices, code smell, DRY, etc etc, osea literalmente que me digas si esta lsito para producion o no. Obvio no quereos un sistema ultra vanguardista, simplemente uno MVP++, sencillo, profesional, y escalable. Se que auth es un modulo grarnde ya que implica, login, register, forgot pasword, frontend, backend, supabase y no se si mas cosas, entonces no se como quieras atacar esto, si gustaas primero una como que vsita general, de las cosas mas criticas o de las cosas que deven estar al 100% o mejor dicho como que las bases, y luego nos vamos aduitoriando bloque por bloque. sOLO investoiga, no implementes,ya que despeus tenemos queplanear como dividir las tareas para no meter un commit gigante.
+
+### L2 — Roadmap request (verbatim)
+va va, priemro arreglemos esto que comentaste, osea arreglemos los bloques 1-5 l;uego cuando temrinesmos o incluso en esas mismas seisones peudes hacer otra auditoria pero ya mas acotada que cuvbra desde backend hasta forntedn ya que cuando tienes un scoop definido es mas facil identificar los bugs o errores, o al menos asi lo veo yo. Antes de dar por centado el plan, analiza de nuevo los bloques y dime si esta correctoq ue este definido asi, ya que de ahi se van a basar todas las sesiones,ya que cada bloque lo trabajare en una seison diferente con sus commits propios para llevar un trabajo ordenado y mas facil. Entonces si quieres mi opinion, puedes hacer el roadmap o el plan como si no tuvieramos modulo auth contruido, pensadno que roadmap harias si tuvbieras qeu hacer un modulo auth, simple, oprofesional, y que siga buenas practicas y modernas. te esccho
+
+### L3 — Roadmap acceptance and block-1 implementation authorization (verbatim)
+perefcto guarda el plan, y en esta sesion empezaremos por el bloqque 1 por asi decirlo, y cada bloque con su commit respectuvo.
+
+### L4 — Initial audit evidence
+Initial read-only audit: branch `audit/auth`, clean working tree. Focused command `bun test ./apps/frontend/core/utils/__tests__/passwordChange.test.ts ./supabase/migrations/__tests__/on_auth_user_updated.test.ts`: exit 0, 18 pass, 0 fail. These helper/source tests do not prove runtime auth/security. No remote project accessed.
+
+### L5 — Block-1 focused investigation and blockers
+Generated types separate public profile fields from private role/status fields. `supabase/migrations/20260608000000_product_deletion_hardening.sql:172-235` recreates the account-status RPC against `public.profiles`; canonical query body targets `profiles_private`. The migration uses a TEXT status argument, while generated RPC types describe an enum argument; admin UI also sends `p_admin_id`, absent from the inspected migration signature. Verify live overloads before planning a corrective migration; do not edit historical SQL as a substitute for a forward deployment.
+`is_admin()` and the admin directory view are referenced, but definitions were not located by the focused exploration. Repository RLS/grants JSON files are snapshots, not live evidence. Broad grants alone are not proof of a role-escalation vulnerability.
+`apps/frontend/app/sell/index.tsx:27-43` prevents suspended users starting the sell flow. The system guard blocks banned users globally. `apps/admin-web/src/components/features/verify/UserSafetyActions.tsx` labels bans permanent but offers reactivation for all non-active users. The status RPC reactivates non-deleted HIDDEN products without recording why each was hidden. These behaviors do not define a coherent intended policy.
+No source mutation is safe for broad account-state enforcement until the user confirms the action matrix. No production-readiness claim is safe without live authorization evidence. No implementation or remote writes performed.
+
+### L6 — Delivery and resume
+Current scope: T1 only. Future T2–T6 sessions are intentionally deferred under L2/L3. Delivery strategy defaults to ask-on-risk; no PR shape selected and no publishing authorized. T1 authored-line forecast is not reliable before policy/live-inventory reconciliation; pause for scope agreement before a multi-area expansion. Documentation currently adds only this tracker; no source diff or block commit yet.
+On resume, read Engram topic `odd/auth-hardening/tasks` and reconcile this file. T1 policy is now accepted in L8; the remaining prerequisite is live authorization evidence. Keep the local file, full memory mirror and visible task projection synchronized. Security changes require independent verification; native review remains governed by the user-owned RDD switch and exact candidate consent.
+
+### L7 — User clarification of account states (verbatim)
+okey suspension, es mas par cunado se abre una disputa, ejemplo, uisario publica 3 productos, se le vende 1, el paquete llega al compardor y este reporta y abre un ticket, ahi podemos supsender al usario para que otra gebte mn compmre sus productos o haga auna accion fiunanciera hasat que se resuelvva el caso. Bneado ya es el estado critico y final de una cuenta, cunado el usario ejemplo si estafo de maanera clara oq uizo estafar de manera clara a un usario, ahi ay es banned, que actualmente peude inciciar seiosn pero lo manda a una pantalla en espesifico. Ya masomenos distinguiste como es? digo se parece a lo que comentaste, ojo lo que digo no es 100% lo quie deve sweri, simepre me gusta que debatamos y cuestiones si algo no te gusta o basicamnete yo estoy mal. QUE OPINAS?
+
+### L8 — Approval to record refined policy (verbatim)
+me gusta, me gusta ese plan, anotalo.
+
+Accepted proposal: administrator-decided suspension rather than automatic account-wide sanction on dispute creation; block new listings/sales/withdrawal requests, preserve evidence and existing fulfillment, allow controlled refunds/resolution, and do not automatically interrupt in-flight financial processes. Accepted recommendation: seller-scoped suspension leaves own purchases allowed. Banned accounts retain dedicated login/blocked-screen behavior, not regular app access; remove routine ban reactivation. Never indiscriminately re-verify hidden products on suspension recovery. S4 and the T1 blocker were updated accordingly. This turn records policy only; source implementation, migration, remote changes, and block commit remain pending live authorization inventory. Earlier L5 policy gaps are historical, superseded by this entry; deployment gaps remain open.
+
+### L9 — Start block 1 (verbatim)
+koey esta seison la usamos para bloque 1, peudes empezar a trabjar master.
+
+Reconciled local document with Engram observation 2462; only the untracked roadmap exists before this step. No Supabase MCP resources/templates or remote query tools are available in this session. T1a prepares a single catalog-only SELECT and instructions so the maintainer can supply live evidence without changing remote state. Do not guess deployed overloads or run remote SQL through alternate credential paths. Allowed T1a artifacts: `supabase/queries/auth/auth_deployed_inventory.sql`, `supabase/queries/auth/auth_deployed_inventory.md`, `supabase/queries/auth/__tests__/auth_deployed_inventory.test.ts`. Worker does not edit this tracker or commit. No existing command/API is changed; no differential runtime check is applicable to this additive diagnostic. SQL execution against PostgreSQL remains distinct from static safety checks. No block-1 completion or security claim is authorized by the diagnostic alone.
+
+### L10 — T1a diagnostic handoff and verification
+Created only the three allowed inventory artifacts: SQL 184 lines, guide 31 lines, tests 33 lines (248 authored lines). Parent read all three; catalog sources are PostgreSQL catalogs/builtins, not application data or user-defined function invocations. Output includes static-discovery and metadata-sanitization caveats; it is not exhaustive dependency discovery or effective behavior proof.
+Worker: focused RED exited 1 with both artifacts missing; an intermediate test exit 1 identified an incomplete permitted-builtin test allowlist, then focused GREEN exited 0 (2 pass/81 assertions). Existing catalog diagnostic test exited 0 (1 pass/61 assertions). Parent command `bun test ./supabase/queries/auth/__tests__/auth_deployed_inventory.test.ts ./supabase/queries/rls/__tests__/notification_cutover_preflight.test.ts` exited 0: 3 pass, 0 fail, 142 assertions. `git diff --check` passed; only the untracked tracker and new diagnostic directory are present. No existing command/API changed, so a differential baseline check is inapplicable.
+PostgreSQL execution is unavailable: worker `command -v psql` returned exit 1; no install, infrastructure start or alternative remote credential path attempted. Static guards are not PostgreSQL parser/runtime evidence. Whole-app tests/lint/device checks do not establish catalog SQL correctness and were not run for this additive diagnostic.
+Native ASSESS returned `nativeRisk: unassessable` because untracked files require an explicit scope declaration. Its plan retained writer self-verification and did not require an independent verifier; no native review started, approved or acknowledged. This result is not security approval or a commit gate bypass.
+T1a is done as a prepared/structurally checked handoff, not as a remotely executed inventory. T1 remains blocked: maintainer must run `supabase/queries/auth/auth_deployed_inventory.sql` in the intended Supabase Dashboard SQL Editor and provide the complete sanitized JSONB `inventory`, or the exact execution error. The query changes no data/schema/grants and deploys no functions. Do not regenerate DB types for this read-only collection. No auth runtime edits, migration, block commit, push or deployment performed. Next authorized step after inventory arrives: reconcile live signatures/permissions, then bound T1 fixes and tests.
+
+### L11 — Dashboard failure report (verbatim)
+okey mastre el preflight me salio error: Failed to run sql query: ERROR:  42725: operator is not unique: text || "char"
+LINE 154:   UNION ALL SELECT 'default_acls', d.defaclrole || '.' || d.defaclnamespace || '.' || d.defaclobjtype,
+                                                                                             ^
+HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
+
+### L12 — Bounded inventory compatibility correction
+Maintainer supplied the real PostgreSQL failure. Local runtime reproduction was unavailable: no `psql`; Docker context `desktop-linux` resolves to local `npipe:////./pipe/dockerDesktopLinuxEngine`, and `docker ps --format '{{.Names}} {{.Image}}'` succeeded with no running containers. No infrastructure was started or installed and no remote commands were run.
+Added a source-only regression assertion for explicit text casts in the default-ACL sort key. RED command `bun test ./supabase/queries/auth/__tests__/auth_deployed_inventory.test.ts --test-name-pattern 'default ACL sort key'` exited 1 (0 pass, 1 fail, 2 filtered). This reproduces the missing-cast source defect, not the PostgreSQL runtime error. Cast `defaclrole`, `defaclnamespace` and internal `"char"` `defaclobjtype` to `text` before concatenation; no other query section or permissions changed. Updated the handoff guide to acknowledge the failed original Dashboard execution rather than continuing to claim it never ran.
+GREEN command `bun test ./supabase/queries/auth/__tests__/auth_deployed_inventory.test.ts ./supabase/queries/rls/__tests__/notification_cutover_preflight.test.ts` exited 0: 4 pass, 0 fail, 143 assertions. `git diff --check` passed. Other existing catalog diagnostic still passes; no existing runtime command/parser/helper is changed, so a git-history differential check is inapplicable. Risk: none for the bounded diagnostic correction (no runtime auth/security control changed). Corrected PostgreSQL execution and complete inventory still require maintainer rerun of the entire SQL file. T1a is complete only as a corrected source-checked handoff; T1 remains blocked and no block commit has been created.
+
+### L13 — Second Dashboard failure report (verbatim)
+,e sa;iop este error ahora: Error: Failed to run sql query: ERROR: 22023: ACL arrays must be one-dimensional
+
+### L14 — Empty-ACL correction and execution-proof gate
+Reviewed Supabase monitoring/debugging documentation and PostgreSQL REL_17_STABLE `src/backend/utils/adt/acl.c`: `check_acl` rejects arrays unless `ARR_NDIM(acl) == 1`; `aclexplode` invokes it before expansion. The inventory feeds SQL `'{}'::aclitem[]` as the no-column-grants fallback, which can be zero-dimensional. This is a query defect, not evidence of broken deployed permissions.
+Guarded both `aclexplode` inputs (object/column fallback and configured default ACL) with `CASE WHEN pg_catalog.cardinality(acl) > 0 THEN acl END`. Empty input now becomes NULL for expansion; retain empty raw fields and do not replace empty explicit ACLs with default privileges. No change to access checks or underlying permissions.
+Source regression RED: `bun test ./supabase/queries/auth/__tests__/auth_deployed_inventory.test.ts --test-name-pattern 'ACL expansion skips'`, exit 1 (0 pass, 1 fail, 3 filtered). Source GREEN: `bun test ./supabase/queries/auth/__tests__/auth_deployed_inventory.test.ts ./supabase/queries/rls/__tests__/notification_cutover_preflight.test.ts`, exit 0 (5 pass, 0 fail, 146 assertions); `git diff --check` passed. Updated guide to record both failed real Dashboard attempts and lack of execution of the latest corrected query.
+Local PostgreSQL remains unavailable as previously established; did not retry discovery, install/start infrastructure or run remotely. T1a is reopened/blocked on actual execution proof, rather than calling another set of static checks sufficient. Proposed next proof route needs human authorization: download a PostgreSQL image if absent, create an isolated disposable local container with no host ports or persistent volumes, run the full inventory and empty/default/explicit-ACL cases, then remove only that owned test container. Alternatively, the maintainer may choose to run the corrected full SELECT in Dashboard. No source auth change, financial mutation, deployment, commit, or test-runner/config change. Risk: none for this diagnostic-only correction; no shared runtime helper or existing auth control changed.
+
+### L15 — Corrected inventory execution confirmation (verbatim)
+no hace falta master ya paso. Nomas detalle, es un log muy largo, de 22k lineas jajja, obvio es un json pero pues es algo largo, te lo paso todo? osea te lo puedo guardar en algun lado en el repo si es que queremos tenerlo a  la mano simepre o te o guardo en un archivo en mi carpeta temp.
+
+listo la ubicaicon es esta: C:\Temp\deployed-inventory.json
+
+User prefers keeping the raw export outside the worktree. Do not copy the raw export into the repository or memory.
+
+### L16 — Sanitized baseline inventory evidence
+Parent validated `C:/Temp/deployed-inventory.json`: SHA256 `cdc639799b2d58533e7cb40362ac24941aab49b0e47e85f1bff8b623450c00cb`, 1,034,459 bytes, valid wrapper `[{inventory}]`, 14 array sections, 27 functions, 28 policies, 2700 effective checks, 198 columns, 91 triggers. No expected objects missing except the `private` schema (not a failure). This temp file is provenance for that capture, not automatically current future state.
+Findings:
+- Deployed account-status RPC has one four-argument overload (target uuid, admin uuid, status `account_status`, reason text), targets `profiles_private` and validates the JWT actor plus `is_admin()`. The L5 historical migration mismatch is NOT a current deployed signature/target defect.
+- The actual RPC allows banned reactivation and indiscriminate nondeleted HIDDEN->VERIFIED product restoration, conflicting with L8 policy.
+- `is_admin()` reads the private role for `auth.uid()` but ignores account status.
+- Own-row `profiles` UPDATE RLS plus effective UPDATE on `is_verified_seller`, with NO noninternal `profiles` triggers, allows self-verification at the permission-model level (not live exploited).
+- `profiles_private` has no client UPDATE policy: broad role/status grants do NOT prove role escalation.
+- Admin directory view uses `security_invoker=true`; no public data leak is proven from grants alone.
+- Direct publish uses `products` INSERT; `fn_request_payout` is still called by the wallet store despite the disabled withdrawal UI.
+- `fn_reserve_products`/`fn_request_payout` bodies are absent from the 27 captured functions and `products` triggers were not collected: one bounded supplemental result is required before policy-gate implementation.
+No code, DB or security change, commit or deployment; no production-ready claim. T1a done; T1 blocked only on the supplemental result. Parent supplies the read-only catalog SELECT in its final answer; no additional diagnostic file or tests created.
+
+### L17 — Supplemental result location (verbatim)
+Litsoo master lo puse aqui: C:\Temp\supplemental.json
+
+### L18 — Supplemental evidence and block-1 implementation plan
+Parent read `C:/Temp/supplemental.json` (10,874 bytes, SHA256 `9597fca36a9b3d52c9a874d77feb6fc7024280960cc2e82a61577ede8b67d041`): one overload each of `fn_request_payout(numeric,uuid)` (SECURITY DEFINER, `search_path=""`, EXECUTE authenticated) and `fn_reserve_products(uuid,uuid[])` (SECURITY DEFINER, EXECUTE service_role only); `products` triggers `tr_product_fts_update` and `validate_product_publication_economics` (neither checks status or seller account); no noninternal `profiles` triggers.
+Confirmed permission-model defects (catalog evidence, not live exploitation):
+- D1: `products_insert` WITH CHECK only `auth.uid() = seller_id` and no trigger constrains `status`, so a client can insert a listing directly as `VERIFIED`, skipping admin verification; suspended/banned sellers can also insert.
+- D2: `products_update_owner` lets a suspended seller move HIDDEN products back to `PENDING_VERIFICATION`, re-entering the review queue.
+- D3: the deployed status RPC hides VERIFIED, PENDING_VERIFICATION and IN_REVIEW products on suspension but restores every nondeleted HIDDEN product to `VERIFIED`; pending listings therefore skip review, and unrelated hidden listings are published. It also allows `banned -> active`.
+- D4: own-row `profiles` UPDATE with table-wide grants lets users set `is_verified_seller`, `average_rating`, `total_reviews` and `total_sales` (forged trust signals). Clients only update `username` (`apps/frontend/core/hooks/updateProfileUsername.ts:14`) and `avatar_url` (`apps/frontend/core/hooks/useProfile.ts:48-50`).
+- D5: `fn_reserve_products` has no seller-status check; suspension currently blocks sales only indirectly by hiding listings (D1/D3 undermine that).
+- D6: `fn_request_payout` authenticates the JWT caller and is disabled by the `connect_enabled` guard, but has no account-status check (defense in depth for a legacy path still called by `useWalletStore`).
+- D7: `is_admin()` ignores account status, so a suspended or banned admin keeps admin authority.
+Controls confirmed sound: admin RPCs derive the actor from the JWT (ignore `p_admin_id`); `fn_reserve_products` is not client-callable; publication economics are server-validated; `fn_request_payout` uses an empty search_path and row lock.
+Plan: two high-risk work units, each its own commit, migration, canonical `supabase/queries` copy and focused source tests (no local PostgreSQL by maintainer choice, so behavioral proof is a rollback-only post-deploy script supplied with the deployment handoff). T1b fixes D3/D7 plus admin UI; T1c fixes D1/D2/D4/D5/D6. Existing purchases, fulfillment, disputes and refunds remain untouched. Out of scope, flagged for the user: whether admin-controlled Connect payout releases must refuse suspended sellers. Listings already hidden by a current suspension at deployment have no recorded prior status and stay HIDDEN for admin review.
+
+### L19 — T1b/T1c implementation and verification evidence
+T1b worker: RED 2 pass/21 fail (exit 1), GREEN 40 pass/0 fail. T1c worker: RED 3 pass/21 fail (exit 1), GREEN 46 pass/0 fail; existing `reservation_lifecycle_hardening.test.ts` 18 pass/0 fail.
+Parent drift check against `C:/Temp/supplemental.json`: `fn_reserve_products` matched the deployed body; `fn_request_payout` had been rebuilt from the 20260613 migration with English notification/ledger/log text that differs from the deployed Spanish text. Added a regression test (RED: 2 fail), restored the deployed literals in the migration and canonical copy (GREEN); a literal-level comparison now reports no deployed literal missing for either RPC. Deployed product column defaults confirmed NULL for verified_at/deleted_at/reserved_at/locked_by/rejection_reason and PENDING_VERIFICATION for status, so the new insert predicates accept the real publish payload.
+Independent verifier (gentle-ai-verify): D1, D2, D4, D5, D7 pass pending runtime proof; D6 pass; S10 met; blocker D3: a NULL `p_new_status` skipped the banned-final guard and wrote NULL, which every gate reads as active (un-ban). Fixed with an `INVALID_ACCOUNT_STATUS` guard before the lock/write, plus non-blocking note 1 (clear stale holds on listings an admin moved out of HIDDEN during a suspension). RED 4 fail, GREEN. Combined block-1 run: 92 pass/0 fail, 341 assertions, exit 0; `git diff --check` clean.
+Not run / unavailable: admin-web typecheck (`bunx tsc --noEmit -p tsconfig.app.json` failed with TS2688 `vite/client` because this worktree has no node_modules; no repo files changed); lint (no node_modules); PostgreSQL execution (maintainer declined local Docker). Pre-existing, out of scope: `validate_product_publication_economics` recomputes economics from current settings on every UPDATE, so status-only updates on listings published under older settings can raise `INVALID_OR_STALE_PUBLICATION_ECONOMICS` (already true of deployed RPCs). Risk: items 1, 2 and 6 (RLS/grants/SECURITY DEFINER changes; stored product status data; no executable regression test against PostgreSQL).
+
+### L20 — Full-suite parity and commit gate
+Full `bun test` on the candidate: 1696 pass, 28 fail, 19 errors (exit 1). Every error is a missing package (`react`, `zustand`, `zod`, `react/jsx-dev-runtime`) because this worktree has no node_modules. Differential check: the same suite on a clean `git archive HEAD` copy fails the identical set of 18 distinct test names, with nothing only in the candidate and nothing only in the base, so no regression is attributable to block 1. The Husky pre-commit hook runs `bun test`, so commits are blocked by this environment baseline until dependencies are installed in the worktree. Waiting for the user to authorize installing dependencies from the existing lockfile (or another commit route); `--no-verify` is not used without explicit permission. Engram mirror of this tracker is behind L19–L20 until the next sync.
+
+### L21 — Dependencies installed and commits
+User installed dependencies (verbatim): "okey master, hasta aqui todo bien no? sobre el bun install, ya lo corri, no ocupas correlo, dihco esto avanzamos o quieres ocmentar algo?"
+`bun.lock` shows as modified only by line endings (empty content diff); excluded from block commits. With dependencies: admin-web `tsc --noEmit -p tsconfig.app.json` exit 0; ESLint on touched TS files exit 0; full `bun test` 1873 pass, 0 fail, exit 0 (the earlier 28 failures were the missing-dependency baseline). Commits on `audit/auth` with the Husky hook passing: 7211f8c (catalog inventory diagnostic), 502c72f (T1b account-status lifecycle), then the T1c trust-boundary commit including this tracker. Split rationale (S2): two independent high-risk units plus a low-risk diagnostic, each reviewable and revertible alone. Native ASSESS per commit was unassessable while untracked files remained; rerun on the committed range once the tree is clean.
+Next: maintainer applies `20261018120000_account_status_lifecycle.sql` then `20261018130000_account_trust_boundaries.sql` in the Dashboard (no Edge Function deploy), confirms, then `bun db:types` and post-deploy verification. T1 closes only after that evidence.
+
+### L22 — Native review and deployment handoff
+Native ASSESS on the committed range: risk high, review due. Ordinary review `review-a07b22ddefa0ef9c` over base a56662c → 69c2530 (lenses risk + reliability, 2 host-relay reviewer runs): **approved**, acknowledged, authority burned. Advisory, non-blocking findings (separate later work, not a reason to re-review this candidate):
+- R1 (warning): between applying 20261018120000 and 20261018130000 an owner could still write `status_before_account_hold`; apply both migrations back-to-back in one session.
+- R3 profiles revoke (warning): any unlisted invoker-rights writer of `profiles` would now fail; post-deploy smoke must cover username/avatar edits and review/stat refresh paths.
+- R3 RESERVED not held (warning): listings RESERVED at suspension are not held; when that reservation expires, cleanup returns them to VERIFIED (visible), though the new reservation gate still blocks their sale. Follow-up candidate.
+- R3 unknown status (warning): `getAccountStatusActions` has no default branch for an unexpected status value. Follow-up candidate.
+- R3 reactivation copy (warning): modal promises restore to prior status, but listings hidden before deployment have no recorded prior status and stay hidden.
+- R3 SQL behavior unproved (warning): tests are source contracts; runtime proof is the post-deploy check.
+- R3 component wiring string test and inventory doc staleness (suggestions).
+Deployment handoff given to maintainer: run pre-check (admins by status), apply 20261018120000 then 20261018130000 back-to-back in Dashboard SQL Editor, no Edge Function/secret/cron change, run catalog verification query and app smoke checks, confirm, then `bun db:types` (expect `products.status_before_account_hold` and `fn_current_account_is_active`) and commit regenerated types. T1 stays in_progress until that evidence arrives.
+
+### L23 — Deployment confirmation and regenerated types (verbatim excerpt)
+"okey master detalles. En  una de las migraciones que por dcierto alique ambas y tdas pasaron y el preflight qe me pasaste muestra todo lo que dijiste  hold_column en true, Cada función con exactamente 1 overload., etc etc."
+Maintainer applied 20261018120000 and 20261018130000 without errors; catalog verification matched expectations (hold column present, exactly one overload per function, profile UPDATE limited to username/avatar_url/updated_at, helper not executable by anon). App smoke checks (suspend/reactivate/ban/publish/profile edits) not yet reported.
+`bun run db:types` exit 0. Generated diff: 12 hunks, 138 added lines; only 4 hunks (10 lines) belong to block 1 (`products.status_before_account_hold` Row/Insert/Update, `fn_current_account_is_active`). The other 8 hunks are already-deployed schema from other worktrees (shipment cancellation operations, shipment transfer functions, transfer_token/transfer_started_at); left unstaged so this branch does not carry another feature's types. Only the block-1 hunks were committed.
+User note: wallets and everything related are legacy and slated for deletion in a separate session. Block 1 only added an account-status gate to `fn_request_payout`; no new wallet dependency. Known blocker for that removal: `admin_user_directory_view` LEFT JOINs `wallets` and the admin login (`apps/admin-web/src/store/useAuthStore.ts`) reads that view, so the view must change before dropping wallets.
+T1 remains open only for the app smoke checks.
+
+### L24 — Post-deploy smoke checks (verbatim)
+1: si me deja entrar como admin. 2. SUpender una cuenta en efceto oculta el prodcuto. problema minimo, cunado usario entra a 'mis publicaciones', todo lo que esta publciado desaparece, y se va a historial, esto queda mal ui/ux anotalo paar evr cuando lo arreglamos. 3. En efceto todo vuelve al estado normal. 4. si, un usario baneado entra y sale el mensaje y el boton de cerrar sesion. 5. listo. todo parce estar bien, nomas el pequeno detalle de ui que comente, si quieres commitea o no se si loquieras commitear ya opara poder avanzar a lo siguiente, no se que quieres hacer ?
+
+Passed: active admin keeps dashboard access after the `is_admin()` change; suspension hides listings; reactivation restores prior statuses; banned login reaches the blocked screen with sign-out; own-row status actions absent. Not explicitly reported: mobile publish, username and avatar edits on an active account (the profiles column-grant change, R3 warning) — confirm before closing T1.
+New follow-up F1 (UI/UX, user-reported): during a suspension the seller's "Mis publicaciones" moves held listings to history because `product-status.ts:41` treats every HIDDEN as history. Distinguish account holds via `status_before_account_hold`. Not a block-1 security defect.
+
+### L25 — Mobile smoke confirmation and block-1 closure (verbatim)
+si master lo puede hacer. que sigue ? no hagas nada dime que sigue y refrescame que lleavmos echo de todo el plan por asi  decirlo
+
+Active-account mobile publish, username and avatar edits work after the profiles column-grant change. Block 1 (T1) closed. Open follow-ups: F1 (suspension-held listings shown as history), RESERVED listings not held on suspension, missing default branch in `getAccountStatusActions`, user decision on blocking admin Connect payout releases for suspended sellers, and the separate legacy wallet removal (`admin_user_directory_view` depends on `wallets`). Next: block 2 (sessions) in a new session on a new branch from updated main.

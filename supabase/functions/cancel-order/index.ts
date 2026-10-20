@@ -8,6 +8,7 @@ import {
   resolveManualShipmentCancelPlan,
   type ShipmentCancelItem,
 } from './cancel-order.ts';
+import { runShipmentCancellation } from '../_shared/shipment-cancellation.ts';
 import { buildStripeFeeReconciliationPlan } from '../stripe-webhooks/single-modal-settlement.ts';
 
 const corsHeaders = {
@@ -56,9 +57,7 @@ serve(async (req) => {
     const {
       data: { user },
       error: authError,
-    } = await supabaseAdmin.auth.getUser(
-      authHeader.replace('Bearer ', ''),
-    );
+    } = await supabaseAdmin.auth.getUser(authHeader.replace('Bearer ', ''));
     if (authError || !user) throw new ApiError(401, 'No autorizado');
 
     const { data: systemSettings, error: settingsError } = await supabaseAdmin
@@ -115,129 +114,213 @@ serve(async (req) => {
       throw new ApiError(403, 'UNAUTHORIZED');
     }
 
-    const { data: orderItems, error: itemsError } = await supabaseAdmin
-      .from('order_items')
-      .select('price_at_purchase, shipping_amount, shipment_id')
-      .eq('order_id', orderId);
-
-    if (itemsError) {
-      throw new ApiError(500, 'ORDER_ITEMS_NOT_FOUND');
+    if (shipment.status !== 'paid') {
+      throw new ApiError(422, 'SHIPMENT_NOT_CANCELABLE');
     }
-
-    let refundCharge: Stripe.Charge | null = null;
-    if (order.stripe_charge_id) {
-      try {
-        refundCharge = (await stripe.charges.retrieve(order.stripe_charge_id, {
-          expand: ['balance_transaction'],
-        })) as Stripe.Charge;
-      } catch {
-        throw new ApiError(500, 'STRIPE_CHARGE_NOT_FOUND');
-      }
-    }
-
-    let actualStripeFeeCents = order.actual_stripe_fee_cents ?? null;
-    if (actualStripeFeeCents === null && refundCharge) {
-      const feePlan = buildStripeFeeReconciliationPlan({
-        existingActualStripeFeeCents: order.actual_stripe_fee_cents ?? null,
-        charge: refundCharge as unknown as {
-          id: string;
-          balance_transaction?: string | { fee?: number | null } | null;
-        },
-        reconciledAt: new Date().toISOString(),
-      });
-
-      if (feePlan.kind === 'ready') {
-        actualStripeFeeCents = feePlan.actualStripeFeeCents;
-        const { error: feeUpdateError } = await supabaseAdmin
-          .from('orders')
-          .update({
-            actual_stripe_fee_cents: feePlan.actualStripeFeeCents,
-            stripe_fee_reconciled_at: feePlan.stripeFeeReconciledAt,
-            updated_at: feePlan.stripeFeeReconciledAt,
-          })
-          .eq('id', orderId)
-          .is('actual_stripe_fee_cents', null);
-
-        if (feeUpdateError) {
-          log('WARN', 'Could not persist on-demand Stripe fee reconciliation', {
-            orderId,
-            error: feeUpdateError.message,
-          });
-        }
-      } else {
-        log('WARN', 'Stripe fee reconciliation unavailable during cancel', {
-          orderId,
-          chargeId: order.stripe_charge_id,
-        });
-      }
-    }
-
-    const orderChargeCents = refundCharge?.amount
-      ? refundCharge.amount
-      : Math.round(Number(order.total_amount) * 100);
-    const remainingRefundableCents = refundCharge?.amount
-      ? refundCharge.amount - refundCharge.amount_refunded
-      : null;
-
-    const plan = resolveManualShipmentCancelPlan({
-      isMaintenance: false,
-      callerRole: isSeller ? 'seller' : 'buyer',
-      callerId: user.id,
-      orderId,
-      orderBuyerId: order.buyer_id,
-      shipmentSellerId: shipment.seller_id,
-      shipmentId,
-      shipmentOrderId: shipment.order_id,
-      shipmentStatus: shipment.status,
-      shipmentStripePaymentIntentId: shipment.stripe_payment_intent_id,
-      shipmentStripeTransferId: shipment.stripe_transfer_id,
-      shipmentItems: (orderItems ?? []).filter(
-        (item) => item.shipment_id === shipmentId,
-      ) as ShipmentCancelItem[],
-      orderItems: (orderItems ?? []) as ShipmentCancelItem[],
-      orderChargeCents,
-      remainingRefundableCents,
-      actualStripeFeeCents,
-      reason,
-      onCritical: (message, metadata) => log('CRITICAL', message, metadata),
-    });
-
-    try {
-      await stripe.refunds.create(plan.refundParams.params, plan.refundParams.options);
-    } catch (stripeError: unknown) {
-      const code =
-        typeof stripeError === 'object' && stripeError !== null
-          ? (stripeError as { code?: string }).code
-          : null;
-
-      if (code === 'charge_already_refunded') {
-        log('WARN', 'Charge already refunded', { shipmentId });
-      } else {
-        const msg =
-          stripeError instanceof Error ? stripeError.message : String(stripeError);
-        log('ERROR', 'Stripe refund failed', {
-          shipmentId,
-          error: msg,
-        });
-        throw new ApiError(500, `Error de Stripe: ${msg}`);
-      }
-    }
-
-    const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc(
-      'fn_cancel_shipment',
-      plan.rpcInput,
-    );
-
-    if (rpcError || !rpcData?.[0]?.success) {
-      log('CRITICAL', 'Refund processed but shipment cancel RPC failed', {
+    if (shipment.stripe_transfer_id) {
+      log('CRITICAL', 'CRITICAL_TRANSFER_BLOCKED', {
         orderId,
         shipmentId,
-        dbError: rpcError?.message || rpcData?.[0]?.error_message,
+        stripeTransferId: shipment.stripe_transfer_id,
       });
-      throw new ApiError(
-        500,
-        'Dinero devuelto, pero error al actualizar inventario. Soporte técnico ha sido notificado.',
-      );
+      throw new ApiError(409, 'STRIPE_TRANSFER_ALREADY_RELEASED');
+    }
+    if (!shipment.stripe_payment_intent_id) {
+      throw new ApiError(500, 'PAYMENT_INTENT_NOT_FOUND');
+    }
+
+    const result = await runShipmentCancellation({
+      context: {
+        orderId,
+        shipmentId,
+        actorId: user.id,
+        source: isSeller ? 'seller' : 'buyer',
+        reason,
+      },
+      claim: async (context) => {
+        const { data, error } = await supabaseAdmin.rpc(
+          'fn_claim_shipment_cancellation',
+          {
+            p_order_id: context.orderId,
+            p_shipment_id: context.shipmentId,
+            p_actor_id: context.actorId,
+            p_source: context.source,
+            p_reason: context.reason,
+          },
+        );
+        if (error) throw new ApiError(409, error.message);
+        return data;
+      },
+      prepare: async (winner) => {
+        const { data: orderItems, error: itemsError } = await supabaseAdmin
+          .from('order_items')
+          .select('price_at_purchase, shipping_amount, shipment_id')
+          .eq('order_id', orderId);
+
+        if (itemsError) {
+          throw new ApiError(500, 'ORDER_ITEMS_NOT_FOUND');
+        }
+
+        let refundCharge: Stripe.Charge | null = null;
+        if (order.stripe_charge_id) {
+          try {
+            refundCharge = (await stripe.charges.retrieve(
+              order.stripe_charge_id,
+              {
+                expand: ['balance_transaction'],
+              },
+            )) as Stripe.Charge;
+          } catch {
+            throw new ApiError(500, 'STRIPE_CHARGE_NOT_FOUND');
+          }
+        }
+
+        let actualStripeFeeCents = order.actual_stripe_fee_cents ?? null;
+        if (actualStripeFeeCents === null && refundCharge) {
+          const feePlan = buildStripeFeeReconciliationPlan({
+            existingActualStripeFeeCents: order.actual_stripe_fee_cents ?? null,
+            charge: refundCharge as unknown as {
+              id: string;
+              balance_transaction?: string | { fee?: number | null } | null;
+            },
+            reconciledAt: new Date().toISOString(),
+          });
+
+          if (feePlan.kind === 'ready') {
+            actualStripeFeeCents = feePlan.actualStripeFeeCents;
+            const { error: feeUpdateError } = await supabaseAdmin
+              .from('orders')
+              .update({
+                actual_stripe_fee_cents: feePlan.actualStripeFeeCents,
+                stripe_fee_reconciled_at: feePlan.stripeFeeReconciledAt,
+                updated_at: feePlan.stripeFeeReconciledAt,
+              })
+              .eq('id', orderId)
+              .is('actual_stripe_fee_cents', null);
+
+            if (feeUpdateError) {
+              log(
+                'WARN',
+                'Could not persist on-demand Stripe fee reconciliation',
+                {
+                  orderId,
+                  error: feeUpdateError.message,
+                },
+              );
+            }
+          } else {
+            log('WARN', 'Stripe fee reconciliation unavailable during cancel', {
+              orderId,
+              chargeId: order.stripe_charge_id,
+            });
+          }
+        }
+
+        const orderChargeCents = refundCharge?.amount
+          ? refundCharge.amount
+          : Math.round(Number(order.total_amount) * 100);
+        const remainingRefundableCents = refundCharge?.amount
+          ? refundCharge.amount - refundCharge.amount_refunded
+          : null;
+
+        const plan = resolveManualShipmentCancelPlan({
+          isMaintenance: false,
+          // The plan validates a manual owner; timeout takeover metadata remains
+          // authoritative in the coordinator's frozen provider request.
+          callerRole: winner.source === 'seller' ? 'seller' : 'buyer',
+          callerId:
+            winner.source === 'seller'
+              ? winner.actorId!
+              : winner.source === 'buyer'
+                ? winner.actorId!
+                : order.buyer_id,
+          orderId,
+          orderBuyerId: order.buyer_id,
+          shipmentSellerId: shipment.seller_id,
+          shipmentId,
+          shipmentOrderId: shipment.order_id,
+          shipmentStatus: shipment.status,
+          shipmentStripePaymentIntentId: shipment.stripe_payment_intent_id,
+          shipmentStripeTransferId: shipment.stripe_transfer_id,
+          shipmentItems: (orderItems ?? []).filter(
+            (item) => item.shipment_id === shipmentId,
+          ) as ShipmentCancelItem[],
+          orderItems: (orderItems ?? []) as ShipmentCancelItem[],
+          orderChargeCents,
+          remainingRefundableCents,
+          actualStripeFeeCents,
+          reason: winner.reason,
+          onCritical: (message, metadata) => log('CRITICAL', message, metadata),
+        });
+
+        return {
+          paymentIntentId: shipment.stripe_payment_intent_id!,
+          amountCents: plan.amountCents,
+          seguroShareCents:
+            plan.refundParams.params.metadata.seguro_share_cents,
+          cancellationLossCents: plan.rpcInput.p_cancellation_loss_cents,
+        };
+      },
+      start: async (input) => {
+        const { data, error } = await supabaseAdmin.rpc(
+          'fn_start_shipment_cancellation_refund',
+          {
+            p_shipment_id: input.shipmentId,
+            p_claim_token: input.claimToken,
+            p_refund_request: input.refundRequest,
+            p_cancellation_loss_cents: input.cancellationLossCents,
+          },
+        );
+        if (error) throw new ApiError(409, error.message);
+        return data;
+      },
+      refund: (request, options) => {
+        const fail = (stripeError: unknown): never => {
+          const msg =
+            stripeError instanceof Error
+              ? stripeError.message
+              : String(stripeError);
+          log('ERROR', 'Stripe refund failed', {
+            shipmentId,
+            error: msg,
+          });
+          throw new ApiError(500, `Error de Stripe: ${msg}`);
+        };
+        try {
+          return stripe.refunds.create(request, options).catch(fail);
+        } catch (stripeError: unknown) {
+          return fail(stripeError);
+        }
+      },
+      complete: async (winner, frozen) => {
+        const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc(
+          'fn_cancel_shipment',
+          {
+            p_shipment_id: winner.shipmentId,
+            p_cancelled_by_role:
+              winner.source === 'buyer' || winner.source === 'seller'
+                ? winner.source
+                : 'system',
+            p_reason: winner.reason,
+            p_cancellation_loss_cents: frozen.cancellationLossCents,
+          },
+        );
+
+        if (rpcError || !rpcData?.[0]?.success) {
+          log('CRITICAL', 'Refund processed but shipment cancel RPC failed', {
+            orderId,
+            shipmentId,
+            dbError: rpcError?.message || rpcData?.[0]?.error_message,
+          });
+          throw new ApiError(
+            500,
+            'Dinero devuelto, pero error al actualizar inventario. Soporte técnico ha sido notificado.',
+          );
+        }
+      },
+    });
+    if (result.status !== 'cancelled') {
+      throw new ApiError(409, 'CANCELLATION_' + result.status.toUpperCase());
     }
 
     log('INFO', 'Cancelación de shipment completada con éxito', {

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 const root = process.cwd();
 const migrationPath =
-  'supabase/migrations/20260915000000_fix_payout_release_amount_contract.sql';
+  'supabase/migrations/archive/20260915000000_fix_payout_release_amount_contract.sql';
 const sourcePath =
   'supabase/queries/payments/admin_connect_payout_release_view_shipping_cost_fix.sql';
 

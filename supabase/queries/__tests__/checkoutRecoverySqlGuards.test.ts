@@ -6,24 +6,24 @@ const readSql = (relativePath: string) =>
   readFileSync(join(process.cwd(), relativePath), 'utf8').replace(/\s+/g, ' ');
 
 const readRetryHardeningMigration = () => {
-  const migrationFile = readdirSync(join(process.cwd(), 'supabase/migrations')).find(
+  const migrationFile = readdirSync(join(process.cwd(), 'supabase/migrations/archive')).find(
     (file) => file.endsWith('_standalone_recovery_retry_hardening.sql'),
   );
 
   return {
     migrationFile,
-    sql: migrationFile ? readSql(`supabase/migrations/${migrationFile}`) : '',
+    sql: migrationFile ? readSql(`supabase/migrations/archive/${migrationFile}`) : '',
   };
 };
 
 const readOperationalControlMigration = () => {
-  const migrationFile = readdirSync(join(process.cwd(), 'supabase/migrations')).find(
+  const migrationFile = readdirSync(join(process.cwd(), 'supabase/migrations/archive')).find(
     (file) => file.endsWith('_checkout_recovery_worker_operational_control.sql'),
   );
 
   return {
     migrationFile,
-    sql: migrationFile ? readSql(`supabase/migrations/${migrationFile}`) : '',
+    sql: migrationFile ? readSql(`supabase/migrations/archive/${migrationFile}`) : '',
   };
 };
 
@@ -159,7 +159,7 @@ describe('checkout recovery SQL guards', () => {
 
   it('persists malformed or legacy charged metadata in a standalone shell when no order exists', () => {
     const sql = readSql('supabase/queries/orders/checkout_recovery.sql');
-    const migration = readSql('supabase/migrations/20260826045628_paid_checkout_recovery.sql');
+    const migration = readSql('supabase/migrations/archive/20260826045628_paid_checkout_recovery.sql');
     const upsertStart = sql.indexOf('fn_upsert_checkout_recovery_shell');
     const claimStart = sql.indexOf('fn_claim_checkout_recovery_shells');
     const upsert = sql.slice(upsertStart, claimStart);

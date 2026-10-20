@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 // Source contracts only; these checks do not execute PostgreSQL.
-const migration = join(import.meta.dir, '../20261008090000_atomic_payout_resume_mapping.sql');
+const migration = join(import.meta.dir, '../archive/20261008090000_atomic_payout_resume_mapping.sql');
 const canonical = join(import.meta.dir, '../../queries/payments/atomic_payout_resume_mapping.sql');
 const sql = existsSync(migration) ? readFileSync(migration, 'utf8') : '';
 test('specialized atomic RPC exists with locked server CAS and a version increment', () => {

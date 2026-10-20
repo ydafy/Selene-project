@@ -21,13 +21,11 @@
     "trustTitle": "Compra Protegida",
     "trustMsg": "Tu dinero está seguro. Selene lo retiene hasta que confirmes que el hardware funciona perfectamente.",
     "itemsCount": "Especificaciones del envío",
-
     "itemsTitlePurchased": "Productos comprados",
     "itemsTitleSold": "Productos vendidos",
     "addressTitle": "Dirección de envío",
     "trackingTitle": "Numero de guia",
     "paymentTitle": "Resumen de pago",
-
     "trackingProvider": "Paquetería express",
     "cancelledMsg": "El pedido ha sido cancelado. Si ya se había realizado un pago, el reembolso se procesará automáticamente.",
     "disputeMsgBuyer": "Tus fondos están protegidos por Selene. Estamos revisando el caso y emitiremos un veredicto en menos de 72 horas.",
@@ -111,7 +109,6 @@
   "errors": {
     "cannotCancel": "No se puede cancelar una orden que ya está en preparación"
   },
-
   "stepper": {
     "paid_desc": "Selene ha recibido tu pago de forma segura.",
     "preparing_desc": "El vendedor está empacando tu hardware.",
@@ -166,6 +163,7 @@
     "returnShipmentPendingSeller": "Guía generada. El comprador tiene {{timeLeft}} para enviar el paquete.",
     "returnShipmentInTransit": "El paquete de retorno ya está con la paquetería.",
     "returnDeliveredBuyer": "El vendedor ya recibió el paquete. Tu reembolso se procesará tras la inspección.",
+    "cancelledBuyer": "Tu envío fue cancelado. El reembolso se procesa al método de pago original. Una vez confirmado, tu banco puede tardar entre 5 y 10 días hábiles en reflejarlo.",
     "refundProcessedBuyer": "Tu reembolso ha sido procesado con éxito. El dinero se verá reflejado en tu cuenta en un plazo de 5 a 10 días hábiles.",
     "refundProcessedSeller": "Disputa cerrada. El dinero ha sido devuelto al comprador.",
     "reportReturnProblem": "Reportar problema con el retorno"
@@ -211,7 +209,6 @@
     "step1": "Descarga e imprime la guía completa (son 3 hojas).",
     "step2": "Pega la primera hoja en tu caja con cinta transparente en los bordes (sin tapar el código).",
     "step3": "Guarda las otras 2 hojas y lleva tu paquete a la sucursal de Paquete Express. Entréga las otras dos hojas si te las solicitan.",
-
     "contextLine": "Pedido #{{reference}} · Aún no se envía",
     "packTitle": "Empácalo así",
     "packSteps": [
@@ -286,7 +283,6 @@
       "labelOpenFailed": "Tu guía sigue guardada. No pudimos abrir el PDF; intenta abrirlo nuevamente."
     }
   },
-
   "dispute": {
     "wizardTitle": "Reportar un problema",
     "triageTitle": "Validación Técnica",
@@ -303,5 +299,19 @@
     "submitBtn": "Abrir Disputa y Congelar Pago",
     "successTitle": "Reporte Enviado",
     "successMsg": "Selene está revisando tu caso. El pago al vendedor ha sido congelado hasta nuevo aviso."
+  },
+  "tracking": {
+    "title": "Actualizaciones de rastreo",
+    "loading": "Cargando actualizaciones de rastreo…",
+    "empty": "Las actualizaciones aparecerán cuando la paquetería las reporte.",
+    "error": "No se pudieron cargar las actualizaciones. Inténtalo de nuevo.",
+    "events": {
+      "created": "Guía creada",
+      "information": "Actualización de paquetería",
+      "in_transit": "En camino",
+      "delivered": "Entregado",
+      "exception": "Incidente de entrega",
+      "returned": "Devuelto al remitente"
+    }
   }
 }

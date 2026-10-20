@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const sql = () => readFileSync(join(import.meta.dir, '..', '20260923000000_notification_client_authority.sql'), 'utf8');
+const sql = () => readFileSync(join(import.meta.dir, '..', 'archive', '20260923000000_notification_client_authority.sql'), 'utf8');
 
 describe('N4b notification client authority (static guards only)', () => {
   it('precedes N4a in one bounded transaction', () => {

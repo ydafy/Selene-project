@@ -1,76 +1,112 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
-};
+import { extractEnviaPollingObservations } from '../_shared/envia-tracking-ingestion.ts';
+import {
+  createTrackShipmentsHandler,
+  type TrackShipmentsDependencies,
+} from './handler.ts';
 
-const log = (
-  level: 'INFO' | 'WARN' | 'ERROR',
-  msg: string,
-  data?: Record<string, unknown>,
-) => {
-  console.log(
-    JSON.stringify({
-      timestamp: new Date().toISOString(),
-      function: 'track-shipments',
-      level,
-      msg,
-      ...data,
-    }),
+const BATCH_SIZE = 50;
+const TRACKING_DEADLINE_MS = 90_000;
+const POLLING_INTERVALS = {
+  preparing: 5 * 60 * 1000,
+  shipped: 15 * 60 * 1000,
+} as const;
+
+type UnknownRecord = Record<string, unknown>;
+
+const isRecord = (value: unknown): value is UnknownRecord =>
+  Boolean(value) && typeof value === 'object';
+
+const isInvalidPollingResponse = (value: unknown): boolean => {
+  if (!isRecord(value)) return true;
+
+  const history = value.history ?? value.events;
+  const observations = Array.isArray(history) ? history : [value];
+  return observations.some(
+    (observation) =>
+      !isRecord(observation) ||
+      !Object.hasOwn(observation, 'status') ||
+      typeof observation.status !== 'string' ||
+      observation.status.trim().length === 0,
   );
 };
 
-const BATCH_SIZE = 50;
+const createDeadline = () => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), TRACKING_DEADLINE_MS);
+  return { signal: controller.signal, dispose: () => clearTimeout(timeout) };
+};
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS')
-    return new Response('ok', { headers: corsHeaders });
-
-  try {
+const createDependencies = (): TrackShipmentsDependencies => ({
+  acquireLease: async (lane) => {
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
+    const { data, error } = await supabaseAdmin.rpc(
+      'fn_acquire_track_shipments_lease',
+      { p_lane: lane },
+    );
+    if (error) throw error;
 
-    log('INFO', 'Iniciando rastreo de paquetes');
-
-    // 1. Obtener shipments activos (priorizando los menos rastreados recientemente)
+    const lease = Array.isArray(data) ? data[0] : data;
+    if (!lease) throw new Error('TRACKING_LEASE_ACQUIRE_FAILED');
+    return {
+      acquired: Boolean(lease.acquired),
+      leaseId: lease.lease_id ?? undefined,
+    };
+  },
+  releaseLease: async (lane, leaseId) => {
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    );
+    const { error } = await supabaseAdmin.rpc(
+      'fn_release_track_shipments_lease',
+      { p_lane: lane, p_lease_id: leaseId },
+    );
+    if (error) throw error;
+  },
+  selectTargets: async (status, signal) => {
+    if (signal.aborted) throw new Error('TRACKING_DEADLINE_EXCEEDED');
+    const dueAt = new Date(
+      Date.now() - POLLING_INTERVALS[status],
+    ).toISOString();
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    );
     const { data: shipments, error: fetchError } = await supabaseAdmin
       .from('shipments')
-      .select('id, order_id, tracking_number, status')
-      .in('status', ['preparing', 'shipped'])
+      .select('id, tracking_number')
+      .eq('status', status)
       .not('tracking_number', 'is', null)
+      .or(`last_tracked_at.is.null,last_tracked_at.lte.${dueAt}`)
       .order('last_tracked_at', { ascending: true, nullsFirst: true })
+      .order('id', { ascending: true })
       .limit(BATCH_SIZE);
-
     if (fetchError) throw fetchError;
-    if (!shipments || shipments.length === 0) {
-      return new Response(
-        JSON.stringify({ message: 'No hay shipments para rastrear' }),
-        { status: 200 },
-      );
-    }
-
-    // 2. Configuración de API Envia
-    const mode = Deno.env.get('ENVIA_MODE') || 'sandbox';
+    if (signal.aborted) throw new Error('TRACKING_DEADLINE_EXCEEDED');
+    return (shipments ?? []).flatMap((shipment) =>
+      shipment.tracking_number
+        ? [{ id: shipment.id, trackingNumber: shipment.tracking_number }]
+        : [],
+    );
+  },
+  fetchObservations: async (trackingNumbers, signal) => {
+    const mode = Deno.env.get('ENVIA_MODE') ?? 'sandbox';
     const apiKey =
-      mode === 'sandbox'
-        ? Deno.env.get('ENVIA_API_KEY_SANDBOX')
-        : Deno.env.get('ENVIA_API_KEY_PROD');
+      mode === 'production'
+        ? Deno.env.get('ENVIA_API_KEY_PROD')
+        : Deno.env.get('ENVIA_API_KEY_SANDBOX');
     const apiUrl =
-      mode === 'sandbox'
-        ? 'https://api-test.envia.com'
-        : 'https://api.envia.com';
+      mode === 'production'
+        ? 'https://api.envia.com'
+        : 'https://api-test.envia.com';
+    if (!apiKey) throw new Error('MISSING_ENVIA_API_KEY');
 
-    // 3. Deduplicar tracking numbers para consulta masiva
-    const trackingNumbers = [
-      ...new Set(shipments.map((s) => s.tracking_number)),
-    ];
-
-    // 4. Consulta masiva a Envia.com
     const response = await fetch(`${apiUrl}/ship/generaltrack/`, {
       method: 'POST',
       headers: {
@@ -78,109 +114,70 @@ serve(async (req) => {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({ trackingNumbers }),
+      signal,
     });
-
-    const resData = await response.json();
-    if (!response.ok || resData.meta === 'error') {
-      throw new Error(`Envia API Error: ${resData.message || 'Unknown'}`);
+    const payload: unknown = await response.json();
+    const data =
+      payload && typeof payload === 'object'
+        ? (payload as { data?: unknown }).data
+        : undefined;
+    const meta =
+      payload && typeof payload === 'object'
+        ? (payload as { meta?: unknown }).meta
+        : undefined;
+    if (!response.ok || meta === 'error' || !Array.isArray(data)) {
+      throw new Error('ENVIA_TRACKING_REQUEST_FAILED');
     }
-
-    // Estados de Envia que confirman que el paquete ya está en manos de la paquetería
-    const CARRIER_IN_TRANSIT_STATUSES = new Set([
-      'recibido en oficina',
-      'recolectado',
-      'en tránsito',
-      'in-store pickup',
-      'in transit',
-      'picked up',
-    ]);
-
-    let deliveredCount = 0;
-    const processedIds: string[] = [];
-
-    // 5. Procesar resultados
-    for (const trackInfo of resData.data) {
-      // Encontrar todos los shipments que coincidan con este tracking number
-      const matchingShipments = shipments.filter(
-        (s) => s.tracking_number === trackInfo.trackingNumber,
-      );
-      if (matchingShipments.length === 0) continue;
-
-      const normalizedStatus = trackInfo.status?.toLowerCase() || '';
-
-      for (const shipment of matchingShipments) {
-        // Acumular ID para bulk update de last_tracked_at (evita N+1)
-        processedIds.push(shipment.id);
-
-        // 5a. Si el shipment sigue en 'preparing' y Envia ya lo recibió → shipped
-        if (
-          shipment.status === 'preparing' &&
-          CARRIER_IN_TRANSIT_STATUSES.has(normalizedStatus)
-        ) {
-          log('INFO', `Paquete recibido por paquetería`, {
-            shipmentId: shipment.id,
-            orderId: shipment.order_id,
-            enviaStatus: trackInfo.status,
-          });
-          await supabaseAdmin
-            .from('shipments')
-            .update({ status: 'shipped', shipped_at: new Date().toISOString() })
-            .eq('id', shipment.id);
-        }
-
-        // 5b. Si el estado es entregado, disparamos la RPC atómica
-        if (normalizedStatus === 'delivered') {
-          log('INFO', `Paquete entregado detectado`, {
-            shipmentId: shipment.id,
-            orderId: shipment.order_id,
-          });
-          const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc(
-            'fn_mark_shipment_delivered',
-            {
-              p_shipment_id: shipment.id,
-            },
-          );
-
-          if (rpcError || (rpcData && !rpcData[0]?.success)) {
-            log('ERROR', `Fallo al ejecutar fn_mark_shipment_delivered`, {
-              shipmentId: shipment.id,
-              orderId: shipment.order_id,
-              error: rpcError?.message || rpcData[0]?.error_message,
-            });
-          } else {
-            deliveredCount++;
-          }
-        }
-      }
+    if (data.some(isInvalidPollingResponse)) {
+      throw new Error('ENVIA_TRACKING_INVALID_RESPONSE');
     }
-
-    // 6. Bulk update: un solo viaje a DB para actualizar last_tracked_at de todos los procesados
-    if (processedIds.length > 0) {
-      await supabaseAdmin
-        .from('shipments')
-        .update({ last_tracked_at: new Date().toISOString() })
-        .in('id', processedIds);
-    }
-
-    log('INFO', 'Rastreo finalizado', {
-      total: shipments.length,
-      delivered: deliveredCount,
-    });
-
-    return new Response(
-      JSON.stringify({
-        processed: shipments.length,
-        delivered: deliveredCount,
-      }),
+    return data.flatMap(extractEnviaPollingObservations);
+  },
+  record: async (event, pollingRunId) => {
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    );
+    const { data, error } = await supabaseAdmin.rpc(
+      'fn_record_tracking_event',
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        p_shipment_id: event.targetId,
+        p_dispute_id: null,
+        p_event_type: event.eventType,
+        p_event_at: event.eventAt,
+        p_raw_status: event.rawStatus,
+        p_location: event.location,
+        p_status_description: event.statusDescription,
+        p_carrier_name: event.carrierName,
+        p_webhook_delivery_id: null,
+        p_polling_run_id: pollingRunId,
+        p_transition: event.transition,
       },
     );
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    log('ERROR', 'Fallo crítico en track-shipments', { error: message });
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
-    });
-  }
+    if (error) throw error;
+    return {
+      inserted: Boolean((data as { inserted?: boolean } | null)?.inserted),
+    };
+  },
+  markTracked: async (targetIds, trackedAt) => {
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    );
+    const { error } = await supabaseAdmin
+      .from('shipments')
+      .update({ last_tracked_at: trackedAt })
+      .in('id', targetIds);
+    if (error) throw error;
+  },
 });
+
+serve(
+  createTrackShipmentsHandler({
+    secret: Deno.env.get('TRACK_SHIPMENTS_CRON_SECRET'),
+    pollingEnabled: Deno.env.get('TRACK_SHIPMENTS_POLLING_ENABLED'),
+    dependencies: createDependencies(),
+    now: () => new Date(),
+    createDeadline,
+  }),
+);

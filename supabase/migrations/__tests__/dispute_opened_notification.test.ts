@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const root = join(import.meta.dir, '..', '..', '..');
-const migration = readFileSync(join(root, 'supabase/migrations/20260930000000_dispute_opened_notification.sql'), 'utf8');
+const migration = readFileSync(join(root, 'supabase/migrations/archive/20260930000000_dispute_opened_notification.sql'), 'utf8');
 const edge = readFileSync(join(root, 'supabase/functions/create-dispute/index.ts'), 'utf8');
 
 describe('dispute.opened transactional producer', () => {

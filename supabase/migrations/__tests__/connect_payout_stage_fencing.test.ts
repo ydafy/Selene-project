@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-const MIGRATIONS_DIR = join(import.meta.dir, '..');
+const MIGRATIONS_DIR = join(import.meta.dir, '..', 'archive');
 
 const readStageFencingMigration = (): string => {
   const migrationFile = readdirSync(MIGRATIONS_DIR)
@@ -36,7 +36,7 @@ const findFunction = (sql: string, name: string): string =>
 // T4 structural contract only: these assertions inspect repository SQL, not
 // PostgreSQL execution or the historical incident's unproven interleaving.
 describe('complete failed terminal replay SQL contract (not DB execution)', () => {
-  const canonicalDir = join(MIGRATIONS_DIR, '..', 'queries', 'payments');
+  const canonicalDir = join(MIGRATIONS_DIR, '..', '..', 'queries', 'payments');
   const sources = {
     standalone: readFileSync(join(canonicalDir, 'fn_project_payout_run_terminal.sql'), 'utf8'),
     combined: [...readFileSync(join(canonicalDir, 'connect_payout_stage_fencing.sql'), 'utf8')
@@ -109,7 +109,7 @@ describe('additive terminal projection migration', () => {
   test('canonical operational SQL ends with the same terminal function as the additive migration', () => {
     const migration = readFileSync(join(MIGRATIONS_DIR, '20261001070000_idempotent_failed_payout_terminal_projection.sql'), 'utf8');
     const canonical = readFileSync(
-      join(MIGRATIONS_DIR, '..', 'queries', 'payments', 'connect_payout_stage_fencing.sql'),
+      join(MIGRATIONS_DIR, '..', '..', 'queries', 'payments', 'connect_payout_stage_fencing.sql'),
       'utf8',
     );
     const name = 'fn_project_payout_run_terminal';
@@ -202,7 +202,7 @@ describe('late progress after terminal additive override', () => {
       join(MIGRATIONS_DIR, '20260923010000_late_payout_progress_after_paid.sql'), 'utf8',
     );
     const canonical = readFileSync(
-      join(MIGRATIONS_DIR, '..', 'queries', 'payments', 'connect_payout_stage_fencing.sql'), 'utf8',
+      join(MIGRATIONS_DIR, '..', '..', 'queries', 'payments', 'connect_payout_stage_fencing.sql'), 'utf8',
     );
     const definitions = [...canonical.matchAll(
       /CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.fn_project_payout_run_stage\b[\s\S]*?\$\$;/gi,
@@ -215,7 +215,7 @@ describe('late progress after terminal additive override', () => {
 describe('idempotent payout progress regression override', () => {
   test('final canonical stage override accepts only healthy in-transit replay of pending', () => {
     const migration = readFileSync(join(MIGRATIONS_DIR, '20260923030000_idempotent_payout_progress_regression.sql'), 'utf8');
-    const canonical = readFileSync(join(MIGRATIONS_DIR, '..', 'queries', 'payments', 'connect_payout_stage_fencing.sql'), 'utf8');
+    const canonical = readFileSync(join(MIGRATIONS_DIR, '..', '..', 'queries', 'payments', 'connect_payout_stage_fencing.sql'), 'utf8');
     const definitions = [...canonical.matchAll(/CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.fn_project_payout_run_stage\b[\s\S]*?\$\$;/gi)];
     expect(definitions).toHaveLength(3);
     const rpc = findFunction(migration, 'fn_project_payout_run_stage');
@@ -235,7 +235,7 @@ describe('idempotent payout progress regression override', () => {
 describe('stage-specific guarded park additive migration', () => {
   test('late progress on a complete failed payout is evidence-only, but incomplete or mismatched runs are not', () => {
     const migration = readFileSync(join(MIGRATIONS_DIR, '20260923040000_preserve_complete_failed_payout_progress.sql'), 'utf8');
-    const canonical = readFileSync(join(MIGRATIONS_DIR, '..', 'queries', 'payments', 'fn_decide_rejected_payout_stage_park.sql'), 'utf8');
+    const canonical = readFileSync(join(MIGRATIONS_DIR, '..', '..', 'queries', 'payments', 'fn_decide_rejected_payout_stage_park.sql'), 'utf8');
     const rpc = findFunction(migration, 'fn_decide_rejected_payout_stage_park');
     expect(findFunction(canonical, 'fn_decide_rejected_payout_stage_park').replaceAll('\r\n', '\n')).toBe(rpc.replaceAll('\r\n', '\n'));
     expect(rpc).toMatch(/FOR UPDATE/i);
@@ -251,7 +251,7 @@ describe('stage-specific guarded park additive migration', () => {
   });
   test('combined canonical decision retains the final failed-run override and missing-run conflict', () => {
     const migration = readFileSync(join(MIGRATIONS_DIR, '20260923040000_preserve_complete_failed_payout_progress.sql'), 'utf8');
-    const canonical = readFileSync(join(MIGRATIONS_DIR, '..', 'queries', 'payments', 'connect_payout_stage_fencing.sql'), 'utf8');
+    const canonical = readFileSync(join(MIGRATIONS_DIR, '..', '..', 'queries', 'payments', 'connect_payout_stage_fencing.sql'), 'utf8');
     const name = 'fn_decide_rejected_payout_stage_park';
     const rpc = findFunction(canonical, name);
     expect(rpc).not.toBe('');
