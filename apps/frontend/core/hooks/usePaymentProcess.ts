@@ -7,7 +7,9 @@
  * 2. Cleanup via rollback-connect-payment when the prepared session becomes stale.
  * 3. Race condition prevention using an asynchronous queue (lifecycleQueue) to serialize DB reservations and releases.
  * 4. Stale API response prevention using an atomic versioning counter (prepareVersion) for rapid checkout input changes.
- * 5. Automatic cleanup releasing reserved products upon screen unmounting.
+ * 5. Automatic cleanup on screen unmount through rollback-connect-payment. The client never
+ *    releases products directly; the server releases its own failed reservations and the
+ *    reservation TTL covers anything else.
  *
  * @version 1.3
  * @domain mobile-checkout-hooks
@@ -85,17 +87,6 @@ export const usePaymentProcess = () => {
     return isMounted.current && version === prepareVersion.current;
   }, []);
 
-  const releaseProductIds = useCallback(async (productIds: string[]) => {
-    if (productIds.length === 0 || isPaymentSuccessful.current) return;
-
-    try {
-      await supabase.rpc('fn_release_products', { p_product_ids: productIds });
-      if (__DEV__) console.log('[PAYMENT] Products released successfully');
-    } catch (e) {
-      console.error('[PAYMENT] Error releasing products:', e);
-    }
-  }, []);
-
   const rollbackOrReleaseSession = useCallback(
     async (session: CheckoutSessionSnapshot) => {
       if (isPaymentSuccessful.current) return;
@@ -124,10 +115,8 @@ export const usePaymentProcess = () => {
           console.error('[PAYMENT_ROLLBACK_ERROR]', rollbackError);
         }
       }
-
-      await releaseProductIds(session.productIds);
     },
-    [releaseProductIds],
+    [],
   );
 
   const disposeActiveSession = useCallback(async () => {
@@ -178,10 +167,8 @@ export const usePaymentProcess = () => {
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : String(err);
           if (errorMessage === 'RESERVATION_FAILED') {
-            await releaseProductIds(snapshot.productIds);
             if (canWriteState(version)) setError(t('payment.outOfStockMsg'));
           } else if (errorMessage === 'SELLER_NOT_ONBOARDED') {
-            await releaseProductIds(snapshot.productIds);
             if (canWriteState(version)) {
               setError(
                 'Seller onboarding is required before checkout for one or more items.',
@@ -220,8 +207,6 @@ export const usePaymentProcess = () => {
         });
         setIsReady(true);
       } catch (e: unknown) {
-        await releaseProductIds(snapshot.productIds);
-
         if (!canWriteState(version)) return;
 
         const errorMessage = e instanceof Error ? e.message : String(e);
@@ -235,7 +220,6 @@ export const usePaymentProcess = () => {
     [
       canWriteState,
       disposeActiveSession,
-      releaseProductIds,
       rollbackOrReleaseSession,
       setPaymentSession,
       t,
