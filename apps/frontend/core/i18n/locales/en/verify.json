@@ -82,7 +82,14 @@
     "successMessage": "Your product is under review. We will notify you when it is approved.",
     "errorTitle": "Error",
     "errorMessage": "Could not upload the tests. Please try again.",
-    "missingFields": "Please complete all required missions."
+    "missingFields": "Please complete all required missions.",
+    "permissionTitle": "Permission required",
+    "permissionMessage": "We need camera access to verify the product."
+  },
+  "load": {
+    "errorTitle": "We could not load your product",
+    "errorMessage": "Check your connection and try again.",
+    "retry": "Retry"
   },
   "rejection": {
     "title": "Verification Rejected",
