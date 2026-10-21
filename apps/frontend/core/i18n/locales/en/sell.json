@@ -112,12 +112,13 @@
     "insuranceWarning": "⚠️ Warning: If you disable insurance, you will be 100% responsible for any losses or damages during shipping.",
     "shippingInsurance": "Secure Shipping",
     "shippingInsuranceTitle": "What is insurance?",
-    "shippingInsuranceDescription": "Selene offers reimbursement for the product receipt value, in case the package arrives damaged, gets lost, or arrives incomplete.",
+    "shippingInsuranceDescription": "If the package is lost or arrives damaged, a refund is offered.",
     "shippingInsurancesText": "Your shipment is insured",
     "productPriceText": "Product Price",
     "youReceiveLabel": "You receive",
     "youReceiveHelpTitle": "How is what you receive calculated?",
-    "youReceiveHelpDescription": "The amount considers the commission, shipping logistics, and shipment protection."
+    "youReceiveHelpDescription": "This amount already includes the costs of your sale:\n\n• Shipping: we give you a ready label to drop your package off at the carrier.\n\n• Insurance: if the package is lost or arrives damaged, open a report and we review it.\n\n• {{commissionPct}}% commission: charged only when you sell, and it protects your payment.\n\nThe final shipping cost may vary slightly.",
+    "youReceiveHelpDescriptionNoRate": "This amount already includes the costs of your sale:\n\n• Shipping: we give you a ready label to drop your package off at the carrier.\n\n• Insurance: if the package is lost or arrives damaged, open a report and we review it.\n\n• Commission: charged only when you sell, and it protects your payment.\n\nThe final shipping cost may vary slightly."
   },
   "sections": {
     "price": "Set Your Price",

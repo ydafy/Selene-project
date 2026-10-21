@@ -367,7 +367,13 @@ export const SellDetailsForm: React.FC<SellDetailsFormProps> = ({
               <LabelWithHelp
                 label={t('fields.youReceiveLabel')}
                 helpTitle={t('fields.youReceiveHelpTitle')}
-                helpDescription={t('fields.youReceiveHelpDescription')}
+                helpDescription={
+                  earnings.commissionPct === null
+                    ? t('fields.youReceiveHelpDescriptionNoRate')
+                    : t('fields.youReceiveHelpDescription', {
+                        commissionPct: earnings.commissionPct,
+                      })
+                }
               />
             </Box>
 
