@@ -20,7 +20,19 @@ Bun monorepo with strict TypeScript.
 - `odd/tasks/`: one tracking document per feature (specs quoted from the maintainer, tasks, decision log).
 - `openspec/`, `sdd/`: older planning artifacts. Historical reference only.
 
-External services: Supabase/Postgres, Stripe Connect (payments and seller payouts), Envia.com (shipping labels and tracking).
+External services: Supabase/Postgres, Stripe Connect (payments and seller payouts), Envia.com (shipping labels and tracking), Sentry (backend errors and cron health).
+
+## Tooling you have
+
+Use these before guessing or asking the maintainer to look something up. MCP servers are configured per user (`~/.gentle-shell/agent/mcp.json`); if one listed here is missing from your session, say so instead of working around it.
+
+| Need                                | Tool                                                                                   |
+| ----------------------------------- | -------------------------------------------------------------------------------------- |
+| Run or test SQL and Edge Functions  | Local Supabase stack (CLI + Docker), see "Local Supabase"                              |
+| Read the remote database, logs      | Supabase MCP, read-only (`mcp__supabase__*`)                                           |
+| Read the Stripe sandbox             | Stripe MCP, read-only (`mcp__stripe__*`); Stripe CLI for local webhooks and triggers   |
+| Read production errors, cron health | Sentry MCP, read-only (`mcp__sentry__*`), see "Sentry"                                 |
+| Check dependency vulnerabilities    | `bun audit` command in "Commands"; weekly job `.github/workflows/dependency-audit.yml` |
 
 ## Where truth lives
 
@@ -130,6 +142,15 @@ Agents read the Stripe sandbox (`Selene sandbox`, test mode) through the officia
 - Create test scenarios with the Stripe CLI, not through the MCP.
 - Local payments loop, with the local Supabase stack running: `bun run functions:serve` (reads `supabase/functions/.env`, maintainer-owned and gitignored), then `bun run stripe:listen` to forward sandbox webhooks to the local `stripe-webhooks`, then `stripe trigger <event>`. `stripe:listen` (`scripts/stripe-listen.ts`) reads the current worktree's API URL and refuses non-local targets. When `stripe-webhooks` handles a new event type, add it to `STRIPE_WEBHOOK_EVENTS` in that script and to `docs/go-live.md`.
 - OAuth does not cover connected (seller) accounts.
+
+## Sentry
+
+Project `selene-ze/selene-edge-functions` (free plan) receives Edge Function errors. Agents read it through the read-only Sentry MCP (`mcp__sentry__*`: `search_issues`, `search_errors`, `get_sentry_resource`, ...); write tools are hidden. Never resolve, assign, or edit issues.
+
+- Wrap every Edge Function handler: `serve(withSentry('<folder-name>', handler))` from `_shared/sentry.ts`. It reports thrown errors and 5xx responses only, never bodies, headers, URLs, or user data. Do not call the Sentry SDK directly.
+- `cron-watchdog` checks every pg_cron job through `fn_cron_health()` and reports failed or overdue jobs; it is the only Sentry Cron Monitor the plan allows. A new cron job needs a schedule `cron-watchdog/health.ts` supports.
+- `SENTRY_DSN` is a Supabase secret; locally it lives in `supabase/functions/.env` with `SENTRY_ENVIRONMENT=local`. Without a DSN the helper does nothing.
+- When investigating a production bug, search Sentry before reading logs.
 
 ## Git
 
