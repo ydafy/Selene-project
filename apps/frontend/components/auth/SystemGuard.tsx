@@ -7,6 +7,8 @@ import React from 'react';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTheme } from '@shopify/restyle';
+import { useTranslation } from 'react-i18next';
 
 import { Box, Text } from '../base';
 import { PrimaryButton } from '../ui/PrimaryButton';
@@ -17,10 +19,13 @@ import { MaintenanceScreen } from '../ui/MaintenanceScreen';
 import { useSystemConfig } from '../../core/hooks/useSystemConfig';
 import { useAuthContext } from '../auth/AuthProvider';
 import { isVersionLower } from '../../core/utils/version';
+import { Theme } from '../../core/theme';
 
 export function SystemGuard({ children }: { children: React.ReactNode }) {
   const { data: config, isLoading, isError, refetch } = useSystemConfig();
   const { isBanned, statusReason } = useAuthContext();
+  const { t } = useTranslation('auth');
+  const theme = useTheme<Theme>();
   const currentVersion = Constants.expoConfig?.version || '1.0.0';
 
   if (isLoading && !config) return null;
@@ -53,7 +58,7 @@ export function SystemGuard({ children }: { children: React.ReactNode }) {
           <MaterialCommunityIcons
             name="account-cancel"
             size={40}
-            color="theme.colors.error"
+            color={theme.colors.error}
           />
         </Box>
 
@@ -63,7 +68,7 @@ export function SystemGuard({ children }: { children: React.ReactNode }) {
           textAlign="center"
           marginBottom="s"
         >
-          CUENTA SUSPENDIDA
+          {t('auth:bannedAccount.title')}
         </Text>
 
         <Text
@@ -72,12 +77,11 @@ export function SystemGuard({ children }: { children: React.ReactNode }) {
           textAlign="center"
           marginBottom="xl"
         >
-          {statusReason ||
-            'Tu cuenta ha sido dada de baja permanentemente por infringir las normas de seguridad de Selene.'}
+          {statusReason || t('auth:bannedAccount.defaultMessage')}
         </Text>
 
         <PrimaryButton onPress={() => signOutUser()}>
-          CERRAR SESIÓN
+          {t('auth:bannedAccount.signOut')}
         </PrimaryButton>
       </Box>
     );
