@@ -4,10 +4,9 @@ import 'react-native-url-polyfill/auto';
 
 import { AppState, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createClient } from '@supabase/supabase-js';
 import { Database } from '@selene/types';
 
-import { bindAutoRefreshToAppState, createNativeAuthOptions } from './authSession';
+import { createNativeSupabaseClient } from './nativeClient';
 
 // Obtenemos la URL y la llave anónima de las variables de entorno.
 // El prefijo EXPO_PUBLIC_ es la forma en que Expo nos permite acceder a estas variables en la app.
@@ -24,15 +23,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 // Creamos y exportamos el cliente de Supabase.
 // Esta es la única instancia que importaremos y usaremos en toda la aplicación.
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-  auth: createNativeAuthOptions(AsyncStorage),
-});
-
-// On web, auth-js follows page visibility itself.
-if (Platform.OS !== 'web') {
-  bindAutoRefreshToAppState(
-    supabase.auth,
-    AppState,
-    supabase.auth.getSession(),
-  );
-}
+export const supabase = createNativeSupabaseClient<Database>(
+  supabaseUrl,
+  supabaseAnonKey,
+  { storage: AsyncStorage, appState: AppState, platformOS: Platform.OS },
+);
