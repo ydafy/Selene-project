@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   resolveMediaType,
+  uploadMediaFromBase64,
   uploadMediaFromUri,
 } from '../../core/storage/uploadMedia';
 
@@ -155,6 +156,128 @@ describe('uploadMediaFromUri', () => {
     expect((payload as { bucket: string }).bucket).toBe('products');
     const serialized = JSON.stringify(errorSpy.mock.calls[0]);
     expect(serialized).not.toContain(base.uri);
+    expect(serialized).not.toContain(base.path);
+  });
+});
+
+describe('uploadMediaFromUri maxBytes', () => {
+  let errorSpy: ReturnType<typeof spyOn>;
+  beforeEach(() => {
+    errorSpy = spyOn(console, 'error').mockImplementation(() => {});
+  });
+  afterEach(() => errorSpy.mockRestore());
+
+  const base = {
+    bucket: 'evidence',
+    path: 'disputes/o/u/v.mp4',
+    uri: 'file:///private/v.mp4',
+    contentType: 'video/mp4',
+    upsert: true,
+    maxBytes: 10,
+  };
+
+  it('throws MEDIA_TOO_LARGE above the limit and never uploads', async () => {
+    const { storage, calls } = makeStorage({ data: { path: 'p' }, error: null });
+    await expect(
+      uploadMediaFromUri({ ...base, storage, fetchImpl: makeFetch(true, 11) }),
+    ).rejects.toThrow('MEDIA_TOO_LARGE');
+    expect(calls).toHaveLength(0);
+  });
+
+  it('uploads when the body is exactly at the limit', async () => {
+    const { storage, calls } = makeStorage({ data: { path: 'p' }, error: null });
+    await expect(
+      uploadMediaFromUri({ ...base, storage, fetchImpl: makeFetch(true, 10) }),
+    ).resolves.toBe('p');
+    expect(calls).toHaveLength(1);
+  });
+});
+
+describe('uploadMediaFromBase64', () => {
+  let errorSpy: ReturnType<typeof spyOn>;
+  beforeEach(() => {
+    errorSpy = spyOn(console, 'error').mockImplementation(() => {});
+  });
+  afterEach(() => errorSpy.mockRestore());
+
+  const base = {
+    bucket: 'evidence',
+    path: 'shipments/o/u/secret-slot.jpg',
+    base64: 'SECRETBASE64PAYLOAD',
+    contentType: 'image/jpeg',
+    upsert: true,
+  };
+  const decode = (bytes: number) => () => new ArrayBuffer(bytes);
+
+  it('throws MEDIA_EMPTY for missing or empty base64 and never uploads', async () => {
+    const { storage, calls } = makeStorage({ data: { path: 'p' }, error: null });
+    for (const value of [undefined, null, '']) {
+      await expect(
+        uploadMediaFromBase64({
+          ...base,
+          base64: value,
+          storage,
+          decode: decode(4),
+        }),
+      ).rejects.toThrow('MEDIA_EMPTY');
+    }
+    expect(calls).toHaveLength(0);
+  });
+
+  it('throws MEDIA_EMPTY when the decoded body has zero bytes', async () => {
+    const { storage, calls } = makeStorage({ data: { path: 'p' }, error: null });
+    await expect(
+      uploadMediaFromBase64({ ...base, storage, decode: decode(0) }),
+    ).rejects.toThrow('MEDIA_EMPTY');
+    expect(calls).toHaveLength(0);
+  });
+
+  it('rethrows the storage error', async () => {
+    const storageError = new Error('bucket exploded');
+    const { storage } = makeStorage({ data: null, error: storageError });
+    await expect(
+      uploadMediaFromBase64({ ...base, storage, decode: decode(4) }),
+    ).rejects.toBe(storageError);
+  });
+
+  it('throws MEDIA_UPLOAD_NO_PATH when storage returns no path', async () => {
+    const { storage } = makeStorage({ data: null, error: null });
+    await expect(
+      uploadMediaFromBase64({ ...base, storage, decode: decode(4) }),
+    ).rejects.toThrow('MEDIA_UPLOAD_NO_PATH');
+  });
+
+  it('uploads with exact args and returns data.path', async () => {
+    const { storage, calls } = makeStorage({
+      data: { path: 'stored.jpg' },
+      error: null,
+    });
+    const result = await uploadMediaFromBase64({
+      ...base,
+      storage,
+      decode: decode(4),
+    });
+    expect(result).toBe('stored.jpg');
+    expect(calls).toHaveLength(1);
+    const [bucket, path, body, options] = calls[0];
+    expect(bucket).toBe('evidence');
+    expect(path).toBe(base.path);
+    expect((body as ArrayBuffer).byteLength).toBe(4);
+    expect(options).toEqual({ contentType: 'image/jpeg', upsert: true });
+    expect(errorSpy).not.toHaveBeenCalled();
+  });
+
+  it('logs once with the bucket but never base64 or path', async () => {
+    const { storage } = makeStorage({ data: null, error: new Error('boom') });
+    await expect(
+      uploadMediaFromBase64({ ...base, storage, decode: decode(4) }),
+    ).rejects.toThrow('boom');
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    const [label, payload] = errorSpy.mock.calls[0];
+    expect(label).toBe('[media] upload failed');
+    expect((payload as { bucket: string }).bucket).toBe('evidence');
+    const serialized = JSON.stringify(errorSpy.mock.calls[0]);
+    expect(serialized).not.toContain(base.base64);
     expect(serialized).not.toContain(base.path);
   });
 });

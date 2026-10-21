@@ -1,13 +1,17 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../db/supabase';
+import { resolveMediaType, uploadMediaFromUri } from '../storage/uploadMedia';
 
 const MAX_VIDEO_SIZE_BYTES = 50 * 1024 * 1024; // 50MB (Límite Supabase Free)
 const MAX_VIDEO_DURATION_MS = 120000; // 2 Minutos
 
 export const useVideoUpload = () => {
+  const { t } = useTranslation('disputes');
   const [uploading, setUploading] = useState(false);
+  const uploadingRef = useRef(false);
   const [status, requestPermission] = ImagePicker.useMediaLibraryPermissions();
 
   const pickVideo = async () => {
@@ -15,7 +19,10 @@ export const useVideoUpload = () => {
       const hasPermission =
         status?.granted || (await requestPermission()).granted;
       if (!hasPermission) {
-        Alert.alert('Permiso denegado', 'Necesitamos acceso a tus videos.');
+        Alert.alert(
+          t('video.permissionDeniedTitle'),
+          t('video.permissionDeniedMsg'),
+        );
         return null;
       }
 
@@ -32,72 +39,51 @@ export const useVideoUpload = () => {
 
       // 1. Validación de Duración
       if (asset.duration && asset.duration > MAX_VIDEO_DURATION_MS) {
-        Alert.alert(
-          'Video muy largo',
-          'El video no debe superar los 2 minutos. Por favor, recórtalo.',
-        );
+        Alert.alert(t('video.tooLongTitle'), t('video.tooLongMsg'));
         return null;
       }
 
       // 2. Validación de Tamaño (Evitar Error 413 de Supabase)
       if (asset.fileSize && asset.fileSize > MAX_VIDEO_SIZE_BYTES) {
-        Alert.alert(
-          'Archivo muy pesado',
-          'El video supera los 50MB. Intenta grabar en una resolución menor.',
-        );
+        Alert.alert(t('video.tooLargeTitle'), t('video.tooLargeMsg'));
         return null;
       }
 
       return asset;
     } catch (error) {
       console.error('[Picker Error]', error);
-      Alert.alert('Error', 'No se pudo abrir el selector de video.');
+      Alert.alert(t('video.pickerErrorTitle'), t('video.pickerErrorMsg'));
       return null;
     }
   };
 
   const uploadVideo = async (orderId: string, userId: string, uri: string) => {
-    if (!orderId || !userId)
-      throw new Error('Faltan parámetros de identificación (Order/User)');
+    if (!orderId || !userId) throw new Error('VIDEO_MISSING_IDS');
+    if (uploadingRef.current) throw new Error('VIDEO_UPLOAD_IN_PROGRESS');
 
+    uploadingRef.current = true;
     setUploading(true);
     try {
-      console.log('[Video Upload] URI:', uri);
+      const { ext, contentType } = resolveMediaType(uri);
+      const path = `disputes/${orderId}/${userId}/unboxing_${Date.now()}.${ext}`;
 
-      // 1. Obtenemos el Blob nativo directo del archivo físico (sin Base64 ni ArrayBuffers)
-      const response = await fetch(uri);
-      const arrayBuffer = await response.arrayBuffer();
-
-      console.log(
-        '[Video Upload] ArrayBuffer size (bytes):',
-        arrayBuffer.byteLength,
-      );
-      const fileName = `unboxing_${Date.now()}.mp4`;
-      const path = `disputes/${orderId}/${userId}/${fileName}`;
-      console.log('[Video Upload] Uploading to path:', path);
-
-      // Le pasamos el 'arrayBuffer' directamente a Supabase
-      const { error } = await supabase.storage
-        .from('evidence')
-        .upload(path, arrayBuffer, {
-          contentType: 'video/mp4',
-          upsert: true,
-        });
-
-      if (error) {
-        console.error('[Video Upload] Supabase error:', error);
-        throw error;
-      }
+      // The picker can omit fileSize, so the limit is enforced on the real bytes.
+      await uploadMediaFromUri({
+        storage: supabase.storage,
+        bucket: 'evidence',
+        path,
+        uri,
+        contentType,
+        upsert: true,
+        maxBytes: MAX_VIDEO_SIZE_BYTES,
+      });
 
       const { data: urlData } = supabase.storage
         .from('evidence')
         .getPublicUrl(path);
-      console.log('[Video Upload] Success, URL:', urlData.publicUrl);
       return urlData.publicUrl;
-    } catch (error: any) {
-      console.error('[Video Upload Error]', error.message, error);
-      throw error;
     } finally {
+      uploadingRef.current = false;
       setUploading(false);
     }
   };

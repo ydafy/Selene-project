@@ -89,6 +89,16 @@
       "package": "Packaging"
     }
   },
+  "video": {
+    "permissionDeniedTitle": "Permission denied",
+    "permissionDeniedMsg": "We need access to your videos.",
+    "tooLongTitle": "Video too long",
+    "tooLongMsg": "The video must not exceed 2 minutes. Please trim it.",
+    "tooLargeTitle": "File too large",
+    "tooLargeMsg": "The video exceeds 50MB. Try recording at a lower resolution.",
+    "pickerErrorTitle": "Error",
+    "pickerErrorMsg": "Could not open the video picker."
+  },
   "errors": {
     "noActiveDispute": "No active dispute to contest",
     "videoUploadFailed": "Video could not be uploaded. Please try again."
