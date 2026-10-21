@@ -19,7 +19,6 @@ import { ProductSummaryModal } from '../../components/features/checkout/ProductS
 import { Stack } from 'expo-router';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useCartStore } from '@/core/store/useCartStore';
-import { supabase } from '@/core/db/supabase';
 
 export default function PaymentScreen() {
   const { t } = useTranslation('checkout');
@@ -27,9 +26,6 @@ export default function PaymentScreen() {
 
   const summaryModalRef = useRef<BottomSheetModal>(null);
   const items = useCartStore((state) => state.items);
-
-  const isPaidRef = useRef(false);
-  const productIdsRef = useRef(items.map((i) => i.id));
 
   const {
     loading,
@@ -48,7 +44,6 @@ export default function PaymentScreen() {
     const result = await handlePayment();
 
     if (result.success) {
-      isPaidRef.current = true;
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } else if (!result.cancelled) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -61,22 +56,6 @@ export default function PaymentScreen() {
     const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => sub.remove();
   }, [isBusy]);
-
-  useEffect(() => {
-    return () => {
-      if (!isPaidRef.current && productIdsRef.current.length > 0) {
-        supabase
-          .rpc('fn_release_products', {
-            p_product_ids: productIdsRef.current,
-          })
-          .then(({ error }) => {
-            if (error && __DEV__) {
-              console.error('[RELEASE_ERROR]:', error.message);
-            }
-          });
-      }
-    };
-  }, []);
 
   if (error) {
     return (

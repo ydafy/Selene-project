@@ -1,6 +1,9 @@
 -- ============================================================================
 -- Source of truth for fn_release_products.
--- Registered by migration 20260701000000_reservation_lifecycle_hardening.sql.
+-- Registered by migration 20260701000000_reservation_lifecycle_hardening.sql
+-- (archived); authorization fixed by
+-- 20261020214153_release_products_service_role_only.sql (service_role only,
+-- SECURITY INVOKER, no session check).
 -- Deployable as a standalone CREATE OR REPLACE FUNCTION statement.
 -- ============================================================================
 
