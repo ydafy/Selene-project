@@ -26,13 +26,14 @@ External services: Supabase/Postgres, Stripe Connect (payments and seller payout
 
 Use these before guessing or asking the maintainer to look something up. MCP servers are configured per user (`~/.gentle-shell/agent/mcp.json`); if one listed here is missing from your session, say so instead of working around it.
 
-| Need                                | Tool                                                                                   |
-| ----------------------------------- | -------------------------------------------------------------------------------------- |
-| Run or test SQL and Edge Functions  | Local Supabase stack (CLI + Docker), see "Local Supabase"                              |
-| Read the remote database, logs      | Supabase MCP, read-only (`mcp__supabase__*`)                                           |
-| Read the Stripe sandbox             | Stripe MCP, read-only (`mcp__stripe__*`); Stripe CLI for local webhooks and triggers   |
-| Read production errors, cron health | Sentry MCP, read-only (`mcp__sentry__*`), see "Sentry"                                 |
-| Check dependency vulnerabilities    | `bun audit` command in "Commands"; weekly job `.github/workflows/dependency-audit.yml` |
+| Need                                    | Tool                                                                                   |
+| --------------------------------------- | -------------------------------------------------------------------------------------- |
+| Run or test SQL and Edge Functions      | Local Supabase stack (CLI + Docker), see "Local Supabase"                              |
+| Read the remote database, logs          | Supabase MCP, read-only (`mcp__supabase__*`)                                           |
+| Read the Stripe sandbox                 | Stripe MCP, read-only (`mcp__stripe__*`); Stripe CLI for local webhooks and triggers   |
+| Read production errors, cron health     | Sentry MCP, read-only (`mcp__sentry__*`), see "Sentry"                                 |
+| Check dependency vulnerabilities        | `bun audit` command in "Commands"; weekly job `.github/workflows/dependency-audit.yml` |
+| Call local endpoints and Edge Functions | Bruno collection in `bruno/`, see "Bruno collection"                                   |
 
 ## Where truth lives
 
@@ -142,6 +143,11 @@ Agents read the Stripe sandbox (`Selene sandbox`, test mode) through the officia
 - Create test scenarios with the Stripe CLI, not through the MCP.
 - Local payments loop, with the local Supabase stack running: `bun run functions:serve` (reads `supabase/functions/.env`, maintainer-owned and gitignored), then `bun run stripe:listen` to forward sandbox webhooks to the local `stripe-webhooks`, then `stripe trigger <event>`. `stripe:listen` (`scripts/stripe-listen.ts`) reads the current worktree's API URL and refuses non-local targets. When `stripe-webhooks` handles a new event type, add it to `STRIPE_WEBHOOK_EVENTS` in that script and to `docs/go-live.md`.
 - OAuth does not cover connected (seller) accounts.
+
+## Bruno collection
+
+`bruno/` holds the HTTP requests (`.bru`) for the local stack of the current worktree. Run `bun run bruno:env` to generate the gitignored `bruno/.env` from `supabase status --env`, then `bun run api:test` to run everything (the `functions` folder needs `supabase functions serve --no-verify-jwt --env-file supabase/functions/.env`).
+Requests must never mutate remote data and target only the local stack; `bruno:env` refuses non-local URLs.
 
 ## Sentry
 

@@ -1,0 +1,27 @@
+meta {
+  name: stripe-webhooks-unsigned
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/stripe-webhooks
+  body: json
+  auth: none
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("rejects a request without a Stripe signature", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody()).to.equal("No signature");
+  });
+}
+
+docs {
+  Needs `supabase functions serve --no-verify-jwt --env-file supabase/functions/.env`.
+  Proves the webhook refuses unsigned calls before touching any data.
+}

@@ -20,6 +20,8 @@
     "functions:serve": "supabase functions serve --env-file supabase/functions/.env",
     "stripe:listen": "bun scripts/stripe-listen.ts",
     "worktree:env": "bun scripts/worktree-env.ts",
+    "bruno:env": "bun scripts/bruno-env.ts",
+    "api:test": "cd bruno && bunx @usebruno/cli@4.2.1 run -r --env local",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "db:types": "bunx supabase gen types typescript --project-id acoiclkeymgtlwcxilun --schema public > packages/types/src/database.types.ts",

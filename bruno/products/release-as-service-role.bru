@@ -1,0 +1,34 @@
+meta {
+  name: release-as-service-role
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_release_products
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_product_ids": ["00000000-0000-4000-8000-0000000000b1"]
+  }
+}
+
+tests {
+  test("service role can call fn_release_products", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ success: true }]);
+  });
+}
+
+docs {
+  Only service_role may execute fn_release_products. The seeded product is already
+  VERIFIED, so the status guard skips it and nothing changes (the call is idempotent).
+}
