@@ -144,15 +144,17 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
+        "npm:@playwright/test@^1.64.0",
+        "npm:@sentry/deno@11.8.0",
         "npm:@supabase/supabase-js@^2.107.0",
         "npm:@types/bun@^1.3.14",
+        "npm:@types/node@26.5.1",
         "npm:@typescript-eslint/eslint-plugin@^8.46.1",
         "npm:@typescript-eslint/parser@^8.46.1",
         "npm:eslint-config-prettier@^10.1.8",
         "npm:eslint-plugin-prettier@^5.5.4",
         "npm:eslint@^9.38.0",
         "npm:expo-system-ui@^57.0.2",
-        "npm:gentle-engram@0.1.4",
         "npm:lint-staged@^16.2.4",
         "npm:prettier@^3.6.2",
         "npm:zod@4.1.12"
