@@ -50,12 +50,13 @@ Values differ per project; never copy them from another environment.
 - `checkout_recovery_worker_service_role_key`
 - `complete_delivered_shipments_cron_secret`
 - `resume_pending_payouts_cron_secret`
+- `cron_watchdog_cron_secret` (same value as the `CRON_SECRET` function secret)
 - `stripe_fee_worker_project_url`
 - `stripe_fee_worker_service_role_jwt`
 
 ## 6. Edge Function secrets
 
-`CRON_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CONNECT_WEBHOOK_SECRET`, `ENVIA_MODE`, `ENVIA_API_KEY_PROD`, `ENVIA_API_URL_PROD`, `ENVIA_WEBHOOK_SECRET_PROD`, `ENVIA_API_KEY_SANDBOX`, `ENVIA_API_URL_SANDBOX`, `ENVIA_WEBHOOK_SECRET_SANDBOX`.
+`CRON_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CONNECT_WEBHOOK_SECRET`, `ENVIA_MODE`, `ENVIA_API_KEY_PROD`, `ENVIA_API_URL_PROD`, `ENVIA_WEBHOOK_SECRET_PROD`, `ENVIA_API_KEY_SANDBOX`, `ENVIA_API_URL_SANDBOX`, `ENVIA_WEBHOOK_SECRET_SANDBOX`, `SENTRY_DSN` (required; without it Sentry reporting and the `cron-watchdog` monitor are silently off), `SENTRY_ENVIRONMENT` (optional, default `production`).
 
 `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` are injected by Supabase.
 
@@ -74,6 +75,7 @@ The remote project also runs `dynamic-api` (name `get-shipping-quote-seller`), w
 | `auto-cancel-orders-job`                   | `0 * * * *`    | function `auto-cancel-orders`           |
 | `checkout-recovery-worker-every-5-minutes` | `*/5 * * * *`  | function `checkout-recovery-worker`     |
 | `complete-delivered-shipments`             | `*/5 * * * *`  | function `complete-delivered-shipments` |
+| `cron-watchdog-every-15-minutes`           | `*/15 * * * *` | function `cron-watchdog`                |
 | `dispute-payout-timeout-job`               | `0 * * * *`    | `fn_cron_dispute_payout_timeout()`      |
 | `dispute-shipping-timeout-job`             | `0 * * * *`    | `fn_cron_dispute_shipping_timeout()`    |
 | `purge-expired-reservations`               | `*/15 * * * *` | inline `UPDATE public.products`         |
@@ -85,6 +87,29 @@ The remote project also runs `dynamic-api` (name `get-shipping-quote-seller`), w
 | `track-shipments-every-6-hours`            | `0 */6 * * *`  | function `track-shipments`              |
 
 `auto-cancel-orders-job` and `track-shipments-every-6-hours` embed a literal JWT and the project URL in the job command. Recreate them reading Vault secrets, like the other HTTP jobs.
+
+`cron-watchdog-every-15-minutes` calls `cron-watchdog`, which reads `fn_cron_health()` and reports failed, overdue, or unsupported-schedule jobs to Sentry. Create the Vault secret `cron_watchdog_cron_secret` first, with the same value as the `CRON_SECRET` function secret (the function compares the `x-cron-secret` header against `CRON_SECRET`). Then run, in the SQL Editor:
+
+```sql
+select cron.schedule(
+  'cron-watchdog-every-15-minutes',
+  '*/15 * * * *',
+  $$
+  select net.http_post(
+    url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url') || '/functions/v1/cron-watchdog',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'project_anon_jwt'),
+      'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'project_anon_jwt'),
+      'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'cron_watchdog_cron_secret')
+    ),
+    body := '{}'::jsonb
+  );
+  $$
+);
+```
+
+Sentry creates the `cron-watchdog` Cron Monitor on its first check-in (free plan: 1 monitor). The watchdog only sees jobs that end `failed` in `cron.job_run_details`; an HTTP job records `succeeded` once `pg_net` queues the request, so those functions need `withSentry` to surface their own 5xx.
 
 ## 9. External webhooks
 

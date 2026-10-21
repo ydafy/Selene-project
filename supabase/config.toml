@@ -25,6 +25,10 @@ verify_jwt = false
 [functions.track-shipments]
 verify_jwt = false
 
+# Cron-invoked health watchdog; authenticated by the `x-cron-secret` header.
+[functions.cron-watchdog]
+verify_jwt = false
+
 # Edge Functions run on the Supabase Edge Runtime, not the local Deno CLI.
 # Pin its Deno major so local serve matches the hosted runtime.
 [edge_runtime]

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { createSentryWrapper, type SentrySdk } from './sentry';
+import { createSentry, createSentryWrapper, type SentrySdk } from './sentry';
 
 interface CaptureCall {
   kind: 'exception' | 'message';
@@ -13,6 +13,7 @@ interface CaptureCall {
 interface FakeSdkOptions {
   captureThrows?: boolean;
   flushThrows?: boolean;
+  monitorThrows?: boolean;
 }
 
 function createFakeSdk(options: FakeSdkOptions = {}) {
@@ -22,6 +23,7 @@ function createFakeSdk(options: FakeSdkOptions = {}) {
   let currentTags: Record<string, string> = {};
   let currentFingerprint: string[] | undefined;
   const fingerprintCalls: string[][] = [];
+  const monitorCalls: Array<{ slug: string; config: unknown }> = [];
 
   const sdk: SentrySdk = {
     init: (initOptions) => {
@@ -59,6 +61,11 @@ function createFakeSdk(options: FakeSdkOptions = {}) {
       captures.push({ kind: 'message', payload: message, level, tags: { ...currentTags }, fingerprint: currentFingerprint });
       return 'event-id';
     },
+    withMonitor: (slug, callback, config) => {
+      if (options.monitorThrows) throw new Error('monitor failed');
+      monitorCalls.push({ slug, config });
+      return callback();
+    },
     flush: async (timeout) => {
       flushCalls.push(timeout as number);
       if (options.flushThrows) throw new Error('flush failed');
@@ -66,7 +73,7 @@ function createFakeSdk(options: FakeSdkOptions = {}) {
     },
   };
 
-  return { sdk, initCalls, captures, flushCalls, fingerprintCalls };
+  return { sdk, initCalls, captures, flushCalls, fingerprintCalls, monitorCalls };
 }
 
 function setup(env: Record<string, string | undefined>, sdkOptions: FakeSdkOptions = {}) {
@@ -280,5 +287,145 @@ describe('withSentry', () => {
     expect(serialized).not.toContain('private-body');
     expect(serialized).not.toContain('Bearer');
     expect(serialized).not.toContain('example.test');
+  });
+});
+
+const MONITOR_CONFIG = {
+  schedule: { type: 'crontab' as const, value: '*/15 * * * *' },
+  checkinMargin: 5,
+  maxRuntime: 5,
+  timezone: 'UTC',
+};
+
+function setupClient(env: Record<string, string | undefined>, sdkOptions: FakeSdkOptions = {}) {
+  const fake = createFakeSdk(sdkOptions);
+  let loadCalls = 0;
+  const sentry = createSentry({
+    getEnv: (name) => env[name],
+    loadSdk: async () => {
+      loadCalls += 1;
+      return fake.sdk;
+    },
+    log: () => {},
+  });
+  return { ...fake, sentry, loadCalls: () => loadCalls };
+}
+
+describe('reportMessage', () => {
+  it('captures an error message with fingerprint and tags in an isolated scope, then flushes', async () => {
+    const ctx = setupClient({ SENTRY_DSN: DSN });
+    await ctx.sentry.reportMessage('cron job-a failed', {
+      fingerprint: ['cron-unhealthy', 'job-a', 'failed'],
+      tags: { 'cron.job': 'job-a', 'cron.reason': 'failed' },
+    });
+    await ctx.sentry.reportMessage('cron job-b overdue', {
+      fingerprint: ['cron-unhealthy', 'job-b', 'overdue'],
+      tags: { 'cron.job': 'job-b', 'cron.reason': 'overdue' },
+    });
+
+    expect(ctx.captures).toEqual([
+      {
+        kind: 'message',
+        payload: 'cron job-a failed',
+        level: 'error',
+        fingerprint: ['cron-unhealthy', 'job-a', 'failed'],
+        tags: { 'cron.job': 'job-a', 'cron.reason': 'failed' },
+      },
+      {
+        kind: 'message',
+        payload: 'cron job-b overdue',
+        level: 'error',
+        fingerprint: ['cron-unhealthy', 'job-b', 'overdue'],
+        tags: { 'cron.job': 'job-b', 'cron.reason': 'overdue' },
+      },
+    ]);
+    expect(ctx.flushCalls).toEqual([2000, 2000]);
+  });
+
+  it('is a no-op without SENTRY_DSN', async () => {
+    const ctx = setupClient({});
+    await ctx.sentry.reportMessage('m', { fingerprint: ['a'], tags: {} });
+
+    expect(ctx.loadCalls()).toBe(0);
+    expect(ctx.captures).toHaveLength(0);
+    expect(ctx.flushCalls).toHaveLength(0);
+  });
+
+  it('never throws when capture or flush fails', async () => {
+    const capture = setupClient({ SENTRY_DSN: DSN }, { captureThrows: true });
+    await expect(
+      capture.sentry.reportMessage('m', { fingerprint: ['a'], tags: {} }),
+    ).resolves.toBeUndefined();
+    const flush = setupClient({ SENTRY_DSN: DSN }, { flushThrows: true });
+    await expect(
+      flush.sentry.reportMessage('m', { fingerprint: ['a'], tags: {} }),
+    ).resolves.toBeUndefined();
+  });
+});
+
+describe('withMonitor', () => {
+  it('runs the function inside the SDK monitor with the exact config, then flushes', async () => {
+    const ctx = setupClient({ SENTRY_DSN: DSN });
+    const result = await ctx.sentry.withMonitor('cron-watchdog', MONITOR_CONFIG, async () => 42);
+
+    expect(result).toBe(42);
+    expect(ctx.monitorCalls).toEqual([{ slug: 'cron-watchdog', config: MONITOR_CONFIG }]);
+    expect(ctx.flushCalls).toEqual([2000]);
+  });
+
+  it('is a plain passthrough without SENTRY_DSN', async () => {
+    const ctx = setupClient({});
+    const result = await ctx.sentry.withMonitor('cron-watchdog', MONITOR_CONFIG, async () => 'ok');
+
+    expect(result).toBe('ok');
+    expect(ctx.loadCalls()).toBe(0);
+    expect(ctx.monitorCalls).toHaveLength(0);
+    expect(ctx.flushCalls).toHaveLength(0);
+  });
+
+  it('propagates the function error unchanged', async () => {
+    const ctx = setupClient({ SENTRY_DSN: DSN });
+    const failure = new Error('run failed');
+
+    await expect(
+      ctx.sentry.withMonitor('cron-watchdog', MONITOR_CONFIG, async () => {
+        throw failure;
+      }),
+    ).rejects.toBe(failure);
+    expect(ctx.flushCalls).toEqual([2000]);
+  });
+
+  it('still runs the function once when the SDK monitor fails', async () => {
+    const ctx = setupClient({ SENTRY_DSN: DSN }, { monitorThrows: true });
+    let runs = 0;
+    const result = await ctx.sentry.withMonitor('cron-watchdog', MONITOR_CONFIG, async () => {
+      runs += 1;
+      return 'done';
+    });
+
+    expect(result).toBe('done');
+    expect(runs).toBe(1);
+  });
+
+  it('never changes the result when flush throws', async () => {
+    const ctx = setupClient({ SENTRY_DSN: DSN }, { flushThrows: true });
+
+    expect(await ctx.sentry.withMonitor('cron-watchdog', MONITOR_CONFIG, async () => 'ok')).toBe('ok');
+  });
+
+  it('runs the function once when the SDK cannot load', async () => {
+    const sentry = createSentry({
+      getEnv: (name) => (name === 'SENTRY_DSN' ? DSN : undefined),
+      loadSdk: async () => {
+        throw new Error('cannot load');
+      },
+      log: () => {},
+    });
+    let runs = 0;
+    await sentry.withMonitor('cron-watchdog', MONITOR_CONFIG, async () => {
+      runs += 1;
+    });
+
+    expect(runs).toBe(1);
   });
 });

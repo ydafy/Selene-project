@@ -2,7 +2,7 @@
 // Reports thrown errors and 5xx responses only. Never reads or attaches request or
 // response bodies, headers, URLs, query strings, user ids or emails. Any failure to
 // load or call the SDK degrades to a plain passthrough: Sentry must never break a
-// money flow.
+// money flow. Also offers `reportMessage` and `withMonitor` for the cron watchdog (L12).
 
 const FLUSH_TIMEOUT_MS = 2000;
 
@@ -35,7 +35,21 @@ export interface SentrySdk {
   withScope<T>(callback: (scope: SentryScope) => T): T;
   captureException(error: unknown): unknown;
   captureMessage(message: string, level: 'error'): unknown;
+  withMonitor<T>(slug: string, callback: () => T, config: SentryMonitorConfig): T;
   flush(timeout?: number): Promise<unknown>;
+}
+
+/** Sentry Cron Monitor config, as accepted by the SDK `withMonitor`. */
+export interface SentryMonitorConfig {
+  schedule: { type: 'crontab'; value: string };
+  checkinMargin: number;
+  maxRuntime: number;
+  timezone: string;
+}
+
+export interface SentryMessageOptions {
+  fingerprint: string[];
+  tags: Record<string, string>;
 }
 
 export interface SentryWrapperDeps {
@@ -52,7 +66,7 @@ const stripPersonalData = (event: SentryEvent): SentryEvent => {
   return event;
 };
 
-export function createSentryWrapper(deps: SentryWrapperDeps) {
+export function createSentry(deps: SentryWrapperDeps) {
   let sdkPromise: Promise<SentrySdk | null> | null = null;
 
   const getSdk = (dsn: string): Promise<SentrySdk | null> => {
@@ -89,7 +103,68 @@ export function createSentryWrapper(deps: SentryWrapperDeps) {
     }
   };
 
-  return function withSentry(functionName: string, handler: Handler): Handler {
+  /** The SDK when `SENTRY_DSN` is set and the SDK loads; otherwise null. */
+  const getActiveSdk = async (): Promise<SentrySdk | null> => {
+    const dsn = deps.getEnv('SENTRY_DSN');
+    return dsn ? getSdk(dsn) : null;
+  };
+
+  /** Reports one error message in its own scope. No-op without a DSN; never throws. */
+  const reportMessage = async (message: string, options: SentryMessageOptions): Promise<void> => {
+    const sdk = await getActiveSdk();
+    if (!sdk) return;
+    await report(sdk, () =>
+      sdk.withScope((scope) => {
+        for (const [key, value] of Object.entries(options.tags)) scope.setTag(key, value);
+        scope.setFingerprint(options.fingerprint);
+        return sdk.captureMessage(message, 'error');
+      }),
+    );
+  };
+
+  /**
+   * Runs `fn` inside a Sentry Cron Monitor (check-in on start and on finish).
+   * Without a DSN, or when Sentry fails before `fn` starts, `fn` runs plainly.
+   * An error from `fn` always propagates unchanged.
+   */
+  const withMonitor = async <T>(
+    slug: string,
+    config: SentryMonitorConfig,
+    fn: () => Promise<T>,
+  ): Promise<T> => {
+    const sdk = await getActiveSdk();
+    if (!sdk) return fn();
+
+    let started = false;
+    let outcome: { ok: true; value: T } | { ok: false; error: unknown } | null = null;
+    try {
+      const value = await sdk.withMonitor(
+        slug,
+        async () => {
+          started = true;
+          try {
+            const result = await fn();
+            outcome = { ok: true, value: result };
+            return result;
+          } catch (error) {
+            outcome = { ok: false, error };
+            throw error;
+          }
+        },
+        config,
+      );
+      await report(sdk, () => undefined);
+      return value;
+    } catch (error) {
+      if (!started) return fn();
+      await report(sdk, () => undefined);
+      const finished = outcome as typeof outcome;
+      if (finished?.ok) return finished.value;
+      throw finished ? finished.error : error;
+    }
+  };
+
+  const withSentry = function withSentry(functionName: string, handler: Handler): Handler {
     return async (req: Request): Promise<Response> => {
       const dsn = deps.getEnv('SENTRY_DSN');
       if (!dsn) return handler(req);
@@ -128,9 +203,13 @@ export function createSentryWrapper(deps: SentryWrapperDeps) {
       });
     };
   };
+
+  return { withSentry, reportMessage, withMonitor };
 }
 
-export const withSentry = createSentryWrapper({
+export const createSentryWrapper = (deps: SentryWrapperDeps) => createSentry(deps).withSentry;
+
+export const { withSentry, reportMessage, withMonitor } = createSentry({
   getEnv: (name) => Deno.env.get(name),
   loadSdk: async () => (await import('npm:@sentry/deno@11.8.0')) as unknown as SentrySdk,
   log: (message) => console.error(message),
