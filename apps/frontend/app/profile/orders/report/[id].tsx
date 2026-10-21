@@ -5,7 +5,7 @@
  * Utiliza un Wizard de 3 pasos con validación técnica por categoría.
  */
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
   ScrollView,
   ActivityIndicator,
@@ -43,6 +43,7 @@ import { WizardSteps } from '@/components/features/sell/WizardSteps';
 import { FormTextInput } from '@/components/ui/FormTextInput';
 import { useAuthContext } from '@/components/auth/AuthProvider';
 import { resolveShipmentContext } from '@/core/utils/disputeShipmentContext';
+import { describeError } from '@/core/utils/describe-error';
 
 export default function ReportProblemScreen() {
   const { id, shipment_id } = useLocalSearchParams<{
@@ -59,6 +60,7 @@ export default function ReportProblemScreen() {
     uploadVideo,
     uploading: uploadingVideo,
   } = useVideoUpload();
+  const videoBusyRef = useRef(false);
 
   // Data & Store
   const { data: order, isLoading } = useOrderById(id || '');
@@ -165,10 +167,12 @@ export default function ReportProblemScreen() {
   }
 
   const handleUploadVideo = async () => {
-    const asset = await pickVideo();
-    if (!asset) return;
-
+    if (videoBusyRef.current || uploadingVideo) return;
+    videoBusyRef.current = true;
     try {
+      const asset = await pickVideo();
+      if (!asset) return;
+
       // Usamos el ID del comprador para el folder si es disputa, o el del vendedor si es contra-disputa
       const folderUserId = isSeller ? session?.user.id : order.buyer_id;
       const url = await uploadVideo(order.id, folderUserId || '', asset.uri);
@@ -176,12 +180,21 @@ export default function ReportProblemScreen() {
       store.setVideoUrl(url);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error: unknown) {
-      //  Usamos el error para el log, ya no está huérfano
-      console.error('[VIDEO_UPLOAD_ERROR]', error);
+      console.error('[VIDEO_UPLOAD_ERROR]', describeError(error));
+      // The picker may not report a size; the upload checks the real bytes.
+      if (error instanceof Error && error.message === 'MEDIA_TOO_LARGE') {
+        Alert.alert(
+          t('disputes:video.tooLargeTitle'),
+          t('disputes:video.tooLargeMsg'),
+        );
+        return;
+      }
       Alert.alert(
         t('common:errors.errorTitle'),
         t('disputes:errors.videoUploadFailed'),
       );
+    } finally {
+      videoBusyRef.current = false;
     }
   };
 

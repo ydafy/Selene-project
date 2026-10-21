@@ -9,6 +9,7 @@ import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../db/supabase';
 import { decode } from 'base64-arraybuffer';
+import { uploadMediaFromBase64 } from '../storage/uploadMedia';
 import { useTranslation } from 'react-i18next';
 
 interface PickerOptions {
@@ -16,6 +17,11 @@ interface PickerOptions {
   aspect?: [number, number];
   quality?: number;
 }
+
+const imageContentType = (ext: string) => {
+  const normalized = ext.toLowerCase();
+  return `image/${normalized === 'jpg' ? 'jpeg' : normalized}`;
+};
 
 export const useImageUpload = () => {
   const { t } = useTranslation('common');
@@ -96,20 +102,20 @@ export const useImageUpload = () => {
   const uploadFile = async (
     bucket: 'Avatars' | 'evidence',
     path: string,
-    base64Image: string,
+    base64Image: string | null | undefined,
     fileExtension: string = 'jpg',
   ) => {
     setUploading(true);
     try {
-      const arrayBuffer = decode(base64Image);
-      const { error } = await supabase.storage
-        .from(bucket)
-        .upload(path, arrayBuffer, {
-          contentType: `image/${fileExtension}`,
-          upsert: true, // Si el archivo existe, lo sobreescribe
-        });
-
-      if (error) throw error;
+      await uploadMediaFromBase64({
+        storage: supabase.storage,
+        bucket,
+        path,
+        base64: base64Image,
+        contentType: imageContentType(fileExtension),
+        upsert: true, // Si el archivo existe, lo sobreescribe
+        decode,
+      });
 
       const { data: urlData } = supabase.storage
         .from(bucket)
@@ -117,9 +123,6 @@ export const useImageUpload = () => {
 
       // Cache-busting: Añadimos un timestamp a la URL para forzar a la UI a recargar la imagen
       return `${urlData.publicUrl}?t=${Date.now()}`;
-    } catch (error: unknown) {
-      console.error('[IMAGE_UPLOAD]', { event: 'upload_failed' });
-      throw error;
     } finally {
       setUploading(false);
     }
@@ -129,7 +132,11 @@ export const useImageUpload = () => {
    * Alias para subir avatares.
    * Usa un nombre fijo (avatar.ext) para aprovechar el upsert y ahorrar storage.
    */
-  const uploadAvatar = (userId: string, base64: string, ext: string) =>
+  const uploadAvatar = (
+    userId: string,
+    base64: string | null | undefined,
+    ext: string,
+  ) =>
     uploadFile('Avatars', `${userId}/avatar.${ext}`, base64, ext);
 
   return { pickImage, takePhoto, uploadFile, uploadAvatar, uploading };

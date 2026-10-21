@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/useAuthStore';
-import type { User } from '@supabase/supabase-js';
-import type { AdminProfile } from '../store/useAuthStore';
+import { adminAccessMessage } from '../lib/adminAccess';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -11,7 +10,7 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const setUser = useAuthStore((state) => state.setUser);
+  const evaluateAccess = useAuthStore((state) => state.evaluateAccess);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,29 +27,14 @@ function Login() {
 
       if (authError) throw authError;
 
-      const { data: profile, error: profileError } = await supabase
-        .from('admin_user_directory_view')
-        .select('*')
-        .eq('id', data.user.id)
-        .single();
-
-      if (profileError || !profile) {
-        await supabase.auth.signOut();
-        throw new Error(
-          profileError
-            ? `Error al validar perfil: ${profileError.message}`
-            : 'Perfil de administrador no encontrado.',
-        );
+      const outcome = await evaluateAccess(data.user);
+      if (outcome.status === 'denied') {
+        throw new Error(adminAccessMessage(outcome.reason));
+      }
+      if (outcome.status === 'stale') {
+        throw new Error('No se pudo validar la sesión. Inténtalo de nuevo.');
       }
 
-      if (profile?.role !== 'admin') {
-        await supabase.auth.signOut();
-        throw new Error(
-          `Acceso denegado: Tu rol actual es "${profile?.role ?? 'sin rol'}" y se requiere "admin".`,
-        );
-      }
-
-      setUser(data.user as User, profile as AdminProfile);
       navigate('/');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Error inesperado al iniciar sesión.');

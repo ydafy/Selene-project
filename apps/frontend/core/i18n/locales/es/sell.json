@@ -112,12 +112,13 @@
     "insuranceWarning": "⚠️ Advertencia: Si desactivas el seguro, tú serás 100% responsable por pérdidas o daños en el envío.",
     "shippingInsurance": "Envio seguro",
     "shippingInsuranceTitle": "¿Qué es el seguro?",
-    "shippingInsuranceDescription": "Selene ofrece reembolso por el valor del comprobante del producto, por si el paquete llega dañado, se pierde o llega incompleto.",
+    "shippingInsuranceDescription": "Si el paquete se pierde o llega dañado, se ofrece reembolso.",
     "shippingInsurancesText": "Tu envío está asegurado",
     "productPriceText": "Precio del producto",
     "youReceiveLabel": "Tú recibes",
-    "youReceiveHelpTitle": "¿Cómo se calcula lo que recibirás?",
-    "youReceiveHelpDescription": "El monto considera la comisión, la logística de envío y la protección del envío."
+    "youReceiveHelpTitle": "¿Cómo se calcula lo que recibes?",
+    "youReceiveHelpDescription": "Este monto ya incluye los costos de tu venta:\n\n• Envío: te damos la guía lista para llevar tu paquete a la paquetería.\n\n• Seguro: si el paquete se pierde o llega dañado, abre un reporte y lo revisamos.\n\n• Comisión del {{commissionPct}}%: solo se cobra cuando vendes y protege tu pago.\n\nEl costo final del envío puede variar un poco.",
+    "youReceiveHelpDescriptionNoRate": "Este monto ya incluye los costos de tu venta:\n\n• Envío: te damos la guía lista para llevar tu paquete a la paquetería.\n\n• Seguro: si el paquete se pierde o llega dañado, abre un reporte y lo revisamos.\n\n• Comisión: solo se cobra cuando vendes y protege tu pago.\n\nEl costo final del envío puede variar un poco."
   },
   "sections": {
     "price": "Define tu Precio",

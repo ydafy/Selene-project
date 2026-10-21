@@ -19,7 +19,7 @@ if (process.env.SELENE_UPLOAD_CHILD !== '1') {
   let release!: () => void;
   const upload = mock(async () => {
     await new Promise<void>((resolve) => { release = resolve; });
-    return { error: fail ? privateError : null };
+    return fail ? { data: null, error: privateError } : { data: { path: 'avatar.jpg' }, error: null };
   });
   const getPublicUrl = mock(() => ({ data: { publicUrl: 'https://example.test/photo' } }));
   const from = mock(() => ({ upload, getPublicUrl }));
@@ -51,7 +51,11 @@ if (process.env.SELENE_UPLOAD_CHILD !== '1') {
       expect(api.uploading).toBe(false);
       expect(getPublicUrl).not.toHaveBeenCalled();
       expect(JSON.stringify(logs)).not.toContain('SYNTHETIC_PRIVATE_UPLOAD_MARKER');
-      expect(logs.filter((args) => args[0] === '[IMAGE_UPLOAD]')).toEqual([['[IMAGE_UPLOAD]', { event: 'upload_failed' }]]);
+      expect(JSON.stringify(logs)).not.toContain('encoded');
+      expect(logs.filter((args) => args[0] === '[media] upload failed')).toEqual([
+        ['[media] upload failed', expect.objectContaining({ bucket: 'evidence' })],
+      ]);
+      expect(JSON.stringify(logs)).not.toContain('shipments/order/user/photo.jpg');
       fail = false;
       let result: unknown;
       await act(async () => { pending = api.uploadFile('Avatars', 'avatar.jpg', 'encoded', 'png'); });

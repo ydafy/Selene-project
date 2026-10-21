@@ -95,6 +95,7 @@
     "updateFailed": "We couldn't save your changes. Please try again.",
     "deleteFailed": "We couldn't delete your account. Please try again later.",
     "authRequired": "Your session expired. Please sign in again.",
+    "signOutFailed": "We couldn't sign you out cleanly. Please try again.",
     "phraseMismatch": "Text does not match. Type ELIMINAR to continue.",
     "usernameTooShort": "Minimum 3 characters.",
     "usernameTooLong": "Maximum 20 characters.",

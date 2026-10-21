@@ -1,5 +1,5 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../db/supabase';
+import { useMutation } from '@tanstack/react-query';
+import { signOutUser } from '../auth/signOut';
 import { invokeEdge } from '../services/edge-client';
 import {
   mapDeleteAccountResponse,
@@ -17,8 +17,6 @@ import {
  * UI can render a localized blocked-reason message.
  */
 export const useDeleteAccount = () => {
-  const queryClient = useQueryClient();
-
   return useMutation<DeleteAccountResult, Error, void>({
     mutationFn: async () => {
       try {
@@ -43,8 +41,7 @@ export const useDeleteAccount = () => {
     },
     onSuccess: async (result) => {
       if (result.ok) {
-        await supabase.auth.signOut();
-        queryClient.clear();
+        await signOutUser('global');
       }
     },
   });

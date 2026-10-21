@@ -12,6 +12,7 @@ import { Box, Text } from '../../base';
 import { AppImage } from '../../ui/AppImage';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import { useImageUpload } from '../../../core/hooks/useImageUpload';
+import { describeError } from '../../../core/utils/describe-error';
 import { Theme } from '../../../core/theme';
 
 type AllowedBuckets = 'evidence' | 'Avatars';
@@ -95,7 +96,7 @@ export const EvidenceUploadSection = ({
       if (!result || !mounted.current || disabledRef.current) return;
 
       const path = `${folder}/${orderId}/${userId}/slot_${index}_${Date.now()}.jpg`;
-      const url = await uploadFile(bucket, path, result.base64!, 'jpg');
+      const url = await uploadFile(bucket, path, result.base64, 'jpg');
       if (!mounted.current || disabledRef.current) return;
 
       const newPhotos = [...photos];
@@ -106,8 +107,8 @@ export const EvidenceUploadSection = ({
       try {
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       } catch { /* Optional feedback only. */ }
-    } catch {
-      console.warn('[EVIDENCE_UPLOAD]', { event: 'capture_or_upload_failed' });
+    } catch (error) {
+      console.warn('[EVIDENCE_UPLOAD]', describeError(error));
       if (mounted.current) onFailure?.();
     } finally {
       busyRef.current = false;

@@ -87,6 +87,16 @@
       "package": "Empaque"
     }
   },
+  "video": {
+    "permissionDeniedTitle": "Permiso denegado",
+    "permissionDeniedMsg": "Necesitamos acceso a tus videos.",
+    "tooLongTitle": "Video muy largo",
+    "tooLongMsg": "El video no debe superar los 2 minutos. Por favor, recórtalo.",
+    "tooLargeTitle": "Archivo muy pesado",
+    "tooLargeMsg": "El video supera los 50MB. Intenta grabar en una resolución menor.",
+    "pickerErrorTitle": "Error",
+    "pickerErrorMsg": "No se pudo abrir el selector de video."
+  },
   "errors": {
     "noActiveDispute": "No hay disputa activa para impugnar",
     "videoUploadFailed": "No se pudo subir el video. Intenta de nuevo."

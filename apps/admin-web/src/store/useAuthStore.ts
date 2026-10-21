@@ -2,6 +2,13 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import { toast } from 'sonner';
+import { queryClient } from '../lib/queryClient';
+import { adminAccessMessage, type AdminAccessDenial } from '../lib/adminAccess';
+import {
+  createLoadGuard,
+  resolveAdminSession,
+  type AdminSessionOutcome,
+} from '../lib/adminSession.logic';
 
 export interface AdminProfile {
   id: string;
@@ -21,96 +28,134 @@ interface AuthState {
   profile: AdminProfile | null;
   loading: boolean;
   initialized: boolean;
-  setUser: (user: User | null, profile: AdminProfile | null) => void;
+  evaluateAccess: (user: User) => Promise<AdminSessionOutcome<AdminProfile>>;
   signOut: () => Promise<void>;
   initialize: () => Promise<void>;
 }
 
-// Función auxiliar para cargar perfil y validar rol de administrador
+/** Resolves `null` when no profile exists and throws on a request failure. */
 async function fetchAdminProfile(userId: string): Promise<AdminProfile | null> {
   const { data: profile, error } = await supabase
     .from('admin_user_directory_view')
     .select('*')
     .eq('id', userId)
-    .single();
+    .maybeSingle();
 
-  if (error || !profile) {
-    console.error('[useAuthStore] Error cargando perfil:', error?.message);
-    return null;
+  if (error) {
+    console.error('[useAuthStore] Error cargando perfil:', error.message);
+    throw new Error(error.message);
   }
 
-  // Guardia de Seguridad: Expulsamos a usuarios que no sean administradores
-  if (profile.role !== 'admin') {
-    console.warn('[useAuthStore] Acceso no autorizado: El usuario no es admin');
-    toast.error(
-      'Acceso denegado: Esta cuenta no tiene permisos de administrador.',
-    );
-    await supabase.auth.signOut();
-    return null;
-  }
-
-  return profile as AdminProfile;
+  return (profile as AdminProfile | null) ?? null;
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+const guard = createLoadGuard();
+let pending: {
+  userId: string;
+  promise: Promise<AdminSessionOutcome<AdminProfile>>;
+} | null = null;
+let initPromise: Promise<void> | null = null;
+
+const SIGNED_OUT_STATE = {
   user: null,
   profile: null,
-  loading: true,
-  initialized: false,
+  loading: false,
+  initialized: true,
+};
 
-  setUser: (user, profile) => set({ user, profile, loading: false }),
+/** Único escritor del estado de autenticación del panel. */
+export const useAuthStore = create<AuthState>((set, get) => {
+  const onDenied = (reason: AdminAccessDenial) => {
+    set(SIGNED_OUT_STATE);
+    toast.error(adminAccessMessage(reason));
+  };
 
-  signOut: async () => {
-    await supabase.auth.signOut();
-    set({ user: null, profile: null, loading: false, initialized: true });
-  },
+  return {
+    user: null,
+    profile: null,
+    loading: true,
+    initialized: false,
 
-  initialize: async () => {
-    // Evitamos duplicar listeners si ya se inicializó
-    if (get().initialized) return;
+    // Concurrent callers for the same user (login + SIGNED_IN event) share one
+    // evaluation so neither is discarded as stale by the other.
+    evaluateAccess: (user) => {
+      if (pending?.userId === user.id) return pending.promise;
 
-    try {
-      // 1. Snapshot Inicial de la Sesión
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const { user: currentUser, profile: currentProfile } = get();
+      const allowedProfile =
+        currentUser?.id === user.id && currentProfile ? currentProfile : undefined;
 
-      if (session?.user) {
-        const profile = await fetchAdminProfile(session.user.id);
-        set({
-          user: profile ? session.user : null,
-          profile,
-          loading: false,
-          initialized: true,
+      const promise = resolveAdminSession(
+        user.id,
+        guard,
+        {
+          loadProfile: fetchAdminProfile,
+          signOut: async () => {
+            await supabase.auth.signOut();
+          },
+          clearCache: () => queryClient.clear(),
+          onDenied,
+        },
+        { allowedProfile },
+      )
+        .then((outcome) => {
+          if (outcome.status === 'allowed') {
+            set({
+              user,
+              profile: outcome.profile,
+              loading: false,
+              initialized: true,
+            });
+          }
+          return outcome;
+        })
+        .finally(() => {
+          if (pending?.promise === promise) pending = null;
         });
-      } else {
-        set({ user: null, profile: null, loading: false, initialized: true });
-      }
+      pending = { userId: user.id, promise };
+      return promise;
+    },
 
-      // 2. Listener Reactivo en Tiempo Real (Maneja refrescos de tokens de 60m y cierres de sesión)
-      supabase.auth.onAuthStateChange(async (event, currentSession) => {
-        if (event === 'SIGNED_OUT' || !currentSession) {
-          set({ user: null, profile: null, loading: false, initialized: true });
-          return;
-        }
+    signOut: async () => {
+      guard.begin();
+      queryClient.clear();
+      set(SIGNED_OUT_STATE);
+      await supabase.auth.signOut();
+    },
 
-        if (
-          event === 'TOKEN_REFRESHED' ||
-          event === 'SIGNED_IN' ||
-          event === 'USER_UPDATED'
-        ) {
-          const profile = await fetchAdminProfile(currentSession.user.id);
-          set({
-            user: profile ? currentSession.user : null,
-            profile,
-            loading: false,
-            initialized: true,
-          });
+    initialize: () => {
+      // Idempotente: una sola suscripción aunque se llame varias veces.
+      initPromise ??= (async () => {
+        supabase.auth.onAuthStateChange((event, session) => {
+          if (event === 'INITIAL_SESSION') return;
+
+          if (event === 'SIGNED_OUT' || !session) {
+            const hadUser = get().user !== null;
+            guard.begin();
+            queryClient.clear();
+            set(SIGNED_OUT_STATE);
+            if (hadUser)
+              toast.warning('Sesión expirada. Redirigiendo al login...');
+            return;
+          }
+
+          void get().evaluateAccess(session.user);
+        });
+
+        try {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+
+          if (session?.user) await get().evaluateAccess(session.user);
+        } catch (err) {
+          console.error('[useAuthStore] Error de inicialización:', err);
+          guard.begin();
+          queryClient.clear();
         }
-      });
-    } catch (err) {
-      console.error('[useAuthStore] Error de inicialización:', err);
-      set({ user: null, profile: null, loading: false, initialized: true });
-    }
-  },
-}));
+        set({ loading: false, initialized: true });
+      })();
+      return initPromise;
+    },
+  };
+});
