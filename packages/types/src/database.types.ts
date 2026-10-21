@@ -3991,6 +3991,10 @@ export type Database = {
           state_name: string
         }[]
       }
+      fn_get_shipment_cancellation_recovery: {
+        Args: { p_shipment_id: string }
+        Returns: Json
+      }
       fn_lock_dispute: {
         Args: { p_dispute_id: string }
         Returns: {
