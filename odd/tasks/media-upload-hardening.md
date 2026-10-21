@@ -14,8 +14,8 @@ Out of scope: session persistence and AppState token refresh (auth worktree, `au
 
 ## Tasks
 
-- B1 | S1, S4 | inline | Verify screen fails closed (load error + retry, loading state, abort on failed re-read, `.select()` on update, submit ref guard, i18n permission dialog, real error logged); success screen handoff (ref guard, disabled button) | Implemented, suite 2290/0, awaiting device check | Commit: pending
-- B2 | S2 | inline | Shared `core/storage/uploadMedia.ts` (`response.ok`, ext → MIME with jpg → image/jpeg, structured error log without paths); migrate verification and publish | Commit: pending
+- B1 | S1, S4 | inline | Verify screen fails closed (load error + retry, loading state, abort on failed re-read, `.select()` on update, submit ref guard, i18n permission dialog, real error logged); success screen handoff (ref guard, disabled button) | Done, device-checked by maintainer | Commit: 5ae4408
+- B2 | S2 | inline | Shared `core/storage/uploadMedia.ts` (`response.ok`, ext → MIME with jpg → image/jpeg, structured error log without paths); migrate verification and publish | Done, device-checked by maintainer (publish + verify) | Commit: this B2 commit
 - B3 | S2, S4 | inline | Evidence, avatar, dispute video: use helper, remove unchecked `base64!`, i18n video strings, size check when picker omits size, buttons locked while uploading | Commit: pending
 - B4 | S2 | deferred | Remove orphaned uploads when a later step fails; needs storage delete policies from the auth worktree | Commit: pending
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../db/supabase';
+import { resolveMediaType, uploadMediaFromUri } from '../storage/uploadMedia';
 import { ProductCategory, ProductStatus } from '@selene/types';
 import {
   buildVerificationData,
@@ -99,17 +100,17 @@ export const useVerificationLogic = (productId?: string) => {
 
   //  Subida (Interna)
   const uploadProof = async (uri: string, prefix: string) => {
-    const response = await fetch(uri);
-    const blob = await response.arrayBuffer();
-    const ext = uri.split('.').pop() || 'jpg';
+    const { ext, contentType } = resolveMediaType(uri);
     const path = `${productId}/${prefix}_${Date.now()}.${ext}`;
 
-    const { error, data } = await supabase.storage
-      .from('verification')
-      .upload(path, blob, { contentType: `image/${ext}`, upsert: true });
-
-    if (error) throw error;
-    return data.path;
+    return uploadMediaFromUri({
+      storage: supabase.storage,
+      bucket: 'verification',
+      path,
+      uri,
+      contentType,
+      upsert: true,
+    });
   };
 
   //  Submit
