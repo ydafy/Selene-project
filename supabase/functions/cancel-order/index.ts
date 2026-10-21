@@ -8,6 +8,7 @@ import {
   resolveManualShipmentCancelPlan,
   type ShipmentCancelItem,
 } from './cancel-order.ts';
+import { reportMessage, withSentry } from '../_shared/sentry.ts';
 import { runShipmentCancellation } from '../_shared/shipment-cancellation.ts';
 import { buildStripeFeeReconciliationPlan } from '../stripe-webhooks/single-modal-settlement.ts';
 
@@ -35,9 +36,28 @@ const log = (
   );
 };
 
+/** CRITICAL log plus a Sentry message; no bodies or user data, and never throws. */
+const reportCritical = async (
+  message: string,
+  data: Record<string, unknown>,
+) => {
+  log('CRITICAL', message, data);
+  const tags: Record<string, string> = { edge_function: 'cancel-order' };
+  if (typeof data.shipmentId === 'string') tags.shipment_id = data.shipmentId;
+  if (typeof data.refundId === 'string') tags.refund_id = data.refundId;
+  try {
+    await reportMessage('cancel-order ' + message, {
+      fingerprint: ['shipment-cancellation', 'cancel-order', message],
+      tags,
+    });
+  } catch {
+    // Reporting must never change the cancellation outcome.
+  }
+};
+
 // Legacy deployed name kept for compatibility.
 // Manual cancellations are shipment-scoped and never whole-order here.
-serve(async (req) => {
+serve(withSentry('cancel-order', async (req: Request) => {
   if (req.method === 'OPTIONS')
     return new Response('ok', { headers: corsHeaders });
 
@@ -128,6 +148,26 @@ serve(async (req) => {
     if (!shipment.stripe_payment_intent_id) {
       throw new ApiError(500, 'PAYMENT_INTENT_NOT_FOUND');
     }
+
+    // Stripe lookups for recovery: the raw Stripe message is logged, never returned.
+    const stripeLookup = async <T>(
+      action: 'list' | 'retrieve',
+      call: () => Promise<T>,
+    ): Promise<T> => {
+      try {
+        return await call();
+      } catch (stripeError: unknown) {
+        log('ERROR', 'Stripe refund lookup failed', {
+          shipmentId,
+          action,
+          error:
+            stripeError instanceof Error
+              ? stripeError.message
+              : String(stripeError),
+        });
+        throw new ApiError(500, 'CANCELLATION_REFUND_LOOKUP_FAILED');
+      }
+    };
 
     const result = await runShipmentCancellation({
       context: {
@@ -304,9 +344,39 @@ serve(async (req) => {
             p_failure_reason: input.failureReason,
           },
         );
-        if (error) throw new ApiError(409, error.message);
+        if (error) {
+          // Logs only: the RPC text may expose constraint or column names.
+          log('ERROR', 'Cancellation refund record RPC failed', {
+            shipmentId,
+            error: error.message,
+          });
+          throw new ApiError(500, 'CANCELLATION_REFUND_RECORD_FAILED');
+        }
         return data;
       },
+      loadRecovery: async (recoveryShipmentId) => {
+        const { data, error } = await supabaseAdmin.rpc(
+          'fn_get_shipment_cancellation_recovery',
+          { p_shipment_id: recoveryShipmentId },
+        );
+        if (error) {
+          log('ERROR', 'Cancellation recovery lookup failed', {
+            shipmentId,
+            error: error.message,
+          });
+          throw new ApiError(500, 'CANCELLATION_RECOVERY_UNAVAILABLE');
+        }
+        return data;
+      },
+      listRefunds: (paymentIntentId) =>
+        stripeLookup('list', () =>
+          stripe.refunds
+            .list({ payment_intent: paymentIntentId, limit: 100 })
+            .autoPagingToArray({ limit: 1000 }),
+        ),
+      retrieveRefund: (refundId) =>
+        stripeLookup('retrieve', () => stripe.refunds.retrieve(refundId)),
+      reportCritical,
       complete: async (winner, frozen) => {
         const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc(
           'fn_cancel_shipment',
@@ -322,7 +392,7 @@ serve(async (req) => {
         );
 
         if (rpcError || !rpcData?.[0]?.success) {
-          log('CRITICAL', 'Refund processed but shipment cancel RPC failed', {
+          await reportCritical('Refund processed but shipment cancel RPC failed', {
             orderId,
             shipmentId,
             dbError: rpcError?.message || rpcData?.[0]?.error_message,
@@ -361,4 +431,4 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+}));

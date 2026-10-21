@@ -48,6 +48,15 @@ export interface CancellationRefundRecordInput {
   status: string;
   failureReason: string | null;
 }
+/** Stripe keeps idempotency keys for 24 h; replay only while the key is surely alive. */
+export const REFUND_REPLAY_WINDOW_MS = 23 * 60 * 60 * 1000;
+interface ProviderRefund {
+  id: string;
+  payment_intent: string;
+  amount: number;
+  status: string;
+  failure_reason?: unknown;
+}
 export interface ShipmentCancellationPorts<T> {
   context: CancellationContext;
   claim: (context: CancellationContext) => Promise<unknown>;
@@ -58,6 +67,14 @@ export interface ShipmentCancellationPorts<T> {
     options: { idempotencyKey: string },
   ) => Promise<unknown>;
   recordRefund: (input: CancellationRefundRecordInput) => Promise<unknown>;
+  /** Service RPC `fn_get_shipment_cancellation_recovery`: JSON null or the started operation. */
+  loadRecovery: (shipmentId: string) => Promise<unknown>;
+  /** All Stripe refunds of the PaymentIntent (an array). */
+  listRefunds: (paymentIntentId: string) => Promise<unknown>;
+  retrieveRefund: (refundId: string) => Promise<unknown>;
+  /** Awaited; its own failure never changes the outcome. */
+  reportCritical: (message: string, data: Record<string, unknown>) => unknown;
+  now?: () => number;
   complete: (
     winner: CancellationContext,
     frozen: FrozenCancellation,
@@ -77,6 +94,81 @@ function source(value: unknown): value is CancellationSource {
     value === 'paid_timeout' ||
     value === 'preparing_timeout'
   );
+}
+function validWinner(
+  winnerSource: unknown,
+  actorId: unknown,
+  reason: unknown,
+): winnerSource is CancellationSource {
+  return (
+    source(winnerSource) &&
+    nonblank(reason) &&
+    (winnerSource === 'buyer' || winnerSource === 'seller'
+      ? nonblank(actorId)
+      : actorId === null)
+  );
+}
+function validFrozenRequest(
+  value: unknown,
+  context: CancellationContext,
+): value is CancellationRefundRequest {
+  if (
+    !record(value) ||
+    Object.keys(value).length !== 4 ||
+    !nonblank(value.payment_intent) ||
+    !Number.isSafeInteger(value.amount) ||
+    (value.amount as number) <= 0 ||
+    value.reason !== 'requested_by_customer' ||
+    !record(value.metadata)
+  )
+    return false;
+  const metadata = value.metadata;
+  return (
+    Object.keys(metadata).length === 5 &&
+    [
+      'shipment_id',
+      'order_id',
+      'caller_role',
+      'reason',
+      'seguro_share_cents',
+    ].every((key) => key in metadata) &&
+    metadata.shipment_id === context.shipmentId &&
+    metadata.order_id === context.orderId
+  );
+}
+async function critical(
+  ports: {
+    reportCritical: ShipmentCancellationPorts<unknown>['reportCritical'];
+  },
+  message: string,
+  data: Record<string, unknown>,
+): Promise<void> {
+  try {
+    await ports.reportCritical(message, data);
+  } catch {
+    // Alerting must never change the money outcome.
+  }
+}
+function providerRefund(value: unknown): ProviderRefund {
+  if (
+    !record(value) ||
+    !nonblank(value.id) ||
+    typeof value.status !== 'string' ||
+    !nonblank(value.payment_intent) ||
+    !Number.isSafeInteger(value.amount)
+  ) {
+    throw new ApiError(409, 'CANCELLATION_REFUND_UNCONFIRMED');
+  }
+  return value as unknown as ProviderRefund;
+}
+/** A refund found by recovery must belong to exactly this shipment. */
+function recoveredRefund(value: unknown, shipmentId: string): ProviderRefund {
+  const refund = providerRefund(value);
+  const metadata = (refund as unknown as Record<string, unknown>).metadata;
+  if (!record(metadata) || metadata.shipment_id !== shipmentId) {
+    throw new ApiError(409, 'CANCELLATION_REFUND_UNCONFIRMED');
+  }
+  return refund;
 }
 function matchesRequest(
   value: unknown,
@@ -100,11 +192,164 @@ function matchesRequest(
   );
 }
 
+/** Records the provider result and completes only on a recorded `succeeded`. */
+async function settleRefund<T>(
+  ports: ShipmentCancellationPorts<T>,
+  refund: ProviderRefund,
+  winner: CancellationContext,
+  frozen: FrozenCancellation,
+): Promise<{ status: 'cancelled'; value: T }> {
+  const failure = {
+    shipmentId: winner.shipmentId,
+    refundId: refund.id,
+    refundStatus: refund.status,
+  };
+  // Record Stripe's own values; the database validates them against the frozen request.
+  let recorded: unknown;
+  try {
+    recorded = await ports.recordRefund({
+      shipmentId: winner.shipmentId,
+      refundId: refund.id,
+      paymentIntentId: refund.payment_intent,
+      amountCents: refund.amount,
+      status: refund.status,
+      failureReason:
+        typeof refund.failure_reason === 'string'
+          ? refund.failure_reason
+          : null,
+    });
+  } catch (error) {
+    await critical(ports, 'CANCELLATION_REFUND_RECORD_FAILED', failure);
+    throw error;
+  }
+  if (
+    !record(recorded) ||
+    recorded.refund_id !== refund.id ||
+    typeof recorded.refund_status !== 'string'
+  ) {
+    await critical(ports, 'CANCELLATION_REFUND_RECORD_FAILED', failure);
+    throw new ApiError(500, 'CANCELLATION_REFUND_RECORD_INVALID');
+  }
+  if (recorded.refund_status !== 'succeeded') {
+    throw new ApiError(409, 'CANCELLATION_REFUND_UNCONFIRMED');
+  }
+  return { status: 'cancelled', value: await ports.complete(winner, frozen) };
+}
+
+/**
+ * Converges a started operation without new money movement: reuses the
+ * recorded refund, finds it at Stripe by shipment metadata, or replays the
+ * frozen request with the same idempotency key while that key is alive.
+ */
+async function recoverCancellation<T>(
+  ports: ShipmentCancellationPorts<T>,
+): Promise<
+  { status: 'cancelled'; value: T } | { status: 'recovery_required' }
+> {
+  const { context } = ports;
+  const key = `cancel_shipment_${context.shipmentId}`;
+  const operation = await ports.loadRecovery(context.shipmentId);
+  if (
+    !record(operation) ||
+    operation.operation_key !== key ||
+    operation.order_id !== context.orderId ||
+    !validWinner(operation.source, operation.actor_id, operation.reason) ||
+    !validFrozenRequest(operation.refund_request, context) ||
+    (operation.cancellation_loss_cents !== null &&
+      (!Number.isSafeInteger(operation.cancellation_loss_cents) ||
+        (operation.cancellation_loss_cents as number) < 0)) ||
+    typeof operation.external_started_at !== 'string' ||
+    !Number.isFinite(Date.parse(operation.external_started_at))
+  ) {
+    return { status: 'recovery_required' };
+  }
+  const winner: CancellationContext = {
+    ...context,
+    source: operation.source,
+    actorId: typeof operation.actor_id === 'string' ? operation.actor_id : null,
+    reason: operation.reason as string,
+  };
+  const frozen: FrozenCancellation = {
+    operationKey: key,
+    refundRequest: operation.refund_request,
+    cancellationLossCents: operation.cancellation_loss_cents as number | null,
+  };
+  const refundId = operation.refund_id;
+  const refundStatus = operation.refund_status;
+  if (refundId !== null && refundId !== undefined) {
+    if (!nonblank(refundId) || typeof refundStatus !== 'string') {
+      return { status: 'recovery_required' };
+    }
+    if (refundStatus === 'succeeded') {
+      return {
+        status: 'cancelled',
+        value: await ports.complete(winner, frozen),
+      };
+    }
+    if (refundStatus === 'failed' || refundStatus === 'canceled') {
+      return { status: 'recovery_required' };
+    }
+    const retrieved = recoveredRefund(
+      await ports.retrieveRefund(refundId),
+      context.shipmentId,
+    );
+    if (retrieved.id !== refundId) {
+      throw new ApiError(409, 'CANCELLATION_REFUND_UNCONFIRMED');
+    }
+    return settleRefund(ports, retrieved, winner, frozen);
+  }
+  if (refundStatus !== null && refundStatus !== undefined) {
+    return { status: 'recovery_required' };
+  }
+  const listed = await ports.listRefunds(frozen.refundRequest.payment_intent);
+  if (!Array.isArray(listed)) {
+    throw new ApiError(409, 'CANCELLATION_REFUND_UNCONFIRMED');
+  }
+  const matches = listed.filter(
+    (entry) =>
+      record(entry) &&
+      record(entry.metadata) &&
+      entry.metadata.shipment_id === context.shipmentId,
+  );
+  if (matches.length > 1) {
+    await critical(ports, 'CANCELLATION_REFUND_AMBIGUOUS', {
+      shipmentId: context.shipmentId,
+      refundIds: matches.map((entry) => (entry as { id?: unknown }).id),
+    });
+    return { status: 'recovery_required' };
+  }
+  if (matches.length === 1) {
+    return settleRefund(
+      ports,
+      recoveredRefund(matches[0], context.shipmentId),
+      winner,
+      frozen,
+    );
+  }
+  const elapsed =
+    (ports.now ?? Date.now)() - Date.parse(operation.external_started_at);
+  if (elapsed >= REFUND_REPLAY_WINDOW_MS) {
+    await critical(ports, 'CANCELLATION_REFUND_NOT_FOUND', {
+      shipmentId: context.shipmentId,
+      externalStartedAt: operation.external_started_at,
+    });
+    return { status: 'recovery_required' };
+  }
+  // Same key and body: Stripe returns the original refund instead of a new one.
+  const replayed = recoveredRefund(
+    await ports.refund(frozen.refundRequest, {
+      idempotencyKey: frozen.operationKey,
+    }),
+    context.shipmentId,
+  );
+  return settleRefund(ports, replayed, winner, frozen);
+}
+
 /**
  * Claims before reconstruction; a confirmed atomic start is mandatory before Stripe.
- * The provider result is recorded durably (B2) and only a recorded `succeeded`
- * refund completes the cancellation. No retries or recovery are performed here
- * (recovery is B2.2).
+ * The provider result is recorded durably and only a recorded `succeeded`
+ * refund completes the cancellation. A claim in `recovery_required` converges
+ * the started operation without new money movement (see recoverCancellation).
  */
 export async function runShipmentCancellation<T>(
   ports: ShipmentCancellationPorts<T>,
@@ -112,12 +357,11 @@ export async function runShipmentCancellation<T>(
   { status: 'cancelled'; value: T } | { status: 'busy' | 'recovery_required' }
 > {
   const reservation = await ports.claim(ports.context);
-  if (
-    record(reservation) &&
-    (reservation.status === 'busy' ||
-      reservation.status === 'recovery_required')
-  ) {
-    return { status: reservation.status };
+  if (record(reservation) && reservation.status === 'busy') {
+    return { status: 'busy' };
+  }
+  if (record(reservation) && reservation.status === 'recovery_required') {
+    return recoverCancellation(ports);
   }
   const key = `cancel_shipment_${ports.context.shipmentId}`;
   if (
@@ -125,11 +369,7 @@ export async function runShipmentCancellation<T>(
     reservation.status !== 'claimed' ||
     reservation.operation_key !== key ||
     !nonblank(reservation.claim_token) ||
-    !source(reservation.source) ||
-    !nonblank(reservation.reason) ||
-    (reservation.source === 'buyer' || reservation.source === 'seller'
-      ? !nonblank(reservation.actor_id)
-      : reservation.actor_id !== null)
+    !validWinner(reservation.source, reservation.actor_id, reservation.reason)
   ) {
     throw new ApiError(500, 'CANCELLATION_RESERVATION_INVALID');
   }
@@ -140,7 +380,7 @@ export async function runShipmentCancellation<T>(
     source: reservation.source,
     actorId:
       typeof reservation.actor_id === 'string' ? reservation.actor_id : null,
-    reason: reservation.reason,
+    reason: reservation.reason as string,
   };
   const plan = await ports.prepare(winner);
   if (
@@ -194,37 +434,10 @@ export async function runShipmentCancellation<T>(
   };
   // An error, including charge_already_refunded, does not establish this
   // shipment's refund. Leave the durable fence for B2/manual recovery.
-  const refund = await ports.refund(frozen.refundRequest, {
-    idempotencyKey: frozen.operationKey,
-  });
-  if (
-    !record(refund) ||
-    !nonblank(refund.id) ||
-    typeof refund.status !== 'string' ||
-    !nonblank(refund.payment_intent) ||
-    !Number.isSafeInteger(refund.amount)
-  ) {
-    throw new ApiError(409, 'CANCELLATION_REFUND_UNCONFIRMED');
-  }
-  // Record Stripe's own values; the database validates them against the frozen request.
-  const recorded = await ports.recordRefund({
-    shipmentId: winner.shipmentId,
-    refundId: refund.id,
-    paymentIntentId: refund.payment_intent,
-    amountCents: refund.amount as number,
-    status: refund.status,
-    failureReason:
-      typeof refund.failure_reason === 'string' ? refund.failure_reason : null,
-  });
-  if (
-    !record(recorded) ||
-    recorded.refund_id !== refund.id ||
-    typeof recorded.refund_status !== 'string'
-  ) {
-    throw new ApiError(500, 'CANCELLATION_REFUND_RECORD_INVALID');
-  }
-  if (recorded.refund_status !== 'succeeded') {
-    throw new ApiError(409, 'CANCELLATION_REFUND_UNCONFIRMED');
-  }
-  return { status: 'cancelled', value: await ports.complete(winner, frozen) };
+  const refund = providerRefund(
+    await ports.refund(frozen.refundRequest, {
+      idempotencyKey: frozen.operationKey,
+    }),
+  );
+  return settleRefund(ports, refund, winner, frozen);
 }

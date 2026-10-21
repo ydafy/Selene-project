@@ -15,6 +15,7 @@ async function invoke(
     busy?: boolean;
     providerError?: string;
     refundStatus?: string;
+    recordError?: string;
   } = {},
 ) {
   const business = {
@@ -95,6 +96,8 @@ async function invoke(
         };
       if (name === 'fn_record_shipment_cancellation_refund') {
         recordings.push(args);
+        if (options.recordError)
+          return { error: { message: options.recordError } };
         return {
           data: {
             refund_id: args.p_refund_id,
@@ -145,6 +148,8 @@ async function invoke(
     'resolveManualShipmentCancelPlan',
     'runShipmentCancellation',
     'buildStripeFeeReconciliationPlan',
+    'withSentry',
+    'reportMessage',
     executable,
   )(
     (callback: typeof handler) => {
@@ -159,6 +164,8 @@ async function invoke(
     resolveManualShipmentCancelPlan,
     runShipmentCancellation,
     buildStripeFeeReconciliationPlan,
+    (_name: string, callback: typeof handler) => callback,
+    async () => undefined,
   );
   const response = await handler(
     new Request('https://test.invalid/cancel-order', {
@@ -260,6 +267,21 @@ describe('manual cancellation HTTP preservation', () => {
       expect(result.after).toBe(result.before);
     });
   }
+  test('a record RPC error returns a stable 500 and never leaks the RPC text', async () => {
+    const result = await invoke({ recordError: 'secret rpc detail p_refund_id' });
+    expect(result.response.status).toBe(500);
+    expect(result.body).toBe('{"error":"CANCELLATION_REFUND_RECORD_FAILED"}');
+    expect(result.body).not.toContain('secret rpc detail');
+    expect(result.completions).toEqual([]);
+    expect(result.refunds).toHaveLength(1);
+    expect(result.logs).toContainEqual(
+      expect.objectContaining({
+        level: 'ERROR',
+        error: 'secret rpc detail p_refund_id',
+      }),
+    );
+    expect(result.after).toBe(result.before);
+  });
   test('succeeded refund retains the existing HTTP success contract', async () => {
     const result = await invoke();
     expect(result.response.status).toBe(200);

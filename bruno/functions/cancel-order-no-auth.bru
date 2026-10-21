@@ -1,0 +1,31 @@
+meta {
+  name: cancel-order-no-auth
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/cancel-order
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "orderId": "00000000-0000-4000-8000-0000000000c1",
+    "shipmentId": "00000000-0000-4000-8000-0000000000c2",
+    "reason": "Bruno: no auth"
+  }
+}
+
+tests {
+  test("rejects a cancellation without a user token", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody()).to.deep.equal({ error: "AUTH_REQUIRED" });
+  });
+}
+
+docs {
+  Needs the functions server (see stripe-webhooks-unsigned). Proves cancel-order refuses
+  anonymous callers before reading any order or calling Stripe.
+}

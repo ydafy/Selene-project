@@ -23,9 +23,11 @@ function refundResult(status: string) {
     failure_reason: null,
   };
 }
+const NOW = Date.parse('2026-10-20T12:00:00.000Z');
 function fixture() {
   const effects: string[] = [];
   let started = false;
+  let operation: Record<string, unknown> | null = null;
   const ports: ShipmentCancellationPorts<void> = {
     context,
     claim: async () =>
@@ -51,6 +53,18 @@ function fixture() {
     start: async (input) => {
       started = true;
       effects.push('start');
+      operation = {
+        operation_key: 'cancel_shipment_shipment',
+        order_id: 'order',
+        source: 'seller',
+        actor_id: 'seller',
+        reason: 'Original reason',
+        refund_request: input.refundRequest,
+        cancellation_loss_cents: input.cancellationLossCents,
+        refund_id: null,
+        refund_status: null,
+        external_started_at: new Date(NOW - 60_000).toISOString(),
+      };
       return {
         operation_key: 'cancel_shipment_shipment',
         refund_request: input.refundRequest,
@@ -71,11 +85,30 @@ function fixture() {
     },
     recordRefund: async (input) => {
       effects.push('record');
+      operation = {
+        ...operation,
+        refund_id: input.refundId,
+        refund_status: input.status,
+      };
       return {
         refund_id: input.refundId,
         refund_status: input.status,
       };
     },
+    loadRecovery: async () => {
+      effects.push('loadRecovery');
+      return operation;
+    },
+    listRefunds: async () => {
+      effects.push('list');
+      return [];
+    },
+    retrieveRefund: async () => {
+      effects.push('retrieve');
+      return { ...refundResult('pending'), metadata: { shipment_id: 'shipment' } };
+    },
+    reportCritical: () => undefined,
+    now: () => NOW,
     complete: async (winner, frozen) => {
       expect(winner).toEqual({
         ...context,
@@ -90,12 +123,37 @@ function fixture() {
   return { ports, effects };
 }
 
-it('keeps takeover context and fences repeated manual attempts', async () => {
+it('keeps takeover context and converges a repeated attempt without another refund', async () => {
   const { ports, effects } = fixture();
   expect(await runShipmentCancellation(ports)).toEqual({
     status: 'cancelled',
     value: undefined,
   });
+  // The recorded succeeded refund completes again with the stored winner; no money moves.
+  expect(await runShipmentCancellation(ports)).toEqual({
+    status: 'cancelled',
+    value: undefined,
+  });
+  expect(effects).toEqual([
+    'prepare:Original reason',
+    'start',
+    'refund',
+    'record',
+    'complete',
+    'loadRecovery',
+    'complete',
+  ]);
+});
+
+it('does not complete or call Stripe when the recorded refund failed', async () => {
+  const { ports, effects } = fixture();
+  ports.refund = async () => {
+    effects.push('refund');
+    return refundResult('failed');
+  };
+  await expect(runShipmentCancellation(ports)).rejects.toThrow(
+    'CANCELLATION_REFUND_UNCONFIRMED',
+  );
   expect(await runShipmentCancellation(ports)).toEqual({
     status: 'recovery_required',
   });
@@ -104,7 +162,7 @@ it('keeps takeover context and fences repeated manual attempts', async () => {
     'start',
     'refund',
     'record',
-    'complete',
+    'loadRecovery',
   ]);
 });
 
@@ -150,13 +208,30 @@ it('never completes after an uncertain refund or already-refunded error', async 
     await expect(runShipmentCancellation(ports)).rejects.toThrow(
       outcome === 'pending' ? 'CANCELLATION_REFUND_UNCONFIRMED' : outcome,
     );
-    expect(await runShipmentCancellation(ports)).toEqual({
-      status: 'recovery_required',
-    });
+    // Recovery re-reads the recorded refund or replays the same key; it never completes.
+    await expect(runShipmentCancellation(ports)).rejects.toThrow(
+      outcome === 'pending' ? 'CANCELLATION_REFUND_UNCONFIRMED' : outcome,
+    );
+    expect(effects).not.toContain('complete');
     expect(effects).toEqual(
       outcome === 'pending'
-        ? ['prepare:Original reason', 'start', 'refund', 'record']
-        : ['prepare:Original reason', 'start', 'refund'],
+        ? [
+            'prepare:Original reason',
+            'start',
+            'refund',
+            'record',
+            'loadRecovery',
+            'retrieve',
+            'record',
+          ]
+        : [
+            'prepare:Original reason',
+            'start',
+            'refund',
+            'loadRecovery',
+            'list',
+            'refund',
+          ],
     );
   }
 });
@@ -167,6 +242,14 @@ it('wires reservation before financial reconstruction and preserves preclaim gua
   expect(source).toContain("'fn_claim_shipment_cancellation'");
   expect(source).toContain("'fn_start_shipment_cancellation_refund'");
   expect(source).toContain("'fn_record_shipment_cancellation_refund'");
+  expect(source).toContain("'fn_get_shipment_cancellation_recovery'");
+  expect(source).toMatch(/stripe\s*\.refunds\s*\.list\(\{/);
+  expect(source).toContain('payment_intent: paymentIntentId');
+  expect(source).toContain('stripe.refunds.retrieve(');
+  expect(source).toContain("withSentry('cancel-order'");
+  expect(source).toContain('reportMessage(');
+  expect(source).toContain("'CANCELLATION_REFUND_RECORD_FAILED'");
+  expect(source).toContain("'CANCELLATION_RECOVERY_UNAVAILABLE'");
   const prepare = source.indexOf('prepare: async (winner)');
   expect(prepare).toBeGreaterThan(source.indexOf("'UNAUTHORIZED'"));
   expect(prepare).toBeGreaterThan(

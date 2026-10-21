@@ -17,7 +17,7 @@ function adapter(name: string) {
   expect(start).toBeGreaterThan(0);
   const end = source.indexOf('// Delay', start);
   const body = new Bun.Transpiler({ loader: 'ts' }).transformSync(
-    `async function execute(supabaseAdmin, stripe, shipment, log, runShipmentCancellation, computeShipmentRefundAmountCents, allocateCancellationLossCents, resolveAutoCancelShipmentCancellationGate) { let successCount = 0; const hours = 80; ${source.slice(start, end)} return successCount; }`,
+    `async function execute(supabaseAdmin, stripe, shipment, log, runShipmentCancellation, computeShipmentRefundAmountCents, allocateCancellationLossCents, resolveAutoCancelShipmentCancellationGate, reportCritical) { let successCount = 0; const hours = 80; ${source.slice(start, end)} return successCount; }`,
   );
   return new Function(`${body}; return execute;`)();
 }
@@ -38,6 +38,9 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         providerError?: boolean;
         source?: string;
         recordings?: unknown[];
+        recovery?: Record<string, unknown> | null;
+        recoveryRpcError?: boolean;
+        unrecorded?: boolean;
       } = {},
     ) {
       const expectedSource =
@@ -47,6 +50,9 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
       const completions: Record<string, unknown>[] = [];
       const recordings: Record<string, unknown>[] = [];
       const logs: unknown[] = [];
+      const critical: unknown[][] = [];
+      const listed: unknown[] = [];
+      const retrieved: unknown[] = [];
       const order = {
         stripe_charge_id: 'ch',
         total_amount: 7569.59,
@@ -65,6 +71,31 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
           shipping_amount: 900,
         },
       ];
+      const recoveryOperation = () => ({
+        operation_key: 'cancel_shipment_target',
+        order_id: 'order',
+        source: options.source ?? expectedSource,
+        actor_id: options.source ? 'original_actor' : null,
+        reason: options.source ? 'Original reason' : 'Stored reason',
+        refund_request: {
+          payment_intent: 'pi_order',
+          amount: 339326,
+          reason: 'requested_by_customer',
+          metadata: {
+            shipment_id: 'target',
+            order_id: 'order',
+            caller_role: options.source ?? 'system',
+            reason: options.source ? 'Original reason' : 'Stored reason',
+            seguro_share_cents: 14326,
+          },
+        },
+        cancellation_loss_cents: 14326,
+        refund_id: options.unrecorded ? null : 're_target',
+        refund_status: options.unrecorded
+          ? null
+          : (options.refundStatus ?? 'succeeded'),
+        external_started_at: new Date().toISOString(),
+      });
       const supabase = {
         from(table: string) {
           events.push(table);
@@ -114,6 +145,17 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
               },
             };
           }
+          if (name === 'fn_get_shipment_cancellation_recovery') {
+            expect(args).toEqual({ p_shipment_id: 'target' });
+            if (options.recoveryRpcError)
+              return { error: { message: 'recovery rpc secret' } };
+            return {
+              data:
+                options.recovery === undefined
+                  ? recoveryOperation()
+                  : options.recovery,
+            };
+          }
           if (name === 'fn_start_shipment_cancellation_refund') {
             if (options.reservation) options.reservation.started = true;
             return options.failStart
@@ -152,6 +194,21 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
           },
         },
         refunds: {
+          list: (params: unknown) => {
+            listed.push(params);
+            return { autoPagingToArray: async () => [] };
+          },
+          retrieve: async (id: string) => {
+            retrieved.push(id);
+            return {
+              id,
+              payment_intent: 'pi_order',
+              amount: 339326,
+              status: options.refundStatus ?? 'pending',
+              failure_reason: null,
+              metadata: { shipment_id: 'target' },
+            };
+          },
           create: async (...args: unknown[]) => {
             events.push('refund');
             refunds.push(args);
@@ -163,6 +220,7 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
               amount: 339326,
               status: options.refundStatus ?? 'succeeded',
               failure_reason: null,
+              metadata: { shipment_id: 'target' },
             };
           },
         },
@@ -183,11 +241,25 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
           computeShipmentRefundAmountCents,
           allocateCancellationLossCents,
           resolveAutoCancelShipmentCancellationGate,
+          async (...args: unknown[]) => {
+            critical.push(args);
+          },
         );
       } catch (caught) {
         error = caught;
       }
-      return { events, refunds, completions, recordings, logs, error, count };
+      return {
+        events,
+        refunds,
+        completions,
+        recordings,
+        logs,
+        critical,
+        listed,
+        retrieved,
+        error,
+        count,
+      };
     }
 
     test('claims before reconstruction; second target uses order PI and uncapped sibling loss weights', async () => {
@@ -263,10 +335,23 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
       expect(attempts.flatMap((attempt) => attempt.completions)).toHaveLength(
         1,
       );
-      expect(repeated.events).toEqual(['fn_claim_shipment_cancellation']);
+      // The repeated run converges from the recorded succeeded refund: no new money.
+      expect(repeated.events).toEqual([
+        'fn_claim_shipment_cancellation',
+        'fn_get_shipment_cancellation_recovery',
+        'fn_cancel_shipment',
+      ]);
       expect(repeated.refunds).toEqual([]);
-      expect(repeated.completions).toEqual([]);
-      expect(JSON.stringify(repeated.logs)).toContain('recovery_required');
+      expect(repeated.listed).toEqual([]);
+      expect(repeated.completions).toEqual([
+        expect.objectContaining({
+          p_shipment_id: 'target',
+          p_cancelled_by_role: 'system',
+          p_reason: 'Stored reason',
+          p_cancellation_loss_cents: 14326,
+        }),
+      ]);
+      expect(repeated.count).toBe(1);
     });
     test('preserves first cancellation and shipment PI precedence', async () => {
       const result = await run({
@@ -284,15 +369,99 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         p_cancellation_loss_cents: 14326,
       });
     });
-    for (const status of ['busy', 'recovery_required'])
-      test(`${status} skips all financial and business work explicitly`, async () => {
-        const result = await run({ status });
-        expect(result.events).toEqual(['fn_claim_shipment_cancellation']);
+    test('busy skips all financial and business work explicitly', async () => {
+      const result = await run({ status: 'busy' });
+      expect(result.events).toEqual(['fn_claim_shipment_cancellation']);
+      expect(result.refunds).toEqual([]);
+      expect(result.completions).toEqual([]);
+      expect(JSON.stringify(result.logs)).toContain('busy');
+      expect(result.count).toBe(0);
+    });
+    test('recovery_required with a recorded succeeded refund completes with the stored winner and creates no refund', async () => {
+      const result = await run({
+        status: 'recovery_required',
+        source: 'seller',
+      });
+      expect(result.error).toBeUndefined();
+      expect(result.events).toEqual([
+        'fn_claim_shipment_cancellation',
+        'fn_get_shipment_cancellation_recovery',
+        'fn_cancel_shipment',
+      ]);
+      expect(result.refunds).toEqual([]);
+      expect(result.listed).toEqual([]);
+      expect(result.completions).toEqual([
+        expect.objectContaining({
+          p_cancelled_by_role: 'seller',
+          p_reason: 'Original reason',
+          p_cancellation_loss_cents: 14326,
+        }),
+      ]);
+      expect(result.count).toBe(1);
+    });
+    for (const refundStatus of ['failed', 'canceled'])
+      test(`recovery_required with a recorded ${refundStatus} refund makes no Stripe call and no cancellation`, async () => {
+        const result = await run({ status: 'recovery_required', refundStatus });
+        expect(result.error).toBeUndefined();
+        expect(result.events).toEqual([
+          'fn_claim_shipment_cancellation',
+          'fn_get_shipment_cancellation_recovery',
+        ]);
         expect(result.refunds).toEqual([]);
+        expect(result.listed).toEqual([]);
+        expect(result.retrieved).toEqual([]);
         expect(result.completions).toEqual([]);
-        expect(JSON.stringify(result.logs)).toContain(status);
+        expect(JSON.stringify(result.logs)).toContain('recovery_required');
         expect(result.count).toBe(0);
       });
+    test('recovery_required with a recorded pending refund retrieves it by id and never completes', async () => {
+      const result = await run({
+        status: 'recovery_required',
+        refundStatus: 'pending',
+      });
+      expect(String(result.error)).toContain('CANCELLATION_REFUND_UNCONFIRMED');
+      expect(result.retrieved).toEqual(['re_target']);
+      expect(result.refunds).toEqual([]);
+      expect(result.completions).toEqual([]);
+    });
+    test('recovery_required with nothing recorded lists refunds by payment_intent, then replays the same key', async () => {
+      const result = await run({
+        status: 'recovery_required',
+        unrecorded: true,
+      });
+      expect(result.error).toBeUndefined();
+      expect(result.listed).toEqual([
+        { payment_intent: 'pi_order', limit: 100 },
+      ]);
+      expect(result.refunds).toHaveLength(1);
+      expect((result.refunds[0] as unknown[])[1]).toEqual({
+        idempotencyKey: 'cancel_shipment_target',
+      });
+      expect(result.recordings).toHaveLength(1);
+      expect(result.completions).toHaveLength(1);
+    });
+    test('an unreadable recovery operation surfaces a stable code and leaks no RPC text', async () => {
+      const result = await run({
+        status: 'recovery_required',
+        recoveryRpcError: true,
+      });
+      expect((result.error as Error).message).toBe(
+        'CANCELLATION_RECOVERY_UNAVAILABLE',
+      );
+      expect(JSON.stringify(result.logs)).toContain('recovery rpc secret');
+      expect(result.refunds).toEqual([]);
+      expect(result.completions).toEqual([]);
+    });
+    test('a database cancellation failure after a recorded refund is reported as critical and still throws', async () => {
+      const result = await run({ rpcErrorAt: 'fn_cancel_shipment' });
+      expect(result.error).toBeInstanceOf(Error);
+      expect(result.critical).toHaveLength(1);
+      expect(result.critical[0]![0]).toBe(
+        'Refund succeeded but database cancellation failed; manual review required',
+      );
+      expect(result.critical[0]![1]).toMatchObject({ shipmentId: 'target' });
+      expect(result.refunds).toHaveLength(1);
+    });
     for (const rpcErrorAt of [
       'fn_claim_shipment_cancellation',
       'fn_start_shipment_cancellation_refund',

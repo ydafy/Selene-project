@@ -62,13 +62,14 @@ BEGIN
     RETURN;
   END IF;
 
-  -- A recorded refund must have succeeded before the business cancellation.
-  -- NULL is still accepted while pre-B2.1 handlers, which never record, run.
+  -- The Stripe refund must be recorded as succeeded before the business
+  -- cancellation: every caller records it first, so a missing operation or a
+  -- NULL status means no confirmed refund.
   SELECT refund_status INTO v_refund_status
   FROM public.shipment_cancellation_operations
   WHERE shipment_id = p_shipment_id;
 
-  IF v_refund_status IS NOT NULL AND v_refund_status <> 'succeeded' THEN
+  IF v_refund_status IS DISTINCT FROM 'succeeded' THEN
     RETURN QUERY SELECT false, 'REFUND_NOT_SUCCEEDED'::TEXT;
     RETURN;
   END IF;

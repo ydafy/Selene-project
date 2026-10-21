@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import Stripe from 'https://esm.sh/stripe@17.0.0';
 
 import type { Tables } from '../../../packages/types/src/index.ts';
+import { reportMessage, withSentry } from '../_shared/sentry.ts';
 import { runShipmentCancellation } from '../_shared/shipment-cancellation.ts';
 import { resolveAutoCancelShipmentCancellationGate } from '../_shared/auto-cancel-safety.ts';
 import {
@@ -29,7 +30,26 @@ const log = (
   );
 };
 
-serve(async () => {
+/** CRITICAL log plus a Sentry message; no bodies or user data, and never throws. */
+const reportCritical = async (
+  message: string,
+  data: Record<string, unknown>,
+) => {
+  log('CRITICAL', message, data);
+  const tags: Record<string, string> = { edge_function: 'auto-cancel-preparing' };
+  if (typeof data.shipmentId === 'string') tags.shipment_id = data.shipmentId;
+  if (typeof data.refundId === 'string') tags.refund_id = data.refundId;
+  try {
+    await reportMessage('auto-cancel-preparing ' + message, {
+      fingerprint: ['shipment-cancellation', 'auto-cancel-preparing', message],
+      tags,
+    });
+  } catch {
+    // Reporting must never change the cancellation outcome.
+  }
+};
+
+serve(withSentry('auto-cancel-preparing', async () => {
   const supabaseAdmin = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -337,6 +357,26 @@ serve(async () => {
             return data;
           },
           refund: (request, options) => stripe.refunds.create(request, options),
+          loadRecovery: async (shipmentId) => {
+            const { data, error } = await supabaseAdmin.rpc(
+              'fn_get_shipment_cancellation_recovery',
+              { p_shipment_id: shipmentId },
+            );
+            if (error) {
+              log('ERROR', 'Cancellation recovery lookup failed', {
+                shipmentId,
+                error: error.message,
+              });
+              throw new Error('CANCELLATION_RECOVERY_UNAVAILABLE');
+            }
+            return data;
+          },
+          listRefunds: (paymentIntentId) =>
+            stripe.refunds
+              .list({ payment_intent: paymentIntentId, limit: 100 })
+              .autoPagingToArray({ limit: 1000 }),
+          retrieveRefund: (refundId) => stripe.refunds.retrieve(refundId),
+          reportCritical,
           recordRefund: async (input) => {
             const { data, error } = await supabaseAdmin.rpc(
               'fn_record_shipment_cancellation_refund',
@@ -366,8 +406,7 @@ serve(async () => {
               },
             );
             if (error || !data?.[0]?.success) {
-              log(
-                'CRITICAL',
+              await reportCritical(
                 'Refund succeeded but database cancellation failed; manual review required',
                 {
                   shipmentId: winner.shipmentId,
@@ -443,4 +482,4 @@ serve(async () => {
       status: 500,
     });
   }
-});
+}));

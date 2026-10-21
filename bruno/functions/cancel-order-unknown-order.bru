@@ -1,0 +1,37 @@
+meta {
+  name: cancel-order-unknown-order
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/cancel-order
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  {
+    "orderId": "00000000-0000-4000-8000-0000000000c1",
+    "shipmentId": "00000000-0000-4000-8000-0000000000c2",
+    "reason": "Bruno: unknown order"
+  }
+}
+
+tests {
+  test("a signed-in buyer cannot cancel an order that does not exist", function () {
+    expect(res.getStatus()).to.equal(422);
+    expect(res.getBody()).to.deep.equal({ error: "ORDER_NOT_FOUND" });
+  });
+}
+
+docs {
+  Run after auth/login-buyer (needs `buyerToken`) with the functions server and
+  supabase/functions/.env (STRIPE_SECRET_KEY). Proves an authenticated buyer is stopped
+  before any claim, refund or database change when the order is not theirs or missing.
+}
