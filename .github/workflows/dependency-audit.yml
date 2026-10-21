@@ -1,0 +1,27 @@
+# Weekly dependency vulnerability audit.
+# Dependabot alerts only see direct dependencies in package.json; bun audit reads
+# bun.lock, so it also covers transitive dependencies. Fails on high or critical.
+# It never blocks commits: it runs on a schedule, on demand, and when the lockfile changes.
+name: Dependency audit
+
+on:
+  schedule:
+    - cron: '0 14 * * 1' # Mondays 14:00 UTC (08:00 in Mexico City)
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [bun.lock]
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      # Bun version comes from "packageManager" in package.json.
+      - uses: oven-sh/setup-bun@v2
+      # Reads bun.lock directly; no install needed.
+      - run: bun audit --audit-level=high
