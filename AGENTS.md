@@ -50,6 +50,7 @@ Run from the repository or worktree root. `package.json` is the source of truth.
 - `bun run db:types`: regenerates types from the remote project. Run it only after the maintainer confirms the SQL was applied.
 - Run `expo install` from `apps/frontend`, never from the root, or native autolinking breaks.
 - `bunfig.toml` blocks package versions newer than 3 days. If an install fails, pick an older version; do not change the setting.
+- `bun audit --audit-level=high` must stay clean apart from the documented `--ignore` list in `.github/workflows/dependency-audit.yml` (weekly job). After changing dependencies, run that exact command; never add an ignore without its reason in that file.
 
 ## How we work
 
