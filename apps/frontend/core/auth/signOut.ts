@@ -13,6 +13,7 @@ import {
   type SignOutResult,
   type SignOutScope,
 } from './signOut.logic';
+import { resetUserQueries } from './userQueries.logic';
 
 /**
  * Clears everything tied to the signed-in user. Device preferences such as
@@ -20,7 +21,7 @@ import {
  */
 export const clearUserScopedData = (): void =>
   runCleanupSteps([
-    () => queryClient.clear(),
+    () => resetUserQueries(queryClient),
     () => useCheckoutStore.getState().resetCheckout(),
     () => useCartStore.getState().clearCart(),
     () => useDisputeStore.getState().reset(),
