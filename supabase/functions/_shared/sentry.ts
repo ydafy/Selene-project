@@ -136,7 +136,9 @@ export function createSentry(deps: SentryWrapperDeps) {
     if (!sdk) return fn();
 
     let started = false;
-    let outcome: { ok: true; value: T } | { ok: false; error: unknown } | null = null;
+    // Typed through `as` so TypeScript does not narrow it to `null`: it is only
+    // assigned inside the monitor callback, which control-flow analysis cannot see.
+    let outcome = null as { ok: true; value: T } | { ok: false; error: unknown } | null;
     try {
       const value = await sdk.withMonitor(
         slug,
@@ -158,7 +160,7 @@ export function createSentry(deps: SentryWrapperDeps) {
     } catch (error) {
       if (!started) return fn();
       await report(sdk, () => undefined);
-      const finished = outcome as typeof outcome;
+      const finished = outcome;
       if (finished?.ok) return finished.value;
       throw finished ? finished.error : error;
     }
