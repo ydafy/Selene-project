@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+# A new worktree checks out from the null revision: bring the gitignored env files.
+# The script is resolved next to this hook, so it also works for worktrees of branches
+# that predate it; it copies into the current directory, the new worktree.
+if [ "$1" = "0000000000000000000000000000000000000000" ]; then
+  bun "$(dirname "$0")/../scripts/worktree-env.ts" || true
+fi

@@ -19,6 +19,7 @@
     "db:test:stop": "docker compose -f docker-compose.postgres-test.yml -p selene-pg-shipment-cancellations stop",
     "functions:serve": "supabase functions serve --env-file supabase/functions/.env",
     "stripe:listen": "bun scripts/stripe-listen.ts",
+    "worktree:env": "bun scripts/worktree-env.ts",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "db:types": "bunx supabase gen types typescript --project-id acoiclkeymgtlwcxilun --schema public > packages/types/src/database.types.ts",

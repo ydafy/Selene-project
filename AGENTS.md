@@ -72,7 +72,7 @@ Run from the repository or worktree root. `package.json` is the source of truth.
 - If an unrelated failure blocks verification, report the command and output and stop for a decision. Never weaken a test to get green.
 - Preserve uncommitted changes you did not make.
 - Code, identifiers, comments, tests, commits, and docs are in English. User-facing strings go through i18n with both English and Spanish (`apps/frontend/core/i18n/locales`); locale parity tests enforce it.
-- Several features are developed in parallel worktrees under `C:/dev/School-portal-worktrees/`. Stay inside the worktree you were given.
+- Several features are developed in parallel worktrees under `C:/dev/School-portal-worktrees/`. Stay inside the worktree you were given. `git worktree add` copies the gitignored env files (`apps/frontend/.env`, `apps/admin-web/.env`, `supabase/functions/.env`) from the main checkout through the `post-checkout` hook; in an older worktree run `bun run worktree:env`.
 
 ## How money moves
 
