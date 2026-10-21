@@ -35,6 +35,21 @@ Use these before guessing or asking the maintainer to look something up. MCP ser
 | Check dependency vulnerabilities        | `bun audit` command in "Commands"; weekly job `.github/workflows/dependency-audit.yml` |
 | Call local endpoints and Edge Functions | Bruno collection in `bruno/`, see "Bruno collection"                                   |
 
+## Verifying a change
+
+The maintainer does not start these tools or tell you when to use them: you do, without being asked, based on what your change touches. Unit tests alone do not prove SQL, permissions, Edge Functions, or webhooks. If Docker is not running or a tool fails, report the exact blocker instead of skipping the check.
+
+| Your change touches                | Prove it with                                                                                                                                                                                                                       |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SQL, migrations, RPCs, RLS, grants | `supabase start` (once per worktree), `supabase db reset`, then call the RPC or table per role (service role, buyer, anon) with a Bruno request                                                                                     |
+| An Edge Function                   | `bun run functions:serve` started right before the calls (the stack sleeps after 60 s idle), `bun run bruno:env`, `bun run api:test`; add or extend the request for that function in `bruno/` and keep the whole collection passing |
+| Payments or Stripe webhooks        | The above plus `bun run stripe:listen` and `stripe trigger <event>`; read the result in the sandbox through the Stripe MCP                                                                                                          |
+| A production bug report            | Sentry MCP first, then Supabase logs through the Supabase MCP; reproduce it on the local stack before deciding it works                                                                                                             |
+| Dependencies                       | The `bun audit` command in "Commands"                                                                                                                                                                                               |
+| Frontend only                      | `bun test` for the touched behavior and the typecheck of the touched files                                                                                                                                                          |
+
+Report which of these you ran and their results. Never point Bruno, `stripe:listen`, or data-mutating SQL at the remote project.
+
 ## Where truth lives
 
 Check these instead of guessing:
