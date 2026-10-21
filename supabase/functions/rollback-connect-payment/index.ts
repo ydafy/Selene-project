@@ -8,6 +8,7 @@ import {
   extractProductIdsFromIntentMetadata,
   mergeUniqueProductIds,
 } from './rollback-connect-payment.ts';
+import { withSentry } from '../_shared/sentry.ts';
 
 const STRIPE_API_VERSION = '2026-04-22.dahlia';
 
@@ -39,7 +40,7 @@ const log = (
   );
 };
 
-serve(async (req) => {
+serve(withSentry('rollback-connect-payment', async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -170,4 +171,4 @@ serve(async (req) => {
       },
     );
   }
-});
+}));

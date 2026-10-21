@@ -9,6 +9,7 @@ import type {
   Database,
   Json,
 } from '../../../packages/types/src/database.types.ts';
+import { withSentry } from '../_shared/sentry.ts';
 import { normalizeAccountStatus, type ConnectAccountLike } from '../_shared/connect-status.ts';
 import { extractStripeChargeId } from '../_shared/stripe-charge.ts';
 import { verifyStripeWebhookSignature } from './signature.ts';
@@ -611,7 +612,7 @@ async function retrieveAuthoritativeConnectPayout(
   };
 }
 
-serve(async (req: Request) => {
+serve(withSentry('stripe-webhooks', async (req: Request) => {
   if (req.method === 'OPTIONS')
     return new Response('ok', { headers: corsHeaders });
 
@@ -1182,4 +1183,4 @@ serve(async (req: Request) => {
       status: 500,
     });
   }
-});
+}));

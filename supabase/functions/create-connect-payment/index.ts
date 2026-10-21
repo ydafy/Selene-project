@@ -28,6 +28,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import Stripe from 'https://esm.sh/stripe@17.0.0';
+import { withSentry } from '../_shared/sentry.ts';
 import { z } from '../_shared/zod-runtime.ts';
 import {
   assertValidCheckoutAllocation,
@@ -122,7 +123,7 @@ const describeReservationRpcData = (data: ReservationRpcData) => ({
     : (data?.error_message ?? null),
 });
 
-serve(async (req: Request) => {
+serve(withSentry('create-connect-payment', async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -560,4 +561,4 @@ serve(async (req: Request) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+}));
