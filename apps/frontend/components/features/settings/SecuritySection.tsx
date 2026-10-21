@@ -8,6 +8,7 @@ import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import { FormTextInput } from '../../ui/FormTextInput';
 import { SettingsRow } from './SettingsRow';
 import { supabase } from '../../../core/db/supabase';
+import { signOutUser } from '../../../core/auth/signOut';
 import { useAuthContext } from '../../../components/auth/AuthProvider';
 import {
   validatePasswordChange,
@@ -43,11 +44,11 @@ export const SecuritySection = ({ disabled = false }: SecuritySectionProps) => {
 
   const handleConfirm = async () => {
     setLoading(true);
-    try {
-      await supabase.auth.signOut();
-    } finally {
-      setLoading(false);
-      setDialogOpen(false);
+    const { success } = await signOutUser();
+    setLoading(false);
+    setDialogOpen(false);
+    if (!success) {
+      Toast.show({ type: 'error', text1: t('errors.signOutFailed') });
     }
   };
 

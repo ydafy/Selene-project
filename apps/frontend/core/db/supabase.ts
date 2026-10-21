@@ -30,5 +30,9 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
 
 // On web, auth-js follows page visibility itself.
 if (Platform.OS !== 'web') {
-  bindAutoRefreshToAppState(supabase.auth, AppState);
+  bindAutoRefreshToAppState(
+    supabase.auth,
+    AppState,
+    supabase.auth.getSession(),
+  );
 }

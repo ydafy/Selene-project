@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it, spyOn } from 'bun:test';
 
 import {
   bindAutoRefreshToAppState,
@@ -102,5 +102,82 @@ describe('bindAutoRefreshToAppState', () => {
     expect(appState.listenerCount()).toBe(0);
     expect(appState.removedCount()).toBe(1);
     expect(calls).toEqual(['start']);
+  });
+});
+
+describe('bindAutoRefreshToAppState hardening', () => {
+  const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  it('logs a rejected start/stop instead of dropping it', async () => {
+    const spy = spyOn(console, 'error').mockImplementation(() => undefined);
+    const auth = {
+      startAutoRefresh: async () => {
+        throw new Error('start failed');
+      },
+      stopAutoRefresh: async () => {
+        throw new Error('stop failed');
+      },
+    };
+    const appState = createAppState('active');
+    bindAutoRefreshToAppState(auth, appState.source);
+    appState.emit('background');
+    await flush();
+
+    const logged = spy.mock.calls.map((args) => args.join(' '));
+    spy.mockRestore();
+    expect(logged).toHaveLength(2);
+    expect(logged[0]).toContain('start failed');
+    expect(logged[1]).toContain('stop failed');
+  });
+
+  it('re-applies the current state once the client is ready', async () => {
+    const { auth, calls } = createAuthSpy();
+    const appState = createAppState('background');
+    let release: () => void = () => undefined;
+    const ready = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    bindAutoRefreshToAppState(auth, appState.source, ready);
+    expect(calls).toEqual(['stop']);
+
+    release();
+    await flush();
+    expect(calls).toEqual(['stop', 'stop']);
+  });
+
+  it('re-applies a state change that happened while initializing', async () => {
+    const { auth, calls } = createAuthSpy();
+    const appState = createAppState('active');
+    let release: () => void = () => undefined;
+    const ready = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    bindAutoRefreshToAppState(auth, appState.source, ready);
+    appState.source.currentState = 'background';
+
+    release();
+    await flush();
+    expect(calls[calls.length - 1]).toBe('stop');
+  });
+
+  it('still re-applies when readiness rejects, and does nothing after unbind', async () => {
+    const { auth, calls } = createAuthSpy();
+    bindAutoRefreshToAppState(
+      auth,
+      createAppState('active').source,
+      Promise.reject(new Error('init failed')),
+    );
+    await flush();
+    expect(calls).toEqual(['start', 'start']);
+
+    const second = createAuthSpy();
+    const unbind = bindAutoRefreshToAppState(
+      second.auth,
+      createAppState('active').source,
+      Promise.resolve(),
+    );
+    unbind();
+    await flush();
+    expect(second.calls).toEqual(['start']);
   });
 });

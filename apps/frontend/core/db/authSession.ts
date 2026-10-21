@@ -34,19 +34,41 @@ export const createNativeAuthOptions = (storage: AuthStorage) => ({
   detectSessionInUrl: false,
 });
 
+const logRefreshFailure = (action: string, error: unknown) => {
+  const message = error instanceof Error ? error.message : 'unknown error';
+  console.error(`[AUTH] ${action} failed:`, message);
+};
+
+/**
+ * `ready` should resolve once auth-js finished its own initialization: outside
+ * a browser it starts its ticker there, which could undo a background stop.
+ * The then-current AppState is applied again at that point.
+ */
 export const bindAutoRefreshToAppState = (
   auth: AutoRefreshControl,
   appState: AppStateSource,
+  ready?: Promise<unknown>,
 ): (() => void) => {
+  let bound = true;
+
   const apply = (state: string) => {
     if (state === 'active') {
-      void auth.startAutoRefresh();
+      auth.startAutoRefresh().catch((e) => logRefreshFailure('startAutoRefresh', e));
     } else {
-      void auth.stopAutoRefresh();
+      auth.stopAutoRefresh().catch((e) => logRefreshFailure('stopAutoRefresh', e));
     }
   };
 
   apply(appState.currentState);
   const subscription = appState.addEventListener('change', apply);
-  return () => subscription.remove();
+  ready
+    ?.catch(() => undefined)
+    .then(() => {
+      if (bound) apply(appState.currentState);
+    });
+
+  return () => {
+    bound = false;
+    subscription.remove();
+  };
 };

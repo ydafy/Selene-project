@@ -6,13 +6,18 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 import { supabase } from '../db/supabase';
 import { Session } from '@supabase/supabase-js';
-import { AccountStatus } from '@selene/types';
 
-import { queryClient } from '../db/queryClient';
-import { useCheckoutStore } from '../store/useCheckoutStore';
-import { useCartStore } from '../store/useCartStore';
+import { clearUserScopedData } from '../auth/signOut';
+import {
+  INITIAL_STATUS_STATE,
+  applyStatusLoad,
+  shouldReloadStatusOnResume,
+  syncStatusOwner,
+  type StatusLoadResult,
+} from '../auth/sessionStatus.logic';
 
 const INITIALIZATION_TIMEOUT = 10000;
 
@@ -20,12 +25,21 @@ export const useSession = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [accountStatus, setAccountStatus] = useState<AccountStatus>('active');
-  const [statusReason, setStatusReason] = useState<string | null>(null);
+  const [statusState, setStatusState] = useState(INITIAL_STATUS_STATE);
   const isMounted = useRef(true);
+  // Mirrors the session user so late status responses can be checked against it.
+  const currentUserId = useRef<string | null>(null);
+
+  const applySession = (next: Session | null) => {
+    const nextUserId = next?.user.id ?? null;
+    currentUserId.current = nextUserId;
+    setStatusState((prev) => syncStatusOwner(prev, nextUserId));
+    setSession(next);
+  };
 
   // Función auxiliar para cargar el status de profiles_private
   const fetchAccountStatus = async (userId: string) => {
+    let result: StatusLoadResult = { ok: false };
     try {
       const { data: privateProfile, error: profileError } = await supabase
         .from('profiles_private')
@@ -38,17 +52,20 @@ export const useSession = () => {
           '[AUTH] Error consultando profiles_private:',
           profileError.message,
         );
-        return;
-      }
-
-      if (privateProfile && isMounted.current) {
-        console.log('[AUTH STATUS CARGADO]', privateProfile.status);
-        setAccountStatus(privateProfile.status || 'active');
-        setStatusReason(privateProfile.status_reason || null);
+      } else if (privateProfile) {
+        result = {
+          ok: true,
+          status: privateProfile.status,
+          reason: privateProfile.status_reason,
+        };
       }
     } catch (e) {
       console.error('[AUTH] Fallo al consultar status:', e);
     }
+
+    if (!isMounted.current) return;
+    const owner = currentUserId.current;
+    setStatusState((prev) => applyStatusLoad(prev, userId, owner, result));
   };
 
   useEffect(() => {
@@ -70,7 +87,7 @@ export const useSession = () => {
         if (authError) throw authError;
 
         if (currentSession && isMounted.current) {
-          setSession(currentSession);
+          applySession(currentSession);
           await fetchAccountStatus(currentSession.user.id);
         }
       } catch (err) {
@@ -96,13 +113,13 @@ export const useSession = () => {
         if (event === 'USER_UPDATED' && newSession) {
           const { data: fresh } = await supabase.auth.getUser();
           if (fresh.user) {
-            setSession({ ...newSession, user: fresh.user });
+            applySession({ ...newSession, user: fresh.user });
             await fetchAccountStatus(fresh.user.id);
             return;
           }
         }
 
-        setSession(newSession);
+        applySession(newSession);
 
         if (newSession?.user) {
           // 🚀 VITAL: Consultamos el status cada vez que hay una sesión activa
@@ -111,19 +128,28 @@ export const useSession = () => {
 
         if (event === 'SIGNED_OUT') {
           setLoading(false);
-          setAccountStatus('active');
-          setStatusReason(null);
-
-          queryClient.clear();
-          useCheckoutStore.getState().resetCheckout();
-          useCartStore.getState().clearCart();
+          setStatusState(INITIAL_STATUS_STATE);
+          try {
+            clearUserScopedData();
+          } catch (e) {
+            console.error('[AUTH] Fallo al limpiar datos de usuario:', e);
+          }
         }
+      }
+    });
+
+    // A ban applied while the app was open only shows after a resume reload.
+    const appStateSubscription = AppState.addEventListener('change', (state) => {
+      const userId = currentUserId.current;
+      if (userId && shouldReloadStatusOnResume(state, userId)) {
+        void fetchAccountStatus(userId);
       }
     });
 
     return () => {
       isMounted.current = false;
       subscription.unsubscribe();
+      appStateSubscription.remove();
     };
   }, []);
 
@@ -131,9 +157,9 @@ export const useSession = () => {
     session,
     loading,
     error,
-    accountStatus,
-    statusReason,
-    isBanned: accountStatus === 'banned',
-    isSuspended: accountStatus === 'suspended',
+    accountStatus: statusState.status,
+    statusReason: statusState.reason,
+    isBanned: statusState.status === 'banned',
+    isSuspended: statusState.status === 'suspended',
   };
 };

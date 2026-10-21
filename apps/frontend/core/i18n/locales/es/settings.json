@@ -95,6 +95,7 @@
     "updateFailed": "No pudimos guardar los cambios. Intenta de nuevo.",
     "deleteFailed": "No pudimos eliminar tu cuenta. Intenta más tarde.",
     "authRequired": "Tu sesión expiró. Vuelve a iniciar sesión.",
+    "signOutFailed": "No pudimos cerrar tu sesión correctamente. Intenta de nuevo.",
     "phraseMismatch": "El texto no coincide. Escribe ELIMINAR para continuar.",
     "usernameTooShort": "Mínimo 3 caracteres.",
     "usernameTooLong": "Máximo 20 caracteres.",

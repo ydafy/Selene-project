@@ -10,13 +10,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { Box, Text } from '../base';
 import { PrimaryButton } from '../ui/PrimaryButton';
+import { signOutUser } from '../../core/auth/signOut';
 import { ErrorState } from '../ui/ErrorState';
 import { MaintenanceScreen } from '../ui/MaintenanceScreen';
 
 import { useSystemConfig } from '../../core/hooks/useSystemConfig';
 import { useAuthContext } from '../auth/AuthProvider';
 import { isVersionLower } from '../../core/utils/version';
-import { supabase } from '../../core/db/supabase';
 
 export function SystemGuard({ children }: { children: React.ReactNode }) {
   const { data: config, isLoading, isError, refetch } = useSystemConfig();
@@ -76,7 +76,7 @@ export function SystemGuard({ children }: { children: React.ReactNode }) {
             'Tu cuenta ha sido dada de baja permanentemente por infringir las normas de seguridad de Selene.'}
         </Text>
 
-        <PrimaryButton onPress={() => supabase.auth.signOut()}>
+        <PrimaryButton onPress={() => signOutUser()}>
           CERRAR SESIÓN
         </PrimaryButton>
       </Box>
