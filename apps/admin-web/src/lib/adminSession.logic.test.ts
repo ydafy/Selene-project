@@ -131,3 +131,37 @@ describe('resolveAdminSession', () => {
     expect(stale.calls).toEqual([]);
   });
 });
+
+describe('resolveAdminSession with transient load failures', () => {
+  const failingLoad = async (): Promise<Profile | null> => {
+    throw new Error('Network request failed');
+  };
+
+  it('keeps an already-allowed session when a reload fails transiently', async () => {
+    const { deps, calls } = makeDeps(failingLoad);
+    const outcome = await resolveAdminSession('a', createLoadGuard(), deps, {
+      allowedProfile: activeAdmin,
+    });
+    expect(outcome).toEqual({ status: 'allowed', profile: activeAdmin });
+    expect(calls).toEqual([]);
+  });
+
+  it('denies as unverified when the first load fails', async () => {
+    const { deps, calls } = makeDeps(failingLoad);
+    const outcome = await resolveAdminSession('a', createLoadGuard(), deps);
+    expect(outcome).toEqual({ status: 'denied', reason: 'unverified' });
+    expect(calls).toEqual(['clearCache', 'denied:unverified', 'signOut']);
+  });
+
+  it('still denies an allowed session when the reload confirms it is inactive', async () => {
+    const { deps, calls } = makeDeps(async () => ({
+      role: 'admin',
+      status: 'suspended',
+    }));
+    const outcome = await resolveAdminSession('a', createLoadGuard(), deps, {
+      allowedProfile: activeAdmin,
+    });
+    expect(outcome).toEqual({ status: 'denied', reason: 'inactive' });
+    expect(calls).toEqual(['clearCache', 'denied:inactive', 'signOut']);
+  });
+});

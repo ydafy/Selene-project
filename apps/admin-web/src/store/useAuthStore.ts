@@ -33,19 +33,20 @@ interface AuthState {
   initialize: () => Promise<void>;
 }
 
+/** Resolves `null` when no profile exists and throws on a request failure. */
 async function fetchAdminProfile(userId: string): Promise<AdminProfile | null> {
   const { data: profile, error } = await supabase
     .from('admin_user_directory_view')
     .select('*')
     .eq('id', userId)
-    .single();
+    .maybeSingle();
 
-  if (error || !profile) {
-    console.error('[useAuthStore] Error cargando perfil:', error?.message);
-    return null;
+  if (error) {
+    console.error('[useAuthStore] Error cargando perfil:', error.message);
+    throw new Error(error.message);
   }
 
-  return profile as AdminProfile;
+  return (profile as AdminProfile | null) ?? null;
 }
 
 const guard = createLoadGuard();
@@ -80,14 +81,23 @@ export const useAuthStore = create<AuthState>((set, get) => {
     evaluateAccess: (user) => {
       if (pending?.userId === user.id) return pending.promise;
 
-      const promise = resolveAdminSession(user.id, guard, {
-        loadProfile: fetchAdminProfile,
-        signOut: async () => {
-          await supabase.auth.signOut();
+      const { user: currentUser, profile: currentProfile } = get();
+      const allowedProfile =
+        currentUser?.id === user.id && currentProfile ? currentProfile : undefined;
+
+      const promise = resolveAdminSession(
+        user.id,
+        guard,
+        {
+          loadProfile: fetchAdminProfile,
+          signOut: async () => {
+            await supabase.auth.signOut();
+          },
+          clearCache: () => queryClient.clear(),
+          onDenied,
         },
-        clearCache: () => queryClient.clear(),
-        onDenied,
-      })
+        { allowedProfile },
+      )
         .then((outcome) => {
           if (outcome.status === 'allowed') {
             set({

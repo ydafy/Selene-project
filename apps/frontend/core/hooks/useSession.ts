@@ -14,6 +14,7 @@ import { clearUserScopedData } from '../auth/signOut';
 import {
   INITIAL_STATUS_STATE,
   applyStatusLoad,
+  createLatestRequest,
   shouldReloadStatusOnResume,
   syncStatusOwner,
   type StatusLoadResult,
@@ -29,6 +30,7 @@ export const useSession = () => {
   const isMounted = useRef(true);
   // Mirrors the session user so late status responses can be checked against it.
   const currentUserId = useRef<string | null>(null);
+  const statusRequests = useRef(createLatestRequest()).current;
 
   const applySession = (next: Session | null) => {
     const nextUserId = next?.user.id ?? null;
@@ -39,6 +41,7 @@ export const useSession = () => {
 
   // Función auxiliar para cargar el status de profiles_private
   const fetchAccountStatus = async (userId: string) => {
+    const seq = statusRequests.begin();
     let result: StatusLoadResult = { ok: false };
     try {
       const { data: privateProfile, error: profileError } = await supabase
@@ -63,7 +66,7 @@ export const useSession = () => {
       console.error('[AUTH] Fallo al consultar status:', e);
     }
 
-    if (!isMounted.current) return;
+    if (!isMounted.current || !statusRequests.isLatest(seq)) return;
     const owner = currentUserId.current;
     setStatusState((prev) => applyStatusLoad(prev, userId, owner, result));
   };

@@ -1,4 +1,8 @@
-export type AdminAccessDenial = 'missing_profile' | 'not_admin' | 'inactive';
+export type AdminAccessDenial =
+  | 'missing_profile'
+  | 'not_admin'
+  | 'inactive'
+  | 'unverified';
 
 export type AdminAccess =
   { allowed: true } | { allowed: false; reason: AdminAccessDenial };
@@ -31,5 +35,7 @@ export const adminAccessMessage = (reason: AdminAccessDenial): string => {
       return 'Acceso denegado: Esta cuenta no tiene permisos de administrador.';
     case 'inactive':
       return 'Acceso denegado: Esta cuenta está suspendida o inactiva.';
+    case 'unverified':
+      return 'No pudimos verificar tu acceso. Revisa tu conexión e inténtalo de nuevo.';
   }
 };

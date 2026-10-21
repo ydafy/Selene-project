@@ -3,6 +3,7 @@ import { describe, expect, it } from 'bun:test';
 import {
   INITIAL_STATUS_STATE,
   applyStatusLoad,
+  createLatestRequest,
   shouldReloadStatusOnResume,
   syncStatusOwner,
   type StatusState,
@@ -89,5 +90,31 @@ describe('shouldReloadStatusOnResume', () => {
     expect(shouldReloadStatusOnResume('active', null)).toBe(false);
     expect(shouldReloadStatusOnResume('background', 'user-a')).toBe(false);
     expect(shouldReloadStatusOnResume('inactive', 'user-a')).toBe(false);
+  });
+});
+
+describe('createLatestRequest', () => {
+  it('only the most recent status load may be applied', () => {
+    const requests = createLatestRequest();
+    const older = requests.begin();
+    const newer = requests.begin();
+    expect(requests.isLatest(older)).toBe(false);
+    expect(requests.isLatest(newer)).toBe(true);
+  });
+
+  it('an older banned response cannot overwrite a newer active one', () => {
+    const requests = createLatestRequest();
+    let state: StatusState = INITIAL_STATUS_STATE;
+    const apply = (seq: number, status: 'active' | 'banned') => {
+      if (!requests.isLatest(seq)) return;
+      state = applyStatusLoad(state, 'u1', 'u1', { ok: true, status, reason: null });
+    };
+
+    const older = requests.begin();
+    const newer = requests.begin();
+    apply(newer, 'active');
+    apply(older, 'banned');
+
+    expect(state.status).toBe('active');
   });
 });

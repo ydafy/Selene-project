@@ -52,3 +52,16 @@ export const shouldReloadStatusOnResume = (
   appState: string,
   userId: string | null,
 ): boolean => appState === 'active' && userId !== null;
+
+/**
+ * Orders status loads for the same user: only the most recent request may be
+ * applied, so a slow older response (for example a stale "banned") cannot
+ * overwrite a newer one.
+ */
+export const createLatestRequest = () => {
+  let latest = 0;
+  return {
+    begin: (): number => ++latest,
+    isLatest: (seq: number): boolean => seq === latest,
+  };
+};

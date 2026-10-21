@@ -22,6 +22,7 @@ export type LoadGuard = ReturnType<typeof createLoadGuard>;
 export interface AdminSessionDeps<
   P extends { role: string | null; status: string | null },
 > {
+  /** Resolves `null` when no profile exists; rejects on a transient failure. */
   loadProfile: (userId: string) => Promise<P | null>;
   signOut: () => Promise<void>;
   clearCache: () => void;
@@ -33,10 +34,16 @@ export type AdminSessionOutcome<P> =
   | { status: 'denied'; reason: AdminAccessDenial }
   | { status: 'stale' };
 
+export interface AdminSessionOptions<P> {
+  /** Profile already allowed for this same user (token refresh, re-check). */
+  allowedProfile?: P;
+}
+
 /**
  * Loads the profile of a session user and decides admin access. Denied access
  * clears cached data and signs the user out; stale results are discarded
- * without side effects.
+ * without side effects. A transient load failure keeps an already-allowed
+ * session (the server still rejects inactive admins) and denies a new one.
  */
 export const resolveAdminSession = async <
   P extends { role: string | null; status: string | null },
@@ -44,15 +51,31 @@ export const resolveAdminSession = async <
   userId: string,
   guard: LoadGuard,
   deps: AdminSessionDeps<P>,
+  options: AdminSessionOptions<P> = {},
 ): Promise<AdminSessionOutcome<P>> => {
   const token = guard.begin();
-  const profile = await deps.loadProfile(userId);
+  let profile: P | null;
+  let loadFailed = false;
+  try {
+    profile = await deps.loadProfile(userId);
+  } catch {
+    profile = null;
+    loadFailed = true;
+  }
   if (!guard.isCurrent(token)) return { status: 'stale' };
+
+  if (loadFailed && options.allowedProfile) {
+    return { status: 'allowed', profile: options.allowedProfile };
+  }
 
   const access = evaluateAdminAccess(profile);
   if (access.allowed && profile) return { status: 'allowed', profile };
 
-  const reason = access.allowed ? 'missing_profile' : access.reason;
+  const reason: AdminAccessDenial = loadFailed
+    ? 'unverified'
+    : access.allowed
+      ? 'missing_profile'
+      : access.reason;
   guard.begin();
   deps.clearCache();
   deps.onDenied(reason);

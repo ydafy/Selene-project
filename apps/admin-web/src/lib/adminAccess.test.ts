@@ -56,3 +56,11 @@ describe('evaluateAdminAccess', () => {
     expect(messages.size).toBe(3);
   });
 });
+
+describe('adminAccessMessage for an unverified session', () => {
+  it('asks the admin to retry instead of blaming the account', () => {
+    expect(adminAccessMessage('unverified')).toBe(
+      'No pudimos verificar tu acceso. Revisa tu conexión e inténtalo de nuevo.',
+    );
+  });
+});
