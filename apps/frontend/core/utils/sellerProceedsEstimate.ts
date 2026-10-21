@@ -75,5 +75,15 @@ export const calculateSellerProceedsEstimate = ({
   };
 };
 
+/** Configured service fee as a display percent (0.06 -> 6), or null when unknown. */
+export const resolveCommissionPercent = (
+  value: number | null | undefined,
+): number | null => {
+  if (value === null || value === undefined) return null;
+  const rate = Number(value);
+  if (!Number.isFinite(rate) || rate < 0) return null;
+  return Math.round(rate * 1000) / 10;
+};
+
 export const formatCentsAsMx = (valueCents: number): string =>
   (Math.max(0, Math.round(valueCents)) / 100).toFixed(2);

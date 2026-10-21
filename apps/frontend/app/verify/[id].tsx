@@ -1,5 +1,10 @@
 import React, { useRef, useState } from 'react';
-import { ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import {
+  ActivityIndicator,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,6 +19,10 @@ import { BenchmarkGuideModal } from '../../components/features/verify/BenchmarkG
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 
 import { useVerificationLogic } from '../../core/hooks/useVerificationLogic';
+import {
+  canSubmitVerification,
+  resolveVerificationRequirements,
+} from '../../core/utils/verification-submit';
 import { theme } from '@/core/theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -30,7 +39,8 @@ export default function VerifyProductScreen() {
   // Lógica extraída
   const {
     category,
-    loadingCategory,
+    loadState,
+    reload,
     physicalUri,
     performanceUri,
     score,
@@ -60,33 +70,24 @@ export default function VerifyProductScreen() {
     if (result === 'PERMISSION_DENIED') {
       setDialogConfig({
         visible: true,
-        title: 'Permiso Requerido',
-        description:
-          'Necesitamos acceso a la cámara para verificar el producto.',
+        title: t('alerts.permissionTitle'),
+        description: t('alerts.permissionMessage'),
         isError: true,
         onConfirm: closeDialog,
       });
     }
   };
 
+  const canSubmit = canSubmitVerification({
+    loadState,
+    category,
+    physicalUri,
+    performanceUri,
+    score,
+  });
+
   const onSubmitPress = async () => {
-    // Validaciones de UI antes de llamar a lógica
-    const requiresBenchmark = category && ['GPU', 'CPU'].includes(category);
-    const requiresInfo = category && ['RAM', 'Motherboard'].includes(category);
-
-    if (!physicalUri) return;
-
-    if (requiresBenchmark && (!performanceUri || !score)) {
-      setDialogConfig({
-        visible: true,
-        title: t('alerts.errorTitle'),
-        description: t('alerts.missingFields'),
-        isError: true,
-        onConfirm: closeDialog,
-      });
-      return;
-    }
-    if (requiresInfo && !performanceUri) {
+    if (!canSubmit) {
       setDialogConfig({
         visible: true,
         title: t('alerts.errorTitle'),
@@ -98,7 +99,8 @@ export default function VerifyProductScreen() {
     }
 
     try {
-      await submitVerification();
+      const result = await submitVerification();
+      if (result !== 'SUCCESS') return;
       // Éxito
       setDialogConfig({
         visible: true,
@@ -122,10 +124,57 @@ export default function VerifyProductScreen() {
     }
   };
 
-  if (loadingCategory) return <Box flex={1} backgroundColor="background" />;
+  if (loadState === 'loading') {
+    return (
+      <Box
+        flex={1}
+        backgroundColor="background"
+        justifyContent="center"
+        alignItems="center"
+      >
+        <Stack.Screen options={{ headerShown: false }} />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </Box>
+    );
+  }
 
-  const requiresBenchmark = category && ['GPU', 'CPU'].includes(category);
-  const requiresInfo = category && ['RAM', 'Motherboard'].includes(category);
+  if (loadState === 'error' || !category) {
+    return (
+      <Box flex={1} backgroundColor="background">
+        <Stack.Screen options={{ headerShown: false }} />
+        <GlobalHeader
+          title={t('screen.title')}
+          showBack={true}
+          backgroundColor="cardBackground"
+        />
+        <Box
+          flex={1}
+          justifyContent="center"
+          alignItems="center"
+          padding="l"
+          gap="m"
+        >
+          <MaterialCommunityIcons
+            name="wifi-alert"
+            size={48}
+            color={theme.colors.textSecondary}
+          />
+          <Text variant="subheader-md" color="textPrimary" textAlign="center">
+            {t('load.errorTitle')}
+          </Text>
+          <Text variant="body-md" color="textSecondary" textAlign="center">
+            {t('load.errorMessage')}
+          </Text>
+          <PrimaryButton onPress={reload} icon="refresh">
+            {t('load.retry')}
+          </PrimaryButton>
+        </Box>
+      </Box>
+    );
+  }
+
+  const { requiresBenchmark, requiresInfo } =
+    resolveVerificationRequirements(category);
   let guideType: 'benchmark' | 'info' | 'mobo' = 'benchmark';
 
   if (category === 'RAM') {
@@ -135,11 +184,6 @@ export default function VerifyProductScreen() {
   } else {
     guideType = 'benchmark';
   }
-  const canSubmit =
-    (requiresBenchmark && physicalUri && performanceUri && score) ||
-    (requiresInfo && physicalUri && performanceUri) ||
-    (!requiresBenchmark && !requiresInfo && physicalUri);
-
   return (
     <Box flex={1} backgroundColor="background">
       <Stack.Screen options={{ headerShown: false }} />

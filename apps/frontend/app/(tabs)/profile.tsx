@@ -123,7 +123,7 @@ const UserProfile = () => {
       // Llamamos a la mutación (Toda la lógica de Supabase ya no está aquí)
       await updateAvatar.mutateAsync({
         userId: session.user.id,
-        base64: imageAsset.base64!,
+        base64: imageAsset.base64,
         ext,
       });
 

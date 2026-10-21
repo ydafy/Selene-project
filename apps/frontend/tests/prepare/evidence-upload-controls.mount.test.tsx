@@ -133,9 +133,10 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
       expect(tree.root.findAllByType('TouchableOpacity')[0].props.disabled).toBe(false);
       expect(busy.mock.calls).toEqual([[true], [false], [true], [false], [true], [false]]);
       expect(warning.mock.calls).toEqual([
-        ['[EVIDENCE_UPLOAD]', { event: 'capture_or_upload_failed' }],
-        ['[EVIDENCE_UPLOAD]', { event: 'capture_or_upload_failed' }],
+        ['[EVIDENCE_UPLOAD]', { name: 'Error', message: undefined, code: undefined, status: undefined }],
+        ['[EVIDENCE_UPLOAD]', { name: 'Error', message: undefined, code: undefined, status: undefined }],
       ]);
+      expect(JSON.stringify(warning.mock.calls)).not.toContain('private');
       camera = deferred(); camera.resolve(null);
       await act(async () => { await press(); });
       expect(failure).toHaveBeenCalledTimes(2);

@@ -84,7 +84,14 @@
     "successMessage": "Tu producto está en revisión. Te notificaremos cuando sea aprobado.",
     "errorTitle": "Error",
     "errorMessage": "No se pudieron subir las pruebas. Intenta de nuevo.",
-    "missingFields": "Por favor completa todas las misiones requeridas."
+    "missingFields": "Por favor completa todas las misiones requeridas.",
+    "permissionTitle": "Permiso requerido",
+    "permissionMessage": "Necesitamos acceso a la cámara para verificar el producto."
+  },
+  "load": {
+    "errorTitle": "No pudimos cargar tu producto",
+    "errorMessage": "Revisa tu conexión e intenta de nuevo.",
+    "retry": "Reintentar"
   },
   "rejection": {
     "title": "Verificación Rechazada",

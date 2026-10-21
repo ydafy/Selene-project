@@ -16,6 +16,7 @@ import { useSystemConfig } from './useSystemConfig';
 import {
   calculateSellerProceedsEstimate,
   formatCentsAsMx,
+  resolveCommissionPercent,
 } from '@/core/utils/sellerProceedsEstimate';
 import { getCategoryResetFields } from '@/core/utils/sellCategoryReset';
 import {
@@ -120,9 +121,10 @@ export const useSellDetailsForm = () => {
 
   // Calculadora de Ganancias
   const earnings = useMemo(() => {
+    const commissionPct = resolveCommissionPercent(systemConfig?.service_fee_pct);
     const priceNum = parseFloat(price) || 0;
     if (priceNum === 0 || !systemConfig) {
-      return { commission: '0.00', shipping: '0.00', final: '0.00' };
+      return { commission: '0.00', shipping: '0.00', final: '0.00', commissionPct };
     }
 
     const subtotalCents = Math.round(priceNum * 100);
@@ -137,6 +139,7 @@ export const useSellDetailsForm = () => {
       commission: formatCentsAsMx(estimate.commissionCents),
       shipping: formatCentsAsMx(estimate.shippingCents),
       final: formatCentsAsMx(estimate.finalCents),
+      commissionPct,
     };
   }, [price, shippingCost, systemConfig]);
 

@@ -37,7 +37,7 @@ export const useUpdateAvatar = () => {
       ext,
     }: {
       userId: string;
-      base64: string;
+      base64: string | null | undefined;
       ext: string;
     }) => {
       // A. Subir imagen al bucket

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -17,6 +17,8 @@ export default function SellSuccessScreen() {
   const router = useRouter();
   const theme = useTheme<Theme>();
   const [isNavigating, setIsNavigating] = useState(false);
+  // State alone lets two taps in the same frame both navigate.
+  const navigatingRef = useRef(false);
 
   // 2. Obtenemos la función para limpiar el borrador
   const { resetDraft } = useSellStore();
@@ -43,8 +45,9 @@ export default function SellSuccessScreen() {
   }, []);
 
   const handleVerifyNow = () => {
-    if (!productId || isNavigating) return;
+    if (!productId || navigatingRef.current) return;
 
+    navigatingRef.current = true;
     setIsNavigating(true);
     resetDraft();
 
@@ -58,7 +61,8 @@ export default function SellSuccessScreen() {
   };
 
   const handleLater = () => {
-    if (isNavigating) return;
+    if (navigatingRef.current) return;
+    navigatingRef.current = true;
     setIsNavigating(true);
     resetDraft();
 
@@ -124,11 +128,20 @@ export default function SellSuccessScreen() {
 
       {/* Acciones */}
       <Box width="100%" gap="m">
-        <PrimaryButton onPress={handleVerifyNow} icon="camera-outline">
+        <PrimaryButton
+          onPress={handleVerifyNow}
+          icon="camera-outline"
+          disabled={!productId || isNavigating}
+          loading={isNavigating}
+        >
           {t('success.verifyNow')}
         </PrimaryButton>
 
-        <TouchableOpacity onPress={handleLater} activeOpacity={0.7}>
+        <TouchableOpacity
+          onPress={handleLater}
+          activeOpacity={0.7}
+          disabled={isNavigating}
+        >
           <Box padding="m" alignItems="center">
             <Text
               variant="body-md"

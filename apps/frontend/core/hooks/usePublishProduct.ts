@@ -14,6 +14,7 @@ import {
 } from '../store/useSellStore';
 import { useAuthContext } from '../../components/auth/AuthProvider';
 import { ProductCategory } from '@selene/types';
+import { resolveMediaType, uploadMediaFromUri } from '../storage/uploadMedia';
 import { normalize } from '../utils/compare';
 import { useTranslation } from 'react-i18next';
 import {
@@ -67,30 +68,23 @@ export const usePublishProduct = () => {
     setImageProgress(uri, { status: 'uploading', progress: 0 });
 
     try {
-      console.log(`[Upload] Iniciando subida para: ${uri}`);
-      const response = await fetch(uri);
-      const arrayBuffer = await response.arrayBuffer();
+      const { ext, contentType } = resolveMediaType(uri);
+      const fileName = `${userId}/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
 
-      const fileExt = uri.split('.').pop()?.toLowerCase() || 'jpg';
-      const fileName = `${userId}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-
-      const uploadOptions = {
-        contentType: `image/${fileExt}`,
+      await uploadMediaFromUri({
+        storage: supabase.storage,
+        bucket: 'products',
+        path: fileName,
+        uri,
+        contentType,
         upsert: false,
-      };
-
-      const { error: uploadError } = await supabase.storage
-        .from('products')
-        .upload(fileName, arrayBuffer, uploadOptions);
-
-      if (uploadError) throw uploadError;
+      });
 
       setImageProgress(uri, { status: 'done', progress: 100 });
       const { data } = supabase.storage.from('products').getPublicUrl(fileName);
       return data.publicUrl;
     } catch (error) {
       setImageProgress(uri, { status: 'error', progress: 0 });
-      console.error('[Upload Error]', error);
       throw error;
     }
   };
