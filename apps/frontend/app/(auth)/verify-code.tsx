@@ -18,6 +18,9 @@ import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { TextLink } from '../../components/ui/TextLink';
 import { Box, Text } from '../../components/base';
 import { useAuth } from '../../core/hooks/useAuth';
+import { mapAuthErrorKey } from '../../core/auth/authErrors.logic';
+import { shouldStartCooldown } from '../../core/auth/resendCooldown.logic';
+import { useResendCooldown } from '../../core/auth/useResendCooldown';
 import { Theme } from '../../core/theme';
 
 export default function VerifyCodeScreen() {
@@ -31,6 +34,8 @@ export default function VerifyCodeScreen() {
 
   const [otpCode, setOtpCode] = useState('');
   const [isResending, setIsResending] = useState(false);
+  const { seconds: cooldownSeconds, start: startCooldown } =
+    useResendCooldown();
 
   // --- 1. GUARDIÁN DE DATOS ---
   useEffect(() => {
@@ -38,7 +43,7 @@ export default function VerifyCodeScreen() {
       Toast.show({
         type: 'error',
         text1: t('common:errors.errorTitle'),
-        text2: 'Falta información de correo.',
+        text2: t('auth:errors.missingEmail'),
       });
       router.replace('/(auth)/register');
     }
@@ -70,7 +75,7 @@ export default function VerifyCodeScreen() {
       Toast.show({
         type: 'error',
         text1: t('auth:verificationErrorTitle'),
-        text2: result.error?.message || t('common:errors.generic'),
+        text2: t(result.error?.messageKey ?? mapAuthErrorKey(null)),
       });
     }
   };
@@ -84,18 +89,19 @@ export default function VerifyCodeScreen() {
     setIsResending(true);
     const result = await resendSignUpOtp(email);
     setIsResending(false);
+    if (shouldStartCooldown(result)) startCooldown();
 
     if (!result.success) {
       Toast.show({
         type: 'error',
         text1: t('auth:verificationErrorTitle'),
-        text2: result.error?.message || t('common:errors.generic'),
+        text2: t(result.error?.messageKey ?? mapAuthErrorKey(null)),
       });
     } else {
       Toast.show({
         type: 'success',
-        text1: t('auth:resendCodeSuccessTitle', 'Código reenviado'),
-        text2: t('auth:resendCodeSuccessMsg', 'Revisa tu bandeja de entrada.'),
+        text1: t('auth:resendCodeSuccessTitle'),
+        text2: t('auth:resendCodeSuccessMsg'),
       });
     }
   };
@@ -168,10 +174,15 @@ export default function VerifyCodeScreen() {
           justifyContent="center"
         >
           <Text color="textSecondary">{t('auth:didNotReceiveCode')} </Text>
-          <TextLink onPress={handleResendCode} disabled={isResending}>
+          <TextLink
+            onPress={handleResendCode}
+            disabled={isResending || cooldownSeconds > 0}
+          >
             {isResending
               ? t('common:states.loading')
-              : t('auth:resendCodeLink')}
+              : cooldownSeconds > 0
+                ? t('auth:resendCodeIn', { seconds: cooldownSeconds })
+                : t('auth:resendCodeLink')}
           </TextLink>
         </Box>
       </Box>

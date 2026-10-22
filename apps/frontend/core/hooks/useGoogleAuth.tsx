@@ -10,8 +10,14 @@ import {
 } from '@react-native-google-signin/google-signin';
 import { supabase } from '../db/supabase';
 import Toast from 'react-native-toast-message';
+import { useTranslation } from 'react-i18next';
+import {
+  GOOGLE_NO_ID_TOKEN,
+  resolveGoogleError,
+} from '../auth/googleAuth.logic';
 
 export const useGoogleAuth = (onSuccess?: () => void) => {
+  const { t } = useTranslation('auth');
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const signInWithGoogle = async () => {
@@ -33,7 +39,7 @@ export const useGoogleAuth = (onSuccess?: () => void) => {
         const idToken = response.data.idToken;
 
         if (!idToken) {
-          throw new Error('No se pudo obtener el ID Token de Google.');
+          throw { code: GOOGLE_NO_ID_TOKEN };
         }
 
         // 3. Sincronizar con Supabase Auth
@@ -54,18 +60,20 @@ export const useGoogleAuth = (onSuccess?: () => void) => {
         setIsGoogleLoading(false);
       }
     } catch (error: any) {
-      /**
-       * Manejo de errores específicos de Google.
-       * Ignoramos el error si el usuario simplemente cerró la ventana.
-       */
-      if (error.code !== statusCodes.SIGN_IN_CANCELLED) {
-        console.error('[GOOGLE_AUTH_ERROR]', error);
+      // A user cancel is silent; anything else shows a localized message.
+      const resolution = resolveGoogleError(error, statusCodes.SIGN_IN_CANCELLED);
+      if (!resolution.silent) {
+        // Never log the raw error: it can carry tokens.
+        console.error('[GOOGLE_AUTH_ERROR]', {
+          name: error?.name,
+          code: error?.code,
+          status: error?.status,
+        });
 
         Toast.show({
           type: 'error',
-          text1: 'Error con Google',
-          text2:
-            error.message || 'Ocurrió un error inesperado al iniciar sesión.',
+          text1: t('errors.googleSignInErrorTitle'),
+          text2: t(resolution.key),
         });
       }
     } finally {

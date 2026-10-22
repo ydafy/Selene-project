@@ -70,6 +70,7 @@ export default function RegisterScreen() {
         {/* El formulario ahora contiene toda la lógica de Google y validación */}
         <RegisterForm
           onSuccess={handleRegisterSuccess}
+          onAccountExists={() => router.replace('/(auth)/login')}
           onLoginPress={() => router.push('/(auth)/login')}
         />
       </Box>
