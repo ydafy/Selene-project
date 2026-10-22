@@ -29,6 +29,43 @@ verify_jwt = false
 [functions.cron-watchdog]
 verify_jwt = false
 
+# Local Auth mirrors the deployed settings of project acoiclkeymgtlwcxilun so the
+# signup flow (confirmation code, password policy) behaves the same locally.
+# Google sign-in is not configured locally: it needs client secrets. "Require
+# current password when updating" has no CLI key and stays off until block 4.
+# Manual identity linking is disabled; Supabase links by verified email.
+[auth]
+enable_signup = true
+enable_manual_linking = false
+minimum_password_length = 8
+password_requirements = ""
+
+# Mirrors the remote rate limits. The CLI only applies `email_sent` with custom
+# SMTP, so it is inert on the local mail catcher.
+[auth.rate_limit]
+email_sent = 2
+sms_sent = 30
+anonymous_users = 30
+token_refresh = 150
+sign_in_sign_ups = 30
+token_verifications = 30
+web3 = 30
+
+# Mirrors the remote email provider: signup on, confirmation code required,
+# secure email and password change on, 6-digit code valid for 15 minutes.
+[auth.email]
+enable_signup = true
+enable_confirmations = true
+double_confirm_changes = true
+secure_password_change = true
+max_frequency = "60s"
+otp_length = 6
+otp_expiry = 900
+# The local mail catcher uses the default link template: experimental stack
+# mode does not serve custom templates (content_path), so locally a signup is
+# confirmed through the link's token_hash. The 6-digit code flow is proven on
+# the remote project, whose Dashboard template sends {{ .Token }}.
+
 # Edge Functions run on the Supabase Edge Runtime, not the local Deno CLI.
 # Pin its Deno major so local serve matches the hosted runtime.
 [edge_runtime]
