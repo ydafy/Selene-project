@@ -25,6 +25,8 @@ import {
   RegisterData,
 } from '../../../core/hooks/useAuth';
 import { useGoogleAuth } from '../../../core/hooks/useGoogleAuth';
+import { isUsernameAvailable } from '../../../core/auth/registerUsername.logic';
+import { supabase } from '../../../core/db/supabase';
 import { Theme } from '../../../core/theme';
 
 type RegisterFormProps = {
@@ -53,6 +55,7 @@ export const RegisterForm = ({
   const {
     control,
     handleSubmit,
+    setError,
     formState: { errors, isValid },
   } = useForm<RegisterData>({
     resolver: zodResolver(registerSchema),
@@ -67,6 +70,14 @@ export const RegisterForm = ({
   });
 
   const onSubmit = async (data: RegisterData) => {
+    // Pre-check so a taken username is a field error, not a failed signup. The
+    // signup trigger stays the authority if this lookup is inconclusive.
+    const availability = await isUsernameAvailable(supabase, data.username);
+    if (availability === 'taken') {
+      setError('username', { message: 'auth:errors.usernameAlreadyTaken' });
+      return;
+    }
+
     const result = await signUp(data);
     if (!result.success) {
       Toast.show({

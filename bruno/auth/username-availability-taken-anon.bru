@@ -1,0 +1,28 @@
+meta {
+  name: username-availability-taken-anon
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/profiles?select=id&username=eq.hardware_seller&limit=1
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{anonKey}}
+}
+
+tests {
+  test("a seeded username is reported as taken to an anonymous caller", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(1);
+  });
+}
+
+docs {
+  The registration form reads `profiles` as anon (policy `profiles_public_read`)
+  before calling signUp to tell whether a typed username is already taken.
+}

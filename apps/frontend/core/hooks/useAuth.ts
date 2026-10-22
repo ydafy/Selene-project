@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { z } from 'zod';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../db/supabase';
+import { validateRegisterUsername } from '../auth/registerUsername.logic';
 
 // --- 1. ESQUEMAS DE VALIDACIÓN (ZOD) ---
 
@@ -21,7 +22,11 @@ export const loginSchema = z.object({
 
 export const registerSchema = z
   .object({
-    username: z.string().min(3, { message: 'auth:errors.usernameTooShort' }),
+    username: z.string().superRefine((value, ctx) => {
+      const result = validateRegisterUsername(value);
+      if (!result.ok)
+        ctx.addIssue({ code: 'custom', message: result.errorKey });
+    }),
     email: z.string().email({ message: 'auth:errors.invalidEmail' }),
     password: z.string().min(8, { message: 'auth:errors.passwordTooShort' }),
     confirmPassword: z.string(),
