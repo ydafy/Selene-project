@@ -48,6 +48,10 @@
     "passwordChangeAction": "Actualizar contraseña",
     "passwordMismatch": "Las contraseñas nuevas no coinciden.",
     "passwordTooShort": "La contraseña debe tener al menos 8 caracteres.",
+    "passwordCurrent": "Contraseña actual",
+    "currentPasswordRequired": "Ingresa tu contraseña actual.",
+    "samePassword": "La nueva contraseña debe ser diferente a la actual.",
+    "recentLoginRequired": "Por seguridad, cierra sesión y vuelve a iniciarla para cambiar tu contraseña.",
     "biometricPrompt": "Confirma tu identidad",
     "biometricFallback": "Usar contraseña",
     "biometricFailed": "Autenticación fallida. Intenta de nuevo."

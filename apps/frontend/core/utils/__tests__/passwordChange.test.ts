@@ -1,24 +1,30 @@
 import { expect, test, describe } from 'bun:test';
 import {
   validatePasswordChange,
-  generatePasswordNonce,
   buildPasswordUpdatePayload,
+  mapPasswordChangeErrorKey,
 } from '../passwordChange';
 
 /**
- * Covers EXTD-TASK-009 + CONF-017: validation, nonce generation, payload.
- * Updated: biometric gate replaces currentPassword field — validatePasswordChange
- * now takes (new, confirm) only.
+ * Covers CONF-017 and auth block 4 (S7, L54): the current password proves the
+ * user's identity and travels as GoTrue's `current_password` field.
  */
 describe('validatePasswordChange', () => {
-  test('accepts when new === confirm and >= 8 chars', () => {
-    expect(validatePasswordChange('newpw1234', 'newpw1234')).toEqual({
+  test('accepts current + new === confirm and >= 8 chars', () => {
+    expect(validatePasswordChange('oldpw123', 'newpw1234', 'newpw1234')).toEqual({
       ok: true,
     });
   });
 
+  test('rejects an empty current password', () => {
+    expect(validatePasswordChange('', 'newpw1234', 'newpw1234')).toEqual({
+      ok: false,
+      errorKey: 'security.currentPasswordRequired',
+    });
+  });
+
   test('rejects new password shorter than 8', () => {
-    expect(validatePasswordChange('short', 'short')).toEqual({
+    expect(validatePasswordChange('oldpw123', 'short', 'short')).toEqual({
       ok: false,
       errorKey: 'security.passwordTooShort',
     });
@@ -26,59 +32,61 @@ describe('validatePasswordChange', () => {
 
   test('rejects new !== confirm', () => {
     expect(
-      validatePasswordChange('newpw1234', 'differentpw'),
+      validatePasswordChange('oldpw123', 'newpw1234', 'differentpw'),
     ).toEqual({ ok: false, errorKey: 'security.passwordMismatch' });
   });
 
+  test('rejects a new password equal to the current one', () => {
+    expect(
+      validatePasswordChange('samepw123', 'samepw123', 'samepw123'),
+    ).toEqual({ ok: false, errorKey: 'security.samePassword' });
+  });
+
   test('rejects exactly 7 chars (boundary)', () => {
-    expect(validatePasswordChange('1234567', '1234567')).toEqual({
+    expect(validatePasswordChange('oldpw123', '1234567', '1234567')).toEqual({
       ok: false,
       errorKey: 'security.passwordTooShort',
     });
   });
 
   test('accepts exactly 8 chars (boundary)', () => {
-    expect(validatePasswordChange('12345678', '12345678')).toEqual({
+    expect(validatePasswordChange('oldpw123', '12345678', '12345678')).toEqual({
       ok: true,
     });
   });
 });
 
-describe('generatePasswordNonce', () => {
-  test('returns a non-empty string', () => {
-    const nonce = generatePasswordNonce();
-    expect(typeof nonce).toBe('string');
-    expect(nonce.length).toBeGreaterThan(0);
-  });
-
-  test('produces distinct values on repeated calls', () => {
-    const a = generatePasswordNonce();
-    const b = generatePasswordNonce();
-    const c = generatePasswordNonce();
-    expect(new Set([a, b, c]).size).toBe(3);
-  });
-
-  test('nonce is at least 16 chars (entropy floor)', () => {
-    expect(generatePasswordNonce().length).toBeGreaterThanOrEqual(16);
+describe('buildPasswordUpdatePayload', () => {
+  test('sends the new password and current_password, never a nonce', () => {
+    expect(buildPasswordUpdatePayload('oldpw123', 'newpw1234')).toEqual({
+      password: 'newpw1234',
+      current_password: 'oldpw123',
+    });
   });
 });
 
-describe('buildPasswordUpdatePayload', () => {
-  test('includes password and nonce', () => {
-    const payload = buildPasswordUpdatePayload('newpw1234', 'nonce-abc');
-    expect(payload).toEqual({ password: 'newpw1234', nonce: 'nonce-abc' });
+describe('mapPasswordChangeErrorKey', () => {
+  test.each([
+    ['current_password_invalid', 'settings:errors.wrongPassword'],
+    ['current_password_required', 'settings:errors.wrongPassword'],
+    ['same_password', 'settings:security.samePassword'],
+    ['reauthentication_needed', 'settings:security.recentLoginRequired'],
+    ['reauthentication_not_valid', 'settings:security.recentLoginRequired'],
+    ['weak_password', 'auth:errors.weakPassword'],
+    ['over_request_rate_limit', 'auth:errors.rateLimited'],
+  ])('maps %s to %s', (code, key) => {
+    expect(mapPasswordChangeErrorKey({ name: 'AuthApiError', code })).toBe(key);
   });
 
-  test('includes currentPassword when provided', () => {
-    const payload = buildPasswordUpdatePayload(
-      'newpw1234',
-      'nonce-abc',
-      'oldpw',
-    );
-    expect(payload).toEqual({
-      password: 'newpw1234',
-      nonce: 'nonce-abc',
-      currentPassword: 'oldpw',
-    });
+  test('maps a network failure to the network message', () => {
+    expect(
+      mapPasswordChangeErrorKey({ name: 'AuthRetryableFetchError', status: 0 }),
+    ).toBe('auth:errors.network');
+  });
+
+  test('never matches on the raw message text', () => {
+    expect(
+      mapPasswordChangeErrorKey({ message: 'Invalid password, wrong input' }),
+    ).toBe('common:errors.generic');
   });
 });

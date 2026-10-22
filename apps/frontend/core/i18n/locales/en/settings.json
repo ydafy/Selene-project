@@ -48,6 +48,10 @@
     "passwordChangeAction": "Update password",
     "passwordMismatch": "New passwords do not match.",
     "passwordTooShort": "Password must be at least 8 characters.",
+    "passwordCurrent": "Current password",
+    "currentPasswordRequired": "Enter your current password.",
+    "samePassword": "The new password must be different from the current one.",
+    "recentLoginRequired": "For your security, sign out and sign in again to change your password.",
     "biometricPrompt": "Confirm your identity",
     "biometricFallback": "Use password",
     "biometricFailed": "Authentication failed. Please try again."

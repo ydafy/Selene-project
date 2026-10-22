@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
-import * as LocalAuthentication from 'expo-local-authentication';
 
 import { Box, Text } from '../../base';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
@@ -12,8 +11,8 @@ import { signOutUser } from '../../../core/auth/signOut';
 import { useAuthContext } from '../../../components/auth/AuthProvider';
 import {
   validatePasswordChange,
-  generatePasswordNonce,
   buildPasswordUpdatePayload,
+  mapPasswordChangeErrorKey,
 } from '../../../core/utils/passwordChange';
 
 type SecuritySectionProps = {
@@ -31,12 +30,14 @@ export const SecuritySection = ({ disabled = false }: SecuritySectionProps) => {
 
   // Password change dialog
   const [pwOpen, setPwOpen] = useState(false);
+  const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
   const [pwError, setPwError] = useState<string | null>(null);
   const [pwSubmitting, setPwSubmitting] = useState(false);
 
   const resetPwForm = () => {
+    setCurrentPw('');
     setNewPw('');
     setConfirmPw('');
     setPwError(null);
@@ -53,7 +54,7 @@ export const SecuritySection = ({ disabled = false }: SecuritySectionProps) => {
   };
 
   const handlePwConfirm = async () => {
-    const validation = validatePasswordChange(newPw, confirmPw);
+    const validation = validatePasswordChange(currentPw, newPw, confirmPw);
     if (!validation.ok) {
       setPwError(t(validation.errorKey));
       return;
@@ -61,26 +62,9 @@ export const SecuritySection = ({ disabled = false }: SecuritySectionProps) => {
     setPwError(null);
     setPwSubmitting(true);
     try {
-      // Biometric gate — proves physical possession, session alone is not enough
-      // for destructive account mutations. Supabase ignores currentPassword in
-      // updateUser, so biometric replaces re-typing.
-
-      const hasHardware = await LocalAuthentication.hasHardwareAsync();
-      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-
-      if (hasHardware && isEnrolled) {
-        const auth = await LocalAuthentication.authenticateAsync({
-          promptMessage: t('security.biometricPrompt'),
-          fallbackLabel: t('security.biometricFallback'),
-        });
-
-        if (!auth.success) {
-          setPwError(t('security.biometricFailed'));
-          return;
-        }
-      }
-      const nonce = generatePasswordNonce();
-      const payload = buildPasswordUpdatePayload(newPw, nonce);
+      // The server verifies the current password (S7, L54); a device-local
+      // check would not prove anything to GoTrue.
+      const payload = buildPasswordUpdatePayload(currentPw, newPw);
       const { error } = await supabase.auth.updateUser(payload);
       if (error) throw error;
 
@@ -92,9 +76,7 @@ export const SecuritySection = ({ disabled = false }: SecuritySectionProps) => {
         text2: t('toasts.passwordUpdatedMessage'),
       });
     } catch (err) {
-      const code = (err as { message?: string })?.message ?? '';
-      const isWrong = /invalid|wrong|incorrect/i.test(code);
-      setPwError(t(isWrong ? 'errors.wrongPassword' : 'errors.updateFailed'));
+      setPwError(t(mapPasswordChangeErrorKey(err)));
     } finally {
       setPwSubmitting(false);
     }
@@ -155,6 +137,17 @@ export const SecuritySection = ({ disabled = false }: SecuritySectionProps) => {
         icon="lock-reset"
       >
         <Box marginTop="s">
+          <FormTextInput
+            label={t('security.passwordCurrent')}
+            value={currentPw}
+            onChangeText={setCurrentPw}
+            labelMode="static"
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!pwSubmitting}
+          />
+          <Box height={12} />
           <FormTextInput
             label={t('security.passwordNew')}
             value={newPw}
