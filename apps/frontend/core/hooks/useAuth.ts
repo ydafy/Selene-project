@@ -50,7 +50,7 @@ export type AuthResult = {
   success: boolean;
   session: Session | null;
   user: User | null;
-  error: { message: string } | null;
+  error: { message: string; code?: string } | null;
 };
 
 /**
@@ -62,7 +62,7 @@ const formatAuthResponse = (data: any, error: any): AuthResult => {
       success: false,
       session: null,
       user: null,
-      error: { message: error.message },
+      error: { message: error.message, code: error.code },
     };
   }
   return {

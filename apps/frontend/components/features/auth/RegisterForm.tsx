@@ -26,16 +26,19 @@ import {
 } from '../../../core/hooks/useAuth';
 import { useGoogleAuth } from '../../../core/hooks/useGoogleAuth';
 import { isUsernameAvailable } from '../../../core/auth/registerUsername.logic';
+import { classifySignUpResult } from '../../../core/auth/authOutcome.logic';
 import { supabase } from '../../../core/db/supabase';
 import { Theme } from '../../../core/theme';
 
 type RegisterFormProps = {
   onSuccess: (email: string) => void;
+  onAccountExists: () => void;
   onLoginPress: () => void;
 };
 
 export const RegisterForm = ({
   onSuccess,
+  onAccountExists,
   onLoginPress,
 }: RegisterFormProps) => {
   const { t } = useTranslation('auth');
@@ -87,7 +90,17 @@ export const RegisterForm = ({
       });
       return;
     }
-    if (result.user || result.session) onSuccess(data.email);
+    const outcome = classifySignUpResult(result);
+    if (outcome === 'account_exists') {
+      Toast.show({
+        type: 'info',
+        text1: t('accountAlreadyExistsTitle'),
+        text2: t('accountAlreadyExistsMsg'),
+      });
+      onAccountExists();
+      return;
+    }
+    if (outcome === 'verify') onSuccess(data.email);
   };
 
   const isBusy = loading || isGoogleLoading;

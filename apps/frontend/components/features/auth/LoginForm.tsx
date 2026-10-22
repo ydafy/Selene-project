@@ -18,16 +18,22 @@ import { GoogleButton } from '../../ui/GoogleButton';
 import { TextLink } from '../../ui/TextLink';
 import { useAuth, loginSchema, LoginData } from '../../../core/hooks/useAuth';
 import { useGoogleAuth } from '../../../core/hooks/useGoogleAuth'; // <--- NUEVO
+import {
+  classifyLoginError,
+  recoverUnconfirmedLogin,
+} from '../../../core/auth/authOutcome.logic';
 import { Theme } from '../../../core/theme';
 
 type LoginFormProps = {
   onSuccess: () => void;
+  onEmailNotConfirmed: (email: string) => void;
   onRegisterPress: () => void;
   onForgotPasswordPress?: () => void;
 };
 
 export const LoginForm = ({
   onSuccess,
+  onEmailNotConfirmed,
   onRegisterPress,
   onForgotPasswordPress,
 }: LoginFormProps) => {
@@ -52,13 +58,16 @@ export const LoginForm = ({
       const result = await signIn(data);
 
       if (!result.success) {
-        if (result.error?.message === 'Email not confirmed') {
+        if (classifyLoginError(result.error) === 'email_not_confirmed') {
           Toast.show({
             type: 'info',
             text1: t('verificationRequired'),
             text2: t('resendingCode'),
           });
-          await resendSignUpOtp(data.email);
+          await recoverUnconfirmedLogin(data.email, {
+            resend: resendSignUpOtp,
+            openVerification: onEmailNotConfirmed,
+          });
           return;
         }
 

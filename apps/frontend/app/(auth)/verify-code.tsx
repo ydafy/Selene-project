@@ -94,8 +94,8 @@ export default function VerifyCodeScreen() {
     } else {
       Toast.show({
         type: 'success',
-        text1: t('auth:resendCodeSuccessTitle', 'Código reenviado'),
-        text2: t('auth:resendCodeSuccessMsg', 'Revisa tu bandeja de entrada.'),
+        text1: t('auth:resendCodeSuccessTitle'),
+        text2: t('auth:resendCodeSuccessMsg'),
       });
     }
   };
