@@ -66,6 +66,7 @@ const NEW_KEYS = [
   // Errors
   'errors.invalidEmail',
   'errors.wrongPassword',
+  'errors.sameEmail',
   'errors.browserNotFound',
 ] as const;
 

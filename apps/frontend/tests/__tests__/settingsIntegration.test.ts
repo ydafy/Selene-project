@@ -103,6 +103,13 @@ describe('AccountSection email-change wiring (CONF-016)', () => {
     expect(src).toContain('buildEmailUpdatePayload');
   });
 
+  test('rejects an unchanged address and maps errors by code', () => {
+    expect(src).toContain('isSameEmail(emailDraft, email)');
+    expect(src).toContain("t('errors.sameEmail')");
+    expect(src).toContain('t(mapEmailChangeErrorKey(err))');
+    expect(src).not.toContain("includes('already')");
+  });
+
   test('shows confirmation-flow toast (emailSentTitle / Message)', () => {
     expect(src).toContain('toasts.emailSentTitle');
     expect(src).toContain('toasts.emailSentMessage');
