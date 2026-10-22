@@ -29,7 +29,10 @@
     "alreadyInCartTitle": "Ya está en tu carrito",
     "alreadyInCartMsg": "Puedes proceder al pago cuando quieras.",
     "addedToCartTitle": "¡Añadido al carrito!",
-    "addedToCartMsg": "{{productName}} listo para comprar."
+    "addedToCartMsg": "{{productName}} listo para comprar.",
+    "sellerNotReadyTitle": "El vendedor aún no puede recibir pagos",
+    "sellerNotReadyMsg": "Este vendedor no ha terminado de configurar sus pagos, por lo que no puedes comprar este artículo por ahora.",
+    "sellerNotReadyBtn": "El vendedor aún no puede recibir pagos"
   },
   "status": {
     "sold": "Vendido",

@@ -74,7 +74,8 @@
     "processing": "Procesando...",
     "noAddressError": "Falta la dirección de envío.",
     "outOfStockMsg": "Alguien más acaba de comprar uno de tus productos.",
-    "genericError": "Ocurrió un error al conectar con el servidor."
+    "genericError": "Ocurrió un error al conectar con el servidor.",
+    "sellerNotReadyError": "Uno o más vendedores aún no pueden recibir pagos. Quita esos artículos de tu carrito o inténtalo más tarde."
   },
 
   "success": {

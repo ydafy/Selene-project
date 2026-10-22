@@ -29,6 +29,10 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 // Hooks y Utilidades
 import { useProductCart } from '../../components/features/product/hooks/useProductCart';
 import { useProductShare } from '../../components/features/product/hooks/useProductShare';
+import {
+  useSellerPaymentReadiness,
+  isSellerBlocked,
+} from '../../core/hooks/useSellerPaymentReadiness';
 import { useProduct } from '../../core/hooks/useProduct';
 import { useAuthContext } from '../../components/auth/AuthProvider';
 import { Theme } from '../../core/theme';
@@ -48,6 +52,7 @@ export default function ProductDetailScreen() {
 
   const { data: product, isLoading, error } = useProduct(id || '');
   const { handleAddToCart, isAddingToCart, isAdded } = useProductCart(product);
+  const { data: readiness } = useSellerPaymentReadiness(id ? [id] : []);
   const { handleShare } = useProductShare(product);
   const { toggleFavorite, isFavorite } = useProductFavorite(id);
   const { addProductToHistory } = useProductHistoryStore();
@@ -112,6 +117,8 @@ export default function ProductDetailScreen() {
   }
 
   const isOwner = session?.user.id === product.seller_id;
+  const sellerCannotReceive =
+    product.status === 'VERIFIED' && isSellerBlocked(readiness, product.id);
 
   return (
     <Box flex={1} backgroundColor="background">
@@ -260,11 +267,15 @@ export default function ProductDetailScreen() {
             <PrimaryButton
               onPress={onAddToCartPress}
               loading={isAddingToCart}
-              disabled={isAddingToCart}
+              disabled={isAddingToCart || sellerCannotReceive}
               variant={isAdded ? 'outline' : 'solid'}
               icon={isAdded ? 'check' : 'cart-outline'}
             >
-              {isAdded ? t('actions.added') : t('actions.addToCart')}
+              {sellerCannotReceive
+                ? t('actions.sellerNotReadyBtn')
+                : isAdded
+                  ? t('actions.added')
+                  : t('actions.addToCart')}
             </PrimaryButton>
           </Box>
         </Box>

@@ -28,7 +28,10 @@
     "alreadyInCartTitle": "Already in cart",
     "alreadyInCartMsg": "You can proceed to checkout anytime.",
     "addedToCartTitle": "Added to cart!",
-    "addedToCartMsg": "{{productName}} is ready for checkout."
+    "addedToCartMsg": "{{productName}} is ready for checkout.",
+    "sellerNotReadyTitle": "Seller can't receive payments yet",
+    "sellerNotReadyMsg": "This seller hasn't finished setting up payments, so you can't buy this item right now.",
+    "sellerNotReadyBtn": "Seller can't receive payments yet"
   },
   "status": {
     "sold": "Sold",

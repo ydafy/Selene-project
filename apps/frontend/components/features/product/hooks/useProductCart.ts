@@ -11,6 +11,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Product } from '@selene/types';
 import { useCartStore } from '../../../../core/store/useCartStore';
 import { supabase } from '../../../../core/db/supabase';
+import {
+  fetchSellerPaymentReadiness,
+  isSellerBlocked,
+} from '../../../../core/hooks/useSellerPaymentReadiness';
 
 export const useProductCart = (product: Product | null | undefined) => {
   const { t } = useTranslation(['product', 'common']);
@@ -24,7 +28,7 @@ export const useProductCart = (product: Product | null | undefined) => {
    * Maneja la validación y adición al carrito.
    */
   const handleAddToCart = async (): Promise<
-    'SUCCESS' | 'NOT_VERIFIED' | 'SOLD' | 'ERROR'
+    'SUCCESS' | 'NOT_VERIFIED' | 'SOLD' | 'SELLER_NOT_READY' | 'ERROR'
   > => {
     if (!product) return 'ERROR';
 
@@ -72,7 +76,18 @@ export const useProductCart = (product: Product | null | undefined) => {
         return 'NOT_VERIFIED';
       }
 
-      // 3. ACT: Éxito
+      // 3. CHECK: el vendedor puede recibir pagos (advisory; fail-open, el servidor decide)
+      const readiness = await fetchSellerPaymentReadiness([product.id]);
+      if (isSellerBlocked(readiness, product.id)) {
+        Toast.show({
+          type: 'error',
+          text1: t('product:actions.sellerNotReadyTitle'),
+          text2: t('product:actions.sellerNotReadyMsg'),
+        });
+        return 'SELLER_NOT_READY';
+      }
+
+      // 4. ACT: Éxito
       addItem(product);
 
       Toast.show({
