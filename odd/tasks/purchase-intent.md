@@ -1,0 +1,36 @@
+# Purchase intent
+
+Let buyers see listings still in verification, register purchase intent ("Avísame"), and let sellers learn about demand. Only Connect-ready sellers with VERIFIED listings can be paid.
+Plan source: Engram `selene/purchase-intent-plan` (obs #2534). Branch `feat/purchase-intent`.
+
+## Specs
+
+- S1 Visibility: "la tabla de estados visibles (PENDING_VERIFICATION e IN_REVIEW visibles, REJECTED oculto, solo VERIFIED se compra)". Plan: "products_select_public adds PENDING_VERIFICATION, IN_REVIEW; REJECTED/HIDDEN/RESERVED/IN_DISPUTE hidden; only VERIFIED purchasable; badges; audit products columns before RLS change".
+- S2 "que home y búsqueda no se tocan". Plan: "home \"recientes verificados\" + search untouched".
+- S3 Connect gate: "create-connect-payment must require profiles_private.stripe_onboarding_status='complete', today only checks stripe_account_id = real money-flow bug".
+- S4 "read-only \"accepts payments\" boolean; pre-checks product/cart/checkout; i18n hardcoded English error in usePaymentProcess".
+- S5 "profile banner when >=1 listing and Connect incomplete".
+- S6 "el botón \"Avísame\"". Plan: "purchase intent \"Avísame\" via RPC with reason".
+- S7 "los avisos agrupados al vendedor". Plan: "aggregated deduped seller notice".
+- S8 Plan: "notify buyers when purchasable, product.approved Connect CTA".
+- S9 "favoritos va como bloque propio (avisarle al vendedor que su producto genera interés y arreglar el copy de favoritos que promete una alerta que no existe)". Plan: "favorites -> seller notification (\"tu producto está generando interés\") ... reusing the aggregated notice mechanism, and fix favorites copy promising a nonexistent approval alert (product.json:76)".
+- S10 Plan: "B4 email".
+
+## Tasks
+
+- [x] T1 S3: server Connect gate in `create-connect-payment` (require `stripe_onboarding_status = 'complete'`). Route: inline, test-first. Risk: item 2/money flow, own commit. Evidence: commit `fix(payments): require complete Connect onboarding before checkout`; unit RED->GREEN, bun test 2548/0, deno check no new errors, local stack + Bruno 11/11.
+- [ ] T2 S4: read-only "accepts payments" boolean, pre-checks in product/cart/checkout, i18n `SELLER_NOT_ONBOARDED` error. Route: inline.
+- [ ] T3 S5: profile banner for sellers with listings and incomplete Connect. Route: inline.
+- [ ] T4 S1-S2: audit product queries and exposed columns, RLS migration, status badges; pin home/search to VERIFIED. Route: inline, local stack + Bruno. Risk: item 2 (RLS), own commit.
+- [ ] T5 S6-S7: "Avísame" RPC with reason + aggregated deduped seller notice. Route: inline, local stack.
+- [ ] T6 S8: notify interested buyers when purchasable; Connect CTA on product.approved. Route: inline.
+- [ ] T7 S9: favorites interest notice to seller via S7 mechanism + fix favorites copy. Route: inline.
+- [ ] T8 S10: email channel. Route: decide when reached.
+
+## Log
+
+- L1 (maintainer, verbatim): "Master, arrancamos el feature de intención de compra en este worktree (rama feat/purchase-intent). Ya está todo planeado en la sesión anterior: buscá en Engram el topic \"selene/purchase-intent-plan\" (mem_search + mem_get_observation) y leé las decisiones que tomamos: la tabla de estados visibles (PENDING_VERIFICATION e IN_REVIEW visibles, REJECTED oculto, solo VERIFIED se compra), que home y búsqueda no se tocan, el gate de Connect, el botón \"Avísame\", los avisos agrupados al vendedor y que favoritos va como bloque propio (avisarle al vendedor que su producto genera interés y arreglar el copy de favoritos que promete una alerta que no existe). Dime que opinas"
+- L2 (maintainer): "me gusta master, dale si no tienes mas dudas o coas que me quieras preguntar." Approved order: T1 first.
+- L3 (evidence): `stripe-webhooks/index.ts:1063-1088` writes `stripe_onboarding_status` from `normalizeAccountStatus` on every `account.updated`, including downgrades to `pending`/`rejected`, so the column is a valid gate source. `fn_reserve_products.sql:74-82` reserves only `VERIFIED` products, so opening visibility (T4) does not make non-verified listings purchasable server-side.
+- L5 (T1 verification): seed seller now has `acct_local_seller_pending` with `pending` onboarding; Bruno `checkout-seller-onboarding-pending` returns 400 SELLER_NOT_ONBOARDED and the listing is VERIFIED again. Old code was not replayed against the stack because it would create a real sandbox PaymentIntent.
+- L4 (risk for T4): home/search currently rely on RLS to hide non-verified listings; every product query must filter `status` explicitly before the policy opens.
