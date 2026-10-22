@@ -19,7 +19,8 @@ Plan source: Engram `selene/purchase-intent-plan` (obs #2534). Branch `feat/purc
 ## Tasks
 
 - [x] T1 S3: server Connect gate in `create-connect-payment` (require `stripe_onboarding_status = 'complete'`). Route: inline, test-first. Risk: item 2/money flow, own commit. Evidence: commit `fix(payments): require complete Connect onboarding before checkout`; unit RED->GREEN, bun test 2548/0, deno check no new errors, local stack + Bruno 11/11.
-- [ ] T2 S4: read-only "accepts payments" boolean, pre-checks in product/cart/checkout, i18n `SELLER_NOT_ONBOARDED` error. Route: inline.
+- [x] T2a S4: read-only "accepts payments" boolean as RPC `fn_product_seller_payment_readiness(uuid[])` (anon/authenticated/service_role, PUBLIC revoked). Route: inline, test-first. Risk: item 2 (SECURITY DEFINER grant), own commit. Evidence: commit `feat(products): expose whether a listing's seller accepts payments`; structural RED->GREEN, db reset, Bun.sql rollback check (pending/complete/null status/banned/no account), Bruno 14/14.
+- [ ] T2b S4: pre-checks in product page, cart add and checkout using T2a; i18n the hardcoded `SELLER_NOT_ONBOARDED` error in `usePaymentProcess`. Route: worker (context backstop).
 - [ ] T3 S5: profile banner for sellers with listings and incomplete Connect. Route: inline.
 - [ ] T4 S1-S2: audit product queries and exposed columns, RLS migration, status badges; pin home/search to VERIFIED. Route: inline, local stack + Bruno. Risk: item 2 (RLS), own commit.
 - [ ] T5 S6-S7: "Avísame" RPC with reason + aggregated deduped seller notice. Route: inline, local stack.
@@ -33,4 +34,5 @@ Plan source: Engram `selene/purchase-intent-plan` (obs #2534). Branch `feat/purc
 - L2 (maintainer): "me gusta master, dale si no tienes mas dudas o coas que me quieras preguntar." Approved order: T1 first.
 - L3 (evidence): `stripe-webhooks/index.ts:1063-1088` writes `stripe_onboarding_status` from `normalizeAccountStatus` on every `account.updated`, including downgrades to `pending`/`rejected`, so the column is a valid gate source. `fn_reserve_products.sql:74-82` reserves only `VERIFIED` products, so opening visibility (T4) does not make non-verified listings purchasable server-side.
 - L5 (T1 verification): seed seller now has `acct_local_seller_pending` with `pending` onboarding; Bruno `checkout-seller-onboarding-pending` returns 400 SELLER_NOT_ONBOARDED and the listing is VERIFIED again. Old code was not replayed against the stack because it would create a real sandbox PaymentIntent.
+- L6 (T2a): `profiles_private.status` is nullable, so the RPC uses `IS DISTINCT FROM 'suspended'/'banned'` to match `fn_reserve_products`. `get_advisors` not run: the migration is not applied remotely yet, so remote advisors cannot see it; run after the maintainer applies it.
 - L4 (risk for T4): home/search currently rely on RLS to hide non-verified listings; every product query must filter `status` explicitly before the policy opens.

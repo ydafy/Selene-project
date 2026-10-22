@@ -1,0 +1,31 @@
+meta {
+  name: payment-readiness-as-service-role
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_product_seller_payment_readiness
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_product_ids": ["00000000-0000-4000-8000-0000000000b3"]
+  }
+}
+
+tests {
+  test("service role can call fn_product_seller_payment_readiness", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([
+      { product_id: "00000000-0000-4000-8000-0000000000b3", seller_accepts_payments: false }
+    ]);
+  });
+}
