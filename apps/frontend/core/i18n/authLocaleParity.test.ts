@@ -12,6 +12,19 @@ const REQUIRED_KEYS = [
   'accountAlreadyExistsMsg',
 ] as const;
 
+const ERROR_KEYS = [
+  'invalidCredentials',
+  'emailNotConfirmed',
+  'weakPassword',
+  'rateLimited',
+  'otpExpired',
+  'validationFailed',
+  'signupDisabled',
+  'network',
+  'googleSignInFailed',
+  'missingEmail',
+] as const;
+
 describe('auth locale parity', () => {
   it('defines the verification and existing-account keys in both languages', () => {
     const en = enAuth as unknown as Record<string, string>;
@@ -28,6 +41,27 @@ describe('auth locale parity', () => {
     for (const modal of [enAuth.modal, esAuth.modal] as Record<string, string>[]) {
       expect(modal.welcomeBack).toBeString();
       expect(modal.createAccount).toBeString();
+    }
+  });
+
+  it('defines the localized auth error messages in both languages', () => {
+    for (const errors of [enAuth.errors, esAuth.errors] as Record<
+      string,
+      string
+    >[]) {
+      for (const key of ERROR_KEYS) {
+        expect(errors[key]).toBeString();
+        expect(errors[key].length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('defines the resend countdown with a seconds placeholder in both languages', () => {
+    for (const auth of [enAuth, esAuth] as unknown as Record<
+      string,
+      string
+    >[]) {
+      expect(auth.resendCodeIn).toContain('{{seconds}}');
     }
   });
 });

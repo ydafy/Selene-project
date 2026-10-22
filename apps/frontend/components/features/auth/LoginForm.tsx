@@ -22,6 +22,7 @@ import {
   classifyLoginError,
   recoverUnconfirmedLogin,
 } from '../../../core/auth/authOutcome.logic';
+import { mapAuthErrorKey } from '../../../core/auth/authErrors.logic';
 import { Theme } from '../../../core/theme';
 
 type LoginFormProps = {
@@ -74,18 +75,17 @@ export const LoginForm = ({
         Toast.show({
           type: 'error',
           text1: t('loginErrorTitle'),
-          text2: result.error?.message || t('common:errors.generic'),
+          text2: t(result.error?.messageKey ?? mapAuthErrorKey(null)),
         });
         return;
       }
 
       onSuccess();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
       Toast.show({
         type: 'error',
         text1: t('loginErrorTitle'),
-        text2: message,
+        text2: t(mapAuthErrorKey(err)),
       });
     }
   };

@@ -27,6 +27,11 @@ import {
 import { useGoogleAuth } from '../../../core/hooks/useGoogleAuth';
 import { isUsernameAvailable } from '../../../core/auth/registerUsername.logic';
 import { classifySignUpResult } from '../../../core/auth/authOutcome.logic';
+import {
+  ACCOUNT_EXISTS_KEY,
+  USERNAME_TAKEN_KEY,
+  mapAuthErrorKey,
+} from '../../../core/auth/authErrors.logic';
 import { supabase } from '../../../core/db/supabase';
 import { Theme } from '../../../core/theme';
 
@@ -83,10 +88,24 @@ export const RegisterForm = ({
 
     const result = await signUp(data);
     if (!result.success) {
+      const key = result.error?.messageKey ?? mapAuthErrorKey(null);
+      if (key === USERNAME_TAKEN_KEY) {
+        setError('username', { message: USERNAME_TAKEN_KEY });
+        return;
+      }
+      if (key === ACCOUNT_EXISTS_KEY) {
+        Toast.show({
+          type: 'info',
+          text1: t('accountAlreadyExistsTitle'),
+          text2: t('accountAlreadyExistsMsg'),
+        });
+        onAccountExists();
+        return;
+      }
       Toast.show({
         type: 'error',
         text1: t('registerErrorTitle'),
-        text2: result.error?.message || 'Error',
+        text2: t(key),
       });
       return;
     }
