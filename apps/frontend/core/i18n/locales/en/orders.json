@@ -156,6 +156,7 @@
     "returnShipmentInTransit": "The return package is already with the carrier.",
     "returnDeliveredBuyer": "The seller has received the package. Your refund will be processed after inspection.",
     "cancelledBuyer": "Your shipment was canceled. The refund is processed to the original payment method. Once confirmed, your bank may take 5 to 10 business days to reflect it.",
+    "cancelledSeller": "This shipment was cancelled and your product is back in your store: it is available to sell again. The buyer gets their refund; you do not need to do anything.",
     "refundProcessedBuyer": "Your refund has been processed successfully. The funds will appear in your account within 5 to 10 business days.",
     "refundProcessedSeller": "Dispute closed. The funds have been returned to the buyer.",
     "reportReturnProblem": "Report a return problem"
