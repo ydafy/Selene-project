@@ -2086,6 +2086,8 @@ export type Database = {
           operation_key: string | null
           order_id: string
           reason: string
+          recovery_escalated_at: string | null
+          recovery_escalation_reason: string | null
           refund_failure_reason: string | null
           refund_id: string | null
           refund_request: Json | null
@@ -2104,6 +2106,8 @@ export type Database = {
           operation_key?: string | null
           order_id: string
           reason: string
+          recovery_escalated_at?: string | null
+          recovery_escalation_reason?: string | null
           refund_failure_reason?: string | null
           refund_id?: string | null
           refund_request?: Json | null
@@ -2122,6 +2126,8 @@ export type Database = {
           operation_key?: string | null
           order_id?: string
           reason?: string
+          recovery_escalated_at?: string | null
+          recovery_escalation_reason?: string | null
           refund_failure_reason?: string | null
           refund_id?: string | null
           refund_request?: Json | null
@@ -3937,6 +3943,10 @@ export type Database = {
       fn_derive_order_status: {
         Args: { p_order_id: string }
         Returns: Database["public"]["Enums"]["order_status_enum"]
+      }
+      fn_escalate_shipment_cancellation: {
+        Args: { p_reason: string; p_shipment_id: string }
+        Returns: Json
       }
       fn_fail_payout_create_from_fence: {
         Args: {
