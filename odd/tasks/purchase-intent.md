@@ -1,6 +1,6 @@
 # Purchase intent
 
-Let buyers see listings still in verification, register purchase intent ("Avísame"), and let sellers learn about demand. Only Connect-ready sellers with VERIFIED listings can be paid.
+Let buyers see listings still in verification, signal interest through favorites, and let sellers and buyers learn when a listing becomes purchasable. Only Connect-ready sellers with VERIFIED listings can be paid.
 Plan source: Engram `selene/purchase-intent-plan` (obs #2534). Branch `feat/purchase-intent`.
 
 ## Specs
@@ -10,23 +10,24 @@ Plan source: Engram `selene/purchase-intent-plan` (obs #2534). Branch `feat/purc
 - S3 Connect gate: "create-connect-payment must require profiles_private.stripe_onboarding_status='complete', today only checks stripe_account_id = real money-flow bug".
 - S4 "read-only \"accepts payments\" boolean; pre-checks product/cart/checkout; i18n hardcoded English error in usePaymentProcess".
 - S5 "profile banner when >=1 listing and Connect incomplete".
-- S6 "el botón \"Avísame\"". Plan: "purchase intent \"Avísame\" via RPC with reason".
-- S7 "los avisos agrupados al vendedor". Plan: "aggregated deduped seller notice".
-- S8 Plan: "notify buyers when purchasable, product.approved Connect CTA".
-- S9 "favoritos va como bloque propio (avisarle al vendedor que su producto genera interés y arreglar el copy de favoritos que promete una alerta que no existe)". Plan: "favorites -> seller notification (\"tu producto está generando interés\") ... reusing the aggregated notice mechanism, and fix favorites copy promising a nonexistent approval alert (product.json:76)".
-- S10 Plan: "B4 email".
+- S6 Product detail (L9): "un usario si entra a productDetail deveria de ver siempre el boton de add to cart, pero cuando lo pulse mostrar un dialog que dependiendo des sattus del producto mostrarle algo al usario comprador no tan tecnio pero recomendarle agregarlo a favoritos". The three states: "1 pendig verification = usaro publico pero no ha mandado las benchmarks, 2 in review = usario publico y ya mando los benchamrks, esta en lista de espera, 3 'verifed || sin stripe connect configured' usario ya publico, ya envio las pruebas y ya lo verificaron pero no confguro todavia su cuneta de stripe connect'". Replaces the disabled button shipped in T2b. The "Avísame" button is dropped (L10): favorites is the only interest signal.
+- S7 "los avisos agrupados al vendedor". Plan: "aggregated deduped seller notice". Never reveals which buyer.
+- S8 (L9): "notifcar tanto al vendedor cunado un usario agrege su producto a fav y uno de estos lo agrego a fav por culpa de que no ah terminado como el happy path para que se venda en selene". Seller notice for a not-ready seller carries the action to finish (verification or Connect).
+- S9 (L9): "notificar de msma manera al usaro comprador cuando se actualcen los sattus de esos productos en fav screen". Purchasable = VERIFIED and seller ready, so both the product verdict and Connect `account.updated` must trigger it, without duplicates. Also fix the favorites copy that promises a nonexistent alert (product.json:76).
+- S10 (L9): "ya sera momento de ver que onda con expo notiicarion o la prcatica que me recomeinde para el tema de notificaciones". Decision (L10): push via expo-notifications + Expo Push Service; in-app `notifications` stays the source of truth, push is a delivery channel. Email deferred.
 
 ## Tasks
 
 - [x] T1 S3: server Connect gate in `create-connect-payment` (require `stripe_onboarding_status = 'complete'`). Route: inline, test-first. Risk: item 2/money flow, own commit. Evidence: commit `fix(payments): require complete Connect onboarding before checkout`; unit RED->GREEN, bun test 2548/0, deno check no new errors, local stack + Bruno 11/11.
 - [x] T2a S4: read-only "accepts payments" boolean as RPC `fn_product_seller_payment_readiness(uuid[])` (anon/authenticated/service_role, PUBLIC revoked). Route: inline, test-first. Risk: item 2 (SECURITY DEFINER grant), own commit. Evidence: commit `feat(products): expose whether a listing's seller accepts payments`; structural RED->GREEN, db reset, Bun.sql rollback check (pending/complete/null status/banned/no account), Bruno 14/14.
 - [x] T2b S4: pre-checks in product page, cart add and checkout using T2a; i18n the hardcoded `SELLER_NOT_ONBOARDED` error in `usePaymentProcess`. Route: worker (context backstop). Evidence: commit `feat(checkout): warn buyers before paying when a seller cannot receive payments`; RED (module missing) -> GREEN, bun test 2569/0, typecheck clean in touched files, eslint clean.
-- [ ] T3 S5: profile banner for sellers with listings and incomplete Connect. Route: inline.
+- [ ] T2c S6: always-visible add-to-cart; on press, a buyer-friendly dialog per state (PENDING_VERIFICATION, IN_REVIEW, VERIFIED with seller not ready) recommending favorites. Replaces the T2b disabled button. Route: worker.
+- [ ] T3 S5: profile banner for sellers with listings and incomplete Connect. Route: worker. Implemented, maintainer device-tested ("10/10", details pending); commit after details.
 - [ ] T4 S1-S2: audit product queries and exposed columns, RLS migration, status badges; pin home/search to VERIFIED. Route: inline, local stack + Bruno. Risk: item 2 (RLS), own commit.
-- [ ] T5 S6-S7: "Avísame" RPC with reason + aggregated deduped seller notice. Route: inline, local stack.
-- [ ] T6 S8: notify interested buyers when purchasable; Connect CTA on product.approved. Route: inline.
-- [ ] T7 S9: favorites interest notice to seller via S7 mechanism + fix favorites copy. Route: inline.
-- [ ] T8 S10: email channel. Route: decide when reached.
+- [-] T5 dropped (L10): "Avísame" button removed; favorites replaces it.
+- [ ] T6 S9: notify buyers who favorited a listing when it becomes purchasable (verdict + Connect complete triggers, deduped) + fix favorites copy. Route: inline, local stack.
+- [ ] T7 S7-S8: aggregated, deduped, anonymous seller notice when buyers favorite a listing that is not purchasable yet, with the action to finish. Route: inline, local stack.
+- [ ] T8 S10: push notifications with expo-notifications (device tokens table, send from Edge Function on new notice, go-live credentials). Route: decide when reached.
 
 ## Log
 
@@ -37,4 +38,8 @@ Plan source: Engram `selene/purchase-intent-plan` (obs #2534). Branch `feat/purc
 - L6 (T2a): `profiles_private.status` is nullable, so the RPC uses `IS DISTINCT FROM 'suspended'/'banned'` to match `fn_reserve_products`. `get_advisors` not run: the migration is not applied remotely yet, so remote advisors cannot see it; run after the maintainer applies it.
 - L7 (T2b follow-ups): checkout still mounts `usePaymentProcess` (reserve + create-connect-payment) while the blocked-seller ErrorState shows; the server refuses and releases, so it is wasteful but safe. `product:errors.verificationFailed` is referenced in `useProductCart.ts` but missing from locales (pre-existing). Screen/cart tests are source contracts, not rendered behavior.
 - L8 (slice 1 = T1, T2a, T2b: d0967db, 1e49e81, 349bf00, 868 lines). Native review lineage review-80471c2792af5387 (risk + reliability) approved and acknowledged. Advisory findings, later work: R1-001 suggestion on the RPC body; reliability warnings on cwd-dependent and source-text wiring tests; legacy sellers with a Connect account and NULL onboarding status are blocked by the gate. Remote check (read-only): 11 sellers with a Connect account, all `complete`, none NULL, so the gate blocks no current seller. Slice boundary recorded here; T3 starts slice 2.
+- L9 (maintainer, verbatim): "aa ya entendi, simeplmente no hemos aplciado la laogica esa, osea la vamos aplciar en este modulo. Ahora ya verifique el prdocuto, y la vredad no me guta como queda lo del boton, mi idea era mas que cuando un saurio entrara al producto que ennuetsroc aso puede haber 3 estados: 1 pendig verification = usaro publico pero no ha mandado las benchmarks, 2 in review =  usario publico y ya mando los benchamrks, esta en lista de espera, 3 'verifed || sin stripe connect configured' usario ya publico, ya envio las pruebas y ya lo verificaron pero no confguro todavia su cuneta de stripe connect' entoncess un usario si entra a productDetail deveria de ver siempre el boton de add to cart, pero cuando lo pulse mostrar un dialog  que dependiendo des sattus del producto mostrarle algo al usario comprador no tan tecnio pero recomendarle agregarlo a favoritos, y ahi esa accion es la que luego vasmos atacar que es notifcar tanto al vendedor cunado un usario agrege su producto a fav y uno de estos lo agrego a fav por culpa de que no ah terminado como el happy path para que se venda en selene, y notificar de msma manera al usaro comprador cuando se actualcen los sattus de esos productos en fav screen, OJO actualmenet tenemos opuro in app, pero se me hace que ya sera momento de ver que onda con expo notiicarion o la prcatica que me recomeinde para el tema de notificaciones. qUE OPINAS de eesto master?"
+- L10 (maintainer): "si dale, confrmo todo. actualiza el plan y continua master" Confirms: drop "Avísame" (favorites is the single interest signal), T2c dialog, push via Expo before email.
+- L11 (evidence): migration 20261022010508 applied remotely and verified (SECURITY DEFINER, search_path pinned, PUBLIC no execute, anon execute). get_advisors security: new WARN 0028/0029 for fn_product_seller_payment_readiness is intended (documented in the migration; returns one boolean, no account data). Other findings pre-existing.
+- L12 (types): `bun run db:types` against the shared remote also pulls unmerged objects from other branches (shipment cancellation refund RPCs and columns, fn_generate_profile_username). Not committed here; the frontend keeps the zod-validated untyped RPC call. Regenerate after those branches merge.
 - L4 (risk for T4): home/search currently rely on RLS to hide non-verified listings; every product query must filter `status` explicitly before the policy opens.
