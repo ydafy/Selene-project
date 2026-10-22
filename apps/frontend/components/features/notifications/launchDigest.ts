@@ -5,6 +5,7 @@ import { getVerifiedEventIdentity } from './notificationPresentation';
 const priority: Record<NonNullable<ReturnType<typeof getVerifiedEventIdentity>>['kind'], Partial<Record<'buyer' | 'seller', number>>> = {
   'order.payment_confirmed': { buyer: 2, seller: 2 },
   'shipment.cancelled': { buyer: 3, seller: 3 },
+  'shipment.refund_failed': { buyer: 3 },
   'dispute.opened': { buyer: 3, seller: 3 },
   'dispute.verdict': { buyer: 3, seller: 3 },
   'product.approved': { seller: 1 },

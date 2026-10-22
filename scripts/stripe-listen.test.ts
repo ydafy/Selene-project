@@ -63,6 +63,8 @@ describe('buildStripeListenArgs', () => {
       'payment_intent.payment_failed',
       'payment_intent.canceled',
       'setup_intent.succeeded',
+      'refund.updated',
+      'refund.failed',
       'account.updated',
       'account.external_account.created',
       'account.external_account.updated',

@@ -10,6 +10,7 @@ import type {
   Json,
 } from '../../../packages/types/src/database.types.ts';
 import { withSentry } from '../_shared/sentry.ts';
+import { createCancellationReporter } from '../_shared/cancellation-alerts.ts';
 import { normalizeAccountStatus, type ConnectAccountLike } from '../_shared/connect-status.ts';
 import { extractStripeChargeId } from '../_shared/stripe-charge.ts';
 import { verifyStripeWebhookSignature } from './signature.ts';
@@ -35,6 +36,10 @@ import {
   type RecoveryShellInput,
   type SingleModalSettlementInput,
 } from './single-modal-settlement.ts';
+import {
+  handleShipmentRefundEvent,
+  type ShipmentRefundEventInput,
+} from './shipment-refund-events.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '\*',
@@ -1146,6 +1151,45 @@ serve(withSentry('stripe-webhooks', async (req: Request) => {
         });
         log('INFO', 'Nuevo método de pago guardado', { user_id });
       }
+    }
+
+    const refundEvent = event as {
+      id: string;
+      type: string;
+      data: { object: unknown };
+    };
+    if (
+      refundEvent.type === 'refund.updated' ||
+      refundEvent.type === 'refund.failed'
+    ) {
+      const refundResult = await handleShipmentRefundEvent(
+        refundEvent,
+        {
+          apply: async (input: ShipmentRefundEventInput) => {
+            const { data, error } = await supabaseAdmin.rpc(
+              'fn_apply_shipment_cancellation_refund_event' as never,
+              {
+                p_shipment_id: input.shipmentId,
+                p_refund_id: input.refundId,
+                p_payment_intent_id: input.paymentIntentId,
+                p_amount_cents: input.amountCents,
+                p_status: input.status,
+                p_failure_reason: input.failureReason,
+              } as never,
+            );
+            return { data: data as unknown, error };
+          },
+          report: createCancellationReporter('stripe-webhooks', log),
+          log,
+        },
+      );
+      log('INFO', 'Shipment refund event processed', {
+        eventId: refundEvent.id,
+        eventType: refundEvent.type,
+        ...(refundResult.handled
+          ? { outcome: refundResult.outcome }
+          : { ignored: refundResult.reason }),
+      });
     }
 
     return new Response(JSON.stringify({ received: true }), { status: 200 });

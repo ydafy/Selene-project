@@ -8,6 +8,7 @@
     "purchase": "Purchase update",
     "sale": "Sale update",
     "cancellation": "Cancellation update",
+    "refund": "Refund update",
     "dispute": "Dispute update",
     "listing": "Listing update",
     "return": "Return update"
