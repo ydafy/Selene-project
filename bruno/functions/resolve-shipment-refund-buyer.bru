@@ -1,0 +1,36 @@
+meta {
+  name: resolve-shipment-refund-buyer
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/resolve-shipment-refund
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  {
+    "shipment_id": "00000000-0000-4000-8000-0000000000c2",
+    "reference": "Bruno: buyer"
+  }
+}
+
+tests {
+  test("a signed-in buyer cannot resolve a refund", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody()).to.deep.equal({ error: "ADMIN_ONLY" });
+  });
+}
+
+docs {
+  Run after auth/login-buyer (needs `buyerToken`) with the functions server and
+  supabase/functions/.env. Proves the admin check reads profiles_private.role: a valid
+  non-admin session is stopped before the body is read or any RPC is called.
+}

@@ -1,0 +1,40 @@
+meta {
+  name: login-admin
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/auth/v1/token?grant_type=password
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+body:json {
+  {
+    "email": "admin@selene.local",
+    "password": "password123"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("adminToken", res.getBody().access_token);
+  }
+}
+
+tests {
+  test("logs in the seeded admin", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().access_token).to.be.a("string");
+  });
+}
+
+docs {
+  Signs in the seeded admin (supabase/seed.sql) and stores the access token in the
+  `adminToken` runtime variable for the admin-only function requests that follow.
+}

@@ -29,6 +29,11 @@ verify_jwt = false
 [functions.cron-watchdog]
 verify_jwt = false
 
+# Admin-invoked: the caller's Supabase JWT is verified at the gateway and the function
+# then checks profiles_private.role = 'admin'.
+[functions.resolve-shipment-refund]
+verify_jwt = true
+
 # Edge Functions run on the Supabase Edge Runtime, not the local Deno CLI.
 # Pin its Deno major so local serve matches the hosted runtime.
 [edge_runtime]

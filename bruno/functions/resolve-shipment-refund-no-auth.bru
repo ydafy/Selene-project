@@ -1,0 +1,31 @@
+meta {
+  name: resolve-shipment-refund-no-auth
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/resolve-shipment-refund
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "shipment_id": "00000000-0000-4000-8000-0000000000c2",
+    "reference": "Bruno: no auth"
+  }
+}
+
+tests {
+  test("rejects a refund resolution without a user token", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody()).to.deep.equal({ error: "AUTH_REQUIRED" });
+  });
+}
+
+docs {
+  Needs the functions server started with --no-verify-jwt (see stripe-webhooks-unsigned),
+  otherwise the gateway answers before the function does. Proves resolve-shipment-refund
+  refuses anonymous callers before any lookup or database call.
+}

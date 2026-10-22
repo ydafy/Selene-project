@@ -28,6 +28,7 @@ DECLARE
   v_loss_update_cents BIGINT;
   v_next_cancellation_loss_cents BIGINT;
   v_refund_status TEXT;
+  v_refund_resolved_at TIMESTAMPTZ;
 BEGIN
   -- 1. Lock shipment and validate eligibility.
   SELECT order_id, seller_id, status
@@ -64,12 +65,13 @@ BEGIN
 
   -- The Stripe refund must be recorded as succeeded before the business
   -- cancellation: every caller records it first, so a missing operation or a
-  -- NULL status means no confirmed refund.
-  SELECT refund_status INTO v_refund_status
+  -- NULL status means no confirmed refund. The one exception is a failed or
+  -- canceled refund an admin resolved (fn_resolve_shipment_cancellation_refund).
+  SELECT refund_status, refund_resolved_at INTO v_refund_status, v_refund_resolved_at
   FROM public.shipment_cancellation_operations
   WHERE shipment_id = p_shipment_id;
 
-  IF v_refund_status IS DISTINCT FROM 'succeeded' THEN
+  IF v_refund_status IS DISTINCT FROM 'succeeded' AND v_refund_resolved_at IS NULL THEN
     RETURN QUERY SELECT false, 'REFUND_NOT_SUCCEEDED'::TEXT;
     RETURN;
   END IF;
