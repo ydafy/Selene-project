@@ -29,6 +29,11 @@ verify_jwt = false
 [functions.cron-watchdog]
 verify_jwt = false
 
+# Admin-invoked: the caller's Supabase JWT is verified at the gateway and the function
+# then checks profiles_private.role = 'admin'.
+[functions.resolve-shipment-refund]
+verify_jwt = true
+
 # Local Auth mirrors the deployed settings of project acoiclkeymgtlwcxilun so the
 # signup flow (confirmation code, password policy) behaves the same locally.
 # Google sign-in is not configured locally: it needs client secrets. "Require

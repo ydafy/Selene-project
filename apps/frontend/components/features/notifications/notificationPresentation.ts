@@ -3,11 +3,12 @@ import type { ComponentProps } from 'react';
 import type { MaterialCommunityIcons } from '@expo/vector-icons';
 
 type Icon = ComponentProps<typeof MaterialCommunityIcons>['name'];
-type Presentation = { icon: Icon; accent: 'primary' | 'success' | 'error'; state: 'generic' | 'purchase' | 'sale' | 'cancellation' | 'dispute' | 'listing' | 'return' };
+type Presentation = { icon: Icon; accent: 'primary' | 'success' | 'error'; state: 'generic' | 'purchase' | 'sale' | 'cancellation' | 'refund' | 'dispute' | 'listing' | 'return' };
 
 const catalogue = {
   'order.payment_confirmed': { buyer: ['cart-check', 'success', 'purchase'], seller: ['storefront-outline', 'primary', 'sale'] },
   'shipment.cancelled': { buyer: ['package-variant-closed-remove', 'primary', 'cancellation'], seller: ['package-variant-closed-remove', 'primary', 'cancellation'] },
+  'shipment.refund_failed': { buyer: ['cash-refund', 'error', 'refund'] },
   'dispute.opened': { buyer: ['file-document-outline', 'primary', 'dispute'], seller: ['file-document-outline', 'primary', 'dispute'] },
   'dispute.verdict': { buyer: ['file-check-outline', 'primary', 'dispute'], seller: ['file-check-outline', 'primary', 'dispute'] },
   'product.approved': { seller: ['check-circle-outline', 'success', 'listing'] },

@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 
 const help =
   'Usage: bun scripts/test-shipment-cancellation-refund-status.ts [--help]\n' +
-  "B2.1 SQL: per-shipment refund ID/status on the cancellation operation and fn_cancel_shipment's refund guard.\n" +
+  "B2.1+B2.2+B2.2.1 SQL: per-shipment refund ID/status on the cancellation operation, fn_cancel_shipment's refund guard,\n" +
+  'the service-only fn_get_shipment_cancellation_recovery read and the once-only fn_escalate_shipment_cancellation.\n' +
   "Runs against this worktree's local Supabase stack (`supabase start`); every case rolls back.\n" +
   'Database URL: SELENE_LOCAL_DB_URL, else `supabase status --env`. Only 127.0.0.1/localhost is accepted.';
 
@@ -84,6 +85,28 @@ async function start(tx: Tx, shipmentId: string) {
   assert.equal(claim.status, 'claimed');
   await tx`SELECT public.fn_start_shipment_cancellation_refund(
     ${shipmentId}::uuid, ${claim.claim_token}::uuid, ${JSON.stringify(request(shipmentId))}::text::jsonb, 0::bigint)`;
+}
+
+async function claim(tx: Tx, shipmentId: string) {
+  const [{ claim: claimed }] = await tx`SELECT public.fn_claim_shipment_cancellation(
+    ${shipmentId}::uuid, ${ids.order}::uuid, ${ids.buyer}::uuid, 'buyer', 'Changed my mind') AS claim`;
+  assert.equal(claimed.status, 'claimed');
+}
+
+async function recovery(tx: Tx, shipmentId: string) {
+  const [{ result }] = await tx`SELECT public.fn_get_shipment_cancellation_recovery(${shipmentId}::uuid) AS result`;
+  return result;
+}
+
+async function escalate(tx: Tx, shipmentId: string, reason: string) {
+  const [{ result }] = await tx`SELECT public.fn_escalate_shipment_cancellation(${shipmentId}::uuid, ${reason}) AS result`;
+  return result;
+}
+
+async function escalationRow(tx: Tx, shipmentId: string) {
+  const [row] = await tx`SELECT recovery_escalated_at, recovery_escalation_reason
+    FROM public.shipment_cancellation_operations WHERE shipment_id = ${shipmentId}`;
+  return row;
 }
 
 async function record(
@@ -250,11 +273,157 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     },
   ],
   [
-    'transition: fn_cancel_shipment still completes when no refund status was recorded (pre-B2.1 handlers)',
+    'fn_cancel_shipment refuses a started operation with no recorded refund status',
     async (tx) => {
       await start(tx, ids.shipment);
-      const [done] = await tx`SELECT * FROM public.fn_cancel_shipment(${ids.shipment}::uuid, 'buyer', 'Changed my mind', 0::bigint)`;
-      assert.deepEqual({ ...done }, { success: true, error_message: null });
+      const [blocked] = await tx`SELECT * FROM public.fn_cancel_shipment(${ids.shipment}::uuid, 'buyer', 'Changed my mind', 0::bigint)`;
+      assert.deepEqual({ ...blocked }, { success: false, error_message: 'REFUND_NOT_SUCCEEDED' });
+      const [still] = await tx`SELECT status FROM public.shipments WHERE id = ${ids.shipment}`;
+      assert.equal(still.status, 'paid');
+    },
+  ],
+  [
+    'fn_cancel_shipment refuses a shipment with no cancellation operation',
+    async (tx) => {
+      const [blocked] = await tx`SELECT * FROM public.fn_cancel_shipment(${ids.shipment}::uuid, 'buyer', 'Changed my mind', 0::bigint)`;
+      assert.deepEqual({ ...blocked }, { success: false, error_message: 'REFUND_NOT_SUCCEEDED' });
+      const [still] = await tx`SELECT status FROM public.shipments WHERE id = ${ids.shipment}`;
+      assert.equal(still.status, 'paid');
+    },
+  ],
+  [
+    'fn_cancel_shipment keeps returning ALREADY_CANCELLED for a cancelled shipment',
+    async (tx) => {
+      await start(tx, ids.shipment);
+      await record(tx, ids.shipment, 're_1', 'succeeded');
+      await tx`SELECT * FROM public.fn_cancel_shipment(${ids.shipment}::uuid, 'buyer', 'Changed my mind', 0::bigint)`;
+      const [again] = await tx`SELECT * FROM public.fn_cancel_shipment(${ids.shipment}::uuid, 'buyer', 'Changed my mind', 0::bigint)`;
+      assert.deepEqual({ ...again }, { success: true, error_message: 'ALREADY_CANCELLED' });
+    },
+  ],
+  [
+    'recovery read returns null for a missing or merely claimed operation',
+    async (tx) => {
+      assert.equal(await recovery(tx, ids.shipment), null);
+      await claim(tx, ids.shipment);
+      assert.equal(await recovery(tx, ids.shipment), null);
+    },
+  ],
+  [
+    'recovery read returns the frozen operation, reflects the recorded refund, and changes nothing',
+    async (tx) => {
+      await start(tx, ids.shipment);
+      const before = await tx`SELECT * FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`;
+      const started = await recovery(tx, ids.shipment);
+      assert.deepEqual(Object.keys(started).sort(), [
+        'actor_id',
+        'cancellation_loss_cents',
+        'external_started_at',
+        'operation_key',
+        'order_id',
+        'reason',
+        'recovery_escalated_at',
+        'refund_id',
+        'refund_request',
+        'refund_status',
+        'source',
+      ]);
+      assert.equal(started.operation_key, `cancel_shipment_${ids.shipment}`);
+      assert.equal(started.order_id, ids.order);
+      assert.equal(started.source, 'buyer');
+      assert.equal(started.actor_id, ids.buyer);
+      assert.equal(started.reason, 'Changed my mind');
+      assert.deepEqual(started.refund_request, request(ids.shipment));
+      assert.equal(Number(started.cancellation_loss_cents), 0);
+      assert.equal(started.recovery_escalated_at, null);
+      assert.equal(started.refund_id, null);
+      assert.equal(started.refund_status, null);
+      assert.ok(started.external_started_at);
+      assert.deepEqual(await tx`SELECT * FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`, before);
+
+      await record(tx, ids.shipment, 're_1', 'pending');
+      const pending = await recovery(tx, ids.shipment);
+      assert.equal(pending.refund_id, 're_1');
+      assert.equal(pending.refund_status, 'pending');
+    },
+  ],
+  [
+    'only service_role may read the recovery state (authenticated denied)',
+    async (tx) => {
+      await start(tx, ids.shipment);
+      await tx`SELECT set_config('request.jwt.claims', '{"role":"authenticated"}', true)`;
+      await tx`SET LOCAL ROLE authenticated`;
+      await rejects(tx, (sp) => recovery(sp, ids.shipment), 'permission denied');
+    },
+  ],
+  [
+    'anon cannot read the recovery state either',
+    async (tx) => {
+      await start(tx, ids.shipment);
+      await tx`SELECT set_config('request.jwt.claims', '{"role":"anon"}', true)`;
+      await tx`SET LOCAL ROLE anon`;
+      await rejects(tx, (sp) => recovery(sp, ids.shipment), 'permission denied');
+    },
+  ],
+  [
+    'escalation is recorded once: the first call returns escalated true, a replay returns false and changes nothing',
+    async (tx) => {
+      await start(tx, ids.shipment);
+      assert.equal((await escalationRow(tx, ids.shipment)).recovery_escalated_at, null);
+      assert.deepEqual(await escalate(tx, ids.shipment, 'refund_not_found'), { escalated: true });
+      const first = await escalationRow(tx, ids.shipment);
+      assert.ok(first.recovery_escalated_at);
+      assert.equal(first.recovery_escalation_reason, 'refund_not_found');
+      assert.deepEqual(await escalate(tx, ids.shipment, 'refund_ambiguous'), { escalated: false });
+      assert.deepEqual(await escalate(tx, ids.shipment, 'refund_not_found'), { escalated: false });
+      assert.deepEqual(await escalationRow(tx, ids.shipment), first);
+    },
+  ],
+  [
+    'the recovery read shows the escalation, and escalating leaves the sibling and refund state untouched',
+    async (tx) => {
+      await start(tx, ids.shipment);
+      await start(tx, ids.sibling);
+      const before = await operation(tx, ids.shipment);
+      await escalate(tx, ids.shipment, 'refund_ambiguous');
+      const read = await recovery(tx, ids.shipment);
+      assert.ok(read.recovery_escalated_at);
+      assert.equal(read.refund_id, null);
+      assert.deepEqual(await operation(tx, ids.shipment), before);
+      assert.equal((await recovery(tx, ids.sibling)).recovery_escalated_at, null);
+      assert.equal((await escalationRow(tx, ids.sibling)).recovery_escalated_at, null);
+    },
+  ],
+  [
+    'escalation rejects an unstarted or missing operation and an unknown reason, leaving the row unchanged',
+    async (tx) => {
+      await rejects(tx, (sp) => escalate(sp, ids.shipment, 'refund_not_found'), 'CANCELLATION_NOT_STARTED');
+      await claim(tx, ids.shipment);
+      await rejects(tx, (sp) => escalate(sp, ids.shipment, 'refund_not_found'), 'CANCELLATION_NOT_STARTED');
+      assert.equal((await escalationRow(tx, ids.shipment)).recovery_escalated_at, null);
+      await start(tx, ids.sibling);
+      await rejects(tx, (sp) => escalate(sp, ids.sibling, 'because'), 'INVALID_ESCALATION_REASON');
+      await rejects(tx, (sp) => escalate(sp, ids.sibling, '  '), 'INVALID_ESCALATION_REASON');
+      assert.equal((await escalationRow(tx, ids.sibling)).recovery_escalated_at, null);
+      assert.deepEqual(await escalate(tx, ids.sibling, 'refund_not_found'), { escalated: true });
+    },
+  ],
+  [
+    'only service_role may escalate (authenticated denied)',
+    async (tx) => {
+      await start(tx, ids.shipment);
+      await tx`SELECT set_config('request.jwt.claims', '{"role":"authenticated"}', true)`;
+      await tx`SET LOCAL ROLE authenticated`;
+      await rejects(tx, (sp) => escalate(sp, ids.shipment, 'refund_not_found'), 'permission denied');
+    },
+  ],
+  [
+    'anon cannot escalate either',
+    async (tx) => {
+      await start(tx, ids.shipment);
+      await tx`SELECT set_config('request.jwt.claims', '{"role":"anon"}', true)`;
+      await tx`SET LOCAL ROLE anon`;
+      await rejects(tx, (sp) => escalate(sp, ids.shipment, 'refund_not_found'), 'permission denied');
     },
   ],
 ];

@@ -67,6 +67,8 @@ Production uses live Stripe keys and `ENVIA_MODE` set to production.
 
 Deploy every directory in `supabase/functions/` except `_shared/`. `supabase/config.toml` holds the `verify_jwt` flags; deploy with the CLI so they apply.
 
+`resolve-shipment-refund` is called by admins with their own session, so it keeps `verify_jwt = true` (declared in `supabase/config.toml`) and checks `profiles_private.role = 'admin'` itself. It needs no new secret. Apply `supabase/migrations/20261022013846_shipment_cancellation_refund_resolution.sql` (new resolution columns, service-only `fn_resolve_shipment_cancellation_refund`, `fn_cancel_shipment` accepting an admin-resolved refund) before deploying it.
+
 The remote project also runs `dynamic-api` (name `get-shipping-quote-seller`), which has no source in this repository. Decide whether production needs it before go-live.
 
 ## 8. Cron jobs
@@ -115,7 +117,8 @@ Sentry creates the `cron-watchdog` Cron Monitor on its first check-in (free plan
 ## 9. External webhooks
 
 - Stripe (live mode): platform and Connect endpoints → `stripe-webhooks`; copy each signing secret into `STRIPE_WEBHOOK_SECRET` and `STRIPE_CONNECT_WEBHOOK_SECRET`. Each endpoint has its own secret, unlike the single local `stripe listen` secret.
-  - Platform events: `payment_intent.succeeded`, `payment_intent.payment_failed`, `payment_intent.canceled`, `setup_intent.succeeded`.
+  - Platform events: `payment_intent.succeeded`, `payment_intent.payment_failed`, `payment_intent.canceled`, `setup_intent.succeeded`, `refund.updated`, `refund.failed`.
+  - The refund events complete a shipment cancellation whose refund settles asynchronously, and flag a refund that failed (buyer notification plus a Sentry CRITICAL). Subscribe the platform endpoint to both, and apply `supabase/migrations/20261022005940_shipment_cancellation_refund_events.sql` (new service-only `fn_apply_shipment_cancellation_refund_event`, new `shipment.refund_failed` notification kind) before deploying `stripe-webhooks`.
   - Connect events: `account.updated`, `account.external_account.created`, `account.external_account.updated`, `account.external_account.deleted`, `payout.created`, `payout.updated`, `payout.paid`, `payout.failed`, `payout.canceled`.
   - Keep this list in sync with `STRIPE_WEBHOOK_EVENTS` in `scripts/stripe-listen.ts`.
 - Stripe Account Links return/refresh URLs → `connect-onboarding-return`.

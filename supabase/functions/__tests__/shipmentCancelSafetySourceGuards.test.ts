@@ -22,9 +22,19 @@ describe('shipment cancel source guards', () => {
       expect(source).not.toContain('`auto_cancel_${');
       expect(source).not.toContain('`auto_cancel_preparing_${');
       expect(source).not.toContain("=== 'charge_already_refunded'");
+      expect(source).toContain('fn_get_shipment_cancellation_recovery');
+      expect(source).toMatch(/refunds\s*\.list\(/);
+      expect(source).toMatch(/payment_intent:\s*\w+/);
+      expect(source).toContain('refunds.retrieve(');
+      expect(source).toContain(`withSentry('${handler}'`);
+      expect(source).toContain('reportCritical');
     }
-    const orchestration = read(
+    // The first-attempt flow; recovery replays use their own ordered calls.
+    const orchestrationFile = read(
       'supabase/functions/_shared/shipment-cancellation.ts',
+    );
+    const orchestration = orchestrationFile.slice(
+      orchestrationFile.indexOf('export async function runShipmentCancellation'),
     );
     expect(orchestration.indexOf('await ports.claim(')).toBeLessThan(
       orchestration.indexOf('await ports.prepare('),
@@ -36,12 +46,17 @@ describe('shipment cancel source guards', () => {
       orchestration.indexOf('await ports.refund('),
     );
     expect(orchestration.indexOf('await ports.refund(')).toBeLessThan(
-      orchestration.indexOf('await ports.recordRefund('),
+      orchestration.indexOf('return settleRefund('),
     );
-    expect(orchestration.indexOf('await ports.recordRefund(')).toBeLessThan(
-      orchestration.indexOf('await ports.complete('),
+    // Every path (first attempt and recovery) completes only after recording.
+    const settle = orchestrationFile.slice(
+      orchestrationFile.indexOf('async function settleRefund'),
+      orchestrationFile.indexOf('async function recoverCancellation'),
     );
-    expect(orchestration).toContain("recorded.refund_status !== 'succeeded'");
+    expect(settle.indexOf('await ports.recordRefund(')).toBeLessThan(
+      settle.indexOf('await ports.complete('),
+    );
+    expect(orchestrationFile).toContain("recorded.refund_status !== 'succeeded'");
   });
   it('uses the service-role RPC path after refund in cancel-order', () => {
     const indexTs = read('supabase/functions/cancel-order/index.ts');

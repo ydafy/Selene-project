@@ -17,11 +17,10 @@ const statements = (sql: string) =>
 // Text contracts only; the local `supabase db reset` + scripts/test-shipment-cancellation-refund-status.ts
 // prove the behavior in PostgreSQL.
 describe('shipment cancellation refund status migration (SQL text)', () => {
-  it('is exactly one active migration containing both canonical copies', () => {
+  it('is exactly one active migration containing its canonical copy', () => {
     expect(migrations).toHaveLength(1);
     expect(statements(migration)).toContain(statements(read('supabase/queries/orders/shipment_cancellation_refund_status.sql')));
-    const cancel = read('supabase/queries/orders/fn_cancel_shipment.sql');
-    expect(statements(migration)).toContain(statements(cancel).replace(/^DROP FUNCTION[^\n]*\n/m, ''));
+    // fn_cancel_shipment's canonical copy moved on in B2.2 (shipment_cancellation_recovery.test.ts).
   });
 
   it('drops nothing and grants the record RPC to service_role only', () => {

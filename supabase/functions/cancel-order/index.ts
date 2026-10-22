@@ -8,6 +8,8 @@ import {
   resolveManualShipmentCancelPlan,
   type ShipmentCancelItem,
 } from './cancel-order.ts';
+import { createCancellationReporter } from '../_shared/cancellation-alerts.ts';
+import { withSentry } from '../_shared/sentry.ts';
 import { runShipmentCancellation } from '../_shared/shipment-cancellation.ts';
 import { buildStripeFeeReconciliationPlan } from '../stripe-webhooks/single-modal-settlement.ts';
 
@@ -35,9 +37,11 @@ const log = (
   );
 };
 
+const reportCritical = createCancellationReporter('cancel-order', log);
+
 // Legacy deployed name kept for compatibility.
 // Manual cancellations are shipment-scoped and never whole-order here.
-serve(async (req) => {
+serve(withSentry('cancel-order', async (req: Request) => {
   if (req.method === 'OPTIONS')
     return new Response('ok', { headers: corsHeaders });
 
@@ -129,6 +133,26 @@ serve(async (req) => {
       throw new ApiError(500, 'PAYMENT_INTENT_NOT_FOUND');
     }
 
+    // Stripe lookups for recovery: the raw Stripe message is logged, never returned.
+    const stripeLookup = async <T>(
+      action: 'list' | 'retrieve',
+      call: () => Promise<T>,
+    ): Promise<T> => {
+      try {
+        return await call();
+      } catch (stripeError: unknown) {
+        log('ERROR', 'Stripe refund lookup failed', {
+          shipmentId,
+          action,
+          error:
+            stripeError instanceof Error
+              ? stripeError.message
+              : String(stripeError),
+        });
+        throw new ApiError(500, 'CANCELLATION_REFUND_LOOKUP_FAILED');
+      }
+    };
+
     const result = await runShipmentCancellation({
       context: {
         orderId,
@@ -148,7 +172,14 @@ serve(async (req) => {
             p_reason: context.reason,
           },
         );
-        if (error) throw new ApiError(409, error.message);
+        if (error) {
+          // Logs only: the RPC text may expose constraint or column names.
+          log('ERROR', 'Cancellation claim RPC failed', {
+            shipmentId,
+            error: error.message,
+          });
+          throw new ApiError(409, 'CANCELLATION_CLAIM_FAILED');
+        }
         return data;
       },
       prepare: async (winner) => {
@@ -271,7 +302,13 @@ serve(async (req) => {
             p_cancellation_loss_cents: input.cancellationLossCents,
           },
         );
-        if (error) throw new ApiError(409, error.message);
+        if (error) {
+          log('ERROR', 'Cancellation start RPC failed', {
+            shipmentId,
+            error: error.message,
+          });
+          throw new ApiError(409, 'CANCELLATION_START_FAILED');
+        }
         return data;
       },
       refund: (request, options) => {
@@ -284,7 +321,7 @@ serve(async (req) => {
             shipmentId,
             error: msg,
           });
-          throw new ApiError(500, `Error de Stripe: ${msg}`);
+          throw new ApiError(500, 'CANCELLATION_REFUND_PROVIDER_FAILED');
         };
         try {
           return stripe.refunds.create(request, options).catch(fail);
@@ -304,9 +341,53 @@ serve(async (req) => {
             p_failure_reason: input.failureReason,
           },
         );
-        if (error) throw new ApiError(409, error.message);
+        if (error) {
+          // Logs only: the RPC text may expose constraint or column names.
+          log('ERROR', 'Cancellation refund record RPC failed', {
+            shipmentId,
+            error: error.message,
+          });
+          throw new ApiError(500, 'CANCELLATION_REFUND_RECORD_FAILED');
+        }
         return data;
       },
+      loadRecovery: async (recoveryShipmentId) => {
+        const { data, error } = await supabaseAdmin.rpc(
+          'fn_get_shipment_cancellation_recovery',
+          { p_shipment_id: recoveryShipmentId },
+        );
+        if (error) {
+          log('ERROR', 'Cancellation recovery lookup failed', {
+            shipmentId,
+            error: error.message,
+          });
+          throw new ApiError(500, 'CANCELLATION_RECOVERY_UNAVAILABLE');
+        }
+        return data;
+      },
+      listRefunds: (paymentIntentId) =>
+        stripeLookup('list', () =>
+          stripe.refunds
+            .list({ payment_intent: paymentIntentId, limit: 100 })
+            .autoPagingToArray({ limit: 1000 }),
+        ),
+      retrieveRefund: (refundId) =>
+        stripeLookup('retrieve', () => stripe.refunds.retrieve(refundId)),
+      escalate: async (escalatedShipmentId, reason) => {
+        const { data, error } = await supabaseAdmin.rpc(
+          'fn_escalate_shipment_cancellation',
+          { p_shipment_id: escalatedShipmentId, p_reason: reason },
+        );
+        if (error) {
+          log('ERROR', 'Cancellation escalation failed', {
+            shipmentId,
+            error: error.message,
+          });
+          throw new ApiError(500, 'CANCELLATION_ESCALATION_FAILED');
+        }
+        return data;
+      },
+      reportCritical,
       complete: async (winner, frozen) => {
         const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc(
           'fn_cancel_shipment',
@@ -322,7 +403,7 @@ serve(async (req) => {
         );
 
         if (rpcError || !rpcData?.[0]?.success) {
-          log('CRITICAL', 'Refund processed but shipment cancel RPC failed', {
+          await reportCritical('Refund processed but shipment cancel RPC failed', {
             orderId,
             shipmentId,
             dbError: rpcError?.message || rpcData?.[0]?.error_message,
@@ -361,4 +442,4 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+}));
