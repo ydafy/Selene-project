@@ -3966,6 +3966,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      fn_generate_profile_username: { Args: { p_raw: string }; Returns: string }
       fn_get_admin_payout_queue: {
         Args: {
           p_bucket?: string

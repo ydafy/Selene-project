@@ -125,6 +125,8 @@ Sentry creates the `cron-watchdog` Cron Monitor on its first check-in (free plan
 
 - Enable leaked password protection (currently disabled).
 - Site URL, redirect URLs, providers, and email templates: not yet inventoried. Record them here.
+- Custom SMTP is required before the first real user. The built-in Supabase mailer only delivers to members of the project's organization (other addresses fail with "Email address not authorized"), has a low hourly limit and no delivery guarantee, so signup codes would never reach real users. Configure Resend (or another SMTP provider) under Authentication > Emails > SMTP Settings: verify the sending domain with SPF and DKIM (and DMARC), use a dedicated From address such as `no-reply@<auth domain>`, and disable link tracking. No app code changes are needed.
+- After enabling custom SMTP, raise "Rate limit for sending emails" under Authentication > Rate Limits (it starts at 30 per hour) to the expected signup volume.
 
 ## 11. Mobile app signing
 
