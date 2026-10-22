@@ -1,0 +1,26 @@
+meta {
+  name: list-shipment-refund-problems-no-auth
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/functions/v1/list-shipment-refund-problems
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+tests {
+  test("rejects the list without a user token", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody()).to.deep.equal({ error: "AUTH_REQUIRED" });
+  });
+}
+
+docs {
+  Needs the functions server started with --no-verify-jwt. Proves the list refuses anonymous callers.
+}

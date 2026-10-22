@@ -34,6 +34,10 @@ verify_jwt = false
 [functions.resolve-shipment-refund]
 verify_jwt = true
 
+# Admin-invoked list of unresolved refund problems; same admin check as resolve-shipment-refund.
+[functions.list-shipment-refund-problems]
+verify_jwt = true
+
 # Edge Functions run on the Supabase Edge Runtime, not the local Deno CLI.
 # Pin its Deno major so local serve matches the hosted runtime.
 [edge_runtime]
