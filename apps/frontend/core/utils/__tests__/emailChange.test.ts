@@ -108,6 +108,12 @@ describe('mapEmailChangeErrorKey', () => {
     ).toBe('auth:errors.network');
   });
 
+  test('a code named like an Object prototype key falls back to generic', () => {
+    expect(mapEmailChangeErrorKey({ code: 'toString' })).toBe(
+      'common:errors.generic',
+    );
+  });
+
   test('never matches on the raw message text', () => {
     expect(
       mapEmailChangeErrorKey({ message: 'A user with this email already exists' }),

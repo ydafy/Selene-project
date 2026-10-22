@@ -54,7 +54,7 @@ const EMAIL_CHANGE_KEYS: Record<string, string> = {
 /** Maps a GoTrue error code to an i18n key; never matches message text. */
 export const mapEmailChangeErrorKey = (error: unknown): string => {
   const code = (error as { code?: unknown } | null)?.code;
-  if (typeof code === 'string' && code in EMAIL_CHANGE_KEYS) {
+  if (typeof code === 'string' && Object.hasOwn(EMAIL_CHANGE_KEYS, code)) {
     return EMAIL_CHANGE_KEYS[code];
   }
   return mapAuthErrorKey(error);

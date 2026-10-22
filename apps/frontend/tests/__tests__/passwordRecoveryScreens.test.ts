@@ -40,6 +40,13 @@ describe('resetPassword.tsx', () => {
     expect(src).toContain("t('auth:resendCodeIn'");
   });
 
+  test('a successful resend clears the previous code from the input', () => {
+    expect(src).toContain('ref={otpInputRef}');
+    expect(src).toMatch(
+      /setCodeVerified\(false\);\s*otpInputRef\.current\?\.clear\(\);\s*setOtpCode\(''\);/,
+    );
+  });
+
   test('starts the cooldown on mount because the code was just sent', () => {
     expect(src).toMatch(/useEffect\(\(\) => \{\s*if \(email\) startCooldown\(\);/);
   });

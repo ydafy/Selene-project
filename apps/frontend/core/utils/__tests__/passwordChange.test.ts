@@ -84,6 +84,12 @@ describe('mapPasswordChangeErrorKey', () => {
     ).toBe('auth:errors.network');
   });
 
+  test('a code named like an Object prototype key falls back to generic', () => {
+    expect(mapPasswordChangeErrorKey({ code: 'constructor' })).toBe(
+      'common:errors.generic',
+    );
+  });
+
   test('never matches on the raw message text', () => {
     expect(
       mapPasswordChangeErrorKey({ message: 'Invalid password, wrong input' }),

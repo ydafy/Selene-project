@@ -61,7 +61,7 @@ const PASSWORD_CHANGE_KEYS: Record<string, string> = {
 
 export const mapPasswordChangeErrorKey = (error: unknown): string => {
   const code = (error as { code?: unknown } | null)?.code;
-  if (typeof code === 'string' && code in PASSWORD_CHANGE_KEYS) {
+  if (typeof code === 'string' && Object.hasOwn(PASSWORD_CHANGE_KEYS, code)) {
     return PASSWORD_CHANGE_KEYS[code];
   }
   return mapAuthErrorKey(error);

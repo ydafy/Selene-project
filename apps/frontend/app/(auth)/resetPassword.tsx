@@ -4,7 +4,7 @@
  * Valida el código OTP y permite establecer la nueva credencial de forma segura.
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useForm, Controller } from 'react-hook-form';
@@ -54,6 +54,7 @@ export default function ResetPasswordScreen() {
   const { email } = useLocalSearchParams<{ email: string }>();
 
   const [otpCode, setOtpCode] = useState('');
+  const otpInputRef = useRef<OTPTextInput>(null);
   // The recovery code is single use: once verified, retries only update the password.
   const [codeVerified, setCodeVerified] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -145,6 +146,8 @@ export default function ResetPasswordScreen() {
       });
     } else {
       setCodeVerified(false);
+      otpInputRef.current?.clear();
+      setOtpCode('');
       Toast.show({
         type: 'success',
         text1: t('auth:resendCodeSuccessTitle'),
@@ -199,6 +202,7 @@ export default function ResetPasswordScreen() {
             </Text>
 
             <OTPTextInput
+              ref={otpInputRef}
               handleTextChange={(val) => setOtpCode(val.trim())} // Sanitización básica
               inputCount={6}
               tintColor={theme.colors.primary}

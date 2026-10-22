@@ -77,6 +77,7 @@ Follow repository manual Supabase workflow: supply SQL/function/config handoff, 
 - T4a | S7 | inline | done (3c4a941, review approved; device check pending) | Password change asks for the current password, sends `currentPassword` instead of a random nonce, maps GoTrue error codes (C1, C2, C4 for Settings password) | Own commit (high risk: credentials) | Commit: not created.
 - T4b | S7 | delegated writer (context backstop) | done (see git log; device check pending) | Recovery: retry after a failed update without re-verifying the consumed code, resend with cooldown, localized errors and copy (C3, C4) | Commit: not created.
 - T4c | S7 | inline | done (see git log; device check pending) | Email change: error codes, unchanged-address guard and copy for confirming from both inboxes (C4, C5, C8) | Commit: not created.
+- T4d | S7 | inline | done (see git log) | Review follow-ups: clear the old code after a resend; error-code lookups ignore Object prototype keys | Commit: see git log.
 - T5 | S1–S3,S8,S10 | route on resume | pending, future session by explicit user request | Harden account deletion | Commit: not created.
 - T6 | S1–S3,S9,S10 | route on resume | pending, future session by explicit user request | Verify production configuration and integrated journeys | Commit: not created.
 
@@ -425,4 +426,9 @@ T4c: `core/utils/emailChange.ts` adds `isSameEmail` and `mapEmailChangeErrorKey`
 RED: 121 pass, 4 fail, 1 error. GREEN: 151 pass, 0 fail. ESLint clean; no `tsc` diagnostics in touched files. Local GoTrue (double confirm on): same email -> 200 and 0 emails; taken email -> `422 email_exists`; new email -> 200 and 2 emails (current and new inbox). Database reset afterwards.
 Still open in C6: whether `selene://profile/settings` is in the remote redirect allow list (maintainer).
 Covers C4 (email change), C5, C8. Risk: none of items 1-5 (client validation and copy; server unchanged); item 6 for the screen wiring (source-contract test and device check).
+
+### L59 — T4c review and T4d follow-ups
+T4c commit 941fa2f: native review `review-0bdf5a5ac134c8dd` (reliability) approved and acknowledged. Advisory: `code in MAP` lookups also match Object prototype keys (`constructor`, `toString`); source-text wiring contract; cross-namespace keys not proven by a render test.
+T4d (inline): `resetPassword.tsx` clears the OTP input (`OTPTextInput.clear()` through a ref) and `otpCode` after a successful resend (T4b advisory); `mapAuthErrorKey`, `mapPasswordChangeErrorKey` and `mapEmailChangeErrorKey` use `Object.hasOwn`. RED: 4 fail (one per behavior); GREEN: 362 pass across `core/auth`, `core/utils`, `core/i18n` and the recovery screen test; ESLint clean; no `tsc` diagnostics in touched files. Not done: invalidating `codeVerified` when the recovery session ends (T4b advisory, low: GoTrue then returns `session_not_found`/generic and the user goes back to request a new code).
+Risk: none of items 1-5; item 6 for the OTP clear (device check).
 
