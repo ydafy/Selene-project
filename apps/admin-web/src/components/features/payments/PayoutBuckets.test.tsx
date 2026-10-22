@@ -56,6 +56,12 @@ if (process.env.A65_SSR_CHILD !== '1') {
       releaseSelectedShipments: () => { throw new Error('Unexpected financial mutation'); },
       retryFailedPayout: () => { throw new Error('Unexpected financial mutation'); } }),
   }));
+  // The action-required tab also mounts the refunds chip, which owns its own query.
+  mock.module('../../../hooks/useShipmentRefundProblems', () => ({
+    useShipmentRefundProblems: () => ({ problems: [], count: 0, isLoading: false, isError: false,
+      refetch: async () => undefined }),
+    useResolveShipmentRefund: () => ({ resolve: async () => undefined, isPending: false }),
+  }));
   // No actual client module/environment loading or external requests.
   mock.module('../../../lib/supabase', () => ({ supabase: {
     functions: { invoke: () => { throw new Error('Unexpected external request'); } },
