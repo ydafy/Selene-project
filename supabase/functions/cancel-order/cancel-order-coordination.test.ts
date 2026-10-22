@@ -64,6 +64,7 @@ function fixture() {
         refund_id: null,
         refund_status: null,
         external_started_at: new Date(NOW - 60_000).toISOString(),
+        recovery_escalated_at: null,
       };
       return {
         operation_key: 'cancel_shipment_shipment',
@@ -106,6 +107,10 @@ function fixture() {
     retrieveRefund: async () => {
       effects.push('retrieve');
       return { ...refundResult('pending'), metadata: { shipment_id: 'shipment' } };
+    },
+    escalate: async () => {
+      effects.push('escalate');
+      return { escalated: true };
     },
     reportCritical: () => undefined,
     now: () => NOW,
@@ -247,7 +252,9 @@ it('wires reservation before financial reconstruction and preserves preclaim gua
   expect(source).toContain('payment_intent: paymentIntentId');
   expect(source).toContain('stripe.refunds.retrieve(');
   expect(source).toContain("withSentry('cancel-order'");
-  expect(source).toContain('reportMessage(');
+  expect(source).toContain("createCancellationReporter('cancel-order', log)");
+  expect(source).toContain("'fn_escalate_shipment_cancellation'");
+  expect(source).toContain("'CANCELLATION_ESCALATION_FAILED'");
   expect(source).toContain("'CANCELLATION_REFUND_RECORD_FAILED'");
   expect(source).toContain("'CANCELLATION_RECOVERY_UNAVAILABLE'");
   const prepare = source.indexOf('prepare: async (winner)');

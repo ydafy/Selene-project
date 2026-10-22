@@ -44,6 +44,9 @@ const noRecovery = {
   retrieveRefund: async () => {
     throw new Error('unexpected retrieveRefund');
   },
+  escalate: async () => {
+    throw new Error('unexpected escalate');
+  },
   reportCritical: async () => undefined,
 };
 function harness(overrides: Record<string, unknown> = {}) {
@@ -616,7 +619,9 @@ const startedOperation = {
   refund_id: null,
   refund_status: null,
   external_started_at: startedAt,
+  recovery_escalated_at: null,
 };
+const escalatedAt = '2026-10-20T12:00:00.000Z';
 const ownRefund = {
   ...stripeRefund,
   metadata: { shipment_id: 'shipment-a' },
@@ -637,6 +642,7 @@ function recoveryHarness(
   const sent: unknown[] = [];
   const completed: unknown[] = [];
   const criticals: { message: string; data: Record<string, unknown> }[] = [];
+  const escalations: unknown[][] = [];
   const dependencies = {
     context: { ...context, reason: 'Later buyer reason' },
     claim: async () => {
@@ -662,6 +668,11 @@ function recoveryHarness(
     retrieveRefund: async () => {
       calls.push('retrieve');
       return { ...ownRefund };
+    },
+    escalate: async (shipmentId: string, reason: string) => {
+      calls.push('escalate');
+      escalations.push([shipmentId, reason]);
+      return { escalated: true };
     },
     refund: async (request: unknown, options: unknown) => {
       calls.push('refund');
@@ -692,6 +703,7 @@ function recoveryHarness(
     sent,
     completed,
     criticals,
+    escalations,
     run: () => runShipmentCancellation({ ...dependencies, ...overrides }),
   };
 }
@@ -808,10 +820,12 @@ describe('shipment cancellation recovery', () => {
     });
     expect(await subject.run()).toEqual({ status: 'recovery_required' });
     expect(subject.criticals).toHaveLength(1);
+    expect(subject.criticals[0].message).toBe('CANCELLATION_REFUND_AMBIGUOUS');
     expect(subject.criticals[0].data).toMatchObject({
       shipmentId: 'shipment-a',
     });
-    expect(subject.calls).toEqual(['claim', 'load']);
+    expect(subject.calls).toEqual(['claim', 'load', 'escalate']);
+    expect(subject.escalations).toEqual([['shipment-a', 'refund_ambiguous']]);
     expect(subject.effects).toEqual({ refunds: 0, cancellations: 0 });
   });
 
@@ -839,6 +853,8 @@ describe('shipment cancellation recovery', () => {
       });
       expect(await subject.run()).toEqual({ status: 'recovery_required' });
       expect(subject.criticals).toHaveLength(1);
+      expect(subject.criticals[0].message).toBe('CANCELLATION_REFUND_NOT_FOUND');
+      expect(subject.escalations).toEqual([['shipment-a', 'refund_not_found']]);
       expect(subject.effects).toEqual({ refunds: 0, cancellations: 0 });
     }
     const justInside = recoveryHarness(startedOperation, {
@@ -884,6 +900,16 @@ describe('shipment cancellation recovery', () => {
     ['fractional loss', { ...startedOperation, cancellation_loss_cents: 0.5 }],
     ['unparseable start', { ...startedOperation, external_started_at: 'nope' }],
     ['missing start', { ...startedOperation, external_started_at: null }],
+    ['unparseable escalation', { ...startedOperation, recovery_escalated_at: 'nope' }],
+    ['numeric escalation', { ...startedOperation, recovery_escalated_at: 123 }],
+    [
+      'missing escalation field',
+      Object.fromEntries(
+        Object.entries(startedOperation).filter(
+          ([key]) => key !== 'recovery_escalated_at',
+        ),
+      ),
+    ],
     ['id without status', { ...startedOperation, refund_id: 're_a' }],
     ['status without id', { ...startedOperation, refund_status: 'pending' }],
   ])(
@@ -895,6 +921,108 @@ describe('shipment cancellation recovery', () => {
       expect(subject.effects).toEqual({ refunds: 0, cancellations: 0 });
     },
   );
+
+  describe('escalation (B2.2.1)', () => {
+    const escalatedOperation = {
+      ...startedOperation,
+      recovery_escalated_at: escalatedAt,
+    };
+
+    test('an escalated operation with no recorded refund stops before any Stripe call and stays silent', async () => {
+      const subject = recoveryHarness(escalatedOperation);
+      expect(await subject.run()).toEqual({ status: 'recovery_required' });
+      expect(subject.calls).toEqual(['claim', 'load']);
+      expect(subject.criticals).toEqual([]);
+      expect(subject.escalations).toEqual([]);
+      expect(subject.effects).toEqual({ refunds: 0, cancellations: 0 });
+    });
+
+    test('a recorded succeeded refund still completes when escalated', async () => {
+      const subject = recoveryHarness({
+        ...escalatedOperation,
+        refund_id: 're_a',
+        refund_status: 'succeeded',
+      });
+      expect(await subject.run()).toEqual({ status: 'cancelled', value: 'done' });
+      expect(subject.calls).toEqual(['claim', 'load', 'complete']);
+      expect(subject.criticals).toEqual([]);
+    });
+
+    test('a recorded pending refund is still retrieved and completed when escalated', async () => {
+      const subject = recoveryHarness({
+        ...escalatedOperation,
+        refund_id: 're_a',
+        refund_status: 'pending',
+      });
+      expect(await subject.run()).toEqual({ status: 'cancelled', value: 'done' });
+      expect(subject.calls).toEqual(['claim', 'load', 'retrieve', 'record', 'complete']);
+      expect(subject.escalations).toEqual([]);
+    });
+
+    test.each([
+      [
+        'refund_ambiguous',
+        'CANCELLATION_REFUND_AMBIGUOUS',
+        { listRefunds: async () => [ownRefund, { ...ownRefund, id: 're_c' }] },
+      ],
+      [
+        'refund_not_found',
+        'CANCELLATION_REFUND_NOT_FOUND',
+        { now: () => Date.parse(startedAt) + REFUND_REPLAY_WINDOW_MS },
+      ],
+    ])('%s: reports CRITICAL only when the escalation was newly recorded', async (reason, message, overrides) => {
+      const first = recoveryHarness(startedOperation, overrides);
+      expect(await first.run()).toEqual({ status: 'recovery_required' });
+      expect(first.escalations).toEqual([['shipment-a', reason]]);
+      expect(first.criticals.map((entry) => entry.message)).toEqual([message]);
+
+      for (const result of [
+        { escalated: false },
+        { escalated: 'true' },
+        { escalated: true, extra: 1 },
+        {},
+        null,
+        undefined,
+        true,
+      ]) {
+        const later = recoveryHarness(startedOperation, {
+          ...overrides,
+          escalate: async () => result,
+        });
+        expect(await later.run()).toEqual({ status: 'recovery_required' });
+        expect(later.criticals).toEqual([]);
+        expect(later.effects).toEqual({ refunds: 0, cancellations: 0 });
+      }
+    });
+
+    test.each([
+      ['CANCELLATION_REFUND_AMBIGUOUS', { listRefunds: async () => [ownRefund, { ...ownRefund, id: 're_c' }] }],
+      ['CANCELLATION_REFUND_NOT_FOUND', { now: () => Date.parse(startedAt) + REFUND_REPLAY_WINDOW_MS }],
+    ])('%s: an escalate failure still needs an admin and fails safe toward alerting', async (message, overrides) => {
+      const subject = recoveryHarness(startedOperation, {
+        ...overrides,
+        escalate: async () => {
+          throw new Error('rpc down');
+        },
+      });
+      expect(await subject.run()).toEqual({ status: 'recovery_required' });
+      expect(subject.criticals).toHaveLength(1);
+      expect(subject.criticals[0].message).toBe(message);
+      expect(subject.criticals[0].data).toMatchObject({ shipmentId: 'shipment-a' });
+      expect(subject.effects).toEqual({ refunds: 0, cancellations: 0 });
+    });
+
+    test('a throwing reporter never changes the escalation outcome', async () => {
+      const subject = recoveryHarness(startedOperation, {
+        now: () => Date.parse(startedAt) + REFUND_REPLAY_WINDOW_MS,
+        reportCritical: () => {
+          throw new Error('sentry down');
+        },
+      });
+      expect(await subject.run()).toEqual({ status: 'recovery_required' });
+      expect(subject.escalations).toEqual([['shipment-a', 'refund_not_found']]);
+    });
+  });
 
   test('a null loss in the stored operation is accepted', async () => {
     const subject = recoveryHarness({

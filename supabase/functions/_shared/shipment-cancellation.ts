@@ -48,6 +48,7 @@ export interface CancellationRefundRecordInput {
   status: string;
   failureReason: string | null;
 }
+export type EscalationReason = 'refund_not_found' | 'refund_ambiguous';
 /** Stripe keeps idempotency keys for 24 h; replay only while the key is surely alive. */
 export const REFUND_REPLAY_WINDOW_MS = 23 * 60 * 60 * 1000;
 interface ProviderRefund {
@@ -72,6 +73,8 @@ export interface ShipmentCancellationPorts<T> {
   /** All Stripe refunds of the PaymentIntent (an array). */
   listRefunds: (paymentIntentId: string) => Promise<unknown>;
   retrieveRefund: (refundId: string) => Promise<unknown>;
+  /** Service RPC `fn_escalate_shipment_cancellation`: exactly `{ escalated: true }` the first time. */
+  escalate: (shipmentId: string, reason: EscalationReason) => Promise<unknown>;
   /** Awaited; its own failure never changes the outcome. */
   reportCritical: (message: string, data: Record<string, unknown>) => unknown;
   now?: () => number;
@@ -147,6 +150,32 @@ async function critical(
     await ports.reportCritical(message, data);
   } catch {
     // Alerting must never change the money outcome.
+  }
+}
+/**
+ * Marks the operation escalated and alerts only for the call that newly set the
+ * marker, so a stuck shipment alerts once. If the marker cannot be written the
+ * alert is sent anyway: failing toward noise beats failing silent.
+ */
+async function escalateOnce(
+  ports: ShipmentCancellationPorts<unknown>,
+  reason: EscalationReason,
+  message: string,
+  data: Record<string, unknown>,
+): Promise<void> {
+  let result: unknown;
+  try {
+    result = await ports.escalate(String(data.shipmentId), reason);
+  } catch {
+    await critical(ports, message, { ...data, escalationFailed: true });
+    return;
+  }
+  if (
+    record(result) &&
+    Object.keys(result).length === 1 &&
+    result.escalated === true
+  ) {
+    await critical(ports, message, data);
   }
 }
 function providerRefund(value: unknown): ProviderRefund {
@@ -259,7 +288,10 @@ async function recoverCancellation<T>(
       (!Number.isSafeInteger(operation.cancellation_loss_cents) ||
         (operation.cancellation_loss_cents as number) < 0)) ||
     typeof operation.external_started_at !== 'string' ||
-    !Number.isFinite(Date.parse(operation.external_started_at))
+    !Number.isFinite(Date.parse(operation.external_started_at)) ||
+    (operation.recovery_escalated_at !== null &&
+      (typeof operation.recovery_escalated_at !== 'string' ||
+        !Number.isFinite(Date.parse(operation.recovery_escalated_at))))
   ) {
     return { status: 'recovery_required' };
   }
@@ -301,6 +333,10 @@ async function recoverCancellation<T>(
   if (refundStatus !== null && refundStatus !== undefined) {
     return { status: 'recovery_required' };
   }
+  // Already escalated and nothing recorded: no Stripe call, no repeat alert.
+  if (operation.recovery_escalated_at !== null) {
+    return { status: 'recovery_required' };
+  }
   const listed = await ports.listRefunds(frozen.refundRequest.payment_intent);
   if (!Array.isArray(listed)) {
     throw new ApiError(409, 'CANCELLATION_REFUND_UNCONFIRMED');
@@ -312,10 +348,15 @@ async function recoverCancellation<T>(
       entry.metadata.shipment_id === context.shipmentId,
   );
   if (matches.length > 1) {
-    await critical(ports, 'CANCELLATION_REFUND_AMBIGUOUS', {
-      shipmentId: context.shipmentId,
-      refundIds: matches.map((entry) => (entry as { id?: unknown }).id),
-    });
+    await escalateOnce(
+      ports,
+      'refund_ambiguous',
+      'CANCELLATION_REFUND_AMBIGUOUS',
+      {
+        shipmentId: context.shipmentId,
+        refundIds: matches.map((entry) => (entry as { id?: unknown }).id),
+      },
+    );
     return { status: 'recovery_required' };
   }
   if (matches.length === 1) {
@@ -329,10 +370,15 @@ async function recoverCancellation<T>(
   const elapsed =
     (ports.now ?? Date.now)() - Date.parse(operation.external_started_at);
   if (elapsed >= REFUND_REPLAY_WINDOW_MS) {
-    await critical(ports, 'CANCELLATION_REFUND_NOT_FOUND', {
-      shipmentId: context.shipmentId,
-      externalStartedAt: operation.external_started_at,
-    });
+    await escalateOnce(
+      ports,
+      'refund_not_found',
+      'CANCELLATION_REFUND_NOT_FOUND',
+      {
+        shipmentId: context.shipmentId,
+        externalStartedAt: operation.external_started_at,
+      },
+    );
     return { status: 'recovery_required' };
   }
   // Same key and body: Stripe returns the original refund instead of a new one.

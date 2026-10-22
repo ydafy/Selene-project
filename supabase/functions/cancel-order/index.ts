@@ -8,7 +8,8 @@ import {
   resolveManualShipmentCancelPlan,
   type ShipmentCancelItem,
 } from './cancel-order.ts';
-import { reportMessage, withSentry } from '../_shared/sentry.ts';
+import { createCancellationReporter } from '../_shared/cancellation-alerts.ts';
+import { withSentry } from '../_shared/sentry.ts';
 import { runShipmentCancellation } from '../_shared/shipment-cancellation.ts';
 import { buildStripeFeeReconciliationPlan } from '../stripe-webhooks/single-modal-settlement.ts';
 
@@ -36,24 +37,7 @@ const log = (
   );
 };
 
-/** CRITICAL log plus a Sentry message; no bodies or user data, and never throws. */
-const reportCritical = async (
-  message: string,
-  data: Record<string, unknown>,
-) => {
-  log('CRITICAL', message, data);
-  const tags: Record<string, string> = { edge_function: 'cancel-order' };
-  if (typeof data.shipmentId === 'string') tags.shipment_id = data.shipmentId;
-  if (typeof data.refundId === 'string') tags.refund_id = data.refundId;
-  try {
-    await reportMessage('cancel-order ' + message, {
-      fingerprint: ['shipment-cancellation', 'cancel-order', message],
-      tags,
-    });
-  } catch {
-    // Reporting must never change the cancellation outcome.
-  }
-};
+const reportCritical = createCancellationReporter('cancel-order', log);
 
 // Legacy deployed name kept for compatibility.
 // Manual cancellations are shipment-scoped and never whole-order here.
@@ -188,7 +172,14 @@ serve(withSentry('cancel-order', async (req: Request) => {
             p_reason: context.reason,
           },
         );
-        if (error) throw new ApiError(409, error.message);
+        if (error) {
+          // Logs only: the RPC text may expose constraint or column names.
+          log('ERROR', 'Cancellation claim RPC failed', {
+            shipmentId,
+            error: error.message,
+          });
+          throw new ApiError(409, 'CANCELLATION_CLAIM_FAILED');
+        }
         return data;
       },
       prepare: async (winner) => {
@@ -311,7 +302,13 @@ serve(withSentry('cancel-order', async (req: Request) => {
             p_cancellation_loss_cents: input.cancellationLossCents,
           },
         );
-        if (error) throw new ApiError(409, error.message);
+        if (error) {
+          log('ERROR', 'Cancellation start RPC failed', {
+            shipmentId,
+            error: error.message,
+          });
+          throw new ApiError(409, 'CANCELLATION_START_FAILED');
+        }
         return data;
       },
       refund: (request, options) => {
@@ -324,7 +321,7 @@ serve(withSentry('cancel-order', async (req: Request) => {
             shipmentId,
             error: msg,
           });
-          throw new ApiError(500, `Error de Stripe: ${msg}`);
+          throw new ApiError(500, 'CANCELLATION_REFUND_PROVIDER_FAILED');
         };
         try {
           return stripe.refunds.create(request, options).catch(fail);
@@ -376,6 +373,20 @@ serve(withSentry('cancel-order', async (req: Request) => {
         ),
       retrieveRefund: (refundId) =>
         stripeLookup('retrieve', () => stripe.refunds.retrieve(refundId)),
+      escalate: async (escalatedShipmentId, reason) => {
+        const { data, error } = await supabaseAdmin.rpc(
+          'fn_escalate_shipment_cancellation',
+          { p_shipment_id: escalatedShipmentId, p_reason: reason },
+        );
+        if (error) {
+          log('ERROR', 'Cancellation escalation failed', {
+            shipmentId,
+            error: error.message,
+          });
+          throw new ApiError(500, 'CANCELLATION_ESCALATION_FAILED');
+        }
+        return data;
+      },
       reportCritical,
       complete: async (winner, frozen) => {
         const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc(

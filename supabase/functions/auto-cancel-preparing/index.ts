@@ -3,7 +3,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import Stripe from 'https://esm.sh/stripe@17.0.0';
 
 import type { Tables } from '../../../packages/types/src/index.ts';
-import { reportMessage, withSentry } from '../_shared/sentry.ts';
+import { createCancellationReporter } from '../_shared/cancellation-alerts.ts';
+import { withSentry } from '../_shared/sentry.ts';
 import { runShipmentCancellation } from '../_shared/shipment-cancellation.ts';
 import { resolveAutoCancelShipmentCancellationGate } from '../_shared/auto-cancel-safety.ts';
 import {
@@ -30,24 +31,7 @@ const log = (
   );
 };
 
-/** CRITICAL log plus a Sentry message; no bodies or user data, and never throws. */
-const reportCritical = async (
-  message: string,
-  data: Record<string, unknown>,
-) => {
-  log('CRITICAL', message, data);
-  const tags: Record<string, string> = { edge_function: 'auto-cancel-preparing' };
-  if (typeof data.shipmentId === 'string') tags.shipment_id = data.shipmentId;
-  if (typeof data.refundId === 'string') tags.refund_id = data.refundId;
-  try {
-    await reportMessage('auto-cancel-preparing ' + message, {
-      fingerprint: ['shipment-cancellation', 'auto-cancel-preparing', message],
-      tags,
-    });
-  } catch {
-    // Reporting must never change the cancellation outcome.
-  }
-};
+const reportCritical = createCancellationReporter('auto-cancel-preparing', log);
 
 serve(withSentry('auto-cancel-preparing', async () => {
   const supabaseAdmin = createClient(
@@ -371,11 +355,53 @@ serve(withSentry('auto-cancel-preparing', async () => {
             }
             return data;
           },
-          listRefunds: (paymentIntentId) =>
-            stripe.refunds
-              .list({ payment_intent: paymentIntentId, limit: 100 })
-              .autoPagingToArray({ limit: 1000 }),
-          retrieveRefund: (refundId) => stripe.refunds.retrieve(refundId),
+          // Stripe lookups for recovery: the raw Stripe message is logged, never surfaced.
+          listRefunds: async (paymentIntentId) => {
+            try {
+              return await stripe.refunds
+                .list({ payment_intent: paymentIntentId, limit: 100 })
+                .autoPagingToArray({ limit: 1000 });
+            } catch (stripeError) {
+              log('ERROR', 'Stripe refund lookup failed', {
+                shipmentId: shipment.id,
+                action: 'list',
+                error:
+                  stripeError instanceof Error
+                    ? stripeError.message
+                    : String(stripeError),
+              });
+              throw new Error('CANCELLATION_REFUND_LOOKUP_FAILED');
+            }
+          },
+          retrieveRefund: async (refundId) => {
+            try {
+              return await stripe.refunds.retrieve(refundId);
+            } catch (stripeError) {
+              log('ERROR', 'Stripe refund lookup failed', {
+                shipmentId: shipment.id,
+                action: 'retrieve',
+                error:
+                  stripeError instanceof Error
+                    ? stripeError.message
+                    : String(stripeError),
+              });
+              throw new Error('CANCELLATION_REFUND_LOOKUP_FAILED');
+            }
+          },
+          escalate: async (escalatedShipmentId, reason) => {
+            const { data, error } = await supabaseAdmin.rpc(
+              'fn_escalate_shipment_cancellation',
+              { p_shipment_id: escalatedShipmentId, p_reason: reason },
+            );
+            if (error) {
+              log('ERROR', 'Cancellation escalation failed', {
+                shipmentId: escalatedShipmentId,
+                error: error.message,
+              });
+              throw new Error('CANCELLATION_ESCALATION_FAILED');
+            }
+            return data;
+          },
           reportCritical,
           recordRefund: async (input) => {
             const { data, error } = await supabaseAdmin.rpc(
@@ -474,11 +500,10 @@ serve(withSentry('auto-cancel-preparing', async () => {
       .update({ auto_cancel_preparing_running: false })
       .eq('id', 1);
 
-    const message = error instanceof Error ? error.message : String(error);
     log('ERROR', 'Fallo crítico en auto-cancel-preparing', {
-      error: message,
+      error: error instanceof Error ? error.message : String(error),
     });
-    return new Response(JSON.stringify({ error: message }), {
+    return new Response(JSON.stringify({ error: 'INTERNAL_ERROR' }), {
       status: 500,
     });
   }

@@ -22,7 +22,7 @@ const frozen = {
 const op = (o: Record<string, unknown> = {}) => ({
   operation_key: KEY, order_id: ORDER, source: 'seller', actor_id: 'seller-1', reason: 'Stored',
   refund_request: frozen, cancellation_loss_cents: 77, refund_id: null, refund_status: null,
-  external_started_at: STARTED, ...o,
+  external_started_at: STARTED, recovery_escalated_at: null, ...o,
 });
 const own = (o: Record<string, unknown> = {}) => ({
   id: 're_own', payment_intent: 'pi_shared', amount: 5000, status: 'succeeded', failure_reason: null,
@@ -53,6 +53,7 @@ function h(operation: unknown, o: Record<string, unknown> = {}, now = T0 + 1000)
     listRefunds: async () => { s.lists++; return []; },
     retrieveRefund: async (id: string) => { s.retrieves.push(id); return own(); },
     reportCritical: async (m: string) => { s.crit.push(m); },
+    escalate: async () => ({ escalated: true }),
     now: () => now,
     complete: async (w: unknown, f: unknown) => { s.completes.push([w, f]); return 'ok'; },
   };

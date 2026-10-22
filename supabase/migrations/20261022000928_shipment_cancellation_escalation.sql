@@ -1,0 +1,102 @@
+-- B2.2.1: once-only recovery escalation marker plus the recovery read returning it.
+-- Canonical copies: supabase/queries/orders/shipment_cancellation_escalation.sql
+-- and supabase/queries/orders/shipment_cancellation_recovery.sql. Apply this OR those, not both.
+BEGIN;
+
+ALTER TABLE public.shipment_cancellation_operations
+  ADD COLUMN recovery_escalated_at TIMESTAMPTZ,
+  ADD COLUMN recovery_escalation_reason TEXT
+    CHECK (recovery_escalation_reason IN ('refund_not_found', 'refund_ambiguous')),
+  ADD CONSTRAINT shipment_cancellation_operations_escalation_recorded CHECK (
+    (recovery_escalated_at IS NULL) = (recovery_escalation_reason IS NULL)
+  );
+
+COMMENT ON COLUMN public.shipment_cancellation_operations.recovery_escalated_at IS
+  'When automatic recovery gave up on this operation (no or several Stripe refunds found). Set once by fn_escalate_shipment_cancellation; clearing it is admin work.';
+COMMENT ON COLUMN public.shipment_cancellation_operations.recovery_escalation_reason IS
+  'Why recovery escalated: refund_not_found or refund_ambiguous. Kept together with recovery_escalated_at.';
+
+-- Marks a started operation as escalated the first time only. Returns
+-- {escalated: true} when this call set the marker and {escalated: false} when
+-- it was already set, so callers alert exactly once per stuck operation.
+CREATE OR REPLACE FUNCTION public.fn_escalate_shipment_cancellation(p_shipment_id UUID, p_reason TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_operation public.shipment_cancellation_operations%ROWTYPE;
+  v_escalated BOOLEAN := FALSE;
+BEGIN
+  IF auth.role() IS DISTINCT FROM 'service_role' THEN RAISE EXCEPTION 'UNAUTHORIZED'; END IF;
+  IF p_reason IS NULL OR p_reason NOT IN ('refund_not_found', 'refund_ambiguous') THEN
+    RAISE EXCEPTION 'INVALID_ESCALATION_REASON';
+  END IF;
+
+  -- Same lock order as the record RPC: shipment first, then the operation.
+  PERFORM 1 FROM public.shipments WHERE id = p_shipment_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'SHIPMENT_NOT_FOUND'; END IF;
+  SELECT * INTO v_operation FROM public.shipment_cancellation_operations
+    WHERE shipment_id = p_shipment_id FOR UPDATE;
+  IF NOT FOUND OR v_operation.external_started_at IS NULL THEN
+    RAISE EXCEPTION 'CANCELLATION_NOT_STARTED';
+  END IF;
+
+  IF v_operation.recovery_escalated_at IS NULL THEN
+    UPDATE public.shipment_cancellation_operations
+      SET recovery_escalated_at = clock_timestamp(),
+          recovery_escalation_reason = p_reason
+      WHERE shipment_id = p_shipment_id;
+    v_escalated := TRUE;
+  END IF;
+
+  RETURN jsonb_build_object('escalated', v_escalated);
+END;
+$$;
+
+-- Service-only: the marker gates Stripe lookups and alerts, so clients must never write it.
+REVOKE EXECUTE ON FUNCTION public.fn_escalate_shipment_cancellation(UUID, TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_escalate_shipment_cancellation(UUID, TEXT) TO service_role;
+
+-- Returns NULL for a missing or merely claimed (not started) operation. Never
+-- writes: recovery decisions and the Stripe calls live in the Edge Functions.
+CREATE OR REPLACE FUNCTION public.fn_get_shipment_cancellation_recovery(p_shipment_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_operation public.shipment_cancellation_operations%ROWTYPE;
+BEGIN
+  IF auth.role() IS DISTINCT FROM 'service_role' THEN RAISE EXCEPTION 'UNAUTHORIZED'; END IF;
+
+  SELECT * INTO v_operation FROM public.shipment_cancellation_operations
+    WHERE shipment_id = p_shipment_id;
+  IF NOT FOUND OR v_operation.external_started_at IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'operation_key', v_operation.operation_key,
+    'order_id', v_operation.order_id,
+    'source', v_operation.source,
+    'actor_id', v_operation.actor_id,
+    'reason', v_operation.reason,
+    'refund_request', v_operation.refund_request,
+    'cancellation_loss_cents', v_operation.cancellation_loss_cents,
+    'refund_id', v_operation.refund_id,
+    'refund_status', v_operation.refund_status,
+    'external_started_at', v_operation.external_started_at,
+    'recovery_escalated_at', v_operation.recovery_escalated_at
+  );
+END;
+$$;
+
+-- Service-only: the frozen request and actor are internal money-flow state.
+REVOKE EXECUTE ON FUNCTION public.fn_get_shipment_cancellation_recovery(UUID) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_get_shipment_cancellation_recovery(UUID) TO service_role;
+
+COMMIT;

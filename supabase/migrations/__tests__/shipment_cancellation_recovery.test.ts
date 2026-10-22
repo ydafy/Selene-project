@@ -17,9 +17,9 @@ const statements = (sql: string) =>
 // Text contracts only; the local `supabase db reset` + scripts/test-shipment-cancellation-refund-status.ts
 // prove the behavior in PostgreSQL.
 describe('shipment cancellation recovery migration (SQL text)', () => {
-  it('is exactly one active migration containing both canonical copies', () => {
+  it('is exactly one active migration containing the fn_cancel_shipment canonical copy', () => {
     expect(migrations).toHaveLength(1);
-    expect(statements(migration)).toContain(statements(read('supabase/queries/orders/shipment_cancellation_recovery.sql')));
+    // The recovery read's canonical copy moved on in B2.2.1 (shipment_cancellation_escalation.test.ts).
     const cancel = read('supabase/queries/orders/fn_cancel_shipment.sql');
     expect(statements(migration)).toContain(statements(cancel).replace(/^DROP FUNCTION[^\n]*\n/m, ''));
   });

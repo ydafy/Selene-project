@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 
 const help =
   'Usage: bun scripts/test-shipment-cancellation-refund-status.ts [--help]\n' +
-  "B2.1+B2.2 SQL: per-shipment refund ID/status on the cancellation operation, fn_cancel_shipment's refund guard\n" +
-  'and the service-only fn_get_shipment_cancellation_recovery read.\n' +
+  "B2.1+B2.2+B2.2.1 SQL: per-shipment refund ID/status on the cancellation operation, fn_cancel_shipment's refund guard,\n" +
+  'the service-only fn_get_shipment_cancellation_recovery read and the once-only fn_escalate_shipment_cancellation.\n' +
   "Runs against this worktree's local Supabase stack (`supabase start`); every case rolls back.\n" +
   'Database URL: SELENE_LOCAL_DB_URL, else `supabase status --env`. Only 127.0.0.1/localhost is accepted.';
 
@@ -96,6 +96,17 @@ async function claim(tx: Tx, shipmentId: string) {
 async function recovery(tx: Tx, shipmentId: string) {
   const [{ result }] = await tx`SELECT public.fn_get_shipment_cancellation_recovery(${shipmentId}::uuid) AS result`;
   return result;
+}
+
+async function escalate(tx: Tx, shipmentId: string, reason: string) {
+  const [{ result }] = await tx`SELECT public.fn_escalate_shipment_cancellation(${shipmentId}::uuid, ${reason}) AS result`;
+  return result;
+}
+
+async function escalationRow(tx: Tx, shipmentId: string) {
+  const [row] = await tx`SELECT recovery_escalated_at, recovery_escalation_reason
+    FROM public.shipment_cancellation_operations WHERE shipment_id = ${shipmentId}`;
+  return row;
 }
 
 async function record(
@@ -311,6 +322,7 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         'operation_key',
         'order_id',
         'reason',
+        'recovery_escalated_at',
         'refund_id',
         'refund_request',
         'refund_status',
@@ -323,6 +335,7 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       assert.equal(started.reason, 'Changed my mind');
       assert.deepEqual(started.refund_request, request(ids.shipment));
       assert.equal(Number(started.cancellation_loss_cents), 0);
+      assert.equal(started.recovery_escalated_at, null);
       assert.equal(started.refund_id, null);
       assert.equal(started.refund_status, null);
       assert.ok(started.external_started_at);
@@ -350,6 +363,67 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       await tx`SELECT set_config('request.jwt.claims', '{"role":"anon"}', true)`;
       await tx`SET LOCAL ROLE anon`;
       await rejects(tx, (sp) => recovery(sp, ids.shipment), 'permission denied');
+    },
+  ],
+  [
+    'escalation is recorded once: the first call returns escalated true, a replay returns false and changes nothing',
+    async (tx) => {
+      await start(tx, ids.shipment);
+      assert.equal((await escalationRow(tx, ids.shipment)).recovery_escalated_at, null);
+      assert.deepEqual(await escalate(tx, ids.shipment, 'refund_not_found'), { escalated: true });
+      const first = await escalationRow(tx, ids.shipment);
+      assert.ok(first.recovery_escalated_at);
+      assert.equal(first.recovery_escalation_reason, 'refund_not_found');
+      assert.deepEqual(await escalate(tx, ids.shipment, 'refund_ambiguous'), { escalated: false });
+      assert.deepEqual(await escalate(tx, ids.shipment, 'refund_not_found'), { escalated: false });
+      assert.deepEqual(await escalationRow(tx, ids.shipment), first);
+    },
+  ],
+  [
+    'the recovery read shows the escalation, and escalating leaves the sibling and refund state untouched',
+    async (tx) => {
+      await start(tx, ids.shipment);
+      await start(tx, ids.sibling);
+      const before = await operation(tx, ids.shipment);
+      await escalate(tx, ids.shipment, 'refund_ambiguous');
+      const read = await recovery(tx, ids.shipment);
+      assert.ok(read.recovery_escalated_at);
+      assert.equal(read.refund_id, null);
+      assert.deepEqual(await operation(tx, ids.shipment), before);
+      assert.equal((await recovery(tx, ids.sibling)).recovery_escalated_at, null);
+      assert.equal((await escalationRow(tx, ids.sibling)).recovery_escalated_at, null);
+    },
+  ],
+  [
+    'escalation rejects an unstarted or missing operation and an unknown reason, leaving the row unchanged',
+    async (tx) => {
+      await rejects(tx, (sp) => escalate(sp, ids.shipment, 'refund_not_found'), 'CANCELLATION_NOT_STARTED');
+      await claim(tx, ids.shipment);
+      await rejects(tx, (sp) => escalate(sp, ids.shipment, 'refund_not_found'), 'CANCELLATION_NOT_STARTED');
+      assert.equal((await escalationRow(tx, ids.shipment)).recovery_escalated_at, null);
+      await start(tx, ids.sibling);
+      await rejects(tx, (sp) => escalate(sp, ids.sibling, 'because'), 'INVALID_ESCALATION_REASON');
+      await rejects(tx, (sp) => escalate(sp, ids.sibling, '  '), 'INVALID_ESCALATION_REASON');
+      assert.equal((await escalationRow(tx, ids.sibling)).recovery_escalated_at, null);
+      assert.deepEqual(await escalate(tx, ids.sibling, 'refund_not_found'), { escalated: true });
+    },
+  ],
+  [
+    'only service_role may escalate (authenticated denied)',
+    async (tx) => {
+      await start(tx, ids.shipment);
+      await tx`SELECT set_config('request.jwt.claims', '{"role":"authenticated"}', true)`;
+      await tx`SET LOCAL ROLE authenticated`;
+      await rejects(tx, (sp) => escalate(sp, ids.shipment, 'refund_not_found'), 'permission denied');
+    },
+  ],
+  [
+    'anon cannot escalate either',
+    async (tx) => {
+      await start(tx, ids.shipment);
+      await tx`SELECT set_config('request.jwt.claims', '{"role":"anon"}', true)`;
+      await tx`SET LOCAL ROLE anon`;
+      await rejects(tx, (sp) => escalate(sp, ids.shipment, 'refund_not_found'), 'permission denied');
     },
   ],
 ];

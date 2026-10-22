@@ -41,6 +41,12 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         recovery?: Record<string, unknown> | null;
         recoveryRpcError?: boolean;
         unrecorded?: boolean;
+        listError?: string;
+        retrieveError?: string;
+        hoursSinceStart?: number;
+        escalated?: boolean;
+        escalateResult?: unknown;
+        escalateError?: string;
       } = {},
     ) {
       const expectedSource =
@@ -53,6 +59,7 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
       const critical: unknown[][] = [];
       const listed: unknown[] = [];
       const retrieved: unknown[] = [];
+      const escalations: unknown[] = [];
       const order = {
         stripe_charge_id: 'ch',
         total_amount: 7569.59,
@@ -94,7 +101,12 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         refund_status: options.unrecorded
           ? null
           : (options.refundStatus ?? 'succeeded'),
-        external_started_at: new Date().toISOString(),
+        external_started_at: new Date(
+          Date.now() - (options.hoursSinceStart ?? 0) * 60 * 60 * 1000,
+        ).toISOString(),
+        recovery_escalated_at: options.escalated
+          ? new Date().toISOString()
+          : null,
       });
       const supabase = {
         from(table: string) {
@@ -156,6 +168,12 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
                   : options.recovery,
             };
           }
+          if (name === 'fn_escalate_shipment_cancellation') {
+            escalations.push(args);
+            if (options.escalateError)
+              return { error: { message: options.escalateError } };
+            return { data: options.escalateResult ?? { escalated: true } };
+          }
           if (name === 'fn_start_shipment_cancellation_refund') {
             if (options.reservation) options.reservation.started = true;
             return options.failStart
@@ -196,10 +214,16 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         refunds: {
           list: (params: unknown) => {
             listed.push(params);
-            return { autoPagingToArray: async () => [] };
+            return {
+              autoPagingToArray: async () => {
+                if (options.listError) throw new Error(options.listError);
+                return [];
+              },
+            };
           },
           retrieve: async (id: string) => {
             retrieved.push(id);
+            if (options.retrieveError) throw new Error(options.retrieveError);
             return {
               id,
               payment_intent: 'pi_order',
@@ -257,6 +281,7 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         critical,
         listed,
         retrieved,
+        escalations,
         error,
         count,
       };
@@ -452,6 +477,81 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
       expect(result.refunds).toEqual([]);
       expect(result.completions).toEqual([]);
     });
+    test.each([
+      [
+        'list',
+        { unrecorded: true, listError: 'stripe list secret' },
+        'stripe list secret',
+      ],
+      [
+        'retrieve',
+        { refundStatus: 'pending', retrieveError: 'stripe retrieve secret' },
+        'stripe retrieve secret',
+      ],
+    ])('a Stripe %s failure surfaces CANCELLATION_REFUND_LOOKUP_FAILED, logs the Stripe text and creates nothing', async (action, options, raw) => {
+      const result = await run({ status: 'recovery_required', ...options });
+      expect((result.error as Error).message).toBe(
+        'CANCELLATION_REFUND_LOOKUP_FAILED',
+      );
+      expect(JSON.stringify(result.logs)).toContain(raw);
+      expect(JSON.stringify(result.logs)).toContain(action);
+      expect(result.refunds).toEqual([]);
+      expect(result.completions).toEqual([]);
+    });
+    test('a refund missing after 24 h escalates once, alerts, and creates nothing', async () => {
+      const result = await run({
+        status: 'recovery_required',
+        unrecorded: true,
+        hoursSinceStart: 24,
+      });
+      expect(result.error).toBeUndefined();
+      expect(result.count).toBe(0);
+      expect(result.escalations).toEqual([
+        { p_shipment_id: 'target', p_reason: 'refund_not_found' },
+      ]);
+      expect(result.critical).toHaveLength(1);
+      expect(result.critical[0]![0]).toBe('CANCELLATION_REFUND_NOT_FOUND');
+      expect(result.refunds).toEqual([]);
+      expect(result.completions).toEqual([]);
+    });
+    test('a repeated escalation does not alert again', async () => {
+      const result = await run({
+        status: 'recovery_required',
+        unrecorded: true,
+        hoursSinceStart: 24,
+        escalateResult: { escalated: false },
+      });
+      expect(result.error).toBeUndefined();
+      expect(result.escalations).toHaveLength(1);
+      expect(result.critical).toEqual([]);
+    });
+    test('an already escalated shipment costs no Stripe list, no escalation and no alert', async () => {
+      const result = await run({
+        status: 'recovery_required',
+        unrecorded: true,
+        hoursSinceStart: 48,
+        escalated: true,
+      });
+      expect(result.error).toBeUndefined();
+      expect(result.count).toBe(0);
+      expect(result.listed).toEqual([]);
+      expect(result.escalations).toEqual([]);
+      expect(result.critical).toEqual([]);
+      expect(result.refunds).toEqual([]);
+    });
+    test('an escalation RPC error still alerts, logs the RPC text and never creates a refund', async () => {
+      const result = await run({
+        status: 'recovery_required',
+        unrecorded: true,
+        hoursSinceStart: 24,
+        escalateError: 'escalate secret detail',
+      });
+      expect(result.error).toBeUndefined();
+      expect(result.critical).toHaveLength(1);
+      expect(JSON.stringify(result.logs)).toContain('escalate secret detail');
+      expect(result.refunds).toEqual([]);
+      expect(result.completions).toEqual([]);
+    });
     test('a database cancellation failure after a recorded refund is reported as critical and still throws', async () => {
       const result = await run({ rpcErrorAt: 'fn_cancel_shipment' });
       expect(result.error).toBeInstanceOf(Error);
@@ -518,6 +618,71 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
           `"caller_role":"${source}"`,
         );
       });
+    test('a top-level failure returns a stable INTERNAL_ERROR and logs the raw error', async () => {
+      const source = readFileSync(
+        new URL(`../${name}/index.ts`, import.meta.url),
+        'utf8',
+      );
+      const executable = new Bun.Transpiler({ loader: 'ts' }).transformSync(
+        source.replace(/^import\s[\s\S]*?from\s+['"][^'"]+['"];\s*/gm, ''),
+      );
+      const logs: Record<string, unknown>[] = [];
+      let handler!: () => Promise<Response>;
+      const query: Record<string, unknown> = {
+        select: () => query,
+        update: () => query,
+        eq: () => query,
+        single: async () => {
+          throw new Error('secret db detail');
+        },
+        then: (resolve: (value: unknown) => unknown) =>
+          Promise.resolve(resolve({})),
+      };
+      new Function(
+        'serve',
+        'createClient',
+        'Stripe',
+        'Deno',
+        'console',
+        'withSentry',
+        'createCancellationReporter',
+        'runShipmentCancellation',
+        'resolveAutoCancelShipmentCancellationGate',
+        'allocateCancellationLossCents',
+        'computeShipmentRefundAmountCents',
+        'buildStripeFeeReconciliationPlan',
+        executable,
+      )(
+        (callback: typeof handler) => {
+          handler = callback;
+        },
+        () => ({ from: () => query }),
+        class {
+          static createFetchHttpClient() {
+            return {};
+          }
+        },
+        { env: { get: () => 'fake' } },
+        { log: (value: string) => logs.push(JSON.parse(value)) },
+        (_name: string, callback: typeof handler) => callback,
+        () => async () => undefined,
+        runShipmentCancellation,
+        resolveAutoCancelShipmentCancellationGate,
+        allocateCancellationLossCents,
+        computeShipmentRefundAmountCents,
+        () => undefined,
+      );
+      const response = await handler();
+      expect(response.status).toBe(500);
+      expect(await response.text()).toBe('{"error":"INTERNAL_ERROR"}');
+      expect(logs).toContainEqual(
+        expect.objectContaining({
+          level: 'ERROR',
+          msg: `Fallo crítico en ${name}`,
+          error: 'secret db detail',
+        }),
+      );
+    });
     test('preserves settings, timeout selection and global locks', () => {
       const source = readFileSync(
         new URL(`../${name}/index.ts`, import.meta.url),

@@ -1,5 +1,6 @@
 -- B2.2: read-only view of a started shipment cancellation, so the Edge Functions
 -- can recover the frozen refund without trusting the current caller.
+-- B2.2.1 adds recovery_escalated_at; requires the B2.2.1 escalation columns first.
 -- Requires the B2.1 refund status SQL first.
 -- Apply the matching migration OR this identical canonical copy, not both.
 BEGIN;
@@ -34,7 +35,8 @@ BEGIN
     'cancellation_loss_cents', v_operation.cancellation_loss_cents,
     'refund_id', v_operation.refund_id,
     'refund_status', v_operation.refund_status,
-    'external_started_at', v_operation.external_started_at
+    'external_started_at', v_operation.external_started_at,
+    'recovery_escalated_at', v_operation.recovery_escalated_at
   );
 END;
 $$;
