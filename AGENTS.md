@@ -47,7 +47,7 @@ The maintainer does not start these tools or tell you when to use them: you do, 
 | A production bug report            | Sentry MCP first, then Supabase logs through the Supabase MCP; reproduce it on the local stack before deciding it works                                                                                                             |
 | Dependencies                       | The `bun audit` command in "Commands"                                                                                                                                                                                               |
 | Frontend only                      | `bun test` for the touched behavior and the typecheck of the touched files                                                                                                                                                          |
-| An admin-web screen                | The above plus a Playwright spec in `e2e/admin-web/` (`bun run test:e2e`) driving the real page; when the screen calls a new or changed endpoint, also run that flow once against the local stack                                   |
+| An admin-web screen                | The above plus a Playwright spec in `e2e/admin-web/` (`bun run test:e2e`) driving the real page; when the screen calls a new or changed endpoint, also run that flow against the local stack (`bun run test:e2e:local`) |
 
 Report which of these you ran and their results. Never point Bruno, `stripe:listen`, or data-mutating SQL at the remote project.
 
