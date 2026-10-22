@@ -10,6 +10,7 @@ const REQUIRED_KEYS = [
   'resendCodeSuccessMsg',
   'accountAlreadyExistsTitle',
   'accountAlreadyExistsMsg',
+  'recoveryErrorTitle',
 ] as const;
 
 const ERROR_KEYS = [
@@ -23,6 +24,8 @@ const ERROR_KEYS = [
   'network',
   'googleSignInFailed',
   'missingEmail',
+  'samePassword',
+  'enter6DigitCode',
 ] as const;
 
 describe('auth locale parity', () => {

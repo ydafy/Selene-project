@@ -21,7 +21,10 @@ import { FormTextInput } from '../../components/ui/FormTextInput';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { AppImage } from '../../components/ui/AppImage';
 import { Box, Text } from '../../components/base';
+import { TextLink } from '../../components/ui/TextLink';
 import { useAuth } from '../../core/hooks/useAuth';
+import { shouldStartCooldown } from '../../core/auth/resendCooldown.logic';
+import { useResendCooldown } from '../../core/auth/useResendCooldown';
 import { Theme } from '../../core/theme';
 
 const logoIconPath = require('../../assets/images/SeleneLunaLogo.png');
@@ -47,10 +50,15 @@ export default function ResetPasswordScreen() {
   const theme = useTheme<Theme>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { resetPassword, loading } = useAuth();
+  const { resetPassword, sendPasswordResetOtp, loading } = useAuth();
   const { email } = useLocalSearchParams<{ email: string }>();
 
   const [otpCode, setOtpCode] = useState('');
+  // The recovery code is single use: once verified, retries only update the password.
+  const [codeVerified, setCodeVerified] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const { seconds: cooldownSeconds, start: startCooldown } =
+    useResendCooldown();
 
   // --- 2. GUARDIÁN DE DATOS ---
   useEffect(() => {
@@ -58,11 +66,16 @@ export default function ResetPasswordScreen() {
       Toast.show({
         type: 'error',
         text1: t('common:errors.errorTitle'),
-        text2: 'Falta información de correo.',
+        text2: t('auth:errors.missingEmail'),
       });
       router.replace('/(auth)/forgotPassword');
     }
   }, [email]);
+
+  // The code was just sent by the previous screen.
+  useEffect(() => {
+    if (email) startCooldown();
+  }, [email, startCooldown]);
 
   const schema = useMemo(() => getResetPasswordSchema(t), [t]);
 
@@ -79,18 +92,24 @@ export default function ResetPasswordScreen() {
   const onSubmit = async (data: ResetPasswordData) => {
     if (!email) return;
 
-    if (otpCode.length < 6) {
+    if (!codeVerified && otpCode.length < 6) {
       Toast.show({
         type: 'error',
-        text1: t('auth:verificationErrorTitle'),
-        text2: t('auth:enter6DigitCode'),
+        text1: t('auth:recoveryErrorTitle'),
+        text2: t('auth:errors.enter6DigitCode'),
       });
       return;
     }
 
-    const result = await resetPassword(email, otpCode, data.password);
+    const result = await resetPassword(
+      email,
+      otpCode,
+      data.password,
+      codeVerified,
+    );
+    setCodeVerified(result.codeVerified);
 
-    if (result.success) {
+    if (result.ok) {
       Toast.show({
         type: 'success',
         text1: t('auth:passwordResetSuccess'),
@@ -100,8 +119,36 @@ export default function ResetPasswordScreen() {
     } else {
       Toast.show({
         type: 'error',
-        text1: t('auth:forgotPassword.errorTitle'),
-        text2: result.error?.message || t('common:errors.generic'),
+        text1: t('auth:recoveryErrorTitle'),
+        text2: t(result.messageKey ?? 'common:errors.generic'),
+      });
+    }
+  };
+
+  /**
+   * Requests a new recovery code. A new code replaces the previous one, so the
+   * verified state is reset.
+   */
+  const handleResendCode = async () => {
+    if (!email || isResending) return;
+
+    setIsResending(true);
+    const result = await sendPasswordResetOtp(email);
+    setIsResending(false);
+    if (shouldStartCooldown(result)) startCooldown();
+
+    if (!result.success) {
+      Toast.show({
+        type: 'error',
+        text1: t('auth:recoveryErrorTitle'),
+        text2: t(result.error?.messageKey ?? 'common:errors.generic'),
+      });
+    } else {
+      setCodeVerified(false);
+      Toast.show({
+        type: 'success',
+        text1: t('auth:resendCodeSuccessTitle'),
+        text2: t('auth:resendCodeSuccessMsg'),
       });
     }
   };
@@ -145,27 +192,31 @@ export default function ResetPasswordScreen() {
           </Text>
         </Box>
 
-        <Text variant="body-md" marginBottom="s">
-          {t('auth:codeLabel')}
-        </Text>
+        {!codeVerified && (
+          <>
+            <Text variant="body-md" marginBottom="s">
+              {t('auth:codeLabel')}
+            </Text>
 
-        <OTPTextInput
-          handleTextChange={(val) => setOtpCode(val.trim())} // Sanitización básica
-          inputCount={6}
-          tintColor={theme.colors.primary}
-          offTintColor={theme.colors.textSecondary}
-          textInputStyle={
-            {
-              width: 35,
-              height: 50,
-              color: theme.colors.textPrimary,
-              fontFamily: 'Montserrat-Medium',
-              borderBottomWidth: 2,
-              borderWidth: 0,
-            } as any
-          }
-          containerStyle={{ marginBottom: 24 }}
-        />
+            <OTPTextInput
+              handleTextChange={(val) => setOtpCode(val.trim())} // Sanitización básica
+              inputCount={6}
+              tintColor={theme.colors.primary}
+              offTintColor={theme.colors.textSecondary}
+              textInputStyle={
+                {
+                  width: 35,
+                  height: 50,
+                  color: theme.colors.textPrimary,
+                  fontFamily: 'Montserrat-Medium',
+                  borderBottomWidth: 2,
+                  borderWidth: 0,
+                } as any
+              }
+              containerStyle={{ marginBottom: 24 }}
+            />
+          </>
+        )}
 
         <Controller
           control={control}
@@ -216,10 +267,31 @@ export default function ResetPasswordScreen() {
         <PrimaryButton
           onPress={handleSubmit(onSubmit)}
           loading={loading}
-          disabled={!isValid || loading || otpCode.length < 6}
+          disabled={
+            !isValid || loading || (!codeVerified && otpCode.length < 6)
+          }
         >
           {t('auth:resetButton')}
         </PrimaryButton>
+
+        <Box
+          marginTop="l"
+          alignItems="center"
+          flexDirection="row"
+          justifyContent="center"
+        >
+          <Text color="textSecondary">{t('auth:didNotReceiveCode')} </Text>
+          <TextLink
+            onPress={handleResendCode}
+            disabled={isResending || cooldownSeconds > 0}
+          >
+            {isResending
+              ? t('common:states.loading')
+              : cooldownSeconds > 0
+                ? t('auth:resendCodeIn', { seconds: cooldownSeconds })
+                : t('auth:resendCodeLink')}
+          </TextLink>
+        </Box>
       </Box>
     </ScreenLayout>
   );

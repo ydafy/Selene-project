@@ -64,7 +64,7 @@ export default function ForgotPasswordScreen() {
       Toast.show({
         type: 'error',
         text1: t('auth:forgotPassword'),
-        text2: result.error?.message || t('common:errors.generic'),
+        text2: t(result.error?.messageKey ?? 'common:errors.generic'),
       });
     } else {
       Toast.show({
