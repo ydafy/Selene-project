@@ -29,15 +29,16 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 // Hooks y Utilidades
 import { useProductCart } from '../../components/features/product/hooks/useProductCart';
 import { useProductShare } from '../../components/features/product/hooks/useProductShare';
-import {
-  useSellerPaymentReadiness,
-  isSellerBlocked,
-} from '../../core/hooks/useSellerPaymentReadiness';
 import { useProduct } from '../../core/hooks/useProduct';
 import { useAuthContext } from '../../components/auth/AuthProvider';
 import { Theme } from '../../core/theme';
 import { useProductFavorite } from '../../core/hooks/useProductFavorite';
 import { useProductHistoryStore } from '../../core/store/useProductHistoryStore';
+import {
+  PurchaseDialogVariant,
+  purchaseDialogContent,
+} from '../../core/utils/productPurchaseGate';
+import { PurchaseProgressSteps } from '../../components/features/product/PurchaseProgressSteps';
 import { formatCurrency } from '@/core/utils/format';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -48,11 +49,11 @@ export default function ProductDetailScreen() {
   const insets = useSafeAreaInsets();
   const { session } = useAuthContext();
 
-  const [showEducationDialog, setShowEducationDialog] = useState(false);
+  const [dialogVariant, setDialogVariant] =
+    useState<PurchaseDialogVariant | null>(null);
 
   const { data: product, isLoading, error } = useProduct(id || '');
   const { handleAddToCart, isAddingToCart, isAdded } = useProductCart(product);
-  const { data: readiness } = useSellerPaymentReadiness(id ? [id] : []);
   const { handleShare } = useProductShare(product);
   const { toggleFavorite, isFavorite } = useProductFavorite(id);
   const { addProductToHistory } = useProductHistoryStore();
@@ -67,9 +68,13 @@ export default function ProductDetailScreen() {
   const onAddToCartPress = async () => {
     const result = await handleAddToCart();
 
-    if (result === 'NOT_VERIFIED') {
-      // Si el hook nos dice que no está verificado, abrimos el diálogo
-      setShowEducationDialog(true);
+    if (
+      result === 'PENDING_VERIFICATION' ||
+      result === 'IN_REVIEW' ||
+      result === 'SELLER_NOT_READY'
+    ) {
+      // Si el hook nos dice que aún no se puede comprar, explicamos por qué
+      setDialogVariant(result);
     }
   };
 
@@ -117,8 +122,9 @@ export default function ProductDetailScreen() {
   }
 
   const isOwner = session?.user.id === product.seller_id;
-  const sellerCannotReceive =
-    product.status === 'VERIFIED' && isSellerBlocked(readiness, product.id);
+  const dialog = dialogVariant
+    ? purchaseDialogContent(dialogVariant, isFavorite)
+    : null;
 
   return (
     <Box flex={1} backgroundColor="background">
@@ -267,36 +273,23 @@ export default function ProductDetailScreen() {
             <PrimaryButton
               onPress={onAddToCartPress}
               loading={isAddingToCart}
-              disabled={isAddingToCart || sellerCannotReceive}
+              disabled={isAddingToCart}
               variant={isAdded ? 'outline' : 'solid'}
               icon={isAdded ? 'check' : 'cart-outline'}
             >
-              {sellerCannotReceive
-                ? t('actions.sellerNotReadyBtn')
-                : isAdded
-                  ? t('actions.added')
-                  : t('actions.addToCart')}
+              {isAdded ? t('actions.added') : t('actions.addToCart')}
             </PrimaryButton>
           </Box>
         </Box>
       </BottomActionBar>
       <ConfirmDialog
-        visible={showEducationDialog}
-        title={
-          product?.status === 'IN_REVIEW'
-            ? t('dialogs.inReviewTitle')
-            : t('dialogs.pendingTitle')
-        }
-        description={
-          product?.status === 'IN_REVIEW'
-            ? t('dialogs.inReviewMsg')
-            : t('dialogs.pendingMsg')
-        }
+        visible={dialog !== null}
+        title={dialog ? t(dialog.titleKey) : ''}
         onConfirm={() => {
-          setShowEducationDialog(false);
+          setDialogVariant(null);
           if (!isFavorite) toggleFavorite(); // Acción inteligente: Agrega a favoritos
         }}
-        onCancel={() => setShowEducationDialog(false)}
+        onCancel={() => setDialogVariant(null)}
         confirmLabel={
           isFavorite ? t('dialogs.understood') : t('dialogs.addToFavs')
         }
@@ -304,7 +297,25 @@ export default function ProductDetailScreen() {
         icon="shield-alert-outline"
         // Si ya es favorito, ocultamos cancelar para que sea solo informativo
         hideCancel={isFavorite}
-      />
+      >
+        {dialog && (
+          <Box gap="m" marginTop="s">
+            <PurchaseProgressSteps currentStep={dialog.currentStep} />
+            <Text variant="body-md" color="textPrimary" textAlign="center">
+              {t(dialog.lineKey)}
+            </Text>
+            <Text
+              variant="body-sm"
+              color="textPrimary"
+              textAlign="center"
+              opacity={0.75}
+              style={{ fontFamily: 'Montserrat-Italic' }}
+            >
+              {t(dialog.favoriteLineKey)}
+            </Text>
+          </Box>
+        )}
+      </ConfirmDialog>
     </Box>
   );
 }

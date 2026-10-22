@@ -98,13 +98,21 @@ describe('isSellerBlocked', () => {
 });
 
 describe('screen and hook wiring (S4)', () => {
-  it('useProductCart returns SELLER_NOT_READY after the VERIFIED check', () => {
+  it('useProductCart decides through the gate after reading the fresh status', () => {
     const src = read('components/features/product/hooks/useProductCart.ts');
-    expect(src).toContain("'SELLER_NOT_READY'");
+    expect(src).toContain('decidePurchaseGate');
     expect(src).toContain('fetchSellerPaymentReadiness');
+    expect(src).not.toContain('sellerNotReady');
     const call = src.indexOf('await fetchSellerPaymentReadiness(');
-    expect(src.indexOf("!== 'VERIFIED'")).toBeLessThan(call);
+    expect(src.indexOf("'VERIFIED'")).toBeLessThan(call);
     expect(call).toBeLessThan(src.indexOf('addItem(product)'));
+  });
+
+  it('product screen keeps the normal button and opens a dialog per state', () => {
+    const src = read('app/product/[id].tsx');
+    expect(src).not.toContain('sellerNotReadyBtn');
+    expect(src).toContain('PurchaseProgressSteps');
+    expect(src).toContain('purchaseDialogContent');
   });
 
   it('usePaymentProcess uses an i18n key for SELLER_NOT_ONBOARDED', () => {
@@ -113,8 +121,7 @@ describe('screen and hook wiring (S4)', () => {
     expect(src).toContain("t('payment.sellerNotReadyError')");
   });
 
-  it('product screen and payment screen use the readiness hook', () => {
-    expect(read('app/product/[id].tsx')).toContain('useSellerPaymentReadiness');
+  it('payment screen uses the readiness hook', () => {
     expect(read('app/checkout/payment.tsx')).toContain(
       'useSellerPaymentReadiness',
     );
@@ -128,9 +135,10 @@ describe('screen and hook wiring (S4)', () => {
       const checkout = JSON.parse(
         read(`core/i18n/locales/${lang}/checkout.json`),
       );
-      expect(product.actions.sellerNotReadyTitle).toBeString();
-      expect(product.actions.sellerNotReadyMsg).toBeString();
-      expect(product.actions.sellerNotReadyBtn).toBeString();
+      expect(product.dialogs.sellerNotReadyTitle).toBeString();
+      expect(product.actions.sellerNotReadyBtn).toBeUndefined();
+      expect(product.actions.sellerNotReadyTitle).toBeUndefined();
+      expect(product.actions.sellerNotReadyMsg).toBeUndefined();
       expect(checkout.payment.sellerNotReadyError).toBeString();
     }
   });
