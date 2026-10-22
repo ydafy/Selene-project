@@ -114,7 +114,18 @@ async function startPreparing(tx: Tx, n: number) {
 async function applyResult(tx: Tx, n: number, refundId: string, status: string, reason: string | null = null) {
   const [{ r }] = await tx`SELECT public.fn_apply_shipment_cancellation_refund_event(
     ${shipmentId(n)}::uuid, ${refundId}, ${paymentIntent(n)}, ${amount(n)}::bigint, ${status}, ${reason}) AS r`;
-  return r as { outcome: string; refund_status: string | null };
+  return r as {
+    outcome: string;
+    refund_id: string | null;
+    refund_status: string | null;
+    refund_failure_reason: string | null;
+    amount_owed_cents: number;
+    resolution_reference?: string;
+  };
+}
+async function applyRaw(tx: Tx, n: number, refundId: string, pi: string, cents: number, status: string) {
+  await tx`SELECT public.fn_apply_shipment_cancellation_refund_event(
+    ${shipmentId(n)}::uuid, ${refundId}, ${pi}, ${cents}::bigint, ${status}, NULL)`;
 }
 async function resolveResult(tx: Tx, n: number, ref = reference) {
   const [{ r }] = await tx`SELECT public.fn_resolve_shipment_cancellation_refund(${shipmentId(n)}::uuid, ${ids.admin}::uuid, ${ref}) AS r`;
@@ -132,36 +143,42 @@ async function rejectsWith(tx: Tx, action: (sp: Tx) => Promise<unknown>): Promis
   return 'NO_ERROR';
 }
 const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
-  ['Q1 resolved escalated (no refund): later pending/requires_action/succeeded refund events fail closed and change nothing', async (tx) => {
+  ['Q1 resolved escalated (no refund): later pending/requires_action/succeeded refund events return after_resolution and change nothing', async (tx) => {
     for (const [n, reason] of [[1, 'refund_not_found'], [2, 'refund_ambiguous']] as const) {
       await start(tx, n);
       await escalate(tx, n, reason);
       assert.equal((await resolveResult(tx, n)).shipment_cancelled, true);
       const before = await state(tx, n);
       for (const status of ['pending', 'requires_action', 'succeeded']) {
-        assert.match(
-          await rejectsWith(tx, (sp) => applyResult(sp, n, `re_late_${n}`, status)),
-          /refund_resolution_status/,
+        const r = await applyResult(tx, n, `re_late_${n}`, status);
+        assert.deepEqual(
+          [r.outcome, r.refund_id, r.refund_status, Number(r.amount_owed_cents), r.resolution_reference],
+          ['after_resolution', `re_late_${n}`, status, amount(n), reference],
         );
         assert.equal(await state(tx, n), before);
       }
       assert.deepEqual(await list(tx), []);
     }
   }],
-  ['Q2 resolved escalated: a later failed/canceled refund event records on the resolved op (outcome failed_after_cancellation, hidden from the list)', async (tx) => {
+  ['Q2 resolved escalated: a later failed/canceled refund event returns after_resolution, records nothing and notifies no one', async (tx) => {
     await start(tx, 1);
     await escalate(tx, 1, 'refund_ambiguous');
     await resolveResult(tx, 1);
+    const before = await state(tx, 1);
     const r = await applyResult(tx, 1, 're_late_1', 'failed', 'expired_or_canceled_card');
-    assert.equal(r.outcome, 'failed_after_cancellation');
-    // Recorded on the resolved operation, so it is hidden from the bucket (advisory A1).
-    assert.deepEqual(await list(tx), []);
+    assert.deepEqual(
+      [r.outcome, r.refund_id, r.refund_status, r.refund_failure_reason, r.resolution_reference],
+      ['after_resolution', 're_late_1', 'failed', 'expired_or_canceled_card', reference],
+    );
+    assert.equal(await state(tx, 1), before);
     await start(tx, 2);
     await escalate(tx, 2, 'refund_not_found');
     await resolveResult(tx, 2);
+    const beforeCanceled = await state(tx, 2);
     const c = await applyResult(tx, 2, 're_late_2', 'canceled');
-    assert.equal(c.outcome, 'failed_after_cancellation');
-    assert.equal(c.refund_status, 'canceled');
+    assert.deepEqual([c.outcome, c.refund_id, c.refund_status], ['after_resolution', 're_late_2', 'canceled']);
+    assert.equal(await state(tx, 2), beforeCanceled);
+    assert.deepEqual(await list(tx), []);
   }],
   ['Q3 resolved escalated: a new claim (cancel-order / cron) is refused before any refund; resolve replay is idempotent', async (tx) => {
     await start(tx, 1);
@@ -258,6 +275,35 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     assert.equal(Number(rows[0].amount_owed_cents), 7000);
     assert.equal(rows[0].payment_intent_id, 'pi_b24a_7');
     assert.equal(rows[0].buyer_id, ids.buyer);
+  }],
+  ['Q11 resolved failed-before-success op: a replay of the identical failed event is unchanged and writes nothing', async (tx) => {
+    await start(tx, 1);
+    assert.equal((await applyResult(tx, 1, 're_1', 'failed', 'lost_or_stolen_card')).outcome, 'failed_before_cancellation');
+    assert.equal((await resolveResult(tx, 1)).shipment_cancelled, true);
+    const before = await state(tx, 1);
+    const r = await applyResult(tx, 1, 're_1', 'failed', 'lost_or_stolen_card');
+    assert.deepEqual([r.outcome, r.refund_id, r.refund_status], ['unchanged', 're_1', 'failed']);
+    assert.equal(await state(tx, 1), before);
+  }],
+  ['Q12 resolved failed-before-success op: succeeded for the same refund and a different refund id are after_resolution and write nothing', async (tx) => {
+    await start(tx, 1);
+    await applyResult(tx, 1, 're_1', 'failed');
+    await resolveResult(tx, 1);
+    const before = await state(tx, 1);
+    const same = await applyResult(tx, 1, 're_1', 'succeeded');
+    assert.deepEqual([same.outcome, same.refund_id, same.refund_status, same.resolution_reference], ['after_resolution', 're_1', 'succeeded', reference]);
+    const other = await applyResult(tx, 1, 're_other', 'failed');
+    assert.deepEqual([other.outcome, other.refund_id, other.refund_status], ['after_resolution', 're_other', 'failed']);
+    assert.equal(await state(tx, 1), before);
+  }],
+  ['Q13 resolved op: a foreign payment intent or amount still raises, never after_resolution, and writes nothing', async (tx) => {
+    await start(tx, 1);
+    await escalate(tx, 1, 'refund_not_found');
+    await resolveResult(tx, 1);
+    const before = await state(tx, 1);
+    assert.match(await rejectsWith(tx, (sp) => applyRaw(sp, 1, 're_x', 'pi_foreign', amount(1), 'succeeded')), /REFUND_PAYMENT_INTENT_MISMATCH/);
+    assert.match(await rejectsWith(tx, (sp) => applyRaw(sp, 1, 're_x', paymentIntent(1), amount(1) + 1, 'succeeded')), /REFUND_AMOUNT_MISMATCH/);
+    assert.equal(await state(tx, 1), before);
   }],
 ];
 async function run() {

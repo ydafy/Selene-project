@@ -20,7 +20,8 @@ const events = read('supabase/queries/orders/shipment_cancellation_refund_events
 describe('shipment cancellation refund events migration (SQL text)', () => {
   it('is exactly one active migration containing its canonical copy', () => {
     expect(migrations).toHaveLength(1);
-    expect(statements(migration)).toContain(statements(events));
+    // B2.4a.1 replaced the function in a later migration: this one holds the catalogue and the original body.
+    expect(statements(migration)).toContain(statements(events.slice(0, events.indexOf('-- Applies one Stripe refund snapshot'))));
     expect(migration.match(/^BEGIN;$/gm)).toHaveLength(1);
     expect(migration.match(/^COMMIT;$/gm)).toHaveLength(1);
   });

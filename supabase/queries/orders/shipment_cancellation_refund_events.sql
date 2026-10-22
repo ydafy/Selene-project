@@ -23,7 +23,11 @@ ALTER TABLE public.notifications ADD CONSTRAINT notifications_event_kind_catalog
 --   failed_after_cancellation  succeeded -> failed on a cancelled shipment; it stays cancelled
 --   failed_before_cancellation failed/canceled while the shipment is still open; it is NOT cancelled
 --   recorded                   a changed non-terminal status
---   unchanged                  replay or stale snapshot
+--   unchanged                  replay or stale snapshot (also: a resolved operation seeing its recorded refund id and status again)
+--   after_resolution           the operation was already resolved by an admin and the event is not the recorded
+--                              refund id + status: nothing is written (no record, cancellation or notification);
+--                              the result carries the event's refund id/status and the stored resolution_reference
+--                              so the webhook can alert the admin. A foreign payment intent or amount still raises.
 -- Any error rolls everything back, so the webhook can be retried safely.
 CREATE OR REPLACE FUNCTION public.fn_apply_shipment_cancellation_refund_event(
   p_shipment_id UUID,
@@ -59,6 +63,36 @@ BEGIN
     WHERE shipment_id = p_shipment_id;
   IF NOT FOUND OR v_operation.external_started_at IS NULL OR v_operation.refund_request IS NULL THEN
     RETURN jsonb_build_object('outcome', 'ignored');
+  END IF;
+
+  -- A resolved operation is settled by hand (the buyer may already have been paid another way):
+  -- never write to it. Validate against the frozen request first so a foreign event is not accepted.
+  IF v_operation.refund_resolved_at IS NOT NULL THEN
+    IF p_refund_id IS NULL OR btrim(p_refund_id) = '' THEN RAISE EXCEPTION 'INVALID_REFUND_ID'; END IF;
+    IF p_status IS NULL OR p_status NOT IN ('pending', 'requires_action', 'succeeded', 'failed', 'canceled') THEN
+      RAISE EXCEPTION 'INVALID_REFUND_STATUS';
+    END IF;
+    IF p_payment_intent_id IS DISTINCT FROM v_operation.refund_request->>'payment_intent' THEN
+      RAISE EXCEPTION 'REFUND_PAYMENT_INTENT_MISMATCH';
+    END IF;
+    IF p_amount_cents IS DISTINCT FROM (v_operation.refund_request->>'amount')::BIGINT THEN
+      RAISE EXCEPTION 'REFUND_AMOUNT_MISMATCH';
+    END IF;
+    IF p_refund_id = v_operation.refund_id AND p_status = v_operation.refund_status THEN
+      RETURN jsonb_build_object(
+        'refund_id', v_operation.refund_id,
+        'refund_status', v_operation.refund_status,
+        'refund_failure_reason', v_operation.refund_failure_reason,
+        'amount_owed_cents', (v_operation.refund_request->>'amount')::BIGINT,
+        'outcome', 'unchanged');
+    END IF;
+    RETURN jsonb_build_object(
+      'refund_id', p_refund_id,
+      'refund_status', p_status,
+      'refund_failure_reason', p_failure_reason,
+      'amount_owed_cents', (v_operation.refund_request->>'amount')::BIGINT,
+      'resolution_reference', v_operation.refund_resolution_reference,
+      'outcome', 'after_resolution');
   END IF;
 
   v_recorded := public.fn_record_shipment_cancellation_refund(
