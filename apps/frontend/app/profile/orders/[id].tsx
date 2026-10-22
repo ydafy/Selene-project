@@ -70,6 +70,7 @@ import {
   shouldSuppressShipmentActionsForBuyerRecovery,
 } from './order-recovery-view';
 import Toast from 'react-native-toast-message';
+import { describeError } from '../../../core/utils/describe-error';
 
 // --- TIPO AUXILIAR PARA REVIEW (viene en la query de useOrderById pero no en EnrichedOrder) ---
 // V2: adds product_id / shipment_id / seller_id so the review gate can match
@@ -275,13 +276,8 @@ export default function OrderDetailScreen() {
 
       Toast.show({
         type: 'success',
-        text1: t('orders:dialogs.deliverySuccessTitle', {
-          defaultValue: '¡Entrega confirmada!',
-        }),
-        text2: t('orders:dialogs.deliverySuccessMsg', {
-          defaultValue:
-            'Gracias por tu compra. Los fondos han sido liberados al vendedor.',
-        }),
+        text1: t('orders:dialogs.deliverySuccessTitle'),
+        text2: t('orders:dialogs.deliverySuccessMsg'),
       });
     } catch {
       // El hook dispara el toast de error; el diálogo queda abierto para reintentar
@@ -328,9 +324,7 @@ export default function OrderDetailScreen() {
     } catch {
       Toast.show({
         type: 'error',
-        text1: t('common:errors.generic', {
-          defaultValue: 'No se pudo abrir el navegador',
-        }),
+        text1: t('common:errors.generic'),
       });
     }
   };
@@ -340,21 +334,16 @@ export default function OrderDetailScreen() {
 
     try {
       await Share.share({
-        title: t('orders:actions.shareTitle', {
-          defaultValue: 'Guía de envío - Selene',
-        }),
+        title: t('orders:actions.shareTitle'),
         message: t('orders:actions.shareMessage', {
           url: currentShipment.label_url,
-          defaultValue: `Guía de envío para imprimir: ${currentShipment.label_url}`,
         }),
         url: currentShipment.label_url,
       });
     } catch {
       Toast.show({
         type: 'error',
-        text1: t('common:errors.generic', {
-          defaultValue: 'No se pudo compartir la guía',
-        }),
+        text1: t('common:errors.generic'),
       });
     }
   };
@@ -491,7 +480,9 @@ export default function OrderDetailScreen() {
         <ScreenHeader
           title={t('orders:detail.title')}
           subtitle={
-            order.isSeller ? 'Resumen de tu venta' : 'Resumen de tu compra'
+            order.isSeller
+              ? t('orders:detail.subTitleSeller')
+              : t('orders:detail.subTitle')
           }
         />
 
@@ -524,7 +515,6 @@ export default function OrderDetailScreen() {
                 <Text variant="body-md" fontWeight="bold" color="primary">
                   {t('orders:detail.multiSellerTitle', {
                     count: order.shipments.length,
-                    defaultValue: `Esta orden tiene ${order.shipments.length} vendedores`,
                   })}
                 </Text>
               </Box>
@@ -544,7 +534,6 @@ export default function OrderDetailScreen() {
                     {shipment.items.length}{' '}
                     {t('orders:detail.items', {
                       count: shipment.items.length,
-                      defaultValue: 'producto(s)',
                     })}
                   </Text>
                   <Text variant="caption-md" color="textSecondary">
@@ -559,9 +548,7 @@ export default function OrderDetailScreen() {
                     color="primary"
                     textDecorationLine="underline"
                   >
-                    {t('orders:detail.viewShipment', {
-                      defaultValue: 'Ver envío',
-                    })}
+                    {t('orders:detail.viewShipment')}
                   </Text>
                 </TouchableOpacity>
               </Box>
@@ -575,9 +562,7 @@ export default function OrderDetailScreen() {
               style={{ marginTop: 12, borderColor: theme.colors.primary }}
               icon="truck-delivery-outline"
             >
-              {t('orders:detail.viewShippingSummary', {
-                defaultValue: 'Ver resumen de envíos',
-              })}
+              {t('orders:detail.viewShippingSummary')}
             </PrimaryButton>
           </Box>
         )}
@@ -664,9 +649,7 @@ export default function OrderDetailScreen() {
           <Box {...cardStyles} borderColor="primary" borderWidth={1}>
             <Text variant="header-xl" color="primary" marginBottom="m">
               {currentShipment?.permissions.showReturnTracking
-                ? t('orders:detail.returnTrackingTitle', {
-                    defaultValue: 'Rastreo de Retorno',
-                  })
+                ? t('orders:detail.returnTrackingTitle')
                 : t('orders:detail.trackingTitle')}
             </Text>
             <Box
@@ -799,9 +782,7 @@ export default function OrderDetailScreen() {
                         color={theme.colors.success}
                       />
                       <Text variant="caption-md" color="success">
-                        {t('orders:actions.reviewed', {
-                          defaultValue: 'Calificado',
-                        })}
+                        {t('orders:actions.reviewed')}
                       </Text>
                     </Box>
                   ) : null}
@@ -815,9 +796,7 @@ export default function OrderDetailScreen() {
             </TouchableOpacity>
           )) ?? (
             <Text variant="body-md" color="textSecondary" padding="m">
-              {t('orders:detail.noItems', {
-                defaultValue: 'No hay productos disponibles.',
-              })}
+              {t('orders:detail.noItems')}
             </Text>
           )}
           <Box
@@ -873,9 +852,7 @@ export default function OrderDetailScreen() {
                 onPress={handleShareLabel}
                 icon="share-variant"
               >
-                {t('orders:actions.shareLabel', {
-                  defaultValue: 'Compartir guía (WhatsApp / Imprimir)',
-                })}
+                {t('orders:actions.shareLabel')}
               </PrimaryButton>
 
               <Text
@@ -884,10 +861,7 @@ export default function OrderDetailScreen() {
                 textAlign="center"
                 marginTop="xs"
               >
-                {t('orders:actions.printHint', {
-                  defaultValue:
-                    '💡 ¿No tienes impresora? Compártela para imprimirla en tu papelería más cercana.',
-                })}
+                {t('orders:actions.printHint')}
               </Text>
             </Box>
           )}
@@ -941,16 +915,10 @@ export default function OrderDetailScreen() {
               onPress={() => openReviewFor(item.product_id)}
               icon="star-outline"
               style={{ marginTop: 8 }}
-              accessibilityLabel={t('orders:actions.rateProduct', {
-                defaultValue: 'Calificar pedido',
-              })}
-              accessibilityHint={t('orders:actions.rateProductHint', {
-                defaultValue: 'Abre el formulario para calificar este producto',
-              })}
+              accessibilityLabel={t('orders:actions.rateProduct')}
+              accessibilityHint={t('orders:actions.rateProductHint')}
             >
-              {t('orders:actions.rateProduct', {
-                defaultValue: 'Calificar pedido',
-              })}
+              {t('orders:actions.rateProduct')}
             </PrimaryButton>
           ))}
       </ScrollView>
@@ -1002,26 +970,23 @@ export default function OrderDetailScreen() {
           try {
             await refetchOrder();
           } catch (e) {
-            setReviewError(
-              e instanceof Error
-                ? e.message
-                : 'No pudimos guardar tu calificación. Intenta de nuevo.',
-            );
+            console.error('[review] refresh failed', describeError(e));
+            setReviewError(t('orders:dialogs.reviewErrorMsg'));
           }
         }}
       />
 
       <ConfirmDialog
         visible={!!reviewError}
-        title="Error al guardar"
+        title={t('orders:dialogs.reviewErrorTitle')}
         description={reviewError ?? ''}
         onConfirm={async () => {
           setReviewError(null);
           await refetchOrder();
         }}
         onCancel={() => setReviewError(null)}
-        confirmLabel="Reintentar"
-        cancelLabel="Cerrar"
+        confirmLabel={t('orders:dialogs.reviewErrorRetry')}
+        cancelLabel={t('orders:dialogs.reviewErrorClose')}
       />
     </Box>
   );

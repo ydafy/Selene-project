@@ -7,6 +7,7 @@
   "detail": {
     "title": "Your Order",
     "subTitle": "Your Purchase Summary",
+    "subTitleSeller": "Your Sale Summary",
     "orderId": "Order",
     "shippingAddress": "Shipping Address",
     "summary": "Purchase Summary",
@@ -36,8 +37,13 @@
     "returnTitle": "RETURN IN PROGRESS",
     "WaitingReturnBuyerMsg": "Your money is protected by the Selene Shield. We are waiting for the seller to provide the return shipping label. If they don't do so within 48 hours, you will automatically receive your refund and the case will be closed.",
     "WaitingReturnSellerMsg": "You have 48 hours to pay for the return shipping label if you wish to recover your hardware. If payment is not received within this timeframe, the system will issue a final refund to the buyer, and you will forfeit your right to claim the product.",
-    "deliverySuccessTitle": "DELIVERY CONFIRMED!",
-    "deliverySuccessMsg": "The package has arrived. Your funds will be released automatically within 48 hours if there are no reports."
+    "multiSellerTitle": "This order has {{count}} sellers",
+    "items_one": "product",
+    "items_other": "products",
+    "viewShipment": "View shipment",
+    "viewShippingSummary": "View shipping summary",
+    "returnTrackingTitle": "Return tracking",
+    "noItems": "No products available."
   },
   "status": {
     "statusTitle": "Status",
@@ -126,6 +132,10 @@
     "reportProblem": "Report a Problem",
     "rateProduct": "Rate product",
     "reviewed": "Reviewed",
+    "shareTitle": "Shipping label - Selene",
+    "shareMessage": "Shipping label to print: {{url}}",
+    "printHint": "💡 No printer? Share it to print at your nearest print shop.",
+    "rateProductHint": "Opens the form to rate this product",
     "managePackage": "Manage package"
   },
   "actionCard": {
@@ -180,7 +190,13 @@
     "deliveryTitle": "Did you receive and check your product?",
     "deliveryMsg": "Confirming completes the purchase. If the product is incorrect or does not work, do not confirm: report a problem.",
     "deliveryConfirm": "Yes, confirm",
-    "deliveryCancel": "Go back"
+    "deliveryCancel": "Go back",
+    "deliverySuccessTitle": "Delivery confirmed!",
+    "deliverySuccessMsg": "Thanks for your purchase. Selene will handle the seller's payment.",
+    "reviewErrorTitle": "Could not refresh",
+    "reviewErrorMsg": "Your rating was saved, but we could not refresh the screen. Please try again.",
+    "reviewErrorRetry": "Retry",
+    "reviewErrorClose": "Close"
   },
   "prepare": {
     "headerTitle": "Generate Label",
