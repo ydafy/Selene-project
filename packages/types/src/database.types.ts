@@ -2091,6 +2091,9 @@ export type Database = {
           refund_failure_reason: string | null
           refund_id: string | null
           refund_request: Json | null
+          refund_resolution_reference: string | null
+          refund_resolved_at: string | null
+          refund_resolved_by: string | null
           refund_status: string | null
           refund_status_updated_at: string | null
           shipment_id: string
@@ -2111,6 +2114,9 @@ export type Database = {
           refund_failure_reason?: string | null
           refund_id?: string | null
           refund_request?: Json | null
+          refund_resolution_reference?: string | null
+          refund_resolved_at?: string | null
+          refund_resolved_by?: string | null
           refund_status?: string | null
           refund_status_updated_at?: string | null
           shipment_id: string
@@ -2131,6 +2137,9 @@ export type Database = {
           refund_failure_reason?: string | null
           refund_id?: string | null
           refund_request?: Json | null
+          refund_resolution_reference?: string | null
+          refund_resolved_at?: string | null
+          refund_resolved_by?: string | null
           refund_status?: string | null
           refund_status_updated_at?: string | null
           shipment_id?: string
@@ -3607,6 +3616,17 @@ export type Database = {
         }
         Returns: number
       }
+      fn_apply_shipment_cancellation_refund_event: {
+        Args: {
+          p_amount_cents: number
+          p_failure_reason?: string
+          p_payment_intent_id: string
+          p_refund_id: string
+          p_shipment_id: string
+          p_status: string
+        }
+        Returns: Json
+      }
       fn_atomic_payout_resume_mapping: {
         Args: {
           p_expected_parent_payout_id: string
@@ -4249,6 +4269,10 @@ export type Database = {
           p_verdict: string
         }
         Returns: boolean
+      }
+      fn_resolve_shipment_cancellation_refund: {
+        Args: { p_admin_id: string; p_reference: string; p_shipment_id: string }
+        Returns: Json
       }
       fn_save_bank_account: {
         Args: { p_clabe: string; p_holder_name: string }
