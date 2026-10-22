@@ -7,6 +7,7 @@
   "detail": {
     "title": "Tu Pedido",
     "subTitle": "Resumen de tu compra",
+    "subTitleSeller": "Resumen de tu venta",
     "orderId": "Pedido",
     "shippingAddress": "Dirección de Envío",
     "summary": "Resumen de compra",
@@ -36,8 +37,13 @@
     "returnTitle": "DEVOLUCIÓN EN CURSO",
     "WaitingReturnBuyerMsg": "Tu dinero está resguardado por el Escudo Selene. Estamos esperando que el vendedor pague la guía de retorno. Si no lo hace en menos de 48h, recibirás tu reembolso automáticamente y el caso se cerrará.",
     "WaitingReturnSellerMsg": "Tienes 48 horas para pagar la guía de retorno si deseas recuperar tu hardware. Si el plazo expira sin pago, el sistema reembolsará al comprador de forma definitiva y perderás el derecho a reclamar el producto.",
-    "deliverySuccessTitle": "¡ENTREGA CONFIRMADA!",
-    "deliverySuccessMsg": "El paquete ha llegado. Tus fondos se liberarán automáticamente en 48 horas si no hay reportes.",
+    "multiSellerTitle": "Esta orden tiene {{count}} vendedores",
+    "items_one": "producto",
+    "items_other": "productos",
+    "viewShipment": "Ver envío",
+    "viewShippingSummary": "Ver resumen de envíos",
+    "returnTrackingTitle": "Rastreo de retorno",
+    "noItems": "No hay productos disponibles.",
     "routeTitleReturn": "Ruta de Retorno",
     "routeFromSeller": "Desde (Vendedor)",
     "routeFromBuyer": "Desde (Tu ubicación)",
@@ -134,6 +140,10 @@
     "reportProblem": "Reportar un problema",
     "rateProduct": "Calificar pedido",
     "reviewed": "Calificado",
+    "shareTitle": "Guía de envío - Selene",
+    "shareMessage": "Guía de envío para imprimir: {{url}}",
+    "printHint": "💡 ¿No tienes impresora? Compártela para imprimirla en tu papelería más cercana.",
+    "rateProductHint": "Abre el formulario para calificar este producto",
     "managePackage": "Gestionar paquete"
   },
   "actionCard": {
@@ -164,6 +174,7 @@
     "returnShipmentInTransit": "El paquete de retorno ya está con la paquetería.",
     "returnDeliveredBuyer": "El vendedor ya recibió el paquete. Tu reembolso se procesará tras la inspección.",
     "cancelledBuyer": "Tu envío fue cancelado. El reembolso se procesa al método de pago original. Una vez confirmado, tu banco puede tardar entre 5 y 10 días hábiles en reflejarlo.",
+    "cancelledSeller": "Este envío fue cancelado y tu producto volvió a tu tienda: ya está disponible para venderse de nuevo. El comprador recibe su reembolso; tú no tienes que hacer nada.",
     "refundProcessedBuyer": "Tu reembolso ha sido procesado con éxito. El dinero se verá reflejado en tu cuenta en un plazo de 5 a 10 días hábiles.",
     "refundProcessedSeller": "Disputa cerrada. El dinero ha sido devuelto al comprador.",
     "reportReturnProblem": "Reportar problema con el retorno"
@@ -178,7 +189,13 @@
     "deliveryTitle": "¿Recibiste y revisaste tu producto?",
     "deliveryMsg": "Al confirmar, la compra se completa. Si el producto no es el correcto o no funciona, no confirmes: reporta un problema.",
     "deliveryConfirm": "Sí, confirmar",
-    "deliveryCancel": "Volver"
+    "deliveryCancel": "Volver",
+    "deliverySuccessTitle": "¡Entrega confirmada!",
+    "deliverySuccessMsg": "Gracias por tu compra. Selene gestionará el pago al vendedor.",
+    "reviewErrorTitle": "No pudimos actualizar",
+    "reviewErrorMsg": "Tu calificación se guardó, pero no pudimos actualizar la pantalla. Intenta de nuevo.",
+    "reviewErrorRetry": "Reintentar",
+    "reviewErrorClose": "Cerrar"
   },
   "return": {
     "succesToastMsgTitle": "Evidencia guardada",

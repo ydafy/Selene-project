@@ -557,6 +557,15 @@ export interface EnrichedShipment extends Tables<'shipments'> {
 - `/profile/orders/[id]?shipmentId=` — Order detail with optional shipment filter
 - `OrderActionCard` accepts optional `shipment: EnrichedShipment` prop
 
+### Delivered Shipment Review UI
+
+- For the selected dispute-free `delivered` shipment, the seller sees a short delivery status message; the buyer sees instructions to check the correct product and test that it works before confirming.
+- Both roles see a separately labeled 48-hour review countdown anchored to that shipment's `delivered_at`, never the order's timestamp. The seller label describes remaining review time; the buyer label describes time to report a problem. Missing or invalid delivery timestamps do not produce a countdown.
+- When the countdown expires while the shipment is still `delivered`, hide the countdown and show neutral wording that the review window ended and the purchase awaits a status update. Do not claim funds are processing or have arrived.
+- The buyer confirmation dialog states that confirming completes the purchase and tells buyers with an incorrect or non-working product not to confirm and to report a problem. Its actions are explicit confirmation and return labels. Existing confirmation and dispute permissions are unchanged.
+- Seller payment help is available for both `delivered` and `completed` dispute-free shipments and reuses `SellerPaymentExplanation`. Purchase completion, Selene's payment release, and bank arrival remain distinct; payout wording follows `payout-operating-model`.
+- Maintain equivalent Spanish and English translations. This UI does not change completion jobs, payout operations, or financial authorization.
+
 ### Hooks
 
 - `useShipments(orderId)` — fetches shipments with items/products/seller/dispute joins; computes `permissions.canCancel` as `(isBuyer || isSellerOwnShipment) && status === 'paid'`

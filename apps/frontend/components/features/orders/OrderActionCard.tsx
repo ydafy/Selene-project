@@ -117,8 +117,11 @@ export const OrderActionCard = ({
   const isCriticalStatus = order.status
     ? ['cancelled', 'dispute', 'refunded'].includes(order.status)
     : false;
+  // A multi-seller order stays active when only this shipment is cancelled.
+  const isCancelledShipment = shipment.status === 'cancelled' && order.status !== 'dispute';
   const shouldShow =
     isCriticalStatus ||
+    isCancelledShipment ||
     showSellerStatusBanner ||
     showBuyerDeliveredBanner ||
     permissions.canCancel ||
@@ -161,6 +164,7 @@ export const OrderActionCard = ({
         ? t('actionCard.deliveredTitle')
         : t('actionCard.buyerDeliveredTitle');
     if (showSellerCompletedBanner) return t('orders:status.completed');
+    if (isCancelledShipment) return t('orders:status.cancelled').toUpperCase();
     if (order.status === 'dispute') {
       if (dispute?.status === 'return_delivered' && isSeller)
         return t('actionCard.recordUnboxingTitle');
@@ -241,8 +245,10 @@ export const OrderActionCard = ({
         ? t('actionCard.refundProcessedBuyer')
         : t('actionCard.refundProcessedSeller');
     }
-    if (isBuyer && shipment.status === 'cancelled' && order.status !== 'dispute') {
-      return t('actionCard.cancelledBuyer');
+    if (isCancelledShipment) {
+      return isBuyer
+        ? t('actionCard.cancelledBuyer')
+        : t('actionCard.cancelledSeller');
     }
     return t(`orders:detail.${order.status}Msg`);
   };
