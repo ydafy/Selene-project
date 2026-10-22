@@ -25,12 +25,23 @@ const withoutResolutionGuard = (sql: string) =>
       .replace(/ {2}-- The Stripe refund must be recorded[\s\S]*?END IF;\n/, ''),
   );
 
+// B2.4a replaced the status CHECK and the resolve function in a later migration, so this (deployed)
+// migration is compared with the canonical columns section minus that CHECK.
+const columnsSection = (sql: string) =>
+  statements(sql.slice(0, sql.indexOf('-- Marks a failed/canceled shipment refund')))
+    .replace(
+      /,\n {2}ADD CONSTRAINT shipment_cancellation_operations_refund_resolution_status CHECK \([\s\S]*?\n {2}\)/,
+      '',
+    );
+
 // Text contracts only; the local `supabase db reset` + scripts/test-shipment-cancellation-refund-resolution.ts
 // prove the behavior in PostgreSQL.
 describe('shipment cancellation refund resolution migration (SQL text)', () => {
   it('is exactly one active migration containing both canonical copies', () => {
     expect(migrations).toHaveLength(1);
-    expect(statements(migration)).toContain(statements(resolution));
+    expect(columnsSection(migration)).toContain(columnsSection(resolution));
+    expect(columnsSection(resolution)).toContain('ADD COLUMN refund_resolved_at TIMESTAMPTZ');
+    expect(migration).toContain('CREATE OR REPLACE FUNCTION public.fn_resolve_shipment_cancellation_refund(');
     expect(statements(migration)).toContain(statements(cancel).replace(/^DROP FUNCTION[^\n]*\n/m, ''));
     expect(migration.match(/^BEGIN;$/gm)).toHaveLength(1);
     expect(migration.match(/^COMMIT;$/gm)).toHaveLength(1);
@@ -60,7 +71,7 @@ describe('shipment cancellation refund resolution migration (SQL text)', () => {
     }
     expect(sql).toContain('(refund_resolved_at IS NULL) = (refund_resolved_by IS NULL)');
     expect(sql).toContain('(refund_resolved_at IS NULL) = (refund_resolution_reference IS NULL)');
-    expect(sql).toContain("refund_resolved_at IS NULL OR COALESCE(refund_status IN ('failed', 'canceled'), FALSE)");
+    expect(sql).toContain("OR COALESCE(refund_status IN ('failed', 'canceled'), FALSE)");
     expect(sql).toContain('char_length(refund_resolution_reference) BETWEEN 1 AND 200');
   });
 
