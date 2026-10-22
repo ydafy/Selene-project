@@ -153,4 +153,5 @@ Sentry creates the `cron-watchdog` Cron Monitor on its first check-in (free plan
 
 1. `get_advisors` security and performance: no new findings.
 2. A real end-to-end purchase, label, delivery, and payout with live keys and a small amount.
-3. Every cron job shows successful runs in `cron.job_run_details`.
+3. One manual pass of the main journeys in the app and admin-web (purchase, cancellation with refund, notifications, admin Payments "Necesita atención"). It looks for what automated checks cannot see: confusing copy, layout, real-device behavior. Logic is already covered by the automated checks in `AGENTS.md`, "Verifying a change".
+4. Every cron job shows successful runs in `cron.job_run_details`.
