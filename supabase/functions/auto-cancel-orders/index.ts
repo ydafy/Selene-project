@@ -4,6 +4,11 @@ import Stripe from 'https://esm.sh/stripe@17.0.0';
 
 import type { Tables } from '../../../packages/types/src/index.ts';
 import { createCancellationReporter } from '../_shared/cancellation-alerts.ts';
+import {
+  acquireAutoCancelLease,
+  releaseAutoCancelLease,
+} from '../_shared/auto-cancel-lease.ts';
+import { isAuthorizedCronRequest } from '../_shared/cron-auth.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import { runShipmentCancellation } from '../_shared/shipment-cancellation.ts';
 import { resolveAutoCancelShipmentCancellationGate } from '../_shared/auto-cancel-safety.ts';
@@ -33,7 +38,14 @@ const log = (
 
 const reportCritical = createCancellationReporter('auto-cancel-orders', log);
 
-serve(withSentry('auto-cancel-orders', async () => {
+serve(withSentry('auto-cancel-orders', async (req: Request) => {
+  if (!isAuthorizedCronRequest(req, Deno.env.get('CRON_SECRET'))) {
+    return new Response(JSON.stringify({ error: 'UNAUTHORIZED' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   const supabaseAdmin = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -43,37 +55,38 @@ serve(withSentry('auto-cancel-orders', async () => {
     httpClient: Stripe.createFetchHttpClient(),
   });
 
+  let leaseId: string | undefined;
+
   try {
     log('INFO', 'Iniciando proceso de auto-cancelación');
 
-    // 0. Evitar ejecución concurrente — lock por 10 minutos
-    const { data: lock } = await supabaseAdmin
-      .from('system_settings')
-      .select('auto_cancel_orders_running')
-      .single();
-
-    if (lock?.auto_cancel_orders_running) {
-      log(
-        'WARN',
-        'Otro proceso de auto-cancel-orders está corriendo, saliendo',
-      );
-      return new Response(JSON.stringify({ message: 'Already running' }), {
-        status: 200,
-      });
-    }
-
-    await supabaseAdmin
-      .from('system_settings')
-      .update({ auto_cancel_orders_running: true })
-      .eq('id', 1);
+    const lease = await acquireAutoCancelLease(supabaseAdmin, 'orders', log);
+    if (!lease.acquired) return lease.response;
+    leaseId = lease.leaseId;
 
     // 1. Obtener configuración
-    const { data: settings } = await supabaseAdmin
+    const { data: settings, error: settingsError } = await supabaseAdmin
       .from('system_settings')
       .select('order_expiration_hours')
       .single();
 
-    const hours = settings?.order_expiration_hours || 48;
+    // Fail closed: a failed read or a non-positive-integer value never falls back to a default.
+    const hours = settings?.order_expiration_hours;
+    if (
+      settingsError ||
+      typeof hours !== 'number' ||
+      !Number.isInteger(hours) ||
+      hours <= 0
+    ) {
+      log('ERROR', 'Auto-cancel settings invalid', {
+        setting: 'order_expiration_hours',
+        value: hours ?? null,
+      });
+      return new Response(
+        JSON.stringify({ error: 'AUTO_CANCEL_SETTINGS_INVALID' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
     const expirationLimit = new Date(
       Date.now() - hours * 60 * 60 * 1000,
     ).toISOString();
@@ -87,17 +100,12 @@ serve(withSentry('auto-cancel-orders', async () => {
       .eq('status', 'paid')
       .is('tracking_number', null)
       .lt('created_at', expirationLimit)
+      .order('created_at', { ascending: true })
       .limit(50);
 
     if (fetchError) throw fetchError;
     if (!expiredShipments || expiredShipments.length === 0) {
       log('INFO', 'No hay shipments para cancelar');
-
-      // Liberar lock antes de salir
-      await supabaseAdmin
-        .from('system_settings')
-        .update({ auto_cancel_orders_running: false })
-        .eq('id', 1);
 
       return new Response(
         JSON.stringify({ message: 'No shipments to cancel' }),
@@ -110,8 +118,19 @@ serve(withSentry('auto-cancel-orders', async () => {
     log('INFO', `Procesando ${expiredShipments.length} shipments expirados`);
 
     let successCount = 0;
+    let deferred = 0;
 
-    for (const shipment of expiredShipments) {
+    for (const [index, shipment] of expiredShipments.entries()) {
+      if (lease.budgetExceeded()) {
+        deferred = expiredShipments.length - index;
+        log(
+          'WARN',
+          'Auto-cancel run budget reached; remaining shipments wait for the next run',
+          { deferred },
+        );
+        break;
+      }
+
       try {
         const result = await runShipmentCancellation({
           context: {
@@ -470,19 +489,15 @@ serve(withSentry('auto-cancel-orders', async () => {
 
     log('INFO', 'Proceso finalizado', {
       total: expiredShipments.length,
+      deferred,
       success: successCount,
     });
 
-    // 7. Liberar lock
-    await supabaseAdmin
-      .from('system_settings')
-      .update({ auto_cancel_orders_running: false })
-      .eq('id', 1);
-
     return new Response(
       JSON.stringify({
-        processed: expiredShipments.length,
+        processed: expiredShipments.length - deferred,
         success: successCount,
+        deferred,
       }),
       {
         status: 200,
@@ -490,17 +505,13 @@ serve(withSentry('auto-cancel-orders', async () => {
       },
     );
   } catch (error: unknown) {
-    // Liberar lock en caso de error crítico
-    await supabaseAdmin
-      .from('system_settings')
-      .update({ auto_cancel_orders_running: false })
-      .eq('id', 1);
-
     log('ERROR', 'Fallo crítico en auto-cancel-orders', {
       error: error instanceof Error ? error.message : String(error),
     });
     return new Response(JSON.stringify({ error: 'INTERNAL_ERROR' }), {
       status: 500,
     });
+  } finally {
+    await releaseAutoCancelLease(supabaseAdmin, 'orders', leaseId, log);
   }
 }));

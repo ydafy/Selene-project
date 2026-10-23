@@ -1,0 +1,26 @@
+meta {
+  name: public-hides-rejected
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/products?id=eq.00000000-0000-4000-8000-0000000000b7&select=id,status
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+tests {
+  test("a guest cannot see a REJECTED listing", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([]);
+  });
+}
+
+docs {
+  REJECTED stays hidden from the public (owner and admins still read it).
+}

@@ -15,6 +15,7 @@ const catalogue = {
   'product.approved_with_note': { seller: ['check-circle-outline', 'success', 'listing'] },
   'product.rejected': { seller: ['pencil-outline', 'primary', 'listing'] },
   'product.available': { buyer: ['check-circle-outline', 'success', 'listing'] },
+  'product.interest': { seller: ['heart-outline', 'primary', 'listing'] },
   'return.seller_evidence_submitted': { buyer: ['file-document-outline', 'primary', 'return'] },
   'return.delivered': { buyer: ['package-variant-closed-check', 'primary', 'return'], seller: ['package-variant-closed-check', 'primary', 'return'] },
 } as const;

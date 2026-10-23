@@ -1,0 +1,26 @@
+meta {
+  name: public-sees-pending-verification
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/products?id=eq.00000000-0000-4000-8000-0000000000b5&select=id,status
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+tests {
+  test("a guest sees a listing that is PENDING_VERIFICATION", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ id: "00000000-0000-4000-8000-0000000000b5", status: "PENDING_VERIFICATION" }]);
+  });
+}
+
+docs {
+  products_select_public shows PENDING_VERIFICATION. Seeded in supabase/seed.sql.
+}

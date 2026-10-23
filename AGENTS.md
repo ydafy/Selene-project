@@ -61,7 +61,7 @@ Check these instead of guessing:
 | --------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | How does the product behave today?      | The code and its tests                                                                                |
 | What is the current feature asking for? | `odd/tasks/<feature>.md`, especially its `## Specs` and `## Log`                                      |
-| What was decided before, and why?       | Engram memory for project `school-portal`, when your harness has it; `docs/decision-log.md` for setup |
+| What was decided before, and why?       | Engram memory for project `selene-project`, when your harness has it; `docs/decision-log.md` for setup |
 | Which tables, columns, and enums exist? | `packages/types/src/database.types.ts` and aliases in `packages/types/src/index.ts`                   |
 | What is deployed right now?             | The Supabase MCP (see below), not the repository                                                      |
 | What does production need?              | `docs/go-live.md`                                                                                     |
@@ -178,7 +178,10 @@ Project `selene-ze/selene-edge-functions` (free plan) receives Edge Function err
 
 ## Git
 
-- Commit, push, open PRs, or merge only when asked.
+- Push, open PRs, or merge only when asked.
+- Inside an authorized feature on its feature branch, commit each work unit as soon as its checks pass; do not wait to be asked. Target about 400 authored changed lines per commit (larger commits exceed the native review budget). A change to money, SQL, RLS, or auth goes in its own commit.
+- When planning a roadmap, size each task so it lands as one such commit. If a task will clearly exceed that, split it in the plan, not at commit time.
+- Generated files (`packages/types/src/database.types.ts`) go in the same commit as the migration that produced them.
 - Keep commits scoped: code, tests, migration, and contract updates for one behavior go together. Use Conventional Commits.
 - Husky runs `bun test` before every commit.
 - No AI attribution or `Co-Authored-By` lines.

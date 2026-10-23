@@ -1,0 +1,26 @@
+meta {
+  name: public-sees-only-verification-states
+  type: http
+  seq: 14
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/products?status=in.(PENDING_VERIFICATION,IN_REVIEW,REJECTED)&select=id&order=id
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+tests {
+  test("only the two verification states are public, REJECTED is not", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ id: "00000000-0000-4000-8000-0000000000b5" }, { id: "00000000-0000-4000-8000-0000000000b6" }]);
+  });
+}
+
+docs {
+  Run before the checkout request that touches b6; seeded states are b5 PENDING_VERIFICATION, b6 IN_REVIEW, b7 REJECTED.
+}

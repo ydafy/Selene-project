@@ -19,6 +19,7 @@ const fetchProducts = async (
       .from('products')
       .select('*')
       .is('deleted_at', null) // Integridad: No mostrar borrados
+      .in('status', ['VERIFIED', 'SOLD']) // Do not rely on RLS to hide non-public statuses
       .neq('status', 'HIDDEN')
       .order('created_at', { ascending: false });
 

@@ -1,0 +1,40 @@
+meta {
+  name: login-seller
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/auth/v1/token?grant_type=password
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+body:json {
+  {
+    "email": "seller@selene.local",
+    "password": "password123"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("sellerToken", res.getBody().access_token);
+  }
+}
+
+tests {
+  test("logs in the seeded seller", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().access_token).to.be.a("string");
+  });
+}
+
+docs {
+  Signs in the seeded seller (supabase/seed.sql) and stores the access token in the
+  `sellerToken` runtime variable for the requests that follow.
+}

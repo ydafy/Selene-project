@@ -15,6 +15,11 @@ describe('notification presentation', () => {
     expect(getNotificationPresentation(Object.assign({}, legacy, base, { event_payload: { recipient_role: 'buyer' } }))).toEqual({ icon: 'check-circle-outline', accent: 'success', state: 'listing' });
     expect(getNotificationPresentation(Object.assign({}, legacy, base, { event_payload: { recipient_role: 'seller' } }))).toEqual({ icon: 'alert-circle-outline', accent: 'error', state: 'generic' });
   });
+  test('presents product.interest as a seller listing notice and rejects the buyer role', () => {
+    const base = { event_kind: 'product.interest', source_event_key: 'product.interest:123:1' };
+    expect(getNotificationPresentation(Object.assign({}, legacy, base, { event_payload: { recipient_role: 'seller' } }))).toEqual({ icon: 'heart-outline', accent: 'primary', state: 'listing' });
+    expect(getNotificationPresentation(Object.assign({}, legacy, base, { event_payload: { recipient_role: 'buyer' } }))).toEqual({ icon: 'alert-circle-outline', accent: 'error', state: 'generic' });
+  });
   test('rejects unknown or malformed metadata instead of inferring from legacy severity', () => {
     for (const metadata of [
       { event_kind: 'unknown', source_event_key: 'unknown:123', event_payload: { recipient_role: 'seller' } },

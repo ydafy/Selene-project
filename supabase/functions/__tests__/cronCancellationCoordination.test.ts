@@ -6,6 +6,7 @@ import {
   computeShipmentRefundAmountCents,
 } from '../_shared/refund-basis';
 import { resolveAutoCancelShipmentCancellationGate } from '../_shared/auto-cancel-safety';
+import { isAuthorizedCronRequest } from '../_shared/cron-auth';
 
 // Execute the actual per-shipment adapter, without importing serve or remote SDKs.
 function adapter(name: string) {
@@ -619,7 +620,12 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
           `"caller_role":"${source}"`,
         );
       });
-    test('a top-level failure returns a stable INTERNAL_ERROR and logs the raw error', async () => {
+    // Runs the whole handler with stubbed imports; `lease` decides what the lease helper returns.
+    // `settings` controls the system_settings read; without it the read throws.
+    function runHandler(
+      lease: { acquired: boolean },
+      settings?: { data: unknown; error?: unknown },
+    ) {
       const source = readFileSync(
         new URL(`../${name}/index.ts`, import.meta.url),
         'utf8',
@@ -627,18 +633,34 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
       const executable = new Bun.Transpiler({ loader: 'ts' }).transformSync(
         source.replace(/^import\s[\s\S]*?from\s+['"][^'"]+['"];\s*/gm, ''),
       );
+      const job = name === 'auto-cancel-orders' ? 'orders' : 'preparing';
       const logs: Record<string, unknown>[] = [];
-      let handler!: () => Promise<Response>;
+      const tables: string[] = [];
+      const leaseCalls: unknown[][] = [];
+      let clientsCreated = 0;
+      let handler!: (req: Request) => Promise<Response>;
+      const shipmentQuery: unknown[][] = [];
       const query: Record<string, unknown> = {
         select: () => query,
         update: () => query,
         eq: () => query,
         single: async () => {
+          if (settings) return { error: null, ...settings };
           throw new Error('secret db detail');
         },
         then: (resolve: (value: unknown) => unknown) =>
           Promise.resolve(resolve({})),
       };
+      const shipmentsChain: Record<string, unknown> = {
+        then: (resolve: (value: unknown) => unknown) =>
+          Promise.resolve(resolve({ data: [], error: null })),
+      };
+      for (const method of ['select', 'eq', 'is', 'lt', 'order', 'limit'])
+        shipmentsChain[method] = (...args: unknown[]) => {
+          shipmentQuery.push([method, ...args]);
+          return shipmentsChain;
+        };
+      const held = new Response(JSON.stringify({ message: 'Already running' }));
       new Function(
         'serve',
         'createClient',
@@ -652,12 +674,23 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         'allocateCancellationLossCents',
         'computeShipmentRefundAmountCents',
         'buildStripeFeeReconciliationPlan',
+        'acquireAutoCancelLease',
+        'releaseAutoCancelLease',
+        'isAuthorizedCronRequest',
         executable,
       )(
         (callback: typeof handler) => {
           handler = callback;
         },
-        () => ({ from: () => query }),
+        () => {
+          clientsCreated += 1;
+          return {
+            from: (table: string) => {
+              tables.push(table);
+              return table === 'shipments' ? shipmentsChain : query;
+            },
+          };
+        },
         class {
           static createFetchHttpClient() {
             return {};
@@ -672,8 +705,37 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         allocateCancellationLossCents,
         computeShipmentRefundAmountCents,
         () => undefined,
+        async (_client: unknown, leaseJob: string) => {
+          leaseCalls.push(['acquire', leaseJob]);
+          return lease.acquired
+            ? { acquired: true, leaseId: 'lease-1', budgetExceeded: () => false }
+            : { acquired: false, response: held };
+        },
+        async (_client: unknown, leaseJob: string, leaseId: unknown) => {
+          leaseCalls.push(['release', leaseJob, leaseId]);
+        },
+        isAuthorizedCronRequest,
       );
-      const response = await handler();
+      // The stubbed Deno.env returns 'fake' for every key, including CRON_SECRET.
+      const call = (
+        headers: Record<string, string> = { 'x-cron-secret': 'fake' },
+      ) => handler(new Request('http://localhost/', { method: 'POST', headers }));
+      return {
+        run: () => call(),
+        call,
+        logs,
+        tables,
+        leaseCalls,
+        job,
+        held,
+        shipmentQuery,
+        clientsCreated: () => clientsCreated,
+      };
+    }
+
+    test('a top-level failure returns a stable INTERNAL_ERROR, logs the raw error and releases the lease', async () => {
+      const { run, logs, leaseCalls, job } = runHandler({ acquired: true });
+      const response = await run();
       expect(response.status).toBe(500);
       expect(await response.text()).toBe('{"error":"INTERNAL_ERROR"}');
       expect(logs).toContainEqual(
@@ -683,18 +745,96 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
           error: 'secret db detail',
         }),
       );
+      expect(leaseCalls).toEqual([
+        ['acquire', job],
+        ['release', job, 'lease-1'],
+      ]);
     });
-    test('preserves settings, timeout selection and global locks', () => {
+    for (const [label, headers] of [
+      ['no secret', {}],
+      ['a wrong secret', { 'x-cron-secret': 'not-the-secret' }],
+      ['only an Authorization bearer', { Authorization: 'Bearer fake' }],
+    ] as const)
+      test(`${label} returns 401 UNAUTHORIZED before any client, lease or table is touched`, async () => {
+        const { call, tables, leaseCalls, clientsCreated } = runHandler({
+          acquired: true,
+        });
+        const response = await call({ ...headers });
+        expect(response.status).toBe(401);
+        expect(response.headers.get('Content-Type')).toBe('application/json');
+        expect(await response.text()).toBe('{"error":"UNAUTHORIZED"}');
+        expect(clientsCreated()).toBe(0);
+        expect(leaseCalls).toEqual([]);
+        expect(tables).toEqual([]);
+      });
+    test('a lease held by another run returns its response without reading settings or shipments', async () => {
+      const { run, tables, leaseCalls, job, held } = runHandler({ acquired: false });
+      expect(await run()).toBe(held);
+      expect(tables).toEqual([]);
+      // Nothing acquired, so the release call carries no lease id and does nothing.
+      expect(leaseCalls).toEqual([
+        ['acquire', job],
+        ['release', job, undefined],
+      ]);
+    });
+    const paidJob = name === 'auto-cancel-orders';
+    const column = paidJob ? 'order_expiration_hours' : 'preparing_expiration_hours';
+    const timestampColumn = paidJob ? 'created_at' : 'updated_at';
+    for (const [label, settings] of [
+      ['null', { data: { [column]: null } }],
+      ['0', { data: { [column]: 0 } }],
+      ['-1', { data: { [column]: -1 } }],
+      ['1.5', { data: { [column]: 1.5 } }],
+      ['a missing row', { data: null }],
+      ['a read error', { data: null, error: { message: 'boom' } }],
+    ] as const)
+      test(`an invalid ${column} (${label}) returns 500 AUTO_CANCEL_SETTINGS_INVALID, never queries shipments and releases the lease`, async () => {
+        const { run, logs, tables, leaseCalls, job } = runHandler(
+          { acquired: true },
+          settings,
+        );
+        const response = await run();
+        expect(response.status).toBe(500);
+        expect(await response.text()).toBe('{"error":"AUTO_CANCEL_SETTINGS_INVALID"}');
+        expect(logs).toContainEqual(
+          expect.objectContaining({
+            level: 'ERROR',
+            msg: 'Auto-cancel settings invalid',
+            setting: column,
+          }),
+        );
+        expect(tables).not.toContain('shipments');
+        expect(leaseCalls).toEqual([
+          ['acquire', job],
+          ['release', job, 'lease-1'],
+        ]);
+      });
+    test(`a valid ${column} sets the limit from it and orders candidates oldest first`, async () => {
+      const { run, shipmentQuery } = runHandler(
+        { acquired: true },
+        { data: { [column]: 5 } },
+      );
+      const before = Date.now();
+      const response = await run();
+      const after = Date.now();
+      expect(response.status).toBe(200);
+      const lt = shipmentQuery.find(([method]) => method === 'lt')!;
+      expect(lt[1]).toBe(timestampColumn);
+      const limit = new Date(lt[2] as string).getTime();
+      expect(limit).toBeGreaterThanOrEqual(before - 5 * 3600 * 1000);
+      expect(limit).toBeLessThanOrEqual(after - 5 * 3600 * 1000);
+      const methods = shipmentQuery.map(([method]) => method);
+      expect(shipmentQuery).toContainEqual(['order', timestampColumn, { ascending: true }]);
+      expect(methods.indexOf('order')).toBeLessThan(methods.indexOf('limit'));
+      expect(shipmentQuery).toContainEqual(['limit', 50]);
+    });
+    test('preserves settings and timeout selection, without the legacy boolean lock', () => {
       const source = readFileSync(
         new URL(`../${name}/index.ts`, import.meta.url),
         'utf8',
       );
       const paid = name === 'auto-cancel-orders';
-      expect(source).toContain(
-        paid
-          ? 'settings?.order_expiration_hours || 48'
-          : 'settings?.preparing_expiration_hours || 72',
-      );
+      expect(source).not.toContain('expiration_hours || ');
       expect(source).toContain(
         paid
           ? ".lt('created_at', expirationLimit)"
@@ -703,11 +843,7 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
       expect(source).toContain(
         paid ? ".eq('status', 'paid')" : ".eq('status', 'preparing')",
       );
-      expect(source).toContain(
-        paid
-          ? 'auto_cancel_orders_running: false'
-          : 'auto_cancel_preparing_running: false',
-      );
+      expect(source).not.toContain('_running');
       expect(source).not.toContain('charge_already_refunded');
     });
   });

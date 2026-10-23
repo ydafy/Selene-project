@@ -1,0 +1,36 @@
+meta {
+  name: checkout-in-review-refused
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/create-connect-payment
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  {
+    "productIds": ["00000000-0000-4000-8000-0000000000b6"],
+    "addressId": "00000000-0000-4000-8000-0000000000a3"
+  }
+}
+
+tests {
+  test("a listing in review is visible but cannot be bought", function () {
+    expect(res.getStatus()).to.equal(409);
+    expect(res.getBody().error).to.equal("RESERVATION_FAILED");
+  });
+}
+
+docs {
+  Run after auth/login-buyer (needs `buyerToken`) with the functions server. Only VERIFIED
+  listings reserve (fn_reserve_products), so opening visibility does not open purchase.
+  checkout-in-review-unchanged proves the listing was not touched.
+}

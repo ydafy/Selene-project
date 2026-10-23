@@ -16,7 +16,6 @@ INSERT INTO public.system_settings (
   service_fee_pct, service_fee_fixed_cents, insurance_rate, payout_fee_fixed_cents,
   currency, shipping_buffer_cents, package_presets, return_label_fee_cents,
   order_expiration_hours, min_payout_amount_cents, preparing_expiration_hours,
-  auto_cancel_orders_running, auto_cancel_preparing_running,
   return_delivery_timeout_running, release_funds_running,
   isr_withholding_pct, iva_withholding_pct, connect_enabled,
   novice_completed_threshold, novice_active_limit, trusted_active_limit,
@@ -36,7 +35,6 @@ INSERT INTO public.system_settings (
   }'::jsonb,
   30000,
   48, 10000, 72,
-  false, false,
   false, false,
   0.00, 0.00, false,
   3, 3, 10,
@@ -149,8 +147,9 @@ INSERT INTO public.products (
 SELECT
   p.id, p.name, p.description, p.price, p.category, p.condition, p.usage,
   ARRAY['https://placehold.co/800x800/png?text=' || replace(p.name, ' ', '+')],
-  'VERIFIED', p.specifications, '00000000-0000-4000-8000-000000000002',
-  p.shipping_cost, '06600', p.package_preset, now(),
+  p.status::public.product_status_enum, p.specifications, '00000000-0000-4000-8000-000000000002',
+  p.shipping_cost, '06600', p.package_preset,
+  CASE WHEN p.status = 'VERIFIED' THEN now() END,
   round(p.shipping_cost * 100)::bigint
     + s.shipping_buffer_cents
     + ceil(round(p.price * 100)::numeric * public.normalize_publication_rate(s.insurance_rate))::bigint,
@@ -159,12 +158,18 @@ SELECT
 FROM public.system_settings s
 CROSS JOIN (VALUES
   ('00000000-0000-4000-8000-0000000000b1'::uuid, 'NVIDIA RTX 3070', 'Tarjeta usada, sin minería, con caja original.', 7500::numeric,
-   'GPU', 'used', 'gaming', '{"chipset": "NVIDIA", "brand": "MSI", "model": "RTX 3070", "memory": "8 GB"}'::jsonb, 180::numeric, 'gpu_1'),
+   'GPU', 'used', 'gaming', '{"chipset": "NVIDIA", "brand": "MSI", "model": "RTX 3070", "memory": "8 GB"}'::jsonb, 180::numeric, 'gpu_1', 'VERIFIED'),
   ('00000000-0000-4000-8000-0000000000b2'::uuid, 'AMD Ryzen 7 5800X', 'Procesador funcionando al 100%, sin disipador.', 3900::numeric,
-   'CPU', 'used', 'gaming', '{"brand": "AMD", "family": "Ryzen 7", "model": "5800X", "cores": "8"}'::jsonb, 120::numeric, 'cpu_2'),
+   'CPU', 'used', 'gaming', '{"brand": "AMD", "family": "Ryzen 7", "model": "5800X", "cores": "8"}'::jsonb, 120::numeric, 'cpu_2', 'VERIFIED'),
   ('00000000-0000-4000-8000-0000000000b3'::uuid, 'Corsair Vengeance 32 GB DDR4', 'Kit 2x16 GB a 3600 MHz.', 1600::numeric,
-   'RAM', 'used', 'office', '{"brand": "Corsair", "type": "DDR4", "capacity": "32 GB", "speed": "3600 MHz"}'::jsonb, 100::numeric, 'ram_1'),
+   'RAM', 'used', 'office', '{"brand": "Corsair", "type": "DDR4", "capacity": "32 GB", "speed": "3600 MHz"}'::jsonb, 100::numeric, 'ram_1', 'VERIFIED'),
   ('00000000-0000-4000-8000-0000000000b4'::uuid, 'ASUS TUF B550-PLUS', 'Tarjeta madre AM4 en caja original.', 2400::numeric,
-   'Motherboard', 'used', 'gaming', '{"brand": "ASUS", "socket": "AM4", "form_factor": "ATX", "chipset": "B550"}'::jsonb, 150::numeric, 'mobo_1')
-) AS p(id, name, description, price, category, condition, usage, specifications, shipping_cost, package_preset)
+   'Motherboard', 'used', 'gaming', '{"brand": "ASUS", "socket": "AM4", "form_factor": "ATX", "chipset": "B550"}'::jsonb, 150::numeric, 'mobo_1', 'VERIFIED'),
+  ('00000000-0000-4000-8000-0000000000b5'::uuid, 'Gigabyte RTX 3060 Ti', 'Tarjeta usada, pendiente de enviar pruebas.', 5200::numeric,
+   'GPU', 'used', 'gaming', '{"chipset": "NVIDIA", "brand": "Gigabyte", "model": "RTX 3060 Ti", "memory": "8 GB"}'::jsonb, 180::numeric, 'gpu_1', 'PENDING_VERIFICATION'),
+  ('00000000-0000-4000-8000-0000000000b6'::uuid, 'Intel Core i7-12700K', 'Procesador en revisión por el equipo de Selene.', 4800::numeric,
+   'CPU', 'used', 'gaming', '{"brand": "Intel", "family": "Core i7", "model": "12700K", "cores": "12"}'::jsonb, 120::numeric, 'cpu_2', 'IN_REVIEW'),
+  ('00000000-0000-4000-8000-0000000000b7'::uuid, 'Kingston Fury 16 GB DDR4', 'Kit rechazado en la verificación.', 900::numeric,
+   'RAM', 'used', 'office', '{"brand": "Kingston", "type": "DDR4", "capacity": "16 GB", "speed": "3200 MHz"}'::jsonb, 100::numeric, 'ram_1', 'REJECTED')
+) AS p(id, name, description, price, category, condition, usage, specifications, shipping_cost, package_preset, status)
 WHERE s.id = 1;

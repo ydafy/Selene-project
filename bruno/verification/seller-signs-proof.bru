@@ -1,0 +1,27 @@
+meta {
+  name: seller-signs-proof
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/storage/v1/object/sign/verification/00000000-0000-4000-8000-0000000000b1/{{proofName}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{sellerToken}}
+}
+
+body:json {
+  { "expiresIn": 60 }
+}
+
+tests {
+  test("the listing owner gets a signed URL", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().signedURL).to.be.a("string");
+  });
+}

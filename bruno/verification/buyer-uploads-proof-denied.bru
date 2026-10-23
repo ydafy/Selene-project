@@ -1,0 +1,32 @@
+meta {
+  name: buyer-uploads-proof-denied
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/storage/v1/object/verification/00000000-0000-4000-8000-0000000000b1/{{proofName}}
+  body: text
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+  Content-Type: text/plain
+}
+
+body:text {
+  bruno verification proof
+}
+
+tests {
+  test("a non-owner cannot upload into another listing's proof folder", function () {
+    expect(res.getStatus()).to.be.oneOf([400, 401, 403]);
+    expect(res.getBody().error).to.be.oneOf(["Unauthorized", "new row violates row-level security policy"]);
+  });
+}
+
+docs {
+  Run after seller-uploads-proof (shares proofName) and auth/login-buyer.
+}

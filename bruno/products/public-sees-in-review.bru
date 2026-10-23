@@ -1,0 +1,26 @@
+meta {
+  name: public-sees-in-review
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/products?id=eq.00000000-0000-4000-8000-0000000000b6&select=id,status
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+tests {
+  test("a guest sees a listing that is IN_REVIEW", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ id: "00000000-0000-4000-8000-0000000000b6", status: "IN_REVIEW" }]);
+  });
+}
+
+docs {
+  products_select_public shows IN_REVIEW. Seeded in supabase/seed.sql.
+}

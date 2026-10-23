@@ -1,0 +1,23 @@
+meta {
+  name: seller_trust_stats-as-admin
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/seller_trust_stats
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+tests {
+  test("an admin can read seller_trust_stats", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.an("array");
+  });
+}
