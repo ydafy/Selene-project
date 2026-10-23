@@ -1,0 +1,34 @@
+meta {
+  name: delete-account-throwaway-row
+  type: http
+  seq: 41
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/account_closures?user_id=eq.{{deleteThrowawaySub}}&select=*
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("one closure row, cleanup finished by a single attempt", function () {
+    expect(res.getStatus()).to.equal(200);
+    const rows = res.getBody();
+    expect(rows.length).to.equal(1);
+    expect(rows[0].stripe_customer_cleanup).to.equal("not_needed");
+    expect(rows[0].stripe_account_cleanup).to.equal("not_needed");
+    expect(rows[0].storage_cleanup).to.equal("done");
+    expect(rows[0].attempts).to.equal(1);
+    expect(rows[0].last_error).to.equal(null);
+  });
+}
+
+docs {
+  Reads account_closures with the service role (no client grant exists). attempts = 1
+  after the 200 and the refused repeat proves the repeat re-did nothing.
+}

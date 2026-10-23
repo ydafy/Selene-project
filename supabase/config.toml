@@ -29,6 +29,11 @@ verify_jwt = false
 [functions.cron-watchdog]
 verify_jwt = false
 
+# Self-service account closure: the caller JWT is verified at the gateway and again by
+# auth.getUser inside the function, which also requires a sign-in newer than 10 minutes.
+[functions.delete-account]
+verify_jwt = true
+
 # Admin-invoked: the caller's Supabase JWT is verified at the gateway and the function
 # then checks profiles_private.role = 'admin'.
 [functions.resolve-shipment-refund]

@@ -1,0 +1,33 @@
+meta {
+  name: delete-account-blocked-setup
+  type: http
+  seq: 32
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/wallets?user_id=eq.00000000-0000-4000-8000-000000000003
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  { "pending_balance": 1 }
+}
+
+tests {
+  test("the seeded buyer holds a pending legacy wallet balance", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].pending_balance).to.equal(1);
+  });
+}
+
+docs {
+  Local stack only. Gives the seeded buyer one pending obligation (a legacy wallet
+  balance) for delete-account-blocked. delete-account-blocked-cleanup restores it.
+}

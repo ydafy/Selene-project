@@ -294,3 +294,6 @@ $$;
 
 COMMENT ON FUNCTION public.fn_close_account(uuid) IS
   'Service-only (SECURITY DEFINER): anonymizes and closes an account in one transaction, or returns a blocked reason with no change. Idempotent: a second call returns already_closed.';
+
+REVOKE EXECUTE ON FUNCTION public.fn_close_account(uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_close_account(uuid) TO service_role;

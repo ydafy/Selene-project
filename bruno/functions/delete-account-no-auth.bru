@@ -1,0 +1,26 @@
+meta {
+  name: delete-account-no-auth
+  type: http
+  seq: 30
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/delete-account
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+tests {
+  test("rejects a call without a user token", function () {
+    expect(res.getStatus()).to.equal(401);
+  });
+}
+
+docs {
+  Needs the functions server (see stripe-webhooks-unsigned). With verify_jwt = true the
+  gateway answers first, so no body is asserted; nothing is read or changed.
+}

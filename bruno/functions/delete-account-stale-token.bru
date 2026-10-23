@@ -1,0 +1,56 @@
+meta {
+  name: delete-account-stale-token
+  type: http
+  seq: 38
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/delete-account
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{deleteStaleToken}}
+}
+
+script:pre-request {
+  // Local stack only: re-sign the throwaway user's claims with an amr entry from one
+  // hour ago, using the public default JWT secret of `supabase start`. The session id
+  // is the real one, so auth.getUser accepts the token and only the age check can stop it.
+  const CryptoJS = require("crypto-js");
+  const urlSafe = (base64) => base64.replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const encode = (value) => urlSafe(Buffer.from(JSON.stringify(value)).toString("base64"));
+  const now = Math.floor(Date.now() / 1000);
+  const header = encode({ alg: "HS256", typ: "JWT" });
+  const payload = encode({
+    iss: bru.getEnvVar("baseUrl") + "/auth/v1",
+    aud: "authenticated",
+    role: "authenticated",
+    sub: bru.getVar("deleteThrowawaySub"),
+    session_id: bru.getVar("deleteThrowawaySession"),
+    iat: now,
+    exp: now + 600,
+    amr: [{ method: "password", timestamp: now - 3600 }],
+  });
+  const signature = urlSafe(
+    CryptoJS.HmacSHA256(
+      header + "." + payload,
+      "super-secret-jwt-token-with-at-least-32-characters-long",
+    ).toString(CryptoJS.enc.Base64),
+  );
+  bru.setVar("deleteStaleToken", header + "." + payload + "." + signature);
+}
+
+tests {
+  test("a valid session whose sign-in is an hour old must sign in again", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody()).to.deep.equal({ error: "REAUTH_REQUIRED" });
+  });
+}
+
+docs {
+  Proves the 10-minute rule without waiting: the token is genuine except for its amr
+  timestamp. Nothing is closed; delete-account-throwaway closes the same user next.
+}

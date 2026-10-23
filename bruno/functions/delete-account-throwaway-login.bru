@@ -1,0 +1,42 @@
+meta {
+  name: delete-account-throwaway-login
+  type: http
+  seq: 37
+}
+
+post {
+  url: {{baseUrl}}/auth/v1/token?grant_type=password
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+body:json {
+  {
+    "email": "{{deleteThrowawayEmail}}",
+    "password": "password123"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const token = res.getBody().access_token;
+    bru.setVar("deleteThrowawayToken", token);
+    const claims = JSON.parse(Buffer.from(token.split(".")[1], "base64").toString());
+    bru.setVar("deleteThrowawaySession", claims.session_id);
+    bru.setVar("deleteThrowawaySub", claims.sub);
+  }
+}
+
+tests {
+  test("signs in the throwaway user with a password", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}
+
+docs {
+  The token's amr claim holds [{method: "password", timestamp: now}].
+}

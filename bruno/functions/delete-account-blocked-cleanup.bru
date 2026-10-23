@@ -1,0 +1,32 @@
+meta {
+  name: delete-account-blocked-cleanup
+  type: http
+  seq: 35
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/wallets?user_id=eq.00000000-0000-4000-8000-000000000003
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  { "pending_balance": 0 }
+}
+
+tests {
+  test("the seeded buyer wallet is back to zero", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].pending_balance).to.equal(0);
+  });
+}
+
+docs {
+  Restores what delete-account-blocked-setup changed so the collection is repeatable.
+}

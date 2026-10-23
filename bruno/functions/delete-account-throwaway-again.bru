@@ -1,0 +1,29 @@
+meta {
+  name: delete-account-throwaway-again
+  type: http
+  seq: 40
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/delete-account
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{deleteThrowawayToken}}
+}
+
+tests {
+  test("the closed account's token no longer works", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody()).to.deep.equal({ error: "AUTH_REQUIRED" });
+  });
+}
+
+docs {
+  Closing deletes the user's sessions, so a repeat with the same token is refused as
+  unauthenticated: access ends at the first 200. A retry of the cleanup runs with the
+  service role (cleanup worker), never with a user token.
+}

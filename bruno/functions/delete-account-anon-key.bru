@@ -1,0 +1,28 @@
+meta {
+  name: delete-account-anon-key
+  type: http
+  seq: 31
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/delete-account
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{anonKey}}
+}
+
+tests {
+  test("a valid JWT that is not a user session is AUTH_REQUIRED", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody()).to.deep.equal({ error: "AUTH_REQUIRED" });
+  });
+}
+
+docs {
+  The anon key passes the gateway but auth.getUser finds no user behind it, so the
+  function stops before the sign-in check and before any RPC.
+}

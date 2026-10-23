@@ -1,0 +1,31 @@
+meta {
+  name: delete-account-blocked
+  type: http
+  seq: 34
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/delete-account
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{deleteBlockedToken}}
+}
+
+tests {
+  test("a pending obligation refuses the closure", function () {
+    expect(res.getStatus()).to.equal(409);
+    expect(res.getBody()).to.deep.equal({
+      error: "DELETE_BLOCKED",
+      blocked_reason: "pending_payouts",
+    });
+  });
+}
+
+docs {
+  Runs after delete-account-blocked-setup and delete-account-blocked-login. The
+  closure is refused and nothing changes, so the seeded buyer stays usable.
+}
