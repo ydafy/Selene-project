@@ -34,6 +34,10 @@ verify_jwt = false
 [functions.resolve-shipment-refund]
 verify_jwt = true
 
+# Admin-invoked list of unresolved refund problems; same admin check as resolve-shipment-refund.
+[functions.list-shipment-refund-problems]
+verify_jwt = true
+
 # Local Auth mirrors the deployed settings of project acoiclkeymgtlwcxilun so the
 # signup flow (confirmation code, password policy) behaves the same locally.
 # Google sign-in is not configured locally: it needs client secrets. "Require

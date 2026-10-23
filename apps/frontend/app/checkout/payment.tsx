@@ -19,6 +19,10 @@ import { ProductSummaryModal } from '../../components/features/checkout/ProductS
 import { Stack } from 'expo-router';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useCartStore } from '@/core/store/useCartStore';
+import {
+  useSellerPaymentReadiness,
+  isSellerBlocked,
+} from '../../core/hooks/useSellerPaymentReadiness';
 
 export default function PaymentScreen() {
   const { t } = useTranslation('checkout');
@@ -26,6 +30,13 @@ export default function PaymentScreen() {
 
   const summaryModalRef = useRef<BottomSheetModal>(null);
   const items = useCartStore((state) => state.items);
+
+  const { data: readiness } = useSellerPaymentReadiness(
+    items.map((item) => item.id),
+  );
+  const sellerNotReady = items.some((item) =>
+    isSellerBlocked(readiness, item.id),
+  );
 
   const {
     loading,
@@ -56,6 +67,19 @@ export default function PaymentScreen() {
     const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => sub.remove();
   }, [isBusy]);
+
+  if (sellerNotReady) {
+    return (
+      <Box flex={1} backgroundColor="background">
+        <Stack.Screen options={{ headerShown: false }} />
+        <GlobalHeader title={t('payment.securityTitle')} showBack />
+        <ErrorState
+          title={t('payment.errorTitle')}
+          message={t('payment.sellerNotReadyError')}
+        />
+      </Box>
+    );
+  }
 
   if (error) {
     return (

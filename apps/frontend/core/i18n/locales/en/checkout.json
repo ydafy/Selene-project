@@ -70,7 +70,8 @@
     "processing": "Processing...",
     "noAddressError": "Missing shipping address.",
     "outOfStockMsg": "Someone else just purchased one of your products.",
-    "genericError": "An error occurred while connecting to the server."
+    "genericError": "An error occurred while connecting to the server.",
+    "sellerNotReadyError": "One or more sellers can't receive payments yet. Remove those items from your cart or try again later."
   },
   "success": {
     "title": "Payment Confirmed!",

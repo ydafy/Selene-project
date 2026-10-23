@@ -1,0 +1,27 @@
+meta {
+  name: list-shipment-refund-problems-buyer
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{baseUrl}}/functions/v1/list-shipment-refund-problems
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+tests {
+  test("a signed-in buyer cannot list refund problems", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody()).to.deep.equal({ error: "ADMIN_ONLY" });
+  });
+}
+
+docs {
+  Run after auth/login-buyer (needs buyerToken). A valid non-admin session is stopped before the RPC.
+}

@@ -11,6 +11,17 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Product } from '@selene/types';
 import { useCartStore } from '../../../../core/store/useCartStore';
 import { supabase } from '../../../../core/db/supabase';
+import {
+  fetchSellerPaymentReadiness,
+  isSellerBlocked,
+} from '../../../../core/hooks/useSellerPaymentReadiness';
+import {
+  decidePurchaseGate,
+  PurchaseDialogVariant,
+} from '../../../../core/utils/productPurchaseGate';
+
+export type AddToCartResult =
+  'SUCCESS' | 'UNAVAILABLE' | 'ERROR' | PurchaseDialogVariant;
 
 export const useProductCart = (product: Product | null | undefined) => {
   const { t } = useTranslation(['product', 'common']);
@@ -23,9 +34,7 @@ export const useProductCart = (product: Product | null | undefined) => {
   /**
    * Maneja la validación y adición al carrito.
    */
-  const handleAddToCart = async (): Promise<
-    'SUCCESS' | 'NOT_VERIFIED' | 'SOLD' | 'ERROR'
-  > => {
+  const handleAddToCart = async (): Promise<AddToCartResult> => {
     if (!product) return 'ERROR';
 
     if (isAdded) {
@@ -50,7 +59,17 @@ export const useProductCart = (product: Product | null | undefined) => {
 
       if (error || !freshProduct) throw new Error('PRODUCT_NOT_FOUND');
 
-      // 2. VALIDAR: Actualización inteligente de caché
+      // 2. CHECK: el vendedor puede recibir pagos (advisory; fail-open, el servidor decide)
+      const sellerBlocked =
+        freshProduct.status === 'VERIFIED' &&
+        isSellerBlocked(
+          await fetchSellerPaymentReadiness([product.id]),
+          product.id,
+        );
+
+      // 3. VALIDAR: la pantalla abre el diálogo según el resultado
+      const decision = decidePurchaseGate(freshProduct.status, sellerBlocked);
+
       if (freshProduct.status !== 'VERIFIED') {
         // Actualizamos la caché solo si el objeto existe en TanStack Query
         queryClient.setQueryData(
@@ -59,20 +78,20 @@ export const useProductCart = (product: Product | null | undefined) => {
             return old ? { ...old, status: freshProduct.status } : old;
           },
         );
-
-        if (freshProduct.status === 'SOLD') {
-          Toast.show({
-            type: 'error',
-            text1: t('product:actions.notAvailable'),
-            text2: t('product:actions.notAvailableMsg'),
-          });
-          return 'SOLD';
-        }
-
-        return 'NOT_VERIFIED';
       }
 
-      // 3. ACT: Éxito
+      if (decision === 'unavailable') {
+        Toast.show({
+          type: 'error',
+          text1: t('product:actions.notAvailable'),
+          text2: t('product:actions.notAvailableMsg'),
+        });
+        return 'UNAVAILABLE';
+      }
+
+      if (decision !== 'add') return decision;
+
+      // 4. ACT: Éxito
       addItem(product);
 
       Toast.show({

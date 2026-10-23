@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 
 const help =
   'Usage: bun scripts/test-shipment-cancellation-refund-resolution.ts [--help]\n' +
-  'B2.3.1 SQL: the service-only fn_resolve_shipment_cancellation_refund lets an admin mark a failed/canceled\n' +
-  'shipment refund as resolved with a reference (audited), and completes a cancellation whose refund failed\n' +
-  'before success. fn_cancel_shipment accepts a resolved refund.\n' +
+  'B2.3.1/B2.4a SQL: the service-only fn_resolve_shipment_cancellation_refund lets an admin mark a failed/canceled\n' +
+  'shipment refund, or an escalated operation without a refund, as resolved with a reference (audited), and\n' +
+  'completes a cancellation that never succeeded. fn_cancel_shipment accepts a resolved refund.\n' +
   "Runs against this worktree's local Supabase stack (`supabase start`); every case rolls back.\n" +
   'Database URL: SELENE_LOCAL_DB_URL, else `supabase status --env`. Only 127.0.0.1/localhost is accepted.';
 
@@ -316,7 +316,7 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     },
   ],
   [
-    'refuses a shipment with no refund recorded: unstarted, claimed only, started without a refund, escalated without a refund',
+    'refuses a shipment with no refund recorded unless recovery escalated it: unstarted, claimed only, started without a refund',
     async (tx) => {
       // No operation at all.
       await rejects(tx, (sp) => resolve(sp, ids.shipment), 'REFUND_NOT_RESOLVABLE');
@@ -326,10 +326,8 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       await tx`SELECT public.fn_claim_shipment_cancellation(
         ${ids.shipment}::uuid, ${ids.order}::uuid, ${ids.buyer}::uuid, 'buyer', 'Changed my mind')`;
       await rejects(tx, (sp) => resolve(sp, ids.shipment), 'REFUND_NOT_RESOLVABLE');
-      // Started, Stripe result never recorded; then escalated by recovery.
+      // Started, Stripe result never recorded, not escalated: still unresolvable.
       await start(tx, ids.sibling);
-      await rejects(tx, (sp) => resolve(sp, ids.sibling), 'REFUND_NOT_RESOLVABLE');
-      await tx`SELECT public.fn_escalate_shipment_cancellation(${ids.sibling}::uuid, 'refund_not_found')`;
       const before = await snapshot(tx, ids.sibling);
       await rejects(tx, (sp) => resolve(sp, ids.sibling), 'REFUND_NOT_RESOLVABLE');
       assert.deepEqual(await snapshot(tx, ids.sibling), before);
@@ -338,6 +336,86 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         (await tx`SELECT count(*)::int AS n FROM public.admin_audit_logs WHERE action_type = 'SHIPMENT_REFUND_RESOLVED'`)[0].n,
         0,
       );
+    },
+  ],
+  ...(['refund_not_found', 'refund_ambiguous'] as const).map(
+    (reason): [string, (tx: Tx) => Promise<void>] => [
+      `an escalated ${reason} operation without a refund is resolvable: cancels the paid shipment, audits the escalation reason, keeps the markers`,
+      async (tx) => {
+        await start(tx, ids.shipment, 'buyer', 300);
+        await tx`SELECT public.fn_escalate_shipment_cancellation(${ids.shipment}::uuid, ${reason})`;
+        const escalated = (await snapshot(tx, ids.shipment)).operation;
+
+        assert.deepEqual(await resolve(tx, ids.shipment), {
+          resolved: true,
+          shipment_cancelled: true,
+          amount_owed_cents: 11000,
+          reference,
+        });
+
+        const state = await snapshot(tx, ids.shipment);
+        assert.equal(state.shipment, 'cancelled');
+        assert.equal(await productStatus(tx, ids.product), 'VERIFIED');
+        assert.equal(state.operation.refund_id, null);
+        assert.equal(state.operation.refund_status, null);
+        assert.equal(state.operation.refund_resolved_by, ids.admin);
+        assert.equal(state.operation.refund_resolution_reference, reference);
+        assert.deepEqual(state.operation.recovery_escalated_at, escalated.recovery_escalated_at);
+        assert.equal(state.operation.recovery_escalation_reason, reason);
+        const [order] = await tx`SELECT cancellation_loss_cents FROM public.orders WHERE id = ${ids.order}`;
+        assert.equal(Number(order.cancellation_loss_cents), 300);
+        const rows = await auditRows(tx);
+        assert.equal(rows.length, 1);
+        assert.deepEqual(
+          { ...rows[0].details },
+          {
+            refund_id: null,
+            refund_status: null,
+            amount_owed_cents: 11000,
+            reference,
+            shipment_status_before: 'paid',
+            escalation_reason: reason,
+          },
+        );
+        assert.equal((await snapshot(tx, ids.sibling)).shipment, 'paid');
+        // Idempotent: a second resolve changes and audits nothing.
+        const again = await resolve(tx, ids.shipment, 'OTHER');
+        assert.equal(again.resolved, false);
+        assert.equal(again.reference, reference);
+        assert.equal((await auditRows(tx)).length, 1);
+      },
+    ],
+  ),
+  [
+    'an escalated operation with a recorded pending or requires_action refund is still refused; a succeeded one too',
+    async (tx) => {
+      await start(tx, ids.shipment);
+      await start(tx, ids.sibling);
+      for (const id of [ids.shipment, ids.sibling])
+        await tx`SELECT public.fn_escalate_shipment_cancellation(${id}::uuid, 'refund_ambiguous')`;
+      await apply(tx, ids.shipment, 're_1', 'pending');
+      await apply(tx, ids.sibling, 're_2', 'requires_action');
+      for (const id of [ids.shipment, ids.sibling]) {
+        const before = await snapshot(tx, id);
+        await rejects(tx, (sp) => resolve(sp, id), 'REFUND_NOT_RESOLVABLE');
+        assert.deepEqual(await snapshot(tx, id), before);
+      }
+      await apply(tx, ids.shipment, 're_1', 'succeeded');
+      await rejects(tx, (sp) => resolve(sp, ids.shipment), 'REFUND_NOT_RESOLVABLE');
+      assert.equal((await auditRows(tx)).length, 0);
+    },
+  ],
+  [
+    'an escalated operation whose refund later failed resolves through the failed path and audits the escalation reason too',
+    async (tx) => {
+      await start(tx, ids.shipment);
+      await tx`SELECT public.fn_escalate_shipment_cancellation(${ids.shipment}::uuid, 'refund_not_found')`;
+      await apply(tx, ids.shipment, 're_1', 'failed', 'lost_or_stolen_card');
+      assert.equal((await resolve(tx, ids.shipment)).shipment_cancelled, true);
+      const [audit] = await auditRows(tx);
+      assert.equal(audit.details.refund_id, 're_1');
+      assert.equal(audit.details.refund_status, 'failed');
+      assert.equal(audit.details.escalation_reason, 'refund_not_found');
     },
   ],
   [

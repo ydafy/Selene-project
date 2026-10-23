@@ -10,6 +10,7 @@ const OUTCOMES = [
   'recorded',
   'failed_after_cancellation',
   'failed_before_cancellation',
+  'after_resolution',
 ] as const;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -116,6 +117,21 @@ export async function handleShipmentRefundEvent(
         typeof result.amount_owed_cents === 'number' ? result.amount_owed_cents : null,
       failureReason:
         typeof result.refund_failure_reason === 'string' ? result.refund_failure_reason : null,
+      outcome,
+    });
+  }
+
+  if (outcome === 'after_resolution') {
+    // The operation is already resolved, so nothing was written: this is the only signal that
+    // Stripe moved money (or failed to) after the admin settled it by hand.
+    await ports.report('SHIPMENT_REFUND_EVENT_AFTER_RESOLUTION', {
+      shipmentId: shipmentId.trim(),
+      refundId: refund.id,
+      status: refund.status,
+      amountOwedCents:
+        typeof result.amount_owed_cents === 'number' ? result.amount_owed_cents : null,
+      resolutionReference:
+        typeof result.resolution_reference === 'string' ? result.resolution_reference : null,
       outcome,
     });
   }

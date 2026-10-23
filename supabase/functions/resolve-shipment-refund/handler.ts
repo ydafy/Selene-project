@@ -7,6 +7,8 @@
  * Raw database text only reaches the log, never the response.
  */
 
+import { isActiveAdmin } from '../_shared/admin-auth.ts';
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -33,10 +35,7 @@ export type ResolveShipmentRefundDeps = {
   log: (level: 'INFO' | 'WARN' | 'ERROR', msg: string, data?: Record<string, unknown>) => unknown;
 };
 
-/** Same rule as SQL is_admin(): admin role and an active account (NULL status counts as active). */
-export const isActiveAdmin = (
-  row: { role?: unknown; status?: unknown } | null,
-): boolean => row !== null && row.role === 'admin' && (row.status ?? 'active') === 'active';
+export { isActiveAdmin };
 
 const respond = (status: number, body: Record<string, unknown>): Response =>
   new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });

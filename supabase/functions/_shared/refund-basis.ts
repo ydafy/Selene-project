@@ -68,10 +68,48 @@ export function computeShipmentRefundAmountCents(
   }
 
   if (refundCents > refundableCapCents) {
+    // Each shipment rounds its fee share on its own, so the shares of an order can sum
+    // to a few cents more than the fee. Only that exact excess is forgiven: the last
+    // shipment then gets what is left of the charge, never less than its own subtotal.
+    const roundingExcessCents = feeRoundingExcessCents(
+      input.orderItems,
+      buyerFeeCents,
+      orderSubtotalCents,
+    );
+    if (
+      refundCents - refundableCapCents <= roundingExcessCents &&
+      refundableCapCents >= shipmentSubtotalCents
+    ) {
+      return refundableCapCents;
+    }
     throw new ApiError(422, 'REFUND_AMOUNT_EXCEEDS_CAP');
   }
 
   return refundCents;
+}
+
+/**
+ * How many cents the independently rounded fee shares of the order's shipments add up
+ * to beyond the fee itself (0 when they round down or exactly). An item without a
+ * shipment id is its own shipment.
+ */
+function feeRoundingExcessCents(
+  items: ShipmentCancelItem[],
+  buyerFeeCents: number,
+  orderSubtotalCents: number,
+): number {
+  const subtotals = new Map<string, number>();
+  items.forEach((item, index) => {
+    const key = item.shipment_id ?? `item:${index}`;
+    subtotals.set(key, (subtotals.get(key) ?? 0) + item.price_at_purchase);
+  });
+  let sharesCents = 0;
+  for (const subtotal of subtotals.values()) {
+    sharesCents += Math.round(
+      (buyerFeeCents * Math.round(subtotal * 100)) / orderSubtotalCents,
+    );
+  }
+  return Math.max(0, sharesCents - buyerFeeCents);
 }
 
 export function allocateCancellationLossCents(

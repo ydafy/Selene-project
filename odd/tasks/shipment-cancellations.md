@@ -233,7 +233,7 @@ Do not substitute estimated processing fees for authoritative transaction data.
 | P0 | Complete | Plan read back, independently verified, and mirrored in Engram. |
 | E0 | Closed with mixed results | Sequential M1–M4 baseline: M1, fresh M2 comparison and M4 passed within evidence limits; original M2 and M3 failed on second cancellation (REFUND_AMOUNT_EXCEEDS_CAP). No retries/root cause/fixes. Extended tests and remediation deferred. |
 | B1 | Complete | B1.1–B1.4 committed, SQL applied, Edge Functions deployed to sandbox; evidence and limits in docs/shipment-cancellation-coordination.md. Follow-ups FU1–FU4 in B14-L5. |
-| B2 | In progress | Durable refund ID/status and DB recovery; tracked in `odd/tasks/shipment-cancellations-b2.md` (branch `feat/shipment-cancellations-b2`). |
+| B2 | Complete | Refund identity/status, recovery, refund webhooks, admin refund resolution and "Reembolsos" bucket, FU1 rounding fix; deployed and on main. Evidence in `odd/tasks/shipment-cancellations-b2.md` and docs/shipment-cancellation-coordination.md. FU1 fixed, FU3 covered by B2.5; FU2 (B4) and FU4 (B3) remain. |
 | B3 | Pending | Paid timeout E2E, atomic/expiring job coordination; depends on B1/B2. |
 | B4 | Pending | Preparing evidence, label outcome, guarded tracking; depends on B1/B2. |
 | B5 | Pending | UI consistency, messaging, polish; depends on relevant B1–B4 behavior. |

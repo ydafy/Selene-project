@@ -1,0 +1,29 @@
+meta {
+  name: checkout-seller-onboarding-pending-released
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/products?id=eq.00000000-0000-4000-8000-0000000000b1&select=id,status
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+tests {
+  test("the listing is VERIFIED and public again after the refused checkout", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([
+      { id: "00000000-0000-4000-8000-0000000000b1", status: "VERIFIED" }
+    ]);
+  });
+}
+
+docs {
+  Runs right after checkout-seller-onboarding-pending. A refused checkout must release the
+  reservation; a listing left RESERVED would be hidden from anonymous buyers.
+}

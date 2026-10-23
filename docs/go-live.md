@@ -69,6 +69,8 @@ Deploy every directory in `supabase/functions/` except `_shared/`. `supabase/con
 
 `resolve-shipment-refund` is called by admins with their own session, so it keeps `verify_jwt = true` (declared in `supabase/config.toml`) and checks `profiles_private.role = 'admin'` itself. It needs no new secret. Apply `supabase/migrations/20261022013846_shipment_cancellation_refund_resolution.sql` (new resolution columns, service-only `fn_resolve_shipment_cancellation_refund`, `fn_cancel_shipment` accepting an admin-resolved refund) before deploying it.
 
+`list-shipment-refund-problems` is the admin read of unresolved refund problems (GET, returns `{ problems }`). Like `resolve-shipment-refund` it keeps `verify_jwt = true` (declared in `supabase/config.toml`) and checks `profiles_private.role = 'admin'` itself. It needs no new secret. Apply `supabase/migrations/20261022223302_shipment_refund_problems.sql` (service-only `fn_list_shipment_refund_problems`) before deploying it.
+
 The remote project also runs `dynamic-api` (name `get-shipping-quote-seller`), which has no source in this repository. Decide whether production needs it before go-live.
 
 ## 8. Cron jobs
@@ -151,4 +153,5 @@ Sentry creates the `cron-watchdog` Cron Monitor on its first check-in (free plan
 
 1. `get_advisors` security and performance: no new findings.
 2. A real end-to-end purchase, label, delivery, and payout with live keys and a small amount.
-3. Every cron job shows successful runs in `cron.job_run_details`.
+3. One manual pass of the main journeys in the app and admin-web (purchase, cancellation with refund, notifications, admin Payments "Necesita atención"). It looks for what automated checks cannot see: confusing copy, layout, real-device behavior. Logic is already covered by the automated checks in `AGENTS.md`, "Verifying a change".
+4. Every cron job shows successful runs in `cron.job_run_details`.

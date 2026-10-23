@@ -4026,6 +4026,21 @@ export type Database = {
         Args: { p_shipment_id: string }
         Returns: Json
       }
+      fn_list_shipment_refund_problems: {
+        Args: never
+        Returns: {
+          amount_owed_cents: number
+          buyer_id: string
+          kind: string
+          order_id: string
+          payment_intent_id: string
+          refund_failure_reason: string
+          refund_id: string
+          shipment_id: string
+          shipment_status: string
+          since: string
+        }[]
+      }
       fn_lock_dispute: {
         Args: { p_dispute_id: string }
         Returns: {

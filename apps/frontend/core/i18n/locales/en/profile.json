@@ -118,5 +118,17 @@
     "avatarErrorTitle": "Upload Error",
     "avatarErrorMsg": "Could not update photo. Please try again.",
     "understood": "Understood"
+  },
+  "connectBanner": {
+    "setup": {
+      "title": "Turn on your payments",
+      "message": "Buyers can't pay you yet.",
+      "cta": "Opens payment setup"
+    },
+    "rejected": {
+      "title": "Check your payment account",
+      "message": "There's a problem, so buyers can't pay you.",
+      "cta": "Opens your payment account"
+    }
   }
 }

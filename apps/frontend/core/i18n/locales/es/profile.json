@@ -116,5 +116,17 @@
     "avatarErrorTitle": "Error de Subida",
     "avatarErrorMsg": "No se pudo actualizar la foto. Intenta de nuevo.",
     "understood": "Entendido"
+  },
+  "connectBanner": {
+    "setup": {
+      "title": "Activa tus pagos",
+      "message": "Los compradores aún no pueden pagarte.",
+      "cta": "Abre la configuración de pagos"
+    },
+    "rejected": {
+      "title": "Revisa tu cuenta de pagos",
+      "message": "Hay un problema y los compradores no pueden pagarte.",
+      "cta": "Abre tu cuenta de pagos"
+    }
   }
 }

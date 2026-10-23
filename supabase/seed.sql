@@ -115,6 +115,15 @@ UPDATE public.profiles
 SET is_verified_seller = true
 WHERE id = '00000000-0000-4000-8000-000000000002';
 
+-- The seller started Stripe Connect onboarding but has not finished it: the
+-- account id exists while charges and payouts are not enabled yet. Checkout
+-- must refuse this seller (bruno/functions/checkout-seller-onboarding-pending).
+-- The id is a local placeholder, not a real Stripe account.
+UPDATE public.profiles_private
+SET stripe_account_id = 'acct_local_seller_pending',
+    stripe_onboarding_status = 'pending'
+WHERE id = '00000000-0000-4000-8000-000000000002';
+
 INSERT INTO public.addresses (
   id, user_id, label, full_name, phone, street_line1, street_number,
   district, city, state, zip_code, is_default

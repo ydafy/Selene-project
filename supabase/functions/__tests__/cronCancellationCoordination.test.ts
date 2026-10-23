@@ -585,6 +585,7 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
     for (const options of [
       { missingPI: true },
       { invalid: true },
+      // This order's fee shares round to the exact fee, so even one missing cent is not rounding.
       { remaining: 339325 },
     ])
       test(`invalid basis cannot start: ${JSON.stringify(options)}`, async () => {

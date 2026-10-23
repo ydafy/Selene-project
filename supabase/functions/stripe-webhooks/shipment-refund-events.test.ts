@@ -193,6 +193,49 @@ describe('handleShipmentRefundEvent', () => {
     });
   }
 
+  it('sends exactly one CRITICAL for after_resolution with the event refund, status, amount owed and resolution reference', async () => {
+    const h = harness({
+      data: {
+        outcome: 'after_resolution',
+        refund_id: 're_late',
+        refund_status: 'succeeded',
+        refund_failure_reason: null,
+        amount_owed_cents: 11000,
+        resolution_reference: 'SPEI-2026-10-22-0001',
+      },
+      error: null,
+    });
+    const result = await handleShipmentRefundEvent(
+      event(refund({ id: 're_late', status: 'succeeded' })),
+      h.ports,
+    );
+    expect(result).toEqual({ handled: true, outcome: 'after_resolution' });
+    expect(h.reports).toEqual([
+      {
+        message: 'SHIPMENT_REFUND_EVENT_AFTER_RESOLUTION',
+        data: {
+          shipmentId: SHIPMENT,
+          refundId: 're_late',
+          status: 'succeeded',
+          amountOwedCents: 11000,
+          resolutionReference: 'SPEI-2026-10-22-0001',
+          outcome: 'after_resolution',
+        },
+      },
+    ]);
+  });
+
+  it('still alerts for after_resolution when the amount or reference is unusable', async () => {
+    const h = harness({ data: { outcome: 'after_resolution' }, error: null });
+    await handleShipmentRefundEvent(event(refund()), h.ports);
+    expect(h.reports).toHaveLength(1);
+    expect(h.reports[0]?.data).toMatchObject({
+      amountOwedCents: null,
+      resolutionReference: null,
+      outcome: 'after_resolution',
+    });
+  });
+
   it('never reports on unchanged, completed, recorded or ignored outcomes', async () => {
     for (const outcome of ['unchanged', 'completed', 'recorded', 'ignored']) {
       const h = harness({ data: { outcome }, error: null });
