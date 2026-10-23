@@ -15,6 +15,7 @@ import { getSelectedEligibleShipmentIds, type ReleaseQueueBatch, type ReleaseQue
 import { ErrorState } from '../components/ui/ErrorState';
 import { formatTime } from '../lib/utils/formatDate';
 import { PayoutReleaseWorkbench } from '../components/features/payments/PayoutReleaseWorkbench';
+import { ActionRequiredPanel } from '../components/features/payments/ActionRequiredPanel';
 import { PayoutRunsWorkbench } from '../components/features/payments/PayoutRunsWorkbench';
 import { workbenchFocus } from '../components/features/payments/PayoutWorkbenchLayout';
 
@@ -214,6 +215,32 @@ export const PaymentsPage = () => {
         ? actionRequiredRuns
         : historyRuns;
 
+  const runsWorkbench = activeTab === 'ready' ? null : (
+    <PayoutRunsWorkbench
+      key={`${activeTab}:${debouncedSearch}`}
+      mode={activeTab}
+      runs={isQueueError ? [] : currentRuns}
+      pageRevision={pageEvidence}
+      pagination={pagination}
+      onPageChange={(next) => { if (!financialBusy) setPage(next); }}
+      onSelectAll={async () => {
+        const source = current.current;
+        const epoch = authorization.current.epoch;
+        if (source.queueUnresolved || source.isQueueError) throw new Error('Espera a que se actualice la cola.');
+        const complete = await fetchSelection();
+        if (authorization.current.epoch !== epoch || current.current.queueUnresolved || current.current.isQueueError ||
+          current.current.search !== source.search || current.current.activeTab !== source.activeTab)
+          throw new Error('La consulta cambió; vuelve a seleccionar.');
+        return complete.actionRequiredRuns;
+      }}
+      isLoading={queueUnresolved || isQueueError}
+      isReleasing={isReleasing}
+      isRetrying={isRetrying}
+      onBusyChange={setWorkbenchBusy}
+      onRetryFailedPayout={handleRetry}
+    />
+  );
+
   return (
     <div className="min-w-0 space-y-4">
       <header className="flex flex-col justify-between gap-4 pb-2 sm:flex-row sm:items-end">
@@ -357,30 +384,10 @@ export const PaymentsPage = () => {
             onBusyChange={setWorkbenchBusy}
             onRelease={handleRelease}
           />
+        ) : activeTab === 'action-required' ? (
+          <ActionRequiredPanel payoutCount={actionRequiredRuns.length}>{runsWorkbench}</ActionRequiredPanel>
         ) : (
-          <PayoutRunsWorkbench
-            key={`${activeTab}:${debouncedSearch}`}
-            mode={activeTab}
-            runs={isQueueError ? [] : currentRuns}
-            pageRevision={pageEvidence}
-            pagination={pagination}
-            onPageChange={(next) => { if (!financialBusy) setPage(next); }}
-            onSelectAll={async () => {
-              const source = current.current;
-              const epoch = authorization.current.epoch;
-              if (source.queueUnresolved || source.isQueueError) throw new Error('Espera a que se actualice la cola.');
-              const complete = await fetchSelection();
-              if (authorization.current.epoch !== epoch || current.current.queueUnresolved || current.current.isQueueError ||
-                current.current.search !== source.search || current.current.activeTab !== source.activeTab)
-                throw new Error('La consulta cambió; vuelve a seleccionar.');
-              return complete.actionRequiredRuns;
-            }}
-            isLoading={queueUnresolved || isQueueError}
-            isReleasing={isReleasing}
-            isRetrying={isRetrying}
-            onBusyChange={setWorkbenchBusy}
-            onRetryFailedPayout={handleRetry}
-          />
+          runsWorkbench
         )}
       </section>
       <div className="space-y-1 text-[10px] leading-relaxed text-blue-light">

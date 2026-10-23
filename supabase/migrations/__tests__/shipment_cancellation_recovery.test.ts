@@ -17,11 +17,11 @@ const statements = (sql: string) =>
 // Text contracts only; the local `supabase db reset` + scripts/test-shipment-cancellation-refund-status.ts
 // prove the behavior in PostgreSQL.
 describe('shipment cancellation recovery migration (SQL text)', () => {
-  it('is exactly one active migration containing the fn_cancel_shipment canonical copy', () => {
+  it('is exactly one active migration holding the strict fn_cancel_shipment guard as deployed in B2.2', () => {
     expect(migrations).toHaveLength(1);
-    // The recovery read's canonical copy moved on in B2.2.1 (shipment_cancellation_escalation.test.ts).
-    const cancel = read('supabase/queries/orders/fn_cancel_shipment.sql');
-    expect(statements(migration)).toContain(statements(cancel).replace(/^DROP FUNCTION[^\n]*\n/m, ''));
+    // The recovery read's canonical copy moved on in B2.2.1 (shipment_cancellation_escalation.test.ts) and
+    // fn_cancel_shipment's canonical copy in B2.3.1 (shipment_cancellation_refund_resolution.test.ts).
+    expect(statements(migration)).toContain("IF v_refund_status IS DISTINCT FROM 'succeeded' THEN");
   });
 
   it('drops nothing and grants the recovery read to service_role only', () => {
@@ -42,7 +42,8 @@ describe('shipment cancellation recovery migration (SQL text)', () => {
 
   it('fn_cancel_shipment requires a recorded succeeded refund', () => {
     const cancel = read('supabase/queries/orders/fn_cancel_shipment.sql');
-    expect(cancel).toContain("IF v_refund_status IS DISTINCT FROM 'succeeded' THEN");
+    // B2.3.1 also accepts an admin-resolved refund; any unresolved non-succeeded status is still refused.
+    expect(cancel).toContain("IF v_refund_status IS DISTINCT FROM 'succeeded' AND v_refund_resolved_at IS NULL THEN");
     expect(cancel).not.toContain('IS NOT NULL AND v_refund_status');
   });
 });

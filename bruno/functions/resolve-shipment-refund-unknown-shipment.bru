@@ -1,0 +1,37 @@
+meta {
+  name: resolve-shipment-refund-unknown-shipment
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/resolve-shipment-refund
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+body:json {
+  {
+    "shipment_id": "00000000-0000-4000-8000-0000000000c2",
+    "reference": "Bruno: unknown shipment"
+  }
+}
+
+tests {
+  test("an admin cannot resolve a shipment that has no recorded refund", function () {
+    expect(res.getStatus()).to.equal(409);
+    expect(res.getBody()).to.deep.equal({ error: "REFUND_NOT_RESOLVABLE" });
+  });
+}
+
+docs {
+  Run after login-admin (needs `adminToken`), with the functions server and
+  supabase/functions/.env. Proves the admin path reaches the service-only RPC with server
+  credentials and that a shipment without a failed or canceled refund is refused with a
+  stable code (nothing is written).
+}

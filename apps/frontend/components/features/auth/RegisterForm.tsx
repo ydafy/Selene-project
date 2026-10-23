@@ -25,15 +25,25 @@ import {
   RegisterData,
 } from '../../../core/hooks/useAuth';
 import { useGoogleAuth } from '../../../core/hooks/useGoogleAuth';
+import { isUsernameAvailable } from '../../../core/auth/registerUsername.logic';
+import { classifySignUpResult } from '../../../core/auth/authOutcome.logic';
+import {
+  ACCOUNT_EXISTS_KEY,
+  USERNAME_TAKEN_KEY,
+  mapAuthErrorKey,
+} from '../../../core/auth/authErrors.logic';
+import { supabase } from '../../../core/db/supabase';
 import { Theme } from '../../../core/theme';
 
 type RegisterFormProps = {
   onSuccess: (email: string) => void;
+  onAccountExists: () => void;
   onLoginPress: () => void;
 };
 
 export const RegisterForm = ({
   onSuccess,
+  onAccountExists,
   onLoginPress,
 }: RegisterFormProps) => {
   const { t } = useTranslation('auth');
@@ -53,6 +63,7 @@ export const RegisterForm = ({
   const {
     control,
     handleSubmit,
+    setError,
     formState: { errors, isValid },
   } = useForm<RegisterData>({
     resolver: zodResolver(registerSchema),
@@ -67,16 +78,48 @@ export const RegisterForm = ({
   });
 
   const onSubmit = async (data: RegisterData) => {
+    // Pre-check so a taken username is a field error, not a failed signup. The
+    // signup trigger stays the authority if this lookup is inconclusive.
+    const availability = await isUsernameAvailable(supabase, data.username);
+    if (availability === 'taken') {
+      setError('username', { message: 'auth:errors.usernameAlreadyTaken' });
+      return;
+    }
+
     const result = await signUp(data);
     if (!result.success) {
+      const key = result.error?.messageKey ?? mapAuthErrorKey(null);
+      if (key === USERNAME_TAKEN_KEY) {
+        setError('username', { message: USERNAME_TAKEN_KEY });
+        return;
+      }
+      if (key === ACCOUNT_EXISTS_KEY) {
+        Toast.show({
+          type: 'info',
+          text1: t('accountAlreadyExistsTitle'),
+          text2: t('accountAlreadyExistsMsg'),
+        });
+        onAccountExists();
+        return;
+      }
       Toast.show({
         type: 'error',
         text1: t('registerErrorTitle'),
-        text2: result.error?.message || 'Error',
+        text2: t(key),
       });
       return;
     }
-    if (result.user || result.session) onSuccess(data.email);
+    const outcome = classifySignUpResult(result);
+    if (outcome === 'account_exists') {
+      Toast.show({
+        type: 'info',
+        text1: t('accountAlreadyExistsTitle'),
+        text2: t('accountAlreadyExistsMsg'),
+      });
+      onAccountExists();
+      return;
+    }
+    if (outcome === 'verify') onSuccess(data.email);
   };
 
   const isBusy = loading || isGoogleLoading;

@@ -13,6 +13,13 @@ const typed = (id: string, created: string, kind: string, role: string) => row(i
 });
 
 describe('launch digest', () => {
+  test('a buyer refund failure outranks routine notices and only counts for the buyer', () => {
+    const routine = typed('routine', '2026-04-03', 'order.payment_confirmed', 'buyer');
+    const failure = typed('failure', '2026-04-01', 'shipment.refund_failed', 'buyer');
+    expect(selectLaunchDigest([routine, failure], 'owner')).toBe(failure);
+    expect(selectLaunchDigest([failure, typed('seller-side', '2026-04-04', 'shipment.refund_failed', 'seller')], 'owner')).toBe(failure);
+  });
+
   test('scans beyond twenty generic notices for an older priority-three notice', async () => {
     const rows = Array.from({ length: 20 }, (_, i) => row(String(30 - i), `2026-04-${String(30 - i).padStart(2, '0')}`));
     rows.push(typed('older', '2026-04-01', 'dispute.opened', 'buyer'));

@@ -8,6 +8,8 @@ import { useState } from 'react';
 import { z } from 'zod';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../db/supabase';
+import { validateRegisterUsername } from '../auth/registerUsername.logic';
+import { mapAuthErrorKey } from '../auth/authErrors.logic';
 
 // --- 1. ESQUEMAS DE VALIDACIÓN (ZOD) ---
 
@@ -21,7 +23,11 @@ export const loginSchema = z.object({
 
 export const registerSchema = z
   .object({
-    username: z.string().min(3, { message: 'auth:errors.usernameTooShort' }),
+    username: z.string().superRefine((value, ctx) => {
+      const result = validateRegisterUsername(value);
+      if (!result.ok)
+        ctx.addIssue({ code: 'custom', message: result.errorKey });
+    }),
     email: z.string().email({ message: 'auth:errors.invalidEmail' }),
     password: z.string().min(8, { message: 'auth:errors.passwordTooShort' }),
     confirmPassword: z.string(),
@@ -41,12 +47,31 @@ export const registerSchema = z
 export type LoginData = z.infer<typeof loginSchema>;
 export type RegisterData = z.infer<typeof registerSchema>;
 
+/**
+ * `message` is the raw server text (logs only). Screens show `messageKey`, an
+ * i18n key from `mapAuthErrorKey`; `code` is the Supabase Auth error code.
+ */
+export type AuthFailure = {
+  message: string;
+  code?: string;
+  messageKey: string;
+};
+
 export type AuthResult = {
   success: boolean;
   session: Session | null;
   user: User | null;
-  error: { message: string } | null;
+  error: AuthFailure | null;
 };
+
+const toAuthFailure = (err: unknown): AuthFailure => ({
+  message: err instanceof Error ? err.message : String(err),
+  code:
+    typeof (err as { code?: unknown } | null)?.code === 'string'
+      ? (err as { code: string }).code
+      : undefined,
+  messageKey: mapAuthErrorKey(err),
+});
 
 /**
  * Helper interno para estandarizar las respuestas de Supabase Auth.
@@ -57,7 +82,7 @@ const formatAuthResponse = (data: any, error: any): AuthResult => {
       success: false,
       session: null,
       user: null,
-      error: { message: error.message },
+      error: toAuthFailure(error),
     };
   }
   return {
@@ -94,9 +119,9 @@ export const useAuth = () => {
       if (formatted.error) setError(formatted.error.message);
       return formatted;
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setError(message);
-      return { success: false, session: null, user: null, error: { message } };
+      const failure = toAuthFailure(err);
+      setError(failure.message);
+      return { success: false, session: null, user: null, error: failure };
     } finally {
       setLoading(false);
     }
@@ -117,9 +142,9 @@ export const useAuth = () => {
       if (formatted.error) setError(formatted.error.message);
       return formatted;
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setError(message);
-      return { success: false, session: null, user: null, error: { message } };
+      const failure = toAuthFailure(err);
+      setError(failure.message);
+      return { success: false, session: null, user: null, error: failure };
     } finally {
       setLoading(false);
     }
@@ -164,8 +189,12 @@ export const useAuth = () => {
       });
       return formatAuthResponse(result.data, result.error);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      return { success: false, session: null, user: null, error: { message } };
+      return {
+        success: false,
+        session: null,
+        user: null,
+        error: toAuthFailure(err),
+      };
     } finally {
       setLoading(false);
     }
@@ -185,7 +214,7 @@ export const useAuth = () => {
       if (resendError) throw resendError;
       return { success: true, error: null };
     } catch (err: any) {
-      return { success: false, error: { message: err.message } };
+      return { success: false, error: toAuthFailure(err) };
     } finally {
       setLoading(false);
     }

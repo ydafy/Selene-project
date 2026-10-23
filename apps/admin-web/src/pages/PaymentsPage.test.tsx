@@ -59,6 +59,10 @@ if (process.env.PAYOUT_PAGING_PAGE_CHILD !== '1') {
     },
   }));
   mock.module('sonner', () => ({ toast: { success: () => undefined, error: () => undefined } }));
+  mock.module('../hooks/useShipmentRefundProblems', () => ({
+    useShipmentRefundProblems: () => ({ problems: [], count: 0, isLoading: false, isError: false, refetch: async () => undefined }),
+    useResolveShipmentRefund: () => ({ resolve: async () => undefined, isPending: false }),
+  }));
   mock.module('../components/features/payments/PayoutReleaseWorkbench', () => ({ PayoutReleaseWorkbench: () => null }));
   mock.module('../components/features/payments/PayoutRunsWorkbench', () => ({ PayoutRunsWorkbench: () => null }));
   const { PaymentsPage } = await import('./PaymentsPage');

@@ -126,14 +126,15 @@ export const AuthModal = forwardRef<BottomSheetModal, AuthModalProps>(
                 />
                 <Text variant="body-md" color="textSecondary" marginTop="s">
                   {currentView === 'login'
-                    ? t('modal.welcomeBack', 'Bienvenido de vuelta')
-                    : t('modal.createAccount', 'Crea tu cuenta en segundos')}
+                    ? t('modal.welcomeBack')
+                    : t('modal.createAccount')}
                 </Text>
               </Box>
 
               {currentView === 'login' ? (
                 <LoginForm
                   onSuccess={() => handleSuccess()}
+                  onEmailNotConfirmed={(email) => handleSuccess(email)}
                   onRegisterPress={() => setCurrentView('register')}
                   onForgotPasswordPress={() => {
                     dismissModal();
@@ -143,6 +144,7 @@ export const AuthModal = forwardRef<BottomSheetModal, AuthModalProps>(
               ) : (
                 <RegisterForm
                   onSuccess={(email) => handleSuccess(email)}
+                  onAccountExists={() => setCurrentView('login')}
                   onLoginPress={() => setCurrentView('login')}
                 />
               )}

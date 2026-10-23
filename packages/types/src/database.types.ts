@@ -2091,6 +2091,9 @@ export type Database = {
           refund_failure_reason: string | null
           refund_id: string | null
           refund_request: Json | null
+          refund_resolution_reference: string | null
+          refund_resolved_at: string | null
+          refund_resolved_by: string | null
           refund_status: string | null
           refund_status_updated_at: string | null
           shipment_id: string
@@ -2111,6 +2114,9 @@ export type Database = {
           refund_failure_reason?: string | null
           refund_id?: string | null
           refund_request?: Json | null
+          refund_resolution_reference?: string | null
+          refund_resolved_at?: string | null
+          refund_resolved_by?: string | null
           refund_status?: string | null
           refund_status_updated_at?: string | null
           shipment_id: string
@@ -2131,6 +2137,9 @@ export type Database = {
           refund_failure_reason?: string | null
           refund_id?: string | null
           refund_request?: Json | null
+          refund_resolution_reference?: string | null
+          refund_resolved_at?: string | null
+          refund_resolved_by?: string | null
           refund_status?: string | null
           refund_status_updated_at?: string | null
           shipment_id?: string
@@ -3607,6 +3616,17 @@ export type Database = {
         }
         Returns: number
       }
+      fn_apply_shipment_cancellation_refund_event: {
+        Args: {
+          p_amount_cents: number
+          p_failure_reason?: string
+          p_payment_intent_id: string
+          p_refund_id: string
+          p_shipment_id: string
+          p_status: string
+        }
+        Returns: Json
+      }
       fn_atomic_payout_resume_mapping: {
         Args: {
           p_expected_parent_payout_id: string
@@ -3976,6 +3996,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      fn_generate_profile_username: { Args: { p_raw: string }; Returns: string }
       fn_get_admin_payout_queue: {
         Args: {
           p_bucket?: string
@@ -4004,6 +4025,21 @@ export type Database = {
       fn_get_shipment_cancellation_recovery: {
         Args: { p_shipment_id: string }
         Returns: Json
+      }
+      fn_list_shipment_refund_problems: {
+        Args: never
+        Returns: {
+          amount_owed_cents: number
+          buyer_id: string
+          kind: string
+          order_id: string
+          payment_intent_id: string
+          refund_failure_reason: string
+          refund_id: string
+          shipment_id: string
+          shipment_status: string
+          since: string
+        }[]
       }
       fn_lock_dispute: {
         Args: { p_dispute_id: string }
@@ -4249,6 +4285,10 @@ export type Database = {
           p_verdict: string
         }
         Returns: boolean
+      }
+      fn_resolve_shipment_cancellation_refund: {
+        Args: { p_admin_id: string; p_reference: string; p_shipment_id: string }
+        Returns: Json
       }
       fn_save_bank_account: {
         Args: { p_clabe: string; p_holder_name: string }

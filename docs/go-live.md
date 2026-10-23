@@ -67,6 +67,10 @@ Production uses live Stripe keys and `ENVIA_MODE` set to production.
 
 Deploy every directory in `supabase/functions/` except `_shared/`. `supabase/config.toml` holds the `verify_jwt` flags; deploy with the CLI so they apply.
 
+`resolve-shipment-refund` is called by admins with their own session, so it keeps `verify_jwt = true` (declared in `supabase/config.toml`) and checks `profiles_private.role = 'admin'` itself. It needs no new secret. Apply `supabase/migrations/20261022013846_shipment_cancellation_refund_resolution.sql` (new resolution columns, service-only `fn_resolve_shipment_cancellation_refund`, `fn_cancel_shipment` accepting an admin-resolved refund) before deploying it.
+
+`list-shipment-refund-problems` is the admin read of unresolved refund problems (GET, returns `{ problems }`). Like `resolve-shipment-refund` it keeps `verify_jwt = true` (declared in `supabase/config.toml`) and checks `profiles_private.role = 'admin'` itself. It needs no new secret. Apply `supabase/migrations/20261022223302_shipment_refund_problems.sql` (service-only `fn_list_shipment_refund_problems`) before deploying it.
+
 The remote project also runs `dynamic-api` (name `get-shipping-quote-seller`), which has no source in this repository. Decide whether production needs it before go-live.
 
 ## 8. Cron jobs
@@ -115,7 +119,8 @@ Sentry creates the `cron-watchdog` Cron Monitor on its first check-in (free plan
 ## 9. External webhooks
 
 - Stripe (live mode): platform and Connect endpoints → `stripe-webhooks`; copy each signing secret into `STRIPE_WEBHOOK_SECRET` and `STRIPE_CONNECT_WEBHOOK_SECRET`. Each endpoint has its own secret, unlike the single local `stripe listen` secret.
-  - Platform events: `payment_intent.succeeded`, `payment_intent.payment_failed`, `payment_intent.canceled`, `setup_intent.succeeded`.
+  - Platform events: `payment_intent.succeeded`, `payment_intent.payment_failed`, `payment_intent.canceled`, `setup_intent.succeeded`, `refund.updated`, `refund.failed`.
+  - The refund events complete a shipment cancellation whose refund settles asynchronously, and flag a refund that failed (buyer notification plus a Sentry CRITICAL). Subscribe the platform endpoint to both, and apply `supabase/migrations/20261022005940_shipment_cancellation_refund_events.sql` (new service-only `fn_apply_shipment_cancellation_refund_event`, new `shipment.refund_failed` notification kind) before deploying `stripe-webhooks`.
   - Connect events: `account.updated`, `account.external_account.created`, `account.external_account.updated`, `account.external_account.deleted`, `payout.created`, `payout.updated`, `payout.paid`, `payout.failed`, `payout.canceled`.
   - Keep this list in sync with `STRIPE_WEBHOOK_EVENTS` in `scripts/stripe-listen.ts`.
 - Stripe Account Links return/refresh URLs → `connect-onboarding-return`.
@@ -123,8 +128,20 @@ Sentry creates the `cron-watchdog` Cron Monitor on its first check-in (free plan
 
 ## 10. Auth (Dashboard)
 
-- Enable leaked password protection (currently disabled).
+- Deployed Auth settings (project `acoiclkeymgtlwcxilun`, recorded 2026-10-22). `supabase/config.toml` mirrors them for the local stack:
+  - Email provider on; confirm email on; secure email change on; secure password change on; require current password when updating off.
+  - Minimum password length 8; no password composition requirements; leaked password protection off (Pro plan only).
+  - Email OTP length 6; email OTP expiry 900 s; minimum interval per user 60 s.
+  - Rate limits: emails 2 per hour (built-in mailer), SMS 30, token refreshes 150, token verifications 30, anonymous users 30, sign-ups and sign-ins 30, Web3 30.
+  - Provider linking: Supabase automatic linking by verified email (a Google sign-in whose verified email matches an existing user links to that user); manual linking (`linkIdentity`) disabled and unused.
+- Pending Auth items:
+  - Turn Google "Skip nonce check" off. It is only needed for iOS with the current native library; revisit when iOS ships.
+  - Enable "Require current password when updating" together with the block-4 client change that sends `currentPassword`.
+  - Enable leaked password protection once the project is on the Pro plan.
+  - Enable CAPTCHA on sign-up and sign-in before launch.
 - Site URL, redirect URLs, providers, and email templates: not yet inventoried. Record them here.
+- Custom SMTP is required before the first real user. The built-in Supabase mailer only delivers to members of the project's organization (other addresses fail with "Email address not authorized"), has a low hourly limit and no delivery guarantee, so signup codes would never reach real users. Configure Resend (or another SMTP provider) under Authentication > Emails > SMTP Settings: verify the sending domain with SPF and DKIM (and DMARC), use a dedicated From address such as `no-reply@<auth domain>`, and disable link tracking. No app code changes are needed.
+- After enabling custom SMTP, raise "Rate limit for sending emails" under Authentication > Rate Limits (it starts at 30 per hour) to the expected signup volume.
 
 ## 11. Mobile app signing
 

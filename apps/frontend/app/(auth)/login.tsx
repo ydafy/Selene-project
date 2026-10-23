@@ -55,6 +55,12 @@ export default function LoginScreen() {
 
         <LoginForm
           onSuccess={() => router.replace('/(tabs)')}
+          onEmailNotConfirmed={(email) =>
+            router.replace({
+              pathname: '/(auth)/verify-code',
+              params: { email },
+            })
+          }
           onRegisterPress={() => router.push('/(auth)/register')}
           onForgotPasswordPress={() => router.push('/(auth)/forgotPassword')}
         />
