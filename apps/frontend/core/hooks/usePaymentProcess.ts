@@ -57,9 +57,8 @@ export const usePaymentProcess = () => {
   const [loading, setLoading] = useState(true);
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [paymentData, setPaymentData] = useState<NormalizedConnectPayment | null>(
-    null,
-  );
+  const [paymentData, setPaymentData] =
+    useState<NormalizedConnectPayment | null>(null);
 
   const items = useCartStore((state) => state.items);
   const clearCart = useCartStore((state) => state.clearCart);
@@ -93,8 +92,8 @@ export const usePaymentProcess = () => {
 
       if (session.orderId && session.paymentIntentId) {
         try {
-          const { data: rollbackData, error: rollbackError } = await supabase
-            .functions.invoke('rollback-connect-payment', {
+          const { data: rollbackData, error: rollbackError } =
+            await supabase.functions.invoke('rollback-connect-payment', {
               body: {
                 orderId: session.orderId,
                 paymentIntentIds: [session.paymentIntentId],
@@ -170,9 +169,7 @@ export const usePaymentProcess = () => {
             if (canWriteState(version)) setError(t('payment.outOfStockMsg'));
           } else if (errorMessage === 'SELLER_NOT_ONBOARDED') {
             if (canWriteState(version)) {
-              setError(
-                'Seller onboarding is required before checkout for one or more items.',
-              );
+              setError(t('payment.sellerNotReadyError'));
             }
           } else if (canWriteState(version)) {
             setError(t('payment.genericError'));

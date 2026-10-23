@@ -1,0 +1,37 @@
+meta {
+  name: checkout-seller-onboarding-pending
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/create-connect-payment
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  {
+    "productIds": ["00000000-0000-4000-8000-0000000000b1"],
+    "addressId": "00000000-0000-4000-8000-0000000000a3"
+  }
+}
+
+tests {
+  test("checkout is refused when the seller has a Connect account but onboarding is not complete", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody()).to.deep.equal({ error: "SELLER_NOT_ONBOARDED" });
+  });
+}
+
+docs {
+  Run after auth/login-buyer (needs `buyerToken`) with the functions server and
+  supabase/functions/.env (STRIPE_SECRET_KEY). The seeded seller has a Connect account id
+  with `stripe_onboarding_status = 'pending'` (supabase/seed.sql), so no PaymentIntent may
+  be created. checkout-seller-onboarding-pending-released proves the reservation was undone.
+}

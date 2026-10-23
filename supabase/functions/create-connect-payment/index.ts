@@ -47,6 +47,10 @@ import {
   normalizeCreateConnectPaymentRequest,
   type ReservationRpcData,
 } from './single-payment-builder.ts';
+import {
+  findSellersNotReadyForPayment,
+  type SellerPaymentProfile,
+} from './seller-payment-readiness.ts';
 
 const STRIPE_API_VERSION = '2026-04-22.dahlia';
 const APP_NAME = 'selene';
@@ -358,29 +362,24 @@ serve(withSentry('create-connect-payment', async (req: Request) => {
     ];
     const { data: sellerProfiles, error: profilesError } = await supabaseAdmin
       .from('profiles_private')
-      .select('id, stripe_account_id')
+      .select('id, stripe_account_id, stripe_onboarding_status')
       .in('id', sellerIds);
     if (profilesError) {
       await releaseReserved('PROFILES_LOAD_FAILED');
       throw new Error('PROFILES_LOAD_FAILED');
     }
 
-    const stripeAccountBySellerId = new Map(
-      (sellerProfiles || []).map((profile) => [
-        profile.id,
-        profile.stripe_account_id,
-      ]),
+    // 8. Validate all sellers finished Connect onboarding (manual release
+    // needs payout-ready accounts; fail fast before charging the buyer).
+    const notOnboarded = findSellersNotReadyForPayment(
+      sellerIds,
+      (sellerProfiles || []) as SellerPaymentProfile[],
     );
-
-    // 8. Validate all sellers are onboarded (manual release needs Connect
-    // accounts; fail fast before charging the buyer).
-    const notOnboarded: string[] = [];
-    for (const sellerId of sellerIds) {
-      if (!stripeAccountBySellerId.get(sellerId)) {
-        notOnboarded.push(sellerId);
-      }
-    }
     if (notOnboarded.length > 0) {
+      log('warn', 'Checkout blocked: seller not ready for payment', {
+        buyerId: user.id,
+        sellerCount: notOnboarded.length,
+      });
       await releaseReserved('SELLER_NOT_ONBOARDED');
       throw new Error('SELLER_NOT_ONBOARDED');
     }

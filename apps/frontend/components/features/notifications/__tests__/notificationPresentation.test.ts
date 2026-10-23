@@ -10,6 +10,11 @@ describe('notification presentation', () => {
   test('uses verified catalogue identity and recipient role without replacing server copy', () => {
     expect(getNotificationPresentation(Object.assign({}, legacy, { event_kind: 'order.payment_confirmed', source_event_key: 'order.payment_confirmed:123:1', event_payload: { recipient_role: 'seller' } }))).toEqual({ icon: 'storefront-outline', accent: 'primary', state: 'sale' });
   });
+  test('presents product.available as a buyer success notice and rejects the seller role', () => {
+    const base = { event_kind: 'product.available', source_event_key: 'product.available:123' };
+    expect(getNotificationPresentation(Object.assign({}, legacy, base, { event_payload: { recipient_role: 'buyer' } }))).toEqual({ icon: 'check-circle-outline', accent: 'success', state: 'listing' });
+    expect(getNotificationPresentation(Object.assign({}, legacy, base, { event_payload: { recipient_role: 'seller' } }))).toEqual({ icon: 'alert-circle-outline', accent: 'error', state: 'generic' });
+  });
   test('rejects unknown or malformed metadata instead of inferring from legacy severity', () => {
     for (const metadata of [
       { event_kind: 'unknown', source_event_key: 'unknown:123', event_payload: { recipient_role: 'seller' } },

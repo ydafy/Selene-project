@@ -73,10 +73,20 @@
   },
   "dialogs": {
     "inReviewTitle": "Under Review",
-    "inReviewMsg": "The Selene team is verifying this product for your safety. Add it to your favorites to receive an alert when it's approved.",
     "pendingTitle": "Preparing for Verification",
-    "pendingMsg": "The vendor is preparing for functional testing. Add it to your favorites so you don't lose track of it.",
+    "sellerNotReadyTitle": "Almost ready to buy",
     "addToFavs": "Add to Favorites",
-    "understood": "Understood"
+    "understood": "Understood",
+    "pendingLine": "The seller is preparing the tests.",
+    "inReviewLine": "Selene is checking that it works.",
+    "sellerNotReadyLine": "Already verified. The seller still needs to turn on payments.",
+    "favoritePrompt": "Add it to your favorites and we'll let you know when it's available.",
+    "favoriteKnown": "We'll let you know when it's available."
+  },
+  "purchaseProgress": {
+    "published": "Published",
+    "verifying": "Verifying",
+    "ready": "Ready to buy",
+    "a11y": "Step {{step}} of {{total}}: {{name}}"
   }
 }
