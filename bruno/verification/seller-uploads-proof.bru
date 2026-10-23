@@ -1,0 +1,36 @@
+meta {
+  name: seller-uploads-proof
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/storage/v1/object/verification/00000000-0000-4000-8000-0000000000b1/{{proofName}}
+  body: text
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{sellerToken}}
+  Content-Type: text/plain
+}
+
+body:text {
+  bruno verification proof
+}
+
+script:pre-request {
+  bru.setVar("proofName", "bruno_proof_" + Date.now() + ".txt");
+}
+
+tests {
+  test("the listing owner can upload a proof", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}
+
+docs {
+  Run after auth/login-seller. Uses a unique object name per run so the request is
+  idempotent without UPDATE/DELETE policies. The seeded seller owns listing b1.
+}

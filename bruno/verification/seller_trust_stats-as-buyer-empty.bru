@@ -1,0 +1,23 @@
+meta {
+  name: seller_trust_stats-as-buyer-empty
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/seller_trust_stats
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+tests {
+  test("a buyer sees no rows from seller_trust_stats", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([]);
+  });
+}
