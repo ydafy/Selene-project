@@ -70,6 +70,21 @@ describe('launch digest', () => {
     ], 'owner')?.id).toBe('dispute');
   });
 
+  test('ranks a seller product.interest notice like an approval and below a dispute', () => {
+    expect(selectLaunchDigest([
+      typed('interest', '2026-04-04', 'product.interest', 'seller'),
+      typed('rejected', '2026-04-03', 'product.rejected', 'seller'),
+    ], 'owner')?.id).toBe('rejected');
+    expect(selectLaunchDigest([
+      typed('interest', '2026-04-03', 'product.interest', 'seller'),
+      row('legacy', '2026-04-04'),
+    ], 'owner')?.id).toBe('interest');
+    expect(selectLaunchDigest([
+      typed('interest', '2026-04-04', 'product.interest', 'seller'),
+      typed('dispute', '2026-04-03', 'dispute.opened', 'seller'),
+    ], 'owner')?.id).toBe('dispute');
+  });
+
   test('uses newest then ID for equal priority and treats malformed or unknown identity as generic', () => {
     expect(selectLaunchDigest([
       typed('a', '2026-04-02', 'dispute.opened', 'seller'),

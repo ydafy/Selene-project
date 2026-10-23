@@ -24,6 +24,7 @@ const ROUTE_MAP: RouteEntry[] = [
   { pattern: '/profile/notifications', params: [] },
   { pattern: '/profile/support', params: [] },
   { pattern: '/help/verification', params: [] },
+  { pattern: '/sell/onboarding', params: [] },
 
   // Dynamic routes
   { pattern: '/product/[id]', params: ['id'] },

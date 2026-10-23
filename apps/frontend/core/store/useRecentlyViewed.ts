@@ -15,8 +15,9 @@ export const useRecentlyViewed = () => {
         .from('products')
         .select('*')
         .in('id', viewedIds)
-
-        .not('status', 'in', '(HIDDEN,REJECTED)');
+        // Only listings that home already shows; do not rely on RLS, which
+        // also exposes listings still in verification to the product page.
+        .in('status', ['VERIFIED', 'SOLD']);
 
       if (error) throw error;
 

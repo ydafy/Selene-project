@@ -1,0 +1,23 @@
+meta {
+  name: admin_product_queue_view-as-buyer-empty
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/admin_product_queue_view
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+tests {
+  test("a buyer sees no rows from admin_product_queue_view", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([]);
+  });
+}
