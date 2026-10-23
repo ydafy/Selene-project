@@ -115,24 +115,35 @@ describe('computeShipmentRefundAmountCents: last shipment rounding remainder', (
     ).toBe(521_903);
   });
 
-  it('accepts up to one cent of rounding per order shipment', () => {
-    expect(
+  it('rejects a shortfall larger than the rounding excess of the order', () => {
+    expect(() =>
       computeShipmentRefundAmountCents({
         shipmentItems: lastShipment,
         orderItems,
         orderChargeCents: 1_670_092,
-        remainingRefundableCents: 521_901,
+        remainingRefundableCents: 521_902,
       }),
-    ).toBe(521_901);
+    ).toThrow('REFUND_AMOUNT_EXCEEDS_CAP');
   });
 
-  it('still rejects a shortfall larger than one cent per order shipment', () => {
+  it('still rejects a larger shortfall', () => {
     expect(() =>
       computeShipmentRefundAmountCents({
         shipmentItems: lastShipment,
         orderItems,
         orderChargeCents: 1_670_092,
         remainingRefundableCents: 521_900,
+      }),
+    ).toThrow('REFUND_AMOUNT_EXCEEDS_CAP');
+  });
+
+  it('keeps a single-shipment order exact: one missing cent is not rounding', () => {
+    expect(() =>
+      computeShipmentRefundAmountCents({
+        shipmentItems: [{ price_at_purchase: 10_000, shipping_amount: null, shipment_id: 'only' }],
+        orderItems: [{ price_at_purchase: 10_000, shipping_amount: null, shipment_id: 'only' }],
+        orderChargeCents: 1_000_350,
+        remainingRefundableCents: 1_000_349,
       }),
     ).toThrow('REFUND_AMOUNT_EXCEEDS_CAP');
   });
