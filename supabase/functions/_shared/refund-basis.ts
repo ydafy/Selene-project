@@ -68,10 +68,31 @@ export function computeShipmentRefundAmountCents(
   }
 
   if (refundCents > refundableCapCents) {
+    // Each shipment rounds its fee share on its own, so earlier refunds can take up to
+    // a cent each beyond their exact share. The last shipment then gets exactly what
+    // is left of the charge, never less than its own subtotal.
+    const roundingToleranceCents = countOrderShipments(input.orderItems);
+    if (
+      refundCents - refundableCapCents <= roundingToleranceCents &&
+      refundableCapCents >= shipmentSubtotalCents
+    ) {
+      return refundableCapCents;
+    }
     throw new ApiError(422, 'REFUND_AMOUNT_EXCEEDS_CAP');
   }
 
   return refundCents;
+}
+
+/** Distinct shipments of the order; an item without a shipment id counts on its own. */
+function countOrderShipments(items: ShipmentCancelItem[]): number {
+  const ids = new Set<string>();
+  let unassigned = 0;
+  for (const item of items) {
+    if (item.shipment_id) ids.add(item.shipment_id);
+    else unassigned += 1;
+  }
+  return ids.size + unassigned;
 }
 
 export function allocateCancellationLossCents(

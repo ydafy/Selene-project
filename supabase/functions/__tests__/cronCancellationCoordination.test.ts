@@ -585,7 +585,8 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
     for (const options of [
       { missingPI: true },
       { invalid: true },
-      { remaining: 339325 },
+      // Short by more than the one cent per shipment that rounding can explain.
+      { remaining: 339323 },
     ])
       test(`invalid basis cannot start: ${JSON.stringify(options)}`, async () => {
         const result = await run(options);
@@ -596,6 +597,11 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         expect(result.refunds).toEqual([]);
         expect(result.completions).toEqual([]);
       });
+    test('a rounding shortfall of one cent refunds exactly what is left of the charge', async () => {
+      const result = await run({ remaining: 339325 });
+      expect(result.refunds).toHaveLength(1);
+      expect((result.refunds[0] as unknown[])[0]).toMatchObject({ amount: 339325 });
+    });
     for (const options of [
       { refundStatus: 'pending' },
       { providerError: true },
