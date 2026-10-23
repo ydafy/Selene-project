@@ -1,0 +1,34 @@
+meta {
+  name: notify-product-interest-as-anon-denied
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_notify_product_interest
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{anonKey}}
+}
+
+body:json {
+  {
+    "p_product_id": "00000000-0000-4000-8000-0000000000b1",
+    "p_favoriter_id": "00000000-0000-4000-8000-000000000003"
+  }
+}
+
+tests {
+  test("an anonymous caller is denied", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody().code).to.equal("42501");
+  });
+}
+
+docs {
+  Proves EXECUTE on fn_notify_product_interest is revoked from `anon`.
+}
