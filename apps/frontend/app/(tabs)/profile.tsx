@@ -22,6 +22,7 @@ import { ProfileActionsBar } from '../../components/features/profile/ProfileActi
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { ProfileFavoritesGrid } from '../../components/features/profile/ProfileFavoritesGrid';
 import { ProfileSkeleton } from '../../components/features/profile/ProfileSkeleton';
+import { ConnectIncompleteBanner } from '../../components/features/profile/ConnectIncompleteBanner';
 
 // Componentes de Feature (Perfil)
 import { ProfileHeader } from '../../components/features/profile/ProfileHeader';
@@ -195,6 +196,8 @@ const UserProfile = () => {
         onEditProfile={handleEditProfile}
         isUploading={updateAvatar.isPending}
       />
+
+      <ConnectIncompleteBanner />
 
       <ProfileActionsBar />
 
