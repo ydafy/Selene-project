@@ -38,6 +38,7 @@ import { useProfile } from '../../core/hooks/useProfile';
 import { useProducts } from '../../core/hooks/useProducts';
 import { useSellerReviews } from '../../core/hooks/useSellerReviews';
 import { formatCurrency } from '../../core/utils/format';
+import { isClosedAccount } from '../../core/utils/publicIdentity';
 import { Theme } from '../../core/theme';
 import { GlobalHeader } from '@/components/layout/GlobalHeader';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -211,6 +212,47 @@ export default function PublicProfileScreen() {
         >
           <Text variant="body-sm" color="primary" fontWeight="bold">
             {t('profile:public.actions.retry')}
+          </Text>
+        </TouchableOpacity>
+      </Box>
+    );
+  }
+
+  // A closed account keeps its row for reviews and history, but its profile
+  // is no longer public: show a short state, not the old username or avatar.
+  if (isClosedAccount(profile)) {
+    return (
+      <Box
+        flex={1}
+        justifyContent="center"
+        alignItems="center"
+        backgroundColor="background"
+        padding="xl"
+      >
+        <MaterialCommunityIcons
+          name="account-off-outline"
+          size={48}
+          color={theme.colors.textSecondary}
+        />
+        <Text variant="subheader-md" marginTop="m" textAlign="center">
+          {t('profile:public.deleted.title')}
+        </Text>
+        <Text
+          variant="body-md"
+          color="textSecondary"
+          marginTop="s"
+          textAlign="center"
+        >
+          {t('profile:public.deleted.body')}
+        </Text>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel={t('profile:public.actions.goBack')}
+          style={{ marginTop: 16 }}
+        >
+          <Text variant="body-sm" color="primary" fontWeight="bold">
+            {t('profile:public.actions.goBack')}
           </Text>
         </TouchableOpacity>
       </Box>

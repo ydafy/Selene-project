@@ -15,6 +15,7 @@ import { PrimaryButton } from '../../ui/PrimaryButton';
 import { EnrichedShipment } from '@selene/types';
 import { Theme } from '@/core/theme';
 import { formatCurrency } from '@/core/utils/format';
+import { resolvePublicIdentity } from '@/core/utils/publicIdentity';
 import {
   getOrderStatusColor,
   getOrderStatusLabel,
@@ -51,6 +52,10 @@ export const OrderShipmentCard = ({
 
   const theme = useTheme<Theme>();
   const { t } = useTranslation(['orders', 'common']);
+  const sellerIdentity = resolvePublicIdentity(
+    shipment.seller,
+    t('common:deletedUser'),
+  );
 
   // --- Derived data ---
   const statusColorKey = getOrderStatusColor(shipment.status);
@@ -127,8 +132,10 @@ export const OrderShipmentCard = ({
   // --- Render helpers ---
 
   const renderAvatar = () => {
-    const avatarUrl = shipment.seller?.avatar_url?.trim();
-    const firstLetter = shipment.seller?.username?.charAt(0).toUpperCase();
+    const avatarUrl = sellerIdentity.avatarUrl?.trim();
+    const firstLetter = sellerIdentity.isDeleted
+      ? undefined
+      : sellerIdentity.displayName?.charAt(0).toUpperCase();
     const hasAvatar = !!avatarUrl && failedAvatarUrl !== avatarUrl;
 
     return (
@@ -155,7 +162,7 @@ export const OrderShipmentCard = ({
           </Text>
         ) : (
           <MaterialCommunityIcons
-            name="account"
+            name={sellerIdentity.isDeleted ? 'account-off-outline' : 'account'}
             size={20}
             color={theme.colors.background}
           />
@@ -277,7 +284,7 @@ export const OrderShipmentCard = ({
           {renderAvatar()}
           <Box flex={1} style={{ minWidth: 96, flexShrink: 1 }}>
             <Text variant="body-md" numberOfLines={1} style={{ flexShrink: 1 }}>
-              {shipment.seller?.username || t('card.unknownSeller')}
+              {sellerIdentity.displayName || t('card.unknownSeller')}
             </Text>
           </Box>
           {renderStatusBadge()}

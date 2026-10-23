@@ -131,4 +131,52 @@ describe('getUserReviewCardPresentation', () => {
       'Compra verificada: RX 7900 XT',
     );
   });
+
+  test('names a closed reviewer with the deleted-user label, never the old username', () => {
+    const copy = {
+      userFallback: 'Customer',
+      itemFallback: 'item',
+      noComment: 'No comment provided',
+      reviewFrom: 'Review from',
+      rating: 'Rating',
+      outOfFive: 'out of 5',
+      reviewedOn: 'Reviewed on',
+      comment: 'Comment',
+      verifiedPurchase: 'Verified purchase',
+      deletedUser: 'Deleted user',
+    };
+    const base = {
+      id: 'review-closed',
+      created_at: '2026-06-05T12:00:00.000Z',
+      rating: 4,
+      comment: 'Fast shipping',
+      shipment_id: null,
+      product_id: null,
+      isVerifiedPurchase: false,
+      product: null,
+    };
+
+    const byFlag = getUserReviewCardPresentation(
+      {
+        ...base,
+        reviewer: {
+          username: 'deleted_0123456789ab',
+          avatar_url: 'https://x/a.png',
+          deleted_at: '2026-10-22T10:00:00Z',
+        },
+      },
+      'en-US',
+      copy,
+    );
+    expect(byFlag.accessibilityLabel).toContain('Review from Deleted user.');
+    expect(byFlag.accessibilityLabel).not.toContain('@');
+    expect(byFlag.accessibilityLabel).not.toContain('deleted_0123456789ab');
+
+    const byShape = getUserReviewCardPresentation(
+      { ...base, reviewer: { username: 'deleted_0123456789ab', avatar_url: null } },
+      'en-US',
+      copy,
+    );
+    expect(byShape.accessibilityLabel).toContain('Review from Deleted user.');
+  });
 });

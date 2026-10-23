@@ -8,6 +8,8 @@ export interface SellerReviewRow {
   reviewer: {
     username: string | null;
     avatar_url: string | null;
+    // Not in the generated types until `db:types` runs after the closure migration.
+    deleted_at?: string | null;
   } | null;
   product: {
     name: string;

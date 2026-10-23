@@ -90,6 +90,10 @@
       "products": "Este vendedor no tiene publicaciones activas actualmente.",
       "reviews": "Este vendedor aún no ha recibido reseñas de compradores."
     },
+    "deleted": {
+      "title": "Esta cuenta fue eliminada",
+      "body": "Este usuario cerró su cuenta, por lo que el perfil ya no está disponible."
+    },
     "errors": {
       "invalidProfile": "Este enlace de perfil público no es válido.",
       "products": "No se pudieron cargar las publicaciones.",

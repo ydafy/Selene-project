@@ -92,6 +92,10 @@
       "products": "This seller has no active listings right now.",
       "reviews": "This seller has not received buyer reviews yet."
     },
+    "deleted": {
+      "title": "This account was deleted",
+      "body": "This user closed their account, so the profile is no longer available."
+    },
     "errors": {
       "invalidProfile": "This public profile link is invalid.",
       "products": "Could not load listings.",

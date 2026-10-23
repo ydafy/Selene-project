@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { Box, Text } from '../../base';
 import { AppImage } from '../../ui/AppImage';
 import { Theme } from '../../../core/theme';
+import { resolvePublicIdentity } from '../../../core/utils/publicIdentity';
 
 type ProductSellerCardProps = {
   product: ProductWithSeller;
@@ -19,14 +20,15 @@ type ProductSellerCardProps = {
 export const ProductSellerCard = ({ product }: ProductSellerCardProps) => {
   const theme = useTheme<Theme>();
   const router = useRouter();
-  const { t } = useTranslation('product');
+  const { t } = useTranslation(['product', 'common']);
 
   // FIX: Ahora leemos 'seller' directamente sin usar 'any'
   const seller = product.seller;
-  const sellerName = seller?.username ?? t('seller.fallbackName');
+  const identity = resolvePublicIdentity(seller, t('common:deletedUser'));
+  const sellerName = identity.displayName ?? t('seller.fallbackName');
 
   const handlePress = () => {
-    if (seller?.id) {
+    if (seller?.id && identity.canOpenProfile) {
       router.push({
         pathname: '/profile/[id]',
         params: { id: seller.id },
@@ -46,7 +48,11 @@ export const ProductSellerCard = ({ product }: ProductSellerCardProps) => {
   }
 
   return (
-    <TouchableOpacity activeOpacity={0.7} onPress={handlePress}>
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={handlePress}
+      disabled={!identity.canOpenProfile}
+    >
       <Box
         flexDirection="row"
         alignItems="center"
@@ -58,9 +64,9 @@ export const ProductSellerCard = ({ product }: ProductSellerCardProps) => {
         style={{ borderStyle: 'solid' }}
       >
         <Box marginRight="m">
-          {seller.avatar_url ? (
+          {identity.avatarUrl ? (
             <AppImage
-              source={{ uri: seller.avatar_url }}
+              source={{ uri: identity.avatarUrl }}
               style={{ width: 40, height: 40, borderRadius: 20 }}
             />
           ) : (
@@ -72,9 +78,21 @@ export const ProductSellerCard = ({ product }: ProductSellerCardProps) => {
               alignItems="center"
               backgroundColor="primary"
             >
-              <Text variant="subheader-md" fontWeight="bold" color="background">
-                {sellerName.charAt(0).toUpperCase()}
-              </Text>
+              {identity.isDeleted ? (
+                <MaterialCommunityIcons
+                  name="account-off-outline"
+                  size={22}
+                  color={theme.colors.background}
+                />
+              ) : (
+                <Text
+                  variant="subheader-md"
+                  fontWeight="bold"
+                  color="background"
+                >
+                  {sellerName.charAt(0).toUpperCase()}
+                </Text>
+              )}
             </Box>
           )}
         </Box>
@@ -83,11 +101,11 @@ export const ProductSellerCard = ({ product }: ProductSellerCardProps) => {
           {/* FILA 1: NOMBRE + ICONO (Solo si es VIP) */}
           <Box flexDirection="row" alignItems="center">
             <Text variant="body-md" fontWeight="bold">
-              @{sellerName}
+              {identity.isDeleted ? sellerName : `@${sellerName}`}
             </Text>
 
             {/* EL ICONO: Solo aparece si es verificado */}
-            {seller.is_verified_seller && (
+            {!identity.isDeleted && seller.is_verified_seller && (
               <MaterialCommunityIcons
                 name="check-decagram"
                 size={16}
@@ -98,7 +116,7 @@ export const ProductSellerCard = ({ product }: ProductSellerCardProps) => {
           </Box>
 
           {/* FILA 2: TEXTO DE RESPALDO (Solo si es VIP) */}
-          {seller.is_verified_seller && (
+          {!identity.isDeleted && seller.is_verified_seller && (
             <Text
               variant="caption-md"
               color="primary"
@@ -109,12 +127,14 @@ export const ProductSellerCard = ({ product }: ProductSellerCardProps) => {
             </Text>
           )}
         </Box>
-        <IconButton
-          icon="chevron-right"
-          iconColor={theme.colors.textPrimary}
-          size={20}
-          style={{ margin: 0 }}
-        />
+        {identity.canOpenProfile && (
+          <IconButton
+            icon="chevron-right"
+            iconColor={theme.colors.textPrimary}
+            size={20}
+            style={{ margin: 0 }}
+          />
+        )}
       </Box>
     </TouchableOpacity>
   );

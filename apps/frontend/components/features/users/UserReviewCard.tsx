@@ -45,6 +45,7 @@ export const UserReviewCard = ({ review }: UserReviewCardProps) => {
       reviewedOn: t('public.reviewDatePrefix'),
       comment: t('public.a11y.reviewComment'),
       verifiedPurchase: t('public.a11y.reviewVerifiedPurchase'),
+      deletedUser: t('common:deletedUser'),
     },
   );
 
@@ -53,9 +54,11 @@ export const UserReviewCard = ({ review }: UserReviewCardProps) => {
   }
 
   // Fallback calculations for avatar initials
-  const initials = review.reviewer?.username
-    ? review.reviewer.username.slice(0, 2).toUpperCase()
-    : 'US';
+  const { reviewer } = presentation;
+  const initials =
+    !reviewer.isDeleted && reviewer.displayName
+      ? reviewer.displayName.slice(0, 2).toUpperCase()
+      : 'US';
 
   // Dynamic accessibility description for screen readers (a11y)
   const accessibilityLabel = presentation.accessibilityLabel;
@@ -88,10 +91,16 @@ export const UserReviewCard = ({ review }: UserReviewCardProps) => {
             justifyContent="center"
             alignItems="center"
           >
-            {review.reviewer?.avatar_url ? (
+            {reviewer.avatarUrl ? (
               <AppImage
-                source={{ uri: review.reviewer.avatar_url }}
+                source={{ uri: reviewer.avatarUrl }}
                 style={{ width: '100%', height: '100%' }}
+              />
+            ) : reviewer.isDeleted ? (
+              <MaterialCommunityIcons
+                name="account-off-outline"
+                size={18}
+                color={theme.colors.textSecondary}
               />
             ) : (
               <Text variant="caption-md" color="textSecondary">
@@ -100,7 +109,9 @@ export const UserReviewCard = ({ review }: UserReviewCardProps) => {
             )}
           </Box>
           <Text variant="body-sm" fontWeight="bold">
-            @{review.reviewer?.username || 'Usuario'}
+            {reviewer.isDeleted
+              ? reviewer.displayName
+              : `@${reviewer.displayName || 'Usuario'}`}
           </Text>
         </Box>
 

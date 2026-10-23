@@ -1,10 +1,15 @@
 import type { SellerReview } from '../../../core/hooks/useSellerReviews.helpers';
+import {
+  resolvePublicIdentity,
+  type PublicIdentity,
+} from '../../../core/utils/publicIdentity';
 
 type ReviewCardPresentation = {
   shouldRender: boolean;
   showVerifiedBadge: boolean;
   formattedDate: string;
   accessibilityLabel: string;
+  reviewer: PublicIdentity;
 };
 
 export type UserReviewCardAccessibilityCopy = {
@@ -17,6 +22,7 @@ export type UserReviewCardAccessibilityCopy = {
   reviewedOn: string;
   comment: string;
   verifiedPurchase: string;
+  deletedUser?: string;
 };
 
 const defaultAccessibilityCopy: UserReviewCardAccessibilityCopy = {
@@ -45,7 +51,13 @@ export const getUserReviewCardPresentation = (
   copy: UserReviewCardAccessibilityCopy = defaultAccessibilityCopy,
 ): ReviewCardPresentation => {
   const comment = review.comment?.trim() ?? '';
-  const reviewerName = review.reviewer?.username ?? copy.userFallback;
+  const reviewer = resolvePublicIdentity(
+    review.reviewer,
+    copy.deletedUser ?? 'Deleted user',
+  );
+  const reviewerName = reviewer.isDeleted
+    ? reviewer.displayName
+    : `@${reviewer.displayName ?? copy.userFallback}`;
   const formattedDate = formatReviewDate(review.created_at, locale);
   const verifiedSegment = review.isVerifiedPurchase
     ? ` ${copy.verifiedPurchase}: ${review.product?.name ?? copy.itemFallback}.`
@@ -55,6 +67,7 @@ export const getUserReviewCardPresentation = (
     shouldRender: comment.length > 0,
     showVerifiedBadge: review.isVerifiedPurchase,
     formattedDate,
-    accessibilityLabel: `${copy.reviewFrom} @${reviewerName}. ${copy.rating}: ${review.rating} ${copy.outOfFive}. ${copy.reviewedOn} ${formattedDate}. ${copy.comment}: ${comment || copy.noComment}.${verifiedSegment}`,
+    reviewer,
+    accessibilityLabel: `${copy.reviewFrom} ${reviewerName}. ${copy.rating}: ${review.rating} ${copy.outOfFive}. ${copy.reviewedOn} ${formattedDate}. ${copy.comment}: ${comment || copy.noComment}.${verifiedSegment}`,
   };
 };

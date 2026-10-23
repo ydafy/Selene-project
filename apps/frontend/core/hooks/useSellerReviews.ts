@@ -32,7 +32,7 @@ const fetchSellerReviews = async (
       comment,
       shipment_id,
       product_id,
-      reviewer:profiles!reviewer_id(username, avatar_url),
+      reviewer:profiles!reviewer_id(username, avatar_url, deleted_at),
       product:products(name)
     `,
     )

@@ -21,11 +21,13 @@ test('renders one purchased product as the shipment identity', () => {
 test('uses the joined seller profile for a clipped avatar and safe fallback', () => {
   expect(shipmentTypes).toContain('seller: Profile | null;');
   expect(shipmentHook).toContain('seller: shipment.seller,');
-  expect(source).toContain('const avatarUrl = shipment.seller?.avatar_url?.trim();');
+  expect(source).toContain('const avatarUrl = sellerIdentity.avatarUrl?.trim();');
+  expect(source).toContain('resolvePublicIdentity(');
+  expect(source).toContain("t('common:deletedUser')");
   expect(source).toContain('const hasAvatar = !!avatarUrl && failedAvatarUrl !== avatarUrl;');
   expect(source).toContain('source={{ uri: avatarUrl }}');
   expect(source).toContain('onError={() => setFailedAvatarUrl(avatarUrl ?? null)}');
-  expect(source).toContain("shipment.seller?.username || t('card.unknownSeller')");
+  expect(source).toContain("sellerIdentity.displayName || t('card.unknownSeller')");
   expect(source).not.toContain('shipment as EnrichedShipment');
 });
 
