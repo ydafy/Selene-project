@@ -1,0 +1,35 @@
+meta {
+  name: notify-product-available-as-buyer-denied
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_notify_product_available
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  {
+    "p_product_ids": ["00000000-0000-4000-8000-0000000000b1"]
+  }
+}
+
+tests {
+  test("an authenticated buyer is denied", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody().code).to.equal("42501");
+  });
+}
+
+docs {
+  Run after auth/login-buyer (needs `buyerToken`). Proves EXECUTE on
+  fn_notify_product_available is revoked from `authenticated`: buyers cannot
+  fabricate "available" notices for other users.
+}

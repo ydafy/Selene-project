@@ -52,6 +52,17 @@ describe('launch digest', () => {
     ], 'owner')?.id).toBe('dispute');
   });
 
+  test('ranks a buyer product.available notice above an approved seller notice and below a dispute', () => {
+    expect(selectLaunchDigest([
+      typed('approved', '2026-04-04', 'product.approved', 'seller'),
+      typed('available', '2026-04-03', 'product.available', 'buyer'),
+    ], 'owner')?.id).toBe('available');
+    expect(selectLaunchDigest([
+      typed('available', '2026-04-04', 'product.available', 'buyer'),
+      typed('dispute', '2026-04-03', 'dispute.opened', 'buyer'),
+    ], 'owner')?.id).toBe('dispute');
+  });
+
   test('uses newest then ID for equal priority and treats malformed or unknown identity as generic', () => {
     expect(selectLaunchDigest([
       typed('a', '2026-04-02', 'dispute.opened', 'seller'),

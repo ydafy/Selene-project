@@ -10,6 +10,7 @@ const priority: Record<NonNullable<ReturnType<typeof getVerifiedEventIdentity>>[
   'product.approved': { seller: 1 },
   'product.approved_with_note': { seller: 1 },
   'product.rejected': { seller: 2 },
+  'product.available': { buyer: 2 },
   'return.seller_evidence_submitted': { buyer: 2 },
   'return.delivered': { buyer: 2, seller: 2 },
 };
