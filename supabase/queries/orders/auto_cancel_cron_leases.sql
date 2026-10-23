@@ -4,6 +4,8 @@
 -- 600 seconds, longer than any Edge Function wall clock, so a killed run blocks at most
 -- the next hourly run window and never overlaps a live one. Only the holder may release.
 -- Same pattern as fn_acquire_track_shipments_lease.
+-- Current state of migrations 20261023023952_auto_cancel_cron_leases (columns, functions)
+-- and 20261023043940_drop_auto_cancel_running_flags (DROP below).
 
 ALTER TABLE public.system_settings
   ADD COLUMN IF NOT EXISTS auto_cancel_orders_lease_id UUID,

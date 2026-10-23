@@ -1,4 +1,23 @@
-# Shipment cancellation coordination — B1 and B2
+# Shipment cancellation coordination — B1, B2 and B3
+
+## B3 status: authenticated, expiring cron coordination (closed by B3.4)
+
+Tracker: `odd/tasks/shipment-cancellations-b3.md` (specs S1–S5, Log L1–L20). Deployed to the sandbox project.
+
+| Unit | Behavior |
+|---|---|
+| B3.1 | `auto-cancel-orders` and `auto-cancel-preparing` take a service-only expiring lease (`fn_acquire_auto_cancel_lease` / `fn_release_auto_cancel_lease`, 600 s TTL) instead of the global `*_running` booleans, release it in `finally`, and start no new shipment after a 100 s run budget (`deferred` in the response). A killed run blocks at most until its lease expires (FU4 fixed). The booleans are dropped. |
+| B3.2 | Both functions require `x-cron-secret` equal to `CRON_SECRET` (constant time) before touching the database or Stripe; anything else gets 401 `UNAUTHORIZED`. `auto-cancel-orders-job` reads URL, anon JWT and `auto_cancel_orders_cron_secret` from Vault (no literal JWT). |
+| B3.3 | An unreadable, null, zero, negative or non-integer expiration setting fails closed with 500 `AUTO_CANCEL_SETTINGS_INVALID` instead of falling back to a default. Candidates are processed oldest first; exactly-at-limit is not expired. |
+
+Evidence: lease SQL harness `scripts/test-auto-cancel-lease.ts` (13 cases incl. real row-lock races); served-function harness `scripts/test-auto-cancel-paid-timeout.ts` (live boundaries, rerun, held lease, invalid setting, overlapping HTTP runs); Bruno auth requests; real sandbox run through the Vault-based job command: 200 `{"processed":2,"success":0,"deferred":0}`, lease free, both FU2 orphans rejected with `SHIPMENT_LABEL_OPERATION_ACTIVE` before Stripe. Native reviews approved for every high-risk commit and for the whole branch.
+
+### B3 remaining limits
+
+- A wrong Vault secret makes every hourly run return 401 while `cron.job_run_details` still shows `succeeded`, and Sentry ignores 4xx: check `net._http_response` after touching the job or `CRON_SECRET`.
+- Oldest-first selection plus permanently failing candidates (FU2 `orphan_pending`) could starve newer shipments once 50 or more exist (2 today). Resolve with FU2 in B4.
+- `auto-cancel-preparing` has the lease and the secret but no cron job; scheduling it belongs to B4.
+- The run-budget deferral is source-guarded, not executed by a test.
 
 ## B2 status: refund identity, recovery and refund problems (closed by B2.5)
 
@@ -25,7 +44,7 @@ Tracker: `odd/tasks/shipment-cancellations-b2.md` (specs S1–S8, Log L1–L45).
 
 - Refunds UI polish (payout seller search and queue error banner still visible under "Reembolsos", Spanish labels for status and reason) is B5.
 - Out-of-module follow-ups live in `odd/tasks/cross-module-backlog.md` (BL1–BL11), including payout runs without a close action (BL1) and the 1-cent round-down residual (BL11).
-- B3 (global cron locks, paid-timeout E2E) and B4 (preparing evidence, label outcome, orphan labels) remain.
+- B4 (preparing evidence, label outcome, orphan labels) remains; B3 closed above.
 
 ## B1 status (closed by B1.4)
 
