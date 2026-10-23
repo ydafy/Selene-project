@@ -41,4 +41,24 @@ describe('isAuthorizedCronRequest', () => {
       ),
     ).toBe(false);
   });
+
+  test('matches the header name case-insensitively and rejects a duplicated header', () => {
+    const withHeaders = (headers: [string, string][]) =>
+      new Request('http://localhost/', { method: 'POST', headers });
+    expect(isAuthorizedCronRequest(withHeaders([['X-Cron-Secret', 's3cret']]), 's3cret')).toBe(true);
+    expect(
+      isAuthorizedCronRequest(
+        withHeaders([
+          ['x-cron-secret', 's3cret'],
+          ['x-cron-secret', 's3cret'],
+        ]),
+        's3cret',
+      ),
+    ).toBe(false);
+  });
+
+  test('compares non-ASCII secrets byte by byte', () => {
+    expect(isAuthorizedCronRequest(request({ 'x-cron-secret': 'ñandú' }), 'ñandú')).toBe(true);
+    expect(isAuthorizedCronRequest(request({ 'x-cron-secret': 'nandu' }), 'ñandú')).toBe(false);
+  });
 });
