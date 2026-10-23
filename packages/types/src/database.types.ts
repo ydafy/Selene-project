@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_closures: {
+        Row: {
+          attempts: number
+          closed_at: string
+          last_error: string | null
+          storage_cleanup: string
+          stripe_account_cleanup: string
+          stripe_account_id: string | null
+          stripe_customer_cleanup: string
+          stripe_customer_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          closed_at?: string
+          last_error?: string | null
+          storage_cleanup?: string
+          stripe_account_cleanup?: string
+          stripe_account_id?: string | null
+          stripe_customer_cleanup?: string
+          stripe_customer_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          closed_at?: string
+          last_error?: string | null
+          storage_cleanup?: string
+          stripe_account_cleanup?: string
+          stripe_account_id?: string | null
+          stripe_customer_cleanup?: string
+          stripe_customer_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       addresses: {
         Row: {
           city: string
@@ -1696,6 +1735,7 @@ export type Database = {
           avatar_url: string | null
           average_rating: number
           created_at: string
+          deleted_at: string | null
           id: string
           is_verified_seller: boolean | null
           total_reviews: number
@@ -1707,6 +1747,7 @@ export type Database = {
           avatar_url?: string | null
           average_rating?: number
           created_at?: string
+          deleted_at?: string | null
           id: string
           is_verified_seller?: boolean | null
           total_reviews?: number
@@ -1718,6 +1759,7 @@ export type Database = {
           avatar_url?: string | null
           average_rating?: number
           created_at?: string
+          deleted_at?: string | null
           id?: string
           is_verified_seller?: boolean | null
           total_reviews?: number
@@ -3714,6 +3756,27 @@ export type Database = {
           stage_version: number
         }[]
       }
+      fn_claim_account_closures: {
+        Args: { p_limit: number; p_max_attempts: number; p_min_idle: string }
+        Returns: {
+          attempts: number
+          closed_at: string
+          last_error: string | null
+          storage_cleanup: string
+          stripe_account_cleanup: string
+          stripe_account_id: string | null
+          stripe_customer_cleanup: string
+          stripe_customer_id: string | null
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "account_closures"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       fn_claim_checkout_recovery_shells: {
         Args: {
           p_claim_scope?: string
@@ -3816,6 +3879,7 @@ export type Database = {
           p_source_event_id: string
           p_stripe_account_id: string
         }
+      fn_close_account: { Args: { p_user_id: string }; Returns: Json }
         Returns: boolean
       }
       fn_complete_payout_create_fence: {
@@ -4193,6 +4257,14 @@ export type Database = {
           p_dispute_id: string
           p_event_at: string
           p_event_type: Database["public"]["Enums"]["shipment_tracking_event_type"]
+      fn_record_closure_attempt: {
+        Args: {
+          p_count_attempt: boolean
+          p_last_error: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
           p_location: string
           p_polling_run_id: string
           p_raw_status: string
