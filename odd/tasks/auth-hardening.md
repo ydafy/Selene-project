@@ -73,12 +73,12 @@ Follow repository manual Supabase workflow: supply SQL/function/config handoff, 
 - T3b | S6 | delegated writer (context backstop) | done (see git log; device check pending) | Unconfirmed-login and existing-email registration recovery (B4, B5) plus missing auth i18n keys (B6) | Commit: not created.
 - T3c | S6 | delegated writer (context backstop) | done (see git log; device check pending) | Localized auth errors by error code, Google sign-in copy, resend cooldown (B7, B8) | Commit: not created.
 - T3d | S6,S9 | delegated writer (context backstop) | done (see git log) | Provider-linking policy and deployed Auth settings recorded; local `[auth]` config mirrors the remote once the maintainer supplies the Dashboard values (B9, B10) | Commit: not created.
-- T4 | S1–S3,S7,S10 | parent orchestration | in progress (branch `audit/auth-recovery`, audit L53) | Harden recovery and credential changes | Commit: not created.
-- T4a | S7 | inline | done (3c4a941, review approved; device check pending) | Password change asks for the current password, sends `currentPassword` instead of a random nonce, maps GoTrue error codes (C1, C2, C4 for Settings password) | Own commit (high risk: credentials) | Commit: not created.
-- T4b | S7 | delegated writer (context backstop) | done (314d23a, review approved; device check pending) | Recovery: retry after a failed update without re-verifying the consumed code, resend with cooldown, localized errors and copy (C3, C4) | Commit: not created.
-- T4c | S7 | inline | done (941fa2f, review approved; device check pending) | Email change: error codes, unchanged-address guard and copy for confirming from both inboxes (C4, C5, C8) | Commit: not created.
+- T4 | S1–S3,S7,S10 | parent orchestration | done (merged to main, L65) | Harden recovery and credential changes | Commit: see T4a-T4e.
+- T4a | S7 | inline | done (3c4a941, review approved; device check passed L62) | Password change asks for the current password, sends `current_password` instead of a random nonce, maps GoTrue error codes (C1, C2, C4 for Settings password) | Own commit (high risk: credentials) | Commit: not created.
+- T4b | S7 | delegated writer (context backstop) | done (314d23a, review approved; device check passed L64) | Recovery: retry after a failed update without re-verifying the consumed code, resend with cooldown, localized errors and copy (C3, C4) | Commit: not created.
+- T4c | S7 | inline | done (941fa2f, review approved; device check passed L62) | Email change: error codes, unchanged-address guard and copy for confirming from both inboxes (C4, C5, C8) | Commit: not created.
 - T4d | S7 | inline | done (7ed565c, review approved) | Review follow-ups: clear the old code after a resend; error-code lookups ignore Object prototype keys | Commit: see git log.
-- T4e | S7 | inline | done (see git log; device check pending) | Password dialog: error under the field that failed; dialog stays above the keyboard (L62) | Commit: not created.
+- T4e | S7 | inline | done (ec6185e, f0ed6d5; reviews approved; device check passed L65) | Password dialog: error under the field that failed; dialog stays above the keyboard (L62) | Commit: not created.
 - T5 | S1–S3,S8,S10 | route on resume | pending, future session by explicit user request | Harden account deletion | Commit: not created.
 - T6 | S1–S3,S9,S10 | route on resume | pending, future session by explicit user request | Verify production configuration and integrated journeys | Commit: not created.
 
@@ -458,4 +458,9 @@ Keyboard (verbatim): "el teclado, sigue tapando el tecaldo el dialog"; field err
 Fix: the `KeyboardAvoidingView` wrapper had no effect on the Paper dialog, so it is removed. `core/hooks/keyboardHeight.logic.ts` (`subscribeKeyboardHeight`, injected keyboard source; iOS `keyboardWill*`, Android `keyboardDid*`) and `useKeyboardHeight(enabled)` feed `ConfirmDialog`, which adds `marginBottom: keyboardHeight` when `avoidKeyboard` is set: Paper centers the dialog, so the margin centers it in the space above the keyboard. The `ConfirmDialog` diff against main is now +12/-2.
 RED: 2 fail (module missing, dialog wiring). GREEN: 225 pass (`core/hooks` keyboard test, `core/utils`, settings contract test); ESLint clean; no `tsc` diagnostics in touched files. Device check pending: password and email dialogs above the keyboard.
 Risk: item 3 (shared `ConfirmDialog`, opt-in only); item 6 (layout, device check only).
+
+### L65 — Block 4 closed and merged into main
+Maintainer (verbatim): "Listo lo del teclado quedo hermoso master, todo ok, puedes cerrar bloque 4". f0ed6d5 review `review-cc71aee02ea05dbb` (reliability) approved and acknowledged; advisory: the hook and dialog layout are proven by the device check only; keyboard state when the dialog mounts with the keyboard already open.
+All emulator checks passed (L62, L64, L65). Block 4 commits: 3c4a941, 314d23a, 941fa2f, 7ed565c, ec6185e, f0ed6d5 (each with an approved native review), docs e250706 and 66071dc; the accumulated-branch review was declined by the maintainer (L61).
+Open after block 4: C7 (Google-only detection from `app_metadata.provider`); `codeVerified` not invalidated when the recovery session ends; the email-change biometric gate is device-local only; custom SMTP (Resend) and CAPTCHA before go-live (built-in mailer: 2 emails per hour, organization members only); test account `tester1@test.com` cannot receive email. Next blocks: 5 (account deletion) and the auth-screen UI/UX pass (L62), each in a new session.
 
