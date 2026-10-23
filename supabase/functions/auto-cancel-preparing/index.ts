@@ -68,12 +68,28 @@ serve(withSentry('auto-cancel-preparing', async (req: Request) => {
     //    72h balancea experiencia del buyer (no esperar demasiado) con la realidad
     //    del seller (carrier scan delays). Si se detectan cancelaciones injustas
     //    en producción, subir a 96h desde el dashboard sin deploy.
-    const { data: settings } = await supabaseAdmin
+    const { data: settings, error: settingsError } = await supabaseAdmin
       .from('system_settings')
       .select('preparing_expiration_hours')
       .single();
 
-    const hours = settings?.preparing_expiration_hours || 72;
+    // Fail closed: a failed read or a non-positive-integer value never falls back to a default.
+    const hours = settings?.preparing_expiration_hours;
+    if (
+      settingsError ||
+      typeof hours !== 'number' ||
+      !Number.isInteger(hours) ||
+      hours <= 0
+    ) {
+      log('ERROR', 'Auto-cancel settings invalid', {
+        setting: 'preparing_expiration_hours',
+        value: hours ?? null,
+      });
+      return new Response(
+        JSON.stringify({ error: 'AUTO_CANCEL_SETTINGS_INVALID' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
     const expirationLimit = new Date(
       Date.now() - hours * 60 * 60 * 1000,
     ).toISOString();
@@ -90,6 +106,7 @@ serve(withSentry('auto-cancel-preparing', async (req: Request) => {
       )
       .eq('status', 'preparing')
       .lt('updated_at', expirationLimit)
+      .order('updated_at', { ascending: true })
       .limit(50);
 
     if (fetchError) throw fetchError;

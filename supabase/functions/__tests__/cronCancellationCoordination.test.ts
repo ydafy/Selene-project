@@ -621,7 +621,11 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         );
       });
     // Runs the whole handler with stubbed imports; `lease` decides what the lease helper returns.
-    function runHandler(lease: { acquired: boolean }) {
+    // `settings` controls the system_settings read; without it the read throws.
+    function runHandler(
+      lease: { acquired: boolean },
+      settings?: { data: unknown; error?: unknown },
+    ) {
       const source = readFileSync(
         new URL(`../${name}/index.ts`, import.meta.url),
         'utf8',
@@ -635,16 +639,27 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
       const leaseCalls: unknown[][] = [];
       let clientsCreated = 0;
       let handler!: (req: Request) => Promise<Response>;
+      const shipmentQuery: unknown[][] = [];
       const query: Record<string, unknown> = {
         select: () => query,
         update: () => query,
         eq: () => query,
         single: async () => {
+          if (settings) return { error: null, ...settings };
           throw new Error('secret db detail');
         },
         then: (resolve: (value: unknown) => unknown) =>
           Promise.resolve(resolve({})),
       };
+      const shipmentsChain: Record<string, unknown> = {
+        then: (resolve: (value: unknown) => unknown) =>
+          Promise.resolve(resolve({ data: [], error: null })),
+      };
+      for (const method of ['select', 'eq', 'is', 'lt', 'order', 'limit'])
+        shipmentsChain[method] = (...args: unknown[]) => {
+          shipmentQuery.push([method, ...args]);
+          return shipmentsChain;
+        };
       const held = new Response(JSON.stringify({ message: 'Already running' }));
       new Function(
         'serve',
@@ -672,7 +687,7 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
           return {
             from: (table: string) => {
               tables.push(table);
-              return query;
+              return table === 'shipments' ? shipmentsChain : query;
             },
           };
         },
@@ -713,6 +728,7 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         leaseCalls,
         job,
         held,
+        shipmentQuery,
         clientsCreated: () => clientsCreated,
       };
     }
@@ -761,17 +777,64 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         ['release', job, undefined],
       ]);
     });
+    const paidJob = name === 'auto-cancel-orders';
+    const column = paidJob ? 'order_expiration_hours' : 'preparing_expiration_hours';
+    const timestampColumn = paidJob ? 'created_at' : 'updated_at';
+    for (const [label, settings] of [
+      ['null', { data: { [column]: null } }],
+      ['0', { data: { [column]: 0 } }],
+      ['-1', { data: { [column]: -1 } }],
+      ['1.5', { data: { [column]: 1.5 } }],
+      ['a missing row', { data: null }],
+      ['a read error', { data: null, error: { message: 'boom' } }],
+    ] as const)
+      test(`an invalid ${column} (${label}) returns 500 AUTO_CANCEL_SETTINGS_INVALID, never queries shipments and releases the lease`, async () => {
+        const { run, logs, tables, leaseCalls, job } = runHandler(
+          { acquired: true },
+          settings,
+        );
+        const response = await run();
+        expect(response.status).toBe(500);
+        expect(await response.text()).toBe('{"error":"AUTO_CANCEL_SETTINGS_INVALID"}');
+        expect(logs).toContainEqual(
+          expect.objectContaining({
+            level: 'ERROR',
+            msg: 'Auto-cancel settings invalid',
+            setting: column,
+          }),
+        );
+        expect(tables).not.toContain('shipments');
+        expect(leaseCalls).toEqual([
+          ['acquire', job],
+          ['release', job, 'lease-1'],
+        ]);
+      });
+    test(`a valid ${column} sets the limit from it and orders candidates oldest first`, async () => {
+      const { run, shipmentQuery } = runHandler(
+        { acquired: true },
+        { data: { [column]: 5 } },
+      );
+      const before = Date.now();
+      const response = await run();
+      const after = Date.now();
+      expect(response.status).toBe(200);
+      const lt = shipmentQuery.find(([method]) => method === 'lt')!;
+      expect(lt[1]).toBe(timestampColumn);
+      const limit = new Date(lt[2] as string).getTime();
+      expect(limit).toBeGreaterThanOrEqual(before - 5 * 3600 * 1000);
+      expect(limit).toBeLessThanOrEqual(after - 5 * 3600 * 1000);
+      const methods = shipmentQuery.map(([method]) => method);
+      expect(shipmentQuery).toContainEqual(['order', timestampColumn, { ascending: true }]);
+      expect(methods.indexOf('order')).toBeLessThan(methods.indexOf('limit'));
+      expect(shipmentQuery).toContainEqual(['limit', 50]);
+    });
     test('preserves settings and timeout selection, without the legacy boolean lock', () => {
       const source = readFileSync(
         new URL(`../${name}/index.ts`, import.meta.url),
         'utf8',
       );
       const paid = name === 'auto-cancel-orders';
-      expect(source).toContain(
-        paid
-          ? 'settings?.order_expiration_hours || 48'
-          : 'settings?.preparing_expiration_hours || 72',
-      );
+      expect(source).not.toContain('expiration_hours || ');
       expect(source).toContain(
         paid
           ? ".lt('created_at', expirationLimit)"

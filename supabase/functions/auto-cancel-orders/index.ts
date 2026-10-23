@@ -65,12 +65,28 @@ serve(withSentry('auto-cancel-orders', async (req: Request) => {
     leaseId = lease.leaseId;
 
     // 1. Obtener configuración
-    const { data: settings } = await supabaseAdmin
+    const { data: settings, error: settingsError } = await supabaseAdmin
       .from('system_settings')
       .select('order_expiration_hours')
       .single();
 
-    const hours = settings?.order_expiration_hours || 48;
+    // Fail closed: a failed read or a non-positive-integer value never falls back to a default.
+    const hours = settings?.order_expiration_hours;
+    if (
+      settingsError ||
+      typeof hours !== 'number' ||
+      !Number.isInteger(hours) ||
+      hours <= 0
+    ) {
+      log('ERROR', 'Auto-cancel settings invalid', {
+        setting: 'order_expiration_hours',
+        value: hours ?? null,
+      });
+      return new Response(
+        JSON.stringify({ error: 'AUTO_CANCEL_SETTINGS_INVALID' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
     const expirationLimit = new Date(
       Date.now() - hours * 60 * 60 * 1000,
     ).toISOString();
@@ -84,6 +100,7 @@ serve(withSentry('auto-cancel-orders', async (req: Request) => {
       .eq('status', 'paid')
       .is('tracking_number', null)
       .lt('created_at', expirationLimit)
+      .order('created_at', { ascending: true })
       .limit(50);
 
     if (fetchError) throw fetchError;
