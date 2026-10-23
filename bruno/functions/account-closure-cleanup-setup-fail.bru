@@ -1,0 +1,39 @@
+meta {
+  name: account-closure-cleanup-setup-fail
+  type: http
+  seq: 46
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/account_closures?user_id=eq.{{cleanupThrowawayId}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "storage_cleanup": "failed",
+    "last_error": "storage:error",
+    "attempts": 3,
+    "updated_at": "2020-01-01T00:00:00Z"
+  }
+}
+
+tests {
+  test("the closure is left with a failed storage step, idle for years", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(1);
+    expect(res.getBody()[0].storage_cleanup).to.equal("failed");
+    expect(res.getBody()[0].attempts).to.equal(3);
+  });
+}
+
+docs {
+  Local stack only. An old updated_at puts the row outside the worker's idle window.
+}

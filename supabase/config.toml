@@ -29,6 +29,11 @@ verify_jwt = false
 [functions.cron-watchdog]
 verify_jwt = false
 
+# Cron-invoked retry of the Stripe and Storage cleanup of closed accounts; authenticated
+# by the `x-cron-secret` header.
+[functions.account-closure-cleanup]
+verify_jwt = false
+
 # Self-service account closure: the caller JWT is verified at the gateway and again by
 # auth.getUser inside the function, which also requires a sign-in newer than 10 minutes.
 [functions.delete-account]

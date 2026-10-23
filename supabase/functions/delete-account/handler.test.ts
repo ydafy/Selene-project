@@ -3,7 +3,10 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import {
+  AuthUnavailableError,
   createDeleteAccountHandler,
+  isTransientAuthError,
+  latestSignInSeconds,
   type ClosureCleanupUpdate,
   type DeleteAccountDeps,
 } from './handler.ts';
@@ -47,6 +50,8 @@ function stripeError(code: string, message = RAW_STRIPE_MESSAGE) {
 function harness(
   overrides: {
     userId?: string | null;
+    userIdError?: Error;
+    warnThrows?: boolean;
     rpc?: RpcResult | Error;
     customer?: Error;
     account?: Error;
@@ -64,6 +69,7 @@ function harness(
   const deps: DeleteAccountDeps = {
     getUserId: async (token) => {
       tokens.push(token);
+      if (overrides.userIdError) throw overrides.userIdError;
       return overrides.userId === undefined ? USER : overrides.userId;
     },
     now: () => NOW_MS,
@@ -90,6 +96,7 @@ function harness(
     },
     log: (level, msg, data) => {
       logs.push({ level, msg, data });
+      if (overrides.warnThrows && level === 'WARN') throw new Error('log sink down');
     },
   };
   return {
@@ -505,6 +512,76 @@ describe('delete-account handler: cleanup after closure', () => {
   });
 });
 
+describe('delete-account handler: transient auth failures', () => {
+  it('503 TEMPORARILY_UNAVAILABLE when the token check is unavailable, with no side effects', async () => {
+    const h = harness({ userIdError: new AuthUnavailableError() });
+    const { response, body } = await send(h, post());
+    expect(response.status).toBe(503);
+    expect(body).toEqual({ error: 'TEMPORARILY_UNAVAILABLE' });
+    nothingHappened(h);
+  });
+
+  it('keeps 401 AUTH_REQUIRED for a token the auth server rejects', async () => {
+    const h = harness({ userId: null });
+    const { response, body } = await send(h, post());
+    expect(response.status).toBe(401);
+    expect(body).toEqual({ error: 'AUTH_REQUIRED' });
+  });
+
+  it('classifies the auth error status: 4xx is an invalid token, the rest is transient', () => {
+    for (const status of [400, 401, 403, 404, 422]) expect(isTransientAuthError({ status })).toBe(false);
+    for (const status of [0, 429, 500, 502, 503]) expect(isTransientAuthError({ status })).toBe(true);
+    expect(isTransientAuthError({})).toBe(true);
+    expect(isTransientAuthError(new Error('fetch failed'))).toBe(true);
+    expect(isTransientAuthError(null)).toBe(true);
+  });
+});
+
+describe('delete-account handler: malformed token payload', () => {
+  it('latestSignInSeconds returns null instead of throwing on a broken payload', () => {
+    const payloads = [
+      '%%%',
+      'bm90IGpzb24',
+      'W10',
+      'bnVsbA',
+      Buffer.from('{"amr":[null,1,{"timestamp":"x"}]}').toString('base64url'),
+    ];
+    for (const payload of payloads) {
+      expect(() => latestSignInSeconds(`h.${payload}.s`)).not.toThrow();
+      expect(latestSignInSeconds(`h.${payload}.s`)).toBeNull();
+    }
+  });
+});
+
+describe('delete-account handler: crash logs', () => {
+  it('logs a sanitized code, never the message, when the request crashes', async () => {
+    const h = harness({
+      userIdError: Object.assign(new Error('boom for jane@example.com'), { code: 'upstream_down' }),
+    });
+    const { response, body } = await send(h, post());
+    expect(response.status).toBe(500);
+    expect(body).toEqual({ error: 'INTERNAL' });
+    const crash = h.logs.find((entry) => entry.msg === 'Account closure crashed');
+    expect(crash?.data).toEqual({ code: 'upstream_down' });
+    expect(JSON.stringify(h.logs)).not.toContain('jane@example.com');
+  });
+
+  it('falls back to a generic code when the error has none', async () => {
+    const h = harness({ userIdError: new Error('x') });
+    await send(h, post());
+    expect(h.logs.find((entry) => entry.msg === 'Account closure crashed')?.data).toEqual({ code: 'error' });
+  });
+
+  it('logs the code when the cleanup itself crashes and still answers 200', async () => {
+    const h = harness({ warnThrows: true, customer: stripeError('api_connection_error') });
+    const { response, body } = await send(h, post());
+    expect(response.status).toBe(200);
+    expect(body).toEqual({ success: true });
+    const crash = h.logs.find((entry) => entry.msg === 'Account closure cleanup crashed');
+    expect(crash?.data).toEqual({ userId: USER, code: 'error' });
+  });
+});
+
 describe('delete-account wiring (source contract)', () => {
   const root = join(import.meta.dir, '..', '..', '..');
   const index = readFileSync(join(import.meta.dir, 'index.ts'), 'utf8');
@@ -519,6 +596,20 @@ describe('delete-account wiring (source contract)', () => {
     expect(index).toContain('p_user_id');
     expect(index).toContain('createClient<Database>');
     expect(index).toContain('SUPABASE_SERVICE_ROLE_KEY');
+  });
+
+  it('shares the cleanup with the retry worker instead of carrying its own copy', () => {
+    expect(index).toContain("from '../_shared/account-closure-cleanup.ts'");
+    expect(index).toContain('createSupabaseClosurePorts');
+    expect(index).not.toContain('customers.del');
+    expect(readFileSync(join(import.meta.dir, 'handler.ts'), 'utf8')).toContain(
+      "from '../_shared/account-closure-cleanup.ts'",
+    );
+  });
+
+  it('answers a transient auth.getUser failure as unavailable, keeping 401 for an invalid token', () => {
+    expect(index).toContain('isTransientAuthError');
+    expect(index).toContain('AuthUnavailableError');
   });
 
   it('is declared in config.toml with JWT verification on', () => {

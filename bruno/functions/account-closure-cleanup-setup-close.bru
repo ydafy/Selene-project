@@ -1,0 +1,33 @@
+meta {
+  name: account-closure-cleanup-setup-close
+  type: http
+  seq: 45
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_close_account
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  { "p_user_id": "{{cleanupThrowawayId}}" }
+}
+
+tests {
+  test("the service role closes the throwaway account", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().status).to.equal("closed");
+    expect(res.getBody().storage_cleanup).to.equal("pending");
+  });
+}
+
+docs {
+  Closes the user through the RPC only, without the delete-account function, so the
+  cleanup is left undone like a request that died after the RPC committed.
+}

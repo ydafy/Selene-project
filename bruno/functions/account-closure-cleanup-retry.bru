@@ -1,0 +1,33 @@
+meta {
+  name: account-closure-cleanup-retry
+  type: http
+  seq: 47
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/account-closure-cleanup
+  body: json
+  auth: none
+}
+
+headers {
+  x-cron-secret: {{cronSecret}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("the worker claims and finishes the closure", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().claimed).to.be.at.least(1);
+    expect(res.getBody().completed).to.equal(res.getBody().claimed);
+    expect(res.getBody().failed).to.equal(0);
+    expect(res.getBody().invalid).to.equal(0);
+  });
+}
+
+docs {
+  Needs the functions server. Retries the closure left failed by account-closure-cleanup-setup-fail.
+}

@@ -52,6 +52,7 @@ Values differ per project; never copy them from another environment.
 - `complete_delivered_shipments_cron_secret`
 - `resume_pending_payouts_cron_secret`
 - `cron_watchdog_cron_secret` (same value as the `CRON_SECRET` function secret)
+- `account_closure_cleanup_cron_secret` (same value as the `CRON_SECRET` function secret)
 - `stripe_fee_worker_project_url`
 - `stripe_fee_worker_service_role_jwt`
 
@@ -71,12 +72,15 @@ Deploy every directory in `supabase/functions/` except `_shared/`. `supabase/con
 
 `list-shipment-refund-problems` is the admin read of unresolved refund problems (GET, returns `{ problems }`). Like `resolve-shipment-refund` it keeps `verify_jwt = true` (declared in `supabase/config.toml`) and checks `profiles_private.role = 'admin'` itself. It needs no new secret. Apply `supabase/migrations/20261022223302_shipment_refund_problems.sql` (service-only `fn_list_shipment_refund_problems`) before deploying it.
 
+`delete-account` closes an account in one SQL transaction (`fn_close_account`) and then removes the Stripe customer, the Stripe Connect account and Storage files. `account-closure-cleanup` is its cron retry for closures whose cleanup failed or never ran: it runs without a user session, is authenticated by the `x-cron-secret` header against `CRON_SECRET`, and keeps `verify_jwt = false` (declared in `supabase/config.toml`). Apply `supabase/migrations/20261023043220_account_closure.sql` and then `supabase/migrations/20261023052842_account_closure_cleanup.sql` (service-only `fn_claim_account_closures` and `fn_record_closure_attempt`), then deploy both functions. The retry stops after 24 attempts per closure and lists those closures in its response and in an `ERROR` log (`Account closure cleanup gave up`, with the user ids) on every run; an admin reads `account_closures.last_error` for those users and finishes the failed step by hand.
+
 The remote project also runs `dynamic-api` (name `get-shipping-quote-seller`), which has no source in this repository. Decide whether production needs it before go-live.
 
 ## 8. Cron jobs
 
 | Job                                        | Schedule       | Target                                  |
 | ------------------------------------------ | -------------- | --------------------------------------- |
+| `account-closure-cleanup`                  | `0 * * * *`    | function `account-closure-cleanup`      |
 | `auto-cancel-orders-job`                   | `0 * * * *`    | function `auto-cancel-orders`           |
 | `checkout-recovery-worker-every-5-minutes` | `*/5 * * * *`  | function `checkout-recovery-worker`     |
 | `complete-delivered-shipments`             | `*/5 * * * *`  | function `complete-delivered-shipments` |
@@ -107,6 +111,27 @@ select cron.schedule(
       'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'project_anon_jwt'),
       'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'project_anon_jwt'),
       'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'cron_watchdog_cron_secret')
+    ),
+    body := '{}'::jsonb
+  );
+  $$
+);
+```
+
+`account-closure-cleanup` retries the Stripe and Storage cleanup of closed accounts every hour (the schedule shape `cron-watchdog` supports). Create the Vault secret `account_closure_cleanup_cron_secret` first, with the same value as the `CRON_SECRET` function secret, then run, in the SQL Editor:
+
+```sql
+select cron.schedule(
+  'account-closure-cleanup',
+  '0 * * * *',
+  $$
+  select net.http_post(
+    url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url') || '/functions/v1/account-closure-cleanup',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'project_anon_jwt'),
+      'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'project_anon_jwt'),
+      'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'account_closure_cleanup_cron_secret')
     ),
     body := '{}'::jsonb
   );
