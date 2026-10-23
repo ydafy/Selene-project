@@ -1,0 +1,27 @@
+# Shipment cancellations B3: authenticated, expiring cron coordination for paid timeout
+
+Branch `feat/shipment-cancellations-b3` from `origin/main` `2acc4c1` (B1 and B2 complete). Parent tracker: `odd/tasks/shipment-cancellations.md` (B3 row, R7, R8, FU4 in B14-L2/B14-L5).
+Scope: expiring lease instead of the global boolean locks, runtime authorization of both auto-cancel functions, paid-timeout boundaries with live settings, observed cron execution. Excluded: scheduling `auto-cancel-preparing` (moved to B4), B4 carrier policy, B5 UI.
+
+## Specs
+
+- S1 — Tracker B3 scope: "Paid timeout honors live settings/boundaries; authenticated runtime and observed cron execution; atomic expiring coordination."
+- S2 — FU4 / B14-L2: "`auto-cancel-orders/index.ts:46-64` uses a global boolean `system_settings.auto_cancel_orders_running` as lock, released only on normal return or caught error. A wall-clock kill during a long first run (14 Stripe refunds) would leave it `true`, after which every run returns 200 `{"message":"Already running"}` without work."
+- S3 — R7: "Expired vs unexpired paid boundaries using live settings; rerun idempotence/concurrent jobs."
+- S4 — R8: "Runtime authorization and actual cron-run evidence, not repository schedule inference."
+- S5 — Preparing cron moved to B4, maintainer verbatim: "si pasalo a b4 master, lo que creas mejor." `auto-cancel-preparing` gets the same lease and authorization in B3 but is not scheduled.
+
+## Tasks
+
+- B3.1 | S2, S3 | parent (SQL, helper) + worker (handlers) | In progress (L4): service-only `fn_acquire_auto_cancel_lease(p_job)` / `fn_release_auto_cancel_lease(p_job, p_lease_id)` (jobs `orders`, `preparing`; TTL 600 s; pattern of `fn_acquire_track_shipments_lease`), lease columns on `system_settings`; both handlers acquire the lease, release it in `finally`, and stop starting new shipments after a run budget. Booleans stay until after deploy (B3.4). Risk: item 4 (concurrency). Own commit.
+- B3.2 | S4 | parent | Pending: both handlers require `x-cron-secret` = `CRON_SECRET` (constant time) before any DB or Stripe call; Bruno requests; `docs/go-live.md` SQL to recreate `auto-cancel-orders-job` from Vault (no literal JWT). Risk: item 2 (auth). Own commit.
+- B3.3 | S1, S3 | parent | Pending: local harness for paid-timeout boundaries with live `order_expiration_hours` (just expired vs not yet, invalid setting), rerun idempotence and two concurrent runs against the served function.
+- B3.4 | S1, S4 | parent + maintainer | Pending: maintainer applies SQL and deploys both functions and the cron job; evidence of a real cron run (`net._http_response`, function logs) via MCP; follow-up migration dropping `auto_cancel_*_running`; closure docs in `docs/shipment-cancellation-coordination.md` and parent tracker.
+
+## Log
+
+- L1 — Original request, verbatim: "master, arrancamos B3 de shipment cancellations en el worktree shipment-cancellations. Leé odd/tasks/shipment-cancellations.md (roadmap y FU4) y el resumen de Engram de la sesión anterior, y primero revisemos el alcance. Cuando arranques, te propongo crear una rama nueva desde main (feat/shipment-cancellations-b3) en este mismo worktree o lo que tu recomiendes."
+- L2 — Read-only findings (sandbox via MCP, 2026-10-22): only `auto-cancel-orders-job` (`0 * * * *`) exists; `auto-cancel-preparing` has no cron job. Neither handler validates its caller (default `verify_jwt`, anon key passes). `auto-cancel-orders-job` embeds a literal JWT (`docs/go-live.md:94`). Both `*_running` flags false; 2 expired paid untracked shipments and 1 preparing older than 72 h exist (likely FU2 orphans). `fn_acquire_track_shipments_lease` is the existing expiring-lease pattern. Minor: `order_expiration_hours || 48` maps 0 to 48; `.limit(50)` has no order. Out of module: `checkout_recovery_running = true` remotely (backlog).
+- L3 — Scope accepted with preparing scheduling moved to B4 (S5): "sin mas que decir, puede continuar". Design: reuse `CRON_SECRET` / `x-cron-secret` (cron-watchdog pattern, already provisioned); drop the boolean columns only after the new functions are deployed, so no deployed version reads a missing column.
+- L4 — B3.1 SQL and helper done (not committed): migration `20261023023952_auto_cancel_cron_leases.sql` = canonical `queries/orders/auto_cancel_cron_leases.sql`; live harness `scripts/test-auto-cancel-lease.ts` RED (missing column) -> GREEN 11/0 after `supabase db reset` (TTL, held, independent jobs, expiry takeover, holder-only release, superseded holder, invalid job, grants, role denial, body UNAUTHORIZED, two concurrent acquires one winner). Helper `_shared/auto-cancel-lease.ts` (`acquireAutoCancelLease`, `releaseAutoCancelLease`, `AUTO_CANCEL_RUN_BUDGET_MS` = 100 s): unit tests RED -> GREEN 8/0. Remaining: wire both handlers (delegated, context backstop).
+- L5 — Worker mvkd6b70 wired both handlers: lease acquired before any settings/shipments read, `lease.response` (200 `Already running`) when held, release in `finally` on every path, run budget breaks the loop and reports `deferred` (final body `processed` = picked up minus deferred, parent fix). New source guards `__tests__/autoCancelLeaseWiring.test.ts` RED 2/14 -> GREEN 16/0. Parent updated `cronCancellationCoordination.test.ts`: the executed-handler harness injects the lease helpers and now proves release on the 500 path and that a held lease reads neither settings nor shipments; the legacy-lock assertion became `not.toContain('_running')`. Focused run 86/0.

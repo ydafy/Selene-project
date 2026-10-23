@@ -619,7 +619,8 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
           `"caller_role":"${source}"`,
         );
       });
-    test('a top-level failure returns a stable INTERNAL_ERROR and logs the raw error', async () => {
+    // Runs the whole handler with stubbed imports; `lease` decides what the lease helper returns.
+    function runHandler(lease: { acquired: boolean }) {
       const source = readFileSync(
         new URL(`../${name}/index.ts`, import.meta.url),
         'utf8',
@@ -627,7 +628,10 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
       const executable = new Bun.Transpiler({ loader: 'ts' }).transformSync(
         source.replace(/^import\s[\s\S]*?from\s+['"][^'"]+['"];\s*/gm, ''),
       );
+      const job = name === 'auto-cancel-orders' ? 'orders' : 'preparing';
       const logs: Record<string, unknown>[] = [];
+      const tables: string[] = [];
+      const leaseCalls: unknown[][] = [];
       let handler!: () => Promise<Response>;
       const query: Record<string, unknown> = {
         select: () => query,
@@ -639,6 +643,7 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         then: (resolve: (value: unknown) => unknown) =>
           Promise.resolve(resolve({})),
       };
+      const held = new Response(JSON.stringify({ message: 'Already running' }));
       new Function(
         'serve',
         'createClient',
@@ -652,12 +657,19 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         'allocateCancellationLossCents',
         'computeShipmentRefundAmountCents',
         'buildStripeFeeReconciliationPlan',
+        'acquireAutoCancelLease',
+        'releaseAutoCancelLease',
         executable,
       )(
         (callback: typeof handler) => {
           handler = callback;
         },
-        () => ({ from: () => query }),
+        () => ({
+          from: (table: string) => {
+            tables.push(table);
+            return query;
+          },
+        }),
         class {
           static createFetchHttpClient() {
             return {};
@@ -672,8 +684,22 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         allocateCancellationLossCents,
         computeShipmentRefundAmountCents,
         () => undefined,
+        async (_client: unknown, leaseJob: string) => {
+          leaseCalls.push(['acquire', leaseJob]);
+          return lease.acquired
+            ? { acquired: true, leaseId: 'lease-1', budgetExceeded: () => false }
+            : { acquired: false, response: held };
+        },
+        async (_client: unknown, leaseJob: string, leaseId: unknown) => {
+          leaseCalls.push(['release', leaseJob, leaseId]);
+        },
       );
-      const response = await handler();
+      return { run: () => handler(), logs, tables, leaseCalls, job, held };
+    }
+
+    test('a top-level failure returns a stable INTERNAL_ERROR, logs the raw error and releases the lease', async () => {
+      const { run, logs, leaseCalls, job } = runHandler({ acquired: true });
+      const response = await run();
       expect(response.status).toBe(500);
       expect(await response.text()).toBe('{"error":"INTERNAL_ERROR"}');
       expect(logs).toContainEqual(
@@ -683,8 +709,22 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
           error: 'secret db detail',
         }),
       );
+      expect(leaseCalls).toEqual([
+        ['acquire', job],
+        ['release', job, 'lease-1'],
+      ]);
     });
-    test('preserves settings, timeout selection and global locks', () => {
+    test('a lease held by another run returns its response without reading settings or shipments', async () => {
+      const { run, tables, leaseCalls, job, held } = runHandler({ acquired: false });
+      expect(await run()).toBe(held);
+      expect(tables).toEqual([]);
+      // Nothing acquired, so the release call carries no lease id and does nothing.
+      expect(leaseCalls).toEqual([
+        ['acquire', job],
+        ['release', job, undefined],
+      ]);
+    });
+    test('preserves settings and timeout selection, without the legacy boolean lock', () => {
       const source = readFileSync(
         new URL(`../${name}/index.ts`, import.meta.url),
         'utf8',
@@ -703,11 +743,7 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
       expect(source).toContain(
         paid ? ".eq('status', 'paid')" : ".eq('status', 'preparing')",
       );
-      expect(source).toContain(
-        paid
-          ? 'auto_cancel_orders_running: false'
-          : 'auto_cancel_preparing_running: false',
-      );
+      expect(source).not.toContain('_running');
       expect(source).not.toContain('charge_already_refunded');
     });
   });
