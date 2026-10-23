@@ -40,11 +40,15 @@ const NEW_KEYS = [
   // Security password change
   'security.passwordTitle',
   'security.googleProviderHint',
+  'security.passwordCurrent',
   'security.passwordNew',
   'security.passwordConfirm',
   'security.passwordChangeAction',
   'security.passwordMismatch',
   'security.passwordTooShort',
+  'security.currentPasswordRequired',
+  'security.samePassword',
+  'security.recentLoginRequired',
   'security.biometricPrompt',
   'security.biometricFallback',
   'security.biometricFailed',
@@ -62,6 +66,7 @@ const NEW_KEYS = [
   // Errors
   'errors.invalidEmail',
   'errors.wrongPassword',
+  'errors.sameEmail',
   'errors.browserNotFound',
 ] as const;
 

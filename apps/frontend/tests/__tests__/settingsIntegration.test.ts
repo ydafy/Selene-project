@@ -103,6 +103,13 @@ describe('AccountSection email-change wiring (CONF-016)', () => {
     expect(src).toContain('buildEmailUpdatePayload');
   });
 
+  test('rejects an unchanged address and maps errors by code', () => {
+    expect(src).toContain('isSameEmail(emailDraft, email)');
+    expect(src).toContain("t('errors.sameEmail')");
+    expect(src).toContain('t(mapEmailChangeErrorKey(err))');
+    expect(src).not.toContain("includes('already')");
+  });
+
   test('shows confirmation-flow toast (emailSentTitle / Message)', () => {
     expect(src).toContain('toasts.emailSentTitle');
     expect(src).toContain('toasts.emailSentMessage');
@@ -117,12 +124,14 @@ describe('AccountSection email-change wiring (CONF-016)', () => {
 describe('SecuritySection password-change wiring (CONF-017)', () => {
   const src = read('components/features/settings/SecuritySection.tsx');
 
-  test('imports nonce generator and payload builder', () => {
-    expect(src).toContain('generatePasswordNonce');
+  test('imports payload builder and error mapper, never a client nonce', () => {
     expect(src).toContain('buildPasswordUpdatePayload');
+    expect(src).toContain('mapPasswordChangeErrorKey');
+    expect(src).not.toContain('nonce');
   });
 
-  test('renders 2 password fields (new, confirm) — biometric gate replaces current', () => {
+  test('renders 3 password fields (current, new, confirm)', () => {
+    expect(src).toContain('security.passwordCurrent');
     expect(src).toContain('security.passwordNew');
     expect(src).toContain('security.passwordConfirm');
   });
@@ -136,17 +145,30 @@ describe('SecuritySection password-change wiring (CONF-017)', () => {
 
   test('uses secureTextEntry on password fields', () => {
     const matches = src.match(/secureTextEntry/g) ?? [];
-    expect(matches.length).toBeGreaterThanOrEqual(2);
+    expect(matches.length).toBeGreaterThanOrEqual(3);
   });
 
-  test('generates nonce + calls supabase.auth.updateUser with payload', () => {
+  test('sends the current password payload to supabase.auth.updateUser', () => {
     expect(src).toMatch(
-      /const nonce = generatePasswordNonce\(\);[\s\S]*supabase\.auth\.updateUser\(payload\)/,
+      /buildPasswordUpdatePayload\(currentPw, newPw\)[\s\S]*supabase\.auth\.updateUser\(payload\)/,
     );
   });
 
-  test('shows wrongPassword error toast on invalid credentials', () => {
-    expect(src).toContain('errors.wrongPassword');
+  test('shows each error under the field it belongs to', () => {
+    expect(src).toContain('passwordErrorField');
+    expect(src).toContain('error={!!pwErrors.current}');
+    expect(src).toContain('error={!!pwErrors.new}');
+    expect(src).toContain('error={!!pwErrors.confirm}');
+  });
+
+  test('keeps the password dialog above the keyboard', () => {
+    expect(src).toMatch(/<ConfirmDialog[\s\S]*?avoidKeyboard[\s\S]*?icon="lock-reset"/);
+  });
+
+  test('shows the mapped error key instead of matching message text', () => {
+    expect(src).toContain('showPwError(mapPasswordChangeErrorKey(err))');
+    expect(src).toContain('[passwordErrorField(errorKey)]: t(errorKey)');
+    expect(src).not.toMatch(/invalid\|wrong\|incorrect/);
   });
 });
 
@@ -217,5 +239,17 @@ describe('package.json lists @chatwoot/react-native-widget', () => {
   test('dependency entry exists', () => {
     const pkg = JSON.parse(read('package.json'));
     expect(pkg.dependencies['@chatwoot/react-native-widget']).toBeDefined();
+  });
+});
+
+describe('ConfirmDialog keyboard handling (L62)', () => {
+  const src = read('components/ui/ConfirmDialog.tsx');
+
+  test('reserves the keyboard height below the dialog only when avoidKeyboard is set', () => {
+    expect(src).toContain('avoidKeyboard?: boolean');
+    expect(src).toMatch(/avoidKeyboard\s*=\s*false/);
+    expect(src).toContain('useKeyboardHeight(avoidKeyboard)');
+    expect(src).toContain('marginBottom: keyboardHeight');
+    expect(src).not.toContain('KeyboardAvoidingView');
   });
 });

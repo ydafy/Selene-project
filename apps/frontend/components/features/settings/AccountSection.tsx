@@ -12,6 +12,8 @@ import { supabase } from '../../../core/db/supabase';
 import {
   validateEmail,
   buildEmailUpdatePayload,
+  isSameEmail,
+  mapEmailChangeErrorKey,
   EMAIL_REDIRECT_URL,
 } from '../../../core/utils/emailChange';
 
@@ -35,6 +37,10 @@ export const AccountSection = ({ email }: AccountSectionProps) => {
     const validation = validateEmail(emailDraft);
     if (!validation.ok) {
       setEmailError(t(validation.errorKey));
+      return;
+    }
+    if (isSameEmail(emailDraft, email)) {
+      setEmailError(t('errors.sameEmail'));
       return;
     }
     setEmailError(null);
@@ -66,12 +72,7 @@ export const AccountSection = ({ email }: AccountSectionProps) => {
         text2: t('toasts.emailSentMessage'),
       });
     } catch (err) {
-      const message = (err as { message?: string })?.message ?? '';
-      if (message.includes('already')) {
-        setEmailError(t('errors.emailAlreadyTaken'));
-      } else {
-        setEmailError(t('errors.updateFailed'));
-      }
+      setEmailError(t(mapEmailChangeErrorKey(err)));
     } finally {
       setIsEmailSubmitting(false);
     }
@@ -110,6 +111,7 @@ export const AccountSection = ({ email }: AccountSectionProps) => {
         onConfirm={handleEmailConfirm}
         confirmLabel={t('account.emailChangeAction')}
         loading={isEmailSubmitting}
+        avoidKeyboard
         icon="email-edit-outline"
       >
         <Box marginTop="s">

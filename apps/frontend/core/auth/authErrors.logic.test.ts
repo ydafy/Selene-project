@@ -123,3 +123,10 @@ describe('isRateLimitError', () => {
     expect(isRateLimitError(null)).toBe(false);
   });
 });
+
+describe('mapAuthErrorKey prototype keys', () => {
+  it('a code named like an Object prototype key falls back to generic', () => {
+    expect(mapAuthErrorKey({ code: 'constructor' })).toBe(GENERIC_ERROR_KEY);
+    expect(mapAuthErrorKey({ code: '__proto__' })).toBe(GENERIC_ERROR_KEY);
+  });
+});

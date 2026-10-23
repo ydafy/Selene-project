@@ -58,7 +58,7 @@ const isNetworkFailure = ({ name, message, status }: ErrorFields) =>
 
 export const mapAuthErrorKey = (error: unknown): string => {
   const fields = fieldsOf(error);
-  if (typeof fields.code === 'string' && fields.code in CODE_KEYS) {
+  if (typeof fields.code === 'string' && Object.hasOwn(CODE_KEYS, fields.code)) {
     return CODE_KEYS[fields.code];
   }
   if (isTriggerUsernameRejection(fields)) return USERNAME_TAKEN_KEY;

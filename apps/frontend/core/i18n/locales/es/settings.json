@@ -18,7 +18,7 @@
     "loading": "Cargando perfil...",
     "emailLabel": "Correo electrónico",
     "emailChangeTitle": "Cambiar correo",
-    "emailChangeMessage": "Te enviaremos un correo de confirmación a tu nuevo email.",
+    "emailChangeMessage": "Te enviaremos un enlace de confirmación a tu correo actual y al nuevo. El cambio se aplica cuando abras ambos enlaces.",
     "emailChangeAction": "Enviar confirmación",
     "biometricPrompt": "Confirma tu identidad",
     "biometricFallback": "Usar contraseña",
@@ -48,6 +48,10 @@
     "passwordChangeAction": "Actualizar contraseña",
     "passwordMismatch": "Las contraseñas nuevas no coinciden.",
     "passwordTooShort": "La contraseña debe tener al menos 8 caracteres.",
+    "passwordCurrent": "Contraseña actual",
+    "currentPasswordRequired": "Ingresa tu contraseña actual.",
+    "samePassword": "La nueva contraseña debe ser diferente a la actual.",
+    "recentLoginRequired": "Por seguridad, cierra sesión y vuelve a iniciarla para cambiar tu contraseña.",
     "biometricPrompt": "Confirma tu identidad",
     "biometricFallback": "Usar contraseña",
     "biometricFailed": "Autenticación fallida. Intenta de nuevo."
@@ -82,7 +86,7 @@
     "routeErrorTitle": "Ruta no disponible",
     "routeErrorMessage": "No pudimos abrir esta sección. Intenta de nuevo más tarde.",
     "emailSentTitle": "Correo de confirmación enviado",
-    "emailSentMessage": "Revisa tu nuevo correo y toca el enlace para confirmar el cambio.",
+    "emailSentMessage": "Abre el enlace que enviamos a tu correo actual y al nuevo para confirmar el cambio.",
     "passwordUpdatedTitle": "Contraseña actualizada",
     "passwordUpdatedMessage": "Tu contraseña fue cambiada correctamente.",
     "profileUpdatedTitle": "Perfil actualizado",
@@ -102,7 +106,8 @@
     "invalidEmail": "Ingresa un correo electrónico válido.",
     "wrongPassword": "La contraseña actual es incorrecta.",
     "browserNotFound": "No pudimos abrir el navegador. Intenta más tarde.",
-    "emailAlreadyTaken": "Ese correo electrónico ya está en uso."
+    "emailAlreadyTaken": "Ese correo electrónico ya está en uso.",
+    "sameEmail": "Ese ya es tu correo actual."
   },
   "blockedReasons": {
     "active_shipments": "Tienes envíos activos. Espera a que se completen o se cancelen.",

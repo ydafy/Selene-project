@@ -18,7 +18,7 @@
     "loading": "Loading profile...",
     "emailLabel": "Email",
     "emailChangeTitle": "Change email",
-    "emailChangeMessage": "We'll send a confirmation email. Your address won't change until you open the link we send you.",
+    "emailChangeMessage": "We'll send a confirmation link to your current and your new address. The change applies once you open both links.",
     "emailChangeAction": "Send confirmation",
     "biometricPrompt": "Confirm your identity",
     "biometricFallback": "Use password",
@@ -48,6 +48,10 @@
     "passwordChangeAction": "Update password",
     "passwordMismatch": "New passwords do not match.",
     "passwordTooShort": "Password must be at least 8 characters.",
+    "passwordCurrent": "Current password",
+    "currentPasswordRequired": "Enter your current password.",
+    "samePassword": "The new password must be different from the current one.",
+    "recentLoginRequired": "For your security, sign out and sign in again to change your password.",
     "biometricPrompt": "Confirm your identity",
     "biometricFallback": "Use password",
     "biometricFailed": "Authentication failed. Please try again."
@@ -82,7 +86,7 @@
     "routeErrorTitle": "Route unavailable",
     "routeErrorMessage": "We couldn't open this section. Please try again later.",
     "emailSentTitle": "Confirmation email sent",
-    "emailSentMessage": "Check your new inbox and tap the link to confirm the change.",
+    "emailSentMessage": "Open the link we sent to your current and your new inbox to confirm the change.",
     "passwordUpdatedTitle": "Password updated",
     "passwordUpdatedMessage": "Your password was changed successfully.",
     "profileUpdatedTitle": "Profile updated",
@@ -102,7 +106,8 @@
     "invalidEmail": "Enter a valid email address.",
     "wrongPassword": "Current password is incorrect.",
     "browserNotFound": "We couldn't open the browser. Please try again later.",
-    "emailAlreadyTaken": "That email is already taken."
+    "emailAlreadyTaken": "That email is already taken.",
+    "sameEmail": "That is already your current email."
   },
   "blockedReasons": {
     "active_shipments": "You have active shipments. Wait until they are completed or cancelled.",

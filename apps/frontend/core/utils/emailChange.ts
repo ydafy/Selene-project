@@ -8,6 +8,8 @@
  * scheme configured in the Supabase dashboard (e.g. selene://).
  */
 
+import { mapAuthErrorKey } from '../auth/authErrors.logic';
+
 // Practical RFC-5322 subset: local@domain.tld where local and domain
 // are non-empty and contain no whitespace / @ / double-dot.
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -32,3 +34,28 @@ export const buildEmailUpdatePayload = (raw: string): { email: string } => ({
  * and the deep link scheme in app.json (expo.scheme).
  */
 export const EMAIL_REDIRECT_URL = 'selene://profile/settings';
+
+/**
+ * GoTrue sends no email when the address is unchanged but still answers 200,
+ * so an unchanged address is rejected before the request.
+ */
+export const isSameEmail = (
+  raw: string,
+  current: string | null | undefined,
+): boolean =>
+  !!current && buildEmailUpdatePayload(raw).email === current.trim().toLowerCase();
+
+const EMAIL_CHANGE_KEYS: Record<string, string> = {
+  email_exists: 'settings:errors.emailAlreadyTaken',
+  user_already_exists: 'settings:errors.emailAlreadyTaken',
+  email_address_invalid: 'settings:errors.invalidEmail',
+};
+
+/** Maps a GoTrue error code to an i18n key; never matches message text. */
+export const mapEmailChangeErrorKey = (error: unknown): string => {
+  const code = (error as { code?: unknown } | null)?.code;
+  if (typeof code === 'string' && Object.hasOwn(EMAIL_CHANGE_KEYS, code)) {
+    return EMAIL_CHANGE_KEYS[code];
+  }
+  return mapAuthErrorKey(error);
+};

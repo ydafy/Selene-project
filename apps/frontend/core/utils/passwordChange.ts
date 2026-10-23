@@ -1,14 +1,17 @@
 /**
  * @file core/utils/passwordChange.ts
- * @description Pure helpers for the password-change flow (CONF-017).
+ * @description Pure helpers for the password-change flow (CONF-017, auth block 4).
  * - validatePasswordChange: current + new + confirm validation
- * - generatePasswordNonce: per-submit nonce (Crypto.randomUUID preferred,
- *   falls back to crypto.getRandomValues, then to Math.random as last resort)
  * - buildPasswordUpdatePayload: payload for supabase.auth.updateUser
+ * - mapPasswordChangeErrorKey: GoTrue error code -> i18n key
  *
- * `currentPassword` is supported from @supabase/supabase-js ^2.102.0.
+ * The current password proves the user's identity: GoTrue checks
+ * `current_password` when "Require current password" is on (it skips the
+ * check in recovery sessions). auth-js forwards the attributes as the request
+ * body, so the field must use GoTrue's snake_case name.
  */
 
+import { mapAuthErrorKey } from '../auth/authErrors.logic';
 
 const MIN_LENGTH = 8;
 
@@ -17,65 +20,65 @@ export type PasswordValidation =
   | { ok: false; errorKey: string };
 
 export const validatePasswordChange = (
+  current: string,
   next: string,
   confirm: string,
 ): PasswordValidation => {
+  if (current.length === 0) {
+    return { ok: false, errorKey: 'security.currentPasswordRequired' };
+  }
   if (next.length < MIN_LENGTH) {
     return { ok: false, errorKey: 'security.passwordTooShort' };
   }
   if (next !== confirm) {
     return { ok: false, errorKey: 'security.passwordMismatch' };
   }
+  if (next === current) {
+    return { ok: false, errorKey: 'security.samePassword' };
+  }
   return { ok: true };
-};
-
-/**
- * Generate a per-submit nonce. Uses the strongest available source:
- *   1. globalThis.crypto.randomUUID (Hermes/RN ≥ 0.74, web)
- *   2. globalThis.crypto.getRandomValues (RN with polyfill)
- *   3. Math.random fallback (last resort — flagged in comments)
- *
- * Length is at least 32 chars when crypto is available, 16+ in fallback.
- */
-export const generatePasswordNonce = (): string => {
-  const g = globalThis as unknown as {
-    crypto?: {
-      randomUUID?: () => string;
-      getRandomValues?: (a: Uint8Array) => Uint8Array;
-    };
-  };
-
-  if (g.crypto?.randomUUID) {
-    // 36 chars including hyphens — plenty of entropy.
-    return g.crypto.randomUUID();
-  }
-
-  if (g.crypto?.getRandomValues) {
-    const bytes = new Uint8Array(16);
-    g.crypto.getRandomValues(bytes);
-    return Array.from(bytes)
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('');
-  }
-
-  // Last-resort fallback. NOT cryptographically strong — flagged.
-  // expo-crypto polyfills crypto.getRandomValues, so this should not run
-  // in production unless the polyfill is missing.
-  let out = '';
-  while (out.length < 16) {
-    out += Math.random().toString(36).slice(2);
-  }
-  return out.slice(0, 32);
 };
 
 export type PasswordUpdatePayload = {
   password: string;
-  nonce: string;
-  currentPassword?: string;
+  current_password: string;
 };
 
 export const buildPasswordUpdatePayload = (
+  currentPassword: string,
   password: string,
-  nonce: string,
-  currentPassword?: string,
-): PasswordUpdatePayload => ({ password, nonce, ...(currentPassword ? { currentPassword } : {}) });
+): PasswordUpdatePayload => ({ password, current_password: currentPassword });
+
+const PASSWORD_CHANGE_KEYS: Record<string, string> = {
+  current_password_invalid: 'settings:errors.wrongPassword',
+  current_password_required: 'settings:errors.wrongPassword',
+  same_password: 'settings:security.samePassword',
+  // Only reachable while "Secure password change" is on: a fresh sign-in
+  // makes the session recent enough for GoTrue.
+  reauthentication_needed: 'settings:security.recentLoginRequired',
+  reauthentication_not_valid: 'settings:security.recentLoginRequired',
+};
+
+export const mapPasswordChangeErrorKey = (error: unknown): string => {
+  const code = (error as { code?: unknown } | null)?.code;
+  if (typeof code === 'string' && Object.hasOwn(PASSWORD_CHANGE_KEYS, code)) {
+    return PASSWORD_CHANGE_KEYS[code];
+  }
+  return mapAuthErrorKey(error);
+};
+
+export type PasswordField = 'current' | 'new' | 'confirm' | 'form';
+
+const FIELD_BY_KEY: Record<string, PasswordField> = {
+  'security.currentPasswordRequired': 'current',
+  'settings:errors.wrongPassword': 'current',
+  'security.passwordTooShort': 'new',
+  'security.samePassword': 'new',
+  'settings:security.samePassword': 'new',
+  'auth:errors.weakPassword': 'new',
+  'security.passwordMismatch': 'confirm',
+};
+
+/** The field an error key belongs to, so it renders under that field. */
+export const passwordErrorField = (errorKey: string): PasswordField =>
+  Object.hasOwn(FIELD_BY_KEY, errorKey) ? FIELD_BY_KEY[errorKey] : 'form';

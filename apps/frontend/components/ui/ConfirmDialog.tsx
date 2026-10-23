@@ -6,6 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AccessibilityInfo, findNodeHandle, View } from 'react-native';
 import { Box } from '../base';
 import { Theme } from '../../core/theme';
+import { useKeyboardHeight } from '../../core/hooks/useKeyboardHeight';
 
 type ConfirmDialogProps = {
   visible: boolean;
@@ -22,6 +23,8 @@ type ConfirmDialogProps = {
   hideCancel?: boolean;
   loading?: boolean;
   disabled?: boolean; // Disables confirm button (e.g., phrase mismatch)
+  /** Lifts the dialog above the keyboard; for dialogs with text inputs. */
+  avoidKeyboard?: boolean;
 };
 
 export const ConfirmDialog = ({
@@ -39,10 +42,14 @@ export const ConfirmDialog = ({
   hideCancel = false,
   loading = false,
   disabled = false,
+  avoidKeyboard = false,
 }: ConfirmDialogProps) => {
   const theme = useTheme<Theme>();
   const { t } = useTranslation('common');
   const confirmButtonRef = useRef<View>(null);
+  // Paper centers the dialog in the whole screen; a bottom margin equal to the
+  // keyboard height centers it in the space above the keyboard instead.
+  const keyboardHeight = useKeyboardHeight(avoidKeyboard);
 
   // Focus the confirm button and announce title when dialog opens
   useEffect(() => {
@@ -63,6 +70,7 @@ export const ConfirmDialog = ({
         style={{
           backgroundColor: theme.colors.cardBackground,
           borderRadius: theme.borderRadii.m,
+          marginBottom: keyboardHeight,
         }}
       >
         {/* Live region wrapper announces dialog content to screen readers */}
@@ -117,7 +125,9 @@ export const ConfirmDialog = ({
             <Button
               ref={confirmButtonRef}
               onPress={onConfirm}
-              textColor={isDangerous ? theme.colors.error : theme.colors.primary}
+              textColor={
+                isDangerous ? theme.colors.error : theme.colors.primary
+              }
               loading={loading}
               disabled={loading || disabled}
             >

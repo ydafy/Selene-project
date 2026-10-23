@@ -10,6 +10,7 @@ import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../db/supabase';
 import { validateRegisterUsername } from '../auth/registerUsername.logic';
 import { mapAuthErrorKey } from '../auth/authErrors.logic';
+import { completePasswordRecovery } from '../auth/passwordRecovery.logic';
 
 // --- 1. ESQUEMAS DE VALIDACIÓN (ZOD) ---
 
@@ -233,47 +234,33 @@ export const useAuth = () => {
       if (resetError) throw resetError;
       return { success: true, error: null };
     } catch (err: any) {
-      setError(err.message);
-      return { success: false, error: { message: err.message } };
+      const failure = toAuthFailure(err);
+      setError(failure.message);
+      return { success: false, error: failure };
     } finally {
       setLoading(false);
     }
   };
 
   /**
-   * Paso final de recuperación: Valida OTP y actualiza contraseña.
+   * Final recovery step: verifies the code (unless already verified) and
+   * updates the password. The caller keeps `codeVerified` for retries.
    */
   const resetPassword = async (
     email: string,
     code: string,
     newPassword: string,
+    codeVerified = false,
   ) => {
     setLoading(true);
     setError(null);
     try {
-      // 1. Validar OTP (Esto ya crea una sesión activa)
-      const { data: verifyData, error: verifyError } =
-        await supabase.auth.verifyOtp({
-          email: email.trim(),
-          token: code,
-          type: 'recovery',
-        });
-
-      if (verifyError) throw verifyError;
-
-      // 2. Actualizar contraseña
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: newPassword,
+      return await completePasswordRecovery(supabase.auth, {
+        email,
+        code,
+        newPassword,
+        codeVerified,
       });
-
-      if (updateError) throw updateError;
-
-      // FIX: Devolvemos la sesión del paso 1, ya que updateUser solo devuelve el User
-      return { success: true, session: verifyData.session, error: null };
-    } catch (err: any) {
-      const message = err.message || String(err);
-      setError(message);
-      return { success: false, session: null, error: { message } };
     } finally {
       setLoading(false);
     }

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
-import * as LocalAuthentication from 'expo-local-authentication';
 
 import { Box, Text } from '../../base';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
@@ -12,8 +11,10 @@ import { signOutUser } from '../../../core/auth/signOut';
 import { useAuthContext } from '../../../components/auth/AuthProvider';
 import {
   validatePasswordChange,
-  generatePasswordNonce,
   buildPasswordUpdatePayload,
+  mapPasswordChangeErrorKey,
+  passwordErrorField,
+  type PasswordField,
 } from '../../../core/utils/passwordChange';
 
 type SecuritySectionProps = {
@@ -31,15 +32,19 @@ export const SecuritySection = ({ disabled = false }: SecuritySectionProps) => {
 
   // Password change dialog
   const [pwOpen, setPwOpen] = useState(false);
+  const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
-  const [pwError, setPwError] = useState<string | null>(null);
+  const [pwErrors, setPwErrors] = useState<
+    Partial<Record<PasswordField, string>>
+  >({});
   const [pwSubmitting, setPwSubmitting] = useState(false);
 
   const resetPwForm = () => {
+    setCurrentPw('');
     setNewPw('');
     setConfirmPw('');
-    setPwError(null);
+    setPwErrors({});
   };
 
   const handleConfirm = async () => {
@@ -52,35 +57,22 @@ export const SecuritySection = ({ disabled = false }: SecuritySectionProps) => {
     }
   };
 
+  // Each error renders under the field that failed (L62).
+  const showPwError = (errorKey: string) =>
+    setPwErrors({ [passwordErrorField(errorKey)]: t(errorKey) });
+
   const handlePwConfirm = async () => {
-    const validation = validatePasswordChange(newPw, confirmPw);
+    const validation = validatePasswordChange(currentPw, newPw, confirmPw);
     if (!validation.ok) {
-      setPwError(t(validation.errorKey));
+      showPwError(validation.errorKey);
       return;
     }
-    setPwError(null);
+    setPwErrors({});
     setPwSubmitting(true);
     try {
-      // Biometric gate — proves physical possession, session alone is not enough
-      // for destructive account mutations. Supabase ignores currentPassword in
-      // updateUser, so biometric replaces re-typing.
-
-      const hasHardware = await LocalAuthentication.hasHardwareAsync();
-      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-
-      if (hasHardware && isEnrolled) {
-        const auth = await LocalAuthentication.authenticateAsync({
-          promptMessage: t('security.biometricPrompt'),
-          fallbackLabel: t('security.biometricFallback'),
-        });
-
-        if (!auth.success) {
-          setPwError(t('security.biometricFailed'));
-          return;
-        }
-      }
-      const nonce = generatePasswordNonce();
-      const payload = buildPasswordUpdatePayload(newPw, nonce);
+      // The server verifies the current password (S7, L54); a device-local
+      // check would not prove anything to GoTrue.
+      const payload = buildPasswordUpdatePayload(currentPw, newPw);
       const { error } = await supabase.auth.updateUser(payload);
       if (error) throw error;
 
@@ -92,9 +84,7 @@ export const SecuritySection = ({ disabled = false }: SecuritySectionProps) => {
         text2: t('toasts.passwordUpdatedMessage'),
       });
     } catch (err) {
-      const code = (err as { message?: string })?.message ?? '';
-      const isWrong = /invalid|wrong|incorrect/i.test(code);
-      setPwError(t(isWrong ? 'errors.wrongPassword' : 'errors.updateFailed'));
+      showPwError(mapPasswordChangeErrorKey(err));
     } finally {
       setPwSubmitting(false);
     }
@@ -152,9 +142,27 @@ export const SecuritySection = ({ disabled = false }: SecuritySectionProps) => {
         onConfirm={handlePwConfirm}
         confirmLabel={t('security.passwordChangeAction')}
         loading={pwSubmitting}
+        avoidKeyboard
         icon="lock-reset"
       >
         <Box marginTop="s">
+          <FormTextInput
+            label={t('security.passwordCurrent')}
+            value={currentPw}
+            onChangeText={setCurrentPw}
+            labelMode="static"
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!pwSubmitting}
+            error={!!pwErrors.current}
+          />
+          {pwErrors.current && (
+            <Text variant="caption-md" color="error" marginTop="xs">
+              {pwErrors.current}
+            </Text>
+          )}
+          <Box height={12} />
           <FormTextInput
             label={t('security.passwordNew')}
             value={newPw}
@@ -164,7 +172,13 @@ export const SecuritySection = ({ disabled = false }: SecuritySectionProps) => {
             autoCapitalize="none"
             autoCorrect={false}
             editable={!pwSubmitting}
+            error={!!pwErrors.new}
           />
+          {pwErrors.new && (
+            <Text variant="caption-md" color="error" marginTop="xs">
+              {pwErrors.new}
+            </Text>
+          )}
           <Box height={12} />
           <FormTextInput
             label={t('security.passwordConfirm')}
@@ -175,10 +189,16 @@ export const SecuritySection = ({ disabled = false }: SecuritySectionProps) => {
             autoCapitalize="none"
             autoCorrect={false}
             editable={!pwSubmitting}
+            error={!!pwErrors.confirm}
           />
-          {pwError && (
+          {pwErrors.confirm && (
+            <Text variant="caption-md" color="error" marginTop="xs">
+              {pwErrors.confirm}
+            </Text>
+          )}
+          {pwErrors.form && (
             <Text variant="caption-md" color="error" marginTop="s">
-              {pwError}
+              {pwErrors.form}
             </Text>
           )}
         </Box>
