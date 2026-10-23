@@ -1,4 +1,31 @@
-# Shipment cancellation coordination — B1
+# Shipment cancellation coordination — B1 and B2
+
+## B2 status: refund identity, recovery and refund problems (closed by B2.5)
+
+Tracker: `odd/tasks/shipment-cancellations-b2.md` (specs S1–S8, Log L1–L45). Everything below is deployed and on `main`.
+
+| Unit | Behavior |
+|---|---|
+| B2.1 | Each cancellation operation records its Stripe refund (`refund_id`, `refund_status`, failure reason). `fn_cancel_shipment` completes only on a recorded `succeeded`. |
+| B2.2 / B2.2.1 | Recovery without new money movement: reuse the recorded refund, find it by `metadata.shipment_id`, or replay the frozen request with the same idempotency key within 23 h. A refund that cannot be found or is ambiguous escalates once (`recovery_escalated_at`) with one CRITICAL. Stable error codes. |
+| B2.3 | `stripe-webhooks` handles `refund.updated` / `refund.failed` (platform endpoint): pending to succeeded completes the cancellation; a failure notifies the buyer (`shipment.refund_failed`) and sends one CRITICAL with the amount owed. |
+| B2.3.1 / B2.4a | Admin resolution with a reference (`resolve-shipment-refund`, audited in `admin_audit_logs`) for failed, canceled or escalated refunds; resolving a still-open shipment cancels it. Selene never creates a refund from the dashboard. |
+| B2.4a.1 | Refund events on a resolved operation never write: an identical replay is `unchanged`, anything else is `after_resolution` with one CRITICAL. |
+| B2.4b / B2.4c | `list-shipment-refund-problems` and admin Payments "Necesita atención" chips: "Dispersiones" (unchanged) and "Reembolsos" with "Marcar resuelto". |
+| FU1 fix | The last shipment of an order refunds exactly what is left of the charge when only fee rounding explains the shortfall (exact rounding excess, never below its subtotal). Unblocked order `2514c6e9…`. |
+
+### B2.5 integrated verification
+
+- Live Stripe sandbox + local stack through the real `cancel-order`: `pm_card_pendingRefund` (409 `CANCELLATION_REFUND_UNCONFIRMED`, then `refund.updated` completes) and `pm_card_refundFail` (cancelled, `refund.failed`, listed in the bucket, resolved, replay `unchanged`). One refund per PaymentIntent in Stripe.
+- Local-stack Playwright E2E of the admin bucket: `bun run test:e2e:local` (`e2e/admin-web-local/`).
+- Randomized cumulative-cancellation probe (`_shared/refund-basis.probes.test.ts`): no order stranded; the previous rounding stranded about 10% of random multi-shipment orders.
+- Native reviews approved for every high-risk commit; independent verification for every money change.
+
+### Remaining limits
+
+- Refunds UI polish (payout seller search and queue error banner still visible under "Reembolsos", Spanish labels for status and reason) is B5.
+- Out-of-module follow-ups live in `odd/tasks/cross-module-backlog.md` (BL1–BL11), including payout runs without a close action (BL1) and the 1-cent round-down residual (BL11).
+- B3 (global cron locks, paid-timeout E2E) and B4 (preparing evidence, label outcome, orphan labels) remain.
 
 ## B1 status (closed by B1.4)
 
