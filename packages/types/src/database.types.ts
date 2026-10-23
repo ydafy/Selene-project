@@ -4133,6 +4133,10 @@ export type Database = {
         Args: { p_product_ids: string[] }
         Returns: undefined
       }
+      fn_notify_product_interest: {
+        Args: { p_favoriter_id: string; p_product_id: string }
+        Returns: undefined
+      }
       fn_persist_shipment_label_quote: {
         Args: {
           p_carrier: string
