@@ -33,6 +33,7 @@ export const useSearchProducts = (filters: SearchFilters) => {
         .from('products')
         .select('*', { count: 'exact' })
         .is('deleted_at', null)
+        .in('status', ['VERIFIED', 'SOLD'])
         .neq('status', 'HIDDEN');
 
       // 1. Full Text Search
