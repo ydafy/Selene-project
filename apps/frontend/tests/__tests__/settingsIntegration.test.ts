@@ -245,9 +245,11 @@ describe('package.json lists @chatwoot/react-native-widget', () => {
 describe('ConfirmDialog keyboard handling (L62)', () => {
   const src = read('components/ui/ConfirmDialog.tsx');
 
-  test('wraps the dialog in a KeyboardAvoidingView only when avoidKeyboard is set', () => {
+  test('reserves the keyboard height below the dialog only when avoidKeyboard is set', () => {
     expect(src).toContain('avoidKeyboard?: boolean');
-    expect(src).toContain('KeyboardAvoidingView');
     expect(src).toMatch(/avoidKeyboard\s*=\s*false/);
+    expect(src).toContain('useKeyboardHeight(avoidKeyboard)');
+    expect(src).toContain('marginBottom: keyboardHeight');
+    expect(src).not.toContain('KeyboardAvoidingView');
   });
 });

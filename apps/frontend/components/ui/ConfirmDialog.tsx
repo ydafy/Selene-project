@@ -3,14 +3,10 @@ import { Button, Dialog, Portal, Text as PaperText } from 'react-native-paper';
 import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import {
-  AccessibilityInfo,
-  findNodeHandle,
-  KeyboardAvoidingView,
-  View,
-} from 'react-native';
+import { AccessibilityInfo, findNodeHandle, View } from 'react-native';
 import { Box } from '../base';
 import { Theme } from '../../core/theme';
+import { useKeyboardHeight } from '../../core/hooks/useKeyboardHeight';
 
 type ConfirmDialogProps = {
   visible: boolean;
@@ -51,6 +47,9 @@ export const ConfirmDialog = ({
   const theme = useTheme<Theme>();
   const { t } = useTranslation('common');
   const confirmButtonRef = useRef<View>(null);
+  // Paper centers the dialog in the whole screen; a bottom margin equal to the
+  // keyboard height centers it in the space above the keyboard instead.
+  const keyboardHeight = useKeyboardHeight(avoidKeyboard);
 
   // Focus the confirm button and announce title when dialog opens
   useEffect(() => {
@@ -62,94 +61,81 @@ export const ConfirmDialog = ({
     }
   }, [visible]);
 
-  const dialog = (
-    <Dialog
-      visible={visible}
-      onDismiss={loading ? () => {} : onCancel}
-      dismissable={dismissable && !loading}
-      style={{
-        backgroundColor: theme.colors.cardBackground,
-        borderRadius: theme.borderRadii.m,
-      }}
-    >
-      {/* Live region wrapper announces dialog content to screen readers */}
-      <View accessibilityLiveRegion="polite" accessibilityViewIsModal={true}>
-        {/* --- ICON --- */}
-        {icon && (
-          <Box alignItems="center" marginTop="m">
-            <MaterialCommunityIcons
-              name={icon}
-              size={40}
-              color={isDangerous ? theme.colors.error : theme.colors.primary}
-            />
-          </Box>
-        )}
-
-        <Dialog.Title
-          style={{
-            color: theme.colors.textPrimary,
-            fontFamily: 'Montserrat-Bold',
-            textAlign: icon ? 'center' : 'left',
-          }}
-        >
-          {title}
-        </Dialog.Title>
-
-        <Dialog.Content>
-          {description && (
-            <PaperText
-              variant="bodyMedium"
-              style={{
-                color: theme.colors.textPrimary,
-                fontFamily: 'Montserrat-Regular',
-                textAlign: icon ? 'center' : 'left',
-              }}
-            >
-              {description}
-            </PaperText>
-          )}
-          {children}
-        </Dialog.Content>
-
-        <Dialog.Actions>
-          {!hideCancel && (
-            <Button
-              onPress={onCancel}
-              textColor={theme.colors.textSecondary}
-              disabled={loading}
-            >
-              {cancelLabel || t('dialog.cancel')}
-            </Button>
-          )}
-          <Button
-            ref={confirmButtonRef}
-            onPress={onConfirm}
-            textColor={isDangerous ? theme.colors.error : theme.colors.primary}
-            loading={loading}
-            disabled={loading || disabled}
-          >
-            {confirmLabel || t('dialog.confirm')}
-          </Button>
-        </Dialog.Actions>
-      </View>
-    </Dialog>
-  );
-
   return (
     <Portal>
-      {avoidKeyboard ? (
-        // Expo 54 runs edge-to-edge, so the window no longer resizes for the
-        // keyboard on Android either; padding keeps the inputs visible.
-        <KeyboardAvoidingView
-          behavior="padding"
-          style={{ flex: 1 }}
-          pointerEvents="box-none"
-        >
-          {dialog}
-        </KeyboardAvoidingView>
-      ) : (
-        dialog
-      )}
+      <Dialog
+        visible={visible}
+        onDismiss={loading ? () => {} : onCancel}
+        dismissable={dismissable && !loading}
+        style={{
+          backgroundColor: theme.colors.cardBackground,
+          borderRadius: theme.borderRadii.m,
+          marginBottom: keyboardHeight,
+        }}
+      >
+        {/* Live region wrapper announces dialog content to screen readers */}
+        <View accessibilityLiveRegion="polite" accessibilityViewIsModal={true}>
+          {/* --- ICON --- */}
+          {icon && (
+            <Box alignItems="center" marginTop="m">
+              <MaterialCommunityIcons
+                name={icon}
+                size={40}
+                color={isDangerous ? theme.colors.error : theme.colors.primary}
+              />
+            </Box>
+          )}
+
+          <Dialog.Title
+            style={{
+              color: theme.colors.textPrimary,
+              fontFamily: 'Montserrat-Bold',
+              textAlign: icon ? 'center' : 'left',
+            }}
+          >
+            {title}
+          </Dialog.Title>
+
+          <Dialog.Content>
+            {description && (
+              <PaperText
+                variant="bodyMedium"
+                style={{
+                  color: theme.colors.textPrimary,
+                  fontFamily: 'Montserrat-Regular',
+                  textAlign: icon ? 'center' : 'left',
+                }}
+              >
+                {description}
+              </PaperText>
+            )}
+            {children}
+          </Dialog.Content>
+
+          <Dialog.Actions>
+            {!hideCancel && (
+              <Button
+                onPress={onCancel}
+                textColor={theme.colors.textSecondary}
+                disabled={loading}
+              >
+                {cancelLabel || t('dialog.cancel')}
+              </Button>
+            )}
+            <Button
+              ref={confirmButtonRef}
+              onPress={onConfirm}
+              textColor={
+                isDangerous ? theme.colors.error : theme.colors.primary
+              }
+              loading={loading}
+              disabled={loading || disabled}
+            >
+              {confirmLabel || t('dialog.confirm')}
+            </Button>
+          </Dialog.Actions>
+        </View>
+      </Dialog>
     </Portal>
   );
 };
