@@ -88,5 +88,8 @@
     "verifying": "Verificando",
     "ready": "Listo para comprar",
     "a11y": "Paso {{step}} de {{total}}: {{name}}"
+  },
+  "visibilityBadge": {
+    "verifying": "En verificación"
   }
 }

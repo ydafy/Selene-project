@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   decidePurchaseGate,
+  decideVisibilityBadge,
   purchaseDialogContent,
 } from '../productPurchaseGate';
 
@@ -98,5 +99,27 @@ describe('purchase dialog copy', () => {
         expect(json.dialogs[old]).toBeUndefined();
       }
     }
+  });
+});
+
+describe('decideVisibilityBadge', () => {
+  it('shows step 1 with the verifying label for PENDING_VERIFICATION and IN_REVIEW', () => {
+    for (const status of ['PENDING_VERIFICATION', 'IN_REVIEW']) {
+      expect(decideVisibilityBadge(status, false)).toEqual({
+        show: true,
+        currentStep: 1,
+        labelKey: 'visibilityBadge.verifying',
+      });
+    }
+  });
+
+  it('hides it for VERIFIED and SOLD listings', () => {
+    expect(decideVisibilityBadge('VERIFIED', false).show).toBe(false);
+    expect(decideVisibilityBadge('SOLD', false).show).toBe(false);
+  });
+
+  it('hides it from the owner, who has their own status UI', () => {
+    expect(decideVisibilityBadge('IN_REVIEW', true).show).toBe(false);
+    expect(decideVisibilityBadge('PENDING_VERIFICATION', true).show).toBe(false);
   });
 });
