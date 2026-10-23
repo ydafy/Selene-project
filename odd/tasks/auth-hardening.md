@@ -46,6 +46,13 @@ Accepted policy (L54): an authenticated password change is proven with the curre
 ### S8 — Block 5: account deletion
 Accepted roadmap: confirmation/actor authorization, blockers for existing obligations, deletion versus retention, existing external dependencies, retries/partial failures, session and access after deletion.
 Exit: denied deletion does not partially delete the account; accepted deletion has a consistent verifiable outcome. Do not redesign payments beyond necessary deletion boundaries.
+Accepted policy (L68, research L67): "anonymize and close", not hard deletion. Maintainer approval (verbatim): "i dale, arma el plan de nuevo y dale master".
+- Deleted at once: email, phone, addresses, avatar, saved cards (Stripe customer), favorites, blocks, notifications, unsold listings.
+- Public profile and reviews remain as "Usuario eliminado"; other users keep their history.
+- Orders, shipments, payouts and disputes are kept blocked (LFPDPPP "bloqueo") for 5 years (Codigo Fiscal art. 30), visible only for claims, disputes or tax requests; anonymized after that.
+- Login is closed for good; the same email or Google account can register again as a new account.
+- Deletion is refused, with nothing changed, while a shipment, order, dispute, refund or unreleased payout is pending.
+Derived decisions (L68): a recent sign-in (10 minutes) proves the actor for password and Google accounts alike; suspended and banned accounts cannot self-delete (S4 evidence retention); the auth and database part is one SQL transaction; Stripe and Storage cleanup run after it and retry until done.
 
 ### S9 — Block 6: production readiness and integrated validation
 Accepted roadmap: deployed Auth settings, providers/SMTP, redirect URLs and links where applicable, expiry/rate limits/proportionate abuse protection, secret-free logs, actual SQL/function deployment evidence and integrated mobile/admin smoke tests.
@@ -79,7 +86,12 @@ Follow repository manual Supabase workflow: supply SQL/function/config handoff, 
 - T4c | S7 | inline | done (941fa2f, review approved; device check passed L62) | Email change: error codes, unchanged-address guard and copy for confirming from both inboxes (C4, C5, C8) | Commit: not created.
 - T4d | S7 | inline | done (7ed565c, review approved) | Review follow-ups: clear the old code after a resend; error-code lookups ignore Object prototype keys | Commit: see git log.
 - T4e | S7 | inline | done (ec6185e, f0ed6d5; reviews approved; device check passed L65) | Password dialog: error under the field that failed; dialog stays above the keyboard (L62) | Commit: not created.
-- T5 | S1–S3,S8,S10 | route on resume | pending, future session by explicit user request | Harden account deletion | Commit: not created.
+- T5 | S1–S3,S8,S10 | parent orchestration | in progress (audit L66, plan L68, branch `audit/auth-deletion`) | Harden account deletion | Commit: see T5a-T5e.
+- T5a | S8 | writer | pending | SQL: closure record table and service-only `fn_close_account(p_user_id)`: locks, blockers (D1, D3, D8), atomic anonymization of app and auth rows, idempotent re-run; local `db reset` plus per-role proof | Own commit (high risk: data, auth) | Commit: not created.
+- T5b | S8 | writer | pending | Edge Function `delete-account` rewrite: handler/index split, `withSentry`, recent sign-in check, RPC call, Stripe customer and Connect account cleanup, Storage cleanup, sanitized errors, Bruno requests (D4, D5, D6, D7) | Own commit (high risk: security, external effects) | Commit: not created.
+- T5c | S8 | writer | pending | Cleanup retry: cron-driven worker for closures whose Stripe or Storage cleanup failed; `cron-watchdog` schedule, `docs/go-live.md` | Own commit (risk: delivery, cron) | Commit: not created.
+- T5d | S8 | writer | pending | App: re-sign-in step, new blocked reasons, copy for what is deleted and what is kept (en/es), local sign-out after closure (D9) | Commit: not created.
+- T5e | S8 | inline | pending | Block close: tracker evidence, backlog for the 5-year ledger anonymization job and the store web deletion URL (D10, block 6) | Commit: not created.
 - T6 | S1–S3,S9,S10 | route on resume | pending, future session by explicit user request | Verify production configuration and integrated journeys | Commit: not created.
 
 ## Log
@@ -463,4 +475,29 @@ Risk: item 3 (shared `ConfirmDialog`, opt-in only); item 6 (layout, device check
 Maintainer (verbatim): "Listo lo del teclado quedo hermoso master, todo ok, puedes cerrar bloque 4". f0ed6d5 review `review-cc71aee02ea05dbb` (reliability) approved and acknowledged; advisory: the hook and dialog layout are proven by the device check only; keyboard state when the dialog mounts with the keyboard already open.
 All emulator checks passed (L62, L64, L65). Block 4 commits: 3c4a941, 314d23a, 941fa2f, 7ed565c, ec6185e, f0ed6d5 (each with an approved native review), docs e250706 and 66071dc; the accumulated-branch review was declined by the maintainer (L61).
 Open after block 4: C7 (Google-only detection from `app_metadata.provider`); `codeVerified` not invalidated when the recovery session ends; the email-change biometric gate is device-local only; custom SMTP (Resend) and CAPTCHA before go-live (built-in mailer: 2 emails per hour, organization members only); test account `tester1@test.com` cannot receive email. Next blocks: 5 (account deletion) and the auth-screen UI/UX pass (L62), each in a new session.
+
+### L66 — Block 5 start and account-deletion audit
+Maintainer (verbatim): "Arrancamos el bloque 5 del roadmap de auth (eliminación de cuenta, S8 en odd/tasks/auth-hardening.md). Leé el tracker hasta L65 y Engram del proyecto school-portal. Creá una rama nueva desde origin/main y empezá por la auditoría de solo lectura antes de tocar código."
+Branch `audit/auth-deletion` from origin/main 2acc4c1 (upstream unset). Read-only audit: `supabase/functions/delete-account/index.ts`, `core/hooks/useDeleteAccount.ts`, `deleteAccountHelpers.ts`, `DeleteAccountSection.tsx`, `core/auth/signOut*.ts`, baseline FKs and storage policies. Remote (Supabase MCP, read-only): `delete-account` v25 is deployed with `verify_jwt = true` and its source is identical to the repository; remote FK delete rules match the baseline.
+Findings:
+- D1 (critical) Deletion fails for anyone with history. `auth.admin.deleteUser` cascades `auth.users` -> `profiles`, but `orders.buyer_id` and `order_items.seller_id` (NO ACTION to `auth.users`), `shipments.seller_id`, `connect_payout_runs.seller_id/actor_id`, `shipment_completion_events.actor_id` (RESTRICT to `profiles`) and `disputes.buyer_id/seller_id`, `admin_audit_logs.admin_id` (NO ACTION) block it. The pre-checks only look for *active* rows, so the user passes them and gets `500 DELETE_FAILED` (shown as "No pudimos eliminar tu cuenta"). Remote count: 11 of 14 users can never delete. The failure is atomic (no partial delete), but the feature is unusable. Local reproduction pending.
+- D2 (critical, policy) Hard delete conflicts with retention: where it succeeds it cascades reviews written and received (other users' reputation), listings, favorites, reports and admin notes; the ledger (orders, shipments, payouts, disputes) must survive. Needs a deletion-versus-retention decision.
+- D3 (high) Blockers are pre-Connect: they read the deprecated `wallets` and `payout_requests` and ignore Connect: completed shipments whose payout Selene has not released, `connect_payout_runs` pending reconciliation, shipment refunds still in flight.
+- D4 (high) No Stripe cleanup: the Stripe customer and saved payment methods (7 users) and the Connect account (12 users, 4 without shipments) are left behind; the function logs `stripe_customer_id`.
+- D5 (medium) No reauthentication: a valid session plus typing ELIMINAR deletes the account. Block 4 proves password changes with the current password; Google-only accounts need another proof.
+- D6 (medium) Function hygiene: not wrapped in `withSentry`, `std@0.168`/esm.sh imports, raw database and internal messages returned to the client, no handler/index split, no unit tests, no Bruno request. Frontend tests cover only the pure helpers.
+- D7 (medium) Storage: avatar (`Avatars/<uid>/`), listing photos (`products`) and evidence files are not removed.
+- D8 (low, policy) The function ignores account status: a suspended seller (S4) could delete once no dispute is open.
+- D9 (hypothesis) After deletion, `signOutUser('global')` calls GoTrue `/logout` with the deleted user's token; local cleanup always runs (`runSignOut`), but whether supabase-js drops the stored session on that error needs local proof. GoTrue deletes refresh tokens, so other devices lose the session at the next refresh; the access token stays valid until it expires.
+- D10 (info, block 6) App Store 5.1.1(v) and Google Play require in-app deletion; Google Play also asks for a web deletion URL.
+No source changes. Open decision before any design: hard deletion versus anonymize-and-close.
+
+### L67 — Retention research (maintainer question and findings)
+Maintainer (verbatim): "SIEMPRE PARA este tipop de acciones me gusta basarme en las otras apps, como lo manejan las apps la acciion de eliminar cuenta? me refeiro a que hacen? porque si mal no etsoy ae incluso hasta algo legal involucrado no? algo como que tenemos que si borrar datos no nomas bloquear la cuenta y quedarnos con datos o algo asi, aclarame esto y en base a lo que investigues y comentes devcidimos"
+Findings: the LFPDPPP published 2025-03-20 defines "bloqueo" as keeping data only to settle possible liabilities until they prescribe, with no other processing, and requires suppression after it (art. 10). Codigo Fiscal art. 30 keeps accounting records 5 years. Vinted requires finished orders and withdrawn funds, then deactivates at once and keeps legally required data; Mercado Libre keeps data only while the law requires and then deletes or anonymizes it. Apple 5.1.1(v) requires in-app deletion and allows keeping legally required data; Google Play also asks for a web deletion link. Platform tax duties of Selene over sellers need confirmation from an accountant (not legal advice).
+
+### L68 — Deletion model accepted and plan
+Maintainer (verbatim): "i dale, arma el plan de nuevo y dale master". Model and derived decisions recorded in S8; tasks T5a-T5e.
+Remote check (Supabase MCP): role `postgres` has UPDATE and DELETE on `auth.users`, `auth.identities`, `auth.sessions`, `auth.refresh_tokens`, `auth.mfa_factors`, so one SECURITY DEFINER transaction can close the auth side and the app side together. Keeping the `auth.users` row (email and password removed, `banned_until` set, identities and sessions deleted) keeps every ledger FK valid; deleting the identities lets the same Google account register again.
+Order of effects: the RPC commits the closure (source of truth) and returns the Stripe ids; the Edge Function then deletes the Stripe customer, closes the Connect account and removes Storage files, recording each result so T5c retries failures. A blocked request changes nothing.
 
