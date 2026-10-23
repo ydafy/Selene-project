@@ -2696,7 +2696,11 @@ export type Database = {
       }
       system_settings: {
         Row: {
+          auto_cancel_orders_lease_expires_at: string | null
+          auto_cancel_orders_lease_id: string | null
           auto_cancel_orders_running: boolean | null
+          auto_cancel_preparing_lease_expires_at: string | null
+          auto_cancel_preparing_lease_id: string | null
           auto_cancel_preparing_running: boolean | null
           checkout_recovery_enabled: boolean
           checkout_recovery_running: boolean
@@ -2735,7 +2739,11 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          auto_cancel_orders_lease_expires_at?: string | null
+          auto_cancel_orders_lease_id?: string | null
           auto_cancel_orders_running?: boolean | null
+          auto_cancel_preparing_lease_expires_at?: string | null
+          auto_cancel_preparing_lease_id?: string | null
           auto_cancel_preparing_running?: boolean | null
           checkout_recovery_enabled?: boolean
           checkout_recovery_running?: boolean
@@ -2774,7 +2782,11 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          auto_cancel_orders_lease_expires_at?: string | null
+          auto_cancel_orders_lease_id?: string | null
           auto_cancel_orders_running?: boolean | null
+          auto_cancel_preparing_lease_expires_at?: string | null
+          auto_cancel_preparing_lease_id?: string | null
           auto_cancel_preparing_running?: boolean | null
           checkout_recovery_enabled?: boolean
           checkout_recovery_running?: boolean
@@ -3553,6 +3565,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      fn_acquire_auto_cancel_lease: {
+        Args: { p_job: string }
+        Returns: {
+          acquired: boolean
+          lease_expires_at: string
+          lease_id: string
+        }[]
+      }
       fn_acquire_connect_account_refresh: {
         Args: { p_source_event_id: string; p_stripe_account_id: string }
         Returns: number
@@ -4115,6 +4135,10 @@ export type Database = {
         Args: { p_claim_token: string; p_shipment_id: string }
         Returns: boolean
       }
+      fn_notify_product_available: {
+        Args: { p_product_ids: string[] }
+        Returns: undefined
+      }
       fn_persist_shipment_label_quote: {
         Args: {
           p_carrier: string
@@ -4126,6 +4150,13 @@ export type Database = {
           p_shipment_id: string
         }
         Returns: boolean
+      }
+      fn_product_seller_payment_readiness: {
+        Args: { p_product_ids: string[] }
+        Returns: {
+          product_id: string
+          seller_accepts_payments: boolean
+        }[]
       }
       fn_project_payout_run_stage: {
         Args: { p_payout_id: string; p_run_id: string; p_target_stage: string }
@@ -4206,6 +4237,10 @@ export type Database = {
       fn_refresh_seller_stats: {
         Args: { p_seller_id: string }
         Returns: undefined
+      }
+      fn_release_auto_cancel_lease: {
+        Args: { p_job: string; p_lease_id: string }
+        Returns: boolean
       }
       fn_release_payout_claim: {
         Args: { p_claim_token: string; p_run_id: string }
