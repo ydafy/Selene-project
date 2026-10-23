@@ -51,6 +51,7 @@ Values differ per project; never copy them from another environment.
 - `checkout_recovery_worker_service_role_key`
 - `complete_delivered_shipments_cron_secret`
 - `resume_pending_payouts_cron_secret`
+- `auto_cancel_orders_cron_secret` (same value as the `CRON_SECRET` function secret)
 - `cron_watchdog_cron_secret` (same value as the `CRON_SECRET` function secret)
 - `stripe_fee_worker_project_url`
 - `stripe_fee_worker_service_role_jwt`
@@ -91,7 +92,32 @@ The remote project also runs `dynamic-api` (name `get-shipping-quote-seller`), w
 | `return-delivery-timeout`                  | `0 * * * *`    | `fn_cron_return_delivery_timeout()`     |
 | `track-shipments-every-6-hours`            | `0 */6 * * *`  | function `track-shipments`              |
 
-`auto-cancel-orders-job` and `track-shipments-every-6-hours` embed a literal JWT and the project URL in the job command. Recreate them reading Vault secrets, like the other HTTP jobs.
+`track-shipments-every-6-hours` still embeds a literal JWT and the project URL in the job command (outside the cancellation work). Recreate it reading Vault secrets, like the other HTTP jobs.
+
+`auto-cancel-orders` and `auto-cancel-preparing` reject any caller without the `x-cron-secret` header (401 `UNAUTHORIZED`, compared against `CRON_SECRET`), even though the gateway still accepts the anon JWT. Order matters: create the Vault secret `auto_cancel_orders_cron_secret` and recreate `auto-cancel-orders-job` first (the previous function version ignores the extra header), and only then deploy both functions; otherwise the hourly runs get 401. In the SQL Editor:
+
+```sql
+select cron.unschedule('auto-cancel-orders-job');
+
+select cron.schedule(
+  'auto-cancel-orders-job',
+  '0 * * * *',
+  $$
+  select net.http_post(
+    url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url') || '/functions/v1/auto-cancel-orders',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'project_anon_jwt'),
+      'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'project_anon_jwt'),
+      'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'auto_cancel_orders_cron_secret')
+    ),
+    body := '{}'::jsonb
+  );
+  $$
+);
+```
+
+`auto-cancel-preparing` has the same authorization but is intentionally not scheduled until B4 of the shipment cancellations work; do not create a job for it before then.
 
 `cron-watchdog-every-15-minutes` calls `cron-watchdog`, which reads `fn_cron_health()` and reports failed, overdue, or unsupported-schedule jobs to Sentry. Create the Vault secret `cron_watchdog_cron_secret` first, with the same value as the `CRON_SECRET` function secret (the function compares the `x-cron-secret` header against `CRON_SECRET`). Then run, in the SQL Editor:
 

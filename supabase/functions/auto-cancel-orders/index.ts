@@ -8,6 +8,7 @@ import {
   acquireAutoCancelLease,
   releaseAutoCancelLease,
 } from '../_shared/auto-cancel-lease.ts';
+import { isAuthorizedCronRequest } from '../_shared/cron-auth.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import { runShipmentCancellation } from '../_shared/shipment-cancellation.ts';
 import { resolveAutoCancelShipmentCancellationGate } from '../_shared/auto-cancel-safety.ts';
@@ -37,7 +38,14 @@ const log = (
 
 const reportCritical = createCancellationReporter('auto-cancel-orders', log);
 
-serve(withSentry('auto-cancel-orders', async () => {
+serve(withSentry('auto-cancel-orders', async (req: Request) => {
+  if (!isAuthorizedCronRequest(req, Deno.env.get('CRON_SECRET'))) {
+    return new Response(JSON.stringify({ error: 'UNAUTHORIZED' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   const supabaseAdmin = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',

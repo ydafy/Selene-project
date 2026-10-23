@@ -6,6 +6,7 @@ import {
   computeShipmentRefundAmountCents,
 } from '../_shared/refund-basis';
 import { resolveAutoCancelShipmentCancellationGate } from '../_shared/auto-cancel-safety';
+import { isAuthorizedCronRequest } from '../_shared/cron-auth';
 
 // Execute the actual per-shipment adapter, without importing serve or remote SDKs.
 function adapter(name: string) {
@@ -632,7 +633,8 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
       const logs: Record<string, unknown>[] = [];
       const tables: string[] = [];
       const leaseCalls: unknown[][] = [];
-      let handler!: () => Promise<Response>;
+      let clientsCreated = 0;
+      let handler!: (req: Request) => Promise<Response>;
       const query: Record<string, unknown> = {
         select: () => query,
         update: () => query,
@@ -659,17 +661,21 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         'buildStripeFeeReconciliationPlan',
         'acquireAutoCancelLease',
         'releaseAutoCancelLease',
+        'isAuthorizedCronRequest',
         executable,
       )(
         (callback: typeof handler) => {
           handler = callback;
         },
-        () => ({
-          from: (table: string) => {
-            tables.push(table);
-            return query;
-          },
-        }),
+        () => {
+          clientsCreated += 1;
+          return {
+            from: (table: string) => {
+              tables.push(table);
+              return query;
+            },
+          };
+        },
         class {
           static createFetchHttpClient() {
             return {};
@@ -693,8 +699,22 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         async (_client: unknown, leaseJob: string, leaseId: unknown) => {
           leaseCalls.push(['release', leaseJob, leaseId]);
         },
+        isAuthorizedCronRequest,
       );
-      return { run: () => handler(), logs, tables, leaseCalls, job, held };
+      // The stubbed Deno.env returns 'fake' for every key, including CRON_SECRET.
+      const call = (
+        headers: Record<string, string> = { 'x-cron-secret': 'fake' },
+      ) => handler(new Request('http://localhost/', { method: 'POST', headers }));
+      return {
+        run: () => call(),
+        call,
+        logs,
+        tables,
+        leaseCalls,
+        job,
+        held,
+        clientsCreated: () => clientsCreated,
+      };
     }
 
     test('a top-level failure returns a stable INTERNAL_ERROR, logs the raw error and releases the lease', async () => {
@@ -714,6 +734,23 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         ['release', job, 'lease-1'],
       ]);
     });
+    for (const [label, headers] of [
+      ['no secret', {}],
+      ['a wrong secret', { 'x-cron-secret': 'not-the-secret' }],
+      ['only an Authorization bearer', { Authorization: 'Bearer fake' }],
+    ] as const)
+      test(`${label} returns 401 UNAUTHORIZED before any client, lease or table is touched`, async () => {
+        const { call, tables, leaseCalls, clientsCreated } = runHandler({
+          acquired: true,
+        });
+        const response = await call({ ...headers });
+        expect(response.status).toBe(401);
+        expect(response.headers.get('Content-Type')).toBe('application/json');
+        expect(await response.text()).toBe('{"error":"UNAUTHORIZED"}');
+        expect(clientsCreated()).toBe(0);
+        expect(leaseCalls).toEqual([]);
+        expect(tables).toEqual([]);
+      });
     test('a lease held by another run returns its response without reading settings or shipments', async () => {
       const { run, tables, leaseCalls, job, held } = runHandler({ acquired: false });
       expect(await run()).toBe(held);

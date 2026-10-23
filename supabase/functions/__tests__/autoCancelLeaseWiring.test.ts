@@ -21,6 +21,17 @@ for (const { name, job, flag } of handlers) {
     const runAt = source.indexOf('const result = await runShipmentCancellation(');
     const finallyAt = source.indexOf('} finally {');
 
+    test('requires the cron secret before building any client', () => {
+      const authAt = source.indexOf(
+        "isAuthorizedCronRequest(req, Deno.env.get('CRON_SECRET'))",
+      );
+      expect(source).toContain("from '../_shared/cron-auth.ts'");
+      expect(authAt).toBeGreaterThan(0);
+      expect(authAt).toBeLessThan(source.indexOf('createClient('));
+      expect(authAt).toBeLessThan(source.indexOf('new Stripe('));
+      expect(source).toContain("JSON.stringify({ error: 'UNAUTHORIZED' })");
+    });
+
     test('no longer references the global boolean lock', () => {
       expect(source).not.toContain('_running');
       expect(source).not.toContain(flag);
