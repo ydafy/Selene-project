@@ -2698,10 +2698,8 @@ export type Database = {
         Row: {
           auto_cancel_orders_lease_expires_at: string | null
           auto_cancel_orders_lease_id: string | null
-          auto_cancel_orders_running: boolean | null
           auto_cancel_preparing_lease_expires_at: string | null
           auto_cancel_preparing_lease_id: string | null
-          auto_cancel_preparing_running: boolean | null
           checkout_recovery_enabled: boolean
           checkout_recovery_running: boolean
           connect_enabled: boolean | null
@@ -2741,10 +2739,8 @@ export type Database = {
         Insert: {
           auto_cancel_orders_lease_expires_at?: string | null
           auto_cancel_orders_lease_id?: string | null
-          auto_cancel_orders_running?: boolean | null
           auto_cancel_preparing_lease_expires_at?: string | null
           auto_cancel_preparing_lease_id?: string | null
-          auto_cancel_preparing_running?: boolean | null
           checkout_recovery_enabled?: boolean
           checkout_recovery_running?: boolean
           connect_enabled?: boolean | null
@@ -2784,10 +2780,8 @@ export type Database = {
         Update: {
           auto_cancel_orders_lease_expires_at?: string | null
           auto_cancel_orders_lease_id?: string | null
-          auto_cancel_orders_running?: boolean | null
           auto_cancel_preparing_lease_expires_at?: string | null
           auto_cancel_preparing_lease_id?: string | null
-          auto_cancel_preparing_running?: boolean | null
           checkout_recovery_enabled?: boolean
           checkout_recovery_running?: boolean
           connect_enabled?: boolean | null
