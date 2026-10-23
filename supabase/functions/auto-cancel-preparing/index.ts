@@ -468,6 +468,7 @@ serve(withSentry('auto-cancel-preparing', async () => {
 
     log('INFO', 'Proceso de auto-cancelación de preparing finalizado', {
       total: expiredShipments.length,
+      deferred,
       success: successCount,
     });
 

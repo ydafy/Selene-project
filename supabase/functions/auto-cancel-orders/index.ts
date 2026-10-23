@@ -464,6 +464,7 @@ serve(withSentry('auto-cancel-orders', async () => {
 
     log('INFO', 'Proceso finalizado', {
       total: expiredShipments.length,
+      deferred,
       success: successCount,
     });
 

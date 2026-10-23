@@ -227,8 +227,77 @@ async function concurrentAcquire(sql: SQL) {
   }
 }
 
+/** A second run blocks on the row lock while the holder's transaction is open, then sees it held. */
+async function heldOpenAcquire(sql: SQL) {
+  const name = 'a second acquire waits on the open holder transaction and then sees the lease held';
+  let commitFirst!: () => void;
+  const gate = new Promise<void>((resolve) => (commitFirst = resolve));
+  try {
+    const first = sql.begin(async (tx) => {
+      await asService(tx as Tx);
+      const lease = await acquire(tx as Tx, 'orders');
+      await gate;
+      return lease;
+    });
+    await Bun.sleep(200);
+    let secondDone = false;
+    const second = sql.begin(async (tx) => {
+      await asService(tx as Tx);
+      const lease = await acquire(tx as Tx, 'orders');
+      secondDone = true;
+      return lease;
+    });
+    await Bun.sleep(300);
+    assert.equal(secondDone, false, 'the second acquire must wait on the row lock');
+    commitFirst();
+    const [a, b] = await Promise.all([first, second]);
+    assert.equal(a.acquired, true);
+    assert.equal(b.acquired, false);
+    console.log(`PASS ${name}`);
+    return 0;
+  } catch (error) {
+    commitFirst();
+    console.log(`FAIL ${name}\n  ${(error as Error).message}`);
+    return 1;
+  } finally {
+    await sql.begin((tx) => clearLeases(tx as Tx)).catch(() => undefined);
+  }
+}
+
+/** Five runs take over one expired lease at once: exactly one new holder; the stale id cannot release it. */
+async function concurrentTakeover(sql: SQL) {
+  const name = 'five concurrent takeovers of an expired lease produce one new holder the stale id cannot release';
+  const asServiceAcquire = () =>
+    sql.begin(async (tx) => {
+      await asService(tx as Tx);
+      return acquire(tx as Tx, 'orders');
+    });
+  try {
+    const stale = await asServiceAcquire();
+    await sql`UPDATE public.system_settings SET auto_cancel_orders_lease_expires_at = statement_timestamp() - interval '1 second' WHERE id = 1`;
+    const results = await Promise.all(Array.from({ length: 5 }, asServiceAcquire));
+    const winners = results.filter((lease) => lease.acquired);
+    assert.equal(winners.length, 1, JSON.stringify(results));
+    assert.notEqual(winners[0].lease_id, stale.lease_id);
+    const released = await sql.begin(async (tx) => {
+      await asService(tx as Tx);
+      return release(tx as Tx, 'orders', stale.lease_id!);
+    });
+    assert.equal(released, false);
+    const [row] = await sql`SELECT auto_cancel_orders_lease_id AS lease_id FROM public.system_settings WHERE id = 1`;
+    assert.equal(row.lease_id, winners[0].lease_id);
+    console.log(`PASS ${name}`);
+    return 0;
+  } catch (error) {
+    console.log(`FAIL ${name}\n  ${(error as Error).message}`);
+    return 1;
+  } finally {
+    await sql.begin((tx) => clearLeases(tx as Tx)).catch(() => undefined);
+  }
+}
+
 async function run() {
-  const sql = new SQL(databaseUrl(), { max: 2, connectionTimeout: 5 });
+  const sql = new SQL(databaseUrl(), { max: 5, connectionTimeout: 5 });
   let failed = 0;
   try {
     const [before] = await sql`SELECT auto_cancel_orders_lease_id IS NULL AND auto_cancel_preparing_lease_id IS NULL AS free
@@ -251,10 +320,12 @@ async function run() {
       }
     }
     failed += await concurrentAcquire(sql);
+    failed += await heldOpenAcquire(sql);
+    failed += await concurrentTakeover(sql);
   } finally {
     await sql.close();
   }
-  const total = cases.length + 1;
+  const total = cases.length + 3;
   console.log(`${total - failed} pass, ${failed} fail`);
   if (failed) process.exit(1);
 }
