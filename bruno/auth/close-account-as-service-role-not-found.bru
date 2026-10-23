@@ -1,0 +1,35 @@
+meta {
+  name: close-account-as-service-role-not-found
+  type: http
+  seq: 22
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_close_account
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_user_id": "00000000-0000-4000-8000-0000000000ff"
+  }
+}
+
+tests {
+  test("service role reaches the function and an unknown user is not_found", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal({ status: "not_found" });
+  });
+}
+
+docs {
+  Only service_role may execute fn_close_account. The uuid belongs to no user, so the
+  request changes nothing and stays repeatable. Closing, blocked and idempotent paths
+  mutate seed accounts and are covered by the SQL proof in the T5a log entry.
+}
