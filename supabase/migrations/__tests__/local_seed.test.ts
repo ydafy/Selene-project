@@ -27,7 +27,9 @@ describe('local seed (SQL structural only)', () => {
       seed.indexOf('INSERT INTO public.system_settings'),
       seed.indexOf('ON CONFLICT (id) DO NOTHING;'),
     );
-    expect(settings).toContain('auto_cancel_orders_running');
+    // The auto-cancel crons use expiring leases since B3; their booleans are dropped.
+    expect(settings).not.toContain('auto_cancel_orders_running');
+    expect(settings).not.toContain('auto_cancel_preparing_running');
     expect(settings).toContain('checkout_recovery_running');
     const values = settings.slice(settings.indexOf(') VALUES ('));
     expect(values.trimEnd().endsWith('true, false\n)')).toBe(true);

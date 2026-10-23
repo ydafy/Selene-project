@@ -11,6 +11,12 @@ ALTER TABLE public.system_settings
   ADD COLUMN IF NOT EXISTS auto_cancel_preparing_lease_id UUID,
   ADD COLUMN IF NOT EXISTS auto_cancel_preparing_lease_expires_at TIMESTAMPTZ;
 
+-- B3.4: the legacy booleans are gone once the lease-based functions are deployed
+-- (migration 20261023043940_drop_auto_cancel_running_flags).
+ALTER TABLE public.system_settings
+  DROP COLUMN IF EXISTS auto_cancel_orders_running,
+  DROP COLUMN IF EXISTS auto_cancel_preparing_running;
+
 CREATE OR REPLACE FUNCTION public.fn_acquire_auto_cancel_lease(
   p_job TEXT
 ) RETURNS TABLE (
