@@ -3,6 +3,8 @@ import {
   validatePasswordChange,
   buildPasswordUpdatePayload,
   mapPasswordChangeErrorKey,
+  passwordErrorField,
+  type PasswordField,
 } from '../passwordChange';
 
 /**
@@ -94,5 +96,22 @@ describe('mapPasswordChangeErrorKey', () => {
     expect(
       mapPasswordChangeErrorKey({ message: 'Invalid password, wrong input' }),
     ).toBe('common:errors.generic');
+  });
+});
+
+describe('passwordErrorField (L62: the error shows under the field that failed)', () => {
+  test.each<[string, PasswordField]>([
+    ['security.currentPasswordRequired', 'current'],
+    ['settings:errors.wrongPassword', 'current'],
+    ['security.passwordTooShort', 'new'],
+    ['security.samePassword', 'new'],
+    ['settings:security.samePassword', 'new'],
+    ['auth:errors.weakPassword', 'new'],
+    ['security.passwordMismatch', 'confirm'],
+    ['auth:errors.network', 'form'],
+    ['settings:security.recentLoginRequired', 'form'],
+    ['common:errors.generic', 'form'],
+  ])('%s belongs to %s', (key, field) => {
+    expect(passwordErrorField(key)).toBe(field);
   });
 });

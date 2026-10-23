@@ -78,6 +78,7 @@ Follow repository manual Supabase workflow: supply SQL/function/config handoff, 
 - T4b | S7 | delegated writer (context backstop) | done (314d23a, review approved; device check pending) | Recovery: retry after a failed update without re-verifying the consumed code, resend with cooldown, localized errors and copy (C3, C4) | Commit: not created.
 - T4c | S7 | inline | done (941fa2f, review approved; device check pending) | Email change: error codes, unchanged-address guard and copy for confirming from both inboxes (C4, C5, C8) | Commit: not created.
 - T4d | S7 | inline | done (7ed565c, review approved) | Review follow-ups: clear the old code after a resend; error-code lookups ignore Object prototype keys | Commit: see git log.
+- T4e | S7 | inline | done (see git log; device check pending) | Password dialog: error under the field that failed; dialog stays above the keyboard (L62) | Commit: not created.
 - T5 | S1–S3,S8,S10 | route on resume | pending, future session by explicit user request | Harden account deletion | Commit: not created.
 - T6 | S1–S3,S9,S10 | route on resume | pending, future session by explicit user request | Verify production configuration and integrated journeys | Commit: not created.
 
@@ -439,4 +440,15 @@ Open follow-ups: C7 (Google-only detection from `app_metadata.provider`); `codeV
 
 ### L61 — Accumulated-branch review declined (verbatim)
 The stop hook offered a native review of the whole branch (base 0115250, target `sha256:1a418c84…`). Recommendation: do not start it; every code commit (3c4a941, 314d23a, 941fa2f, 7ed565c) has its own approved review and e250706 is documentation only. Maintainer decision (verbatim): "si dale, sin revisar entonces master." The accumulated-branch candidate stays unreviewed by explicit user choice.
+
+### L62 — Emulator results and Dashboard changes (maintainer, verbatim excerpts)
+"A: todo quedo asi. C.1: Actualice la contrasena, todo sin errores. C.2: cORRECTO EL CASO 1 y 2, nomas que no me gusta dodne queda el aviso [...] queda abajo de 'confrmar contrasena' entonces esta confuso ahi la ui". C.3: countdown, wrong-code message and same-password message correct; "el corro que me lleog es de 8 digitos, y en la app 6". C.4: same and taken email pass; a new address showed "not a valid email". C.5: language switch works. Keyboard: "en cambiar contrasena, como abrimos una modal, el teclado tapa el ultimo campo". Requested a later UI/UX pass on all auth screens (forgot password responsiveness).
+Remote Auth logs (Supabase MCP): only one recovery `/verify` (the wrong code, `otp_expired`), so the correct code never reached the server: the remote "Email OTP Length" was 8, not 6 as recorded in L50. The email-change "invalid" was `email_address_invalid` for the account's current address `tester1@test.com` (secure email change also mails the current inbox), followed by `429 over_email_send_rate_limit`; not an app defect.
+Maintainer then confirmed (verbatim): "ya puse la config de supabse como dijsite y lo de gogole tambein": Email OTP length 6, secure password change off, require current password on, Google "Skip nonce check" off. Pending: retest C.3 with the 6-digit code.
+Decisions: T4e (field-level errors and keyboard in the password dialog) belongs to this block; the auth-screen UI/UX pass is a separate later block.
+
+### L63 — T4e implementation and evidence
+`core/utils/passwordChange.ts` adds `passwordErrorField(errorKey)` (current password required/wrong -> current; too short, same or weak -> new; mismatch -> confirm; anything else -> form). `SecuritySection.tsx` keeps one error per field and renders it under that field with the input in error state; network and other errors stay at the bottom. `ConfirmDialog` gets an opt-in `avoidKeyboard` prop (default false) that wraps the dialog in a `KeyboardAvoidingView` (`behavior="padding"`; Expo 54 is edge-to-edge, so Android no longer resizes the window for the keyboard); only the password and email-change dialogs use it, the other 23 dialogs are unchanged. The `ConfirmDialog` diff is mostly the re-indent of the extracted `dialog` element.
+RED: 4 fail (field mapping, field wiring, dialog prop, keyboard wrapper). GREEN: 321 pass across `core/utils`, `core/i18n` and the settings contract test; ESLint clean; no `tsc` diagnostics in touched files. Device check pending: wrong current password shows under the current field, mismatch under confirm, and the keyboard no longer covers the last field (password and email dialogs).
+Risk: item 3 (shared `ConfirmDialog`, mitigated by the opt-in default); item 6 for the keyboard layout (device check only).
 

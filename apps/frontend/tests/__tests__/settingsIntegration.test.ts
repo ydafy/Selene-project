@@ -154,8 +154,20 @@ describe('SecuritySection password-change wiring (CONF-017)', () => {
     );
   });
 
+  test('shows each error under the field it belongs to', () => {
+    expect(src).toContain('passwordErrorField');
+    expect(src).toContain('error={!!pwErrors.current}');
+    expect(src).toContain('error={!!pwErrors.new}');
+    expect(src).toContain('error={!!pwErrors.confirm}');
+  });
+
+  test('keeps the password dialog above the keyboard', () => {
+    expect(src).toMatch(/<ConfirmDialog[\s\S]*?avoidKeyboard[\s\S]*?icon="lock-reset"/);
+  });
+
   test('shows the mapped error key instead of matching message text', () => {
-    expect(src).toContain('t(mapPasswordChangeErrorKey(err))');
+    expect(src).toContain('showPwError(mapPasswordChangeErrorKey(err))');
+    expect(src).toContain('[passwordErrorField(errorKey)]: t(errorKey)');
     expect(src).not.toMatch(/invalid\|wrong\|incorrect/);
   });
 });
@@ -227,5 +239,15 @@ describe('package.json lists @chatwoot/react-native-widget', () => {
   test('dependency entry exists', () => {
     const pkg = JSON.parse(read('package.json'));
     expect(pkg.dependencies['@chatwoot/react-native-widget']).toBeDefined();
+  });
+});
+
+describe('ConfirmDialog keyboard handling (L62)', () => {
+  const src = read('components/ui/ConfirmDialog.tsx');
+
+  test('wraps the dialog in a KeyboardAvoidingView only when avoidKeyboard is set', () => {
+    expect(src).toContain('avoidKeyboard?: boolean');
+    expect(src).toContain('KeyboardAvoidingView');
+    expect(src).toMatch(/avoidKeyboard\s*=\s*false/);
   });
 });

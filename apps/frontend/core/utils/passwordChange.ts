@@ -66,3 +66,19 @@ export const mapPasswordChangeErrorKey = (error: unknown): string => {
   }
   return mapAuthErrorKey(error);
 };
+
+export type PasswordField = 'current' | 'new' | 'confirm' | 'form';
+
+const FIELD_BY_KEY: Record<string, PasswordField> = {
+  'security.currentPasswordRequired': 'current',
+  'settings:errors.wrongPassword': 'current',
+  'security.passwordTooShort': 'new',
+  'security.samePassword': 'new',
+  'settings:security.samePassword': 'new',
+  'auth:errors.weakPassword': 'new',
+  'security.passwordMismatch': 'confirm',
+};
+
+/** The field an error key belongs to, so it renders under that field. */
+export const passwordErrorField = (errorKey: string): PasswordField =>
+  Object.hasOwn(FIELD_BY_KEY, errorKey) ? FIELD_BY_KEY[errorKey] : 'form';

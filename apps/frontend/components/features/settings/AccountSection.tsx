@@ -111,6 +111,7 @@ export const AccountSection = ({ email }: AccountSectionProps) => {
         onConfirm={handleEmailConfirm}
         confirmLabel={t('account.emailChangeAction')}
         loading={isEmailSubmitting}
+        avoidKeyboard
         icon="email-edit-outline"
       >
         <Box marginTop="s">
