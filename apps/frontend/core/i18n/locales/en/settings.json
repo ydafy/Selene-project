@@ -58,14 +58,20 @@
   },
   "privacy": {
     "deleteAccount": "Delete account",
-    "deleteAccountDescription": "Permanently erase your account and all your data.",
+    "deleteAccountDescription": "Close your account and erase your personal data. Some purchase records are kept as required by law.",
     "firstConfirmTitle": "Delete your account?",
-    "firstConfirmMessage": "This is irreversible. You will lose access to your history, favorites, balance, and personal data.",
+    "firstConfirmMessage": "Your email, phone, addresses, photo, saved cards, favorites and unsold listings are deleted right away.\n\nYour orders, payments and disputes are kept blocked for up to 5 years for legal and tax obligations. Your public reviews remain as \"Usuario eliminado\".\n\nYou can register again with the same email later.",
     "firstConfirmAction": "Continue",
     "secondConfirmTitle": "Final confirmation",
     "secondConfirmMessage": "Type the word ELIMINAR to confirm you want to delete your account.",
     "typedPhrasePlaceholder": "Type ELIMINAR",
-    "secondConfirmAction": "Delete my account"
+    "secondConfirmAction": "Delete my account",
+    "reauthTitle": "Confirm your identity",
+    "reauthPasswordMessage": "For your security, enter your password to delete your account.",
+    "reauthGoogleMessage": "For your security, sign in with Google again to delete your account.",
+    "reauthPasswordLabel": "Password",
+    "reauthPasswordAction": "Confirm and delete",
+    "reauthGoogleAction": "Continue with Google"
   },
   "legales": {
     "sectionTitle": "Legal",
@@ -107,13 +113,17 @@
     "wrongPassword": "Current password is incorrect.",
     "browserNotFound": "We couldn't open the browser. Please try again later.",
     "emailAlreadyTaken": "That email is already taken.",
-    "sameEmail": "That is already your current email."
+    "sameEmail": "That is already your current email.",
+    "retryLater": "We couldn't complete the request. Please try again in a few minutes.",
+    "reauthFailed": "We couldn't confirm your identity. Please try again.",
+    "accountMismatch": "You signed in with a different account. Nothing was deleted and you are back in your original account."
   },
   "blockedReasons": {
     "active_shipments": "You have active shipments. Wait until they are completed or cancelled.",
     "active_orders": "You have active purchases. Wait until they are completed or cancelled.",
     "open_disputes": "You have open disputes. Resolve them before deleting your account.",
     "pending_payouts": "You have pending payouts. Wait until they are processed.",
-    "available_balance": "Your wallet is not empty. Withdraw your available and escrow balance before continuing."
+    "account_restricted": "Your account is suspended or restricted. Contact support to continue.",
+    "pending_refunds": "You have pending refunds. Wait until they are processed."
   }
 }

@@ -58,14 +58,20 @@
   },
   "privacy": {
     "deleteAccount": "Eliminar cuenta",
-    "deleteAccountDescription": "Borra de forma permanente tu cuenta y todos tus datos.",
+    "deleteAccountDescription": "Cierra tu cuenta y borra tus datos personales. Algunos registros de compras se conservan por obligación legal.",
     "firstConfirmTitle": "¿Eliminar tu cuenta?",
-    "firstConfirmMessage": "Esta acción es irreversible. Perderás acceso a tu historial, favoritos, saldo y datos personales.",
+    "firstConfirmMessage": "Se eliminan de inmediato tu correo, teléfono, direcciones, foto, tarjetas guardadas, favoritos y publicaciones sin vender.\n\nTus pedidos, pagos y disputas se conservan bloqueados hasta 5 años por obligaciones legales y fiscales. Tus reseñas públicas permanecen como \"Usuario eliminado\".\n\nMás adelante podrás registrarte de nuevo con el mismo correo.",
     "firstConfirmAction": "Continuar",
     "secondConfirmTitle": "Confirmación final",
     "secondConfirmMessage": "Escribe la palabra ELIMINAR para confirmar que quieres borrar tu cuenta.",
     "typedPhrasePlaceholder": "Escribe ELIMINAR",
-    "secondConfirmAction": "Eliminar mi cuenta"
+    "secondConfirmAction": "Eliminar mi cuenta",
+    "reauthTitle": "Confirma tu identidad",
+    "reauthPasswordMessage": "Por seguridad, ingresa tu contraseña para eliminar tu cuenta.",
+    "reauthGoogleMessage": "Por seguridad, vuelve a iniciar sesión con Google para eliminar tu cuenta.",
+    "reauthPasswordLabel": "Contraseña",
+    "reauthPasswordAction": "Confirmar y eliminar",
+    "reauthGoogleAction": "Continuar con Google"
   },
   "legales": {
     "sectionTitle": "Legales",
@@ -107,13 +113,17 @@
     "wrongPassword": "La contraseña actual es incorrecta.",
     "browserNotFound": "No pudimos abrir el navegador. Intenta más tarde.",
     "emailAlreadyTaken": "Ese correo electrónico ya está en uso.",
-    "sameEmail": "Ese ya es tu correo actual."
+    "sameEmail": "Ese ya es tu correo actual.",
+    "retryLater": "No pudimos completar la solicitud. Intenta de nuevo en unos minutos.",
+    "reauthFailed": "No pudimos confirmar tu identidad. Intenta de nuevo.",
+    "accountMismatch": "Iniciaste sesión con otra cuenta. No se eliminó nada y seguimos en tu cuenta original."
   },
   "blockedReasons": {
     "active_shipments": "Tienes envíos activos. Espera a que se completen o se cancelen.",
     "active_orders": "Tienes compras activas. Espera a que se completen o se cancelen.",
     "open_disputes": "Tienes disputas abiertas. Resuélvelas antes de eliminar tu cuenta.",
     "pending_payouts": "Tienes retiros pendientes. Espera a que se procesen.",
-    "available_balance": "Tu billetera no está vacía. Retira tu saldo disponible y en garantía antes de continuar."
+    "account_restricted": "Tu cuenta está suspendida o restringida. Contacta a soporte para continuar.",
+    "pending_refunds": "Tienes reembolsos pendientes. Espera a que se procesen."
   }
 }

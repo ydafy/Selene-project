@@ -1,120 +1,148 @@
 import { expect, test, describe } from 'bun:test';
 import {
   mapDeleteAccountResponse,
+  readInvokeFailure,
   validateDeleteConfirmation,
   stripSettingsNamespace,
   DELETE_CONFIRMATION_PHRASE,
 } from './deleteAccountHelpers';
 
+const FAILED = 'settings:errors.deleteFailed';
+const RETRY = 'settings:errors.retryLater';
+
 describe('mapDeleteAccountResponse', () => {
-  test('returns ok=true when success flag is true', () => {
-    expect(mapDeleteAccountResponse({ success: true })).toEqual({
-      ok: true,
+  test('200 with success flag is ok', () => {
+    expect(
+      mapDeleteAccountResponse({ status: 200, body: { success: true } }),
+    ).toEqual({ ok: true });
+  });
+
+  test('200 without the success flag is a failure', () => {
+    expect(mapDeleteAccountResponse({ status: 200, body: {} })).toEqual({
+      ok: false,
+      errorKey: FAILED,
     });
   });
 
-  test('maps active_orders blocked_reason to i18n key', () => {
+  for (const reason of [
+    'account_restricted',
+    'active_shipments',
+    'active_orders',
+    'open_disputes',
+    'pending_payouts',
+    'pending_refunds',
+  ]) {
+    test(`409 DELETE_BLOCKED ${reason} maps to its blocked message`, () => {
+      expect(
+        mapDeleteAccountResponse({
+          status: 409,
+          body: { error: 'DELETE_BLOCKED', blocked_reason: reason },
+        }),
+      ).toEqual({ ok: false, errorKey: `settings:blockedReasons.${reason}` });
+    });
+  }
+
+  test('the obsolete available_balance reason is no longer known', () => {
     expect(
       mapDeleteAccountResponse({
-        error: 'DELETE_BLOCKED',
-        blocked_reason: 'active_orders',
+        status: 409,
+        body: { error: 'DELETE_BLOCKED', blocked_reason: 'available_balance' },
+      }),
+    ).toEqual({ ok: false, errorKey: FAILED });
+  });
+
+  test('409 with an unknown reason falls back to deleteFailed', () => {
+    expect(
+      mapDeleteAccountResponse({
+        status: 409,
+        body: { error: 'DELETE_BLOCKED', blocked_reason: 'weird_reason' },
+      }),
+    ).toEqual({ ok: false, errorKey: FAILED });
+  });
+
+  test('403 REAUTH_REQUIRED asks for reauthentication', () => {
+    expect(
+      mapDeleteAccountResponse({
+        status: 403,
+        body: { error: 'REAUTH_REQUIRED' },
       }),
     ).toEqual({
       ok: false,
-      errorKey: 'settings:blockedReasons.active_orders',
+      errorKey: 'settings:errors.reauthFailed',
+      reauthRequired: true,
     });
   });
 
-  test('maps active_shipments blocked_reason to i18n key', () => {
+  test('403 with another code is a plain failure', () => {
+    expect(
+      mapDeleteAccountResponse({ status: 403, body: { error: 'FORBIDDEN' } }),
+    ).toEqual({ ok: false, errorKey: FAILED });
+  });
+
+  test('401 AUTH_REQUIRED maps to the session expired message', () => {
     expect(
       mapDeleteAccountResponse({
-        error: 'DELETE_BLOCKED',
-        blocked_reason: 'active_shipments',
+        status: 401,
+        body: { error: 'AUTH_REQUIRED' },
       }),
-    ).toEqual({
-      ok: false,
-      errorKey: 'settings:blockedReasons.active_shipments',
-    });
+    ).toEqual({ ok: false, errorKey: 'settings:errors.authRequired' });
   });
 
-  test('maps open_disputes blocked_reason', () => {
-    expect(
-      mapDeleteAccountResponse({
-        error: 'DELETE_BLOCKED',
-        blocked_reason: 'open_disputes',
-      }),
-    ).toEqual({
-      ok: false,
-      errorKey: 'settings:blockedReasons.open_disputes',
-    });
-  });
-
-  test('maps pending_payouts blocked_reason', () => {
-    expect(
-      mapDeleteAccountResponse({
-        error: 'DELETE_BLOCKED',
-        blocked_reason: 'pending_payouts',
-      }),
-    ).toEqual({
-      ok: false,
-      errorKey: 'settings:blockedReasons.pending_payouts',
-    });
-  });
-
-  test('maps available_balance blocked_reason', () => {
-    expect(
-      mapDeleteAccountResponse({
-        error: 'DELETE_BLOCKED',
-        blocked_reason: 'available_balance',
-      }),
-    ).toEqual({
-      ok: false,
-      errorKey: 'settings:blockedReasons.available_balance',
-    });
-  });
-
-  test('unknown blocked_reason falls back to deleteFailed', () => {
-    expect(
-      mapDeleteAccountResponse({
-        error: 'DELETE_BLOCKED',
-        blocked_reason: 'weird_reason',
-      }),
-    ).toEqual({
-      ok: false,
-      errorKey: 'settings:errors.deleteFailed',
-    });
-  });
-
-  test('null/undefined data falls back to deleteFailed', () => {
-    expect(mapDeleteAccountResponse(null)).toEqual({
-      ok: false,
-      errorKey: 'settings:errors.deleteFailed',
-    });
-    expect(mapDeleteAccountResponse(undefined)).toEqual({
-      ok: false,
-      errorKey: 'settings:errors.deleteFailed',
-    });
-  });
-
-  test('plain error without blocked_reason falls back to deleteFailed', () => {
-    expect(mapDeleteAccountResponse({ error: 'INTERNAL' })).toEqual({
-      ok: false,
-      errorKey: 'settings:errors.deleteFailed',
-    });
-  });
-
-  test('UNAUTHORIZED error maps to authRequired', () => {
-    expect(mapDeleteAccountResponse({ error: 'UNAUTHORIZED' })).toEqual({
+  test('401 without a parseable body still maps to session expired', () => {
+    expect(mapDeleteAccountResponse({ status: 401, body: null })).toEqual({
       ok: false,
       errorKey: 'settings:errors.authRequired',
     });
   });
 
-  test('AUTH_REQUIRED error maps to authRequired', () => {
-    expect(mapDeleteAccountResponse({ error: 'AUTH_REQUIRED' })).toEqual({
-      ok: false,
-      errorKey: 'settings:errors.authRequired',
+  for (const status of [503, 500, 404, 502, 429]) {
+    test(`${status} maps to the retry-later message`, () => {
+      expect(
+        mapDeleteAccountResponse({ status, body: { error: 'X' } }),
+      ).toEqual({ ok: false, errorKey: RETRY });
     });
+  }
+
+  test('a network failure (no status) maps to the retry-later message', () => {
+    expect(mapDeleteAccountResponse({ status: null, body: null })).toEqual({
+      ok: false,
+      errorKey: RETRY,
+    });
+  });
+
+  test('a non-object body never throws', () => {
+    expect(mapDeleteAccountResponse({ status: 409, body: 'oops' })).toEqual({
+      ok: false,
+      errorKey: FAILED,
+    });
+  });
+});
+
+describe('readInvokeFailure', () => {
+  test('reads status and JSON body from the HTTP error context', async () => {
+    const context = new Response(JSON.stringify({ error: 'REAUTH_REQUIRED' }), {
+      status: 403,
+    });
+    expect(await readInvokeFailure({ context })).toEqual({
+      status: 403,
+      body: { error: 'REAUTH_REQUIRED' },
+    });
+  });
+
+  test('keeps the status when the body is not JSON', async () => {
+    const context = new Response('<html>', { status: 503 });
+    expect(await readInvokeFailure({ context })).toEqual({
+      status: 503,
+      body: null,
+    });
+  });
+
+  test('an error without an HTTP context is a network failure', async () => {
+    expect(await readInvokeFailure(new Error('Failed to fetch'))).toEqual({
+      status: null,
+      body: null,
+    });
+    expect(await readInvokeFailure(null)).toEqual({ status: null, body: null });
   });
 });
 
