@@ -97,9 +97,9 @@ Follow repository manual Supabase workflow: supply SQL/function/config handoff, 
 - T7 | S3,S9 | parent orchestration | in progress on branch `audit/auth-ui`; audit done (L82, d358b9e), split approved (L83) | Auth-screen UI/UX pass (L62): every auth screen, including forgot-password responsiveness | Commit: not created.
 - T7a | S3 | inline | done (L84) | U2: missing `auth` i18n keys (en `loginErrorTitle`, `verificationErrorTitle`; `enter6DigitCode` in both) plus an `auth` locale parity and key-usage test | Commit: 813ec98 (review approved).
 - T7b | S3 | delegated writer (context backstop) | done (1f65253, review approved; device check passed L86) | U1 + U5: opt-in keyboard-aware layout for the auth screens on Android edge-to-edge; back button inset | Commit: not created.
-- T7c | S3 | inline | pending | U3 + U7: autofill hints, keyboard next/submit on login and forgot password, one field-error style, no hardcoded fallback copy, wrapping resend row | Commit: not created.
+- T7c | S3 | delegated writer (context backstop) | done (L88; device check pending) | U3 + U7: autofill hints, keyboard next/submit on login and forgot password, one field-error style, no hardcoded fallback copy, wrapping resend row | Commit: not created.
 - T7d | S3 | none | closed without code (L86): the device check did not confirm U4/U6 | U4 OTP paste/autofill; U6 `AuthModal` keyboard and small-screen clipping | Commit: not created.
-- T7e | S3 | inline | done (L87) | Sign-in and registration only through `AuthModal`: remove the stack `login` and `register` screens; the guest profile link presents the modal; `verify-code` without an email returns to the tabs | Commit: see git log.
+- T7e | S3 | inline | done (L87) | Sign-in and registration only through `AuthModal`: remove the stack `login` and `register` screens; the guest profile link presents the modal; `verify-code` without an email returns to the tabs | Commit: 117aba0 (review approved).
 - T8 | S1 | route on resume | pending, after T6 | Auth backlog pass: resolve the consolidated list in L81 | Commit: not created.
 
 ## Log
@@ -621,3 +621,11 @@ Maintainer (verbatim): "si dale master apruebo". Done before T7c so T7c does not
 RED: `tests/__tests__/authEntryPoints.test.ts` 5 fail. GREEN: 120 pass (entry points, layout, `core/i18n`). ESLint on touched files: only the pre-existing `as any` OTP style in `verify-code`. Typecheck: `bun run --filter frontend typecheck` matched no workspace (the package is `@selene/frontend`), so the T7b "no typecheck diagnostics" claim in L85 was unproven; rerun with `--filter @selene/frontend`: 74 pre-existing errors, none in the T7b or T7e files. The root `auth` keys `loginTitle` and `joinSelene` are now unused (left; backlog T8).
 Device check: guest profile "create account" opens the modal on the register view; the modal still reaches forgot password and verify code.
 Risk: item 3 (removes two routes; no deep link, email redirect, notification or other source targets them).
+
+### L88 — T7c implementation and evidence
+T7e review (risk, reliability) approved; advisory: the removed-route scan in `authEntryPoints.test.ts` covers only three files.
+Autofill hints (`autoComplete`/`textContentType`) on every auth field: email, current password (login), new password and confirm (register, reset), username (register). Keyboard flow: login email Next -> password, Done submits; forgot password Send submits; reset new password Next -> confirm, Done submits. Keyboard submit goes through `submitFromKeyboard`, which applies the same guard as the button (`resetPassword` `canSubmit` is the old disabled condition negated). `RegisterForm` field errors use the shared `color="error" marginTop="s" marginLeft="s"`; the resend rows in `verify-code` and `resetPassword` wrap. `FormTextInput` unchanged (it already forwards props and ref).
+RED: `tests/__tests__/authFormFields.test.ts` 17 fail. GREEN: 17 pass; `auth*` tests and `core/i18n` 137 pass; full `bun test` 3198 pass, 0 fail. ESLint: only pre-existing errors (`require` logos, `as any`, unused `theme` in `LoginForm`). Typecheck (`--filter @selene/frontend`): no diagnostics in touched files.
+Backlog T8: `RegisterForm` confirm-password `onSubmitEditing` submits without the button guard (pre-existing); unused `theme` in `LoginForm`.
+Device check pending: autofill offered on the modal login; Next/Done flow on login, forgot and reset (Done does nothing with fewer than 6 code digits); register errors look like the rest; Spanish resend row wraps.
+Risk: item 6 (autofill and keyboard, device check only).

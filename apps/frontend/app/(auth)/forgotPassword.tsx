@@ -76,6 +76,12 @@ export default function ForgotPasswordScreen() {
     }
   };
 
+  // Keyboard submit must obey the same guards as the button.
+  const submitFromKeyboard = () => {
+    if (!isValid || loading) return;
+    void handleSubmit(onSubmit)();
+  };
+
   return (
     <ScreenLayout keyboardAware>
       <Stack.Screen options={{ headerShown: false }} />
@@ -113,8 +119,12 @@ export default function ForgotPasswordScreen() {
               value={value}
               keyboardType="email-address"
               autoCapitalize="none"
+              autoComplete="email"
+              textContentType="emailAddress"
               leftIcon="email-outline"
               error={!!errors.email}
+              returnKeyType="send"
+              onSubmitEditing={submitFromKeyboard}
             />
           )}
         />

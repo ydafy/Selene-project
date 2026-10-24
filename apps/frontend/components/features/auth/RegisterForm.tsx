@@ -8,7 +8,6 @@ import React, { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useTheme } from '@shopify/restyle';
 import { TextInput as RNTextInput } from 'react-native'; // <--- IMPORTANTE
 import Toast from 'react-native-toast-message';
 import { router } from 'expo-router';
@@ -33,7 +32,6 @@ import {
   mapAuthErrorKey,
 } from '../../../core/auth/authErrors.logic';
 import { supabase } from '../../../core/db/supabase';
-import { Theme } from '../../../core/theme';
 
 type RegisterFormProps = {
   onSuccess: (email: string) => void;
@@ -47,7 +45,6 @@ export const RegisterForm = ({
   onLoginPress,
 }: RegisterFormProps) => {
   const { t } = useTranslation('auth');
-  const theme = useTheme<Theme>();
   const { signUp, loading } = useAuth();
 
   // 1. RESTAURACIÓN DE REFS (Para navegación de teclado)
@@ -148,6 +145,8 @@ export const RegisterForm = ({
               onChangeText={onChange}
               value={value}
               autoCapitalize="none"
+              autoComplete="username"
+              textContentType="username"
               leftIcon="account-circle-outline"
               error={!!errors.username}
               autoFocus
@@ -157,10 +156,7 @@ export const RegisterForm = ({
           )}
         />
         {errors.username && (
-          <Text
-            variant="body-sm"
-            style={{ color: theme.colors.error, marginTop: 4 }}
-          >
+          <Text variant="body-sm" color="error" marginTop="s" marginLeft="s">
             {t(errors.username.message as string)}
           </Text>
         )}
@@ -180,6 +176,8 @@ export const RegisterForm = ({
               value={value}
               keyboardType="email-address"
               autoCapitalize="none"
+              autoComplete="email"
+              textContentType="emailAddress"
               leftIcon="email-outline"
               error={!!errors.email}
               returnKeyType="next"
@@ -188,10 +186,7 @@ export const RegisterForm = ({
           )}
         />
         {errors.email && (
-          <Text
-            variant="body-sm"
-            style={{ color: theme.colors.error, marginTop: 4 }}
-          >
+          <Text variant="body-sm" color="error" marginTop="s" marginLeft="s">
             {t(errors.email.message as string)}
           </Text>
         )}
@@ -210,6 +205,8 @@ export const RegisterForm = ({
               onChangeText={onChange}
               value={value}
               secureTextEntry
+              autoComplete="new-password"
+              textContentType="newPassword"
               leftIcon="lock-outline"
               error={!!errors.password}
               returnKeyType="next"
@@ -218,10 +215,7 @@ export const RegisterForm = ({
           )}
         />
         {errors.password && (
-          <Text
-            variant="body-sm"
-            style={{ color: theme.colors.error, marginTop: 4 }}
-          >
+          <Text variant="body-sm" color="error" marginTop="s" marginLeft="s">
             {t(errors.password.message as string)}
           </Text>
         )}
@@ -240,6 +234,8 @@ export const RegisterForm = ({
               onChangeText={onChange}
               value={value}
               secureTextEntry
+              autoComplete="new-password"
+              textContentType="newPassword"
               leftIcon="lock-check-outline"
               error={!!errors.confirmPassword}
               returnKeyType="done"
@@ -248,10 +244,7 @@ export const RegisterForm = ({
           )}
         />
         {errors.confirmPassword && (
-          <Text
-            variant="body-sm"
-            style={{ color: theme.colors.error, marginTop: 4 }}
-          >
+          <Text variant="body-sm" color="error" marginTop="s" marginLeft="s">
             {t(errors.confirmPassword.message as string)}
           </Text>
         )}

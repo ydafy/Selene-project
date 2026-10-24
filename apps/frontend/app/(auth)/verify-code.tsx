@@ -156,6 +156,7 @@ export default function VerifyCodeScreen() {
           marginTop="l"
           alignItems="center"
           flexDirection="row"
+          flexWrap="wrap"
           justifyContent="center"
         >
           <Text color="textSecondary">{t('auth:didNotReceiveCode')} </Text>

@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTheme } from '@shopify/restyle';
+import { TextInput as RNTextInput } from 'react-native';
 import OTPTextInput from 'react-native-otp-textinput';
 import Toast from 'react-native-toast-message';
 import { z } from 'zod';
@@ -53,6 +54,7 @@ export default function ResetPasswordScreen() {
 
   const [otpCode, setOtpCode] = useState('');
   const otpInputRef = useRef<OTPTextInput>(null);
+  const confirmInputRef = useRef<RNTextInput>(null);
   // The recovery code is single use: once verified, retries only update the password.
   const [codeVerified, setCodeVerified] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -154,6 +156,15 @@ export default function ResetPasswordScreen() {
     }
   };
 
+  const canSubmit =
+    isValid && !loading && (codeVerified || otpCode.length >= 6);
+
+  // Keyboard submit must obey the same guards as the button.
+  const submitFromKeyboard = () => {
+    if (!canSubmit) return;
+    void handleSubmit(onSubmit)();
+  };
+
   return (
     <ScreenLayout keyboardAware>
       <Stack.Screen options={{ headerShown: false }} />
@@ -217,8 +228,12 @@ export default function ResetPasswordScreen() {
               onChangeText={onChange}
               value={value}
               secureTextEntry
+              autoComplete="new-password"
+              textContentType="newPassword"
               leftIcon="lock-outline"
               error={!!errors.password}
+              returnKeyType="next"
+              onSubmitEditing={() => confirmInputRef.current?.focus()}
             />
           )}
         />
@@ -235,13 +250,18 @@ export default function ResetPasswordScreen() {
           name="confirmPassword"
           render={({ field: { onChange, onBlur, value } }) => (
             <FormTextInput
+              ref={confirmInputRef}
               label={t('auth:confirmPasswordLabel')}
               onBlur={onBlur}
               onChangeText={onChange}
               value={value}
               secureTextEntry
+              autoComplete="new-password"
+              textContentType="newPassword"
               leftIcon="lock-check-outline"
               error={!!errors.confirmPassword}
+              returnKeyType="done"
+              onSubmitEditing={submitFromKeyboard}
             />
           )}
         />
@@ -256,9 +276,7 @@ export default function ResetPasswordScreen() {
         <PrimaryButton
           onPress={handleSubmit(onSubmit)}
           loading={loading}
-          disabled={
-            !isValid || loading || (!codeVerified && otpCode.length < 6)
-          }
+          disabled={!canSubmit}
         >
           {t('auth:resetButton')}
         </PrimaryButton>
@@ -267,6 +285,7 @@ export default function ResetPasswordScreen() {
           marginTop="l"
           alignItems="center"
           flexDirection="row"
+          flexWrap="wrap"
           justifyContent="center"
         >
           <Text color="textSecondary">{t('auth:didNotReceiveCode')} </Text>

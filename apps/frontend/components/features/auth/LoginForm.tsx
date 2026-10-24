@@ -4,11 +4,12 @@
  * Centraliza la lógica de Google y Email en hooks especializados.
  */
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTheme } from '@shopify/restyle';
+import { TextInput as RNTextInput } from 'react-native';
 import Toast from 'react-native-toast-message';
 
 import { Box, Text } from '../../base';
@@ -41,6 +42,8 @@ export const LoginForm = ({
   const { t } = useTranslation('auth');
   const theme = useTheme<Theme>();
   const { signIn, loading, resendSignUpOtp } = useAuth();
+
+  const passwordInputRef = useRef<RNTextInput>(null);
 
   // 1. MOTOR DE GOOGLE (Centralizado)
   const { signInWithGoogle, isGoogleLoading } = useGoogleAuth(onSuccess);
@@ -92,6 +95,12 @@ export const LoginForm = ({
 
   const isBusy = loading || isGoogleLoading;
 
+  // Keyboard submit must obey the same guards as the button.
+  const submitFromKeyboard = () => {
+    if (!isValid || isBusy) return;
+    void handleSubmit(onSubmit)();
+  };
+
   return (
     <Box width="100%">
       <Box height={24} />
@@ -107,8 +116,12 @@ export const LoginForm = ({
             value={value}
             keyboardType="email-address"
             autoCapitalize="none"
+            autoComplete="email"
+            textContentType="emailAddress"
             leftIcon="account-outline"
             error={!!errors.email}
+            returnKeyType="next"
+            onSubmitEditing={() => passwordInputRef.current?.focus()}
           />
         )}
       />
@@ -125,13 +138,18 @@ export const LoginForm = ({
         name="password"
         render={({ field: { onChange, onBlur, value } }) => (
           <FormTextInput
+            ref={passwordInputRef}
             label={t('passwordLabel')}
             onBlur={onBlur}
             onChangeText={onChange}
             value={value}
             secureTextEntry
+            autoComplete="current-password"
+            textContentType="password"
             leftIcon="lock-outline"
             error={!!errors.password}
+            returnKeyType="done"
+            onSubmitEditing={submitFromKeyboard}
           />
         )}
       />
