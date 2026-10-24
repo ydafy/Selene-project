@@ -9,6 +9,7 @@ const shipment = {
   id: 'shipment-a',
   trackingNumber: 'TRK-1',
   carrier: 'estafeta',
+  source: 'preparing_timeout',
 };
 const claimToken = 'claim-token';
 const NOW = '2026-10-23T12:00:00.000Z';
@@ -48,6 +49,7 @@ type ShipmentInput = {
   id: string;
   trackingNumber: string | null;
   carrier: string | null;
+  source: string;
 };
 
 function harness(
@@ -58,6 +60,8 @@ function harness(
     marked?: unknown;
     available?: boolean;
     recordEventError?: boolean;
+    recordOutcomeError?: boolean;
+    shipmentStatus?: string | null;
   } = {},
 ) {
   const calls: string[] = [];
@@ -89,6 +93,9 @@ function harness(
       calls.push('event');
       if (options.recordEventError) throw new Error('record failed');
       events.push({ ...event, pollingRunId });
+      return options.shipmentStatus === undefined
+        ? 'shipped'
+        : options.shipmentStatus;
     },
     cancelLabel: async (input: unknown) => {
       calls.push('cancel');
@@ -99,6 +106,7 @@ function harness(
     recordOutcome: async (...args: unknown[]) => {
       calls.push('outcome');
       outcomes.push(args);
+      if (options.recordOutcomeError) throw new Error('record rpc failed');
     },
     markReview: async (...args: unknown[]) => {
       calls.push('mark');
@@ -213,6 +221,97 @@ describe('preparing carrier gate (B4.4b, S3/S4/S8)', () => {
     ]);
     expect(subject.marks).toEqual([]);
     expect(subject.criticals).toEqual([]);
+  });
+
+  test('delivered-only history leaves the shipment preparing: marks tracking_unknown instead of looping', async () => {
+    const delivered: FreshTrackingAssessment = {
+      state: 'scanned',
+      observations: [{ trackingNumber: 'TRK-1', status: 'Delivered' }],
+    };
+    const subject = harness({ tracking: [delivered], shipmentStatus: 'preparing' });
+    expect(await subject.run()).toEqual({
+      proceed: false,
+      reason: 'tracking_unknown',
+    });
+    expect(subject.calls).toEqual(['stored', 'tracking', 'event', 'mark', 'critical']);
+    expect(subject.marks).toEqual([
+      ['shipment-a', claimToken, 'tracking_unknown'],
+    ]);
+    expect(subject.criticals).toHaveLength(1);
+  });
+
+  test('a repeated mark after a delivered-only history does not alert again', async () => {
+    const delivered: FreshTrackingAssessment = {
+      state: 'scanned',
+      observations: [{ trackingNumber: 'TRK-1', status: 'Delivered' }],
+    };
+    const subject = harness({
+      tracking: [delivered],
+      shipmentStatus: 'preparing',
+      marked: { marked: false },
+    });
+    expect((await subject.run()).proceed).toBe(false);
+    expect(subject.criticals).toEqual([]);
+  });
+
+  test('a shipped observation moves the shipment: stops with tracking_advanced and no mark', async () => {
+    const subject = harness({ tracking: [scanned], shipmentStatus: 'shipped' });
+    expect(await subject.run()).toEqual({
+      proceed: false,
+      reason: 'tracking_advanced',
+    });
+    expect(subject.marks).toEqual([]);
+  });
+
+  test.each([
+    ['a non-matching source', 'buyer'],
+    ['a paid_timeout source', 'paid_timeout'],
+    ['a missing source', undefined],
+  ])('%s stops with source_mismatch before any port call', async (_label, source) => {
+    const subject = harness({ tracking: [unscanned], cancel: accepted });
+    expect(
+      await subject.run({ source: source as unknown as string }),
+    ).toEqual({ proceed: false, reason: 'source_mismatch' });
+    expect(subject.calls).toEqual([]);
+  });
+
+  test('a refused tracking read (unavailable) stops with carrier_unavailable and marks nothing', async () => {
+    const subject = harness({
+      tracking: [{ state: 'unavailable', observations: [] }],
+    });
+    expect(await subject.run()).toEqual({
+      proceed: false,
+      reason: 'carrier_unavailable',
+    });
+    expect(subject.calls).toEqual(['stored', 'tracking']);
+    expect(subject.criticals).toEqual([]);
+  });
+
+  test('the record RPC failing after Envia accepted throws, cancels once and never proceeds', async () => {
+    const subject = harness({
+      tracking: [unscanned],
+      cancel: accepted,
+      recordOutcomeError: true,
+    });
+    await expect(subject.run()).rejects.toThrow('record rpc failed');
+    expect(subject.calls).toEqual(['stored', 'tracking', 'cancel', 'outcome']);
+    expect(subject.cancels).toHaveLength(1);
+    expect(subject.marks).toEqual([]);
+  });
+
+  test('no stored outcome and tracking canceled marks tracking_unknown, never cancels, alerts once', async () => {
+    const canceled: FreshTrackingAssessment = {
+      state: 'unknown',
+      observations: [{ trackingNumber: 'TRK-1', status: 'Canceled' }],
+    };
+    const subject = harness({ tracking: [canceled] });
+    expect(await subject.run()).toEqual({
+      proceed: false,
+      reason: 'tracking_unknown',
+    });
+    expect(subject.cancels).toEqual([]);
+    expect(subject.calls).toEqual(['stored', 'tracking', 'mark', 'critical']);
+    expect(subject.criticals).toHaveLength(1);
   });
 
   test('a failed event write stops the run with the error and no cancel', async () => {

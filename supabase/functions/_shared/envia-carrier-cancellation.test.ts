@@ -472,12 +472,25 @@ describe('fetchFreshTracking', () => {
     });
   });
 
-  test('a null config yields unknown without calling fetch', async () => {
+  test('a null config yields unavailable without calling fetch', async () => {
     const { calls, deps } = recorder(() => jsonResponse(200, {}));
     expect(await fetchFreshTracking(null, TRACKING, deps)).toEqual({
-      state: 'unknown',
+      state: 'unavailable',
       observations: [],
     });
     expect(calls).toHaveLength(0);
   });
+
+  test.each([401, 403, 429])(
+    'HTTP %i yields unavailable (retry next run, no review)',
+    async (status) => {
+      const { deps } = recorder(() =>
+        jsonResponse(status, { meta: 'error', error: { code: 1 } }),
+      );
+      expect(await fetchFreshTracking(config, TRACKING, deps)).toEqual({
+        state: 'unavailable',
+        observations: [],
+      });
+    },
+  );
 });

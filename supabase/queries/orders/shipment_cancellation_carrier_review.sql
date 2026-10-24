@@ -453,10 +453,22 @@ BEGIN
       RETURN v_result || jsonb_build_object('status', 'busy');
     END IF;
     -- A stale pre-call worker can no longer pass start after token rotation.
-    UPDATE public.shipment_cancellation_operations
-      SET claim_token = gen_random_uuid(), claim_expires_at = clock_timestamp() + interval '15 minutes'
-      WHERE shipment_id = p_shipment_id
-      RETURNING * INTO v_operation;
+    -- B4.4b: a preparing_timeout takeover of an expired pre-start operation that belongs to
+    -- another source re-owns it. That operation never authorized an external call, and its
+    -- source (buyer, seller, paid_timeout) can no longer act on a preparing shipment, so
+    -- keeping that context would make the carrier outcome and review RPCs reject it forever.
+    IF p_source = 'preparing_timeout' AND v_operation.source <> 'preparing_timeout' THEN
+      UPDATE public.shipment_cancellation_operations
+        SET claim_token = gen_random_uuid(), claim_expires_at = clock_timestamp() + interval '15 minutes',
+            source = 'preparing_timeout', actor_id = NULL, reason = p_reason
+        WHERE shipment_id = p_shipment_id
+        RETURNING * INTO v_operation;
+    ELSE
+      UPDATE public.shipment_cancellation_operations
+        SET claim_token = gen_random_uuid(), claim_expires_at = clock_timestamp() + interval '15 minutes'
+        WHERE shipment_id = p_shipment_id
+        RETURNING * INTO v_operation;
+    END IF;
   ELSE
     INSERT INTO public.shipment_cancellation_operations
       (shipment_id, order_id, source, actor_id, reason, claim_token, claim_expires_at)

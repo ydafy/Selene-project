@@ -697,6 +697,67 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       assert.notEqual(rotated, token);
     },
   ],
+  [
+    'a preparing_timeout claim re-owns an expired pre-start operation of another source; record and mark then succeed',
+    async (tx) => {
+      const [{ claim: buyerClaim }] = await tx`SELECT public.fn_claim_shipment_cancellation(
+        ${ids.paid}::uuid, ${ids.order}::uuid, ${ids.buyer}::uuid, 'buyer', 'buyer asked') AS claim`;
+      assert.equal(buyerClaim.status, 'claimed');
+      await expireClaim(tx, ids.paid);
+      await tx`UPDATE public.shipments SET status = 'preparing', label_generation_state = 'generated',
+        label_provider_cost_cents = ${labelCost}, tracking_number = 'TRK-B44B-1', carrier = 'estafeta' WHERE id = ${ids.paid}`;
+      const [{ claim: takeover }] = await tx`SELECT public.fn_claim_shipment_cancellation(
+        ${ids.paid}::uuid, ${ids.order}::uuid, NULL::uuid, 'preparing_timeout', 'preparing timeout reason') AS claim`;
+      assert.equal(takeover.status, 'claimed');
+      assert.equal(takeover.source, 'preparing_timeout');
+      assert.equal(takeover.actor_id, null);
+      assert.equal(takeover.reason, 'preparing timeout reason');
+      assert.notEqual(takeover.claim_token, buyerClaim.claim_token);
+      const stored = await operation(tx, ids.paid);
+      assert.equal(stored.source, 'preparing_timeout');
+      assert.equal(stored.actor_id, null);
+      assert.equal(stored.reason, 'preparing timeout reason');
+      assert.equal(stored.external_started_at, null);
+      const recorded = await outcomeRpc(tx, takeover.claim_token, 'refused', ids.paid);
+      assert.equal(recorded.carrier_cancellation_outcome, 'refused');
+      const marked = await mark(tx, takeover.claim_token, 'carrier_refused', ids.paid);
+      assert.equal(marked.marked, true);
+    },
+  ],
+  [
+    'a live non-preparing claim stays busy and a started operation stays recovery_required for the preparing claim; nothing changes',
+    async (tx) => {
+      await claim(tx, ids.paid, 'paid_timeout');
+      await tx`UPDATE public.shipments SET status = 'preparing', label_generation_state = 'generated' WHERE id = ${ids.paid}`;
+      const before = await operation(tx, ids.paid);
+      const [{ claim: busy }] = await tx`SELECT public.fn_claim_shipment_cancellation(
+        ${ids.paid}::uuid, ${ids.order}::uuid, NULL::uuid, 'preparing_timeout', 'preparing timeout reason') AS claim`;
+      assert.equal(busy.status, 'busy');
+      assert.equal(busy.source, 'paid_timeout');
+      assert.deepEqual(await operation(tx, ids.paid), before);
+
+      await tx`UPDATE public.shipment_cancellation_operations SET external_started_at = clock_timestamp(), claim_expires_at = '-infinity' WHERE shipment_id = ${ids.paid}`;
+      const started = await operation(tx, ids.paid);
+      const [{ claim: recovery }] = await tx`SELECT public.fn_claim_shipment_cancellation(
+        ${ids.paid}::uuid, ${ids.order}::uuid, NULL::uuid, 'preparing_timeout', 'preparing timeout reason') AS claim`;
+      assert.equal(recovery.status, 'recovery_required');
+      assert.equal(recovery.source, 'paid_timeout');
+      assert.deepEqual(await operation(tx, ids.paid), started);
+    },
+  ],
+  [
+    'a buyer takeover of an expired paid_timeout claim keeps the paid_timeout context',
+    async (tx) => {
+      await claim(tx, ids.paid, 'paid_timeout');
+      await expireClaim(tx, ids.paid);
+      const [{ claim: takeover }] = await tx`SELECT public.fn_claim_shipment_cancellation(
+        ${ids.paid}::uuid, ${ids.order}::uuid, ${ids.buyer}::uuid, 'buyer', 'buyer asked') AS claim`;
+      assert.equal(takeover.status, 'claimed');
+      assert.equal(takeover.source, 'paid_timeout');
+      assert.equal(takeover.actor_id, null);
+      assert.equal(takeover.reason, 'paid_timeout test');
+    },
+  ],
 ];
 
 async function run() {

@@ -161,7 +161,7 @@ serve(withSentry('auto-cancel-preparing', async (req: Request) => {
       fetchFreshTracking: (trackingNumber) =>
         fetchFreshTracking(enviaConfiguration, trackingNumber, enviaDependencies),
       recordTrackingEvent: async (event, pollingRunId) => {
-        const { error } = await supabaseAdmin.rpc('fn_record_tracking_event', {
+        const { data, error } = await supabaseAdmin.rpc('fn_record_tracking_event', {
           p_shipment_id: event.targetId,
           p_dispute_id: null,
           p_event_type: event.eventType,
@@ -175,6 +175,9 @@ serve(withSentry('auto-cancel-preparing', async (req: Request) => {
           p_transition: event.transition,
         });
         if (error) throw rpcFailure(error);
+        const status = (data as { shipment_status?: unknown } | null)
+          ?.shipment_status;
+        return typeof status === 'string' ? status : null;
       },
       cancelLabel: (input) =>
         requestEnviaLabelCancellation(
@@ -214,12 +217,14 @@ serve(withSentry('auto-cancel-preparing', async (req: Request) => {
     const confirmCarrier = (
       shipment: Pick<Tables<'shipments'>, 'id' | 'tracking_number' | 'carrier'>,
       claimToken: string,
+      claimSource: string,
     ) =>
       confirmPreparingCarrier(
         {
           id: shipment.id,
           trackingNumber: shipment.tracking_number,
           carrier: shipment.carrier,
+          source: claimSource,
         },
         claimToken,
         carrierGatePorts,
@@ -262,8 +267,8 @@ serve(withSentry('auto-cancel-preparing', async (req: Request) => {
             if (error) throw new Error(error.message);
             return data;
           },
-          confirmBeforeRefund: (_winner, claimToken) =>
-            confirmCarrier(shipment, claimToken),
+          confirmBeforeRefund: (winner, claimToken) =>
+            confirmCarrier(shipment, claimToken, winner.source),
           prepare: async () => {
             // Reconstruct and persist fees only after winning the reservation.
             const { data: orderItems } = await supabaseAdmin
@@ -578,10 +583,15 @@ serve(withSentry('auto-cancel-preparing', async (req: Request) => {
             refundAmountCents: result.value,
           });
         } else if (result.status === 'carrier_pending') {
-          log('WARN', 'Shipment cancellation waiting on carrier evidence', {
-            shipmentId: shipment.id,
-            reason: result.reason,
-          });
+          // A winner that is not preparing_timeout can never record a carrier outcome: it
+          // would repeat every run, so it is an ERROR rather than a wait.
+          log(
+            result.reason === 'source_mismatch' ? 'ERROR' : 'WARN',
+            result.reason === 'source_mismatch'
+              ? 'Shipment cancellation claim has an unexpected source; no carrier call was made'
+              : 'Shipment cancellation waiting on carrier evidence',
+            { shipmentId: shipment.id, reason: result.reason },
+          );
         } else {
           log('WARN', 'Shipment cancellation skipped', {
             shipmentId: shipment.id,

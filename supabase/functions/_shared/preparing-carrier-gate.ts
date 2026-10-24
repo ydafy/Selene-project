@@ -14,6 +14,8 @@ export interface PreparingCarrierShipment {
   id: string;
   trackingNumber: string | null;
   carrier: string | null;
+  /** Source of the winning claim; the carrier RPCs only accept `preparing_timeout`. */
+  source: string;
 }
 
 export interface PreparingCarrierGatePorts {
@@ -22,11 +24,14 @@ export interface PreparingCarrierGatePorts {
   /** Service RPC `fn_get_shipment_carrier_cancellation`. */
   getStoredState: (shipmentId: string) => Promise<unknown>;
   fetchFreshTracking: (trackingNumber: string) => Promise<FreshTrackingAssessment>;
-  /** Service RPC `fn_record_tracking_event`; throws on failure. */
+  /**
+   * Service RPC `fn_record_tracking_event`; throws on failure. Returns the shipment status
+   * after the event, so the gate can tell whether the shipment actually left `preparing`.
+   */
   recordTrackingEvent: (
     event: PollingTrackingEvent,
     pollingRunId: string,
-  ) => Promise<void>;
+  ) => Promise<string | null>;
   cancelLabel: (input: {
     carrier: string;
     trackingNumber: string;
@@ -82,6 +87,7 @@ async function markForReview(
 async function recordObservations(
   ports: PreparingCarrierGatePorts,
   shipment: { id: string; trackingNumber: string },
+  claimToken: string,
   assessment: FreshTrackingAssessment,
 ): Promise<CancellationConfirmation> {
   const events = buildPollingTrackingEvents(
@@ -90,8 +96,14 @@ async function recordObservations(
     ports.now(),
   );
   const pollingRunId = ports.newRunId();
+  let status: string | null = null;
   for (const event of events) {
-    await ports.recordTrackingEvent(event, pollingRunId);
+    status = await ports.recordTrackingEvent(event, pollingRunId);
+  }
+  // `fn_record_tracking_event` only moves `preparing` to `shipped`: a history it cannot act on
+  // (delivered only) leaves the shipment preparing, so stopping here would loop every run.
+  if (status === null || status === 'preparing') {
+    return markForReview(ports, shipment.id, claimToken, 'tracking_unknown');
   }
   return stop('tracking_advanced');
 }
@@ -107,6 +119,10 @@ export async function confirmPreparingCarrier(
   claimToken: string,
   ports: PreparingCarrierGatePorts,
 ): Promise<CancellationConfirmation> {
+  // The carrier RPCs reject any other source; stopping here avoids a cancelled label that
+  // can never be recorded or reviewed. Checked before every port call.
+  if (shipment.source !== 'preparing_timeout') return stop('source_mismatch');
+
   const stored = await ports.getStoredState(shipment.id);
   if (!record(stored)) throw new Error('CARRIER_STATE_INVALID');
 
@@ -125,7 +141,10 @@ export async function confirmPreparingCarrier(
   const target = { id: shipment.id, trackingNumber };
 
   const fresh = await ports.fetchFreshTracking(trackingNumber);
-  if (fresh.state === 'scanned') return recordObservations(ports, target, fresh);
+  if (fresh.state === 'unavailable') return stop('carrier_unavailable');
+  if (fresh.state === 'scanned') {
+    return recordObservations(ports, target, claimToken, fresh);
+  }
   if (fresh.state === 'unknown') {
     return markForReview(ports, shipment.id, claimToken, 'tracking_unknown');
   }
@@ -139,7 +158,7 @@ export async function confirmPreparingCarrier(
       // A refusal usually means the carrier already scanned the package: re-read before alerting.
       const recheck = await ports.fetchFreshTracking(trackingNumber);
       if (recheck.state === 'scanned') {
-        return recordObservations(ports, target, recheck);
+        return recordObservations(ports, target, claimToken, recheck);
       }
       return markForReview(ports, shipment.id, claimToken, 'carrier_refused');
     }

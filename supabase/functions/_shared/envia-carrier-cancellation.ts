@@ -7,7 +7,9 @@ export type EnviaCarrierConfiguration = NonNullable<
   ReturnType<typeof resolveEnviaRuntimeConfiguration>
 >;
 
-export type FreshTrackingState = 'scanned' | 'unscanned' | 'unknown';
+/** `unavailable`: Envia could not be asked (config, auth, rate limit); retry next run, no review. */
+export type FreshTrackingState =
+  'scanned' | 'unscanned' | 'unknown' | 'unavailable';
 
 export interface FreshTrackingAssessment {
   state: FreshTrackingState;
@@ -200,12 +202,17 @@ const unknownTracking: FreshTrackingAssessment = {
   observations: [],
 };
 
+const unavailableTracking: FreshTrackingAssessment = {
+  state: 'unavailable',
+  observations: [],
+};
+
 export async function fetchFreshTracking(
   config: EnviaCarrierConfiguration | null,
   trackingNumber: string,
   deps: EnviaCarrierRequestDependencies,
 ): Promise<FreshTrackingAssessment> {
-  if (!config) return { ...unknownTracking };
+  if (!config) return { ...unavailableTracking };
 
   const result = await postJson(
     config,
@@ -213,6 +220,10 @@ export async function fetchFreshTracking(
     { trackingNumbers: [trackingNumber] },
     deps,
   );
+  if (result.kind === 'response' && UNAVAILABLE_STATUSES.has(result.status)) {
+    deps.log?.('WARN', 'Envia fresh tracking unavailable', safeMeta(result));
+    return { ...unavailableTracking };
+  }
   const body =
     result.kind === 'response' && isRecord(result.body) ? result.body : null;
   if (
