@@ -91,6 +91,30 @@ serve(withSentry('auto-cancel-orders', async (req: Request) => {
       Date.now() - hours * 60 * 60 * 1000,
     ).toISOString();
 
+    // Expired shipments held by a label operation cannot be claimed; report them for review
+    // instead of retrying them every run. Reporting never blocks the cancellations below.
+    const { data: blockedShipments, error: blockedError } = await supabaseAdmin
+      .from('shipments')
+      .select('id')
+      .eq('status', 'paid')
+      .is('tracking_number', null)
+      .lt('created_at', expirationLimit)
+      .not('label_generation_state', 'in', '(unclaimed,retryable_rejected)')
+      .order('created_at', { ascending: true })
+      .limit(50);
+
+    if (blockedError) {
+      log('ERROR', 'Blocked paid shipment report failed', {
+        error: blockedError.message,
+      });
+    } else if (blockedShipments && blockedShipments.length > 0) {
+      log(
+        'WARN',
+        'Expired paid shipments blocked by a label operation; manual review required',
+        { shipmentIds: blockedShipments.map((blocked) => blocked.id) },
+      );
+    }
+
     // 2. Buscar shipments expirados sin tracking_number
     const { data: expiredShipments, error: fetchError } = await supabaseAdmin
       .from('shipments')
@@ -100,6 +124,7 @@ serve(withSentry('auto-cancel-orders', async (req: Request) => {
       .eq('status', 'paid')
       .is('tracking_number', null)
       .lt('created_at', expirationLimit)
+      .in('label_generation_state', ['unclaimed', 'retryable_rejected'])
       .order('created_at', { ascending: true })
       .limit(50);
 

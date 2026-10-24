@@ -625,6 +625,7 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
     function runHandler(
       lease: { acquired: boolean },
       settings?: { data: unknown; error?: unknown },
+      report: { data: unknown; error?: unknown } = { data: [], error: null },
     ) {
       const source = readFileSync(
         new URL(`../${name}/index.ts`, import.meta.url),
@@ -640,6 +641,8 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
       let clientsCreated = 0;
       let handler!: (req: Request) => Promise<Response>;
       const shipmentQuery: unknown[][] = [];
+      // One entry per from('shipments') call; the report query is the one that uses `not`.
+      const shipmentQueries: unknown[][][] = [];
       const query: Record<string, unknown> = {
         select: () => query,
         update: () => query,
@@ -651,15 +654,27 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         then: (resolve: (value: unknown) => unknown) =>
           Promise.resolve(resolve({})),
       };
-      const shipmentsChain: Record<string, unknown> = {
-        then: (resolve: (value: unknown) => unknown) =>
-          Promise.resolve(resolve({ data: [], error: null })),
-      };
-      for (const method of ['select', 'eq', 'is', 'lt', 'order', 'limit'])
-        shipmentsChain[method] = (...args: unknown[]) => {
-          shipmentQuery.push([method, ...args]);
-          return shipmentsChain;
+      const newShipmentsChain = () => {
+        const recorded: unknown[][] = [];
+        shipmentQueries.push(recorded);
+        const chain: Record<string, unknown> = {
+          then: (resolve: (value: unknown) => unknown) =>
+            Promise.resolve(
+              resolve(
+                recorded.some(([method]) => method === 'not')
+                  ? { error: null, ...report }
+                  : { data: [], error: null },
+              ),
+            ),
         };
+        for (const method of ['select', 'eq', 'is', 'lt', 'not', 'in', 'order', 'limit'])
+          chain[method] = (...args: unknown[]) => {
+            shipmentQuery.push([method, ...args]);
+            recorded.push([method, ...args]);
+            return chain;
+          };
+        return chain;
+      };
       const held = new Response(JSON.stringify({ message: 'Already running' }));
       new Function(
         'serve',
@@ -687,7 +702,7 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
           return {
             from: (table: string) => {
               tables.push(table);
-              return table === 'shipments' ? shipmentsChain : query;
+              return table === 'shipments' ? newShipmentsChain() : query;
             },
           };
         },
@@ -729,6 +744,7 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         job,
         held,
         shipmentQuery,
+        shipmentQueries,
         clientsCreated: () => clientsCreated,
       };
     }
@@ -828,6 +844,83 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
       expect(methods.indexOf('order')).toBeLessThan(methods.indexOf('limit'));
       expect(shipmentQuery).toContainEqual(['limit', 50]);
     });
+    const blockedWarn = 'Expired paid shipments blocked by a label operation; manual review required';
+    const hoursSetting = { data: { [column]: 5 } };
+    if (paidJob) {
+      test('candidates are limited to shipments whose label state allows a claim', async () => {
+        const { run, shipmentQueries } = runHandler({ acquired: true }, hoursSetting);
+        expect((await run()).status).toBe(200);
+        const candidate = shipmentQueries.find(
+          (recorded) => !recorded.some(([method]) => method === 'not'),
+        )!;
+        expect(candidate).toContainEqual([
+          'in',
+          'label_generation_state',
+          ['unclaimed', 'retryable_rejected'],
+        ]);
+      });
+      test('blocked expired shipments are reported once for manual review with the exact report query', async () => {
+        const { run, logs, shipmentQueries } = runHandler(
+          { acquired: true },
+          hoursSetting,
+          { data: [{ id: 's1' }, { id: 's2' }] },
+        );
+        const response = await run();
+        expect(response.status).toBe(200);
+        const warns = logs.filter((entry) => entry.msg === blockedWarn);
+        expect(warns).toHaveLength(1);
+        expect(warns[0]).toMatchObject({ level: 'WARN', shipmentIds: ['s1', 's2'] });
+        const reportQuery = shipmentQueries.find((recorded) =>
+          recorded.some(([method]) => method === 'not'),
+        )!;
+        expect(reportQuery.map(([method]) => method)).toEqual([
+          'select', 'eq', 'is', 'lt', 'not', 'order', 'limit',
+        ]);
+        expect(reportQuery).toContainEqual(['select', 'id']);
+        expect(reportQuery).toContainEqual(['eq', 'status', 'paid']);
+        expect(reportQuery).toContainEqual(['is', 'tracking_number', null]);
+        expect(reportQuery.find(([method]) => method === 'lt')![1]).toBe('created_at');
+        expect(reportQuery).toContainEqual([
+          'not', 'label_generation_state', 'in', '(unclaimed,retryable_rejected)',
+        ]);
+        expect(reportQuery).toContainEqual(['order', 'created_at', { ascending: true }]);
+        expect(reportQuery).toContainEqual(['limit', 50]);
+      });
+      test('no blocked shipments means no review warning', async () => {
+        const { run, logs } = runHandler({ acquired: true }, hoursSetting);
+        expect((await run()).status).toBe(200);
+        expect(logs.filter((entry) => entry.msg === blockedWarn)).toEqual([]);
+      });
+      test('a report read error is logged by message and never blocks the candidate query', async () => {
+        const { run, logs, shipmentQueries } = runHandler(
+          { acquired: true },
+          hoursSetting,
+          { data: null, error: { message: 'boom' } },
+        );
+        const response = await run();
+        expect(response.status).toBe(200);
+        const failure = logs.find((entry) => entry.level === 'ERROR');
+        expect(failure).toBeDefined();
+        expect(JSON.stringify(failure)).toContain('boom');
+        expect(JSON.stringify(failure)).not.toContain('[object Object]');
+        expect(logs.filter((entry) => entry.msg === blockedWarn)).toEqual([]);
+        expect(
+          shipmentQueries.some(
+            (recorded) => !recorded.some(([method]) => method === 'not'),
+          ),
+        ).toBe(true);
+      });
+    } else {
+      test('the preparing query keeps no label state filter and no report query', async () => {
+        const { run, shipmentQueries, shipmentQuery } = runHandler(
+          { acquired: true },
+          hoursSetting,
+        );
+        expect((await run()).status).toBe(200);
+        expect(shipmentQueries).toHaveLength(1);
+        expect(JSON.stringify(shipmentQuery)).not.toContain('label_generation_state');
+      });
+    }
     test('preserves settings and timeout selection, without the legacy boolean lock', () => {
       const source = readFileSync(
         new URL(`../${name}/index.ts`, import.meta.url),
