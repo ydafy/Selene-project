@@ -3,7 +3,6 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   decidePurchaseGate,
-  decideVisibilityBadge,
   purchaseDialogContent,
 } from '../productPurchaseGate';
 
@@ -102,36 +101,23 @@ describe('purchase dialog copy', () => {
   });
 });
 
-describe('decideVisibilityBadge', () => {
-  // L34: the page shows only the label; the progress steps live in the
-  // add-to-cart dialog.
-  it('shows only the verifying label for PENDING_VERIFICATION and IN_REVIEW', () => {
-    for (const status of ['PENDING_VERIFICATION', 'IN_REVIEW']) {
-      expect(decideVisibilityBadge(status, false)).toEqual({
-        show: true,
-        labelKey: 'visibilityBadge.verifying',
-      });
-    }
+// L34-L35: the product page shows no verification status on load; the add-to-cart
+// dialog explains it (progress steps included) when the buyer tries to buy.
+describe('product page', () => {
+  const page = readFileSync(
+    join(import.meta.dir, '..', '..', '..', 'app', 'product', '[id].tsx'),
+    'utf8',
+  );
+
+  it('shows no verification label on load', () => {
+    expect(page).not.toContain('visibilityBadge');
+    expect(page).not.toContain('<VerificationPill');
   });
 
-  it('the product page renders progress steps only inside the dialog', () => {
-    const page = readFileSync(
-      join(import.meta.dir, '..', '..', '..', 'app', 'product', '[id].tsx'),
-      'utf8',
-    );
+  it('renders progress steps only inside the dialog', () => {
     expect(page.match(/<PurchaseProgressSteps/g)).toHaveLength(1);
     expect(page).toContain(
       '<PurchaseProgressSteps currentStep={dialog.currentStep} />',
     );
-  });
-
-  it('hides it for VERIFIED and SOLD listings', () => {
-    expect(decideVisibilityBadge('VERIFIED', false).show).toBe(false);
-    expect(decideVisibilityBadge('SOLD', false).show).toBe(false);
-  });
-
-  it('hides it from the owner, who has their own status UI', () => {
-    expect(decideVisibilityBadge('IN_REVIEW', true).show).toBe(false);
-    expect(decideVisibilityBadge('PENDING_VERIFICATION', true).show).toBe(false);
   });
 });
