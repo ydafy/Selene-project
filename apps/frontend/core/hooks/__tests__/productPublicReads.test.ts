@@ -122,6 +122,8 @@ test('the product page caches per user', () => {
 
 test('the cart status refresh updates every user-scoped product cache entry', () => {
   const source = read('components/features/product/hooks/useProductCart.ts');
-  expect(source).toContain("setQueriesData(\n          { queryKey: ['product', product.id] },");
+  expect(source).toMatch(
+    /setQueriesData\(\s*\{ queryKey: \['product', product\.id\] \},/,
+  );
   expect(source).not.toContain('setQueryData(');
 });
