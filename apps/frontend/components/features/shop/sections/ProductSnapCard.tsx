@@ -14,6 +14,8 @@ import { AppImage } from '../../../ui/AppImage';
 import { PrimaryButton } from '../../../ui/PrimaryButton';
 import { formatCurrency } from '../../../../core/utils/format';
 import { Product } from '@selene/types';
+import { isInVerification } from '../../../../core/utils/productListingStatus';
+import { VerificationPill } from '../../product/VerificationPill';
 
 interface Props {
   product: Product;
@@ -104,6 +106,8 @@ const ProductSnapCardComponent = ({
             />
 
             <Box gap="xs">
+              {isInVerification(product.status) && <VerificationPill />}
+
               <Text
                 variant="caption-md"
                 color="primary"

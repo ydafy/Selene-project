@@ -8,6 +8,7 @@ import { supabase } from '../db/supabase';
 import type { Product } from '@selene/types';
 import {
   resolveProductsQueryEnabled,
+  resolveProductStatuses,
   type UseProductsOptions,
 } from './useProducts.helpers';
 
@@ -19,7 +20,7 @@ const fetchProducts = async (
       .from('products')
       .select('*')
       .is('deleted_at', null) // Integridad: No mostrar borrados
-      .in('status', ['VERIFIED', 'SOLD']) // Do not rely on RLS to hide non-public statuses
+      .in('status', resolveProductStatuses(options)) // Do not rely on RLS to hide non-public statuses
       .neq('status', 'HIDDEN')
       .order('created_at', { ascending: false });
 

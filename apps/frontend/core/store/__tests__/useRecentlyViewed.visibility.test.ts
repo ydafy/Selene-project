@@ -7,10 +7,11 @@ const source = readFileSync(
   'utf8',
 );
 
-// Home "recently viewed" must keep showing only VERIFIED and SOLD listings
-// once products_select_public also exposes PENDING_VERIFICATION and IN_REVIEW.
-test('useRecentlyViewed pins status to VERIFIED and SOLD instead of relying on RLS', () => {
-  expect(source).toMatch(/\.in\('status', \['VERIFIED', 'SOLD'\]\)/);
+// Home "recently viewed" also shows listings in verification (L31), but
+// never rejected, hidden, reserved or disputed ones.
+test('useRecentlyViewed pins status to the buyer-listed statuses instead of relying on RLS', () => {
+  expect(source).toContain(".in('status', BUYER_LISTED_STATUSES)");
+  expect(source).not.toMatch(/\.in\('status', \['VERIFIED', 'SOLD'\]\)/);
   expect(source).not.toContain("'(HIDDEN,REJECTED)'");
 });
 

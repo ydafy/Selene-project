@@ -7,8 +7,10 @@ const read = (file: string) =>
 
 const explicitPublicStatuses = /\.in\('status', \['VERIFIED', 'SOLD'\]\)/;
 
-test('useProducts pins status to VERIFIED and SOLD instead of relying on RLS', () => {
-  expect(read('useProducts.ts')).toMatch(explicitPublicStatuses);
+test('useProducts pins status explicitly instead of relying on RLS', () => {
+  expect(read('useProducts.ts')).toContain(
+    ".in('status', resolveProductStatuses(options))",
+  );
 });
 
 test('useProducts keeps deleted_at, HIDDEN, verifiedOnly, ordering and limit', () => {

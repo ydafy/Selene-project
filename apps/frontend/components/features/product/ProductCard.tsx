@@ -17,6 +17,8 @@ import { ProductFavoriteButton } from './ProductFavoriteButton';
 import { Theme } from '../../../core/theme';
 import { formatCurrency } from '../../../core/utils/format';
 import { getSharedStyles } from '../home/sharedStyles';
+import { isInVerification } from '../../../core/utils/productListingStatus';
+import { VerificationPill } from './VerificationPill';
 
 type ProductCardProps = {
   product: Product;
@@ -151,6 +153,12 @@ export const ProductCard = memo(
                         iconColor="white"
                         style={{ margin: 0, width: 18, height: 18 }}
                       />
+                    </Box>
+                  )}
+
+                  {isInVerification(product.status) && (
+                    <Box position="absolute" top={8} left={8}>
+                      <VerificationPill />
                     </Box>
                   )}
 

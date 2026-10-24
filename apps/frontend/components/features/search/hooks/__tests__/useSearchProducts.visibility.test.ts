@@ -7,8 +7,11 @@ const source = readFileSync(
   'utf8',
 );
 
-test('search lists pin status to VERIFIED and SOLD instead of relying on RLS', () => {
-  expect(source).toMatch(/\.in\('status', \['VERIFIED', 'SOLD'\]\)/);
+// Shop lists show listings in verification too (L31); the verified chip
+// narrows them to VERIFIED. RLS is never the presentation filter.
+test('search lists pin status to the buyer-listed statuses instead of relying on RLS', () => {
+  expect(source).toContain(".in('status', BUYER_LISTED_STATUSES)");
+  expect(source).not.toMatch(/\.in\('status', \['VERIFIED', 'SOLD'\]\)/);
 });
 
 test('search keeps its deleted_at, HIDDEN and verifiedOnly filters', () => {
