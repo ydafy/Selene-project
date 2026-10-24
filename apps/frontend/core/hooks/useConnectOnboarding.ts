@@ -120,6 +120,35 @@ export const normalizeSellerOnboardingResponse = (
   };
 };
 
+type FetchSellerOnboardingDeps = {
+  userId: string | undefined;
+  getSessionUserId: () => Promise<string | null>;
+  invoke: (
+    name: 'get-seller-onboarding',
+    options: { body: Record<string, never> },
+  ) => Promise<{ data: SellerOnboardingResponse | null; error: unknown }>;
+};
+
+/**
+ * Sign-out resets and refetches mounted queries while they still hold the
+ * previous user id. Without a session for that user, supabase-js would call
+ * the function with the anon key (a 401 and an auth log 403), so skip it.
+ */
+export const fetchSellerOnboardingStatus = async ({
+  userId,
+  getSessionUserId,
+  invoke,
+}: FetchSellerOnboardingDeps): Promise<OnboardingStatusRow> => {
+  if (!userId) return emptyOnboardingStatus;
+  if ((await getSessionUserId()) !== userId) return emptyOnboardingStatus;
+
+  const { data, error } = await invoke('get-seller-onboarding', { body: {} });
+  if (error) {
+    throw new Error(CONNECT_ONBOARDING_ERROR.statusUnavailable);
+  }
+  return normalizeSellerOnboardingResponse(data, userId);
+};
+
 /**
  * Hook for the Stripe Connect Express onboarding flow (CON-001).
  *
@@ -141,20 +170,14 @@ export function useConnectOnboarding(userId: string | undefined) {
 
   const query = useQuery({
     queryKey: ['connect-onboarding', userId],
-    queryFn: async (): Promise<OnboardingStatusRow> => {
-      if (!userId) return emptyOnboardingStatus;
-
-      const { data, error: functionError } =
-        await supabase.functions.invoke<SellerOnboardingResponse>(
-          'get-seller-onboarding',
-          { body: {} },
-        );
-
-      if (functionError) {
-        throw new Error(CONNECT_ONBOARDING_ERROR.statusUnavailable);
-      }
-      return normalizeSellerOnboardingResponse(data, userId);
-    },
+    queryFn: () =>
+      fetchSellerOnboardingStatus({
+        userId,
+        getSessionUserId: async () =>
+          (await supabase.auth.getSession()).data.session?.user.id ?? null,
+        invoke: (name, options) =>
+          supabase.functions.invoke<SellerOnboardingResponse>(name, options),
+      }),
     enabled: !!userId,
     staleTime: CONNECT_ONBOARDING_QUERY_STALE_TIME_MS,
   });

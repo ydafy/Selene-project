@@ -145,3 +145,81 @@ describe('normalizeSellerOnboardingResponse', () => {
     ).toEqual({ error: 'unknown', refreshError: 'refreshFailed' });
   });
 });
+
+describe('fetchSellerOnboardingStatus', () => {
+  const empty = { has_stripe_account: false, stripe_onboarding_status: null };
+
+  const makeInvoke = () => {
+    const calls: string[] = [];
+    const invoke = async (name: string) => {
+      calls.push(name);
+      return {
+        data: {
+          success: true as const,
+          has_stripe_account: true,
+          stripe_onboarding_status: 'complete' as const,
+        },
+        error: null,
+      };
+    };
+    return { calls, invoke };
+  };
+
+  it('does not call the function after sign-out, when there is no session', async () => {
+    const { fetchSellerOnboardingStatus } = await loadHelpers();
+    const { calls, invoke } = makeInvoke();
+
+    const result = await fetchSellerOnboardingStatus({
+      userId: 'user-1',
+      getSessionUserId: async () => null,
+      invoke,
+    });
+
+    expect(result).toEqual(empty);
+    expect(calls).toEqual([]);
+  });
+
+  it('does not call the function when the session belongs to another user', async () => {
+    const { fetchSellerOnboardingStatus } = await loadHelpers();
+    const { calls, invoke } = makeInvoke();
+
+    const result = await fetchSellerOnboardingStatus({
+      userId: 'user-1',
+      getSessionUserId: async () => 'user-2',
+      invoke,
+    });
+
+    expect(result).toEqual(empty);
+    expect(calls).toEqual([]);
+  });
+
+  it('loads the status for the signed-in user', async () => {
+    const { fetchSellerOnboardingStatus } = await loadHelpers();
+    const { calls, invoke } = makeInvoke();
+
+    const result = await fetchSellerOnboardingStatus({
+      userId: 'user-1',
+      getSessionUserId: async () => 'user-1',
+      invoke,
+    });
+
+    expect(calls).toEqual(['get-seller-onboarding']);
+    expect(result).toEqual({
+      has_stripe_account: true,
+      stripe_onboarding_status: 'complete',
+    });
+  });
+
+  it('keeps reporting a function error as status unavailable', async () => {
+    const { fetchSellerOnboardingStatus, CONNECT_ONBOARDING_ERROR } =
+      await loadHelpers();
+
+    await expect(
+      fetchSellerOnboardingStatus({
+        userId: 'user-1',
+        getSessionUserId: async () => 'user-1',
+        invoke: async () => ({ data: null, error: new Error('boom') }),
+      }),
+    ).rejects.toThrow(CONNECT_ONBOARDING_ERROR.statusUnavailable);
+  });
+});
