@@ -23,5 +23,5 @@ FROM public.products p
 WHERE p.deleted_at IS NULL
   AND p.status IN ('VERIFIED', 'SOLD', 'PENDING_VERIFICATION', 'IN_REVIEW');
 
-REVOKE ALL ON public.products_public FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON public.products_public FROM PUBLIC, anon, authenticated, service_role;
 GRANT SELECT ON public.products_public TO anon, authenticated, service_role;

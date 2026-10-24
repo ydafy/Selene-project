@@ -82,7 +82,7 @@ describe('products_public view', () => {
       });
 
       it('revokes everything and grants SELECT only to anon, authenticated, service_role', () => {
-        expect(sql).toMatch(/REVOKE ALL ON public\.products_public FROM PUBLIC, anon, authenticated;/);
+        expect(sql).toMatch(/REVOKE ALL ON public\.products_public FROM PUBLIC, anon, authenticated, service_role;/);
         expect(sql).toMatch(/GRANT SELECT ON public\.products_public TO anon, authenticated, service_role;/);
         expect(sql).not.toMatch(/GRANT\s+(?!SELECT)\w+[^;]*products_public/i);
       });

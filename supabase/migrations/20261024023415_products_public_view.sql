@@ -12,7 +12,8 @@
 -- security_barrier stops a caller-supplied filter or function from running
 -- before the predicate and leaking hidden rows.
 --
--- Grant review: PUBLIC, anon and authenticated lose every privilege first, then
+-- Grant review: PUBLIC, anon, authenticated and service_role lose every privilege
+-- first (service_role would otherwise keep the default ALL), then
 -- SELECT is granted to anon, authenticated and service_role only. The view is
 -- not updatable by any API role (no INSERT/UPDATE/DELETE grant). Anonymous read
 -- is intended: the listings are already public. No table policy or grant on
@@ -40,5 +41,5 @@ FROM public.products p
 WHERE p.deleted_at IS NULL
   AND p.status IN ('VERIFIED', 'SOLD', 'PENDING_VERIFICATION', 'IN_REVIEW');
 
-REVOKE ALL ON public.products_public FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON public.products_public FROM PUBLIC, anon, authenticated, service_role;
 GRANT SELECT ON public.products_public TO anon, authenticated, service_role;
