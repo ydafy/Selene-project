@@ -94,7 +94,11 @@ Follow repository manual Supabase workflow: supply SQL/function/config handoff, 
 - T5f | S8 | writer | done (0a2b36e, review approved L78; device check pending) | The mobile app shows a closed profile (`profiles.deleted_at`) as "Usuario eliminado" wherever another user's username or avatar is rendered (listings, reviews, orders, public profile); admin-web keeps the `deleted_` username and `account_closed` reason | Commit: not created.
 - T5e | S8 | inline | done (L78) | Block close: tracker evidence, backlog for the 5-year ledger anonymization job and the store web deletion URL (D10, block 6) | Commit: not created.
 - T6 | S1–S3,S9,S10 | route on resume | pending, future session by explicit user request | Verify production configuration and integrated journeys | Commit: not created.
-- T7 | S3,S9 | parent orchestration | in progress on branch `audit/auth-ui`; audit done (L82), split pending approval | Auth-screen UI/UX pass (L62): every auth screen, including forgot-password responsiveness | Commit: not created.
+- T7 | S3,S9 | parent orchestration | in progress on branch `audit/auth-ui`; audit done (L82, d358b9e), split approved (L83) | Auth-screen UI/UX pass (L62): every auth screen, including forgot-password responsiveness | Commit: not created.
+- T7a | S3 | inline | done (L84) | U2: missing `auth` i18n keys (en `loginErrorTitle`, `verificationErrorTitle`; `enter6DigitCode` in both) plus an `auth` locale parity and key-usage test | Commit: not created.
+- T7b | S3 | inline | pending | U1 + U5: opt-in keyboard-aware layout for the auth screens on Android edge-to-edge; back button inset | Commit: not created.
+- T7c | S3 | inline | pending | U3 + U7: autofill hints, keyboard next/submit on login and forgot password, one field-error style, no hardcoded fallback copy, wrapping resend row | Commit: not created.
+- T7d | S3 | route after device check | blocked until the maintainer's device check confirms U4/U6 | U4 OTP paste/autofill; U6 `AuthModal` keyboard and small-screen clipping | Commit: not created.
 - T8 | S1 | route on resume | pending, after T6 | Auth backlog pass: resolve the consolidated list in L81 | Commit: not created.
 
 ## Log
@@ -586,5 +590,14 @@ Branch `audit/auth-ui` from origin/main (ac347ea), no upstream. Read-only audit 
 - U6 (hypothesis, device): `AuthModal` renders the forms in a fixed `BottomSheetView` (85%) with Paper inputs instead of `BottomSheetTextInput`, so `keyboardBehavior="interactive"` may not apply and the register view may clip on small devices.
 - U7 (confirmed, consistency): field errors use two styles (`RegisterForm` inline `style` with marginTop 4; the rest `marginTop="s" marginLeft="s"`); hardcoded Spanish fallback `'Bienvenido'` in `login.tsx:52`; the resend row does not wrap for long copy.
 - Out of T7 scope, recorded for block 6: the terms text in `RegisterForm` is not a link to any terms or privacy page (S9 privacy notice).
-Proposed split (pending maintainer approval): T7a U2 i18n keys plus an `auth` locale parity test; T7b U1 + U5 opt-in keyboard-aware auth layout; T7c U3 + U7 field behavior and error consistency; T7d U4 + U6 after a device check confirms them.
+Proposed split: T7a U2 i18n keys plus an `auth` locale parity test; T7b U1 + U5 opt-in keyboard-aware auth layout; T7c U3 + U7 field behavior and error consistency; T7d U4 + U6 after a device check confirms them.
 
+### L83 — T7 split approved
+Maintainer (verbatim): "apruebo el todo, me lo puedes traer en forma ed tabla, solo para evr como queda el roadmap". T7a-T7d recorded in Tasks; T7d waits for the device check of U4 and U6.
+
+### L84 — T7a implementation and evidence
+The existing `authLocaleParity.test.ts` checked a hand-written key list (L82 said no test covered `auth`; corrected). New test: every literal `t('...')` key in the auth screens, `LoginForm`, `RegisterForm` and `AuthModal` must resolve to a string in en and es (`auth` and `common` namespaces).
+RED: 1 fail, 11 missing entries: en `loginErrorTitle`, en `verificationErrorTitle`, `auth:enter6DigitCode` (both) and, found by the test, `common:errors.errorTitle` (both; the key is `common:errors.title`) in `verify-code` and `resetPassword`. Fix: the two en root keys added; the screens use `auth:errors.enter6DigitCode` and `common:errors.title`.
+GREEN: 5 pass in the file; `core/i18n` 100 pass, 0 fail. ESLint on touched files: only the 4 pre-existing errors (`require` logo import, `as any` OTP styles); the test file is clean.
+Out of scope (backlog T8): `common:errors.errorTitle` is still used by 5 non-auth call sites (orders report and return, `useProductCart`, `useProductManagement`).
+Risk: none (copy keys only; no shared code changed).

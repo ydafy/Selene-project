@@ -66,7 +66,7 @@ export default function ResetPasswordScreen() {
     if (!email) {
       Toast.show({
         type: 'error',
-        text1: t('common:errors.errorTitle'),
+        text1: t('common:errors.title'),
         text2: t('auth:errors.missingEmail'),
       });
       router.replace('/(auth)/forgotPassword');

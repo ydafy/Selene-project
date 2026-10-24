@@ -42,7 +42,7 @@ export default function VerifyCodeScreen() {
     if (!email) {
       Toast.show({
         type: 'error',
-        text1: t('common:errors.errorTitle'),
+        text1: t('common:errors.title'),
         text2: t('auth:errors.missingEmail'),
       });
       router.replace('/(auth)/register');
@@ -57,7 +57,7 @@ export default function VerifyCodeScreen() {
       Toast.show({
         type: 'error',
         text1: t('auth:verificationErrorTitle'),
-        text2: t('auth:enter6DigitCode'),
+        text2: t('auth:errors.enter6DigitCode'),
       });
       return;
     }
