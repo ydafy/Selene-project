@@ -1,0 +1,27 @@
+meta {
+  name: products-table-seller-reads-own
+  type: http
+  seq: 62
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/products?id=eq.00000000-0000-4000-8000-0000000000b1&select=id,status,origin_zip
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{sellerToken}}
+}
+
+tests {
+  test("the seller reads their own listing from the table, internal columns included", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ id: "00000000-0000-4000-8000-0000000000b1", status: "VERIFIED", origin_zip: "06600" }]);
+  });
+}
+
+docs {
+  products_select_owner stays. Run after auth/login-seller (needs sellerToken).
+}

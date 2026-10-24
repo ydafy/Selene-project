@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/rest/v1/products?status=in.(PENDING_VERIFICATION,IN_REVIEW,REJECTED)&select=id&order=id
+  url: {{baseUrl}}/rest/v1/products_public?status=in.(PENDING_VERIFICATION,IN_REVIEW,REJECTED)&select=id&order=id
   body: none
   auth: none
 }

@@ -1,0 +1,31 @@
+meta {
+  name: products-table-profile-stats-counts-sold-for-anon
+  type: http
+  seq: 70
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/get_profile_stats
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Content-Type: application/json
+}
+
+body:json {
+  { "target_user_id": "00000000-0000-4000-8000-000000000002" }
+}
+
+tests {
+  test("get_profile_stats still counts the seller's SOLD listing for a guest", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().sales_count).to.equal(1);
+  });
+}
+
+docs {
+  The function is SECURITY INVOKER and now reads products_public; it would return 0 for non-owners if it still read the closed table.
+}
