@@ -1106,6 +1106,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "favorites_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "favorites_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -1305,6 +1312,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_public"
             referencedColumns: ["id"]
           },
           {
@@ -1953,6 +1967,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_public"
             referencedColumns: ["id"]
           },
           {
@@ -3534,6 +3555,96 @@ export type Database = {
         }
         Relationships: []
       }
+      products_public: {
+        Row: {
+          aspect_ratio: number | null
+          category: string | null
+          condition: string | null
+          created_at: string | null
+          description: string | null
+          fts: unknown
+          id: string | null
+          images: string[] | null
+          name: string | null
+          price: number | null
+          seller_id: string | null
+          specifications: Json | null
+          status: Database["public"]["Enums"]["product_status_enum"] | null
+          usage: string | null
+          views: number | null
+        }
+        Insert: {
+          aspect_ratio?: number | null
+          category?: string | null
+          condition?: string | null
+          created_at?: string | null
+          description?: string | null
+          fts?: unknown
+          id?: string | null
+          images?: string[] | null
+          name?: string | null
+          price?: number | null
+          seller_id?: string | null
+          specifications?: Json | null
+          status?: Database["public"]["Enums"]["product_status_enum"] | null
+          usage?: string | null
+          views?: number | null
+        }
+        Update: {
+          aspect_ratio?: number | null
+          category?: string | null
+          condition?: string | null
+          created_at?: string | null
+          description?: string | null
+          fts?: unknown
+          id?: string | null
+          images?: string[] | null
+          name?: string | null
+          price?: number | null
+          seller_id?: string | null
+          specifications?: Json | null
+          status?: Database["public"]["Enums"]["product_status_enum"] | null
+          usage?: string | null
+          views?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "admin_disputes_monitor_view"
+            referencedColumns: ["buyer_id"]
+          },
+          {
+            foreignKeyName: "products_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "admin_disputes_monitor_view"
+            referencedColumns: ["seller_id"]
+          },
+          {
+            foreignKeyName: "products_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "admin_seller_onboarding_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_directory_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       seller_trust_stats: {
         Row: {
           in_review_count: number | null
@@ -3756,20 +3867,6 @@ export type Database = {
           success: boolean
         }[]
       }
-      fn_claim_awaiting_balance_payout_run: {
-        Args: { p_lease_seconds?: number }
-        Returns: {
-          actor_id: string
-          amount_cents: number
-          claim_expires_at: string
-          claim_token: string
-          idempotency_key: string
-          run_id: string
-          seller_id: string
-          shipment_ids: string[]
-          stage_version: number
-        }[]
-      }
       fn_claim_account_closures: {
         Args: { p_limit: number; p_max_attempts: number; p_min_idle: string }
         Returns: {
@@ -3790,6 +3887,20 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      fn_claim_awaiting_balance_payout_run: {
+        Args: { p_lease_seconds?: number }
+        Returns: {
+          actor_id: string
+          amount_cents: number
+          claim_expires_at: string
+          claim_token: string
+          idempotency_key: string
+          run_id: string
+          seller_id: string
+          shipment_ids: string[]
+          stage_version: number
+        }[]
       }
       fn_claim_checkout_recovery_shells: {
         Args: {
@@ -3879,6 +3990,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      fn_close_account: { Args: { p_user_id: string }; Returns: Json }
       fn_commit_connect_account_refresh: {
         Args: {
           p_blocked_reason: string
@@ -3893,7 +4005,6 @@ export type Database = {
           p_source_event_id: string
           p_stripe_account_id: string
         }
-      fn_close_account: { Args: { p_user_id: string }; Returns: Json }
         Returns: boolean
       }
       fn_complete_payout_create_fence: {
@@ -4257,6 +4368,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      fn_record_closure_attempt: {
+        Args: {
+          p_count_attempt: boolean
+          p_last_error: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       fn_record_connect_account_event: {
         Args: {
           p_event_type: string
@@ -4286,14 +4405,6 @@ export type Database = {
           p_dispute_id: string
           p_event_at: string
           p_event_type: Database["public"]["Enums"]["shipment_tracking_event_type"]
-      fn_record_closure_attempt: {
-        Args: {
-          p_count_attempt: boolean
-          p_last_error: string
-          p_user_id: string
-        }
-        Returns: undefined
-      }
           p_location: string
           p_polling_run_id: string
           p_raw_status: string
