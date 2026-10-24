@@ -19,9 +19,12 @@ export function createNotificationPressHandler({
   return async (notif: PressableNotification): Promise<void> => {
     if (inFlight) return;
     inFlight = true;
-    // The mutation reports its own failure; a missed read mark must not block navigation.
-    markAsRead(notif.id).catch(() => {});
     try {
+      // The mutation reports its own failure; a missed read mark, async or
+      // thrown synchronously, must not block navigation or keep the guard set.
+      Promise.resolve()
+        .then(() => markAsRead(notif.id))
+        .catch(() => {});
       await navigate(notif.action_path);
     } finally {
       inFlight = false;

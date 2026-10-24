@@ -69,6 +69,19 @@ describe('createNotificationPressHandler', () => {
     expect(navigate).toHaveBeenCalledTimes(2);
   });
 
+  it('still navigates and re-arms when marking as read throws synchronously', async () => {
+    const markAsRead = mock((): Promise<void> => {
+      throw new Error('sync failure');
+    });
+    const navigate = mock(async () => {});
+    const press = createNotificationPressHandler({ markAsRead, navigate });
+
+    await press(notif);
+    await press(notif);
+
+    expect(navigate).toHaveBeenCalledTimes(2);
+  });
+
   it('still navigates when marking as read fails', async () => {
     const markAsRead = mock(async () => {
       throw new Error('offline');
