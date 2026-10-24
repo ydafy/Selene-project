@@ -11,11 +11,12 @@
     "typecheck": "tsc -b --noEmit"
   },
   "dependencies": {
+    "@hcaptcha/react-hcaptcha": "2.2.0",
+    "@selene/types": "workspace:*",
     "@supabase/supabase-js": "^2.105.3",
     "@tailwindcss/vite": "^4.2.1",
     "@tanstack/react-query": "^5.90.21",
     "@tanstack/react-table": "^8.21.3",
-    "@selene/types": "workspace:*",
     "clsx": "^2.1.1",
     "lucide-react": "^0.577.0",
     "react": "19.1.0",

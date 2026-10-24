@@ -26,6 +26,7 @@
       "name": "admin-web",
       "version": "0.0.0",
       "dependencies": {
+        "@hcaptcha/react-hcaptcha": "2.2.0",
         "@selene/types": "workspace:*",
         "@supabase/supabase-js": "^2.105.3",
         "@tailwindcss/vite": "^4.2.1",
@@ -405,6 +406,8 @@
     "@gorhom/portal": ["@gorhom/portal@1.0.14", "", { "dependencies": { "nanoid": "^3.3.1" }, "peerDependencies": { "react": "*", "react-native": "*" } }, "sha512-MXyL4xvCjmgaORr/rtryDNFy3kU4qUbKlwtQqqsygd0xX3mhKjOLn6mQK8wfu0RkoE0pBE0nAasRoHua+/QZ7A=="],
 
     "@hcaptcha/loader": ["@hcaptcha/loader@2.4.2", "", {}, "sha512-+Pf0Vin6iJlJj5u/mq6XMgbJT1mi/Sg5LWHxxqO4YHt2YvdZgecp5V2sbC6vRaNPJUqQGk2HOu1K/i12mqs5vw=="],
+
+    "@hcaptcha/react-hcaptcha": ["@hcaptcha/react-hcaptcha@2.2.0", "", {}, "sha512-/HrPgNLRrJziLrh2s+qFRO33ubBSuHn9sdNsQcP0wQElpORxlpR6wnq3X9j/bZGd+uQtYIvPl4QSU2la+Jl9Hg=="],
 
     "@hcaptcha/react-native-hcaptcha": ["@hcaptcha/react-native-hcaptcha@4.1.0", "", { "dependencies": { "@hcaptcha/loader": "2.4.2" }, "peerDependencies": { "react": "*", "react-native": "*", "react-native-webview": ">=9.0.1" } }, "sha512-cpjJOOmaxr/OGM9XZX1ung00hwuMUX9xnvDHO7WWlOOVLAOEoIo5T+GCHqc5Q0G6M8YaNf0jHsJVuruDDc51Lw=="],
 
