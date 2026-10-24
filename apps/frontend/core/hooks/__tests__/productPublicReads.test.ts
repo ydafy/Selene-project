@@ -111,9 +111,17 @@ test.each(['core/hooks/useOrders.ts', 'core/hooks/useShipments.ts'])(
   },
 );
 
-test('the shared item product embed asks for the table row and the view row', () => {
-  const source = read('core/hooks/useOrders.ts');
-  expect(source).toContain(
-    "'product:products(*), public_product:products_public(*)'",
+// The product page result depends on who asks (view row, or the owner's table
+// row), so the cache key carries the user: a session that arrives late refetches
+// instead of keeping a cached "not found" for the owner.
+test('the product page caches per user', () => {
+  expect(read('core/hooks/useProduct.ts')).toContain(
+    "queryKey: ['product', id, userId ?? null]",
   );
+});
+
+test('the cart status refresh updates every user-scoped product cache entry', () => {
+  const source = read('components/features/product/hooks/useProductCart.ts');
+  expect(source).toContain("setQueriesData(\n          { queryKey: ['product', product.id] },");
+  expect(source).not.toContain('setQueryData(');
 });

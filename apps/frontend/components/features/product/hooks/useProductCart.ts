@@ -74,8 +74,9 @@ export const useProductCart = (product: Product | null | undefined) => {
 
       if (freshStatus !== 'VERIFIED') {
         // Actualizamos la caché solo si el objeto existe en TanStack Query
-        queryClient.setQueryData(
-          ['product', product.id],
+        // (one entry per user, see useProduct)
+        queryClient.setQueriesData(
+          { queryKey: ['product', product.id] },
           (old: Product | undefined) => {
             return old ? { ...old, status: freshStatus } : old;
           },

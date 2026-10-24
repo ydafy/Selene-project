@@ -44,7 +44,9 @@ export const useProduct = (id: string) => {
   const userId = session?.user.id;
 
   return useQuery({
-    queryKey: ['product', id],
+    // The result depends on who asks (view row, or the owner's table row), so
+    // a session that arrives late gets its own entry instead of a cached null.
+    queryKey: ['product', id, userId ?? null],
     queryFn: () => fetchProductById(id, !!userId),
     enabled: !!id,
     staleTime: 1000 * 60 * 5, // 5 minutos
