@@ -94,12 +94,12 @@ Follow repository manual Supabase workflow: supply SQL/function/config handoff, 
 - T5f | S8 | writer | done (0a2b36e, review approved L78; device check pending) | The mobile app shows a closed profile (`profiles.deleted_at`) as "Usuario eliminado" wherever another user's username or avatar is rendered (listings, reviews, orders, public profile); admin-web keeps the `deleted_` username and `account_closed` reason | Commit: not created.
 - T5e | S8 | inline | done (L78) | Block close: tracker evidence, backlog for the 5-year ledger anonymization job and the store web deletion URL (D10, block 6) | Commit: not created.
 - T6 | S1–S3,S9,S10 | route on resume | pending, future session by explicit user request | Verify production configuration and integrated journeys | Commit: not created.
-- T7 | S3,S9 | parent orchestration | in progress on branch `audit/auth-ui`; audit done (L82, d358b9e), split approved (L83) | Auth-screen UI/UX pass (L62): every auth screen, including forgot-password responsiveness | Commit: not created.
+- T7 | S3,S9 | parent orchestration | done on branch `audit/auth-ui` (L89); merge to main pending maintainer request | Auth-screen UI/UX pass (L62): every auth screen, including forgot-password responsiveness | Commit: not created.
 - T7a | S3 | inline | done (L84) | U2: missing `auth` i18n keys (en `loginErrorTitle`, `verificationErrorTitle`; `enter6DigitCode` in both) plus an `auth` locale parity and key-usage test | Commit: 813ec98 (review approved).
 - T7b | S3 | delegated writer (context backstop) | done (1f65253, review approved; device check passed L86) | U1 + U5: opt-in keyboard-aware layout for the auth screens on Android edge-to-edge; back button inset | Commit: not created.
-- T7c | S3 | delegated writer (context backstop) | done (L88; device check pending) | U3 + U7: autofill hints, keyboard next/submit on login and forgot password, one field-error style, no hardcoded fallback copy, wrapping resend row | Commit: not created.
+- T7c | S3 | delegated writer (context backstop) | done (4e0977b, review approved; device check passed L89) | U3 + U7: autofill hints, keyboard next/submit on login and forgot password, one field-error style, no hardcoded fallback copy, wrapping resend row | Commit: not created.
 - T7d | S3 | none | closed without code (L86): the device check did not confirm U4/U6 | U4 OTP paste/autofill; U6 `AuthModal` keyboard and small-screen clipping | Commit: not created.
-- T7e | S3 | inline | done (L87) | Sign-in and registration only through `AuthModal`: remove the stack `login` and `register` screens; the guest profile link presents the modal; `verify-code` without an email returns to the tabs | Commit: 117aba0 (review approved).
+- T7e | S3 | inline | done (117aba0, review approved; device check passed L89) | Sign-in and registration only through `AuthModal`: remove the stack `login` and `register` screens; the guest profile link presents the modal; `verify-code` without an email returns to the tabs | Commit: 117aba0 (review approved).
 - T8 | S1 | route on resume | pending, after T6 | Auth backlog pass: resolve the consolidated list in L81 | Commit: not created.
 
 ## Log
@@ -629,3 +629,8 @@ RED: `tests/__tests__/authFormFields.test.ts` 17 fail. GREEN: 17 pass; `auth*` t
 Backlog T8: `RegisterForm` confirm-password `onSubmitEditing` submits without the button guard (pre-existing); unused `theme` in `LoginForm`.
 Device check pending: autofill offered on the modal login; Next/Done flow on login, forgot and reset (Done does nothing with fewer than 6 code digits); register errors look like the rest; Spanish resend row wraps.
 Risk: item 6 (autofill and keyboard, device check only).
+
+### L89 — Device check and T7 close
+Maintainer (verbatim): "todo perfecto master, ahora pregunta porque en varias partes ay el agente me ha dicho esto: 'No arranqué la review que pidió el hook. Esta vez quería revisar la rama entera desde origin/main' osea porque pasa? es error mio o que onda? contestame etso y luego avanzamos paar cerarr 76 y ver si continuamos con 76 y t8"
+The 8 device checks of T7c and T7e passed. T7c review (readability, reliability) approved; advisories only (source-contract tests; minor readability). Answer: the stop hook computes its candidate as the accumulated branch diff against origin/main, a different identity from each per-commit review, so every new commit yields a new reminder; it never starts a review and disappears once the branch is merged. Per-commit review stays the workflow (L86).
+T7 closed: d358b9e (audit), 813ec98 (T7a), 1f65253 (T7b), 117aba0 (T7e), 4e0977b (T7c), each with an approved review; T7d closed without code. Backlog for T8 from this block: `common:errors.errorTitle` in 5 non-auth sites (L84); unused `auth` keys `loginTitle`, `joinSelene` (L87); `RegisterForm` confirm `onSubmitEditing` without the button guard and unused `theme` in `LoginForm` (L88).
