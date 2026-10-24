@@ -2142,10 +2142,15 @@ export type Database = {
         Row: {
           actor_id: string | null
           cancellation_loss_cents: number | null
+          carrier_balance_returned: boolean | null
+          carrier_balance_returned_at: string | null
+          carrier_cancellation_outcome: string | null
+          carrier_cancellation_recorded_at: string | null
           claim_expires_at: string
           claim_token: string
           created_at: string
           external_started_at: string | null
+          label_cost_loss_cents: number | null
           operation_key: string | null
           order_id: string
           reason: string
@@ -2159,16 +2164,27 @@ export type Database = {
           refund_resolved_by: string | null
           refund_status: string | null
           refund_status_updated_at: string | null
+          review_reason: string | null
+          review_required_at: string | null
+          review_resolution: string | null
+          review_resolution_note: string | null
+          review_resolved_at: string | null
+          review_resolved_by: string | null
           shipment_id: string
           source: string
         }
         Insert: {
           actor_id?: string | null
           cancellation_loss_cents?: number | null
+          carrier_balance_returned?: boolean | null
+          carrier_balance_returned_at?: string | null
+          carrier_cancellation_outcome?: string | null
+          carrier_cancellation_recorded_at?: string | null
           claim_expires_at: string
           claim_token: string
           created_at?: string
           external_started_at?: string | null
+          label_cost_loss_cents?: number | null
           operation_key?: string | null
           order_id: string
           reason: string
@@ -2182,16 +2198,27 @@ export type Database = {
           refund_resolved_by?: string | null
           refund_status?: string | null
           refund_status_updated_at?: string | null
+          review_reason?: string | null
+          review_required_at?: string | null
+          review_resolution?: string | null
+          review_resolution_note?: string | null
+          review_resolved_at?: string | null
+          review_resolved_by?: string | null
           shipment_id: string
           source: string
         }
         Update: {
           actor_id?: string | null
           cancellation_loss_cents?: number | null
+          carrier_balance_returned?: boolean | null
+          carrier_balance_returned_at?: string | null
+          carrier_cancellation_outcome?: string | null
+          carrier_cancellation_recorded_at?: string | null
           claim_expires_at?: string
           claim_token?: string
           created_at?: string
           external_started_at?: string | null
+          label_cost_loss_cents?: number | null
           operation_key?: string | null
           order_id?: string
           reason?: string
@@ -2205,6 +2232,12 @@ export type Database = {
           refund_resolved_by?: string | null
           refund_status?: string | null
           refund_status_updated_at?: string | null
+          review_reason?: string | null
+          review_required_at?: string | null
+          review_resolution?: string | null
+          review_resolution_note?: string | null
+          review_resolved_at?: string | null
+          review_resolved_by?: string | null
           shipment_id?: string
           source?: string
         }
@@ -4215,6 +4248,24 @@ export type Database = {
         Args: { p_shipment_id: string }
         Returns: Json
       }
+      fn_get_shipment_carrier_cancellation: {
+        Args: { p_shipment_id: string }
+        Returns: Json
+      }
+      fn_list_shipment_cancellation_reviews: {
+        Args: never
+        Returns: {
+          carrier: string
+          carrier_cancellation_outcome: string
+          label_provider_cost_cents: number
+          order_id: string
+          review_reason: string
+          review_required_at: string
+          seller_id: string
+          shipment_id: string
+          tracking_number: string
+        }[]
+      }
       fn_list_shipment_refund_problems: {
         Args: never
         Returns: {
@@ -4276,6 +4327,10 @@ export type Database = {
           error_message: string
           success: boolean
         }[]
+      }
+      fn_mark_shipment_cancellation_review: {
+        Args: { p_claim_token: string; p_reason: string; p_shipment_id: string }
+        Returns: Json
       }
       fn_mark_shipment_delivered: {
         Args: { p_shipment_id: string }
@@ -4399,6 +4454,16 @@ export type Database = {
         }
         Returns: Json
       }
+      fn_record_shipment_carrier_cancellation: {
+        Args: {
+          p_balance_returned?: boolean
+          p_balance_returned_at?: string
+          p_claim_token: string
+          p_outcome: string
+          p_shipment_id: string
+        }
+        Returns: Json
+      }
       fn_record_tracking_event: {
         Args: {
           p_carrier_name: string
@@ -4504,6 +4569,15 @@ export type Database = {
       }
       fn_resolve_shipment_cancellation_refund: {
         Args: { p_admin_id: string; p_reference: string; p_shipment_id: string }
+        Returns: Json
+      }
+      fn_resolve_shipment_cancellation_review: {
+        Args: {
+          p_admin_id: string
+          p_note: string
+          p_resolution: string
+          p_shipment_id: string
+        }
         Returns: Json
       }
       fn_save_bank_account: {
