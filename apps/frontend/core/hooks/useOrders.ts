@@ -19,6 +19,30 @@ import { useReviewStore } from '../store/useReviewStore';
 
 const DISPUTE_WINDOW_MS = 48 * 60 * 60 * 1000;
 
+/**
+ * Order and shipment details serve buyers and sellers. The table embed answers
+ * only for the listing owner (or an admin), including RESERVED/IN_DISPUTE
+ * rows; the public view answers for everyone else. Embed both and merge them
+ * with `mergeItemProducts`.
+ */
+export const ITEM_PRODUCT_EMBED =
+  'product:products(*), public_product:products_public(*)';
+
+/** Folds `public_product` into `product` on every order item, at any depth. */
+export const mergeItemProducts = <T>(node: T): T => {
+  if (Array.isArray(node)) {
+    node.forEach(mergeItemProducts);
+  } else if (node && typeof node === 'object') {
+    const record = node as Record<string, unknown>;
+    if ('public_product' in record) {
+      record.product = record.product ?? record.public_product;
+      delete record.public_product;
+    }
+    Object.values(record).forEach(mergeItemProducts);
+  }
+  return node;
+};
+
 type ReviewRow = {
   id: string;
   rating: number;
@@ -188,16 +212,16 @@ export const useOrderById = (orderId: string | undefined) => {
         .from('orders')
         .select(
           `*,
-          items:order_items(*, product:products(*)),
+          items:order_items(*, ${ITEM_PRODUCT_EMBED}),
           dispute:disputes(*),
-          shipments:shipments(*, seller:profiles(username, avatar_url, deleted_at), items:order_items(*, product:products(*)), dispute:disputes(*)),
+          shipments:shipments(*, seller:profiles(username, avatar_url, deleted_at), items:order_items(*, ${ITEM_PRODUCT_EMBED}), dispute:disputes(*)),
           review:reviews(id, rating, comment, created_at, product_id, shipment_id, seller_id)`,
         )
         .eq('id', orderId)
         .single();
 
       if (error) throw error;
-      return data as unknown as RawOrder;
+      return mergeItemProducts(data) as unknown as RawOrder;
     },
     enabled: !!orderId && !!userId,
   });
@@ -219,7 +243,7 @@ export const useMyPurchases = (userId: string | undefined) => {
       const { data, error } = await supabase
         .from('orders')
         .select(
-          '*, items:order_items(*, product:products(*)), dispute:disputes(*), shipments:shipments(*,seller:profiles(username, avatar_url, deleted_at),  items:order_items(*, product:products(*)), dispute:disputes(*)), review:reviews(id, rating, comment, created_at, product_id, shipment_id, seller_id)',
+          '*, items:order_items(*, product:products_public(*)), dispute:disputes(*), shipments:shipments(*,seller:profiles(username, avatar_url, deleted_at),  items:order_items(*, product:products_public(*)), dispute:disputes(*)), review:reviews(id, rating, comment, created_at, product_id, shipment_id, seller_id)',
         )
         .eq('buyer_id', userId)
         .order('created_at', { ascending: false });
@@ -241,14 +265,14 @@ export const useMySales = (userId: string | undefined) => {
       const { data, error } = await supabase
         .from('order_items')
         .select(
-          '*, order:orders(*, dispute:disputes(*), shipments:shipments(*, seller:profiles(username, avatar_url, deleted_at), items:order_items(*, product:products(*)), dispute:disputes(*)), review:reviews(id, rating, comment, created_at)), product:products(*)',
+          `*, order:orders(*, dispute:disputes(*), shipments:shipments(*, seller:profiles(username, avatar_url, deleted_at), items:order_items(*, ${ITEM_PRODUCT_EMBED}), dispute:disputes(*)), review:reviews(id, rating, comment, created_at)), product:products(*)`,
         )
         .eq('seller_id', userId)
         .order('created_at', { ascending: false });
       if (error) throw error;
 
       const ordersMap = new Map<string, CompatEnrichedOrder>();
-      (data as unknown as RawOrderItem[]).forEach((item) => {
+      (mergeItemProducts(data) as unknown as RawOrderItem[]).forEach((item) => {
         if (!item.order) return;
         if (!ordersMap.has(item.order.id)) {
           const enriched = enrichOrder(item.order, userId, ignoredOrderIds);

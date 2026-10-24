@@ -6,7 +6,7 @@
 
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { supabase } from '../../../../core/db/supabase';
-import { Product } from '@selene/types';
+import { PublicProduct } from '@selene/types';
 import { BUYER_LISTED_STATUSES } from '../../../../core/utils/productListingStatus';
 
 export type SearchFilters = {
@@ -31,11 +31,9 @@ export const useSearchProducts = (filters: SearchFilters) => {
 
     queryFn: async ({ pageParam = 0 }) => {
       let queryBuilder = supabase
-        .from('products')
+        .from('products_public') // The view already hides deleted and HIDDEN rows
         .select('*', { count: 'exact' })
-        .is('deleted_at', null)
-        .in('status', BUYER_LISTED_STATUSES)
-        .neq('status', 'HIDDEN');
+        .in('status', BUYER_LISTED_STATUSES);
 
       // 1. Full Text Search
       if (filters.query?.trim()) {
@@ -107,7 +105,7 @@ export const useSearchProducts = (filters: SearchFilters) => {
       if (error) throw error;
 
       return {
-        data: data as Product[],
+        data: data as PublicProduct[],
         nextPage: count && to < count - 1 ? pageParam + 1 : undefined,
       };
     },

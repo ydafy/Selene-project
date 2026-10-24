@@ -15,6 +15,11 @@ test('useRecentlyViewed pins status to the buyer-listed statuses instead of rely
   expect(source).not.toContain("'(HIDDEN,REJECTED)'");
 });
 
+test('useRecentlyViewed reads the view', () => {
+  expect(source).toContain(".from('products_public')");
+  expect(source).not.toContain(".from('products')");
+});
+
 test('useRecentlyViewed keeps reading only the viewed ids in history order', () => {
   expect(source).toContain(".in('id', viewedIds)");
   expect(source).toContain('viewedIds.indexOf(a.id) - viewedIds.indexOf(b.id)');

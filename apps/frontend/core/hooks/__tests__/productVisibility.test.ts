@@ -13,10 +13,13 @@ test('useProducts pins status explicitly instead of relying on RLS', () => {
   );
 });
 
-test('useProducts keeps deleted_at, HIDDEN, verifiedOnly, ordering and limit', () => {
+// products_public already enforces deleted_at IS NULL and hides HIDDEN rows
+// (T4d2); it has no deleted_at column, so filtering on it would fail.
+test('useProducts keeps verifiedOnly, ordering and limit on the view', () => {
   const source = read('useProducts.ts');
-  expect(source).toContain(".is('deleted_at', null)");
-  expect(source).toContain(".neq('status', 'HIDDEN')");
+  expect(source).toContain(".from('products_public')");
+  expect(source).not.toContain('deleted_at');
+  expect(source).not.toContain(".neq('status', 'HIDDEN')");
   expect(source).toContain(".eq('status', 'VERIFIED')");
   expect(source).toContain(".order('created_at', { ascending: false })");
   expect(source).toContain('.limit(options.limit)');

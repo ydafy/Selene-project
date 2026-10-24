@@ -1,31 +1,51 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../db/supabase';
 import { Product, ProductWithSeller } from '@selene/types';
+import { useAuthContext } from '../../components/auth/AuthProvider';
+
+const PRODUCT_WITH_SELLER = `*, seller:profiles!products_seller_id_fkey(*)`;
 
 /**
- * Función de servicio blindada
+ * Función de servicio blindada.
+ * Everyone reads the public view first. A signed-in user who finds no row may
+ * be the owner (or an admin) of a listing the view hides (HIDDEN, REJECTED,
+ * RESERVED, IN_DISPUTE), so the table is read next; its RLS returns the row
+ * only to them.
  */
 const fetchProductById = async (
   id: string,
+  canBeOwner: boolean,
 ): Promise<ProductWithSeller | null> => {
   const { data, error } = await supabase
+    .from('products_public')
+    .select(PRODUCT_WITH_SELLER)
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (data || !canBeOwner) {
+    // Hacemos el cast al nuevo tipo
+    return data as unknown as ProductWithSeller | null;
+  }
+
+  const { data: owned, error: ownedError } = await supabase
     .from('products')
-    .select(`*, seller:profiles!products_seller_id_fkey(*)`)
+    .select(PRODUCT_WITH_SELLER)
     .eq('id', id)
     .is('deleted_at', null)
     .maybeSingle();
 
-  if (error) throw error;
-
-  // Hacemos el cast al nuevo tipo
-  return data as unknown as ProductWithSeller | null;
+  if (ownedError) throw ownedError;
+  return owned as unknown as ProductWithSeller | null;
 };
 export const useProduct = (id: string) => {
   const queryClient = useQueryClient();
+  const { session } = useAuthContext();
+  const userId = session?.user.id;
 
   return useQuery({
     queryKey: ['product', id],
-    queryFn: () => fetchProductById(id),
+    queryFn: () => fetchProductById(id, !!userId),
     enabled: !!id,
     staleTime: 1000 * 60 * 5, // 5 minutos
 

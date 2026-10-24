@@ -5,7 +5,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../db/supabase';
-import type { Product } from '@selene/types';
+import type { PublicProduct } from '@selene/types';
 import {
   resolveProductsQueryEnabled,
   resolveProductStatuses,
@@ -14,14 +14,12 @@ import {
 
 const fetchProducts = async (
   options?: UseProductsOptions,
-): Promise<Product[]> => {
+): Promise<PublicProduct[]> => {
   try {
     let query = supabase
-      .from('products')
+      .from('products_public') // The view already hides deleted and HIDDEN rows
       .select('*')
-      .is('deleted_at', null) // Integridad: No mostrar borrados
-      .in('status', resolveProductStatuses(options)) // Do not rely on RLS to hide non-public statuses
-      .neq('status', 'HIDDEN')
+      .in('status', resolveProductStatuses(options)) // Do not rely on the view to pick the screen's statuses
       .order('created_at', { ascending: false });
 
     if (options?.sellerId) {
@@ -39,7 +37,7 @@ const fetchProducts = async (
     const { data, error } = await query;
 
     if (error) throw error;
-    return (data as Product[]) || [];
+    return (data as PublicProduct[]) || [];
   } catch (err: unknown) {
     // Transformamos el error para que sea legible
     const message =

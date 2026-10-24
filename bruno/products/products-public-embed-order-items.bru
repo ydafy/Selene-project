@@ -1,0 +1,27 @@
+meta {
+  name: products-public-embed-order-items
+  type: http
+  seq: 52
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/order_items?select=id,product:products_public(id,name,status)&limit=1
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+tests {
+  test("order_items embeds products_public (relationship resolves, no 400)", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.an("array");
+  });
+}
+
+docs {
+  Same embed as useMyPurchases. The seed has no orders, so the proof is that PostgREST detects the order_items to products_public relationship.
+}

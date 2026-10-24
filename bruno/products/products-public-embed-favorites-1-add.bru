@@ -1,0 +1,32 @@
+meta {
+  name: products-public-embed-favorites-1-add
+  type: http
+  seq: 49
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/favorites
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+  Content-Type: application/json
+  Prefer: return=minimal
+}
+
+body:json {
+  { "user_id": "00000000-0000-4000-8000-000000000003", "product_id": "00000000-0000-4000-8000-0000000000b1" }
+}
+
+tests {
+  test("the seeded buyer favorites the VERIFIED seed listing", function () {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  Setup for products-public-embed-favorites-2-read; removed by -3-remove. Run after auth/login-buyer.
+}

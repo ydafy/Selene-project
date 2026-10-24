@@ -14,8 +14,11 @@ test('search lists pin status to the buyer-listed statuses instead of relying on
   expect(source).not.toMatch(/\.in\('status', \['VERIFIED', 'SOLD'\]\)/);
 });
 
-test('search keeps its deleted_at, HIDDEN and verifiedOnly filters', () => {
-  expect(source).toContain(".is('deleted_at', null)");
-  expect(source).toContain(".neq('status', 'HIDDEN')");
+// The view enforces deleted_at and HIDDEN itself and has no deleted_at column.
+test('search reads the view and keeps its textSearch and verifiedOnly filters', () => {
+  expect(source).toContain(".from('products_public')");
+  expect(source).not.toContain('deleted_at');
+  expect(source).not.toContain(".neq('status', 'HIDDEN')");
+  expect(source).toContain(".textSearch('fts'");
   expect(source).toContain(".eq('status', 'VERIFIED')");
 });

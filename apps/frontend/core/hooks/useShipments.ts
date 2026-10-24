@@ -18,6 +18,7 @@ import {
 import { useAuthContext } from '../../components/auth/AuthProvider';
 import { canCancelShipment } from '../utils/shipment-cancel-safety';
 import { canConfirmShipmentDelivery } from '../utils/shipment-confirmation';
+import { ITEM_PRODUCT_EMBED, mergeItemProducts } from './useOrders';
 
 const DISPUTE_WINDOW_MS = 48 * 60 * 60 * 1000;
 const ACTIVE_DISPUTE_STATUSES: readonly Enums<'dispute_status'>[] = [
@@ -147,7 +148,7 @@ export const useShipmentsByOrder = (orderId: string | undefined) => {
         .from('shipments')
         .select(
           `*,
-          items:order_items(*, product:products(*)),
+          items:order_items(*, ${ITEM_PRODUCT_EMBED}),
           dispute:disputes(*),
           seller:profiles!shipments_seller_id_fkey(*),
           order:orders(buyer_id)`,
@@ -157,7 +158,7 @@ export const useShipmentsByOrder = (orderId: string | undefined) => {
 
       if (error) throw error;
 
-      const typedData = data as unknown as (RawShipment)[];
+      const typedData = mergeItemProducts(data) as unknown as RawShipment[];
       const buyerId = typedData[0]?.order?.buyer_id || '';
       return { shipments: typedData, buyerId };
     },
@@ -187,7 +188,7 @@ export const useShipmentById = (shipmentId: string | undefined) => {
         .from('shipments')
         .select(
           `*,
-          items:order_items(*, product:products(*)),
+          items:order_items(*, ${ITEM_PRODUCT_EMBED}),
           dispute:disputes(*),
           seller:profiles!shipments_seller_id_fkey(*),
           order:orders(buyer_id)`,
@@ -196,7 +197,9 @@ export const useShipmentById = (shipmentId: string | undefined) => {
         .single();
 
       if (error) throw error;
-      return data as unknown as RawShipment & { order: { buyer_id: string } };
+      return mergeItemProducts(data) as unknown as RawShipment & {
+        order: { buyer_id: string };
+      };
     },
     enabled: !!shipmentId && !!userId,
   });

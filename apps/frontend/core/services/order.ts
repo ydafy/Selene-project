@@ -21,10 +21,9 @@ export class OrderService {
         return { isValid: false, unavailableIds: [], errorCode: 'EMPTY_CART' };
 
       const { data: products, error } = await supabase
-        .from('products')
+        .from('products_public')
         .select('id, status')
-        .in('id', productIds)
-        .is('deleted_at', null);
+        .in('id', productIds);
 
       if (error) throw error;
 

@@ -43,10 +43,9 @@ export const useProductFavorite = (productId: string) => {
       } else {
         //  ¿El producto sigue existiendo?
         const { data: product, error: checkError } = await supabase
-          .from('products')
+          .from('products_public')
           .select('id')
           .eq('id', productId)
-          .is('deleted_at', null)
           .single();
 
         if (checkError || !product) throw new Error('PRODUCT_NOT_AVAILABLE');

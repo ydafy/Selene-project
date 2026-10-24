@@ -33,7 +33,7 @@ const fetchSellerReviews = async (
       shipment_id,
       product_id,
       reviewer:profiles!reviewer_id(username, avatar_url, deleted_at),
-      product:products(name)
+      product:products_public(name)
     `,
     )
     .eq('seller_id', sellerId)

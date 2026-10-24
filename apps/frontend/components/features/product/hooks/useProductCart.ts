@@ -49,33 +49,35 @@ export const useProductCart = (product: Product | null | undefined) => {
     setIsAddingToCart(true);
 
     try {
-      // 1. CHECK: Fuente de verdad (DB) filtrando por soft deletes
+      // 1. CHECK: Fuente de verdad (DB); la vista ya oculta los soft deletes
       const { data: freshProduct, error } = await supabase
-        .from('products')
+        .from('products_public')
         .select('status')
         .eq('id', product.id)
-        .is('deleted_at', null)
         .single();
 
       if (error || !freshProduct) throw new Error('PRODUCT_NOT_FOUND');
 
+      // View rows are typed nullable; a matched row always carries its status.
+      const freshStatus = freshProduct.status as Product['status'];
+
       // 2. CHECK: el vendedor puede recibir pagos (advisory; fail-open, el servidor decide)
       const sellerBlocked =
-        freshProduct.status === 'VERIFIED' &&
+        freshStatus === 'VERIFIED' &&
         isSellerBlocked(
           await fetchSellerPaymentReadiness([product.id]),
           product.id,
         );
 
       // 3. VALIDAR: la pantalla abre el diálogo según el resultado
-      const decision = decidePurchaseGate(freshProduct.status, sellerBlocked);
+      const decision = decidePurchaseGate(freshStatus, sellerBlocked);
 
-      if (freshProduct.status !== 'VERIFIED') {
+      if (freshStatus !== 'VERIFIED') {
         // Actualizamos la caché solo si el objeto existe en TanStack Query
         queryClient.setQueryData(
           ['product', product.id],
           (old: Product | undefined) => {
-            return old ? { ...old, status: freshProduct.status } : old;
+            return old ? { ...old, status: freshStatus } : old;
           },
         );
       }

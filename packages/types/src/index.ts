@@ -20,6 +20,28 @@ export type PayoutRequest = Tables<'payout_requests'>;
 export type SellerBankAccount = Tables<'seller_bank_accounts'>;
 export type Profile = Tables<'profiles'>;
 export type Product = Tables<'products'>;
+/**
+ * A listing as buyers read it, through the `products_public` allow-list view.
+ * View rows are typed fully nullable; hooks cast them to this at the boundary.
+ */
+export type PublicProduct = Pick<
+  Product,
+  | 'id'
+  | 'seller_id'
+  | 'name'
+  | 'description'
+  | 'price'
+  | 'category'
+  | 'condition'
+  | 'usage'
+  | 'images'
+  | 'specifications'
+  | 'aspect_ratio'
+  | 'status'
+  | 'views'
+  | 'created_at'
+  | 'fts'
+>;
 export type Order = Tables<'orders'>;
 export type Dispute = Tables<'disputes'>;
 export type Shipment = Tables<'shipments'>;

@@ -1,0 +1,27 @@
+meta {
+  name: products-public-embed-reviews
+  type: http
+  seq: 53
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/reviews?select=id,product:products_public(name)&limit=1
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+tests {
+  test("reviews embeds products_public (relationship resolves, no 400)", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.an("array");
+  });
+}
+
+docs {
+  Same embed as useSellerReviews. The seed has no reviews, so the proof is that PostgREST detects the reviews to products_public relationship.
+}

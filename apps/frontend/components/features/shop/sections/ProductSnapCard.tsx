@@ -13,12 +13,12 @@ import { Box, Text } from '../../../base';
 import { AppImage } from '../../../ui/AppImage';
 import { PrimaryButton } from '../../../ui/PrimaryButton';
 import { formatCurrency } from '../../../../core/utils/format';
-import { Product } from '@selene/types';
+import { PublicProduct } from '@selene/types';
 import { isInVerification } from '../../../../core/utils/productListingStatus';
 import { VerificationPill } from '../../product/VerificationPill';
 
 interface Props {
-  product: Product;
+  product: PublicProduct;
   visibleHeight: number;
   contentBottomClearance?: number;
 }

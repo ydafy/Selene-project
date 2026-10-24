@@ -7,7 +7,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Box, Text } from '../../base';
 import { AppImage } from '../../ui/AppImage';
 import { Theme } from '../../../core/theme';
-import { Product } from '@selene/types';
+import { PublicProduct } from '@selene/types';
 
 const { width } = Dimensions.get('window');
 // Calculamos el ancho para 3 columnas
@@ -15,7 +15,7 @@ const { width } = Dimensions.get('window');
 const ITEM_SIZE = (width - 32) / 3;
 
 type ProfileFavoritesGridProps = {
-  favorites: Product[];
+  favorites: PublicProduct[];
   isLoading: boolean;
 };
 

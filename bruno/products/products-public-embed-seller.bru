@@ -1,0 +1,30 @@
+meta {
+  name: products-public-embed-seller
+  type: http
+  seq: 54
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/products_public?id=eq.00000000-0000-4000-8000-0000000000b1&select=*,seller:profiles!products_seller_id_fkey(*)
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+tests {
+  test("the product page select embeds the seller profile through the view", function () {
+    expect(res.getStatus()).to.equal(200);
+    const rows = res.getBody();
+    expect(rows.length).to.equal(1);
+    expect(rows[0].seller).to.be.an("object");
+    expect(rows[0].seller.id).to.equal(rows[0].seller_id);
+  });
+}
+
+docs {
+  Same select as useProduct. Run after auth/login-buyer.
+}

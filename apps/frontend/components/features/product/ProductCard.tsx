@@ -9,7 +9,7 @@ import { TouchableOpacity, StyleSheet } from 'react-native';
 import { useTheme } from '@shopify/restyle';
 import { IconButton } from 'react-native-paper';
 import { MotiView } from 'moti';
-import { Product } from '@selene/types';
+import { PublicProduct } from '@selene/types';
 
 import { Box, Text } from '../../base';
 import { AppImage } from '../../ui/AppImage';
@@ -21,8 +21,9 @@ import { isInVerification } from '../../../core/utils/productListingStatus';
 import { VerificationPill } from './VerificationPill';
 
 type ProductCardProps = {
-  product: Product;
-  onPress: (product: Product) => void;
+  product: PublicProduct;
+  // Method syntax keeps handlers typed with the full Product assignable.
+  onPress(product: PublicProduct): void;
   imageHeight: number;
   index?: number;
   onFavoriteToggle?: (productId: string, willBeFavorite: boolean) => void;

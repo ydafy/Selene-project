@@ -12,14 +12,15 @@ import { Box, Text } from '../../base';
 import { AppImage } from '../../ui/AppImage';
 import { Theme } from '../../../core/theme';
 import { formatCurrency } from '../../../core/utils/format';
-import { Product } from '@selene/types';
+import { PublicProduct } from '@selene/types';
 import { getSharedStyles } from '../home/sharedStyles';
 import { isInVerification } from '../../../core/utils/productListingStatus';
 import { VerificationPill } from './VerificationPill';
 
 interface Props {
-  product: Product;
-  onPress: (product: Product) => void;
+  product: PublicProduct;
+  // Method syntax keeps handlers typed with the full Product assignable.
+  onPress(product: PublicProduct): void;
   cardHeight: number;
 }
 

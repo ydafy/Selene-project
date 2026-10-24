@@ -1,0 +1,27 @@
+meta {
+  name: products-public-embed-favorites-3-remove
+  type: http
+  seq: 51
+}
+
+delete {
+  url: {{baseUrl}}/rest/v1/favorites?user_id=eq.00000000-0000-4000-8000-000000000003&product_id=eq.00000000-0000-4000-8000-0000000000b1
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+  Prefer: return=minimal
+}
+
+tests {
+  test("the buyer removes the setup favorite", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  Cleanup for products-public-embed-favorites-1-add.
+}

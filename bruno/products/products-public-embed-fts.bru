@@ -1,0 +1,31 @@
+meta {
+  name: products-public-embed-fts
+  type: http
+  seq: 55
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/products_public?fts=wfts(simple).{{ftsTerm}}&select=id
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+vars:pre-request {
+  ftsTerm: nvidia
+}
+
+tests {
+  test("full-text search runs against the view's fts column", function () {
+    expect(res.getStatus()).to.equal(200);
+    const ids = res.getBody().map((row) => row.id);
+    expect(ids).to.include("00000000-0000-4000-8000-0000000000b1");
+  });
+}
+
+docs {
+  Same filter useSearchProducts sends (textSearch websearch, simple config). Finds the seeded 'NVIDIA RTX 3070' listing, so fts is exposed and searchable.
+}
