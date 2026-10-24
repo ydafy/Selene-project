@@ -29,6 +29,7 @@ import { paperTheme, theme, navigationTheme } from '../core/theme';
 // Proveedores y Hooks
 import { AuthProvider } from '../components/auth/AuthProvider';
 import { AuthModalProvider } from '../core/auth/AuthModalProvider';
+import { CaptchaProvider } from '../core/auth/captcha/CaptchaProvider';
 import { NotificationWatcher } from '../components/features/notifications/NotificationWatcher';
 
 import { OfflineNotice } from '../components/ui/OfflineNotice';
@@ -138,21 +139,23 @@ export default function RootLayout() {
           <QueryClientProvider client={queryClient}>
             <NavThemeProvider value={navigationTheme}>
               <AuthProvider>
-                <AuthModalProvider>
-                  <OfflineNotice />
-                  <SystemGuard>
-                    {STRIPE_KEY ? (
-                      <StripeProvider
-                        publishableKey={STRIPE_KEY}
-                        merchantIdentifier="merchant.com.selene.marketplace"
-                      >
+                <CaptchaProvider>
+                  <AuthModalProvider>
+                    <OfflineNotice />
+                    <SystemGuard>
+                      {STRIPE_KEY ? (
+                        <StripeProvider
+                          publishableKey={STRIPE_KEY}
+                          merchantIdentifier="merchant.com.selene.marketplace"
+                        >
+                          <RootStack />
+                        </StripeProvider>
+                      ) : (
                         <RootStack />
-                      </StripeProvider>
-                    ) : (
-                      <RootStack />
-                    )}
-                  </SystemGuard>
-                </AuthModalProvider>
+                      )}
+                    </SystemGuard>
+                  </AuthModalProvider>
+                </CaptchaProvider>
                 <NotificationWatcher />
               </AuthProvider>
             </NavThemeProvider>
