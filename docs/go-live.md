@@ -15,6 +15,15 @@ The repository rebuilds the database schema: `supabase/migrations/` starts with 
 3. Use the new API keys from day one: `sb_publishable_...` in the apps and `sb_secret_...` in server components, and keep the legacy `anon`/`service_role` JWT keys disabled. The legacy `service_role` key of the development project was exposed on 2026-10-19 (it was embedded in a Dashboard-created trigger); never reuse it or copy any key from that project.
 4. Decide whether migrations deploy through the Supabase GitHub integration (applies pending `supabase/migrations/` on every push to the production branch). It was connected to the development project on 2026-10-21 and disconnected the same day: its first run failed with `column "refund_id" ... already exists` because two migrations had been applied by hand and were missing from the remote history (nothing was applied). Enable it only on a project whose migration history matches the repository, and only once every branch that pushes to `main` is meant to reach production; then update the "The repository does not deploy itself" rule in `AGENTS.md`.
 
+### Domain
+
+Selene has no domain yet. Code uses the placeholder `selene.example` (`.example` is reserved by RFC 2606 and never resolves) from one constant: `SELENE_DOMAIN` in `packages/types/src/domain.ts` (`SELENE_WEB_URL` derives from it). Several modules need the domain; any new code that needs it imports that constant instead of writing a domain.
+
+When the real domain is registered:
+
+1. Change `SELENE_DOMAIN` in `packages/types/src/domain.ts` and update its test.
+2. Settings outside code, which do not read the constant: custom SMTP sender and DNS records (section 10), Auth Site URL and redirect URLs (section 10), and any public page URL registered in the app stores (Google Play account deletion).
+
 ## 2. Extensions
 
 `pg_cron`, `pg_net`, `pgcrypto`, `uuid-ossp`, `supabase_vault`, `wrappers`, `pg_stat_statements`, `hypopg`, `index_advisor`.

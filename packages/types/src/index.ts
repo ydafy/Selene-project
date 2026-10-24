@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Database, Json } from './database.types.ts';
 
+export { SELENE_DOMAIN, SELENE_WEB_URL } from './domain.ts';
+
 // --- 1. UTILIDADES CORE ---
 // Extrae el tipo de una fila de la tabla X
 export type Tables<
