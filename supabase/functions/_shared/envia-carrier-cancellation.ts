@@ -94,6 +94,57 @@ const errorCodeOf = (body: UnknownRecord): string | null => {
   return null;
 };
 
+// The cancelled entry is `data` itself or the only element of a `data` array.
+const cancelEntryOf = (body: UnknownRecord): UnknownRecord | null => {
+  const { data } = body;
+  if (Array.isArray(data)) {
+    return data.length === 1 && isRecord(data[0]) ? data[0] : null;
+  }
+  return isRecord(data) ? data : null;
+};
+
+const trackingNumberMatches = (entry: UnknownRecord, requested: string) => {
+  const value = entry.trackingNumber;
+  if (typeof value === 'string') return value.trim() === requested.trim();
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value) === requested.trim();
+  }
+  return false;
+};
+
+const typeName = (value: unknown): string => {
+  if (value === null) return 'null';
+  return Array.isArray(value) ? 'array' : typeof value;
+};
+
+/** Structure only (key names and type names); never any value of the body. */
+const cancelShape = (
+  requestedTrackingNumber: string,
+  result: EnviaCancelResult,
+): Record<string, unknown> => {
+  const body = result.kind === 'response' ? result.body : undefined;
+  const record = isRecord(body) ? body : {};
+  const data = record.data;
+  const candidate = Array.isArray(data)
+    ? data.length === 1
+      ? data[0]
+      : undefined
+    : data;
+  const entry = isRecord(candidate) ? candidate : null;
+  return {
+    topLevelKeys: Object.keys(record).sort(),
+    dataType: typeName(data),
+    ...(Array.isArray(data) ? { dataLength: data.length } : {}),
+    ...(entry ? { entryKeys: Object.keys(entry).sort() } : {}),
+    trackingNumberType: typeName(entry?.trackingNumber),
+    balanceReturnedType: typeName(entry?.balanceReturned),
+    balanceReturnDateType: typeName(entry?.balanceReturnDate),
+    trackingNumberMatched: entry
+      ? trackingNumberMatches(entry, requestedTrackingNumber)
+      : false,
+  };
+};
+
 export function classifyEnviaCancelResponse(
   requestedTrackingNumber: string,
   result: EnviaCancelResult,
@@ -104,15 +155,12 @@ export function classifyEnviaCancelResponse(
   if (UNAVAILABLE_STATUSES.has(status)) return { outcome: 'unavailable' };
 
   if (status >= 200 && status < 300) {
-    const data = isRecord(body) && isRecord(body.data) ? body.data : null;
-    if (
-      !isRecord(body) ||
-      body.meta !== 'cancel' ||
-      !data ||
-      data.trackingNumber !== requestedTrackingNumber
-    ) {
+    const entry =
+      isRecord(body) && body.meta === 'cancel' ? cancelEntryOf(body) : null;
+    if (!entry || !trackingNumberMatches(entry, requestedTrackingNumber)) {
       return { outcome: 'ambiguous' };
     }
+    const data = entry;
     const balanceReturned = data.balanceReturned === true;
     const returnedAt =
       balanceReturned && typeof data.balanceReturnDate === 'string'
@@ -262,6 +310,7 @@ export async function requestEnviaLabelCancellation(
   deps.log?.('INFO', 'Envia label cancellation classified', {
     ...safeMeta(result),
     outcome: classified.outcome,
+    shape: cancelShape(input.trackingNumber, result),
   });
   return classified;
 }

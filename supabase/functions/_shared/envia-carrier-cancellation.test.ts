@@ -301,6 +301,198 @@ const hangUntilAborted = (call: FetchCall) =>
     );
   });
 
+const cancelResponse = (data: unknown) => ({
+  kind: 'response' as const,
+  status: 200,
+  body: { meta: 'cancel', data },
+});
+
+describe('classifyEnviaCancelResponse with data as an array', () => {
+  const entry = {
+    trackingNumber: TRACKING,
+    balanceReturned: true,
+    balanceReturnDate: '2025-10-01 12:31:00',
+  };
+
+  test('accepts the only element and reads balance fields from it', () => {
+    const result = classifyEnviaCancelResponse(
+      TRACKING,
+      cancelResponse([entry]),
+    );
+    expect(result).toEqual({
+      outcome: 'accepted',
+      balanceReturned: true,
+      balanceReturnedAt: new Date('2025-10-01 12:31:00').toISOString(),
+    });
+    expect(
+      (result as { balanceReturnedAt: string }).balanceReturnedAt,
+    ).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+  });
+
+  test('accepts a numeric tracking number equal to the requested one', () => {
+    expect(
+      classifyEnviaCancelResponse(
+        TRACKING,
+        cancelResponse([{ ...entry, trackingNumber: Number(TRACKING) }]),
+      ),
+    ).toMatchObject({ outcome: 'accepted', balanceReturned: true });
+  });
+
+  test('compares tracking numbers trimmed', () => {
+    expect(
+      classifyEnviaCancelResponse(
+        ' 123 ',
+        cancelResponse([{ ...entry, trackingNumber: '123' }]),
+      ),
+    ).toMatchObject({ outcome: 'accepted' });
+  });
+
+  test('accepts an object data with a numeric tracking number', () => {
+    expect(
+      classifyEnviaCancelResponse(
+        TRACKING,
+        cancelResponse({ ...entry, trackingNumber: Number(TRACKING) }),
+      ),
+    ).toMatchObject({ outcome: 'accepted' });
+  });
+
+  test.each([
+    ['two entries', [entry, entry]],
+    ['an empty array', []],
+    ['another tracking number', [{ ...entry, trackingNumber: 'OTHER' }]],
+    ['a non-object entry', ['x']],
+    ['a null entry', [null]],
+    ['a nested array entry', [[entry]]],
+    ['a missing tracking number', [{ balanceReturned: true }]],
+    ['a boolean tracking number', [{ ...entry, trackingNumber: true }]],
+  ])('%s is ambiguous', (_name, data) => {
+    expect(
+      classifyEnviaCancelResponse(TRACKING, cancelResponse(data)),
+    ).toEqual({ outcome: 'ambiguous' });
+  });
+});
+
+const SECRET_TRACKING = 'SECRET-TRACK-991';
+const SECRET_DATE = '2031-02-03 04:05:06';
+
+const shapeOf = async (respond: () => Promise<Response> | Response) => {
+  const { logs, deps } = recorder(respond);
+  await requestEnviaLabelCancellation(
+    config,
+    { carrier: 'fedex', trackingNumber: SECRET_TRACKING },
+    deps,
+  );
+  const meta = logs[0][2] as Record<string, unknown>;
+  return { meta, shape: meta.shape as Record<string, unknown> };
+};
+
+describe('cancel classification shape fingerprint', () => {
+  test('describes an object data entry', async () => {
+    const { shape } = await shapeOf(() =>
+      jsonResponse(200, {
+        meta: 'cancel',
+        data: {
+          trackingNumber: SECRET_TRACKING,
+          balanceReturned: true,
+          balanceReturnDate: SECRET_DATE,
+        },
+      }),
+    );
+    expect(shape).toEqual({
+      topLevelKeys: ['data', 'meta'],
+      dataType: 'object',
+      entryKeys: ['balanceReturnDate', 'balanceReturned', 'trackingNumber'],
+      trackingNumberType: 'string',
+      balanceReturnedType: 'boolean',
+      balanceReturnDateType: 'string',
+      trackingNumberMatched: true,
+    });
+  });
+
+  test('describes an array data entry with a numeric tracking number', async () => {
+    const { shape } = await shapeOf(() =>
+      jsonResponse(200, {
+        meta: 'cancel',
+        data: [{ trackingNumber: 5, balanceReturned: 'yes' }],
+      }),
+    );
+    expect(shape).toEqual({
+      topLevelKeys: ['data', 'meta'],
+      dataType: 'array',
+      dataLength: 1,
+      entryKeys: ['balanceReturned', 'trackingNumber'],
+      trackingNumberType: 'number',
+      balanceReturnedType: 'string',
+      balanceReturnDateType: 'undefined',
+      trackingNumberMatched: false,
+    });
+  });
+
+  test('describes a two-entry array without entry keys', async () => {
+    const { shape } = await shapeOf(() =>
+      jsonResponse(200, { meta: 'cancel', data: [{ a: 1 }, { b: 2 }] }),
+    );
+    expect(shape).toMatchObject({
+      dataType: 'array',
+      dataLength: 2,
+      trackingNumberMatched: false,
+    });
+    expect(shape).not.toHaveProperty('entryKeys');
+  });
+
+  test.each([
+    ['transport failure', () => Promise.reject(new Error('down'))],
+    [
+      'error body',
+      () =>
+        jsonResponse(422, {
+          meta: 'error',
+          error: { code: 7, message: 'LEAK-MESSAGE' },
+          trackingNumber: SECRET_TRACKING,
+        }),
+    ],
+    [
+      'accepted body',
+      () =>
+        jsonResponse(200, {
+          meta: 'cancel',
+          data: [
+            {
+              trackingNumber: SECRET_TRACKING,
+              balanceReturned: true,
+              balanceReturnDate: SECRET_DATE,
+            },
+          ],
+        }),
+    ],
+    [
+      'string data',
+      () => jsonResponse(200, { meta: 'cancel', data: SECRET_DATE }),
+    ],
+  ])('never logs a body value for a %s', async (_name, respond) => {
+    const { meta, shape } = await shapeOf(respond);
+    expect(shape).toBeDefined();
+    const serialized = JSON.stringify(meta);
+    for (const leaked of [
+      SECRET_TRACKING,
+      SECRET_DATE,
+      '2031',
+      'LEAK-MESSAGE',
+    ]) {
+      expect(serialized).not.toContain(leaked);
+    }
+  });
+
+  test('a transport failure has an empty fingerprint', async () => {
+    const { shape } = await shapeOf(() => Promise.reject(new Error('down')));
+    expect(shape).toMatchObject({
+      topLevelKeys: [],
+      dataType: 'undefined',
+      trackingNumberMatched: false,
+    });
+  });
+});
+
 describe('requestEnviaLabelCancellation', () => {
   const input = { carrier: 'fedex', trackingNumber: TRACKING };
 
