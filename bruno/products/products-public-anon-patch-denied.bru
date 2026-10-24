@@ -1,0 +1,29 @@
+meta {
+  name: products-public-anon-patch-denied
+  type: http
+  seq: 28
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/products_public?id=eq.00000000-0000-4000-8000-0000000000b1
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Content-Type: application/json
+}
+
+body:json {
+  { "name": "hacked" }
+}
+tests {
+  test("a guest cannot patch through the view", function () {
+    expect([401, 403]).to.include(res.getStatus());
+  });
+}
+
+docs {
+  The view grants SELECT only; no write privilege exists for API roles.
+}

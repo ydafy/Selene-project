@@ -1,0 +1,27 @@
+meta {
+  name: products-public-anon-sees-in-review
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/products_public?id=eq.00000000-0000-4000-8000-0000000000b6&select=id,status
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+
+}
+
+tests {
+  test("a guest reads an IN_REVIEW listing from the view", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ id: "00000000-0000-4000-8000-0000000000b6", status: "IN_REVIEW" }]);
+  });
+}
+
+docs {
+  The view keeps the products_select_public predicate.
+}

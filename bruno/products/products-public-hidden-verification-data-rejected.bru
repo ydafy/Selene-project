@@ -1,0 +1,27 @@
+meta {
+  name: products-public-hidden-verification-data-rejected
+  type: http
+  seq: 24
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/products_public?select=id,verification_data&limit=1
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+
+}
+
+tests {
+  test("verification_data does not exist on the view", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().code).to.equal("42703");
+  });
+}
+
+docs {
+  Allow-list: hidden columns are not selectable.
+}

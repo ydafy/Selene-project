@@ -1,0 +1,29 @@
+meta {
+  name: products-public-anon-insert-denied
+  type: http
+  seq: 27
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/products_public?id=eq.00000000-0000-4000-8000-0000000000b1
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Content-Type: application/json
+}
+
+body:json {
+  { "name": "x", "seller_id": "00000000-0000-4000-8000-000000000002" }
+}
+tests {
+  test("a guest cannot post through the view", function () {
+    expect([401, 403]).to.include(res.getStatus());
+  });
+}
+
+docs {
+  The view grants SELECT only; no write privilege exists for API roles.
+}

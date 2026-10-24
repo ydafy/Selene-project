@@ -1,0 +1,26 @@
+meta {
+  name: products-public-anon-delete-denied
+  type: http
+  seq: 29
+}
+
+delete {
+  url: {{baseUrl}}/rest/v1/products_public?id=eq.00000000-0000-4000-8000-0000000000b1
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+
+}
+
+tests {
+  test("a guest cannot delete through the view", function () {
+    expect([401, 403]).to.include(res.getStatus());
+  });
+}
+
+docs {
+  The view grants SELECT only; no write privilege exists for API roles.
+}

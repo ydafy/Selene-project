@@ -1,0 +1,31 @@
+meta {
+  name: products-public-buyer-reads-same-rows
+  type: http
+  seq: 26
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/products_public?id=in.(00000000-0000-4000-8000-0000000000b1,00000000-0000-4000-8000-0000000000b5,00000000-0000-4000-8000-0000000000b6,00000000-0000-4000-8000-0000000000b7)&select=id,status&order=id
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+tests {
+  test("a signed-in buyer reads the same public rows and not the REJECTED one", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([
+      { id: "00000000-0000-4000-8000-0000000000b1", status: "VERIFIED" },
+      { id: "00000000-0000-4000-8000-0000000000b5", status: "PENDING_VERIFICATION" },
+      { id: "00000000-0000-4000-8000-0000000000b6", status: "IN_REVIEW" }
+    ]);
+  });
+}
+
+docs {
+  Run after auth/login-buyer (needs buyerToken).
+}

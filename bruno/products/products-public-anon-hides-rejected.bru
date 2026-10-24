@@ -1,0 +1,27 @@
+meta {
+  name: products-public-anon-hides-rejected
+  type: http
+  seq: 22
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/products_public?id=eq.00000000-0000-4000-8000-0000000000b7&select=id,status
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+
+}
+
+tests {
+  test("a guest cannot read a REJECTED listing from the view", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([]);
+  });
+}
+
+docs {
+  REJECTED stays hidden. The view owner bypasses table RLS, so the predicate inside the view is what hides it.
+}
