@@ -43,7 +43,7 @@ export default function VerifyCodeScreen() {
         text1: t('common:errors.title'),
         text2: t('auth:errors.missingEmail'),
       });
-      router.replace('/(auth)/register');
+      router.replace('/(tabs)');
     }
   }, [email]);
 

@@ -63,7 +63,7 @@ const GuestProfile = () => {
         {t('auth:guestScreen.loginText')}
       </PrimaryButton>
       <Box height={16} />
-      <TextLink onPress={() => router.push('/register')}>
+      <TextLink onPress={() => present('register')}>
         {t('auth:guestScreen.createAccountText')}
       </TextLink>
     </Box>

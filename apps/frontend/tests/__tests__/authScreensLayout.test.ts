@@ -12,8 +12,6 @@ const FRONTEND = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const read = (relPath: string) => readFileSync(join(FRONTEND, relPath), 'utf8');
 
 const AUTH_SCREENS = [
-  'login',
-  'register',
   'forgotPassword',
   'verify-code',
   'resetPassword',

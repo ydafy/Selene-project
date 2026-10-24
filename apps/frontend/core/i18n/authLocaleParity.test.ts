@@ -11,8 +11,6 @@ const FRONTEND_DIR = join(import.meta.dir, '..', '..');
 
 // Screens and forms whose default namespace is `auth`.
 const AUTH_SOURCES = [
-  'app/(auth)/login.tsx',
-  'app/(auth)/register.tsx',
   'app/(auth)/forgotPassword.tsx',
   'app/(auth)/verify-code.tsx',
   'app/(auth)/resetPassword.tsx',
