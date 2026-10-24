@@ -94,6 +94,8 @@ Follow repository manual Supabase workflow: supply SQL/function/config handoff, 
 - T5f | S8 | writer | done (0a2b36e, review approved L78; device check pending) | The mobile app shows a closed profile (`profiles.deleted_at`) as "Usuario eliminado" wherever another user's username or avatar is rendered (listings, reviews, orders, public profile); admin-web keeps the `deleted_` username and `account_closed` reason | Commit: not created.
 - T5e | S8 | inline | done (L78) | Block close: tracker evidence, backlog for the 5-year ledger anonymization job and the store web deletion URL (D10, block 6) | Commit: not created.
 - T6 | S1–S3,S9,S10 | route on resume | pending, future session by explicit user request | Verify production configuration and integrated journeys | Commit: not created.
+- T7 | S3,S9 | route on resume | pending, after the UI/UX pass | Auth-screen UI/UX pass (L62): every auth screen, including forgot-password responsiveness | Commit: not created.
+- T8 | S1 | route on resume | pending, after T6 | Auth backlog pass: resolve the consolidated list in L81 | Commit: not created.
 
 ## Log
 
@@ -560,4 +562,16 @@ Remote (Supabase MCP, read-only): `account_closures` and `fn_claim_account_closu
 Maintainer (verbatim): "si master account_closure_cleanup_cron_secret ya quedo. Ya elimine una cuenta, y todo paso bien al parecer. Chectae lo de la hora y nomas conrimamre si ya podemos mergear a main y psuhear paar qeu qeude en github". The Vault secret matches `CRON_SECRET`.
 Remote (Supabase MCP, read-only): the maintainer's closure at 23:58:08 UTC has `stripe_account_cleanup` done, `storage_cleanup` done, `stripe_customer_cleanup` not_needed, `attempts` 1, no `last_error`, auth email cleared and username `deleted_e41f46d26e69`. Cron run at 00:00:01: `account-closure-cleanup` answered 200 `{claimed:0, completed:0, failed:0, invalid:0, capped:[]}` and logged "Account closure cleanup run finished". Out of scope: two other 00:00 jobs answered 401 `UNAUTHORIZED` and 500 (`attempted 1, failed 1`); not from block 5, reported to the maintainer.
 Merged origin/main (0d9e59e, clean) into `audit/auth-deletion`; `bun test` 3160 pass, 0 fail; pushed fast-forward to `main` (ab5c408). Block 5 closed; the device checks in L75 and L77 passed per the maintainer's report.
+
+### L81 — Module status and consolidated auth backlog
+Maintainer (verbatim): "okey anota todos esos puntos, ya ue cuando temrinoemos como que lo critico me gusta ver si le dedciamos tiempo a esos backlog para resolverlos. Me husta tu plan quieres empezar otra sesion para el siguiente bloqe o abrimos uno nuevo ?"
+Agreed order: T7 (auth-screen UI/UX pass), then T6 (block 6, production readiness), then T8 (this backlog). Findings outside auth go to `odd/tasks/cross-module-backlog.md` (BL14 cron failures, BL15 hardcoded cron JWT).
+Assessment: server-side enforcement, tests and per-commit reviews are in place; not production-ready until block 6 (custom SMTP is the hard blocker: the built-in mailer sends 2 emails per hour to organization members only); scalable for an MVP++ on Supabase Auth. Weak spots: many SQL tests read source text instead of running it; several SECURITY DEFINER functions are executable by `authenticated` (BL3).
+Block 6 inputs (T6): custom SMTP (Resend); CAPTCHA on signup and login; leaked password protection; production redirect URLs and deep links; Google Play web deletion URL (D10); privacy notice describing deletion and the 5-year blocked retention (legal copy, maintainer); integrated mobile and admin smoke run.
+Consolidated backlog (T8):
+- Block 1: F1 suspension-held listings shown as history; RESERVED listings not held on suspension (L22); `getAccountStatusActions` has no default branch (L22); reactivation copy promises a prior status that pre-deployment holds lack (L22); decision on refusing Connect payout releases for suspended sellers (L18).
+- Block 2: the open follow-ups in L36.
+- Block 4: C7 Google-only detection from `app_metadata.provider` (block 5 resolves it from identities only in the delete flow); `codeVerified` not invalidated when the recovery session ends; the email-change biometric gate is device-local only.
+- Block 5: reserve the `deleted_` username prefix on the server (L77); drop the `as never` casts and the local `deleted_at` types now that the types exist (L79); 5-year anonymization of the blocked ledger (not before 2031); `seller_bank_accounts` CLABE and `auth.audit_log_entries` emails kept (L69); FU-a buyer order race and FU-d publication-economics trigger abort (L70); constant-time cron secret compare, claim deadline and Sentry report for failed cleanup steps (L74); typed cancel outcome, single success toast and native Google re-sign-in tests (L76); English default label in the review helper, duplicated `@handle` format, seller card render test (L78); admin-web shows closed accounts as banned with reason `account_closed`; sandbox leftover Express account `acct_1UTao9PEpHJkyYH0`.
+- Cross-cutting: run SQL behavior against PostgreSQL in tests instead of source-text checks for auth migrations.
 
