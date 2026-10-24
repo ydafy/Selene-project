@@ -188,17 +188,16 @@ Sentry creates the `cron-watchdog` Cron Monitor on its first check-in (free plan
 
 ## 10. Auth (Dashboard)
 
-- Deployed Auth settings (project `acoiclkeymgtlwcxilun`, recorded 2026-10-22). `supabase/config.toml` mirrors them for the local stack:
-  - Email provider on; confirm email on; secure email change on; secure password change on; require current password when updating off.
+- Deployed Auth settings (project `acoiclkeymgtlwcxilun`, recorded 2026-10-22, updated 2026-10-23 after auth block 4). `supabase/config.toml` mirrors them for the local stack, except "Require current password when updating", which has no config key:
+  - Email provider on; confirm email on; secure email change on; secure password change off; require current password when updating on (the app sends `current_password`, commit 3c4a941; recovery sessions are exempt, so forgot-password keeps working).
+  - Google provider: "Skip nonce check" off. Revisit when iOS ships: the current native library may need it there.
   - Minimum password length 8; no password composition requirements; leaked password protection off (Pro plan only).
   - Email OTP length 6; email OTP expiry 900 s; minimum interval per user 60 s.
   - Rate limits: emails 2 per hour (built-in mailer), SMS 30, token refreshes 150, token verifications 30, anonymous users 30, sign-ups and sign-ins 30, Web3 30.
   - Provider linking: Supabase automatic linking by verified email (a Google sign-in whose verified email matches an existing user links to that user); manual linking (`linkIdentity`) disabled and unused.
 - Pending Auth items:
-  - Turn Google "Skip nonce check" off. It is only needed for iOS with the current native library; revisit when iOS ships.
-  - Password change in Settings is proven with the current password (auth block 4): turn "Secure password change" off, and turn "Require current password when updating" on only after the app build that sends `current_password` (commit 3c4a941) is installed; older builds then get `current_password_required`. Recovery sessions are exempt, so forgot-password keeps working.
   - Enable leaked password protection once the project is on the Pro plan.
-  - Enable CAPTCHA on sign-up and sign-in before launch.
+  - Enable CAPTCHA on sign-up and sign-in before launch, and only after the app build that sends `captchaToken` is installed (auth T6c): turning it on first rejects every sign-up and sign-in.
 - Site URL, redirect URLs, providers, and email templates: not yet inventoried. Record them here. Known so far: the "Reset password" template sends the 6-digit `{{ .Token }}` (the app enters the code, not a link); the email-change confirmation redirects to `selene://profile/settings`, which must be in the redirect URL allow list.
 - Custom SMTP is required before the first real user. The built-in Supabase mailer only delivers to members of the project's organization (other addresses fail with "Email address not authorized"), has a low hourly limit and no delivery guarantee, so signup codes would never reach real users. Configure Resend (or another SMTP provider) under Authentication > Emails > SMTP Settings: verify the sending domain with SPF and DKIM (and DMARC), use a dedicated From address such as `no-reply@<auth domain>`, and disable link tracking. No app code changes are needed.
 - After enabling custom SMTP, raise "Rate limit for sending emails" under Authentication > Rate Limits (it starts at 30 per hour) to the expected signup volume.

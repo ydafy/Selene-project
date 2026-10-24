@@ -94,7 +94,8 @@ Follow repository manual Supabase workflow: supply SQL/function/config handoff, 
 - T5f | S8 | writer | done (0a2b36e, review approved L78; device check pending) | The mobile app shows a closed profile (`profiles.deleted_at`) as "Usuario eliminado" wherever another user's username or avatar is rendered (listings, reviews, orders, public profile); admin-web keeps the `deleted_` username and `account_closed` reason | Commit: not created.
 - T5e | S8 | inline | done (L78) | Block close: tracker evidence, backlog for the 5-year ledger anonymization job and the store web deletion URL (D10, block 6) | Commit: not created.
 - T6 | S1–S3,S9,S10 | parent orchestration | in progress on branch `audit/auth-production`; audit done (L90), plan pending approval | Verify production configuration and integrated journeys | Commit: not created.
-- T6g | S9 | inline | done (L91) | Placeholder domain `selene.example` in one constant (`packages/types/src/domain.ts`) and the `docs/go-live.md` "Domain" checklist for the real one | Commit: see git log.
+- T6a | S9,S10 | inline | in progress (L92) | Reconcile `docs/go-live.md` and `supabase/config.toml` with the settings confirmed in L62; inventory Site URL, redirect URLs, Google provider and email templates from the maintainer's Dashboard values | Commit: see git log.
+- T6g | S9 | inline | done (L91) | Placeholder domain `selene.example` in one constant (`packages/types/src/domain.ts`) and the `docs/go-live.md` "Domain" checklist for the real one | Commit: c616063 (review approved).
 - T7 | S3,S9 | parent orchestration | done on branch `audit/auth-ui` (L89); merge to main pending maintainer request | Auth-screen UI/UX pass (L62): every auth screen, including forgot-password responsiveness | Commit: not created.
 - T7a | S3 | inline | done (L84) | U2: missing `auth` i18n keys (en `loginErrorTitle`, `verificationErrorTitle`; `enter6DigitCode` in both) plus an `auth` locale parity and key-usage test | Commit: 813ec98 (review approved).
 - T7b | S3 | delegated writer (context backstop) | done (1f65253, review approved; device check passed L86) | U1 + U5: opt-in keyboard-aware layout for the auth screens on Android edge-to-edge; back button inset | Commit: not created.
@@ -655,3 +656,10 @@ Maintainer (verbatim): "no master todaviia no etngo domnio, pon uno de prueba po
 RED: `packages/types/src/__tests__/domain.test.ts` 1 fail, 1 error (export missing). GREEN: `packages/types` 16 pass. Typecheck `@selene/types`: no diagnostics in touched files (1 pre-existing error in `connectPayoutContracts.test.ts`, missing `payout_run_paid_at`); ESLint clean.
 Consequence for T6: P2 (SMTP) is blocked until a real domain exists; P3 and P5 can proceed against the placeholder.
 Risk: none (new constant, no consumer yet).
+
+### L92 — T6a part 1: docs and config reconciliation
+Maintainer (verbatim): "si sigue, mientras en la otra sesion hago lo que comenatsmos, mejor, lo dejare hasta que terminemos, igual no urge ese cambio. COntnua master" (the AGENTS.md backlog rule is deferred to a main session; prompt given in chat).
+Backlog rule applied to this block: BL16 added to `odd/tasks/cross-module-backlog.md` (`common:errors.errorTitle` in 5 non-auth sites, L84) and BL10 updated (`fn_product_seller_payment_readiness` and `is_admin` still anon-executable, L90).
+`docs/go-live.md` section 10: secure password change off, require current password on, Google "Skip nonce check" off recorded as deployed (L62); the two done items removed from "Pending"; CAPTCHA must follow the app build that sends `captchaToken` (T6c). `supabase/config.toml`: `secure_password_change = false`; "Require current password" has no config key (Supabase docs, password security), so the local stack cannot mirror it. Proof: `bun` parses the file and reads `auth.email.secure_password_change = false`; the local stack was not restarted.
+Pending (part 2): Site URL, redirect URLs, Google provider client IDs and email template bodies from the Dashboard; the MCP cannot read Auth settings.
+Risk: item 5 (local environment config; a boolean that only affects the local stack).

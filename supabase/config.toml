@@ -71,12 +71,14 @@ token_verifications = 30
 web3 = 30
 
 # Mirrors the remote email provider: signup on, confirmation code required,
-# secure email and password change on, 6-digit code valid for 15 minutes.
+# secure email change on, secure password change off (the password change is
+# proven with the current password instead; "Require current password" is a
+# Dashboard-only setting with no config key), 6-digit code valid for 15 minutes.
 [auth.email]
 enable_signup = true
 enable_confirmations = true
 double_confirm_changes = true
-secure_password_change = true
+secure_password_change = false
 max_frequency = "60s"
 otp_length = 6
 otp_expiry = 900
