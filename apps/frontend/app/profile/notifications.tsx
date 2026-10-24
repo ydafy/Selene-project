@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   RefreshControl,
   TouchableOpacity,
@@ -14,6 +14,7 @@ import { Box } from '../../components/base';
 import { GlobalHeader } from '../../components/layout/GlobalHeader';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { NotificationItem } from '../../components/features/notifications/NotificationItem';
+import { createNotificationPressHandler } from '../../components/features/notifications/notificationPress';
 import { useNotificationsList } from '../../core/hooks/useNotificationsList';
 import { useNotificationMutations } from '../../core/hooks/useNotificationMutations';
 import { useUnreadNotifications } from '../../core/hooks/useUnreadNotifications';
@@ -23,7 +24,6 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { useTheme } from '@shopify/restyle';
 import { Theme } from '../../core/theme';
-import { Notification } from '@selene/types';
 
 export default function NotificationsScreen() {
   const { t } = useTranslation(['orders', 'common', 'notifications']);
@@ -49,10 +49,16 @@ export default function NotificationsScreen() {
   const { markAsRead, markAllAsRead, dismissAll } =
     useNotificationMutations(userId);
 
-  const handleNotificationPress = async (notif: Notification) => {
-    await markAsRead(notif.id);
-    await NotificationLinking.navigate(notif.action_path);
-  };
+  // markAsRead changes every render; the handler (and its double-tap guard)
+  // must live for the whole screen, so it reads the latest one through a ref.
+  const markAsReadRef = useRef(markAsRead);
+  markAsReadRef.current = markAsRead;
+  const [handleNotificationPress] = useState(() =>
+    createNotificationPressHandler({
+      markAsRead: (id) => markAsReadRef.current(id),
+      navigate: (path) => NotificationLinking.navigate(path),
+    }),
+  );
 
   const handleMarkAllAsRead = async () => {
     setIsActionLoading(true);

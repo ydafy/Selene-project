@@ -39,6 +39,11 @@ import { useProducts } from '../../core/hooks/useProducts';
 import { useSellerReviews } from '../../core/hooks/useSellerReviews';
 import { formatCurrency } from '../../core/utils/format';
 import { isClosedAccount } from '../../core/utils/publicIdentity';
+import {
+  ACTIVE_LISTING_STATUSES,
+  isInVerification,
+} from '../../core/utils/productListingStatus';
+import { VerificationPill } from '../../components/features/product/VerificationPill';
 import { Theme } from '../../core/theme';
 import { GlobalHeader } from '@/components/layout/GlobalHeader';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -119,7 +124,7 @@ export default function PublicProfileScreen() {
     refetch: refetchProducts,
   } = useProducts({
     sellerId: sellerId ?? undefined,
-    verifiedOnly: true, // Solo traemos productos que estén listos para la venta (excluye vendidos/ocultos)
+    statuses: ACTIVE_LISTING_STATUSES, // Unsold listings, verified or still in verification
     enabled: isSellerIdValid,
   });
 
@@ -394,6 +399,11 @@ export default function PublicProfileScreen() {
                               size={32}
                               color={theme.colors.textSecondary}
                             />
+                          )}
+                          {isInVerification(item.status) && (
+                            <Box position="absolute" top={8} left={8}>
+                              <VerificationPill />
+                            </Box>
                           )}
                         </Box>
                         <Box padding="s">

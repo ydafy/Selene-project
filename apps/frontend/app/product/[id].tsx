@@ -36,7 +36,6 @@ import { useProductFavorite } from '../../core/hooks/useProductFavorite';
 import { useProductHistoryStore } from '../../core/store/useProductHistoryStore';
 import {
   PurchaseDialogVariant,
-  decideVisibilityBadge,
   purchaseDialogContent,
 } from '../../core/utils/productPurchaseGate';
 import { PurchaseProgressSteps } from '../../components/features/product/PurchaseProgressSteps';
@@ -123,7 +122,6 @@ export default function ProductDetailScreen() {
   }
 
   const isOwner = session?.user.id === product.seller_id;
-  const visibilityBadge = decideVisibilityBadge(product.status, isOwner);
   const dialog = dialogVariant
     ? purchaseDialogContent(dialogVariant, isFavorite)
     : null;
@@ -237,20 +235,6 @@ export default function ProductDetailScreen() {
               </Text>
             </Box>
           </Box>
-
-          {visibilityBadge.show && (
-            <Box marginBottom="m">
-              <Text
-                variant="body-md"
-                color="textPrimary"
-                textAlign="center"
-                marginBottom="s"
-              >
-                {t(visibilityBadge.labelKey)}
-              </Text>
-              <PurchaseProgressSteps currentStep={visibilityBadge.currentStep} />
-            </Box>
-          )}
 
           <Text
             variant="subheader-lg"

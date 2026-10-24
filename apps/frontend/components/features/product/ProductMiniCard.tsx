@@ -14,6 +14,8 @@ import { Theme } from '../../../core/theme';
 import { formatCurrency } from '../../../core/utils/format';
 import { Product } from '@selene/types';
 import { getSharedStyles } from '../home/sharedStyles';
+import { isInVerification } from '../../../core/utils/productListingStatus';
+import { VerificationPill } from './VerificationPill';
 
 interface Props {
   product: Product;
@@ -115,6 +117,12 @@ export const ProductMiniCard = ({ product, onPress, cardHeight }: Props) => {
                 iconColor="white"
                 style={{ margin: 0, width: 20, height: 20 }}
               />
+            </Box>
+          )}
+
+          {isInVerification(product.status) && !isSold && (
+            <Box position="absolute" top={8} right={8}>
+              <VerificationPill />
             </Box>
           )}
 

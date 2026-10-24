@@ -1,6 +1,9 @@
 import { describe, expect, test } from 'bun:test';
 
-import { resolveProductsQueryEnabled } from './useProducts.helpers';
+import {
+  resolveProductsQueryEnabled,
+  resolveProductStatuses,
+} from './useProducts.helpers';
 
 describe('resolveProductsQueryEnabled', () => {
   test('defaults to enabled for existing catalog consumers', () => {
@@ -15,5 +18,23 @@ describe('resolveProductsQueryEnabled', () => {
     expect(
       resolveProductsQueryEnabled({ sellerId: 'seller-1', enabled: true }),
     ).toBe(true);
+  });
+});
+
+describe('resolveProductStatuses', () => {
+  test('defaults to VERIFIED and SOLD so home keeps its current lists', () => {
+    expect(resolveProductStatuses(undefined)).toEqual(['VERIFIED', 'SOLD']);
+    expect(resolveProductStatuses({ verifiedOnly: true })).toEqual([
+      'VERIFIED',
+      'SOLD',
+    ]);
+  });
+
+  test('uses the statuses a screen asks for', () => {
+    expect(
+      resolveProductStatuses({
+        statuses: ['VERIFIED', 'PENDING_VERIFICATION', 'IN_REVIEW'],
+      }),
+    ).toEqual(['VERIFIED', 'PENDING_VERIFICATION', 'IN_REVIEW']);
   });
 });

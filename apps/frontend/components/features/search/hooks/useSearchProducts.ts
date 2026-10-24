@@ -7,6 +7,7 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { supabase } from '../../../../core/db/supabase';
 import { Product } from '@selene/types';
+import { BUYER_LISTED_STATUSES } from '../../../../core/utils/productListingStatus';
 
 export type SearchFilters = {
   query?: string;
@@ -33,7 +34,7 @@ export const useSearchProducts = (filters: SearchFilters) => {
         .from('products')
         .select('*', { count: 'exact' })
         .is('deleted_at', null)
-        .in('status', ['VERIFIED', 'SOLD'])
+        .in('status', BUYER_LISTED_STATUSES)
         .neq('status', 'HIDDEN');
 
       // 1. Full Text Search

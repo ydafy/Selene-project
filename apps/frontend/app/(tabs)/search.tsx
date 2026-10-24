@@ -22,6 +22,7 @@ import {
 } from '../../components/features/shop/index';
 import { ShopSkeleton } from '../../components/features/shop/ShopSkeleton';
 import { useProducts } from '../../core/hooks/useProducts';
+import { ACTIVE_LISTING_STATUSES } from '../../core/utils/productListingStatus';
 import { Theme } from '../../core/theme/index';
 import { useTheme } from '@shopify/restyle';
 import { ProductSnapCard } from '../../components/features/shop/sections/ProductSnapCard';
@@ -45,7 +46,7 @@ export default function SearchScreen() {
     isLoading,
     error,
   } = useProducts({
-    verifiedOnly: true,
+    statuses: ACTIVE_LISTING_STATUSES,
     limit: 10,
   });
 

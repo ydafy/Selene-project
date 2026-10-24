@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../db/supabase';
 import { Product } from '@selene/types';
 import { useProductHistoryStore } from '../store/useProductHistoryStore';
+import { BUYER_LISTED_STATUSES } from '../utils/productListingStatus';
 
 export const useRecentlyViewed = () => {
   const { viewedIds } = useProductHistoryStore();
@@ -15,9 +16,9 @@ export const useRecentlyViewed = () => {
         .from('products')
         .select('*')
         .in('id', viewedIds)
-        // Only listings that home already shows; do not rely on RLS, which
-        // also exposes listings still in verification to the product page.
-        .in('status', ['VERIFIED', 'SOLD']);
+        // Listings buyers can find, in verification included (L31); never
+        // rely on RLS to hide rejected, hidden or reserved listings.
+        .in('status', BUYER_LISTED_STATUSES);
 
       if (error) throw error;
 
