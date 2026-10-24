@@ -44,7 +44,7 @@ ALTER TABLE public.shipment_cancellation_operations
       AND carrier_balance_returned_at IS NULL
       AND (label_cost_loss_cents IS NULL OR review_resolution IS NOT DISTINCT FROM 'refund_approved')
     )
-    OR (carrier_cancellation_outcome = 'accepted' AND carrier_balance_returned IS NOT NULL)
+    OR (carrier_cancellation_outcome IS NOT DISTINCT FROM 'accepted' AND carrier_balance_returned IS NOT NULL)
   );
 
 COMMENT ON COLUMN public.shipment_cancellation_operations.review_reason IS
@@ -313,8 +313,14 @@ BEGIN
   SELECT * INTO STRICT v_operation FROM public.shipment_cancellation_operations
     WHERE shipment_id = p_shipment_id;
   IF v_operation.source = 'preparing_timeout'
-     AND v_operation.carrier_cancellation_outcome IS DISTINCT FROM 'accepted'
-     AND v_operation.review_resolution IS DISTINCT FROM 'refund_approved' THEN
+     AND (
+       (v_operation.carrier_cancellation_outcome IS DISTINCT FROM 'accepted'
+        AND v_operation.review_resolution IS DISTINCT FROM 'refund_approved')
+       -- Resolutions are final: an operation marked for review needs the approval even when
+       -- the outcome is accepted, so a live token cannot refund while pending or after closing.
+       OR (v_operation.review_required_at IS NOT NULL
+           AND v_operation.review_resolution IS DISTINCT FROM 'refund_approved')
+     ) THEN
     RAISE EXCEPTION 'CARRIER_CANCELLATION_NOT_CONFIRMED';
   END IF;
   SELECT COALESCE(s.stripe_payment_intent_id, o.stripe_payment_intent_id)

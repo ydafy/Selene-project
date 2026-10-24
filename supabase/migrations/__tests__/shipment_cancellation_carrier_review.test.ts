@@ -60,7 +60,7 @@ describe('shipment cancellation carrier review migration (SQL text)', () => {
       body.indexOf('ADD CONSTRAINT shipment_cancellation_operations_carrier_balance_consistent'),
     );
     expect(constraint).toContain("review_resolution IS NOT DISTINCT FROM 'refund_approved'");
-    expect(constraint).toContain("carrier_cancellation_outcome = 'accepted' AND carrier_balance_returned IS NOT NULL");
+    expect(constraint).toContain("carrier_cancellation_outcome IS NOT DISTINCT FROM 'accepted' AND carrier_balance_returned IS NOT NULL");
     expect(constraint).toContain('carrier_balance_returned IS NULL');
     expect(constraint).toContain('carrier_balance_returned_at IS NULL');
     expect(body.replace(/DROP CONSTRAINT[^\n]*/g, '')).not.toMatch(/DROP\s/i);

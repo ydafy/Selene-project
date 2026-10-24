@@ -509,6 +509,117 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     },
   ],
   [
+    'an accepted outcome marked for review cannot start the refund while pending or after closed_no_refund, with the live token',
+    async (tx) => {
+      const token = await claim(tx);
+      await tx`SELECT public.fn_record_shipment_carrier_cancellation(${ids.shipment}::uuid, ${token}::uuid, 'accepted', true, '2026-10-23T10:00:00Z'::timestamptz)`;
+      await mark(tx, token, 'carrier_ambiguous');
+      const pending = await operation(tx);
+      await rejects(tx, (sp) => startRefund(sp, token), 'CARRIER_CANCELLATION_NOT_CONFIRMED');
+      assert.deepEqual(await operation(tx), pending);
+      assert.equal(pending.external_started_at, null);
+
+      await resolve(tx, 'closed_no_refund', 'no refund');
+      const closed = await operation(tx);
+      await rejects(tx, (sp) => startRefund(sp, token), 'CARRIER_CANCELLATION_NOT_CONFIRMED');
+      assert.deepEqual(await operation(tx), closed);
+      assert.equal(closed.external_started_at, null);
+    },
+  ],
+  [
+    'an accepted outcome marked for review starts the refund with the live token once refund_approved',
+    async (tx) => {
+      const token = await claim(tx);
+      await tx`SELECT public.fn_record_shipment_carrier_cancellation(${ids.shipment}::uuid, ${token}::uuid, 'accepted', true, '2026-10-23T10:00:00Z'::timestamptz)`;
+      await mark(tx, token, 'carrier_ambiguous');
+      await resolve(tx, 'refund_approved', 'approved');
+      const result = await startRefund(tx, token);
+      assert.equal(result.operation_key, `cancel_shipment_${ids.shipment}`);
+      assert.ok((await operation(tx)).external_started_at);
+    },
+  ],
+  [
+    'direct writes that break the carrier and review invariants are rejected by constraints',
+    async (tx) => {
+      const token = await claim(tx);
+      await tx`RESET ROLE`;
+      await rejects(
+        tx,
+        (sp) => sp`UPDATE public.shipment_cancellation_operations
+          SET carrier_balance_returned = true, carrier_balance_returned_at = clock_timestamp()
+          WHERE shipment_id = ${ids.shipment}`,
+        'shipment_cancellation_operations_carrier_balance_consistent',
+      );
+      await asService(tx);
+      await outcomeRpc(tx, token, 'refused');
+      await mark(tx, token, 'carrier_refused');
+      await tx`RESET ROLE`;
+      await rejects(
+        tx,
+        (sp) => sp`UPDATE public.shipment_cancellation_operations SET label_cost_loss_cents = 100 WHERE shipment_id = ${ids.shipment}`,
+        'shipment_cancellation_operations_carrier_balance_consistent',
+      );
+      await asService(tx);
+      await resolve(tx, 'closed_no_refund', 'no refund');
+      await tx`RESET ROLE`;
+      await rejects(
+        tx,
+        (sp) => sp`UPDATE public.shipment_cancellation_operations SET label_cost_loss_cents = 100 WHERE shipment_id = ${ids.shipment}`,
+        'shipment_cancellation_operations_carrier_balance_consistent',
+      );
+      await tx`DELETE FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`;
+      await asService(tx);
+      await claim(tx);
+      await tx`RESET ROLE`;
+      await rejects(
+        tx,
+        (sp) => sp`UPDATE public.shipment_cancellation_operations
+          SET review_resolution = 'refund_approved', review_resolved_at = clock_timestamp(),
+              review_resolved_by = ${ids.admin}, review_resolution_note = 'x'
+          WHERE shipment_id = ${ids.shipment}`,
+        'shipment_cancellation_operations_review_resolution_after_requir', // Postgres truncates names to 63 bytes
+      );
+    },
+  ],
+  [
+    'a suspended admin gets ADMIN_REQUIRED on resolve and the row stays unchanged',
+    async (tx) => {
+      await reviewed(tx);
+      const before = await operation(tx);
+      await tx`RESET ROLE`;
+      await tx`UPDATE public.profiles_private SET status = 'suspended' WHERE id = ${ids.admin}`;
+      await asService(tx);
+      await rejects(tx, (sp) => resolve(sp, 'refund_approved'), 'ADMIN_REQUIRED');
+      assert.deepEqual(await operation(tx), before);
+    },
+  ],
+  [
+    'resolve leaves the claim, external start, refund request and shipment status unchanged',
+    async (tx) => {
+      await reviewed(tx);
+      const before = await operation(tx);
+      const [shipmentBefore] = await tx`SELECT status FROM public.shipments WHERE id = ${ids.shipment}`;
+      await resolve(tx, 'refund_approved', 'approved');
+      const after = await operation(tx);
+      assert.equal(after.claim_token, before.claim_token);
+      assert.deepEqual(after.claim_expires_at, before.claim_expires_at);
+      assert.equal(after.external_started_at, null);
+      assert.equal(after.refund_request, before.refund_request);
+      const [shipmentAfter] = await tx`SELECT status FROM public.shipments WHERE id = ${ids.shipment}`;
+      assert.equal(shipmentAfter.status, shipmentBefore.status);
+    },
+  ],
+  [
+    'a live claim with a pending review raises SHIPMENT_CANCELLATION_UNDER_REVIEW, not busy',
+    async (tx) => {
+      await reviewed(tx);
+      const live = await operation(tx);
+      assert.ok(new Date(live.claim_expires_at) > new Date());
+      await rejects(tx, (sp) => claim(sp), 'SHIPMENT_CANCELLATION_UNDER_REVIEW');
+      assert.deepEqual(await operation(tx), live);
+    },
+  ],
+  [
     'anon and authenticated cannot execute any new RPC (grants)',
     async (tx) => {
       const token = await reviewed(tx);
