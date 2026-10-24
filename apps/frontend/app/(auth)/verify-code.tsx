@@ -8,12 +8,11 @@ import React, { useState, useEffect } from 'react';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
-import { IconButton } from 'react-native-paper';
 import OTPTextInput from 'react-native-otp-textinput';
 import Toast from 'react-native-toast-message';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScreenLayout } from '../../components/layout/ScreenLayout';
+import { AuthBackButton } from '../../components/features/auth/AuthBackButton';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { TextLink } from '../../components/ui/TextLink';
 import { Box, Text } from '../../components/base';
@@ -27,7 +26,6 @@ export default function VerifyCodeScreen() {
   const { t } = useTranslation(['auth', 'common']);
   const theme = useTheme<Theme>();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
 
   const { verifyOtp, resendSignUpOtp, loading } = useAuth();
   const { email } = useLocalSearchParams<{ email: string }>();
@@ -107,24 +105,11 @@ export default function VerifyCodeScreen() {
   };
 
   return (
-    <ScreenLayout>
+    <ScreenLayout keyboardAware>
       {/* gestureEnabled: false evita que el usuario regrese por accidente sin verificar */}
       <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
 
-      {/* BOTÓN DE ATRÁS DINÁMICO */}
-      <Box
-        position="absolute"
-        top={insets.top > 0 ? insets.top : 20}
-        left={theme.spacing.s}
-        zIndex={10}
-      >
-        <IconButton
-          icon="arrow-left"
-          iconColor={theme.colors.textPrimary}
-          size={28}
-          onPress={() => router.back()}
-        />
-      </Box>
+      <AuthBackButton />
 
       <Box flex={1} justifyContent="center" paddingHorizontal="xl">
         <Box alignItems="center" marginBottom="xl">

@@ -95,8 +95,8 @@ Follow repository manual Supabase workflow: supply SQL/function/config handoff, 
 - T5e | S8 | inline | done (L78) | Block close: tracker evidence, backlog for the 5-year ledger anonymization job and the store web deletion URL (D10, block 6) | Commit: not created.
 - T6 | S1–S3,S9,S10 | route on resume | pending, future session by explicit user request | Verify production configuration and integrated journeys | Commit: not created.
 - T7 | S3,S9 | parent orchestration | in progress on branch `audit/auth-ui`; audit done (L82, d358b9e), split approved (L83) | Auth-screen UI/UX pass (L62): every auth screen, including forgot-password responsiveness | Commit: not created.
-- T7a | S3 | inline | done (L84) | U2: missing `auth` i18n keys (en `loginErrorTitle`, `verificationErrorTitle`; `enter6DigitCode` in both) plus an `auth` locale parity and key-usage test | Commit: not created.
-- T7b | S3 | inline | pending | U1 + U5: opt-in keyboard-aware layout for the auth screens on Android edge-to-edge; back button inset | Commit: not created.
+- T7a | S3 | inline | done (L84) | U2: missing `auth` i18n keys (en `loginErrorTitle`, `verificationErrorTitle`; `enter6DigitCode` in both) plus an `auth` locale parity and key-usage test | Commit: 813ec98 (review approved).
+- T7b | S3 | delegated writer (context backstop) | done (L85; device check pending) | U1 + U5: opt-in keyboard-aware layout for the auth screens on Android edge-to-edge; back button inset | Commit: not created.
 - T7c | S3 | inline | pending | U3 + U7: autofill hints, keyboard next/submit on login and forgot password, one field-error style, no hardcoded fallback copy, wrapping resend row | Commit: not created.
 - T7d | S3 | route after device check | blocked until the maintainer's device check confirms U4/U6 | U4 OTP paste/autofill; U6 `AuthModal` keyboard and small-screen clipping | Commit: not created.
 - T8 | S1 | route on resume | pending, after T6 | Auth backlog pass: resolve the consolidated list in L81 | Commit: not created.
@@ -601,3 +601,10 @@ RED: 1 fail, 11 missing entries: en `loginErrorTitle`, en `verificationErrorTitl
 GREEN: 5 pass in the file; `core/i18n` 100 pass, 0 fail. ESLint on touched files: only the 4 pre-existing errors (`require` logo import, `as any` OTP styles); the test file is clean.
 Out of scope (backlog T8): `common:errors.errorTitle` is still used by 5 non-auth call sites (orders report and return, `useProductCart`, `useProductManagement`).
 Risk: none (copy keys only; no shared code changed).
+
+### L85 — T7b implementation and evidence
+Maintainer (verbatim): "okey dime master". T7a review approved (advisories: hand-written source list, the regex misses dynamic or double-quoted keys, the T7a Commit field; fixed here).
+`ScreenLayout` gets an opt-in `keyboardAware` prop: on Android it reuses `useKeyboardHeight` (T4e) and adds the keyboard height as bottom padding of the scroll content; iOS keeps the `KeyboardAvoidingView` padding and never subscribes. Without the prop the other 6 users are unchanged (the hook is disabled and the extra style entry is `null`). The five auth screens opt in and use a new `components/features/auth/AuthBackButton.tsx`: a normal row inside the already safe-area-padded layout instead of an absolute box offset by `insets.top` a second time (U5); same icon, size, color and `router.back()`.
+RED: `tests/__tests__/authScreensLayout.test.ts` 18 fail, 1 error (component missing). GREEN: 170 pass (new test plus `core/hooks`); full `bun test` 3182 pass, 0 fail. ESLint: only the 8 pre-existing errors in the screens (`require` logos, `as any` OTP styles); new files clean. No typecheck diagnostics in touched files.
+Device check pending (Android emulator): reset password and register, focus the last field, scroll: field and submit button above the keyboard; closing the keyboard leaves no gap; back arrow below the status bar, not touching the logo; iOS without double spacing.
+Risk: item 3 (shared `ScreenLayout`, opt-in default); item 6 (layout, device check only).

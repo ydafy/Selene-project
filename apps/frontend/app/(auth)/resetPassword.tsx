@@ -10,13 +10,12 @@ import { useTranslation } from 'react-i18next';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTheme } from '@shopify/restyle';
-import { IconButton } from 'react-native-paper';
 import OTPTextInput from 'react-native-otp-textinput';
 import Toast from 'react-native-toast-message';
 import { z } from 'zod';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScreenLayout } from '../../components/layout/ScreenLayout';
+import { AuthBackButton } from '../../components/features/auth/AuthBackButton';
 import { FormTextInput } from '../../components/ui/FormTextInput';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { AppImage } from '../../components/ui/AppImage';
@@ -49,7 +48,6 @@ export default function ResetPasswordScreen() {
   const { t } = useTranslation(['auth', 'common']);
   const theme = useTheme<Theme>();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { resetPassword, sendPasswordResetOtp, loading } = useAuth();
   const { email } = useLocalSearchParams<{ email: string }>();
 
@@ -157,23 +155,10 @@ export default function ResetPasswordScreen() {
   };
 
   return (
-    <ScreenLayout>
+    <ScreenLayout keyboardAware>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* BOTÓN DE ATRÁS DINÁMICO */}
-      <Box
-        position="absolute"
-        top={insets.top > 0 ? insets.top : 20}
-        left={theme.spacing.s}
-        zIndex={10}
-      >
-        <IconButton
-          icon="arrow-left"
-          iconColor={theme.colors.textPrimary}
-          size={28}
-          onPress={() => router.back()}
-        />
-      </Box>
+      <AuthBackButton />
 
       <Box flex={1} paddingHorizontal="xl" justifyContent="center">
         <Box alignItems="center" marginBottom="l">
