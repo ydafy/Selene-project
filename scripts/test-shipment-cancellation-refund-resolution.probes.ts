@@ -54,6 +54,10 @@ async function start(tx: Tx, source: 'buyer' | 'preparing_timeout' = 'buyer') {
   const request = { payment_intent: pi, amount, reason: 'requested_by_customer', metadata: {
     shipment_id: ids.shipment, order_id: ids.order, caller_role: source === 'buyer' ? 'buyer' : 'system',
     reason: 'Changed my mind', seguro_share_cents: 500 } };
+  // A preparing refund can only start after the carrier accepted the label cancellation (B4.2).
+  if (source === 'preparing_timeout')
+    await tx`SELECT public.fn_record_shipment_carrier_cancellation(
+      ${ids.shipment}::uuid, ${claim.claim_token}::uuid, 'accepted', true, now())`;
   await tx`SELECT public.fn_start_shipment_cancellation_refund(
     ${ids.shipment}::uuid, ${claim.claim_token}::uuid, ${JSON.stringify(request)}::text::jsonb, 0::bigint)`;
 }
