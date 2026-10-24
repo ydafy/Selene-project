@@ -240,15 +240,9 @@ export default function ProductDetailScreen() {
 
           {visibilityBadge.show && (
             <Box marginBottom="m">
-              <Text
-                variant="body-md"
-                color="textPrimary"
-                textAlign="center"
-                marginBottom="s"
-              >
+              <Text variant="body-md" color="textPrimary" textAlign="center">
                 {t(visibilityBadge.labelKey)}
               </Text>
-              <PurchaseProgressSteps currentStep={visibilityBadge.currentStep} />
             </Box>
           )}
 

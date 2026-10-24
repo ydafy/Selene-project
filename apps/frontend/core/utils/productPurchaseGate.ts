@@ -62,12 +62,12 @@ export const purchaseDialogContent = (
 
 export type VisibilityBadge =
   | { show: false }
-  | { show: true; currentStep: number; labelKey: string };
+  | { show: true; labelKey: string };
 
 /**
- * Status block a buyer sees on a listing that cannot be bought yet. Owners
- * and purchasable or sold listings get none; seller readiness is explained on
- * press (see `decidePurchaseGate`), not on load.
+ * Status label a buyer sees on a listing that cannot be bought yet. Owners
+ * and purchasable or sold listings get none; the progress steps and seller
+ * readiness are explained on press (see `decidePurchaseGate`), not on load.
  */
 export const decideVisibilityBadge = (
   status: string,
@@ -75,11 +75,7 @@ export const decideVisibilityBadge = (
 ): VisibilityBadge => {
   if (isOwner) return { show: false };
   if (status === 'PENDING_VERIFICATION' || status === 'IN_REVIEW') {
-    return {
-      show: true,
-      currentStep: 1,
-      labelKey: 'visibilityBadge.verifying',
-    };
+    return { show: true, labelKey: 'visibilityBadge.verifying' };
   }
   return { show: false };
 };

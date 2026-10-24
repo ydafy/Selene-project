@@ -103,14 +103,26 @@ describe('purchase dialog copy', () => {
 });
 
 describe('decideVisibilityBadge', () => {
-  it('shows step 1 with the verifying label for PENDING_VERIFICATION and IN_REVIEW', () => {
+  // L34: the page shows only the label; the progress steps live in the
+  // add-to-cart dialog.
+  it('shows only the verifying label for PENDING_VERIFICATION and IN_REVIEW', () => {
     for (const status of ['PENDING_VERIFICATION', 'IN_REVIEW']) {
       expect(decideVisibilityBadge(status, false)).toEqual({
         show: true,
-        currentStep: 1,
         labelKey: 'visibilityBadge.verifying',
       });
     }
+  });
+
+  it('the product page renders progress steps only inside the dialog', () => {
+    const page = readFileSync(
+      join(import.meta.dir, '..', '..', '..', 'app', 'product', '[id].tsx'),
+      'utf8',
+    );
+    expect(page.match(/<PurchaseProgressSteps/g)).toHaveLength(1);
+    expect(page).toContain(
+      '<PurchaseProgressSteps currentStep={dialog.currentStep} />',
+    );
   });
 
   it('hides it for VERIFIED and SOLD listings', () => {
