@@ -11,6 +11,8 @@ import {
   type ReauthResult,
 } from './reauth.logic';
 import { signOutUser } from './signOut';
+import { getCaptchaToken } from './captcha/captcha';
+import { reauthSignInWithPassword } from './captchaAuth.logic';
 
 const reauthDeps: ReauthDeps = {
   googleCancelledCode: statusCodes.SIGN_IN_CANCELLED,
@@ -25,13 +27,8 @@ const reauthDeps: ReauthDeps = {
       refreshToken: session.refresh_token,
     };
   },
-  signInWithPassword: async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { userId: data.user?.id ?? null, error };
-  },
+  signInWithPassword: (email, password) =>
+    reauthSignInWithPassword(supabase.auth, getCaptchaToken, email, password),
   signInWithGoogle: async () => {
     try {
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });

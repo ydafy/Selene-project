@@ -22,6 +22,8 @@ const CODE_KEYS: Record<string, string> = {
   validation_failed: 'auth:errors.validationFailed',
   email_address_invalid: 'auth:errors.invalidEmail',
   signup_disabled: 'auth:errors.signupDisabled',
+  captcha_failed: 'auth:errors.captchaFailed',
+  captcha_cancelled: 'auth:errors.captchaCancelled',
 };
 
 const RATE_LIMIT_CODES = ['over_email_send_rate_limit', 'over_request_rate_limit'];

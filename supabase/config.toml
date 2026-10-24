@@ -70,6 +70,13 @@ sign_in_sign_ups = 30
 token_verifications = 30
 web3 = 30
 
+# CAPTCHA is off remotely, so it stays off here. Enabling it requires the Bruno
+# password-grant requests to send the hCaptcha test token (captcha_token).
+# [auth.captcha]
+# enabled = false
+# provider = "hcaptcha"
+# secret = "env(SUPABASE_AUTH_CAPTCHA_SECRET)"
+
 # Mirrors the remote email provider: signup on, confirmation code required,
 # secure email change on, secure password change off (the password change is
 # proven with the current password instead; "Require current password" is a

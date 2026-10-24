@@ -64,3 +64,20 @@ describe('createCaptchaGetter', () => {
     expect((error as CaptchaError).code).toBe(CAPTCHA_FAILED_CODE);
   });
 });
+
+describe('createCaptchaGetter timeout', () => {
+  it('fails instead of waiting forever when the challenge never answers', async () => {
+    const getToken = createCaptchaGetter(
+      () => provider({ request: () => new Promise<string>(() => undefined) }),
+      10,
+    );
+    await expect(getToken()).rejects.toMatchObject({
+      code: CAPTCHA_FAILED_CODE,
+    });
+  });
+
+  it('keeps the token when the challenge answers before the timeout', async () => {
+    const getToken = createCaptchaGetter(() => provider(), 1_000);
+    expect(await getToken()).toBe('token-1');
+  });
+});
