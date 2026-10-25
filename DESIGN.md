@@ -53,6 +53,11 @@ Both apps use the same palette and typeface. Names differ by platform.
 | Accent             | `#bd9f65` | `primary` (`lion`)              | `lion`            |
 | Success            | `#28a745` | `success` (`forest`)            | `forest`          |
 | Error              | `#dc3545` | `error` (`fire`)                | `fire`            |
+| Warning            | `#f59e0b` | `warning` (`amber`)             | (none)            |
+| Error panel        | `#dc35451a` | `errorSubtle` (`fireSubtle`)  | (none)            |
+
+- `warning` is for caution icons, borders, and status dots. `errorSubtle` is the background of an error panel, always with an `error` border or text.
+- App only: `shadow` (`#000000`) for `shadowColor`, `mediaBackground` (`#000000`) behind full-screen photos and video.
 
 Order and shipment states, identical in both apps:
 
@@ -66,11 +71,11 @@ Order and shipment states, identical in both apps:
 
 - **Type:** Montserrat only (Regular, Medium, Bold; Italic is loaded). Medium for headings, Regular for body. Use tabular figures for money and counts.
 - **Theme:** dark only. There is no light mode; do not add one without a product decision.
-- **Spacing (app):** `xs 4`, `s 8`, `m 16`, `l 24`, `xl 40`. **Radii (app):** `s 8`, `m 16`, `l 24`, `xl 40`, `full`.
+- **Spacing (app):** `xs 4`, `s 8`, `m 16`, `l 24`, `xl 40`. **Radii (app):** `s 8`, `m 16`, `l 24`, `xl 40`, `full`. React Native Paper `roundness` is `s`; Paper multiplies it per component (Dialog x7, Chip x2), so set an explicit radius when a Paper component needs an exact one.
 
 ## Mobile app (`apps/frontend`)
 
-- Use Restyle tokens and `textVariants` (`header-2xl` once per screen, `subheader-*` for sections, `body-*`, `caption-*` for secondary text). No hardcoded colors or font sizes in components.
+- Use Restyle tokens and `textVariants` (`header-2xl` once per screen, `subheader-*` for sections, `body-*`, `caption-*` for secondary text). No hardcoded colors or font sizes in components. Tokens live in `core/theme/tokens.ts`; outside a component that has `useTheme`, import `colors` from there. `core/theme/__tests__/noHardcodedColors.test.ts` fails on hex literals outside the theme; the only exceptions are third-party brand colors (logos in `components/icons/`, Stripe, 3DMark).
 - Follow native conventions (load the `expo-native-ui` skill); tokens and component variants follow `expo-design-system` within this file's palette.
 - Icons: `@expo/vector-icons`, one family per screen.
 - Blur (`blurBackground`) is for overlays on top of content, not for cards.
@@ -91,10 +96,9 @@ Clarity and the same premium identity count equally. The partners must understan
 
 Recorded, not fixed. Fix them in their own change.
 
-- The app palette defines `pending`, but the Restyle theme has no `pending` color; the admin has `status-pending`.
-- The app `warning` token is a translucent red (`#dc35451a`), not a warning color.
-- Some app components hardcode colors (for example `#D2232A`, `#f59e0b`, `#FFFFFF`) instead of tokens.
-- React Native Paper uses `roundness: 12`, which is not on the app radii scale.
+- `getOrderStatusColor` (`apps/frontend/core/utils/order-status.ts`) shows `cancelled`, `refunded`, and `dispute` in `error` red instead of their state colors from the table above.
+- App components still use `rgba(...)` literals for overlays and translucent borders; the hardcoded-color test only covers hex.
+- The admin has no `warning` or `errorSubtle` equivalent; add them to `index.css` when an admin screen needs one.
 
 ## For agents
 

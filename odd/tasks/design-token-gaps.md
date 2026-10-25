@@ -15,8 +15,8 @@ Visual-only change; no money, SQL, or auth.
 ## Tasks
 
 - [x] T1 (S1, S2, S4): tokens module, `pending`, `warning`/`errorSubtle`, `shadow`, `mediaBackground`, roundness 8; call sites of `warning` re-pointed. Commit e801207.
-- [x] T2 (S3): replace hex literals in components; source-scan guard test. Also `getOrderStatusColor("pending")` -> `pending` (S1); unused `getOrderStatusBgColor` and `core/constants/Colors.ts` removed.
-- [ ] T3 (S5, S6): DESIGN.md token table and Known gaps; skill registry refresh.
+- [x] T2 (S3): replace hex literals in components; source-scan guard test. Also `getOrderStatusColor("pending")` -> `pending` (S1); unused `getOrderStatusBgColor` and `core/constants/Colors.ts` removed. Commit 82c6d7e.
+- [x] T3 (S5, S6): DESIGN.md token table and Known gaps; skill registry refresh. Registry: 46 skills, `.atl/skill-registry.md` (gitignored), Engram `skill-registry` updated.
 
 ## Log
 
@@ -24,3 +24,4 @@ Visual-only change; no money, SQL, or auth.
 - L2: Maintainer answers: warning "Separar: errorSubtle + warning ámbar (Recomendado)"; roundness "s = 8 (Recomendado)"; hardcoded "Lo anterior + tokens de sombra y media".
 - L3: Findings. `#D2232A` is the Kingston/XPG logo red inside brand SVG icons (legitimate). `warning` had two uses: soft error panel background (`backgroundColor="warning"` + `borderColor="error"`) and caution foreground (alert icons, Connect border, status dot for PENDING_VERIFICATION/RESERVED/IN_REVIEW/IN_DISPUTE), where 10% red was nearly invisible. `getOrderStatusBgColor` and `core/constants/Colors.ts` are unused. Importing `core/theme/index.ts` under `bun test` fails (react-native), so tokens move to a pure `tokens.ts`.
 - L4: T2 mapping: shadows -> `shadow`; image viewers -> `mediaBackground`; `#121212` -> `background`; toasts: info `#2196F3` -> `textSecondary`, warning -> `warning`; `#EF4444` -> `error`; `#666` -> `textSecondary`; `#2a2a2a` map placeholder -> `cardBackground`; PrimaryButton loading `#FFFFFF` and WalletBalanceCard `#000` text on gold -> `background`. Found but not decided: `getOrderStatusColor` maps cancelled/refunded/dispute to `error` instead of their state colors; recorded in Known gaps. Typecheck: 74 errors before and after, identical set. Lint on changed files: 1 pre-existing error (`ProductSnapCard.tsx` unused `styles`).
+- L5: `gentle-ai skill-registry refresh --force` -> "Skill registry refreshed (46 skills)". `vercel-composition-patterns` indexes with an empty description: its multi-line YAML `description` is not read by the refresh parser (vendor skill, not edited). New since the last list: `sentry-react-native-sdk`.
