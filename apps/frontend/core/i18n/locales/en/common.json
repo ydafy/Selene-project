@@ -66,5 +66,10 @@
     "title": "Kernel Failure",
     "message": "Selene has stopped a process to protect the integrity of your data. The technical report has been sent to the NetRunners.",
     "retryButton": "REBOOT SYSTEM"
+  },
+
+  "imageViewer": {
+    "close": "Close image viewer",
+    "counterLabel": "Image {{current}} of {{total}}"
   }
 }

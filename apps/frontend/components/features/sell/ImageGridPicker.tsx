@@ -3,7 +3,7 @@ import { TouchableOpacity, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import ImageViewing from 'react-native-image-viewing';
+import { AppImageViewer } from '../../ui/AppImageViewer';
 
 import { Box, Text } from '../../base';
 import { AppImage } from '../../ui/AppImage';
@@ -54,43 +54,12 @@ export const ImageGridPicker = ({
   return (
     <Box>
       {/* Visor de Pantalla Completa */}
-      <ImageViewing
+      <AppImageViewer
         images={imagesForViewer}
-        imageIndex={currentImageIndex}
+        initialIndex={currentImageIndex}
         visible={visible}
-        onRequestClose={() => setVisible(false)}
-        swipeToCloseEnabled={true}
-        doubleTapToZoomEnabled={true}
-        animationType="fade"
-        backgroundColor={theme.colors.mediaBackground}
-        HeaderComponent={() => (
-          <Box position="absolute" top={50} right={20} zIndex={1}>
-            <TouchableOpacity
-              onPress={() => setVisible(false)}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              accessibilityRole="button"
-              accessibilityLabel={buildCloseViewerA11yLabel(t)}
-              style={{
-                backgroundColor: 'rgba(0,0,0,0.5)',
-                padding: 8,
-                borderRadius: 20,
-              }}
-            >
-              <MaterialCommunityIcons name="close" size={24} color="white" />
-            </TouchableOpacity>
-          </Box>
-        )}
-        FooterComponent={({ imageIndex }) => (
-          <Box position="absolute" bottom={40} width="100%" alignItems="center">
-            <Text
-              variant="body-md"
-              color="textPrimary"
-              style={{ textShadowColor: 'black', textShadowRadius: 5 }}
-            >
-              {imageIndex + 1} / {images.length}
-            </Text>
-          </Box>
-        )}
+        onClose={() => setVisible(false)}
+        closeAccessibilityLabel={buildCloseViewerA11yLabel(t)}
       />
 
       {/* Grid de Imágenes */}

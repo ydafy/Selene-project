@@ -66,5 +66,10 @@
     "title": "Falla en el Núcleo",
     "message": "Selene ha detenido un proceso para proteger la integridad de tus datos. El reporte técnico ha sido enviado a los NetRunners.",
     "retryButton": "REINICIAR SISTEMA"
+  },
+
+  "imageViewer": {
+    "close": "Cerrar visor de imagen",
+    "counterLabel": "Imagen {{current}} de {{total}}"
   }
 }

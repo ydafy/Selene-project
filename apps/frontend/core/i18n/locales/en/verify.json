@@ -17,6 +17,7 @@
   },
   "guide": {
     "buttonLabel": "How do I do this?",
+    "stepCounter": "Step {{current}} of {{total}}",
     "benchmark": {
       "modalTitle": "Guide: How to use 3DMark",
       "step1Title": "1. Search on Steam",

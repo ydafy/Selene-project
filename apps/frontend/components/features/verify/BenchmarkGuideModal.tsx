@@ -7,7 +7,7 @@ import {
 } from '@gorhom/bottom-sheet';
 import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
-import ImageViewing from 'react-native-image-viewing';
+import { AppImageViewer } from '../../ui/AppImageViewer';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { Box, Text } from '../../base';
@@ -326,36 +326,12 @@ export const BenchmarkGuideModal = ({
         </BottomSheetScrollView>
       </BottomSheetModal>
 
-      <ImageViewing
+      <AppImageViewer
         images={imagesForViewer}
-        imageIndex={currentImageIndex}
+        initialIndex={currentImageIndex}
         visible={viewerVisible}
-        onRequestClose={() => setViewerVisible(false)}
-        swipeToCloseEnabled={true}
-        doubleTapToZoomEnabled={true}
-        animationType="fade"
-        backgroundColor={theme.colors.mediaBackground}
-        HeaderComponent={() => (
-          <Box position="absolute" top={50} right={20} zIndex={1}>
-            <TouchableOpacity
-              onPress={() => setViewerVisible(false)}
-              style={{
-                backgroundColor: 'separator',
-                padding: 8,
-                borderRadius: 20,
-              }}
-            >
-              <MaterialCommunityIcons name="close" size={24} color="white" />
-            </TouchableOpacity>
-          </Box>
-        )}
-        FooterComponent={({ imageIndex }) => (
-          <Box position="absolute" bottom={40} width="100%" alignItems="center">
-            <Text variant="body-md" color="textPrimary">
-              Paso {imageIndex + 1} de {config.steps.length}
-            </Text>
-          </Box>
-        )}
+        onClose={() => setViewerVisible(false)}
+        footerText={({ current, total }) => t('guide.stepCounter', { current, total })}
       />
     </>
   );

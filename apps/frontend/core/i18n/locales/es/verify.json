@@ -22,6 +22,7 @@
   },
   "guide": {
     "buttonLabel": "¿Cómo hago esto?",
+    "stepCounter": "Paso {{current}} de {{total}}",
 
     "benchmark": {
       "modalTitle": "Guía: Cómo usar 3DMark",

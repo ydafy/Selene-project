@@ -1,12 +1,10 @@
 import { useState } from 'react';
 import { TouchableOpacity } from 'react-native';
-import ImageViewing from 'react-native-image-viewing';
 import { useTheme } from '@shopify/restyle';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { IconButton } from 'react-native-paper';
 
-import { Box, Text } from '../../base'; // Importamos Text para el contador
+import { Box } from '../../base';
 import { AppImage } from '../../ui/AppImage';
+import { AppImageViewer } from '../../ui/AppImageViewer';
 import { Theme } from '../../../core/theme';
 
 type ProductImageGalleryProps = {
@@ -25,65 +23,13 @@ export const ProductImageGallery = ({
   const currentImage = images[selectedImageIndex];
   const imagesForViewer = images.map((img) => ({ uri: img }));
 
-  // --- 1. HEADER (Botón Cerrar) ---
-  const renderHeader = () => (
-    <SafeAreaView
-      edges={['top']}
-      style={{ position: 'absolute', top: 0, right: 0, zIndex: 1 }}
-    >
-      <IconButton
-        icon="close"
-        iconColor="white"
-        size={28}
-        onPress={() => setIsViewerVisible(false)}
-        style={{ backgroundColor: 'rgba(0,0,0,0.5)', margin: 16 }}
-      />
-    </SafeAreaView>
-  );
-
-  // --- 2. FOOTER (Contador de Imágenes - MUST HAVE) ---
-  // Recibe el imageIndex actual automáticamente de la librería
-  const renderFooter = ({ imageIndex }: { imageIndex: number }) => (
-    <SafeAreaView
-      edges={['bottom']}
-      style={{
-        position: 'absolute',
-        bottom: 0,
-        width: '100%',
-        alignItems: 'center',
-        marginBottom: 20,
-      }}
-    >
-      <Box
-        backgroundColor="background" // Fondo oscuro
-        opacity={0.8}
-        paddingHorizontal="m"
-        paddingVertical="s"
-        borderRadius="l"
-      >
-        <Text variant="body-md" color="textPrimary" fontWeight="bold">
-          {imageIndex + 1} / {images.length}
-        </Text>
-      </Box>
-    </SafeAreaView>
-  );
-
   return (
     <>
-      <ImageViewing
+      <AppImageViewer
         images={imagesForViewer}
-        imageIndex={selectedImageIndex}
+        initialIndex={selectedImageIndex}
         visible={isViewerVisible}
-        onRequestClose={() => setIsViewerVisible(false)}
-        // --- CONFIGURACIÓN PREMIUM ---
-        swipeToCloseEnabled={true}
-        doubleTapToZoomEnabled={true}
-        animationType="fade" // 'fade' suele sentirse más elegante que 'slide' para visores de fotos
-        presentationStyle="overFullScreen" // Truco para Android: cubre la barra de estado
-        backgroundColor={theme.colors.mediaBackground}
-        // --- COMPONENTES CUSTOM ---
-        HeaderComponent={renderHeader}
-        FooterComponent={renderFooter} // Añadimos el contador
+        onClose={() => setIsViewerVisible(false)}
       />
 
       {/* --- GALERÍA EN PANTALLA (Sin cambios) --- */}
