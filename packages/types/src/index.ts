@@ -269,19 +269,6 @@ export interface EdgeFunctionRegistry {
       ephemeralKey?: string;
     };
   };
-  'create-payment-intent': {
-    payload: {
-      productIds: string[];
-      addressId: string;
-      idempotencyKey: string;
-    };
-    response: {
-      clientSecret: string;
-      ephemeralKey: string;
-      customer: string;
-      amount: number;
-    };
-  };
   'create-connect-account': {
     payload: { refreshUrl?: string; returnUrl?: string };
     response: { url: string; accountId: string };
