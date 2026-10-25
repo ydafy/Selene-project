@@ -1,13 +1,9 @@
 {
   "version": "5",
   "specifiers": {
-    "npm:zod@3.23.8": "3.23.8",
     "npm:zod@4.6.7": "4.6.7"
   },
   "npm": {
-    "zod@3.23.8": {
-      "integrity": "sha512-XBx9AXhXktjUqnepgTiE5flcKIYWi/rme0Eaj+5Y0lftuGBq+jyRu/md4WnuxqgP1ubdpNCsYEYPxrzVHD8d6g=="
-    },
     "zod@4.6.7": {
       "integrity": "sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg=="
     }
@@ -25,8 +21,7 @@
     "https://deno.land/std@0.168.0/async/tee.ts": "3a47cc4e9a940904fd4341f0224907e199121c80b831faa5ec2b054c6d2eff5e",
     "https://deno.land/std@0.168.0/http/server.ts": "e99c1bee8a3f6571ee4cdeb2966efad465b8f6fe62bec1bdb59c1f007cc4d155",
     "https://esm.sh/@supabase/supabase-js@2.39.3": "832d7714491bd1c8a9008a332b35cb099f24b451ad79e755ecf4d71985fd6610",
-    "https://esm.sh/stripe@17.0.0": "fe49d87a0bc0e521b9147d8c7db9c8699a788b7f7829b80f017c9a5c4737df6f",
-    "https://esm.sh/zod@3.23.8": "15e60c792ac21d4818f181671c7c74bf33bf7526d487dc524911e42785d8b5c2"
+    "https://esm.sh/stripe@17.0.0": "fe49d87a0bc0e521b9147d8c7db9c8699a788b7f7829b80f017c9a5c4737df6f"
   },
   "workspace": {
     "dependencies": [

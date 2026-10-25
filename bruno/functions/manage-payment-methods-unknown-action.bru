@@ -1,0 +1,39 @@
+meta {
+  name: manage-payment-methods-unknown-action
+  type: http
+  seq: 61
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/manage-payment-methods
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  {
+    "action": "drop_everything"
+  }
+}
+
+tests {
+  test("an unknown action fails with one invalid_value issue", function () {
+    expect(res.getStatus()).to.equal(400);
+    const issues = JSON.parse(res.getBody().error);
+    expect(issues).to.have.length(1);
+    expect(issues[0].code).to.equal("invalid_value");
+    expect(issues[0].path).to.deep.equal(["action"]);
+  });
+}
+
+docs {
+  The body `error` is zod 4's `ZodError.message` (JSON of issues); `usePaymentMethods` only
+  branches on `PAYMENT_LIMIT_REACHED`. Validation runs after the Bearer token check and before
+  the Stripe customer lookup or creation, so nothing is created or soft-deleted. Run after
+  auth/login-buyer.
+}

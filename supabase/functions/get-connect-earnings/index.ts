@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import { z } from 'https://esm.sh/zod@3.23.8';
+
+import { ConnectEarningsRequestSchema } from './request-schema.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,10 +9,6 @@ const corsHeaders = {
     'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
-
-const RequestSchema = z.object({
-  search: z.string().trim().max(120).optional(),
-});
 
 const escapeIlikePattern = (value: string) =>
   value.replace(/[\\%_]/g, (match) => `\\${match}`);
@@ -46,7 +43,7 @@ serve(async (req) => {
       .single();
     if (profile?.role !== 'admin') throw new Error('ADMIN_REQUIRED');
 
-    const { search } = RequestSchema.parse(await req.json().catch(() => ({})));
+    const { search } = ConnectEarningsRequestSchema.parse(await req.json().catch(() => ({})));
 
     let query = supabaseAdmin
       .from('admin_connect_earnings_view')

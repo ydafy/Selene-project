@@ -7,7 +7,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import Stripe from 'https://esm.sh/stripe@17.0.0';
-import { z } from 'https://esm.sh/zod@3.23.8';
+
+import { CreatePaymentIntentRequestSchema } from './request-schema.ts';
 
 const APP_NAME = 'selene';
 const STRIPE_API_VERSION = '2026-04-22.dahlia';
@@ -18,12 +19,6 @@ const corsHeaders = {
     'authorization, x-client-info, apikey, content-type, idempotency-key',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
-
-const RequestSchema = z.object({
-  productIds: z.array(z.string().uuid()).min(1),
-  addressId: z.string().uuid(),
-  idempotencyKey: z.string().optional(),
-});
 
 /**
  * Logger estructurado para auditoría en Supabase Logs
@@ -99,7 +94,7 @@ serve(async (req) => {
 
     // 6. VALIDACIÓN DE INPUT (Zod)
     const body = await req.json();
-    const result = RequestSchema.safeParse(body);
+    const result = CreatePaymentIntentRequestSchema.safeParse(body);
     if (!result.success) {
       log('error', 'Validation failed', { errors: result.error.format() });
       throw new Error('INVALID_INPUT');
