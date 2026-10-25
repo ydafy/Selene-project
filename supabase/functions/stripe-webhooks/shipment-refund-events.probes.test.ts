@@ -150,7 +150,7 @@ describe('shipment refund events: verifier probes', () => {
   });
 
   it('an RPC error throws REFUND_EVENT_RPC_FAILED, keeps the raw message in the log only and never alerts', async () => {
-    const fake = fakePorts(null, { message: 'REFUND_ID_MISMATCH raw detail' });
+    const fake = fakePorts(null, { message: 'CANCELLATION_COMPLETE_FAILED: raw detail' });
     let thrown = '';
     try {
       await handleShipmentRefundEvent(refundEvent(), fake.ports);
@@ -158,7 +158,7 @@ describe('shipment refund events: verifier probes', () => {
       thrown = (error as Error).message;
     }
     expect(thrown).toBe('REFUND_EVENT_RPC_FAILED');
-    expect(JSON.stringify(fake.logs)).toContain('REFUND_ID_MISMATCH raw detail');
+    expect(JSON.stringify(fake.logs)).toContain('CANCELLATION_COMPLETE_FAILED: raw detail');
     expect(fake.reports).toHaveLength(0);
   });
 
