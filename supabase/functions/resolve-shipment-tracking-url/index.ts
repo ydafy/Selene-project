@@ -1,14 +1,12 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import { z } from 'https://esm.sh/zod@3.23.8';
 
 import { resolveEnviaTrackingUrl } from '../_shared/envia-tracking.ts';
 import {
   createResolveShipmentTrackingUrlHandler,
   type TrackingUrlSubject,
 } from './handler.ts';
-
-const shipmentIdSchema = z.object({ shipmentId: z.string().uuid() });
+import { ShipmentTrackingUrlRequestSchema } from './request-schema.ts';
 
 const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
@@ -57,7 +55,7 @@ serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok');
 
   const body = await request.clone().json().catch(() => null);
-  if (!shipmentIdSchema.safeParse(body).success) {
+  if (!ShipmentTrackingUrlRequestSchema.safeParse(body).success) {
     return new Response(JSON.stringify({ error: 'INVALID_SHIPMENT_ID' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
