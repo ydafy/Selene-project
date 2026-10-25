@@ -7,11 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "selene",
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./assets/images/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#121212"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.selene.marketplace",
@@ -91,7 +86,17 @@
       "expo-video",
       "expo-font",
       "expo-localization",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-image",
+      "expo-sharing",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#121212"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

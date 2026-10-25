@@ -16,7 +16,7 @@ mock.module('expo-web-browser', () => ({
   openBrowserAsync: async () => undefined,
 }));
 
-mock.module('@react-navigation/native', () => ({
+mock.module('expo-router/react-navigation', () => ({
   useFocusEffect: () => undefined,
 }));
 

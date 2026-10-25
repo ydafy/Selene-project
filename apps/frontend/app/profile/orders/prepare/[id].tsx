@@ -5,7 +5,7 @@ import {
   TouchableOpacity,
   ImageSourcePropType,
 } from 'react-native';
-import { usePreventRemove } from '@react-navigation/native';
+import { usePreventRemove } from 'expo-router/react-navigation';
 import {
   Stack,
   useLocalSearchParams,

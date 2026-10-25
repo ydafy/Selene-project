@@ -39,7 +39,7 @@ import { MD3DarkTheme as DefaultPaperTheme } from 'react-native-paper';
 import {
   DarkTheme as NavigationDarkTheme,
   Theme as NavThemeType,
-} from '@react-navigation/native';
+} from 'expo-router/react-navigation';
 import { borderRadii, colors, paperRoundness, spacing } from './tokens';
 
 // La paleta y los roles semánticos viven en `tokens.ts`.
@@ -199,7 +199,7 @@ export const paperTheme = {
     error: theme.colors.error,
   },
 };
-export const navigationTheme: NavThemeType = {
+export const navigationTheme = {
   ...NavigationDarkTheme,
   colors: {
     ...NavigationDarkTheme.colors,
@@ -210,6 +210,6 @@ export const navigationTheme: NavThemeType = {
     primary: theme.colors.primary, // Para el tint color activo
     notification: theme.colors.error, // Para badges
   },
-};
+} satisfies NavThemeType;
 
 export type Theme = typeof theme;

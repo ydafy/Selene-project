@@ -53,7 +53,7 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
     ScrollView: host('ScrollView'), TouchableOpacity: host('TouchableOpacity'),
     Linking: { openURL },
   }));
-  mock.module('@react-navigation/native', () => ({ usePreventRemove: () => {} }));
+  mock.module('expo-router/react-navigation', () => ({ usePreventRemove: () => {} }));
   mock.module('expo-router', () => ({
     Stack: { Screen: host('StackScreen') },
     useLocalSearchParams: () => ({ id: orderId, shipment_id: selectedId }),

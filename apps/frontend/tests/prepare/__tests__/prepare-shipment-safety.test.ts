@@ -11,7 +11,7 @@ describe('prepare shipment safety & resilience policy', () => {
   test('enforces native gesture & back button navigation lock', () => {
     // 1. Must use React Navigation prevent remove hook
     expect(src).toContain(
-      "import { usePreventRemove } from '@react-navigation/native'",
+      "import { usePreventRemove } from 'expo-router/react-navigation'",
     );
     expect(src).toMatch(/usePreventRemove\(\s*isProcessing/);
 

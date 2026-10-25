@@ -9,7 +9,7 @@ import {
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useScrollToTop } from '@react-navigation/native';
+import { useScrollToTop } from 'expo-router/react-navigation';
 import { MotiView } from 'moti';
 import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';

@@ -21,7 +21,7 @@ if (process.env.SELENE_LABEL_REFRESH_CHILD !== '1') {
   let blurImmediately = false;
   let currentState = 'active';
   const listeners = new Set<(state: string) => void>();
-  mock.module('@react-navigation/native', () => ({
+  mock.module('expo-router/react-navigation', () => ({
     useFocusEffect: (effect: React.EffectCallback) => {
       React.useEffect(() => {
         const cleanup = focused ? effect() : undefined;

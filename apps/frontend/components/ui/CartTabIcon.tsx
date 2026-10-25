@@ -1,3 +1,4 @@
+import { ColorValue } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 //import { useTheme } from '@shopify/restyle';
 import { Box, Text } from '../base';
@@ -5,7 +6,7 @@ import { colors } from '@/core/theme/tokens';
 //import { Theme } from '../../core/theme';
 
 type CartTabIconProps = {
-  color: string;
+  color: ColorValue;
   size: number;
   count: number;
 };

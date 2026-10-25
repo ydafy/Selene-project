@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { AppState } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router/react-navigation';
 
 /** Refreshes persisted status only; the caller owns diagnostics, never purchases. */
 export function useShipmentLabelRefresh(

@@ -60,5 +60,8 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.107.0",
     "expo-system-ui": "^57.0.2"
+  },
+  "patchedDependencies": {
+    "react-native-image-viewing@0.2.2": "patches/react-native-image-viewing@0.2.2.patch"
   }
 }
