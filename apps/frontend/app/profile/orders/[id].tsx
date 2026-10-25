@@ -590,7 +590,7 @@ export default function OrderDetailScreen() {
           <Box
             {...cardStyles}
             borderColor="error"
-            backgroundColor="warning"
+            backgroundColor="errorSubtle"
             flexDirection="row"
             alignItems="center"
             gap="m"

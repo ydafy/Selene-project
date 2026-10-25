@@ -618,7 +618,7 @@ function PrepareShipmentContent() {
 
         {errorMsg && (
           <Box
-            backgroundColor="warning"
+            backgroundColor="errorSubtle"
             padding="m"
             borderRadius="m"
             marginBottom="m"

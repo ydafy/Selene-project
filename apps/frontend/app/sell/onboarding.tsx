@@ -336,7 +336,7 @@ export default function SellerOnboardingScreen() {
 
         {onboardingUi.showRejectedBanner && (
           <Box
-            backgroundColor="warning"
+            backgroundColor="errorSubtle"
             padding="m"
             borderRadius="m"
             marginBottom="m"
@@ -379,7 +379,7 @@ export default function SellerOnboardingScreen() {
 
         {visibleErrorMessage && (
           <Box
-            backgroundColor="warning"
+            backgroundColor="errorSubtle"
             padding="m"
             borderRadius="m"
             marginBottom="m"

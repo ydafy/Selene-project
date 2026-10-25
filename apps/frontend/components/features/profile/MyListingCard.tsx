@@ -177,9 +177,9 @@ export const MyListingCard = ({
                 marginTop="xs"
                 paddingVertical="xs"
                 paddingHorizontal="s"
-                backgroundColor="warning"
+                backgroundColor="errorSubtle"
                 borderRadius="s"
-                style={{ borderWidth: 1, borderColor: theme.colors.warning }}
+                style={{ borderWidth: 1, borderColor: theme.colors.errorSubtle }}
               >
                 <MaterialCommunityIcons
                   name="alert-circle-outline"

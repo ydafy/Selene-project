@@ -259,7 +259,7 @@ export const OrderActionCard = ({
       animate={{ opacity: 1, scale: 1 }}
     >
       <Box
-        backgroundColor="warning"
+        backgroundColor="errorSubtle"
         padding="m"
         borderRadius="l"
         borderWidth={1}
