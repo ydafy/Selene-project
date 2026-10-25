@@ -29,7 +29,14 @@ describe('shipment refund events after resolution migration (SQL text)', () => {
 
   it('contains the canonical function and its grants, and replaces only that function', () => {
     expect(events.indexOf(fnStart)).toBeGreaterThan(-1);
-    expect(statements(migration)).toContain(statements(fromFunction(events)));
+    // BL7 replaced the function in a later migration: this one holds the resolved-operation path.
+    const body = fromFunction(events);
+    const resolvedPath = body.slice(
+      body.indexOf('IF v_operation.refund_resolved_at IS NOT NULL THEN'),
+      body.indexOf('v_recorded := public.fn_record_shipment_cancellation_refund('),
+    );
+    expect(resolvedPath.length).toBeGreaterThan(0);
+    expect(statements(migration)).toContain(statements(resolvedPath));
     expect(migration).not.toMatch(/DROP\s+(FUNCTION|TABLE)/i);
     expect(migration).not.toContain('notifications_event_kind_catalogue_chk');
     expect(migration).toMatch(
