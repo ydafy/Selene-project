@@ -20,9 +20,9 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import Stripe from 'https://esm.sh/stripe@17.0.0';
-import { z } from 'https://esm.sh/zod@3.23.8';
 
 import { resolveConnectOnboardingUrls } from './connect-onboarding-urls.ts';
+import { CreateConnectAccountRequestSchema } from './request-schema.ts';
 
 const STRIPE_API_VERSION = '2026-04-22.dahlia';
 const APP_NAME = 'selene';
@@ -33,14 +33,6 @@ const corsHeaders = {
     'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
-
-const RequestSchema = z.object({
-  // The client may still send Expo/app deep links for context. The resolver
-  // never forwards raw client URLs to Stripe; it uses configured HTTPS URLs or
-  // the HTTPS redirect bridge below.
-  refreshUrl: z.string().optional(),
-  returnUrl: z.string().optional(),
-});
 
 const log = (
   level: 'info' | 'warn' | 'error',
@@ -90,7 +82,7 @@ serve(async (req: Request) => {
 
     // 3. Validate input (links are optional — fallback to defaults below)
     const body = await req.json().catch(() => ({}));
-    const { refreshUrl, returnUrl } = RequestSchema.parse(body);
+    const { refreshUrl, returnUrl } = CreateConnectAccountRequestSchema.parse(body);
 
     const onboardingUrls = resolveConnectOnboardingUrls(
       { refreshUrl, returnUrl },
