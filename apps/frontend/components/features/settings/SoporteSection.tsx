@@ -4,24 +4,22 @@ import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
 import { SettingsRow } from './SettingsRow';
-import { resolveChatwootConfig } from '../../../core/utils/chatwoot';
+import { resolveSupportEmail } from '../../../core/utils/supportEmail';
 
 /**
- * Soporte section: opens the dedicated /profile/support modal where the
- * Chatwoot widget mounts. Falls back to a localized "unavailable" toast
- * if env config is missing. Covers CONF-018.
+ * Soporte section: opens the /profile/support modal, where users write to
+ * the support email. Shows a localized "unavailable" toast when the email
+ * is not configured.
  */
 export const SoporteSection = () => {
   const { t } = useTranslation('settings');
 
-  const config = resolveChatwootConfig({
-    EXPO_PUBLIC_CHATWOOT_BASE_URL: process.env.EXPO_PUBLIC_CHATWOOT_BASE_URL,
-    EXPO_PUBLIC_CHATWOOT_WEBSITE_TOKEN:
-      process.env.EXPO_PUBLIC_CHATWOOT_WEBSITE_TOKEN,
+  const email = resolveSupportEmail({
+    EXPO_PUBLIC_SUPPORT_EMAIL: process.env.EXPO_PUBLIC_SUPPORT_EMAIL,
   });
 
   const handlePress = useCallback(() => {
-    if (!config.available) {
+    if (!email) {
       Toast.show({
         type: 'info',
         text1: t('support.title'),
@@ -30,7 +28,7 @@ export const SoporteSection = () => {
       return;
     }
     router.push('/profile/support');
-  }, [config.available, t]);
+  }, [email, t]);
 
   return (
     <SettingsRow

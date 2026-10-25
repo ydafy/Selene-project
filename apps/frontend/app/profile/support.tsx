@@ -1,21 +1,15 @@
 /**
  * @file app/profile/support.tsx
- * @description /profile/support modal — Chatwoot widget host with web
- * fallback via expo-web-browser. Covers CONF-018 (EXTD-TASK-010).
- *
- * The native @chatwoot/react-native-widget package is loaded dynamically
- * so the route can render even when the dependency is not yet installed
- * (placeholder phase). If the require fails OR the runtime widget throws,
- * the screen renders the fallback button that opens the chat URL via
- * expo-web-browser.
+ * @description /profile/support modal: users write to the support email for
+ * questions and reports. The address stays visible so it can be copied when
+ * the device has no mail app.
  */
-import { useCallback, useEffect, useState } from 'react';
-import { TouchableOpacity } from 'react-native';
+import { useCallback } from 'react';
+import { Linking, TouchableOpacity } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import * as WebBrowser from 'expo-web-browser';
 import Toast from 'react-native-toast-message';
 
 import { Box, Text } from '../../components/base';
@@ -23,37 +17,20 @@ import { ScreenLayout } from '../../components/layout/ScreenLayout';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { Theme } from '../../core/theme';
 import {
-  resolveChatwootConfig,
-  buildChatwootChatUrl,
-} from '../../core/utils/chatwoot';
+  buildSupportMailto,
+  resolveSupportEmail,
+} from '../../core/utils/supportEmail';
 
 export default function SupportScreen() {
   const { t } = useTranslation('settings');
   const theme = useTheme<Theme>();
 
-  const config = resolveChatwootConfig({
-    EXPO_PUBLIC_CHATWOOT_BASE_URL: process.env.EXPO_PUBLIC_CHATWOOT_BASE_URL,
-    EXPO_PUBLIC_CHATWOOT_WEBSITE_TOKEN:
-      process.env.EXPO_PUBLIC_CHATWOOT_WEBSITE_TOKEN,
+  const email = resolveSupportEmail({
+    EXPO_PUBLIC_SUPPORT_EMAIL: process.env.EXPO_PUBLIC_SUPPORT_EMAIL,
   });
-  const chatUrl = buildChatwootChatUrl(config);
 
-  const [widgetUnavailable, setWidgetUnavailable] = useState(false);
-
-  useEffect(() => {
-    // Attempt to load the native widget dynamically. If the dependency is
-    // not yet installed (placeholder phase) or fails to evaluate, mark the
-    // widget as unavailable so the fallback CTA is the only path.
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('@chatwoot/react-native-widget');
-    } catch {
-      setWidgetUnavailable(true);
-    }
-  }, []);
-
-  const openWebFallback = useCallback(async () => {
-    if (!chatUrl) {
+  const openMail = useCallback(async () => {
+    if (!email) {
       Toast.show({
         type: 'info',
         text1: t('support.title'),
@@ -62,15 +39,15 @@ export default function SupportScreen() {
       return;
     }
     try {
-      await WebBrowser.openBrowserAsync(chatUrl);
+      await Linking.openURL(buildSupportMailto(email, t('support.emailSubject')));
     } catch {
       Toast.show({
-        type: 'error',
-        text1: t('toasts.routeErrorTitle'),
-        text2: t('errors.browserNotFound'),
+        type: 'info',
+        text1: t('support.title'),
+        text2: t('support.noMailApp', { email }),
       });
     }
-  }, [chatUrl, t]);
+  }, [email, t]);
 
   return (
     <ScreenLayout>
@@ -104,7 +81,7 @@ export default function SupportScreen() {
 
       <Box flex={1} padding="l" justifyContent="center" alignItems="center">
         <MaterialCommunityIcons
-          name="lifebuoy"
+          name="email-outline"
           size={64}
           color={theme.colors.primary}
         />
@@ -117,7 +94,17 @@ export default function SupportScreen() {
           {t('support.description')}
         </Text>
 
-        {widgetUnavailable && (
+        {email ? (
+          <Text
+            variant="subheader-md"
+            color="primary"
+            marginTop="s"
+            textAlign="center"
+            selectable
+          >
+            {email}
+          </Text>
+        ) : (
           <Text
             variant="caption-md"
             color="textSecondary"
@@ -129,8 +116,8 @@ export default function SupportScreen() {
         )}
 
         <Box marginTop="xl" width="100%">
-          <PrimaryButton onPress={openWebFallback} disabled={!chatUrl}>
-            {t('support.title')}
+          <PrimaryButton onPress={openMail} disabled={!email}>
+            {t('support.cta')}
           </PrimaryButton>
         </Box>
       </Box>

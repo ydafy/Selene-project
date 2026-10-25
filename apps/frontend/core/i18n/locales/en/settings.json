@@ -81,7 +81,10 @@
   },
   "support": {
     "title": "Support",
-    "description": "Chat with our support team.",
+    "description": "Have a question or something to report? Write to us and we'll reply by email.",
+    "cta": "Email support",
+    "emailSubject": "Selene support",
+    "noMailApp": "We couldn't find a mail app. Write to us at {{email}}.",
     "unavailable": "Support is currently unavailable. Please try again later."
   },
   "toasts": {

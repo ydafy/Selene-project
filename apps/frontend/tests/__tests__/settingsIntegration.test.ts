@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 /**
  * Structural integration tests for the account-settings-extended change.
  * Covers EXTD-TASK-012: section rendering order, modal navigation registration,
- * email/password payload assertions, and Chatwoot fallback wiring.
+ * email/password payload assertions, and email support wiring.
  *
  * These tests read source files and assert key wiring strings exist rather
  * than mounting React Native components (which bun:test cannot render).
@@ -172,12 +172,12 @@ describe('SecuritySection password-change wiring (CONF-017)', () => {
   });
 });
 
-describe('Chatwoot Soporte fallback wiring (CONF-018)', () => {
+describe('Soporte email wiring', () => {
   const sectionSrc = read('components/features/settings/SoporteSection.tsx');
   const supportSrc = read('app/profile/support.tsx');
 
-  test('SoporteSection shows unavailable toast when config missing', () => {
-    expect(sectionSrc).toContain('resolveChatwootConfig');
+  test('SoporteSection shows unavailable toast when the email is not configured', () => {
+    expect(sectionSrc).toContain('resolveSupportEmail');
     expect(sectionSrc).toContain('support.unavailable');
   });
 
@@ -185,13 +185,19 @@ describe('Chatwoot Soporte fallback wiring (CONF-018)', () => {
     expect(sectionSrc).toContain("'/profile/support'");
   });
 
-  test('support screen tries to require @chatwoot/react-native-widget', () => {
-    expect(supportSrc).toContain('@chatwoot/react-native-widget');
+  test('support screen opens a mailto link and shows the address', () => {
+    expect(supportSrc).toContain('buildSupportMailto');
+    expect(supportSrc).toContain('Linking.openURL');
+    expect(supportSrc).toContain('{email}');
   });
 
-  test('support screen falls back to openBrowserAsync on widget failure', () => {
-    expect(supportSrc).toContain('openBrowserAsync');
-    expect(supportSrc).toContain('buildChatwootChatUrl');
+  test('support screen tells the user to write to the address when no mail app opens', () => {
+    expect(supportSrc).toContain('support.noMailApp');
+  });
+
+  test('no Chatwoot code is left in the app', () => {
+    expect(sectionSrc.toLowerCase()).not.toContain('chatwoot');
+    expect(supportSrc.toLowerCase()).not.toContain('chatwoot');
   });
 });
 
@@ -215,15 +221,12 @@ describe('profile/edit modal wiring (CONF-015)', () => {
   });
 });
 
-describe('.env.example documents Chatwoot + Legal vars (CONF-018, CONF-012)', () => {
+describe('.env.example documents support + Legal vars (CONF-012)', () => {
   const env = read('.env.example');
 
-  test('contains EXPO_PUBLIC_CHATWOOT_BASE_URL', () => {
-    expect(env).toContain('EXPO_PUBLIC_CHATWOOT_BASE_URL');
-  });
-
-  test('contains EXPO_PUBLIC_CHATWOOT_WEBSITE_TOKEN', () => {
-    expect(env).toContain('EXPO_PUBLIC_CHATWOOT_WEBSITE_TOKEN');
+  test('contains EXPO_PUBLIC_SUPPORT_EMAIL and no Chatwoot vars', () => {
+    expect(env).toContain('EXPO_PUBLIC_SUPPORT_EMAIL');
+    expect(env).not.toContain('CHATWOOT');
   });
 
   test('contains EXPO_PUBLIC_TERMS_URL', () => {
@@ -235,10 +238,11 @@ describe('.env.example documents Chatwoot + Legal vars (CONF-018, CONF-012)', ()
   });
 });
 
-describe('package.json lists @chatwoot/react-native-widget', () => {
-  test('dependency entry exists', () => {
+describe('package.json drops the Chatwoot widget', () => {
+  test('neither Chatwoot nor its webview peer is a dependency', () => {
     const pkg = JSON.parse(read('package.json'));
-    expect(pkg.dependencies['@chatwoot/react-native-widget']).toBeDefined();
+    expect(pkg.dependencies['@chatwoot/react-native-widget']).toBeUndefined();
+    expect(pkg.dependencies['react-native-webview']).toBeUndefined();
   });
 });
 

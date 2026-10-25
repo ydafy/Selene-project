@@ -81,7 +81,10 @@
   },
   "support": {
     "title": "Soporte",
-    "description": "Chatea con nuestro equipo de soporte.",
+    "description": "¿Tienes una duda o quieres reportar algo? Escríbenos y te respondemos por correo.",
+    "cta": "Escribir a soporte",
+    "emailSubject": "Soporte Selene",
+    "noMailApp": "No encontramos una app de correo. Escríbenos a {{email}}.",
     "unavailable": "El soporte no está disponible por ahora. Intenta más tarde."
   },
   "toasts": {
