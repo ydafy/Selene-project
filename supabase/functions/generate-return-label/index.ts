@@ -12,7 +12,8 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import { z } from 'https://esm.sh/zod@3.23.8';
+
+import { ReturnLabelRequestSchema } from './request-schema.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -46,10 +47,6 @@ const log = (
   );
 };
 
-const RequestSchema = z.object({
-  disputeId: z.string().uuid('ID de disputa inválido'),
-});
-
 const cleanPhone = (p: string) =>
   String(p || '5500000000')
     .replace(/\D/g, '')
@@ -61,7 +58,7 @@ serve(async (req: Request) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { disputeId } = RequestSchema.parse(body);
+    const { disputeId } = ReturnLabelRequestSchema.parse(body);
 
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
