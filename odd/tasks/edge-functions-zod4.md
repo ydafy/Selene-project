@@ -15,23 +15,23 @@ Branch `fix/edge-functions-zod4`, worktree `School-portal-worktrees/edge-zod4`. 
 
 Route: inline. Each function: request schema moved to `<fn>/request-schema.ts` on `../_shared/zod-runtime.ts`, a bun test of that schema, a Bruno request under `bruno/functions/`, one commit.
 
-- [x] T1 (S1, S2, S5): resolve-shipment-tracking-url (afb61f9)
-- [x] T2 (S1, S2, S5): get-shipping-quote (10da653, L5)
-- [x] T3 (S1, S2, S5): confirm-shipment-delivery (c3d7d6e)
-- [x] T4 (S1, S2, S5): create-return-intent (5e1615a)
-- [x] T5 (S1, S2, S5): generate-return-label (e87eeef)
-- [x] T6 (S1, S2, S5): get-connect-earnings (b972317)
-- [x] T7 (S1, S2, S5): checkout-recovery-worker (b3524d7)
+- [x] T1 (S1, S2, S5): resolve-shipment-tracking-url (76505d8)
+- [x] T2 (S1, S2, S5): get-shipping-quote (1a51a36, L5)
+- [x] T3 (S1, S2, S5): confirm-shipment-delivery (ca46d39)
+- [x] T4 (S1, S2, S5): create-return-intent (ba08159)
+- [x] T5 (S1, S2, S5): generate-return-label (1210003)
+- [x] T6 (S1, S2, S5): get-connect-earnings (126c41b)
+- [x] T7 (S1, S2, S5): checkout-recovery-worker (b86274c)
 T8-T14 route: `gentle-ai-worker` (parent context backstop); the parent reviews each diff and commits per function.
 
-- [x] T8 (S1, S2, S5): rollback-connect-payment (money) (5f241cb)
-- [x] T9 (S1, S2, S5): reconcile-connect-payments (money) (7d34dfe)
-- [x] T10 (S1, S2, S5): resolve-dispute (money) (0a2f479)
-- [x] T11 (S1, S2, S5): create-connect-account (money) (8431799)
-- [x] T12 (S1, S2, S3, S5): create-payment-intent, with BL28 `.max(50)` (money) (9857a8d, L9)
-- [x] T13 (S1, S2, S5): manage-payment-methods (money) (9e42c1a)
-- [x] T14 (S1, S2, S5): drain-legacy-wallets (money) (cd5c91b)
-- [x] T15 (S4): guard test against URL zod imports; drop zod 3.23.8 from `supabase/functions/deno.lock`; close BL28/BL29 in the backlog
+- [x] T8 (S1, S2, S5): rollback-connect-payment (money) (de19c7a)
+- [x] T9 (S1, S2, S5): reconcile-connect-payments (money) (7f8c912)
+- [x] T10 (S1, S2, S5): resolve-dispute (money) (de27952)
+- [x] T11 (S1, S2, S5): create-connect-account (money) (b3a76f1)
+- [x] T12 (S1, S2, S3, S5): create-payment-intent, with BL28 `.max(50)` (money) (4b8f301, L9)
+- [x] T13 (S1, S2, S5): manage-payment-methods (money) (b2eb11f)
+- [x] T14 (S1, S2, S5): drain-legacy-wallets (money) (6b5a4ba)
+- [x] T15 (S4): guard test against URL zod imports; drop zod 3.23.8 from `supabase/functions/deno.lock`; close BL28/BL29 in the backlog (c4282de)
 - [x] T16: verification: `deno check` per function, `bun test`, `functions:serve` + `bun run api:test`
 
 ## Log
@@ -46,3 +46,4 @@ T8-T14 route: `gentle-ai-worker` (parent context backstop); the parent reviews e
 - L8 (T8-T14): `gentle-ai-worker` moved the seven money schemas verbatim (RED "Cannot find module './request-schema.ts'" in all seven; `deno check` clean; `bun test` 3331/0); the parent reviewed every `index.ts` diff (import plus the call site only) and committed each function alone. `drain-legacy-wallets` `.optional().default(false)` keeps an empty body as a real drain, as before (pinned).
 - L9 (T12, BL28): `productIds` capped at 50 (unit test: 10,000 invalid ids give one `too_big` on `['productIds']`). Bruno live showed `create-payment-intent` answers 401 `AUTH_REQUIRED` to a valid buyer before validation: `supabaseClient.auth.getUser()` without the JWT on supabase-js 2.39.3 returns "Auth session missing!" (reproduced with a standalone Deno probe). Pre-existing, unrelated to zod, and the function has no caller; logged as backlog BL34 (retire or `getUser(token)`). Its Bruno request pins the 401 and says it must expect 422 once BL34 is fixed.
 - L10 (T15, T16): guard `_shared/__tests__/no-url-zod-imports.test.ts` scans every source file under `supabase/functions/` for static, re-export, side-effect and dynamic zod imports from `http(s)://`; RED with the seven money `index.ts` stashed (listed each one), GREEN after. `supabase/functions/deno.lock`: the three zod 3.23.8 entries removed; `deno check --frozen` passes for all 14 entrypoints. Local stack (`supabase start`, `db reset`), `functions:serve` + `bun run api:test`: 108/108 pass. Backlog: BL28 and BL29 marked DONE, BL34 added.
+- L11: Rebased on `main` 6a9e3ed (PR #11), which added backlog BL32 and BL33; the `create-payment-intent` auth item is BL34. Commit hashes above are the rebased ones.
