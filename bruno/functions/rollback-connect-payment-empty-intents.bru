@@ -1,0 +1,42 @@
+meta {
+  name: rollback-connect-payment-empty-intents
+  type: http
+  seq: 56
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/rollback-connect-payment
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  {
+    "orderId": "order_validation_only",
+    "paymentIntentIds": []
+  }
+}
+
+tests {
+  test("an empty paymentIntentIds list fails with one too_small issue", function () {
+    expect(res.getStatus()).to.equal(400);
+    const body = res.getBody();
+    expect(body.success).to.equal(false);
+    expect(body.rolledBack).to.equal(0);
+    const issues = JSON.parse(body.error);
+    expect(issues).to.have.length(1);
+    expect(issues[0].code).to.equal("too_small");
+    expect(issues[0].path).to.deep.equal(["paymentIntentIds"]);
+  });
+}
+
+docs {
+  The body `error` is zod 4's `ZodError.message` (JSON of issues); the checkout client only
+  passes it through. Validation runs after the Bearer token check and before any Stripe call
+  or database write, so nothing is refunded or released. Run after auth/login-buyer.
+}
