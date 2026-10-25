@@ -17,7 +17,7 @@ export const palette = {
   black: '#0D0D0D',
   pureBlack: '#000000',
 
-  shadow: 'rgba(0,0,0,0.6)',
+  scrim: 'rgba(0,0,0,0.6)',
   transparent: '#00000000',
   pending: '#A9924C',
   paid: '#5C85AD',
@@ -45,7 +45,7 @@ export const colors = {
   warning: palette.amber,
   // Soft background for error panels, paired with an `error` border or text.
   errorSubtle: palette.fireSubtle,
-  focus: palette.shadow,
+  focus: palette.scrim,
   // `shadowColor` for elevated surfaces; opacity comes from `shadowOpacity`.
   shadow: palette.pureBlack,
   // Behind full-screen photos and video, where any tint would show.
