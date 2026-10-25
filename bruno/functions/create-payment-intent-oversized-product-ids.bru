@@ -1,0 +1,44 @@
+meta {
+  name: create-payment-intent-oversized-product-ids
+  type: http
+  seq: 60
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/create-payment-intent
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  {}
+}
+
+script:pre-request {
+  req.setBody({
+    productIds: Array.from({ length: 10000 }, () => "not-a-uuid"),
+    addressId: "00000000-0000-4000-8000-0000000000a3",
+  });
+}
+
+tests {
+  test("the function boots on zod 4 and refuses before reserving stock", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody()).to.deep.equal({ error: "AUTH_REQUIRED" });
+  });
+}
+
+docs {
+  Earliest safe refusal, not the zod check: the function calls `auth.getUser()` without the JWT
+  on supabase-js 2.39.3, which answers "Auth session missing!", so even a valid buyer gets 401
+  before validation (pre-existing; backlog BL34; the function has no caller). BL28 bounds
+  productIds to 50, so zod 4 reports one `too_big` issue instead of 10,000 (GHSA-mrhx-c7xc-m3w5);
+  that is pinned in request-schema.test.ts. When BL34 is fixed, this request must expect 422
+  `{ error: "INVALID_INPUT" }`. Nothing is reserved and no PaymentIntent is created. Run after
+  auth/login-buyer.
+}
