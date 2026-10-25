@@ -1,0 +1,35 @@
+meta {
+  name: resolve-shipment-refund-anon-key
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/resolve-shipment-refund
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{anonKey}}
+}
+
+body:json {
+  {
+    "shipment_id": "00000000-0000-4000-8000-0000000000c2",
+    "reference": "Bruno: anon key"
+  }
+}
+
+tests {
+  test("a valid JWT that is not a user session is AUTH_REQUIRED", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody()).to.deep.equal({ error: "AUTH_REQUIRED" });
+  });
+}
+
+docs {
+  The anon key passes the gateway (verify_jwt = true) but is not a user session, so the
+  function's own check must refuse it before any lookup or database call.
+}
