@@ -1,0 +1,66 @@
+name: Finding
+description: A bug, gap, or follow-up found outside the work in progress.
+title: "[Finding] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Security vulnerabilities do not go here.** This repository is public. Report them privately: Security > Report a vulnerability (see SECURITY.md).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens
+      description: The problem in plain words, as the user or the system sees it.
+    validations:
+      required: true
+  - type: textarea
+    id: where
+    attributes:
+      label: Where
+      description: Screen, Edge Function, table, file and line.
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Why it matters
+      description: Who is affected and what breaks or could break.
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - Critical (money, data loss, or production broken)
+        - High (wrong behavior users will hit)
+        - Medium (edge case or degraded experience)
+        - Low (cleanup, tooling, docs)
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Payments and payouts
+        - Orders and shipments
+        - Mobile app
+        - Admin web
+        - Edge Functions
+        - Database
+        - Dependencies and tooling
+        - Docs
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Logs, command output, query results, or steps to reproduce. Never paste secrets or personal data.
+      render: text
+  - type: input
+    id: found-while
+    attributes:
+      label: Found while
+      description: Feature or branch in progress, e.g. odd/tasks/<feature>.md.

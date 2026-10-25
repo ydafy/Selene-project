@@ -54,6 +54,7 @@ Manual testing: never ask the maintainer to repeat by hand what these checks alr
 | What is deployed right now?             | The Supabase MCP, not the repository                                                                   |
 | What does production need?              | `docs/go-live.md`                                                                                      |
 | Which skills apply?                     | `.atl/skill-registry.md`                                                                               |
+| What is pending outside a feature?      | GitHub Issues ("Finding" form); private Security Advisories for vulnerabilities                        |
 
 Use the typed aliases (`Tables<'orders'>`, `Enums<'order_status_enum'>`). Never invent table, column, enum, or relationship names.
 
@@ -86,6 +87,15 @@ Run from the repository or worktree root. `package.json` is the source of truth.
 - Preserve uncommitted changes you did not make.
 - Code, identifiers, comments, tests, commits, and docs are in English. User-facing strings go through i18n with both English and Spanish (`apps/frontend/core/i18n/locales`); locale parity tests enforce it.
 - Several features are developed in parallel worktrees under `C:/dev/School-portal-worktrees/`. Stay inside the worktree you were given. `git worktree add` copies the gitignored env files (`apps/frontend/.env`, `apps/admin-web/.env`, `supabase/functions/.env`) from the main checkout through the `post-checkout` hook; in an older worktree run `bun run worktree:env`.
+
+## Findings outside the current work
+
+When you find a bug or gap that is not part of the task, do not fix it: record it and continue.
+
+- Ordinary findings: open a GitHub issue with the "Finding" form (`.github/ISSUE_TEMPLATE/finding.yml`) using the `gentle-ai-issue-creation` skill, without asking first. Search open and closed issues for a duplicate first. Write it so the maintainer understands it without the code open, and cite the issue number in the feature's `## Log`.
+- Vulnerabilities (auth, permissions, secrets, money integrity, data exposure): this repository is public. While unfixed, never describe them in an issue, PR, commit message, or any file in the repository. Tell the maintainer in the session and draft a private Security Advisory (`SECURITY.md`); details go public only after the fix is deployed.
+- A PR that fixes an issue says `Closes #N`. Close an issue by hand only with the maintainer's decision.
+- `odd/tasks/cross-module-backlog.md` is legacy: add nothing to it; its open items will move to issues and advisories.
 
 ## How money moves
 
