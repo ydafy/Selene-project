@@ -27,15 +27,7 @@ jobs:
       # Accepted exceptions: build-time tooling only (Expo CLI, Metro, Babel/Jest),
       # never in the app bundle or on a server with untrusted input. Review them on
       # every Expo SDK upgrade and drop each --ignore once a fixed version lands.
-      #   GHSA-vfj7-8cjw-p6xm braces 3.0.3 (micromatch via react-native jest/babel): no fix published
-      #   GHSA-86w9-cpqp-85rv node-forge 1.4.0 (@expo/cli dev server): no fix published
-      #   GHSA-5p2g-fcmc-qvqq, GHSA-w3rx-r6r6-pgpr image-size 1.2.1 (metro ^1.0.2): reads our own assets
-      #   GHSA-6g55-p6wh-862q, GHSA-r28c-9q8g-f849 postcss 8.4.49 (@expo/metro-config ~8.4.32): our own CSS
+      #   GHSA-86w9-cpqp-85rv node-forge 1.4.0 (@expo/cli 57 dev server): no fix published
       - run: >-
           bun audit --audit-level=high
-          --ignore=GHSA-vfj7-8cjw-p6xm
           --ignore=GHSA-86w9-cpqp-85rv
-          --ignore=GHSA-5p2g-fcmc-qvqq
-          --ignore=GHSA-w3rx-r6r6-pgpr
-          --ignore=GHSA-6g55-p6wh-862q
-          --ignore=GHSA-r28c-9q8g-f849
