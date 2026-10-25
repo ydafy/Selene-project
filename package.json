@@ -58,7 +58,6 @@
     ]
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.107.0",
-    "expo-system-ui": "^57.0.2"
+    "@supabase/supabase-js": "^2.107.0"
   }
 }
