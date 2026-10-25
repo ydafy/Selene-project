@@ -7,7 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "selene",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
@@ -35,7 +34,10 @@
               "host": "auth-verified"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         },
         {
           "action": "VIEW",
@@ -47,7 +49,10 @@
               "pathPrefix": "/onboarding"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
       "predictiveBackGestureEnabled": true,
@@ -83,7 +88,10 @@
           "cameraPermission": "Selene necesita acceso a tu cámara para que puedas tomar fotos de tus productos."
         }
       ],
-      "expo-video"
+      "expo-video",
+      "expo-font",
+      "expo-localization",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
