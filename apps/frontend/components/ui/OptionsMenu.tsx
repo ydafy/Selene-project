@@ -11,6 +11,7 @@ import { Box, Text } from '../base';
 import { Theme } from '../../core/theme';
 import { useModeration } from '../../core/hooks/useModeration';
 import { useAuthContext } from '../../components/auth/AuthProvider';
+import { colors } from '@/core/theme/tokens';
 
 type OptionsMenuProps = {
   targetId: string; // ID del producto o usuario
@@ -151,7 +152,7 @@ export const OptionsMenu = ({
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
   shadow: {
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 4.65,

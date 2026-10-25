@@ -55,7 +55,7 @@ export const WalletBalanceCard = ({
       borderColor="separator"
       style={{
         elevation: 8,
-        shadowColor: '#000',
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 10,
@@ -227,7 +227,7 @@ export const WalletBalanceCard = ({
           }}
           labelStyle={{
             fontSize: 14,
-            color: available > 0 ? '#000' : theme.colors.textSecondary,
+            color: available > 0 ? theme.colors.background : theme.colors.textSecondary,
             lineHeight: 26, // Ayuda a que la fuente no flote
             includeFontPadding: false, // Fix específico para Android
             textAlignVertical: 'center',

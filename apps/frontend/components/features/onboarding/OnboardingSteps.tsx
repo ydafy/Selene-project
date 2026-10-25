@@ -121,7 +121,7 @@ const StripeGuideImageCard = ({
       overflow="hidden"
       style={{
         elevation: 4,
-        shadowColor: '#000',
+        shadowColor: theme.colors.shadow,
         shadowOpacity: 0.3,
         shadowRadius: 5,
       }}

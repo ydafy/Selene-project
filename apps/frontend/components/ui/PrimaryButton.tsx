@@ -28,7 +28,7 @@ const getTextColor = (
   variant: 'solid' | 'outline',
   theme: Theme,
 ): string => {
-  if (loading) return '#FFFFFF';
+  if (loading) return theme.colors.background;
   if (variant === 'outline') return theme.colors.primary;
   return theme.colors.background;
 };

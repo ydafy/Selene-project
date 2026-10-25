@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 //import { useTheme } from '@shopify/restyle';
 import { Box, Text } from '../base';
+import { colors } from '@/core/theme/tokens';
 //import { Theme } from '../../core/theme';
 
 type CartTabIconProps = {
@@ -33,7 +34,7 @@ export const CartTabIcon = ({ color, size, count }: CartTabIconProps) => {
           borderColor="cardBackground"
           style={{
             // Sombra sutil para levantar el badge
-            shadowColor: '#000',
+            shadowColor: colors.shadow,
             shadowOffset: { width: 0, height: 1 },
             shadowOpacity: 0.2,
             shadowRadius: 1,

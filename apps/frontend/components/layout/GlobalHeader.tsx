@@ -36,7 +36,7 @@ export const GlobalHeader = ({
   return (
     <>
       <LinearGradient
-        colors={['#121212', 'transparent']}
+        colors={[theme.colors.background, 'transparent']}
         style={{
           position: 'absolute',
           top: 0,
@@ -62,7 +62,7 @@ export const GlobalHeader = ({
         borderRadius="l"
         style={{
           elevation: 4,
-          shadowColor: '#000',
+          shadowColor: theme.colors.shadow,
           shadowOpacity: 0.3,
           shadowRadius: 4,
           shadowOffset: { width: 0, height: 2 },

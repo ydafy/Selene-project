@@ -68,7 +68,7 @@ export const ProfileActionsBar = () => {
       paddingVertical="m"
       position="relative"
       style={{
-        shadowColor: '#000',
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 4,

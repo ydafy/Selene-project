@@ -19,6 +19,7 @@ import { formatCurrency } from '../../../core/utils/format';
 import { getSharedStyles } from '../home/sharedStyles';
 import { isInVerification } from '../../../core/utils/productListingStatus';
 import { VerificationPill } from './VerificationPill';
+import { colors } from '@/core/theme/tokens';
 
 type ProductCardProps = {
   product: PublicProduct;
@@ -221,7 +222,7 @@ export const ProductCard = memo(
 const styles = StyleSheet.create({
   container: { width: '100%', marginBottom: 16 },
   shadow: {
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 4.65,

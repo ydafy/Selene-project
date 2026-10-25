@@ -168,13 +168,13 @@ export const ShellEndFeedCard2 = ({
 
         {/* Gradientes de desvanecimiento laterales */}
         <LinearGradient
-          colors={['#121212', 'transparent']}
+          colors={[theme.colors.background, 'transparent']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={[styles.edgeGradient, { left: 0 }]}
         />
         <LinearGradient
-          colors={['transparent', '#121212']}
+          colors={['transparent', theme.colors.background]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={[styles.edgeGradient, { right: 0 }]}

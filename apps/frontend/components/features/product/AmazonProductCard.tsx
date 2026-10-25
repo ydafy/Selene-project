@@ -33,7 +33,7 @@ export const AmazonProductCard = ({ product, onPress }: ProductCardProps) => {
         overflow="hidden"
         // Sombra flotante consistente
         style={{
-          shadowColor: '#000',
+          shadowColor: theme.colors.shadow,
           shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.3,
           shadowRadius: 4.65,

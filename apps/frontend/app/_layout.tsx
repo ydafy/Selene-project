@@ -201,7 +201,7 @@ function RootStack() {
 
 const styles = StyleSheet.create({
   splashContainer: {
-    backgroundColor: '#121212',
+    backgroundColor: theme.colors.background,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 99999,

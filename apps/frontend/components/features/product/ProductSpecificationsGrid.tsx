@@ -4,6 +4,7 @@ import { useTheme } from '@shopify/restyle';
 import { Box, Text } from '../../base';
 import { Theme } from '../../../core/theme';
 import { BrandIcon } from '../../ui/BrandIcon';
+import { colors } from '@/core/theme/tokens';
 
 type ProductSpecificationsProps = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -104,7 +105,7 @@ export const ProductSpecificationsGrid = ({
 const styles = StyleSheet.create({
   gridItem: {
     width: '48%',
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.5,
     shadowRadius: 4.65,

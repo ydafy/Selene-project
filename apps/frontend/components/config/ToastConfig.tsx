@@ -17,7 +17,7 @@ const baseToastStyle = {
   minHeight: 65,
   borderRadius: theme.borderRadii.m,
   borderLeftWidth: 6,
-  shadowColor: '#000',
+  shadowColor: theme.colors.shadow,
   shadowOffset: { width: 0, height: 4 },
   shadowOpacity: 0.3,
   shadowRadius: 8,
@@ -51,7 +51,7 @@ export const toastConfig: ToastConfig = {
       {...props}
       style={[
         baseToastStyle,
-        { borderLeftColor: theme.colors.success || '#28a745' },
+        { borderLeftColor: theme.colors.success },
       ]}
       contentContainerStyle={contentContainerStyle}
       text1Style={text1Style}
@@ -67,7 +67,7 @@ export const toastConfig: ToastConfig = {
       {...props}
       style={[
         baseToastStyle,
-        { borderLeftColor: theme.colors.error || '#dc3545' },
+        { borderLeftColor: theme.colors.error },
       ]}
       contentContainerStyle={contentContainerStyle}
       text1Style={text1Style}
@@ -81,7 +81,7 @@ export const toastConfig: ToastConfig = {
   info: (props: BaseToastProps) => (
     <BaseToast
       {...props}
-      style={[baseToastStyle, { borderLeftColor: '#2196F3' }]}
+      style={[baseToastStyle, { borderLeftColor: theme.colors.textSecondary }]}
       contentContainerStyle={contentContainerStyle}
       text1Style={text1Style}
       text2Style={text2Style}
@@ -94,7 +94,7 @@ export const toastConfig: ToastConfig = {
   warning: (props: BaseToastProps) => (
     <BaseToast
       {...props}
-      style={[baseToastStyle, { borderLeftColor: '#f59e0b' }]}
+      style={[baseToastStyle, { borderLeftColor: theme.colors.warning }]}
       contentContainerStyle={contentContainerStyle}
       text1Style={text1Style}
       text2Style={text2Style}

@@ -37,7 +37,7 @@ export const CartSummary = ({
       padding="m"
       borderRadius="l"
       style={{
-        shadowColor: '#000',
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 4.65,

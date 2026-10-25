@@ -30,7 +30,7 @@ export const LocationPicker = ({ value }: LocationPickerProps) => {
         flex={1}
         justifyContent="center"
         alignItems="center"
-        style={{ backgroundColor: '#2a2a2a' }} // Un gris mapa oscuro
+        backgroundColor="cardBackground"
       >
         <MaterialCommunityIcons
           name="map-marker"
@@ -57,7 +57,7 @@ export const LocationPicker = ({ value }: LocationPickerProps) => {
             padding="m"
             borderRadius="m"
             style={{
-              shadowColor: '#000',
+              shadowColor: theme.colors.shadow,
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.3,
               shadowRadius: 5,

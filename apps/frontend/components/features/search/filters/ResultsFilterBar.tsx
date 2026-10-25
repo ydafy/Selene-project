@@ -95,7 +95,7 @@ export const ResultsFilterBar = memo(
         borderRadius="m"
         paddingVertical="s"
         style={{
-          shadowColor: '#000',
+          shadowColor: theme.colors.shadow,
           shadowOpacity: 0.3,
           shadowRadius: 4.65,
         }}

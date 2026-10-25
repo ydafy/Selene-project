@@ -27,6 +27,7 @@ import {
 } from '../../../core/utils/order-status';
 import { EnrichedOrder, OrderStatus } from '@selene/types';
 import { useTranslation } from 'react-i18next';
+import { colors } from '@/core/theme/tokens';
 
 interface Props {
   order: EnrichedOrder;
@@ -35,7 +36,7 @@ interface Props {
 }
 
 // --- PULSEDOT
-const PulseDot = ({ color = '#EF4444' }: { color?: string }) => {
+const PulseDot = ({ color = colors.error }: { color?: string }) => {
   const opacity = useRef(new Animated.Value(0.4)).current;
 
   useEffect(() => {
@@ -120,7 +121,7 @@ export const OrderCard = ({ order, isSeller, onPress }: Props) => {
         borderColor="separator"
         style={{
           elevation: 4,
-          shadowColor: '#000',
+          shadowColor: theme.colors.shadow,
           shadowOpacity: 0.2,
           shadowRadius: 8,
         }}

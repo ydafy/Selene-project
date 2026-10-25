@@ -4,6 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Box, Text } from '../../base';
 import { AppImage } from '../../ui/AppImage';
 import { Product } from '@selene/types';
+import { colors } from '@/core/theme/tokens';
 
 interface Props {
   items: Product[];
@@ -31,7 +32,7 @@ export const OrderPreviewStrip = ({ items, onPress }: Props) => {
           <MaterialCommunityIcons
             name="format-list-bulleted"
             size={18}
-            color="#666"
+            color={colors.textSecondary}
           />
           <Text variant="caption-md" color="textSecondary" marginLeft="s">
             {items.length} {items.length === 1 ? 'producto' : 'productos'}
@@ -59,7 +60,7 @@ export const OrderPreviewStrip = ({ items, onPress }: Props) => {
               </Box>
             ))}
           </Box>
-          <MaterialCommunityIcons name="chevron-right" size={20} color="#666" />
+          <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textSecondary} />
         </Box>
       </Box>
     </TouchableOpacity>

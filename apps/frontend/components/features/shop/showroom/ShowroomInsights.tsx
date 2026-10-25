@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { Box, Text } from '../../../base';
 import { AppImage } from '../../../ui/AppImage';
+import { colors } from '@/core/theme/tokens';
 
 type SearchAction = {
   type: 'SEARCH';
@@ -176,11 +177,11 @@ const styles = StyleSheet.create({
     marginRight: 30,
     borderRadius: 24,
     overflow: 'hidden',
-    backgroundColor: '#121212',
+    backgroundColor: colors.background,
     borderWidth: 0.5,
     borderColor: 'rgba(255,255,255,0.1)',
     // Sombra para profundidad
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 12,

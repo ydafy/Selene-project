@@ -62,7 +62,7 @@ export const AddressCard = ({
             borderColor="separator" // Borde minimalista siempre
             style={{
               elevation: pressed ? 2 : 4,
-              shadowColor: '#000',
+              shadowColor: theme.colors.shadow,
               shadowOpacity: 0.1,
               shadowRadius: 8,
               backgroundColor: pressed

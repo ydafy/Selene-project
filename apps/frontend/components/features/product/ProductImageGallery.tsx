@@ -80,7 +80,7 @@ export const ProductImageGallery = ({
         doubleTapToZoomEnabled={true}
         animationType="fade" // 'fade' suele sentirse más elegante que 'slide' para visores de fotos
         presentationStyle="overFullScreen" // Truco para Android: cubre la barra de estado
-        backgroundColor="#000000" // Negro puro para máxima inmersión
+        backgroundColor={theme.colors.mediaBackground}
         // --- COMPONENTES CUSTOM ---
         HeaderComponent={renderHeader}
         FooterComponent={renderFooter} // Añadimos el contador
@@ -136,7 +136,7 @@ export const ProductImageGallery = ({
                 }
                 style={{
                   elevation: 4,
-                  shadowColor: '#000',
+                  shadowColor: theme.colors.shadow,
                   shadowOpacity: 0.5,
                   shadowRadius: 3,
                   backgroundColor: theme.colors.cardBackground,

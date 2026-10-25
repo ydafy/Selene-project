@@ -104,7 +104,8 @@ describe('ToastConfig warning type', () => {
   });
 
   test('warning toast uses orange accent color', () => {
-    expect(toastConfigSource()).toContain('#f59e0b');
+    // The amber value itself is pinned in core/theme/__tests__/tokens.test.ts.
+    expect(toastConfigSource()).toContain('borderLeftColor: theme.colors.warning');
   });
 });
 

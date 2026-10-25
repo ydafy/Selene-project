@@ -14,6 +14,7 @@ import { Box, Text } from '../../base';
 import { BrandIcon } from '../../ui/BrandIcon';
 import { Theme } from '../../../core/theme';
 import { getSharedStyles } from '../home/sharedStyles';
+import { colors } from '@/core/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -155,7 +156,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 0.8,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.4,
     shadowRadius: 15,

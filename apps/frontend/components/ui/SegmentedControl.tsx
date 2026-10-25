@@ -3,6 +3,7 @@ import { useTheme } from '@shopify/restyle';
 import { MotiView } from 'moti';
 import { Box, Text } from '../base';
 import { Theme } from '../../core/theme';
+import { colors } from '@/core/theme/tokens';
 
 type SegmentedControlProps = {
   options: string[];
@@ -105,7 +106,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   shadow: {
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 2,

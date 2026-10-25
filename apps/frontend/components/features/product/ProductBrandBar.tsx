@@ -3,6 +3,7 @@ import { ScrollView, TouchableOpacity } from 'react-native';
 import { Box } from '../../base';
 //import { Theme } from '../../../core/theme';
 import { BrandIcon } from '../../ui/BrandIcon';
+import { colors } from '@/core/theme/tokens';
 
 type ProductBrandBarProps = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -47,7 +48,7 @@ export const ProductBrandBar = ({ specs }: ProductBrandBarProps) => {
                 style={{
                   // Sombra sutil para que flote
                   elevation: 2,
-                  shadowColor: '#000',
+                  shadowColor: colors.shadow,
                   shadowOffset: { width: 0, height: 2 },
                   shadowOpacity: 0.3,
                   shadowRadius: 2,

@@ -111,7 +111,7 @@ export default function PaymentScreen() {
           alignItems="center"
           width="100%"
           style={{
-            shadowColor: '#000',
+            shadowColor: theme.colors.shadow,
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.1,
             shadowRadius: 12,

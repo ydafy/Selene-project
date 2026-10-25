@@ -140,7 +140,7 @@ const PriceRangeFilterComponent = ({
             backgroundColor: theme.colors.primary,
             borderWidth: 4,
             borderColor: theme.colors.background,
-            shadowColor: '#000',
+            shadowColor: theme.colors.shadow,
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.5,
             shadowRadius: 4,

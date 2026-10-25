@@ -39,7 +39,7 @@ export default function TabsLayout() {
             marginHorizontal: theme.spacing.m,
 
             elevation: 8,
-            shadowColor: '#000',
+            shadowColor: theme.colors.shadow,
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.3,
             shadowRadius: 5,
@@ -56,7 +56,7 @@ export default function TabsLayout() {
           },
           tabBarBackground: () => (
             <LinearGradient
-              colors={['transparent', '#121212']}
+              colors={['transparent', theme.colors.background]}
               pointerEvents="none"
               style={{
                 position: 'absolute',

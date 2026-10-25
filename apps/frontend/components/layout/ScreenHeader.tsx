@@ -1,5 +1,6 @@
 //import { useTheme } from '@shopify/restyle';
 import { Box, Text } from '../base';
+import { colors } from '@/core/theme/tokens';
 //import { Theme } from '../../core/theme';
 
 type ScreenHeaderProps = {
@@ -18,7 +19,7 @@ export const ScreenHeader = ({ title, subtitle }: ScreenHeaderProps) => {
       marginBottom="m" // Espacio hacia el contenido
       // Sombra sutil para el efecto flotante
       style={{
-        shadowColor: '#000',
+        shadowColor: colors.shadow,
         shadowOffset: {
           width: 0,
           height: 4,

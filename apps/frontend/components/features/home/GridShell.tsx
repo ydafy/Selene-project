@@ -7,6 +7,7 @@
 import React, { useMemo, memo } from 'react';
 import { StyleSheet } from 'react-native';
 import { Box } from '../../base';
+import { colors } from '@/core/theme/tokens';
 
 // --- CONFIGURACIÓN TÉCNICA ---
 const CELL_SIZE = 25; // Tamaño base del cuadro
@@ -79,7 +80,7 @@ const GridShellComponent = ({ children }: GridShellProps) => {
 
 const styles = StyleSheet.create({
   shellShadow: {
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.5,
     shadowRadius: 20,

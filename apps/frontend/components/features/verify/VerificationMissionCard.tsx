@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { Box, Text } from '../../base';
 import { PrimaryButton } from '../../ui/PrimaryButton';
 import { Theme } from '../../../core/theme';
+import { colors } from '@/core/theme/tokens';
 
 type VerificationMissionCardProps = {
   title: string;
@@ -186,7 +187,7 @@ export const VerificationMissionCard = ({
 
 const styles = StyleSheet.create({
   shadow: {
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,

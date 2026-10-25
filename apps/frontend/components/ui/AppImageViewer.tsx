@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { IconButton } from 'react-native-paper';
 
 import { Box, Text } from '../base';
+import { colors } from '@/core/theme/tokens';
 
 type ImageSource = { uri: string } | number;
 
@@ -94,7 +95,7 @@ export const AppImageViewer = ({
       doubleTapToZoomEnabled={true}
       animationType="fade"
       presentationStyle="overFullScreen"
-      backgroundColor="#000000"
+      backgroundColor={colors.mediaBackground}
       HeaderComponent={renderHeader}
       FooterComponent={renderFooter}
     />

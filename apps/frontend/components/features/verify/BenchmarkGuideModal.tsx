@@ -334,7 +334,7 @@ export const BenchmarkGuideModal = ({
         swipeToCloseEnabled={true}
         doubleTapToZoomEnabled={true}
         animationType="fade"
-        backgroundColor="#000000"
+        backgroundColor={theme.colors.mediaBackground}
         HeaderComponent={() => (
           <Box position="absolute" top={50} right={20} zIndex={1}>
             <TouchableOpacity
