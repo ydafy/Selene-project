@@ -1,18 +1,16 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import Stripe from "https://esm.sh/stripe@17.0.0";
-import { z } from "https://esm.sh/zod@3.23.8";
 
 import type { Database } from "../../../packages/types/src/database.types.ts";
 import { extractStripeChargeId } from "../_shared/stripe-charge.ts";
+import { RecoveryChargeEvidenceSchema } from "./charge-evidence-schema.ts";
 import {
   claimCheckoutRecoveryShells,
   compensateRecoveryShell,
   isAuthorizedCheckoutRecoveryWorker,
   processRecoveryClaimsSequentially,
 } from "./recovery.ts";
-
-const RecoveryChargeEvidenceSchema = z.string().min(1);
 
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
   apiVersion: "2026-04-22.dahlia",
