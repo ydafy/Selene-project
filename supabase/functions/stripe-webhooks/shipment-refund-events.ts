@@ -11,6 +11,16 @@ const OUTCOMES = [
   'failed_after_cancellation',
   'failed_before_cancellation',
   'after_resolution',
+  'mismatch',
+] as const;
+// The RPC raises these when a refund carries our shipment id but does not match the frozen
+// request (only a refund made by hand in the Stripe Dashboard can). Nothing was written, so
+// retrying cannot help: settle the event and alert instead of letting Stripe retry for days.
+const MISMATCH_CODES = [
+  'REFUND_PAYMENT_INTENT_MISMATCH',
+  'REFUND_AMOUNT_MISMATCH',
+  'REFUND_ID_MISMATCH',
+  'REFUND_ID_ALREADY_LINKED',
 ] as const;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -84,14 +94,34 @@ export async function handleShipmentRefundEvent(
     throw malformed();
   }
 
-  const { data, error } = await ports.apply({
+  const input: ShipmentRefundEventInput = {
     shipmentId: shipmentId.trim(),
     refundId: refund.id,
     paymentIntentId,
     amountCents: refund.amount,
     status: refund.status,
     failureReason: typeof refund.failure_reason === 'string' ? refund.failure_reason : null,
-  });
+  };
+  const { data, error } = await ports.apply(input);
+  const mismatch = error
+    ? MISMATCH_CODES.find((code) => error.message.includes(code))
+    : undefined;
+  if (mismatch) {
+    ports.log('WARN', 'Shipment refund event does not match the cancellation request', {
+      shipmentId: input.shipmentId,
+      refundId: input.refundId,
+      reason: mismatch,
+    });
+    await ports.report('SHIPMENT_REFUND_EVENT_MISMATCH', {
+      shipmentId: input.shipmentId,
+      refundId: input.refundId,
+      paymentIntentId: input.paymentIntentId,
+      amountCents: input.amountCents,
+      status: input.status,
+      reason: mismatch,
+    });
+    return { handled: true, outcome: 'mismatch' };
+  }
   if (error) {
     // The raw RPC message stays in the log; the thrown code is all the webhook response shows.
     ports.log('ERROR', 'Shipment refund event RPC failed', {

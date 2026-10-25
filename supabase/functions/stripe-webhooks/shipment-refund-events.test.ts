@@ -246,12 +246,56 @@ describe('handleShipmentRefundEvent', () => {
   });
 
   it('maps an RPC error to a stable code, logs the raw message and never exposes it', async () => {
-    const h = harness({ data: null, error: { message: 'REFUND_AMOUNT_MISMATCH secret detail' } });
+    const h = harness({ data: null, error: { message: 'CANCELLATION_COMPLETE_FAILED: secret detail' } });
     const failure = await handleShipmentRefundEvent(event(refund()), h.ports).catch((error: Error) => error);
     expect(failure).toBeInstanceOf(Error);
     expect((failure as Error).message).toBe('REFUND_EVENT_RPC_FAILED');
-    expect(h.logs.some((l) => JSON.stringify(l).includes('REFUND_AMOUNT_MISMATCH secret detail'))).toBe(true);
+    expect(h.logs.some((l) => JSON.stringify(l).includes('CANCELLATION_COMPLETE_FAILED: secret detail'))).toBe(true);
     expect(h.reports).toHaveLength(0);
+  });
+
+  for (const code of [
+    'REFUND_PAYMENT_INTENT_MISMATCH',
+    'REFUND_AMOUNT_MISMATCH',
+    'REFUND_ID_MISMATCH',
+    'REFUND_ID_ALREADY_LINKED',
+  ]) {
+    it(`settles ${code} as a terminal mismatch with exactly one CRITICAL instead of failing the webhook`, async () => {
+      const h = harness({ data: null, error: { message: code } });
+      const result = await handleShipmentRefundEvent(
+        event(refund({ id: 're_dashboard', amount: 5000, status: 'succeeded' })),
+        h.ports,
+      );
+      expect(result).toEqual({ handled: true, outcome: 'mismatch' });
+      expect(h.reports).toEqual([
+        {
+          message: 'SHIPMENT_REFUND_EVENT_MISMATCH',
+          data: {
+            shipmentId: SHIPMENT,
+            refundId: 're_dashboard',
+            paymentIntentId: 'pi_1',
+            amountCents: 5000,
+            status: 'succeeded',
+            reason: code,
+          },
+        },
+      ]);
+    });
+  }
+
+  it('recognizes a mismatch code inside a longer RPC message', async () => {
+    const h = harness({ data: null, error: { message: 'REFUND_ID_MISMATCH (detail from the database)' } });
+    const result = await handleShipmentRefundEvent(event(refund()), h.ports);
+    expect(result).toEqual({ handled: true, outcome: 'mismatch' });
+    expect(h.reports[0]?.data.reason).toBe('REFUND_ID_MISMATCH');
+  });
+
+  it('reports a mismatch again on every delivery, since nothing is written', async () => {
+    const h = harness({ data: null, error: { message: 'REFUND_ID_MISMATCH' } });
+    await handleShipmentRefundEvent(event(refund()), h.ports);
+    await handleShipmentRefundEvent(event(refund()), h.ports);
+    expect(h.applied).toHaveLength(2);
+    expect(h.reports).toHaveLength(2);
   });
 
   it('throws a stable code when the RPC returns an unusable result', async () => {
