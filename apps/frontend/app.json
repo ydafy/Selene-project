@@ -96,7 +96,8 @@
           "resizeMode": "contain",
           "backgroundColor": "#121212"
         }
-      ]
+      ],
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true
