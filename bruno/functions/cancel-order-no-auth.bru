@@ -19,13 +19,15 @@ body:json {
 }
 
 tests {
-  test("rejects a cancellation without a user token", function () {
+  test("the gateway rejects a cancellation without a JWT before the function runs", function () {
     expect(res.getStatus()).to.equal(401);
-    expect(res.getBody()).to.deep.equal({ error: "AUTH_REQUIRED" });
+    expect(res.getBody().code).to.equal("UNAUTHORIZED_NO_AUTH_HEADER");
   });
 }
 
 docs {
+  verify_jwt = true (deployed and in supabase/config.toml), so an anonymous call never
+  reaches the function; its own AUTH_REQUIRED branch only covers a missing header behind the gateway.
   Needs the functions server (see stripe-webhooks-unsigned). Proves cancel-order refuses
   anonymous callers before reading any order or calling Stripe.
 }
