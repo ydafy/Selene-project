@@ -22,6 +22,7 @@ import {
 } from './release-connect-payout.ts';
 
 import { createAtomicResumeAdapters } from './atomic-resume-adapter.ts';
+import { withSentry } from '../_shared/sentry.ts';
 
 const STRIPE_API_VERSION = '2026-04-22.dahlia';
 
@@ -82,7 +83,7 @@ const getSupabaseErrorLogMeta = (
   supabaseErrorHint: error.hint,
 });
 
-serve(async (req: Request) => {
+serve(withSentry('release-connect-payout', async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -610,4 +611,4 @@ serve(async (req: Request) => {
     log('ERROR', 'Connect payout release failed', { message, status });
     return jsonResponse({ success: false, error: message }, status);
   }
-});
+}));
