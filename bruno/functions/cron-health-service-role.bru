@@ -1,0 +1,36 @@
+meta {
+  name: cron-health-service-role
+  type: http
+  seq: 76
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_cron_health
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("the service role reads one row per pg_cron job, without commands", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.an("array");
+    for (const row of res.getBody()) {
+      expect(Object.keys(row).sort()).to.eql(["active", "jobname", "last_start", "last_status", "schedule"]);
+    }
+  });
+}
+
+docs {
+  BL33: what cron-watchdog reads. The local stack has no pg_cron jobs, so the list may be
+  empty; every row exposes only jobname, schedule, active, last_start, last_status (never
+  the command, which holds Vault lookups).
+}
