@@ -92,6 +92,7 @@ The remote project also runs `dynamic-api` (name `get-shipping-quote-seller`), w
 | `dispute-payout-timeout-job`               | `0 * * * *`    | `fn_cron_dispute_payout_timeout()`      |
 | `dispute-shipping-timeout-job`             | `0 * * * *`    | `fn_cron_dispute_shipping_timeout()`    |
 | `purge-expired-reservations`               | `*/15 * * * *` | inline `UPDATE public.products`         |
+| `purge-cron-run-details`                   | `0 3 * * *`    | inline `DELETE FROM cron.job_run_details` (7 days) |
 | `purge-old-evidence`                       | `0 0 * * *`    | inline `DELETE FROM storage.objects`    |
 | `reconcile-connect-payments`               | `0 */6 * * *`  | `fn_reconcile_connect_payments()`       |
 | `reconcile-stripe-fees-every-5-minutes`    | `*/5 * * * *`  | function `reconcile-stripe-fees`        |
@@ -173,7 +174,7 @@ select cron.schedule(
 
 `auto-cancel-preparing` has the same authorization but is intentionally not scheduled until B4 of the shipment cancellations work; do not create a job for it before then.
 
-`cron-watchdog-every-15-minutes` calls `cron-watchdog`, which reads `fn_cron_health()` and reports failed, overdue, or unsupported-schedule jobs to Sentry. Create the Vault secret `cron_watchdog_cron_secret` first, with the same value as the `CRON_SECRET` function secret (the function compares the `x-cron-secret` header against `CRON_SECRET`). Then run, in the SQL Editor:
+`cron-watchdog-every-15-minutes` calls `cron-watchdog`, which reads `fn_cron_health()` and reports failed, overdue, or unsupported-schedule jobs to Sentry. In order: apply `supabase/migrations/20261021025844_cron_health.sql` (creates `fn_cron_health()`, service role only) and `supabase/migrations/20261026014010_cron_health_index_scan.sql` (reads `cron.job_run_details` by primary key; without it the read timed out on 86k rows), deploy `cron-watchdog`, and create the Vault secret `cron_watchdog_cron_secret` with the same value as the `CRON_SECRET` function secret (the function compares the `x-cron-secret` header against `CRON_SECRET`). Then run, in the SQL Editor:
 
 ```sql
 select cron.schedule(
@@ -188,9 +189,22 @@ select cron.schedule(
       'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'project_anon_jwt'),
       'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'cron_watchdog_cron_secret')
     ),
-    body := '{}'::jsonb
+    body := '{}'::jsonb,
+    timeout_milliseconds := 30000
   );
   $$
+);
+```
+
+The 30-second timeout keeps the response in `net._http_response` while the function reports to Sentry (the `pg_net` default of 5 seconds cut the first run). Running `cron.schedule` again with the same name replaces the job.
+
+`purge-cron-run-details` keeps 7 days of `cron.job_run_details`, which pg_cron never trims (2026-10-26: 86,638 rows since February, about 2,000 more a day). It deletes finished runs only; a run in progress has no `end_time`. Run in the SQL Editor:
+
+```sql
+select cron.schedule(
+  'purge-cron-run-details',
+  '0 3 * * *',
+  $$ delete from cron.job_run_details where end_time < now() - interval '7 days' $$
 );
 ```
 
