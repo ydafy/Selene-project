@@ -207,4 +207,25 @@ describe('checkout recovery SQL guards', () => {
       expect(claim).toContain("p_claim_scope IS NULL OR p_claim_scope = 'standalone'");
     }
   });
+
+  it('replaces the stuck running flag with an expiring, service-only worker lease', () => {
+    const canonical = readSql('supabase/queries/orders/checkout_recovery_lease.sql');
+    const migration = readSql('supabase/migrations/20261026003552_checkout_recovery_lease.sql');
+    const body = (sql: string) => sql.slice(sql.indexOf('ALTER TABLE public.system_settings'));
+
+    expect(body(migration)).toBe(body(canonical));
+    expect(canonical).toContain("interval '600 seconds'");
+    expect(canonical).toContain('AND settings.checkout_recovery_enabled = true');
+    expect(canonical).toContain('AND settings.checkout_recovery_lease_id = p_lease_id');
+    expect(canonical).toContain("IF auth.role() IS DISTINCT FROM 'service_role' THEN");
+    for (const signature of [
+      'fn_acquire_checkout_recovery_lease()',
+      'fn_release_checkout_recovery_lease(UUID)',
+    ]) {
+      expect(canonical).toContain(
+        `REVOKE EXECUTE ON FUNCTION public.${signature} FROM PUBLIC, anon, authenticated;`,
+      );
+      expect(canonical).toContain(`GRANT EXECUTE ON FUNCTION public.${signature} TO service_role;`);
+    }
+  });
 });
