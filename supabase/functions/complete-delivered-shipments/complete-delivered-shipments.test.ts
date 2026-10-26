@@ -5,6 +5,7 @@ import {
   AUTO_COMPLETION_DELAY_MS,
   MAX_AUTO_COMPLETION_BATCH_SIZE,
   buildAutoCompletionRpcInput,
+  isActiveDisputeRefusal,
   mapAutoCompletionRpcResult,
   resolveAutoCompletionPlan,
   summarizeAutoCompletionResults,
@@ -93,6 +94,47 @@ describe('resolveAutoCompletionPlan', () => {
   });
 });
 
+describe('shipments with an active dispute', () => {
+  it('leaves shipments with an active dispute out of the plan so they never block the batch', () => {
+    const disputed = shipment('shipment-disputed', '2026-09-01T00:00:00.000Z');
+    const plan = resolveAutoCompletionPlan({
+      method: 'POST',
+      suppliedCronSecret: cronSecret,
+      expectedCronSecret: cronSecret,
+      now,
+      candidates: [disputed, dueShipment],
+      activeDisputeShipmentIds: ['shipment-disputed'],
+    });
+    expect(plan.shipmentIds).toEqual(['shipment-due']);
+  });
+
+  it('recognizes the active-dispute refusal and nothing else as an expected skip', () => {
+    const refusal = { success: false, error: 'SHIPMENT_HAS_ACTIVE_DISPUTE', completion_source: null, idempotent: false };
+    expect(isActiveDisputeRefusal(refusal)).toBe(true);
+    expect(isActiveDisputeRefusal({ ...refusal, error: 'SHIPMENT_NOT_IN_CONFIRMABLE_STATE' })).toBe(false);
+    expect(isActiveDisputeRefusal({ ...refusal, success: true, error: null })).toBe(false);
+    expect(isActiveDisputeRefusal(null)).toBe(false);
+  });
+
+  it('counts a skipped shipment without failing the batch', () => {
+    expect(
+      summarizeAutoCompletionResults([
+        { completionSource: 'auto', idempotent: false, shipmentId: 'new-completion' },
+        'skipped',
+      ]),
+    ).toEqual({ success: true, attempted: 2, completed: 1, idempotent: 0, skipped: 1, failed: 0 });
+  });
+
+  it('reads the active disputes before the shipments and excludes them in the query', async () => {
+    const source = await Bun.file(new URL('./index.ts', import.meta.url)).text();
+    const disputesIndex = source.indexOf(".from('disputes')");
+    expect(disputesIndex).toBeGreaterThanOrEqual(0);
+    expect(source.indexOf(".from('shipments')")).toBeGreaterThan(disputesIndex);
+    expect(source).toContain(".not('status', 'in', '(resolved,rejected)')");
+    expect(source).toContain(".not('id', 'in',");
+  });
+});
+
 describe('auto completion RPC contracts', () => {
   it('uses a deterministic auto key and maps a retry to idempotent success', () => {
     expect(buildAutoCompletionRpcInput('shipment-due')).toEqual({
@@ -176,6 +218,7 @@ describe('scheduler endpoint contract', () => {
       attempted: 3,
       completed: 1,
       idempotent: 1,
+      skipped: 0,
       failed: 1,
     });
   });
