@@ -2,7 +2,6 @@ DECLARE
     v_status public.order_status_enum;
     v_buyer_id UUID;
     v_item RECORD;
-    v_wallet_record RECORD;
 BEGIN
     -- 1. Bloqueo y Validación de la Orden
     SELECT status, buyer_id INTO v_status, v_buyer_id
@@ -30,7 +29,6 @@ BEGIN
         SELECT
             oi.product_id,
             oi.seller_id,
-            oi.net_payout,
             p.name as prod_name
         FROM public.order_items oi
         JOIN public.products p ON p.id = oi.product_id
@@ -44,40 +42,7 @@ BEGIN
             updated_at = now()
         WHERE id = v_item.product_id;
 
-        -- B. Bloqueo de Wallet y Actualización de Balance
-        -- Usamos FOR UPDATE para asegurar integridad financiera
-        SELECT id, pending_balance INTO v_wallet_record
-        FROM public.wallets
-        WHERE user_id = v_item.seller_id
-        FOR UPDATE;
-
-        IF v_wallet_record.id IS NOT NULL THEN
-            UPDATE public.wallets
-            SET pending_balance = GREATEST(0, pending_balance - v_item.net_payout),
-                updated_at = now()
-            WHERE id = v_wallet_record.id;
-
-            -- C. Ledger (Audit Trail)
-            INSERT INTO public.wallet_transactions (
-                wallet_id,
-                order_id,
-                amount,
-                net_amount,
-                balance_after,
-                type,
-                description
-            ) VALUES (
-                v_wallet_record.id,
-                p_order_id,
-                0,
-                -v_item.net_payout,
-                GREATEST(0, v_wallet_record.pending_balance - v_item.net_payout),
-                'adjustment',
-                'Cancelación (' || p_cancelled_by_role || '): ' || p_reason
-            );
-        END IF;
-
-        -- D. Notificación al Vendedor
+        -- B. Notificación al Vendedor
         INSERT INTO public.notifications (user_id, type, title, message, action_path)
         VALUES (
             v_item.seller_id,

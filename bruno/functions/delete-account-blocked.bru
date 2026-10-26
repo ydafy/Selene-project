@@ -20,7 +20,7 @@ tests {
     expect(res.getStatus()).to.equal(409);
     expect(res.getBody()).to.deep.equal({
       error: "DELETE_BLOCKED",
-      blocked_reason: "pending_payouts",
+      blocked_reason: "active_orders",
     });
   });
 }

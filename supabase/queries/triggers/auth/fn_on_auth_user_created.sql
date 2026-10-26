@@ -1,6 +1,6 @@
 -- Source body for public.fn_on_auth_user_created().
 -- Migration: supabase/migrations/*_auth_username_provisioning.sql
--- Provisions profiles, profiles_private and wallets for every new auth user.
+-- Provisions profiles and profiles_private for every new auth user.
 -- A typed registration username is validated and rejected when invalid or
 -- taken; a derived one (full_name, name, email prefix) is normalized and
 -- suffixed by public.fn_generate_profile_username so provisioning never fails.
@@ -56,11 +56,6 @@ BEGIN
   INSERT INTO public.profiles_private (id, email, role, status)
   VALUES (NEW.id, NEW.email, 'user', 'active')
   ON CONFLICT (id) DO NOTHING;
-
-  -- C. Wallet (deprecated, kept unchanged)
-  INSERT INTO public.wallets (user_id, available_balance, pending_balance)
-  VALUES (NEW.id, 0, 0)
-  ON CONFLICT (user_id) DO NOTHING;
 
   RETURN NEW;
 EXCEPTION

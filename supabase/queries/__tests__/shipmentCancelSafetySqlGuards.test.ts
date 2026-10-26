@@ -14,7 +14,6 @@ describe('fn_cancel_shipment SQL guards', () => {
     expect(sql).toContain("IF auth.role() IS DISTINCT FROM 'service_role' THEN");
     expect(sql).toContain("RETURN QUERY SELECT false, 'UNAUTHORIZED'::TEXT;");
     expect(sql).toContain("IF p_cancelled_by_role NOT IN ('buyer', 'seller', 'system') THEN");
-    expect(sql).toContain("'Cancelación (' || p_cancelled_by_role || '): ' || p_reason");
     expect(sql).not.toContain('auth.uid() IS DISTINCT FROM v_buyer_id');
     expect(sql).not.toContain('auth.uid() IS DISTINCT FROM v_seller_id');
   });
