@@ -17,9 +17,9 @@ Close the pstack-derived items deferred in BL16 (`odd/tasks/cross-module-backlog
 
 - T1 | S1-S2 | inline | branch `fix/design-token-gaps-2` | commit: 4284ecf (done)
 - T2 | S3 | inline | branch `fix/design-token-gaps-2` | commit: 35db2b8 (done)
-- T3 | S5 | worker | branch `docs/verify-selene-skill` | commit: 8ce912e (done)
-- T4 | S6 | worker | branch `docs/payout-invariant-tla` | commit: this commit (done)
-- T5 | S7 | inline | branch `docs/technical-writing-skill` | commit: pending
+- T3 | S5 | worker | branch `docs/verify-selene-skill` | commit: aee2358 (done)
+- T4 | S6 | worker | branch `docs/payout-invariant-tla` | commit: 5a6d49e (done)
+- T5 | S7 | inline | branch `docs/technical-writing-skill` | commit: this commit (done)
 
 ## Log
 
@@ -35,3 +35,4 @@ Close the pstack-derived items deferred in BL16 (`odd/tasks/cross-module-backlog
 - L10 (evidence): JDK Temurin 21.0.12.1 (winget) and TLC 1.8.0 at `C:/Users/estra/.local/tla/tla2tools.jar` (sha256 d15655ee...726f) installed and runnable.
 - L11 (evidence T3): proof run on local stack: doctor checks pass; `bun run test:e2e:local` 1/1 (refund problems) with trace; `bun run api:test` 116/116; evidence kept in `verification-evidence/admin-refund-problems/20261025-2014/` after `supabase stop`. Unverified: `stripe:listen` + `stripe trigger` (no sandbox login in the run), Stripe MCP cross-check.
 - L12 (evidence T4): `docs/formal/shipment-transfer-cancellation/` (model, cfg, README). TLC (jar sha256 d15655ee...726f, prints `2026.10.24.013619`): no error, 3,295,096 states, 995,560 distinct, depth 29 (re-run by parent). Eight broken variants each violate their property (table in README).
+- L13 (evidence T5): `.agents/skills/selene-technical-writing/` (SKILL.md, references/unslop.md, LICENSE). PR-body and commit rules dropped; verbatim `## Specs`/`## Log` quotes protected. Listed as ours in `AGENTS.md` and `docs/skills.md`. prettier clean; bun test 3342 pass.
