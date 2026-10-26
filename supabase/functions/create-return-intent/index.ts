@@ -4,6 +4,7 @@ import Stripe from 'https://esm.sh/stripe@17.0.0';
 
 import { buildReturnShippingPaymentIntentParams } from './create-return-intent.ts';
 import { ReturnIntentRequestSchema } from './request-schema.ts';
+import { withSentry } from '../_shared/sentry.ts';
 
 const STRIPE_API_VERSION = '2026-04-22.dahlia';
 
@@ -39,7 +40,7 @@ const log = (
   );
 };
 
-serve(async (req) => {
+serve(withSentry('create-return-intent', async (req) => {
   if (req.method === 'OPTIONS')
     return new Response('ok', { headers: corsHeaders });
 
@@ -170,4 +171,4 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+}));
