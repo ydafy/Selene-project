@@ -12,7 +12,7 @@ Close the three frontend items of `odd/tasks/cross-module-backlog.md`. Branch `f
 
 - [x] T1 (S1) tab titles and the `defaultValue`s through i18n, both locales, with a test (`core/i18n/__tests__/hardcodedSpanish.test.ts`). Commit 1.
 - [x] T2 (S2) each typecheck error checked against the real data; fix the bug or the type. Commit 2. Frontend typecheck: 0 errors outside test files (16 pre-existing in tests).
-- [ ] T3 (S3) `userInterfaceStyle` to `dark`; maintainer confirms on device. Commit 3.
+- [x] T3 (S3) `userInterfaceStyle` to `dark` (test `tests/__tests__/appConfigTheme.test.ts`); native setting, needs a new dev build; maintainer confirms on device. Commit 3.
 
 ## Log
 
