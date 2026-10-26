@@ -102,7 +102,7 @@ export const ImageGridPicker = ({
                 position: 'absolute',
                 top: 4,
                 right: 4,
-                backgroundColor: 'rgba(0,0,0,0.6)',
+                backgroundColor: theme.colors.scrim,
                 borderRadius: 12,
                 padding: 4,
                 zIndex: 10,
@@ -128,7 +128,7 @@ export const ImageGridPicker = ({
                   accessibilityRole="button"
                   accessibilityLabel={buildMovePhotoUpA11yLabel(index + 1, t)}
                   style={{
-                    backgroundColor: 'rgba(0,0,0,0.6)',
+                    backgroundColor: theme.colors.scrim,
                     borderRadius: 12,
                     padding: 4,
                     opacity: index === 0 ? 0.4 : 1,
@@ -147,7 +147,7 @@ export const ImageGridPicker = ({
                   accessibilityRole="button"
                   accessibilityLabel={buildMovePhotoDownA11yLabel(index + 1, t)}
                   style={{
-                    backgroundColor: 'rgba(0,0,0,0.6)',
+                    backgroundColor: theme.colors.scrim,
                     borderRadius: 12,
                     padding: 4,
                     opacity: index === images.length - 1 ? 0.4 : 1,

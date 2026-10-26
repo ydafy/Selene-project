@@ -66,7 +66,7 @@ export const AddressCard = ({
               shadowOpacity: 0.1,
               shadowRadius: 8,
               backgroundColor: pressed
-                ? 'rgba(255,255,255,0.02)'
+                ? theme.colors.surfaceSubtle
                 : theme.colors.cardBackground,
             }}
           >
@@ -130,7 +130,7 @@ export const AddressCard = ({
                     paddingVertical="xs"
                     borderRadius="s"
                     style={{
-                      backgroundColor: 'rgba(189, 159, 101, 0.15)',
+                      backgroundColor: theme.colors.primarySubtle,
                       borderWidth: 1,
                       borderColor: theme.colors.primary,
                     }}

@@ -144,7 +144,7 @@ export const CartItem = ({
             iconColor={theme.colors.error}
             size={22}
             onPress={() => onRemove(product.id)}
-            style={{ margin: 0, backgroundColor: 'rgba(220, 53, 69, 0.1)' }}
+            style={{ margin: 0, backgroundColor: theme.colors.errorSubtle }}
           />
         </Box>
       </Box>

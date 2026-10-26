@@ -23,7 +23,7 @@ export const getSharedStyles = (theme: Theme) =>
      * Contenedor base para efectos de escaneo y HUD.
      */
     hudContainer: {
-      backgroundColor: 'rgba(0, 0, 0, 0.2)',
+      backgroundColor: theme.colors.scrimLight,
       borderRadius: 8,
       borderWidth: 0.5,
       borderColor: theme.colors.separator,

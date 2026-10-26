@@ -67,9 +67,9 @@ const CategorySnapCardComponent = ({
               transform: [{ scale: pressed ? 0.99 : 1 }],
               borderColor: pressed
                 ? theme.colors.primary
-                : 'rgba(255, 255, 255, 0.12)',
+                : theme.colors.separator,
               // El color de fondo con opacidad ayuda al Blur a verse más denso
-              backgroundColor: 'rgba(30, 30, 30, 0.3)',
+              backgroundColor: theme.colors.glassSurface,
             },
           ]}
           onPress={() => {
@@ -81,7 +81,7 @@ const CategorySnapCardComponent = ({
         >
           <ImageBackground source={cat.img} style={StyleSheet.absoluteFill}>
             <LinearGradient
-              colors={['rgba(0,0,0,0.2)', 'rgba(0,0,0,0.7)']}
+              colors={[theme.colors.scrimLight, theme.colors.scrimStrong]}
               style={StyleSheet.absoluteFill}
             />
             <Box

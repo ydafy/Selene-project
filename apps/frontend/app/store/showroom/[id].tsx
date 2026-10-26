@@ -461,7 +461,7 @@ export default function ShowroomScreen() {
               />
               <LinearGradient
                 colors={[
-                  'rgba(255,255,255,0.03)',
+                  theme.colors.surfaceSubtle,
                   'transparent',
                   theme.colors.background,
                 ]}
