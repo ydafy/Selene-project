@@ -23,11 +23,11 @@ Branch `feat/remove-legacy-wallet`, worktree `School-portal-worktrees/remove-leg
 Order matters for deployment: clients and Edge Functions stop using the wallet before the database drops it.
 
 - [x] T1 (S1) app: remove wallet screens, store, hook, components, notification routes and i18n keys (both locales). Commit 1. Connect onboarding copy moved from `wallet:onboarding` to the `sellerOnboarding` namespace; guard `core/legacyWalletRemoval.test.ts`.
-- [ ] T2 (S1) admin web: remove the drain page, wallet card, transactions table and wallet KPIs; Playwright spec for the pages that change. Commit 2.
+- [x] T2 (S1) admin web: remove the drain page, wallet card, transactions table and wallet KPIs; Playwright spec for the pages that change. Commit 2. Also removed the SPEI file generator (`lib/bbva`), payout-request tables and the balance sort and footer on user cards; guard `src/lib/legacyWalletRemoval.test.ts`, Playwright `e2e/admin-web/legacyWalletRemoval.e2e.ts` (10/10).
 - [ ] T3 (S1, S2) Edge Functions: delete `drain-legacy-wallets` (and its Bruno requests, `config.toml` entry); remove wallet code from `confirm-shipment-delivery` and `resolve-dispute-refund`. Commit 3.
 - [ ] T4 (S4) database, part 1: migration rewriting the signup, order-creation, cancellation and refund functions without wallet writes; update `supabase/queries/`; prove each on the local stack per role. Own commit, native review.
 - [ ] T5 (S4) database, part 2: migration rewriting delivery, release, dispute and cron functions without wallet writes. Own commit, native review.
-- [ ] T6 (S2, S3) database, part 3: drop `fn_request_payout`, `fn_save_bank_account`, `connect_enabled`, and the five tables; regenerate types after the maintainer applies it. Own commit, native review.
+- [ ] T6 (S2, S3) database, part 3: drop `fn_request_payout`, `fn_save_bank_account`, `connect_enabled`, the `admin_payments_overview` view (no reader since T2), and the five tables; regenerate types after the maintainer applies it. Own commit, native review.
 - [ ] T7 (S3) docs: AGENTS.md "How money moves", `docs/go-live.md` (deploy order: T1-T3 deployed before the T4-T6 SQL), backlog and `supabase/AGENTS.md` mentions. Close the private advisory after T6 is deployed.
 
 ## Log
