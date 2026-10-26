@@ -40,6 +40,7 @@ const REQUIRED_KEYS: Array<[string, string, string]> = [
     'prepare.alreadyGeneratedDesc',
     'This shipment already has its shipping label.',
   ],
+  ['disputes', 'orderReference', 'Order #{{reference}}'],
 ];
 
 describe('BL20 hardcoded Spanish', () => {
@@ -59,6 +60,14 @@ describe('BL20 hardcoded Spanish', () => {
     for (const tab of ['home', 'search', 'sell', 'cart', 'profile']) {
       expect(source).toContain(`t('tabs.${tab}')`);
     }
+  });
+
+  test('the report screen header is translated', () => {
+    const source = readSource('app/profile/orders/report/[id].tsx');
+    expect(source.includes("'Impugnar Retorno'")).toBe(false);
+    expect(source.includes('`Orden #')).toBe(false);
+    expect(source).toContain("t('disputes:titleSeller')");
+    expect(source).toContain("t('disputes:orderReference'");
   });
 
   test.each([
