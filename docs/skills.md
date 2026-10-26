@@ -5,7 +5,7 @@ Project skills live in `.agents/skills/`. The rules agents follow are in the roo
 ## Sources
 
 - Vendor skills are installed from their upstream repositories with the [`skills` CLI](https://github.com/vercel-labs/skills) and recorded in `skills-lock.json`. Never edit them: an update overwrites local changes.
-- `envia-integration` and `selene-engineering-principles` are written and maintained in this repository. They are not in the lock.
+- `envia-integration`, `selene-engineering-principles`, and `verify-selene` are written and maintained in this repository. They are not in the lock.
 - `.atl/skill-registry.md` is the local, gitignored index the harness reads. Regenerate it with `gentle-ai skill-registry refresh`.
 
 ## Update
