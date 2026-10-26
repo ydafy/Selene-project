@@ -3723,6 +3723,14 @@ export type Database = {
           lease_id: string
         }[]
       }
+      fn_acquire_checkout_recovery_lease: {
+        Args: never
+        Returns: {
+          acquired: boolean
+          lease_expires_at: string
+          lease_id: string
+        }[]
+      }
       fn_acquire_connect_account_refresh: {
         Args: { p_source_event_id: string; p_stripe_account_id: string }
         Returns: number
@@ -3756,14 +3764,6 @@ export type Database = {
           p_admin_id: string
           p_new_status: Database["public"]["Enums"]["account_status"]
           p_reason: string
-      fn_acquire_checkout_recovery_lease: {
-        Args: never
-        Returns: {
-          acquired: boolean
-          lease_expires_at: string
-          lease_id: string
-        }[]
-      }
           p_target_user_id: string
         }
         Returns: boolean
@@ -4434,6 +4434,10 @@ export type Database = {
         Args: { p_job: string; p_lease_id: string }
         Returns: boolean
       }
+      fn_release_checkout_recovery_lease: {
+        Args: { p_lease_id: string }
+        Returns: boolean
+      }
       fn_release_payout_claim: {
         Args: { p_claim_token: string; p_run_id: string }
         Returns: boolean
@@ -4499,10 +4503,6 @@ export type Database = {
       }
       fn_resolve_dispute_to_seller_as_admin: {
         Args: { p_admin_id: string; p_admin_note: string; p_dispute_id: string }
-      fn_release_checkout_recovery_lease: {
-        Args: { p_lease_id: string }
-        Returns: boolean
-      }
         Returns: {
           error_message: string
           success: boolean
