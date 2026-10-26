@@ -70,3 +70,6 @@ apps/frontend/credentials/
 # Local Pi runtime state
 .atl/
 /.local/
+
+# Verification evidence (verify-selene skill)
+/verification-evidence/

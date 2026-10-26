@@ -10,14 +10,14 @@ Close the pstack-derived items deferred in BL16 (`odd/tasks/cross-module-backlog
 - S3. App components use no `rgba(...)` literals outside the theme; `noHardcodedColors.test.ts` fails on them as it does on hex (DESIGN.md: "App components still use `rgba(...)` literals for overlays and translucent borders; the hardcoded-color test only covers hex.").
 - S4. Admin `warning` / `errorSubtle` stay unadded until an admin screen needs one (DESIGN.md: "add them to `index.css` when an admin screen needs one").
 - S5. A project skill `verify-selene` gives the procedure to drive real flows on the local stack (Bruno for functions and RPCs, Playwright for admin-web, Stripe CLI for webhooks) with evidence and cleanup, without copying the `AGENTS.md` verification table; proven by running it on one real flow.
-- S6. A TLA+ model of the payout invariant: a shipment is released for its full amount or not at all, and never after a refund or dispute; checked with TLC (Java + TLC install authorized, L6).
+- S6. A TLA+ model of the payout invariant: a shipment is released for its full amount or not at all, and never after a cancellation refund; scope limited to shipment transfer vs shipment cancellation (L9); checked with TLC (Java + TLC install authorized, L6).
 - S7. A project skill adapting pstack `technical-writing` + `unslop` for `docs/` and `odd/tasks`, without PR-body rules.
 
 ## Tasks
 
-- T1 | S1-S2 | inline | branch `fix/design-token-gaps-2` | commit: 59cd1c3 (done)
-- T2 | S3 | inline | branch `fix/design-token-gaps-2` | commit: this commit (done)
-- T3 | S5 | inline | branch `docs/verify-selene-skill` | commit: pending
+- T1 | S1-S2 | inline | branch `fix/design-token-gaps-2` | commit: 4284ecf (done)
+- T2 | S3 | inline | branch `fix/design-token-gaps-2` | commit: 35db2b8 (done)
+- T3 | S5 | worker | branch `docs/verify-selene-skill` | commit: this commit (done)
 - T4 | S6 | inline | branch `docs/payout-invariant-tla` | commit: pending
 - T5 | S7 | inline | branch `docs/technical-writing-skill` | commit: pending
 
@@ -29,3 +29,8 @@ Close the pstack-derived items deferred in BL16 (`odd/tasks/cross-module-backlog
 - L4 (user): "me sirve el plan, y si insala java y tlc." Plan: PR1 DESIGN gaps, PR2 verify-selene, PR3 TLA+, PR4 technical-writing; benchmark/hillclimb/correct out.
 - L5 (user decision): contrast of `#6A3939`/`#6A4D39`/`#782B2B` text on 60% black is about 2:1; chose "1. Color de estado en el borde, la barra y el punto; texto legible".
 - L6 (user): Java and TLC install authorized for T4.
+- L7 (evidence): T1-T2 on `fix/design-token-gaps-2` (4284ecf, 35db2b8); bun test 3336 pass; no new typecheck or lint diagnostics; review assess medium, reviewDue false.
+- L8 (T3 grounding): pstack `create-verification-skill` adapted. Skill at `.agents/skills/verify-selene/` with `features/` map; evidence in gitignored `/verification-evidence/` (Playwright wipes `test-results/` per run). Local stack only; never remote.
+- L9 (user decision): T4 models only shipment transfer vs shipment cancellation ("Solo la parte protegida"); dispute actions stay out of this model for now.
+- L10 (evidence): JDK Temurin 21.0.12.1 (winget) and TLC 1.8.0 at `C:/Users/estra/.local/tla/tla2tools.jar` (sha256 d15655ee...726f) installed and runnable.
+- L11 (evidence T3): proof run on local stack: doctor checks pass; `bun run test:e2e:local` 1/1 (refund problems) with trace; `bun run api:test` 116/116; evidence kept in `verification-evidence/admin-refund-problems/20261025-2014/` after `supabase stop`. Unverified: `stripe:listen` + `stripe trigger` (no sandbox login in the run), Stripe MCP cross-check.
