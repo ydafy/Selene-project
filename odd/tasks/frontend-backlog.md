@@ -11,10 +11,11 @@ Close the three frontend items of `odd/tasks/cross-module-backlog.md`. Branch `f
 ## Tasks
 
 - [x] T1 (S1) tab titles and the `defaultValue`s through i18n, both locales, with a test (`core/i18n/__tests__/hardcodedSpanish.test.ts`). Commit 1.
-- [ ] T2 (S2) each typecheck error checked against the real data; fix the bug or the type. Commit 2 (split if large).
+- [x] T2 (S2) each typecheck error checked against the real data; fix the bug or the type. Commit 2. Frontend typecheck: 0 errors outside test files (16 pre-existing in tests).
 - [ ] T3 (S3) `userInterfaceStyle` to `dark`; maintainer confirms on device. Commit 3.
 
 ## Log
 
 - L1: Maintainer, 2026-10-25, verbatim: "okey empezemos por los de frontend como dices, es facil y rapdio luego vemos en a cual trabajamos. si queres rcea un woktree donde vamos a etsar trabajado todas estas que comentaste, el woktree me gusria atacar Frontend  y lo de quitar el modulo de wallet de todos lados del proyecto ya que es legacy."
 - L2: Reused the existing `remove-legacy-wallet` worktree (plan `odd/tasks/remove-legacy-wallet.md` on `feat/remove-legacy-wallet`) instead of a second one; this branch starts from `origin/main` 5cd0902. BL20 survey: only `orders:prepare.alreadyGeneratedTitle` and `alreadyGeneratedDesc` are missing from both locales; the other three `defaultValue`s duplicate existing keys.
+- L3: BL19 findings. Real bug: the dispute report wizard never showed its step indicator (`WizardSteps` returns `null` without `steps`); it now gets `disputes:steps.*`. Type-only (runtime data was right): `RawOrder` lacked the `shipments` the query selects; `OrderCard` and the orders list typed `EnrichedOrder` while they receive `CompatEnrichedOrder` with `items`; the `manage-payment-methods` registry said `clientSecret` while the function returns `setupIntent` (the add-card flow now refuses an incomplete config instead of opening the sheet); the sell preview lacked the four nullable publication columns (null until publish).

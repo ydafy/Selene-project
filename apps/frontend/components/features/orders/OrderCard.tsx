@@ -25,12 +25,13 @@ import {
   getOrderStatusColor,
   getOrderStatusLabel,
 } from '../../../core/utils/order-status';
-import { EnrichedOrder, OrderStatus } from '@selene/types';
+import { OrderStatus } from '@selene/types';
+import type { CompatEnrichedOrder } from '../../../core/hooks/useOrders';
 import { useTranslation } from 'react-i18next';
 import { colors } from '@/core/theme/tokens';
 
 interface Props {
-  order: EnrichedOrder;
+  order: CompatEnrichedOrder;
   isSeller: boolean;
   onPress: () => void;
 }

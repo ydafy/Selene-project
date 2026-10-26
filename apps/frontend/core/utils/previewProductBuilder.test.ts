@@ -53,6 +53,15 @@ describe('buildPreviewProduct', () => {
     expect(preview.seller_id).toBe('user-1');
   });
 
+  it('leaves the publication economics unset until the product is published', () => {
+    const preview = buildPreviewProduct(baseDraft, seller);
+
+    expect(preview.publication_commission_rate).toBeNull();
+    expect(preview.publication_insurance_rate).toBeNull();
+    expect(preview.publication_shipping_reserve_cents).toBeNull();
+    expect(preview.status_before_account_hold).toBeNull();
+  });
+
   it('keeps the draft id when present', () => {
     const preview = buildPreviewProduct({ ...baseDraft, id: 'prod-123' }, seller);
 

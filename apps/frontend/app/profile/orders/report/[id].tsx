@@ -462,7 +462,14 @@ export default function ReportProblemScreen() {
           />
 
           <Box marginVertical="l">
-            <WizardSteps currentStep={store.currentStep} />
+            <WizardSteps
+              currentStep={store.currentStep}
+              steps={[
+                t('disputes:steps.triage'),
+                t('disputes:steps.details'),
+                t('disputes:steps.evidence'),
+              ]}
+            />
           </Box>
 
           {store.currentStep === 0 && renderTriage()}

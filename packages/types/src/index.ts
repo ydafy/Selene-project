@@ -264,9 +264,11 @@ export interface EdgeFunctionRegistry {
       | { action: 'delete_payment_method'; paymentMethodId: string };
     response: {
       methods?: PaymentMethod[];
-      clientSecret?: string;
+      // get_setup_config: the SetupIntent client secret.
+      setupIntent?: string;
       customer?: string;
       ephemeralKey?: string;
+      publishableKey?: string;
     };
   };
   'create-connect-account': {
