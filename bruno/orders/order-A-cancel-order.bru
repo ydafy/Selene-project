@@ -1,0 +1,35 @@
+meta {
+  name: order-A-cancel-order
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_cancel_order
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_order_id": "{{orderIdA}}",
+    "p_reason": "Bruno cancellation",
+    "p_cancelled_by_role": "buyer"
+  }
+}
+
+tests {
+  test("the order is cancelled", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ success: true, error_message: null }]);
+  });
+}
+
+docs {
+  fn_cancel_order (service role). Releases the listing, cancels the order and notifies the seller and the buyer.
+}

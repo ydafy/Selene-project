@@ -1,0 +1,31 @@
+meta {
+  name: delete-account-payout-blocked
+  type: http
+  seq: 76
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/delete-account
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{deletePayoutBlockedToken}}
+}
+
+tests {
+  test("a Connect payout run that needs reconciliation refuses the closure", function () {
+    expect(res.getStatus()).to.equal(409);
+    expect(res.getBody()).to.deep.equal({
+      error: "DELETE_BLOCKED",
+      blocked_reason: "pending_payouts",
+    });
+  });
+}
+
+docs {
+Runs after delete-account-payout-blocked-setup and delete-account-payout-blocked-login. The closure
+is refused and nothing changes, so the seeded seller stays usable.
+}

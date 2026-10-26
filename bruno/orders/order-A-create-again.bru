@@ -1,0 +1,40 @@
+meta {
+  name: order-A-create-again
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_create_order_from_payment
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_buyer_id": "{{orderBuyerId}}",
+    "p_stripe_intent_id": "{{intentA}}",
+    "p_total_amount": 2550,
+    "p_service_fee": 150,
+    "p_address_id": "{{orderAddressId}}",
+    "p_product_ids": [
+      "00000000-0000-4000-8000-0000000000b4"
+    ]
+  }
+}
+
+tests {
+  test("the same payment is not processed twice", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ success: true, error_message: "ALREADY_PROCESSED" }]);
+  });
+}
+
+docs {
+  Idempotency of order creation.
+}

@@ -1,0 +1,27 @@
+meta {
+  name: order-D-shipment-refunded
+  type: http
+  seq: 39
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/shipments?id=eq.{{shipmentIdD}}&select=id,status
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the shipment is refunded", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].status).to.equal("refunded");
+  });
+}
+
+docs {
+  Shipment state after the call.
+}
