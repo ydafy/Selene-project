@@ -26,18 +26,18 @@ export const ONBOARDING_GUIDE_IMAGE_INDEX = {
 const GUIDANCE_CARD_DEFINITIONS = [
   {
     icon: 'bank-outline',
-    titleKey: 'wallet:onboarding.guidance.tip3_title',
-    descriptionKey: 'wallet:onboarding.guidance.tip3_desc',
+    titleKey: 'sellerOnboarding:guidance.tip3_title',
+    descriptionKey: 'sellerOnboarding:guidance.tip3_desc',
   },
   {
     icon: 'file-document-outline',
-    titleKey: 'wallet:onboarding.guidance.tip2_title',
-    descriptionKey: 'wallet:onboarding.guidance.tip2_desc',
+    titleKey: 'sellerOnboarding:guidance.tip2_title',
+    descriptionKey: 'sellerOnboarding:guidance.tip2_desc',
   },
   {
     icon: 'shield-check-outline',
-    titleKey: 'wallet:onboarding.guidance.tip1_title',
-    descriptionKey: 'wallet:onboarding.guidance.tip1_desc',
+    titleKey: 'sellerOnboarding:guidance.tip1_title',
+    descriptionKey: 'sellerOnboarding:guidance.tip1_desc',
   },
 ] as const satisfies ReadonlyArray<{
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
@@ -62,7 +62,7 @@ const GuidanceCard = ({
   description,
   index,
 }: GuidanceCardProps) => {
-  const { t } = useTranslation(['wallet']);
+  const { t } = useTranslation(['sellerOnboarding']);
   const theme = useTheme<Theme>();
   return (
     <Box
@@ -73,7 +73,7 @@ const GuidanceCard = ({
       borderColor="separator"
       accessible={true}
       accessibilityRole="text"
-      accessibilityLabel={t('wallet:onboarding.guidance.cardLabel', {
+      accessibilityLabel={t('sellerOnboarding:guidance.cardLabel', {
         index,
         total: GUIDANCE_CARD_TOTAL,
         title,
@@ -109,7 +109,7 @@ const StripeGuideImageCard = ({
   imageIndex,
   onImagePress,
 }: StripeGuideImageCardProps) => {
-  const { t } = useTranslation(['wallet']);
+  const { t } = useTranslation(['sellerOnboarding']);
   const theme = useTheme<Theme>();
 
   return (
@@ -131,7 +131,7 @@ const StripeGuideImageCard = ({
         onPress={onImagePress}
         accessible={true}
         accessibilityRole="button"
-        accessibilityLabel={t('wallet:onboarding.image.openLabel')}
+        accessibilityLabel={t('sellerOnboarding:image.openLabel')}
       >
         <AppImage
           source={ONBOARDING_GUIDE_IMAGES[imageIndex]}
@@ -157,7 +157,7 @@ const StripeGuideImageCard = ({
             color={theme.colors.primary}
           />
           <Text variant="caption-md" color="textPrimary">
-            {t('wallet:onboarding.image.viewScreen')}
+            {t('sellerOnboarding:image.viewScreen')}
           </Text>
         </Box>
       </TouchableOpacity>
@@ -166,7 +166,7 @@ const StripeGuideImageCard = ({
 };
 
 export const OnboardingStep0 = () => {
-  const { t } = useTranslation(['wallet']);
+  const { t } = useTranslation(['sellerOnboarding']);
   return (
     <Box gap="m">
       {GUIDANCE_CARD_DEFINITIONS.map((card, index) => (
@@ -192,7 +192,7 @@ export const OnboardingStep1 = ({ onImagePress }: Step1Props) => {
       <Box backgroundColor="cardBackground" padding="m" borderRadius="m">
         <Text variant="body-md" color="textSecondary">
           <Trans
-            i18nKey="wallet:onboarding.guidance.accountType_desc"
+            i18nKey="sellerOnboarding:guidance.accountType_desc"
             components={{
               resaltar: (
                 <Text
@@ -224,7 +224,7 @@ export const OnboardingStep2 = ({ onImagePress }: Step2Props) => {
       <Box backgroundColor="cardBackground" padding="m" borderRadius="m">
         <Text variant="body-md" color="textSecondary">
           <Trans
-            i18nKey="wallet:onboarding.guidance.tip2_desc"
+            i18nKey="sellerOnboarding:guidance.tip2_desc"
             components={{
               resaltar: (
                 <Text
@@ -264,7 +264,7 @@ export const OnboardingStep3 = ({
   status,
   statusGuidanceKey,
 }: Step3Props) => {
-  const { t } = useTranslation(['wallet']);
+  const { t } = useTranslation(['sellerOnboarding']);
   const theme = useTheme<Theme>();
   const guidanceKey =
     statusGuidanceKey ??
@@ -292,7 +292,7 @@ export const OnboardingStep3 = ({
           marginBottom="xs"
           style={{ paddingHorizontal: 16 }}
         >
-          {t(`wallet:onboarding.statusGuidance.${guidanceKey}Title`)}
+          {t(`sellerOnboarding:statusGuidance.${guidanceKey}Title`)}
         </Text>
         <Text
           variant="body-md"
@@ -300,7 +300,7 @@ export const OnboardingStep3 = ({
           color="textSecondary"
           style={{ paddingHorizontal: 16 }}
         >
-          {t(`wallet:onboarding.statusGuidance.${guidanceKey}Desc`)}
+          {t(`sellerOnboarding:statusGuidance.${guidanceKey}Desc`)}
         </Text>
       </Box>
     </Box>

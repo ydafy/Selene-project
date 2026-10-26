@@ -22,7 +22,7 @@ Branch `feat/remove-legacy-wallet`, worktree `School-portal-worktrees/remove-leg
 
 Order matters for deployment: clients and Edge Functions stop using the wallet before the database drops it.
 
-- [ ] T1 (S1) app: remove wallet screens, store, hook, components, notification routes and i18n keys (both locales). Commit 1.
+- [x] T1 (S1) app: remove wallet screens, store, hook, components, notification routes and i18n keys (both locales). Commit 1. Connect onboarding copy moved from `wallet:onboarding` to the `sellerOnboarding` namespace; guard `core/legacyWalletRemoval.test.ts`.
 - [ ] T2 (S1) admin web: remove the drain page, wallet card, transactions table and wallet KPIs; Playwright spec for the pages that change. Commit 2.
 - [ ] T3 (S1, S2) Edge Functions: delete `drain-legacy-wallets` (and its Bruno requests, `config.toml` entry); remove wallet code from `confirm-shipment-delivery` and `resolve-dispute-refund`. Commit 3.
 - [ ] T4 (S4) database, part 1: migration rewriting the signup, order-creation, cancellation and refund functions without wallet writes; update `supabase/queries/`; prove each on the local stack per role. Own commit, native review.
