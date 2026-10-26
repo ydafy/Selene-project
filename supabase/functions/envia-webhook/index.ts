@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 import { verifyEnviaWebhook } from '../_shared/envia-webhook-verify.ts';
 import { createEnviaWebhookHandler } from './handler.ts';
+import { withSentry } from '../_shared/sentry.ts';
 
 const sha256 = async (value: string) => {
   const digest = await crypto.subtle.digest(
@@ -127,4 +128,4 @@ const handler = createEnviaWebhookHandler({
   },
 });
 
-serve(handler);
+serve(withSentry('envia-webhook', handler));

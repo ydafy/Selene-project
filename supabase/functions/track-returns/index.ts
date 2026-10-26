@@ -6,6 +6,7 @@ import {
   extractEnviaPollingObservations,
   successfulPollingTargetIds,
 } from '../_shared/envia-tracking-ingestion.ts';
+import { withSentry } from '../_shared/sentry.ts';
 
 const BATCH_SIZE = 50;
 const json = (body: unknown, status = 200) =>
@@ -14,7 +15,7 @@ const json = (body: unknown, status = 200) =>
     headers: { 'Content-Type': 'application/json' },
   });
 
-serve(async (req) => {
+serve(withSentry('track-returns', async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok');
   try {
     const supabaseAdmin = createClient(
@@ -94,4 +95,4 @@ serve(async (req) => {
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : 'TRACKING_RECONCILIATION_FAILED' }, 500);
   }
-});
+}));

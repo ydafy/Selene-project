@@ -15,6 +15,7 @@ import {
   isAuthorizedCheckoutRecoveryWorker,
   processRecoveryClaimsSequentially,
 } from "./recovery.ts";
+import { withSentry } from '../_shared/sentry.ts';
 
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
   apiVersion: "2026-04-22.dahlia",
@@ -30,7 +31,7 @@ const warnLeaseNotReleased = (data: { leaseId: string; reason: string }) =>
     }),
   );
 
-serve(async (request) => {
+serve(withSentry('checkout-recovery-worker', async (request) => {
   const workerServiceRoleJwt = Deno.env.get(
     "CHECKOUT_RECOVERY_SERVICE_ROLE_JWT",
   )?.trim();
@@ -205,4 +206,4 @@ serve(async (request) => {
       );
     }
   }
-});
+}));

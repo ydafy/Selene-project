@@ -24,6 +24,7 @@ import {
   FALLBACK_PACKAGE_PRESET,
   resolveShipmentPackage,
 } from './shipment-package.ts';
+import { withSentry } from '../_shared/sentry.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -123,7 +124,7 @@ const hashRateInput = async (payload: Record<string, unknown>) => {
 
 // --- 4. FUNCIÓN PRINCIPAL ---
 
-serve(async (req: Request) => {
+serve(withSentry('generate-shipping-label', async (req: Request) => {
   if (req.method === 'OPTIONS')
     return new Response('ok', { headers: corsHeaders });
 
@@ -641,4 +642,4 @@ serve(async (req: Request) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+}));

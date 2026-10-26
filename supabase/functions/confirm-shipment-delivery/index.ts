@@ -9,6 +9,7 @@ import {
   resolveBuyerConfirmationPlan,
 } from './confirm-shipment-delivery.ts';
 import { ConfirmationRequestSchema } from './request-schema.ts';
+import { withSentry } from '../_shared/sentry.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -32,7 +33,7 @@ const log = (
   );
 };
 
-serve(async (req) => {
+serve(withSentry('confirm-shipment-delivery', async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -168,4 +169,4 @@ serve(async (req) => {
       },
     );
   }
-});
+}));

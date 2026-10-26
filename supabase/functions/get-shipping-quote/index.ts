@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { QuoteContractError, quoteListingShipment } from "./quote-contract.ts";
 import { ShippingQuoteRequestSchema } from "./request-schema.ts";
 import { resolveProductionQuoteRuntime } from "./runtime.ts";
+import { withSentry } from '../_shared/sentry.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -23,7 +24,7 @@ const log = (level: string, message: string, meta?: unknown) => {
   );
 };
 
-serve(async (req: Request) => {
+serve(withSentry('get-shipping-quote', async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -115,4 +116,4 @@ serve(async (req: Request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+}));
