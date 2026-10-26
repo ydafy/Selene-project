@@ -6,6 +6,10 @@ import type { Database } from "../../../packages/types/src/database.types.ts";
 import { extractStripeChargeId } from "../_shared/stripe-charge.ts";
 import { RecoveryChargeEvidenceSchema } from "./charge-evidence-schema.ts";
 import {
+  acquireCheckoutRecoveryLease,
+  releaseCheckoutRecoveryLease,
+} from "./lease.ts";
+import {
   claimCheckoutRecoveryShells,
   compensateRecoveryShell,
   isAuthorizedCheckoutRecoveryWorker,
@@ -16,6 +20,15 @@ const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
   apiVersion: "2026-04-22.dahlia",
   httpClient: Stripe.createFetchHttpClient(),
 });
+
+const warnLeaseNotReleased = (data: { leaseId: string; reason: string }) =>
+  console.warn(
+    JSON.stringify({
+      level: "WARN",
+      msg: "Checkout recovery lease not released; it expires on its own",
+      ...data,
+    }),
+  );
 
 serve(async (request) => {
   const workerServiceRoleJwt = Deno.env.get(
@@ -35,26 +48,18 @@ serve(async (request) => {
     Deno.env.get("SUPABASE_URL") || "",
     workerServiceRoleJwt,
   );
-  let lockAcquired = false;
+  const leaseClient = {
+    rpc: (fn: string, args: Record<string, unknown>) =>
+      supabase.rpc(fn as never, args as never),
+  };
+  let leaseId: string | undefined;
 
   try {
-    const { data: lock, error: lockError } = await supabase
-      .from("system_settings")
-      .update({ checkout_recovery_running: true } as never)
-      .eq("id", 1)
-      .eq("checkout_recovery_enabled" as never, true)
-      .eq("checkout_recovery_running" as never, false)
-      .select("id")
-      .maybeSingle();
-    if (lockError) {
-      throw new Error(
-        `CHECKOUT_RECOVERY_LOCK_ACQUIRE_FAILED: ${lockError.message}`,
-      );
-    }
-    if (!lock) {
+    const lease = await acquireCheckoutRecoveryLease(leaseClient);
+    if (!lease.acquired) {
       return Response.json({ received: true, skipped: true });
     }
-    lockAcquired = true;
+    leaseId = lease.leaseId;
 
     const claims = await claimCheckoutRecoveryShells(
       async ({ limit, scope }) => {
@@ -192,16 +197,12 @@ serve(async (request) => {
       results,
     });
   } finally {
-    if (lockAcquired) {
-      const { error: releaseError } = await supabase
-        .from("system_settings")
-        .update({ checkout_recovery_running: false } as never)
-        .eq("id", 1);
-      if (releaseError) {
-        throw new Error(
-          `CHECKOUT_RECOVERY_LOCK_RELEASE_FAILED: ${releaseError.message}`,
-        );
-      }
+    if (leaseId) {
+      await releaseCheckoutRecoveryLease(
+        leaseClient,
+        leaseId,
+        warnLeaseNotReleased,
+      );
     }
   }
 });

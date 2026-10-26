@@ -1,0 +1,34 @@
+meta {
+  name: checkout-recovery-lease-release-holder
+  type: http
+  seq: 73
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_release_checkout_recovery_lease
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_lease_id": "{{checkoutRecoveryLeaseId}}"
+  }
+}
+
+tests {
+  test("the holder releases its lease", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.equal(true);
+  });
+}
+
+docs {
+  BL13: releases the lease taken by checkout-recovery-lease-service-acquire, leaving the
+  local stack as the seed left it.
+}

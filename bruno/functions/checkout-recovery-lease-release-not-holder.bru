@@ -1,0 +1,33 @@
+meta {
+  name: checkout-recovery-lease-release-not-holder
+  type: http
+  seq: 72
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_release_checkout_recovery_lease
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_lease_id": "00000000-0000-4000-8000-0000000000ff"
+  }
+}
+
+tests {
+  test("a lease id that is not the holder releases nothing", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.equal(false);
+  });
+}
+
+docs {
+  BL13: only the holder may release; a stale or foreign id leaves the lease in place.
+}

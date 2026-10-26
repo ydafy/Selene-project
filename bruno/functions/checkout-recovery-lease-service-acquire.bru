@@ -1,0 +1,37 @@
+meta {
+  name: checkout-recovery-lease-service-acquire
+  type: http
+  seq: 70
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_acquire_checkout_recovery_lease
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("the service role acquires a free lease for 600 seconds", function () {
+    expect(res.getStatus()).to.equal(200);
+    const [lease] = res.getBody();
+    expect(lease.acquired).to.equal(true);
+    expect(lease.lease_id).to.match(/^[0-9a-f-]{36}$/);
+    const ttl = (new Date(lease.lease_expires_at) - new Date()) / 1000;
+    expect(ttl).to.be.within(590, 610);
+    bru.setVar("checkoutRecoveryLeaseId", lease.lease_id);
+  });
+}
+
+docs {
+  BL13: the worker lease is free in the seed (recovery enabled), so the service role gets it.
+  The next requests prove it is held, that a non-holder cannot release it, and release it.
+}
