@@ -1,6 +1,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
+import { withSentry } from '../_shared/sentry.ts';
+
 import {
   ApiError,
   AUTO_COMPLETION_DELAY_MS,
@@ -31,7 +33,7 @@ const log = (
   );
 };
 
-serve(async (req: Request): Promise<Response> => {
+serve(withSentry('complete-delivered-shipments', async (req: Request): Promise<Response> => {
   try {
     validateAutoCompletionRequest({
       method: req.method,
@@ -170,4 +172,4 @@ serve(async (req: Request): Promise<Response> => {
       },
     );
   }
-});
+}));

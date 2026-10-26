@@ -131,10 +131,23 @@ export function buildAutoCompletionRpcInput(
   };
 }
 
+// fn_confirm_shipment_delivery error codes are SCREAMING_SNAKE_CASE; any other text is
+// not a code that may reach the logs.
+const RPC_ERROR_CODE = /^[A-Z][A-Z_]{0,63}$/;
+
 export function mapAutoCompletionRpcResult(
   value: unknown,
   shipmentId: string,
 ): AutoCompletionResult {
+  if (
+    isCompletionRpcResult(value) &&
+    !value.success &&
+    value.error !== null &&
+    RPC_ERROR_CODE.test(value.error)
+  ) {
+    throw new ApiError(500, value.error);
+  }
+
   if (
     !isCompletionRpcResult(value) ||
     !value.success ||

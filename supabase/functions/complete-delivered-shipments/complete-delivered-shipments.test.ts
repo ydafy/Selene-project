@@ -184,6 +184,23 @@ describe('auto completion RPC contracts', () => {
       new ApiError(500, 'INTERNAL_ERROR'),
     );
   });
+
+  it('fails a coded RPC refusal with its own code, and unexpected error text as INTERNAL_ERROR', () => {
+    for (const code of ['COMPLETION_AUDIT_MISSING', 'SHIPMENT_NOT_FOUND', 'SHIPMENT_NOT_IN_CONFIRMABLE_STATE']) {
+      expect(() =>
+        mapAutoCompletionRpcResult(
+          { success: false, error: code, completion_source: null, idempotent: false },
+          'shipment-due',
+        ),
+      ).toThrow(new ApiError(500, code));
+    }
+    expect(() =>
+      mapAutoCompletionRpcResult(
+        { success: false, error: 'permission denied for table x', completion_source: null, idempotent: false },
+        'shipment-due',
+      ),
+    ).toThrow(new ApiError(500, 'INTERNAL_ERROR'));
+  });
 });
 
 describe('scheduler endpoint contract', () => {
