@@ -2,7 +2,8 @@
 -- Canonical: public.fn_cron_health()
 -- Read model of pg_cron health for the cron-watchdog Edge Function
 -- (service_role only). Never exposes `command` or `return_message`.
--- Deployed by: supabase/migrations/*_cron_health.sql
+-- Deployed by: supabase/migrations/20261021025844_cron_health.sql, replaced by
+-- 20261026014010_cron_health_index_scan.sql (primary key read, BL33).
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION public.fn_cron_health()
@@ -29,7 +30,8 @@ AS $$
     SELECT r.start_time, r.status
     FROM cron.job_run_details AS r
     WHERE r.jobid = j.jobid
-    ORDER BY r.start_time DESC NULLS LAST
+      AND r.start_time IS NOT NULL
+    ORDER BY r.runid DESC
     LIMIT 1
   ) AS d ON true
   ORDER BY 1;
