@@ -690,16 +690,11 @@ function PrepareShipmentContent() {
                 color={theme.colors.success}
               />
               <Text variant="body-md" fontWeight="bold">
-                {t('orders:prepare.alreadyGeneratedTitle', {
-                  defaultValue: 'Guía ya generada',
-                })}
+                {t('orders:prepare.alreadyGeneratedTitle')}
               </Text>
             </Box>
             <Text variant="body-sm" color="textSecondary" marginBottom="m">
-              {t('orders:prepare.alreadyGeneratedDesc', {
-                defaultValue:
-                  'Este envío ya cuenta con su guía de paquetería generada.',
-              })}
+              {t('orders:prepare.alreadyGeneratedDesc')}
             </Text>
             <PrimaryButton
               disabled={isProcessing}
@@ -710,9 +705,7 @@ function PrepareShipmentContent() {
               }}
               icon="printer-check"
             >
-              {t('orders:actions.viewPdf', {
-                defaultValue: 'Ver PDF de la guía',
-              })}
+              {t('orders:actions.viewPdf')}
             </PrimaryButton>
           </Box>
         ) : selectedShipment && isLabelRecoveryState(labelState) ? (
