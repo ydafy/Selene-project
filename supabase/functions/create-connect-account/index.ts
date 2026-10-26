@@ -23,6 +23,7 @@ import Stripe from 'https://esm.sh/stripe@17.0.0';
 
 import { resolveConnectOnboardingUrls } from './connect-onboarding-urls.ts';
 import { CreateConnectAccountRequestSchema } from './request-schema.ts';
+import { withSentry } from '../_shared/sentry.ts';
 
 const STRIPE_API_VERSION = '2026-04-22.dahlia';
 const APP_NAME = 'selene';
@@ -50,7 +51,7 @@ const log = (
   );
 };
 
-serve(async (req: Request) => {
+serve(withSentry('create-connect-account', async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -273,4 +274,4 @@ serve(async (req: Request) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+}));

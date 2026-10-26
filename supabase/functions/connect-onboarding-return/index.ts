@@ -11,6 +11,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
 import { resolveConnectOnboardingRedirect } from './connect-onboarding-return.ts';
+import { withSentry } from '../_shared/sentry.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,7 +19,7 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
 };
 
-serve((req: Request) => {
+serve(withSentry('connect-onboarding-return', (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -60,4 +61,4 @@ serve((req: Request) => {
       'Cache-Control': 'no-store',
     },
   });
-});
+}));

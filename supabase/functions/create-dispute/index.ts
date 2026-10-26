@@ -7,6 +7,7 @@ import {
   parseCreateDisputeRequestBody,
   validateShipmentDisputeContext,
 } from './create-dispute.ts';
+import { withSentry } from '../_shared/sentry.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -30,7 +31,7 @@ const log = (
   );
 };
 
-serve(async (req) => {
+serve(withSentry('create-dispute', async (req) => {
   if (req.method === 'OPTIONS')
     return new Response('ok', { headers: corsHeaders });
 
@@ -145,4 +146,4 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+}));

@@ -7,6 +7,7 @@ import {
   resolveSellerOnboardingResponse,
   type SellerOnboardingResponse,
 } from './get-seller-onboarding.ts';
+import { withSentry } from '../_shared/sentry.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,7 +22,7 @@ const jsonResponse = (body: SellerOnboardingResponse, status: number) =>
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 
-serve(async (req) => {
+serve(withSentry('get-seller-onboarding', async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -75,4 +76,4 @@ serve(async (req) => {
 
     return jsonResponse({ success: false, error: message }, status);
   }
-});
+}));

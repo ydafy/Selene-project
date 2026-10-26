@@ -7,6 +7,7 @@ import {
   type TrackingUrlSubject,
 } from './handler.ts';
 import { ShipmentTrackingUrlRequestSchema } from './request-schema.ts';
+import { withSentry } from '../_shared/sentry.ts';
 
 const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
@@ -51,7 +52,7 @@ const handler = createResolveShipmentTrackingUrlHandler({
     resolveEnviaTrackingUrl(Deno.env.get('ENVIA_MODE') ?? 'sandbox', trackingNumber),
 });
 
-serve(async (request) => {
+serve(withSentry('resolve-shipment-tracking-url', async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok');
 
   const body = await request.clone().json().catch(() => null);
@@ -63,4 +64,4 @@ serve(async (request) => {
   }
 
   return handler(request);
-});
+}));
