@@ -211,9 +211,18 @@ describe('checkout recovery SQL guards', () => {
   it('replaces the stuck running flag with an expiring, service-only worker lease', () => {
     const canonical = readSql('supabase/queries/orders/checkout_recovery_lease.sql');
     const migration = readSql('supabase/migrations/20261026003552_checkout_recovery_lease.sql');
+    const drop = readSql('supabase/migrations/20261026004335_drop_checkout_recovery_running_flag.sql');
+    const dropStatement =
+      'ALTER TABLE public.system_settings DROP COLUMN IF EXISTS checkout_recovery_running;';
     const body = (sql: string) => sql.slice(sql.indexOf('ALTER TABLE public.system_settings'));
+    const canonicalWithoutDrop = canonical.replace(
+      / -- The legacy boolean is gone .*? DROP COLUMN IF EXISTS checkout_recovery_running;/,
+      '',
+    );
 
-    expect(body(migration)).toBe(body(canonical));
+    expect(body(migration)).toBe(body(canonicalWithoutDrop));
+    expect(drop).toContain(dropStatement);
+    expect(canonical).toContain(dropStatement);
     expect(canonical).toContain("interval '600 seconds'");
     expect(canonical).toContain('AND settings.checkout_recovery_enabled = true');
     expect(canonical).toContain('AND settings.checkout_recovery_lease_id = p_lease_id');

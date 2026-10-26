@@ -23,7 +23,7 @@ INSERT INTO public.system_settings (
   isr_withholding_pct, iva_withholding_pct, connect_enabled,
   novice_completed_threshold, novice_active_limit, trusted_active_limit,
   envia_carrier, envia_service, envia_print_format, envia_print_size,
-  checkout_recovery_enabled, checkout_recovery_running
+  checkout_recovery_enabled
 ) VALUES (
   1, false, '1.0.0', '1.0.0',
   0.06, 0, 0.012, 200,
@@ -42,7 +42,7 @@ INSERT INTO public.system_settings (
   0.00, 0.00, false,
   3, 3, 10,
   'paquetexpress', 'ground', 'PDF', 'STOCK_4X6',
-  true, false
+  true
 )
 ON CONFLICT (id) DO NOTHING;
 

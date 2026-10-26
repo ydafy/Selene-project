@@ -5,11 +5,17 @@
 -- at most the next two 5-minute runs and never overlaps a live one. Only the holder may
 -- release. A lease is granted only while checkout_recovery_enabled is true.
 -- Same pattern as fn_acquire_auto_cancel_lease.
--- Current state of migration 20261026003552_checkout_recovery_lease (columns, functions).
+-- Current state of migrations 20261026003552_checkout_recovery_lease (columns, functions)
+-- and 20261026004335_drop_checkout_recovery_running_flag (DROP below).
 
 ALTER TABLE public.system_settings
   ADD COLUMN IF NOT EXISTS checkout_recovery_lease_id UUID,
   ADD COLUMN IF NOT EXISTS checkout_recovery_lease_expires_at TIMESTAMPTZ;
+
+-- The legacy boolean is gone once the lease-based worker is deployed
+-- (migration 20261026004335_drop_checkout_recovery_running_flag).
+ALTER TABLE public.system_settings
+  DROP COLUMN IF EXISTS checkout_recovery_running;
 
 CREATE OR REPLACE FUNCTION public.fn_acquire_checkout_recovery_lease()
 RETURNS TABLE (
