@@ -24,6 +24,7 @@ import {
 } from './resume-pending-payouts.ts';
 import { createReconciliationAdapters } from './reconciliation-adapter.ts';
 import type { ReleaseQueueRow } from '../release-connect-payout/release-connect-payout.ts';
+import { withSentry } from '../_shared/sentry.ts';
 
 const STRIPE_API_VERSION = '2026-04-22.dahlia';
 
@@ -387,4 +388,4 @@ const serveHandler = async (req: Request): Promise<Response> => {
   }
 };
 
-serve(serveHandler);
+serve(withSentry('resume-pending-payouts', serveHandler));
