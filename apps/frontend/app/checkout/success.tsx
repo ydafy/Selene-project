@@ -86,7 +86,7 @@ export default function SuccessScreen() {
       </MotiView>
 
       <Text variant="header-xl" marginTop="xl" textAlign="center">
-        {t('success.title', { defaultValue: '¡Pago Confirmado!' })}
+        {t('success.title')}
       </Text>
 
       <Text
@@ -96,15 +96,12 @@ export default function SuccessScreen() {
         marginTop="m"
         marginBottom="xl"
       >
-        {t('success.description', {
-          defaultValue:
-            'Tu hardware ha sido apartado. El vendedor recibirá la guía de envío en breve.',
-        })}
+        {t('success.description')}
       </Text>
 
       <Box width="100%" gap="m">
         <PrimaryButton onPress={handleGoToOrders}>
-          {t('success.viewOrders', { defaultValue: 'Ir a Mis Pedidos' })}
+          {t('success.viewOrders')}
         </PrimaryButton>
 
         <TouchableOpacity onPress={handleGoHome} style={{ padding: 10 }}>
@@ -114,7 +111,7 @@ export default function SuccessScreen() {
             textAlign="center"
             fontWeight="bold"
           >
-            {t('success.backHome', { defaultValue: 'Volver al Inicio' })}
+            {t('success.backHome')}
           </Text>
         </TouchableOpacity>
       </Box>

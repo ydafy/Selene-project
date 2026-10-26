@@ -208,6 +208,8 @@
   },
   "prepare": {
     "headerTitle": "Generar Guía",
+    "alreadyGeneratedTitle": "Guía ya generada",
+    "alreadyGeneratedDesc": "Este envío ya cuenta con su guía de paquetería generada.",
     "title": "Preparar Envío",
     "originLabel": "De dónde envías",
     "originTitle": "Tu dirección de envío",
