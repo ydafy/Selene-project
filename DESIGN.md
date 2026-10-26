@@ -69,6 +69,7 @@ Order and shipment states, identical in both apps:
 | shipped   | `#336084` | dispute   | `#782b2b` |
 | delivered | `#478560` |           |           |
 
+- `cancelled`, `refunded`, and `dispute` are too dark for small text on a dark background (about 2:1). In app status badges their color goes on the border, side bar, and dot, and the label uses `textPrimary` (`getOrderStatusTextColor` in `apps/frontend/core/utils/order-status.ts`).
 - **Type:** Montserrat only (Regular, Medium, Bold; Italic is loaded). Medium for headings, Regular for body. Use tabular figures for money and counts.
 - **Theme:** dark only. There is no light mode; do not add one without a product decision.
 - **Spacing (app):** `xs 4`, `s 8`, `m 16`, `l 24`, `xl 40`. **Radii (app):** `s 8`, `m 16`, `l 24`, `xl 40`, `full`. React Native Paper `roundness` is `s`; Paper multiplies it per component (Dialog x7, Chip x2), so set an explicit radius when a Paper component needs an exact one.
@@ -96,7 +97,6 @@ Clarity and the same premium identity count equally. The partners must understan
 
 Recorded, not fixed. Fix them in their own change.
 
-- `getOrderStatusColor` (`apps/frontend/core/utils/order-status.ts`) shows `cancelled`, `refunded`, and `dispute` in `error` red instead of their state colors from the table above.
 - App components still use `rgba(...)` literals for overlays and translucent borders; the hardcoded-color test only covers hex.
 - The admin has no `warning` or `errorSubtle` equivalent; add them to `index.css` when an admin screen needs one.
 

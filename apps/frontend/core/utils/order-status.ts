@@ -21,13 +21,29 @@ export const getOrderStatusColor = (
     case 'completed':
       return 'completed';
     case 'cancelled':
+      return 'cancelled';
     case 'refunded':
+      return 'refunded';
     case 'dispute':
-      return 'error';
+      return 'dispute';
     default:
       return 'textSecondary';
   }
 };
+
+// These state colors are too dark for small text on the dark badge (about 2:1),
+// so their label uses primary text while the border, bar, and dot keep the state color.
+const LOW_CONTRAST_STATES: OrderStatus[] = ['cancelled', 'refunded', 'dispute'];
+
+/**
+ * Color for the status label text, legible on the dark badge background.
+ */
+export const getOrderStatusTextColor = (
+  status: OrderStatus,
+): keyof Theme['colors'] =>
+  LOW_CONTRAST_STATES.includes(status)
+    ? 'textPrimary'
+    : getOrderStatusColor(status);
 
 /**
  * Obtiene la clave de traducción para el estado.

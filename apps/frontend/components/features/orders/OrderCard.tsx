@@ -23,6 +23,7 @@ import { formatCurrency, formatDate } from '../../../core/utils/format';
 import { orderCardAmountCents } from '../../../core/utils/order-summary-state';
 import {
   getOrderStatusColor,
+  getOrderStatusTextColor,
   getOrderStatusLabel,
 } from '../../../core/utils/order-status';
 import { OrderStatus } from '@selene/types';
@@ -92,6 +93,7 @@ export const OrderCard = ({ order, isSeller, onPress }: Props) => {
 
   const currentProduct = order.items[activeIndex]?.product;
   const statusColor = getOrderStatusColor(safeStatus);
+  const statusTextColor = getOrderStatusTextColor(safeStatus);
   const statusLabel = t(getOrderStatusLabel(safeStatus)).toUpperCase();
   const showPulse = ['paid', 'shipped'].includes(safeStatus);
   const hasMultipleItems = order.items.length > 1;
@@ -274,7 +276,7 @@ export const OrderCard = ({ order, isSeller, onPress }: Props) => {
                 variant="caption-md"
                 fontWeight="bold"
                 style={{
-                  color: theme.colors[statusColor as keyof Theme['colors']],
+                  color: theme.colors[statusTextColor],
                   fontSize: 11,
                   letterSpacing: 1,
                 }}
