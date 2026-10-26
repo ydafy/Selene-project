@@ -9,6 +9,7 @@ const FUNCTIONS = [
   'cancel-order',
   'auto-cancel-orders',
   'auto-cancel-preparing',
+  'complete-delivered-shipments',
 ];
 
 describe('Sentry wiring', () => {

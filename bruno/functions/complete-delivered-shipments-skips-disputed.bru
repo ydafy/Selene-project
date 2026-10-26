@@ -1,0 +1,38 @@
+meta {
+  name: complete-delivered-shipments-skips-disputed
+  type: http
+  seq: 66
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/complete-delivered-shipments
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{anonKey}}
+  x-cron-secret: {{cronSecret}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("a due shipment with an open dispute does not fail the batch", function () {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body.success).to.equal(true);
+    expect(body.failed).to.equal(0);
+  });
+}
+
+docs {
+  BL14: the cron answered 500 forever because a due shipment with an open dispute (seed f2)
+  came back from fn_confirm_shipment_delivery as SHIPMENT_HAS_ACTIVE_DISPUTE and was counted
+  as a failure. The candidate query now leaves out shipments with an active dispute (#22).
+  Needs the functions server and CRON_SECRET in supabase/functions/.env. Completes seed f1 and
+  f3 on its first run; later runs find nothing due.
+}

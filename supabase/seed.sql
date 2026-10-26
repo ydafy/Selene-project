@@ -5,6 +5,9 @@
 --   admin@selene.local   admin
 --   seller@selene.local  verified seller with four published listings
 --   buyer@selene.local   buyer with a default shipping address
+--   fixture-seller@selene.local, fixture-buyer@selene.local
+--                        own the auto-completion fixtures, so the accounts above keep
+--                        no orders or disputes (delete-account requests rely on that)
 --
 -- Configuration rows mirror project acoiclkeymgtlwcxilun on 2026-10-20, with
 -- every cron "running" flag reset to false.
@@ -92,7 +95,9 @@ SELECT
 FROM (VALUES
   ('00000000-0000-4000-8000-000000000001'::uuid, 'admin@selene.local', 'selene_admin'),
   ('00000000-0000-4000-8000-000000000002'::uuid, 'seller@selene.local', 'hardware_seller'),
-  ('00000000-0000-4000-8000-000000000003'::uuid, 'buyer@selene.local', 'pc_buyer')
+  ('00000000-0000-4000-8000-000000000003'::uuid, 'buyer@selene.local', 'pc_buyer'),
+  ('00000000-0000-4000-8000-000000000004'::uuid, 'fixture-seller@selene.local', 'fixture_seller'),
+  ('00000000-0000-4000-8000-000000000005'::uuid, 'fixture-buyer@selene.local', 'fixture_buyer')
 ) AS u(id, email, username);
 
 INSERT INTO auth.identities (
@@ -173,3 +178,36 @@ CROSS JOIN (VALUES
    'RAM', 'used', 'office', '{"brand": "Kingston", "type": "DDR4", "capacity": "16 GB", "speed": "3200 MHz"}'::jsonb, 100::numeric, 'ram_1', 'REJECTED')
 ) AS p(id, name, description, price, category, condition, usage, specifications, shipping_cost, package_preset, status)
 WHERE s.id = 1;
+
+-- Auto-completion fixtures for complete-delivered-shipments (backlog BL14): one fixture-buyer
+-- order with four fixture-seller shipments. f1 is due (delivered 3 days ago, no dispute); f2 is due but has
+-- an open dispute; f3 is due and its dispute is resolved; f4 was delivered 1 hour ago.
+-- The complete-delivered-shipments cron must complete f1 and f3 only. The Stripe ids are fake:
+-- they only mark the shipments as Connect, so completion never touches the legacy wallets.
+INSERT INTO public.orders (id, buyer_id, total_amount, shipping_address, status) VALUES
+  ('00000000-0000-4000-8000-0000000000f0', '00000000-0000-4000-8000-000000000005', 100,
+   '{"street": "Av. Reforma 1", "city": "Ciudad de México", "zip": "06500"}'::jsonb, 'delivered');
+
+INSERT INTO public.shipments (id, order_id, seller_id, status, delivered_at, stripe_payment_intent_id) VALUES
+  ('00000000-0000-4000-8000-0000000000f1', '00000000-0000-4000-8000-0000000000f0',
+   '00000000-0000-4000-8000-000000000004', 'delivered', now() - interval '3 days', 'pi_seed_auto_completion_f1'),
+  ('00000000-0000-4000-8000-0000000000f2', '00000000-0000-4000-8000-0000000000f0',
+   '00000000-0000-4000-8000-000000000004', 'delivered', now() - interval '3 days', 'pi_seed_auto_completion_f2'),
+  ('00000000-0000-4000-8000-0000000000f3', '00000000-0000-4000-8000-0000000000f0',
+   '00000000-0000-4000-8000-000000000004', 'delivered', now() - interval '3 days', 'pi_seed_auto_completion_f3'),
+  ('00000000-0000-4000-8000-0000000000f4', '00000000-0000-4000-8000-0000000000f0',
+   '00000000-0000-4000-8000-000000000004', 'delivered', now() - interval '1 hour', 'pi_seed_auto_completion_f4');
+
+-- fn_notify_dispute_opened only accepts service-role inserts of open disputes, so the seed acts
+-- as the service role for this block and resolves f6 afterwards.
+SELECT set_config('request.jwt.claims', '{"role": "service_role"}', false);
+
+INSERT INTO public.disputes (id, order_id, shipment_id, buyer_id, seller_id, reason, description, status) VALUES
+  ('00000000-0000-4000-8000-0000000000f5', '00000000-0000-4000-8000-0000000000f0', '00000000-0000-4000-8000-0000000000f2',
+   '00000000-0000-4000-8000-000000000005', '00000000-0000-4000-8000-000000000004', 'damaged', 'Seed: open dispute', 'open'),
+  ('00000000-0000-4000-8000-0000000000f6', '00000000-0000-4000-8000-0000000000f0', '00000000-0000-4000-8000-0000000000f3',
+   '00000000-0000-4000-8000-000000000005', '00000000-0000-4000-8000-000000000004', 'damaged', 'Seed: resolved dispute', 'open');
+
+UPDATE public.disputes SET status = 'resolved' WHERE id = '00000000-0000-4000-8000-0000000000f6';
+
+SELECT set_config('request.jwt.claims', '', false);

@@ -1,0 +1,29 @@
+meta {
+  name: complete-delivered-shipments-fixture-state
+  type: http
+  seq: 67
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/shipments?id=in.(00000000-0000-4000-8000-0000000000f1,00000000-0000-4000-8000-0000000000f2,00000000-0000-4000-8000-0000000000f3,00000000-0000-4000-8000-0000000000f4)&select=id,status,completed_at&order=id
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("only the due shipments without an active dispute were completed", function () {
+    expect(res.getStatus()).to.equal(200);
+    const byId = Object.fromEntries(res.getBody().map((row) => [row.id.slice(-2), row.status]));
+    expect(byId).to.deep.equal({ f1: "completed", f2: "delivered", f3: "completed", f4: "delivered" });
+  });
+}
+
+docs {
+  Runs after complete-delivered-shipments-skips-disputed. f2 (open dispute) and f4 (delivered
+  1 hour ago) must stay delivered; f1 and f3 (resolved dispute) are completed.
+}
