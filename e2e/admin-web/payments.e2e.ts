@@ -85,7 +85,7 @@ async function openPayments(
       await route.fulfill({ headers: cors, json: {
         id: userId, role: 'admin', username: 'Browser fixture', email: 'fixture@example.invalid',
         avatar_url: null, status: 'active', is_verified_seller: false,
-        created_at: '2026-01-01T00:00:00.000Z', available_balance: 0, pending_balance: 0,
+        created_at: '2026-01-01T00:00:00.000Z',
       } });
       return;
     }

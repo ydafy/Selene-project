@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 
-import enWallet from './locales/en/wallet.json';
-import esWallet from './locales/es/wallet.json';
+import enSellerOnboarding from './locales/en/sellerOnboarding.json';
+import esSellerOnboarding from './locales/es/sellerOnboarding.json';
 
 const REQUIRED_STATUS_GUIDANCE_KEYS = [
   'newTitle',
@@ -12,10 +12,10 @@ const REQUIRED_STATUS_GUIDANCE_KEYS = [
   'rejectedDesc',
 ] as const;
 
-describe('wallet onboarding locale parity', () => {
+describe('seller onboarding locale parity', () => {
   it('keeps shared payment copy and interpolation tokens aligned without guaranteed dates', () => {
-    const en = enWallet.onboarding as unknown as Record<string, Record<string, string>>;
-    const es = esWallet.onboarding as unknown as Record<string, Record<string, string>>;
+    const en = enSellerOnboarding as unknown as Record<string, Record<string, string>>;
+    const es = esSellerOnboarding as unknown as Record<string, Record<string, string>>;
     expect(en.paymentExplanation).toBeDefined();
     expect(es.paymentExplanation).toBeDefined();
     expect(Object.keys(en.paymentExplanation).sort()).toEqual(Object.keys(es.paymentExplanation).sort());
@@ -40,12 +40,12 @@ describe('wallet onboarding locale parity', () => {
   });
   it('keeps final-step status guidance keys in English and Spanish', () => {
     for (const key of REQUIRED_STATUS_GUIDANCE_KEYS) {
-      expect(enWallet.onboarding.statusGuidance[key]).toBeString();
-      expect(esWallet.onboarding.statusGuidance[key]).toBeString();
+      expect(enSellerOnboarding.statusGuidance[key]).toBeString();
+      expect(esSellerOnboarding.statusGuidance[key]).toBeString();
     }
 
-    expect(Object.keys(enWallet.onboarding.statusGuidance).sort()).toEqual(
-      Object.keys(esWallet.onboarding.statusGuidance).sort(),
+    expect(Object.keys(enSellerOnboarding.statusGuidance).sort()).toEqual(
+      Object.keys(esSellerOnboarding.statusGuidance).sort(),
     );
   });
 });

@@ -200,6 +200,8 @@
   },
   "prepare": {
     "headerTitle": "Generate Label",
+    "alreadyGeneratedTitle": "Label already generated",
+    "alreadyGeneratedDesc": "This shipment already has its shipping label.",
     "title": "Prepare Shipment",
     "originLabel": "Where you ship from",
     "originTitle": "Your shipping address",

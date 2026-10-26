@@ -24,10 +24,8 @@ import esAddress from './locales/es/address.json';
 import enAddress from './locales/en/address.json';
 import esCheckout from './locales/es/checkout.json';
 import enCheckout from './locales/en/checkout.json';
-import esWallet from './locales/es/wallet.json';
-import enWallet from './locales/en/wallet.json';
-import esWithdraw from './locales/es/withdraw.json';
-import enWithdraw from './locales/en/withdraw.json';
+import esSellerOnboarding from './locales/es/sellerOnboarding.json';
+import enSellerOnboarding from './locales/en/sellerOnboarding.json';
 import esOrders from './locales/es/orders.json';
 import enOrders from './locales/en/orders.json';
 import esNotifications from './locales/es/notifications.json';
@@ -53,8 +51,7 @@ export const namespaces = [
   'admin',
   'address',
   'checkout',
-  'wallet',
-  'withdraw',
+  'sellerOnboarding',
   'orders',
   'notifications',
   'disputes',
@@ -89,8 +86,7 @@ const resources = {
     admin: enAdmin,
     address: enAddress,
     checkout: enCheckout,
-    wallet: enWallet,
-    withdraw: enWithdraw,
+    sellerOnboarding: enSellerOnboarding,
     orders: enOrders,
     notifications: enNotifications,
     disputes: enDisputes,
@@ -110,8 +106,7 @@ const resources = {
     admin: esAdmin,
     address: esAddress,
     checkout: esCheckout,
-    wallet: esWallet,
-    withdraw: esWithdraw,
+    sellerOnboarding: esSellerOnboarding,
     orders: esOrders,
     notifications: esNotifications,
     disputes: esDisputes,

@@ -12,7 +12,7 @@ describe('shared seller payment explanation', () => {
     expect(existsSync(join(FRONTEND, component))).toBe(true);
     const shared = read(component);
     for (const key of ['buyerReview', 'release', 'bank', 'delays']) {
-      expect(shared).toContain(`t('onboarding.paymentExplanation.${key}')`);
+      expect(shared).toContain(`t('paymentExplanation.${key}')`);
     }
     expect(shared).not.toContain('paymentExplanation.title');
     const onboarding = read('app/sell/onboarding.tsx');

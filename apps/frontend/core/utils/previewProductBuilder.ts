@@ -53,6 +53,11 @@ export const buildPreviewProduct = (
   shipping_payer: draft.shipping_payer || 'buyer',
   verification_data: null,
   verified_at: null,
+  // Frozen by usePublishProduct at publish time; a draft has none yet.
+  publication_commission_rate: null,
+  publication_insurance_rate: null,
+  publication_shipping_reserve_cents: null,
+  status_before_account_hold: null,
 
   // Seller mock required by ProductWithSeller
   seller: seller as Profile,
