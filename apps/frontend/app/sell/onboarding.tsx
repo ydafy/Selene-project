@@ -56,16 +56,16 @@ type OnboardingStepRenderContext = {
 const ONBOARDING_STEP_DEFINITIONS = [
   {
     key: 'intro',
-    labelKey: 'wallet:onboarding.steps.intro',
-    titleKey: 'wallet:onboarding.header.title',
-    subtitleKey: 'wallet:onboarding.header.subtitle',
+    labelKey: 'sellerOnboarding:steps.intro',
+    titleKey: 'sellerOnboarding:header.title',
+    subtitleKey: 'sellerOnboarding:header.subtitle',
     renderContent: () => <OnboardingStep0 />,
   },
   {
     key: 'type',
-    labelKey: 'wallet:onboarding.steps.type',
-    titleKey: 'wallet:onboarding.steps.typeTitle',
-    subtitleKey: 'wallet:onboarding.steps.typeDesc',
+    labelKey: 'sellerOnboarding:steps.type',
+    titleKey: 'sellerOnboarding:steps.typeTitle',
+    subtitleKey: 'sellerOnboarding:steps.typeDesc',
     renderContent: ({ openViewer }: OnboardingStepRenderContext) => (
       <OnboardingStep1
         onImagePress={() => openViewer(ONBOARDING_GUIDE_IMAGE_INDEX.accountType)}
@@ -74,9 +74,9 @@ const ONBOARDING_STEP_DEFINITIONS = [
   },
   {
     key: 'details',
-    labelKey: 'wallet:onboarding.steps.details',
-    titleKey: 'wallet:onboarding.steps.detailsTitle',
-    subtitleKey: 'wallet:onboarding.steps.detailsDesc',
+    labelKey: 'sellerOnboarding:steps.details',
+    titleKey: 'sellerOnboarding:steps.detailsTitle',
+    subtitleKey: 'sellerOnboarding:steps.detailsDesc',
     renderContent: ({ openViewer }: OnboardingStepRenderContext) => (
       <OnboardingStep2
         onImagePress={() =>
@@ -87,9 +87,9 @@ const ONBOARDING_STEP_DEFINITIONS = [
   },
   {
     key: 'done',
-    labelKey: 'wallet:onboarding.steps.done',
-    titleKey: 'wallet:onboarding.steps.doneTitle',
-    subtitleKey: 'wallet:onboarding.steps.doneDesc',
+    labelKey: 'sellerOnboarding:steps.done',
+    titleKey: 'sellerOnboarding:steps.doneTitle',
+    subtitleKey: 'sellerOnboarding:steps.doneDesc',
     renderContent: ({ status, statusGuidanceKey }) => (
       <OnboardingStep3 status={status} statusGuidanceKey={statusGuidanceKey} />
     ),
@@ -106,7 +106,7 @@ const LAST_ONBOARDING_STEP_INDEX = ONBOARDING_STEP_DEFINITIONS.length - 1;
 const DEFAULT_ONBOARDING_STEP = ONBOARDING_STEP_DEFINITIONS[0];
 
 export default function SellerOnboardingScreen() {
-  const { t } = useTranslation(['wallet']);
+  const { t } = useTranslation(['sellerOnboarding']);
   const router = useRouter();
   const params = useLocalSearchParams<{ return?: string; refresh?: string }>();
   const theme = useTheme<Theme>();
@@ -203,14 +203,14 @@ export default function SellerOnboardingScreen() {
     statusError,
   });
   const visibleErrorMessage = visibleErrorKey
-    ? t(`wallet:onboarding.errors.${visibleErrorKey}`)
+    ? t(`sellerOnboarding:errors.${visibleErrorKey}`)
     : null;
 
   if (onboardingUi.viewState === 'auth-required') {
     return (
       <Box flex={1} backgroundColor="background">
         <GlobalHeader showBack />
-        <ErrorState title={t('wallet:onboarding.errors.authRequired')} />
+        <ErrorState title={t('sellerOnboarding:errors.authRequired')} />
       </Box>
     );
   }
@@ -230,8 +230,8 @@ export default function SellerOnboardingScreen() {
           }}
         >
           <ScreenHeader
-            title={t('wallet:onboarding.loading.title')}
-            subtitle={t('wallet:onboarding.loading.subtitle')}
+            title={t('sellerOnboarding:loading.title')}
+            subtitle={t('sellerOnboarding:loading.subtitle')}
           />
           <Skeleton height={48} borderRadius="m" />
           <Skeleton height={280} borderRadius="l" />
@@ -269,7 +269,7 @@ export default function SellerOnboardingScreen() {
             marginBottom="s"
             color="textPrimary"
           >
-            {t('wallet:onboarding.success.title')}
+            {t('sellerOnboarding:success.title')}
           </Text>
 
           <Text
@@ -279,7 +279,7 @@ export default function SellerOnboardingScreen() {
             marginBottom="xl"
             style={{ paddingHorizontal: 16 }}
           >
-            {t('wallet:onboarding.success.subtitle')}
+            {t('sellerOnboarding:success.subtitle')}
           </Text>
 
           <Box
@@ -291,7 +291,7 @@ export default function SellerOnboardingScreen() {
             gap="m"
           >
             <Text variant="subheader-md" color="textPrimary">
-              {t('wallet:onboarding.paymentExplanation.title')}
+              {t('sellerOnboarding:paymentExplanation.title')}
             </Text>
             <SellerPaymentExplanation />
           </Box>
@@ -301,7 +301,7 @@ export default function SellerOnboardingScreen() {
               onPress={() => router.replace(CONNECT_ONBOARDING_SUCCESS_CTA_ROUTE)}
               icon="check"
             >
-              {t('wallet:onboarding.success.cta')}
+              {t('sellerOnboarding:success.cta')}
             </PrimaryButton>
           </Box>
         </ScrollView>
@@ -344,10 +344,10 @@ export default function SellerOnboardingScreen() {
             borderColor="error"
           >
             <Text color="error" variant="body-md" fontWeight="bold">
-              {t('wallet:onboarding.status.rejectedTitle')}
+              {t('sellerOnboarding:status.rejectedTitle')}
             </Text>
             <Text color="error" variant="body-sm" marginTop="xs">
-              {t('wallet:onboarding.status.rejectedDesc')}
+              {t('sellerOnboarding:status.rejectedDesc')}
             </Text>
           </Box>
         )}
@@ -362,7 +362,7 @@ export default function SellerOnboardingScreen() {
             borderColor="separator"
           >
             <Text variant="body-sm" color="textSecondary">
-              {t('wallet:onboarding.actions.checking')}
+              {t('sellerOnboarding:actions.checking')}
             </Text>
           </Box>
         )}
@@ -408,7 +408,7 @@ export default function SellerOnboardingScreen() {
                 variant="outline"
                 icon="arrow-left"
               >
-                {t('wallet:onboarding.actions.back')}
+                {t('sellerOnboarding:actions.back')}
               </PrimaryButton>
             </Box>
           )}
@@ -421,7 +421,7 @@ export default function SellerOnboardingScreen() {
                 loading={onboardingUi.nextLoading}
                 icon="arrow-right"
               >
-                {t('wallet:onboarding.actions.next')}
+                {t('sellerOnboarding:actions.next')}
               </PrimaryButton>
             ) : onboardingUi.showStartCta ? (
               <PrimaryButton
@@ -430,7 +430,7 @@ export default function SellerOnboardingScreen() {
                 disabled={onboardingUi.ctaDisabled}
                 icon="bank-outline"
               >
-                {t(`wallet:onboarding.actions.${onboardingUi.ctaKey}`)}
+                {t(`sellerOnboarding:actions.${onboardingUi.ctaKey}`)}
               </PrimaryButton>
             ) : (
               <Skeleton height={48} borderRadius="m" />
@@ -444,9 +444,9 @@ export default function SellerOnboardingScreen() {
         initialIndex={0}
         visible={isViewerVisible}
         onClose={() => setIsViewerVisible(false)}
-        closeAccessibilityLabel={t('wallet:onboarding.image.closeLabel')}
+        closeAccessibilityLabel={t('sellerOnboarding:image.closeLabel')}
         counterAccessibilityLabel={({ current, total }) =>
-          t('wallet:onboarding.image.counterLabel', { current, total })
+          t('sellerOnboarding:image.counterLabel', { current, total })
         }
       />
     </Box>
