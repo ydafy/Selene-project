@@ -150,7 +150,7 @@ export const OptionsMenu = ({
 };
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
+  backdrop: { flex: 1, backgroundColor: colors.backdrop },
   shadow: {
     shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },

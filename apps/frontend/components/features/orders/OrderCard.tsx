@@ -248,7 +248,7 @@ export const OrderCard = ({ order, isSeller, onPress }: Props) => {
           )}
 
           <LinearGradient
-            colors={['transparent', 'rgba(18,18,18,0.8)']}
+            colors={['transparent', theme.colors.backgroundFade]}
             style={StyleSheet.absoluteFill}
             pointerEvents="none"
           />
@@ -263,7 +263,7 @@ export const OrderCard = ({ order, isSeller, onPress }: Props) => {
               borderRadius="full"
               borderWidth={1}
               style={{
-                backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                backgroundColor: theme.colors.scrim,
                 borderColor: theme.colors[statusColor as keyof Theme['colors']],
               }}
             >
@@ -293,7 +293,7 @@ export const OrderCard = ({ order, isSeller, onPress }: Props) => {
               color="primary"
               style={{
                 fontSize: 26,
-                textShadowColor: 'rgba(0,0,0,0.8)',
+                textShadowColor: theme.colors.scrimStrong,
                 textShadowRadius: 4,
               }}
             >
@@ -309,7 +309,7 @@ export const OrderCard = ({ order, isSeller, onPress }: Props) => {
               padding="m"
               style={{
                 backgroundColor: pressed
-                  ? 'rgba(255,255,255,0.03)'
+                  ? theme.colors.surfaceSubtle
                   : 'transparent',
               }}
             >

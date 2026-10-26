@@ -67,7 +67,7 @@ const CategoryStrip = memo(
           styles.stripPressable,
           {
             backgroundColor: pressed
-              ? 'rgba(255, 255, 255, 0.03)'
+              ? theme.colors.surfaceSubtle
               : 'transparent',
           },
         ]}

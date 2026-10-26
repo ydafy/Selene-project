@@ -15,8 +15,8 @@ Close the pstack-derived items deferred in BL16 (`odd/tasks/cross-module-backlog
 
 ## Tasks
 
-- T1 | S1-S2 | inline | branch `fix/design-token-gaps-2` | commit: pending
-- T2 | S3 | inline | branch `fix/design-token-gaps-2` | commit: pending
+- T1 | S1-S2 | inline | branch `fix/design-token-gaps-2` | commit: 59cd1c3 (done)
+- T2 | S3 | inline | branch `fix/design-token-gaps-2` | commit: this commit (done)
 - T3 | S5 | inline | branch `docs/verify-selene-skill` | commit: pending
 - T4 | S6 | inline | branch `docs/payout-invariant-tla` | commit: pending
 - T5 | S7 | inline | branch `docs/technical-writing-skill` | commit: pending

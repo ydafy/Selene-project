@@ -178,7 +178,7 @@ export const OrderShipmentCard = ({
   const renderStatusBadge = () => (
     <Box
       style={{
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        backgroundColor: theme.colors.scrim,
         borderColor: statusColor,
         borderWidth: 1,
         alignSelf: 'flex-start',

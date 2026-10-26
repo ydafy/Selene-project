@@ -58,6 +58,7 @@ Both apps use the same palette and typeface. Names differ by platform.
 
 - `warning` is for caution icons, borders, and status dots. `errorSubtle` is the background of an error panel, always with an `error` border or text.
 - App only: `shadow` (`#000000`) for `shadowColor`, `mediaBackground` (`#000000`) behind full-screen photos and video.
+- App only, translucent: `surfaceSubtle` (white 3%) for inactive cards and chips; `primarySubtle` (gold 15%) for a selected fill with a `primary` border; `glassSurface` (card gray 30%) under a `BlurView`; `scrimLight`, `scrim`, `scrimStrong` (black 20%, 60%, 70%) for overlays on photos; `backdrop` (black 40%) behind menus and modals; `backgroundFade` (background 80%) to end a fade-out gradient; `skeleton` and `skeletonShimmer` for loading placeholders. Borders use `separator` (white 10%).
 
 Order and shipment states, identical in both apps:
 
@@ -76,7 +77,7 @@ Order and shipment states, identical in both apps:
 
 ## Mobile app (`apps/frontend`)
 
-- Use Restyle tokens and `textVariants` (`header-2xl` once per screen, `subheader-*` for sections, `body-*`, `caption-*` for secondary text). No hardcoded colors or font sizes in components. Tokens live in `core/theme/tokens.ts`; outside a component that has `useTheme`, import `colors` from there. `core/theme/__tests__/noHardcodedColors.test.ts` fails on hex literals outside the theme; the only exceptions are third-party brand colors (logos in `components/icons/`, Stripe, 3DMark).
+- Use Restyle tokens and `textVariants` (`header-2xl` once per screen, `subheader-*` for sections, `body-*`, `caption-*` for secondary text). No hardcoded colors or font sizes in components. Tokens live in `core/theme/tokens.ts`; outside a component that has `useTheme`, import `colors` from there. `core/theme/__tests__/noHardcodedColors.test.ts` fails on hex and `rgb`/`rgba`/`hsl` literals outside the theme; the only exceptions are third-party brand colors (logos in `components/icons/`, Stripe, 3DMark).
 - Follow native conventions (load the `expo-native-ui` skill); tokens and component variants follow `expo-design-system` within this file's palette.
 - Icons: `@expo/vector-icons`, one family per screen.
 - Blur (`blurBackground`) is for overlays on top of content, not for cards.
@@ -97,7 +98,6 @@ Clarity and the same premium identity count equally. The partners must understan
 
 Recorded, not fixed. Fix them in their own change.
 
-- App components still use `rgba(...)` literals for overlays and translucent borders; the hardcoded-color test only covers hex.
 - The admin has no `warning` or `errorSubtle` equivalent; add them to `index.css` when an admin screen needs one.
 
 ## For agents
