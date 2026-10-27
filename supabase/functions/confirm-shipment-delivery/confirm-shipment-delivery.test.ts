@@ -202,6 +202,7 @@ describe('mapConfirmationRpcResult', () => {
       'SHIPMENT_NOT_IN_CONFIRMABLE_STATE',
       'SHIPMENT_HAS_ACTIVE_DISPUTE',
       'COMPLETION_AUDIT_MISSING',
+      'SHIPMENT_NOT_CONNECT',
     ]) {
       expect(() =>
         mapConfirmationRpcResult(
@@ -210,6 +211,15 @@ describe('mapConfirmationRpcResult', () => {
         ),
       ).toThrow(new ApiError(409, error));
     }
+  });
+
+  it('no longer maps the removed wallet error code to a conflict', () => {
+    expect(() =>
+      mapConfirmationRpcResult(
+        { success: false, error: 'SELLER_WALLET_NOT_FOUND', completion_source: null, idempotent: false },
+        shipmentId,
+      ),
+    ).toThrow(new ApiError(500, 'INTERNAL_ERROR'));
   });
 
   it('fails closed for malformed or unexpected RPC output', () => {
