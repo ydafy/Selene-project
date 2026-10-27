@@ -10,6 +10,7 @@ import {
   BadgeCheck,
   Users,
   Package,
+  Truck,
   LogOut,
   ChevronRight,
   Menu,
@@ -36,6 +37,7 @@ export const Layout = () => {
     { name: 'Disputas', path: '/disputes', icon: Gavel },
     { name: 'Productos', path: '/products', icon: Package },
     { name: 'Connect Earnings', path: '/payments', icon: Wallet },
+    { name: 'Envíos', path: '/shipments', icon: Truck },
     { name: 'Seller Onboarding', path: '/seller-onboarding', icon: BadgeCheck },
   ];
 

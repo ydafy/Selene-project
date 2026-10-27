@@ -6,7 +6,7 @@ const help =
   'Usage: bun scripts/test-auto-cancel-paid-timeout.ts [--help]\n' +
   'B3.3 live: drives the REAL served auto-cancel-orders function over HTTP and checks its effects in the\n' +
   'database: paid-timeout boundaries with a live order_expiration_hours (just expired vs not yet, tracked and\n' +
-  'non-paid shipments excluded), rerun idempotence, a held lease ("Already running"), two simultaneous runs,\n' +
+  'non-paid and label-blocked orphan_pending shipments excluded), rerun idempotence, a held lease ("Already running"), two simultaneous runs,\n' +
   'an invalid live setting (500 AUTO_CANCEL_SETTINGS_INVALID) and a free lease after every run.\n' +
   'Fixtures have no Stripe payment intent, so every selected shipment stops at the AUTO_CANCEL_MISSING_PAYMENT_INTENT\n' +
   'gate after its cancellation operation is claimed: Stripe is never reached and no money moves.\n' +
@@ -21,13 +21,21 @@ const ids = {
   seller: '00000000-0000-4000-8000-000000000002',
   order: '7b430000-0000-4000-8000-000000000001',
 };
-const productIds = [1, 2, 3, 4].map((n) => `00000000-0000-4000-8000-0000000000b${n}`);
+const productIds = [1, 2, 3, 4, 5].map((n) => `00000000-0000-4000-8000-0000000000b${n}`);
 const shipments = {
   expired: { id: '7b430000-0000-4000-8000-000000000011', status: 'paid', tracking: null, minutesOld: HOURS * 60 + 2 },
   fresh: { id: '7b430000-0000-4000-8000-000000000012', status: 'paid', tracking: null, minutesOld: HOURS * 60 - 2 },
   tracked: { id: '7b430000-0000-4000-8000-000000000013', status: 'paid', tracking: 'TRK-B33', minutesOld: 10 * 60 },
   preparing: { id: '7b430000-0000-4000-8000-000000000014', status: 'preparing', tracking: null, minutesOld: 10 * 60 },
-};
+  // Expired like `expired`, but a label operation blocks it: B4.1 leaves it out of the candidates.
+  orphan: {
+    id: '7b430000-0000-4000-8000-000000000015',
+    status: 'paid',
+    tracking: null,
+    minutesOld: HOURS * 60 + 2,
+    labelState: 'orphan_pending',
+  },
+} as Record<string, { id: string; status: string; tracking: string | null; minutesOld: number; labelState?: string }>;
 const shipmentIds = Object.values(shipments).map((shipment) => shipment.id);
 
 function status(): Record<string, string> {
@@ -109,6 +117,10 @@ async function fixture(sql: SQL) {
     await sql`INSERT INTO public.shipments (id, order_id, seller_id, status, tracking_number, created_at)
       VALUES (${shipment.id}, ${ids.order}, ${ids.seller}, ${shipment.status}, ${shipment.tracking},
         now() - (${shipment.minutesOld}::int * interval '1 minute'))`;
+    // shipments_label_claim_check requires a claim_token for every state past unclaimed.
+    if (shipment.labelState)
+      await sql`UPDATE public.shipments SET label_generation_state = ${shipment.labelState}, claim_token = gen_random_uuid()
+        WHERE id = ${shipment.id}`;
     await sql`INSERT INTO public.order_items (order_id, product_id, seller_id, price_at_purchase, net_payout, shipment_id)
       VALUES (${ids.order}, ${productIds[index]}, ${ids.seller}, 1000, 900, ${shipment.id})`;
   }
@@ -185,6 +197,8 @@ async function run() {
       const reply = await call();
       assert.equal(reply.status, 200, reply.text);
       assert.deepEqual(await operatedIds(sql), [shipments.expired.id]);
+      assert.equal(await operationCount(sql, shipments.orphan.id), 0, 'orphan must not be selected');
+      assert.match(reply.text, /"processed":1,/, `only the expired shipment is processed: ${reply.text}`);
       const [operation] = await sql`SELECT source, actor_id FROM public.shipment_cancellation_operations
         WHERE shipment_id = ${shipments.expired.id}`;
       assert.equal(operation.source, 'paid_timeout');

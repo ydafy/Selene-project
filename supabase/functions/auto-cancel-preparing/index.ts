@@ -8,8 +8,21 @@ import {
   acquireAutoCancelLease,
   releaseAutoCancelLease,
 } from '../_shared/auto-cancel-lease.ts';
-import { isAuthorizedCronRequest } from '../_shared/cron-auth.ts';
-import { withSentry } from '../_shared/sentry.ts';
+import { readAutoCancelExpirationHours } from '../_shared/auto-cancel-settings.ts';
+import {
+  isAuthorizedCronRequest,
+  reportCronSecretMismatch,
+} from '../_shared/cron-auth.ts';
+import {
+  fetchFreshTracking,
+  requestEnviaLabelCancellation,
+} from '../_shared/envia-carrier-cancellation.ts';
+import { resolveEnviaRuntimeConfiguration } from '../_shared/envia-shipping.ts';
+import {
+  confirmPreparingCarrier,
+  type PreparingCarrierGatePorts,
+} from '../_shared/preparing-carrier-gate.ts';
+import { reportMessage, withSentry } from '../_shared/sentry.ts';
 import { runShipmentCancellation } from '../_shared/shipment-cancellation.ts';
 import { resolveAutoCancelShipmentCancellationGate } from '../_shared/auto-cancel-safety.ts';
 import {
@@ -40,6 +53,7 @@ const reportCritical = createCancellationReporter('auto-cancel-preparing', log);
 
 serve(withSentry('auto-cancel-preparing', async (req: Request) => {
   if (!isAuthorizedCronRequest(req, Deno.env.get('CRON_SECRET'))) {
+    await reportCronSecretMismatch(req, 'auto-cancel-preparing', reportMessage);
     return new Response(JSON.stringify({ error: 'UNAUTHORIZED' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },
@@ -68,28 +82,13 @@ serve(withSentry('auto-cancel-preparing', async (req: Request) => {
     //    72h balancea experiencia del buyer (no esperar demasiado) con la realidad
     //    del seller (carrier scan delays). Si se detectan cancelaciones injustas
     //    en producción, subir a 96h desde el dashboard sin deploy.
-    const { data: settings, error: settingsError } = await supabaseAdmin
-      .from('system_settings')
-      .select('preparing_expiration_hours')
-      .single();
-
-    // Fail closed: a failed read or a non-positive-integer value never falls back to a default.
-    const hours = settings?.preparing_expiration_hours;
-    if (
-      settingsError ||
-      typeof hours !== 'number' ||
-      !Number.isInteger(hours) ||
-      hours <= 0
-    ) {
-      log('ERROR', 'Auto-cancel settings invalid', {
-        setting: 'preparing_expiration_hours',
-        value: hours ?? null,
-      });
-      return new Response(
-        JSON.stringify({ error: 'AUTO_CANCEL_SETTINGS_INVALID' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } },
-      );
-    }
+    const settings = await readAutoCancelExpirationHours(
+      supabaseAdmin,
+      'preparing_expiration_hours',
+      log,
+    );
+    if ('response' in settings) return settings.response;
+    const hours = settings.hours;
     const expirationLimit = new Date(
       Date.now() - hours * 60 * 60 * 1000,
     ).toISOString();
@@ -102,7 +101,7 @@ serve(withSentry('auto-cancel-preparing', async (req: Request) => {
     const { data: expiredShipments, error: fetchError } = await supabaseAdmin
       .from('shipments')
       .select(
-        'id, order_id, seller_id, stripe_payment_intent_id, status, stripe_transfer_id',
+        'id, order_id, seller_id, stripe_payment_intent_id, status, stripe_transfer_id, tracking_number, carrier',
       )
       .eq('status', 'preparing')
       .lt('updated_at', expirationLimit)
@@ -123,6 +122,103 @@ serve(withSentry('auto-cancel-preparing', async (req: Request) => {
       'INFO',
       `Procesando ${expiredShipments.length} shipments atascados en preparing`,
     );
+
+    // The carrier gate (L15): fresh tracking and the label cancellation come before any refund.
+    // Without Envia configuration no carrier call is possible; the gate stops each shipment
+    // without marking it, so nothing is lost and the next run retries.
+    const enviaConfiguration = resolveEnviaRuntimeConfiguration((name) =>
+      Deno.env.get(name),
+    );
+    if (!enviaConfiguration) {
+      log(
+        'ERROR',
+        'Envia configuration unavailable; preparing cancellations will not call the carrier',
+      );
+    }
+    const enviaDependencies = { fetch, log };
+    const rpcFailure = (error: { message: string }) =>
+      new Error(error.message);
+    const carrierGatePorts: PreparingCarrierGatePorts = {
+      carrierAvailable: enviaConfiguration !== null,
+      getStoredState: async (shipmentId) => {
+        const { data, error } = await supabaseAdmin.rpc(
+          'fn_get_shipment_carrier_cancellation',
+          { p_shipment_id: shipmentId },
+        );
+        if (error) throw rpcFailure(error);
+        return data;
+      },
+      fetchFreshTracking: (trackingNumber) =>
+        fetchFreshTracking(enviaConfiguration, trackingNumber, enviaDependencies),
+      recordTrackingEvent: async (event, pollingRunId) => {
+        const { data, error } = await supabaseAdmin.rpc('fn_record_tracking_event', {
+          p_shipment_id: event.targetId,
+          p_dispute_id: null,
+          p_event_type: event.eventType,
+          p_event_at: event.eventAt,
+          p_raw_status: event.rawStatus,
+          p_location: event.location,
+          p_status_description: event.statusDescription,
+          p_carrier_name: event.carrierName,
+          p_webhook_delivery_id: null,
+          p_polling_run_id: pollingRunId,
+          p_transition: event.transition,
+        });
+        if (error) throw rpcFailure(error);
+        const status = (data as { shipment_status?: unknown } | null)
+          ?.shipment_status;
+        return typeof status === 'string' ? status : null;
+      },
+      cancelLabel: (input) =>
+        requestEnviaLabelCancellation(
+          enviaConfiguration,
+          input,
+          enviaDependencies,
+        ),
+      recordOutcome: async (shipmentId, claimToken, outcome) => {
+        const { error } = await supabaseAdmin.rpc(
+          'fn_record_shipment_carrier_cancellation',
+          {
+            p_shipment_id: shipmentId,
+            p_claim_token: claimToken,
+            p_outcome: outcome.outcome,
+            p_balance_returned: outcome.balanceReturned,
+            p_balance_returned_at: outcome.balanceReturnedAt,
+          },
+        );
+        if (error) throw rpcFailure(error);
+      },
+      markReview: async (shipmentId, claimToken, reason) => {
+        const { data, error } = await supabaseAdmin.rpc(
+          'fn_mark_shipment_cancellation_review',
+          {
+            p_shipment_id: shipmentId,
+            p_claim_token: claimToken,
+            p_reason: reason,
+          },
+        );
+        if (error) throw rpcFailure(error);
+        return data;
+      },
+      reportCritical,
+      now: () => new Date().toISOString(),
+      newRunId: () => crypto.randomUUID(),
+    };
+    const confirmCarrier = (
+      shipment: Pick<Tables<'shipments'>, 'id' | 'tracking_number' | 'carrier'>,
+      claimToken: string,
+      claimSource: string,
+    ) =>
+      confirmPreparingCarrier(
+        {
+          id: shipment.id,
+          trackingNumber: shipment.tracking_number,
+          carrier: shipment.carrier,
+          source: claimSource,
+        },
+        claimToken,
+        carrierGatePorts,
+      );
 
     let successCount = 0;
     let deferred = 0;
@@ -161,6 +257,8 @@ serve(withSentry('auto-cancel-preparing', async (req: Request) => {
             if (error) throw new Error(error.message);
             return data;
           },
+          confirmBeforeRefund: (winner, claimToken) =>
+            confirmCarrier(shipment, claimToken, winner.source),
           prepare: async () => {
             // Reconstruct and persist fees only after winning the reservation.
             const { data: orderItems } = await supabaseAdmin
@@ -474,6 +572,16 @@ serve(withSentry('auto-cancel-preparing', async (req: Request) => {
             orderId: shipment.order_id,
             refundAmountCents: result.value,
           });
+        } else if (result.status === 'carrier_pending') {
+          // A winner that is not preparing_timeout can never record a carrier outcome: it
+          // would repeat every run, so it is an ERROR rather than a wait.
+          log(
+            result.reason === 'source_mismatch' ? 'ERROR' : 'WARN',
+            result.reason === 'source_mismatch'
+              ? 'Shipment cancellation claim has an unexpected source; no carrier call was made'
+              : 'Shipment cancellation waiting on carrier evidence',
+            { shipmentId: shipment.id, reason: result.reason },
+          );
         } else {
           log('WARN', 'Shipment cancellation skipped', {
             shipmentId: shipment.id,
@@ -484,10 +592,23 @@ serve(withSentry('auto-cancel-preparing', async (req: Request) => {
         // Delay para no saturar Stripe API
         await new Promise((r) => setTimeout(r, 500));
       } catch (err) {
-        log('ERROR', `Excepción en loop para shipment ${shipment.id}`, {
-          orderId: shipment.order_id,
-          error: err instanceof Error ? err.message : String(err),
-        });
+        const message = err instanceof Error ? err.message : String(err);
+        // An admin review owns these shipments: skipping them is expected, not a failure.
+        if (
+          message === 'SHIPMENT_CANCELLATION_UNDER_REVIEW' ||
+          message === 'SHIPMENT_CANCELLATION_REVIEW_CLOSED'
+        ) {
+          log('INFO', 'Shipment cancellation skipped: carrier review', {
+            shipmentId: shipment.id,
+            orderId: shipment.order_id,
+            reason: message,
+          });
+        } else {
+          log('ERROR', `Excepción en loop para shipment ${shipment.id}`, {
+            orderId: shipment.order_id,
+            error: message,
+          });
+        }
       }
     }
 

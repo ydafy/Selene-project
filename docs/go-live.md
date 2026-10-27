@@ -78,6 +78,8 @@ Deploy every directory in `supabase/functions/` except `_shared/`. `supabase/con
 
 `delete-account` closes an account in one SQL transaction (`fn_close_account`) and then removes the Stripe customer, the Stripe Connect account and Storage files. `account-closure-cleanup` is its cron retry for closures whose cleanup failed or never ran: it runs without a user session, is authenticated by the `x-cron-secret` header against `CRON_SECRET`, and keeps `verify_jwt = false` (declared in `supabase/config.toml`). Apply `supabase/migrations/20261023043220_account_closure.sql` and then `supabase/migrations/20261023052842_account_closure_cleanup.sql` (service-only `fn_claim_account_closures` and `fn_record_closure_attempt`), then deploy both functions. The retry stops after 24 attempts per closure and lists those closures in its response and in an `ERROR` log (`Account closure cleanup gave up`, with the user ids) on every run; an admin reads `account_closures.last_error` for those users and finishes the failed step by hand. Apply `20261023043220_account_closure.sql` before shipping a mobile build from this change: the app selects `profiles.deleted_at` in its order and review queries, which fail on a database without that column.
 
+`list-shipment-operation-reviews` and `resolve-shipment-operation-review` serve the admin "Envios" section: the first lists preparing-timeout cancellations waiting for a carrier review (GET or POST, returns `{ reviews }`), the second records the admin decision (`refund_approved` or `closed_no_refund` with a required note, POST). Like the refund pair they keep `verify_jwt = true` (declared in `supabase/config.toml`) and check `profiles_private.role = 'admin'` themselves, and they need no new secret. Apply `supabase/migrations/20261024020649_shipment_cancellation_carrier_review.sql` (service-only `fn_list_shipment_cancellation_reviews` and `fn_resolve_shipment_cancellation_review`) before deploying them. The decision moves no money: an approved refund starts on the next `auto-cancel-preparing` run.
+
 The remote project also runs `dynamic-api` (name `get-shipping-quote-seller`), which has no source in this repository. Decide whether production needs it before go-live.
 
 ## 8. Cron jobs
@@ -172,7 +174,27 @@ select cron.schedule(
 );
 ```
 
-`auto-cancel-preparing` has the same authorization but is intentionally not scheduled until B4 of the shipment cancellations work; do not create a job for it before then.
+`auto-cancel-preparing` has the same authorization and reuses the Vault secret `auto_cancel_orders_cron_secret` (same `CRON_SECRET` value). It runs hourly at minute 30, so it never overlaps `auto-cancel-orders`. Before each refund it reads fresh tracking and cancels the label with Envia; a run can take longer than pg_net's default 5 s, so the job sets `timeout_milliseconds` to keep the real HTTP status in `net._http_response`. Apply the B4 migrations (`20261024013216_shipment_carrier_cancellation_outcome.sql`, `20261024020649_shipment_cancellation_carrier_review.sql`) and deploy `auto-cancel-preparing` first. In the SQL Editor:
+
+```sql
+select cron.schedule(
+  'auto-cancel-preparing-job',
+  '30 * * * *',
+  $$
+  select net.http_post(
+    url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url') || '/functions/v1/auto-cancel-preparing',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'project_anon_jwt'),
+      'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'project_anon_jwt'),
+      'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'auto_cancel_orders_cron_secret')
+    ),
+    body := '{}'::jsonb,
+    timeout_milliseconds := 120000
+  );
+  $$
+);
+```
 
 `cron-watchdog-every-15-minutes` calls `cron-watchdog`, which reads `fn_cron_health()` and reports failed, overdue, or unsupported-schedule jobs to Sentry. In order: apply `supabase/migrations/20261021025844_cron_health.sql` (creates `fn_cron_health()`, service role only) and `supabase/migrations/20261026014010_cron_health_index_scan.sql` (reads `cron.job_run_details` by primary key; without it the read timed out on 86k rows), deploy `cron-watchdog`, and create the Vault secret `cron_watchdog_cron_secret` with the same value as the `CRON_SECRET` function secret (the function compares the `x-cron-secret` header against `CRON_SECRET`). Then run, in the SQL Editor:
 

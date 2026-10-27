@@ -1,4 +1,26 @@
-# Shipment cancellation coordination — B1, B2 and B3
+# Shipment cancellation coordination — B1, B2, B3 and B4
+
+## B4 status: carrier cancellation before preparing refunds
+
+Tracker: `odd/tasks/shipment-cancellations-b4.md` (specs S1–S9, Log L1–L40). Deployed to the sandbox project; `auto-cancel-preparing-job` runs hourly at minute 30.
+
+| Unit | Behavior |
+|---|---|
+| B4.1 | `auto-cancel-orders` only selects paid shipments whose label state is `unclaimed` or `retryable_rejected`; shipments blocked by a label operation (`orphan_pending`, in-flight claims) are reported once per run in a WARN instead of being retried forever (FU2). |
+| B4.2 | The cancellation operation records the carrier answer (`accepted`, `refused`, `ambiguous`), whether the label money came back, and `label_cost_loss_cents` computed in SQL, separate from the Stripe fee loss. `fn_start_shipment_cancellation_refund` refuses a `preparing_timeout` refund without an accepted carrier cancellation (`CARRIER_CANCELLATION_NOT_CONFIRMED`). |
+| B4.3 / B4.5b | `_shared/envia-carrier-cancellation.ts` reads fresh tracking (`scanned`, `unscanned`, `unknown`, `unavailable`) and classifies `POST /ship/cancel/`. Envia's real accepted answer is `data` as a one-element list and `balanceReturned` as a number (`1`), not the documented object and boolean; both forms are accepted. Each classification logs only the response shape (key and type names). |
+| B4.4a | A review marker (`tracking_unknown`, `carrier_refused`, `carrier_ambiguous`), a final admin resolution (`refund_approved` or `closed_no_refund`, required note) and a pending-review list. Claims on a shipment under review or closed without refund are refused before any token rotation. An admin approval moves no money; the next preparing run refunds. |
+| B4.4b | `auto-cancel-preparing` asks the carrier before any refund: stored `accepted` or admin approval continues without calling Envia; otherwise a scan lets tracking advance the shipment (no refund), an unscanned label is cancelled with Envia, and only `accepted` continues. Refused without a scan, ambiguous answers and unclear tracking go to review with one CRITICAL alert. A preparing claim re-owns an expired pre-start operation left by another source. Tracking never moves a cancelled shipment. |
+| B4.4c / B4.4d | Admin functions `list-shipment-operation-reviews` and `resolve-shipment-operation-review` (same admin check as the refund pair) and the admin-web "Envíos" section, built as buckets so later shipping queues are one component each. |
+
+Evidence: SQL harnesses `scripts/test-shipment-carrier-cancellation.ts` (20), `scripts/test-shipment-carrier-review.ts` (33), `scripts/test-tracking-cancelled-shipment.ts` (21); unit tests of the gate and the Envia classifier; Bruno and Playwright (mocked and local). Sandbox: the first real run met an unexpected Envia answer and failed closed into review; an admin approval then refunded in full (`re_3US4vNAC…`). After the classifier fix, a second order was cancelled at Envia and refunded automatically (`re_3UUycpAC…`, 417796 cents, no review). Independent verifiers met for the money and auth units (one blocker found and fixed before deploy).
+
+### B4 remaining limits
+
+- Shipments under review still take candidate slots in the preparing run (one claim each, no Envia call).
+- If the record RPC fails right after Envia accepted, the next run sees the label cancelled and sends the case to review; the admin then decides, and an approval counts the full label cost as lost.
+- The two sandbox operations from before the `balanceReturned` fix keep `label_cost_loss_cents` 23780 although Envia returned the labels (test data, not corrected).
+- Blocked-label shipments (`orphan_pending`) are only logged; their bucket in "Envíos" is issue #43.
 
 ## B3 status: authenticated, expiring cron coordination (closed by B3.4)
 
@@ -15,8 +37,8 @@ Evidence: lease SQL harness `scripts/test-auto-cancel-lease.ts` (13 cases incl. 
 ### B3 remaining limits
 
 - A wrong Vault secret makes every hourly run return 401 while `cron.job_run_details` still shows `succeeded`, and Sentry ignores 4xx: check `net._http_response` after touching the job or `CRON_SECRET`.
-- Oldest-first selection plus permanently failing candidates (FU2 `orphan_pending`) could starve newer shipments once 50 or more exist (2 today). Resolve with FU2 in B4.
-- `auto-cancel-preparing` has the lease and the secret but no cron job; scheduling it belongs to B4.
+- Oldest-first selection plus permanently failing candidates (FU2 `orphan_pending`) could starve newer shipments once 50 or more exist. Fixed in B4.1.
+- `auto-cancel-preparing` scheduling: done in B4 (`auto-cancel-preparing-job`).
 - The run-budget deferral is source-guarded, not executed by a test.
 
 ## B2 status: refund identity, recovery and refund problems (closed by B2.5)

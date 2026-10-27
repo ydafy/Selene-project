@@ -235,7 +235,7 @@ Do not substitute estimated processing fees for authoritative transaction data.
 | B1 | Complete | B1.1–B1.4 committed, SQL applied, Edge Functions deployed to sandbox; evidence and limits in docs/shipment-cancellation-coordination.md. Follow-ups FU1–FU4 in B14-L5. |
 | B2 | Complete | Refund identity/status, recovery, refund webhooks, admin refund resolution and "Reembolsos" bucket, FU1 rounding fix; deployed and on main. Evidence in `odd/tasks/shipment-cancellations-b2.md` and docs/shipment-cancellation-coordination.md. FU1 fixed, FU3 covered by B2.5; FU2 (B4) and FU4 (B3) remain. |
 | B3 | Complete | Expiring leases instead of the boolean cron locks (FU4 fixed, booleans dropped), `CRON_SECRET` on both auto-cancel functions with a Vault-based job, fail-closed timeout settings, live harnesses and a real sandbox run (200). Evidence in `odd/tasks/shipment-cancellations-b3.md` and docs/shipment-cancellation-coordination.md. `auto-cancel-preparing` scheduling and the oldest-first/FU2 starvation risk move to B4. |
-| B4 | Pending | Preparing evidence, label outcome, guarded tracking; depends on B1/B2. |
+| B4 | Complete (design pass B4.8 pending) | Carrier cancellation before preparing refunds, review queue and admin "Envíos" section, FU2 orphan exclusion, preparing cron scheduled. Evidence in `odd/tasks/shipment-cancellations-b4.md` and docs/shipment-cancellation-coordination.md. Two sandbox runs proved the review path and the automatic path. |
 | B5 | Pending | UI consistency, messaging, polish; depends on relevant B1–B4 behavior. |
 
 A0 covered pure tests/source guards, **not** handler, SQL, or provider E2E.
@@ -591,8 +591,7 @@ approved controlled setup. The following is future validation, not claimed passe
 | R12 | B4 | Label-cost loss recorded separately; no guaranteed label refund. |
 | R13 | B5 | Target/other UI scopes, reasons/errors, refreshed state, timers/settings, unboxing notice. |
 
-B4 carrier-refusal product policy stays open until its dedicated design session.
-Do not silently choose an automatic cancellation/refund policy for that case.
+B4 carrier-refusal policy decided in `odd/tasks/shipment-cancellations-b4.md` S8 and L3: automatic refund only when the carrier accepts the cancellation; a refusal re-reads tracking; refusal without a scan or an ambiguous answer goes to admin review with no refund.
 
 ## V1 policy and asynchronous refund evidence
 

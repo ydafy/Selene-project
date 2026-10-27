@@ -19,3 +19,27 @@ export function isAuthorizedCronRequest(
 
   return difference === 0;
 }
+
+export type CronMismatchReporter = (
+  message: string,
+  options: { fingerprint: string[]; tags: Record<string, string> },
+) => void | Promise<void>;
+
+// A request that sends a wrong x-cron-secret is a misconfigured job (the Vault copy drifted);
+// a request without the header is an ordinary probe and stays silent. Never reports the header
+// value, and a failing reporter never changes the 401 the caller returns.
+export async function reportCronSecretMismatch(
+  req: Request,
+  functionName: string,
+  report: CronMismatchReporter,
+): Promise<void> {
+  if (!req.headers.get('x-cron-secret')) return;
+  try {
+    await report(`${functionName} cron secret mismatch`, {
+      fingerprint: ['cron-secret-mismatch', functionName],
+      tags: { edge_function: functionName },
+    });
+  } catch {
+    // Alerting is best effort.
+  }
+}
