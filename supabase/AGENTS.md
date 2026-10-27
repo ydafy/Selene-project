@@ -25,6 +25,8 @@ For Postgres design and performance, load the `supabase-postgres-best-practices`
 - `supabase/seed.sql` loads on every reset: admin, seller, and buyer accounts at `@selene.local` (password `password123`, local only), four published listings, and the configuration rows. Extend it when a feature needs more data; never point it at a remote project.
 - The baseline does not include pg_cron jobs, Vault secrets, Auth settings, or Edge Function secrets (`docs/go-live.md` lists them).
 - Never put secrets in schema objects (trigger arguments, function bodies, foreign server options); `schema_baseline.test.ts` fails if a migration contains one.
+- `supabase/supabase.lock` pins the exact build of every local service, so every worktree runs the same stack whatever CLI version it has. It is committed; if `supabase start` rewrites it, commit the change in its own `chore` commit. The CLI also maintains `supabase/.gitignore` for its local files (`.link.json`, the lock lease).
+- The stack belongs to the process that started it and stops when that process exits. Run `supabase start`, `functions serve` and the Bruno collection from one long-lived shell; a stack whose state the CLI cannot read after an upgrade is fixed by deleting the directory the error names under `~/.supabase/stacks/` (local data only) and starting again.
 
 ## Reading the remote project
 
