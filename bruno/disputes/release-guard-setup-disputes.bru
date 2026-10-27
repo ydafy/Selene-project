@@ -1,0 +1,55 @@
+meta {
+  name: release-guard-setup-disputes
+  type: http
+  seq: 39
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/disputes
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  [
+    {
+      "id": "{{rgDisp2}}",
+      "order_id": "{{rgOrder}}",
+      "shipment_id": "{{rgShip2}}",
+      "buyer_id": "00000000-0000-4000-8000-000000000005",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "reason": "damaged",
+      "description": "Bruno release guard fixture",
+      "status": "open",
+      "updated_at": "{{rgDeliveredOld}}"
+    },
+    {
+      "id": "{{rgDisp5}}",
+      "order_id": "{{rgOrder}}",
+      "shipment_id": "{{rgShip5}}",
+      "buyer_id": "00000000-0000-4000-8000-000000000005",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "reason": "damaged",
+      "description": "Bruno release guard fixture",
+      "status": "open",
+      "updated_at": "{{rgDeliveredOld}}"
+    }
+  ]
+}
+
+tests {
+  test("two open disputes exist for r2 and r5", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().length).to.equal(2);
+  });
+}
+
+docs {
+  Local stack only. Disputes start open (fn_notify_dispute_opened); updated_at is three days ago.
+}

@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/rest/v1/disputes?id=eq.{{t5Disp8}}&select=status,resolution_type,shipments(status)
+  url: {{baseUrl}}/rest/v1/disputes?id=eq.{{t5Disp8}}&select=status,resolution_type,shipments(status,completed_at)
   body: none
   auth: none
 }
@@ -18,10 +18,15 @@ headers {
 tests {
   test("d8 is closed for the seller and s8 is completed", function () {
     expect(res.getStatus()).to.equal(200);
-    expect(res.getBody()).to.deep.equal([{ status: "resolved", resolution_type: "seller_wins_timeout", shipments: { status: "completed" } }]);
+    const [row] = res.getBody();
+    expect(res.getBody().length).to.equal(1);
+    expect(row.status).to.equal("resolved");
+    expect(row.resolution_type).to.equal("seller_wins_timeout");
+    expect(row.shipments.status).to.equal("completed");
+    expect(row.shipments.completed_at).to.not.equal(null);
   });
 }
 
 docs {
-  Release then resolve, as before.
+  The dispute is resolved, then the shipment completes and records when.
 }

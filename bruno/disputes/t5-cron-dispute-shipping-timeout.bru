@@ -26,5 +26,5 @@ tests {
 }
 
 docs {
-  Service role through rest/v1/rpc, like dispute-shipping-timeout-job. Acts on d8 (label paid, no return tracking for more than 48 h); it calls fn_release_shipment_funds for s8.
+  Service role through rest/v1/rpc, like dispute-shipping-timeout-job. Acts on d8 (label paid, no return tracking for more than 48 h): it resolves d8, then calls fn_release_shipment_funds for s8.
 }

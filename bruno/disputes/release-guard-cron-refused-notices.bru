@@ -1,0 +1,27 @@
+meta {
+  name: release-guard-cron-refused-notices
+  type: http
+  seq: 49
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/notifications?action_path=eq./profile/orders/{{rgOrder}}&title=in.(Disputa Ganada,Disputa Perdida)&select=user_id
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("nobody is told the dispute closed", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([]);
+  });
+}
+
+docs {
+  The notices are written only after a successful release.
+}
