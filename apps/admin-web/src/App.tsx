@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Toaster } from 'sonner';
+import { ACCOUNT_DELETION_PATH, PRIVACY_PATH } from '@selene/types';
 import {
   BrowserRouter,
   Routes,
@@ -11,6 +12,8 @@ import { evaluateAdminAccess } from './lib/adminAccess';
 import { Layout } from './components/layout/Layout';
 import { DashboardHome } from './pages/DashboardHome';
 import Login from './pages/Login';
+import { AccountDeletionPage } from './pages/AccountDeletionPage';
+import { PrivacyPage } from './pages/PrivacyPage';
 import { VerificationPage } from './pages/VerificationPage';
 import { UsersPage } from './pages/UsersPage';
 import { UserDetailPage } from './pages/UserDetailPage';
@@ -41,6 +44,8 @@ function App() {
       <Toaster theme="dark" position="top-right" richColors />
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path={ACCOUNT_DELETION_PATH} element={<AccountDeletionPage />} />
+        <Route path={PRIVACY_PATH} element={<PrivacyPage />} />
 
         <Route
           path="/"

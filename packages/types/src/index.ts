@@ -1,7 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Database, Json } from './database.types.ts';
 
-export { SELENE_DOMAIN, SELENE_WEB_URL } from './domain';
+export {
+  ACCOUNT_DELETION_PATH,
+  ACCOUNT_DELETION_URL,
+  PRIVACY_PATH,
+  PRIVACY_URL,
+  SELENE_DOMAIN,
+  SELENE_SUPPORT_EMAIL,
+  SELENE_WEB_URL,
+} from './domain';
 
 // --- 1. UTILIDADES CORE ---
 // Extrae el tipo de una fila de la tabla X

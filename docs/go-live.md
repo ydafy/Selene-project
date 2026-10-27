@@ -17,7 +17,7 @@ The repository rebuilds the database schema: `supabase/migrations/` starts with 
 
 ### Domain
 
-Selene has no domain yet. Code uses the placeholder `selene.example` (`.example` is reserved by RFC 2606 and never resolves) from one constant: `SELENE_DOMAIN` in `packages/types/src/domain.ts` (`SELENE_WEB_URL` derives from it). Several modules need the domain; any new code that needs it imports that constant instead of writing a domain.
+Selene has no domain yet. Code uses the placeholder `selene.example` (`.example` is reserved by RFC 2606 and never resolves) from one constant: `SELENE_DOMAIN` in `packages/types/src/domain.ts` (`SELENE_WEB_URL` derives from it). The same file holds `SELENE_SUPPORT_EMAIL` (`soporte@<domain>`), `ACCOUNT_DELETION_PATH` (`/eliminar-cuenta`), `PRIVACY_PATH` (`/privacidad`) and the derived `ACCOUNT_DELETION_URL` and `PRIVACY_URL`. Several modules need the domain; any new code that needs it imports that constant instead of writing a domain.
 
 When the real domain is registered:
 
@@ -267,6 +267,10 @@ Sentry creates the `cron-watchdog` Cron Monitor on its first check-in (free plan
   - Redirect URLs: `selene://`, `selene://auth-verified`, `http://localhost:5173/**`, `selene://profile/settings`. The app needs `selene://profile/settings` (email-change confirmation, `EMAIL_REDIRECT_URL`); `selene://auth-verified` is not used by any code and can be removed. Production: replace `http://localhost:5173/**` with the deployed admin-web URL.
   - Google: one Client ID (`332992495631-gnackhq8269n8v4k7e12sefsfs0cj5ep.apps.googleusercontent.com`, the web client the app sends as `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`); "Skip nonce check" off. Add the iOS client ID when iOS ships.
   - Email templates: "Confirm signup" and "Reset password" send the 6-digit `{{ .Token }}` (the app asks for the code); "Change email address" sends `{{ .ConfirmationURL }}` (the app confirms by link through `selene://profile/settings`); "Reauthentication" uses `{{ .Token }}` but the app never calls it (password changes send `current_password`). Templates are unstyled defaults: brand them together with custom SMTP.
+- Public pages (admin-web, no sign-in; routes outside `ProtectedRoute`): `/eliminar-cuenta` and `/privacidad`. They ship with the admin-web deployment (issue #49). Once deployed:
+  - Google Play account-deletion URL (Play Console, Data safety): `ACCOUNT_DELETION_URL`.
+  - Mobile env: `EXPO_PUBLIC_PRIVACY_URL` = `PRIVACY_URL` and `EXPO_PUBLIC_SUPPORT_EMAIL` = `SELENE_SUPPORT_EMAIL` (`apps/frontend/.env.example`).
+  - Go-live blocker (maintainer): `/privacidad` is only a summary of decided data handling. The full privacy notice (legal text, company identity, ARCO procedure) needs legal review and must not be presented as complete until it exists. The support mailbox must exist and receive mail before the Play submission.
 - Custom SMTP is required before the first real user. The built-in Supabase mailer only delivers to members of the project's organization (other addresses fail with "Email address not authorized"), has a low hourly limit and no delivery guarantee, so signup codes would never reach real users. Configure Resend (or another SMTP provider) under Authentication > Emails > SMTP Settings: verify the sending domain with SPF and DKIM (and DMARC), use a dedicated From address such as `no-reply@<auth domain>`, and disable link tracking. No app code changes are needed.
 - After enabling custom SMTP, raise "Rate limit for sending emails" under Authentication > Rate Limits (it starts at 30 per hour) to the expected signup volume.
 
