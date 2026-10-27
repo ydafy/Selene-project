@@ -32,7 +32,7 @@ describe('cancelled shipment banner', () => {
       "if (isCancelledShipment) return t('orders:status.cancelled').toUpperCase();",
     );
     expect(card).toContain(
-      "if (isCancelledShipment) { return isBuyer ? t('actionCard.cancelledBuyer') : t('actionCard.cancelledSeller'); }",
+      'if (isCancelledShipment) { return t(cancelledCopy.messageKey); }',
     );
   });
 

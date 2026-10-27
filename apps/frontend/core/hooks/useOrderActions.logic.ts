@@ -11,6 +11,7 @@ export const getCancelOrderSuccessInvalidationKeys = (
   ['shipments', orderId],
   ['my-listings'],
   ['product'],
+  ['shipment-cancellation-summary'],
 ];
 
 // These groups mean the shipment is no longer (or not yet) in the state the

@@ -14,7 +14,9 @@ import { ShippingLabelCard } from './ShippingLabelCard';
 import { EnrichedOrder, EnrichedShipment } from '@selene/types';
 import { useOrderCountdown } from '@/core/hooks/useOrderCountdown';
 import { useCancellationSettings } from '@/core/hooks/useCancellationSettings';
+import { useShipmentCancellationSummary } from '@/core/hooks/useShipmentCancellationSummary';
 import { resolveShipmentPreparingWindowMessage } from '@/core/utils/shipment-cancel-safety';
+import { resolveCancelledShipmentCopy } from '@/core/utils/shipment-cancellation-summary';
 import { Theme } from '@/core/theme';
 
 interface Props {
@@ -58,6 +60,7 @@ export const OrderActionCard = ({
   const showStatusBanner = showSellerStatusBanner || showBuyerDeliveredBanner;
   const { orderExpirationHours, preparingExpirationHours } =
     useCancellationSettings();
+  const cancellationSummary = useShipmentCancellationSummary(shipment.id, shipment.status);
 
   // --- 1. LÓGICA DEL RELOJ DINÁMICO ---
   const timerConfig = useMemo(() => {
@@ -183,6 +186,8 @@ export const OrderActionCard = ({
     return t(`orders:status.${order.status}`).toUpperCase();
   };
 
+  const cancelledCopy = resolveCancelledShipmentCopy(cancellationSummary, isBuyer);
+
   // --- 4. MENSAJES DINÁMICOS (CON RELOJ) ---
   const getBannerMessage = () => {
     // Settings still loading or missing: the backend has no deadline either,
@@ -264,9 +269,7 @@ export const OrderActionCard = ({
         : t('actionCard.refundProcessedSeller');
     }
     if (isCancelledShipment) {
-      return isBuyer
-        ? t('actionCard.cancelledBuyer')
-        : t('actionCard.cancelledSeller');
+      return t(cancelledCopy.messageKey);
     }
     return t(`orders:detail.${order.status}Msg`);
   };
@@ -322,6 +325,16 @@ export const OrderActionCard = ({
                 {showSellerDeliveredBanner
                   ? t('actionCard.sellerReviewCountdown', { timeLeft })
                   : t('actionCard.buyerReviewCountdown', { timeLeft })}
+              </Text>
+            )}
+            {isCancelledShipment && cancelledCopy.reasonKey && (
+              <Text
+                variant="caption-md"
+                color="textPrimary"
+                fontWeight="bold"
+                marginTop="s"
+              >
+                {t(cancelledCopy.reasonKey)}
               </Text>
             )}
             <Text

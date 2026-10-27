@@ -21,6 +21,7 @@ describe('cancel-order success refresh', () => {
     expect(keys).toContainEqual(['my-listings']);
     // useProduct keys its cache ['product', id, userId]; the prefix covers it.
     expect(keys).toContainEqual(['product']);
+    expect(keys).toContainEqual(['shipment-cancellation-summary']);
   });
 });
 
