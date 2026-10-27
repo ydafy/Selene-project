@@ -82,8 +82,8 @@ export const useOrderActions = (orderId: string) => {
       const toast = resolveCancelOrderFailureToast(error);
       Toast.show({
         type: 'error',
-        text1: t('errors.errorTitle', toast.title),
-        text2: toast.message,
+        text1: t(toast.titleKey),
+        text2: t(toast.messageKey),
       });
     },
     onSuccess: () => {

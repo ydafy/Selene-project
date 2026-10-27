@@ -63,8 +63,8 @@ describe('shipment cancel safety frontend helpers', () => {
 
   it('maps cancel failures to a friendly toast payload', () => {
     expect(resolveCancelOrderFailureToast('MAINTENANCE_MODE')).toEqual({
-      title: 'No pudimos cancelar el envío',
-      message: 'Estamos haciendo mantenimiento. Intenta nuevamente en unos minutos.',
+      titleKey: 'orders:cancelErrors.maintenance.title',
+      messageKey: 'orders:cancelErrors.maintenance.message',
     });
   });
 

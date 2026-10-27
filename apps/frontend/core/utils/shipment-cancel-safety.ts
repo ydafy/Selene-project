@@ -17,9 +17,20 @@ export interface CancelOrderPayload {
   reason: string;
 }
 
+export type CancelErrorGroup =
+  | 'maintenance'
+  | 'session'
+  | 'notAllowed'
+  | 'notCancelable'
+  | 'busy'
+  | 'inProgress'
+  | 'review'
+  | 'needsSupport'
+  | 'generic';
+
 export interface CancelOrderFailureToast {
-  title: string;
-  message: string;
+  titleKey: string;
+  messageKey: string;
 }
 
 export interface ShipmentPreparingWindowCopyInput {
@@ -63,50 +74,56 @@ export function buildCancelOrderPayload(
   };
 }
 
+// What the user can do about each cancel-order error. Unlisted codes fall back
+// to `generic`; codes after a refund may exist never ask for a blind retry.
+const CANCEL_ERROR_GROUPS: Record<string, CancelErrorGroup> = {
+  MAINTENANCE_MODE: 'maintenance',
+  AUTH_REQUIRED: 'session',
+  // Older text answered by cancel-order before it used AUTH_REQUIRED (#15).
+  'No autorizado': 'session',
+  UNAUTHORIZED: 'notAllowed',
+  BUYER_ONLY: 'notAllowed',
+  ORDER_BUYER_MISMATCH: 'notAllowed',
+  SHIPMENT_SELLER_MISMATCH: 'notAllowed',
+  SHIPMENT_ORDER_MISMATCH: 'notAllowed',
+  ORDER_NOT_FOUND: 'notAllowed',
+  SHIPMENT_NOT_CANCELABLE: 'notCancelable',
+  CANCELLATION_BUSY: 'busy',
+  CANCELLATION_CLAIM_FAILED: 'busy',
+  CANCELLATION_START_FAILED: 'busy',
+  CANCELLATION_REFUND_UNCONFIRMED: 'inProgress',
+  CANCELLATION_REFUND_PROVIDER_FAILED: 'inProgress',
+  CANCELLATION_REFUND_RECORD_FAILED: 'inProgress',
+  CANCELLATION_REFUND_RECORD_INVALID: 'inProgress',
+  CANCELLATION_REFUND_LOOKUP_FAILED: 'inProgress',
+  CANCELLATION_RECOVERY_UNAVAILABLE: 'inProgress',
+  CANCELLATION_ESCALATION_FAILED: 'inProgress',
+  CANCELLATION_RECOVERY_REQUIRED: 'review',
+  CANCELLATION_CARRIER_PENDING: 'review',
+  STRIPE_TRANSFER_ALREADY_RELEASED: 'needsSupport',
+  REFUND_AMOUNT_EXCEEDS_CAP: 'needsSupport',
+};
+
+// cancel-order answers this sentence when the refund succeeded but the
+// shipment update failed.
+const REFUNDED_BUT_NOT_UPDATED_PREFIX = 'Dinero devuelto';
+
 export function resolveCancelOrderFailureToast(
   error: unknown,
 ): CancelOrderFailureToast {
-  const message =
-    error instanceof Error
-      ? error.message
-      : typeof error === 'string'
-        ? error
-        : 'UNKNOWN_CANCEL_ERROR';
+  const message = (
+    error instanceof Error ? error.message : typeof error === 'string' ? error : ''
+  ).trim();
 
-  if (message.includes('MAINTENANCE_MODE')) {
-    return {
-      title: 'No pudimos cancelar el envío',
-      message:
-        'Estamos haciendo mantenimiento. Intenta nuevamente en unos minutos.',
-    };
-  }
-
-  if (message.includes('SHIPMENT_NOT_CANCELABLE')) {
-    return {
-      title: 'Este envío no se puede cancelar',
-      message:
-        'Si ya fue enviado, usa soporte o disputa para continuar el caso.',
-    };
-  }
-
-  if (message.includes('REFUND_AMOUNT_EXCEEDS_CAP')) {
-    return {
-      title: 'No pudimos cancelar el envío',
-      message:
-        'La devolución calculada supera el monto disponible para reembolso.',
-    };
-  }
-
-  if (message.includes('STRIPE_TRANSFER_ALREADY_RELEASED')) {
-    return {
-      title: 'No pudimos cancelar el envío',
-      message: 'Ese envío ya liberó fondos. Contacta soporte para continuar.',
-    };
-  }
+  const group: CancelErrorGroup = message.startsWith(
+    REFUNDED_BUT_NOT_UPDATED_PREFIX,
+  )
+    ? 'inProgress'
+    : (CANCEL_ERROR_GROUPS[message] ?? 'generic');
 
   return {
-    title: 'No pudimos cancelar el envío',
-    message: 'Inténtalo de nuevo. Si sigue fallando, contacta soporte.',
+    titleKey: `orders:cancelErrors.${group}.title`,
+    messageKey: `orders:cancelErrors.${group}.message`,
   };
 }
 

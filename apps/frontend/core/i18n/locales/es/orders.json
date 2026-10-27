@@ -115,6 +115,17 @@
   "errors": {
     "cannotCancel": "No se puede cancelar una orden que ya está en preparación"
   },
+  "cancelErrors": {
+    "maintenance": { "title": "No pudimos cancelar el envío", "message": "Estamos haciendo mantenimiento. Inténtalo de nuevo en unos minutos." },
+    "session": { "title": "Tu sesión expiró", "message": "Inicia sesión de nuevo para cancelar el envío." },
+    "notAllowed": { "title": "No puedes cancelar este envío", "message": "Este envío no pertenece a tu cuenta o ya no existe." },
+    "notCancelable": { "title": "Este envío ya no se puede cancelar", "message": "El envío cambió de estado: puede que ya esté cancelado, en preparación o en camino. Actualiza el pedido para ver su estado actual." },
+    "busy": { "title": "El envío está ocupado", "message": "Hay otra operación en curso para este envío. Inténtalo de nuevo en unos minutos." },
+    "inProgress": { "title": "Estamos terminando la cancelación", "message": "Tu cancelación ya está en proceso. Si el reembolso ya se emitió, no se duplica aunque lo intentes de nuevo. Actualiza el pedido en unos minutos." },
+    "review": { "title": "Estamos revisando la cancelación", "message": "Nuestro equipo está revisando este envío y te avisaremos cuando termine. No necesitas intentarlo de nuevo." },
+    "needsSupport": { "title": "No pudimos cancelar el envío", "message": "Este envío necesita ayuda de soporte para cancelarse. Escríbenos desde el centro de ayuda." },
+    "generic": { "title": "No pudimos cancelar el envío", "message": "Inténtalo de nuevo; si ya se había emitido un reembolso, no se duplica. Si sigue fallando, contacta a soporte." }
+  },
   "stepper": {
     "paid_desc": "Selene ha recibido tu pago de forma segura.",
     "preparing_desc": "El vendedor está empacando tu hardware.",

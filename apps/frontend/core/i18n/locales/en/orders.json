@@ -107,6 +107,17 @@
   "errors": {
     "cannotCancel": "An order that is already being prepared cannot be canceled."
   },
+  "cancelErrors": {
+    "maintenance": { "title": "We couldn't cancel the shipment", "message": "We're doing maintenance. Try again in a few minutes." },
+    "session": { "title": "Your session expired", "message": "Sign in again to cancel the shipment." },
+    "notAllowed": { "title": "You can't cancel this shipment", "message": "This shipment doesn't belong to your account or no longer exists." },
+    "notCancelable": { "title": "This shipment can no longer be cancelled", "message": "The shipment changed state: it may already be cancelled, being prepared or on its way. Refresh the order to see its current state." },
+    "busy": { "title": "The shipment is busy", "message": "Another operation is in progress for this shipment. Try again in a few minutes." },
+    "inProgress": { "title": "We're finishing the cancellation", "message": "Your cancellation is already in progress. If the refund was already issued, it will not be duplicated even if you try again. Refresh the order in a few minutes." },
+    "review": { "title": "We're reviewing the cancellation", "message": "Our team is reviewing this shipment and will let you know when it's done. You don't need to try again." },
+    "needsSupport": { "title": "We couldn't cancel the shipment", "message": "This shipment needs help from support to be cancelled. Write to us from the help center." },
+    "generic": { "title": "We couldn't cancel the shipment", "message": "Try again; if a refund was already issued, it will not be duplicated. If it keeps failing, contact support." }
+  },
   "stepper": {
     "paid_desc": "Selene has securely received your payment.",
     "preparing_desc": "The seller is packing your hardware.",

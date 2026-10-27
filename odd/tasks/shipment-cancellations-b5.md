@@ -1,0 +1,35 @@
+# Shipment cancellations B5: UI scopes, reasons, errors, refresh and timers
+
+Branch `feat/shipment-cancellations-b5` from `origin/main` `cdddaa0` (B4 merged, PR #48). Parent tracker: `odd/tasks/shipment-cancellations.md` (B5 row, R13). Issues taken: #15, #39. Private advisory for this module: GHSA-wf4v-hvg8-wv3q (details only in the advisory, never in the repository).
+Scope: the buyer and seller app around shipment cancellation, the participant read of cancellation reason and refund state, the cancellation error contract, and the two issues. Excluded: Envios admin redesign (#46), blocked-label queue (#43), disputes logic.
+
+## Specs
+
+- S1 — Tracker R13: "Target/other UI scopes, reasons/errors, refreshed state, timers/settings, unboxing notice."
+- S2 — Tracker B5 row: "UI consistency, messaging, polish; depends on relevant B1–B4 behavior."
+- S3 — Issue #15, verbatim: "When a request carries a valid token that is not a signed-in user (for example the public anon key), seven Edge Functions answer `401` with the Spanish text `{\"error\": \"No autorizado\"}` instead of a stable error code. Other functions answer `{\"error\": \"AUTH_REQUIRED\"}` for the same case." Functions: `cancel-order`, `create-dispute`, `create-return-intent`, `generate-return-label`, `generate-shipping-label`, `resolve-dispute`, `resolve-dispute-refund`. "Changing it touches both the functions and the app, so both must ship together."
+- S4 — Issue #39, verbatim: "The database function `fn_cancel_order` cancels a whole order but leaves its shipments in `paid`. Nothing calls it today" ... "Suggested: drop `fn_cancel_order` (and its canonical file and SQL-text tests) in a migration, or, if it must stay, make it refuse to run."
+- S5 — Cancelled shipment shows reason and refund state. Maintainer, verbatim: "no es sobre inegieria la opcion 1? si no lo es y cres qeu es lo mejor para el mvp++ escojo la primera" (option 1: "Motivo + estado de reembolso", a read RPC limited to the buyer and seller of the shipment).
+- S6 — #15 scope. Maintainer chose: "Las 7 funciones (Recomendado)". The app accepts both the old text and `AUTH_REQUIRED` during the transition.
+- S7 — Expired seller deadline before the cron runs. Maintainer chose: "Botón visible + aviso claro (Recomendado)": the banner says the seller did not ship in time and the shipment will be cancelled automatically with a full refund, or the buyer can cancel now.
+- S8 — Advisory GHSA-wf4v-hvg8-wv3q (AGENTS.md: read module advisories before starting): reproduce on the local stack, then fix or close per the advisory.
+
+## Tasks
+
+- B5.1 | S1, S2 | parent inline | Complete (L5). Risk: none (client copy and mapping; no server, money or SQL change). Cancellation error contract in the app: every `cancel-order` code mapped to en/es messages (grouped), title key fixed (`errors.errorTitle` does not exist; same bug as #50 at other sites), refund unconfirmed/ambiguous copy says the retry is safe. Tests for `shipment-cancel-safety.ts`. Frontend only.
+- B5.2 | S3, S6 | pending | #15: `AUTH_REQUIRED` in the seven functions, app matchers accept both texts, Bruno pins updated. Risk: item 3 (contract). Own commit. Deploy: the seven functions.
+- B5.3 | S1, S7 | pending | Scope copy: dialog and toast name the shipment and say the other shipments continue; expired-deadline banner (S7); regression test for the unboxing notice.
+- B5.4 | S1 | pending | Refresh and timers: invalidate `['my-listings']` and `['product', id]` after cancelling; no 48/72 fallback while settings are missing (no timer instead); `useOrderCountdown` resets when its start time goes null.
+- B5.5 | S5 | pending | SQL: participant read RPC for one shipment's cancellation source and refund state; per-role checks on the local stack (buyer, seller, other user, anon). Risk: item 2 (permissions). Own commit. Maintainer applies, then `db:types`.
+- B5.6 | S5 | pending | Cancelled banner shows reason and refund state from B5.5. Depends on B5.5 applied and types.
+- B5.7 | S4 | pending | #39: migration drops `fn_cancel_order`, removes its canonical file and SQL-text tests. Risk: item 1. Own commit. Maintainer applies.
+- B5.8 | S8 | pending | Advisory: reproduce on the local stack; fix (TLC on `docs/formal/shipment-transfer-cancellation/`) or close per the advisory. No details in the repository.
+- B5.9 | S1, S2 | pending | Close: B5 section in `docs/shipment-cancellation-coordination.md`, parent tracker row, maintainer visual check of copy and layout on device.
+
+## Log
+
+- L1 — Original request, verbatim: "arrancamos B5 de shipment cancellations, leé el tracker y los issues #39 y #15"
+- L2 — Read-only map (explore): only cancel entry is `app/profile/orders/[id].tsx` -> `useOrderActions` -> `cancel-order` with `shipmentId` and the default reason; button gate `status === 'paid'`. `resolveCancelOrderFailureToast` maps 4 of about 35 codes, with hardcoded Spanish; title key `errors.errorTitle` missing. Dialog says "pedido" and "reembolso completo" for a single shipment. Reason and refund state live in `shipment_cancellation_operations`, not readable by clients; banner copy is the same for every source. `['my-listings']` and `['product', id]` not invalidated. Timer fallback 48/72 vs backend fail closed; expired card says the window closed while the button stays. Unboxing notice (`showUnboxingWarning`, SLOT B) has no test. Notifications for `shipment.cancelled` are stored Spanish text from `fn_cancel_shipment` (out of scope: issue #52).
+- L3 — Worktree had only `supabase/supabase.lock` and `supabase/.gitignore` changes, identical to main (PR #47); dropped and branched from `origin/main` `cdddaa0`.
+- L4 — Decisions S5, S6, S7 taken by the maintainer (verbatim in Specs).
+- L5 — B5.1: `resolveCancelOrderFailureToast` returns i18n keys for 9 groups (maintenance, session, notAllowed, notCancelable, busy, inProgress, review, needsSupport, generic) covering every `cancel-order` code, including the old `No autorizado` text and the Spanish refunded-but-not-updated sentence; texts in `orders.json` en/es under `cancelErrors`; hook uses `t(toast.titleKey)` (missing `errors.errorTitle` key gone at this site). Copy never asks for a blind retry when a refund may exist (idempotency key prevents duplicates); `notCancelable` covers a shipment already cancelled by the cron. RED 0/39 -> GREEN 39/39 (`apps/frontend/tests/orders/shipment-cancel-errors.test.ts`); root `tests/shipment-cancel-safety.test.ts` pinned the old Spanish payload and now asserts the maintenance keys (contract change by design). Full `bun test` 3832/0; ESLint clean; `tsc` no diagnostics in touched files.
