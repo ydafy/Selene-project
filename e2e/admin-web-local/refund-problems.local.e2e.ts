@@ -32,7 +32,6 @@ async function ok<T>(promise: PromiseLike<{ data: T; error: { message: string } 
 
 async function cleanup() {
   await ok(db.from('notifications').delete().eq('event_payload->>order_id', orderId), 'notifications');
-  await ok(db.from('wallet_transactions').delete().in('shipment_id', shipmentIds), 'wallet_transactions');
   await ok(db.from('admin_audit_logs').delete().in('target_id', shipmentIds), 'admin_audit_logs');
   await ok(db.from('shipment_cancellation_operations').delete().in('shipment_id', shipmentIds), 'operations');
   await ok(db.from('shipments').delete().in('id', shipmentIds), 'shipments');

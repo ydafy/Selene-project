@@ -14,10 +14,6 @@ export type Enums<T extends keyof Database['public']['Enums']> =
 export type Address = Tables<'addresses'>;
 export type PaymentMethod = Tables<'payment_methods'>;
 export type Notification = Tables<'notifications'>;
-export type Wallet = Tables<'wallets'>;
-export type WalletTransaction = Tables<'wallet_transactions'>;
-export type PayoutRequest = Tables<'payout_requests'>;
-export type SellerBankAccount = Tables<'seller_bank_accounts'>;
 export type Profile = Tables<'profiles'>;
 export type Product = Tables<'products'>;
 /**
