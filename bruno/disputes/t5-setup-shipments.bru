@@ -1,0 +1,108 @@
+meta {
+  name: t5-setup-shipments
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/shipments
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  [
+    {
+      "id": "{{t5Ship1}}",
+      "order_id": "{{t5Order}}",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "status": "delivered",
+      "delivered_at": "{{t5Delivered}}",
+      "stripe_payment_intent_id": "pi_bruno_t5_1"
+    },
+    {
+      "id": "{{t5Ship2}}",
+      "order_id": "{{t5Order}}",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "status": "delivered",
+      "delivered_at": "{{t5Delivered}}",
+      "stripe_payment_intent_id": null
+    },
+    {
+      "id": "{{t5Ship3}}",
+      "order_id": "{{t5Order}}",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "status": "delivered",
+      "delivered_at": "{{t5Delivered}}",
+      "stripe_payment_intent_id": "pi_bruno_t5_3"
+    },
+    {
+      "id": "{{t5Ship4}}",
+      "order_id": "{{t5Order}}",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "status": "delivered",
+      "delivered_at": "{{t5Delivered}}",
+      "stripe_payment_intent_id": "pi_bruno_t5_4"
+    },
+    {
+      "id": "{{t5Ship5}}",
+      "order_id": "{{t5Order}}",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "status": "delivered",
+      "delivered_at": "{{t5Delivered}}",
+      "stripe_payment_intent_id": "pi_bruno_t5_5"
+    },
+    {
+      "id": "{{t5Ship6}}",
+      "order_id": "{{t5Order}}",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "status": "delivered",
+      "delivered_at": "{{t5Delivered}}",
+      "stripe_payment_intent_id": "pi_bruno_t5_6"
+    },
+    {
+      "id": "{{t5Ship7}}",
+      "order_id": "{{t5Order}}",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "status": "delivered",
+      "delivered_at": "{{t5Delivered}}",
+      "stripe_payment_intent_id": "pi_bruno_t5_7"
+    },
+    {
+      "id": "{{t5Ship8}}",
+      "order_id": "{{t5Order}}",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "status": "delivered",
+      "delivered_at": "{{t5Delivered}}",
+      "stripe_payment_intent_id": "pi_bruno_t5_8"
+    },
+    {
+      "id": "{{t5Ship9}}",
+      "order_id": "{{t5Order}}",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "status": "delivered",
+      "delivered_at": "{{t5Delivered}}",
+      "stripe_payment_intent_id": "pi_bruno_t5_9"
+    }
+  ]
+}
+
+tests {
+  test("nine delivered shipments exist and only s2 is not Connect", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().length).to.equal(9);
+    const legacy = res.getBody().filter((s) => s.stripe_payment_intent_id === null);
+    expect(legacy.length).to.equal(1);
+    expect(legacy[0].id).to.equal(bru.getVar("t5Ship2"));
+  });
+}
+
+docs {
+  Local stack only. s1 confirmation (Connect), s2 no payment intent (refused), s3 release (Connect), s4 admin verdict, s5 verdict without a session, s6 return payment, s7 payout timeout, s8 shipping timeout, s9 return-delivery timeout. All delivered three days ago; the payment intent ids are fake.
+}

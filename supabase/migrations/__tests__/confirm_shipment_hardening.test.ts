@@ -107,14 +107,14 @@ test('canonical RPC timestamps only explicit buyer completion and preserves auto
   );
 });
 
-test('completion preserves non-Connect accounting and blocks deprecated wallet writes for Connect', async () => {
+test('completion refuses non-Connect shipments and keeps the Connect completion log', async () => {
   const canonicalFunction = await readFile(canonicalFunctionPath, 'utf8');
 
   expect(canonicalFunction).toContain('v_is_connect BOOLEAN');
   expect(canonicalFunction).toContain('stripe_payment_intent_id IS NOT NULL');
   expect(canonicalFunction).toContain('IF NOT v_is_connect THEN');
-  expect(canonicalFunction).toContain('UPDATE public.wallets');
-  expect(canonicalFunction).toContain('INSERT INTO public.wallet_transactions');
+  expect(canonicalFunction).toContain("'SHIPMENT_NOT_CONNECT'");
+  expect(canonicalFunction).not.toMatch(/\bwallets\b|wallet_transactions|SELLER_WALLET_NOT_FOUND/);
   expect(canonicalFunction).toContain("'INFO'");
   expect(canonicalFunction).toContain('Connect shipment completion skipped deprecated wallet release');
 });

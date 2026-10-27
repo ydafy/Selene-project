@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/rest/v1/products?id=eq.00000000-0000-4000-8000-0000000000b6&select=id,status
+  url: {{baseUrl}}/rest/v1/products_public?id=eq.00000000-0000-4000-8000-0000000000b6&select=id,status
   body: none
   auth: none
 }
@@ -22,5 +22,5 @@ tests {
 }
 
 docs {
-  products_select_public shows IN_REVIEW. Seeded in supabase/seed.sql.
+  products_public shows IN_REVIEW to guests (the table policy was dropped in T4d3). Seeded in supabase/seed.sql.
 }

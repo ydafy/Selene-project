@@ -46,7 +46,7 @@ WITH candidate_tables(table_name) AS (
   VALUES
     ('orders'), ('order_items'), ('shipments'), ('shipment_label_events'),
     ('disputes'), ('connect_payout_runs'), ('connect_payout_run_shipments'),
-    ('wallet_transactions'), ('payout_requests'), ('notifications')
+    ('notifications')
 ),
 foreign_keys AS (
   SELECT

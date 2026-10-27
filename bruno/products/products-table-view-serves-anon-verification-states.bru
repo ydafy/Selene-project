@@ -1,0 +1,30 @@
+meta {
+  name: products-table-view-serves-anon-verification-states
+  type: http
+  seq: 65
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/products_public?id=in.(00000000-0000-4000-8000-0000000000b1,00000000-0000-4000-8000-0000000000b5,00000000-0000-4000-8000-0000000000b6)&select=id,status&order=id
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+tests {
+  test("a guest still reads the VERIFIED, PENDING_VERIFICATION and IN_REVIEW listings from the view", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([
+      { id: "00000000-0000-4000-8000-0000000000b1", status: "VERIFIED" },
+      { id: "00000000-0000-4000-8000-0000000000b5", status: "PENDING_VERIFICATION" },
+      { id: "00000000-0000-4000-8000-0000000000b6", status: "IN_REVIEW" }
+    ]);
+  });
+}
+
+docs {
+  The view keeps working after the table policy is gone.
+}

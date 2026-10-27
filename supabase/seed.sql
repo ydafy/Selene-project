@@ -20,7 +20,7 @@ INSERT INTO public.system_settings (
   currency, shipping_buffer_cents, package_presets, return_label_fee_cents,
   order_expiration_hours, min_payout_amount_cents, preparing_expiration_hours,
   return_delivery_timeout_running, release_funds_running,
-  isr_withholding_pct, iva_withholding_pct, connect_enabled,
+  isr_withholding_pct, iva_withholding_pct,
   novice_completed_threshold, novice_active_limit, trusted_active_limit,
   envia_carrier, envia_service, envia_print_format, envia_print_size,
   checkout_recovery_enabled
@@ -39,7 +39,7 @@ INSERT INTO public.system_settings (
   30000,
   48, 10000, 72,
   false, false,
-  0.00, 0.00, false,
+  0.00, 0.00,
   3, 3, 10,
   'paquetexpress', 'ground', 'PDF', 'STOCK_4X6',
   true
@@ -60,14 +60,6 @@ INSERT INTO public.category_configurations (category_name, sell_fields, filter_f
    '[{"name": "brand", "type": "select"}, {"name": "type", "type": "select"}, {"name": "capacity", "type": "select"}, {"name": "speed", "type": "select"}]',
    '[{"id": "brand", "label": "Marca", "options": ["Corsair", "G.Skill", "Kingston", "ADATA (XPG)", "TeamGroup", "Crucial", "Samsung", "Other"]}, {"id": "type", "label": "Tipo", "options": ["DDR5", "DDR4", "DDR3"]}, {"id": "capacity", "label": "Capacidad", "options": ["8 GB", "16 GB", "32 GB", "64 GB", "128 GB"]}, {"id": "speed", "label": "Velocidad", "options": ["3200 MHz", "3600 MHz", "5200 MHz", "6000 MHz", "6400 MHz", "Other"]}]')
 ON CONFLICT (category_name) DO NOTHING;
-
-INSERT INTO public.mexico_banks (code, name, active) VALUES
-  ('002', 'BANAMEX', true), ('012', 'BBVA', true), ('014', 'SANTANDER', true),
-  ('021', 'HSBC', true), ('036', 'INBURSA', true), ('044', 'SCOTIABANK', true),
-  ('058', 'BANREGIO', true), ('062', 'AFIRME', true), ('072', 'BANORTE', true),
-  ('127', 'AZTECA', true), ('137', 'BANCOPPEL', true), ('143', 'CIBANCO', true),
-  ('156', 'SABADELL', true), ('901', 'STP', true)
-ON CONFLICT (code) DO NOTHING;
 
 -- A small subset of the 154k postal codes, enough for the seeded addresses.
 INSERT INTO public.mexico_zips (zip_code, district, city, state_name, state_code) VALUES
@@ -175,7 +167,13 @@ CROSS JOIN (VALUES
   ('00000000-0000-4000-8000-0000000000b6'::uuid, 'Intel Core i7-12700K', 'Procesador en revisión por el equipo de Selene.', 4800::numeric,
    'CPU', 'used', 'gaming', '{"brand": "Intel", "family": "Core i7", "model": "12700K", "cores": "12"}'::jsonb, 120::numeric, 'cpu_2', 'IN_REVIEW'),
   ('00000000-0000-4000-8000-0000000000b7'::uuid, 'Kingston Fury 16 GB DDR4', 'Kit rechazado en la verificación.', 900::numeric,
-   'RAM', 'used', 'office', '{"brand": "Kingston", "type": "DDR4", "capacity": "16 GB", "speed": "3200 MHz"}'::jsonb, 100::numeric, 'ram_1', 'REJECTED')
+   'RAM', 'used', 'office', '{"brand": "Kingston", "type": "DDR4", "capacity": "16 GB", "speed": "3200 MHz"}'::jsonb, 100::numeric, 'ram_1', 'REJECTED'),
+  ('00000000-0000-4000-8000-0000000000b8'::uuid, 'Sapphire Pulse RX 6600', 'Tarjeta ya vendida.', 3200::numeric,
+   'GPU', 'used', 'gaming', '{"chipset": "AMD", "brand": "Sapphire", "model": "RX 6600", "memory": "8 GB"}'::jsonb, 180::numeric, 'gpu_1', 'SOLD'),
+  ('00000000-0000-4000-8000-0000000000b9'::uuid, 'Crucial Ballistix 16 GB DDR4', 'Kit oculto por el vendedor.', 700::numeric,
+   'RAM', 'used', 'office', '{"brand": "Crucial", "type": "DDR4", "capacity": "16 GB", "speed": "3200 MHz"}'::jsonb, 100::numeric, 'ram_1', 'HIDDEN'),
+  ('00000000-0000-4000-8000-0000000000ba'::uuid, 'AMD Ryzen 5 3600', 'Listado eliminado por el vendedor.', 1500::numeric,
+   'CPU', 'used', 'gaming', '{"brand": "AMD", "family": "Ryzen 5", "model": "3600", "cores": "6"}'::jsonb, 120::numeric, 'cpu_2', 'VERIFIED')
 ) AS p(id, name, description, price, category, condition, usage, specifications, shipping_cost, package_preset, status)
 WHERE s.id = 1;
 
@@ -211,3 +209,7 @@ INSERT INTO public.disputes (id, order_id, shipment_id, buyer_id, seller_id, rea
 UPDATE public.disputes SET status = 'resolved' WHERE id = '00000000-0000-4000-8000-0000000000f6';
 
 SELECT set_config('request.jwt.claims', '', false);
+
+-- Soft-deleted listing (ba): VERIFIED but deleted_at set, so products_public hides it.
+UPDATE public.products SET deleted_at = now()
+WHERE id = '00000000-0000-4000-8000-0000000000ba';

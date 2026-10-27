@@ -1,0 +1,30 @@
+meta {
+  name: t5-cron-dispute-shipping-timeout
+  type: http
+  seq: 29
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_cron_dispute_shipping_timeout
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("the cron runs", function () {
+    expect([200, 204]).to.include(res.getStatus());
+  });
+}
+
+docs {
+  Service role through rest/v1/rpc, like dispute-shipping-timeout-job. Acts on d8 (label paid, no return tracking for more than 48 h); it calls fn_release_shipment_funds for s8.
+}

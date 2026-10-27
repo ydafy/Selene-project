@@ -1,0 +1,99 @@
+meta {
+  name: t5-setup-disputes
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/disputes
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  [
+    {
+      "id": "{{t5Disp4}}",
+      "order_id": "{{t5Order}}",
+      "shipment_id": "{{t5Ship4}}",
+      "buyer_id": "00000000-0000-4000-8000-000000000005",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "reason": "damaged",
+      "description": "Bruno T5 fixture",
+      "status": "open",
+      "updated_at": "{{t5Delivered}}"
+    },
+    {
+      "id": "{{t5Disp5}}",
+      "order_id": "{{t5Order}}",
+      "shipment_id": "{{t5Ship5}}",
+      "buyer_id": "00000000-0000-4000-8000-000000000005",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "reason": "damaged",
+      "description": "Bruno T5 fixture",
+      "status": "open",
+      "updated_at": "{{t5Delivered}}"
+    },
+    {
+      "id": "{{t5Disp6}}",
+      "order_id": "{{t5Order}}",
+      "shipment_id": "{{t5Ship6}}",
+      "buyer_id": "00000000-0000-4000-8000-000000000005",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "reason": "damaged",
+      "description": "Bruno T5 fixture",
+      "status": "open",
+      "updated_at": "{{t5Delivered}}"
+    },
+    {
+      "id": "{{t5Disp7}}",
+      "order_id": "{{t5Order}}",
+      "shipment_id": "{{t5Ship7}}",
+      "buyer_id": "00000000-0000-4000-8000-000000000005",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "reason": "damaged",
+      "description": "Bruno T5 fixture",
+      "status": "open",
+      "updated_at": "{{t5Delivered}}"
+    },
+    {
+      "id": "{{t5Disp8}}",
+      "order_id": "{{t5Order}}",
+      "shipment_id": "{{t5Ship8}}",
+      "buyer_id": "00000000-0000-4000-8000-000000000005",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "reason": "damaged",
+      "description": "Bruno T5 fixture",
+      "status": "open",
+      "updated_at": "{{t5Delivered}}"
+    },
+    {
+      "id": "{{t5Disp9}}",
+      "order_id": "{{t5Order}}",
+      "shipment_id": "{{t5Ship9}}",
+      "buyer_id": "00000000-0000-4000-8000-000000000005",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "reason": "damaged",
+      "description": "Bruno T5 fixture",
+      "status": "open",
+      "updated_at": "{{t5Delivered}}"
+    }
+  ]
+}
+
+tests {
+  test("six open disputes exist for s4-s9", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().length).to.equal(6);
+  });
+}
+
+docs {
+  Local stack only. fn_notify_dispute_opened accepts only service-role inserts of open disputes, so they start open; the next requests move d6-d9 to the states the functions look for. updated_at is three days ago.
+}

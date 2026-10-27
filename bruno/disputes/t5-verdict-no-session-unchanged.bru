@@ -1,0 +1,27 @@
+meta {
+  name: t5-verdict-no-session-unchanged
+  type: http
+  seq: 22
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/disputes?id=eq.{{t5Disp5}}&select=status,resolution_type,resolved_by
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("d5 is still open", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ status: "open", resolution_type: null, resolved_by: null }]);
+  });
+}
+
+docs {
+  The refusal changed nothing.
+}

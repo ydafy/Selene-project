@@ -29,8 +29,11 @@ const findMigration = (): string => {
   return normalize(readFileSync(join(MIGRATIONS_DIR, files[0]), 'utf8'));
 };
 
-const canonical = normalize(
-  readFileSync(join(QUERIES_DIR, 'rls', 'products_select_public.sql'), 'utf8'),
+// The policy was dropped by *_drop_products_select_public.sql (T4d3), so the
+// canonical file is now a history note instead of the policy definition.
+const canonical = readFileSync(
+  join(QUERIES_DIR, 'rls', 'products_select_public.sql'),
+  'utf8',
 );
 
 describe('products_select_public', () => {
@@ -63,7 +66,8 @@ describe('products_select_public', () => {
     }
   });
 
-  test('migration contains the canonical policy', () => {
-    expect(sql).toContain(canonical);
+  test('canonical file records that a later migration dropped the policy', () => {
+    expect(canonical).toMatch(/dropped/i);
+    expect(canonical).toContain('products_public');
   });
 });

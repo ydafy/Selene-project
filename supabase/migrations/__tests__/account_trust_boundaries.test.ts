@@ -17,7 +17,6 @@ const normalize = (sql: string) => sql.replace(/\s+/g, ' ').trim();
 const migration = read('supabase/migrations/archive/20261018130000_account_trust_boundaries.sql');
 const helperSource = read('supabase/queries/auth/fn_current_account_is_active.sql');
 const reserveSource = read('supabase/queries/products/fn_reserve_products.sql');
-const payoutSource = read('supabase/queries/payments/fn_request_payout.sql');
 
 const functionBlock = (sql: string, name: string) =>
   sql.match(new RegExp(`CREATE OR REPLACE FUNCTION public\\.${name}\\([\\s\\S]*?AS \\$\\$([\\s\\S]*?)\\$\\$;`));
@@ -31,8 +30,6 @@ const helperBody = helperBlock?.[1] ?? '';
 const reserveBody = reserveBlock?.[1] ?? '';
 const payoutBody = payoutBlock?.[1] ?? '';
 const reserveCanonicalBody = functionBlock(reserveSource, 'fn_reserve_products')?.[1] ?? '';
-// The payout canonical copy keeps its existing style: a signature line followed by the body.
-const payoutCanonicalBody = payoutSource.replace(/^CREATE OR REPLACE FUNCTION public\.fn_request_payout\(.*\)\n/, '');
 
 const ACTIVE = '(SELECT public.fn_current_account_is_active())';
 
@@ -75,10 +72,8 @@ describe('account trust boundaries migration', () => {
   test('migration bodies equal the canonical query copies', () => {
     expect(helperSource).not.toBe('');
     expect(reserveCanonicalBody).not.toBe('');
-    expect(payoutCanonicalBody).not.toBe('');
     expect(normalize(helperBody)).toBe(normalize(helperSource));
     expect(normalize(reserveBody)).toBe(normalize(reserveCanonicalBody));
-    expect(normalize(payoutBody)).toBe(normalize(payoutCanonicalBody));
   });
 });
 
@@ -212,14 +207,10 @@ describe('fn_request_payout (D6)', () => {
     expect(payoutBlock?.[0]).toContain(
       "CREATE OR REPLACE FUNCTION public.fn_request_payout(\n  p_amount NUMERIC,\n  p_bank_account_id UUID\n)\nRETURNS TABLE(success BOOLEAN, error_message TEXT)\nLANGUAGE plpgsql\nSECURITY DEFINER\nSET search_path = ''\nAS $$",
     );
-    expect(payoutSource).toStartWith(
-      'CREATE OR REPLACE FUNCTION public.fn_request_payout(p_amount NUMERIC, p_bank_account_id UUID)\n',
-    );
   });
 
   describe.each([
     ['migration body', () => payoutBody],
-    ['canonical copy', () => payoutCanonicalBody],
   ])('%s', (_label, body) => {
     test('keeps the Connect guard first, then the JWT actor, then the account gate', () => {
       const sql = body();
