@@ -104,4 +104,5 @@ Recorded, not fixed. Fix them in their own change.
 
 - Read this file before UI work. Design skills (`frontend-design`, `expo-design-system`, `expo-native-ui`, `expo-ui`, `expo-animation`, `kpi-dashboard-design`, `accessibility`) apply inside these rules; when a skill suggests a different palette, typeface, or style, this file wins.
 - Need a new token? Propose it in the theme file instead of hardcoding a value.
+- Design explorations (mockups and alternative directions before code) live in `design/<slug>/` as self-contained HTML artboards, made with the Gentle Design skill. `design/system.md` is the token catalog they use, synced from the theme files; re-sync it when a theme file changes. An artboard is a proposal, not a spec: the chosen one is implemented with the app's real tokens and components.
 - When a change is mostly visual, ask the maintainer for a quick look and say exactly what to check (see `AGENTS.md`, "Verifying a change").

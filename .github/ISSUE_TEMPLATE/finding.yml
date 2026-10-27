@@ -1,6 +1,8 @@
 name: Finding
 description: A bug, gap, or follow-up found outside the work in progress.
 title: "[Finding] "
+# Priority and area labels come from .github/workflows/issue-labels.yml.
+labels: [finding]
 body:
   - type: markdown
     attributes:
