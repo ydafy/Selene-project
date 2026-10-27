@@ -1,0 +1,36 @@
+meta {
+  name: t5-log-return-payment-missing-dispute
+  type: http
+  seq: 23
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_log_return_payment
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_dispute_id": "00000000-0000-4000-8000-0000000000ff",
+    "p_stripe_id": "pi_bruno_t5_missing",
+    "p_amount": 45
+  }
+}
+
+tests {
+  test("a missing dispute raises DISPUTE_NOT_FOUND", function () {
+    expect(res.getStatus()).to.be.at.least(400);
+    expect(res.getBody().code).to.equal("P0002");
+    expect(res.getBody().message).to.contain("DISPUTE_NOT_FOUND");
+  });
+}
+
+docs {
+  Unchanged guard: the function raises P0002 before touching anything.
+}

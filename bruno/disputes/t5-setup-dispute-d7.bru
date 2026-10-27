@@ -1,0 +1,36 @@
+meta {
+  name: t5-setup-dispute-d7
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/disputes?id=eq.{{t5Disp7}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "status": "waiting_return",
+    "return_payout_status": "pending"
+  }
+}
+
+tests {
+  test("d7 waits for the seller to pay the return label", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].status).to.equal("waiting_return");
+    expect(res.getBody()[0].return_payout_status).to.equal("pending");
+  });
+}
+
+docs {
+  Local stack only. d7: label unpaid for more than 48 h (fn_cron_dispute_payout_timeout).
+}

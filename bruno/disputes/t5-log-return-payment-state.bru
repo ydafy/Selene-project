@@ -1,0 +1,27 @@
+meta {
+  name: t5-log-return-payment-state
+  type: http
+  seq: 25
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/disputes?id=eq.{{t5Disp6}}&select=status,return_payout_id,return_payout_status
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("d6 is paid and moved to return_shipped", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ status: "return_shipped", return_payout_id: "pi_bruno_t5_return_6", return_payout_status: "paid" }]);
+  });
+}
+
+docs {
+  The dispute update is the only effect left in fn_log_return_payment.
+}

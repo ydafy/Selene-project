@@ -1,0 +1,35 @@
+meta {
+  name: t5-setup-dispute-d9
+  type: http
+  seq: 7
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/disputes?id=eq.{{t5Disp9}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "status": "return_delivered",
+    "return_delivered_at": "{{t5Delivered}}"
+  }
+}
+
+tests {
+  test("d9 was delivered back more than 48 h ago", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].status).to.equal("return_delivered");
+  });
+}
+
+docs {
+  Local stack only. d9: return delivered three days ago (fn_cron_return_delivery_timeout).
+}

@@ -1,0 +1,32 @@
+meta {
+  name: t5-verdict-as-admin-state
+  type: http
+  seq: 18
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/disputes?id=eq.{{t5Disp4}}&select=status,resolution_type,resolved_by,shipments(status,completed_at)
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("d4 is resolved for the seller, resolved_by is the admin and s4 is completed", function () {
+    expect(res.getStatus()).to.equal(200);
+    const dispute = res.getBody()[0];
+    expect(dispute.status).to.equal("resolved");
+    expect(dispute.resolution_type).to.equal("seller");
+    expect(dispute.resolved_by).to.equal("00000000-0000-4000-8000-000000000001");
+    expect(dispute.shipments.status).to.equal("completed");
+    expect(dispute.shipments.completed_at).to.be.a("string");
+  });
+}
+
+docs {
+  Dispute and shipment rows after the verdict.
+}

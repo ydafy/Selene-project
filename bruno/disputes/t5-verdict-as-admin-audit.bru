@@ -1,0 +1,27 @@
+meta {
+  name: t5-verdict-as-admin-audit
+  type: http
+  seq: 19
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/admin_audit_logs?target_id=eq.{{t5Disp4}}&select=admin_id,action_type
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("one audit row names the admin and the seller verdict", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ admin_id: "00000000-0000-4000-8000-000000000001", action_type: "DISPUTE_RESOLVE_SELLER" }]);
+  });
+}
+
+docs {
+  Admin audit trail written by the verdict.
+}

@@ -1,0 +1,34 @@
+meta {
+  name: t5-verdict-no-session-refused
+  type: http
+  seq: 21
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_resolve_dispute_to_seller
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_dispute_id": "{{t5Disp5}}",
+    "p_admin_note": "Bruno T5 no session"
+  }
+}
+
+tests {
+  test("the service role key has no user session, so the verdict is refused", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ success: false, error_message: "INTERNAL_SERVER_ERROR" }]);
+  });
+}
+
+docs {
+  fn_resolve_dispute_to_seller reads the admin from the JWT subject (UNAUTHORIZED_NO_SESSION, logged and answered as INTERNAL_SERVER_ERROR); production resolves verdicts through fn_resolve_dispute_to_seller_as_admin. The success path was proved with a forged admin session on the local database.
+}

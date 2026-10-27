@@ -1,0 +1,36 @@
+meta {
+  name: t5-confirm-connect-again
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_confirm_shipment_delivery
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_shipment_id": "{{t5Ship1}}",
+    "p_source": "auto",
+    "p_actor_id": null,
+    "p_idempotency_key": "auto_completion_{{t5Ship1}}"
+  }
+}
+
+tests {
+  test("the same confirmation again is an idempotent success", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ success: true, error: null, completion_source: "auto", idempotent: true }]);
+  });
+}
+
+docs {
+  A retry returns the stored completion source and writes nothing new.
+}

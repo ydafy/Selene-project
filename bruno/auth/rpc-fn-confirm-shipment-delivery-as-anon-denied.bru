@@ -1,0 +1,38 @@
+meta {
+  name: rpc-fn-confirm-shipment-delivery-as-anon-denied
+  type: http
+  seq: 38
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_confirm_shipment_delivery
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{anonKey}}
+}
+
+body:json {
+  {
+    "p_shipment_id": "00000000-0000-4000-8000-0000000000ff",
+    "p_source": "auto",
+    "p_actor_id": null,
+    "p_idempotency_key": "denied"
+  }
+}
+
+tests {
+  test("an anonymous caller is denied", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody().code).to.equal("42501");
+    expect(res.getBody().message).to.equal("permission denied for function fn_confirm_shipment_delivery");
+  });
+}
+
+docs {
+  EXECUTE on fn_confirm_shipment_delivery is limited to service_role, so a client cannot call it through the RPC.
+  The ids are placeholders: the request is refused before the function runs and changes nothing.
+}
