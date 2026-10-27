@@ -1,0 +1,33 @@
+meta {
+  name: order-buyer-close-account-again
+  type: http
+  seq: 42
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_close_account
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_user_id": "{{orderBuyerId}}"
+  }
+}
+
+tests {
+  test("a second closure reports the stored state", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().status).to.equal("already_closed");
+  });
+}
+
+docs {
+  Idempotency of account closure.
+}

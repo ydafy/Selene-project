@@ -114,7 +114,7 @@ export const ShowroomInsights = memo(({ news }: { news: NewsItem[] }) => {
 
             {/* Gradiente de Legibilidad */}
             <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.7)']}
+              colors={['transparent', colors.scrimStrong]}
               style={StyleSheet.absoluteFill}
               locations={[0.4, 1]}
             />
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: colors.background,
     borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: colors.separator,
     // Sombra para profundidad
     shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 8 },

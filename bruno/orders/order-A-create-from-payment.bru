@@ -1,0 +1,44 @@
+meta {
+  name: order-A-create-from-payment
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_create_order_from_payment
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:pre-request {
+  bru.setVar("intentA", "pi_bruno_A_" + Date.now());
+}
+
+body:json {
+  {
+    "p_buyer_id": "{{orderBuyerId}}",
+    "p_stripe_intent_id": "{{intentA}}",
+    "p_total_amount": 2550,
+    "p_service_fee": 150,
+    "p_address_id": "{{orderAddressId}}",
+    "p_product_ids": [
+      "00000000-0000-4000-8000-0000000000b4"
+    ]
+  }
+}
+
+tests {
+  test("the payment becomes an order", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ success: true, error_message: null }]);
+  });
+}
+
+docs {
+  fn_create_order_from_payment (service role). Creates the order, one shipment, the order item and the seller and buyer notices, and marks the listing SOLD. A repeat with the same payment is ALREADY_PROCESSED.
+}

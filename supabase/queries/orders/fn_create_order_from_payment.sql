@@ -4,8 +4,6 @@ DECLARE
   v_addr_snapshot JSONB;
   v_prod RECORD;
   v_seller RECORD;
-  v_wallet_id UUID;
-  v_wallet_pending NUMERIC;
   v_net_payout NUMERIC;
   v_commission_pct NUMERIC;
   v_isr_pct NUMERIC;
@@ -13,7 +11,6 @@ DECLARE
   v_sat_withholding NUMERIC;
   v_shipment_id UUID;
   v_shipments_cache JSONB := '{}'::JSONB; -- {seller_id: shipment_id}
-  v_wallet_available NUMERIC;
 BEGIN
   -- 1. Idempotencia
   IF EXISTS (SELECT 1 FROM public.orders WHERE stripe_payment_intent_id = p_stripe_intent_id) THEN
@@ -78,27 +75,6 @@ BEGIN
       v_order_id, v_prod.id, v_prod.seller_id, v_prod.price,
       (v_prod.price * v_commission_pct), COALESCE(v_prod.shipping_cost, 0),
       v_net_payout, v_shipment_id, v_sat_withholding
-    );
-
-    -- Wallet
-    SELECT id, pending_balance, available_balance
-      INTO v_wallet_id, v_wallet_pending, v_wallet_available
-    FROM public.wallets WHERE user_id = v_prod.seller_id FOR UPDATE;
-
-    UPDATE public.wallets
-    SET pending_balance = pending_balance + v_net_payout,
-        updated_at = now()
-    WHERE id = v_wallet_id;
-
-    INSERT INTO public.wallet_transactions (
-      wallet_id, order_id, shipment_id, amount, net_amount, balance_after, type, description, tax_withholding
-    )
-    VALUES (
-      v_wallet_id, v_order_id, v_shipment_id, v_prod.price, v_net_payout,
-      v_wallet_available,  -- available_balance intacto (el cobro entra a pending)
-      'sale_proceeds',
-      'Venta: ' || v_prod.name,
-      v_sat_withholding
     );
 
     -- Marcar vendido

@@ -1,9 +1,10 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import Stripe from 'https://esm.sh/stripe@17.0.0';
-import { z } from 'https://esm.sh/zod@3.23.8';
 
 import { buildReturnShippingPaymentIntentParams } from './create-return-intent.ts';
+import { ReturnIntentRequestSchema } from './request-schema.ts';
+import { withSentry } from '../_shared/sentry.ts';
 
 const STRIPE_API_VERSION = '2026-04-22.dahlia';
 
@@ -39,17 +40,13 @@ const log = (
   );
 };
 
-const RequestSchema = z.object({
-  disputeId: z.string().uuid('ID de disputa inválido'),
-});
-
-serve(async (req) => {
+serve(withSentry('create-return-intent', async (req) => {
   if (req.method === 'OPTIONS')
     return new Response('ok', { headers: corsHeaders });
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { disputeId } = RequestSchema.parse(body);
+    const { disputeId } = ReturnIntentRequestSchema.parse(body);
 
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -174,4 +171,4 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+}));

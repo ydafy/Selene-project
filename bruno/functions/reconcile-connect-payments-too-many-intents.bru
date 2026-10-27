@@ -1,0 +1,44 @@
+meta {
+  name: reconcile-connect-payments-too-many-intents
+  type: http
+  seq: 57
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/reconcile-connect-payments
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+body:json {
+  {}
+}
+
+script:pre-request {
+  req.setBody({
+    paymentIntentIds: Array.from({ length: 51 }, (_, i) => "pi_validation_only_" + i),
+  });
+}
+
+tests {
+  test("more than 50 PaymentIntent ids fail with one too_big issue", function () {
+    expect(res.getStatus()).to.equal(400);
+    const body = res.getBody();
+    expect(body.success).to.equal(false);
+    const issues = JSON.parse(body.error);
+    expect(issues).to.have.length(1);
+    expect(issues[0].code).to.equal("too_big");
+    expect(issues[0].path).to.deep.equal(["paymentIntentIds"]);
+  });
+}
+
+docs {
+  The body `error` is zod 4's `ZodError.message` (JSON of issues). Validation runs after the
+  admin check and before any Stripe call, so no PaymentIntent is retrieved. Run after
+  auth/login-admin.
+}

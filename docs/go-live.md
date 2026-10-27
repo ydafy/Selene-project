@@ -56,10 +56,11 @@ Values differ per project; never copy them from another environment.
 - `account_closure_cleanup_cron_secret` (same value as the `CRON_SECRET` function secret)
 - `stripe_fee_worker_project_url`
 - `stripe_fee_worker_service_role_jwt`
+- `track_shipments_cron_secret` (same value as the `TRACK_SHIPMENTS_CRON_SECRET` function secret)
 
 ## 6. Edge Function secrets
 
-`CRON_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CONNECT_WEBHOOK_SECRET`, `ENVIA_MODE`, `ENVIA_API_KEY_PROD`, `ENVIA_API_URL_PROD`, `ENVIA_WEBHOOK_SECRET_PROD`, `ENVIA_API_KEY_SANDBOX`, `ENVIA_API_URL_SANDBOX`, `ENVIA_WEBHOOK_SECRET_SANDBOX`, `SENTRY_DSN` (required; without it Sentry reporting and the `cron-watchdog` monitor are silently off), `SENTRY_ENVIRONMENT` (optional, default `production`).
+`CRON_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CONNECT_WEBHOOK_SECRET`, `ENVIA_MODE`, `ENVIA_API_KEY_PROD`, `ENVIA_API_URL_PROD`, `ENVIA_WEBHOOK_SECRET_PROD`, `ENVIA_API_KEY_SANDBOX`, `ENVIA_API_URL_SANDBOX`, `ENVIA_WEBHOOK_SECRET_SANDBOX`, `SENTRY_DSN` (required; without it Sentry reporting and the `cron-watchdog` monitor are silently off), `SENTRY_ENVIRONMENT` (optional, default `production`). `TRACK_SHIPMENTS_CRON_SECRET` and `TRACK_SHIPMENTS_POLLING_ENABLED` (`true` turns Envia polling on; see "8. Cron jobs").
 
 `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` are injected by Supabase.
 
@@ -68,6 +69,8 @@ Production uses live Stripe keys and `ENVIA_MODE` set to production.
 ## 7. Edge Functions
 
 Deploy every directory in `supabase/functions/` except `_shared/`. `supabase/config.toml` holds the `verify_jwt` flags; deploy with the CLI so they apply.
+
+`create-payment-intent` was retired (replaced by `create-connect-payment`; it no longer exists in the repository). Its deployed copy was deleted from the development project on 2026-10-25, so a project still listing it is out of date: remove it with `supabase functions delete create-payment-intent`.
 
 `resolve-shipment-refund` is called by admins with their own session, so it keeps `verify_jwt = true` (declared in `supabase/config.toml`) and checks `profiles_private.role = 'admin'` itself. It needs no new secret. Apply `supabase/migrations/20261022013846_shipment_cancellation_refund_resolution.sql` (new resolution columns, service-only `fn_resolve_shipment_cancellation_refund`, `fn_cancel_shipment` accepting an admin-resolved refund) before deploying it.
 
@@ -91,14 +94,62 @@ The remote project also runs `dynamic-api` (name `get-shipping-quote-seller`), w
 | `dispute-payout-timeout-job`               | `0 * * * *`    | `fn_cron_dispute_payout_timeout()`      |
 | `dispute-shipping-timeout-job`             | `0 * * * *`    | `fn_cron_dispute_shipping_timeout()`    |
 | `purge-expired-reservations`               | `*/15 * * * *` | inline `UPDATE public.products`         |
+| `purge-cron-run-details`                   | `0 3 * * *`    | inline `DELETE FROM cron.job_run_details` (7 days) |
 | `purge-old-evidence`                       | `0 0 * * *`    | inline `DELETE FROM storage.objects`    |
 | `reconcile-connect-payments`               | `0 */6 * * *`  | `fn_reconcile_connect_payments()`       |
 | `reconcile-stripe-fees-every-5-minutes`    | `*/5 * * * *`  | function `reconcile-stripe-fees`        |
 | `resume-pending-payouts`                   | `*/5 * * * *`  | function `resume-pending-payouts`       |
 | `return-delivery-timeout`                  | `0 * * * *`    | `fn_cron_return_delivery_timeout()`     |
-| `track-shipments-every-6-hours`            | `0 */6 * * *`  | function `track-shipments`              |
+| `track-shipments-preparing`                | `*/5 * * * *`  | function `track-shipments` (`preparing`) |
+| `track-shipments-shipped`                  | `*/15 * * * *` | function `track-shipments` (`shipped`)   |
 
-`track-shipments-every-6-hours` still embeds a literal JWT and the project URL in the job command (outside the cancellation work). Recreate it reading Vault secrets, like the other HTTP jobs.
+`track-shipments` polls Envia per lane and authenticates its caller with `Authorization: Bearer <TRACK_SHIPMENTS_CRON_SECRET>` (`verify_jwt = false`; no JWT and no `x-cron-secret`). It only works when `TRACK_SHIPMENTS_POLLING_ENABLED` is `true`; any other value answers `200 {"skipped": true, "reason": "disabled"}` without touching the database or Envia. The old `track-shipments-every-6-hours` job sends a literal service-role JWT and no `lane`, so every run gets 401 (seen four times on 2026-10-25). Replace it in this order:
+
+1. Generate a secret (`openssl rand -hex 32`) and set it as the Edge Function secret `TRACK_SHIPMENTS_CRON_SECRET` (`supabase secrets set TRACK_SHIPMENTS_CRON_SECRET=<value>`). Leave `TRACK_SHIPMENTS_POLLING_ENABLED` unset for now.
+2. Store the same value in Vault, then remove the old job (this also removes the service-role JWT from `cron.job`) and create the two lanes. In the SQL Editor:
+
+```sql
+select vault.create_secret('<same value as TRACK_SHIPMENTS_CRON_SECRET>', 'track_shipments_cron_secret');
+
+select cron.unschedule('track-shipments-every-6-hours');
+
+select cron.schedule(
+  'track-shipments-preparing',
+  '*/5 * * * *',
+  $$
+  select net.http_post(
+    url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url') || '/functions/v1/track-shipments',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'track_shipments_cron_secret')
+    ),
+    body := '{"lane": "preparing"}'::jsonb
+  );
+  $$
+);
+
+select cron.schedule(
+  'track-shipments-shipped',
+  '*/15 * * * *',
+  $$
+  select net.http_post(
+    url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url') || '/functions/v1/track-shipments',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'track_shipments_cron_secret')
+    ),
+    body := '{"lane": "shipped"}'::jsonb
+  );
+  $$
+);
+```
+
+3. Check the next runs return `200` with `"reason": "disabled"` instead of 401 (Edge Function logs for `track-shipments`).
+4. Enable polling: `supabase secrets set TRACK_SHIPMENTS_POLLING_ENABLED=true`. The next runs report `processed` and `recorded` counts per lane.
+
+Both lanes use `*/N` schedules because `cron-watchdog` only supports `*/N`, `M * * * *`, `M */N * * *` and `M H * * *`; each lane has its own lease, so starting in the same minute is safe. Rollback: unset `TRACK_SHIPMENTS_POLLING_ENABLED` (runs keep answering `disabled`), then `cron.unschedule` both lanes if needed.
+
+The service-role JWT that the old job carried was readable by anyone with database owner access. It is replaced, not revoked: revoking it is part of moving to Supabase's per-key API keys before go-live (backlog BL32), which also replaces the service-role values stored in Vault (`checkout_recovery_worker_service_role_key`, `stripe_fee_worker_service_role_jwt`).
 
 `auto-cancel-orders` and `auto-cancel-preparing` reject any caller without the `x-cron-secret` header (401 `UNAUTHORIZED`, compared against `CRON_SECRET`), even though the gateway still accepts the anon JWT. Order matters: create the Vault secret `auto_cancel_orders_cron_secret` and recreate `auto-cancel-orders-job` first (the previous function version ignores the extra header), and only then deploy both functions; otherwise the hourly runs get 401. In the SQL Editor:
 
@@ -125,7 +176,7 @@ select cron.schedule(
 
 `auto-cancel-preparing` has the same authorization but is intentionally not scheduled until B4 of the shipment cancellations work; do not create a job for it before then.
 
-`cron-watchdog-every-15-minutes` calls `cron-watchdog`, which reads `fn_cron_health()` and reports failed, overdue, or unsupported-schedule jobs to Sentry. Create the Vault secret `cron_watchdog_cron_secret` first, with the same value as the `CRON_SECRET` function secret (the function compares the `x-cron-secret` header against `CRON_SECRET`). Then run, in the SQL Editor:
+`cron-watchdog-every-15-minutes` calls `cron-watchdog`, which reads `fn_cron_health()` and reports failed, overdue, or unsupported-schedule jobs to Sentry. In order: apply `supabase/migrations/20261021025844_cron_health.sql` (creates `fn_cron_health()`, service role only) and `supabase/migrations/20261026014010_cron_health_index_scan.sql` (reads `cron.job_run_details` by primary key; without it the read timed out on 86k rows), deploy `cron-watchdog`, and create the Vault secret `cron_watchdog_cron_secret` with the same value as the `CRON_SECRET` function secret (the function compares the `x-cron-secret` header against `CRON_SECRET`). Then run, in the SQL Editor:
 
 ```sql
 select cron.schedule(
@@ -140,9 +191,22 @@ select cron.schedule(
       'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'project_anon_jwt'),
       'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'cron_watchdog_cron_secret')
     ),
-    body := '{}'::jsonb
+    body := '{}'::jsonb,
+    timeout_milliseconds := 30000
   );
   $$
+);
+```
+
+The 30-second timeout keeps the response in `net._http_response` while the function reports to Sentry (the `pg_net` default of 5 seconds cut the first run). Running `cron.schedule` again with the same name replaces the job.
+
+`purge-cron-run-details` keeps 7 days of `cron.job_run_details`, which pg_cron never trims (2026-10-26: 86,638 rows since February, about 2,000 more a day). It deletes finished runs only; a run in progress has no `end_time`. Run in the SQL Editor:
+
+```sql
+select cron.schedule(
+  'purge-cron-run-details',
+  '0 3 * * *',
+  $$ delete from cron.job_run_details where end_time < now() - interval '7 days' $$
 );
 ```
 

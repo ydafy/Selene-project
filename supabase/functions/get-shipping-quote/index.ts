@@ -1,8 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { z } from "https://esm.sh/zod@3.23.8";
 import { QuoteContractError, quoteListingShipment } from "./quote-contract.ts";
+import { ShippingQuoteRequestSchema } from "./request-schema.ts";
 import { resolveProductionQuoteRuntime } from "./runtime.ts";
+import { withSentry } from '../_shared/sentry.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,13 +11,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-
-const RequestSchema = z.object({
-  originZip: z.string().regex(/^\d{4,5}$/),
-  packageId: z.string().trim().min(1).max(100),
-  price: z.number().finite().positive(),
-  destinationZip: z.string().regex(/^\d{4,5}$/).optional(),
-});
 
 const log = (level: string, message: string, meta?: unknown) => {
   console.log(
@@ -30,12 +24,24 @@ const log = (level: string, message: string, meta?: unknown) => {
   );
 };
 
-serve(async (req: Request) => {
+serve(withSentry('get-shipping-quote', async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      throw new Error("INVALID_INPUT");
+    }
+    const result = ShippingQuoteRequestSchema.safeParse(body);
+    if (!result.success) {
+      log("error", "INVALID_INPUT");
+      throw new Error("INVALID_INPUT");
+    }
+
     const runtimeConfiguration = resolveProductionQuoteRuntime((name) =>
       Deno.env.get(name)
     );
@@ -43,18 +49,6 @@ serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     if (!runtimeConfiguration || !serviceRoleKey || !supabaseUrl) {
       throw new Error("MISSING_SERVER_CONFIG");
-    }
-
-    let body: unknown;
-    try {
-      body = await req.json();
-    } catch {
-      throw new Error("INVALID_INPUT");
-    }
-    const result = RequestSchema.safeParse(body);
-    if (!result.success) {
-      log("error", "INVALID_INPUT");
-      throw new Error("INVALID_INPUT");
     }
 
     const { originZip, packageId, price, destinationZip } = result.data;
@@ -122,4 +116,4 @@ serve(async (req: Request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+}));

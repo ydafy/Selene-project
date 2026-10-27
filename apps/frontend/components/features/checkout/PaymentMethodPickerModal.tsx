@@ -14,6 +14,7 @@ import {
 import { useTheme } from '@shopify/restyle';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useStripe } from '@stripe/stripe-react-native';
+import { useTranslation } from 'react-i18next';
 
 import { Box, Text } from '../../base';
 import { Theme } from '../../../core/theme';
@@ -33,6 +34,7 @@ export const PaymentMethodPickerModal = ({
   innerRef: React.RefObject<BottomSheetModal | null>;
 }) => {
   const theme = useTheme<Theme>();
+  const { t } = useTranslation('common');
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
   const [isSyncing, setIsSyncing] = useState(false);
@@ -59,13 +61,16 @@ export const PaymentMethodPickerModal = ({
   const handleAddCard = async () => {
     try {
       const currentCount = methods.length;
-      const config = await getSetupConfig();
+      const { setupIntent, customer, ephemeralKey } = await getSetupConfig();
+      if (!setupIntent || !customer || !ephemeralKey) {
+        throw new Error(t('errors.generic'));
+      }
 
       const { error: initError } = await initPaymentSheet({
         merchantDisplayName: 'Selene Marketplace',
-        setupIntentClientSecret: config.setupIntent,
-        customerId: config.customer,
-        customerEphemeralKeySecret: config.ephemeralKey,
+        setupIntentClientSecret: setupIntent,
+        customerId: customer,
+        customerEphemeralKeySecret: ephemeralKey,
         // --- PERSONALIZACIÓN DE DISEÑO ---
         appearance: {
           shapes: {

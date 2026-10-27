@@ -258,9 +258,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         },
       );
 
+      // BL7: a redelivered failure of an unresolved operation reports again (the first alert may have
+      // been lost to a crash after commit), while the buyer still gets a single notice.
       assert.equal(
         (await apply(tx, ids.shipment, 're_1', 'failed', { reason: 'expired_or_canceled_card' })).outcome,
-        'unchanged',
+        'failed_after_cancellation',
       );
       assert.equal((await apply(tx, ids.shipment, 're_1', 'succeeded')).outcome, 'unchanged');
       assert.equal((await notifications(tx, 'shipment.refund_failed')).length, 1);
@@ -280,11 +282,12 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       assert.equal((await notifications(tx, 'shipment.cancelled')).length, 0);
       assert.equal((await notifications(tx, 'shipment.refund_failed')).length, 1);
 
-      // failed is terminal: a late succeeded snapshot cannot reopen it, and a replay adds nothing.
+      // failed is terminal: a late succeeded snapshot cannot reopen it. A redelivered failure reports
+      // again while the operation is unresolved (BL7) but adds no notice and keeps the shipment open.
       assert.equal((await apply(tx, ids.shipment, 're_1', 'succeeded')).outcome, 'unchanged');
       assert.equal(
         (await apply(tx, ids.shipment, 're_1', 'failed', { reason: 'lost_or_stolen_card' })).outcome,
-        'unchanged',
+        'failed_before_cancellation',
       );
       assert.equal((await snapshot(tx, ids.shipment)).shipment, 'paid');
       assert.equal(await productStatus(tx, ids.product), 'SOLD');
@@ -436,7 +439,7 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       );
       assert.equal(
         (await apply(tx, ids.shipment, 're_1', 'failed', { reason: 'lost_or_stolen_card' })).outcome,
-        'unchanged',
+        'failed_after_cancellation',
       );
       const rows = await notifications(tx, 'shipment.refund_failed');
       assert.equal(rows.length, 1);

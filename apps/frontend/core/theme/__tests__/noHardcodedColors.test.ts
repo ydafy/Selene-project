@@ -15,6 +15,7 @@ const ALLOWED_BRAND_COLORS: Record<string, string[]> = {
 };
 
 const HEX_LITERAL = /['"`](#[0-9a-fA-F]{3,8})['"`]/g;
+const FUNCTIONAL_LITERAL = /['"`]((?:rgb|hsl)a?\([^)]*\))['"`]/gi;
 
 const sourceFiles = (dir: string): string[] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -30,7 +31,7 @@ const sourceFiles = (dir: string): string[] =>
   });
 
 describe('app components use theme color tokens', () => {
-  test('no hex color literals outside the theme and brand assets', () => {
+  test('no hex or rgb/hsl color literals outside the theme and brand assets', () => {
     const offenders: string[] = [];
 
     for (const dir of SCANNED_DIRS) {
@@ -44,6 +45,9 @@ describe('app components use theme color tokens', () => {
           .forEach((line, index) => {
             for (const [, hex] of line.matchAll(HEX_LITERAL)) {
               if (!allowed.includes(hex)) offenders.push(`${rel}:${index + 1} ${hex}`);
+            }
+            for (const [, color] of line.matchAll(FUNCTIONAL_LITERAL)) {
+              offenders.push(`${rel}:${index + 1} ${color}`);
             }
           });
       }

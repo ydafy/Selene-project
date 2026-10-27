@@ -1,6 +1,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
+import { withSentry } from '../_shared/sentry.ts';
+
 import {
   ApiError,
   AUTO_COMPLETION_DELAY_MS,
@@ -8,6 +10,7 @@ import {
   type AutoCompletionResult,
   buildAutoCompletionDiagnostic,
   buildAutoCompletionRpcInput,
+  isActiveDisputeRefusal,
   mapAutoCompletionRpcResult,
   resolveAutoCompletionPlan,
   summarizeAutoCompletionResults,
@@ -30,7 +33,7 @@ const log = (
   );
 };
 
-serve(async (req: Request): Promise<Response> => {
+serve(withSentry('complete-delivered-shipments', async (req: Request): Promise<Response> => {
   try {
     validateAutoCompletionRequest({
       method: req.method,
@@ -44,12 +47,31 @@ serve(async (req: Request): Promise<Response> => {
     );
     const now = Date.now();
     const dueAt = new Date(now - AUTO_COMPLETION_DELAY_MS).toISOString();
-    const { data: candidates, error: candidatesError } = await supabaseAdmin
+
+    // Excluded in the query, not after it: a disputed shipment can never complete, so letting
+    // it fill the batch would block every shipment delivered after it.
+    const { data: disputes, error: disputesError } = await supabaseAdmin
+      .from('disputes')
+      .select('shipment_id')
+      .not('status', 'in', '(resolved,rejected)')
+      .not('shipment_id', 'is', null);
+    if (disputesError || !disputes) {
+      throw new ApiError(500, 'INTERNAL_ERROR');
+    }
+    const activeDisputeShipmentIds = [
+      ...new Set(disputes.map((dispute) => dispute.shipment_id as string)),
+    ];
+
+    let candidatesQuery = supabaseAdmin
       .from('shipments')
       .select('id, status, delivered_at, buyer_confirmed_at')
       .eq('status', 'delivered')
       .is('buyer_confirmed_at', null)
-      .lte('delivered_at', dueAt)
+      .lte('delivered_at', dueAt);
+    if (activeDisputeShipmentIds.length > 0) {
+      candidatesQuery = candidatesQuery.not('id', 'in', `(${activeDisputeShipmentIds.join(',')})`);
+    }
+    const { data: candidates, error: candidatesError } = await candidatesQuery
       .order('delivered_at', { ascending: true })
       .limit(MAX_AUTO_COMPLETION_BATCH_SIZE);
 
@@ -63,8 +85,9 @@ serve(async (req: Request): Promise<Response> => {
       expectedCronSecret: Deno.env.get('CRON_SECRET') ?? null,
       now,
       candidates,
+      activeDisputeShipmentIds,
     });
-    const results: (AutoCompletionResult | null)[] = [];
+    const results: (AutoCompletionResult | 'skipped' | null)[] = [];
 
     for (const shipmentId of shipmentIds) {
       try {
@@ -76,10 +99,22 @@ serve(async (req: Request): Promise<Response> => {
           throw new ApiError(500, 'INTERNAL_ERROR');
         }
 
-        const result = mapAutoCompletionRpcResult(
-          Array.isArray(data) ? data[0] : data,
-          shipmentId,
-        );
+        const row = Array.isArray(data) ? data[0] : data;
+        if (isActiveDisputeRefusal(row)) {
+          results.push('skipped');
+          log(
+            'INFO',
+            'Delivered shipment completion skipped',
+            buildAutoCompletionDiagnostic({
+              shipmentId,
+              result: 'success',
+              code: 'SKIPPED_ACTIVE_DISPUTE',
+            }),
+          );
+          continue;
+        }
+
+        const result = mapAutoCompletionRpcResult(row, shipmentId);
         results.push(result);
         log(
           'INFO',
@@ -137,4 +172,4 @@ serve(async (req: Request): Promise<Response> => {
       },
     );
   }
-});
+}));

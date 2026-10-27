@@ -1,0 +1,37 @@
+meta {
+  name: confirm-shipment-delivery-non-rfc-id
+  type: http
+  seq: 51
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/confirm-shipment-delivery
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  {
+    "orderId": "11111111-2222-3333-4444-555555555555",
+    "shipmentId": "00000000-0000-4000-8000-0000000000c1",
+    "idempotencyKey": "confirm_shipment_00000000-0000-4000-8000-0000000000c1"
+  }
+}
+
+tests {
+  test("an order id with a non-RFC variant is refused before any lookup", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody()).to.deep.equal({ success: false, error: "INVALID_REQUEST" });
+  });
+}
+
+docs {
+  The request schema runs on zod 4 (`_shared/zod-runtime.ts`), whose `.uuid()` requires the
+  RFC 9562 variant; zod 3.23.8 accepted this order id. Validation precedes auth and any
+  database read, so nothing is confirmed. Run after auth/login-buyer.
+}

@@ -24,6 +24,8 @@ export interface AutoCompletionContext {
   expectedCronSecret: string | null;
   now: number;
   candidates: readonly AutoCompletionCandidate[];
+  // Shipments with a dispute that is not resolved or rejected: never auto-completed.
+  activeDisputeShipmentIds?: readonly string[];
 }
 
 export interface AutoCompletionPlan {
@@ -54,6 +56,7 @@ export interface AutoCompletionBatchResult {
   attempted: number;
   completed: number;
   idempotent: number;
+  skipped: number;
   failed: number;
 }
 
@@ -108,9 +111,10 @@ export function resolveAutoCompletionPlan(
 ): AutoCompletionPlan {
   validateAutoCompletionRequest(context);
 
+  const disputed = new Set(context.activeDisputeShipmentIds ?? []);
   return {
     shipmentIds: context.candidates
-      .filter((candidate) => isDue(candidate, context.now))
+      .filter((candidate) => isDue(candidate, context.now) && !disputed.has(candidate.id))
       .slice(0, MAX_AUTO_COMPLETION_BATCH_SIZE)
       .map((candidate) => candidate.id),
   };
@@ -127,10 +131,23 @@ export function buildAutoCompletionRpcInput(
   };
 }
 
+// fn_confirm_shipment_delivery error codes are SCREAMING_SNAKE_CASE; any other text is
+// not a code that may reach the logs.
+const RPC_ERROR_CODE = /^[A-Z][A-Z_]{0,63}$/;
+
 export function mapAutoCompletionRpcResult(
   value: unknown,
   shipmentId: string,
 ): AutoCompletionResult {
+  if (
+    isCompletionRpcResult(value) &&
+    !value.success &&
+    value.error !== null &&
+    RPC_ERROR_CODE.test(value.error)
+  ) {
+    throw new ApiError(500, value.error);
+  }
+
   if (
     !isCompletionRpcResult(value) ||
     !value.success ||
@@ -147,11 +164,22 @@ export function mapAutoCompletionRpcResult(
   };
 }
 
+// fn_confirm_shipment_delivery refuses a shipment whose dispute opened after the candidates
+// were read. That is the expected outcome, not a failure: the shipment waits for the dispute.
+export function isActiveDisputeRefusal(value: unknown): boolean {
+  if (!isCompletionRpcResult(value)) return false;
+  return !value.success && value.error === 'SHIPMENT_HAS_ACTIVE_DISPUTE';
+}
+
 export function summarizeAutoCompletionResults(
-  results: readonly (AutoCompletionResult | null)[],
+  results: readonly (AutoCompletionResult | 'skipped' | null)[],
 ): AutoCompletionBatchResult {
   return results.reduce<AutoCompletionBatchResult>(
     (summary, result) => {
+      if (result === 'skipped') {
+        return { ...summary, skipped: summary.skipped + 1 };
+      }
+
       if (!result) {
         return { ...summary, failed: summary.failed + 1, success: false };
       }
@@ -167,6 +195,7 @@ export function summarizeAutoCompletionResults(
       attempted: results.length,
       completed: 0,
       idempotent: 0,
+      skipped: 0,
       failed: 0,
     },
   );

@@ -20,8 +20,8 @@ ALTER TABLE public.notifications ADD CONSTRAINT notifications_event_kind_catalog
 -- refund identity) and the lifecycle, then acts on the recorded result:
 --   ignored                    no started cancellation for the shipment (not ours)
 --   completed                  recorded succeeded on an open shipment: cancelled with the stored winner
---   failed_after_cancellation  succeeded -> failed on a cancelled shipment; it stays cancelled
---   failed_before_cancellation failed/canceled while the shipment is still open; it is NOT cancelled
+--   failed_after_cancellation  succeeded -> failed on a cancelled shipment; it stays cancelled (also on a redelivered failure event)
+--   failed_before_cancellation failed/canceled while the shipment is still open; it is NOT cancelled (also on a redelivered failure event)
 --   recorded                   a changed non-terminal status
 --   unchanged                  replay or stale snapshot (also: a resolved operation seeing its recorded refund id and status again)
 --   after_resolution           the operation was already resolved by an admin and the event is not the recorded
@@ -114,7 +114,11 @@ BEGIN
       RAISE EXCEPTION 'CANCELLATION_COMPLETE_FAILED: %', COALESCE(v_cancel_error, 'UNKNOWN');
     END IF;
     v_outcome := 'completed';
-  ELSIF (v_recorded->>'changed')::BOOLEAN AND v_operation.refund_status IN ('failed', 'canceled') THEN
+  -- A redelivered failure event reports again while the operation is unresolved (resolved ones
+  -- returned above): the webhook alerts after this commits, so a crash in between must not lose
+  -- the alert. The buyer notice below is idempotent, so a redelivery never adds a second one.
+  ELSIF v_operation.refund_status IN ('failed', 'canceled')
+        AND ((v_recorded->>'changed')::BOOLEAN OR p_status IN ('failed', 'canceled')) THEN
     SELECT buyer_id INTO v_buyer_id FROM public.orders WHERE id = v_order_id;
     INSERT INTO public.notifications (
       user_id, event_kind, source_event_key, event_payload,

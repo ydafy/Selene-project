@@ -1,0 +1,27 @@
+meta {
+  name: signup-private-profile-row
+  type: http
+  seq: 25
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/profiles_private?id=eq.{{signupUserId}}&select=id,email,role,status
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the new user has an active private profile with the user role", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ id: bru.getVar("signupUserId"), email: bru.getVar("signupEmail"), role: "user", status: "active" }]);
+  });
+}
+
+docs {
+  Private profile written by fn_on_auth_user_created.
+}

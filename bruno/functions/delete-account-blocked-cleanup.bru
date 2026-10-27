@@ -4,9 +4,9 @@ meta {
   seq: 35
 }
 
-patch {
-  url: {{baseUrl}}/rest/v1/wallets?user_id=eq.00000000-0000-4000-8000-000000000003
-  body: json
+delete {
+  url: {{baseUrl}}/rest/v1/orders?id=eq.00000000-0000-4000-8000-0000000000d1
+  body: none
   auth: none
 }
 
@@ -16,17 +16,13 @@ headers {
   Prefer: return=representation
 }
 
-body:json {
-  { "pending_balance": 0 }
-}
-
 tests {
-  test("the seeded buyer wallet is back to zero", function () {
+  test("the order delete-account-blocked-setup created is gone", function () {
     expect(res.getStatus()).to.equal(200);
-    expect(res.getBody()[0].pending_balance).to.equal(0);
+    expect(res.getBody().length).to.equal(1);
   });
 }
 
 docs {
-  Restores what delete-account-blocked-setup changed so the collection is repeatable.
+  Removes what delete-account-blocked-setup created so the collection is repeatable.
 }

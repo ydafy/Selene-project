@@ -30,9 +30,11 @@ describe('local seed (SQL structural only)', () => {
     // The auto-cancel crons use expiring leases since B3; their booleans are dropped.
     expect(settings).not.toContain('auto_cancel_orders_running');
     expect(settings).not.toContain('auto_cancel_preparing_running');
-    expect(settings).toContain('checkout_recovery_running');
+    // checkout-recovery-worker uses an expiring lease since BL13; its boolean is dropped.
+    expect(settings).not.toContain('checkout_recovery_running');
+    expect(settings).toContain('checkout_recovery_enabled\n)');
     const values = settings.slice(settings.indexOf(') VALUES ('));
-    expect(values.trimEnd().endsWith('true, false\n)')).toBe(true);
+    expect(values.trimEnd().endsWith('true\n)')).toBe(true);
   });
 
   test('derives publication economics from system_settings instead of hardcoding them', () => {

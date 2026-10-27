@@ -1,0 +1,43 @@
+meta {
+  name: checkout-oversized-product-ids
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/create-connect-payment
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  {}
+}
+
+script:pre-request {
+  req.setBody({
+    productIds: Array.from({ length: 10000 }, () => "not-a-uuid"),
+    addressId: "00000000-0000-4000-8000-0000000000a3",
+  });
+}
+
+tests {
+  test("an oversized productIds array fails on its size bound alone", function () {
+    expect(res.getStatus()).to.equal(400);
+    const issues = JSON.parse(res.getBody().error);
+    expect(issues).to.have.length(1);
+    expect(issues[0].code).to.equal("too_big");
+    expect(issues[0].path).to.deep.equal(["productIds"]);
+  });
+}
+
+docs {
+  GHSA-mrhx-c7xc-m3w5: zod < 4.6.6 parsed every element before checking `.max(50)`,
+  building one issue per bad element (10,001 here). Run after auth/login-buyer (needs
+  `buyerToken`) with the functions server. Validation fails before any reservation.
+}

@@ -1,0 +1,33 @@
+meta {
+  name: checkout-recovery-worker-not-worker
+  type: http
+  seq: 55
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/checkout-recovery-worker
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("the worker boots on zod 4 and refuses a caller without the worker JWT", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody()).to.equal("Unauthorized");
+  });
+}
+
+docs {
+  The worker validates only its evidence RPC result with zod 4 (`charge-evidence-schema.ts`);
+  this request proves the module loads with the new import and that a buyer JWT is refused
+  before any lock or Stripe call. Run after auth/login-buyer.
+}

@@ -1,0 +1,32 @@
+meta {
+  name: cron-health-anon-denied
+  type: http
+  seq: 74
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_cron_health
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{anonKey}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("an anonymous caller cannot read cron job health", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody().code).to.equal("42501");
+  });
+}
+
+docs {
+  BL33: fn_cron_health exposes internal job names and schedules; EXECUTE is revoked
+  from `anon`.
+}

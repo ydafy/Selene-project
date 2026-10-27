@@ -18,10 +18,6 @@ DECLARE
   v_seller_id UUID;
   v_status public.order_status_enum;
   v_buyer_id UUID;
-  v_wallet_id UUID;
-  v_wallet_pending NUMERIC;
-  v_wallet_available NUMERIC;
-  v_total_refund NUMERIC;
   v_item RECORD;
   v_actual_stripe_fee_cents BIGINT;
   v_cancellation_loss_cents BIGINT;
@@ -88,48 +84,7 @@ BEGIN
     RETURN;
   END IF;
 
-  -- 4. Sum the shipment's seller refund basis.
-  SELECT COALESCE(SUM(COALESCE(net_payout, 0)), 0)
-    INTO v_total_refund
-  FROM public.order_items
-  WHERE shipment_id = p_shipment_id;
-
-  -- 5. Revert the seller wallet once.
-  SELECT id, pending_balance, available_balance
-    INTO v_wallet_id, v_wallet_pending, v_wallet_available
-  FROM public.wallets
-  WHERE user_id = v_seller_id
-  FOR UPDATE;
-
-  IF v_wallet_id IS NOT NULL THEN
-    UPDATE public.wallets
-    SET pending_balance = GREATEST(0, pending_balance - v_total_refund),
-        updated_at = now()
-    WHERE id = v_wallet_id;
-
-    INSERT INTO public.wallet_transactions (
-      wallet_id,
-      order_id,
-      shipment_id,
-      amount,
-      net_amount,
-      balance_after,
-      type,
-      description
-    )
-    VALUES (
-      v_wallet_id,
-      v_order_id,
-      p_shipment_id,
-      0,
-      -v_total_refund,
-      v_wallet_available,
-      'adjustment',
-      'Cancelación (' || p_cancelled_by_role || '): ' || p_reason
-    );
-  END IF;
-
-  -- 6. Release products before publishing the shipment transition.
+  -- 4. Release products before publishing the shipment transition.
   FOR v_item IN
     SELECT oi.product_id
     FROM public.order_items oi
@@ -141,7 +96,7 @@ BEGIN
     WHERE id = v_item.product_id;
   END LOOP;
 
-  -- 7. Mark the shipment cancelled and persist any reconciled loss.
+  -- 5. Mark the shipment cancelled and persist any reconciled loss.
   UPDATE public.shipments
   SET status = 'cancelled', updated_at = now()
   WHERE id = p_shipment_id;

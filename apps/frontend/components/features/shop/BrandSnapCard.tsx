@@ -103,9 +103,9 @@ const BrandSnapCardComponent = ({
                   transform: [{ scale: pressed ? 0.96 : 1 }],
                   borderColor: pressed
                     ? theme.colors.primary
-                    : 'rgba(255, 255, 255, 0.12)',
+                    : theme.colors.separator,
                   // El color de fondo con opacidad ayuda al Blur a verse más denso
-                  backgroundColor: 'rgba(30, 30, 30, 0.3)',
+                  backgroundColor: theme.colors.glassSurface,
                 },
               ]}
             >

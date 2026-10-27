@@ -1,0 +1,43 @@
+meta {
+  name: resolve-dispute-non-rfc-id
+  type: http
+  seq: 58
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/resolve-dispute
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+body:json {
+  {
+    "disputeId": "11111111-2222-3333-4444-555555555555",
+    "verdict": "buyer",
+    "adminNote": "Validation only, no verdict applied"
+  }
+}
+
+tests {
+  test("a non-RFC dispute id fails with one invalid_format issue", function () {
+    expect(res.getStatus()).to.equal(400);
+    const body = res.getBody();
+    const issues = JSON.parse(typeof body === "string" ? JSON.parse(body).error : body.error);
+    expect(issues).to.have.length(1);
+    expect(issues[0].code).to.equal("invalid_format");
+    expect(issues[0].format).to.equal("uuid");
+    expect(issues[0].path).to.deep.equal(["disputeId"]);
+  });
+}
+
+docs {
+  The body `error` is zod 4's `ZodError.message` (JSON of issues); the admin dispute toast
+  shows it as is. zod 3.23.8 accepted this id. Validation runs after the admin check and before
+  the verdict RPC, so no dispute is resolved and no money moves. The function replies without
+  a JSON content type, hence the defensive parse. Run after auth/login-admin.
+}

@@ -18,14 +18,16 @@ body:json {
 }
 
 tests {
-  test("rejects a refund resolution without a user token", function () {
+  test("the gateway rejects a refund resolution without a JWT before the function runs", function () {
     expect(res.getStatus()).to.equal(401);
-    expect(res.getBody()).to.deep.equal({ error: "AUTH_REQUIRED" });
+    expect(res.getBody().code).to.equal("UNAUTHORIZED_NO_AUTH_HEADER");
   });
 }
 
 docs {
-  Needs the functions server started with --no-verify-jwt (see stripe-webhooks-unsigned),
-  otherwise the gateway answers before the function does. Proves resolve-shipment-refund
-  refuses anonymous callers before any lookup or database call.
+  verify_jwt = true (deployed and in supabase/config.toml), so an anonymous call never
+  reaches the function; its own AUTH_REQUIRED branch only covers a missing header behind the gateway.
+  Needs the functions server (bun run functions:serve). Proves resolve-shipment-refund refuses
+  anonymous callers before any lookup or database call; resolve-shipment-refund-anon-key covers
+  the function's own check.
 }

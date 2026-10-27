@@ -208,15 +208,14 @@ describe('Connect money-flow SQL guards', () => {
     );
   });
 
-  it('legacy shipment refund no-ops for Connect shipments before wallet writes', () => {
+  it('shipment refund completion only marks Connect shipments refunded and writes no wallet rows', () => {
     const sql = readSql(
       'supabase/queries/shipments/fn_complete_shipment_refund.sql',
     );
 
     expect(sql).toContain('stripe_payment_intent_id IS NOT NULL');
-    expect(sql.indexOf('stripe_payment_intent_id IS NOT NULL')).toBeLessThan(
-      sql.indexOf('UPDATE public.wallets'),
-    );
+    expect(sql).toContain('CONNECT_SHIPMENT_SKIPPED_WALLET_REFUND');
+    expect(sql).not.toMatch(/wallets|wallet_transactions/);
   });
 
   it('manual Connect payout release deducts the legacy shipping cost and gates eligibility on it', () => {

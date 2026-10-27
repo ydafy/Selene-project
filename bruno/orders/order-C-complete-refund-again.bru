@@ -1,0 +1,33 @@
+meta {
+  name: order-C-complete-refund-again
+  type: http
+  seq: 32
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_complete_shipment_refund
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_shipment_id": "{{shipmentIdC}}"
+  }
+}
+
+tests {
+  test("a refunded shipment cannot be refunded twice", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ success: false, error_message: "SHIPMENT_NOT_REFUNDABLE" }]);
+  });
+}
+
+docs {
+  Refunded shipments are refused.
+}

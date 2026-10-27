@@ -110,7 +110,6 @@ export const UsersPage = () => {
         >
           <option value="newest">Más recientes</option>
           <option value="oldest">Más antiguos</option>
-          <option value="balance">Mayor saldo</option>
           <option value="sales">Más ventas</option>
         </select>
       </div>

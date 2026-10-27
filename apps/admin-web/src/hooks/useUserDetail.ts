@@ -30,14 +30,6 @@ export const useUserDetail = (userId: string) => {
           .eq('id', userId)
           .single(),
 
-        /* bank */ safeQuery(
-          supabase
-            .from('seller_bank_accounts')
-            .select('*')
-            .eq('user_id', userId)
-            .maybeSingle(),
-          null,
-        ),
         /* addresses */ safeQuery(
           supabase
             .from('addresses')
@@ -78,15 +70,6 @@ export const useUserDetail = (userId: string) => {
             .from('admin_audit_logs')
             .select('*, admin:profiles(username)')
             .eq('target_id', userId)
-            .order('created_at', { ascending: false })
-            .limit(20),
-          [],
-        ),
-        /* payouts */ safeQuery(
-          supabase
-            .from('payout_requests')
-            .select('*')
-            .eq('user_id', userId)
             .order('created_at', { ascending: false })
             .limit(20),
           [],
@@ -171,20 +154,6 @@ export const useUserDetail = (userId: string) => {
             .limit(10),
           [],
         ),
-        /* transactions */ safeQuery(
-          supabase
-            .from('wallet_transactions')
-            .select(
-              `
-    *,
-    wallet:wallets!inner(user_id)
-  `,
-            )
-            .eq('wallet.user_id', userId)
-            .order('created_at', { ascending: false })
-            .limit(20),
-          [],
-        ),
         /* profilesPrivate */ safeQuery(
           supabase
             .from('profiles_private')
@@ -204,23 +173,20 @@ export const useUserDetail = (userId: string) => {
       ]);
 
       const profileRes = results[0];
-      const bankRes = results[1];
-      const addressRes = results[2];
-      const purchasesRes = results[3];
-      const productsRes = results[4];
-      const notesRes = results[5];
-      const logsRes = results[6];
-      const payoutsRes = results[7];
-      const reportsRes = results[8];
-      const reviewsRes = results[9];
-      const cancelledSalesRes = results[10];
-      const cancelledPurchasesRes = results[11];
-      const purchasedItemsRes = results[12];
-      const volumeRes = results[13];
-      const disputeDetailsRes = results[14];
-      const transactionsRes = results[15];
-      const profilesPrivateRes = results[16];
-      const sellerTrustStatsRes = results[17];
+      const addressRes = results[1];
+      const purchasesRes = results[2];
+      const productsRes = results[3];
+      const notesRes = results[4];
+      const logsRes = results[5];
+      const reportsRes = results[6];
+      const reviewsRes = results[7];
+      const cancelledSalesRes = results[8];
+      const cancelledPurchasesRes = results[9];
+      const purchasedItemsRes = results[10];
+      const volumeRes = results[11];
+      const disputeDetailsRes = results[12];
+      const profilesPrivateRes = results[13];
+      const sellerTrustStatsRes = results[14];
 
       if (profileRes.error) throw profileRes.error;
 
@@ -258,17 +224,14 @@ export const useUserDetail = (userId: string) => {
 
       return {
         profile: profileRes.data,
-        bank: bankRes.data,
         addresses: addressRes.data || [],
         products: productsRes.data || [],
         purchasedItems: purchasedItemsRes.data || [],
         internalNotes: notesRes.data || [],
         auditLogs: logsRes.data || [],
-        payouts: payoutsRes.data || [],
         reportsCount: reportsRes.count || 0,
         reports: reportsRes.data || [],
         disputes: disputeDetailsRes.data || [],
-        transactions: transactionsRes.data || [],
         stripeAccountId: profilesPrivateRes.data?.stripe_account_id ?? null,
         stripeOnboardingStatus:
           profilesPrivateRes.data?.stripe_onboarding_status ?? null,

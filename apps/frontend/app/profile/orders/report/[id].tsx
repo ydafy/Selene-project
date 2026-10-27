@@ -106,7 +106,9 @@ export default function ReportProblemScreen() {
   const screenTitle = isSeller
     ? t('disputes:titleSeller')
     : t('disputes:title');
-  const screenSubtitle = isSeller ? 'Impugnar Retorno' : t('disputes:subtitle');
+  const screenSubtitle = isSeller
+    ? t('disputes:titleSeller')
+    : t('disputes:subtitle');
 
   const handleSubmit = async () => {
     if (!order) return;
@@ -458,11 +460,20 @@ export default function ReportProblemScreen() {
         >
           <ScreenHeader
             title={screenSubtitle}
-            subtitle={`Orden #${order.id.slice(0, 8).toUpperCase()}`}
+            subtitle={t('disputes:orderReference', {
+              reference: order.id.slice(0, 8).toUpperCase(),
+            })}
           />
 
           <Box marginVertical="l">
-            <WizardSteps currentStep={store.currentStep} />
+            <WizardSteps
+              currentStep={store.currentStep}
+              steps={[
+                t('disputes:steps.triage'),
+                t('disputes:steps.details'),
+                t('disputes:steps.evidence'),
+              ]}
+            />
           </Box>
 
           {store.currentStep === 0 && renderTriage()}

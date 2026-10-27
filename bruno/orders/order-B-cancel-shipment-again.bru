@@ -1,0 +1,35 @@
+meta {
+  name: order-B-cancel-shipment-again
+  type: http
+  seq: 24
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_cancel_shipment
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_shipment_id": "{{shipmentIdB}}",
+    "p_cancelled_by_role": "buyer",
+    "p_reason": "Changed my mind"
+  }
+}
+
+tests {
+  test("a second cancel changes nothing", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ success: true, error_message: "ALREADY_CANCELLED" }]);
+  });
+}
+
+docs {
+  Idempotency of shipment cancellation (service role).
+}

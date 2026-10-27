@@ -17,7 +17,6 @@ export const UserCard = ({
   const soldCount = user.sold_count || 0;
   const verifiedCount = user.verified_count || 0;
   const processedCount = user.processed_count || 0;
-  const availableBalance = user.available_balance || 0;
 
   const ratio =
     processedCount > 0 ? Math.round((verifiedCount / processedCount) * 100) : 0;
@@ -149,18 +148,8 @@ export const UserCard = ({
           </button>
         </div>
 
-        {/* FOOTER: FINANZAS */}
-        <div className="w-full mt-6 pt-4 border-t border-white/5 flex justify-between items-center">
-          <div className="flex flex-col">
-            <span className="text-[9px] text-blue-light font-bold uppercase tracking-tighter">
-              Saldo Disp.
-            </span>
-            <span
-              className={`text-lg font-bold ${availableBalance > 0 ? 'text-forest' : 'text-platinum/40'}`}
-            >
-              ${availableBalance.toLocaleString()}
-            </span>
-          </div>
+        {/* FOOTER */}
+        <div className="w-full mt-6 pt-4 border-t border-white/5 flex justify-end items-center">
           <div className="h-10 w-10 rounded-2xl bg-lion/10 flex items-center justify-center text-lion group-hover:bg-lion group-hover:text-night transition-all">
             <ChevronRight size={20} />
           </div>

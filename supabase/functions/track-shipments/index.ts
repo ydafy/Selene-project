@@ -6,6 +6,7 @@ import {
   createTrackShipmentsHandler,
   type TrackShipmentsDependencies,
 } from './handler.ts';
+import { withSentry } from '../_shared/sentry.ts';
 
 const BATCH_SIZE = 50;
 const TRACKING_DEADLINE_MS = 90_000;
@@ -172,12 +173,10 @@ const createDependencies = (): TrackShipmentsDependencies => ({
   },
 });
 
-serve(
-  createTrackShipmentsHandler({
-    secret: Deno.env.get('TRACK_SHIPMENTS_CRON_SECRET'),
-    pollingEnabled: Deno.env.get('TRACK_SHIPMENTS_POLLING_ENABLED'),
-    dependencies: createDependencies(),
-    now: () => new Date(),
-    createDeadline,
-  }),
-);
+serve(withSentry('track-shipments', createTrackShipmentsHandler({
+  secret: Deno.env.get('TRACK_SHIPMENTS_CRON_SECRET'),
+  pollingEnabled: Deno.env.get('TRACK_SHIPMENTS_POLLING_ENABLED'),
+  dependencies: createDependencies(),
+  now: () => new Date(),
+  createDeadline,
+})));

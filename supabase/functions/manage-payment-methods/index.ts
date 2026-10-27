@@ -1,7 +1,9 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import Stripe from 'https://esm.sh/stripe@17.0.0';
-import { z } from 'https://esm.sh/zod@3.23.8';
+
+import { ManagePaymentMethodsRequestSchema } from './request-schema.ts';
+import { withSentry } from '../_shared/sentry.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -29,16 +31,7 @@ const log = (
   );
 };
 
-const RequestSchema = z.object({
-  action: z.enum([
-    'get_setup_config',
-    'list_payment_methods',
-    'delete_payment_method',
-  ]),
-  paymentMethodId: z.string().uuid().optional(),
-});
-
-serve(async (req) => {
+serve(withSentry('manage-payment-methods', async (req) => {
   if (req.method === 'OPTIONS')
     return new Response('ok', { headers: corsHeaders });
 
@@ -65,7 +58,7 @@ serve(async (req) => {
 
     // 2. Validar Input
     const body = await req.json().catch(() => ({}));
-    const { action, paymentMethodId } = RequestSchema.parse(body);
+    const { action, paymentMethodId } = ManagePaymentMethodsRequestSchema.parse(body);
 
     // 3. Asegurar Stripe Customer
     let { data: profile } = await supabaseAdmin
@@ -195,4 +188,4 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+}));

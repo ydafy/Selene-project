@@ -8,7 +8,6 @@ import {
   Gavel,
   Wallet,
   BadgeCheck,
-  CircleDollarSign,
   Users,
   Package,
   Truck,
@@ -40,7 +39,6 @@ export const Layout = () => {
     { name: 'Connect Earnings', path: '/payments', icon: Wallet },
     { name: 'Envíos', path: '/shipments', icon: Truck },
     { name: 'Seller Onboarding', path: '/seller-onboarding', icon: BadgeCheck },
-    { name: 'Legacy Drain', path: '/drain-legacy-wallets', icon: CircleDollarSign },
   ];
 
   return (

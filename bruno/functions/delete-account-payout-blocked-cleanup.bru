@@ -1,0 +1,28 @@
+meta {
+  name: delete-account-payout-blocked-cleanup
+  type: http
+  seq: 77
+}
+
+delete {
+  url: {{baseUrl}}/rest/v1/connect_payout_runs?idempotency_key=eq.bruno-pending-payouts-blocker
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+tests {
+  test("the payout run delete-account-payout-blocked-setup created is gone", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(1);
+  });
+}
+
+docs {
+Removes what delete-account-payout-blocked-setup created so the collection is repeatable.
+}

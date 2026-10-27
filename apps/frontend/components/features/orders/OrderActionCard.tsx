@@ -34,7 +34,7 @@ export const OrderActionCard = ({
   shareLabel,
   isSharing,
 }: Props) => {
-  const { t } = useTranslation(['orders', 'wallet']);
+  const { t } = useTranslation(['orders', 'sellerOnboarding']);
   const { height } = useWindowDimensions();
   const [isPaymentExplanationVisible, setIsPaymentExplanationVisible] = useState(false);
   const theme = useTheme<Theme>();
@@ -373,7 +373,7 @@ export const OrderActionCard = ({
 
       <ConfirmDialog
         visible={showSellerStatusBanner && isPaymentExplanationVisible}
-        title={t('wallet:onboarding.paymentExplanation.title')}
+        title={t('sellerOnboarding:paymentExplanation.title')}
         onConfirm={() => setIsPaymentExplanationVisible(false)}
         onCancel={() => setIsPaymentExplanationVisible(false)}
         confirmLabel={t('actionCard.paymentExplanationClose')}

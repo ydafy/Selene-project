@@ -94,10 +94,9 @@ const cases: Array<[string, (tx: Tx) => Promise<void>, ('paid' | 'preparing')?]>
       SET refund_resolved_at = now(), refund_resolved_by = ${ids.admin}, refund_resolution_reference = 'x'
       WHERE shipment_id = ${ids.shipment} RETURNING shipment_id`;
     assert.equal(updated.length, 0);
-    // Whatever the EXECUTE grant, a non-service caller never reaches the refund guard.
-    const [direct] = await tx`SELECT * FROM public.fn_cancel_shipment(${ids.shipment}::uuid, 'buyer', 'x', 0::bigint)`;
-    assert.equal(direct.success, false);
-    assert.equal(direct.error_message, 'UNAUTHORIZED');
+    // fn_cancel_shipment is granted to service_role only (T4 restates it), so a non-service caller never reaches the refund guard.
+    await rejects(tx, (sp) => sp`SELECT * FROM public.fn_cancel_shipment(${ids.shipment}::uuid, 'buyer', 'x', 0::bigint)`,
+      'permission denied for function fn_cancel_shipment');
     await asOwner(tx);
     assert.equal(await shipmentStatus(tx), 'paid');
     assert.equal((await op(tx)).refund_resolved_at, null);
@@ -151,9 +150,6 @@ const cases: Array<[string, (tx: Tx) => Promise<void>, ('paid' | 'preparing')?]>
     await apply(tx, 're_p5', 'failed');
     assert.deepEqual(await resolve(tx), { resolved: true, shipment_cancelled: true, amount_owed_cents: amount, reference });
     assert.equal(await shipmentStatus(tx), 'cancelled');
-    const wallet = await tx`SELECT description FROM public.wallet_transactions WHERE shipment_id = ${ids.shipment} AND type = 'adjustment'`;
-    assert.equal(wallet.length, 1);
-    assert.ok(wallet[0].description.startsWith('Cancelación (system): '));
     const product = await tx`SELECT status FROM public.products WHERE id = ${ids.product}`;
     assert.equal(product[0].status, 'VERIFIED');
   }, 'preparing'],

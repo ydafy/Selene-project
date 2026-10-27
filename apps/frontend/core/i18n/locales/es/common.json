@@ -2,6 +2,13 @@
   "deletedUser": "Usuario eliminado",
   "yes": "Sí",
   "no": "No",
+  "tabs": {
+    "home": "Inicio",
+    "search": "Buscar",
+    "sell": "Vender",
+    "cart": "Carrito",
+    "profile": "Perfil"
+  },
   "successChange": "Los cambios se han guardado.",
   "states": {
     "errorTitle": "Algo salió mal",

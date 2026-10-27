@@ -11,8 +11,11 @@ import { SegmentedControl } from '../../../components/ui/SegmentedControl';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { OrderCard } from '../../../components/features/orders/OrderCard';
 import { useAuthContext } from '../../../components/auth/AuthProvider';
-import { EnrichedOrder } from '@selene/types';
-import { useMyPurchases, useMySales } from '../../../core/hooks/useOrders';
+import {
+  useMyPurchases,
+  useMySales,
+  type CompatEnrichedOrder,
+} from '../../../core/hooks/useOrders';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { useTheme } from 'react-native-paper';
 import { Theme } from '@/core/theme';
@@ -72,7 +75,7 @@ export default function OrdersScreen() {
     );
   }
 
-  const renderItem = ({ item }: { item: EnrichedOrder }) => {
+  const renderItem = ({ item }: { item: CompatEnrichedOrder }) => {
     const view = resolveRoleAwareOrderView(
       {
         id: item.id,

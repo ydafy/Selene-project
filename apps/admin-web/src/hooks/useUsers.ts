@@ -50,9 +50,6 @@ export const useUsers = (
         case 'oldest':
           query = query.order('created_at', { ascending: true });
           break;
-        case 'balance':
-          query = query.order('available_balance', { ascending: false });
-          break;
         case 'sales':
           query = query.order('sold_count', { ascending: false });
           break;
