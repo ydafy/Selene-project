@@ -1,0 +1,33 @@
+meta {
+  name: release-guard-refuses-no-delivered-at
+  type: http
+  seq: 44
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_release_shipment_funds
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_shipment_id": "{{rgShip4}}"
+  }
+}
+
+tests {
+  test("a delivered shipment without delivered_at is refused", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ success: false, error_message: "GRACE_PERIOD_ACTIVE" }]);
+  });
+}
+
+docs {
+  Service role, the only role with EXECUTE (anon and buyer: auth/rpc-fn-release-shipment-funds-as-*-denied).
+}

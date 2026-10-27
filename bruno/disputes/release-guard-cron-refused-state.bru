@@ -1,0 +1,27 @@
+meta {
+  name: release-guard-cron-refused-state
+  type: http
+  seq: 47
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/disputes?id=eq.{{rgDisp5}}&select=status,resolution_type,admin_notes,shipments(status,completed_at)
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the r5 dispute is still waiting and r5 is unchanged", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ status: "waiting_return", resolution_type: null, admin_notes: null, shipments: { status: "shipped", completed_at: null } }]);
+  });
+}
+
+docs {
+  The resolution written before the refused release is rolled back; the next run retries.
+}

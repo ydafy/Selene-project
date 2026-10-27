@@ -1,0 +1,34 @@
+meta {
+  name: release-guard-cleanup-disputes
+  type: http
+  seq: 50
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/disputes?id=in.({{rgDisp2}},{{rgDisp5}})
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "status": "resolved"
+  }
+}
+
+tests {
+  test("the disputes of this run are closed", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(2);
+  });
+}
+
+docs {
+  Local stack only. Keeps r5 out of later shipping-timeout runs.
+}

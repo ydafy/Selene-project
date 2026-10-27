@@ -1,0 +1,32 @@
+meta {
+  name: release-guard-refusals-state
+  type: http
+  seq: 45
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/shipments?id=in.({{rgShip1}},{{rgShip2}},{{rgShip3}},{{rgShip4}})&select=id,status,completed_at
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("no refused shipment changed", function () {
+    expect(res.getStatus()).to.equal(200);
+    const byId = Object.fromEntries(res.getBody().map((row) => [row.id, row]));
+    expect(byId[bru.getVar("rgShip1")]).to.deep.equal({ id: bru.getVar("rgShip1"), status: "shipped", completed_at: null });
+    for (const n of [2, 3, 4]) {
+      const id = bru.getVar("rgShip" + n);
+      expect(byId[id]).to.deep.equal({ id, status: "delivered", completed_at: null });
+    }
+  });
+}
+
+docs {
+  The refusals run before any state change.
+}

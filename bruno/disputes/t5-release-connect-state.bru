@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/rest/v1/shipments?id=in.({{t5Ship2}},{{t5Ship3}})&select=id,status&order=id
+  url: {{baseUrl}}/rest/v1/shipments?id=in.({{t5Ship2}},{{t5Ship3}})&select=id,status,completed_at&order=id
   body: none
   auth: none
 }
@@ -18,12 +18,14 @@ headers {
 tests {
   test("s3 is completed and s2 is still delivered", function () {
     expect(res.getStatus()).to.equal(200);
-    const byId = Object.fromEntries(res.getBody().map((row) => [row.id, row.status]));
-    expect(byId[bru.getVar("t5Ship3")]).to.equal("completed");
-    expect(byId[bru.getVar("t5Ship2")]).to.equal("delivered");
+    const byId = Object.fromEntries(res.getBody().map((row) => [row.id, row]));
+    expect(byId[bru.getVar("t5Ship3")].status).to.equal("completed");
+    expect(byId[bru.getVar("t5Ship3")].completed_at).to.not.equal(null);
+    expect(byId[bru.getVar("t5Ship2")].status).to.equal("delivered");
+    expect(byId[bru.getVar("t5Ship2")].completed_at).to.equal(null);
   });
 }
 
 docs {
-  Only the Connect shipment changed.
+  Only the Connect shipment changed, and it records when it completed.
 }

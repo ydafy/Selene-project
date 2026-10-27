@@ -1,0 +1,35 @@
+meta {
+  name: release-guard-cleanup-shipments
+  type: http
+  seq: 51
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/shipments?order_id=eq.{{rgOrder}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "status": "cancelled"
+  }
+}
+
+tests {
+  test("the shipments of this run are closed", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(5);
+    expect(res.getBody().every((s) => s.status === "cancelled")).to.equal(true);
+  });
+}
+
+docs {
+  Local stack only. Closes r1-r5 so no later cron run picks them up.
+}
