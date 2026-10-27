@@ -1,0 +1,36 @@
+meta {
+  name: rpc-fn-cancel-order-removed
+  type: http
+  seq: 32
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_cancel_order
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_order_id": "00000000-0000-4000-8000-0000000000ff",
+    "p_reason": "removed",
+    "p_cancelled_by_role": "buyer"
+  }
+}
+
+tests {
+  test("the dropped function is not found, even for the service role", function () {
+    expect(res.getStatus()).to.equal(404);
+    expect(res.getBody().code).to.equal("PGRST202");
+  });
+}
+
+docs {
+  fn_cancel_order was dropped (issue #39). Order cancellation goes through the cancel-order Edge Function and fn_cancel_shipment.
+  The ids are placeholders: no function runs, so nothing changes.
+}
