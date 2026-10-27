@@ -1,0 +1,43 @@
+meta {
+  name: summary-G-claim-cancellation
+  type: http
+  seq: 60
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_claim_shipment_cancellation
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_shipment_id": "{{shipmentIdG}}",
+    "p_order_id": "{{orderIdG}}",
+    "p_actor_id": "00000000-0000-4000-8000-000000000002",
+    "p_source": "seller",
+    "p_reason": "Bruno: seller cancels"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("claimTokenG", res.getBody().claim_token);
+  }
+}
+
+tests {
+  test("the seller claims the shipment cancellation", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().status).to.equal("claimed");
+  });
+}
+
+docs {
+  Claim of the cancellation fence.
+}

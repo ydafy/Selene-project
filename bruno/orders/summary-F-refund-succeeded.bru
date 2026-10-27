@@ -1,0 +1,41 @@
+meta {
+  name: summary-F-refund-succeeded
+  type: http
+  seq: 52
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_apply_shipment_cancellation_refund_event
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:pre-request {
+  bru.setVar("refundIdF", "re_bruno_F_" + Date.now());
+}
+
+body:json {
+  {
+    "p_shipment_id": "{{shipmentIdF}}",
+    "p_refund_id": "{{refundIdF}}",
+    "p_payment_intent_id": "{{intentF}}",
+    "p_amount_cents": 2400,
+    "p_status": "succeeded"
+  }
+}
+
+tests {
+  test("a succeeded refund completes the cancellation", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().outcome).to.equal("completed");
+  });
+}
+
+docs {
+  Stripe confirms the refund.
+}

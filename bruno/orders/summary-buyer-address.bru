@@ -1,0 +1,49 @@
+meta {
+  name: summary-buyer-address
+  type: http
+  seq: 44
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/addresses
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "user_id": "{{sumBuyerId}}",
+    "label": "Casa",
+    "full_name": "Comprador Bruno",
+    "phone": "3322222222",
+    "street_line1": "Avenida Chapultepec",
+    "street_number": "45",
+    "district": "Ladrón de Guevara",
+    "city": "Guadalajara",
+    "state": "Jalisco",
+    "zip_code": "44600",
+    "is_default": true
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    bru.setVar("sumAddressId", res.getBody()[0].id);
+  }
+}
+
+tests {
+  test("the throwaway buyer has a shipping address", function () {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  The order snapshot copies this address.
+}

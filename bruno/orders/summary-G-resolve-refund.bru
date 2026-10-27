@@ -1,0 +1,35 @@
+meta {
+  name: summary-G-resolve-refund
+  type: http
+  seq: 64
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_resolve_shipment_cancellation_refund
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_shipment_id": "{{shipmentIdG}}",
+    "p_admin_id": "00000000-0000-4000-8000-000000000001",
+    "p_reference": "Bruno SPEI {{intentG}}"
+  }
+}
+
+tests {
+  test("the admin resolution completes the cancellation", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().resolved).to.equal(true);
+  });
+}
+
+docs {
+  Admin marks the failed refund as repaid outside Stripe; the open shipment is cancelled and the listing returns to the seller.
+}

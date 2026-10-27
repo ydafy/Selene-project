@@ -1,0 +1,47 @@
+meta {
+  name: summary-G-start-refund
+  type: http
+  seq: 61
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_start_shipment_cancellation_refund
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_shipment_id": "{{shipmentIdG}}",
+    "p_claim_token": "{{claimTokenG}}",
+    "p_refund_request": {
+      "payment_intent": "{{intentG}}",
+      "amount": 2400,
+      "reason": "requested_by_customer",
+      "metadata": {
+        "shipment_id": "{{shipmentIdG}}",
+        "order_id": "{{orderIdG}}",
+        "caller_role": "seller",
+        "reason": "Bruno: seller cancels",
+        "seguro_share_cents": 150
+      }
+    },
+    "p_cancellation_loss_cents": 0
+  }
+}
+
+tests {
+  test("the refund request is frozen", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().refund_request.amount).to.equal(2400);
+  });
+}
+
+docs {
+  Starts the cancellation with the refund request that Stripe would receive.
+}
