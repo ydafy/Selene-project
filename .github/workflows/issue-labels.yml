@@ -1,0 +1,32 @@
+name: Issue labels
+
+# Labels Finding issues from their form answers (Priority and Area dropdowns).
+# Issue forms can only add fixed labels, so the dropdown answers need this job.
+# The issue body is untrusted input: the script reads it through gh and only
+# applies labels from a fixed table; it is never interpolated into a command.
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: issue-labels-${{ github.event.issue.number }}
+
+jobs:
+  label-finding:
+    if: startsWith(github.event.issue.title, '[Finding]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+      - name: Label from form answers
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: bash .github/scripts/label-finding.sh "$ISSUE_NUMBER"
