@@ -1,0 +1,33 @@
+meta {
+  name: order-C-complete-refund
+  type: http
+  seq: 28
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_complete_shipment_refund
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_shipment_id": "{{shipmentIdC}}"
+  }
+}
+
+tests {
+  test("the refund completes", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ success: true, error_message: null }]);
+  });
+}
+
+docs {
+  fn_complete_shipment_refund (service role) on a shipment without a Stripe payment intent of its own.
+}

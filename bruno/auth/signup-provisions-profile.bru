@@ -1,0 +1,44 @@
+meta {
+  name: signup-provisions-profile
+  type: http
+  seq: 23
+}
+
+post {
+  url: {{baseUrl}}/auth/v1/signup
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{anonKey}}
+}
+
+script:pre-request {
+  bru.setVar("signupEmail", "bruno-signup-" + Date.now() + "@selene.local");
+}
+
+body:json {
+  {
+    "email": "{{signupEmail}}",
+    "password": "password123"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("signupUserId", res.getBody().id);
+  }
+}
+
+tests {
+  test("signs a new user up", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().id).to.be.a("string");
+  });
+}
+
+docs {
+  Local stack only. tr_on_auth_user_created runs fn_on_auth_user_created.
+}

@@ -1,0 +1,28 @@
+meta {
+  name: order-C-buyer-notice-refunded
+  type: http
+  seq: 31
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/notifications?user_id=eq.{{orderBuyerId}}&action_path=eq./profile/orders/{{orderIdC}}&title=eq.Reembolso Finalizado&select=type,title,action_path
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("Reembolso Finalizado is delivered", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(1);
+    expect(res.getBody()[0].title).to.equal("Reembolso Finalizado");
+  });
+}
+
+docs {
+  Notice written by the function.
+}

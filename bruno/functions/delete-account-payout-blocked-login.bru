@@ -1,0 +1,38 @@
+meta {
+  name: delete-account-payout-blocked-login
+  type: http
+  seq: 75
+}
+
+post {
+  url: {{baseUrl}}/auth/v1/token?grant_type=password
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+body:json {
+  {
+    "email": "seller@selene.local",
+    "password": "password123"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("deletePayoutBlockedToken", res.getBody().access_token);
+  }
+}
+
+tests {
+  test("signs in the seeded seller just now", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}
+
+docs {
+A fresh password sign-in carries an amr timestamp of now, which delete-account needs.
+}

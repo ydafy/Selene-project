@@ -79,7 +79,7 @@ INSERT INTO public.mexico_zips (zip_code, district, city, state_name, state_code
   ('64700', 'Tecnológico', 'Monterrey', 'Nuevo León', 'NL');
 
 -- Accounts -------------------------------------------------------------------
--- tr_on_auth_user_created provisions profiles, profiles_private and wallets.
+-- tr_on_auth_user_created provisions profiles and profiles_private.
 
 INSERT INTO auth.users (
   instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,

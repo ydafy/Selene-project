@@ -88,7 +88,6 @@ async function fixture(tx: Tx) {
     VALUES (${ids.order}, ${ids.product}, ${ids.seller}, 7500, 7000, ${ids.shipment}),
            (${ids.order}, ${ids.siblingProduct}, ${ids.seller}, 3900, 3500, ${ids.sibling})`;
   await tx`UPDATE public.products SET status = 'SOLD' WHERE id IN (${ids.product}, ${ids.siblingProduct})`;
-  await tx`UPDATE public.wallets SET pending_balance = 20000 WHERE user_id = ${ids.seller}`;
   await asService(tx);
 }
 
@@ -146,11 +145,6 @@ async function auditRows(tx: Tx, shipmentId = ids.shipment) {
     WHERE action_type = 'SHIPMENT_REFUND_RESOLVED' AND target_id = ${shipmentId}`;
 }
 
-async function adjustments(tx: Tx) {
-  return await tx`SELECT net_amount, description FROM public.wallet_transactions
-    WHERE shipment_id = ${ids.shipment} AND type = 'adjustment'`;
-}
-
 async function rejects(tx: Tx, action: (sp: Tx) => Promise<unknown>, message: string) {
   await assert.rejects(
     tx.savepoint((sp) => action(sp as Tx)),
@@ -174,7 +168,6 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       assert.equal((await apply(tx, ids.shipment, 're_1', 'failed', 'expired_or_canceled_card')).outcome, 'failed_after_cancellation');
       const noticesBefore = (await notifications(tx, 'shipment.cancelled')).length;
       assert.equal(noticesBefore, 2);
-      const adjustmentsBefore = (await adjustments(tx)).length;
 
       assert.deepEqual(await resolve(tx, ids.shipment, `  ${reference}  `), {
         resolved: true,
@@ -190,7 +183,6 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       assert.equal(state.operation.refund_resolution_reference, reference);
       assert.ok(state.operation.refund_resolved_at instanceof Date);
       assert.equal((await notifications(tx, 'shipment.cancelled')).length, noticesBefore);
-      assert.equal((await adjustments(tx)).length, adjustmentsBefore);
 
       const rows = await auditRows(tx);
       assert.equal(rows.length, 1);
@@ -209,7 +201,7 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     },
   ],
   [
-    'resolving a refund that failed before success cancels the shipment: products VERIFIED, notices, wallet adjustment, frozen loss',
+    'resolving a refund that failed before success cancels the shipment: products VERIFIED, notices, frozen loss',
     async (tx) => {
       await start(tx, ids.shipment, 'buyer', 300);
       assert.equal((await apply(tx, ids.shipment, 're_1', 'pending')).outcome, 'recorded');
@@ -233,10 +225,6 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
           .sort(),
         ['buyer', 'seller'],
       );
-      const wallet = await adjustments(tx);
-      assert.equal(wallet.length, 1);
-      assert.equal(Number(wallet[0].net_amount), -7000);
-      assert.ok(wallet[0].description.startsWith('Cancelación (buyer): Changed my mind'));
       const [order] = await tx`SELECT cancellation_loss_cents FROM public.orders WHERE id = ${ids.order}`;
       assert.equal(Number(order.cancellation_loss_cents), 300);
       const [audit] = await auditRows(tx);
@@ -256,12 +244,6 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       await apply(tx, ids.sibling, 're_2', 'failed');
       assert.equal((await resolve(tx, ids.shipment)).shipment_cancelled, true);
       assert.equal((await resolve(tx, ids.sibling)).shipment_cancelled, true);
-      const [system] = await tx`SELECT description FROM public.wallet_transactions
-        WHERE shipment_id = ${ids.shipment} AND type = 'adjustment'`;
-      const [seller] = await tx`SELECT description FROM public.wallet_transactions
-        WHERE shipment_id = ${ids.sibling} AND type = 'adjustment'`;
-      assert.ok(system.description.startsWith('Cancelación (system): '));
-      assert.ok(seller.description.startsWith('Cancelación (seller): '));
       assert.equal((await snapshot(tx, ids.shipment)).shipment, 'cancelled');
       assert.equal((await snapshot(tx, ids.sibling)).shipment, 'cancelled');
     },
@@ -289,7 +271,6 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       assert.deepEqual(await snapshot(tx, ids.shipment), before);
       assert.equal((await auditRows(tx)).length, 1);
       assert.equal((await notifications(tx, 'shipment.cancelled')).length, noticesBefore);
-      assert.equal((await adjustments(tx)).length, 1);
     },
   ],
   [

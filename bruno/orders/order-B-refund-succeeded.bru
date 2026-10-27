@@ -1,0 +1,41 @@
+meta {
+  name: order-B-refund-succeeded
+  type: http
+  seq: 19
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_apply_shipment_cancellation_refund_event
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:pre-request {
+  bru.setVar("refundIdB", "re_bruno_B_" + Date.now());
+}
+
+body:json {
+  {
+    "p_shipment_id": "{{shipmentIdB}}",
+    "p_refund_id": "{{refundIdB}}",
+    "p_payment_intent_id": "{{intentB}}",
+    "p_amount_cents": 2400,
+    "p_status": "succeeded"
+  }
+}
+
+tests {
+  test("a succeeded refund completes the cancellation through fn_cancel_shipment", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().outcome).to.equal("completed");
+  });
+}
+
+docs {
+  The refund event RPC records the refund and calls fn_cancel_shipment.
+}

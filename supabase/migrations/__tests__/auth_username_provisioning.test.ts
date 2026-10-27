@@ -76,12 +76,9 @@ describe('auth username provisioning migration (SQL structural only)', () => {
     expect(canonicalHelper()).toMatch(/IF v_attempt > 50 THEN\s+RAISE EXCEPTION/);
   });
 
-  test('profiles_private and wallets provisioning is unchanged and idempotent', () => {
+  test('profiles_private provisioning is unchanged and idempotent', () => {
     expect(migration).toMatch(
       /INSERT INTO public\.profiles_private \(id, email, role, status\)\s+VALUES \(NEW\.id, NEW\.email, 'user', 'active'\)\s+ON CONFLICT \(id\) DO NOTHING/,
-    );
-    expect(migration).toMatch(
-      /INSERT INTO public\.wallets \(user_id, available_balance, pending_balance\)\s+VALUES \(NEW\.id, 0, 0\)\s+ON CONFLICT \(user_id\) DO NOTHING/,
     );
     expect(migration).toMatch(
       /INSERT INTO public\.profiles \([\s\S]*?ON CONFLICT \(id\) DO NOTHING/,

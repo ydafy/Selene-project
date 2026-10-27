@@ -1,0 +1,37 @@
+meta {
+  name: rpc-fn-cancel-shipment-as-buyer-denied
+  type: http
+  seq: 35
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_cancel_shipment
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  {
+    "p_shipment_id": "00000000-0000-4000-8000-0000000000ff",
+    "p_cancelled_by_role": "buyer",
+    "p_reason": "denied"
+  }
+}
+
+tests {
+  test("an authenticated buyer is denied", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody().code).to.equal("42501");
+    expect(res.getBody().message).to.equal("permission denied for function fn_cancel_shipment");
+  });
+}
+
+docs {
+  Run after auth/login-buyer (needs `buyerToken`). EXECUTE on fn_cancel_shipment is limited to service_role, so a client cannot call it through the RPC.
+  The ids are placeholders: the request is refused before the function runs and changes nothing.
+}

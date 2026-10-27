@@ -1,0 +1,39 @@
+meta {
+  name: delete-account-payout-blocked-setup
+  type: http
+  seq: 74
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/connect_payout_runs
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "idempotency_key": "bruno-pending-payouts-blocker",
+    "seller_id": "00000000-0000-4000-8000-000000000002",
+    "amount": 0,
+    "status": "reconciliation_needed",
+    "actor_id": "00000000-0000-4000-8000-000000000001"
+  }
+}
+
+tests {
+  test("the seeded seller has a payout run that needs reconciliation", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody()[0].status).to.equal("reconciliation_needed");
+  });
+}
+
+docs {
+Local stack only. A Connect payout run that needs reconciliation is a pending obligation of the
+seeded seller for delete-account-payout-blocked. delete-account-payout-blocked-cleanup removes it.
+}

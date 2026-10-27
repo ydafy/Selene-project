@@ -99,8 +99,7 @@ BEGIN
 
   -- Seller funds: a completed Connect shipment is released only when its latest
   -- payout run is paid (same rule as admin_connect_payout_release_view). Runs
-  -- still pending or needing reconciliation block as well, and so do the
-  -- deprecated wallet balance and legacy payout requests.
+  -- still pending or needing reconciliation block as well.
   IF EXISTS (
     SELECT 1 FROM public.admin_connect_payout_release_view v
     WHERE v.seller_id = p_user_id
@@ -112,14 +111,6 @@ BEGIN
     SELECT 1 FROM public.connect_payout_runs r
     WHERE r.seller_id = p_user_id
       AND r.status IN ('pending_reconciliation', 'reconciliation_needed')
-  ) OR EXISTS (
-    SELECT 1 FROM public.wallets w
-    WHERE w.user_id = p_user_id
-      AND (w.available_balance > 0 OR w.pending_balance > 0)
-  ) OR EXISTS (
-    SELECT 1 FROM public.payout_requests pr
-    WHERE pr.user_id = p_user_id
-      AND pr.status IN ('pending', 'processing')
   ) THEN
     RETURN jsonb_build_object('status', 'blocked', 'reason', 'pending_payouts');
   END IF;

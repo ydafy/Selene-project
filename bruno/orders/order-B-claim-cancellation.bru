@@ -1,0 +1,43 @@
+meta {
+  name: order-B-claim-cancellation
+  type: http
+  seq: 17
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_claim_shipment_cancellation
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_shipment_id": "{{shipmentIdB}}",
+    "p_order_id": "{{orderIdB}}",
+    "p_actor_id": "{{orderBuyerId}}",
+    "p_source": "buyer",
+    "p_reason": "Changed my mind"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("claimTokenB", res.getBody().claim_token);
+  }
+}
+
+tests {
+  test("the buyer claims the shipment cancellation", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().status).to.equal("claimed");
+  });
+}
+
+docs {
+  Claim of the cancellation fence.
+}
