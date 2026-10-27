@@ -174,7 +174,27 @@ select cron.schedule(
 );
 ```
 
-`auto-cancel-preparing` has the same authorization but is intentionally not scheduled until B4 of the shipment cancellations work; do not create a job for it before then.
+`auto-cancel-preparing` has the same authorization and reuses the Vault secret `auto_cancel_orders_cron_secret` (same `CRON_SECRET` value). It runs hourly at minute 30, so it never overlaps `auto-cancel-orders`. Before each refund it reads fresh tracking and cancels the label with Envia; a run can take longer than pg_net's default 5 s, so the job sets `timeout_milliseconds` to keep the real HTTP status in `net._http_response`. Apply the B4 migrations (`20261024013216_shipment_carrier_cancellation_outcome.sql`, `20261024020649_shipment_cancellation_carrier_review.sql`) and deploy `auto-cancel-preparing` first. In the SQL Editor:
+
+```sql
+select cron.schedule(
+  'auto-cancel-preparing-job',
+  '30 * * * *',
+  $$
+  select net.http_post(
+    url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url') || '/functions/v1/auto-cancel-preparing',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'project_anon_jwt'),
+      'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'project_anon_jwt'),
+      'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'auto_cancel_orders_cron_secret')
+    ),
+    body := '{}'::jsonb,
+    timeout_milliseconds := 120000
+  );
+  $$
+);
+```
 
 `cron-watchdog-every-15-minutes` calls `cron-watchdog`, which reads `fn_cron_health()` and reports failed, overdue, or unsupported-schedule jobs to Sentry. In order: apply `supabase/migrations/20261021025844_cron_health.sql` (creates `fn_cron_health()`, service role only) and `supabase/migrations/20261026014010_cron_health_index_scan.sql` (reads `cron.job_run_details` by primary key; without it the read timed out on 86k rows), deploy `cron-watchdog`, and create the Vault secret `cron_watchdog_cron_secret` with the same value as the `CRON_SECRET` function secret (the function compares the `x-cron-secret` header against `CRON_SECRET`). Then run, in the SQL Editor:
 
