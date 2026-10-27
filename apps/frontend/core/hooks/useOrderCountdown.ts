@@ -15,10 +15,14 @@ export const useOrderCountdown = (
   const [hoursRemaining, setHoursRemaining] = useState<number>(hoursLimit);
 
   useEffect(() => {
-    if (!startTimeString) return;
-
-    const startTime = new Date(startTimeString).getTime();
-    if (isNaN(startTime)) return;
+    const startTime = startTimeString ? new Date(startTimeString).getTime() : NaN;
+    if (isNaN(startTime)) {
+      // No usable start time: drop the previous countdown instead of keeping it.
+      setTimeLeft('--h --m');
+      setIsExpired(false);
+      setHoursRemaining(hoursLimit);
+      return;
+    }
     const endTime = startTime + hoursLimit * 60 * 60 * 1000;
 
     const calculateTime = () => {

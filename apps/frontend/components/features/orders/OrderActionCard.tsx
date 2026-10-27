@@ -61,14 +61,22 @@ export const OrderActionCard = ({
 
   // --- 1. LÓGICA DEL RELOJ DINÁMICO ---
   const timerConfig = useMemo(() => {
-    if (permissions.canCancel && shipment.created_at) {
+    if (
+      permissions.canCancel &&
+      shipment.created_at &&
+      orderExpirationHours != null
+    ) {
       return {
         startTime: shipment.created_at,
         limit: orderExpirationHours,
       };
     }
 
-    if (shipment.status === 'preparing' && shipment.updated_at) {
+    if (
+      shipment.status === 'preparing' &&
+      shipment.updated_at &&
+      preparingExpirationHours != null
+    ) {
       return {
         startTime: shipment.updated_at,
         limit: preparingExpirationHours,
@@ -177,6 +185,15 @@ export const OrderActionCard = ({
 
   // --- 4. MENSAJES DINÁMICOS (CON RELOJ) ---
   const getBannerMessage = () => {
+    // Settings still loading or missing: the backend has no deadline either,
+    // so say nothing about time instead of showing a placeholder countdown.
+    if (
+      (permissions.canCancel && orderExpirationHours == null) ||
+      (shipment.status === 'preparing' && preparingExpirationHours == null)
+    ) {
+      return null;
+    }
+
     if (permissions.canCancel) {
       // Past the deadline the shipment stays `paid` (and cancellable) until the cron cancels it.
       return isExpired

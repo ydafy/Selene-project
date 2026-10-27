@@ -134,8 +134,12 @@ describe('delivered review polish', () => {
   });
 
   it('preserves cancellation, preparing, return-dispute, and completed seller paths', () => {
-    expect(flatCard).toContain('if (permissions.canCancel && shipment.created_at)');
-    expect(flatCard).toContain("if (shipment.status === 'preparing' && shipment.updated_at)");
+    expect(flatCard).toContain(
+      'permissions.canCancel && shipment.created_at && orderExpirationHours != null',
+    );
+    expect(flatCard).toContain(
+      "shipment.status === 'preparing' && shipment.updated_at && preparingExpirationHours != null",
+    );
     expect(card).toContain('resolveShipmentPreparingWindowMessage({');
     expect(card).toContain("t('actionCard.returnPayoutPendingBuyer', { timeLeft })");
     expect(card).toContain("t('actionCard.returnPayoutPendingSeller', { timeLeft })");

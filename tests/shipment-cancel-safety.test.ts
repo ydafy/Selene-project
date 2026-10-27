@@ -45,10 +45,10 @@ describe('shipment cancel safety frontend helpers', () => {
     });
   });
 
-  it('preserves the live cancellation SLA fallback mapping', () => {
+  it('invents no cancellation deadline while settings are missing', () => {
     expect(resolveCancellationSettings(null)).toEqual({
-      orderExpirationHours: 48,
-      preparingExpirationHours: 72,
+      orderExpirationHours: null,
+      preparingExpirationHours: null,
     });
   });
 
