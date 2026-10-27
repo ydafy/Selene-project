@@ -1,0 +1,800 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=1440" />
+    <title>Selene — Design system</title>
+    <style>
+      :root {
+        --night: #121212;
+        --state-gray: #1e1e1e;
+        --black: #0d0d0d;
+        --platinum: #e4e4e4;
+        --blue-light: #6f839f;
+        --lion: #bd9f65;
+        --forest: #28a745;
+        --fire: #dc3545;
+        --amber: #f59e0b;
+        --fire-subtle: #dc35451a;
+        --separator: #ffffff1a;
+        --surface-subtle: rgba(255, 255, 255, 0.03);
+        --primary-subtle: rgba(189, 159, 101, 0.15);
+        --backdrop: rgba(0, 0, 0, 0.4);
+        --st-pending: #a9924c;
+        --st-paid: #5c85ad;
+        --st-preparing: #7866a3;
+        --st-shipped: #336084;
+        --st-delivered: #478560;
+        --st-completed: #319b5b;
+        --st-cancelled: #6a3939;
+        --st-refunded: #6a4d39;
+        --st-dispute: #782b2b;
+        --font:
+          Montserrat, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        width: 1440px;
+        background: var(--night);
+        color: var(--platinum);
+        font-family: var(--font);
+        -webkit-font-smoothing: antialiased;
+      }
+      main {
+        padding: 40px;
+        display: grid;
+        gap: 40px;
+      }
+      header.page {
+        padding: 40px 40px 0;
+      }
+      h1 {
+        font-weight: 500;
+        font-size: 36px;
+        line-height: 40px;
+        margin: 0 0 8px;
+      }
+      h2 {
+        font-weight: 500;
+        font-size: 22px;
+        line-height: 29px;
+        margin: 0 0 16px;
+      }
+      p.lead {
+        color: var(--blue-light);
+        font-size: 14px;
+        line-height: 24px;
+        margin: 0;
+        max-width: 760px;
+      }
+      section {
+        border-top: 1px solid var(--separator);
+        padding-top: 24px;
+      }
+      .note {
+        color: var(--blue-light);
+        font-size: 12px;
+        line-height: 16px;
+        margin: 8px 0 0;
+      }
+      code {
+        font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+        font-size: 12px;
+      }
+
+      .swatches {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 16px;
+      }
+      .swatch {
+        background: var(--state-gray);
+        border: 1px solid var(--separator);
+        border-radius: 16px;
+        overflow: hidden;
+      }
+      .chip {
+        height: 72px;
+        border-bottom: 1px solid var(--separator);
+      }
+      .swatch dl {
+        margin: 0;
+        padding: 8px 16px 16px;
+        font-size: 12px;
+        line-height: 16px;
+      }
+      .swatch dt {
+        font-weight: 500;
+        color: var(--platinum);
+        font-size: 14px;
+        line-height: 20px;
+      }
+      .swatch dd {
+        margin: 0;
+        color: var(--blue-light);
+      }
+
+      .states {
+        display: grid;
+        grid-template-columns: repeat(9, 1fr);
+        gap: 8px;
+      }
+      .state {
+        background: var(--state-gray);
+        border: 1px solid var(--separator);
+        border-left: 4px solid;
+        border-radius: 8px;
+        padding: 8px;
+        font-size: 12px;
+        line-height: 16px;
+      }
+      .state strong {
+        display: block;
+        font-weight: 500;
+        color: var(--platinum);
+      }
+      .state span {
+        color: var(--blue-light);
+      }
+
+      .type {
+        display: grid;
+        gap: 8px;
+      }
+      .type-row {
+        display: grid;
+        grid-template-columns: 200px 160px 1fr;
+        align-items: baseline;
+        gap: 24px;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--separator);
+      }
+      .type-row .meta {
+        color: var(--blue-light);
+        font-size: 12px;
+      }
+
+      .scales {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 24px;
+      }
+      .panel {
+        background: var(--state-gray);
+        border: 1px solid var(--separator);
+        border-radius: 16px;
+        padding: 24px;
+      }
+      .bar-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        font-size: 12px;
+        color: var(--blue-light);
+        margin-bottom: 8px;
+      }
+      .bar-row b {
+        width: 40px;
+        color: var(--platinum);
+        font-weight: 500;
+      }
+      .bar {
+        height: 16px;
+        background: var(--lion);
+        border-radius: 2px;
+      }
+      .radii {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      .radius {
+        width: 64px;
+        height: 64px;
+        border: 1px solid var(--lion);
+        background: var(--primary-subtle);
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding-bottom: 4px;
+        font-size: 12px;
+      }
+      .depth {
+        display: grid;
+        gap: 8px;
+      }
+      .depth div {
+        padding: 16px;
+        border-radius: 8px;
+        font-size: 12px;
+        border: 1px solid var(--separator);
+      }
+
+      .components {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+      }
+      .row {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .btn-app {
+        font-family: var(--font);
+        font-weight: 700;
+        font-size: 16px;
+        border-radius: 30px;
+        border: 2px solid var(--lion);
+        padding: 10px 24px;
+        cursor: pointer;
+      }
+      .btn-app.solid {
+        background: var(--lion);
+        color: var(--night);
+      }
+      .btn-app.outline {
+        background: var(--night);
+        color: var(--lion);
+      }
+      .btn-app[disabled] {
+        opacity: 0.5;
+        background: var(--night);
+        color: var(--lion);
+        cursor: not-allowed;
+      }
+      .btn-admin {
+        font-family: var(--font);
+        font-size: 14px;
+        border: 0;
+        border-radius: 12px;
+        padding: 8px 16px;
+        cursor: pointer;
+      }
+      .btn-admin.primary {
+        background: var(--lion);
+        color: var(--night);
+        font-weight: 700;
+      }
+      .btn-admin.danger {
+        background: var(--fire);
+        color: var(--night);
+        font-weight: 700;
+      }
+      .btn-admin.secondary {
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--platinum);
+        font-weight: 600;
+      }
+      .btn-admin.secondary:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+      button:focus-visible {
+        outline: 2px solid var(--lion);
+        outline-offset: 2px;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        line-height: 16px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        border: 1px solid;
+        color: var(--platinum);
+      }
+      .badge i {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+      }
+
+      .stat {
+        background: var(--state-gray);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+        padding: 20px;
+        display: flex;
+        justify-content: space-between;
+        min-width: 260px;
+      }
+      .stat:hover {
+        border-color: rgba(189, 159, 101, 0.3);
+      }
+      .stat p {
+        margin: 0;
+      }
+      .stat .label {
+        font-size: 12px;
+        color: var(--blue-light);
+        font-weight: 600;
+      }
+      .stat .value {
+        font-size: 24px;
+        font-weight: 700;
+        margin-top: 8px;
+        font-variant-numeric: tabular-nums;
+      }
+      .stat .icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        display: grid;
+        place-items: center;
+        color: var(--blue-light);
+      }
+
+      .notice {
+        border-radius: 16px;
+        padding: 16px;
+        font-size: 14px;
+        line-height: 20px;
+      }
+      .notice.error {
+        background: var(--fire-subtle);
+        border: 1px solid var(--fire);
+      }
+      .notice.warning {
+        background: var(--state-gray);
+        border: 1px solid var(--amber);
+      }
+      .notice.selected {
+        background: var(--primary-subtle);
+        border: 1px solid var(--lion);
+      }
+
+      .modal-demo {
+        position: relative;
+        background: var(--state-gray);
+        border-radius: 16px;
+        padding: 24px;
+        overflow: hidden;
+        border: 1px solid var(--separator);
+      }
+      .modal-demo .scrim {
+        position: absolute;
+        inset: 0;
+        background: rgba(18, 18, 18, 0.8);
+      }
+      .modal {
+        position: relative;
+        max-width: 420px;
+        margin: 0 auto;
+        background: var(--state-gray);
+        border: 1px solid var(--separator);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+      }
+      .modal h3 {
+        margin: 0 0 8px;
+        font-size: 20px;
+        font-weight: 700;
+      }
+      .modal p {
+        margin: 0 0 24px;
+        color: var(--blue-light);
+        font-size: 14px;
+        line-height: 22px;
+      }
+      .modal .amount {
+        color: var(--lion);
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+      }
+      .modal .row button {
+        flex: 1;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          transition-duration: 0.01ms !important;
+          animation-duration: 0.01ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="page">
+      <h1>Selene — design system</h1>
+      <p class="lead">
+        Tokens y componentes que ya existen en la app (Restyle) y en el panel de
+        administración (Tailwind). Intención y reglas: <code>DESIGN.md</code>.
+        Catálogo con fuentes: <code>design/system.md</code>.
+      </p>
+    </header>
+    <main>
+      <section aria-labelledby="colors">
+        <h2 id="colors">Colores base</h2>
+        <div class="swatches">
+          <div class="swatch">
+            <div class="chip" style="background: var(--night)"></div>
+            <dl>
+              <dt>night</dt>
+              <dd>#121212 · fondo</dd>
+              <dd>app: background</dd>
+            </dl>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--state-gray)"></div>
+            <dl>
+              <dt>state-gray</dt>
+              <dd>#1e1e1e · tarjetas</dd>
+              <dd>app: cardBackground</dd>
+            </dl>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--platinum)"></div>
+            <dl>
+              <dt>platinum</dt>
+              <dd>#e4e4e4 · texto</dd>
+              <dd>app: textPrimary</dd>
+            </dl>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--blue-light)"></div>
+            <dl>
+              <dt>blue-light</dt>
+              <dd>#6f839f · secundario</dd>
+              <dd>app: textSecondary</dd>
+            </dl>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--lion)"></div>
+            <dl>
+              <dt>lion</dt>
+              <dd>#bd9f65 · único acento</dd>
+              <dd>app: primary</dd>
+            </dl>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--black)"></div>
+            <dl>
+              <dt>black</dt>
+              <dd>#0d0d0d</dd>
+              <dd>solo app</dd>
+            </dl>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--forest)"></div>
+            <dl>
+              <dt>forest</dt>
+              <dd>#28a745 · éxito</dd>
+              <dd>app: success</dd>
+            </dl>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--fire)"></div>
+            <dl>
+              <dt>fire</dt>
+              <dd>#dc3545 · error</dd>
+              <dd>app: error</dd>
+            </dl>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--amber)"></div>
+            <dl>
+              <dt>amber</dt>
+              <dd>#f59e0b · precaución</dd>
+              <dd>solo app: warning</dd>
+            </dl>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--fire-subtle)"></div>
+            <dl>
+              <dt>fireSubtle</dt>
+              <dd>#dc35451a · panel de error</dd>
+              <dd>solo app: errorSubtle</dd>
+            </dl>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--primary-subtle)"></div>
+            <dl>
+              <dt>lionSubtle</dt>
+              <dd>oro 15% · selección</dd>
+              <dd>admin: bg-lion/10</dd>
+            </dl>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--surface-subtle)"></div>
+            <dl>
+              <dt>surfaceSubtle</dt>
+              <dd>blanco 3% · inactivo</dd>
+              <dd>admin: bg-white/5</dd>
+            </dl>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="states">
+        <h2 id="states">Estados de orden y envío</h2>
+        <div class="states">
+          <div class="state" style="border-left-color: var(--st-pending)">
+            <strong>Pendiente</strong><span>#a9924c</span>
+          </div>
+          <div class="state" style="border-left-color: var(--st-paid)">
+            <strong>Pagada</strong><span>#5c85ad</span>
+          </div>
+          <div class="state" style="border-left-color: var(--st-preparing)">
+            <strong>Preparando</strong><span>#7866a3</span>
+          </div>
+          <div class="state" style="border-left-color: var(--st-shipped)">
+            <strong>Enviada</strong><span>#336084</span>
+          </div>
+          <div class="state" style="border-left-color: var(--st-delivered)">
+            <strong>Entregada</strong><span>#478560</span>
+          </div>
+          <div class="state" style="border-left-color: var(--st-completed)">
+            <strong>Completada</strong><span>#319b5b</span>
+          </div>
+          <div class="state" style="border-left-color: var(--st-cancelled)">
+            <strong>Cancelada</strong><span>#6a3939</span>
+          </div>
+          <div class="state" style="border-left-color: var(--st-refunded)">
+            <strong>Reembolsada</strong><span>#6a4d39</span>
+          </div>
+          <div class="state" style="border-left-color: var(--st-dispute)">
+            <strong>En disputa</strong><span>#782b2b</span>
+          </div>
+        </div>
+        <p class="note">
+          Color más etiqueta, nunca solo color. Cancelada, Reembolsada y En
+          disputa no se usan como color de texto pequeño (≈2:1 sobre night): van
+          en borde, barra o punto.
+        </p>
+      </section>
+
+      <section aria-labelledby="type">
+        <h2 id="type">Tipografía — Montserrat</h2>
+        <div class="type">
+          <div class="type-row">
+            <code>header-2xl</code><span class="meta">Medium 36/40</span
+            ><span style="font-weight: 500; font-size: 36px; line-height: 40px"
+              >Únete a Selene</span
+            >
+          </div>
+          <div class="type-row">
+            <code>header-xl</code><span class="meta">Medium 28/36</span
+            ><span style="font-weight: 500; font-size: 28px; line-height: 36px"
+              >Tu pedido está protegido</span
+            >
+          </div>
+          <div class="type-row">
+            <code>subheader-lg</code><span class="meta">Medium 22/29</span
+            ><span style="font-weight: 500; font-size: 22px; line-height: 29px"
+              >Especificaciones</span
+            >
+          </div>
+          <div class="type-row">
+            <code>subheader-md</code><span class="meta">Medium 16/24</span
+            ><span style="font-weight: 500; font-size: 16px; line-height: 24px"
+              >RTX 3070 Founders Edition · verificada</span
+            >
+          </div>
+          <div class="type-row">
+            <code>body-lg</code><span class="meta">Regular 16/28</span
+            ><span style="font-size: 16px; line-height: 28px"
+              >Retenemos tu pago hasta que el envío se complete.</span
+            >
+          </div>
+          <div class="type-row">
+            <code>body-md</code><span class="meta">Regular 14/24</span
+            ><span style="font-size: 14px; line-height: 24px"
+              >Probada con 3DMark Time Spy: 13,412 puntos.</span
+            >
+          </div>
+          <div class="type-row">
+            <code>body-sm</code><span class="meta">Regular 12/16</span
+            ><span style="font-size: 12px; line-height: 16px"
+              >Incluye caja original y cable de alimentación.</span
+            >
+          </div>
+          <div class="type-row">
+            <code>caption-lg</code
+            ><span class="meta">Regular 14/20 · secundario</span
+            ><span
+              style="
+                font-size: 14px;
+                line-height: 20px;
+                color: var(--blue-light);
+              "
+              >Miembro desde marzo 2025</span
+            >
+          </div>
+          <div class="type-row">
+            <code>caption-md</code
+            ><span class="meta">Regular 12/16 · secundario</span
+            ><span
+              style="
+                font-size: 12px;
+                line-height: 16px;
+                color: var(--blue-light);
+              "
+              >Publicado hace 2 días · Guadalajara</span
+            >
+          </div>
+        </div>
+        <p class="note">
+          Los artboards no cargan fuentes web: Montserrat se ve solo si está
+          instalada localmente; si no, cae a la fuente del sistema.
+        </p>
+      </section>
+
+      <section aria-labelledby="scales">
+        <h2 id="scales">Espaciado, radios y profundidad</h2>
+        <div class="scales">
+          <div class="panel">
+            <div class="bar-row">
+              <b>xs</b>
+              <div class="bar" style="width: 4px"></div>
+              4
+            </div>
+            <div class="bar-row">
+              <b>s</b>
+              <div class="bar" style="width: 8px"></div>
+              8
+            </div>
+            <div class="bar-row">
+              <b>m</b>
+              <div class="bar" style="width: 16px"></div>
+              16
+            </div>
+            <div class="bar-row">
+              <b>l</b>
+              <div class="bar" style="width: 24px"></div>
+              24
+            </div>
+            <div class="bar-row">
+              <b>xl</b>
+              <div class="bar" style="width: 40px"></div>
+              40
+            </div>
+          </div>
+          <div class="panel">
+            <div class="radii">
+              <div class="radius" style="border-radius: 8px">s 8</div>
+              <div class="radius" style="border-radius: 16px">m 16</div>
+              <div class="radius" style="border-radius: 24px">l 24</div>
+              <div class="radius" style="border-radius: 40px">xl 40</div>
+              <div class="radius" style="border-radius: 999px">full</div>
+            </div>
+            <p class="note">
+              Admin: rounded-xl botones, rounded-2xl paneles, rounded-3xl modal,
+              rounded-full pills.
+            </p>
+          </div>
+          <div class="panel depth">
+            <div style="background: var(--black)">black · #0d0d0d</div>
+            <div style="background: var(--night)">night · fondo</div>
+            <div style="background: var(--state-gray)">
+              state-gray · tarjeta
+            </div>
+            <div
+              style="
+                background: var(--state-gray);
+                border-color: rgba(189, 159, 101, 0.3);
+              "
+            >
+              hover · borde lion/30
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="components">
+        <h2 id="components">Componentes</h2>
+        <div class="components">
+          <div class="panel">
+            <h3 style="margin: 0 0 16px; font-size: 16px; font-weight: 500">
+              Botones de la app
+            </h3>
+            <div class="row">
+              <button class="btn-app solid" type="button">Comprar ahora</button>
+              <button class="btn-app outline" type="button">
+                Hacer pregunta
+              </button>
+              <button class="btn-app" type="button" disabled>Agotado</button>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 style="margin: 0 0 16px; font-size: 16px; font-weight: 500">
+              Botones del admin
+            </h3>
+            <div class="row">
+              <button class="btn-admin primary" type="button">Liberar</button>
+              <button class="btn-admin danger" type="button">
+                Reembolsar envío
+              </button>
+              <button class="btn-admin secondary" type="button">
+                Cancelar
+              </button>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 style="margin: 0 0 16px; font-size: 16px; font-weight: 500">
+              Estado con etiqueta
+            </h3>
+            <div class="row">
+              <span class="badge" style="border-color: var(--st-paid)"
+                ><i style="background: var(--st-paid)"></i>Pagada</span
+              >
+              <span class="badge" style="border-color: var(--st-shipped)"
+                ><i style="background: var(--st-shipped)"></i>Enviada</span
+              >
+              <span class="badge" style="border-color: var(--st-completed)"
+                ><i style="background: var(--st-completed)"></i>Completada</span
+              >
+              <span class="badge" style="border-color: var(--st-dispute)"
+                ><i style="background: var(--st-dispute)"></i>En disputa</span
+              >
+            </div>
+          </div>
+          <div class="panel">
+            <h3 style="margin: 0 0 16px; font-size: 16px; font-weight: 500">
+              Tarjeta de métrica (admin)
+            </h3>
+            <div class="stat">
+              <div>
+                <p class="label">Fondos retenidos</p>
+                <p class="value">$48,250.00 MXN</p>
+              </div>
+              <div class="icon" aria-hidden="true">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <rect x="3" y="11" width="18" height="10" rx="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+              </div>
+            </div>
+          </div>
+          <div class="panel" style="display: grid; gap: 8px">
+            <h3 style="margin: 0 0 8px; font-size: 16px; font-weight: 500">
+              Avisos
+            </h3>
+            <div class="notice error" role="alert">
+              No pudimos procesar el reembolso. Stripe rechazó la operación; los
+              fondos siguen retenidos.
+            </div>
+            <div class="notice warning">
+              El vendedor tiene 2 días para generar la guía.
+            </div>
+            <div class="notice selected">
+              Seguro Selene incluido: tu pago queda retenido hasta la entrega.
+            </div>
+          </div>
+          <div class="modal-demo">
+            <div class="scrim" aria-hidden="true"></div>
+            <div class="modal" role="dialog" aria-labelledby="modal-title">
+              <h3 id="modal-title">Liberar fondos del envío</h3>
+              <p>
+                Se transferirán <span class="amount">$7,830.00 MXN</span> al
+                vendedor. Esta acción no se puede deshacer.
+              </p>
+              <div class="row">
+                <button class="btn-admin secondary" type="button">
+                  Cancelar
+                </button>
+                <button class="btn-admin primary" type="button">Liberar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
