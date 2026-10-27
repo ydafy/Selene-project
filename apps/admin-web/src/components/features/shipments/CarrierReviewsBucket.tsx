@@ -130,8 +130,10 @@ export const CarrierReviewsBucket = ({
           {reviews.length} {reviews.length === 1 ? 'cancelación necesita' : 'cancelaciones necesitan'} revisión
         </p>
         <p className="mt-1 max-w-2xl text-xs text-blue-light/70">
-          El vendedor no preparó el envío a tiempo y el carrier no confirmó la cancelación de la guía. Decide si se
-          reembolsa al comprador o se cierra sin reembolso.
+          <span className="font-semibold text-platinum">Cancelaciones que necesitan tu decisión.</span> Estos envíos
+          pasaron el tiempo límite sin que el vendedor los entregara. Intentamos cancelar la guía, pero el carrier no lo
+          confirmó, así que no reembolsamos automáticamente: puede que el paquete ya esté en camino. Revisa el caso y
+          decide.
         </p>
       </div>
 

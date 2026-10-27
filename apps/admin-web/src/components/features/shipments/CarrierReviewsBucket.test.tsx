@@ -106,6 +106,14 @@ it('shows an error state, never empty or partial rows, and wires the retry', () 
   expect(nodes(h.render()).some((n) => n.props.onRetry === onRetry)).toBe(true);
 });
 
+it('explains that these are the exceptions the carrier did not confirm, not every late shipment', () => {
+  const html = harness().html();
+  expect(html).toContain('Cancelaciones que necesitan tu decisión');
+  expect(html).toContain('Intentamos cancelar la guía, pero el carrier no lo confirmó');
+  expect(html).toContain('no reembolsamos automáticamente');
+  expect(html).not.toContain('El vendedor no preparó el envío a tiempo');
+});
+
 it('shows the empty state only when resolved with no reviews', () => {
   const html = harness({ reviews: [] }).html();
   expect(html).toContain('Ninguna cancelación pendiente');
