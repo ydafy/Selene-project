@@ -1,0 +1,36 @@
+meta {
+  name: t5-confirm-non-connect-refused
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_confirm_shipment_delivery
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_shipment_id": "{{t5Ship2}}",
+    "p_source": "auto",
+    "p_actor_id": null,
+    "p_idempotency_key": "auto_completion_{{t5Ship2}}"
+  }
+}
+
+tests {
+  test("a shipment without a Stripe payment intent is refused with SHIPMENT_NOT_CONNECT", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ success: false, error: "SHIPMENT_NOT_CONNECT", completion_source: null, idempotent: false }]);
+  });
+}
+
+docs {
+  BL36: the non-Connect branch used to credit a wallet. It is refused before any state changes.
+}

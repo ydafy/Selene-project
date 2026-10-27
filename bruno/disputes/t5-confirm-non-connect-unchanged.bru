@@ -1,0 +1,29 @@
+meta {
+  name: t5-confirm-non-connect-unchanged
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/shipments?id=eq.{{t5Ship2}}&select=id,status,completed_at,shipment_completion_events(id)
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the refused shipment is still delivered and has no completion event", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].status).to.equal("delivered");
+    expect(res.getBody()[0].completed_at).to.equal(null);
+    expect(res.getBody()[0].shipment_completion_events).to.equal(null);
+  });
+}
+
+docs {
+  The refusal wrote nothing.
+}

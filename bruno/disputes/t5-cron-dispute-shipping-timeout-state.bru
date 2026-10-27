@@ -1,0 +1,27 @@
+meta {
+  name: t5-cron-dispute-shipping-timeout-state
+  type: http
+  seq: 30
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/disputes?id=eq.{{t5Disp8}}&select=status,resolution_type,shipments(status)
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("d8 is closed for the seller and s8 is completed", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ status: "resolved", resolution_type: "seller_wins_timeout", shipments: { status: "completed" } }]);
+  });
+}
+
+docs {
+  Release then resolve, as before.
+}

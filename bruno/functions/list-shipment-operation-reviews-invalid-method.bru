@@ -1,0 +1,27 @@
+meta {
+  name: list-shipment-operation-reviews-invalid-method
+  type: http
+  seq: 17
+}
+
+delete {
+  url: {{baseUrl}}/functions/v1/list-shipment-operation-reviews
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+tests {
+  test("rejects a method the list does not serve", function () {
+    expect(res.getStatus()).to.equal(405);
+    expect(res.getBody()).to.deep.equal({ error: "METHOD_NOT_ALLOWED" });
+  });
+}
+
+docs {
+  Run after functions/login-admin. Only GET and POST are served; the method is refused before any lookup.
+}

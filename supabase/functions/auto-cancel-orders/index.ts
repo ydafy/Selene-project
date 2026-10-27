@@ -8,8 +8,12 @@ import {
   acquireAutoCancelLease,
   releaseAutoCancelLease,
 } from '../_shared/auto-cancel-lease.ts';
-import { isAuthorizedCronRequest } from '../_shared/cron-auth.ts';
-import { withSentry } from '../_shared/sentry.ts';
+import { readAutoCancelExpirationHours } from '../_shared/auto-cancel-settings.ts';
+import {
+  isAuthorizedCronRequest,
+  reportCronSecretMismatch,
+} from '../_shared/cron-auth.ts';
+import { reportMessage, withSentry } from '../_shared/sentry.ts';
 import { runShipmentCancellation } from '../_shared/shipment-cancellation.ts';
 import { resolveAutoCancelShipmentCancellationGate } from '../_shared/auto-cancel-safety.ts';
 import {
@@ -40,6 +44,7 @@ const reportCritical = createCancellationReporter('auto-cancel-orders', log);
 
 serve(withSentry('auto-cancel-orders', async (req: Request) => {
   if (!isAuthorizedCronRequest(req, Deno.env.get('CRON_SECRET'))) {
+    await reportCronSecretMismatch(req, 'auto-cancel-orders', reportMessage);
     return new Response(JSON.stringify({ error: 'UNAUTHORIZED' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },
@@ -65,31 +70,40 @@ serve(withSentry('auto-cancel-orders', async (req: Request) => {
     leaseId = lease.leaseId;
 
     // 1. Obtener configuración
-    const { data: settings, error: settingsError } = await supabaseAdmin
-      .from('system_settings')
-      .select('order_expiration_hours')
-      .single();
-
-    // Fail closed: a failed read or a non-positive-integer value never falls back to a default.
-    const hours = settings?.order_expiration_hours;
-    if (
-      settingsError ||
-      typeof hours !== 'number' ||
-      !Number.isInteger(hours) ||
-      hours <= 0
-    ) {
-      log('ERROR', 'Auto-cancel settings invalid', {
-        setting: 'order_expiration_hours',
-        value: hours ?? null,
-      });
-      return new Response(
-        JSON.stringify({ error: 'AUTO_CANCEL_SETTINGS_INVALID' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } },
-      );
-    }
+    const settings = await readAutoCancelExpirationHours(
+      supabaseAdmin,
+      'order_expiration_hours',
+      log,
+    );
+    if ('response' in settings) return settings.response;
+    const hours = settings.hours;
     const expirationLimit = new Date(
       Date.now() - hours * 60 * 60 * 1000,
     ).toISOString();
+
+    // Expired shipments held by a label operation cannot be claimed; report them for review
+    // instead of retrying them every run. Reporting never blocks the cancellations below.
+    const { data: blockedShipments, error: blockedError } = await supabaseAdmin
+      .from('shipments')
+      .select('id')
+      .eq('status', 'paid')
+      .is('tracking_number', null)
+      .lt('created_at', expirationLimit)
+      .not('label_generation_state', 'in', '(unclaimed,retryable_rejected)')
+      .order('created_at', { ascending: true })
+      .limit(50);
+
+    if (blockedError) {
+      log('ERROR', 'Blocked paid shipment report failed', {
+        error: blockedError.message,
+      });
+    } else if (blockedShipments && blockedShipments.length > 0) {
+      log(
+        'WARN',
+        'Expired paid shipments blocked by a label operation; manual review required',
+        { shipmentIds: blockedShipments.map((blocked) => blocked.id) },
+      );
+    }
 
     // 2. Buscar shipments expirados sin tracking_number
     const { data: expiredShipments, error: fetchError } = await supabaseAdmin
@@ -100,6 +114,7 @@ serve(withSentry('auto-cancel-orders', async (req: Request) => {
       .eq('status', 'paid')
       .is('tracking_number', null)
       .lt('created_at', expirationLimit)
+      .in('label_generation_state', ['unclaimed', 'retryable_rejected'])
       .order('created_at', { ascending: true })
       .limit(50);
 

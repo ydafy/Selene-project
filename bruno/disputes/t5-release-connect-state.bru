@@ -1,0 +1,29 @@
+meta {
+  name: t5-release-connect-state
+  type: http
+  seq: 15
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/shipments?id=in.({{t5Ship2}},{{t5Ship3}})&select=id,status&order=id
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("s3 is completed and s2 is still delivered", function () {
+    expect(res.getStatus()).to.equal(200);
+    const byId = Object.fromEntries(res.getBody().map((row) => [row.id, row.status]));
+    expect(byId[bru.getVar("t5Ship3")]).to.equal("completed");
+    expect(byId[bru.getVar("t5Ship2")]).to.equal("delivered");
+  });
+}
+
+docs {
+  Only the Connect shipment changed.
+}

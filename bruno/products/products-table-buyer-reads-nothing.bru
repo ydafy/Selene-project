@@ -1,0 +1,27 @@
+meta {
+  name: products-table-buyer-reads-nothing
+  type: http
+  seq: 61
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/products?id=in.(00000000-0000-4000-8000-0000000000b1,00000000-0000-4000-8000-0000000000b5,00000000-0000-4000-8000-0000000000b6,00000000-0000-4000-8000-0000000000b8)&select=id,status
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+tests {
+  test("a signed-in buyer reads no row from the products table (VERIFIED, PENDING, IN_REVIEW, SOLD)", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([]);
+  });
+}
+
+docs {
+  Run after auth/login-buyer (needs buyerToken).
+}

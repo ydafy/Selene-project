@@ -1,0 +1,35 @@
+meta {
+  name: t5-verdict-not-admin-refused
+  type: http
+  seq: 16
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_resolve_dispute_to_seller_as_admin
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_dispute_id": "{{t5Disp4}}",
+    "p_admin_note": "Bruno T5 verdict",
+    "p_admin_id": "00000000-0000-4000-8000-000000000004"
+  }
+}
+
+tests {
+  test("an actor who is not an admin is refused", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ success: false, error_message: "UNAUTHORIZED_ADMIN_ONLY" }]);
+  });
+}
+
+docs {
+  The role check is unchanged.
+}

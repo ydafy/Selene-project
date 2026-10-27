@@ -189,23 +189,16 @@ describe('Connect money-flow SQL guards', () => {
     );
   });
 
-  it('cron release only selects legacy shipments for wallet release', () => {
-    const sql = readSql(
-      'supabase/queries/triggers/shipments/fn_cron_release_shipment_funds.sql',
-    );
-
-    expect(sql).toContain('s.stripe_payment_intent_id IS NULL');
-  });
-
-  it('manual wallet release skips Connect shipments before wallet writes', () => {
+  it('manual release completes Connect shipments and refuses the rest before any state change', () => {
     const sql = readSql(
       'supabase/queries/shipments/fn_release_shipment_funds.sql',
     );
 
     expect(sql).toContain('stripe_payment_intent_id IS NOT NULL');
     expect(sql.indexOf('stripe_payment_intent_id IS NOT NULL')).toBeLessThan(
-      sql.indexOf('UPDATE public.wallets'),
+      sql.indexOf('SHIPMENT_NOT_CONNECT'),
     );
+    expect(sql).not.toMatch(/wallets|wallet_transactions/);
   });
 
   it('shipment refund completion only marks Connect shipments refunded and writes no wallet rows', () => {

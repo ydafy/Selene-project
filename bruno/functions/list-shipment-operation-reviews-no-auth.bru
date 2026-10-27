@@ -1,0 +1,26 @@
+meta {
+  name: list-shipment-operation-reviews-no-auth
+  type: http
+  seq: 14
+}
+
+get {
+  url: {{baseUrl}}/functions/v1/list-shipment-operation-reviews
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+tests {
+  test("rejects the review list without a user token", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody()).to.deep.equal({ error: "AUTH_REQUIRED" });
+  });
+}
+
+docs {
+  Needs the functions server started with --no-verify-jwt. Proves the list refuses anonymous callers.
+}

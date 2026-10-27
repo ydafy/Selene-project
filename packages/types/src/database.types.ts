@@ -1149,24 +1149,6 @@ export type Database = {
           },
         ]
       }
-      mexico_banks: {
-        Row: {
-          active: boolean | null
-          code: string
-          name: string
-        }
-        Insert: {
-          active?: boolean | null
-          code: string
-          name: string
-        }
-        Update: {
-          active?: boolean | null
-          code?: string
-          name?: string
-        }
-        Relationships: []
-      }
       mexico_zips: {
         Row: {
           city: string | null
@@ -1466,104 +1448,6 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
-      }
-      payout_requests: {
-        Row: {
-          amount: number
-          bank_account_id: string
-          completed_at: string | null
-          id: string
-          notes: string | null
-          processed_at: string | null
-          processed_by: string | null
-          rejected_at: string | null
-          rejected_reason: string | null
-          requested_at: string | null
-          status: Database["public"]["Enums"]["payout_status"] | null
-          user_id: string
-          wallet_id: string
-        }
-        Insert: {
-          amount: number
-          bank_account_id: string
-          completed_at?: string | null
-          id?: string
-          notes?: string | null
-          processed_at?: string | null
-          processed_by?: string | null
-          rejected_at?: string | null
-          rejected_reason?: string | null
-          requested_at?: string | null
-          status?: Database["public"]["Enums"]["payout_status"] | null
-          user_id: string
-          wallet_id: string
-        }
-        Update: {
-          amount?: number
-          bank_account_id?: string
-          completed_at?: string | null
-          id?: string
-          notes?: string | null
-          processed_at?: string | null
-          processed_by?: string | null
-          rejected_at?: string | null
-          rejected_reason?: string | null
-          requested_at?: string | null
-          status?: Database["public"]["Enums"]["payout_status"] | null
-          user_id?: string
-          wallet_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payout_requests_bank_account_id_fkey"
-            columns: ["bank_account_id"]
-            isOneToOne: false
-            referencedRelation: "seller_bank_accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payout_requests_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_disputes_monitor_view"
-            referencedColumns: ["buyer_id"]
-          },
-          {
-            foreignKeyName: "payout_requests_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_disputes_monitor_view"
-            referencedColumns: ["seller_id"]
-          },
-          {
-            foreignKeyName: "payout_requests_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_seller_onboarding_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payout_requests_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_user_directory_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payout_requests_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payout_requests_wallet_id_fkey"
-            columns: ["wallet_id"]
-            isOneToOne: false
-            referencedRelation: "wallets"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       products: {
         Row: {
@@ -2069,83 +1953,19 @@ export type Database = {
           },
         ]
       }
-      seller_bank_accounts: {
-        Row: {
-          account_holder_name: string
-          bank_name: string | null
-          clabe: string
-          created_at: string | null
-          deleted_at: string | null
-          id: string
-          is_verified: boolean | null
-          user_id: string
-        }
-        Insert: {
-          account_holder_name: string
-          bank_name?: string | null
-          clabe: string
-          created_at?: string | null
-          deleted_at?: string | null
-          id?: string
-          is_verified?: boolean | null
-          user_id: string
-        }
-        Update: {
-          account_holder_name?: string
-          bank_name?: string | null
-          clabe?: string
-          created_at?: string | null
-          deleted_at?: string | null
-          id?: string
-          is_verified?: boolean | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "seller_bank_accounts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "admin_disputes_monitor_view"
-            referencedColumns: ["buyer_id"]
-          },
-          {
-            foreignKeyName: "seller_bank_accounts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "admin_disputes_monitor_view"
-            referencedColumns: ["seller_id"]
-          },
-          {
-            foreignKeyName: "seller_bank_accounts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "admin_seller_onboarding_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "seller_bank_accounts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "admin_user_directory_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "seller_bank_accounts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       shipment_cancellation_operations: {
         Row: {
           actor_id: string | null
           cancellation_loss_cents: number | null
+          carrier_balance_returned: boolean | null
+          carrier_balance_returned_at: string | null
+          carrier_cancellation_outcome: string | null
+          carrier_cancellation_recorded_at: string | null
           claim_expires_at: string
           claim_token: string
           created_at: string
           external_started_at: string | null
+          label_cost_loss_cents: number | null
           operation_key: string | null
           order_id: string
           reason: string
@@ -2159,16 +1979,27 @@ export type Database = {
           refund_resolved_by: string | null
           refund_status: string | null
           refund_status_updated_at: string | null
+          review_reason: string | null
+          review_required_at: string | null
+          review_resolution: string | null
+          review_resolution_note: string | null
+          review_resolved_at: string | null
+          review_resolved_by: string | null
           shipment_id: string
           source: string
         }
         Insert: {
           actor_id?: string | null
           cancellation_loss_cents?: number | null
+          carrier_balance_returned?: boolean | null
+          carrier_balance_returned_at?: string | null
+          carrier_cancellation_outcome?: string | null
+          carrier_cancellation_recorded_at?: string | null
           claim_expires_at: string
           claim_token: string
           created_at?: string
           external_started_at?: string | null
+          label_cost_loss_cents?: number | null
           operation_key?: string | null
           order_id: string
           reason: string
@@ -2182,16 +2013,27 @@ export type Database = {
           refund_resolved_by?: string | null
           refund_status?: string | null
           refund_status_updated_at?: string | null
+          review_reason?: string | null
+          review_required_at?: string | null
+          review_resolution?: string | null
+          review_resolution_note?: string | null
+          review_resolved_at?: string | null
+          review_resolved_by?: string | null
           shipment_id: string
           source: string
         }
         Update: {
           actor_id?: string | null
           cancellation_loss_cents?: number | null
+          carrier_balance_returned?: boolean | null
+          carrier_balance_returned_at?: string | null
+          carrier_cancellation_outcome?: string | null
+          carrier_cancellation_recorded_at?: string | null
           claim_expires_at?: string
           claim_token?: string
           created_at?: string
           external_started_at?: string | null
+          label_cost_loss_cents?: number | null
           operation_key?: string | null
           order_id?: string
           reason?: string
@@ -2205,6 +2047,12 @@ export type Database = {
           refund_resolved_by?: string | null
           refund_status?: string | null
           refund_status_updated_at?: string | null
+          review_reason?: string | null
+          review_required_at?: string | null
+          review_resolution?: string | null
+          review_resolution_note?: string | null
+          review_resolved_at?: string | null
+          review_resolved_by?: string | null
           shipment_id?: string
           source?: string
         }
@@ -2766,7 +2614,6 @@ export type Database = {
           checkout_recovery_enabled: boolean
           checkout_recovery_lease_expires_at: string | null
           checkout_recovery_lease_id: string | null
-          connect_enabled: boolean | null
           currency: string | null
           envia_carrier: string | null
           envia_print_format: string | null
@@ -2808,7 +2655,6 @@ export type Database = {
           checkout_recovery_enabled?: boolean
           checkout_recovery_lease_expires_at?: string | null
           checkout_recovery_lease_id?: string | null
-          connect_enabled?: boolean | null
           currency?: string | null
           envia_carrier?: string | null
           envia_print_format?: string | null
@@ -2850,7 +2696,6 @@ export type Database = {
           checkout_recovery_enabled?: boolean
           checkout_recovery_lease_expires_at?: string | null
           checkout_recovery_lease_id?: string | null
-          connect_enabled?: boolean | null
           currency?: string | null
           envia_carrier?: string | null
           envia_print_format?: string | null
@@ -2885,163 +2730,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
-      }
-      wallet_transactions: {
-        Row: {
-          amount: number
-          balance_after: number
-          created_at: string
-          description: string | null
-          fee_deducted: number | null
-          id: string
-          insurance_amount: number | null
-          net_amount: number
-          order_id: string | null
-          shipment_id: string | null
-          shipping_cost: number | null
-          tax_withholding: number | null
-          type: Database["public"]["Enums"]["wallet_transaction_type"]
-          wallet_id: string
-        }
-        Insert: {
-          amount: number
-          balance_after: number
-          created_at?: string
-          description?: string | null
-          fee_deducted?: number | null
-          id?: string
-          insurance_amount?: number | null
-          net_amount: number
-          order_id?: string | null
-          shipment_id?: string | null
-          shipping_cost?: number | null
-          tax_withholding?: number | null
-          type: Database["public"]["Enums"]["wallet_transaction_type"]
-          wallet_id: string
-        }
-        Update: {
-          amount?: number
-          balance_after?: number
-          created_at?: string
-          description?: string | null
-          fee_deducted?: number | null
-          id?: string
-          insurance_amount?: number | null
-          net_amount?: number
-          order_id?: string | null
-          shipment_id?: string | null
-          shipping_cost?: number | null
-          tax_withholding?: number | null
-          type?: Database["public"]["Enums"]["wallet_transaction_type"]
-          wallet_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "wallet_transactions_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "admin_disputes_monitor_view"
-            referencedColumns: ["order_id"]
-          },
-          {
-            foreignKeyName: "wallet_transactions_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "wallet_transactions_shipment_id_fkey"
-            columns: ["shipment_id"]
-            isOneToOne: false
-            referencedRelation: "admin_connect_earnings_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "wallet_transactions_shipment_id_fkey"
-            columns: ["shipment_id"]
-            isOneToOne: false
-            referencedRelation: "admin_connect_payout_release_view"
-            referencedColumns: ["shipment_id"]
-          },
-          {
-            foreignKeyName: "wallet_transactions_shipment_id_fkey"
-            columns: ["shipment_id"]
-            isOneToOne: false
-            referencedRelation: "shipments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "wallet_transactions_wallet_id_fkey"
-            columns: ["wallet_id"]
-            isOneToOne: false
-            referencedRelation: "wallets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      wallets: {
-        Row: {
-          available_balance: number
-          currency: string | null
-          id: string
-          pending_balance: number
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          available_balance?: number
-          currency?: string | null
-          id?: string
-          pending_balance?: number
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          available_balance?: number
-          currency?: string | null
-          id?: string
-          pending_balance?: number
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "wallets_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "admin_disputes_monitor_view"
-            referencedColumns: ["buyer_id"]
-          },
-          {
-            foreignKeyName: "wallets_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "admin_disputes_monitor_view"
-            referencedColumns: ["seller_id"]
-          },
-          {
-            foreignKeyName: "wallets_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "admin_seller_onboarding_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "wallets_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "admin_user_directory_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "wallets_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       webhook_deliveries: {
         Row: {
@@ -3311,63 +2999,6 @@ export type Database = {
         }
         Relationships: []
       }
-      admin_payments_overview: {
-        Row: {
-          account_holder_name: string | null
-          amount: number | null
-          bank_name: string | null
-          clabe: string | null
-          completed_at: string | null
-          id: string | null
-          is_verified: boolean | null
-          processed_at: string | null
-          processed_by: string | null
-          processed_by_name: string | null
-          rejected_at: string | null
-          rejected_reason: string | null
-          requested_at: string | null
-          seller_name: string | null
-          status: Database["public"]["Enums"]["payout_status"] | null
-          user_id: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payout_requests_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_disputes_monitor_view"
-            referencedColumns: ["buyer_id"]
-          },
-          {
-            foreignKeyName: "payout_requests_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_disputes_monitor_view"
-            referencedColumns: ["seller_id"]
-          },
-          {
-            foreignKeyName: "payout_requests_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_seller_onboarding_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payout_requests_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_user_directory_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payout_requests_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       admin_product_queue_view: {
         Row: {
           aspect_ratio: number | null
@@ -3545,13 +3176,11 @@ export type Database = {
       }
       admin_user_directory_view: {
         Row: {
-          available_balance: number | null
           avatar_url: string | null
           created_at: string | null
           email: string | null
           id: string | null
           is_verified_seller: boolean | null
-          pending_balance: number | null
           role: string | null
           status: Database["public"]["Enums"]["account_status"] | null
           username: string | null
@@ -4127,11 +3756,14 @@ export type Database = {
       }
       fn_cron_dispute_payout_timeout: { Args: never; Returns: undefined }
       fn_cron_dispute_shipping_timeout: { Args: never; Returns: undefined }
-      fn_cron_release_shipment_funds: {
+      fn_cron_health: {
         Args: never
         Returns: {
-          total_errors: number
-          total_processed: number
+          active: boolean
+          jobname: string
+          last_start: string
+          last_status: string
+          schedule: string
         }[]
       }
       fn_cron_return_delivery_timeout: {
@@ -4226,6 +3858,24 @@ export type Database = {
         Args: { p_shipment_id: string }
         Returns: Json
       }
+      fn_get_shipment_carrier_cancellation: {
+        Args: { p_shipment_id: string }
+        Returns: Json
+      }
+      fn_list_shipment_cancellation_reviews: {
+        Args: never
+        Returns: {
+          carrier: string
+          carrier_cancellation_outcome: string
+          label_provider_cost_cents: number
+          order_id: string
+          review_reason: string
+          review_required_at: string
+          seller_id: string
+          shipment_id: string
+          tracking_number: string
+        }[]
+      }
       fn_list_shipment_refund_problems: {
         Args: never
         Returns: {
@@ -4287,6 +3937,10 @@ export type Database = {
           error_message: string
           success: boolean
         }[]
+      }
+      fn_mark_shipment_cancellation_review: {
+        Args: { p_claim_token: string; p_reason: string; p_shipment_id: string }
+        Returns: Json
       }
       fn_mark_shipment_delivered: {
         Args: { p_shipment_id: string }
@@ -4410,6 +4064,16 @@ export type Database = {
         }
         Returns: Json
       }
+      fn_record_shipment_carrier_cancellation: {
+        Args: {
+          p_balance_returned?: boolean
+          p_balance_returned_at?: string
+          p_claim_token: string
+          p_outcome: string
+          p_shipment_id: string
+        }
+        Returns: Json
+      }
       fn_record_tracking_event: {
         Args: {
           p_carrier_name: string
@@ -4465,13 +4129,6 @@ export type Database = {
         Args: { p_lane: string; p_lease_id: string }
         Returns: boolean
       }
-      fn_request_payout: {
-        Args: { p_amount: number; p_bank_account_id: string }
-        Returns: {
-          error_message: string
-          success: boolean
-        }[]
-      }
       fn_reserve_products: {
         Args: { p_buyer_id: string; p_product_ids: string[] }
         Returns: {
@@ -4521,13 +4178,14 @@ export type Database = {
         Args: { p_admin_id: string; p_reference: string; p_shipment_id: string }
         Returns: Json
       }
-      fn_save_bank_account: {
-        Args: { p_clabe: string; p_holder_name: string }
-        Returns: {
-          bank_name: string
-          error_message: string
-          success: boolean
-        }[]
+      fn_resolve_shipment_cancellation_review: {
+        Args: {
+          p_admin_id: string
+          p_note: string
+          p_resolution: string
+          p_shipment_id: string
+        }
+        Returns: Json
       }
       fn_seller_confirm_return_shipment: {
         Args: { p_shipment_id: string }
@@ -4682,12 +4340,6 @@ export type Database = {
         | "exception"
         | "returned"
       stripe_onboarding_status: "pending" | "complete" | "rejected"
-      wallet_transaction_type:
-        | "sale_proceeds"
-        | "payout"
-        | "refund"
-        | "adjustment"
-        | "release"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4863,13 +4515,6 @@ export const Constants = {
         "returned",
       ],
       stripe_onboarding_status: ["pending", "complete", "rejected"],
-      wallet_transaction_type: [
-        "sale_proceeds",
-        "payout",
-        "refund",
-        "adjustment",
-        "release",
-      ],
     },
   },
 } as const

@@ -58,9 +58,21 @@ interface ProviderRefund {
   status: string;
   failure_reason?: unknown;
 }
+/** Answer of `confirmBeforeRefund`: continue to the refund, or stop with a reason to log. */
+export type CancellationConfirmation =
+  { proceed: true } | { proceed: false; reason: string };
 export interface ShipmentCancellationPorts<T> {
   context: CancellationContext;
   claim: (context: CancellationContext) => Promise<unknown>;
+  /**
+   * Optional gate called after a winning claim and before `prepare` (only the preparing
+   * timeout passes it). A stop ends the run without prepare, start or refund. An answer
+   * that is neither shape fails closed.
+   */
+  confirmBeforeRefund?: (
+    winner: CancellationContext,
+    claimToken: string,
+  ) => Promise<CancellationConfirmation>;
   prepare: (winner: CancellationContext) => Promise<CancellationPlan>;
   start: (input: CancellationStartInput) => Promise<unknown>;
   refund: (
@@ -400,7 +412,9 @@ async function recoverCancellation<T>(
 export async function runShipmentCancellation<T>(
   ports: ShipmentCancellationPorts<T>,
 ): Promise<
-  { status: 'cancelled'; value: T } | { status: 'busy' | 'recovery_required' }
+  | { status: 'cancelled'; value: T }
+  | { status: 'busy' | 'recovery_required' }
+  | { status: 'carrier_pending'; reason: string }
 > {
   const reservation = await ports.claim(ports.context);
   if (record(reservation) && reservation.status === 'busy') {
@@ -428,6 +442,21 @@ export async function runShipmentCancellation<T>(
       typeof reservation.actor_id === 'string' ? reservation.actor_id : null,
     reason: reservation.reason as string,
   };
+  if (ports.confirmBeforeRefund) {
+    const confirmation: unknown = await ports.confirmBeforeRefund(
+      winner,
+      reservation.claim_token,
+    );
+    if (record(confirmation) && confirmation.proceed === false) {
+      if (!nonblank(confirmation.reason)) {
+        throw new ApiError(500, 'CANCELLATION_CONFIRMATION_INVALID');
+      }
+      return { status: 'carrier_pending', reason: confirmation.reason };
+    }
+    if (!record(confirmation) || confirmation.proceed !== true) {
+      throw new ApiError(500, 'CANCELLATION_CONFIRMATION_INVALID');
+    }
+  }
   const plan = await ports.prepare(winner);
   if (
     !nonblank(plan.paymentIntentId) ||

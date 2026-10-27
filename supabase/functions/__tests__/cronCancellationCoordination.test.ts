@@ -6,7 +6,15 @@ import {
   computeShipmentRefundAmountCents,
 } from '../_shared/refund-basis';
 import { resolveAutoCancelShipmentCancellationGate } from '../_shared/auto-cancel-safety';
-import { isAuthorizedCronRequest } from '../_shared/cron-auth';
+import {
+  isAuthorizedCronRequest,
+  reportCronSecretMismatch,
+} from '../_shared/cron-auth';
+import { readAutoCancelExpirationHours } from '../_shared/auto-cancel-settings';
+import type {
+  PreparingCarrierGatePorts,
+  PreparingCarrierShipment,
+} from '../_shared/preparing-carrier-gate';
 
 // Execute the actual per-shipment adapter, without importing serve or remote SDKs.
 function adapter(name: string) {
@@ -18,7 +26,7 @@ function adapter(name: string) {
   expect(start).toBeGreaterThan(0);
   const end = source.indexOf('// Delay', start);
   const body = new Bun.Transpiler({ loader: 'ts' }).transformSync(
-    `async function execute(supabaseAdmin, stripe, shipment, log, runShipmentCancellation, computeShipmentRefundAmountCents, allocateCancellationLossCents, resolveAutoCancelShipmentCancellationGate, reportCritical) { let successCount = 0; const hours = 80; ${source.slice(start, end)} return successCount; }`,
+    `async function execute(supabaseAdmin, stripe, shipment, log, runShipmentCancellation, computeShipmentRefundAmountCents, allocateCancellationLossCents, resolveAutoCancelShipmentCancellationGate, reportCritical, confirmCarrier) { let successCount = 0; const hours = 80; ${source.slice(start, end)} return successCount; }`,
   );
   return new Function(`${body}; return execute;`)();
 }
@@ -48,6 +56,7 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         escalated?: boolean;
         escalateResult?: unknown;
         escalateError?: string;
+        confirm?: (shipment: unknown, claimToken: string) => Promise<unknown>;
       } = {},
     ) {
       const expectedSource =
@@ -61,6 +70,7 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
       const listed: unknown[] = [];
       const retrieved: unknown[] = [];
       const escalations: unknown[] = [];
+      const confirmations: unknown[][] = [];
       const order = {
         stripe_charge_id: 'ch',
         total_amount: 7569.59,
@@ -269,6 +279,12 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
           async (...args: unknown[]) => {
             critical.push(args);
           },
+          async (...args: unknown[]) => {
+            confirmations.push(args);
+            return options.confirm
+              ? options.confirm(args[0], args[1] as string)
+              : { proceed: true };
+          },
         );
       } catch (caught) {
         error = caught;
@@ -283,6 +299,7 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         listed,
         retrieved,
         escalations,
+        confirmations,
         error,
         count,
       };
@@ -620,11 +637,80 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
           `"caller_role":"${source}"`,
         );
       });
+    type RunPorts = {
+      confirmBeforeRefund?: (winner: unknown, claimToken: string) => Promise<{ reason?: string }>;
+    };
+    type HandlerExtra = {
+      candidates?: unknown[];
+      run?: (ports: RunPorts) => Promise<unknown>;
+      envia?: unknown;
+      budgetExceededAfter?: number;
+      reportMessage?: (...args: unknown[]) => Promise<void>;
+      gate?: (
+        shipment: PreparingCarrierShipment,
+        claimToken: string,
+        ports: PreparingCarrierGatePorts,
+      ) => Promise<unknown>;
+    };
+    const defaultEnvia = {
+      mode: 'sandbox',
+      apiKey: 'envia-key-secret',
+      apiUrl: 'https://envia.test/',
+    };
+    if (name === 'auto-cancel-preparing') {
+      test('asks the carrier gate with the shipment and the claim token before any reconstruction', async () => {
+        const result = await run();
+        expect(result.confirmations).toEqual([
+          [
+            { id: 'target', order_id: 'order', stripe_payment_intent_id: null },
+            'token',
+            'preparing_timeout',
+          ],
+        ]);
+        expect(result.events.slice(0, 2)).toEqual(['fn_claim_shipment_cancellation', 'order_items']);
+        expect(result.count).toBe(1);
+      });
+      test('a gate stop logs a WARN with shipment id and reason and does no financial work', async () => {
+        const result = await run({
+          confirm: async () => ({ proceed: false, reason: 'carrier_refused' }),
+        });
+        expect(result.error).toBeUndefined();
+        expect(result.count).toBe(0);
+        expect(result.events).toEqual(['fn_claim_shipment_cancellation']);
+        expect(result.refunds).toEqual([]);
+        expect(result.completions).toEqual([]);
+        expect(result.recordings).toEqual([]);
+        expect(result.logs).toContainEqual([
+          'WARN',
+          'Shipment cancellation waiting on carrier evidence',
+          { shipmentId: 'target', reason: 'carrier_refused' },
+        ]);
+        expect(JSON.stringify(result.logs)).not.toContain('token');
+      });
+      test('a gate failure surfaces its error with no financial work', async () => {
+        const result = await run({
+          confirm: async () => {
+            throw new Error('gate exploded');
+          },
+        });
+        expect((result.error as Error).message).toBe('gate exploded');
+        expect(result.events).toEqual(['fn_claim_shipment_cancellation']);
+        expect(result.refunds).toEqual([]);
+      });
+    } else {
+      test('the paid adapter never asks for carrier confirmation', async () => {
+        const result = await run();
+        expect(result.count).toBe(1);
+        expect(result.confirmations).toEqual([]);
+      });
+    }
     // Runs the whole handler with stubbed imports; `lease` decides what the lease helper returns.
     // `settings` controls the system_settings read; without it the read throws.
     function runHandler(
       lease: { acquired: boolean },
       settings?: { data: unknown; error?: unknown },
+      report: { data: unknown; error?: unknown } = { data: [], error: null },
+      extra: HandlerExtra = {},
     ) {
       const source = readFileSync(
         new URL(`../${name}/index.ts`, import.meta.url),
@@ -638,8 +724,18 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
       const tables: string[] = [];
       const leaseCalls: unknown[][] = [];
       let clientsCreated = 0;
+      const rpcCalls: [string, Record<string, unknown>][] = [];
+      const gateCalls: unknown[][] = [];
+      const trackingFetches: unknown[][] = [];
+      const cancelRequests: unknown[][] = [];
+      let enviaResolutions = 0;
+      const runPorts: RunPorts[] = [];
+      const sentryReports: unknown[][] = [];
+      let budgetChecks = 0;
       let handler!: (req: Request) => Promise<Response>;
       const shipmentQuery: unknown[][] = [];
+      // One entry per from('shipments') call; the report query is the one that uses `not`.
+      const shipmentQueries: unknown[][][] = [];
       const query: Record<string, unknown> = {
         select: () => query,
         update: () => query,
@@ -651,15 +747,27 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         then: (resolve: (value: unknown) => unknown) =>
           Promise.resolve(resolve({})),
       };
-      const shipmentsChain: Record<string, unknown> = {
-        then: (resolve: (value: unknown) => unknown) =>
-          Promise.resolve(resolve({ data: [], error: null })),
-      };
-      for (const method of ['select', 'eq', 'is', 'lt', 'order', 'limit'])
-        shipmentsChain[method] = (...args: unknown[]) => {
-          shipmentQuery.push([method, ...args]);
-          return shipmentsChain;
+      const newShipmentsChain = () => {
+        const recorded: unknown[][] = [];
+        shipmentQueries.push(recorded);
+        const chain: Record<string, unknown> = {
+          then: (resolve: (value: unknown) => unknown) =>
+            Promise.resolve(
+              resolve(
+                recorded.some(([method]) => method === 'not')
+                  ? { error: null, ...report }
+                  : { data: extra.candidates ?? [], error: null },
+              ),
+            ),
         };
+        for (const method of ['select', 'eq', 'is', 'lt', 'not', 'in', 'order', 'limit'])
+          chain[method] = (...args: unknown[]) => {
+            shipmentQuery.push([method, ...args]);
+            recorded.push([method, ...args]);
+            return chain;
+          };
+        return chain;
+      };
       const held = new Response(JSON.stringify({ message: 'Already running' }));
       new Function(
         'serve',
@@ -677,6 +785,13 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         'acquireAutoCancelLease',
         'releaseAutoCancelLease',
         'isAuthorizedCronRequest',
+        'reportCronSecretMismatch',
+        'readAutoCancelExpirationHours',
+        'reportMessage',
+        'resolveEnviaRuntimeConfiguration',
+        'fetchFreshTracking',
+        'requestEnviaLabelCancellation',
+        'confirmPreparingCarrier',
         executable,
       )(
         (callback: typeof handler) => {
@@ -687,7 +802,17 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
           return {
             from: (table: string) => {
               tables.push(table);
-              return table === 'shipments' ? shipmentsChain : query;
+              return table === 'shipments' ? newShipmentsChain() : query;
+            },
+            rpc: async (rpcName: string, args: Record<string, unknown>) => {
+              rpcCalls.push([rpcName, args]);
+              if (rpcName === 'fn_record_tracking_event') {
+                return {
+                  data: { inserted: true, shipment_status: 'shipped' },
+                  error: null,
+                };
+              }
+              return { data: { marked: true }, error: null };
             },
           };
         },
@@ -700,7 +825,12 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         { log: (value: string) => logs.push(JSON.parse(value)) },
         (_name: string, callback: typeof handler) => callback,
         () => async () => undefined,
-        runShipmentCancellation,
+        extra.run
+          ? async (ports: RunPorts) => {
+              runPorts.push(ports);
+              return extra.run!(ports);
+            }
+          : runShipmentCancellation,
         resolveAutoCancelShipmentCancellationGate,
         allocateCancellationLossCents,
         computeShipmentRefundAmountCents,
@@ -708,13 +838,49 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         async (_client: unknown, leaseJob: string) => {
           leaseCalls.push(['acquire', leaseJob]);
           return lease.acquired
-            ? { acquired: true, leaseId: 'lease-1', budgetExceeded: () => false }
+            ? {
+                acquired: true,
+                leaseId: 'lease-1',
+                budgetExceeded: () => {
+                  budgetChecks += 1;
+                  return budgetChecks > (extra.budgetExceededAfter ?? Infinity);
+                },
+              }
             : { acquired: false, response: held };
         },
         async (_client: unknown, leaseJob: string, leaseId: unknown) => {
           leaseCalls.push(['release', leaseJob, leaseId]);
         },
         isAuthorizedCronRequest,
+        reportCronSecretMismatch,
+        readAutoCancelExpirationHours,
+        async (...args: unknown[]) => {
+          sentryReports.push(args);
+          return extra.reportMessage?.(...args);
+        },
+        (read: (name: string) => string | undefined) => {
+          enviaResolutions += 1;
+          read('ENVIA_MODE');
+          return 'envia' in extra ? extra.envia : defaultEnvia;
+        },
+        async (...args: unknown[]) => {
+          trackingFetches.push(args);
+          return { state: 'unscanned', observations: [] };
+        },
+        async (...args: unknown[]) => {
+          cancelRequests.push(args);
+          return { outcome: 'unavailable' };
+        },
+        async (
+          shipment: PreparingCarrierShipment,
+          claimToken: string,
+          ports: PreparingCarrierGatePorts,
+        ) => {
+          gateCalls.push([shipment, claimToken, ports]);
+          return extra.gate
+            ? extra.gate(shipment, claimToken, ports)
+            : { proceed: true };
+        },
       );
       // The stubbed Deno.env returns 'fake' for every key, including CRON_SECRET.
       const call = (
@@ -729,6 +895,14 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         job,
         held,
         shipmentQuery,
+        shipmentQueries,
+        rpcCalls,
+        gateCalls,
+        trackingFetches,
+        cancelRequests,
+        runPorts,
+        sentryReports,
+        enviaResolutions: () => enviaResolutions,
         clientsCreated: () => clientsCreated,
       };
     }
@@ -767,6 +941,48 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         expect(leaseCalls).toEqual([]);
         expect(tables).toEqual([]);
       });
+    test('a wrong non-empty secret sends one Sentry message and still returns the plain 401', async () => {
+      const { call, sentryReports, clientsCreated } = runHandler({ acquired: true });
+      const response = await call({ 'x-cron-secret': 'not-the-secret' });
+      expect(response.status).toBe(401);
+      expect(await response.text()).toBe('{"error":"UNAUTHORIZED"}');
+      expect(clientsCreated()).toBe(0);
+      expect(sentryReports).toEqual([
+        [
+          `${name} cron secret mismatch`,
+          {
+            fingerprint: ['cron-secret-mismatch', name],
+            tags: { edge_function: name },
+          },
+        ],
+      ]);
+      expect(JSON.stringify(sentryReports)).not.toContain('not-the-secret');
+    });
+    for (const [label, headers] of [
+      ['no header', {}],
+      ['only an Authorization bearer', { Authorization: 'Bearer fake' }],
+    ] as const)
+      test(`${label} returns the 401 without a Sentry message`, async () => {
+        const { call, sentryReports } = runHandler({ acquired: true });
+        expect((await call({ ...headers })).status).toBe(401);
+        expect(sentryReports).toEqual([]);
+      });
+    test('a failing Sentry report never changes the 401', async () => {
+      const { call, sentryReports } = runHandler(
+        { acquired: true },
+        undefined,
+        undefined,
+        {
+          reportMessage: async () => {
+            throw new Error('sentry down');
+          },
+        },
+      );
+      const response = await call({ 'x-cron-secret': 'wrong' });
+      expect(response.status).toBe(401);
+      expect(await response.text()).toBe('{"error":"UNAUTHORIZED"}');
+      expect(sentryReports).toHaveLength(1);
+    });
     test('a lease held by another run returns its response without reading settings or shipments', async () => {
       const { run, tables, leaseCalls, job, held } = runHandler({ acquired: false });
       expect(await run()).toBe(held);
@@ -828,6 +1044,386 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
       expect(methods.indexOf('order')).toBeLessThan(methods.indexOf('limit'));
       expect(shipmentQuery).toContainEqual(['limit', 50]);
     });
+    test('a run budget exceeded after the first candidate defers the rest, unclaimed, and reports it', async () => {
+      const candidates = ['s1', 's2', 's3'].map((id) => ({
+        id,
+        order_id: `o-${id}`,
+        seller_id: 'seller',
+        stripe_payment_intent_id: null,
+        status: paidJob ? 'paid' : 'preparing',
+        stripe_transfer_id: null,
+        tracking_number: null,
+        carrier: null,
+      }));
+      const { run, logs, runPorts, rpcCalls } = runHandler(
+        { acquired: true },
+        { data: { [column]: 5 } },
+        undefined,
+        {
+          candidates,
+          budgetExceededAfter: 1,
+          run: async () => ({ status: 'busy' }),
+        },
+      );
+      const response = await run();
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ processed: 1, success: 0, deferred: 2 });
+      expect(runPorts).toHaveLength(1);
+      expect(runPorts[0]!.context.shipmentId).toBe('s1');
+      expect(rpcCalls.filter(([rpcName]) => rpcName === 'fn_claim_shipment_cancellation')).toEqual([]);
+      expect(logs).toContainEqual(
+        expect.objectContaining({
+          level: 'WARN',
+          msg: 'Auto-cancel run budget reached; remaining shipments wait for the next run',
+          deferred: 2,
+        }),
+      );
+      expect(logs).toContainEqual(
+        expect.objectContaining({
+          msg: paidJob
+            ? 'Proceso finalizado'
+            : 'Proceso de auto-cancelación de preparing finalizado',
+          total: 3,
+          deferred: 2,
+          success: 0,
+        }),
+      );
+    });
+    const blockedWarn = 'Expired paid shipments blocked by a label operation; manual review required';
+    const hoursSetting = { data: { [column]: 5 } };
+    if (paidJob) {
+      test('candidates are limited to shipments whose label state allows a claim', async () => {
+        const { run, shipmentQueries } = runHandler({ acquired: true }, hoursSetting);
+        expect((await run()).status).toBe(200);
+        const candidate = shipmentQueries.find(
+          (recorded) => !recorded.some(([method]) => method === 'not'),
+        )!;
+        expect(candidate).toContainEqual([
+          'in',
+          'label_generation_state',
+          ['unclaimed', 'retryable_rejected'],
+        ]);
+      });
+      test('blocked expired shipments are reported once for manual review with the exact report query', async () => {
+        const { run, logs, shipmentQueries } = runHandler(
+          { acquired: true },
+          hoursSetting,
+          { data: [{ id: 's1' }, { id: 's2' }] },
+        );
+        const response = await run();
+        expect(response.status).toBe(200);
+        const warns = logs.filter((entry) => entry.msg === blockedWarn);
+        expect(warns).toHaveLength(1);
+        expect(warns[0]).toMatchObject({ level: 'WARN', shipmentIds: ['s1', 's2'] });
+        const reportQuery = shipmentQueries.find((recorded) =>
+          recorded.some(([method]) => method === 'not'),
+        )!;
+        expect(reportQuery.map(([method]) => method)).toEqual([
+          'select', 'eq', 'is', 'lt', 'not', 'order', 'limit',
+        ]);
+        expect(reportQuery).toContainEqual(['select', 'id']);
+        expect(reportQuery).toContainEqual(['eq', 'status', 'paid']);
+        expect(reportQuery).toContainEqual(['is', 'tracking_number', null]);
+        expect(reportQuery.find(([method]) => method === 'lt')![1]).toBe('created_at');
+        expect(reportQuery).toContainEqual([
+          'not', 'label_generation_state', 'in', '(unclaimed,retryable_rejected)',
+        ]);
+        expect(reportQuery).toContainEqual(['order', 'created_at', { ascending: true }]);
+        expect(reportQuery).toContainEqual(['limit', 50]);
+      });
+      test('the paid cron never builds a carrier gate or resolves Envia', async () => {
+        const { run, runPorts, enviaResolutions, gateCalls } = runHandler(
+          { acquired: true },
+          hoursSetting,
+          undefined,
+          {
+            candidates: [{ id: 's1', order_id: 'o1', seller_id: 'seller', stripe_payment_intent_id: null, status: 'paid', stripe_transfer_id: null }],
+            run: async () => ({ status: 'busy' }),
+          },
+        );
+        expect((await run()).status).toBe(200);
+        expect(runPorts).toHaveLength(1);
+        expect(runPorts[0]!.confirmBeforeRefund).toBeUndefined();
+        expect(enviaResolutions()).toBe(0);
+        expect(gateCalls).toEqual([]);
+      });
+      test('no blocked shipments means no review warning', async () => {
+        const { run, logs } = runHandler({ acquired: true }, hoursSetting);
+        expect((await run()).status).toBe(200);
+        expect(logs.filter((entry) => entry.msg === blockedWarn)).toEqual([]);
+      });
+      test('a report read error is logged by message and never blocks the candidate query', async () => {
+        const { run, logs, shipmentQueries } = runHandler(
+          { acquired: true },
+          hoursSetting,
+          { data: null, error: { message: 'boom' } },
+        );
+        const response = await run();
+        expect(response.status).toBe(200);
+        const failure = logs.find((entry) => entry.level === 'ERROR');
+        expect(failure).toBeDefined();
+        expect(JSON.stringify(failure)).toContain('boom');
+        expect(JSON.stringify(failure)).not.toContain('[object Object]');
+        expect(logs.filter((entry) => entry.msg === blockedWarn)).toEqual([]);
+        expect(
+          shipmentQueries.some(
+            (recorded) => !recorded.some(([method]) => method === 'not'),
+          ),
+        ).toBe(true);
+      });
+    } else {
+      const candidate = {
+        id: 's1',
+        order_id: 'o1',
+        seller_id: 'seller',
+        stripe_payment_intent_id: null,
+        status: 'preparing',
+        stripe_transfer_id: null,
+        tracking_number: 'TRK-9',
+        carrier: 'estafeta',
+      };
+      const askGate = (fallbackReason: string) => async (ports: RunPorts) => {
+        const answer = await ports.confirmBeforeRefund(
+          { shipmentId: 's1', orderId: 'o1', source: 'preparing_timeout' },
+          'claim-secret-token',
+        );
+        return { status: 'carrier_pending', reason: answer.reason ?? fallbackReason };
+      };
+      test('selects the stored tracking number and carrier for the carrier gate', async () => {
+        const { run, shipmentQuery } = runHandler({ acquired: true }, hoursSetting);
+        expect((await run()).status).toBe(200);
+        expect(shipmentQuery).toContainEqual([
+          'select',
+          'id, order_id, seller_id, stripe_payment_intent_id, status, stripe_transfer_id, tracking_number, carrier',
+        ]);
+      });
+      test('a carrier_pending result logs a WARN with the shipment id and reason and counts no success', async () => {
+        const { run, logs } = runHandler({ acquired: true }, hoursSetting, undefined, {
+          candidates: [candidate],
+          run: async () => ({ status: 'carrier_pending', reason: 'carrier_refused' }),
+        });
+        const response = await run();
+        expect(await response.json()).toEqual({ processed: 1, success: 0, deferred: 0 });
+        expect(logs).toContainEqual(
+          expect.objectContaining({
+            level: 'WARN',
+            msg: 'Shipment cancellation waiting on carrier evidence',
+            shipmentId: 's1',
+            reason: 'carrier_refused',
+          }),
+        );
+        expect(logs.filter((entry) => entry.level === 'ERROR')).toEqual([]);
+        expect(JSON.stringify(logs)).not.toContain('exitosamente');
+      });
+      test.each([
+        ['SHIPMENT_CANCELLATION_UNDER_REVIEW'],
+        ['SHIPMENT_CANCELLATION_REVIEW_CLOSED'],
+      ])('a %s claim error is a skip, never an ERROR', async (code) => {
+        const { run, logs } = runHandler({ acquired: true }, hoursSetting, undefined, {
+          candidates: [candidate],
+          run: async () => {
+            throw new Error(code);
+          },
+        });
+        const response = await run();
+        expect(await response.json()).toEqual({ processed: 1, success: 0, deferred: 0 });
+        expect(logs.filter((entry) => entry.level === 'ERROR')).toEqual([]);
+        const skip = logs.find((entry) => JSON.stringify(entry).includes(code))!;
+        expect(['INFO', 'WARN']).toContain(skip.level);
+        expect(skip).toMatchObject({ shipmentId: 's1' });
+      });
+      test('any other loop failure is still an ERROR', async () => {
+        const { run, logs } = runHandler({ acquired: true }, hoursSetting, undefined, {
+          candidates: [candidate],
+          run: async () => {
+            throw new Error('SOMETHING_ELSE');
+          },
+        });
+        await run();
+        expect(logs).toContainEqual(
+          expect.objectContaining({ level: 'ERROR', error: 'SOMETHING_ELSE' }),
+        );
+      });
+      test('resolves the Envia configuration once per run and passes the gate to every shipment', async () => {
+        const second = { ...candidate, id: 's2', tracking_number: null, carrier: null };
+        const { run, enviaResolutions, runPorts, gateCalls } = runHandler(
+          { acquired: true },
+          hoursSetting,
+          undefined,
+          { candidates: [candidate, second], run: askGate('x') },
+        );
+        await run();
+        expect(enviaResolutions()).toBe(1);
+        expect(runPorts).toHaveLength(2);
+        expect(
+          gateCalls.map(([shipment, token, ports]) => [shipment, token, ports.carrierAvailable]),
+        ).toEqual([
+          [
+            { id: 's1', trackingNumber: 'TRK-9', carrier: 'estafeta', source: 'preparing_timeout' },
+            'claim-secret-token',
+            true,
+          ],
+          [
+            { id: 's2', trackingNumber: null, carrier: null, source: 'preparing_timeout' },
+            'claim-secret-token',
+            true,
+          ],
+        ]);
+      });
+      test('missing Envia configuration logs one ERROR without secrets and tells the gate no carrier call is possible', async () => {
+        const { run, logs, gateCalls } = runHandler(
+          { acquired: true },
+          hoursSetting,
+          undefined,
+          {
+            candidates: [candidate, { ...candidate, id: 's2' }],
+            envia: null,
+            run: askGate('x'),
+          },
+        );
+        await run();
+        const errors = logs.filter((entry) => entry.level === 'ERROR');
+        expect(errors).toHaveLength(1);
+        expect(errors[0]).toMatchObject({
+          msg: 'Envia configuration unavailable; preparing cancellations will not call the carrier',
+        });
+        expect(gateCalls.map(([, , ports]) => ports.carrierAvailable)).toEqual([false, false]);
+      });
+      test('gate ports use the Envia adapter and the cancellation RPCs with the exact arguments', async () => {
+        const { run, rpcCalls, trackingFetches, cancelRequests, logs } = runHandler(
+          { acquired: true },
+          hoursSetting,
+          undefined,
+          {
+            candidates: [candidate],
+            run: askGate('x'),
+            gate: async (shipment, token, ports) => {
+              await ports.getStoredState(shipment.id);
+              await ports.fetchFreshTracking('TRK-9');
+              await ports.cancelLabel({ carrier: 'estafeta', trackingNumber: 'TRK-9' });
+              await ports.recordOutcome(shipment.id, token, {
+                outcome: 'accepted',
+                balanceReturned: true,
+                balanceReturnedAt: '2026-10-23T11:00:00.000Z',
+              });
+              const marked = await ports.markReview(shipment.id, token, 'carrier_refused');
+              expect(marked).toEqual({ marked: true });
+              const shipmentStatus = await ports.recordTrackingEvent(
+                {
+                  targetId: 's1',
+                  trackingNumber: 'TRK-9',
+                  rawStatus: 'Picked up',
+                  eventType: 'in_transit',
+                  transition: 'shipped',
+                  eventAt: '2026-10-22T10:00:00.000Z',
+                  statusDescription: 'Picked up',
+                  location: 'CDMX',
+                  carrierName: 'Estafeta',
+                },
+                'run-1',
+              );
+              expect(shipmentStatus).toBe('shipped');
+              return { proceed: false, reason: 'carrier_refused' };
+            },
+          },
+        );
+        await run();
+        expect(rpcCalls).toEqual([
+          ['fn_get_shipment_carrier_cancellation', { p_shipment_id: 's1' }],
+          [
+            'fn_record_shipment_carrier_cancellation',
+            {
+              p_shipment_id: 's1',
+              p_claim_token: 'claim-secret-token',
+              p_outcome: 'accepted',
+              p_balance_returned: true,
+              p_balance_returned_at: '2026-10-23T11:00:00.000Z',
+            },
+          ],
+          [
+            'fn_mark_shipment_cancellation_review',
+            {
+              p_shipment_id: 's1',
+              p_claim_token: 'claim-secret-token',
+              p_reason: 'carrier_refused',
+            },
+          ],
+          [
+            'fn_record_tracking_event',
+            {
+              p_shipment_id: 's1',
+              p_dispute_id: null,
+              p_event_type: 'in_transit',
+              p_event_at: '2026-10-22T10:00:00.000Z',
+              p_raw_status: 'Picked up',
+              p_location: 'CDMX',
+              p_status_description: 'Picked up',
+              p_carrier_name: 'Estafeta',
+              p_webhook_delivery_id: null,
+              p_polling_run_id: 'run-1',
+              p_transition: 'shipped',
+            },
+          ],
+        ]);
+        expect(trackingFetches.map(([config, trackingNumber]) => [config, trackingNumber])).toEqual([
+          [{ mode: 'sandbox', apiKey: 'envia-key-secret', apiUrl: 'https://envia.test/' }, 'TRK-9'],
+        ]);
+        expect(cancelRequests.map(([, input]) => input)).toEqual([
+          { carrier: 'estafeta', trackingNumber: 'TRK-9' },
+        ]);
+        expect(JSON.stringify(logs)).not.toContain('claim-secret-token');
+        expect(JSON.stringify(logs)).not.toContain('envia-key-secret');
+      });
+      test('a source_mismatch gate stop is an ERROR (not a WARN wait) with shipment id and reason, no secrets', async () => {
+        const { run, logs } = runHandler({ acquired: true }, hoursSetting, undefined, {
+          candidates: [candidate],
+          run: async (ports) => {
+            const answer = await ports.confirmBeforeRefund({ shipmentId: 's1', source: 'buyer' }, 'tok');
+            return { status: 'carrier_pending', reason: answer.reason };
+          },
+          gate: async () => ({ proceed: false, reason: 'source_mismatch' }),
+        });
+        await run();
+        expect(logs).toContainEqual(
+          expect.objectContaining({ level: 'ERROR', shipmentId: 's1', reason: 'source_mismatch' }),
+        );
+        expect(logs.filter((entry) => entry.level === 'WARN' && entry.reason === 'source_mismatch')).toEqual([]);
+        expect(JSON.stringify(logs)).not.toContain('tok"');
+      });
+      test('the gate receives the source of the winning claim', async () => {
+        const { run, gateCalls } = runHandler({ acquired: true }, hoursSetting, undefined, {
+          candidates: [candidate],
+          run: async (ports) => ports.confirmBeforeRefund({ shipmentId: 's1', source: 'buyer' }, 'tok'),
+          gate: async () => ({ proceed: false, reason: 'x' }),
+        });
+        await run();
+        expect(gateCalls.map(([shipment]) => shipment)).toEqual([
+          expect.objectContaining({ id: 's1', source: 'buyer' }),
+        ]);
+      });
+      test('a gate failure reaches the loop as an ERROR so the shipment is retried next run', async () => {
+        const { run, logs } = runHandler({ acquired: true }, hoursSetting, undefined, {
+          candidates: [candidate],
+          run: async (ports) => ports.confirmBeforeRefund({ shipmentId: 's1' }, 'tok'),
+          gate: async () => {
+            throw new Error('gate exploded');
+          },
+        });
+        await run();
+        expect(logs).toContainEqual(
+          expect.objectContaining({ level: 'ERROR', error: 'gate exploded' }),
+        );
+      });
+      test('the preparing query keeps no label state filter and no report query', async () => {
+        const { run, shipmentQueries, shipmentQuery } = runHandler(
+          { acquired: true },
+          hoursSetting,
+        );
+        expect((await run()).status).toBe(200);
+        expect(shipmentQueries).toHaveLength(1);
+        expect(JSON.stringify(shipmentQuery)).not.toContain('label_generation_state');
+      });
+    }
     test('preserves settings and timeout selection, without the legacy boolean lock', () => {
       const source = readFileSync(
         new URL(`../${name}/index.ts`, import.meta.url),

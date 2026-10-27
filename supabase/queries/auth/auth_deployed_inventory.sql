@@ -5,7 +5,7 @@ role_names(name) AS (VALUES ('anon'), ('authenticated'), ('service_role')),
 helper_names(name) AS (VALUES ('is_admin'), ('fn_admin_update_user_status'),
   ('fn_admin_toggle_verified_seller'), ('fn_on_auth_user_created'), ('fn_on_auth_user_updated')),
 relation_names(name) AS (VALUES ('profiles'), ('profiles_private'), ('products'), ('orders'),
-  ('shipments'), ('wallets'), ('payout_requests'), ('disputes'), ('admin_user_directory_view')),
+  ('shipments'), ('disputes'), ('admin_user_directory_view')),
 schemas AS (
   SELECT n.* FROM pg_catalog.pg_namespace n WHERE n.nspname IN ('public', 'private', 'auth')
 ),

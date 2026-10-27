@@ -2,11 +2,11 @@ import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
 const handlers = [
-  { name: 'auto-cancel-orders', job: 'orders', flag: 'auto_cancel_orders_running' },
-  { name: 'auto-cancel-preparing', job: 'preparing', flag: 'auto_cancel_preparing_running' },
+  { name: 'auto-cancel-orders', job: 'orders', flag: 'auto_cancel_orders_running', column: 'order_expiration_hours' },
+  { name: 'auto-cancel-preparing', job: 'preparing', flag: 'auto_cancel_preparing_running', column: 'preparing_expiration_hours' },
 ];
 
-for (const { name, job, flag } of handlers) {
+for (const { name, job, flag, column } of handlers) {
   describe(`${name} lease wiring`, () => {
     const source = readFileSync(
       new URL(`../${name}/index.ts`, import.meta.url),
@@ -75,6 +75,15 @@ for (const { name, job, flag } of handlers) {
       const responseAt = source.indexOf('processed: expiredShipments.length');
       expect(responseAt).toBeGreaterThan(0);
       expect(source.slice(responseAt, responseAt + 120)).toContain('deferred');
+    });
+
+    test('reads the expiration window through the shared settings reader', () => {
+      expect(source).toContain("from '../_shared/auto-cancel-settings.ts'");
+      expect(source.replace(/\s+/g, ' ')).toContain(
+        `readAutoCancelExpirationHours( supabaseAdmin, '${column}', log, )`,
+      );
+      expect(source).not.toContain("'AUTO_CANCEL_SETTINGS_INVALID'");
+      expect(source).not.toContain(".from('system_settings')");
     });
 
     test('caught errors still return 500 INTERNAL_ERROR', () => {

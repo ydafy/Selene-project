@@ -1,0 +1,33 @@
+meta {
+  name: t5-complete-delivered-ignores-non-connect
+  type: http
+  seq: 33
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/complete-delivered-shipments
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{anonKey}}
+  x-cron-secret: {{cronSecret}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("a delivered shipment without a payment intent does not fail the batch", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().success).to.equal(true);
+    expect(res.getBody().failed).to.equal(0);
+  });
+}
+
+docs {
+  Needs the functions server and CRON_SECRET in supabase/functions/.env. s2 is due and has no payment intent, so the candidate query leaves it out; the shipments completed by the cron here are cleaned up below.
+}

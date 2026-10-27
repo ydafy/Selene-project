@@ -1,0 +1,34 @@
+meta {
+  name: t5-log-return-payment
+  type: http
+  seq: 24
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_log_return_payment
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_dispute_id": "{{t5Disp6}}",
+    "p_stripe_id": "pi_bruno_t5_return_6",
+    "p_amount": 45
+  }
+}
+
+tests {
+  test("the return payment is logged", function () {
+    expect([200, 204]).to.include(res.getStatus());
+  });
+}
+
+docs {
+  Called by stripe-webhooks on payment_intent.succeeded with type=return_shipping.
+}

@@ -1,0 +1,30 @@
+meta {
+  name: resolve-shipment-operation-review-no-auth
+  type: http
+  seq: 18
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/resolve-shipment-operation-review
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+body:json {
+  { "shipment_id": "00000000-0000-4000-8000-0000000000d1", "resolution": "closed_no_refund", "note": "Bruno: no auth" }
+}
+
+tests {
+  test("rejects a review resolution without a user token", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody()).to.deep.equal({ error: "AUTH_REQUIRED" });
+  });
+}
+
+docs {
+  Needs the functions server started with --no-verify-jwt. Refuses anonymous callers before any lookup or database call.
+}

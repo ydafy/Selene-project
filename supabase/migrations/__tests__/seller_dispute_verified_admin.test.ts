@@ -7,6 +7,15 @@ const read = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf
 const prior = read('../archive/20260929000000_dispute_seller_verdict_notification.sql').match(/AS \$\$([\s\S]*?)\$\$;/)![1];
 const fingerprint = '0617e9508ed1e6387a382df3940899b0';
 const signature = 'public.fn_resolve_dispute_to_seller_as_admin(uuid,text,uuid)';
+// remove-legacy-wallet T5: the canonical body no longer moves wallet funds, the archived one still does.
+const withoutWalletPayout = (body: string) =>
+  body
+    .replace('    v_total_payout NUMERIC;\n    v_new_balance NUMERIC;\n    v_wallet_id UUID;\n', '')
+    .replace(
+      /   -- D\. LÓGICA FINANCIERA[\s\S]*?    END IF;\n\n    -- F\. ACTUALIZAR ESTADOS/,
+      () =>
+        "    -- D. PAGO: Stripe Connect releases the seller's funds from the admin payout\n    -- queue once the shipment is completed (F.1). Nothing moves in this function.\n\n    -- F. ACTUALIZAR ESTADOS",
+    );
 
 test('installs mandatory verified actor with exact complete legacy body parity', () => {
   const files = readdirSync(dir).filter(name => name.endsWith('_seller_dispute_verified_admin.sql'));
@@ -20,7 +29,7 @@ test('installs mandatory verified actor with exact complete legacy body parity',
     .replace("v_auth_user_id := (current_setting('request.jwt.claims', true)::json->>'sub')::UUID;", 'v_auth_user_id := p_admin_id;')
     .replace('UNAUTHORIZED_NO_SESSION', 'UNAUTHORIZED_NO_ACTOR');
   const installed = sql.match(/AS \$\$([\s\S]*?)\$\$;/)![1];
-  expect(installed).toBe(expected);
+  expect(withoutWalletPayout(installed)).toBe(expected);
   const forward = read('../archive/20261008013951_notification_copy_polish.sql');
   expect(forward.split(`('${signature}',`)).toHaveLength(2);
   for (const guard of ["md5(btrim(replace(body, E'\\r\\n', E'\\n'), E'\\n'))", 'IS DISTINCT FROM target.expected_body_md5', 'pg_catalog.quote_literal(target.old_copy[i])', 'pg_catalog.quote_literal(target.new_copy[i])', '/ length(old_literal) <> 1', 'strpos(definition, new_literal) <> 0', "after_catalog - 'prosrc' - 'proargdefaults'", 'after_defaults IS DISTINCT FROM before_defaults', "(after_catalog->>'prosrc') IS DISTINCT FROM patched_body", 'pg_catalog.to_regprocedure(target.identity)::oid IS DISTINCT FROM function_oid']) expect(forward).toContain(guard);
@@ -43,7 +52,7 @@ test('installs mandatory verified actor with exact complete legacy body parity',
     expect(installed).not.toContain(newLiteral);
     polished = polished.replace(oldLiteral, newLiteral);
   }
-  expect(polished).toBe(canonical);
+  expect(withoutWalletPayout(polished)).toBe(canonical);
   expect(sql).toMatch(/CREATE FUNCTION public\.fn_resolve_dispute_to_seller_as_admin\(\s*p_dispute_id UUID,\s*p_admin_note TEXT,\s*p_admin_id UUID\s*\)/);
   expect(sql).toContain('SECURITY DEFINER\nSET search_path = public, pg_temp');
   expect(sql).not.toMatch(/\bDEFAULT\b|CREATE OR REPLACE|request\.jwt|set_config/i);

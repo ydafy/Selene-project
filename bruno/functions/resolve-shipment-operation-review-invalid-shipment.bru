@@ -1,0 +1,31 @@
+meta {
+  name: resolve-shipment-operation-review-invalid-shipment
+  type: http
+  seq: 20
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/resolve-shipment-operation-review
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+body:json {
+  { "shipment_id": "not-a-uuid", "resolution": "closed_no_refund", "note": "Bruno: invalid shipment" }
+}
+
+tests {
+  test("an admin gets a stable validation code for a malformed shipment id", function () {
+    expect(res.getStatus()).to.equal(422);
+    expect(res.getBody()).to.deep.equal({ error: "INVALID_SHIPMENT_ID" });
+  });
+}
+
+docs {
+  Run after functions/login-admin (needs adminToken). Proves an admin reaches body validation.
+}

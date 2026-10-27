@@ -1155,3 +1155,140 @@ describe('shipment cancellation recovery', () => {
     await expect(failedRecord.run()).rejects.toThrow('record unavailable');
   });
 });
+
+describe('shipment cancellation carrier confirmation port (B4.4b)', () => {
+  const happyPath = [
+    'claim',
+    'prepare',
+    'start',
+    'refund',
+    'record',
+    'complete',
+  ];
+
+  test.each(['buyer', 'paid_timeout'] as const)(
+    'without the port a %s cancellation runs exactly as before',
+    async (source) => {
+      const subject = harness({
+        context: { ...context, source, actorId: source === 'buyer' ? 'buyer-a' : null },
+        claim: async () => {
+          subject.calls.push('claim');
+          return {
+            ...claim,
+            source,
+            actor_id: source === 'buyer' ? 'buyer-a' : null,
+          };
+        },
+      });
+      expect(await subject.run()).toEqual({
+        status: 'cancelled',
+        value: { success: true },
+      });
+      expect(subject.calls).toEqual(happyPath);
+    },
+  );
+
+  test('a proceed answer runs after the claim and before prepare, with the stored winner and the claim token', async () => {
+    const confirmations: unknown[][] = [];
+    const subject = harness({
+      confirmBeforeRefund: async (...args: unknown[]) => {
+        subject.calls.push('confirm');
+        confirmations.push(args);
+        return { proceed: true };
+      },
+    });
+    expect(await subject.run()).toEqual({
+      status: 'cancelled',
+      value: { success: true },
+    });
+    expect(subject.calls).toEqual([
+      'claim',
+      'confirm',
+      'prepare',
+      'start',
+      'refund',
+      'record',
+      'complete',
+    ]);
+    expect(confirmations).toEqual([
+      [
+        {
+          ...context,
+          source: 'buyer',
+          actorId: 'buyer-a',
+          reason: 'Original reason',
+        },
+        'opaque-token',
+      ],
+    ]);
+  });
+
+  test('a stop answer ends the run with carrier_pending: no prepare, start, refund or completion', async () => {
+    const subject = harness({
+      confirmBeforeRefund: async () => {
+        subject.calls.push('confirm');
+        return { proceed: false, reason: 'carrier_refused' };
+      },
+    });
+    expect(await subject.run()).toEqual({
+      status: 'carrier_pending',
+      reason: 'carrier_refused',
+    });
+    expect(subject.calls).toEqual(['claim', 'confirm']);
+    expect(subject.effects).toEqual({ refunds: 0, cancellations: 0 });
+    expect(subject.recorded).toEqual([]);
+  });
+
+  test('a throwing confirmation propagates its error and never reaches prepare', async () => {
+    const subject = harness({
+      confirmBeforeRefund: async () => {
+        subject.calls.push('confirm');
+        throw new Error('carrier lookup exploded');
+      },
+    });
+    await expect(subject.run()).rejects.toThrow('carrier lookup exploded');
+    expect(subject.calls).toEqual(['claim', 'confirm']);
+    expect(subject.effects).toEqual({ refunds: 0, cancellations: 0 });
+  });
+
+  test.each([
+    ['undefined', undefined],
+    ['a bare true', true],
+    ['an empty object', {}],
+    ['proceed as a string', { proceed: 'true' }],
+    ['a stop without a reason', { proceed: false }],
+    ['a stop with a blank reason', { proceed: false, reason: '  ' }],
+  ])('%s fails closed without prepare or any money movement', async (_label, answer) => {
+    const subject = harness({
+      confirmBeforeRefund: async () => {
+        subject.calls.push('confirm');
+        return answer;
+      },
+    });
+    await expect(subject.run()).rejects.toMatchObject({
+      message: 'CANCELLATION_CONFIRMATION_INVALID',
+    });
+    expect(subject.calls).toEqual(['claim', 'confirm']);
+    expect(subject.effects).toEqual({ refunds: 0, cancellations: 0 });
+  });
+
+  test.each([
+    ['busy', { status: 'busy' }],
+    ['recovery_required', { status: 'recovery_required' }],
+  ])('a %s claim never asks for carrier confirmation', async (_label, reservation) => {
+    const subject = harness({
+      claim: async () => {
+        subject.calls.push('claim');
+        return reservation;
+      },
+      loadRecovery: async () => null,
+      confirmBeforeRefund: async () => {
+        subject.calls.push('confirm');
+        return { proceed: true };
+      },
+    });
+    await subject.run();
+    expect(subject.calls).not.toContain('confirm');
+    expect(subject.calls).not.toContain('prepare');
+  });
+});

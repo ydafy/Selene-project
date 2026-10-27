@@ -19,6 +19,7 @@ Bun monorepo with strict TypeScript. Before changing files under a path below, r
 | `packages/types/`     | Shared types, including generated Supabase types                         |                                |
 | `supabase/`           | Migrations, canonical SQL (`queries/`), local stack, remote project      | `supabase/AGENTS.md`           |
 | `supabase/functions/` | Edge Functions (Deno), Sentry wrapper, Bruno and Stripe local loops      | `supabase/functions/AGENTS.md` |
+| `design/`             | Gentle Design mockups (HTML artboards) and the synced token catalog      | `DESIGN.md`                    |
 | `odd/tasks/`          | One tracking document per feature (verbatim specs, tasks, decision log)  |                                |
 | `openspec/`, `sdd/`   | Older planning artifacts, often outdated: background only, never binding |                                |
 
@@ -95,7 +96,7 @@ Before starting work on a module, read the open issues and the draft Security Ad
 
 When you find a bug or gap that is not part of the task, do not fix it: record it and continue.
 
-- Ordinary findings: open a GitHub issue with the "Finding" form (`.github/ISSUE_TEMPLATE/finding.yml`) using the `gentle-ai-issue-creation` skill, without asking first. Search open and closed issues for a duplicate first. Write it so the maintainer understands it without the code open, and cite the issue number in the feature's `## Log`.
+- Ordinary findings: open a GitHub issue with the "Finding" form (`.github/ISSUE_TEMPLATE/finding.yml`) using the `gentle-ai-issue-creation` skill, without asking first. Search open and closed issues for a duplicate first. Write it so the maintainer understands it without the code open, and cite the issue number in the feature's `## Log`. Keep the form's `### Priority` and `### Area` headings with the exact option text: `.github/workflows/issue-labels.yml` sets the `priority:*` and `area:*` labels from them, so change a priority by editing the body, not the label.
 - Vulnerabilities (auth, permissions, secrets, money integrity, data exposure): this repository is public. While unfixed, never describe them in an issue, PR, commit message, or any file in the repository. Tell the maintainer in the session and draft a private Security Advisory (`SECURITY.md`); details go public only after the fix is deployed. When the maintainer confirms the fix is deployed, close the advisory yourself (`gh api -X PATCH repos/ydafy/Selene-project/security-advisories/<GHSA-id> -f state=closed`); do not publish it.
 - A PR that fixes an issue says `Closes #N`. Close an issue by hand only with the maintainer's decision.
 - `odd/tasks/cross-module-backlog.md` is legacy: add nothing to it; its open items will move to issues and advisories.
@@ -108,7 +109,6 @@ For money, webhook, cron, or order and shipment state work, also load the `selen
 - Payments go through Stripe Connect with manual payouts. Selene holds the seller's funds until the shipment is completed, then an admin releases them. Never enable automatic payouts: they would pay sellers before delivery or before disputes and refunds are resolved.
 - A payout releases the full shipment amount or nothing. Partial payouts would make the database ledger diverge from Stripe.
 - Refunds and disputes are only possible before a shipment is completed, and they always target one `shipment_id`, never a whole multi-seller order.
-- `wallets`, `wallet_transactions`, `payout_requests`, and `seller_bank_accounts` are deprecated by the Stripe Connect migration. They stay as read-only audit history; never build on them.
 
 ## Money and security invariants
 

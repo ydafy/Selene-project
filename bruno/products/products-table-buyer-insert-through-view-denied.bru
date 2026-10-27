@@ -1,0 +1,31 @@
+meta {
+  name: products-table-buyer-insert-through-view-denied
+  type: http
+  seq: 67
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/products_public
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  { "name": "x", "seller_id": "00000000-0000-4000-8000-000000000002" }
+}
+
+tests {
+  test("a signed-in buyer cannot insert through the view", function () {
+    expect(res.getStatus()).to.equal(403);
+  });
+}
+
+docs {
+  The view grants SELECT only. Run after auth/login-buyer.
+}

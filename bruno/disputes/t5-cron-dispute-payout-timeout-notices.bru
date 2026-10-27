@@ -1,0 +1,29 @@
+meta {
+  name: t5-cron-dispute-payout-timeout-notices
+  type: http
+  seq: 28
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/notifications?action_path=eq./profile/orders/{{t5Order}}&title=in.(Disputa Ganada,Disputa Perdida)&select=user_id,title&order=user_id,title
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the buyer and the seller of the payout timeout are notified", function () {
+    expect(res.getStatus()).to.equal(200);
+    const rows = res.getBody();
+    expect(rows.some((r) => r.user_id === "00000000-0000-4000-8000-000000000005" && r.title === "Disputa Ganada")).to.equal(true);
+    expect(rows.some((r) => r.user_id === "00000000-0000-4000-8000-000000000004" && r.title === "Disputa Perdida")).to.equal(true);
+  });
+}
+
+docs {
+  Notices written by the Connect path.
+}

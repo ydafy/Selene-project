@@ -1,0 +1,33 @@
+meta {
+  name: t5-release-connect
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_release_shipment_funds
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_shipment_id": "{{t5Ship3}}"
+  }
+}
+
+tests {
+  test("a Connect shipment is marked completed", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ success: true, error_message: "CONNECT_SHIPMENT_SKIPPED_WALLET" }]);
+  });
+}
+
+docs {
+  The Connect guard is unchanged: the shipment completes and the payout is released from the admin queue.
+}

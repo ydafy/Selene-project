@@ -11,6 +11,7 @@ import {
   buildAutoCompletionDiagnostic,
   buildAutoCompletionRpcInput,
   isActiveDisputeRefusal,
+  isNotConnectRefusal,
   mapAutoCompletionRpcResult,
   resolveAutoCompletionPlan,
   summarizeAutoCompletionResults,
@@ -66,6 +67,7 @@ serve(withSentry('complete-delivered-shipments', async (req: Request): Promise<R
       .from('shipments')
       .select('id, status, delivered_at, buyer_confirmed_at')
       .eq('status', 'delivered')
+      .not('stripe_payment_intent_id', 'is', null)
       .is('buyer_confirmed_at', null)
       .lte('delivered_at', dueAt);
     if (activeDisputeShipmentIds.length > 0) {
@@ -109,6 +111,20 @@ serve(withSentry('complete-delivered-shipments', async (req: Request): Promise<R
               shipmentId,
               result: 'success',
               code: 'SKIPPED_ACTIVE_DISPUTE',
+            }),
+          );
+          continue;
+        }
+
+        if (isNotConnectRefusal(row)) {
+          results.push('skipped');
+          log(
+            'INFO',
+            'Delivered shipment completion skipped',
+            buildAutoCompletionDiagnostic({
+              shipmentId,
+              result: 'success',
+              code: 'SKIPPED_NOT_CONNECT',
             }),
           );
           continue;

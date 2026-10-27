@@ -46,7 +46,7 @@ SELECT jsonb_build_object(
       ('fn_create_shipments_from_single_payment(text,text,bigint,text,jsonb)'),
       ('fn_cron_dispute_payout_timeout()'),('fn_cron_dispute_shipping_timeout()'),
       ('fn_cron_return_delivery_timeout()'),('fn_mark_return_delivered(uuid)'),
-      ('fn_request_payout(numeric,uuid)'),('fn_resolve_dispute_to_buyer(uuid,text)'),
+      ('fn_resolve_dispute_to_buyer(uuid,text)'),
       ('fn_resolve_dispute_to_seller(uuid,text)'),('fn_resolve_product_verdict(uuid,text,text,text)'),
       ('fn_seller_submit_return_evidence(uuid,text[],text)')
     ) v(signature) LEFT JOIN pg_catalog.pg_proc p ON p.oid=to_regprocedure('public.' || v.signature)),

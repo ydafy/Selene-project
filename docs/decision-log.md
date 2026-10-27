@@ -188,3 +188,13 @@ It is established as the standard procedure for structural inconsistencies.
 - When bumping Bun, change `packageManager` and the `eas.json` profiles in the same commit, then run a development EAS build.
 
 **Deno:** Edge Functions do not run on the local Deno CLI. `supabase functions serve` and deploys use the Supabase Edge Runtime, whose Deno major is declared in `supabase/config.toml` (`[edge_runtime] deno_version`). The local Deno CLI only serves the editor (LSP) and `deno check`, so its exact version is not pinned. On 2026-10-20 the runtime reported "supabase-edge-runtime-0.1.0 (compatible with Deno v2.1.4)" while the local CLI was 2.6.6: a local `deno check` can accept APIs the runtime lacks, so `supabase functions serve` is the real check.
+
+## 2026-10-26: Commit the Supabase Stack Lock File
+
+**Context:** Supabase CLI 2.122.0 writes `supabase/supabase.lock` in stack mode, pinning the image and digest of every local service, and adds its local files (`.link.json`, the lock lease) to `supabase/.gitignore`. The CLI release (supabase/cli#7195) says to commit the lock so every checkout and CI job runs the same builds whatever CLI version it has. The stack state saved by 2.121.0 could not be read by 2.122.0 and had to be deleted.
+
+**Decision:**
+
+- Commit `supabase/supabase.lock` and the CLI-maintained `supabase/.gitignore` entries. A later rewrite by `supabase start` goes in its own `chore` commit.
+- The lock is unlinked (no `supabase link`): it pins the CLI's default builds, not the hosted project's versions.
+- CI does not run the Supabase CLI today, so the frozen-lock behavior in CI does not apply yet.
