@@ -1,10 +1,12 @@
 import type { ComponentType } from 'react';
 import { CarrierReviewsPanel } from '../components/features/shipments/CarrierReviewsPanel';
+import { LateCarrierActivityPanel } from '../components/features/shipments/LateCarrierActivityPanel';
 
 // A new shipping queue (blocked labels, label recovery) is one self-contained component
 // (its own hook, service and bucket) plus one entry here.
 const BUCKETS: ReadonlyArray<{ id: string; Component: ComponentType }> = [
   { id: 'carrier-reviews', Component: CarrierReviewsPanel },
+  { id: 'late-carrier-activity', Component: LateCarrierActivityPanel },
 ];
 
 export const ShipmentsPage = () => (

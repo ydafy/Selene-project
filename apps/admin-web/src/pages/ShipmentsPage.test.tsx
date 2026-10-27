@@ -20,6 +20,11 @@ if (process.env.B44D_PAGE_CHILD !== '1') {
     fetchCarrierReviews: async () => [],
     resolveCarrierReview: async () => undefined,
   }));
+  mock.module('../services/lateCarrierActivity', () => ({
+    fetchLateCarrierActivity: async () => [],
+    acknowledgeLateCarrierActivity: async () => undefined,
+  }));
+  const { LateCarrierActivityPanel } = await import('../components/features/shipments/LateCarrierActivityPanel');
   const { CarrierReviewsPanel } = await import('../components/features/shipments/CarrierReviewsPanel');
   const { ShipmentsPage } = await import('./ShipmentsPage');
 
@@ -45,5 +50,12 @@ if (process.env.B44D_PAGE_CHILD !== '1') {
 
   it('renders the carrier cancellations bucket', () => {
     expect(nodes(ShipmentsPage()).some((n) => n.type === CarrierReviewsPanel)).toBe(true);
+  });
+
+  it('renders the late carrier activity bucket after the carrier reviews bucket', () => {
+    const order = nodes(ShipmentsPage())
+      .filter((n) => n.type === CarrierReviewsPanel || n.type === LateCarrierActivityPanel)
+      .map((n) => n.type);
+    expect(order).toEqual([CarrierReviewsPanel, LateCarrierActivityPanel]);
   });
 }
