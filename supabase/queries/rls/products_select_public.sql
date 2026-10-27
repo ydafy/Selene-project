@@ -1,14 +1,12 @@
--- Canonical public read policy for public.products.
--- Anyone (anon and authenticated, no TO clause) reads live listings that are
--- purchasable (VERIFIED), sold (SOLD) or still being verified
--- (PENDING_VERIFICATION, IN_REVIEW). REJECTED, HIDDEN, RESERVED and IN_DISPUTE
--- stay hidden from the public. Only VERIFIED can be bought: fn_reserve_products
--- enforces it server-side.
-
-DROP POLICY IF EXISTS "products_select_public" ON public.products;
-CREATE POLICY "products_select_public" ON public.products
-  FOR SELECT
-  USING (
-    deleted_at IS NULL
-    AND status IN ('VERIFIED', 'SOLD', 'PENDING_VERIFICATION', 'IN_REVIEW')
-  );
+-- DROPPED by migration 20261024035903_drop_products_select_public.sql (T4d3).
+--
+-- products_select_public used to let anyone read live listings (VERIFIED, SOLD,
+-- PENDING_VERIFICATION, IN_REVIEW) straight from public.products. Non-owners now read through the allow-list view public.products_public
+-- (supabase/queries/products/products_public.sql), which keeps the same row
+-- predicate and exposes only the buyer-facing columns.
+--
+-- Table policies that remain on public.products for reads:
+--   products_select_owner (seller reads own rows) and products_select_admin.
+--
+-- Kept for history: the last definition of the policy lives in
+-- supabase/migrations/20261023044211_products_public_verification_states.sql.

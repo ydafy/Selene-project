@@ -1,0 +1,28 @@
+meta {
+  name: products-table-admin-reads-any
+  type: http
+  seq: 64
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/products?id=in.(00000000-0000-4000-8000-0000000000b1,00000000-0000-4000-8000-0000000000b7,00000000-0000-4000-8000-0000000000b9,00000000-0000-4000-8000-0000000000ba)&select=id,status,origin_zip&order=id
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+tests {
+  test("an admin reads any listing from the table, hidden states and internal columns included", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().map((r) => r.id)).to.deep.equal(["00000000-0000-4000-8000-0000000000b1", "00000000-0000-4000-8000-0000000000b7", "00000000-0000-4000-8000-0000000000b9", "00000000-0000-4000-8000-0000000000ba"]);
+    expect(res.getBody()[0].origin_zip).to.equal("06600");
+  });
+}
+
+docs {
+  products_select_admin stays. Run after auth/login-admin (needs adminToken).
+}

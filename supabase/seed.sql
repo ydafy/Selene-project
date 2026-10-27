@@ -175,7 +175,13 @@ CROSS JOIN (VALUES
   ('00000000-0000-4000-8000-0000000000b6'::uuid, 'Intel Core i7-12700K', 'Procesador en revisión por el equipo de Selene.', 4800::numeric,
    'CPU', 'used', 'gaming', '{"brand": "Intel", "family": "Core i7", "model": "12700K", "cores": "12"}'::jsonb, 120::numeric, 'cpu_2', 'IN_REVIEW'),
   ('00000000-0000-4000-8000-0000000000b7'::uuid, 'Kingston Fury 16 GB DDR4', 'Kit rechazado en la verificación.', 900::numeric,
-   'RAM', 'used', 'office', '{"brand": "Kingston", "type": "DDR4", "capacity": "16 GB", "speed": "3200 MHz"}'::jsonb, 100::numeric, 'ram_1', 'REJECTED')
+   'RAM', 'used', 'office', '{"brand": "Kingston", "type": "DDR4", "capacity": "16 GB", "speed": "3200 MHz"}'::jsonb, 100::numeric, 'ram_1', 'REJECTED'),
+  ('00000000-0000-4000-8000-0000000000b8'::uuid, 'Sapphire Pulse RX 6600', 'Tarjeta ya vendida.', 3200::numeric,
+   'GPU', 'used', 'gaming', '{"chipset": "AMD", "brand": "Sapphire", "model": "RX 6600", "memory": "8 GB"}'::jsonb, 180::numeric, 'gpu_1', 'SOLD'),
+  ('00000000-0000-4000-8000-0000000000b9'::uuid, 'Crucial Ballistix 16 GB DDR4', 'Kit oculto por el vendedor.', 700::numeric,
+   'RAM', 'used', 'office', '{"brand": "Crucial", "type": "DDR4", "capacity": "16 GB", "speed": "3200 MHz"}'::jsonb, 100::numeric, 'ram_1', 'HIDDEN'),
+  ('00000000-0000-4000-8000-0000000000ba'::uuid, 'AMD Ryzen 5 3600', 'Listado eliminado por el vendedor.', 1500::numeric,
+   'CPU', 'used', 'gaming', '{"brand": "AMD", "family": "Ryzen 5", "model": "3600", "cores": "6"}'::jsonb, 120::numeric, 'cpu_2', 'VERIFIED')
 ) AS p(id, name, description, price, category, condition, usage, specifications, shipping_cost, package_preset, status)
 WHERE s.id = 1;
 
@@ -211,3 +217,7 @@ INSERT INTO public.disputes (id, order_id, shipment_id, buyer_id, seller_id, rea
 UPDATE public.disputes SET status = 'resolved' WHERE id = '00000000-0000-4000-8000-0000000000f6';
 
 SELECT set_config('request.jwt.claims', '', false);
+
+-- Soft-deleted listing (ba): VERIFIED but deleted_at set, so products_public hides it.
+UPDATE public.products SET deleted_at = now()
+WHERE id = '00000000-0000-4000-8000-0000000000ba';

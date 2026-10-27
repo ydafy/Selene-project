@@ -1,0 +1,26 @@
+meta {
+  name: products-table-view-shows-sold-hides-hidden-and-deleted
+  type: http
+  seq: 66
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/products_public?id=in.(00000000-0000-4000-8000-0000000000b8,00000000-0000-4000-8000-0000000000b9,00000000-0000-4000-8000-0000000000ba)&select=id,status&order=id
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+tests {
+  test("the view shows the SOLD listing and omits the HIDDEN and soft-deleted ones", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ id: "00000000-0000-4000-8000-0000000000b8", status: "SOLD" }]);
+  });
+}
+
+docs {
+  Seeds: b8 SOLD, b9 HIDDEN, ba VERIFIED with deleted_at set.
+}
