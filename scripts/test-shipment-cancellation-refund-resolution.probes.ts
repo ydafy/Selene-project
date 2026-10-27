@@ -101,11 +101,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>, ('paid' | 'preparing')?]>
     assert.equal(await shipmentStatus(tx), 'paid');
     assert.equal((await op(tx)).refund_resolved_at, null);
   }],
-  ['P2 only fn_resolve_shipment_cancellation_refund writes refund_resolved_*; fn_cancel_shipment, the B2.4a list and the refund event RPC only read it', async (tx) => {
+  ['P2 only fn_resolve_shipment_cancellation_refund writes refund_resolved_*; fn_cancel_shipment, the B2.4a list, the refund event RPC and fn_close_account (blocks closure on an unresolved refund) only read it', async (tx) => {
     await asOwner(tx);
     const rows = await tx`SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
       WHERE n.nspname = 'public' AND p.prosrc ILIKE '%refund_resolved_at%' ORDER BY 1`;
-    assert.deepEqual(rows.map((r: { proname: string }) => r.proname), ['fn_apply_shipment_cancellation_refund_event', 'fn_cancel_shipment', 'fn_list_shipment_refund_problems', 'fn_resolve_shipment_cancellation_refund']);
+    assert.deepEqual(rows.map((r: { proname: string }) => r.proname), ['fn_apply_shipment_cancellation_refund_event', 'fn_cancel_shipment', 'fn_close_account', 'fn_list_shipment_refund_problems', 'fn_resolve_shipment_cancellation_refund']);
     const trig = await tx`SELECT tgname FROM pg_trigger WHERE tgrelid = 'public.shipment_cancellation_operations'::regclass AND NOT tgisinternal`;
     assert.equal(trig.length, 0);
   }],
