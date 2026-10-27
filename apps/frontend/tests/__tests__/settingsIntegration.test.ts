@@ -239,10 +239,15 @@ describe('.env.example documents support + Legal vars (CONF-012)', () => {
 });
 
 describe('package.json drops the Chatwoot widget', () => {
-  test('neither Chatwoot nor its webview peer is a dependency', () => {
+  test('Chatwoot is not a dependency', () => {
     const pkg = JSON.parse(read('package.json'));
     expect(pkg.dependencies['@chatwoot/react-native-widget']).toBeUndefined();
-    expect(pkg.dependencies['react-native-webview']).toBeUndefined();
+  });
+
+  test('react-native-webview stays only as the hCaptcha native peer', () => {
+    const pkg = JSON.parse(read('package.json'));
+    expect(pkg.dependencies['@hcaptcha/react-native-hcaptcha']).toBeDefined();
+    expect(pkg.dependencies['react-native-webview']).toBeDefined();
   });
 });
 

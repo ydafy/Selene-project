@@ -28,6 +28,8 @@ describe('mapAuthErrorKey', () => {
     ['validation_failed', 'auth:errors.validationFailed'],
     ['email_address_invalid', 'auth:errors.invalidEmail'],
     ['signup_disabled', 'auth:errors.signupDisabled'],
+    ['captcha_failed', 'auth:errors.captchaFailed'],
+    ['captcha_cancelled', 'auth:errors.captchaCancelled'],
   ];
 
   for (const [code, key] of cases) {

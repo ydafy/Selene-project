@@ -11,6 +11,13 @@ import { supabase } from '../db/supabase';
 import { validateRegisterUsername } from '../auth/registerUsername.logic';
 import { mapAuthErrorKey } from '../auth/authErrors.logic';
 import { completePasswordRecovery } from '../auth/passwordRecovery.logic';
+import { getCaptchaToken } from '../auth/captcha/captcha';
+import {
+  resendSignupCode,
+  sendRecoveryCode,
+  signInWithPasswordCaptcha,
+  signUpWithCaptcha,
+} from '../auth/captchaAuth.logic';
 
 // --- 1. ESQUEMAS DE VALIDACIÓN (ZOD) ---
 
@@ -107,14 +114,10 @@ export const useAuth = () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await supabase.auth.signUp({
+      const result = await signUpWithCaptcha(supabase.auth, getCaptchaToken, {
         email: data.email.trim(),
         password: data.password,
-        options: {
-          data: {
-            username: data.username.trim(),
-          },
-        },
+        username: data.username.trim(),
       });
       const formatted = formatAuthResponse(result.data, result.error);
       if (formatted.error) setError(formatted.error.message);
@@ -135,10 +138,12 @@ export const useAuth = () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await supabase.auth.signInWithPassword({
-        email: data.email.trim(),
-        password: data.password,
-      });
+      const result = await signInWithPasswordCaptcha(
+        supabase.auth,
+        getCaptchaToken,
+        data.email.trim(),
+        data.password,
+      );
       const formatted = formatAuthResponse(result.data, result.error);
       if (formatted.error) setError(formatted.error.message);
       return formatted;
@@ -208,10 +213,11 @@ export const useAuth = () => {
     setLoading(true);
     setError(null);
     try {
-      const { error: resendError } = await supabase.auth.resend({
-        type: 'signup',
-        email: email.trim(),
-      });
+      const { error: resendError } = await resendSignupCode(
+        supabase.auth,
+        getCaptchaToken,
+        email.trim(),
+      );
       if (resendError) throw resendError;
       return { success: true, error: null };
     } catch (err: any) {
@@ -228,7 +234,9 @@ export const useAuth = () => {
     setLoading(true);
     setError(null);
     try {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+      const { error: resetError } = await sendRecoveryCode(
+        supabase.auth,
+        getCaptchaToken,
         email.trim(),
       );
       if (resetError) throw resetError;

@@ -3,6 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/useAuthStore';
 import { adminAccessMessage } from '../lib/adminAccess';
+import { useCaptcha } from '../lib/captcha/useCaptcha';
+import {
+  loginErrorMessage,
+  signInWithPasswordCaptcha,
+} from '../lib/captcha/captchaAuth.logic';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -11,6 +16,7 @@ function Login() {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const evaluateAccess = useAuthStore((state) => state.evaluateAccess);
+  const { getToken, widget } = useCaptcha();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,11 +24,11 @@ function Login() {
     setError(null);
 
     try {
-      const { data, error: authError } = await supabase.auth.signInWithPassword(
-        {
-          email,
-          password,
-        },
+      const { data, error: authError } = await signInWithPasswordCaptcha(
+        supabase.auth,
+        getToken,
+        email,
+        password,
       );
 
       if (authError) throw authError;
@@ -37,7 +43,7 @@ function Login() {
 
       navigate('/');
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Error inesperado al iniciar sesión.');
+      setError(loginErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -98,6 +104,7 @@ function Login() {
           >
             {loading ? 'Autenticando...' : 'Entrar al Sistema'}
           </button>
+          {widget}
         </form>
       </div>
     </div>

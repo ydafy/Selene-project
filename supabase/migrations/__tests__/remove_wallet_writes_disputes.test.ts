@@ -86,7 +86,7 @@ const migrationBody = (name: string): string => {
 
 /**
  * The canonical file follows the newest migration that defines the function, so a later
- * migration that changes one of these functions (B5.8 changed fn_confirm_shipment_delivery)
+ * migration that changes one of these functions (B5.8 changed fn_confirm_shipment_delivery; the release-funds guard changed fn_release_shipment_funds and fn_cron_dispute_shipping_timeout)
  * does not make this migration's body the reference.
  */
 const latestBody = (name: string): string => {

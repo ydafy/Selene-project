@@ -1,0 +1,74 @@
+meta {
+  name: release-guard-setup-shipments
+  type: http
+  seq: 38
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/shipments
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  [
+    {
+      "id": "{{rgShip1}}",
+      "order_id": "{{rgOrder}}",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "status": "shipped",
+      "delivered_at": null,
+      "stripe_payment_intent_id": "pi_bruno_rg_1"
+    },
+    {
+      "id": "{{rgShip2}}",
+      "order_id": "{{rgOrder}}",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "status": "delivered",
+      "delivered_at": "{{rgDeliveredOld}}",
+      "stripe_payment_intent_id": "pi_bruno_rg_2"
+    },
+    {
+      "id": "{{rgShip3}}",
+      "order_id": "{{rgOrder}}",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "status": "delivered",
+      "delivered_at": "{{rgDeliveredRecent}}",
+      "stripe_payment_intent_id": "pi_bruno_rg_3"
+    },
+    {
+      "id": "{{rgShip4}}",
+      "order_id": "{{rgOrder}}",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "status": "delivered",
+      "delivered_at": null,
+      "stripe_payment_intent_id": "pi_bruno_rg_4"
+    },
+    {
+      "id": "{{rgShip5}}",
+      "order_id": "{{rgOrder}}",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "status": "shipped",
+      "delivered_at": null,
+      "stripe_payment_intent_id": "pi_bruno_rg_5"
+    }
+  ]
+}
+
+tests {
+  test("five Connect shipments exist", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().length).to.equal(5);
+    expect(res.getBody().every((s) => s.stripe_payment_intent_id !== null && s.completed_at === null)).to.equal(true);
+  });
+}
+
+docs {
+  Local stack only. r1 shipped, not delivered; r2 delivered three days ago with an open dispute; r3 delivered an hour ago; r4 delivered without delivered_at; r5 shipped, with a dispute the shipping-timeout cron selects. The payment intent ids are fake.
+}

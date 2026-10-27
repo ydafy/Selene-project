@@ -15,6 +15,15 @@ The repository rebuilds the database schema: `supabase/migrations/` starts with 
 3. Use the new API keys from day one: `sb_publishable_...` in the apps and `sb_secret_...` in server components, and keep the legacy `anon`/`service_role` JWT keys disabled. The legacy `service_role` key of the development project was exposed on 2026-10-19 (it was embedded in a Dashboard-created trigger); never reuse it or copy any key from that project.
 4. Decide whether migrations deploy through the Supabase GitHub integration (applies pending `supabase/migrations/` on every push to the production branch). It was connected to the development project on 2026-10-21 and disconnected the same day: its first run failed with `column "refund_id" ... already exists` because two migrations had been applied by hand and were missing from the remote history (nothing was applied). Enable it only on a project whose migration history matches the repository, and only once every branch that pushes to `main` is meant to reach production; then update the "The repository does not deploy itself" rule in `AGENTS.md`.
 
+### Domain
+
+Selene has no domain yet. Code uses the placeholder `selene.example` (`.example` is reserved by RFC 2606 and never resolves) from one constant: `SELENE_DOMAIN` in `packages/types/src/domain.ts` (`SELENE_WEB_URL` derives from it). The same file holds `SELENE_SUPPORT_EMAIL` (`soporte@<domain>`), `ACCOUNT_DELETION_PATH` (`/eliminar-cuenta`), `PRIVACY_PATH` (`/privacidad`) and the derived `ACCOUNT_DELETION_URL` and `PRIVACY_URL`. Several modules need the domain; any new code that needs it imports that constant instead of writing a domain.
+
+When the real domain is registered:
+
+1. Change `SELENE_DOMAIN` in `packages/types/src/domain.ts` and update its test.
+2. Settings outside code, which do not read the constant: custom SMTP sender and DNS records (section 10), Auth Site URL and redirect URLs (section 10), and any public page URL registered in the app stores (Google Play account deletion).
+
 ## 2. Extensions
 
 `pg_cron`, `pg_net`, `pgcrypto`, `uuid-ossp`, `supabase_vault`, `wrappers`, `pg_stat_statements`, `hypopg`, `index_advisor`.
@@ -269,18 +278,25 @@ Sentry creates the `cron-watchdog` Cron Monitor on its first check-in (free plan
 
 ## 10. Auth (Dashboard)
 
-- Deployed Auth settings (project `acoiclkeymgtlwcxilun`, recorded 2026-10-22). `supabase/config.toml` mirrors them for the local stack:
-  - Email provider on; confirm email on; secure email change on; secure password change on; require current password when updating off.
+- Deployed Auth settings (project `acoiclkeymgtlwcxilun`, recorded 2026-10-22, updated 2026-10-23 after auth block 4). `supabase/config.toml` mirrors them for the local stack, except "Require current password when updating", which has no config key:
+  - Email provider on; confirm email on; secure email change on; secure password change off; require current password when updating on (the app sends `current_password`, commit 3c4a941; recovery sessions are exempt, so forgot-password keeps working).
+  - Google provider: "Skip nonce check" off. Revisit when iOS ships: the current native library may need it there.
   - Minimum password length 8; no password composition requirements; leaked password protection off (Pro plan only).
   - Email OTP length 6; email OTP expiry 900 s; minimum interval per user 60 s.
   - Rate limits: emails 2 per hour (built-in mailer), SMS 30, token refreshes 150, token verifications 30, anonymous users 30, sign-ups and sign-ins 30, Web3 30.
   - Provider linking: Supabase automatic linking by verified email (a Google sign-in whose verified email matches an existing user links to that user); manual linking (`linkIdentity`) disabled and unused.
 - Pending Auth items:
-  - Turn Google "Skip nonce check" off. It is only needed for iOS with the current native library; revisit when iOS ships.
-  - Password change in Settings is proven with the current password (auth block 4): turn "Secure password change" off, and turn "Require current password when updating" on only after the app build that sends `current_password` (commit 3c4a941) is installed; older builds then get `current_password_required`. Recovery sessions are exempt, so forgot-password keeps working.
   - Enable leaked password protection once the project is on the Pro plan.
-  - Enable CAPTCHA on sign-up and sign-in before launch.
-- Site URL, redirect URLs, providers, and email templates: not yet inventoried. Record them here. Known so far: the "Reset password" template sends the 6-digit `{{ .Token }}` (the app enters the code, not a link); the email-change confirmation redirects to `selene://profile/settings`, which must be in the redirect URL allow list.
+  - Enable CAPTCHA (hCaptcha) before launch, in this order, because turning it on first rejects every sign-up and sign-in: (1) set `EXPO_PUBLIC_HCAPTCHA_SITE_KEY` (the real hCaptcha site key, never the test key) in the EAS/production env, and the same site key as `VITE_HCAPTCHA_SITE_KEY` in the admin-web build env (Vite inlines it at build time; empty means no widget and no token); (2) ship the mobile build (new native dependencies `react-native-webview` and `@hcaptcha/react-native-hcaptcha`); (3) deploy the admin-web build with `VITE_HCAPTCHA_SITE_KEY` set (login sends `captchaToken`); (4) then enable CAPTCHA in the Dashboard (Authentication > Attack Protection: provider hCaptcha, the hCaptcha secret). Token senders: mobile `signUp`, `signInWithPassword`, `resend` (verify code), `resetPasswordForEmail` (forgot password and reset resend), the delete-account re-sign-in, and the admin-web login. Exempt on the server: Google `signInWithIdToken`, `verifyOtp`, session refresh and `updateUser`. A switch to Turnstile replaces only the provider component (mobile `core/auth/captcha/CaptchaProvider.tsx`, admin-web `src/lib/captcha/useCaptcha.tsx`), the site keys and the Dashboard secret.
+- URLs, provider and templates (recorded 2026-10-26 from the Dashboard, auth T6a):
+  - Site URL: `http://localhost:5173` (the local admin-web). Production: the public web URL (`SELENE_WEB_URL`, section 1 "Domain").
+  - Redirect URLs: `selene://`, `selene://auth-verified`, `http://localhost:5173/**`, `selene://profile/settings`. The app needs `selene://profile/settings` (email-change confirmation, `EMAIL_REDIRECT_URL`); `selene://auth-verified` is not used by any code and can be removed. Production: replace `http://localhost:5173/**` with the deployed admin-web URL.
+  - Google: one Client ID (`332992495631-gnackhq8269n8v4k7e12sefsfs0cj5ep.apps.googleusercontent.com`, the web client the app sends as `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`); "Skip nonce check" off. Add the iOS client ID when iOS ships.
+  - Email templates: "Confirm signup" and "Reset password" send the 6-digit `{{ .Token }}` (the app asks for the code); "Change email address" sends `{{ .ConfirmationURL }}` (the app confirms by link through `selene://profile/settings`); "Reauthentication" uses `{{ .Token }}` but the app never calls it (password changes send `current_password`). Templates are unstyled defaults: brand them together with custom SMTP.
+- Public pages (admin-web, no sign-in; routes outside `ProtectedRoute`): `/eliminar-cuenta` and `/privacidad`. They ship with the admin-web deployment (issue #49). Once deployed:
+  - Google Play account-deletion URL (Play Console, Data safety): `ACCOUNT_DELETION_URL`.
+  - Mobile env: `EXPO_PUBLIC_PRIVACY_URL` = `PRIVACY_URL` and `EXPO_PUBLIC_SUPPORT_EMAIL` = `SELENE_SUPPORT_EMAIL` (`apps/frontend/.env.example`).
+  - Go-live blocker (maintainer): `/privacidad` is only a summary of decided data handling. The full privacy notice (legal text, company identity, ARCO procedure) needs legal review and must not be presented as complete until it exists. The support mailbox must exist and receive mail before the Play submission.
 - Custom SMTP is required before the first real user. The built-in Supabase mailer only delivers to members of the project's organization (other addresses fail with "Email address not authorized"), has a low hourly limit and no delivery guarantee, so signup codes would never reach real users. Configure Resend (or another SMTP provider) under Authentication > Emails > SMTP Settings: verify the sending domain with SPF and DKIM (and DMARC), use a dedicated From address such as `no-reply@<auth domain>`, and disable link tracking. No app code changes are needed.
 - After enabling custom SMTP, raise "Rate limit for sending emails" under Authentication > Rate Limits (it starts at 30 per hour) to the expected signup volume.
 
