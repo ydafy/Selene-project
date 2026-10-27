@@ -1,8 +1,7 @@
 -- Close the products table to non-owners (T4d3, purchase intent).
 --
--- Why: products_select_public exposed every column (origin_zip, locked_by,
--- publication economics, verification_data paths) of the public rows. Since
--- 20261024023415 the allow-list view public.products_public carries the
+-- Why: non-owner reads move from the table to an explicit column allow-list.
+-- Since 20261024023415 the allow-list view public.products_public carries the
 -- buyer-facing columns and the same row predicate, and the app reads it for
 -- every buyer screen (T4d2). Dropping the policy leaves two table policies:
 -- products_select_owner (seller reads own rows) and products_select_admin.

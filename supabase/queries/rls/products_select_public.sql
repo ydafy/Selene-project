@@ -1,8 +1,7 @@
 -- DROPPED by migration 20261024035903_drop_products_select_public.sql (T4d3).
 --
 -- products_select_public used to let anyone read live listings (VERIFIED, SOLD,
--- PENDING_VERIFICATION, IN_REVIEW) straight from public.products, with every
--- column. Non-owners now read through the allow-list view public.products_public
+-- PENDING_VERIFICATION, IN_REVIEW) straight from public.products. Non-owners now read through the allow-list view public.products_public
 -- (supabase/queries/products/products_public.sql), which keeps the same row
 -- predicate and exposes only the buyer-facing columns.
 --
