@@ -161,7 +161,9 @@ export function classifyEnviaCancelResponse(
       return { outcome: 'ambiguous' };
     }
     const data = entry;
-    const balanceReturned = data.balanceReturned === true;
+    // The docs say boolean; Envia sandbox sends 1 (L37). Anything else means not returned.
+    const balanceReturned =
+      data.balanceReturned === true || data.balanceReturned === 1;
     const returnedAt =
       balanceReturned && typeof data.balanceReturnDate === 'string'
         ? new Date(data.balanceReturnDate)

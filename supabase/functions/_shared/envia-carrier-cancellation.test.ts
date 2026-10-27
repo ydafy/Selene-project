@@ -148,7 +148,24 @@ describe('classifyEnviaCancelResponse', () => {
     });
   });
 
-  test.each([[undefined], [''], ['true'], [1]])(
+  // Envia sandbox answers balanceReturned as a number (L37), not the documented boolean.
+  test('accepted with balanceReturned 1 counts as returned, with its date', () => {
+    expect(
+      classifyEnviaCancelResponse(
+        TRACKING,
+        accepted({
+          balanceReturned: 1,
+          balanceReturnDate: '2026-10-01T12:31:00.000Z',
+        }),
+      ),
+    ).toEqual({
+      outcome: 'accepted',
+      balanceReturned: true,
+      balanceReturnedAt: '2026-10-01T12:31:00.000Z',
+    });
+  });
+
+  test.each([[undefined], [''], ['true'], [0], [2], [-1]])(
     'treats balanceReturned %p as not returned',
     (balanceReturned) => {
       expect(
