@@ -52,7 +52,7 @@ Manual testing: never ask the maintainer to repeat by hand what these checks alr
 | How should the UI look and feel?        | `DESIGN.md`                                                                                            |
 | What is the current feature asking for? | `odd/tasks/<feature>.md`, especially its `## Specs` and `## Log`                                       |
 | What was decided before, and why?       | Engram memory for project `selene-project`, when your harness has it; `docs/decision-log.md` for setup |
-| Which tables, columns, and enums exist? | `packages/types/src/database.types.ts` and aliases in `packages/types/src/index.ts`                    |
+| Which tables, columns, and enums exist? | `packages/types/src/database.types.ts` and aliases in `packages/types/src/types.ts`                    |
 | What is deployed right now?             | The Supabase MCP, not the repository                                                                   |
 | What does production need?              | `docs/go-live.md`                                                                                      |
 | Which skills apply?                     | `.atl/skill-registry.md`                                                                               |

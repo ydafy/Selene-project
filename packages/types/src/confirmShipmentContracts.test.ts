@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 
 const registrySource = await Bun.file(
-  new URL('./index.ts', import.meta.url),
+  new URL('./types.ts', import.meta.url),
 ).text();
 
 test('registers the confirmation function with its request payload', () => {

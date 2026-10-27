@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 
 const source = readFileSync(new URL('./OrderShipmentCard.tsx', import.meta.url), 'utf8');
 const shipmentTypes = readFileSync(
-  new URL('../../../../../packages/types/src/index.ts', import.meta.url),
+  new URL('../../../../../packages/types/src/types.ts', import.meta.url),
   'utf8',
 );
 const shipmentHook = readFileSync(
