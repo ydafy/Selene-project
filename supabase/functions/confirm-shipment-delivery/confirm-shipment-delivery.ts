@@ -54,6 +54,7 @@ const conflictCodes = new Set([
   'COMPLETION_AUDIT_MISSING',
   'SHIPMENT_NOT_CONNECT',
   'AUTO_COMPLETION_NOT_DUE',
+  'SHIPMENT_CANCELLATION_OPERATION_ACTIVE',
 ]);
 
 const isConfirmationRpcResult = (

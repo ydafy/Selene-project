@@ -11,6 +11,7 @@ import {
   buildAutoCompletionDiagnostic,
   buildAutoCompletionRpcInput,
   isActiveDisputeRefusal,
+  isCancellationOperationActiveRefusal,
   isNotConnectRefusal,
   mapAutoCompletionRpcResult,
   resolveAutoCompletionPlan,
@@ -19,7 +20,7 @@ import {
 } from './complete-delivered-shipments.ts';
 
 const log = (
-  level: 'INFO' | 'ERROR',
+  level: 'INFO' | 'WARN' | 'ERROR',
   msg: string,
   data: Record<string, unknown>,
 ): void => {
@@ -125,6 +126,20 @@ serve(withSentry('complete-delivered-shipments', async (req: Request): Promise<R
               shipmentId,
               result: 'success',
               code: 'SKIPPED_NOT_CONNECT',
+            }),
+          );
+          continue;
+        }
+
+        if (isCancellationOperationActiveRefusal(row)) {
+          results.push('skipped');
+          log(
+            'WARN',
+            'Delivered shipment completion skipped',
+            buildAutoCompletionDiagnostic({
+              shipmentId,
+              result: 'success',
+              code: 'SKIPPED_CANCELLATION_OPERATION_ACTIVE',
             }),
           );
           continue;

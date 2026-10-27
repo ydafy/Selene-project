@@ -10,6 +10,7 @@ const help =
   'Database URL: SELENE_LOCAL_DB_URL, else `supabase status --env`. Only 127.0.0.1/localhost is accepted.';
 
 const ids = {
+  admin: '00000000-0000-4000-8000-000000000001',
   buyer: '00000000-0000-4000-8000-000000000003',
   seller: '00000000-0000-4000-8000-000000000002',
   order: '7b5a0000-0000-4000-8000-000000000001',
@@ -148,6 +149,30 @@ async function shipment(tx: Tx, shipmentId: string) {
 async function operation(tx: Tx, shipmentId: string) {
   const [row] = await tx`SELECT source, external_started_at, refund_status, late_carrier_activity_at, late_carrier_activity_event_type FROM public.shipment_cancellation_operations WHERE shipment_id = ${shipmentId}`;
   return row;
+}
+
+async function recovery(tx: Tx, shipmentId: string) {
+  const [{ recovery: value }] = await tx`SELECT public.fn_get_shipment_cancellation_recovery(${shipmentId}::uuid) AS recovery`;
+  return value;
+}
+
+async function acknowledge(tx: Tx, shipmentId: string, adminId: string | null, note: string | null) {
+  const [{ result }] = await tx`SELECT public.fn_acknowledge_shipment_late_carrier_activity(
+    ${shipmentId}::uuid, ${adminId}::uuid, ${note}) AS result`;
+  return result;
+}
+
+// Everything on the operation except the three acknowledgement columns, as JSON.
+async function operationWithoutAcknowledgement(tx: Tx, shipmentId: string) {
+  const [row] = await tx`SELECT to_jsonb(o) - 'late_carrier_activity_acknowledged_at'
+      - 'late_carrier_activity_acknowledged_by' - 'late_carrier_activity_acknowledged_note' AS op
+    FROM public.shipment_cancellation_operations o WHERE shipment_id = ${shipmentId}`;
+  return row.op;
+}
+
+async function withLateActivity(tx: Tx) {
+  await startPreparingCancellation(tx, 'pending');
+  await track(tx, ids.preparing, 'in_transit', 'shipped', '2026-10-24T10:00:00Z');
 }
 
 function observe(label: string, value: unknown) {
@@ -413,6 +438,182 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       const result = await cancelShipment(tx, ids.paid);
       assert.equal(result.success, true);
       assert.equal((await shipment(tx, ids.paid)).status, 'cancelled');
+    },
+  ],
+  // verifier regression cases
+  [
+    'a delivered scan after the refund started leaves the recovery read unchanged, and the cancellation still completes',
+    async (tx) => {
+      await startPreparingCancellation(tx, null);
+      await recordRefund(tx, ids.preparing, 'succeeded');
+      const before = await recovery(tx, ids.preparing);
+      await track(tx, ids.preparing, 'in_transit', 'shipped', '2026-10-18T10:00:00Z');
+      const delivered = await track(tx, ids.preparing, 'delivered', 'delivered', '2026-10-19T10:00:00Z');
+      observe('tracking result', delivered);
+      const after = await recovery(tx, ids.preparing);
+      observe('recovery', after);
+      assert.deepEqual(after, before);
+      assert.equal(after.refund_status, 'succeeded');
+      assert.equal('late_carrier_activity_at' in after, false);
+      const result = await cancelShipment(tx, ids.preparing);
+      assert.equal(result.success, true);
+      assert.equal((await shipment(tx, ids.preparing)).status, 'cancelled');
+    },
+  ],
+  [
+    'a tracking event without a status transition after the refund started leaves late_carrier_activity_at NULL',
+    async (tx) => {
+      await startPreparingCancellation(tx, 'pending');
+      const result = await track(tx, ids.preparing, 'in_transit', null, '2026-10-24T10:00:00Z');
+      observe('tracking result', result);
+      assert.equal(result.inserted, true);
+      const [{ n }] = await tx`SELECT count(*)::int AS n FROM public.shipment_tracking_events WHERE shipment_id = ${ids.preparing}`;
+      assert.equal(n, 1);
+      const op = await operation(tx, ids.preparing);
+      assert.equal(op.late_carrier_activity_at, null);
+      assert.equal(op.late_carrier_activity_event_type, null);
+      assert.equal((await shipment(tx, ids.preparing)).status, 'preparing');
+    },
+  ],
+  [
+    'catalog: the tracking, delivery, list and acknowledge functions are SECURITY DEFINER, pin a search_path and grant only service_role',
+    async (tx) => {
+      const names = [
+        'fn_record_tracking_event',
+        'fn_mark_shipment_delivered',
+        'fn_confirm_shipment_delivery',
+        'fn_list_shipment_late_carrier_activity',
+        'fn_acknowledge_shipment_late_carrier_activity',
+      ];
+      const rows = await tx`SELECT p.proname, p.prosecdef, p.proconfig,
+          (SELECT array_agg(DISTINCT CASE WHEN a.grantee = 0 THEN 'PUBLIC' ELSE a.grantee::regrole::text END)
+             FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) a
+            WHERE a.privilege_type = 'EXECUTE') AS grantees,
+          has_function_privilege('anon', p.oid, 'EXECUTE') AS anon_execute,
+          has_function_privilege('authenticated', p.oid, 'EXECUTE') AS authenticated_execute,
+          has_function_privilege('service_role', p.oid, 'EXECUTE') AS service_execute
+        FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public' AND p.proname = ANY(string_to_array(${names.join(',')}, ','))
+        ORDER BY p.proname`;
+      observe('catalog', rows);
+      assert.equal(rows.length, names.length);
+      for (const row of rows) {
+        assert.equal(row.prosecdef, true, `${row.proname} prosecdef`);
+        assert.ok((row.proconfig ?? []).some((c: string) => c.startsWith('search_path=')), `${row.proname} search_path`);
+        assert.equal(row.anon_execute, false, `${row.proname} anon`);
+        assert.equal(row.authenticated_execute, false, `${row.proname} authenticated`);
+        assert.equal(row.service_execute, true, `${row.proname} service_role`);
+        assert.ok(!row.grantees.includes('PUBLIC'), `${row.proname} PUBLIC`);
+        assert.deepEqual(
+          row.grantees.filter((g: string) => g !== 'postgres' && g !== 'service_role'),
+          [],
+          `${row.proname} extra grantees`,
+        );
+      }
+    },
+  ],
+  // acknowledge
+  [
+    'an admin acknowledges late carrier activity: the case leaves the list and only the acknowledgement columns change',
+    async (tx) => {
+      await withLateActivity(tx);
+      const shipmentBefore = await shipment(tx, ids.preparing);
+      const operationBefore = await operationWithoutAcknowledgement(tx, ids.preparing);
+      const result = await acknowledge(tx, ids.preparing, ids.admin, '  Seller shipped it anyway; called the buyer  ');
+      observe('acknowledge', result);
+      assert.equal(result.acknowledged_by, ids.admin);
+      assert.equal(result.acknowledged_note, 'Seller shipped it anyway; called the buyer');
+      assert.equal(result.already_acknowledged, false);
+      assert.notEqual(result.acknowledged_at, null);
+      assert.equal((await tx`SELECT * FROM public.fn_list_shipment_late_carrier_activity()`).length, 0);
+      assert.deepEqual(await shipment(tx, ids.preparing), shipmentBefore);
+      assert.deepEqual(await operationWithoutAcknowledgement(tx, ids.preparing), operationBefore);
+      const [{ orders }] = await tx`SELECT count(*)::int AS orders FROM public.orders WHERE id = ${ids.order} AND status = 'paid'`;
+      assert.equal(orders, 1);
+    },
+  ],
+  [
+    'acknowledging twice is idempotent: the second call returns the stored acknowledgement and changes nothing',
+    async (tx) => {
+      await withLateActivity(tx);
+      const first = await acknowledge(tx, ids.preparing, ids.admin, 'first note');
+      const second = await acknowledge(tx, ids.preparing, ids.admin, 'a different note');
+      observe('second acknowledge', second);
+      assert.equal(second.already_acknowledged, true);
+      assert.equal(second.acknowledged_note, 'first note');
+      assert.equal(second.acknowledged_at, first.acknowledged_at);
+      assert.equal(second.acknowledged_by, first.acknowledged_by);
+    },
+  ],
+  [
+    'acknowledging works after the cancellation completes, and the completed shipment stays cancelled',
+    async (tx) => {
+      await withLateActivity(tx);
+      await recordRefund(tx, ids.preparing, 'succeeded');
+      await cancelShipment(tx, ids.preparing);
+      assert.equal((await tx`SELECT * FROM public.fn_list_shipment_late_carrier_activity()`).length, 1);
+      const result = await acknowledge(tx, ids.preparing, ids.admin, 'reviewed after cancel');
+      assert.equal(result.already_acknowledged, false);
+      assert.equal((await shipment(tx, ids.preparing)).status, 'cancelled');
+      assert.equal((await operation(tx, ids.preparing)).refund_status, 'succeeded');
+    },
+  ],
+  [
+    'only an active admin can acknowledge (ADMIN_REQUIRED for buyer, seller, unknown and NULL ids), and nothing is written',
+    async (tx) => {
+      await withLateActivity(tx);
+      for (const who of [ids.buyer, ids.seller, '7b5a0000-0000-4000-8000-0000000000ff', null]) {
+        await rejects(tx, (sp) => acknowledge(sp, ids.preparing, who, 'note'), 'ADMIN_REQUIRED');
+      }
+      await tx`UPDATE public.profiles_private SET status = 'suspended' WHERE id = ${ids.admin}::uuid`;
+      await rejects(tx, (sp) => acknowledge(sp, ids.preparing, ids.admin, 'note'), 'ADMIN_REQUIRED');
+      const [{ n }] = await tx`SELECT count(*)::int AS n FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.preparing} AND late_carrier_activity_acknowledged_at IS NOT NULL`;
+      assert.equal(n, 0);
+    },
+  ],
+  [
+    'the acknowledgement note must be 1-200 characters after trimming',
+    async (tx) => {
+      await withLateActivity(tx);
+      for (const note of [null, '', '   ', 'x'.repeat(201), `  ${'x'.repeat(201)}  `]) {
+        await rejects(tx, (sp) => acknowledge(sp, ids.preparing, ids.admin, note), 'INVALID_ACKNOWLEDGEMENT_NOTE');
+      }
+      const ok = await acknowledge(tx, ids.preparing, ids.admin, `  ${'x'.repeat(200)}  `);
+      assert.equal(ok.acknowledged_note, 'x'.repeat(200));
+    },
+  ],
+  [
+    'acknowledge refuses an unknown shipment and an operation without late carrier activity',
+    async (tx) => {
+      await startPreparingCancellation(tx, 'pending');
+      await rejects(tx, (sp) => acknowledge(sp, ids.preparing, ids.admin, 'note'), 'LATE_CARRIER_ACTIVITY_NOT_FOUND');
+      await rejects(tx, (sp) => acknowledge(sp, ids.paid, ids.admin, 'note'), 'LATE_CARRIER_ACTIVITY_NOT_FOUND');
+      await rejects(tx, (sp) => acknowledge(sp, '7b5a0000-0000-4000-8000-0000000000fe', ids.admin, 'note'), 'SHIPMENT_NOT_FOUND');
+    },
+  ],
+  [
+    'anon and authenticated cannot run acknowledge, and a non-service JWT role is refused',
+    async (tx) => {
+      await withLateActivity(tx);
+      for (const role of ['anon', 'authenticated']) {
+        await rejects(
+          tx,
+          async (sp) => {
+            await sp.unsafe(`SET LOCAL ROLE ${role}`);
+            await acknowledge(sp, ids.preparing, ids.admin, 'note');
+          },
+          'permission denied',
+        );
+      }
+      await rejects(
+        tx,
+        async (sp) => {
+          await sp`SELECT set_config('request.jwt.claims', '{"role":"authenticated"}', true)`;
+          await acknowledge(sp, ids.preparing, ids.admin, 'note');
+        },
+        'UNAUTHORIZED',
+      );
+      assert.equal((await tx`SELECT * FROM public.fn_list_shipment_late_carrier_activity()`).length, 1);
     },
   ],
 ];

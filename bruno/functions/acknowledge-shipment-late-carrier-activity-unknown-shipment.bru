@@ -1,0 +1,31 @@
+meta {
+  name: acknowledge-shipment-late-carrier-activity-unknown-shipment
+  type: http
+  seq: 96
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/acknowledge-shipment-late-carrier-activity
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+body:json {
+  { "shipment_id": "00000000-0000-4000-8000-0000000000d1", "note": "Bruno: unknown shipment" }
+}
+
+tests {
+  test("an admin cannot acknowledge a shipment that does not exist", function () {
+    expect(res.getStatus()).to.equal(404);
+    expect(res.getBody()).to.deep.equal({ error: "SHIPMENT_NOT_FOUND" });
+  });
+}
+
+docs {
+  Run after functions/login-admin (needs adminToken), with the functions server and supabase/functions/.env. Proves the admin path reaches the service-only RPC with server credentials; nothing is written.
+}

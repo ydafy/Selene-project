@@ -37,8 +37,7 @@ describe('shipment tracking during cancellation migration (SQL text)', () => {
     const tracking = definition(migration, 'fn_record_tracking_event');
     expect(tracking).not.toBe('');
     expect(read('supabase/queries/tracking/fn_record_tracking_event.sql')).toContain(tracking);
-    const list = definition(migration, 'fn_list_shipment_late_carrier_activity');
-    expect(read('supabase/queries/orders/shipment_cancellation_late_carrier_activity.sql')).toContain(list);
+    // The list function is redefined by the acknowledge migration; the canonical file follows that one.
   });
 
   it('guards on the started cancellation operation after the shipment lock', () => {
