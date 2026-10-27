@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { isAuthorizedCronRequest } from './cron-auth';
+import { isAuthorizedCronRequest, reportCronSecretMismatch } from './cron-auth';
 
 const request = (headers: Record<string, string> = {}) =>
   new Request('http://localhost/functions/v1/auto-cancel-orders', {
@@ -60,5 +60,52 @@ describe('isAuthorizedCronRequest', () => {
   test('compares non-ASCII secrets byte by byte', () => {
     expect(isAuthorizedCronRequest(request({ 'x-cron-secret': 'ñandú' }), 'ñandú')).toBe(true);
     expect(isAuthorizedCronRequest(request({ 'x-cron-secret': 'nandu' }), 'ñandú')).toBe(false);
+  });
+});
+
+describe('reportCronSecretMismatch', () => {
+  type Report = Parameters<typeof reportCronSecretMismatch>[2];
+  const recorder = () => {
+    const calls: Parameters<Report>[] = [];
+    const report: Report = async (...args) => {
+      calls.push(args);
+    };
+    return { calls, report };
+  };
+
+  test('reports one tagged message for a wrong non-empty secret, never the header value', async () => {
+    const { calls, report } = recorder();
+    await reportCronSecretMismatch(
+      request({ 'x-cron-secret': 'wrong-value-123' }),
+      'auto-cancel-orders',
+      report,
+    );
+    expect(calls).toEqual([
+      [
+        'auto-cancel-orders cron secret mismatch',
+        {
+          fingerprint: ['cron-secret-mismatch', 'auto-cancel-orders'],
+          tags: { edge_function: 'auto-cancel-orders' },
+        },
+      ],
+    ]);
+    expect(JSON.stringify(calls)).not.toContain('wrong-value-123');
+  });
+
+  test('reports nothing when the header is missing or empty', async () => {
+    const { calls, report } = recorder();
+    await reportCronSecretMismatch(request(), 'auto-cancel-orders', report);
+    await reportCronSecretMismatch(request({ 'x-cron-secret': '' }), 'auto-cancel-orders', report);
+    expect(calls).toEqual([]);
+  });
+
+  test('never throws when the reporter rejects or throws', async () => {
+    const headers = { 'x-cron-secret': 'wrong' };
+    await reportCronSecretMismatch(request(headers), 'f', async () => {
+      throw new Error('sentry down');
+    });
+    await reportCronSecretMismatch(request(headers), 'f', () => {
+      throw new Error('sentry down');
+    });
   });
 });

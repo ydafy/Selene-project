@@ -8,7 +8,11 @@ import {
   acquireAutoCancelLease,
   releaseAutoCancelLease,
 } from '../_shared/auto-cancel-lease.ts';
-import { isAuthorizedCronRequest } from '../_shared/cron-auth.ts';
+import { readAutoCancelExpirationHours } from '../_shared/auto-cancel-settings.ts';
+import {
+  isAuthorizedCronRequest,
+  reportCronSecretMismatch,
+} from '../_shared/cron-auth.ts';
 import {
   fetchFreshTracking,
   requestEnviaLabelCancellation,
@@ -18,7 +22,7 @@ import {
   confirmPreparingCarrier,
   type PreparingCarrierGatePorts,
 } from '../_shared/preparing-carrier-gate.ts';
-import { withSentry } from '../_shared/sentry.ts';
+import { reportMessage, withSentry } from '../_shared/sentry.ts';
 import { runShipmentCancellation } from '../_shared/shipment-cancellation.ts';
 import { resolveAutoCancelShipmentCancellationGate } from '../_shared/auto-cancel-safety.ts';
 import {
@@ -49,6 +53,7 @@ const reportCritical = createCancellationReporter('auto-cancel-preparing', log);
 
 serve(withSentry('auto-cancel-preparing', async (req: Request) => {
   if (!isAuthorizedCronRequest(req, Deno.env.get('CRON_SECRET'))) {
+    await reportCronSecretMismatch(req, 'auto-cancel-preparing', reportMessage);
     return new Response(JSON.stringify({ error: 'UNAUTHORIZED' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },
@@ -77,28 +82,13 @@ serve(withSentry('auto-cancel-preparing', async (req: Request) => {
     //    72h balancea experiencia del buyer (no esperar demasiado) con la realidad
     //    del seller (carrier scan delays). Si se detectan cancelaciones injustas
     //    en producción, subir a 96h desde el dashboard sin deploy.
-    const { data: settings, error: settingsError } = await supabaseAdmin
-      .from('system_settings')
-      .select('preparing_expiration_hours')
-      .single();
-
-    // Fail closed: a failed read or a non-positive-integer value never falls back to a default.
-    const hours = settings?.preparing_expiration_hours;
-    if (
-      settingsError ||
-      typeof hours !== 'number' ||
-      !Number.isInteger(hours) ||
-      hours <= 0
-    ) {
-      log('ERROR', 'Auto-cancel settings invalid', {
-        setting: 'preparing_expiration_hours',
-        value: hours ?? null,
-      });
-      return new Response(
-        JSON.stringify({ error: 'AUTO_CANCEL_SETTINGS_INVALID' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } },
-      );
-    }
+    const settings = await readAutoCancelExpirationHours(
+      supabaseAdmin,
+      'preparing_expiration_hours',
+      log,
+    );
+    if ('response' in settings) return settings.response;
+    const hours = settings.hours;
     const expirationLimit = new Date(
       Date.now() - hours * 60 * 60 * 1000,
     ).toISOString();

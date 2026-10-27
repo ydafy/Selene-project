@@ -6,7 +6,11 @@ import {
   computeShipmentRefundAmountCents,
 } from '../_shared/refund-basis';
 import { resolveAutoCancelShipmentCancellationGate } from '../_shared/auto-cancel-safety';
-import { isAuthorizedCronRequest } from '../_shared/cron-auth';
+import {
+  isAuthorizedCronRequest,
+  reportCronSecretMismatch,
+} from '../_shared/cron-auth';
+import { readAutoCancelExpirationHours } from '../_shared/auto-cancel-settings';
 import type {
   PreparingCarrierGatePorts,
   PreparingCarrierShipment,
@@ -640,6 +644,8 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
       candidates?: unknown[];
       run?: (ports: RunPorts) => Promise<unknown>;
       envia?: unknown;
+      budgetExceededAfter?: number;
+      reportMessage?: (...args: unknown[]) => Promise<void>;
       gate?: (
         shipment: PreparingCarrierShipment,
         claimToken: string,
@@ -724,6 +730,8 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
       const cancelRequests: unknown[][] = [];
       let enviaResolutions = 0;
       const runPorts: RunPorts[] = [];
+      const sentryReports: unknown[][] = [];
+      let budgetChecks = 0;
       let handler!: (req: Request) => Promise<Response>;
       const shipmentQuery: unknown[][] = [];
       // One entry per from('shipments') call; the report query is the one that uses `not`.
@@ -777,6 +785,9 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         'acquireAutoCancelLease',
         'releaseAutoCancelLease',
         'isAuthorizedCronRequest',
+        'reportCronSecretMismatch',
+        'readAutoCancelExpirationHours',
+        'reportMessage',
         'resolveEnviaRuntimeConfiguration',
         'fetchFreshTracking',
         'requestEnviaLabelCancellation',
@@ -827,13 +838,26 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         async (_client: unknown, leaseJob: string) => {
           leaseCalls.push(['acquire', leaseJob]);
           return lease.acquired
-            ? { acquired: true, leaseId: 'lease-1', budgetExceeded: () => false }
+            ? {
+                acquired: true,
+                leaseId: 'lease-1',
+                budgetExceeded: () => {
+                  budgetChecks += 1;
+                  return budgetChecks > (extra.budgetExceededAfter ?? Infinity);
+                },
+              }
             : { acquired: false, response: held };
         },
         async (_client: unknown, leaseJob: string, leaseId: unknown) => {
           leaseCalls.push(['release', leaseJob, leaseId]);
         },
         isAuthorizedCronRequest,
+        reportCronSecretMismatch,
+        readAutoCancelExpirationHours,
+        async (...args: unknown[]) => {
+          sentryReports.push(args);
+          return extra.reportMessage?.(...args);
+        },
         (read: (name: string) => string | undefined) => {
           enviaResolutions += 1;
           read('ENVIA_MODE');
@@ -877,6 +901,7 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         trackingFetches,
         cancelRequests,
         runPorts,
+        sentryReports,
         enviaResolutions: () => enviaResolutions,
         clientsCreated: () => clientsCreated,
       };
@@ -916,6 +941,48 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         expect(leaseCalls).toEqual([]);
         expect(tables).toEqual([]);
       });
+    test('a wrong non-empty secret sends one Sentry message and still returns the plain 401', async () => {
+      const { call, sentryReports, clientsCreated } = runHandler({ acquired: true });
+      const response = await call({ 'x-cron-secret': 'not-the-secret' });
+      expect(response.status).toBe(401);
+      expect(await response.text()).toBe('{"error":"UNAUTHORIZED"}');
+      expect(clientsCreated()).toBe(0);
+      expect(sentryReports).toEqual([
+        [
+          `${name} cron secret mismatch`,
+          {
+            fingerprint: ['cron-secret-mismatch', name],
+            tags: { edge_function: name },
+          },
+        ],
+      ]);
+      expect(JSON.stringify(sentryReports)).not.toContain('not-the-secret');
+    });
+    for (const [label, headers] of [
+      ['no header', {}],
+      ['only an Authorization bearer', { Authorization: 'Bearer fake' }],
+    ] as const)
+      test(`${label} returns the 401 without a Sentry message`, async () => {
+        const { call, sentryReports } = runHandler({ acquired: true });
+        expect((await call({ ...headers })).status).toBe(401);
+        expect(sentryReports).toEqual([]);
+      });
+    test('a failing Sentry report never changes the 401', async () => {
+      const { call, sentryReports } = runHandler(
+        { acquired: true },
+        undefined,
+        undefined,
+        {
+          reportMessage: async () => {
+            throw new Error('sentry down');
+          },
+        },
+      );
+      const response = await call({ 'x-cron-secret': 'wrong' });
+      expect(response.status).toBe(401);
+      expect(await response.text()).toBe('{"error":"UNAUTHORIZED"}');
+      expect(sentryReports).toHaveLength(1);
+    });
     test('a lease held by another run returns its response without reading settings or shipments', async () => {
       const { run, tables, leaseCalls, job, held } = runHandler({ acquired: false });
       expect(await run()).toBe(held);
@@ -976,6 +1043,51 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
       expect(shipmentQuery).toContainEqual(['order', timestampColumn, { ascending: true }]);
       expect(methods.indexOf('order')).toBeLessThan(methods.indexOf('limit'));
       expect(shipmentQuery).toContainEqual(['limit', 50]);
+    });
+    test('a run budget exceeded after the first candidate defers the rest, unclaimed, and reports it', async () => {
+      const candidates = ['s1', 's2', 's3'].map((id) => ({
+        id,
+        order_id: `o-${id}`,
+        seller_id: 'seller',
+        stripe_payment_intent_id: null,
+        status: paidJob ? 'paid' : 'preparing',
+        stripe_transfer_id: null,
+        tracking_number: null,
+        carrier: null,
+      }));
+      const { run, logs, runPorts, rpcCalls } = runHandler(
+        { acquired: true },
+        { data: { [column]: 5 } },
+        undefined,
+        {
+          candidates,
+          budgetExceededAfter: 1,
+          run: async () => ({ status: 'busy' }),
+        },
+      );
+      const response = await run();
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ processed: 1, success: 0, deferred: 2 });
+      expect(runPorts).toHaveLength(1);
+      expect(runPorts[0]!.context.shipmentId).toBe('s1');
+      expect(rpcCalls.filter(([rpcName]) => rpcName === 'fn_claim_shipment_cancellation')).toEqual([]);
+      expect(logs).toContainEqual(
+        expect.objectContaining({
+          level: 'WARN',
+          msg: 'Auto-cancel run budget reached; remaining shipments wait for the next run',
+          deferred: 2,
+        }),
+      );
+      expect(logs).toContainEqual(
+        expect.objectContaining({
+          msg: paidJob
+            ? 'Proceso finalizado'
+            : 'Proceso de auto-cancelación de preparing finalizado',
+          total: 3,
+          deferred: 2,
+          success: 0,
+        }),
+      );
     });
     const blockedWarn = 'Expired paid shipments blocked by a label operation; manual review required';
     const hoursSetting = { data: { [column]: 5 } };
