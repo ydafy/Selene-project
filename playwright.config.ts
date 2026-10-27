@@ -24,6 +24,7 @@ export default defineConfig({
     env: {
       VITE_SUPABASE_URL: 'https://payments-e2e.invalid',
       VITE_SUPABASE_ANON_KEY: 'e2e-public-placeholder-not-a-credential',
+      VITE_HCAPTCHA_SITE_KEY: '',
     },
   },
 });
