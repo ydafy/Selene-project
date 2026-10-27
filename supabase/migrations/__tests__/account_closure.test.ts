@@ -38,6 +38,20 @@ const functionBody = (sql: string): string => {
   return match[0];
 };
 
+// remove-legacy-wallet T4 replaced fn_close_account (no wallet blockers); the
+// canonical file carries that newest body.
+const findWalletRemovalMigration = (): string => {
+  const files = readdirSync(MIGRATIONS_DIR).filter((f) =>
+    f.endsWith('_remove_wallet_writes_core.sql'),
+  );
+  if (files.length !== 1) {
+    throw new Error(
+      `Expected exactly one *_remove_wallet_writes_core.sql, found ${files.length}`,
+    );
+  }
+  return readFileSync(join(MIGRATIONS_DIR, files[0]), 'utf8');
+};
+
 describe('account closure migration', () => {
   const migration = findMigration();
   const canonicalFunction = readFileSync(
@@ -52,7 +66,9 @@ describe('account closure migration', () => {
   const fn = functionBody(migration);
 
   test('the migration and the canonical files define the same function and table', () => {
-    expect(functionBody(canonicalFunction)).toBe(fn);
+    expect(functionBody(canonicalFunction)).toBe(
+      functionBody(findWalletRemovalMigration()),
+    );
     const table = (text: string) =>
       normalize(text).match(
         /CREATE TABLE IF NOT EXISTS public\.account_closures.*?\) ?;/i,
@@ -167,9 +183,9 @@ describe('account closure migration', () => {
     expect(fn).toContain('public.shipment_cancellation_operations');
     expect(fn).toContain('refund_resolved_at IS NULL');
     expect(fn).toContain('compensation_state');
-    expect(fn).toContain('public.wallets');
-    expect(fn).toContain('public.payout_requests');
-    expect(fn).toMatch(/status IN \('pending', 'processing'\)/);
+    expect(functionBody(canonicalFunction)).not.toMatch(
+      /wallets|payout_requests/,
+    );
   });
 
   test('anonymizes the public and private profile', () => {

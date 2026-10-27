@@ -1,0 +1,34 @@
+meta {
+  name: resolve-shipment-tracking-url-non-rfc-id
+  type: http
+  seq: 49
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/resolve-shipment-tracking-url
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  {
+    "shipmentId": "11111111-2222-3333-4444-555555555555"
+  }
+}
+
+tests {
+  test("a shipment id with a non-RFC variant is refused before any lookup", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody()).to.deep.equal({ error: "INVALID_SHIPMENT_ID" });
+  });
+}
+
+docs {
+  The entrypoint validates with zod 4 (`_shared/zod-runtime.ts`), whose `.uuid()` requires the
+  RFC 9562 variant; zod 3.23.8 accepted this id. Run after auth/login-buyer (needs `buyerToken`).
+}

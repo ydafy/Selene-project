@@ -7,6 +7,7 @@ import {
   RefreshConnectAccountError,
   type RefreshProfile,
 } from './refresh-connect-account-status.ts';
+import { withSentry } from '../_shared/sentry.ts';
 
 const STRIPE_API_VERSION = '2026-04-22.dahlia';
 
@@ -33,7 +34,7 @@ const log = (
   );
 };
 
-serve(async (req: Request) => {
+serve(withSentry('refresh-connect-account-status', async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -125,4 +126,4 @@ serve(async (req: Request) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+}));

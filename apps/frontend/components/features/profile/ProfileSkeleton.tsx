@@ -1,7 +1,7 @@
 /**
  * @file components/features/profile/ProfileSkeleton.tsx
  * @description Estado de carga de alta fidelidad para la pantalla de perfil.
- * Imita la jerarquía visual de ProfileHeader, Wallet y ActionsBar para evitar Layout Shifts.
+ * Imita la jerarquía visual de ProfileHeader y ActionsBar para evitar Layout Shifts.
  */
 
 import React from 'react';
@@ -68,17 +68,12 @@ export const ProfileSkeleton = () => {
         </Box>
       </Box>
 
-      {/* 2. WALLET SECTION PLACEHOLDER */}
-      <Box marginTop="m">
-        <Skeleton width="100%" height={70} borderRadius="m" />
-      </Box>
-
-      {/* 3. ACTIONS BAR PLACEHOLDER (Pedidos, Publicaciones, Direcciones) */}
+      {/* 2. ACTIONS BAR PLACEHOLDER (Pedidos, Publicaciones, Direcciones) */}
       <Box marginTop="m">
         <Skeleton width="100%" height={120} borderRadius="l" />
       </Box>
 
-      {/* 4. FAVORITES HEADER & GRID */}
+      {/* 3. FAVORITES HEADER & GRID */}
       <Box marginTop="xl" alignItems="center">
         <Skeleton width={30} height={30} borderRadius={15} />
         <Skeleton width="60%" height={14} marginTop="m" borderRadius={4} />

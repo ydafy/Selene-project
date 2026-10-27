@@ -26,9 +26,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { InventoryTable } from '../components/features/users/InventoryTable';
 import { PurchasesTable } from '../components/features/users/PurchasesTable';
 import { UserReviewsList } from '../components/features/users/UserReviewsList';
-import { UserWalletCard } from '../components/features/users/UserWalletCard';
 
-import { UserTransactionsTable } from '../components/features/users/UserTransactionsTable';
 import { UserAddressesList } from '../components/features/users/UserAddressesList';
 import { UserReportsList } from '../components/features/users/UserReportsList';
 import { UserAdminHistory } from '../components/features/users/UserAdminHistory';
@@ -401,12 +399,6 @@ export const UserDetailPage = () => {
 
         {activeTab === 'finance' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            {/* RESUMEN FINANCIERO */}
-            <UserWalletCard
-              available={profile.available_balance ?? 0}
-              pending={profile.pending_balance ?? 0}
-            />
-
             {/* Stripe Connect Onboarding Status */}
             {data.stripeAccountId && (
               <div className="bg-state-gray border border-white/5 rounded-2xl p-5 space-y-3">
@@ -449,9 +441,6 @@ export const UserDetailPage = () => {
 
             {/* LIBRETA DE DIRECCIONES (MVP++ COMPONENTE) */}
             <UserAddressesList addresses={addresses} />
-
-            {/* LIBRO MAYOR (LEDGER) */}
-            <UserTransactionsTable transactions={data.transactions} />
           </div>
         )}
         {activeTab === 'security' && (

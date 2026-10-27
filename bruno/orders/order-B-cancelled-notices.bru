@@ -1,0 +1,27 @@
+meta {
+  name: order-B-cancelled-notices
+  type: http
+  seq: 23
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/notifications?event_kind=eq.shipment.cancelled&source_event_key=eq.shipment.cancelled:{{shipmentIdB}}&select=user_id&order=user_id
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the buyer and the seller are told once", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().map((n) => n.user_id).sort()).to.deep.equal([bru.getVar("orderBuyerId"), "00000000-0000-4000-8000-000000000002"].sort());
+  });
+}
+
+docs {
+  One shipment.cancelled notice per distinct recipient.
+}

@@ -1,0 +1,36 @@
+meta {
+  name: get-shipping-quote-invalid-input
+  type: http
+  seq: 50
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/get-shipping-quote
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{sellerToken}}
+}
+
+body:json {
+  {
+    "originZip": "065",
+    "packageId": "gpu-medium",
+    "price": 4500
+  }
+}
+
+tests {
+  test("a malformed origin zip is refused with the fixed INVALID_INPUT code", function () {
+    expect(res.getStatus()).to.equal(422);
+    expect(res.getBody()).to.deep.equal({ error: "INVALID_INPUT" });
+  });
+}
+
+docs {
+  The request schema runs on zod 4 (`_shared/zod-runtime.ts`) and is checked before the Envia
+  configuration, so this holds on a local stack without Envia secrets. Run after auth/login-seller.
+}

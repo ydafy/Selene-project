@@ -1,4 +1,5 @@
 import type { Database } from '../../../packages/types/src/database.types.ts';
+import { withSentry } from '../_shared/sentry.ts';
 
 const STRIPE_API_VERSION = '2026-04-22.dahlia';
 const WORKER_BEARER_SECRET_ENV = 'STRIPE_FEE_RECONCILIATION_WORKER_SECRET';
@@ -492,7 +493,7 @@ if (denoRuntime) {
         })()
       : null;
 
-  serve((request: Request) => {
+  serve(withSentry('reconcile-stripe-fees', (request: Request) => {
     if (
       !workerBearerSecret ||
       request.headers.get('authorization') !== `Bearer ${workerBearerSecret}`
@@ -504,5 +505,5 @@ if (denoRuntime) {
     }
 
     return productionHandler(request);
-  });
+  }));
 }

@@ -46,7 +46,7 @@ export const Skeleton = ({
           marginTop: marginTop,
           // Usamos un color base. En modo oscuro, un gris claro con opacidad funciona mejor.
           // Si cardBackground es #1E1E1E, al bajarle la opacidad se verá sutil.
-          backgroundColor: 'rgba(255, 255, 255, 0.50)',
+          backgroundColor: theme.colors.skeletonShimmer,
           borderRadius: borderRadius || theme.spacing.s,
         },
         style,

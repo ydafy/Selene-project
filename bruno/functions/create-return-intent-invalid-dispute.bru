@@ -1,0 +1,39 @@
+meta {
+  name: create-return-intent-invalid-dispute
+  type: http
+  seq: 52
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/create-return-intent
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{sellerToken}}
+}
+
+body:json {
+  {
+    "disputeId": "11111111-2222-3333-4444-555555555555"
+  }
+}
+
+tests {
+  test("a non-RFC dispute id fails with the Spanish message the app shows", function () {
+    expect(res.getStatus()).to.equal(400);
+    const issues = JSON.parse(res.getBody().error);
+    expect(issues).to.have.length(1);
+    expect(issues[0].code).to.equal("invalid_format");
+    expect(issues[0].path).to.deep.equal(["disputeId"]);
+    expect(issues[0].message).to.equal("ID de disputa inválido");
+  });
+}
+
+docs {
+  The body `error` is zod 4's `ZodError.message` (JSON of issues); `useReturnPayment` shows it
+  as is. Validation runs before auth, Stripe and any database read, so no PaymentIntent is
+  created. zod 3.23.8 accepted this id. Run after auth/login-seller.
+}

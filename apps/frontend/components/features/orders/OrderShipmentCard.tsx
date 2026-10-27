@@ -18,6 +18,7 @@ import { formatCurrency } from '@/core/utils/format';
 import { resolvePublicIdentity } from '@/core/utils/publicIdentity';
 import {
   getOrderStatusColor,
+  getOrderStatusTextColor,
   getOrderStatusLabel,
 } from '@/core/utils/order-status';
 
@@ -60,6 +61,9 @@ export const OrderShipmentCard = ({
   // --- Derived data ---
   const statusColorKey = getOrderStatusColor(shipment.status);
   const statusColor = theme.colors[statusColorKey] as string;
+  const statusTextColor = theme.colors[
+    getOrderStatusTextColor(shipment.status)
+  ] as string;
   const statusLabel = t(getOrderStatusLabel(shipment.status));
 
   const item = shipment.items[0];
@@ -174,7 +178,7 @@ export const OrderShipmentCard = ({
   const renderStatusBadge = () => (
     <Box
       style={{
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        backgroundColor: theme.colors.scrim,
         borderColor: statusColor,
         borderWidth: 1,
         alignSelf: 'flex-start',
@@ -187,7 +191,7 @@ export const OrderShipmentCard = ({
       <Text
         variant="caption-md"
         fontWeight="bold"
-        style={{ color: statusColor }}
+        style={{ color: statusTextColor }}
       >
         {statusLabel}
       </Text>

@@ -1,0 +1,37 @@
+meta {
+  name: cancel-order-anon-key
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/cancel-order
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{anonKey}}
+}
+
+body:json {
+  {
+    "orderId": "00000000-0000-4000-8000-0000000000c1",
+    "shipmentId": "00000000-0000-4000-8000-0000000000c2",
+    "reason": "Bruno: anon key"
+  }
+}
+
+tests {
+  test("a valid JWT that is not a user session is refused before any order is read", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody()).to.deep.equal({ error: "No autorizado" });
+  });
+}
+
+docs {
+  The anon key passes the gateway (verify_jwt = true) but is not a user session, so
+  cancel-order must refuse it before reading any order or calling Stripe. The error text is
+  the function's current contract.
+}

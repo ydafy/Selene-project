@@ -1,7 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import Stripe from 'https://esm.sh/stripe@17.0.0';
-import { z } from 'https://esm.sh/zod@3.23.8';
 
 import {
   buildConnectRollbackRefundParams,
@@ -9,6 +8,7 @@ import {
   mergeUniqueProductIds,
 } from './rollback-connect-payment.ts';
 import { withSentry } from '../_shared/sentry.ts';
+import { RollbackConnectPaymentRequestSchema } from './request-schema.ts';
 
 const STRIPE_API_VERSION = '2026-04-22.dahlia';
 
@@ -18,11 +18,6 @@ const corsHeaders = {
     'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
-
-const RequestSchema = z.object({
-  orderId: z.string().min(1),
-  paymentIntentIds: z.array(z.string().min(1)).min(1).max(20),
-});
 
 const log = (
   level: 'info' | 'warn' | 'error',
@@ -63,7 +58,7 @@ serve(withSentry('rollback-connect-payment', async (req) => {
     } = await supabaseAdmin.auth.getUser(authHeader.replace('Bearer ', ''));
     if (authError || !user) throw new Error('AUTH_REQUIRED');
 
-    const { orderId, paymentIntentIds } = RequestSchema.parse(
+    const { orderId, paymentIntentIds } = RollbackConnectPaymentRequestSchema.parse(
       await req.json().catch(() => ({})),
     );
 

@@ -1,0 +1,31 @@
+meta {
+  name: checkout-recovery-lease-anon-denied
+  type: http
+  seq: 68
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_acquire_checkout_recovery_lease
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{anonKey}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("an anonymous caller cannot acquire the worker lease", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody().code).to.equal("42501");
+  });
+}
+
+docs {
+  BL13: EXECUTE on fn_acquire_checkout_recovery_lease is revoked from `anon`.
+}

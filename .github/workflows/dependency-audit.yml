@@ -28,6 +28,10 @@ jobs:
       # never in the app bundle or on a server with untrusted input. Review them on
       # every Expo SDK upgrade and drop each --ignore once a fixed version lands.
       #   GHSA-86w9-cpqp-85rv node-forge 1.4.0 (@expo/cli 57 dev server): no fix published
+      #   GHSA-mrhx-c7xc-m3w5 zod 3.25.76 (@expo/cli 57 build tooling): zod 3 has no fix and
+      #     @expo/cli 58 still needs ^3.25.76. bun ignores a GHSA for every copy, so
+      #     scripts/dependency-audit-exceptions.test.ts fails if any other zod drops below 4.6.6.
       - run: >-
           bun audit --audit-level=high
           --ignore=GHSA-86w9-cpqp-85rv
+          --ignore=GHSA-mrhx-c7xc-m3w5

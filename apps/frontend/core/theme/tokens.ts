@@ -18,6 +18,14 @@ export const palette = {
   pureBlack: '#000000',
 
   scrim: 'rgba(0,0,0,0.6)',
+  scrimLight: 'rgba(0,0,0,0.2)',
+  backdrop: 'rgba(0,0,0,0.4)',
+  scrimStrong: 'rgba(0,0,0,0.7)',
+  nightFade: 'rgba(18,18,18,0.8)',
+  glassGraySurface: 'rgba(30,30,30,0.3)',
+  lionSubtle: 'rgba(189,159,101,0.15)',
+  skeleton: 'rgba(255,255,255,0.08)',
+  skeletonShimmer: 'rgba(255,255,255,0.5)',
   transparent: '#00000000',
   pending: '#A9924C',
   paid: '#5C85AD',
@@ -52,7 +60,25 @@ export const colors = {
   mediaBackground: palette.pureBlack,
   success: palette.forest,
   error: palette.fire,
+  // Hairline borders and dividers.
   separator: palette.blueGray,
+  // Barely raised fill for inactive cards and chips on the background.
+  surfaceSubtle: palette.shadowDark,
+  // Selected or highlighted fill, paired with a `primary` border.
+  primarySubtle: palette.lionSubtle,
+  // Translucent fill under a BlurView so the blur reads denser.
+  glassSurface: palette.glassGraySurface,
+  // Overlays on top of photos and content, from light to strong.
+  scrimLight: palette.scrimLight,
+  scrim: palette.scrim,
+  scrimStrong: palette.scrimStrong,
+  // Dims the screen behind menus and modals.
+  backdrop: palette.backdrop,
+  // End of a gradient that fades content into the background.
+  backgroundFade: palette.nightFade,
+  // Static and animated loading placeholders.
+  skeleton: palette.skeleton,
+  skeletonShimmer: palette.skeletonShimmer,
   transparent: palette.transparent,
   // Order and shipment states
   pending: palette.pending,

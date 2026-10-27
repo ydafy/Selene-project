@@ -1,0 +1,27 @@
+meta {
+  name: order-B-refund-row
+  type: http
+  seq: 22
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/shipment_cancellation_operations?shipment_id=eq.{{shipmentIdB}}&select=refund_status,refund_id,source
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the refund is recorded as succeeded", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ refund_status: "succeeded", refund_id: bru.getVar("refundIdB"), source: "buyer" }]);
+  });
+}
+
+docs {
+  Refund row that gates fn_cancel_shipment.
+}

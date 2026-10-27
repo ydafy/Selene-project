@@ -1,0 +1,32 @@
+meta {
+  name: checkout-recovery-lease-service-held
+  type: http
+  seq: 71
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_acquire_checkout_recovery_lease
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("a held lease is not granted to a second run", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.eql([{ acquired: false, lease_id: null, lease_expires_at: null }]);
+  });
+}
+
+docs {
+  BL13: while the lease from checkout-recovery-lease-service-acquire is held and unexpired,
+  an overlapping worker run gets nothing (the worker answers `skipped`).
+}

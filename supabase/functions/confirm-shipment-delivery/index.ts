@@ -1,6 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import { z } from 'https://esm.sh/zod@3.23.8';
 
 import {
   ApiError,
@@ -9,25 +8,14 @@ import {
   parseConfirmationRequestBody,
   resolveBuyerConfirmationPlan,
 } from './confirm-shipment-delivery.ts';
+import { ConfirmationRequestSchema } from './request-schema.ts';
+import { withSentry } from '../_shared/sentry.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
     'authorization, x-client-info, apikey, content-type',
 };
-
-const confirmationRequestSchema = z
-  .object({
-    orderId: z.string().uuid(),
-    shipmentId: z.string().uuid(),
-    idempotencyKey: z.string().min(1),
-  })
-  .strict()
-  .refine(
-    (request) =>
-      request.idempotencyKey === `confirm_shipment_${request.shipmentId}`,
-    { path: ['idempotencyKey'], message: 'Invalid idempotency key' },
-  );
 
 const log = (
   level: 'INFO' | 'ERROR',
@@ -45,7 +33,7 @@ const log = (
   );
 };
 
-serve(async (req) => {
+serve(withSentry('confirm-shipment-delivery', async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -60,7 +48,7 @@ serve(async (req) => {
     }
 
     const body = await req.json().catch(() => null);
-    const parsed = confirmationRequestSchema.safeParse(body);
+    const parsed = ConfirmationRequestSchema.safeParse(body);
     if (!parsed.success) {
       throw new ApiError(400, 'INVALID_REQUEST');
     }
@@ -181,4 +169,4 @@ serve(async (req) => {
       },
     );
   }
-});
+}));

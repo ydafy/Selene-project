@@ -19,8 +19,6 @@ export interface AdminProfile {
   status: string | null;
   is_verified_seller: boolean | null;
   created_at: string;
-  available_balance: number;
-  pending_balance: number;
 }
 
 interface AuthState {

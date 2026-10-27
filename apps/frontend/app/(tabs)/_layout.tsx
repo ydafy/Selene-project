@@ -1,4 +1,5 @@
 import { router, Tabs } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@shopify/restyle';
 
@@ -12,6 +13,7 @@ import { getTabDockMetrics, TAB_DOCK } from '../../core/constants/layout';
 
 export default function TabsLayout() {
   const theme = useTheme<Theme>();
+  const { t } = useTranslation('common');
   const insets = useSafeAreaInsets();
   const dockMetrics = getTabDockMetrics(insets.bottom);
 
@@ -76,7 +78,7 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="index"
           options={{
-            title: 'Inicio',
+            title: t('tabs.home'),
             tabBarIcon: ({ color, size }) => (
               <MaterialCommunityIcons
                 name="home-outline"
@@ -90,7 +92,7 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="search"
           options={{
-            title: 'Buscar',
+            title: t('tabs.search'),
 
             tabBarIcon: ({ color, size }) => (
               <MaterialCommunityIcons
@@ -105,7 +107,7 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="sell"
           options={{
-            title: 'Vender',
+            title: t('tabs.sell'),
             tabBarIcon: ({ color, size }) => (
               <MaterialCommunityIcons
                 name="plus-circle-outline"
@@ -125,7 +127,7 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="cart"
           options={{
-            title: 'Carrito',
+            title: t('tabs.cart'),
             tabBarIcon: ({ color, size }) => (
               <CartTabIcon color={color} size={size} count={cartCount} />
             ),
@@ -135,7 +137,7 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="profile"
           options={{
-            title: 'Perfil',
+            title: t('tabs.profile'),
             tabBarIcon: ({ color, size }) => (
               <MaterialCommunityIcons
                 name="account-outline"

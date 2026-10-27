@@ -1,0 +1,31 @@
+meta {
+  name: cron-health-buyer-denied
+  type: http
+  seq: 75
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_cron_health
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("an authenticated buyer cannot read cron job health", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody().code).to.equal("42501");
+  });
+}
+
+docs {
+  BL33: EXECUTE on fn_cron_health is revoked from `authenticated`. Run after auth/login-buyer.
+}

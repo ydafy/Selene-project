@@ -1,0 +1,38 @@
+meta {
+  name: create-connect-account-invalid-link
+  type: http
+  seq: 59
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/create-connect-account
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{sellerToken}}
+}
+
+body:json {
+  {
+    "refreshUrl": 123
+  }
+}
+
+tests {
+  test("a non-string refreshUrl fails with one invalid_type issue", function () {
+    expect(res.getStatus()).to.equal(400);
+    const issues = JSON.parse(res.getBody().error);
+    expect(issues).to.have.length(1);
+    expect(issues[0].code).to.equal("invalid_type");
+    expect(issues[0].path).to.deep.equal(["refreshUrl"]);
+  });
+}
+
+docs {
+  The body `error` is zod 4's `ZodError.message` (JSON of issues). Validation runs after the
+  Bearer token check and before the profile read, so no Stripe account or AccountLink is
+  created. Run after auth/login-seller.
+}

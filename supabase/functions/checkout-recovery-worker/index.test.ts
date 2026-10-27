@@ -57,7 +57,7 @@ describe("checkout recovery worker authorization", () => {
 });
 
 describe("checkout recovery worker cron claims", () => {
-  it("acquires its enabled-only overlap lock atomically before claiming work and releases it in finally", () => {
+  it("acquires its expiring enabled-only lease before claiming work and releases it in finally", () => {
     const source = readFileSync(
       join(
         process.cwd(),
@@ -66,24 +66,24 @@ describe("checkout recovery worker cron claims", () => {
       "utf8",
     );
 
-    expect(source).toContain('.eq("checkout_recovery_enabled" as never, true)');
+    // BL13: the global boolean stayed true forever after a killed run.
+    expect(source).not.toContain("checkout_recovery_running");
     expect(source).toContain(
-      '.eq("checkout_recovery_running" as never, false)',
+      "const lease = await acquireCheckoutRecoveryLease(leaseClient);",
     );
-    expect(source).toContain(
-      ".update({ checkout_recovery_running: true } as never)",
-    );
-    expect(source).toContain("if (!lock)");
+    expect(source).toContain("if (!lease.acquired)");
     expect(source).toContain(
       "return Response.json({ received: true, skipped: true });",
     );
+    expect(source).toContain("leaseId = lease.leaseId;");
     expect(source).toContain("} finally {");
-    expect(source).toContain(
-      ".update({ checkout_recovery_running: false } as never)",
+    expect(source).toMatch(
+      /await releaseCheckoutRecoveryLease\(\s*leaseClient,\s*leaseId,\s*warnLeaseNotReleased,\s*\);/,
     );
+    expect(source).not.toContain("CHECKOUT_RECOVERY_LOCK_RELEASE_FAILED");
     expect(source.indexOf("const claims = await claimCheckoutRecoveryShells"))
       .toBeGreaterThan(
-        source.indexOf("lockAcquired = true"),
+        source.indexOf("leaseId = lease.leaseId;"),
       );
   });
 

@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { Dimensions } from 'react-native';
+import { colors } from '@/core/theme/tokens';
 import { Box } from '../../base';
 import { Skeleton } from '../../ui/Skeleton';
 import { GridShell } from './GridShell';
@@ -17,7 +18,7 @@ interface Props {
 
 export const HomeSkeleton = ({ rank }: Props) => {
   // Ajustamos el color base del skeleton para que sea sutil en Dark Mode
-  const skeletonStyle = { backgroundColor: 'rgba(255, 255, 255, 0.08)' };
+  const skeletonStyle = { backgroundColor: colors.skeleton };
 
   if (rank === 'EXPLORER') {
     return (

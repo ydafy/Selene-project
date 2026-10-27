@@ -1,0 +1,40 @@
+meta {
+  name: get-connect-earnings-search-too-long
+  type: http
+  seq: 54
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/get-connect-earnings
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+body:json {
+  {}
+}
+
+script:pre-request {
+  req.setBody({ search: "a".repeat(121) });
+}
+
+tests {
+  test("an admin search over 120 characters fails with one too_big issue", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().success).to.equal(false);
+    const issues = JSON.parse(res.getBody().error);
+    expect(issues).to.have.length(1);
+    expect(issues[0].code).to.equal("too_big");
+    expect(issues[0].path).to.deep.equal(["search"]);
+  });
+}
+
+docs {
+  The body `error` is zod 4's `ZodError.message` (JSON of issues); `useConnectEarnings` only
+  checks for an error. Validation runs after the admin check, so this needs auth/login-admin.
+}

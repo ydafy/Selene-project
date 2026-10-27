@@ -2764,7 +2764,8 @@ export type Database = {
           auto_cancel_preparing_lease_expires_at: string | null
           auto_cancel_preparing_lease_id: string | null
           checkout_recovery_enabled: boolean
-          checkout_recovery_running: boolean
+          checkout_recovery_lease_expires_at: string | null
+          checkout_recovery_lease_id: string | null
           connect_enabled: boolean | null
           currency: string | null
           envia_carrier: string | null
@@ -2805,7 +2806,8 @@ export type Database = {
           auto_cancel_preparing_lease_expires_at?: string | null
           auto_cancel_preparing_lease_id?: string | null
           checkout_recovery_enabled?: boolean
-          checkout_recovery_running?: boolean
+          checkout_recovery_lease_expires_at?: string | null
+          checkout_recovery_lease_id?: string | null
           connect_enabled?: boolean | null
           currency?: string | null
           envia_carrier?: string | null
@@ -2846,7 +2848,8 @@ export type Database = {
           auto_cancel_preparing_lease_expires_at?: string | null
           auto_cancel_preparing_lease_id?: string | null
           checkout_recovery_enabled?: boolean
-          checkout_recovery_running?: boolean
+          checkout_recovery_lease_expires_at?: string | null
+          checkout_recovery_lease_id?: string | null
           connect_enabled?: boolean | null
           currency?: string | null
           envia_carrier?: string | null
@@ -3720,6 +3723,14 @@ export type Database = {
           lease_id: string
         }[]
       }
+      fn_acquire_checkout_recovery_lease: {
+        Args: never
+        Returns: {
+          acquired: boolean
+          lease_expires_at: string
+          lease_id: string
+        }[]
+      }
       fn_acquire_connect_account_refresh: {
         Args: { p_source_event_id: string; p_stripe_account_id: string }
         Returns: number
@@ -4421,6 +4432,10 @@ export type Database = {
       }
       fn_release_auto_cancel_lease: {
         Args: { p_job: string; p_lease_id: string }
+        Returns: boolean
+      }
+      fn_release_checkout_recovery_lease: {
+        Args: { p_lease_id: string }
         Returns: boolean
       }
       fn_release_payout_claim: {

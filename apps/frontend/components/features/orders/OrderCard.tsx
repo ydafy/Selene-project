@@ -23,14 +23,16 @@ import { formatCurrency, formatDate } from '../../../core/utils/format';
 import { orderCardAmountCents } from '../../../core/utils/order-summary-state';
 import {
   getOrderStatusColor,
+  getOrderStatusTextColor,
   getOrderStatusLabel,
 } from '../../../core/utils/order-status';
-import { EnrichedOrder, OrderStatus } from '@selene/types';
+import { OrderStatus } from '@selene/types';
+import type { CompatEnrichedOrder } from '../../../core/hooks/useOrders';
 import { useTranslation } from 'react-i18next';
 import { colors } from '@/core/theme/tokens';
 
 interface Props {
-  order: EnrichedOrder;
+  order: CompatEnrichedOrder;
   isSeller: boolean;
   onPress: () => void;
 }
@@ -91,6 +93,7 @@ export const OrderCard = ({ order, isSeller, onPress }: Props) => {
 
   const currentProduct = order.items[activeIndex]?.product;
   const statusColor = getOrderStatusColor(safeStatus);
+  const statusTextColor = getOrderStatusTextColor(safeStatus);
   const statusLabel = t(getOrderStatusLabel(safeStatus)).toUpperCase();
   const showPulse = ['paid', 'shipped'].includes(safeStatus);
   const hasMultipleItems = order.items.length > 1;
@@ -245,7 +248,7 @@ export const OrderCard = ({ order, isSeller, onPress }: Props) => {
           )}
 
           <LinearGradient
-            colors={['transparent', 'rgba(18,18,18,0.8)']}
+            colors={['transparent', theme.colors.backgroundFade]}
             style={StyleSheet.absoluteFill}
             pointerEvents="none"
           />
@@ -260,7 +263,7 @@ export const OrderCard = ({ order, isSeller, onPress }: Props) => {
               borderRadius="full"
               borderWidth={1}
               style={{
-                backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                backgroundColor: theme.colors.scrim,
                 borderColor: theme.colors[statusColor as keyof Theme['colors']],
               }}
             >
@@ -273,7 +276,7 @@ export const OrderCard = ({ order, isSeller, onPress }: Props) => {
                 variant="caption-md"
                 fontWeight="bold"
                 style={{
-                  color: theme.colors[statusColor as keyof Theme['colors']],
+                  color: theme.colors[statusTextColor],
                   fontSize: 11,
                   letterSpacing: 1,
                 }}
@@ -290,7 +293,7 @@ export const OrderCard = ({ order, isSeller, onPress }: Props) => {
               color="primary"
               style={{
                 fontSize: 26,
-                textShadowColor: 'rgba(0,0,0,0.8)',
+                textShadowColor: theme.colors.scrimStrong,
                 textShadowRadius: 4,
               }}
             >
@@ -306,7 +309,7 @@ export const OrderCard = ({ order, isSeller, onPress }: Props) => {
               padding="m"
               style={{
                 backgroundColor: pressed
-                  ? 'rgba(255,255,255,0.03)'
+                  ? theme.colors.surfaceSubtle
                   : 'transparent',
               }}
             >

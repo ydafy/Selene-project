@@ -2,6 +2,13 @@
   "deletedUser": "Deleted user",
   "yes": "Yes",
   "no": "No",
+  "tabs": {
+    "home": "Home",
+    "search": "Search",
+    "sell": "Sell",
+    "cart": "Cart",
+    "profile": "Profile"
+  },
   "successChange": "Changes saved.",
   "states": {
     "errorTitle": "Something went wrong.",

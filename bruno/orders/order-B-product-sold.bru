@@ -1,0 +1,27 @@
+meta {
+  name: order-B-product-sold
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/products?id=eq.00000000-0000-4000-8000-0000000000b4&select=id,status
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the sold listing is SOLD", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ id: "00000000-0000-4000-8000-0000000000b4", status: "SOLD" }]);
+  });
+}
+
+docs {
+  Order creation marks the listing sold.
+}

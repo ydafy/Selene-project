@@ -39,6 +39,14 @@ type RawOrder = Tables<'orders'> & {
   payment_processing?: boolean | null;
   items: (Tables<'order_items'> & { product: Tables<'products'> })[];
   dispute: Tables<'disputes'> | null;
+  shipments: (Tables<'shipments'> & {
+    items: (Tables<'order_items'> & { product: Tables<'products'> })[];
+    seller: Pick<
+      Tables<'profiles'>,
+      'username' | 'avatar_url' | 'deleted_at'
+    > | null;
+    dispute: Tables<'disputes'> | null;
+  })[];
   // PostgREST returns `review` as a SINGLE object when the FK is detected as
   // 1:1 (exactly one review row matches) and as an ARRAY for 0 or 2+ rows.
   // The TypeScript types declare it always an array — they lie. The runtime

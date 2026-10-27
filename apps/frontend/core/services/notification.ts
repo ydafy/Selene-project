@@ -19,7 +19,6 @@ const ROUTE_MAP: RouteEntry[] = [
   // Static routes
   { pattern: '/profile/listings', params: [] },
   { pattern: '/profile/orders', params: [] },
-  { pattern: '/profile/wallet', params: [] },
   { pattern: '/profile/favorites', params: [] },
   { pattern: '/profile/notifications', params: [] },
   { pattern: '/profile/support', params: [] },

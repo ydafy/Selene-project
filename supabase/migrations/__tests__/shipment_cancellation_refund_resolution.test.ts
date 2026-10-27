@@ -17,6 +17,14 @@ const resolution = read('supabase/queries/orders/shipment_cancellation_refund_re
 const cancel = read('supabase/queries/orders/fn_cancel_shipment.sql');
 const body = (sql: string) => sql.match(/CREATE OR REPLACE FUNCTION public\.fn_cancel_shipment\([\s\S]*?\$\$;/)?.[0] ?? '';
 const normalize = (sql: string) => sql.replace(/\s+/g, ' ').trim();
+// remove-legacy-wallet T4 dropped the seller wallet reversal from the canonical fn_cancel_shipment; the
+// deployed bodies in older migrations still carry it, so strip it before comparing.
+const withoutWalletReversal = (sql: string) =>
+  sql
+    .replace(/\n {2}v_(wallet_id|wallet_pending|wallet_available|total_refund) [A-Z]+;/g, '')
+    .replace(/ {2}-- 4\. Sum the shipment[\s\S]*?(?= {2}-- 6\. Release products)/, '')
+    .replace('-- 6. Release products', '-- 4. Release products')
+    .replace('-- 7. Mark the shipment', '-- 5. Mark the shipment');
 // Everything the resolution change touches in fn_cancel_shipment: one declaration and the guard.
 const withoutResolutionGuard = (sql: string) =>
   normalize(
@@ -42,7 +50,9 @@ describe('shipment cancellation refund resolution migration (SQL text)', () => {
     expect(columnsSection(migration)).toContain(columnsSection(resolution));
     expect(columnsSection(resolution)).toContain('ADD COLUMN refund_resolved_at TIMESTAMPTZ');
     expect(migration).toContain('CREATE OR REPLACE FUNCTION public.fn_resolve_shipment_cancellation_refund(');
-    expect(statements(migration)).toContain(statements(cancel).replace(/^DROP FUNCTION[^\n]*\n/m, ''));
+    expect(statements(withoutWalletReversal(migration))).toContain(
+      statements(cancel).replace(/^DROP FUNCTION[^\n]*\n/m, ''),
+    );
     expect(migration.match(/^BEGIN;$/gm)).toHaveLength(1);
     expect(migration.match(/^COMMIT;$/gm)).toHaveLength(1);
   });
@@ -60,7 +70,7 @@ describe('shipment cancellation refund resolution migration (SQL text)', () => {
 
   it('changes nothing else in fn_cancel_shipment compared with the deployed B2.2 body', () => {
     const deployed = read('supabase/migrations/20261021052336_shipment_cancellation_recovery.sql');
-    expect(withoutResolutionGuard(cancel)).toBe(withoutResolutionGuard(deployed));
+    expect(withoutResolutionGuard(cancel)).toBe(withoutResolutionGuard(withoutWalletReversal(deployed)));
     expect(withoutResolutionGuard(cancel)).not.toBe('');
   });
 

@@ -8,6 +8,7 @@ import {
 } from './get-connect-payout-release-queue.ts';
 
 import { createQueueHandler } from './handler.ts';
+import { withSentry } from '../_shared/sentry.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,7 +23,7 @@ const jsonResponse = (body: unknown, status: number) =>
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 
-serve(async (req: Request) => {
+serve(withSentry('get-connect-payout-release-queue', async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -80,4 +81,4 @@ serve(async (req: Request) => {
       getQueueErrorStatus(message),
     );
   }
-});
+}));

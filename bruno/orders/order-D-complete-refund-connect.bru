@@ -1,0 +1,33 @@
+meta {
+  name: order-D-complete-refund-connect
+  type: http
+  seq: 38
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_complete_shipment_refund
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_shipment_id": "{{shipmentIdD}}"
+  }
+}
+
+tests {
+  test("a Connect shipment is only marked refunded", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ success: true, error_message: "CONNECT_SHIPMENT_SKIPPED_WALLET_REFUND" }]);
+  });
+}
+
+docs {
+  Connect refunds are handled by Stripe in resolve-dispute-refund; the function only marks the shipment.
+}
