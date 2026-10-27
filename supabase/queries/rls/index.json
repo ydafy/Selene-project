@@ -65,13 +65,6 @@
   {
     "cmd": "SELECT",
     "qual": "true",
-    "tablename": "mexico_banks",
-    "policyname": "mexico_banks_read",
-    "with_check": null
-  },
-  {
-    "cmd": "SELECT",
-    "qual": "true",
     "tablename": "mexico_zips",
     "policyname": "mexico_zips_read",
     "with_check": null
@@ -109,27 +102,6 @@
     "qual": "(( SELECT auth.uid() AS uid) = user_id)",
     "tablename": "payment_methods",
     "policyname": "payment_methods_manage",
-    "with_check": null
-  },
-  {
-    "cmd": "SELECT",
-    "qual": "is_admin()",
-    "tablename": "payout_requests",
-    "policyname": "admin_payments_select",
-    "with_check": null
-  },
-  {
-    "cmd": "UPDATE",
-    "qual": "is_admin()",
-    "tablename": "payout_requests",
-    "policyname": "admin_payments_update",
-    "with_check": "is_admin()"
-  },
-  {
-    "cmd": "SELECT",
-    "qual": "((( SELECT auth.uid() AS uid) = user_id) OR ( SELECT is_admin() AS is_admin))",
-    "tablename": "payout_requests",
-    "policyname": "payouts_select",
     "with_check": null
   },
   {
@@ -231,20 +203,6 @@
     "with_check": null
   },
   {
-    "cmd": "SELECT",
-    "qual": "is_admin()",
-    "tablename": "seller_bank_accounts",
-    "policyname": "admin_payments_select",
-    "with_check": null
-  },
-  {
-    "cmd": "ALL",
-    "qual": "(( SELECT auth.uid() AS uid) = user_id)",
-    "tablename": "seller_bank_accounts",
-    "policyname": "bank_accounts_all",
-    "with_check": null
-  },
-  {
     "cmd": "DELETE",
     "qual": "false",
     "tablename": "shipments",
@@ -319,20 +277,6 @@
     "qual": "true",
     "tablename": "system_settings",
     "policyname": "system_settings_read",
-    "with_check": null
-  },
-  {
-    "cmd": "SELECT",
-    "qual": "((EXISTS ( SELECT 1\n   FROM wallets\n  WHERE ((wallets.id = wallet_transactions.wallet_id) AND (wallets.user_id = ( SELECT auth.uid() AS uid))))) OR ( SELECT is_admin() AS is_admin))",
-    "tablename": "wallet_transactions",
-    "policyname": "transactions_select",
-    "with_check": null
-  },
-  {
-    "cmd": "SELECT",
-    "qual": "((( SELECT auth.uid() AS uid) = user_id) OR ( SELECT is_admin() AS is_admin))",
-    "tablename": "wallets",
-    "policyname": "wallets_select",
     "with_check": null
   },
   {

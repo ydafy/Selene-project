@@ -108,7 +108,6 @@ For money, webhook, cron, or order and shipment state work, also load the `selen
 - Payments go through Stripe Connect with manual payouts. Selene holds the seller's funds until the shipment is completed, then an admin releases them. Never enable automatic payouts: they would pay sellers before delivery or before disputes and refunds are resolved.
 - A payout releases the full shipment amount or nothing. Partial payouts would make the database ledger diverge from Stripe.
 - Refunds and disputes are only possible before a shipment is completed, and they always target one `shipment_id`, never a whole multi-seller order.
-- `wallets`, `wallet_transactions`, `payout_requests`, and `seller_bank_accounts` are deprecated by the Stripe Connect migration. They stay as read-only audit history; never build on them.
 
 ## Money and security invariants
 

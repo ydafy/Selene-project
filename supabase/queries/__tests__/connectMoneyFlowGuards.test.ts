@@ -189,14 +189,6 @@ describe('Connect money-flow SQL guards', () => {
     );
   });
 
-  it('cron release only selects legacy shipments for wallet release', () => {
-    const sql = readSql(
-      'supabase/queries/triggers/shipments/fn_cron_release_shipment_funds.sql',
-    );
-
-    expect(sql).toContain('s.stripe_payment_intent_id IS NULL');
-  });
-
   it('manual release completes Connect shipments and refuses the rest before any state change', () => {
     const sql = readSql(
       'supabase/queries/shipments/fn_release_shipment_funds.sql',
