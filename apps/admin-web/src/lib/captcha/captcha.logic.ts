@@ -68,8 +68,12 @@ const withTimeout = (
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
     timer = setTimeout(() => {
-      onTimeout?.();
       reject(new CaptchaError(CAPTCHA_FAILED_CODE));
+      try {
+        onTimeout?.();
+      } catch {
+        // Closing is best effort; the caller already got its error.
+      }
     }, ms);
   });
   return Promise.race([request, timeout]).finally(() => clearTimeout(timer));

@@ -101,3 +101,21 @@ describe('createCaptchaGetter timeout cleanup', () => {
     expect(cancels).toBe(0);
   });
 });
+
+describe('createCaptchaGetter timeout with a failing cancel', () => {
+  it('still rejects when closing the challenge throws', async () => {
+    const getToken = createCaptchaGetter(
+      () => ({
+        configured: true,
+        request: () => new Promise<string>(() => undefined),
+        cancel: () => {
+          throw new Error('widget already unmounted');
+        },
+      }),
+      10,
+    );
+    await expect(getToken()).rejects.toMatchObject({
+      code: CAPTCHA_FAILED_CODE,
+    });
+  });
+});

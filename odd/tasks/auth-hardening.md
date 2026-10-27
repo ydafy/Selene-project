@@ -98,7 +98,7 @@ Follow repository manual Supabase workflow: supply SQL/function/config handoff, 
 - T6e | S5,S9 | inline | done (L94) | P6: the 403 `missing sub claim` come from `get-seller-onboarding` refetched without a session right after sign-out | Commit: b9d136a (review approved).
 - T6c1 | S9 | delegated writer (context backstop) | done (L98; 8398895 + next commit; device check pending) | hCaptcha in the mobile app: one swappable captcha component/hook, token on signUp, signInWithPassword, resend, resetPasswordForEmail and the delete-account re-sign-in; i18n errors for `captcha_failed`; local `[auth.captcha]` with the hCaptcha test secret | Commit: 8398895, 53af2a2 (reviews approved).
 - T6c2 | S9 | delegated writer (context backstop) | done (L99; browser check pending) | hCaptcha on the admin-web login through the same provider contract | Commit: not created.
-- T6c3 | S9 | inline | done (L101) | A timed-out CAPTCHA challenge closes its widget in both apps (review advisories of 538687f and 8535073) | Commit: see git log.
+- T6c3 | S9 | inline | done (L101) | A timed-out CAPTCHA challenge closes its widget in both apps (review advisories of 538687f and 8535073) | Commit: c2b28d3 (review approved) + follow-up.
 - T6g | S9 | inline | done (L91) | Placeholder domain `selene.example` in one constant (`packages/types/src/domain.ts`) and the `docs/go-live.md` "Domain" checklist for the real one | Commit: c616063 (review approved).
 - T7 | S3,S9 | parent orchestration | done on branch `audit/auth-ui` (L89); merge to main pending maintainer request | Auth-screen UI/UX pass (L62): every auth screen, including forgot-password responsiveness | Commit: not created.
 - T7a | S3 | inline | done (L84) | U2: missing `auth` i18n keys (en `loginErrorTitle`, `verificationErrorTitle`; `enter6DigitCode` in both) plus an `auth` locale parity and key-usage test | Commit: 813ec98 (review approved).
@@ -730,3 +730,6 @@ T6c3: `CaptchaProviderHandle` gets an optional `cancel()`; `createCaptchaGetter`
 RED: 2 fail (one per app: cancel not called on timeout). GREEN: `apps/frontend/core/auth/captcha` + `apps/admin-web/src/lib/captcha` 45 pass. ESLint clean; `admin-web` typecheck exit 0; `@selene/frontend` typecheck 16 errors after the main sync (was 74), none in touched files. The provider components still have no mount test (T8).
 Device check: folded into the T6c1/T6c2 checks (a challenge left unanswered for 2 minutes closes and shows the localized error).
 Risk: item 6 (widget close behavior on device and browser only).
+
+### L102 — T6c3 review follow-up
+Review of c2b28d3 (resilience, reliability) approved; both lenses flagged that a throwing `cancel()` would skip `reject` and hang the getter. Fixed in both contracts: the timer rejects first, then calls `cancel()` inside `try`. RED: new test (`cancel` throws) surfaced an uncaught error and no rejection; GREEN: 47 pass across both captcha folders; ESLint clean; `admin-web` typecheck exit 0.
