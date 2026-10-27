@@ -24,7 +24,9 @@ CONSTANTS
     G_StartFence,     \* start: SHIPMENT_TRANSFER_OPERATION_ACTIVE
     G_StartStatus,    \* start: SHIPMENT_NOT_CANCELABLE
     G_StartFunds,     \* start: SHIPMENT_FUNDS_ALREADY_RELEASED
-    G_CancelRefund    \* fn_cancel_shipment: REFUND_NOT_SUCCEEDED
+    G_CancelRefund,   \* fn_cancel_shipment: REFUND_NOT_SUCCEEDED
+    G_ProgressOp,     \* tracking / fn_mark_shipment_delivered: no status change once external_started_at is set
+    G_ConfirmOp       \* fn_confirm_shipment_delivery: SHIPMENT_CANCELLATION_OPERATION_ACTIVE
 
 Runs == {Root, Child}
 Amt == 2      \* release_amount_cents of a shipment (abstract units)
@@ -88,10 +90,12 @@ Init ==
 
 (***************************** shipment lifecycle ****************************)
 
-\* Label, carrier and delivery steps up to shipments.status = 'delivered'.
-\* Deliberately NOT gated by the cancellation operation (conservative).
+\* Label, carrier and delivery steps up to shipments.status = 'delivered':
+\* fn_record_tracking_event (shipped, delivered) and fn_mark_shipment_delivered.
+\* Once external_started_at is set they leave the status alone (B5.8).
 Progress(s) ==
     /\ shStatus[s] = "paid"
+    /\ G_ProgressOp => op[s] # "started"
     /\ shStatus' = [shStatus EXCEPT ![s] = "delivered"]
     /\ UNCHANGED <<transferId, viewAmt, fence, sentAmt, runState, mapNet,
                    mapStatus, wpc, beginAmt, op, opGen, opExpired, actorTok,
@@ -100,6 +104,7 @@ Progress(s) ==
 \* fn_confirm_shipment_delivery: delivered -> completed.
 ConfirmDelivery(s) ==
     /\ shStatus[s] = "delivered"
+    /\ G_ConfirmOp => op[s] # "started"           \* SHIPMENT_CANCELLATION_OPERATION_ACTIVE
     /\ shStatus' = [shStatus EXCEPT ![s] = "completed"]
     /\ UNCHANGED <<transferId, viewAmt, fence, sentAmt, runState, mapNet,
                    mapStatus, wpc, beginAmt, op, opGen, opExpired, actorTok,
@@ -309,5 +314,17 @@ AtMostOneTransfer ==
 \* Harm: the shipment is cancelled while the buyer has not been refunded.
 RefundBeforeCancel ==
     \A s \in Shipments : shStatus[s] = "cancelled" => refundStatus[s] = "succeeded"
+
+\* Harm: a shipment whose refund started is advanced (shipped, delivered, completed), so
+\* fn_cancel_shipment can never finish: the buyer is refunded and the shipment is wedged.
+RefundStartedStaysOpen ==
+    \A s \in Shipments : op[s] = "started" => shStatus[s] \in {"paid", "cancelled"}
+
+\* The same as a step property: after external_started_at is set, a paid/preparing
+\* shipment only ever moves to cancelled.
+RefundStartedOnlyCancels ==
+    [][\A s \in Shipments :
+          (op[s] = "started" /\ shStatus[s] = "paid")
+              => shStatus'[s] \in {"paid", "cancelled"}]_vars
 
 =============================================================================

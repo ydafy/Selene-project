@@ -84,6 +84,24 @@ const migrationBody = (name: string): string => {
   return migration.slice(open + 2, close);
 };
 
+/**
+ * The canonical file follows the newest migration that defines the function, so a later
+ * migration that changes one of these functions (B5.8 changed fn_confirm_shipment_delivery)
+ * does not make this migration's body the reference.
+ */
+const latestBody = (name: string): string => {
+  const pattern = new RegExp(`CREATE OR REPLACE FUNCTION public\\.${name}\\(`);
+  const newest = readdirSync(MIGRATIONS_DIR)
+    .filter((f) => f.endsWith('.sql'))
+    .sort()
+    .filter((f) => pattern.test(readFileSync(join(MIGRATIONS_DIR, f), 'utf8')))
+    .pop();
+  const sql = readFileSync(join(MIGRATIONS_DIR, newest as string), 'utf8');
+  const start = sql.search(pattern);
+  const open = sql.indexOf('$$', start);
+  return sql.slice(open + 2, sql.indexOf('$$;', open + 2));
+};
+
 /** Canonical files are either a full CREATE statement or a bare body. */
 const canonicalBody = (file: string): string => {
   const sql = readFileSync(join(QUERIES_DIR, file), 'utf8');
@@ -124,7 +142,7 @@ describe('remove legacy wallet writes from the delivery, release, dispute and cr
       test('the canonical query file carries the migration body', () => {
         const canonical = canonicalBody(fn.file);
         expect(canonical).not.toMatch(WALLET_REFERENCE);
-        expect(collapse(canonical)).toBe(collapse(migrationBody(fn.name)));
+        expect(collapse(canonical)).toBe(collapse(latestBody(fn.name)));
       });
 
       test('execute is limited to service_role, restated explicitly', () => {

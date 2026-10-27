@@ -1,6 +1,6 @@
 # Shipment transfer vs shipment cancellation (TLA+)
 
-A TLA+ model, checked with TLC, of how the release of a shipment's funds (Stripe `transfers.create`) and the cancellation of that shipment (Stripe refund) exclude each other. It checks that a shipment is released for its full amount or not at all, once, and never after a cancellation refund started.
+A TLA+ model, checked with TLC, of how the release of a shipment's funds (Stripe `transfers.create`) and the cancellation of that shipment (Stripe refund) exclude each other. It checks that a shipment is released for its full amount or not at all, once, and never after a cancellation refund started, and that a shipment whose refund started is never advanced by carrier tracking or delivery confirmation (it only ever ends cancelled).
 
 Disputes and returns are out of scope for this model.
 
@@ -13,6 +13,7 @@ Files: `ShipmentTransferCancel.tla` (model and properties), `ShipmentTransferCan
 | Synced against | `origin/main` `adb63322ed13f82b23d1172d4f8c4391b4616cbb` |
 | Files and functions covered | the table below |
 | Files unchanged since the sync commit | all files in the table (checked with `git diff adb63322 HEAD` on `supabase/queries/payments`, `supabase/queries/orders`, `supabase/queries/shipments/fn_claim_shipment_label.sql`, `supabase/functions/release-connect-payout`, `supabase/functions/cancel-order`), except the legacy wallet removal below |
+| B5.8 changes (S8) | `fn_record_tracking_event` (`supabase/queries/tracking/fn_record_tracking_event.sql`), `fn_mark_shipment_delivered` and `fn_confirm_shipment_delivery` now read the cancellation operation after the shipment lock and leave the status alone when `external_started_at` is set (`G_ProgressOp`, `G_ConfirmOp`); migration `20261027040000_shipment_tracking_during_cancellation.sql`. TLC rerun 2026-10-27. These changes are not in the sync commit above: re-point the sync commit to the B5.8 commit once it exists. The B2/B4 changes to `supabase/queries/orders` since the sync commit (carrier outcome and review, summary, `fn_cancel_shipment`) were not re-audited by B5.8; the ones read while working on B5.8 only add refusals before a refund starts. |
 | Changes since the sync | `odd/tasks/remove-legacy-wallet.md` T4-T6: `fn_cancel_shipment` and `fn_confirm_shipment_delivery` lost their wallet writes (never modeled), and `fn_confirm_shipment_delivery` refuses a shipment without `stripe_payment_intent_id` (`SHIPMENT_NOT_CONNECT`). The modeled transitions of Connect shipments are unchanged; TLC was not rerun. |
 
 When any file in the mapping table changes, re-read its row and update the model and this table.
@@ -31,7 +32,7 @@ java -XX:+UseParallelGC -cp "$TLA2TOOLS" tlc2.TLC -workers auto -deadlock \
 
 `-deadlock` turns off the deadlock check: the model ends in terminal states (everything released or cancelled) by design. `-metadir` keeps TLC scratch output out of the repository.
 
-Last result (Windows 11, Temurin 21.0.12.1, 2026-10-25): `Model checking completed. No error has been found.` 3,295,096 states generated, 995,560 distinct states, depth 29, 4 s.
+Last result (Windows 11, Temurin 21.0.12.1, 2026-10-27, with the B5.8 guards): `Model checking completed. No error has been found.` 1,321,384 states generated, 505,816 distinct states, depth 29. Before B5.8 (2026-10-25, progress not gated): 3,295,096 generated, 995,560 distinct.
 
 ## Properties
 
@@ -43,6 +44,8 @@ Each is an invariant in the `.tla` file and in the `.cfg`.
 | `NoTransferAfterCancel` | Once a transfer is started or made, no cancellation operation is started and the shipment is not cancelled or refunded; and a cancelled or refund-started shipment is never transferred. | The buyer is refunded and the seller is also paid, or the reverse. |
 | `AtMostOneTransfer` | At most one Stripe transfer exists per shipment across runs and retries. | Selene pays out the same shipment through two transfers. |
 | `RefundBeforeCancel` | A shipment is cancelled only after its refund succeeded. | The shipment is cancelled while the buyer has not been refunded. |
+| `RefundStartedStaysOpen` | Once a cancellation operation has started, its shipment is `paid`/`preparing` or `cancelled`, never `delivered` or `completed`. | The buyer is refunded and the shipment is advanced, so `fn_cancel_shipment` answers `CANNOT_CANCEL_IN_THIS_STATUS` for ever. |
+| `RefundStartedOnlyCancels` (step property in `PROPERTY`) | No step moves a `paid`/`preparing` shipment whose operation has started anywhere except to `cancelled`. | Same as above, stated on the transition. |
 
 ## Code mapping
 
@@ -50,7 +53,8 @@ Every action maps to one named code step. Error names are the `RAISE EXCEPTION` 
 
 | Model action | Code step | Guards modeled (switch) |
 | --- | --- | --- |
-| `Progress`, `ConfirmDelivery` | status moves to `delivered`; `fn_confirm_shipment_delivery` in `supabase/queries/orders/fn_confirm_shipment_delivery.sql` sets `completed` | none from the cancellation operation (see assumption 1) |
+| `Progress` | `fn_record_tracking_event` (`supabase/queries/tracking/fn_record_tracking_event.sql`) moves `preparing` to `shipped` and `shipped` to `delivered`; `fn_mark_shipment_delivered` (`supabase/queries/shipments/fn_mark_shipment_delivered.sql`) moves `shipped`/`preparing` to `delivered` | a cancellation operation with `external_started_at` set leaves the status alone: the tracking event is still stored and the first one is recorded in `late_carrier_activity_*`; `fn_mark_shipment_delivered` returns `SHIPMENT_CANCELLATION_OPERATION_ACTIVE` (`G_ProgressOp`). A live claim without a start is not a guard (assumption 1) |
+| `ConfirmDelivery` | `fn_confirm_shipment_delivery` in `supabase/queries/orders/fn_confirm_shipment_delivery.sql` sets `completed` | `SHIPMENT_CANCELLATION_OPERATION_ACTIVE` when the operation has started (`G_ConfirmOp`) |
 | `Reprice` | inputs of `release_amount_cents` in `admin_connect_payout_release_view_shipping_cost_fix.sql` change | assumption 2 |
 | `CreateRun` | `releaseConnectPayout` in `supabase/functions/release-connect-payout/release-connect-payout.ts`: `assertEligibleRows` (all `completed`), `deps.createRun`, `deps.createRunShipments`; one retry child per run (`idx_connect_payout_runs_one_retry_per_parent`); no second active mapping | |
 | `FailRun` | a pending run becomes `failed` and its mappings `failed` | the fence stays set (column comment on `transfer_started_at`) |
@@ -71,7 +75,7 @@ Two shipments (`s1`, `s2`), two cancellation actors (`a1`, `a2`; buyer, cron, ad
 
 ## Assumptions and exclusions
 
-1. Steps from `paid` to `completed` (label, carrier tracking, delivery confirmation) are modeled as not checking the cancellation operation, whether or not the code does. Only the guards in the mapping table are credited.
+1. Steps from `paid` to `completed` (label, carrier tracking, delivery confirmation) are gated only by a started operation (`op = started`, the code's `external_started_at IS NOT NULL`). A live claim whose refund has not started is not a guard in the code either: a scan that moves the shipment first makes `fn_start_shipment_cancellation` refuse with `SHIPMENT_NOT_CANCELABLE` (`G_StartStatus`) before any money moves. Only the guards in the mapping table are credited.
 2. The release amount can change once, and only before any transfer fence or Stripe transfer exists. Not checked against the code.
 3. A pending run can fail at any moment (the model does not distinguish why).
 4. Stripe idempotency keys are treated as permanent. Real keys expire, which is why the model also relies on the `transfer_started_at` fence.
@@ -94,5 +98,10 @@ Each variant turns one or more `G_*` constants to `FALSE` in a temporary copy of
 | `G_BeginOp` + start-side guards (`G_StartFence`, `G_StartStatus`, `G_StartFunds`) | `NoTransferAfterCancel` | 9 | same |
 | `G_BeginAmount` (mapping amount sent without comparing to the view) | `FullOrNothing` | 9 | amount changes after the run was created, a stale amount is sent |
 | `G_CancelRefund` (`REFUND_NOT_SUCCEEDED`) | `RefundBeforeCancel` | 8 | shipment cancelled right after the refund started |
+| `G_ProgressOp` (tracking and `fn_mark_shipment_delivered` ignore a started operation) | `RefundStartedStaysOpen` | 4 | claim, start refund, then a carrier scan moves the shipment to `delivered`; nothing can cancel it any more |
+| `G_ProgressOp` | `RefundStartedOnlyCancels` | 4 to 5 | same step, found as a transition (TLC may print an extra `Reprice` step first) |
+| `G_ProgressOp` + `G_ConfirmOp` | `RefundStartedStaysOpen` | 4 to 5 | same |
 
-Single guards that are not the only barrier. Removing each of these alone, or all together, leaves all four properties passing (995,560 distinct states, same as the faithful model), because another guard or the status rules already exclude the bad interleaving: `G_ClaimFence`, `G_StartFence`, `G_StartStatus`, `G_StartFunds`, and `G_ClaimFence`+`G_StartFence`+`G_StartStatus`+`G_StartFunds` together. They are defense in depth inside this model's assumptions; do not read this as permission to delete them.
+`G_ProgressOp` alone leaves `FullOrNothing`, `NoTransferAfterCancel`, `AtMostOneTransfer` and `RefundBeforeCancel` passing: the advance is harmful because it wedges the cancellation, not because it moves money (`G_BeginOp` still stops the transfer). `G_ConfirmOp` alone leaves all properties passing (505,816 distinct states, same as the faithful model): while `G_ProgressOp` holds, a started shipment never reaches `delivered`, so the confirm guard only protects rows left `delivered` by earlier code; keep it as defense in depth.
+
+Single guards that are not the only barrier. Removing each of these alone leaves all six properties passing (505,816 distinct states, same as the faithful model), because another guard or the status rules already exclude the bad interleaving: `G_ClaimFence`, `G_StartFence`, `G_StartFunds`. `G_StartStatus` is the exception since B5.8: alone, with the original four properties it still passes (995,560 distinct states), but it violates `RefundStartedStaysOpen` (4 to 5 states: claim, a scan moves the shipment to `delivered`, then the refund starts on a shipment that can no longer be cancelled), so it is a real barrier for that property. Removing `G_ClaimFence`+`G_StartFence`+`G_StartStatus`+`G_StartFunds` together violates the same property for the same reason. The three single guards that pass are defense in depth inside this model's assumptions; do not read this as permission to delete them.
