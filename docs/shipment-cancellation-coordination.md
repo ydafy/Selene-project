@@ -1,4 +1,49 @@
-# Shipment cancellation coordination — B1, B2, B3 and B4
+# Shipment cancellation coordination — B1, B2, B3, B4 and B5
+
+## B5 status: app messaging, participant summary and late carrier activity (in progress)
+
+Tracker: `odd/tasks/shipment-cancellations-b5.md` (specs S1–S8, Log L1–L17). Committed locally on `feat/shipment-cancellations-b5`. Not applied remotely, not deployed, not pushed.
+
+| Unit | Behavior |
+|---|---|
+| B5.1 | Every `cancel-order` error code maps to an English and Spanish message in nine groups. Refund-unconfirmed copy says a retry is safe. |
+| B5.2 | Seven Edge Functions answer `401 AUTH_REQUIRED` instead of the Spanish `No autorizado` for a token that is not a signed-in user (issue #15). The app accepts both texts during the transition. |
+| B5.3 | Dialog, toast and actions name the shipment and say the other shipments of the order continue. An expired seller deadline shows a banner: the seller did not ship in time, the shipment is cancelled automatically with a full refund, or the buyer can cancel now. |
+| B5.4 | Cancelling refreshes `['my-listings']` and `['product']`. Failures that mean the state changed refresh order, shipment, purchases and sales. Without cancellation settings the app starts no timer instead of using the 48 and 72 hour fallback. `useOrderCountdown` resets when its start time is null. |
+| B5.5 | `fn_get_shipment_cancellation_summary(p_shipment_id)` returns the cancellation source and refund state (`refunded`, `delayed`, `processing`) only to the buyer and the seller of that shipment. Other users and `anon` get no rows or no access. |
+| B5.7 | `fn_cancel_order` is dropped (issue #39). Nothing called it. |
+| B5.8 | `fn_record_tracking_event` still stores events but does not advance a shipment whose cancellation refund has started. `fn_mark_shipment_delivered` and `fn_confirm_shipment_delivery` refuse with `SHIPMENT_CANCELLATION_OPERATION_ACTIVE`. The cancellation completes and the first such event is recorded on the operation. |
+| B5.8b | Admin functions `list-shipment-late-carrier-activity` and `acknowledge-shipment-late-carrier-activity`, and a second "Envíos" bucket, "Actividad del carrier tras la cancelación", with "Marcar revisado" (required note). `confirm-shipment-delivery` answers 409 `SHIPMENT_CANCELLATION_OPERATION_ACTIVE`. `complete-delivered-shipments` skips such a shipment with a WARN and continues. |
+
+### B5 apply and deploy order
+
+Apply the migrations in this order, all before any push, then run `bun run db:types`:
+
+1. `20261027020000_shipment_cancellation_summary.sql`
+2. `20261027030000_drop_fn_cancel_order.sql`
+3. `20261027040000_shipment_tracking_during_cancellation.sql`
+4. `20261027050000_shipment_late_carrier_activity_acknowledge.sql`
+
+Deploy these Edge Functions:
+
+- B5.2, together with the app release: `cancel-order`, `create-dispute`, `create-return-intent`, `generate-return-label`, `generate-shipping-label`, `resolve-dispute`, `resolve-dispute-refund`.
+- B5.8b, after migration `20261027050000`: `list-shipment-late-carrier-activity`, `acknowledge-shipment-late-carrier-activity`, `confirm-shipment-delivery`, `complete-delivered-shipments`.
+
+### B5 evidence
+
+- B5.1: 39 mapping tests; full `bun test` 3832/0.
+- B5.2: 16 tests including the source scan `auth-required-contract.test.ts`; Bruno 255/255 at that point.
+- B5.5: SQL-text tests 4/4; harness `scripts/test-shipment-cancellation-summary.ts` 11/11 (buyer, seller, other user, anon, service role, co-seller, each state); 25 Bruno requests.
+- B5.7: SQL-text test `drop_fn_cancel_order.test.ts` 6 tests; Bruno 275/275 from a fresh reset.
+- B5.8: harness `scripts/test-shipment-tracking-during-cancellation.ts` 17/0; TLC on `docs/formal/shipment-transfer-cancellation/`: the faithful configuration finds no error (1,321,384 states, 505,816 distinct, depth 29) and the broken variant `G_ProgressOp=FALSE` violates `RefundStartedStaysOpen` and `RefundStartedOnlyCancels`. Bruno 282/282.
+- B5.8b: Edge tests 40/0 and 28/0; SQL-text 6/6; harness 27/0; admin-web 266/0; Bruno 292/292 after a fresh reset; `deno check` on four functions clean; `bun test` 3954/0; Playwright `test:e2e` 16/16 and `test:e2e:local` 3/3.
+- Independent verifiers and native reviews approved B5.1 to B5.5 and B5.8 (L7, L10, L15).
+
+### B5 remaining items
+
+- B5.6: the cancelled-shipment banner with the reason and refund state. It needs migration `20261027020000` applied and the regenerated types.
+- Maintainer check on a device: the shipment-scoped copy, the expired-deadline banner and the new "Envíos" bucket.
+- B5 is in progress, not complete, until the migrations are applied, the functions are deployed and B5.6 lands.
 
 ## B4 status: carrier cancellation before preparing refunds
 
