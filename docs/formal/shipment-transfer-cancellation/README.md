@@ -12,7 +12,8 @@ Files: `ShipmentTransferCancel.tla` (model and properties), `ShipmentTransferCan
 | --- | --- |
 | Synced against | `origin/main` `adb63322ed13f82b23d1172d4f8c4391b4616cbb` |
 | Files and functions covered | the table below |
-| Files unchanged since the sync commit | all files in the table (checked with `git diff adb63322 HEAD` on `supabase/queries/payments`, `supabase/queries/orders`, `supabase/queries/shipments/fn_claim_shipment_label.sql`, `supabase/functions/release-connect-payout`, `supabase/functions/cancel-order`) |
+| Files unchanged since the sync commit | all files in the table (checked with `git diff adb63322 HEAD` on `supabase/queries/payments`, `supabase/queries/orders`, `supabase/queries/shipments/fn_claim_shipment_label.sql`, `supabase/functions/release-connect-payout`, `supabase/functions/cancel-order`), except the legacy wallet removal below |
+| Changes since the sync | `odd/tasks/remove-legacy-wallet.md` T4-T6: `fn_cancel_shipment` and `fn_confirm_shipment_delivery` lost their wallet writes (never modeled), and `fn_confirm_shipment_delivery` refuses a shipment without `stripe_payment_intent_id` (`SHIPMENT_NOT_CONNECT`). The modeled transitions of Connect shipments are unchanged; TLC was not rerun. |
 
 When any file in the mapping table changes, re-read its row and update the model and this table.
 
@@ -75,7 +76,7 @@ Two shipments (`s1`, `s2`), two cancellation actors (`a1`, `a2`; buyer, cron, ad
 3. A pending run can fail at any moment (the model does not distinguish why).
 4. Stripe idempotency keys are treated as permanent. Real keys expire, which is why the model also relies on the `transfer_started_at` fence.
 5. Refund status is reduced to "none" and "succeeded". The `failed`, `canceled`, `pending` and `requires_action` refund states, `refund_resolved_at` and the admin resolution of a failed refund are not modeled.
-6. Not modeled: `payouts.create` and the balance preflight after the transfers, `paid` mappings, executor claims on runs, label generation states, wallets (deprecated), authorization and the service-role check, lock ordering and deadlocks (each SQL function is one atomic action, which holds because each locks the shipment first).
+6. Not modeled: `payouts.create` and the balance preflight after the transfers, `paid` mappings, executor claims on runs, label generation states, wallets (removed by the legacy wallet removal), authorization and the service-role check, lock ordering and deadlocks (each SQL function is one atomic action, which holds because each locks the shipment first).
 7. Safety only. Liveness (every started operation eventually finishes) is not checked.
 8. Model checking covers the bounds above, not all sizes. It proves nothing about code beyond the rows in the mapping table.
 
