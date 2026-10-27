@@ -227,6 +227,50 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     },
   ],
   [
+    'a co-seller of the same order and a non-participant admin get zero rows',
+    async (tx) => {
+      await tx`INSERT INTO public.shipments (id, order_id, seller_id, status, stripe_payment_intent_id, label_generation_state)
+        VALUES ('7b550000-0000-4000-8000-000000000013', ${ids.order}, ${ids.other}, 'paid', ${paymentIntent}, 'unclaimed')`;
+      await claim(tx, 'seller');
+      assert.equal((await summary(tx, 'other')).length, 0);
+      await tx`RESET ROLE`;
+      await tx`SELECT set_config('request.jwt.claims', ${JSON.stringify({ role: 'authenticated', sub: ids.admin })}, true)`;
+      await tx`SET LOCAL ROLE authenticated`;
+      assert.equal(
+        (await tx`SELECT * FROM public.fn_get_shipment_cancellation_summary(${ids.shipment}::uuid)`).length,
+        0,
+      );
+      await asService(tx);
+    },
+  ],
+  [
+    'the buyer comes from the order recorded on the operation, not a rewritten shipment link',
+    async (tx) => {
+      await claim(tx, 'seller');
+      await tx`INSERT INTO public.orders (id, buyer_id, total_amount, shipping_address, status, stripe_payment_intent_id)
+        VALUES ('7b550000-0000-4000-8000-000000000002', ${ids.other}, 180, '{}'::jsonb, 'paid', 'pi_b55_other')`;
+      await tx`UPDATE public.shipments SET order_id = '7b550000-0000-4000-8000-000000000002' WHERE id = ${ids.shipment}`;
+      assert.equal((await summary(tx, 'other')).length, 0);
+      assert.equal((await summary(tx, 'buyer')).length, 1);
+      assert.equal((await summary(tx, 'seller')).length, 1);
+    },
+  ],
+  [
+    'catalog: definer, STABLE, empty search_path, anon cannot execute',
+    async (tx) => {
+      await tx`RESET ROLE`;
+      const [p] = await tx`SELECT prosecdef, provolatile, proconfig,
+        has_function_privilege('anon', oid, 'EXECUTE') AS anon_x,
+        has_function_privilege('authenticated', oid, 'EXECUTE') AS auth_x
+        FROM pg_proc WHERE oid = 'public.fn_get_shipment_cancellation_summary(uuid)'::regprocedure`;
+      assert.deepEqual(
+        [p.prosecdef, p.provolatile, p.proconfig, p.anon_x, p.auth_x],
+        [true, 's', ['search_path=""'], false, true],
+      );
+      await asService(tx);
+    },
+  ],
+  [
     'reading writes nothing: the operation row is unchanged',
     async (tx) => {
       await claim(tx);

@@ -40,7 +40,8 @@ AS $$
          o.refund_status_updated_at
   FROM public.shipment_cancellation_operations o
   JOIN public.shipments s ON s.id = o.shipment_id
-  JOIN public.orders ord ON ord.id = s.order_id
+  -- The buyer comes from the order recorded on the operation, not the shipment's current link.
+  JOIN public.orders ord ON ord.id = o.order_id
   WHERE o.shipment_id = p_shipment_id
     AND auth.uid() IS NOT NULL
     AND (ord.buyer_id = auth.uid() OR s.seller_id = auth.uid());
