@@ -244,7 +244,7 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     },
   ],
   [
-    'the buyer comes from the order recorded on the operation, not a rewritten shipment link',
+    'the buyer is read from the order recorded on the cancellation operation',
     async (tx) => {
       await claim(tx, 'seller');
       await tx`INSERT INTO public.orders (id, buyer_id, total_amount, shipping_address, status, stripe_payment_intent_id)
