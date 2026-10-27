@@ -20,7 +20,7 @@ Evidence: SQL harnesses `scripts/test-shipment-carrier-cancellation.ts` (20), `s
 - Shipments under review still take candidate slots in the preparing run (one claim each, no Envia call).
 - If the record RPC fails right after Envia accepted, the next run sees the label cancelled and sends the case to review; the admin then decides, and an approval counts the full label cost as lost.
 - The two sandbox operations from before the `balanceReturned` fix keep `label_cost_loss_cents` 23780 although Envia returned the labels (test data, not corrected).
-- Blocked-label shipments (`orphan_pending`) are only logged; their bucket in "Envíos" is backlog BL38.
+- Blocked-label shipments (`orphan_pending`) are only logged; their bucket in "Envíos" is issue #43.
 
 ## B3 status: authenticated, expiring cron coordination (closed by B3.4)
 
