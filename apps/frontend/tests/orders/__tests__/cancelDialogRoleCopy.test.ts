@@ -14,33 +14,39 @@ const en = JSON.parse(read('core/i18n/locales/en/orders.json'));
 describe('cancel dialog role copy', () => {
   it('provides role-specific cancel copy in Spanish', () => {
     expect(es.dialogs.cancelMsgBuyer).toBe(
-      'Recibirás un reembolso completo a tu método de pago original. Solo puedes cancelar antes de que el vendedor prepare el envío.',
+      'Recibirás un reembolso completo de este envío a tu método de pago original. Solo puedes cancelar antes de que el vendedor prepare el envío.',
     );
     expect(es.dialogs.cancelMsgSeller).toBe(
-      'El comprador recibirá un reembolso completo y tus productos volverán a estar disponibles. Solo puedes cancelar antes de preparar el envío.',
+      'El comprador recibirá un reembolso completo de este envío y los productos de este envío volverán a estar disponibles. Solo puedes cancelar antes de preparar el envío.',
     );
-    expect(es.dialogs.cancelSuccessTitle).toBe('Pedido cancelado');
+    expect(es.dialogs.cancelSuccessTitle).toBe('Envío cancelado');
     expect(es.dialogs.cancelSuccessMsgBuyer).toBe(
-      'Tu reembolso será procesado a tu método de pago original.',
+      'Tu reembolso de este envío será procesado a tu método de pago original.',
     );
     expect(es.dialogs.cancelSuccessMsgSeller).toBe(
-      'El comprador recibirá su reembolso y tus productos vuelven a estar disponibles.',
+      'El comprador recibirá el reembolso de este envío y tus productos vuelven a estar disponibles.',
+    );
+    expect(es.dialogs.otherShipmentsContinue).toBe(
+      'Los demás envíos del pedido continúan con normalidad.',
     );
   });
 
   it('provides role-specific cancel copy in English', () => {
     expect(en.dialogs.cancelMsgBuyer).toBe(
-      'You will receive a full refund to your original payment method. You can only cancel before the seller prepares the shipment.',
+      'You will receive a full refund of this shipment to your original payment method. You can only cancel before the seller prepares the shipment.',
     );
     expect(en.dialogs.cancelMsgSeller).toBe(
-      'The buyer will receive a full refund and your products will be available again. You can only cancel before preparing the shipment.',
+      'The buyer will receive a full refund of this shipment and the products in this shipment will be available again. You can only cancel before preparing the shipment.',
     );
-    expect(en.dialogs.cancelSuccessTitle).toBe('Order cancelled');
+    expect(en.dialogs.cancelSuccessTitle).toBe('Shipment cancelled');
     expect(en.dialogs.cancelSuccessMsgBuyer).toBe(
-      'Your refund will be processed to your original payment method.',
+      'Your refund for this shipment will be processed to your original payment method.',
     );
     expect(en.dialogs.cancelSuccessMsgSeller).toBe(
-      'The buyer will receive their refund and your products are available again.',
+      'The buyer will receive the refund for this shipment and your products are available again.',
+    );
+    expect(en.dialogs.otherShipmentsContinue).toBe(
+      'The other shipments of the order continue as normal.',
     );
   });
 
@@ -48,13 +54,7 @@ describe('cancel dialog role copy', () => {
     expect(flatDetail).toContain(
       "const isSellerCancel = currentShipment?.isSeller ?? false;",
     );
-    expect(flatDetail).toContain(
-      "description={t( isSellerCancel ? 'orders:dialogs.cancelMsgSeller' : 'orders:dialogs.cancelMsgBuyer', )}",
-    );
     expect(flatDetail).toContain("text1: t('orders:dialogs.cancelSuccessTitle')");
-    expect(flatDetail).toContain(
-      "text2: t( isSellerCancel ? 'orders:dialogs.cancelSuccessMsgSeller' : 'orders:dialogs.cancelSuccessMsgBuyer', )",
-    );
   });
 
   it('drops the buyer-only disclaimer and hardcoded toast fallbacks', () => {
@@ -67,7 +67,24 @@ describe('cancel dialog role copy', () => {
   it('keeps the shared cancel title and confirm action', () => {
     expect(detail).toContain("title={t('orders:dialogs.cancelTitle')}");
     expect(detail).toContain("confirmLabel={t('orders:actions.confirmCancel')}");
-    expect(es.dialogs.cancelTitle).toBe('¿Deseas cancelar este pedido?');
-    expect(en.dialogs.cancelTitle).toBe('Do you want to cancel this order?');
+    expect(es.dialogs.cancelTitle).toBe('¿Deseas cancelar este envío?');
+    expect(en.dialogs.cancelTitle).toBe('Do you want to cancel this shipment?');
+    expect(es.actions.cancelOrder).toBe('Cancelar envío');
+    expect(en.actions.cancelOrder).toBe('Cancel shipment');
+    expect(es.actions.confirmCancel).toBe('Sí, cancelar envío');
+    expect(en.actions.confirmCancel).toBe('Yes, cancel shipment');
+  });
+
+  it('adds the other-shipments note only when the order has several shipments', () => {
+    expect(detail).toContain('const isMultiShipment = (order?.shipments?.length ?? 0) > 1;');
+    expect(flatDetail).toContain(
+      "const withOtherShipmentsNote = (message: string) => isMultiShipment ? `${message} ${t('orders:dialogs.otherShipmentsContinue')}` : message;",
+    );
+    expect(flatDetail).toContain(
+      "description={withOtherShipmentsNote( t( isSellerCancel ? 'orders:dialogs.cancelMsgSeller' : 'orders:dialogs.cancelMsgBuyer', ), )}",
+    );
+    expect(flatDetail).toContain(
+      "text2: withOtherShipmentsNote( t( isSellerCancel ? 'orders:dialogs.cancelSuccessMsgSeller' : 'orders:dialogs.cancelSuccessMsgBuyer', ), )",
+    );
   });
 });

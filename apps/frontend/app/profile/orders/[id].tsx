@@ -284,6 +284,12 @@ export default function OrderDetailScreen() {
     }
   };
 
+  // Only one shipment is cancelled; say so when the order has others.
+  const withOtherShipmentsNote = (message: string) =>
+    isMultiShipment
+      ? `${message} ${t('orders:dialogs.otherShipmentsContinue')}`
+      : message;
+
   const handleCancelOrder = async () => {
     if (!currentShipment) {
       setShowCancelConfirm(false);
@@ -301,10 +307,12 @@ export default function OrderDetailScreen() {
       Toast.show({
         type: 'info',
         text1: t('orders:dialogs.cancelSuccessTitle'),
-        text2: t(
-          isSellerCancel
-            ? 'orders:dialogs.cancelSuccessMsgSeller'
-            : 'orders:dialogs.cancelSuccessMsgBuyer',
+        text2: withOtherShipmentsNote(
+          t(
+            isSellerCancel
+              ? 'orders:dialogs.cancelSuccessMsgSeller'
+              : 'orders:dialogs.cancelSuccessMsgBuyer',
+          ),
         ),
       });
     } catch {
@@ -929,10 +937,12 @@ export default function OrderDetailScreen() {
       <ConfirmDialog
         visible={showCancelConfirm}
         title={t('orders:dialogs.cancelTitle')}
-        description={t(
-          isSellerCancel
-            ? 'orders:dialogs.cancelMsgSeller'
-            : 'orders:dialogs.cancelMsgBuyer',
+        description={withOtherShipmentsNote(
+          t(
+            isSellerCancel
+              ? 'orders:dialogs.cancelMsgSeller'
+              : 'orders:dialogs.cancelMsgBuyer',
+          ),
         )}
         onConfirm={handleCancelOrder}
         onCancel={() => setShowCancelConfirm(false)}

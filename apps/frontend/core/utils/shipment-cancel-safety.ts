@@ -127,22 +127,32 @@ export function resolveCancelOrderFailureToast(
   };
 }
 
+export interface ShipmentPreparingWindowMessage {
+  key: string;
+  params: { timeLeft?: string };
+}
+
 export function resolveShipmentPreparingWindowMessage(
   input: ShipmentPreparingWindowCopyInput,
-): string {
+): ShipmentPreparingWindowMessage {
   if (input.isExpired) {
-    return input.isSeller
-      ? 'Your carrier scan window has closed.'
-      : "The seller's shipping window has closed.";
+    return {
+      key: input.isSeller
+        ? 'orders:actionCard.carrierScanWindowClosed'
+        : 'orders:actionCard.sellerShippingWindowClosed',
+      params: {},
+    };
   }
 
+  const params = { timeLeft: input.timeLeft };
+
   if (input.isBuyer) {
-    return `El vendedor tiene ${input.timeLeft} para realizar el envío. Si no lo envía a tiempo, el envío se cancela automáticamente y se procesa tu reembolso.`;
+    return { key: 'orders:actionCard.preparingWindowBuyer', params };
   }
 
   if (input.isSeller) {
-    return `Dispones de ${input.timeLeft} para que se realice el escaneo por parte del transportista. Si esto no ocurre, el envío se cancelará automáticamente.`;
+    return { key: 'orders:actionCard.preparingWindowSeller', params };
   }
 
-  return `The seller has ${input.timeLeft} before the shipment is locked for auto-cancel.`;
+  return { key: 'orders:actionCard.preparingWindowOther', params };
 }

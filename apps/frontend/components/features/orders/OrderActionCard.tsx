@@ -178,21 +178,22 @@ export const OrderActionCard = ({
   // --- 4. MENSAJES DINÁMICOS (CON RELOJ) ---
   const getBannerMessage = () => {
     if (permissions.canCancel) {
+      // Past the deadline the shipment stays `paid` (and cancellable) until the cron cancels it.
       return isExpired
-        ? t('actionCard.cancellationWindowClosed')
+        ? isBuyer
+          ? t('actionCard.cancellationWindowExpiredBuyer')
+          : t('actionCard.cancellationWindowExpiredSeller')
         : t('actionCard.cancellationWindowOpen', { timeLeft });
     }
 
     if (shipment.status === 'preparing') {
-      return isExpired
-        ? isSeller
-          ? t('actionCard.carrierScanWindowClosed')
-          : t('actionCard.sellerShippingWindowClosed')
-        : resolveShipmentPreparingWindowMessage({
-            isBuyer,
-            isSeller,
-            timeLeft,
-          });
+      const preparingMessage = resolveShipmentPreparingWindowMessage({
+        isBuyer,
+        isSeller,
+        timeLeft,
+        isExpired,
+      });
+      return t(preparingMessage.key, preparingMessage.params);
     }
 
     if (showDeliveredReviewBanner && isExpired) {
