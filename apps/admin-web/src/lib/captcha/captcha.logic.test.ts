@@ -67,3 +67,37 @@ describe('toCaptchaError', () => {
     expect(toCaptchaError(error)).toBe(error);
   });
 });
+
+describe('createCaptchaGetter timeout cleanup', () => {
+  it('asks the provider to close the challenge when it times out', async () => {
+    let cancels = 0;
+    const getToken = createCaptchaGetter(
+      () => ({
+        configured: true,
+        request: () => new Promise<string>(() => {}),
+        cancel: () => {
+          cancels += 1;
+        },
+      }),
+      10,
+    );
+    await expect(getToken()).rejects.toMatchObject({ code: CAPTCHA_FAILED_CODE });
+    expect(cancels).toBe(1);
+  });
+
+  it('does not cancel a challenge that answered in time', async () => {
+    let cancels = 0;
+    const getToken = createCaptchaGetter(
+      () => ({
+        configured: true,
+        request: async () => 'token',
+        cancel: () => {
+          cancels += 1;
+        },
+      }),
+      1_000,
+    );
+    expect(await getToken()).toBe('token');
+    expect(cancels).toBe(0);
+  });
+});

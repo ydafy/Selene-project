@@ -36,6 +36,8 @@ export function useCaptcha(): { getToken: CaptchaTokenSource; widget: ReactNode 
       createCaptchaGetter(() => ({
         configured: SITE_KEY !== '',
         request,
+        // A timed-out challenge must not stay open over the login form.
+        cancel: () => widgetRef.current?.resetCaptcha(),
       })),
     [request],
   );

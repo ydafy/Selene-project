@@ -27,6 +27,8 @@ export type CaptchaProviderHandle = {
   configured: boolean;
   /** Runs one challenge; resolves a single-use token or rejects `CaptchaError`. */
   request: () => Promise<string>;
+  /** Closes an open challenge; called when the request times out. */
+  cancel?: () => void;
 };
 
 export type CaptchaTokenSource = () => Promise<string | undefined>;
@@ -47,7 +49,7 @@ export const createCaptchaGetter =
     const provider = getProvider();
     if (!provider) throw new CaptchaError(CAPTCHA_FAILED_CODE);
     if (!provider.configured) return undefined;
-    return withTimeout(provider.request(), timeoutMs);
+    return withTimeout(provider.request(), timeoutMs, provider.cancel);
   };
 
 /** Normalizes whatever a widget rejects with; hCaptcha rejects with strings like `challenge-closed`. */
@@ -58,10 +60,17 @@ export const toCaptchaError = (reason: unknown): CaptchaError => {
   );
 };
 
-const withTimeout = (request: Promise<string>, ms: number): Promise<string> => {
+const withTimeout = (
+  request: Promise<string>,
+  ms: number,
+  onTimeout?: () => void,
+): Promise<string> => {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new CaptchaError(CAPTCHA_FAILED_CODE)), ms);
+    timer = setTimeout(() => {
+      onTimeout?.();
+      reject(new CaptchaError(CAPTCHA_FAILED_CODE));
+    }, ms);
   });
   return Promise.race([request, timeout]).finally(() => clearTimeout(timer));
 };

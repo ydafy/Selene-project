@@ -42,9 +42,15 @@ export function CaptchaProvider({ children }: { children?: React.ReactNode }) {
     [],
   );
 
+  // A timed-out challenge must not stay on screen or answer a later request.
+  const cancel = useCallback(() => {
+    pending.current = null;
+    widget.current?.hide();
+  }, []);
+
   useEffect(
-    () => registerCaptchaProvider({ configured: !!SITE_KEY, request }),
-    [request],
+    () => registerCaptchaProvider({ configured: !!SITE_KEY, request, cancel }),
+    [request, cancel],
   );
 
   const onMessage = useCallback((event: HcaptchaEventLike) => {
