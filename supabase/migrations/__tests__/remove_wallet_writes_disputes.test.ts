@@ -67,6 +67,12 @@ const FUNCTIONS = [
   },
 ] as const;
 
+/** Functions a later migration redefines, by that migration's file suffix. */
+const SUPERSEDED_BY: Partial<Record<(typeof FUNCTIONS)[number]['name'], string>> = {
+  fn_release_shipment_funds: '_release_shipment_funds_guard.sql',
+  fn_cron_dispute_shipping_timeout: '_release_shipment_funds_guard.sql',
+};
+
 const WALLET_REFERENCE = /\bwallets\b|wallet_transactions|payout_requests/i;
 
 const collapse = (sql: string): string => sql.replace(/\s+/g, ' ').trim();
@@ -124,6 +130,14 @@ describe('remove legacy wallet writes from the delivery, release, dispute and cr
       test('the canonical query file carries the migration body', () => {
         const canonical = canonicalBody(fn.file);
         expect(canonical).not.toMatch(WALLET_REFERENCE);
+        const later = SUPERSEDED_BY[fn.name];
+        if (later) {
+          // A later migration redefines it; its own test compares the canonical file.
+          expect(
+            readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith(later)),
+          ).toHaveLength(1);
+          return;
+        }
         expect(collapse(canonical)).toBe(collapse(migrationBody(fn.name)));
       });
 

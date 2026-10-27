@@ -1,0 +1,51 @@
+meta {
+  name: release-guard-setup-order
+  type: http
+  seq: 37
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/orders
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+script:pre-request {
+  const base = Date.now();
+  bru.setVar("rgOrder", "00000000-0000-4000-8000-" + (base * 64 + 32).toString(16).padStart(12, "0"));
+  for (let n = 1; n <= 5; n++) bru.setVar("rgShip" + n, "00000000-0000-4000-8000-" + (base * 64 + 32 + n).toString(16).padStart(12, "0"));
+  for (const n of [2, 5]) bru.setVar("rgDisp" + n, "00000000-0000-4000-8000-" + (base * 64 + 48 + n).toString(16).padStart(12, "0"));
+  bru.setVar("rgDeliveredOld", new Date(base - 3 * 24 * 3600 * 1000).toISOString());
+  bru.setVar("rgDeliveredRecent", new Date(base - 3600 * 1000).toISOString());
+}
+
+body:json {
+  {
+    "id": "{{rgOrder}}",
+    "buyer_id": "00000000-0000-4000-8000-000000000005",
+    "total_amount": 100,
+    "shipping_address": {
+      "street": "Av. Reforma 1",
+      "city": "Ciudad de México",
+      "zip": "06500"
+    },
+    "status": "delivered"
+  }
+}
+
+tests {
+  test("the fixture order exists", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody()[0].id).to.equal(bru.getVar("rgOrder"));
+  });
+}
+
+docs {
+  Local stack only. Fixtures for the refusals of fn_release_shipment_funds and for a refused release inside fn_cron_dispute_shipping_timeout, with fresh ids per run. The completing paths are t5-release-connect and t5-cron-dispute-shipping-timeout.
+}

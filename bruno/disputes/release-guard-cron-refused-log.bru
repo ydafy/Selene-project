@@ -1,0 +1,27 @@
+meta {
+  name: release-guard-cron-refused-log
+  type: http
+  seq: 48
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/system_logs?message=eq.Cron shipping timeout: release failed&metadata->>dispute_id=eq.{{rgDisp5}}&select=level,metadata
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the refusal is logged once with its reason", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ level: "WARNING", metadata: { dispute_id: bru.getVar("rgDisp5"), shipment_id: bru.getVar("rgShip5"), error: "SHIPMENT_NOT_DELIVERED" } }]);
+  });
+}
+
+docs {
+  Same WARNING row as before the change.
+}
