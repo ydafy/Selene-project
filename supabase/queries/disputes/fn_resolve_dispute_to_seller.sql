@@ -6,9 +6,6 @@ DECLARE
     v_buyer_id UUID;
     v_shipment_id UUID;
     v_status public.dispute_status;
-    v_total_payout NUMERIC;
-    v_new_balance NUMERIC;
-    v_wallet_id UUID;
     v_audit_id UUID;
 BEGIN
     -- A. SEGURIDAD: Obtener ID desde JWT y validar sesión
@@ -39,50 +36,8 @@ BEGIN
         RETURN QUERY SELECT false, 'INVALID_DISPUTE_STATUS'::TEXT; RETURN;
     END IF;
 
-   -- D. LÓGICA FINANCIERA: Liberar el dinero al vendedor de forma aislada
-    -- Connect guard: if the shipment was paid via Stripe Connect, skip wallet
-    -- operations. We do NOT update shipments here to avoid triggering the
-    -- Database Webhook twice. Section F.1 will handle the single atomic update.
-    IF v_shipment_id IS NOT NULL AND EXISTS (
-      SELECT 1 FROM public.shipments
-      WHERE id = v_shipment_id AND stripe_payment_intent_id IS NOT NULL
-    ) THEN
-      -- Skip wallet operations entirely. Let Section F.1 handle the
-      -- single, atomic completed update.
-      NULL;
-
-      RAISE NOTICE 'Connect dispute resolved: shipment % skips wallet operations', v_shipment_id;
-    ELSE
-      -- Legacy path: wallet pending→available
-      -- FIX Double Payout: si hay shipment_id, sumamos solo los items de ESE shipment
-      IF v_shipment_id IS NOT NULL THEN
-          SELECT COALESCE(SUM(net_payout), 0) INTO v_total_payout
-          FROM public.order_items
-          WHERE shipment_id = v_shipment_id;
-      ELSE
-          -- Fallback pre-migration (históricos sin shipment_id)
-          SELECT COALESCE(SUM(net_payout), 0) INTO v_total_payout
-          FROM public.order_items
-          WHERE order_id = v_order_id AND seller_id = v_seller_id;
-      END IF;
-
-      -- Mover dinero de Pending a Available con precisión absoluta
-      UPDATE public.wallets
-      SET pending_balance = GREATEST(0, pending_balance - v_total_payout),
-          available_balance = available_balance + v_total_payout,
-          updated_at = now()
-      WHERE user_id = v_seller_id
-      RETURNING id, available_balance INTO v_wallet_id, v_new_balance;
-
-      -- E. LEDGER: Registro inmutable del movimiento
-      INSERT INTO public.wallet_transactions (
-          wallet_id, order_id, shipment_id, amount, net_amount, balance_after, type, description
-      ) VALUES (
-          v_wallet_id, v_order_id, v_shipment_id, v_total_payout, v_total_payout, v_new_balance,
-          'release', 'Resolución de disputa a favor del vendedor'
-      );
-
-    END IF;
+    -- D. PAGO: Stripe Connect releases the seller's funds from the admin payout
+    -- queue once the shipment is completed (F.1). Nothing moves in this function.
 
     -- F. ACTUALIZAR ESTADOS: Cerrar caso
     UPDATE public.disputes

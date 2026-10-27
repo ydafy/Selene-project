@@ -1,4 +1,3 @@
-
 DECLARE
     v_dispute RECORD;
     v_success BOOLEAN;
@@ -17,7 +16,7 @@ BEGIN
         BEGIN
             IF v_dispute.shipment_id IS NOT NULL THEN
                 -- fn_release_shipment_funds hace TODO atómicamente:
-                -- wallet release (pending→available), ledger, shipment→completed (trigger→order)
+                -- shipment→completed (trigger→order)
                 -- NO resuelve la disputa ni notifica — eso es responsabilidad del cron.
                 SELECT success, error_message INTO v_success, v_err
                 FROM public.fn_release_shipment_funds(v_dispute.shipment_id);
