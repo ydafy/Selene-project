@@ -164,7 +164,7 @@ serve(withSentry('generate-shipping-label', async (req: Request) => {
       authHeader?.replace('Bearer ', '') || '',
     );
 
-    if (authError || !user) throw new ApiError(401, 'No autorizado');
+    if (authError || !user) throw new ApiError(401, 'AUTH_REQUIRED');
 
     // C. Fetch Paralelo (Shipment + Padre Order + Settings)
     const [shipmentRes, settingsRes] = await Promise.all([

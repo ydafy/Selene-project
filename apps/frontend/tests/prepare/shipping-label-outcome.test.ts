@@ -112,9 +112,11 @@ describe('shipping label outcome', () => {
   });
 
   it('maps only known public failures and never returns raw technical messages', () => {
-    expect(resolveLabelFailureKey(new Error('No autorizado'))).toBe(
-      'prepare.errors.sessionExpired',
-    );
+    for (const code of ['No autorizado', 'AUTH_REQUIRED']) {
+      expect(resolveLabelFailureKey(new Error(code))).toBe(
+        'prepare.errors.sessionExpired',
+      );
+    }
     for (const code of [
       'PAQUETEXPRESS_GROUND_UNAVAILABLE',
       'ENVIA_CONFIGURATION_INVALID',

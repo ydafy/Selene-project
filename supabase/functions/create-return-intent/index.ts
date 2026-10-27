@@ -66,7 +66,7 @@ serve(withSentry('create-return-intent', async (req) => {
     } = await supabaseAdmin.auth.getUser(
       authHeader?.replace('Bearer ', '') || '',
     );
-    if (authError || !user) throw new ApiError(401, 'No autorizado');
+    if (authError || !user) throw new ApiError(401, 'AUTH_REQUIRED');
 
     // 2. Fetch de Datos (Disputa + Settings)
     const [disputeRes, settingsRes] = await Promise.all([

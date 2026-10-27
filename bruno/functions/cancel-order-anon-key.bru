@@ -26,12 +26,12 @@ body:json {
 tests {
   test("a valid JWT that is not a user session is refused before any order is read", function () {
     expect(res.getStatus()).to.equal(401);
-    expect(res.getBody()).to.deep.equal({ error: "No autorizado" });
+    expect(res.getBody()).to.deep.equal({ error: "AUTH_REQUIRED" });
   });
 }
 
 docs {
   The anon key passes the gateway (verify_jwt = true) but is not a user session, so
-  cancel-order must refuse it before reading any order or calling Stripe. The error text is
-  the function's current contract.
+  cancel-order must refuse it before reading any order or calling Stripe. The error code is
+  the function's contract (it used to be the Spanish text "No autorizado").
 }

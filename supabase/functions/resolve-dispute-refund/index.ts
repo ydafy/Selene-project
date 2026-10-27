@@ -48,7 +48,7 @@ serve(withSentry('resolve-dispute-refund', async (req: Request) => {
       authHeader?.replace('Bearer ', '') || '',
     );
     if (authError || !user)
-      return new Response(JSON.stringify({ error: 'No autorizado' }), {
+      return new Response(JSON.stringify({ error: 'AUTH_REQUIRED' }), {
         status: 401,
         headers: corsHeaders,
       });

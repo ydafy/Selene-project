@@ -24,6 +24,7 @@ interface LabelEffects {
 export function resolveLabelFailureKey(error: unknown): LabelFailureKey {
   switch (error instanceof Error ? error.message : undefined) {
     case 'No autorizado':
+    case 'AUTH_REQUIRED':
       return 'prepare.errors.sessionExpired';
     case 'PAQUETEXPRESS_GROUND_UNAVAILABLE':
     case 'ENVIA_CONFIGURATION_INVALID':
