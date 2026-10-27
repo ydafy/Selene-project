@@ -1,0 +1,35 @@
+meta {
+  name: t5-setup-dispute-d8
+  type: http
+  seq: 6
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/disputes?id=eq.{{t5Disp8}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "status": "waiting_return",
+    "return_payout_status": "paid"
+  }
+}
+
+tests {
+  test("d8 waits for the buyer to ship the return", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].return_payout_status).to.equal("paid");
+  });
+}
+
+docs {
+  Local stack only. d8: label paid, no tracking number for more than 48 h (fn_cron_dispute_shipping_timeout).
+}

@@ -1,14 +1,11 @@
+
 DECLARE
   v_order_id uuid;
-  v_seller_id uuid;
   v_buyer_id uuid;
   v_status public.order_status_enum;
   v_delivered_at timestamptz;
   v_buyer_confirmed_at timestamptz;
   v_is_connect BOOLEAN;
-  v_wallet_id uuid;
-  v_wallet_balance numeric;
-  v_net_payout numeric;
   v_completion_source text;
   v_completed_at timestamptz := now();
 BEGIN
@@ -44,14 +41,12 @@ BEGIN
 
   SELECT
     s.order_id,
-    s.seller_id,
     s.status,
     s.delivered_at,
     s.buyer_confirmed_at,
     s.stripe_payment_intent_id IS NOT NULL
   INTO
     v_order_id,
-    v_seller_id,
     v_status,
     v_delivered_at,
     v_buyer_confirmed_at,
@@ -113,22 +108,11 @@ BEGIN
     RETURN;
   END IF;
 
+  -- Shipments without a Stripe payment intent have no payout path since the
+  -- internal balance was removed: refuse them before any state changes.
   IF NOT v_is_connect THEN
-    SELECT wallet.id, wallet.available_balance
-    INTO v_wallet_id, v_wallet_balance
-    FROM public.wallets AS wallet
-    WHERE wallet.user_id = v_seller_id
-    FOR UPDATE;
-
-    IF NOT FOUND THEN
-      RETURN QUERY SELECT false, 'SELLER_WALLET_NOT_FOUND'::text, NULL::text, false;
-      RETURN;
-    END IF;
-
-    SELECT coalesce(sum(item.net_payout), 0)
-    INTO v_net_payout
-    FROM public.order_items AS item
-    WHERE item.shipment_id = p_shipment_id;
+    RETURN QUERY SELECT false, 'SHIPMENT_NOT_CONNECT'::text, NULL::text, false;
+    RETURN;
   END IF;
 
   INSERT INTO public.shipment_completion_events (
@@ -149,44 +133,16 @@ BEGIN
     v_is_connect
   );
 
-  IF NOT v_is_connect THEN
-    UPDATE public.wallets
-    SET pending_balance = greatest(0, pending_balance - v_net_payout),
-        available_balance = available_balance + v_net_payout,
-        updated_at = v_completed_at
-    WHERE id = v_wallet_id;
-
-    INSERT INTO public.wallet_transactions (
-      wallet_id,
-      order_id,
-      shipment_id,
-      amount,
-      net_amount,
-      balance_after,
-      type,
-      description
-    ) VALUES (
-      v_wallet_id,
-      v_order_id,
-      p_shipment_id,
-      v_net_payout,
-      v_net_payout,
-      v_wallet_balance + v_net_payout,
-      'release',
-      'Shipment completion release'
-    );
-  ELSE
-    INSERT INTO public.system_logs (level, message, metadata)
-    VALUES (
-      'INFO',
-      'Connect shipment completion skipped deprecated wallet release',
-      jsonb_build_object(
-        'shipment_id', p_shipment_id,
-        'source', p_source,
-        'is_connect', true
-      )
-    );
-  END IF;
+  INSERT INTO public.system_logs (level, message, metadata)
+  VALUES (
+    'INFO',
+    'Connect shipment completion skipped deprecated wallet release',
+    jsonb_build_object(
+      'shipment_id', p_shipment_id,
+      'source', p_source,
+      'is_connect', true
+    )
+  );
 
   UPDATE public.shipments
   SET status = 'completed',

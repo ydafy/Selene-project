@@ -1,0 +1,35 @@
+meta {
+  name: t5-verdict-as-admin
+  type: http
+  seq: 17
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_resolve_dispute_to_seller_as_admin
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_dispute_id": "{{t5Disp4}}",
+    "p_admin_note": "Bruno T5 verdict",
+    "p_admin_id": "00000000-0000-4000-8000-000000000001"
+  }
+}
+
+tests {
+  test("the verdict is recorded", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ success: true, error_message: null }]);
+  });
+}
+
+docs {
+  Resolves d4 for the seller of a Connect shipment: no payout is moved here, the shipment completes and funds are released from the admin queue.
+}

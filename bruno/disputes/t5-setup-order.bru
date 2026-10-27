@@ -1,0 +1,50 @@
+meta {
+  name: t5-setup-order
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/orders
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+script:pre-request {
+  const base = Date.now();
+  bru.setVar("t5Order", "00000000-0000-4000-8000-" + (base * 64 + 0).toString(16).padStart(12, "0"));
+  for (let n = 1; n <= 9; n++) bru.setVar("t5Ship" + n, "00000000-0000-4000-8000-" + (base * 64 + n).toString(16).padStart(12, "0"));
+  for (let n = 4; n <= 9; n++) bru.setVar("t5Disp" + n, "00000000-0000-4000-8000-" + (base * 64 + 16 + n).toString(16).padStart(12, "0"));
+  bru.setVar("t5Delivered", new Date(base - 3 * 24 * 3600 * 1000).toISOString());
+}
+
+body:json {
+  {
+    "id": "{{t5Order}}",
+    "buyer_id": "00000000-0000-4000-8000-000000000005",
+    "total_amount": 100,
+    "shipping_address": {
+      "street": "Av. Reforma 1",
+      "city": "Ciudad de México",
+      "zip": "06500"
+    },
+    "status": "delivered"
+  }
+}
+
+tests {
+  test("the fixture order exists", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody()[0].id).to.equal(bru.getVar("t5Order"));
+  });
+}
+
+docs {
+  Local stack only. Starts the delivery, release, dispute and cron flow of remove-legacy-wallet T5 with fresh ids per run, so the collection stays repeatable. The next requests add nine delivered shipments (s1-s9) and six disputes (d4-d9) for the fixture buyer and seller.
+}

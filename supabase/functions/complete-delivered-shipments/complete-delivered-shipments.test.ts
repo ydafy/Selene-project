@@ -6,6 +6,7 @@ import {
   MAX_AUTO_COMPLETION_BATCH_SIZE,
   buildAutoCompletionRpcInput,
   isActiveDisputeRefusal,
+  isNotConnectRefusal,
   mapAutoCompletionRpcResult,
   resolveAutoCompletionPlan,
   summarizeAutoCompletionResults,
@@ -116,6 +117,15 @@ describe('shipments with an active dispute', () => {
     expect(isActiveDisputeRefusal(null)).toBe(false);
   });
 
+  it('recognizes the non-Connect refusal and nothing else as an expected skip', () => {
+    const refusal = { success: false, error: 'SHIPMENT_NOT_CONNECT', completion_source: null, idempotent: false };
+    expect(isNotConnectRefusal(refusal)).toBe(true);
+    expect(isNotConnectRefusal({ ...refusal, error: 'SHIPMENT_HAS_ACTIVE_DISPUTE' })).toBe(false);
+    expect(isNotConnectRefusal({ ...refusal, success: true, error: null })).toBe(false);
+    expect(isNotConnectRefusal(null)).toBe(false);
+    expect(isActiveDisputeRefusal(refusal)).toBe(false);
+  });
+
   it('counts a skipped shipment without failing the batch', () => {
     expect(
       summarizeAutoCompletionResults([
@@ -132,6 +142,11 @@ describe('shipments with an active dispute', () => {
     expect(source.indexOf(".from('shipments')")).toBeGreaterThan(disputesIndex);
     expect(source).toContain(".not('status', 'in', '(resolved,rejected)')");
     expect(source).toContain(".not('id', 'in',");
+  });
+
+  it('only reads shipments paid through Stripe Connect so legacy rows never starve the batch', async () => {
+    const source = await Bun.file(new URL('./index.ts', import.meta.url)).text();
+    expect(source).toContain(".not('stripe_payment_intent_id', 'is', null)");
   });
 });
 

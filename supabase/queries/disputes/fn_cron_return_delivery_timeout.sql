@@ -1,4 +1,3 @@
-
 DECLARE
   v_dispute    RECORD;
   v_processed  INT := 0;
@@ -16,7 +15,7 @@ BEGIN
   LOOP
     BEGIN
       -- Connect guard: if the shipment was paid via Stripe Connect,
-      -- skip fn_complete_shipment_refund (wallet ops). Connect refunds
+      -- skip fn_complete_shipment_refund. Connect refunds
       -- are handled by resolve-dispute-refund with reverse_transfer.
       SELECT EXISTS(
         SELECT 1 FROM public.shipments
@@ -25,7 +24,7 @@ BEGIN
       ) INTO v_is_connect;
 
       IF v_is_connect THEN
-        -- Connect path: just mark dispute resolved, no wallet ops needed.
+        -- Connect path: just mark dispute resolved.
         -- The actual refund should be triggered by resolve-dispute-refund.
         UPDATE public.disputes
         SET status = 'resolved',
@@ -40,7 +39,7 @@ BEGIN
 
         v_processed := v_processed + 1;
       ELSE
-        -- Legacy path: wallet rollback via fn_complete_shipment_refund
+        -- Legacy path: refund via fn_complete_shipment_refund
         SELECT * INTO v_success, v_err_msg
         FROM public.fn_complete_shipment_refund(v_dispute.shipment_id);
 

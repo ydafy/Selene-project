@@ -1,0 +1,27 @@
+meta {
+  name: t5-verdict-as-admin-notices
+  type: http
+  seq: 20
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/notifications?event_kind=eq.dispute.verdict&source_event_key=like.dispute.verdict:{{t5Disp4}}:*&select=user_id&order=user_id
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the seller and the buyer are notified once", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ user_id: "00000000-0000-4000-8000-000000000004" }, { user_id: "00000000-0000-4000-8000-000000000005" }]);
+  });
+}
+
+docs {
+  One verdict notice per participant.
+}

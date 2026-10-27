@@ -1,0 +1,33 @@
+meta {
+  name: rpc-fn-cron-return-delivery-timeout-as-anon-denied
+  type: http
+  seq: 52
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_cron_return_delivery_timeout
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{anonKey}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("an anonymous caller is denied", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody().code).to.equal("42501");
+    expect(res.getBody().message).to.equal("permission denied for function fn_cron_return_delivery_timeout");
+  });
+}
+
+docs {
+  EXECUTE on fn_cron_return_delivery_timeout is limited to service_role, so a client cannot call it through the RPC.
+  The ids are placeholders: the request is refused before the function runs and changes nothing.
+}

@@ -1,0 +1,33 @@
+meta {
+  name: t5-cron-return-delivery-timeout
+  type: http
+  seq: 31
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_cron_return_delivery_timeout
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("the cron reports the processed dispute without errors", function () {
+    expect(res.getStatus()).to.equal(200);
+    const row = res.getBody()[0];
+    expect(row.total_processed).to.be.at.least(1);
+    expect(row.total_errors).to.equal(0);
+  });
+}
+
+docs {
+  Service role through rest/v1/rpc, like the return-delivery-timeout job. Acts on d9 (return delivered more than 48 h ago, Connect shipment).
+}

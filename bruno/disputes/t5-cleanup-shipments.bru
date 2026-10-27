@@ -1,0 +1,34 @@
+meta {
+  name: t5-cleanup-shipments
+  type: http
+  seq: 36
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/shipments?order_id=eq.{{t5Order}}&status=eq.delivered
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "status": "cancelled"
+  }
+}
+
+tests {
+  test("the shipments still delivered are closed", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().every((s) => s.status === "cancelled")).to.equal(true);
+  });
+}
+
+docs {
+  Local stack only. Closes the delivered shipments of this run (s2 and the shipments whose dispute was resolved without completing them) so no later cron run picks them up.
+}

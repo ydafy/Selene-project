@@ -1,0 +1,27 @@
+meta {
+  name: t5-cron-dispute-payout-timeout-state
+  type: http
+  seq: 27
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/disputes?id=eq.{{t5Disp7}}&select=status,resolution_type
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("d7 is closed for the buyer", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ status: "resolved", resolution_type: "buyer_wins_timeout" }]);
+  });
+}
+
+docs {
+  Connect path of fn_cron_dispute_payout_timeout.
+}

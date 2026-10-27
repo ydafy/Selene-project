@@ -1,0 +1,30 @@
+meta {
+  name: t5-confirm-connect-state
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/shipments?id=eq.{{t5Ship1}}&select=id,status,completed_at,shipment_completion_events(source,is_connect)
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("s1 is completed and its completion event is a Connect auto completion", function () {
+    expect(res.getStatus()).to.equal(200);
+    const shipment = res.getBody()[0];
+    expect(shipment.status).to.equal("completed");
+    expect(shipment.completed_at).to.be.a("string");
+    expect(shipment.shipment_completion_events).to.deep.equal({ source: "auto", is_connect: true });
+  });
+}
+
+docs {
+  Rows written by fn_confirm_shipment_delivery for a Connect shipment.
+}

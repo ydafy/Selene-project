@@ -1,0 +1,36 @@
+meta {
+  name: t5-confirm-connect
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_confirm_shipment_delivery
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_shipment_id": "{{t5Ship1}}",
+    "p_source": "auto",
+    "p_actor_id": null,
+    "p_idempotency_key": "auto_completion_{{t5Ship1}}"
+  }
+}
+
+tests {
+  test("a due Connect shipment completes through the auto source", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ success: true, error: null, completion_source: "auto", idempotent: false }]);
+  });
+}
+
+docs {
+  The Connect path is unchanged by remove-legacy-wallet T5.
+}

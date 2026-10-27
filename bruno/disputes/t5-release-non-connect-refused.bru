@@ -1,0 +1,33 @@
+meta {
+  name: t5-release-non-connect-refused
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_release_shipment_funds
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_shipment_id": "{{t5Ship2}}"
+  }
+}
+
+tests {
+  test("a non-Connect shipment is refused instead of completing without a payout", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ success: false, error_message: "SHIPMENT_NOT_CONNECT" }]);
+  });
+}
+
+docs {
+  The refusal that replaced steps 2-8 (checks and wallet release) of the non-Connect path.
+}

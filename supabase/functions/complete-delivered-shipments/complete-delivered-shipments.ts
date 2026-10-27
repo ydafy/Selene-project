@@ -171,6 +171,13 @@ export function isActiveDisputeRefusal(value: unknown): boolean {
   return !value.success && value.error === 'SHIPMENT_HAS_ACTIVE_DISPUTE';
 }
 
+// A shipment without a Stripe payment intent has no payout path since the wallet was removed, so
+// fn_confirm_shipment_delivery refuses it. It is not retried and must not fail the batch.
+export function isNotConnectRefusal(value: unknown): boolean {
+  if (!isCompletionRpcResult(value)) return false;
+  return !value.success && value.error === 'SHIPMENT_NOT_CONNECT';
+}
+
 export function summarizeAutoCompletionResults(
   results: readonly (AutoCompletionResult | 'skipped' | null)[],
 ): AutoCompletionBatchResult {
