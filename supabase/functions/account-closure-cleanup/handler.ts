@@ -101,8 +101,13 @@ export function createAccountClosureCleanupHandler(deps: AccountClosureCleanupDe
     });
   }
 
+  /**
+   * Collects the run's failures as 'step:code'; each distinct one is reported once after the
+   * batch, so a slow Sentry flush costs a few waits per run instead of one per failed step.
+   */
   async function cleanRow(
     row: Record<string, unknown>,
+    failedSteps: Set<string>,
   ): Promise<'completed' | 'failed' | 'invalid'> {
     const userId = row.user_id;
     const closure = parseClosureCleanup(row);
@@ -113,11 +118,11 @@ export function createAccountClosureCleanupHandler(deps: AccountClosureCleanupDe
     try {
       // The claim already counted this attempt.
       const { failures } = await runClosureCleanup(userId, closure, deps, { countAttempt: false });
-      for (const failure of failures) await reportFailedStep(failure);
+      for (const failure of failures) failedSteps.add(failure);
       return failures.length === 0 ? 'completed' : 'failed';
     } catch (error: unknown) {
       deps.log('ERROR', 'Account closure cleanup crashed', { userId, code: safeErrorCode(error) });
-      await reportFailedStep(`crash:${safeErrorCode(error)}`);
+      failedSteps.add(`crash:${safeErrorCode(error)}`);
       return 'failed';
     }
   }
@@ -165,7 +170,9 @@ export function createAccountClosureCleanupHandler(deps: AccountClosureCleanupDe
       }
 
       const summary = { claimed: data.length, completed: 0, failed: 0, invalid: 0 };
-      for (const row of data) summary[await cleanRow(row)] += 1;
+      const failedSteps = new Set<string>();
+      for (const row of data) summary[await cleanRow(row, failedSteps)] += 1;
+      for (const failure of failedSteps) await reportFailedStep(failure);
 
       const capped = await reportCapped();
       deps.log('INFO', 'Account closure cleanup run finished', { ...summary, capped: capped.length });

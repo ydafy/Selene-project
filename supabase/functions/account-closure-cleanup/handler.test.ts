@@ -313,6 +313,25 @@ describe('account-closure-cleanup: Sentry reports', () => {
     for (const secret of [U1, U2, 'jane@example.com', '4242', 'cus_1', 'acct_1']) expect(text).not.toContain(secret);
   });
 
+  it('reports a repeated step failure once per run, after every row was processed', async () => {
+    const fingerprints: string[][] = [];
+    const storageCallsAtReport: number[] = [];
+    let storageCalls: string[] = [];
+    const h = harness({
+      rows: [row(U1), row(U2), row(U3)],
+      storage: () => Object.assign(new Error('bucket down'), { code: 'storage_down' }),
+      reporter: (_message, options) => {
+        fingerprints.push(options.fingerprint);
+        storageCallsAtReport.push(storageCalls.length);
+      },
+    });
+    storageCalls = h.storageCalls;
+    const response = await call(h);
+    expect(await response.json()).toEqual({ ...EMPTY, claimed: 3, failed: 3 });
+    expect(fingerprints).toEqual([['account-closure-cleanup-step-failed', 'storage', 'storage_down']]);
+    expect(storageCallsAtReport).toEqual([3]);
+  });
+
   it('reports nothing for a clean run', async () => {
     const h = harness({ rows: [row(U1)] });
     await call(h);
