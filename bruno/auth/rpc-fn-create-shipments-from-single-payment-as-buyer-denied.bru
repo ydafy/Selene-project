@@ -1,0 +1,39 @@
+meta {
+  name: rpc-fn-create-shipments-from-single-payment-as-buyer-denied
+  type: http
+  seq: 62
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_create_shipments_from_single_payment
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  {
+    "p_stripe_payment_intent_id": "pi_denied",
+    "p_stripe_charge_id": "ch_denied",
+    "p_amount_received": 1,
+    "p_transfer_group": "denied",
+    "p_allocation": []
+  }
+}
+
+tests {
+  test("an authenticated buyer is denied", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody().code).to.equal("42501");
+    expect(res.getBody().message).to.equal("permission denied for function fn_create_shipments_from_single_payment");
+  });
+}
+
+docs {
+  Run after auth/login-buyer (needs `buyerToken`). EXECUTE on fn_create_shipments_from_single_payment is limited to service_role, so a client cannot call it through the RPC.
+  The values are placeholders: the request is refused before the function runs and changes nothing.
+}

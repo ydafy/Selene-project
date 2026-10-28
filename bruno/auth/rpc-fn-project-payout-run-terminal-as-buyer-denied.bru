@@ -1,0 +1,39 @@
+meta {
+  name: rpc-fn-project-payout-run-terminal-as-buyer-denied
+  type: http
+  seq: 64
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_project_payout_run_terminal
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  {
+    "p_run_id": "00000000-0000-4000-8000-0000000000ff",
+    "p_payout_id": "po_denied",
+    "p_target_status": "paid",
+    "p_occurred_at": "2026-01-01T00:00:00Z",
+    "p_failure_reason": null
+  }
+}
+
+tests {
+  test("an authenticated buyer is denied", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody().code).to.equal("42501");
+    expect(res.getBody().message).to.equal("permission denied for function fn_project_payout_run_terminal");
+  });
+}
+
+docs {
+  Run after auth/login-buyer (needs `buyerToken`). EXECUTE on fn_project_payout_run_terminal is limited to service_role, so a client cannot call it through the RPC.
+  The values are placeholders: the request is refused before the function runs and changes nothing.
+}
