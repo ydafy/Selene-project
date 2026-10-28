@@ -87,10 +87,18 @@ function harness(overrides: Record<string, unknown> = {}) {
 }
 afterEach(() => mock.restore());
 
+it('explains in plain words what happened, what to do and what marking it does', () => {
+  const html = harness({ isLoading: true }).html();
+  expect(html).toContain('ya iniciamos el reembolso al comprador');
+  expect(html).toContain('Habla con el vendedor o el comprador');
+  expect(html).toContain('solo queda anotado y sale de la lista');
+  expect(html).not.toMatch(/carrier registró movimiento|empezó el reembolso de la cancelación/);
+});
+
 it('shows the title and a dash instead of a count while loading, never rows or empty', () => {
   const h = harness({ isLoading: true });
   const html = h.html();
-  expect(html).toContain('Actividad del carrier tras la cancelación');
+  expect(html).toContain('Paquetes que se movieron después de cancelar');
   expect(html).toContain('Consultando actividad del carrier');
   expect(html).not.toContain('Ningún caso pendiente');
   expect(html).not.toContain('TRK-998877');
@@ -116,10 +124,8 @@ it('shows the empty state with a zero count only when resolved with no cases', (
   expect(h.chip()).toBe('0');
 });
 
-it('explains neutrally that the refund had started and that marking it reviewed changes nothing', () => {
+it('stays neutral: no technical or security wording', () => {
   const html = harness().html();
-  expect(html).toContain('después de que empezó el reembolso');
-  expect(html).toContain('no cambia el envío, el pedido ni el reembolso');
   expect(html).not.toMatch(/vulnerab|race|carrera|exploit/i);
 });
 

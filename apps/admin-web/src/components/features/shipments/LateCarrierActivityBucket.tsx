@@ -92,7 +92,7 @@ export const LateCarrierActivityBucket = ({
     <section className="space-y-4" aria-labelledby="late-carrier-activity-title">
       <div>
         <h2 id="late-carrier-activity-title" className="flex items-center gap-2 text-lg font-bold text-platinum">
-          <PackageSearch size={20} className="text-amber-400" /> Actividad del carrier tras la cancelación
+          <PackageSearch size={20} className="text-amber-400" /> Paquetes que se movieron después de cancelar
           <span
             data-testid="late-carrier-activity-count"
             aria-label={`Casos por revisar: ${unresolved ? 'consultando' : cases.length}`}
@@ -102,9 +102,9 @@ export const LateCarrierActivityBucket = ({
           </span>
         </h2>
         <p className="mt-1 max-w-2xl text-xs text-blue-light/70">
-          <span className="font-semibold text-platinum">El carrier registró movimiento del paquete después de que empezó
-            el reembolso de la cancelación.</span> Revisa el paquete (por ejemplo con el vendedor o el carrier) y marca el
-          caso como revisado con una nota. Marcarlo no cambia el envío, el pedido ni el reembolso, y no mueve dinero.
+          <span className="font-semibold text-platinum">Cancelamos estos envíos y ya iniciamos el reembolso al comprador,
+            pero la paquetería reportó que el paquete se movió.</span> Habla con el vendedor o el comprador para saber dónde
+          está el paquete. Cuando lo resuelvas, márcalo como revisado: solo queda anotado y sale de la lista.
         </p>
       </div>
 
@@ -123,7 +123,7 @@ export const LateCarrierActivityBucket = ({
           icon={PackageCheck}
           tone="forest"
           title="Ningún caso pendiente"
-          description="No hay cancelaciones con actividad del carrier por revisar."
+          description="Ningún paquete se movió después de una cancelación."
         />
       ) : (
         <div className="grid gap-3 lg:grid-cols-2">
@@ -191,8 +191,8 @@ export const LateCarrierActivityBucket = ({
               <PackageSearch size={20} className="text-amber-400" /> Marcar revisado
             </h3>
             <p className="text-sm text-blue-light">
-              Se registrará que revisaste este paquete. No cambia el envío, el pedido ni el reembolso, y no se puede
-              deshacer.
+              Queda anotado que ya lo atendiste y el caso sale de la lista. No mueve dinero ni cambia el pedido, y no se
+              puede deshacer.
             </p>
             <label className="block text-xs font-semibold text-platinum">
               Nota para el registro
@@ -202,7 +202,7 @@ export const LateCarrierActivityBucket = ({
                 rows={3}
                 disabled={busy}
                 onChange={(event) => setNote(event.target.value)}
-                placeholder="Ej. el vendedor confirmó que el paquete ya salió"
+                placeholder="Ej. el comprador recibió el paquete y lo va a devolver"
                 className={`mt-1 w-full rounded-xl border border-white/10 bg-night px-3 py-2 text-sm text-platinum disabled:opacity-40 ${workbenchFocus}`}
               />
             </label>

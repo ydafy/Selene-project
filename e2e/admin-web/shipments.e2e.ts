@@ -212,9 +212,9 @@ test('Envíos lists carrier activity after the cancellation refund started and a
   };
   await openShipments(page, context, baseURL!, mock);
 
-  await expect(page.getByRole('heading', { name: 'Actividad del carrier tras la cancelación' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Paquetes que se movieron después de cancelar' })).toBeVisible();
   await expect(page.getByTestId('late-carrier-activity-count')).toHaveText('2');
-  await expect(page.getByText('después de que empezó el reembolso', { exact: false })).toBeVisible();
+  await expect(page.getByText('ya iniciamos el reembolso al comprador', { exact: false })).toBeVisible();
 
   const cards = page.getByRole('article');
   await expect(cards).toHaveCount(2);

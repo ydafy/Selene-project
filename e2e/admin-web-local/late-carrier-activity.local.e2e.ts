@@ -1,4 +1,4 @@
-// Admin "Envíos" -> "Actividad del carrier tras la cancelación" against the LOCAL Supabase stack:
+// Admin "Envíos" -> "Paquetes que se movieron después de cancelar" against the LOCAL Supabase stack:
 // real login, real list-shipment-late-carrier-activity / acknowledge-shipment-late-carrier-activity
 // functions, real SQL.
 //
@@ -176,7 +176,7 @@ test('admin sees carrier activity after the refund started and marks it reviewed
   await expect(page).not.toHaveURL(/\/login/);
   await page.getByRole('button', { name: 'Envíos', exact: true }).click();
   await expect(page).toHaveURL(/\/shipments$/);
-  await expect(page.getByRole('heading', { name: 'Actividad del carrier tras la cancelación' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Paquetes que se movieron después de cancelar' })).toBeVisible();
 
   const row = page.getByRole('article').filter({ hasText: trackingNumber });
   await expect(row).toHaveCount(1);
