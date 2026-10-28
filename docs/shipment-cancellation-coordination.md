@@ -1,6 +1,6 @@
 # Shipment cancellation coordination — B1, B2, B3, B4 and B5
 
-## B5 status: app messaging, participant summary and late carrier activity (in progress)
+## B5 status: app messaging, participant summary and late carrier activity (complete)
 
 Tracker: `odd/tasks/shipment-cancellations-b5.md` (specs S1–S8, Log L1–L17). Committed locally on `feat/shipment-cancellations-b5`. Not applied remotely, not deployed, not pushed.
 
@@ -12,6 +12,7 @@ Tracker: `odd/tasks/shipment-cancellations-b5.md` (specs S1–S8, Log L1–L17).
 | B5.4 | Cancelling refreshes `['my-listings']` and `['product']`. Failures that mean the state changed refresh order, shipment, purchases and sales. Without cancellation settings the app starts no timer instead of using the 48 and 72 hour fallback. `useOrderCountdown` resets when its start time is null. |
 | B5.5 | `fn_get_shipment_cancellation_summary(p_shipment_id)` returns the cancellation source and refund state (`refunded`, `delayed`, `processing`) only to the buyer and the seller of that shipment. Other users and `anon` get no rows or no access. |
 | B5.6 | A cancelled shipment's banner shows why it was cancelled (worded for the buyer or the seller) and, for the buyer, whether the refund is in progress, issued (the bank may take 5 to 10 business days) or delayed and under review. It reads `fn_get_shipment_cancellation_summary` only once the shipment is cancelled; without a summary it keeps the previous text. |
+| B5.10 | A cancelled shipment no longer offers the seller "Ver guía" or "Compartir guía"; when it had a label, the seller banner says the label is no longer valid. |
 | B5.7 | `fn_cancel_order` is dropped (issue #39). Nothing called it. |
 | B5.8 | `fn_record_tracking_event` still stores events but does not advance a shipment whose cancellation refund has started. `fn_mark_shipment_delivered` and `fn_confirm_shipment_delivery` refuse with `SHIPMENT_CANCELLATION_OPERATION_ACTIVE`. The cancellation completes and the first such event is recorded on the operation. |
 | B5.8b | Admin functions `list-shipment-late-carrier-activity` and `acknowledge-shipment-late-carrier-activity`, and a second "Envíos" bucket, "Actividad del carrier tras la cancelación", with "Marcar revisado" (required note). `confirm-shipment-delivery` answers 409 `SHIPMENT_CANCELLATION_OPERATION_ACTIVE`. `complete-delivered-shipments` skips such a shipment with a WARN and continues. |
@@ -45,10 +46,12 @@ Release the mobile app (B5.1 to B5.6) together with the B5.2 functions: the app 
 - After merging `main` and fixing #60: `bun test` 4045/0, `deno check` clean on the five functions, Bruno 307/307 after a fresh reset.
 - Independent verifiers approved B5.5, B5.8 and the B5.8b backend; native reviews approved every unit (L7, L10, L15, L18, L21, L22).
 
-### B5 remaining items
+### B5 closure and remaining limits
 
-- Maintainer check on a device: the shipment-scoped copy, the expired-deadline banner and the cancelled banner (reason and refund state); in admin-web, the new "Envíos" bucket.
-- B5 is in progress, not complete, until the functions above are deployed and the device check is done.
+- Delivered in PR #61 (merge `a5be618`, 2026-10-28). The 15 Edge Functions were deployed from that commit the same day; all active, no boot errors in the function logs. admin-web and the app run from `main` in development; no production release yet.
+- Maintainer device check passed (copy, expired-deadline banner, cancelled banner with reason and refund state, label hidden on cancelled shipments) and reviewed the "Envíos" page.
+- Not confirmed: whether a Paquetexpress branch rejects a label already cancelled at Envía (Envía documents a cancellation delay of up to 24 hours). The "Envíos" bucket for moved packages covers it; questions are with Envía and Paquetexpress.
+- Follow-ups: #62 (order detail banner uses the order status before the shipment status), #43 (blocked-label shipments: the expired-deadline banner says they are cancelled automatically, but the paid-timeout cron only logs them), #52 (notifications stored in fixed Spanish).
 
 ## B4 status: carrier cancellation before preparing refunds
 
