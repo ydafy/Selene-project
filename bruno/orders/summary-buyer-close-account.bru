@@ -1,0 +1,33 @@
+meta {
+  name: summary-buyer-close-account
+  type: http
+  seq: 67
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_close_account
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_user_id": "{{sumBuyerId}}"
+  }
+}
+
+tests {
+  test("finished orders do not block the closure", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().status).to.equal("closed");
+  });
+}
+
+docs {
+  fn_close_account (service role). Cancelled orders are finished, so the summary buyer closes.
+}

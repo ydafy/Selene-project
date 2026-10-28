@@ -1,4 +1,4 @@
-import type { Tables } from '../../../packages/types/src/index.ts';
+import type { Tables } from '../../../packages/types/src/types.ts';
 import { ApiError } from './refund-basis.ts';
 
 type Operation = Tables<'shipment_cancellation_operations'>;

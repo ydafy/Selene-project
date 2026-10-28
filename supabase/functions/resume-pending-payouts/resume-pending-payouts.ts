@@ -25,7 +25,7 @@
  *     multiple matches become action_required, not a new payout.
  */
 import type { ReleaseQueueRow } from '../release-connect-payout/release-connect-payout.ts';
-import type { Database, ConnectPayoutRunShipment } from '../../../packages/types/src/index.ts';
+import type { Database, ConnectPayoutRunShipment } from '../../../packages/types/src/types.ts';
 
 /** Exact deployed reconciliation RPC DTO: intentionally has no shipment_ids. */
 export type ReconciliationClaim = Omit<Database['public']['Functions']['fn_claim_payout_create_reconciliation']['Returns'][number], 'stripe_account_id'> & {

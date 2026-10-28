@@ -1,0 +1,32 @@
+meta {
+  name: create-return-intent-anon-key
+  type: http
+  seq: 79
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/create-return-intent
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{anonKey}}
+}
+
+body:json {
+  { "disputeId": "00000000-0000-4000-8000-0000000000c3" }
+}
+
+tests {
+  test("a valid JWT that is not a user session is refused with the stable code", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody()).to.deep.equal({ error: "AUTH_REQUIRED" });
+  });
+}
+
+docs {
+  The anon key passes the gateway but is not a user session, so create-return-intent must refuse it with
+  AUTH_REQUIRED before reading any row or calling Stripe or Envia.
+}

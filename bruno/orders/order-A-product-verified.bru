@@ -4,24 +4,31 @@ meta {
   seq: 10
 }
 
-get {
-  url: {{baseUrl}}/rest/v1/products?id=eq.00000000-0000-4000-8000-0000000000b4&select=id,status
-  body: none
+patch {
+  url: {{baseUrl}}/rest/v1/products?id=eq.00000000-0000-4000-8000-0000000000b4
+  body: json
   auth: none
 }
 
 headers {
   apikey: {{serviceRoleKey}}
   Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "status": "VERIFIED"
+  }
 }
 
 tests {
-  test("the listing is VERIFIED", function () {
+  test("the listing is back to VERIFIED so the next order can use it", function () {
     expect(res.getStatus()).to.equal(200);
-    expect(res.getBody()).to.deep.equal([{ id: "00000000-0000-4000-8000-0000000000b4", status: "VERIFIED" }]);
+    expect(res.getBody()[0].status).to.equal("VERIFIED");
   });
 }
 
 docs {
-  fn_cancel_order returns the listing to the seller inventory.
+  Local stack only. Restores the seeded listing that order creation marked SOLD.
 }

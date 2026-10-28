@@ -24,6 +24,8 @@ const findMigration = (): string => {
   return readFileSync(join(MIGRATIONS_DIR, files[0]), 'utf8');
 };
 
+// fn_cancel_order was rewritten here and dropped later by *_drop_fn_cancel_order.sql: it has no
+// canonical file left, so only the migration-body checks below still cover it.
 const FUNCTIONS = [
   { name: 'fn_on_auth_user_created', args: '', file: 'triggers/auth/fn_on_auth_user_created.sql' },
   {
@@ -31,7 +33,6 @@ const FUNCTIONS = [
     args: 'uuid, text, numeric, numeric, uuid, uuid[]',
     file: 'orders/fn_create_order_from_payment.sql',
   },
-  { name: 'fn_cancel_order', args: 'uuid, text, text', file: 'orders/fn_cancel_order.sql' },
   {
     name: 'fn_cancel_shipment',
     args: 'uuid, text, text, bigint',

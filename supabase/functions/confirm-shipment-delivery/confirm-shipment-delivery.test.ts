@@ -213,6 +213,20 @@ describe('mapConfirmationRpcResult', () => {
     }
   });
 
+  it('maps a shipment whose cancellation refund started to a 409 with its own code', () => {
+    expect(() =>
+      mapConfirmationRpcResult(
+        {
+          success: false,
+          error: 'SHIPMENT_CANCELLATION_OPERATION_ACTIVE',
+          completion_source: null,
+          idempotent: false,
+        },
+        shipmentId,
+      ),
+    ).toThrow(new ApiError(409, 'SHIPMENT_CANCELLATION_OPERATION_ACTIVE'));
+  });
+
   it('no longer maps the removed wallet error code to a conflict', () => {
     expect(() =>
       mapConfirmationRpcResult(

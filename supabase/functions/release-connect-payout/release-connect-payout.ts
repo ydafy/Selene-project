@@ -3,7 +3,7 @@ import type {
   ConnectPayoutReleaseRequest,
   ConnectPayoutRun,
   Database,
-} from '../../../packages/types/src/index.ts';
+} from '../../../packages/types/src/types.ts';
 
 export type ConnectPayoutRunStatus =
   | 'pending_reconciliation'

@@ -1,0 +1,45 @@
+meta {
+  name: summary-buyer-create
+  type: http
+  seq: 43
+}
+
+post {
+  url: {{baseUrl}}/auth/v1/admin/users
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:pre-request {
+  bru.setVar("sumBuyerEmail", "bruno-summary-" + Date.now() + "@selene.local");
+}
+
+body:json {
+  {
+    "email": "{{sumBuyerEmail}}",
+    "password": "password123",
+    "email_confirm": true
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("sumBuyerId", res.getBody().id);
+  }
+}
+
+tests {
+  test("creates a confirmed throwaway buyer for the summary flows", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().id).to.be.a("string");
+  });
+}
+
+docs {
+  B5.5, local stack only. This buyer is closed at the end of the summary flows.
+}

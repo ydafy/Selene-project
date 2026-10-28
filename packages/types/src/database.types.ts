@@ -1966,6 +1966,13 @@ export type Database = {
           created_at: string
           external_started_at: string | null
           label_cost_loss_cents: number | null
+          late_carrier_activity_acknowledged_at: string | null
+          late_carrier_activity_acknowledged_by: string | null
+          late_carrier_activity_acknowledged_note: string | null
+          late_carrier_activity_at: string | null
+          late_carrier_activity_event_type:
+            | Database["public"]["Enums"]["shipment_tracking_event_type"]
+            | null
           operation_key: string | null
           order_id: string
           reason: string
@@ -2000,6 +2007,13 @@ export type Database = {
           created_at?: string
           external_started_at?: string | null
           label_cost_loss_cents?: number | null
+          late_carrier_activity_acknowledged_at?: string | null
+          late_carrier_activity_acknowledged_by?: string | null
+          late_carrier_activity_acknowledged_note?: string | null
+          late_carrier_activity_at?: string | null
+          late_carrier_activity_event_type?:
+            | Database["public"]["Enums"]["shipment_tracking_event_type"]
+            | null
           operation_key?: string | null
           order_id: string
           reason: string
@@ -2034,6 +2048,13 @@ export type Database = {
           created_at?: string
           external_started_at?: string | null
           label_cost_loss_cents?: number | null
+          late_carrier_activity_acknowledged_at?: string | null
+          late_carrier_activity_acknowledged_by?: string | null
+          late_carrier_activity_acknowledged_note?: string | null
+          late_carrier_activity_at?: string | null
+          late_carrier_activity_event_type?:
+            | Database["public"]["Enums"]["shipment_tracking_event_type"]
+            | null
           operation_key?: string | null
           order_id?: string
           reason?: string
@@ -3344,6 +3365,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      fn_acknowledge_shipment_late_carrier_activity: {
+        Args: { p_admin_id: string; p_note: string; p_shipment_id: string }
+        Returns: Json
+      }
       fn_acquire_auto_cancel_lease: {
         Args: { p_job: string }
         Returns: {
@@ -3479,17 +3504,6 @@ export type Database = {
       }
       fn_buyer_submit_return_evidence: {
         Args: { p_dispute_id: string; p_images: string[] }
-        Returns: {
-          error_message: string
-          success: boolean
-        }[]
-      }
-      fn_cancel_order: {
-        Args: {
-          p_cancelled_by_role: string
-          p_order_id: string
-          p_reason: string
-        }
         Returns: {
           error_message: string
           success: boolean
@@ -3858,6 +3872,14 @@ export type Database = {
         Args: { p_shipment_id: string }
         Returns: Json
       }
+      fn_get_shipment_cancellation_summary: {
+        Args: { p_shipment_id: string }
+        Returns: {
+          refund_state: string
+          refund_updated_at: string
+          source: string
+        }[]
+      }
       fn_get_shipment_carrier_cancellation: {
         Args: { p_shipment_id: string }
         Returns: Json
@@ -3873,6 +3895,21 @@ export type Database = {
           review_required_at: string
           seller_id: string
           shipment_id: string
+          tracking_number: string
+        }[]
+      }
+      fn_list_shipment_late_carrier_activity: {
+        Args: never
+        Returns: {
+          carrier: string
+          late_carrier_activity_at: string
+          late_carrier_activity_event_type: Database["public"]["Enums"]["shipment_tracking_event_type"]
+          order_id: string
+          refund_status: string
+          seller_id: string
+          shipment_id: string
+          shipment_status: Database["public"]["Enums"]["order_status_enum"]
+          source: string
           tracking_number: string
         }[]
       }

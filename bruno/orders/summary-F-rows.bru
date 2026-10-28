@@ -1,0 +1,35 @@
+meta {
+  name: summary-F-rows
+  type: http
+  seq: 47
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/orders?stripe_payment_intent_id=eq.{{intentF}}&select=id,status,shipments(id,status)
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:post-response {
+  if (res.getStatus() === 200 && res.getBody().length === 1) {
+    bru.setVar("orderIdF", res.getBody()[0].id);
+    bru.setVar("shipmentIdF", res.getBody()[0].shipments[0].id);
+  }
+}
+
+tests {
+  test("one paid order with one paid shipment", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(1);
+    expect(res.getBody()[0].shipments[0].status).to.equal("paid");
+  });
+}
+
+docs {
+  Keeps the ids of order F for the next requests.
+}

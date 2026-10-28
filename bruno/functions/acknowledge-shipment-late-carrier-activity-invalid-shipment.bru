@@ -1,0 +1,31 @@
+meta {
+  name: acknowledge-shipment-late-carrier-activity-invalid-shipment
+  type: http
+  seq: 93
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/acknowledge-shipment-late-carrier-activity
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+body:json {
+  { "shipment_id": "not-a-uuid", "note": "Bruno: invalid shipment" }
+}
+
+tests {
+  test("an admin gets a stable validation code for a malformed shipment id", function () {
+    expect(res.getStatus()).to.equal(422);
+    expect(res.getBody()).to.deep.equal({ error: "INVALID_SHIPMENT_ID" });
+  });
+}
+
+docs {
+  Run after functions/login-admin (needs adminToken).
+}

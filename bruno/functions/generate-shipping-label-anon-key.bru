@@ -1,0 +1,42 @@
+meta {
+  name: generate-shipping-label-anon-key
+  type: http
+  seq: 81
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/generate-shipping-label
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{anonKey}}
+}
+
+body:json {
+  {
+    "shipmentId": "00000000-0000-4000-8000-0000000000c2",
+    "originAddressId": "00000000-0000-4000-8000-0000000000c4",
+    "shippingEvidence": {
+      "images": [
+        "https://example.test/evidence-1.jpg",
+        "https://example.test/evidence-2.jpg",
+        "https://example.test/evidence-3.jpg"
+      ]
+    }
+  }
+}
+
+tests {
+  test("a valid JWT that is not a user session is refused with the stable code", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody()).to.deep.equal({ error: "AUTH_REQUIRED" });
+  });
+}
+
+docs {
+  The anon key passes the gateway but is not a user session, so generate-shipping-label must refuse it with
+  AUTH_REQUIRED before reading any row or calling Stripe or Envia.
+}

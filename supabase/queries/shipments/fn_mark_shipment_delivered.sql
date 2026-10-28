@@ -13,6 +13,15 @@ BEGIN
     RETURN QUERY SELECT false, 'SHIPMENT_NOT_FOUND'::TEXT; RETURN;
   END IF;
 
+  -- 1b. Un reembolso de cancelación ya iniciado: la cancelación debe terminar, el envío no avanza.
+  -- Mismo predicado que fn_begin_shipment_transfer, leído tras el bloqueo del envío.
+  IF EXISTS (
+    SELECT 1 FROM public.shipment_cancellation_operations
+    WHERE shipment_id = p_shipment_id AND external_started_at IS NOT NULL
+  ) THEN
+    RETURN QUERY SELECT false, 'SHIPMENT_CANCELLATION_OPERATION_ACTIVE'::TEXT; RETURN;
+  END IF;
+
   -- 2. Solo avanzar si está en tránsito (o empaque si se saltó el scan de tránsito)
   IF v_current_status NOT IN ('shipped', 'preparing') THEN
     RETURN QUERY SELECT false, format('INVALID_SHIPMENT_STATUS: %s', v_current_status); RETURN;

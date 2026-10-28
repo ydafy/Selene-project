@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'bun:test';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import {
   ApiError,
@@ -6,6 +8,7 @@ import {
   MAX_AUTO_COMPLETION_BATCH_SIZE,
   buildAutoCompletionRpcInput,
   isActiveDisputeRefusal,
+  isCancellationOperationActiveRefusal,
   isNotConnectRefusal,
   mapAutoCompletionRpcResult,
   resolveAutoCompletionPlan,
@@ -123,6 +126,16 @@ describe('shipments with an active dispute', () => {
     expect(isNotConnectRefusal({ ...refusal, error: 'SHIPMENT_HAS_ACTIVE_DISPUTE' })).toBe(false);
     expect(isNotConnectRefusal({ ...refusal, success: true, error: null })).toBe(false);
     expect(isNotConnectRefusal(null)).toBe(false);
+    expect(isActiveDisputeRefusal(refusal)).toBe(false);
+  });
+
+  it('recognizes the cancellation-in-progress refusal and nothing else as an expected skip', () => {
+    const refusal = { success: false, error: 'SHIPMENT_CANCELLATION_OPERATION_ACTIVE', completion_source: null, idempotent: false };
+    expect(isCancellationOperationActiveRefusal(refusal)).toBe(true);
+    expect(isCancellationOperationActiveRefusal({ ...refusal, error: 'SHIPMENT_NOT_CONNECT' })).toBe(false);
+    expect(isCancellationOperationActiveRefusal({ ...refusal, success: true, error: null })).toBe(false);
+    expect(isCancellationOperationActiveRefusal(null)).toBe(false);
+    expect(isNotConnectRefusal(refusal)).toBe(false);
     expect(isActiveDisputeRefusal(refusal)).toBe(false);
   });
 
@@ -253,5 +266,16 @@ describe('scheduler endpoint contract', () => {
       skipped: 0,
       failed: 1,
     });
+  });
+});
+
+describe('complete-delivered-shipments wiring', () => {
+  const index = readFileSync(join(import.meta.dir, 'index.ts'), 'utf8');
+
+  it('skips a shipment whose cancellation refund started, logs a WARN and keeps processing', () => {
+    expect(index).toContain('isCancellationOperationActiveRefusal(row)');
+    expect(index).toContain("code: 'SKIPPED_CANCELLATION_OPERATION_ACTIVE'");
+    expect(index).toMatch(/'WARN',\s*'Delivered shipment completion skipped'/);
+    expect(index).toContain("level: 'INFO' | 'WARN' | 'ERROR'");
   });
 });

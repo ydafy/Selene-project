@@ -1,0 +1,27 @@
+meta {
+  name: list-shipment-late-carrier-activity-buyer
+  type: http
+  seq: 88
+}
+
+get {
+  url: {{baseUrl}}/functions/v1/list-shipment-late-carrier-activity
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+tests {
+  test("a signed-in buyer cannot list late carrier activity", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody()).to.deep.equal({ error: "ADMIN_ONLY" });
+  });
+}
+
+docs {
+  Run after auth/login-buyer (needs buyerToken). A valid non-admin session is stopped before the RPC.
+}

@@ -178,6 +178,13 @@ export function isNotConnectRefusal(value: unknown): boolean {
   return !value.success && value.error === 'SHIPMENT_NOT_CONNECT';
 }
 
+// A shipment whose cancellation refund already started is not completed: the cancellation
+// finishes it. The refusal is expected and must not fail the batch.
+export function isCancellationOperationActiveRefusal(value: unknown): boolean {
+  if (!isCompletionRpcResult(value)) return false;
+  return !value.success && value.error === 'SHIPMENT_CANCELLATION_OPERATION_ACTIVE';
+}
+
 export function summarizeAutoCompletionResults(
   results: readonly (AutoCompletionResult | 'skipped' | null)[],
 ): AutoCompletionBatchResult {

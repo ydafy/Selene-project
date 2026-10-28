@@ -75,6 +75,18 @@ BEGIN
     RETURN;
   END IF;
 
+  -- Read after the shipment lock, like fn_begin_shipment_transfer: a started cancellation
+  -- operation means a refund was requested, so the shipment must end cancelled, never completed.
+  IF EXISTS (
+    SELECT 1
+    FROM public.shipment_cancellation_operations AS operation
+    WHERE operation.shipment_id = p_shipment_id
+      AND operation.external_started_at IS NOT NULL
+  ) THEN
+    RETURN QUERY SELECT false, 'SHIPMENT_CANCELLATION_OPERATION_ACTIVE'::text, NULL::text, false;
+    RETURN;
+  END IF;
+
   IF NOT v_status = 'delivered' THEN
     RETURN QUERY SELECT false, 'SHIPMENT_NOT_IN_CONFIRMABLE_STATE'::text, NULL::text, false;
     RETURN;

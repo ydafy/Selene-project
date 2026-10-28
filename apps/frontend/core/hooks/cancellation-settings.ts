@@ -1,13 +1,10 @@
 import type { Tables } from '@selene/types';
 
-export const CANCELLATION_SETTINGS_FALLBACKS = {
-  orderExpirationHours: 48,
-  preparingExpirationHours: 72,
-} as const;
-
+// The backend fails closed when these settings are missing, so the app shows
+// no countdown (null) instead of inventing a deadline.
 export type CancellationSettings = {
-  orderExpirationHours: number;
-  preparingExpirationHours: number;
+  orderExpirationHours: number | null;
+  preparingExpirationHours: number | null;
 };
 
 type SystemSettingsCancellationFields = Pick<
@@ -19,11 +16,7 @@ export function resolveCancellationSettings(
   systemSettings: SystemSettingsCancellationFields | null | undefined,
 ): CancellationSettings {
   return {
-    orderExpirationHours:
-      systemSettings?.order_expiration_hours ??
-      CANCELLATION_SETTINGS_FALLBACKS.orderExpirationHours,
-    preparingExpirationHours:
-      systemSettings?.preparing_expiration_hours ??
-      CANCELLATION_SETTINGS_FALLBACKS.preparingExpirationHours,
+    orderExpirationHours: systemSettings?.order_expiration_hours ?? null,
+    preparingExpirationHours: systemSettings?.preparing_expiration_hours ?? null,
   };
 }

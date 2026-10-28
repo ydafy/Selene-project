@@ -85,10 +85,9 @@ describe('role-aware orders localization', () => {
       'preparingShipmentTitle',
       'deliveredTitle',
       'recordUnboxingTitle',
-      'cancellationWindowClosed',
+      'cancellationWindowExpiredBuyer',
+      'cancellationWindowExpiredSeller',
       'cancellationWindowOpen',
-      'carrierScanWindowClosed',
-      'sellerShippingWindowClosed',
       'deliveredReviewMessage',
       'completedMessage',
       'paymentExplanationHelp',
@@ -107,6 +106,21 @@ describe('role-aware orders localization', () => {
       expect(actionCard).toContain(`t('actionCard.${key}'`);
     }
     expect(actionCard).toContain("t('actionCard.paymentExplanationClose')");
+    // The preparing-window copy is chosen by resolveShipmentPreparingWindowMessage,
+    // which returns these keys; both locales must define them with the same params.
+    for (const key of [
+      'carrierScanWindowClosed',
+      'sellerShippingWindowClosed',
+      'preparingWindowBuyer',
+      'preparingWindowSeller',
+      'preparingWindowOther',
+    ]) {
+      expect(en.actionCard[key]).toBeString();
+      expect(es.actionCard[key]).toBeString();
+      expect(String(en.actionCard[key]).match(/{{[^}]+}}/g) ?? []).toEqual(
+        String(es.actionCard[key]).match(/{{[^}]+}}/g) ?? [],
+      );
+    }
     for (const key of ['paymentExplanationHelp', 'paymentExplanationClose']) {
       expect(en.actionCard[key]).toBeString();
       expect(es.actionCard[key]).toBeString();

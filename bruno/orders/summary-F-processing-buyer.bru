@@ -1,0 +1,37 @@
+meta {
+  name: summary-F-processing-buyer
+  type: http
+  seq: 49
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_get_shipment_cancellation_summary
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{sumBuyerToken}}
+}
+
+body:json {
+  {
+    "p_shipment_id": "{{shipmentIdF}}"
+  }
+}
+
+tests {
+  test("the buyer sees its cancellation as processing before any refund is recorded", function () {
+    expect(res.getStatus()).to.equal(200);
+    const rows = res.getBody();
+    expect(rows.length).to.equal(1);
+    expect(Object.keys(rows[0]).sort()).to.deep.equal(["refund_state", "refund_updated_at", "source"]);
+    expect(rows[0].source).to.equal("buyer");
+    expect(rows[0].refund_state).to.equal("processing");
+  });
+}
+
+docs {
+  B5.5 fn_get_shipment_cancellation_summary as a participant: only source, refund_state and refund_updated_at.
+}

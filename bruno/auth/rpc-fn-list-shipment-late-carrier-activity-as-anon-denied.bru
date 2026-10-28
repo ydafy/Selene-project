@@ -1,0 +1,32 @@
+meta {
+  name: rpc-fn-list-shipment-late-carrier-activity-as-anon-denied
+  type: http
+  seq: 54
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_list_shipment_late_carrier_activity
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{anonKey}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("an anonymous caller is denied", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody().code).to.equal("42501");
+    expect(res.getBody().message).to.equal("permission denied for function fn_list_shipment_late_carrier_activity");
+  });
+}
+
+docs {
+  The list of cancellations whose shipment saw carrier activity after the refund started is service-only.
+}

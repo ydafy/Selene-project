@@ -1,0 +1,31 @@
+meta {
+  name: rpc-fn-list-shipment-late-carrier-activity-as-service-role
+  type: http
+  seq: 60
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_list_shipment_late_carrier_activity
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("service role reads the list", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.an("array");
+  });
+}
+
+docs {
+  Read-only. The seeded database has no cancellation with late carrier activity, so the list is empty; scripts/test-shipment-tracking-during-cancellation.ts covers the rows.
+}

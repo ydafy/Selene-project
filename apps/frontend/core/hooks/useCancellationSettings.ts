@@ -6,10 +6,7 @@ import {
   type CancellationSettings,
 } from './cancellation-settings';
 
-export {
-  CANCELLATION_SETTINGS_FALLBACKS,
-  resolveCancellationSettings,
-} from './cancellation-settings';
+export { resolveCancellationSettings } from './cancellation-settings';
 export type { CancellationSettings } from './cancellation-settings';
 
 export function useCancellationSettings(): CancellationSettings {

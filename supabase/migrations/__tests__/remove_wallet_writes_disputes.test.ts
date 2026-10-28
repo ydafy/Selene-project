@@ -67,12 +67,6 @@ const FUNCTIONS = [
   },
 ] as const;
 
-/** Functions a later migration redefines, by that migration's file suffix. */
-const SUPERSEDED_BY: Partial<Record<(typeof FUNCTIONS)[number]['name'], string>> = {
-  fn_release_shipment_funds: '_release_shipment_funds_guard.sql',
-  fn_cron_dispute_shipping_timeout: '_release_shipment_funds_guard.sql',
-};
-
 const WALLET_REFERENCE = /\bwallets\b|wallet_transactions|payout_requests/i;
 
 const collapse = (sql: string): string => sql.replace(/\s+/g, ' ').trim();
@@ -88,6 +82,24 @@ const migrationBody = (name: string): string => {
   const open = migration.indexOf('$$', start);
   const close = migration.indexOf('$$;', open + 2);
   return migration.slice(open + 2, close);
+};
+
+/**
+ * The canonical file follows the newest migration that defines the function, so a later
+ * migration that changes one of these functions (B5.8 changed fn_confirm_shipment_delivery; the release-funds guard changed fn_release_shipment_funds and fn_cron_dispute_shipping_timeout)
+ * does not make this migration's body the reference.
+ */
+const latestBody = (name: string): string => {
+  const pattern = new RegExp(`CREATE OR REPLACE FUNCTION public\\.${name}\\(`);
+  const newest = readdirSync(MIGRATIONS_DIR)
+    .filter((f) => f.endsWith('.sql'))
+    .sort()
+    .filter((f) => pattern.test(readFileSync(join(MIGRATIONS_DIR, f), 'utf8')))
+    .pop();
+  const sql = readFileSync(join(MIGRATIONS_DIR, newest as string), 'utf8');
+  const start = sql.search(pattern);
+  const open = sql.indexOf('$$', start);
+  return sql.slice(open + 2, sql.indexOf('$$;', open + 2));
 };
 
 /** Canonical files are either a full CREATE statement or a bare body. */
@@ -130,15 +142,7 @@ describe('remove legacy wallet writes from the delivery, release, dispute and cr
       test('the canonical query file carries the migration body', () => {
         const canonical = canonicalBody(fn.file);
         expect(canonical).not.toMatch(WALLET_REFERENCE);
-        const later = SUPERSEDED_BY[fn.name];
-        if (later) {
-          // A later migration redefines it; its own test compares the canonical file.
-          expect(
-            readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith(later)),
-          ).toHaveLength(1);
-          return;
-        }
-        expect(collapse(canonical)).toBe(collapse(migrationBody(fn.name)));
+        expect(collapse(canonical)).toBe(collapse(latestBody(fn.name)));
       });
 
       test('execute is limited to service_role, restated explicitly', () => {

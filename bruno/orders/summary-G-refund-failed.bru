@@ -1,0 +1,42 @@
+meta {
+  name: summary-G-refund-failed
+  type: http
+  seq: 62
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_apply_shipment_cancellation_refund_event
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:pre-request {
+  bru.setVar("refundIdG", "re_bruno_G_" + Date.now());
+}
+
+body:json {
+  {
+    "p_shipment_id": "{{shipmentIdG}}",
+    "p_refund_id": "{{refundIdG}}",
+    "p_payment_intent_id": "{{intentG}}",
+    "p_amount_cents": 2400,
+    "p_status": "failed",
+    "p_failure_reason": "expired_or_canceled_card"
+  }
+}
+
+tests {
+  test("a failed refund leaves the shipment open", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().outcome).to.equal("failed_before_cancellation");
+  });
+}
+
+docs {
+  Failed is terminal: only an admin resolution moves this operation on.
+}

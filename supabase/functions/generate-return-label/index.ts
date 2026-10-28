@@ -74,7 +74,7 @@ serve(withSentry('generate-return-label', async (req: Request) => {
     } = await supabaseAdmin.auth.getUser(
       authHeader?.replace('Bearer ', '') || '',
     );
-    if (authError || !user) throw new ApiError(401, 'No autorizado');
+    if (authError || !user) throw new ApiError(401, 'AUTH_REQUIRED');
 
     // 2. Fetch dispute + order shipping address + shipment origin address
     const { data: dispute, error: disputeError } = await supabaseAdmin

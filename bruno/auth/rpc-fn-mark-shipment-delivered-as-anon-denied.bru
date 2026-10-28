@@ -1,11 +1,11 @@
 meta {
-  name: rpc-fn-cancel-order-as-anon-denied
+  name: rpc-fn-mark-shipment-delivered-as-anon-denied
   type: http
-  seq: 32
+  seq: 56
 }
 
 post {
-  url: {{baseUrl}}/rest/v1/rpc/fn_cancel_order
+  url: {{baseUrl}}/rest/v1/rpc/fn_mark_shipment_delivered
   body: json
   auth: none
 }
@@ -17,9 +17,7 @@ headers {
 
 body:json {
   {
-    "p_order_id": "00000000-0000-4000-8000-0000000000ff",
-    "p_reason": "denied",
-    "p_cancelled_by_role": "buyer"
+    "p_shipment_id": "00000000-0000-4000-8000-0000000000ff"
   }
 }
 
@@ -27,11 +25,11 @@ tests {
   test("an anonymous caller is denied", function () {
     expect(res.getStatus()).to.equal(401);
     expect(res.getBody().code).to.equal("42501");
-    expect(res.getBody().message).to.equal("permission denied for function fn_cancel_order");
+    expect(res.getBody().message).to.equal("permission denied for function fn_mark_shipment_delivered");
   });
 }
 
 docs {
-  EXECUTE on fn_cancel_order is limited to service_role, so a client cannot call it through the RPC.
+  EXECUTE on fn_mark_shipment_delivered is limited to service_role.
   The ids are placeholders: the request is refused before the function runs and changes nothing.
 }

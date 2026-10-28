@@ -59,7 +59,7 @@ serve(withSentry('create-dispute', async (req) => {
     } = await supabaseAdmin.auth.getUser(
       authHeader?.replace('Bearer ', '') || '',
     );
-    if (authError || !user) throw new ApiError(401, 'No autorizado');
+    if (authError || !user) throw new ApiError(401, 'AUTH_REQUIRED');
 
     // 2. Buscar Orden y Validar
     const { data: order, error: orderError } = await supabaseAdmin

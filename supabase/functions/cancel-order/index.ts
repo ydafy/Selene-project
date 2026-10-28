@@ -62,7 +62,7 @@ serve(withSentry('cancel-order', async (req: Request) => {
       data: { user },
       error: authError,
     } = await supabaseAdmin.auth.getUser(authHeader.replace('Bearer ', ''));
-    if (authError || !user) throw new ApiError(401, 'No autorizado');
+    if (authError || !user) throw new ApiError(401, 'AUTH_REQUIRED');
 
     const { data: systemSettings, error: settingsError } = await supabaseAdmin
       .from('system_settings')

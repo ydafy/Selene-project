@@ -8,10 +8,11 @@ import {
   getOpenDisputeInvalidationKeys,
 } from '../utils/disputeShipmentContext';
 import type { OpenDisputeParams } from '../utils/disputeShipmentContext';
+import { buildCancelOrderPayload, resolveCancelOrderFailureToast } from '../utils/shipment-cancel-safety';
 import {
-  buildCancelOrderPayload,
-  resolveCancelOrderFailureToast,
-} from '../utils/shipment-cancel-safety';
+  getCancelOrderFailureInvalidationKeys,
+  getCancelOrderSuccessInvalidationKeys,
+} from './useOrderActions.logic';
 import {
   buildShipmentConfirmationPayload,
   resolveShipmentConfirmationFailureToast,
@@ -82,15 +83,17 @@ export const useOrderActions = (orderId: string) => {
       const toast = resolveCancelOrderFailureToast(error);
       Toast.show({
         type: 'error',
-        text1: t('errors.errorTitle', toast.title),
-        text2: toast.message,
+        text1: t(toast.titleKey),
+        text2: t(toast.messageKey),
+      });
+      getCancelOrderFailureInvalidationKeys(orderId, error).forEach((queryKey) => {
+        queryClient.invalidateQueries({ queryKey: [...queryKey] });
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['order', orderId] });
-      queryClient.invalidateQueries({ queryKey: ['my-purchases'] });
-      queryClient.invalidateQueries({ queryKey: ['my-sales'] });
-      queryClient.invalidateQueries({ queryKey: ['shipments', orderId] });
+      getCancelOrderSuccessInvalidationKeys(orderId).forEach((queryKey) => {
+        queryClient.invalidateQueries({ queryKey: [...queryKey] });
+      });
     },
   });
 

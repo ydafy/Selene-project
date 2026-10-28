@@ -2,7 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import Stripe from 'https://esm.sh/stripe@17.0.0';
 
-import type { Tables } from '../../../packages/types/src/index.ts';
+import type { Tables } from '../../../packages/types/src/types.ts';
 import { createCancellationReporter } from '../_shared/cancellation-alerts.ts';
 import {
   acquireAutoCancelLease,

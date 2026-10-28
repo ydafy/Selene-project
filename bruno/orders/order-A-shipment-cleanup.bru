@@ -23,12 +23,12 @@ body:json {
 }
 
 tests {
-  test("the shipment fn_cancel_order leaves paid is closed so the seller has no open shipment", function () {
+  test("the paid shipment is closed so the seller has no open shipment", function () {
     expect(res.getStatus()).to.equal(200);
     expect(res.getBody()[0].status).to.equal("cancelled");
   });
 }
 
 docs {
-  Local stack only. fn_cancel_order cancels the order and releases the listing but does not touch the shipment row (unchanged behavior). Closing it keeps the delete-account requests and the collection repeatable.
+  Local stack only. Closes the shipment created by order A so the delete-account requests and the collection stay repeatable.
 }

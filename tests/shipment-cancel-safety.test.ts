@@ -45,10 +45,10 @@ describe('shipment cancel safety frontend helpers', () => {
     });
   });
 
-  it('preserves the live cancellation SLA fallback mapping', () => {
+  it('invents no cancellation deadline while settings are missing', () => {
     expect(resolveCancellationSettings(null)).toEqual({
-      orderExpirationHours: 48,
-      preparingExpirationHours: 72,
+      orderExpirationHours: null,
+      preparingExpirationHours: null,
     });
   });
 
@@ -63,21 +63,22 @@ describe('shipment cancel safety frontend helpers', () => {
 
   it('maps cancel failures to a friendly toast payload', () => {
     expect(resolveCancelOrderFailureToast('MAINTENANCE_MODE')).toEqual({
-      title: 'No pudimos cancelar el envío',
-      message: 'Estamos haciendo mantenimiento. Intenta nuevamente en unos minutos.',
+      titleKey: 'orders:cancelErrors.maintenance.title',
+      messageKey: 'orders:cancelErrors.maintenance.message',
     });
   });
 
-  it('resolves actor-aware preparing window copy', () => {
+  it('resolves actor-aware preparing window copy as keys and params', () => {
     expect(
       resolveShipmentPreparingWindowMessage({
         isBuyer: true,
         isSeller: false,
         timeLeft: '47h',
       }),
-    ).toBe(
-      'El vendedor tiene 47h para realizar el envío. Si no lo envía a tiempo, el envío se cancela automáticamente y se procesa tu reembolso.',
-    );
+    ).toEqual({
+      key: 'orders:actionCard.preparingWindowBuyer',
+      params: { timeLeft: '47h' },
+    });
 
     expect(
       resolveShipmentPreparingWindowMessage({
@@ -85,8 +86,39 @@ describe('shipment cancel safety frontend helpers', () => {
         isSeller: true,
         timeLeft: '47h',
       }),
-    ).toBe(
-      'Dispones de 47h para que se realice el escaneo por parte del transportista. Si esto no ocurre, el envío se cancelará automáticamente.',
-    );
+    ).toEqual({
+      key: 'orders:actionCard.preparingWindowSeller',
+      params: { timeLeft: '47h' },
+    });
+
+    expect(
+      resolveShipmentPreparingWindowMessage({
+        isBuyer: false,
+        isSeller: false,
+        timeLeft: '47h',
+      }),
+    ).toEqual({
+      key: 'orders:actionCard.preparingWindowOther',
+      params: { timeLeft: '47h' },
+    });
+  });
+
+  it('resolves the expired preparing window by role without hardcoded text', () => {
+    expect(
+      resolveShipmentPreparingWindowMessage({
+        isBuyer: false,
+        isSeller: true,
+        timeLeft: '0h',
+        isExpired: true,
+      }),
+    ).toEqual({ key: 'orders:actionCard.carrierScanWindowClosed', params: {} });
+    expect(
+      resolveShipmentPreparingWindowMessage({
+        isBuyer: true,
+        isSeller: false,
+        timeLeft: '0h',
+        isExpired: true,
+      }),
+    ).toEqual({ key: 'orders:actionCard.sellerShippingWindowClosed', params: {} });
   });
 });
