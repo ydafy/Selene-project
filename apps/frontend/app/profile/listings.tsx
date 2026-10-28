@@ -60,7 +60,10 @@ export default function MyListingsScreen() {
   // Filtering logic (client-side — instant)
   const filteredListings = useMemo(() => {
     return listings?.filter((item) => {
-      const isHistory = isProductHistory(item.status);
+      const isHistory = isProductHistory(
+        item.status,
+        item.status_before_account_hold,
+      );
 
       if (selectedIndex === 0) return !isHistory;
       return isHistory;

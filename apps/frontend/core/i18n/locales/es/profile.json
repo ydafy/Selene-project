@@ -53,7 +53,8 @@
       "SOLD": "Vendido",
       "REJECTED": "Rechazado",
       "HIDDEN": "Oculto",
-      "IN_DISPUTE": "En Disputa"
+      "IN_DISPUTE": "En Disputa",
+      "ACCOUNT_HOLD": "En pausa (cuenta suspendida)"
     },
     "actions": {
       "edit": "Editar",

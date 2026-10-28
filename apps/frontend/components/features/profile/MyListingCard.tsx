@@ -11,6 +11,7 @@ import { Theme } from '../../../core/theme';
 import { formatCurrency, formatDate } from '../../../core/utils/format';
 import {
   getStatusColor,
+  isAccountHeld,
   isProductHistory,
 } from '../../../core/utils/product-status';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -42,8 +43,13 @@ export const MyListingCard = ({
   const { t } = useTranslation('profile');
   const router = useRouter();
 
-  const isHistoryItem = isProductHistory(product.status);
-  const statusColor = getStatusColor(product.status);
+  const isHeld = isAccountHeld(product);
+  const isHistoryItem = isProductHistory(
+    product.status,
+    product.status_before_account_hold,
+  );
+  const statusKey = isHeld ? 'ACCOUNT_HOLD' : product.status;
+  const statusColor = getStatusColor(statusKey);
 
   // Status action states
   const isPending = product.status === 'PENDING_VERIFICATION';
@@ -94,9 +100,10 @@ export const MyListingCard = ({
 
   const actionConfig = getActionConfig();
 
-  // Show actions if NOT history, or if rejected (actionable from history)
+  // Show actions if NOT history, or if rejected (actionable from history).
+  // A listing held by an account suspension has none: the server refuses both.
   // Hide trash when IN_DISPUTE
-  const showActions = !isHistoryItem || isRejected;
+  const showActions = !isHeld && (!isHistoryItem || isRejected);
   const showTrash = !isInDispute;
 
   return (
@@ -161,7 +168,7 @@ export const MyListingCard = ({
               marginRight="xs"
             />
             <Text variant="caption-md" color="textSecondary">
-              {t(`listings.status.${product.status}`)}
+              {t(`listings.status.${statusKey}`)}
             </Text>
           </Box>
 
