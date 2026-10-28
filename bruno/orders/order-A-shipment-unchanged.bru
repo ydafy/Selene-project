@@ -1,0 +1,31 @@
+meta {
+  name: order-A-shipment-unchanged
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/shipments?id=eq.{{shipmentIdA}}&select=order_id,status,tracking_number
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the denied updates left the shipment as fn_create_order_from_payment wrote it", function () {
+    expect(res.getStatus()).to.equal(200);
+    const rows = res.getBody();
+    expect(rows.length).to.equal(1);
+    expect(rows[0].order_id).to.equal(bru.getVar("orderIdA"));
+    expect(rows[0].status).to.equal("paid");
+    expect(rows[0].tracking_number).to.equal(null);
+  });
+}
+
+docs {
+  Reads the shipment back with the service role after the seller, buyer and anon updates.
+}

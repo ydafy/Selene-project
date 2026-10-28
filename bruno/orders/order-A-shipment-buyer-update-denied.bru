@@ -1,0 +1,35 @@
+meta {
+  name: order-A-shipment-buyer-update-denied
+  type: http
+  seq: 9
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/shipments?id=eq.{{shipmentIdA}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "status": "shipped",
+    "tracking_number": "BRUNO-BUYER"
+  }
+}
+
+tests {
+  test("a buyer cannot update a shipment through REST", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody().code).to.equal("42501");
+  });
+}
+
+docs {
+  `authenticated` holds no write privilege on `public.shipments`.
+}
