@@ -2,7 +2,7 @@
 
 ## B5 status: app messaging, participant summary and late carrier activity (complete)
 
-Tracker: `odd/tasks/shipment-cancellations-b5.md` (specs S1–S8, Log L1–L17). Committed locally on `feat/shipment-cancellations-b5`. Not applied remotely, not deployed, not pushed.
+Tracker: `odd/tasks/shipment-cancellations-b5.md` (specs S1–S8, Log L1–L27). Merged in PR #61 (`a5be618`); migrations applied 2026-10-27; Edge Functions deployed 2026-10-28.
 
 | Unit | Behavior |
 |---|---|
