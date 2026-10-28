@@ -182,6 +182,7 @@
     "returnDeliveredBuyer": "The seller has received the package. Your refund will be processed after inspection.",
     "cancelledBuyer": "Your shipment was canceled. The refund is processed to the original payment method. Once confirmed, your bank may take 5 to 10 business days to reflect it.",
     "cancelledSeller": "This shipment was cancelled and your product is back in your store: it is available to sell again. The buyer gets their refund; you do not need to do anything.",
+    "cancelledLabelInvalidSeller": "The label is no longer valid: do not take the package to the carrier.",
     "cancelReasonBuyerByBuyer": "You cancelled this shipment.",
     "cancelReasonBuyerBySeller": "The seller cancelled this shipment.",
     "cancelReasonBuyerPaidTimeout": "The seller did not prepare this shipment in time.",

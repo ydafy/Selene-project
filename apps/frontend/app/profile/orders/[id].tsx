@@ -10,6 +10,7 @@
  * en lugar de propiedades directas de la orden. OrderActionCard conectado en 3.6.
  */
 
+import { canShowSellerLabelActions } from '@/core/utils/shipment-label-visibility';
 import React, {
   useState,
   useCallback,
@@ -849,7 +850,12 @@ export default function OrderDetailScreen() {
               </PrimaryButton>
             )}
           {/* SECCIÓN DE GUÍA: VER, COMPARTIR Y TIP */}
-          {currentShipment?.isSeller && Boolean(currentShipment?.label_url) && (
+          {currentShipment &&
+            canShowSellerLabelActions({
+              isSeller: currentShipment.isSeller,
+              status: currentShipment.status,
+              labelUrl: currentShipment.label_url,
+            }) && (
             <Box gap="s">
               <PrimaryButton onPress={handleOpenLabel} icon="printer-check">
                 {t('orders:actions.viewPdf')}

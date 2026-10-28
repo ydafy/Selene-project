@@ -51,14 +51,20 @@ describe('resolveCancelledShipmentCopy', () => {
     expect(resolveCancelledShipmentCopy(null, true)).toEqual({
       reasonKey: null,
       messageKey: `${P}cancelledBuyer`,
+      labelNoticeKey: null,
     });
     expect(resolveCancelledShipmentCopy(null, false)).toEqual({
       reasonKey: null,
       messageKey: `${P}cancelledSeller`,
+      labelNoticeKey: null,
     });
     expect(
       resolveCancelledShipmentCopy({ source: 'new', refundState: 'new' }, true),
-    ).toEqual({ reasonKey: null, messageKey: `${P}cancelledBuyer` });
+    ).toEqual({
+      reasonKey: null,
+      messageKey: `${P}cancelledBuyer`,
+      labelNoticeKey: null,
+    });
   });
 
   it('only has keys that exist in both locales', () => {
@@ -109,6 +115,6 @@ describe('banner wiring', () => {
 
   it('reads the summary for the shipment and resolves the copy by role', () => {
     expect(card).toContain('useShipmentCancellationSummary(shipment.id, shipment.status)');
-    expect(card).toContain('resolveCancelledShipmentCopy(cancellationSummary, isBuyer)');
+    expect(card).toContain('resolveCancelledShipmentCopy( cancellationSummary, isBuyer,');
   });
 });

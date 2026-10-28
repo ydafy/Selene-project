@@ -8,6 +8,7 @@ export interface ShipmentCancellationSummary {
 export interface CancelledShipmentCopy {
   reasonKey: string | null;
   messageKey: string;
+  labelNoticeKey: string | null;
 }
 
 const PREFIX = 'orders:actionCard.';
@@ -38,6 +39,7 @@ const own = (map: Record<string, string>, key: string): string | undefined =>
 export function resolveCancelledShipmentCopy(
   summary: ShipmentCancellationSummary | null,
   isBuyer: boolean,
+  hadLabel = false,
 ): CancelledShipmentCopy {
   const reason = summary
     ? own(isBuyer ? BUYER_REASON : SELLER_REASON, summary.source)
@@ -47,5 +49,6 @@ export function resolveCancelledShipmentCopy(
   return {
     reasonKey: reason ? `${PREFIX}${reason}` : null,
     messageKey: `${PREFIX}${refund ?? (isBuyer ? 'cancelledBuyer' : 'cancelledSeller')}`,
+    labelNoticeKey: !isBuyer && hadLabel ? `${PREFIX}cancelledLabelInvalidSeller` : null,
   };
 }

@@ -186,7 +186,11 @@ export const OrderActionCard = ({
     return t(`orders:status.${order.status}`).toUpperCase();
   };
 
-  const cancelledCopy = resolveCancelledShipmentCopy(cancellationSummary, isBuyer);
+  const cancelledCopy = resolveCancelledShipmentCopy(
+    cancellationSummary,
+    isBuyer,
+    Boolean(shipment.label_url),
+  );
 
   // --- 4. MENSAJES DINÁMICOS (CON RELOJ) ---
   const getBannerMessage = () => {
@@ -344,6 +348,16 @@ export const OrderActionCard = ({
             >
               {getBannerMessage()}
             </Text>
+            {isCancelledShipment && cancelledCopy.labelNoticeKey && (
+              <Text
+                variant="caption-md"
+                color="textPrimary"
+                fontWeight="bold"
+                marginTop="s"
+              >
+                {t(cancelledCopy.labelNoticeKey)}
+              </Text>
+            )}
           </Box>
         </Box>
 

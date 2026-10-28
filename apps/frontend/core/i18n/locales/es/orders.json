@@ -190,6 +190,7 @@
     "returnDeliveredBuyer": "El vendedor ya recibió el paquete. Tu reembolso se procesará tras la inspección.",
     "cancelledBuyer": "Tu envío fue cancelado. El reembolso se procesa al método de pago original. Una vez confirmado, tu banco puede tardar entre 5 y 10 días hábiles en reflejarlo.",
     "cancelledSeller": "Este envío fue cancelado y tu producto volvió a tu tienda: ya está disponible para venderse de nuevo. El comprador recibe su reembolso; tú no tienes que hacer nada.",
+    "cancelledLabelInvalidSeller": "La guía ya no es válida: no lleves el paquete a la paquetería.",
     "cancelReasonBuyerByBuyer": "Cancelaste este envío.",
     "cancelReasonBuyerBySeller": "El vendedor canceló este envío.",
     "cancelReasonBuyerPaidTimeout": "El vendedor no preparó este envío a tiempo.",
