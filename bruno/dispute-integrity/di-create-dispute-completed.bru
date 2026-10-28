@@ -1,0 +1,40 @@
+meta {
+  name: di-create-dispute-completed
+  type: http
+  seq: 20
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/create-dispute
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{fixtureBuyerToken}}
+}
+
+body:json {
+  {
+    "orderId": "{{diOrder}}",
+    "shipmentId": "{{diShipCompleted}}",
+    "reason": "damaged",
+    "description": "Bruno dispute integrity check for one shipment",
+    "evidence": {
+      "images": ["https://example.test/evidence-1.jpg"],
+      "tech_checklist": { "powers_on": false }
+    }
+  }
+}
+
+tests {
+  test("a completed shipment cannot be disputed", function () {
+    expect(res.getStatus()).to.equal(422);
+    expect(res.getBody()).to.deep.equal({ error: "DISPUTE_STATUS_NOT_ALLOWED:completed" });
+  });
+}
+
+docs {
+  The order is still delivered, but the disputed shipment is completed. Needs di-login-fixture-buyer and the di-setup-* requests first.
+}

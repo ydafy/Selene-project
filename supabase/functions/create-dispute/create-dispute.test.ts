@@ -4,23 +4,9 @@ import { join } from 'node:path';
 
 import {
   ApiError,
-  buildDisputeInsert,
+  mapDisputeErrorCode,
   parseCreateDisputeRequestBody,
-  validateShipmentDisputeContext,
 } from './create-dispute';
-
-const order = {
-  id: '11111111-1111-4111-8111-111111111111',
-  buyer_id: 'buyer-1',
-  status: 'shipped',
-  delivered_at: null,
-};
-
-const shipment = {
-  id: '22222222-2222-4222-8222-222222222222',
-  order_id: order.id,
-  seller_id: 'seller-from-shipment',
-};
 
 const evidence = {
   images: ['https://example.com/evidence.jpg'],
@@ -32,7 +18,7 @@ describe('parseCreateDisputeRequestBody', () => {
   it('rejects dispute requests without shipmentId', () => {
     expect(() =>
       parseCreateDisputeRequestBody({
-        orderId: order.id,
+        orderId: '11111111-1111-4111-8111-111111111111',
         reason: 'not_as_described',
         description: 'The component does not match the listing.',
         evidence,
@@ -41,59 +27,32 @@ describe('parseCreateDisputeRequestBody', () => {
   });
 });
 
-describe('validateShipmentDisputeContext', () => {
-  it('rejects a shipment that does not belong to the disputed order', () => {
-    expect(() =>
-      validateShipmentDisputeContext({
-        userId: 'buyer-1',
-        order,
-        shipment: {
-          ...shipment,
-          order_id: '33333333-3333-4333-8333-333333333333',
-        },
-      }),
-    ).toThrow(new ApiError(400, 'SHIPMENT_ORDER_MISMATCH'));
+describe('mapDisputeErrorCode', () => {
+  it.each([
+    ['SHIPMENT_NOT_FOUND', 404, 'Envío no encontrado'],
+    ['SHIPMENT_ORDER_MISMATCH', 400, 'SHIPMENT_ORDER_MISMATCH'],
+    ['ORDER_BUYER_MISMATCH', 403, 'ORDER_BUYER_MISMATCH'],
+    ['DISPUTE_STATUS_NOT_ALLOWED:completed', 422, 'DISPUTE_STATUS_NOT_ALLOWED:completed'],
+    ['DISPUTE_WINDOW_EXPIRED', 422, 'DISPUTE_WINDOW_EXPIRED'],
+    ['SHIPMENT_CANCELLATION_OPERATION_ACTIVE', 409, 'SHIPMENT_CANCELLATION_OPERATION_ACTIVE'],
+    ['DISPUTE_ALREADY_EXISTS', 409, 'Ya existe una disputa abierta para este paquete.'],
+  ])('maps %s to HTTP %d', (code, status, message) => {
+    expect(mapDisputeErrorCode(code)).toEqual(new ApiError(status, message));
   });
 
-  it('rejects a buyer that does not own the order before dispute insert', () => {
-    expect(() =>
-      validateShipmentDisputeContext({
-        userId: 'other-buyer',
-        order,
-        shipment,
-      }),
-    ).toThrow(new ApiError(403, 'ORDER_BUYER_MISMATCH'));
+  it('maps an unknown code to a 500', () => {
+    const error = mapDisputeErrorCode('SOMETHING_ELSE');
+    expect(error.status).toBe(500);
+    expect(error.message).toBe('Error al crear disputa: SOMETHING_ELSE');
   });
 });
 
 describe('Edge notice cutover', () => {
   it('does not insert post-commit notifications', () => {
     const source = readFileSync(join(import.meta.dir, 'index.ts'), 'utf8');
-    expect(source).toContain(".from('disputes')");
+    expect(source).toContain('.rpc(');
+    expect(source).toContain("'fn_open_shipment_dispute'");
+    expect(source).not.toContain(".from('disputes')");
     expect(source).not.toMatch(/\.from\('notifications'\)|const notifications =/);
-  });
-});
-
-describe('buildDisputeInsert', () => {
-  it('derives seller_id from shipments.seller_id and includes shipment_id', () => {
-    expect(
-      buildDisputeInsert({
-        order,
-        shipment,
-        buyerId: 'buyer-1',
-        reason: 'not_as_described',
-        description: 'The component does not match the listing.',
-        evidence,
-      }),
-    ).toEqual({
-      order_id: order.id,
-      shipment_id: shipment.id,
-      buyer_id: 'buyer-1',
-      seller_id: 'seller-from-shipment',
-      reason: 'not_as_described',
-      description: 'The component does not match the listing.',
-      buyer_evidence: evidence,
-      status: 'open',
-    });
   });
 });

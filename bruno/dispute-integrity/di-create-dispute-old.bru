@@ -1,0 +1,40 @@
+meta {
+  name: di-create-dispute-old
+  type: http
+  seq: 22
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/create-dispute
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{fixtureBuyerToken}}
+}
+
+body:json {
+  {
+    "orderId": "{{diOrder}}",
+    "shipmentId": "{{diShipOld}}",
+    "reason": "damaged",
+    "description": "Bruno dispute integrity check for one shipment",
+    "evidence": {
+      "images": ["https://example.test/evidence-1.jpg"],
+      "tech_checklist": { "powers_on": false }
+    }
+  }
+}
+
+tests {
+  test("a shipment delivered three days ago is outside the dispute window", function () {
+    expect(res.getStatus()).to.equal(422);
+    expect(res.getBody()).to.deep.equal({ error: "DISPUTE_WINDOW_EXPIRED" });
+  });
+}
+
+docs {
+  The window counts from the shipment's own delivered_at; the order-level delivered_at is not set.
+}

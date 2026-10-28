@@ -1,0 +1,40 @@
+meta {
+  name: di-create-dispute-recent-again
+  type: http
+  seq: 26
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/create-dispute
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{fixtureBuyerToken}}
+}
+
+body:json {
+  {
+    "orderId": "{{diOrder}}",
+    "shipmentId": "{{diShipRecent}}",
+    "reason": "damaged",
+    "description": "Bruno dispute integrity check for one shipment",
+    "evidence": {
+      "images": ["https://example.test/evidence-1.jpg"],
+      "tech_checklist": { "powers_on": false }
+    }
+  }
+}
+
+tests {
+  test("a second dispute for the same shipment is refused", function () {
+    expect(res.getStatus()).to.equal(409);
+    expect(res.getBody()).to.deep.equal({ error: "Ya existe una disputa abierta para este paquete." });
+  });
+}
+
+docs {
+  Run right after di-create-dispute-recent.
+}

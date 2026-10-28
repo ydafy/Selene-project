@@ -1,0 +1,30 @@
+meta {
+  name: di-dispute-row-recent
+  type: http
+  seq: 27
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/disputes?shipment_id=eq.{{diShipRecent}}&select=id,status,order_id,buyer_id,seller_id,reason
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("exactly one open dispute exists with the shipment's seller", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{
+      id: bru.getVar("diNewDispute"),
+      status: "open",
+      order_id: bru.getVar("diOrder"),
+      buyer_id: "00000000-0000-4000-8000-000000000005",
+      seller_id: "00000000-0000-4000-8000-000000000004",
+      reason: "damaged"
+    }]);
+  });
+}

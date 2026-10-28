@@ -13,8 +13,8 @@ Hardens how disputes are opened, confirmed and refunded so every refund state in
 
 | ID | Specs | Route | Commit |
 | --- | --- | --- | --- |
-| T1 | S1 | inline | |
-| T2 | S2 | inline | |
+| T1 | S1 | inline | b396380 |
+| T2 | S2 | worker | (this commit) |
 | T3 | S3 | inline | |
 | T4 | S4 | inline | none (read-only, see L5) |
 
