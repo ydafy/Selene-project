@@ -23,6 +23,11 @@ import {
   safeErrorCode,
   type ClosureCleanupPorts,
 } from '../_shared/account-closure-cleanup.ts';
+import {
+  isAuthorizedCronRequest,
+  reportCronSecretMismatch,
+  type CronMismatchReporter,
+} from '../_shared/cron-auth.ts';
 
 /** Rows per run. Steps run one after another, so this keeps a run far below the function time limit. */
 export const BATCH_SIZE = 20;
@@ -40,6 +45,7 @@ export const MIN_IDLE_SECONDS = 10 * 60;
 export const MAX_ATTEMPTS = 24;
 /** Capped rows listed per run, enough for an admin to act on. */
 const CAPPED_LIST_LIMIT = 50;
+const FUNCTION_NAME = 'account-closure-cleanup';
 
 type DbError = { code?: string; message: string } | null;
 
@@ -47,6 +53,8 @@ export type CappedClosure = { user_id: string; attempts: number };
 
 export type AccountClosureCleanupDeps = ClosureCleanupPorts & {
   getCronSecret: () => string | undefined;
+  /** Sentry message reporter (`reportMessage` from `_shared/sentry.ts`); failures never reach the caller. */
+  reportMessage: CronMismatchReporter;
   /** Atomically claims open closures and adds one attempt to each. */
   claimClosures: (
     limit: number,
@@ -67,6 +75,32 @@ const json = (body: unknown, status: number): Response =>
   });
 
 export function createAccountClosureCleanupHandler(deps: AccountClosureCleanupDeps) {
+  /** Best effort: a failing reporter never changes the response or aborts the run. */
+  async function reportToSentry(
+    message: string,
+    options: { fingerprint: string[]; tags: Record<string, string> },
+  ): Promise<void> {
+    try {
+      await deps.reportMessage(message, {
+        fingerprint: options.fingerprint,
+        tags: { edge_function: FUNCTION_NAME, ...options.tags },
+      });
+    } catch {
+      // Alerting is best effort.
+    }
+  }
+
+  /** Reports a failed step as 'step:code' (the machine codes of runClosureCleanup); no ids or provider text. */
+  async function reportFailedStep(failure: string): Promise<void> {
+    const separator = failure.indexOf(':');
+    const step = separator < 0 ? failure : failure.slice(0, separator);
+    const code = separator < 0 ? 'error' : failure.slice(separator + 1);
+    await reportToSentry(`${FUNCTION_NAME} step failed`, {
+      fingerprint: ['account-closure-cleanup-step-failed', step, code],
+      tags: { step, code },
+    });
+  }
+
   async function cleanRow(
     row: Record<string, unknown>,
   ): Promise<'completed' | 'failed' | 'invalid'> {
@@ -79,9 +113,11 @@ export function createAccountClosureCleanupHandler(deps: AccountClosureCleanupDe
     try {
       // The claim already counted this attempt.
       const { failures } = await runClosureCleanup(userId, closure, deps, { countAttempt: false });
+      for (const failure of failures) await reportFailedStep(failure);
       return failures.length === 0 ? 'completed' : 'failed';
     } catch (error: unknown) {
       deps.log('ERROR', 'Account closure cleanup crashed', { userId, code: safeErrorCode(error) });
+      await reportFailedStep(`crash:${safeErrorCode(error)}`);
       return 'failed';
     }
   }
@@ -103,14 +139,17 @@ export function createAccountClosureCleanupHandler(deps: AccountClosureCleanupDe
         count: capped.length,
         userIds: capped.map((entry) => entry.user_id),
       });
+      await reportToSentry(`${FUNCTION_NAME} gave up on closures`, {
+        fingerprint: ['account-closure-cleanup-capped'],
+        tags: { capped: String(capped.length) },
+      });
     }
     return capped;
   }
 
   return async (req: Request): Promise<Response> => {
-    const expected = deps.getCronSecret();
-    const supplied = req.headers.get('x-cron-secret');
-    if (!expected || supplied !== expected) {
+    if (!isAuthorizedCronRequest(req, deps.getCronSecret())) {
+      await reportCronSecretMismatch(req, FUNCTION_NAME, deps.reportMessage);
       return json({ error: 'CRON_UNAUTHORIZED' }, 401);
     }
     if (req.method !== 'POST') {
