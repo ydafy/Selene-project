@@ -1,0 +1,34 @@
+meta {
+  name: di-cleanup-shipments
+  type: http
+  seq: 91
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/shipments?order_id=eq.{{diOrder}}&status=eq.delivered
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "status": "cancelled"
+  }
+}
+
+tests {
+  test("the shipments still delivered are closed", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().every((s) => s.status === "cancelled")).to.equal(true);
+  });
+}
+
+docs {
+  Local stack only. Closes this run's delivered shipments so no later cron run completes them.
+}

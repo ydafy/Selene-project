@@ -48,6 +48,10 @@ const FUNCTIONS = [
 
 const WALLET_REFERENCE = /\bwallets\b|wallet_transactions|payout_requests/i;
 
+// Rewritten again by a later migration, whose test checks that the canonical file carries the
+// newer body: *_connect_refund_requires_stripe.sql (fn_complete_shipment_refund).
+const SUPERSEDED: ReadonlySet<string> = new Set(['fn_complete_shipment_refund']);
+
 const collapse = (sql: string): string => sql.replace(/\s+/g, ' ').trim();
 
 const migration = findMigration();
@@ -91,6 +95,7 @@ describe('remove legacy wallet writes from the core functions (SQL structural on
       test('the canonical query file carries the migration body', () => {
         const canonical = canonicalBody(fn.file);
         expect(canonical).not.toMatch(WALLET_REFERENCE);
+        if (SUPERSEDED.has(fn.name)) return;
         expect(collapse(canonical)).toBe(collapse(migrationBody(fn.name)));
       });
 

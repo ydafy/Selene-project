@@ -201,13 +201,13 @@ describe('Connect money-flow SQL guards', () => {
     expect(sql).not.toMatch(/wallets|wallet_transactions/);
   });
 
-  it('shipment refund completion only marks Connect shipments refunded and writes no wallet rows', () => {
+  it('shipment refund completion refuses Connect shipments and writes no wallet rows', () => {
     const sql = readSql(
       'supabase/queries/shipments/fn_complete_shipment_refund.sql',
     );
 
     expect(sql).toContain('stripe_payment_intent_id IS NOT NULL');
-    expect(sql).toContain('CONNECT_SHIPMENT_SKIPPED_WALLET_REFUND');
+    expect(sql).toContain('CONNECT_REFUND_REQUIRES_STRIPE');
     expect(sql).not.toMatch(/wallets|wallet_transactions/);
   });
 

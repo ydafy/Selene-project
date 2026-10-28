@@ -1,0 +1,33 @@
+meta {
+  name: di-seller-confirm-return-removed
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_seller_confirm_return_shipment
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{fixtureSellerToken}}
+}
+
+body:json {
+  {
+    "p_shipment_id": "{{diShipReturn}}"
+  }
+}
+
+tests {
+  test("the seller cannot confirm a return through the API", function () {
+    expect(res.getStatus()).to.equal(404);
+    expect(res.getBody().code).to.equal("PGRST202");
+  });
+}
+
+docs {
+  The function was removed: a dispute in the buyer's favor is resolved only by resolve-dispute-refund, after the Stripe refund.
+}

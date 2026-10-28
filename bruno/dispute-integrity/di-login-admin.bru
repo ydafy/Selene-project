@@ -1,0 +1,34 @@
+meta {
+  name: di-login-admin
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/auth/v1/token?grant_type=password
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+body:json {
+  {
+    "email": "admin@selene.local",
+    "password": "password123"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("adminToken", res.getBody().access_token);
+  }
+}
+
+tests {
+  test("logs in the seeded admin", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

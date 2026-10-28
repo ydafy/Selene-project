@@ -4,24 +4,32 @@ meta {
   seq: 39
 }
 
-get {
-  url: {{baseUrl}}/rest/v1/shipments?id=eq.{{shipmentIdD}}&select=id,status
-  body: none
+patch {
+  url: {{baseUrl}}/rest/v1/shipments?id=eq.{{shipmentIdD}}&status=eq.paid&select=id,status
+  body: json
   auth: none
 }
 
 headers {
   apikey: {{serviceRoleKey}}
   Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "status": "refunded"
+  }
 }
 
 tests {
-  test("the shipment is refunded", function () {
+  test("the refused call left the shipment paid", function () {
     expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(1);
     expect(res.getBody()[0].status).to.equal("refunded");
   });
 }
 
 docs {
-  Shipment state after the call.
+  The filter matches only while the shipment is still paid, so one returned row proves the refused call changed nothing. Local stack only: the update then marks it refunded by service role, so the later account closures see a finished order, as before.
 }
