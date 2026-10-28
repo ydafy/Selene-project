@@ -1,0 +1,37 @@
+meta {
+  name: order-A-shipment-seller-update-denied
+  type: http
+  seq: 8
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/shipments?id=eq.{{shipmentIdA}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{sellerToken}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "order_id": "00000000-0000-4000-8000-0000000000f0",
+    "status": "shipped",
+    "tracking_number": "BRUNO-SELLER"
+  }
+}
+
+tests {
+  test("the seller cannot update their own paid shipment through REST", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody().code).to.equal("42501");
+  });
+}
+
+docs {
+  Shipment writes go through Edge Functions and RPCs only. `authenticated` holds no write
+  privilege on `public.shipments`. order-A-shipment-unchanged reads the row back.
+}

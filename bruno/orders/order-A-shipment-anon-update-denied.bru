@@ -1,0 +1,35 @@
+meta {
+  name: order-A-shipment-anon-update-denied
+  type: http
+  seq: 11
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/shipments?id=eq.{{shipmentIdA}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{anonKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "status": "shipped",
+    "tracking_number": "BRUNO-ANON"
+  }
+}
+
+tests {
+  test("an anonymous caller cannot update a shipment", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody().code).to.equal("42501");
+  });
+}
+
+docs {
+  `anon` holds no write privilege on `public.shipments`.
+}
