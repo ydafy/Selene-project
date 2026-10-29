@@ -1,0 +1,33 @@
+meta {
+  name: di-resolve-refund-completed
+  type: http
+  seq: 30
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/resolve-dispute-refund
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+body:json {
+  {
+    "disputeId": "{{diDispCompletedDisputed}}"
+  }
+}
+
+tests {
+  test("a completed shipment is not refunded", function () {
+    expect(res.getStatus()).to.equal(422);
+    expect(res.getBody()).to.deep.equal({ error: "SHIPMENT_NOT_REFUNDABLE:completed" });
+  });
+}
+
+docs {
+  The refusal happens before any Stripe call. Needs di-login-admin and the di-setup-* requests first.
+}

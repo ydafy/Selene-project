@@ -1,0 +1,27 @@
+meta {
+  name: di-record-refund-state
+  type: http
+  seq: 33
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/disputes?id=eq.{{diDispReturn}}&select=status,resolution_type,admin_notes,shipments(status)
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the shipment is refunded and the dispute resolved for the buyer", function () {
+    expect(res.getStatus()).to.equal(200);
+    const row = res.getBody()[0];
+    expect(row.status).to.equal("resolved");
+    expect(row.resolution_type).to.equal("buyer");
+    expect(row.shipments.status).to.equal("refunded");
+    expect(row.admin_notes).to.contain("re_bruno_di_return");
+  });
+}
