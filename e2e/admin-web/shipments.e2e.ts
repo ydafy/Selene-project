@@ -6,6 +6,8 @@ const listPath = '/functions/v1/list-shipment-operation-reviews';
 const resolvePath = '/functions/v1/resolve-shipment-operation-review';
 const lateListPath = '/functions/v1/list-shipment-late-carrier-activity';
 const acknowledgePath = '/functions/v1/acknowledge-shipment-late-carrier-activity';
+const labelListPath = '/functions/v1/list-shipment-label-reconciliations';
+const labelResolvePath = '/functions/v1/resolve-shipment-label-reconciliation';
 
 const review = (n: number, overrides: Record<string, unknown> = {}) => ({
   shipment_id: `1111111${n}-aaaa-4bbb-8ccc-000000000001`,
@@ -34,6 +36,29 @@ const lateCase = (n: number, overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+const labelCase = (n: number, overrides: Record<string, unknown> = {}) => ({
+  shipment_id: `7777777${n}-aaaa-4bbb-8ccc-000000000001`,
+  order_id: `8888888${n}-aaaa-4bbb-8ccc-000000000001`,
+  seller_id: `9999999${n}-aaaa-4bbb-8ccc-000000000001`,
+  seller_name: `vendedor_${n}`,
+  buyer_id: `aaaaaaa${n}-aaaa-4bbb-8ccc-000000000001`,
+  buyer_name: `comprador_${n}`,
+  shipment_created_at: new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString(),
+  label_generation_state: 'orphan_pending',
+  stuck_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+  claim_expires_at: null,
+  last_label_event_at: null,
+  quote_carrier: 'paquetexpress',
+  quote_service: 'ground',
+  quote_cost_cents: 15000,
+  quote_rated_at: null,
+  origin_postal_code: '64000',
+  origin_city: 'Monterrey',
+  destination_postal_code: '06600',
+  destination_city: 'Ciudad de México',
+  ...overrides,
+});
+
 interface Mock {
   pending: Array<ReturnType<typeof review>>;
   resolveStatus: number;
@@ -43,6 +68,11 @@ interface Mock {
   lateListStatus?: number;
   acknowledgeStatus?: number;
   acknowledgeBodies?: unknown[];
+  labels?: Array<ReturnType<typeof labelCase>>;
+  labelListStatus?: number;
+  labelResolveStatus?: number;
+  labelResolveError?: string;
+  labelResolveBodies?: unknown[];
 }
 
 // Deny-by-default boundary installed BEFORE navigation or session setup.
@@ -98,6 +128,32 @@ async function openShipments(page: Page, context: BrowserContext, baseURL: strin
         acknowledged_by: userId,
         acknowledged_note: body.note,
         already_acknowledged: false,
+      } });
+      return;
+    }
+    if (isMock && url.pathname === labelListPath) {
+      if (mock.labelListStatus && mock.labelListStatus !== 200) {
+        await route.fulfill({ status: mock.labelListStatus, headers: cors, json: { error: 'INTERNAL_ERROR' } });
+        return;
+      }
+      await route.fulfill({ headers: cors, json: { label_reconciliations: mock.labels ?? [] } });
+      return;
+    }
+    if (isMock && request.method() === 'POST' && url.pathname === labelResolvePath) {
+      const body = request.postDataJSON() as { shipment_id: string; resolution: string };
+      mock.labelResolveBodies?.push(body);
+      if (mock.labelResolveStatus && mock.labelResolveStatus !== 200) {
+        await route.fulfill({ status: mock.labelResolveStatus, headers: cors, json: { error: mock.labelResolveError ?? 'INTERNAL_ERROR' } });
+        return;
+      }
+      mock.labels = (mock.labels ?? []).filter((item) => item.shipment_id !== body.shipment_id);
+      const found = body.resolution === 'label_found';
+      await route.fulfill({ headers: cors, json: {
+        result: 'resolved',
+        resolution: body.resolution,
+        shipment_id: body.shipment_id,
+        status: found ? 'preparing' : 'paid',
+        label_generation_state: found ? 'generated' : 'unclaimed',
       } });
       return;
     }
@@ -278,5 +334,117 @@ test('the carrier activity bucket shows its empty state with a zero count', asyn
 
   await expect(page.getByText('Ningún caso pendiente')).toBeVisible();
   await expect(page.getByTestId('late-carrier-activity-count')).toHaveText('0');
+  expect(mock.unexpected).toEqual([]);
+});
+
+test('Envíos lists shipments stuck in label generation and "no hay guía" releases one after a note', async ({ page, context, baseURL }) => {
+  const mock: Mock = {
+    pending: [], resolveStatus: 200, resolveBodies: [], unexpected: [],
+    labels: [labelCase(1), labelCase(2, { label_generation_state: 'claimed', seller_name: null, quote_cost_cents: null })],
+    labelResolveBodies: [],
+  };
+  await openShipments(page, context, baseURL!, mock);
+
+  await expect(page.getByRole('heading', { name: 'Guías que no sabemos si se crearon' })).toBeVisible();
+  await expect(page.getByTestId('label-reconciliations-count')).toHaveText('2');
+  await expect(page.getByText('no supimos si Envía la creó', { exact: false })).toBeVisible();
+
+  const cards = page.getByRole('article');
+  await expect(cards).toHaveCount(2);
+  const first = cards.filter({ hasText: 'vendedor_1' });
+  await expect(first).toContainText('Envía no respondió');
+  await expect(first).toContainText('comprador_1');
+  await expect(first).toContainText('Monterrey 64000 → Ciudad de México 06600');
+  await expect(first).toContainText('paquetexpress · ground · $150');
+  await expect(first).toContainText('Hace 4 h');
+  const second = cards.filter({ hasText: 'El intento se quedó sin terminar' });
+  await expect(second).toContainText('Vendedor: 99999992');
+  await expect(second).toContainText('Cotización: paquetexpress · ground');
+
+  await first.getByRole('button', { name: 'No hay guía' }).click();
+  await expect(page.getByText('regresa al vendedor para que genere la guía otra vez', { exact: false })).toBeVisible();
+  await expect(page.getByText('se cancela y se reembolsa al comprador', { exact: false })).toBeVisible();
+  await page.getByRole('button', { name: 'Confirmar: no hay guía' }).click();
+  await expect(page.getByRole('alert')).toContainText('nota');
+  expect(mock.labelResolveBodies).toEqual([]);
+
+  await page.getByLabel('Nota para el registro').fill('  Revisé Envía, no hay guía  ');
+  await page.getByRole('button', { name: 'Confirmar: no hay guía' }).click();
+
+  await expect(cards).toHaveCount(1);
+  await expect(page.getByTestId('label-reconciliations-count')).toHaveText('1');
+  expect(mock.labelResolveBodies).toEqual([
+    { shipment_id: labelCase(1).shipment_id, resolution: 'no_label', note: 'Revisé Envía, no hay guía' },
+  ]);
+  expect(mock.unexpected).toEqual([]);
+});
+
+test('"La guía existe" validates the form and sends the cost in integer cents', async ({ page, context, baseURL }) => {
+  const mock: Mock = {
+    pending: [], resolveStatus: 200, resolveBodies: [], unexpected: [],
+    labels: [labelCase(1)], labelResolveBodies: [],
+  };
+  await openShipments(page, context, baseURL!, mock);
+
+  await page.getByRole('button', { name: 'La guía existe' }).click();
+  await page.getByLabel('Número de guía').fill('PX123');
+  await page.getByLabel('URL de la guía').fill('https://labels.example/px123.pdf');
+  await page.getByLabel('ID de envío en Envía').fill('98765');
+  await page.getByLabel('Costo de la guía (MXN)').fill('-5');
+  await page.getByLabel('Nota para el registro').fill('Está en el panel');
+  await page.getByRole('button', { name: 'Guardar guía' }).click();
+  await expect(page.getByRole('alert')).toContainText('costo en pesos');
+  expect(mock.labelResolveBodies).toEqual([]);
+
+  await page.getByLabel('Costo de la guía (MXN)').fill('93.50');
+  await page.getByRole('button', { name: 'Guardar guía' }).click();
+
+  await expect(page.getByRole('article')).toHaveCount(0);
+  await expect(page.getByTestId('label-reconciliations-count')).toHaveText('0');
+  expect(mock.labelResolveBodies).toEqual([{
+    shipment_id: labelCase(1).shipment_id,
+    resolution: 'label_found',
+    note: 'Está en el panel',
+    envia_shipment_id: '98765',
+    tracking_number: 'PX123',
+    label_url: 'https://labels.example/px123.pdf',
+    provider_cost_cents: 9350,
+  }]);
+  expect(mock.unexpected).toEqual([]);
+});
+
+test('an already resolved shipment shows a friendly message and the list refreshes', async ({ page, context, baseURL }) => {
+  const mock: Mock = {
+    pending: [], resolveStatus: 200, resolveBodies: [], unexpected: [],
+    labels: [labelCase(1)], labelResolveStatus: 409, labelResolveError: 'ALREADY_RESOLVED', labelResolveBodies: [],
+  };
+  await openShipments(page, context, baseURL!, mock);
+
+  await page.getByRole('button', { name: 'No hay guía' }).click();
+  await page.getByLabel('Nota para el registro').fill('Revisado');
+  mock.labels = [];
+  await page.getByRole('button', { name: 'Confirmar: no hay guía' }).click();
+
+  await expect(page.getByRole('alert')).toContainText('ya no está pendiente');
+  await expect(page.getByTestId('label-reconciliations-count')).toHaveText('0');
+  expect(mock.unexpected).toEqual([]);
+});
+
+test('the stuck labels bucket shows a dash and an error, never an empty state, when the list fails', async ({ page, context, baseURL }) => {
+  const mock: Mock = { pending: [], resolveStatus: 200, resolveBodies: [], unexpected: [], labelListStatus: 500 };
+  await openShipments(page, context, baseURL!, mock);
+
+  await expect(page.getByText('Error al cargar las guías por revisar')).toBeVisible();
+  await expect(page.getByTestId('label-reconciliations-count')).toHaveText('—');
+  await expect(page.getByText('Ninguna guía por revisar')).toHaveCount(0);
+  expect(mock.unexpected).toEqual([]);
+});
+
+test('the stuck labels bucket shows its empty state with a zero count', async ({ page, context, baseURL }) => {
+  const mock: Mock = { pending: [], resolveStatus: 200, resolveBodies: [], unexpected: [], labels: [] };
+  await openShipments(page, context, baseURL!, mock);
+
+  await expect(page.getByText('Ninguna guía por revisar')).toBeVisible();
+  await expect(page.getByTestId('label-reconciliations-count')).toHaveText('0');
   expect(mock.unexpected).toEqual([]);
 });
