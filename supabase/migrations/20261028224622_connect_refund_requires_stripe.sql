@@ -2,16 +2,12 @@
 -- A Connect shipment is marked refunded only after its Stripe refund.
 --
 -- resolve-dispute-refund creates the Stripe refund (reverse_transfer) and then
--- records it. Two older paths could mark a Connect shipment refunded without
--- any Stripe refund:
---   * fn_seller_confirm_return_shipment resolved the dispute for the buyer and
---     called fn_complete_shipment_refund. Its header said only admins should
---     use it, yet it accepted the shipment's seller and was executable by
---     authenticated. No client calls it; it is dropped.
---   * fn_complete_shipment_refund only set status = 'refunded' for Connect
---     shipments. It now refuses them with CONNECT_REFUND_REQUIRES_STRIPE before
---     any write. The legacy (non-Connect) path is unchanged; the dispute crons
---     already call it only for legacy shipments.
+-- records it; that is the only path for Connect shipments.
+--   * fn_seller_confirm_return_shipment is dropped. No client calls it, and
+--     disputes are resolved for the buyer through resolve-dispute-refund.
+--   * fn_complete_shipment_refund refuses Connect shipments with
+--     CONNECT_REFUND_REQUIRES_STRIPE before any write. The legacy (non-Connect)
+--     path is unchanged; the dispute crons call it only for legacy shipments.
 --
 -- Signature, SECURITY DEFINER, search_path and owner are those deployed.
 --

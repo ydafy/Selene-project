@@ -41,7 +41,7 @@ describe('connect_refund_requires_stripe migration', () => {
     expect(files.length).toBe(1);
   });
 
-  test('drops the client-callable return confirmation', () => {
+  test('drops fn_seller_confirm_return_shipment', () => {
     expect(code).toContain(
       'DROP FUNCTION IF EXISTS public.fn_seller_confirm_return_shipment(uuid);',
     );

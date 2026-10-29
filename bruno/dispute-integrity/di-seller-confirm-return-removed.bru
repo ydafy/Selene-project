@@ -22,7 +22,7 @@ body:json {
 }
 
 tests {
-  test("the seller cannot confirm a return through the API", function () {
+  test("the return-confirmation RPC no longer exists", function () {
     expect(res.getStatus()).to.equal(404);
     expect(res.getBody().code).to.equal("PGRST202");
   });

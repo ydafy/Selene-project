@@ -4,7 +4,7 @@ Hardens how disputes are opened, confirmed and refunded so every refund state in
 
 ## Specs
 
-- **S1** Return confirmation is not callable by clients. The return-confirmation RPC that resolved a dispute in the buyer's favor without a Stripe refund is removed; the shipment refund RPC refuses to mark a Stripe Connect shipment refunded on its own.
+- **S1** A Stripe Connect shipment is marked refunded only after its Stripe refund. `fn_seller_confirm_return_shipment` (no callers) is removed; the shipment refund RPC refuses Connect shipments.
 - **S2** A dispute opens only for a shipment that is `shipped` or `delivered`, inside 48 hours of that shipment's own `delivered_at`, with no started cancellation refund. The check and the insert run in one transaction that locks the shipment row.
 - **S3** A dispute refund runs only while the disputed shipment is `shipped` or `delivered`. The Edge Function checks this before calling Stripe, and after the Stripe refund succeeds a guarded RPC marks the shipment refunded and resolves the dispute in one transaction.
 - **S4** Read the remote project (read-only) for existing rows that the old behavior may have produced, and report them to the maintainer.
@@ -15,7 +15,7 @@ Hardens how disputes are opened, confirmed and refunded so every refund state in
 | --- | --- | --- | --- |
 | T1 | S1 | inline | b396380 |
 | T2 | S2 | worker | 55ef13e |
-| T3 | S3 | worker | (this commit) |
+| T3 | S3 | worker | f681c4a |
 | T4 | S4 | inline | none (read-only, see L5) |
 
 ## Log

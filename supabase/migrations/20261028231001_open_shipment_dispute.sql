@@ -1,8 +1,7 @@
 -- ============================================================================
 -- A dispute opens under the shipment row lock, from the shipment's own state.
 --
--- create-dispute used to read the order status and delivery time and insert
--- the dispute afterwards, without looking at the shipment. fn_open_shipment_dispute
+-- create-dispute calls fn_open_shipment_dispute, which
 -- locks the shipment row FOR UPDATE (the lock the completion and release paths
 -- take before they refuse on an active dispute) and, in one transaction:
 --   * checks the shipment belongs to the order and the order to the buyer;
