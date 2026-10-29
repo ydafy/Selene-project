@@ -39,7 +39,8 @@ describe('dispute.opened transactional producer', () => {
     expect(migration).not.toMatch(/user_id,\s*NEW\.seller_id/);
   });
   it('removes the post-commit Edge notices without changing the dispute insert', () => {
-    expect(edge).toContain(".from('disputes')");
+    // The insert moved into fn_open_shipment_dispute (service role), so the trigger still fires on it.
+    expect(edge).toContain("'fn_open_shipment_dispute'");
     expect(edge).not.toMatch(/\.from\('notifications'\)|const notifications =/);
   });
 });

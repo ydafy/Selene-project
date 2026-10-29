@@ -1,0 +1,73 @@
+meta {
+  name: di-setup-shipments
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/shipments
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  [
+    {
+      "id": "{{diShipReturn}}",
+      "order_id": "{{diOrder}}",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "status": "delivered",
+      "delivered_at": "{{diDeliveredOld}}",
+      "stripe_payment_intent_id": "pi_bruno_di_return"
+    },
+    {
+      "id": "{{diShipCompleted}}",
+      "order_id": "{{diOrder}}",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "status": "completed",
+      "delivered_at": "{{diDeliveredRecent}}",
+      "stripe_payment_intent_id": "pi_bruno_di_completed"
+    },
+    {
+      "id": "{{diShipRecent}}",
+      "order_id": "{{diOrder}}",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "status": "delivered",
+      "delivered_at": "{{diDeliveredRecent}}",
+      "stripe_payment_intent_id": "pi_bruno_di_recent"
+    },
+    {
+      "id": "{{diShipOld}}",
+      "order_id": "{{diOrder}}",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "status": "delivered",
+      "delivered_at": "{{diDeliveredOld}}",
+      "stripe_payment_intent_id": "pi_bruno_di_old"
+    },
+    {
+      "id": "{{diShipCompletedDisputed}}",
+      "order_id": "{{diOrder}}",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "status": "completed",
+      "delivered_at": "{{diDeliveredRecent}}",
+      "stripe_payment_intent_id": "pi_bruno_di_completed_disputed"
+    }
+  ]
+}
+
+tests {
+  test("five Connect shipments exist", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().length).to.equal(5);
+  });
+}
+
+docs {
+  Local stack only; the payment intent ids are fake. Return: delivered three days ago, its dispute waits for the return. Completed: completed one hour after delivery. Recent: delivered one hour ago. Old: delivered three days ago. CompletedDisputed: completed, with a dispute that predates this change.
+}

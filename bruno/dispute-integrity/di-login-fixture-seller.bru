@@ -1,0 +1,38 @@
+meta {
+  name: di-login-fixture-seller
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/auth/v1/token?grant_type=password
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+body:json {
+  {
+    "email": "fixture-seller@selene.local",
+    "password": "password123"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("fixtureSellerToken", res.getBody().access_token);
+  }
+}
+
+tests {
+  test("logs in the fixture seller", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}
+
+docs {
+  The fixture seller owns every shipment of this folder.
+}

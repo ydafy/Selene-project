@@ -1,0 +1,33 @@
+meta {
+  name: di-cleanup-disputes
+  type: http
+  seq: 90
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/disputes?order_id=eq.{{diOrder}}&status=not.in.(resolved,rejected)
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "status": "resolved"
+  }
+}
+
+tests {
+  test("the open disputes of this run are closed", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}
+
+docs {
+  Local stack only. Open disputes would otherwise keep their shipments out of the crons for ever.
+}

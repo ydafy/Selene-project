@@ -1,0 +1,23 @@
+meta {
+  name: di-record-refund-completed-unchanged
+  type: http
+  seq: 36
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/disputes?id=eq.{{diDispCompletedDisputed}}&select=status,resolution_type,shipments(status)
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("nothing changed", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ status: "waiting_return", resolution_type: null, shipments: { status: "completed" } }]);
+  });
+}

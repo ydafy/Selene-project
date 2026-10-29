@@ -2,10 +2,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import {
   ApiError,
-  assertDisputeWindow,
-  buildDisputeInsert,
+  mapDisputeErrorCode,
   parseCreateDisputeRequestBody,
-  validateShipmentDisputeContext,
 } from './create-dispute.ts';
 import { withSentry } from '../_shared/sentry.ts';
 
@@ -61,69 +59,35 @@ serve(withSentry('create-dispute', async (req) => {
     );
     if (authError || !user) throw new ApiError(401, 'AUTH_REQUIRED');
 
-    // 2. Buscar Orden y Validar
-    const { data: order, error: orderError } = await supabaseAdmin
-      .from('orders')
-      .select('id, status, buyer_id, delivered_at')
-      .eq('id', orderId)
-      .single();
+    // 2. Abrir la disputa en una sola transacción que bloquea el envío
+    const { data, error: rpcError } = await supabaseAdmin.rpc(
+      'fn_open_shipment_dispute',
+      {
+        p_buyer_id: user.id,
+        p_order_id: orderId,
+        p_shipment_id: shipmentId,
+        p_reason: reason,
+        p_description: description,
+        p_evidence: evidence,
+      },
+    );
 
-    if (orderError || !order) throw new ApiError(404, 'Orden no encontrada');
-
-    const { data: shipment, error: shipmentError } = await supabaseAdmin
-      .from('shipments')
-      .select('id, order_id, seller_id')
-      .eq('id', shipmentId)
-      .single();
-
-    if (shipmentError || !shipment) {
-      throw new ApiError(404, 'Envío no encontrado');
+    if (rpcError) {
+      throw new ApiError(500, `Error al crear disputa: ${rpcError.message}`);
     }
 
-    validateShipmentDisputeContext({
-      userId: user.id,
-      order,
-      shipment,
-    });
-
-    // 3. Validar Estados Permitidos
-    assertDisputeWindow(order);
-
-    // 4. Validar Reloj de 48h (Solo si ya fue entregado)
-    if (order.status === 'delivered' && order.delivered_at) {
-      log('INFO', 'Validando ventana de disputa entregada', {
+    const result = Array.isArray(data) ? data[0] : data;
+    if (!result) throw new ApiError(500, 'Error al crear disputa: sin respuesta');
+    if (result.error_code) {
+      log('WARN', 'Disputa rechazada', {
         orderId,
-        deliveredAt: order.delivered_at,
+        shipmentId,
+        errorCode: result.error_code,
       });
+      throw mapDisputeErrorCode(result.error_code);
     }
 
-    // 5. Insertar Disputa (Con manejo de Idempotencia)
-    const { data: dispute, error: insertError } = await supabaseAdmin
-      .from('disputes')
-      .insert(
-        buildDisputeInsert({
-          order,
-          shipment,
-          buyerId: user.id,
-          reason,
-          description,
-          evidence,
-        }),
-      )
-      .select('id')
-      .single();
-
-    if (insertError) {
-      // 23505 es el código de Postgres para "Unique Violation"
-      if (insertError.code === '23505') {
-        log('WARN', 'Intento de disputa duplicada', { orderId, shipmentId });
-        throw new ApiError(
-          409,
-          'Ya existe una disputa abierta para este paquete.',
-        );
-      }
-      throw new ApiError(500, `Error al crear disputa: ${insertError.message}`);
-    }
+    const dispute = { id: result.dispute_id as string };
 
     log('INFO', 'Disputa creada exitosamente', {
       disputeId: dispute.id,

@@ -1,0 +1,42 @@
+meta {
+  name: di-create-dispute-recent
+  type: http
+  seq: 25
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/create-dispute
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{fixtureBuyerToken}}
+}
+
+body:json {
+  {
+    "orderId": "{{diOrder}}",
+    "shipmentId": "{{diShipRecent}}",
+    "reason": "damaged",
+    "description": "Bruno dispute integrity check for one shipment",
+    "evidence": {
+      "images": ["https://example.test/evidence-1.jpg"],
+      "tech_checklist": { "powers_on": false }
+    }
+  }
+}
+
+tests {
+  test("a shipment delivered one hour ago can be disputed", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().success).to.equal(true);
+    expect(res.getBody().disputeId).to.be.a("string");
+    bru.setVar("diNewDispute", res.getBody().disputeId);
+  });
+}
+
+docs {
+  Opens the dispute through fn_open_shipment_dispute.
+}
