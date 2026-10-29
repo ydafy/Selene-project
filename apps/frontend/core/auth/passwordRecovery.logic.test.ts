@@ -1,6 +1,9 @@
 import { describe, expect, mock, test } from 'bun:test';
 
-import { completePasswordRecovery } from './passwordRecovery.logic';
+import {
+  completePasswordRecovery,
+  RECOVERY_SESSION_ENDED_KEY,
+} from './passwordRecovery.logic';
 
 /**
  * Auth block 4 (S7, C3): the recovery code is single use. Once it is verified,
@@ -105,5 +108,29 @@ describe('completePasswordRecovery', () => {
       codeVerified: false,
       messageKey: 'auth:errors.network',
     });
+  });
+
+  test('asks for a new code when the recovery session ended before the update', async () => {
+    for (const sessionError of [
+      { name: 'AuthSessionMissingError', status: 400, message: 'Auth session missing!' },
+      authError('session_not_found', 403),
+      authError('session_expired', 403),
+    ]) {
+      const auth = makeAuth(null, [sessionError]);
+      const result = await completePasswordRecovery(auth, { ...input, codeVerified: true });
+
+      expect(auth.verifyOtp).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        ok: false,
+        codeVerified: false,
+        messageKey: RECOVERY_SESSION_ENDED_KEY,
+      });
+    }
+  });
+
+  test('keeps the verified code for any other update failure', async () => {
+    const auth = makeAuth(null, [authError('weak_password')]);
+    const result = await completePasswordRecovery(auth, { ...input, codeVerified: true });
+    expect(result.codeVerified).toBe(true);
   });
 });

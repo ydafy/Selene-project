@@ -66,6 +66,10 @@ export const resolveReauthMethod = (user: IdentityUser): ReauthMethod => {
   return providers.includes('google') ? 'google' : 'password';
 };
 
+/** Google is the only way in: the account has no password to change or confirm (C7). */
+export const isGoogleOnlyAccount = (user: IdentityUser): boolean =>
+  !!user && resolveReauthMethod(user) === 'google';
+
 const WRONG_PASSWORD_KEY = 'settings:errors.wrongPassword';
 const AUTH_REQUIRED_KEY = 'settings:errors.authRequired';
 const ACCOUNT_MISMATCH_KEY = 'settings:errors.accountMismatch';
