@@ -49,8 +49,12 @@ const FUNCTIONS = [
 const WALLET_REFERENCE = /\bwallets\b|wallet_transactions|payout_requests/i;
 
 // Rewritten again by a later migration, whose test checks that the canonical file carries the
-// newer body: *_connect_refund_requires_stripe.sql (fn_complete_shipment_refund).
-const SUPERSEDED: ReadonlySet<string> = new Set(['fn_complete_shipment_refund']);
+// newer body: *_connect_refund_requires_stripe.sql (fn_complete_shipment_refund) and
+// *_close_account_push_tokens.sql (fn_close_account, checked in account_closure.test.ts).
+const SUPERSEDED: ReadonlySet<string> = new Set([
+  'fn_complete_shipment_refund',
+  'fn_close_account',
+]);
 
 const collapse = (sql: string): string => sql.replace(/\s+/g, ' ').trim();
 

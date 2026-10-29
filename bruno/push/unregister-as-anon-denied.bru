@@ -1,0 +1,30 @@
+meta {
+  name: unregister-as-anon-denied
+  type: http
+  seq: 112
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_unregister_push_token
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+body:json {
+  { "p_token": "ExponentPushToken[bruno-push-token-0001]" }
+}
+
+tests {
+  test("an anonymous caller is denied", function () {
+    expect(res.getStatus()).to.be.equal(401);
+    expect(res.getBody().code).to.equal("42501");
+  });
+}
+
+docs {
+  EXECUTE is granted to authenticated only.
+}

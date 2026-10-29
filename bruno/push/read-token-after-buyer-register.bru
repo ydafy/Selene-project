@@ -1,0 +1,30 @@
+meta {
+  name: read-token-after-buyer-register
+  type: http
+  seq: 104
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/push_tokens?select=user_id,platform,disabled_at&token=eq.ExponentPushToken%5Bbruno-push-token-0001%5D
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the token belongs to the buyer on android and is active", function () {
+    const rows = res.getBody();
+    expect(rows).to.have.length(1);
+    expect(rows[0].user_id).to.equal(bru.getVar("pushBuyerId"));
+    expect(rows[0].platform).to.equal("android");
+    expect(rows[0].disabled_at).to.equal(null);
+  });
+}
+
+docs {
+  Service-role read of the row the previous request wrote.
+}

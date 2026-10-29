@@ -1,0 +1,30 @@
+meta {
+  name: register-same-token-as-seller-moves-it
+  type: http
+  seq: 105
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_register_push_token
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{sellerToken}}
+}
+
+body:json {
+  { "p_token": "ExponentPushToken[bruno-push-token-0001]", "p_platform": "ios" }
+}
+
+tests {
+  test("the seller registers the same device token", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  Run after auth/login-seller. Same device, different account: the token moves to the caller.
+}

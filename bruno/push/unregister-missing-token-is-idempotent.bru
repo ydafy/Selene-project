@@ -1,0 +1,30 @@
+meta {
+  name: unregister-missing-token-is-idempotent
+  type: http
+  seq: 117
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_unregister_push_token
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{sellerToken}}
+}
+
+body:json {
+  { "p_token": "ExponentPushToken[bruno-push-token-0001]" }
+}
+
+tests {
+  test("unregistering an absent token is not an error", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  Sign-out must be safe to repeat.
+}

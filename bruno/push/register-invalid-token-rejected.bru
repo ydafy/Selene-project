@@ -1,0 +1,31 @@
+meta {
+  name: register-invalid-token-rejected
+  type: http
+  seq: 109
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_register_push_token
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  { "p_token": "not-an-expo-token", "p_platform": "android" }
+}
+
+tests {
+  test("a token with the wrong shape is rejected", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().message).to.equal("INVALID_PUSH_TOKEN");
+  });
+}
+
+docs {
+  Expo tokens look like ExponentPushToken[...] or ExpoPushToken[...].
+}

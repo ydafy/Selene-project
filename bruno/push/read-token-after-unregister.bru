@@ -1,0 +1,26 @@
+meta {
+  name: read-token-after-unregister
+  type: http
+  seq: 116
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/push_tokens?select=user_id,platform,disabled_at&token=eq.ExponentPushToken%5Bbruno-push-token-0001%5D
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the token is gone", function () {
+    expect(res.getBody()).to.have.length(0);
+  });
+}
+
+docs {
+  Service-role read after the owner unregistered.
+}

@@ -1,0 +1,33 @@
+meta {
+  name: setup-resolve-buyer-id
+  type: http
+  seq: 101
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/profiles_private?select=id&email=eq.buyer@selene.local
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("pushBuyerId", res.getBody()[0].id);
+  }
+}
+
+tests {
+  test("finds the seeded buyer id", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.length(1);
+  });
+}
+
+docs {
+  Stores the seeded buyer id in pushBuyerId for the ownership checks that follow.
+}

@@ -1,0 +1,33 @@
+meta {
+  name: setup-resolve-seller-id
+  type: http
+  seq: 102
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/profiles_private?select=id&email=eq.seller@selene.local
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("pushSellerId", res.getBody()[0].id);
+  }
+}
+
+tests {
+  test("finds the seeded seller id", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.length(1);
+  });
+}
+
+docs {
+  Stores the seeded seller id in pushSellerId.
+}
