@@ -3898,6 +3898,30 @@ export type Database = {
           tracking_number: string
         }[]
       }
+      fn_list_shipment_label_reconciliations: {
+        Args: never
+        Returns: {
+          buyer_id: string
+          buyer_name: string
+          claim_expires_at: string
+          destination_city: string
+          destination_postal_code: string
+          label_generation_state: string
+          last_label_event_at: string
+          order_id: string
+          origin_city: string
+          origin_postal_code: string
+          quote_carrier: string
+          quote_cost_cents: number
+          quote_rated_at: string
+          quote_service: string
+          seller_id: string
+          seller_name: string
+          shipment_created_at: string
+          shipment_id: string
+          stuck_at: string
+        }[]
+      }
       fn_list_shipment_late_carrier_activity: {
         Args: never
         Returns: {
@@ -4061,6 +4085,7 @@ export type Database = {
           p_carrier: string
           p_envia_shipment_id: string
           p_label_url: string
+          p_note?: string
           p_print_format: string
           p_print_size: string
           p_provider_cost_cents: number
@@ -4224,6 +4249,19 @@ export type Database = {
         }
         Returns: Json
       }
+      fn_resolve_shipment_label_reconciliation: {
+        Args: {
+          p_actor_id: string
+          p_envia_shipment_id?: string
+          p_label_url?: string
+          p_note: string
+          p_provider_cost_cents?: number
+          p_resolution: string
+          p_shipment_id: string
+          p_tracking_number?: string
+        }
+        Returns: Json
+      }
       fn_seller_confirm_return_shipment: {
         Args: { p_shipment_id: string }
         Returns: {
@@ -4248,6 +4286,14 @@ export type Database = {
       fn_set_checkout_recovery_charge_evidence: {
         Args: { p_stripe_charge_id: string; p_stripe_payment_intent_id: string }
         Returns: string
+      }
+      fn_shipment_label_is_stuck: {
+        Args: {
+          p_claim_expires_at: string
+          p_state: string
+          p_status: Database["public"]["Enums"]["order_status_enum"]
+        }
+        Returns: boolean
       }
       fn_start_shipment_cancellation: {
         Args: { p_claim_token: string; p_shipment_id: string }
