@@ -1,0 +1,39 @@
+meta {
+  name: cancel-setup-buyer-login
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/auth/v1/token?grant_type=password
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+body:json {
+  {
+    "email": "{{cancBuyerEmail}}",
+    "password": "password123"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("cancBuyerToken", res.getBody().access_token);
+  }
+}
+
+tests {
+  test("signs in the throwaway buyer of the order under test", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().access_token).to.be.a("string");
+  });
+}
+
+docs {
+  Stores the access token in the cancBuyerToken runtime variable.
+}

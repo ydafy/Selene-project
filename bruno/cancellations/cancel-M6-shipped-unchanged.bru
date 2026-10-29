@@ -1,0 +1,27 @@
+meta {
+  name: cancel-M6-shipped-unchanged
+  type: http
+  seq: 20
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/shipments?id=eq.{{cancShipmentId}}&select=status
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the shipped shipment keeps its status", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ status: "shipped" }]);
+  });
+}
+
+docs {
+  Service-role read after both refused calls.
+}

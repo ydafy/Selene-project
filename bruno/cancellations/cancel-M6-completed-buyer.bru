@@ -1,0 +1,35 @@
+meta {
+  name: cancel-M6-completed-buyer
+  type: http
+  seq: 28
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/cancel-order
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{cancBuyerToken}}
+}
+
+body:json {
+  {
+    "orderId": "{{cancOrderId}}",
+    "shipmentId": "{{cancShipmentId}}",
+    "reason": "Bruno: rejected cancellation"
+  }
+}
+
+tests {
+  test("the buyer cannot cancel a completed shipment", function () {
+    expect(res.getStatus()).to.equal(422);
+    expect(res.getBody()).to.deep.equal({ error: "SHIPMENT_NOT_CANCELABLE" });
+  });
+}
+
+docs {
+  M6. Manual cancellation is only open while the shipment is paid. Needs the functions server and supabase/functions/.env.
+}

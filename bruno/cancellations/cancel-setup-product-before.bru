@@ -1,0 +1,35 @@
+meta {
+  name: cancel-setup-product-before
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/products?id=eq.00000000-0000-4000-8000-0000000000b4&select=id,status,reserved_at,deleted_at,status_before_account_hold
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:post-response {
+  if (res.getStatus() === 200 && res.getBody().length === 1) {
+    bru.setVar("cancProductBefore", JSON.stringify(res.getBody()[0]));
+  }
+}
+
+tests {
+  test("the listing starts available", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(1);
+    expect(res.getBody()[0].status).to.equal("VERIFIED");
+    expect(res.getBody()[0].deleted_at).to.equal(null);
+  });
+}
+
+docs {
+  Keeps the listing row so the last request can prove it was restored exactly (orders/order-A-* sell the same listing later).
+}
