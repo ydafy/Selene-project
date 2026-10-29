@@ -115,12 +115,12 @@ Follow repository manual Supabase workflow: supply SQL/function/config handoff, 
 - T8a | S4 | inline | done (3933485, review approved L110; device check pending) | F1: listings held by an account suspension (`status_before_account_hold` set) stay out of "history" in Mis publicaciones | Commit: not created.
 - T8b | S8 | delegated writer (context backstop) | done (d7349da, review approved L111; follow-up in the next commit) | `account-closure-cleanup`: shared constant-time `isAuthorizedCronRequest` and mismatch report; failed cleanup steps reported to Sentry (L74); own commit (risk: auth guard) | Commit: not created.
 - T8c | S8 | inline | done (98b1f41, review approved L114) | Drop the `as never` casts in `delete-account`, `account-closure-cleanup` and the shared cleanup now that the types exist (L79) | Commit: not created.
-- T8d | S7 | inline | done (L115; device check pending) | C7: Settings detects Google-only accounts from identities (the `reauth.logic` helper), not `app_metadata.provider`; `codeVerified` reset when the recovery session ends | Commit: not created.
+- T8d | S7 | inline | done (e63efee, review approved L116; device check pending) | C7: Settings detects Google-only accounts from identities (the `reauth.logic` helper), not `app_metadata.provider`; `codeVerified` reset when the recovery session ends | Commit: not created.
 - T8e | S3,S6 | inline | done (b53d0a5, review approved L115) | Auth form tidy: `RegisterForm` confirm keyboard submit through the button guard, unused `theme` in `LoginForm`, unused root keys `loginTitle`/`joinSelene`, local `deleted_at` types replaced by generated ones | Commit: not created.
 - T8f | S4,S8 | inline | pending | Admin-web: `getAccountStatusActions` default branch, closed accounts shown as deleted (reason `account_closed`) instead of banned, reactivation copy that does not promise a prior status (L22) | Commit: not created.
 - T8g | S6,S8 | inline | pending | Server reserves the `deleted_` username prefix for closed accounts (migration; maintainer applies); own commit (high risk: SQL) | Commit: not created.
 - T8h | S3 | inline | done (28193ba, review approved L113) | #50: `common:errors.errorTitle` in 4 mobile files | Commit: not created.
-- T8i | S9 | inline | pending | Mount tests for the mobile `CaptchaProvider` and admin `useCaptcha` (L98, L101) | Commit: not created.
+- T8i | S9 | inline | done (L116) | Mount tests for the mobile `CaptchaProvider` and admin `useCaptcha` (L98, L101) | Commit: not created.
 
 ## Log
 
@@ -835,3 +835,11 @@ Recovery: `completePasswordRecovery` kept `codeVerified` after any `updateUser` 
 RED: both test files failed to load (`RECOVERY_SESSION_ENDED_KEY`, `isGoogleOnlyAccount` missing). GREEN: `core/auth` + `core/i18n` + auth screen tests 285 pass. ESLint clean; `@selene/frontend` typecheck 17 (baseline).
 Device check: an email account signed in with Google too still sees "Change password"; a Google-only account does not.
 Risk: item 2 (which credential UI a user sees; the server still requires the current password).
+
+### L116 — Slice 1 merged; T8i CAPTCHA provider tests
+Maintainer (verbatim): "dale abrimos pr no? y lo mergeamos a maain? Ya hide el redeploy de las EF, sobre el etst maunal porfa se un poco mas descriptivo de lo que quieres que haga, y dime si ocupas priero esos test o si peudes continuar a la par"
+`delete-account` and `account-closure-cleanup` redeployed by the maintainer (T8b, T8c). Slice 1 opened as PR #75 from `fix/auth-backlog-1` (origin/main..28193ba); CI `test` and the Vercel previews passed; merged as 60057ee, which closed #50. origin/main merged back into `audit/auth-backlog` (23dd5a0, clean; `bun test` 4123 pass, 0 fail). Slice 2 starts after 60057ee.
+e63efee review (risk, reliability) approved; advisory: the settings wiring test reads source text.
+T8i, mobile: `tests/auth/captcha-provider.mount.test.tsx` mounts the real `CaptchaProvider` with a fake `@hcaptcha/react-native-hcaptcha` (child process, like the other mount tests) and drives it through `getCaptchaToken`: site key, invisible size and app language; a solved challenge resolves, marks the token used and hides the widget; `open` keeps waiting; `challenge-closed` rejects `captcha_cancelled`; an SDK error rejects `captcha_failed`; a new request cancels the pending one; a late event changes nothing; after unmount the getter fails closed. Mutation check: removing the "cancel the pending request" line or the "ignore late events" guard each fails one test; the provider file is unchanged.
+T8i, admin-web: `react-test-renderer` is not installed there, so instead of a new dependency the request and reset rules moved from `useCaptcha.tsx` into `hcaptchaHandle.logic.ts` (`createHcaptchaHandle(getWidget, configured)`); the hook keeps only the ref, the getter and the widget. `hcaptchaHandle.logic.test.ts` covers token plus reset, closed challenge, other errors, no mounted widget, no site key and the timeout reset. RED: module missing; GREEN: `apps/admin-web/src/lib/captcha` 21 pass. ESLint clean; `admin-web` typecheck exit 0.
+Risk: none (tests, and a behavior-preserving move in the admin hook covered by its tests and the login e2e).
