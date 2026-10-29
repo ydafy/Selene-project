@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react';
 import { CarrierReviewsPanel } from '../components/features/shipments/CarrierReviewsPanel';
+import { LabelReconciliationsPanel } from '../components/features/shipments/LabelReconciliationsPanel';
 import { LateCarrierActivityPanel } from '../components/features/shipments/LateCarrierActivityPanel';
 
 // A new shipping queue (blocked labels, label recovery) is one self-contained component
@@ -7,6 +8,7 @@ import { LateCarrierActivityPanel } from '../components/features/shipments/LateC
 const BUCKETS: ReadonlyArray<{ id: string; Component: ComponentType }> = [
   { id: 'carrier-reviews', Component: CarrierReviewsPanel },
   { id: 'late-carrier-activity', Component: LateCarrierActivityPanel },
+  { id: 'label-reconciliations', Component: LabelReconciliationsPanel },
 ];
 
 export const ShipmentsPage = () => (
