@@ -1,0 +1,40 @@
+meta {
+  name: rpc-fn-open-shipment-dispute-as-buyer-denied
+  type: http
+  seq: 39
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_open_shipment_dispute
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  {
+    "p_buyer_id": "00000000-0000-4000-8000-0000000000fe",
+    "p_order_id": "00000000-0000-4000-8000-0000000000fd",
+    "p_shipment_id": "00000000-0000-4000-8000-0000000000ff",
+    "p_reason": "damaged",
+    "p_description": "Bruno role check, never reaches the function",
+    "p_evidence": { "images": ["https://example.test/evidence-1.jpg"], "tech_checklist": {} }
+  }
+}
+
+tests {
+  test("an authenticated buyer is denied", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody().code).to.equal("42501");
+    expect(res.getBody().message).to.equal("permission denied for function fn_open_shipment_dispute");
+  });
+}
+
+docs {
+  Run after auth/login-buyer (needs `buyerToken`). EXECUTE on fn_open_shipment_dispute is limited to service_role, so a client cannot call it through the RPC.
+  The ids are placeholders: the request is refused before the function runs and changes nothing.
+}

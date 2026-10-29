@@ -1,0 +1,33 @@
+meta {
+  name: di-complete-refund-connect-refused
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_complete_shipment_refund
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_shipment_id": "{{diShipReturn}}"
+  }
+}
+
+tests {
+  test("a Connect shipment is refused and nothing changes", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ success: false, error_message: "CONNECT_REFUND_REQUIRES_STRIPE" }]);
+  });
+}
+
+docs {
+  Connect refunds are recorded by resolve-dispute-refund after the Stripe refund; this function refuses Connect shipments before any write. di-return-unchanged (next) proves nothing moved.
+}

@@ -1,0 +1,30 @@
+meta {
+  name: di-setup-dispute-states
+  type: http
+  seq: 7
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/disputes?id=in.({{diDispReturn}},{{diDispCompletedDisputed}})
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "status": "waiting_return"
+  }
+}
+
+tests {
+  test("both disputes wait for the return", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(2);
+  });
+}

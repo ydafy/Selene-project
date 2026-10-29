@@ -8,19 +8,6 @@ export class ApiError extends Error {
   }
 }
 
-export interface CreateDisputeOrderContext {
-  id: string;
-  buyer_id: string;
-  status: string;
-  delivered_at: string | null;
-}
-
-export interface CreateDisputeShipmentContext {
-  id: string;
-  order_id: string;
-  seller_id: string;
-}
-
 export interface CreateDisputeEvidence {
   images: string[];
   tech_checklist: Record<string, boolean>;
@@ -132,54 +119,25 @@ export function parseCreateDisputeRequestBody(
   };
 }
 
-export function validateShipmentDisputeContext(input: {
-  userId: string;
-  order: CreateDisputeOrderContext;
-  shipment: CreateDisputeShipmentContext;
-}): void {
-  if (input.order.buyer_id !== input.userId) {
-    throw new ApiError(403, 'ORDER_BUYER_MISMATCH');
+export function mapDisputeErrorCode(errorCode: string): ApiError {
+  if (errorCode.startsWith('DISPUTE_STATUS_NOT_ALLOWED:')) {
+    return new ApiError(422, errorCode);
   }
 
-  if (input.shipment.order_id !== input.order.id) {
-    throw new ApiError(400, 'SHIPMENT_ORDER_MISMATCH');
+  switch (errorCode) {
+    case 'SHIPMENT_NOT_FOUND':
+      return new ApiError(404, 'Envío no encontrado');
+    case 'SHIPMENT_ORDER_MISMATCH':
+      return new ApiError(400, errorCode);
+    case 'ORDER_BUYER_MISMATCH':
+      return new ApiError(403, errorCode);
+    case 'DISPUTE_WINDOW_EXPIRED':
+      return new ApiError(422, errorCode);
+    case 'SHIPMENT_CANCELLATION_OPERATION_ACTIVE':
+      return new ApiError(409, errorCode);
+    case 'DISPUTE_ALREADY_EXISTS':
+      return new ApiError(409, 'Ya existe una disputa abierta para este paquete.');
+    default:
+      return new ApiError(500, `Error al crear disputa: ${errorCode}`);
   }
-
-  if (!input.shipment.seller_id) {
-    throw new ApiError(500, 'SHIPMENT_SELLER_NOT_FOUND');
-  }
-}
-
-export function assertDisputeWindow(order: CreateDisputeOrderContext): void {
-  if (!['shipped', 'delivered'].includes(order.status)) {
-    throw new ApiError(422, `DISPUTE_STATUS_NOT_ALLOWED:${order.status}`);
-  }
-
-  if (order.status !== 'delivered' || !order.delivered_at) return;
-
-  const deliveredTime = new Date(order.delivered_at).getTime();
-  const fortyEightHours = 48 * 60 * 60 * 1000;
-  if (Date.now() - deliveredTime > fortyEightHours) {
-    throw new ApiError(422, 'DISPUTE_WINDOW_EXPIRED');
-  }
-}
-
-export function buildDisputeInsert(input: {
-  order: CreateDisputeOrderContext;
-  shipment: CreateDisputeShipmentContext;
-  buyerId: string;
-  reason: string;
-  description: string;
-  evidence: CreateDisputeEvidence;
-}) {
-  return {
-    order_id: input.order.id,
-    shipment_id: input.shipment.id,
-    buyer_id: input.buyerId,
-    seller_id: input.shipment.seller_id,
-    reason: input.reason,
-    description: input.description,
-    buyer_evidence: input.evidence,
-    status: 'open' as const,
-  };
 }

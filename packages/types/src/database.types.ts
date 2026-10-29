@@ -4014,6 +4014,20 @@ export type Database = {
         Args: { p_favoriter_id: string; p_product_id: string }
         Returns: undefined
       }
+      fn_open_shipment_dispute: {
+        Args: {
+          p_buyer_id: string
+          p_description: string
+          p_evidence: Json
+          p_order_id: string
+          p_reason: Database["public"]["Enums"]["dispute_reason"]
+          p_shipment_id: string
+        }
+        Returns: {
+          dispute_id: string
+          error_code: string
+        }[]
+      }
       fn_persist_shipment_label_quote: {
         Args: {
           p_carrier: string
@@ -4089,6 +4103,13 @@ export type Database = {
           p_stripe_event_id: string
         }
         Returns: boolean
+      }
+      fn_record_dispute_refund: {
+        Args: { p_dispute_id: string; p_stripe_refund_id: string }
+        Returns: {
+          error_code: string
+          success: boolean
+        }[]
       }
       fn_record_shipment_cancellation_refund: {
         Args: {
@@ -4223,13 +4244,6 @@ export type Database = {
           p_shipment_id: string
         }
         Returns: Json
-      }
-      fn_seller_confirm_return_shipment: {
-        Args: { p_shipment_id: string }
-        Returns: {
-          error_message: string
-          success: boolean
-        }[]
       }
       fn_seller_initiate_return_label: {
         Args: { p_caller_id: string; p_dispute_id: string }

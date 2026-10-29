@@ -1,0 +1,53 @@
+meta {
+  name: di-setup-disputes
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/disputes
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  [
+    {
+      "id": "{{diDispReturn}}",
+      "order_id": "{{diOrder}}",
+      "shipment_id": "{{diShipReturn}}",
+      "buyer_id": "00000000-0000-4000-8000-000000000005",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "reason": "damaged",
+      "description": "Bruno dispute-integrity fixture",
+      "status": "open"
+    },
+    {
+      "id": "{{diDispCompletedDisputed}}",
+      "order_id": "{{diOrder}}",
+      "shipment_id": "{{diShipCompletedDisputed}}",
+      "buyer_id": "00000000-0000-4000-8000-000000000005",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "reason": "damaged",
+      "description": "Bruno dispute-integrity fixture",
+      "status": "open"
+    }
+  ]
+}
+
+tests {
+  test("two open disputes exist", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().length).to.equal(2);
+  });
+}
+
+docs {
+  Local stack only. Disputes can only be inserted open; the next request moves them to waiting_return.
+}
