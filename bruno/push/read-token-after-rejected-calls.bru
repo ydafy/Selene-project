@@ -1,0 +1,31 @@
+meta {
+  name: read-token-after-rejected-calls
+  type: http
+  seq: 115
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/push_tokens?select=user_id,platform,disabled_at,disabled_reason&token=eq.ExponentPushToken%5Bbruno-push-token-0001%5D
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the rejected and denied calls left the seller's row unchanged", function () {
+    const rows = res.getBody();
+    expect(rows).to.have.length(1);
+    expect(rows[0].user_id).to.equal(bru.getVar("pushSellerId"));
+    expect(rows[0].platform).to.equal("ios");
+    expect(rows[0].disabled_at).to.equal(null);
+    expect(rows[0].disabled_reason).to.equal(null);
+  });
+}
+
+docs {
+  Service-role read after the invalid token, invalid platform, and anon requests.
+}
