@@ -55,7 +55,8 @@
       "SOLD": "Sold",
       "REJECTED": "Rejected",
       "HIDDEN": "Hidden",
-      "IN_DISPUTE": "In Dispute"
+      "IN_DISPUTE": "In Dispute",
+      "ACCOUNT_HOLD": "Paused (account suspended)"
     },
     "actions": {
       "edit": "Edit",
