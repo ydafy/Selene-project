@@ -62,6 +62,12 @@ verify_jwt = true
 [functions.acknowledge-shipment-late-carrier-activity]
 verify_jwt = true
 
+[functions.list-shipment-label-reconciliations]
+verify_jwt = true
+
+[functions.resolve-shipment-label-reconciliation]
+verify_jwt = true
+
 # Local Auth mirrors the deployed settings of project acoiclkeymgtlwcxilun so the
 # signup flow (confirmation code, password policy) behaves the same locally.
 # Google sign-in is not configured locally: it needs client secrets. "Require

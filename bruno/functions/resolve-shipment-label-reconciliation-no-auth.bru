@@ -1,0 +1,30 @@
+meta {
+  name: resolve-shipment-label-reconciliation-no-auth
+  type: http
+  seq: 100
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/resolve-shipment-label-reconciliation
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+body:json {
+  { "shipment_id": "00000000-0000-4000-8000-0000000000d1", "resolution": "no_label", "note": "Bruno: no-auth" }
+}
+
+tests {
+  test("rejects a label reconciliation without a user token", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody()).to.deep.equal({ error: "AUTH_REQUIRED" });
+  });
+}
+
+docs {
+  Needs the functions server started with --no-verify-jwt. Refuses anonymous callers before any lookup or database call.
+}

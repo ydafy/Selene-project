@@ -1,0 +1,31 @@
+meta {
+  name: resolve-shipment-label-reconciliation-buyer
+  type: http
+  seq: 101
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/resolve-shipment-label-reconciliation
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  { "shipment_id": "00000000-0000-4000-8000-0000000000d1", "resolution": "no_label", "note": "Bruno: buyer" }
+}
+
+tests {
+  test("a signed-in buyer cannot resolve a label reconciliation", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody()).to.deep.equal({ error: "ADMIN_ONLY" });
+  });
+}
+
+docs {
+  Run after auth/login-buyer (needs buyerToken). A valid non-admin session is stopped before the body is read or any RPC is called.
+}
