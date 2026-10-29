@@ -25,3 +25,4 @@ Hardens how disputes are opened, confirmed and refunded so every refund state in
 - **L3** One of the three advisories was already fixed and deployed (the legacy wallet functions no longer exist remotely); closed on 2026-10-28. Two remain, covered by S1-S3.
 - **L4** Open issues near this area, not covered here: #54, #59.
 - **L5** T4, remote read 2026-10-28 (3 disputes in total): no dispute was confirmed by a seller or forced by an admin through the removed function, no dispute was opened after its shipment completed, and no Connect shipment is `refunded`. A separate finding in the same area was reported privately to the maintainer.
+- **L6** (2026-10-28, maintainer): "master migracion aplicada succes y las dos deploy's de las EF. dime que sigue y si todo esta bein o que quieres haecer." Remote read confirmed the three migrations and both functions; types regenerated in 3dae8c7 (this branch's hunks only).
