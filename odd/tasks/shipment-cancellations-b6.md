@@ -18,8 +18,8 @@ Scope: the last gaps before shipment cancellation can be called ready: a shipmen
 - B6.1a | S3, S6 | worker mvsrbv2i | Complete (L5), commits `022ee78` (SQL, canonical, text test) and `991f8da` (harness, Bruno). Risk: items 1, 2. Maintainer applies the migration, then `db:types`.
 - B6.1b | S3, S6 | worker mvss8haa | Complete (L7), commit `59bb0cd`. Types `37a680c` after the maintainer applied the migration (L6).
 - B6.1c | S3, S6 | worker mvss8haa | Complete (L7), commits `1fec27d`, `ea80a45`, `c1b77b9`. Local e2e timeout raised with maintainer approval (L8).
-- B6.2 | S4 | TBD | Pending. Bruno requests for M5 and M6 against the real `cancel-order`.
-- B6.C | S1 | parent | Pending. Docs (coordination doc, parent tracker B6 row, go-live), PR, close #43.
+- B6.2 | S4 | worker mvstq51x (cancelled, stalled) + parent | Complete (L9). `bruno/cancellations/` M5 and M6.
+- B6.C | S1 | parent | Complete (L9). Coordination doc B6 section, parent tracker B6 row; PR closes #43.
 
 ## Log
 
@@ -31,3 +31,4 @@ Scope: the last gaps before shipment cancellation can be called ready: a shipmen
 - L6 — PR #73 merged (`901d11f`) after the maintainer applied `20261028234144` ("listo migracion aplicada"). `db:types` +46 lines, only additions. Production grants (MCP): the four functions are service_role only. Native review `review-f7d317229ca81468` could not collect: the reviewer tooling rejected the result format twice (risk lens had 0 findings); left open, no verdict.
 - L7 — B6.1b/c by worker mvss8haa. Resolve takes the actor from the JWT; `already_resolved` -> 409 `ALREADY_RESOLVED`; `LABEL_SETTINGS_MISSING` -> 500. RED handlers 0/2, admin-web 4 files -> GREEN 31 and 48; deno check clean; Bruno 326/326 on a fresh reset; `bun test` 4155/0; `test:e2e` 24/24; `test:e2e:local`: the new spec passes, the three existing ones time out under the default 5 s expect timeout because the page now makes a third slow function call in stack mode (pass with a 30 s scratch config). `ShipmentsPage.test.tsx` updated for the third panel with parent approval. Not verified: visual look, `label_found` through the real UI (mocked spec + SQL harness only).
 - L8 — Maintainer chose "Subir el timeout solo en el config local (Recomendado)": `playwright.local.config.ts` sets `expect: { timeout: 30_000 }`; CI and the mocked config unchanged, no assertion loosened. Parent rerun on a fresh `supabase db reset`: `test:e2e:local` 4 passed (1.3m).
+- L9 — B6.2: worker mvstq51x wrote 33 requests in `bruno/cancellations/` (own throwaway buyer and order on listing b4, outsider `buyer@selene.local`, service-role setup per state, b4 restored from a snapshot read at the start), then stalled for ~20 minutes and was cancelled; its runs showed only isolated cold-start 503s in `delete-account`. Parent run on a fresh reset: folder 35/35 (with logins), then full collection 389/389 on the same database. Mutation check: M5 expecting 200 and M6 preparing-buyer expecting 200 both fail with the real 403/422, files restored. PRs #73 and #76 merged; the maintainer deploys the two admin functions and takes a quick look at the bucket. B6 closes the module.

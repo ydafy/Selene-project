@@ -1,0 +1,40 @@
+meta {
+  name: cancel-cleanup-product
+  type: http
+  seq: 33
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/products?id=eq.00000000-0000-4000-8000-0000000000b4
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+script:pre-request {
+  req.setBody(JSON.parse(bru.getVar("cancProductBefore")));
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("the listing is restored exactly as it was found", function () {
+    expect(res.getStatus()).to.equal(200);
+    const before = JSON.parse(bru.getVar("cancProductBefore"));
+    const row = res.getBody()[0];
+    for (const key of Object.keys(before)) {
+      expect(row[key]).to.equal(before[key]);
+    }
+  });
+}
+
+docs {
+  Local stack only. Orders A to D sell this same listing later in the run and assert its state, so it must leave this folder as it entered.
+}

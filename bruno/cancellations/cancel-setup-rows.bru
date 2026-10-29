@@ -1,0 +1,40 @@
+meta {
+  name: cancel-setup-rows
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/orders?stripe_payment_intent_id=eq.{{cancIntent}}&select=id,status,buyer_id,shipments(id,status,seller_id)
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:post-response {
+  if (res.getStatus() === 200 && res.getBody().length === 1) {
+    bru.setVar("cancOrderId", res.getBody()[0].id);
+    bru.setVar("cancShipmentId", res.getBody()[0].shipments[0].id);
+  }
+}
+
+tests {
+  test("one paid order with one paid shipment for the seeded seller", function () {
+    expect(res.getStatus()).to.equal(200);
+    const orders = res.getBody();
+    expect(orders.length).to.equal(1);
+    expect(orders[0].status).to.equal("paid");
+    expect(orders[0].buyer_id).to.equal(bru.getVar("cancBuyerId"));
+    expect(orders[0].shipments.length).to.equal(1);
+    expect(orders[0].shipments[0].status).to.equal("paid");
+    expect(orders[0].shipments[0].seller_id).to.equal("00000000-0000-4000-8000-000000000002");
+  });
+}
+
+docs {
+  Keeps the order and shipment ids for the requests that follow.
+}

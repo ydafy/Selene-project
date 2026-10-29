@@ -1,0 +1,35 @@
+meta {
+  name: cancel-M5-outsider
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/cancel-order
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  {
+    "orderId": "{{cancOrderId}}",
+    "shipmentId": "{{cancShipmentId}}",
+    "reason": "Bruno: rejected cancellation"
+  }
+}
+
+tests {
+  test("a signed-in user who is neither buyer nor seller is refused", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody()).to.deep.equal({ error: "UNAUTHORIZED" });
+  });
+}
+
+docs {
+  M5. cancel-order stops a non-participant before any claim, refund or database write. Needs the functions server and supabase/functions/.env.
+}

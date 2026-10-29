@@ -1,0 +1,34 @@
+meta {
+  name: cancel-cleanup-shipment
+  type: http
+  seq: 32
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/shipments?id=eq.{{cancShipmentId}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "status": "cancelled"
+  }
+}
+
+tests {
+  test("the shipment is closed so the seller has no open shipment", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].status).to.equal("cancelled");
+  });
+}
+
+docs {
+  Local stack only. Closes the shipment, as orders/order-A-shipment-cleanup does, so later requests and the collection stay repeatable.
+}

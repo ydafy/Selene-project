@@ -1,4 +1,28 @@
-# Shipment cancellation coordination — B1, B2, B3, B4 and B5
+# Shipment cancellation coordination — B1 to B6
+
+## B6 status: stuck label generation and manual-cancellation rejection tests (complete)
+
+B6 closed the last two gaps of the module (`odd/tasks/shipment-cancellations-b6.md`, issue #43).
+
+| Unit | Behavior |
+|---|---|
+| B6.1a (PR #73) | A paid shipment whose label outcome is unproven (`orphan_pending`, or `claimed`/`generation_sent` with an expired claim) is listed by the service-only `fn_list_shipment_label_reconciliations`. An active admin resolves it with `fn_resolve_shipment_label_reconciliation`: `label_found` records the label from the Envía panel through `fn_reconcile_shipment_label` (generated, preparing); `no_label` releases it to `unclaimed`, still `paid`, so the buyer or seller can cancel, the paid-timeout cron can refund it, or the seller can generate again. A shipment that is no longer stuck returns `already_resolved`. The audit is a `shipment_label_events` row (`reconciled` or `released`) with actor and note. No money moves in either resolution. |
+| B6.1b/c (PR #76) | Admin Edge Functions `list-shipment-label-reconciliations` and `resolve-shipment-label-reconciliation` (`verify_jwt = true`, admin checked in the function, actor from the JWT) and the third admin-web "Envíos" bucket, "Guías que no sabemos si se crearon". |
+| B6.2 | Bruno folder `bruno/cancellations/`: a non-participant gets 403 `UNAUTHORIZED` on a paid shipment (M5); buyer and seller get 422 `SHIPMENT_NOT_CANCELABLE` in `preparing`, `shipped`, `delivered` and `completed` (M6). Each case reads back the shipment, product, notifications and cancellation operations to prove nothing changed. |
+
+Why an admin decides: Envía documents no lookup for a label whose create answer was lost (no idempotency key; lookups need the tracking number the lost answer carried), so the system never guesses. Docs consulted are listed in the B6 feature document (L3).
+
+### B6 evidence
+
+- Live harness `scripts/test-shipment-label-reconciliation.ts` 11/11 and SQL-text test 9/9 (both RED before the SQL existed); production grants checked through the read-only MCP: the four functions are service_role only.
+- Handler tests 31, admin-web tests 48 (RED first); `test:e2e` 24/24, `test:e2e:local` 4/4 (the local spec releases a seeded stuck shipment through the real UI).
+- B6.2 on a fresh reset: `bruno/cancellations` 35/35, then the full collection 389/389 on the same database (repeatable, the shared listing restored). Flipping the expected status of one M5 and one M6 request fails them (`expected 403 to equal 200`, `expected 422 to equal 200`).
+
+### B6 remaining limits
+
+- Legacy sandbox rows from before B1 (two `orphan_pending` shipments from 2026-09-28) are left alone by decision; an admin can resolve them from the new bucket.
+- Native review could not run for B6 (reviewer result format rejected on #73, inspect timeout on #76).
+- Out of module: #62 (order banner uses the order status in multi-seller orders) and #46 (Envíos table layout).
 
 ## B5 status: app messaging, participant summary and late carrier activity (complete)
 

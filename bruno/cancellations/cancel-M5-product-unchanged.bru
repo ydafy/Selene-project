@@ -1,0 +1,27 @@
+meta {
+  name: cancel-M5-product-unchanged
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/products?id=eq.00000000-0000-4000-8000-0000000000b4&select=id,status
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the listing is still sold", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ id: "00000000-0000-4000-8000-0000000000b4", status: "SOLD" }]);
+  });
+}
+
+docs {
+  The refused call must not release the inventory.
+}

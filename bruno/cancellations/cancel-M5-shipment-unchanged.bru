@@ -1,0 +1,29 @@
+meta {
+  name: cancel-M5-shipment-unchanged
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/orders?id=eq.{{cancOrderId}}&select=status,shipments(id,status)
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the order and shipment are untouched", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(1);
+    expect(res.getBody()[0].status).to.equal("paid");
+    expect(res.getBody()[0].shipments.map((s) => s.status)).to.deep.equal(["paid"]);
+  });
+}
+
+docs {
+  Service-role read after the refused call.
+}

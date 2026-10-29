@@ -1,0 +1,44 @@
+meta {
+  name: cancel-setup-create-from-payment
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_create_order_from_payment
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:pre-request {
+  bru.setVar("cancIntent", "pi_bruno_cancel_" + Date.now());
+}
+
+body:json {
+  {
+    "p_buyer_id": "{{cancBuyerId}}",
+    "p_stripe_intent_id": "{{cancIntent}}",
+    "p_total_amount": 2550,
+    "p_service_fee": 150,
+    "p_address_id": "{{cancAddressId}}",
+    "p_product_ids": [
+      "00000000-0000-4000-8000-0000000000b4"
+    ]
+  }
+}
+
+tests {
+  test("the payment becomes a paid order", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ success: true, error_message: null }]);
+  });
+}
+
+docs {
+  fn_create_order_from_payment (service role) builds the paid shipment of the seeded seller that the rejections run against.
+}

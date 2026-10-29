@@ -1,0 +1,27 @@
+meta {
+  name: cancel-M5-no-notices
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/notifications?event_kind=eq.shipment.cancelled&source_event_key=eq.shipment.cancelled:{{cancShipmentId}}&select=user_id
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("no cancellation notice was sent", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([]);
+  });
+}
+
+docs {
+  The refused call must not notify the buyer or the seller.
+}

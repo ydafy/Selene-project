@@ -1,0 +1,45 @@
+meta {
+  name: cancel-setup-buyer-create
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/auth/v1/admin/users
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:pre-request {
+  bru.setVar("cancBuyerEmail", "bruno-cancel-" + Date.now() + "@selene.local");
+}
+
+body:json {
+  {
+    "email": "{{cancBuyerEmail}}",
+    "password": "password123",
+    "email_confirm": true
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("cancBuyerId", res.getBody().id);
+  }
+}
+
+tests {
+  test("creates a confirmed throwaway buyer for the rejection checks", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().id).to.be.a("string");
+  });
+}
+
+docs {
+  Local stack only. Each run makes its own buyer, so the collection is repeatable. Run after auth/login-buyer and auth/login-seller: the seeded buyer (no part in this order) is the outsider and the seeded seller owns the shipment.
+}

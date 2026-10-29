@@ -1,0 +1,34 @@
+meta {
+  name: cancel-M6-delivered-setup
+  type: http
+  seq: 22
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/shipments?id=eq.{{cancShipmentId}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "status": "delivered"
+  }
+}
+
+tests {
+  test("the shipment is moved to delivered", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].status).to.equal("delivered");
+  });
+}
+
+docs {
+  Local stack only. Service-role precondition; the action under test is the cancel-order call that follows.
+}

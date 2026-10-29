@@ -1,0 +1,27 @@
+meta {
+  name: cancel-M6-shipped-no-operation
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/shipment_cancellation_operations?shipment_id=eq.{{cancShipmentId}}&select=shipment_id
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("no cancellation operation exists for the shipped shipment", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([]);
+  });
+}
+
+docs {
+  Neither refused call may write a cancellation identity.
+}
