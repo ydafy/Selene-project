@@ -68,6 +68,15 @@ describe('keyboard flow', () => {
     expect(src).toMatch(/submitFromKeyboard = \(\) => \{\s*if \(!isValid \|\| isBusy\) return;/);
   });
 
+  test('register confirm password submits from the keyboard with the button guards', () => {
+    const src = read(REGISTER);
+    const confirm = field(src, 'confirmPasswordLabel');
+    expect(confirm).toContain('returnKeyType="done"');
+    expect(confirm).toContain('onSubmitEditing={submitFromKeyboard}');
+    expect(src).toContain('disabled={!isValid || isBusy}');
+    expect(src).toMatch(/submitFromKeyboard = \(\) => \{\s*if \(!isValid \|\| isBusy\) return;/);
+  });
+
   test('forgot password email submits from the keyboard when valid', () => {
     const src = read(FORGOT);
     const el = field(src, 'auth:emailLabel');

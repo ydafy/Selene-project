@@ -8,7 +8,6 @@ import React, { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useTheme } from '@shopify/restyle';
 import { TextInput as RNTextInput } from 'react-native';
 import Toast from 'react-native-toast-message';
 
@@ -24,7 +23,6 @@ import {
   recoverUnconfirmedLogin,
 } from '../../../core/auth/authOutcome.logic';
 import { mapAuthErrorKey } from '../../../core/auth/authErrors.logic';
-import { Theme } from '../../../core/theme';
 
 type LoginFormProps = {
   onSuccess: () => void;
@@ -40,7 +38,6 @@ export const LoginForm = ({
   onForgotPasswordPress,
 }: LoginFormProps) => {
   const { t } = useTranslation('auth');
-  const theme = useTheme<Theme>();
   const { signIn, loading, resendSignUpOtp } = useAuth();
 
   const passwordInputRef = useRef<RNTextInput>(null);

@@ -121,6 +121,12 @@ export const RegisterForm = ({
 
   const isBusy = loading || isGoogleLoading;
 
+  // Keyboard "Done" applies the same guard as the register button.
+  const submitFromKeyboard = () => {
+    if (!isValid || isBusy) return;
+    void handleSubmit(onSubmit)();
+  };
+
   // Helper para renderizar el label de términos (Asumo que ya lo tienes)
   const renderTermsLabel = () => (
     <Text variant="body-md" color="textSecondary">
@@ -239,7 +245,7 @@ export const RegisterForm = ({
               leftIcon="lock-check-outline"
               error={!!errors.confirmPassword}
               returnKeyType="done"
-              onSubmitEditing={handleSubmit(onSubmit)}
+              onSubmitEditing={submitFromKeyboard}
             />
           )}
         />

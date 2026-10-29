@@ -29,7 +29,10 @@ describe('common namespace key usage (#50)', () => {
     const missing: string[] = [];
     for (const file of SOURCES) {
       const source = readFileSync(join(FRONTEND_DIR, file), 'utf8');
-      for (const match of source.matchAll(/\bt\(\s*'common:([\w.]+)'/g)) {
+      const matches = [...source.matchAll(/\bt\(\s*'common:([\w.]+)'/g)];
+      // Each file shows at least the error title, so an empty scan means the pattern broke.
+      expect(matches.length).toBeGreaterThan(0);
+      for (const match of matches) {
         for (const [lang, locale] of [['en', enCommon], ['es', esCommon]] as const) {
           if (typeof lookup(locale, match[1]) !== 'string') missing.push(`${lang} common:${match[1]} (${file})`);
         }
