@@ -1,0 +1,27 @@
+meta {
+  name: list-shipment-label-reconciliations-admin
+  type: http
+  seq: 99
+}
+
+get {
+  url: {{baseUrl}}/functions/v1/list-shipment-label-reconciliations
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+tests {
+  test("an admin gets the label reconciliation list", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().label_reconciliations).to.be.an("array");
+  });
+}
+
+docs {
+  Run after functions/login-admin (needs adminToken). Read-only; the array is empty on a fresh seed.
+}

@@ -24,6 +24,11 @@ if (process.env.B44D_PAGE_CHILD !== '1') {
     fetchLateCarrierActivity: async () => [],
     acknowledgeLateCarrierActivity: async () => undefined,
   }));
+  mock.module('../services/labelReconciliations', () => ({
+    fetchLabelReconciliations: async () => [],
+    resolveLabelReconciliation: async () => undefined,
+  }));
+  const { LabelReconciliationsPanel } = await import('../components/features/shipments/LabelReconciliationsPanel');
   const { LateCarrierActivityPanel } = await import('../components/features/shipments/LateCarrierActivityPanel');
   const { CarrierReviewsPanel } = await import('../components/features/shipments/CarrierReviewsPanel');
   const { ShipmentsPage } = await import('./ShipmentsPage');
@@ -52,10 +57,10 @@ if (process.env.B44D_PAGE_CHILD !== '1') {
     expect(nodes(ShipmentsPage()).some((n) => n.type === CarrierReviewsPanel)).toBe(true);
   });
 
-  it('renders the late carrier activity bucket after the carrier reviews bucket', () => {
+  it('renders the late carrier activity bucket after the carrier reviews bucket, then the label reconciliations bucket', () => {
     const order = nodes(ShipmentsPage())
-      .filter((n) => n.type === CarrierReviewsPanel || n.type === LateCarrierActivityPanel)
+      .filter((n) => n.type === CarrierReviewsPanel || n.type === LateCarrierActivityPanel || n.type === LabelReconciliationsPanel)
       .map((n) => n.type);
-    expect(order).toEqual([CarrierReviewsPanel, LateCarrierActivityPanel]);
+    expect(order).toEqual([CarrierReviewsPanel, LateCarrierActivityPanel, LabelReconciliationsPanel]);
   });
 }

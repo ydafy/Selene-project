@@ -12,6 +12,9 @@ export default defineConfig({
   testDir: './e2e/admin-web-local',
   testMatch: '**/*.local.e2e.ts',
   workers: 1,
+  // In stack mode each Edge Function call takes a few seconds and the Envios page
+  // calls three of them, so the default 5 s expect timeout is too short here.
+  expect: { timeout: 30_000 },
   use: {
     baseURL,
     serviceWorkers: 'block',
