@@ -113,7 +113,7 @@ export const useProductCart = (product: Product | null | undefined) => {
 
       Toast.show({
         type: 'error',
-        text1: t('common:errors.errorTitle'),
+        text1: t('common:errors.title'),
         text2: t('product:errors.verificationFailed'),
       });
       return 'ERROR';

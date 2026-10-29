@@ -128,7 +128,7 @@ export const useProductManagement = () => {
       ) {
         Toast.show({
           type: 'error',
-          text1: t('common:errors.errorTitle', 'Error'),
+          text1: t('common:errors.title'),
           text2:
             error.message ||
             t('common:errors.generic', 'Ocurrió un error inesperado.'),

@@ -119,7 +119,7 @@ Follow repository manual Supabase workflow: supply SQL/function/config handoff, 
 - T8e | S3,S6 | inline | pending | Auth form tidy: `RegisterForm` confirm keyboard submit through the button guard, unused `theme` in `LoginForm`, unused root keys `loginTitle`/`joinSelene`, local `deleted_at` types replaced by generated ones | Commit: not created.
 - T8f | S4,S8 | inline | pending | Admin-web: `getAccountStatusActions` default branch, closed accounts shown as deleted (reason `account_closed`) instead of banned, reactivation copy that does not promise a prior status (L22) | Commit: not created.
 - T8g | S6,S8 | inline | pending | Server reserves the `deleted_` username prefix for closed accounts (migration; maintainer applies); own commit (high risk: SQL) | Commit: not created.
-- T8h | S3 | inline | pending | #50: `common:errors.errorTitle` in 4 mobile files | Commit: not created.
+- T8h | S3 | inline | done (L112) | #50: `common:errors.errorTitle` in 4 mobile files | Commit: not created.
 - T8i | S9 | inline | pending | Mount tests for the mobile `CaptchaProvider` and admin `useCaptcha` (L98, L101) | Commit: not created.
 
 ## Log
@@ -805,3 +805,10 @@ Risk: item 2 (cron authentication guard).
 ### L111 — T8b review follow-up
 d7349da review (risk, resilience, reliability) approved. Resilience and reliability both warned that each failed step awaited its own Sentry flush inside the row loop (`reportMessage` flushes with `FLUSH_TIMEOUT_MS` per report), so a batch of 20 closures with several failed steps could spend most of the function time limit waiting on Sentry. Fixed: the run collects failures as `step:code` and reports each distinct one once after the batch. Other advisories, not changed: the crash-path report and the source-text check that the shared helper is used have no behavioral test beyond the unit harness; the mismatch report awaits before the 401 (bounded by the same flush timeout, same as the other cron functions).
 RED: new test "reports a repeated step failure once per run, after every row was processed" (3 reports instead of 1). GREEN: `account-closure-cleanup` 30 pass. `deno check` clean; ESLint clean.
+
+### L112 — T8h: #50 error toast titles
+2ccc9b7 review (resilience, reliability) approved. Advisories accepted: reports deferred to the end of the run are lost if the run aborts mid-batch (the 500 is reported by `withSentry`); deduplication drops the per-step count (the per-closure detail stays in the logs).
+#50: the order report and return screens, `useProductCart` and `useProductManagement` used `common:errors.errorTitle`, which does not exist; they now use `common:errors.title` ("Something went wrong." / "Algo salió mal"). New `core/i18n/commonKeyUsage.test.ts` resolves every literal `common:` key of those four files in en and es.
+RED: 1 fail, 8 missing entries (4 files x 2 languages). GREEN: `core/i18n` + `core/hooks` 308 pass. ESLint clean.
+Finding while scanning the whole app with the same test: eight other `common:` keys are missing (`cancel`, `select`, `states.unknown`, `actions.retry`, `actions.cancel`, `errors.required`, and `actions.goBack` in English); opened #72, out of this task.
+Risk: none (copy keys only).
