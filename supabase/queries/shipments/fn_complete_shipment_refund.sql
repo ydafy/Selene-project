@@ -1,4 +1,3 @@
-
 DECLARE
   v_order_id UUID;
   v_seller_id UUID;
@@ -18,14 +17,11 @@ BEGIN
     RETURN QUERY SELECT false, 'SHIPMENT_NOT_FOUND'::TEXT; RETURN;
   END IF;
 
-  -- Connect guard: Connect refunds are handled by Stripe reverse_transfer in
-  -- resolve-dispute-refund. For Connect-era shipments this function only marks
-  -- the shipment refunded.
+  -- Connect shipments are refunded in Stripe by resolve-dispute-refund, which
+  -- records the refund itself. Marking one refunded here would claim a refund
+  -- that never happened, so refuse before any write.
   IF v_stripe_payment_intent_id IS NOT NULL THEN
-    UPDATE public.shipments
-    SET status = 'refunded', updated_at = now()
-    WHERE id = p_shipment_id;
-    RETURN QUERY SELECT true, 'CONNECT_SHIPMENT_SKIPPED_WALLET_REFUND'::TEXT; RETURN;
+    RETURN QUERY SELECT false, 'CONNECT_REFUND_REQUIRES_STRIPE'::TEXT; RETURN;
   END IF;
 
   -- 1b. No reembolsar shipments ya refunded o completed (fondos ya liberados)

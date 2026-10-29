@@ -10,7 +10,7 @@ import Stripe from 'https://esm.sh/stripe@17.0.0';
 
 import type { Database } from '../../../packages/types/src/database.types.ts';
 import { createSupabaseClosurePorts } from '../_shared/account-closure-cleanup.ts';
-import { withSentry } from '../_shared/sentry.ts';
+import { reportMessage, withSentry } from '../_shared/sentry.ts';
 import { createAccountClosureCleanupHandler, type CappedClosure } from './handler.ts';
 
 const STRIPE_API_VERSION = '2026-04-22.dahlia';
@@ -95,6 +95,7 @@ const handler = createAccountClosureCleanupHandler({
   },
   ...createSupabaseClosurePorts({ getAdmin: getAdminClient, getStripe }),
   log,
+  reportMessage,
 });
 
 serve(withSentry('account-closure-cleanup', handler));

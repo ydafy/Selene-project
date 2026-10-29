@@ -1,0 +1,30 @@
+meta {
+  name: di-record-refund-again
+  type: http
+  seq: 34
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_record_dispute_refund
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_dispute_id": "{{diDispReturn}}",
+    "p_stripe_refund_id": "re_bruno_di_return"
+  }
+}
+
+tests {
+  test("a repeated call is a no-op", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ success: true, error_code: "ALREADY_RECORDED" }]);
+  });
+}

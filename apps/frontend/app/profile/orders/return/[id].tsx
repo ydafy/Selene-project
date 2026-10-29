@@ -78,7 +78,7 @@ export default function PrepareReturnScreen() {
 
       Toast.show({
         type: 'error',
-        text1: t('common:errors.errorTitle'),
+        text1: t('common:errors.title'),
         text2: errorMessage,
       });
     }

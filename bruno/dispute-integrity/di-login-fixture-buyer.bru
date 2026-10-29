@@ -1,0 +1,38 @@
+meta {
+  name: di-login-fixture-buyer
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/auth/v1/token?grant_type=password
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+body:json {
+  {
+    "email": "fixture-buyer@selene.local",
+    "password": "password123"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("fixtureBuyerToken", res.getBody().access_token);
+  }
+}
+
+tests {
+  test("logs in the fixture buyer", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}
+
+docs {
+  The fixture buyer owns this folder's orders, so the seeded buyer keeps none.
+}

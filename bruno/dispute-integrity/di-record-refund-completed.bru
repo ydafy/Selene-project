@@ -1,0 +1,30 @@
+meta {
+  name: di-record-refund-completed
+  type: http
+  seq: 35
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_record_dispute_refund
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_dispute_id": "{{diDispCompletedDisputed}}",
+    "p_stripe_refund_id": "re_bruno_di_completed"
+  }
+}
+
+tests {
+  test("a completed shipment is refused", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ success: false, error_code: "SHIPMENT_NOT_REFUNDABLE:completed" }]);
+  });
+}

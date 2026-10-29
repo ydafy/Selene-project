@@ -22,12 +22,12 @@ body:json {
 }
 
 tests {
-  test("a Connect shipment is only marked refunded", function () {
+  test("a Connect shipment is refused: only resolve-dispute-refund marks it refunded", function () {
     expect(res.getStatus()).to.equal(200);
-    expect(res.getBody()).to.deep.equal([{ success: true, error_message: "CONNECT_SHIPMENT_SKIPPED_WALLET_REFUND" }]);
+    expect(res.getBody()).to.deep.equal([{ success: false, error_message: "CONNECT_REFUND_REQUIRES_STRIPE" }]);
   });
 }
 
 docs {
-  Connect refunds are handled by Stripe in resolve-dispute-refund; the function only marks the shipment.
+  Connect refunds are handled by Stripe in resolve-dispute-refund, which records the refund itself; this function refuses Connect shipments before any write.
 }

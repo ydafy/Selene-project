@@ -192,7 +192,7 @@ export default function ReportProblemScreen() {
         return;
       }
       Alert.alert(
-        t('common:errors.errorTitle'),
+        t('common:errors.title'),
         t('disputes:errors.videoUploadFailed'),
       );
     } finally {

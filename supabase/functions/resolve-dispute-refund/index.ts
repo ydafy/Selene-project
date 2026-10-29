@@ -2,6 +2,10 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import Stripe from 'https://esm.sh/stripe@17.0.0';
 import { withSentry } from '../_shared/sentry.ts';
+import {
+  extractRefundId,
+  refundBlockedReason,
+} from './resolve-dispute-refund.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -114,6 +118,33 @@ serve(withSentry('resolve-dispute-refund', async (req: Request) => {
       dispute.orders as unknown as { stripe_payment_intent_id: string }
     ).stripe_payment_intent_id;
 
+    // 6. Resolve PI ID: Connect uses shipments.stripe_payment_intent_id,
+    // Legacy uses orders.stripe_payment_intent_id (per T-001).
+    // Also detect Connect for reverse_transfer + direct shipment update.
+    let isConnectPayment = false;
+    let connectStripeIntentId: string | null = null;
+    if (dispute.shipment_id) {
+      const { data: shipment } = await supabaseAdmin
+        .from('shipments')
+        .select('status, stripe_payment_intent_id')
+        .eq('id', dispute.shipment_id)
+        .maybeSingle();
+
+      // Only a shipped or delivered shipment can be refunded; checked before
+      // any call to Stripe.
+      const blockedReason = refundBlockedReason(shipment?.status);
+      if (blockedReason)
+        return new Response(JSON.stringify({ error: blockedReason }), {
+          status: 422,
+          headers: corsHeaders,
+        });
+
+      if (shipment?.stripe_payment_intent_id) {
+        isConnectPayment = true;
+        connectStripeIntentId = shipment.stripe_payment_intent_id;
+      }
+    }
+
     // =========================================================================
     // FIX CRÍTICO: Calcular monto exacto del shipment (en centavos)
     // Sin esto, Stripe reembolsa el 100% del PaymentIntent → en multi-seller
@@ -163,22 +194,6 @@ serve(withSentry('resolve-dispute-refund', async (req: Request) => {
       });
     }
 
-    // 6. Resolve PI ID: Connect uses shipments.stripe_payment_intent_id,
-    // Legacy uses orders.stripe_payment_intent_id (per T-001).
-    // Also detect Connect for reverse_transfer + direct shipment update.
-    let isConnectPayment = false;
-    let connectStripeIntentId: string | null = null;
-    if (dispute.shipment_id) {
-      const { data: shipment } = await supabaseAdmin
-        .from('shipments')
-        .select('stripe_payment_intent_id')
-        .eq('id', dispute.shipment_id)
-        .maybeSingle();
-      if (shipment?.stripe_payment_intent_id) {
-        isConnectPayment = true;
-        connectStripeIntentId = shipment.stripe_payment_intent_id;
-      }
-    }
 
     const finalStripeIntentId = isConnectPayment
       ? connectStripeIntentId!
@@ -190,6 +205,8 @@ serve(withSentry('resolve-dispute-refund', async (req: Request) => {
       intent: finalStripeIntentId,
       amountCents: refundAmountCents,
     });
+
+    let stripeRefundId: string | null = null;
 
     try {
       const refundParams: Stripe.RefundCreateParams = {
@@ -211,9 +228,10 @@ serve(withSentry('resolve-dispute-refund', async (req: Request) => {
         refundParams.amount = refundAmountCents;
       }
 
-      await stripe.refunds.create(refundParams, {
+      const refund = await stripe.refunds.create(refundParams, {
         idempotencyKey: `refund_dispute_${disputeId}`,
       });
+      stripeRefundId = extractRefundId(refund);
     } catch (stripeError: unknown) {
       if (
         typeof stripeError === 'object' &&
@@ -234,26 +252,25 @@ serve(withSentry('resolve-dispute-refund', async (req: Request) => {
     let rpcErrorMsg: string | null = null;
 
     if (isConnectPayment) {
-      // Connect refund: reverse_transfer already handled by Stripe.
-      // Just update the shipment status directly.
-      log(
-        'INFO',
-        'Connect refund — updating shipment directly',
-        {
-          disputeId,
-          shipmentId: dispute.shipment_id,
-        },
-      );
+      // Connect refund: reverse_transfer already handled by Stripe. The
+      // guarded RPC marks the shipment refunded and resolves the dispute.
+      log('INFO', 'Connect refund — recording in database', {
+        disputeId,
+        shipmentId: dispute.shipment_id,
+        stripeRefundId,
+      });
 
-      const { error: updateErr } = await supabaseAdmin
-        .from('shipments')
-        .update({ status: 'refunded' })
-        .eq('id', dispute.shipment_id);
-      if (updateErr) {
-        rpcErrorMsg = updateErr.message;
-        rpcSuccess = false;
+      const { data: recordData, error: recordError } =
+        await supabaseAdmin.rpc('fn_record_dispute_refund', {
+          p_dispute_id: disputeId,
+          p_stripe_refund_id: stripeRefundId,
+        });
+
+      if (recordError) {
+        rpcErrorMsg = recordError.message;
       } else {
-        rpcSuccess = true;
+        rpcSuccess = recordData?.[0]?.success ?? false;
+        rpcErrorMsg = recordData?.[0]?.error_code ?? null;
       }
     } else {
       // Legacy refund (no shipment payment intent): canonical refund RPC

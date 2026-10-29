@@ -1,0 +1,54 @@
+meta {
+  name: di-setup-order
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/orders
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+script:pre-request {
+  const base = Date.now();
+  const id = (n) => "00000000-0000-4000-8000-" + (base * 64 + n).toString(16).padStart(12, "0");
+  bru.setVar("diOrder", id(0));
+  ["Return", "Completed", "Recent", "Old", "CompletedDisputed"].forEach((name, i) => {
+    bru.setVar("diShip" + name, id(1 + i));
+    bru.setVar("diDisp" + name, id(16 + i));
+  });
+  bru.setVar("diDeliveredRecent", new Date(base - 3600 * 1000).toISOString());
+  bru.setVar("diDeliveredOld", new Date(base - 3 * 24 * 3600 * 1000).toISOString());
+}
+
+body:json {
+  {
+    "id": "{{diOrder}}",
+    "buyer_id": "00000000-0000-4000-8000-000000000005",
+    "total_amount": 500,
+    "shipping_address": {
+      "street": "Av. Reforma 1",
+      "city": "Ciudad de México",
+      "zip": "06500"
+    },
+    "status": "delivered"
+  }
+}
+
+tests {
+  test("the fixture order exists", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody()[0].id).to.equal(bru.getVar("diOrder"));
+  });
+}
+
+docs {
+  Local stack only. One multi-seller-style order whose shipments sit in different states, with fresh ids per run so the collection stays repeatable.
+}

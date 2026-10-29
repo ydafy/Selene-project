@@ -1,0 +1,23 @@
+meta {
+  name: di-no-dispute-rows
+  type: http
+  seq: 23
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/disputes?shipment_id=in.({{diShipCompleted}},{{diShipOld}})&select=id
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the refused requests created no dispute", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([]);
+  });
+}
