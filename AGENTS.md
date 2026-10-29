@@ -7,7 +7,7 @@ docs over copies. Keep it under ~150 lines; put area procedures in the nested fi
 
 Selene is a peer-to-peer marketplace in Mexico for used PC hardware. Its product is trust: technical verification of listings and safe money flow between buyers and sellers. It is in active development, and every module is built as if it shipped to production tomorrow. Do not add sandbox-only shortcuts, mocks in production paths, or "fine for now" workarounds.
 
-No real users exist yet. Every user, order, payment, and payout in the Supabase project and the Stripe sandbox is test data. Remove or rewrite legacy code, producers, and data paths when the work needs it: the goal is a module that reaches production by changing configuration, not one that keeps old test rows working. The rules below on how to reach the remote project and Stripe still apply.
+Existing rows in the Supabase project and the Stripe sandbox are disposable test data, not users to protect. Do not write backfills, compatibility paths, or special cases to keep old rows working; change the schema, producers, and flows directly. This never lowers the bar: build every module as if it shipped to production the next day.
 
 ## Map
 
