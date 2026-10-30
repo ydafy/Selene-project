@@ -11,7 +11,6 @@
   ],
   "scripts": {
     "frontend": "cd apps/frontend && bun run start",
-    "backend": "cd apps/backend && bun run dev",
     "dev:install": "cd apps/frontend && bunx eas-cli build:dev --platform=android",
     "dashboard": "cd apps/admin-web && bun run dev",
     "db:test:up": "docker compose -f docker-compose.postgres-test.yml -p selene-pg-shipment-cancellations up -d --wait --wait-timeout 90",
@@ -49,6 +48,7 @@
     "eslint-plugin-prettier": "^5.5.4",
     "lint-staged": "^16.2.4",
     "prettier": "^3.6.2",
+    "typescript": "~5.9.3",
     "zod": "4.6.7"
   },
   "lint-staged": {

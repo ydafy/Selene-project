@@ -41,4 +41,4 @@ Report the consulted Envia `.md` URLs, the confirmed provider behavior, applicab
 ## References
 
 - `../../../AGENTS.md` — repository security, financial, Supabase, and fulfillment invariants.
-- `../../../openspec/specs/shipments/spec.md` — current shipment product contract.
+- `../../../docs/specs/shipments.md` — current shipment product contract.

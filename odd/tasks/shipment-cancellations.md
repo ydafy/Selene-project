@@ -208,7 +208,7 @@ The parent owns the Engram mirror and task/todo projection.
 ## Objective and current policy
 
 Deliver MVP++ financial safety without redesigning checkout or payouts.
-The current contract is [shipments](../../openspec/specs/shipments/spec.md).
+The current contract is [shipments](../../docs/specs/shipments.md).
 
 | Topic | Current contract / constraint |
 |---|---|

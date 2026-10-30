@@ -17,13 +17,11 @@ Bun monorepo with strict TypeScript. Before changing files under a path below, r
 | --------------------- | ------------------------------------------------------------------------ | ------------------------------ |
 | `apps/frontend/`      | Expo React Native app (user-facing); styled with Restyle, not NativeWind |                                |
 | `apps/admin-web/`     | React + Vite admin dashboard                                             |                                |
-| `apps/backend/`       | Express API with limited use; prefer Edge Functions for new server logic |                                |
 | `packages/types/`     | Shared types, including generated Supabase types                         |                                |
 | `supabase/`           | Migrations, canonical SQL (`queries/`), local stack, remote project      | `supabase/AGENTS.md`           |
 | `supabase/functions/` | Edge Functions (Deno), Sentry wrapper, Bruno and Stripe local loops      | `supabase/functions/AGENTS.md` |
 | `design/`             | Gentle Design mockups (HTML artboards) and the synced token catalog      | `DESIGN.md`                    |
 | `odd/tasks/`          | One tracking document per feature (verbatim specs, tasks, decision log)  |                                |
-| `openspec/`, `sdd/`   | Older planning artifacts, often outdated: background only, never binding |                                |
 
 ## Verifying a change
 

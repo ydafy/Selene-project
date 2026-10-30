@@ -193,20 +193,6 @@
           ]
         }
       },
-      "apps/backend": {
-        "packageJson": {
-          "dependencies": [
-            "npm:@types/bun@latest",
-            "npm:@types/cors@^2.8.17",
-            "npm:@types/express@^4.17.21",
-            "npm:cors@^2.8.5",
-            "npm:express@^4.19.2",
-            "npm:nodemon@^3.1.0",
-            "npm:ts-node@^10.9.2",
-            "npm:typescript@5"
-          ]
-        }
-      },
       "apps/frontend": {
         "packageJson": {
           "dependencies": [
