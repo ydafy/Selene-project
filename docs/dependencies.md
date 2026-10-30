@@ -21,7 +21,9 @@ A package below `1.0.0` can break on a minor. Treat its minor like a major.
 - **Monthly, by hand.** Run `bun outdated --filter @selene/frontend` and `bun outdated --filter admin-web`. Update the in-range updates together in one commit. Update each major in its own commit after reading its changelog.
 - **Expo SDK, 4 to 8 weeks after a release.** Upgrade one SDK at a time, in its own worktree. Merge to `main` only when the whole upgrade passes. Follow `odd/tasks/expo-sdk-upgrade.md` and run its device checklist (L12, updated by L21) on a new development build.
 
-<!-- weekly report: added by T3 -->
+**The weekly report does the looking for you.** The `Dependency report` workflow (`.github/workflows/dependency-report.yml`) runs every Monday after the audit. It runs `bun scripts/dependency-report.ts` and writes the result into one open issue, **Reporte de dependencias**, then comments a one-line summary so you get an email. The report lists safe updates, majors with changelog links, majors held back on purpose with the reason, the Expo SDK status, packages off the SDK, and the audit. It never opens pull requests. Run the script locally for the same report, or start the workflow from the **Actions** tab.
+
+When you hold a major back, add it to `HELD_BACK` in `scripts/dependency-report.ts` with its reason, and write the case in "When not to update" below. Remove the entry when the blocker is gone.
 
 ## Move Expo-pinned packages only with Expo
 

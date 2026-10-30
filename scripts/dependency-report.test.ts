@@ -248,6 +248,14 @@ describe('buildDependencyReport', () => {
     expect(first).toContain('docs/dependencies.md');
   });
 
+  // .github/workflows/dependency-report.yml comments line 3 as the weekly summary.
+  test('puts the one-line summary on line 3', () => {
+    const lines = buildDependencyReport(baseInput(), NOW).split('\n');
+    expect(lines[0]).toBe('# Dependency report, 2026-10-29');
+    expect(lines[1]).toBe('');
+    expect(lines[2]).toMatch(/^\d+ safe updates, \d+ majors, .+\.$/);
+  });
+
   test('lists in-range updates sorted by package name', () => {
     const safe = section(
       buildDependencyReport(baseInput(), NOW),
