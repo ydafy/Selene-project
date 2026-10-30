@@ -38,10 +38,22 @@ describe('autofill hints', () => {
     [REGISTER, 'usernameLabel', 'username', 'username', 'register username'],
     [REGISTER, 'emailLabel', 'email', 'emailAddress', 'register email'],
     [REGISTER, 'passwordLabel', 'new-password', 'newPassword', 'register pw'],
-    [REGISTER, 'confirmPasswordLabel', 'new-password', 'newPassword', 'register confirm'],
+    [
+      REGISTER,
+      'confirmPasswordLabel',
+      'new-password',
+      'newPassword',
+      'register confirm',
+    ],
     [FORGOT, 'auth:emailLabel', 'email', 'emailAddress', 'forgot email'],
     [RESET, 'auth:newPasswordLabel', 'new-password', 'newPassword', 'reset pw'],
-    [RESET, 'auth:confirmPasswordLabel', 'new-password', 'newPassword', 'reset confirm'],
+    [
+      RESET,
+      'auth:confirmPasswordLabel',
+      'new-password',
+      'newPassword',
+      'reset confirm',
+    ],
   ];
   for (const [file, label, auto, content, name] of cases) {
     test(`${name} declares ${auto}`, () => {
@@ -65,7 +77,9 @@ describe('keyboard flow', () => {
 
   test('login keyboard submit respects the button guards', () => {
     const src = read(LOGIN);
-    expect(src).toMatch(/submitFromKeyboard = \(\) => \{\s*if \(!isValid \|\| isBusy\) return;/);
+    expect(src).toMatch(
+      /submitFromKeyboard = \(\) => \{\s*if \(!isValid \|\| isBusy\) return;/,
+    );
   });
 
   test('register confirm password submits from the keyboard with the button guards', () => {
@@ -74,7 +88,9 @@ describe('keyboard flow', () => {
     expect(confirm).toContain('returnKeyType="done"');
     expect(confirm).toContain('onSubmitEditing={submitFromKeyboard}');
     expect(src).toContain('disabled={!isValid || isBusy}');
-    expect(src).toMatch(/submitFromKeyboard = \(\) => \{\s*if \(!isValid \|\| isBusy\) return;/);
+    expect(src).toMatch(
+      /submitFromKeyboard = \(\) => \{\s*if \(!isValid \|\| isBusy\) return;/,
+    );
   });
 
   test('forgot password email submits from the keyboard when valid', () => {
@@ -82,7 +98,9 @@ describe('keyboard flow', () => {
     const el = field(src, 'auth:emailLabel');
     expect(el).toContain('returnKeyType="send"');
     expect(el).toContain('onSubmitEditing={submitFromKeyboard}');
-    expect(src).toMatch(/submitFromKeyboard = \(\) => \{\s*if \(!isValid \|\| loading\) return;/);
+    expect(src).toMatch(
+      /submitFromKeyboard = \(\) => \{\s*if \(!isValid \|\| loading\) return;/,
+    );
   });
 
   test('reset password moves new -> confirm -> submit with the button guards', () => {
@@ -95,7 +113,9 @@ describe('keyboard flow', () => {
     expect(confirm).toContain('returnKeyType="done"');
     expect(confirm).toContain('onSubmitEditing={submitFromKeyboard}');
     expect(src).toContain('disabled={!canSubmit}');
-    expect(src).toMatch(/submitFromKeyboard = \(\) => \{\s*if \(!canSubmit\) return;/);
+    expect(src).toMatch(
+      /submitFromKeyboard = \(\) => \{\s*if \(!canSubmit\) return;/,
+    );
   });
 });
 
@@ -120,4 +140,17 @@ describe('resend row wraps', () => {
       expect(src.slice(open, idx)).toContain('flexWrap="wrap"');
     });
   }
+});
+
+describe('register terms link', () => {
+  const src = read(REGISTER);
+  test('the terms text opens the terms page from the domain constant', () => {
+    expect(src).toMatch(/import \{ TERMS_URL \} from '@selene\/types'/);
+    const idx = src.indexOf("{t('termsAndConditions')}");
+    expect(idx).toBeGreaterThan(-1);
+    const open = src.lastIndexOf('<Text', idx);
+    const element = src.slice(open, idx);
+    expect(element).toContain('onPress={() => openUrl(TERMS_URL)}');
+    expect(element).toContain('accessibilityRole="link"');
+  });
 });

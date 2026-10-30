@@ -11,9 +11,11 @@ export const SELENE_WEB_URL = `https://${SELENE_DOMAIN}`;
 
 export const SELENE_SUPPORT_EMAIL = `soporte@${SELENE_DOMAIN}`;
 
-/** Public pages served by the admin-web without a session (Google Play and the privacy link). */
+/** Public pages served by the admin-web without a session (Google Play and the app's legal links). */
 export const ACCOUNT_DELETION_PATH = '/eliminar-cuenta';
 export const PRIVACY_PATH = '/privacidad';
+export const TERMS_PATH = '/terminos';
 
 export const ACCOUNT_DELETION_URL = `${SELENE_WEB_URL}${ACCOUNT_DELETION_PATH}`;
 export const PRIVACY_URL = `${SELENE_WEB_URL}${PRIVACY_PATH}`;
+export const TERMS_URL = `${SELENE_WEB_URL}${TERMS_PATH}`;

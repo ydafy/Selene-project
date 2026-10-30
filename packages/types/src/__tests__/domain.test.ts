@@ -8,6 +8,8 @@ import {
   SELENE_DOMAIN,
   SELENE_SUPPORT_EMAIL,
   SELENE_WEB_URL,
+  TERMS_PATH,
+  TERMS_URL,
 } from '../index.ts';
 
 describe('Selene domain', () => {
@@ -30,5 +32,7 @@ describe('Selene domain', () => {
     expect(PRIVACY_PATH).toBe('/privacidad');
     expect(ACCOUNT_DELETION_URL).toBe(`${SELENE_WEB_URL}/eliminar-cuenta`);
     expect(PRIVACY_URL).toBe(`${SELENE_WEB_URL}/privacidad`);
+    expect(TERMS_PATH).toBe('/terminos');
+    expect(TERMS_URL).toBe(`${SELENE_WEB_URL}/terminos`);
   });
 });

@@ -11,4 +11,6 @@ export {
   SELENE_DOMAIN,
   SELENE_SUPPORT_EMAIL,
   SELENE_WEB_URL,
+  TERMS_PATH,
+  TERMS_URL,
 } from './domain';

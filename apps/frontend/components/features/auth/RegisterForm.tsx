@@ -11,6 +11,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { TextInput as RNTextInput } from 'react-native'; // <--- IMPORTANTE
 import Toast from 'react-native-toast-message';
 import { router } from 'expo-router';
+import { TERMS_URL } from '@selene/types';
 
 import { Box, Text } from '../../base';
 import { FormTextInput } from '../../ui/FormTextInput';
@@ -24,6 +25,7 @@ import {
   RegisterData,
 } from '../../../core/hooks/useAuth';
 import { useGoogleAuth } from '../../../core/hooks/useGoogleAuth';
+import { useOpenInBrowser } from '../../../core/hooks/useOpenInBrowser';
 import { isUsernameAvailable } from '../../../core/auth/registerUsername.logic';
 import { classifySignUpResult } from '../../../core/auth/authOutcome.logic';
 import {
@@ -45,6 +47,7 @@ export const RegisterForm = ({
   onLoginPress,
 }: RegisterFormProps) => {
   const { t } = useTranslation('auth');
+  const openUrl = useOpenInBrowser();
   const { signUp, loading } = useAuth();
 
   // 1. RESTAURACIÓN DE REFS (Para navegación de teclado)
@@ -127,11 +130,16 @@ export const RegisterForm = ({
     void handleSubmit(onSubmit)();
   };
 
-  // Helper para renderizar el label de términos (Asumo que ya lo tienes)
+  // The terms text opens the page; the rest of the row toggles the checkbox.
   const renderTermsLabel = () => (
     <Text variant="body-md" color="textSecondary">
       {t('iHaveReadAndAccept')}{' '}
-      <Text color="primary" fontWeight="bold">
+      <Text
+        color="primary"
+        fontWeight="bold"
+        accessibilityRole="link"
+        onPress={() => openUrl(TERMS_URL)}
+      >
         {t('termsAndConditions')}
       </Text>
     </Text>

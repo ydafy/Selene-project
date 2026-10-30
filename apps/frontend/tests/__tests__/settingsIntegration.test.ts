@@ -65,8 +65,21 @@ describe('LegalesSection row order (Terms → Privacy → Version)', () => {
     expect(src).toMatch(/showChevron=\{false\}/);
   });
 
-  test('uses expo-web-browser openBrowserAsync', () => {
-    expect(src).toContain('openBrowserAsync');
+  test('opens the pages through the shared browser hook', () => {
+    expect(src).toContain('useOpenInBrowser');
+    expect(read('core/hooks/useOpenInBrowser.ts')).toContain(
+      'openBrowserAsync',
+    );
+  });
+
+  test('legal URLs come only from the domain constants', () => {
+    expect(src).toMatch(
+      /import \{[^}]*\bPRIVACY_URL\b[^}]*\bTERMS_URL\b[^}]*\} from '@selene\/types'/,
+    );
+    expect(src).toContain('openUrl(TERMS_URL)');
+    expect(src).toContain('openUrl(PRIVACY_URL)');
+    expect(src).not.toContain('EXPO_PUBLIC_TERMS_URL');
+    expect(src).not.toContain('EXPO_PUBLIC_PRIVACY_URL');
   });
 });
 
@@ -76,17 +89,27 @@ describe('modal configuration within the profile stack', () => {
 
   test('profile/edit declares modal presentation in its own screen', () => {
     const editSrc = read('app/profile/edit.tsx');
-    expect(rootSrc).toMatch(/<Stack\.Screen\s+name="profile"\s+options=\{\{\s*headerShown:\s*false\s*\}\}\s*\/>/);
-    expect(profileSrc).toContain('<Stack screenOptions={{ headerShown: false }}>');
-    expect(editSrc).toMatch(/<Stack\.Screen\s+options=\{\{[^}]*presentation:\s*'modal'[^}]*\}\}\s*\/>/);
+    expect(rootSrc).toMatch(
+      /<Stack\.Screen\s+name="profile"\s+options=\{\{\s*headerShown:\s*false\s*\}\}\s*\/>/,
+    );
+    expect(profileSrc).toContain(
+      '<Stack screenOptions={{ headerShown: false }}>',
+    );
+    expect(editSrc).toMatch(
+      /<Stack\.Screen\s+options=\{\{[^}]*presentation:\s*'modal'[^}]*\}\}\s*\/>/,
+    );
   });
 
   test('profile/support is registered as modal in the nested profile layout', () => {
-    expect(rootSrc).toMatch(/<Stack\.Screen\s+name="profile"\s+options=\{\{\s*headerShown:\s*false\s*\}\}\s*\/>/);
+    expect(rootSrc).toMatch(
+      /<Stack\.Screen\s+name="profile"\s+options=\{\{\s*headerShown:\s*false\s*\}\}\s*\/>/,
+    );
     expect(profileSrc).toMatch(
       /<Stack\.Screen\s+name="support"\s+options=\{\{[^}]*presentation:\s*'modal'[^}]*\}\}\s*\/>/,
     );
-    expect(read('app/profile/support.tsx')).toMatch(/<Stack\.Screen\s+options=\{\{[^}]*presentation:\s*'modal'[^}]*\}\}\s*\/>/);
+    expect(read('app/profile/support.tsx')).toMatch(
+      /<Stack\.Screen\s+options=\{\{[^}]*presentation:\s*'modal'[^}]*\}\}\s*\/>/,
+    );
   });
 });
 
@@ -162,7 +185,9 @@ describe('SecuritySection password-change wiring (CONF-017)', () => {
   });
 
   test('keeps the password dialog above the keyboard', () => {
-    expect(src).toMatch(/<ConfirmDialog[\s\S]*?avoidKeyboard[\s\S]*?icon="lock-reset"/);
+    expect(src).toMatch(
+      /<ConfirmDialog[\s\S]*?avoidKeyboard[\s\S]*?icon="lock-reset"/,
+    );
   });
 
   test('shows the mapped error key instead of matching message text', () => {
@@ -221,20 +246,13 @@ describe('profile/edit modal wiring (CONF-015)', () => {
   });
 });
 
-describe('.env.example documents support + Legal vars (CONF-012)', () => {
+// Terms and privacy URLs come from `@selene/types` (domain.ts), not from env vars.
+describe('.env.example documents the support var (CONF-012)', () => {
   const env = read('.env.example');
 
   test('contains EXPO_PUBLIC_SUPPORT_EMAIL and no Chatwoot vars', () => {
     expect(env).toContain('EXPO_PUBLIC_SUPPORT_EMAIL');
     expect(env).not.toContain('CHATWOOT');
-  });
-
-  test('contains EXPO_PUBLIC_TERMS_URL', () => {
-    expect(env).toContain('EXPO_PUBLIC_TERMS_URL');
-  });
-
-  test('contains EXPO_PUBLIC_PRIVACY_URL', () => {
-    expect(env).toContain('EXPO_PUBLIC_PRIVACY_URL');
   });
 });
 

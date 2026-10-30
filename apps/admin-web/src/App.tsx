@@ -1,12 +1,7 @@
 import React, { useEffect } from 'react';
 import { Toaster } from 'sonner';
-import { ACCOUNT_DELETION_PATH, PRIVACY_PATH } from '@selene/types';
-import {
-  BrowserRouter,
-  Routes,
-  Route,
-  Navigate,
-} from 'react-router-dom';
+import { ACCOUNT_DELETION_PATH, PRIVACY_PATH, TERMS_PATH } from '@selene/types';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/useAuthStore';
 import { evaluateAdminAccess } from './lib/adminAccess';
 import { Layout } from './components/layout/Layout';
@@ -14,6 +9,7 @@ import { DashboardHome } from './pages/DashboardHome';
 import Login from './pages/Login';
 import { AccountDeletionPage } from './pages/AccountDeletionPage';
 import { PrivacyPage } from './pages/PrivacyPage';
+import { TermsPage } from './pages/TermsPage';
 import { VerificationPage } from './pages/VerificationPage';
 import { UsersPage } from './pages/UsersPage';
 import { UserDetailPage } from './pages/UserDetailPage';
@@ -28,7 +24,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, profile, loading, initialized } = useAuthStore();
 
   if (!initialized || loading) return <div className="h-screen bg-night" />;
-  if (!user || !evaluateAdminAccess(profile).allowed) return <Navigate to="/login" />;
+  if (!user || !evaluateAdminAccess(profile).allowed)
+    return <Navigate to="/login" />;
 
   return <>{children}</>;
 };
@@ -47,6 +44,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path={ACCOUNT_DELETION_PATH} element={<AccountDeletionPage />} />
         <Route path={PRIVACY_PATH} element={<PrivacyPage />} />
+        <Route path={TERMS_PATH} element={<TermsPage />} />
 
         <Route
           path="/"
