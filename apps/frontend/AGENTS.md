@@ -21,4 +21,4 @@ Expo React Native app. Read `docs/conventions.md` first for structure, naming, a
 
 - Put a unit test next to its file (`foo.ts`, `foo.test.ts`). Add no new `__tests__/` folders.
 - Run the touched tests with `bun test <path>`.
-- Typecheck with `bun run --filter @selene/frontend typecheck`. Judge only the diagnostics in files you changed.
+- Typecheck with `bun run --filter @selene/frontend typecheck`. It passes with zero errors; keep it that way.
