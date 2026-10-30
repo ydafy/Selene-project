@@ -116,7 +116,7 @@ Follow repository manual Supabase workflow: supply SQL/function/config handoff, 
 - T9a | S8,S9 | inline | done (L127, review approved L129; device check pending) | Legal links from `domain.ts` only (`TERMS_URL`, `PRIVACY_URL`; `legalUrls.ts` and its env overrides removed), public `/terminos` page in admin-web, register terms link | Commit: not created.
 - T9b | S9 | delegated writer (context backstop) | done (L130, review approved L131) | Auth email templates versioned in `supabase/templates/` and wired in `config.toml` | Commit: not created.
 - T9c | S9 | inline | done (L132) | One auth switch-on runbook in `docs/go-live.md`, each step with an MCP check | Commit: not created.
-- T9d | S9 | delegated writer (context backstop) | in progress (L133; uncommitted, waits for T9d1) | CAPTCHA on in the local stack with the hCaptcha test secret; Bruno sends the test token | Commit: not created.
+- T9d | S9 | delegated writer (context backstop) | done (L133, L135; review pending) | CAPTCHA on in the local stack with the hCaptcha test secret; Bruno sends the test token | Commit: not created.
 - T9d1 | S9 | delegated writer (context backstop) | done (L134; review pending) | Admin-web hCaptcha through the hCaptcha JS API in `useCaptcha.tsx` (drop `@hcaptcha/react-hcaptcha`); a failing reset never hides the CAPTCHA error | Commit: not created.
 - T9e | S4 | route at start | pending | #70: listings reserved at suspension | Commit: not created.
 - T9f | S8 | route at start | pending | #69: publication-economics trigger aborts a closure | Commit: not created.
@@ -962,3 +962,9 @@ Worker: `useCaptcha.tsx` no longer uses `@hcaptcha/react-hcaptcha` (removed from
 RED: 3 of 4 new handle tests failed (a throwing reset replaced the token, replaced the `CaptchaError`, and broke `cancel`). GREEN: `bun test apps/admin-web` 359 pass, 0 fail (4 handle tests, 9 adapter tests); `admin-web` typecheck exit 0; `bun run lint` zero; `bun audit --audit-level=high` with the workflow ignores: no vulnerabilities (768 packages). `bun run test:e2e` 28 passed (no hCaptcha request without a site key). Local stack with CAPTCHA on (T9d config): `bun run test:e2e:local` 4/4 with the real GoTrue verifying the hCaptcha test token.
 Not proven: the StrictMode double mount only by a logic test; a failed first load leaves that widget's `ready` rejected until the page reloads (the loader itself retries).
 Risk: item 2 (admin authentication), item 5 (dependency removed).
+
+### L135 — T9d committed after T9d1
+With T9d1 in place, T9d commits as recorded in L133: local `[auth.captcha]` on with the hCaptcha public test secret, Bruno sends the test token (15 requests plus the negative `login-without-captcha-rejected`), `playwright.local.config.ts` passes the public test site key to the admin-web build (maintainer approval, L133), `docs/go-live.md` step 7 and `supabase/AGENTS.md` say so. Evidence: `bun run api:test` 447/447; `bun run test:e2e:local` 4/4 with CAPTCHA on (L134).
+Consequence: the local stack no longer mirrors the remote's CAPTCHA (off until go-live); a client pointed at the local stack must use the hCaptcha test site key (`EXPO_PUBLIC_HCAPTCHA_SITE_KEY`, `VITE_HCAPTCHA_SITE_KEY` = `10000000-ffff-ffff-ffff-000000000001`) or its password sign-ins and sign-ups get `captcha_failed`. GoTrue verifies the token with hCaptcha's servers, so local sign-ins need internet.
+Slice T9-3: origin/main..HEAD (T9c f09aa5f4, T9d1 cbeb1841, T9d), about 530 authored lines, over the ~400 target because T9d1 had to land before T9d.
+Risk: item 2 (local Auth guard), item 6 (third-party widget only in a browser).

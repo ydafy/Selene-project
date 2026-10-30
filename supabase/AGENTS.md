@@ -27,6 +27,7 @@ For Postgres design and performance, load the `supabase-postgres-best-practices`
 - Never put secrets in schema objects (trigger arguments, function bodies, foreign server options); `schema_baseline.test.ts` fails if a migration contains one.
 - `supabase/supabase.lock` pins the exact build of every local service, so every worktree runs the same stack whatever CLI version it has. It is committed; if `supabase start` rewrites it, commit the change in its own `chore` commit. The CLI also maintains `supabase/.gitignore` for its local files (`.link.json`, the lock lease).
 - The stack belongs to the process that started it and stops when that process exits. Run `supabase start`, `functions serve` and the Bruno collection from one long-lived shell; a stack whose state the CLI cannot read after an upgrade is fixed by deleting the directory the error names under `~/.supabase/stacks/` (local data only) and starting again.
+- The local stack runs CAPTCHA with hCaptcha's public test secret (`[auth.captcha]` in `config.toml`). A Bruno request that signs up or signs in with a password sends `gotrue_meta_security.captcha_token` as `{{captchaToken}}`; `auth/login-without-captcha-rejected` proves the guard is on.
 
 ## Reading the remote project
 

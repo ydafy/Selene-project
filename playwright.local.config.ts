@@ -20,7 +20,9 @@ export default defineConfig({
     serviceWorkers: 'block',
     trace: 'retain-on-failure',
   },
-  projects: [{ name: 'admin-web-local-chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'admin-web-local-chromium', use: { ...devices['Desktop Chrome'] } },
+  ],
   webServer: {
     command: 'bun run dashboard --host 127.0.0.1 --port 5188 --strictPort',
     url: baseURL,
@@ -28,6 +30,9 @@ export default defineConfig({
     env: {
       VITE_SUPABASE_URL: stack.apiUrl,
       VITE_SUPABASE_ANON_KEY: stack.anonKey,
+      // The local stack runs CAPTCHA with hCaptcha's public test secret, so the
+      // login needs the matching public test site key (the widget loads from hCaptcha).
+      VITE_HCAPTCHA_SITE_KEY: '10000000-ffff-ffff-ffff-000000000001',
     },
   },
 });
