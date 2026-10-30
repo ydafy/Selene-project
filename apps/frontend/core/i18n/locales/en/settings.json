@@ -104,6 +104,7 @@
   "errors": {
     "usernameInvalid": "Only letters, numbers, underscore and dot are allowed.",
     "usernameTaken": "That username is already taken.",
+    "usernameReserved": "That username is reserved. Please choose another.",
     "usernameRequired": "We need a username.",
     "updateFailed": "We couldn't save your changes. Please try again.",
     "deleteFailed": "We couldn't delete your account. Please try again later.",

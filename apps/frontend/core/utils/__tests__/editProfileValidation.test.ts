@@ -71,3 +71,19 @@ describe('validateEditUsername', () => {
     });
   });
 });
+
+describe('validateEditUsername reserved prefix', () => {
+  test('rejects the deleted_ prefix in any case with the reserved key', () => {
+    for (const value of ['deleted_abc', 'DELETED_abc', 'Deleted_x1']) {
+      expect(validateEditUsername(value)).toEqual({
+        ok: false,
+        errorKey: 'errors.usernameReserved',
+      });
+    }
+  });
+
+  test('accepts names that only contain or resemble the prefix', () => {
+    expect(validateEditUsername('deleted')).toEqual({ ok: true });
+    expect(validateEditUsername('my_deleted_x')).toEqual({ ok: true });
+  });
+});

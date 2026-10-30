@@ -870,3 +870,8 @@ RED: migration test 7 of 7 failed (file missing). GREEN: 7/7; `bun test supabase
 Local stack after `supabase db reset`: (a) a signed-in user setting `deleted_abc` or `DELETED_Abc`, with or without `deleted_at`, gets 400/23514 and the row is unchanged; (b) the same user sets `buyer_renamed` and `my_deleted_x`; (c) sign-up with `deleted_foo@...` gets `user_deleted_foo`, a typed `Deleted_typed` username fails with 23514; (d) `fn_close_account` as service_role closes an account as `deleted_<12 hex>`; (e) anon updates nothing, anon cannot call `fn_close_account` (42501) and the guard is not exposed over RPC. Bruno: new `bruno/auth/signup-*` requests; full `bun run api:test` 403/403.
 Maintainer: apply the migration (one transaction, no data change, no function, secret or cron change; `db:types` not needed).
 Risk: item 1 and 2 (trigger on `profiles` writes; account identity).
+
+### L121 — T8g client check in the profile editor
+`validateEditUsername` (`core/utils/editProfileValidation.ts`, used by `app/profile/edit.tsx`) rejects a username starting with `deleted_` (any case) with `settings:errors.usernameReserved` ("That username is reserved. Please choose another." / "Ese nombre de usuario está reservado. Elige otro."), so the editor answers before the server's 23514. The register form's rules (`core/auth/registerUsername.logic.ts`) are unchanged: the server rejects the prefix at sign-up and the screen shows its generic username error.
+RED: 1 of 2 new tests failed (prefix accepted). GREEN: `editProfileValidation` + `core/i18n` 125 pass.
+Risk: none (client-side message before an existing server rule).
