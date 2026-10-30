@@ -114,6 +114,28 @@ otp_expiry = 900
 # confirmed through the link's token_hash. The 6-digit code flow is proven on
 # the remote project, whose Dashboard template sends {{ .Token }}.
 
+# Branded Spanish templates (supabase/templates/, go-live section 10), left
+# commented out: the experimental stack above refuses them at `supabase start`
+# ("content_path requires template serving, which is not supported by the
+# experimental stack"). To preview them locally, uncomment this block and run
+# `SUPABASE_EXPERIMENTAL_STACK=0 supabase start` (legacy stack, fixed ports): the
+# signup mail then carries the 6-digit code. Never commit it uncommented.
+# [auth.email.template.confirmation]
+# subject = "Tu código de confirmación de Selene"
+# content_path = "./supabase/templates/confirmation.html"
+#
+# [auth.email.template.recovery]
+# subject = "Restablece tu contraseña de Selene"
+# content_path = "./supabase/templates/recovery.html"
+#
+# [auth.email.template.email_change]
+# subject = "Confirma el cambio de correo en Selene"
+# content_path = "./supabase/templates/email_change.html"
+#
+# [auth.email.template.reauthentication]
+# subject = "Tu código de verificación de Selene"
+# content_path = "./supabase/templates/reauthentication.html"
+
 # Edge Functions run on the Supabase Edge Runtime, not the local Deno CLI.
 # Pin its Deno major so local serve matches the hosted runtime.
 [edge_runtime]
