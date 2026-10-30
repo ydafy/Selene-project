@@ -1,0 +1,42 @@
+meta {
+  name: milestones-setup-order
+  type: http
+  seq: 177
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/orders
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "buyer_id": "{{msBuyerId}}",
+    "total_amount": 100,
+    "shipping_address": {}
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    bru.setVar("msOrderId", res.getBody()[0].id);
+  }
+}
+
+tests {
+  test("inserts an order owned by the throwaway buyer", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody()[0].buyer_id).to.equal(bru.getVar("msBuyerId"));
+  });
+}
+
+docs {
+  Local stack only. Service-role insert; only buyer_id, total_amount and shipping_address are required.
+}

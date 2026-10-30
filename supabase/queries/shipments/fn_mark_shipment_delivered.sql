@@ -34,6 +34,9 @@ BEGIN
       updated_at = now()
   WHERE id = p_shipment_id;
 
+  -- 4. Buyer notice, once per shipment (the carrier delivered scan writes the same key).
+  PERFORM public.fn_notify_shipment_milestone(p_shipment_id, 'shipment.delivered');
+
   RETURN QUERY SELECT true, NULL::TEXT;
 
 EXCEPTION WHEN OTHERS THEN

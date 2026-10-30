@@ -1,0 +1,52 @@
+meta {
+  name: milestones-setup-shipments
+  type: http
+  seq: 178
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/shipments
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  [
+    {
+      "order_id": "{{msOrderId}}",
+      "seller_id": "00000000-0000-4000-8000-000000000002",
+      "status": "preparing"
+    },
+    {
+      "order_id": "{{msOrderId}}",
+      "seller_id": "00000000-0000-4000-8000-000000000002",
+      "status": "shipped"
+    }
+  ]
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const rows = res.getBody();
+    bru.setVar("msTrackShipmentId", rows.find((r) => r.status === "preparing").id);
+    bru.setVar("msMarkShipmentId", rows.find((r) => r.status === "shipped").id);
+  }
+}
+
+tests {
+  test("inserts one preparing and one shipped shipment for the order", function () {
+    expect(res.getStatus()).to.equal(201);
+    const statuses = res.getBody().map((r) => r.status).sort();
+    expect(statuses).to.deep.equal(["preparing", "shipped"]);
+  });
+}
+
+docs {
+  msTrackShipmentId (preparing) is moved by carrier scans; msMarkShipmentId (shipped) is moved by fn_mark_shipment_delivered.
+}

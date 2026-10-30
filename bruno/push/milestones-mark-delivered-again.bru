@@ -1,0 +1,31 @@
+meta {
+  name: milestones-mark-delivered-again
+  type: http
+  seq: 184
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_mark_shipment_delivered
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  { "p_shipment_id": "{{msMarkShipmentId}}" }
+}
+
+tests {
+  test("S4: a second mark on a delivered shipment is refused", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ success: false, error_message: "INVALID_SHIPMENT_STATUS: delivered" }]);
+  });
+}
+
+docs {
+  Service role. The refused call writes no notice; milestones-read-notifications counts them.
+}

@@ -1,0 +1,31 @@
+meta {
+  name: milestones-mark-delivered
+  type: http
+  seq: 182
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_mark_shipment_delivered
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  { "p_shipment_id": "{{msMarkShipmentId}}" }
+}
+
+tests {
+  test("S4: fn_mark_shipment_delivered marks the shipped shipment delivered", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ success: true, error_message: null }]);
+  });
+}
+
+docs {
+  Service role. No Edge Function calls fn_mark_shipment_delivered today; it is the second producer of shipment.delivered. Writes the buyer notice for msMarkShipmentId.
+}
