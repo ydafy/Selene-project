@@ -43,7 +43,15 @@
     "viewShipment": "View shipment",
     "viewShippingSummary": "View shipping summary",
     "returnTrackingTitle": "Return tracking",
-    "noItems": "No products available."
+    "noItems": "No products available.",
+    "routeTitleReturn": "Return Route",
+    "routeFromSeller": "From (Seller)",
+    "routeFromBuyer": "From (Your location)",
+    "routeToSeller": "To (Seller)",
+    "routeToBuyer": "To (Buyer)",
+    "routePending": "The shipping route will appear once the seller prepares the package.",
+    "routeOriginVerified": "Origin verified",
+    "routeDestVerified": "Destination verified"
   },
   "status": {
     "statusTitle": "Status",

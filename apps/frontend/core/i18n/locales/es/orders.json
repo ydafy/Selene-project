@@ -226,8 +226,8 @@
     "reviewErrorClose": "Cerrar"
   },
   "return": {
-    "succesToastMsgTitle": "Evidencia guardada",
-    "succesToastDesc": "Ya puedes descargar tu guía de envío.",
+    "successToastMsgTitle": "Evidencia guardada",
+    "successToastDesc": "Ya puedes descargar tu guía de envío.",
     "globalHeaderTitle": "Preparar Retorno",
     "screenHeaderTitle": "Evidencia de Envío",
     "screenHeaderSubtitle": "Prepara tu envio.",

@@ -17,6 +17,8 @@
   "markReadLabel": "Mark notification as read: {{title}}",
   "emptyTitle": "Empty Inbox",
   "emptyMsg": "Your sales, purchase, and verification updates will appear here.",
+  "markAllConfirm": "Mark all as read?",
+  "markAllDesc": "All pending notifications will be marked as reviewed.",
   "justNow": "Right now",
   "dismissLabel": "Dismiss notification",
   "dismissConfirm": "Dismiss this notification?",

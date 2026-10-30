@@ -272,7 +272,7 @@ export const FilterModal = memo(
                   {t('search:filters.error_loading_specs')}
                 </ThemedText>
                 <AppChip
-                  label={t('common:actions.retry')}
+                  label={t('common:states.retryButton')}
                   onPress={() => {
                     refetch();
                   }}

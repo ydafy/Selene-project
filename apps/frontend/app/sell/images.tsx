@@ -71,7 +71,7 @@ export default function SellImagesScreen() {
         [
           { text: t('fields.takePhoto'), onPress: () => handleSelection(0) },
           { text: t('fields.addPhotos'), onPress: () => handleSelection(1) },
-          { text: t('common:actions.cancel'), style: 'cancel' },
+          { text: t('common:dialog.cancel'), style: 'cancel' },
         ],
         { cancelable: true },
       );

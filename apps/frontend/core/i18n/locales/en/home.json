@@ -62,12 +62,6 @@
     "header": "USER_HISTORY // RECENTLY_VIEWED",
     "title": "Continue your search"
   },
-  "publisher": {
-    "card1Tag": "MARKET_TREND",
-    "card2Tag": "NETRUNNER_GUIDE",
-    "card3Tag": "COMMUNITY"
-  },
-
   "editorial": {
     "header": "SELENE_BRIEFINGS // TRENDS",
     "title": "Market Trends",
@@ -79,7 +73,10 @@
         "tag": "MARKET_TREND",
         "title": "The RTX 3060 still reigns",
         "desc": "It's the most searched GPU at Selene this month. See its current price.",
-        "query": "RTX 3060",
+        "params": {
+          "query": "RTX 3060",
+          "category": "GPU"
+        },
         "icon": "chart-line-variant"
       },
 
@@ -88,7 +85,10 @@
         "tag": "NETRUNNER_GUIDE",
         "title": "Prepare your hardware",
         "desc": "Tips to make sure your component passes the audit the first time.",
-        "query": "GPU",
+        "params": {
+          "query": "GPU",
+          "category": "GPU"
+        },
         "icon": "tools"
       },
       {
@@ -96,7 +96,10 @@
         "tag": "COMMUNITY",
         "title": "Trust Report",
         "desc": "+500 components successfully certified by 2025.",
-        "query": "",
+        "params": {
+          "query": "",
+          "category": ""
+        },
         "icon": "shield-check-outline"
       }
     ]

@@ -1,5 +1,6 @@
 {
   "deletedUser": "Deleted user",
+  "select": "Select",
   "yes": "Yes",
   "no": "No",
   "tabs": {
@@ -23,13 +24,15 @@
     "updateMessage": "Updated.",
     "noImage": "No image.",
     "unknownProduct": "Unknown product.",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "unknown": "Unknown"
   },
   "errors": {
     "title": "Something went wrong.",
     "generic": "A problem occurred. Please try again.",
     "connection": "Connection to the server failed.",
-    "noPackages": "No packaging options available"
+    "noPackages": "No packaging options available",
+    "required": "This field is required."
   },
   "dialog": {
     "confirm": "Confirm",
@@ -49,7 +52,8 @@
 
   "actions": {
     "discard": "Discard",
-    "continue": "Continue"
+    "continue": "Continue",
+    "goBack": "Go back"
   },
 
   "home": {

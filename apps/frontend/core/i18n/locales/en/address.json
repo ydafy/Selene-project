@@ -10,6 +10,7 @@
     "stateLabel": "State",
     "streetLabel": "Street and Number",
     "streetPlaceholder": "e.g., Reforma Ave. 123",
+    "detailsLabel": "Apt / Unit",
     "recipientLabel": "Recipient's Name",
     "recipientPlaceholder": "e.g., Juan Pérez",
     "phoneLabel": "Contact Phone Number",
@@ -42,7 +43,8 @@
   },
   "modal": {
     "title": "Select Address",
-    "addBtn": "Add New Address"
+    "addBtn": "Add New Address",
+    "limitReached": "Address limit reached"
   },
 
   "dialogs": {
@@ -58,5 +60,9 @@
     "cityRequired": "The city is required.",
     "districtRequired": "Please select your neighborhood.",
     "labelRequired": "Please select a label."
+  },
+  "empty": {
+    "title": "You have no saved addresses",
+    "message": "Add an address to make your future orders easier."
   }
 }
