@@ -67,8 +67,9 @@ BEGIN
   IF char_length(v_base) < 3 THEN
     v_base := v_base || 'user';
   END IF;
-  -- "deleted_" is reserved for closed accounts (fn_close_account).
-  IF v_base LIKE 'deleted\_%' THEN
+  -- "deleted_" is reserved for closed accounts (fn_close_account). A bare
+  -- "deleted" counts too: a collision suffix would turn it into deleted_NNNN.
+  IF v_base = 'deleted' OR v_base LIKE 'deleted\_%' THEN
     v_base := 'user_' || v_base;
   END IF;
   v_base := left(v_base, 20);

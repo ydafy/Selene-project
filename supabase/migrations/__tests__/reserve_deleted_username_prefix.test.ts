@@ -54,6 +54,12 @@ describe('reserve the deleted_ username prefix (SQL structural only)', () => {
     );
   });
 
+  test('a bare "deleted" base is prefixed too, so a collision suffix cannot form deleted_NNNN', () => {
+    const guard = /IF v_base = 'deleted' OR v_base LIKE 'deleted\\_%' THEN/;
+    expect(migration).toMatch(guard);
+    expect(canonical('fn_generate_profile_username.sql')).toMatch(guard);
+  });
+
   test('the guard is SECURITY INVOKER with a grant review and no client EXECUTE', () => {
     expect(migration).not.toMatch(/SECURITY DEFINER\s*\n\s*SET/);
     expect(migration).toMatch(/Grant review/);
