@@ -1,0 +1,31 @@
+meta {
+  name: delete-account-stale-listing-read-seed
+  type: http
+  seq: 115
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/products?id=eq.00000000-0000-4000-8000-0000000000b1&select=*
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:post-response {
+  if (res.getStatus() === 200 && res.getBody().length === 1) {
+    const { id, created_at, updated_at, seller_id, fts, ...listing } = res.getBody()[0];
+    bru.setVar("staleListingBody", JSON.stringify({ ...listing, seller_id: bru.getVar("staleListingUserId") }));
+  }
+}
+
+tests {
+  test("reads the seeded VERIFIED listing whose snapshot is valid", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(1);
+    expect(res.getBody()[0].status).to.equal("VERIFIED");
+  });
+}

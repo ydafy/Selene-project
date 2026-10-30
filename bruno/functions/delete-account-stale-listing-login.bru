@@ -1,0 +1,35 @@
+meta {
+  name: delete-account-stale-listing-login
+  type: http
+  seq: 114
+}
+
+post {
+  url: {{baseUrl}}/auth/v1/token?grant_type=password
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+body:json {
+  {
+    "gotrue_meta_security": { "captcha_token": "{{captchaToken}}" },
+    "email": "{{staleListingEmail}}",
+    "password": "password123"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("staleListingToken", res.getBody().access_token);
+  }
+}
+
+tests {
+  test("signs in the throwaway seller with a password", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

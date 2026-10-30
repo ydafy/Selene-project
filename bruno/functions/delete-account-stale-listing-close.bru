@@ -1,0 +1,28 @@
+meta {
+  name: delete-account-stale-listing-close
+  type: http
+  seq: 119
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/delete-account
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{staleListingToken}}
+}
+
+tests {
+  test("a listing that no longer passes the economics trigger does not block the closure", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal({ success: true });
+  });
+}
+
+docs {
+  An unsold listing is not an obligation (S8, #69): it is deleted at closure even when its
+  stored economics are stale.
+}
