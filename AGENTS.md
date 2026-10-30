@@ -7,7 +7,7 @@ docs over copies. Keep it under ~150 lines; put area procedures in the nested fi
 
 Selene is a peer-to-peer marketplace in Mexico for used PC hardware. Its product is trust: technical verification of listings and safe money flow between buyers and sellers. It is in active development, and every module is built as if it shipped to production tomorrow. Do not add sandbox-only shortcuts, mocks in production paths, or "fine for now" workarounds.
 
-Existing rows in the Supabase project and the Stripe sandbox are disposable test data, not users to protect. Do not write backfills, compatibility paths, or special cases to keep old rows working; change the schema, producers, and flows directly. This never lowers the bar: build every module as if it shipped to production the next day.
+Existing rows in the Supabase project and the Stripe sandbox are disposable test data, not users to protect. Do not write backfills, compatibility paths, or special cases to keep old rows working; change the schema, producers, and flows directly.
 
 ## Map
 
@@ -35,7 +35,7 @@ You choose and run these checks, without being asked, based on what your change 
 | Shipment transfer or cancellation  | The above plus TLC on `docs/formal/shipment-transfer-cancellation/` (command in its README); update its code mapping table and sync commit                                                                                          |
 | A production bug report            | Sentry MCP first, then Supabase logs through the Supabase MCP; reproduce it on the local stack before deciding it works                                                                                                             |
 | Dependencies                       | The `bun audit` command in "Commands"                                                                                                                                                                                               |
-| Frontend only                      | `bun test` for the touched behavior and the typecheck of the touched files                                                                                                                                                          |
+| Frontend only                      | `bun test` for the touched behavior, `bun run lint`, and `bun run typecheck`                                                                                                                                                        |
 | An admin-web screen                | The above plus a Playwright spec in `e2e/admin-web/` (`bun run test:e2e`) driving the real page; when the screen calls a new or changed endpoint, also run that flow against the local stack (`bun run test:e2e:local`)             |
 
 Report which of these you ran and their results.
@@ -106,7 +106,7 @@ Run from the repository or worktree root. `package.json` is the source of truth.
 - Structure, naming, and test placement: `docs/conventions.md`.
 - If an unrelated failure blocks verification, report the command and output and stop for a decision. Never weaken a test to get green.
 - Code, identifiers, comments, tests, commits, and docs are in English. User-facing strings go through i18n with both English and Spanish (`apps/frontend/core/i18n/locales`); locale parity tests enforce it.
-- Several features are developed in parallel worktrees under `C:/dev/School-portal-worktrees/`. Stay inside the worktree you were given. `git worktree add` copies the gitignored env files (`apps/frontend/.env`, `apps/admin-web/.env`, `supabase/functions/.env`) from the main checkout through the `post-checkout` hook; in an older worktree run `bun run worktree:env`. A finished worktree (branch merged) is removed with `bun run worktree:clean <name>` from the main checkout, which also removes its branch and local Supabase stack data (`docs/worktrees.md`); show the plan and run `--yes` only when the maintainer asks. Do not delete worktrees, branches or `~/.supabase/stacks` by hand.
+- Several features are developed in parallel worktrees under `C:/dev/School-portal-worktrees/`. Stay inside the worktree you were given. A new worktree gets the gitignored env files through the `post-checkout` hook; in an older one run `bun run worktree:env`. To remove a finished worktree, run `bun run worktree:clean <name>` from the main checkout to show the plan, and add `--yes` only when the maintainer asks (`docs/worktrees.md`). Never delete worktrees, branches, or `~/.supabase/stacks` by hand.
 
 ## Findings outside the current work
 
@@ -147,7 +147,7 @@ These protect real money and user data. They hold for every change:
 
 - **Supabase.** The maintainer applies SQL and deploys Edge Functions manually; a file in `supabase/` does not mean it is live. The remote project is treated as production: read it only through the read-only Supabase MCP, never run data-mutating tests against it, and never try to bypass read-only mode. Procedures: `supabase/AGENTS.md`.
 - **Stripe.** Read the sandbox (`Selene sandbox`, test mode) through the Stripe MCP instead of asking for Dashboard screenshots: payment intents, charges, refunds, balance, payouts, transfers, and events. It is authorized by OAuth for the sandbox only (not for connected seller accounts), and write and money-moving tools are hidden in the user-level `mcp.json`. Always pass `livemode: false`; never request live-mode access or try to reach hidden write tools.
-- **Sentry.** Project `selene-ze/selene-edge-functions` (free plan) receives Edge Function errors. Read it through the Sentry MCP (`search_issues`, `search_errors`, `get_sentry_resource`, ...); search it before reading logs when investigating a production bug. Never resolve, assign, or edit issues.
+- **Sentry.** Project `selene-ze/selene-edge-functions` receives Edge Function errors. Read it through the Sentry MCP (`search_issues`, `search_errors`, `get_sentry_resource`, ...); search it before reading logs when investigating a production bug. Never resolve, assign, or edit issues.
 
 ## Git
 
