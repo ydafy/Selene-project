@@ -78,14 +78,15 @@ export const useReturnPayment = (disputeId: string) => {
       });
 
       return { success: true };
-    } catch (e: any) {
+    } catch (e) {
       console.error('[RETURN PAYMENT ERROR]', e);
+      const message = (e as Error).message;
       Toast.show({
         type: 'error',
         text1: 'Error técnico',
-        text2: e.message,
+        text2: message,
       });
-      return { success: false, error: e.message };
+      return { success: false, error: message };
     } finally {
       setLoading(false);
     }

@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'bun:test';
 
 import { SellDraft } from '../store/useSellStore';
-import { buildPreviewProduct, PreviewSellerInfo } from './previewProductBuilder';
+import {
+  buildPreviewProduct,
+  PreviewSellerInfo,
+} from './previewProductBuilder';
 
 const seller: PreviewSellerInfo = {
   id: 'user-1',
@@ -49,7 +52,7 @@ describe('buildPreviewProduct', () => {
   it('uses the provided seller info', () => {
     const preview = buildPreviewProduct(baseDraft, seller);
 
-    expect(preview.seller).toEqual(seller);
+    expect(preview.seller).toEqual(seller as typeof preview.seller);
     expect(preview.seller_id).toBe('user-1');
   });
 
@@ -63,7 +66,10 @@ describe('buildPreviewProduct', () => {
   });
 
   it('keeps the draft id when present', () => {
-    const preview = buildPreviewProduct({ ...baseDraft, id: 'prod-123' }, seller);
+    const preview = buildPreviewProduct(
+      { ...baseDraft, id: 'prod-123' },
+      seller,
+    );
 
     expect(preview.id).toBe('prod-123');
   });

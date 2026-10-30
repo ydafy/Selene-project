@@ -7,7 +7,17 @@ import {
   resolveShipmentConfirmationFailureToast,
 } from '../../core/utils/shipment-confirmation';
 
-const source = (path: string) => readFileSync(join(process.cwd(), path), 'utf8');
+// Prettier may re-wrap the source files read below; compare without layout.
+const compact = (source: string) =>
+  source
+    .replace(/\s+/g, ' ')
+    .replace(/([([{]) /g, '$1')
+    .replace(/ ([)\]}])/g, '$1')
+    .replace(/,([)\]}])/g, '$1')
+    .replace(/ \./g, '.');
+
+const source = (path: string) =>
+  readFileSync(join(process.cwd(), path), 'utf8');
 
 describe('shipment confirmation', () => {
   it('allows only buyers to confirm delivered shipments without an active dispute', () => {
@@ -54,7 +64,9 @@ describe('shipment confirmation', () => {
       "'return_shipped'",
       "'return_delivered'",
     ]);
-    expect(shipments).toContain('ACTIVE_DISPUTE_STATUSES.includes(dispute.status)');
+    expect(shipments).toContain(
+      'ACTIVE_DISPUTE_STATUSES.includes(dispute.status)',
+    );
     expect(shipments).not.toContain('const activeDispute = isDispute;');
 
     expect(
@@ -100,7 +112,8 @@ describe('shipment confirmation', () => {
       resolveShipmentConfirmationFailureToast(new Error('MAINTENANCE_MODE')),
     ).toEqual({
       title: 'No pudimos confirmar la entrega',
-      message: 'Estamos haciendo mantenimiento. Intenta nuevamente en unos minutos.',
+      message:
+        'Estamos haciendo mantenimiento. Intenta nuevamente en unos minutos.',
     });
     expect(
       resolveShipmentConfirmationFailureToast(
@@ -110,17 +123,25 @@ describe('shipment confirmation', () => {
       title: 'No pudimos confirmar la entrega',
       message: 'Solo puedes confirmar un envío después de que sea entregado.',
     });
-    expect(resolveShipmentConfirmationFailureToast(new Error('unexpected'))).toEqual({
+    expect(
+      resolveShipmentConfirmationFailureToast(new Error('unexpected')),
+    ).toEqual({
       title: 'No pudimos confirmar la entrega',
       message: 'Inténtalo de nuevo. Si sigue fallando, contacta soporte.',
     });
   });
 
   it('routes confirmation through the shipment Edge Function without the retired fallback', () => {
-    const actions = source('apps/frontend/core/hooks/useOrderActions.ts');
-    const shipments = source('apps/frontend/core/hooks/useShipments.ts');
+    const actions = compact(
+      source('apps/frontend/core/hooks/useOrderActions.ts'),
+    );
+    const shipments = compact(
+      source('apps/frontend/core/hooks/useShipments.ts'),
+    );
 
-    expect(actions).toContain("invokeEdge('confirm-shipment-delivery'");
+    expect(actions).toContain(
+      compact("invokeEdge('confirm-shipment-delivery'"),
+    );
     expect(actions).toContain('buildShipmentConfirmationPayload');
     expect(actions).not.toContain('fn_confirm_delivery');
     expect(shipments).toContain('canConfirmShipmentDelivery');
@@ -137,11 +158,15 @@ describe('shipment confirmation', () => {
 
     expect(detail).toContain("t('orders:dialogs.deliveryMsg')");
     expect(english.actions.confirmDelivery).toBe('Confirm Delivered Package');
-    expect(english.dialogs.deliveryMsg).toContain('Confirming completes the purchase');
+    expect(english.dialogs.deliveryMsg).toContain(
+      'Confirming completes the purchase',
+    );
     expect(english.dialogs.deliveryMsg).toContain('report a problem');
     expect(english.dialogs.deliveryMsg).not.toContain('releases');
     expect(spanish.actions.confirmDelivery).toBe('Confirmar paquete entregado');
-    expect(spanish.dialogs.deliveryMsg).toContain('Al confirmar, la compra se completa');
+    expect(spanish.dialogs.deliveryMsg).toContain(
+      'Al confirmar, la compra se completa',
+    );
     expect(spanish.dialogs.deliveryMsg).toContain('reporta un problema');
     expect(spanish.dialogs.deliveryMsg).not.toContain('libera');
   });

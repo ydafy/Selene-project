@@ -62,18 +62,6 @@ const log = (
 
 // --- 2. TIPOS E INTERFACES ---
 
-interface Address {
-  full_name?: string;
-  phone: string;
-  street_line1: string;
-  street_number?: string;
-  district?: string;
-  city: string;
-  state?: string;
-  state_code?: string;
-  zip_code: string;
-}
-
 interface ShipmentItem {
   price_at_purchase: number;
   product: {
@@ -124,54 +112,56 @@ const hashRateInput = async (payload: Record<string, unknown>) => {
 
 // --- 4. FUNCIÓN PRINCIPAL ---
 
-serve(withSentry('generate-shipping-label', async (req: Request) => {
-  if (req.method === 'OPTIONS')
-    return new Response('ok', { headers: corsHeaders });
+serve(
+  withSentry('generate-shipping-label', async (req: Request) => {
+    if (req.method === 'OPTIONS')
+      return new Response('ok', { headers: corsHeaders });
 
-  try {
-    // A. Parseo y Validación de Input
-    const body = await req.json().catch(() => ({}));
-    log('INFO', 'Label request received');
+    try {
+      // A. Parseo y Validación de Input
+      const body = await req.json().catch(() => ({}));
+      log('INFO', 'Label request received');
 
-    const parseResult = LabelRequestSchema.safeParse(body);
+      const parseResult = LabelRequestSchema.safeParse(body);
 
-    if (!parseResult.success) {
-      // Esto te dirá exactamente qué campo falla: ej. "originAddress.state_code: Required"
-      const errorDetails = parseResult.error.issues
-        .map((e) => `${e.path.join('.')}: ${e.message}`)
-        .join(', ');
+      if (!parseResult.success) {
+        // Esto te dirá exactamente qué campo falla: ej. "originAddress.state_code: Required"
+        const errorDetails = parseResult.error.issues
+          .map((e) => `${e.path.join('.')}: ${e.message}`)
+          .join(', ');
 
-      log('WARN', 'Request validation failed', {
-        errorClass: 'invalid_request',
-      });
-      throw new ApiError(400, `Datos inválidos: ${errorDetails}`);
-    }
+        log('WARN', 'Request validation failed', {
+          errorClass: 'invalid_request',
+        });
+        throw new ApiError(400, `Datos inválidos: ${errorDetails}`);
+      }
 
-    const { shipmentId, originAddressId, shippingEvidence } = parseResult.data;
-    log('INFO', 'Iniciando generación de guía', { shipmentId });
+      const { shipmentId, originAddressId, shippingEvidence } =
+        parseResult.data;
+      log('INFO', 'Iniciando generación de guía', { shipmentId });
 
-    // B. Autenticación
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    );
+      // B. Autenticación
+      const supabaseAdmin = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      );
 
-    const authHeader = req.headers.get('Authorization');
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseAdmin.auth.getUser(
-      authHeader?.replace('Bearer ', '') || '',
-    );
+      const authHeader = req.headers.get('Authorization');
+      const {
+        data: { user },
+        error: authError,
+      } = await supabaseAdmin.auth.getUser(
+        authHeader?.replace('Bearer ', '') || '',
+      );
 
-    if (authError || !user) throw new ApiError(401, 'AUTH_REQUIRED');
+      if (authError || !user) throw new ApiError(401, 'AUTH_REQUIRED');
 
-    // C. Fetch Paralelo (Shipment + Padre Order + Settings)
-    const [shipmentRes, settingsRes] = await Promise.all([
-      supabaseAdmin
-        .from('shipments')
-        .select(
-          `
+      // C. Fetch Paralelo (Shipment + Padre Order + Settings)
+      const [shipmentRes, settingsRes] = await Promise.all([
+        supabaseAdmin
+          .from('shipments')
+          .select(
+            `
            id, seller_id, status, tracking_number, label_url,
            label_quote_carrier, label_quote_service, label_quote_cost_cents,
            label_quote_reference, label_quote_input_hash, origin_address,
@@ -181,465 +171,473 @@ serve(withSentry('generate-shipping-label', async (req: Request) => {
             product:products(package_preset, category)
           )
         `,
-        )
-        .eq('id', shipmentId)
-        .single(),
-      supabaseAdmin
-        .from('system_settings')
-        .select(
-          'package_presets, novice_completed_threshold, novice_active_limit, trusted_active_limit, envia_carrier, envia_service, envia_print_format, envia_print_size',
-        )
-        .single(),
-    ]);
-
-    if (shipmentRes.error || !shipmentRes.data)
-      throw new ApiError(404, 'Envío no encontrado');
-    if (settingsRes.error || !settingsRes.data)
-      throw new ApiError(500, 'Error cargando configuración del sistema');
-
-    const shipment = shipmentRes.data as unknown as ShipmentData;
-    const declaredValue = shipment.items.reduce(
-      (total, item) => total + item.price_at_purchase,
-      0,
-    );
-
-    if (!Number.isFinite(declaredValue) || declaredValue <= 0)
-      throw new ApiError(422, 'El envío no tiene un valor asegurable válido.');
-
-    const enviaShipmentConfiguration = buildEnviaShipmentConfiguration(
-      projectEnviaShipmentConfiguration(settingsRes.data),
-    );
-
-    if (!enviaShipmentConfiguration)
-      throw new ApiError(503, 'ENVIA_CONFIGURATION_INVALID');
-
-    // D. Validaciones de Negocio
-    if (shipment.seller_id !== user.id)
-      throw new ApiError(403, 'No tienes permiso para gestionar este envío');
-    if (shipment.tracking_number)
-      return new Response(
-        JSON.stringify({
-          success: true,
-          labelUrl: shipment.label_url,
-          trackingNumber: shipment.tracking_number,
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        },
-      );
-    if (shipment.status !== 'paid')
-      throw new ApiError(
-        422,
-        'Solo se pueden generar guías de envíos pagados.',
-      );
-    const buyerDestination = buildBuyerDestinationFromStoredSnapshot(
-      shipment.order.shipping_address,
-    );
-    const { data: originAddress, error: originAddressError } =
-      await supabaseAdmin
-        .from('addresses')
-        .select(
-          'full_name, phone, street_line1, street_number, district, city, state, country, zip_code',
-        )
-        .eq('id', originAddressId)
-        .eq('user_id', shipment.seller_id)
-        .is('deleted_at', null)
-        .single();
-    const sellerOrigin = originAddressError
-      ? null
-      : buildSellerOriginFromStoredAddress(
-          shipment.origin_address ?? originAddress,
-        );
-    const preflightError = runPaquetexpressAddressPreflight(
-      sellerOrigin,
-      buyerDestination,
-    );
-    if (preflightError) throw new ApiError(422, preflightError);
-
-    // E. Regla Anti-Fraude (Shipments del seller)
-    const [completedRes, activeRes] = await Promise.all([
-      supabaseAdmin
-        .from('shipments')
-        .select('id', { count: 'exact', head: true })
-        .eq('seller_id', user.id)
-        .eq('status', 'completed'),
-      supabaseAdmin
-        .from('shipments')
-        .select('id', { count: 'exact', head: true })
-        .eq('seller_id', user.id)
-        .in('status', [
-          'preparing',
-          'shipped',
-          'delivered',
-          'dispute',
-          'waiting_return',
-          'return_shipped',
-        ]),
-    ]);
-
-    const completedCount = completedRes.count || 0;
-    const activeCount = activeRes.count || 0;
-
-    // Extraer límites dinámicos desde la respuesta de system_settings con fallbacks seguros
-    const noviceThreshold = settingsRes.data.novice_completed_threshold ?? 3;
-    const noviceLimit = settingsRes.data.novice_active_limit ?? 3;
-    const trustedLimit = settingsRes.data.trusted_active_limit ?? 10;
-
-    const isNovice = completedCount < noviceThreshold;
-    const limit = isNovice ? noviceLimit : trustedLimit;
-
-    if (activeCount >= limit) {
-      throw new ApiError(
-        429,
-        `Límite de envíos activos alcanzado (${activeCount}/${limit}). Completa tus ventas actuales para generar más guías.`,
-      );
-    }
-
-    // F. Package dimensions from the configured presets of this shipment's items
-    const presetKeys = shipment.items.map(
-      (item) => item.product.package_preset,
-    );
-    const shipmentPackage = resolveShipmentPackage(
-      presetKeys,
-      settingsRes.data.package_presets,
-    );
-    if (!shipmentPackage) {
-      log('ERROR', 'No usable package preset for label', {
-        shipmentId,
-        errorClass: 'package_preset_unavailable',
-      });
-      throw new ApiError(422, 'PACKAGE_PRESET_UNAVAILABLE');
-    }
-    if (shipmentPackage.fallbackPresetKeys.length > 0)
-      log('WARN', `Preset no encontrado. Usando ${FALLBACK_PACKAGE_PRESET}.`, {
-        shipmentId,
-        presetKeys: shipmentPackage.fallbackPresetKeys,
-      });
-
-    // G. Validate Envia configuration and the server-loaded buyer snapshot before claim.
-    const runtimeConfiguration = resolveEnviaRuntimeConfiguration((name) =>
-      Deno.env.get(name),
-    );
-    if (!runtimeConfiguration)
-      throw new ApiError(503, 'ENVIA_CONFIGURATION_INVALID');
-
-    const payload = {
-      origin: {
-        ...sellerOrigin!,
-      },
-      destination: {
-        ...buyerDestination,
-      },
-      packages: [
-        {
-          type: 'box',
-          content: declaredContentForCategories(
-            shipment.items.map((item) => item.product.category),
-          ),
-          amount: 1,
-          declaredValue,
-          lengthUnit: 'CM',
-          weightUnit: 'KG',
-          weight: shipmentPackage.weight,
-          dimensions: {
-            length: shipmentPackage.length,
-            width: shipmentPackage.width,
-            height: shipmentPackage.height,
-          },
-          additionalServices: [
-            {
-              data: {
-                amount: declaredValue,
-              },
-              service: 'envia_insurance',
-            },
-          ],
-        },
-      ],
-      ...enviaShipmentConfiguration,
-    };
-    const rateInputHash = await hashRateInput(payload);
-
-    const enviaDiagnostics = buildSanitizedEnviaDiagnostics(payload, {
-      shipmentId,
-      endpointBaseUrl: runtimeConfiguration.apiUrl,
-      mode: runtimeConfiguration.mode,
-      itemCount: shipment.items.length,
-      presetKeys,
-    });
-
-    // H. Claim, send, provider, and token-guarded persistence
-    log('INFO', 'Prepared Envia label request', { enviaDiagnostics });
-    let acceptedRate: {
-      carrier: string;
-      service: string;
-      quoteReference: string | null;
-      quotedCostCents: number;
-    } | null = null;
-    const rpc = (fn: string, args: Record<string, unknown>) =>
-      supabaseAdmin.rpc(fn, args);
-    const result = await runLabelClaimOrchestration({
-      claim: async () => {
-        const { data, error } = await rpc('fn_claim_shipment_label', {
-          p_shipment_id: shipmentId,
-          p_seller_id: user.id,
-          p_origin_address_id: originAddressId,
-        });
-        if (error || !data) return { status: 'ineligible' as const };
-        return { status: data.status, claimToken: data.claim_token };
-      },
-      persistEvidence: async (token) => {
-        // Only the request holding the active claim may replace stored evidence.
-        const { data, error } = await supabaseAdmin
-          .from('shipments')
-          .update({ shipping_evidence: shippingEvidence.images })
-          .eq('id', shipmentId)
-          .eq('claim_token', token)
-          .eq('label_generation_state', 'claimed')
-          .select('id');
-        return !error && data?.length === 1;
-      },
-      rateAndPersist: async (token) => {
-        const reusableEvidence =
-          shipment.label_quote_input_hash === rateInputHash &&
-          shipment.label_quote_carrier?.trim().toLowerCase() ===
-            'paquetexpress' &&
-          shipment.label_quote_service?.trim().toLowerCase() === 'ground' &&
-          Number.isInteger(shipment.label_quote_cost_cents) &&
-          (shipment.label_quote_cost_cents ?? -1) >= 0;
-
-        if (reusableEvidence) {
-          acceptedRate = {
-            carrier: shipment.label_quote_carrier!,
-            service: shipment.label_quote_service!,
-            quoteReference: shipment.label_quote_reference ?? null,
-            quotedCostCents: shipment.label_quote_cost_cents!,
-          };
-        } else {
-          const rateResponse = await fetch(
-            enviaEndpoint(runtimeConfiguration.apiUrl, 'ship/rate/'),
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${runtimeConfiguration.apiKey}`,
-              },
-              body: JSON.stringify(payload),
-            },
-          );
-          const rateBody = await rateResponse.json().catch(() => null);
-          acceptedRate = rateResponse.ok
-            ? selectPaquetexpressGroundRate(
-                rateBody && typeof rateBody === 'object'
-                  ? (rateBody as { data?: unknown }).data
-                  : null,
-              )
-            : null;
-        }
-
-        if (!acceptedRate) return false;
-        const persisted = await rpc('fn_persist_shipment_label_quote', {
-          p_shipment_id: shipmentId,
-          p_claim_token: token,
-          p_carrier: acceptedRate.carrier,
-          p_service: acceptedRate.service,
-          p_quote_cost_cents: acceptedRate.quotedCostCents,
-          p_quote_reference: acceptedRate.quoteReference,
-          p_input_hash: rateInputHash,
-        });
-        return persisted.data === true;
-      },
-      markSent: async (token) =>
-        (
-          await rpc('fn_mark_shipment_label_sent', {
-            p_shipment_id: shipmentId,
-            p_claim_token: token,
-          })
-        ).data === true,
-      provider: async () => {
-        try {
-          if (!acceptedRate) return 'ambiguous';
-          const generationPayload = {
-            ...payload,
-            shipment: {
-              ...payload.shipment,
-              carrier: acceptedRate.carrier,
-              service: acceptedRate.service,
-            },
-          };
-          const response = await fetch(
-            enviaEndpoint(runtimeConfiguration.apiUrl, 'ship/generate/'),
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${runtimeConfiguration.apiKey}`,
-              },
-              body: JSON.stringify(generationPayload),
-            },
-          );
-          const data = await response.json();
-          const item = data?.data?.[0];
-          if (!response.ok || data.meta === 'error' || data.code >= 400) {
-            log('ERROR', 'Envia rejected label request', {
-              shipmentId,
-              enviaDiagnostics,
-              enviaError: extractEnviaErrorMetadata(data),
-            });
-            return classifyEnviaGenerateOutcome({
-              status: response.status,
-              body: {
-                error: data?.error ?? data?.message,
-                code: data?.code ?? data?.error?.code,
-                trackingNumber: item?.trackingNumber,
-                labelUrl: item?.label,
-                shipmentId: item?.shipmentId,
-              },
-            }) === 'retryable_rejected'
-              ? 'rejected'
-              : 'ambiguous';
-          }
-          const labelCostExtraction = extractEnviaLabelCostCents(data);
-          if (
-            !item?.trackingNumber ||
-            !item?.label ||
-            item?.shipmentId == null ||
-            !labelCostExtraction
           )
-            return 'ambiguous';
-          log('INFO', 'Extracted Envia label cost', {
-            shipmentId,
-            enviaResponseMetadata: buildSanitizedEnviaResponseMetadata(
-              data,
-              labelCostExtraction,
-            ),
-          });
-          return {
-            status: 'accepted' as const,
-            accepted: {
-              trackingNumber: item.trackingNumber,
-              labelUrl: item.label,
-              enviaShipmentId: String(item.shipmentId),
-              labelCost: labelCostExtraction.shippingCostCents,
-            } satisfies AcceptedLabel,
-          };
-        } catch {
-          return 'ambiguous';
-        }
-      },
-      finalize: async (token, accepted) =>
-        accepted !== null &&
-        acceptedRate !== null &&
-        (
-          await rpc('fn_finalize_shipment_label', {
-            p_shipment_id: shipmentId,
-            p_claim_token: token,
-            p_envia_shipment_id: accepted.enviaShipmentId,
-            p_tracking_number: accepted.trackingNumber,
-            p_label_url: accepted.labelUrl,
-            p_carrier: acceptedRate.carrier,
-            p_service: acceptedRate.service,
-            p_print_format: enviaShipmentConfiguration.settings.printFormat,
-            p_print_size: enviaShipmentConfiguration.settings.printSize,
-            p_provider_cost_cents: accepted.labelCost,
-          })
-        ).data === true,
-      rejected: async (token, reason) =>
-        (
-          await rpc('fn_mark_shipment_label_rejected', {
-            p_shipment_id: shipmentId,
-            p_claim_token: token,
-            p_error_class: reason ?? 'deterministic_provider_rejection',
-          })
-        ).data === true,
-      orphan: async (token) =>
-        (
-          await rpc('fn_mark_shipment_label_orphan', {
-            p_shipment_id: shipmentId,
-            p_claim_token: token,
-            p_error_class: 'provider_outcome_unproven',
-          })
-        ).data === true,
-    });
-    if (result.status === 'generated' && result.accepted)
-      return new Response(
-        JSON.stringify({
-          success: true,
-          labelUrl: result.accepted.labelUrl,
-          trackingNumber: result.accepted.trackingNumber,
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
-    if (result.status === 'generated' && !result.accepted) {
-      const finalizedLabelRes = await supabaseAdmin
-        .from('shipments')
-        .select('label_url, tracking_number')
-        .eq('id', shipmentId)
-        .single();
-      const finalizedLabel = finalizedLabelRes.data;
+          .eq('id', shipmentId)
+          .single(),
+        supabaseAdmin
+          .from('system_settings')
+          .select(
+            'package_presets, novice_completed_threshold, novice_active_limit, trusted_active_limit, envia_carrier, envia_service, envia_print_format, envia_print_size',
+          )
+          .single(),
+      ]);
 
-      if (
-        !finalizedLabelRes.error &&
-        finalizedLabel?.label_url &&
-        finalizedLabel.tracking_number
-      )
+      if (shipmentRes.error || !shipmentRes.data)
+        throw new ApiError(404, 'Envío no encontrado');
+      if (settingsRes.error || !settingsRes.data)
+        throw new ApiError(500, 'Error cargando configuración del sistema');
+
+      const shipment = shipmentRes.data as unknown as ShipmentData;
+      const declaredValue = shipment.items.reduce(
+        (total, item) => total + item.price_at_purchase,
+        0,
+      );
+
+      if (!Number.isFinite(declaredValue) || declaredValue <= 0)
+        throw new ApiError(
+          422,
+          'El envío no tiene un valor asegurable válido.',
+        );
+
+      const enviaShipmentConfiguration = buildEnviaShipmentConfiguration(
+        projectEnviaShipmentConfiguration(settingsRes.data),
+      );
+
+      if (!enviaShipmentConfiguration)
+        throw new ApiError(503, 'ENVIA_CONFIGURATION_INVALID');
+
+      // D. Validaciones de Negocio
+      if (shipment.seller_id !== user.id)
+        throw new ApiError(403, 'No tienes permiso para gestionar este envío');
+      if (shipment.tracking_number)
         return new Response(
           JSON.stringify({
             success: true,
-            labelUrl: finalizedLabel.label_url,
-            trackingNumber: finalizedLabel.tracking_number,
+            labelUrl: shipment.label_url,
+            trackingNumber: shipment.tracking_number,
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          },
+        );
+      if (shipment.status !== 'paid')
+        throw new ApiError(
+          422,
+          'Solo se pueden generar guías de envíos pagados.',
+        );
+      const buyerDestination = buildBuyerDestinationFromStoredSnapshot(
+        shipment.order.shipping_address,
+      );
+      const { data: originAddress, error: originAddressError } =
+        await supabaseAdmin
+          .from('addresses')
+          .select(
+            'full_name, phone, street_line1, street_number, district, city, state, country, zip_code',
+          )
+          .eq('id', originAddressId)
+          .eq('user_id', shipment.seller_id)
+          .is('deleted_at', null)
+          .single();
+      const sellerOrigin = originAddressError
+        ? null
+        : buildSellerOriginFromStoredAddress(
+            shipment.origin_address ?? originAddress,
+          );
+      const preflightError = runPaquetexpressAddressPreflight(
+        sellerOrigin,
+        buyerDestination,
+      );
+      if (preflightError) throw new ApiError(422, preflightError);
+
+      // E. Regla Anti-Fraude (Shipments del seller)
+      const [completedRes, activeRes] = await Promise.all([
+        supabaseAdmin
+          .from('shipments')
+          .select('id', { count: 'exact', head: true })
+          .eq('seller_id', user.id)
+          .eq('status', 'completed'),
+        supabaseAdmin
+          .from('shipments')
+          .select('id', { count: 'exact', head: true })
+          .eq('seller_id', user.id)
+          .in('status', [
+            'preparing',
+            'shipped',
+            'delivered',
+            'dispute',
+            'waiting_return',
+            'return_shipped',
+          ]),
+      ]);
+
+      const completedCount = completedRes.count || 0;
+      const activeCount = activeRes.count || 0;
+
+      // Extraer límites dinámicos desde la respuesta de system_settings con fallbacks seguros
+      const noviceThreshold = settingsRes.data.novice_completed_threshold ?? 3;
+      const noviceLimit = settingsRes.data.novice_active_limit ?? 3;
+      const trustedLimit = settingsRes.data.trusted_active_limit ?? 10;
+
+      const isNovice = completedCount < noviceThreshold;
+      const limit = isNovice ? noviceLimit : trustedLimit;
+
+      if (activeCount >= limit) {
+        throw new ApiError(
+          429,
+          `Límite de envíos activos alcanzado (${activeCount}/${limit}). Completa tus ventas actuales para generar más guías.`,
+        );
+      }
+
+      // F. Package dimensions from the configured presets of this shipment's items
+      const presetKeys = shipment.items.map(
+        (item) => item.product.package_preset,
+      );
+      const shipmentPackage = resolveShipmentPackage(
+        presetKeys,
+        settingsRes.data.package_presets,
+      );
+      if (!shipmentPackage) {
+        log('ERROR', 'No usable package preset for label', {
+          shipmentId,
+          errorClass: 'package_preset_unavailable',
+        });
+        throw new ApiError(422, 'PACKAGE_PRESET_UNAVAILABLE');
+      }
+      if (shipmentPackage.fallbackPresetKeys.length > 0)
+        log(
+          'WARN',
+          `Preset no encontrado. Usando ${FALLBACK_PACKAGE_PRESET}.`,
+          {
+            shipmentId,
+            presetKeys: shipmentPackage.fallbackPresetKeys,
+          },
+        );
+
+      // G. Validate Envia configuration and the server-loaded buyer snapshot before claim.
+      const runtimeConfiguration = resolveEnviaRuntimeConfiguration((name) =>
+        Deno.env.get(name),
+      );
+      if (!runtimeConfiguration)
+        throw new ApiError(503, 'ENVIA_CONFIGURATION_INVALID');
+
+      const payload = {
+        origin: {
+          ...sellerOrigin!,
+        },
+        destination: {
+          ...buyerDestination,
+        },
+        packages: [
+          {
+            type: 'box',
+            content: declaredContentForCategories(
+              shipment.items.map((item) => item.product.category),
+            ),
+            amount: 1,
+            declaredValue,
+            lengthUnit: 'CM',
+            weightUnit: 'KG',
+            weight: shipmentPackage.weight,
+            dimensions: {
+              length: shipmentPackage.length,
+              width: shipmentPackage.width,
+              height: shipmentPackage.height,
+            },
+            additionalServices: [
+              {
+                data: {
+                  amount: declaredValue,
+                },
+                service: 'envia_insurance',
+              },
+            ],
+          },
+        ],
+        ...enviaShipmentConfiguration,
+      };
+      const rateInputHash = await hashRateInput(payload);
+
+      const enviaDiagnostics = buildSanitizedEnviaDiagnostics(payload, {
+        shipmentId,
+        endpointBaseUrl: runtimeConfiguration.apiUrl,
+        mode: runtimeConfiguration.mode,
+        itemCount: shipment.items.length,
+        presetKeys,
+      });
+
+      // H. Claim, send, provider, and token-guarded persistence
+      log('INFO', 'Prepared Envia label request', { enviaDiagnostics });
+      let acceptedRate: {
+        carrier: string;
+        service: string;
+        quoteReference: string | null;
+        quotedCostCents: number;
+      } | null = null;
+      const rpc = (fn: string, args: Record<string, unknown>) =>
+        supabaseAdmin.rpc(fn, args);
+      const result = await runLabelClaimOrchestration({
+        claim: async () => {
+          const { data, error } = await rpc('fn_claim_shipment_label', {
+            p_shipment_id: shipmentId,
+            p_seller_id: user.id,
+            p_origin_address_id: originAddressId,
+          });
+          if (error || !data) return { status: 'ineligible' as const };
+          return { status: data.status, claimToken: data.claim_token };
+        },
+        persistEvidence: async (token) => {
+          // Only the request holding the active claim may replace stored evidence.
+          const { data, error } = await supabaseAdmin
+            .from('shipments')
+            .update({ shipping_evidence: shippingEvidence.images })
+            .eq('id', shipmentId)
+            .eq('claim_token', token)
+            .eq('label_generation_state', 'claimed')
+            .select('id');
+          return !error && data?.length === 1;
+        },
+        rateAndPersist: async (token) => {
+          const reusableEvidence =
+            shipment.label_quote_input_hash === rateInputHash &&
+            shipment.label_quote_carrier?.trim().toLowerCase() ===
+              'paquetexpress' &&
+            shipment.label_quote_service?.trim().toLowerCase() === 'ground' &&
+            Number.isInteger(shipment.label_quote_cost_cents) &&
+            (shipment.label_quote_cost_cents ?? -1) >= 0;
+
+          if (reusableEvidence) {
+            acceptedRate = {
+              carrier: shipment.label_quote_carrier!,
+              service: shipment.label_quote_service!,
+              quoteReference: shipment.label_quote_reference ?? null,
+              quotedCostCents: shipment.label_quote_cost_cents!,
+            };
+          } else {
+            const rateResponse = await fetch(
+              enviaEndpoint(runtimeConfiguration.apiUrl, 'ship/rate/'),
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${runtimeConfiguration.apiKey}`,
+                },
+                body: JSON.stringify(payload),
+              },
+            );
+            const rateBody = await rateResponse.json().catch(() => null);
+            acceptedRate = rateResponse.ok
+              ? selectPaquetexpressGroundRate(
+                  rateBody && typeof rateBody === 'object'
+                    ? (rateBody as { data?: unknown }).data
+                    : null,
+                )
+              : null;
+          }
+
+          if (!acceptedRate) return false;
+          const persisted = await rpc('fn_persist_shipment_label_quote', {
+            p_shipment_id: shipmentId,
+            p_claim_token: token,
+            p_carrier: acceptedRate.carrier,
+            p_service: acceptedRate.service,
+            p_quote_cost_cents: acceptedRate.quotedCostCents,
+            p_quote_reference: acceptedRate.quoteReference,
+            p_input_hash: rateInputHash,
+          });
+          return persisted.data === true;
+        },
+        markSent: async (token) =>
+          (
+            await rpc('fn_mark_shipment_label_sent', {
+              p_shipment_id: shipmentId,
+              p_claim_token: token,
+            })
+          ).data === true,
+        provider: async () => {
+          try {
+            if (!acceptedRate) return 'ambiguous';
+            const generationPayload = {
+              ...payload,
+              shipment: {
+                ...payload.shipment,
+                carrier: acceptedRate.carrier,
+                service: acceptedRate.service,
+              },
+            };
+            const response = await fetch(
+              enviaEndpoint(runtimeConfiguration.apiUrl, 'ship/generate/'),
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${runtimeConfiguration.apiKey}`,
+                },
+                body: JSON.stringify(generationPayload),
+              },
+            );
+            const data = await response.json();
+            const item = data?.data?.[0];
+            if (!response.ok || data.meta === 'error' || data.code >= 400) {
+              log('ERROR', 'Envia rejected label request', {
+                shipmentId,
+                enviaDiagnostics,
+                enviaError: extractEnviaErrorMetadata(data),
+              });
+              return classifyEnviaGenerateOutcome({
+                status: response.status,
+                body: {
+                  error: data?.error ?? data?.message,
+                  code: data?.code ?? data?.error?.code,
+                  trackingNumber: item?.trackingNumber,
+                  labelUrl: item?.label,
+                  shipmentId: item?.shipmentId,
+                },
+              }) === 'retryable_rejected'
+                ? 'rejected'
+                : 'ambiguous';
+            }
+            const labelCostExtraction = extractEnviaLabelCostCents(data);
+            if (
+              !item?.trackingNumber ||
+              !item?.label ||
+              item?.shipmentId == null ||
+              !labelCostExtraction
+            )
+              return 'ambiguous';
+            log('INFO', 'Extracted Envia label cost', {
+              shipmentId,
+              enviaResponseMetadata: buildSanitizedEnviaResponseMetadata(
+                data,
+                labelCostExtraction,
+              ),
+            });
+            return {
+              status: 'accepted' as const,
+              accepted: {
+                trackingNumber: item.trackingNumber,
+                labelUrl: item.label,
+                enviaShipmentId: String(item.shipmentId),
+                labelCost: labelCostExtraction.shippingCostCents,
+              } satisfies AcceptedLabel,
+            };
+          } catch {
+            return 'ambiguous';
+          }
+        },
+        finalize: async (token, accepted) =>
+          accepted !== null &&
+          acceptedRate !== null &&
+          (
+            await rpc('fn_finalize_shipment_label', {
+              p_shipment_id: shipmentId,
+              p_claim_token: token,
+              p_envia_shipment_id: accepted.enviaShipmentId,
+              p_tracking_number: accepted.trackingNumber,
+              p_label_url: accepted.labelUrl,
+              p_carrier: acceptedRate.carrier,
+              p_service: acceptedRate.service,
+              p_print_format: enviaShipmentConfiguration.settings.printFormat,
+              p_print_size: enviaShipmentConfiguration.settings.printSize,
+              p_provider_cost_cents: accepted.labelCost,
+            })
+          ).data === true,
+        rejected: async (token, reason) =>
+          (
+            await rpc('fn_mark_shipment_label_rejected', {
+              p_shipment_id: shipmentId,
+              p_claim_token: token,
+              p_error_class: reason ?? 'deterministic_provider_rejection',
+            })
+          ).data === true,
+        orphan: async (token) =>
+          (
+            await rpc('fn_mark_shipment_label_orphan', {
+              p_shipment_id: shipmentId,
+              p_claim_token: token,
+              p_error_class: 'provider_outcome_unproven',
+            })
+          ).data === true,
+      });
+      if (result.status === 'generated' && result.accepted)
+        return new Response(
+          JSON.stringify({
+            success: true,
+            labelUrl: result.accepted.labelUrl,
+            trackingNumber: result.accepted.trackingNumber,
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
-    }
-    if (
-      result.status === 'evidence_persistence_released' ||
-      result.status === 'evidence_state_persistence_failed'
-    )
-      throw new ApiError(500, 'No se pudo guardar la evidencia de envío');
-    if (
-      result.status === 'retryable_rejected' ||
-      result.status === 'rate_evidence_rejected'
-    )
-      throw new ApiError(422, 'PAQUETEXPRESS_GROUND_UNAVAILABLE');
-    if (result.status === 'orphan_pending')
-      log('ERROR', '[CRITICAL] Label requires reconciliation', {
-        shipmentId,
-        errorClass: 'provider_or_finalize_unproven',
+      if (result.status === 'generated' && !result.accepted) {
+        const finalizedLabelRes = await supabaseAdmin
+          .from('shipments')
+          .select('label_url, tracking_number')
+          .eq('id', shipmentId)
+          .single();
+        const finalizedLabel = finalizedLabelRes.data;
+
+        if (
+          !finalizedLabelRes.error &&
+          finalizedLabel?.label_url &&
+          finalizedLabel.tracking_number
+        )
+          return new Response(
+            JSON.stringify({
+              success: true,
+              labelUrl: finalizedLabel.label_url,
+              trackingNumber: finalizedLabel.tracking_number,
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+          );
+      }
+      if (
+        result.status === 'evidence_persistence_released' ||
+        result.status === 'evidence_state_persistence_failed'
+      )
+        throw new ApiError(500, 'No se pudo guardar la evidencia de envío');
+      if (
+        result.status === 'retryable_rejected' ||
+        result.status === 'rate_evidence_rejected'
+      )
+        throw new ApiError(422, 'PAQUETEXPRESS_GROUND_UNAVAILABLE');
+      if (result.status === 'orphan_pending')
+        log('ERROR', '[CRITICAL] Label requires reconciliation', {
+          shipmentId,
+          errorClass: 'provider_or_finalize_unproven',
+        });
+      if (
+        result.status === 'rejected_state_persistence_failed' ||
+        result.status === 'orphan_state_persistence_failed'
+      )
+        throw new ApiError(500, 'LABEL_STATE_PERSISTENCE_FAILED');
+      throw new ApiError(
+        result.status === 'mark_sent_released' ||
+          result.status === 'mark_sent_failed'
+          ? 500
+          : 409,
+        result.status === 'orphan_pending'
+          ? 'LABEL_RECONCILIATION_REQUIRED'
+          : 'LABEL_GENERATION_CONFLICT',
+      );
+    } catch (error: unknown) {
+      const isApiError = error instanceof ApiError;
+      const status = isApiError ? error.status : 500;
+      const message = isApiError ? error.message : 'Error interno del servidor';
+
+      if (!isApiError) {
+        log('ERROR', 'Unhandled label generation failure', {
+          errorClass: 'unhandled_exception',
+        });
+      }
+
+      log('ERROR', 'Label generation failed', {
+        errorClass: isApiError ? 'api_error' : 'unhandled_exception',
+        isApiError,
       });
-    if (
-      result.status === 'rejected_state_persistence_failed' ||
-      result.status === 'orphan_state_persistence_failed'
-    )
-      throw new ApiError(500, 'LABEL_STATE_PERSISTENCE_FAILED');
-    throw new ApiError(
-      result.status === 'mark_sent_released' ||
-        result.status === 'mark_sent_failed'
-        ? 500
-        : 409,
-      result.status === 'orphan_pending'
-        ? 'LABEL_RECONCILIATION_REQUIRED'
-        : 'LABEL_GENERATION_CONFLICT',
-    );
-  } catch (error: unknown) {
-    const isApiError = error instanceof ApiError;
-    const status = isApiError ? error.status : 500;
-    const message = isApiError ? error.message : 'Error interno del servidor';
 
-    if (!isApiError) {
-      log('ERROR', 'Unhandled label generation failure', {
-        errorClass: 'unhandled_exception',
+      return new Response(JSON.stringify({ error: message }), {
+        status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    log('ERROR', 'Label generation failed', {
-      errorClass: isApiError ? 'api_error' : 'unhandled_exception',
-      isApiError,
-    });
-
-    return new Response(JSON.stringify({ error: message }), {
-      status,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
-}));
+  }),
+);

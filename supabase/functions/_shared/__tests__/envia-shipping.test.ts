@@ -68,6 +68,7 @@ describe('Envia destination schemas', () => {
   });
 
   it('projects only stored buyer fields and omits a missing house number', () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- rest destructuring omits keys from the fixture
     const { number: _number, ...destinationWithoutNumber } = validDestination;
     expect(
       buildBuyerDestinationFromStoredSnapshot({

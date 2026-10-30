@@ -3,12 +3,21 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { resolveCommissionPercent } from '../../core/utils/sellerProceedsEstimate';
 
+// Prettier may re-wrap the source files read below; compare without layout.
+const compact = (source: string) =>
+  source
+    .replace(/\s+/g, ' ')
+    .replace(/([([{]) /g, '$1')
+    .replace(/ ([)\]}])/g, '$1')
+    .replace(/,([)\]}])/g, '$1')
+    .replace(/ \./g, '.');
+
 const FRONTEND = join(import.meta.dir, '..', '..');
 const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
 const es = JSON.parse(read('core/i18n/locales/es/sell.json'));
 const en = JSON.parse(read('core/i18n/locales/en/sell.json'));
-const form = read('components/features/sell/SellDetailsForm.tsx').replace(/\s+/g, ' ');
-const hook = read('core/hooks/useSellDetailsForm.ts').replace(/\s+/g, ' ');
+const form = compact(read('components/features/sell/SellDetailsForm.tsx'));
+const hook = compact(read('core/hooks/useSellDetailsForm.ts'));
 
 describe('resolveCommissionPercent', () => {
   it('turns the configured fraction into a whole percent', () => {
@@ -39,7 +48,9 @@ const EN_DESC =
 
 describe('sell "you receive" help copy', () => {
   it('explains the amount briefly in words in Spanish', () => {
-    expect(es.fields.youReceiveHelpTitle).toBe('¿Cómo se calcula lo que recibes?');
+    expect(es.fields.youReceiveHelpTitle).toBe(
+      '¿Cómo se calcula lo que recibes?',
+    );
     expect(es.fields.youReceiveHelpDescription).toBe(ES_DESC);
     expect(es.fields.youReceiveHelpDescriptionNoRate).toBe(
       ES_DESC.replace('Comisión del {{commissionPct}}%', 'Comisión'),
@@ -47,7 +58,9 @@ describe('sell "you receive" help copy', () => {
   });
 
   it('explains the amount briefly in words in English', () => {
-    expect(en.fields.youReceiveHelpTitle).toBe('How is what you receive calculated?');
+    expect(en.fields.youReceiveHelpTitle).toBe(
+      'How is what you receive calculated?',
+    );
     expect(en.fields.youReceiveHelpDescription).toBe(EN_DESC);
     expect(en.fields.youReceiveHelpDescriptionNoRate).toBe(
       EN_DESC.replace('{{commissionPct}}% commission', 'Commission'),
@@ -65,7 +78,10 @@ describe('sell "you receive" help copy', () => {
 
   it('never shows deducted amounts, legal disclaimers, or automatic coverage', () => {
     for (const copy of [es.fields, en.fields]) {
-      for (const key of ['youReceiveHelpDescription', 'youReceiveHelpDescriptionNoRate']) {
+      for (const key of [
+        'youReceiveHelpDescription',
+        'youReceiveHelpDescriptionNoRate',
+      ]) {
         expect(copy[key]).not.toMatch(/[-−]\s?\$/);
         expect(copy[key]).not.toMatch(
           /estás cubierto|you are covered|recoge|picks up|reembolso|reimburse|Términos|Terms/i,
@@ -75,9 +91,13 @@ describe('sell "you receive" help copy', () => {
   });
 
   it('reads the commission from system settings, not a hardcoded rate', () => {
-    expect(hook).toContain('resolveCommissionPercent(systemConfig?.service_fee_pct)');
+    expect(hook).toContain(
+      compact('resolveCommissionPercent(systemConfig?.service_fee_pct)'),
+    );
     expect(form).toContain(
-      "earnings.commissionPct === null ? t('fields.youReceiveHelpDescriptionNoRate') : t('fields.youReceiveHelpDescription', { commissionPct: earnings.commissionPct, })",
+      compact(
+        "earnings.commissionPct === null ? t('fields.youReceiveHelpDescriptionNoRate') : t('fields.youReceiveHelpDescription', { commissionPct: earnings.commissionPct, })",
+      ),
     );
   });
 });

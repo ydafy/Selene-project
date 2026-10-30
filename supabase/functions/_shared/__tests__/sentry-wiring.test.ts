@@ -4,6 +4,14 @@ import { join } from 'node:path';
 
 const FUNCTIONS_DIR = join(import.meta.dir, '..', '..');
 
+// Prettier may wrap `serve(withSentry(...))` over several lines; compare without line breaks.
+const compact = (source: string) =>
+  source
+    .replace(/\s+/g, ' ')
+    .replace(/\( /g, '(')
+    .replace(/ \)/g, ')')
+    .replace(/,\)/g, ')');
+
 // Every function folder: `_shared`, `__tests__` and other underscore folders are not functions.
 const FUNCTIONS = readdirSync(FUNCTIONS_DIR, { withFileTypes: true })
   .filter((entry) => entry.isDirectory() && !entry.name.startsWith('_'))
@@ -25,7 +33,9 @@ describe('Sentry wiring', () => {
         expect(existsSync(indexPath)).toBe(true);
       });
 
-      const source = existsSync(indexPath) ? readFileSync(indexPath, 'utf8') : '';
+      const source = existsSync(indexPath)
+        ? readFileSync(indexPath, 'utf8')
+        : '';
 
       it('imports withSentry from the shared helper', () => {
         expect(source).toMatch(
@@ -34,7 +44,7 @@ describe('Sentry wiring', () => {
       });
 
       it('wraps the serve handler with its own folder name', () => {
-        expect(source).toContain(`serve(withSentry('${name}', `);
+        expect(compact(source)).toContain(`serve(withSentry('${name}', `);
         expect(source.match(/\bserve\(/g)).toHaveLength(1);
       });
     });

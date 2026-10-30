@@ -113,7 +113,7 @@ export const ReviewModal = forwardRef<BottomSheetModal, Props>(
           text1: t('common:states.errorTitle'),
           text2:
             e instanceof Error
-              ? `[${(e as any).code || 'ERROR'}] ${e.message}`
+              ? `[${(e as Error & { code?: string }).code || 'ERROR'}] ${e.message}`
               : t('common:errors.generic'),
         });
         if (typeof ref !== 'function' && ref?.current) {

@@ -2,20 +2,28 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 
 /** Wrap a non-critical query so one failure doesn't crash the whole hook */
-async function safeQuery(
-  promise: PromiseLike<any>,
-  fallback?: any,
-): Promise<{ data: any; error: null; count?: number | null }> {
+async function safeQuery<T>(
+  promise: PromiseLike<{
+    data: T;
+    error: { message: string } | null;
+    count?: number | null;
+  }>,
+  fallback?: unknown,
+): Promise<{
+  data: T;
+  error: { message: string } | null;
+  count?: number | null;
+}> {
   try {
     const res = await promise;
     if (res.error) {
       console.warn('[useUserDetail] Query error:', res.error.message);
-      return { data: fallback ?? null, error: null, count: null };
+      return { data: (fallback ?? null) as T, error: null, count: null };
     }
     return res;
   } catch (err) {
     console.warn('[useUserDetail] Query threw:', err);
-    return { data: fallback ?? null, error: null, count: null };
+    return { data: (fallback ?? null) as T, error: null, count: null };
   }
 }
 
@@ -157,7 +165,9 @@ export const useUserDetail = (userId: string) => {
         /* profilesPrivate */ safeQuery(
           supabase
             .from('profiles_private')
-            .select('stripe_account_id, stripe_onboarding_status, phone_number, last_sign_in_at')
+            .select(
+              'stripe_account_id, stripe_onboarding_status, phone_number, last_sign_in_at',
+            )
             .eq('id', userId)
             .maybeSingle(),
           null,
@@ -191,9 +201,9 @@ export const useUserDetail = (userId: string) => {
       if (profileRes.error) throw profileRes.error;
 
       // --- LÓGICA DE CÁLCULO ---
-      const disputes: any[] = disputeDetailsRes.data || [];
+      const disputes = disputeDetailsRes.data || [];
       const disputeStats = disputes.reduce(
-        (acc: { won: number; lost: number; pending: number }, d: any) => {
+        (acc: { won: number; lost: number; pending: number }, d) => {
           if (!d.resolution_type) {
             acc.pending++;
           } else {
@@ -210,15 +220,15 @@ export const useUserDetail = (userId: string) => {
       );
 
       const totalVolume =
-        (volumeRes.data as any[])?.reduce(
-          (acc: number, item: any) => acc + (item.price_at_purchase || 0),
+        volumeRes.data?.reduce(
+          (acc: number, item) => acc + (item.price_at_purchase || 0),
           0,
         ) || 0;
 
-      const reviews: any[] = reviewsRes.data || [];
+      const reviews = reviewsRes.data || [];
       const avgRating =
         reviews.length > 0
-          ? reviews.reduce((acc: number, r: any) => acc + r.rating, 0) /
+          ? reviews.reduce((acc: number, r) => acc + r.rating, 0) /
             reviews.length
           : 0;
 
@@ -241,7 +251,7 @@ export const useUserDetail = (userId: string) => {
         reviews,
         avgRating,
         metrics: {
-          sales: (volumeRes.data as any[])?.length || 0,
+          sales: volumeRes.data?.length || 0,
           purchases: purchasesRes.count || 0,
           cancelledSales: cancelledSalesRes.count || 0,
           cancelledPurchases: cancelledPurchasesRes.count || 0,

@@ -1,10 +1,15 @@
 import { describe, expect, it, mock } from 'bun:test';
 
-import { presentSinglePaymentSheet } from './checkoutPaymentFlow';
+import {
+  presentSinglePaymentSheet,
+  type SinglePaymentSheetDependencies,
+} from './checkoutPaymentFlow';
 
 describe('presentSinglePaymentSheet', () => {
   it('initializes and presents the Stripe sheet exactly once', async () => {
-    const initPaymentSheet = mock(async () => ({ error: null }));
+    const initPaymentSheet = mock<
+      SinglePaymentSheetDependencies['initPaymentSheet']
+    >(async () => ({ error: null }));
     const presentPaymentSheet = mock(async () => ({ error: null }));
 
     const result = await presentSinglePaymentSheet({

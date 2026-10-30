@@ -6,11 +6,12 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTheme } from '@shopify/restyle';
-import { TextInput as RNTextInput } from 'react-native';
+import { TextInput as RNTextInput, type TextStyle } from 'react-native';
 import OTPTextInput from 'react-native-otp-textinput';
 import Toast from 'react-native-toast-message';
 import { z } from 'zod';
@@ -27,10 +28,11 @@ import { shouldStartCooldown } from '../../core/auth/resendCooldown.logic';
 import { useResendCooldown } from '../../core/auth/useResendCooldown';
 import { Theme } from '../../core/theme';
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- Metro resolves static asset requires at bundle time
 const logoIconPath = require('../../assets/images/SeleneLunaLogo.png');
 
 // --- 1. ESQUEMA DE VALIDACIÓN ---
-const getResetPasswordSchema = (t: any) =>
+const getResetPasswordSchema = (t: TFunction) =>
   z
     .object({
       password: z
@@ -211,7 +213,7 @@ export default function ResetPasswordScreen() {
                   fontFamily: 'Montserrat-Medium',
                   borderBottomWidth: 2,
                   borderWidth: 0,
-                } as any
+                } as TextStyle
               }
               containerStyle={{ marginBottom: 24 }}
             />

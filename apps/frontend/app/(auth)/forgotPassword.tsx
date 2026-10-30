@@ -17,13 +17,15 @@ import { AuthBackButton } from '../../components/features/auth/AuthBackButton';
 import { FormTextInput } from '../../components/ui/FormTextInput';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { AppImage } from '../../components/ui/AppImage';
+import type { TFunction } from 'i18next';
 import { Box, Text } from '../../components/base';
 import { useAuth } from '../../core/hooks/useAuth';
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- Metro resolves static asset requires at bundle time
 const logoIconPath = require('../../assets/images/SeleneLunaLogo.png');
 
 // --- 1. ESQUEMA DE VALIDACIÓN BLINDADO ---
-const getForgotPasswordSchema = (t: any) =>
+const getForgotPasswordSchema = (t: TFunction) =>
   z.object({
     email: z
       .string()

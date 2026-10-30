@@ -16,8 +16,8 @@ describe('subscribeBeforeRemove', () => {
 
   it('registers the beforeRemove listener on the navigation object', () => {
     const listener = () => {};
-    let registeredEvent: string | null = null;
-    let registeredListener: ((e: unknown) => void) | null = null;
+    let registeredEvent = null as string | null;
+    let registeredListener = null as ((e: unknown) => void) | null;
 
     const navigation = {
       addListener: (event: string, l: (e: unknown) => void) => {

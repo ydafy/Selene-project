@@ -15,7 +15,8 @@ describe('connect payout shared contracts', () => {
       idempotencyKey: 'release-key-1',
     } satisfies ConnectPayoutReleaseRequest;
 
-    const registryPayload: EdgeFunctionRegistry['release-connect-payout']['payload'] = payload;
+    const registryPayload: EdgeFunctionRegistry['release-connect-payout']['payload'] =
+      payload;
 
     expect(registryPayload).toEqual(payload);
   });
@@ -41,7 +42,8 @@ describe('connect payout shared contracts', () => {
   test('release-connect-payout response supports retryable balance insufficiency details', () => {
     const failed = {
       success: false,
-      error: 'Connected account available balance is insufficient for this payout.',
+      error:
+        'Connected account available balance is insufficient for this payout.',
       code: 'stripe_balance_insufficient',
       retryable: true,
       required_amount_cents: 10_000,
@@ -82,6 +84,7 @@ describe('connect payout shared contracts', () => {
       payout_run_failed_at: null,
       payout_run_failure_reason: null,
       payout_run_id: null,
+      payout_run_paid_at: null,
       payout_run_status: null,
       retry_of_run_id: null,
       // New SCT (Stripe Connect Transfer) contract fields surfaced by the view.
@@ -111,7 +114,8 @@ describe('connect payout shared contracts', () => {
       },
     } satisfies CreateDisputeRequest;
 
-    const registryPayload: EdgeFunctionRegistry['create-dispute']['payload'] = payload;
+    const registryPayload: EdgeFunctionRegistry['create-dispute']['payload'] =
+      payload;
 
     expect(registryPayload.shipmentId).toBe('shipment-1');
   });
