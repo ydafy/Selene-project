@@ -118,7 +118,7 @@ Follow repository manual Supabase workflow: supply SQL/function/config handoff, 
 - T9c | S9 | inline | done (L132) | One auth switch-on runbook in `docs/go-live.md`, each step with an MCP check | Commit: not created.
 - T9d | S9 | delegated writer (context backstop) | done (L133, L135, review approved L136) | CAPTCHA on in the local stack with the hCaptcha test secret; Bruno sends the test token | Commit: not created.
 - T9d1 | S9 | delegated writer (context backstop) | done (L134, review approved L136) | Admin-web hCaptcha through the hCaptcha JS API in `useCaptcha.tsx` (drop `@hcaptcha/react-hcaptcha`); a failing reset never hides the CAPTCHA error | Commit: not created.
-- T9e | S4 | delegated writer (context backstop) | done (L137; review pending; maintainer applies the migration) | #70: listings reserved at suspension | Commit: not created.
+- T9e | S4 | delegated writer (context backstop) | done (L137, review approved L138; maintainer applies the migration) | #70: listings reserved at suspension | Commit: not created.
 - T9e2 | S4 | route at start | pending (L137) | The refund compensation in `checkout_recovery.sql` (~398) also returns RESERVED to VERIFIED without the seller check | Commit: not created.
 - T9f | S8 | route at start | pending | #69: publication-economics trigger aborts a closure | Commit: not created.
 - T9g | S4 | route at start | pending | #88: local `profiles` grants match production | Commit: not created.
@@ -982,3 +982,8 @@ Not proven: the suspension/release lock under concurrent load; `fn_release_stale
 Follow-up T9e2: the refund compensation in `supabase/queries/orders/checkout_recovery.sql` (~398) also returns RESERVED to VERIFIED without the seller check.
 Maintainer: apply the migration (two `CREATE OR REPLACE FUNCTION`, no data change); then I read both definitions back through the MCP.
 Risk: item 1 (product status writes), item 4 (lock order with the suspension RPC).
+
+### L138 — T9e review and session stop
+cf2c9bb2 review (risk, resilience, reliability) approved and acknowledged. Reliability warned that `SELECT ... FOR SHARE` needs UPDATE privilege and the local proof ran as postgres, not service_role; remote check (Supabase MCP, read-only): `service_role` has UPDATE and SELECT on `profiles_private` and UPDATE on `products`, so the lock works for the caller. Other advisories, not changed: the status mapping is pinned by a structural test plus the rolled-back local run (no committed runtime test, #68/T9h); the lock subquery could read only the needed seller ids (suggestion); the T9e2 row names the refund path (not a vulnerability: listing visibility only).
+Maintainer (verbatim): "master cuando termines para porfa, coninutamos el dia de manana". Stopped after this review.
+State for the next session: branch `audit/auth-backlog` at cf2c9bb2 plus this entry, not pushed; slice T9-4 (T9e) is about 440 lines and needs the migration applied before its PR. Next: maintainer applies `20261030120000_release_reservation_account_hold.sql`, parent reads both functions back through the MCP, PR T9-4; then T9e2, T9f (#69), T9g (#88); T9h waits for the option.
