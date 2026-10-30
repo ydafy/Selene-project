@@ -11,11 +11,18 @@ import Toast from 'react-native-toast-message';
 import { supabase } from '../db/supabase';
 import { useAuthContext } from '../../components/auth/AuthProvider';
 import { Product } from '@selene/types';
+import {
+  removeProductFromCachedLists,
+  restoreCachedLists,
+  type CachedListsSnapshot,
+} from './optimisticListRemoval';
 
-// Type for mutation context (optimistic cache snapshots)
+// Lists are cached as ['my-listings', userId] and ['products', filters] (#82)
+const LIST_PREFIXES = ['my-listings', 'products'];
+
+// Type for mutation context (optimistic cache snapshot)
 type DeleteContext = {
-  prevListings: unknown;
-  prevProducts: unknown;
+  snapshot: CachedListsSnapshot;
 };
 
 // Conditional haptics import — some platforms may not support expo-haptics
@@ -87,17 +94,13 @@ export const useProductManagement = () => {
       await queryClient.cancelQueries({ queryKey: ['my-listings'] });
       await queryClient.cancelQueries({ queryKey: ['products'] });
 
-      const prevListings = queryClient.getQueryData(['my-listings']);
-      const prevProducts = queryClient.getQueryData(['products']);
-
-      queryClient.setQueryData(['my-listings'], (old: Product[] | undefined) =>
-        old ? old.filter((p) => p.id !== product.id) : old,
-      );
-      queryClient.setQueryData(['products'], (old: Product[] | undefined) =>
-        old ? old.filter((p) => p.id !== product.id) : old,
+      const snapshot = removeProductFromCachedLists(
+        queryClient,
+        LIST_PREFIXES,
+        product.id,
       );
 
-      return { prevListings, prevProducts };
+      return { snapshot };
     },
 
     mutationFn: async (product) => {
@@ -115,10 +118,7 @@ export const useProductManagement = () => {
 
     onError: (error, _product, ctx) => {
       // Restore caches on error (guard errors don't reach here, but network errors do)
-      if (ctx) {
-        queryClient.setQueryData(['my-listings'], ctx.prevListings);
-        queryClient.setQueryData(['products'], ctx.prevProducts);
-      }
+      if (ctx) restoreCachedLists(queryClient, ctx.snapshot);
 
       // Only show network error toast — guard errors already toasted above
       if (

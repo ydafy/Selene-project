@@ -1,5 +1,12 @@
 import { expect, test, describe } from 'bun:test';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { QueryClient } from '@tanstack/react-query';
 import { getStatusColor, isProductHistory } from '../../utils/product-status';
+import {
+  removeProductFromCachedLists,
+  restoreCachedLists,
+} from '../optimisticListRemoval';
 
 // ─── Product Status Utilities ─────────────────────────────────────────────
 
@@ -74,7 +81,12 @@ describe('deletion pre-flight guards', () => {
   });
 
   test('VERIFIED, PENDING_VERIFICATION, IN_REVIEW, REJECTED are deletable (status check only)', () => {
-    const deletable = ['VERIFIED', 'PENDING_VERIFICATION', 'IN_REVIEW', 'REJECTED'];
+    const deletable = [
+      'VERIFIED',
+      'PENDING_VERIFICATION',
+      'IN_REVIEW',
+      'REJECTED',
+    ];
     for (const status of deletable) {
       expect(GUARD_REJECTED_STATUSES).not.toContain(status);
     }
@@ -98,18 +110,76 @@ describe('deletion pre-flight guards', () => {
 // ─── Optimistic Update Contract ───────────────────────────────────────────
 
 describe('optimistic delete contract', () => {
-  test('onMutate removes product from my-listings and products caches', () => {
-    // Contract: queryClient.setQueryData filters out the product.id
-    const cache = [{ id: '1' }, { id: '2' }, { id: '3' }];
-    const filtered = cache.filter((p) => p.id !== '2');
-    expect(filtered).toEqual([{ id: '1' }, { id: '3' }]);
+  // Lists live under ['my-listings', userId] and ['products', filters] (#82),
+  // so the removal must reach every entry under each prefix.
+  const seed = () => {
+    const client = new QueryClient();
+    client.setQueryData(
+      ['my-listings', 'seller-1'],
+      [{ id: '1' }, { id: '2' }],
+    );
+    client.setQueryData(
+      ['products', { sellerId: null }],
+      [{ id: '2' }, { id: '3' }],
+    );
+    client.setQueryData(['products', { sellerId: 'seller-1' }], [{ id: '2' }]);
+    client.setQueryData(['product', '2'], { id: '2' });
+    return client;
+  };
+
+  test('onMutate removes the product from every cached my-listings and products list', () => {
+    const client = seed();
+    removeProductFromCachedLists(client, ['my-listings', 'products'], '2');
+    expect(client.getQueryData(['my-listings', 'seller-1'])).toEqual([
+      { id: '1' },
+    ]);
+    expect(client.getQueryData(['products', { sellerId: null }])).toEqual([
+      { id: '3' },
+    ]);
+    expect(client.getQueryData(['products', { sellerId: 'seller-1' }])).toEqual(
+      [],
+    );
+    // The product detail is not a list and stays as it is
+    expect(client.getQueryData(['product', '2'])).toEqual({ id: '2' });
   });
 
-  test('onError restores previous cache snapshots', () => {
-    // Contract: ctx.prevListings and ctx.prevProducts are restored
-    const prev = [{ id: '1' }, { id: '2' }];
-    const restored = [...prev];
-    expect(restored).toEqual(prev);
+  test('onMutate leaves non-list data under the prefixes untouched', () => {
+    const client = seed();
+    client.setQueryData(['products', 'count'], 7);
+    removeProductFromCachedLists(client, ['products'], '2');
+    expect(client.getQueryData(['products', 'count'])).toBe(7);
+  });
+
+  test('onError restores every list exactly as it was before onMutate', () => {
+    const client = seed();
+    const snapshot = removeProductFromCachedLists(
+      client,
+      ['my-listings', 'products'],
+      '2',
+    );
+    restoreCachedLists(client, snapshot);
+    expect(client.getQueryData(['my-listings', 'seller-1'])).toEqual([
+      { id: '1' },
+      { id: '2' },
+    ]);
+    expect(client.getQueryData(['products', { sellerId: null }])).toEqual([
+      { id: '2' },
+      { id: '3' },
+    ]);
+    expect(client.getQueryData(['products', { sellerId: 'seller-1' }])).toEqual(
+      [{ id: '2' }],
+    );
+  });
+
+  test('the hook uses the prefix helpers, never the exact list keys', () => {
+    const hook = readFileSync(
+      join(import.meta.dir, '..', 'useProductManagement.ts'),
+      'utf8',
+    );
+    expect(hook).not.toMatch(/getQueryData\(\['(products|my-listings)'\]\)/);
+    expect(hook).not.toMatch(/setQueryData\(\['(products|my-listings)'\]/);
+    expect(hook).toContain('removeProductFromCachedLists(');
+    expect(hook).toContain('restoreCachedLists(');
   });
 
   test('onSuccess fires haptics only on iOS', () => {
