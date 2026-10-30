@@ -115,7 +115,7 @@ Follow repository manual Supabase workflow: supply SQL/function/config handoff, 
 - T9 | S1,S9 | parent orchestration | approved (L126); T9h option still open | Final auth pass: leave every launch switch one config change away and close the auth issues | Commit: not created.
 - T9a | S8,S9 | inline | done (L127, review approved L129; device check pending) | Legal links from `domain.ts` only (`TERMS_URL`, `PRIVACY_URL`; `legalUrls.ts` and its env overrides removed), public `/terminos` page in admin-web, register terms link | Commit: not created.
 - T9b | S9 | delegated writer (context backstop) | done (L130, review approved L131) | Auth email templates versioned in `supabase/templates/` and wired in `config.toml` | Commit: not created.
-- T9c | S9 | route at start | pending | One auth switch-on runbook in `docs/go-live.md`, each step with an MCP check | Commit: not created.
+- T9c | S9 | inline | done (L132) | One auth switch-on runbook in `docs/go-live.md`, each step with an MCP check | Commit: not created.
 - T9d | S9 | route at start | pending | CAPTCHA on in the local stack with the hCaptcha test secret; Bruno sends the test token | Commit: not created.
 - T9e | S4 | route at start | pending | #70: listings reserved at suspension | Commit: not created.
 - T9f | S8 | route at start | pending | #69: publication-economics trigger aborts a closure | Commit: not created.
@@ -941,3 +941,9 @@ Risk: item 6 (mail rendering is visible only in a mail client).
 
 ### L131 — T9b review follow-up
 abb9c82a review (readability, reliability) approved. Fixed: Prettier had wrapped `{{ .Email }}` in `email_change.html` across two lines; Go templates accept that since Go 1.16, but the paragraph is now `<!-- prettier-ignore -->` and a new test fails when any template action spans a line (RED: 1 fail on email_change; GREEN: 16 pass). L130 corrected: all three code templates state the 15-minute expiry. Other advisories, not changed: the 15-minute literal is not derived from `otp_expiry` (templates and config change together); the four templates repeat the same layout (Auth has no partials); the test pins the commented wiring but not that it stays commented (the experimental stack would refuse to start, which is loud).
+
+### L132 — T9c: auth switch-on runbook
+T9b follow-up c3c7bb7b review (reliability) approved with no findings. Slice T9-2 (T9b) merged as PR #109 (4f5d2dbc): CI `test` passed; the four Vercel previews failed with "Deployment rate limited — retry in 24 hours" (account build quota; the slice does not touch admin-web), merged without them.
+`docs/go-live.md` section 10 gets "Auth switch-on order": nine ordered steps (domain, Resend domain verification, custom SMTP, templates, email rate limit, Site URL and redirects with #49, CAPTCHA in its four-step order, leaked-password protection, close), each with its check. The Supabase MCP cannot read Dashboard Auth settings, so steps without an MCP check end with a Dashboard readback recorded in "Deployed Auth settings"; steps 3 and 7 use the auth logs (`query_logs`), steps 8 and 9 `get_advisors`. Read-only check now: `get_advisors` (security) reports `auth_leaked_password_protection`, the lint name step 8 expects to disappear.
+Proof: documentation only, no runnable test; the advisor name was read from the remote.
+Risk: none (docs).
