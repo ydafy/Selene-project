@@ -112,7 +112,7 @@ Follow repository manual Supabase workflow: supply SQL/function/config handoff, 
 - T7d | S3 | none | closed without code (L86): the device check did not confirm U4/U6 | U4 OTP paste/autofill; U6 `AuthModal` keyboard and small-screen clipping | Commit: not created.
 - T7e | S3 | inline | done (117aba0, review approved; device check passed L89) | Sign-in and registration only through `AuthModal`: remove the stack `login` and `register` screens; the guest profile link presents the modal; `verify-code` without an email returns to the tabs | Commit: 117aba0 (review approved).
 - T8 | S1 | parent orchestration | done (L124): merged to main in PRs #75, #80 and #90; branch `audit/auth-backlog` | Auth backlog pass: resolve the consolidated list in L81 plus the T6/T7 additions | Commit: not created.
-- T9 | S1,S9 | parent orchestration | approved (L126); T9h option still open | Final auth pass: leave every launch switch one config change away and close the auth issues | Commit: not created.
+- T9 | S1,S9 | parent orchestration | approved (L126); T9h option 1 (L143) | Final auth pass: leave every launch switch one config change away and close the auth issues | Commit: not created.
 - T9a | S8,S9 | inline | done (L127, review approved L129; device check pending) | Legal links from `domain.ts` only (`TERMS_URL`, `PRIVACY_URL`; `legalUrls.ts` and its env overrides removed), public `/terminos` page in admin-web, register terms link | Commit: not created.
 - T9b | S9 | delegated writer (context backstop) | done (L130, review approved L131) | Auth email templates versioned in `supabase/templates/` and wired in `config.toml` | Commit: not created.
 - T9c | S9 | inline | done (L132) | One auth switch-on runbook in `docs/go-live.md`, each step with an MCP check | Commit: not created.
@@ -122,7 +122,7 @@ Follow repository manual Supabase workflow: supply SQL/function/config handoff, 
 - T9e2 | S4 | delegated writer (context backstop) | done (L141, applied L142; native review not run: inspect timed out) | Every remaining path that returns a listing to VERIFIED applies the T9e seller rule through one helper: `fn_finalize_checkout_recovery` refund, `fn_reserve_products` (stale cleanup and partial rollback), `fn_cancel_shipment`; T9e's two release functions use the same helper | Commit: not created.
 - T9f | S8 | route at start | pending | #69: publication-economics trigger aborts a closure | Commit: not created.
 - T9g | S4 | route at start | pending | #88: local `profiles` grants match production | Commit: not created.
-- T9h | S1 | route at start | blocked: option not chosen (L126) | #68: auth SQL tests against PostgreSQL | Commit: not created.
+- T9h | S1 | route at start | pending (option 1 chosen, L143) | #68: auth SQL tests against PostgreSQL | Commit: not created.
 - T8a | S4 | inline | done (3933485, review approved L110; device check in the go-live pass, L117) | F1: listings held by an account suspension (`status_before_account_hold` set) stay out of "history" in Mis publicaciones | Commit: not created.
 - T8b | S8 | delegated writer (context backstop) | done (d7349da, review approved L111; follow-up in the next commit) | `account-closure-cleanup`: shared constant-time `isAuthorizedCronRequest` and mismatch report; failed cleanup steps reported to Sentry (L74); own commit (risk: auth guard) | Commit: not created.
 - T8c | S8 | inline | done (98b1f41, review approved L114) | Drop the `as never` casts in `delete-account`, `account-closure-cleanup` and the shared cleanup now that the types exist (L79) | Commit: not created.
@@ -1015,3 +1015,6 @@ Slice T9-4 (T9e and the `.env.example` cleanup) merged as PR #117 (be285fec) aft
 T9e2 native review: the `inspect` timed out (`operation_timeout`, not retry-safe) and was not retried.
 Maintainer (verbatim): "Migracion aplicad master con succes". Remote (Supabase MCP, read-only): `fn_release_listings` exists (SECURITY INVOKER, `FOR SHARE` lock, executable by service_role only); `fn_release_stale_reservations`, `fn_release_products`, `fn_reserve_products`, `fn_finalize_checkout_recovery` and `fn_cancel_shipment` all call it; caller security modes and grants unchanged (the three DEFINER callers stay DEFINER; anon and authenticated execute none of the six). Security advisors: the same findings as before (L132), none for the new function.
 T9f (#69) runs in a worker; T9e2 and T9f go to main together as slice T9-5.
+
+### L143 — T9h option chosen
+Maintainer (verbatim): "dale con la 1 master". T9h (#68) is option 1 from L125: auth SQL tests run against the local PostgreSQL through a new `bun run test:db` script, with no CI job. This is the explicit approval AGENTS.md requires to add a test script to `package.json`; it does not cover a CI change. T9h starts after T9f, because both use this worktree's local stack.
