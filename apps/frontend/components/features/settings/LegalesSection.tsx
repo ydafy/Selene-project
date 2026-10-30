@@ -1,13 +1,11 @@
 import { useTranslation } from 'react-i18next';
-import { useCallback } from 'react';
-import * as WebBrowser from 'expo-web-browser';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-import Toast from 'react-native-toast-message';
+import { PRIVACY_URL, TERMS_URL } from '@selene/types';
 
 import { SettingsRow } from './SettingsRow';
 import { formatVersionLabel } from '../../../core/utils/versionLabel';
-import { resolveLegalUrls } from '../../../core/utils/legalUrls';
+import { useOpenInBrowser } from '../../../core/hooks/useOpenInBrowser';
 
 /**
  * Legales section: Terms + Privacy (tappable via expo-web-browser) and
@@ -15,11 +13,7 @@ import { resolveLegalUrls } from '../../../core/utils/legalUrls';
  */
 export const LegalesSection = () => {
   const { t } = useTranslation('settings');
-
-  const urls = resolveLegalUrls({
-    EXPO_PUBLIC_TERMS_URL: process.env.EXPO_PUBLIC_TERMS_URL,
-    EXPO_PUBLIC_PRIVACY_URL: process.env.EXPO_PUBLIC_PRIVACY_URL,
-  });
+  const openUrl = useOpenInBrowser();
 
   const version = Constants.expoConfig?.version ?? undefined;
   const build =
@@ -29,32 +23,17 @@ export const LegalesSection = () => {
 
   const versionLabel = formatVersionLabel(version, build ?? undefined);
 
-  const openUrl = useCallback(
-    async (url: string) => {
-      try {
-        await WebBrowser.openBrowserAsync(url);
-      } catch {
-        Toast.show({
-          type: 'error',
-          text1: t('toasts.routeErrorTitle'),
-          text2: t('errors.browserNotFound'),
-        });
-      }
-    },
-    [t],
-  );
-
   return (
     <>
       <SettingsRow
         icon="file-document-outline"
         label={t('legales.terms')}
-        onPress={() => openUrl(urls.terms)}
+        onPress={() => openUrl(TERMS_URL)}
       />
       <SettingsRow
         icon="shield-lock-outline"
         label={t('legales.privacy')}
-        onPress={() => openUrl(urls.privacy)}
+        onPress={() => openUrl(PRIVACY_URL)}
       />
       <SettingsRow
         icon="information-outline"
