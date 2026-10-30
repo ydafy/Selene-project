@@ -1,0 +1,33 @@
+meta {
+  name: unlock-product-09-admin-unlocks
+  type: http
+  seq: 79
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_unlock_product
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+body:json {
+  {
+    "p_product_id": "00000000-0000-4000-8000-0000000000b4"
+  }
+}
+
+tests {
+  test("the admin releases their own review lock", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.equal(true);
+  });
+}
+
+docs {
+  The call admin-web makes from useProductLock.releaseLock (#66).
+}

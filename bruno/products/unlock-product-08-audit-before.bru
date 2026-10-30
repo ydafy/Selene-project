@@ -1,0 +1,31 @@
+meta {
+  name: unlock-product-08-audit-before
+  type: http
+  seq: 78
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/admin_audit_logs?target_id=eq.00000000-0000-4000-8000-0000000000b4&action_type=eq.PRODUCT_UNLOCK&admin_id=eq.00000000-0000-4000-8000-000000000001&select=admin_id
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:post-response {
+  bru.setVar("unlockAuditBefore", res.getBody().length);
+}
+
+tests {
+  test("the refused calls wrote no unlock audit row", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}
+
+docs {
+  Counts the admin's PRODUCT_UNLOCK rows for b4 before unlock-product-09, so unlock-product-11
+  proves exactly one new row however often the collection ran.
+}

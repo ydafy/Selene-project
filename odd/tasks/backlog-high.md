@@ -1,0 +1,36 @@
+# Backlog fixes: #66, #29, #27
+
+Branch `fix/backlog-high`. Scope after L5: #66 only for `fn_unlock_product`, and #27. The dispute functions of #66 and all of #29 move to the disputes audit session.
+The #66 part changes a function grant (permissions), so it gets its own commit and the local per-role proof.
+
+## Specs
+
+- S1 (#66): "Four RPCs that the apps call with a signed-in user's session are not executable by `authenticated` in the deployed project, so those calls fail with a permission error (`42501`): `fn_buyer_submit_return_evidence(uuid, text[])` [...] `fn_lock_dispute(uuid)` and `fn_unlock_dispute(uuid)` [...] `fn_unlock_product(uuid)`". Maintainer chose route A: "grant authenticated + checks internos": `authenticated` gets EXECUTE on the four; `PUBLIC` and `anon` stay revoked; role and ownership checks stay inside each function.
+- S2 (#66): `fn_lock_dispute` and `fn_unlock_dispute` check admin through `is_admin()` (`profiles_private.role`, active status), not `public.profiles.role` (column does not exist, L2). A signed-in non-admin is refused with `UNAUTHORIZED_ADMIN_ONLY`. admin-web calls them with `p_dispute_id` only (no `p_admin_id`).
+- S3 (#66): `fn_buyer_submit_return_evidence` refuses a call without a session, refuses a caller who is not the dispute's buyer (`UNAUTHORIZED`), and never returns a raw database error message to the client.
+- S4 (#66, rewritten by L11): an active admin can release a product review lock; a suspended or banned admin, a signed-in non-admin, and anon cannot. The admin check is `is_admin()`, as in `fn_lock_product`.
+- S5 (#29): "The daily pg_cron job `purge-old-evidence` (00:00 UTC) fails every night [...] A fix has to delete through the Storage API (for example from an Edge Function that lists and removes the old objects). It should also decide whether evidence of a dispute that is still open must be kept: the current rule deletes by age only."
+- S6 (#27): "When a buyer adds a card from checkout, the Stripe payment sheet always opens Google Pay in test mode, even in a production build. The error messages that sheet shows the user are also fixed Spanish text, so English users see Spanish." "It should follow the build environment (or the Stripe key mode), and `docs/go-live.md` should list it."
+
+## Tasks
+
+- [x] T1 (S1, S4): `fn_unlock_product` grant to authenticated: migration, canonical header, structural test, Bruno per role (admin, buyer, anon). Own commit (permissions). Evidence L6, L10.
+- [x] T2 (S2, S3): dropped by L5, moved to the disputes audit (comment on #66).
+- [x] T3 (S5): dropped by L5, moved to the disputes audit (comment on #29).
+- [x] T4 (S6; worker): Google Pay `testEnv` from the publishable key mode; i18n for every literal in the sheet; go-live doc. Commit 0c29c84. Evidence L9.
+- [x] T5: comments on #66 and #29 with the findings; Finding issue #78 for checkout/common locale drift (L8).
+
+## Log
+
+- L1: "master este woktree y esta seiosn quiero atacar estos issues: #66, #29 y #27. La idea son esos, empoezando por el #66."
+- L2: Exploration (2026-10-29). Remote (read-only MCP): `authenticated` EXECUTE false on the four; `fn_lock_dispute`/`fn_unlock_dispute` bodies query `public.profiles ... role = 'admin'`, and `public.profiles.role` does not exist, so both fail for any caller. admin-web `useDisputeActions.ts` passes `p_admin_id`, which neither function declares (PostgREST would not resolve the call). `fn_buyer_submit_return_evidence` has no null-session guard (`v_buyer_id != NULL` is NULL, so the ownership `IF` does not fire) and returns `SQLERRM` to the caller. `fn_unlock_product` already checks `profiles_private`. `fn_lock_product` is granted to `authenticated` and uses `is_admin()`: the established pattern. Open draft advisory GHSA-w856-7jfr-chv6 (return-delivery timeout) is about returns but is not covered by this work.
+- L3: Maintainer chose route A for #66.
+- L4: "El modulo disputas es el siguiente que quiero atacar [...] tal vez cambiemos toda la logca de disputas, ya que no es nomas arreglar errores si no hacer una auditoria general de todo el modulo [...] tal vez mejor dejamos ese problema para depssues y nos efocamos solo los que no afecten disputas".
+- L5: Maintainer chose "acá fn_unlock_product + #27": the three dispute functions and #29 (retention depends on the dispute lifecycle; today it fails safe by deleting nothing) go to the disputes session.
+- L6: T1 evidence. RED: structural test failed (no migration); Bruno unlock-product-* 5/9 (admin unlock 403 42501). GREEN after `supabase db reset`: structural 3/3, Bruno 9/9 (admin locks, buyer refused P0001 UNAUTHORIZED_ADMIN_ONLY, anon 401 42501, lock unchanged after refusals, admin unlocks, row cleared, PRODUCT_UNLOCK audited). `bun test supabase` 2564/2564.
+- L7: Out-of-scope finding: locale drift in `checkout.json` (en nests `validation` and `dialogs` under `actions`; `errors.stockTitle/stockMsg` only in es) and `common.json` (`actions.goBack` only in es); no parity test covers either file.
+- L8: Published: issue #78 (locale drift, verified call sites in `app/checkout/index.tsx` and `app/product/[id].tsx`); comments on #66 (scope + dispute-function notes) and #29 (moved to the disputes audit).
+- L9: T4 evidence. RED 0/5 (missing module, literals present); GREEN 7/7 (`stripeMode.test.ts`, `PaymentMethodPickerModal.test.ts`, source assertions: no RN render harness). Pre-commit full suite 4210/4210; eslint and prettier clean on touched files; frontend typecheck: no diagnostics in touched files. Visible copy change: sheet header now uses `payment.selectMethod` ("Payment Method" / "Método de pago") instead of "Mis Métodos de Pago". Manual check left: the sheet on a device in both languages.
+- L10: Full Bruno collection after `db reset`: 395/396; the one failure was `cancellations/cancel-M6-shipped-buyer` with 503 from the functions server. Rerun of the cancellations folder with `functions:serve` up: 36/36. Transient, unrelated to T1.
+- L11: Independent verify (gentle-ai-verify) of 2c574b9: S1 and S4 met, no blockers; advisory: the direct `profiles_private.role` check ignores `status`, so the new grant would let a suspended or banned admin with a live session clear locks. Fixed before any apply: the migration now redefines the function with `is_admin()`; S4 rewritten. RED: structural 3/5, Bruno 9/13 (suspended admin unlock returned 200 and cleared the lock). GREEN after `db reset`: structural 5/5, Bruno 13/13, rerun without reset 13/13 (audit check now compares counts before and after), `products` folder 59/59. Commit amended (same message scope).
+- L12: Apply plan for the maintainer: run `supabase/migrations/20261029233832_unlock_product_authenticated_grant.sql` on the remote project. No Edge Function deploy, secrets, cron or webhooks. After apply: MCP `has_function_privilege('authenticated', 'public.fn_unlock_product(uuid)', 'EXECUTE') = true`, anon false, `pg_get_functiondef` shows `is_admin()`; `get_advisors` security; `bun run db:types` should show no change (same signature).

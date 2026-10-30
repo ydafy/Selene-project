@@ -1,0 +1,34 @@
+meta {
+  name: unlock-product-04-reactivate-admin
+  type: http
+  seq: 74
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/profiles_private?id=eq.00000000-0000-4000-8000-000000000001
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "status": "active"
+  }
+}
+
+tests {
+  test("the seeded admin is active again", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].status).to.equal("active");
+  });
+}
+
+docs {
+  Undoes unlock-product-02.
+}
