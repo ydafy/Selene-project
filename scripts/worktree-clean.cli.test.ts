@@ -103,7 +103,7 @@ describe('worktree:clean against a real repository', () => {
 
     const plan = clean('merged');
     expect(plan.code).toBe(0);
-    expect(plan.out).toContain('would run: git branch -d feat/merged');
+    expect(plan.out).toContain('would run: git branch -D feat/merged');
     expect(existsSync(wt)).toBe(true);
 
     const run = clean('merged', '--yes');
@@ -113,6 +113,43 @@ describe('worktree:clean against a real repository', () => {
     expect(sh(['git', 'branch', '--list', 'feat/merged'], main)).toBe('');
     expect(existsSync(ownStack)).toBe(false);
     expect(existsSync(otherStack)).toBe(true);
+  });
+
+  it('deletes a merged branch even when its upstream is behind it', () => {
+    const wt = join(`${main}-worktrees`, 'upstream');
+    sh(['git', 'worktree', 'add', '-q', '-b', 'feat/upstream', wt], main);
+    sh(['git', 'push', '-q', '-u', 'origin', 'feat/upstream'], wt);
+    commit(wt, 'upstream.md');
+    sh(['git', 'merge', '-q', '--ff-only', 'feat/upstream'], main);
+    sh(['git', 'push', '-q', 'origin', 'HEAD:main'], main);
+
+    const run = clean('upstream', '--yes');
+    expect(run.out).toContain('[worktree-clean] done');
+    expect(run.code).toBe(0);
+    expect(sh(['git', 'branch', '--list', 'feat/upstream'], main)).toBe('');
+  });
+
+  it('removes a worktree whose ignored files have paths longer than 260 characters', () => {
+    writeFileSync(join(main, '.gitignore'), 'node_modules/\n');
+    sh(['git', 'add', '.gitignore'], main);
+    sh(['git', 'commit', '-q', '-m', 'ignore node_modules'], main);
+    sh(['git', 'push', '-q', 'origin', 'HEAD:main'], main);
+    const wt = join(`${main}-worktrees`, 'deep');
+    sh(['git', 'worktree', 'add', '-q', '-b', 'feat/deep', wt], main);
+    const deep = join(
+      wt,
+      'node_modules',
+      ...Array(12).fill('a-long-package-name-x'),
+    );
+    mkdirSync(deep, { recursive: true });
+    writeFileSync(join(deep, 'index.js'), '');
+    expect(join(deep, 'index.js').length).toBeGreaterThan(260);
+
+    const run = clean('deep', '--yes');
+    expect(run.out).toContain('[worktree-clean] done');
+    expect(run.code).toBe(0);
+    expect(existsSync(wt)).toBe(false);
+    expect(sh(['git', 'branch', '--list', 'feat/deep'], main)).toBe('');
   });
 
   it('keeps a detached worktree whose commits are not in origin/main', () => {

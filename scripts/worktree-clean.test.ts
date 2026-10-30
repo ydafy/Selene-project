@@ -163,7 +163,7 @@ describe('planWorktreeClean', () => {
       'supabase stop (inside the worktree)',
       'git worktree remove C:/dev/School-portal-worktrees/auth',
       'git worktree prune',
-      'git branch -d fix/auth',
+      'git branch -D fix/auth',
       'git fetch --prune origin',
       'delete Supabase stack data C:/Users/me/.supabase/stacks/abc',
     ]);
@@ -234,7 +234,7 @@ describe('planWorktreeClean', () => {
       }),
     );
     expect(plan.blockers).toEqual([]);
-    expect(plan.steps).not.toContain('git branch -d fix/auth');
+    expect(plan.steps).not.toContain('git branch -D fix/auth');
     expect(plan.steps.some((s) => s.startsWith('delete Supabase'))).toBe(false);
     expect(plan.warnings).toEqual([
       'verification-evidence/ holds 3 files and is deleted with the folder: copy it first if a PR needs it',
