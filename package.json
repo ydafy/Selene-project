@@ -31,7 +31,7 @@
     "lint": "bunx eslint . --ext .js,.jsx,.ts,.tsx",
     "typecheck": "bun run --filter '*' typecheck",
     "format": "bunx prettier --write .",
-    "prepare": "bunx husky install || true",
+    "prepare": "husky",
     "clean:all": "bun scripts/clean-all.ts",
     "doctor:frontend": "cd apps/frontend && bunx expo-doctor",
     "fix:frontend": "cd apps/frontend && bunx expo install --fix"
@@ -46,6 +46,7 @@
     "eslint": "^9.38.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.4",
+    "husky": "^9",
     "lint-staged": "^16.2.4",
     "prettier": "^3.6.2",
     "typescript": "~5.9.3",
@@ -54,7 +55,7 @@
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
       "prettier --write",
-      "eslint --fix"
+      "eslint --fix --no-warn-ignored"
     ]
   },
   "dependencies": {

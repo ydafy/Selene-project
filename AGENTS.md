@@ -93,7 +93,7 @@ Vendor skills in `.agents/skills/` are installed with the `skills` CLI and never
 
 Run from the repository or worktree root. `package.json` is the source of truth.
 
-- `bun test`: full suite (`bun:test`). The pre-commit hook and CI run it. Run one file with `bun test <path>`.
+- `bun test`: full suite (`bun:test`). The pre-push hook and CI run the full suite; pre-commit runs `lint-staged` (Prettier and ESLint on staged files), and the commit-msg hook rejects headers that are not Conventional Commits (`scripts/check-commit-msg.ts`). Run one file with `bun test <path>`.
 - `bun run lint` and `bun run typecheck` (one workspace: `bun run --filter <package> typecheck`) fail on `main` with pre-existing errors. Run them on the files you changed, judge only those diagnostics, and do not fix unrelated errors. Edge Functions: see `supabase/functions/AGENTS.md`.
 - `bun run db:types`: regenerates types from the remote project. Run it only after the maintainer confirms the SQL was applied.
 - Run `expo install` from `apps/frontend`, never from the root, or native autolinking breaks.

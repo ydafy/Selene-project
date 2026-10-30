@@ -16,7 +16,7 @@ The frontend move to `src/` and the feature-based layout (phases 5-6) wait until
 
 - T1 | S1-S2 | inline | commit: d796757 (done)
 - T2 | S3-S4 | worker | commit: see L9 (done)
-- T3 | S5 | inline | commit: pending
+- T3 | S5 | worker | commit: see L10 (done)
 - T4 | S6 | inline, one commit per workspace | commit: pending
 
 ## Log
@@ -30,3 +30,4 @@ The frontend move to `src/` and the feature-based layout (phases 5-6) wait until
 - L7 (evidence T1): `odd/tasks/engram-safe-upgrade.ps1` was already gone on `origin/main`. Removing `apps/backend` changed the hoisted root `typescript` from 5.9.3 to 6.0.3 (the version root ESLint resolves), so the root `package.json` pins `typescript` `~5.9.3`; `bun install` then reports no install changes. `deno.lock` drops the `apps/backend` workspace member. `git worktree prune` removed the stale `shipment-cancellations` record. `bun test`: 4212 pass, 0 fail. The audit command from `dependency-audit.yml` reports 1 high, `decode-uri-component@0.2.2` (GHSA-qr28-fpjm-wq7f), already present in `origin/main`'s `bun.lock`, so not caused by this change.
 - L8 (baseline for T4): `tsc` errors: `packages/types` 1, `apps/admin-web` 0, `apps/frontend` 17 (all in test files). ESLint: 92 errors (71 `no-explicit-any`, 14 `no-unused-vars`, 7 `no-require-imports`): `apps/frontend` 65, `apps/admin-web` 13, `supabase/functions` 11, `.agents/skills` 3.
 - L9 (evidence T2): `docs/conventions.md` (76 lines) and `apps/frontend/AGENTS.md` (24 lines) added. Root `AGENTS.md` 139 to 154 lines: stack versions in the Map intro, frontend guide in "Read first", a conventions row in "Where truth lives", and a `## Boundaries` section (Always, Ask first, Never) built only from rules moved out of "How we work", "Git", "Verifying a change", and the Supabase bullet. The camelCase count is 207 at this commit. `bunx prettier --check` passes.
+- L10 (evidence T3): RED `bun test scripts/check-commit-msg.test.ts` failed on the missing module; GREEN 20 pass. Through the `.husky/_` wrappers: `did some stuff` exits 1 with the exact format error; `fix(hooks): reject bad headers` exits 0 silently; a staged file with an unused variable makes `lint-staged` exit 1 and restore the index. `husky` 9.1.7 added as a devDependency (`bun.lock` +3 lines); `prepare` is `husky`. Audit unchanged (only GHSA-qr28-fpjm-wq7f). Full `bun test` 4232 pass.
