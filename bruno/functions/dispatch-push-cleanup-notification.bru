@@ -1,0 +1,28 @@
+meta {
+  name: dispatch-push-cleanup-notification
+  type: http
+  seq: 111
+}
+
+delete {
+  url: {{baseUrl}}/rest/v1/notifications?source_event_key=eq.bruno-dispatch-push:seller
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+tests {
+  test("the fixture notification is removed", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.length(1);
+  });
+}
+
+docs {
+  Cleanup. Deleting the notification cascades to its delivery.
+}

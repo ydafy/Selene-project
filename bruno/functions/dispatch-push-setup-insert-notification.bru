@@ -1,0 +1,37 @@
+meta {
+  name: dispatch-push-setup-insert-notification
+  type: http
+  seq: 107
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/notifications
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  { "user_id": "{{dispatchSellerId}}", "event_kind": "order.payment_confirmed", "source_event_key": "bruno-dispatch-push:seller", "event_payload": { "recipient_role": "seller" }, "type": "success", "title": "Nueva venta confirmada", "message": "Bruno dispatch-push fixture" }
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    bru.setVar("dispatchNotificationId", res.getBody()[0].id);
+  }
+}
+
+tests {
+  test("the producer insert succeeds", function () {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  Stands in for a producer; the trigger queues one delivery for the token.
+}

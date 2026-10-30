@@ -1,0 +1,33 @@
+meta {
+  name: dispatch-push-setup-resolve-seller-id
+  type: http
+  seq: 105
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/profiles_private?select=id&email=eq.seller@selene.local
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("dispatchSellerId", res.getBody()[0].id);
+  }
+}
+
+tests {
+  test("finds the seeded seller id", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.length(1);
+  });
+}
+
+docs {
+  The seller receives the fixture notification.
+}

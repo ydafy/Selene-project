@@ -1,0 +1,34 @@
+meta {
+  name: dispatch-push-run
+  type: http
+  seq: 108
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/dispatch-push
+  body: json
+  auth: none
+}
+
+headers {
+  x-cron-secret: {{cronSecret}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("the run claims the delivery and records Expo's answer", function () {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body.claimed).to.be.at.least(1);
+    expect(body.sent + body.retry + body.failed + body.ignored).to.equal(body.claimed);
+    expect(body.receipts).to.be.an("object");
+    expect(body.purged).to.be.a("number");
+  });
+}
+
+docs {
+  Needs the functions server and EXPO_ACCESS_TOKEN in supabase/functions/.env. Calls the real Expo Push API (S7).
+}

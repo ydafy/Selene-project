@@ -67,13 +67,14 @@ Values differ per project; never copy them from another environment.
 - `auto_cancel_orders_cron_secret` (same value as the `CRON_SECRET` function secret)
 - `cron_watchdog_cron_secret` (same value as the `CRON_SECRET` function secret)
 - `account_closure_cleanup_cron_secret` (same value as the `CRON_SECRET` function secret)
+- `dispatch_push_cron_secret` (same value as the `CRON_SECRET` function secret)
 - `stripe_fee_worker_project_url`
 - `stripe_fee_worker_service_role_jwt`
 - `track_shipments_cron_secret` (same value as the `TRACK_SHIPMENTS_CRON_SECRET` function secret)
 
 ## 6. Edge Function secrets
 
-`CRON_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CONNECT_WEBHOOK_SECRET`, `ENVIA_MODE`, `ENVIA_API_KEY_PROD`, `ENVIA_API_URL_PROD`, `ENVIA_WEBHOOK_SECRET_PROD`, `ENVIA_API_KEY_SANDBOX`, `ENVIA_API_URL_SANDBOX`, `ENVIA_WEBHOOK_SECRET_SANDBOX`, `SENTRY_DSN` (required; without it Sentry reporting and the `cron-watchdog` monitor are silently off), `SENTRY_ENVIRONMENT` (optional, default `production`). `TRACK_SHIPMENTS_CRON_SECRET` and `TRACK_SHIPMENTS_POLLING_ENABLED` (`true` turns Envia polling on; see "8. Cron jobs").
+`CRON_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CONNECT_WEBHOOK_SECRET`, `ENVIA_MODE`, `ENVIA_API_KEY_PROD`, `ENVIA_API_URL_PROD`, `ENVIA_WEBHOOK_SECRET_PROD`, `ENVIA_API_KEY_SANDBOX`, `ENVIA_API_URL_SANDBOX`, `ENVIA_WEBHOOK_SECRET_SANDBOX`, `SENTRY_DSN` (required; without it Sentry reporting and the `cron-watchdog` monitor are silently off), `SENTRY_ENVIRONMENT` (optional, default `production`). `TRACK_SHIPMENTS_CRON_SECRET` and `TRACK_SHIPMENTS_POLLING_ENABLED` (`true` turns Envia polling on; see "8. Cron jobs"). `EXPO_ACCESS_TOKEN` (required by `dispatch-push`; see "7. Edge Functions").
 
 `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` are injected by Supabase.
 
@@ -90,6 +91,8 @@ Deploy every directory in `supabase/functions/` except `_shared/`. `supabase/con
 `list-shipment-refund-problems` is the admin read of unresolved refund problems (GET, returns `{ problems }`). Like `resolve-shipment-refund` it keeps `verify_jwt = true` (declared in `supabase/config.toml`) and checks `profiles_private.role = 'admin'` itself. It needs no new secret. Apply `supabase/migrations/20261022223302_shipment_refund_problems.sql` (service-only `fn_list_shipment_refund_problems`) before deploying it.
 
 `delete-account` closes an account in one SQL transaction (`fn_close_account`) and then removes the Stripe customer, the Stripe Connect account and Storage files. `account-closure-cleanup` is its cron retry for closures whose cleanup failed or never ran: it runs without a user session, is authenticated by the `x-cron-secret` header against `CRON_SECRET`, and keeps `verify_jwt = false` (declared in `supabase/config.toml`). Apply `supabase/migrations/20261023043220_account_closure.sql` and then `supabase/migrations/20261023052842_account_closure_cleanup.sql` (service-only `fn_claim_account_closures` and `fn_record_closure_attempt`), then deploy both functions. The retry stops after 24 attempts per closure and lists those closures in its response and in an `ERROR` log (`Account closure cleanup gave up`, with the user ids) on every run; an admin reads `account_closures.last_error` for those users and finishes the failed step by hand. Apply `20261023043220_account_closure.sql` before shipping a mobile build from this change: the app selects `profiles.deleted_at` in its order and review queries, which fail on a database without that column.
+
+`dispatch-push` delivers queued push notifications through the Expo Push API every minute: it claims up to 5 batches of 100 rows from `push_deliveries`, sends each batch right after its claim, records the tickets, checks receipts 15 minutes after sending (a `DeviceNotRegistered` receipt disables the token) and deletes finished rows older than 30 days. It is authenticated by the `x-cron-secret` header against `CRON_SECRET` and keeps `verify_jwt = false` (declared in `supabase/config.toml`). It needs the function secret `EXPO_ACCESS_TOKEN`; without it every run answers 500 `MISSING_SERVER_CONFIG` and claims nothing. Create an access token on expo.dev (https://expo.dev/settings/access-tokens) with the account that owns the project, set it with `supabase secrets set EXPO_ACCESS_TOKEN=<value>`, then turn on "Enhanced security for push notifications" in the project settings on expo.dev, so Expo rejects a push request without the token. Apply `supabase/migrations/20261030014104_push_outbox.sql` and `supabase/migrations/20261030025554_push_receipts_and_purge.sql` before deploying it. Expo credential errors (`InvalidCredentials`, `MismatchSenderId`, `UNAUTHORIZED`) are reported to Sentry.
 
 `list-shipment-operation-reviews` and `resolve-shipment-operation-review` serve the admin "Envios" section: the first lists preparing-timeout cancellations waiting for a carrier review (GET or POST, returns `{ reviews }`), the second records the admin decision (`refund_approved` or `closed_no_refund` with a required note, POST). Like the refund pair they keep `verify_jwt = true` (declared in `supabase/config.toml`) and check `profiles_private.role = 'admin'` themselves, and they need no new secret. Apply `supabase/migrations/20261024020649_shipment_cancellation_carrier_review.sql` (service-only `fn_list_shipment_cancellation_reviews` and `fn_resolve_shipment_cancellation_review`) before deploying them. The decision moves no money: an approved refund starts on the next `auto-cancel-preparing` run.
 
@@ -110,6 +113,7 @@ The remote project also runs `dynamic-api` (name `get-shipping-quote-seller`), w
 | `checkout-recovery-worker-every-5-minutes` | `*/5 * * * *`  | function `checkout-recovery-worker`     |
 | `complete-delivered-shipments`             | `*/5 * * * *`  | function `complete-delivered-shipments` |
 | `cron-watchdog-every-15-minutes`           | `*/15 * * * *` | function `cron-watchdog`                |
+| `dispatch-push-every-minute`               | `*/1 * * * *`  | function `dispatch-push`                |
 | `dispute-payout-timeout-job`               | `0 * * * *`    | `fn_cron_dispute_payout_timeout()`      |
 | `dispute-shipping-timeout-job`             | `0 * * * *`    | `fn_cron_dispute_shipping_timeout()`    |
 | `purge-expired-reservations`               | `*/15 * * * *` | inline `UPDATE public.products`         |
@@ -265,6 +269,28 @@ select cron.schedule(
       'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'account_closure_cleanup_cron_secret')
     ),
     body := '{}'::jsonb
+  );
+  $$
+);
+```
+
+`dispatch-push-every-minute` sends queued push notifications (see "7. Edge Functions"). The schedule is written `*/1 * * * *`, the shape `cron-watchdog` supports; `* * * * *` would be reported as unsupported. Deploy `dispatch-push` and set `EXPO_ACCESS_TOKEN` first, then create the Vault secret `dispatch_push_cron_secret` with the same value as the `CRON_SECRET` function secret, then run, in the SQL Editor:
+
+```sql
+select cron.schedule(
+  'dispatch-push-every-minute',
+  '*/1 * * * *',
+  $$
+  select net.http_post(
+    url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url') || '/functions/v1/dispatch-push',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'project_anon_jwt'),
+      'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'project_anon_jwt'),
+      'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'dispatch_push_cron_secret')
+    ),
+    body := '{}'::jsonb,
+    timeout_milliseconds := 60000
   );
   $$
 );
