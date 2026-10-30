@@ -857,3 +857,7 @@ T8f (worker, parent fixes): closed accounts (L69, L78) show as "Cuenta eliminada
 RED: 3 fail, 1 error (unknown status returned `undefined`, old reactivation copy, helper module missing). GREEN: `bun test apps/admin-web` 346 pass; `bun run test:e2e` 27 passed, including the new `e2e/admin-web/closedAccounts.e2e.ts` (list badge, detail without actions, reactivation copy). `admin-web` typecheck exit 0; ESLint clean on touched files.
 Not done: the users page "Baneados" filter still lists closed accounts; not run against the local stack (`test:e2e:local`), the specs mock the network.
 Risk: none of items 1-5 (display and button visibility for accounts the server already refuses to reactivate); item 6 for the badge look.
+
+### L119 — T8f review follow-up
+1a75bd6 review (readability, reliability) approved. Both lenses flagged that `UserSafetyActions` took `username` as optional, so a caller that omitted it would show a closed account as an ordinary ban: `VerificationDetail` (product verification) did omit it. Fixed: `username` is required and `VerificationDetail` passes the seller's username. Other advisories, not changed: the closed label and badge markup repeat in `UserCard` and `UserDetailPage`; the `default` branch hides missing-case exhaustiveness at compile time (accepted: an unknown runtime status must yield no actions).
+Evidence: `admin-web` typecheck exit 0 (the required prop compiles at both call sites); `bun test apps/admin-web` 346 pass; `bun run test:e2e` 27 passed; ESLint clean.

@@ -11,7 +11,8 @@ import { isClosedAccount } from '../../../lib/accountStatus';
 interface Props {
   user: {
     id: string;
-    username?: string | null;
+    /** Needed to recognize a closed account (see isClosedAccount). */
+    username: string | null;
     status: AccountStatus;
     is_verified_seller: boolean | null;
   };
@@ -24,7 +25,7 @@ export const UserSafetyActions = ({ user, onUpdate }: Props) => {
   const actions = getAccountStatusActions(user.status, user.id === admin?.id);
   const closed = isClosedAccount({
     status: user.status,
-    username: user.username ?? null,
+    username: user.username,
   });
 
   // ESTADO PARA EL MODAL
