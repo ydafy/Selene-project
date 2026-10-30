@@ -11,7 +11,7 @@ Existing rows in the Supabase project and the Stripe sandbox are disposable test
 
 ## Map
 
-Bun monorepo with strict TypeScript. Stack: Expo SDK 57, React Native 0.86, and React 19.2 in `apps/frontend` (TypeScript 6.0); React 19.1, Vite 8, and TypeScript 5.9 in `apps/admin-web`. Before changing files under a path below, read its guide; it holds the procedures for that area.
+Bun monorepo with strict TypeScript. Stack: Expo, React Native, and React in `apps/frontend`; React and Vite in `apps/admin-web`. Each workspace's `package.json` is the source of truth for versions; read it instead of assuming one. Before changing files under a path below, read its guide; it holds the procedures for that area.
 
 | Path                  | What                                                                     | Read first                     |
 | --------------------- | ------------------------------------------------------------------------ | ------------------------------ |
