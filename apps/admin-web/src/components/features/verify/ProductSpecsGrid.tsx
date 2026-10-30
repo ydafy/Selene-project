@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Hash, Copy, Check } from 'lucide-react';
 
 interface Props {
-  specs?: Record<string, any>;
+  specs?: Record<string, unknown>;
 }
 
 export const ProductSpecsGrid = ({ specs }: Props) => {
