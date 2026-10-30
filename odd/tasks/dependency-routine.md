@@ -13,7 +13,7 @@ Worktree `repo-hygiene`, branch `chore/dependency-routine`. Source: `cross-modul
 ## Tasks
 
 - T1 | S1, S4 | worker | `docs/dependencies.md` plus pointers from `AGENTS.md` and `docs/skills.md` if needed | commit: this commit (done)
-- T2 | S2, S3 | worker | report script with tests (pure report builder fed by `bun outdated`, `expo install --check`, `bun audit`, npm registry dates) | commit: pending
+- T2 | S2, S3 | worker | report script with tests (pure report builder fed by `bun outdated`, `expo install --check`, `bun audit`, npm registry dates) | commit: this commit (done)
 - T3 | S2 | inline | weekly workflow that runs the script and updates the issue (CI change, approved in L3) | commit: pending
 
 ## Log
@@ -22,3 +22,4 @@ Worktree `repo-hygiene`, branch `chore/dependency-routine`. Source: `cross-modul
 - L2 (user): "okey me gusta, mientras termino los dos woktrees actuales, vamos adelantando eso que comentas"
 - L3 (user decision): "Script propio (recomendado)" over Renovate. Reasons given: Renovate does not run `expo install` (renovatebot discussion #24735), has an open bun workspaces lockfile issue (discussion #44523, 2026-07), and is a third-party GitHub App with write access to a public repository.
 - L4 (evidence T1): `docs/dependencies.md` (82 lines): semver table, cadence, Expo-pinned packages, checklist before adding, update procedure, and "When not to update" with the TypeScript 7 and `decode-uri-component` cases. `AGENTS.md` gains a "Where truth lives" row. Prettier passes. The `<!-- weekly report: added by T3 -->` placeholder is replaced in T3.
+- L5 (evidence T2): `scripts/dependency-report.ts` with pure parsers and builder, collectors injected for tests. Real formats (bun 1.4.2): `bun outdated` has no JSON flag (boxed table parsed); `bun audit --json` lists ignored advisories too, so the builder applies the workflow's `--ignore` list read from `dependency-audit.yml`; `npx expo install --check --json` prints dotenv lines before the JSON. The SDK age uses the publish time of `<major>.0.0`. Majors held on purpose (TypeScript 7, reason from `docs/dependencies.md`) get their own section. RED (missing module, then the held-back test), GREEN 31 pass; eslint 0. Real run exit 0: 19 safe updates, 15 majors, 1 held back, Expo SDK 58 "Upgrade recommended" (released 2026-09-29, 30 days), 0 packages off the SDK, no high or critical vulnerabilities with 3 accepted exceptions.
