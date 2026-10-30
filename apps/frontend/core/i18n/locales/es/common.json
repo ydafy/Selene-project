@@ -1,5 +1,6 @@
 {
   "deletedUser": "Usuario eliminado",
+  "select": "Seleccionar",
   "yes": "Sí",
   "no": "No",
   "tabs": {
@@ -23,14 +24,16 @@
     "updateMessage": "Actualizado",
     "noImage": "Sin imagen",
     "unknownProduct": "Producto desconocido",
-    "loading": "Cargando..."
+    "loading": "Cargando...",
+    "unknown": "Desconocido"
   },
 
   "errors": {
     "title": "Algo salió mal",
     "generic": "Ocurrió un problema. Intenta de nuevo.",
     "connection": "Error de conexión con el servidor.",
-    "noPackages": "No hay opciones de empaque"
+    "noPackages": "No hay opciones de empaque",
+    "required": "Este campo es obligatorio."
   },
 
   "dialog": {

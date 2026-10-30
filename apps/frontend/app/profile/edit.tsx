@@ -84,7 +84,7 @@ export default function EditProfileScreen() {
       t('profile:avatar.changeTitle'),
       t('profile:avatar.chooseOption'),
       [
-        { text: t('common:cancel'), style: 'cancel' },
+        { text: t('common:dialog.cancel'), style: 'cancel' },
         {
           text: t('profile:avatar.camera'),
           onPress: async () => processImageUpload(await takePhoto()),

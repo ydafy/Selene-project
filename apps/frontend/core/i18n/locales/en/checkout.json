@@ -37,16 +37,17 @@
   },
   "actions": {
     "pay": "Pay",
-    "changeAddress": "Change address",
-    "validation": {
-      "invalidProduct": "Product not available",
-      "invalidProductMsg": "The selected product is no longer available."
-    },
+    "changeAddress": "Change address"
+  },
 
-    "dialogs": {
-      "protectionTitle": "Seguro Selene",
-      "protectionDesc": "Seguro Selene covers payment processing and keeps your purchase protected if the hardware doesn't arrive, is damaged, or doesn't match the technical description. Subject to Terms and Conditions."
-    }
+  "validation": {
+    "invalidProduct": "Product not available",
+    "invalidProductMsg": "The selected product is no longer available."
+  },
+
+  "dialogs": {
+    "protectionTitle": "Seguro Selene",
+    "protectionDesc": "Seguro Selene covers payment processing and keeps your purchase protected if the hardware doesn't arrive, is damaged, or doesn't match the technical description. Subject to Terms and Conditions."
   },
   "payment": {
     "selectMethod": "Payment Method",
@@ -92,6 +93,8 @@
   },
 
   "errors": {
+    "stockTitle": "Product sold out",
+    "stockMsg": "Someone else just bought one of your products.",
     "shippingFailed": "Shipping could not be calculated.",
     "selfPurchase": "You cannot purchase a product listed by you.",
     "shippingFailedMsg": "There was a problem calculating the shipping cost. Please try again.",

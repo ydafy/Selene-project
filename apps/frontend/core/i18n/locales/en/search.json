@@ -40,5 +40,9 @@
   "shellTrustSnap": {
     "trustMsg": "Each component goes through benchmarks and tests before it can be purchased.",
     "trustButton": "VER PROCESO"
+  },
+  "shellFotter": {
+    "title": "You've seen the latest",
+    "description": "Our full inventory awaits you with hundreds of parts verified by NetRunners."
   }
 }

@@ -20,11 +20,12 @@ describe('cancelled shipment banner', () => {
     );
   });
 
-  it('shows the banner for a cancelled shipment even when the order is still active', () => {
-    expect(card).toContain(
-      "const isCancelledShipment = shipment.status === 'cancelled' && order.status !== 'dispute';",
+  it('shows the banner for a cancelled shipment whatever the order status is (#62)', () => {
+    expect(card).toMatch(
+      /const isCancelledShipment =\s*resolveOrderBannerKind\(\{[^}]*shipmentStatus: shipment\.status,?\s*\}\) === 'cancelledShipment';/,
     );
-    expect(card).toContain('isCriticalStatus || isCancelledShipment ||');
+    expect(card).not.toContain("order.status !== 'dispute'");
+    expect(card).toMatch(/isCriticalStatus \|\|\s*isCancelledShipment \|\|/);
   });
 
   it('titles and words the banner by the shipment and the viewer role', () => {

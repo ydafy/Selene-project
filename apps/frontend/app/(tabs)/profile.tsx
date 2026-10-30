@@ -154,7 +154,7 @@ const UserProfile = () => {
       t('profile:avatar.chooseOption'),
       [
         {
-          text: t('common:cancel'),
+          text: t('common:dialog.cancel'),
           style: 'cancel',
         },
         {
