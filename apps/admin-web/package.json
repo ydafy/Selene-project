@@ -11,7 +11,6 @@
     "typecheck": "tsc -b --noEmit"
   },
   "dependencies": {
-    "@hcaptcha/react-hcaptcha": "2.2.0",
     "@selene/types": "workspace:*",
     "@supabase/supabase-js": "^2.105.3",
     "@tailwindcss/vite": "^4.2.1",

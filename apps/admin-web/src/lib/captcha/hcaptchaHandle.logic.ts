@@ -9,10 +9,22 @@ import {
   type CaptchaProviderHandle,
 } from './captcha.logic';
 
-/** The slice of `@hcaptcha/react-hcaptcha` the login uses. */
+/** The slice of an hCaptcha widget the login uses (adapted in `hcaptchaApi.logic.ts`). */
 export type HcaptchaWidgetLike = {
   execute: (options: { async: true }) => Promise<{ response: string }>;
   resetCaptcha: () => void;
+};
+
+/**
+ * hCaptcha throws plain objects (`{ cause: 'missing-captcha' }`) when the widget is
+ * gone. Resetting is best effort and must never replace the real result or error.
+ */
+const resetQuietly = (widget: HcaptchaWidgetLike | null): void => {
+  try {
+    widget?.resetCaptcha();
+  } catch {
+    // Nothing to reset.
+  }
 };
 
 export const createHcaptchaHandle = (
@@ -30,9 +42,9 @@ export const createHcaptchaHandle = (
       throw toCaptchaError(reason);
     } finally {
       // Tokens are single use: the next login needs a fresh challenge.
-      widget.resetCaptcha();
+      resetQuietly(widget);
     }
   },
   // A timed-out challenge must not stay open over the login form.
-  cancel: () => getWidget()?.resetCaptcha(),
+  cancel: () => resetQuietly(getWidget()),
 });
