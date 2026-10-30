@@ -8,6 +8,10 @@ Inventory below was read from project `acoiclkeymgtlwcxilun` through the read-on
 
 The repository rebuilds the database schema: `supabase/migrations/` starts with the baseline `20261020100000_remote_schema_baseline.sql`, verified on 2026-10-20 to match the development project (functions, policies, triggers, columns, indexes, constraints, enums, views and grants). Pre-baseline history lives in `supabase/migrations/archive/` and is never applied.
 
+Open launch dependencies:
+
+- Fee-free period for launch sellers (#64). The commission (`system_settings.service_fee_pct`) is global and frozen into each product at publication, so the app cannot waive it for invited sellers' first sales. Do not set the global rate to 0 as a workaround: every product published while it is 0 keeps 0 permanently.
+
 ## 1. Project
 
 1. Create the project in the target region and organization.
