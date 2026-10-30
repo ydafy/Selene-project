@@ -1724,6 +1724,39 @@ export type Database = {
         }
         Relationships: []
       }
+      push_tokens: {
+        Row: {
+          created_at: string
+          disabled_at: string | null
+          disabled_reason: string | null
+          id: string
+          platform: string
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          disabled_at?: string | null
+          disabled_reason?: string | null
+          id?: string
+          platform: string
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          disabled_at?: string | null
+          disabled_reason?: string | null
+          id?: string
+          platform?: string
+          token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       reports: {
         Row: {
           created_at: string
@@ -4177,6 +4210,10 @@ export type Database = {
         Args: { p_seller_id: string }
         Returns: undefined
       }
+      fn_register_push_token: {
+        Args: { p_platform: string; p_token: string }
+        Returns: undefined
+      }
       fn_release_auto_cancel_lease: {
         Args: { p_job: string; p_lease_id: string }
         Returns: boolean
@@ -4371,6 +4408,10 @@ export type Database = {
       }
       fn_unlock_dispute: { Args: { p_dispute_id: string }; Returns: boolean }
       fn_unlock_product: { Args: { p_product_id: string }; Returns: boolean }
+      fn_unregister_push_token: {
+        Args: { p_token: string }
+        Returns: undefined
+      }
       fn_upsert_checkout_recovery_shell: {
         Args: {
           p_charged_amount_cents: number

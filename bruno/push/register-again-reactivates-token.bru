@@ -1,0 +1,30 @@
+meta {
+  name: register-again-reactivates-token
+  type: http
+  seq: 117
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_register_push_token
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{sellerToken}}
+}
+
+body:json {
+  { "p_token": "ExponentPushToken[bruno-push-token-0001]", "p_platform": "ios" }
+}
+
+tests {
+  test("the owner registers the disabled token again", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  The app registers its token on every sign-in, which reactivates a disabled row.
+}

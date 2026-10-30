@@ -1,0 +1,30 @@
+meta {
+  name: register-as-buyer
+  type: http
+  seq: 103
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_register_push_token
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  { "p_token": "ExponentPushToken[bruno-push-token-0001]", "p_platform": "android" }
+}
+
+tests {
+  test("a signed-in buyer registers a token", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  Run after auth/login-buyer. The token is a Bruno fixture; the folder deletes it at the end.
+}

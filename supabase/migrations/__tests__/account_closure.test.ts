@@ -38,15 +38,16 @@ const functionBody = (sql: string): string => {
   return match[0];
 };
 
-// remove-legacy-wallet T4 replaced fn_close_account (no wallet blockers); the
-// canonical file carries that newest body.
-const findWalletRemovalMigration = (): string => {
+// remove-legacy-wallet T4 replaced fn_close_account (no wallet blockers), and
+// expo-push-notifications T1 replaced it again (closing deletes push tokens);
+// the canonical file carries that newest body.
+const findLatestCloseAccountMigration = (): string => {
   const files = readdirSync(MIGRATIONS_DIR).filter((f) =>
-    f.endsWith('_remove_wallet_writes_core.sql'),
+    f.endsWith('_close_account_push_tokens.sql'),
   );
   if (files.length !== 1) {
     throw new Error(
-      `Expected exactly one *_remove_wallet_writes_core.sql, found ${files.length}`,
+      `Expected exactly one *_close_account_push_tokens.sql, found ${files.length}`,
     );
   }
   return readFileSync(join(MIGRATIONS_DIR, files[0]), 'utf8');
@@ -67,7 +68,7 @@ describe('account closure migration', () => {
 
   test('the migration and the canonical files define the same function and table', () => {
     expect(functionBody(canonicalFunction)).toBe(
-      functionBody(findWalletRemovalMigration()),
+      functionBody(findLatestCloseAccountMigration()),
     );
     const table = (text: string) =>
       normalize(text).match(

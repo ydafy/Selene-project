@@ -1,0 +1,34 @@
+meta {
+  name: disable-token-as-service-role
+  type: http
+  seq: 116
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/push_tokens?token=eq.ExponentPushToken%5Bbruno-push-token-0001%5D
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  { "disabled_at": "2026-10-29T00:00:00Z", "disabled_reason": "DeviceNotRegistered" }
+}
+
+tests {
+  test("the service role disables the token, as the dispatcher does for a dead device", function () {
+    expect(res.getStatus()).to.equal(200);
+    const rows = res.getBody();
+    expect(rows).to.have.length(1);
+    expect(rows[0].disabled_reason).to.equal("DeviceNotRegistered");
+  });
+}
+
+docs {
+  Stands in for the dispatcher (T3) marking a token dead.
+}

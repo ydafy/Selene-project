@@ -1,0 +1,30 @@
+meta {
+  name: read-token-after-reactivation
+  type: http
+  seq: 118
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/push_tokens?select=user_id,platform,disabled_at,disabled_reason&token=eq.ExponentPushToken%5Bbruno-push-token-0001%5D
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("registering again clears the disabled state", function () {
+    const rows = res.getBody();
+    expect(rows).to.have.length(1);
+    expect(rows[0].user_id).to.equal(bru.getVar("pushSellerId"));
+    expect(rows[0].disabled_at).to.equal(null);
+    expect(rows[0].disabled_reason).to.equal(null);
+  });
+}
+
+docs {
+  Service-role read after the reactivation.
+}

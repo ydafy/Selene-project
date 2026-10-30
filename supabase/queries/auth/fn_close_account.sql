@@ -6,6 +6,7 @@
 -- because ledger foreign keys point to it) and record the closure.
 -- Returns {status: 'closed' | 'already_closed' | 'blocked' | 'not_found', ...}.
 -- Service role only; the Edge Function cleans Stripe and Storage afterwards.
+-- Also removes the user's push tokens (expo-push-notifications T1).
 -- =========================================================================
 
 CREATE OR REPLACE FUNCTION public.fn_close_account(p_user_id uuid)
@@ -185,6 +186,7 @@ BEGIN
   DELETE FROM public.favorites WHERE user_id = p_user_id;
   DELETE FROM public.blocked_users WHERE blocker_id = p_user_id OR blocked_id = p_user_id;
   DELETE FROM public.notifications WHERE user_id = p_user_id;
+  DELETE FROM public.push_tokens WHERE user_id = p_user_id;
 
   -- A shipment keeps its origin address id, so an address a shipment points to
   -- cannot be deleted; its personal data is scrubbed in place instead.
