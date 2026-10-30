@@ -1,3 +1,5 @@
+import type { Tables } from '@selene/types';
+
 export interface SellerReviewRow {
   id: string;
   created_at: string;
@@ -5,12 +7,8 @@ export interface SellerReviewRow {
   comment: string | null;
   shipment_id: string | null;
   product_id: string | null;
-  reviewer: {
-    username: string | null;
-    avatar_url: string | null;
-    // Not in the generated types until `db:types` runs after the closure migration.
-    deleted_at?: string | null;
-  } | null;
+  reviewer: (Pick<Tables<'profiles'>, 'username' | 'avatar_url'> &
+    Partial<Pick<Tables<'profiles'>, 'deleted_at'>>) | null;
   product: {
     name: string;
   } | null;

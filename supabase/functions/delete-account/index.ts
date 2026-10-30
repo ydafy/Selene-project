@@ -56,10 +56,7 @@ const handler = createDeleteAccountHandler({
   },
   now: () => Date.now(),
   closeAccount: async (userId) => {
-    // The RPC is not in the generated types until `bun run db:types` runs after it is applied.
-    const { data, error } = await getAdminClient().rpc('fn_close_account' as never, {
-      p_user_id: userId,
-    } as never);
+    const { data, error } = await getAdminClient().rpc('fn_close_account', { p_user_id: userId });
     return { data: data as unknown, error };
   },
   ...createSupabaseClosurePorts({ getAdmin: getAdminClient, getStripe }),

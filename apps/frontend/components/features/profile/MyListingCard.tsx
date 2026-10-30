@@ -102,8 +102,8 @@ export const MyListingCard = ({
 
   // Show actions if NOT history, or if rejected (actionable from history).
   // A listing held by an account suspension has none: the server refuses both.
-  // Hide trash when IN_DISPUTE
   const showActions = !isHeld && (!isHistoryItem || isRejected);
+  // Hide trash when IN_DISPUTE
   const showTrash = !isInDispute;
 
   return (

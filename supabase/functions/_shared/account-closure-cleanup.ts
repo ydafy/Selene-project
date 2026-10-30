@@ -256,18 +256,6 @@ export function createSupabaseClosurePorts(deps: {
   getAdmin: () => SupabaseClient<Database>;
   getStripe: () => StripeCleanupClient;
 }): Pick<ClosureCleanupPorts, 'deleteStripeCustomer' | 'deleteStripeAccount' | 'removeStorageFiles' | 'recordCleanup'> {
-  // `account_closures` and its RPCs are not in the generated types until `bun run db:types`
-  // runs after the migrations are applied.
-  type ClosureTable = {
-    update: (values: Record<string, unknown>) => {
-      eq: (column: string, value: string) => Promise<{ error: { message: string } | null }>;
-    };
-  };
-  type RecordRpc = (
-    name: string,
-    args: Record<string, unknown>,
-  ) => Promise<{ error: { message: string } | null }>;
-
   return {
     deleteStripeCustomer: async (customerId) => {
       await deps.getStripe().customers.del(customerId);
@@ -320,16 +308,17 @@ export function createSupabaseClosurePorts(deps: {
       const admin = deps.getAdmin();
       if ('attempt' in update || 'finish' in update) {
         // One atomic UPDATE in the database: concurrent runs cannot undercount.
-        const { error } = await (admin.rpc as unknown as RecordRpc).call(admin, 'fn_record_closure_attempt', {
+        const { error } = await admin.rpc('fn_record_closure_attempt', {
           p_user_id: userId,
-          p_last_error: update.last_error,
+          // The SQL argument accepts NULL (clears the error); the generator types every argument as non-null.
+          p_last_error: update.last_error as string,
           p_count_attempt: 'attempt' in update,
         });
         if (error) throw new Error(error.message);
         return;
       }
-      const table = admin.from('account_closures' as never) as unknown as ClosureTable;
-      const { error } = await table
+      const { error } = await admin
+        .from('account_closures')
         .update({ ...update, updated_at: new Date().toISOString() })
         .eq('user_id', userId);
       if (error) throw new Error(error.message);

@@ -9,6 +9,7 @@ import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import { SettingsRow } from './SettingsRow';
 import { useAuthContext } from '../../../components/auth/AuthProvider';
 import { supabase } from '../../../core/db/supabase';
+import { isGoogleOnlyAccount } from '../../../core/auth/reauth.logic';
 import {
   validateEmail,
   buildEmailUpdatePayload,
@@ -31,7 +32,7 @@ export const AccountSection = ({ email }: AccountSectionProps) => {
   const [isEmailSubmitting, setIsEmailSubmitting] = useState(false);
 
   const { session } = useAuthContext();
-  const isGoogleUser = session?.user?.app_metadata?.provider === 'google';
+  const isGoogleUser = isGoogleOnlyAccount(session?.user ?? null);
 
   const handleEmailConfirm = async () => {
     const validation = validateEmail(emailDraft);

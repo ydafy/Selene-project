@@ -114,13 +114,13 @@ Follow repository manual Supabase workflow: supply SQL/function/config handoff, 
 - T8 | S1 | parent orchestration | in progress, plan approved (L107); branch `audit/auth-backlog` | Auth backlog pass: resolve the consolidated list in L81 plus the T6/T7 additions | Commit: not created.
 - T8a | S4 | inline | done (3933485, review approved L110; device check pending) | F1: listings held by an account suspension (`status_before_account_hold` set) stay out of "history" in Mis publicaciones | Commit: not created.
 - T8b | S8 | delegated writer (context backstop) | done (d7349da, review approved L111; follow-up in the next commit) | `account-closure-cleanup`: shared constant-time `isAuthorizedCronRequest` and mismatch report; failed cleanup steps reported to Sentry (L74); own commit (risk: auth guard) | Commit: not created.
-- T8c | S8 | inline | pending | Drop the `as never` casts in `delete-account`, `account-closure-cleanup` and the shared cleanup now that the types exist (L79) | Commit: not created.
-- T8d | S7 | inline | pending | C7: Settings detects Google-only accounts from identities (the `reauth.logic` helper), not `app_metadata.provider`; `codeVerified` reset when the recovery session ends | Commit: not created.
-- T8e | S3,S6 | inline | pending | Auth form tidy: `RegisterForm` confirm keyboard submit through the button guard, unused `theme` in `LoginForm`, unused root keys `loginTitle`/`joinSelene`, local `deleted_at` types replaced by generated ones | Commit: not created.
+- T8c | S8 | inline | done (98b1f41, review approved L114) | Drop the `as never` casts in `delete-account`, `account-closure-cleanup` and the shared cleanup now that the types exist (L79) | Commit: not created.
+- T8d | S7 | inline | done (e63efee, review approved L116; device check pending) | C7: Settings detects Google-only accounts from identities (the `reauth.logic` helper), not `app_metadata.provider`; `codeVerified` reset when the recovery session ends | Commit: not created.
+- T8e | S3,S6 | inline | done (b53d0a5, review approved L115) | Auth form tidy: `RegisterForm` confirm keyboard submit through the button guard, unused `theme` in `LoginForm`, unused root keys `loginTitle`/`joinSelene`, local `deleted_at` types replaced by generated ones | Commit: not created.
 - T8f | S4,S8 | inline | pending | Admin-web: `getAccountStatusActions` default branch, closed accounts shown as deleted (reason `account_closed`) instead of banned, reactivation copy that does not promise a prior status (L22) | Commit: not created.
 - T8g | S6,S8 | inline | pending | Server reserves the `deleted_` username prefix for closed accounts (migration; maintainer applies); own commit (high risk: SQL) | Commit: not created.
-- T8h | S3 | inline | done (L112) | #50: `common:errors.errorTitle` in 4 mobile files | Commit: not created.
-- T8i | S9 | inline | pending | Mount tests for the mobile `CaptchaProvider` and admin `useCaptcha` (L98, L101) | Commit: not created.
+- T8h | S3 | inline | done (28193ba, review approved L113) | #50: `common:errors.errorTitle` in 4 mobile files | Commit: not created.
+- T8i | S9 | inline | done (L116) | Mount tests for the mobile `CaptchaProvider` and admin `useCaptcha` (L98, L101) | Commit: not created.
 
 ## Log
 
@@ -812,3 +812,34 @@ RED: new test "reports a repeated step failure once per run, after every row was
 RED: 1 fail, 8 missing entries (4 files x 2 languages). GREEN: `core/i18n` + `core/hooks` 308 pass. ESLint clean.
 Finding while scanning the whole app with the same test: eight other `common:` keys are missing (`cancel`, `select`, `states.unknown`, `actions.retry`, `actions.cancel`, `errors.required`, and `actions.goBack` in English); opened #72, out of this task.
 Risk: none (copy keys only).
+
+### L113 — Delivery slice 1 boundary; T8c generated types in the closure functions
+Slice boundary: the branch passed ~400 authored lines at 28193ba. Slice 1 (for a pull request when the maintainer asks) is origin/main..28193ba: tracker plan and block-6 checks, T8a, T8b with its follow-up, T8h. Later commits form slice 2.
+28193ba review (reliability) approved; advisory: the key test would pass vacuously if its regex matched nothing (fixed in T8e).
+T8c: `delete-account/index.ts`, `account-closure-cleanup/index.ts` and `_shared/account-closure-cleanup.ts` call `fn_close_account`, `fn_claim_account_closures`, `fn_record_closure_attempt` and the `account_closures` table through the typed admin client; the `as never` casts, the hand-written `ClaimRpc`/`CappedQuery`/`ClosureTable`/`RecordRpc` types and the "not in the generated types" comments are gone. One narrow cast stays: `p_last_error` is NULL-able in SQL but generated as `string`, so `update.last_error as string` with a comment. Test helpers keep `admin as never` for their fakes.
+Evidence: `deno check` clean for both functions; `delete-account` + `account-closure-cleanup` + shared closure tests 101 pass; ESLint clean (an unused `CappedClosure` import was removed). Local stack: full `bun run api:test` 312/312, including every `delete-account` and `account-closure-cleanup` request. A first run had 2 unidentified failures while `functions:serve` stopped after its idle minute; the rerun with the same code passed all 312.
+Deploy (maintainer): redeploy `delete-account` and `account-closure-cleanup` with T8b; no SQL, secret or cron change.
+Risk: none (types only; the same calls run, proven by Bruno).
+
+### L114 — T8e: auth form tidy
+98b1f41 review (reliability) approved with no findings.
+`RegisterForm` confirm-password "Done" now calls `submitFromKeyboard`, which returns unless `isValid && !isBusy` (the register button's guard) before `handleSubmit(onSubmit)` (L88). `LoginForm` drops the unused `useTheme`/`Theme` (L88). The root `auth` keys `loginTitle` and `joinSelene` are removed in en and es (unused since L87; `guestScreen.joinSelene` stays). `PublicIdentitySource` and the review row's `reviewer` use `Tables<'profiles'>` instead of hand-written `deleted_at` types (L79); `deleted_at` stays optional on purpose, because queries that do not select it use the closed-username fallback. `MyListingCard`: the "Hide trash when IN_DISPUTE" comment moved to `showTrash` (T8a review). `commonKeyUsage.test.ts` now fails when a file yields no `common:` match (T8h review).
+RED: `authFormFields.test.ts` "register confirm password submits from the keyboard with the button guards" failed (1 of 18). GREEN: auth tests + `core/utils` + `core/hooks` + `core/i18n` 566 pass; ESLint clean on touched files; `@selene/frontend` typecheck 17 errors, all in untouched test files (current main baseline, was 16 on L101).
+Device check: on register, "Done" on the confirm field with an invalid form does nothing; with a valid form it registers once.
+Risk: none (UI guard, types and unused code).
+
+### L115 — T8d: Google-only detection and an ended recovery session
+b53d0a5 review (readability, reliability) approved; suggestions only (the empty-scan assertion does not name the file; the keyboard-guard test is a source contract; L114 wording).
+C7: `AccountSection` and `SecuritySection` decided "Google user" from `app_metadata.provider === 'google'`, which names only the first provider, so a Google sign-up that later added a password lost its password change. New `isGoogleOnlyAccount(user)` in `core/auth/reauth.logic.ts` reuses the identity-first `resolveReauthMethod` (block 5); both sections use it.
+Recovery: `completePasswordRecovery` kept `codeVerified` after any `updateUser` failure; when the recovery session itself ended (`AuthSessionMissingError`, `session_not_found`, `session_expired`) the screen hid the code field and every retry failed. It now returns `codeVerified: false` with the new `auth:errors.recoverySessionEnded` ("Your reset session ended. Request a new code to continue." / "Tu sesión de recuperación terminó. Solicita un código nuevo para continuar."), so the code field and its resend row come back. Other failures keep the verified code (C3 unchanged).
+RED: both test files failed to load (`RECOVERY_SESSION_ENDED_KEY`, `isGoogleOnlyAccount` missing). GREEN: `core/auth` + `core/i18n` + auth screen tests 285 pass. ESLint clean; `@selene/frontend` typecheck 17 (baseline).
+Device check: an email account signed in with Google too still sees "Change password"; a Google-only account does not.
+Risk: item 2 (which credential UI a user sees; the server still requires the current password).
+
+### L116 — Slice 1 merged; T8i CAPTCHA provider tests
+Maintainer (verbatim): "dale abrimos pr no? y lo mergeamos a maain? Ya hide el redeploy de las EF, sobre el etst maunal porfa se un poco mas descriptivo de lo que quieres que haga, y dime si ocupas priero esos test o si peudes continuar a la par"
+`delete-account` and `account-closure-cleanup` redeployed by the maintainer (T8b, T8c). Slice 1 opened as PR #75 from `fix/auth-backlog-1` (origin/main..28193ba); CI `test` and the Vercel previews passed; merged as 60057ee, which closed #50. origin/main merged back into `audit/auth-backlog` (23dd5a0, clean; `bun test` 4123 pass, 0 fail). Slice 2 starts after 60057ee.
+e63efee review (risk, reliability) approved; advisory: the settings wiring test reads source text.
+T8i, mobile: `tests/auth/captcha-provider.mount.test.tsx` mounts the real `CaptchaProvider` with a fake `@hcaptcha/react-native-hcaptcha` (child process, like the other mount tests) and drives it through `getCaptchaToken`: site key, invisible size and app language; a solved challenge resolves, marks the token used and hides the widget; `open` keeps waiting; `challenge-closed` rejects `captcha_cancelled`; an SDK error rejects `captcha_failed`; a new request cancels the pending one; a late event changes nothing; after unmount the getter fails closed. Mutation check: removing the "cancel the pending request" line or the "ignore late events" guard each fails one test; the provider file is unchanged.
+T8i, admin-web: `react-test-renderer` is not installed there, so instead of a new dependency the request and reset rules moved from `useCaptcha.tsx` into `hcaptchaHandle.logic.ts` (`createHcaptchaHandle(getWidget, configured)`); the hook keeps only the ref, the getter and the widget. `hcaptchaHandle.logic.test.ts` covers token plus reset, closed challenge, other errors, no mounted widget, no site key and the timeout reset. RED: module missing; GREEN: `apps/admin-web/src/lib/captcha` 21 pass. ESLint clean; `admin-web` typecheck exit 0.
+Risk: none (tests, and a behavior-preserving move in the admin hook covered by its tests and the login e2e).

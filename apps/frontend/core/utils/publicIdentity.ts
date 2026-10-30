@@ -5,16 +5,15 @@
  * no avatar and no link to the public profile.
  */
 
+import type { Tables } from '@selene/types';
+
 /**
- * `profiles.deleted_at` is not in the generated Supabase types until the
- * account-closure migration is applied and `bun run db:types` runs. Remove
- * this local extension then.
+ * The profile columns a query loaded. `deleted_at` stays optional: a query that
+ * does not select it falls back to the closed-username shape below.
  */
-export type PublicIdentitySource = {
-  username?: string | null;
-  avatar_url?: string | null;
-  deleted_at?: string | null;
-};
+export type PublicIdentitySource = Partial<
+  Pick<Tables<'profiles'>, 'username' | 'avatar_url' | 'deleted_at'>
+>;
 
 export type PublicIdentity = {
   isDeleted: boolean;

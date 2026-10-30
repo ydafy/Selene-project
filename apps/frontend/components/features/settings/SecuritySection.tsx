@@ -8,6 +8,7 @@ import { FormTextInput } from '../../ui/FormTextInput';
 import { SettingsRow } from './SettingsRow';
 import { supabase } from '../../../core/db/supabase';
 import { signOutUser } from '../../../core/auth/signOut';
+import { isGoogleOnlyAccount } from '../../../core/auth/reauth.logic';
 import { useAuthContext } from '../../../components/auth/AuthProvider';
 import {
   validatePasswordChange,
@@ -24,7 +25,7 @@ type SecuritySectionProps = {
 export const SecuritySection = ({ disabled = false }: SecuritySectionProps) => {
   const { t } = useTranslation('settings');
   const { session } = useAuthContext();
-  const isGoogleUser = session?.user?.app_metadata?.provider === 'google';
+  const isGoogleUser = isGoogleOnlyAccount(session?.user ?? null);
 
   // Logout dialog
   const [dialogOpen, setDialogOpen] = useState(false);

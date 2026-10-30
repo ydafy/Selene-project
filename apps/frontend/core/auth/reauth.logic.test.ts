@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'bun:test';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   reauthenticate,
+  isGoogleOnlyAccount,
   resolveReauthMethod,
   type ReauthDeps,
 } from './reauth.logic';
@@ -202,3 +205,42 @@ describe('reauthenticate', () => {
     expect(calls).toEqual(['restore']);
   });
 });
+
+describe('isGoogleOnlyAccount (C7)', () => {
+  it('a Google sign-up that later added a password is not Google-only', () => {
+    expect(
+      isGoogleOnlyAccount({
+        identities: [{ provider: 'google' }, { provider: 'email' }],
+        app_metadata: { provider: 'google' },
+      }),
+    ).toBe(false);
+  });
+
+  it('an account whose only identity is Google is Google-only', () => {
+    expect(
+      isGoogleOnlyAccount({
+        identities: [{ provider: 'google' }],
+        app_metadata: { provider: 'google' },
+      }),
+    ).toBe(true);
+  });
+
+  it('email accounts and a missing user are not Google-only', () => {
+    expect(isGoogleOnlyAccount({ identities: [{ provider: 'email' }] })).toBe(false);
+    expect(isGoogleOnlyAccount(null)).toBe(false);
+  });
+});
+
+describe('settings sections (C7)', () => {
+  it('decide Google-only accounts from identities, not app_metadata.provider', () => {
+    for (const file of ['AccountSection.tsx', 'SecuritySection.tsx']) {
+      const src = readFileSync(
+        join(import.meta.dir, '..', '..', 'components', 'features', 'settings', file),
+        'utf8',
+      );
+      expect(src).toContain('isGoogleOnlyAccount(session?.user ?? null)');
+      expect(src).not.toContain('app_metadata?.provider');
+    }
+  });
+});
+
