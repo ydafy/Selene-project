@@ -7,11 +7,11 @@ docs over copies. Keep it under ~150 lines; put area procedures in the nested fi
 
 Selene is a peer-to-peer marketplace in Mexico for used PC hardware. Its product is trust: technical verification of listings and safe money flow between buyers and sellers. It is in active development, and every module is built as if it shipped to production tomorrow. Do not add sandbox-only shortcuts, mocks in production paths, or "fine for now" workarounds.
 
-Existing rows in the Supabase project and the Stripe sandbox are disposable test data, not users to protect. Do not write backfills, compatibility paths, or special cases to keep old rows working; change the schema, producers, and flows directly. This never lowers the bar: build every module as if it shipped to production the next day.
+Existing rows in the Supabase project and the Stripe sandbox are disposable test data, not users to protect. Do not write backfills, compatibility paths, or special cases to keep old rows working; change the schema, producers, and flows directly.
 
 ## Map
 
-Bun monorepo with strict TypeScript. Stack: Expo SDK 57, React Native 0.86, and React 19.2 in `apps/frontend` (TypeScript 6.0); React 19.1, Vite 8, and TypeScript 5.9 in `apps/admin-web`. Before changing files under a path below, read its guide; it holds the procedures for that area.
+Bun monorepo with strict TypeScript. Stack: Expo, React Native, and React in `apps/frontend`; React and Vite in `apps/admin-web`. Each workspace's `package.json` is the source of truth for versions; read it instead of assuming one. Before changing files under a path below, read its guide; it holds the procedures for that area.
 
 | Path                  | What                                                                     | Read first                     |
 | --------------------- | ------------------------------------------------------------------------ | ------------------------------ |
@@ -35,7 +35,7 @@ You choose and run these checks, without being asked, based on what your change 
 | Shipment transfer or cancellation  | The above plus TLC on `docs/formal/shipment-transfer-cancellation/` (command in its README); update its code mapping table and sync commit                                                                                          |
 | A production bug report            | Sentry MCP first, then Supabase logs through the Supabase MCP; reproduce it on the local stack before deciding it works                                                                                                             |
 | Dependencies                       | The `bun audit` command in "Commands"                                                                                                                                                                                               |
-| Frontend only                      | `bun test` for the touched behavior and the typecheck of the touched files                                                                                                                                                          |
+| Frontend only                      | `bun test` for the touched behavior, `bun run lint`, and `bun run typecheck`                                                                                                                                                        |
 | An admin-web screen                | The above plus a Playwright spec in `e2e/admin-web/` (`bun run test:e2e`) driving the real page; when the screen calls a new or changed endpoint, also run that flow against the local stack (`bun run test:e2e:local`)             |
 
 Report which of these you ran and their results.
@@ -58,7 +58,7 @@ Manual testing: never ask the maintainer to repeat by hand what these checks alr
 | When and how do I update a dependency?  | `docs/dependencies.md`                                                                                 |
 | Which skills apply?                     | `.atl/skill-registry.md`                                                                               |
 | Which conventions apply to new code?    | `docs/conventions.md`                                                                                  |
-| What is pending outside a feature?      | GitHub Issues ("Finding" form); private Security Advisories for vulnerabilities                        |
+| What is pending outside a feature?      | GitHub Issues ("Finding" and "Idea" forms); private Security Advisories for vulnerabilities            |
 
 Use the typed aliases (`Tables<'orders'>`, `Enums<'order_status_enum'>`). Never invent table, column, enum, or relationship names.
 
@@ -106,7 +106,7 @@ Run from the repository or worktree root. `package.json` is the source of truth.
 - Structure, naming, and test placement: `docs/conventions.md`.
 - If an unrelated failure blocks verification, report the command and output and stop for a decision. Never weaken a test to get green.
 - Code, identifiers, comments, tests, commits, and docs are in English. User-facing strings go through i18n with both English and Spanish (`apps/frontend/core/i18n/locales`); locale parity tests enforce it.
-- Several features are developed in parallel worktrees under `C:/dev/School-portal-worktrees/`. Stay inside the worktree you were given. `git worktree add` copies the gitignored env files (`apps/frontend/.env`, `apps/admin-web/.env`, `supabase/functions/.env`) from the main checkout through the `post-checkout` hook; in an older worktree run `bun run worktree:env`. A finished worktree (branch merged) is removed with `bun run worktree:clean <name>` from the main checkout, which also removes its branch and local Supabase stack data (`docs/worktrees.md`); show the plan and run `--yes` only when the maintainer asks. Do not delete worktrees, branches or `~/.supabase/stacks` by hand.
+- Several features are developed in parallel worktrees under `C:/dev/School-portal-worktrees/`. Stay inside the worktree you were given. A new worktree gets the gitignored env files through the `post-checkout` hook; in an older one run `bun run worktree:env`. To remove a finished worktree, run `bun run worktree:clean <name>` from the main checkout to show the plan, and add `--yes` only when the maintainer asks (`docs/worktrees.md`). Never delete worktrees, branches, or `~/.supabase/stacks` by hand.
 
 ## Findings outside the current work
 
@@ -115,9 +115,9 @@ Before starting work on a module, read the open issues and the draft Security Ad
 When you find a bug or gap that is not part of the task, do not fix it: record it and continue.
 
 - Ordinary findings: open a GitHub issue with the "Finding" form (`.github/ISSUE_TEMPLATE/finding.yml`) using the `gentle-ai-issue-creation` skill, without asking first. Search open and closed issues for a duplicate first. Write it so the maintainer understands it without the code open, and cite the issue number in the feature's `## Log`. Keep the form's `### Priority` and `### Area` headings with the exact option text: `.github/workflows/issue-labels.yml` sets the `priority:*` and `area:*` labels from them, so change a priority by editing the body, not the label.
+- Ideas (a feature, tool, or process worth doing later, not a defect): open an issue with the "Idea" form (`.github/ISSUE_TEMPLATE/idea.yml`) when the maintainer asks to note one. Do not keep backlog lists in `odd/tasks/`.
 - Vulnerabilities (auth, permissions, secrets, money integrity, data exposure): this repository is public. While unfixed, never describe them in an issue, PR, commit message, or any file in the repository. Tell the maintainer in the session and draft a private Security Advisory (`SECURITY.md`); details go public only after the fix is deployed. When the maintainer confirms the fix is deployed, close the advisory yourself (`gh api -X PATCH repos/ydafy/Selene-project/security-advisories/<GHSA-id> -f state=closed`); do not publish it.
 - A PR that fixes an issue says `Closes #N`. Close an issue by hand only with the maintainer's decision.
-- `odd/tasks/cross-module-backlog.md` is legacy: add nothing to it; its open items will move to issues and advisories.
 
 ## How money moves
 
@@ -147,7 +147,7 @@ These protect real money and user data. They hold for every change:
 
 - **Supabase.** The maintainer applies SQL and deploys Edge Functions manually; a file in `supabase/` does not mean it is live. The remote project is treated as production: read it only through the read-only Supabase MCP, never run data-mutating tests against it, and never try to bypass read-only mode. Procedures: `supabase/AGENTS.md`.
 - **Stripe.** Read the sandbox (`Selene sandbox`, test mode) through the Stripe MCP instead of asking for Dashboard screenshots: payment intents, charges, refunds, balance, payouts, transfers, and events. It is authorized by OAuth for the sandbox only (not for connected seller accounts), and write and money-moving tools are hidden in the user-level `mcp.json`. Always pass `livemode: false`; never request live-mode access or try to reach hidden write tools.
-- **Sentry.** Project `selene-ze/selene-edge-functions` (free plan) receives Edge Function errors. Read it through the Sentry MCP (`search_issues`, `search_errors`, `get_sentry_resource`, ...); search it before reading logs when investigating a production bug. Never resolve, assign, or edit issues.
+- **Sentry.** Project `selene-ze/selene-edge-functions` receives Edge Function errors. Read it through the Sentry MCP (`search_issues`, `search_errors`, `get_sentry_resource`, ...); search it before reading logs when investigating a production bug. Never resolve, assign, or edit issues.
 
 ## Git
 

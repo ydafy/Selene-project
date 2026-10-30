@@ -21,7 +21,7 @@ bun run worktree:clean <folder name or path>        # prints the plan, changes n
 bun run worktree:clean <folder name or path> --yes  # runs it
 ```
 
-In order, it stops the worktree's Supabase stack, removes the worktree, prunes the registration, deletes the local branch with `git branch -d`, prunes remote-tracking branches, and deletes the stack data folders whose `state.json` names the worktree.
+In order, it stops the worktree's Supabase stack, removes the worktree, prunes the registration, deletes the local branch with `git branch -D` after checking that the branch is merged into `origin/main` (`-d` would also compare it against its upstream, which can lag behind), prunes remote-tracking branches, and deletes the stack data folders whose `state.json` names the worktree.
 
 It refuses, and changes nothing, when:
 
@@ -32,7 +32,7 @@ It refuses, and changes nothing, when:
 - the path is not a worktree of this repository;
 - the arguments mix a worktree with `--orphans`, or include an unknown flag.
 
-If Windows keeps the folder locked (an open terminal, editor or Docker Desktop), the command stops after the failed remove. Close what holds it, delete the folder by hand, and run the command again: it then finishes the remaining steps. If a later step fails (deleting the branch or a stack folder), the command names it, ends with `finished with problems` and exits with code 1. A `supabase stop` that could not run is reported as a warning: a worktree without a running stack is the normal case.
+Git removes the worktree with `core.longpaths` on, because `node_modules` holds paths longer than 260 characters. If `git worktree remove` still fails, the command deletes the folder itself (the worktree already passed every check above). If Windows keeps the folder locked (an open terminal, editor or Docker Desktop), the command stops: close what holds it and run the command again. If a later step fails (deleting the branch or a stack folder), the command names it, ends with `finished with problems` and exits with code 1. A `supabase stop` that could not run is reported as a warning: a worktree without a running stack is the normal case.
 
 ## Stack data of worktrees already deleted
 

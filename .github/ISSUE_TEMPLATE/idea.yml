@@ -1,0 +1,33 @@
+name: Idea
+description: A feature, tool, or process improvement worth doing later. Not a bug.
+title: '[Idea] '
+labels: [idea]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Bugs and gaps in what exists go in a **Finding**. Security vulnerabilities go to a private report (see SECURITY.md).
+  - type: textarea
+    id: what
+    attributes:
+      label: Idea
+      description: What to build or change, in plain words.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: What it would improve, and for whom.
+    validations:
+      required: true
+  - type: input
+    id: when
+    attributes:
+      label: When to revisit
+      description: The moment or trigger that makes it worth doing, e.g. "before go-live" or "first performance task".
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Design sketches, links, decisions already made, and where the idea came from.

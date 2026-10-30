@@ -142,7 +142,7 @@ Tracker: `odd/tasks/shipment-cancellations-b2.md` (specs S1–S8, Log L1–L45).
 ### Remaining limits
 
 - Refunds UI polish (payout seller search and queue error banner still visible under "Reembolsos", Spanish labels for status and reason) is B5.
-- Out-of-module follow-ups live in `odd/tasks/cross-module-backlog.md` (BL1–BL11), including payout runs without a close action (BL1) and the 1-cent round-down residual (BL11).
+- Out-of-module follow-ups are GitHub issues, including payout runs without a close action (#96) and the 1-cent round-down residual (#97).
 - B4 (preparing evidence, label outcome, orphan labels) remains; B3 closed above.
 
 ## B1 status (closed by B1.4)
