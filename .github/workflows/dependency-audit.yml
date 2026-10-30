@@ -24,14 +24,20 @@ jobs:
       # Bun version comes from "packageManager" in package.json.
       - uses: oven-sh/setup-bun@v2
       # Reads bun.lock directly; no install needed.
-      # Accepted exceptions: build-time tooling only (Expo CLI, Metro, Babel/Jest),
-      # never in the app bundle or on a server with untrusted input. Review them on
-      # every Expo SDK upgrade and drop each --ignore once a fixed version lands.
+      # Accepted exceptions, each with no fix the dependency range accepts. Review them
+      # on every Expo SDK upgrade and drop each --ignore once a fixed version lands.
+      # scripts/dependency-audit-exceptions.test.ts fails if an exception would also
+      # hide another copy of the package.
       #   GHSA-86w9-cpqp-85rv node-forge 1.4.0 (@expo/cli 57 dev server): no fix published
       #   GHSA-mrhx-c7xc-m3w5 zod 3.25.76 (@expo/cli 57 build tooling): zod 3 has no fix and
       #     @expo/cli 58 still needs ^3.25.76. bun ignores a GHSA for every copy, so
       #     scripts/dependency-audit-exceptions.test.ts fails if any other zod drops below 4.6.6.
+      #   GHSA-qr28-fpjm-wq7f decode-uri-component 0.2.2 (expo-router 57 > query-string 7.1.3):
+      #     in the app bundle, but only a slow decode of a crafted deep link on the user's own
+      #     device; no server or money path. Fixed in 0.5.1, which is ESM-only and outside
+      #     query-string 7's ^0.2.2 range, so an override would risk the Metro bundle (issue #81).
       - run: >-
           bun audit --audit-level=high
           --ignore=GHSA-86w9-cpqp-85rv
           --ignore=GHSA-mrhx-c7xc-m3w5
+          --ignore=GHSA-qr28-fpjm-wq7f
