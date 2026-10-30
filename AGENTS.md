@@ -55,6 +55,7 @@ Manual testing: never ask the maintainer to repeat by hand what these checks alr
 | Which tables, columns, and enums exist? | `packages/types/src/database.types.ts` and aliases in `packages/types/src/types.ts`                    |
 | What is deployed right now?             | The Supabase MCP, not the repository                                                                   |
 | What does production need?              | `docs/go-live.md`                                                                                      |
+| When and how do I update a dependency?  | `docs/dependencies.md`                                                                                 |
 | Which skills apply?                     | `.atl/skill-registry.md`                                                                               |
 | Which conventions apply to new code?    | `docs/conventions.md`                                                                                  |
 | What is pending outside a feature?      | GitHub Issues ("Finding" form); private Security Advisories for vulnerabilities                        |
