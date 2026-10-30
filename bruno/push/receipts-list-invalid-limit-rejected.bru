@@ -1,0 +1,31 @@
+meta {
+  name: receipts-list-invalid-limit-rejected
+  type: http
+  seq: 147
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_list_push_receipts_due
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  { "p_limit": 1001 }
+}
+
+tests {
+  test("more than the 1000 ids Expo accepts is rejected", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().message).to.equal("INVALID_PUSH_RECEIPT_LIMIT");
+  });
+}
+
+docs {
+  Expo getReceipts takes at most 1000 ids.
+}

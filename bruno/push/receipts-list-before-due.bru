@@ -1,0 +1,31 @@
+meta {
+  name: receipts-list-before-due
+  type: http
+  seq: 148
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_list_push_receipts_due
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  { "p_limit": 1000 }
+}
+
+tests {
+  test("the sent ticket is not listed", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().map((r) => r.delivery_id)).to.not.include(bru.getVar("pushDeliveryId"));
+  });
+}
+
+docs {
+  The delivery was just sent; its receipt is not due for 15 minutes.
+}

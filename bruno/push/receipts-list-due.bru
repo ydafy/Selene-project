@@ -1,0 +1,32 @@
+meta {
+  name: receipts-list-due
+  type: http
+  seq: 150
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_list_push_receipts_due
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  { "p_limit": 1000 }
+}
+
+tests {
+  test("the sent ticket is due 15 minutes after sending", function () {
+    expect(res.getStatus()).to.equal(200);
+    const ours = res.getBody().filter((r) => r.delivery_id === bru.getVar("pushDeliveryId"));
+    expect(ours).to.deep.equal([{ delivery_id: bru.getVar("pushDeliveryId"), ticket_id: "bruno-ticket-1" }]);
+  });
+}
+
+docs {
+  Service role list after the backdate.
+}

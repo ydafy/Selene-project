@@ -1,0 +1,37 @@
+meta {
+  name: receipts-backdate-sent-2-hours
+  type: http
+  seq: 155
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/push_deliveries?id=eq.{{pushDeliveryId}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  { "sent_at": "{{pushSentAt}}", "receipt_checked_at": "{{pushCheckedAt}}" }
+}
+
+script:pre-request {
+  bru.setVar("pushSentAt", new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString());
+  bru.setVar("pushCheckedAt", new Date(Date.now() - 20 * 60 * 1000).toISOString());
+}
+
+tests {
+  test("the fixture row is updated", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.length(1);
+  });
+}
+
+docs {
+  Moves the send two hours back and the last check 20 minutes back.
+}

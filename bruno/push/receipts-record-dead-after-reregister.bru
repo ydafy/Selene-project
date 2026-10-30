@@ -1,0 +1,31 @@
+meta {
+  name: receipts-record-dead-after-reregister
+  type: http
+  seq: 161
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_record_push_receipts
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  { "p_receipts": [{ "id": "{{pushKeepDeliveryId}}", "receipt": "error", "error": "DeviceNotRegistered", "token_dead": true }] }
+}
+
+tests {
+  test("a dead receipt for a push sent before the token registered again keeps the token", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal({"ok": 0, "error": 1, "missing": 0, "pending": 0, "ignored": 0, "tokens_disabled": 0});
+  });
+}
+
+docs {
+  The device registered the token after this push, so it is alive again.
+}

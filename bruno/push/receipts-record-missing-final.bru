@@ -1,0 +1,31 @@
+meta {
+  name: receipts-record-missing-final
+  type: http
+  seq: 156
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_record_push_receipts
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  { "p_receipts": [{ "id": "{{pushDeliveryId}}", "receipt": "missing" }] }
+}
+
+tests {
+  test("a receipt still missing one hour after sending is final", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal({"ok": 0, "error": 0, "missing": 1, "pending": 0, "ignored": 0, "tokens_disabled": 0});
+  });
+}
+
+docs {
+  Expo clears receipts after 24 hours; after an hour without one the row stops being checked.
+}

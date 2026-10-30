@@ -1,0 +1,29 @@
+meta {
+  name: receipts-read-token-still-active
+  type: http
+  seq: 162
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/push_tokens?select=disabled_at,disabled_reason&token=eq.ExponentPushToken%5Bbruno-push-token-0002%5D
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the token stays active", function () {
+    const rows = res.getBody();
+    expect(rows).to.have.length(1);
+    expect(rows[0].disabled_at).to.equal(null);
+    expect(rows[0].disabled_reason).to.equal(null);
+  });
+}
+
+docs {
+  The re-registration guard held.
+}
