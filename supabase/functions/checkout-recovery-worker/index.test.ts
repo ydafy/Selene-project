@@ -1,35 +1,33 @@
-import { describe, expect, it } from "bun:test";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { describe, expect, it } from 'bun:test';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   claimCheckoutRecoveryShells,
   isAuthorizedCheckoutRecoveryWorker,
   processRecoveryClaimsSequentially,
-} from "./recovery.ts";
+} from './recovery.ts';
 
-describe("checkout recovery worker authorization", () => {
-  it("rejects an empty dedicated worker JWT instead of authorizing Bearer whitespace", () => {
+describe('checkout recovery worker authorization', () => {
+  it('rejects an empty dedicated worker JWT instead of authorizing Bearer whitespace', () => {
     expect(
       isAuthorizedCheckoutRecoveryWorker({
-        authorization: "Bearer ",
-        workerServiceRoleJwt: "",
+        authorization: 'Bearer ',
+        workerServiceRoleJwt: '',
       }),
     ).toBe(false);
   });
 
-  it("reads the dedicated worker JWT once and reuses it for authorization and the admin client", () => {
+  it('reads the dedicated worker JWT once and reuses it for authorization and the admin client', () => {
     const source = readFileSync(
       join(
         process.cwd(),
-        "supabase/functions/checkout-recovery-worker/index.ts",
+        'supabase/functions/checkout-recovery-worker/index.ts',
       ),
-      "utf8",
+      'utf8',
     );
 
     expect(
-      source.match(
-        /Deno\.env\.get\(\s*"CHECKOUT_RECOVERY_SERVICE_ROLE_JWT"/g,
-      ),
+      source.match(/Deno\.env\.get\(\s*"CHECKOUT_RECOVERY_SERVICE_ROLE_JWT"/g),
     ).toHaveLength(1);
     expect(source).toMatch(
       /const workerServiceRoleJwt = Deno\.env\.get\(\s*"CHECKOUT_RECOVERY_SERVICE_ROLE_JWT",?\s*\)\?\.trim\(\);/,
@@ -42,87 +40,84 @@ describe("checkout recovery worker authorization", () => {
     );
   });
 
-  it("has no service-role or secret-key fallback", () => {
+  it('has no service-role or secret-key fallback', () => {
     const source = readFileSync(
       join(
         process.cwd(),
-        "supabase/functions/checkout-recovery-worker/index.ts",
+        'supabase/functions/checkout-recovery-worker/index.ts',
       ),
-      "utf8",
+      'utf8',
     );
 
     expect(source).not.toContain('Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")');
-    expect(source).not.toContain("SUPABASE_SECRET_KEYS");
+    expect(source).not.toContain('SUPABASE_SECRET_KEYS');
   });
 });
 
-describe("checkout recovery worker cron claims", () => {
-  it("acquires its expiring enabled-only lease before claiming work and releases it in finally", () => {
+describe('checkout recovery worker cron claims', () => {
+  it('acquires its expiring enabled-only lease before claiming work and releases it in finally', () => {
     const source = readFileSync(
       join(
         process.cwd(),
-        "supabase/functions/checkout-recovery-worker/index.ts",
+        'supabase/functions/checkout-recovery-worker/index.ts',
       ),
-      "utf8",
+      'utf8',
     );
 
     // BL13: the global boolean stayed true forever after a killed run.
-    expect(source).not.toContain("checkout_recovery_running");
+    expect(source).not.toContain('checkout_recovery_running');
     expect(source).toContain(
-      "const lease = await acquireCheckoutRecoveryLease(leaseClient);",
+      'const lease = await acquireCheckoutRecoveryLease(leaseClient);',
     );
-    expect(source).toContain("if (!lease.acquired)");
+    expect(source).toContain('if (!lease.acquired)');
     expect(source).toContain(
-      "return Response.json({ received: true, skipped: true });",
+      'return Response.json({ received: true, skipped: true });',
     );
-    expect(source).toContain("leaseId = lease.leaseId;");
-    expect(source).toContain("} finally {");
+    expect(source).toContain('leaseId = lease.leaseId;');
+    expect(source).toContain('} finally {');
     expect(source).toMatch(
       /await releaseCheckoutRecoveryLease\(\s*leaseClient,\s*leaseId,\s*warnLeaseNotReleased,\s*\);/,
     );
-    expect(source).not.toContain("CHECKOUT_RECOVERY_LOCK_RELEASE_FAILED");
-    expect(source.indexOf("const claims = await claimCheckoutRecoveryShells"))
-      .toBeGreaterThan(
-        source.indexOf("leaseId = lease.leaseId;"),
-      );
+    expect(source).not.toContain('CHECKOUT_RECOVERY_LOCK_RELEASE_FAILED');
+    expect(
+      source.indexOf('const claims = await claimCheckoutRecoveryShells'),
+    ).toBeGreaterThan(source.indexOf('leaseId = lease.leaseId;'));
   });
 
-  it("derives missing charge evidence from an expanded PaymentIntent before refund work", () => {
+  it('derives missing charge evidence from an expanded PaymentIntent before refund work', () => {
     const source = readFileSync(
       join(
         process.cwd(),
-        "supabase/functions/checkout-recovery-worker/index.ts",
+        'supabase/functions/checkout-recovery-worker/index.ts',
       ),
-      "utf8",
+      'utf8',
     );
 
     expect(source).toContain(
       'import { extractStripeChargeId } from "../_shared/stripe-charge.ts";',
     );
-    expect(source).toContain("await stripe.paymentIntents.retrieve(");
+    expect(source).toContain('await stripe.paymentIntents.retrieve(');
     expect(source).toContain('expand: ["latest_charge"]');
-    expect(source).toContain("fn_set_checkout_recovery_charge_evidence");
+    expect(source).toContain('fn_set_checkout_recovery_charge_evidence');
   });
 
-  it("records missing charge evidence for reconciliation before the state machine can refund", () => {
+  it('records missing charge evidence for reconciliation before the state machine can refund', () => {
     const source = readFileSync(
       join(
         process.cwd(),
-        "supabase/functions/checkout-recovery-worker/index.ts",
+        'supabase/functions/checkout-recovery-worker/index.ts',
       ),
-      "utf8",
+      'utf8',
     );
 
-    expect(source).toContain(
-      "fn_mark_checkout_recovery_reconciliation_needed",
-    );
+    expect(source).toContain('fn_mark_checkout_recovery_reconciliation_needed');
     expect(source).toContain('p_error: "STANDALONE_CHARGE_EVIDENCE_MISSING"');
     expect(source).toContain(
       'chargeEvidence: chargeId ? "present" : "missing"',
     );
   });
 
-  it("does not start the next claim until the current claim completes", async () => {
+  it('does not start the next claim until the current claim completes', async () => {
     const started: string[] = [];
     let releaseFirst: (() => void) | undefined;
     const firstCompleted = new Promise<void>((resolve) => {
@@ -130,81 +125,81 @@ describe("checkout recovery worker cron claims", () => {
     });
 
     const processing = processRecoveryClaimsSequentially(
-      ["pi_first", "pi_second"],
+      ['pi_first', 'pi_second'],
       async (paymentIntentId) => {
         started.push(paymentIntentId);
-        if (paymentIntentId === "pi_first") await firstCompleted;
+        if (paymentIntentId === 'pi_first') await firstCompleted;
         return `${paymentIntentId}:complete`;
       },
     );
 
     await Promise.resolve();
-    expect(started).toEqual(["pi_first"]);
+    expect(started).toEqual(['pi_first']);
 
     releaseFirst?.();
     await expect(processing).resolves.toEqual([
-      "pi_first:complete",
-      "pi_second:complete",
+      'pi_first:complete',
+      'pi_second:complete',
     ]);
-    expect(started).toEqual(["pi_first", "pi_second"]);
+    expect(started).toEqual(['pi_first', 'pi_second']);
   });
 
-  it("delegates cron claims into the sequential recovery processor", () => {
+  it('delegates cron claims into the sequential recovery processor', () => {
     const source = readFileSync(
       join(
         process.cwd(),
-        "supabase/functions/checkout-recovery-worker/index.ts",
+        'supabase/functions/checkout-recovery-worker/index.ts',
       ),
-      "utf8",
+      'utf8',
     );
 
-    expect(source).toContain("claimCheckoutRecoveryShells");
+    expect(source).toContain('claimCheckoutRecoveryShells');
     expect(source).toContain(
-      "const claims = await claimCheckoutRecoveryShells",
+      'const claims = await claimCheckoutRecoveryShells',
     );
-    expect(source).toContain("processRecoveryClaimsSequentially");
-    expect(source).not.toContain("Promise.all(");
+    expect(source).toContain('processRecoveryClaimsSequentially');
+    expect(source).not.toContain('Promise.all(');
     expect(
-      source.indexOf("const claims = await claimCheckoutRecoveryShells"),
+      source.indexOf('const claims = await claimCheckoutRecoveryShells'),
     ).toBeLessThan(
-      source.indexOf("const results = await processRecoveryClaimsSequentially"),
+      source.indexOf('const results = await processRecoveryClaimsSequentially'),
     );
   });
 
-  it("claims twelve order shells before thirteen standalone shells and preserves that order", async () => {
-    const calls: Array<{ limit: number; scope: "order" | "standalone" }> = [];
+  it('claims twelve order shells before thirteen standalone shells and preserves that order', async () => {
+    const calls: Array<{ limit: number; scope: 'order' | 'standalone' }> = [];
 
     const claims = await claimCheckoutRecoveryShells(async (input) => {
       calls.push(input);
-      return input.scope === "order"
-        ? [{ stripe_payment_intent_id: "pi_order" }]
-        : [{ stripe_payment_intent_id: "pi_standalone" }];
+      return input.scope === 'order'
+        ? [{ stripe_payment_intent_id: 'pi_order' }]
+        : [{ stripe_payment_intent_id: 'pi_standalone' }];
     });
 
     expect(calls).toEqual([
-      { limit: 12, scope: "order" },
-      { limit: 13, scope: "standalone" },
+      { limit: 12, scope: 'order' },
+      { limit: 13, scope: 'standalone' },
     ]);
     expect(claims).toEqual([
-      { stripe_payment_intent_id: "pi_order" },
-      { stripe_payment_intent_id: "pi_standalone" },
+      { stripe_payment_intent_id: 'pi_order' },
+      { stripe_payment_intent_id: 'pi_standalone' },
     ]);
   });
 
-  it("propagates a standalone claim failure instead of processing partial cron claims", async () => {
-    const calls: Array<{ limit: number; scope: "order" | "standalone" }> = [];
+  it('propagates a standalone claim failure instead of processing partial cron claims', async () => {
+    const calls: Array<{ limit: number; scope: 'order' | 'standalone' }> = [];
 
     await expect(
       claimCheckoutRecoveryShells(async (input) => {
         calls.push(input);
-        if (input.scope === "standalone") throw new Error("claim failed");
-        return [{ stripe_payment_intent_id: "pi_order" }];
+        if (input.scope === 'standalone') throw new Error('claim failed');
+        return [{ stripe_payment_intent_id: 'pi_order' }];
       }),
-    ).rejects.toThrow("claim failed");
+    ).rejects.toThrow('claim failed');
 
     expect(calls).toEqual([
-      { limit: 12, scope: "order" },
-      { limit: 13, scope: "standalone" },
+      { limit: 12, scope: 'order' },
+      { limit: 13, scope: 'standalone' },
     ]);
   });
 });

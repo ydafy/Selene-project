@@ -10,7 +10,9 @@ describe('checkout recovery charge evidence schema', () => {
 
   it('rejects an empty, missing, or non-string RPC result', () => {
     for (const invalid of ['', null, undefined, 42, { charge: 'ch_3Pq' }]) {
-      expect(RecoveryChargeEvidenceSchema.safeParse(invalid).success).toBe(false);
+      expect(RecoveryChargeEvidenceSchema.safeParse(invalid).success).toBe(
+        false,
+      );
     }
   });
 

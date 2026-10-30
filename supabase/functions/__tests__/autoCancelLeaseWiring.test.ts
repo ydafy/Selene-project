@@ -2,8 +2,18 @@ import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
 const handlers = [
-  { name: 'auto-cancel-orders', job: 'orders', flag: 'auto_cancel_orders_running', column: 'order_expiration_hours' },
-  { name: 'auto-cancel-preparing', job: 'preparing', flag: 'auto_cancel_preparing_running', column: 'preparing_expiration_hours' },
+  {
+    name: 'auto-cancel-orders',
+    job: 'orders',
+    flag: 'auto_cancel_orders_running',
+    column: 'order_expiration_hours',
+  },
+  {
+    name: 'auto-cancel-preparing',
+    job: 'preparing',
+    flag: 'auto_cancel_preparing_running',
+    column: 'preparing_expiration_hours',
+  },
 ];
 
 for (const { name, job, flag, column } of handlers) {
@@ -17,8 +27,12 @@ for (const { name, job, flag, column } of handlers) {
       `acquireAutoCancelLease(supabaseAdmin, '${job}', log)`,
     );
     const shipmentsQueryAt = source.indexOf(".from('shipments')");
-    const loopAt = source.indexOf('for (const [index, shipment] of expiredShipments.entries())');
-    const runAt = source.indexOf('const result = await runShipmentCancellation(');
+    const loopAt = source.indexOf(
+      'for (const [index, shipment] of expiredShipments.entries())',
+    );
+    const runAt = source.indexOf(
+      'const result = await runShipmentCancellation(',
+    );
     const finallyAt = source.indexOf('} finally {');
 
     test('requires the cron secret before building any client', () => {

@@ -19,7 +19,9 @@ describe('unboxing notice', () => {
 
   it('renders the notice in the order detail from that permission', () => {
     const detail = flat('app/profile/orders/[id].tsx');
-    expect(detail).toContain('{currentShipment?.permissions.showUnboxingWarning && (');
+    expect(detail).toContain(
+      '{currentShipment?.permissions.showUnboxingWarning && (',
+    );
     expect(detail).toContain("t('orders:detail.videoWarningTitle')");
     expect(detail).toContain("t('orders:detail.videoWarningMsg')");
   });
@@ -27,7 +29,11 @@ describe('unboxing notice', () => {
   it('keeps the notice copy in both languages', () => {
     expect(es.detail.videoWarningTitle).toBe('Graba tu Unboxing');
     expect(en.detail.videoWarningTitle).toBe('Record your unboxing.');
-    expect(es.detail.videoWarningMsg).toStartWith('Te recomendamos grabar un video continuo');
-    expect(en.detail.videoWarningMsg).toStartWith('We recommend recording a continuous video');
+    expect(es.detail.videoWarningMsg).toStartWith(
+      'Te recomendamos grabar un video continuo',
+    );
+    expect(en.detail.videoWarningMsg).toStartWith(
+      'We recommend recording a continuous video',
+    );
   });
 });
