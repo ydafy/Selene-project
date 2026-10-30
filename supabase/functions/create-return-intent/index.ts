@@ -164,7 +164,8 @@ serve(
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         },
       );
-    } catch (error: any) {
+    } catch (caught) {
+      const error = caught as Error;
       const status = error instanceof ApiError ? error.status : 400;
       log('ERROR', 'Fallo al crear intent de retorno', {
         error: error.message,

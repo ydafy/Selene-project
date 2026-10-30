@@ -120,6 +120,7 @@ function createWorkerDeps(
       calls.reconcileClaims.push(graceSeconds);
       const fixture = options.reconcileClaimQueue?.shift();
       if (!fixture) return null;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- rest destructuring omits keys from the fixture
       const { shipment_ids: _, ...row } = fixture;
       return {
         ...row,
@@ -233,12 +234,14 @@ function createWorkerDeps(
 
 describe('reconciliation RPC mapping reconstruction', () => {
   const actualRpcRow = () => {
+    /* eslint-disable @typescript-eslint/no-unused-vars -- rest destructuring omits keys from the fixture */
     const {
       shipment_ids: _,
       stripe_account_id: _account,
       payout_create_attempted_at: _attempt,
       ...row
     } = claimedRun();
+    /* eslint-enable @typescript-eslint/no-unused-vars */
     return {
       ...row,
       stripe_account_id: 'acct_seller_1',

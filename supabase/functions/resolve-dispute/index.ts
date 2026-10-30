@@ -97,7 +97,8 @@ serve(
         status: 200,
         headers: corsHeaders,
       });
-    } catch (error: any) {
+    } catch (caught) {
+      const error = caught as Error;
       log('ERROR', 'Fallo en resolución', { error: error.message });
       return new Response(JSON.stringify({ error: error.message }), {
         status: 400,

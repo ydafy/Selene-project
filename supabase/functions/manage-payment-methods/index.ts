@@ -161,7 +161,8 @@ serve(
             log('INFO', 'Tarjeta desvinculada de Stripe', {
               pmId: pm.stripe_payment_method_id,
             });
-          } catch (stripeError: any) {
+          } catch (caught) {
+            const stripeError = caught as Error;
             log('WARN', 'Fallo al desvincular en Stripe (continuando con DB)', {
               error: stripeError.message,
             });
@@ -183,7 +184,8 @@ serve(
         default:
           throw new Error('INVALID_ACTION');
       }
-    } catch (error: any) {
+    } catch (caught) {
+      const error = caught as Error;
       log('ERROR', 'Excepción en gestión de pagos', { error: error.message });
       return new Response(JSON.stringify({ error: error.message }), {
         status: 400,

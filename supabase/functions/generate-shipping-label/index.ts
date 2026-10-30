@@ -62,18 +62,6 @@ const log = (
 
 // --- 2. TIPOS E INTERFACES ---
 
-interface Address {
-  full_name?: string;
-  phone: string;
-  street_line1: string;
-  street_number?: string;
-  district?: string;
-  city: string;
-  state?: string;
-  state_code?: string;
-  zip_code: string;
-}
-
 interface ShipmentItem {
   price_at_purchase: number;
   product: {

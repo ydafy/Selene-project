@@ -101,7 +101,8 @@ serve(
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         },
       );
-    } catch (error: any) {
+    } catch (caught) {
+      const error = caught as Error;
       // Liberar lock en caso de error crítico
       await supabaseAdmin
         .from('system_settings')
