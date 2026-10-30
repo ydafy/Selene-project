@@ -3,6 +3,8 @@
 -- Normalizes a raw name to the profile editor charset (letters, digits,
 -- underscore, dot), clamps it to 3..20 characters and appends a random numeric
 -- suffix until the username is free, giving up after 50 attempts.
+-- A base that starts with the reserved "deleted_" prefix gets "user_" in front
+-- (migration *_reserve_deleted_username_prefix.sql).
 DECLARE
   v_base text;
   v_candidate text;
@@ -16,6 +18,10 @@ BEGIN
   v_base := regexp_replace(v_base, '[^a-z0-9_.]', '', 'g');
   IF char_length(v_base) < 3 THEN
     v_base := v_base || 'user';
+  END IF;
+  -- "deleted_" is reserved for closed accounts (fn_close_account).
+  IF v_base LIKE 'deleted\_%' THEN
+    v_base := 'user_' || v_base;
   END IF;
   v_base := left(v_base, 20);
 
