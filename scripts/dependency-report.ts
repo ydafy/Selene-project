@@ -101,9 +101,15 @@ export function parseOutdated(text: string, workspace: string): OutdatedRow[] {
     const row = cells(line);
     if (row[0] === 'Package') {
       columns = row;
-      continue;
     }
-    if (!columns) continue;
+    // A changed format must fail the check, not look like "nothing to update".
+    const known =
+      columns !== undefined &&
+      ['Current', 'Update', 'Latest'].every((c) => columns!.includes(c));
+    if (!known) {
+      throw new Error(`unrecognized \`bun outdated\` output: ${line.trim()}`);
+    }
+    if (row[0] === 'Package') continue;
     const at = (column: string) =>
       stripStar(row[columns!.indexOf(column)] ?? '');
     const rawName = row[0];

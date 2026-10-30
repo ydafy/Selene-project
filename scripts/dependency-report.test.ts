@@ -31,6 +31,19 @@ const daysAgo = (days: number) =>
   new Date(NOW.getTime() - days * DAY).toISOString();
 
 describe('parseOutdated', () => {
+  test('rejects a table it does not recognize instead of reporting nothing', () => {
+    expect(() =>
+      parseOutdated('| Name | From | To |\n| a | 1.0.0 | 2.0.0 |', 'root'),
+    ).toThrow('unrecognized `bun outdated` output');
+    expect(() =>
+      parseOutdated('| Package | Current | Version |\n| a | 1 | 2 |', 'root'),
+    ).toThrow('unrecognized `bun outdated` output');
+  });
+
+  test('treats output without a table as nothing outdated', () => {
+    expect(parseOutdated('bun outdated v1.4.2\n', 'root')).toEqual([]);
+  });
+
   test('reads the table of a filtered workspace and strips the star markers', () => {
     const rows = parseOutdated(fixture('outdated-frontend.stdout'), 'ignored');
     const query = rows.find((row) => row.name === '@tanstack/react-query');
