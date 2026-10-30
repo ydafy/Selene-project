@@ -1,0 +1,27 @@
+meta {
+  name: release-hold-9-restored
+  type: http
+  seq: 98
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/products?id=eq.00000000-0000-4000-8000-0000000000b3&select=status,status_before_account_hold,reserved_at
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("lifting the suspension restores the held listing", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ status: "VERIFIED", status_before_account_hold: null, reserved_at: null }]);
+  });
+}
+
+docs {
+  The listing is VERIFIED again with no hold; the seeded seller is active.
+}

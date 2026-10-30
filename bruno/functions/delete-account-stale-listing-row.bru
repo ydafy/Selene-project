@@ -1,0 +1,25 @@
+meta {
+  name: delete-account-stale-listing-row
+  type: http
+  seq: 121
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/products?id=eq.{{staleListingId}}&select=status,deleted_at
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the stale listing was hidden and soft-deleted by the closure", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(1);
+    expect(res.getBody()[0].status).to.equal("HIDDEN");
+    expect(res.getBody()[0].deleted_at).to.be.a("string");
+  });
+}

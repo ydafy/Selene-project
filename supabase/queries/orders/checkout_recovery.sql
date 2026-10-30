@@ -393,12 +393,11 @@ BEGIN
   ORDER BY p.id
   FOR UPDATE;
 
-  UPDATE public.products p
-  SET status = 'VERIFIED', reserved_at = NULL, updated_at = now()
-  FROM public.order_items oi
-  WHERE oi.order_id = v_order_id
-    AND oi.product_id = p.id
-    AND p.status = 'RESERVED';
+  PERFORM public.fn_release_listings(
+    ARRAY(SELECT oi.product_id FROM public.order_items oi WHERE oi.order_id = v_order_id),
+    true,
+    false
+  );
 
   UPDATE public.orders
   SET status = 'refunded',

@@ -1,0 +1,45 @@
+meta {
+  name: delete-account-stale-listing-create
+  type: http
+  seq: 113
+}
+
+post {
+  url: {{baseUrl}}/auth/v1/admin/users
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:pre-request {
+  bru.setVar("staleListingEmail", "bruno-stale-" + Date.now() + "@selene.local");
+}
+
+body:json {
+  {
+    "email": "{{staleListingEmail}}",
+    "password": "password123",
+    "email_confirm": true
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("staleListingUserId", res.getBody().id);
+  }
+}
+
+tests {
+  test("creates a confirmed throwaway seller through the local admin API", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}
+
+docs {
+  Local stack only. Start of the stale-listing closure sequence (#69): create, login, copy a
+  seeded listing to this user, make its economics stale, close, restore settings, verify.
+}

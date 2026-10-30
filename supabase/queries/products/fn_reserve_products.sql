@@ -1,7 +1,8 @@
 -- ============================================================================
 -- Source of truth for fn_reserve_products.
 -- Registered by migration 20260701000000_reservation_lifecycle_hardening.sql;
--- account-status gates added by 20261018130000_account_trust_boundaries.sql.
+-- account-status gates added by 20261018130000_account_trust_boundaries.sql;
+-- releases go through fn_release_listings (20261030130000_release_listings_helper.sql).
 -- Deployable as a standalone CREATE OR REPLACE FUNCTION statement.
 -- ============================================================================
 
@@ -9,8 +10,9 @@
 --
 -- 1. Release any EXPIRED reservations among the requested products first so
 --    stale inventory (app kill, abandoned checkout, TTL passed) becomes
---    VERIFIED and available again before we attempt to reserve. This is a
---    legitimate stale release and is applied regardless of reserve outcome.
+--    VERIFIED (or held, when the seller's account is not active) before we
+--    attempt to reserve. This is a legitimate stale release and is applied
+--    regardless of reserve outcome.
 -- 0. Banned buyers are rejected with 'ACCOUNT_RESTRICTED' before any write;
 --    suspended buyers keep their own purchases.
 -- 2. Tentatively reserve only VERIFIED products not owned by the buyer and
@@ -56,13 +58,7 @@ BEGIN
   END IF;
 
   -- 1. LIMPIEZA IDEMPOTENTE: Recuperar reservas vencidas (> 10 min) de este carrito
-  UPDATE public.products
-  SET status = 'VERIFIED',
-      updated_at = now(),
-      reserved_at = NULL
-  WHERE id = ANY(p_product_ids)
-    AND status = 'RESERVED'
-    AND reserved_at < now() - interval '10 minutes';
+  PERFORM public.fn_release_listings(p_product_ids, true, true);
 
   -- 2. SEGURO ANTI-DEADLOCK: Bloqueo determinístico en orden alfabético de UUID
   PERFORM 1
@@ -97,12 +93,7 @@ BEGIN
     RETURN QUERY SELECT v_sum, true, NULL::TEXT;
   ELSE
     IF v_count > 0 THEN
-      UPDATE public.products
-      SET status = 'VERIFIED',
-          updated_at = now(),
-          reserved_at = NULL
-      WHERE id = ANY(v_reserved_ids)
-        AND status = 'RESERVED';
+      PERFORM public.fn_release_listings(v_reserved_ids, true, false);
     END IF;
     RETURN QUERY SELECT 0::NUMERIC, false, 'SOME_PRODUCTS_UNAVAILABLE'::TEXT;
   END IF;

@@ -1,0 +1,33 @@
+meta {
+  name: delete-account-stale-listing-insert
+  type: http
+  seq: 117
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/products
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+script:pre-request {
+  req.setBody(JSON.parse(bru.getVar("staleListingBody")));
+}
+
+tests {
+  test("the throwaway seller gets a VERIFIED listing with a valid snapshot", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody()[0].status).to.equal("VERIFIED");
+    bru.setVar("staleListingId", res.getBody()[0].id);
+  });
+}
+
+body:json {
+  {}
+}

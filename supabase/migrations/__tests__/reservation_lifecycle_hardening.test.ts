@@ -190,7 +190,7 @@ describe('reservation lifecycle hardening query source files', () => {
       /CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.fn_reserve_products/i,
     );
     expect(sql).toMatch(
-      /UPDATE\s+public\.products[\s\S]*?reserved_at\s*=\s*NULL[\s\S]*?AND\s+status\s*=\s*'RESERVED'[\s\S]*?reserved_at\s*<\s*now\(\)\s*-\s*interval\s+'10\s+minutes'/i,
+      /PERFORM\s+public\.fn_release_listings\(\s*p_product_ids\s*,\s*true\s*,\s*true\s*\)/i,
     );
     expect(sql).toMatch(
       /AND\s+status\s*=\s*'VERIFIED'[\s\S]*?seller_id\s*<>\s*p_buyer_id/i,
@@ -203,9 +203,11 @@ describe('reservation lifecycle hardening query source files', () => {
     expect(sql).toMatch(
       /CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.fn_release_products/i,
     );
-    expect(sql).toMatch(/reserved_at\s*=\s*NULL/i);
-    expect(sql).toMatch(/AND\s+p\.id\s*=\s*ANY\(p_product_ids\)/i);
-    expect(sql).toMatch(/AND\s+p\.status\s*=\s*'RESERVED'/i);
+    // The RESERVED guard and reserved_at = NULL live in fn_release_listings
+    // (release_listings_helper.test.ts); the caller asks for RESERVED rows only.
+    expect(sql).toMatch(
+      /PERFORM\s+public\.fn_release_listings\(\s*p_product_ids\s*,\s*true\s*,\s*false\s*\)/i,
+    );
     expect(sql).toMatch(/RETURN\s+QUERY\s+SELECT\s+true/i);
   });
 });
@@ -260,7 +262,7 @@ describe('reservation lifecycle hardening query source — all-or-nothing reserv
     // Rollback UPDATE on the failure path: scoped to the captured id array,
     // strict RESERVED guard, no TTL condition (distinct from stale pre-release).
     expect(sql).toMatch(
-      /UPDATE\s+public\.products[\s\S]*?SET\s+status\s*=\s*'VERIFIED'[\s\S]*?reserved_at\s*=\s*NULL[\s\S]*?WHERE\s+id\s*=\s*ANY\(\s*v_reserved_ids\s*\)\s*AND\s+status\s*=\s*'RESERVED'/i,
+      /PERFORM\s+public\.fn_release_listings\(\s*v_reserved_ids\s*,\s*true\s*,\s*false\s*\)/i,
     );
     // Count-mismatch check against the full requested array gates the rollback.
     expect(sql).toMatch(/v_count\s*=\s*cardinality\(\s*p_product_ids\s*\)/i);

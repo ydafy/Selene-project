@@ -1,0 +1,27 @@
+meta {
+  name: release-hold-7-held-again
+  type: http
+  seq: 96
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/products?id=eq.00000000-0000-4000-8000-0000000000b3&select=status,status_before_account_hold,reserved_at
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the expired reservation cleaned up by a checkout is held, not re-listed", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ status: "HIDDEN", status_before_account_hold: "VERIFIED", reserved_at: null }]);
+  });
+}
+
+docs {
+  The listing is HIDDEN with the hold set to VERIFIED.
+}

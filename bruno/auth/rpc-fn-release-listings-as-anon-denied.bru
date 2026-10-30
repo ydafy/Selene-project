@@ -1,0 +1,37 @@
+meta {
+  name: rpc-fn-release-listings-as-anon-denied
+  type: http
+  seq: 73
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_release_listings
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{anonKey}}
+}
+
+body:json {
+  {
+    "p_product_ids": ["00000000-0000-4000-8000-0000000000ba"],
+    "p_only_reserved": false,
+    "p_only_expired": false
+  }
+}
+
+tests {
+  test("an anonymous caller is denied", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody().code).to.equal("42501");
+    expect(res.getBody().message).to.equal("permission denied for function fn_release_listings");
+  });
+}
+
+docs {
+  fn_release_listings is the internal helper that returns listings to the catalog (T9e2). EXECUTE is limited to service_role, so a client cannot call it through the RPC.
+  The request is refused before the function runs and changes nothing.
+}

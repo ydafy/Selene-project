@@ -1,0 +1,29 @@
+meta {
+  name: delete-account-stale-listing-read-settings
+  type: http
+  seq: 116
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/system_settings?id=eq.1&select=shipping_buffer_cents
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("staleListingBuffer", res.getBody()[0].shipping_buffer_cents);
+  }
+}
+
+tests {
+  test("reads the shipping buffer so the sequence can restore it", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].shipping_buffer_cents).to.be.a("number");
+  });
+}

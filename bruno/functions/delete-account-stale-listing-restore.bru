@@ -1,0 +1,32 @@
+meta {
+  name: delete-account-stale-listing-restore
+  type: http
+  seq: 120
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/system_settings?id=eq.1
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+script:pre-request {
+  req.setBody({ shipping_buffer_cents: Number(bru.getVar("staleListingBuffer")) });
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("the shipping buffer is back to its original value", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].shipping_buffer_cents).to.equal(Number(bru.getVar("staleListingBuffer")));
+  });
+}
