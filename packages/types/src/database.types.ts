@@ -1724,6 +1724,93 @@ export type Database = {
         }
         Relationships: []
       }
+      push_deliveries: {
+        Row: {
+          attempts: number
+          channel: string
+          claim_token: string | null
+          claimed_at: string | null
+          created_at: string
+          expo_ticket_id: string | null
+          id: string
+          last_error: string | null
+          next_attempt_at: string
+          notification_id: string
+          push_token_id: string
+          sent_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          channel: string
+          claim_token?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          expo_ticket_id?: string | null
+          id?: string
+          last_error?: string | null
+          next_attempt_at?: string
+          notification_id: string
+          push_token_id: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          channel?: string
+          claim_token?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          expo_ticket_id?: string | null
+          id?: string
+          last_error?: string | null
+          next_attempt_at?: string
+          notification_id?: string
+          push_token_id?: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_deliveries_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "push_deliveries_push_token_id_fkey"
+            columns: ["push_token_id"]
+            isOneToOne: false
+            referencedRelation: "push_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      push_event_policy: {
+        Row: {
+          channel: string
+          event_kind: string
+          recipient_role: string
+        }
+        Insert: {
+          channel: string
+          event_kind: string
+          recipient_role: string
+        }
+        Update: {
+          channel?: string
+          event_kind?: string
+          recipient_role?: string
+        }
+        Relationships: []
+      }
       push_tokens: {
         Row: {
           created_at: string
@@ -3615,6 +3702,21 @@ export type Database = {
           stripe_account_id: string
         }[]
       }
+      fn_claim_push_deliveries: {
+        Args: { p_limit: number; p_max_age?: string }
+        Returns: {
+          action_path: string
+          channel: string
+          claim_token: string
+          delivery_id: string
+          event_kind: string
+          expo_token: string
+          message: string
+          notification_id: string
+          platform: string
+          title: string
+        }[]
+      }
       fn_claim_shipment_cancellation: {
         Args: {
           p_actor_id: string
@@ -4169,6 +4271,7 @@ export type Database = {
           success: boolean
         }[]
       }
+      fn_record_push_results: { Args: { p_results: Json }; Returns: Json }
       fn_record_shipment_cancellation_refund: {
         Args: {
           p_amount_cents: number
