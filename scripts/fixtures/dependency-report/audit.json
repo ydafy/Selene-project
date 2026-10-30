@@ -1,0 +1,64 @@
+{
+  "decode-uri-component": [
+    {
+      "id": 1243857,
+      "url": "https://github.com/advisories/GHSA-qr28-fpjm-wq7f",
+      "title": "decode-uri-component vulnerable to denial of service via quadratic replacement of percent-encoded runs",
+      "severity": "high",
+      "vulnerable_versions": "<=0.5.0",
+      "cwe": ["CWE-400", "CWE-407"],
+      "cvss": { "score": 0, "vectorString": null }
+    },
+    {
+      "id": 1147955,
+      "url": "https://github.com/advisories/GHSA-vcc3-ghjq-m6fr",
+      "title": "decode-uri-component: Denial of service via exponential decoding of malformed percent-encoded input",
+      "severity": "moderate",
+      "vulnerable_versions": "<=0.4.2",
+      "cwe": ["CWE-400", "CWE-405", "CWE-407", "CWE-1176"],
+      "cvss": { "score": 0, "vectorString": null }
+    }
+  ],
+  "deepmerge": [
+    {
+      "id": 1243505,
+      "url": "https://github.com/advisories/GHSA-gcqx-w48m-w2h4",
+      "title": "deepmerge mergeObject() allows prototype poisoning of returned objects",
+      "severity": "low",
+      "vulnerable_versions": ">=4.2.0 <=4.3.1",
+      "cwe": ["CWE-1321"],
+      "cvss": {
+        "score": 5.3,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N"
+      }
+    }
+  ],
+  "node-forge": [
+    {
+      "id": 1240912,
+      "url": "https://github.com/advisories/GHSA-86w9-cpqp-85rv",
+      "title": "node-forge RSA PKCS#1 v1.5 signature verification accepts extra nested DigestAlgorithm elements",
+      "severity": "high",
+      "vulnerable_versions": "<=1.4.0",
+      "cwe": ["CWE-347"],
+      "cvss": {
+        "score": 7.5,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+      }
+    }
+  ],
+  "zod": [
+    {
+      "id": 1243066,
+      "url": "https://github.com/advisories/GHSA-mrhx-c7xc-m3w5",
+      "title": "Zod can exhaust memory while validating oversized constrained collections",
+      "severity": "high",
+      "vulnerable_versions": "<4.6.6",
+      "cwe": ["CWE-770"],
+      "cvss": {
+        "score": 7.5,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+      }
+    }
+  ]
+}

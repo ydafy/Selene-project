@@ -1,0 +1,59 @@
+# Weekly dependency report (docs/dependencies.md).
+# Writes scripts/dependency-report.ts output into one open issue titled
+# "Reporte de dependencias" and comments the summary line, so the maintainer gets
+# an email. It never opens pull requests and never changes dependencies.
+name: Dependency report
+
+on:
+  schedule:
+    - cron: '30 14 * * 1' # Mondays 14:30 UTC, after the dependency audit
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: dependency-report
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TITLE: Reporte de dependencias
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      # The report reads the installed Expo SDK, and `expo install --check` needs it.
+      - run: bun install --frozen-lockfile
+      # Exit 1 means a check could not run; publish the report anyway, then fail.
+      - id: report
+        run: |
+          set +e
+          bun scripts/dependency-report.ts > report.md
+          echo "exit=$?" >> "$GITHUB_OUTPUT"
+      - name: Update the report issue
+        run: |
+          # A crashed script must not wipe the last good report.
+          if [ ! -s report.md ]; then
+            echo "::error::The report is empty; the issue was not changed."
+            exit 1
+          fi
+          # Only the issue this workflow created: anyone can open one with the same title.
+          number=$(gh issue list --state open --author app/github-actions \
+            --search "in:title \"$TITLE\"" \
+            --json number,title --jq "map(select(.title == env.TITLE)) | .[0].number // empty")
+          if [ -z "$number" ]; then
+            url=$(gh issue create --title "$TITLE" --body-file report.md)
+            number=${url##*/}
+          else
+            gh issue edit "$number" --body-file report.md
+          fi
+          summary=$(sed -n '3p' report.md)
+          gh issue comment "$number" --body "Updated report: $summary"
+      - if: steps.report.outputs.exit != '0'
+        run: |
+          echo "::error::A dependency check could not run; see 'Could not check' in the report."
+          exit 1

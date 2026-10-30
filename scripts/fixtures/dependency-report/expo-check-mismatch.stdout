@@ -1,0 +1,19 @@
+env: load .env
+env: export EXPO_PUBLIC_CHATWOOT_BASE_URL EXPO_PUBLIC_CHATWOOT_WEBSITE_TOKEN EXPO_PUBLIC_GOOGLE_MAPS_KEY EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID EXPO_PUBLIC_PRIVACY_URL EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY EXPO_PUBLIC_SUPABASE_ANON_KEY EXPO_PUBLIC_SUPABASE_URL EXPO_PUBLIC_TERMS_URL
+{
+  "dependencies": [
+    {
+      "packageName": "expo-image",
+      "packageType": "dependencies",
+      "expectedVersionOrRange": "~57.0.5",
+      "actualVersion": "57.0.2"
+    },
+    {
+      "packageName": "react-native-screens",
+      "packageType": "dependencies",
+      "expectedVersionOrRange": "~4.26.2",
+      "actualVersion": "4.25.0"
+    }
+  ],
+  "upToDate": false
+}
