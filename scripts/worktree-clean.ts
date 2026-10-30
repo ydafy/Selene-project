@@ -184,7 +184,7 @@ export function planWorktreeClean(input: CleanInput): CleanPlan {
     'supabase stop (inside the worktree)',
     `git worktree remove ${worktree.path}`,
     'git worktree prune',
-    ...(worktree.branch ? [`git branch -d ${worktree.branch}`] : []),
+    ...(worktree.branch ? [`git branch -D ${worktree.branch}`] : []),
     'git fetch --prune origin',
     ...input.stackDirs.map((dir) => `delete Supabase stack data ${dir}`),
   ];
@@ -218,7 +218,7 @@ function probe(cmd: string[], cwd: string) {
 
 function removeDir(dir: string): string | null {
   try {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { recursive: true, force: true, maxRetries: 3 });
     return null;
   } catch (error) {
     return `could not delete ${dir}: ${String(error)}`;
@@ -334,9 +334,24 @@ function cleanWorktree(arg: string, apply: boolean) {
         `[worktree-clean] warning: supabase stop did not run: ${stopped.err || stopped.out}`,
       );
   }
+  // --force: only line-ending noise is left. core.longpaths: node_modules holds
+  // paths over 260 characters, which git on Windows cannot delete without it.
   const removed = present
-    ? run(['git', 'worktree', 'remove', '--force', target]) // only line-ending noise is left
+    ? run([
+        'git',
+        '-c',
+        'core.longpaths=true',
+        'worktree',
+        'remove',
+        '--force',
+        target,
+      ])
     : { ok: true, out: '', err: '' };
+  // A failed remove can leave the folder half deleted after git already dropped
+  // the registration, so a rerun would no longer find it. The worktree passed
+  // every blocker above (clean and merged), so finish deleting the folder here.
+  if (!removed.ok && removeDir(target) === null && !existsSync(target))
+    removed.ok = true;
   if (!removed.ok) {
     console.error(
       `[worktree-clean] git worktree remove failed: ${removed.err}`,
@@ -347,10 +362,22 @@ function cleanWorktree(arg: string, apply: boolean) {
     return 1;
   }
   run(['git', 'worktree', 'prune']);
+  // -d also compares against the branch's upstream, which can lag behind a
+  // branch that is merged into origin/main. -D runs only after checking the
+  // branch itself against origin/main.
   if (match?.branch) {
-    const branch = run(['git', 'branch', '-d', match.branch]);
+    const merged = run([
+      'git',
+      'merge-base',
+      '--is-ancestor',
+      match.branch,
+      'origin/main',
+    ]).ok;
+    const branch = merged
+      ? run(['git', 'branch', '-D', match.branch])
+      : { ok: false, out: '', err: 'not merged into origin/main' };
     if (!branch.ok)
-      problems.push(`git branch -d ${match.branch}: ${branch.err}`);
+      problems.push(`git branch -D ${match.branch}: ${branch.err}`);
   }
   run(['git', 'fetch', '-q', '--prune', 'origin']);
   for (const dir of findStacksForRoot(readStacks(), target)) {
