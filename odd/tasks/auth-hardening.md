@@ -113,14 +113,14 @@ Follow repository manual Supabase workflow: supply SQL/function/config handoff, 
 - T7e | S3 | inline | done (117aba0, review approved; device check passed L89) | Sign-in and registration only through `AuthModal`: remove the stack `login` and `register` screens; the guest profile link presents the modal; `verify-code` without an email returns to the tabs | Commit: 117aba0 (review approved).
 - T8 | S1 | parent orchestration | done (L124): merged to main in PRs #75, #80 and #90; branch `audit/auth-backlog` | Auth backlog pass: resolve the consolidated list in L81 plus the T6/T7 additions | Commit: not created.
 - T9 | S1,S9 | parent orchestration | approved (L126); T9h option still open | Final auth pass: leave every launch switch one config change away and close the auth issues | Commit: not created.
-- T9a | S8,S9 | inline | done (L127; review pending; device check pending) | Legal links from `domain.ts` only (`TERMS_URL`, `PRIVACY_URL`; `legalUrls.ts` and its env overrides removed), public `/terminos` page in admin-web, register terms link | Commit: not created.
-- T9b | S9 | pending | Auth email templates versioned in `supabase/templates/` and wired in `config.toml` | Commit: not created.
-- T9c | S9 | pending | One auth switch-on runbook in `docs/go-live.md`, each step with an MCP check | Commit: not created.
-- T9d | S9 | pending | CAPTCHA on in the local stack with the hCaptcha test secret; Bruno sends the test token | Commit: not created.
-- T9e | S4 | pending | #70: listings reserved at suspension | Commit: not created.
-- T9f | S8 | pending | #69: publication-economics trigger aborts a closure | Commit: not created.
-- T9g | S4 | pending | #88: local `profiles` grants match production | Commit: not created.
-- T9h | S1 | blocked: option not chosen (L126) | #68: auth SQL tests against PostgreSQL | Commit: not created.
+- T9a | S8,S9 | inline | done (L127, review approved L129; device check pending) | Legal links from `domain.ts` only (`TERMS_URL`, `PRIVACY_URL`; `legalUrls.ts` and its env overrides removed), public `/terminos` page in admin-web, register terms link | Commit: not created.
+- T9b | S9 | route at start | pending | Auth email templates versioned in `supabase/templates/` and wired in `config.toml` | Commit: not created.
+- T9c | S9 | route at start | pending | One auth switch-on runbook in `docs/go-live.md`, each step with an MCP check | Commit: not created.
+- T9d | S9 | route at start | pending | CAPTCHA on in the local stack with the hCaptcha test secret; Bruno sends the test token | Commit: not created.
+- T9e | S4 | route at start | pending | #70: listings reserved at suspension | Commit: not created.
+- T9f | S8 | route at start | pending | #69: publication-economics trigger aborts a closure | Commit: not created.
+- T9g | S4 | route at start | pending | #88: local `profiles` grants match production | Commit: not created.
+- T9h | S1 | route at start | blocked: option not chosen (L126) | #68: auth SQL tests against PostgreSQL | Commit: not created.
 - T8a | S4 | inline | done (3933485, review approved L110; device check in the go-live pass, L117) | F1: listings held by an account suspension (`status_before_account_hold` set) stay out of "history" in Mis publicaciones | Commit: not created.
 - T8b | S8 | delegated writer (context backstop) | done (d7349da, review approved L111; follow-up in the next commit) | `account-closure-cleanup`: shared constant-time `isAuthorizedCronRequest` and mismatch report; failed cleanup steps reported to Sentry (L74); own commit (risk: auth guard) | Commit: not created.
 - T8c | S8 | inline | done (98b1f41, review approved L114) | Drop the `as never` casts in `delete-account`, `account-closure-cleanup` and the shared cleanup now that the types exist (L79) | Commit: not created.
@@ -926,3 +926,6 @@ Risk: item 3 (two env vars no longer read), item 6 (link tap on device).
 Maintainer (verbatim): "Master a que te reieres borrar EXPO_PUBLIC_TERMS_URL y EXPO_PUBLIC_PRIVACY_URL? osea porque? SObre lo del pr, si master, tu toma esa iniciativa, osea no se porque me preguntas a mi, creo que es por culpa de mi agents md, pero en realdiad tanto tu como gentle-shell son los que dcen como se aplcian las bets pracices sobre git, pero si, haz el pr y merge, te doy persmio."
 Answered in chat: the two env vars overrode the code default (`EXPO_PUBLIC_TERMS_URL` pointed to `selene.mx`), and after T9a nothing reads them; `SELENE_DOMAIN` is the only place to change. Removing them from `.env.example` and `.env` is cleanup, not a fix.
 Slice boundary: slice T9-1 is origin/main..HEAD (L124 and L125 tracker commits, the main syncs, T9a bc4e44b6 and this entry), about 460 authored lines. Native review of bc4e44b6: assess said due (auth hot path), the inspect timed out (`operation_timeout`, not retry-safe) and was not retried; delivered under the maintainer's PR and merge permission without that review.
+
+### L129 — T9a review approved
+The RDD reminder offered a fresh start for the slice target; review of origin/main..1042619d (readability, reliability) approved and acknowledged, superseding the "without that review" note in L128. Advisories, not blocking: `useOpenInBrowser` reads the `settings` namespace for its toast, so a caller outside Settings depends on those keys (both lenses); the register link is pinned only by a source-contract test (device check pending); the legal links point to the `selene.example` placeholder until the domain exists (L91); `App.tsx` import reformatting by Prettier; T9b-T9h rows lacked the route column (fixed here).
