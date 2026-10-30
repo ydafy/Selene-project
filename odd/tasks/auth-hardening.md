@@ -120,7 +120,7 @@ Follow repository manual Supabase workflow: supply SQL/function/config handoff, 
 - T9d1 | S9 | delegated writer (context backstop) | done (L134, review approved L136) | Admin-web hCaptcha through the hCaptcha JS API in `useCaptcha.tsx` (drop `@hcaptcha/react-hcaptcha`); a failing reset never hides the CAPTCHA error | Commit: not created.
 - T9e | S4 | delegated writer (context backstop) | done (L137, review approved L138, applied L140; PR #117 merged be285fec, closed #70) | #70: listings reserved at suspension | Commit: not created.
 - T9e2 | S4 | delegated writer (context backstop) | done (L141, applied L142, review approved L145) | Every remaining path that returns a listing to VERIFIED applies the T9e seller rule through one helper: `fn_finalize_checkout_recovery` refund, `fn_reserve_products` (stale cleanup and partial rollback), `fn_cancel_shipment`; T9e's two release functions use the same helper | Commit: not created.
-- T9f | S8 | delegated writer (context backstop) | done (L144, review approved L145; maintainer applies the migration) | #69: publication-economics trigger aborts a closure | Commit: not created.
+- T9f | S8 | delegated writer (context backstop) | done (L144, review approved L145, applied L146) | #69: publication-economics trigger aborts a closure | Commit: not created.
 - T9g | S4 | route at start | pending | #88: local `profiles` grants match production | Commit: not created.
 - T9h | S1 | route at start | pending (option 1 chosen, L143) | #68: auth SQL tests against PostgreSQL | Commit: not created.
 - T8a | S4 | inline | done (3933485, review approved L110; device check in the go-live pass, L117) | F1: listings held by an account suspension (`status_before_account_hold` set) stay out of "history" in Mis publicaciones | Commit: not created.
@@ -1034,3 +1034,7 @@ A later `inspect` worked: review of be285fec..e485418d (T9e2 4be77b8c and T9f e4
 - The trigger skips validation for any soft-deleted row, whatever its status (risk): a soft-deleted row is out of the catalog and the reservation gates; restoring it (clearing `deleted_at`) validates again.
 - Runtime coverage: the new paths are proven by the rolled-back psql runs and Bruno for two of five callers; the structural tests pin the text (T9h).
 - Bruno `release-hold-1-suspend` suspends seeded seller 002; if a later step fails, the seller stays suspended for the rest of the run (resilience). A failing run is reset with `supabase db reset`.
+
+### L146 — T9f migration applied
+Maintainer (verbatim): "Migracion aplicada master con succes. Pueds contnuar". Remote (Supabase MCP, read-only): `validate_product_publication_economics` carries the non-sellable early return (soft-deleted, HIDDEN, SOLD, REJECTED, IN_DISPUTE) and keeps the `PUBLICATION_ECONOMICS_IMMUTABLE` check; still SECURITY DEFINER, not executable by anon or authenticated; trigger `validate_product_publication_economics` enabled. `db:types` not needed.
+Slice T9-5 (T9e2, T9f, tracker L141-L146) is ready for its PR; it is pushed after the T9g worker finishes, because the pre-push hook runs `bun test` on the working tree the worker is editing.
