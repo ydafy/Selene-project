@@ -1,0 +1,30 @@
+meta {
+  name: milestones-read-policy
+  type: http
+  seq: 187
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/push_event_policy?select=event_kind,recipient_role,channel&event_kind=in.(shipment.in_transit,shipment.delivered)&order=event_kind
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("S4: both milestone kinds push to the buyer on the orders channel", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([
+      { event_kind: "shipment.delivered", recipient_role: "buyer", channel: "orders" },
+      { event_kind: "shipment.in_transit", recipient_role: "buyer", channel: "orders" },
+    ]);
+  });
+}
+
+docs {
+  Service-role read of push_event_policy for the two milestone kinds.
+}

@@ -1,0 +1,44 @@
+meta {
+  name: milestones-record-on-cancelled
+  type: http
+  seq: 193
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_record_tracking_event
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_shipment_id": "{{msTrackShipmentId}}",
+    "p_dispute_id": null,
+    "p_event_type": "delivered",
+    "p_event_at": "2026-10-30T13:00:00Z",
+    "p_raw_status": "bruno-milestones-cancelled",
+    "p_location": null,
+    "p_status_description": null,
+    "p_carrier_name": null,
+    "p_webhook_delivery_id": null,
+    "p_polling_run_id": null,
+    "p_transition": "delivered"
+  }
+}
+
+tests {
+  test("S4: a carrier scan on a cancelled shipment is stored and moves nothing", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().inserted).to.equal(true);
+    expect(res.getBody().shipment_status).to.equal("cancelled");
+  });
+}
+
+docs {
+  Service role. Runs after milestones-cleanup-shipments cancelled both shipments and the earlier notices were deleted, so milestones-read-notifications-after-cancelled expects none.
+}

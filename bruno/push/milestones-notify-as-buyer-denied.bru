@@ -1,0 +1,32 @@
+meta {
+  name: milestones-notify-as-buyer-denied
+  type: http
+  seq: 189
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_notify_shipment_milestone
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  { "p_shipment_id": "{{msTrackShipmentId}}", "p_event_kind": "shipment.delivered" }
+}
+
+tests {
+  test("an authenticated buyer is denied", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody().code).to.equal("42501");
+    expect(res.getBody().message).to.equal("permission denied for function fn_notify_shipment_milestone");
+  });
+}
+
+docs {
+  Run after auth/login-buyer (needs buyerToken). fn_notify_shipment_milestone has no client grant.
+}

@@ -1,0 +1,30 @@
+meta {
+  name: milestones-setup-register-token
+  type: http
+  seq: 176
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_register_push_token
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{msBuyerToken}}
+}
+
+body:json {
+  { "p_token": "ExponentPushToken[bruno-push-milestones-0001]", "p_platform": "android" }
+}
+
+tests {
+  test("the throwaway buyer registers a push token", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  Gives the buyer one active token, so each milestone notice fans out to one pending delivery. The folder removes it at the end.
+}

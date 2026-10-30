@@ -1,0 +1,27 @@
+meta {
+  name: milestones-read-notifications-after-denied
+  type: http
+  seq: 190
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/notifications?select=id&user_id=eq.{{msBuyerId}}&event_kind=in.(shipment.in_transit,shipment.delivered)
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the denied calls wrote no notice: the buyer still has the same three", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().map((r) => r.id).sort().join(",")).to.equal(bru.getVar("msNoticeIds"));
+  });
+}
+
+docs {
+  Service-role read after the two denied fn_notify_shipment_milestone calls.
+}

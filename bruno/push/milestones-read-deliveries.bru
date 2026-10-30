@@ -1,0 +1,33 @@
+meta {
+  name: milestones-read-deliveries
+  type: http
+  seq: 186
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/push_deliveries?select=id,notification_id,user_id,channel,status&user_id=eq.{{msBuyerId}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("S4: each buyer notice produced one pending orders delivery", function () {
+    expect(res.getStatus()).to.equal(200);
+    const rows = res.getBody();
+    expect(rows).to.have.length(3);
+    rows.forEach((r) => {
+      expect(r.channel).to.equal("orders");
+      expect(r.status).to.equal("pending");
+    });
+    expect(rows.map((r) => r.notification_id).sort().join(",")).to.equal(bru.getVar("msNoticeIds"));
+  });
+}
+
+docs {
+  Service-role read of the fan-out written by the notifications trigger, for the one registered token of the throwaway buyer.
+}

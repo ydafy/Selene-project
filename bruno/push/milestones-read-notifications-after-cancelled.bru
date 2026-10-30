@@ -1,0 +1,27 @@
+meta {
+  name: milestones-read-notifications-after-cancelled
+  type: http
+  seq: 194
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/notifications?select=id&user_id=eq.{{msBuyerId}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("S4: the scan on the cancelled shipment wrote no buyer notice", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.length(0);
+  });
+}
+
+docs {
+  Service-role read of every notice of the throwaway buyer.
+}
