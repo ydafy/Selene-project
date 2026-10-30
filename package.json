@@ -20,6 +20,7 @@
     "functions:serve": "supabase functions serve --env-file supabase/functions/.env",
     "stripe:listen": "bun scripts/stripe-listen.ts",
     "worktree:env": "bun scripts/worktree-env.ts",
+    "worktree:clean": "bun scripts/worktree-clean.ts",
     "bruno:env": "bun scripts/bruno-env.ts",
     "api:test": "cd bruno && bunx @usebruno/cli@4.2.1 run -r --env local",
     "test:e2e": "playwright test",
