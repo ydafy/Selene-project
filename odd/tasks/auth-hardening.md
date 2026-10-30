@@ -118,8 +118,8 @@ Follow repository manual Supabase workflow: supply SQL/function/config handoff, 
 - T9c | S9 | inline | done (L132) | One auth switch-on runbook in `docs/go-live.md`, each step with an MCP check | Commit: not created.
 - T9d | S9 | delegated writer (context backstop) | done (L133, L135, review approved L136) | CAPTCHA on in the local stack with the hCaptcha test secret; Bruno sends the test token | Commit: not created.
 - T9d1 | S9 | delegated writer (context backstop) | done (L134, review approved L136) | Admin-web hCaptcha through the hCaptcha JS API in `useCaptcha.tsx` (drop `@hcaptcha/react-hcaptcha`); a failing reset never hides the CAPTCHA error | Commit: not created.
-- T9e | S4 | delegated writer (context backstop) | done (L137, review approved L138; applied L140) | #70: listings reserved at suspension | Commit: not created.
-- T9e2 | S4 | delegated writer (context backstop) | done (L141; review pending; maintainer applies the migration) | Every remaining path that returns a listing to VERIFIED applies the T9e seller rule through one helper: `fn_finalize_checkout_recovery` refund, `fn_reserve_products` (stale cleanup and partial rollback), `fn_cancel_shipment`; T9e's two release functions use the same helper | Commit: not created.
+- T9e | S4 | delegated writer (context backstop) | done (L137, review approved L138, applied L140; PR #117 merged be285fec, closed #70) | #70: listings reserved at suspension | Commit: not created.
+- T9e2 | S4 | delegated writer (context backstop) | done (L141, applied L142; native review not run: inspect timed out) | Every remaining path that returns a listing to VERIFIED applies the T9e seller rule through one helper: `fn_finalize_checkout_recovery` refund, `fn_reserve_products` (stale cleanup and partial rollback), `fn_cancel_shipment`; T9e's two release functions use the same helper | Commit: not created.
 - T9f | S8 | route at start | pending | #69: publication-economics trigger aborts a closure | Commit: not created.
 - T9g | S4 | route at start | pending | #88: local `profiles` grants match production | Commit: not created.
 - T9h | S1 | route at start | blocked: option not chosen (L126) | #68: auth SQL tests against PostgreSQL | Commit: not created.
@@ -1009,3 +1009,9 @@ RED/GREEN on the local stack (psql in the database container, rolled back, each 
 Not proven: the banned case on the three new paths (same expression; only suspended was run); the refund and cancel-shipment paths have no Bruno case (they need a Stripe refund); lock order: the helper locks sellers then products, the order `fn_admin_update_user_status` uses, but `fn_reserve_products` (rollback) and `fn_finalize_checkout_recovery` already hold product locks when they call it, so a suspension racing them can deadlock; PostgreSQL aborts one transaction with 40P01 and nothing half-commits (the checkout retries, the recovery worker retries, the admin sees an error). Not tested under load.
 Maintainer: apply `20261030130000_release_listings_helper.sql` (one new function, five `CREATE OR REPLACE FUNCTION`, no data change, `db:types` not needed).
 Risk: item 1 (product status writes in money paths: refund finalization, shipment cancellation), item 4 (lock order).
+
+### L142 — T9e merged; T9e2 migration applied
+Slice T9-4 (T9e and the `.env.example` cleanup) merged as PR #117 (be285fec) after CI `test` and the Vercel previews passed; it closed #70. origin/main merged back.
+T9e2 native review: the `inspect` timed out (`operation_timeout`, not retry-safe) and was not retried.
+Maintainer (verbatim): "Migracion aplicad master con succes". Remote (Supabase MCP, read-only): `fn_release_listings` exists (SECURITY INVOKER, `FOR SHARE` lock, executable by service_role only); `fn_release_stale_reservations`, `fn_release_products`, `fn_reserve_products`, `fn_finalize_checkout_recovery` and `fn_cancel_shipment` all call it; caller security modes and grants unchanged (the three DEFINER callers stay DEFINER; anon and authenticated execute none of the six). Security advisors: the same findings as before (L132), none for the new function.
+T9f (#69) runs in a worker; T9e2 and T9f go to main together as slice T9-5.
