@@ -1,0 +1,31 @@
+meta {
+  name: outbox-record-sent-as-service-role
+  type: http
+  seq: 138
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_record_push_results
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  { "p_results": [{ "id": "{{pushDeliveryId}}", "claim_token": "{{pushClaimToken}}", "outcome": "sent", "ticket_id": "bruno-ticket-1" }] }
+}
+
+tests {
+  test("the dispatcher records the sent outcome", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal({ sent: 1, retry: 0, failed: 0, ignored: 0 });
+  });
+}
+
+docs {
+  Runs after the malformed batch, which must have changed nothing.
+}

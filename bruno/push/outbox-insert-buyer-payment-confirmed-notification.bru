@@ -1,0 +1,38 @@
+meta {
+  name: outbox-insert-buyer-payment-confirmed-notification
+  type: http
+  seq: 123
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/notifications
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  { "user_id": "{{pushSellerId}}", "event_kind": "order.payment_confirmed", "source_event_key": "bruno-push-outbox:buyer", "event_payload": { "recipient_role": "buyer" }, "type": "success", "title": "Compra confirmada", "message": "Bruno push outbox fixture" }
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    bru.setVar("pushBuyerNotificationId", res.getBody()[0].id);
+  }
+}
+
+tests {
+  test("the producer insert succeeds", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody()).to.have.length(1);
+  });
+}
+
+docs {
+  Stands in for a producer: a typed notification addressed to the seller user id, with recipient_role buyer. The trigger fans it out.
+}

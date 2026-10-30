@@ -1,0 +1,28 @@
+meta {
+  name: outbox-cleanup-delete-notifications
+  type: http
+  seq: 141
+}
+
+delete {
+  url: {{baseUrl}}/rest/v1/notifications?source_event_key=in.(bruno-push-outbox:buyer,bruno-push-outbox:seller)
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+tests {
+  test("both fixture notifications are removed", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.length(2);
+  });
+}
+
+docs {
+  Cleanup. Deleting a notification cascades to its deliveries.
+}

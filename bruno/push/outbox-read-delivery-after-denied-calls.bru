@@ -1,0 +1,31 @@
+meta {
+  name: outbox-read-delivery-after-denied-calls
+  type: http
+  seq: 135
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/push_deliveries?select=status,attempts,claim_token,claimed_at,last_error&id=eq.{{pushDeliveryId}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the denied calls left the delivery untouched", function () {
+    const rows = res.getBody();
+    expect(rows).to.have.length(1);
+    expect(rows[0].status).to.equal("pending");
+    expect(rows[0].attempts).to.equal(0);
+    expect(rows[0].claim_token).to.equal(null);
+    expect(rows[0].last_error).to.equal(null);
+  });
+}
+
+docs {
+  Service-role read after the anon and buyer claim and record attempts.
+}

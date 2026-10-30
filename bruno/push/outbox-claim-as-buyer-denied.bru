@@ -1,0 +1,32 @@
+meta {
+  name: outbox-claim-as-buyer-denied
+  type: http
+  seq: 132
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_claim_push_deliveries
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  { "p_limit": 10 }
+}
+
+tests {
+  test("the caller cannot claim deliveries", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody().code).to.equal("42501");
+    expect(res.getBody().message).to.equal("permission denied for function fn_claim_push_deliveries");
+  });
+}
+
+docs {
+  EXECUTE is granted to service_role only.
+}

@@ -1,0 +1,31 @@
+meta {
+  name: outbox-policy-read-as-service-role
+  type: http
+  seq: 130
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/push_event_policy?select=event_kind,recipient_role,channel&order=event_kind,recipient_role
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the service role reads the allowlist: 15 pairs, seller-only payment confirmation", function () {
+    const rows = res.getBody();
+    expect(rows).to.have.length(15);
+    const pairs = rows.map((r) => r.event_kind + ":" + r.recipient_role);
+    expect(pairs).to.include("order.payment_confirmed:seller");
+    expect(pairs).to.not.include("order.payment_confirmed:buyer");
+    expect(rows.filter((r) => r.channel === "activity").map((r) => r.event_kind).sort()).to.deep.equal(["product.available", "product.interest"]);
+  });
+}
+
+docs {
+  The seeded matrix from the migration (L4).
+}
