@@ -75,12 +75,14 @@ describe('fn_release_products authorization migration', () => {
     expect(body).toContain('RETURN QUERY SELECT true');
   });
 
-  // The account-hold migration (release_reservation_account_hold) later
-  // replaced the body; its own test pins the canonical text.
-  test('canonical file keeps the strict RESERVED guard and clears reserved_at', () => {
+  // The account-hold migration (release_reservation_account_hold) replaced the
+  // body, and release_listings_helper moved the release into fn_release_listings
+  // (RESERVED rows only); their own tests pin the canonical text.
+  test('canonical file releases RESERVED rows only, through the helper', () => {
     const body = normalize(canonical);
-    expect(body).toContain('reserved_at = NULL');
-    expect(body).toContain("AND p.status = 'RESERVED'");
+    expect(body).toContain(
+      'PERFORM public.fn_release_listings(p_product_ids, true, false)',
+    );
     expect(body).toContain('RETURN QUERY SELECT true');
   });
 

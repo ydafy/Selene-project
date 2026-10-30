@@ -27,7 +27,11 @@ const findMigration = (): string => {
 // fn_cancel_order was rewritten here and dropped later by *_drop_fn_cancel_order.sql: it has no
 // canonical file left, so only the migration-body checks below still cover it.
 const FUNCTIONS = [
-  { name: 'fn_on_auth_user_created', args: '', file: 'triggers/auth/fn_on_auth_user_created.sql' },
+  {
+    name: 'fn_on_auth_user_created',
+    args: '',
+    file: 'triggers/auth/fn_on_auth_user_created.sql',
+  },
   {
     name: 'fn_create_order_from_payment',
     args: 'uuid, text, numeric, numeric, uuid, uuid[]',
@@ -51,9 +55,12 @@ const WALLET_REFERENCE = /\bwallets\b|wallet_transactions|payout_requests/i;
 // Rewritten again by a later migration, whose test checks that the canonical file carries the
 // newer body: *_connect_refund_requires_stripe.sql (fn_complete_shipment_refund) and
 // *_close_account_push_tokens.sql (fn_close_account, checked in account_closure.test.ts).
+// *_release_listings_helper.sql (fn_cancel_shipment: the release goes through
+// fn_release_listings, pinned in release_listings_helper.test.ts).
 const SUPERSEDED: ReadonlySet<string> = new Set([
   'fn_complete_shipment_refund',
   'fn_close_account',
+  'fn_cancel_shipment',
 ]);
 
 const collapse = (sql: string): string => sql.replace(/\s+/g, ' ').trim();
@@ -108,7 +115,9 @@ describe('remove legacy wallet writes from the core functions (SQL structural on
         expect(migration).toContain(
           `REVOKE ALL ON FUNCTION ${target} FROM PUBLIC, anon, authenticated;`,
         );
-        expect(migration).toContain(`GRANT EXECUTE ON FUNCTION ${target} TO service_role;`);
+        expect(migration).toContain(
+          `GRANT EXECUTE ON FUNCTION ${target} TO service_role;`,
+        );
       });
     });
   }
@@ -147,7 +156,9 @@ describe('every other effect of the rewritten functions is kept', () => {
     expect(body).toContain('ORDER_NOT_FOUND');
     expect(body).toContain('ALREADY_CANCELLED');
     expect(body).toContain('CANNOT_CANCEL_IN_THIS_STATUS');
-    expect(body).toMatch(/UPDATE public\.products SET status = 'VERIFIED', reserved_at = NULL/);
+    expect(body).toMatch(
+      /UPDATE public\.products SET status = 'VERIFIED', reserved_at = NULL/,
+    );
     expect(body).toContain("'Venta Cancelada'");
     expect(body).toContain("'Pedido Cancelado'");
     expect(body).toMatch(/UPDATE public\.orders SET status = 'cancelled'/);
@@ -170,7 +181,9 @@ describe('every other effect of the rewritten functions is kept', () => {
     expect(body).toContain("auth.role() IS DISTINCT FROM 'service_role'");
     expect(body).toContain('FROM public.shipment_cancellation_operations');
     expect(body).toMatch(/UPDATE public\.shipments SET status = 'cancelled'/);
-    expect(body).toContain('cancellation_loss_cents = v_next_cancellation_loss_cents');
+    expect(body).toContain(
+      'cancellation_loss_cents = v_next_cancellation_loss_cents',
+    );
     expect(body).toContain("'shipment.cancelled'");
   });
 

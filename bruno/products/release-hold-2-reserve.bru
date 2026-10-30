@@ -1,0 +1,36 @@
+meta {
+  name: release-hold-2-reserve
+  type: http
+  seq: 91
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/products?id=eq.00000000-0000-4000-8000-0000000000b3&select=status
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "status": "RESERVED",
+    "reserved_at": "2026-01-01T00:00:00Z",
+    "status_before_account_hold": null
+  }
+}
+
+tests {
+  test("the listing is reserved with an expired reservation while its seller is suspended", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ status: "RESERVED" }]);
+  });
+}
+
+docs {
+  Puts the listing back in RESERVED with a long expired reservation, as it is when a seller is suspended during a checkout. Service role only.
+}

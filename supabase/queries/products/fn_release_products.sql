@@ -2,7 +2,8 @@
 -- Source of truth for fn_release_products.
 -- Registered by migration 20261020214153_release_products_service_role_only.sql
 -- (service_role only, SECURITY INVOKER, no session check); account-hold
--- handling by 20261030120000_release_reservation_account_hold.sql.
+-- handling by 20261030120000_release_reservation_account_hold.sql, moved into
+-- fn_release_listings by 20261030130000_release_listings_helper.sql.
 -- Deployable as a standalone CREATE OR REPLACE FUNCTION statement.
 -- ============================================================================
 
@@ -24,35 +25,7 @@ LANGUAGE plpgsql
 SET search_path = public, pg_temp
 AS $$
 BEGIN
-  PERFORM 1
-  FROM public.profiles_private pp
-  WHERE pp.id IN (
-    SELECT s.seller_id
-    FROM public.products s
-    WHERE s.id = ANY(p_product_ids)
-      AND s.status = 'RESERVED'
-  )
-  ORDER BY pp.id
-  FOR SHARE;
-
-  UPDATE public.products AS p
-  SET status = CASE
-        WHEN COALESCE(pp.status, 'active') = 'active'
-          THEN 'VERIFIED'::public.product_status_enum
-        ELSE 'HIDDEN'::public.product_status_enum
-      END,
-      status_before_account_hold = CASE
-        WHEN COALESCE(pp.status, 'active') = 'active'
-          THEN p.status_before_account_hold
-        ELSE COALESCE(p.status_before_account_hold, 'VERIFIED'::public.product_status_enum)
-      END,
-      updated_at = now(),
-      reserved_at = NULL
-  FROM public.products AS s
-  LEFT JOIN public.profiles_private AS pp ON pp.id = s.seller_id
-  WHERE s.id = p.id
-    AND p.id = ANY(p_product_ids)
-    AND p.status = 'RESERVED';
+  PERFORM public.fn_release_listings(p_product_ids, true, false);
 
   RETURN QUERY SELECT true;
 END;

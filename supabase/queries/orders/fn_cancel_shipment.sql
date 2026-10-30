@@ -18,7 +18,6 @@ DECLARE
   v_seller_id UUID;
   v_status public.order_status_enum;
   v_buyer_id UUID;
-  v_item RECORD;
   v_actual_stripe_fee_cents BIGINT;
   v_cancellation_loss_cents BIGINT;
   v_loss_update_cents BIGINT;
@@ -85,16 +84,16 @@ BEGIN
   END IF;
 
   -- 4. Release products before publishing the shipment transition.
-  FOR v_item IN
-    SELECT oi.product_id
-    FROM public.order_items oi
-    JOIN public.products p ON p.id = oi.product_id
-    WHERE oi.shipment_id = p_shipment_id
-  LOOP
-    UPDATE public.products
-    SET status = 'VERIFIED', reserved_at = NULL, updated_at = now()
-    WHERE id = v_item.product_id;
-  END LOOP;
+  PERFORM public.fn_release_listings(
+    ARRAY(
+      SELECT oi.product_id
+      FROM public.order_items oi
+      JOIN public.products p ON p.id = oi.product_id
+      WHERE oi.shipment_id = p_shipment_id
+    ),
+    false,
+    false
+  );
 
   -- 5. Mark the shipment cancelled and persist any reconciled loss.
   UPDATE public.shipments

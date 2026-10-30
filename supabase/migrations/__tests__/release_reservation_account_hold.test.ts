@@ -10,7 +10,6 @@ import { join } from 'node:path';
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..');
-const QUERIES_DIR = join(import.meta.dir, '..', '..', 'queries', 'products');
 
 const migration = (() => {
   const files = readdirSync(MIGRATIONS_DIR).filter((f) =>
@@ -44,30 +43,19 @@ const functionStatement = (sql: string, name: string): string => {
 describe.each(['fn_release_stale_reservations', 'fn_release_products'])(
   '%s account hold',
   (name) => {
-    const canonical = readFileSync(join(QUERIES_DIR, `${name}.sql`), 'utf8');
-
-    test.each([
-      ['migration', migration],
-      ['canonical file', canonical],
-    ])(
-      '%s holds the listing of a non-active seller instead of re-listing it',
-      (_, sql) => {
-        const body = functionStatement(sql, name);
-        expect(body).toMatch(/COALESCE\(.*status, 'active'\) = 'active'/i);
-        expect(body).toContain("'HIDDEN'::public.product_status_enum");
-        expect(body).toMatch(/status_before_account_hold = CASE/i);
-        expect(body).toMatch(
-          /COALESCE\((p\.)?status_before_account_hold, 'VERIFIED'/i,
-        );
-        expect(body).toMatch(/FOR SHARE/i);
-        expect(body).toMatch(/AND p\.status = 'RESERVED'/i);
-      },
-    );
-
-    test('canonical body matches the migration body', () => {
-      expect(functionStatement(canonical, name)).toBe(
-        functionStatement(migration, name),
+    // This migration was superseded by release_listings_helper, which moved the
+    // rule into fn_release_listings and rewrote the canonical files; the helper
+    // test pins the canonical text. These checks pin the migration as deployed.
+    test('migration holds the listing of a non-active seller instead of re-listing it', () => {
+      const body = functionStatement(migration, name);
+      expect(body).toMatch(/COALESCE\(.*status, 'active'\) = 'active'/i);
+      expect(body).toContain("'HIDDEN'::public.product_status_enum");
+      expect(body).toMatch(/status_before_account_hold = CASE/i);
+      expect(body).toMatch(
+        /COALESCE\((p\.)?status_before_account_hold, 'VERIFIED'/i,
       );
+      expect(body).toMatch(/FOR SHARE/i);
+      expect(body).toMatch(/AND p\.status = 'RESERVED'/i);
     });
 
     test('migration keeps service_role only grants', () => {

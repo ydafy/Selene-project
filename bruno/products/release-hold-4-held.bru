@@ -1,0 +1,27 @@
+meta {
+  name: release-hold-4-held
+  type: http
+  seq: 93
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/products?id=eq.00000000-0000-4000-8000-0000000000b3&select=status,status_before_account_hold,reserved_at
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("a released reservation of a suspended seller is held, not re-listed", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ status: "HIDDEN", status_before_account_hold: "VERIFIED", reserved_at: null }]);
+  });
+}
+
+docs {
+  The listing is HIDDEN with the hold set to VERIFIED.
+}

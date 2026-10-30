@@ -1,0 +1,33 @@
+meta {
+  name: release-hold-3-release-products
+  type: http
+  seq: 92
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_release_products
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_product_ids": ["00000000-0000-4000-8000-0000000000b3"]
+  }
+}
+
+tests {
+  test("the checkout-failure release succeeds", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ success: true }]);
+  });
+}
+
+docs {
+  fn_release_products as service_role. With the seller suspended the listing is held instead of returning to VERIFIED (next request).
+}
