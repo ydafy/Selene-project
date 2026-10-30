@@ -37,6 +37,11 @@ describe('auth email templates', () => {
       expect(block).toMatch(/^subject = ".+"/m);
     });
 
+    test(`${name}: every template action stays on one line`, () => {
+      // Formatters may wrap `{{ .Email }}` across lines; keep each action whole.
+      expect(read(name)).not.toMatch(/\{\{[^}]*\n[^}]*\}\}/);
+    });
+
     test(`${name}: no external asset URLs`, () => {
       expect(read(name)).not.toMatch(/https?:\/\//i);
     });
