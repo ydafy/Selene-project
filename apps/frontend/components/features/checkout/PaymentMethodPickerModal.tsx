@@ -25,6 +25,7 @@ import { EmptyState } from '../../ui/EmptyState';
 import { ErrorState } from '../../ui/ErrorState'; // Importado
 import { BrandIcon } from '../../ui/BrandIcon';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
+import { googlePayTestEnv } from '../../../core/utils/stripeMode';
 
 const MAX_CARDS = 3;
 
@@ -34,7 +35,7 @@ export const PaymentMethodPickerModal = ({
   innerRef: React.RefObject<BottomSheetModal | null>;
 }) => {
   const theme = useTheme<Theme>();
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['checkout', 'common']);
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
   const [isSyncing, setIsSyncing] = useState(false);
@@ -63,7 +64,7 @@ export const PaymentMethodPickerModal = ({
       const currentCount = methods.length;
       const { setupIntent, customer, ephemeralKey } = await getSetupConfig();
       if (!setupIntent || !customer || !ephemeralKey) {
-        throw new Error(t('errors.generic'));
+        throw new Error(t('common:errors.generic'));
       }
 
       const { error: initError } = await initPaymentSheet({
@@ -92,7 +93,9 @@ export const PaymentMethodPickerModal = ({
         // Opcional: Habilitar Google Pay si lo configuraste en app.json
         googlePay: {
           merchantCountryCode: 'MX',
-          testEnv: true, // Cambiar a false en producción
+          testEnv: googlePayTestEnv(
+            process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+          ),
         },
       });
 
@@ -111,8 +114,10 @@ export const PaymentMethodPickerModal = ({
       }, 2500);
     } catch (e: any) {
       Alert.alert(
-        'Error',
-        e.message === 'limit_reached' ? 'Límite alcanzado' : e.message,
+        t('common:errors.title'),
+        e.message === 'limit_reached'
+          ? t('checkout:payment.limitReached')
+          : t('common:errors.generic'),
       );
     }
   };
@@ -129,7 +134,7 @@ export const PaymentMethodPickerModal = ({
       setMethodToDelete(null);
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e: any) {
-      Alert.alert('Error', 'No se pudo eliminar la tarjeta.');
+      Alert.alert(t('common:errors.title'), t('checkout:payment.deleteFailed'));
     }
   };
 
@@ -148,7 +153,7 @@ export const PaymentMethodPickerModal = ({
       return (
         <ErrorState
           onRetry={() => refreshMethods()}
-          message="No pudimos cargar tus tarjetas. Revisa tu conexión."
+          message={t('checkout:payment.loadFailed')}
         />
       );
     }
@@ -159,8 +164,8 @@ export const PaymentMethodPickerModal = ({
         <Box flex={1} justifyContent="center" padding="xl">
           <EmptyState
             icon="credit-card-off-outline"
-            title="Sin tarjetas"
-            message="Agrega un método de pago para continuar."
+            title={t('checkout:payment.emptyTitle')}
+            message={t('checkout:payment.emptyMessage')}
           />
         </Box>
       );
@@ -272,7 +277,9 @@ export const PaymentMethodPickerModal = ({
           borderBottomColor="background"
           alignItems="center"
         >
-          <Text variant="subheader-md">Mis Métodos de Pago</Text>
+          <Text variant="subheader-md">
+            {t('checkout:payment.selectMethod')}
+          </Text>
         </Box>
 
         <TouchableOpacity
@@ -303,8 +310,8 @@ export const PaymentMethodPickerModal = ({
                   fontWeight="bold"
                 >
                   {isSyncing
-                    ? 'Verificando tarjeta...'
-                    : 'Conectando con Stripe...'}
+                    ? t('checkout:payment.verifyingCard')
+                    : t('checkout:payment.connectingStripe')}
                 </Text>
               </Box>
             ) : (
@@ -320,7 +327,7 @@ export const PaymentMethodPickerModal = ({
                   marginLeft="s"
                   fontWeight="bold"
                 >
-                  Agregar Nueva Tarjeta
+                  {t('checkout:payment.addCard')}
                 </Text>
               </>
             )}
@@ -331,11 +338,13 @@ export const PaymentMethodPickerModal = ({
 
         <ConfirmDialog
           visible={!!methodToDelete}
-          title="Eliminar tarjeta"
-          description={`¿Estás seguro de que quieres eliminar la tarjeta terminada en ${methodToDelete?.last4}?`}
+          title={t('checkout:payment.deleteTitle')}
+          description={t('checkout:payment.deleteDescription', {
+            last4: methodToDelete?.last4,
+          })}
           icon="alert-circle-outline"
           isDangerous
-          confirmLabel="Eliminar"
+          confirmLabel={t('checkout:payment.deleteAction')}
           loading={isDeleting}
           onConfirm={handleDelete}
           onCancel={() => setMethodToDelete(null)}

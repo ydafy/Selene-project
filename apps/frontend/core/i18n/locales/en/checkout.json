@@ -71,7 +71,17 @@
     "noAddressError": "Missing shipping address.",
     "outOfStockMsg": "Someone else just purchased one of your products.",
     "genericError": "An error occurred while connecting to the server.",
-    "sellerNotReadyError": "One or more sellers can't receive payments yet. Remove those items from your cart or try again later."
+    "sellerNotReadyError": "One or more sellers can't receive payments yet. Remove those items from your cart or try again later.",
+    "addCard": "Add new card",
+    "verifyingCard": "Verifying card...",
+    "connectingStripe": "Connecting to Stripe...",
+    "loadFailed": "We could not load your cards. Check your connection.",
+    "emptyTitle": "No cards",
+    "emptyMessage": "Add a payment method to continue.",
+    "deleteTitle": "Delete card",
+    "deleteDescription": "Are you sure you want to delete the card ending in {{last4}}?",
+    "deleteAction": "Delete",
+    "deleteFailed": "The card could not be deleted."
   },
   "success": {
     "title": "Payment Confirmed!",
