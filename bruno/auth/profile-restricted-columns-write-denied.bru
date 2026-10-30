@@ -1,0 +1,35 @@
+meta {
+  name: profile-restricted-columns-write-denied
+  type: http
+  seq: 75
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/profiles?id=eq.00000000-0000-4000-8000-000000000003
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  {
+    "is_verified_seller": true
+  }
+}
+
+tests {
+  test("a signed-in user cannot write is_verified_seller on their own profile", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody().code).to.equal("42501");
+  });
+}
+
+docs {
+  Issue #88. Local grants match production: authenticated can update only username,
+  avatar_url and updated_at on public.profiles. The seeded buyer id is
+  00000000-0000-4000-8000-000000000003 (supabase/seed.sql).
+}
