@@ -40,8 +40,9 @@ export interface CleanInput {
   target: string;
   currentRoot: string;
   worktrees: Worktree[];
-  changedFiles: string[];
-  untrackedFiles: string[];
+  /** null when git could not read the worktree: never assume it is clean */
+  changedFiles: string[] | null;
+  untrackedFiles: string[] | null;
   headMerged: boolean;
   stackDirs: string[];
   evidenceFiles: number;
@@ -102,10 +103,28 @@ export const findStacksForRoot = (stacks: StackDir[], root: string) =>
     .filter((stack) => samePath(stack.identity.projectRoot, root))
     .map((stack) => stack.dir);
 
+const isInside = (path: string, dir: string) =>
+  normalize(path).startsWith(`${normalize(dir)}/`) || samePath(path, dir);
+
+/**
+ * The main checkout and its sibling <main>-worktrees folder (AGENTS.md layout).
+ * Stack data anywhere else may belong to another project and is never an orphan here.
+ */
+export const orphanScopes = (mainRoot: string) => [
+  mainRoot,
+  `${mainRoot}-worktrees`,
+];
+
 export const findOrphanStacks = (
   stacks: StackDir[],
   exists: (path: string) => boolean,
-) => stacks.filter((stack) => !exists(stack.identity.projectRoot));
+  scopes: string[],
+) =>
+  stacks.filter(
+    (stack) =>
+      scopes.some((scope) => isInside(stack.identity.projectRoot, scope)) &&
+      !exists(stack.identity.projectRoot),
+  );
 
 export function parseArgs(args: string[]) {
   const flags = new Set(args.filter((arg) => arg.startsWith('--')));
@@ -140,9 +159,11 @@ export function planWorktreeClean(input: CleanInput): CleanPlan {
   }
 
   const blockers: string[] = [];
-  if (input.changedFiles.length > 0)
+  if (input.changedFiles === null || input.untrackedFiles === null)
+    blockers.push(`could not read the git status of ${input.target}`);
+  if (input.changedFiles?.length)
     blockers.push(`uncommitted changes: ${input.changedFiles.join(', ')}`);
-  if (input.untrackedFiles.length > 0)
+  if (input.untrackedFiles?.length)
     blockers.push(`untracked files: ${input.untrackedFiles.join(', ')}`);
   const head = worktree.branch ? `branch ${worktree.branch}` : 'detached HEAD';
   if (!input.headMerged)
@@ -176,12 +197,32 @@ export function planWorktreeClean(input: CleanInput): CleanPlan {
 const STACKS_DIR = join(homedir(), '.supabase', 'stacks');
 
 function run(cmd: string[], cwd?: string) {
-  const result = Bun.spawnSync(cmd, { cwd, stdout: 'pipe', stderr: 'pipe' });
-  return {
-    ok: result.exitCode === 0,
-    out: result.stdout.toString().trim(),
-    err: result.stderr.toString().trim(),
-  };
+  try {
+    const result = Bun.spawnSync(cmd, { cwd, stdout: 'pipe', stderr: 'pipe' });
+    return {
+      ok: result.exitCode === 0,
+      out: result.stdout.toString().trim(),
+      err: result.stderr.toString().trim(),
+    };
+  } catch (error) {
+    // e.g. the Supabase CLI is not installed
+    return { ok: false, out: '', err: String(error) };
+  }
+}
+
+/** The lines a read-only git probe printed, or null when it failed. */
+function probe(cmd: string[], cwd: string) {
+  const result = run(cmd, cwd);
+  return result.ok ? lines(result.out) : null;
+}
+
+function removeDir(dir: string): string | null {
+  try {
+    rmSync(dir, { recursive: true, force: true });
+    return null;
+  } catch (error) {
+    return `could not delete ${dir}: ${String(error)}`;
+  }
 }
 
 const lines = (text: string) =>
@@ -210,23 +251,35 @@ function countFiles(dir: string): number {
 }
 
 function cleanOrphans(apply: boolean) {
-  const orphans = findOrphanStacks(readStacks(), existsSync);
+  const [main] = parseWorktrees(
+    run(['git', 'worktree', 'list', '--porcelain']).out,
+  );
+  if (!main) {
+    console.error('[worktree-clean] run it inside this repository');
+    return 1;
+  }
+  const orphans = findOrphanStacks(
+    readStacks(),
+    existsSync,
+    orphanScopes(main.path),
+  );
   if (orphans.length === 0) {
     console.log('[worktree-clean] no orphan Supabase stack data');
     return 0;
   }
+  const problems: string[] = [];
   for (const { dir, identity } of orphans) {
     console.log(
       `[worktree-clean] orphan: ${dir} (was ${identity.projectRoot}, ${identity.branch ?? 'no branch'})`,
     );
-    if (apply) rmSync(dir, { recursive: true, force: true });
+    const problem = apply ? removeDir(dir) : null;
+    if (problem) problems.push(problem);
   }
-  console.log(
-    apply
-      ? `[worktree-clean] deleted ${orphans.length}`
-      : '[worktree-clean] plan only: add --yes to delete them',
-  );
-  return 0;
+  if (!apply) {
+    console.log('[worktree-clean] plan only: add --yes to delete them');
+    return 0;
+  }
+  return finish(problems);
 }
 
 function cleanWorktree(arg: string, apply: boolean) {
@@ -245,13 +298,10 @@ function cleanWorktree(arg: string, apply: boolean) {
     currentRoot: run(['git', 'rev-parse', '--show-toplevel']).out,
     worktrees,
     changedFiles: present
-      ? lines(run(['git', 'diff', 'HEAD', '--name-only'], target).out)
+      ? probe(['git', 'diff', 'HEAD', '--name-only'], target)
       : [],
     untrackedFiles: present
-      ? lines(
-          run(['git', 'ls-files', '--others', '--exclude-standard'], target)
-            .out,
-        )
+      ? probe(['git', 'ls-files', '--others', '--exclude-standard'], target)
       : [],
     headMerged: match
       ? run(['git', 'merge-base', '--is-ancestor', match.head, 'origin/main'])
@@ -275,7 +325,15 @@ function cleanWorktree(arg: string, apply: boolean) {
     return 0;
   }
 
-  if (present) run(['supabase', 'stop'], target); // no stack running is fine
+  const problems: string[] = [];
+  if (present) {
+    const stopped = run(['supabase', 'stop'], target);
+    // A worktree without a running stack is the normal case, not a problem.
+    if (!stopped.ok && !/no managed stack/i.test(stopped.out + stopped.err))
+      console.log(
+        `[worktree-clean] warning: supabase stop did not run: ${stopped.err || stopped.out}`,
+      );
+  }
   const removed = present
     ? run(['git', 'worktree', 'remove', '--force', target]) // only line-ending noise is left
     : { ok: true, out: '', err: '' };
@@ -292,15 +350,25 @@ function cleanWorktree(arg: string, apply: boolean) {
   if (match?.branch) {
     const branch = run(['git', 'branch', '-d', match.branch]);
     if (!branch.ok)
-      console.error(
-        `[worktree-clean] git branch -d ${match.branch}: ${branch.err}`,
-      );
+      problems.push(`git branch -d ${match.branch}: ${branch.err}`);
   }
   run(['git', 'fetch', '-q', '--prune', 'origin']);
-  for (const dir of findStacksForRoot(readStacks(), target))
-    rmSync(dir, { recursive: true, force: true });
-  console.log('[worktree-clean] done');
-  return 0;
+  for (const dir of findStacksForRoot(readStacks(), target)) {
+    const problem = removeDir(dir);
+    if (problem) problems.push(problem);
+  }
+  return finish(problems);
+}
+
+function finish(problems: string[]) {
+  for (const problem of problems)
+    console.error(`[worktree-clean] failed: ${problem}`);
+  console.log(
+    problems.length > 0
+      ? '[worktree-clean] finished with problems: see above'
+      : '[worktree-clean] done',
+  );
+  return problems.length > 0 ? 1 : 0;
 }
 
 if (import.meta.main) {

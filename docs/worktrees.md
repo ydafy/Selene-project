@@ -26,11 +26,13 @@ In order, it stops the worktree's Supabase stack, removes the worktree, prunes t
 It refuses, and changes nothing, when:
 
 - the worktree has uncommitted changes or untracked files (line-ending-only differences do not count);
-- its branch is not merged into `origin/main`;
+- its `HEAD` is not in `origin/main`: an unmerged branch, or commits on a detached `HEAD`;
+- git cannot read the worktree's status (it never assumes a worktree is clean);
 - the target is the main checkout or the worktree the command runs in;
-- the path is not a worktree of this repository.
+- the path is not a worktree of this repository;
+- the arguments mix a worktree with `--orphans`, or include an unknown flag.
 
-If Windows keeps the folder locked (an open terminal, editor or Docker Desktop), the command stops after the failed remove. Close what holds it, delete the folder by hand, and run the command again: it then finishes the remaining steps.
+If Windows keeps the folder locked (an open terminal, editor or Docker Desktop), the command stops after the failed remove. Close what holds it, delete the folder by hand, and run the command again: it then finishes the remaining steps. If a later step fails (deleting the branch or a stack folder), the command names it, ends with `finished with problems` and exits with code 1. A `supabase stop` that could not run is reported as a warning: a worktree without a running stack is the normal case.
 
 ## Stack data of worktrees already deleted
 
@@ -38,6 +40,8 @@ If Windows keeps the folder locked (an open terminal, editor or Docker Desktop),
 bun run worktree:clean --orphans        # lists stack data whose worktree folder no longer exists
 bun run worktree:clean --orphans --yes  # deletes it
 ```
+
+It only considers stack data of this repository: projects whose root is the main checkout or a folder under `<main checkout>-worktrees` (for example `C:/dev/School-portal-worktrees`). Stack data of other projects on the same machine is never listed, even when their folder is gone.
 
 ## Is any context lost?
 

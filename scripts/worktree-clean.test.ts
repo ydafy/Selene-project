@@ -4,6 +4,7 @@ import {
   findOrphanStacks,
   findStacksForRoot,
   parseStackIdentity,
+  orphanScopes,
   parseArgs,
   parseWorktrees,
   planWorktreeClean,
@@ -95,6 +96,15 @@ describe('parseStackIdentity', () => {
   });
 });
 
+describe('orphanScopes', () => {
+  it('covers only the main checkout and its -worktrees folder', () => {
+    expect(orphanScopes('C:/dev/School-portal')).toEqual([
+      'C:/dev/School-portal',
+      'C:/dev/School-portal-worktrees',
+    ]);
+  });
+});
+
 describe('findStacksForRoot', () => {
   it('returns every stack of the worktree, whatever branch created it', () => {
     const stacks = [
@@ -116,7 +126,18 @@ describe('findOrphanStacks', () => {
     ];
     const exists = (path: string) =>
       samePath(path, 'C:/dev/School-portal-worktrees/auth');
-    expect(findOrphanStacks(stacks, exists)).toEqual([stacks[1]]);
+    const scopes = ['C:/dev/School-portal-worktrees'];
+    expect(findOrphanStacks(stacks, exists, scopes)).toEqual([stacks[1]]);
+  });
+
+  it('never lists stacks of other projects, even when their folder is gone', () => {
+    const stacks = [
+      stack('other', 'C:\\dev\\another-app'),
+      stack('lookalike', 'C:\\dev\\School-portal-worktrees-old\\x'),
+      stack('ours', 'C:\\dev\\School-portal-worktrees\\gone'),
+    ];
+    const scopes = ['C:/dev/School-portal', 'C:/dev/School-portal-worktrees'];
+    expect(findOrphanStacks(stacks, () => false, scopes)).toEqual([stacks[2]]);
   });
 });
 
@@ -176,6 +197,16 @@ describe('planWorktreeClean', () => {
       'untracked files: notes.md',
       'branch fix/auth is not merged into origin/main',
     ]);
+  });
+
+  it('refuses when git could not read the worktree status, instead of assuming it is clean', () => {
+    const plan = planWorktreeClean(input({ changedFiles: null }));
+    expect(plan.blockers).toEqual([
+      'could not read the git status of C:/dev/School-portal-worktrees/auth',
+    ]);
+    expect(planWorktreeClean(input({ untrackedFiles: null })).blockers).toEqual(
+      plan.blockers,
+    );
   });
 
   it('refuses to delete the worktree the command runs in', () => {
