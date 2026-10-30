@@ -59,14 +59,20 @@ export const createHcaptchaWidget = (
   let ready: Promise<{ api: HcaptchaApi; id: string }> | null = null;
 
   const ensure = () => {
-    ready ??= load().then((api) => {
-      if (disposed) throw new CaptchaError(CAPTCHA_CANCELLED_CODE);
-      rendered = {
-        api,
-        id: api.render(container, { sitekey, size: 'invisible' }),
-      };
-      return rendered;
-    });
+    ready ??= load()
+      .then((api) => {
+        if (disposed) throw new CaptchaError(CAPTCHA_CANCELLED_CODE);
+        rendered = {
+          api,
+          id: api.render(container, { sitekey, size: 'invisible' }),
+        };
+        return rendered;
+      })
+      .catch((error: unknown) => {
+        // A failed load must not stick: the next request tries again.
+        ready = null;
+        throw error;
+      });
     return ready;
   };
 

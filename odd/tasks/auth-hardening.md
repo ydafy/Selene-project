@@ -116,8 +116,8 @@ Follow repository manual Supabase workflow: supply SQL/function/config handoff, 
 - T9a | S8,S9 | inline | done (L127, review approved L129; device check pending) | Legal links from `domain.ts` only (`TERMS_URL`, `PRIVACY_URL`; `legalUrls.ts` and its env overrides removed), public `/terminos` page in admin-web, register terms link | Commit: not created.
 - T9b | S9 | delegated writer (context backstop) | done (L130, review approved L131) | Auth email templates versioned in `supabase/templates/` and wired in `config.toml` | Commit: not created.
 - T9c | S9 | inline | done (L132) | One auth switch-on runbook in `docs/go-live.md`, each step with an MCP check | Commit: not created.
-- T9d | S9 | delegated writer (context backstop) | done (L133, L135; review pending) | CAPTCHA on in the local stack with the hCaptcha test secret; Bruno sends the test token | Commit: not created.
-- T9d1 | S9 | delegated writer (context backstop) | done (L134; review pending) | Admin-web hCaptcha through the hCaptcha JS API in `useCaptcha.tsx` (drop `@hcaptcha/react-hcaptcha`); a failing reset never hides the CAPTCHA error | Commit: not created.
+- T9d | S9 | delegated writer (context backstop) | done (L133, L135, review approved L136) | CAPTCHA on in the local stack with the hCaptcha test secret; Bruno sends the test token | Commit: not created.
+- T9d1 | S9 | delegated writer (context backstop) | done (L134, review approved L136) | Admin-web hCaptcha through the hCaptcha JS API in `useCaptcha.tsx` (drop `@hcaptcha/react-hcaptcha`); a failing reset never hides the CAPTCHA error | Commit: not created.
 - T9e | S4 | route at start | pending | #70: listings reserved at suspension | Commit: not created.
 - T9f | S8 | route at start | pending | #69: publication-economics trigger aborts a closure | Commit: not created.
 - T9g | S4 | route at start | pending | #88: local `profiles` grants match production | Commit: not created.
@@ -968,3 +968,6 @@ With T9d1 in place, T9d commits as recorded in L133: local `[auth.captcha]` on w
 Consequence: the local stack no longer mirrors the remote's CAPTCHA (off until go-live); a client pointed at the local stack must use the hCaptcha test site key (`EXPO_PUBLIC_HCAPTCHA_SITE_KEY`, `VITE_HCAPTCHA_SITE_KEY` = `10000000-ffff-ffff-ffff-000000000001`) or its password sign-ins and sign-ups get `captcha_failed`. GoTrue verifies the token with hCaptcha's servers, so local sign-ins need internet.
 Slice T9-3: origin/main..HEAD (T9c f09aa5f4, T9d1 cbeb1841, T9d), about 530 authored lines, over the ~400 target because T9d1 had to land before T9d.
 Risk: item 2 (local Auth guard), item 6 (third-party widget only in a browser).
+
+### L136 — T9d1/T9d review follow-up
+Review of f09aa5f4..9aea1c6c (T9d1 cbeb1841 and T9d 9aea1c6c together; risk, resilience, reliability) approved and acknowledged. Fixed: resilience and reliability both found that a failed first API load left the widget's `ready` promise rejected, so the login could not recover without a reload (the L134 "not proven" note); `createHcaptchaWidget` now forgets a failed load and the next request tries again (RED: new test "a failed API load is retried on the next request" failed; GREEN: `bun test apps/admin-web` 360 pass, typecheck exit 0, ESLint clean). Risk advisory: `supabase config push` would replace the Dashboard secret with the test secret; the `[auth.captcha]` comment now says never to push this file (go-live already forbids it).

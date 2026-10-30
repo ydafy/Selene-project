@@ -90,6 +90,23 @@ describe('createHcaptchaWidget', () => {
     expect(api.reset).toHaveBeenCalledWith('id-1');
   });
 
+  test('a failed API load is retried on the next request', async () => {
+    const api = fakeApi();
+    const load = mock<() => Promise<HcaptchaApi>>()
+      .mockImplementationOnce(() =>
+        Promise.reject(new Error('hcaptcha_script_failed')),
+      )
+      .mockImplementationOnce(() => Promise.resolve(api));
+    const widget = createHcaptchaWidget(load, container, 'site');
+
+    await expect(widget.execute({ async: true })).rejects.toThrow(
+      'hcaptcha_script_failed',
+    );
+    expect(await widget.execute({ async: true })).toEqual({ response: 'tok' });
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(api.render).toHaveBeenCalledTimes(1);
+  });
+
   test('reset before the API is ready is a no-op', () => {
     const widget = createHcaptchaWidget(
       () => new Promise(() => {}),
