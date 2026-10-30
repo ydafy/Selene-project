@@ -1,0 +1,27 @@
+meta {
+  name: unlock-product-11-audit
+  type: http
+  seq: 81
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/admin_audit_logs?target_id=eq.00000000-0000-4000-8000-0000000000b4&action_type=eq.PRODUCT_UNLOCK&admin_id=eq.00000000-0000-4000-8000-000000000001&select=admin_id
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the unlock wrote exactly one audit row under the admin", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(bru.getVar("unlockAuditBefore") + 1);
+  });
+}
+
+docs {
+  fn_unlock_product writes PRODUCT_UNLOCK to admin_audit_logs when it releases a lock.
+}

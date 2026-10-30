@@ -1,0 +1,35 @@
+meta {
+  name: unlock-product-05-buyer-denied
+  type: http
+  seq: 75
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_unlock_product
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  {
+    "p_product_id": "00000000-0000-4000-8000-0000000000b4"
+  }
+}
+
+tests {
+  test("a signed-in buyer reaches the function and is refused as a non-admin", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().code).to.equal("P0001");
+    expect(res.getBody().message).to.equal("UNAUTHORIZED_ADMIN_ONLY");
+  });
+}
+
+docs {
+  authenticated has EXECUTE on fn_unlock_product; the admin check inside the function refuses buyers.
+  unlock-product-07 proves the lock is unchanged.
+}

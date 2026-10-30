@@ -1,7 +1,8 @@
-
+-- Body of fn_unlock_product(p_product_id uuid). EXECUTE: authenticated and
+-- service_role; admin check through is_admin() (active admins only).
+-- Last changed by 20261029233832_unlock_product_authenticated_grant.sql.
 DECLARE
     v_auth_user_id UUID;
-    v_is_admin BOOLEAN;
     v_rows_affected INTEGER;
 BEGIN
     v_auth_user_id := (current_setting('request.jwt.claims', true)::json->>'sub')::UUID;
@@ -10,13 +11,8 @@ BEGIN
         RAISE EXCEPTION 'UNAUTHORIZED_NO_SESSION';
     END IF;
 
-    -- Direct check bypassing is_admin() which may have search_path issues
-    SELECT EXISTS (
-        SELECT 1 FROM public.profiles_private
-        WHERE id = v_auth_user_id AND role = 'admin'
-    ) INTO v_is_admin;
-
-    IF NOT v_is_admin THEN
+    -- Active admins only: is_admin() reads profiles_private.role and status.
+    IF NOT public.is_admin() THEN
         RAISE EXCEPTION 'UNAUTHORIZED_ADMIN_ONLY';
     END IF;
 

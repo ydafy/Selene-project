@@ -1,0 +1,35 @@
+meta {
+  name: unlock-product-02-suspend-admin
+  type: http
+  seq: 72
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/profiles_private?id=eq.00000000-0000-4000-8000-000000000001
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "status": "suspended"
+  }
+}
+
+tests {
+  test("the seeded admin is suspended", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].status).to.equal("suspended");
+  });
+}
+
+docs {
+  Local stack only. Setup for unlock-product-03; unlock-product-04 reactivates the admin.
+  An aborted run leaves the admin suspended: run supabase db reset.
+}
