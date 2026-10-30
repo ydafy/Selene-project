@@ -20,6 +20,7 @@ import { useUserDetail } from '../hooks/useUserDetail';
 import { UserAvatar } from '../components/ui/UserAvatar';
 import { UserSafetyActions } from '../components/features/verify/UserSafetyActions';
 import { getRank } from '../lib/utils/ranks';
+import { isClosedAccount } from '../lib/accountStatus';
 import { ErrorState } from '../components/ui/ErrorState';
 import { StatCard } from '../components/ui/StatCard';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -127,6 +128,7 @@ export const UserDetailPage = () => {
     processedCount > 0 ? Math.round((verifiedCount / processedCount) * 100) : 0;
 
   const rank = getRank(soldCount, displayRatio);
+  const closed = isClosedAccount(profile);
 
   return (
     <div className="space-y-6">
@@ -179,12 +181,19 @@ export const UserDetailPage = () => {
                   className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border ${
                     profile.status === 'active'
                       ? 'border-forest/30 text-forest bg-forest/5'
-                      : 'border-fire/30 text-fire bg-fire/5'
+                      : closed
+                        ? 'border-white/10 text-blue-light bg-white/5'
+                        : 'border-fire/30 text-fire bg-fire/5'
                   }`}
                 >
-                  {profile.status}
+                  {closed ? 'Cuenta eliminada' : profile.status}
                 </span>
               </div>
+              {closed && (
+                <p className="mt-2 text-sm text-blue-light">
+                  El usuario cerró su cuenta. No se puede reactivar.
+                </p>
+              )}
 
               <div className="flex flex-col sm:flex-row sm:items-center gap-y-2 gap-x-6 mt-4">
                 <div className="flex items-center gap-2 text-blue-light text-sm">
@@ -222,6 +231,7 @@ export const UserDetailPage = () => {
             <UserSafetyActions
               user={{
                 id: profile.id!,
+                username: profile.username,
                 status: profile.status ?? 'active',
                 is_verified_seller: profile.is_verified_seller,
               }}

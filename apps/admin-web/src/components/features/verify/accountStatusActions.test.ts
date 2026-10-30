@@ -21,6 +21,10 @@ describe('getAccountStatusActions', () => {
     expect(getAccountStatusActions(status, isSelf)).toEqual(expected);
   });
 
+  test('an unexpected status allows no actions', () => {
+    expect(getAccountStatusActions('deleted' as AccountStatus, false)).toEqual([]);
+  });
+
   test('maps each action to the RPC target status', () => {
     expect(ACCOUNT_STATUS_ACTION_TARGET).toEqual({
       suspend: 'suspended',
@@ -37,5 +41,7 @@ test('UserSafetyActions renders only helper-allowed status actions', async () =>
   expect(component).toContain("actions.includes('reactivate')");
   expect(component).toContain("actions.includes('ban')");
   expect(component).not.toContain('volverán a ser VERIFIED');
-  expect(component).toContain('estado que tenían antes de la suspensión');
+  expect(component).not.toContain('regresarán al estado que tenían antes de la suspensión');
+  expect(component).toContain('Sus publicaciones que estaban activas antes de la suspensión');
+  expect(component).toContain('las demás siguen ocultas hasta revisarlas');
 });

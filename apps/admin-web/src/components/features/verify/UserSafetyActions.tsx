@@ -6,10 +6,12 @@ import { toast } from 'sonner';
 import { InputModal } from '../../ui/InputModal';
 import type { AccountStatus } from '@selene/types';
 import { getAccountStatusActions } from './accountStatusActions';
+import { isClosedAccount } from '../../../lib/accountStatus';
 
 interface Props {
   user: {
     id: string;
+    username?: string | null;
     status: AccountStatus;
     is_verified_seller: boolean | null;
   };
@@ -20,6 +22,10 @@ export const UserSafetyActions = ({ user, onUpdate }: Props) => {
   const { user: admin } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const actions = getAccountStatusActions(user.status, user.id === admin?.id);
+  const closed = isClosedAccount({
+    status: user.status,
+    username: user.username ?? null,
+  });
 
   // ESTADO PARA EL MODAL
   const [modalConfig, setModalConfig] = useState<{
@@ -69,6 +75,21 @@ export const UserSafetyActions = ({ user, onUpdate }: Props) => {
     }
     setLoading(false);
   };
+
+  if (closed) {
+    return (
+      <div className="flex items-center gap-2 border-l border-white/10 pl-4 ml-4">
+        <span
+          role="img"
+          aria-label="Cuenta eliminada (sin acciones)"
+          title="Cuenta eliminada (sin acciones)"
+          className="p-2 rounded-lg bg-white/5 text-blue-light opacity-70"
+        >
+          <Lock size={18} />
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center gap-2 border-l border-white/10 pl-4 ml-4">
@@ -150,7 +171,7 @@ export const UserSafetyActions = ({ user, onUpdate }: Props) => {
         }
         description={
           modalConfig.status === 'active'
-            ? 'Explica por qué estás devolviendo el acceso a este usuario. Sus publicaciones ocultas por la suspensión regresarán al estado que tenían antes de la suspensión.'
+            ? 'Explica por qué estás devolviendo el acceso a este usuario. Sus publicaciones que estaban activas antes de la suspensión vuelven a su estado previo; las demás siguen ocultas hasta revisarlas.'
             : `Explica por qué estás cambiando el estado a ${modalConfig.status}.`
         }
         placeholder="Escribe el motivo aquí..."
