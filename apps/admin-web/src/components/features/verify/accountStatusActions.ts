@@ -23,7 +23,7 @@ export function getAccountStatusActions(
       return ['suspend', 'ban'];
     case 'suspended':
       return ['reactivate', 'ban'];
-    case 'banned':
+    default:
       return [];
   }
 }

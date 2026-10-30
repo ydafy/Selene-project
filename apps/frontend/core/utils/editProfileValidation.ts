@@ -6,6 +6,8 @@
  */
 
 const USERNAME_REGEX = /^[A-Za-z0-9_.]+$/;
+// Reserved by the server for accounts closed by fn_close_account.
+const RESERVED_PREFIX_REGEX = /^deleted_/i;
 const MIN_LEN = 3;
 const MAX_LEN = 30;
 
@@ -27,6 +29,9 @@ export const validateEditUsername = (raw: string): UsernameValidation => {
   }
   if (!USERNAME_REGEX.test(value)) {
     return { ok: false, errorKey: 'errors.usernameInvalid' };
+  }
+  if (RESERVED_PREFIX_REGEX.test(value)) {
+    return { ok: false, errorKey: 'errors.usernameReserved' };
   }
   return { ok: true };
 };

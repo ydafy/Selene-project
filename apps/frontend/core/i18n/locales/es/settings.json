@@ -104,6 +104,7 @@
   "errors": {
     "usernameInvalid": "Solo se permiten letras, números, guion bajo y punto.",
     "usernameTaken": "Ese nombre de usuario ya está en uso.",
+    "usernameReserved": "Ese nombre de usuario está reservado. Elige otro.",
     "usernameRequired": "Necesitamos un nombre de usuario.",
     "updateFailed": "No pudimos guardar los cambios. Intenta de nuevo.",
     "deleteFailed": "No pudimos eliminar tu cuenta. Intenta más tarde.",

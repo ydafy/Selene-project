@@ -189,6 +189,7 @@ export const VerificationDetail = ({
           <UserSafetyActions
             user={{
               id: product.seller_id,
+              username: product.seller?.username ?? null,
               status:
                 (product.seller as { status?: AccountStatus })?.status ||
                 'active',

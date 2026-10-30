@@ -1,0 +1,41 @@
+meta {
+  name: signup-reserved-username-rejected
+  type: http
+  seq: 70
+}
+
+post {
+  url: {{baseUrl}}/auth/v1/signup
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{anonKey}}
+}
+
+script:pre-request {
+  bru.setVar("reservedSignupEmail", "bruno-reserved-" + Date.now() + "@selene.local");
+}
+
+body:json {
+  {
+    "email": "{{reservedSignupEmail}}",
+    "password": "password123",
+    "data": { "username": "Deleted_typed" }
+  }
+}
+
+tests {
+  test("a typed deleted_ username fails the signup with check_violation (23514)", function () {
+    expect(res.getStatus()).to.equal(500);
+    expect(res.getBody().code).to.equal("23514");
+    expect(res.getBody().message).to.contain("is reserved");
+  });
+}
+
+docs {
+  Local stack only. tr_profiles_reserve_deleted_username rejects the reserved prefix
+  case-insensitively; no user is created.
+}

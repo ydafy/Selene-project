@@ -3,6 +3,7 @@ import { Mail, ChevronRight, Copy, Check, Fingerprint } from 'lucide-react';
 import { UserAvatar } from '../../ui/UserAvatar';
 import { getRank } from '../../../lib/utils/ranks';
 import type { AdminUser } from '@selene/types';
+import { isClosedAccount } from '../../../lib/accountStatus';
 
 export const UserCard = ({
   user,
@@ -25,6 +26,7 @@ export const UserCard = ({
 
   // 2. LÓGICA DE ROLES Y TIEMPO
   const isAdmin = user.role === 'admin';
+  const closed = isClosedAccount(user);
   const isNew =
     new Date().getTime() -
       new Date(user.created_at ?? new Date().toISOString()).getTime() <
@@ -71,10 +73,12 @@ export const UserCard = ({
           className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${
             user.status === 'active'
               ? 'bg-forest/10 text-forest border-forest/20'
-              : 'bg-fire/10 text-fire border-fire/20'
+              : closed
+                ? 'bg-white/5 text-blue-light border-white/10'
+                : 'bg-fire/10 text-fire border-fire/20'
           }`}
         >
-          {user.status}
+          {closed ? 'Cuenta eliminada' : user.status}
         </span>
       </div>
 
