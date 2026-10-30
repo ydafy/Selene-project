@@ -1,0 +1,29 @@
+meta {
+  name: purge-read-after
+  type: http
+  seq: 170
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/push_deliveries?select=id&id=in.({{pushDeliveryId}},{{pushKeepDeliveryId}},{{pushDeadDeliveryId}})
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("only the old finished row is gone", function () {
+    expect(res.getStatus()).to.equal(200);
+    const ids = res.getBody().map((r) => r.id);
+    expect(ids).to.have.length(2);
+    expect(ids).to.not.include(bru.getVar("pushDeliveryId"));
+  });
+}
+
+docs {
+  Recent finished rows stay for 30 days.
+}

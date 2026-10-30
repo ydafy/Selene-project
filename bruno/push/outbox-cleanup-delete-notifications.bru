@@ -1,11 +1,11 @@
 meta {
   name: outbox-cleanup-delete-notifications
   type: http
-  seq: 141
+  seq: 171
 }
 
 delete {
-  url: {{baseUrl}}/rest/v1/notifications?source_event_key=in.(bruno-push-outbox:buyer,bruno-push-outbox:seller)
+  url: {{baseUrl}}/rest/v1/notifications?source_event_key=in.(bruno-push-outbox:buyer,bruno-push-outbox:seller,bruno-push-receipts:keep,bruno-push-receipts:dead)
   body: none
   auth: none
 }
@@ -17,9 +17,9 @@ headers {
 }
 
 tests {
-  test("both fixture notifications are removed", function () {
+  test("every fixture notification is removed", function () {
     expect(res.getStatus()).to.equal(200);
-    expect(res.getBody()).to.have.length(2);
+    expect(res.getBody()).to.have.length(4);
   });
 }
 

@@ -1,0 +1,29 @@
+meta {
+  name: receipts-read-token-disabled
+  type: http
+  seq: 166
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/push_tokens?select=disabled_at,disabled_reason&token=eq.ExponentPushToken%5Bbruno-push-token-0002%5D
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the token is disabled as a dead device", function () {
+    const rows = res.getBody();
+    expect(rows).to.have.length(1);
+    expect(rows[0].disabled_at).to.be.a("string");
+    expect(rows[0].disabled_reason).to.equal("DeviceNotRegistered");
+  });
+}
+
+docs {
+  The fan-out and the claim skip it from now on.
+}

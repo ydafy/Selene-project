@@ -1,0 +1,31 @@
+meta {
+  name: receipts-record-again-ignored
+  type: http
+  seq: 157
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_record_push_receipts
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  { "p_receipts": [{ "id": "{{pushDeliveryId}}", "receipt": "ok" }] }
+}
+
+tests {
+  test("a receipt is recorded once", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal({"ok": 0, "error": 0, "missing": 0, "pending": 0, "ignored": 1, "tokens_disabled": 0});
+  });
+}
+
+docs {
+  A second run that saw the same ticket changes nothing.
+}

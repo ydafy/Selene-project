@@ -1737,6 +1737,9 @@ export type Database = {
           next_attempt_at: string
           notification_id: string
           push_token_id: string
+          receipt_checked_at: string | null
+          receipt_error: string | null
+          receipt_status: string | null
           sent_at: string | null
           status: string
           updated_at: string
@@ -1754,6 +1757,9 @@ export type Database = {
           next_attempt_at?: string
           notification_id: string
           push_token_id: string
+          receipt_checked_at?: string | null
+          receipt_error?: string | null
+          receipt_status?: string | null
           sent_at?: string | null
           status?: string
           updated_at?: string
@@ -1771,6 +1777,9 @@ export type Database = {
           next_attempt_at?: string
           notification_id?: string
           push_token_id?: string
+          receipt_checked_at?: string | null
+          receipt_error?: string | null
+          receipt_status?: string | null
           sent_at?: string | null
           status?: string
           updated_at?: string
@@ -4019,6 +4028,13 @@ export type Database = {
         Args: { p_shipment_id: string }
         Returns: Json
       }
+      fn_list_push_receipts_due: {
+        Args: { p_limit: number }
+        Returns: {
+          delivery_id: string
+          ticket_id: string
+        }[]
+      }
       fn_list_shipment_cancellation_reviews: {
         Args: never
         Returns: {
@@ -4220,6 +4236,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      fn_purge_push_deliveries: { Args: { p_limit: number }; Returns: number }
       fn_reconcile_connect_payments: {
         Args: never
         Returns: {
@@ -4271,6 +4288,7 @@ export type Database = {
           success: boolean
         }[]
       }
+      fn_record_push_receipts: { Args: { p_receipts: Json }; Returns: Json }
       fn_record_push_results: { Args: { p_results: Json }; Returns: Json }
       fn_record_shipment_cancellation_refund: {
         Args: {

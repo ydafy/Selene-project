@@ -1,0 +1,31 @@
+meta {
+  name: purge-as-service-role
+  type: http
+  seq: 169
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_purge_push_deliveries
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  { "p_limit": 10000 }
+}
+
+tests {
+  test("the purge deletes finished rows older than 30 days", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.at.least(1);
+  });
+}
+
+docs {
+  Service role purge.
+}

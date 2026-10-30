@@ -1,0 +1,32 @@
+meta {
+  name: receipts-record-malformed-rejected
+  type: http
+  seq: 151
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_record_push_receipts
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  { "p_receipts": [{ "id": "{{pushDeliveryId}}", "receipt": "ok" }, { "id": "{{pushDeliveryId}}", "receipt": "ok", "token_dead": true }] }
+}
+
+tests {
+  test("a malformed item rejects the whole batch", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().message).to.contain("INVALID_PUSH_RECEIPTS");
+    expect(res.getBody().message).to.contain("token_dead requires receipt error");
+  });
+}
+
+docs {
+  The valid first item must not be applied: the next requests see the receipt still due.
+}

@@ -1,0 +1,31 @@
+meta {
+  name: receipts-read-after-missing
+  type: http
+  seq: 153
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/push_deliveries?select=status,receipt_status,receipt_error,receipt_checked_at&id=eq.{{pushDeliveryId}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the receipt is still open and the check is stamped", function () {
+    const rows = res.getBody();
+    expect(rows).to.have.length(1);
+    expect(rows[0].status).to.equal("sent");
+    expect(rows[0].receipt_status).to.equal(null);
+    expect(rows[0].receipt_error).to.equal(null);
+    expect(rows[0].receipt_checked_at).to.be.a("string");
+  });
+}
+
+docs {
+  Stored state after the malformed batch and the first missing receipt.
+}

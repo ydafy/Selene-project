@@ -1,0 +1,37 @@
+meta {
+  name: receipts-insert-dead-notification
+  type: http
+  seq: 163
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/notifications
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  { "user_id": "{{pushSellerId}}", "event_kind": "product.rejected", "source_event_key": "bruno-push-receipts:dead", "event_payload": { "recipient_role": "seller" }, "type": "info", "title": "Bruno push receipts", "message": "Bruno push receipts fixture" }
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    bru.setVar("pushDeadNotificationId", res.getBody()[0].id);
+  }
+}
+
+tests {
+  test("the producer insert succeeds", function () {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  Stands in for a producer; the trigger fans it out to the seller token.
+}
