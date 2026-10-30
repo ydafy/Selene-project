@@ -168,7 +168,7 @@ select cron.schedule(
 
 Both lanes use `*/N` schedules because `cron-watchdog` only supports `*/N`, `M * * * *`, `M */N * * *` and `M H * * *`; each lane has its own lease, so starting in the same minute is safe. Rollback: unset `TRACK_SHIPMENTS_POLLING_ENABLED` (runs keep answering `disabled`), then `cron.unschedule` both lanes if needed.
 
-The service-role JWT that the old job carried was readable by anyone with database owner access. It is replaced, not revoked: revoking it is part of moving to Supabase's per-key API keys before go-live (backlog BL32), which also replaces the service-role values stored in Vault (`checkout_recovery_worker_service_role_key`, `stripe_fee_worker_service_role_jwt`).
+The service-role JWT that the old job carried was readable by anyone with database owner access. It is replaced, not revoked: revoking it is part of moving to Supabase's per-key API keys before go-live (section 1, step 3), which also replaces the service-role values stored in Vault (`checkout_recovery_worker_service_role_key`, `stripe_fee_worker_service_role_jwt`).
 
 `auto-cancel-orders` and `auto-cancel-preparing` reject any caller without the `x-cron-secret` header (401 `UNAUTHORIZED`, compared against `CRON_SECRET`), even though the gateway still accepts the anon JWT. Order matters: create the Vault secret `auto_cancel_orders_cron_secret` and recreate `auto-cancel-orders-job` first (the previous function version ignores the extra header), and only then deploy both functions; otherwise the hourly runs get 401. In the SQL Editor:
 

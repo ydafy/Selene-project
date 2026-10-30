@@ -58,7 +58,7 @@ Manual testing: never ask the maintainer to repeat by hand what these checks alr
 | When and how do I update a dependency?  | `docs/dependencies.md`                                                                                 |
 | Which skills apply?                     | `.atl/skill-registry.md`                                                                               |
 | Which conventions apply to new code?    | `docs/conventions.md`                                                                                  |
-| What is pending outside a feature?      | GitHub Issues ("Finding" form); private Security Advisories for vulnerabilities                        |
+| What is pending outside a feature?      | GitHub Issues ("Finding" and "Idea" forms); private Security Advisories for vulnerabilities            |
 
 Use the typed aliases (`Tables<'orders'>`, `Enums<'order_status_enum'>`). Never invent table, column, enum, or relationship names.
 
@@ -115,9 +115,9 @@ Before starting work on a module, read the open issues and the draft Security Ad
 When you find a bug or gap that is not part of the task, do not fix it: record it and continue.
 
 - Ordinary findings: open a GitHub issue with the "Finding" form (`.github/ISSUE_TEMPLATE/finding.yml`) using the `gentle-ai-issue-creation` skill, without asking first. Search open and closed issues for a duplicate first. Write it so the maintainer understands it without the code open, and cite the issue number in the feature's `## Log`. Keep the form's `### Priority` and `### Area` headings with the exact option text: `.github/workflows/issue-labels.yml` sets the `priority:*` and `area:*` labels from them, so change a priority by editing the body, not the label.
+- Ideas (a feature, tool, or process worth doing later, not a defect): open an issue with the "Idea" form (`.github/ISSUE_TEMPLATE/idea.yml`) when the maintainer asks to note one. Do not keep backlog lists in `odd/tasks/`.
 - Vulnerabilities (auth, permissions, secrets, money integrity, data exposure): this repository is public. While unfixed, never describe them in an issue, PR, commit message, or any file in the repository. Tell the maintainer in the session and draft a private Security Advisory (`SECURITY.md`); details go public only after the fix is deployed. When the maintainer confirms the fix is deployed, close the advisory yourself (`gh api -X PATCH repos/ydafy/Selene-project/security-advisories/<GHSA-id> -f state=closed`); do not publish it.
 - A PR that fixes an issue says `Closes #N`. Close an issue by hand only with the maintainer's decision.
-- `odd/tasks/cross-module-backlog.md` is legacy: add nothing to it; its open items will move to issues and advisories.
 
 ## How money moves
 
