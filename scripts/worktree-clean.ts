@@ -22,6 +22,7 @@ import { basename, join } from 'node:path';
 
 export interface Worktree {
   path: string;
+  head: string;
   branch: string | null;
 }
 
@@ -41,8 +42,7 @@ export interface CleanInput {
   worktrees: Worktree[];
   changedFiles: string[];
   untrackedFiles: string[];
-  /** null when the worktree is detached and has no branch to delete */
-  branchMerged: boolean | null;
+  headMerged: boolean;
   stackDirs: string[];
   evidenceFiles: number;
 }
@@ -62,6 +62,7 @@ export function parseWorktrees(porcelain: string): Worktree[] {
       const branchLine = lines.find((line) => line.startsWith('branch '));
       return {
         path: lines[0].slice('worktree '.length).trim(),
+        head: lines.find((line) => line.startsWith('HEAD '))?.slice(5) ?? '',
         branch: branchLine
           ? branchLine.slice('branch refs/heads/'.length).trim()
           : null,
@@ -106,6 +107,18 @@ export const findOrphanStacks = (
   exists: (path: string) => boolean,
 ) => stacks.filter((stack) => !exists(stack.identity.projectRoot));
 
+export function parseArgs(args: string[]) {
+  const flags = new Set(args.filter((arg) => arg.startsWith('--')));
+  const [target, ...extra] = args.filter((arg) => !arg.startsWith('--'));
+  const apply = flags.delete('--yes');
+  const orphans = flags.delete('--orphans');
+  if (flags.size > 0 || extra.length > 0 || orphans === Boolean(target))
+    return null;
+  return orphans
+    ? { mode: 'orphans' as const, apply }
+    : { mode: 'worktree' as const, target, apply };
+}
+
 export function planWorktreeClean(input: CleanInput): CleanPlan {
   const worktree = input.worktrees.find((entry) =>
     samePath(entry.path, input.target),
@@ -131,8 +144,9 @@ export function planWorktreeClean(input: CleanInput): CleanPlan {
     blockers.push(`uncommitted changes: ${input.changedFiles.join(', ')}`);
   if (input.untrackedFiles.length > 0)
     blockers.push(`untracked files: ${input.untrackedFiles.join(', ')}`);
-  if (worktree.branch && input.branchMerged === false)
-    blockers.push(`branch ${worktree.branch} is not merged into origin/main`);
+  const head = worktree.branch ? `branch ${worktree.branch}` : 'detached HEAD';
+  if (!input.headMerged)
+    blockers.push(`${head} is not merged into origin/main`);
   if (samePath(input.currentRoot, input.target))
     blockers.push(
       'this command runs inside the target worktree: run it from the main checkout',
@@ -239,15 +253,10 @@ function cleanWorktree(arg: string, apply: boolean) {
             .out,
         )
       : [],
-    branchMerged: match?.branch
-      ? run([
-          'git',
-          'merge-base',
-          '--is-ancestor',
-          `refs/heads/${match.branch}`,
-          'origin/main',
-        ]).ok
-      : null,
+    headMerged: match
+      ? run(['git', 'merge-base', '--is-ancestor', match.head, 'origin/main'])
+          .ok
+      : false,
     stackDirs: findStacksForRoot(readStacks(), target),
     evidenceFiles: present
       ? countFiles(join(target, 'verification-evidence'))
@@ -295,15 +304,13 @@ function cleanWorktree(arg: string, apply: boolean) {
 }
 
 if (import.meta.main) {
-  const args = Bun.argv.slice(2);
-  const apply = args.includes('--yes');
-  const positional = args.filter((arg) => !arg.startsWith('--'));
-  if (args.includes('--orphans')) process.exit(cleanOrphans(apply));
-  if (positional.length !== 1) {
+  const parsed = parseArgs(Bun.argv.slice(2));
+  if (!parsed) {
     console.error(
       'usage: bun run worktree:clean <worktree path or folder name> [--yes] | --orphans [--yes]',
     );
     process.exit(2);
   }
-  process.exit(cleanWorktree(positional[0], apply));
+  if (parsed.mode === 'orphans') process.exit(cleanOrphans(parsed.apply));
+  process.exit(cleanWorktree(parsed.target, parsed.apply));
 }

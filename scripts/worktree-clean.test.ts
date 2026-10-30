@@ -4,6 +4,7 @@ import {
   findOrphanStacks,
   findStacksForRoot,
   parseStackIdentity,
+  parseArgs,
   parseWorktrees,
   planWorktreeClean,
   samePath,
@@ -35,13 +36,15 @@ const stack = (
   identity: { projectRoot, branch },
 });
 
+const DETACHED_UNMERGED = 'detached HEAD is not merged into origin/main';
+
 const input = (overrides: Partial<CleanInput> = {}): CleanInput => ({
   target: 'C:/dev/School-portal-worktrees/auth',
   currentRoot: 'C:/dev/School-portal',
   worktrees: parseWorktrees(PORCELAIN),
   changedFiles: [],
   untrackedFiles: [],
-  branchMerged: true,
+  headMerged: true,
   stackDirs: ['C:/Users/me/.supabase/stacks/abc'],
   evidenceFiles: 0,
   ...overrides,
@@ -49,11 +52,13 @@ const input = (overrides: Partial<CleanInput> = {}): CleanInput => ({
 
 describe('parseWorktrees', () => {
   it('reads every worktree with its branch, or null when detached', () => {
-    expect(parseWorktrees(PORCELAIN)).toEqual([
+    expect(parseWorktrees(PORCELAIN)).toMatchObject([
       { path: 'C:/dev/School-portal', branch: 'main' },
       { path: 'C:/dev/School-portal-worktrees/auth', branch: 'fix/auth' },
       { path: 'C:/dev/School-portal-worktrees/spike', branch: null },
     ]);
+    const heads = parseWorktrees(PORCELAIN).map((w) => w.head);
+    expect(heads).toEqual(['aaa', 'bbb', 'ccc']);
   });
 });
 
@@ -115,6 +120,20 @@ describe('findOrphanStacks', () => {
   });
 });
 
+describe('parseArgs', () => {
+  it('reads one worktree or the orphans mode, and rejects every other combination', () => {
+    const worktree = { mode: 'worktree', target: 'auth' };
+    expect(parseArgs(['auth'])).toEqual({ ...worktree, apply: false });
+    expect(parseArgs(['auth', '--yes'])).toEqual({ ...worktree, apply: true });
+    const orphans = { mode: 'orphans', apply: true };
+    expect(parseArgs(['--orphans', '--yes'])).toEqual(orphans);
+    expect(parseArgs(['auth', '--orphans', '--yes'])).toBeNull();
+    expect(parseArgs(['auth', '--force'])).toBeNull();
+    expect(parseArgs([])).toBeNull();
+    expect(parseArgs(['a', 'b'])).toBeNull();
+  });
+});
+
 describe('planWorktreeClean', () => {
   it('plans every cleanup step, in order, for a merged and clean worktree', () => {
     const plan = planWorktreeClean(input());
@@ -149,7 +168,7 @@ describe('planWorktreeClean', () => {
       input({
         changedFiles: ['src/a.ts'],
         untrackedFiles: ['notes.md'],
-        branchMerged: false,
+        headMerged: false,
       }),
     );
     expect(plan.blockers).toEqual([
@@ -168,11 +187,17 @@ describe('planWorktreeClean', () => {
     ]);
   });
 
+  it('refuses a detached worktree whose HEAD has commits outside origin/main', () => {
+    const spike = 'C:/dev/School-portal-worktrees/spike';
+    const plan = planWorktreeClean(input({ target: spike, headMerged: false }));
+    expect(plan.blockers).toEqual([DETACHED_UNMERGED]);
+  });
+
   it('skips the branch step for a detached worktree and warns about verification evidence', () => {
     const plan = planWorktreeClean(
       input({
         target: 'C:/dev/School-portal-worktrees/spike',
-        branchMerged: null,
+        headMerged: true,
         stackDirs: [],
         evidenceFiles: 3,
       }),
