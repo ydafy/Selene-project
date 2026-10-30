@@ -1,0 +1,31 @@
+meta {
+  name: purge-invalid-limit-rejected
+  type: http
+  seq: 167
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_purge_push_deliveries
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  { "p_limit": 0 }
+}
+
+tests {
+  test("a non-positive limit is rejected", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().message).to.equal("INVALID_PUSH_PURGE_LIMIT");
+  });
+}
+
+docs {
+  The purge always runs in bounded batches.
+}

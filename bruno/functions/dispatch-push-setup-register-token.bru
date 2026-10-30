@@ -1,0 +1,30 @@
+meta {
+  name: dispatch-push-setup-register-token
+  type: http
+  seq: 106
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_register_push_token
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{sellerToken}}
+}
+
+body:json {
+  { "p_token": "ExponentPushToken[bruno-dispatch-push-0001]", "p_platform": "android" }
+}
+
+tests {
+  test("the seller registers a device token", function () {
+    expect(res.getStatus()).to.be.oneOf([200, 204]);
+  });
+}
+
+docs {
+  A well-formed Expo token that no device owns. Expo answers it for real.
+}

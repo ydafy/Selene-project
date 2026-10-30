@@ -1,0 +1,42 @@
+meta {
+  name: receipts-mark-keep-sent
+  type: http
+  seq: 160
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/push_deliveries?notification_id=eq.{{pushKeepNotificationId}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  { "status": "sent", "attempts": 1, "expo_ticket_id": "bruno-ticket-2", "sent_at": "{{pushSentAt}}" }
+}
+
+script:pre-request {
+  bru.setVar("pushSentAt", new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString());
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("pushKeepDeliveryId", res.getBody()[0].id);
+  }
+}
+
+tests {
+  test("the fixture row is updated", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.length(1);
+  });
+}
+
+docs {
+  Stands in for a send two hours ago, before the seller registered the token again.
+}

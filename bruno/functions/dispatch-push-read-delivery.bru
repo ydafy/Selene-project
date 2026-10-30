@@ -1,0 +1,31 @@
+meta {
+  name: dispatch-push-read-delivery
+  type: http
+  seq: 109
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/push_deliveries?select=status,attempts,last_error,expo_ticket_id&notification_id=eq.{{dispatchNotificationId}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("Expo reported the unknown token as a dead device", function () {
+    const rows = res.getBody();
+    expect(rows).to.have.length(1);
+    expect(rows[0].status).to.equal("failed");
+    expect(rows[0].attempts).to.equal(1);
+    expect(rows[0].last_error).to.equal("DeviceNotRegistered");
+    expect(rows[0].expo_ticket_id).to.equal(null);
+  });
+}
+
+docs {
+  The ticket for a token no device owns is DeviceNotRegistered.
+}

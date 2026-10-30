@@ -1,0 +1,31 @@
+meta {
+  name: receipts-record-dead-device
+  type: http
+  seq: 165
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_record_push_receipts
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  { "p_receipts": [{ "id": "{{pushDeadDeliveryId}}", "receipt": "error", "error": "DeviceNotRegistered", "token_dead": true }] }
+}
+
+tests {
+  test("a DeviceNotRegistered receipt disables the token", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal({"ok": 0, "error": 1, "missing": 0, "pending": 0, "ignored": 0, "tokens_disabled": 1});
+  });
+}
+
+docs {
+  The device cannot receive pushes any more.
+}

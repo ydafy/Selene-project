@@ -1,0 +1,36 @@
+meta {
+  name: purge-backdate-finished-row
+  type: http
+  seq: 168
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/push_deliveries?id=eq.{{pushDeliveryId}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  { "updated_at": "{{pushUpdatedAt}}" }
+}
+
+script:pre-request {
+  bru.setVar("pushUpdatedAt", new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString());
+}
+
+tests {
+  test("the fixture row is updated", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.length(1);
+  });
+}
+
+docs {
+  The first fixture row has been finished for 31 days.
+}

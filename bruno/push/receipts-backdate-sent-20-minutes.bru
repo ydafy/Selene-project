@@ -1,0 +1,36 @@
+meta {
+  name: receipts-backdate-sent-20-minutes
+  type: http
+  seq: 149
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/push_deliveries?id=eq.{{pushDeliveryId}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  { "sent_at": "{{pushSentAt}}" }
+}
+
+script:pre-request {
+  bru.setVar("pushSentAt", new Date(Date.now() - 20 * 60 * 1000).toISOString());
+}
+
+tests {
+  test("the fixture row is updated", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.length(1);
+  });
+}
+
+docs {
+  Moves the send 20 minutes back so the receipt is due.
+}

@@ -1,0 +1,29 @@
+meta {
+  name: dispatch-push-read-token
+  type: http
+  seq: 110
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/push_tokens?select=disabled_at,disabled_reason&token=eq.ExponentPushToken%5Bbruno-dispatch-push-0001%5D
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the dead token is disabled", function () {
+    const rows = res.getBody();
+    expect(rows).to.have.length(1);
+    expect(rows[0].disabled_at).to.be.a("string");
+    expect(rows[0].disabled_reason).to.equal("DeviceNotRegistered");
+  });
+}
+
+docs {
+  The fan-out and the claim skip it from now on.
+}

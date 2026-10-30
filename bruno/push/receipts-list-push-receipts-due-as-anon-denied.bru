@@ -1,0 +1,31 @@
+meta {
+  name: receipts-list-push-receipts-due-as-anon-denied
+  type: http
+  seq: 141
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_list_push_receipts_due
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+body:json {
+  { "p_limit": 10 }
+}
+
+tests {
+  test("the caller cannot run fn_list_push_receipts_due", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody().code).to.equal("42501");
+    expect(res.getBody().message).to.equal("permission denied for function fn_list_push_receipts_due");
+  });
+}
+
+docs {
+  EXECUTE is granted to service_role only.
+}

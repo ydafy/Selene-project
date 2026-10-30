@@ -1,0 +1,31 @@
+meta {
+  name: receipts-record-missing-stays-due
+  type: http
+  seq: 152
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_record_push_receipts
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  { "p_receipts": [{ "id": "{{pushDeliveryId}}", "receipt": "missing" }] }
+}
+
+tests {
+  test("a receipt not there 20 minutes after sending stays due", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal({"ok": 0, "error": 0, "missing": 0, "pending": 1, "ignored": 0, "tokens_disabled": 0});
+  });
+}
+
+docs {
+  Expo had no receipt yet; the row is checked again later.
+}

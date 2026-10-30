@@ -1,0 +1,31 @@
+meta {
+  name: receipts-record-push-receipts-as-anon-denied
+  type: http
+  seq: 142
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_record_push_receipts
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+body:json {
+  { "p_receipts": [{ "id": "{{pushDeliveryId}}", "receipt": "error", "error": "DeviceNotRegistered", "token_dead": true }] }
+}
+
+tests {
+  test("the caller cannot run fn_record_push_receipts", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody().code).to.equal("42501");
+    expect(res.getBody().message).to.equal("permission denied for function fn_record_push_receipts");
+  });
+}
+
+docs {
+  EXECUTE is granted to service_role only.
+}
