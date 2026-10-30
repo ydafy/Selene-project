@@ -1,6 +1,15 @@
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
+// Prettier may re-wrap the source files read below; compare without layout.
+const compact = (source: string) =>
+  source
+    .replace(/\s+/g, ' ')
+    .replace(/([([{]) /g, '$1')
+    .replace(/ ([)\]}])/g, '$1')
+    .replace(/,([)\]}])/g, '$1')
+    .replace(/ \./g, '.');
+
 const handlers = [
   {
     name: 'auto-cancel-orders',
@@ -22,11 +31,12 @@ for (const { name, job, flag, column } of handlers) {
       new URL(`../${name}/index.ts`, import.meta.url),
       'utf8',
     );
-    const tryStart = source.indexOf('  try {');
-    const acquireAt = source.indexOf(
-      `acquireAutoCancelLease(supabaseAdmin, '${job}', log)`,
+    const flat = compact(source);
+    const tryStart = flat.indexOf(compact('  try {'));
+    const acquireAt = flat.indexOf(
+      compact(`acquireAutoCancelLease(supabaseAdmin, '${job}', log)`),
     );
-    const shipmentsQueryAt = source.indexOf(".from('shipments')");
+    const shipmentsQueryAt = flat.indexOf(compact(".from('shipments')"));
     const loopAt = source.indexOf(
       'for (const [index, shipment] of expiredShipments.entries())',
     );

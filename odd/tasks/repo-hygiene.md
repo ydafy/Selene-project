@@ -15,11 +15,12 @@ The frontend move to `src/` and the feature-based layout (phases 5-6) wait until
 ## Tasks
 
 - T1 | S1-S2 | inline | commit: d796757 (done)
-- T2 | S3-S4 | worker | commit: see L9 (done)
-- T3 | S5 | worker | commit: see L10 (done)
-- T4a | S6 | worker | `apps/frontend` lint and typecheck to zero | commit: bcef989 (done)
-- T4b | S6 | worker | `apps/admin-web`, `packages/types`, `supabase/functions` lint and typecheck to zero, `.agents/skills` (vendor) ignored by ESLint | commit: ce813f9, 5202262 (format only), 0c81acd (done)
-- T4c | S6 | inline | CI runs `bun run lint` and `bun run typecheck` | commit: this commit (done)
+- T2 | S3-S4 | worker | commit: f0086ac (done)
+- T3 | S5 | worker | commit: 58024c2 (done)
+- T4a | S6 | worker | `apps/frontend` lint and typecheck to zero | commit: 955bf0b (done)
+- T4b | S6 | worker | `apps/admin-web`, `packages/types`, `supabase/functions` lint and typecheck to zero, `.agents/skills` (vendor) ignored by ESLint | commit: dc50042, 84ef831 (format only), 56f4b39 (done)
+- T4c | S6 | inline | CI runs `bun run lint` and `bun run typecheck` | commit: b92dc44 (done)
+- T5 | S5 | worker | source guard tests compare code without Prettier line breaks (L15) | commit: see L16 (done)
 
 ## Log
 
@@ -34,6 +35,8 @@ The frontend move to `src/` and the feature-based layout (phases 5-6) wait until
 - L9 (evidence T2): `docs/conventions.md` (76 lines) and `apps/frontend/AGENTS.md` (24 lines) added. Root `AGENTS.md` 139 to 154 lines: stack versions in the Map intro, frontend guide in "Read first", a conventions row in "Where truth lives", and a `## Boundaries` section (Always, Ask first, Never) built only from rules moved out of "How we work", "Git", "Verifying a change", and the Supabase bullet. The camelCase count is 207 at this commit. `bunx prettier --check` passes.
 - L10 (evidence T3): RED `bun test scripts/check-commit-msg.test.ts` failed on the missing module; GREEN 20 pass. Through the `.husky/_` wrappers: `did some stuff` exits 1 with the exact format error; `fix(hooks): reject bad headers` exits 0 silently; a staged file with an unused variable makes `lint-staged` exit 1 and restore the index. `husky` 9.1.7 added as a devDependency (`bun.lock` +3 lines); `prepare` is `husky`. Audit unchanged (only GHSA-qr28-fpjm-wq7f). Full `bun test` 4232 pass.
 - L11 (evidence T4): from the L8 baseline to zero. `bun run lint` exit 0; `bun run typecheck` exits 0 for `@selene/types`, `admin-web`, and `@selene/frontend`; `bun test` 4232 pass, 0 fail (same as before T4). `deno check` on the six touched Edge Functions: 0 errors before and after. Inline disables: `no-require-imports` for Metro asset requires (4) and the CommonJS `metro.config.js`; `no-unused-vars` for rest destructuring that omits fixture keys (Edge Function tests). `useOrderCountdown.test.ts` uses `@ts-expect-error` on `react-test-renderer`, as the other mount tests do, because `@types/react-test-renderer` is not a frontend dependency. `ordersMultiShipmentGuards.test.ts` pins the source text, so its two pinned strings change from `as any)` to `as Href)` with the source; the assertions are as strict as before.
-- L12 (process): `lint-staged` runs Prettier on whole staged files, so files unformatted at HEAD get reformatted on first touch. `bcef989` mixes that formatting with the frontend type fixes (924 insertions, 336 deletions). For the Edge Functions, the formatting went in its own commit `5202262` (made with `HUSKY=0` because those files still had the lint errors), so `0c81acd` shows only the 14-line type change.
+- L12 (process): `lint-staged` runs Prettier on whole staged files, so files unformatted at HEAD get reformatted on first touch. `955bf0b` mixes that formatting with the frontend type fixes (924 insertions, 336 deletions). For the Edge Functions, the formatting went in its own commit `84ef831` (made with `HUSKY=0` because those files still had the lint errors), so `56f4b39` shows only the 14-line type change.
 - L13 (finding): issue #81 for the pre-existing `decode-uri-component@0.2.2` audit failure.
 - L14 (maintainer action): enable branch protection on `main` requiring the `CI` workflow before merge (GitHub settings; agents cannot set it).
+- L15 (finding from T3): `lint-staged` runs Prettier on whole staged files, and some tests pin exact source text. Experiment in a throwaway worktree: `bun test` 4232 pass, 0 fail; after `prettier --write "**/*.{ts,tsx,js,jsx}"` (523 files) 4216 pass, 16 fail in 14 test files. Four guards broken by this branch's own formatting were fixed inside their commits (`sentry-wiring`, `verdictRpc`, `cancelledShipmentSummary`, `ordersMultiShipmentGuards`); T5 makes the remaining 16 format-independent so the hook cannot break them.
+- L16 (evidence T5): the 14 test files compare compacted source (whitespace, padding inside brackets, trailing commas, quote style for the Deno files) with the same needles, order checks, and negative assertions. Format proof in a throwaway worktree: the 16 failures reproduce after `prettier --write`, and with the new tests the formatted tree gives 4232 pass, 0 fail. Mutation check: breaking one guarded source line per file makes exactly that test fail. Formatting of the 14 files went in its own commit (made with `HUSKY=0`) before the logic change (289 insertions, 145 deletions).

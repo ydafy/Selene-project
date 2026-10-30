@@ -3,6 +3,15 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { resolveShipmentLabelState } from '../../core/utils/shipment-label-state';
 
+// Prettier may re-wrap the source files read below; compare without layout.
+const compact = (source: string) =>
+  source
+    .replace(/\s+/g, ' ')
+    .replace(/([([{]) /g, '$1')
+    .replace(/ ([)\]}])/g, '$1')
+    .replace(/,([)\]}])/g, '$1')
+    .replace(/ \./g, '.');
+
 const shipment = {
   status: 'paid' as const,
   label_generation_state: 'unclaimed',
@@ -12,20 +21,27 @@ const shipment = {
 
 describe('persisted shipment label state', () => {
   it('wires the same state policy into submission and preserves cached data on read errors', () => {
-    const source = readFileSync(
-      join(process.cwd(), 'apps/frontend/app/profile/orders/prepare/[id].tsx'),
-      'utf8',
+    const source = compact(
+      readFileSync(
+        join(
+          process.cwd(),
+          'apps/frontend/app/profile/orders/prepare/[id].tsx',
+        ),
+        'utf8',
+      ),
     );
     expect(source).toContain(
-      'resolveShipmentLabelState(selectedShipment, Boolean(error))',
+      compact('resolveShipmentLabelState(selectedShipment, Boolean(error))'),
     );
     expect(source).toContain(
-      "const canGenerateLabel = labelState === 'ready' && !isFetching;",
+      compact(
+        "const canGenerateLabel = labelState === 'ready' && !isFetching;",
+      ),
     );
     expect(source.match(/!canGenerateLabel/g)).toHaveLength(2);
-    expect(source).toContain('refetch({ cancelRefetch: false })');
-    expect(source).toContain('isLabelRecoveryState(labelState)');
-    expect(source).not.toContain('if (error || !order)');
+    expect(source).toContain(compact('refetch({ cancelRefetch: false })'));
+    expect(source).toContain(compact('isLabelRecoveryState(labelState)'));
+    expect(source).not.toContain(compact('if (error || !order)'));
   });
 
   it('localizes every recovery state and both safe actions in English and Spanish', () => {

@@ -7,6 +7,15 @@ import {
   resolveShipmentConfirmationFailureToast,
 } from '../../core/utils/shipment-confirmation';
 
+// Prettier may re-wrap the source files read below; compare without layout.
+const compact = (source: string) =>
+  source
+    .replace(/\s+/g, ' ')
+    .replace(/([([{]) /g, '$1')
+    .replace(/ ([)\]}])/g, '$1')
+    .replace(/,([)\]}])/g, '$1')
+    .replace(/ \./g, '.');
+
 const source = (path: string) =>
   readFileSync(join(process.cwd(), path), 'utf8');
 
@@ -123,10 +132,16 @@ describe('shipment confirmation', () => {
   });
 
   it('routes confirmation through the shipment Edge Function without the retired fallback', () => {
-    const actions = source('apps/frontend/core/hooks/useOrderActions.ts');
-    const shipments = source('apps/frontend/core/hooks/useShipments.ts');
+    const actions = compact(
+      source('apps/frontend/core/hooks/useOrderActions.ts'),
+    );
+    const shipments = compact(
+      source('apps/frontend/core/hooks/useShipments.ts'),
+    );
 
-    expect(actions).toContain("invokeEdge('confirm-shipment-delivery'");
+    expect(actions).toContain(
+      compact("invokeEdge('confirm-shipment-delivery'"),
+    );
     expect(actions).toContain('buildShipmentConfirmationPayload');
     expect(actions).not.toContain('fn_confirm_delivery');
     expect(shipments).toContain('canConfirmShipmentDelivery');

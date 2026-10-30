@@ -3,15 +3,21 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { resolveCommissionPercent } from '../../core/utils/sellerProceedsEstimate';
 
+// Prettier may re-wrap the source files read below; compare without layout.
+const compact = (source: string) =>
+  source
+    .replace(/\s+/g, ' ')
+    .replace(/([([{]) /g, '$1')
+    .replace(/ ([)\]}])/g, '$1')
+    .replace(/,([)\]}])/g, '$1')
+    .replace(/ \./g, '.');
+
 const FRONTEND = join(import.meta.dir, '..', '..');
 const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
 const es = JSON.parse(read('core/i18n/locales/es/sell.json'));
 const en = JSON.parse(read('core/i18n/locales/en/sell.json'));
-const form = read('components/features/sell/SellDetailsForm.tsx').replace(
-  /\s+/g,
-  ' ',
-);
-const hook = read('core/hooks/useSellDetailsForm.ts').replace(/\s+/g, ' ');
+const form = compact(read('components/features/sell/SellDetailsForm.tsx'));
+const hook = compact(read('core/hooks/useSellDetailsForm.ts'));
 
 describe('resolveCommissionPercent', () => {
   it('turns the configured fraction into a whole percent', () => {
@@ -86,10 +92,12 @@ describe('sell "you receive" help copy', () => {
 
   it('reads the commission from system settings, not a hardcoded rate', () => {
     expect(hook).toContain(
-      'resolveCommissionPercent(systemConfig?.service_fee_pct)',
+      compact('resolveCommissionPercent(systemConfig?.service_fee_pct)'),
     );
     expect(form).toContain(
-      "earnings.commissionPct === null ? t('fields.youReceiveHelpDescriptionNoRate') : t('fields.youReceiveHelpDescription', { commissionPct: earnings.commissionPct, })",
+      compact(
+        "earnings.commissionPct === null ? t('fields.youReceiveHelpDescriptionNoRate') : t('fields.youReceiveHelpDescription', { commissionPct: earnings.commissionPct, })",
+      ),
     );
   });
 });

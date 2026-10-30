@@ -1735,7 +1735,7 @@ describe('stage projection for payout lifecycle events', () => {
   it('wires production adapter to the stage-specific RPC with bounded decision logging', () => {
     const source = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
     expect(source).toMatch(
-      /decideRejectedPayoutStagePark:\s*\(input\)\s*=>\s*decideRejectedPayoutStagePark\(supabaseAdmin, input\)/,
+      /decideRejectedPayoutStagePark:\s*\(input\)\s*=>\s*decideRejectedPayoutStagePark\(\s*supabaseAdmin,\s*input,?\s*\)/,
     );
     expect(source).toMatch(/'fn_decide_rejected_payout_stage_park' as never/);
     for (const argument of [
@@ -1747,7 +1747,7 @@ describe('stage projection for payout lifecycle events', () => {
       expect(source).toContain(argument);
     }
     expect(source).toMatch(
-      /Payout stage conflict decision', \{ eventId: input\.eventId, category: data \}/,
+      /Payout stage conflict decision',\s*\{\s*eventId: input\.eventId,\s*category: data,?\s*\}/,
     );
   });
 

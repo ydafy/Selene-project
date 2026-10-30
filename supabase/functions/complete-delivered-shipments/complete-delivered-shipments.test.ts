@@ -16,6 +16,15 @@ import {
   validateAutoCompletionRequest,
 } from './complete-delivered-shipments';
 
+// Prettier may re-wrap the source files read below; compare without layout.
+const compact = (source: string) =>
+  source
+    .replace(/\s+/g, ' ')
+    .replace(/([([{]) /g, '$1')
+    .replace(/ ([)\]}])/g, '$1')
+    .replace(/,([)\]}])/g, '$1')
+    .replace(/ \./g, '.');
+
 const now = Date.parse('2026-09-04T12:00:00.000Z');
 const cronSecret = 'scheduler-secret';
 
@@ -210,14 +219,18 @@ describe('shipments with an active dispute', () => {
   });
 
   it('reads the active disputes before the shipments and excludes them in the query', async () => {
-    const source = await Bun.file(
-      new URL('./index.ts', import.meta.url),
-    ).text();
-    const disputesIndex = source.indexOf(".from('disputes')");
+    const source = compact(
+      await Bun.file(new URL('./index.ts', import.meta.url)).text(),
+    );
+    const disputesIndex = source.indexOf(compact(".from('disputes')"));
     expect(disputesIndex).toBeGreaterThanOrEqual(0);
-    expect(source.indexOf(".from('shipments')")).toBeGreaterThan(disputesIndex);
-    expect(source).toContain(".not('status', 'in', '(resolved,rejected)')");
-    expect(source).toContain(".not('id', 'in',");
+    expect(source.indexOf(compact(".from('shipments')"))).toBeGreaterThan(
+      disputesIndex,
+    );
+    expect(source).toContain(
+      compact(".not('status', 'in', '(resolved,rejected)')"),
+    );
+    expect(source).toContain(compact(".not('id', 'in',"));
   });
 
   it('only reads shipments paid through Stripe Connect so legacy rows never starve the batch', async () => {

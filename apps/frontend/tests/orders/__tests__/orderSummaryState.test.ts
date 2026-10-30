@@ -5,6 +5,15 @@ import {
   summaryAmounts,
 } from '../../../core/utils/order-summary-state';
 
+// Prettier may re-wrap the source files read below; compare without layout.
+const compact = (source: string) =>
+  source
+    .replace(/\s+/g, ' ')
+    .replace(/([([{]) /g, '$1')
+    .replace(/ ([)\]}])/g, '$1')
+    .replace(/,([)\]}])/g, '$1')
+    .replace(/ \./g, '.');
+
 const ready = {
   hasOrder: true,
   orderPending: false,
@@ -84,18 +93,20 @@ describe('saved summary amounts', () => {
     expect(summaryAmounts('seller', [], 24.56).subtotalCents).toBe(0);
   });
   it('screen wires policy, amounts, localized retry and buyer-only total', () => {
-    const source = readFileSync(
-      `${import.meta.dir}/../../../app/profile/orders/summary/[id].tsx`,
-      'utf8',
+    const source = compact(
+      readFileSync(
+        `${import.meta.dir}/../../../app/profile/orders/summary/[id].tsx`,
+        'utf8',
+      ),
     );
-    expect(source).toContain('resolveSummaryState(');
+    expect(source).toContain(compact('resolveSummaryState('));
     expect(source).toContain(
-      'summaryAmounts(view.role, visibleShipments.flatMap',
+      compact('summaryAmounts(view.role, visibleShipments.flatMap'),
     );
-    expect(source).toContain("t('summary.subtotal')");
-    expect(source).toContain("t('summary.totalPaid')");
-    expect(source).toContain("t('summary.retry')");
-    expect(source).toContain("{view.role === 'buyer' && (");
-    expect(source).not.toContain('isAnyLoading || !order');
+    expect(source).toContain(compact("t('summary.subtotal')"));
+    expect(source).toContain(compact("t('summary.totalPaid')"));
+    expect(source).toContain(compact("t('summary.retry')"));
+    expect(source).toContain(compact("{view.role === 'buyer' && ("));
+    expect(source).not.toContain(compact('isAnyLoading || !order'));
   });
 });

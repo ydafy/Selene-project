@@ -3,6 +3,14 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 // Source contracts only; these checks do not execute PostgreSQL.
+// Prettier may re-wrap the source files read below; compare without layout.
+const compact = (source: string) =>
+  source
+    .replace(/\s+/g, ' ')
+    .replace(/([([{]) /g, '$1')
+    .replace(/ ([)\]}])/g, '$1')
+    .replace(/,([)\]}])/g, '$1')
+    .replace(/ \./g, '.');
 const migration = join(
   import.meta.dir,
   '../archive/20261008090000_atomic_payout_resume_mapping.sql',
@@ -70,13 +78,17 @@ test('SQL rejects inconsistent mappings and preserves immutable parent/financial
   expect(writes).not.toContain('v_parent.id');
 });
 test('manual adapters use only the specialized RPC with explicit response refusal', () => {
-  const entrypoint = readFileSync(
-    join(import.meta.dir, '../../functions/release-connect-payout/index.ts'),
-    'utf8',
+  const entrypoint = compact(
+    readFileSync(
+      join(import.meta.dir, '../../functions/release-connect-payout/index.ts'),
+      'utf8',
+    ),
   );
-  expect(entrypoint).toContain("from './atomic-resume-adapter.ts'");
+  expect(entrypoint).toContain(compact("from './atomic-resume-adapter.ts'"));
   expect(entrypoint).toContain(
-    '...createAtomicResumeAdapters((name, args) => supabaseAdmin.rpc(name, args))',
+    compact(
+      '...createAtomicResumeAdapters((name, args) => supabaseAdmin.rpc(name, args))',
+    ),
   );
   const factory = readFileSync(
     join(
@@ -94,21 +106,27 @@ test('manual adapters use only the specialized RPC with explicit response refusa
     expect(adapter).not.toContain('.update(');
     expect(adapter).not.toContain('.select(');
   }
-  const orchestrator = readFileSync(
-    join(
-      import.meta.dir,
-      '../../functions/release-connect-payout/release-connect-payout.ts',
+  const orchestrator = compact(
+    readFileSync(
+      join(
+        import.meta.dir,
+        '../../functions/release-connect-payout/release-connect-payout.ts',
+      ),
+      'utf8',
     ),
-    'utf8',
   );
   expect(orchestrator.indexOf('const resumedIntent =')).toBeLessThan(
-    orchestrator.indexOf('await deps.retrieveStripePayout('),
+    orchestrator.indexOf(compact('await deps.retrieveStripePayout(')),
   );
   expect(orchestrator).toContain(
-    'assertResumeApplied(await deps.markRunPendingReconciliation(resumeIntent))',
+    compact(
+      'assertResumeApplied(await deps.markRunPendingReconciliation(resumeIntent))',
+    ),
   );
   expect(orchestrator).toContain(
-    'const version = assertResumeApplied(await deps.markRunRetrying(resumeIntent))',
+    compact(
+      'const version = assertResumeApplied(await deps.markRunRetrying(resumeIntent))',
+    ),
   );
   expect(orchestrator).not.toContain('Database &');
 });

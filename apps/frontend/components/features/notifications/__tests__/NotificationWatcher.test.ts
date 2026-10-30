@@ -6,6 +6,15 @@ import { join } from 'node:path';
 
 // ─── Source-grep contracts ────────────────────────────────────────────────
 
+// Prettier may re-wrap the source files read below; compare without layout.
+const compact = (source: string) =>
+  source
+    .replace(/\s+/g, ' ')
+    .replace(/([([{]) /g, '$1')
+    .replace(/ ([)\]}])/g, '$1')
+    .replace(/,([)\]}])/g, '$1')
+    .replace(/ \./g, '.');
+
 const WATCHER_PATH = join(import.meta.dir, '..', 'NotificationWatcher.tsx');
 const watcherSource = () => readFileSync(WATCHER_PATH, 'utf8');
 
@@ -19,28 +28,29 @@ describe('NotificationWatcher source contracts', () => {
   });
 
   test('paginates owner-scoped rows with optional typed metadata and never marks read', () => {
-    const source = watcherSource();
-    expect(source).toContain(".select('*')");
-    expect(source).toContain(".eq('user_id', userId)");
-    expect(source).toContain(".is('deleted_at', null)");
-    expect(source).toContain("query.or('read.is.null,read.eq.false')");
+    const raw = watcherSource();
+    const source = compact(raw);
+    expect(source).toContain(compact(".select('*')"));
+    expect(source).toContain(compact(".eq('user_id', userId)"));
+    expect(source).toContain(compact(".is('deleted_at', null)"));
+    expect(source).toContain(compact("query.or('read.is.null,read.eq.false')"));
     expect(source).toContain(
-      'and(read.is.null,or(${older})),and(read.eq.false,or(${older}))',
+      compact('and(read.is.null,or(${older})),and(read.eq.false,or(${older}))'),
     );
-    expect(source).toContain('id.lt.${cursor.id}');
-    expect(source).not.toContain('current.notice.title');
-    expect(source).not.toContain('current.notice.message');
-    expect(source).not.toContain('current.notice.action_path');
-    expect(source).not.toContain('internal_note');
-    expect(source).toMatch(
-      /\.order\('created_at', \{ ascending: false \}\)\s*\.order\('id', \{ ascending: false \}\)\s*\.limit\(LAUNCH_LIMIT\)/,
+    expect(source).toContain(compact('id.lt.${cursor.id}'));
+    expect(source).not.toContain(compact('current.notice.title'));
+    expect(source).not.toContain(compact('current.notice.message'));
+    expect(source).not.toContain(compact('current.notice.action_path'));
+    expect(source).not.toContain(compact('internal_note'));
+    expect(raw).toMatch(
+      /\.order\('created_at',\s*\{\s*ascending: false,?\s*\}\s*\)\s*\.order\('id',\s*\{\s*ascending: false,?\s*\}\s*\)\s*\.limit\(LAUNCH_LIMIT\)/,
     );
-    expect(source).toContain('scanLaunchDigest(userId');
-    expect(source).toContain('currentOwner.current !== userId');
-    expect(source).not.toContain('.range(');
-    expect(source).toContain('gate.current.cancel(attempt)');
-    expect(source).toContain('gate.current.complete(attempt)');
-    expect(source).not.toContain('markAsRead');
+    expect(source).toContain(compact('scanLaunchDigest(userId'));
+    expect(source).toContain(compact('currentOwner.current !== userId'));
+    expect(source).not.toContain(compact('.range('));
+    expect(source).toContain(compact('gate.current.cancel(attempt)'));
+    expect(source).toContain(compact('gate.current.complete(attempt)'));
+    expect(source).not.toContain(compact('markAsRead'));
   });
 
   test('uses a generic reminder with one inbox CTA and defer', () => {

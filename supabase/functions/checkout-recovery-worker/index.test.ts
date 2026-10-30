@@ -7,6 +7,28 @@ import {
   processRecoveryClaimsSequentially,
 } from './recovery.ts';
 
+// Prettier may re-wrap the source files read below and rewrite double quotes
+// to single quotes; compare without layout or quote style.
+const compact = (source: string) =>
+  source
+    .replace(/\s+/g, ' ')
+    .replace(/([([{]) /g, '$1')
+    .replace(/ ([)\]}])/g, '$1')
+    .replace(/,([)\]}])/g, '$1')
+    .replace(/ (\??\.)/g, '$1')
+    .replace(/"/g, "'");
+
+const workerSource = () =>
+  compact(
+    readFileSync(
+      join(
+        process.cwd(),
+        'supabase/functions/checkout-recovery-worker/index.ts',
+      ),
+      'utf8',
+    ),
+  );
+
 describe('checkout recovery worker authorization', () => {
   it('rejects an empty dedicated worker JWT instead of authorizing Bearer whitespace', () => {
     expect(
@@ -18,65 +40,57 @@ describe('checkout recovery worker authorization', () => {
   });
 
   it('reads the dedicated worker JWT once and reuses it for authorization and the admin client', () => {
-    const source = readFileSync(
-      join(
-        process.cwd(),
-        'supabase/functions/checkout-recovery-worker/index.ts',
-      ),
-      'utf8',
-    );
+    const source = workerSource();
 
     expect(
-      source.match(/Deno\.env\.get\(\s*"CHECKOUT_RECOVERY_SERVICE_ROLE_JWT"/g),
+      source.match(/Deno\.env\.get\('CHECKOUT_RECOVERY_SERVICE_ROLE_JWT'/g),
     ).toHaveLength(1);
-    expect(source).toMatch(
-      /const workerServiceRoleJwt = Deno\.env\.get\(\s*"CHECKOUT_RECOVERY_SERVICE_ROLE_JWT",?\s*\)\?\.trim\(\);/,
+    expect(source).toContain(
+      compact(
+        'const workerServiceRoleJwt = Deno.env.get("CHECKOUT_RECOVERY_SERVICE_ROLE_JWT")?.trim();',
+      ),
     );
-    expect(source).toMatch(
-      /isAuthorizedCheckoutRecoveryWorker\(\{\s*authorization: request\.headers\.get\("authorization"\),\s*workerServiceRoleJwt,\s*}\)/,
+    expect(source).toContain(
+      compact(
+        'isAuthorizedCheckoutRecoveryWorker({ authorization: request.headers.get("authorization"), workerServiceRoleJwt, })',
+      ),
     );
-    expect(source).toMatch(
-      /createClient<Database>\(\s*Deno\.env\.get\("SUPABASE_URL"\) \|\| "",\s*workerServiceRoleJwt,\s*\)/,
+    expect(source).toContain(
+      compact(
+        'createClient<Database>( Deno.env.get("SUPABASE_URL") || "", workerServiceRoleJwt, )',
+      ),
     );
   });
 
   it('has no service-role or secret-key fallback', () => {
-    const source = readFileSync(
-      join(
-        process.cwd(),
-        'supabase/functions/checkout-recovery-worker/index.ts',
-      ),
-      'utf8',
-    );
+    const source = workerSource();
 
-    expect(source).not.toContain('Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")');
+    expect(source).not.toContain(
+      compact('Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")'),
+    );
     expect(source).not.toContain('SUPABASE_SECRET_KEYS');
   });
 });
 
 describe('checkout recovery worker cron claims', () => {
   it('acquires its expiring enabled-only lease before claiming work and releases it in finally', () => {
-    const source = readFileSync(
-      join(
-        process.cwd(),
-        'supabase/functions/checkout-recovery-worker/index.ts',
-      ),
-      'utf8',
-    );
+    const source = workerSource();
 
     // BL13: the global boolean stayed true forever after a killed run.
     expect(source).not.toContain('checkout_recovery_running');
     expect(source).toContain(
-      'const lease = await acquireCheckoutRecoveryLease(leaseClient);',
+      compact('const lease = await acquireCheckoutRecoveryLease(leaseClient);'),
     );
     expect(source).toContain('if (!lease.acquired)');
     expect(source).toContain(
-      'return Response.json({ received: true, skipped: true });',
+      compact('return Response.json({ received: true, skipped: true });'),
     );
     expect(source).toContain('leaseId = lease.leaseId;');
     expect(source).toContain('} finally {');
-    expect(source).toMatch(
-      /await releaseCheckoutRecoveryLease\(\s*leaseClient,\s*leaseId,\s*warnLeaseNotReleased,\s*\);/,
+    expect(source).toContain(
+      compact(
+        'await releaseCheckoutRecoveryLease( leaseClient, leaseId, warnLeaseNotReleased, );',
+      ),
     );
     expect(source).not.toContain('CHECKOUT_RECOVERY_LOCK_RELEASE_FAILED');
     expect(
@@ -85,35 +99,27 @@ describe('checkout recovery worker cron claims', () => {
   });
 
   it('derives missing charge evidence from an expanded PaymentIntent before refund work', () => {
-    const source = readFileSync(
-      join(
-        process.cwd(),
-        'supabase/functions/checkout-recovery-worker/index.ts',
-      ),
-      'utf8',
-    );
+    const source = workerSource();
 
     expect(source).toContain(
-      'import { extractStripeChargeId } from "../_shared/stripe-charge.ts";',
+      compact(
+        'import { extractStripeChargeId } from "../_shared/stripe-charge.ts";',
+      ),
     );
-    expect(source).toContain('await stripe.paymentIntents.retrieve(');
-    expect(source).toContain('expand: ["latest_charge"]');
+    expect(source).toContain(compact('await stripe.paymentIntents.retrieve('));
+    expect(source).toContain(compact('expand: ["latest_charge"]'));
     expect(source).toContain('fn_set_checkout_recovery_charge_evidence');
   });
 
   it('records missing charge evidence for reconciliation before the state machine can refund', () => {
-    const source = readFileSync(
-      join(
-        process.cwd(),
-        'supabase/functions/checkout-recovery-worker/index.ts',
-      ),
-      'utf8',
-    );
+    const source = workerSource();
 
     expect(source).toContain('fn_mark_checkout_recovery_reconciliation_needed');
-    expect(source).toContain('p_error: "STANDALONE_CHARGE_EVIDENCE_MISSING"');
     expect(source).toContain(
-      'chargeEvidence: chargeId ? "present" : "missing"',
+      compact('p_error: "STANDALONE_CHARGE_EVIDENCE_MISSING"'),
+    );
+    expect(source).toContain(
+      compact('chargeEvidence: chargeId ? "present" : "missing"'),
     );
   });
 
@@ -145,13 +151,7 @@ describe('checkout recovery worker cron claims', () => {
   });
 
   it('delegates cron claims into the sequential recovery processor', () => {
-    const source = readFileSync(
-      join(
-        process.cwd(),
-        'supabase/functions/checkout-recovery-worker/index.ts',
-      ),
-      'utf8',
-    );
+    const source = workerSource();
 
     expect(source).toContain('claimCheckoutRecoveryShells');
     expect(source).toContain(

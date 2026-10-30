@@ -586,9 +586,11 @@ describe('account event routing and adapter (source structural, not Edge runtime
   });
   test('Stripe list adapter explicitly filters banks and forwards final-id pagination', () => {
     const source = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
-    expect(source).toMatch(/stripe\.accounts\.retrieve\(input\.accountId\)/);
     expect(source).toMatch(
-      /stripe\.accounts\.listExternalAccounts\(input\.accountId,\s*\{\s*object: 'bank_account', limit: 100,/,
+      /stripe\s*\.accounts\s*\.retrieve\(\s*input\.accountId\s*\)/,
+    );
+    expect(source).toMatch(
+      /stripe\s*\.accounts\s*\.listExternalAccounts\(\s*input\.accountId,\s*\{\s*object: 'bank_account',\s*limit: 100,/,
     );
     expect(source).toContain('starting_after: input.startingAfter');
     expect(source).not.toContain('fn_apply_connect_account_actionability');
