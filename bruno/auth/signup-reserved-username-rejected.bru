@@ -21,6 +21,7 @@ script:pre-request {
 
 body:json {
   {
+    "gotrue_meta_security": { "captcha_token": "{{captchaToken}}" },
     "email": "{{reservedSignupEmail}}",
     "password": "password123",
     "data": { "username": "Deleted_typed" }

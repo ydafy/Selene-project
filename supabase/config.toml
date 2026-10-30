@@ -90,12 +90,18 @@ sign_in_sign_ups = 30
 token_verifications = 30
 web3 = 30
 
-# CAPTCHA is off remotely, so it stays off here. Enabling it requires the Bruno
-# password-grant requests to send the hCaptcha test token (captcha_token).
-# [auth.captcha]
-# enabled = false
-# provider = "hcaptcha"
-# secret = "env(SUPABASE_AUTH_CAPTCHA_SECRET)"
+# CAPTCHA is on locally so the local stack exercises the same token path as production,
+# which turns it on in the Dashboard at launch (docs/go-live.md section 10). The secret is
+# hCaptcha's public TEST secret, not a credential: with it Auth accepts the test response
+# token 10000000-aaaa-bbbb-cccc-000000000001 (site key 10000000-ffff-ffff-ffff-000000000001).
+# Production uses the real hCaptcha secret from the Dashboard; never `supabase config push`
+# this file to the remote, or the test secret would replace it. Every local caller of a guarded
+# endpoint (/signup, /recover, /resend, /magiclink, /otp, /token?grant_type=password) sends
+# that token as gotrue_meta_security.captcha_token (Bruno `captchaToken`; local admin-web E2E).
+[auth.captcha]
+enabled = true
+provider = "hcaptcha"
+secret = "0x0000000000000000000000000000000000000000"
 
 # Mirrors the remote email provider: signup on, confirmation code required,
 # secure email change on, secure password change off (the password change is

@@ -1,0 +1,35 @@
+meta {
+  name: login-without-captcha-rejected
+  type: http
+  seq: 71
+}
+
+post {
+  url: {{baseUrl}}/auth/v1/token?grant_type=password
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+body:json {
+  {
+    "email": "buyer@selene.local",
+    "password": "password123"
+  }
+}
+
+tests {
+  test("rejects a password grant that carries no CAPTCHA token", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().error_code).to.equal("captcha_failed");
+    expect(res.getBody().access_token).to.equal(undefined);
+  });
+}
+
+docs {
+  Proves the local stack runs CAPTCHA (`[auth.captcha]` in supabase/config.toml, hCaptcha test
+  secret). Every other password grant and signup sends `{{captchaToken}}`; this one sends none.
+}
