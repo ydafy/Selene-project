@@ -25,7 +25,10 @@ const claimedRun = (overrides: Partial<ClaimedRun> = {}): ClaimedRun => ({
 });
 
 test('undetermined account actionability does not park an otherwise valid run', async () => {
-  const deps = createWorkerDeps({ createClaimQueue: [claimedRun()], actionability: null });
+  const deps = createWorkerDeps({
+    createClaimQueue: [claimedRun()],
+    actionability: null,
+  });
   const summary = await resumePendingPayoutRuns(deps);
   expect(summary.results[0]?.status).toBe('resumed');
   expect(deps.calls.blockedMarks).toHaveLength(0);
@@ -73,7 +76,10 @@ function createWorkerDeps(
     createClaimQueue?: Array<ClaimedRun | null>;
     reconcileClaimQueue?: Array<ClaimedRun | null>;
     actorRole?: string | null;
-    actionability?: { isActionable: boolean; blockedReason: string | null } | null;
+    actionability?: {
+      isActionable: boolean;
+      blockedReason: string | null;
+    } | null;
     balanceAvailable?: number;
     createStripePayout?: ResumePendingPayoutsDeps['createStripePayout'];
     completePayoutCreate?: ResumePendingPayoutsDeps['completePayoutCreate'];
@@ -114,11 +120,26 @@ function createWorkerDeps(
       calls.reconcileClaims.push(graceSeconds);
       const fixture = options.reconcileClaimQueue?.shift();
       if (!fixture) return null;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- rest destructuring omits keys from the fixture
       const { shipment_ids: _, ...row } = fixture;
-      return { ...row, stripe_account_id: row.stripe_account_id ?? null, payout_create_attempted_at: row.payout_create_attempted_at ?? '2026-09-20T00:00:00.000Z' };
+      return {
+        ...row,
+        stripe_account_id: row.stripe_account_id ?? null,
+        payout_create_attempted_at:
+          row.payout_create_attempted_at ?? '2026-09-20T00:00:00.000Z',
+      };
     },
     loadReconciliationMappings: async (runId) => ({
-      rows: [{ id: 'mapping-1', run_id: runId, shipment_id: 'shipment-1', net_payout: 12_500, status: 'pending_reconciliation' }], total: 1,
+      rows: [
+        {
+          id: 'mapping-1',
+          run_id: runId,
+          shipment_id: 'shipment-1',
+          net_payout: 12_500,
+          status: 'pending_reconciliation',
+        },
+      ],
+      total: 1,
     }),
     getActorProfile: async (actorId) => {
       calls.actorLookups.push(actorId);
@@ -161,11 +182,16 @@ function createWorkerDeps(
     },
     beginPayoutCreate: async (input) => {
       calls.fenceBegins.push(input);
-      return (options.beginPayoutCreate ? await options.beginPayoutCreate(input) : input.stageVersion + 1) as number;
+      return (
+        options.beginPayoutCreate
+          ? await options.beginPayoutCreate(input)
+          : input.stageVersion + 1
+      ) as number;
     },
     completePayoutCreate: async (input) => {
       calls.fenceCompletions.push(input);
-      if (options.completePayoutCreate) return options.completePayoutCreate(input);
+      if (options.completePayoutCreate)
+        return options.completePayoutCreate(input);
       return true;
     },
     failPayoutCreate: async (input) => {
@@ -208,20 +234,40 @@ function createWorkerDeps(
 
 describe('reconciliation RPC mapping reconstruction', () => {
   const actualRpcRow = () => {
-    const { shipment_ids: _, stripe_account_id: _account, payout_create_attempted_at: _attempt, ...row } = claimedRun();
-    return { ...row, stripe_account_id: 'acct_seller_1', payout_create_attempted_at: '2026-09-20T00:00:00.000Z' };
+    /* eslint-disable @typescript-eslint/no-unused-vars -- rest destructuring omits keys from the fixture */
+    const {
+      shipment_ids: _,
+      stripe_account_id: _account,
+      payout_create_attempted_at: _attempt,
+      ...row
+    } = claimedRun();
+    /* eslint-enable @typescript-eslint/no-unused-vars */
+    return {
+      ...row,
+      stripe_account_id: 'acct_seller_1',
+      payout_create_attempted_at: '2026-09-20T00:00:00.000Z',
+    };
   };
   const mapping = (overrides = {}) => ({
-    id: 'mapping-1', run_id: 'run-awaiting-1', shipment_id: 'shipment-1',
-    net_payout: 12_500, status: 'pending_reconciliation', ...overrides,
+    id: 'mapping-1',
+    run_id: 'run-awaiting-1',
+    shipment_id: 'shipment-1',
+    net_payout: 12_500,
+    status: 'pending_reconciliation',
+    ...overrides,
   });
   test('reconciles a faithful RPC row without shipment_ids using persisted mappings', async () => {
     const deps = createWorkerDeps();
     let claimed = false;
-    deps.claimPayoutCreateReconciliation = async () => claimed ? null : (claimed = true, actualRpcRow());
+    deps.claimPayoutCreateReconciliation = async () =>
+      claimed ? null : ((claimed = true), actualRpcRow());
     expect(actualRpcRow()).not.toHaveProperty('shipment_ids');
-    Object.assign(deps, { loadReconciliationMappings: async () => ({ rows: [mapping()], total: 1 }) });
-    deps.listStripePayoutsForReconciliation = async () => [{ id: 'po_existing', metadata: { run_id: 'run-awaiting-1' } }];
+    Object.assign(deps, {
+      loadReconciliationMappings: async () => ({ rows: [mapping()], total: 1 }),
+    });
+    deps.listStripePayoutsForReconciliation = async () => [
+      { id: 'po_existing', metadata: { run_id: 'run-awaiting-1' } },
+    ];
     const summary = await resumePendingPayoutRuns(deps);
     expect(summary.resumed).toBe(1);
     expect(deps.calls.stripePayoutCreates).toEqual([]);
@@ -237,8 +283,11 @@ describe('reconciliation RPC mapping reconstruction', () => {
     test(`refuses ${name} mappings before provider listing or state mutation`, async () => {
       const deps = createWorkerDeps();
       let claimed = false;
-      deps.claimPayoutCreateReconciliation = async () => claimed ? null : (claimed = true, actualRpcRow());
-      Object.assign(deps, { loadReconciliationMappings: async () => ({ rows, total }) });
+      deps.claimPayoutCreateReconciliation = async () =>
+        claimed ? null : ((claimed = true), actualRpcRow());
+      Object.assign(deps, {
+        loadReconciliationMappings: async () => ({ rows, total }),
+      });
       const summary = await resumePendingPayoutRuns(deps);
       expect(summary.errors).toBe(1);
       expect(deps.calls.stripePayoutLists).toEqual([]);
@@ -251,13 +300,23 @@ describe('reconciliation RPC mapping reconstruction', () => {
 describe('reconciliation persisted identity checks', () => {
   for (const [name, rows] of [
     ['foreign seller', [completedShipment({ seller_id: 'foreign' })]],
-    ['foreign account', [completedShipment({ stripe_account_id: 'acct_foreign' })]],
+    [
+      'foreign account',
+      [completedShipment({ stripe_account_id: 'acct_foreign' })],
+    ],
     ['foreign shipment', [completedShipment({ shipment_id: 'foreign' })]],
     ['missing release row', []],
     ['duplicate release rows', [completedShipment(), completedShipment()]],
   ] as const) {
     test(`refuses ${name} before provider action`, async () => {
-      const deps = createWorkerDeps({ reconcileClaimQueue: [claimedRun({ stripe_account_id: 'acct_seller_1', payout_create_attempted_at: '2026-09-20T00:00:00.000Z' })] });
+      const deps = createWorkerDeps({
+        reconcileClaimQueue: [
+          claimedRun({
+            stripe_account_id: 'acct_seller_1',
+            payout_create_attempted_at: '2026-09-20T00:00:00.000Z',
+          }),
+        ],
+      });
       deps.loadReleaseRows = async () => [...rows];
       const summary = await resumePendingPayoutRuns(deps);
       expect(summary.errors).toBe(1);
@@ -728,8 +787,7 @@ describe('resumePendingPayoutRuns', () => {
     expect(deps.calls.deferrals[0]).toMatchObject({ runId: 'run-old' });
     expect(deps.calls.createClaims).toHaveLength(3);
     expect(deps.calls.stripePayoutCreates).toHaveLength(1);
-    expect(
-      deps.calls.stripePayoutCreates[0]).toMatchObject({
+    expect(deps.calls.stripePayoutCreates[0]).toMatchObject({
       metadata: { run_id: 'run-new' },
     });
   });
@@ -774,9 +832,9 @@ describe('validateResumeRequest', () => {
   };
 
   test('rejects non-POST invocations', () => {
-    expect(() =>
-      validateResumeRequest({ ...base, method: 'GET' }),
-    ).toThrow('INVALID_REQUEST');
+    expect(() => validateResumeRequest({ ...base, method: 'GET' })).toThrow(
+      'INVALID_REQUEST',
+    );
   });
 
   test('fails closed when no cron secret is configured', () => {

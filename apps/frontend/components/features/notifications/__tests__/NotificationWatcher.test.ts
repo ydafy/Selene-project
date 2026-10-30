@@ -2,10 +2,18 @@ import { expect, test, describe } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-
 // The legacy digest no longer uses the obsolete classifier or dialog controls.
 
 // ─── Source-grep contracts ────────────────────────────────────────────────
+
+// Prettier may re-wrap the source files read below; compare without layout.
+const compact = (source: string) =>
+  source
+    .replace(/\s+/g, ' ')
+    .replace(/([([{]) /g, '$1')
+    .replace(/ ([)\]}])/g, '$1')
+    .replace(/,([)\]}])/g, '$1')
+    .replace(/ \./g, '.');
 
 const WATCHER_PATH = join(import.meta.dir, '..', 'NotificationWatcher.tsx');
 const watcherSource = () => readFileSync(WATCHER_PATH, 'utf8');
@@ -20,24 +28,29 @@ describe('NotificationWatcher source contracts', () => {
   });
 
   test('paginates owner-scoped rows with optional typed metadata and never marks read', () => {
-    const source = watcherSource();
-    expect(source).toContain(".select('*')");
-    expect(source).toContain(".eq('user_id', userId)");
-    expect(source).toContain(".is('deleted_at', null)");
-    expect(source).toContain("query.or('read.is.null,read.eq.false')");
-    expect(source).toContain('and(read.is.null,or(${older})),and(read.eq.false,or(${older}))');
-    expect(source).toContain('id.lt.${cursor.id}');
-    expect(source).not.toContain('current.notice.title');
-    expect(source).not.toContain('current.notice.message');
-    expect(source).not.toContain('current.notice.action_path');
-    expect(source).not.toContain('internal_note');
-    expect(source).toMatch(/\.order\('created_at', \{ ascending: false \}\)\s*\.order\('id', \{ ascending: false \}\)\s*\.limit\(LAUNCH_LIMIT\)/);
-    expect(source).toContain('scanLaunchDigest(userId');
-    expect(source).toContain('currentOwner.current !== userId');
-    expect(source).not.toContain('.range(');
-    expect(source).toContain('gate.current.cancel(attempt)');
-    expect(source).toContain('gate.current.complete(attempt)');
-    expect(source).not.toContain('markAsRead');
+    const raw = watcherSource();
+    const source = compact(raw);
+    expect(source).toContain(compact(".select('*')"));
+    expect(source).toContain(compact(".eq('user_id', userId)"));
+    expect(source).toContain(compact(".is('deleted_at', null)"));
+    expect(source).toContain(compact("query.or('read.is.null,read.eq.false')"));
+    expect(source).toContain(
+      compact('and(read.is.null,or(${older})),and(read.eq.false,or(${older}))'),
+    );
+    expect(source).toContain(compact('id.lt.${cursor.id}'));
+    expect(source).not.toContain(compact('current.notice.title'));
+    expect(source).not.toContain(compact('current.notice.message'));
+    expect(source).not.toContain(compact('current.notice.action_path'));
+    expect(source).not.toContain(compact('internal_note'));
+    expect(raw).toMatch(
+      /\.order\('created_at',\s*\{\s*ascending: false,?\s*\}\s*\)\s*\.order\('id',\s*\{\s*ascending: false,?\s*\}\s*\)\s*\.limit\(LAUNCH_LIMIT\)/,
+    );
+    expect(source).toContain(compact('scanLaunchDigest(userId'));
+    expect(source).toContain(compact('currentOwner.current !== userId'));
+    expect(source).not.toContain(compact('.range('));
+    expect(source).toContain(compact('gate.current.cancel(attempt)'));
+    expect(source).toContain(compact('gate.current.complete(attempt)'));
+    expect(source).not.toContain(compact('markAsRead'));
   });
 
   test('uses a generic reminder with one inbox CTA and defer', () => {
@@ -45,11 +58,15 @@ describe('NotificationWatcher source contracts', () => {
     expect(source).not.toContain('notifications:digestMore');
     expect(source).not.toContain('notifications:moreCount');
     expect(source).not.toContain('<Pressable');
-    expect(source).toContain("onConfirm={() => navigate('/profile/notifications')}");
+    expect(source).toContain(
+      "onConfirm={() => navigate('/profile/notifications')}",
+    );
     expect(source).toContain("confirmLabel={t('notifications:digestOpen')}");
     expect(source).toContain("cancelLabel={t('notifications:digestSkip')}");
     for (const path of [EN_I18N_PATH, ES_I18N_PATH]) {
-      expect(JSON.parse(readFileSync(path, 'utf8')).digestOpen).toBeTypeOf('string');
+      expect(JSON.parse(readFileSync(path, 'utf8')).digestOpen).toBeTypeOf(
+        'string',
+      );
     }
   });
 
@@ -71,7 +88,16 @@ describe('NotificationWatcher source contracts', () => {
 
 // ─── NotificationLinking contract ─────────────────────────────────────────
 
-const LINKING_PATH = join(import.meta.dir, '..', '..', '..', '..', 'core', 'services', 'notification.ts');
+const LINKING_PATH = join(
+  import.meta.dir,
+  '..',
+  '..',
+  '..',
+  '..',
+  'core',
+  'services',
+  'notification.ts',
+);
 const linkingSource = () => readFileSync(LINKING_PATH, 'utf8');
 
 describe('NotificationLinking source contract', () => {
@@ -79,7 +105,9 @@ describe('NotificationLinking source contract', () => {
     const source = linkingSource();
     expect(source).not.toContain('NotificationService');
     expect(source).toContain('export const NotificationLinking = {');
-    expect(source).toContain("{ pattern: '/profile', params: [], redirectTo: '/profile/listings' }");
+    expect(source).toContain(
+      "{ pattern: '/profile', params: [], redirectTo: '/profile/listings' }",
+    );
     expect(source).toContain("return '/profile/notifications';");
   });
 
@@ -95,7 +123,14 @@ describe('NotificationLinking source contract', () => {
 
 // ─── ToastConfig warning contract ─────────────────────────────────────────
 
-const TOAST_CONFIG_PATH = join(import.meta.dir, '..', '..', '..', 'config', 'ToastConfig.tsx');
+const TOAST_CONFIG_PATH = join(
+  import.meta.dir,
+  '..',
+  '..',
+  '..',
+  'config',
+  'ToastConfig.tsx',
+);
 const toastConfigSource = () => readFileSync(TOAST_CONFIG_PATH, 'utf8');
 
 describe('ToastConfig warning type', () => {
@@ -105,14 +140,38 @@ describe('ToastConfig warning type', () => {
 
   test('warning toast uses orange accent color', () => {
     // The amber value itself is pinned in core/theme/__tests__/tokens.test.ts.
-    expect(toastConfigSource()).toContain('borderLeftColor: theme.colors.warning');
+    expect(toastConfigSource()).toContain(
+      'borderLeftColor: theme.colors.warning',
+    );
   });
 });
 
 // ─── i18n shape contract ──────────────────────────────────────────────────
 
-const EN_I18N_PATH = join(import.meta.dir, '..', '..', '..', '..', 'core', 'i18n', 'locales', 'en', 'notifications.json');
-const ES_I18N_PATH = join(import.meta.dir, '..', '..', '..', '..', 'core', 'i18n', 'locales', 'es', 'notifications.json');
+const EN_I18N_PATH = join(
+  import.meta.dir,
+  '..',
+  '..',
+  '..',
+  '..',
+  'core',
+  'i18n',
+  'locales',
+  'en',
+  'notifications.json',
+);
+const ES_I18N_PATH = join(
+  import.meta.dir,
+  '..',
+  '..',
+  '..',
+  '..',
+  'core',
+  'i18n',
+  'locales',
+  'es',
+  'notifications.json',
+);
 
 describe('notifications i18n shape', () => {
   test('en notifications.json is flat', () => {
@@ -158,7 +217,16 @@ describe('NotificationItem source contracts', () => {
 
 // ─── NotificationsScreen source contracts ─────────────────────────────────
 
-const SCREEN_PATH = join(import.meta.dir, '..', '..', '..', '..', 'app', 'profile', 'notifications.tsx');
+const SCREEN_PATH = join(
+  import.meta.dir,
+  '..',
+  '..',
+  '..',
+  '..',
+  'app',
+  'profile',
+  'notifications.tsx',
+);
 const screenSource = () => readFileSync(SCREEN_PATH, 'utf8');
 
 describe('NotificationsScreen source contracts', () => {
@@ -179,7 +247,16 @@ describe('NotificationsScreen source contracts', () => {
 
 // ─── Bell badge source contracts ──────────────────────────────────────────
 
-const HOME_PATH = join(import.meta.dir, '..', '..', '..', '..', 'app', '(tabs)', 'index.tsx');
+const HOME_PATH = join(
+  import.meta.dir,
+  '..',
+  '..',
+  '..',
+  '..',
+  'app',
+  '(tabs)',
+  'index.tsx',
+);
 const homeSource = () => readFileSync(HOME_PATH, 'utf8');
 
 describe('Home bell badge source contracts', () => {

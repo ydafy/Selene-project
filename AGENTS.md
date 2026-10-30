@@ -11,19 +11,17 @@ Existing rows in the Supabase project and the Stripe sandbox are disposable test
 
 ## Map
 
-Bun monorepo with strict TypeScript. Before changing files under a path below, read its guide; it holds the procedures for that area.
+Bun monorepo with strict TypeScript. Stack: Expo SDK 57, React Native 0.86, and React 19.2 in `apps/frontend` (TypeScript 6.0); React 19.1, Vite 8, and TypeScript 5.9 in `apps/admin-web`. Before changing files under a path below, read its guide; it holds the procedures for that area.
 
 | Path                  | What                                                                     | Read first                     |
 | --------------------- | ------------------------------------------------------------------------ | ------------------------------ |
-| `apps/frontend/`      | Expo React Native app (user-facing); styled with Restyle, not NativeWind |                                |
+| `apps/frontend/`      | Expo React Native app (user-facing); styled with Restyle, not NativeWind | `apps/frontend/AGENTS.md`      |
 | `apps/admin-web/`     | React + Vite admin dashboard                                             |                                |
-| `apps/backend/`       | Express API with limited use; prefer Edge Functions for new server logic |                                |
 | `packages/types/`     | Shared types, including generated Supabase types                         |                                |
 | `supabase/`           | Migrations, canonical SQL (`queries/`), local stack, remote project      | `supabase/AGENTS.md`           |
 | `supabase/functions/` | Edge Functions (Deno), Sentry wrapper, Bruno and Stripe local loops      | `supabase/functions/AGENTS.md` |
 | `design/`             | Gentle Design mockups (HTML artboards) and the synced token catalog      | `DESIGN.md`                    |
 | `odd/tasks/`          | One tracking document per feature (verbatim specs, tasks, decision log)  |                                |
-| `openspec/`, `sdd/`   | Older planning artifacts, often outdated: background only, never binding |                                |
 
 ## Verifying a change
 
@@ -40,7 +38,7 @@ You choose and run these checks, without being asked, based on what your change 
 | Frontend only                      | `bun test` for the touched behavior and the typecheck of the touched files                                                                                                                                                          |
 | An admin-web screen                | The above plus a Playwright spec in `e2e/admin-web/` (`bun run test:e2e`) driving the real page; when the screen calls a new or changed endpoint, also run that flow against the local stack (`bun run test:e2e:local`)             |
 
-Report which of these you ran and their results. Never point Bruno, `stripe:listen`, or data-mutating SQL at the remote project.
+Report which of these you ran and their results.
 
 The Supabase, Stripe, and Sentry MCP servers are read-only and configured per user; if one is missing from your session, say so instead of working around it. Use them before asking the maintainer to look something up.
 
@@ -58,9 +56,29 @@ Manual testing: never ask the maintainer to repeat by hand what these checks alr
 | What is deployed right now?             | The Supabase MCP, not the repository                                                                   |
 | What does production need?              | `docs/go-live.md`                                                                                      |
 | Which skills apply?                     | `.atl/skill-registry.md`                                                                               |
+| Which conventions apply to new code?    | `docs/conventions.md`                                                                                  |
 | What is pending outside a feature?      | GitHub Issues ("Finding" form); private Security Advisories for vulnerabilities                        |
 
 Use the typed aliases (`Tables<'orders'>`, `Enums<'order_status_enum'>`). Never invent table, column, enum, or relationship names.
+
+## Boundaries
+
+Always:
+
+- Test first: write the failing test, watch it fail, then implement.
+- Make the smallest complete change. Do not refactor, reformat, or "improve" files outside the request.
+- Preserve uncommitted changes you did not make.
+
+Ask first:
+
+- Changing ESLint, TypeScript, formatter, test runner, Git hook, build, or CI configuration. Never change it to make a change pass; it needs explicit maintainer approval.
+- Pushing, opening PRs, or merging. Do it only when asked.
+
+Never:
+
+- Point Bruno, `stripe:listen`, or data-mutating SQL at the remote project.
+- Apply migrations, deploy functions, change secrets, or configure cron or webhooks, unless the maintainer asks for that specific action.
+- Add AI attribution or `Co-Authored-By` lines.
 
 ## Skills
 
@@ -75,8 +93,8 @@ Vendor skills in `.agents/skills/` are installed with the `skills` CLI and never
 
 Run from the repository or worktree root. `package.json` is the source of truth.
 
-- `bun test`: full suite (`bun:test`). The pre-commit hook and CI run it. Run one file with `bun test <path>`.
-- `bun run lint` and `bun run typecheck` (one workspace: `bun run --filter <package> typecheck`) fail on `main` with pre-existing errors. Run them on the files you changed, judge only those diagnostics, and do not fix unrelated errors. Edge Functions: see `supabase/functions/AGENTS.md`.
+- `bun test`: full suite (`bun:test`). The pre-push hook and CI run the full suite; pre-commit runs `lint-staged` (Prettier and ESLint on staged files), and the commit-msg hook rejects headers that are not Conventional Commits (`scripts/check-commit-msg.ts`). Run one file with `bun test <path>`.
+- `bun run lint` and `bun run typecheck` (one workspace: `bun run --filter <package> typecheck`) pass with zero errors, and CI runs both. Keep them at zero; an inline `eslint-disable` needs the rule and a reason after `--`. Edge Functions: see `supabase/functions/AGENTS.md`.
 - `bun run db:types`: regenerates types from the remote project. Run it only after the maintainer confirms the SQL was applied.
 - Run `expo install` from `apps/frontend`, never from the root, or native autolinking breaks.
 - `bunfig.toml` blocks package versions newer than 3 days. If an install fails, pick an older version; do not change the setting.
@@ -84,11 +102,8 @@ Run from the repository or worktree root. `package.json` is the source of truth.
 
 ## How we work
 
-- Test first: write the failing test, watch it fail, then implement.
-- Make the smallest complete change. Do not refactor, reformat, or "improve" files outside the request.
-- Do not change ESLint, TypeScript, formatter, test runner, Git hook, build, or CI configuration to make a change pass. Configuration changes need explicit maintainer approval.
+- Structure, naming, and test placement: `docs/conventions.md`.
 - If an unrelated failure blocks verification, report the command and output and stop for a decision. Never weaken a test to get green.
-- Preserve uncommitted changes you did not make.
 - Code, identifiers, comments, tests, commits, and docs are in English. User-facing strings go through i18n with both English and Spanish (`apps/frontend/core/i18n/locales`); locale parity tests enforce it.
 - Several features are developed in parallel worktrees under `C:/dev/School-portal-worktrees/`. Stay inside the worktree you were given. `git worktree add` copies the gitignored env files (`apps/frontend/.env`, `apps/admin-web/.env`, `supabase/functions/.env`) from the main checkout through the `post-checkout` hook; in an older worktree run `bun run worktree:env`. A finished worktree (branch merged) is removed with `bun run worktree:clean <name>` from the main checkout, which also removes its branch and local Supabase stack data (`docs/worktrees.md`); show the plan and run `--yes` only when the maintainer asks. Do not delete worktrees, branches or `~/.supabase/stacks` by hand.
 
@@ -129,15 +144,13 @@ These protect real money and user data. They hold for every change:
 
 ## External services
 
-- **Supabase.** The maintainer applies SQL and deploys Edge Functions manually; a file in `supabase/` does not mean it is live. Agents never apply migrations, deploy functions, change secrets, or configure cron or webhooks unless the maintainer asks for that specific action. The remote project is treated as production: read it only through the read-only Supabase MCP, never run data-mutating tests against it, and never try to bypass read-only mode. Procedures: `supabase/AGENTS.md`.
+- **Supabase.** The maintainer applies SQL and deploys Edge Functions manually; a file in `supabase/` does not mean it is live. The remote project is treated as production: read it only through the read-only Supabase MCP, never run data-mutating tests against it, and never try to bypass read-only mode. Procedures: `supabase/AGENTS.md`.
 - **Stripe.** Read the sandbox (`Selene sandbox`, test mode) through the Stripe MCP instead of asking for Dashboard screenshots: payment intents, charges, refunds, balance, payouts, transfers, and events. It is authorized by OAuth for the sandbox only (not for connected seller accounts), and write and money-moving tools are hidden in the user-level `mcp.json`. Always pass `livemode: false`; never request live-mode access or try to reach hidden write tools.
 - **Sentry.** Project `selene-ze/selene-edge-functions` (free plan) receives Edge Function errors. Read it through the Sentry MCP (`search_issues`, `search_errors`, `get_sentry_resource`, ...); search it before reading logs when investigating a production bug. Never resolve, assign, or edit issues.
 
 ## Git
 
-- Push, open PRs, or merge only when asked.
 - Inside an authorized feature on its feature branch, commit each work unit as soon as its checks pass; do not wait to be asked. Target about 400 authored changed lines per commit (larger commits exceed the native review budget). A change to money, SQL, RLS, or auth goes in its own commit.
 - When planning a roadmap, size each task so it lands as one such commit. If a task will clearly exceed that, split it in the plan, not at commit time.
 - Generated files (`packages/types/src/database.types.ts`) go in the same commit as the migration that produced them.
 - Keep commits scoped: code, tests, migration, and contract updates for one behavior go together. Use Conventional Commits.
-- No AI attribution or `Co-Authored-By` lines.

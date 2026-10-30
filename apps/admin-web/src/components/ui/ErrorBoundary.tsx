@@ -1,4 +1,4 @@
-import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { Component, type ReactNode } from 'react';
 import { AlertCircle } from 'lucide-react';
 
 interface ErrorBoundaryProps {
@@ -24,7 +24,7 @@ export class ErrorBoundary extends Component<
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, _errorInfo: ErrorInfo) {
+  componentDidCatch(error: Error) {
     console.error('[ErrorBoundary]', error.message);
   }
 

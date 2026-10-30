@@ -51,7 +51,7 @@ describe('deterministic checkout UUID cutover contract', () => {
 
   it('keeps cutover deployment maintainer-only and sandbox-only', () => {
     const runbook = readProjectFile(
-      'openspec/changes/archive/2026-09-05-standardize-checkout-deterministic-uuids/cutover-runbook.md',
+      'docs/runbooks/checkout-deterministic-uuid-cutover.md',
     );
 
     expect(runbook).toContain("maintainer's disposable sandbox only");

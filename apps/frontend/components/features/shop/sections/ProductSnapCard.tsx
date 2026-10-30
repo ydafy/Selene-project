@@ -16,7 +16,6 @@ import { formatCurrency } from '../../../../core/utils/format';
 import { PublicProduct } from '@selene/types';
 import { isInVerification } from '../../../../core/utils/productListingStatus';
 import { VerificationPill } from '../../product/VerificationPill';
-import { colors } from '@/core/theme/tokens';
 
 interface Props {
   product: PublicProduct;
@@ -151,16 +150,3 @@ const ProductSnapCardComponent = ({
 };
 
 export const ProductSnapCard = memo(ProductSnapCardComponent);
-
-const styles = StyleSheet.create({
-  imagePressable: {
-    width: '100%',
-    height: '70%',
-    // Sombra sutil para que la imagen no se vea plana sobre el blur
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    elevation: 10,
-  },
-});

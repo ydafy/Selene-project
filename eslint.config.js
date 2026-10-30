@@ -13,6 +13,8 @@ module.exports = [
       'apps/frontend/ios/',
       'apps/frontend/android/',
       // AÑADE ESTAS LÍNEAS:
+      // Vendor skills installed with the skills CLI are not linted.
+      '.agents/',
       'eslint.config.js',
       '.prettierrc.js',
     ],

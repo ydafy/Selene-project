@@ -1,7 +1,7 @@
 import { expect, test, describe } from 'bun:test';
+import type { Database } from '@selene/types';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { fetchAllFavorites } from './fetchAllFavorites';
-
-const PAGE_SIZE = 20;
 
 // Test doubles use a minimal chainable interface — not a full SupabaseClient.
 // The pure function accepts any object with the query builder methods it calls.
@@ -12,13 +12,13 @@ interface MockSupabaseQuery {
   is: () => MockSupabaseQuery;
   order: () => MockSupabaseQuery;
   range: (from: number, to: number) => MockSupabaseQuery;
-  then: (cb: (v: any) => any) => Promise<any>;
+  then: (cb: (v: unknown) => unknown) => Promise<unknown>;
 }
 
 function createMockClient(response: {
-  data?: any[];
+  data?: unknown[];
   count?: number;
-  error?: any;
+  error?: unknown;
 }): MockSupabaseQuery & {
   range: (from: number, to: number) => MockSupabaseQuery;
 } {
@@ -31,7 +31,7 @@ function createMockClient(response: {
     is: () => chain,
     order: () => chain,
     range: () => chain,
-    then: (cb: (v: any) => any) =>
+    then: (cb: (v: unknown) => unknown) =>
       Promise.resolve(
         cb({
           data: response.data || [],
@@ -56,7 +56,11 @@ describe('fetchAllFavorites', () => {
     };
 
     // Cast through unknown since the mock only implements the methods the function calls
-    await fetchAllFavorites('user-123', 0, mockClient as any);
+    await fetchAllFavorites(
+      'user-123',
+      0,
+      mockClient as unknown as SupabaseClient<Database>,
+    );
 
     expect(rangeCalls).toEqual([[0, 19]]);
   });
@@ -72,7 +76,11 @@ describe('fetchAllFavorites', () => {
       return mockClient;
     };
 
-    await fetchAllFavorites('user-123', 1, mockClient as any);
+    await fetchAllFavorites(
+      'user-123',
+      1,
+      mockClient as unknown as SupabaseClient<Database>,
+    );
 
     expect(rangeCalls).toEqual([[20, 39]]);
   });
@@ -83,7 +91,11 @@ describe('fetchAllFavorites', () => {
       count: 2,
     });
 
-    const result = await fetchAllFavorites('user-123', 0, mockClient as any);
+    const result = await fetchAllFavorites(
+      'user-123',
+      0,
+      mockClient as unknown as SupabaseClient<Database>,
+    );
 
     expect(result.nextPage).toBeUndefined();
   });
@@ -94,7 +106,11 @@ describe('fetchAllFavorites', () => {
       count: 25,
     });
 
-    const result = await fetchAllFavorites('user-123', 0, mockClient as any);
+    const result = await fetchAllFavorites(
+      'user-123',
+      0,
+      mockClient as unknown as SupabaseClient<Database>,
+    );
 
     expect(result.nextPage).toBe(1);
   });
@@ -109,7 +125,11 @@ describe('fetchAllFavorites', () => {
       count: 2,
     });
 
-    const result = await fetchAllFavorites('user-123', 0, mockClient as any);
+    const result = await fetchAllFavorites(
+      'user-123',
+      0,
+      mockClient as unknown as SupabaseClient<Database>,
+    );
 
     expect(result.data).toHaveLength(2);
     expect(result.data[0].id).toBe('p1');

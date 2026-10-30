@@ -1,4 +1,6 @@
 import { expect, test, describe } from 'bun:test';
+import type { Database } from '@selene/types';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { fetchMyFavorites } from './fetchMyFavorites';
 
 // Test doubles use a minimal chainable interface — not a full SupabaseClient.
@@ -10,13 +12,13 @@ interface MockSupabaseQuery {
   is: () => MockSupabaseQuery;
   order: () => MockSupabaseQuery;
   limit: (n: number) => MockSupabaseQuery;
-  then: (cb: (v: any) => any) => Promise<any>;
+  then: (cb: (v: unknown) => unknown) => Promise<unknown>;
 }
 
 function createMockClient(response: {
-  data?: any[];
+  data?: unknown[];
   count?: number;
-  error?: any;
+  error?: unknown;
 }): MockSupabaseQuery {
   const chain: MockSupabaseQuery = {
     from: () => chain,
@@ -25,7 +27,7 @@ function createMockClient(response: {
     is: () => chain,
     order: () => chain,
     limit: () => chain,
-    then: (cb: (v: any) => any) =>
+    then: (cb: (v: unknown) => unknown) =>
       Promise.resolve(
         cb({
           data: response.data || [],
@@ -41,13 +43,16 @@ describe('fetchMyFavorites', () => {
   test('default call applies limit of 6', async () => {
     const limitCalls: number[] = [];
     const mockClient = createMockClient({ count: 5 });
-    const originalLimit = mockClient.limit;
     mockClient.limit = (n: number) => {
       limitCalls.push(n);
       return mockClient;
     };
 
-    await fetchMyFavorites('user-123', undefined, mockClient as any);
+    await fetchMyFavorites(
+      'user-123',
+      undefined,
+      mockClient as unknown as SupabaseClient<Database>,
+    );
 
     expect(limitCalls).toEqual([6]);
   });
@@ -60,7 +65,11 @@ describe('fetchMyFavorites', () => {
       return mockClient;
     };
 
-    await fetchMyFavorites('user-123', 10, mockClient as any);
+    await fetchMyFavorites(
+      'user-123',
+      10,
+      mockClient as unknown as SupabaseClient<Database>,
+    );
 
     expect(limitCalls).toEqual([10]);
   });
@@ -73,7 +82,11 @@ describe('fetchMyFavorites', () => {
       return mockClient;
     };
 
-    await fetchMyFavorites('user-123', 0, mockClient as any);
+    await fetchMyFavorites(
+      'user-123',
+      0,
+      mockClient as unknown as SupabaseClient<Database>,
+    );
 
     expect(limitCalls).toEqual([]);
   });
@@ -88,7 +101,11 @@ describe('fetchMyFavorites', () => {
       count: 2,
     });
 
-    const result = await fetchMyFavorites('user-123', undefined, mockClient as any);
+    const result = await fetchMyFavorites(
+      'user-123',
+      undefined,
+      mockClient as unknown as SupabaseClient<Database>,
+    );
 
     expect(result).toHaveLength(2);
     expect(result[0].id).toBe('p1');

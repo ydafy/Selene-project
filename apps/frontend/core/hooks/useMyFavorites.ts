@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../db/supabase';
-import { Product } from '@selene/types';
 import { fetchMyFavorites } from './fetchMyFavorites';
 
 export const useMyFavorites = (

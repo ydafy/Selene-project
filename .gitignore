@@ -40,10 +40,6 @@ apps/frontend/dist/
 apps/frontend/ios/
 apps/frontend/android/
 
-# Backend (a futuro)
-apps/backend/dist/
-apps/backend/build/
-
 # =============================================================================
 # Artefactos de Build
 # =============================================================================

@@ -59,15 +59,23 @@ export const useGoogleAuth = (onSuccess?: () => void) => {
          */
         setIsGoogleLoading(false);
       }
-    } catch (error: any) {
+    } catch (error) {
       // A user cancel is silent; anything else shows a localized message.
-      const resolution = resolveGoogleError(error, statusCodes.SIGN_IN_CANCELLED);
+      const resolution = resolveGoogleError(
+        error,
+        statusCodes.SIGN_IN_CANCELLED,
+      );
       if (!resolution.silent) {
         // Never log the raw error: it can carry tokens.
+        const { name, code, status } = (error ?? {}) as {
+          name?: unknown;
+          code?: unknown;
+          status?: unknown;
+        };
         console.error('[GOOGLE_AUTH_ERROR]', {
-          name: error?.name,
-          code: error?.code,
-          status: error?.status,
+          name,
+          code,
+          status,
         });
 
         Toast.show({

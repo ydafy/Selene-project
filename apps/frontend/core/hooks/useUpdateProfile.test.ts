@@ -1,4 +1,6 @@
 import { expect, test, describe } from 'bun:test';
+import type { Database } from '@selene/types';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   updateProfileUsername,
   mapUpdateProfileError,
@@ -8,7 +10,7 @@ interface MockUpdateQuery {
   from: (table: string) => MockUpdateQuery;
   update: (payload: Record<string, unknown>) => MockUpdateQuery;
   eq: (col: string, val: string) => MockUpdateQuery;
-  then: (cb: (v: any) => any) => Promise<any>;
+  then: (cb: (v: unknown) => unknown) => Promise<unknown>;
 }
 
 function createMockClient(
@@ -40,10 +42,14 @@ function createMockClient(
 
 describe('updateProfileUsername', () => {
   test('calls profiles.update with correct username and id', async () => {
-    const recorder: any = {};
+    const recorder: NonNullable<Parameters<typeof createMockClient>[1]> = {};
     const client = createMockClient({ error: null }, recorder);
 
-    await updateProfileUsername('user-1', 'newname', client as any);
+    await updateProfileUsername(
+      'user-1',
+      'newname',
+      client as unknown as SupabaseClient<Database>,
+    );
 
     expect(recorder.table).toBe('profiles');
     expect(recorder.payload).toEqual({ username: 'newname' });
@@ -53,7 +59,11 @@ describe('updateProfileUsername', () => {
   test('resolves on success', async () => {
     const client = createMockClient({ error: null });
     await expect(
-      updateProfileUsername('user-1', 'ok', client as any),
+      updateProfileUsername(
+        'user-1',
+        'ok',
+        client as unknown as SupabaseClient<Database>,
+      ),
     ).resolves.toBeUndefined();
   });
 
@@ -62,7 +72,11 @@ describe('updateProfileUsername', () => {
       error: { code: '23505', message: 'duplicate' },
     });
     await expect(
-      updateProfileUsername('user-1', 'taken', client as any),
+      updateProfileUsername(
+        'user-1',
+        'taken',
+        client as unknown as SupabaseClient<Database>,
+      ),
     ).rejects.toMatchObject({ code: '23505' });
   });
 });
