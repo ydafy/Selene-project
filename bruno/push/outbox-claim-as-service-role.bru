@@ -1,0 +1,41 @@
+meta {
+  name: outbox-claim-as-service-role
+  type: http
+  seq: 136
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_claim_push_deliveries
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  { "p_limit": 100 }
+}
+
+tests {
+  test("the dispatcher claims the seller delivery with everything the sender needs", function () {
+    expect(res.getStatus()).to.equal(200);
+    const ours = res.getBody().filter((r) => r.delivery_id === bru.getVar("pushDeliveryId"));
+    expect(ours).to.have.length(1);
+    expect(ours[0].expo_token).to.equal("ExponentPushToken[bruno-push-token-0002]");
+    expect(ours[0].platform).to.equal("android");
+    expect(ours[0].channel).to.equal("orders");
+    expect(ours[0].title).to.equal("Nueva venta confirmada");
+    expect(ours[0].message).to.equal("Bruno push outbox fixture");
+    expect(ours[0].event_kind).to.equal("order.payment_confirmed");
+    expect(ours[0].notification_id).to.equal(bru.getVar("pushSellerNotificationId"));
+    expect(ours[0].claim_token).to.be.a("string");
+    bru.setVar("pushClaimToken", ours[0].claim_token);
+  });
+}
+
+docs {
+  Service role claim. A second claim would not return the same row while its lease is open.
+}

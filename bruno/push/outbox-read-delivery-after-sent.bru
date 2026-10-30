@@ -1,0 +1,34 @@
+meta {
+  name: outbox-read-delivery-after-sent
+  type: http
+  seq: 140
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/push_deliveries?select=status,attempts,claim_token,claimed_at,expo_ticket_id,sent_at,last_error&id=eq.{{pushDeliveryId}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the row is sent with its ticket and was not changed by the malformed or stale calls", function () {
+    const rows = res.getBody();
+    expect(rows).to.have.length(1);
+    expect(rows[0].status).to.equal("sent");
+    expect(rows[0].attempts).to.equal(1);
+    expect(rows[0].expo_ticket_id).to.equal("bruno-ticket-1");
+    expect(rows[0].sent_at).to.be.a("string");
+    expect(rows[0].claim_token).to.equal(null);
+    expect(rows[0].claimed_at).to.equal(null);
+    expect(rows[0].last_error).to.equal(null);
+  });
+}
+
+docs {
+  Stored state after claim, malformed batch, sent, and stale result.
+}

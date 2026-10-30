@@ -1,0 +1,34 @@
+meta {
+  name: outbox-read-deliveries-after-inserts
+  type: http
+  seq: 125
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/push_deliveries?select=id,notification_id,user_id,channel,status,attempts,claim_token,expo_ticket_id&notification_id=in.({{pushSellerNotificationId}},{{pushBuyerNotificationId}})
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("only the seller notification produced one pending delivery; S5: the buyer one produced none", function () {
+    const rows = res.getBody();
+    expect(rows).to.have.length(1);
+    expect(rows[0].notification_id).to.equal(bru.getVar("pushSellerNotificationId"));
+    expect(rows[0].user_id).to.equal(bru.getVar("pushSellerId"));
+    expect(rows[0].channel).to.equal("orders");
+    expect(rows[0].status).to.equal("pending");
+    expect(rows[0].attempts).to.equal(0);
+    expect(rows[0].claim_token).to.equal(null);
+    bru.setVar("pushDeliveryId", rows[0].id);
+  });
+}
+
+docs {
+  Service-role read of the fan-out written by the notifications trigger.
+}

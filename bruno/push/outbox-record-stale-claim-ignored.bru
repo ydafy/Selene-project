@@ -1,0 +1,31 @@
+meta {
+  name: outbox-record-stale-claim-ignored
+  type: http
+  seq: 139
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_record_push_results
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  { "p_results": [{ "id": "{{pushDeliveryId}}", "claim_token": "{{pushClaimToken}}", "outcome": "failed", "error": "late duplicate" }] }
+}
+
+tests {
+  test("a repeated result for a closed claim is ignored", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal({ sent: 0, retry: 0, failed: 0, ignored: 1 });
+  });
+}
+
+docs {
+  Idempotent: the row is already sent and has no claim.
+}

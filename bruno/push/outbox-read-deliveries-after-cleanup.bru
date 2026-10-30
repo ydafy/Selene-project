@@ -1,0 +1,27 @@
+meta {
+  name: outbox-read-deliveries-after-cleanup
+  type: http
+  seq: 143
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/push_deliveries?select=id&user_id=eq.{{pushSellerId}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("no delivery of the seller remains", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.length(0);
+  });
+}
+
+docs {
+  The cascade removed the fixture delivery.
+}

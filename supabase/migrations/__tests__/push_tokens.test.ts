@@ -36,6 +36,7 @@ const rawDefinition = (sql: string, name: string): string | undefined =>
     .match(new RegExp(String.raw`CREATE OR REPLACE FUNCTION public\.${name}\(.*?\n\$\$;`, 's'))?.[0];
 
 const migration = findMigration('push_tokens');
+const newestRegister = findMigration('register_push_token_closed_account');
 const code = normalize(migration);
 
 describe('push_tokens table', () => {
@@ -150,7 +151,9 @@ describe('canonical SQL parity', () => {
     test(`${name} canonical file matches the migration`, () => {
       const canonical = readFileSync(join(QUERIES_DIR, 'push', `${name}.sql`), 'utf8');
       expect(rawDefinition(canonical, name)).toBeDefined();
-      expect(rawDefinition(canonical, name)).toBe(rawDefinition(migration, name));
+      // fn_register_push_token was redefined by the closed-account migration; the canonical file tracks the newest.
+      const newest = name === 'fn_register_push_token' ? newestRegister : migration;
+      expect(rawDefinition(canonical, name)).toBe(rawDefinition(newest, name));
     });
   }
 });

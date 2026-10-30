@@ -1,0 +1,31 @@
+meta {
+  name: outbox-record-malformed-rejected
+  type: http
+  seq: 137
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_record_push_results
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  { "p_results": [{ "id": "{{pushDeliveryId}}", "claim_token": "{{pushClaimToken}}", "outcome": "sent", "ticket_id": "bruno-ticket-1" }, { "id": "not-a-uuid", "claim_token": "x", "outcome": "sent" }] }
+}
+
+tests {
+  test("a malformed item rejects the whole batch", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().message).to.contain("INVALID_PUSH_RESULTS");
+  });
+}
+
+docs {
+  The valid first item must not be applied: the next requests read the row still sending.
+}

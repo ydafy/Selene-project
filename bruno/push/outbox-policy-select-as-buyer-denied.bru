@@ -1,0 +1,27 @@
+meta {
+  name: outbox-policy-select-as-buyer-denied
+  type: http
+  seq: 129
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/push_event_policy?select=*
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+tests {
+  test("an authenticated user has no table access", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody().code).to.equal("42501");
+  });
+}
+
+docs {
+  push_event_policy is service role only.
+}

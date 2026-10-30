@@ -1,0 +1,30 @@
+meta {
+  name: outbox-unregister-token-as-seller
+  type: http
+  seq: 142
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_unregister_push_token
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{sellerToken}}
+}
+
+body:json {
+  { "p_token": "ExponentPushToken[bruno-push-token-0002]" }
+}
+
+tests {
+  test("the owner removes its token", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  Cleanup of the outbox fixture token.
+}

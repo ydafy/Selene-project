@@ -1,9 +1,11 @@
 -- =========================================================================
 -- fn_register_push_token — a signed-in user registers this device's Expo push token
--- Migration: supabase/migrations/*_push_tokens.sql
+-- Migration: supabase/migrations/*_push_tokens.sql, then *_register_push_token_closed_account.sql
 -- One row per device token. A token another user owns moves to the caller (the
 -- same device signed in to a different account). Re-registering clears any
--- disabled state. Idempotent.
+-- disabled state. Idempotent. A closed account (profiles.deleted_at set) raises
+-- ACCOUNT_CLOSED: closure deletes its tokens, so a still-valid session must not
+-- register new ones.
 -- =========================================================================
 
 CREATE OR REPLACE FUNCTION public.fn_register_push_token(p_token text, p_platform text)
@@ -17,6 +19,10 @@ DECLARE
 BEGIN
   IF v_user_id IS NULL THEN
     RAISE EXCEPTION 'UNAUTHORIZED';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM public.profiles WHERE id = v_user_id AND deleted_at IS NOT NULL) THEN
+    RAISE EXCEPTION 'ACCOUNT_CLOSED';
   END IF;
 
   IF p_token IS NULL
