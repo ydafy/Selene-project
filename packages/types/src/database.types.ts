@@ -4189,6 +4189,10 @@ export type Database = {
         Args: { p_favoriter_id: string; p_product_id: string }
         Returns: undefined
       }
+      fn_notify_shipment_milestone: {
+        Args: { p_event_kind: string; p_shipment_id: string }
+        Returns: undefined
+      }
       fn_open_shipment_dispute: {
         Args: {
           p_buyer_id: string

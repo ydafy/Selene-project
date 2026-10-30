@@ -1,0 +1,44 @@
+meta {
+  name: milestones-record-in-transit-replay
+  type: http
+  seq: 180
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_record_tracking_event
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_shipment_id": "{{msTrackShipmentId}}",
+    "p_dispute_id": null,
+    "p_event_type": "in_transit",
+    "p_event_at": "{{msEventAt}}",
+    "p_raw_status": "bruno-milestones",
+    "p_location": null,
+    "p_status_description": null,
+    "p_carrier_name": null,
+    "p_webhook_delivery_id": null,
+    "p_polling_run_id": null,
+    "p_transition": "shipped"
+  }
+}
+
+tests {
+  test("S4: a replayed event is not inserted and changes nothing", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().inserted).to.equal(false);
+    expect(res.getBody().shipment_status).to.equal("shipped");
+  });
+}
+
+docs {
+  The exact same call as milestones-record-in-transit. A replay writes no second notice.
+}

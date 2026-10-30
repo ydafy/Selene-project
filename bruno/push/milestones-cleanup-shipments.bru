@@ -1,0 +1,35 @@
+meta {
+  name: milestones-cleanup-shipments
+  type: http
+  seq: 192
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/shipments?order_id=eq.{{msOrderId}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "status": "cancelled"
+  }
+}
+
+tests {
+  test("both shipments are closed so the seller has no open shipment", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.length(2);
+    res.getBody().forEach((r) => expect(r.status).to.equal("cancelled"));
+  });
+}
+
+docs {
+  Local stack only. Closes the shipments, as cancellations/cancel-cleanup-shipment does, so the collection stays repeatable.
+}

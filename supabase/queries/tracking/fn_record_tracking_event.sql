@@ -1,5 +1,7 @@
--- B5.8: the canonical fn_record_tracking_event. Requires shipment_cancellation_late_carrier_activity.sql first
--- (the late_carrier_activity_* columns). Apply the matching migration OR this identical canonical copy, not both.
+-- The canonical fn_record_tracking_event. Requires shipment_cancellation_late_carrier_activity.sql (the
+-- late_carrier_activity_* columns) and fn_notify_shipment_milestone.sql first. Latest migration:
+-- *_shipment_milestone_notifications.sql (expo-push-notifications T4). Apply that migration OR this identical
+-- canonical copy, not both.
 CREATE OR REPLACE FUNCTION public.fn_record_tracking_event(p_shipment_id uuid, p_dispute_id uuid, p_event_type public.shipment_tracking_event_type, p_event_at timestamp with time zone, p_raw_status text, p_location text, p_status_description text, p_carrier_name text, p_webhook_delivery_id uuid, p_polling_run_id uuid, p_transition public.order_status_enum)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -71,11 +73,13 @@ BEGIN
     SET status = 'shipped', shipped_at = p_event_at, updated_at = now()
     WHERE id = p_shipment_id;
     v_status := 'shipped';
+    PERFORM public.fn_notify_shipment_milestone(p_shipment_id, 'shipment.in_transit');
   ELSIF p_dispute_id IS NULL AND v_status = 'shipped' AND p_transition = 'delivered' THEN
     UPDATE public.shipments
     SET status = 'delivered', delivered_at = p_event_at, updated_at = now()
     WHERE id = p_shipment_id;
     v_status := 'delivered';
+    PERFORM public.fn_notify_shipment_milestone(p_shipment_id, 'shipment.delivered');
   ELSIF v_status = 'cancelled' THEN
     NULL;
   END IF;

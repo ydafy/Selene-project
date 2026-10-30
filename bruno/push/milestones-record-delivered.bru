@@ -1,0 +1,48 @@
+meta {
+  name: milestones-record-delivered
+  type: http
+  seq: 181
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_record_tracking_event
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:pre-request {
+  bru.setVar("msDeliveredAt", "2026-10-30T12:00:00Z");
+}
+
+body:json {
+  {
+    "p_shipment_id": "{{msTrackShipmentId}}",
+    "p_dispute_id": null,
+    "p_event_type": "delivered",
+    "p_event_at": "{{msDeliveredAt}}",
+    "p_raw_status": "bruno-milestones",
+    "p_location": null,
+    "p_status_description": null,
+    "p_carrier_name": null,
+    "p_webhook_delivery_id": null,
+    "p_polling_run_id": null,
+    "p_transition": "delivered"
+  }
+}
+
+tests {
+  test("S4: the delivered scan moves shipped to delivered", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().inserted).to.equal(true);
+    expect(res.getBody().shipment_status).to.equal("delivered");
+  });
+}
+
+docs {
+  Service role. Writes the shipment.delivered buyer notice for msTrackShipmentId.
+}

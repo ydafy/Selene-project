@@ -16,9 +16,9 @@ headers {
 }
 
 tests {
-  test("the service role reads the allowlist: 15 pairs, seller-only payment confirmation", function () {
+  test("the service role reads the allowlist: 17 pairs, seller-only payment confirmation", function () {
     const rows = res.getBody();
-    expect(rows).to.have.length(15);
+    expect(rows).to.have.length(17);
     const pairs = rows.map((r) => r.event_kind + ":" + r.recipient_role);
     expect(pairs).to.include("order.payment_confirmed:seller");
     expect(pairs).to.not.include("order.payment_confirmed:buyer");
@@ -27,5 +27,5 @@ tests {
 }
 
 docs {
-  The seeded matrix from the migration (L4).
+  The seeded matrix from the push outbox migration (L4), plus the two buyer shipment milestone pairs (T4).
 }
