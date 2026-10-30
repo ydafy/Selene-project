@@ -6,6 +6,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../db/supabase';
 import type { PublicProduct } from '@selene/types';
+import { productsListKey } from './productQueryKeys';
 import {
   resolveProductsQueryEnabled,
   resolveProductStatuses,
@@ -49,8 +50,8 @@ const fetchProducts = async (
 
 export const useProducts = (options?: UseProductsOptions) => {
   return useQuery({
-    // La queryKey debe incluir las opciones para que React Query sepa que es una lista diferente
-    queryKey: ['products', options],
+    // Only options that change the rows are in the key (not `enabled`)
+    queryKey: productsListKey(options),
     queryFn: () => fetchProducts(options),
     enabled: resolveProductsQueryEnabled(options),
     staleTime: 1000 * 60 * 5,

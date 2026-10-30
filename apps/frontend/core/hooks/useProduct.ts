@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../db/supabase';
-import { Product, ProductWithSeller } from '@selene/types';
+import { ProductWithSeller } from '@selene/types';
+import { findCachedProduct } from './productQueryKeys';
 import { useAuthContext } from '../../components/auth/AuthProvider';
 
 const PRODUCT_WITH_SELLER = `*, seller:profiles!products_seller_id_fkey(*)`;
@@ -55,8 +56,7 @@ export const useProduct = (id: string) => {
     placeholderData: (previousData) => {
       if (previousData) return previousData;
 
-      const cachedProducts = queryClient.getQueryData<Product[]>(['products']);
-      const foundProduct = cachedProducts?.find((p) => p.id === id);
+      const foundProduct = findCachedProduct(queryClient, id);
 
       // FIX: Casteamos el producto de la caché para que TypeScript no llore por la falta del 'seller'.
       // La UI mostrará el producto al instante, y el 'seller' cargará medio segundo después.
