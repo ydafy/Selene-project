@@ -290,7 +290,7 @@ select cron.schedule(
       'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'dispatch_push_cron_secret')
     ),
     body := '{}'::jsonb,
-    timeout_milliseconds := 60000
+    timeout_milliseconds := 120000
   );
   $$
 );
