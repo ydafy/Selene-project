@@ -18,6 +18,7 @@ import { useShipmentCancellationSummary } from '@/core/hooks/useShipmentCancella
 import { resolveShipmentPreparingWindowMessage } from '@/core/utils/shipment-cancel-safety';
 import { resolveCancelledShipmentCopy } from '@/core/utils/shipment-cancellation-summary';
 import { Theme } from '@/core/theme';
+import { resolveOrderBannerKind } from './orderActionBanner';
 
 interface Props {
   order: EnrichedOrder;
@@ -129,7 +130,11 @@ export const OrderActionCard = ({
     ? ['cancelled', 'dispute', 'refunded'].includes(order.status)
     : false;
   // A multi-seller order stays active when only this shipment is cancelled.
-  const isCancelledShipment = shipment.status === 'cancelled' && order.status !== 'dispute';
+  const isCancelledShipment =
+    resolveOrderBannerKind({
+      orderStatus: order.status,
+      shipmentStatus: shipment.status,
+    }) === 'cancelledShipment';
   const shouldShow =
     isCriticalStatus ||
     isCancelledShipment ||
@@ -235,6 +240,11 @@ export const OrderActionCard = ({
       return t('actionCard.completedMessage');
     }
 
+    // A cancelled shipment keeps its own copy whatever the order-level status is.
+    if (isCancelledShipment) {
+      return t(cancelledCopy.messageKey);
+    }
+
     if (order.status === 'dispute') {
       if (dispute?.status === 'open') {
         return isBuyer
@@ -271,9 +281,6 @@ export const OrderActionCard = ({
       return isBuyer
         ? t('actionCard.refundProcessedBuyer')
         : t('actionCard.refundProcessedSeller');
-    }
-    if (isCancelledShipment) {
-      return t(cancelledCopy.messageKey);
     }
     return t(`orders:detail.${order.status}Msg`);
   };
