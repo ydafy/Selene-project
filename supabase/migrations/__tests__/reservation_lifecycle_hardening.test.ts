@@ -20,13 +20,7 @@ import { join } from 'node:path';
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..', 'archive');
-const QUERIES_DIR = join(
-  import.meta.dir,
-  '..',
-  '..',
-  'queries',
-  'products',
-);
+const QUERIES_DIR = join(import.meta.dir, '..', '..', 'queries', 'products');
 
 const findMigration = (): string => {
   const files = readdirSync(MIGRATIONS_DIR).filter(
@@ -77,7 +71,9 @@ describe('reservation lifecycle hardening migration', () => {
     expect(sql).toMatch(
       /CREATE\s+INDEX\s+IF\s+NOT\s+EXISTS\s+idx_products_reserved_status_reserved_at/i,
     );
-    expect(sql).toMatch(/ON\s+public\.products\s*\(\s*status\s*,\s*reserved_at\s*\)/i);
+    expect(sql).toMatch(
+      /ON\s+public\.products\s*\(\s*status\s*,\s*reserved_at\s*\)/i,
+    );
     expect(sql).toMatch(/WHERE\s+status\s*=\s*'RESERVED'/i);
   });
 
@@ -196,7 +192,9 @@ describe('reservation lifecycle hardening query source files', () => {
     expect(sql).toMatch(
       /UPDATE\s+public\.products[\s\S]*?reserved_at\s*=\s*NULL[\s\S]*?AND\s+status\s*=\s*'RESERVED'[\s\S]*?reserved_at\s*<\s*now\(\)\s*-\s*interval\s+'10\s+minutes'/i,
     );
-    expect(sql).toMatch(/AND\s+status\s*=\s*'VERIFIED'[\s\S]*?seller_id\s*<>\s*p_buyer_id/i);
+    expect(sql).toMatch(
+      /AND\s+status\s*=\s*'VERIFIED'[\s\S]*?seller_id\s*<>\s*p_buyer_id/i,
+    );
     expect(sql).toMatch(/SOME_PRODUCTS_UNAVAILABLE/);
   });
 
@@ -206,8 +204,8 @@ describe('reservation lifecycle hardening query source files', () => {
       /CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.fn_release_products/i,
     );
     expect(sql).toMatch(/reserved_at\s*=\s*NULL/i);
-    expect(sql).toMatch(/WHERE\s+id\s*=\s*ANY\(p_product_ids\)/i);
-    expect(sql).toMatch(/AND\s+status\s*=\s*'RESERVED'/i);
+    expect(sql).toMatch(/AND\s+p\.id\s*=\s*ANY\(p_product_ids\)/i);
+    expect(sql).toMatch(/AND\s+p\.status\s*=\s*'RESERVED'/i);
     expect(sql).toMatch(/RETURN\s+QUERY\s+SELECT\s+true/i);
   });
 });
@@ -216,7 +214,8 @@ describe('reservation lifecycle hardening RPC permission hardening', () => {
   const rpcFiles = [
     {
       name: 'fn_release_stale_reservations.sql',
-      signature: 'public\\.fn_release_stale_reservations\\s*\\(\\s*UUID\\[\\]\\s*\\)',
+      signature:
+        'public\\.fn_release_stale_reservations\\s*\\(\\s*UUID\\[\\]\\s*\\)',
     },
     {
       name: 'fn_reserve_products.sql',
