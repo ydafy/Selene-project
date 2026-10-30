@@ -37,18 +37,6 @@ const getAdminClient = () => {
   });
 };
 
-// The receipt and purge RPCs are not in the generated types until the maintainer applies the
-// migration and runs `bun run db:types`; this narrow cast stands in until then.
-type DbError = { code?: string; message: string } | null;
-type UntypedRpc = (
-  name: string,
-  args: Record<string, unknown>,
-) => Promise<{ data: unknown; error: DbError }>;
-const untypedRpc = (name: string, args: Record<string, unknown>) => {
-  const admin = getAdminClient();
-  return (admin.rpc.bind(admin) as unknown as UntypedRpc)(name, args);
-};
-
 const handler = createDispatchPushHandler({
   getCronSecret: () => Deno.env.get('CRON_SECRET'),
   getExpoAccessToken: () => Deno.env.get('EXPO_ACCESS_TOKEN'),
@@ -66,23 +54,18 @@ const handler = createDispatchPushHandler({
     await getAdminClient().rpc('fn_record_push_results', {
       p_results: results,
     }),
-  listReceiptsDue: async (limit) => {
-    const { data, error } = await untypedRpc('fn_list_push_receipts_due', {
+  listReceiptsDue: async (limit) =>
+    await getAdminClient().rpc('fn_list_push_receipts_due', {
       p_limit: limit,
-    });
-    return {
-      data: data as { delivery_id: string; ticket_id: string }[] | null,
-      error,
-    };
-  },
+    }),
   recordReceipts: async (receipts) =>
-    await untypedRpc('fn_record_push_receipts', { p_receipts: receipts }),
-  purgeDeliveries: async (limit) => {
-    const { data, error } = await untypedRpc('fn_purge_push_deliveries', {
+    await getAdminClient().rpc('fn_record_push_receipts', {
+      p_receipts: receipts,
+    }),
+  purgeDeliveries: async (limit) =>
+    await getAdminClient().rpc('fn_purge_push_deliveries', {
       p_limit: limit,
-    });
-    return { data: data as number | null, error };
-  },
+    }),
   log,
   reportMessage,
 });
