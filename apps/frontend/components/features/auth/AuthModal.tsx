@@ -17,6 +17,7 @@ import {
   BottomSheetModal,
   BottomSheetBackdrop,
   BottomSheetView,
+  type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
 import { useTheme } from '@shopify/restyle';
 import { useRouter } from 'expo-router';
@@ -28,6 +29,7 @@ import { LoginForm } from './LoginForm';
 import { RegisterForm } from './RegisterForm';
 import { AppImage } from '../../ui/AppImage';
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- Metro resolves static asset requires at bundle time
 const logoPath = require('../../../assets/images/SeleneLunaLogo.png');
 
 type AuthView = 'login' | 'register';
@@ -45,9 +47,10 @@ export const AuthModal = forwardRef<BottomSheetModal, AuthModalProps>(
 
     const [currentView, setCurrentView] = useState<AuthView>(initialView);
 
-    const pendingNavigation = useRef<{ path: string; params?: any } | null>(
-      null,
-    );
+    const pendingNavigation = useRef<{
+      path: '/(auth)/verify-code';
+      params?: Record<string, string>;
+    } | null>(null);
 
     // --- 1. SINCRONIZACIÓN CON EL PROVIDER ---
     useEffect(() => {
@@ -67,13 +70,13 @@ export const AuthModal = forwardRef<BottomSheetModal, AuthModalProps>(
     const handleDismiss = useCallback(() => {
       if (pendingNavigation.current) {
         const { path, params } = pendingNavigation.current;
-        router.push({ pathname: path as any, params });
+        router.push({ pathname: path, params });
         pendingNavigation.current = null;
       }
     }, [router]);
 
     const renderBackdrop = useCallback(
-      (props: any) => (
+      (props: BottomSheetBackdropProps) => (
         <BottomSheetBackdrop
           {...props}
           disappearsOnIndex={-1}

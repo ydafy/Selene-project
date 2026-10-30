@@ -7,7 +7,7 @@
  * Detecta si un valor seleccionado requiere una especificación manual ("Other").
  * Se usa tanto en esquemas de validación como en componentes de UI.
  */
-export const checkIfOther = (value: any): boolean => {
+export const checkIfOther = (value: unknown): boolean => {
   if (!value) return false;
   const val = String(value);
   return val === 'Other' || val.endsWith('Other') || val.includes('Not Listed');

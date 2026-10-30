@@ -15,7 +15,11 @@ import { join } from 'node:path';
 const FRONTEND = join(import.meta.dir, '..', '..', '..');
 
 const read = (relPath: string) =>
-  readFileSync(join(FRONTEND, relPath), 'utf8').replace(/\s+/g, ' ');
+  readFileSync(join(FRONTEND, relPath), 'utf8')
+    .replace(/\s+/g, ' ')
+    .replace(/\( /g, '(')
+    .replace(/ \)/g, ')')
+    .replace(/,\)/g, ')');
 
 describe('orders detail screen shipment-aware source guards', () => {
   const detail = read('app/profile/orders/[id].tsx');
@@ -79,9 +83,11 @@ describe('OrderActionCard shipment-level timing guard', () => {
     // delivers; using it would mis-anchor each seller's 48h window. The
     // cleanup reads shipment.delivered_at instead.
     expect(card).toContain(
-      'if ( showDeliveredReviewBanner && shipment.delivered_at && Number.isFinite(new Date(shipment.delivered_at).getTime()) )',
+      'if (showDeliveredReviewBanner && shipment.delivered_at && Number.isFinite(new Date(shipment.delivered_at).getTime()))',
     );
-    expect(card).toContain("return { startTime: shipment.delivered_at, limit: 48 };");
+    expect(card).toContain(
+      'return { startTime: shipment.delivered_at, limit: 48 };',
+    );
     expect(card).not.toContain('return { startTime: order.delivered_at');
   });
 });
@@ -120,10 +126,10 @@ describe('OrderActionCard seller return problem navigation guard', () => {
       "{isSeller && dispute?.status === 'return_delivered' && (",
     );
     expect(action).toContain(
-      'router.push(`/profile/orders/report/${order.id}?shipment_id=${shipment.id}` as any)',
+      'router.push(`/profile/orders/report/${order.id}?shipment_id=${shipment.id}` as Href)',
     );
     expect(action).not.toContain(
-      'router.push(`/profile/orders/report/${order.id}` as any)',
+      'router.push(`/profile/orders/report/${order.id}` as Href)',
     );
   });
 });
@@ -234,8 +240,19 @@ describe('orders summary canonical shipment source guard', () => {
     // Already canonical before this cleanup; guard that it stays that way and
     // that the summary overview keeps using order-level totals/status (the
     // summary is order-scoped, not shipment-scoped).
-    expect(summary).toContain('if (order?.shipments && order.shipments.length > 0)');
+    expect(summary).toContain(
+      'if (order?.shipments && order.shipments.length > 0)',
+    );
     expect(summary).toContain('return shipments ?? [];');
     expect(summary).toContain('formatCurrency(visibleTotal)');
+  });
+});
+
+describe('OrderActionCard buyer return evidence navigation guard', () => {
+  it('opens the return evidence screen for this order', () => {
+    const card = read('components/features/orders/OrderActionCard.tsx');
+    expect(card).toContain(
+      'router.push(`/profile/orders/return/${order.id}` as Href)',
+    );
   });
 });

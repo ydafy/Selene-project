@@ -71,6 +71,7 @@ const ShellHeroComponent = () => {
         </Box>
 
         <AppImage
+          // eslint-disable-next-line @typescript-eslint/no-require-imports -- Metro resolves static asset requires at bundle time
           source={require('../../../../assets/images/home/gpuHome.webp')}
           style={{ width: '90%', height: '80%' }}
           contentFit="contain"

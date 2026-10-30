@@ -8,6 +8,7 @@ import React, { useState, useEffect } from 'react';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
+import type { TextStyle } from 'react-native';
 import OTPTextInput from 'react-native-otp-textinput';
 import Toast from 'react-native-toast-message';
 
@@ -137,7 +138,7 @@ export default function VerifyCodeScreen() {
               fontFamily: 'Montserrat-Medium',
               borderBottomWidth: 2,
               borderWidth: 0,
-            } as any
+            } as TextStyle
           }
           containerStyle={{
             marginBottom: theme.spacing.xl,

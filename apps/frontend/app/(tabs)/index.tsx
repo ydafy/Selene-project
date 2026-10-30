@@ -62,7 +62,7 @@ export default function HomeScreen() {
 
   const { t } = useTranslation(['common', 'notifications']);
   const theme = useTheme<Theme>();
-  const { isConnected } = useNetInfo();
+  useNetInfo();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const dockMetrics = getTabDockMetrics(insets.bottom);

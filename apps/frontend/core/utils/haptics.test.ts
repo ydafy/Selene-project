@@ -9,7 +9,7 @@ type FakeHaptics = {
 
 describe('triggerHaptic', () => {
   it('calls impactAsync with the light style by default', async () => {
-    let capturedStyle: string | null = null;
+    let capturedStyle = null as string | null;
     const fakeHaptics: FakeHaptics = {
       ImpactFeedbackStyle: { Light: 'light', Medium: 'medium' },
       impactAsync: async (style) => {
@@ -22,7 +22,7 @@ describe('triggerHaptic', () => {
   });
 
   it('calls impactAsync with the requested style', async () => {
-    let capturedStyle: string | null = null;
+    let capturedStyle = null as string | null;
     const fakeHaptics: FakeHaptics = {
       ImpactFeedbackStyle: { Light: 'light', Medium: 'medium' },
       impactAsync: async (style) => {
@@ -48,6 +48,8 @@ describe('triggerHaptic', () => {
   });
 
   it('returns early when no haptics implementation is available', async () => {
-    await expect(triggerHaptic(undefined, null as never)).resolves.toBeUndefined();
+    await expect(
+      triggerHaptic(undefined, null as never),
+    ).resolves.toBeUndefined();
   });
 });

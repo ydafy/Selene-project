@@ -5,7 +5,7 @@
 
 import { useState, useCallback } from 'react';
 
-export const useSeleneRefresh = (refetch: () => Promise<any>) => {
+export const useSeleneRefresh = (refetch: () => Promise<unknown>) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const onRefresh = useCallback(async () => {

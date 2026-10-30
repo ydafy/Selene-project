@@ -6,15 +6,16 @@
 
 import React, { useEffect } from 'react';
 import { StyleSheet, ViewStyle } from 'react-native';
-import { useVideoPlayer, VideoView } from 'expo-video';
+import { useVideoPlayer, VideoView, type VideoSource } from 'expo-video';
+import type { ImageProps } from 'expo-image';
 import { Box } from '../base';
 import { AppImage } from './AppImage';
 
 interface AppVideoProps {
-  source: any;
+  source: VideoSource;
   style?: ViewStyle;
   shouldPlay?: boolean;
-  posterSource?: any;
+  posterSource?: ImageProps['source'];
 }
 
 export const AppVideo = ({

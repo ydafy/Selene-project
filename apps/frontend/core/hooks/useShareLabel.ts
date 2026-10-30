@@ -14,7 +14,10 @@ export const useShareLabel = () => {
       const fileName = `Guia_Selene_${orderId.slice(0, 8)}.pdf`;
 
       // Acceso seguro para evitar el error de "Property does not exist"
-      const fs: any = FileSystem;
+      const fs: {
+        cacheDirectory?: string | null;
+        documentDirectory?: string | null;
+      } = FileSystem;
       const directory = fs.cacheDirectory || fs.documentDirectory;
       const fileUri = `${directory}${fileName}`;
 

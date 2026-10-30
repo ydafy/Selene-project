@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ScrollView, useWindowDimensions } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { MotiView } from 'moti';
@@ -13,6 +13,7 @@ import { SellerPaymentExplanation } from '../payments/SellerPaymentExplanation';
 import { ShippingLabelCard } from './ShippingLabelCard';
 import { EnrichedOrder, EnrichedShipment } from '@selene/types';
 import { useOrderCountdown } from '@/core/hooks/useOrderCountdown';
+import { useReturnPayment } from '@/core/hooks/useReturnPayment';
 import { useCancellationSettings } from '@/core/hooks/useCancellationSettings';
 import { useShipmentCancellationSummary } from '@/core/hooks/useShipmentCancellationSummary';
 import { resolveShipmentPreparingWindowMessage } from '@/core/utils/shipment-cancel-safety';
@@ -23,7 +24,7 @@ import { resolveOrderBannerKind } from './orderActionBanner';
 interface Props {
   order: EnrichedOrder;
   shipment: EnrichedShipment;
-  returnPayment: any;
+  returnPayment: ReturnType<typeof useReturnPayment>;
   onRefresh: () => void;
   shareLabel: (url: string, id: string) => void;
   isSharing: boolean;
@@ -39,7 +40,8 @@ export const OrderActionCard = ({
 }: Props) => {
   const { t } = useTranslation(['orders', 'sellerOnboarding']);
   const { height } = useWindowDimensions();
-  const [isPaymentExplanationVisible, setIsPaymentExplanationVisible] = useState(false);
+  const [isPaymentExplanationVisible, setIsPaymentExplanationVisible] =
+    useState(false);
   const theme = useTheme<Theme>();
   const router = useRouter();
   const { permissions, dispute, isSeller, isBuyer } = shipment;
@@ -61,7 +63,10 @@ export const OrderActionCard = ({
   const showStatusBanner = showSellerStatusBanner || showBuyerDeliveredBanner;
   const { orderExpirationHours, preparingExpirationHours } =
     useCancellationSettings();
-  const cancellationSummary = useShipmentCancellationSummary(shipment.id, shipment.status);
+  const cancellationSummary = useShipmentCancellationSummary(
+    shipment.id,
+    shipment.status,
+  );
 
   // --- 1. LÓGICA DEL RELOJ DINÁMICO ---
   const timerConfig = useMemo(() => {
@@ -150,9 +155,7 @@ export const OrderActionCard = ({
   const isManualCancelWindow =
     permissions.canCancel || shipment.status === 'preparing';
   const bannerColor =
-    isManualCancelWindow ||
-    isWaitingReturn ||
-    showStatusBanner
+    isManualCancelWindow || isWaitingReturn || showStatusBanner
       ? theme.colors.primary
       : theme.colors.error;
   const bannerBorderColor = isManualCancelWindow
@@ -309,7 +312,7 @@ export const OrderActionCard = ({
           }
         >
           <MaterialCommunityIcons
-            name={iconName as any}
+            name={iconName}
             size={24}
             color={bannerColor}
           />
@@ -317,11 +320,7 @@ export const OrderActionCard = ({
             <Text
               variant="body-md"
               fontWeight="bold"
-              color={
-                isWaitingReturn || showStatusBanner
-                  ? 'primary'
-                  : 'error'
-              }
+              color={isWaitingReturn || showStatusBanner ? 'primary' : 'error'}
             >
               {getBannerTitle()}
             </Text>
@@ -397,7 +396,7 @@ export const OrderActionCard = ({
           {isBuyer && permissions.canUploadReturnEvidence && (
             <PrimaryButton
               onPress={() =>
-                router.push(`/profile/orders/return/${order.id}` as any)
+                router.push(`/profile/orders/return/${order.id}` as Href)
               }
               disabled={isExpired}
               icon="camera"
@@ -411,7 +410,9 @@ export const OrderActionCard = ({
             <PrimaryButton
               variant="outline"
               onPress={() =>
-                router.push(`/profile/orders/report/${order.id}?shipment_id=${shipment.id}` as any)
+                router.push(
+                  `/profile/orders/report/${order.id}?shipment_id=${shipment.id}` as Href,
+                )
               }
               icon="shield-alert"
               style={{ borderColor: theme.colors.error, marginTop: 8 }}

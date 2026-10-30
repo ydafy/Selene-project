@@ -84,7 +84,10 @@ const toAuthFailure = (err: unknown): AuthFailure => ({
 /**
  * Helper interno para estandarizar las respuestas de Supabase Auth.
  */
-const formatAuthResponse = (data: any, error: any): AuthResult => {
+const formatAuthResponse = (
+  data: { session: Session | null; user: User | null },
+  error: unknown,
+): AuthResult => {
   if (error) {
     return {
       success: false,
@@ -169,8 +172,8 @@ export const useAuth = () => {
       const { error: signOutError } = await supabase.auth.signOut();
       if (signOutError) throw signOutError;
       return { success: true, error: null };
-    } catch (err: any) {
-      const message = err.message || String(err);
+    } catch (err) {
+      const message = (err as { message?: string }).message || String(err);
       setError(message);
       return { success: false, error: { message } };
     } finally {
@@ -220,7 +223,7 @@ export const useAuth = () => {
       );
       if (resendError) throw resendError;
       return { success: true, error: null };
-    } catch (err: any) {
+    } catch (err) {
       return { success: false, error: toAuthFailure(err) };
     } finally {
       setLoading(false);
@@ -241,7 +244,7 @@ export const useAuth = () => {
       );
       if (resetError) throw resetError;
       return { success: true, error: null };
-    } catch (err: any) {
+    } catch (err) {
       const failure = toAuthFailure(err);
       setError(failure.message);
       return { success: false, error: failure };
