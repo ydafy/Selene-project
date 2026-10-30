@@ -159,6 +159,28 @@ BEGIN
     RETURN v_shipment.stripe_transfer_id = p_stripe_transfer_id;
   END IF;
   UPDATE public.shipments SET stripe_transfer_id = p_stripe_transfer_id WHERE id = p_shipment_id;
+  -- The seller notice is best effort: a failing insert must never undo the
+  -- recorded transfer, so it runs in its own subtransaction.
+  BEGIN
+    INSERT INTO public.notifications (
+      user_id, event_kind, source_event_key, event_payload, type, title, message, action_path
+    ) VALUES (
+      v_shipment.seller_id,
+      'shipment.funds_released',
+      'shipment.funds_released:' || p_shipment_id::text,
+      jsonb_build_object('order_id', v_shipment.order_id, 'shipment_id', p_shipment_id,
+        'amount_cents', v_mapping.net_payout, 'currency', 'mxn', 'recipient_role', 'seller'),
+      'success',
+      'Liberamos el pago de tu venta',
+      'Enviamos $' || to_char(v_mapping.net_payout / 100.0, 'FM999,999,990.00')
+        || ' MXN a tu cuenta de vendedor. El depósito a tu banco puede tardar unos días hábiles.',
+      '/profile/orders/' || v_shipment.order_id::text
+    )
+    ON CONFLICT (source_event_key, user_id) WHERE source_event_key IS NOT NULL DO NOTHING;
+  EXCEPTION WHEN OTHERS THEN
+    INSERT INTO public.system_logs (level, message, metadata) VALUES ('WARNING', 'Funds released notice failed',
+      jsonb_build_object('shipment_id', p_shipment_id, 'sqlstate', SQLSTATE, 'error', SQLERRM));
+  END;
   -- Never clear the possible-effect fence, including on idempotent completion.
   RETURN true;
 END;

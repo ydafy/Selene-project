@@ -91,6 +91,13 @@ async function run() {
           stripe_transfer_id text, stripe_payout_id text, shipping_cost integer,
           label_generation_state text DEFAULT 'unclaimed', updated_at timestamptz);
         CREATE TABLE public.order_items (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), shipment_id uuid, net_payout numeric);
+        CREATE TABLE public.notifications (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL,
+          event_kind text, source_event_key text, event_payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+          type text, title text NOT NULL, message text, action_path text);
+        CREATE UNIQUE INDEX notifications_source_event_key_user_idx ON public.notifications (source_event_key, user_id)
+          WHERE source_event_key IS NOT NULL;
+        CREATE TABLE public.system_logs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), level text, message text NOT NULL,
+          metadata jsonb, created_at timestamptz DEFAULT now());
         CREATE TABLE public.disputes (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), shipment_id uuid, status text);
         CREATE TABLE public.connect_account_actionability (stripe_account_id text PRIMARY KEY, is_actionable boolean, blocked_reason text);
         INSERT INTO public.profiles VALUES ('${ids.buyer}', 'buyer'), ('${ids.seller}', 'seller');
@@ -270,13 +277,42 @@ async function run() {
       const canonical =
         'supabase/queries/payments/shipment_transfer_coordination.sql';
       if (existsSync(`${root}${canonical}`)) {
-        const migrations = readdirSync(`${root}supabase/migrations/archive`).filter(
-          (name) => name.endsWith('_shipment_transfer_coordination.sql'),
+        const migrations = readdirSync(
+          `${root}supabase/migrations/archive`,
+        ).filter((name) =>
+          name.endsWith('_shipment_transfer_coordination.sql'),
         );
         assert.equal(migrations.length, 1);
+        // Equal to the archived migration except fn_complete_shipment_transfer, which
+        // the funds released migration redefines (seller notice).
+        const lf = (text: string) => text.replace(/\r\n/g, '\n');
+        const withoutComplete = (text: string) => {
+          const start = text.indexOf(
+            'CREATE OR REPLACE FUNCTION public.fn_complete_shipment_transfer(',
+          );
+          return (
+            text.slice(0, start) + text.slice(text.indexOf('\n$$;', start) + 4)
+          );
+        };
         assert.equal(
-          source(canonical),
-          source(`supabase/migrations/archive/${migrations[0]}`),
+          withoutComplete(lf(source(canonical))),
+          withoutComplete(
+            lf(source(`supabase/migrations/archive/${migrations[0]}`)),
+          ),
+        );
+        const redefinitions = readdirSync(`${root}supabase/migrations`).filter(
+          (name) => name.endsWith('_shipment_funds_released_notification.sql'),
+        );
+        assert.equal(redefinitions.length, 1);
+        const completeBody = (text: string) => {
+          const start = text.indexOf(
+            'CREATE OR REPLACE FUNCTION public.fn_complete_shipment_transfer(',
+          );
+          return text.slice(start, text.indexOf('\n$$;', start) + 4);
+        };
+        assert.equal(
+          completeBody(lf(source(canonical))),
+          completeBody(lf(source(`supabase/migrations/${redefinitions[0]}`))),
         );
         await a.unsafe(source(canonical));
       }
