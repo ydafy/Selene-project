@@ -1,0 +1,40 @@
+meta {
+  name: profile-username-write-allowed
+  type: http
+  seq: 77
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/profiles?id=eq.00000000-0000-4000-8000-000000000003
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+  Prefer: return=representation
+}
+
+script:pre-request {
+  bru.setVar("profileUsername", "bruno" + Date.now().toString().slice(-8));
+}
+
+body:json {
+  {
+    "username": "{{profileUsername}}"
+  }
+}
+
+tests {
+  test("a signed-in user can still update their own username", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(1);
+    expect(res.getBody()[0].username).to.equal(bru.getVar("profileUsername"));
+  });
+}
+
+docs {
+  Issue #88. username stays updatable by authenticated, as in production. The name is
+  unique per run so the request can repeat.
+}

@@ -1,0 +1,33 @@
+meta {
+  name: profile-deleted-at-write-denied
+  type: http
+  seq: 76
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/profiles?id=eq.00000000-0000-4000-8000-000000000003
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  {
+    "deleted_at": "2026-01-01T00:00:00Z"
+  }
+}
+
+tests {
+  test("a signed-in user cannot write deleted_at on their own profile", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody().code).to.equal("42501");
+  });
+}
+
+docs {
+  Issue #88. Same grant as profile-restricted-columns-write-denied.
+}
