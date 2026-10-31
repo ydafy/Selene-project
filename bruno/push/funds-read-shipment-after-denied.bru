@@ -1,0 +1,27 @@
+meta {
+  name: funds-read-shipment-after-denied
+  type: http
+  seq: 207
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/shipments?select=stripe_transfer_id&id=eq.{{fdShipmentId}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("S4: the denied call recorded no transfer", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ stripe_transfer_id: null }]);
+  });
+}
+
+docs {
+  Service-role read of the shipment.
+}

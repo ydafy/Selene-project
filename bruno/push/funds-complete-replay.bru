@@ -1,0 +1,37 @@
+meta {
+  name: funds-complete-replay
+  type: http
+  seq: 209
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_complete_shipment_transfer
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_run_id": "{{fdRunId}}",
+    "p_shipment_id": "{{fdShipmentId}}",
+    "p_expected_stage_version": {{fdStageVersion}},
+    "p_transfer_token": "{{fdTransferToken}}",
+    "p_stripe_transfer_id": "{{fdTransferId}}"
+  }
+}
+
+tests {
+  test("S4: the replay with the same arguments returns true", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.equal(true);
+  });
+}
+
+docs {
+  Service role, same arguments. The shipment already holds this transfer id, so the call is idempotent and writes no second notice (funds-read-notifications counts one).
+}

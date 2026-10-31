@@ -1,0 +1,28 @@
+meta {
+  name: funds-cleanup-shipment
+  type: http
+  seq: 220
+}
+
+delete {
+  url: {{baseUrl}}/rest/v1/shipments?id=eq.{{fdShipmentId}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+tests {
+  test("the shipment is removed", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.length(1);
+  });
+}
+
+docs {
+  Cleanup. Unlike the milestones folder it deletes the shipment, so no completed shipment stays behind.
+}

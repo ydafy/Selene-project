@@ -1,0 +1,28 @@
+meta {
+  name: funds-cleanup-order
+  type: http
+  seq: 221
+}
+
+delete {
+  url: {{baseUrl}}/rest/v1/orders?id=eq.{{fdOrderId}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+tests {
+  test("the order is removed", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.length(1);
+  });
+}
+
+docs {
+  Cleanup of the order of the throwaway buyer.
+}

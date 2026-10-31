@@ -1,0 +1,27 @@
+meta {
+  name: funds-read-shipment
+  type: http
+  seq: 212
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/shipments?select=stripe_transfer_id,status&id=eq.{{fdShipmentId}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("S4: the shipment holds the transfer id the service-role call sent", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ stripe_transfer_id: bru.getVar("fdTransferId"), status: "completed" }]);
+  });
+}
+
+docs {
+  Service-role read. The notice and the transfer record share one transaction.
+}

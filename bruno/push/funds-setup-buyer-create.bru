@@ -1,0 +1,45 @@
+meta {
+  name: funds-setup-buyer-create
+  type: http
+  seq: 200
+}
+
+post {
+  url: {{baseUrl}}/auth/v1/admin/users
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:pre-request {
+  bru.setVar("fdBuyerEmail", "bruno-funds-buyer-" + Date.now() + "@selene.local");
+}
+
+body:json {
+  {
+    "email": "{{fdBuyerEmail}}",
+    "password": "password123",
+    "email_confirm": true
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("fdBuyerId", res.getBody().id);
+  }
+}
+
+tests {
+  test("creates a confirmed throwaway buyer for the order", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().id).to.be.a("string");
+  });
+}
+
+docs {
+  Local stack only. The buyer owns the order and must receive no funds-released notice. Stores fdBuyerEmail and fdBuyerId.
+}
