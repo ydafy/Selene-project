@@ -70,9 +70,9 @@ export const PaymentsPage = () => {
     bucket: activeTab,
     page,
   });
-  useLayoutEffect(() => {
-    if (pagination && pagination.page !== page) setPage(pagination.page);
-  }, [pagination, page]);
+  // The server clamps an out-of-range page; adopt its page during render so no
+  // extra commit shows the stale one.
+  if (pagination && pagination.page !== page) setPage(pagination.page);
   // A complete read wins over the page committed before it began. Any later
   // page commit reconciles overlapping groups again, even if values repeat.
   const pageEvidence = JSON.stringify([

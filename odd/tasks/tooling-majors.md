@@ -1,0 +1,27 @@
+# Tooling majors
+
+Take the tooling majors from the weekly report (#95): ESLint 10 with `@eslint/js` 10 and `globals` 17, `lint-staged` 17, and the admin-web majors. Fix the admin-web lint errors in #143 first, because ESLint 10 applies the nearest `eslint.config.js` to each file and the root `bun run lint` would start failing on them.
+Roadmap item #130 (part of #127). Worktree `C:/dev/School-portal-worktrees/repo-hygiene`, branch `chore/tooling-majors`. Procedure: `docs/dependencies.md` (one major per commit, changelog first).
+
+## Specs
+
+- S1: From #130: "One major per commit after reading its changelog: ESLint 10 (with `@eslint/js` and `globals`), `lint-staged` 17; admin-web `lucide-react` 1.x, `@tanstack/react-table` 9, `eslint-plugin-react-refresh` 0.5. ESLint 10 may need `eslint.config.js` changes (config: needs approval)."
+- S2: Maintainer decision on the ESLint 10 blocker: "Arreglar #143 primero (Recomendado)". The 4 React Hooks errors in admin-web get a real fix in their own commit, with `Closes #143`.
+- S3: "Sobre #130, me gusta, sigamos con ese" — approves the order: #143, ESLint 10, `lint-staged` 17, then the admin-web majors one per commit. ESLint config changes are approved within this item.
+
+## Tasks
+
+- [x] T1 (S2): fix #143. `react-hooks/set-state-in-effect` in `InputModal.tsx:29`, `SecureImage.tsx:26`, `PaymentsPage.tsx:64`, and `react-hooks/refs` in `lib/captcha/useCaptcha.tsx:47`. Keep behavior; tests first where the behavior is testable. `cd apps/admin-web && bunx eslint .` reports 0 errors.
+- [ ] T2 (S1, S3): ESLint 10 with `@eslint/js` 10 and `globals` 17 (root and admin-web) in one commit. Fix `no-useless-assignment` in `pages/ProductManagementPage.tsx:56`. The root `bun run lint` passes and now applies the admin-web config.
+- [ ] T3 (S1): `lint-staged` 17 (needs Node >= 22.22.1, now 24.22.2).
+- [ ] T4 (S1): `eslint-plugin-react-refresh` 0.5.
+- [ ] T5 (S1): `lucide-react` 1.x.
+- [ ] T6 (S1): `@tanstack/react-table` 9 (`useReactTable` becomes `useTable` with a `features` option, `components/ui/DataTable.tsx`). Run the admin-web Playwright specs.
+
+## Log
+
+- L1: "si master hagamos el #130" (2026-10-31).
+- L2: Blockers from the #130 comment (proof run of `selene-dependency-review`, #146): ESLint 10 makes the root lint apply `apps/admin-web/eslint.config.js` and fail on the 4 errors in #143. `no-useless-assignment` flags `ProductManagementPage.tsx:56`. `typescript-eslint` 8.72.1 and `eslint-plugin-react-hooks` 7.1.1 accept ESLint `^10`. `@eslint/js` 10 requires ESLint 10. `lint-staged` 17 needs Node >= 22.22.1 and Git >= 2.32. `@tanstack/react-table` 9 renames `useReactTable` to `useTable` and requires `features`. `globals` 17, `eslint-plugin-react-refresh` 0.5 and `lucide-react` 1.x showed no impact.
+- L3: `lint-staged` 17 unblocked by #156 (PR #159): Node 24.22.2 everywhere. Local Git 2.51.2.
+- L4: Latest versions on 2026-10-31: eslint 10.14.0, @eslint/js 10.0.1, globals 17.13.0, lint-staged 17.6.0, lucide-react 1.66.0, @tanstack/react-table 9.3.1, eslint-plugin-react-refresh 0.5.7.
+- L5: T1 done by a worker. `InputModal` renders an `InputModalBody` only when open (fresh state per open). `SecureImage` derives direct and public URLs during render and stores only the signed URL per `bucket:path`. A failed load is now remembered per source, so a new path clears it (before, the error stuck). `useCaptcha` reads the widget ref only when a token is requested. `PaymentsPage` adopts the server-clamped page during render instead of in `useLayoutEffect`. New `InputModal.test.tsx` and `SecureImage.test.tsx` (RED before the fix on fresh-state and derived-URL cases), one preservation test in `PaymentsPage.test.tsx`. Checks: admin-web `eslint .` 0 errors and 3 warnings (left as they are), `bun run lint` 0, `bun run typecheck` 0, `bun test` 4627 pass / 0 fail, `bun run test:e2e` 28 passed. The tests render server markup with mocked hooks (no DOM testing library), so "type, close, reopen" is not exercised in a browser.

@@ -294,6 +294,15 @@ if (process.env.PAYOUT_PAGING_PAGE_CHILD !== '1') {
       'shipment-20',
     ]);
   });
+  it('adopts the page the server clamps to, so the next query asks for it', () => {
+    const h = harness();
+    serverPage = 0;
+    h.release().onPageChange!(3);
+    h.render();
+    h.render();
+    expect(lastOptions.page).toBe(0);
+    expect(h.release().pagination?.page).toBe(0);
+  });
   it('rejects late amount/account/eligibility drift without clearing selected data or calling money', async () => {
     const h = harness();
     await h.release().onSelectAll!();

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 interface Props {
   isOpen: boolean;
@@ -12,8 +12,12 @@ interface Props {
   minLength?: number;
 }
 
-export const InputModal = ({
-  isOpen,
+// The reason lives in the body, which only exists while the modal is open, so
+// every opening starts with an empty field.
+export const InputModal = (props: Props) =>
+  props.isOpen ? <InputModalBody {...props} /> : null;
+
+const InputModalBody = ({
   onClose,
   onConfirm,
   title,
@@ -25,18 +29,12 @@ export const InputModal = ({
 }: Props) => {
   const [value, setValue] = useState('');
 
-  useEffect(() => {
-    if (!isOpen) setValue('');
-  }, [isOpen]);
-
   const trimmed = value.trim();
   const isTooShort =
     minLength !== undefined && trimmed.length > 0 && trimmed.length < minLength;
   const isValid =
     trimmed.length > 0 &&
     (minLength === undefined || trimmed.length >= minLength);
-
-  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
