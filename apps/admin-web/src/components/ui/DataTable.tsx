@@ -1,10 +1,17 @@
 import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getPaginationRowModel,
+  useTable,
+  tableFeatures,
+  rowSortingFeature,
+  rowPaginationFeature,
+  createSortedRowModel,
+  createPaginatedRowModel,
+  sortFn_alphanumeric,
+  sortFn_basic,
+  sortFn_datetime,
+  sortFn_text,
   flexRender,
-  type ColumnDef,
+  type ColumnDef as TableColumnDef,
+  type RowData,
   type SortingState,
   type PaginationState,
 } from '@tanstack/react-table';
@@ -17,7 +24,27 @@ import {
 } from 'lucide-react';
 import { useState, useCallback, useMemo } from 'react';
 
-export interface DataTableProps<TData> {
+// Only sorting and pagination are used. The sort functions are the ones the
+// default 'auto' sortFn picks from, depending on the column's data.
+const features = tableFeatures({
+  rowSortingFeature,
+  rowPaginationFeature,
+  sortedRowModel: createSortedRowModel(),
+  paginatedRowModel: createPaginatedRowModel(),
+  sortFns: {
+    alphanumeric: sortFn_alphanumeric,
+    basic: sortFn_basic,
+    datetime: sortFn_datetime,
+    text: sortFn_text,
+  },
+});
+
+export type ColumnDef<TData extends RowData> = TableColumnDef<
+  typeof features,
+  TData
+>;
+
+export interface DataTableProps<TData extends RowData> {
   columns: ColumnDef<TData>[];
   data: TData[];
   isLoading?: boolean;
@@ -34,8 +61,10 @@ export interface DataTableProps<TData> {
 }
 
 function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
-  if (sorted === 'asc') return <ArrowUp size={12} className="text-lion shrink-0" />;
-  if (sorted === 'desc') return <ArrowDown size={12} className="text-lion shrink-0" />;
+  if (sorted === 'asc')
+    return <ArrowUp size={12} className="text-lion shrink-0" />;
+  if (sorted === 'desc')
+    return <ArrowDown size={12} className="text-lion shrink-0" />;
   return <ArrowUpDown size={12} className="text-blue-light/30 shrink-0" />;
 }
 
@@ -55,7 +84,7 @@ function SkeletonRow({ columns }: { columns: number }) {
   );
 }
 
-export function DataTable<TData>({
+export function DataTable<TData extends RowData>({
   columns,
   data,
   isLoading = false,
@@ -74,10 +103,12 @@ export function DataTable<TData>({
   const sorting = controlledSorting ?? internalSorting;
   const setSorting = onSortingChange ?? setInternalSorting;
 
-  const [internalPagination, setInternalPagination] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 10,
-  });
+  const [internalPagination, setInternalPagination] = useState<PaginationState>(
+    {
+      pageIndex: 0,
+      pageSize: 10,
+    },
+  );
   const pagination = controlledPagination ?? internalPagination;
   const setPagination = onPaginationChange ?? setInternalPagination;
 
@@ -91,7 +122,9 @@ export function DataTable<TData>({
   );
 
   const handlePaginationChange = useCallback(
-    (updater: PaginationState | ((old: PaginationState) => PaginationState)) => {
+    (
+      updater: PaginationState | ((old: PaginationState) => PaginationState),
+    ) => {
       const newValue =
         typeof updater === 'function' ? updater(pagination) : updater;
       setPagination(newValue);
@@ -102,7 +135,8 @@ export function DataTable<TData>({
   const isManualSorting = !!onSortingChange;
   const isManualPagination = !!pageCount;
 
-  const table = useReactTable({
+  const table = useTable({
+    features,
     data: data ?? [],
     columns: columns ?? [],
     state: {
@@ -111,20 +145,14 @@ export function DataTable<TData>({
     },
     onSortingChange: handleSortingChange,
     onPaginationChange: handlePaginationChange,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: isManualPagination ? undefined : getPaginationRowModel(),
     enableSorting: enableSorting && !isManualSorting,
     manualSorting: isManualSorting,
     manualPagination: isManualPagination,
-    pageCount: pageCount ?? -1,
+    pageCount,
     debugTable: false,
   });
 
-  const columnCount = useMemo(
-    () => columns?.length ?? 0,
-    [columns],
-  );
+  const columnCount = useMemo(() => columns?.length ?? 0, [columns]);
 
   return (
     <div className="bg-state-gray rounded-3xl border border-white/5 overflow-hidden shadow-xl">
@@ -190,12 +218,12 @@ export function DataTable<TData>({
               table.getRowModel().rows.map((row) => (
                 <tr
                   key={row.id}
-                    className={`transition-colors duration-150 ${
-                      onRowClick ? 'cursor-pointer hover:bg-white/[0.02]' : ''
-                    }`}
+                  className={`transition-colors duration-150 ${
+                    onRowClick ? 'cursor-pointer hover:bg-white/[0.02]' : ''
+                  }`}
                   onClick={() => onRowClick?.(row.original)}
                 >
-                  {row.getVisibleCells().map((cell) => (
+                  {row.getAllCells().map((cell) => (
                     <td key={cell.id} className="p-4 text-sm">
                       {flexRender(
                         cell.column.columnDef.cell,
@@ -220,38 +248,36 @@ export function DataTable<TData>({
       </div>
 
       {/* Pagination - client-side */}
-      {!isManualPagination &&
-        data &&
-        data.length > pagination.pageSize && (
-          <div className="p-4 border-t border-white/5 flex items-center justify-between">
-            <p className="text-xs text-blue-light font-medium">
-              Mostrando página {table.getState().pagination.pageIndex + 1} de{' '}
-              {table.getPageCount()}
-            </p>
+      {!isManualPagination && data && data.length > pagination.pageSize && (
+        <div className="p-4 border-t border-white/5 flex items-center justify-between">
+          <p className="text-xs text-blue-light font-medium">
+            Mostrando página {table.state.pagination.pageIndex + 1} de{' '}
+            {table.getPageCount()}
+          </p>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-                aria-label="Previous page"
-                className="flex items-center gap-2 px-4 py-2 bg-state-gray rounded-xl border border-white/5 text-sm disabled:opacity-30 hover:bg-white/10 transition-all outline-none focus:ring-2 focus:ring-lion/50 cursor-pointer"
-              >
-                <ChevronLeft size={14} />
-                Anterior
-              </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+              aria-label="Previous page"
+              className="flex items-center gap-2 px-4 py-2 bg-state-gray rounded-xl border border-white/5 text-sm disabled:opacity-30 hover:bg-white/10 transition-all outline-none focus:ring-2 focus:ring-lion/50 cursor-pointer"
+            >
+              <ChevronLeft size={14} />
+              Anterior
+            </button>
 
-              <button
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-                aria-label="Next page"
-                className="flex items-center gap-2 px-4 py-2 bg-state-gray rounded-xl border border-white/5 text-sm disabled:opacity-30 hover:bg-white/10 transition-all outline-none focus:ring-2 focus:ring-lion/50 cursor-pointer"
-              >
-                Siguiente
-                <ChevronRight size={14} />
-              </button>
-            </div>
+            <button
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+              aria-label="Next page"
+              className="flex items-center gap-2 px-4 py-2 bg-state-gray rounded-xl border border-white/5 text-sm disabled:opacity-30 hover:bg-white/10 transition-all outline-none focus:ring-2 focus:ring-lion/50 cursor-pointer"
+            >
+              Siguiente
+              <ChevronRight size={14} />
+            </button>
           </div>
-        )}
+        </div>
+      )}
 
       {/* Pagination - controlled */}
       {isManualPagination && pagination && (
@@ -284,8 +310,7 @@ export function DataTable<TData>({
                 })
               }
               disabled={
-                pageCount !== undefined &&
-                pagination.pageIndex >= pageCount - 1
+                pageCount !== undefined && pagination.pageIndex >= pageCount - 1
               }
               aria-label="Next page"
               className="flex items-center gap-2 px-4 py-2 bg-state-gray rounded-xl border border-white/5 text-sm disabled:opacity-30 hover:bg-white/10 transition-all outline-none focus:ring-2 focus:ring-lion/50 cursor-pointer"

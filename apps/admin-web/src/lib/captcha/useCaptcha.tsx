@@ -2,7 +2,7 @@
  * The only file that knows hCaptcha. Switching to Turnstile means replacing
  * this hook, `VITE_HCAPTCHA_SITE_KEY` and the Dashboard secret, never the login.
  */
-import { useEffect, useMemo, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { createCaptchaGetter, type CaptchaTokenSource } from './captcha.logic';
 import {
   createHcaptchaLoader,
@@ -42,11 +42,12 @@ export function useCaptcha(): {
     };
   }, []);
 
-  const getToken = useMemo(
+  // The widget ref is read when a token is requested, never during render.
+  const getToken = useCallback<CaptchaTokenSource>(
     () =>
       createCaptchaGetter(() =>
         createHcaptchaHandle(() => widgetRef.current, SITE_KEY !== ''),
-      ),
+      )(),
     [],
   );
 

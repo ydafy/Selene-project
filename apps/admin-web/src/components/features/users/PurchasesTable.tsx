@@ -1,9 +1,8 @@
 import { useMemo } from 'react';
 import { ShoppingBag } from 'lucide-react';
 import { StatusBadge } from '../../ui/StatusBadge';
-import { DataTable } from '../../ui/DataTable';
+import { DataTable, type ColumnDef } from '../../ui/DataTable';
 import { SecureImage } from '../../ui/SecureImage';
-import type { ColumnDef } from '@tanstack/react-table';
 import type { StatusType } from '../../ui/StatusBadge';
 import type { OrderItemWithProduct } from '@selene/types';
 

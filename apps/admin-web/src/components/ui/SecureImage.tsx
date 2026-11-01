@@ -19,38 +19,48 @@ export const SecureImage = ({
   onClick,
   bucket = 'verification',
 }: Props) => {
-  const [url, setUrl] = useState<string | null>(null);
-  const [error, setError] = useState(false);
+  // Signed URLs and failed loads are remembered per source, so a new path or
+  // bucket starts clean without resetting state in an effect.
+  const source = `${bucket}:${path}`;
+  const [signed, setSigned] = useState<{
+    source: string;
+    url: string | null;
+  } | null>(null);
+  const [failedSource, setFailedSource] = useState<string | null>(null);
+
+  // External URLs or Supabase public URLs — load directly, no signing needed
+  const isDirect =
+    path.startsWith('http') &&
+    (!path.includes('supabase.co') || path.includes('/object/public/'));
 
   useEffect(() => {
-    if (!path) { setError(true); return; }
-
-    // External URLs or Supabase public URLs — load directly, no signing needed
-    if (
-      path.startsWith('http') &&
-      (!path.includes('supabase.co') || path.includes('/object/public/'))
-    ) {
-      setUrl(path);
-      return;
-    }
-
+    if (!path || isDirect) return;
+    let cancelled = false;
     const getSignedUrl = async () => {
       const cleanPath = getStoragePath(path, bucket);
       const { data } = await supabase.storage
         .from(bucket)
         .createSignedUrl(cleanPath, 3600);
-      if (data) {
-        setUrl(data.signedUrl);
-      } else {
-        setError(true);
-      }
+      if (!cancelled) setSigned({ source, url: data?.signedUrl ?? null });
     };
     getSignedUrl();
-  }, [path, bucket]);
+    return () => {
+      cancelled = true;
+    };
+  }, [path, bucket, isDirect, source]);
+
+  const resolved = signed?.source === source ? signed : null;
+  const url = isDirect ? path : (resolved?.url ?? null);
+  const error =
+    !path ||
+    failedSource === source ||
+    (resolved !== null && resolved.url === null);
 
   if (error) {
     return (
-      <div className={`flex items-center justify-center bg-white/5 ${className}`}>
+      <div
+        className={`flex items-center justify-center bg-white/5 ${className}`}
+      >
         <span className="text-blue-light text-xs">No disponible</span>
       </div>
     );
@@ -59,7 +69,12 @@ export const SecureImage = ({
 
   return (
     <div className="relative group w-full h-full">
-      <img src={url} alt={alt} className={className} onError={() => setError(true)} />
+      <img
+        src={url}
+        alt={alt}
+        className={className}
+        onError={() => setFailedSource(source)}
+      />
 
       {/* Overlay sutil que indica que es clickeable */}
       <button
