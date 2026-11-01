@@ -7,18 +7,18 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "node": "22.13.1",
-      "bun": "1.4.2"
+      "node": "24.22.2",
+      "bun": "1.4.4"
     },
     "preview": {
       "distribution": "internal",
-      "node": "22.13.1",
-      "bun": "1.4.2"
+      "node": "24.22.2",
+      "bun": "1.4.4"
     },
     "production": {
       "autoIncrement": true,
-      "node": "22.13.1",
-      "bun": "1.4.2"
+      "node": "24.22.2",
+      "bun": "1.4.4"
     },
     "development-simulator": {
       "developmentClient": true,
@@ -27,8 +27,8 @@
         "simulator": true
       },
       "environment": "development",
-      "node": "22.13.1",
-      "bun": "1.4.2"
+      "node": "24.22.2",
+      "bun": "1.4.4"
     }
   },
   "submit": {
