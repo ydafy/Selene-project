@@ -27,7 +27,8 @@ const readSource = (relativePath: string) =>
  */
 
 const INDEX_PATH = 'supabase/functions/stripe-webhooks/index.ts';
-const BUILDER_PATH = 'supabase/functions/stripe-webhooks/single-modal-settlement.ts';
+const BUILDER_PATH =
+  'supabase/functions/stripe-webhooks/single-modal-settlement.ts';
 const STRIPE_CHARGE_PATH = 'supabase/functions/_shared/stripe-charge.ts';
 
 describe('single-modal webhook wiring guards', () => {
@@ -41,7 +42,9 @@ describe('single-modal webhook wiring guards', () => {
 
   it('imports SINGLE_MODAL_FLOW from the create-connect-payment builder (single source of truth)', () => {
     const builder = readSource(BUILDER_PATH);
-    expect(builder).toContain("import { SINGLE_MODAL_FLOW } from '../create-connect-payment/single-payment-builder.ts';");
+    expect(builder).toContain(
+      "import { SINGLE_MODAL_FLOW } from '../create-connect-payment/single-payment-builder.ts';",
+    );
     // The webhook references the same constant end-to-end (no local hardcoded
     // copy of the flow string).
     expect(index).toContain('SINGLE_MODAL_FLOW');
@@ -92,7 +95,10 @@ describe('single-modal webhook wiring guards', () => {
 
   it('forwards the Stripe charge id when it upserts a standalone recovery shell', () => {
     const upsertStart = index.indexOf('fn_upsert_checkout_recovery_shell');
-    const claimStart = index.indexOf('fn_claim_checkout_recovery_shells', upsertStart);
+    const claimStart = index.indexOf(
+      'fn_claim_checkout_recovery_shells',
+      upsertStart,
+    );
     const shellUpsert = index.slice(upsertStart, claimStart);
 
     expect(shellUpsert).toContain('p_stripe_charge_id: chargeId');
@@ -101,8 +107,12 @@ describe('single-modal webhook wiring guards', () => {
   it('logs recovery diagnostics from executed RPC responses rather than hardcoded versions', () => {
     expect(index).toContain('outcome.runtimeVersion');
     expect(index).toContain('recoveryRuntimeVersion');
-    expect(index).not.toContain("runtimeSettlementVersion: 'single_modal_settlement_v2'");
-    expect(index).not.toContain("sqlMigrationVersion: 'paid_checkout_recovery_v1'");
+    expect(index).not.toContain(
+      "runtimeSettlementVersion: 'single_modal_settlement_v2'",
+    );
+    expect(index).not.toContain(
+      "sqlMigrationVersion: 'paid_checkout_recovery_v1'",
+    );
   });
 
   it('throws into the DLQ path for fatal_error outcomes (transport/precondition failures)', () => {
@@ -126,17 +136,13 @@ describe('single-modal webhook preserves supported flows', () => {
     expect(index).not.toContain('fn_create_shipment_from_payment');
   });
 
-  it('keeps the legacy app_name path intact (fn_create_order_from_payment + fraud + release)', () => {
-    expect(index).toContain('APP_NAME');
-    expect(index).toContain('fn_create_order_from_payment');
-    expect(index).toContain('FRAUDE DETECTADO');
-    expect(index).toContain('fn_release_products');
+  it('has no non-Connect order path (fn_create_order_from_payment and its fraud check removed)', () => {
+    expect(index).not.toContain('fn_create_order_from_payment');
+    expect(index).not.toContain('FRAUDE DETECTADO');
   });
 
   it('keeps the payment_intent.payment_failed / .canceled product-release branch intact', () => {
-    expect(index).toContain(
-      "event.type === 'payment_intent.payment_failed'",
-    );
+    expect(index).toContain("event.type === 'payment_intent.payment_failed'");
     expect(index).toContain("event.type === 'payment_intent.canceled'");
     expect(index).toContain('fn_release_products');
   });

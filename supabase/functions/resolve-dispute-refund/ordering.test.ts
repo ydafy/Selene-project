@@ -14,4 +14,20 @@ describe('resolve-dispute-refund ordering', () => {
     expect(record).toBeGreaterThan(refund);
     expect(src).not.toMatch(/from\('shipments'\)\s*\.update\(/);
   });
+
+  test('refuses a shipment without a payment intent with 422 before Stripe and before any write', () => {
+    const refusal = src.indexOf('refundIntentBlockedReason(');
+    const refund = src.indexOf('stripe.refunds.create(');
+    const firstRpc = src.indexOf('.rpc(');
+    expect(refusal).toBeGreaterThan(-1);
+    expect(refund).toBeGreaterThan(refusal);
+    expect(firstRpc).toBeGreaterThan(refusal);
+    expect(src.slice(refusal, refund)).toContain('status: 422');
+  });
+
+  test('has no non-Connect refund branch', () => {
+    expect(src).not.toContain('fn_complete_shipment_refund');
+    expect(src).not.toContain('isConnectPayment');
+    expect(src).not.toContain('orders!inner');
+  });
 });

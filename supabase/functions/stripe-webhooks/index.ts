@@ -683,14 +683,7 @@ serve(
 
       if (event.type === 'payment_intent.succeeded') {
         const intent = event.data.object as Stripe.PaymentIntent;
-        const {
-          type,
-          dispute_id,
-          app_name,
-          buyer_id,
-          product_ids,
-          address_id,
-        } = intent.metadata;
+        const { type, dispute_id } = intent.metadata;
 
         if (type === 'return_shipping') {
           log('INFO', 'Procesando pago de retorno', {
@@ -923,83 +916,6 @@ serve(
           });
           return new Response(JSON.stringify({ received: true }), {
             status: 200,
-          });
-        }
-
-        // Legacy path: single PaymentIntent for entire order (pre-Connect)
-        if (app_name === APP_NAME) {
-          const productIdsArray = JSON.parse(product_ids || '[]');
-          log('INFO', 'Procesando compra exitosa', {
-            buyer_id,
-            product_ids: productIdsArray,
-          });
-
-          const [{ data: settings }, { data: dbProducts }] = await Promise.all([
-            supabaseAdmin.from('system_settings').select('*').single(),
-            supabaseAdmin
-              .from('products')
-              .select('price')
-              .in('id', productIdsArray),
-          ]);
-
-          if (
-            !settings ||
-            !dbProducts ||
-            settings.service_fee_pct === null ||
-            settings.service_fee_fixed_cents === null
-          )
-            throw new Error('Configuración o productos no encontrados');
-
-          const realSubtotalCents = Math.round(
-            dbProducts.reduce(
-              (sum: number, p: { price: number }) => sum + Number(p.price),
-              0,
-            ) * 100,
-          );
-          const expectedServiceFeeCents =
-            Math.round(realSubtotalCents * settings.service_fee_pct) +
-            settings.service_fee_fixed_cents;
-          const expectedTotalCents =
-            realSubtotalCents + expectedServiceFeeCents;
-
-          if (Math.abs(intent.amount - expectedTotalCents) > 1) {
-            log('ERROR', 'FRAUDE DETECTADO: El monto no coincide', {
-              intent: intent.amount,
-              expected: expectedTotalCents,
-            });
-            await supabaseAdmin.rpc('fn_release_products', {
-              p_product_ids: productIdsArray,
-            });
-            return new Response(JSON.stringify({ error: 'Fraud detected' }), {
-              status: 200,
-            });
-          }
-
-          const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc(
-            'fn_create_order_from_payment',
-            {
-              p_buyer_id: buyer_id,
-              p_stripe_intent_id: intent.id,
-              p_product_ids: productIdsArray,
-              p_address_id: address_id,
-              p_total_amount: intent.amount / 100,
-              p_service_fee: expectedServiceFeeCents / 100,
-            },
-          );
-
-          if (rpcError || (rpcData && !rpcData[0]?.success)) {
-            const errorMsg = rpcError?.message || rpcData?.[0]?.error_message;
-            log('ERROR', 'Fallo al completar orden en DB (Rollback iniciado)', {
-              error: errorMsg,
-            });
-            await supabaseAdmin.rpc('fn_release_products', {
-              p_product_ids: productIdsArray,
-            });
-            throw new Error(`Fallo DB: ${errorMsg}`);
-          }
-
-          log('INFO', 'Orden completada y stock descontado con éxito', {
-            buyer_id,
           });
         }
       }
