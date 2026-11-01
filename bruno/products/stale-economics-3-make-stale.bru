@@ -1,0 +1,32 @@
+meta {
+  name: stale-economics-3-make-stale
+  type: http
+  seq: 101
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/system_settings?id=eq.1
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+script:pre-request {
+  req.setBody({ shipping_buffer_cents: Number(bru.getVar("staleEconBuffer")) + 500 });
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("the shipping buffer changed, so the listing snapshot no longer matches", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].shipping_buffer_cents).to.equal(Number(bru.getVar("staleEconBuffer")) + 500);
+  });
+}

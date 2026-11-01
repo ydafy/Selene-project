@@ -1,0 +1,28 @@
+meta {
+  name: stale-economics-6-hide-stale
+  type: http
+  seq: 104
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/products?id=eq.{{staleEconId}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  { "status": "HIDDEN" }
+}
+
+tests {
+  test("a status-only update on a stale listing is accepted", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].status).to.equal("HIDDEN");
+  });
+}

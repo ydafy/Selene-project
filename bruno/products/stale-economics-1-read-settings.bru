@@ -1,0 +1,37 @@
+meta {
+  name: stale-economics-1-read-settings
+  type: http
+  seq: 99
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/system_settings?id=eq.1&select=shipping_buffer_cents,insurance_rate,service_fee_pct
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const s = res.getBody()[0];
+    bru.setVar("staleEconBuffer", s.shipping_buffer_cents);
+    bru.setVar("staleEconInsurance", s.insurance_rate);
+    bru.setVar("staleEconCommission", s.service_fee_pct);
+  }
+}
+
+tests {
+  test("reads the settings so the sequence can compute snapshots and restore the buffer", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].shipping_buffer_cents).to.be.a("number");
+  });
+}
+
+docs {
+  Local stack only. T10a (#120): a listing keeps its published economics when settings change.
+  Run after auth/login-seller (needs sellerToken). Steps 1-10 restore the buffer and soft-delete the listing.
+}
