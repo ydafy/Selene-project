@@ -1,0 +1,44 @@
+meta {
+  name: deadline-read-notifications
+  type: http
+  seq: 267
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/notifications?select=id,user_id,event_kind,type,title,message,action_path,event_payload&source_event_key=eq.shipment.label_deadline:{{dlShipmentId}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:post-response {
+  if (res.getStatus() === 200 && res.getBody().length === 1) {
+    bru.setVar("dlNoticeId", res.getBody()[0].id);
+  }
+}
+
+tests {
+  test("S4: one notice for the seller and none for the buyer", function () {
+    expect(res.getStatus()).to.equal(200);
+    const rows = res.getBody();
+    expect(rows).to.have.length(1);
+    expect(rows[0].user_id).to.equal(bru.getVar("dlSellerId"));
+  });
+
+  test("the notice carries the kind, copy, path and payload", function () {
+    const row = res.getBody()[0];
+    expect(row.event_kind).to.equal("shipment.label_deadline");
+    expect(row.type).to.equal("warning");
+    expect(row.title).to.equal("Genera la guía de tu venta");
+    expect(row.message).to.equal("Si no generas la guía en 8 horas, cancelaremos la venta y reembolsaremos al comprador.");
+    expect(row.action_path).to.equal("/profile/orders/" + bru.getVar("dlOrderId"));
+    expect(row.event_payload.shipment_id).to.equal(bru.getVar("dlShipmentId"));
+    expect(row.event_payload.order_id).to.equal(bru.getVar("dlOrderId"));
+    expect(row.event_payload.recipient_role).to.equal("seller");
+    expect(row.event_payload.deadline_at).to.be.a("string");
+  });
+}

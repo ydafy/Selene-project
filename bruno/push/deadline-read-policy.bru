@@ -1,0 +1,23 @@
+meta {
+  name: deadline-read-policy
+  type: http
+  seq: 269
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/push_event_policy?select=recipient_role,channel&event_kind=eq.shipment.label_deadline
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the kind is pushed to the seller only, on the orders channel", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ recipient_role: "seller", channel: "orders" }]);
+  });
+}

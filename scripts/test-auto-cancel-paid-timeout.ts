@@ -8,6 +8,8 @@ const help =
   'database: paid-timeout boundaries with a live order_expiration_hours (just expired vs not yet, tracked and\n' +
   'non-paid and label-blocked orphan_pending shipments excluded), rerun idempotence, a held lease ("Already running"), two simultaneous runs,\n' +
   'an invalid live setting (500 AUTO_CANCEL_SETTINGS_INVALID) and a free lease after every run.\n' +
+  'T7: the paid untracked shipment whose deadline is less than 12 h away gets exactly one seller label deadline\n' +
+  'notice ("reminded" in the reply), the others none, and a rerun writes no second notice.\n' +
   'Fixtures have no Stripe payment intent, so every selected shipment stops at the AUTO_CANCEL_MISSING_PAYMENT_INTENT\n' +
   'gate after its cancellation operation is claimed: Stripe is never reached and no money moves.\n' +
   "Runs against this worktree's local Supabase stack (`supabase start`) with the function served:\n" +
@@ -141,6 +143,13 @@ async function operatedIds(sql: SQL): Promise<string[]> {
   return rows.map((row: { shipment_id: string }) => row.shipment_id);
 }
 
+const reminderKeys = shipmentIds.map((id) => `shipment.label_deadline:${id}`);
+
+async function reminders(sql: SQL) {
+  return sql`SELECT user_id, source_event_key, type, title, message, action_path, event_payload
+    FROM public.notifications WHERE source_event_key IN ${sql(reminderKeys)} ORDER BY source_event_key`;
+}
+
 async function leaseFree(sql: SQL): Promise<boolean> {
   const [row] =
     await sql`SELECT auto_cancel_orders_lease_id IS NULL AS free FROM public.system_settings WHERE id = 1`;
@@ -152,6 +161,7 @@ async function setHours(sql: SQL, hours: number) {
 }
 
 async function cleanup(sql: SQL) {
+  await sql`DELETE FROM public.notifications WHERE source_event_key IN ${sql(reminderKeys)}`;
   await sql`DELETE FROM public.shipment_cancellation_operations WHERE shipment_id IN ${sql(shipmentIds)}`;
   await sql`DELETE FROM public.order_items WHERE order_id = ${ids.order}`;
   await sql`DELETE FROM public.shipments WHERE id IN ${sql(shipmentIds)}`;
@@ -228,6 +238,11 @@ async function run() {
           assert.equal(reply.status, 500);
           assert.equal(reply.text, '{"error":"AUTO_CANCEL_SETTINGS_INVALID"}');
           assert.equal(await operationCount(sql), 0);
+          assert.equal(
+            (await reminders(sql)).length,
+            0,
+            'an invalid setting writes no reminder',
+          );
           assert.equal(await leaseFree(sql), true);
         } finally {
           await setHours(sql, HOURS);
@@ -283,6 +298,29 @@ async function run() {
           /"processed":1,/,
           `only the expired shipment is processed: ${reply.text}`,
         );
+        assert.match(
+          reply.text,
+          /"reminded":1}$/,
+          `only the fresh shipment is reminded: ${reply.text}`,
+        );
+        const notices = await reminders(sql);
+        assert.equal(notices.length, 1, 'exactly one label deadline notice');
+        const [notice] = notices;
+        assert.equal(
+          notice.source_event_key,
+          `shipment.label_deadline:${shipments.fresh.id}`,
+        );
+        assert.equal(notice.user_id, ids.seller);
+        assert.equal(notice.type, 'warning');
+        assert.equal(notice.title, 'Genera la guía de tu venta');
+        // fresh is 2 minutes from its deadline: the hours left round up to 1.
+        assert.equal(
+          notice.message,
+          'Si no generas la guía en 1 hora, cancelaremos la venta y reembolsaremos al comprador.',
+        );
+        assert.equal(notice.action_path, `/profile/orders/${ids.order}`);
+        assert.equal(notice.event_payload.recipient_role, 'seller');
+        assert.equal(notice.event_payload.shipment_id, shipments.fresh.id);
         const [operation] =
           await sql`SELECT source, actor_id FROM public.shipment_cancellation_operations
         WHERE shipment_id = ${shipments.expired.id}`;
@@ -311,7 +349,7 @@ async function run() {
     );
 
     check(
-      'a rerun returns 200 and creates no second operation for the same shipment',
+      'a rerun returns 200 and creates no second operation or reminder for the same shipment',
       async () => {
         const [before] =
           await sql`SELECT claim_token, created_at FROM public.shipment_cancellation_operations
@@ -319,6 +357,16 @@ async function run() {
         const reply = await call();
         assert.equal(reply.status, 200, reply.text);
         assert.deepEqual(await operatedIds(sql), [shipments.expired.id]);
+        assert.match(
+          reply.text,
+          /"reminded":0}$/,
+          `a rerun reminds nobody again: ${reply.text}`,
+        );
+        assert.equal(
+          (await reminders(sql)).length,
+          1,
+          'a rerun writes no second notice',
+        );
         const [after] =
           await sql`SELECT claim_token, created_at FROM public.shipment_cancellation_operations
         WHERE shipment_id = ${shipments.expired.id}`;

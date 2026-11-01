@@ -1,0 +1,24 @@
+meta {
+  name: deadline-cleanup-delete-notifications
+  type: http
+  seq: 270
+}
+
+delete {
+  url: {{baseUrl}}/rest/v1/notifications?user_id=eq.{{dlSellerId}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+tests {
+  test("the reminder is removed", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.length(1);
+  });
+}

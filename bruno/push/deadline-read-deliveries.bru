@@ -1,0 +1,27 @@
+meta {
+  name: deadline-read-deliveries
+  type: http
+  seq: 268
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/push_deliveries?select=notification_id,channel,status&user_id=eq.{{dlSellerId}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("S4: the reminder produced one pending orders delivery for the seller", function () {
+    expect(res.getStatus()).to.equal(200);
+    const rows = res.getBody();
+    expect(rows).to.have.length(1);
+    expect(rows[0].notification_id).to.equal(bru.getVar("dlNoticeId"));
+    expect(rows[0].channel).to.equal("orders");
+    expect(rows[0].status).to.equal("pending");
+  });
+}

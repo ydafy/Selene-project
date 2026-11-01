@@ -82,6 +82,20 @@ serve(
         Date.now() - hours * 60 * 60 * 1000,
       ).toISOString();
 
+      // Remind sellers whose paid shipment is cancelled within 12 hours unless they generate
+      // the label. Once per shipment; a failure never blocks the cancellations below.
+      let reminded = 0;
+      const { data: reminderCount, error: reminderError } =
+        await supabaseAdmin.rpc('fn_notify_label_deadline_reminders');
+      if (reminderError) {
+        log('ERROR', 'Label deadline reminders failed', {
+          error: reminderError.message,
+        });
+      } else {
+        reminded = reminderCount ?? 0;
+        log('INFO', 'Label deadline reminders written', { reminded });
+      }
+
       // Expired shipments held by a label operation cannot be claimed; report them for review
       // instead of retrying them every run. Reporting never blocks the cancellations below.
       const { data: blockedShipments, error: blockedError } =
@@ -125,7 +139,7 @@ serve(
         log('INFO', 'No hay shipments para cancelar');
 
         return new Response(
-          JSON.stringify({ message: 'No shipments to cancel' }),
+          JSON.stringify({ message: 'No shipments to cancel', reminded }),
           {
             status: 200,
           },
@@ -520,6 +534,7 @@ serve(
           processed: expiredShipments.length - deferred,
           success: successCount,
           deferred,
+          reminded,
         }),
         {
           status: 200,

@@ -830,6 +830,9 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
                   error: null,
                 };
               }
+              if (rpcName === 'fn_notify_label_deadline_reminders') {
+                return { data: 2, error: null };
+              }
               return { data: { marked: true }, error: null };
             },
           };
@@ -1098,11 +1101,17 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
       );
       const response = await run();
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({
-        processed: 1,
-        success: 0,
-        deferred: 2,
-      });
+      // Only the paid job writes label deadline reminders (expo-push-notifications T7).
+      expect(await response.json()).toEqual(
+        paidJob
+          ? { processed: 1, success: 0, deferred: 2, reminded: 2 }
+          : { processed: 1, success: 0, deferred: 2 },
+      );
+      expect(
+        rpcCalls.filter(
+          ([rpcName]) => rpcName === 'fn_notify_label_deadline_reminders',
+        ),
+      ).toHaveLength(paidJob ? 1 : 0);
       expect(runPorts).toHaveLength(1);
       expect(runPorts[0]!.context.shipmentId).toBe('s1');
       expect(

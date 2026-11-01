@@ -1,0 +1,32 @@
+meta {
+  name: deadline-notify-as-service-role
+  type: http
+  seq: 265
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_notify_label_deadline_reminders
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("S4: the service role writes the due reminders and returns how many", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.a("number");
+    expect(res.getBody()).to.be.at.least(1);
+  });
+}
+
+docs {
+  The count covers every due shipment in the local database; the reads below check this run's shipment only.
+}
