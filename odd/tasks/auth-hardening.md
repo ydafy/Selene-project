@@ -1197,3 +1197,6 @@ GREEN: `bun run typecheck` 0 errors with and without `expo-env.d.ts`; `bun run l
 Finding #174: the CI typecheck runs without Expo's types; the fix is a CI change and needs approval.
 Risk: none (type assertion only; runtime style unchanged).
 Review: native review of bcb22fe1..9dcf0bc0 (readability; tier high) approved and acknowledged; one suggestion (the task row cited L170 instead of the commit) fixed here.
+
+### L171 — T10e closed
+PR #176 merged (89a6ccd6) after the required checks `test` and `db-test` passed; it closed roadmap item #164. Open from T10e: #174 (the CI typecheck runs without Expo's types; the fix is a CI change and needs approval). This entry is commit-only on local branch `docs/auth-t10e-close` and goes out with the next slice. Next roadmap item: #165 (T10f, #122 limited to the auth tables; migration, the maintainer applies it).
