@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTheme } from '@shopify/restyle';
-import { TextInput as RNTextInput, type TextStyle } from 'react-native';
+import { TextInput as RNTextInput, type ViewStyle } from 'react-native';
 import OTPTextInput from 'react-native-otp-textinput';
 import Toast from 'react-native-toast-message';
 import { z } from 'zod';
@@ -205,6 +205,8 @@ export default function ResetPasswordScreen() {
               inputCount={6}
               tintColor={theme.colors.primary}
               offTintColor={theme.colors.textSecondary}
+              // The library types this prop as ViewStyle but applies it to its TextInput,
+              // so the text props below are valid at runtime (#148 replaces the library).
               textInputStyle={
                 {
                   width: 35,
@@ -213,7 +215,7 @@ export default function ResetPasswordScreen() {
                   fontFamily: 'Montserrat-Medium',
                   borderBottomWidth: 2,
                   borderWidth: 0,
-                } as TextStyle
+                } as ViewStyle
               }
               containerStyle={{ marginBottom: 24 }}
             />

@@ -142,7 +142,8 @@ Acceptance: an update that leaves `price` and `shipping_cost` unchanged keeps th
 - T10b | S4 | inline | done (L159-L160) | pgTAP for the block-1 account rules: a suspended seller cannot publish, edit or receive reservations (own purchases stay); lifting a suspension restores only account-held listings to their prior status; banned is final; clients cannot write `role` or `status` (own or other rows, signup or metadata, JWT claims); admin flows only as setup | Commit: f7d8a62b.
 - T10c.1 | S4,S8 | delegated writer (context backstop) | done (L163-L164) | pgTAP for the `fn_close_account` blockers not covered yet: unreleased payout (`pending_payouts`), open dispute (`open_disputes`), refund in flight (`pending_refunds`), each refused with nothing changed, plus the allowed case once settled | Commit: a2744ca7 + follow-up (L164).
 - T10c.2 | S4 | delegated writer (context backstop) | done (L165-L166) | pgTAP for the other release callers under the T9e seller rule: `fn_reserve_products` stale cleanup and partial rollback, `fn_cancel_shipment`, and the refund path of `fn_finalize_checkout_recovery`; a suspended seller's listing is held, an active seller's returns to sale | Commit: 208a8738.
-- T10d | S1,S4 | inline | in progress (L168) | Roadmap #163: CI job `db-test` starts the local stack and runs `supabase test db` on every PR; `supabase/AGENTS.md` updated | Commit: not created.
+- T10d | S1,S4 | inline | done (L168-L169) | Roadmap #163: CI job `db-test` starts the local stack and runs `supabase test db` on every PR; `supabase/AGENTS.md` updated | Commit: 391912c7.
+- T10e | S1 | inline | done (L170) | Roadmap #164: frontend typecheck at zero on Windows (OTP `textInputStyle` typed as the library declares it) | Commit: 9dcf0bc0.
 
 ## Log
 
@@ -1183,3 +1184,16 @@ Parent decision: move the remaining items to the roadmap workflow (`docs/roadmap
 T10d (CI change, approved above): job `db-test` in `.github/workflows/ci.yml` runs `supabase/setup-cli@v1` pinned to 2.122.0 (the local CLI), then `supabase start` and `supabase test db`. The stack is local to the runner, and `config.toml` has no `env()` secrets, so the job needs no secrets. The header comment, which said lint and typecheck were not gated, is corrected. `supabase/AGENTS.md` no longer says the suite is not a CI job.
 RED (local): a throwaway pgTAP file asserting `is(1, 2)` made `supabase test db` exit 1 with `Result: FAIL` (Files=9, Tests=270); after removing it the suite passes (Files=8, Tests=269). The job therefore fails the PR whenever an assertion fails.
 Risk: item 5 (CI). The job is new and runs alongside `test`, and nothing in the existing job changes.
+
+### L169 — T10d closed
+The first `db-test` run on PR #168 passed in 33 s (Files=8, Tests=269, Result: PASS). The native review (resilience, readability; tier high) approved it with no findings, and it was acknowledged. PR #168 merged (bcb22fe1) and closed roadmap item #163. The `main` ruleset required only `test`. On the agent's recommendation the maintainer added `db-test`. The first attempt saved it as `db:test` with no source, which would have blocked every PR; that was corrected. Read back through the API: `test` and `db-test`, both from GitHub Actions (integration 15368), ruleset active. This entry is commit-only on local branch `docs/auth-t10d-close` and goes out with the next slice. Next roadmap item: #164 (T10e).
+
+### L170 — T10e: frontend typecheck at zero
+Root cause: `react-native-otp-textinput` types `textInputStyle` as `ViewStyle`, although it applies the style to its `TextInput`. Both screens passed `{...} as TextStyle`. With Expo's types, which `apps/frontend/expo-env.d.ts` loads, `TextStyle` gains the web prop `cursor?: string`, so it no longer fits `ViewStyle` (TS2322). Expo generates that file on `expo start`, and it is gitignored. CI never has it, so CI reported 0 errors.
+Ruled out first: stale `node_modules` links from before the Expo 57 upgrade, which pointed `@react-navigation/native` at react-native 0.81.5. A clean reinstall removed them, and the two errors remained.
+Fix: in `verify-code.tsx` and `resetPassword.tsx` the style is asserted as `ViewStyle`, the type the library declares, with a comment that the library applies it to a `TextInput` and that #148 replaces the library.
+RED: `bun run typecheck` showed the two TS2322 errors (with `expo-env.d.ts`); without the file it exited 0.
+GREEN: `bun run typecheck` 0 errors with and without `expo-env.d.ts`; `bun run lint` exit 0; `bun test apps/frontend` 1220 pass, 0 fail.
+Finding #174: the CI typecheck runs without Expo's types; the fix is a CI change and needs approval.
+Risk: none (type assertion only; runtime style unchanged).
+Review: native review of bcb22fe1..9dcf0bc0 (readability; tier high) approved and acknowledged; one suggestion (the task row cited L170 instead of the commit) fixed here.
