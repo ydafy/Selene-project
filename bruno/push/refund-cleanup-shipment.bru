@@ -1,0 +1,28 @@
+meta {
+  name: refund-cleanup-shipment
+  type: http
+  seq: 254
+}
+
+delete {
+  url: {{baseUrl}}/rest/v1/shipments?id=eq.{{rfShipmentId}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+tests {
+  test("the shipment is removed", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.length(1);
+  });
+}
+
+docs {
+  Cleanup of the refunded shipment.
+}

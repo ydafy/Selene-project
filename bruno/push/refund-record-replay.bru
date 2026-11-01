@@ -1,0 +1,34 @@
+meta {
+  name: refund-record-replay
+  type: http
+  seq: 242
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_record_dispute_refund
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_dispute_id": "{{rfDisputeId}}",
+    "p_stripe_refund_id": "re_bruno_refund_notice"
+  }
+}
+
+tests {
+  test("S4: the replay is ALREADY_RECORDED", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ success: true, error_code: "ALREADY_RECORDED" }]);
+  });
+}
+
+docs {
+  Service role, same arguments. The replay writes nothing, so refund-read-notifications still counts one notice.
+}

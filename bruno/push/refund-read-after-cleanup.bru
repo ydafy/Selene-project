@@ -1,0 +1,27 @@
+meta {
+  name: refund-read-after-cleanup
+  type: http
+  seq: 256
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/orders?select=id,shipments(id),disputes(id)&id=eq.{{rfOrderId}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the order, its shipments and its disputes are gone", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.length(0);
+  });
+}
+
+docs {
+  Service-role read after cleanup.
+}

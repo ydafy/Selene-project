@@ -16,9 +16,9 @@ headers {
 }
 
 tests {
-  test("the service role reads the allowlist: 18 pairs, seller-only payment confirmation", function () {
+  test("the service role reads the allowlist: 19 pairs, seller-only payment confirmation", function () {
     const rows = res.getBody();
-    expect(rows).to.have.length(18);
+    expect(rows).to.have.length(19);
     const pairs = rows.map((r) => r.event_kind + ":" + r.recipient_role);
     expect(pairs).to.include("order.payment_confirmed:seller");
     expect(pairs).to.not.include("order.payment_confirmed:buyer");

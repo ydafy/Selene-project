@@ -1,0 +1,35 @@
+meta {
+  name: refund-record-as-buyer-denied
+  type: http
+  seq: 238
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_record_dispute_refund
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{rfBuyerToken}}
+}
+
+body:json {
+  {
+    "p_dispute_id": "{{rfDisputeId}}",
+    "p_stripe_refund_id": "re_bruno_refund_notice"
+  }
+}
+
+tests {
+  test("S4: the buyer's own JWT is denied", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody().code).to.equal("42501");
+    expect(res.getBody().message).to.equal("permission denied for function fn_record_dispute_refund");
+  });
+}
+
+docs {
+  Authenticated throwaway buyer, with the exact arguments of the service-role call. The function is granted to service_role only.
+}

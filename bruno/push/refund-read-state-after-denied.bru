@@ -1,0 +1,27 @@
+meta {
+  name: refund-read-state-after-denied
+  type: http
+  seq: 240
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/disputes?select=status,resolution_type,shipments(status)&id=eq.{{rfDisputeId}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("S4: the denied call changed neither the shipment nor the dispute", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ status: "return_delivered", resolution_type: null, shipments: { status: "shipped" } }]);
+  });
+}
+
+docs {
+  Service-role read of the shipment and its dispute.
+}

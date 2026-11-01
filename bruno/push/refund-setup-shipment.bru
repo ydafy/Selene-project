@@ -1,0 +1,50 @@
+meta {
+  name: refund-setup-shipment
+  type: http
+  seq: 235
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/shipments
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+script:pre-request {
+  bru.setVar("rfSuffix", String(Date.now()));
+}
+
+body:json {
+  {
+    "order_id": "{{rfOrderId}}",
+    "seller_id": "{{rfSellerId}}",
+    "status": "shipped",
+    "stripe_payment_intent_id": "pi_bruno_refund_{{rfSuffix}}"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    bru.setVar("rfShipmentId", res.getBody()[0].id);
+  }
+}
+
+tests {
+  test("inserts a shipped Connect shipment of the throwaway seller", function () {
+    expect(res.getStatus()).to.equal(201);
+    const row = res.getBody()[0];
+    expect(row.status).to.equal("shipped");
+    expect(row.seller_id).to.equal(bru.getVar("rfSellerId"));
+    expect(row.stripe_payment_intent_id).to.be.a("string");
+  });
+}
+
+docs {
+  Local stack only. A shipment with a Stripe payment intent, the state fn_record_dispute_refund sees in production. Stores rfShipmentId.
+}
