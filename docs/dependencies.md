@@ -18,12 +18,38 @@ A package below `1.0.0` can break on a minor. Treat its minor like a major.
 ## Follow the cadence
 
 - **Weekly, automatic.** The `Dependency audit` workflow (`.github/workflows/dependency-audit.yml`) runs `bun audit --audit-level=high` every Monday. It fails on high or critical vulnerabilities.
-- **Monthly, by hand.** Run `bun outdated --filter @selene/frontend` and `bun outdated --filter admin-web`. Update the in-range updates together in one commit. Update each major in its own commit after reading its changelog.
+- **Monthly, by hand.** Run `bun outdated --filter @selene/frontend` and `bun outdated --filter admin-web`. Update the in-range updates together in one commit. Update each major in its own commit after reading its changelog. Check Node and Bun too ("Keep Node and Bun current").
 - **Expo SDK, 4 to 8 weeks after a release.** Upgrade one SDK at a time, in its own worktree. Merge to `main` only when the whole upgrade passes. Follow `odd/tasks/expo-sdk-upgrade.md` and run its device checklist (L12, updated by L21) on a new development build.
 
-**The weekly report does the looking for you.** The `Dependency report` workflow (`.github/workflows/dependency-report.yml`) runs every Monday after the audit. It runs `bun scripts/dependency-report.ts` and writes the result into one open issue, **Reporte de dependencias**, then comments a one-line summary so you get an email. The report lists safe updates, majors with changelog links, majors held back on purpose with the reason, the Expo SDK status, packages off the SDK, Expo-pinned packages with a newer major (they move with the SDK upgrade, not one by one; the pin list is `apps/frontend/node_modules/expo/bundledNativeModules.json`), and the audit. It never opens pull requests. Run the script locally for the same report, or start the workflow from the **Actions** tab.
+**The weekly report does the looking for you.** The `Dependency report` workflow (`.github/workflows/dependency-report.yml`) runs every Monday after the audit. It runs `bun scripts/dependency-report.ts` and writes the result into one open issue, **Reporte de dependencias**, then comments a one-line summary so you get an email. The report lists safe updates, majors with changelog links, majors held back on purpose with the reason, the Expo SDK status, packages off the SDK, Expo-pinned packages with a newer major (they move with the SDK upgrade, not one by one; the pin list is `apps/frontend/node_modules/expo/bundledNativeModules.json`), the Node and Bun runtimes, and the audit. It never opens pull requests. Run the script locally for the same report, or start the workflow from the **Actions** tab.
 
 When you hold a major back, add it to `HELD_BACK` in `scripts/dependency-report.ts` with its reason, and write the case in "When not to update" below. Remove the entry when the blocker is gone.
+
+## Keep Node and Bun current
+
+Node and Bun run all the tooling: Expo CLI, EAS Build, ESLint, the Git hooks, and the scripts. Each release carries security fixes, and libraries raise their minimum runtime over time, so a stale runtime blocks other updates.
+
+Each runtime has one source of truth:
+
+| Runtime | Source of truth                    | Copies                                    |
+| ------- | ---------------------------------- | ----------------------------------------- |
+| Node    | `.nvmrc` (exact version)           | every profile in `apps/frontend/eas.json` |
+| Bun     | `packageManager` in `package.json` | every profile in `apps/frontend/eas.json` |
+
+The weekly report's **Runtimes** section applies these rules. It flags a newer patch of the pinned Node line (and says when it is a security release), a line that ends within six months, a new LTS line once it is about three months old, and a new Bun release once it is 3 days old.
+
+CI reads Bun from `packageManager` through `oven-sh/setup-bun`. The dependency report workflow reads Node from `.nvmrc`. EAS Build reads neither, so `scripts/runtime-versions.test.ts` fails when an `eas.json` profile disagrees.
+
+Follow these rules:
+
+- **Node.** Use an LTS line (even major: 22, 24, 26). Take the latest patch of that line every month. Move to a new LTS line about three months after it becomes LTS (dates in the [Node.js release schedule](https://github.com/nodejs/Release)), and before the current line ends. Never use an odd major: it has no long-term support.
+- **Bun.** Take the latest release every month. `bunfig.toml` keeps the 3-day minimum age for packages. Apply the same wait to Bun itself.
+
+To change a runtime version:
+
+1. Change the source of truth and every `eas.json` profile in the same commit. Run `bun test scripts/runtime-versions.test.ts`.
+2. Switch your local runtime. For Node with nvm-windows, which does not read `.nvmrc`, run `nvm install <version>`, then `nvm use <version>`. For Bun, run `bun upgrade`, or `bun upgrade --version <version>` for an exact one.
+3. Run the checks in "Update without breaking things", then a development EAS build.
 
 ## Move Expo-pinned packages only with Expo
 

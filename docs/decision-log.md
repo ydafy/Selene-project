@@ -141,7 +141,8 @@ It was shown that using only `bun npm cache clean` and `bun pm cache rm` solves 
 
         bun pm cache clean
         bun pm cache rm
-        
+
+
 Only right this comands in the main root of the project and start de server whit 'bun run frontend --clear'
 
 Validate status:
@@ -198,3 +199,15 @@ It is established as the standard procedure for structural inconsistencies.
 - Commit `supabase/supabase.lock` and the CLI-maintained `supabase/.gitignore` entries. A later rewrite by `supabase start` goes in its own `chore` commit.
 - The lock is unlinked (no `supabase link`): it pins the CLI's default builds, not the hosted project's versions.
 - CI does not run the Supabase CLI today, so the frozen-lock behavior in CI does not apply yet.
+
+## 2026-10-31: Node 24 LTS and Bun 1.4.4, Each With One Source of Truth
+
+**Context:** Node `22.13.1` came from the 2026-01-27 decision. Its problem was misalignment: local Bun differed from EAS Bun. The fix was a fixed version written in `eas.json`. Nothing tracked the pins afterwards. On 2026-10-31 EAS still built with Node `22.13.1` (January 2025, many security releases behind), local Node was `22.19.0`, and the repository had no Node file at all. `lint-staged` 17 needs Node `>=22.22.1`, so the stale pin started to block updates. Roadmap item #156, `odd/tasks/runtime-versions.md`.
+
+**Decision:**
+
+- Node `24.22.2` (LTS "Krypton", supported until 2028-04-30). `.nvmrc` is the source of truth. Bun `1.4.4`, with `packageManager` in the root `package.json` as the source of truth, as before.
+- Every `apps/frontend/eas.json` profile repeats both versions, because EAS Build reads neither file. `scripts/runtime-versions.test.ts` fails when a profile disagrees, so a bump cannot miss a copy.
+- The dependency report workflow installs Node from `.nvmrc`. The other workflows run only Bun.
+- Runtimes follow the update rule in `docs/dependencies.md`, "Keep Node and Bun current". This replaces "Node stays at `22.13.1` for EAS" from the 2026-10-20 entry.
+- Node 26 became LTS on 2026-10-28. Move to it about three months later, near the Expo SDK 58 upgrade (#132).

@@ -26,6 +26,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
+      # `npx expo install --check` runs on Node; use the repository's version.
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
       # The report reads the installed Expo SDK, and `expo install --check` needs it.
       - run: bun install --frozen-lockfile
       # Exit 1 means a check could not run; publish the report anyway, then fail.
