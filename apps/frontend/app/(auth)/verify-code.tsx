@@ -8,7 +8,7 @@ import React, { useState, useEffect } from 'react';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
-import type { TextStyle } from 'react-native';
+import type { ViewStyle } from 'react-native';
 import OTPTextInput from 'react-native-otp-textinput';
 import Toast from 'react-native-toast-message';
 
@@ -130,6 +130,8 @@ export default function VerifyCodeScreen() {
           inputCount={6}
           tintColor={theme.colors.primary}
           offTintColor={theme.colors.textSecondary}
+          // The library types this prop as ViewStyle but applies it to its TextInput,
+          // so the text props below are valid at runtime (#148 replaces the library).
           textInputStyle={
             {
               width: 35,
@@ -138,7 +140,7 @@ export default function VerifyCodeScreen() {
               fontFamily: 'Montserrat-Medium',
               borderBottomWidth: 2,
               borderWidth: 0,
-            } as TextStyle
+            } as ViewStyle
           }
           containerStyle={{
             marginBottom: theme.spacing.xl,
