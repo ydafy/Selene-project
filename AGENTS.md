@@ -59,6 +59,7 @@ Manual testing: never ask the maintainer to repeat by hand what these checks alr
 | Which skills apply?                     | `.atl/skill-registry.md`                                                                               |
 | Which conventions apply to new code?    | `docs/conventions.md`                                                                                  |
 | What is pending outside a feature?      | GitHub Issues ("Finding" and "Idea" forms); private Security Advisories for vulnerabilities            |
+| What is planned across sessions?        | Roadmap issues and their sub-issues (label `roadmap`), as `docs/roadmaps.md` describes                 |
 
 Use the typed aliases (`Tables<'orders'>`, `Enums<'order_status_enum'>`). Never invent table, column, enum, or relationship names.
 
@@ -152,6 +153,6 @@ These protect real money and user data. They hold for every change:
 ## Git
 
 - Inside an authorized feature on its feature branch, commit each work unit as soon as its checks pass; do not wait to be asked. Target about 400 authored changed lines per commit (larger commits exceed the native review budget). A change to money, SQL, RLS, or auth goes in its own commit.
-- When planning a roadmap, size each task so it lands as one such commit. If a task will clearly exceed that, split it in the plan, not at commit time.
+- A plan that spans several sessions or worktrees is a roadmap issue with one sub-issue per item (`docs/roadmaps.md`). Size each item so it lands as one such commit; if one will clearly exceed that, split it in the plan, not at commit time. Check that an item still holds before you start it.
 - Generated files (`packages/types/src/database.types.ts`) go in the same commit as the migration that produced them.
 - Keep commits scoped: code, tests, migration, and contract updates for one behavior go together. Use Conventional Commits.
