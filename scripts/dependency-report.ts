@@ -1,5 +1,5 @@
 // Weekly dependency report in Markdown: safe updates, available majors, the
-// Expo SDK status and the `bun audit` result. Collectors run the tools and the
+// Expo SDK status, the Node and Bun runtimes, and the `bun audit` result. Collectors run the tools and the
 // registry calls; every parser and the report builder are pure so tests need
 // no network. The report is informational: the CLI exits 0 even when updates
 // or findings exist, and 1 only when a collector itself fails.
@@ -9,6 +9,10 @@ import { join } from 'node:path';
 
 const FRONTEND_WORKSPACE = '@selene/frontend';
 const EXPO_UPGRADE_MIN_AGE_DAYS = 30;
+// docs/dependencies.md, "Keep Node and Bun current".
+const NODE_LTS_MIN_AGE_DAYS = 90;
+const NODE_END_WARNING_DAYS = 180;
+const BUN_MIN_AGE_DAYS = 3;
 const DAY_MS = 86_400_000;
 const GUIDE = 'docs/dependencies.md';
 
@@ -59,6 +63,26 @@ export type AuditResult = {
 
 export type ExpoRegistry = { version: string; releasedAt: string };
 
+export type NodeRelease = {
+  version: string;
+  date: string;
+  lts: string | false;
+  security: boolean;
+};
+
+export type NodeLine = { major: number; lts: string | undefined; end: string };
+
+export type BunRelease = { version: string; releasedAt: string };
+
+export type RuntimeStatus = { actions: string[]; notes: string[] };
+
+export type RuntimesInput = {
+  pins: { node: string; bun: string };
+  releases: NodeRelease[];
+  schedule: Map<number, NodeLine>;
+  bun: BunRelease;
+};
+
 export type ReportInput = {
   outdated: Result<OutdatedRow[]>;
   expoCheck: Result<ExpoMismatch[]>;
@@ -66,6 +90,7 @@ export type ReportInput = {
   audit: Result<AuditResult>;
   expo: Result<{ installed: string; latest: ExpoRegistry }>;
   repositories: Result<Record<string, string | undefined>>;
+  runtimes: Result<RuntimesInput>;
 };
 
 export type Collectors = {
@@ -78,6 +103,10 @@ export type Collectors = {
   repositories: (
     names: string[],
   ) => Promise<Record<string, string | undefined>>;
+  nodeReleases: () => Promise<string>;
+  nodeSchedule: () => Promise<string>;
+  bunRegistry: () => Promise<string>;
+  runtimePins: () => Promise<{ nvmrc: string; packageManager: string }>;
 };
 
 // ---------------------------------------------------------------- parsers
@@ -230,6 +259,53 @@ export function parseExpoRegistry(json: string): ExpoRegistry {
   return { version, releasedAt };
 }
 
+// https://nodejs.org/dist/index.json: every release, newest first.
+export function parseNodeReleases(json: string): NodeRelease[] {
+  const data = JSON.parse(json) as unknown;
+  if (!Array.isArray(data)) throw new Error('unrecognized Node release list');
+  return (
+    data as {
+      version: string;
+      date: string;
+      lts: string | false;
+      security: boolean;
+    }[]
+  ).map((item) => ({
+    version: item.version.replace(/^v/, ''),
+    date: item.date,
+    lts: item.lts,
+    security: item.security,
+  }));
+}
+
+// The nodejs/Release schedule.json, keyed "v24"; pre-1.0 keys ("v0.10") are skipped.
+export function parseNodeSchedule(json: string): Map<number, NodeLine> {
+  const data = JSON.parse(json) as Record<
+    string,
+    { lts?: string; end: string }
+  >;
+  const lines = new Map<number, NodeLine>();
+  for (const [key, line] of Object.entries(data)) {
+    const match = key.match(/^v(\d+)$/);
+    if (!match || match[1] === '0') continue;
+    const major = Number(match[1]);
+    lines.set(major, { major, lts: line.lts, end: line.end });
+  }
+  if (!lines.size) throw new Error('unrecognized Node release schedule');
+  return new Map([...lines].sort(([a], [b]) => a - b));
+}
+
+export function parseBunRegistry(json: string): BunRelease {
+  const doc = JSON.parse(json) as {
+    'dist-tags'?: { latest?: string };
+    time?: Record<string, string>;
+  };
+  const version = doc['dist-tags']?.latest;
+  const releasedAt = version ? doc.time?.[version] : undefined;
+  if (!version || !releasedAt) throw new Error('no latest version for bun');
+  return { version, releasedAt };
+}
+
 export function changelogUrl(
   name: string,
   repository: string | undefined,
@@ -273,6 +349,108 @@ export function expoSdkStatus(
     kind: ageDays >= EXPO_UPGRADE_MIN_AGE_DAYS ? 'upgrade' : 'wait',
     ageDays,
   };
+}
+
+function compareVersions(a: string, b: string): number {
+  const left = a.split('.').map(Number);
+  const right = b.split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    if (left[i] !== right[i]) return (left[i] ?? 0) - (right[i] ?? 0);
+  }
+  return 0;
+}
+
+function addDays(date: string, days: number): string {
+  return new Date(new Date(date).getTime() + days * DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+}
+
+function daysSince(date: string, now: Date): number {
+  return Math.floor((now.getTime() - new Date(date).getTime()) / DAY_MS);
+}
+
+// Actions are what the rule asks for now; notes say what comes later.
+export function nodeRuntimeStatus(
+  pinned: string,
+  releases: NodeRelease[],
+  schedule: Map<number, NodeLine>,
+  now: Date,
+): RuntimeStatus & { latestInLine: string; end: string } {
+  const pinnedMajor = major(pinned);
+  const line = schedule.get(pinnedMajor);
+  if (!line) {
+    throw new Error(`Node ${pinnedMajor} is not in the release schedule`);
+  }
+  const newer = releases.filter(
+    (item) =>
+      major(item.version) === pinnedMajor &&
+      compareVersions(item.version, pinned) > 0,
+  );
+  const latestInLine = newer.reduce(
+    (best, item) =>
+      compareVersions(item.version, best) > 0 ? item.version : best,
+    pinned,
+  );
+  const actions: string[] = [];
+  const notes: string[] = [];
+  if (latestInLine !== pinned) {
+    const security = newer.some((item) => item.security);
+    actions.push(
+      `Update to ${latestInLine}${security ? ' (security release)' : ''}`,
+    );
+  }
+  const daysLeft = -daysSince(line.end, now);
+  if (daysLeft < 0) {
+    actions.push(
+      `Node ${pinnedMajor} is no longer supported (ended ${line.end})`,
+    );
+  } else if (daysLeft <= NODE_END_WARNING_DAYS) {
+    actions.push(`Node ${pinnedMajor} support ends ${line.end}`);
+  }
+  const newerLts = [...schedule.values()].filter(
+    (item): item is NodeLine & { lts: string } =>
+      item.major > pinnedMajor &&
+      item.lts !== undefined &&
+      daysSince(item.lts, now) >= 0,
+  );
+  const ready = newerLts
+    .filter((item) => daysSince(item.lts, now) >= NODE_LTS_MIN_AGE_DAYS)
+    .at(-1);
+  if (ready)
+    actions.push(`Move to Node ${ready.major} (LTS since ${ready.lts})`);
+  const upcoming = newerLts.at(-1);
+  if (upcoming && upcoming !== ready) {
+    notes.push(
+      `Node ${upcoming.major} is LTS since ${upcoming.lts}: move to it after ${addDays(upcoming.lts, NODE_LTS_MIN_AGE_DAYS)}`,
+    );
+  }
+  return { latestInLine, end: line.end, actions, notes };
+}
+
+export function bunRuntimeStatus(
+  pinned: string,
+  latest: BunRelease,
+  now: Date,
+): RuntimeStatus {
+  if (compareVersions(latest.version, pinned) <= 0) {
+    return { actions: [], notes: [] };
+  }
+  const age = daysSince(latest.releasedAt, now);
+  if (age < BUN_MIN_AGE_DAYS) {
+    return {
+      actions: [],
+      notes: [
+        `Bun ${latest.version} is ${age} days old: update after ${addDays(latest.releasedAt, BUN_MIN_AGE_DAYS)}`,
+      ],
+    };
+  }
+  return { actions: [`Update to ${latest.version}`], notes: [] };
+}
+
+function describeRuntime(status: RuntimeStatus): string {
+  const parts = [...status.actions, ...status.notes];
+  return parts.length ? parts.join('. ') : 'Up to date';
 }
 
 function isExpoManaged(
@@ -368,6 +546,12 @@ export function buildDependencyReport(input: ReportInput, now: Date): string {
     ).values(),
   ];
   const findings = input.audit.ok ? input.audit.value.findings : [];
+  const runtimes = input.runtimes.ok
+    ? runtimeRows(input.runtimes.value, now)
+    : undefined;
+  const runtimeUpdates = runtimes
+    ? runtimes.filter((row) => row.status.actions.length).length
+    : 0;
 
   const parts: string[] = [];
   parts.push(`# Dependency report, ${now.toISOString().slice(0, 10)}`);
@@ -381,6 +565,11 @@ export function buildDependencyReport(input: ReportInput, now: Date): string {
     input.expoCheck.ok
       ? `${mismatches.length} packages off the SDK`
       : 'Expo package check failed',
+    !runtimes
+      ? 'runtime check failed'
+      : runtimeUpdates
+        ? `${runtimeUpdates} runtime update${runtimeUpdates === 1 ? '' : 's'}`
+        : 'runtimes up to date',
     input.audit.ok ? `${findings.length} vulnerabilities` : 'audit failed',
   ];
   parts.push(`${summary.join(', ')}.`);
@@ -518,6 +707,26 @@ export function buildDependencyReport(input: ReportInput, now: Date): string {
     );
   }
 
+  parts.push('## Runtimes');
+  if (!input.runtimes.ok) parts.push(failed(input.runtimes.error));
+  else {
+    parts.push(
+      table(
+        ['Runtime', 'Pinned', 'Latest', 'Support ends', 'Status'],
+        runtimes!.map((row) => [
+          row.name,
+          row.pinned,
+          row.latest,
+          row.end,
+          describeRuntime(row.status),
+        ]),
+      ),
+    );
+    parts.push(
+      `Node: latest release of the pinned line, from \`.nvmrc\`. Bun: latest release, from \`packageManager\`. Change both sources and every \`apps/frontend/eas.json\` profile together (see \`${GUIDE}\`, "Keep Node and Bun current").`,
+    );
+  }
+
   parts.push('## Security (bun audit)');
   if (!input.audit.ok) parts.push(failed(input.audit.error));
   else {
@@ -553,6 +762,31 @@ export function buildDependencyReport(input: ReportInput, now: Date): string {
 
   parts.push(`---\nHow to act on this report: \`${GUIDE}\`.`);
   return `${parts.join('\n\n')}\n`;
+}
+
+function runtimeRows(input: RuntimesInput, now: Date) {
+  const node = nodeRuntimeStatus(
+    input.pins.node,
+    input.releases,
+    input.schedule,
+    now,
+  );
+  return [
+    {
+      name: 'Node',
+      pinned: input.pins.node,
+      latest: node.latestInLine,
+      end: node.end,
+      status: node,
+    },
+    {
+      name: 'Bun',
+      pinned: input.pins.bun,
+      latest: input.bun.version,
+      end: '-',
+      status: bunRuntimeStatus(input.pins.bun, input.bun, now),
+    },
+  ];
 }
 
 function describeStatusShort(
@@ -634,8 +868,29 @@ export async function runReport(
     collectors.repositories(majorNames),
   );
 
+  const runtimes = await settle('runtimes', errors, async () => {
+    const [releases, schedule, bun, files] = await Promise.all([
+      collectors.nodeReleases(),
+      collectors.nodeSchedule(),
+      collectors.bunRegistry(),
+      collectors.runtimePins(),
+    ]);
+    const value: RuntimesInput = {
+      pins: {
+        node: files.nvmrc.trim(),
+        bun: files.packageManager.replace(/^bun@/, ''),
+      },
+      releases: parseNodeReleases(releases),
+      schedule: parseNodeSchedule(schedule),
+      bun: parseBunRegistry(bun),
+    };
+    // Fails here, not in the builder, when the pinned line is unknown.
+    runtimeRows(value, now);
+    return value;
+  });
+
   const markdown = buildDependencyReport(
-    { outdated, expoCheck, pins, audit, expo, repositories },
+    { outdated, expoCheck, pins, audit, expo, repositories, runtimes },
     now,
   );
   return { markdown, exitCode: errors.length ? 1 : 0, errors };
@@ -721,6 +976,21 @@ export const realCollectors: Collectors = {
     return { json, workflow };
   },
   expoRegistry: () => fetchJson('https://registry.npmjs.org/expo'),
+  nodeReleases: () => fetchJson('https://nodejs.org/dist/index.json'),
+  nodeSchedule: () =>
+    fetchJson(
+      'https://raw.githubusercontent.com/nodejs/Release/main/schedule.json',
+    ),
+  bunRegistry: () => fetchJson('https://registry.npmjs.org/bun'),
+  runtimePins: () =>
+    Promise.resolve({
+      nvmrc: readFileSync(join(ROOT, '.nvmrc'), { encoding: 'utf8' }),
+      packageManager: (
+        JSON.parse(
+          readFileSync(join(ROOT, 'package.json'), { encoding: 'utf8' }),
+        ) as { packageManager: string }
+      ).packageManager,
+    }),
   installedExpo: async () => {
     const path = join(
       ROOT,

@@ -4,13 +4,18 @@ import { join } from 'node:path';
 
 import {
   buildDependencyReport,
+  bunRuntimeStatus,
   changelogUrl,
   expoSdkStatus,
   parseAudit,
   parseAuditIgnores,
+  parseBunRegistry,
   parseExpoCheck,
   parseExpoPins,
+  nodeRuntimeStatus,
   parseExpoRegistry,
+  parseNodeReleases,
+  parseNodeSchedule,
   parseOutdated,
   runReport,
   type Collectors,
@@ -227,6 +232,59 @@ describe('expoSdkStatus', () => {
   });
 });
 
+// Trimmed copies of https://nodejs.org/dist/index.json, the Node release
+// schedule, and the npm registry entry for bun.
+const NODE_INDEX = JSON.stringify([
+  {
+    version: 'v26.13.0',
+    date: '2026-10-28',
+    npm: '11.6.0',
+    lts: 'Lithium',
+    security: false,
+  },
+  { version: 'v25.9.0', date: '2026-03-31', lts: false, security: false },
+  { version: 'v24.23.0', date: '2026-10-27', lts: 'Krypton', security: true },
+  { version: 'v24.22.3', date: '2026-10-01', lts: 'Krypton', security: false },
+  { version: 'v24.22.2', date: '2026-09-01', lts: 'Krypton', security: false },
+  { version: 'v22.23.4', date: '2026-10-20', lts: 'Jod', security: true },
+]);
+const NODE_SCHEDULE = JSON.stringify({
+  'v0.10': { start: '2013-03-11', end: '2016-10-31' },
+  v22: {
+    start: '2024-04-24',
+    lts: '2024-10-29',
+    maintenance: '2025-10-21',
+    end: '2027-04-30',
+    codename: 'Jod',
+  },
+  v24: {
+    start: '2025-05-06',
+    lts: '2025-10-28',
+    maintenance: '2026-10-20',
+    end: '2028-04-30',
+    codename: 'Krypton',
+  },
+  v25: { start: '2025-10-15', maintenance: '2026-04-01', end: '2026-06-01' },
+  v26: {
+    start: '2026-05-05',
+    lts: '2026-10-28',
+    maintenance: '2027-10-20',
+    end: '2029-04-30',
+    codename: 'Lithium',
+  },
+});
+const BUN_REGISTRY = JSON.stringify({
+  'dist-tags': { latest: '1.4.4' },
+  time: {
+    '1.4.2': '2026-09-05T06:01:35.854Z',
+    '1.4.4': '2026-10-22T10:19:13.548Z',
+  },
+});
+const nodeData = {
+  releases: parseNodeReleases(NODE_INDEX),
+  schedule: parseNodeSchedule(NODE_SCHEDULE),
+};
+
 function baseInput(overrides: Partial<ReportInput> = {}): ReportInput {
   return {
     outdated: {
@@ -256,6 +314,14 @@ function baseInput(overrides: Partial<ReportInput> = {}): ReportInput {
         '@tanstack/react-table': 'git+https://github.com/TanStack/table.git',
         'lucide-react': 'git+https://github.com/lucide-icons/lucide.git',
         'react-native-gesture-handler': 'https://gitlab.com/x/y.git',
+      },
+    },
+    runtimes: {
+      ok: true,
+      value: {
+        pins: { node: '24.23.0', bun: '1.4.4' },
+        ...nodeData,
+        bun: parseBunRegistry(BUN_REGISTRY),
       },
     },
     ...overrides,
@@ -586,6 +652,13 @@ describe('runReport', () => {
     expoRegistry: async () => fixture('registry-expo.json'),
     installedExpo: async () => '57.0.31',
     repositories: async () => ({}),
+    nodeReleases: async () => NODE_INDEX,
+    nodeSchedule: async () => NODE_SCHEDULE,
+    bunRegistry: async () => BUN_REGISTRY,
+    runtimePins: async () => ({
+      nvmrc: '24.22.2\n',
+      packageManager: 'bun@1.4.2',
+    }),
     ...overrides,
   });
 
@@ -649,5 +722,215 @@ describe('runReport', () => {
     );
     expect(asked).not.toContain('react-native-gesture-handler');
     expect(asked).toContain('lucide-react');
+  });
+
+  test('reads the runtime pins from .nvmrc and packageManager', async () => {
+    const result = await runReport(collectors(), NOW);
+    expect(result.errors).toEqual([]);
+    const runtimes = section(result.markdown, 'Runtimes');
+    expect(runtimes).toContain('| Node | 24.22.2 | 24.23.0 |');
+    expect(runtimes).toContain('| Bun | 1.4.2 | 1.4.4 |');
+  });
+
+  test('exits 1 when a runtime source cannot be read', async () => {
+    const result = await runReport(
+      collectors({
+        nodeSchedule: async () => {
+          throw new Error('github answered 500');
+        },
+      }),
+      NOW,
+    );
+    expect(result.exitCode).toBe(1);
+    expect(result.errors).toEqual(['runtimes: github answered 500']);
+    expect(result.markdown).toContain('Could not check: github answered 500');
+    expect(result.markdown).toContain('No high or critical vulnerabilities');
+  });
+});
+
+describe('runtime parsers', () => {
+  test('parseNodeReleases keeps version, date, LTS name and the security flag', () => {
+    expect(parseNodeReleases(NODE_INDEX).slice(0, 2)).toEqual([
+      {
+        version: '26.13.0',
+        date: '2026-10-28',
+        lts: 'Lithium',
+        security: false,
+      },
+      { version: '25.9.0', date: '2026-03-31', lts: false, security: false },
+    ]);
+    expect(() => parseNodeReleases('{}')).toThrow(
+      'unrecognized Node release list',
+    );
+  });
+
+  test('parseNodeSchedule keys lines by major and skips pre-1.0 lines', () => {
+    const schedule = parseNodeSchedule(NODE_SCHEDULE);
+    expect(schedule.get(24)).toEqual({
+      major: 24,
+      lts: '2025-10-28',
+      end: '2028-04-30',
+    });
+    expect(schedule.get(25)).toEqual({
+      major: 25,
+      lts: undefined,
+      end: '2026-06-01',
+    });
+    expect([...schedule.keys()]).toEqual([22, 24, 25, 26]);
+    expect(() => parseNodeSchedule('{}')).toThrow(
+      'unrecognized Node release schedule',
+    );
+  });
+
+  test('parseBunRegistry reads the latest version and its publish date', () => {
+    expect(parseBunRegistry(BUN_REGISTRY)).toEqual({
+      version: '1.4.4',
+      releasedAt: '2026-10-22T10:19:13.548Z',
+    });
+    expect(() => parseBunRegistry('{}')).toThrow('no latest version for bun');
+  });
+});
+
+describe('nodeRuntimeStatus', () => {
+  const status = (pinned: string, now: Date) =>
+    nodeRuntimeStatus(pinned, nodeData.releases, nodeData.schedule, now);
+
+  test('flags a newer patch of the pinned line and says when it is a security release', () => {
+    const result = status('24.22.2', NOW);
+    expect(result.latestInLine).toBe('24.23.0');
+    expect(result.end).toBe('2028-04-30');
+    expect(result.actions).toEqual(['Update to 24.23.0 (security release)']);
+  });
+
+  test('does not call a patch a security release when none in between is one', () => {
+    const releases = parseNodeReleases(
+      JSON.stringify([
+        {
+          version: 'v24.22.3',
+          date: '2026-10-01',
+          lts: 'Krypton',
+          security: false,
+        },
+        {
+          version: 'v24.22.2',
+          date: '2026-09-01',
+          lts: 'Krypton',
+          security: false,
+        },
+      ]),
+    );
+    expect(
+      nodeRuntimeStatus('24.22.2', releases, nodeData.schedule, NOW).actions,
+    ).toEqual(['Update to 24.22.3']);
+  });
+
+  test('waits about three months after a new LTS line before recommending it', () => {
+    const early = status('24.23.0', NOW);
+    expect(early.actions).toEqual([]);
+    expect(early.notes).toEqual([
+      'Node 26 is LTS since 2026-10-28: move to it after 2027-01-26',
+    ]);
+    const later = status('24.23.0', new Date('2027-02-01T00:00:00.000Z'));
+    expect(later.actions).toEqual(['Move to Node 26 (LTS since 2026-10-28)']);
+    expect(later.notes).toEqual([]);
+  });
+
+  test('warns when the pinned line ends within six months or has ended', () => {
+    const ending = status('22.23.4', new Date('2027-01-15T00:00:00.000Z'));
+    expect(ending.actions).toEqual([
+      'Node 22 support ends 2027-04-30',
+      'Move to Node 24 (LTS since 2025-10-28)',
+    ]);
+    expect(ending.notes).toEqual([
+      'Node 26 is LTS since 2026-10-28: move to it after 2027-01-26',
+    ]);
+    const ended = status('22.23.4', new Date('2027-05-01T00:00:00.000Z'));
+    expect(ended.actions[0]).toBe(
+      'Node 22 is no longer supported (ended 2027-04-30)',
+    );
+  });
+
+  test('rejects a pinned line that is not in the release schedule', () => {
+    expect(() => status('23.1.0', NOW)).toThrow(
+      'Node 23 is not in the release schedule',
+    );
+  });
+});
+
+describe('bunRuntimeStatus', () => {
+  const bun = parseBunRegistry(BUN_REGISTRY);
+
+  test('recommends a release that is at least 3 days old', () => {
+    expect(bunRuntimeStatus('1.4.2', bun, NOW)).toEqual({
+      actions: ['Update to 1.4.4'],
+      notes: [],
+    });
+  });
+
+  test('waits for a release younger than 3 days', () => {
+    expect(
+      bunRuntimeStatus(
+        '1.4.2',
+        { version: '1.4.5', releasedAt: '2026-10-28T12:00:00.000Z' },
+        NOW,
+      ),
+    ).toEqual({
+      actions: [],
+      notes: ['Bun 1.4.5 is 1 days old: update after 2026-10-31'],
+    });
+  });
+
+  test('is up to date on the latest release', () => {
+    expect(bunRuntimeStatus('1.4.4', bun, NOW)).toEqual({
+      actions: [],
+      notes: [],
+    });
+  });
+});
+
+describe('Runtimes section', () => {
+  const runtimes = (node: string, bun: string): ReportInput['runtimes'] => ({
+    ok: true,
+    value: {
+      pins: { node, bun },
+      ...nodeData,
+      bun: parseBunRegistry(BUN_REGISTRY),
+    },
+  });
+
+  test('lists both runtimes with their pending actions and counts them in the summary', () => {
+    const report = buildDependencyReport(
+      baseInput({ runtimes: runtimes('24.22.2', '1.4.2') }),
+      NOW,
+    );
+    const runtimeSection = section(report, 'Runtimes');
+    expect(runtimeSection).toContain(
+      '| Node | 24.22.2 | 24.23.0 | 2028-04-30 | Update to 24.23.0 (security release). Node 26 is LTS since 2026-10-28: move to it after 2027-01-26 |',
+    );
+    expect(runtimeSection).toContain(
+      '| Bun | 1.4.2 | 1.4.4 | - | Update to 1.4.4 |',
+    );
+    expect(runtimeSection).toContain('.nvmrc');
+    expect(report.split('\n')[2]).toContain('2 runtime updates');
+  });
+
+  test('says up to date when no runtime needs an action', () => {
+    const report = buildDependencyReport(baseInput(), NOW);
+    expect(section(report, 'Runtimes')).toContain(
+      '| Bun | 1.4.4 | 1.4.4 | - | Up to date |',
+    );
+    expect(report.split('\n')[2]).toContain('runtimes up to date');
+  });
+
+  test('reports a failed runtime check without hiding the other sections', () => {
+    const report = buildDependencyReport(
+      baseInput({ runtimes: { ok: false, error: 'nodejs.org answered 503' } }),
+      NOW,
+    );
+    expect(section(report, 'Runtimes')).toContain(
+      'Could not check: nodejs.org answered 503',
+    );
+    expect(report.split('\n')[2]).toContain('runtime check failed');
+    expect(report).toContain('## Security (bun audit)');
   });
 });
