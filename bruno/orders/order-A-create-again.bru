@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: {{baseUrl}}/rest/v1/rpc/fn_create_order_from_payment
+  url: {{baseUrl}}/rest/v1/rpc/fn_create_shipments_from_single_payment
   body: json
   auth: none
 }
@@ -15,26 +15,23 @@ headers {
   Authorization: Bearer {{serviceRoleKey}}
 }
 
+script:pre-request {
+  req.setBody(JSON.parse(bru.getVar("createBodyA")));
+}
+
 body:json {
-  {
-    "p_buyer_id": "{{orderBuyerId}}",
-    "p_stripe_intent_id": "{{intentA}}",
-    "p_total_amount": 2550,
-    "p_service_fee": 150,
-    "p_address_id": "{{orderAddressId}}",
-    "p_product_ids": [
-      "00000000-0000-4000-8000-0000000000b4"
-    ]
-  }
+  {}
 }
 
 tests {
-  test("the same payment is not processed twice", function () {
+  test("a repeat of the same payment is a duplicate of the same order", function () {
     expect(res.getStatus()).to.equal(200);
-    expect(res.getBody()).to.deep.equal([{ success: true, error_message: "ALREADY_PROCESSED" }]);
+    expect(res.getBody().success).to.equal(true);
+    expect(res.getBody().status).to.equal("duplicate");
+    expect(res.getBody().order_id).to.equal(bru.getVar("orderIdA"));
   });
 }
 
 docs {
-  Idempotency of order creation.
+  Replays the exact body of order-A-create-from-payment, as a webhook retry would. The function is idempotent on the payment intent: it returns status duplicate with the same order id and writes nothing; order-A-shipment-unchanged runs after it and still sees one shipment.
 }

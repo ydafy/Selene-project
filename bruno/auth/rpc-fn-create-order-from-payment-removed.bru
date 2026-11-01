@@ -1,0 +1,41 @@
+meta {
+  name: rpc-fn-create-order-from-payment-removed
+  type: http
+  seq: 78
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_create_order_from_payment
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_buyer_id": "00000000-0000-4000-8000-0000000000ff",
+    "p_stripe_intent_id": "pi_removed",
+    "p_total_amount": 1,
+    "p_service_fee": 0,
+    "p_address_id": "00000000-0000-4000-8000-0000000000ff",
+    "p_product_ids": [
+      "00000000-0000-4000-8000-0000000000ff"
+    ]
+  }
+}
+
+tests {
+  test("the dropped function is not found, even for the service role", function () {
+    expect(res.getStatus()).to.equal(404);
+    expect(res.getBody().code).to.equal("PGRST202");
+  });
+}
+
+docs {
+  fn_create_order_from_payment was dropped with the non-Connect order path (expo-push-notifications T6a). Every order is created by fn_create_shipments_from_single_payment.
+  The ids are placeholders: no function runs, so nothing changes.
+}

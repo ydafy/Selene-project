@@ -1,0 +1,28 @@
+meta {
+  name: noconnect-cleanup-shipments
+  type: http
+  seq: 69
+}
+
+delete {
+  url: {{baseUrl}}/rest/v1/shipments?order_id=eq.{{ncOrder}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+tests {
+  test("both shipments are removed", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(2);
+  });
+}
+
+docs {
+  Local stack only.
+}

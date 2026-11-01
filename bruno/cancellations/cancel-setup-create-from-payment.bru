@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: {{baseUrl}}/rest/v1/rpc/fn_create_order_from_payment
+  url: {{baseUrl}}/rest/v1/rpc/fn_create_shipments_from_single_payment
   body: json
   auth: none
 }
@@ -16,29 +16,61 @@ headers {
 }
 
 script:pre-request {
-  bru.setVar("cancIntent", "pi_bruno_cancel_" + Date.now());
+  const base = Date.now();
+  const uuid = (n) => "00000000-0000-4000-8a02-" + (base * 64 + n).toString(16).padStart(12, "0");
+  const seller = "00000000-0000-4000-8000-000000000002";
+  const product = "00000000-0000-4000-8000-0000000000b4";
+  const key = bru.getEnvVar("serviceRoleKey");
+  const reserve = await bru.sendRequest({
+    method: "PATCH",
+    url: bru.getEnvVar("baseUrl") + "/rest/v1/products?id=eq." + product + "&status=eq.VERIFIED",
+    headers: { apikey: key, Authorization: "Bearer " + key, "Content-Type": "application/json", Prefer: "return=representation" },
+    data: { status: "RESERVED" },
+  });
+  if (reserve.status !== 200 || reserve.data.length !== 1) {
+    throw new Error("the seeded listing b4 could not be reserved: " + reserve.status + " " + JSON.stringify(reserve.data));
+  }
+  const orderId = uuid(1);
+  const intent = "pi_bruno_cancel_" + base;
+  bru.setVar("cancIntent", intent);
+  req.setBody({
+    p_stripe_payment_intent_id: intent,
+    p_stripe_charge_id: "ch_bruno_cancel_" + base,
+    p_amount_received: 251000,
+    p_transfer_group: "group_" + orderId,
+    p_allocation: {
+      buyer_id: bru.getVar("cancBuyerId"),
+      address_id: bru.getVar("cancAddressId"),
+      order_id: orderId,
+      total_amount: 2510,
+      rows: [
+        {
+          seller_id: seller,
+          shipment_id: uuid(2),
+          product_ids: [product],
+          gross_cents: 240000,
+          commission_cents: 14400,
+          shipping_cents: 15000,
+          seguro_cents: 11000,
+          net_cents: 210600,
+        },
+      ],
+    },
+  });
 }
 
 body:json {
-  {
-    "p_buyer_id": "{{cancBuyerId}}",
-    "p_stripe_intent_id": "{{cancIntent}}",
-    "p_total_amount": 2550,
-    "p_service_fee": 150,
-    "p_address_id": "{{cancAddressId}}",
-    "p_product_ids": [
-      "00000000-0000-4000-8000-0000000000b4"
-    ]
-  }
+  {}
 }
 
 tests {
-  test("the payment becomes a paid order", function () {
+  test("the payment becomes an order", function () {
     expect(res.getStatus()).to.equal(200);
-    expect(res.getBody()).to.deep.equal([{ success: true, error_message: null }]);
+    expect(res.getBody().success).to.equal(true);
+    expect(res.getBody().status).to.equal("created");
   });
 }
 
 docs {
-  fn_create_order_from_payment (service role) builds the paid shipment of the seeded seller that the rejections run against.
+  fn_create_shipments_from_single_payment (service role) builds the paid shipment of the seeded seller, with its Stripe payment intent, that the rejections run against. The seeded listing b4 is reserved first, as checkout does. Amounts in cents: price 240000, Selene commission 14400, seller-paid shipping 15000, Seguro Selene 11000, seller net 210600; the buyer paid 251000.
 }

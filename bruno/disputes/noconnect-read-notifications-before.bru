@@ -1,0 +1,33 @@
+meta {
+  name: noconnect-read-notifications-before
+  type: http
+  seq: 58
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/notifications?or=(user_id.eq.{{ncBuyerId}},action_path.ilike.*{{ncOrder}}*,action_path.ilike.*{{ncDispA}}*,action_path.ilike.*{{ncDispB}}*)&select=id&order=id
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("ncNoticesBefore", JSON.stringify(res.getBody()));
+  }
+}
+
+tests {
+  test("the notices that exist before the crons are kept for comparison", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.an("array");
+  });
+}
+
+docs {
+  Snapshot of every notice that mentions the fixture buyer, order or disputes (the dispute-opened trigger may have written some). The crons must add none.
+}

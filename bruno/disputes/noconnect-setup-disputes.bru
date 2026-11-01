@@ -1,0 +1,55 @@
+meta {
+  name: noconnect-setup-disputes
+  type: http
+  seq: 55
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/disputes
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  [
+    {
+      "id": "{{ncDispA}}",
+      "order_id": "{{ncOrder}}",
+      "shipment_id": "{{ncShipA}}",
+      "buyer_id": "{{ncBuyerId}}",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "reason": "damaged",
+      "description": "Bruno no-payment-intent fixture",
+      "status": "open",
+      "updated_at": "{{ncOld}}"
+    },
+    {
+      "id": "{{ncDispB}}",
+      "order_id": "{{ncOrder}}",
+      "shipment_id": "{{ncShipB}}",
+      "buyer_id": "{{ncBuyerId}}",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "reason": "damaged",
+      "description": "Bruno no-payment-intent fixture",
+      "status": "open",
+      "updated_at": "{{ncOld}}"
+    }
+  ]
+}
+
+tests {
+  test("two open disputes exist", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().length).to.equal(2);
+  });
+}
+
+docs {
+  Local stack only. fn_notify_dispute_opened accepts only service-role inserts of open disputes, so they start open; the next requests move them to the states the crons look for.
+}

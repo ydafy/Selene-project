@@ -1,0 +1,31 @@
+meta {
+  name: noconnect-read-notifications-after
+  type: http
+  seq: 62
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/notifications?or=(user_id.eq.{{ncBuyerId}},action_path.ilike.*{{ncOrder}}*,action_path.ilike.*{{ncDispA}}*,action_path.ilike.*{{ncDispB}}*)&select=id,title&order=id
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the crons wrote no notice for the buyer or the seller", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(JSON.stringify(res.getBody().map((n) => ({ id: n.id })))).to.equal(bru.getVar("ncNoticesBefore"));
+    const titles = res.getBody().map((n) => n.title);
+    for (const title of ["Disputa Ganada", "Disputa Perdida", "Devolución Recibida"]) {
+      expect(titles).to.not.include(title);
+    }
+  });
+}
+
+docs {
+  Same query as noconnect-read-notifications-before. A Connect dispute gets Disputa Ganada, Disputa Perdida or Devolución Recibida from these crons; this one gets nothing.
+}

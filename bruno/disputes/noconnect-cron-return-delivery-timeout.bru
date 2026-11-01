@@ -1,0 +1,31 @@
+meta {
+  name: noconnect-cron-return-delivery-timeout
+  type: http
+  seq: 60
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_cron_return_delivery_timeout
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("the cron counts the fixture dispute as an error", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].total_errors).to.be.at.least(1);
+  });
+}
+
+docs {
+  Service role through rest/v1/rpc, like the return-delivery-timeout job. total_errors counts the no-payment-intent dispute; other eligible rows would add to it, so the check is a lower bound.
+}

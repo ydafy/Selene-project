@@ -1,0 +1,38 @@
+meta {
+  name: noconnect-disputes-unchanged
+  type: http
+  seq: 61
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/disputes?id=in.({{ncDispA}},{{ncDispB}})&select=id,status,resolution_type,admin_notes,return_payout_status,updated_at,return_delivered_at&order=id
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("both disputes are exactly as they were set up", function () {
+    expect(res.getStatus()).to.equal(200);
+    const byId = Object.fromEntries(res.getBody().map((d) => [d.id, d]));
+    const a = byId[bru.getVar("ncDispA")];
+    const b = byId[bru.getVar("ncDispB")];
+    expect(a.status).to.equal("waiting_return");
+    expect(a.return_payout_status).to.equal("pending");
+    expect(a.resolution_type).to.equal(null);
+    expect(a.admin_notes).to.equal(null);
+    expect(new Date(a.updated_at).toISOString()).to.equal(bru.getVar("ncOld"));
+    expect(b.status).to.equal("return_delivered");
+    expect(new Date(b.return_delivered_at).toISOString()).to.equal(bru.getVar("ncOld"));
+    expect(b.resolution_type).to.equal(null);
+    expect(b.admin_notes).to.equal(null);
+  });
+}
+
+docs {
+  Neither cron resolves a dispute whose shipment has no Stripe payment intent: it stays visible for manual intervention.
+}

@@ -1,0 +1,34 @@
+meta {
+  name: rpc-fn-complete-shipment-refund-removed
+  type: http
+  seq: 79
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_complete_shipment_refund
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {
+    "p_shipment_id": "00000000-0000-4000-8000-0000000000ff"
+  }
+}
+
+tests {
+  test("the dropped function is not found, even for the service role", function () {
+    expect(res.getStatus()).to.equal(404);
+    expect(res.getBody().code).to.equal("PGRST202");
+  });
+}
+
+docs {
+  fn_complete_shipment_refund was dropped with the non-Connect refund path (expo-push-notifications T6a). Connect refunds are recorded by fn_record_dispute_refund.
+  The ids are placeholders: no function runs, so nothing changes.
+}

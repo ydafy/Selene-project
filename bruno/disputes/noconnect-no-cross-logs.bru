@@ -1,0 +1,27 @@
+meta {
+  name: noconnect-no-cross-logs
+  type: http
+  seq: 65
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/system_logs?level=eq.ERROR&or=(and(message.like.Cron payout timeout*,metadata->>dispute_id.eq.{{ncDispB}}),and(message.like.Cron return-delivery-timeout*,metadata->>dispute_id.eq.{{ncDispA}}))&select=message
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("each cron logged only the dispute in its own state", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([]);
+  });
+}
+
+docs {
+  A cron must not log the dispute that is in the other cron's state.
+}

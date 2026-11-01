@@ -1,0 +1,28 @@
+meta {
+  name: noconnect-cleanup-order
+  type: http
+  seq: 70
+}
+
+delete {
+  url: {{baseUrl}}/rest/v1/orders?id=eq.{{ncOrder}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+tests {
+  test("the order is removed", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(1);
+  });
+}
+
+docs {
+  Local stack only.
+}
