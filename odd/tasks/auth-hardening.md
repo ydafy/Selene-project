@@ -1103,3 +1103,9 @@ Native review of c9f043d5..7a293391 (risk, resilience, reliability; tier high). 
 - The legacy paths (an all-null snapshot receiving one through the backfill, a legacy row re-priced) have no runtime test; legacy rows are disposable test data.
 - Partial clear of the snapshot: covered by the R1 correction.
 Migration to apply: `supabase/migrations/20261031120000_publication_economics_keep_snapshot.sql` (function only; same REVOKE/GRANT as before).
+
+### L155 — T10a.2: the app re-prices with a fresh snapshot
+Worker: `apps/frontend/core/utils/listingEdit.ts` (`classifyListingEdit`: sacred changes as before, economics = price or shipping cost differ in cents; `buildEditEconomicsFields`: the three `publication_*` fields through `buildPublicationEconomicsSnapshot`), 9 co-located tests (RED: module missing; GREEN 9/0). `usePublishProduct` edit branch: an economics change fetches `system_settings` and sends the fresh snapshot; a sacred or economics change sets PENDING_VERIFICATION. `sell/preview.tsx`: a price or shipping change without sacred changes shows a new dialog (`sell:dialogs.repriceTitle`, `repriceMessage`, en and es).
+Checks: `bun test apps/frontend` 1220 pass, 0 fail (locale parity included); `bun run lint` exit 0; frontend typecheck only the known T10e TS2322 errors. Local stack (worker, rolled-back SQL as the owner): a VERIFIED listing re-priced to PENDING_VERIFICATION with a fresh snapshot returns UPDATE 1. Device check (maintainer, go-live pass): edit the price of a listing, see the dialog, the listing goes to review.
+Finding outside T10a (worker, local stack): an owner update of a VERIFIED listing that keeps it VERIFIED (for example description only) fails `products_update_owner` RLS, so the app's no-review edit path fails for every VERIFIED listing.
+Risk: none beyond S11 (the edit branch only changes when price or shipping cost change).

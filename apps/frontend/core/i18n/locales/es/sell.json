@@ -205,6 +205,8 @@
   },
   "dialogs": {
     "title": "¿Descartar Publicación?",
-    "message": "Has modificado las imágenes o especificaciones. Si continúas, tu producto perderá la insignia de 'Verificado' y tendrás que enviar la prueba nuevamente."
+    "message": "Has modificado las imágenes o especificaciones. Si continúas, tu producto perderá la insignia de 'Verificado' y tendrás que enviar la prueba nuevamente.",
+    "repriceTitle": "¿Cambiar precio o envío?",
+    "repriceMessage": "Si cambias el precio o el costo de envío, tu publicación volverá a revisión y se le aplicarán las tarifas vigentes de Selene."
   }
 }
