@@ -105,6 +105,7 @@ Run from the repository or worktree root. `package.json` is the source of truth.
 ## How we work
 
 - Structure, naming, and test placement: `docs/conventions.md`.
+- Track work by its shape. One feature: `odd/tasks/<feature>.md`. Items with an order or dependencies across sessions or worktrees: a roadmap (`docs/roadmaps.md`), which you propose and the maintainer approves before you create it. Independent items: separate issues.
 - If an unrelated failure blocks verification, report the command and output and stop for a decision. Never weaken a test to get green.
 - Code, identifiers, comments, tests, commits, and docs are in English. User-facing strings go through i18n with both English and Spanish (`apps/frontend/core/i18n/locales`); locale parity tests enforce it.
 - Several features are developed in parallel worktrees under `C:/dev/School-portal-worktrees/`. Stay inside the worktree you were given. A new worktree gets the gitignored env files through the `post-checkout` hook; in an older one run `bun run worktree:env`. To remove a finished worktree, run `bun run worktree:clean <name>` from the main checkout to show the plan, and add `--yes` only when the maintainer asks (`docs/worktrees.md`). Never delete worktrees, branches, or `~/.supabase/stacks` by hand.
@@ -153,6 +154,6 @@ These protect real money and user data. They hold for every change:
 ## Git
 
 - Inside an authorized feature on its feature branch, commit each work unit as soon as its checks pass; do not wait to be asked. Target about 400 authored changed lines per commit (larger commits exceed the native review budget). A change to money, SQL, RLS, or auth goes in its own commit.
-- A plan that spans several sessions or worktrees is a roadmap issue with one sub-issue per item (`docs/roadmaps.md`). Size each item so it lands as one such commit; if one will clearly exceed that, split it in the plan, not at commit time. Check that an item still holds before you start it.
+- In a roadmap ("How we work"), size each item so it lands as one such commit; if one will clearly exceed that, split it in the plan, not at commit time. Check that an item still holds before you start it.
 - Generated files (`packages/types/src/database.types.ts`) go in the same commit as the migration that produced them.
 - Keep commits scoped: code, tests, migration, and contract updates for one behavior go together. Use Conventional Commits.
