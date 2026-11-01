@@ -1219,3 +1219,17 @@ Target matrix (everything not listed is revoked from that role; service_role and
 | admin_connect_payout_release_view, account_closures | none | none (as today) |
 RLS stays the row control. This is the auth part of #122; the other tables and the default privileges stay in #122.
 Finding #178: admin-web `useAdminStats` reads `admin_connect_payout_release_view` without a grant, so the dashboard always shows 0 funds to release. Granting it is out of scope (it would widen access to payout data).
+
+### L173 — T10f: migration and pgTAP
+The worker wrote `supabase/migrations/20261101120000_auth_grants_least_privilege.sql`: one REVOKE ALL from anon and authenticated on the nine relations, then GRANTs that leave exactly the L172 matrix. The `profiles` UPDATE columns are granted again because a table-level REVOKE also removes column privileges. It is idempotent and has no anon grant except SELECT on `profiles`. It also wrote `supabase/tests/database/auth_grants.test.sql` with 44 assertions:
+- every relation and role holds exactly its L172 privilege set (`has_table_privilege`, plus `has_column_privilege` for the `profiles` UPDATE columns);
+- the client paths still work: anon reads `profiles`; a user renames itself and reads its own `profiles_private` row; an admin reads the audit log and both admin views, and adds and reads notes;
+- forbidden actions raise 42501: anon on `profiles_private` and the admin views, and client INSERT, UPDATE or DELETE on `profiles_private`.
+It also added the structural test `supabase/migrations/__tests__/auth_grants_least_privilege.test.ts`.
+RED: before the migration, 20 of the 44 assertions failed (old full grants, anon reads of the admin views, client UPDATE and DELETE of `profiles_private` running without error).
+Tests the new grants made wrong:
+- `profile_grants.test.sql`: three client writes to `profiles_private` now `throws_ok 42501` (were `lives_ok` with 0 rows), and its header comment now describes the new grants.
+- `account_rules.test.sql`: "a client cannot write another user role or status" now expects 42501 (parent).
+GREEN: `supabase db reset`, then `bun run test:db` Files=9, Tests=313, PASS; `bun test supabase` 2789 pass (worker); `bun test supabase/migrations` 830 pass (parent); Bruno full collection 594 of 597, and the 3 failures are the known `dispatch-push-run` ones (L144). The profile, verification and admin requests pass.
+Risk: item 2 (security: grants) and item 3 (a client relying on a revoked privilege would break). Usage mapped in L172; nothing in the matrix broke on the local stack.
+Migration to apply: `supabase/migrations/20261101120000_auth_grants_least_privilege.sql` (grants only, no schema change, so `db:types` is not needed).

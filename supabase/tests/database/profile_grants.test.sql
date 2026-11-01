@@ -1,6 +1,6 @@
 -- Grants on profiles, profiles_private and the server-only tables (T9g, #88).
--- profiles_private has a SELECT-only policy and broad table grants locally (see
--- #122), so client writes are stopped by RLS: updates and deletes touch no row.
+-- Since T10f (#122) clients hold only SELECT on profiles_private, so a client
+-- write raises 42501 before RLS is reached; the full matrix is in auth_grants.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
 select plan(64);
@@ -32,16 +32,16 @@ select throws_ok(
   $$update public.profiles set deleted_at = now()
     where id = 'd0000000-0000-4000-8000-000000000001'$$,
   '42501', null, 'authenticated cannot update deleted_at');
-select lives_ok(
+select throws_ok(
   $$update public.profiles_private set role = 'admin', status = 'banned'
     where id = 'd0000000-0000-4000-8000-000000000001'$$,
-  'authenticated update of profiles_private runs but RLS leaves no row to change');
+  '42501', null, 'authenticated cannot update profiles_private');
 select throws_ok(
   $$insert into public.profiles_private (id) values ('d0000000-0000-4000-8000-0000000000ff')$$,
   '42501', null, 'authenticated cannot insert into profiles_private');
-select lives_ok(
+select throws_ok(
   $$delete from public.profiles_private where id = 'd0000000-0000-4000-8000-000000000001'$$,
-  'authenticated delete from profiles_private runs but RLS leaves no row to delete');
+  '42501', null, 'authenticated cannot delete from profiles_private');
 
 reset role;
 select is(
@@ -75,10 +75,10 @@ select throws_ok(
   $$update public.profiles set avatar_url = 'https://example.test/x.png'
     where id = 'd0000000-0000-4000-8000-000000000001'$$,
   '42501', null, 'anon cannot update profiles.avatar_url');
-select lives_ok(
+select throws_ok(
   $$update public.profiles_private set role = 'admin'
     where id = 'd0000000-0000-4000-8000-000000000001'$$,
-  'anon update of profiles_private runs but RLS leaves no row to change');
+  '42501', null, 'anon cannot update profiles_private');
 select throws_ok(
   $$insert into public.profiles_private (id) values ('d0000000-0000-4000-8000-0000000000ff')$$,
   '42501', null, 'anon cannot insert into profiles_private');
