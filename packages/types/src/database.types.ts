@@ -4160,6 +4160,7 @@ export type Database = {
         Args: { p_claim_token: string; p_shipment_id: string }
         Returns: boolean
       }
+      fn_notify_label_deadline_reminders: { Args: never; Returns: number }
       fn_notify_product_available: {
         Args: { p_product_ids: string[] }
         Returns: undefined
