@@ -30,8 +30,11 @@ export const InputModal = ({
   }, [isOpen]);
 
   const trimmed = value.trim();
-  const isTooShort = minLength !== undefined && trimmed.length > 0 && trimmed.length < minLength;
-  const isValid = trimmed.length > 0 && (minLength === undefined || trimmed.length >= minLength);
+  const isTooShort =
+    minLength !== undefined && trimmed.length > 0 && trimmed.length < minLength;
+  const isValid =
+    trimmed.length > 0 &&
+    (minLength === undefined || trimmed.length >= minLength);
 
   if (!isOpen) return null;
 

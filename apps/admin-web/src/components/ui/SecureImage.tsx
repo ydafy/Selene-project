@@ -23,7 +23,10 @@ export const SecureImage = ({
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (!path) { setError(true); return; }
+    if (!path) {
+      setError(true);
+      return;
+    }
 
     // External URLs or Supabase public URLs — load directly, no signing needed
     if (
@@ -50,7 +53,9 @@ export const SecureImage = ({
 
   if (error) {
     return (
-      <div className={`flex items-center justify-center bg-white/5 ${className}`}>
+      <div
+        className={`flex items-center justify-center bg-white/5 ${className}`}
+      >
         <span className="text-blue-light text-xs">No disponible</span>
       </div>
     );
@@ -59,7 +64,12 @@ export const SecureImage = ({
 
   return (
     <div className="relative group w-full h-full">
-      <img src={url} alt={alt} className={className} onError={() => setError(true)} />
+      <img
+        src={url}
+        alt={alt}
+        className={className}
+        onError={() => setError(true)}
+      />
 
       {/* Overlay sutil que indica que es clickeable */}
       <button
