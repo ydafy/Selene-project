@@ -1109,3 +1109,6 @@ Worker: `apps/frontend/core/utils/listingEdit.ts` (`classifyListingEdit`: sacred
 Checks: `bun test apps/frontend` 1220 pass, 0 fail (locale parity included); `bun run lint` exit 0; frontend typecheck only the known T10e TS2322 errors. Local stack (worker, rolled-back SQL as the owner): a VERIFIED listing re-priced to PENDING_VERIFICATION with a fresh snapshot returns UPDATE 1. Device check (maintainer, go-live pass): edit the price of a listing, see the dialog, the listing goes to review.
 Finding outside T10a (worker, local stack): an owner update of a VERIFIED listing that keeps it VERIFIED (for example description only) fails `products_update_owner` RLS, so the app's no-review edit path fails for every VERIFIED listing.
 Risk: none beyond S11 (the edit branch only changes when price or shipping cost change).
+
+### L156 — T10a.2 review; finding #141
+Native review of 7a293391..809ed043 (risk, reliability; tier high) approved and acknowledged; no blocking finding. Three reliability advisories (R3-001 `listingEdit.ts:46-47`, R3-002 `preview.tsx:89-90`, R3-003 `usePublishProduct.ts:222-239`), not blocking. The L155 RLS finding is #141 (owner edit that keeps a listing VERIFIED is refused; needs a product decision).
