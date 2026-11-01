@@ -1,0 +1,53 @@
+meta {
+  name: funds-setup-shipment
+  type: http
+  seq: 202
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/shipments
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+script:pre-request {
+  bru.setVar("fdSuffix", String(Date.now()));
+  bru.setVar("fdCompletedAt", new Date().toISOString());
+}
+
+body:json {
+  {
+    "order_id": "{{fdOrderId}}",
+    "seller_id": "{{fdSellerId}}",
+    "status": "completed",
+    "completed_at": "{{fdCompletedAt}}",
+    "stripe_payment_intent_id": "pi_bruno_funds_{{fdSuffix}}"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    bru.setVar("fdShipmentId", res.getBody()[0].id);
+  }
+}
+
+tests {
+  test("inserts a completed shipment of the throwaway seller with no transfer yet", function () {
+    expect(res.getStatus()).to.equal(201);
+    const row = res.getBody()[0];
+    expect(row.status).to.equal("completed");
+    expect(row.seller_id).to.equal(bru.getVar("fdSellerId"));
+    expect(row.order_id).to.equal(bru.getVar("fdOrderId"));
+    expect(row.stripe_transfer_id).to.equal(null);
+  });
+}
+
+docs {
+  Local stack only. A completed shipment waiting for its payout, the state fn_complete_shipment_transfer sees in production. Stores fdShipmentId.
+}

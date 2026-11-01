@@ -41,19 +41,46 @@ test.each(['0', '65536', 'abc'])(
 );
 
 test('full canonical SQL equals exactly one CLI migration; no extra workflow table', () => {
-  const migrations = readdirSync(`${root}supabase/migrations/archive`).filter((name) =>
-    name.endsWith('_shipment_transfer_coordination.sql'),
+  const migrations = readdirSync(`${root}supabase/migrations/archive`).filter(
+    (name) => name.endsWith('_shipment_transfer_coordination.sql'),
   );
   expect(migrations).toHaveLength(1);
   const sql = readFileSync(
     `${root}supabase/migrations/archive/${migrations[0]}`,
     'utf8',
   );
-  expect(sql).toBe(
+  // The canonical file equals the archived migration except for
+  // fn_complete_shipment_transfer, which a later migration redefines (seller notice).
+  const lf = (text: string) => text.replace(/\r\n/g, '\n');
+  const completeDefinition = (text: string) => {
+    const start = text.indexOf(
+      'CREATE OR REPLACE FUNCTION public.fn_complete_shipment_transfer(',
+    );
+    const end = text.indexOf('\n$$;', start) + 4;
+    return { start, end, body: text.slice(start, end) };
+  };
+  const withoutComplete = (text: string, d: { start: number; end: number }) =>
+    text.slice(0, d.start) + text.slice(d.end);
+  const canonical = lf(
     readFileSync(
       `${root}supabase/queries/payments/shipment_transfer_coordination.sql`,
       'utf8',
     ),
+  );
+  const archived = completeDefinition(lf(sql));
+  const current = completeDefinition(canonical);
+  const redefinitions = readdirSync(`${root}supabase/migrations`).filter(
+    (name) => name.endsWith('_shipment_funds_released_notification.sql'),
+  );
+  expect(redefinitions).toHaveLength(1);
+  const redefined = completeDefinition(
+    lf(readFileSync(`${root}supabase/migrations/${redefinitions[0]}`, 'utf8')),
+  );
+  expect(archived.start).toBeGreaterThan(-1);
+  expect(current.body).toBe(redefined.body);
+  expect(current.body).not.toBe(archived.body);
+  expect(withoutComplete(canonical, current)).toBe(
+    withoutComplete(lf(sql), archived),
   );
   expect(sql).not.toMatch(/CREATE TABLE/i);
   expect(sql.match(/CREATE OR REPLACE FUNCTION public\.[a-z_]+/g)).toEqual([

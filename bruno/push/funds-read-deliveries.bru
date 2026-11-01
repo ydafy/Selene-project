@@ -1,0 +1,31 @@
+meta {
+  name: funds-read-deliveries
+  type: http
+  seq: 213
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/push_deliveries?select=id,notification_id,user_id,channel,status&notification_id=eq.{{fdNoticeId}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("S4: the notice produced one pending orders delivery for the seller's token", function () {
+    expect(res.getStatus()).to.equal(200);
+    const rows = res.getBody();
+    expect(rows).to.have.length(1);
+    expect(rows[0].user_id).to.equal(bru.getVar("fdSellerId"));
+    expect(rows[0].channel).to.equal("orders");
+    expect(rows[0].status).to.equal("pending");
+  });
+}
+
+docs {
+  Service-role read of the fan-out written by the notifications trigger, for the one registered token of the throwaway seller.
+}

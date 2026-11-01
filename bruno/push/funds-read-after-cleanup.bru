@@ -1,0 +1,27 @@
+meta {
+  name: funds-read-after-cleanup
+  type: http
+  seq: 222
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/orders?select=id,shipments(id)&id=eq.{{fdOrderId}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the order and its shipments are gone", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.length(0);
+  });
+}
+
+docs {
+  Service-role read after cleanup.
+}

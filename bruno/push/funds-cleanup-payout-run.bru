@@ -1,0 +1,28 @@
+meta {
+  name: funds-cleanup-payout-run
+  type: http
+  seq: 219
+}
+
+delete {
+  url: {{baseUrl}}/rest/v1/connect_payout_runs?id=eq.{{fdRunId}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+tests {
+  test("the payout run is removed", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.length(1);
+  });
+}
+
+docs {
+  Cleanup. A leftover pending_reconciliation run would block account closure of its seller.
+}

@@ -1,0 +1,55 @@
+meta {
+  name: funds-setup-payout-run
+  type: http
+  seq: 203
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/connect_payout_runs
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+script:pre-request {
+  bru.setVar("fdIdemKey", "bruno-funds-" + Date.now());
+}
+
+body:json {
+  {
+    "idempotency_key": "{{fdIdemKey}}",
+    "seller_id": "{{fdSellerId}}",
+    "actor_id": "00000000-0000-4000-8000-000000000001",
+    "amount": 123456,
+    "status": "pending_reconciliation",
+    "release_stage": "release_accepted"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    bru.setVar("fdRunId", res.getBody()[0].id);
+    bru.setVar("fdStageVersion", res.getBody()[0].release_stage_version);
+  }
+}
+
+tests {
+  test("inserts a payout run in release_accepted that waits for reconciliation", function () {
+    expect(res.getStatus()).to.equal(201);
+    const row = res.getBody()[0];
+    expect(row.seller_id).to.equal(bru.getVar("fdSellerId"));
+    expect(row.amount).to.equal(123456);
+    expect(row.status).to.equal("pending_reconciliation");
+    expect(row.release_stage).to.equal("release_accepted");
+    expect(row.release_stage_version).to.be.a("number");
+  });
+}
+
+docs {
+  Local stack only. The idempotency key is unique per run; the actor is the seeded admin. Stores fdRunId and fdStageVersion (release_stage_version), which fn_complete_shipment_transfer compares with p_expected_stage_version.
+}

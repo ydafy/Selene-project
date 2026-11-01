@@ -1,0 +1,52 @@
+meta {
+  name: funds-setup-run-shipment
+  type: http
+  seq: 204
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/connect_payout_run_shipments
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+script:pre-request {
+  bru.setVar("fdStartedAt", new Date().toISOString());
+  bru.setVar("fdTransferToken", "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+    const n = Math.floor(Math.random() * 16);
+    return (c === "x" ? n : (n & 3) | 8).toString(16);
+  }));
+  bru.setVar("fdTransferId", "tr_bruno_funds_" + Date.now());
+}
+
+body:json {
+  {
+    "run_id": "{{fdRunId}}",
+    "shipment_id": "{{fdShipmentId}}",
+    "net_payout": 123456,
+    "status": "pending_reconciliation",
+    "transfer_started_at": "{{fdStartedAt}}",
+    "transfer_token": "{{fdTransferToken}}"
+  }
+}
+
+tests {
+  test("maps the shipment to the run with a started transfer", function () {
+    expect(res.getStatus()).to.equal(201);
+    const row = res.getBody()[0];
+    expect(row.run_id).to.equal(bru.getVar("fdRunId"));
+    expect(row.shipment_id).to.equal(bru.getVar("fdShipmentId"));
+    expect(row.net_payout).to.equal(123456);
+    expect(row.transfer_token).to.equal(bru.getVar("fdTransferToken"));
+  });
+}
+
+docs {
+  Local stack only. What fn_begin_shipment_transfer leaves behind: a fresh transfer_token (generated here) and transfer_started_at set. Stores fdTransferToken and the Stripe transfer id fdTransferId that the next calls send.
+}

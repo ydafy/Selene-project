@@ -1,0 +1,29 @@
+meta {
+  name: funds-read-policy
+  type: http
+  seq: 214
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/push_event_policy?select=event_kind,recipient_role,channel&event_kind=eq.shipment.funds_released
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("S4: funds released push to the seller on the orders channel", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([
+      { event_kind: "shipment.funds_released", recipient_role: "seller", channel: "orders" },
+    ]);
+  });
+}
+
+docs {
+  Service-role read of push_event_policy.
+}
