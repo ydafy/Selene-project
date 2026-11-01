@@ -141,7 +141,7 @@ Acceptance: an update that leaves `price` and `shipping_cost` unchanged keeps th
 - T10a.2 | S11 | inline | done (L155-L156) | App edit flow: a price or shipping-cost change sends a fresh snapshot and returns the listing to review | Commit: not created.
 - T10b | S4 | inline | done (L159-L160) | pgTAP for the block-1 account rules: a suspended seller cannot publish, edit or receive reservations (own purchases stay); lifting a suspension restores only account-held listings to their prior status; banned is final; clients cannot write `role` or `status` (own or other rows, signup or metadata, JWT claims); admin flows only as setup | Commit: f7d8a62b.
 - T10c.1 | S4,S8 | delegated writer (context backstop) | done (L163-L164) | pgTAP for the `fn_close_account` blockers not covered yet: unreleased payout (`pending_payouts`), open dispute (`open_disputes`), refund in flight (`pending_refunds`), each refused with nothing changed, plus the allowed case once settled | Commit: a2744ca7 + follow-up (L164).
-- T10c.2 | S4 | delegated writer (context backstop) | done (L165-L166) | pgTAP for the other release callers under the T9e seller rule: `fn_reserve_products` stale cleanup and partial rollback, `fn_cancel_shipment`, and the refund path of `fn_finalize_checkout_recovery`; a suspended seller's listing is held, an active seller's returns to sale | Commit: see L165-L166.
+- T10c.2 | S4 | delegated writer (context backstop) | done (L165-L166) | pgTAP for the other release callers under the T9e seller rule: `fn_reserve_products` stale cleanup and partial rollback, `fn_cancel_shipment`, and the refund path of `fn_finalize_checkout_recovery`; a suspended seller's listing is held, an active seller's returns to sale | Commit: 208a8738.
 
 ## Log
 
@@ -1168,3 +1168,7 @@ No bug found, so there is nothing to apply.
 Parent mutation check (current stack, rolled back): `fn_release_listings` never holding fails 6 of 50 (one hold assertion per caller path); always holding fails 10 of 50. The function is intact and pgTAP is not left installed.
 Checks: `bun run test:db` Files=8, Tests=269, PASS.
 Risk: none (test-only). TLC not run: `fn_cancel_shipment` is unchanged.
+
+### L166 — T10c.2 review; slice T10c
+Native review of 383b0bd0..208a8738 (reliability; tier high) approved and acknowledged; no blocking finding. One suggestion, kept as is: the bystander fingerprint (`release_callers.test.sql:49`) includes `updated_at`, which cannot change inside the test's single transaction because `now()` is fixed. Status, hold and `reserved_at` still detect a change.
+Slice T10c: 5f457c3b (L161), the L162 tracker entry, a2744ca7, 383b0bd0, 208a8738 and this entry. That is about 640 authored lines, over the ~400 target, so they ship as one PR whose commits were each reviewed on their own (each under 400 lines). The slice boundary is the end of T10c.
