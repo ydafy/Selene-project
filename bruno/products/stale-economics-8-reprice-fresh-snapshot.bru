@@ -1,0 +1,46 @@
+meta {
+  name: stale-economics-8-reprice-fresh-snapshot
+  type: http
+  seq: 106
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/products?id=eq.{{staleEconId}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{sellerToken}}
+  Prefer: return=representation
+}
+
+script:pre-request {
+  function reserve(price, shipping, buffer, insurance) {
+    return Math.round(shipping * 100) + buffer + Math.ceil(Math.round(price * 100) * insurance);
+  }
+  const buffer = Number(bru.getVar("staleEconBuffer")) + 500;
+  const insurance = Number(bru.getVar("staleEconInsurance"));
+  bru.setVar("staleEconNewReserve", reserve(8100, 100, buffer, insurance));
+  req.setBody({
+    price: 8100,
+    status: "PENDING_VERIFICATION",
+    publication_shipping_reserve_cents: reserve(8100, 100, buffer, insurance),
+    publication_commission_rate: Number(bru.getVar("staleEconCommission")),
+    publication_insurance_rate: insurance
+  });
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("a price change with a snapshot fresh against current settings is stored", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(Number(res.getBody()[0].price)).to.equal(8100);
+    expect(res.getBody()[0].status).to.equal("PENDING_VERIFICATION");
+    expect(res.getBody()[0].publication_shipping_reserve_cents).to.equal(Number(bru.getVar("staleEconNewReserve")));
+  });
+}

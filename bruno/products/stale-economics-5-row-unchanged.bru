@@ -1,0 +1,25 @@
+meta {
+  name: stale-economics-5-row-unchanged
+  type: http
+  seq: 103
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/products?id=eq.{{staleEconId}}&select=price,status,publication_shipping_reserve_cents
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the refused update left the price and the snapshot as published", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(Number(res.getBody()[0].price)).to.equal(8000);
+    expect(res.getBody()[0].status).to.equal("VERIFIED");
+    expect(res.getBody()[0].publication_shipping_reserve_cents).to.equal(Number(bru.getVar("staleEconReserve")));
+  });
+}

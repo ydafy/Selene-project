@@ -23,7 +23,7 @@ import { ProductSellerCard } from '../../components/features/product/ProductSell
 import { useSellStore } from '../../core/store/useSellStore';
 import { usePublishProduct } from '../../core/hooks/usePublishProduct';
 import { useAuthContext } from '../../components/auth/AuthProvider';
-import { normalize } from '../../core/utils/compare';
+import { classifyListingEdit } from '../../core/utils/listingEdit';
 import { formatCurrency } from '../../core/utils/format';
 import { buildPreviewProduct } from '../../core/utils/previewProductBuilder';
 import { describeUploadState } from '../../core/utils/describeUploadState';
@@ -44,6 +44,7 @@ export default function SellPreviewScreen() {
 
   // Estado para el diálogo de advertencia
   const [showWarning, setShowWarning] = useState(false);
+  const [showRepriceWarning, setShowRepriceWarning] = useState(false);
 
   // Memoize the preview mock so unrelated store changes do not rebuild it.
   const previewProduct: ProductWithSeller = useMemo(() => {
@@ -78,15 +79,15 @@ export default function SellPreviewScreen() {
     }
 
     // Si es edición, verificamos si tocó campos "Sagrados"
-    const sacredChanges =
-      JSON.stringify(normalize(draft.images)) !==
-        JSON.stringify(normalize(originalData.images)) ||
-      JSON.stringify(normalize(draft.specifications)) !==
-        JSON.stringify(normalize(originalData.specifications)) ||
-      draft.category !== originalData.category;
+    const { sacredChanges, economicsChanges } = classifyListingEdit(
+      draft,
+      originalData,
+    );
 
     if (sacredChanges) {
       setShowWarning(true);
+    } else if (economicsChanges) {
+      setShowRepriceWarning(true);
     } else {
       publish();
     }
@@ -264,6 +265,20 @@ export default function SellPreviewScreen() {
         confirmLabel={t('common:dialog.confirm')}
         cancelLabel={t('common:dialog.cancel')}
         isDangerous={true} // Rojo para alertar
+        icon="alert-circle-outline"
+      />
+
+      <ConfirmDialog
+        visible={showRepriceWarning}
+        title={t('sell:dialogs.repriceTitle')}
+        description={t('sell:dialogs.repriceMessage')}
+        onConfirm={() => {
+          setShowRepriceWarning(false);
+          publish();
+        }}
+        onCancel={() => setShowRepriceWarning(false)}
+        confirmLabel={t('common:dialog.confirm')}
+        cancelLabel={t('common:dialog.cancel')}
         icon="alert-circle-outline"
       />
     </Box>

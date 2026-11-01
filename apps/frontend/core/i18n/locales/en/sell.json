@@ -205,6 +205,8 @@
   },
   "dialogs": {
     "title": "Discard Listing?",
-    "message": "You have modified images or specifications. If you continue, your product will lose the 'Verified' badge and you will have to send proof again."
+    "message": "You have modified images or specifications. If you continue, your product will lose the 'Verified' badge and you will have to send proof again.",
+    "repriceTitle": "Change price or shipping?",
+    "repriceMessage": "Changing the price or shipping cost sends your listing back to review, and the current Selene fees will apply to it."
   }
 }

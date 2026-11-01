@@ -15,7 +15,10 @@ import {
 import { useAuthContext } from '../../components/auth/AuthProvider';
 import { ProductCategory } from '@selene/types';
 import { resolveMediaType, uploadMediaFromUri } from '../storage/uploadMedia';
-import { normalize } from '../utils/compare';
+import {
+  buildEditEconomicsFields,
+  classifyListingEdit,
+} from '../utils/listingEdit';
 import { useTranslation } from 'react-i18next';
 import {
   checkPublishGuard,
@@ -203,12 +206,12 @@ export const usePublishProduct = () => {
         // --- LÓGICA DE EDICIÓN ---
         const original = useSellStore.getState().originalData;
 
-        const sacredChanges =
-          JSON.stringify(normalize(productData.images)) !==
-            JSON.stringify(normalize(original?.images)) ||
-          JSON.stringify(normalize(productData.specifications)) !==
-            JSON.stringify(normalize(original?.specifications)) ||
-          productData.category !== original?.category;
+        const { sacredChanges, economicsChanges } = original
+          ? classifyListingEdit(
+              { ...draft, images: productData.images },
+              original,
+            )
+          : { sacredChanges: true, economicsChanges: false };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const updatePayload: any = {
@@ -216,7 +219,24 @@ export const usePublishProduct = () => {
           rejection_reason: null,
         };
 
-        if (sacredChanges) {
+        if (economicsChanges) {
+          // A price or shipping change is a new deal: re-snapshot the fees.
+          const { data: settings, error: settingsError } = await supabase
+            .from('system_settings')
+            .select('service_fee_pct, shipping_buffer_cents, insurance_rate')
+            .eq('id', 1)
+            .single();
+
+          if (settingsError || !settings) {
+            throw new Error('PUBLICATION_ECONOMICS_ACCEPTANCE_REQUIRED');
+          }
+          Object.assign(
+            updatePayload,
+            buildEditEconomicsFields(draft, settings),
+          );
+        }
+
+        if (sacredChanges || economicsChanges) {
           updatePayload.status = 'PENDING_VERIFICATION';
           requiresReverification = true;
         } else {
@@ -241,19 +261,17 @@ export const usePublishProduct = () => {
         }
         const { data, error } = await supabase
           .from('products')
-          .insert(
-            {
-              ...productData,
-              publication_shipping_reserve_cents:
-                publicationEconomics.shippingReserveCents,
-              publication_commission_rate: publicationEconomics.commissionRate,
-              publication_insurance_rate: publicationEconomics.insuranceRate,
-              seller_id: session.user.id,
-              status: 'PENDING_VERIFICATION',
-              views: 0,
-              aspect_ratio: aspectRatio,
-            } as never,
-          )
+          .insert({
+            ...productData,
+            publication_shipping_reserve_cents:
+              publicationEconomics.shippingReserveCents,
+            publication_commission_rate: publicationEconomics.commissionRate,
+            publication_insurance_rate: publicationEconomics.insuranceRate,
+            seller_id: session.user.id,
+            status: 'PENDING_VERIFICATION',
+            views: 0,
+            aspect_ratio: aspectRatio,
+          } as never)
           .select()
           .single();
 

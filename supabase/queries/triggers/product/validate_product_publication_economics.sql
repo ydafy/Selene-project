@@ -1,13 +1,14 @@
 -- =========================================================================
 -- validate_product_publication_economics — BEFORE INSERT OR UPDATE on products
--- Keeps the publication snapshot immutable and rejects a snapshot that no
--- longer matches the price, shipping cost and system_settings. The economics
--- are only checked while the row is, or becomes, publicly sellable
--- (PENDING_VERIFICATION, IN_REVIEW, VERIFIED, RESERVED). An UPDATE that leaves
--- the row soft-deleted or in HIDDEN, SOLD, REJECTED or IN_DISPUTE is never
--- refused here: account closure, suspension, admin soft delete and the sale
--- itself must succeed even after a fee or settings change (#69).
--- Migration: supabase/migrations/20261030140000_publication_economics_sellable_only.sql
+-- A listing keeps the economics it was published with (T10a, #120). INSERT
+-- needs a snapshot that matches system_settings. An UPDATE that leaves price
+-- and shipping_cost unchanged keeps the snapshot immutable and is never
+-- refused for stale settings, whatever the status (closure, suspension lift,
+-- release, sale, #69). A legacy row with no snapshot may still receive one
+-- from the backfill, validated against current settings. A price or
+-- shipping_cost change is a new deal: it must carry a snapshot that matches
+-- current settings and cannot clear the stored one.
+-- Migration: supabase/migrations/20261031120000_publication_economics_keep_snapshot.sql
 -- =========================================================================
 
 CREATE OR REPLACE FUNCTION public.validate_product_publication_economics()
@@ -21,37 +22,40 @@ DECLARE
   v_commission_rate NUMERIC;
   v_insurance_rate NUMERIC;
   v_expected_reserve_cents BIGINT;
+  v_old_empty BOOLEAN;
+  v_new_empty BOOLEAN;
 BEGIN
-  IF TG_OP = 'UPDATE'
-    AND OLD.publication_shipping_reserve_cents IS NOT NULL
-    AND (
-      NEW.publication_shipping_reserve_cents IS DISTINCT FROM OLD.publication_shipping_reserve_cents
-      OR NEW.publication_commission_rate IS DISTINCT FROM OLD.publication_commission_rate
-      OR NEW.publication_insurance_rate IS DISTINCT FROM OLD.publication_insurance_rate
-    ) THEN
-    RAISE EXCEPTION 'PUBLICATION_ECONOMICS_IMMUTABLE';
-  END IF;
-
-  IF TG_OP = 'UPDATE'
-    AND (
-      NEW.deleted_at IS NOT NULL
-      OR NEW.status IN (
-        'HIDDEN'::public.product_status_enum,
-        'SOLD'::public.product_status_enum,
-        'REJECTED'::public.product_status_enum,
-        'IN_DISPUTE'::public.product_status_enum
-      )
-    ) THEN
-    RETURN NEW;
-  END IF;
-
-  IF NEW.publication_shipping_reserve_cents IS NULL
+  v_new_empty := NEW.publication_shipping_reserve_cents IS NULL
     AND NEW.publication_commission_rate IS NULL
-    AND NEW.publication_insurance_rate IS NULL THEN
-    IF TG_OP = 'INSERT' THEN
+    AND NEW.publication_insurance_rate IS NULL;
+
+  IF TG_OP = 'INSERT' THEN
+    IF v_new_empty THEN
       RAISE EXCEPTION 'PUBLICATION_SNAPSHOT_REQUIRED';
     END IF;
-    RETURN NEW;
+  ELSE
+    v_old_empty := OLD.publication_shipping_reserve_cents IS NULL
+      AND OLD.publication_commission_rate IS NULL
+      AND OLD.publication_insurance_rate IS NULL;
+
+    IF NEW.price IS NOT DISTINCT FROM OLD.price
+      AND NEW.shipping_cost IS NOT DISTINCT FROM OLD.shipping_cost THEN
+      IF NEW.publication_shipping_reserve_cents IS NOT DISTINCT FROM OLD.publication_shipping_reserve_cents
+        AND NEW.publication_commission_rate IS NOT DISTINCT FROM OLD.publication_commission_rate
+        AND NEW.publication_insurance_rate IS NOT DISTINCT FROM OLD.publication_insurance_rate THEN
+        RETURN NEW;
+      END IF;
+      IF NOT v_old_empty THEN
+        RAISE EXCEPTION 'PUBLICATION_ECONOMICS_IMMUTABLE';
+      END IF;
+    ELSE
+      IF NOT v_old_empty AND v_new_empty THEN
+        RAISE EXCEPTION 'PUBLICATION_SNAPSHOT_REQUIRED';
+      END IF;
+      IF v_new_empty THEN
+        RETURN NEW;
+      END IF;
+    END IF;
   END IF;
 
   SELECT
@@ -74,9 +78,9 @@ BEGIN
     + v_shipping_buffer_cents
     + ceil(round(NEW.price * 100)::NUMERIC * v_insurance_rate)::BIGINT;
 
-  IF NEW.publication_shipping_reserve_cents <> v_expected_reserve_cents
-    OR NEW.publication_commission_rate <> v_commission_rate
-    OR NEW.publication_insurance_rate <> v_insurance_rate THEN
+  IF NEW.publication_shipping_reserve_cents IS DISTINCT FROM v_expected_reserve_cents
+    OR NEW.publication_commission_rate IS DISTINCT FROM v_commission_rate
+    OR NEW.publication_insurance_rate IS DISTINCT FROM v_insurance_rate THEN
     RAISE EXCEPTION 'INVALID_OR_STALE_PUBLICATION_ECONOMICS';
   END IF;
 

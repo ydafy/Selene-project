@@ -1,0 +1,29 @@
+meta {
+  name: stale-economics-7-restore-verified-stale
+  type: http
+  seq: 105
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/products?id=eq.{{staleEconId}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  { "status": "VERIFIED" }
+}
+
+tests {
+  test("HIDDEN to VERIFIED on a stale listing keeps the published snapshot", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].status).to.equal("VERIFIED");
+    expect(res.getBody()[0].publication_shipping_reserve_cents).to.equal(Number(bru.getVar("staleEconReserve")));
+  });
+}
