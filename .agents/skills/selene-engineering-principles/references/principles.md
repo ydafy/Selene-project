@@ -78,3 +78,19 @@ For work crossing a module or function boundary, single agent only:
 4. Implement.
 
 Deviations from the sketch are signal. Scrap the sketch when the same workaround shape repeats, types need escape hatches, or callers must know internals. Sketches are working notes, never committed as `not implemented` stubs in production paths.
+
+## 10. Encode repeated mistakes in structure
+
+When an agent repeats a mistake the maintainer already corrected, make the mistake impossible instead of adding another prompt rule. Nothing fails when an agent skips a rule in `AGENTS.md`.
+
+A mistake qualifies once it happened twice. Keep the evidence (the two commits, review comments, or corrections). Do not add guards for mistakes that have not happened.
+
+Fix it at the highest level that works:
+
+1. Architecture: one owner per piece of state, one supported way per task, and no dead code an agent could copy.
+2. Types: the bad state does not compile.
+3. Lint or a guard test whose error names the file or function to use instead. `noHardcodedColors.test.ts` and `dependency-audit-exceptions.test.ts` are this level.
+4. A behavior test.
+5. A rule in `AGENTS.md` or a skill, only for judgment calls no check can make.
+
+Prove the new check fails on the real past mistake before you keep it. A new ESLint rule, Git hook, or CI step changes configuration, which needs the maintainer's approval first (`AGENTS.md`, "Ask first"). Once a check enforces a rule, remove the rule's text from `AGENTS.md`.

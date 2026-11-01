@@ -13,7 +13,7 @@ The Expo SDK 58 plan (with #99) is out of scope: another session owns it (L1).
 ## Tasks
 
 - T1 | S1-S2 | worker (context backstop) | branch `fix/dependency-report-expo-pins` | commit: this commit (done)
-- T2 | S4 | inline | branch `docs/correct-principle` | commit: pending
+- T2 | S4 | inline | branch `docs/correct-principle` (stacked on T1) | commit: this commit (done)
 - T3 | S3 | inline | branch `docs/dependency-review-skill` (after T1 merges) | commit: pending
 
 ## Log
@@ -21,3 +21,5 @@ The Expo SDK 58 plan (with #99) is out of scope: another session owns it (L1).
 - L1 (user): "osi master quiero seguir tu recomendacion con una expecion el 2 lo hare en otro woktree , dime ocupas eso para hacer 3 y 4 ? si no, pues deja nomas 1 3 y 4, y la otra seison se hace cargo del 2, si si lo ocupas me dices y termino la otra seiosn y veulvo aca contigo". Recommendation it refers to: 1 fix #126, 2 SDK 58 plan with #99, 3 #107 distilled from a real analysis, 4 the `correct` section of #106.
 - L2 (decision): T3 does not wait for the SDK 58 plan: after T1, the report keeps about nine real non-Expo majors to prove the skill on.
 - L3 (evidence T1): the pin list is read from `bundledNativeModules.json` (`parseExpoPins`, collector `expoPins`). Pinned majors move to a new Expo subsection, "Expo-pinned packages with a newer major". A failed pin read exits 1 and withholds unclassified app rows from safe updates and majors. RED: `Export named 'parseExpoPins' not found`. GREEN: `bun test scripts/` 206 pass; eslint and prettier clean. Real run exit 0: 9 majors (was 15), and the six S1 packages are under the new Expo subsection. Also seen, outside this task: 5 new high node-forge advisories (GHSA-5x38-2vff-x55p, GHSA-7wch-p9px-956x, GHSA-8hrf-8g6f-7xwp, GHSA-hqq3-7jhf-c5jx, GHSA-jc66-7q78-782g), fixed in node-forge 1.4.2, which fits `@expo/cli`'s `^1.3.3`.
+- L4 (incident): the T1 worker left the worktree on a detached `origin/main`, so `a5ab1a65` was committed off-branch. Recovered with fast-forward merges; no history rewritten.
+- L5 (evidence T2): `references/principles.md` §10 "Encode repeated mistakes in structure"; `SKILL.md` trigger, activation line, a Decision Gates row, and "ten adapted principles". `benchmark-checklist` and hillclimb stay in #106. Prettier clean.
