@@ -137,10 +137,10 @@ Acceptance: an update that leaves `price` and `shipping_cost` unchanged keeps th
 - T8h | S3 | inline | done (28193ba, review approved L113) | #50: `common:errors.errorTitle` in 4 mobile files | Commit: not created.
 - T8i | S9 | inline | done (8bc5a4c, review approved L117) | Mount tests for the mobile `CaptchaProvider` and admin `useCaptcha` (L98, L101) | Commit: not created.
 - T10 | S1,S4,S11 | parent orchestration | in progress (L152, L159) | Code-complete pass; plan in Engram `odd/auth-hardening/t10-plan`; T10a done (L158), T10b done (L161); this session runs T10c (L162) | Commit: see T10a.1-T10a.2, T10b.
-- T10a.1 | S11 | inline | in progress | Trigger `validate_product_publication_economics`: status-only and other non-economic updates accept the snapshot; a price or shipping-cost change needs a snapshot fresh against current settings; pgTAP (release batch, suspension lift, shipment cancel with a stale snapshot) and Bruno | Own commit (high risk: money, SQL); maintainer applies.
-- T10a.2 | S11 | inline | pending | App edit flow: a price or shipping-cost change sends a fresh snapshot and returns the listing to review | Commit: not created.
+- T10a.1 | S11 | inline | done (L153-L154, applied L157) | Trigger `validate_product_publication_economics`: status-only and other non-economic updates accept the snapshot; a price or shipping-cost change needs a snapshot fresh against current settings; pgTAP (release batch, suspension lift, shipment cancel with a stale snapshot) and Bruno | Own commit (high risk: money, SQL); maintainer applies.
+- T10a.2 | S11 | inline | done (L155-L156) | App edit flow: a price or shipping-cost change sends a fresh snapshot and returns the listing to review | Commit: not created.
 - T10b | S4 | inline | done (L159-L160) | pgTAP for the block-1 account rules: a suspended seller cannot publish, edit or receive reservations (own purchases stay); lifting a suspension restores only account-held listings to their prior status; banned is final; clients cannot write `role` or `status` (own or other rows, signup or metadata, JWT claims); admin flows only as setup | Commit: f7d8a62b.
-- T10c.1 | S4,S8 | delegated writer (context backstop) | in progress (L162) | pgTAP for the `fn_close_account` blockers not covered yet: unreleased payout (`pending_payouts`), open dispute (`open_disputes`), refund in flight (`pending_refunds`), each refused with nothing changed, plus the allowed case once settled | Commit: not created.
+- T10c.1 | S4,S8 | delegated writer (context backstop) | done (L163-L164) | pgTAP for the `fn_close_account` blockers not covered yet: unreleased payout (`pending_payouts`), open dispute (`open_disputes`), refund in flight (`pending_refunds`), each refused with nothing changed, plus the allowed case once settled | Commit: a2744ca7 + follow-up (L164).
 - T10c.2 | S4 | delegated writer (context backstop) | pending | pgTAP for the other release callers under the T9e seller rule: `fn_reserve_products` stale cleanup and partial rollback, `fn_cancel_shipment`, and the refund path of `fn_finalize_checkout_recovery`; a suspended seller's listing is held, an active seller's returns to sale | Commit: not created.
 
 ## Log
@@ -1148,3 +1148,11 @@ No bug found (the rules hold locally), so there is nothing to apply.
 Stack note: this worktree had two local stacks (`246c0a8d...` from an earlier session and `30386468...` started in L159); the T10b mutation check and the worker's runs used the older one's database. All of them were rolled back. The parent reran both mutation checks against the current stack: T10b 19 of 44 fail; T10c.1 with the three blockers disabled 28 of 36 fail (the worker also saw 12, 8 and 8 with one blocker disabled at a time). Functions intact and pgTAP not left installed afterwards.
 Checks: `bun run test:db` Files=7, Tests=219, PASS.
 Risk: none (test-only).
+
+### L164 — T10c.1 review
+Native review of 4149a57b..a2744ca7 (reliability; tier high) approved and acknowledged; no blocking finding. Advisories:
+- WARNING: the fixture check `payout_run_status IS NULL` would also pass with no row in the view. Fixed: it now counts exactly one releasable completed row with no run.
+- WARNING: the refusal snapshot missed the other anonymization effects. Fixed: it now includes the username and the user's live listings, and every user has an unsold VERIFIED listing that a closure would soft-delete.
+- SUGGESTION: the T10c.1 row was still "in progress" because a tracker edit had not matched. Fixed here, along with the stale T10a.1 and T10a.2 rows.
+- SUGGESTION, kept as is: the control settles every blocker in one step. Each user has only its own blocker, and the exact reason asserted earlier shows that no other blocker fires first.
+Follow-up checks: `bun run test:db` Files=7, Tests=219, PASS. Mutation check on the current stack with the three blockers disabled: still 28 of 36 fail; the function is intact afterwards.

@@ -7,7 +7,7 @@ begin;
 select plan(36);
 
 -- Same economics formula as validate_product_publication_economics.
-create function pg_temp.make_product(p_id uuid, p_seller uuid)
+create function pg_temp.make_product(p_id uuid, p_seller uuid, p_status text default 'SOLD')
 returns void language sql as $$
   insert into public.products (
     id, name, description, price, category, condition, usage, images, status,
@@ -16,7 +16,7 @@ returns void language sql as $$
     publication_insurance_rate
   )
   select p_id, 'Test GPU', 'Test listing', 1000, 'GPU', 'used', 'gaming',
-    array['https://example.test/p.png'], 'SOLD', '{}'::jsonb, p_seller, 100, '06600', 'gpu_1',
+    array['https://example.test/p.png'], p_status::public.product_status_enum, '{}'::jsonb, p_seller, 100, '06600', 'gpu_1',
     round(100 * 100)::bigint + s.shipping_buffer_cents
       + ceil(round(1000 * 100)::numeric * public.normalize_publication_rate(s.insurance_rate))::bigint,
     public.normalize_publication_rate(s.service_fee_pct),
@@ -46,12 +46,16 @@ begin
   update public.orders set status = p_status where id = v_order;
 end $$;
 
--- What a refused closure must leave untouched, as one comparable string.
+-- What a refused closure must leave untouched, as one comparable string: the
+-- profile (deleted_at, username), the closure record, both emails, and the
+-- user's live listings (anonymization soft-deletes unsold ones).
 create function pg_temp.snapshot(p_user uuid) returns text language sql as $$
   select (select deleted_at is null from public.profiles where id = p_user)::text
+    || '|' || (select username from public.profiles where id = p_user)
     || '|' || (select count(*) from public.account_closures where user_id = p_user)::text
     || '|' || (select email from public.profiles_private where id = p_user)
     || '|' || (select email from auth.users where id = p_user)
+    || '|' || (select count(*) from public.products where seller_id = p_user and deleted_at is null)::text
 $$;
 
 insert into auth.users (
@@ -72,6 +76,11 @@ from (values
   ('d0000000-0000-4000-8000-000000000018'::uuid, 'counter_seller@test.local', 'blk_counter_seller'),
   ('d0000000-0000-4000-8000-000000000019'::uuid, 'counter_buyer@test.local', 'blk_counter_buyer')
 ) as u(id, email, username);
+
+-- Every user also has one unsold listing, which a closure would soft-delete.
+select pg_temp.make_product(('d0000000-0000-4000-8000-0000000f00' || u)::uuid,
+  ('d0000000-0000-4000-8000-0000000000' || u)::uuid, 'VERIFIED')
+from unnest(array['11', '12', '13', '14', '15', '16', '17']) as u;
 
 -- 11: seller with a completed Connect shipment and no payout run.
 select pg_temp.make_sale(1, 'd0000000-0000-4000-8000-000000000019', 'd0000000-0000-4000-8000-000000000011', 'completed', 'pi_test_unpaid');
@@ -111,15 +120,17 @@ select pg_temp.make_sale(7, 'd0000000-0000-4000-8000-000000000017', 'd0000000-00
 update public.orders set compensation_state = 'refund_pending' where id = 'd0000000-0000-4000-8000-0000000b0007';
 
 select is(
-  (select payout_run_status from public.admin_connect_payout_release_view where shipment_id = 'd0000000-0000-4000-8000-0000000c0001'),
-  null, 'fixture: the completed Connect shipment has no paid payout run');
+  (select count(*) from public.admin_connect_payout_release_view
+   where shipment_id = 'd0000000-0000-4000-8000-0000000c0001'
+     and status = 'completed' and release_amount_cents > 0 and payout_run_status is null),
+  1::bigint, 'fixture: the completed Connect shipment is releasable and has no payout run');
 
 -- 11: a completed Connect shipment without a paid payout run
 set local role service_role;
 select is((public.fn_close_account('d0000000-0000-4000-8000-000000000011'::uuid))->>'status', 'blocked', 'pending_payouts: a completed Connect shipment without a paid payout run refuses the closure');
 select is((public.fn_close_account('d0000000-0000-4000-8000-000000000011'::uuid))->>'reason', 'pending_payouts', 'pending_payouts: the answer names the reason (11)');
 reset role;
-select is(pg_temp.snapshot('d0000000-0000-4000-8000-000000000011'), 'true|0|payout_unpaid@test.local|payout_unpaid@test.local',
+select is(pg_temp.snapshot('d0000000-0000-4000-8000-000000000011'), 'true|blk_payout_unpaid|0|payout_unpaid@test.local|payout_unpaid@test.local|2',
   'pending_payouts: the refusal changed nothing (11)');
 
 -- 12: a payout run in pending_reconciliation
@@ -127,7 +138,7 @@ set local role service_role;
 select is((public.fn_close_account('d0000000-0000-4000-8000-000000000012'::uuid))->>'status', 'blocked', 'pending_payouts: a payout run in pending_reconciliation refuses the closure');
 select is((public.fn_close_account('d0000000-0000-4000-8000-000000000012'::uuid))->>'reason', 'pending_payouts', 'pending_payouts: the answer names the reason (12)');
 reset role;
-select is(pg_temp.snapshot('d0000000-0000-4000-8000-000000000012'), 'true|0|run_pending@test.local|run_pending@test.local',
+select is(pg_temp.snapshot('d0000000-0000-4000-8000-000000000012'), 'true|blk_run_pending|0|run_pending@test.local|run_pending@test.local|1',
   'pending_payouts: the refusal changed nothing (12)');
 
 -- 13: a payout run in reconciliation_needed
@@ -135,7 +146,7 @@ set local role service_role;
 select is((public.fn_close_account('d0000000-0000-4000-8000-000000000013'::uuid))->>'status', 'blocked', 'pending_payouts: a payout run in reconciliation_needed refuses the closure');
 select is((public.fn_close_account('d0000000-0000-4000-8000-000000000013'::uuid))->>'reason', 'pending_payouts', 'pending_payouts: the answer names the reason (13)');
 reset role;
-select is(pg_temp.snapshot('d0000000-0000-4000-8000-000000000013'), 'true|0|run_recon@test.local|run_recon@test.local',
+select is(pg_temp.snapshot('d0000000-0000-4000-8000-000000000013'), 'true|blk_run_recon|0|run_recon@test.local|run_recon@test.local|1',
   'pending_payouts: the refusal changed nothing (13)');
 
 -- 14: an open dispute as the buyer
@@ -143,7 +154,7 @@ set local role service_role;
 select is((public.fn_close_account('d0000000-0000-4000-8000-000000000014'::uuid))->>'status', 'blocked', 'open_disputes: an open dispute as the buyer refuses the closure');
 select is((public.fn_close_account('d0000000-0000-4000-8000-000000000014'::uuid))->>'reason', 'open_disputes', 'open_disputes: the answer names the reason (14)');
 reset role;
-select is(pg_temp.snapshot('d0000000-0000-4000-8000-000000000014'), 'true|0|dispute_buyer@test.local|dispute_buyer@test.local',
+select is(pg_temp.snapshot('d0000000-0000-4000-8000-000000000014'), 'true|blk_dispute_buyer|0|dispute_buyer@test.local|dispute_buyer@test.local|1',
   'open_disputes: the refusal changed nothing (14)');
 
 -- 15: a return_shipped dispute as the seller
@@ -151,7 +162,7 @@ set local role service_role;
 select is((public.fn_close_account('d0000000-0000-4000-8000-000000000015'::uuid))->>'status', 'blocked', 'open_disputes: a return_shipped dispute as the seller refuses the closure');
 select is((public.fn_close_account('d0000000-0000-4000-8000-000000000015'::uuid))->>'reason', 'open_disputes', 'open_disputes: the answer names the reason (15)');
 reset role;
-select is(pg_temp.snapshot('d0000000-0000-4000-8000-000000000015'), 'true|0|dispute_seller@test.local|dispute_seller@test.local',
+select is(pg_temp.snapshot('d0000000-0000-4000-8000-000000000015'), 'true|blk_dispute_seller|0|dispute_seller@test.local|dispute_seller@test.local|2',
   'open_disputes: the refusal changed nothing (15)');
 
 -- 16: a started cancellation with a pending refund
@@ -159,7 +170,7 @@ set local role service_role;
 select is((public.fn_close_account('d0000000-0000-4000-8000-000000000016'::uuid))->>'status', 'blocked', 'pending_refunds: a started cancellation with a pending refund refuses the closure');
 select is((public.fn_close_account('d0000000-0000-4000-8000-000000000016'::uuid))->>'reason', 'pending_refunds', 'pending_refunds: the answer names the reason (16)');
 reset role;
-select is(pg_temp.snapshot('d0000000-0000-4000-8000-000000000016'), 'true|0|refund_op@test.local|refund_op@test.local',
+select is(pg_temp.snapshot('d0000000-0000-4000-8000-000000000016'), 'true|blk_refund_op|0|refund_op@test.local|refund_op@test.local|1',
   'pending_refunds: the refusal changed nothing (16)');
 
 -- 17: an order still compensating a payment
@@ -167,7 +178,7 @@ set local role service_role;
 select is((public.fn_close_account('d0000000-0000-4000-8000-000000000017'::uuid))->>'status', 'blocked', 'pending_refunds: an order still compensating a payment refuses the closure');
 select is((public.fn_close_account('d0000000-0000-4000-8000-000000000017'::uuid))->>'reason', 'pending_refunds', 'pending_refunds: the answer names the reason (17)');
 reset role;
-select is(pg_temp.snapshot('d0000000-0000-4000-8000-000000000017'), 'true|0|compensation@test.local|compensation@test.local',
+select is(pg_temp.snapshot('d0000000-0000-4000-8000-000000000017'), 'true|blk_compensation|0|compensation@test.local|compensation@test.local|1',
   'pending_refunds: the refusal changed nothing (17)');
 
 -- Allowed control: settle each blocker and the same users close ------------------
