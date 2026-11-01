@@ -14,7 +14,7 @@ Roadmap item #156 (part of #127), before #130. Worktree `C:/dev/School-portal-wo
 
 - [x] T1 (S2, S3, S4): (445df787) pin Node 24.22.2 in `.nvmrc` and Bun 1.4.4 in `packageManager`, align the four `eas.json` profiles, set up Node from `.nvmrc` in the dependency report workflow (it runs Expo CLI with `npx`), add the guard test, and document the rule in `docs/dependencies.md`.
 - [x] T2 (S1, S3): add the Runtimes section to `scripts/dependency-report.ts`, test-first.
-- [ ] T3: maintainer installs Node 24.22.2 (`nvm install 24.22.2`, `nvm use 24.22.2`) and Bun 1.4.4 (`bun upgrade`); then run the hooks and `bun test` on the new runtimes.
+- [x] T3: maintainer installs Node 24.22.2 (`nvm install 24.22.2`, `nvm use 24.22.2`) and Bun 1.4.4 (`bun upgrade`); then run the hooks and `bun test` on the new runtimes.
 
 ## Log
 
@@ -22,3 +22,4 @@ Roadmap item #156 (part of #127), before #130. Worktree `C:/dev/School-portal-wo
 - L2: State on 2026-10-31. Local Node 22.19.0, `eas.json` Node 22.13.1 in four profiles, no `.nvmrc` or `engines`. Bun 1.4.2 in `packageManager` and `eas.json` (CI reads `packageManager` through `oven-sh/setup-bun`). Latest releases: Node 26.13.0 (LTS "Lithium" since 2026-10-28, end 2029-04-30), Node 24.22.2 (LTS "Krypton", maintenance since 2026-10-20, end 2028-04-30), Node 22.23.4 (maintenance, end 2027-04-30), Bun 1.4.4 (2026-10-22). Sources: https://nodejs.org/dist/index.json, https://raw.githubusercontent.com/nodejs/Release/main/schedule.json, the npm registry. `lint-staged` 17 needs Node >= 22.22.1. Expo SDK 58 accepts Node `^22.13.0 || ^24.3.0 || ^26.0.0`.
 - L3: Decision: Node 24 now and Node 26 about three months after its LTS date, near the Expo SDK 58 upgrade (#132). No `engines.node`: `.nvmrc` is the only Node source, Bun does not enforce `engines`, and a second copy would need its own guard.
 - L4: T1 checks: `bun run lint` 0, `bun run typecheck` 0, `bun test` 4567 pass / 0 fail. T2: RED observed (missing exports), then `scripts/dependency-report.test.ts` 57 pass. Rules in the report: Node patch behind (flagged "security release" when any newer patch of the line has `security: true` in `index.json`), line end within 180 days or past, new LTS line once 90 days past its LTS date (earlier as a note), Bun release once 3 days old (earlier as a note). A pinned Node line missing from the schedule fails the runtimes check (exit 1).
+- L5: "listo master ya instale y reincie todo, cornimma esto si quieres y si si, mergea los dos". On Node v24.22.2 and Bun 1.4.4: `bun install --frozen-lockfile` OK, `bun run lint` 0, `bun run typecheck` 0, `bun test` 4584 pass / 0 fail, `bun scripts/dependency-report.ts` exit 0 ("runtimes up to date"). The pre-commit hook (`lint-staged`) ran on the commit that records this entry.
