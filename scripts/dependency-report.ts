@@ -62,6 +62,7 @@ export type ExpoRegistry = { version: string; releasedAt: string };
 export type ReportInput = {
   outdated: Result<OutdatedRow[]>;
   expoCheck: Result<ExpoMismatch[]>;
+  pins: Result<string[]>;
   audit: Result<AuditResult>;
   expo: Result<{ installed: string; latest: ExpoRegistry }>;
   repositories: Result<Record<string, string | undefined>>;
@@ -70,6 +71,7 @@ export type ReportInput = {
 export type Collectors = {
   outdated: () => Promise<{ workspace: string; text: string }[]>;
   expoCheck: () => Promise<string>;
+  expoPins: () => Promise<string>;
   audit: () => Promise<{ json: string; workflow: string }>;
   expoRegistry: () => Promise<string>;
   installedExpo: () => Promise<string>;
@@ -143,6 +145,21 @@ export function parseExpoCheck(text: string): ExpoMismatch[] {
     actual: dependency.actualVersion,
     expected: dependency.expectedVersionOrRange,
   }));
+}
+
+// `bundledNativeModules.json` of the installed `expo` maps each package the SDK
+// pins to its version range; only the names matter here.
+export function parseExpoPins(json: string): string[] {
+  const parsed: unknown = JSON.parse(json);
+  if (
+    typeof parsed !== 'object' ||
+    parsed === null ||
+    Array.isArray(parsed) ||
+    !Object.keys(parsed).length
+  ) {
+    throw new Error('no pinned packages in bundledNativeModules.json');
+  }
+  return Object.keys(parsed);
 }
 
 // The audit job passes accepted exceptions as `--ignore=<id>` flags; reading
@@ -258,13 +275,33 @@ export function expoSdkStatus(
   };
 }
 
-function isExpoManaged(row: OutdatedRow, mismatches: Set<string>): boolean {
+function isExpoManaged(
+  row: OutdatedRow,
+  mismatches: Set<string>,
+  pins: Set<string>,
+): boolean {
   if (row.workspace !== FRONTEND_WORKSPACE) return false;
   return (
     row.name === 'expo' ||
     row.name === 'react-native' ||
     row.name.startsWith('expo-') ||
-    mismatches.has(row.name)
+    mismatches.has(row.name) ||
+    pins.has(row.name)
+  );
+}
+
+// Without the pin list an app package may or may not be pinned, so it is
+// neither Expo-managed nor safe to list for a one-by-one update.
+function isUnclassified(
+  row: OutdatedRow,
+  mismatches: Set<string>,
+  pins: Set<string>,
+  pinsKnown: boolean,
+): boolean {
+  return (
+    !pinsKnown &&
+    row.workspace === FRONTEND_WORKSPACE &&
+    !isExpoManaged(row, mismatches, pins)
   );
 }
 
@@ -306,8 +343,18 @@ export function buildDependencyReport(input: ReportInput, now: Date): string {
   const mismatches = input.expoCheck.ok ? input.expoCheck.value : [];
   const mismatchNames = new Set(mismatches.map((item) => item.name));
   const outdated = input.outdated.ok ? input.outdated.value : [];
-  const managed = outdated.filter((row) => isExpoManaged(row, mismatchNames));
-  const others = outdated.filter((row) => !isExpoManaged(row, mismatchNames));
+  const pins = new Set(input.pins.ok ? input.pins.value : []);
+  const managed = outdated.filter((row) =>
+    isExpoManaged(row, mismatchNames, pins),
+  );
+  const unclassified = outdated.filter((row) =>
+    isUnclassified(row, mismatchNames, pins, input.pins.ok),
+  );
+  const others = outdated.filter(
+    (row) =>
+      !isExpoManaged(row, mismatchNames, pins) &&
+      !isUnclassified(row, mismatchNames, pins, input.pins.ok),
+  );
   const safe = others.filter((row) => row.update !== row.current).sort(byName);
   const allMajors = others
     .filter((row) => isMajorChange(row.current, row.latest))
@@ -379,6 +426,11 @@ export function buildDependencyReport(input: ReportInput, now: Date): string {
       );
     }
   }
+  if (input.outdated.ok && !input.pins.ok) {
+    parts.push(
+      `${failed(input.pins.error)}. ${unclassified.length} app packages (\`${FRONTEND_WORKSPACE}\`) could not be classified as Expo-pinned or not, so they are not listed as majors or safe updates.`,
+    );
+  }
 
   if (held.length) {
     parts.push('## Held back on purpose');
@@ -443,6 +495,27 @@ export function buildDependencyReport(input: ReportInput, now: Date): string {
       ),
     );
     parts.push('Update with `npx expo install --fix` from `apps/frontend`.');
+  }
+  const newerMajor = managed
+    .filter(
+      (row) =>
+        row.name !== 'expo' &&
+        row.name !== 'react-native' &&
+        !row.name.startsWith('expo-') &&
+        isMajorChange(row.current, row.latest),
+    )
+    .sort(byName);
+  if (newerMajor.length) {
+    parts.push('### Expo-pinned packages with a newer major');
+    parts.push(
+      table(
+        ['Package', 'Current', 'Latest'],
+        newerMajor.map((row) => [row.name, row.current, row.latest]),
+      ),
+    );
+    parts.push(
+      'These move with the next Expo SDK upgrade, not one by one: the SDK pins their version. Follow the SDK procedure (`npx expo install --fix` from `apps/frontend`).',
+    );
   }
 
   parts.push('## Security (bun audit)');
@@ -527,6 +600,9 @@ export async function runReport(
   const expoCheck = await settle('expo install --check', errors, async () =>
     parseExpoCheck(await collectors.expoCheck()),
   );
+  const pins = await settle('expo pins', errors, async () =>
+    parseExpoPins(await collectors.expoPins()),
+  );
   const audit = await settle('bun audit', errors, async () => {
     const { json, workflow } = await collectors.audit();
     return parseAudit(json, parseAuditIgnores(workflow));
@@ -539,13 +615,15 @@ export async function runReport(
   const mismatchNames = new Set(
     expoCheck.ok ? expoCheck.value.map((item) => item.name) : [],
   );
+  const pinNames = new Set(pins.ok ? pins.value : []);
   const majorNames = outdated.ok
     ? [
         ...new Set(
           outdated.value
             .filter(
               (row) =>
-                !isExpoManaged(row, mismatchNames) &&
+                !isExpoManaged(row, mismatchNames, pinNames) &&
+                !isUnclassified(row, mismatchNames, pinNames, pins.ok) &&
                 isMajorChange(row.current, row.latest),
             )
             .map((row) => row.name),
@@ -557,7 +635,7 @@ export async function runReport(
   );
 
   const markdown = buildDependencyReport(
-    { outdated, expoCheck, audit, expo, repositories },
+    { outdated, expoCheck, pins, audit, expo, repositories },
     now,
   );
   return { markdown, exitCode: errors.length ? 1 : 0, errors };
@@ -613,6 +691,20 @@ export const realCollectors: Collectors = {
       ['npx', 'expo', 'install', '--check', '--json'],
       join(ROOT, 'apps', 'frontend'),
       [0, 1],
+    ),
+  expoPins: () =>
+    Promise.resolve(
+      readFileSync(
+        join(
+          ROOT,
+          'apps',
+          'frontend',
+          'node_modules',
+          'expo',
+          'bundledNativeModules.json',
+        ),
+        { encoding: 'utf8' },
+      ),
     ),
   // With --json bun lists every advisory and exits 1 on unignored findings;
   // the report filters them itself.

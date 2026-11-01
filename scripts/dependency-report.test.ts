@@ -9,6 +9,7 @@ import {
   parseAudit,
   parseAuditIgnores,
   parseExpoCheck,
+  parseExpoPins,
   parseExpoRegistry,
   parseOutdated,
   runReport,
@@ -100,6 +101,21 @@ describe('parseExpoCheck', () => {
 
   test('throws when the output has no JSON', () => {
     expect(() => parseExpoCheck('boom')).toThrow();
+  });
+});
+
+describe('parseExpoPins', () => {
+  test('lists the package names the installed SDK pins', () => {
+    const pins = parseExpoPins(fixture('expo-pins.json'));
+    expect(pins).toContain('react-native-gesture-handler');
+    expect(pins).toContain('@stripe/stripe-react-native');
+    expect(pins).toHaveLength(11);
+  });
+
+  test('throws on output that is not a pin list', () => {
+    expect(() => parseExpoPins('boom')).toThrow();
+    expect(() => parseExpoPins('[]')).toThrow();
+    expect(() => parseExpoPins('{}')).toThrow();
   });
 });
 
@@ -222,6 +238,7 @@ function baseInput(overrides: Partial<ReportInput> = {}): ReportInput {
       ],
     },
     expoCheck: { ok: true, value: [] },
+    pins: { ok: true, value: parseExpoPins(fixture('expo-pins.json')) },
     audit: {
       ok: true,
       value: parseAudit(fixture('audit.json'), parseAuditIgnores(workflow)),
@@ -336,12 +353,117 @@ describe('buildDependencyReport', () => {
       '| lucide-react | admin-web | 0.577.0 | 1.61.0 | https://github.com/lucide-icons/lucide/releases |',
     );
     expect(majors).toContain('https://github.com/TanStack/table/releases');
-    expect(majors).toContain(
-      'https://www.npmjs.com/package/react-native-gesture-handler',
+    expect(majors).toContain('https://www.npmjs.com/package/@eslint/js');
+  });
+
+  const row = (
+    name: string,
+    workspace: string,
+    current: string,
+    update: string,
+    latest: string,
+  ) => ({ name, workspace, dev: false, current, update, latest });
+
+  test('keeps pinned packages with a newer major out of safe updates and majors, and shows them in the Expo section', () => {
+    const report = buildDependencyReport(
+      baseInput({
+        outdated: {
+          ok: true,
+          value: [
+            row(
+              'react-native-gesture-handler',
+              '@selene/frontend',
+              '2.32.0',
+              '2.32.0',
+              '3.4.0',
+            ),
+            row(
+              'react-native-webview',
+              '@selene/frontend',
+              '13.16.1',
+              '13.16.2',
+              '14.0.1',
+            ),
+            row('left-pad', '@selene/frontend', '1.0.0', '1.0.0', '2.0.0'),
+          ],
+        },
+      }),
+      NOW,
     );
-    expect(majors).toContain(
-      'https://www.npmjs.com/package/@stripe/stripe-react-native',
+    for (const title of [
+      'Safe updates (patch and minor)',
+      'Majors available',
+    ]) {
+      expect(section(report, title)).not.toContain(
+        'react-native-gesture-handler',
+      );
+      expect(section(report, title)).not.toContain('react-native-webview');
+    }
+    const expo = section(report, 'Expo');
+    expect(expo).toContain('| react-native-gesture-handler | 2.32.0 | 3.4.0 |');
+    expect(expo).toContain('| react-native-webview | 13.16.1 | 14.0.1 |');
+    expect(expo).toContain('SDK upgrade');
+    expect(section(report, 'Majors available')).toContain('| left-pad |');
+    expect(report.split(/\r?\n/)[2]).toMatch(/^0 safe updates, 1 majors, /);
+  });
+
+  test('still lists a pinned package of another workspace as a major', () => {
+    const majors = section(
+      buildDependencyReport(
+        baseInput({
+          outdated: {
+            ok: true,
+            value: [
+              row(
+                'react-native-gesture-handler',
+                'admin-web',
+                '2.0.0',
+                '2.0.0',
+                '3.0.0',
+              ),
+            ],
+          },
+        }),
+        NOW,
+      ),
+      'Majors available',
     );
+    expect(majors).toContain('| react-native-gesture-handler | admin-web |');
+  });
+
+  test('withholds app packages from the update lists when the pin list could not be read', () => {
+    const report = buildDependencyReport(
+      baseInput({
+        pins: { ok: false, error: 'pin list missing' },
+        outdated: {
+          ok: true,
+          value: [
+            row(
+              'react-native-gesture-handler',
+              '@selene/frontend',
+              '2.32.0',
+              '2.32.0',
+              '3.4.0',
+            ),
+            row(
+              'expo-image',
+              '@selene/frontend',
+              '57.0.5',
+              '57.0.5',
+              '58.0.17',
+            ),
+            row('lucide-react', 'admin-web', '0.577.0', '0.577.0', '1.61.0'),
+          ],
+        },
+      }),
+      NOW,
+    );
+    const majors = section(report, 'Majors available');
+    expect(majors).not.toContain('react-native-gesture-handler');
+    expect(majors).toContain('| lucide-react | admin-web |');
+    expect(majors).toContain('could not be classified');
+    expect(majors).toContain('Could not check: pin list missing');
+    expect(report.split(/\r?\n/)[2]).toMatch(/^0 safe updates, 1 majors, /);
   });
 
   test('moves held-back majors to their own list with the reason', () => {
@@ -459,6 +581,7 @@ describe('runReport', () => {
       { workspace: 'root', text: fixture('outdated-root.stdout') },
     ],
     expoCheck: async () => fixture('expo-check.stdout'),
+    expoPins: async () => fixture('expo-pins.json'),
     audit: async () => ({ json: fixture('audit.json'), workflow }),
     expoRegistry: async () => fixture('registry-expo.json'),
     installedExpo: async () => '57.0.31',
@@ -491,5 +614,40 @@ describe('runReport', () => {
     expect(result.markdown).toContain('Could not check: network down');
     expect(result.markdown).toContain('@tanstack/react-query');
     expect(result.markdown).toContain('No high or critical vulnerabilities');
+  });
+
+  test('exits 1 and does not list app packages as majors when the pin list fails', async () => {
+    const result = await runReport(
+      collectors({
+        expoPins: async () => {
+          throw new Error('no bundledNativeModules.json');
+        },
+      }),
+      NOW,
+    );
+    expect(result.exitCode).toBe(1);
+    expect(result.errors).toEqual(['expo pins: no bundledNativeModules.json']);
+    expect(result.markdown).toContain(
+      'Could not check: no bundledNativeModules.json',
+    );
+    const majors = section(result.markdown, 'Majors available');
+    expect(majors).not.toContain('react-native-gesture-handler');
+    expect(majors).not.toContain('@shopify/flash-list');
+    expect(majors).toContain('| lucide-react | admin-web |');
+  });
+
+  test('looks up changelogs only for packages the report lists as majors', async () => {
+    let asked: string[] = [];
+    await runReport(
+      collectors({
+        repositories: async (names) => {
+          asked = names;
+          return {};
+        },
+      }),
+      NOW,
+    );
+    expect(asked).not.toContain('react-native-gesture-handler');
+    expect(asked).toContain('lucide-react');
   });
 });
