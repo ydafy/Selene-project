@@ -746,6 +746,25 @@ describe('runReport', () => {
     expect(result.markdown).toContain('Could not check: github answered 500');
     expect(result.markdown).toContain('No high or critical vulnerabilities');
   });
+
+  test('exits 1 when .nvmrc pins a Node line the schedule does not know', async () => {
+    const result = await runReport(
+      collectors({
+        runtimePins: async () => ({
+          nvmrc: '23.1.0\n',
+          packageManager: 'bun@1.4.4',
+        }),
+      }),
+      NOW,
+    );
+    expect(result.exitCode).toBe(1);
+    expect(result.errors).toEqual([
+      'runtimes: Node 23 is not in the release schedule',
+    ]);
+    expect(result.markdown).toContain(
+      'Could not check: Node 23 is not in the release schedule',
+    );
+  });
 });
 
 describe('runtime parsers', () => {
