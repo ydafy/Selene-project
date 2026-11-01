@@ -136,10 +136,12 @@ Acceptance: an update that leaves `price` and `shipping_cost` unchanged keeps th
 - T8g | S6,S8 | delegated writer (context backstop) | done (2c2b15d, 5807db4, 3b5e962; reviews approved; applied L123) | Server reserves the `deleted_` username prefix for closed accounts (migration; maintainer applies); own commit (high risk: SQL) | Commit: not created.
 - T8h | S3 | inline | done (28193ba, review approved L113) | #50: `common:errors.errorTitle` in 4 mobile files | Commit: not created.
 - T8i | S9 | inline | done (8bc5a4c, review approved L117) | Mount tests for the mobile `CaptchaProvider` and admin `useCaptcha` (L98, L101) | Commit: not created.
-- T10 | S1,S4,S11 | parent orchestration | in progress (L152, L159) | Code-complete pass; plan in Engram `odd/auth-hardening/t10-plan`; T10a done (L158); this session runs T10b only | Commit: see T10a.1-T10a.2, T10b.
-- T10a.1 | S11 | inline | in progress | Trigger `validate_product_publication_economics`: status-only and other non-economic updates accept the snapshot; a price or shipping-cost change needs a snapshot fresh against current settings; pgTAP (release batch, suspension lift, shipment cancel with a stale snapshot) and Bruno | Own commit (high risk: money, SQL); maintainer applies.
-- T10a.2 | S11 | inline | pending | App edit flow: a price or shipping-cost change sends a fresh snapshot and returns the listing to review | Commit: not created.
+- T10 | S1,S4,S11 | parent orchestration | in progress (L152, L159) | Code-complete pass; plan in Engram `odd/auth-hardening/t10-plan`; T10a done (L158), T10b done (L161); this session runs T10c (L162) | Commit: see T10a.1-T10a.2, T10b.
+- T10a.1 | S11 | inline | done (L153-L154, applied L157) | Trigger `validate_product_publication_economics`: status-only and other non-economic updates accept the snapshot; a price or shipping-cost change needs a snapshot fresh against current settings; pgTAP (release batch, suspension lift, shipment cancel with a stale snapshot) and Bruno | Own commit (high risk: money, SQL); maintainer applies.
+- T10a.2 | S11 | inline | done (L155-L156) | App edit flow: a price or shipping-cost change sends a fresh snapshot and returns the listing to review | Commit: not created.
 - T10b | S4 | inline | done (L159-L160) | pgTAP for the block-1 account rules: a suspended seller cannot publish, edit or receive reservations (own purchases stay); lifting a suspension restores only account-held listings to their prior status; banned is final; clients cannot write `role` or `status` (own or other rows, signup or metadata, JWT claims); admin flows only as setup | Commit: f7d8a62b.
+- T10c.1 | S4,S8 | delegated writer (context backstop) | done (L163-L164) | pgTAP for the `fn_close_account` blockers not covered yet: unreleased payout (`pending_payouts`), open dispute (`open_disputes`), refund in flight (`pending_refunds`), each refused with nothing changed, plus the allowed case once settled | Commit: a2744ca7 + follow-up (L164).
+- T10c.2 | S4 | delegated writer (context backstop) | done (L165-L166) | pgTAP for the other release callers under the T9e seller rule: `fn_reserve_products` stale cleanup and partial rollback, `fn_cancel_shipment`, and the refund path of `fn_finalize_checkout_recovery`; a suspended seller's listing is held, an active seller's returns to sale | Commit: 208a8738.
 
 ## Log
 
@@ -1132,3 +1134,41 @@ Risk: none (test-only; it closes the item 6 gap for these rules).
 
 ### L160 — T10b review
 Native review of 34bc46fa..f7d8a62b (reliability; tier high) approved and acknowledged; no blocking finding. Two suggestions, not blocking: the Auth metadata step (`account_rules.test.sql:308-315`) updates the row as postgres, so it proves the `auth.users` update trigger ignores metadata but not GoTrue's own handling of `updateUser`; and the T10b row cited this entry before it existed (fixed here). No bug found, so no migration. Slice T10b: 616e2fd9 (L158), f7d8a62b and this entry; one PR.
+
+### L161 — T10b closed
+PR #152 merged (4149a57b) after CI `test` passed. T10b is on main with an approved native review; no bug found, so no migration and nothing to apply. Findings outside T10b, recorded as issues: #153 (four functions write `system_logs` in an EXCEPTION handler and then re-raise, so the log row is rolled back; reproduced locally with `fn_admin_update_user_status`) and #154 (two AFTER UPDATE triggers on `auth.users` run `fn_on_auth_user_updated`, so every sign-in rewrites `profiles_private`; both present in production per the Supabase MCP). This entry is commit-only on local branch `docs/auth-t10b-close`; it goes out with the next slice. Next: T10c (plan in Engram `odd/auth-hardening/t10-plan`).
+
+### L162 — T10c starts
+User request (verbatim): "contnua master, nokmas que trate lo mas reciente que este en main porfa, y lees d enuevo agnets md"
+Branch `test/auth-t10c-closure-release` from origin/main 4149a57b (newest) with the L161 close cherry-picked (5f457c3b). AGENTS.md reread: a fix in `fn_cancel_shipment` would also need TLC on `docs/formal/shipment-transfer-cancellation/`; the roadmap rule (`docs/roadmaps.md`) postdates the T10 plan, which stays in this tracker and Engram unless the maintainer asks to move it. No open issue covers T10c; #103 (local function grants) belongs to T10f. Split: T10c.1 closure blockers, T10c.2 release callers, each its own commit and review.
+
+### L163 — T10c.1: closure blockers
+Worker: `supabase/tests/database/account_closure_blockers.test.sql`, 36 assertions. `pending_payouts` covers three cases: a completed Connect shipment with no payout run, a run in `pending_reconciliation`, and a run in `reconciliation_needed`. `open_disputes` covers a buyer with an `open` dispute and a seller with a `return_shipped` one. `pending_refunds` covers a started cancellation with a `pending` refund and an order with `compensation_state = 'refund_pending'`. Each refusal asserts `blocked`, its exact reason (so no earlier blocker fires), and that nothing changed (`deleted_at` NULL, no `account_closures` row, emails intact). Control: once each blocker is settled (paid run mapped to the shipment, runs paid, disputes resolved, failed refund resolved by an admin, compensation `refunded`), the same user closes with `closed` and `deleted_at` set. Fixture note: the dispute triggers need the service-role claim and move the order to `dispute` and the listing to `IN_DISPUTE`, so the fixture puts the sale back to finished to let only the dispute block.
+No bug found (the rules hold locally), so there is nothing to apply.
+Stack note: this worktree had two local stacks (`246c0a8d...` from an earlier session and `30386468...` started in L159); the T10b mutation check and the worker's runs used the older one's database. All of them were rolled back. The parent reran both mutation checks against the current stack: T10b 19 of 44 fail; T10c.1 with the three blockers disabled 28 of 36 fail (the worker also saw 12, 8 and 8 with one blocker disabled at a time). Functions intact and pgTAP not left installed afterwards.
+Checks: `bun run test:db` Files=7, Tests=219, PASS.
+Risk: none (test-only).
+
+### L164 — T10c.1 review
+Native review of 4149a57b..a2744ca7 (reliability; tier high) approved and acknowledged; no blocking finding. Advisories:
+- WARNING: the fixture check `payout_run_status IS NULL` would also pass with no row in the view. Fixed: it now counts exactly one releasable completed row with no run.
+- WARNING: the refusal snapshot missed the other anonymization effects. Fixed: it now includes the username and the user's live listings, and every user has an unsold VERIFIED listing that a closure would soft-delete.
+- SUGGESTION: the T10c.1 row was still "in progress" because a tracker edit had not matched. Fixed here, along with the stale T10a.1 and T10a.2 rows.
+- SUGGESTION, kept as is: the control settles every blocker in one step. Each user has only its own blocker, and the exact reason asserted earlier shows that no other blocker fires first.
+Follow-up checks: `bun run test:db` Files=7, Tests=219, PASS. Mutation check on the current stack with the three blockers disabled: still 28 of 36 fail; the function is intact afterwards.
+
+### L165 — T10c.2: release callers
+Worker: `supabase/tests/database/release_callers.test.sql`, 50 assertions; users are a suspended seller, an active seller, a buyer, and an active seller whom a trigger suspends mid-call.
+- `fn_reserve_products` stale pre-release: an expired reservation of a suspended seller is held (`HIDDEN:VERIFIED`, `reserved_at` cleared) and the cart returns `SOME_PRODUCTS_UNAVAILABLE`. An active seller's expired reservation returns to sale and this call reserves it. Mixed carts end held for the suspended seller and VERIFIED for the active one, and fresh reservations inside and outside the cart are unchanged.
+- `fn_reserve_products` partial rollback: the tentatively reserved listing of an active seller returns to VERIFIED, not held, and nothing stays RESERVED. When a trigger suspends the seller right after the reservation (the same stand-in as L141; a real race needs two sessions), the rollback holds the listing.
+- `fn_cancel_shipment`: anon and authenticated get 42501 and nothing is cancelled. The cancelled shipment's listing returns to VERIFIED for an active seller and is held for a suspended one. The order's other shipment and another order's listings are unchanged (`order_items.shipment_id` is unique, so there is one listing per shipment).
+- `fn_finalize_checkout_recovery` refund: anon and authenticated get 42501. Active, suspended, and two-seller orders end `refunded`, with each reserved listing VERIFIED or held according to its seller. A non-reserved listing of the order and a reserved listing in no order are unchanged.
+The suspension is set on `profiles_private.status` directly (the rule reads that column; `suspension_hold` covers the RPC route). Banned is not run separately because the helper treats it like suspended (`COALESCE(pp.status, 'active') = 'active'`).
+No bug found, so there is nothing to apply.
+Parent mutation check (current stack, rolled back): `fn_release_listings` never holding fails 6 of 50 (one hold assertion per caller path); always holding fails 10 of 50. The function is intact and pgTAP is not left installed.
+Checks: `bun run test:db` Files=8, Tests=269, PASS.
+Risk: none (test-only). TLC not run: `fn_cancel_shipment` is unchanged.
+
+### L166 — T10c.2 review; slice T10c
+Native review of 383b0bd0..208a8738 (reliability; tier high) approved and acknowledged; no blocking finding. One suggestion, kept as is: the bystander fingerprint (`release_callers.test.sql:49`) includes `updated_at`, which cannot change inside the test's single transaction because `now()` is fixed. Status, hold and `reserved_at` still detect a change.
+Slice T10c: 5f457c3b (L161), the L162 tracker entry, a2744ca7, 383b0bd0, 208a8738 and this entry. That is about 640 authored lines, over the ~400 target, so they ship as one PR whose commits were each reviewed on their own (each under 400 lines). The slice boundary is the end of T10c.
