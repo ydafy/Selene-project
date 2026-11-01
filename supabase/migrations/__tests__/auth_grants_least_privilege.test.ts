@@ -82,9 +82,10 @@ describe('auth grants least privilege migration', () => {
       expect(grant).not.toContain('delete');
       expect(grant).not.toContain('truncate');
     }
-    const privateGrant = statements.find((s) =>
-      s.startsWith('grant select on table public.profiles_private'),
+    const privateGrants = grants.filter((s) =>
+      s.includes('public.profiles_private'),
     );
-    expect(privateGrant).toBeDefined();
+    expect(privateGrants).toHaveLength(1);
+    expect(privateGrants[0]).toStartWith('grant select on table');
   });
 });

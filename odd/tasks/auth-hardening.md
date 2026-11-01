@@ -144,7 +144,7 @@ Acceptance: an update that leaves `price` and `shipping_cost` unchanged keeps th
 - T10c.2 | S4 | delegated writer (context backstop) | done (L165-L166) | pgTAP for the other release callers under the T9e seller rule: `fn_reserve_products` stale cleanup and partial rollback, `fn_cancel_shipment`, and the refund path of `fn_finalize_checkout_recovery`; a suspended seller's listing is held, an active seller's returns to sale | Commit: 208a8738.
 - T10d | S1,S4 | inline | done (L168-L169) | Roadmap #163: CI job `db-test` starts the local stack and runs `supabase test db` on every PR; `supabase/AGENTS.md` updated | Commit: 391912c7.
 - T10e | S1 | inline | done (L170) | Roadmap #164: frontend typecheck at zero on Windows (OTP `textInputStyle` typed as the library declares it) | Commit: 9dcf0bc0.
-- T10f | S4,S10 | delegated writer (context backstop) | in progress (L172) | Roadmap #165 (part of #122): narrow `anon` and `authenticated` grants on the auth tables and admin views to the matrix in L172; pgTAP per role; maintainer applies the migration | Commit: not created.
+- T10f | S4,S10 | delegated writer (context backstop) | in progress (L172) | Roadmap #165 (part of #122): narrow `anon` and `authenticated` grants on the auth tables and admin views to the matrix in L172; pgTAP per role; maintainer applies the migration | Commit: a49e1324 + follow-up (L174).
 
 ## Log
 
@@ -1233,3 +1233,11 @@ Tests the new grants made wrong:
 GREEN: `supabase db reset`, then `bun run test:db` Files=9, Tests=313, PASS; `bun test supabase` 2789 pass (worker); `bun test supabase/migrations` 830 pass (parent); Bruno full collection 594 of 597, and the 3 failures are the known `dispatch-push-run` ones (L144). The profile, verification and admin requests pass.
 Risk: item 2 (security: grants) and item 3 (a client relying on a revoked privilege would break). Usage mapped in L172; nothing in the matrix broke on the local stack.
 Migration to apply: `supabase/migrations/20261101120000_auth_grants_least_privilege.sql` (grants only, no schema change, so `db:types` is not needed).
+
+### L174 — T10f review
+Native review of 63abca56..a49e1324 (risk, reliability; tier high) approved and acknowledged; no blocking finding.
+- WARNING R3-001, fixed: the structural test "never writes on profiles_private" would have passed with a `GRANT UPDATE` on `profiles_private`. It now requires the only grant that names `profiles_private` to be the SELECT. Proof: with an UPDATE grant injected into a copy of the migration, 1 of 4 tests fails; with the original migration, 4 pass.
+- Suggestions, kept as is:
+  - R1-001 (migration lines 34-41): the SELECT grants rely on RLS for the rows, as the comment says.
+  - R3-002 (structural test line 56): the relation regex is loose.
+  - R3-003 (pgTAP lines 128-142): the admin view checks run on views with few or no rows; the matrix assertions cover the privileges.
