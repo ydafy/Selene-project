@@ -169,7 +169,9 @@ describe('Connect money-flow SQL guards', () => {
     expect(indexSource).toContain(
       "select('shipping_buffer_cents, insurance_rate, service_fee_pct')",
     );
-    expect(indexSource).toContain('calculateEstimatedSellerShippingDeductionCents');
+    expect(indexSource).toContain(
+      'calculateEstimatedSellerShippingDeductionCents',
+    );
     // Each product allocation carries its own shipping deduction.
     expect(indexSource).toContain('shippingCents: product.shippingCents');
     // The compact allocation row the webhook reassembles keeps shippingCents.
@@ -198,16 +200,6 @@ describe('Connect money-flow SQL guards', () => {
     expect(sql.indexOf('stripe_payment_intent_id IS NOT NULL')).toBeLessThan(
       sql.indexOf('SHIPMENT_NOT_CONNECT'),
     );
-    expect(sql).not.toMatch(/wallets|wallet_transactions/);
-  });
-
-  it('shipment refund completion refuses Connect shipments and writes no wallet rows', () => {
-    const sql = readSql(
-      'supabase/queries/shipments/fn_complete_shipment_refund.sql',
-    );
-
-    expect(sql).toContain('stripe_payment_intent_id IS NOT NULL');
-    expect(sql).toContain('CONNECT_REFUND_REQUIRES_STRIPE');
     expect(sql).not.toMatch(/wallets|wallet_transactions/);
   });
 
@@ -377,7 +369,9 @@ describe('Connect money-flow SQL guards', () => {
     expect(sql).toContain(
       'Do not mark a run failed until an operator confirms in Stripe that no payout',
     );
-    expect(sql).toContain('CREATE TEMP TABLE verified_no_stripe_payout_run_ids');
+    expect(sql).toContain(
+      'CREATE TEMP TABLE verified_no_stripe_payout_run_ids',
+    );
     expect(sql).toContain('cpr.stripe_payout_id IS NULL');
     expect(sql).toContain(
       "cpr.status IN ('pending_reconciliation', 'reconciliation_needed')",

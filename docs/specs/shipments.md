@@ -440,9 +440,7 @@ After `fn_reserve_products`:
 
 ### stripe-webhooks
 
-On `payment_intent.succeeded`:
-- Calls `fn_create_order_from_payment` (already multi-seller capable)
-- Creates: 1 order + N shipments (one per seller) + order_items with correct `shipment_id`
+On `payment_intent.succeeded`, the single-modal flow creates the order, one shipment per seller and the order items through `fn_create_shipments_from_single_payment`. The old `app_name` branch and `fn_create_order_from_payment` were removed (expo-push-notifications T6a): every shipment is a Connect shipment.
 
 ---
 
@@ -456,21 +454,11 @@ Auth: admin OR `dispute.seller_id === auth.uid()`
 
 Flow:
 1. Validate `dispute.status IN ('return_delivered', 'waiting_return')`
-2. Stripe refund (full PaymentIntent, idempotent)
-3. Call `fn_complete_shipment_refund(p_shipment_id)` (filters by seller_id)
-4. Fallback if `dispute.shipment_id IS NULL`: call `fn_complete_dispute_refund(p_order_id, p_dispute_id)` with seller filter
+2. Refuse with 422 when the shipment is missing, is not shipped or delivered, or has no `stripe_payment_intent_id`; this happens before any call to Stripe
+3. Stripe refund of the shipment amount with `reverse_transfer` (idempotent)
+4. Call `fn_record_dispute_refund` to mark the shipment refunded and resolve the dispute
 
-### fn_complete_shipment_refund
-
-```sql
--- Deducts only the disputed seller's pending balance
-UPDATE wallet_transactions
-SET status = 'refunded'
-WHERE shipment_id = p_shipment_id;
-
-UPDATE wallets SET pending_balance = pending_balance - v_net_payout
-WHERE seller_id = v_seller_id;
-```
+`fn_complete_shipment_refund` was removed (expo-push-notifications T6a).
 
 ### fn_release_shipment_funds
 
@@ -489,8 +477,9 @@ WHERE seller_id = v_seller_id;
 ### fn_cron_dispute_payout_timeout
 
 - Marks dispute as `resolved` (buyer didn't pay return label in 48h)
-- Calls `fn_complete_shipment_refund(shipment_id)` if `shipment_id IS NOT NULL`
-- Fallback: `fn_release_order_funds(order_id)` for pre-migration disputes
+- Connect shipment (`stripe_payment_intent_id IS NOT NULL`): resolves the dispute for the buyer and notifies both parties
+- Shipment without a payment intent: writes an `ERROR` row in `system_logs` and leaves the dispute for manual intervention
+- Fallback: resolves a dispute without `shipment_id` for the buyer
 
 ### fn_cron_dispute_shipping_timeout
 
@@ -501,7 +490,8 @@ WHERE seller_id = v_seller_id;
 ### fn_cron_return_delivery_timeout
 
 - Marks dispute as `resolved` if return not delivered within 10 days
-- Calls `fn_complete_shipment_refund(shipment_id)` on buyer win
+- Connect shipment: resolves the dispute for the buyer, refund pending in `resolve-dispute-refund`
+- Shipment without a payment intent: writes an `ERROR` row in `system_logs`, counts it in `total_errors` and leaves the dispute for manual intervention
 
 ### fn_cron_release_shipment_funds
 
@@ -594,7 +584,9 @@ export interface EnrichedShipment extends Tables<'shipments'> {
 | `fn_mark_as_delivered` | `fn_mark_shipment_delivered` |
 | `fn_mark_return_as_delivered` | `fn_mark_return_delivered` |
 | `fn_release_order_funds` | `fn_release_shipment_funds` |
-| `fn_complete_dispute_refund` | `fn_complete_shipment_refund` (deprecated, kept for pre-migration) |
+| `fn_complete_dispute_refund` | `fn_record_dispute_refund` |
+| `fn_complete_shipment_refund` | `fn_record_dispute_refund` (Connect refunds only) |
+| `fn_create_order_from_payment` | `fn_create_shipments_from_single_payment` |
 | `fn_confirm_return_receipt` | `fn_seller_confirm_return_shipment` |
 
 ---
@@ -611,7 +603,7 @@ export interface EnrichedShipment extends Tables<'shipments'> {
 ## Dependencies
 
 1. Fases 1-4 executed in production (shipments table must exist with data)
-2. `fn_mark_shipment_delivered`, `fn_complete_shipment_refund`, `fn_release_shipment_funds` deployed
+2. `fn_mark_shipment_delivered`, `fn_record_dispute_refund`, `fn_release_shipment_funds` deployed
 3. Envia.com API keys in Supabase secrets
 4. Stripe webhook secret configured
 

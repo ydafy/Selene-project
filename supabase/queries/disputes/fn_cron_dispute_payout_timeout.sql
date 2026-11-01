@@ -40,17 +40,9 @@ BEGIN
 
                     v_success := true;
                 ELSE
-                    -- Legacy path: refund via fn_complete_shipment_refund
-                    SELECT success, error_message INTO v_success, v_err
-                    FROM public.fn_complete_shipment_refund(v_dispute.shipment_id);
-
-                    IF v_success THEN
-                        UPDATE public.disputes
-                        SET resolution_type = 'buyer_wins_timeout',
-                            admin_notes = COALESCE(admin_notes, '') || E'\n[SYSTEM]: Vendedor no pagó guía en 48h. Caso cerrado a favor del comprador.',
-                            updated_at = now()
-                        WHERE id = v_dispute.id;
-                    END IF;
+                    INSERT INTO public.system_logs (level, message, metadata)
+                    VALUES ('ERROR', 'Cron payout timeout: shipment has no Stripe payment intent, manual intervention required',
+                            jsonb_build_object('dispute_id', v_dispute.id, 'shipment_id', v_dispute.shipment_id));
                 END IF;
 
                 IF NOT v_success THEN

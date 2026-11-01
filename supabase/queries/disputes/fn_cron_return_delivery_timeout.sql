@@ -39,18 +39,10 @@ BEGIN
 
         v_processed := v_processed + 1;
       ELSE
-        -- Legacy path: refund via fn_complete_shipment_refund
-        SELECT * INTO v_success, v_err_msg
-        FROM public.fn_complete_shipment_refund(v_dispute.shipment_id);
-
-        IF v_success THEN
-          v_processed := v_processed + 1;
-        ELSE
-          INSERT INTO public.system_logs (level, message, metadata)
-          VALUES ('WARNING', 'Cron return-delivery-timeout: fallo en dispute',
-                  jsonb_build_object('dispute_id', v_dispute.id, 'shipment_id', v_dispute.shipment_id, 'error', v_err_msg));
-          v_errors := v_errors + 1;
-        END IF;
+        INSERT INTO public.system_logs (level, message, metadata)
+        VALUES ('ERROR', 'Cron return-delivery-timeout: shipment has no Stripe payment intent, manual intervention required',
+                jsonb_build_object('dispute_id', v_dispute.id, 'shipment_id', v_dispute.shipment_id));
+        v_errors := v_errors + 1;
       END IF;
     EXCEPTION WHEN OTHERS THEN
       INSERT INTO public.system_logs (level, message, metadata)
