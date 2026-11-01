@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: {{baseUrl}}/rest/v1/rpc/fn_create_order_from_payment
+  url: {{baseUrl}}/rest/v1/rpc/fn_create_shipments_from_single_payment
   body: json
   auth: none
 }
@@ -16,29 +16,63 @@ headers {
 }
 
 script:pre-request {
-  bru.setVar("intentA", "pi_bruno_A_" + Date.now());
+  const base = Date.now();
+  const uuid = (n) => "00000000-0000-4000-8a01-" + (base * 64 + n).toString(16).padStart(12, "0");
+  const seller = "00000000-0000-4000-8000-000000000002";
+  const product = "00000000-0000-4000-8000-0000000000b4";
+  const key = bru.getEnvVar("serviceRoleKey");
+  const reserve = await bru.sendRequest({
+    method: "PATCH",
+    url: bru.getEnvVar("baseUrl") + "/rest/v1/products?id=eq." + product + "&status=eq.VERIFIED",
+    headers: { apikey: key, Authorization: "Bearer " + key, "Content-Type": "application/json", Prefer: "return=representation" },
+    data: { status: "RESERVED" },
+  });
+  if (reserve.status !== 200 || reserve.data.length !== 1) {
+    throw new Error("the seeded listing b4 could not be reserved: " + reserve.status + " " + JSON.stringify(reserve.data));
+  }
+  const orderId = uuid(1);
+  const intent = "pi_bruno_A_" + base;
+  bru.setVar("intentA", intent);
+  const body = {
+    p_stripe_payment_intent_id: intent,
+    p_stripe_charge_id: "ch_bruno_A_" + base,
+    p_amount_received: 251000,
+    p_transfer_group: "group_" + orderId,
+    p_allocation: {
+      buyer_id: bru.getVar("orderBuyerId"),
+      address_id: bru.getVar("orderAddressId"),
+      order_id: orderId,
+      total_amount: 2510,
+      rows: [
+        {
+          seller_id: seller,
+          shipment_id: uuid(2),
+          product_ids: [product],
+          gross_cents: 240000,
+          commission_cents: 14400,
+          shipping_cents: 15000,
+          seguro_cents: 11000,
+          net_cents: 210600,
+        },
+      ],
+    },
+  };
+  bru.setVar("createBodyA", JSON.stringify(body));
+  req.setBody(body);
 }
 
 body:json {
-  {
-    "p_buyer_id": "{{orderBuyerId}}",
-    "p_stripe_intent_id": "{{intentA}}",
-    "p_total_amount": 2550,
-    "p_service_fee": 150,
-    "p_address_id": "{{orderAddressId}}",
-    "p_product_ids": [
-      "00000000-0000-4000-8000-0000000000b4"
-    ]
-  }
+  {}
 }
 
 tests {
   test("the payment becomes an order", function () {
     expect(res.getStatus()).to.equal(200);
-    expect(res.getBody()).to.deep.equal([{ success: true, error_message: null }]);
+    expect(res.getBody().success).to.equal(true);
+    expect(res.getBody().status).to.equal("created");
   });
 }
 
 docs {
-  fn_create_order_from_payment (service role). Creates the order, one shipment, the order item and the seller and buyer notices, and marks the listing SOLD. A repeat with the same payment is ALREADY_PROCESSED.
+  fn_create_shipments_from_single_payment (service role), the function the payment_intent.succeeded webhook calls for every order. Reserves the seeded listing b4 first, as checkout does, then creates the order, one shipment (paid, with the Stripe payment intent), the order item and the payment-confirmed notices, and marks the listing SOLD. Amounts in cents: price 240000, Selene commission 14400, seller-paid shipping 15000, Seguro Selene 11000, seller net 210600; the buyer paid 251000.
 }

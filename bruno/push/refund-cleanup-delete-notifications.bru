@@ -1,0 +1,28 @@
+meta {
+  name: refund-cleanup-delete-notifications
+  type: http
+  seq: 250
+}
+
+delete {
+  url: {{baseUrl}}/rest/v1/notifications?user_id=in.({{rfBuyerId}},{{rfSellerId}})
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+tests {
+  test("the refund notice and the dispute-opened notice are removed", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.length(2);
+  });
+}
+
+docs {
+  Cleanup. Deleting a notification cascades to its deliveries, so dispatch-push-run never claims them.
+}

@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/rest/v1/notifications?user_id=eq.00000000-0000-4000-8000-000000000002&action_path=eq./profile/orders/{{orderIdA}}&select=type,title,action_path
+  url: {{baseUrl}}/rest/v1/notifications?user_id=eq.00000000-0000-4000-8000-000000000002&source_event_key=eq.order.payment_confirmed:{{orderIdA}}&select=type,title,action_path,event_kind
   body: none
   auth: none
 }
@@ -16,13 +16,19 @@ headers {
 }
 
 tests {
-  test("¡Vendido! is delivered", function () {
+  test("the seller is told once about the confirmed sale", function () {
     expect(res.getStatus()).to.equal(200);
-    expect(res.getBody().length).to.equal(1);
-    expect(res.getBody()[0].title).to.equal("¡Vendido!");
+    expect(res.getBody()).to.deep.equal([
+      {
+        type: "success",
+        title: "Nueva venta confirmada",
+        action_path: "/profile/orders/" + bru.getVar("orderIdA"),
+        event_kind: "order.payment_confirmed",
+      },
+    ]);
   });
 }
 
 docs {
-  Notice written by the function.
+  Notice written by fn_create_shipments_from_single_payment: one order.payment_confirmed row per distinct recipient, keyed by the order. The earlier non-Connect order path wrote "¡Vendido!" instead.
 }

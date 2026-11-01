@@ -23,7 +23,10 @@ const findMigration = (): string => {
       `Expected exactly one *_release_shipment_funds_guard.sql, found ${files.length}`,
     );
   }
-  return readFileSync(join(MIGRATIONS_DIR, files[0]), 'utf8').replace(/\r/g, '');
+  return readFileSync(join(MIGRATIONS_DIR, files[0]), 'utf8').replace(
+    /\r/g,
+    '',
+  );
 };
 
 const migration = findMigration();
@@ -48,6 +51,27 @@ const migrationHeader = (name: string): string => {
     new RegExp(`CREATE OR REPLACE FUNCTION public\\.${name}\\(`),
   );
   return collapse(migration.slice(start, migration.indexOf('$$', start)));
+};
+
+/**
+ * The canonical file follows the newest migration that defines the function, so a
+ * later migration (20261101031000 changed the notices of fn_cron_dispute_shipping_timeout)
+ * does not make this migration's body the reference.
+ */
+const latestBody = (name: string): string => {
+  const pattern = new RegExp(`CREATE OR REPLACE FUNCTION public\\.${name}\\(`);
+  const newest = readdirSync(MIGRATIONS_DIR)
+    .filter((f) => f.endsWith('.sql'))
+    .sort()
+    .filter((f) => pattern.test(readFileSync(join(MIGRATIONS_DIR, f), 'utf8')))
+    .pop();
+  const sql = readFileSync(
+    join(MIGRATIONS_DIR, newest as string),
+    'utf8',
+  ).replace(/\r/g, '');
+  const start = sql.search(pattern);
+  const open = sql.indexOf('$$', start);
+  return sql.slice(open + 2, sql.indexOf('$$;', open + 2));
 };
 
 const canonicalBody = (file: string): string =>
@@ -78,9 +102,9 @@ describe('release_shipment_funds_guard migration (SQL structural only)', () => {
   });
 
   for (const fn of FUNCTIONS) {
-    test(`${fn.name}: the canonical query file carries the migration body`, () => {
+    test(`${fn.name}: the canonical query file carries the newest migration body`, () => {
       expect(collapse(canonicalBody(fn.file))).toBe(
-        collapse(migrationBody(fn.name)),
+        collapse(latestBody(fn.name)),
       );
     });
 
@@ -107,7 +131,9 @@ describe('release_shipment_funds_guard migration (SQL structural only)', () => {
 });
 
 describe('fn_release_shipment_funds completes only a delivered, undisputed Connect shipment past the grace period', () => {
-  const body = collapse(withoutComments(migrationBody('fn_release_shipment_funds')));
+  const body = collapse(
+    withoutComments(migrationBody('fn_release_shipment_funds')),
+  );
   const completion = body.indexOf("SET status = 'completed'");
 
   test('reads the shipment once, locked', () => {
@@ -115,7 +141,9 @@ describe('fn_release_shipment_funds completes only a delivered, undisputed Conne
       'SELECT s.status, s.delivered_at, s.stripe_payment_intent_id IS NOT NULL INTO v_status, v_delivered_at, v_is_connect FROM public.shipments AS s WHERE s.id = p_shipment_id FOR UPDATE;',
     );
     expect(body.match(/FROM public\.shipments/g)).toHaveLength(1);
-    expect(body.indexOf('FOR UPDATE')).toBeLessThan(body.indexOf('UPDATE public.shipments'));
+    expect(body.indexOf('FOR UPDATE')).toBeLessThan(
+      body.indexOf('UPDATE public.shipments'),
+    );
     expect(body).not.toMatch(/INSERT INTO public\.(?!system_logs)/);
   });
 
@@ -165,7 +193,9 @@ describe('fn_release_shipment_funds completes only a delivered, undisputed Conne
 });
 
 describe('fn_cron_dispute_shipping_timeout resolves the dispute before the release and undoes it on refusal', () => {
-  const body = collapse(withoutComments(migrationBody('fn_cron_dispute_shipping_timeout')));
+  const body = collapse(
+    withoutComments(migrationBody('fn_cron_dispute_shipping_timeout')),
+  );
 
   test('keeps its selection', () => {
     expect(body).toContain(
@@ -175,7 +205,9 @@ describe('fn_cron_dispute_shipping_timeout resolves the dispute before the relea
 
   test('resolves, then releases, then notifies', () => {
     const resolve = body.indexOf("resolution_type = 'seller_wins_timeout'");
-    const release = body.indexOf('fn_release_shipment_funds(v_dispute.shipment_id)');
+    const release = body.indexOf(
+      'fn_release_shipment_funds(v_dispute.shipment_id)',
+    );
     const notify = body.indexOf('INSERT INTO public.notifications');
     expect(resolve).toBeGreaterThan(-1);
     expect(release).toBeGreaterThan(resolve);

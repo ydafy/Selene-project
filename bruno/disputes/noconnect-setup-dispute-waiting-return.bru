@@ -1,0 +1,38 @@
+meta {
+  name: noconnect-setup-dispute-waiting-return
+  type: http
+  seq: 56
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/disputes?id=eq.{{ncDispA}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "status": "waiting_return",
+    "return_payout_status": "pending",
+    "updated_at": "{{ncOld}}"
+  }
+}
+
+tests {
+  test("the dispute waits for a return label unpaid for 72 hours", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].status).to.equal("waiting_return");
+    expect(res.getBody()[0].return_payout_status).to.equal("pending");
+    expect(new Date(res.getBody()[0].updated_at).toISOString()).to.equal(bru.getVar("ncOld"));
+  });
+}
+
+docs {
+  Local stack only. Eligible for fn_cron_dispute_payout_timeout (48 h limit), on a shipment without a payment intent.
+}

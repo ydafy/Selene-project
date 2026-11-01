@@ -1,0 +1,46 @@
+meta {
+  name: refund-setup-dispute
+  type: http
+  seq: 236
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/disputes
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "order_id": "{{rfOrderId}}",
+    "shipment_id": "{{rfShipmentId}}",
+    "buyer_id": "{{rfBuyerId}}",
+    "seller_id": "{{rfSellerId}}",
+    "reason": "damaged",
+    "description": "Bruno refund notice fixture",
+    "status": "open"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    bru.setVar("rfDisputeId", res.getBody()[0].id);
+  }
+}
+
+tests {
+  test("opens a dispute on the shipment", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody()[0].status).to.equal("open");
+  });
+}
+
+docs {
+  Local stack only. A dispute is inserted as open (the opened-notice trigger requires it); the next request moves it to return_delivered. Stores rfDisputeId.
+}

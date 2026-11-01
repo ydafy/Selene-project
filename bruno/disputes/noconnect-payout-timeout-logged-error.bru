@@ -1,0 +1,27 @@
+meta {
+  name: noconnect-payout-timeout-logged-error
+  type: http
+  seq: 63
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/system_logs?message=eq.Cron payout timeout: shipment has no Stripe payment intent, manual intervention required&metadata->>dispute_id=eq.{{ncDispA}}&select=level,metadata
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("one ERROR row names the dispute and its shipment", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ level: "ERROR", metadata: { dispute_id: bru.getVar("ncDispA"), shipment_id: bru.getVar("ncShipA") } }]);
+  });
+}
+
+docs {
+  fn_cron_dispute_payout_timeout logs the manual-intervention error once for the waiting_return dispute.
+}

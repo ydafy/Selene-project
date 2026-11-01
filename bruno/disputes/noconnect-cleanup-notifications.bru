@@ -1,0 +1,27 @@
+meta {
+  name: noconnect-cleanup-notifications
+  type: http
+  seq: 67
+}
+
+delete {
+  url: {{baseUrl}}/rest/v1/notifications?or=(user_id.eq.{{ncBuyerId}},action_path.ilike.*{{ncOrder}}*,action_path.ilike.*{{ncDispA}}*,action_path.ilike.*{{ncDispB}}*)
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+tests {
+  test("the fixture notices are removed", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}
+
+docs {
+  Local stack only. Removes the notices of the fixture buyer, order and disputes.
+}

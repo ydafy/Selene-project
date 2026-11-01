@@ -1,0 +1,30 @@
+meta {
+  name: refund-cleanup-unregister-token
+  type: http
+  seq: 252
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_unregister_push_token
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{rfBuyerToken}}
+}
+
+body:json {
+  { "p_token": "ExponentPushToken[bruno-push-refund-0001]" }
+}
+
+tests {
+  test("the owner removes its token", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  Cleanup of the refund fixture token.
+}

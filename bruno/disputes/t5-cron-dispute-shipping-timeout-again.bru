@@ -1,0 +1,30 @@
+meta {
+  name: t5-cron-dispute-shipping-timeout-again
+  type: http
+  seq: 72
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_cron_dispute_shipping_timeout
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("the cron runs again", function () {
+    expect([200, 204]).to.include(res.getStatus());
+  });
+}
+
+docs {
+  Service role, a second run after t5-cron-dispute-shipping-timeout. d8 is already resolved, so the run selects nothing of this fixture and writes no second pair of notices (t5-cron-dispute-shipping-timeout-notices counts two).
+}

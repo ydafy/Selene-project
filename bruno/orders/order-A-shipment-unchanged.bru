@@ -16,7 +16,7 @@ headers {
 }
 
 tests {
-  test("the denied updates left the shipment as fn_create_order_from_payment wrote it", function () {
+  test("the denied updates left the shipment as fn_create_shipments_from_single_payment wrote it", function () {
     expect(res.getStatus()).to.equal(200);
     const rows = res.getBody();
     expect(rows.length).to.equal(1);

@@ -1,0 +1,36 @@
+meta {
+  name: noconnect-setup-dispute-return-delivered
+  type: http
+  seq: 57
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/disputes?id=eq.{{ncDispB}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "status": "return_delivered",
+    "return_delivered_at": "{{ncOld}}"
+  }
+}
+
+tests {
+  test("the return was delivered 72 hours ago", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].status).to.equal("return_delivered");
+    expect(new Date(res.getBody()[0].return_delivered_at).toISOString()).to.equal(bru.getVar("ncOld"));
+  });
+}
+
+docs {
+  Local stack only. Eligible for fn_cron_return_delivery_timeout (48 h limit), on a shipment without a payment intent.
+}

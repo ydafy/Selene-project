@@ -5,8 +5,10 @@ import { join } from 'node:path';
 /**
  * A Connect shipment is marked refunded only by resolve-dispute-refund, after
  * the Stripe refund: fn_seller_confirm_return_shipment is dropped and
- * fn_complete_shipment_refund refuses Connect shipments. These tests read SQL
- * text; `supabase db reset` plus bruno/dispute-integrity prove the SQL runs.
+ * fn_complete_shipment_refund refused Connect shipments until
+ * *_remove_non_connect_order_refund_path.sql dropped it with its canonical
+ * file. These tests read the migration text; `supabase db reset` proves the
+ * SQL runs.
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..');
@@ -20,11 +22,6 @@ const migration =
     ? readFileSync(join(MIGRATIONS_DIR, files[0]), 'utf8').replace(/\r/g, '')
     : '';
 const code = migration.replace(/--[^\n]*/g, '');
-
-const canonical = readFileSync(
-  join(QUERIES_DIR, 'shipments', 'fn_complete_shipment_refund.sql'),
-  'utf8',
-).replace(/\r/g, '');
 
 const refusesConnectBeforeAnyWrite = (sql: string): void => {
   const guard = sql.indexOf('stripe_payment_intent_id IS NOT NULL');
@@ -46,7 +43,9 @@ describe('connect_refund_requires_stripe migration', () => {
       'DROP FUNCTION IF EXISTS public.fn_seller_confirm_return_shipment(uuid);',
     );
     expect(
-      existsSync(join(QUERIES_DIR, 'shipments', 'fn_seller_confirm_return_shipment.sql')),
+      existsSync(
+        join(QUERIES_DIR, 'shipments', 'fn_seller_confirm_return_shipment.sql'),
+      ),
     ).toBe(false);
   });
 
@@ -61,13 +60,5 @@ describe('connect_refund_requires_stripe migration', () => {
     expect(code).toContain(
       'GRANT EXECUTE ON FUNCTION public.fn_complete_shipment_refund(uuid) TO service_role;',
     );
-  });
-
-  test('the canonical copy carries the migration body', () => {
-    const open = migration.indexOf('$$');
-    const body = migration.slice(open + 2, migration.indexOf('$$;', open + 2));
-    const collapse = (sql: string): string => sql.replace(/\s+/g, ' ').trim();
-    expect(collapse(canonical)).toBe(collapse(body));
-    refusesConnectBeforeAnyWrite(canonical);
   });
 });

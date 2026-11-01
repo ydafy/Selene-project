@@ -78,5 +78,35 @@ BEGIN
             'shipment_id', v_shipment_id,
             'stripe_refund_id', p_stripe_refund_id));
 
+  -- The buyer notice is best effort: a failing insert must never undo the
+  -- recorded refund, so it runs in its own subtransaction.
+  BEGIN
+    INSERT INTO public.notifications (
+      user_id, event_kind, source_event_key, event_payload, type, title, message, action_path
+    )
+    SELECT o.buyer_id,
+           'shipment.refunded',
+           'shipment.refunded:' || v_shipment_id::text,
+           jsonb_build_object('shipment_id', v_shipment_id, 'order_id', s.order_id,
+             'dispute_id', p_dispute_id, 'recipient_role', 'buyer'),
+           'success',
+           'Te devolvimos tu dinero',
+           'Reembolsamos tu compra a tu método de pago. Puede tardar de 5 a 10 días hábiles en verse en tu estado de cuenta.',
+           '/profile/orders/' || s.order_id::text
+    FROM public.shipments AS s
+    JOIN public.orders AS o ON o.id = s.order_id
+    WHERE s.id = v_shipment_id
+    ON CONFLICT (source_event_key, user_id) WHERE source_event_key IS NOT NULL DO NOTHING;
+  EXCEPTION WHEN OTHERS THEN
+    BEGIN
+      INSERT INTO public.system_logs (level, message, metadata)
+      VALUES ('WARNING', 'Refund notice failed',
+              jsonb_build_object('dispute_id', p_dispute_id, 'shipment_id', v_shipment_id,
+                'sqlstate', SQLSTATE, 'error', SQLERRM));
+    EXCEPTION WHEN OTHERS THEN
+      RAISE WARNING 'Refund notice failed and could not be logged: %', SQLERRM;
+    END;
+  END;
+
   RETURN QUERY SELECT true, NULL::TEXT;
 END;

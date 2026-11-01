@@ -1,0 +1,45 @@
+meta {
+  name: noconnect-setup-buyer-create
+  type: http
+  seq: 52
+}
+
+post {
+  url: {{baseUrl}}/auth/v1/admin/users
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:pre-request {
+  bru.setVar("ncBuyerEmail", "bruno-noconnect-" + Date.now() + "@selene.local");
+}
+
+body:json {
+  {
+    "email": "{{ncBuyerEmail}}",
+    "password": "password123",
+    "email_confirm": true
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("ncBuyerId", res.getBody().id);
+  }
+}
+
+tests {
+  test("creates a confirmed throwaway buyer for the disputes", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().id).to.be.a("string");
+  });
+}
+
+docs {
+  Local stack only. The buyer of both no-payment-intent disputes must receive no notice from the crons. Stores ncBuyerEmail and ncBuyerId; noconnect-cleanup-buyer removes it.
+}

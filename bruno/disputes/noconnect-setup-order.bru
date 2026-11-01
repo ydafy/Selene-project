@@ -1,0 +1,53 @@
+meta {
+  name: noconnect-setup-order
+  type: http
+  seq: 53
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/orders
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+script:pre-request {
+  const base = Date.now();
+  const uuid = (n) => "00000000-0000-4000-8a03-" + (base * 64 + n).toString(16).padStart(12, "0");
+  bru.setVar("ncOrder", uuid(0));
+  bru.setVar("ncShipA", uuid(1));
+  bru.setVar("ncShipB", uuid(2));
+  bru.setVar("ncDispA", uuid(3));
+  bru.setVar("ncDispB", uuid(4));
+  bru.setVar("ncOld", new Date(base - 72 * 3600 * 1000).toISOString());
+}
+
+body:json {
+  {
+    "id": "{{ncOrder}}",
+    "buyer_id": "{{ncBuyerId}}",
+    "total_amount": 100,
+    "shipping_address": {
+      "street": "Av. Reforma 1",
+      "city": "Ciudad de México",
+      "zip": "06500"
+    },
+    "status": "delivered"
+  }
+}
+
+tests {
+  test("the fixture order exists", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody()[0].id).to.equal(bru.getVar("ncOrder"));
+  });
+}
+
+docs {
+  Local stack only. Fixtures for the branch of fn_cron_dispute_payout_timeout and fn_cron_return_delivery_timeout that meets a shipment without a Stripe payment intent. fn_create_shipments_from_single_payment always stores one, so this row is written by hand with the service role. Ids are fresh per run.
+}

@@ -1,0 +1,50 @@
+meta {
+  name: noconnect-setup-shipments
+  type: http
+  seq: 54
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/shipments
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  [
+    {
+      "id": "{{ncShipA}}",
+      "order_id": "{{ncOrder}}",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "status": "delivered",
+      "delivered_at": "{{ncOld}}",
+      "stripe_payment_intent_id": null
+    },
+    {
+      "id": "{{ncShipB}}",
+      "order_id": "{{ncOrder}}",
+      "seller_id": "00000000-0000-4000-8000-000000000004",
+      "status": "delivered",
+      "delivered_at": "{{ncOld}}",
+      "stripe_payment_intent_id": null
+    }
+  ]
+}
+
+tests {
+  test("two delivered shipments exist and neither has a payment intent", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().length).to.equal(2);
+    expect(res.getBody().every((s) => s.stripe_payment_intent_id === null)).to.equal(true);
+  });
+}
+
+docs {
+  Local stack only. ncShipA is for the payout-timeout dispute, ncShipB for the return-delivery dispute.
+}

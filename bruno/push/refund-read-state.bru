@@ -1,0 +1,27 @@
+meta {
+  name: refund-read-state
+  type: http
+  seq: 243
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/disputes?select=status,resolution_type,shipments(status)&id=eq.{{rfDisputeId}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("S4: the shipment is refunded and the dispute resolved for the buyer", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ status: "resolved", resolution_type: "buyer", shipments: { status: "refunded" } }]);
+  });
+}
+
+docs {
+  Service-role read of the shipment and its dispute.
+}

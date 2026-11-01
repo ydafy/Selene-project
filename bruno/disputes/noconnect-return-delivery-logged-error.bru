@@ -1,0 +1,27 @@
+meta {
+  name: noconnect-return-delivery-logged-error
+  type: http
+  seq: 64
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/system_logs?message=eq.Cron return-delivery-timeout: shipment has no Stripe payment intent, manual intervention required&metadata->>dispute_id=eq.{{ncDispB}}&select=level,metadata
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("one ERROR row names the dispute and its shipment", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ level: "ERROR", metadata: { dispute_id: bru.getVar("ncDispB"), shipment_id: bru.getVar("ncShipB") } }]);
+  });
+}
+
+docs {
+  fn_cron_return_delivery_timeout logs the manual-intervention error once for the return_delivered dispute and counts it in total_errors.
+}

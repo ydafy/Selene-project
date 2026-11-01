@@ -1,0 +1,27 @@
+meta {
+  name: refund-read-seller-notifications
+  type: http
+  seq: 245
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/notifications?select=event_kind&user_id=eq.{{rfSellerId}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("S4: the seller got no refund notice (only the dispute-opened one)", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().map((row) => row.event_kind)).to.deep.equal(["dispute.opened"]);
+  });
+}
+
+docs {
+  Service-role read of every notification of the throwaway seller. The dispute insert writes dispute.opened for the seller.
+}

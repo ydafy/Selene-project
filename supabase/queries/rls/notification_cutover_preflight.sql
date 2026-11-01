@@ -42,7 +42,6 @@ SELECT jsonb_build_object(
     ORDER BY v.signature),'[]'::jsonb)
     FROM (VALUES
       ('fn_cancel_order(uuid,text,text)'),('fn_cancel_shipment(uuid,text,text,bigint)'),
-      ('fn_complete_shipment_refund(uuid)'),('fn_create_order_from_payment(uuid,text,numeric,numeric,uuid,uuid[])'),
       ('fn_create_shipments_from_single_payment(text,text,bigint,text,jsonb)'),
       ('fn_cron_dispute_payout_timeout()'),('fn_cron_dispute_shipping_timeout()'),
       ('fn_cron_return_delivery_timeout()'),('fn_mark_return_delivered(uuid)'),

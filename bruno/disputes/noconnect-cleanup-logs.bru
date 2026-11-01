@@ -1,0 +1,28 @@
+meta {
+  name: noconnect-cleanup-logs
+  type: http
+  seq: 66
+}
+
+delete {
+  url: {{baseUrl}}/rest/v1/system_logs?or=(metadata->>dispute_id.eq.{{ncDispA}},metadata->>dispute_id.eq.{{ncDispB}})
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+tests {
+  test("the fixture log rows are removed", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.be.at.least(2);
+  });
+}
+
+docs {
+  Local stack only. Removes the ERROR rows of this run so nothing else reads them.
+}

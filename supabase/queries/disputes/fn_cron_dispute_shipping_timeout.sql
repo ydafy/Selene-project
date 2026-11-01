@@ -34,10 +34,22 @@ BEGIN
                 END IF;
 
                 -- Notificar
-                INSERT INTO public.notifications (user_id, type, title, message, action_path)
-                VALUES
-                    (v_dispute.seller_id, 'success', 'Disputa Ganada', 'El comprador no envió el retorno a tiempo. Tus fondos han sido liberados.', '/profile/orders/' || v_dispute.order_id),
-                    (v_dispute.buyer_id, 'error', 'Disputa Perdida', 'No enviaste el producto a tiempo. El caso ha sido cerrado.', '/profile/orders/' || v_dispute.order_id);
+                -- One typed notice per distinct participant, bound to this dispute.
+                INSERT INTO public.notifications (
+                    user_id, type, title, message, action_path,
+                    event_kind, source_event_key, event_payload
+                )
+                SELECT recipients.user_id, recipients.type, recipients.title,
+                       recipients.message, '/profile/orders/' || v_dispute.order_id::text,
+                       'dispute.verdict',
+                       'dispute.verdict:' || v_dispute.id::text || ':shipping_timeout',
+                       jsonb_build_object('dispute_id', v_dispute.id, 'order_id', v_dispute.order_id, 'recipient_role', recipients.recipient_role)
+                FROM (VALUES
+                    (v_dispute.seller_id, 'seller', 'success', 'Disputa Ganada', 'El comprador no envió el retorno a tiempo. El caso se cerró a tu favor.'),
+                    (v_dispute.buyer_id, 'buyer', 'error', 'Disputa Perdida', 'No enviaste el producto a tiempo. El caso ha sido cerrado.')
+                ) AS recipients(user_id, recipient_role, type, title, message)
+                WHERE recipients.recipient_role = 'buyer' OR v_dispute.seller_id IS DISTINCT FROM v_dispute.buyer_id
+                ON CONFLICT (source_event_key, user_id) WHERE source_event_key IS NOT NULL DO NOTHING;
             ELSE
                 -- Data integrity issue: disputa activa sin shipment_id — requiere intervención manual
                 INSERT INTO public.system_logs (level, message, metadata)

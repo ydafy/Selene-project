@@ -1,0 +1,27 @@
+meta {
+  name: refund-read-notifications-after-denied
+  type: http
+  seq: 239
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/notifications?select=id&source_event_key=eq.shipment.refunded:{{rfShipmentId}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("S4: the denied call wrote no notice", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.length(0);
+  });
+}
+
+docs {
+  Service-role read by source_event_key.
+}

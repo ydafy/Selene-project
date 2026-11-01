@@ -1,0 +1,28 @@
+meta {
+  name: noconnect-cleanup-disputes
+  type: http
+  seq: 68
+}
+
+delete {
+  url: {{baseUrl}}/rest/v1/disputes?id=in.({{ncDispA}},{{ncDispB}})
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+tests {
+  test("both disputes are removed", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(2);
+  });
+}
+
+docs {
+  Local stack only. Both disputes are still eligible for the crons, so they must not outlive the run.
+}

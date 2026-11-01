@@ -53,14 +53,20 @@ const FUNCTIONS = [
 const WALLET_REFERENCE = /\bwallets\b|wallet_transactions|payout_requests/i;
 
 // Rewritten again by a later migration, whose test checks that the canonical file carries the
-// newer body: *_connect_refund_requires_stripe.sql (fn_complete_shipment_refund) and
-// *_close_account_push_tokens.sql (fn_close_account, checked in account_closure.test.ts).
+// newer body: *_close_account_push_tokens.sql (fn_close_account, checked in account_closure.test.ts).
 // *_release_listings_helper.sql (fn_cancel_shipment: the release goes through
 // fn_release_listings, pinned in release_listings_helper.test.ts).
 const SUPERSEDED: ReadonlySet<string> = new Set([
-  'fn_complete_shipment_refund',
   'fn_close_account',
   'fn_cancel_shipment',
+]);
+
+// Dropped by *_remove_non_connect_order_refund_path.sql, which also deleted their canonical
+// files (pinned in remove_non_connect_order_refund_path.test.ts); only the migration-body
+// checks below still cover them.
+const DROPPED: ReadonlySet<string> = new Set([
+  'fn_create_order_from_payment',
+  'fn_complete_shipment_refund',
 ]);
 
 const collapse = (sql: string): string => sql.replace(/\s+/g, ' ').trim();
@@ -104,6 +110,7 @@ describe('remove legacy wallet writes from the core functions (SQL structural on
       });
 
       test('the canonical query file carries the migration body', () => {
+        if (DROPPED.has(fn.name)) return;
         const canonical = canonicalBody(fn.file);
         expect(canonical).not.toMatch(WALLET_REFERENCE);
         if (SUPERSEDED.has(fn.name)) return;

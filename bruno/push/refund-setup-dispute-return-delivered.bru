@@ -1,0 +1,32 @@
+meta {
+  name: refund-setup-dispute-return-delivered
+  type: http
+  seq: 237
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/disputes?id=eq.{{rfDisputeId}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  { "status": "return_delivered" }
+}
+
+tests {
+  test("the dispute waits for the refund", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].status).to.equal("return_delivered");
+  });
+}
+
+docs {
+  Local stack only. The state the resolve-dispute-refund Edge Function records the refund from.
+}

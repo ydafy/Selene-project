@@ -1,0 +1,50 @@
+meta {
+  name: t5-cron-dispute-shipping-timeout-notices
+  type: http
+  seq: 73
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/notifications?event_payload->>dispute_id=eq.{{t5Disp8}}&event_kind=eq.dispute.verdict&select=user_id,event_kind,source_event_key,type,title,message,action_path,event_payload&order=user_id
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("S4: the d8 timeout wrote exactly two dispute.verdict notices, after two cron runs", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.length(2);
+    for (const row of res.getBody()) {
+      expect(row.event_kind).to.equal("dispute.verdict");
+      expect(row.source_event_key).to.equal("dispute.verdict:" + bru.getVar("t5Disp8") + ":shipping_timeout");
+      expect(row.action_path).to.equal("/profile/orders/" + bru.getVar("t5Order"));
+      expect(row.event_payload.dispute_id).to.equal(bru.getVar("t5Disp8"));
+      expect(row.event_payload.order_id).to.equal(bru.getVar("t5Order"));
+    }
+  });
+
+  test("S4: the seller won, and the text no longer says the funds were released", function () {
+    const row = res.getBody().find((r) => r.user_id === "00000000-0000-4000-8000-000000000004");
+    expect(row.event_payload.recipient_role).to.equal("seller");
+    expect(row.type).to.equal("success");
+    expect(row.title).to.equal("Disputa Ganada");
+    expect(row.message).to.equal("El comprador no envió el retorno a tiempo. El caso se cerró a tu favor.");
+  });
+
+  test("S4: the buyer lost, with the unchanged text", function () {
+    const row = res.getBody().find((r) => r.user_id === "00000000-0000-4000-8000-000000000005");
+    expect(row.event_payload.recipient_role).to.equal("buyer");
+    expect(row.type).to.equal("error");
+    expect(row.title).to.equal("Disputa Perdida");
+    expect(row.message).to.equal("No enviaste el producto a tiempo. El caso ha sido cerrado.");
+  });
+}
+
+docs {
+  Service-role read of the fixture dispute only (filtered by its id in the payload), never a count of the table (issue #58). The notices are typed and keyed per dispute, so a second cron run cannot write a second pair.
+}

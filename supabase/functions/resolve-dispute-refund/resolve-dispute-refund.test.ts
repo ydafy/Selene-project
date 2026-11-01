@@ -2,7 +2,26 @@ import { describe, expect, test } from 'bun:test';
 import {
   extractRefundId,
   refundBlockedReason,
+  refundIntentBlockedReason,
 } from './resolve-dispute-refund';
+
+describe('refundIntentBlockedReason', () => {
+  test('a shipment with a payment intent is refundable', () => {
+    expect(refundIntentBlockedReason('pi_123')).toBeNull();
+  });
+
+  test('a missing shipment or a shipment without a payment intent is refused', () => {
+    expect(refundIntentBlockedReason(undefined)).toBe(
+      'SHIPMENT_WITHOUT_PAYMENT_INTENT',
+    );
+    expect(refundIntentBlockedReason(null)).toBe(
+      'SHIPMENT_WITHOUT_PAYMENT_INTENT',
+    );
+    expect(refundIntentBlockedReason('')).toBe(
+      'SHIPMENT_WITHOUT_PAYMENT_INTENT',
+    );
+  });
+});
 
 describe('refundBlockedReason', () => {
   test('shipped and delivered shipments are refundable', () => {
@@ -13,7 +32,9 @@ describe('refundBlockedReason', () => {
   test.each(['completed', 'refunded', 'cancelled', 'pending'])(
     'a %s shipment is refused with its status',
     (status) => {
-      expect(refundBlockedReason(status)).toBe(`SHIPMENT_NOT_REFUNDABLE:${status}`);
+      expect(refundBlockedReason(status)).toBe(
+        `SHIPMENT_NOT_REFUNDABLE:${status}`,
+      );
     },
   );
 
