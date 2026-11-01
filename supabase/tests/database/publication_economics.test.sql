@@ -3,7 +3,7 @@
 -- settings; every other update, status changes included, keeps the stored snapshot.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(23);
+select plan(24);
 
 -- Snapshot reserve for a price and shipping cost (pesos) under the current settings.
 create function pg_temp.fresh_reserve(p_price numeric, p_shipping numeric)
@@ -150,6 +150,12 @@ select throws_ok(
     where id = 'd0000000-0000-4000-8000-0000000000a1'$$,
   'P0001', 'PUBLICATION_SNAPSHOT_REQUIRED',
   'a price change cannot clear the snapshot');
+select throws_ok(
+  $$update public.products set price = 1200, publication_commission_rate = null,
+      publication_shipping_reserve_cents = pg_temp.fresh_reserve(1200, 100)
+    where id = 'd0000000-0000-4000-8000-0000000000a1'$$,
+  'P0001', 'INVALID_OR_STALE_PUBLICATION_ECONOMICS',
+  'a price change with a partial snapshot is rejected');
 select is(
   (select price::text || ':' || publication_shipping_reserve_cents::text
    from public.products where id = 'd0000000-0000-4000-8000-0000000000a1'),

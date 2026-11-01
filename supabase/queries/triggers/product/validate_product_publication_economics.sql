@@ -78,9 +78,9 @@ BEGIN
     + v_shipping_buffer_cents
     + ceil(round(NEW.price * 100)::NUMERIC * v_insurance_rate)::BIGINT;
 
-  IF NEW.publication_shipping_reserve_cents <> v_expected_reserve_cents
-    OR NEW.publication_commission_rate <> v_commission_rate
-    OR NEW.publication_insurance_rate <> v_insurance_rate THEN
+  IF NEW.publication_shipping_reserve_cents IS DISTINCT FROM v_expected_reserve_cents
+    OR NEW.publication_commission_rate IS DISTINCT FROM v_commission_rate
+    OR NEW.publication_insurance_rate IS DISTINCT FROM v_insurance_rate THEN
     RAISE EXCEPTION 'INVALID_OR_STALE_PUBLICATION_ECONOMICS';
   END IF;
 
