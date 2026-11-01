@@ -31,7 +31,7 @@ For Postgres design and performance, load the `supabase-postgres-best-practices`
 
 ## Database tests
 
-`bun run test:db` (`supabase test db`) runs the pgTAP files in `supabase/tests/database/*.test.sql` against this worktree's local database. Run `supabase start` first (and `supabase db reset` after a migration change), from the same shell. It never touches the remote project, and it is not a CI job by decision (`odd/tasks/auth-hardening.md` L143), so run it yourself when you change auth, grants, account status, closure or listing-release SQL.
+`bun run test:db` (`supabase test db`) runs the pgTAP files in `supabase/tests/database/*.test.sql` against this worktree's local database. Run `supabase start` first (and `supabase db reset` after a migration change), from the same shell. It never touches the remote project. CI runs it too (job `db-test` in `.github/workflows/ci.yml`), but still run it yourself when you change auth, grants, account status, closure or listing-release SQL, so a failure shows up before the push.
 
 - Each file is `begin; select plan(n); ... select * from finish(); rollback;`, creates its own users and rows, and leaves nothing behind. It does not depend on seed rows or Bruno state.
 - Impersonate a role with `select set_config('request.jwt.claims', '{"sub": "<uuid>", "role": "authenticated"}', true); set local role authenticated;` and go back with `reset role;` before asserting on stored rows. `service_role` needs only `{"role": "service_role"}`.
