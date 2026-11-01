@@ -1,6 +1,21 @@
 # Roadmaps
 
-A roadmap plans work that spans several sessions, features, or worktrees. It lives in GitHub issues, not in a repository file: every worktree and session sees an issue at once, while a file is visible only after its branch merges.
+A roadmap plans several items that must land in an order or depend on each other, across sessions or worktrees. It lives in GitHub issues, not in a repository file: every worktree and session sees an issue at once, while a file is visible only after its branch merges.
+
+## Decide whether you need one
+
+Track work by its shape, not its size:
+
+| Work                                                                     | Track it with                                |
+| ------------------------------------------------------------------------ | -------------------------------------------- |
+| One change, one session, one PR                                          | Nothing extra, or the issue it closes        |
+| One feature over several sessions                                        | `odd/tasks/<feature>.md` (specs, tasks, log) |
+| Several items with an order or dependencies across sessions or worktrees | A roadmap                                    |
+| Several independent items                                                | Separate issues ("Finding" or "Idea")        |
+
+Test: if the items can be done in any order, by anyone, without reading the others, they do not need a roadmap.
+
+An agent proposes a roadmap and the maintainer approves it before the issues are created. Once it exists, a session may change it on its own, as "Change the plan" describes.
 
 ## How a roadmap is built
 
