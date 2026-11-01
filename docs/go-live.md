@@ -197,6 +197,8 @@ select cron.schedule(
 );
 ```
 
+On every run `auto-cancel-orders` first calls `fn_notify_label_deadline_reminders`, which reminds the seller of each paid shipment without a label that the run would cancel within 12 hours (`shipment.label_deadline`, pushed on `orders`). Apply `supabase/migrations/20261101040000_shipment_label_deadline_notification.sql` before deploying that version of the function: against an older database the call fails, the run logs `Label deadline reminders failed` as an `ERROR` every hour, and the cancellations still run. It needs no new secret or cron job.
+
 `auto-cancel-preparing` has the same authorization and reuses the Vault secret `auto_cancel_orders_cron_secret` (same `CRON_SECRET` value). It runs hourly at minute 30, so it never overlaps `auto-cancel-orders`. Before each refund it reads fresh tracking and cancels the label with Envia; a run can take longer than pg_net's default 5 s, so the job sets `timeout_milliseconds` to keep the real HTTP status in `net._http_response`. Apply the B4 migrations (`20261024013216_shipment_carrier_cancellation_outcome.sql`, `20261024020649_shipment_cancellation_carrier_review.sql`) and deploy `auto-cancel-preparing` first. In the SQL Editor:
 
 ```sql

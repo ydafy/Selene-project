@@ -1,0 +1,45 @@
+meta {
+  name: deadline-setup-seller-create
+  type: http
+  seq: 257
+}
+
+post {
+  url: {{baseUrl}}/auth/v1/admin/users
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:pre-request {
+  bru.setVar("dlSellerEmail", "bruno-deadline-" + Date.now() + "@selene.local");
+}
+
+body:json {
+  {
+    "email": "{{dlSellerEmail}}",
+    "password": "password123",
+    "email_confirm": true
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("dlSellerId", res.getBody().id);
+  }
+}
+
+tests {
+  test("creates a confirmed throwaway seller for the label deadline reminder", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().id).to.be.a("string");
+  });
+}
+
+docs {
+  T7 (expo-push-notifications): a throwaway seller, so every notice and delivery read below is this run's own.
+}

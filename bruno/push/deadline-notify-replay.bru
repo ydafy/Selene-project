@@ -1,0 +1,27 @@
+meta {
+  name: deadline-notify-replay
+  type: http
+  seq: 266
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_notify_label_deadline_reminders
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("an immediate second run writes no notice again", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.equal(0);
+  });
+}

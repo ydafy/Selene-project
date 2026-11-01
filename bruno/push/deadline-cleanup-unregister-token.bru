@@ -1,0 +1,26 @@
+meta {
+  name: deadline-cleanup-unregister-token
+  type: http
+  seq: 272
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_unregister_push_token
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{dlSellerToken}}
+}
+
+body:json {
+  { "p_token": "ExponentPushToken[bruno-push-deadline-0001]" }
+}
+
+tests {
+  test("the owner removes its token", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}

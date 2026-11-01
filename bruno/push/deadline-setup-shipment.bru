@@ -1,0 +1,47 @@
+meta {
+  name: deadline-setup-shipment
+  type: http
+  seq: 261
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/shipments
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+script:pre-request {
+  // Paid 40 hours ago: with the seeded order_expiration_hours (48) the deadline is 8 hours away.
+  bru.setVar("dlCreatedAt", new Date(Date.now() - 40 * 3600 * 1000).toISOString());
+}
+
+body:json {
+  {
+    "order_id": "{{dlOrderId}}",
+    "seller_id": "{{dlSellerId}}",
+    "status": "paid",
+    "created_at": "{{dlCreatedAt}}"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    bru.setVar("dlShipmentId", res.getBody()[0].id);
+  }
+}
+
+tests {
+  test("inserts a paid shipment without a label, 8 hours before its deadline", function () {
+    expect(res.getStatus()).to.equal(201);
+    const row = res.getBody()[0];
+    expect(row.status).to.equal("paid");
+    expect(row.tracking_number).to.equal(null);
+    expect(row.label_generation_state).to.equal("unclaimed");
+  });
+}

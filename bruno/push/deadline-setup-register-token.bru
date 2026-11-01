@@ -1,0 +1,26 @@
+meta {
+  name: deadline-setup-register-token
+  type: http
+  seq: 259
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_register_push_token
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{dlSellerToken}}
+}
+
+body:json {
+  { "p_token": "ExponentPushToken[bruno-push-deadline-0001]", "p_platform": "android" }
+}
+
+tests {
+  test("the throwaway seller registers a push token", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}

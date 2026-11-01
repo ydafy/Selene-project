@@ -1,0 +1,23 @@
+meta {
+  name: deadline-read-deliveries-after-cleanup
+  type: http
+  seq: 273
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/push_deliveries?select=id&user_id=eq.{{dlSellerId}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("no delivery of the throwaway seller is left for dispatch-push-run to claim", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.length(0);
+  });
+}

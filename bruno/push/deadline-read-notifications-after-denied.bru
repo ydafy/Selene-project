@@ -1,0 +1,23 @@
+meta {
+  name: deadline-read-notifications-after-denied
+  type: http
+  seq: 264
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/notifications?select=id&source_event_key=eq.shipment.label_deadline:{{dlShipmentId}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the denied calls wrote no notice", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.length(0);
+  });
+}

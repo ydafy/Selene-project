@@ -1,0 +1,37 @@
+meta {
+  name: deadline-setup-order
+  type: http
+  seq: 260
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/orders
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "buyer_id": "00000000-0000-4000-8000-000000000003",
+    "total_amount": 100,
+    "shipping_address": {}
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    bru.setVar("dlOrderId", res.getBody()[0].id);
+  }
+}
+
+tests {
+  test("inserts an order for the seeded buyer", function () {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
