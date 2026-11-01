@@ -112,7 +112,7 @@ Follow repository manual Supabase workflow: supply SQL/function/config handoff, 
 - T7d | S3 | none | closed without code (L86): the device check did not confirm U4/U6 | U4 OTP paste/autofill; U6 `AuthModal` keyboard and small-screen clipping | Commit: not created.
 - T7e | S3 | inline | done (117aba0, review approved; device check passed L89) | Sign-in and registration only through `AuthModal`: remove the stack `login` and `register` screens; the guest profile link presents the modal; `verify-code` without an email returns to the tabs | Commit: 117aba0 (review approved).
 - T8 | S1 | parent orchestration | done (L124): merged to main in PRs #75, #80 and #90; branch `audit/auth-backlog` | Auth backlog pass: resolve the consolidated list in L81 plus the T6/T7 additions | Commit: not created.
-- T9 | S1,S9 | parent orchestration | approved (L126); T9h option 1 (L143) | Final auth pass: leave every launch switch one config change away and close the auth issues | Commit: not created.
+- T9 | S1,S9 | parent orchestration | done (L151): merged to main in PRs #94, #109, #110, #117, #121, #123 | Final auth pass: leave every launch switch one config change away and close the auth issues | Commit: not created.
 - T9a | S8,S9 | inline | done (L127, review approved L129; device check pending) | Legal links from `domain.ts` only (`TERMS_URL`, `PRIVACY_URL`; `legalUrls.ts` and its env overrides removed), public `/terminos` page in admin-web, register terms link | Commit: not created.
 - T9b | S9 | delegated writer (context backstop) | done (L130, review approved L131) | Auth email templates versioned in `supabase/templates/` and wired in `config.toml` | Commit: not created.
 - T9c | S9 | inline | done (L132) | One auth switch-on runbook in `docs/go-live.md`, each step with an MCP check | Commit: not created.
@@ -121,8 +121,8 @@ Follow repository manual Supabase workflow: supply SQL/function/config handoff, 
 - T9e | S4 | delegated writer (context backstop) | done (L137, review approved L138, applied L140; PR #117 merged be285fec, closed #70) | #70: listings reserved at suspension | Commit: not created.
 - T9e2 | S4 | delegated writer (context backstop) | done (L141, applied L142, review approved L145; PR #121 merged 1d761f3d) | Every remaining path that returns a listing to VERIFIED applies the T9e seller rule through one helper: `fn_finalize_checkout_recovery` refund, `fn_reserve_products` (stale cleanup and partial rollback), `fn_cancel_shipment`; T9e's two release functions use the same helper | Commit: not created.
 - T9f | S8 | delegated writer (context backstop) | done (L144, review approved L145, applied L146; PR #121 merged 1d761f3d, closed #69) | #69: publication-economics trigger aborts a closure | Commit: not created.
-- T9g | S4,S10 | delegated writer (context backstop) | done (L147, review approved L148, applied L150) | #88: local `profiles` grants match production | Commit: not created.
-- T9h | S1 | delegated writer (context backstop) | done (L149; native review not run: inspect timed out) | #68: auth SQL tests against PostgreSQL | Commit: not created.
+- T9g | S4,S10 | delegated writer (context backstop) | done (L147, review approved L148, applied L150; PR #123 merged d4c6f01c, closed #88) | #88: local `profiles` grants match production | Commit: not created.
+- T9h | S1 | delegated writer (context backstop) | done (L149; native review not run: inspect timed out; PR #123 merged d4c6f01c, closed #68) | #68: auth SQL tests against PostgreSQL | Commit: not created.
 - T8a | S4 | inline | done (3933485, review approved L110; device check in the go-live pass, L117) | F1: listings held by an account suspension (`status_before_account_hold` set) stay out of "history" in Mis publicaciones | Commit: not created.
 - T8b | S8 | delegated writer (context backstop) | done (d7349da, review approved L111; follow-up in the next commit) | `account-closure-cleanup`: shared constant-time `isAuthorizedCronRequest` and mismatch report; failed cleanup steps reported to Sentry (L74); own commit (risk: auth guard) | Commit: not created.
 - T8c | S8 | inline | done (98b1f41, review approved L114) | Drop the `as never` casts in `delete-account`, `account-closure-cleanup` and the shared cleanup now that the types exist (L79) | Commit: not created.
@@ -1065,3 +1065,15 @@ Risk: item 5 (new test script; no CI change).
 Maintainer (verbatim): "listo migarcion aplicada con succes." Remote (Supabase MCP, read-only): the grants of the objects the migration touches equal the L145 snapshot (profiles: authenticated UPDATE only avatar_url, updated_at, username; anon no UPDATE; notifications and shipment_tracking_events as before; server-only tables none; the two admin views keep anon), so it was a no-op as intended. Correction to L148/L149: the remote migration history lists only the four baseline migrations (`list_migrations`), because the maintainer applies SQL through the editor; applying a no-op migration does not align a history the remote does not record.
 T9h native review: the `inspect` timed out (`operation_timeout`, not retry-safe) and was not retried.
 Slice T9-6: T9g 82ecb695, T9h e264b502 and the tracker entries L147-L150.
+
+### L151 — T9 closed
+Slice T9-6 merged as PR #123 (d4c6f01c) after CI `test` passed; three Vercel previews failed with "build-rate-limit" (account quota; the PR touches no `apps/` file). It closed #88 and #68.
+T9 is closed. T9a-T9h, T9d1 and T9e2 are on main through PRs #94, #109, #110, #117, #121 and #123, and they closed #68, #69, #70 and #88. Every commit had an approved native review except bc4e44b6 before its later review (L129), and T9e2 and T9h, whose `inspect` timed out (T9e2 was then reviewed together with T9f, L145). The maintainer applied and the parent read back every migration: `20261030120000`, `20261030130000`, `20261030140000` and `20261030150000`.
+Open after T9 (each with its owner):
+- #120 (needs a product decision): a listing published before a fee change cannot go back on sale. This blocks the stale-reservation batch, cancellation after a refund and suspension lift.
+- #122 (low): default full grants for anon and authenticated; RLS is the only layer.
+- #49: admin-web production deploy settings, with the deploy session.
+- #67: 5-year anonymization, long horizon.
+- Go-live (maintainer, `docs/go-live.md` section 10 "Auth switch-on order"): domain, Resend and SMTP, paste the email templates, rate limit, Site URL and redirects, real hCaptcha keys and the Dashboard switch, leaked-password protection, legal privacy and terms text.
+- Device checks in the go-live pass: T8a held listing, T8e register "Done", T9a register terms link.
+- Local environment: `EXPO_PUBLIC_HCAPTCHA_SITE_KEY`/`VITE_HCAPTCHA_SITE_KEY` must be the hCaptcha test key against the local stack (L135); `EXPO_ACCESS_TOKEN` in `supabase/functions/.env` for the `dispatch-push` Bruno requests (L144).
