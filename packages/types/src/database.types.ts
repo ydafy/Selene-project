@@ -3814,13 +3814,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      fn_complete_shipment_refund: {
-        Args: { p_shipment_id: string }
-        Returns: {
-          error_message: string
-          success: boolean
-        }[]
-      }
       fn_complete_shipment_transfer: {
         Args: {
           p_expected_stage_version: number
@@ -3877,20 +3870,6 @@ export type Database = {
           completion_source: string
           error: string
           idempotent: boolean
-          success: boolean
-        }[]
-      }
-      fn_create_order_from_payment: {
-        Args: {
-          p_address_id: string
-          p_buyer_id: string
-          p_product_ids: string[]
-          p_service_fee: number
-          p_stripe_intent_id: string
-          p_total_amount: number
-        }
-        Returns: {
-          error_message: string
           success: boolean
         }[]
       }
