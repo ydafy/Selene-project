@@ -57,6 +57,18 @@ Answer these before running `bun add`. If an answer is bad, do not add the packa
 
 `bunfig.toml` sets `minimumReleaseAge = 259200` (3 days). Bun refuses to install a version published less than 3 days ago. If an install fails for that reason, pick the previous version. Never change the setting.
 
+## Fix one indirect package
+
+An indirect package (one that only reaches us through another package, such as `node-forge` through `@expo/cli`) sometimes needs a fixed version right away, usually for an advisory. Deleting its line from `bun.lock` and running `bun install` also refreshes hundreds of unrelated in-range packages, which do not belong in a security change. Change only that package's entry instead:
+
+1. Check that the fixed version fits the range the dependent declares (`bun pm why <name>` shows the range). If it does not, the fix waits for a release of the dependent, or becomes an exception (see "An override would be unsafe" below).
+2. Read the fixed version's `integrity` from `https://registry.npmjs.org/<name>/<version>`.
+3. In `bun.lock`, replace the version and the `sha512-...` hash on that package's line. Leave every other line alone.
+4. Run `bun install --frozen-lockfile`. It fails if the lockfile is inconsistent.
+5. Run the checks in "Update without breaking things". If the fix clears an advisory that has an `--ignore`, remove the flag and its comment from `.github/workflows/dependency-audit.yml`.
+
+PR #147 (node-forge 1.4.0 to 1.4.2) followed these steps. The unrelated in-range updates go into the monthly update commit.
+
 ## When not to update
 
 Updating is the default. Leave a package alone only for a reason you can write down, and write it down. This repository has two such cases.
