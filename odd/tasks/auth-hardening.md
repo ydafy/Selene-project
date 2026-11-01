@@ -141,7 +141,7 @@ Acceptance: an update that leaves `price` and `shipping_cost` unchanged keeps th
 - T10a.2 | S11 | inline | done (L155-L156) | App edit flow: a price or shipping-cost change sends a fresh snapshot and returns the listing to review | Commit: not created.
 - T10b | S4 | inline | done (L159-L160) | pgTAP for the block-1 account rules: a suspended seller cannot publish, edit or receive reservations (own purchases stay); lifting a suspension restores only account-held listings to their prior status; banned is final; clients cannot write `role` or `status` (own or other rows, signup or metadata, JWT claims); admin flows only as setup | Commit: f7d8a62b.
 - T10c.1 | S4,S8 | delegated writer (context backstop) | done (L163-L164) | pgTAP for the `fn_close_account` blockers not covered yet: unreleased payout (`pending_payouts`), open dispute (`open_disputes`), refund in flight (`pending_refunds`), each refused with nothing changed, plus the allowed case once settled | Commit: a2744ca7 + follow-up (L164).
-- T10c.2 | S4 | delegated writer (context backstop) | pending | pgTAP for the other release callers under the T9e seller rule: `fn_reserve_products` stale cleanup and partial rollback, `fn_cancel_shipment`, and the refund path of `fn_finalize_checkout_recovery`; a suspended seller's listing is held, an active seller's returns to sale | Commit: not created.
+- T10c.2 | S4 | delegated writer (context backstop) | done (L165-L166) | pgTAP for the other release callers under the T9e seller rule: `fn_reserve_products` stale cleanup and partial rollback, `fn_cancel_shipment`, and the refund path of `fn_finalize_checkout_recovery`; a suspended seller's listing is held, an active seller's returns to sale | Commit: see L165-L166.
 
 ## Log
 
@@ -1156,3 +1156,15 @@ Native review of 4149a57b..a2744ca7 (reliability; tier high) approved and acknow
 - SUGGESTION: the T10c.1 row was still "in progress" because a tracker edit had not matched. Fixed here, along with the stale T10a.1 and T10a.2 rows.
 - SUGGESTION, kept as is: the control settles every blocker in one step. Each user has only its own blocker, and the exact reason asserted earlier shows that no other blocker fires first.
 Follow-up checks: `bun run test:db` Files=7, Tests=219, PASS. Mutation check on the current stack with the three blockers disabled: still 28 of 36 fail; the function is intact afterwards.
+
+### L165 — T10c.2: release callers
+Worker: `supabase/tests/database/release_callers.test.sql`, 50 assertions; users are a suspended seller, an active seller, a buyer, and an active seller whom a trigger suspends mid-call.
+- `fn_reserve_products` stale pre-release: an expired reservation of a suspended seller is held (`HIDDEN:VERIFIED`, `reserved_at` cleared) and the cart returns `SOME_PRODUCTS_UNAVAILABLE`. An active seller's expired reservation returns to sale and this call reserves it. Mixed carts end held for the suspended seller and VERIFIED for the active one, and fresh reservations inside and outside the cart are unchanged.
+- `fn_reserve_products` partial rollback: the tentatively reserved listing of an active seller returns to VERIFIED, not held, and nothing stays RESERVED. When a trigger suspends the seller right after the reservation (the same stand-in as L141; a real race needs two sessions), the rollback holds the listing.
+- `fn_cancel_shipment`: anon and authenticated get 42501 and nothing is cancelled. The cancelled shipment's listing returns to VERIFIED for an active seller and is held for a suspended one. The order's other shipment and another order's listings are unchanged (`order_items.shipment_id` is unique, so there is one listing per shipment).
+- `fn_finalize_checkout_recovery` refund: anon and authenticated get 42501. Active, suspended, and two-seller orders end `refunded`, with each reserved listing VERIFIED or held according to its seller. A non-reserved listing of the order and a reserved listing in no order are unchanged.
+The suspension is set on `profiles_private.status` directly (the rule reads that column; `suspension_hold` covers the RPC route). Banned is not run separately because the helper treats it like suspended (`COALESCE(pp.status, 'active') = 'active'`).
+No bug found, so there is nothing to apply.
+Parent mutation check (current stack, rolled back): `fn_release_listings` never holding fails 6 of 50 (one hold assertion per caller path); always holding fails 10 of 50. The function is intact and pgTAP is not left installed.
+Checks: `bun run test:db` Files=8, Tests=269, PASS.
+Risk: none (test-only). TLC not run: `fn_cancel_shipment` is unchanged.
