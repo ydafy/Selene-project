@@ -1,10 +1,9 @@
 import { useMemo } from 'react';
 import { Gavel, ChevronRight, Calendar } from 'lucide-react';
 import { StatusBadge } from '../../ui/StatusBadge';
-import { DataTable } from '../../ui/DataTable';
+import { DataTable, type ColumnDef } from '../../ui/DataTable';
 import { formatCurrency } from '../../../lib/utils/formatCurrency';
 import { formatTime } from '../../../lib/utils/formatDate';
-import type { ColumnDef } from '@tanstack/react-table';
 import type { StatusType } from '../../ui/StatusBadge';
 import type { DisputeSummary } from '@selene/types';
 

@@ -1,10 +1,17 @@
 import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getPaginationRowModel,
+  useTable,
+  tableFeatures,
+  rowSortingFeature,
+  rowPaginationFeature,
+  createSortedRowModel,
+  createPaginatedRowModel,
+  sortFn_alphanumeric,
+  sortFn_basic,
+  sortFn_datetime,
+  sortFn_text,
   flexRender,
-  type ColumnDef,
+  type ColumnDef as TableColumnDef,
+  type RowData,
   type SortingState,
   type PaginationState,
 } from '@tanstack/react-table';
@@ -17,7 +24,27 @@ import {
 } from 'lucide-react';
 import { useState, useCallback, useMemo } from 'react';
 
-export interface DataTableProps<TData> {
+// Only sorting and pagination are used. The sort functions are the ones the
+// default 'auto' sortFn picks from, depending on the column's data.
+const features = tableFeatures({
+  rowSortingFeature,
+  rowPaginationFeature,
+  sortedRowModel: createSortedRowModel(),
+  paginatedRowModel: createPaginatedRowModel(),
+  sortFns: {
+    alphanumeric: sortFn_alphanumeric,
+    basic: sortFn_basic,
+    datetime: sortFn_datetime,
+    text: sortFn_text,
+  },
+});
+
+export type ColumnDef<TData extends RowData> = TableColumnDef<
+  typeof features,
+  TData
+>;
+
+export interface DataTableProps<TData extends RowData> {
   columns: ColumnDef<TData>[];
   data: TData[];
   isLoading?: boolean;
@@ -57,7 +84,7 @@ function SkeletonRow({ columns }: { columns: number }) {
   );
 }
 
-export function DataTable<TData>({
+export function DataTable<TData extends RowData>({
   columns,
   data,
   isLoading = false,
@@ -108,7 +135,8 @@ export function DataTable<TData>({
   const isManualSorting = !!onSortingChange;
   const isManualPagination = !!pageCount;
 
-  const table = useReactTable({
+  const table = useTable({
+    features,
     data: data ?? [],
     columns: columns ?? [],
     state: {
@@ -117,15 +145,10 @@ export function DataTable<TData>({
     },
     onSortingChange: handleSortingChange,
     onPaginationChange: handlePaginationChange,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: isManualPagination
-      ? undefined
-      : getPaginationRowModel(),
     enableSorting: enableSorting && !isManualSorting,
     manualSorting: isManualSorting,
     manualPagination: isManualPagination,
-    pageCount: pageCount ?? -1,
+    pageCount,
     debugTable: false,
   });
 
@@ -200,7 +223,7 @@ export function DataTable<TData>({
                   }`}
                   onClick={() => onRowClick?.(row.original)}
                 >
-                  {row.getVisibleCells().map((cell) => (
+                  {row.getAllCells().map((cell) => (
                     <td key={cell.id} className="p-4 text-sm">
                       {flexRender(
                         cell.column.columnDef.cell,
@@ -228,7 +251,7 @@ export function DataTable<TData>({
       {!isManualPagination && data && data.length > pagination.pageSize && (
         <div className="p-4 border-t border-white/5 flex items-center justify-between">
           <p className="text-xs text-blue-light font-medium">
-            Mostrando página {table.getState().pagination.pageIndex + 1} de{' '}
+            Mostrando página {table.state.pagination.pageIndex + 1} de{' '}
             {table.getPageCount()}
           </p>
 
