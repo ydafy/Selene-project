@@ -144,6 +144,7 @@ Acceptance: an update that leaves `price` and `shipping_cost` unchanged keeps th
 - T10c.2 | S4 | delegated writer (context backstop) | done (L165-L166) | pgTAP for the other release callers under the T9e seller rule: `fn_reserve_products` stale cleanup and partial rollback, `fn_cancel_shipment`, and the refund path of `fn_finalize_checkout_recovery`; a suspended seller's listing is held, an active seller's returns to sale | Commit: 208a8738.
 - T10d | S1,S4 | inline | done (L168-L169) | Roadmap #163: CI job `db-test` starts the local stack and runs `supabase test db` on every PR; `supabase/AGENTS.md` updated | Commit: 391912c7.
 - T10e | S1 | inline | done (L170) | Roadmap #164: frontend typecheck at zero on Windows (OTP `textInputStyle` typed as the library declares it) | Commit: 9dcf0bc0.
+- T10f | S4,S10 | delegated writer (context backstop) | in progress (L172) | Roadmap #165 (part of #122): narrow `anon` and `authenticated` grants on the auth tables and admin views to the matrix in L172; pgTAP per role; maintainer applies the migration | Commit: not created.
 
 ## Log
 
@@ -1200,3 +1201,21 @@ Review: native review of bcb22fe1..9dcf0bc0 (readability; tier high) approved an
 
 ### L171 — T10e closed
 PR #176 merged (89a6ccd6) after the required checks `test` and `db-test` passed; it closed roadmap item #164. Open from T10e: #174 (the CI typecheck runs without Expo's types; the fix is a CI change and needs approval). This entry is commit-only on local branch `docs/auth-t10e-close` and goes out with the next slice. Next roadmap item: #165 (T10f, #122 limited to the auth tables; migration, the maintainer applies it).
+
+### L172 — T10f starts: grant matrix
+Inventory: production grants read through the Supabase MCP (read-only, `has_table_privilege` and `has_column_privilege`). `anon` and `authenticated` hold every table privilege on `profiles_private`, `admin_audit_logs` and `admin_user_notes`. `anon` also holds every privilege on `admin_user_directory_view`, `admin_disputes_monitor_view`, `admin_connect_earnings_view` and `admin_seller_onboarding_view`. `profiles` has INSERT, DELETE, TRUNCATE, REFERENCES and TRIGGER for both roles. Client usage comes from the `.from(...)` calls in `apps/frontend`, `apps/admin-web` and `bruno/`; Edge Functions use `service_role` and are unaffected.
+Target matrix (everything not listed is revoked from that role; service_role and postgres are unchanged):
+| Relation | anon | authenticated |
+| --- | --- | --- |
+| profiles | SELECT | SELECT; UPDATE (username, avatar_url, updated_at) as today |
+| profiles_private | none | SELECT |
+| admin_audit_logs | none | SELECT |
+| admin_user_notes | none | SELECT, INSERT |
+| admin_user_directory_view | none | SELECT |
+| admin_disputes_monitor_view | none | SELECT |
+| admin_product_queue_view | none | SELECT (as today) |
+| admin_connect_earnings_view | none | none |
+| admin_seller_onboarding_view | none | none |
+| admin_connect_payout_release_view, account_closures | none | none (as today) |
+RLS stays the row control. This is the auth part of #122; the other tables and the default privileges stay in #122.
+Finding #178: admin-web `useAdminStats` reads `admin_connect_payout_release_view` without a grant, so the dashboard always shows 0 funds to release. Granting it is out of scope (it would widen access to payout data).
