@@ -53,7 +53,7 @@ export const ProductManagementPage = () => {
   const handleTabKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
       const tabIds = TABS.map((t) => t.id);
-      let nextIndex: number | null = null;
+      let nextIndex: number;
 
       switch (e.key) {
         case 'ArrowRight':
