@@ -79,9 +79,15 @@ describe('record_dispute_refund migration', () => {
     locksThenChecksThenWrites(code);
   });
 
-  test('the canonical copy carries the migration body', () => {
-    const open = migration.indexOf('$$');
-    const body = migration.slice(open + 2, migration.indexOf('$$;', open + 2));
+  test('the canonical copy carries the newest migration body', () => {
+    // 20261101030000_shipment_refunded_notification.sql redefined the function
+    // with the buyer notice; its own test pins the canonical file to that body.
+    const newest = readFileSync(
+      join(MIGRATIONS_DIR, '20261101030000_shipment_refunded_notification.sql'),
+      'utf8',
+    ).replace(/\r/g, '');
+    const open = newest.indexOf('$$');
+    const body = newest.slice(open + 2, newest.indexOf('$$;', open + 2));
     const collapse = (sql: string): string => sql.replace(/\s+/g, ' ').trim();
     expect(collapse(canonical)).toBe(collapse(body));
     locksThenChecksThenWrites(canonical);
