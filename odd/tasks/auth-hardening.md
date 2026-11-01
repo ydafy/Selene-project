@@ -1112,3 +1112,7 @@ Risk: none beyond S11 (the edit branch only changes when price or shipping cost 
 
 ### L156 — T10a.2 review; finding #141
 Native review of 7a293391..809ed043 (risk, reliability; tier high) approved and acknowledged; no blocking finding. Three reliability advisories (R3-001 `listingEdit.ts:46-47`, R3-002 `preview.tsx:89-90`, R3-003 `usePublishProduct.ts:222-239`), not blocking. The L155 RLS finding is #141 (owner edit that keeps a listing VERIFIED is refused; needs a product decision).
+
+### L157 — T10a.1 migration applied
+Maintainer (verbatim): "Migracion aplciada con succes master." Remote (Supabase MCP, read-only): `validate_product_publication_economics` has the price/shipping gate and the `IS DISTINCT FROM` check, no status skip list; SECURITY DEFINER, `search_path=public, pg_temp`; not executable by anon or authenticated; trigger enabled. Its body equals the local one after whitespace normalization (md5 7db445a9...; the remote copy has CRLF line ends from the editor). `db:types` not needed (no schema change).
+Slice T10a: e025d9f3, 7a293391, c1c66de3, 809ed043, cc6fb5dc and this entry; one PR closing #120.
