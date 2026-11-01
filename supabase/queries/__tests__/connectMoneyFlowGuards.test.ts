@@ -186,9 +186,7 @@ describe('Connect money-flow SQL guards', () => {
       'supabase/functions/create-connect-payment/index.ts',
     );
 
-    expect(source).toContain(
-      'quantity: z.number().int().min(1).max(1).default(1)',
-    );
+    expect(source).toContain('quantity: z.literal(1).default(1)');
   });
 
   it('manual release completes Connect shipments and refuses the rest before any state change', () => {

@@ -75,7 +75,7 @@ const corsHeaders = {
 
 const ItemSchema = z.object({
   productId: z.string().uuid(),
-  quantity: z.number().int().min(1).max(1).default(1),
+  quantity: z.literal(1).default(1),
 });
 
 const RequestSchema = z
@@ -127,437 +127,440 @@ const describeReservationRpcData = (data: ReservationRpcData) => ({
     : (data?.error_message ?? null),
 });
 
-serve(withSentry('create-connect-payment', async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
-
-  try {
-    // 1. Secrets
-    const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY');
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    if (!stripeSecret || !serviceRoleKey || !supabaseUrl) {
-      throw new Error('MISSING_SERVER_CONFIG');
+serve(
+  withSentry('create-connect-payment', async (req: Request) => {
+    if (req.method === 'OPTIONS') {
+      return new Response('ok', { headers: corsHeaders });
     }
 
-    const stripe = new Stripe(stripeSecret, {
-      apiVersion: STRIPE_API_VERSION,
-      httpClient: Stripe.createFetchHttpClient(),
-    });
-
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
-
-    // 2. Auth
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) throw new Error('AUTH_REQUIRED');
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseAdmin.auth.getUser(authHeader.replace('Bearer ', ''));
-    if (authError || !user) throw new Error('AUTH_REQUIRED');
-
-    // 3. Validate input
-    const body = await req.json().catch(() => ({}));
-    const parsedBody = RequestSchema.parse(body);
-    const normalizedRequest = normalizeCreateConnectPaymentRequest(parsedBody);
-    const items = normalizedRequest.productIds.map((productId) => ({
-      productId,
-      quantity: 1 as const,
-    }));
-
-    // 3b. Build stable checkout identifiers. When the client supplies an
-    // idempotency key, the order-group id, transfer_group, and the per-seller
-    // shipment ids are DETERMINISTIC functions of that key (+ seller id) so a
-    // retry of the same checkout produces a byte-identical Stripe PaymentIntent
-    // create request and Stripe's request idempotency returns the existing
-    // PaymentIntent instead of rejecting idempotency-key reuse (or minting a
-    // duplicate charge). Without an idempotency key, identifiers are random
-    // and NO Stripe request idempotency key is set below — no unsafe reuse.
-    const { orderGroupId, transferGroup, shipmentIdFor } =
-      buildCheckoutIdentifiers(parsedBody.idempotencyKey, () =>
-        crypto.randomUUID(),
-      );
-
-    const releaseReserved = async (reason: string) => {
-      try {
-        await supabaseAdmin.rpc('fn_release_products', {
-          p_product_ids: productIds,
-        });
-      } catch (err: unknown) {
-        log('error', 'failed to release reserved products', {
-          reason,
-          error: err instanceof Error ? err.message : String(err),
-        });
-      }
-    };
-
-    // 4. Reserve products. fn_reserve_products can soft-fail by returning
-    // { success: false } WITHOUT throwing a Postgrest error (e.g. a product
-    // sold out between cart open and reserve). The pure assertion encodes
-    // that contract and blocks PaymentIntent creation on both error paths.
-    const productIds = items.map((i) => i.productId);
-    log('info', 'Attempting product reservation', {
-      buyerId: user.id,
-      productCount: productIds.length,
-      productIdPreview: summarizeProductIds(productIds),
-      hasIdempotencyKey: Boolean(normalizedRequest.idempotencyKey),
-    });
-    const { data: reserveData, error: reserveError } = await supabaseAdmin.rpc(
-      'fn_reserve_products',
-      { p_product_ids: productIds, p_buyer_id: user.id },
-    );
-    log('info', 'Product reservation RPC completed', {
-      buyerId: user.id,
-      productCount: productIds.length,
-      productIdPreview: summarizeProductIds(productIds),
-      ...describeReservationRpcData(reserveData as ReservationRpcData),
-      postgrestErrorMessage: reserveError?.message ?? null,
-      postgrestErrorCode: reserveError?.code ?? null,
-    });
     try {
-      assertReservationSucceeded({
-        data: reserveData as ReservationRpcData,
-        error: reserveError,
+      // 1. Secrets
+      const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY');
+      const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      const supabaseUrl = Deno.env.get('SUPABASE_URL');
+      if (!stripeSecret || !serviceRoleKey || !supabaseUrl) {
+        throw new Error('MISSING_SERVER_CONFIG');
+      }
+
+      const stripe = new Stripe(stripeSecret, {
+        apiVersion: STRIPE_API_VERSION,
+        httpClient: Stripe.createFetchHttpClient(),
       });
-    } catch (reservationError) {
-      log('error', 'Product reservation failed', {
+
+      const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+
+      // 2. Auth
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader) throw new Error('AUTH_REQUIRED');
+
+      const {
+        data: { user },
+        error: authError,
+      } = await supabaseAdmin.auth.getUser(authHeader.replace('Bearer ', ''));
+      if (authError || !user) throw new Error('AUTH_REQUIRED');
+
+      // 3. Validate input
+      const body = await req.json().catch(() => ({}));
+      const parsedBody = RequestSchema.parse(body);
+      const normalizedRequest =
+        normalizeCreateConnectPaymentRequest(parsedBody);
+      const items = normalizedRequest.productIds.map((productId) => ({
+        productId,
+        quantity: 1 as const,
+      }));
+
+      // 3b. Build stable checkout identifiers. When the client supplies an
+      // idempotency key, the order-group id, transfer_group, and the per-seller
+      // shipment ids are DETERMINISTIC functions of that key (+ seller id) so a
+      // retry of the same checkout produces a byte-identical Stripe PaymentIntent
+      // create request and Stripe's request idempotency returns the existing
+      // PaymentIntent instead of rejecting idempotency-key reuse (or minting a
+      // duplicate charge). Without an idempotency key, identifiers are random
+      // and NO Stripe request idempotency key is set below — no unsafe reuse.
+      const { orderGroupId, transferGroup, shipmentIdFor } =
+        buildCheckoutIdentifiers(parsedBody.idempotencyKey, () =>
+          crypto.randomUUID(),
+        );
+
+      const releaseReserved = async (reason: string) => {
+        try {
+          await supabaseAdmin.rpc('fn_release_products', {
+            p_product_ids: productIds,
+          });
+        } catch (err: unknown) {
+          log('error', 'failed to release reserved products', {
+            reason,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      };
+
+      // 4. Reserve products. fn_reserve_products can soft-fail by returning
+      // { success: false } WITHOUT throwing a Postgrest error (e.g. a product
+      // sold out between cart open and reserve). The pure assertion encodes
+      // that contract and blocks PaymentIntent creation on both error paths.
+      const productIds = items.map((i) => i.productId);
+      log('info', 'Attempting product reservation', {
+        buyerId: user.id,
+        productCount: productIds.length,
+        productIdPreview: summarizeProductIds(productIds),
+        hasIdempotencyKey: Boolean(normalizedRequest.idempotencyKey),
+      });
+      const { data: reserveData, error: reserveError } =
+        await supabaseAdmin.rpc('fn_reserve_products', {
+          p_product_ids: productIds,
+          p_buyer_id: user.id,
+        });
+      log('info', 'Product reservation RPC completed', {
         buyerId: user.id,
         productCount: productIds.length,
         productIdPreview: summarizeProductIds(productIds),
         ...describeReservationRpcData(reserveData as ReservationRpcData),
         postgrestErrorMessage: reserveError?.message ?? null,
         postgrestErrorCode: reserveError?.code ?? null,
-        error:
-          reservationError instanceof Error
-            ? reservationError.message
-            : String(reservationError),
       });
-      throw reservationError instanceof Error
-        ? reservationError
-        : new Error('RESERVATION_FAILED');
-    }
+      try {
+        assertReservationSucceeded({
+          data: reserveData as ReservationRpcData,
+          error: reserveError,
+        });
+      } catch (reservationError) {
+        log('error', 'Product reservation failed', {
+          buyerId: user.id,
+          productCount: productIds.length,
+          productIdPreview: summarizeProductIds(productIds),
+          ...describeReservationRpcData(reserveData as ReservationRpcData),
+          postgrestErrorMessage: reserveError?.message ?? null,
+          postgrestErrorCode: reserveError?.code ?? null,
+          error:
+            reservationError instanceof Error
+              ? reservationError.message
+              : String(reservationError),
+        });
+        throw reservationError instanceof Error
+          ? reservationError
+          : new Error('RESERVATION_FAILED');
+      }
 
-    // 5. Load product details for the reserved items
-    const { data: products, error: productsError } = await supabaseAdmin
-      .from('products')
-      .select('id, seller_id, price, name, shipping_cost, publication_shipping_reserve_cents, publication_commission_rate, publication_insurance_rate')
-      .in('id', productIds);
-    if (productsError || !products?.length) {
-      await releaseReserved('PRODUCTS_NOT_FOUND');
-      throw new Error('PRODUCTS_NOT_FOUND');
-    }
+      // 5. Load product details for the reserved items
+      const { data: products, error: productsError } = await supabaseAdmin
+        .from('products')
+        .select(
+          'id, seller_id, price, name, shipping_cost, publication_shipping_reserve_cents, publication_commission_rate, publication_insurance_rate',
+        )
+        .in('id', productIds);
+      if (productsError || !products?.length) {
+        await releaseReserved('PRODUCTS_NOT_FOUND');
+        throw new Error('PRODUCTS_NOT_FOUND');
+      }
 
-    const { data: systemSettings, error: settingsError } = await supabaseAdmin
-      .from('system_settings')
-      .select('shipping_buffer_cents, insurance_rate, service_fee_pct')
-      .eq('id', 1)
-      .maybeSingle();
+      const { data: systemSettings, error: settingsError } = await supabaseAdmin
+        .from('system_settings')
+        .select('shipping_buffer_cents, insurance_rate, service_fee_pct')
+        .eq('id', 1)
+        .maybeSingle();
 
-    if (settingsError) {
-      log(
-        'warn',
-        'System settings unavailable; using shipping estimate defaults',
-        { error: settingsError.message },
-      );
-    }
+      if (settingsError) {
+        log(
+          'warn',
+          'System settings unavailable; using shipping estimate defaults',
+          { error: settingsError.message },
+        );
+      }
 
-    // 6. Build one allocation for every purchased listing. A seller can own
-    // multiple listings in an order, but each keeps an independent shipment,
-    // label, tracking, and payout boundary.
-    const productAllocations: Array<{
-      productId: string;
-      sellerId: string;
-      subtotalCents: number;
-      shippingCents: number;
-      publicationSnapshot: ProductPublicationEconomicsRow;
-      legacyEconomics?: {
-        shippingReserveCents: number;
-        commissionRate: number;
-        insuranceRate: number;
-      };
-    }> = [];
-
-    for (const product of products) {
-      const item = items.find((i) => i.productId === product.id);
-      if (!item) continue;
-
-      const productEconomics = product as typeof product &
-        ProductPublicationEconomicsRow;
-      const subtotalCents = Math.round(product.price * 100) * item.quantity;
-      const shippingBufferCents =
-        systemSettings?.shipping_buffer_cents == null
-          ? undefined
-          : systemSettings.shipping_buffer_cents * item.quantity;
-      let publicationSnapshot: ProductPublicationEconomicsRow = {
-        publication_shipping_reserve_cents:
-          productEconomics.publication_shipping_reserve_cents,
-        publication_commission_rate:
-          productEconomics.publication_commission_rate,
-        publication_insurance_rate:
-          productEconomics.publication_insurance_rate,
-      };
-      let legacyEconomics:
-        | {
+      // 6. Build one allocation for every purchased listing. A seller can own
+      // multiple listings in an order, but each keeps an independent shipment,
+      // label, tracking, and payout boundary.
+      const productAllocations: Array<{
+        productId: string;
+        sellerId: string;
+        subtotalCents: number;
+        shippingCents: number;
+        publicationSnapshot: ProductPublicationEconomicsRow;
+        legacyEconomics?: {
           shippingReserveCents: number;
           commissionRate: number;
           insuranceRate: number;
-        }
-        | undefined;
-
-      if (hasNoPublicationEconomics(publicationSnapshot)) {
-        const insuranceRate = normalizeEnviaInsuranceRate(
-          systemSettings?.insurance_rate ?? null,
-        );
-        legacyEconomics = {
-          shippingReserveCents:
-            calculateEstimatedSellerShippingDeductionCents({
-              priceCents: subtotalCents,
-              quotedShippingCents:
-                Math.round((product.shipping_cost ?? 0) * 100) * item.quantity,
-              shippingBufferCents,
-              insuranceRate,
-            }),
-          commissionRate: normalizeEnviaInsuranceRate(
-            systemSettings?.service_fee_pct ?? null,
-          ),
-          insuranceRate,
         };
+      }> = [];
 
-        const { data: backfilledSnapshot, error: backfillError } =
-          await supabaseAdmin.rpc('backfill_product_publication_economics', {
-            p_product_id: product.id,
-          });
-        const backfilled = Array.isArray(backfilledSnapshot)
-          ? backfilledSnapshot[0]
-          : backfilledSnapshot;
-        if (
-          backfillError ||
-          !backfilled ||
-          typeof backfilled !== 'object'
-        ) {
-          await releaseReserved('LEGACY_PUBLICATION_ECONOMICS_UNAVAILABLE');
-          throw new Error('LEGACY_PUBLICATION_ECONOMICS_UNAVAILABLE');
+      for (const product of products) {
+        const item = items.find((i) => i.productId === product.id);
+        if (!item) continue;
+
+        const productEconomics = product as typeof product &
+          ProductPublicationEconomicsRow;
+        const subtotalCents = Math.round(product.price * 100) * item.quantity;
+        const shippingBufferCents =
+          systemSettings?.shipping_buffer_cents == null
+            ? undefined
+            : systemSettings.shipping_buffer_cents * item.quantity;
+        let publicationSnapshot: ProductPublicationEconomicsRow = {
+          publication_shipping_reserve_cents:
+            productEconomics.publication_shipping_reserve_cents,
+          publication_commission_rate:
+            productEconomics.publication_commission_rate,
+          publication_insurance_rate:
+            productEconomics.publication_insurance_rate,
+        };
+        let legacyEconomics:
+          | {
+              shippingReserveCents: number;
+              commissionRate: number;
+              insuranceRate: number;
+            }
+          | undefined;
+
+        if (hasNoPublicationEconomics(publicationSnapshot)) {
+          const insuranceRate = normalizeEnviaInsuranceRate(
+            systemSettings?.insurance_rate ?? null,
+          );
+          legacyEconomics = {
+            shippingReserveCents:
+              calculateEstimatedSellerShippingDeductionCents({
+                priceCents: subtotalCents,
+                quotedShippingCents:
+                  Math.round((product.shipping_cost ?? 0) * 100) *
+                  item.quantity,
+                shippingBufferCents,
+                insuranceRate,
+              }),
+            commissionRate: normalizeEnviaInsuranceRate(
+              systemSettings?.service_fee_pct ?? null,
+            ),
+            insuranceRate,
+          };
+
+          const { data: backfilledSnapshot, error: backfillError } =
+            await supabaseAdmin.rpc('backfill_product_publication_economics', {
+              p_product_id: product.id,
+            });
+          const backfilled = Array.isArray(backfilledSnapshot)
+            ? backfilledSnapshot[0]
+            : backfilledSnapshot;
+          if (backfillError || !backfilled || typeof backfilled !== 'object') {
+            await releaseReserved('LEGACY_PUBLICATION_ECONOMICS_UNAVAILABLE');
+            throw new Error('LEGACY_PUBLICATION_ECONOMICS_UNAVAILABLE');
+          }
+
+          publicationSnapshot = backfilled as ProductPublicationEconomicsRow;
+          legacyEconomics = undefined;
         }
 
-        publicationSnapshot = backfilled as ProductPublicationEconomicsRow;
-        legacyEconomics = undefined;
+        productAllocations.push({
+          productId: product.id,
+          sellerId: product.seller_id,
+          subtotalCents,
+          shippingCents:
+            publicationSnapshot.publication_shipping_reserve_cents ?? 0,
+          publicationSnapshot,
+          legacyEconomics,
+        });
       }
 
-      productAllocations.push({
-        productId: product.id,
-        sellerId: product.seller_id,
-        subtotalCents,
-        shippingCents:
-          publicationSnapshot.publication_shipping_reserve_cents ?? 0,
-        publicationSnapshot,
-        legacyEconomics,
-      });
-    }
-
-    // 7. Load Connect accounts for all sellers
-    const sellerIds = [
-      ...new Set(productAllocations.map((row) => row.sellerId)),
-    ];
-    const { data: sellerProfiles, error: profilesError } = await supabaseAdmin
-      .from('profiles_private')
-      .select('id, stripe_account_id, stripe_onboarding_status')
-      .in('id', sellerIds);
-    if (profilesError) {
-      await releaseReserved('PROFILES_LOAD_FAILED');
-      throw new Error('PROFILES_LOAD_FAILED');
-    }
-
-    // 8. Validate all sellers finished Connect onboarding (manual release
-    // needs payout-ready accounts; fail fast before charging the buyer).
-    const notOnboarded = findSellersNotReadyForPayment(
-      sellerIds,
-      (sellerProfiles || []) as SellerPaymentProfile[],
-    );
-    if (notOnboarded.length > 0) {
-      log('warn', 'Checkout blocked: seller not ready for payment', {
-        buyerId: user.id,
-        sellerCount: notOnboarded.length,
-      });
-      await releaseReserved('SELLER_NOT_ONBOARDED');
-      throw new Error('SELLER_NOT_ONBOARDED');
-    }
-
-    // 9. Get/create Stripe customer for buyer + ephemeral key for mobile SDK
-    let customerId: string;
-    const { data: buyerProfile } = await supabaseAdmin
-      .from('profiles_private')
-      .select('stripe_customer_id, email')
-      .eq('id', user.id)
-      .single();
-
-    if (buyerProfile?.stripe_customer_id) {
-      customerId = buyerProfile.stripe_customer_id;
-    } else {
-      const customer = await stripe.customers.create({
-        email: buyerProfile?.email ?? user.email,
-        metadata: { supabase_user_id: user.id, app_name: APP_NAME },
-      });
-      customerId = customer.id;
-      await supabaseAdmin
+      // 7. Load Connect accounts for all sellers
+      const sellerIds = [
+        ...new Set(productAllocations.map((row) => row.sellerId)),
+      ];
+      const { data: sellerProfiles, error: profilesError } = await supabaseAdmin
         .from('profiles_private')
-        .update({ stripe_customer_id: customerId })
-        .eq('id', user.id);
-    }
+        .select('id, stripe_account_id, stripe_onboarding_status')
+        .in('id', sellerIds);
+      if (profilesError) {
+        await releaseReserved('PROFILES_LOAD_FAILED');
+        throw new Error('PROFILES_LOAD_FAILED');
+      }
 
-    const ephemeralKey = await stripe.ephemeralKeys.create(
-      { customer: customerId },
-      { apiVersion: STRIPE_API_VERSION },
-    );
-
-    // 10. Build the per-product allocation inputs with durable shipment ids, then
-    // compute + validate the single-modal allocation. `shipmentId` correlation
-    // is required by the allocation contract so manual release can address each
-    // seller net to exactly one shipment.
-    const allocationInputs: SellerAllocationInput[] = [];
-    const shipmentProductIds: Record<string, string[]> = {};
-    for (const product of productAllocations) {
-      // Deterministic per (idempotencyKey, productId) when an idempotency key
-      // was supplied; random (via the injected crypto.randomUUID) otherwise.
-      // Stable-on-retry shipment ids correlate the per-seller allocation row
-      // to the shipment the webhook will persist — no implicit ordering reliance.
-      const shipmentId = shipmentIdFor(product.productId);
-      allocationInputs.push({
-        sellerId: product.sellerId,
-        shipmentId,
-        subtotalCents: product.subtotalCents,
-        shippingCents: product.shippingCents,
-        publicationSnapshot: product.publicationSnapshot,
-        legacyEconomics: product.legacyEconomics,
-      });
-      shipmentProductIds[shipmentId] = [product.productId];
-    }
-
-    let allocation;
-    try {
-      assertValidAllocationRows({
-        requestedProductIds: productIds,
-        rows: Object.entries(shipmentProductIds).map(
-          ([shipmentId, allocatedProductIds]) => ({
-            shipmentId,
-            productIds: allocatedProductIds,
-          }),
-        ),
-      });
-      allocation = calculateCheckoutAllocation(allocationInputs);
-      assertValidCheckoutAllocation(allocation);
-    } catch (economicsError) {
-      await releaseReserved('INVALID_CONNECT_ECONOMICS');
-      log('warn', 'Invalid Connect seller economics', {
-        error:
-          economicsError instanceof Error
-            ? economicsError.message
-            : String(economicsError),
-      });
-      throw economicsError instanceof Error
-        ? economicsError
-        : new Error('INVALID_CONNECT_ECONOMICS');
-    }
-
-    // 11. Build the single platform PaymentIntent params and create the PI.
-    // No `transfer_data.destination`, no `application_fee_amount`, no hardcoded
-    // payment_method_types: seller funds are NOT routed at PI time; manual
-    // release later creates per-shipment Transfers under `transfer_group`.
-    const piParams = buildSinglePaymentIntentParams({
-      allocation,
-      orderId: orderGroupId,
-      buyerId: user.id,
-      customerId,
-      addressId: normalizedRequest.addressId,
-      transferGroup,
-      shipmentProductIds,
-    });
-
-    const requestParams: Stripe.PaymentIntentCreateParams = {
-      amount: piParams.amount,
-      currency: piParams.currency,
-      customer: piParams.customer,
-      transfer_group: piParams.transfer_group,
-      automatic_payment_methods: { enabled: true },
-      metadata: piParams.metadata,
-    };
-
-    // Stripe request idempotency: when the client retries the same checkout
-    // attempt, reuse the same key so Stripe returns the existing PI instead of
-    // minting a duplicate. This preserves the legacy retry-safety guarantee.
-    let pi: Stripe.PaymentIntent;
-    try {
-      pi = await createSinglePaymentIntent({
-        stripe,
-        params: requestParams,
-        idempotencyKey: normalizedRequest.idempotencyKey,
-      });
-      log('info', 'Single platform PaymentIntent created', {
-        piId: pi.id,
-        amount: pi.amount,
-        transferGroup,
-        sellerCount: allocation.rows.length,
-      });
-    } catch (piError) {
-      log(
-        'error',
-        'Single PaymentIntent creation failed — releasing reservation',
-        {
-          error: piError instanceof Error ? piError.message : String(piError),
-        },
+      // 8. Validate all sellers finished Connect onboarding (manual release
+      // needs payout-ready accounts; fail fast before charging the buyer).
+      const notOnboarded = findSellersNotReadyForPayment(
+        sellerIds,
+        (sellerProfiles || []) as SellerPaymentProfile[],
       );
-      // No prior PIs to cancel (single PI). Release the product reservation so
-      // the cart is buyable again; the failed PI (if Stripe created one before
-      // throwing) is left in `requires_payment_method` and never confirmed.
-      await releaseReserved('PI_CREATION_FAILED');
-      throw new Error('PI_CREATION_FAILED');
+      if (notOnboarded.length > 0) {
+        log('warn', 'Checkout blocked: seller not ready for payment', {
+          buyerId: user.id,
+          sellerCount: notOnboarded.length,
+        });
+        await releaseReserved('SELLER_NOT_ONBOARDED');
+        throw new Error('SELLER_NOT_ONBOARDED');
+      }
+
+      // 9. Get/create Stripe customer for buyer + ephemeral key for mobile SDK
+      let customerId: string;
+      const { data: buyerProfile } = await supabaseAdmin
+        .from('profiles_private')
+        .select('stripe_customer_id, email')
+        .eq('id', user.id)
+        .single();
+
+      if (buyerProfile?.stripe_customer_id) {
+        customerId = buyerProfile.stripe_customer_id;
+      } else {
+        const customer = await stripe.customers.create({
+          email: buyerProfile?.email ?? user.email,
+          metadata: { supabase_user_id: user.id, app_name: APP_NAME },
+        });
+        customerId = customer.id;
+        await supabaseAdmin
+          .from('profiles_private')
+          .update({ stripe_customer_id: customerId })
+          .eq('id', user.id);
+      }
+
+      const ephemeralKey = await stripe.ephemeralKeys.create(
+        { customer: customerId },
+        { apiVersion: STRIPE_API_VERSION },
+      );
+
+      // 10. Build the per-product allocation inputs with durable shipment ids, then
+      // compute + validate the single-modal allocation. `shipmentId` correlation
+      // is required by the allocation contract so manual release can address each
+      // seller net to exactly one shipment.
+      const allocationInputs: SellerAllocationInput[] = [];
+      const shipmentProductIds: Record<string, string[]> = {};
+      for (const product of productAllocations) {
+        // Deterministic per (idempotencyKey, productId) when an idempotency key
+        // was supplied; random (via the injected crypto.randomUUID) otherwise.
+        // Stable-on-retry shipment ids correlate the per-seller allocation row
+        // to the shipment the webhook will persist — no implicit ordering reliance.
+        const shipmentId = shipmentIdFor(product.productId);
+        allocationInputs.push({
+          sellerId: product.sellerId,
+          shipmentId,
+          subtotalCents: product.subtotalCents,
+          shippingCents: product.shippingCents,
+          publicationSnapshot: product.publicationSnapshot,
+          legacyEconomics: product.legacyEconomics,
+        });
+        shipmentProductIds[shipmentId] = [product.productId];
+      }
+
+      let allocation;
+      try {
+        assertValidAllocationRows({
+          requestedProductIds: productIds,
+          rows: Object.entries(shipmentProductIds).map(
+            ([shipmentId, allocatedProductIds]) => ({
+              shipmentId,
+              productIds: allocatedProductIds,
+            }),
+          ),
+        });
+        allocation = calculateCheckoutAllocation(allocationInputs);
+        assertValidCheckoutAllocation(allocation);
+      } catch (economicsError) {
+        await releaseReserved('INVALID_CONNECT_ECONOMICS');
+        log('warn', 'Invalid Connect seller economics', {
+          error:
+            economicsError instanceof Error
+              ? economicsError.message
+              : String(economicsError),
+        });
+        throw economicsError instanceof Error
+          ? economicsError
+          : new Error('INVALID_CONNECT_ECONOMICS');
+      }
+
+      // 11. Build the single platform PaymentIntent params and create the PI.
+      // No `transfer_data.destination`, no `application_fee_amount`, no hardcoded
+      // payment_method_types: seller funds are NOT routed at PI time; manual
+      // release later creates per-shipment Transfers under `transfer_group`.
+      const piParams = buildSinglePaymentIntentParams({
+        allocation,
+        orderId: orderGroupId,
+        buyerId: user.id,
+        customerId,
+        addressId: normalizedRequest.addressId,
+        transferGroup,
+        shipmentProductIds,
+      });
+
+      const requestParams: Stripe.PaymentIntentCreateParams = {
+        amount: piParams.amount,
+        currency: piParams.currency,
+        customer: piParams.customer,
+        transfer_group: piParams.transfer_group,
+        automatic_payment_methods: { enabled: true },
+        metadata: piParams.metadata,
+      };
+
+      // Stripe request idempotency: when the client retries the same checkout
+      // attempt, reuse the same key so Stripe returns the existing PI instead of
+      // minting a duplicate. This preserves the legacy retry-safety guarantee.
+      let pi: Stripe.PaymentIntent;
+      try {
+        pi = await createSinglePaymentIntent({
+          stripe,
+          params: requestParams,
+          idempotencyKey: normalizedRequest.idempotencyKey,
+        });
+        log('info', 'Single platform PaymentIntent created', {
+          piId: pi.id,
+          amount: pi.amount,
+          transferGroup,
+          sellerCount: allocation.rows.length,
+        });
+      } catch (piError) {
+        log(
+          'error',
+          'Single PaymentIntent creation failed — releasing reservation',
+          {
+            error: piError instanceof Error ? piError.message : String(piError),
+          },
+        );
+        // No prior PIs to cancel (single PI). Release the product reservation so
+        // the cart is buyable again; the failed PI (if Stripe created one before
+        // throwing) is left in `requires_payment_method` and never confirmed.
+        await releaseReserved('PI_CREATION_FAILED');
+        throw new Error('PI_CREATION_FAILED');
+      }
+
+      // 12. Return the single-secret response. Exactly one clientSecret, one
+      // transferGroup, one amount — never a per-seller paymentIntents[] array.
+      const response = buildCreateConnectPaymentResponse(pi, {
+        orderId: orderGroupId,
+        customerId,
+        ephemeralKeySecret: ephemeralKey.secret,
+        transferGroup,
+      });
+
+      return new Response(JSON.stringify(response), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      log('error', 'create-connect-payment failed', { message });
+
+      const statusMap: Record<string, number> = {
+        AUTH_REQUIRED: 401,
+        SELLER_NOT_ONBOARDED: 400,
+        RESERVATION_FAILED: 409,
+        PRODUCTS_NOT_FOUND: 404,
+        PROFILES_LOAD_FAILED: 500,
+        PI_CREATION_FAILED: 500,
+        MISSING_SERVER_CONFIG: 500,
+        INVALID_CONNECT_ECONOMICS: 422,
+        ONE_PRODUCT_PER_SHIPMENT_REQUIRED: 422,
+        PRODUCT_ID_NOT_FOUND_OR_NOT_OWNED: 422,
+        'INVALID_CHECKOUT_INPUT:missing_shipment_id': 422,
+        'INVALID_CHECKOUT_INPUT:duplicate_shipment_id': 422,
+        'INVALID_CHECKOUT_INPUT:missing_order_id': 422,
+        'INVALID_CHECKOUT_INPUT:missing_transfer_group': 422,
+        'INVALID_CHECKOUT_INPUT:transfer_group_too_long': 422,
+        'INVALID_ALLOCATION_RECONCILIATION:missing_shipment_id': 500,
+        'INVALID_ALLOCATION_RECONCILIATION:duplicate_shipment_id': 500,
+        'INVALID_ALLOCATION_RECONCILIATION:negative_net': 500,
+        'INVALID_ALLOCATION_RECONCILIATION:row_breakdown': 500,
+        'INVALID_ALLOCATION_RECONCILIATION:buyer_total': 500,
+      };
+      const status = statusMap[message] || 400;
+
+      return new Response(JSON.stringify({ error: message }), {
+        status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
-
-    // 12. Return the single-secret response. Exactly one clientSecret, one
-    // transferGroup, one amount — never a per-seller paymentIntents[] array.
-    const response = buildCreateConnectPaymentResponse(pi, {
-      orderId: orderGroupId,
-      customerId,
-      ephemeralKeySecret: ephemeralKey.secret,
-      transferGroup,
-    });
-
-    return new Response(JSON.stringify(response), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    log('error', 'create-connect-payment failed', { message });
-
-    const statusMap: Record<string, number> = {
-      AUTH_REQUIRED: 401,
-      SELLER_NOT_ONBOARDED: 400,
-      RESERVATION_FAILED: 409,
-      PRODUCTS_NOT_FOUND: 404,
-      PROFILES_LOAD_FAILED: 500,
-      PI_CREATION_FAILED: 500,
-      MISSING_SERVER_CONFIG: 500,
-      INVALID_CONNECT_ECONOMICS: 422,
-      ONE_PRODUCT_PER_SHIPMENT_REQUIRED: 422,
-      PRODUCT_ID_NOT_FOUND_OR_NOT_OWNED: 422,
-      'INVALID_CHECKOUT_INPUT:missing_shipment_id': 422,
-      'INVALID_CHECKOUT_INPUT:duplicate_shipment_id': 422,
-      'INVALID_CHECKOUT_INPUT:missing_order_id': 422,
-      'INVALID_CHECKOUT_INPUT:missing_transfer_group': 422,
-      'INVALID_CHECKOUT_INPUT:transfer_group_too_long': 422,
-      'INVALID_ALLOCATION_RECONCILIATION:missing_shipment_id': 500,
-      'INVALID_ALLOCATION_RECONCILIATION:duplicate_shipment_id': 500,
-      'INVALID_ALLOCATION_RECONCILIATION:negative_net': 500,
-      'INVALID_ALLOCATION_RECONCILIATION:row_breakdown': 500,
-      'INVALID_ALLOCATION_RECONCILIATION:buyer_total': 500,
-    };
-    const status = statusMap[message] || 400;
-
-    return new Response(JSON.stringify({ error: message }), {
-      status,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
-}));
+  }),
+);
