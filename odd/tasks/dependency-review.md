@@ -1,6 +1,6 @@
 # Dependency review (#126, #107, #106)
 
-Fix the weekly dependency report's Expo classification, add the `selene-dependency-review` skill, and add the `correct` principle to `selene-engineering-principles`. One PR per task, in worktree `repo-hygiene`.
+Fix the weekly dependency report's Expo classification, add the `selene-dependency-review` skill, and add the `correct` principle to `selene-engineering-principles`. One PR per task, stacked: T1 and T2 were committed in worktree `repo-hygiene`, T3 in worktree `dependency-review` (L6).
 The Expo SDK 58 plan (with #99) is out of scope: another session owns it (L1).
 
 ## Specs
@@ -14,7 +14,7 @@ The Expo SDK 58 plan (with #99) is out of scope: another session owns it (L1).
 
 - T1 | S1-S2 | worker (context backstop) | branch `fix/dependency-report-expo-pins` | commit: this commit (done)
 - T2 | S4 | inline | branch `docs/correct-principle` (stacked on T1) | commit: this commit (done)
-- T3 | S3 | inline | branch `docs/dependency-review-skill` (after T1 merges) | commit: pending
+- T3 | S3 | worker (context backstop) | branch `docs/dependency-review-skill` (stacked on T2) | commit: this commit (done)
 
 ## Log
 
@@ -23,3 +23,5 @@ The Expo SDK 58 plan (with #99) is out of scope: another session owns it (L1).
 - L3 (evidence T1): the pin list is read from `bundledNativeModules.json` (`parseExpoPins`, collector `expoPins`). Pinned majors move to a new Expo subsection, "Expo-pinned packages with a newer major". A failed pin read exits 1 and withholds unclassified app rows from safe updates and majors. RED: `Export named 'parseExpoPins' not found`. GREEN: `bun test scripts/` 206 pass; eslint and prettier clean. Real run exit 0: 9 majors (was 15), and the six S1 packages are under the new Expo subsection. Also seen, outside this task: 5 new high node-forge advisories (GHSA-5x38-2vff-x55p, GHSA-7wch-p9px-956x, GHSA-8hrf-8g6f-7xwp, GHSA-hqq3-7jhf-c5jx, GHSA-jc66-7q78-782g), fixed in node-forge 1.4.2, which fits `@expo/cli`'s `^1.3.3`.
 - L4 (incident): the T1 worker left the worktree on a detached `origin/main`, so `a5ab1a65` was committed off-branch. Recovered with fast-forward merges; no history rewritten.
 - L5 (evidence T2): `references/principles.md` §10 "Encode repeated mistakes in structure"; `SKILL.md` trigger, activation line, a Decision Gates row, and "ten adapted principles". `benchmark-checklist` and hillclimb stay in #106. Prettier clean.
+- L6 (incident): another session used worktree `repo-hygiene` at the same time (it committed `b8383ead` and merged #140 there, then left HEAD detached on `origin/main`). The uncommitted T3 files were moved to the new worktree `dependency-review` on branch `docs/dependency-review-skill` and removed from `repo-hygiene`; that session's commit did not include them.
+- L7 (evidence T3): `.agents/skills/selene-dependency-review/SKILL.md` (48 lines), listed as ours in `AGENTS.md` and `docs/skills.md`. Proof run on the 9 real majors of the report: update now for `eslint` 10 with `@eslint/js` (after fixing `ProductManagementPage.tsx:56` and the root lint scope), `eslint-plugin-react-refresh`, `globals`, `lint-staged` (Node >= 22.22.1), `lucide-react`, and `@types/node` after a typecheck; wait for `@tanstack/react-table` 9 (`useReactTable` renamed, required `features`). A scratch-directory lint showed ESLint 10 makes the root `bun run lint` apply the admin-web config, which the release notes do not say; the skill gained step 7 (test in a scratch directory) because of it. Expo SDK part not exercised (L2). Finding #143: admin-web `eslint .` reports 4 errors that CI never runs. Prettier check clean.
