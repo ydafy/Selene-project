@@ -1,5 +1,5 @@
-# Minimal CI: the same test suite the pre-commit hook runs.
-# Lint and typecheck are not gated yet because both have baseline failures on main.
+# CI: lint, typecheck and the bun test suite, plus the pgTAP database tests
+# against a local Supabase stack started inside the job.
 name: CI
 
 on:
@@ -26,3 +26,17 @@ jobs:
       - run: bun run lint
       - run: bun run typecheck
       - run: bun test
+
+  # pgTAP files in supabase/tests/database/ (`bun run test:db`). The stack is
+  # local to the runner; this job never reaches the remote project.
+  db-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      # Same CLI version as the maintainer's machine; bump them together.
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.0
+      - run: supabase start
+      - run: supabase test db
