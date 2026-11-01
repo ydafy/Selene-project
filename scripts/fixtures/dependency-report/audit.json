@@ -33,20 +33,6 @@
       }
     }
   ],
-  "node-forge": [
-    {
-      "id": 1240912,
-      "url": "https://github.com/advisories/GHSA-86w9-cpqp-85rv",
-      "title": "node-forge RSA PKCS#1 v1.5 signature verification accepts extra nested DigestAlgorithm elements",
-      "severity": "high",
-      "vulnerable_versions": "<=1.4.0",
-      "cwe": ["CWE-347"],
-      "cvss": {
-        "score": 7.5,
-        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
-      }
-    }
-  ],
   "zod": [
     {
       "id": 1243066,

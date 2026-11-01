@@ -106,7 +106,6 @@ describe('parseExpoCheck', () => {
 describe('parseAuditIgnores', () => {
   test('reads the --ignore flags of the real workflow file', () => {
     expect(parseAuditIgnores(workflow)).toEqual([
-      'GHSA-86w9-cpqp-85rv',
       'GHSA-mrhx-c7xc-m3w5',
       'GHSA-qr28-fpjm-wq7f',
     ]);
@@ -146,9 +145,9 @@ describe('parseAudit', () => {
   test('describes the accepted exceptions with the package that carries them', () => {
     const { exceptions } = parseAudit(fixture('audit.json'), ignores);
     expect(exceptions).toContainEqual({
-      id: 'GHSA-86w9-cpqp-85rv',
-      name: 'node-forge',
-      title: expect.stringContaining('node-forge'),
+      id: 'GHSA-mrhx-c7xc-m3w5',
+      name: 'zod',
+      title: expect.stringContaining('Zod'),
     });
   });
 
