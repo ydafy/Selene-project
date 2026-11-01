@@ -75,7 +75,7 @@ const corsHeaders = {
 
 const ItemSchema = z.object({
   productId: z.string().uuid(),
-  quantity: z.number().int().min(1).max(1).default(1),
+  quantity: z.literal(1).default(1),
 });
 
 const RequestSchema = z

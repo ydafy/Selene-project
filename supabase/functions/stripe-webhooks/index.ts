@@ -658,7 +658,7 @@ serve(
         Deno.env.get('STRIPE_WEBHOOK_SECRET') ?? '',
         Deno.env.get('STRIPE_CONNECT_WEBHOOK_SECRET') ?? '',
       ],
-      construct: (body, header, secret) =>
+      construct: (body, header, secret): Promise<Stripe.Event> =>
         stripe.webhooks.constructEventAsync(body, header, secret),
     });
     if (!verification.ok) {
