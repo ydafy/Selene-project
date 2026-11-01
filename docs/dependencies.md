@@ -51,6 +51,27 @@ To change a runtime version:
 2. Switch your local runtime. For Node with nvm-windows, which does not read `.nvmrc`, run `nvm install <version>`, then `nvm use <version>`. For Bun, run `bun upgrade`, or `bun upgrade --version <version>` for an exact one.
 3. Run the checks in "Update without breaking things", then a development EAS build.
 
+## Keep GitHub Actions pinned
+
+A workflow runs third-party actions with the job token. A tag such as `v4` can be moved to other code at any time, so every `uses:` in `.github/workflows/` points to a full commit SHA, with the exact release tag in a comment:
+
+```yaml
+- uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+```
+
+`scripts/workflow-actions.test.ts` fails when a `uses:` has no SHA or no exact tag, or when two workflows pin the same action differently.
+
+To change an action version:
+
+1. Read its release notes. A new major gets its own commit.
+2. Resolve the tag to its commit. The `commits` endpoint also resolves annotated tags, which `git/ref` returns as tag objects:
+
+   ```bash
+   gh api repos/<owner>/<action>/commits/<tag> --jq .sha
+   ```
+
+3. Replace the SHA and the comment in every workflow that uses the action, and run `bun test scripts/workflow-actions.test.ts`. CI on the pull request runs `ci.yml`. Start `dependency-audit.yml` on the branch with `gh workflow run dependency-audit.yml --ref <branch>`. `dependency-report.yml` also edits the report issue, and `issue-labels.yml` runs only from `main`, so check those two after the merge.
+
 ## Move Expo-pinned packages only with Expo
 
 Each Expo SDK pins the versions of its native packages (`expo-*`, `react-native`, `react-native-reanimated`, and others, pinned in `apps/frontend/package.json`). Do not bump them with `bun update` or by editing `package.json`.
