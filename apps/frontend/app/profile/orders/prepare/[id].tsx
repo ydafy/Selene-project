@@ -1,4 +1,10 @@
-import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import React, {
+  useState,
+  useRef,
+  useCallback,
+  useMemo,
+  useEffect,
+} from 'react';
 import {
   ScrollView,
   Linking,
@@ -15,7 +21,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { MotiView } from 'moti';
+import Animated, { withSpring, withTiming } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@shopify/restyle';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -78,11 +84,30 @@ const PACK_STEP_ICONS = [
   'label-outline',
 ] as const;
 
+// Mount entrance: slides in from the left (spring, 2 s) while fading in (timing).
+const truckEntering = () => {
+  'worklet';
+  return {
+    initialValues: { opacity: 0, transform: [{ translateX: -100 }] },
+    animations: {
+      opacity: withTiming(1),
+      transform: [{ translateX: withSpring(0, { duration: 2000 }) }],
+    },
+  };
+};
+
 export default function PrepareShipmentScreen() {
-  const { id, shipment_id } = useLocalSearchParams<{ id: string; shipment_id?: string }>();
+  const { id, shipment_id } = useLocalSearchParams<{
+    id: string;
+    shipment_id?: string;
+  }>();
   const { session } = useAuthContext();
   const selection = Array.isArray(shipment_id) ? shipment_id[0] : shipment_id;
-  return <PrepareShipmentContent key={JSON.stringify([id, selection, session?.user.id])} />;
+  return (
+    <PrepareShipmentContent
+      key={JSON.stringify([id, selection, session?.user.id])}
+    />
+  );
 }
 
 function PrepareShipmentContent() {
@@ -98,7 +123,13 @@ function PrepareShipmentContent() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const { data: order, isLoading, isFetching, error, refetch } = useOrderById(id);
+  const {
+    data: order,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useOrderById(id);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [evidenceUrls, setEvidenceUrls] = useState<string[]>([]);
   const actions = useOrderActions(id || '');
@@ -126,7 +157,9 @@ function PrepareShipmentContent() {
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
-    return () => { mounted.current = false; };
+    return () => {
+      mounted.current = false;
+    };
   }, []);
   const submissionInFlight = useRef(false);
   const evidenceBusy = useRef(false);
@@ -138,7 +171,10 @@ function PrepareShipmentContent() {
     [isProcessing],
   );
   const hasExistingLabel = Boolean(selectedShipment?.label_url);
-  const labelState = resolveShipmentLabelState(selectedShipment, Boolean(error));
+  const labelState = resolveShipmentLabelState(
+    selectedShipment,
+    Boolean(error),
+  );
   const canGenerateLabel = labelState === 'ready' && !isFetching;
 
   // Bloquea hardware back (Android) y swipe de borde (iOS) mientras procesa:
@@ -163,9 +199,15 @@ function PrepareShipmentContent() {
   const [labelUrl, setLabelUrl] = useState<string | null>(null);
   const [labelOpenError, setLabelOpenError] = useState(false);
 
-  const reportLabelDiagnostic = useCallback((event: LabelDiagnostic) => {
-    console.warn('[PREPARE_SHIPMENT]', { event, shipmentId: targetShipmentId });
-  }, [targetShipmentId]);
+  const reportLabelDiagnostic = useCallback(
+    (event: LabelDiagnostic) => {
+      console.warn('[PREPARE_SHIPMENT]', {
+        event,
+        shipmentId: targetShipmentId,
+      });
+    },
+    [targetShipmentId],
+  );
 
   const handleRefreshLabelStatus = useCallback(async () => {
     setErrorMsg(null);
@@ -241,7 +283,8 @@ function PrepareShipmentContent() {
           return (
             refreshed.data?.shipments?.find(
               (shipment) =>
-                shipment.id === targetShipmentId && shipment.seller_id === userId,
+                shipment.id === targetShipmentId &&
+                shipment.seller_id === userId,
             )?.label_url ?? null
           );
         },
@@ -260,7 +303,8 @@ function PrepareShipmentContent() {
       }
     } catch {
       reportLabelDiagnostic('generation_unconfirmed');
-      if (mounted.current) setErrorMsg(t('orders:prepare.errors.resultUnconfirmed'));
+      if (mounted.current)
+        setErrorMsg(t('orders:prepare.errors.resultUnconfirmed'));
     } finally {
       submissionInFlight.current = false;
       if (mounted.current) setIsAuthenticating(false);
@@ -472,7 +516,11 @@ function PrepareShipmentContent() {
                   {`${boxPreset.length} × ${boxPreset.width} × ${boxPreset.height} cm · ${boxPreset.weight} kg`}
                 </Text>
                 {preparingBox.status === 'fallback' ? (
-                  <Text variant="caption-md" color="textSecondary" marginTop="xs">
+                  <Text
+                    variant="caption-md"
+                    color="textSecondary"
+                    marginTop="xs"
+                  >
                     {t('orders:prepare.boxFallbackNote')}
                   </Text>
                 ) : null}
@@ -611,7 +659,8 @@ function PrepareShipmentContent() {
               },
             ]}
             onEvidenceComplete={(urls) => {
-              if (mounted.current && !submissionInFlight.current) setEvidenceUrls(urls);
+              if (mounted.current && !submissionInFlight.current)
+                setEvidenceUrls(urls);
             }}
           />
         </Box>
@@ -772,22 +821,23 @@ function PrepareShipmentContent() {
         hideCancel
       >
         <Box alignItems="center" paddingVertical="m">
-          <MotiView
-            from={{ translateX: -100, opacity: 0 }}
-            animate={{ translateX: 0, opacity: 1 }}
-            transition={{ type: 'spring', duration: 2000 }}
-          >
+          <Animated.View entering={truckEntering}>
             <MaterialCommunityIcons
               name="truck-fast"
               size={80}
               color={theme.colors.primary}
             />
-          </MotiView>
+          </Animated.View>
           <Text variant="body-md" textAlign="center" marginTop="m">
             {t('orders:prepare.successMsg')}
           </Text>
           {labelOpenError && (
-            <Text variant="body-sm" color="error" textAlign="center" marginTop="m">
+            <Text
+              variant="body-sm"
+              color="error"
+              textAlign="center"
+              marginTop="m"
+            >
               {t('orders:prepare.errors.labelOpenFailed')}
             </Text>
           )}

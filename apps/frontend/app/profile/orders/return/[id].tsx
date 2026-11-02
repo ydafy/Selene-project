@@ -20,9 +20,21 @@ import { EvidenceUploadSection } from '@/components/features/orders/EvidenceUplo
 import { useOrderById } from '../../../../core/hooks/useOrders';
 import { useOrderActions } from '../../../../core/hooks/useOrderActions';
 import { authenticateAsync } from '../../../../core/utils/biometrics';
-import { MotiView } from 'moti';
+import Animated, { withSpring, withTiming } from 'react-native-reanimated';
 import { theme } from '@/core/theme';
 import MaterialCommunityIcons from '@expo/vector-icons/build/MaterialCommunityIcons';
+
+// Mount entrance: slides in from the left (spring, 2 s) while fading in (timing).
+const truckEntering = () => {
+  'worklet';
+  return {
+    initialValues: { opacity: 0, transform: [{ translateX: -100 }] },
+    animations: {
+      opacity: withTiming(1),
+      transform: [{ translateX: withSpring(0, { duration: 2000 }) }],
+    },
+  };
+};
 
 export default function PrepareReturnScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -152,17 +164,13 @@ export default function PrepareReturnScreen() {
         hideCancel
       >
         <Box alignItems="center" paddingVertical="m">
-          <MotiView
-            from={{ translateX: -100, opacity: 0 }}
-            animate={{ translateX: 0, opacity: 1 }}
-            transition={{ type: 'spring', duration: 2000 }}
-          >
+          <Animated.View entering={truckEntering}>
             <MaterialCommunityIcons
               name="truck-fast"
               size={80}
               color={theme.colors.primary}
             />
-          </MotiView>
+          </Animated.View>
           <Text variant="body-md" textAlign="center" marginTop="m">
             {t('orders:prepare.successMsg')}
           </Text>

@@ -42,7 +42,7 @@ import { useExperienceStore } from '@/core/store/useExperienceStore';
 import { useUnreadNotifications } from '@/core/hooks/useUnreadNotifications';
 import { Theme } from '../../core/theme';
 import { Address } from '@selene/types';
-import { MotiView } from 'moti';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSeleneRefresh } from '@/core/hooks/useSeleneRefresh';
 import { useNetInfo } from '@react-native-community/netinfo';
 import { useAuthContext } from '@/components/auth/AuthProvider';
@@ -232,13 +232,10 @@ export default function HomeScreen() {
           <HomeSkeleton rank={rank} />
         ) : (
           /* 2. ESTADO ACTIVO: Contenido con transición suave */
-          <MotiView
-            from={{ opacity: 0, translateY: 15 }}
-            animate={{ opacity: 1, translateY: 0 }}
-            transition={{
-              type: 'timing',
-              duration: 500,
-            }}
+          <Animated.View
+            entering={FadeInDown.duration(500).withInitialValues({
+              transform: [{ translateY: 15 }],
+            })}
           >
             <GridShell>
               {rank === 'EXPLORER' ? (
@@ -272,7 +269,7 @@ export default function HomeScreen() {
               {/* Footer común para ambos perfiles */}
               <ShellFooter />
             </GridShell>
-          </MotiView>
+          </Animated.View>
         )}
       </ScrollView>
 

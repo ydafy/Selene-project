@@ -10,7 +10,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useScrollToTop } from 'expo-router/react-navigation';
-import { MotiView } from 'moti';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 
@@ -221,12 +221,7 @@ export default function SearchScreen() {
       ) : isLoading ? (
         <ShopSkeleton visibleHeight={visibleHeight} />
       ) : (
-        <MotiView
-          from={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ type: 'timing', duration: 500 }}
-          style={{ flex: 1 }}
-        >
+        <Animated.View entering={FadeIn.duration(500)} style={{ flex: 1 }}>
           <FlatList
             data={feedData}
             ref={listRef}
@@ -245,7 +240,7 @@ export default function SearchScreen() {
             onViewableItemsChanged={onViewRef.current}
             viewabilityConfig={viewConfigRef.current}
           />
-        </MotiView>
+        </Animated.View>
       )}
     </Box>
   );
