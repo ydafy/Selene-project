@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import {
+  actionStatus,
   buildDependencyReport,
   bunRuntimeStatus,
   changelogUrl,
@@ -10,7 +11,9 @@ import {
   parseAudit,
   parseAuditIgnores,
   parseBunRegistry,
+  parseCommitSha,
   parseExpoCheck,
+  parseLatestRelease,
   parseExpoPins,
   nodeRuntimeStatus,
   parseExpoRegistry,
@@ -18,6 +21,7 @@ import {
   parseNodeSchedule,
   parseOutdated,
   runReport,
+  type ActionRow,
   type Collectors,
   type ReportInput,
 } from './dependency-report.ts';
@@ -285,6 +289,17 @@ const nodeData = {
   schedule: parseNodeSchedule(NODE_SCHEDULE),
 };
 
+const SHA_A = 'a'.repeat(40);
+const SHA_B = 'b'.repeat(40);
+const actionRow = (overrides: Partial<ActionRow> = {}): ActionRow => ({
+  action: 'actions/checkout',
+  pinnedSha: SHA_A,
+  pinnedTag: 'v4.4.0',
+  resolvedSha: SHA_A,
+  latest: { tag: 'v4.4.0', publishedAt: '2026-05-01T00:00:00Z' },
+  ...overrides,
+});
+
 function baseInput(overrides: Partial<ReportInput> = {}): ReportInput {
   return {
     outdated: {
@@ -324,6 +339,7 @@ function baseInput(overrides: Partial<ReportInput> = {}): ReportInput {
         bun: parseBunRegistry(BUN_REGISTRY),
       },
     },
+    actions: { ok: true, value: [actionRow()] },
     ...overrides,
   };
 }
@@ -659,6 +675,16 @@ describe('runReport', () => {
       nvmrc: '24.22.2\n',
       packageManager: 'bun@1.4.2',
     }),
+    workflows: async () => [
+      `steps:\n  - uses: actions/checkout@${SHA_A} # v4.4.0\n  - uses: actions/checkout@${SHA_A} # v4.4.0\n`,
+    ],
+    githubApi: async (path) =>
+      path.endsWith('/releases/latest')
+        ? JSON.stringify({
+            tag_name: 'v7.0.1',
+            published_at: '2026-10-01T00:00:00Z',
+          })
+        : JSON.stringify({ sha: SHA_A }),
     ...overrides,
   });
 
@@ -764,6 +790,51 @@ describe('runReport', () => {
     expect(result.markdown).toContain(
       'Could not check: Node 23 is not in the release schedule',
     );
+  });
+
+  test('lists each action once and exits 1 when the GitHub API fails', async () => {
+    const calls: string[] = [];
+    const ok = await runReport(
+      collectors({
+        githubApi: async (path) => {
+          calls.push(path);
+          return collectors().githubApi(path);
+        },
+      }),
+      NOW,
+    );
+    expect(calls).toEqual([
+      'repos/actions/checkout/commits/v4.4.0',
+      'repos/actions/checkout/releases/latest',
+    ]);
+    expect(section(ok.markdown, 'GitHub Actions')).toContain(
+      '| actions/checkout | v4.4.0 | v7.0.1 | Update to v7.0.1 (major: read the release notes) |',
+    );
+    const bad = await runReport(
+      collectors({
+        githubApi: async () => {
+          throw new Error('API rate limit exceeded');
+        },
+      }),
+      NOW,
+    );
+    expect(bad.exitCode).toBe(1);
+    expect(bad.errors).toEqual(['github actions: API rate limit exceeded']);
+    expect(section(bad.markdown, 'GitHub Actions')).toContain(
+      'Could not check: API rate limit exceeded',
+    );
+    expect(bad.markdown).toContain('No high or critical vulnerabilities');
+  });
+
+  test('exits 1 when a uses line has no tag comment', async () => {
+    const result = await runReport(
+      collectors({ workflows: async () => ['- uses: owner/repo@abc\n'] }),
+      NOW,
+    );
+    expect(result.exitCode).toBe(1);
+    expect(result.errors).toEqual([
+      'github actions: owner/repo has no release tag comment',
+    ]);
   });
 });
 
@@ -951,5 +1022,98 @@ describe('Runtimes section', () => {
     );
     expect(report.split('\n')[2]).toContain('runtime check failed');
     expect(report).toContain('## Security (bun audit)');
+  });
+});
+
+describe('GitHub Actions section', () => {
+  const release = (tag: string, publishedAt: string) => ({
+    latest: { tag, publishedAt },
+  });
+  const status = (overrides: Partial<ActionRow>) =>
+    actionStatus(actionRow(overrides), NOW);
+
+  test('parses the latest release and the commit of a tag', () => {
+    expect(
+      parseLatestRelease(
+        '{"tag_name":"v7.0.1","published_at":"2026-10-01T00:00:00Z"}',
+      ),
+    ).toEqual({ tag: 'v7.0.1', publishedAt: '2026-10-01T00:00:00Z' });
+    expect(() => parseLatestRelease('{"tag_name":"nightly"}')).toThrow();
+    expect(parseCommitSha(`{"sha":"${SHA_B}"}`)).toBe(SHA_B);
+    expect(() => parseCommitSha('{}')).toThrow();
+  });
+
+  test('says nothing to do when the pin is the latest release', () => {
+    expect(status({})).toEqual({ actions: [], notes: [] });
+  });
+
+  test('asks for a minor or patch update without the major warning', () => {
+    expect(status(release('v4.5.0', '2026-10-01T00:00:00Z'))).toEqual({
+      actions: ['Update to v4.5.0'],
+      notes: [],
+    });
+  });
+
+  test('asks to read the release notes when the major changes', () => {
+    expect(status(release('v7.0.1', '2026-10-01T00:00:00Z'))).toEqual({
+      actions: ['Update to v7.0.1 (major: read the release notes)'],
+      notes: [],
+    });
+  });
+
+  test('waits for a release younger than the minimum age', () => {
+    expect(status(release('v7.0.1', '2026-10-27T12:00:00Z'))).toEqual({
+      actions: [],
+      notes: ['v7.0.1 is 2 days old: update after 2026-10-30'],
+    });
+  });
+
+  test('ignores a latest release that is not newer than the pin', () => {
+    expect(status(release('v4.3.0', '2026-10-01T00:00:00Z'))).toEqual({
+      actions: [],
+      notes: [],
+    });
+  });
+
+  test('flags a pinned SHA that is not the commit of its tag', () => {
+    expect(status({ pinnedSha: SHA_B })).toEqual({
+      actions: ['Pinned SHA is not v4.4.0 (resolves to aaaaaaa)'],
+      notes: [],
+    });
+  });
+
+  test('renders the table, the guide pointer and the summary after Runtimes', () => {
+    const report = buildDependencyReport(baseInput(), NOW);
+    const actions = section(report, 'GitHub Actions');
+    expect(actions).toContain('| Action | Pinned | Latest | Status |');
+    expect(actions).toContain(
+      '| actions/checkout | v4.4.0 | v4.4.0 | Up to date |',
+    );
+    expect(actions).toContain('Keep GitHub Actions pinned');
+    expect(report.indexOf('## GitHub Actions')).toBeGreaterThan(
+      report.indexOf('## Runtimes'),
+    );
+    expect(report.indexOf('## GitHub Actions')).toBeLessThan(
+      report.indexOf('## Security (bun audit)'),
+    );
+  });
+
+  test('words the summary for none, several and failed checks', () => {
+    const line = (actions: ReportInput['actions']) =>
+      buildDependencyReport(baseInput({ actions }), NOW).split('\n')[2];
+    const stale = (action: string) =>
+      actionRow({ action, ...release('v5.0.0', '2026-10-01T00:00:00Z') });
+    expect(line({ ok: true, value: [actionRow()] })).toContain(
+      'actions up to date',
+    );
+    expect(line({ ok: true, value: [stale('a/a')] })).toContain(
+      '1 action update,',
+    );
+    expect(line({ ok: true, value: [stale('a/a'), stale('b/b')] })).toContain(
+      '2 action updates,',
+    );
+    expect(line({ ok: false, error: 'boom' })).toContain(
+      'actions check failed',
+    );
   });
 });
