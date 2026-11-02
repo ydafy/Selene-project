@@ -146,6 +146,7 @@ Acceptance: an update that leaves `price` and `shipping_cost` unchanged keeps th
 - T10e | S1 | inline | done (L170) | Roadmap #164: frontend typecheck at zero on Windows (OTP `textInputStyle` typed as the library declares it) | Commit: 9dcf0bc0.
 - T10f | S4,S10 | delegated writer (context backstop) | in progress (L172) | Roadmap #165 (part of #122): narrow `anon` and `authenticated` grants on the auth tables and admin views to the matrix in L172; pgTAP per role; maintainer applies the migration | Commit: a49e1324 + follow-up (L174).
 - T10g | S1 | delegated writer (context backstop) | in progress (L176) | Roadmap #166: retire the structural text tests whose rules pgTAP now proves at runtime; keep the ones that check something pgTAP does not | Commit: not created.
+- T10h | S1,S4-S9 | delegated writer (context backstop) | in progress (L178) | Roadmap #167: `docs/auth.md`, 1-2 pages: account states, who can do what, closure flow, CAPTCHA, where each rule lives, how to test | Commit: not created.
 
 ## Log
 
@@ -1272,3 +1273,6 @@ Risk: item 6 (fewer tests). Each retired case maps to a pgTAP assertion that the
 Review: native review of ce6b3ecb..d3c5f503 (reliability; tier high) approved and acknowledged. Two warnings, both answered in the tracker:
 - The note said "deletions only", but the commit also adds the tracker entry. The wording is corrected above.
 - Deleting `auth_grants_least_privilege.test.ts` also dropped its check that the migration file exists, which L176 says to keep. Kept as an exception, because the check is still enforced: without the migration, `supabase db reset` leaves the full grants of `20261030150000_local_grants_parity.sql`, and every matrix assertion in `auth_grants.test.sql` fails in the required `db-test` check.
+
+### L178 — T10g closed; T10h starts
+PR #182 merged (772e68d1) after `test` and `db-test` passed; it closed roadmap item #166. T10h (#167), the last roadmap item, starts on branch `docs/auth-t10h-auth-doc`.
