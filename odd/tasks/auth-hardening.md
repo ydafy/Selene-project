@@ -1370,3 +1370,6 @@ Review: native review of 580e545b..03af24ee (risk, reliability; tier high) appro
 - WARNING: no case combined a text edit with a stale snapshot, the place where T10a meets T11d. A text edit after a fee change now affects 1 row and the listing stays VERIFIED.
 - SUGGESTION: the three refused status moves now also pin the message `VERIFIED_EDIT_REQUIRES_REVIEW`, which shows the guard fires before the policy.
 `bun run test:db` Files=11, Tests=356, PASS.
+
+### L186 — T11a-T11c review; PR
+Native review of 820423df..580e545b (T11a-T11c; resilience, reliability; tier high) approved and acknowledged with no findings. The review candidate is the working tree, so the parent checked out 580e545b detached for this review and switched back to the branch afterwards.
