@@ -82,6 +82,11 @@ describe('createPushPermissionPrompt.offer', () => {
     expect(store.size).toBe(0);
   });
 
+  it('offers on Android 13+, which reports denied before the first ask', async () => {
+    const { prompt } = setup({ status: 'denied', canAskAgain: true });
+    expect(await prompt.offer('favorite')).toBe(true);
+  });
+
   it('does not offer when the OS can no longer ask', async () => {
     const { prompt } = setup({ status: 'undetermined', canAskAgain: false });
     expect(await prompt.offer('purchase')).toBe(false);
@@ -174,6 +179,14 @@ describe('pushSettingsRow', () => {
       value: 'off',
       description: 'deniedDescription',
       action: 'openSettings',
+    });
+  });
+
+  it('asks directly on Android 13+ while the OS can still ask', () => {
+    expect(pushSettingsRow({ status: 'denied', canAskAgain: true })).toEqual({
+      value: 'off',
+      description: 'description',
+      action: 'request',
     });
   });
 

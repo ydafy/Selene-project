@@ -25,7 +25,6 @@ import {
   buildInitialUploadProgress,
   ImageUploadState,
 } from '../utils/publishGuard';
-import { offerPushPermission } from '../push/pushPermission';
 
 export const usePublishProduct = () => {
   const [isPublishing, setIsPublishing] = useState(false);
@@ -287,9 +286,6 @@ export const usePublishProduct = () => {
           queryKey: ['product', resultData.id],
         });
       }
-
-      // A new listing sent to verification is a moment to offer push (L6).
-      if (!isEditMode) void offerPushPermission('listing');
 
       // 5. Navegación Inteligente
       if (requiresReverification) {
