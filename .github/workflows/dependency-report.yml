@@ -6,7 +6,8 @@ name: Dependency report
 
 on:
   schedule:
-    - cron: '30 14 * * 1' # Mondays 14:30 UTC, after the dependency audit
+    # Off the top and half hour, where GitHub most often delays or drops scheduled runs.
+    - cron: '47 14 * * 1' # Mondays 14:47 UTC (08:47 in Mexico City), after the dependency audit
   workflow_dispatch:
 
 permissions:

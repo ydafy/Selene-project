@@ -6,7 +6,9 @@ name: Dependency audit
 
 on:
   schedule:
-    - cron: '0 14 * * 1' # Mondays 14:00 UTC (08:00 in Mexico City)
+    # Off the top of the hour: GitHub delays or drops scheduled runs under load,
+    # most often at minute 0.
+    - cron: '17 14 * * 1' # Mondays 14:17 UTC (08:17 in Mexico City)
   workflow_dispatch:
   push:
     branches: [main]
