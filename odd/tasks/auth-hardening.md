@@ -136,7 +136,7 @@ Acceptance: an update that leaves `price` and `shipping_cost` unchanged keeps th
 - T8g | S6,S8 | delegated writer (context backstop) | done (2c2b15d, 5807db4, 3b5e962; reviews approved; applied L123) | Server reserves the `deleted_` username prefix for closed accounts (migration; maintainer applies); own commit (high risk: SQL) | Commit: not created.
 - T8h | S3 | inline | done (28193ba, review approved L113) | #50: `common:errors.errorTitle` in 4 mobile files | Commit: not created.
 - T8i | S9 | inline | done (8bc5a4c, review approved L117) | Mount tests for the mobile `CaptchaProvider` and admin `useCaptcha` (L98, L101) | Commit: not created.
-- T10 | S1,S4,S11 | parent orchestration | in progress (L152, L159) | Code-complete pass; plan in Engram `odd/auth-hardening/t10-plan`; T10a done (L158), T10b done (L161), T10c done (L167); T10d-T10h moved to roadmap #162 (L168) | Commit: see T10a.1-T10a.2, T10b.
+- T10 | S1,S4,S11 | parent orchestration | done (L180) | Code-complete pass: T10a-T10c in this tracker, T10d-T10h as roadmap #162 (#163-#167) | Commit: see T10a-T10h.
 - T10a.1 | S11 | inline | done (L153-L154, applied L157) | Trigger `validate_product_publication_economics`: status-only and other non-economic updates accept the snapshot; a price or shipping-cost change needs a snapshot fresh against current settings; pgTAP (release batch, suspension lift, shipment cancel with a stale snapshot) and Bruno | Own commit (high risk: money, SQL); maintainer applies.
 - T10a.2 | S11 | inline | done (L155-L156) | App edit flow: a price or shipping-cost change sends a fresh snapshot and returns the listing to review | Commit: not created.
 - T10b | S4 | inline | done (L159-L160) | pgTAP for the block-1 account rules: a suspended seller cannot publish, edit or receive reservations (own purchases stay); lifting a suspension restores only account-held listings to their prior status; banned is final; clients cannot write `role` or `status` (own or other rows, signup or metadata, JWT claims); admin flows only as setup | Commit: f7d8a62b.
@@ -146,6 +146,7 @@ Acceptance: an update that leaves `price` and `shipping_cost` unchanged keeps th
 - T10e | S1 | inline | done (L170) | Roadmap #164: frontend typecheck at zero on Windows (OTP `textInputStyle` typed as the library declares it) | Commit: 9dcf0bc0.
 - T10f | S4,S10 | delegated writer (context backstop) | in progress (L172) | Roadmap #165 (part of #122): narrow `anon` and `authenticated` grants on the auth tables and admin views to the matrix in L172; pgTAP per role; maintainer applies the migration | Commit: a49e1324 + follow-up (L174).
 - T10g | S1 | delegated writer (context backstop) | in progress (L176) | Roadmap #166: retire the structural text tests whose rules pgTAP now proves at runtime; keep the ones that check something pgTAP does not | Commit: not created.
+- T10h | S1,S4-S9 | delegated writer (context backstop) | in progress (L178) | Roadmap #167: `docs/auth.md`, 1-2 pages: account states, who can do what, closure flow, CAPTCHA, where each rule lives, how to test | Commit: not created.
 
 ## Log
 
@@ -1272,3 +1273,29 @@ Risk: item 6 (fewer tests). Each retired case maps to a pgTAP assertion that the
 Review: native review of ce6b3ecb..d3c5f503 (reliability; tier high) approved and acknowledged. Two warnings, both answered in the tracker:
 - The note said "deletions only", but the commit also adds the tracker entry. The wording is corrected above.
 - Deleting `auth_grants_least_privilege.test.ts` also dropped its check that the migration file exists, which L176 says to keep. Kept as an exception, because the check is still enforced: without the migration, `supabase db reset` leaves the full grants of `20261030150000_local_grants_parity.sql`, and every matrix assertion in `auth_grants.test.sql` fails in the required `db-test` check.
+
+### L178 — T10g closed; T10h starts
+PR #182 merged (772e68d1) after `test` and `db-test` passed; it closed roadmap item #166. T10h (#167), the last roadmap item, starts on branch `docs/auth-t10h-auth-doc`.
+
+### L179 — T10h: docs/auth.md
+The worker wrote `docs/auth.md` (157 lines). Sections: identity, account states with the action table, how a state changes, who can do what, sign-in and sessions and recovery, account closure with the blocker table, CAPTCHA, where each rule lives (rule, enforcing object, test), how to test, and pitfalls. Every named path, function, trigger, policy and reason code was checked against the repository and the local database. Parent edits: the client-readable admin views are named exactly, and the duplicate `auth.users` triggers point to #154.
+Gaps found and stated in the doc as the code's actual behaviour:
+- "closed" is not an `account_status` value: a closed account is `banned` with `status_reason = 'account_closed'` and `profiles.deleted_at`.
+- S4's withdrawal gate has no object any more: `fn_request_payout` was dropped with the legacy wallet, and payouts are admin-released through `release-connect-payout`, which does not check the seller's status.
+- The `account_restricted` and `active_orders` closure blockers have only a source-text test, with no pgTAP assertion.
+- The 5-year ledger anonymization of S8 is still #67.
+Checks: `bunx prettier --check docs/auth.md` clean. Docs only, so nothing else ran.
+Risk: none (documentation).
+Review: native review of 92611d92..0c3126d7 (readability; tier high) approved and acknowledged; it raised three suggestions, all applied in the follow-up commit:
+- R2-path-root-scope: the path note now covers the closure section and Edge Functions too.
+- R2-unsourced-constants: the 10-minute rule cites `MAX_SIGN_IN_AGE_SECONDS`, the 24-attempt limit cites `MAX_ATTEMPTS`, and the hourly retry cites the cron.
+- R2-unexplained-rule-row: the closure row in the rule map now states its rule.
+
+### L180 — T10 code-complete
+With T10h every item of roadmap #162 is merged or in its last PR. Auth is code-complete: what remains for launch is the configuration in `docs/go-live.md` section 10, plus these open issues outside the roadmap:
+- #141, the owner edit of a VERIFIED listing (needs a product decision);
+- #153 and #154, Low database cleanups;
+- #174, the CI typecheck without Expo's types (a CI change, needs approval);
+- #178, the admin dashboard payout total;
+- #67, the 5-year ledger anonymization (2031);
+- the rest of #122, the grants outside the auth tables.
