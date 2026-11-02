@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test';
 
 import {
   createPushPermissionPrompt,
+  pushSettingsRow,
   type PushPermission,
   type PushPermissionPromptDeps,
 } from './pushPermission.logic';
@@ -148,5 +149,41 @@ describe('createPushPermissionPrompt.request', () => {
     });
     expect(await prompt.request()).toBe(false);
     expect(warnings).toHaveLength(1);
+  });
+});
+
+describe('pushSettingsRow', () => {
+  it('shows on and opens the OS settings when granted', () => {
+    expect(pushSettingsRow({ status: 'granted', canAskAgain: true })).toEqual({
+      value: 'on',
+      description: 'description',
+      action: 'openSettings',
+    });
+  });
+
+  it('shows off and asks directly while undetermined', () => {
+    expect(pushSettingsRow(UNDETERMINED)).toEqual({
+      value: 'off',
+      description: 'description',
+      action: 'request',
+    });
+  });
+
+  it('shows off and points to the OS settings when denied', () => {
+    expect(pushSettingsRow({ status: 'denied', canAskAgain: false })).toEqual({
+      value: 'off',
+      description: 'deniedDescription',
+      action: 'openSettings',
+    });
+  });
+
+  it('treats an undetermined status the OS can no longer ask as denied', () => {
+    expect(
+      pushSettingsRow({ status: 'undetermined', canAskAgain: false }),
+    ).toEqual({
+      value: 'off',
+      description: 'deniedDescription',
+      action: 'openSettings',
+    });
   });
 });

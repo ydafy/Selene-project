@@ -67,3 +67,29 @@ export const createPushPermissionPrompt = (deps: PushPermissionPromptDeps) => {
     },
   };
 };
+
+export type PushSettingsRow = {
+  value: 'on' | 'off';
+  description: 'description' | 'deniedDescription';
+  action: 'request' | 'openSettings';
+};
+
+/**
+ * The Settings row mirrors the OS permission. An app cannot revoke its own
+ * permission, so turning push off, or on after a denial, happens in the OS.
+ */
+export const pushSettingsRow = (
+  permission: PushPermission,
+): PushSettingsRow => {
+  if (permission.status === 'granted') {
+    return { value: 'on', description: 'description', action: 'openSettings' };
+  }
+  if (canAskForPush(permission)) {
+    return { value: 'off', description: 'description', action: 'request' };
+  }
+  return {
+    value: 'off',
+    description: 'deniedDescription',
+    action: 'openSettings',
+  };
+};

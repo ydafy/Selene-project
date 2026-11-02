@@ -51,3 +51,9 @@ test('no other file offers the pre-prompt', () => {
     );
   expect(offenders).toEqual([]);
 });
+
+test('settings shows the notifications section between security and privacy', () => {
+  expect(read('app/profile/settings.tsx')).toMatch(
+    /<SecuritySection \/>\s*<\/SettingsSection>\s*<SettingsSection title=\{t\('sections\.notifications'\)\}>\s*<NotificationsSection \/>\s*<\/SettingsSection>\s*<SettingsSection title=\{t\('sections\.privacy'\)\}>/,
+  );
+});
