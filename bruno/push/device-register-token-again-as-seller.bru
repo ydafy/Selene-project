@@ -1,0 +1,30 @@
+meta {
+  name: device-register-token-again-as-seller
+  type: http
+  seq: 277
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_register_push_token
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{sellerToken}}
+}
+
+body:json {
+  { "p_token": "ExponentPushToken[bruno-push-token-0003]", "p_platform": "android" }
+}
+
+tests {
+  test("the seller registers the device token", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  Fixture for the device unregister checks. Run after auth/login-seller.
+}

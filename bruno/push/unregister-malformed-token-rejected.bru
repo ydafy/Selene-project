@@ -1,0 +1,31 @@
+meta {
+  name: unregister-malformed-token-rejected
+  type: http
+  seq: 107
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_unregister_push_token
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  { "p_token": "not-an-expo-token" }
+}
+
+tests {
+  test("a token with the wrong shape is rejected", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().message).to.equal("INVALID_PUSH_TOKEN");
+  });
+}
+
+docs {
+  The token shape is checked like fn_register_push_token, before any row is touched.
+}

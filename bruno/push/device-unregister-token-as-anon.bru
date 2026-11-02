@@ -1,0 +1,29 @@
+meta {
+  name: device-unregister-token-as-anon
+  type: http
+  seq: 275
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_unregister_push_token
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+body:json {
+  { "p_token": "ExponentPushToken[bruno-push-token-0003]" }
+}
+
+tests {
+  test("a caller without a session removes the token it holds", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  Holding the token proves the device, so no session is needed.
+}

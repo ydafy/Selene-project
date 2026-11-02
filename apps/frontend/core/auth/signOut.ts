@@ -41,4 +41,5 @@ export const signOutUser = (
     signOut: (s) => supabase.auth.signOut({ scope: s }),
     cleanup: clearUserScopedData,
     unregisterPush: pushRegistrar.unregister,
+    signOutFinished: pushRegistrar.signOutFinished,
   });

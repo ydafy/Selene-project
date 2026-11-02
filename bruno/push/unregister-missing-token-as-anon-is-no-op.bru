@@ -1,0 +1,29 @@
+meta {
+  name: unregister-missing-token-as-anon-is-no-op
+  type: http
+  seq: 112
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_unregister_push_token
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+body:json {
+  { "p_token": "ExponentPushToken[bruno-push-token-0099]" }
+}
+
+tests {
+  test("an anonymous call for a token that does not exist is a no-op", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  EXECUTE is granted to anon and authenticated. A device removes its token without a session, and a missing token is not an error.
+}
