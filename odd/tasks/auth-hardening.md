@@ -161,7 +161,7 @@ Acceptance:
 - T11a | S12 | inline | done (L182) | #174: CI step that writes `apps/frontend/expo-env.d.ts` before the typecheck | Commit: not created.
 - T11b | S8,S12 | inline | done (L183) | pgTAP for the `account_restricted` and `active_orders` closure blockers | Commit: not created.
 - T11c | S12 | inline | done (L184; apply pending) | #154: drop the unguarded `tr_on_auth_user_updated` trigger (migration; maintainer applies) | Commit: not created.
-- T11d | S4,S12 | delegated writer | pending | #141: owner may keep a VERIFIED listing VERIFIED when only name, description, condition or usage change (policy + guard trigger; migration; maintainer applies) | Commit: not created.
+- T11d | S4,S12 | delegated writer | done (L185; apply pending) | #141: owner may keep a VERIFIED listing VERIFIED when only name, description, condition or usage change (policy + guard trigger; migration; maintainer applies) | Commit: not created.
 - T11e | S12 | inline | pending | Close the worktree: tracker, Engram, `bun run worktree:clean auth` plan for the maintainer | Commit: not created.
 
 ## Log
@@ -1346,3 +1346,23 @@ Migration `supabase/migrations/20261101180000_drop_duplicate_auth_user_update_tr
 GREEN: `supabase db reset`, `bun run test:db` Files=10, Tests=331, PASS; `bun test supabase` 2770 pass. `docs/auth.md` now describes the single trigger.
 Risk: item 1 (a trigger in production). The function and grants are unchanged, and pgTAP covers the email mirror.
 Migration to apply: `20261101180000_drop_duplicate_auth_user_update_trigger.sql` (no schema change for `db:types`).
+
+### L185 — T11d: owner text edits keep a listing VERIFIED (#141)
+Worker: migration `supabase/migrations/20261101190000_owner_verified_text_edits.sql` makes two changes.
+- `products_update_owner`: the WITH CHECK also accepts VERIFIED. Every other USING and WITH CHECK condition is copied from the live definition unchanged.
+- New BEFORE UPDATE trigger `tr_product_verified_edit_guard` (`guard_owner_verified_edit`, SECURITY INVOKER, EXECUTE revoked from PUBLIC, anon and authenticated; canonical copy in `supabase/queries/triggers/product/guard_owner_verified_edit.sql`). For a client owner (`current_user = 'authenticated'` and not `is_admin()`) writing VERIFIED, it requires OLD.status VERIFIED and a whole row unchanged except `name`, `description`, `condition`, `usage`, `updated_at` and `fts` (`to_jsonb` comparison). Otherwise it raises 42501 `VERIFIED_EDIT_REQUIRES_REVIEW`.
+New pgTAP `supabase/tests/database/owner_verified_edits.test.sql`, 23 assertions:
+- the four-field edit is stored and the listing stays VERIFIED;
+- keeping VERIFIED while changing images, specifications, price (with a fresh snapshot), category or shipping cost is refused, with the row unchanged;
+- HIDDEN, REJECTED or PENDING_VERIFICATION to VERIFIED is refused;
+- the review path (images plus PENDING_VERIFICATION) still works;
+- a suspended owner is refused;
+- an admin can change images while the listing stays VERIFIED;
+- another user changes 0 rows.
+RED: the file aborted at the first owner edit with the #141 RLS error (planned 23, ran 1). GREEN after `supabase db reset`: `bun run test:db` Files=11, Tests=354, PASS (parent rerun); `bun test supabase` 2770 pass.
+Mutation check: with the guard trigger dropped (rolled back), 10 of 23 assertions fail.
+Bruno: new `bruno/products/verified-edit-1..5` (an owner text edit returns 200; an image change while VERIFIED returns 403 42501, with the row unchanged; then cleanup). `stale-economics-4` now sends `status: PENDING_VERIFICATION` with the price, as the app does, so it still reaches the stale-economics check. Full collection: 615 of 619 requests passed. The failures were the 3 known `dispatch-push-run` ones plus 1 Edge Function cold-start 503 that changed between runs, none in the touched files.
+App: `classifyListingEdit` already matches S12, so the app needs no change. The full no-review payload ran as an owner against the seed listings in a rolled-back transaction (UPDATE 4).
+Note: a price change that keeps VERIFIED now gets 42501 from the guard before the economics trigger runs. The app always sends PENDING_VERIFICATION with a price change.
+Risk: item 2 (RLS and owner write rules). Each bypass path is pinned by pgTAP, and the mutation check fails without the guard.
+Migration to apply: `20261101190000_owner_verified_text_edits.sql`. No schema change, so `db:types` is not needed.

@@ -1,0 +1,29 @@
+meta {
+  name: verified-edit-2-text-edit-accepted
+  type: http
+  seq: 110
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/products?id=eq.{{verifiedEditId}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{sellerToken}}
+  Prefer: return=representation
+}
+
+body:json {
+  { "description": "Edited description" }
+}
+
+tests {
+  test("the owner edits the description of a VERIFIED listing and it stays VERIFIED", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].description).to.equal("Edited description");
+    expect(res.getBody()[0].status).to.equal("VERIFIED");
+  });
+}
