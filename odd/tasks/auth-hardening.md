@@ -159,7 +159,7 @@ Acceptance:
 - T10h | S1,S4-S9 | delegated writer (context backstop) | in progress (L178) | Roadmap #167: `docs/auth.md`, 1-2 pages: account states, who can do what, closure flow, CAPTCHA, where each rule lives, how to test | Commit: not created.
 - T11 | S12 | parent orchestration | in progress (L181) | Auth close-out on branch `chore/auth-closeout`; one PR | Commit: see T11a-T11e.
 - T11a | S12 | inline | done (L182) | #174: CI step that writes `apps/frontend/expo-env.d.ts` before the typecheck | Commit: not created.
-- T11b | S8,S12 | inline | pending | pgTAP for the `account_restricted` and `active_orders` closure blockers | Commit: not created.
+- T11b | S8,S12 | inline | done (L183) | pgTAP for the `account_restricted` and `active_orders` closure blockers | Commit: not created.
 - T11c | S12 | inline | pending | #154: drop the unguarded `tr_on_auth_user_updated` trigger (migration; maintainer applies) | Commit: not created.
 - T11d | S4,S12 | delegated writer | pending | #141: owner may keep a VERIFIED listing VERIFIED when only name, description, condition or usage change (policy + guard trigger; migration; maintainer applies) | Commit: not created.
 - T11e | S12 | inline | pending | Close the worktree: tracker, Engram, `bun run worktree:clean auth` plan for the maintainer | Commit: not created.
@@ -1325,3 +1325,13 @@ Design note for #141: opening only the policy would let a modified client change
 In the `test` job of `.github/workflows/ci.yml`, a new step before `bun run typecheck` writes `apps/frontend/expo-env.d.ts` with `/// <reference types="expo/types" />`, the content `expo start` generates.
 RED/GREEN (a local simulation of the CI checkout, with no `expo-env.d.ts`): the T10e regression, reintroduced in a scratch copy, passed the old typecheck (exit 0); with the new step's file it fails with TS2322; the current code passes with the file (exit 0). The workflow parses with `Bun.YAML`, and the step order is lint, then the new step, then typecheck.
 Risk: item 5 (CI); a new step only, approved by the maintainer in S12.
+
+### L183 — T11b: the last two closure blockers get pgTAP
+`account_closure_blockers.test.sql` gains 13 assertions (plan 49):
+- A suspended account and a banned account each get `blocked` / `account_restricted`.
+- A buyer with a `paid` order gets `blocked` / `active_orders`.
+- None of those refusals changes the snapshot.
+- Once the suspension is lifted and the order completes, both users close (`closed`, `deleted_at` set). The banned account has no control case, because banned is final.
+Checks: `bun run test:db` Files=9, Tests=326, PASS. Mutation check (one rolled-back transaction, both `RETURN`s disabled): 11 of 49 fail; the function is intact afterwards.
+Every `fn_close_account` blocker now has a runtime test. `docs/auth.md` is updated to match in T11e.
+Risk: none (test-only).
