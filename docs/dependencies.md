@@ -21,7 +21,7 @@ A package below `1.0.0` can break on a minor. Treat its minor like a major.
 - **Monthly, by hand.** Run `bun outdated --filter @selene/frontend` and `bun outdated --filter admin-web`. Update the in-range updates together in one commit. Update each major in its own commit after reading its changelog. Check Node and Bun too ("Keep Node and Bun current").
 - **Expo SDK, 4 to 8 weeks after a release.** Upgrade one SDK at a time, in its own worktree. Merge to `main` only when the whole upgrade passes. Follow `odd/tasks/expo-sdk-upgrade.md` and run its device checklist (L12, updated by L21) on a new development build.
 
-**The weekly report does the looking for you.** The `Dependency report` workflow (`.github/workflows/dependency-report.yml`) runs every Monday after the audit. It runs `bun scripts/dependency-report.ts` and writes the result into one open issue, **Reporte de dependencias**, then comments a one-line summary so you get an email. The report lists safe updates, majors with changelog links, majors held back on purpose with the reason, the Expo SDK status, packages off the SDK, Expo-pinned packages with a newer major (they move with the SDK upgrade, not one by one; the pin list is `apps/frontend/node_modules/expo/bundledNativeModules.json`), the Node and Bun runtimes, and the audit. It never opens pull requests. Run the script locally for the same report, or start the workflow from the **Actions** tab.
+**The weekly report does the looking for you.** The `Dependency report` workflow (`.github/workflows/dependency-report.yml`) runs every Monday after the audit. It runs `bun scripts/dependency-report.ts` and writes the result into one open issue, **Reporte de dependencias**, then comments a one-line summary so you get an email. The report lists safe updates, majors with changelog links, majors held back on purpose with the reason, the Expo SDK status, packages off the SDK, Expo-pinned packages with a newer major (they move with the SDK upgrade, not one by one; the pin list is `apps/frontend/node_modules/expo/bundledNativeModules.json`), the Node and Bun runtimes, the GitHub Actions pins, and the audit. It never opens pull requests. Run the script locally for the same report, or start the workflow from the **Actions** tab.
 
 When you hold a major back, add it to `HELD_BACK` in `scripts/dependency-report.ts` with its reason, and write the case in "When not to update" below. Remove the entry when the blocker is gone.
 
@@ -60,6 +60,8 @@ A workflow runs third-party actions with the job token. A tag such as `v4` can b
 ```
 
 `scripts/workflow-actions.test.ts` fails when a `uses:` has no SHA or no exact tag, or when two workflows pin the same action differently.
+
+The weekly report's **GitHub Actions** section flags a new release once it is 3 days old, and a SHA that no longer matches the commit of its tag.
 
 To change an action version:
 

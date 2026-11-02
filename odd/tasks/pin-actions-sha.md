@@ -12,7 +12,7 @@ Finding #172. Worktree `C:/dev/School-portal-worktrees/repo-hygiene`, branch `ci
 ## Tasks
 
 - [x] T1 (S1): (fec141d4) pin the 11 `uses:` to the commit their tag or branch runs today, with a guard test and the rule in `docs/dependencies.md`.
-- [ ] T2 (S2): GitHub Actions section in `scripts/dependency-report.ts`, test-first.
+- [x] T2 (S2): GitHub Actions section in `scripts/dependency-report.ts`, test-first.
 - [ ] T3 (S3): `actions/checkout` v7.
 - [ ] T4 (S3): `actions/setup-node` v7.
 - [ ] T5 (S3): `supabase/setup-cli` v3.
@@ -24,3 +24,5 @@ Finding #172. Worktree `C:/dev/School-portal-worktrees/repo-hygiene`, branch `ci
 - L3: T1: RED `scripts/workflow-actions.test.ts` failed on `ci.yml:22` (`actions/checkout@v4`), GREEN after pinning the 11 `uses:` (4 pass). Each pin is the commit the old tag or branch resolved to, so what CI runs does not change; the PR's CI run proves the SHAs resolve. `dependency-report.yml` and `issue-labels.yml` cannot be run from the branch without side effects or at all; check them after the merge.
 - L4: Native review `review-ad2a21ed95145111` (risk, reliability) on fec141d4: approved and acknowledged. Advisories for T2: R3 (warning) `parseActionUses` skips a `uses:` without `@` (a local `./` action or an unpinned `owner/repo`), so the guard would not flag it; R1 the tag comment is not checked against the SHA (the weekly report can resolve it); R3 the "shared by the report" comment is true only after T2.
 - L5: "master cuando termines t1 paras y me comentas que hiciste porfa" — stopped after T1; T2 to T5 wait for the maintainer.
+- L6: "dale continua master, nomas un detalle reinicie la pc, digo ya abri doker pero te lo hago saber." — resume with T2. T2 to T5 change scripts and workflows only; Docker is not needed for them.
+- L7: T2: RED (`actionStatus` export missing, parser test failing), GREEN 74 pass. Full `bun test` 4652 pass / 0 fail, lint 0 errors, typecheck 0. Real run `GH_TOKEN=$(gh auth token) bun scripts/dependency-report.ts` exit 0, summary "3 action updates": checkout v4.4.0 -> v7.0.1, setup-node v4.4.0 -> v7.1.0, setup-cli v1.7.3 -> v3.0.1 (all majors), setup-bun and setup-deno up to date, no SHA mismatch. `parseActionUses` now returns `uses:` without `@` with an empty ref so the guard fails on it (local `./` and `docker://` skipped). Covers L4 R1 and R3.

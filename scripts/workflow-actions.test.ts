@@ -39,6 +39,19 @@ describe('parseActionUses', () => {
       { line: 6, action: 'owner/repo', ref: 'abc', tag: undefined },
     ]);
   });
+
+  it('returns an empty ref for an action without @, and skips local and docker ones', () => {
+    const text = [
+      '  - uses: owner/repo',
+      '  - uses: owner/repo/path # v1.0.0',
+      '  - uses: ./.github/actions/local',
+      '  - uses: docker://alpine:3.20',
+    ].join('\n');
+    expect(parseActionUses(text)).toEqual([
+      { line: 1, action: 'owner/repo', ref: '', tag: undefined },
+      { line: 2, action: 'owner/repo', ref: '', tag: 'v1.0.0' },
+    ]);
+  });
 });
 
 describe('workflow actions', () => {

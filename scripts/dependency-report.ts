@@ -1,11 +1,14 @@
 // Weekly dependency report in Markdown: safe updates, available majors, the
-// Expo SDK status, the Node and Bun runtimes, and the `bun audit` result. Collectors run the tools and the
+// Expo SDK status, the Node and Bun runtimes, the GitHub Actions pins, and the
+// `bun audit` result. Collectors run the tools and the
 // registry calls; every parser and the report builder are pure so tests need
 // no network. The report is informational: the CLI exits 0 even when updates
 // or findings exist, and 1 only when a collector itself fails.
 
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+
+import { parseActionUses } from './workflow-actions.ts';
 
 const FRONTEND_WORKSPACE = '@selene/frontend';
 const EXPO_UPGRADE_MIN_AGE_DAYS = 30;
@@ -13,6 +16,8 @@ const EXPO_UPGRADE_MIN_AGE_DAYS = 30;
 const NODE_LTS_MIN_AGE_DAYS = 90;
 const NODE_END_WARNING_DAYS = 180;
 const BUN_MIN_AGE_DAYS = 3;
+// docs/dependencies.md, "Keep GitHub Actions pinned".
+const ACTION_MIN_AGE_DAYS = BUN_MIN_AGE_DAYS;
 const DAY_MS = 86_400_000;
 const GUIDE = 'docs/dependencies.md';
 
@@ -83,6 +88,15 @@ export type RuntimesInput = {
   bun: BunRelease;
 };
 
+export type ActionRow = {
+  action: string;
+  pinnedSha: string;
+  pinnedTag: string;
+  // The commit the pinned tag resolves to today.
+  resolvedSha: string;
+  latest: { tag: string; publishedAt: string };
+};
+
 export type ReportInput = {
   outdated: Result<OutdatedRow[]>;
   expoCheck: Result<ExpoMismatch[]>;
@@ -91,6 +105,7 @@ export type ReportInput = {
   expo: Result<{ installed: string; latest: ExpoRegistry }>;
   repositories: Result<Record<string, string | undefined>>;
   runtimes: Result<RuntimesInput>;
+  actions: Result<ActionRow[]>;
 };
 
 export type Collectors = {
@@ -107,6 +122,10 @@ export type Collectors = {
   nodeSchedule: () => Promise<string>;
   bunRegistry: () => Promise<string>;
   runtimePins: () => Promise<{ nvmrc: string; packageManager: string }>;
+  // The text of every workflow file.
+  workflows: () => Promise<string[]>;
+  // A GitHub REST API path such as `repos/<owner>/<repo>/releases/latest`.
+  githubApi: (path: string) => Promise<string>;
 };
 
 // ---------------------------------------------------------------- parsers
@@ -306,6 +325,25 @@ export function parseBunRegistry(json: string): BunRelease {
   return { version, releasedAt };
 }
 
+// `releases/latest`: the tag must be a plain vX.Y.Z so it can be compared.
+export function parseLatestRelease(json: string): {
+  tag: string;
+  publishedAt: string;
+} {
+  const doc = JSON.parse(json) as { tag_name?: string; published_at?: string };
+  if (!/^v\d+\.\d+\.\d+$/.test(doc.tag_name ?? '') || !doc.published_at) {
+    throw new Error(`unrecognized latest release: ${doc.tag_name}`);
+  }
+  return { tag: doc.tag_name!, publishedAt: doc.published_at };
+}
+
+// `commits/<tag>` resolves annotated tags to the commit they point at.
+export function parseCommitSha(json: string): string {
+  const sha = (JSON.parse(json) as { sha?: string }).sha;
+  if (!sha || !/^[0-9a-f]{40}$/.test(sha)) throw new Error('no commit SHA');
+  return sha;
+}
+
 export function changelogUrl(
   name: string,
   repository: string | undefined,
@@ -448,6 +486,33 @@ export function bunRuntimeStatus(
   return { actions: [`Update to ${latest.version}`], notes: [] };
 }
 
+// A pin that does not match its tag comment is an action; so is a release at
+// least ACTION_MIN_AGE_DAYS old. A younger one only gets a note.
+export function actionStatus(row: ActionRow, now: Date): RuntimeStatus {
+  const actions: string[] = [];
+  const notes: string[] = [];
+  if (row.pinnedSha !== row.resolvedSha) {
+    actions.push(
+      `Pinned SHA is not ${row.pinnedTag} (resolves to ${row.resolvedSha.slice(0, 7)})`,
+    );
+  }
+  const pinned = row.pinnedTag.slice(1);
+  const latest = row.latest.tag.slice(1);
+  if (compareVersions(latest, pinned) > 0) {
+    const age = daysSince(row.latest.publishedAt, now);
+    if (age < ACTION_MIN_AGE_DAYS) {
+      notes.push(
+        `${row.latest.tag} is ${age} days old: update after ${addDays(row.latest.publishedAt, ACTION_MIN_AGE_DAYS)}`,
+      );
+    } else {
+      actions.push(
+        `Update to ${row.latest.tag}${major(latest) > major(pinned) ? ' (major: read the release notes)' : ''}`,
+      );
+    }
+  }
+  return { actions, notes };
+}
+
 function describeRuntime(status: RuntimeStatus): string {
   const parts = [...status.actions, ...status.notes];
   return parts.length ? parts.join('. ') : 'Up to date';
@@ -553,6 +618,11 @@ export function buildDependencyReport(input: ReportInput, now: Date): string {
     ? runtimes.filter((row) => row.status.actions.length).length
     : 0;
 
+  const actions = input.actions.ok ? input.actions.value : undefined;
+  const actionUpdates = actions
+    ? actions.filter((row) => actionStatus(row, now).actions.length).length
+    : 0;
+
   const parts: string[] = [];
   parts.push(`# Dependency report, ${now.toISOString().slice(0, 10)}`);
   const summary = [
@@ -570,6 +640,11 @@ export function buildDependencyReport(input: ReportInput, now: Date): string {
       : runtimeUpdates
         ? `${runtimeUpdates} runtime update${runtimeUpdates === 1 ? '' : 's'}`
         : 'runtimes up to date',
+    !actions
+      ? 'actions check failed'
+      : actionUpdates
+        ? `${actionUpdates} action update${actionUpdates === 1 ? '' : 's'}`
+        : 'actions up to date',
     input.audit.ok ? `${findings.length} vulnerabilities` : 'audit failed',
   ];
   parts.push(`${summary.join(', ')}.`);
@@ -724,6 +799,25 @@ export function buildDependencyReport(input: ReportInput, now: Date): string {
     );
     parts.push(
       `Node: latest release of the pinned line, from \`.nvmrc\`. Bun: latest release, from \`packageManager\`. Change both sources and every \`apps/frontend/eas.json\` profile together (see \`${GUIDE}\`, "Keep Node and Bun current").`,
+    );
+  }
+
+  parts.push('## GitHub Actions');
+  if (!input.actions.ok) parts.push(failed(input.actions.error));
+  else {
+    parts.push(
+      table(
+        ['Action', 'Pinned', 'Latest', 'Status'],
+        actions!.map((row) => [
+          row.action,
+          row.pinnedTag,
+          row.latest.tag,
+          describeRuntime(actionStatus(row, now)),
+        ]),
+      ),
+    );
+    parts.push(
+      `Update with the steps in \`${GUIDE}\`, "Keep GitHub Actions pinned".`,
     );
   }
 
@@ -889,8 +983,35 @@ export async function runReport(
     return value;
   });
 
+  const actions = await settle('github actions', errors, async () => {
+    const pinned = new Map<string, { ref: string; tag: string }>();
+    for (const text of await collectors.workflows()) {
+      for (const use of parseActionUses(text)) {
+        if (!use.tag) {
+          throw new Error(`${use.action} has no release tag comment`);
+        }
+        pinned.set(use.action, { ref: use.ref, tag: use.tag });
+      }
+    }
+    return Promise.all(
+      [...pinned].sort().map(async ([action, pin]) => ({
+        action,
+        pinnedSha: pin.ref,
+        pinnedTag: pin.tag,
+        resolvedSha: parseCommitSha(
+          await collectors.githubApi(
+            `repos/${action}/commits/${encodeURIComponent(pin.tag)}`,
+          ),
+        ),
+        latest: parseLatestRelease(
+          await collectors.githubApi(`repos/${action}/releases/latest`),
+        ),
+      })),
+    );
+  });
+
   const markdown = buildDependencyReport(
-    { outdated, expoCheck, pins, audit, expo, repositories, runtimes },
+    { outdated, expoCheck, pins, audit, expo, repositories, runtimes, actions },
     now,
   );
   return { markdown, exitCode: errors.length ? 1 : 0, errors };
@@ -921,6 +1042,21 @@ async function run(
 
 async function fetchJson(url: string): Promise<string> {
   const response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+  if (!response.ok) throw new Error(`${url} answered ${response.status}`);
+  return response.text();
+}
+
+// GH_TOKEN raises the API rate limit; the weekly workflow sets it.
+async function githubApi(path: string): Promise<string> {
+  const token = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN;
+  const url = `https://api.github.com/${path}`;
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    signal: AbortSignal.timeout(30_000),
+  });
   if (!response.ok) throw new Error(`${url} answered ${response.status}`);
   return response.text();
 }
@@ -982,6 +1118,15 @@ export const realCollectors: Collectors = {
       'https://raw.githubusercontent.com/nodejs/Release/main/schedule.json',
     ),
   bunRegistry: () => fetchJson('https://registry.npmjs.org/bun'),
+  githubApi,
+  workflows: () => {
+    const dir = join(ROOT, '.github', 'workflows');
+    return Promise.resolve(
+      readdirSync(dir)
+        .filter((file) => /\.ya?ml$/.test(file))
+        .map((file) => readFileSync(join(dir, file), { encoding: 'utf8' })),
+    );
+  },
   runtimePins: () =>
     Promise.resolve({
       nvmrc: readFileSync(join(ROOT, '.nvmrc'), { encoding: 'utf8' }),
