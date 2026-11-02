@@ -2,7 +2,10 @@ import type { Notification } from '@selene/types';
 import { getVerifiedEventIdentity } from './notificationPresentation';
 
 // Priority is an explicit catalogue consumer policy, never inferred from legacy copy or routes.
-const priority: Record<NonNullable<ReturnType<typeof getVerifiedEventIdentity>>['kind'], Partial<Record<'buyer' | 'seller', number>>> = {
+const priority: Record<
+  NonNullable<ReturnType<typeof getVerifiedEventIdentity>>['kind'],
+  Partial<Record<'buyer' | 'seller', number>>
+> = {
   'order.payment_confirmed': { buyer: 2, seller: 2 },
   'shipment.cancelled': { buyer: 3, seller: 3 },
   'shipment.refund_failed': { buyer: 3 },
@@ -19,7 +22,7 @@ const priority: Record<NonNullable<ReturnType<typeof getVerifiedEventIdentity>>[
 
 function rank(row: Notification): number {
   const identity = getVerifiedEventIdentity(row);
-  return identity ? priority[identity.kind][identity.role] ?? 0 : 0;
+  return identity ? (priority[identity.kind][identity.role] ?? 0) : 0;
 }
 
 export type LaunchCursor = Pick<Notification, 'created_at' | 'id'>;
@@ -38,16 +41,31 @@ export async function scanLaunchDigest(
     const rows = await loadPage(cursor);
     if (cancelled()) return null;
     for (const row of rows) {
-      if (row.user_id !== ownerId || row.read === true || row.deleted_at !== null) continue;
+      if (
+        row.user_id !== ownerId ||
+        row.read === true ||
+        row.deleted_at !== null
+      )
+        continue;
       count++;
-      if (!best || rank(row) > rank(best) || (rank(row) === rank(best) &&
-        (row.created_at > best.created_at || (row.created_at === best.created_at && row.id > best.id)))) best = row;
+      if (
+        !best ||
+        rank(row) > rank(best) ||
+        (rank(row) === rank(best) &&
+          (row.created_at > best.created_at ||
+            (row.created_at === best.created_at && row.id > best.id)))
+      )
+        best = row;
     }
-    if (rows.length < pageSize || (best && rank(best) === 3 && count > 1)) return { notice: best, hasMore: count > 1 };
+    if (rows.length < pageSize || (best && rank(best) === 3 && count > 1))
+      return { notice: best, hasMore: count > 1 };
     const last = rows[rows.length - 1];
     if (!last) return { notice: best, hasMore: count > 1 };
-    if (cursor && (last.created_at > cursor.created_at ||
-      (last.created_at === cursor.created_at && last.id >= cursor.id))) {
+    if (
+      cursor &&
+      (last.created_at > cursor.created_at ||
+        (last.created_at === cursor.created_at && last.id >= cursor.id))
+    ) {
       throw new Error('Launch digest cursor did not advance');
     }
     cursor = { created_at: last.created_at, id: last.id };
@@ -56,10 +74,25 @@ export async function scanLaunchDigest(
 }
 
 /** Rank only verified catalogue identity within the supplied owner sample. */
-export function selectLaunchDigest(rows: Notification[], ownerId: string): Notification | null {
-  return rows
-    .filter((row) => row.user_id === ownerId && row.read !== true && row.deleted_at === null)
-    .sort((a, b) => rank(b) - rank(a) || b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id))[0] ?? null;
+export function selectLaunchDigest(
+  rows: Notification[],
+  ownerId: string,
+): Notification | null {
+  return (
+    rows
+      .filter(
+        (row) =>
+          row.user_id === ownerId &&
+          row.read !== true &&
+          row.deleted_at === null,
+      )
+      .sort(
+        (a, b) =>
+          rank(b) - rank(a) ||
+          b.created_at.localeCompare(a.created_at) ||
+          b.id.localeCompare(a.id),
+      )[0] ?? null
+  );
 }
 
 /** An effect cleanup releases only its own pending attempt, never a settled launch. */
@@ -81,6 +114,9 @@ export function createLaunchDigestGate() {
       settled = true;
       return true;
     },
-    reset: () => { pending = null; settled = false; },
+    reset: () => {
+      pending = null;
+      settled = false;
+    },
   };
 }
