@@ -36,5 +36,15 @@
   "digestOpen": "Open notification inbox",
   "digestSkip": "Not now",
   "digestInbox": "Open notification inbox",
-  "digestMore": "More updates are in your inbox"
+  "digestMore": "More updates are in your inbox",
+  "permission": {
+    "purchaseTitle": "Follow your order",
+    "purchaseBody": "We'll let you know when the seller ships your order, when it arrives, and if anything needs your attention.",
+    "favoriteTitle": "Don't miss what you save",
+    "favoriteBody": "We'll let you know when a product you saved is available to buy.",
+    "listingTitle": "Know when you sell",
+    "listingBody": "We'll let you know when we verify your listing, when someone buys it, and when your payment is released.",
+    "confirm": "Turn on notifications",
+    "cancel": "Not now"
+  }
 }

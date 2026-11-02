@@ -19,6 +19,13 @@ const NEW_KEYS = [
   // Legales
   'sections.legal',
   'sections.support',
+  // Push notifications row
+  'sections.notifications',
+  'pushNotifications.label',
+  'pushNotifications.on',
+  'pushNotifications.off',
+  'pushNotifications.description',
+  'pushNotifications.deniedDescription',
   'legales.terms',
   'legales.privacy',
   'legales.versionLabel',

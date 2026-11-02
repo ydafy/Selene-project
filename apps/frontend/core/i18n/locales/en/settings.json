@@ -6,7 +6,15 @@
     "security": "Security",
     "privacy": "Privacy",
     "legal": "Legal",
-    "support": "Support"
+    "support": "Support",
+    "notifications": "Notifications"
+  },
+  "pushNotifications": {
+    "label": "Push notifications",
+    "on": "On",
+    "off": "Off",
+    "description": "Orders, sales, and products you saved",
+    "deniedDescription": "Turn them on in your phone settings"
   },
   "account": {
     "usernameLabel": "Username",

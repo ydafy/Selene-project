@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../db/supabase';
 import { useAuthContext } from '../../components/auth/AuthProvider';
+import { offerPushPermission } from '../push/pushPermission';
 
 export const useProductFavorite = (productId: string) => {
   const { session } = useAuthContext();
@@ -40,6 +41,7 @@ export const useProductFavorite = (productId: string) => {
           .eq('product_id', productId)
           .eq('user_id', userId);
         if (error) throw error;
+        return 'removed';
       } else {
         //  ¿El producto sigue existiendo?
         const { data: product, error: checkError } = await supabase
@@ -54,7 +56,11 @@ export const useProductFavorite = (productId: string) => {
           .from('favorites')
           .insert({ product_id: productId, user_id: userId });
         if (error) throw error;
+        return 'added';
       }
+    },
+    onSuccess: (result) => {
+      if (result === 'added') void offerPushPermission('favorite');
     },
     onMutate: async () => {
       await queryClient.cancelQueries({

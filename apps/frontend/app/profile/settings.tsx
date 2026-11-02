@@ -8,6 +8,7 @@ import { ScreenLayout } from '../../components/layout/ScreenLayout';
 import { useAuthContext } from '../../components/auth/AuthProvider';
 import { AccountSection } from '../../components/features/settings/AccountSection';
 import { SecuritySection } from '../../components/features/settings/SecuritySection';
+import { NotificationsSection } from '../../components/features/settings/NotificationsSection';
 import { DeleteAccountSection } from '../../components/features/settings/DeleteAccountSection';
 import { LegalesSection } from '../../components/features/settings/LegalesSection';
 import { SoporteSection } from '../../components/features/settings/SoporteSection';
@@ -40,6 +41,10 @@ export default function SettingsScreen() {
 
         <SettingsSection title={t('sections.security')}>
           <SecuritySection />
+        </SettingsSection>
+
+        <SettingsSection title={t('sections.notifications')}>
+          <NotificationsSection />
         </SettingsSection>
 
         <SettingsSection title={t('sections.privacy')}>

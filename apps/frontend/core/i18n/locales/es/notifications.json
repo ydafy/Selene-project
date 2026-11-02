@@ -36,5 +36,15 @@
   "digestInbox": "Abrir buzón de avisos",
   "digestMore": "Hay más novedades en tu buzón",
   "markAllConfirm": "¿Marcar todas como leídas?",
-  "markAllDesc": "Todas las notificaciones pendientes se marcarán como revisadas."
+  "markAllDesc": "Todas las notificaciones pendientes se marcarán como revisadas.",
+  "permission": {
+    "purchaseTitle": "Sigue tu pedido",
+    "purchaseBody": "Te avisamos cuando el vendedor envíe tu pedido, cuando llegue y si algo necesita tu atención.",
+    "favoriteTitle": "No te pierdas lo que guardas",
+    "favoriteBody": "Te avisamos cuando un producto que guardaste esté disponible para comprar.",
+    "listingTitle": "Entérate cuando vendas",
+    "listingBody": "Te avisamos cuando verifiquemos tu publicación, cuando alguien la compre y cuando liberemos tu pago.",
+    "confirm": "Activar notificaciones",
+    "cancel": "Ahora no"
+  }
 }
