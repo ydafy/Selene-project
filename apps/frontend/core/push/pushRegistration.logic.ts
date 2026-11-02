@@ -18,7 +18,11 @@ export type PushRegistrarDeps = {
   registerToken: (token: string, platform: PushPlatform) => Promise<void>;
   unregisterToken: (token: string) => Promise<void>;
   storage: PushStorage;
-  /** A step that never settles is abandoned after this; defaults to 15 s. */
+  /**
+   * Each external call (native module, storage, RPC) fails after this;
+   * defaults to 15 s. The queue stays strictly serial, so a late response
+   * can never change state that a later step already wrote.
+   */
   stepTimeoutMs?: number;
   warn: (...args: unknown[]) => void;
 };
@@ -51,22 +55,30 @@ export const createPushRegistrar = (deps: PushRegistrarDeps) => {
   // cannot undo the unregister.
   let signedOutUserId: string | undefined;
 
-  const runStep = async (step: () => Promise<void>): Promise<void> => {
+  // A call that does not answer in time counts as failed; the step then
+  // follows its failure path and the queue moves on.
+  const limit = async <T>(call: () => Promise<T>): Promise<T> => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      await Promise.race([
-        step(),
-        new Promise<void>((resolve) => {
-          timer = setTimeout(() => {
-            deps.warn('[push] Step timed out; moving on');
-            resolve();
-          }, stepTimeoutMs);
+      return await Promise.race([
+        call(),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () => reject(new Error('Push call timed out')),
+            stepTimeoutMs,
+          );
         }),
       ]);
-    } catch (error) {
-      deps.warn('[push] Step failed:', error);
     } finally {
       clearTimeout(timer);
+    }
+  };
+
+  const runStep = async (step: () => Promise<void>): Promise<void> => {
+    try {
+      await step();
+    } catch (error) {
+      deps.warn('[push] Step failed:', error);
     }
   };
 
@@ -78,7 +90,7 @@ export const createPushRegistrar = (deps: PushRegistrarDeps) => {
   // Storage trouble must never stop the token calls themselves.
   const store = async (work: () => Promise<unknown>): Promise<void> => {
     try {
-      await work();
+      await limit(work);
     } catch (error) {
       deps.warn('[push] Storage failed:', error);
     }
@@ -86,7 +98,7 @@ export const createPushRegistrar = (deps: PushRegistrarDeps) => {
 
   const readStored = async (key: string): Promise<string | null> => {
     try {
-      return await deps.storage.get(key);
+      return await limit(() => deps.storage.get(key));
     } catch (error) {
       deps.warn('[push] Storage failed:', error);
       return null;
@@ -97,21 +109,22 @@ export const createPushRegistrar = (deps: PushRegistrarDeps) => {
     const pending = await readStored(PENDING_KEY);
     if (!pending) return;
     try {
-      await deps.unregisterToken(pending);
+      await limit(() => deps.unregisterToken(pending));
       await store(() => deps.storage.remove(PENDING_KEY));
     } catch (error) {
       deps.warn('[push] Pending unregister failed:', error);
     }
   };
 
-  // Retries an unregister that a failed or timed-out sign-out left behind.
-  const flushPending = (): Promise<void> => enqueue(flushOnce);
-
+  /**
+   * Retries an unregister that a failed or timed-out sign-out left behind,
+   * then registers for the current session. Callers retry through here (also
+   * when the network returns), so a retry never ends with the token removed
+   * from a signed-in account.
+   */
   const register = (userId: string | undefined): Promise<void> => {
     currentUserId = userId;
-    // The pending unregister goes first; if it fails and the same token then
-    // registers, registerOnce drops the mark so the new account keeps it.
-    void flushPending();
+    void enqueue(flushOnce);
     return enqueue(() => registerOnce(userId));
   };
 
@@ -120,19 +133,25 @@ export const createPushRegistrar = (deps: PushRegistrarDeps) => {
     if (!isPushPlatform(platform)) return;
     if (userId !== signedOutUserId) signedOutUserId = undefined;
     try {
-      if (platform === 'android') await deps.createChannels();
+      if (platform === 'android') await limit(deps.createChannels);
       if (!userId || userId === signedOutUserId) return;
-      if (!(await deps.hasPermission())) return;
+      if (!(await limit(deps.hasPermission))) return;
       const projectId = deps.getProjectId();
       if (!projectId) {
         deps.warn('[push] Missing EAS project id; skipping registration');
         return;
       }
-      const token = await deps.getExpoPushToken(projectId);
-      await deps.registerToken(token, platform);
+      const token = await limit(() => deps.getExpoPushToken(projectId));
+      // Known before the call: the server may hold it even if the answer is
+      // lost, and a later sign-out must still remove it.
       lastToken = token;
       await store(() => deps.storage.set(REGISTERED_KEY, token));
-      if ((await readStored(PENDING_KEY)) === token) {
+      await limit(() => deps.registerToken(token, platform));
+      // The token now belongs to this account; a pending unregister of it
+      // would remove that registration. Only while the session is this one.
+      const stillSignedIn =
+        userId === currentUserId && userId !== signedOutUserId;
+      if (stillSignedIn && (await readStored(PENDING_KEY)) === token) {
         await store(() => deps.storage.remove(PENDING_KEY));
       }
     } catch (error) {
@@ -164,7 +183,7 @@ export const createPushRegistrar = (deps: PushRegistrarDeps) => {
     // Marked first so a failure or a sign-out time limit leaves it to retry.
     await store(() => deps.storage.set(PENDING_KEY, token));
     try {
-      await deps.unregisterToken(token);
+      await limit(() => deps.unregisterToken(token));
       lastToken = null;
       await store(() => deps.storage.remove(PENDING_KEY));
       await store(() => deps.storage.remove(REGISTERED_KEY));
@@ -178,5 +197,5 @@ export const createPushRegistrar = (deps: PushRegistrarDeps) => {
     signedOutUserId = undefined;
   };
 
-  return { register, unregister, flushPending, signOutFinished };
+  return { register, unregister, signOutFinished };
 };

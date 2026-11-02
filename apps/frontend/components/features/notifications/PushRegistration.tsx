@@ -20,9 +20,9 @@ export const PushRegistration = () => {
     const tokenListener = Notifications.addPushTokenListener(() => {
       void pushRegistrar.register(userId);
     });
-    // A sign-out that could not reach the server retries once back online.
+    // Back online: retry a pending unregister, then register this session.
     const unsubscribeNetwork = NetInfo.addEventListener((state) => {
-      if (isNetworkReachable(state)) void pushRegistrar.flushPending();
+      if (isNetworkReachable(state)) void pushRegistrar.register(userId);
     });
     return () => {
       unsubscribeNetwork();

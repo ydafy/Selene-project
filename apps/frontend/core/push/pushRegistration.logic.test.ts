@@ -226,14 +226,16 @@ describe('createPushRegistrar persistence and retry', () => {
     expect(store.get(REGISTERED_KEY)).toBe(TOKEN);
   });
 
-  it('does not store a token when registration fails', async () => {
-    const { registrar, store } = setup({
+  it('keeps a token whose registration answer was lost, so sign-out removes it', async () => {
+    const { registrar, store, calls } = setup({
       registerToken: async () => {
         throw new Error('offline');
       },
     });
     await registrar.register('user-1');
-    expect(store.has(REGISTERED_KEY)).toBe(false);
+    expect(store.get(REGISTERED_KEY)).toBe(TOKEN);
+    await registrar.unregister();
+    expect(calls.at(-1)).toBe(`unregister:${TOKEN}`);
   });
 
   it('unregisters the stored token after an app restart', async () => {
@@ -294,8 +296,8 @@ describe('createPushRegistrar persistence and retry', () => {
   it('flushes a pending unregister without a session', async () => {
     const { registrar, calls, store } = setup();
     store.set(PENDING_KEY, 'ExponentPushToken[old]');
-    await registrar.flushPending();
-    expect(calls).toEqual(['unregister:ExponentPushToken[old]']);
+    await registrar.register(undefined);
+    expect(calls).toEqual(['unregister:ExponentPushToken[old]', 'channels']);
     expect(store.has(PENDING_KEY)).toBe(false);
   });
 
@@ -306,7 +308,7 @@ describe('createPushRegistrar persistence and retry', () => {
       },
     });
     store.set(PENDING_KEY, 'ExponentPushToken[old]');
-    await registrar.flushPending();
+    await registrar.register(undefined);
     expect(store.get(PENDING_KEY)).toBe('ExponentPushToken[old]');
     expect(warnings).toHaveLength(1);
   });
@@ -447,5 +449,121 @@ describe('createPushRegistrar pending mark at sign-out start', () => {
     void registrar.unregister();
     await tick();
     expect(store.get(PENDING_KEY)).toBe(TOKEN);
+  });
+});
+
+describe('createPushRegistrar late responses', () => {
+  const deferred = () => {
+    let resolve!: () => void;
+    const promise = new Promise<void>((done) => {
+      resolve = done;
+    });
+    return { promise, resolve };
+  };
+  const wait = (ms: number) =>
+    new Promise((resolve) => setTimeout(resolve, ms));
+  // A server that records which account holds the token.
+  const raceSetup = () => {
+    const server = new Map<string, string>();
+    let user = 'A';
+    let onRegister = async (token: string) => {
+      server.set(token, user);
+    };
+    let onUnregister = async (token: string) => {
+      server.delete(token);
+    };
+    const harness = setup({
+      stepTimeoutMs: 30,
+      registerToken: (token) => onRegister(token),
+      unregisterToken: (token) => onUnregister(token),
+    });
+    return {
+      ...harness,
+      server,
+      as: (next: string) => {
+        user = next;
+      },
+      setRegister: (fn: typeof onRegister) => {
+        onRegister = fn;
+      },
+      setUnregister: (fn: typeof onUnregister) => {
+        onUnregister = fn;
+      },
+    };
+  };
+
+  it('a late unregister response does not erase the next account token', async () => {
+    const h = raceSetup();
+    await h.registrar.register('A');
+    const late = deferred();
+    h.setUnregister(async (token) => {
+      h.server.delete(token);
+      await late.promise;
+    });
+    const out = h.registrar.unregister();
+    await wait(60);
+    h.registrar.signOutFinished();
+    h.setUnregister(async (token) => {
+      h.server.delete(token);
+    });
+    await h.registrar.register(undefined);
+    h.as('B');
+    await h.registrar.register('B');
+    late.resolve();
+    await out;
+    await tick();
+    await h.registrar.unregister();
+    h.registrar.signOutFinished();
+    expect(h.server.get(TOKEN)).toBeUndefined();
+  });
+
+  it('the network-return retry leaves the token on the signed-in account', async () => {
+    const h = raceSetup();
+    await h.registrar.register('A');
+    h.setUnregister(async () => {
+      throw new Error('offline');
+    });
+    await h.registrar.unregister();
+    h.registrar.signOutFinished();
+    h.as('B');
+    const late = deferred();
+    h.setRegister(async (token) => {
+      h.server.set(token, 'B');
+      await late.promise;
+    });
+    await h.registrar.register('B');
+    h.setUnregister(async (token) => {
+      h.server.delete(token);
+    });
+    h.setRegister(async (token) => {
+      h.server.set(token, 'B');
+    });
+    await h.registrar.register('B');
+    late.resolve();
+    await tick();
+    expect(h.server.get(TOKEN)).toBe('B');
+  });
+
+  it('a late registration of a signed-out user keeps the pending mark', async () => {
+    const h = raceSetup();
+    await h.registrar.register('A');
+    const late = deferred();
+    h.setRegister(async (token) => {
+      h.server.set(token, 'A');
+      await late.promise;
+    });
+    const registering = h.registrar.register('A');
+    await tick();
+    h.setUnregister(async () => {
+      throw new Error('offline');
+    });
+    const out = h.registrar.unregister();
+    await wait(60);
+    await out;
+    h.registrar.signOutFinished();
+    late.resolve();
+    await registering;
+    await tick();
+    expect(h.store.get(PENDING_KEY)).toBe(TOKEN);
   });
 });
