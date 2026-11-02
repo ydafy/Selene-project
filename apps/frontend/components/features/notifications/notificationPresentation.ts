@@ -14,7 +14,8 @@ type Presentation = {
     | 'refund'
     | 'dispute'
     | 'listing'
-    | 'return';
+    | 'return'
+    | 'shipment';
 };
 
 const catalogue = {
@@ -52,6 +53,17 @@ const catalogue = {
   'return.delivered': {
     buyer: ['package-variant-closed-check', 'primary', 'return'],
     seller: ['package-variant-closed-check', 'primary', 'return'],
+  },
+  'shipment.in_transit': {
+    buyer: ['truck-fast-outline', 'primary', 'shipment'],
+  },
+  'shipment.delivered': {
+    buyer: ['package-variant-closed-check', 'success', 'shipment'],
+  },
+  'shipment.funds_released': { seller: ['cash-check', 'success', 'sale'] },
+  'shipment.refunded': { buyer: ['cash-refund', 'success', 'refund'] },
+  'shipment.label_deadline': {
+    seller: ['clock-alert-outline', 'primary', 'shipment'],
   },
 } as const;
 

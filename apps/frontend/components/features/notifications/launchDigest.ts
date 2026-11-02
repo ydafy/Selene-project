@@ -18,6 +18,11 @@ const priority: Record<
   'product.interest': { seller: 1 },
   'return.seller_evidence_submitted': { buyer: 2 },
   'return.delivered': { buyer: 2, seller: 2 },
+  'shipment.in_transit': { buyer: 1 },
+  'shipment.delivered': { buyer: 2 },
+  'shipment.funds_released': { seller: 2 },
+  'shipment.refunded': { buyer: 2 },
+  'shipment.label_deadline': { seller: 3 },
 };
 
 function rank(row: Notification): number {

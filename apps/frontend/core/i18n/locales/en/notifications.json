@@ -11,7 +11,8 @@
     "refund": "Refund update",
     "dispute": "Dispute update",
     "listing": "Listing update",
-    "return": "Return update"
+    "return": "Return update",
+    "shipment": "Shipment update"
   },
   "markAll": "Mark all as read",
   "markReadLabel": "Mark notification as read: {{title}}",

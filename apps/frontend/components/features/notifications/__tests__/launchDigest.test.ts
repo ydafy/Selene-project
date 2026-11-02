@@ -119,6 +119,60 @@ describe('launch digest', () => {
     ).rejects.toThrow('Launch digest cursor did not advance');
     expect(calls).toBe(2);
   });
+  test('ranks shipment milestones: label deadline first, then delivered, funds and refunds, then in transit', () => {
+    const inTransit = typed(
+      'in-transit',
+      '2026-04-05',
+      'shipment.in_transit',
+      'buyer',
+    );
+    const delivered = typed(
+      'delivered',
+      '2026-04-03',
+      'shipment.delivered',
+      'buyer',
+    );
+    const funds = typed(
+      'funds',
+      '2026-04-02',
+      'shipment.funds_released',
+      'seller',
+    );
+    const refunded = typed(
+      'refunded',
+      '2026-04-02',
+      'shipment.refunded',
+      'buyer',
+    );
+    const deadline = typed(
+      'deadline',
+      '2026-04-01',
+      'shipment.label_deadline',
+      'seller',
+    );
+    expect(
+      selectLaunchDigest(
+        [inTransit, delivered, funds, refunded, deadline],
+        'owner',
+      ),
+    ).toBe(deadline);
+    expect(selectLaunchDigest([inTransit, delivered], 'owner')).toBe(delivered);
+    expect(selectLaunchDigest([inTransit, funds], 'owner')).toBe(funds);
+    expect(selectLaunchDigest([inTransit, refunded], 'owner')).toBe(refunded);
+    expect(
+      selectLaunchDigest([inTransit, row('legacy', '2026-04-06')], 'owner'),
+    ).toBe(inTransit);
+    expect(
+      selectLaunchDigest(
+        [
+          typed('wrong-role', '2026-04-04', 'shipment.label_deadline', 'buyer'),
+          inTransit,
+        ],
+        'owner',
+      ),
+    ).toBe(inTransit);
+  });
+
   test('ranks approved typed priority above newer legacy and across two typed levels', () => {
     expect(
       selectLaunchDigest(

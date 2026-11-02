@@ -140,6 +140,65 @@ describe('notification presentation', () => {
       });
     }
   });
+  test('presents each shipment milestone for its recipient role only', () => {
+    const cases = [
+      [
+        'shipment.in_transit',
+        'buyer',
+        'seller',
+        { icon: 'truck-fast-outline', accent: 'primary', state: 'shipment' },
+      ],
+      [
+        'shipment.delivered',
+        'buyer',
+        'seller',
+        {
+          icon: 'package-variant-closed-check',
+          accent: 'success',
+          state: 'shipment',
+        },
+      ],
+      [
+        'shipment.funds_released',
+        'seller',
+        'buyer',
+        { icon: 'cash-check', accent: 'success', state: 'sale' },
+      ],
+      [
+        'shipment.refunded',
+        'buyer',
+        'seller',
+        { icon: 'cash-refund', accent: 'success', state: 'refund' },
+      ],
+      [
+        'shipment.label_deadline',
+        'seller',
+        'buyer',
+        { icon: 'clock-alert-outline', accent: 'primary', state: 'shipment' },
+      ],
+    ] as const;
+    for (const [kind, role, otherRole, presentation] of cases) {
+      const base = {
+        event_kind: kind,
+        source_event_key: `${kind}:ship-1`,
+        type: 'info',
+      };
+      expect(
+        getNotificationPresentation(
+          Object.assign({}, legacy, base, {
+            event_payload: { recipient_role: role },
+          }),
+        ),
+      ).toEqual(presentation);
+      expect(
+        getNotificationPresentation(
+          Object.assign({}, legacy, base, {
+            event_payload: { recipient_role: otherRole },
+          }),
+        ),
+      ).toEqual({ icon: 'bell-outline', accent: 'primary', state: 'generic' });
+    }
+  });
   test('every presentation state has an English and Spanish label', () => {
     for (const { states } of [en, es] as Array<{
       states: Record<string, unknown>;
@@ -153,6 +212,7 @@ describe('notification presentation', () => {
         'dispute',
         'listing',
         'return',
+        'shipment',
       ]) {
         expect(typeof states[state]).toBe('string');
       }

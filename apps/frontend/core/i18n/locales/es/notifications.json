@@ -11,7 +11,8 @@
     "refund": "Novedad de reembolso",
     "dispute": "Novedad de disputa",
     "listing": "Novedad de publicación",
-    "return": "Novedad de devolución"
+    "return": "Novedad de devolución",
+    "shipment": "Novedad de envío"
   },
   "markAll": "Marcar todo como leído",
   "markReadLabel": "Marcar aviso como leído: {{title}}",
