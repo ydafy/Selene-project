@@ -144,6 +144,7 @@ Acceptance: an update that leaves `price` and `shipping_cost` unchanged keeps th
 - T10c.2 | S4 | delegated writer (context backstop) | done (L165-L166) | pgTAP for the other release callers under the T9e seller rule: `fn_reserve_products` stale cleanup and partial rollback, `fn_cancel_shipment`, and the refund path of `fn_finalize_checkout_recovery`; a suspended seller's listing is held, an active seller's returns to sale | Commit: 208a8738.
 - T10d | S1,S4 | inline | done (L168-L169) | Roadmap #163: CI job `db-test` starts the local stack and runs `supabase test db` on every PR; `supabase/AGENTS.md` updated | Commit: 391912c7.
 - T10e | S1 | inline | done (L170) | Roadmap #164: frontend typecheck at zero on Windows (OTP `textInputStyle` typed as the library declares it) | Commit: 9dcf0bc0.
+- T10f | S4,S10 | delegated writer (context backstop) | in progress (L172) | Roadmap #165 (part of #122): narrow `anon` and `authenticated` grants on the auth tables and admin views to the matrix in L172; pgTAP per role; maintainer applies the migration | Commit: a49e1324 + follow-up (L174).
 
 ## Log
 
@@ -1197,3 +1198,56 @@ GREEN: `bun run typecheck` 0 errors with and without `expo-env.d.ts`; `bun run l
 Finding #174: the CI typecheck runs without Expo's types; the fix is a CI change and needs approval.
 Risk: none (type assertion only; runtime style unchanged).
 Review: native review of bcb22fe1..9dcf0bc0 (readability; tier high) approved and acknowledged; one suggestion (the task row cited L170 instead of the commit) fixed here.
+
+### L171 — T10e closed
+PR #176 merged (89a6ccd6) after the required checks `test` and `db-test` passed; it closed roadmap item #164. Open from T10e: #174 (the CI typecheck runs without Expo's types; the fix is a CI change and needs approval). This entry is commit-only on local branch `docs/auth-t10e-close` and goes out with the next slice. Next roadmap item: #165 (T10f, #122 limited to the auth tables; migration, the maintainer applies it).
+
+### L172 — T10f starts: grant matrix
+Inventory: production grants read through the Supabase MCP (read-only, `has_table_privilege` and `has_column_privilege`). `anon` and `authenticated` hold every table privilege on `profiles_private`, `admin_audit_logs` and `admin_user_notes`. `anon` also holds every privilege on `admin_user_directory_view`, `admin_disputes_monitor_view`, `admin_connect_earnings_view` and `admin_seller_onboarding_view`. `profiles` has INSERT, DELETE, TRUNCATE, REFERENCES and TRIGGER for both roles. Client usage comes from the `.from(...)` calls in `apps/frontend`, `apps/admin-web` and `bruno/`; Edge Functions use `service_role` and are unaffected.
+Target matrix (everything not listed is revoked from that role; service_role and postgres are unchanged):
+| Relation | anon | authenticated |
+| --- | --- | --- |
+| profiles | SELECT | SELECT; UPDATE (username, avatar_url, updated_at) as today |
+| profiles_private | none | SELECT |
+| admin_audit_logs | none | SELECT |
+| admin_user_notes | none | SELECT, INSERT |
+| admin_user_directory_view | none | SELECT |
+| admin_disputes_monitor_view | none | SELECT |
+| admin_product_queue_view | none | SELECT (as today) |
+| admin_connect_earnings_view | none | none |
+| admin_seller_onboarding_view | none | none |
+| admin_connect_payout_release_view, account_closures | none | none (as today) |
+RLS stays the row control. This is the auth part of #122; the other tables and the default privileges stay in #122.
+Finding #178: admin-web `useAdminStats` reads `admin_connect_payout_release_view` without a grant, so the dashboard always shows 0 funds to release. Granting it is out of scope (it would widen access to payout data).
+
+### L173 — T10f: migration and pgTAP
+The worker wrote `supabase/migrations/20261101120000_auth_grants_least_privilege.sql`: one REVOKE ALL from anon and authenticated on the nine relations, then GRANTs that leave exactly the L172 matrix. The `profiles` UPDATE columns are granted again because a table-level REVOKE also removes column privileges. It is idempotent and has no anon grant except SELECT on `profiles`. It also wrote `supabase/tests/database/auth_grants.test.sql` with 44 assertions:
+- every relation and role holds exactly its L172 privilege set (`has_table_privilege`, plus `has_column_privilege` for the `profiles` UPDATE columns);
+- the client paths still work: anon reads `profiles`; a user renames itself and reads its own `profiles_private` row; an admin reads the audit log and both admin views, and adds and reads notes;
+- forbidden actions raise 42501: anon on `profiles_private` and the admin views, and client INSERT, UPDATE or DELETE on `profiles_private`.
+It also added the structural test `supabase/migrations/__tests__/auth_grants_least_privilege.test.ts`.
+RED: before the migration, 20 of the 44 assertions failed (old full grants, anon reads of the admin views, client UPDATE and DELETE of `profiles_private` running without error).
+Tests the new grants made wrong:
+- `profile_grants.test.sql`: three client writes to `profiles_private` now `throws_ok 42501` (were `lives_ok` with 0 rows), and its header comment now describes the new grants.
+- `account_rules.test.sql`: "a client cannot write another user role or status" now expects 42501 (parent).
+GREEN: `supabase db reset`, then `bun run test:db` Files=9, Tests=313, PASS; `bun test supabase` 2789 pass (worker); `bun test supabase/migrations` 830 pass (parent); Bruno full collection 594 of 597, and the 3 failures are the known `dispatch-push-run` ones (L144). The profile, verification and admin requests pass.
+Risk: item 2 (security: grants) and item 3 (a client relying on a revoked privilege would break). Usage mapped in L172; nothing in the matrix broke on the local stack.
+Migration to apply: `supabase/migrations/20261101120000_auth_grants_least_privilege.sql` (grants only, no schema change, so `db:types` is not needed).
+
+### L174 — T10f review
+Native review of 63abca56..a49e1324 (risk, reliability; tier high) approved and acknowledged; no blocking finding.
+- WARNING R3-001, fixed: the structural test "never writes on profiles_private" would have passed with a `GRANT UPDATE` on `profiles_private`. It now requires the only grant that names `profiles_private` to be the SELECT. Proof: with an UPDATE grant injected into a copy of the migration, 1 of 4 tests fails; with the original migration, 4 pass.
+- Suggestions, kept as is:
+  - R1-001 (migration lines 34-41): the SELECT grants rely on RLS for the rows, as the comment says.
+  - R3-002 (structural test line 56): the relation regex is loose.
+  - R3-003 (pgTAP lines 128-142): the admin view checks run on views with few or no rows; the matrix assertions cover the privileges.
+
+### L175 — T10f migration applied
+Maintainer (verbatim): "okey ya lo hice de nuevo, revisa de nuevo master, ojo no corri el comadno bun typess". The first apply did not reach the project: the readback showed the grants unchanged, and owner and grantor were both `postgres`, so a REVOKE would have removed them. The second apply did.
+Remote readback (Supabase MCP, read-only, `has_table_privilege` for SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER and MAINTAIN, plus `has_column_privilege` for UPDATE) matches L172 exactly:
+- `profiles`: anon SELECT; authenticated SELECT and UPDATE on `avatar_url`, `updated_at`, `username`.
+- `profiles_private`, `admin_audit_logs`, `admin_user_directory_view`, `admin_disputes_monitor_view`, `admin_product_queue_view`: authenticated SELECT only.
+- `admin_user_notes`: authenticated SELECT and INSERT.
+- `admin_connect_earnings_view`, `admin_seller_onboarding_view`, `admin_connect_payout_release_view`, `account_closures`: no client privilege.
+- anon has nothing beyond SELECT on `profiles`.
+`db:types` is not needed (grants only, no schema change).

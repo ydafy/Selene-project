@@ -257,10 +257,10 @@ select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000c2'), 'VERIFIED:-',
 -- Clients cannot write role or status ------------------------------------------
 select pg_temp.as_user('d0000000-0000-4000-8000-000000000007');
 set local role authenticated;
-select is(
-  pg_temp.changed($$update public.profiles_private set role = 'admin', status = 'banned'
-    where id = 'd0000000-0000-4000-8000-000000000004'$$),
-  0, 'a client cannot write another user role or status');
+select throws_ok(
+  $$update public.profiles_private set role = 'admin', status = 'banned'
+    where id = 'd0000000-0000-4000-8000-000000000004'$$,
+  '42501', null, 'a client cannot write another user role or status');
 select throws_ok(
   $$update public.products set status_before_account_hold = 'VERIFIED'
     where id = 'd0000000-0000-4000-8000-0000000000e1'$$,
