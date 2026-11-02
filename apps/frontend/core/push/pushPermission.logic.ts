@@ -19,9 +19,12 @@ export type PushPermissionPromptDeps = {
 
 const promptedKey = (moment: PushPermissionMoment) => `push:prompted:${moment}`;
 
-/** The OS dialog can still be shown; on iOS it shows only once in the app's life. */
+/**
+ * The OS dialog can still be shown. iOS reports this as undetermined; Android
+ * 13+ reports denied until it is granted, so `canAskAgain` is the signal.
+ */
 export const canAskForPush = (permission: PushPermission): boolean =>
-  permission.status === 'undetermined' && permission.canAskAgain;
+  permission.status !== 'granted' && permission.canAskAgain;
 
 /**
  * Decides when to show the push pre-prompt. Each moment is offered at most
