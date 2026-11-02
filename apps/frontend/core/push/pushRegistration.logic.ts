@@ -54,6 +54,9 @@ export const createPushRegistrar = (deps: PushRegistrarDeps) => {
   // the session changes or the sign-out finishes, so a queued registration
   // cannot undo the unregister.
   let signedOutUserId: string | undefined;
+  // The last register call got no answer: the server may still apply it,
+  // even after a later unregister, so that unregister keeps its retry.
+  let registerUnanswered = false;
 
   // A call that does not answer in time counts as failed; the step then
   // follows its failure path and the queue moves on.
@@ -110,6 +113,7 @@ export const createPushRegistrar = (deps: PushRegistrarDeps) => {
     if (!pending) return;
     try {
       await limit(() => deps.unregisterToken(pending));
+      registerUnanswered = false;
       await store(() => deps.storage.remove(PENDING_KEY));
     } catch (error) {
       deps.warn('[push] Pending unregister failed:', error);
@@ -146,7 +150,9 @@ export const createPushRegistrar = (deps: PushRegistrarDeps) => {
       // lost, and a later sign-out must still remove it.
       lastToken = token;
       await store(() => deps.storage.set(REGISTERED_KEY, token));
+      registerUnanswered = true;
       await limit(() => deps.registerToken(token, platform));
+      registerUnanswered = false;
       // The token now belongs to this account; a pending unregister of it
       // would remove that registration. Only while the session is this one.
       const stillSignedIn =
@@ -185,7 +191,9 @@ export const createPushRegistrar = (deps: PushRegistrarDeps) => {
     try {
       await limit(() => deps.unregisterToken(token));
       lastToken = null;
-      await store(() => deps.storage.remove(PENDING_KEY));
+      if (!registerUnanswered) {
+        await store(() => deps.storage.remove(PENDING_KEY));
+      }
       await store(() => deps.storage.remove(REGISTERED_KEY));
     } catch (error) {
       deps.warn('[push] Unregister failed:', error);

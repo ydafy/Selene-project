@@ -544,6 +544,24 @@ describe('createPushRegistrar late responses', () => {
     expect(h.server.get(TOKEN)).toBe('B');
   });
 
+  it('removes the token again when a register without an answer lands after sign-out', async () => {
+    const h = raceSetup();
+    const late = deferred();
+    h.setRegister(async (token) => {
+      await late.promise;
+      h.server.set(token, 'A');
+    });
+    await h.registrar.register('A');
+    await h.registrar.unregister();
+    h.registrar.signOutFinished();
+    late.resolve();
+    await tick();
+    expect(h.server.get(TOKEN)).toBe('A');
+    await h.registrar.register(undefined);
+    expect(h.server.get(TOKEN)).toBeUndefined();
+    expect(h.store.has(PENDING_KEY)).toBe(false);
+  });
+
   it('a late registration of a signed-out user keeps the pending mark', async () => {
     const h = raceSetup();
     await h.registrar.register('A');
