@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
+import { afterAll, beforeAll, describe, expect, it as bunIt } from 'bun:test';
 import {
   existsSync,
   mkdirSync,
@@ -14,6 +14,11 @@ import { join } from 'node:path';
 // and USERPROFILE point at a temp folder). Nothing outside the temp folder is touched.
 
 const SCRIPT = join(import.meta.dir, 'worktree-clean.ts');
+// Each test spawns git and the command several times: about 2.5 s alone on
+// Windows, past the 5 s default when the full suite runs in parallel (#203).
+const REAL_REPO_TIMEOUT_MS = 30_000;
+const it = (name: string, fn: () => void) =>
+  bunIt(name, fn, REAL_REPO_TIMEOUT_MS);
 let root = '';
 let main = '';
 let home = '';
