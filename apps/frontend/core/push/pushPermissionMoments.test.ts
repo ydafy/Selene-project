@@ -22,9 +22,15 @@ test('only a confirmed favorite insert offers the favorite moment', () => {
   expect(source).toContain("return 'removed'");
 });
 
-test('only a new listing, not an edit, offers the listing moment', () => {
-  expect(read('core/hooks/usePublishProduct.ts')).toMatch(
-    /if \(!isEditMode\) void offerPushPermission\('listing'\);/,
+test('the listing moment is offered after a verification is sent, once its success dialog closes', () => {
+  expect(read('app/verify/[id].tsx')).toMatch(
+    /onConfirm: \(\) => \{\s*closeDialog\(\);\s*router\.replace\('\/\(tabs\)\/profile'\);\s*(?:\/\/[^\n]*\s*)?void offerPushPermission\('listing'\);/,
+  );
+});
+
+test('creating or editing a listing does not offer push', () => {
+  expect(read('core/hooks/usePublishProduct.ts')).not.toContain(
+    'offerPushPermission',
   );
 });
 
@@ -38,7 +44,7 @@ test('no other file offers the pre-prompt', () => {
   const callers = [
     'app/checkout/success.tsx',
     'core/hooks/useProductFavorite.ts',
-    'core/hooks/usePublishProduct.ts',
+    'app/verify/[id].tsx',
   ];
   const all = new Bun.Glob('{app,components,core}/**/*.{ts,tsx}');
   const offenders = [...all.scanSync(root)]

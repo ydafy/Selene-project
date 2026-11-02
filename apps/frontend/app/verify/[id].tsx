@@ -24,6 +24,7 @@ import {
   resolveVerificationRequirements,
 } from '../../core/utils/verification-submit';
 import { theme } from '@/core/theme';
+import { offerPushPermission } from '@/core/push/pushPermission';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function VerifyProductScreen() {
@@ -110,6 +111,8 @@ export default function VerifyProductScreen() {
         onConfirm: () => {
           closeDialog();
           router.replace('/(tabs)/profile');
+          // Evidence sent: a moment to offer push, after the success dialog (L6).
+          void offerPushPermission('listing');
         },
       });
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
