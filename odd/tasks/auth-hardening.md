@@ -1241,3 +1241,13 @@ Native review of 63abca56..a49e1324 (risk, reliability; tier high) approved and 
   - R1-001 (migration lines 34-41): the SELECT grants rely on RLS for the rows, as the comment says.
   - R3-002 (structural test line 56): the relation regex is loose.
   - R3-003 (pgTAP lines 128-142): the admin view checks run on views with few or no rows; the matrix assertions cover the privileges.
+
+### L175 — T10f migration applied
+Maintainer (verbatim): "okey ya lo hice de nuevo, revisa de nuevo master, ojo no corri el comadno bun typess". The first apply did not reach the project: the readback showed the grants unchanged, and owner and grantor were both `postgres`, so a REVOKE would have removed them. The second apply did.
+Remote readback (Supabase MCP, read-only, `has_table_privilege` for SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER and MAINTAIN, plus `has_column_privilege` for UPDATE) matches L172 exactly:
+- `profiles`: anon SELECT; authenticated SELECT and UPDATE on `avatar_url`, `updated_at`, `username`.
+- `profiles_private`, `admin_audit_logs`, `admin_user_directory_view`, `admin_disputes_monitor_view`, `admin_product_queue_view`: authenticated SELECT only.
+- `admin_user_notes`: authenticated SELECT and INSERT.
+- `admin_connect_earnings_view`, `admin_seller_onboarding_view`, `admin_connect_payout_release_view`, `account_closures`: no client privilege.
+- anon has nothing beyond SELECT on `profiles`.
+`db:types` is not needed (grants only, no schema change).
