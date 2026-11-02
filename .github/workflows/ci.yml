@@ -24,6 +24,10 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
       - run: bun install --frozen-lockfile
       - run: bun run lint
+      # `expo start` writes this gitignored file locally; without it the frontend
+      # typecheck runs without Expo's types and misses errors developers see (#174).
+      - name: Write apps/frontend/expo-env.d.ts
+        run: echo '/// <reference types="expo/types" />' > apps/frontend/expo-env.d.ts
       - run: bun run typecheck
       # Edge Functions run on Deno, which `bun run typecheck` does not cover.
       # --frozen also fails when supabase/functions/deno.lock is out of date.

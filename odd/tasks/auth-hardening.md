@@ -158,7 +158,7 @@ Acceptance:
 - T10g | S1 | delegated writer (context backstop) | in progress (L176) | Roadmap #166: retire the structural text tests whose rules pgTAP now proves at runtime; keep the ones that check something pgTAP does not | Commit: not created.
 - T10h | S1,S4-S9 | delegated writer (context backstop) | in progress (L178) | Roadmap #167: `docs/auth.md`, 1-2 pages: account states, who can do what, closure flow, CAPTCHA, where each rule lives, how to test | Commit: not created.
 - T11 | S12 | parent orchestration | in progress (L181) | Auth close-out on branch `chore/auth-closeout`; one PR | Commit: see T11a-T11e.
-- T11a | S12 | inline | pending | #174: CI step that writes `apps/frontend/expo-env.d.ts` before the typecheck | Commit: not created.
+- T11a | S12 | inline | done (L182) | #174: CI step that writes `apps/frontend/expo-env.d.ts` before the typecheck | Commit: not created.
 - T11b | S8,S12 | inline | pending | pgTAP for the `account_restricted` and `active_orders` closure blockers | Commit: not created.
 - T11c | S12 | inline | pending | #154: drop the unguarded `tr_on_auth_user_updated` trigger (migration; maintainer applies) | Commit: not created.
 - T11d | S4,S12 | delegated writer | pending | #141: owner may keep a VERIFIED listing VERIFIED when only name, description, condition or usage change (policy + guard trigger; migration; maintainer applies) | Commit: not created.
@@ -1320,3 +1320,8 @@ With T10h every item of roadmap #162 is merged or in its last PR. Auth is code-c
 User request (verbatim): "okey si me gusta, pregunta, lo que uiqero saber yo es que mas cabe en este woktree de auth, ya que como etsamos en las ultimas ya lo ocupo cerrar, entoncees dime que mas quieres meter aqui para que quede ya a un buen nivel. SObre 141 y 174, me gusta, dicutamos un poco sobre eso aqui, pero igual te pregunto lo de que mas meterias o nomas esos dos?" The decisions are quoted in S12.
 Left out on purpose: #178 (admin payouts, its own worktree), #153 (two of its four functions are disputes), the rest of #122 (non-auth tables).
 Design note for #141: opening only the policy would let a modified client change images, specifications or price while keeping VERIFIED. A guard trigger therefore limits a VERIFIED-to-VERIFIED owner edit to the four columns plus the server-maintained `updated_at` and `fts`.
+
+### L182 — T11a: CI typecheck loads Expo's types (#174)
+In the `test` job of `.github/workflows/ci.yml`, a new step before `bun run typecheck` writes `apps/frontend/expo-env.d.ts` with `/// <reference types="expo/types" />`, the content `expo start` generates.
+RED/GREEN (a local simulation of the CI checkout, with no `expo-env.d.ts`): the T10e regression, reintroduced in a scratch copy, passed the old typecheck (exit 0); with the new step's file it fails with TS2322; the current code passes with the file (exit 0). The workflow parses with `Bun.YAML`, and the step order is lint, then the new step, then typecheck.
+Risk: item 5 (CI); a new step only, approved by the maintainer in S12.
