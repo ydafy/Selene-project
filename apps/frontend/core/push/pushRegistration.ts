@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
@@ -41,6 +42,11 @@ export const pushRegistrar = createPushRegistrar({
       p_token: token,
     });
     if (error) throw error;
+  },
+  storage: {
+    get: (key) => AsyncStorage.getItem(key),
+    set: (key, value) => AsyncStorage.setItem(key, value),
+    remove: (key) => AsyncStorage.removeItem(key),
   },
   warn: (...args) => console.warn(...args),
 });

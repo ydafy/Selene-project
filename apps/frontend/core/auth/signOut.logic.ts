@@ -10,6 +10,8 @@ type SignOutDeps = {
   unregisterPush?: () => Promise<void>;
   /** A stalled network must not hold the sign-out; defaults to 4 s. */
   unregisterTimeoutMs?: number;
+  /** Called once the sign-out ends, whatever its result. */
+  signOutFinished?: () => void;
 };
 
 const UNREGISTER_TIMEOUT_MS = 4000;
@@ -37,6 +39,7 @@ export const runSignOut = async ({
   cleanup,
   unregisterPush,
   unregisterTimeoutMs = UNREGISTER_TIMEOUT_MS,
+  signOutFinished,
 }: SignOutDeps): Promise<SignOutResult> => {
   let error: Error | null = null;
   if (unregisterPush) {
@@ -63,6 +66,11 @@ export const runSignOut = async ({
     cleanup();
   } catch (e) {
     error ??= toError(e);
+  }
+  try {
+    signOutFinished?.();
+  } catch {
+    // The sign-out result does not depend on the registrar.
   }
   return { success: error === null, error };
 };

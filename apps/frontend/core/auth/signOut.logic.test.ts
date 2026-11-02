@@ -180,3 +180,53 @@ describe('runSignOut when unregister never settles', () => {
     expect(calls).toEqual(['signOut', 'cleanup']);
   });
 });
+
+describe('runSignOut finished hook', () => {
+  it('calls it after signOut and cleanup with the result unchanged', async () => {
+    const calls: string[] = [];
+    const result = await runSignOut({
+      scope: 'local',
+      signOut: async () => {
+        calls.push('signOut');
+        return { error: null };
+      },
+      cleanup: () => {
+        calls.push('cleanup');
+      },
+      signOutFinished: () => {
+        calls.push('finished');
+      },
+    });
+    expect(calls).toEqual(['signOut', 'cleanup', 'finished']);
+    expect(result).toEqual({ success: true, error: null });
+  });
+
+  it('calls it when signOut and cleanup fail', async () => {
+    let finished = false;
+    const failure = new Error('x');
+    const result = await runSignOut({
+      scope: 'local',
+      signOut: async () => ({ error: failure }),
+      cleanup: () => {
+        throw new Error('cleanup');
+      },
+      signOutFinished: () => {
+        finished = true;
+      },
+    });
+    expect(finished).toBe(true);
+    expect(result).toEqual({ success: false, error: failure });
+  });
+
+  it('keeps the result when the hook throws', async () => {
+    const result = await runSignOut({
+      scope: 'local',
+      signOut: async () => ({ error: null }),
+      cleanup: () => {},
+      signOutFinished: () => {
+        throw new Error('hook');
+      },
+    });
+    expect(result).toEqual({ success: true, error: null });
+  });
+});
