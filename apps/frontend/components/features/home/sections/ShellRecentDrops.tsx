@@ -4,11 +4,17 @@
  * Optimización de renderizado y limpieza de i18n.
  */
 
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useEffect } from 'react';
 import { ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@shopify/restyle';
-import { MotiView } from 'moti';
+import Animated, {
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 
@@ -22,6 +28,28 @@ import { Product } from '@selene/types';
 
 const STORE_RESULTS_PATH = '/store/results';
 
+/**
+ * Envuelve el CTA con un pulso de opacidad 0.4 <-> 1.
+ */
+const PulsingCta = memo(({ children }: { children: React.ReactNode }) => {
+  const opacity = useSharedValue(0.4);
+
+  useEffect(() => {
+    opacity.value = withRepeat(withTiming(1, { duration: 2000 }), -1, true);
+    return () => cancelAnimation(opacity);
+  }, [opacity]);
+
+  const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
+  return (
+    <Animated.View
+      style={[{ flexDirection: 'row', alignItems: 'center' }, animatedStyle]}
+    >
+      {children}
+    </Animated.View>
+  );
+});
+
 const ShellRecentDropsComponent = () => {
   const theme = useTheme<Theme>();
   const router = useRouter();
@@ -29,7 +57,11 @@ const ShellRecentDropsComponent = () => {
   const sharedStyles = getSharedStyles(theme);
 
   // Hook de datos con filtros de seguridad (Solo verificados y límite de 10)
-  const { data: products, isLoading, error: productsError } = useProducts({
+  const {
+    data: products,
+    isLoading,
+    error: productsError,
+  } = useProducts({
     verifiedOnly: true,
     limit: 10,
   });
@@ -76,21 +108,32 @@ const ShellRecentDropsComponent = () => {
             decelerationRate="fast"
             scrollEventThrottle={16}
           >
-            {!isLoading && products?.map((product) => (
-              <Box key={product.id} marginRight="m">
-                <ProductMiniCard
-                  product={product}
-                  cardHeight={getMasonryItemHeight(product.aspect_ratio || 1)}
-                  onPress={handleProductPress}
-                />
-              </Box>
-            ))}
+            {!isLoading &&
+              products?.map((product) => (
+                <Box key={product.id} marginRight="m">
+                  <ProductMiniCard
+                    product={product}
+                    cardHeight={getMasonryItemHeight(product.aspect_ratio || 1)}
+                    onPress={handleProductPress}
+                  />
+                </Box>
+              ))}
             {productsError && !products && (
-              <Box width={200} justifyContent="center" alignItems="center" padding="l">
+              <Box
+                width={200}
+                justifyContent="center"
+                alignItems="center"
+                padding="l"
+              >
                 <Text variant="caption-md" color="error" textAlign="center">
                   {t('recentDrops.header')}
                 </Text>
-                <Text variant="body-sm" color="textSecondary" textAlign="center" marginTop="s">
+                <Text
+                  variant="body-sm"
+                  color="textSecondary"
+                  textAlign="center"
+                  marginTop="s"
+                >
                   {t('common:states.feedLoadError')}
                 </Text>
               </Box>
@@ -120,16 +163,7 @@ const ShellRecentDropsComponent = () => {
       {/* 3. CTA PULSANTE */}
       <Box paddingHorizontal="l" paddingVertical="l" alignItems="center">
         <TouchableOpacity onPress={handleSeeAll}>
-          <MotiView
-            from={{ opacity: 0.4 }}
-            animate={{ opacity: 1 }}
-            transition={{
-              type: 'timing',
-              loop: true,
-              duration: 2000,
-            }}
-            style={{ flexDirection: 'row', alignItems: 'center' }}
-          >
+          <PulsingCta>
             <Text
               variant="caption-md"
               color="primary"
@@ -137,7 +171,7 @@ const ShellRecentDropsComponent = () => {
             >
               {t('recentDrops.cta')}
             </Text>
-          </MotiView>
+          </PulsingCta>
         </TouchableOpacity>
       </Box>
     </Box>

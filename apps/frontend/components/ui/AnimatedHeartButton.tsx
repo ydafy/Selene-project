@@ -1,4 +1,10 @@
-import { MotiView } from 'moti';
+import { useEffect, type ReactNode } from 'react';
+import Animated, {
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { IconButton } from 'react-native-paper';
 import { useTheme } from '@shopify/restyle';
 import { Theme } from '../../core/theme';
@@ -8,6 +14,29 @@ type AnimatedHeartButtonProps = {
   isFavorite: boolean;
   onPress: () => void;
   size?: number;
+};
+
+// Si damos like, el icono empieza chico. Si quitamos, empieza grande. Se
+// monta de nuevo (key) en cada cambio para reiniciar la animación.
+const HeartScale = ({
+  isFavorite,
+  children,
+}: {
+  isFavorite: boolean;
+  children: ReactNode;
+}) => {
+  const scale = useSharedValue(isFavorite ? 0.3 : 1.3);
+
+  useEffect(() => {
+    scale.value = withTiming(1, { duration: 400 });
+    return () => cancelAnimation(scale);
+  }, [scale]);
+
+  const scaleStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return <Animated.View style={scaleStyle}>{children}</Animated.View>;
 };
 
 export const AnimatedHeartButton = ({
@@ -35,20 +64,7 @@ export const AnimatedHeartButton = ({
       style={{ borderColor }} // El color cambia instantáneamente (más rápido = mejor percepción)
     >
       {/* 2. Solo animamos el ICONO (Escala) */}
-      <MotiView
-        key={`icon-${isFavorite}`} // Forzamos el reinicio de la animación al cambiar
-        from={{
-          scale: isFavorite ? 0.3 : 1.3, // Si damos like, empieza chico. Si quitamos, empieza normal.
-        }}
-        animate={{
-          scale: 1,
-        }}
-        transition={{
-          // Usamos un resorte muy rápido y "seco" (sin rebote excesivo)
-          type: 'timing',
-          duration: 400,
-        }}
-      >
+      <HeartScale key={`icon-${isFavorite}`} isFavorite={isFavorite}>
         <IconButton
           icon={isFavorite ? 'heart' : 'heart-outline'}
           iconColor={isFavorite ? activeColor : theme.colors.textPrimary}
@@ -56,7 +72,7 @@ export const AnimatedHeartButton = ({
           onPress={onPress}
           style={{ margin: 0 }}
         />
-      </MotiView>
+      </HeartScale>
     </Box>
   );
 };

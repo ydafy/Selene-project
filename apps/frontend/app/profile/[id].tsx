@@ -22,7 +22,7 @@ import { useTheme } from '@shopify/restyle';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { MotiView } from 'moti';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { FlashList } from '@shopify/flash-list';
 import { UserReviewCard } from '../../components/features/users/UserReviewCard';
 
@@ -313,11 +313,11 @@ export default function PublicProfileScreen() {
         {/* CONTENIDO DINÁMICO CON TRANSICIONES DE SEDA */}
         <Box flex={1} marginTop="m" paddingHorizontal="m" paddingBottom="xl">
           {activeTab === 0 ? (
-            <MotiView
+            <Animated.View
               key="products_tab"
-              from={{ opacity: 0, translateY: 10 }}
-              animate={{ opacity: 1, translateY: 0 }}
-              transition={{ type: 'timing', duration: 250 }}
+              entering={FadeInDown.duration(250).withInitialValues({
+                transform: [{ translateY: 10 }],
+              })}
               style={{ flex: 1 }}
             >
               {productsState === 'error' ? (
@@ -427,13 +427,13 @@ export default function PublicProfileScreen() {
                   )}
                 />
               )}
-            </MotiView>
+            </Animated.View>
           ) : (
-            <MotiView
+            <Animated.View
               key="reviews_tab"
-              from={{ opacity: 0, translateY: 10 }}
-              animate={{ opacity: 1, translateY: 0 }}
-              transition={{ type: 'timing', duration: 250 }}
+              entering={FadeInDown.duration(250).withInitialValues({
+                transform: [{ translateY: 10 }],
+              })}
               style={{ flex: 1 }}
             >
               {reviewsState === 'error' ? (
@@ -476,7 +476,7 @@ export default function PublicProfileScreen() {
                   )}
                 />
               )}
-            </MotiView>
+            </Animated.View>
           )}
         </Box>
       </ScrollView>

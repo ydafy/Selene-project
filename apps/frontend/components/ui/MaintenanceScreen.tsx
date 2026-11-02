@@ -1,13 +1,40 @@
-import React from 'react';
-import { MotiView } from 'moti';
+import React, { useEffect } from 'react';
+import Animated, {
+  cancelAnimation,
+  Keyframe,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import { Box, Text } from '../base';
 import { getSharedStyles } from '../features/home/sharedStyles';
 import { useTheme } from '@shopify/restyle';
 import { Theme } from '../../core/theme';
 
+const fadeScaleIn = new Keyframe({
+  0: { opacity: 0, transform: [{ scale: 0.9 }] },
+  100: { opacity: 1, transform: [{ scale: 1 }] },
+}).duration(1000);
+
 export const MaintenanceScreen = () => {
   const theme = useTheme<Theme>();
   const styles = getSharedStyles(theme);
+  const pulse = useSharedValue(0.2);
+
+  useEffect(() => {
+    pulse.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 2000 }),
+        withTiming(0.2, { duration: 2000 }),
+      ),
+      -1,
+    );
+    return () => cancelAnimation(pulse);
+  }, [pulse]);
+
+  const pulseStyle = useAnimatedStyle(() => ({ opacity: pulse.value }));
 
   return (
     <Box
@@ -17,12 +44,7 @@ export const MaintenanceScreen = () => {
       alignItems="center"
       padding="xl"
     >
-      <MotiView
-        from={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ type: 'timing', duration: 1000 }}
-        style={{ alignItems: 'center' }}
-      >
+      <Animated.View entering={fadeScaleIn} style={{ alignItems: 'center' }}>
         <Box
           width={80}
           height={80}
@@ -33,17 +55,14 @@ export const MaintenanceScreen = () => {
           alignItems="center"
           marginBottom="l"
         >
-          <MotiView
-            animate={{ opacity: [0.2, 1, 0.2] }}
-            transition={{ loop: true, duration: 2000 }}
-          >
+          <Animated.View style={pulseStyle}>
             <Box
               width={20}
               height={20}
               backgroundColor="primary"
               borderRadius="full"
             />
-          </MotiView>
+          </Animated.View>
         </Box>
 
         <Text
@@ -73,7 +92,7 @@ export const MaintenanceScreen = () => {
         <Box marginTop="xl" opacity={0.3}>
           <Text style={styles.monoText}>REF_CODE: SELENE_CORE_OFFLINE</Text>
         </Box>
-      </MotiView>
+      </Animated.View>
     </Box>
   );
 };

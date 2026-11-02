@@ -88,7 +88,11 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
   mock.module('@expo/vector-icons', () => ({
     MaterialCommunityIcons: host('Icon'),
   }));
-  mock.module('moti', () => ({ MotiView: host('MotiView') }));
+  mock.module('react-native-reanimated', () => ({
+    default: { View: host('AnimatedView') },
+    withSpring: (value: number) => value,
+    withTiming: (value: number) => value,
+  }));
   mock.module('expo-haptics', () => ({
     notificationAsync: feedback,
     NotificationFeedbackType: { Success: 'success' },

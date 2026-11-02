@@ -4,13 +4,25 @@ import { Stack, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
-import { MotiView } from 'moti';
+import Animated, { withSpring } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 
 import { Box, Text } from '../../components/base';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { Theme } from '../../core/theme';
 import { useCheckoutStore } from '../../core/store/useCheckoutStore';
+
+// Mount entrance: scale 0.5 -> 1 with a fade, driven by a spring.
+const iconEntering = () => {
+  'worklet';
+  return {
+    initialValues: { opacity: 0, transform: [{ scale: 0.5 }] },
+    animations: {
+      opacity: withSpring(1, { damping: 15 }),
+      transform: [{ scale: withSpring(1, { damping: 15 }) }],
+    },
+  };
+};
 
 export default function SuccessScreen() {
   const theme = useTheme<Theme>();
@@ -62,11 +74,7 @@ export default function SuccessScreen() {
       <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
 
       {/* Animación de Éxito */}
-      <MotiView
-        from={{ scale: 0.5, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: 'spring', damping: 15 }}
-      >
+      <Animated.View entering={iconEntering}>
         <Box
           backgroundColor="success"
           width={100}
@@ -83,7 +91,7 @@ export default function SuccessScreen() {
         >
           <MaterialCommunityIcons name="check" size={60} color="white" />
         </Box>
-      </MotiView>
+      </Animated.View>
 
       <Text variant="header-xl" marginTop="xl" textAlign="center">
         {t('success.title')}

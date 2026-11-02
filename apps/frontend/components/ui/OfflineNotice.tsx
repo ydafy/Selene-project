@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNetInfo } from '@react-native-community/netinfo';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MotiView } from 'moti';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useTheme } from '@shopify/restyle';
 import { Text, Box } from '../base';
 import { Theme } from '../../core/theme';
@@ -24,28 +28,40 @@ export const OfflineNotice = () => {
     }
   }, [netInfo.isConnected]);
 
+  const translateY = useSharedValue(-100);
+
+  useEffect(() => {
+    translateY.value = withTiming(netInfo.isConnected ? -100 : 0, {
+      duration: 500,
+    });
+  }, [netInfo.isConnected, translateY]);
+
+  const slideStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
+
   // Si hay internet y el estado show es falso, no renderizamos nada (para performance)
   if (netInfo.isConnected && !show) return null;
 
   return (
-    <MotiView
-      from={{ translateY: -100 }}
-      animate={{ translateY: netInfo.isConnected ? -100 : 0 }}
-      transition={{ type: 'timing', duration: 500 }}
-      style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 999, // Encima de todo, incluso modales
-        backgroundColor: netInfo.isConnected
-          ? theme.colors.success
-          : theme.colors.error,
-        paddingTop: insets.top, // Respetar el notch
-        paddingBottom: theme.spacing.s,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
+    <Animated.View
+      style={[
+        {
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 999, // Encima de todo, incluso modales
+          backgroundColor: netInfo.isConnected
+            ? theme.colors.success
+            : theme.colors.error,
+          paddingTop: insets.top, // Respetar el notch
+          paddingBottom: theme.spacing.s,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        slideStyle,
+      ]}
     >
       <Box flexDirection="row" alignItems="center">
         <Text variant="body-sm" style={{ color: 'white', fontWeight: 'bold' }}>
@@ -54,6 +70,6 @@ export const OfflineNotice = () => {
             : 'Sin conexión a internet'}
         </Text>
       </Box>
-    </MotiView>
+    </Animated.View>
   );
 };

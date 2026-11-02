@@ -4,12 +4,19 @@
  * Optimizado para rendimiento y totalmente internacionalizado.
  */
 
-import React, { memo } from 'react';
-import { Easing } from 'react-native-reanimated';
+import React, { memo, useEffect } from 'react';
+import { LayoutChangeEvent, StyleSheet } from 'react-native';
+import Animated, {
+  Easing,
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
-import { MotiView } from 'moti';
 
 import { Box, Text } from '../../../base';
 import { Theme } from '../../../../core/theme';
@@ -68,6 +75,54 @@ const PipelineCard = memo(({ title, icon }: PipelineCardProps) => {
   );
 });
 
+/**
+ * Barra de luz que cruza la línea de conexión, de -30% a 100% de su ancho y
+ * vuelve a empezar (sin ida y vuelta). Reanimated no interpola porcentajes, así
+ * que el ancho de la línea se mide y se anima `translateX` en píxeles.
+ */
+const FlowBar = memo(({ color }: { color: string }) => {
+  const lineWidth = useSharedValue(0);
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    progress.value = withRepeat(
+      withTiming(1, { duration: 3000, easing: Easing.bezier(0.4, 0, 0.2, 1) }),
+      -1,
+      false,
+    );
+    return () => cancelAnimation(progress);
+  }, [progress]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: (-0.3 + 1.3 * progress.value) * lineWidth.value },
+    ],
+  }));
+
+  return (
+    <Animated.View
+      onLayout={(e: LayoutChangeEvent) => {
+        lineWidth.value = e.nativeEvent.layout.width;
+      }}
+      style={StyleSheet.absoluteFill}
+      pointerEvents="none"
+    >
+      <Animated.View
+        style={[
+          {
+            position: 'absolute',
+            left: 0,
+            width: '30%',
+            height: '100%',
+            backgroundColor: color,
+          },
+          animatedStyle,
+        ]}
+      />
+    </Animated.View>
+  );
+});
+
 const ShellTrustPipelineComponent = () => {
   const theme = useTheme<Theme>();
   const { t } = useTranslation('home');
@@ -102,23 +157,7 @@ const ShellTrustPipelineComponent = () => {
           opacity={0.8}
           overflow="hidden"
         >
-          <MotiView
-            from={{ left: '-30%' }}
-            animate={{ left: '100%' }}
-            transition={{
-              loop: true,
-              repeatReverse: false,
-              duration: 3000,
-              type: 'timing',
-              easing: Easing.bezier(0.4, 0, 0.2, 1),
-            }}
-            style={{
-              position: 'absolute',
-              width: '30%',
-              height: '100%',
-              backgroundColor: theme.colors.primary,
-            }}
-          />
+          <FlowBar color={theme.colors.primary} />
         </Box>
 
         <PipelineCard title={t('pipeline.step1')} icon="upload" />

@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { MotiView } from 'moti';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { Box, Text } from '../../components/base';
 import { GlobalHeader } from '../../components/layout/GlobalHeader';
@@ -68,7 +68,9 @@ const ONBOARDING_STEP_DEFINITIONS = [
     subtitleKey: 'sellerOnboarding:steps.typeDesc',
     renderContent: ({ openViewer }: OnboardingStepRenderContext) => (
       <OnboardingStep1
-        onImagePress={() => openViewer(ONBOARDING_GUIDE_IMAGE_INDEX.accountType)}
+        onImagePress={() =>
+          openViewer(ONBOARDING_GUIDE_IMAGE_INDEX.accountType)
+        }
       />
     ),
   },
@@ -189,7 +191,12 @@ export default function SellerOnboardingScreen() {
       status,
       statusGuidanceKey: onboardingUi.statusGuidanceKey,
     });
-  }, [currentStepDefinition, handleOpenViewer, onboardingUi.statusGuidanceKey, status]);
+  }, [
+    currentStepDefinition,
+    handleOpenViewer,
+    onboardingUi.statusGuidanceKey,
+    status,
+  ]);
 
   const activeViewerImages = useMemo(
     () => [ONBOARDING_GUIDE_IMAGES[viewerIndex]],
@@ -298,7 +305,9 @@ export default function SellerOnboardingScreen() {
 
           <Box width="100%">
             <PrimaryButton
-              onPress={() => router.replace(CONNECT_ONBOARDING_SUCCESS_CTA_ROUTE)}
+              onPress={() =>
+                router.replace(CONNECT_ONBOARDING_SUCCESS_CTA_ROUTE)
+              }
               icon="check"
             >
               {t('sellerOnboarding:success.cta')}
@@ -323,14 +332,12 @@ export default function SellerOnboardingScreen() {
           paddingBottom: insets.bottom + 40,
         }}
       >
-        <MotiView
+        <Animated.View
           key={onboardingUi.effectiveStep}
-          from={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ type: 'timing', duration: 250 }}
+          entering={FadeIn.duration(250)}
         >
           <ScreenHeader title={title} subtitle={subtitle} />
-        </MotiView>
+        </Animated.View>
 
         <WizardSteps currentStep={onboardingUi.effectiveStep} steps={steps} />
 
@@ -367,15 +374,13 @@ export default function SellerOnboardingScreen() {
           </Box>
         )}
 
-        <MotiView
+        <Animated.View
           key={`content_${onboardingUi.effectiveStep}`}
-          from={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ type: 'timing', duration: 250 }}
+          entering={FadeIn.duration(250)}
           style={{ minHeight: 280, marginVertical: 12 }}
         >
           {currentStepContent}
-        </MotiView>
+        </Animated.View>
 
         {visibleErrorMessage && (
           <Box

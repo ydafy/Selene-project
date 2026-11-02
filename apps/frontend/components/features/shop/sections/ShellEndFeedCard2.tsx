@@ -9,6 +9,11 @@ import { ScrollView, StyleSheet, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@shopify/restyle';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 
 import { Box, Text } from '../../../base';
@@ -19,7 +24,6 @@ import { getMasonryItemHeight } from '../../../../core/constants/layout';
 import { Theme } from '../../../../core/theme';
 import { getSharedStyles } from '../../home/sharedStyles';
 import { AppImage } from '@/components/ui/AppImage';
-import { MotiView } from 'moti';
 import SeleneLogo from '../../../../assets/images/SeleneLunaLogo.png';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -41,6 +45,18 @@ export const ShellEndFeedCard2 = ({
 
   // Traemos los productos (reutilizamos la caché de la Home/Shop)
   const { data: products } = useProducts({ verifiedOnly: true, limit: 10 });
+
+  // Aparece (opacity 0 -> 1, translateY 20 -> 0) cuando la tarjeta está activa.
+  const visibility = useSharedValue(isActive ? 1 : 0);
+
+  useEffect(() => {
+    visibility.value = withTiming(isActive ? 1 : 0, { duration: 500 });
+  }, [isActive, visibility]);
+
+  const beltStyle = useAnimatedStyle(() => ({
+    opacity: visibility.value,
+    transform: [{ translateY: 20 * (1 - visibility.value) }],
+  }));
 
   // --- LÓGICA DE AUTO-SCROLL INFINITO (Sencilla y robusta) ---
 
@@ -129,19 +145,17 @@ export const ShellEndFeedCard2 = ({
       </Box>
 
       {/* 2. LA BANDA TRANSPORTADORA (Auto-scroll) */}
-      <MotiView
-        animate={{
-          opacity: isActive ? 1 : 0,
-          translateY: isActive ? 0 : 20,
-        }}
-        transition={{ type: 'timing', duration: 500 }}
-        style={{
-          position: 'absolute',
-          bottom: 60,
-          width: '100%',
-          height: 250,
-          zIndex: 5,
-        }}
+      <Animated.View
+        style={[
+          {
+            position: 'absolute',
+            bottom: 60,
+            width: '100%',
+            height: 250,
+            zIndex: 5,
+          },
+          beltStyle,
+        ]}
       >
         <ScrollView
           ref={scrollRef}
@@ -179,7 +193,7 @@ export const ShellEndFeedCard2 = ({
           end={{ x: 1, y: 0 }}
           style={[styles.edgeGradient, { right: 0 }]}
         />
-      </MotiView>
+      </Animated.View>
 
       {/* 3. TELEMETRÍA DE CIERRE */}
       <Box
