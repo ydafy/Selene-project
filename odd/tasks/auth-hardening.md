@@ -1366,3 +1366,7 @@ App: `classifyListingEdit` already matches S12, so the app needs no change. The 
 Note: a price change that keeps VERIFIED now gets 42501 from the guard before the economics trigger runs. The app always sends PENDING_VERIFICATION with a price change.
 Risk: item 2 (RLS and owner write rules). Each bypass path is pinned by pgTAP, and the mutation check fails without the guard.
 Migration to apply: `20261101190000_owner_verified_text_edits.sql`. No schema change, so `db:types` is not needed.
+Review: native review of 580e545b..03af24ee (risk, reliability; tier high) approved and acknowledged; no blocking finding. Both advisories are fixed in the follow-up commit (`owner_verified_edits.test.sql` plan 25):
+- WARNING: no case combined a text edit with a stale snapshot, the place where T10a meets T11d. A text edit after a fee change now affects 1 row and the listing stays VERIFIED.
+- SUGGESTION: the three refused status moves now also pin the message `VERIFIED_EDIT_REQUIRES_REVIEW`, which shows the guard fires before the policy.
+`bun run test:db` Files=11, Tests=356, PASS.

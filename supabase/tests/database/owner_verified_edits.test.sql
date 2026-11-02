@@ -3,7 +3,7 @@
 -- admins are not limited. Runs against the local database only:
 -- `supabase start`, then `bun run test:db`.
 begin;
-select plan(23);
+select plan(25);
 
 -- Snapshot reserve for a price and shipping cost (pesos) under the current settings.
 create function pg_temp.fresh_reserve(p_price numeric, p_shipping numeric)
@@ -137,19 +137,34 @@ select is(
   (select row_json from before_edit where id = 'e0000000-0000-4000-8000-0000000000a2'),
   'the refused edits left the listing unchanged');
 
+-- A text edit still works after the fees changed (the snapshot is stale) -------
+update public.system_settings set shipping_buffer_cents = shipping_buffer_cents + 500 where id = 1;
+select set_config('request.jwt.claims',
+  '{"sub": "e0000000-0000-4000-8000-000000000002", "role": "authenticated"}', true);
+set local role authenticated;
+select is(
+  pg_temp.rows_updated($$update public.products set description = 'Edited after a fee change'
+    where id = 'e0000000-0000-4000-8000-0000000000a1'$$),
+  1::bigint, 'a text edit of a VERIFIED listing with a stale snapshot affects one row');
+reset role;
+select is(
+  (select status::text || '|' || description from public.products where id = 'e0000000-0000-4000-8000-0000000000a1'),
+  'VERIFIED|Edited after a fee change', 'the listing with a stale snapshot stays VERIFIED with the new text');
+update public.system_settings set shipping_buffer_cents = shipping_buffer_cents - 500 where id = 1;
+
 -- A client cannot reach VERIFIED from another status ----------------------------
 select set_config('request.jwt.claims',
   '{"sub": "e0000000-0000-4000-8000-000000000002", "role": "authenticated"}', true);
 set local role authenticated;
 select throws_ok(
   $$update public.products set status = 'VERIFIED' where id = 'e0000000-0000-4000-8000-0000000000b1'$$,
-  '42501', null, 'the owner cannot move HIDDEN to VERIFIED');
+  '42501', 'VERIFIED_EDIT_REQUIRES_REVIEW', 'the owner cannot move HIDDEN to VERIFIED');
 select throws_ok(
   $$update public.products set status = 'VERIFIED' where id = 'e0000000-0000-4000-8000-0000000000b2'$$,
-  '42501', null, 'the owner cannot move REJECTED to VERIFIED');
+  '42501', 'VERIFIED_EDIT_REQUIRES_REVIEW', 'the owner cannot move REJECTED to VERIFIED');
 select throws_ok(
   $$update public.products set status = 'VERIFIED' where id = 'e0000000-0000-4000-8000-0000000000b3'$$,
-  '42501', null, 'the owner cannot move PENDING_VERIFICATION to VERIFIED');
+  '42501', 'VERIFIED_EDIT_REQUIRES_REVIEW', 'the owner cannot move PENDING_VERIFICATION to VERIFIED');
 reset role;
 select is(
   (select jsonb_agg(to_jsonb(p) order by p.id) from public.products p
