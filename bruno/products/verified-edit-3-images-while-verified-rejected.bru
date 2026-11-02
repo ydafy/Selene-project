@@ -1,0 +1,29 @@
+meta {
+  name: verified-edit-3-images-while-verified-rejected
+  type: http
+  seq: 111
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/products?id=eq.{{verifiedEditId}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{sellerToken}}
+  Prefer: return=representation
+}
+
+body:json {
+  { "images": ["https://placehold.co/800x800/png?text=Swapped"] }
+}
+
+tests {
+  test("changing the images while keeping the listing VERIFIED is refused", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody().code).to.equal("42501");
+    expect(JSON.stringify(res.getBody())).to.contain("VERIFIED_EDIT_REQUIRES_REVIEW");
+  });
+}

@@ -1,10 +1,11 @@
 -- fn_close_account: each obligation blocker refuses the closure without
 -- changing anything, and the same user closes once the blocker is settled
 -- (auth-hardening S4, S8; T10c.1). Blockers covered: pending_payouts,
--- open_disputes, pending_refunds. active_shipments is in account_closure.test.sql.
+-- open_disputes, pending_refunds, account_restricted, active_orders. active_shipments is
+-- in account_closure.test.sql.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(36);
+select plan(49);
 
 -- Same economics formula as validate_product_publication_economics.
 create function pg_temp.make_product(p_id uuid, p_seller uuid, p_status text default 'SOLD')
@@ -229,6 +230,53 @@ set local role service_role;
 select is((public.fn_close_account('d0000000-0000-4000-8000-000000000017'::uuid))->>'status', 'closed', 'settled pending_refunds: the same user now closes (17)');
 reset role;
 select isnt((select deleted_at from public.profiles where id = 'd0000000-0000-4000-8000-000000000017'), null, 'settled pending_refunds: the profile is soft-deleted (17)');
+
+-- account_restricted and active_orders ------------------------------------------
+-- 21 suspended and 22 banned (each with a live listing); 23 a buyer whose order
+-- is paid but not finished.
+insert into auth.users (
+  instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+  raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+  confirmation_token, recovery_token, email_change_token_new, email_change
+)
+select '00000000-0000-0000-0000-000000000000', u.id, 'authenticated', 'authenticated',
+  u.email, '', now(), '{}'::jsonb, jsonb_build_object('username', u.username), now(), now(), '', '', '', ''
+from (values
+  ('d0000000-0000-4000-8000-000000000021'::uuid, 'restricted_susp@test.local', 'blk_restricted_s'),
+  ('d0000000-0000-4000-8000-000000000022'::uuid, 'restricted_ban@test.local', 'blk_restricted_b'),
+  ('d0000000-0000-4000-8000-000000000023'::uuid, 'active_order@test.local', 'blk_active_order')
+) as u(id, email, username);
+select pg_temp.make_product('d0000000-0000-4000-8000-0000000f0021', 'd0000000-0000-4000-8000-000000000021', 'VERIFIED');
+select pg_temp.make_product('d0000000-0000-4000-8000-0000000f0022', 'd0000000-0000-4000-8000-000000000022', 'VERIFIED');
+update public.profiles_private set status = 'suspended' where id = 'd0000000-0000-4000-8000-000000000021';
+update public.profiles_private set status = 'banned' where id = 'd0000000-0000-4000-8000-000000000022';
+select pg_temp.make_sale(8, 'd0000000-0000-4000-8000-000000000023', 'd0000000-0000-4000-8000-000000000018', 'paid', null);
+
+set local role service_role;
+select is((public.fn_close_account('d0000000-0000-4000-8000-000000000021'::uuid))->>'status', 'blocked', 'account_restricted: a suspended account cannot close itself');
+select is((public.fn_close_account('d0000000-0000-4000-8000-000000000021'::uuid))->>'reason', 'account_restricted', 'account_restricted: the answer names the reason (21)');
+select is((public.fn_close_account('d0000000-0000-4000-8000-000000000022'::uuid))->>'status', 'blocked', 'account_restricted: a banned account cannot close itself');
+select is((public.fn_close_account('d0000000-0000-4000-8000-000000000022'::uuid))->>'reason', 'account_restricted', 'account_restricted: the answer names the reason (22)');
+select is((public.fn_close_account('d0000000-0000-4000-8000-000000000023'::uuid))->>'status', 'blocked', 'active_orders: an unfinished buyer order refuses the closure');
+select is((public.fn_close_account('d0000000-0000-4000-8000-000000000023'::uuid))->>'reason', 'active_orders', 'active_orders: the answer names the reason (23)');
+reset role;
+select is(pg_temp.snapshot('d0000000-0000-4000-8000-000000000021'), 'true|blk_restricted_s|0|restricted_susp@test.local|restricted_susp@test.local|1',
+  'account_restricted: the refusal changed nothing (21)');
+select is(pg_temp.snapshot('d0000000-0000-4000-8000-000000000022'), 'true|blk_restricted_b|0|restricted_ban@test.local|restricted_ban@test.local|1',
+  'account_restricted: the refusal changed nothing (22)');
+select is(pg_temp.snapshot('d0000000-0000-4000-8000-000000000023'), 'true|blk_active_order|0|active_order@test.local|active_order@test.local|0',
+  'active_orders: the refusal changed nothing (23)');
+
+-- Settled: the suspension is lifted and the order completes; the ban stays final.
+update public.profiles_private set status = 'active' where id = 'd0000000-0000-4000-8000-000000000021';
+update public.orders set status = 'completed' where id = 'd0000000-0000-4000-8000-0000000b0008';
+update public.shipments set status = 'completed', completed_at = now() where id = 'd0000000-0000-4000-8000-0000000c0008';
+set local role service_role;
+select is((public.fn_close_account('d0000000-0000-4000-8000-000000000021'::uuid))->>'status', 'closed', 'settled account_restricted: the same user closes once active (21)');
+select is((public.fn_close_account('d0000000-0000-4000-8000-000000000023'::uuid))->>'status', 'closed', 'settled active_orders: the same buyer closes once the order completes (23)');
+reset role;
+select isnt((select deleted_at from public.profiles where id = 'd0000000-0000-4000-8000-000000000021'), null, 'settled account_restricted: the profile is soft-deleted (21)');
+select isnt((select deleted_at from public.profiles where id = 'd0000000-0000-4000-8000-000000000023'), null, 'settled active_orders: the profile is soft-deleted (23)');
 
 select * from finish();
 rollback;

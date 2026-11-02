@@ -15,7 +15,7 @@ Inserting a row in `auth.users` fires the trigger `tr_on_auth_user_created`, whi
 - A username typed at registration must be 3 to 20 characters and free. If not, signup fails with `check_violation` or `unique_violation`.
 - A username derived from Google metadata or the email prefix goes through `fn_generate_profile_username`, which normalizes it and adds a suffix when needed.
 - The trigger `tr_profiles_reserve_deleted_username` (`fn_reserve_deleted_username`) keeps the `deleted_` prefix for closed accounts.
-- The triggers `tr_on_auth_user_updated` and `on_auth_user_updated` run `fn_on_auth_user_updated`, which mirrors the Auth email into `profiles_private.email`. Two triggers for one function is redundant (issue #154).
+- The trigger `on_auth_user_updated` runs `fn_on_auth_user_updated` only when the email changes, and the function mirrors the new email into `profiles_private.email`. A sign-in does not touch `profiles_private`.
 
 The canonical SQL of the auth functions is in `supabase/queries/auth/` and `supabase/queries/admin/fn_admin_update_user_status.sql`.
 

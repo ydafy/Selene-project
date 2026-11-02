@@ -1,0 +1,25 @@
+meta {
+  name: verified-edit-4-row-unchanged
+  type: http
+  seq: 112
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/products?id=eq.{{verifiedEditId}}&select=description,images,status
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the refused update left the images as published and kept the accepted text edit", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].images).to.deep.equal(["https://placehold.co/800x800/png?text=Original"]);
+    expect(res.getBody()[0].description).to.equal("Edited description");
+    expect(res.getBody()[0].status).to.equal("VERIFIED");
+  });
+}

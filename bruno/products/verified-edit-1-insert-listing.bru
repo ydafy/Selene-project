@@ -1,0 +1,65 @@
+meta {
+  name: verified-edit-1-insert-listing
+  type: http
+  seq: 109
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/products
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+script:pre-request {
+  const buffer = Number(bru.getVar("staleEconBuffer"));
+  const insurance = Number(bru.getVar("staleEconInsurance"));
+  req.setBody({
+    name: "Verified edit GPU",
+    description: "Original description",
+    price: 8000,
+    category: "GPU",
+    condition: "used",
+    usage: "gaming",
+    images: ["https://placehold.co/800x800/png?text=Original"],
+    status: "VERIFIED",
+    specifications: { chipset: "NVIDIA", brand: "MSI", model: "RTX 3070", memory: "8 GB" },
+    seller_id: "00000000-0000-4000-8000-000000000002",
+    shipping_cost: 100,
+    origin_zip: "06600",
+    package_preset: "gpu_1",
+    verified_at: new Date().toISOString(),
+    publication_shipping_reserve_cents: 10000 + buffer + Math.ceil(800000 * insurance),
+    publication_commission_rate: Number(bru.getVar("staleEconCommission")),
+    publication_insurance_rate: insurance
+  });
+}
+
+body:json {
+  {}
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    bru.setVar("verifiedEditId", res.getBody()[0].id);
+  }
+}
+
+tests {
+  test("the seeded seller gets a VERIFIED listing", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody()[0].status).to.equal("VERIFIED");
+  });
+}
+
+docs {
+  Local stack only. #141 (S12): an owner edits name, description, condition and usage of a VERIFIED listing
+  without review; any other change that keeps it VERIFIED is refused.
+  Run after products/stale-economics-1-read-settings (reads the settings) and auth/login-seller (needs sellerToken).
+  Steps 1-5 soft-delete the listing at the end.
+}

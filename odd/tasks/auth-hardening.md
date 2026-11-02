@@ -66,6 +66,16 @@ Follow repository manual Supabase workflow: supply SQL/function/config handoff, 
 User decision (verbatim): "Decisión de producto (opción B): la publicación respeta la economía con la que se publicó. Una transición que solo cambia el estado (volver a VERIFIED o RESERVED, liberar una reserva, levantar una suspensión, cancelar un envío) acepta el snapshot sin revalidar contra las tarifas actuales. Un cambio de precio es un trato nuevo: recalcula el snapshot con las tarifas vigentes. Antes de implementar, verificá si create-connect-payment cobra con el snapshot o con las tarifas actuales y alinealo con el snapshot si hace falta."
 Acceptance: an update that leaves `price` and `shipping_cost` unchanged keeps the snapshot as is (still immutable) and is never refused for stale economics; an update that changes either must carry a snapshot equal to the current settings, as an insert does, and cannot clear it; checkout charges from the snapshot.
 
+### S12 — T11: auth close-out before the worktree closes
+User decision (verbatim, 2026-11-01): "#141: ¿qué ediciones de una publicación VERIFIED pueden guardarse sin volver a revisión? — Nombre, descripción, condition y usage"; "#174: ¿cómo cargamos los tipos de Expo en CI? — Paso nuevo en ci.yml"; scope "#141 y #174, #154 trigger duplicado, pgTAP de 2 bloqueos de cierre, Cierre del worktree".
+Acceptance:
+- An owner edit of a VERIFIED listing that changes only `name`, `description`, `condition` or `usage` is stored and keeps the listing VERIFIED.
+- An owner edit that keeps the listing VERIFIED and changes any other column is refused. Changing those other columns still requires PENDING_VERIFICATION, as today.
+- Admin edits are not limited by this rule.
+- The CI typecheck loads Expo's types.
+- `auth.users` has one update trigger for `fn_on_auth_user_updated`.
+- The `account_restricted` and `active_orders` closure blockers have pgTAP.
+
 ## Tasks
 
 - T0 | S1–S10 | inline | done | Save accepted roadmap and initial block-1 investigation | Commit: tracker in the T1c commit; proof: document readback and source-only investigation.
@@ -147,6 +157,12 @@ Acceptance: an update that leaves `price` and `shipping_cost` unchanged keeps th
 - T10f | S4,S10 | delegated writer (context backstop) | in progress (L172) | Roadmap #165 (part of #122): narrow `anon` and `authenticated` grants on the auth tables and admin views to the matrix in L172; pgTAP per role; maintainer applies the migration | Commit: a49e1324 + follow-up (L174).
 - T10g | S1 | delegated writer (context backstop) | in progress (L176) | Roadmap #166: retire the structural text tests whose rules pgTAP now proves at runtime; keep the ones that check something pgTAP does not | Commit: not created.
 - T10h | S1,S4-S9 | delegated writer (context backstop) | in progress (L178) | Roadmap #167: `docs/auth.md`, 1-2 pages: account states, who can do what, closure flow, CAPTCHA, where each rule lives, how to test | Commit: not created.
+- T11 | S12 | parent orchestration | in progress (L181) | Auth close-out on branch `chore/auth-closeout`; one PR | Commit: see T11a-T11e.
+- T11a | S12 | inline | done (L182) | #174: CI step that writes `apps/frontend/expo-env.d.ts` before the typecheck | Commit: not created.
+- T11b | S8,S12 | inline | done (L183) | pgTAP for the `account_restricted` and `active_orders` closure blockers | Commit: not created.
+- T11c | S12 | inline | done (L184, applied L187) | #154: drop the unguarded `tr_on_auth_user_updated` trigger (migration; maintainer applies) | Commit: not created.
+- T11d | S4,S12 | delegated writer | done (L185, applied L187) | #141: owner may keep a VERIFIED listing VERIFIED when only name, description, condition or usage change (policy + guard trigger; migration; maintainer applies) | Commit: not created.
+- T11e | S12 | inline | pending | Close the worktree: tracker, Engram, `bun run worktree:clean auth` plan for the maintainer | Commit: not created.
 
 ## Log
 
@@ -1299,3 +1315,69 @@ With T10h every item of roadmap #162 is merged or in its last PR. Auth is code-c
 - #178, the admin dashboard payout total;
 - #67, the 5-year ledger anonymization (2031);
 - the rest of #122, the grants outside the auth tables.
+
+### L181 — T11 starts: auth close-out
+User request (verbatim): "okey si me gusta, pregunta, lo que uiqero saber yo es que mas cabe en este woktree de auth, ya que como etsamos en las ultimas ya lo ocupo cerrar, entoncees dime que mas quieres meter aqui para que quede ya a un buen nivel. SObre 141 y 174, me gusta, dicutamos un poco sobre eso aqui, pero igual te pregunto lo de que mas meterias o nomas esos dos?" The decisions are quoted in S12.
+Left out on purpose: #178 (admin payouts, its own worktree), #153 (two of its four functions are disputes), the rest of #122 (non-auth tables).
+Design note for #141: opening only the policy would let a modified client change images, specifications or price while keeping VERIFIED. A guard trigger therefore limits a VERIFIED-to-VERIFIED owner edit to the four columns plus the server-maintained `updated_at` and `fts`.
+
+### L182 — T11a: CI typecheck loads Expo's types (#174)
+In the `test` job of `.github/workflows/ci.yml`, a new step before `bun run typecheck` writes `apps/frontend/expo-env.d.ts` with `/// <reference types="expo/types" />`, the content `expo start` generates.
+RED/GREEN (a local simulation of the CI checkout, with no `expo-env.d.ts`): the T10e regression, reintroduced in a scratch copy, passed the old typecheck (exit 0); with the new step's file it fails with TS2322; the current code passes with the file (exit 0). The workflow parses with `Bun.YAML`, and the step order is lint, then the new step, then typecheck.
+Risk: item 5 (CI); a new step only, approved by the maintainer in S12.
+
+### L183 — T11b: the last two closure blockers get pgTAP
+`account_closure_blockers.test.sql` gains 13 assertions (plan 49):
+- A suspended account and a banned account each get `blocked` / `account_restricted`.
+- A buyer with a `paid` order gets `blocked` / `active_orders`.
+- None of those refusals changes the snapshot.
+- Once the suspension is lifted and the order completes, both users close (`closed`, `deleted_at` set). The banned account has no control case, because banned is final.
+Checks: `bun run test:db` Files=9, Tests=326, PASS. Mutation check (one rolled-back transaction, both `RETURN`s disabled): 11 of 49 fail; the function is intact afterwards.
+Every `fn_close_account` blocker now has a runtime test. `docs/auth.md` is updated to match in T11e.
+Risk: none (test-only).
+
+### L184 — T11c: one auth.users update trigger (#154)
+New pgTAP `supabase/tests/database/auth_user_triggers.test.sql` (5 assertions):
+- exactly one trigger on `auth.users` runs `fn_on_auth_user_updated`, and it fires only on an email change;
+- a sign-in (an update of `last_sign_in_at`) leaves `profiles_private.updated_at` unchanged;
+- an email change is still mirrored and moves `updated_at`.
+RED: the count was 2, and the file aborted on the guard check ("more than one row returned by a subquery").
+Migration `supabase/migrations/20261101180000_drop_duplicate_auth_user_update_trigger.sql`: `DROP TRIGGER IF EXISTS tr_on_auth_user_updated ON auth.users`; the email-guarded `on_auth_user_updated` stays.
+GREEN: `supabase db reset`, `bun run test:db` Files=10, Tests=331, PASS; `bun test supabase` 2770 pass. `docs/auth.md` now describes the single trigger.
+Risk: item 1 (a trigger in production). The function and grants are unchanged, and pgTAP covers the email mirror.
+Migration to apply: `20261101180000_drop_duplicate_auth_user_update_trigger.sql` (no schema change for `db:types`).
+
+### L185 — T11d: owner text edits keep a listing VERIFIED (#141)
+Worker: migration `supabase/migrations/20261101190000_owner_verified_text_edits.sql` makes two changes.
+- `products_update_owner`: the WITH CHECK also accepts VERIFIED. Every other USING and WITH CHECK condition is copied from the live definition unchanged.
+- New BEFORE UPDATE trigger `tr_product_verified_edit_guard` (`guard_owner_verified_edit`, SECURITY INVOKER, EXECUTE revoked from PUBLIC, anon and authenticated; canonical copy in `supabase/queries/triggers/product/guard_owner_verified_edit.sql`). For a client owner (`current_user = 'authenticated'` and not `is_admin()`) writing VERIFIED, it requires OLD.status VERIFIED and a whole row unchanged except `name`, `description`, `condition`, `usage`, `updated_at` and `fts` (`to_jsonb` comparison). Otherwise it raises 42501 `VERIFIED_EDIT_REQUIRES_REVIEW`.
+New pgTAP `supabase/tests/database/owner_verified_edits.test.sql`, 23 assertions:
+- the four-field edit is stored and the listing stays VERIFIED;
+- keeping VERIFIED while changing images, specifications, price (with a fresh snapshot), category or shipping cost is refused, with the row unchanged;
+- HIDDEN, REJECTED or PENDING_VERIFICATION to VERIFIED is refused;
+- the review path (images plus PENDING_VERIFICATION) still works;
+- a suspended owner is refused;
+- an admin can change images while the listing stays VERIFIED;
+- another user changes 0 rows.
+RED: the file aborted at the first owner edit with the #141 RLS error (planned 23, ran 1). GREEN after `supabase db reset`: `bun run test:db` Files=11, Tests=354, PASS (parent rerun); `bun test supabase` 2770 pass.
+Mutation check: with the guard trigger dropped (rolled back), 10 of 23 assertions fail.
+Bruno: new `bruno/products/verified-edit-1..5` (an owner text edit returns 200; an image change while VERIFIED returns 403 42501, with the row unchanged; then cleanup). `stale-economics-4` now sends `status: PENDING_VERIFICATION` with the price, as the app does, so it still reaches the stale-economics check. Full collection: 615 of 619 requests passed. The failures were the 3 known `dispatch-push-run` ones plus 1 Edge Function cold-start 503 that changed between runs, none in the touched files.
+App: `classifyListingEdit` already matches S12, so the app needs no change. The full no-review payload ran as an owner against the seed listings in a rolled-back transaction (UPDATE 4).
+Note: a price change that keeps VERIFIED now gets 42501 from the guard before the economics trigger runs. The app always sends PENDING_VERIFICATION with a price change.
+Risk: item 2 (RLS and owner write rules). Each bypass path is pinned by pgTAP, and the mutation check fails without the guard.
+Migration to apply: `20261101190000_owner_verified_text_edits.sql`. No schema change, so `db:types` is not needed.
+Review: native review of 580e545b..03af24ee (risk, reliability; tier high) approved and acknowledged; no blocking finding. Both advisories are fixed in the follow-up commit (`owner_verified_edits.test.sql` plan 25):
+- WARNING: no case combined a text edit with a stale snapshot, the place where T10a meets T11d. A text edit after a fee change now affects 1 row and the listing stays VERIFIED.
+- SUGGESTION: the three refused status moves now also pin the message `VERIFIED_EDIT_REQUIRES_REVIEW`, which shows the guard fires before the policy.
+`bun run test:db` Files=11, Tests=356, PASS.
+
+### L186 — T11a-T11c review; PR
+Native review of 820423df..580e545b (T11a-T11c; resilience, reliability; tier high) approved and acknowledged with no findings. The review candidate is the working tree, so the parent checked out 580e545b detached for this review and switched back to the branch afterwards.
+
+### L187 — T11 migrations applied
+Maintainer (verbatim): "migracion aplicada master con susces las dos, checaals y dime que falta". Remote readback (Supabase MCP, read-only):
+- `auth.users` has only `on_auth_user_updated` (`WHEN old.email IS DISTINCT FROM new.email`); `tr_on_auth_user_updated` is gone.
+- `products` has `tr_product_verified_edit_guard` (BEFORE UPDATE).
+- `products_update_owner` WITH CHECK lists PENDING_VERIFICATION, VERIFIED, HIDDEN and IN_REVIEW. The other USING and WITH CHECK conditions are unchanged.
+- `guard_owner_verified_edit` is SECURITY INVOKER, has `search_path=public, pg_temp`, and EXECUTE only for postgres and service_role. Its body has the `to_jsonb(NEW)` comparison and the `VERIFIED_EDIT_REQUIRES_REVIEW` raise.
+`db:types` is not needed (no schema change).
