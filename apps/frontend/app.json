@@ -29,10 +29,7 @@
               "host": "auth-verified"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         },
         {
           "action": "VIEW",
@@ -44,10 +41,7 @@
               "pathPrefix": "/onboarding"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         }
       ],
       "predictiveBackGestureEnabled": true,
@@ -81,6 +75,13 @@
         {
           "photosPermission": "Selene necesita acceso a tus fotos para que puedas subir tu avatar y publicar productos.",
           "cameraPermission": "Selene necesita acceso a tu cámara para que puedas tomar fotos de tus productos."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#bd9f65",
+          "defaultChannel": "orders"
         }
       ],
       "expo-video",

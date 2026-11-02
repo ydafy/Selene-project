@@ -13,6 +13,7 @@ import {
   type SignOutResult,
   type SignOutScope,
 } from './signOut.logic';
+import { pushRegistrar } from '../push/pushRegistration';
 import { resetUserQueries } from './userQueries.logic';
 
 /**
@@ -39,4 +40,5 @@ export const signOutUser = (
     scope,
     signOut: (s) => supabase.auth.signOut({ scope: s }),
     cleanup: clearUserScopedData,
+    unregisterPush: pushRegistrar.unregister,
   });
