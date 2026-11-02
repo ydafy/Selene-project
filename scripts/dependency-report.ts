@@ -32,9 +32,23 @@ const HELD_BACK: Record<string, { major: number; reason: string }> = {
   },
 };
 
-function isHeldBack(row: OutdatedRow): boolean {
+// The hold reason for a major, or undefined when the major is free to take.
+// @types/node is derived: it follows the Node line pinned in .nvmrc, so a major
+// above that line is held and the hold lifts when .nvmrc moves up.
+function heldReason(
+  row: OutdatedRow,
+  pinnedNodeMajor: number | undefined,
+): string | undefined {
+  const latestMajor = Number(row.latest.split('.')[0]);
+  if (row.name === '@types/node') {
+    return pinnedNodeMajor !== undefined && latestMajor > pinnedNodeMajor
+      ? `@types/node follows the pinned Node line (.nvmrc ${pinnedNodeMajor}); take its major together with Node`
+      : undefined;
+  }
   const held = HELD_BACK[row.name];
-  return held !== undefined && Number(row.latest.split('.')[0]) >= held.major;
+  return held !== undefined && latestMajor >= held.major
+    ? held.reason
+    : undefined;
 }
 const WORKFLOW_PATH = '.github/workflows/dependency-audit.yml';
 
@@ -602,6 +616,11 @@ export function buildDependencyReport(input: ReportInput, now: Date): string {
   const allMajors = others
     .filter((row) => isMajorChange(row.current, row.latest))
     .sort(byName);
+  const pinnedNodeMajor = input.runtimes.ok
+    ? Number(input.runtimes.value.pins.node.split('.')[0])
+    : undefined;
+  const isHeldBack = (row: OutdatedRow) =>
+    heldReason(row, pinnedNodeMajor) !== undefined;
   const majors = allMajors.filter((row) => !isHeldBack(row));
   const held = [
     ...new Map(
@@ -705,7 +724,7 @@ export function buildDependencyReport(input: ReportInput, now: Date): string {
           row.name,
           row.current,
           row.latest,
-          HELD_BACK[row.name]!.reason,
+          heldReason(row, pinnedNodeMajor)!,
         ]),
       ),
     );

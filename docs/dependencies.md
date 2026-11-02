@@ -25,7 +25,7 @@ A package below `1.0.0` can break on a minor. Treat its minor like a major.
 
 GitHub can delay a scheduled run by hours or skip it, and a skipped audit sends no email, the same as a clean one. If the Monday comment on the report issue has not arrived by the afternoon, start both workflows by hand, the audit first: `gh workflow run dependency-audit.yml`, then `gh workflow run dependency-report.yml`.
 
-When you hold a major back, add it to `HELD_BACK` in `scripts/dependency-report.ts` with its reason, and write the case in "When not to update" below. Remove the entry when the blocker is gone.
+When you hold a major back, add it to `HELD_BACK` in `scripts/dependency-report.ts` with its reason, and write the case in "When not to update" below. Remove the entry when the blocker is gone. `@types/node` is the exception: the report derives its hold from `.nvmrc`, so it needs no entry.
 
 ## Keep Node and Bun current
 
@@ -122,7 +122,7 @@ PR #147 (node-forge 1.4.0 to 1.4.2) followed these steps. The unrelated in-range
 
 ## When not to update
 
-Updating is the default. Leave a package alone only for a reason you can write down, and write it down. This repository has two such cases.
+Updating is the default. Leave a package alone only for a reason you can write down, and write it down. This repository has three such cases.
 
 ### A tool we depend on excludes the new major
 
@@ -134,6 +134,12 @@ TypeScript 7.0 is `latest` on npm, but this repository stays on TypeScript 6.0.3
 Without the API and without a compatible `typescript-eslint`, `bun run lint` would stop working. The evidence is in `odd/tasks/repo-hygiene.md`, L20 and L21.
 
 The general rule: a major is blocked when a tool we depend on declares a peer range that excludes it. Check the peer ranges of the tools that load the package (`bun pm ls` and the tool's `package.json`). Wait for a release of that tool that accepts the new major, then upgrade.
+
+### A types package runs ahead of the runtime
+
+`@types/node` publishes a major for each Node release line, including lines newer than the one we run. The types must match the runtime, because newer types describe APIs that the pinned Node does not have. So the report holds back any `@types/node` major above the major of the Node version in `.nvmrc`; it appears under "Held back on purpose" instead of "Majors available".
+
+The hold is derived, not a fixed entry in `HELD_BACK`. When `.nvmrc` moves to a new Node line (see "Keep Node and Bun current"), update `@types/node` to the same major in the same change. The report then lists any later major as available again without an edit to the script.
 
 ### An override would be unsafe
 
