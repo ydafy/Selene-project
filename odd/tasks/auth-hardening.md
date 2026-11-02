@@ -1286,3 +1286,16 @@ Gaps found and stated in the doc as the code's actual behaviour:
 - The 5-year ledger anonymization of S8 is still #67.
 Checks: `bunx prettier --check docs/auth.md` clean. Docs only, so nothing else ran.
 Risk: none (documentation).
+Review: native review of 92611d92..0c3126d7 (readability; tier high) approved and acknowledged; it raised three suggestions, all applied in the follow-up commit:
+- R2-path-root-scope: the path note now covers the closure section and Edge Functions too.
+- R2-unsourced-constants: the 10-minute rule cites `MAX_SIGN_IN_AGE_SECONDS`, the 24-attempt limit cites `MAX_ATTEMPTS`, and the hourly retry cites the cron.
+- R2-unexplained-rule-row: the closure row in the rule map now states its rule.
+
+### L180 — T10 code-complete
+With T10h every item of roadmap #162 is merged or in its last PR. Auth is code-complete: what remains for launch is the configuration in `docs/go-live.md` section 10, plus these open issues outside the roadmap:
+- #141, the owner edit of a VERIFIED listing (needs a product decision);
+- #153 and #154, Low database cleanups;
+- #174, the CI typecheck without Expo's types (a CI change, needs approval);
+- #178, the admin dashboard payout total;
+- #67, the 5-year ledger anonymization (2031);
+- the rest of #122, the grants outside the auth tables.

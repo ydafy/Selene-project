@@ -64,7 +64,7 @@ Clients are `anon` and `authenticated` with the anon key. Everything else runs i
 
 ## Sign-in, sessions, and recovery
 
-Paths below are relative to `apps/frontend` for the mobile app and `apps/admin-web/src` for the admin dashboard.
+Paths in this section and the next are relative to `apps/frontend` for the mobile app, `apps/admin-web/src` for the admin dashboard, and `supabase/functions` for Edge Functions.
 
 - Email and password: sign-up with a 6-digit email code. The code lives in `core/hooks/useAuth.ts` (`signUp`, `signInWithPassword`, `verifyOtp`, `resend`), `components/features/auth/RegisterForm.tsx`, and `app/(auth)/verify-code.tsx`. The auth screens open through `core/auth/AuthModalProvider.tsx`. The server rules (confirmation on, minimum 8 characters, code length and expiry) mirror the Dashboard in `[auth]` of `supabase/config.toml`.
 - Google: `core/hooks/useGoogleAuth.tsx` calls `signInWithIdToken`, and `core/auth/googleAuth.logic.ts` maps its errors. Supabase links a Google sign-in to an existing user with the same verified email. Manual linking stays off (`enable_manual_linking = false`).
@@ -79,10 +79,10 @@ Paths below are relative to `apps/frontend` for the mobile app and `apps/admin-w
 The product rule is "anonymize and close", not hard deletion. The flow is:
 
 1. The app asks for a fresh sign-in (`core/auth/reauth.ts`, `core/hooks/useDeleteAccount.ts`, `core/hooks/deleteAccountFlow.ts`) and calls `delete-account` from `DeleteAccountSection.tsx`.
-2. `delete-account` validates the token, then requires a sign-in no older than 10 minutes (the `amr` claim). Older means `403 REAUTH_REQUIRED`.
+2. `delete-account` validates the token, then requires a sign-in no older than 10 minutes (the newest `amr` timestamp; `MAX_SIGN_IN_AGE_SECONDS` in `delete-account/handler.ts`). Older means `403 REAUTH_REQUIRED`.
 3. It calls `fn_close_account(p_user_id)`, one SQL transaction. A blocker returns `409 DELETE_BLOCKED` with `blocked_reason`, and nothing changes.
 4. After the commit, the function deletes the Stripe customer, closes the Connect account, and removes Storage files. It records each result in `account_closures`.
-5. `account-closure-cleanup` retries failed steps every hour. It authenticates with `x-cron-secret` (`_shared/cron-auth.ts`) and gives up after 24 attempts per closure. The shared steps are in `_shared/account-closure-cleanup.ts`.
+5. `account-closure-cleanup` retries failed steps every hour (the `0 * * * *` cron in `docs/go-live.md`). It authenticates with `x-cron-secret` (`_shared/cron-auth.ts`) and gives up after 24 attempts per closure (`MAX_ATTEMPTS`). The shared steps are in `_shared/account-closure-cleanup.ts`.
 
 Blockers, in the order `fn_close_account` checks them:
 
@@ -119,23 +119,23 @@ Locally, `[auth.captcha]` in `supabase/config.toml` is on with hCaptcha's public
 
 ## Where each rule lives
 
-| Rule                                                       | Enforced by                                                                | Test                                                                                       |
-| ---------------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Signup creates both profile rows; metadata cannot set role | `fn_on_auth_user_created`                                                  | `account_rules.test.sql`, `reserved_usernames.test.sql`, Bruno `auth/signup-*`             |
-| Usernames are valid, unique, and `deleted_` is reserved    | `fn_on_auth_user_created`, `tr_profiles_reserve_deleted_username`          | `reserved_usernames.test.sql`, `auth_username_provisioning.test.ts`                        |
-| Clients cannot write role, status, or trust columns        | Grants, `profiles_update`, `profiles_private_access`                       | `auth_grants.test.sql`, `profile_grants.test.sql`, `account_rules.test.sql`                |
-| Only an active admin changes status; banned is final       | `fn_admin_update_user_status`, `is_admin()`                                | `account_rules.test.sql`, `suspension_hold.test.sql`                                       |
-| Suspended and banned sellers cannot publish or edit        | `products_insert`, `products_update_owner`, `fn_current_account_is_active` | `account_rules.test.sql`                                                                   |
-| No new sale for a restricted seller; banned cannot buy     | `fn_reserve_products`                                                      | `account_rules.test.sql`, `release_callers.test.sql`                                       |
-| A hold is restored to the prior status on lift             | `fn_admin_update_user_status`, `fn_release_listings`                       | `suspension_hold.test.sql`, `release_callers.test.sql`                                     |
-| A listing keeps its publication economics                  | `validate_product_publication_economics`                                   | `publication_economics.test.sql`                                                           |
-| Closure blockers and anonymization                         | `fn_close_account`                                                         | `account_closure.test.sql`, `account_closure_blockers.test.sql`, `account_closure.test.ts` |
-| Recent sign-in and response codes of closure               | `supabase/functions/delete-account/handler.ts`                             | `delete-account/handler.test.ts`, Bruno `functions/delete-account-*`                       |
-| Cleanup retry accepts only the cron secret                 | `account-closure-cleanup`, `_shared/cron-auth.ts`                          | `account-closure-cleanup/handler.test.ts`, Bruno `functions/account-closure-cleanup-*`     |
-| Admin Edge Functions need an active admin                  | `_shared/admin-auth.ts`                                                    | `_shared/__tests__/admin-auth.test.ts`                                                     |
-| Admin-web admits only an active admin                      | `lib/adminAccess.ts`                                                       | `lib/adminAccess.test.ts`                                                                  |
-| Password change needs the current password                 | `core/utils/passwordChange.ts` and the Dashboard setting                   | `core/utils/__tests__/passwordChange.test.ts`                                              |
-| Password sign-in needs a CAPTCHA token                     | Supabase Auth `[auth.captcha]`                                             | Bruno `auth/login-without-captcha-rejected`, `captchaAuth.logic.test.ts` in both apps      |
+| Rule                                                        | Enforced by                                                                | Test                                                                                       |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Signup creates both profile rows; metadata cannot set role  | `fn_on_auth_user_created`                                                  | `account_rules.test.sql`, `reserved_usernames.test.sql`, Bruno `auth/signup-*`             |
+| Usernames are valid, unique, and `deleted_` is reserved     | `fn_on_auth_user_created`, `tr_profiles_reserve_deleted_username`          | `reserved_usernames.test.sql`, `auth_username_provisioning.test.ts`                        |
+| Clients cannot write role, status, or trust columns         | Grants, `profiles_update`, `profiles_private_access`                       | `auth_grants.test.sql`, `profile_grants.test.sql`, `account_rules.test.sql`                |
+| Only an active admin changes status; banned is final        | `fn_admin_update_user_status`, `is_admin()`                                | `account_rules.test.sql`, `suspension_hold.test.sql`                                       |
+| Suspended and banned sellers cannot publish or edit         | `products_insert`, `products_update_owner`, `fn_current_account_is_active` | `account_rules.test.sql`                                                                   |
+| No new sale for a restricted seller; banned cannot buy      | `fn_reserve_products`                                                      | `account_rules.test.sql`, `release_callers.test.sql`                                       |
+| A hold is restored to the prior status on lift              | `fn_admin_update_user_status`, `fn_release_listings`                       | `suspension_hold.test.sql`, `release_callers.test.sql`                                     |
+| A listing keeps its publication economics                   | `validate_product_publication_economics`                                   | `publication_economics.test.sql`                                                           |
+| Closure blockers refuse with nothing changed; anonymization | `fn_close_account`                                                         | `account_closure.test.sql`, `account_closure_blockers.test.sql`, `account_closure.test.ts` |
+| Recent sign-in and response codes of closure                | `supabase/functions/delete-account/handler.ts`                             | `delete-account/handler.test.ts`, Bruno `functions/delete-account-*`                       |
+| Cleanup retry accepts only the cron secret                  | `account-closure-cleanup`, `_shared/cron-auth.ts`                          | `account-closure-cleanup/handler.test.ts`, Bruno `functions/account-closure-cleanup-*`     |
+| Admin Edge Functions need an active admin                   | `_shared/admin-auth.ts`                                                    | `_shared/__tests__/admin-auth.test.ts`                                                     |
+| Admin-web admits only an active admin                       | `lib/adminAccess.ts`                                                       | `lib/adminAccess.test.ts`                                                                  |
+| Password change needs the current password                  | `core/utils/passwordChange.ts` and the Dashboard setting                   | `core/utils/__tests__/passwordChange.test.ts`                                              |
+| Password sign-in needs a CAPTCHA token                      | Supabase Auth `[auth.captcha]`                                             | Bruno `auth/login-without-captcha-rejected`, `captchaAuth.logic.test.ts` in both apps      |
 
 The pgTAP files are in `supabase/tests/database/`. The `account_restricted` and `active_orders` blockers have only the source-text check in `account_closure.test.ts`, with no pgTAP assertion yet.
 
