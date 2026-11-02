@@ -145,6 +145,7 @@ Acceptance: an update that leaves `price` and `shipping_cost` unchanged keeps th
 - T10d | S1,S4 | inline | done (L168-L169) | Roadmap #163: CI job `db-test` starts the local stack and runs `supabase test db` on every PR; `supabase/AGENTS.md` updated | Commit: 391912c7.
 - T10e | S1 | inline | done (L170) | Roadmap #164: frontend typecheck at zero on Windows (OTP `textInputStyle` typed as the library declares it) | Commit: 9dcf0bc0.
 - T10f | S4,S10 | delegated writer (context backstop) | in progress (L172) | Roadmap #165 (part of #122): narrow `anon` and `authenticated` grants on the auth tables and admin views to the matrix in L172; pgTAP per role; maintainer applies the migration | Commit: a49e1324 + follow-up (L174).
+- T10g | S1 | delegated writer (context backstop) | in progress (L176) | Roadmap #166: retire the structural text tests whose rules pgTAP now proves at runtime; keep the ones that check something pgTAP does not | Commit: not created.
 
 ## Log
 
@@ -1251,3 +1252,7 @@ Remote readback (Supabase MCP, read-only, `has_table_privilege` for SELECT, INSE
 - `admin_connect_earnings_view`, `admin_seller_onboarding_view`, `admin_connect_payout_release_view`, `account_closures`: no client privilege.
 - anon has nothing beyond SELECT on `profiles`.
 `db:types` is not needed (grants only, no schema change).
+
+### L176 — T10f closed; T10g starts
+PR #180 merged (45eff03e) after `test` and `db-test` passed. It closed roadmap item #165 and is part of #122 (the other tables and the default privileges stay there). Open from T10f: #178 (the admin dashboard reads `admin_connect_payout_release_view` without a grant).
+T10g (#166) starts on branch `test/auth-t10g-retire-structural`. Rule for each structural test (a `bun:test` file under `supabase/migrations/__tests__/` or `supabase/queries/**/__tests__/` that reads SQL text): retire it only when a pgTAP file in `supabase/tests/database/` proves the same rule at runtime, and CI now gates that with `db-test`. Keep tests that check something pgTAP does not, for example that a migration file exists, that a canonical query file matches its migration, or rules with no runtime test yet.
