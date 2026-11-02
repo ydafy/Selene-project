@@ -1,0 +1,26 @@
+meta {
+  name: device-read-token-after-buyer-unregister
+  type: http
+  seq: 279
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/push_tokens?select=user_id&token=eq.ExponentPushToken%5Bbruno-push-token-0003%5D
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the token is gone", function () {
+    expect(res.getBody()).to.have.length(0);
+  });
+}
+
+docs {
+  Service-role read of the device token fixture.
+}

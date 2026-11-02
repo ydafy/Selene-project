@@ -1,0 +1,30 @@
+meta {
+  name: device-unregister-null-token-rejected
+  type: http
+  seq: 280
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_unregister_push_token
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+body:json {
+  { "p_token": null }
+}
+
+tests {
+  test("a missing token argument is rejected", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().message).to.equal("INVALID_PUSH_TOKEN");
+  });
+}
+
+docs {
+  A NULL token is malformed, like fn_register_push_token.
+}

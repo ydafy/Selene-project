@@ -1,0 +1,30 @@
+meta {
+  name: device-unregister-token-as-buyer
+  type: http
+  seq: 278
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_unregister_push_token
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  { "p_token": "ExponentPushToken[bruno-push-token-0003]" }
+}
+
+tests {
+  test("a buyer removes a token another account registered", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  The token, not the session, identifies the device. This is the sign-out of a device whose owner session is gone.
+}

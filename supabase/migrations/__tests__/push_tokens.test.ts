@@ -95,9 +95,10 @@ describe('push_tokens table', () => {
 });
 
 describe('push token RPCs', () => {
+  // fn_unregister_push_token was redefined by 20261102000000_unregister_push_token_by_device.sql;
+  // unregister_push_token_by_device.test.ts covers it.
   for (const [name, args] of [
     ['fn_register_push_token', 'text,text'],
-    ['fn_unregister_push_token', 'text'],
   ] as const) {
     test(`${name} is a definer with a pinned search_path and authenticated-only EXECUTE`, () => {
       const def = definition(migration, name);
@@ -134,14 +135,6 @@ describe('push token RPCs', () => {
     expect(def).toContain('UNAUTHORIZED');
     expect(def).toContain('INVALID_PUSH_TOKEN');
     expect(def).toContain('INVALID_PUSH_PLATFORM');
-  });
-
-  test('unregister deletes only the caller own row and never raises for a missing one', () => {
-    const def = definition(migration, 'fn_unregister_push_token')!;
-    expect(def).toContain(
-      'DELETE FROM public.push_tokens WHERE token = p_token AND user_id = v_user_id;',
-    );
-    expect(def).not.toContain('NOT FOUND');
   });
 
   test('grant review is explained in the header', () => {
@@ -181,7 +174,7 @@ describe('account closure removes push tokens', () => {
 });
 
 describe('canonical SQL parity', () => {
-  for (const name of ['fn_register_push_token', 'fn_unregister_push_token']) {
+  for (const name of ['fn_register_push_token']) {
     test(`${name} canonical file matches the migration`, () => {
       const canonical = readFileSync(
         join(QUERIES_DIR, 'push', `${name}.sql`),
@@ -189,9 +182,9 @@ describe('canonical SQL parity', () => {
       );
       expect(rawDefinition(canonical, name)).toBeDefined();
       // fn_register_push_token was redefined by the closed-account migration; the canonical file tracks the newest.
-      const newest =
-        name === 'fn_register_push_token' ? newestRegister : migration;
-      expect(rawDefinition(canonical, name)).toBe(rawDefinition(newest, name));
+      expect(rawDefinition(canonical, name)).toBe(
+        rawDefinition(newestRegister, name),
+      );
     });
   }
 });

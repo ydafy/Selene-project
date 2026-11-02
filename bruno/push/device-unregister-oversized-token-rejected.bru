@@ -1,0 +1,30 @@
+meta {
+  name: device-unregister-oversized-token-rejected
+  type: http
+  seq: 281
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_unregister_push_token
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+body:json {
+  { "p_token": "ExponentPushToken[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]" }
+}
+
+tests {
+  test("a token longer than 255 characters is rejected", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().message).to.equal("INVALID_PUSH_TOKEN");
+  });
+}
+
+docs {
+  The length limit matches fn_register_push_token.
+}
