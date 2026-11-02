@@ -9,7 +9,10 @@ import React, { useEffect } from 'react';
 import { StyleSheet } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import Animated, {
+  cancelAnimation,
   useAnimatedProps,
+  useAnimatedStyle,
+  withDelay,
   withRepeat,
   withTiming,
   useSharedValue,
@@ -20,9 +23,34 @@ import { useTheme } from '@shopify/restyle';
 import { Box, Text } from '../../../base';
 import { Theme } from '../../../../core/theme';
 import { getSharedStyles } from '../sharedStyles';
-import { MotiView } from 'moti';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
+
+/**
+ * Número de paso con pulso de opacidad 0.5 -> 2 (el render la limita a 1) en
+ * ida y vuelta. El delay (index + 400) aplica solo al arranque.
+ */
+const StepNumber = ({
+  index,
+  children,
+}: {
+  index: number;
+  children: React.ReactNode;
+}) => {
+  const opacity = useSharedValue(0.5);
+
+  useEffect(() => {
+    opacity.value = withDelay(
+      index + 400,
+      withRepeat(withTiming(2, { duration: 2500 }), -1, true),
+    );
+    return () => cancelAnimation(opacity);
+  }, [index, opacity]);
+
+  const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
+  return <Animated.View style={animatedStyle}>{children}</Animated.View>;
+};
 
 export const ShellInspection = () => {
   const theme = useTheme<Theme>();
@@ -114,25 +142,12 @@ export const ShellInspection = () => {
     >
       {/* SLOT 1: El Número Animado (Onda Secuencial) */}
       <Box height={30} justifyContent="center" marginBottom="s">
-        <MotiView
-          from={{ opacity: 0.5, scale: 1 }}
-          animate={{
-            opacity: 2, // El índice afecta la opacidad para crear un efecto de onda
-            scale: 1,
-          }}
-          transition={{
-            type: 'timing',
-            duration: 2500,
-            loop: true,
-            repeatReverse: true,
-            // El delay crea el efecto de que los números se "activan" uno tras otro
-            delay: index + 400,
-          }}
-        >
+        {/* El delay por índice hace que los números se "activen" uno tras otro */}
+        <StepNumber index={index}>
           <Mono color="primary" size={17}>
             {number}
           </Mono>
-        </MotiView>
+        </StepNumber>
       </Box>
 
       {/* SLOT 2: El Título (Altura fija de 45px) */}

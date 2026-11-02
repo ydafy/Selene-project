@@ -6,11 +6,19 @@
  * Optimizado para evitar re-renders innecesarios y con i18n completo.
  */
 
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useEffect } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@shopify/restyle';
-import { MotiView } from 'moti';
+import Animated, {
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 
 import { Box, Text } from '../../../base';
@@ -26,23 +34,82 @@ const STORE_RESULTS_PATH = '/store/results';
  * Micro-componente: Matriz de Bits
  * Extraído para evitar re-creación en cada render.
  */
+const Bit = memo(({ index, color }: { index: number; color: string }) => {
+  const opacity = useSharedValue(0.2);
+
+  useEffect(() => {
+    // Cada paso lleva su propio delay (0.2 -> 1 -> 0.2), como la secuencia original.
+    const step = (to: number) =>
+      withDelay(index * 150, withTiming(to, { duration: 3500 }));
+    opacity.value = withRepeat(withSequence(step(1), step(0.2)), -1, false);
+    return () => cancelAnimation(opacity);
+  }, [index, opacity]);
+
+  const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
+  return (
+    <Animated.View
+      style={[
+        {
+          width: 3,
+          height: 3,
+          backgroundColor: color,
+          borderRadius: 1,
+        },
+        animatedStyle,
+      ]}
+    />
+  );
+});
+
 const BitMatrix = memo(({ theme }: { theme: Theme }) => (
   <Box flexDirection="row" flexWrap="wrap" width={20} gap="xs" opacity={0.4}>
     {BITS.map((_, i) => (
-      <MotiView
-        key={i}
-        animate={{ opacity: [0.2, 1, 0.2] }}
-        transition={{ loop: true, duration: 3500, delay: i * 150 }}
-        style={{
-          width: 3,
-          height: 3,
-          backgroundColor: theme.colors.primary,
-          borderRadius: 1,
-        }}
-      />
+      <Bit key={i} index={i} color={theme.colors.primary} />
     ))}
   </Box>
 ));
+
+/**
+ * Barrido de luz bajo el nombre: translateX -60 -> 60 en ida y vuelta.
+ */
+const ScanSweep = memo(({ color }: { color: string }) => {
+  const translateX = useSharedValue(-60);
+
+  useEffect(() => {
+    translateX.value = withRepeat(withTiming(60, { duration: 3500 }), -1, true);
+    return () => cancelAnimation(translateX);
+  }, [translateX]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        { width: '100%', height: '100%', backgroundColor: color },
+        animatedStyle,
+      ]}
+    />
+  );
+});
+
+/**
+ * Envuelve el texto de clase con un pulso de opacidad 0.3 <-> 1.
+ */
+const PulseText = memo(({ children }: { children: React.ReactNode }) => {
+  const opacity = useSharedValue(0.3);
+
+  useEffect(() => {
+    opacity.value = withRepeat(withTiming(1, { duration: 3000 }), -1, true);
+    return () => cancelAnimation(opacity);
+  }, [opacity]);
+
+  const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
+  return <Animated.View style={animatedStyle}>{children}</Animated.View>;
+});
 
 /**
  * Componente: Fila de Categoría (Strip)
@@ -107,16 +174,7 @@ const CategoryStrip = memo(
                 overflow="hidden"
                 opacity={0.3}
               >
-                <MotiView
-                  from={{ translateX: -60 }}
-                  animate={{ translateX: 60 }}
-                  transition={{ loop: true, duration: 3500, type: 'timing' }}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    backgroundColor: theme.colors.primary,
-                  }}
-                />
+                <ScanSweep color={theme.colors.primary} />
               </Box>
             </Box>
 
@@ -126,11 +184,7 @@ const CategoryStrip = memo(
               >
                 [ {t('categories.classLabel')}{' '}
               </Text>
-              <MotiView
-                from={{ opacity: 0.3 }}
-                animate={{ opacity: 1 }}
-                transition={{ loop: true, duration: 3000, type: 'timing' }}
-              >
+              <PulseText>
                 <Text
                   style={[
                     sharedStyles.monoText,
@@ -139,7 +193,7 @@ const CategoryStrip = memo(
                 >
                   {t('categories.unitType')}
                 </Text>
-              </MotiView>
+              </PulseText>
               <Text
                 style={[sharedStyles.monoText, { fontSize: 7, opacity: 0.5 }]}
               >

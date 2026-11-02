@@ -3,10 +3,16 @@
  * @description Layout genérico para líneas editoriales con badges.
  */
 
-import React, { memo } from 'react';
+import React, { memo, useEffect } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@shopify/restyle';
-import { MotiView } from 'moti';
+import Animated, {
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 import { Box, Text } from '../../../base';
 import { Theme } from '../../../../core/theme';
 
@@ -20,6 +26,14 @@ interface BadgeProps {
  */
 const InlineBadge = memo(({ icon, label }: BadgeProps) => {
   const theme = useTheme<Theme>();
+  const opacity = useSharedValue(0.3);
+
+  useEffect(() => {
+    opacity.value = withRepeat(withTiming(1, { duration: 2000 }), -1, true);
+    return () => cancelAnimation(opacity);
+  }, [opacity]);
+
+  const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
   return (
     <Box
@@ -40,18 +54,14 @@ const InlineBadge = memo(({ icon, label }: BadgeProps) => {
         shadowRadius: 2,
       }}
     >
-      <MotiView
-        from={{ opacity: 0.3 }}
-        animate={{ opacity: 1 }}
-        transition={{ loop: true, duration: 2000, repeatReverse: true }}
-      >
+      <Animated.View style={animatedStyle}>
         <MaterialCommunityIcons
           name={icon}
           size={12}
           color={theme.colors.primary}
           style={{ marginRight: 6 }}
         />
-      </MotiView>
+      </Animated.View>
 
       <Text
         variant="caption-md"

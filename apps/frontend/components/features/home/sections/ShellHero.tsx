@@ -4,11 +4,17 @@
  * Auditada para rendimiento (Memo) e internacionalización (i18n).
  */
 
-import React, { memo } from 'react';
+import React, { memo, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
-import { MotiView } from 'moti';
+import Animated, {
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { Box, Text } from '../../../base';
 import { AppImage } from '../../../ui/AppImage';
@@ -18,6 +24,38 @@ import { getSharedStyles } from '../sharedStyles';
 
 // --- CONSTANTES DE RUTA (Sincronizadas con index.tsx) ---
 const STORE_PATH = '/store/query';
+
+/**
+ * Línea de escaneo: translateY -100 -> 100 y opacity 0 -> 0.5, en ida y vuelta.
+ */
+const ScanLine = memo(({ color }: { color: string }) => {
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    progress.value = withRepeat(withTiming(1, { duration: 2500 }), -1, true);
+    return () => cancelAnimation(progress);
+  }, [progress]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: 0.5 * progress.value,
+    transform: [{ translateY: -100 + 200 * progress.value }],
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        {
+          position: 'absolute',
+          width: '80%',
+          height: 1,
+          backgroundColor: color,
+          zIndex: 10,
+        },
+        animatedStyle,
+      ]}
+    />
+  );
+});
 
 const ShellHeroComponent = () => {
   const { t } = useTranslation('home');
@@ -78,18 +116,7 @@ const ShellHeroComponent = () => {
           cachePolicy="memory-disk"
         />
 
-        <MotiView
-          from={{ translateY: -100, opacity: 0 }}
-          animate={{ translateY: 100, opacity: 0.5 }}
-          transition={{ loop: true, duration: 2500, type: 'timing' }}
-          style={{
-            position: 'absolute',
-            width: '80%',
-            height: 1,
-            backgroundColor: theme.colors.primary,
-            zIndex: 10,
-          }}
-        />
+        <ScanLine color={theme.colors.primary} />
       </Box>
 
       {/* 3. CELDA DE ACCIÓN */}
