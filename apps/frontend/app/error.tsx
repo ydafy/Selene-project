@@ -6,13 +6,25 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ErrorBoundaryProps } from 'expo-router';
-import { MotiView } from 'moti';
+import Animated, { withSpring } from 'react-native-reanimated';
 import { Box, Text } from '../components/base';
 import { PrimaryButton } from '../components/ui/PrimaryButton';
 import { getSharedStyles } from '../components/features/home/sharedStyles';
 import { useTheme } from '@shopify/restyle';
 import { Theme } from '../core/theme';
 import { supabase } from '../core/db/supabase';
+
+// Mount entrance: scale 0.9 -> 1 with a fade, driven by a spring.
+const contentEntering = () => {
+  'worklet';
+  return {
+    initialValues: { opacity: 0, transform: [{ scale: 0.9 }] },
+    animations: {
+      opacity: withSpring(1),
+      transform: [{ scale: withSpring(1) }],
+    },
+  };
+};
 
 export default function GlobalErrorBoundary({
   error,
@@ -56,9 +68,8 @@ export default function GlobalErrorBoundary({
       alignItems="center"
       padding="xl"
     >
-      <MotiView
-        from={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
+      <Animated.View
+        entering={contentEntering}
         style={{ alignItems: 'center', width: '100%' }}
       >
         <Box
@@ -119,7 +130,7 @@ export default function GlobalErrorBoundary({
             </Text>
           </Box>
         )}
-      </MotiView>
+      </Animated.View>
     </Box>
   );
 }

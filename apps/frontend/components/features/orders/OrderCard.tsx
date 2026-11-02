@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useTheme } from '@shopify/restyle';
 
-import { MotiView } from 'moti';
+import Reanimated, { FadeInDown } from 'react-native-reanimated';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -111,9 +111,10 @@ export const OrderCard = ({ order, isSeller, onPress }: Props) => {
   };
 
   return (
-    <MotiView
-      from={{ opacity: 0, translateY: 10 }}
-      animate={{ opacity: 1, translateY: 0 }}
+    <Reanimated.View
+      entering={FadeInDown.springify().withInitialValues({
+        transform: [{ translateY: 10 }],
+      })}
     >
       <Box
         onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
@@ -378,6 +379,6 @@ export const OrderCard = ({ order, isSeller, onPress }: Props) => {
           )}
         </Pressable>
       </Box>
-    </MotiView>
+    </Reanimated.View>
   );
 };

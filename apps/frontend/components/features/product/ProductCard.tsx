@@ -8,7 +8,7 @@ import React, { memo } from 'react';
 import { TouchableOpacity, StyleSheet } from 'react-native';
 import { useTheme } from '@shopify/restyle';
 import { IconButton } from 'react-native-paper';
-import { MotiView } from 'moti';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { PublicProduct } from '@selene/types';
 
 import { Box, Text } from '../../base';
@@ -32,16 +32,23 @@ type ProductCardProps = {
 };
 
 export const ProductCard = memo(
-  ({ product, onPress, imageHeight, index = 0, onFavoriteToggle, onBeforeUnfavorite }: ProductCardProps) => {
+  ({
+    product,
+    onPress,
+    imageHeight,
+    index = 0,
+    onFavoriteToggle,
+    onBeforeUnfavorite,
+  }: ProductCardProps) => {
     const theme = useTheme<Theme>();
     const sharedStyles = getSharedStyles(theme);
     const isSold = product.status === 'SOLD';
 
     return (
-      <MotiView
-        from={{ opacity: 0, translateY: 20 }}
-        animate={{ opacity: 1, translateY: 0 }}
-        transition={{ type: 'timing', duration: 500, delay: index * 100 }}
+      <Animated.View
+        entering={FadeInDown.duration(500)
+          .delay(index * 100)
+          .withInitialValues({ transform: [{ translateY: 20 }] })}
         style={styles.container}
       >
         <TouchableOpacity
@@ -214,7 +221,7 @@ export const ProductCard = memo(
             </Box>
           </Box>
         </TouchableOpacity>
-      </MotiView>
+      </Animated.View>
     );
   },
 );

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
-import { MotiView } from 'moti';
+import Animated, { FadeInUp } from 'react-native-reanimated';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { Box, Text } from '../../base';
@@ -60,13 +60,17 @@ export const OrderStepper = ({ status, isSeller = false }: Props) => {
           <Box key={step} flexDirection="row" minHeight={60}>
             {/* LADO IZQUIERDO: INDICADOR */}
             <Box alignItems="center" width={30}>
-              <MotiView
-                animate={{
+              <Animated.View
+                style={{
                   backgroundColor: circleColor,
                   borderColor: borderColor,
-                  scale: isCurrent ? 1.1 : 1,
-                }}
-                style={{
+                  transform: [{ scale: isCurrent ? 1.1 : 1 }],
+                  transitionProperty: [
+                    'backgroundColor',
+                    'borderColor',
+                    'transform',
+                  ],
+                  transitionDuration: 300,
                   width: 22,
                   height: 22,
                   borderRadius: 11,
@@ -94,7 +98,7 @@ export const OrderStepper = ({ status, isSeller = false }: Props) => {
                     backgroundColor="textPrimary"
                   />
                 ) : null}
-              </MotiView>
+              </Animated.View>
 
               {!isLast && (
                 <Box
@@ -132,9 +136,10 @@ export const OrderStepper = ({ status, isSeller = false }: Props) => {
               </Text>
 
               {isCurrent && (
-                <MotiView
-                  from={{ opacity: 0, translateY: -5 }}
-                  animate={{ opacity: 1, translateY: 0 }}
+                <Animated.View
+                  entering={FadeInUp.springify().withInitialValues({
+                    transform: [{ translateY: -5 }],
+                  })}
                 >
                   <Text
                     variant="caption-md"
@@ -143,7 +148,7 @@ export const OrderStepper = ({ status, isSeller = false }: Props) => {
                   >
                     {t(`orders:stepper.${step}_desc${descriptionSuffix}`)}
                   </Text>
-                </MotiView>
+                </Animated.View>
               )}
             </Box>
           </Box>

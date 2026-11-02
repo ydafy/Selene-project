@@ -3,7 +3,7 @@ import { ScrollView, useWindowDimensions } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { MotiView } from 'moti';
+import Animated, { withSpring } from 'react-native-reanimated';
 import { useTheme } from '@shopify/restyle';
 
 import { Box, Text } from '../../base';
@@ -20,6 +20,18 @@ import { resolveShipmentPreparingWindowMessage } from '@/core/utils/shipment-can
 import { resolveCancelledShipmentCopy } from '@/core/utils/shipment-cancellation-summary';
 import { Theme } from '@/core/theme';
 import { resolveOrderBannerKind } from './orderActionBanner';
+
+// Mount entrance: scale 0.9 -> 1 with a fade, driven by a spring.
+const bannerEntering = () => {
+  'worklet';
+  return {
+    initialValues: { opacity: 0, transform: [{ scale: 0.9 }] },
+    animations: {
+      opacity: withSpring(1),
+      transform: [{ scale: withSpring(1) }],
+    },
+  };
+};
 
 interface Props {
   order: EnrichedOrder;
@@ -289,10 +301,7 @@ export const OrderActionCard = ({
   };
 
   return (
-    <MotiView
-      from={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-    >
+    <Animated.View entering={bannerEntering}>
       <Box
         backgroundColor="errorSubtle"
         padding="m"
@@ -451,6 +460,6 @@ export const OrderActionCard = ({
           />
         </Box>
       )}
-    </MotiView>
+    </Animated.View>
   );
 };

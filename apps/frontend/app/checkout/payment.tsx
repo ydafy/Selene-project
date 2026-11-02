@@ -3,7 +3,7 @@ import { Alert, BackHandler } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@shopify/restyle';
-import { MotiView } from 'moti';
+import Animated, { withSpring } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 
 import { Box, Text } from '../../components/base';
@@ -23,6 +23,18 @@ import {
   useSellerPaymentReadiness,
   isSellerBlocked,
 } from '../../core/hooks/useSellerPaymentReadiness';
+
+// Mount entrance: scale 0.8 -> 1 with a fade, driven by a spring.
+const iconEntering = () => {
+  'worklet';
+  return {
+    initialValues: { opacity: 0, transform: [{ scale: 0.8 }] },
+    animations: {
+      opacity: withSpring(1, { damping: 15 }),
+      transform: [{ scale: withSpring(1, { damping: 15 }) }],
+    },
+  };
+};
 
 export default function PaymentScreen() {
   const { t } = useTranslation('checkout');
@@ -119,11 +131,7 @@ export default function PaymentScreen() {
           }}
         >
           {/* ICONO ANIMADO */}
-          <MotiView
-            from={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', damping: 15 }}
-          >
+          <Animated.View entering={iconEntering}>
             <Box
               width={100}
               height={100}
@@ -141,7 +149,7 @@ export default function PaymentScreen() {
                 color={isReady ? 'white' : theme.colors.primary}
               />
             </Box>
-          </MotiView>
+          </Animated.View>
 
           <Text variant="header-xl" textAlign="center" marginBottom="s">
             {isReady ? t('payment.reservedTitle') : t('payment.reservingTitle')}
