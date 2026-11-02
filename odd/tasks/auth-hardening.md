@@ -160,7 +160,7 @@ Acceptance:
 - T11 | S12 | parent orchestration | in progress (L181) | Auth close-out on branch `chore/auth-closeout`; one PR | Commit: see T11a-T11e.
 - T11a | S12 | inline | done (L182) | #174: CI step that writes `apps/frontend/expo-env.d.ts` before the typecheck | Commit: not created.
 - T11b | S8,S12 | inline | done (L183) | pgTAP for the `account_restricted` and `active_orders` closure blockers | Commit: not created.
-- T11c | S12 | inline | pending | #154: drop the unguarded `tr_on_auth_user_updated` trigger (migration; maintainer applies) | Commit: not created.
+- T11c | S12 | inline | done (L184; apply pending) | #154: drop the unguarded `tr_on_auth_user_updated` trigger (migration; maintainer applies) | Commit: not created.
 - T11d | S4,S12 | delegated writer | pending | #141: owner may keep a VERIFIED listing VERIFIED when only name, description, condition or usage change (policy + guard trigger; migration; maintainer applies) | Commit: not created.
 - T11e | S12 | inline | pending | Close the worktree: tracker, Engram, `bun run worktree:clean auth` plan for the maintainer | Commit: not created.
 
@@ -1335,3 +1335,14 @@ Risk: item 5 (CI); a new step only, approved by the maintainer in S12.
 Checks: `bun run test:db` Files=9, Tests=326, PASS. Mutation check (one rolled-back transaction, both `RETURN`s disabled): 11 of 49 fail; the function is intact afterwards.
 Every `fn_close_account` blocker now has a runtime test. `docs/auth.md` is updated to match in T11e.
 Risk: none (test-only).
+
+### L184 — T11c: one auth.users update trigger (#154)
+New pgTAP `supabase/tests/database/auth_user_triggers.test.sql` (5 assertions):
+- exactly one trigger on `auth.users` runs `fn_on_auth_user_updated`, and it fires only on an email change;
+- a sign-in (an update of `last_sign_in_at`) leaves `profiles_private.updated_at` unchanged;
+- an email change is still mirrored and moves `updated_at`.
+RED: the count was 2, and the file aborted on the guard check ("more than one row returned by a subquery").
+Migration `supabase/migrations/20261101180000_drop_duplicate_auth_user_update_trigger.sql`: `DROP TRIGGER IF EXISTS tr_on_auth_user_updated ON auth.users`; the email-guarded `on_auth_user_updated` stays.
+GREEN: `supabase db reset`, `bun run test:db` Files=10, Tests=331, PASS; `bun test supabase` 2770 pass. `docs/auth.md` now describes the single trigger.
+Risk: item 1 (a trigger in production). The function and grants are unchanged, and pgTAP covers the email mirror.
+Migration to apply: `20261101180000_drop_duplicate_auth_user_update_trigger.sql` (no schema change for `db:types`).
