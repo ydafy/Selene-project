@@ -558,6 +558,48 @@ describe('buildDependencyReport', () => {
     expect(held).toContain('docs/dependencies.md');
   });
 
+  describe('@types/node follows the pinned Node line', () => {
+    const typesNode = {
+      name: '@types/node',
+      workspace: 'root',
+      dev: true,
+      current: '24.19.2',
+      update: '24.19.2',
+      latest: '26.6.6',
+    };
+    const withNode = (node: string) =>
+      buildDependencyReport(
+        baseInput({
+          outdated: { ok: true, value: [typesNode] },
+          runtimes: {
+            ok: true,
+            value: {
+              pins: { node, bun: '1.4.4' },
+              ...nodeData,
+              bun: parseBunRegistry(BUN_REGISTRY),
+            },
+          },
+        }),
+        NOW,
+      );
+
+    test('holds a major above the pinned Node major', () => {
+      const report = withNode('24.23.0');
+      expect(section(report, 'Majors available')).not.toContain('@types/node');
+      const held = section(report, 'Held back on purpose');
+      expect(held).toContain('| @types/node | 24.19.2 | 26.6.6 |');
+      expect(held).toContain('.nvmrc 24');
+    });
+
+    test('lists the major once .nvmrc reaches that Node major', () => {
+      const report = withNode('26.1.0');
+      expect(section(report, 'Majors available')).toContain(
+        '| @types/node | root | 24.19.2 | 26.6.6 |',
+      );
+      expect(report).not.toContain('Held back on purpose');
+    });
+  });
+
   test('treats a minor of a 0.x package as a major', () => {
     const report = buildDependencyReport(
       baseInput({
