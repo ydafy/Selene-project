@@ -12,9 +12,13 @@ const MIGRATIONS_DIR = join(import.meta.dir, '..');
 const QUERIES_DIR = join(import.meta.dir, '..', '..', 'queries');
 
 const findMigration = (name: string): string => {
-  const files = readdirSync(MIGRATIONS_DIR).filter((f) => new RegExp(String.raw`^\d+_${name}\.sql$`).test(f));
+  const files = readdirSync(MIGRATIONS_DIR).filter((f) =>
+    new RegExp(String.raw`^\d+_${name}\.sql$`).test(f),
+  );
   if (files.length !== 1) {
-    throw new Error(`Expected exactly one *_${name}.sql, found ${files.length}`);
+    throw new Error(
+      `Expected exactly one *_${name}.sql, found ${files.length}`,
+    );
   }
   return readFileSync(join(MIGRATIONS_DIR, files[0]), 'utf8');
 };
@@ -27,13 +31,21 @@ const normalize = (sql: string): string =>
 
 const definition = (sql: string, name: string): string | undefined =>
   normalize(sql).match(
-    new RegExp(String.raw`CREATE OR REPLACE FUNCTION public\.${name}\(.*?\$\$ ?;`, 'i'),
+    new RegExp(
+      String.raw`CREATE OR REPLACE FUNCTION public\.${name}\(.*?\$\$ ?;`,
+      'i',
+    ),
   )?.[0];
 
 const rawDefinition = (sql: string, name: string): string | undefined =>
   sql
     .replace(/\r/g, '')
-    .match(new RegExp(String.raw`CREATE OR REPLACE FUNCTION public\.${name}\(.*?\n\$\$;`, 's'))?.[0];
+    .match(
+      new RegExp(
+        String.raw`CREATE OR REPLACE FUNCTION public\.${name}\(.*?\n\$\$;`,
+        's',
+      ),
+    )?.[0];
 
 const migration = findMigration('push_tokens');
 const newestRegister = findMigration('register_push_token_closed_account');
@@ -43,7 +55,9 @@ describe('push_tokens table', () => {
   test('has the registry columns', () => {
     expect(code).toContain('CREATE TABLE public.push_tokens');
     expect(code).toContain('id uuid PRIMARY KEY DEFAULT gen_random_uuid()');
-    expect(code).toContain('user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE');
+    expect(code).toContain(
+      'user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE',
+    );
     expect(code).toContain('token text NOT NULL UNIQUE');
     expect(code).toContain('platform text NOT NULL');
     expect(code).toContain('created_at timestamptz NOT NULL DEFAULT now()');
@@ -55,7 +69,9 @@ describe('push_tokens table', () => {
   test('restricts platform and token shape', () => {
     expect(code).toContain("CHECK (platform IN ('ios', 'android'))");
     expect(code).toContain('char_length(token) <= 255');
-    expect(code).toContain(String.raw`token ~ '^Expo(nent)?PushToken\[[^\]\s]+\]$'`);
+    expect(code).toContain(
+      String.raw`token ~ '^Expo(nent)?PushToken\[[^\]\s]+\]$'`,
+    );
   });
 
   test('indexes active tokens per user', () => {
@@ -65,9 +81,15 @@ describe('push_tokens table', () => {
   });
 
   test('enables RLS and closes the table to every client role', () => {
-    expect(code).toContain('ALTER TABLE public.push_tokens ENABLE ROW LEVEL SECURITY;');
-    expect(code).toContain('REVOKE ALL ON TABLE public.push_tokens FROM PUBLIC, anon, authenticated;');
-    expect(code).toContain('GRANT ALL ON TABLE public.push_tokens TO service_role;');
+    expect(code).toContain(
+      'ALTER TABLE public.push_tokens ENABLE ROW LEVEL SECURITY;',
+    );
+    expect(code).toContain(
+      'REVOKE ALL ON TABLE public.push_tokens FROM PUBLIC, anon, authenticated;',
+    );
+    expect(code).toContain(
+      'GRANT ALL ON TABLE public.push_tokens TO service_role;',
+    );
     expect(code).not.toMatch(/CREATE POLICY/i);
   });
 });
@@ -90,7 +112,11 @@ describe('push token RPCs', () => {
       expect(code).toContain(
         `GRANT EXECUTE ON FUNCTION public.${name}(${args.replace(/,/g, ', ')}) TO authenticated;`,
       );
-      expect(code).not.toMatch(new RegExp(`GRANT EXECUTE ON FUNCTION public\\.${name}[^;]*(anon|PUBLIC)`));
+      expect(code).not.toMatch(
+        new RegExp(
+          `GRANT EXECUTE ON FUNCTION public\\.${name}[^;]*(anon|PUBLIC)`,
+        ),
+      );
     });
   }
 
@@ -112,7 +138,9 @@ describe('push token RPCs', () => {
 
   test('unregister deletes only the caller own row and never raises for a missing one', () => {
     const def = definition(migration, 'fn_unregister_push_token')!;
-    expect(def).toContain('DELETE FROM public.push_tokens WHERE token = p_token AND user_id = v_user_id;');
+    expect(def).toContain(
+      'DELETE FROM public.push_tokens WHERE token = p_token AND user_id = v_user_id;',
+    );
     expect(def).not.toContain('NOT FOUND');
   });
 
@@ -123,8 +151,12 @@ describe('push token RPCs', () => {
 
 describe('account closure removes push tokens', () => {
   const closure = findMigration('close_account_push_tokens');
-  const canonical = readFileSync(join(QUERIES_DIR, 'auth', 'fn_close_account.sql'), 'utf8');
-  const deleteTokens = 'DELETE FROM public.push_tokens WHERE user_id = p_user_id;';
+  const canonical = readFileSync(
+    join(QUERIES_DIR, 'auth', 'fn_close_account.sql'),
+    'utf8',
+  );
+  const deleteTokens =
+    'DELETE FROM public.push_tokens WHERE user_id = p_user_id;';
 
   test('the migration and the canonical function delete the user tokens', () => {
     expect(definition(closure, 'fn_close_account')).toContain(deleteTokens);
@@ -133,7 +165,9 @@ describe('account closure removes push tokens', () => {
 
   test('the migration body equals the canonical function', () => {
     expect(rawDefinition(closure, 'fn_close_account')).toBeDefined();
-    expect(rawDefinition(closure, 'fn_close_account')).toBe(rawDefinition(canonical, 'fn_close_account'));
+    expect(rawDefinition(closure, 'fn_close_account')).toBe(
+      rawDefinition(canonical, 'fn_close_account'),
+    );
   });
 
   test('the closure stays service-role only', () => {
@@ -149,10 +183,14 @@ describe('account closure removes push tokens', () => {
 describe('canonical SQL parity', () => {
   for (const name of ['fn_register_push_token', 'fn_unregister_push_token']) {
     test(`${name} canonical file matches the migration`, () => {
-      const canonical = readFileSync(join(QUERIES_DIR, 'push', `${name}.sql`), 'utf8');
+      const canonical = readFileSync(
+        join(QUERIES_DIR, 'push', `${name}.sql`),
+        'utf8',
+      );
       expect(rawDefinition(canonical, name)).toBeDefined();
       // fn_register_push_token was redefined by the closed-account migration; the canonical file tracks the newest.
-      const newest = name === 'fn_register_push_token' ? newestRegister : migration;
+      const newest =
+        name === 'fn_register_push_token' ? newestRegister : migration;
       expect(rawDefinition(canonical, name)).toBe(rawDefinition(newest, name));
     });
   }
