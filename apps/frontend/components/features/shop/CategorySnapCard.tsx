@@ -5,8 +5,9 @@
  */
 
 import React from 'react';
-import { Pressable, StyleSheet, ImageBackground } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Box, Text } from '../../base';
@@ -79,33 +80,37 @@ const CategorySnapCardComponent = ({
             });
           }}
         >
-          <ImageBackground source={cat.img} style={StyleSheet.absoluteFill}>
-            <LinearGradient
-              colors={[theme.colors.scrimLight, theme.colors.scrimStrong]}
-              style={StyleSheet.absoluteFill}
-            />
-            <Box
-              flex={1}
-              justifyContent="center"
-              paddingHorizontal="xl"
-              // Solo la primera tira baja para no quedar bajo la SearchBar
-              style={{ paddingTop: index === 0 ? insets.top + 60 : 0 }}
+          {/* ImageBackground is deprecated in SDK 58: an absolute image sits behind the content. */}
+          <Image
+            source={cat.img}
+            contentFit="cover"
+            style={StyleSheet.absoluteFill}
+          />
+          <LinearGradient
+            colors={[theme.colors.scrimLight, theme.colors.scrimStrong]}
+            style={StyleSheet.absoluteFill}
+          />
+          <Box
+            flex={1}
+            justifyContent="center"
+            paddingHorizontal="xl"
+            // Solo la primera tira baja para no quedar bajo la SearchBar
+            style={{ paddingTop: index === 0 ? insets.top + 60 : 0 }}
+          >
+            <Text
+              variant="header-xl"
+              color="textPrimary"
+              style={{ fontSize: 32 }}
             >
-              <Text
-                variant="header-xl"
-                color="textPrimary"
-                style={{ fontSize: 32 }}
-              >
-                {t(`categoriesList.${cat.i18nKey}`)}
-              </Text>
-              <Box
-                width={40}
-                height={2}
-                backgroundColor="primary"
-                marginTop="s"
-              />
-            </Box>
-          </ImageBackground>
+              {t(`categoriesList.${cat.i18nKey}`)}
+            </Text>
+            <Box
+              width={40}
+              height={2}
+              backgroundColor="primary"
+              marginTop="s"
+            />
+          </Box>
         </Pressable>
       ))}
     </Box>

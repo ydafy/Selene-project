@@ -1,13 +1,22 @@
+type BlockedAction = { type: string };
+
 /**
- * Subscribes to the React Navigation `beforeRemove` event and returns the
- * unsubscribe function exactly as provided by the emitter. Returning this
- * function from a `useEffect` cleanup is the documented cleanup pattern.
+ * Decides what happens to a removal that `usePreventRemove` blocked.
+ *
+ * A `REPLACE` is how the sell flow leaves after publishing, so it is replayed
+ * at once. Every other removal (back gesture, header back, Android hardware
+ * back, navigating away) waits for the user to answer the discard dialog.
  */
-export const subscribeBeforeRemove = (
-  navigation: {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    addListener: (event: 'beforeRemove', listener: (e: any) => void) => () => void;
+export const routeBlockedRemove = <A extends BlockedAction>(
+  action: A,
+  handlers: {
+    proceed: (action: A) => void;
+    confirmExit: (action: A) => void;
   },
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  listener: (e: any) => void,
-): (() => void) => navigation.addListener('beforeRemove', listener);
+): void => {
+  if (action.type === 'REPLACE') {
+    handlers.proceed(action);
+    return;
+  }
+  handlers.confirmExit(action);
+};
