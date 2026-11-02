@@ -1,35 +1,36 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it, mock } from 'bun:test';
 
-import { subscribeBeforeRemove } from './navigationGuard';
+import { routeBlockedRemove } from './navigationGuard';
 
-describe('subscribeBeforeRemove', () => {
-  it('returns the unsubscribe function provided by the navigation emitter', () => {
-    const unsubscribe = () => {};
-    const navigation = {
-      addListener: () => unsubscribe,
-    };
+const setup = () => {
+  const proceed = mock<(action: { type: string }) => void>(() => {});
+  const confirmExit = mock<(action: { type: string }) => void>(() => {});
+  return { proceed, confirmExit };
+};
 
-    const result = subscribeBeforeRemove(navigation, () => {});
+describe('routeBlockedRemove', () => {
+  it('lets a REPLACE (publishing) through without opening the dialog', () => {
+    const { proceed, confirmExit } = setup();
+    const action = { type: 'REPLACE' };
 
-    expect(result).toBe(unsubscribe);
+    routeBlockedRemove(action, { proceed, confirmExit });
+
+    expect(proceed).toHaveBeenCalledTimes(1);
+    expect(proceed).toHaveBeenCalledWith(action);
+    expect(confirmExit).not.toHaveBeenCalled();
   });
 
-  it('registers the beforeRemove listener on the navigation object', () => {
-    const listener = () => {};
-    let registeredEvent = null as string | null;
-    let registeredListener = null as ((e: unknown) => void) | null;
+  it.each(['GO_BACK', 'POP', 'POP_TO_TOP', 'NAVIGATE', 'PUSH'])(
+    'asks for confirmation on %s and does not proceed',
+    (type) => {
+      const { proceed, confirmExit } = setup();
+      const action = { type };
 
-    const navigation = {
-      addListener: (event: string, l: (e: unknown) => void) => {
-        registeredEvent = event;
-        registeredListener = l;
-        return () => {};
-      },
-    };
+      routeBlockedRemove(action, { proceed, confirmExit });
 
-    subscribeBeforeRemove(navigation, listener);
-
-    expect(registeredEvent).toBe('beforeRemove');
-    expect(registeredListener).toBe(listener);
-  });
+      expect(confirmExit).toHaveBeenCalledTimes(1);
+      expect(confirmExit).toHaveBeenCalledWith(action);
+      expect(proceed).not.toHaveBeenCalled();
+    },
+  );
 });

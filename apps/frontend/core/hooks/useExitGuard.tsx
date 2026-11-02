@@ -1,55 +1,49 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 
-import { useNavigation, useRouter } from 'expo-router';
+import { useNavigation } from 'expo-router';
+import { usePreventRemove } from 'expo-router/react-navigation';
 import { useTranslation } from 'react-i18next';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'; // Ajusta la ruta si es necesario
 import { useSellStore } from '../store/useSellStore';
-import { subscribeBeforeRemove } from '../utils/navigationGuard';
+import { routeBlockedRemove } from '../utils/navigationGuard';
 
 export const useExitGuard = (enabled: boolean = true) => {
   const [showDialog, setShowDialog] = useState(false);
   const navigation = useNavigation();
-  const router = useRouter();
   const { t } = useTranslation('common');
   const { resetDraft } = useSellStore();
 
-  // Guardamos la acción de navegación pendiente para ejecutarla si el usuario confirma
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [pendingAction, setPendingAction] = useState<any>(null);
+  // La acción bloqueada se guarda para repetirla si el usuario confirma
+  const pendingAction = useRef<
+    Parameters<typeof navigation.dispatch>[0] | null
+  >(null);
 
-  useEffect(() => {
-    if (!enabled) return;
-
-    const unsubscribe = subscribeBeforeRemove(navigation, (e) => {
-      // Si es una acción de "Replace" (como cuando publicamos exitosamente), dejamos pasar
-      if (e.data.action.type === 'REPLACE') return;
-
-      // Prevenimos la navegación por defecto
-      e.preventDefault();
-
-      // Guardamos la acción y mostramos el diálogo
-      setPendingAction(e.data.action);
-      setShowDialog(true);
+  usePreventRemove(enabled, ({ data }) => {
+    // Si es una acción de "Replace" (como cuando publicamos exitosamente), dejamos pasar;
+    // el resto guarda la acción y muestra el diálogo
+    routeBlockedRemove(data.action, {
+      proceed: (action) => navigation.dispatch(action),
+      confirmExit: (action) => {
+        pendingAction.current = action;
+        setShowDialog(true);
+      },
     });
-
-    return unsubscribe;
-  }, [navigation, enabled]);
+  });
 
   const handleConfirm = useCallback(() => {
     setShowDialog(false);
-    resetDraft(); // Limpiamos el store porque el usuario decidió salir
 
-    if (pendingAction) {
-      navigation.dispatch(pendingAction);
-    } else {
-      // Fallback si no hay acción pendiente (ej. botón físico Android en casos raros)
-      router.back();
-    }
-  }, [pendingAction, navigation, router, resetDraft]);
+    const action = pendingAction.current;
+    if (!action) return;
+    pendingAction.current = null;
+
+    resetDraft(); // Limpiamos el store porque el usuario decidió salir
+    navigation.dispatch(action);
+  }, [navigation, resetDraft]);
 
   const handleCancel = useCallback(() => {
     setShowDialog(false);
-    setPendingAction(null);
+    pendingAction.current = null;
   }, []);
 
   // Retornamos el componente renderizable
