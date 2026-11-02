@@ -10,15 +10,14 @@ import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useTheme } from '@shopify/restyle';
-import { TextInput as RNTextInput, type ViewStyle } from 'react-native';
-import OTPTextInput from 'react-native-otp-textinput';
+import { TextInput as RNTextInput } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { z } from 'zod';
 
 import { ScreenLayout } from '../../components/layout/ScreenLayout';
 import { AuthBackButton } from '../../components/features/auth/AuthBackButton';
 import { FormTextInput } from '../../components/ui/FormTextInput';
+import { OtpInput, type OtpInputHandle } from '../../components/ui/OtpInput';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { AppImage } from '../../components/ui/AppImage';
 import { Box, Text } from '../../components/base';
@@ -26,7 +25,6 @@ import { TextLink } from '../../components/ui/TextLink';
 import { useAuth } from '../../core/hooks/useAuth';
 import { shouldStartCooldown } from '../../core/auth/resendCooldown.logic';
 import { useResendCooldown } from '../../core/auth/useResendCooldown';
-import { Theme } from '../../core/theme';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- Metro resolves static asset requires at bundle time
 const logoIconPath = require('../../assets/images/SeleneLunaLogo.png');
@@ -49,13 +47,12 @@ type ResetPasswordData = z.infer<ReturnType<typeof getResetPasswordSchema>>;
 
 export default function ResetPasswordScreen() {
   const { t } = useTranslation(['auth', 'common']);
-  const theme = useTheme<Theme>();
   const router = useRouter();
   const { resetPassword, sendPasswordResetOtp, loading } = useAuth();
   const { email } = useLocalSearchParams<{ email: string }>();
 
   const [otpCode, setOtpCode] = useState('');
-  const otpInputRef = useRef<OTPTextInput>(null);
+  const otpInputRef = useRef<OtpInputHandle>(null);
   const confirmInputRef = useRef<RNTextInput>(null);
   // The recovery code is single use: once verified, retries only update the password.
   const [codeVerified, setCodeVerified] = useState(false);
@@ -199,26 +196,9 @@ export default function ResetPasswordScreen() {
               {t('auth:codeLabel')}
             </Text>
 
-            <OTPTextInput
-              ref={otpInputRef}
-              handleTextChange={(val) => setOtpCode(val.trim())} // Sanitización básica
-              inputCount={6}
-              tintColor={theme.colors.primary}
-              offTintColor={theme.colors.textSecondary}
-              // The library types this prop as ViewStyle but applies it to its TextInput,
-              // so the text props below are valid at runtime (#148 replaces the library).
-              textInputStyle={
-                {
-                  width: 35,
-                  height: 50,
-                  color: theme.colors.textPrimary,
-                  fontFamily: 'Montserrat-Medium',
-                  borderBottomWidth: 2,
-                  borderWidth: 0,
-                } as ViewStyle
-              }
-              containerStyle={{ marginBottom: 24 }}
-            />
+            <Box marginBottom="l">
+              <OtpInput ref={otpInputRef} onChangeText={setOtpCode} />
+            </Box>
           </>
         )}
 

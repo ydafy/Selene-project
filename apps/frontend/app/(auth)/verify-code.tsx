@@ -7,13 +7,11 @@
 import React, { useState, useEffect } from 'react';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { useTheme } from '@shopify/restyle';
-import type { ViewStyle } from 'react-native';
-import OTPTextInput from 'react-native-otp-textinput';
 import Toast from 'react-native-toast-message';
 
 import { ScreenLayout } from '../../components/layout/ScreenLayout';
 import { AuthBackButton } from '../../components/features/auth/AuthBackButton';
+import { OtpInput } from '../../components/ui/OtpInput';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { TextLink } from '../../components/ui/TextLink';
 import { Box, Text } from '../../components/base';
@@ -21,11 +19,9 @@ import { useAuth } from '../../core/hooks/useAuth';
 import { mapAuthErrorKey } from '../../core/auth/authErrors.logic';
 import { shouldStartCooldown } from '../../core/auth/resendCooldown.logic';
 import { useResendCooldown } from '../../core/auth/useResendCooldown';
-import { Theme } from '../../core/theme';
 
 export default function VerifyCodeScreen() {
   const { t } = useTranslation(['auth', 'common']);
-  const theme = useTheme<Theme>();
   const router = useRouter();
 
   const { verifyOtp, resendSignUpOtp, loading } = useAuth();
@@ -125,27 +121,9 @@ export default function VerifyCodeScreen() {
           </Text>
         </Box>
 
-        <OTPTextInput
-          handleTextChange={(val) => setOtpCode(val.trim())}
-          inputCount={6}
-          tintColor={theme.colors.primary}
-          offTintColor={theme.colors.textSecondary}
-          // The library types this prop as ViewStyle but applies it to its TextInput,
-          // so the text props below are valid at runtime (#148 replaces the library).
-          textInputStyle={
-            {
-              width: 35,
-              height: 50,
-              color: theme.colors.textPrimary,
-              fontFamily: 'Montserrat-Medium',
-              borderBottomWidth: 2,
-              borderWidth: 0,
-            } as ViewStyle
-          }
-          containerStyle={{
-            marginBottom: theme.spacing.xl,
-          }}
-        />
+        <Box marginBottom="xl">
+          <OtpInput onChangeText={setOtpCode} />
+        </Box>
 
         <PrimaryButton
           onPress={handleVerifyCode}
