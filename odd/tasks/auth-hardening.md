@@ -66,6 +66,16 @@ Follow repository manual Supabase workflow: supply SQL/function/config handoff, 
 User decision (verbatim): "Decisión de producto (opción B): la publicación respeta la economía con la que se publicó. Una transición que solo cambia el estado (volver a VERIFIED o RESERVED, liberar una reserva, levantar una suspensión, cancelar un envío) acepta el snapshot sin revalidar contra las tarifas actuales. Un cambio de precio es un trato nuevo: recalcula el snapshot con las tarifas vigentes. Antes de implementar, verificá si create-connect-payment cobra con el snapshot o con las tarifas actuales y alinealo con el snapshot si hace falta."
 Acceptance: an update that leaves `price` and `shipping_cost` unchanged keeps the snapshot as is (still immutable) and is never refused for stale economics; an update that changes either must carry a snapshot equal to the current settings, as an insert does, and cannot clear it; checkout charges from the snapshot.
 
+### S12 — T11: auth close-out before the worktree closes
+User decision (verbatim, 2026-11-01): "#141: ¿qué ediciones de una publicación VERIFIED pueden guardarse sin volver a revisión? — Nombre, descripción, condition y usage"; "#174: ¿cómo cargamos los tipos de Expo en CI? — Paso nuevo en ci.yml"; scope "#141 y #174, #154 trigger duplicado, pgTAP de 2 bloqueos de cierre, Cierre del worktree".
+Acceptance:
+- An owner edit of a VERIFIED listing that changes only `name`, `description`, `condition` or `usage` is stored and keeps the listing VERIFIED.
+- An owner edit that keeps the listing VERIFIED and changes any other column is refused. Changing those other columns still requires PENDING_VERIFICATION, as today.
+- Admin edits are not limited by this rule.
+- The CI typecheck loads Expo's types.
+- `auth.users` has one update trigger for `fn_on_auth_user_updated`.
+- The `account_restricted` and `active_orders` closure blockers have pgTAP.
+
 ## Tasks
 
 - T0 | S1–S10 | inline | done | Save accepted roadmap and initial block-1 investigation | Commit: tracker in the T1c commit; proof: document readback and source-only investigation.
@@ -147,6 +157,12 @@ Acceptance: an update that leaves `price` and `shipping_cost` unchanged keeps th
 - T10f | S4,S10 | delegated writer (context backstop) | in progress (L172) | Roadmap #165 (part of #122): narrow `anon` and `authenticated` grants on the auth tables and admin views to the matrix in L172; pgTAP per role; maintainer applies the migration | Commit: a49e1324 + follow-up (L174).
 - T10g | S1 | delegated writer (context backstop) | in progress (L176) | Roadmap #166: retire the structural text tests whose rules pgTAP now proves at runtime; keep the ones that check something pgTAP does not | Commit: not created.
 - T10h | S1,S4-S9 | delegated writer (context backstop) | in progress (L178) | Roadmap #167: `docs/auth.md`, 1-2 pages: account states, who can do what, closure flow, CAPTCHA, where each rule lives, how to test | Commit: not created.
+- T11 | S12 | parent orchestration | in progress (L181) | Auth close-out on branch `chore/auth-closeout`; one PR | Commit: see T11a-T11e.
+- T11a | S12 | inline | pending | #174: CI step that writes `apps/frontend/expo-env.d.ts` before the typecheck | Commit: not created.
+- T11b | S8,S12 | inline | pending | pgTAP for the `account_restricted` and `active_orders` closure blockers | Commit: not created.
+- T11c | S12 | inline | pending | #154: drop the unguarded `tr_on_auth_user_updated` trigger (migration; maintainer applies) | Commit: not created.
+- T11d | S4,S12 | delegated writer | pending | #141: owner may keep a VERIFIED listing VERIFIED when only name, description, condition or usage change (policy + guard trigger; migration; maintainer applies) | Commit: not created.
+- T11e | S12 | inline | pending | Close the worktree: tracker, Engram, `bun run worktree:clean auth` plan for the maintainer | Commit: not created.
 
 ## Log
 
@@ -1299,3 +1315,8 @@ With T10h every item of roadmap #162 is merged or in its last PR. Auth is code-c
 - #178, the admin dashboard payout total;
 - #67, the 5-year ledger anonymization (2031);
 - the rest of #122, the grants outside the auth tables.
+
+### L181 — T11 starts: auth close-out
+User request (verbatim): "okey si me gusta, pregunta, lo que uiqero saber yo es que mas cabe en este woktree de auth, ya que como etsamos en las ultimas ya lo ocupo cerrar, entoncees dime que mas quieres meter aqui para que quede ya a un buen nivel. SObre 141 y 174, me gusta, dicutamos un poco sobre eso aqui, pero igual te pregunto lo de que mas meterias o nomas esos dos?" The decisions are quoted in S12.
+Left out on purpose: #178 (admin payouts, its own worktree), #153 (two of its four functions are disputes), the rest of #122 (non-auth tables).
+Design note for #141: opening only the policy would let a modified client change images, specifications or price while keeping VERIFIED. A guard trigger therefore limits a VERIFIED-to-VERIFIED owner edit to the four columns plus the server-maintained `updated_at` and `fts`.
