@@ -1276,3 +1276,13 @@ Review: native review of ce6b3ecb..d3c5f503 (reliability; tier high) approved an
 
 ### L178 — T10g closed; T10h starts
 PR #182 merged (772e68d1) after `test` and `db-test` passed; it closed roadmap item #166. T10h (#167), the last roadmap item, starts on branch `docs/auth-t10h-auth-doc`.
+
+### L179 — T10h: docs/auth.md
+The worker wrote `docs/auth.md` (157 lines). Sections: identity, account states with the action table, how a state changes, who can do what, sign-in and sessions and recovery, account closure with the blocker table, CAPTCHA, where each rule lives (rule, enforcing object, test), how to test, and pitfalls. Every named path, function, trigger, policy and reason code was checked against the repository and the local database. Parent edits: the client-readable admin views are named exactly, and the duplicate `auth.users` triggers point to #154.
+Gaps found and stated in the doc as the code's actual behaviour:
+- "closed" is not an `account_status` value: a closed account is `banned` with `status_reason = 'account_closed'` and `profiles.deleted_at`.
+- S4's withdrawal gate has no object any more: `fn_request_payout` was dropped with the legacy wallet, and payouts are admin-released through `release-connect-payout`, which does not check the seller's status.
+- The `account_restricted` and `active_orders` closure blockers have only a source-text test, with no pgTAP assertion.
+- The 5-year ledger anonymization of S8 is still #67.
+Checks: `bunx prettier --check docs/auth.md` clean. Docs only, so nothing else ran.
+Risk: none (documentation).
