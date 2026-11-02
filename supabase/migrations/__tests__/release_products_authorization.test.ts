@@ -58,15 +58,6 @@ describe('fn_release_products authorization migration', () => {
     },
   );
 
-  test.each([
-    ['migration', migration],
-    ['canonical file', canonical],
-  ])('%s has no session check', (_, sql) => {
-    const code = stripComments(sql);
-    expect(code).not.toContain('UNAUTHORIZED_NO_SESSION');
-    expect(code).not.toContain('request.jwt.claims');
-  });
-
   test('migration keeps the strict RESERVED -> VERIFIED guard', () => {
     const body = normalize(migration);
     expect(body).toContain("SET status = 'VERIFIED'");

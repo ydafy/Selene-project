@@ -83,32 +83,10 @@ describe('fn_release_listings helper', () => {
       functionStatement(migration, 'fn_release_listings'),
     );
   });
-
-  test('is internal: no client role, service_role only', () => {
-    const code = normalize(migration);
-    expect(code).toContain(
-      'REVOKE EXECUTE ON FUNCTION public.fn_release_listings(UUID[], BOOLEAN, BOOLEAN) FROM PUBLIC, anon, authenticated;',
-    );
-    expect(code).toContain(
-      'GRANT EXECUTE ON FUNCTION public.fn_release_listings(UUID[], BOOLEAN, BOOLEAN) TO service_role;',
-    );
-    expect(code).not.toMatch(
-      /GRANT EXECUTE ON FUNCTION public\.fn_release_listings[^;]*\b(anon|authenticated|PUBLIC)\b/i,
-    );
-  });
 });
 
 describe.each(callers)('%s uses the helper', (name, path) => {
   const canonical = canonicalFile(path);
-
-  test.each([
-    ['migration', migration],
-    ['canonical file', canonical],
-  ])('%s releases listings only through fn_release_listings', (_, sql) => {
-    const body = functionStatement(sql, name);
-    expect(body).toContain('public.fn_release_listings(');
-    expect(body).not.toMatch(/SET status = 'VERIFIED'/i);
-  });
 
   test('canonical body matches the migration body', () => {
     expect(functionStatement(canonical, name)).toBe(
@@ -132,20 +110,6 @@ describe('caller row filters', () => {
     );
     expect(body('fn_finalize_checkout_recovery')).toMatch(
       /fn_release_listings\( ARRAY\(.*oi\.order_id = v_order_id\), true, false \)/,
-    );
-  });
-
-  test('reserve cleanup is stale-only and the partial rollback is not', () => {
-    const reserve = body('fn_reserve_products');
-    expect(reserve).toMatch(/fn_release_listings\(p_product_ids, true, true\)/);
-    expect(reserve).toMatch(
-      /fn_release_listings\(v_reserved_ids, true, false\)/,
-    );
-  });
-
-  test('a cancelled shipment releases its listings whatever their status', () => {
-    expect(body('fn_cancel_shipment')).toMatch(
-      /fn_release_listings\( ARRAY\( .*oi\.shipment_id = p_shipment_id \), false, false \)/,
     );
   });
 

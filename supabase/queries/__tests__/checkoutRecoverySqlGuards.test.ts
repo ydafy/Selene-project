@@ -110,17 +110,6 @@ describe('checkout recovery SQL guards', () => {
     expect(finalize).toContain('p_stripe_refund_id');
   });
 
-  it('releases the order listings through the helper, RESERVED rows only, which clears reserved_at', () => {
-    const sql = readSql('supabase/queries/orders/checkout_recovery.sql');
-    const finalize = sql.slice(sql.indexOf('fn_finalize_checkout_recovery'));
-    const helper = readSql('supabase/queries/products/fn_release_listings.sql');
-
-    expect(finalize.replace(/\s+/g, ' ')).toContain(
-      'PERFORM public.fn_release_listings( ARRAY(SELECT oi.product_id FROM public.order_items oi WHERE oi.order_id = v_order_id), true, false )',
-    );
-    expect(helper).toContain('reserved_at = NULL');
-  });
-
   it('keeps an already-refunded order unchanged when a duplicate webhook upserts a shell', () => {
     const sql = readSql('supabase/queries/orders/checkout_recovery.sql');
     const upsertStart = sql.indexOf('fn_upsert_checkout_recovery_shell');

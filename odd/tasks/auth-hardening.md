@@ -145,6 +145,7 @@ Acceptance: an update that leaves `price` and `shipping_cost` unchanged keeps th
 - T10d | S1,S4 | inline | done (L168-L169) | Roadmap #163: CI job `db-test` starts the local stack and runs `supabase test db` on every PR; `supabase/AGENTS.md` updated | Commit: 391912c7.
 - T10e | S1 | inline | done (L170) | Roadmap #164: frontend typecheck at zero on Windows (OTP `textInputStyle` typed as the library declares it) | Commit: 9dcf0bc0.
 - T10f | S4,S10 | delegated writer (context backstop) | in progress (L172) | Roadmap #165 (part of #122): narrow `anon` and `authenticated` grants on the auth tables and admin views to the matrix in L172; pgTAP per role; maintainer applies the migration | Commit: a49e1324 + follow-up (L174).
+- T10g | S1 | delegated writer (context backstop) | in progress (L176) | Roadmap #166: retire the structural text tests whose rules pgTAP now proves at runtime; keep the ones that check something pgTAP does not | Commit: not created.
 
 ## Log
 
@@ -1251,3 +1252,23 @@ Remote readback (Supabase MCP, read-only, `has_table_privilege` for SELECT, INSE
 - `admin_connect_earnings_view`, `admin_seller_onboarding_view`, `admin_connect_payout_release_view`, `account_closures`: no client privilege.
 - anon has nothing beyond SELECT on `profiles`.
 `db:types` is not needed (grants only, no schema change).
+
+### L176 — T10f closed; T10g starts
+PR #180 merged (45eff03e) after `test` and `db-test` passed. It closed roadmap item #165 and is part of #122 (the other tables and the default privileges stay there). Open from T10f: #178 (the admin dashboard reads `admin_connect_payout_release_view` without a grant).
+T10g (#166) starts on branch `test/auth-t10g-retire-structural`. Rule for each structural test (a `bun:test` file under `supabase/migrations/__tests__/` or `supabase/queries/**/__tests__/` that reads SQL text): retire it only when a pgTAP file in `supabase/tests/database/` proves the same rule at runtime, and CI now gates that with `db-test`. Keep tests that check something pgTAP does not, for example that a migration file exists, that a canonical query file matches its migration, or rules with no runtime test yet.
+
+### L177 — T10g: structural tests retired
+The worker retired 11 cases in 7 files, each one only where a named pgTAP assertion proves the same rule; the parent deleted the one fully covered file (the worker cannot delete files). The test diff is deletions only (228 lines); the commit also adds this tracker entry.
+- `auth_grants_least_privilege.test.ts`, deleted: all 4 cases are covered by the `auth_grants.test.sql` matrix and its column-grant assertions.
+- `account_trust_boundaries.test.ts`: the inactive-caller rule and the profiles client writes (D4), covered by `account_rules` and `auth_grants`.
+- `account_status_lifecycle.test.ts`: banned is final, the lift restores only tracked listings, and no blanket restore to VERIFIED, covered by `account_rules` and `suspension_hold`.
+- `release_listings_helper.test.ts`: service-only execution, every caller releasing through the helper, stale-only cleanup against the full rollback, and a cancelled shipment releasing SOLD listings, covered by `suspension_hold`, `release_callers` and `publication_economics`.
+- `release_products_authorization.test.ts`: no session check, covered by `suspension_hold`.
+- `reservation_lifecycle_hardening.test.ts`: the all-or-nothing reservation, covered by `release_callers`.
+- `checkoutRecoverySqlGuards.test.ts`: the refund releases the listings through the helper, covered by `release_callers`.
+Kept on purpose: migration and canonical-file text, function grants with no pgTAP grant assertion, lock order, TTL boundaries, and the parts pgTAP does not exercise. Two cases are kept as unsure: recording the prior status without overwriting an existing hold, and the checkout release touching RESERVED rows only. Nothing was retired in `account_closure`, `reserve_deleted_username_prefix`, the publication-economics tests or the shipment cancellation tests.
+Checks (parent): `bun test supabase` 2770 pass, 0 fail, 226 files (was 2800 across 227); `bun run test:db` Files=9, Tests=313, PASS; `bun run lint` exit 0.
+Risk: item 6 (fewer tests). Each retired case maps to a pgTAP assertion that the required `db-test` check runs.
+Review: native review of ce6b3ecb..d3c5f503 (reliability; tier high) approved and acknowledged. Two warnings, both answered in the tracker:
+- The note said "deletions only", but the commit also adds the tracker entry. The wording is corrected above.
+- Deleting `auth_grants_least_privilege.test.ts` also dropped its check that the migration file exists, which L176 says to keep. Kept as an exception, because the check is still enforced: without the migration, `supabase db reset` leaves the full grants of `20261030150000_local_grants_parity.sql`, and every matrix assertion in `auth_grants.test.sql` fails in the required `db-test` check.

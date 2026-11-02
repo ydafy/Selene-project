@@ -141,28 +141,6 @@ describe('reservation lifecycle hardening migration', () => {
     }
   });
 
-  test('fn_reserve_products is all-or-nothing: no partial reservation on count mismatch', () => {
-    // When not every requested product can be reserved, the function must NOT
-    // leave a subset of products in RESERVED. It must release the tentative
-    // reservations made by this call so product statuses are unchanged except
-    // the legitimate stale-row pre-release.
-    const sql = findMigration();
-    // The reserve UPDATE captures reserved ids (so the rollback can target only
-    // the rows this call reserved, not unrelated RESERVED stock).
-    expect(sql).toMatch(/RETURNING\s+id\s*,\s*price/i);
-    // A rollback UPDATE releases the just-reserved rows on failure: scoped to a
-    // captured id array (NOT the requested array, and NOT TTL-conditioned so it
-    // is distinct from the legitimate stale pre-release).
-    expect(sql).toMatch(
-      /UPDATE\s+public\.products[\s\S]*?SET\s+status\s*=\s*'VERIFIED'[\s\S]*?reserved_at\s*=\s*NULL[\s\S]*?WHERE\s+id\s*=\s*ANY\(\s*v_reserved_ids\s*\)\s*AND\s+status\s*=\s*'RESERVED'/i,
-    );
-    // The rollback must live inside the failure branch, after a count-mismatch
-    // check against the full requested array.
-    expect(sql).toMatch(
-      /v_count\s*=\s*array_length\(\s*p_product_ids\s*,\s*1\s*\)/i,
-    );
-  });
-
   test('does not introduce AVAILABLE status or checkout_sessions table', () => {
     const sql = findMigration();
     // Guard against the forbidden status literal being written, not the word
@@ -251,20 +229,4 @@ describe('reservation lifecycle hardening RPC permission hardening', () => {
       expect(grantIdx).toBeGreaterThan(revokeIdx);
     });
   }
-});
-
-describe('reservation lifecycle hardening query source — all-or-nothing reserve', () => {
-  test('fn_reserve_products.sql rolls back partial reservations on count mismatch', () => {
-    const sql = readQuery('fn_reserve_products.sql');
-    // Reserve UPDATE captures reserved ids so the rollback only touches rows
-    // this call reserved, not unrelated RESERVED stock.
-    expect(sql).toMatch(/RETURNING\s+id\s*,\s*price/i);
-    // Rollback UPDATE on the failure path: scoped to the captured id array,
-    // strict RESERVED guard, no TTL condition (distinct from stale pre-release).
-    expect(sql).toMatch(
-      /PERFORM\s+public\.fn_release_listings\(\s*v_reserved_ids\s*,\s*true\s*,\s*false\s*\)/i,
-    );
-    // Count-mismatch check against the full requested array gates the rollback.
-    expect(sql).toMatch(/v_count\s*=\s*cardinality\(\s*p_product_ids\s*\)/i);
-  });
 });
