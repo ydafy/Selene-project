@@ -160,8 +160,8 @@ Acceptance:
 - T11 | S12 | parent orchestration | in progress (L181) | Auth close-out on branch `chore/auth-closeout`; one PR | Commit: see T11a-T11e.
 - T11a | S12 | inline | done (L182) | #174: CI step that writes `apps/frontend/expo-env.d.ts` before the typecheck | Commit: not created.
 - T11b | S8,S12 | inline | done (L183) | pgTAP for the `account_restricted` and `active_orders` closure blockers | Commit: not created.
-- T11c | S12 | inline | done (L184; apply pending) | #154: drop the unguarded `tr_on_auth_user_updated` trigger (migration; maintainer applies) | Commit: not created.
-- T11d | S4,S12 | delegated writer | done (L185; apply pending) | #141: owner may keep a VERIFIED listing VERIFIED when only name, description, condition or usage change (policy + guard trigger; migration; maintainer applies) | Commit: not created.
+- T11c | S12 | inline | done (L184, applied L187) | #154: drop the unguarded `tr_on_auth_user_updated` trigger (migration; maintainer applies) | Commit: not created.
+- T11d | S4,S12 | delegated writer | done (L185, applied L187) | #141: owner may keep a VERIFIED listing VERIFIED when only name, description, condition or usage change (policy + guard trigger; migration; maintainer applies) | Commit: not created.
 - T11e | S12 | inline | pending | Close the worktree: tracker, Engram, `bun run worktree:clean auth` plan for the maintainer | Commit: not created.
 
 ## Log
@@ -1373,3 +1373,11 @@ Review: native review of 580e545b..03af24ee (risk, reliability; tier high) appro
 
 ### L186 — T11a-T11c review; PR
 Native review of 820423df..580e545b (T11a-T11c; resilience, reliability; tier high) approved and acknowledged with no findings. The review candidate is the working tree, so the parent checked out 580e545b detached for this review and switched back to the branch afterwards.
+
+### L187 — T11 migrations applied
+Maintainer (verbatim): "migracion aplicada master con susces las dos, checaals y dime que falta". Remote readback (Supabase MCP, read-only):
+- `auth.users` has only `on_auth_user_updated` (`WHEN old.email IS DISTINCT FROM new.email`); `tr_on_auth_user_updated` is gone.
+- `products` has `tr_product_verified_edit_guard` (BEFORE UPDATE).
+- `products_update_owner` WITH CHECK lists PENDING_VERIFICATION, VERIFIED, HIDDEN and IN_REVIEW. The other USING and WITH CHECK conditions are unchanged.
+- `guard_owner_verified_edit` is SECURITY INVOKER, has `search_path=public, pg_temp`, and EXECUTE only for postgres and service_role. Its body has the `to_jsonb(NEW)` comparison and the `VERIFIED_EDIT_REQUIRES_REVIEW` raise.
+`db:types` is not needed (no schema change).
