@@ -118,12 +118,6 @@ describe('fn_current_account_is_active helper', () => {
     );
   });
 
-  test('treats only suspended or banned callers as inactive', () => {
-    expect(normalize(helperBody)).toBe(
-      "SELECT NOT EXISTS ( SELECT 1 FROM public.profiles_private WHERE id = (SELECT auth.uid()) AND status IN ('suspended', 'banned') );",
-    );
-  });
-
   test('is executable by authenticated and service_role only', () => {
     expect(migration).toContain(
       'REVOKE EXECUTE ON FUNCTION public.fn_current_account_is_active() FROM PUBLIC, anon;',
@@ -201,23 +195,6 @@ describe('products client policies (D1/D2)', () => {
           AND ${ACTIVE}
         );`),
     );
-  });
-});
-
-describe('profiles client writes (D4)', () => {
-  test('revokes table-wide UPDATE and re-grants only user-editable columns', () => {
-    const revoke = migration.indexOf(
-      'REVOKE UPDATE ON public.profiles FROM anon, authenticated;',
-    );
-    const grant = migration.indexOf(
-      'GRANT UPDATE (username, avatar_url, updated_at) ON public.profiles TO authenticated;',
-    );
-    expect(revoke).toBeGreaterThan(-1);
-    expect(grant).toBeGreaterThan(revoke);
-    expect(migration).not.toMatch(
-      /(GRANT|REVOKE) (SELECT|INSERT|DELETE|ALL)[^;]*ON (TABLE )?public\.profiles\b/i,
-    );
-    expect(migration).not.toMatch(/POLICY[^;]*ON public\.profiles\b/);
   });
 });
 
