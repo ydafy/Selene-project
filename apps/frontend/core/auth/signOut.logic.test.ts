@@ -95,3 +95,88 @@ describe('runCleanupSteps', () => {
     expect(() => runCleanupSteps([() => undefined])).not.toThrow();
   });
 });
+
+describe('runSignOut push unregister', () => {
+  it('unregisters the push token before signing out', async () => {
+    const calls: string[] = [];
+    await runSignOut({
+      scope: 'local',
+      unregisterPush: async () => {
+        calls.push('unregister');
+      },
+      signOut: async () => {
+        calls.push('signOut');
+        return { error: null };
+      },
+      cleanup: () => {
+        calls.push('cleanup');
+      },
+    });
+    expect(calls).toEqual(['unregister', 'signOut', 'cleanup']);
+  });
+
+  it('still signs out with the same result when unregister throws', async () => {
+    const calls: string[] = [];
+    const result = await runSignOut({
+      scope: 'local',
+      unregisterPush: async () => {
+        throw new Error('offline');
+      },
+      signOut: async () => {
+        calls.push('signOut');
+        return { error: null };
+      },
+      cleanup: () => {
+        calls.push('cleanup');
+      },
+    });
+    expect(calls).toEqual(['signOut', 'cleanup']);
+    expect(result).toEqual({ success: true, error: null });
+  });
+
+  it('keeps the signOut error when unregister also fails', async () => {
+    const failure = new Error('network');
+    const result = await runSignOut({
+      scope: 'local',
+      unregisterPush: async () => {
+        throw new Error('offline');
+      },
+      signOut: async () => ({ error: failure }),
+      cleanup: () => {},
+    });
+    expect(result).toEqual({ success: false, error: failure });
+  });
+
+  it('runs cleanup when signOut fails and no unregister is given', async () => {
+    let cleaned = false;
+    const result = await runSignOut({
+      scope: 'global',
+      signOut: async () => ({ error: new Error('x') }),
+      cleanup: () => {
+        cleaned = true;
+      },
+    });
+    expect(cleaned).toBe(true);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('runSignOut when unregister never settles', () => {
+  it('signs out after the unregister time limit', async () => {
+    const calls: string[] = [];
+    const result = await runSignOut({
+      scope: 'local',
+      unregisterPush: () => new Promise<void>(() => {}),
+      unregisterTimeoutMs: 10,
+      signOut: async () => {
+        calls.push('signOut');
+        return { error: null };
+      },
+      cleanup: () => {
+        calls.push('cleanup');
+      },
+    });
+    expect(result).toEqual({ success: true, error: null });
+    expect(calls).toEqual(['signOut', 'cleanup']);
+  });
+});

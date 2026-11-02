@@ -32,6 +32,7 @@ import { AuthModalProvider } from '../core/auth/AuthModalProvider';
 import { CaptchaProvider } from '../core/auth/captcha/CaptchaProvider';
 import { NotificationWatcher } from '../components/features/notifications/NotificationWatcher';
 
+import { PushRegistration } from '../components/features/notifications/PushRegistration';
 import { OfflineNotice } from '../components/ui/OfflineNotice';
 
 import { queryClient } from '../core/db/queryClient';
@@ -157,6 +158,7 @@ export default function RootLayout() {
                   </AuthModalProvider>
                 </CaptchaProvider>
                 <NotificationWatcher />
+                <PushRegistration />
               </AuthProvider>
             </NavThemeProvider>
             <Toast config={toastConfig} />
