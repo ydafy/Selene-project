@@ -157,12 +157,12 @@ Acceptance:
 - T10f | S4,S10 | delegated writer (context backstop) | in progress (L172) | Roadmap #165 (part of #122): narrow `anon` and `authenticated` grants on the auth tables and admin views to the matrix in L172; pgTAP per role; maintainer applies the migration | Commit: a49e1324 + follow-up (L174).
 - T10g | S1 | delegated writer (context backstop) | in progress (L176) | Roadmap #166: retire the structural text tests whose rules pgTAP now proves at runtime; keep the ones that check something pgTAP does not | Commit: not created.
 - T10h | S1,S4-S9 | delegated writer (context backstop) | in progress (L178) | Roadmap #167: `docs/auth.md`, 1-2 pages: account states, who can do what, closure flow, CAPTCHA, where each rule lives, how to test | Commit: not created.
-- T11 | S12 | parent orchestration | in progress (L181) | Auth close-out on branch `chore/auth-closeout`; one PR | Commit: see T11a-T11e.
+- T11 | S12 | parent orchestration | done (L188) | Auth close-out on branch `chore/auth-closeout`; one PR | Commit: see T11a-T11e.
 - T11a | S12 | inline | done (L182) | #174: CI step that writes `apps/frontend/expo-env.d.ts` before the typecheck | Commit: not created.
 - T11b | S8,S12 | inline | done (L183) | pgTAP for the `account_restricted` and `active_orders` closure blockers | Commit: not created.
 - T11c | S12 | inline | done (L184, applied L187) | #154: drop the unguarded `tr_on_auth_user_updated` trigger (migration; maintainer applies) | Commit: not created.
 - T11d | S4,S12 | delegated writer | done (L185, applied L187) | #141: owner may keep a VERIFIED listing VERIFIED when only name, description, condition or usage change (policy + guard trigger; migration; maintainer applies) | Commit: not created.
-- T11e | S12 | inline | pending | Close the worktree: tracker, Engram, `bun run worktree:clean auth` plan for the maintainer | Commit: not created.
+- T11e | S12 | inline | done (L188) | Close the worktree: tracker, Engram, `bun run worktree:clean auth` plan for the maintainer | Commit: not created.
 
 ## Log
 
@@ -1381,3 +1381,22 @@ Maintainer (verbatim): "migracion aplicada master con susces las dos, checaals y
 - `products_update_owner` WITH CHECK lists PENDING_VERIFICATION, VERIFIED, HIDDEN and IN_REVIEW. The other USING and WITH CHECK conditions are unchanged.
 - `guard_owner_verified_edit` is SECURITY INVOKER, has `search_path=public, pg_temp`, and EXECUTE only for postgres and service_role. Its body has the `to_jsonb(NEW)` comparison and the `VERIFIED_EDIT_REQUIRES_REVIEW` raise.
 `db:types` is not needed (no schema change).
+
+### L188 — Auth closed; the worktree can go
+PR #188 merged (f14c7a8d) after `test` and `db-test` passed. It closed #141, #154 and #174.
+Final state:
+- Auth is code-complete. 11 pgTAP files (356 assertions) run as the required `db-test` check.
+- `docs/auth.md` maps every rule to the object that enforces it and to its test.
+- Every migration from this feature is applied to production and read back.
+Open, outside auth:
+- #178: the admin dashboard payout total;
+- #153: EXCEPTION-handler logs (disputes);
+- the rest of #122 (the non-auth grants);
+- #67: the 5-year ledger anonymization (2031).
+Launch-week configuration: `docs/go-live.md` section 10 (T6b SMTP, T6h CAPTCHA keys, leaked-password protection and Site URL, T6i legal text).
+Device checks for the go-live pass:
+- the re-price dialog;
+- editing the description of a VERIFIED listing (it saves and stays on sale);
+- the account-deletion flow and "Usuario eliminado";
+- the blocked-account screen.
+Worktree removal (maintainer, from the main checkout, per `docs/worktrees.md`): `bun run worktree:clean auth` to see the plan, then the same command with `--yes`.
