@@ -356,4 +356,12 @@ Sentry creates the `cron-watchdog` Cron Monitor on its first check-in (free plan
 1. `get_advisors` security and performance: no new findings.
 2. A real end-to-end purchase, label, delivery, and payout with live keys and a small amount.
 3. One manual pass of the main journeys in the app and admin-web (purchase, cancellation with refund, notifications, admin Payments "Necesita atención"). It looks for what automated checks cannot see: confusing copy, layout, real-device behavior. Logic is already covered by the automated checks in `AGENTS.md`, "Verifying a change".
+   Auth journeys in that pass, on a real device unless noted:
+   - Sign up with email, receive the 6-digit code, verify. Sign in with Google: the first time, then again.
+   - Forgot password: the code arrives and the new password works. Change the password in Settings: it asks for the current one.
+   - Change the email and confirm from both inboxes. The link opens Settings.
+   - Edit only the description of a VERIFIED listing: it saves and stays on sale. Change its price: the re-price dialog shows and the listing goes to review.
+   - Delete an account: the re-sign-in step, the "what is deleted and what is kept" copy, and other users then see "Usuario eliminado".
+   - A suspended account sees the suspension notice; a banned account sees only the blocked-account screen with its reason.
+   - Admin-web: log in with the CAPTCHA; a non-admin account is refused.
 4. Every cron job shows successful runs in `cron.job_run_details`.
