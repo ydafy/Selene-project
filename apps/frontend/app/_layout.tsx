@@ -33,6 +33,7 @@ import { CaptchaProvider } from '../core/auth/captcha/CaptchaProvider';
 import { NotificationWatcher } from '../components/features/notifications/NotificationWatcher';
 
 import { PushRegistration } from '../components/features/notifications/PushRegistration';
+import { PushPermissionPrompt } from '../components/features/notifications/PushPermissionPrompt';
 import { OfflineNotice } from '../components/ui/OfflineNotice';
 
 import { queryClient } from '../core/db/queryClient';
@@ -159,6 +160,7 @@ export default function RootLayout() {
                 </CaptchaProvider>
                 <NotificationWatcher />
                 <PushRegistration />
+                <PushPermissionPrompt />
               </AuthProvider>
             </NavThemeProvider>
             <Toast config={toastConfig} />

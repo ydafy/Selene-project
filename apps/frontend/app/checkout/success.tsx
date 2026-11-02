@@ -11,6 +11,7 @@ import { Box, Text } from '../../components/base';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { Theme } from '../../core/theme';
 import { useCheckoutStore } from '../../core/store/useCheckoutStore';
+import { offerPushPermission } from '../../core/push/pushPermission';
 
 // Mount entrance: scale 0.5 -> 1 with a fade, driven by a spring.
 const iconEntering = () => {
@@ -39,6 +40,9 @@ export default function SuccessScreen() {
     // 2. Limpieza de Estado del Checkout (Para la próxima compra)
     // El carrito ya se limpió en payment.tsx, aquí limpiamos selección de UI
     resetCheckout();
+
+    // First completed purchase: a moment with value to offer push (L6).
+    void offerPushPermission('purchase');
 
     // 3. Bloqueo de Botón Atrás (Android)
     const backAction = () => {
