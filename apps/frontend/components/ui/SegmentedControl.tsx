@@ -1,6 +1,12 @@
+import { useEffect, type ReactNode } from 'react';
 import { TouchableOpacity, StyleSheet } from 'react-native';
 import { useTheme } from '@shopify/restyle';
-import { MotiView } from 'moti';
+import Animated, {
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { Box, Text } from '../base';
 import { Theme } from '../../core/theme';
 import { colors } from '@/core/theme/tokens';
@@ -12,6 +18,42 @@ type SegmentedControlProps = {
   // NUEVA PROP: Array de booleanos para mostrar puntos rojos
   // Ejemplo: [false, true] -> Muestra punto en la segunda opción
   badges?: boolean[];
+};
+
+// Fondo de la opción: transparente -> color primario al seleccionarla.
+const SegmentBackground = ({
+  isSelected,
+  children,
+}: {
+  isSelected: boolean;
+  children: ReactNode;
+}) => {
+  const theme = useTheme<Theme>();
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    progress.value = withTiming(isSelected ? 1 : 0, { duration: 200 });
+  }, [isSelected, progress]);
+
+  const backgroundStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(
+      progress.value,
+      [0, 1],
+      ['transparent', theme.colors.primary],
+    ),
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        styles.itemContainer,
+        isSelected && styles.shadow,
+        backgroundStyle,
+      ]}
+    >
+      {children}
+    </Animated.View>
+  );
 };
 
 export const SegmentedControl = ({
@@ -44,19 +86,7 @@ export const SegmentedControl = ({
             accessibilityLabel={option}
             accessibilityState={{ selected: isSelected }}
           >
-            <MotiView
-              from={{ backgroundColor: 'transparent' }}
-              animate={{
-                backgroundColor: isSelected
-                  ? theme.colors.primary
-                  : 'transparent',
-              }}
-              transition={{
-                type: 'timing',
-                duration: 200,
-              }}
-              style={[styles.itemContainer, isSelected && styles.shadow]}
-            >
+            <SegmentBackground isSelected={isSelected}>
               {/* Contenedor relativo para texto y badge */}
               <Box flexDirection="row" alignItems="center">
                 <Text
@@ -90,7 +120,7 @@ export const SegmentedControl = ({
                   />
                 )}
               </Box>
-            </MotiView>
+            </SegmentBackground>
           </TouchableOpacity>
         );
       })}

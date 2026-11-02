@@ -1,4 +1,11 @@
-import { MotiView } from 'moti';
+import { useEffect } from 'react';
+import Animated, {
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 import { useTheme } from '@shopify/restyle';
 import { Theme } from '../../core/theme';
 
@@ -21,23 +28,22 @@ export const Skeleton = ({
   marginTop,
 }: SkeletonProps) => {
   const theme = useTheme<Theme>();
+  const opacity = useSharedValue(0.3); // Empieza muy transparente
+
+  // Efecto "Pulse": sube hasta 0.7 (no llega a sólido total) y vuelve, sin fin
+  useEffect(() => {
+    opacity.value = withRepeat(
+      withTiming(0.7, { duration: 900 }), // Un poco más rápido para que se sienta "vivo"
+      -1,
+      true, // Ida y vuelta (yoyo)
+    );
+    return () => cancelAnimation(opacity);
+  }, [opacity]);
+
+  const pulseStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
   return (
-    <MotiView
-      // 1. Configuración de la Animación (El efecto "Pulse")
-      from={{
-        opacity: 0.3, // Empieza muy transparente (casi invisible)
-      }}
-      animate={{
-        opacity: 0.7, // Sube hasta un 70% de visibilidad (no llega a sólido total)
-      }}
-      transition={{
-        type: 'timing',
-        duration: 900, // Un poco más rápido para que se sienta "vivo"
-        loop: true, // Repetir infinitamente
-        // Moti hace un "yoyo" (ida y vuelta) por defecto con loop: true
-      }}
-      // 2. Estilos Base
+    <Animated.View
       style={[
         {
           width: width,
@@ -49,6 +55,7 @@ export const Skeleton = ({
           backgroundColor: theme.colors.skeletonShimmer,
           borderRadius: borderRadius || theme.spacing.s,
         },
+        pulseStyle,
         style,
       ]}
     />
