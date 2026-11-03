@@ -32,10 +32,29 @@ const ROUTE_MAP: RouteEntry[] = [
   { pattern: '/verify/[id]', params: ['id'] },
 ];
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// The only path with a query: one shipment of an order, as
+// /profile/orders/<order uuid>?shipment_id=<shipment uuid>.
+const ORDER_SHIPMENT_PATH =
+  /^\/profile\/orders\/([^/?#]+)\?shipment_id=([^&#]+)$/;
+
+function resolveQueryPath(actionPath: string): string {
+  const match = ORDER_SHIPMENT_PATH.exec(actionPath);
+  if (match && UUID.test(match[1]) && UUID.test(match[2])) {
+    return actionPath;
+  }
+  return '/profile/notifications';
+}
+
 /**
  * Resolve an action_path to a valid Expo Router path, or the fallback.
  */
 function resolvePath(actionPath: string): string {
+  if (/[?#]/.test(actionPath)) {
+    return resolveQueryPath(actionPath);
+  }
+
   // Check static and redirect routes first
   const staticEntry = ROUTE_MAP.find(
     (entry) => entry.pattern === actionPath && entry.params.length === 0,
