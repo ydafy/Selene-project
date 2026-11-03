@@ -37,7 +37,7 @@ tests {
     rows.forEach((r) => {
       expect(r.user_id).to.equal(bru.getVar("msBuyerId"));
       expect(r.read).to.equal(false);
-      expect(r.action_path).to.equal("/profile/orders/" + bru.getVar("msOrderId"));
+      expect(r.action_path).to.equal("/profile/orders/" + bru.getVar("msOrderId") + "?shipment_id=" + r.event_payload.shipment_id);
       expect(r.event_payload.order_id).to.equal(bru.getVar("msOrderId"));
       expect(r.event_payload.recipient_role).to.equal("buyer");
       expect(r.source_event_key).to.equal(r.event_kind + ":" + r.event_payload.shipment_id);

@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/rest/v1/notifications?event_kind=eq.shipment.cancelled&source_event_key=eq.shipment.cancelled:{{shipmentIdB}}&select=user_id&order=user_id
+  url: {{baseUrl}}/rest/v1/notifications?event_kind=eq.shipment.cancelled&source_event_key=eq.shipment.cancelled:{{shipmentIdB}}&select=user_id,action_path&order=user_id
   body: none
   auth: none
 }
@@ -19,6 +19,12 @@ tests {
   test("the buyer and the seller are told once", function () {
     expect(res.getStatus()).to.equal(200);
     expect(res.getBody().map((n) => n.user_id).sort()).to.deep.equal([bru.getVar("orderBuyerId"), "00000000-0000-4000-8000-000000000002"].sort());
+  });
+
+  test("T13: both notices open the cancelled shipment, not the order summary", function () {
+    for (const n of res.getBody()) {
+      expect(n.action_path).to.equal("/profile/orders/" + bru.getVar("orderIdB") + "?shipment_id=" + bru.getVar("shipmentIdB"));
+    }
   });
 }
 

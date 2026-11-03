@@ -35,7 +35,7 @@ tests {
     expect(row.type).to.equal("warning");
     expect(row.title).to.equal("Genera la guía de tu venta");
     expect(row.message).to.equal("Si no generas la guía en 8 horas, cancelaremos la venta y reembolsaremos al comprador.");
-    expect(row.action_path).to.equal("/profile/orders/" + bru.getVar("dlOrderId"));
+    expect(row.action_path).to.equal("/profile/orders/" + bru.getVar("dlOrderId") + "?shipment_id=" + bru.getVar("dlShipmentId"));
     expect(row.event_payload.shipment_id).to.equal(bru.getVar("dlShipmentId"));
     expect(row.event_payload.order_id).to.equal(bru.getVar("dlOrderId"));
     expect(row.event_payload.recipient_role).to.equal("seller");

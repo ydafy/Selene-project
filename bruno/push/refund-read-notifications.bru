@@ -35,7 +35,7 @@ tests {
     expect(row.read).to.equal(false);
     expect(row.title).to.equal("Te devolvimos tu dinero");
     expect(row.message).to.equal("Reembolsamos tu compra a tu método de pago. Puede tardar de 5 a 10 días hábiles en verse en tu estado de cuenta.");
-    expect(row.action_path).to.equal("/profile/orders/" + bru.getVar("rfOrderId"));
+    expect(row.action_path).to.equal("/profile/orders/" + bru.getVar("rfOrderId") + "?shipment_id=" + bru.getVar("rfShipmentId"));
   });
 
   test("S4: the payload carries the shipment, the order, the dispute and the buyer role", function () {
