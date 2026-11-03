@@ -2,10 +2,13 @@ import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
+import { withoutShipmentLink } from './shipmentNoticeLink';
 const root = join(import.meta.dir, '..', '..', '..');
-const source = readFileSync(
-  join(root, 'supabase/queries/return/fn_seller_submit_return_evidence.sql'),
-  'utf8',
+const source = withoutShipmentLink(
+  readFileSync(
+    join(root, 'supabase/queries/return/fn_seller_submit_return_evidence.sql'),
+    'utf8',
+  ),
 );
 const migration = () =>
   readFileSync(

@@ -61,7 +61,8 @@ BEGIN
         ) VALUES (
             v_buyer_id, 'info', 'Tu disputa se reabrió para revisión',
             'El vendedor reportó un problema con el producto devuelto y presentó evidencia. La misma disputa se reabrió para revisar esa evidencia. Consulta los detalles del caso en tu pedido.',
-            '/profile/orders/' || v_order_id::text,
+            '/profile/orders/' || v_order_id::text
+              || COALESCE('?shipment_id=' || v_shipment_id::text, ''),
             'return.seller_evidence_submitted',
             'return.seller_evidence_submitted:' || p_dispute_id::text || ':' || v_occurrence_id,
             jsonb_build_object('dispute_id', p_dispute_id, 'order_id', v_order_id,

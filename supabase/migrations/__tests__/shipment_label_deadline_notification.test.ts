@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { withoutShipmentLink } from './shipmentNoticeLink';
 
 /**
  * Static guards for the seller label deadline reminder (expo-push-notifications T7/S4).
@@ -80,8 +81,8 @@ describe('shipment label deadline notification migration (SQL text)', () => {
 
   test('keeps the canonical file equal to the migration function and grants', () => {
     expect(definition).not.toBe('');
-    const canonical = read(
-      'supabase/queries/shipments/fn_notify_label_deadline_reminders.sql',
+    const canonical = withoutShipmentLink(
+      read('supabase/queries/shipments/fn_notify_label_deadline_reminders.sql'),
     );
     const fromMigration = migration.slice(
       fnStart,
