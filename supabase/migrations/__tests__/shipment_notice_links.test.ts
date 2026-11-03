@@ -159,4 +159,22 @@ describe('shipment notice links (SQL text)', () => {
       );
     },
   );
+
+  test('every order link in the canonical SQL names its shipment, except the order-scoped payment notice', () => {
+    // order.payment_confirmed tells the buyer and each seller about the whole order.
+    const orderScoped = new Set([
+      'orders/fn_create_shipments_from_single_payment.sql',
+    ]);
+    const queries = join(root, 'supabase/queries');
+    const files = readdirSync(queries, { recursive: true })
+      .map(String)
+      .filter((path) => path.endsWith('.sql'))
+      .map((path) => path.replace(/\\/g, '/'));
+    const unlinked = files.flatMap((path) =>
+      orderLinks(read(`supabase/queries/${path}`))
+        .filter((link) => !link.includes('?shipment_id='))
+        .map(() => path),
+    );
+    expect(unlinked).toEqual([...orderScoped]);
+  });
 });
