@@ -129,6 +129,11 @@ const PRODUCERS: [string, string, string][] = [
     'disputes/fn_resolve_dispute_to_seller_as_admin.sql',
     'v_shipment_id',
   ],
+  [
+    'fn_complete_shipment_transfer',
+    'payments/shipment_transfer_coordination.sql',
+    'p_shipment_id',
+  ],
 ];
 
 const shipmentLink = (shipment: string) =>
