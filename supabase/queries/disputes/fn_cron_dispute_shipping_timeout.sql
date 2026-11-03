@@ -40,7 +40,8 @@ BEGIN
                     event_kind, source_event_key, event_payload
                 )
                 SELECT recipients.user_id, recipients.type, recipients.title,
-                       recipients.message, '/profile/orders/' || v_dispute.order_id::text,
+                       recipients.message, '/profile/orders/' || v_dispute.order_id::text
+                         || COALESCE('?shipment_id=' || v_dispute.shipment_id::text, ''),
                        'dispute.verdict',
                        'dispute.verdict:' || v_dispute.id::text || ':shipping_timeout',
                        jsonb_build_object('dispute_id', v_dispute.id, 'order_id', v_dispute.order_id, 'recipient_role', recipients.recipient_role)

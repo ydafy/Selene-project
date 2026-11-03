@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/rest/v1/notifications?event_kind=eq.dispute.verdict&source_event_key=like.dispute.verdict:{{t5Disp4}}:*&select=user_id&order=user_id
+  url: {{baseUrl}}/rest/v1/notifications?or=(source_event_key.like.dispute.verdict:{{t5Disp4}}:*,source_event_key.eq.dispute.opened:{{t5Disp4}})&select=user_id,event_kind,action_path&order=event_kind,user_id
   body: none
   auth: none
 }
@@ -18,10 +18,20 @@ headers {
 tests {
   test("the seller and the buyer are notified once", function () {
     expect(res.getStatus()).to.equal(200);
-    expect(res.getBody()).to.deep.equal([{ user_id: "00000000-0000-4000-8000-000000000004" }, { user_id: "00000000-0000-4000-8000-000000000005" }]);
+    const verdicts = res.getBody().filter((n) => n.event_kind === "dispute.verdict");
+    expect(verdicts.map((n) => n.user_id)).to.deep.equal(["00000000-0000-4000-8000-000000000004", "00000000-0000-4000-8000-000000000005"]);
+  });
+
+  test("T13: the opened and verdict notices open the disputed shipment, not the order summary", function () {
+    const rows = res.getBody();
+    expect(rows.filter((n) => n.event_kind === "dispute.opened").map((n) => n.user_id)).to.deep.equal(["00000000-0000-4000-8000-000000000004"]);
+    expect(rows.length).to.equal(3);
+    for (const n of rows) {
+      expect(n.action_path).to.equal("/profile/orders/" + bru.getVar("t5Order") + "?shipment_id=" + bru.getVar("t5Ship4"));
+    }
   });
 }
 
 docs {
-  One verdict notice per participant.
+  One verdict notice per participant, plus the seller's dispute.opened notice written when the setup inserted the dispute. Every link names the disputed shipment (T13).
 }

@@ -175,6 +175,7 @@ BEGIN
       'Enviamos $' || to_char(v_mapping.net_payout / 100.0, 'FM999,999,990.00')
         || ' MXN a tu cuenta de vendedor. El depósito a tu banco puede tardar unos días hábiles.',
       '/profile/orders/' || v_shipment.order_id::text
+        || COALESCE('?shipment_id=' || p_shipment_id::text, '')
     )
     ON CONFLICT (source_event_key, user_id) WHERE source_event_key IS NOT NULL DO NOTHING;
   EXCEPTION WHEN OTHERS THEN

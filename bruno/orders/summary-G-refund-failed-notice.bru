@@ -1,0 +1,29 @@
+meta {
+  name: summary-G-refund-failed-notice
+  type: http
+  seq: 63
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/notifications?event_kind=eq.shipment.refund_failed&source_event_key=eq.shipment.refund_failed:{{shipmentIdG}}:{{refundIdG}}&select=user_id,action_path
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("T13: the buyer's refund_failed notice opens the shipment, not the order summary", function () {
+    expect(res.getStatus()).to.equal(200);
+    const rows = res.getBody();
+    expect(rows.length).to.equal(1);
+    expect(rows[0].action_path).to.equal("/profile/orders/" + bru.getVar("orderIdG") + "?shipment_id=" + bru.getVar("shipmentIdG"));
+  });
+}
+
+docs {
+  The failed refund of summary-G-refund-failed writes one shipment.refund_failed notice for the buyer, linked to the shipment (expo-push-notifications T13).
+}

@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/rest/v1/notifications?action_path=eq./profile/orders/{{t5Order}}&title=in.(Disputa Ganada,Disputa Perdida)&select=user_id,title&order=user_id,title
+  url: {{baseUrl}}/rest/v1/notifications?action_path=like./profile/orders/{{t5Order}}*&title=in.(Disputa Ganada,Disputa Perdida)&select=user_id,title,action_path&order=user_id,title
   body: none
   auth: none
 }
@@ -21,6 +21,14 @@ tests {
     const rows = res.getBody();
     expect(rows.some((r) => r.user_id === "00000000-0000-4000-8000-000000000005" && r.title === "Disputa Ganada")).to.equal(true);
     expect(rows.some((r) => r.user_id === "00000000-0000-4000-8000-000000000004" && r.title === "Disputa Perdida")).to.equal(true);
+  });
+
+  test("T13: both notices open the shipment of dispute 7, not the order summary", function () {
+    const rows = res.getBody();
+    expect(rows.length).to.equal(2);
+    for (const r of rows) {
+      expect(r.action_path).to.equal("/profile/orders/" + bru.getVar("t5Order") + "?shipment_id=" + bru.getVar("t5Ship7"));
+    }
   });
 }
 

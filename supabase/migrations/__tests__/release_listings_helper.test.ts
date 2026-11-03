@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { withoutShipmentLink } from './shipmentNoticeLink';
 
 /**
  * Static guards for T9e2 (#70 class): every path that returns a listing to the
@@ -89,7 +90,7 @@ describe.each(callers)('%s uses the helper', (name, path) => {
   const canonical = canonicalFile(path);
 
   test('canonical body matches the migration body', () => {
-    expect(functionStatement(canonical, name)).toBe(
+    expect(functionStatement(withoutShipmentLink(canonical), name)).toBe(
       functionStatement(migration, name),
     );
   });

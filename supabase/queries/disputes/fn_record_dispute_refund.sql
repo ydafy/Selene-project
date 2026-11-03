@@ -93,6 +93,7 @@ BEGIN
            'Te devolvimos tu dinero',
            'Reembolsamos tu compra a tu método de pago. Puede tardar de 5 a 10 días hábiles en verse en tu estado de cuenta.',
            '/profile/orders/' || s.order_id::text
+             || COALESCE('?shipment_id=' || v_shipment_id::text, '')
     FROM public.shipments AS s
     JOIN public.orders AS o ON o.id = s.order_id
     WHERE s.id = v_shipment_id

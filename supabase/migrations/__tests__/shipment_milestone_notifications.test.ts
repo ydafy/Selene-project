@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { withoutShipmentLink } from './shipmentNoticeLink';
 
 /**
  * Static guards for the buyer shipment milestone notices (expo-push-notifications T4/S4).
@@ -145,7 +146,9 @@ describe('shipment milestone notifications migration (SQL text)', () => {
     const helper = definition(migration, 'fn_notify_shipment_milestone');
     expect(helper).not.toBe('');
     expect(
-      read('supabase/queries/shipments/fn_notify_shipment_milestone.sql'),
+      withoutShipmentLink(
+        read('supabase/queries/shipments/fn_notify_shipment_milestone.sql'),
+      ),
     ).toContain(helper);
     expect(helper).toContain('SECURITY DEFINER');
     expect(helper).toContain("SET search_path TO 'public', 'pg_temp'");

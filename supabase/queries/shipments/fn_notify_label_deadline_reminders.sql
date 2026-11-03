@@ -50,6 +50,7 @@ BEGIN
            || CASE WHEN d.hours_left = 1 THEN '1 hora' ELSE d.hours_left::text || ' horas' END
            || ', cancelaremos la venta y reembolsaremos al comprador.',
          '/profile/orders/' || d.order_id::text
+           || COALESCE('?shipment_id=' || d.id::text, '')
   FROM (
     SELECT c.id, c.order_id, c.seller_id, c.deadline_at,
            GREATEST(1, CEIL(EXTRACT(EPOCH FROM c.deadline_at - v_now) / 3600))::integer AS hours_left

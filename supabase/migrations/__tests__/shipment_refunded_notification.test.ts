@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { withoutShipmentLink } from './shipmentNoticeLink';
 
 /**
  * Static guards for the buyer refund notice (expo-push-notifications T6b/S4).
@@ -78,7 +79,11 @@ describe('shipment refunded notification migration (SQL text)', () => {
   test('keeps the canonical file equal to the migration body', () => {
     expect(body).not.toBe('');
     expect(
-      collapse(read('supabase/queries/disputes/fn_record_dispute_refund.sql')),
+      collapse(
+        withoutShipmentLink(
+          read('supabase/queries/disputes/fn_record_dispute_refund.sql'),
+        ),
+      ),
     ).toBe(collapse(body));
   });
 

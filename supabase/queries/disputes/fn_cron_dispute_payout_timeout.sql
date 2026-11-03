@@ -35,8 +35,8 @@ BEGIN
 
                     INSERT INTO public.notifications (user_id, type, title, message, action_path)
                     VALUES
-                        (v_dispute.buyer_id, 'success', 'Disputa Ganada', 'El vendedor no pagó la guía de retorno a tiempo. Se procesará tu reembolso.', '/profile/orders/' || v_dispute.order_id),
-                        (v_dispute.seller_id, 'error', 'Disputa Perdida', 'No pagaste la guía de retorno a tiempo. El caso se cerró a favor del comprador.', '/profile/orders/' || v_dispute.order_id);
+                        (v_dispute.buyer_id, 'success', 'Disputa Ganada', 'El vendedor no pagó la guía de retorno a tiempo. Se procesará tu reembolso.', '/profile/orders/' || v_dispute.order_id || COALESCE('?shipment_id=' || v_dispute.shipment_id::text, '')),
+                        (v_dispute.seller_id, 'error', 'Disputa Perdida', 'No pagaste la guía de retorno a tiempo. El caso se cerró a favor del comprador.', '/profile/orders/' || v_dispute.order_id || COALESCE('?shipment_id=' || v_dispute.shipment_id::text, ''));
 
                     v_success := true;
                 ELSE
@@ -62,8 +62,8 @@ BEGIN
 
                 INSERT INTO public.notifications (user_id, type, title, message, action_path)
                 VALUES
-                    (v_dispute.buyer_id, 'success', 'Disputa Ganada', 'El vendedor no pagó la guía de retorno a tiempo. Tu reembolso será procesado.', '/profile/orders/' || v_dispute.order_id),
-                    (v_dispute.seller_id, 'error', 'Disputa Perdida', 'No pagaste la guía de retorno a tiempo. El caso se cerró a favor del comprador.', '/profile/orders/' || v_dispute.order_id);
+                    (v_dispute.buyer_id, 'success', 'Disputa Ganada', 'El vendedor no pagó la guía de retorno a tiempo. Tu reembolso será procesado.', '/profile/orders/' || v_dispute.order_id || COALESCE('?shipment_id=' || v_dispute.shipment_id::text, '')),
+                    (v_dispute.seller_id, 'error', 'Disputa Perdida', 'No pagaste la guía de retorno a tiempo. El caso se cerró a favor del comprador.', '/profile/orders/' || v_dispute.order_id || COALESCE('?shipment_id=' || v_dispute.shipment_id::text, ''));
             END IF;
         EXCEPTION WHEN OTHERS THEN
             -- Atrapar excepciones DB sin abortar el resto del lote

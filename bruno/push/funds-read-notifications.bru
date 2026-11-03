@@ -35,7 +35,7 @@ tests {
     expect(row.read).to.equal(false);
     expect(row.title).to.equal("Liberamos el pago de tu venta");
     expect(row.message).to.equal("Enviamos $1,234.56 MXN a tu cuenta de vendedor. El depósito a tu banco puede tardar unos días hábiles.");
-    expect(row.action_path).to.equal("/profile/orders/" + bru.getVar("fdOrderId"));
+    expect(row.action_path).to.equal("/profile/orders/" + bru.getVar("fdOrderId") + "?shipment_id=" + bru.getVar("fdShipmentId"));
   });
 
   test("S4: the payload carries the order, the shipment, the amount in cents and the seller role", function () {

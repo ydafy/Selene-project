@@ -129,6 +129,7 @@ BEGIN
          CASE WHEN recipients.recipient_role = 'buyer' THEN 'Se canceló un envío de tu pedido.'
               ELSE 'Se canceló tu envío; los productos regresaron a tu inventario.' END,
          '/profile/orders/' || v_order_id::text
+           || COALESCE('?shipment_id=' || p_shipment_id::text, '')
   -- WHERE true disambiguates INSERT ... SELECT from JOIN ON before ON CONFLICT.
   FROM (
     SELECT v_buyer_id AS user_id, 'buyer' AS recipient_role

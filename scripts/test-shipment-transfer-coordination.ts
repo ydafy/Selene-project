@@ -284,7 +284,7 @@ async function run() {
         );
         assert.equal(migrations.length, 1);
         // Equal to the archived migration except fn_complete_shipment_transfer, which
-        // the funds released migration redefines (seller notice).
+        // later migrations redefine (seller notice, then its shipment link in T13).
         const lf = (text: string) => text.replace(/\r\n/g, '\n');
         const withoutComplete = (text: string) => {
           const start = text.indexOf(
@@ -301,7 +301,7 @@ async function run() {
           ),
         );
         const redefinitions = readdirSync(`${root}supabase/migrations`).filter(
-          (name) => name.endsWith('_shipment_funds_released_notification.sql'),
+          (name) => name.endsWith('_shipment_funds_released_notice_link.sql'),
         );
         assert.equal(redefinitions.length, 1);
         const completeBody = (text: string) => {

@@ -35,7 +35,7 @@ BEGIN
 
         INSERT INTO public.notifications (user_id, type, title, message, action_path)
         VALUES
-          (v_dispute.buyer_id, 'success', 'Devolución Recibida', 'El vendedor recibió el producto. Tu reembolso está pendiente de procesamiento.', '/profile/orders/' || v_dispute.order_id);
+          (v_dispute.buyer_id, 'success', 'Devolución Recibida', 'El vendedor recibió el producto. Tu reembolso está pendiente de procesamiento.', '/profile/orders/' || v_dispute.order_id || COALESCE('?shipment_id=' || v_dispute.shipment_id::text, ''));
 
         v_processed := v_processed + 1;
       ELSE

@@ -22,7 +22,7 @@ tests {
     for (const row of res.getBody()) {
       expect(row.event_kind).to.equal("dispute.verdict");
       expect(row.source_event_key).to.equal("dispute.verdict:" + bru.getVar("t5Disp8") + ":shipping_timeout");
-      expect(row.action_path).to.equal("/profile/orders/" + bru.getVar("t5Order"));
+      expect(row.action_path).to.equal("/profile/orders/" + bru.getVar("t5Order") + "?shipment_id=" + bru.getVar("t5Ship8"));
       expect(row.event_payload.dispute_id).to.equal(bru.getVar("t5Disp8"));
       expect(row.event_payload.order_id).to.equal(bru.getVar("t5Order"));
     }

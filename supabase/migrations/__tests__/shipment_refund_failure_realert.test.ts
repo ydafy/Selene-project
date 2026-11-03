@@ -1,19 +1,29 @@
 import { describe, expect, it } from 'bun:test';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { withoutShipmentLink } from './shipmentNoticeLink';
 
 const root = join(import.meta.dir, '..', '..', '..');
-const read = (path: string) => readFileSync(join(root, path), 'utf8').replace(/\r\n/g, '\n');
+const read = (path: string) =>
+  readFileSync(join(root, path), 'utf8').replace(/\r\n/g, '\n');
 const names = readdirSync(join(root, 'supabase/migrations'));
-const migrations = names.filter((name) => name.endsWith('_shipment_refund_failure_realert.sql'));
-const migration = migrations.length === 1 ? read(`supabase/migrations/${migrations[0]}`) : '';
+const migrations = names.filter((name) =>
+  name.endsWith('_shipment_refund_failure_realert.sql'),
+);
+const migration =
+  migrations.length === 1 ? read(`supabase/migrations/${migrations[0]}`) : '';
 const statements = (sql: string) =>
   sql
     .split('\n')
-    .filter((line) => !/^\s*(--|BEGIN;|COMMIT;)/.test(line) && line.trim() !== '')
+    .filter(
+      (line) => !/^\s*(--|BEGIN;|COMMIT;)/.test(line) && line.trim() !== '',
+    )
     .join('\n');
-const events = read('supabase/queries/orders/shipment_cancellation_refund_events.sql');
-const fnStart = 'CREATE OR REPLACE FUNCTION public.fn_apply_shipment_cancellation_refund_event(';
+const events = withoutShipmentLink(
+  read('supabase/queries/orders/shipment_cancellation_refund_events.sql'),
+);
+const fnStart =
+  'CREATE OR REPLACE FUNCTION public.fn_apply_shipment_cancellation_refund_event(';
 const fromFunction = (sql: string) => sql.slice(sql.indexOf(fnStart));
 
 // Text contracts only; the local `supabase db reset` + scripts/test-shipment-cancellation-refund-events.ts
@@ -23,7 +33,9 @@ describe('shipment refund failure re-alert migration (SQL text)', () => {
     expect(migrations).toHaveLength(1);
     expect(migration.match(/^BEGIN;$/gm)).toHaveLength(1);
     expect(migration.match(/^COMMIT;$/gm)).toHaveLength(1);
-    const previous = names.find((name) => name.endsWith('_shipment_refund_events_after_resolution.sql'));
+    const previous = names.find((name) =>
+      name.endsWith('_shipment_refund_events_after_resolution.sql'),
+    );
     expect(migrations[0] > (previous ?? '~')).toBe(true);
   });
 
@@ -37,7 +49,9 @@ describe('shipment refund failure re-alert migration (SQL text)', () => {
     expect(migration).toMatch(
       /GRANT EXECUTE ON FUNCTION public\.fn_apply_shipment_cancellation_refund_event\([^)]*\) TO service_role;/,
     );
-    expect(migration).not.toMatch(/GRANT[^;]*TO[^;]*\b(anon|authenticated|PUBLIC)\b/i);
+    expect(migration).not.toMatch(
+      /GRANT[^;]*TO[^;]*\b(anon|authenticated|PUBLIC)\b/i,
+    );
   });
 
   it('reports a recorded failure again when a failure event is redelivered, not only when it changes', () => {
@@ -47,6 +61,8 @@ describe('shipment refund failure re-alert migration (SQL text)', () => {
         "        AND ((v_recorded->>'changed')::BOOLEAN OR p_status IN ('failed', 'canceled')) THEN",
     );
     // The buyer notice stays idempotent, so a redelivery never adds a second one.
-    expect(body).toContain('ON CONFLICT (source_event_key, user_id) WHERE source_event_key IS NOT NULL DO NOTHING;');
+    expect(body).toContain(
+      'ON CONFLICT (source_event_key, user_id) WHERE source_event_key IS NOT NULL DO NOTHING;',
+    );
   });
 });

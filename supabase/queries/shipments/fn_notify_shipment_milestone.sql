@@ -48,6 +48,7 @@ BEGIN
          THEN 'La paquetería ya lleva un envío de tu pedido. Puedes seguirlo desde tu pedido.'
          ELSE 'Revisa tus productos. Tienes 48 horas desde la entrega para reportar un problema.' END,
     '/profile/orders/' || v_order_id::text
+      || COALESCE('?shipment_id=' || p_shipment_id::text, '')
   )
   ON CONFLICT (source_event_key, user_id) WHERE source_event_key IS NOT NULL DO NOTHING;
 END;

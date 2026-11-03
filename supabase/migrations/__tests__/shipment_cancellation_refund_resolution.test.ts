@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { withoutShipmentLink } from './shipmentNoticeLink';
 
 const root = join(import.meta.dir, '..', '..', '..');
 const read = (path: string) =>
@@ -20,7 +21,9 @@ const statements = (sql: string) =>
 const resolution = read(
   'supabase/queries/orders/shipment_cancellation_refund_resolution.sql',
 );
-const cancel = read('supabase/queries/orders/fn_cancel_shipment.sql');
+const cancel = withoutShipmentLink(
+  read('supabase/queries/orders/fn_cancel_shipment.sql'),
+);
 const body = (sql: string) =>
   sql.match(
     /CREATE OR REPLACE FUNCTION public\.fn_cancel_shipment\([\s\S]*?\$\$;/,
