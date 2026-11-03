@@ -36,8 +36,8 @@ test('a tap goes through the inbox press handler', () => {
   expect(source).toContain(
     'navigate: (path) => NotificationLinking.navigate(path)',
   );
-  expect(source).toContain(
-    'addNotificationResponseReceivedListener(\n      (response) => pushTapRouter.receive(response),',
+  expect(source).toMatch(
+    /addNotificationResponseReceivedListener\(\s*\(response\) => pushTapRouter\.receive\(response\),/,
   );
   expect(source).toMatch(
     /ready: navigatorReady && !loading,\s*press: userId \? press : null,/,
