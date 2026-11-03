@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { withoutShipmentLink } from './shipmentNoticeLink';
 
 /**
  * A dispute refund is recorded under the shipment row lock after the Stripe
@@ -20,9 +21,11 @@ const migration =
     : '';
 const code = migration.replace(/--[^\n]*/g, '');
 
-const canonical = readFileSync(
-  join(QUERIES_DIR, 'disputes', 'fn_record_dispute_refund.sql'),
-  'utf8',
+const canonical = withoutShipmentLink(
+  readFileSync(
+    join(QUERIES_DIR, 'disputes', 'fn_record_dispute_refund.sql'),
+    'utf8',
+  ),
 ).replace(/\r/g, '');
 
 const locksThenChecksThenWrites = (sql: string): void => {

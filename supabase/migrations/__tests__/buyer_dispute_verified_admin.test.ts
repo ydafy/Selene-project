@@ -1,6 +1,10 @@
 import { expect, test } from 'bun:test';
 import { readFileSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import {
+  withoutShipmentLink,
+  withoutVerdictShipmentRead,
+} from './shipmentNoticeLink';
 
 const dir = new URL('../archive/', import.meta.url);
 const signature = 'public.fn_resolve_dispute_to_buyer_as_admin(uuid,text,uuid)';
@@ -14,22 +18,30 @@ test('transaction installs exact body and only service-role execution without re
     /\r\n/g,
     '\n',
   );
-  const body = readFileSync(
-    new URL(
-      '../../queries/disputes/fn_resolve_dispute_to_buyer_as_admin.sql',
-      import.meta.url,
+  const body = withoutVerdictShipmentRead(
+    withoutShipmentLink(
+      readFileSync(
+        new URL(
+          '../../queries/disputes/fn_resolve_dispute_to_buyer_as_admin.sql',
+          import.meta.url,
+        ),
+        'utf8',
+      ),
     ),
-    'utf8',
   );
   const installed = sql
     .match(/AS \$\$([\s\S]*?)\$\$;/)![1]
     .replace(/\r\n/g, '\n');
-  const legacy = readFileSync(
-    new URL(
-      '../../queries/disputes/fn_resolve_dispute_to_buyer.sql',
-      import.meta.url,
+  const legacy = withoutVerdictShipmentRead(
+    withoutShipmentLink(
+      readFileSync(
+        new URL(
+          '../../queries/disputes/fn_resolve_dispute_to_buyer.sql',
+          import.meta.url,
+        ),
+        'utf8',
+      ),
     ),
-    'utf8',
   ).replace(/\r\n/g, '\n');
   const expected = legacy
     .replace(

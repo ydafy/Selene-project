@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { readFileSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { withoutShipmentLink } from './shipmentNoticeLink';
 
 const dir = new URL('../archive/', import.meta.url);
 const read = (path: string) =>
@@ -33,11 +34,11 @@ test('installs mandatory verified actor with exact complete legacy body parity',
     true,
   );
   const sql = read(`../archive/${files[0]}`);
-  const canonical = read(
-    '../../queries/disputes/fn_resolve_dispute_to_seller_as_admin.sql',
+  const canonical = withoutShipmentLink(
+    read('../../queries/disputes/fn_resolve_dispute_to_seller_as_admin.sql'),
   );
-  const legacy = read(
-    '../../queries/disputes/fn_resolve_dispute_to_seller.sql',
+  const legacy = withoutShipmentLink(
+    read('../../queries/disputes/fn_resolve_dispute_to_seller.sql'),
   );
   const expected = legacy
     .replace(

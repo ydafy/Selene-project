@@ -66,7 +66,8 @@ BEGIN
         event_kind, source_event_key, event_payload
     )
     SELECT recipients.user_id, recipients.type, recipients.title,
-           recipients.message, '/profile/orders/' || v_order_id::text,
+           recipients.message, '/profile/orders/' || v_order_id::text
+             || COALESCE('?shipment_id=' || v_shipment_id::text, ''),
            'dispute.verdict',
            'dispute.verdict:' || p_dispute_id::text || ':' || v_audit_id::text,
            jsonb_build_object('dispute_id', p_dispute_id, 'order_id', v_order_id, 'recipient_role', recipients.recipient_role)

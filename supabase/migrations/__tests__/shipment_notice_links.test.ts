@@ -50,7 +50,7 @@ const canonicalBody = (name: string, path: string) => {
 
 const collapse = (sql: string) => sql.replace(/\s+/g, ' ');
 const ORDER_LINK =
-  /'\/profile\/orders\/' \|\| [\w.]+::text( \|\| COALESCE\('\?shipment_id=' \|\| [\w.]+::text, ''\))?/g;
+  /'\/profile\/orders\/' \|\| [\w.]+(?:::text)?( \|\| COALESCE\('\?shipment_id=' \|\| [\w.]+::text, ''\))?/g;
 
 /** Every order link a body writes, and the shipment expression each one appends. */
 const orderLinks = (body: string) =>
@@ -84,11 +84,56 @@ const PRODUCERS: [string, string, string][] = [
     'return/fn_seller_submit_return_evidence.sql',
     'v_shipment_id',
   ],
+  [
+    'fn_notify_dispute_opened',
+    'disputes/fn_notify_dispute_opened.sql',
+    'NEW.shipment_id',
+  ],
+  [
+    'fn_cron_dispute_payout_timeout',
+    'disputes/fn_cron_dispute_payout_timeout.sql',
+    'v_dispute.shipment_id',
+  ],
+  [
+    'fn_cron_dispute_shipping_timeout',
+    'disputes/fn_cron_dispute_shipping_timeout.sql',
+    'v_dispute.shipment_id',
+  ],
+  [
+    'fn_cron_return_delivery_timeout',
+    'disputes/fn_cron_return_delivery_timeout.sql',
+    'v_dispute.shipment_id',
+  ],
+  [
+    'fn_record_dispute_refund',
+    'disputes/fn_record_dispute_refund.sql',
+    'v_shipment_id',
+  ],
+  [
+    'fn_resolve_dispute_to_buyer',
+    'disputes/fn_resolve_dispute_to_buyer.sql',
+    'v_shipment_id',
+  ],
+  [
+    'fn_resolve_dispute_to_buyer_as_admin',
+    'disputes/fn_resolve_dispute_to_buyer_as_admin.sql',
+    'v_shipment_id',
+  ],
+  [
+    'fn_resolve_dispute_to_seller',
+    'disputes/fn_resolve_dispute_to_seller.sql',
+    'v_shipment_id',
+  ],
+  [
+    'fn_resolve_dispute_to_seller_as_admin',
+    'disputes/fn_resolve_dispute_to_seller_as_admin.sql',
+    'v_shipment_id',
+  ],
 ];
 
 const shipmentLink = (shipment: string) =>
   new RegExp(
-    String.raw`^'/profile/orders/' \|\| [\w.]+::text \|\| COALESCE\('\?shipment_id=' \|\| ${shipment.replace('.', String.raw`\.`)}::text, ''\)$`,
+    String.raw`^'/profile/orders/' \|\| [\w.]+(?:::text)? \|\| COALESCE\('\?shipment_id=' \|\| ${shipment.replace('.', String.raw`\.`)}::text, ''\)$`,
   );
 
 describe('shipment notice links (SQL text)', () => {

@@ -1,11 +1,19 @@
 import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import {
+  withoutShipmentLink,
+  withoutVerdictShipmentRead,
+} from './shipmentNoticeLink';
 
 const root = join(import.meta.dir, '..', '..', '..');
-const source = readFileSync(
-  join(root, 'supabase/queries/disputes/fn_resolve_dispute_to_buyer.sql'),
-  'utf8',
+const source = withoutVerdictShipmentRead(
+  withoutShipmentLink(
+    readFileSync(
+      join(root, 'supabase/queries/disputes/fn_resolve_dispute_to_buyer.sql'),
+      'utf8',
+    ),
+  ),
 );
 const migration = readFileSync(
   join(

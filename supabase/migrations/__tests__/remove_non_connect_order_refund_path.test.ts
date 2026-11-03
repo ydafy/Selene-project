@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { withoutShipmentLink } from './shipmentNoticeLink';
 
 /**
  * expo-push-notifications T6a (S8, L27): the non-Connect order and refund path
@@ -145,7 +146,7 @@ describe('remove_non_connect_order_refund_path migration', () => {
       });
 
       test('the canonical file carries the migration body', () => {
-        const canonical = read(join(QUERIES_DIR, file))
+        const canonical = withoutShipmentLink(read(join(QUERIES_DIR, file)))
           .split('\n')
           .filter((line) => !line.startsWith('--'))
           .join('\n');
