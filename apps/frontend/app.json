@@ -80,6 +80,7 @@
       [
         "expo-notifications",
         {
+          "icon": "./assets/images/notification-icon.png",
           "color": "#bd9f65",
           "defaultChannel": "orders"
         }

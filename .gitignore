@@ -53,6 +53,8 @@ apps/frontend/android/
 *.keystore
 apps/frontend/credentials.json
 apps/frontend/credentials/
+# Firebase config for push: EAS provides it as the file variable GOOGLE_SERVICES_JSON
+apps/frontend/google-services.json
 
 # =============================================================================
 # TypeScript

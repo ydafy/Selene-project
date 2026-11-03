@@ -351,6 +351,14 @@ Sentry creates the `cron-watchdog` Cron Monitor on its first check-in (free plan
 - Google Sign-In: register the SHA-1 of the EAS keystore (and of the Play App Signing key once it exists) on the Android OAuth client used by `@react-native-google-signin/google-signin` in `apps/frontend/app.json`.
 - Signing files stay out of the repository: `credentials.json` and `credentials/` are gitignored.
 
+### Push credentials
+
+- Android push goes through Firebase Cloud Messaging. The Firebase project is the Google Cloud project that holds the Google Sign-In OAuth clients, with the Android app `com.selene.marketplace`.
+- FCM V1 key: in Firebase, Project settings > Service accounts > Generate new private key; upload the JSON on expo.dev (project `selene` > Credentials > Android > `com.selene.marketplace` > FCM V1 service account key), then delete the downloaded file. Expo uses it to send to FCM; it never goes in the repository or in Supabase.
+- `google-services.json` stays out of the repository (gitignored). EAS provides it as the file variable `GOOGLE_SERVICES_JSON`, which `apps/frontend/app.config.ts` reads: `eas env:set --name GOOGLE_SERVICES_JSON --type file --visibility sensitive --value ./google-services.json --environment development --environment preview --environment production`, run in `apps/frontend`. Local builds read `apps/frontend/google-services.json`. A build without it has no push token.
+- iOS needs the Apple Developer Program. The code needs no change: register the device and run `eas build --platform ios`, accepting the push key prompt.
+- Check: a push sent by `dispatch-push` reaches a production build, and its ticket and receipt in `push_deliveries` are `ok`.
+
 ## 12. Verification
 
 1. `get_advisors` security and performance: no new findings.
