@@ -13,3 +13,33 @@ test('the network listener registers only on the transition back online', () => 
   );
   expect(source).not.toContain('isNetworkReachable');
 });
+
+test('the tap handler is mounted inside SystemGuard, next to the navigator', () => {
+  expect(read('app/_layout.tsx')).toMatch(
+    /<SystemGuard>\s*<PushTapHandler \/>\s*\{STRIPE_KEY \?/,
+  );
+});
+
+test('the push module is loaded at startup, so the foreground handler is set', () => {
+  const source = read('core/push/pushTap.ts');
+  expect(source).toMatch(
+    /Notifications\.setNotificationHandler\(\{\s*handleNotification: async \(\) => FOREGROUND_PUSH_BEHAVIOR,\s*\}\);/,
+  );
+  expect(
+    read('components/features/notifications/PushTapHandler.tsx'),
+  ).toContain("from '../../../core/push/pushTap'");
+});
+
+test('a tap goes through the inbox press handler', () => {
+  const source = read('components/features/notifications/PushTapHandler.tsx');
+  expect(source).toContain('createNotificationPressHandler({');
+  expect(source).toContain(
+    'navigate: (path) => NotificationLinking.navigate(path)',
+  );
+  expect(source).toContain(
+    'addNotificationResponseReceivedListener(\n      (response) => pushTapRouter.receive(response),',
+  );
+  expect(source).toMatch(
+    /ready: navigatorReady && !loading,\s*press: userId \? press : null,/,
+  );
+});

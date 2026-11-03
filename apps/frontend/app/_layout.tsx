@@ -34,6 +34,7 @@ import { NotificationWatcher } from '../components/features/notifications/Notifi
 
 import { PushRegistration } from '../components/features/notifications/PushRegistration';
 import { PushPermissionPrompt } from '../components/features/notifications/PushPermissionPrompt';
+import { PushTapHandler } from '../components/features/notifications/PushTapHandler';
 import { OfflineNotice } from '../components/ui/OfflineNotice';
 
 import { queryClient } from '../core/db/queryClient';
@@ -145,6 +146,7 @@ export default function RootLayout() {
                   <AuthModalProvider>
                     <OfflineNotice />
                     <SystemGuard>
+                      <PushTapHandler />
                       {STRIPE_KEY ? (
                         <StripeProvider
                           publishableKey={STRIPE_KEY}

@@ -65,6 +65,12 @@ if (process.env.SELENE_NOTIFICATION_MOUNT_CHILD !== 'watcher') {
   const queryClient = { invalidateQueries: mock(() => {}) };
   const t = (key: string) => key;
   const channel = { on: () => channel, subscribe: () => channel };
+  let launchTap = false;
+  const consumeLaunchTap = mock(() => {
+    const wasTap = launchTap;
+    launchTap = false;
+    return wasTap;
+  });
 
   mock.module('react-native', () => ({ Pressable: host('Pressable') }));
   mock.module('react-native-toast-message', () => ({
@@ -84,6 +90,9 @@ if (process.env.SELENE_NOTIFICATION_MOUNT_CHILD !== 'watcher') {
   }));
   mock.module('../../../../core/services/notification', () => ({
     NotificationLinking: { navigate },
+  }));
+  mock.module('../../../../core/push/pushTap', () => ({
+    pushTapRouter: { consumeLaunchTap },
   }));
   mock.module('react-i18next', () => ({ useTranslation: () => ({ t }) }));
   mock.module('../../../ui/ConfirmDialog', () => ({
@@ -144,5 +153,29 @@ if (process.env.SELENE_NOTIFICATION_MOUNT_CHILD !== 'watcher') {
 
     expect(queryClient.invalidateQueries).not.toHaveBeenCalled();
     expect(from).toHaveBeenCalledTimes(2);
+  });
+
+  test('a launch opened by a push tap skips the digest once', async () => {
+    launchTap = true;
+    let tree: ReturnType<typeof create>;
+    await act(async () => {
+      tree = create(<NotificationWatcher />);
+    });
+    expect(from).toHaveBeenCalledTimes(3);
+    expect(tree!.root.findAllByType('ConfirmDialog')).toHaveLength(0);
+    expect(navigate).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      tree!.unmount();
+    });
+
+    await act(async () => {
+      tree = create(<NotificationWatcher />);
+    });
+    expect(tree!.root.findByType('ConfirmDialog').props.title).toBe(
+      'notifications:digestTitle',
+    );
+    await act(async () => {
+      tree!.unmount();
+    });
   });
 }

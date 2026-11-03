@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuthContext } from '../../../components/auth/AuthProvider';
 import { supabase } from '../../../core/db/supabase';
 import { invalidateNotificationKeys } from '../../../core/hooks/useNotificationMutations';
+import { pushTapRouter } from '../../../core/push/pushTap';
 import { NotificationLinking } from '../../../core/services/notification';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import { createLaunchDigestGate, scanLaunchDigest } from './launchDigest';
@@ -81,7 +82,9 @@ export const NotificationWatcher = () => {
             !gate.current.complete(attempt)
           )
             return;
-          if (result.notice)
+          // A launch opened by a push tap already shows a notice; skip the digest once.
+          const openedByTap = pushTapRouter.consumeLaunchTap();
+          if (result.notice && !openedByTap)
             setDigest({
               owner: userId,
               notice: result.notice,
