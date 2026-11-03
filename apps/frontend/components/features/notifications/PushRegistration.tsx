@@ -5,7 +5,7 @@ import * as Notifications from 'expo-notifications';
 
 import { useAuthContext } from '../../auth/AuthProvider';
 import { pushRegistrar } from '../../../core/push/pushRegistration';
-import { isNetworkReachable } from '../../../core/push/pushRegistration.logic';
+import { createOnlineTransition } from '../../../core/push/pushRegistration.logic';
 
 /** UI-less: keeps this device's push token registered for the signed-in user. */
 export const PushRegistration = () => {
@@ -21,8 +21,9 @@ export const PushRegistration = () => {
       void pushRegistrar.register(userId);
     });
     // Back online: retry a pending unregister, then register this session.
+    const backOnline = createOnlineTransition();
     const unsubscribeNetwork = NetInfo.addEventListener((state) => {
-      if (isNetworkReachable(state)) void pushRegistrar.register(userId);
+      if (backOnline(state)) void pushRegistrar.register(userId);
     });
     return () => {
       unsubscribeNetwork();

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 
 import {
+  createOnlineTransition,
   createPushRegistrar,
   isNetworkReachable,
   type PushRegistrarDeps,
@@ -583,5 +584,40 @@ describe('createPushRegistrar late responses', () => {
     await registering;
     await tick();
     expect(h.store.get(PENDING_KEY)).toBe(TOKEN);
+  });
+});
+
+describe('createOnlineTransition', () => {
+  const online = { isConnected: true, isInternetReachable: true };
+  const offline = { isConnected: false, isInternetReachable: false };
+
+  it('does not fire on the first state, which the mount already covers', () => {
+    expect(createOnlineTransition()(online)).toBe(false);
+    expect(createOnlineTransition()(offline)).toBe(false);
+  });
+
+  it('fires only when the network comes back after being unreachable', () => {
+    const backOnline = createOnlineTransition();
+    expect(backOnline(offline)).toBe(false);
+    expect(backOnline(online)).toBe(true);
+  });
+
+  it('does not fire again while the network stays reachable', () => {
+    const backOnline = createOnlineTransition();
+    expect(backOnline(online)).toBe(false);
+    expect(backOnline(online)).toBe(false);
+    expect(backOnline({ isConnected: true, isInternetReachable: null })).toBe(
+      false,
+    );
+  });
+
+  it('fires once per return when the network drops again', () => {
+    const backOnline = createOnlineTransition();
+    expect(backOnline(online)).toBe(false);
+    expect(backOnline(offline)).toBe(false);
+    expect(backOnline(offline)).toBe(false);
+    expect(backOnline(online)).toBe(true);
+    expect(backOnline(offline)).toBe(false);
+    expect(backOnline(online)).toBe(true);
   });
 });
