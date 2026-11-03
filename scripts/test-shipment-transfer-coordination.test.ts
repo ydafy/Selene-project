@@ -50,7 +50,8 @@ test('full canonical SQL equals exactly one CLI migration; no extra workflow tab
     'utf8',
   );
   // The canonical file equals the archived migration except for
-  // fn_complete_shipment_transfer, which a later migration redefines (seller notice).
+  // fn_complete_shipment_transfer, which later migrations redefine (seller notice, then
+  // its shipment link in expo-push-notifications T13); it equals the newest one.
   const lf = (text: string) => text.replace(/\r\n/g, '\n');
   const completeDefinition = (text: string) => {
     const start = text.indexOf(
@@ -70,7 +71,7 @@ test('full canonical SQL equals exactly one CLI migration; no extra workflow tab
   const archived = completeDefinition(lf(sql));
   const current = completeDefinition(canonical);
   const redefinitions = readdirSync(`${root}supabase/migrations`).filter(
-    (name) => name.endsWith('_shipment_funds_released_notification.sql'),
+    (name) => name.endsWith('_shipment_funds_released_notice_link.sql'),
   );
   expect(redefinitions).toHaveLength(1);
   const redefined = completeDefinition(
