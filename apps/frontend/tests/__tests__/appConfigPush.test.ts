@@ -61,6 +61,20 @@ describe('app config for push', () => {
     }
   });
 
+  it('keeps every app.json value and only adds the Firebase file', () => {
+    const previous = process.env.GOOGLE_SERVICES_JSON;
+    delete process.env.GOOGLE_SERVICES_JSON;
+    try {
+      const { android, ...rest } = appConfig(configContext);
+      const { googleServicesFile, ...androidRest } = android ?? {};
+      expect(googleServicesFile).toBe('./google-services.json');
+      const resolved: ExpoConfig = { ...rest, android: androidRest };
+      expect(resolved).toEqual(appJson.expo as ExpoConfig);
+    } finally {
+      if (previous !== undefined) process.env.GOOGLE_SERVICES_JSON = previous;
+    }
+  });
+
   it('keeps google-services.json out of Git', () => {
     const gitignore = readFileSync(
       join(frontendRoot, '..', '..', '.gitignore'),
