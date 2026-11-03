@@ -5,3 +5,7 @@
 if [ "$1" = "0000000000000000000000000000000000000000" ]; then
   bun "$(dirname "$0")/../scripts/worktree-env.ts" || true
 fi
+# Branch checkouts (not file checkouts) build or sync the CodeGraph index.
+if [ "$3" = "1" ]; then
+  sh "$(dirname "$0")/../scripts/codegraph-refresh.sh"
+fi
