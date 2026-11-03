@@ -41,6 +41,21 @@ export const isNetworkReachable = (state: {
 }): boolean => state.isInternetReachable ?? state.isConnected === true;
 
 /**
+ * Returns a check that is true only when the network becomes reachable after
+ * being unreachable. The first state only sets the start: the mount already
+ * registers, so an online start is not a return.
+ */
+export const createOnlineTransition = () => {
+  let wasReachable: boolean | undefined;
+  return (state: Parameters<typeof isNetworkReachable>[0]): boolean => {
+    const reachable = isNetworkReachable(state);
+    const cameBack = wasReachable === false && reachable;
+    wasReachable = reachable;
+    return cameBack;
+  };
+};
+
+/**
  * Registers this device's Expo push token for the signed-in user. Every
  * failure is logged and swallowed: push must never block or break the UI.
  * Logs carry the error object only, never a token value.

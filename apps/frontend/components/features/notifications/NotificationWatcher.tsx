@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuthContext } from '../../../components/auth/AuthProvider';
 import { supabase } from '../../../core/db/supabase';
 import { invalidateNotificationKeys } from '../../../core/hooks/useNotificationMutations';
+import { pushTapRouter } from '../../../core/push/pushTap';
 import { NotificationLinking } from '../../../core/services/notification';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import { createLaunchDigestGate, scanLaunchDigest } from './launchDigest';
@@ -18,7 +19,11 @@ export const NotificationWatcher = () => {
   const userId = session?.user.id;
   const { t } = useTranslation(['common', 'notifications']);
   const queryClient = useQueryClient();
-  const [digest, setDigest] = useState<{ owner: string; notice: Notification; hasMore: boolean } | null>(null);
+  const [digest, setDigest] = useState<{
+    owner: string;
+    notice: Notification;
+    hasMore: boolean;
+  } | null>(null);
   const gate = useRef(createLaunchDigestGate());
   const launchOwner = useRef<string | undefined>(undefined);
   const currentOwner = useRef(userId);
@@ -44,27 +49,53 @@ export const NotificationWatcher = () => {
     if (attempt) {
       void (async () => {
         try {
-          const result = await scanLaunchDigest(userId, async (cursor) => {
-            let query = supabase.from('notifications')
-              .select('*')
-              .eq('user_id', userId).is('deleted_at', null);
-            if (cursor) {
-              const older = `created_at.lt.${cursor.created_at},and(created_at.eq.${cursor.created_at},id.lt.${cursor.id})`;
-              query = query.or(`and(read.is.null,or(${older})),and(read.eq.false,or(${older}))`);
-            } else {
-              query = query.or('read.is.null,read.eq.false');
-            }
-            const { data, error } = await query
-              .order('created_at', { ascending: false })
-              .order('id', { ascending: false })
-              .limit(LAUNCH_LIMIT);
-            if (error) throw error;
-            return data ?? [];
-          }, LAUNCH_LIMIT, () => !active || currentOwner.current !== userId);
-          if (!active || currentOwner.current !== userId || !result || !gate.current.complete(attempt)) return;
-          if (result.notice) setDigest({ owner: userId, notice: result.notice, hasMore: result.hasMore });
+          const result = await scanLaunchDigest(
+            userId,
+            async (cursor) => {
+              let query = supabase
+                .from('notifications')
+                .select('*')
+                .eq('user_id', userId)
+                .is('deleted_at', null);
+              if (cursor) {
+                const older = `created_at.lt.${cursor.created_at},and(created_at.eq.${cursor.created_at},id.lt.${cursor.id})`;
+                query = query.or(
+                  `and(read.is.null,or(${older})),and(read.eq.false,or(${older}))`,
+                );
+              } else {
+                query = query.or('read.is.null,read.eq.false');
+              }
+              const { data, error } = await query
+                .order('created_at', { ascending: false })
+                .order('id', { ascending: false })
+                .limit(LAUNCH_LIMIT);
+              if (error) throw error;
+              return data ?? [];
+            },
+            LAUNCH_LIMIT,
+            () => !active || currentOwner.current !== userId,
+          );
+          if (
+            !active ||
+            currentOwner.current !== userId ||
+            !result ||
+            !gate.current.complete(attempt)
+          )
+            return;
+          // A launch opened by a push tap already shows a notice; skip the digest once.
+          const openedByTap = pushTapRouter.consumeLaunchTap();
+          if (result.notice && !openedByTap)
+            setDigest({
+              owner: userId,
+              notice: result.notice,
+              hasMore: result.hasMore,
+            });
         } catch (error) {
-          if (active && currentOwner.current === userId && gate.current.complete(attempt)) {
+          if (
+            active &&
+            currentOwner.current === userId &&
+            gate.current.complete(attempt)
+          ) {
             console.error('[NotificationWatcher] Launch fetch error:', error);
             showErrorToast();
           }
@@ -72,23 +103,41 @@ export const NotificationWatcher = () => {
       })();
     }
 
-    const channel = supabase.channel(`notifications_realtime_watcher_${userId}`)
-      .on('postgres_changes', {
-        event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}`,
-      }, (payload) => {
-        if (!active || currentOwner.current !== userId) return;
-        try {
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            invalidateNotificationKeys(queryClient, userId);
+    const channel = supabase
+      .channel(`notifications_realtime_watcher_${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          if (!active || currentOwner.current !== userId) return;
+          try {
+            if (
+              payload.eventType === 'INSERT' ||
+              payload.eventType === 'UPDATE'
+            ) {
+              invalidateNotificationKeys(queryClient, userId);
+            }
+          } catch (error) {
+            console.error(
+              '[NotificationWatcher] Payload handler error:',
+              error,
+            );
+            showErrorToast();
           }
-        } catch (error) {
-          console.error('[NotificationWatcher] Payload handler error:', error);
-          showErrorToast();
-        }
-      }).subscribe((status, error) => {
+        },
+      )
+      .subscribe((status, error) => {
         if (!active || currentOwner.current !== userId) return;
         if (error || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error('[NotificationWatcher] Subscription error:', error ?? status);
+          console.error(
+            '[NotificationWatcher] Subscription error:',
+            error ?? status,
+          );
           showErrorToast();
         }
       });
@@ -112,7 +161,8 @@ export const NotificationWatcher = () => {
   if (!current) return null;
   return (
     <ConfirmDialog
-      visible title={t('notifications:digestTitle')}
+      visible
+      title={t('notifications:digestTitle')}
       description={t('notifications:digestDescription')}
       onConfirm={() => navigate('/profile/notifications')}
       onCancel={dismiss}
