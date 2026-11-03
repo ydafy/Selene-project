@@ -73,6 +73,12 @@ const PRODUCERS: [string, string, string][] = [
     'return/fn_mark_return_delivered.sql',
     'v_shipment_id',
   ],
+  ['fn_cancel_shipment', 'orders/fn_cancel_shipment.sql', 'p_shipment_id'],
+  [
+    'fn_apply_shipment_cancellation_refund_event',
+    'orders/shipment_cancellation_refund_events.sql',
+    'p_shipment_id',
+  ],
   [
     'fn_seller_submit_return_evidence',
     'return/fn_seller_submit_return_evidence.sql',

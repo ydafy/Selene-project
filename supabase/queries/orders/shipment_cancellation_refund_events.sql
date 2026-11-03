@@ -137,6 +137,7 @@ BEGIN
         ELSE 'El reembolso de la cancelación de un envío de tu pedido no se completó. Nuestro equipo lo está revisando y se pondrá en contacto contigo.'
       END,
       '/profile/orders/' || v_order_id::text
+        || COALESCE('?shipment_id=' || p_shipment_id::text, '')
     )
     ON CONFLICT (source_event_key, user_id) WHERE source_event_key IS NOT NULL DO NOTHING;
 
