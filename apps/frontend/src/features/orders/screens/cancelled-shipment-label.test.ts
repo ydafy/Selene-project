@@ -81,7 +81,11 @@ describe('screen wiring', () => {
   );
 
   it('gates the label buttons with the visibility helper', () => {
-    expect(screen).toContain('canShowSellerLabelActions({');
+    const actions = read(
+      'src/features/orders/components/order-detail-actions.tsx',
+    ).replace(/\s+/g, ' ');
+    expect(screen).toContain('<OrderDetailActions');
+    expect(actions).toContain('canShowSellerLabelActions({');
   });
 
   it('renders the label notice in the banner', () => {

@@ -59,8 +59,14 @@ describe('order detail total by role', () => {
   });
 
   it('labels the seller total as sold and keeps the buyer paid label', () => {
-    expect(detail).toContain(
-      "{currentShipment?.isSeller ? t('orders:detail.totalSold') : t('orders:detail.total')}",
+    const items = readFileSync(
+      `${import.meta.dir}/../../../features/orders/components/shipment-items-card.tsx`,
+      'utf8',
+    ).replace(/\s+/g, ' ');
+    expect(detail).toContain('<ShipmentItemsCard');
+    expect(detail).toContain('isSeller={currentShipment?.isSeller}');
+    expect(items).toContain(
+      "{isSeller ? t('orders:detail.totalSold') : t('orders:detail.total')}",
     );
     expect(es.detail.total).toBe('Total pagado');
     expect(en.detail.total).toBe('Total Paid');

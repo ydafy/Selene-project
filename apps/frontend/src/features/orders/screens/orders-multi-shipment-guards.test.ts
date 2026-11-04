@@ -56,7 +56,11 @@ describe('orders detail screen shipment-aware source guards', () => {
     expect(detail).toContain(
       'const displayedTotal = isMultiShipment || currentShipment?.isSeller ? shipmentSubtotal : (order?.total_amount ?? 0);',
     );
-    expect(detail).toContain('formatCurrency(displayedTotal)');
+    expect(detail).toContain('<ShipmentItemsCard');
+    expect(detail).toContain('total={displayedTotal}');
+    expect(
+      read('src/features/orders/components/shipment-items-card.tsx'),
+    ).toContain('formatCurrency(total)');
   });
 
   it('passes the current shipment seller id to the review modal', () => {
@@ -68,9 +72,12 @@ describe('orders detail screen shipment-aware source guards', () => {
     // multi-seller order that would surface the button on another seller's
     // shipment. The gate must read the per-shipment `isSeller`. Source is
     // whitespace-flattened by the read() helper.
-    expect(detail).toContain(
-      '{currentShipment?.isSeller && currentShipment?.status ===',
+    const actions = read(
+      'src/features/orders/components/order-detail-actions.tsx',
     );
+    expect(detail).toContain('<OrderDetailActions');
+    expect(actions).toContain('{shipment.isSeller && shipment.status ===');
+    expect(actions).not.toContain('{order.isSeller &&');
     expect(detail).not.toContain('{order.isSeller &&');
   });
 });

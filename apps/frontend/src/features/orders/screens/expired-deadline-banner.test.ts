@@ -42,7 +42,11 @@ describe('expired seller deadline banner', () => {
 
   it('keeps the cancel button gate unchanged', () => {
     const detail = read('src/features/orders/screens/order-detail-screen.tsx');
-    expect(detail).toContain('currentShipment?.permissions.canCancel && (');
+    const actions = read(
+      'src/features/orders/components/order-detail-actions.tsx',
+    );
+    expect(detail).toContain('<OrderDetailActions');
+    expect(actions).toContain('shipment.permissions.canCancel && (');
     expect(card).toContain(
       'permissions.canCancel && shipment.created_at && orderExpirationHours != null',
     );

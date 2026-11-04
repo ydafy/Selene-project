@@ -10,7 +10,6 @@
  * en lugar de propiedades directas de la orden. OrderActionCard conectado en 3.6.
  */
 
-import { canShowSellerLabelActions } from '@/features/orders/logic/shipment-label-visibility';
 import React, {
   useState,
   useCallback,
@@ -24,11 +23,9 @@ import {
   Linking,
   Share,
   Clipboard,
-  TouchableOpacity,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@shopify/restyle';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -44,10 +41,11 @@ import { TrackingNumberCard } from '../components/tracking-number-card';
 import { cardStyles } from '../components/order-card-styles';
 import { ShippingInstructions } from '../components/shipping-instructions';
 import { ShippingRouteCard } from '../components/shipping-route-card';
+import { ShipmentItemsCard } from '../components/shipment-items-card';
+import { OrderDetailActions } from '../components/order-detail-actions';
 import { PrimaryButton } from '../../../shared/ui/primary-button';
 import { ConfirmDialog } from '../../../shared/ui/confirm-dialog';
 import { Skeleton } from '../../../shared/ui/skeleton';
-import { AppImage } from '../../../shared/ui/app-image';
 import { ShipmentNotFoundState } from '../components/shipment-not-found-state';
 import { ShipmentTrackingTimeline } from '../components/shipment-tracking-timeline';
 import {
@@ -60,7 +58,6 @@ import { useShipmentsByOrder } from '../hooks/use-shipments';
 import { useOrderActions } from '../hooks/use-order-actions';
 import { useReturnPayment } from '../hooks/use-return-payment';
 import { useShareLabel } from '../hooks/use-share-label';
-import { formatCurrency } from '../../../shared/utils/format';
 import { Theme } from '../../../shared/theme';
 import { ReviewModal } from '@/components/features/profile/ReviewModal';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
@@ -602,195 +599,46 @@ export function OrderDetailScreen() {
         {/* Lee items desde currentShipment en lugar de      */}
         {/* order.items (que fue removido de EnrichedOrder).*/}
         {/* ─────────────────────────────────────────────── */}
-        <Box {...cardStyles} overflow="hidden">
-          <Text variant="header-xl" color="primary" marginBottom="m">
-            {order.isBuyer
-              ? t('orders:detail.itemsTitlePurchased')
-              : t('orders:detail.itemsTitleSold')}
-          </Text>
-          {currentShipment?.items.map((item, index) => (
-            <TouchableOpacity
-              key={item.id}
-              onPress={() => router.push(`/product/${item.product_id}` as any)}
-            >
-              <Box
-                padding="m"
-                flexDirection="row"
-                alignItems="center"
-                borderBottomWidth={
-                  index === currentShipment.items.length - 1 ? 0 : 1
-                }
-                borderBottomColor="separator"
-              >
-                <Box
-                  width={60}
-                  height={60}
-                  borderRadius="m"
-                  overflow="hidden"
-                  backgroundColor="background"
-                >
-                  {item.product?.images?.[0] && (
-                    <AppImage
-                      source={{ uri: item.product.images[0] }}
-                      style={{ width: '100%', height: '100%' }}
-                      contentFit="cover"
-                    />
-                  )}
-                </Box>
-                <Box flex={1} marginLeft="m">
-                  <Text variant="body-md" numberOfLines={1}>
-                    {item.product?.name || t('common:states.unknownProduct')}
-                  </Text>
-                  <Text variant="body-sm" color="primary" marginTop="xs">
-                    {formatCurrency(item.price_at_purchase)}
-                  </Text>
-                  {/* V2: per-product reviewed badge.
-                      Shows "Calificado" checkmark when buyer already reviewed
-                      this product. The review CTA button is rendered as a
-                      PrimaryButton at the bottom of this card instead of
-                      inline to meet sizing and accessibility targets. */}
-                  {reviewData.some(
-                    (r: ReviewData[number]) => r.product_id === item.product_id,
-                  ) ? (
-                    <Box
-                      flexDirection="row"
-                      alignItems="center"
-                      gap="xs"
-                      marginTop="xs"
-                    >
-                      <MaterialCommunityIcons
-                        name="check-decagram"
-                        size={16}
-                        color={theme.colors.success}
-                      />
-                      <Text variant="caption-md" color="success">
-                        {t('orders:actions.reviewed')}
-                      </Text>
-                    </Box>
-                  ) : null}
-                </Box>
-                <MaterialCommunityIcons
-                  name="chevron-right"
-                  size={20}
-                  color={theme.colors.textSecondary}
-                />
-              </Box>
-            </TouchableOpacity>
-          )) ?? (
-            <Text variant="body-md" color="textSecondary" padding="m">
-              {t('orders:detail.noItems')}
-            </Text>
-          )}
-          <Box
-            padding="m"
-            flexDirection="row"
-            justifyContent="space-between"
-            alignItems="center"
-          >
-            <Text variant="body-md" color="textSecondary">
-              {currentShipment?.isSeller
-                ? t('orders:detail.totalSold')
-                : t('orders:detail.total')}
-            </Text>
-            <Text variant="subheader-lg" color="primary">
-              {formatCurrency(displayedTotal)}
-            </Text>
-          </Box>
-        </Box>
+        <ShipmentItemsCard
+          items={currentShipment?.items}
+          isBuyer={order.isBuyer}
+          isSeller={currentShipment?.isSeller}
+          total={displayedTotal}
+          isReviewed={(productId) =>
+            reviewData.some(
+              (r: ReviewData[number]) => r.product_id === productId,
+            )
+          }
+          onOpenProduct={(productId) =>
+            router.push(`/product/${productId}` as any)
+          }
+        />
 
         {/* ─────────────────────────────────────────────── */}
         {/* SLOT H: ACCIONES SECUNDARIAS                     */}
         {/* Botones de pie: generar guía, confirmar entrega, */}
         {/* cancelar, reportar problema.                    */}
         {/* ─────────────────────────────────────────────── */}
-        <Box gap="m" marginTop="m">
-          {/* El gate de generar guía debe leerse por envío: en una orden
-              multi-vendedor, `order.isSeller` es true si el viewer es seller
-              de CUALQUIER item, lo que mostraría el botón sobre un envío ajeno. */}
-          {currentShipment?.isSeller &&
-            currentShipment?.status === 'paid' &&
-            !currentShipment?.label_url && (
-              <PrimaryButton
-                onPress={() =>
-                  router.push(
-                    `/profile/orders/prepare/${order.id}?shipment_id=${currentShipment.id}` as any,
-                  )
-                }
-                icon="package-variant-closed"
-                loading={actions.generateLabel.isLoading}
-              >
-                {t('orders:actions.generateLabel')}
-              </PrimaryButton>
-            )}
-          {/* SECCIÓN DE GUÍA: VER, COMPARTIR Y TIP */}
-          {currentShipment &&
-            canShowSellerLabelActions({
-              isSeller: currentShipment.isSeller,
-              status: currentShipment.status,
-              labelUrl: currentShipment.label_url,
-            }) && (
-              <Box gap="s">
-                <PrimaryButton onPress={handleOpenLabel} icon="printer-check">
-                  {t('orders:actions.viewPdf')}
-                </PrimaryButton>
-
-                <PrimaryButton
-                  variant="outline"
-                  onPress={handleShareLabel}
-                  icon="share-variant"
-                >
-                  {t('orders:actions.shareLabel')}
-                </PrimaryButton>
-
-                <Text
-                  variant="caption-md"
-                  color="textSecondary"
-                  textAlign="center"
-                  marginTop="xs"
-                >
-                  {t('orders:actions.printHint')}
-                </Text>
-              </Box>
-            )}
-          {currentShipment?.permissions.canConfirmDelivery && (
-            <PrimaryButton
-              onPress={() => setShowDeliveryConfirm(true)}
-              loading={actions.confirmDelivery.isLoading}
-              icon="check-decagram"
-            >
-              {t('orders:actions.confirmDelivery')}
-            </PrimaryButton>
-          )}
-          {currentShipment?.permissions.canCancel && (
-            <PrimaryButton
-              variant="outline"
-              onPress={() => setShowCancelConfirm(true)}
-              loading={actions.cancelOrder.isLoading}
-              style={{ borderColor: theme.colors.error }}
-              labelStyle={{ color: theme.colors.error }}
-            >
-              {t('orders:actions.cancelOrder')}
-            </PrimaryButton>
-          )}
-          {currentShipment?.permissions.canReport && (
-            <TouchableOpacity
-              onPress={() =>
-                router.push(
-                  `/profile/orders/report/${order.id}?shipment_id=${currentShipment.id}` as any,
-                )
-              }
-              style={{ alignSelf: 'center', marginTop: 15 }}
-            >
-              <Text
-                variant="caption-lg"
-                color="textSecondary"
-                style={{ textDecorationLine: 'underline' }}
-              >
-                {t('orders:actions.reportProblem')}
-              </Text>
-            </TouchableOpacity>
-          )}
-        </Box>
+        <OrderDetailActions
+          shipment={currentShipment}
+          isGeneratingLabel={actions.generateLabel.isLoading}
+          isConfirmingDelivery={actions.confirmDelivery.isLoading}
+          isCancelling={actions.cancelOrder.isLoading}
+          onGenerateLabel={() =>
+            router.push(
+              `/profile/orders/prepare/${order.id}?shipment_id=${currentShipment.id}` as any,
+            )
+          }
+          onOpenLabel={handleOpenLabel}
+          onShareLabel={handleShareLabel}
+          onConfirmDelivery={() => setShowDeliveryConfirm(true)}
+          onCancel={() => setShowCancelConfirm(true)}
+          onReport={() =>
+            router.push(
+              `/profile/orders/report/${order.id}?shipment_id=${currentShipment.id}` as any,
+            )
+          }
+        />
 
         {/* ─────────────────────────────────────────────── */}
         {/* V2: REVIEWS */}
