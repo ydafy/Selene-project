@@ -143,11 +143,11 @@ The hold is derived, not a fixed entry in `HELD_BACK`. When `.nvmrc` moves to a 
 
 ### An override would be unsafe
 
-`decode-uri-component` 0.2.2 reaches the app through `expo-router` and `query-string` 7.1.3. It has an advisory (`GHSA-qr28-fpjm-wq7f`): a crafted deep link can make the decode slow on the user's own device. No server or money path is involved. The fixed version, 0.5.1, is ESM-only and outside the `^0.2.2` range that `query-string` 7 declares. Forcing it with an override could break the Metro bundle (issue #81, PR #92).
+Sometimes the fixed version of an indirect package is outside the range its dependent declares, and forcing it with an override could break the build. For example, `decode-uri-component` 0.5.1 is ESM-only and outside the `^0.2.2` range of `query-string` 7, which `expo-router` used until SDK 58; an override could have broken the Metro bundle (issue #81, PR #92).
 
-So the audit accepts it:
+The audit has no accepted exceptions today: Expo SDK 58 removed the last two (`GHSA-qr28-fpjm-wq7f` for `decode-uri-component` and `GHSA-mrhx-c7xc-m3w5` for the zod 3 copy in `@expo/cli`). If you need one:
 
-- `.github/workflows/dependency-audit.yml` passes `--ignore=GHSA-qr28-fpjm-wq7f` and states the reason in a comment.
-- `scripts/dependency-audit-exceptions.test.ts` fails if the exception would also hide another copy of the package.
+- `.github/workflows/dependency-audit.yml` passes `--ignore=<GHSA>` and states the reason in a comment. `scripts/dependency-audit-exceptions.test.ts` fails if a flag has no reason.
+- Add a guard test in that file that fails if the exception would also hide another copy of the package. bun ignores a GHSA for every copy.
 
 The general rule: when an override is unsafe, accept the finding with a written reason in the workflow, add a guard test that limits what the exception hides, and review the exception on every Expo SDK upgrade. Drop the `--ignore` once a fixed version fits the dependent's range. Never add an `--ignore` without its reason in the workflow file.
