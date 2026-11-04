@@ -41,4 +41,26 @@ describe('frontend import boundaries', () => {
 
     expect(motiImports).toEqual([]);
   });
+
+  // Expo SDK 58 no longer pins it. The app uses Crypto.randomUUID() from
+  // expo-crypto, and Supabase auth runs the implicit flow, which draws no
+  // random bytes (#132).
+  it('does not import react-native-get-random-values', async () => {
+    const polyfillImports: string[] = [];
+
+    for await (const relativePath of new Bun.Glob('**/*.{ts,tsx}').scan({
+      cwd: fileURLToPath(frontendRoot),
+      absolute: false,
+    })) {
+      if (relativePath.split(/[\\/]/).includes('node_modules')) continue;
+      const source = await Bun.file(new URL(relativePath, frontendRoot)).text();
+      if (
+        /(?:import|from)\s+['"]react-native-get-random-values['"]/.test(source)
+      ) {
+        polyfillImports.push(relativePath);
+      }
+    }
+
+    expect(polyfillImports).toEqual([]);
+  });
 });
