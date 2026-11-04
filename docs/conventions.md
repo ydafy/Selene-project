@@ -10,7 +10,7 @@ Imports go one way: `shared -> features -> app`.
 - A feature never imports another feature. If two features need the same code, move it to `shared`.
 - Routes compose features. A route imports screens from features and shared code.
 
-`apps/frontend/core/utils/frontendImportBoundaries.test.ts` is a `bun:test` that scans imports and already forbids imports of `supabase/functions/`. The layout migration extends it to enforce this direction. Until then, review enforces it.
+`apps/frontend/core/utils/frontendImportBoundaries.test.ts` is a `bun:test` that scans imports and already forbids imports of `supabase/functions/`. The layout migration extends it to enforce this direction, and adds the same rule to ESLint (`import/no-restricted-paths`, as bulletproof-react does) so the editor flags a wrong import as you type. Until then, review enforces it.
 
 ## Keep routes thin
 
@@ -50,9 +50,10 @@ Until the move, follow these rules in the current tree:
 
 ## File naming
 
-- React component files use PascalCase: `ProductCard.tsx`.
-- Every other file uses camelCase: hooks as `useX.ts`, utilities as `formatPrice.ts`.
-- Rename an existing kebab-case file when its area migrates. Do not rename it earlier.
+- Every file uses kebab-case: `product-card.tsx` exports `ProductCard`, `use-auth.ts` exports `useAuth`, `format-price.ts` exports `formatPrice`. Identifiers inside the file keep their usual case.
+- Why: Windows and macOS file systems ignore case and the Linux CI does not, so an import that differs only in case works locally and fails in CI. All-lowercase names remove that class of error. The Expo SDK 55 template and bulletproof-react use the same style.
+- Exception: route files under the Expo Router `app/` directory. Their names are URLs and deep links (`(auth)/resetPassword.tsx` is `/resetPassword`), so rename one only as a deliberate route change.
+- Rename an existing PascalCase or camelCase file when its area migrates to `features/` or `shared/` (#134), in the same `git mv`. Do not rename it earlier.
 - Edge Function directories under `supabase/functions/` are kebab-case because they are the function names (`create-connect-payment`). The Deno files inside them are kebab-case too (`fee-calculator.ts`). Keep that style in Deno code. These rules do not apply to it.
 
 At the commit that introduced this file, the non-test `.ts` and `.tsx` files in `apps/frontend/app`, `core`, and `components` were 162 PascalCase, 207 camelCase, and 21 kebab-case. Regenerate the counts from the repository root:
