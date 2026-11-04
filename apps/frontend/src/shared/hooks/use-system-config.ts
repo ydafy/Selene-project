@@ -1,9 +1,9 @@
 /**
- * @file core/hooks/useSystemConfig.ts
+ * @file shared/hooks/use-system-config.ts
  * @description Hook para obtener la configuración global del sistema (Comisiones, Mantenimiento).
  */
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '../../shared/lib/supabase';
+import { supabase } from '../lib/supabase';
 
 export interface PackagePreset {
   category: string;

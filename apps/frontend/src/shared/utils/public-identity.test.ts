@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
-import { resolvePublicIdentity } from '../publicIdentity';
+import { resolvePublicIdentity } from './public-identity';
 
 const LABEL = 'Usuario eliminado';
 
@@ -102,10 +102,7 @@ describe('deleted-user copy', () => {
   const load = (locale: string, file: string) =>
     JSON.parse(
       readFileSync(
-        new URL(
-          `../../../shared/i18n/locales/${locale}/${file}.json`,
-          import.meta.url,
-        ),
+        new URL(`../i18n/locales/${locale}/${file}.json`, import.meta.url),
         'utf8',
       ),
     );

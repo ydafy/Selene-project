@@ -16,7 +16,7 @@ describe('media upload B3 source guards', () => {
   });
 
   it('uses the base64 helper and never image/jpg in useImageUpload', () => {
-    const source = read('src/core/hooks/useImageUpload.ts');
+    const source = read('src/shared/hooks/use-image-upload.ts');
     expect(source).toContain('uploadMediaFromBase64');
     expect(source).not.toContain('image/jpg');
     expect(source).not.toContain('[IMAGE_UPLOAD]');

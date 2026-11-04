@@ -1,5 +1,5 @@
 /**
- * @file core/hooks/keyboardHeight.logic.ts
+ * @file shared/hooks/keyboard-height.logic.ts
  * @description Keyboard height from React Native keyboard events. The keyboard
  * source is injected so the subscription is testable without React Native.
  */

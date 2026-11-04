@@ -1,5 +1,5 @@
 /**
- * @file core/hooks/useSeleneRefresh.ts
+ * @file shared/hooks/use-selene-refresh.ts
  * @description Gestiona la coreografía de refresco: Spinner -> Skeleton -> Data.
  */
 

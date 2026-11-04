@@ -56,7 +56,7 @@ import { useShipmentsByOrder } from '../../../core/hooks/useShipments';
 import { useOrderActions } from '../../../core/hooks/useOrderActions';
 import { useReturnPayment } from '../../../core/hooks/useReturnPayment';
 import { useShareLabel } from '../../../core/hooks/useShareLabel';
-import { formatCurrency } from '../../../core/utils/format';
+import { formatCurrency } from '../../../shared/utils/format';
 import { Theme } from '../../../shared/theme';
 import { ReviewModal } from '@/components/features/profile/ReviewModal';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
@@ -71,7 +71,7 @@ import {
   shouldSuppressShipmentActionsForBuyerRecovery,
 } from './order-recovery-view';
 import Toast from 'react-native-toast-message';
-import { describeError } from '../../../core/utils/describe-error';
+import { describeError } from '../../../shared/utils/describe-error';
 
 // --- TIPO AUXILIAR PARA REVIEW (viene en la query de useOrderById pero no en EnrichedOrder) ---
 // V2: adds product_id / shipment_id / seller_id so the review gate can match

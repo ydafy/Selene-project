@@ -20,7 +20,7 @@ import { Skeleton } from '../../../../shared/ui/skeleton';
 import { OrderShipmentCard } from '../../../../components/features/orders/OrderShipmentCard';
 import { useOrderById } from '../../../../core/hooks/useOrders';
 import { useShipmentsByOrder } from '../../../../core/hooks/useShipments';
-import { formatCurrency, formatDate } from '../../../../core/utils/format';
+import { formatCurrency, formatDate } from '../../../../shared/utils/format';
 import { Theme } from '../../../../shared/theme';
 import { useAuthContext } from '../../../../shared/lib/auth/auth-provider';
 import { resolveRoleAwareOrderView } from '../order-view-routing';

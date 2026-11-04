@@ -22,7 +22,7 @@ import { useSellStore } from '../../core/store/useSellStore';
 
 import { Theme } from '../../shared/theme';
 import { Product } from '@selene/types';
-import { useSeleneRefresh } from '@/core/hooks/useSeleneRefresh';
+import { useSeleneRefresh } from '@/shared/hooks/use-selene-refresh';
 
 export default function MyListingsScreen() {
   const theme = useTheme<Theme>();

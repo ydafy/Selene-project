@@ -14,8 +14,8 @@ import { AppImage } from '../../../shared/ui/app-image';
 import { PrimaryButton } from '../../../shared/ui/primary-button';
 import { EnrichedShipment } from '@selene/types';
 import { Theme } from '@/shared/theme';
-import { formatCurrency } from '@/core/utils/format';
-import { resolvePublicIdentity } from '@/core/utils/publicIdentity';
+import { formatCurrency } from '@/shared/utils/format';
+import { resolvePublicIdentity } from '@/shared/utils/public-identity';
 import {
   getOrderStatusColor,
   getOrderStatusTextColor,

@@ -16,7 +16,7 @@ import { PrimaryButton } from '../../shared/ui/primary-button';
 import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
 import { useAllFavorites } from '../../core/hooks/useAllFavorites';
 import { useAuthContext } from '../../shared/lib/auth/auth-provider';
-import { useSeleneRefresh } from '../../core/hooks/useSeleneRefresh';
+import { useSeleneRefresh } from '../../shared/hooks/use-selene-refresh';
 import { Theme } from '../../shared/theme';
 import type { Product } from '@selene/types';
 

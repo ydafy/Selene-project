@@ -8,7 +8,7 @@ import MaterialCommunityIcons, {
 import { AccessibilityInfo, findNodeHandle, View } from 'react-native';
 import { Box } from './base';
 import { Theme } from '../theme';
-import { useKeyboardHeight } from '../../core/hooks/useKeyboardHeight';
+import { useKeyboardHeight } from '../hooks/use-keyboard-height';
 
 type ConfirmDialogProps = {
   visible: boolean;

@@ -11,10 +11,10 @@ import { IconButton } from 'react-native-paper';
 import { Box, Text } from '../base';
 import { AppImage } from '../app-image';
 import { Theme } from '../../theme';
-import { formatCurrency } from '../../../core/utils/format';
+import { formatCurrency } from '../../utils/format';
 import { PublicProduct } from '@selene/types';
 import { getSharedStyles } from '../../theme/shared-styles';
-import { isInVerification } from '../../../core/utils/productListingStatus';
+import { isInVerification } from '../../utils/product-listing-status';
 import { VerificationPill } from '../../../components/features/product/VerificationPill';
 
 interface Props {

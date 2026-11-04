@@ -4,7 +4,7 @@ import {
   ACTIVE_LISTING_STATUSES,
   BUYER_LISTED_STATUSES,
   isInVerification,
-} from '../productListingStatus';
+} from './product-listing-status';
 
 describe('product listing statuses', () => {
   it('active listings are verified or still in verification, never sold', () => {

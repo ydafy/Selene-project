@@ -10,7 +10,7 @@ import { Box, Text } from '../../shared/ui/base';
 import { PrimaryButton } from '../../shared/ui/primary-button';
 import { Theme } from '../../shared/theme';
 import { useSellStore } from '../../core/store/useSellStore';
-import { triggerHaptic } from '../../core/utils/haptics';
+import { triggerHaptic } from '../../shared/utils/haptics';
 
 export default function SellSuccessScreen() {
   const { t } = useTranslation('sell');

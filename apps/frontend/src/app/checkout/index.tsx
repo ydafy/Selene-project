@@ -34,7 +34,7 @@ import { useCheckoutStore } from '../../core/store/useCheckoutStore';
 import { useAddresses } from '../../core/hooks/useAddresses';
 import { useOrderCalculations } from '../../core/hooks/useOrderCalculations';
 import { usePaymentMethods } from '../../core/hooks/usePaymentMethods';
-import { formatCurrency } from '../../core/utils/format';
+import { formatCurrency } from '../../shared/utils/format';
 import { Address } from '@selene/types';
 import { useAuthContext } from '../../shared/lib/auth/auth-provider';
 import { OrderService } from '../../core/services/order';

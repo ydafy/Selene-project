@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { buildSupportMailto, resolveSupportEmail } from '../supportEmail';
+import { buildSupportMailto, resolveSupportEmail } from './support-email';
 
 describe('resolveSupportEmail', () => {
   test('returns the trimmed address when it is configured', () => {

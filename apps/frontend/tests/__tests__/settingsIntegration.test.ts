@@ -67,7 +67,7 @@ describe('LegalesSection row order (Terms → Privacy → Version)', () => {
 
   test('opens the pages through the shared browser hook', () => {
     expect(src).toContain('useOpenInBrowser');
-    expect(read('src/core/hooks/useOpenInBrowser.ts')).toContain(
+    expect(read('src/shared/hooks/use-open-in-browser.ts')).toContain(
       'openBrowserAsync',
     );
   });

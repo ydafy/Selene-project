@@ -1,12 +1,12 @@
 /**
- * @file core/hooks/useKeyboardHeight.ts
+ * @file shared/hooks/use-keyboard-height.ts
  * @description Current keyboard height in points, or 0 when hidden or disabled.
  */
 
 import { useEffect, useState } from 'react';
 import { Keyboard, Platform } from 'react-native';
 
-import { subscribeKeyboardHeight } from './keyboardHeight.logic';
+import { subscribeKeyboardHeight } from './keyboard-height.logic';
 
 export const useKeyboardHeight = (enabled = true): number => {
   const [height, setHeight] = useState(0);

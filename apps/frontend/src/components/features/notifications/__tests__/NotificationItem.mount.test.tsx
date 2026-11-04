@@ -59,7 +59,7 @@ if (process.env.SELENE_NOTIFICATION_MOUNT_CHILD !== 'item') {
     Box: host('Box'),
     Text: host('Text'),
   }));
-  mock.module('../../../../core/utils/format', () => ({
+  mock.module('../../../../shared/utils/format', () => ({
     formatSmartTime: () => 'now',
   }));
   mock.module('../../../../shared/ui/confirm-dialog', () => ({

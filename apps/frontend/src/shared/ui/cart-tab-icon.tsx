@@ -3,7 +3,7 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 //import { useTheme } from '@shopify/restyle';
 import { Box, Text } from './base';
 import { colors } from '@/shared/theme/tokens';
-import { tabIconColor } from '@/core/utils/tabIconColor';
+import { tabIconColor } from '@/shared/utils/tab-icon-color';
 //import { Theme } from '../../core/theme';
 
 type CartTabIconProps = {

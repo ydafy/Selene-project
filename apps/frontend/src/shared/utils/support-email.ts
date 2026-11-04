@@ -1,5 +1,5 @@
 /**
- * @file core/utils/supportEmail.ts
+ * @file shared/utils/support-email.ts
  * @description Pure helpers for the email support entry: users write to the
  * address in `EXPO_PUBLIC_SUPPORT_EMAIL` for questions and reports.
  */

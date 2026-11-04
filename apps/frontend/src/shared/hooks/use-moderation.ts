@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { supabase } from '../../shared/lib/supabase';
-import { useAuthContext } from '../../shared/lib/auth/auth-provider';
+import { supabase } from '../lib/supabase';
+import { useAuthContext } from '../lib/auth/auth-provider';
 export const useModeration = () => {
   const { session } = useAuthContext();
   const [loading, setLoading] = useState(false);

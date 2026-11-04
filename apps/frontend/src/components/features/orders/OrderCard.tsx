@@ -19,7 +19,7 @@ import { Box, Text } from '../../../shared/ui/base';
 import { AppImage } from '../../../shared/ui/app-image';
 import { Theme } from '../../../shared/theme';
 
-import { formatCurrency, formatDate } from '../../../core/utils/format';
+import { formatCurrency, formatDate } from '../../../shared/utils/format';
 import { orderCardAmountCents } from '../../../core/utils/order-summary-state';
 import {
   getOrderStatusColor,

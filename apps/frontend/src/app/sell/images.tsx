@@ -13,7 +13,7 @@ import { ImageGridPicker } from '../../components/features/sell/ImageGridPicker'
 import { useSellStore } from '../../core/store/useSellStore';
 import { useProductImages } from '../../core/hooks/useProductImages';
 import { SELL_STEP_DEFINITIONS } from '@/core/constants/sellSteps';
-import { triggerHaptic } from '../../core/utils/haptics';
+import { triggerHaptic } from '../../shared/utils/haptics';
 import { reorderImages } from '../../core/utils/imageReorder';
 
 const MAX_IMAGES = 5;

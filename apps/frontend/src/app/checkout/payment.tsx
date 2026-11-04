@@ -13,7 +13,7 @@ import { GlobalHeader } from '../../shared/ui/global-header';
 import { ErrorState } from '../../shared/ui/error-state';
 import { Theme } from '../../shared/theme';
 import { usePaymentProcess } from '../../core/hooks/usePaymentProcess';
-import { formatCurrency } from '../../core/utils/format';
+import { formatCurrency } from '../../shared/utils/format';
 import { OrderPreviewStrip } from '../../components/features/checkout/OrderPreviewStrip';
 import { ProductSummaryModal } from '../../components/features/checkout/ProductSummaryModal';
 import { Stack } from 'expo-router';

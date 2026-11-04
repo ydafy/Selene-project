@@ -16,9 +16,9 @@ import { signOutUser } from '../../core/auth/signOut';
 import { ErrorState } from './error-state';
 import { MaintenanceScreen } from './maintenance-screen';
 
-import { useSystemConfig } from '../../core/hooks/useSystemConfig';
+import { useSystemConfig } from '../hooks/use-system-config';
 import { useAuthContext } from '../lib/auth/auth-provider';
-import { isVersionLower } from '../../core/utils/version';
+import { isVersionLower } from '../utils/version';
 import { Theme } from '../theme';
 
 export function SystemGuard({ children }: { children: React.ReactNode }) {

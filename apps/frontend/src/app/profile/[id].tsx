@@ -37,12 +37,12 @@ import { Skeleton } from '../../shared/ui/skeleton';
 import { useProfile } from '../../core/hooks/useProfile';
 import { useProducts } from '../../core/hooks/useProducts';
 import { useSellerReviews } from '../../core/hooks/useSellerReviews';
-import { formatCurrency } from '../../core/utils/format';
-import { isClosedAccount } from '../../core/utils/publicIdentity';
+import { formatCurrency } from '../../shared/utils/format';
+import { isClosedAccount } from '../../shared/utils/public-identity';
 import {
   ACTIVE_LISTING_STATUSES,
   isInVerification,
-} from '../../core/utils/productListingStatus';
+} from '../../shared/utils/product-listing-status';
 import { VerificationPill } from '../../components/features/product/VerificationPill';
 import { Theme } from '../../shared/theme';
 import { GlobalHeader } from '@/shared/ui/global-header';

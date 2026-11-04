@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { subscribeKeyboardHeight } from '../keyboardHeight.logic';
+import { subscribeKeyboardHeight } from './keyboard-height.logic';
 
 /**
  * L64: the password dialog must sit above the keyboard. The height comes from

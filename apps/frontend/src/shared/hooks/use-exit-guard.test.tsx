@@ -50,10 +50,10 @@ if (process.env.SELENE_EXIT_GUARD_CHILD !== '1') {
   mock.module('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key }),
   }));
-  mock.module('../store/useSellStore', () => ({
+  mock.module('../../core/store/useSellStore', () => ({
     useSellStore: () => ({ resetDraft }),
   }));
-  mock.module('../../shared/ui/confirm-dialog', () => ({
+  mock.module('../ui/confirm-dialog', () => ({
     ConfirmDialog: (props: NonNullable<typeof dialog>) => {
       dialog = props;
       return null;
@@ -61,7 +61,7 @@ if (process.env.SELENE_EXIT_GUARD_CHILD !== '1') {
   }));
 
   const { act, render } = await import('@testing-library/react-native');
-  const { useExitGuard } = await import('./useExitGuard');
+  const { useExitGuard } = await import('./use-exit-guard');
 
   const Harness = ({ enabled }: { enabled: boolean }) => {
     const { ExitDialog } = useExitGuard(enabled);

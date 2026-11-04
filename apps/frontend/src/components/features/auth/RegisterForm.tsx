@@ -25,7 +25,7 @@ import {
   RegisterData,
 } from '../../../core/hooks/useAuth';
 import { useGoogleAuth } from '../../../core/hooks/useGoogleAuth';
-import { useOpenInBrowser } from '../../../core/hooks/useOpenInBrowser';
+import { useOpenInBrowser } from '../../../shared/hooks/use-open-in-browser';
 import { isUsernameAvailable } from '../../../core/auth/registerUsername.logic';
 import { classifySignUpResult } from '../../../core/auth/authOutcome.logic';
 import {

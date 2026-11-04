@@ -188,7 +188,7 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
   mock.module('../../src/core/hooks/useOrderActions', () => ({
     useOrderActions: () => ({ generateLabel: { isLoading: false, execute } }),
   }));
-  mock.module('../../src/core/hooks/useSystemConfig', () => ({
+  mock.module('../../src/shared/hooks/use-system-config', () => ({
     useSystemConfig: () => ({ data: {} }),
   }));
   mock.module('../../src/core/hooks/useConnectOnboarding', () => ({

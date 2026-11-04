@@ -1,6 +1,6 @@
 import { describe, expect, it, mock } from 'bun:test';
 
-import { routeBlockedRemove } from './navigationGuard';
+import { routeBlockedRemove } from './navigation-guard';
 
 const setup = () => {
   const proceed = mock<(action: { type: string }) => void>(() => {});

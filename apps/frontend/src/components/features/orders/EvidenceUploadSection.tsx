@@ -8,8 +8,8 @@ import * as Haptics from 'expo-haptics';
 import { Box, Text } from '../../../shared/ui/base';
 import { AppImage } from '../../../shared/ui/app-image';
 import { ConfirmDialog } from '../../../shared/ui/confirm-dialog';
-import { useImageUpload } from '../../../core/hooks/useImageUpload';
-import { describeError } from '../../../core/utils/describe-error';
+import { useImageUpload } from '../../../shared/hooks/use-image-upload';
+import { describeError } from '../../../shared/utils/describe-error';
 import { Theme } from '../../../shared/theme';
 
 type AllowedBuckets = 'evidence' | 'Avatars';

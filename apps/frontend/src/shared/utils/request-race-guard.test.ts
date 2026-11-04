@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { RequestRaceGuard } from './requestRaceGuard';
+import { RequestRaceGuard } from './request-race-guard';
 
 describe('RequestRaceGuard', () => {
   it('marks the most recent request as current', () => {

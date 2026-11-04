@@ -42,7 +42,7 @@ import {
   PackagePreset,
   PackagePresetsMap,
   useSystemConfig,
-} from '../../../../core/hooks/useSystemConfig';
+} from '../../../../shared/hooks/use-system-config';
 import { authenticateAsync } from '../../../../core/utils/biometrics';
 import {
   generateLabelWithRecovery,

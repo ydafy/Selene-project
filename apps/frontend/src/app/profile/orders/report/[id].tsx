@@ -43,7 +43,7 @@ import { WizardSteps } from '@/components/features/sell/WizardSteps';
 import { FormTextInput } from '@/shared/ui/form-text-input';
 import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import { resolveShipmentContext } from '@/core/utils/disputeShipmentContext';
-import { describeError } from '@/core/utils/describe-error';
+import { describeError } from '@/shared/utils/describe-error';
 
 export default function ReportProblemScreen() {
   const { id, shipment_id } = useLocalSearchParams<{

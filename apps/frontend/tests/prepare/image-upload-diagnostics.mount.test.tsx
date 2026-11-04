@@ -51,7 +51,7 @@ if (process.env.SELENE_UPLOAD_CHILD !== '1') {
   }));
   const { act, render } = await import('@testing-library/react-native');
   const { useImageUpload } =
-    await import('../../src/core/hooks/useImageUpload');
+    await import('../../src/shared/hooks/use-image-upload');
   test('failure rethrows original identity without private logs; success preserves upload and cleanup', async () => {
     let api!: ReturnType<typeof useImageUpload>;
     function Probe() {

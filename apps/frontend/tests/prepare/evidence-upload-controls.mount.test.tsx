@@ -78,7 +78,7 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
   mock.module('../../src/shared/ui/confirm-dialog', () => ({
     ConfirmDialog: host('ConfirmDialog'),
   }));
-  mock.module('../../src/core/hooks/useImageUpload', () => ({
+  mock.module('../../src/shared/hooks/use-image-upload', () => ({
     useImageUpload: () => ({ takePhoto, uploadFile, uploading: false }),
   }));
   for (const image of [

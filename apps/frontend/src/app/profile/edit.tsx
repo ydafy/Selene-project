@@ -22,7 +22,7 @@ import {
   useUpdateProfile,
   useUpdateAvatar,
 } from '../../core/hooks/useProfile';
-import { useImageUpload } from '../../core/hooks/useImageUpload';
+import { useImageUpload } from '../../shared/hooks/use-image-upload';
 import { validateEditUsername } from '../../core/utils/editProfileValidation';
 import { stripSettingsNamespace } from '../../core/hooks/deleteAccountHelpers';
 import { Theme } from '../../shared/theme';

@@ -19,7 +19,7 @@ import { Theme } from '../../shared/theme';
 import {
   buildSupportMailto,
   resolveSupportEmail,
-} from '../../core/utils/supportEmail';
+} from '../../shared/utils/support-email';
 
 export default function SupportScreen() {
   const { t } = useTranslation('settings');

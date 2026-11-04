@@ -9,7 +9,7 @@ import { Theme } from '../../../shared/theme';
 import {
   useSystemConfig,
   PackagePresetsMap,
-} from '../../../core/hooks/useSystemConfig';
+} from '../../../shared/hooks/use-system-config';
 import { useTranslation } from 'react-i18next';
 
 type PackageSelectorProps = {

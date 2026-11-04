@@ -1,5 +1,5 @@
 /**
- * @file core/utils/publicIdentity.ts
+ * @file shared/utils/public-identity.ts
  * @description How another user's public identity is shown. A closed account
  * (`profiles.deleted_at` set) renders as a localized "deleted user" label with
  * no avatar and no link to the public profile.

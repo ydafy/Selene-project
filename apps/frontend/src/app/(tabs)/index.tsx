@@ -43,7 +43,7 @@ import { useUnreadNotifications } from '@/core/hooks/useUnreadNotifications';
 import { Theme } from '../../shared/theme';
 import { Address } from '@selene/types';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { useSeleneRefresh } from '@/core/hooks/useSeleneRefresh';
+import { useSeleneRefresh } from '@/shared/hooks/use-selene-refresh';
 import { useNetInfo } from '@react-native-community/netinfo';
 import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import { ErrorState } from '@/shared/ui/error-state';

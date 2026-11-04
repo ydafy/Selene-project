@@ -5,7 +5,7 @@ import { Box, Text } from '../../../shared/ui/base';
 import { AppImage } from '../../../shared/ui/app-image';
 import { AppChip } from '../../../shared/ui/app-chip';
 
-import { formatCurrency } from '../../../core/utils/format';
+import { formatCurrency } from '../../../shared/utils/format';
 
 interface CheckoutItemProps {
   product: Product;

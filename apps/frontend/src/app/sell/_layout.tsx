@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 
-import { useExitGuard } from '../../core/hooks/useExitGuard';
+import { useExitGuard } from '../../shared/hooks/use-exit-guard';
 import { useSellStore } from '../../core/store/useSellStore';
 import { isSellDraftDirty } from '../../core/utils/sellDraftDirty';
 

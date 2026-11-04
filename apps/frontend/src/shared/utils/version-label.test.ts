@@ -1,5 +1,5 @@
 import { expect, test, describe } from 'bun:test';
-import { formatVersionLabel } from '../versionLabel';
+import { formatVersionLabel } from './version-label';
 
 /**
  * Covers EXTD-TASK-011 + CONF-014: "Selene vX.Y.Z (Build N)" format,

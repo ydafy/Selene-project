@@ -1,5 +1,5 @@
 /**
- * @file core/utils/version.ts
+ * @file shared/utils/version.ts
  * @description Compara dos versiones semánticas (ej. 1.10.0 vs 1.2.0).
  * @returns true si la versión actual es menor que la requerida.
  */

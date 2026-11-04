@@ -22,7 +22,7 @@ import {
 } from '../../components/features/shop/index';
 import { ShopSkeleton } from '../../components/features/shop/ShopSkeleton';
 import { useProducts } from '../../core/hooks/useProducts';
-import { ACTIVE_LISTING_STATUSES } from '../../core/utils/productListingStatus';
+import { ACTIVE_LISTING_STATUSES } from '../../shared/utils/product-listing-status';
 import { Theme } from '../../shared/theme/index';
 import { useTheme } from '@shopify/restyle';
 import { ProductSnapCard } from '../../components/features/shop/sections/ProductSnapCard';

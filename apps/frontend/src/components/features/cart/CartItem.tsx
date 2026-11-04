@@ -11,7 +11,7 @@ import { Box, Text } from '../../../shared/ui/base';
 import { AppImage } from '../../../shared/ui/app-image';
 import { AppChip } from '../../../shared/ui/app-chip';
 import { Theme } from '../../../shared/theme';
-import { formatCurrency } from '../../../core/utils/format'; // <--- AGREGADO
+import { formatCurrency } from '../../../shared/utils/format'; // <--- AGREGADO
 
 type CartItemProps = {
   product: Product;

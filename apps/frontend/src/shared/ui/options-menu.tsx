@@ -9,7 +9,7 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 
 import { Box, Text } from './base';
 import { Theme } from '../theme';
-import { useModeration } from '../../core/hooks/useModeration';
+import { useModeration } from '../hooks/use-moderation';
 import { useAuthContext } from '../lib/auth/auth-provider';
 import { colors } from '@/shared/theme/tokens';
 

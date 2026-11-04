@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Box, Text } from '../../../shared/ui/base';
 import { PrimaryButton } from '../../../shared/ui/primary-button';
 import { Theme } from '../../../shared/theme';
-import { formatCurrency } from '../../../core/utils/format';
+import { formatCurrency } from '../../../shared/utils/format';
 import { getTabDockMetrics } from '../../../core/constants/layout';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 

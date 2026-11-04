@@ -5,7 +5,7 @@ import { useTheme } from '@shopify/restyle';
 
 import { Theme } from '../../shared/theme';
 import { useCartStore } from '../../core/store/useCartStore';
-import { tabIconColor } from '../../core/utils/tabIconColor';
+import { tabIconColor } from '../../shared/utils/tab-icon-color';
 import { CartTabIcon } from '../../shared/ui/cart-tab-icon';
 import { Box } from '@/shared/ui/base';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

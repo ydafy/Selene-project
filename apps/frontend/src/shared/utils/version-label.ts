@@ -1,5 +1,5 @@
 /**
- * @file core/utils/versionLabel.ts
+ * @file shared/utils/version-label.ts
  * @description Formats the app version label rendered on the settings screen.
  * Covers CONF-014: "Selene vX.Y.Z (Build N)" with "unknown" placeholders
  * when expo-constants returns null/undefined.

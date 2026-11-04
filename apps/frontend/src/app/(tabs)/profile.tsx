@@ -10,7 +10,7 @@ import { useAuthContext } from '../../shared/lib/auth/auth-provider';
 import { useAuthModal } from '../../core/auth/AuthModalProvider';
 
 import { useMyFavorites } from '../../core/hooks/useMyFavorites';
-import { useImageUpload } from '../../core/hooks/useImageUpload';
+import { useImageUpload } from '../../shared/hooks/use-image-upload';
 
 // Componentes UI y Base
 import { Box, Text } from '../../shared/ui/base';

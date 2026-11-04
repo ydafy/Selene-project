@@ -1,4 +1,4 @@
-import { describeError } from '../../core/utils/describe-error';
+import { describeError } from '../utils/describe-error';
 
 const MEDIA_TYPES: Record<string, { ext: string; contentType: string }> = {
   jpg: { ext: 'jpg', contentType: 'image/jpeg' },

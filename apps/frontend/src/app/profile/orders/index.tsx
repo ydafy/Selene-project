@@ -20,7 +20,7 @@ import { Skeleton } from '../../../shared/ui/skeleton';
 import { useTheme } from 'react-native-paper';
 import { Theme } from '@/shared/theme';
 import { RefreshControl } from 'react-native';
-import { useSeleneRefresh } from '../../../core/hooks/useSeleneRefresh';
+import { useSeleneRefresh } from '../../../shared/hooks/use-selene-refresh';
 import { ErrorState } from '@/shared/ui/error-state';
 import { resolveRoleAwareOrderView } from './order-view-routing';
 

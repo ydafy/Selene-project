@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { tabIconColor } from './tabIconColor';
+import { tabIconColor } from './tab-icon-color';
 
 describe('tabIconColor', () => {
   it('passes string colors through', () => {

@@ -14,7 +14,7 @@ import { useSellStore } from '../../core/store/useSellStore';
 import { ProductCategory } from '@selene/types';
 import { useAuthContext } from '../../shared/lib/auth/auth-provider';
 import { useAuthModal } from '../../core/auth/AuthModalProvider';
-import { triggerHaptic } from '../../core/utils/haptics';
+import { triggerHaptic } from '../../shared/utils/haptics';
 import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
 import {
   SELL_CATEGORIES,

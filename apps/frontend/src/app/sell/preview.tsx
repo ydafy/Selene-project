@@ -24,7 +24,7 @@ import { useSellStore } from '../../core/store/useSellStore';
 import { usePublishProduct } from '../../core/hooks/usePublishProduct';
 import { useAuthContext } from '../../shared/lib/auth/auth-provider';
 import { classifyListingEdit } from '../../core/utils/listingEdit';
-import { formatCurrency } from '../../core/utils/format';
+import { formatCurrency } from '../../shared/utils/format';
 import { buildPreviewProduct } from '../../core/utils/previewProductBuilder';
 import { describeUploadState } from '../../core/utils/describeUploadState';
 import { countUploadState } from '../../core/utils/countUploadState';
