@@ -5,7 +5,7 @@ import {
   buildShipmentConfirmationPayload,
   canConfirmShipmentDelivery,
   resolveShipmentConfirmationFailureToast,
-} from '../../src/core/utils/shipment-confirmation';
+} from '../../src/features/orders/logic/shipment-confirmation';
 
 // Prettier may re-wrap the source files read below; compare without layout.
 const compact = (source: string) =>
@@ -52,7 +52,9 @@ describe('shipment confirmation', () => {
   });
 
   it('blocks only unresolved dispute statuses and permits resolved or rejected disputes', () => {
-    const shipments = source('apps/frontend/src/core/hooks/useShipments.ts');
+    const shipments = source(
+      'apps/frontend/src/features/orders/hooks/use-shipments.ts',
+    );
     const activeStatuses = shipments
       .match(/const ACTIVE_DISPUTE_STATUSES[^=]*=\s*\[([\s\S]*?)\];/)?.[1]
       .match(/'[^']+'/g);
@@ -133,10 +135,10 @@ describe('shipment confirmation', () => {
 
   it('routes confirmation through the shipment Edge Function without the retired fallback', () => {
     const actions = compact(
-      source('apps/frontend/src/core/hooks/useOrderActions.ts'),
+      source('apps/frontend/src/features/orders/hooks/use-order-actions.ts'),
     );
     const shipments = compact(
-      source('apps/frontend/src/core/hooks/useShipments.ts'),
+      source('apps/frontend/src/features/orders/hooks/use-shipments.ts'),
     );
 
     expect(actions).toContain(
@@ -148,7 +150,9 @@ describe('shipment confirmation', () => {
   });
 
   it('uses delivered-only copy that does not promise an immediate payout', () => {
-    const detail = source('apps/frontend/src/app/profile/orders/[id].tsx');
+    const detail = source(
+      'apps/frontend/src/features/orders/screens/order-detail-screen.tsx',
+    );
     const english = JSON.parse(
       source('apps/frontend/src/shared/i18n/locales/en/orders.json'),
     );
@@ -156,7 +160,12 @@ describe('shipment confirmation', () => {
       source('apps/frontend/src/shared/i18n/locales/es/orders.json'),
     );
 
-    expect(detail).toContain("t('orders:dialogs.deliveryMsg')");
+    const dialogs = source(
+      'apps/frontend/src/features/orders/components/order-detail-dialogs.tsx',
+    );
+
+    expect(detail).toContain('<OrderDetailDialogs');
+    expect(dialogs).toContain("t('orders:dialogs.deliveryMsg')");
     expect(english.actions.confirmDelivery).toBe('Confirm Delivered Package');
     expect(english.dialogs.deliveryMsg).toContain(
       'Confirming completes the purchase',

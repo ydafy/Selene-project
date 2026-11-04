@@ -10,7 +10,7 @@ const json = (locale: string) =>
 describe('media upload B3 source guards', () => {
   it('has no unchecked base64 assertions at the capture call sites', () => {
     expect(
-      read('src/components/features/orders/EvidenceUploadSection.tsx'),
+      read('src/features/orders/components/evidence-upload-section.tsx'),
     ).not.toContain('base64!');
     expect(read('src/app/(tabs)/profile.tsx')).not.toContain('base64!');
   });
@@ -24,14 +24,14 @@ describe('media upload B3 source guards', () => {
 
   it('EvidenceUploadSection logs failures through describeError', () => {
     const source = read(
-      'src/components/features/orders/EvidenceUploadSection.tsx',
+      'src/features/orders/components/evidence-upload-section.tsx',
     );
     expect(source).toContain('describeError');
     expect(source).not.toContain("event: 'capture_or_upload_failed'");
   });
 
   it('useVideoUpload uses the shared helper, a submit guard and i18n', () => {
-    const source = read('src/core/hooks/useVideoUpload.ts');
+    const source = read('src/features/orders/hooks/use-video-upload.ts');
     expect(source).toContain('uploadMediaFromUri');
     expect(source).toContain('maxBytes');
     expect(source).toContain('useRef');

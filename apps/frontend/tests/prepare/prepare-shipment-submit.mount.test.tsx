@@ -132,13 +132,13 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
     ['shared/ui/error-state', 'ErrorState'],
     ['shared/ui/skeleton', 'Skeleton'],
     ['shared/ui/label-with-help', 'LabelWithHelp'],
-    ['components/features/orders/PackagingGuideCard', 'PackagingGuideCard'],
+    ['features/orders/components/packaging-guide-card', 'PackagingGuideCard'],
     [
-      'components/features/orders/ShipmentLabelRecoveryCard',
+      'features/orders/components/shipment-label-recovery-card',
       'ShipmentLabelRecoveryCard',
     ],
     [
-      'components/features/orders/EvidenceUploadSection',
+      'features/orders/components/evidence-upload-section',
       'EvidenceUploadSection',
     ],
   ])
@@ -167,7 +167,7 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
   mock.module('../../src/shared/lib/auth/auth-provider', () => ({
     useAuthContext: () => ({ session: { user: { id: viewer } } }),
   }));
-  mock.module('../../src/core/hooks/useOrders', () => ({
+  mock.module('../../src/features/orders/hooks/use-orders', () => ({
     useOrderById: () => ({
       data: {
         ...order,
@@ -185,7 +185,7 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
       refetch,
     }),
   }));
-  mock.module('../../src/core/hooks/useOrderActions', () => ({
+  mock.module('../../src/features/orders/hooks/use-order-actions', () => ({
     useOrderActions: () => ({ generateLabel: { isLoading: false, execute } }),
   }));
   mock.module('../../src/shared/hooks/use-system-config', () => ({
@@ -194,9 +194,12 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
   mock.module('../../src/core/hooks/useConnectOnboarding', () => ({
     useConnectOnboarding: () => ({ isComplete: onboarding, isLoading: false }),
   }));
-  mock.module('../../src/core/hooks/useShipmentLabelRefresh', () => ({
-    useShipmentLabelRefresh: () => {},
-  }));
+  mock.module(
+    '../../src/features/orders/hooks/use-shipment-label-refresh',
+    () => ({
+      useShipmentLabelRefresh: () => {},
+    }),
+  );
   mock.module('../../src/core/utils/biometrics', () => ({
     authenticateAsync: authenticate,
   }));
@@ -318,6 +321,22 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
         orderId = 'order-123';
         viewer = 'seller';
       }
+    });
+
+    test('a retained submit handler never reaches biometrics with fewer than three photos', async () => {
+      const tree = await render(<Screen />);
+      await act(async () => {
+        one(tree, 'AddressPickerModal').props.onSelect({ id: 'origin' });
+        one(tree, 'EvidenceUploadSection').props.onEvidenceComplete(['a', 'b']);
+      });
+      const submit = one(tree, 'PrimaryButton').props.onPress;
+      expect(one(tree, 'PrimaryButton').props.disabled).toBe(true);
+      const count = authenticate.mock.calls.length;
+      await act(async () => {
+        await submit();
+      });
+      expect(authenticate).toHaveBeenCalledTimes(count);
+      await tree.unmount();
     });
 
     test('retained navigation, refresh and PDF callbacks are inert in the submission turn and dismiss is requested', async () => {

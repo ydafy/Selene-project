@@ -72,7 +72,7 @@ describe('BL20 hardcoded Spanish', () => {
 
   test.each([
     'app/checkout/success.tsx',
-    'app/profile/orders/prepare/[id].tsx',
+    'features/orders/screens/prepare-shipment-screen.tsx',
   ])('%s passes no Spanish defaultValue to t()', (file) => {
     expect(readSource(file).includes('defaultValue')).toBe(false);
   });

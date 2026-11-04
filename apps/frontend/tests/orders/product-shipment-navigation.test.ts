@@ -2,7 +2,17 @@ import { expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
 const detail = readFileSync(
-  new URL('../../src/app/profile/orders/[id].tsx', import.meta.url),
+  new URL(
+    '../../src/features/orders/screens/order-detail-screen.tsx',
+    import.meta.url,
+  ),
+  'utf8',
+);
+const hook = readFileSync(
+  new URL(
+    '../../src/features/orders/hooks/use-order-detail.ts',
+    import.meta.url,
+  ),
   'utf8',
 );
 const summary = readFileSync(
@@ -11,8 +21,9 @@ const summary = readFileSync(
 );
 
 test('uses the product-shipment summary as the default order detail view', () => {
-  expect(detail).toContain('router.replace(orderView.href as any);');
-  expect(detail).toContain(
+  expect(detail).toContain('useOrderDetail(');
+  expect(hook).toContain('router.replace(orderView.href as any);');
+  expect(hook).toContain(
     'if (!source || source.length === 0 || !shipmentId) return null;',
   );
 });

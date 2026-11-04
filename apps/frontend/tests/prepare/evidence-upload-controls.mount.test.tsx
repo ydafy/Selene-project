@@ -105,11 +105,11 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
     return found[0];
   };
   const { EvidenceUploadSection } =
-    await import('../../src/components/features/orders/EvidenceUploadSection');
+    await import('../../src/features/orders/components/evidence-upload-section');
   const { AddressSection } =
     await import('../../src/components/features/checkout/AddressSection');
   const { PackagingGuideCard } =
-    await import('../../src/components/features/orders/PackagingGuideCard');
+    await import('../../src/features/orders/components/packaging-guide-card');
   const { LabelWithHelp } = await import('../../src/shared/ui/label-with-help');
 
   test('shared address, help and packing controls retain enabled defaults and reject disabled callbacks', async () => {
