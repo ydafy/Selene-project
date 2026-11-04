@@ -1,10 +1,10 @@
 import { StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
-import { Box, Text } from '../../base';
-import { Theme } from '../../../core/theme';
-import { BrandIcon } from '../../ui/BrandIcon';
-import { colors } from '@/core/theme/tokens';
+import { Box, Text } from '../../../shared/ui/base';
+import { Theme } from '../../../shared/theme';
+import { BrandIcon } from '../../../shared/ui/brand-icon';
+import { colors } from '@/shared/theme/tokens';
 
 type ProductSpecificationsProps = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

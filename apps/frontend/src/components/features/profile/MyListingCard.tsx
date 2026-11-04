@@ -5,10 +5,10 @@ import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { Product } from '@selene/types';
 
-import { Box, Text } from '../../base';
-import { AppImage } from '../../ui/AppImage';
-import { Theme } from '../../../core/theme';
-import { formatCurrency, formatDate } from '../../../core/utils/format';
+import { Box, Text } from '../../../shared/ui/base';
+import { AppImage } from '../../../shared/ui/app-image';
+import { Theme } from '../../../shared/theme';
+import { formatCurrency, formatDate } from '../../../shared/utils/format';
 import {
   getStatusColor,
   isAccountHeld,

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import type { Notification } from '@selene/types';
-import en from '../../../../core/i18n/locales/en/notifications.json';
-import es from '../../../../core/i18n/locales/es/notifications.json';
+import en from '../../../../shared/i18n/locales/en/notifications.json';
+import es from '../../../../shared/i18n/locales/es/notifications.json';
 import { getNotificationPresentation } from '../notificationPresentation';
 
 const legacy: Notification = {

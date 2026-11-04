@@ -13,16 +13,16 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 import { useTheme } from '@shopify/restyle';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Box, Text } from '../../../../components/base';
-import { GlobalHeader } from '../../../../components/layout/GlobalHeader';
-import { PrimaryButton } from '../../../../components/ui/PrimaryButton';
-import { Skeleton } from '../../../../components/ui/Skeleton';
+import { Box, Text } from '../../../../shared/ui/base';
+import { GlobalHeader } from '../../../../shared/ui/global-header';
+import { PrimaryButton } from '../../../../shared/ui/primary-button';
+import { Skeleton } from '../../../../shared/ui/skeleton';
 import { OrderShipmentCard } from '../../../../components/features/orders/OrderShipmentCard';
 import { useOrderById } from '../../../../core/hooks/useOrders';
 import { useShipmentsByOrder } from '../../../../core/hooks/useShipments';
-import { formatCurrency, formatDate } from '../../../../core/utils/format';
-import { Theme } from '../../../../core/theme';
-import { useAuthContext } from '../../../../components/auth/AuthProvider';
+import { formatCurrency, formatDate } from '../../../../shared/utils/format';
+import { Theme } from '../../../../shared/theme';
+import { useAuthContext } from '../../../../shared/lib/auth/auth-provider';
 import { resolveRoleAwareOrderView } from '../order-view-routing';
 import { getOrderStatusLabel } from '@/core/utils/order-status';
 import {

@@ -4,10 +4,10 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
 
-import { Box, Text } from '../../base';
-import { Theme } from '../../../core/theme';
+import { Box, Text } from '../../../shared/ui/base';
+import { Theme } from '../../../shared/theme';
 import { Notification } from '@selene/types';
-import { formatSmartTime } from '../../../core/utils/format';
+import { formatSmartTime } from '../../../shared/utils/format';
 import {
   getNotificationPresentation,
   getVerifiedEventIdentity,

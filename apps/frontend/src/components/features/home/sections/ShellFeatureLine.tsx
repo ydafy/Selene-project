@@ -15,8 +15,8 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import { Box, Text } from '../../../base';
-import { Theme } from '../../../../core/theme';
+import { Box, Text } from '../../../../shared/ui/base';
+import { Theme } from '../../../../shared/theme';
 
 interface BadgeProps {
   icon: MaterialDesignIconsIconName;

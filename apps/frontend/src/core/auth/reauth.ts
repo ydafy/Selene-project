@@ -2,7 +2,7 @@ import {
   GoogleSignin,
   statusCodes,
 } from '@react-native-google-signin/google-signin';
-import { supabase } from '../db/supabase';
+import { supabase } from '../../shared/lib/supabase';
 import { GOOGLE_NO_ID_TOKEN } from './googleAuth.logic';
 import {
   reauthenticate,

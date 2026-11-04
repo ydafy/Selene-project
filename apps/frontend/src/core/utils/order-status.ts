@@ -1,4 +1,4 @@
-import { Theme } from '../theme';
+import { Theme } from '../../shared/theme';
 import { OrderStatus } from '@selene/types';
 
 /**

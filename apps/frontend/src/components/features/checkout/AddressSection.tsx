@@ -2,10 +2,10 @@ import React, { useRef } from 'react';
 import { TouchableOpacity } from 'react-native';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from '@shopify/restyle';
-import { Box, Text } from '../../base';
+import { Box, Text } from '../../../shared/ui/base';
 import { Address } from '@selene/types';
-import { Theme } from '../../../core/theme';
-import { Skeleton } from '../../ui/Skeleton';
+import { Theme } from '../../../shared/theme';
+import { Skeleton } from '../../../shared/ui/skeleton';
 
 interface AddressSectionProps {
   address: Address | null;

@@ -4,13 +4,13 @@ Expo React Native app. Read `docs/conventions.md` first for structure, naming, a
 
 ## Styling
 
-- Style with Restyle, not NativeWind. The theme is `apps/frontend/src/core/theme/index.ts` (`createTheme`) with tokens in `src/core/theme/tokens.ts`. Primitives such as `Box` and `Text` live in `src/components/base/index.ts`.
+- Style with Restyle, not NativeWind. The theme is `apps/frontend/src/shared/theme/index.ts` (`createTheme`) with tokens in `src/shared/theme/tokens.ts`. Primitives such as `Box` and `Text` live in `src/shared/ui/base.ts`.
 - `DESIGN.md` describes how the UI should look.
 
 ## Strings
 
-- Every user-facing string goes through i18n, in English and Spanish: `src/core/i18n/locales/en` and `src/core/i18n/locales/es`.
-- Locale parity tests (`src/core/i18n/*LocaleParity.test.ts`) fail when the two languages differ.
+- Every user-facing string goes through i18n, in English and Spanish: `src/shared/i18n/locales/en` and `src/shared/i18n/locales/es`.
+- Locale parity tests (`src/shared/i18n/*locale-parity.test.ts`) fail when the two languages differ.
 
 ## Dependencies and types
 

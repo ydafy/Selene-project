@@ -7,8 +7,8 @@ import { canShowSellerLabelActions } from '../../../src/core/utils/shipment-labe
 
 const FRONTEND = join(import.meta.dir, '..', '..', '..');
 const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
-const es = JSON.parse(read('src/core/i18n/locales/es/orders.json'));
-const en = JSON.parse(read('src/core/i18n/locales/en/orders.json'));
+const es = JSON.parse(read('src/shared/i18n/locales/es/orders.json'));
+const en = JSON.parse(read('src/shared/i18n/locales/en/orders.json'));
 
 describe('canShowSellerLabelActions', () => {
   const show = (

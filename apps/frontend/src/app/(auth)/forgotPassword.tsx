@@ -12,13 +12,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import Toast from 'react-native-toast-message';
 import { z } from 'zod';
 
-import { ScreenLayout } from '../../components/layout/ScreenLayout';
+import { ScreenLayout } from '../../shared/ui/screen-layout';
 import { AuthBackButton } from '../../components/features/auth/AuthBackButton';
-import { FormTextInput } from '../../components/ui/FormTextInput';
-import { PrimaryButton } from '../../components/ui/PrimaryButton';
-import { AppImage } from '../../components/ui/AppImage';
+import { FormTextInput } from '../../shared/ui/form-text-input';
+import { PrimaryButton } from '../../shared/ui/primary-button';
+import { AppImage } from '../../shared/ui/app-image';
 import type { TFunction } from 'i18next';
-import { Box, Text } from '../../components/base';
+import { Box, Text } from '../../shared/ui/base';
 import { useAuth } from '../../core/hooks/useAuth';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- Metro resolves static asset requires at bundle time

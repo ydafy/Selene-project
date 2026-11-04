@@ -3,10 +3,10 @@ import { TouchableOpacity, ActivityIndicator } from 'react-native';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
-import { Box, Text } from '../../base';
-import { Theme } from '../../../core/theme';
+import { Box, Text } from '../../../shared/ui/base';
+import { Theme } from '../../../shared/theme';
 import { PaymentMethod } from '@selene/types';
-import { BrandIcon } from '../../ui/BrandIcon';
+import { BrandIcon } from '../../../shared/ui/brand-icon';
 
 interface PaymentMethodRowProps {
   method?: PaymentMethod | null;

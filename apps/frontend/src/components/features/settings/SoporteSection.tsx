@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
 import { SettingsRow } from './SettingsRow';
-import { resolveSupportEmail } from '../../../core/utils/supportEmail';
+import { resolveSupportEmail } from '../../../shared/utils/support-email';
 
 /**
  * Soporte section: opens the /profile/support modal, where users write to

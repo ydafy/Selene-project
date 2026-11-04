@@ -7,22 +7,22 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IconButton } from 'react-native-paper';
 
-import { Box } from '../../components/base';
+import { Box } from '../../shared/ui/base';
 import { MyListingCard } from '../../components/features/profile/MyListingCard';
-import { GlobalHeader } from '../../components/layout/GlobalHeader';
-import { EmptyState } from '../../components/ui/EmptyState';
-import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
-import { ProductCardSkeleton } from '../../components/features/product/ProductCardSkeleton';
-import { SegmentedControl } from '../../components/ui/SegmentedControl';
+import { GlobalHeader } from '../../shared/ui/global-header';
+import { EmptyState } from '../../shared/ui/empty-state';
+import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
+import { ProductCardSkeleton } from '../../shared/ui/product/product-card-skeleton';
+import { SegmentedControl } from '../../shared/ui/segmented-control';
 import { isProductHistory } from '../../core/utils/product-status';
 
 import { useMyListings } from '../../core/hooks/useMyListings';
 import { useProductManagement } from '../../core/hooks/useProductManagement';
 import { useSellStore } from '../../core/store/useSellStore';
 
-import { Theme } from '../../core/theme';
+import { Theme } from '../../shared/theme';
 import { Product } from '@selene/types';
-import { useSeleneRefresh } from '@/core/hooks/useSeleneRefresh';
+import { useSeleneRefresh } from '@/shared/hooks/use-selene-refresh';
 
 export default function MyListingsScreen() {
   const theme = useTheme<Theme>();

@@ -9,13 +9,13 @@ import { TouchableOpacity } from 'react-native';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
-import { Box, Text } from '../../base';
-import { AppImage } from '../../ui/AppImage';
-import { PrimaryButton } from '../../ui/PrimaryButton';
+import { Box, Text } from '../../../shared/ui/base';
+import { AppImage } from '../../../shared/ui/app-image';
+import { PrimaryButton } from '../../../shared/ui/primary-button';
 import { EnrichedShipment } from '@selene/types';
-import { Theme } from '@/core/theme';
-import { formatCurrency } from '@/core/utils/format';
-import { resolvePublicIdentity } from '@/core/utils/publicIdentity';
+import { Theme } from '@/shared/theme';
+import { formatCurrency } from '@/shared/utils/format';
+import { resolvePublicIdentity } from '@/shared/utils/public-identity';
 import {
   getOrderStatusColor,
   getOrderStatusTextColor,

@@ -13,8 +13,8 @@ const flat = (path: string) => read(path).replace(/\s+/g, ' ');
 const hook = flat('src/core/hooks/useVerificationLogic.ts');
 const screen = flat('src/app/verify/[id].tsx');
 const success = flat('src/app/sell/success.tsx');
-const es = JSON.parse(read('src/core/i18n/locales/es/verify.json'));
-const en = JSON.parse(read('src/core/i18n/locales/en/verify.json'));
+const es = JSON.parse(read('src/shared/i18n/locales/es/verify.json'));
+const en = JSON.parse(read('src/shared/i18n/locales/en/verify.json'));
 
 const ready = {
   loadState: 'ready' as const,

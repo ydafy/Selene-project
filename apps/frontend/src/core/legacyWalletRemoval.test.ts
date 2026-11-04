@@ -3,7 +3,8 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 
 const FRONTEND_ROOT = join(import.meta.dir, '..');
-const SCANNED_DIRS = ['app', 'components', 'core'];
+// Every folder under src/, so moved code and locales stay covered.
+const SCANNED_DIRS = ['.'];
 const SELF = join('core', 'legacyWalletRemoval.test.ts');
 const LEGACY_PATTERN = /wallet|withdraw/i;
 

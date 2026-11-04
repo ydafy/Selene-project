@@ -29,7 +29,7 @@ does not decode it on iOS and needs extra Fresco modules on Android.
 The three `evidencia-*` files are our own photos of a real box: the product inside with
 its padding (slot 1), the closed box (slot 2), and the same box from another angle with
 the tape visible (slot 3). They match the per-slot dialog copy in
-`core/i18n/locales/*/orders.json` (`slotProduct*`, `slotBox*`, `slotSealing*`).
+`src/shared/i18n/locales/*/orders.json` (`slotProduct*`, `slotBox*`, `slotSealing*`).
 
 ## Rules
 

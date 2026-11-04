@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Box, Text } from '../../base';
+import { Box, Text } from '../../../shared/ui/base';
 
 /** Shared general guidance, not a shipment's live payout status. */
 export const SellerPaymentExplanation = () => {

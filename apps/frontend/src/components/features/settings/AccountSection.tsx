@@ -3,12 +3,12 @@ import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import * as LocalAuthentication from 'expo-local-authentication';
 
-import { Box, Text } from '../../base';
-import { FormTextInput } from '../../ui/FormTextInput';
-import { ConfirmDialog } from '../../ui/ConfirmDialog';
+import { Box, Text } from '../../../shared/ui/base';
+import { FormTextInput } from '../../../shared/ui/form-text-input';
+import { ConfirmDialog } from '../../../shared/ui/confirm-dialog';
 import { SettingsRow } from './SettingsRow';
-import { useAuthContext } from '../../../components/auth/AuthProvider';
-import { supabase } from '../../../core/db/supabase';
+import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
+import { supabase } from '../../../shared/lib/supabase';
 import { isGoogleOnlyAccount } from '../../../core/auth/reauth.logic';
 import {
   validateEmail,

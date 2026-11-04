@@ -5,7 +5,7 @@ import { join } from 'node:path';
 const FRONTEND = join(import.meta.dir, '..', '..');
 const read = (file: string) => readFileSync(join(FRONTEND, file), 'utf8');
 const json = (locale: string) =>
-  JSON.parse(read(`src/core/i18n/locales/${locale}/disputes.json`));
+  JSON.parse(read(`src/shared/i18n/locales/${locale}/disputes.json`));
 
 describe('media upload B3 source guards', () => {
   it('has no unchecked base64 assertions at the capture call sites', () => {
@@ -16,7 +16,7 @@ describe('media upload B3 source guards', () => {
   });
 
   it('uses the base64 helper and never image/jpg in useImageUpload', () => {
-    const source = read('src/core/hooks/useImageUpload.ts');
+    const source = read('src/shared/hooks/use-image-upload.ts');
     expect(source).toContain('uploadMediaFromBase64');
     expect(source).not.toContain('image/jpg');
     expect(source).not.toContain('[IMAGE_UPLOAD]');
@@ -82,7 +82,7 @@ describe('media upload B3 source guards', () => {
 describe('dispute video cross-platform and size feedback', () => {
   it('accepts iOS QuickTime and Android MP4 videos', async () => {
     const { resolveMediaType } =
-      await import('../../src/core/storage/uploadMedia');
+      await import('../../src/shared/lib/upload-media');
     expect(resolveMediaType('file:///var/mobile/IMG_0001.MOV')).toEqual({
       ext: 'mov',
       contentType: 'video/quicktime',

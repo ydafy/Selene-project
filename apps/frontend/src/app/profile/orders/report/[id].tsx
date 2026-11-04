@@ -24,13 +24,13 @@ import { RadioButton } from 'react-native-paper';
 import { ProductCategory } from '@selene/types';
 import { useVideoUpload } from '@/core/hooks/useVideoUpload';
 
-import { Box, Text } from '@/components/base';
-import { GlobalHeader } from '@/components/layout/GlobalHeader';
-import { ScreenHeader } from '@/components/layout/ScreenHeader';
-import { PrimaryButton } from '@/components/ui/PrimaryButton';
-import { Checkbox } from '@/components/ui/Checkbox';
+import { Box, Text } from '@/shared/ui/base';
+import { GlobalHeader } from '@/shared/ui/global-header';
+import { ScreenHeader } from '@/shared/ui/screen-header';
+import { PrimaryButton } from '@/shared/ui/primary-button';
+import { Checkbox } from '@/shared/ui/checkbox';
 import { EvidenceUploadSection } from '@/components/features/orders/EvidenceUploadSection';
-import { Theme } from '@/core/theme';
+import { Theme } from '@/shared/theme';
 
 import { useDisputeStore, DisputeReason } from '@/core/store/useDisputeStore';
 import {
@@ -40,10 +40,10 @@ import {
 import { useOrderById } from '@/core/hooks/useOrders';
 import { useOrderActions } from '@/core/hooks/useOrderActions';
 import { WizardSteps } from '@/components/features/sell/WizardSteps';
-import { FormTextInput } from '@/components/ui/FormTextInput';
-import { useAuthContext } from '@/components/auth/AuthProvider';
+import { FormTextInput } from '@/shared/ui/form-text-input';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import { resolveShipmentContext } from '@/core/utils/disputeShipmentContext';
-import { describeError } from '@/core/utils/describe-error';
+import { describeError } from '@/shared/utils/describe-error';
 
 export default function ReportProblemScreen() {
   const { id, shipment_id } = useLocalSearchParams<{

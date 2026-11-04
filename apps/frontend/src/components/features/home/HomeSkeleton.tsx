@@ -5,9 +5,9 @@
 
 import React from 'react';
 import { Dimensions } from 'react-native';
-import { colors } from '@/core/theme/tokens';
-import { Box } from '../../base';
-import { Skeleton } from '../../ui/Skeleton';
+import { colors } from '@/shared/theme/tokens';
+import { Box } from '../../../shared/ui/base';
+import { Skeleton } from '../../../shared/ui/skeleton';
 import { GridShell } from './GridShell';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');

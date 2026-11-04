@@ -150,10 +150,10 @@ describe('shipment confirmation', () => {
   it('uses delivered-only copy that does not promise an immediate payout', () => {
     const detail = source('apps/frontend/src/app/profile/orders/[id].tsx');
     const english = JSON.parse(
-      source('apps/frontend/src/core/i18n/locales/en/orders.json'),
+      source('apps/frontend/src/shared/i18n/locales/en/orders.json'),
     );
     const spanish = JSON.parse(
-      source('apps/frontend/src/core/i18n/locales/es/orders.json'),
+      source('apps/frontend/src/shared/i18n/locales/es/orders.json'),
     );
 
     expect(detail).toContain("t('orders:dialogs.deliveryMsg')");

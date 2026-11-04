@@ -4,9 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 
-import { Box } from '@/components/base';
-import { GlobalHeader } from '@/components/layout/GlobalHeader';
-import { ScreenHeader } from '@/components/layout/ScreenHeader';
+import { Box } from '@/shared/ui/base';
+import { GlobalHeader } from '@/shared/ui/global-header';
+import { ScreenHeader } from '@/shared/ui/screen-header';
 import { WizardSteps } from '@/components/features/sell/WizardSteps';
 import { SellDetailsForm } from '@/components/features/sell/SellDetailsForm';
 import { SELL_STEP_DEFINITIONS } from '@/core/constants/sellSteps';

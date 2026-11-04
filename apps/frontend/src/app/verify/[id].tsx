@@ -11,20 +11,20 @@ import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 
-import { Box, Text } from '../../components/base';
-import { PrimaryButton } from '../../components/ui/PrimaryButton';
-import { GlobalHeader } from '../../components/layout/GlobalHeader';
-import { ScreenHeader } from '../../components/layout/ScreenHeader';
+import { Box, Text } from '../../shared/ui/base';
+import { PrimaryButton } from '../../shared/ui/primary-button';
+import { GlobalHeader } from '../../shared/ui/global-header';
+import { ScreenHeader } from '../../shared/ui/screen-header';
 import { VerificationMissionCard } from '../../components/features/verify/VerificationMissionCard';
 import { BenchmarkGuideModal } from '../../components/features/verify/BenchmarkGuideModal';
-import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
 
 import { useVerificationLogic } from '../../core/hooks/useVerificationLogic';
 import {
   canSubmitVerification,
   resolveVerificationRequirements,
 } from '../../core/utils/verification-submit';
-import { theme } from '@/core/theme';
+import { theme } from '@/shared/theme';
 import { offerPushPermission } from '@/core/push/pushPermission';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 

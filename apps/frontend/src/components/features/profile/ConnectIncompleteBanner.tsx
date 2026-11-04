@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 
-import { NoticeBanner } from '../../ui/NoticeBanner';
-import { useAuthContext } from '../../auth/AuthProvider';
+import { NoticeBanner } from '../../../shared/ui/notice-banner';
+import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
 import { useConnectOnboarding } from '../../../core/hooks/useConnectOnboarding';
 import { useMyListings } from '../../../core/hooks/useMyListings';
 import { resolveConnectBanner } from '../../../core/utils/connectBanner';

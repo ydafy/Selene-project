@@ -10,10 +10,10 @@ import { useTranslation } from 'react-i18next';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Box, Text } from '../../base';
+import { Box, Text } from '../../../shared/ui/base';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@shopify/restyle';
-import { Theme } from '@/core/theme';
+import { Theme } from '@/shared/theme';
 
 import gpuShop from '@/assets/images/shop/gpushop.jpg';
 import cpuShop from '@/assets/images/shop/cpuShop.jpg';

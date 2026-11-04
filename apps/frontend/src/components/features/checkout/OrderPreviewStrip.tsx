@@ -1,10 +1,10 @@
 import React from 'react';
 import { TouchableOpacity } from 'react-native';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
-import { Box, Text } from '../../base';
-import { AppImage } from '../../ui/AppImage';
+import { Box, Text } from '../../../shared/ui/base';
+import { AppImage } from '../../../shared/ui/app-image';
 import { Product } from '@selene/types';
-import { colors } from '@/core/theme/tokens';
+import { colors } from '@/shared/theme/tokens';
 
 interface Props {
   items: Product[];

@@ -5,12 +5,12 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 import { useTheme } from '@shopify/restyle';
 import * as Haptics from 'expo-haptics';
 
-import { Box, Text } from '../../base';
-import { AppImage } from '../../ui/AppImage';
-import { ConfirmDialog } from '../../ui/ConfirmDialog';
-import { useImageUpload } from '../../../core/hooks/useImageUpload';
-import { describeError } from '../../../core/utils/describe-error';
-import { Theme } from '../../../core/theme';
+import { Box, Text } from '../../../shared/ui/base';
+import { AppImage } from '../../../shared/ui/app-image';
+import { ConfirmDialog } from '../../../shared/ui/confirm-dialog';
+import { useImageUpload } from '../../../shared/hooks/use-image-upload';
+import { describeError } from '../../../shared/utils/describe-error';
+import { Theme } from '../../../shared/theme';
 
 type AllowedBuckets = 'evidence' | 'Avatars';
 

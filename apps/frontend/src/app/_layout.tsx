@@ -21,12 +21,12 @@ import { onlineManager, focusManager } from '@tanstack/react-query';
 import NetInfo from '@react-native-community/netinfo';
 
 // Configuración y Temas
-import { toastConfig } from '../components/config/ToastConfig';
-import '../core/i18n';
-import { paperTheme, theme, navigationTheme } from '../core/theme';
+import { toastConfig } from '../shared/ui/toast-config';
+import '../shared/i18n';
+import { paperTheme, theme, navigationTheme } from '../shared/theme';
 
 // Proveedores y Hooks
-import { AuthProvider } from '../components/auth/AuthProvider';
+import { AuthProvider } from '../shared/lib/auth/auth-provider';
 import { AuthModalProvider } from '../core/auth/AuthModalProvider';
 import { CaptchaProvider } from '../core/auth/captcha/CaptchaProvider';
 import { NotificationWatcher } from '../components/features/notifications/NotificationWatcher';
@@ -34,11 +34,11 @@ import { NotificationWatcher } from '../components/features/notifications/Notifi
 import { PushRegistration } from '../components/features/notifications/PushRegistration';
 import { PushPermissionPrompt } from '../components/features/notifications/PushPermissionPrompt';
 import { PushTapHandler } from '../components/features/notifications/PushTapHandler';
-import { OfflineNotice } from '../components/ui/OfflineNotice';
+import { OfflineNotice } from '../shared/ui/offline-notice';
 
-import { queryClient } from '../core/db/queryClient';
+import { queryClient } from '../shared/lib/query-client';
 
-import { SystemGuard } from '../components/auth/SystemGuard';
+import { SystemGuard } from '../shared/ui/system-guard';
 
 // --- 1. BOOTSTRAP (Configuración Global Permanente - FUERA DEL COMPONENTE) ---
 SplashScreen.preventAutoHideAsync();

@@ -14,39 +14,37 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton } from 'react-native-paper';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
-import { Box, Text } from '../../components/base';
-import { GlobalHeader } from '../../components/layout/GlobalHeader';
+import { Box, Text } from '../../shared/ui/base';
+import { GlobalHeader } from '../../shared/ui/global-header';
 import { LocationHeaderButton } from '../../components/features/address/LocationHeaderButton';
 import { AddressPickerModal } from '../../components/features/address/AddressPickerModal';
 import { GridShell } from '../../components/features/home/GridShell';
 import { HomeSkeleton } from '../../components/features/home/HomeSkeleton';
 
-import {
-  ShellHero,
-  ShellLogistics,
-  ShellCategoriesV2,
-  ShellRecentDrops,
-  ShellBenchmarksFeature,
-  ShellTrustPipeline,
-  ShellRecentlyViewed,
-  ShellEditorial,
-  ShellFooter,
-  ShellShippingLine,
-  ShellPaymentsFeature,
-} from '../../components/features/home/sections';
+import { ShellHero } from '../../components/features/home/sections/ShellHero';
+import { ShellLogistics } from '../../components/features/home/sections/ShellLogistics';
+import { ShellCategoriesV2 } from '../../components/features/home/sections/ShellCategoriesV2';
+import { ShellRecentDrops } from '../../components/features/home/sections/ShellRecentDrops';
+import { ShellBenchmarksFeature } from '../../components/features/home/sections/ShellBenchmarksFeature';
+import { ShellTrustPipeline } from '../../components/features/home/sections/ShellTrustPipeline';
+import { ShellRecentlyViewed } from '../../components/features/home/sections/ShellRecentlyViewed';
+import { ShellEditorial } from '../../components/features/home/sections/ShellEditorial';
+import { ShellFooter } from '../../components/features/home/sections/ShellFooter';
+import { ShellShippingLine } from '../../components/features/home/sections/ShellShippingLine';
+import { ShellPaymentsFeature } from '../../components/features/home/sections/ShellPaymentsFeature';
 
 import { useCheckoutStore } from '../../core/store/useCheckoutStore';
 import { useAddresses } from '../../core/hooks/useAddresses';
 import { useProducts } from '../../core/hooks/useProducts';
 import { useExperienceStore } from '@/core/store/useExperienceStore';
 import { useUnreadNotifications } from '@/core/hooks/useUnreadNotifications';
-import { Theme } from '../../core/theme';
+import { Theme } from '../../shared/theme';
 import { Address } from '@selene/types';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { useSeleneRefresh } from '@/core/hooks/useSeleneRefresh';
+import { useSeleneRefresh } from '@/shared/hooks/use-selene-refresh';
 import { useNetInfo } from '@react-native-community/netinfo';
-import { useAuthContext } from '@/components/auth/AuthProvider';
-import { ErrorState } from '@/components/ui/ErrorState';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
+import { ErrorState } from '@/shared/ui/error-state';
 import { useTranslation } from 'react-i18next';
 import { getTabDockMetrics } from '../../core/constants/layout';
 import { formatNotificationBadgeCount } from '../../core/utils/notificationBadge';

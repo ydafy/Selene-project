@@ -18,16 +18,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
-import { Box, Text } from '../../components/base';
-import { GlobalHeader } from '../../components/layout/GlobalHeader';
-import { ScreenHeader } from '../../components/layout/ScreenHeader';
-import { PrimaryButton } from '../../components/ui/PrimaryButton';
-import { ErrorState } from '../../components/ui/ErrorState';
-import { Skeleton } from '../../components/ui/Skeleton';
+import { Box, Text } from '../../shared/ui/base';
+import { GlobalHeader } from '../../shared/ui/global-header';
+import { ScreenHeader } from '../../shared/ui/screen-header';
+import { PrimaryButton } from '../../shared/ui/primary-button';
+import { ErrorState } from '../../shared/ui/error-state';
+import { Skeleton } from '../../shared/ui/skeleton';
 import { WizardSteps } from '../../components/features/sell/WizardSteps';
 import { SellerPaymentExplanation } from '../../components/features/payments/SellerPaymentExplanation';
-import { AppImageViewer } from '../../components/ui/AppImageViewer';
-import { useAuthContext } from '../../components/auth/AuthProvider';
+import { AppImageViewer } from '../../shared/ui/app-image-viewer';
+import { useAuthContext } from '../../shared/lib/auth/auth-provider';
 import { useConnectOnboarding } from '../../core/hooks/useConnectOnboarding';
 import {
   CONNECT_ONBOARDING_SUCCESS_CTA_ROUTE,
@@ -36,7 +36,7 @@ import {
 } from '../../core/utils/connectOnboardingUi';
 import type { StripeOnboardingStatus } from '@selene/types';
 import type { ConnectOnboardingStatusGuidanceKey } from '../../core/utils/connectOnboardingUi';
-import { Theme } from '../../core/theme';
+import { Theme } from '../../shared/theme';
 
 import {
   ONBOARDING_GUIDE_IMAGE_INDEX,

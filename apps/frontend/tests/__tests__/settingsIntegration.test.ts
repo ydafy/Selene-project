@@ -67,7 +67,7 @@ describe('LegalesSection row order (Terms → Privacy → Version)', () => {
 
   test('opens the pages through the shared browser hook', () => {
     expect(src).toContain('useOpenInBrowser');
-    expect(read('src/core/hooks/useOpenInBrowser.ts')).toContain(
+    expect(read('src/shared/hooks/use-open-in-browser.ts')).toContain(
       'openBrowserAsync',
     );
   });
@@ -272,7 +272,7 @@ describe('package.json drops the Chatwoot widget', () => {
 });
 
 describe('ConfirmDialog keyboard handling (L62)', () => {
-  const src = read('src/components/ui/ConfirmDialog.tsx');
+  const src = read('src/shared/ui/confirm-dialog.tsx');
 
   test('reserves the keyboard height below the dialog only when avoidKeyboard is set', () => {
     expect(src).toContain('avoidKeyboard?: boolean');

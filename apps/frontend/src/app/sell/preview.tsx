@@ -5,14 +5,14 @@ import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Componentes Base y UI
-import { Box, Text } from '../../components/base';
-import { PrimaryButton } from '../../components/ui/PrimaryButton';
-import { AppChip } from '../../components/ui/AppChip';
-import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { Box, Text } from '../../shared/ui/base';
+import { PrimaryButton } from '../../shared/ui/primary-button';
+import { AppChip } from '../../shared/ui/app-chip';
+import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
 
 // Componentes de Layout
-import { GlobalHeader } from '../../components/layout/GlobalHeader';
-import { BottomActionBar } from '../../components/layout/BottomActionBar';
+import { GlobalHeader } from '../../shared/ui/global-header';
+import { BottomActionBar } from '../../shared/ui/bottom-action-bar';
 
 // Componentes de Feature (Producto)
 import { ProductImageGallery } from '../../components/features/product/ProductImageGallery';
@@ -22,9 +22,9 @@ import { ProductSellerCard } from '../../components/features/product/ProductSell
 // Hooks y Utilidades
 import { useSellStore } from '../../core/store/useSellStore';
 import { usePublishProduct } from '../../core/hooks/usePublishProduct';
-import { useAuthContext } from '../../components/auth/AuthProvider';
+import { useAuthContext } from '../../shared/lib/auth/auth-provider';
 import { classifyListingEdit } from '../../core/utils/listingEdit';
-import { formatCurrency } from '../../core/utils/format';
+import { formatCurrency } from '../../shared/utils/format';
 import { buildPreviewProduct } from '../../core/utils/previewProductBuilder';
 import { describeUploadState } from '../../core/utils/describeUploadState';
 import { countUploadState } from '../../core/utils/countUploadState';

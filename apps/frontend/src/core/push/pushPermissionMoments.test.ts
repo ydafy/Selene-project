@@ -38,7 +38,7 @@ test('no other file offers the pre-prompt', () => {
     'core/hooks/useProductFavorite.ts',
     'app/verify/[id].tsx',
   ];
-  const all = new Bun.Glob('{app,components,core}/**/*.{ts,tsx}');
+  const all = new Bun.Glob('**/*.{ts,tsx}');
   const offenders = [...all.scanSync(root)]
     .map((file) => file.replaceAll('\\', '/'))
     .filter(

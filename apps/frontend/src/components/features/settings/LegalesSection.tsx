@@ -4,8 +4,8 @@ import { Platform } from 'react-native';
 import { PRIVACY_URL, TERMS_URL } from '@selene/types';
 
 import { SettingsRow } from './SettingsRow';
-import { formatVersionLabel } from '../../../core/utils/versionLabel';
-import { useOpenInBrowser } from '../../../core/hooks/useOpenInBrowser';
+import { formatVersionLabel } from '../../../shared/utils/version-label';
+import { useOpenInBrowser } from '../../../shared/hooks/use-open-in-browser';
 
 /**
  * Legales section: Terms + Privacy (tappable via expo-web-browser) and

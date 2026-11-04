@@ -6,8 +6,8 @@
 
 import React, { useMemo, memo } from 'react';
 import { StyleSheet } from 'react-native';
-import { Box } from '../../base';
-import { colors } from '@/core/theme/tokens';
+import { Box } from '../../../shared/ui/base';
+import { colors } from '@/shared/theme/tokens';
 
 // --- CONFIGURACIÓN TÉCNICA ---
 const CELL_SIZE = 25; // Tamaño base del cuadro

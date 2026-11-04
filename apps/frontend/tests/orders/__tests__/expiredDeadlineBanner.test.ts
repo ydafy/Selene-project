@@ -8,8 +8,8 @@ const card = read('src/components/features/orders/OrderActionCard.tsx').replace(
   /\s+/g,
   ' ',
 );
-const es = JSON.parse(read('src/core/i18n/locales/es/orders.json'));
-const en = JSON.parse(read('src/core/i18n/locales/en/orders.json'));
+const es = JSON.parse(read('src/shared/i18n/locales/es/orders.json'));
+const en = JSON.parse(read('src/shared/i18n/locales/en/orders.json'));
 
 // S7: a paid shipment past its shipping window stays cancellable until the
 // cron cancels it, so the banner explains it instead of saying "closed".

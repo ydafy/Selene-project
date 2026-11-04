@@ -26,28 +26,28 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { FlashList } from '@shopify/flash-list';
 import { UserReviewCard } from '../../components/features/users/UserReviewCard';
 
-import { Box, Text } from '../../components/base';
-import { SegmentedControl } from '../../components/ui/SegmentedControl';
+import { Box, Text } from '../../shared/ui/base';
+import { SegmentedControl } from '../../shared/ui/segmented-control';
 import { ProfileHeader } from '../../components/features/profile/ProfileHeader';
-import { OptionsMenu } from '../../components/ui/OptionsMenu';
-import { AppImage } from '../../components/ui/AppImage';
-import { Skeleton } from '../../components/ui/Skeleton';
+import { OptionsMenu } from '../../shared/ui/options-menu';
+import { AppImage } from '../../shared/ui/app-image';
+import { Skeleton } from '../../shared/ui/skeleton';
 
 // Hooks unificados de alto rendimiento
 import { useProfile } from '../../core/hooks/useProfile';
 import { useProducts } from '../../core/hooks/useProducts';
 import { useSellerReviews } from '../../core/hooks/useSellerReviews';
-import { formatCurrency } from '../../core/utils/format';
-import { isClosedAccount } from '../../core/utils/publicIdentity';
+import { formatCurrency } from '../../shared/utils/format';
+import { isClosedAccount } from '../../shared/utils/public-identity';
 import {
   ACTIVE_LISTING_STATUSES,
   isInVerification,
-} from '../../core/utils/productListingStatus';
+} from '../../shared/utils/product-listing-status';
 import { VerificationPill } from '../../components/features/product/VerificationPill';
-import { Theme } from '../../core/theme';
-import { GlobalHeader } from '@/components/layout/GlobalHeader';
+import { Theme } from '../../shared/theme';
+import { GlobalHeader } from '@/shared/ui/global-header';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAuthContext } from '../../components/auth/AuthProvider';
+import { useAuthContext } from '../../shared/lib/auth/auth-provider';
 import {
   resolvePublicProfileCollectionState,
   resolvePublicProfileSellerId,

@@ -2,8 +2,8 @@ import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { resolvePreparingBox } from '../../src/core/utils/preparing-box';
-import en from '../../src/core/i18n/locales/en/orders.json';
-import es from '../../src/core/i18n/locales/es/orders.json';
+import en from '../../src/shared/i18n/locales/en/orders.json';
+import es from '../../src/shared/i18n/locales/es/orders.json';
 
 const presets = {
   gpu_1: {

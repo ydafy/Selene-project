@@ -8,8 +8,8 @@ import React from 'react';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
-import { Box, Text } from '../../base';
-import { Theme } from '../../../core/theme';
+import { Box, Text } from '../../../shared/ui/base';
+import { Theme } from '../../../shared/theme';
 import { Address, EnrichedShipment } from '@selene/types';
 
 interface Props {

@@ -3,11 +3,11 @@ import { Controller } from 'react-hook-form';
 import { ActivityIndicator } from 'react-native';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
-import { Box, Text } from '@/components/base';
-import { FormTextInput } from '@/components/ui/FormTextInput';
-import { FormSelect } from '@/components/ui/FormSelect';
-import { PrimaryButton } from '@/components/ui/PrimaryButton';
-import { LabelWithHelp } from '@/components/ui/LabelWithHelp';
+import { Box, Text } from '@/shared/ui/base';
+import { FormTextInput } from '@/shared/ui/form-text-input';
+import { FormSelect } from '@/shared/ui/form-select';
+import { PrimaryButton } from '@/shared/ui/primary-button';
+import { LabelWithHelp } from '@/shared/ui/label-with-help';
 import { PackageSelector } from './PackageSelector';
 import { useSellDetailsForm } from '@/core/hooks/useSellDetailsForm';
 import {
@@ -15,7 +15,7 @@ import {
   PRODUCT_USAGE_OPTIONS,
 } from '@/core/constants/product-data';
 import { useTheme } from '@shopify/restyle';
-import { Theme } from '@/core/theme';
+import { Theme } from '@/shared/theme';
 
 type SellDetailsFormProps = ReturnType<typeof useSellDetailsForm>;
 

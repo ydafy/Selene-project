@@ -4,8 +4,8 @@ import {
   isAccountHeld,
   isProductHistory,
 } from '../product-status';
-import en from '../../i18n/locales/en/profile.json';
-import es from '../../i18n/locales/es/profile.json';
+import en from '../../../shared/i18n/locales/en/profile.json';
+import es from '../../../shared/i18n/locales/es/profile.json';
 
 // F1 (odd/tasks/auth-hardening.md T8a): a listing hidden by an account suspension keeps its
 // prior status in `status_before_account_hold` and comes back when the account is reactivated,

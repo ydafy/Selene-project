@@ -9,12 +9,12 @@ import { StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { BlurView } from 'expo-blur';
-import { Box, Text } from '../../../base';
-import { AppImage } from '../../../ui/AppImage';
-import { PrimaryButton } from '../../../ui/PrimaryButton';
-import { formatCurrency } from '../../../../core/utils/format';
+import { Box, Text } from '../../../../shared/ui/base';
+import { AppImage } from '../../../../shared/ui/app-image';
+import { PrimaryButton } from '../../../../shared/ui/primary-button';
+import { formatCurrency } from '../../../../shared/utils/format';
 import { PublicProduct } from '@selene/types';
-import { isInVerification } from '../../../../core/utils/productListingStatus';
+import { isInVerification } from '../../../../shared/utils/product-listing-status';
 import { VerificationPill } from '../../product/VerificationPill';
 
 interface Props {

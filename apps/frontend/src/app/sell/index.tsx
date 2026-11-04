@@ -4,18 +4,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
 
-import { Box } from '../../components/base';
+import { Box } from '../../shared/ui/base';
 // Usamos GlobalHeader en lugar de ScreenHeader + IconButton manual
-import { GlobalHeader } from '../../components/layout/GlobalHeader';
+import { GlobalHeader } from '../../shared/ui/global-header';
 import { CategoryCard } from '../../components/features/search/CategoryCard';
-import { ScreenHeader } from '@/components/layout/ScreenHeader';
+import { ScreenHeader } from '@/shared/ui/screen-header';
 
 import { useSellStore } from '../../core/store/useSellStore';
 import { ProductCategory } from '@selene/types';
-import { useAuthContext } from '../../components/auth/AuthProvider';
+import { useAuthContext } from '../../shared/lib/auth/auth-provider';
 import { useAuthModal } from '../../core/auth/AuthModalProvider';
-import { triggerHaptic } from '../../core/utils/haptics';
-import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { triggerHaptic } from '../../shared/utils/haptics';
+import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
 import {
   SELL_CATEGORIES,
   SELL_CATEGORY_META,

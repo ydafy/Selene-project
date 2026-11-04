@@ -13,19 +13,19 @@ import Toast from 'react-native-toast-message';
 import { router } from 'expo-router';
 import { TERMS_URL } from '@selene/types';
 
-import { Box, Text } from '../../base';
-import { FormTextInput } from '../../ui/FormTextInput';
-import { PrimaryButton } from '../../ui/PrimaryButton';
-import { GoogleButton } from '../../ui/GoogleButton';
-import { Checkbox } from '../../ui/Checkbox';
-import { TextLink } from '../../ui/TextLink';
+import { Box, Text } from '../../../shared/ui/base';
+import { FormTextInput } from '../../../shared/ui/form-text-input';
+import { PrimaryButton } from '../../../shared/ui/primary-button';
+import { GoogleButton } from '../../../shared/ui/google-button';
+import { Checkbox } from '../../../shared/ui/checkbox';
+import { TextLink } from '../../../shared/ui/text-link';
 import {
   useAuth,
   registerSchema,
   RegisterData,
 } from '../../../core/hooks/useAuth';
 import { useGoogleAuth } from '../../../core/hooks/useGoogleAuth';
-import { useOpenInBrowser } from '../../../core/hooks/useOpenInBrowser';
+import { useOpenInBrowser } from '../../../shared/hooks/use-open-in-browser';
 import { isUsernameAvailable } from '../../../core/auth/registerUsername.logic';
 import { classifySignUpResult } from '../../../core/auth/authOutcome.logic';
 import {
@@ -33,7 +33,7 @@ import {
   USERNAME_TAKEN_KEY,
   mapAuthErrorKey,
 } from '../../../core/auth/authErrors.logic';
-import { supabase } from '../../../core/db/supabase';
+import { supabase } from '../../../shared/lib/supabase';
 
 type RegisterFormProps = {
   onSuccess: (email: string) => void;

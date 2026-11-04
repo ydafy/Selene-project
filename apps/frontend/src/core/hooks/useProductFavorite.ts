@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../db/supabase';
-import { useAuthContext } from '../../components/auth/AuthProvider';
+import { supabase } from '../../shared/lib/supabase';
+import { useAuthContext } from '../../shared/lib/auth/auth-provider';
 import { offerPushPermission } from '../push/pushPermission';
 
 export const useProductFavorite = (productId: string) => {

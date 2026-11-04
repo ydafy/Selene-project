@@ -3,7 +3,7 @@ import { AppState, Linking, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { SettingsRow } from './SettingsRow';
-import { useAuthContext } from '../../auth/AuthProvider';
+import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
 import { pushRegistrar } from '../../../core/push/pushRegistration';
 import {
   getPushPermission,

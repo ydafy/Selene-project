@@ -22,16 +22,16 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '@shopify/restyle';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Box, Text } from '../../../../components/base';
-import { GlobalHeader } from '../../../../components/layout/GlobalHeader';
-import { ScreenHeader } from '../../../../components/layout/ScreenHeader';
+import { Box, Text } from '../../../../shared/ui/base';
+import { GlobalHeader } from '../../../../shared/ui/global-header';
+import { ScreenHeader } from '../../../../shared/ui/screen-header';
 import { AddressSection } from '../../../../components/features/checkout/AddressSection';
 import { AddressPickerModal } from '../../../../components/features/address/AddressPickerModal';
-import { PrimaryButton } from '../../../../components/ui/PrimaryButton';
-import { ConfirmDialog } from '../../../../components/ui/ConfirmDialog';
-import { ErrorState } from '../../../../components/ui/ErrorState';
-import { Skeleton } from '../../../../components/ui/Skeleton';
-import { LabelWithHelp } from '../../../../components/ui/LabelWithHelp';
+import { PrimaryButton } from '../../../../shared/ui/primary-button';
+import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog';
+import { ErrorState } from '../../../../shared/ui/error-state';
+import { Skeleton } from '../../../../shared/ui/skeleton';
+import { LabelWithHelp } from '../../../../shared/ui/label-with-help';
 import { PackagingGuideCard } from '../../../../components/features/orders/PackagingGuideCard';
 import { ShipmentLabelRecoveryCard } from '../../../../components/features/orders/ShipmentLabelRecoveryCard';
 import { useOrderById } from '../../../../core/hooks/useOrders';
@@ -42,7 +42,7 @@ import {
   PackagePreset,
   PackagePresetsMap,
   useSystemConfig,
-} from '../../../../core/hooks/useSystemConfig';
+} from '../../../../shared/hooks/use-system-config';
 import { authenticateAsync } from '../../../../core/utils/biometrics';
 import {
   generateLabelWithRecovery,
@@ -54,9 +54,9 @@ import {
   resolveShipmentLabelState,
 } from '../../../../core/utils/shipment-label-state';
 import { Address } from '@selene/types';
-import { Theme } from '../../../../core/theme';
+import { Theme } from '../../../../shared/theme';
 import { EvidenceUploadSection } from '@/components/features/orders/EvidenceUploadSection';
-import { useAuthContext } from '@/components/auth/AuthProvider';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import { useConnectOnboarding } from '../../../../core/hooks/useConnectOnboarding';
 
 const EVIDENCE_MIN_PHOTOS = 3;

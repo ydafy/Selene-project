@@ -1,4 +1,4 @@
-import { Box, Text } from '../../base';
+import { Box, Text } from '../../../shared/ui/base';
 
 type SettingsSectionProps = {
   title: string;

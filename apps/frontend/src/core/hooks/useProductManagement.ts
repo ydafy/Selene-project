@@ -8,8 +8,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { supabase } from '../db/supabase';
-import { useAuthContext } from '../../components/auth/AuthProvider';
+import { supabase } from '../../shared/lib/supabase';
+import { useAuthContext } from '../../shared/lib/auth/auth-provider';
 import { Product } from '@selene/types';
 import {
   removeProductFromCachedLists,

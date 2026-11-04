@@ -7,14 +7,17 @@ import Toast from 'react-native-toast-message';
 
 import { publishProductSchema } from '../schemas/sell.schema';
 
-import { supabase } from '../db/supabase';
+import { supabase } from '../../shared/lib/supabase';
 import {
   buildPublicationEconomicsSnapshot,
   useSellStore,
 } from '../store/useSellStore';
-import { useAuthContext } from '../../components/auth/AuthProvider';
+import { useAuthContext } from '../../shared/lib/auth/auth-provider';
 import { ProductCategory } from '@selene/types';
-import { resolveMediaType, uploadMediaFromUri } from '../storage/uploadMedia';
+import {
+  resolveMediaType,
+  uploadMediaFromUri,
+} from '../../shared/lib/upload-media';
 import {
   buildEditEconomicsFields,
   classifyListingEdit,

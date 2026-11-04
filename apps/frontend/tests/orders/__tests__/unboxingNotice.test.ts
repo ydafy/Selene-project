@@ -14,8 +14,8 @@ const compact = (source: string) =>
 const FRONTEND = join(import.meta.dir, '..', '..', '..');
 const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
 const flat = (path: string) => compact(read(path));
-const es = JSON.parse(read('src/core/i18n/locales/es/orders.json'));
-const en = JSON.parse(read('src/core/i18n/locales/en/orders.json'));
+const es = JSON.parse(read('src/shared/i18n/locales/es/orders.json'));
+const en = JSON.parse(read('src/shared/i18n/locales/en/orders.json'));
 
 // The hook needs Expo and React Query, absent in this worktree: pin the rule
 // and the render wiring in source.

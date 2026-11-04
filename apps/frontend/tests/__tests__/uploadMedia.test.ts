@@ -5,7 +5,7 @@ import {
   resolveMediaType,
   uploadMediaFromBase64,
   uploadMediaFromUri,
-} from '../../src/core/storage/uploadMedia';
+} from '../../src/shared/lib/upload-media';
 
 const FRONTEND = join(import.meta.dir, '..', '..');
 

@@ -41,13 +41,13 @@ describe('order detail total by role', () => {
   ).replace(/\s+/g, ' ');
   const es = JSON.parse(
     readFileSync(
-      `${import.meta.dir}/../../../src/core/i18n/locales/es/orders.json`,
+      `${import.meta.dir}/../../../src/shared/i18n/locales/es/orders.json`,
       'utf8',
     ),
   );
   const en = JSON.parse(
     readFileSync(
-      `${import.meta.dir}/../../../src/core/i18n/locales/en/orders.json`,
+      `${import.meta.dir}/../../../src/shared/i18n/locales/en/orders.json`,
       'utf8',
     ),
   );

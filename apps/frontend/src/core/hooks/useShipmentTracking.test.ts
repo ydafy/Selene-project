@@ -22,8 +22,8 @@ describe('shipment tracking frontend boundaries', () => {
     const timeline = read(
       '../components/features/orders/ShipmentTrackingTimeline.tsx',
     );
-    const english = read('i18n/locales/en/orders.json');
-    const spanish = read('i18n/locales/es/orders.json');
+    const english = read('../shared/i18n/locales/en/orders.json');
+    const spanish = read('../shared/i18n/locales/es/orders.json');
 
     expect(hook).toContain(
       "invokeEdge('resolve-shipment-tracking-url', { shipmentId })",

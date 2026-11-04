@@ -3,8 +3,8 @@ import { useStripe } from '@stripe/stripe-react-native';
 import { useTheme } from '@shopify/restyle';
 import * as Crypto from 'expo-crypto';
 import Toast from 'react-native-toast-message';
-import { invokeEdge } from '../services/edge-client';
-import { Theme } from '../theme';
+import { invokeEdge } from '../../shared/lib/edge-client';
+import { Theme } from '../../shared/theme';
 import { useTranslation } from 'react-i18next';
 
 export const useReturnPayment = (disputeId: string) => {

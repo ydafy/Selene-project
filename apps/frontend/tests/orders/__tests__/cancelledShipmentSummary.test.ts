@@ -12,8 +12,8 @@ const compact = (path: string) =>
     .replace(/\( /g, '(')
     .replace(/ \)/g, ')')
     .replace(/,\)/g, ')');
-const es = JSON.parse(read('src/core/i18n/locales/es/orders.json'));
-const en = JSON.parse(read('src/core/i18n/locales/en/orders.json'));
+const es = JSON.parse(read('src/shared/i18n/locales/es/orders.json'));
+const en = JSON.parse(read('src/shared/i18n/locales/en/orders.json'));
 
 const P = 'orders:actionCard.';
 

@@ -59,8 +59,8 @@ if (process.env.SELENE_FAVORITE_CHILD !== '1') {
       flatten: (style: unknown) => style,
     },
   }));
-  mock.module('../db/supabase', () => ({ supabase: { from } }));
-  mock.module('../../components/auth/AuthProvider', () => ({
+  mock.module('../../shared/lib/supabase', () => ({ supabase: { from } }));
+  mock.module('../../shared/lib/auth/auth-provider', () => ({
     useAuthContext: () => ({ session: { user: { id: 'user-1' } } }),
   }));
   mock.module('../push/pushPermission', () => ({ offerPushPermission }));

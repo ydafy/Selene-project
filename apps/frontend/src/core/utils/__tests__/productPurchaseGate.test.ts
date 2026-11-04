@@ -89,7 +89,7 @@ describe('purchase dialog copy', () => {
 
   it('has every key in en and es and no leftover paragraph keys', () => {
     for (const lang of ['en', 'es']) {
-      const json = JSON.parse(read(`core/i18n/locales/${lang}/product.json`));
+      const json = JSON.parse(read(`shared/i18n/locales/${lang}/product.json`));
       for (const key of keys) {
         const [a, b] = key.split('.');
         expect(json[a][b]).toBeString();

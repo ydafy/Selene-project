@@ -6,20 +6,20 @@ import { Alert } from 'react-native';
 import { useProfile, useUpdateAvatar } from '../../core/hooks/useProfile';
 
 // Hooks y Contextos
-import { useAuthContext } from '../../components/auth/AuthProvider';
+import { useAuthContext } from '../../shared/lib/auth/auth-provider';
 import { useAuthModal } from '../../core/auth/AuthModalProvider';
 
 import { useMyFavorites } from '../../core/hooks/useMyFavorites';
-import { useImageUpload } from '../../core/hooks/useImageUpload';
+import { useImageUpload } from '../../shared/hooks/use-image-upload';
 
 // Componentes UI y Base
-import { Box, Text } from '../../components/base';
-import { AppImage } from '../../components/ui/AppImage';
-import { PrimaryButton } from '../../components/ui/PrimaryButton';
-import { TextLink } from '../../components/ui/TextLink';
-import { ScreenLayout } from '../../components/layout/ScreenLayout';
+import { Box, Text } from '../../shared/ui/base';
+import { AppImage } from '../../shared/ui/app-image';
+import { PrimaryButton } from '../../shared/ui/primary-button';
+import { TextLink } from '../../shared/ui/text-link';
+import { ScreenLayout } from '../../shared/ui/screen-layout';
 import { ProfileActionsBar } from '../../components/features/profile/ProfileActionsBar';
-import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
 import { ProfileFavoritesGrid } from '../../components/features/profile/ProfileFavoritesGrid';
 import { ProfileSkeleton } from '../../components/features/profile/ProfileSkeleton';
 import { ConnectIncompleteBanner } from '../../components/features/profile/ConnectIncompleteBanner';

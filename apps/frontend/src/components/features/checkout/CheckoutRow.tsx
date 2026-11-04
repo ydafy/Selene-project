@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Text } from '../../base';
+import { Box, Text } from '../../../shared/ui/base';
 
 interface CheckoutRowProps {
   label: string;

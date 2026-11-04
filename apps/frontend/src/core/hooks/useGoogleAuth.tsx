@@ -8,7 +8,7 @@ import {
   GoogleSignin,
   statusCodes,
 } from '@react-native-google-signin/google-signin';
-import { supabase } from '../db/supabase';
+import { supabase } from '../../shared/lib/supabase';
 import Toast from 'react-native-toast-message';
 import { useTranslation } from 'react-i18next';
 import {

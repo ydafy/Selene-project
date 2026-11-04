@@ -10,11 +10,11 @@ import { useRouter } from 'expo-router';
 import { useTheme } from '@shopify/restyle';
 import { BlurView } from 'expo-blur';
 
-import { Box, Text } from '../../base';
-import { BrandIcon } from '../../ui/BrandIcon';
-import { Theme } from '../../../core/theme';
-import { getSharedStyles } from '../home/sharedStyles';
-import { colors } from '@/core/theme/tokens';
+import { Box, Text } from '../../../shared/ui/base';
+import { BrandIcon } from '../../../shared/ui/brand-icon';
+import { Theme } from '../../../shared/theme';
+import { getSharedStyles } from '../../../shared/theme/shared-styles';
+import { colors } from '@/shared/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 

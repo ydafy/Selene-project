@@ -19,9 +19,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useTheme } from '@shopify/restyle';
 
-import { Box, Text } from '../../../base';
-import { Theme } from '../../../../core/theme';
-import { getSharedStyles } from '../sharedStyles';
+import { Box, Text } from '../../../../shared/ui/base';
+import { Theme } from '../../../../shared/theme';
+import { getSharedStyles } from '../../../../shared/theme/shared-styles';
 
 // Alto del micro-gráfico; las barras animan de 0 a `h%` de este alto.
 const BENCH_CHART_HEIGHT = 30;

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { useSystemConfig } from './useSystemConfig';
+import { useSystemConfig } from '../../shared/hooks/use-system-config';
 import {
   resolveCancellationSettings,
   type CancellationSettings,
