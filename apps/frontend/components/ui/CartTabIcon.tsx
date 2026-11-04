@@ -3,6 +3,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 //import { useTheme } from '@shopify/restyle';
 import { Box, Text } from '../base';
 import { colors } from '@/core/theme/tokens';
+import { tabIconColor } from '@/core/utils/tabIconColor';
 //import { Theme } from '../../core/theme';
 
 type CartTabIconProps = {
@@ -16,7 +17,11 @@ export const CartTabIcon = ({ color, size, count }: CartTabIconProps) => {
 
   return (
     <Box>
-      <MaterialCommunityIcons name="cart-outline" color={color} size={size} />
+      <MaterialCommunityIcons
+        name="cart-outline"
+        color={tabIconColor(color)}
+        size={size}
+      />
 
       {count > 0 && (
         <Box

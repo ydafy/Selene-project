@@ -1,0 +1,11 @@
+# Audit step with two accepted exceptions, frozen from the workflow before
+# Expo SDK 58 removed them, so the parser tests do not depend on today's list.
+jobs:
+  audit:
+    steps:
+      #   GHSA-mrhx-c7xc-m3w5 zod 3.25.76 (@expo/cli build tooling)
+      #   GHSA-qr28-fpjm-wq7f decode-uri-component 0.2.2 (expo-router > query-string 7.1.3)
+      - run: >-
+          bun audit --audit-level=high
+          --ignore=GHSA-mrhx-c7xc-m3w5
+          --ignore=GHSA-qr28-fpjm-wq7f

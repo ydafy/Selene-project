@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useRef } from 'react';
 
-import { useNavigation } from 'expo-router';
-import { usePreventRemove } from 'expo-router/react-navigation';
+import { usePreventRemove } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'; // Ajusta la ruta si es necesario
 import { useSellStore } from '../store/useSellStore';
@@ -9,22 +8,21 @@ import { routeBlockedRemove } from '../utils/navigationGuard';
 
 export const useExitGuard = (enabled: boolean = true) => {
   const [showDialog, setShowDialog] = useState(false);
-  const navigation = useNavigation();
   const { t } = useTranslation('common');
   const { resetDraft } = useSellStore();
 
-  // La acción bloqueada se guarda para repetirla si el usuario confirma
-  const pendingAction = useRef<
-    Parameters<typeof navigation.dispatch>[0] | null
-  >(null);
+  // repeat() apaga la prevención y repite la acción bloqueada; se guarda para
+  // llamarla si el usuario confirma. Despachar la acción a mano no alcanza: con
+  // la prevención activa, SDK 58 la volvería a bloquear.
+  const pendingRepeat = useRef<(() => void) | null>(null);
 
-  usePreventRemove(enabled, ({ data }) => {
+  usePreventRemove(enabled, ({ data, repeat }) => {
     // Si es una acción de "Replace" (como cuando publicamos exitosamente), dejamos pasar;
     // el resto guarda la acción y muestra el diálogo
     routeBlockedRemove(data.action, {
-      proceed: (action) => navigation.dispatch(action),
-      confirmExit: (action) => {
-        pendingAction.current = action;
+      proceed: () => repeat(),
+      confirmExit: () => {
+        pendingRepeat.current = repeat;
         setShowDialog(true);
       },
     });
@@ -33,17 +31,17 @@ export const useExitGuard = (enabled: boolean = true) => {
   const handleConfirm = useCallback(() => {
     setShowDialog(false);
 
-    const action = pendingAction.current;
-    if (!action) return;
-    pendingAction.current = null;
+    const repeat = pendingRepeat.current;
+    if (!repeat) return;
+    pendingRepeat.current = null;
 
     resetDraft(); // Limpiamos el store porque el usuario decidió salir
-    navigation.dispatch(action);
-  }, [navigation, resetDraft]);
+    repeat();
+  }, [resetDraft]);
 
   const handleCancel = useCallback(() => {
     setShowDialog(false);
-    pendingAction.current = null;
+    pendingRepeat.current = null;
   }, []);
 
   // Retornamos el componente renderizable

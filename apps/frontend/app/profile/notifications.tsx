@@ -188,7 +188,9 @@ export default function NotificationsScreen() {
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
-            onRefresh={refetch}
+            onRefresh={async () => {
+              await refetch();
+            }}
             tintColor={theme.colors.primary}
             progressViewOffset={insets.top + 70}
           />

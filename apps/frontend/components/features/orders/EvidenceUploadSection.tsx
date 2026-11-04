@@ -1,9 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  TouchableOpacity,
-  ActivityIndicator,
-  ImageSourcePropType,
-} from 'react-native';
+import { TouchableOpacity, ActivityIndicator } from 'react-native';
+import type { ImageSource } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@shopify/restyle';
 import * as Haptics from 'expo-haptics';
@@ -23,7 +20,7 @@ interface SlotConfig {
   /** Optional translated intro shown in a dialog before the camera opens. */
   description?: string;
   /** Optional 5:3 illustration rendered inside that dialog. */
-  image?: ImageSourcePropType;
+  image?: ImageSource | number;
 }
 
 interface Props {
@@ -78,15 +75,20 @@ export const EvidenceUploadSection = ({
   const canCaptureRef = useRef(canCapture);
   canCaptureRef.current = canCapture;
   const [busy, setBusy] = useState(false);
-  useEffect(() => { if (disabled) setSlotDialogIndex(null); }, [disabled]);
+  useEffect(() => {
+    if (disabled) setSlotDialogIndex(null);
+  }, [disabled]);
 
   useEffect(() => {
     mounted.current = true;
-    return () => { mounted.current = false; };
+    return () => {
+      mounted.current = false;
+    };
   }, []);
 
   const capture = async (index: number) => {
-    if (!mounted.current || disabledRef.current || busyRef.current || uploading) return;
+    if (!mounted.current || disabledRef.current || busyRef.current || uploading)
+      return;
     if (canCaptureRef.current?.() === false) return;
     busyRef.current = true;
     setBusy(true);
@@ -106,7 +108,9 @@ export const EvidenceUploadSection = ({
       // Feedback cannot turn a saved upload into a failed capture.
       try {
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      } catch { /* Optional feedback only. */ }
+      } catch {
+        /* Optional feedback only. */
+      }
     } catch (error) {
       console.warn('[EVIDENCE_UPLOAD]', describeError(error));
       if (mounted.current) onFailure?.();
@@ -120,7 +124,8 @@ export const EvidenceUploadSection = ({
   };
 
   const handlePickImage = async (index: number) => {
-    if (!mounted.current || disabledRef.current || busyRef.current || uploading) return;
+    if (!mounted.current || disabledRef.current || busyRef.current || uploading)
+      return;
     if (canCaptureRef.current?.() === false) return;
     const slot = slotsConfig?.[index];
     // Slots with an intro description always show the dialog first; the
@@ -154,7 +159,11 @@ export const EvidenceUploadSection = ({
                       .join('. ')
                   : undefined
               }
-              accessibilityState={{ selected: Boolean(photo), disabled: disabled || busy || uploading, busy: busy || uploading }}
+              accessibilityState={{
+                selected: Boolean(photo),
+                disabled: disabled || busy || uploading,
+                busy: busy || uploading,
+              }}
               style={{
                 width: '100%',
                 aspectRatio: 1,
@@ -213,7 +222,13 @@ export const EvidenceUploadSection = ({
           title={activeSlot.label}
           description={activeSlot.description}
           onConfirm={() => {
-            if (!mounted.current || disabledRef.current || busyRef.current || uploading) return;
+            if (
+              !mounted.current ||
+              disabledRef.current ||
+              busyRef.current ||
+              uploading
+            )
+              return;
             if (canCaptureRef.current?.() === false) return;
             const index = slotDialogIndex;
             setSlotDialogIndex(null);

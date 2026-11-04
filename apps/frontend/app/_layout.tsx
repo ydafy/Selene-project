@@ -5,7 +5,6 @@
  * Configura proveedores globales, inicializa servicios, maneja la Splash Animada y gestiona el estado del sistema.
  */
 
-import 'react-native-get-random-values';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ThemeProvider } from '@shopify/restyle';
 import { PaperProvider } from 'react-native-paper';

@@ -30,10 +30,8 @@ const fixture = (name: string) =>
   readFileSync(join(import.meta.dir, 'fixtures', 'dependency-report', name), {
     encoding: 'utf8',
   });
-const workflow = readFileSync(
-  join(import.meta.dir, '..', '.github', 'workflows', 'dependency-audit.yml'),
-  { encoding: 'utf8' },
-);
+// A frozen audit workflow with two exceptions; the real one has none today.
+const workflow = fixture('dependency-audit.yml');
 
 const NOW = new Date('2026-10-29T12:00:00.000Z');
 const DAY = 86_400_000;
@@ -129,7 +127,7 @@ describe('parseExpoPins', () => {
 });
 
 describe('parseAuditIgnores', () => {
-  test('reads the --ignore flags of the real workflow file', () => {
+  test('reads the --ignore flags of an audit workflow', () => {
     expect(parseAuditIgnores(workflow)).toEqual([
       'GHSA-mrhx-c7xc-m3w5',
       'GHSA-qr28-fpjm-wq7f',

@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { ImageSourcePropType, TouchableOpacity } from 'react-native';
+import { TouchableOpacity } from 'react-native';
+import type { ImageSource } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@shopify/restyle';
 
@@ -11,7 +12,7 @@ import { Theme } from '../../../core/theme';
  * Default 16:9 illustration per packing step, keyed by step index in the
  * order: box, protection, filler, sealing, label.
  */
-const DEFAULT_STEP_IMAGES: ImageSourcePropType[] = [
+const DEFAULT_STEP_IMAGES: (ImageSource | number)[] = [
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   require('../../../assets/images/packaging/paso-1-caja.webp'),
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -31,7 +32,7 @@ type GuideStep = {
   /** Already-translated hint shown under the image when expanded. */
   hint: string;
   /** Optional per-step illustration; falls back to the default step image. */
-  image?: ImageSourcePropType;
+  image?: ImageSource | number;
 };
 
 type WhereInfo = {
@@ -124,7 +125,10 @@ export const PackagingGuideCard = ({
               disabled={disabled}
               activeOpacity={0.7}
               accessibilityRole="button"
-              accessibilityState={{ expanded: expanded === row.index, disabled }}
+              accessibilityState={{
+                expanded: expanded === row.index,
+                disabled,
+              }}
             >
               <Box
                 flexDirection="row"

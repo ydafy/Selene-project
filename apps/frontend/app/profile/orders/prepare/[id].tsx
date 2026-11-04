@@ -5,18 +5,14 @@ import React, {
   useMemo,
   useEffect,
 } from 'react';
-import {
-  ScrollView,
-  Linking,
-  TouchableOpacity,
-  ImageSourcePropType,
-} from 'react-native';
-import { usePreventRemove } from 'expo-router/react-navigation';
+import { ScrollView, Linking, TouchableOpacity } from 'react-native';
+import type { ImageSource } from 'expo-image';
 import {
   Stack,
   useLocalSearchParams,
   useRouter,
   RelativePathString,
+  usePreventRemove,
 } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
@@ -66,7 +62,7 @@ import { useConnectOnboarding } from '../../../../core/hooks/useConnectOnboardin
 const EVIDENCE_MIN_PHOTOS = 3;
 
 /** 1:1 illustrations shown in each evidence slot's intro dialog. */
-const EVIDENCE_SLOT_IMAGES: ImageSourcePropType[] = [
+const EVIDENCE_SLOT_IMAGES: (ImageSource | number)[] = [
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   require('../../../../assets/images/packaging/evidencia-1-producto.webp'),
   // eslint-disable-next-line @typescript-eslint/no-require-imports

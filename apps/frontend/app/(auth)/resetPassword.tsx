@@ -10,7 +10,7 @@ import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { TextInput as RNTextInput } from 'react-native';
+import type { TextInputInstance } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { z } from 'zod';
 
@@ -53,7 +53,7 @@ export default function ResetPasswordScreen() {
 
   const [otpCode, setOtpCode] = useState('');
   const otpInputRef = useRef<OtpInputHandle>(null);
-  const confirmInputRef = useRef<RNTextInput>(null);
+  const confirmInputRef = useRef<TextInputInstance>(null);
   // The recovery code is single use: once verified, retries only update the password.
   const [codeVerified, setCodeVerified] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -258,7 +258,7 @@ export default function ResetPasswordScreen() {
         <Box height={24} />
 
         <PrimaryButton
-          onPress={handleSubmit(onSubmit)}
+          onPress={() => void handleSubmit(onSubmit)()}
           loading={loading}
           disabled={!canSubmit}
         >

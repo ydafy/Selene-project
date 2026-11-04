@@ -58,7 +58,8 @@
         "@stripe/stripe-react-native",
         {
           "merchantIdentifier": "merchant.com.selene.marketplace",
-          "enableGooglePay": true
+          "enableGooglePay": true,
+          "disableSPM": true
         }
       ],
       [

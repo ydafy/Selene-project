@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
+  type ScrollViewInstance,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -34,7 +35,7 @@ export default function VerifyProductScreen() {
   const insets = useSafeAreaInsets();
 
   // Refs
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
   const guideModalRef = useRef<BottomSheetModal>(null);
 
   // Lógica extraída

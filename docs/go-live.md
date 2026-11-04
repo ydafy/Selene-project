@@ -106,25 +106,25 @@ The remote project also runs `dynamic-api` (name `get-shipping-quote-seller`), w
 
 ## 8. Cron jobs
 
-| Job                                        | Schedule       | Target                                  |
-| ------------------------------------------ | -------------- | --------------------------------------- |
-| `account-closure-cleanup`                  | `0 * * * *`    | function `account-closure-cleanup`      |
-| `auto-cancel-orders-job`                   | `0 * * * *`    | function `auto-cancel-orders`           |
-| `checkout-recovery-worker-every-5-minutes` | `*/5 * * * *`  | function `checkout-recovery-worker`     |
-| `complete-delivered-shipments`             | `*/5 * * * *`  | function `complete-delivered-shipments` |
-| `cron-watchdog-every-15-minutes`           | `*/15 * * * *` | function `cron-watchdog`                |
-| `dispatch-push-every-minute`               | `*/1 * * * *`  | function `dispatch-push`                |
-| `dispute-payout-timeout-job`               | `0 * * * *`    | `fn_cron_dispute_payout_timeout()`      |
-| `dispute-shipping-timeout-job`             | `0 * * * *`    | `fn_cron_dispute_shipping_timeout()`    |
-| `purge-expired-reservations`               | `*/15 * * * *` | inline `UPDATE public.products`         |
+| Job                                        | Schedule       | Target                                             |
+| ------------------------------------------ | -------------- | -------------------------------------------------- |
+| `account-closure-cleanup`                  | `0 * * * *`    | function `account-closure-cleanup`                 |
+| `auto-cancel-orders-job`                   | `0 * * * *`    | function `auto-cancel-orders`                      |
+| `checkout-recovery-worker-every-5-minutes` | `*/5 * * * *`  | function `checkout-recovery-worker`                |
+| `complete-delivered-shipments`             | `*/5 * * * *`  | function `complete-delivered-shipments`            |
+| `cron-watchdog-every-15-minutes`           | `*/15 * * * *` | function `cron-watchdog`                           |
+| `dispatch-push-every-minute`               | `*/1 * * * *`  | function `dispatch-push`                           |
+| `dispute-payout-timeout-job`               | `0 * * * *`    | `fn_cron_dispute_payout_timeout()`                 |
+| `dispute-shipping-timeout-job`             | `0 * * * *`    | `fn_cron_dispute_shipping_timeout()`               |
+| `purge-expired-reservations`               | `*/15 * * * *` | inline `UPDATE public.products`                    |
 | `purge-cron-run-details`                   | `0 3 * * *`    | inline `DELETE FROM cron.job_run_details` (7 days) |
-| `purge-old-evidence`                       | `0 0 * * *`    | inline `DELETE FROM storage.objects`    |
-| `reconcile-connect-payments`               | `0 */6 * * *`  | `fn_reconcile_connect_payments()`       |
-| `reconcile-stripe-fees-every-5-minutes`    | `*/5 * * * *`  | function `reconcile-stripe-fees`        |
-| `resume-pending-payouts`                   | `*/5 * * * *`  | function `resume-pending-payouts`       |
-| `return-delivery-timeout`                  | `0 * * * *`    | `fn_cron_return_delivery_timeout()`     |
-| `track-shipments-preparing`                | `*/5 * * * *`  | function `track-shipments` (`preparing`) |
-| `track-shipments-shipped`                  | `*/15 * * * *` | function `track-shipments` (`shipped`)   |
+| `purge-old-evidence`                       | `0 0 * * *`    | inline `DELETE FROM storage.objects`               |
+| `reconcile-connect-payments`               | `0 */6 * * *`  | `fn_reconcile_connect_payments()`                  |
+| `reconcile-stripe-fees-every-5-minutes`    | `*/5 * * * *`  | function `reconcile-stripe-fees`                   |
+| `resume-pending-payouts`                   | `*/5 * * * *`  | function `resume-pending-payouts`                  |
+| `return-delivery-timeout`                  | `0 * * * *`    | `fn_cron_return_delivery_timeout()`                |
+| `track-shipments-preparing`                | `*/5 * * * *`  | function `track-shipments` (`preparing`)           |
+| `track-shipments-shipped`                  | `*/15 * * * *` | function `track-shipments` (`shipped`)             |
 
 `track-shipments` polls Envia per lane and authenticates its caller with `Authorization: Bearer <TRACK_SHIPMENTS_CRON_SECRET>` (`verify_jwt = false`; no JWT and no `x-cron-secret`). It only works when `TRACK_SHIPMENTS_POLLING_ENABLED` is `true`; any other value answers `200 {"skipped": true, "reason": "disabled"}` without touching the database or Envia. The old `track-shipments-every-6-hours` job sends a literal service-role JWT and no `lane`, so every run gets 401 (seen four times on 2026-10-25). Replace it in this order:
 
@@ -356,7 +356,7 @@ Sentry creates the `cron-watchdog` Cron Monitor on its first check-in (free plan
 - Android push goes through Firebase Cloud Messaging. The Firebase project is the Google Cloud project that holds the Google Sign-In OAuth clients, with the Android app `com.selene.marketplace`.
 - FCM V1 key: in Firebase, Project settings > Service accounts > Generate new private key; upload the JSON on expo.dev (project `selene` > Credentials > Android > `com.selene.marketplace` > FCM V1 service account key), then delete the downloaded file. Expo uses it to send to FCM; it never goes in the repository or in Supabase.
 - `google-services.json` stays out of the repository (gitignored). EAS provides it as the file variable `GOOGLE_SERVICES_JSON`, which `apps/frontend/app.config.ts` reads: `eas env:set --name GOOGLE_SERVICES_JSON --type file --visibility sensitive --value ./google-services.json --environment development --environment preview --environment production`, run in `apps/frontend`. Local builds read `apps/frontend/google-services.json`. Without the file the Android prebuild fails, so a local `expo run:android` needs a copy of it in `apps/frontend/`; `bun run worktree:env` copies only the `.env` files, so a new worktree does not get it.
-- iOS needs the Apple Developer Program. The code needs no change: register the device and run `eas build --profile development --platform ios`, accepting the push key prompt.
+- iOS needs the Apple Developer Program. Register the device and run `eas build --profile development --platform ios`, accepting the push key prompt. The first iOS build also moves Stripe to Swift Package Manager (the Stripe plugin in `apps/frontend/app.json` sets `"disableSPM": true` until then) and checks the other iOS-only items in #217.
 - Check: a push sent by `dispatch-push` reaches a production build, and its ticket and receipt in `push_deliveries` are `ok`.
 
 ## 12. Verification
@@ -372,4 +372,5 @@ Sentry creates the `cron-watchdog` Cron Monitor on its first check-in (free plan
    - Delete an account: the re-sign-in step, the "what is deleted and what is kept" copy, and other users then see "Usuario eliminado".
    - A suspended account sees the suspension notice; a banned account sees only the blocked-account screen with its reason.
    - Admin-web: log in with the CAPTCHA; a non-admin account is refused.
-4. Every cron job shows successful runs in `cron.job_run_details`.
+4. The first Android release build, on a physical device: `bun run build:release:android` (EAS `preview` profile). Since Expo SDK 58, release builds shrink and optimize the code with R8, and development builds do not, so this is the first build that runs it. Check that the app starts, Google Sign-In (its library ships no R8 rules), a Stripe payment with card and Google Pay, and a push notification received and tapped. A crash such as `ClassNotFoundException` in `adb logcat` needs a keep rule through `expo-build-properties` (`odd/tasks/expo-sdk-58.md` L26).
+5. Every cron job shows successful runs in `cron.job_run_details`.

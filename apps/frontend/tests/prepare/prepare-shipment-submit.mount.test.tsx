@@ -68,13 +68,11 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
     TouchableOpacity: host('TouchableOpacity'),
     Linking: { openURL },
   }));
-  mock.module('expo-router/react-navigation', () => ({
-    usePreventRemove: () => {},
-  }));
   mock.module('expo-router', () => ({
     Stack: { Screen: host('StackScreen') },
     useLocalSearchParams: () => ({ id: orderId, shipment_id: selectedId }),
     useRouter: () => ({ canGoBack: () => true, back, setParams, push }),
+    usePreventRemove: () => {},
   }));
   mock.module('react-i18next', () => ({
     useTranslation: () => ({

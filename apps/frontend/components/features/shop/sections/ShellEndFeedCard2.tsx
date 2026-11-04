@@ -5,7 +5,12 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { ScrollView, StyleSheet, Dimensions } from 'react-native';
+import {
+  ScrollView,
+  StyleSheet,
+  Dimensions,
+  type ScrollViewInstance,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@shopify/restyle';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -40,7 +45,7 @@ export const ShellEndFeedCard2 = ({
   const theme = useTheme<Theme>();
   const router = useRouter();
   const sharedStyles = getSharedStyles(theme);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const { t } = useTranslation('search');
 
   // Traemos los productos (reutilizamos la caché de la Home/Shop)

@@ -8,7 +8,7 @@ import React, { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { TextInput as RNTextInput } from 'react-native';
+import type { TextInputInstance } from 'react-native';
 import Toast from 'react-native-toast-message';
 
 import { Box, Text } from '../../base';
@@ -40,7 +40,7 @@ export const LoginForm = ({
   const { t } = useTranslation('auth');
   const { signIn, loading, resendSignUpOtp } = useAuth();
 
-  const passwordInputRef = useRef<RNTextInput>(null);
+  const passwordInputRef = useRef<TextInputInstance>(null);
 
   // 1. MOTOR DE GOOGLE (Centralizado)
   const { signInWithGoogle, isGoogleLoading } = useGoogleAuth(onSuccess);
@@ -159,7 +159,7 @@ export const LoginForm = ({
       <Box height={26} />
 
       <PrimaryButton
-        onPress={handleSubmit(onSubmit)}
+        onPress={() => void handleSubmit(onSubmit)()}
         loading={loading}
         disabled={!isValid || isBusy}
       >
