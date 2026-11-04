@@ -706,4 +706,44 @@ describe('createPushRegistrar burst of callers', () => {
       unregisteredAt,
     );
   });
+
+  it('a call made while the queued registration runs queues one more', async () => {
+    const calls: string[] = [];
+    const gate = blockFirstToken(calls);
+    const { registrar } = setup({ getExpoPushToken: gate.getExpoPushToken });
+    const first = registrar.register('user-1');
+    await tick();
+    const next = registrar.register('user-2');
+    gate.release();
+    await Promise.all([first, next]);
+    await registrar.register('user-2');
+    expect(calls.filter((c) => c.startsWith('token:'))).toHaveLength(3);
+  });
+
+  it('a registration of the signed-out user after sign-out does not run before the unregister', async () => {
+    const calls: string[] = [];
+    const gate = blockFirstToken(calls);
+    const { registrar } = setup({
+      getExpoPushToken: gate.getExpoPushToken,
+      registerToken: async (token, platform) => {
+        calls.push(`register:${token}:${platform}`);
+      },
+      unregisterToken: async (token) => {
+        calls.push(`unregister:${token}`);
+      },
+    });
+    const first = registrar.register('user-1');
+    await tick();
+    const before = registrar.register('user-1');
+    const signingOut = registrar.unregister();
+    const after = registrar.register('user-1');
+    expect(after).not.toBe(before);
+    gate.release();
+    await Promise.all([first, before, signingOut, after]);
+    const unregisteredAt = calls.indexOf(`unregister:${TOKEN}`);
+    expect(unregisteredAt).toBeGreaterThan(-1);
+    expect(
+      calls.slice(unregisteredAt).filter((c) => !c.startsWith('token:')),
+    ).toEqual([`unregister:${TOKEN}`]);
+  });
 });
