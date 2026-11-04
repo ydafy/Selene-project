@@ -79,7 +79,7 @@ Order and shipment states, identical in both apps:
 
 - Use Restyle tokens and `textVariants` (`header-2xl` once per screen, `subheader-*` for sections, `body-*`, `caption-*` for secondary text). No hardcoded colors or font sizes in components. Tokens live in `core/theme/tokens.ts`; outside a component that has `useTheme`, import `colors` from there. `core/theme/__tests__/noHardcodedColors.test.ts` fails on hex and `rgb`/`rgba`/`hsl` literals outside the theme; the only exceptions are third-party brand colors (logos in `components/icons/`, Stripe, 3DMark).
 - Follow native conventions (load the `expo-native-ui` skill); tokens and component variants follow `expo-design-system` within this file's palette.
-- Icons: `@expo/vector-icons`, one family per screen.
+- Icons: Material Design Icons from `@react-native-vector-icons/material-design-icons`, imported as `MaterialCommunityIcons`. It is the only icon family in the app.
 - Blur (`blurBackground`) is for overlays on top of content, not for cards.
 
 ## Admin dashboard (`apps/admin-web`)

@@ -14,7 +14,7 @@ import {
   isAccountHeld,
   isProductHistory,
 } from '../../../core/utils/product-status';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
 type MyListingCardProps = {
   product: Product;
@@ -186,7 +186,10 @@ export const MyListingCard = ({
                 paddingHorizontal="s"
                 backgroundColor="errorSubtle"
                 borderRadius="s"
-                style={{ borderWidth: 1, borderColor: theme.colors.errorSubtle }}
+                style={{
+                  borderWidth: 1,
+                  borderColor: theme.colors.errorSubtle,
+                }}
               >
                 <MaterialCommunityIcons
                   name="alert-circle-outline"

@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
-//import { Icon } from '../../ui/Icon'; // O usa MaterialCommunityIcons directamente si no tienes Icon genérico aún
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { Box, Text } from '../../base';
 import { Theme } from '../../../core/theme';
 

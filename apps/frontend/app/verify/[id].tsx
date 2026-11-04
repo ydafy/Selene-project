@@ -26,7 +26,7 @@ import {
 } from '../../core/utils/verification-submit';
 import { theme } from '@/core/theme';
 import { offerPushPermission } from '@/core/push/pushPermission';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
 export default function VerifyProductScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

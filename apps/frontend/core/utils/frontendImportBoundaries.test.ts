@@ -97,4 +97,39 @@ describe('frontend import boundaries', () => {
         },
     }).toEqual({ rendererImports: [], declared: false });
   });
+
+  // Expo will deprecate @expo/vector-icons (#149). Icons come from
+  // @react-native-vector-icons/material-design-icons, which react-native-paper
+  // also prefers; mixing both packages can render one font as empty squares.
+  it('does not use @expo/vector-icons', async () => {
+    const expoIconImports: string[] = [];
+
+    for await (const relativePath of new Bun.Glob('**/*.{ts,tsx}').scan({
+      cwd: fileURLToPath(frontendRoot),
+      absolute: false,
+    })) {
+      if (relativePath.split(/[\\/]/).includes('node_modules')) continue;
+      const source = await Bun.file(new URL(relativePath, frontendRoot)).text();
+      if (
+        /(?:from|import\(?|require\(|mock\.module\()\s*['"]@expo\/vector-icons(\/[^'"]*)?['"]/.test(
+          source,
+        )
+      ) {
+        expoIconImports.push(relativePath);
+      }
+    }
+    const manifest = (await Bun.file(
+      new URL('package.json', frontendRoot),
+    ).json()) as { dependencies?: object; devDependencies?: object };
+
+    expect({
+      expoIconImports,
+      declared:
+        '@expo/vector-icons' in
+        {
+          ...manifest.dependencies,
+          ...manifest.devDependencies,
+        },
+    }).toEqual({ expoIconImports: [], declared: false });
+  });
 });

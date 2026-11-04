@@ -1,6 +1,6 @@
 import React, { ComponentProps } from 'react';
 import { Linking } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
 

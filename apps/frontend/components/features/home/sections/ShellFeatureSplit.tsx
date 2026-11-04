@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { memo } from 'react';
 import { StyleSheet } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from '@shopify/restyle';
 import { Box, Text } from '../../../base';
 import { Theme } from '../../../../core/theme';
@@ -112,7 +112,6 @@ export const ShellFeatureSplit = memo(
                   name={item.icon}
                   size={16}
                   color={theme.colors.textPrimary}
-                  opacity={0.6}
                 />
                 <Text
                   variant="caption-md"

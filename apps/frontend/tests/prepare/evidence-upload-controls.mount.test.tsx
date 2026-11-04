@@ -58,8 +58,8 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
       ),
     ActivityIndicator: host('ActivityIndicator'),
   }));
-  mock.module('@expo/vector-icons', () => ({
-    MaterialCommunityIcons: host('Icon'),
+  mock.module('@react-native-vector-icons/material-design-icons', () => ({
+    default: host('Icon'),
   }));
   mock.module('@shopify/restyle', () => ({
     useTheme: () => ({ colors: {}, borderRadii: {} }),

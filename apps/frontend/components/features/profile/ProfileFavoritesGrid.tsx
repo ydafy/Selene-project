@@ -2,7 +2,7 @@ import { Dimensions, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
 import { Box, Text } from '../../base';
 import { AppImage } from '../../ui/AppImage';
@@ -83,9 +83,7 @@ export const ProfileFavoritesGrid = ({
           {t('sections.favorites') || 'Tus Favoritos'}
         </Text>
         {/* Botón Ver Todos (Visual por ahora) */}
-        <TouchableOpacity
-          onPress={() => router.push('/profile/favorites')}
-        >
+        <TouchableOpacity onPress={() => router.push('/profile/favorites')}>
           <Text variant="body-sm" color="textSecondary">
             {t('sections.viewAll')}
           </Text>

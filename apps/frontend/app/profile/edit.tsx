@@ -9,7 +9,7 @@ import { Stack, Redirect, router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator } from 'react-native-paper';
 import { useTheme } from '@shopify/restyle';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import Toast from 'react-native-toast-message';
 
 import { Box, Text } from '../../components/base';
@@ -129,9 +129,7 @@ export default function EditProfileScreen() {
 
   return (
     <ScreenLayout>
-      <Stack.Screen
-        options={{ headerShown: false, presentation: 'modal' }}
-      />
+      <Stack.Screen options={{ headerShown: false, presentation: 'modal' }} />
 
       {/* Header */}
       <Box

@@ -1,5 +1,7 @@
 import { TouchableOpacity, Dimensions } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons, {
+  type MaterialDesignIconsIconName,
+} from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from '@shopify/restyle';
 import { Box, Text } from '../../base';
 import { Theme } from '../../../core/theme';
@@ -11,7 +13,7 @@ const CARD_WIDTH = (width - 48) / 2;
 
 type CategoryCardProps = {
   label: string;
-  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  icon: MaterialDesignIconsIconName;
   color: keyof Theme['colors'];
   onPress: () => void;
 };

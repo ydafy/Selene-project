@@ -24,7 +24,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
-import { MaterialCommunityIcons } from '@expo/vector-icons'; // FIX: Import limpio
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
 import { Box, Text } from '../../../base';
 import { AppImage } from '../../../ui/AppImage';

@@ -103,8 +103,8 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
   mock.module('@gorhom/bottom-sheet', () => ({
     BottomSheetModal: host('BottomSheetModal'),
   }));
-  mock.module('@expo/vector-icons', () => ({
-    MaterialCommunityIcons: host('Icon'),
+  mock.module('@react-native-vector-icons/material-design-icons', () => ({
+    default: host('Icon'),
   }));
   mock.module('react-native-reanimated', () => ({
     default: { View: host('AnimatedView') },

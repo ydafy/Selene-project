@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { TouchableOpacity } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from '@shopify/restyle';
 
 import { Box, Text } from '../base';
@@ -33,7 +33,9 @@ export const LabelWithHelp = ({
   canInteractRef.current = canInteract;
   const theme = useTheme<Theme>();
   const [visible, setVisible] = useState(false);
-  useEffect(() => { if (disabled) setVisible(false); }, [disabled]);
+  useEffect(() => {
+    if (disabled) setVisible(false);
+  }, [disabled]);
 
   return (
     <>
@@ -45,7 +47,10 @@ export const LabelWithHelp = ({
         <TouchableOpacity
           disabled={disabled}
           accessibilityState={{ disabled }}
-          onPress={() => { if (!disabledRef.current && canInteractRef.current?.() !== false) setVisible(true); }}
+          onPress={() => {
+            if (!disabledRef.current && canInteractRef.current?.() !== false)
+              setVisible(true);
+          }}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <MaterialCommunityIcons
@@ -61,8 +66,14 @@ export const LabelWithHelp = ({
         visible={visible && !disabled}
         title={helpTitle}
         description={helpDescription}
-        onConfirm={() => { if (!disabledRef.current && canInteractRef.current?.() !== false) setVisible(false); }}
-        onCancel={() => { if (!disabledRef.current && canInteractRef.current?.() !== false) setVisible(false); }}
+        onConfirm={() => {
+          if (!disabledRef.current && canInteractRef.current?.() !== false)
+            setVisible(false);
+        }}
+        onCancel={() => {
+          if (!disabledRef.current && canInteractRef.current?.() !== false)
+            setVisible(false);
+        }}
         confirmLabel={confirmLabel ?? 'Entendido'}
         hideCancel={true} // ¡Truco! Solo mostramos "Entendido"
         icon="lightbulb-on-outline" // Icono de "Idea"

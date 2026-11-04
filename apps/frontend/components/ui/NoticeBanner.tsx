@@ -1,7 +1,9 @@
 import { TouchableOpacity } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useTheme } from '@shopify/restyle';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons, {
+  type MaterialDesignIconsIconName,
+} from '@react-native-vector-icons/material-design-icons';
 
 import { Box, Text } from '../base';
 import { Theme } from '../../core/theme';
@@ -16,7 +18,7 @@ const TONE_COLOR: Record<NoticeTone, keyof Theme['colors']> = {
 
 type NoticeBannerProps = {
   tone: NoticeTone;
-  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  icon: MaterialDesignIconsIconName;
   title: string;
   message?: string;
   /** Makes the whole card pressable and shows a trailing chevron. */

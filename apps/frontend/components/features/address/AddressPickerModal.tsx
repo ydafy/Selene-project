@@ -6,7 +6,7 @@ import {
   BottomSheetBackdrop,
 } from '@gorhom/bottom-sheet';
 import { useTheme } from '@shopify/restyle';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
@@ -47,12 +47,7 @@ export const AddressPickerModal = React.memo(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const renderBackdrop = useCallback(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (props: any) => (
-        <BottomSheetBackdrop
-          {...props}
-          pressBehavior="close"
-        />
-      ),
+      (props: any) => <BottomSheetBackdrop {...props} pressBehavior="close" />,
       [],
     );
 

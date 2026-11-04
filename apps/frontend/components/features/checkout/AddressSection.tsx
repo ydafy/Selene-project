@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { TouchableOpacity } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from '@shopify/restyle';
 import { Box, Text } from '../../base';
 import { Address } from '@selene/types';
@@ -46,7 +46,14 @@ export const AddressSection = ({
       <Text variant="subheader-lg" marginBottom="s" color="primary">
         {label}
       </Text>
-      <TouchableOpacity disabled={disabled} accessibilityState={{ disabled }} onPress={() => { if (!disabledRef.current) onPress(); }} activeOpacity={0.7}>
+      <TouchableOpacity
+        disabled={disabled}
+        accessibilityState={{ disabled }}
+        onPress={() => {
+          if (!disabledRef.current) onPress();
+        }}
+        activeOpacity={0.7}
+      >
         <Box
           backgroundColor="cardBackground"
           padding="m"

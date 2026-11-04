@@ -1,12 +1,14 @@
 import { TouchableOpacity } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons, {
+  type MaterialDesignIconsIconName,
+} from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from '@shopify/restyle';
 
 import { Box, Text } from '../../base';
 import { Theme } from '../../../core/theme';
 
 type SettingsRowProps = {
-  icon?: keyof typeof MaterialCommunityIcons.glyphMap;
+  icon?: MaterialDesignIconsIconName;
   label: string;
   description?: string;
   onPress?: () => void;
@@ -95,11 +97,7 @@ export const SettingsRow = ({
   if (!onPress) return content;
 
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.7}
-      disabled={disabled}
-    >
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7} disabled={disabled}>
       {content}
     </TouchableOpacity>
   );

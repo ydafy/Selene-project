@@ -12,7 +12,7 @@ import {
 import { useTheme } from '@shopify/restyle';
 
 import Reanimated, { FadeInDown } from 'react-native-reanimated';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { Box, Text } from '../../base';

@@ -3,7 +3,7 @@ import { TouchableOpacity } from 'react-native';
 import { IconButton } from 'react-native-paper';
 import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next'; // <--- AGREGADO
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
 import { Product } from '@selene/types';
 

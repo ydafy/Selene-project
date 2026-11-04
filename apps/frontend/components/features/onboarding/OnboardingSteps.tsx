@@ -6,7 +6,9 @@ import React from 'react';
 import { TouchableOpacity } from 'react-native';
 import { useTranslation, Trans } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons, {
+  type MaterialDesignIconsIconName,
+} from '@react-native-vector-icons/material-design-icons';
 
 import { Box, Text } from '../../base';
 import { AppImage } from '../../ui/AppImage';
@@ -40,7 +42,7 @@ const GUIDANCE_CARD_DEFINITIONS = [
     descriptionKey: 'sellerOnboarding:guidance.tip1_desc',
   },
 ] as const satisfies ReadonlyArray<{
-  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  icon: MaterialDesignIconsIconName;
   titleKey: string;
   descriptionKey: string;
 }>;
@@ -50,7 +52,7 @@ const GUIDANCE_CARD_TOTAL = GUIDANCE_CARD_DEFINITIONS.length;
 const stripTransTags = (value: string) => value.replace(/<[^>]*>/g, '');
 
 interface GuidanceCardProps {
-  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  icon: MaterialDesignIconsIconName;
   title: string;
   description: string;
   index: number;
@@ -252,7 +254,7 @@ const STATUS_GUIDANCE_ICON = {
   rejected: 'alert-circle-outline',
 } as const satisfies Record<
   ConnectOnboardingStatusGuidanceKey,
-  keyof typeof MaterialCommunityIcons.glyphMap
+  MaterialDesignIconsIconName
 >;
 
 interface Step3Props {
@@ -260,10 +262,7 @@ interface Step3Props {
   statusGuidanceKey: ConnectOnboardingStatusGuidanceKey | null;
 }
 
-export const OnboardingStep3 = ({
-  status,
-  statusGuidanceKey,
-}: Step3Props) => {
+export const OnboardingStep3 = ({ status, statusGuidanceKey }: Step3Props) => {
   const { t } = useTranslation(['sellerOnboarding']);
   const theme = useTheme<Theme>();
   const guidanceKey =

@@ -59,8 +59,8 @@ if (process.env.SELENE_IMAGE_VIEWER_MOUNT_CHILD !== '1') {
     }),
   }));
   mock.module('expo-image', () => ({ Image: host('ExpoImage') }));
-  mock.module('@expo/vector-icons', () => ({
-    MaterialCommunityIcons: host('Icon'),
+  mock.module('@react-native-vector-icons/material-design-icons', () => ({
+    default: host('Icon'),
   }));
   mock.module('react-i18next', () => ({
     useTranslation: (namespace: string) => ({

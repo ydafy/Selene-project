@@ -9,7 +9,7 @@ import { Linking, TouchableOpacity } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import Toast from 'react-native-toast-message';
 
 import { Box, Text } from '../../components/base';
@@ -39,7 +39,9 @@ export default function SupportScreen() {
       return;
     }
     try {
-      await Linking.openURL(buildSupportMailto(email, t('support.emailSubject')));
+      await Linking.openURL(
+        buildSupportMailto(email, t('support.emailSubject')),
+      );
     } catch {
       Toast.show({
         type: 'info',
@@ -51,9 +53,7 @@ export default function SupportScreen() {
 
   return (
     <ScreenLayout>
-      <Stack.Screen
-        options={{ headerShown: false, presentation: 'modal' }}
-      />
+      <Stack.Screen options={{ headerShown: false, presentation: 'modal' }} />
 
       <Box
         flexDirection="row"

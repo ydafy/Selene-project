@@ -14,7 +14,9 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons, {
+  type MaterialDesignIconsIconName,
+} from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
 
@@ -24,7 +26,7 @@ import { getSharedStyles } from '../sharedStyles';
 
 interface PipelineCardProps {
   title: string;
-  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  icon: MaterialDesignIconsIconName;
   isLast?: boolean;
 }
 

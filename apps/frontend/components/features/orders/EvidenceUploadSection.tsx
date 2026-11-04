@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { TouchableOpacity, ActivityIndicator } from 'react-native';
 import type { ImageSource } from 'expo-image';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from '@shopify/restyle';
 import * as Haptics from 'expo-haptics';
 

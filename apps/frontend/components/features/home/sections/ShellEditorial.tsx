@@ -7,7 +7,7 @@
 
 import React, { memo, useCallback } from 'react';
 import { ScrollView, Dimensions, TouchableOpacity } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from '@shopify/restyle';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -48,7 +48,6 @@ const EditorialCard = memo(
           name={item.icon as any}
           size={18}
           color={theme.colors.primary}
-          opacity={0.5}
         />
       </Box>
 

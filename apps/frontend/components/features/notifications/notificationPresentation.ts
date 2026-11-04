@@ -1,10 +1,8 @@
 import type { Notification } from '@selene/types';
-import type { ComponentProps } from 'react';
-import type { MaterialCommunityIcons } from '@expo/vector-icons';
+import type { MaterialDesignIconsIconName } from '@react-native-vector-icons/material-design-icons';
 
-type Icon = ComponentProps<typeof MaterialCommunityIcons>['name'];
 type Presentation = {
-  icon: Icon;
+  icon: MaterialDesignIconsIconName;
   accent: 'primary' | 'success' | 'error';
   state:
     | 'generic'
@@ -105,7 +103,11 @@ export function getNotificationPresentation(
     const entry = catalogue[identity.kind] as Partial<
       Record<
         'buyer' | 'seller',
-        readonly [Icon, Presentation['accent'], Presentation['state']]
+        readonly [
+          MaterialDesignIconsIconName,
+          Presentation['accent'],
+          Presentation['state'],
+        ]
       >
     >;
     const match = entry[identity.role]!;

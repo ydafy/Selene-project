@@ -22,7 +22,7 @@ import { useOrderActions } from '../../../../core/hooks/useOrderActions';
 import { authenticateAsync } from '../../../../core/utils/biometrics';
 import Animated, { withSpring, withTiming } from 'react-native-reanimated';
 import { theme } from '@/core/theme';
-import MaterialCommunityIcons from '@expo/vector-icons/build/MaterialCommunityIcons';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
 // Mount entrance: slides in from the left (spring, 2 s) while fading in (timing).
 const truckEntering = () => {

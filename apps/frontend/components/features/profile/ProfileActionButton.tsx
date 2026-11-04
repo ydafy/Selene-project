@@ -1,12 +1,14 @@
 import { TouchableOpacity } from 'react-native';
 import { useTheme } from '@shopify/restyle';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons, {
+  type MaterialDesignIconsIconName,
+} from '@react-native-vector-icons/material-design-icons';
 import { Box, Text } from '../../base';
 import { Theme } from '../../../core/theme';
 
 type ProfileActionButtonProps = {
   label: string;
-  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  icon: MaterialDesignIconsIconName;
   onPress: () => void;
 };
 

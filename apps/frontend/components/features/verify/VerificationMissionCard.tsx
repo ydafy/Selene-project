@@ -1,7 +1,9 @@
 import React from 'react';
 import { Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTheme } from '@shopify/restyle';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons, {
+  type MaterialDesignIconsIconName,
+} from '@react-native-vector-icons/material-design-icons';
 import { TextInput } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 
@@ -14,7 +16,7 @@ type VerificationMissionCardProps = {
   title: string;
   description: string;
   instruction: string;
-  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  icon: MaterialDesignIconsIconName;
   imageUri: string | null;
   onPressCamera: () => void;
   onPressHelp?: () => void;
