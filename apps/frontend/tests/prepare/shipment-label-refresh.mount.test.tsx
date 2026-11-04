@@ -1,7 +1,5 @@
 import { afterEach, beforeEach, expect, mock, test } from 'bun:test';
 import React from 'react';
-// @ts-expect-error The installed test-only renderer has no local type declarations.
-import { act, create } from 'react-test-renderer';
 
 if (process.env.SELENE_LABEL_REFRESH_CHILD !== '1') {
   test('mounts the label refresh lifecycle in an isolated process', () => {
@@ -31,6 +29,7 @@ if (process.env.SELENE_LABEL_REFRESH_CHILD !== '1') {
     },
   }));
   mock.module('react-native', () => ({
+    StyleSheet: { flatten: (style: unknown) => style },
     AppState: {
       get currentState() {
         return currentState;
@@ -45,6 +44,7 @@ if (process.env.SELENE_LABEL_REFRESH_CHILD !== '1') {
       },
     },
   }));
+  const { act, render } = await import('@testing-library/react-native');
   const { useShipmentLabelRefresh } =
     await import('../../core/hooks/useShipmentLabelRefresh');
   const Probe = ({
@@ -61,36 +61,29 @@ if (process.env.SELENE_LABEL_REFRESH_CHILD !== '1') {
     currentState = state;
     for (const listener of listeners) listener(state);
   };
-  let tree: ReturnType<typeof create> | undefined;
+  let view: Awaited<ReturnType<typeof render>> | undefined;
   beforeEach(() => {
     focused = true;
     blurImmediately = false;
     currentState = 'active';
   });
   afterEach(async () => {
-    if (tree)
-      await act(async () => {
-        tree!.unmount();
-      });
-    tree = undefined;
+    await view?.unmount();
+    view = undefined;
     expect(listeners.size).toBe(0);
   });
 
   test('does not start the scheduled read if focus is cleaned up immediately', async () => {
     blurImmediately = true;
     const refresh = mock(async () => {});
-    await act(async () => {
-      tree = create(<Probe id="shipment-1" refresh={refresh} />);
-    });
+    view = await render(<Probe id="shipment-1" refresh={refresh} />);
     expect(refresh).toHaveBeenCalledTimes(0);
     expect(listeners.size).toBe(0);
   });
 
   test('refreshes on focus and resume, never while blurred, and removes listeners', async () => {
     const refresh = mock(async () => {});
-    await act(async () => {
-      tree = create(<Probe id="shipment-1" refresh={refresh} />);
-    });
+    view = await render(<Probe id="shipment-1" refresh={refresh} />);
     expect(refresh).toHaveBeenCalledTimes(1);
     expect(listeners.size).toBe(1);
     await act(async () => {
@@ -103,9 +96,7 @@ if (process.env.SELENE_LABEL_REFRESH_CHILD !== '1') {
     });
     expect(refresh).toHaveBeenCalledTimes(2);
     focused = false;
-    await act(async () => {
-      tree!.update(<Probe id="shipment-1" refresh={refresh} />);
-    });
+    await view!.rerender(<Probe id="shipment-1" refresh={refresh} />);
     expect(listeners.size).toBe(0);
     await act(async () => {
       emit('background');
@@ -113,9 +104,7 @@ if (process.env.SELENE_LABEL_REFRESH_CHILD !== '1') {
     });
     expect(refresh).toHaveBeenCalledTimes(2);
     focused = true;
-    await act(async () => {
-      tree!.update(<Probe id="shipment-1" refresh={refresh} />);
-    });
+    await view!.rerender(<Probe id="shipment-1" refresh={refresh} />);
     expect(refresh).toHaveBeenCalledTimes(3);
     expect(listeners.size).toBe(1);
   });
@@ -130,9 +119,7 @@ if (process.env.SELENE_LABEL_REFRESH_CHILD !== '1') {
       calls++;
       return calls === 1 ? pending : Promise.resolve();
     };
-    await act(async () => {
-      tree = create(<Probe id="shipment-1" refresh={refresh} />);
-    });
+    view = await render(<Probe id="shipment-1" refresh={refresh} />);
     await act(async () => {
       emit('background');
       emit('active');
@@ -153,15 +140,13 @@ if (process.env.SELENE_LABEL_REFRESH_CHILD !== '1') {
       resolveRead = resolve;
     });
     const refresh = mock(() => pending);
-    await act(async () => {
-      tree = create(<Probe id="shipment-1" refresh={refresh} />);
-    });
+    view = await render(<Probe id="shipment-1" refresh={refresh} />);
     await act(async () => {
       emit('background');
       emit('active');
-      tree!.unmount();
     });
-    tree = undefined;
+    await view!.unmount();
+    view = undefined;
     await act(async () => {
       resolveRead();
       await pending;
@@ -172,18 +157,12 @@ if (process.env.SELENE_LABEL_REFRESH_CHILD !== '1') {
 
   test('waits for a selected shipment and replaces the subscription on selection changes', async () => {
     const refresh = mock(async () => {});
-    await act(async () => {
-      tree = create(<Probe refresh={refresh} />);
-    });
+    view = await render(<Probe refresh={refresh} />);
     expect(refresh).toHaveBeenCalledTimes(0);
     expect(listeners.size).toBe(0);
-    await act(async () => {
-      tree!.update(<Probe id="shipment-1" refresh={refresh} />);
-    });
+    await view!.rerender(<Probe id="shipment-1" refresh={refresh} />);
     expect(refresh).toHaveBeenCalledTimes(1);
-    await act(async () => {
-      tree!.update(<Probe id="shipment-2" refresh={refresh} />);
-    });
+    await view!.rerender(<Probe id="shipment-2" refresh={refresh} />);
     expect(refresh).toHaveBeenCalledTimes(2);
     expect(listeners.size).toBe(1);
   });
@@ -192,9 +171,7 @@ if (process.env.SELENE_LABEL_REFRESH_CHILD !== '1') {
     const refresh = mock(async () => {
       throw new Error('read failed');
     });
-    await act(async () => {
-      tree = create(<Probe id="shipment-1" refresh={refresh} />);
-    });
+    view = await render(<Probe id="shipment-1" refresh={refresh} />);
     await act(async () => {
       emit('background');
       emit('active');

@@ -1,7 +1,5 @@
 import { expect, mock, test } from 'bun:test';
 import React from 'react';
-// @ts-expect-error The installed test renderer has no declarations.
-import { act, create } from 'react-test-renderer';
 
 if (process.env.SELENE_UPLOAD_CHILD !== '1') {
   test('real upload hook preserves contracts with sanitized diagnostics', () => {
@@ -36,7 +34,10 @@ if (process.env.SELENE_UPLOAD_CHILD !== '1') {
     getPublicUrl,
   }));
   const decode = mock(() => new ArrayBuffer(2));
-  mock.module('react-native', () => ({ Alert: { alert: mock(() => {}) } }));
+  mock.module('react-native', () => ({
+    Alert: { alert: mock(() => {}) },
+    StyleSheet: { flatten: (style: unknown) => style },
+  }));
   mock.module('expo-image-picker', () => ({
     useMediaLibraryPermissions: () => [{ granted: true }, mock(() => {})],
     useCameraPermissions: () => [{ granted: true }, mock(() => {})],
@@ -48,6 +49,7 @@ if (process.env.SELENE_UPLOAD_CHILD !== '1') {
   mock.module('../../core/db/supabase', () => ({
     supabase: { storage: { from } },
   }));
+  const { act, render } = await import('@testing-library/react-native');
   const { useImageUpload } = await import('../../core/hooks/useImageUpload');
   test('failure rethrows original identity without private logs; success preserves upload and cleanup', async () => {
     let api!: ReturnType<typeof useImageUpload>;
@@ -55,16 +57,14 @@ if (process.env.SELENE_UPLOAD_CHILD !== '1') {
       api = useImageUpload();
       return null;
     }
-    let tree: ReturnType<typeof create>;
+    let view: Awaited<ReturnType<typeof render>> | undefined;
     const logs: unknown[][] = [];
     const original = console.error;
     console.error = (...args: unknown[]) => {
       logs.push(args);
     };
     try {
-      await act(async () => {
-        tree = create(<Probe />);
-      });
+      view = await render(<Probe />);
       let pending!: Promise<unknown>;
       await act(async () => {
         pending = api
@@ -120,9 +120,7 @@ if (process.env.SELENE_UPLOAD_CHILD !== '1') {
       ]);
       expect(getPublicUrl.mock.calls).toEqual([['avatar.jpg']]);
     } finally {
-      await act(async () => {
-        tree?.unmount();
-      });
+      await view?.unmount();
       console.error = original;
     }
   });

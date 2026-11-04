@@ -1,7 +1,5 @@
 import { expect, mock, test } from 'bun:test';
 import React from 'react';
-// @ts-expect-error The installed test-only renderer has no local type declarations.
-import { act, create } from 'react-test-renderer';
 import type { Notification } from '@selene/types';
 
 // Isolate the RN mock from other Bun test files that load the native entrypoint.
@@ -72,7 +70,18 @@ if (process.env.SELENE_NOTIFICATION_MOUNT_CHILD !== 'watcher') {
     return wasTap;
   });
 
-  mock.module('react-native', () => ({ Pressable: host('Pressable') }));
+  mock.module('react-native', () => ({
+    Pressable: ({
+      children,
+      ...props
+    }: React.PropsWithChildren<Record<string, unknown>>) =>
+      React.createElement(
+        'Pressable',
+        { accessible: true, ...props },
+        children,
+      ),
+    StyleSheet: { flatten: (style: unknown) => style },
+  }));
   mock.module('react-native-toast-message', () => ({
     default: { show: mock(() => {}) },
   }));
@@ -103,53 +112,48 @@ if (process.env.SELENE_NOTIFICATION_MOUNT_CHILD !== 'watcher') {
     Text: host('Text'),
   }));
 
+  const { act, render } = await import('@testing-library/react-native');
   const { NotificationWatcher } = await import('../NotificationWatcher');
 
+  const byType = (view: Awaited<ReturnType<typeof render>>, type: string) =>
+    view.container.queryAll((node) => node.type === type);
+
   test('mounted owner launch shows unread digest and navigates without marking read', async () => {
-    let tree: ReturnType<typeof create>;
-    await act(async () => {
-      tree = create(<NotificationWatcher />);
-    });
+    let view = await render(<NotificationWatcher />);
     expect(from).toHaveBeenCalledWith('notifications');
-    const dialog = tree!.root.findByType('ConfirmDialog');
+    const dialog = byType(view, 'ConfirmDialog')[0];
     expect(dialog.props.title).toBe('notifications:digestTitle');
     expect(
-      tree!.root
-        .findAllByType('Text')
-        .some(
-          (node: { props: { children: unknown } }) =>
-            node.props.children === notice.title ||
-            node.props.children === notice.message,
-        ),
+      byType(view, 'Text').some(
+        (node) =>
+          node.props.children === notice.title ||
+          node.props.children === notice.message,
+      ),
     ).toBe(false);
-    expect(tree!.root.findAllByType('Pressable')).toHaveLength(0);
+    expect(byType(view, 'Pressable')).toHaveLength(0);
     expect(dialog.props.confirmLabel).toBe('notifications:digestOpen');
     expect(dialog.props.cancelLabel).toBe('notifications:digestSkip');
     expect(navigate).not.toHaveBeenCalled();
     expect(from).toHaveBeenCalledTimes(1);
+    // ConfirmDialog is a host stand-in without a pressable of its own, so the
+    // prop handler is the only way to reach it.
     await act(async () => {
       dialog.props.onCancel();
     });
     expect(navigate).not.toHaveBeenCalled();
-    expect(tree!.root.findAllByType('ConfirmDialog')).toHaveLength(0);
+    expect(byType(view, 'ConfirmDialog')).toHaveLength(0);
     expect(from).toHaveBeenCalledTimes(1);
-    await act(async () => {
-      tree!.unmount();
-    });
+    await view.unmount();
     expect(removeChannel).toHaveBeenCalledTimes(1);
 
-    await act(async () => {
-      tree = create(<NotificationWatcher />);
-    });
-    const open = tree!.root.findByType('ConfirmDialog');
+    view = await render(<NotificationWatcher />);
+    const open = byType(view, 'ConfirmDialog')[0];
     await act(async () => {
       open.props.onConfirm();
     });
     expect(navigate).toHaveBeenCalledWith('/profile/notifications');
-    expect(tree!.root.findAllByType('ConfirmDialog')).toHaveLength(0);
-    await act(async () => {
-      tree!.unmount();
-    });
+    expect(byType(view, 'ConfirmDialog')).toHaveLength(0);
+    await view.unmount();
 
     expect(queryClient.invalidateQueries).not.toHaveBeenCalled();
     expect(from).toHaveBeenCalledTimes(2);
@@ -157,25 +161,16 @@ if (process.env.SELENE_NOTIFICATION_MOUNT_CHILD !== 'watcher') {
 
   test('a launch opened by a push tap skips the digest once', async () => {
     launchTap = true;
-    let tree: ReturnType<typeof create>;
-    await act(async () => {
-      tree = create(<NotificationWatcher />);
-    });
+    let view = await render(<NotificationWatcher />);
     expect(from).toHaveBeenCalledTimes(3);
-    expect(tree!.root.findAllByType('ConfirmDialog')).toHaveLength(0);
+    expect(byType(view, 'ConfirmDialog')).toHaveLength(0);
     expect(navigate).toHaveBeenCalledTimes(1);
-    await act(async () => {
-      tree!.unmount();
-    });
+    await view.unmount();
 
-    await act(async () => {
-      tree = create(<NotificationWatcher />);
-    });
-    expect(tree!.root.findByType('ConfirmDialog').props.title).toBe(
+    view = await render(<NotificationWatcher />);
+    expect(byType(view, 'ConfirmDialog')[0].props.title).toBe(
       'notifications:digestTitle',
     );
-    await act(async () => {
-      tree!.unmount();
-    });
+    await view.unmount();
   });
 }

@@ -1,7 +1,5 @@
 import { expect, mock, test } from 'bun:test';
 import React from 'react';
-// @ts-expect-error The installed test-only renderer has no local type declarations.
-import { act, create } from 'react-test-renderer';
 
 // Bun shares its module registry across suite files; a child isolates the RN mocks
 // from unrelated tests that have already imported the native entrypoint.
@@ -37,8 +35,21 @@ if (process.env.SELENE_CATEGORY_SNAP_MOUNT_CHILD !== '1') {
   };
   // No ImageBackground here: SDK 58 deprecates it, so the card must not use it.
   mock.module('react-native', () => ({
-    Pressable: host('Pressable'),
-    StyleSheet: { create: <T,>(styles: T) => styles, absoluteFill },
+    // Like the real Pressable, the host is accessible unless told otherwise.
+    Pressable: ({
+      children,
+      ...props
+    }: React.PropsWithChildren<Record<string, unknown>>) =>
+      React.createElement(
+        'Pressable',
+        { accessible: true, ...props },
+        children,
+      ),
+    StyleSheet: {
+      create: <T,>(styles: T) => styles,
+      flatten: (style: unknown) => style,
+      absoluteFill,
+    },
   }));
   mock.module('expo-image', () => ({ Image: host('ExpoImage') }));
   mock.module('expo-linear-gradient', () => ({
@@ -67,23 +78,17 @@ if (process.env.SELENE_CATEGORY_SNAP_MOUNT_CHILD !== '1') {
   }));
   mock.module('../../base', () => ({ Box: host('Box'), Text: host('Text') }));
 
+  const { render, fireEvent } = await import('@testing-library/react-native');
   const { CategorySnapCard } = await import('./CategorySnapCard');
 
   test('draws each category image with expo-image behind its gradient and label', async () => {
-    let renderer: ReturnType<typeof create>;
-    await act(async () => {
-      renderer = create(<CategorySnapCard visibleHeight={800} />);
-    });
+    const view = await render(<CategorySnapCard visibleHeight={800} />);
 
-    const cards = renderer!.root.findAll(
-      (node: { type: unknown }) => node.type === 'Pressable',
-    );
+    const cards = view.container.queryAll((node) => node.type === 'Pressable');
     expect(cards).toHaveLength(4);
     for (const card of cards) {
-      const [image, gradient, label] = card.findAll(
-        (node: { type: unknown }) =>
-          typeof node.type === 'string' && node.type !== 'Pressable',
-        { deep: false },
+      const [image, gradient, label] = card.children.filter(
+        (child) => typeof child !== 'string',
       );
       expect(image.type).toBe('ExpoImage');
       // A sibling behind the content, not a wrapper like ImageBackground.
@@ -94,9 +99,9 @@ if (process.env.SELENE_CATEGORY_SNAP_MOUNT_CHILD !== '1') {
       expect(gradient.type).toBe('LinearGradient');
       expect(label.type).toBe('Box');
     }
-    const labels = renderer!.root
-      .findAll((node: { type: unknown }) => node.type === 'Text')
-      .map((node: { props: { children: string } }) => node.props.children);
+    const labels = view.container
+      .queryAll((node) => node.type === 'Text')
+      .map((node) => node.props.children);
     expect(labels).toEqual([
       'search:categoriesList.GPU',
       'search:categoriesList.CPU',
@@ -104,9 +109,7 @@ if (process.env.SELENE_CATEGORY_SNAP_MOUNT_CHILD !== '1') {
       'search:categoriesList.MOTHERBOARD',
     ]);
 
-    await act(async () => {
-      cards[3].props.onPress();
-    });
+    await fireEvent.press(cards[3]);
     expect(push).toHaveBeenCalledWith({
       pathname: '/store/showroom/[id]',
       params: { id: 'MOBO' },

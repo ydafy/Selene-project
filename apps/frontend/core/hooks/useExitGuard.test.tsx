@@ -1,7 +1,5 @@
 import { expect, mock, test } from 'bun:test';
 import React from 'react';
-// @ts-expect-error The installed test-only renderer has no local type declarations.
-import { act, create } from 'react-test-renderer';
 
 // mock.module leaks across files, so the mount test runs in its own process.
 if (process.env.SELENE_EXIT_GUARD_CHILD !== '1') {
@@ -20,8 +18,6 @@ if (process.env.SELENE_EXIT_GUARD_CHILD !== '1') {
     expect(child.exitCode).toBe(0);
   });
 } else {
-  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-
   type Action = { type: string };
   type Callback = (options: {
     data: { action: Action };
@@ -39,6 +35,12 @@ if (process.env.SELENE_EXIT_GUARD_CHILD !== '1') {
     onCancel: () => void;
   } | null = null;
 
+  mock.module('react-native', () => ({
+    StyleSheet: {
+      create: <T,>(styles: T) => styles,
+      flatten: (style: unknown) => style,
+    },
+  }));
   mock.module('expo-router', () => ({
     useNavigation: () => ({ dispatch }),
     usePreventRemove: (prevent: boolean, callback: Callback) => {
@@ -58,40 +60,37 @@ if (process.env.SELENE_EXIT_GUARD_CHILD !== '1') {
     },
   }));
 
+  const { act, render } = await import('@testing-library/react-native');
   const { useExitGuard } = await import('./useExitGuard');
 
   const Harness = ({ enabled }: { enabled: boolean }) => {
     const { ExitDialog } = useExitGuard(enabled);
     return React.createElement(ExitDialog);
   };
-  const mount = (enabled: boolean) => {
+  const mount = async (enabled: boolean) => {
     dispatch.mockClear();
     repeated.mockClear();
     resetDraft.mockClear();
     dialog = null;
-    let renderer!: { unmount: () => void };
-    act(() => {
-      renderer = create(React.createElement(Harness, { enabled }));
-    });
-    return renderer;
+    return render(React.createElement(Harness, { enabled }));
   };
   const block = (action: Action) =>
     act(() => {
       guard!.callback({ data: { action }, repeat: () => repeated(action) });
     });
 
-  test('prevents removal only while the draft is dirty', () => {
-    mount(false);
+  test('prevents removal only while the draft is dirty', async () => {
+    await mount(false);
     expect(guard!.prevent).toBe(false);
-    mount(true);
+    await mount(true);
     expect(guard!.prevent).toBe(true);
   });
 
-  test('a REPLACE passes straight through without the dialog', () => {
-    mount(true);
+  test('a REPLACE passes straight through without the dialog', async () => {
+    await mount(true);
     const publish = { type: 'REPLACE' };
 
-    block(publish);
+    await block(publish);
 
     expect(repeated).toHaveBeenCalledTimes(1);
     expect(repeated).toHaveBeenCalledWith(publish);
@@ -102,16 +101,16 @@ if (process.env.SELENE_EXIT_GUARD_CHILD !== '1') {
 
   test.each(['GO_BACK', 'POP', 'NAVIGATE'])(
     '%s opens the dialog and confirm replays it exactly once',
-    (type) => {
-      mount(true);
+    async (type) => {
+      await mount(true);
       const action = { type };
 
-      block(action);
+      await block(action);
       expect(dialog!.visible).toBe(true);
       expect(repeated).not.toHaveBeenCalled();
 
-      act(() => dialog!.onConfirm());
-      act(() => dialog!.onConfirm());
+      await act(() => dialog!.onConfirm());
+      await act(() => dialog!.onConfirm());
 
       expect(repeated).toHaveBeenCalledTimes(1);
       expect(repeated).toHaveBeenCalledWith(action);
@@ -121,11 +120,11 @@ if (process.env.SELENE_EXIT_GUARD_CHILD !== '1') {
     },
   );
 
-  test('cancel keeps the user on the screen and keeps the draft', () => {
-    mount(true);
+  test('cancel keeps the user on the screen and keeps the draft', async () => {
+    await mount(true);
 
-    block({ type: 'GO_BACK' });
-    act(() => dialog!.onCancel());
+    await block({ type: 'GO_BACK' });
+    await act(() => dialog!.onCancel());
 
     expect(dialog!.visible).toBe(false);
     expect(repeated).not.toHaveBeenCalled();

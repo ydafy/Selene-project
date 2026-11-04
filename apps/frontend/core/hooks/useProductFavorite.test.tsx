@@ -1,8 +1,6 @@
 import { expect, mock, test } from 'bun:test';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-// @ts-expect-error The installed test-only renderer has no local type declarations.
-import { act, create } from 'react-test-renderer';
 
 // mock.module leaks across files, so the mount test runs in its own process.
 if (process.env.SELENE_FAVORITE_CHILD !== '1') {
@@ -21,8 +19,6 @@ if (process.env.SELENE_FAVORITE_CHILD !== '1') {
     expect(child.exitCode).toBe(0);
   });
 } else {
-  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-
   const db = {
     isFavorite: false,
     insertError: null as unknown,
@@ -57,12 +53,19 @@ if (process.env.SELENE_FAVORITE_CHILD !== '1') {
     return query;
   };
 
+  mock.module('react-native', () => ({
+    StyleSheet: {
+      create: <T,>(styles: T) => styles,
+      flatten: (style: unknown) => style,
+    },
+  }));
   mock.module('../db/supabase', () => ({ supabase: { from } }));
   mock.module('../../components/auth/AuthProvider', () => ({
     useAuthContext: () => ({ session: { user: { id: 'user-1' } } }),
   }));
   mock.module('../push/pushPermission', () => ({ offerPushPermission }));
 
+  const { act, render } = await import('@testing-library/react-native');
   const { useProductFavorite } = await import('./useProductFavorite');
 
   type Hook = ReturnType<typeof useProductFavorite>;
@@ -79,18 +82,15 @@ if (process.env.SELENE_FAVORITE_CHILD !== '1') {
         mutations: { retry: false },
       },
     });
-    let renderer: { unmount: () => void } | null = null;
-    await act(async () => {
-      renderer = create(
-        <QueryClientProvider client={client}>
-          <Harness />
-        </QueryClientProvider>,
-      );
-    });
+    const view = await render(
+      <QueryClientProvider client={client}>
+        <Harness />
+      </QueryClientProvider>,
+    );
     for (let i = 0; i < 20 && hook?.isLoading; i++) {
       await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
     }
-    return () => act(() => renderer?.unmount());
+    return () => view.unmount();
   };
 
   const toggle = async () => {

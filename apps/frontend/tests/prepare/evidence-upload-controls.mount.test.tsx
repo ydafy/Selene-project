@@ -1,7 +1,5 @@
 import { expect, mock, test } from 'bun:test';
 import React from 'react';
-// @ts-expect-error The installed test-only renderer has no local declarations.
-import { act, create } from 'react-test-renderer';
 
 if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
   test('mounted evidence controls in an isolated process', () => {
@@ -47,7 +45,17 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
     throw new Error('haptic unavailable');
   });
   mock.module('react-native', () => ({
-    TouchableOpacity: host('TouchableOpacity'),
+    StyleSheet: { flatten: (style: unknown) => style },
+    // Like the real touchable, the host is accessible unless told otherwise.
+    TouchableOpacity: ({
+      children,
+      ...props
+    }: React.PropsWithChildren<Record<string, unknown>>) =>
+      React.createElement(
+        'TouchableOpacity',
+        { accessible: true, ...props },
+        children,
+      ),
     ActivityIndicator: host('ActivityIndicator'),
   }));
   mock.module('@expo/vector-icons', () => ({
@@ -86,6 +94,16 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
   mock.module('../../components/ui/Skeleton', () => ({
     Skeleton: host('Skeleton'),
   }));
+  const { act, fireEvent, render } =
+    await import('@testing-library/react-native');
+  type View = Awaited<ReturnType<typeof render>>;
+  const all = (view: View, type: string) =>
+    view.container.queryAll((node) => node.type === type);
+  const one = (view: View, type: string) => {
+    const found = all(view, type);
+    expect(found).toHaveLength(1);
+    return found[0];
+  };
   const { EvidenceUploadSection } =
     await import('../../components/features/orders/EvidenceUploadSection');
   const { AddressSection } =
@@ -119,10 +137,10 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
       },
       consequence: 'safe',
     };
-    let tree: ReturnType<typeof create>;
+    let tree: View;
     let locked = false;
     const canInteract = () => !locked;
-    const render = (disabled?: boolean) => (
+    const controls = (disabled?: boolean) => (
       <>
         <AddressSection {...addressProps} disabled={disabled} />
         <LabelWithHelp
@@ -137,79 +155,62 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
         />
       </>
     );
-    await act(async () => {
-      tree = create(render());
-    });
+    tree = await render(controls());
     locked = true;
-    await act(async () => {
-      tree.root.findAllByType('TouchableOpacity')[1].props.onPress();
-    });
-    expect(tree.root.findByType('ConfirmDialog').props.visible).toBe(false);
+    await fireEvent.press(all(tree, 'TouchableOpacity')[1]);
+    expect(one(tree, 'ConfirmDialog').props.visible).toBe(false);
     locked = false;
+    const buttons = all(tree, 'TouchableOpacity');
     await act(async () => {
-      const buttons = tree.root.findAllByType('TouchableOpacity');
-      buttons[0].props.onPress();
-      buttons[1].props.onPress();
-      buttons[3].props.onPress();
+      await fireEvent.press(buttons[0]);
+      await fireEvent.press(buttons[1]);
+      await fireEvent.press(buttons[3]);
     });
     expect(onPress).toHaveBeenCalledTimes(1);
-    expect(tree.root.findByType('ConfirmDialog').props.visible).toBe(true);
+    expect(one(tree, 'ConfirmDialog').props.visible).toBe(true);
     expect(
-      tree.root.findAllByType('TouchableOpacity')[3].props.accessibilityState
-        .expanded,
+      all(tree, 'TouchableOpacity')[3].props.accessibilityState.expanded,
     ).toBe(true);
-    const stale = tree.root
-      .findAllByType('TouchableOpacity')
-      .map(
-        (button: { props: { onPress: () => void } }) => button.props.onPress,
-      );
+    const stale = all(tree, 'TouchableOpacity').map(
+      (button) => button.props.onPress as () => void,
+    );
     locked = true;
     await act(async () => {
       stale[3]();
     });
     expect(
-      tree.root.findAllByType('TouchableOpacity')[3].props.accessibilityState
-        .expanded,
+      all(tree, 'TouchableOpacity')[3].props.accessibilityState.expanded,
     ).toBe(true);
-    await act(async () => {
-      tree.update(render(true));
-    });
+    await tree.rerender(controls(true));
     await act(async () => {
       stale.forEach((press: () => void) => press());
     });
     expect(onPress).toHaveBeenCalledTimes(1);
-    expect(tree.root.findByType('ConfirmDialog').props.visible).toBe(false);
-    for (const button of tree.root.findAllByType('TouchableOpacity'))
+    expect(one(tree, 'ConfirmDialog').props.visible).toBe(false);
+    for (const button of all(tree, 'TouchableOpacity'))
       expect(button.props.disabled).toBe(true);
     expect(
-      tree.root.findAllByType('TouchableOpacity')[3].props.accessibilityState
-        .expanded,
+      all(tree, 'TouchableOpacity')[3].props.accessibilityState.expanded,
     ).toBe(true);
     locked = false;
-    await act(async () => {
-      tree.update(render(false));
-    });
-    expect(tree.root.findByType('ConfirmDialog').props.visible).toBe(false);
-    await act(async () => {
-      tree.unmount();
-    });
+    await tree.rerender(controls(false));
+    expect(one(tree, 'ConfirmDialog').props.visible).toBe(false);
+    await tree?.unmount();
   });
 
   test('default capture remains enabled; busy excludes duplicate callbacks and haptics cannot lose a photo', async () => {
     const complete = mock<(...args: unknown[]) => void>(() => {});
     const busy = mock<(...args: unknown[]) => void>(() => {});
-    let tree: ReturnType<typeof create>;
-    await act(async () => {
-      tree = create(
-        <EvidenceUploadSection
-          orderId="order"
-          userId="seller"
-          onEvidenceComplete={complete}
-          onBusyChange={busy}
-        />,
-      );
-    });
-    const press = tree.root.findAllByType('TouchableOpacity')[0].props.onPress;
+    let tree: View;
+    tree = await render(
+      <EvidenceUploadSection
+        orderId="order"
+        userId="seller"
+        onEvidenceComplete={complete}
+        onBusyChange={busy}
+      />,
+    );
+    const press = all(tree, 'TouchableOpacity')[0].props.onPress;
     let pending!: Promise<void>;
     await act(async () => {
       pending = press();
@@ -223,12 +224,8 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
     });
     expect(complete.mock.calls).toEqual([['saved-photo']].map((url) => [url]));
     expect(busy.mock.calls).toEqual([[true], [false]]);
-    expect(tree.root.findAllByType('AppImage')[0].props.source.uri).toBe(
-      'saved-photo',
-    );
-    await act(async () => {
-      tree.unmount();
-    });
+    expect(all(tree, 'AppImage')[0].props.source.uri).toBe('saved-photo');
+    await tree?.unmount();
   });
 
   test('camera and replacement-upload failures preserve saved photos, report fixed diagnostics and unlock', async () => {
@@ -240,21 +237,18 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
     const warning = mock<(...args: unknown[]) => void>(() => {});
     const originalWarn = console.warn;
     console.warn = warning;
-    let tree: ReturnType<typeof create>;
+    let tree: View | undefined;
     try {
-      await act(async () => {
-        tree = create(
-          <EvidenceUploadSection
-            orderId="order"
-            userId="seller"
-            onEvidenceComplete={complete}
-            onBusyChange={busy}
-            onFailure={failure}
-          />,
-        );
-      });
-      const press = () =>
-        tree.root.findAllByType('TouchableOpacity')[0].props.onPress();
+      tree = await render(
+        <EvidenceUploadSection
+          orderId="order"
+          userId="seller"
+          onEvidenceComplete={complete}
+          onBusyChange={busy}
+          onFailure={failure}
+        />,
+      );
+      const press = () => all(tree!, 'TouchableOpacity')[0].props.onPress();
       await act(async () => {
         await press();
       });
@@ -271,12 +265,8 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
       uploadFails = false;
       expect(failure).toHaveBeenCalledTimes(2);
       expect(complete).toHaveBeenCalledTimes(1);
-      expect(tree.root.findAllByType('AppImage')[0].props.source.uri).toBe(
-        'saved-photo',
-      );
-      expect(
-        tree.root.findAllByType('TouchableOpacity')[0].props.disabled,
-      ).toBe(false);
+      expect(all(tree!, 'AppImage')[0].props.source.uri).toBe('saved-photo');
+      expect(all(tree!, 'TouchableOpacity')[0].props.disabled).toBe(false);
       expect(busy.mock.calls).toEqual([
         [true],
         [false],
@@ -316,9 +306,7 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
     } finally {
       cameraFails = false;
       uploadFails = false;
-      await act(async () => {
-        tree?.unmount();
-      });
+      await tree?.unmount();
       console.warn = originalWarn;
     }
   });
@@ -329,24 +317,20 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
     delayedUpload = deferred();
     const complete = mock<(...args: unknown[]) => void>(() => {});
     const busy = mock<(...args: unknown[]) => void>(() => {});
-    let tree: ReturnType<typeof create>;
-    await act(async () => {
-      tree = create(
-        <EvidenceUploadSection
-          orderId="old"
-          userId="seller"
-          onEvidenceComplete={complete}
-          onBusyChange={busy}
-        />,
-      );
-    });
+    let tree: View;
+    tree = await render(
+      <EvidenceUploadSection
+        orderId="old"
+        userId="seller"
+        onEvidenceComplete={complete}
+        onBusyChange={busy}
+      />,
+    );
     let pending!: Promise<void>;
     await act(async () => {
-      pending = tree.root.findAllByType('TouchableOpacity')[0].props.onPress();
+      pending = all(tree, 'TouchableOpacity')[0].props.onPress();
     });
-    await act(async () => {
-      tree.unmount();
-    });
+    await tree?.unmount();
     await act(async () => {
       delayedUpload!.resolve('late-upload');
       await pending;
@@ -358,121 +342,97 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
 
   test('disabled stale portal callback cannot open the camera', async () => {
     const complete = mock<(...args: unknown[]) => void>(() => {});
-    let tree: ReturnType<typeof create>;
+    let tree: View;
     const props = {
       orderId: 'order',
       userId: 'seller',
       onEvidenceComplete: complete,
       slotsConfig: [{ label: 'photo', icon: 'camera', description: 'intro' }],
     };
+    tree = await render(<EvidenceUploadSection {...props} />);
     await act(async () => {
-      tree = create(<EvidenceUploadSection {...props} />);
+      await all(tree, 'TouchableOpacity')[0].props.onPress();
     });
-    await act(async () => {
-      await tree.root.findAllByType('TouchableOpacity')[0].props.onPress();
-    });
-    const confirm = tree.root.findByType('ConfirmDialog').props.onConfirm;
-    await act(async () => {
-      tree.update(<EvidenceUploadSection {...props} disabled />);
-    });
+    const confirm = one(tree, 'ConfirmDialog').props.onConfirm;
+    await tree.rerender(<EvidenceUploadSection {...props} disabled />);
     const count = takePhoto.mock.calls.length;
     await act(async () => {
       await confirm();
-      await tree.root.findAllByType('TouchableOpacity')[0].props.onPress();
+      await all(tree, 'TouchableOpacity')[0].props.onPress();
     });
     expect(takePhoto).toHaveBeenCalledTimes(count);
     expect(complete).not.toHaveBeenCalled();
-    expect(tree.root.findAllByType('TouchableOpacity')[0].props.disabled).toBe(
-      true,
-    );
-    await act(async () => {
-      tree.update(<EvidenceUploadSection {...props} />);
-    });
-    expect(tree.root.findAllByType('ConfirmDialog')).toHaveLength(0);
-    await act(async () => {
-      tree.unmount();
-    });
+    expect(all(tree, 'TouchableOpacity')[0].props.disabled).toBe(true);
+    await tree.rerender(<EvidenceUploadSection {...props} />);
+    expect(all(tree, 'ConfirmDialog')).toHaveLength(0);
+    await tree?.unmount();
   });
 
   test('a synchronous parent capture gate excludes camera side effects before rerender', async () => {
     let blocked = false;
-    let tree: ReturnType<typeof create>;
-    await act(async () => {
-      tree = create(
-        <EvidenceUploadSection
-          orderId="order"
-          userId="seller"
-          onEvidenceComplete={() => {}}
-          canCapture={() => !blocked}
-        />,
-      );
-    });
+    let tree: View;
+    tree = await render(
+      <EvidenceUploadSection
+        orderId="order"
+        userId="seller"
+        onEvidenceComplete={() => {}}
+        canCapture={() => !blocked}
+      />,
+    );
     const count = takePhoto.mock.calls.length;
     blocked = true;
     await act(async () => {
-      await tree.root.findAllByType('TouchableOpacity')[0].props.onPress();
+      await all(tree, 'TouchableOpacity')[0].props.onPress();
     });
     expect(takePhoto).toHaveBeenCalledTimes(count);
-    await act(async () => {
-      tree.unmount();
-    });
+    await tree?.unmount();
   });
 
   test('blocked retained portal confirmation leaves the intro and photos unchanged', async () => {
     let blocked = false;
     const complete = mock<(...args: unknown[]) => void>(() => {});
-    let tree: ReturnType<typeof create>;
+    let tree: View;
+    tree = await render(
+      <EvidenceUploadSection
+        orderId="order"
+        userId="seller"
+        onEvidenceComplete={complete}
+        canCapture={() => !blocked}
+        slotsConfig={[{ label: 'photo', icon: 'camera', description: 'intro' }]}
+      />,
+    );
     await act(async () => {
-      tree = create(
-        <EvidenceUploadSection
-          orderId="order"
-          userId="seller"
-          onEvidenceComplete={complete}
-          canCapture={() => !blocked}
-          slotsConfig={[
-            { label: 'photo', icon: 'camera', description: 'intro' },
-          ]}
-        />,
-      );
+      await all(tree, 'TouchableOpacity')[0].props.onPress();
     });
-    await act(async () => {
-      await tree.root.findAllByType('TouchableOpacity')[0].props.onPress();
-    });
-    const confirm = tree.root.findByType('ConfirmDialog').props.onConfirm;
+    const confirm = one(tree, 'ConfirmDialog').props.onConfirm;
     const count = takePhoto.mock.calls.length;
     blocked = true;
     await act(async () => {
       confirm();
     });
-    expect(tree.root.findByType('ConfirmDialog').props.visible).toBe(true);
+    expect(one(tree, 'ConfirmDialog').props.visible).toBe(true);
     expect(takePhoto).toHaveBeenCalledTimes(count);
     expect(complete).not.toHaveBeenCalled();
-    expect(tree.root.findAllByType('AppImage')).toHaveLength(0);
-    await act(async () => {
-      tree.unmount();
-    });
+    expect(all(tree, 'AppImage')).toHaveLength(0);
+    await tree?.unmount();
   });
 
   test('unmounted camera completion cannot upload or populate a new form', async () => {
     camera = deferred();
     const complete = mock<(...args: unknown[]) => void>(() => {});
-    let tree: ReturnType<typeof create>;
-    await act(async () => {
-      tree = create(
-        <EvidenceUploadSection
-          orderId="old"
-          userId="seller"
-          onEvidenceComplete={complete}
-        />,
-      );
-    });
+    let tree: View;
+    tree = await render(
+      <EvidenceUploadSection
+        orderId="old"
+        userId="seller"
+        onEvidenceComplete={complete}
+      />,
+    );
     let pending!: Promise<void>;
     await act(async () => {
-      pending = tree.root.findAllByType('TouchableOpacity')[0].props.onPress();
+      pending = all(tree, 'TouchableOpacity')[0].props.onPress();
     });
-    await act(async () => {
-      tree.unmount();
-    });
+    await tree?.unmount();
     const count = uploadFile.mock.calls.length;
     await act(async () => {
       camera.resolve({ base64: 'late' });
