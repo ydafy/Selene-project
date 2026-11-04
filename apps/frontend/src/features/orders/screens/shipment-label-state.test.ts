@@ -21,27 +21,30 @@ const shipment = {
 
 describe('persisted shipment label state', () => {
   it('wires the same state policy into submission and preserves cached data on read errors', () => {
-    const source = compact(
-      readFileSync(
-        join(
-          process.cwd(),
-          'apps/frontend/src/features/orders/screens/prepare-shipment-screen.tsx',
-        ),
-        'utf8',
-      ),
+    const read = (relPath: string) =>
+      compact(
+        readFileSync(join(process.cwd(), 'apps/frontend', relPath), 'utf8'),
+      );
+    const screen = read(
+      'src/features/orders/screens/prepare-shipment-screen.tsx',
     );
-    expect(source).toContain(
+    const hook = read('src/features/orders/hooks/use-prepare-shipment.ts');
+    expect(screen).toContain(compact('usePrepareShipment('));
+    expect(hook).toContain(
       compact('resolveShipmentLabelState(selectedShipment, Boolean(error))'),
     );
-    expect(source).toContain(
+    expect(hook).toContain(
       compact(
         "const canGenerateLabel = labelState === 'ready' && !isFetching;",
       ),
     );
-    expect(source.match(/!canGenerateLabel/g)).toHaveLength(2);
-    expect(source).toContain(compact('refetch({ cancelRefetch: false })'));
-    expect(source).toContain(compact('isLabelRecoveryState(labelState)'));
-    expect(source).not.toContain(compact('if (error || !order)'));
+    // The submit guard (hook) and the button's disabled prop (screen).
+    expect(hook.match(/!canGenerateLabel/g)).toHaveLength(1);
+    expect(screen.match(/!canGenerateLabel/g)).toHaveLength(1);
+    expect(hook).toContain(compact('refetch({ cancelRefetch: false })'));
+    expect(screen).toContain(compact('isLabelRecoveryState(labelState)'));
+    expect(screen).not.toContain(compact('if (error || !order)'));
+    expect(hook).not.toContain(compact('if (error || !order)'));
   });
 
   it('localizes every recovery state and both safe actions in English and Spanish', () => {

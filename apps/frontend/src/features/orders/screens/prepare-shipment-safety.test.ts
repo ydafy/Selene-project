@@ -7,17 +7,25 @@ const read = (relPath: string) => readFileSync(join(FRONTEND, relPath), 'utf8');
 
 describe('prepare shipment safety & resilience policy', () => {
   const src = read('src/features/orders/screens/prepare-shipment-screen.tsx');
+  const hook = read('src/features/orders/hooks/use-prepare-shipment.ts');
+  // handleConfirm is the only place a label (and its cost) is bought.
+  const confirmStart = hook.indexOf('const handleConfirm = async');
+  const confirm = hook.slice(
+    confirmStart,
+    hook.indexOf('const handleEvidenceBusyChange', confirmStart),
+  );
   const component = (name: string) =>
     read(`src/features/orders/components/${name}.tsx`);
 
   test('enforces native gesture & back button navigation lock', () => {
     // 1. Must use React Navigation prevent remove hook
     // SDK 58 exports it from expo-router itself.
-    expect(src).toMatch(
+    expect(src).toContain('usePrepareShipment(');
+    expect(hook).toMatch(
       /import {[^}]*usePreventRemove[^}]*} from 'expo-router';/,
     );
-    expect(src).not.toContain('expo-router/react-navigation');
-    expect(src).toMatch(/usePreventRemove\(\s*isProcessing/);
+    expect(hook).not.toContain('expo-router/react-navigation');
+    expect(hook).toMatch(/usePreventRemove\(\s*isProcessing/);
 
     // 2. iOS swipe gesture must be dynamically disabled
     expect(src).toContain('gestureEnabled: !isProcessing');
@@ -32,24 +40,42 @@ describe('prepare shipment safety & resilience policy', () => {
   });
 
   test('protects handleConfirm against concurrent executions & network drops', () => {
+    expect(src).toContain('usePrepareShipment(');
+    expect(confirmStart).toBeGreaterThan(-1);
     // Guard clause (ignora saltos de línea CRLF/LF)
-    expect(src).toMatch(
+    expect(hook).toMatch(
       /if\s*\(\s*!mounted\.current\s*\|\|\s*submissionInFlight\.current\s*\|\|\s*evidenceBusy\.current\s*\|\|\s*isProcessing/,
     );
-    expect(src).toMatch(
+    expect(hook).toMatch(
       /submissionInFlight\.current = true;[\s\S]*?await authenticateAsync/,
     );
     // Finally block cleanup
-    expect(src).toMatch(
+    expect(hook).toMatch(
       /finally\s*\{\s*submissionInFlight\.current = false;\s*if \(mounted\.current\) setIsAuthenticating\(false\);/,
     );
     // Resilience: refetch in catch block
-    expect(src).toContain('await refetch();');
+    expect(hook).toContain('await refetch();');
+    // The guard sits first, before any await, and needs the three photos.
+    expect(confirm).toMatch(
+      /^const handleConfirm = async \(\) => \{\s*if \(\s*!mounted\.current \|\|\s*submissionInFlight\.current/,
+    );
+    expect(confirm.slice(0, confirm.indexOf('await'))).toContain(
+      'evidenceUrls.length < EVIDENCE_MIN_PHOTOS',
+    );
+    // A declined or unmounted prompt stops before the label is generated.
+    expect(confirm).toMatch(
+      /await authenticateAsync\(.*?\);\s*if \(!auth\.success \|\| !mounted\.current\) return;\s*const result = await generateLabelWithRecovery/,
+    );
+    // The in-flight lock is released in finally and nowhere else.
+    expect(confirm.match(/submissionInFlight\.current = false/g)).toHaveLength(
+      1,
+    );
   });
 
   test('implements label recovery view for crashes or offline reconnection', () => {
     // Invariant: detects existing label from database
-    expect(src).toContain(
+    expect(src).toContain('usePrepareShipment(');
+    expect(hook).toContain(
       'const hasExistingLabel = Boolean(selectedShipment?.label_url);',
     );
     // Recovery UI condition

@@ -6,22 +6,28 @@ const source = readFileSync(
   'utf8',
 );
 
+const hook = readFileSync(
+  new URL('../hooks/use-prepare-shipment.ts', import.meta.url),
+  'utf8',
+);
+
 test('requires a selected seller-owned product shipment before generating a label', () => {
-  expect(source).toContain('const { id, shipment_id } = useLocalSearchParams');
-  expect(source).toContain('const sellerShipments = useMemo');
-  expect(source).toContain('const selectedShipment = useMemo');
-  expect(source).toContain('shipment.seller_id === userId');
-  expect(source).toContain('if (!selectedShipmentId) return null;');
-  expect(source).toContain(
+  expect(source).toContain('usePrepareShipment(');
+  expect(hook).toContain('const { id, shipment_id } = useLocalSearchParams');
+  expect(hook).toContain('const sellerShipments = useMemo');
+  expect(hook).toContain('const selectedShipment = useMemo');
+  expect(hook).toContain('shipment.seller_id === userId');
+  expect(hook).toContain('if (!selectedShipmentId) return null;');
+  expect(hook).toContain(
     'sellerShipments.find((shipment) => shipment.id === selectedShipmentId)',
   );
-  expect(source).toContain('const targetShipmentId = selectedShipment?.id;');
-  expect(source).toContain('const EVIDENCE_MIN_PHOTOS = 3;');
-  expect(source).toMatch(
+  expect(hook).toContain('const targetShipmentId = selectedShipment?.id;');
+  expect(hook).toContain('export const EVIDENCE_MIN_PHOTOS = 3;');
+  expect(hook).toMatch(
     /const handleConfirm = async \(\) => \{\s*if\s*\(\s*!mounted\.current\s*\|\|\s*submissionInFlight\.current\s*\|\|\s*evidenceBusy\.current\s*\|\|\s*isProcessing\s*\|\|\s*!selectedOrigin\s*\|\|\s*!targetShipmentId\s*\|\|\s*boxBlocked\s*\|\|\s*!canGenerateLabel\s*\|\|\s*evidenceUrls\.length < EVIDENCE_MIN_PHOTOS\s*\)\s*return;/,
   );
-  expect(source).toContain('shipmentId: targetShipmentId');
-  expect(source).toContain(
+  expect(hook).toContain('shipmentId: targetShipmentId');
+  expect(hook).toContain(
     "const canGenerateLabel = labelState === 'ready' && !isFetching;",
   );
 });

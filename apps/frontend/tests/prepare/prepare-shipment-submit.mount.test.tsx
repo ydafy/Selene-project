@@ -323,6 +323,22 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
       }
     });
 
+    test('a retained submit handler never reaches biometrics with fewer than three photos', async () => {
+      const tree = await render(<Screen />);
+      await act(async () => {
+        one(tree, 'AddressPickerModal').props.onSelect({ id: 'origin' });
+        one(tree, 'EvidenceUploadSection').props.onEvidenceComplete(['a', 'b']);
+      });
+      const submit = one(tree, 'PrimaryButton').props.onPress;
+      expect(one(tree, 'PrimaryButton').props.disabled).toBe(true);
+      const count = authenticate.mock.calls.length;
+      await act(async () => {
+        await submit();
+      });
+      expect(authenticate).toHaveBeenCalledTimes(count);
+      await tree.unmount();
+    });
+
     test('retained navigation, refresh and PDF callbacks are inert in the submission turn and dismiss is requested', async () => {
       let tree: View;
       onboarding = false;

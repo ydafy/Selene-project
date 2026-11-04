@@ -77,9 +77,23 @@ describe('preparing box resolution', () => {
       'utf8',
     );
 
-    expect(screen).toContain('resolvePreparingBox(presetId, packagePresets)');
-    expect(screen.match(/boxBlocked \|\|/g)?.length).toBe(2);
-    expect(screen).toContain("t('orders:prepare.statusBoxUnavailable')");
+    const hook = readFileSync(
+      join(import.meta.dir, '../hooks/use-prepare-shipment.ts'),
+      'utf8',
+    );
+    const statusCard = readFileSync(
+      join(import.meta.dir, '../components/prepare-status-card.tsx'),
+      'utf8',
+    );
+
+    expect(screen).toContain('usePrepareShipment(');
+    expect(hook).toContain('resolvePreparingBox(presetId, packagePresets)');
+    // The submit guard (hook) and the button's disabled prop (screen).
+    expect(hook.match(/boxBlocked \|\|/g)?.length).toBe(1);
+    expect(screen.match(/boxBlocked \|\|/g)?.length).toBe(1);
+    expect(screen).toContain('<PrepareStatusCard');
+    expect(screen).toContain('boxBlocked={boxBlocked}');
+    expect(statusCard).toContain("t('orders:prepare.statusBoxUnavailable')");
     const card = readFileSync(
       join(import.meta.dir, '../components/prepare-box-card.tsx'),
       'utf8',
