@@ -23,9 +23,14 @@ if (process.env.SELENE_EXIT_GUARD_CHILD !== '1') {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
   type Action = { type: string };
-  type Callback = (options: { data: { action: Action } }) => void;
+  type Callback = (options: {
+    data: { action: Action };
+    repeat: () => void;
+  }) => void;
 
   const dispatch = mock<(action: Action) => void>(() => {});
+  // SDK 58: repeat() turns prevention off and replays the blocked action.
+  const repeated = mock<(action: Action) => void>(() => {});
   const resetDraft = mock(() => {});
   let guard: { prevent: boolean; callback: Callback } | null = null;
   let dialog: {
@@ -34,13 +39,11 @@ if (process.env.SELENE_EXIT_GUARD_CHILD !== '1') {
     onCancel: () => void;
   } | null = null;
 
-  mock.module('expo-router/react-navigation', () => ({
+  mock.module('expo-router', () => ({
+    useNavigation: () => ({ dispatch }),
     usePreventRemove: (prevent: boolean, callback: Callback) => {
       guard = { prevent, callback };
     },
-  }));
-  mock.module('expo-router', () => ({
-    useNavigation: () => ({ dispatch }),
   }));
   mock.module('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key }),
@@ -63,6 +66,7 @@ if (process.env.SELENE_EXIT_GUARD_CHILD !== '1') {
   };
   const mount = (enabled: boolean) => {
     dispatch.mockClear();
+    repeated.mockClear();
     resetDraft.mockClear();
     dialog = null;
     let renderer!: { unmount: () => void };
@@ -73,7 +77,7 @@ if (process.env.SELENE_EXIT_GUARD_CHILD !== '1') {
   };
   const block = (action: Action) =>
     act(() => {
-      guard!.callback({ data: { action } });
+      guard!.callback({ data: { action }, repeat: () => repeated(action) });
     });
 
   test('prevents removal only while the draft is dirty', () => {
@@ -89,8 +93,9 @@ if (process.env.SELENE_EXIT_GUARD_CHILD !== '1') {
 
     block(publish);
 
-    expect(dispatch).toHaveBeenCalledTimes(1);
-    expect(dispatch).toHaveBeenCalledWith(publish);
+    expect(repeated).toHaveBeenCalledTimes(1);
+    expect(repeated).toHaveBeenCalledWith(publish);
+    expect(dispatch).not.toHaveBeenCalled();
     expect(dialog!.visible).toBe(false);
     expect(resetDraft).not.toHaveBeenCalled();
   });
@@ -103,13 +108,14 @@ if (process.env.SELENE_EXIT_GUARD_CHILD !== '1') {
 
       block(action);
       expect(dialog!.visible).toBe(true);
+      expect(repeated).not.toHaveBeenCalled();
+
+      act(() => dialog!.onConfirm());
+      act(() => dialog!.onConfirm());
+
+      expect(repeated).toHaveBeenCalledTimes(1);
+      expect(repeated).toHaveBeenCalledWith(action);
       expect(dispatch).not.toHaveBeenCalled();
-
-      act(() => dialog!.onConfirm());
-      act(() => dialog!.onConfirm());
-
-      expect(dispatch).toHaveBeenCalledTimes(1);
-      expect(dispatch).toHaveBeenCalledWith(action);
       expect(resetDraft).toHaveBeenCalledTimes(1);
       expect(dialog!.visible).toBe(false);
     },
@@ -122,7 +128,7 @@ if (process.env.SELENE_EXIT_GUARD_CHILD !== '1') {
     act(() => dialog!.onCancel());
 
     expect(dialog!.visible).toBe(false);
-    expect(dispatch).not.toHaveBeenCalled();
+    expect(repeated).not.toHaveBeenCalled();
     expect(resetDraft).not.toHaveBeenCalled();
   });
 }

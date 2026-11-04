@@ -7,12 +7,12 @@ import React, {
 } from 'react';
 import { ScrollView, Linking, TouchableOpacity } from 'react-native';
 import type { ImageSource } from 'expo-image';
-import { usePreventRemove } from 'expo-router/react-navigation';
 import {
   Stack,
   useLocalSearchParams,
   useRouter,
   RelativePathString,
+  usePreventRemove,
 } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
