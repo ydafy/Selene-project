@@ -1,0 +1,3 @@
+# Check out text files with LF on every OS, as Prettier writes them (endOfLine: lf).
+# Without it, Windows clones get CRLF and `bun run format:check` fails locally while CI passes.
+* text=auto eol=lf

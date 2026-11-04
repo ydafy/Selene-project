@@ -1,4 +1,4 @@
-# CI: lint, typecheck and the bun test suite, plus the pgTAP database tests
+# CI: lint, format check, typecheck and the bun test suite, plus the pgTAP database tests
 # against a local Supabase stack started inside the job.
 name: CI
 
@@ -24,6 +24,8 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
       - run: bun install --frozen-lockfile
       - run: bun run lint
+      # Prettier on every file, not only the staged ones lint-staged formats.
+      - run: bun run format:check
       # `expo start` writes this gitignored file locally; without it the frontend
       # typecheck runs without Expo's types and misses errors developers see (#174).
       - name: Write apps/frontend/expo-env.d.ts

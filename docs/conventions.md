@@ -73,7 +73,7 @@ Do not add an `index.ts` that only re-exports. Import the file directly. An `ind
 
 ## Formatting
 
-Prettier formats the repository (`.prettierrc.js`; `bun run format` writes every file).
+Prettier formats the repository (`.prettierrc.js`; `bun run format` writes every file). The pre-commit hook formats staged code, Markdown, JSON, and YAML, and CI runs `bun run format:check` on every file. `.gitattributes` checks text files out with LF on every OS, as Prettier writes them.
 
 - A formatting-only change goes in its own `style(...)` commit, never mixed with a behavior change. Format first, then change or move the code, so the pre-commit hook never has to be skipped.
 - Add the full hash of each formatting-only commit to `.git-blame-ignore-revs`. GitHub's blame view reads it; locally, run `git config blame.ignoreRevsFile .git-blame-ignore-revs` once per clone.
