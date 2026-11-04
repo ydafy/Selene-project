@@ -1,0 +1,5 @@
+# Show one author for every name and email used in this repository (git log, blame, shortlog).
+# 618 commits were made with the placeholder name {{your_name}}; rewriting history would change
+# every hash, so this maps them instead.
+Alvaro Estrada <estradadaffy@gmail.com>
+Alvaro Estrada <estradadaffy@gmail.com> <63126087+ydafy@users.noreply.github.com>
