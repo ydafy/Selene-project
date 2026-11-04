@@ -49,7 +49,7 @@ import { useSearchProducts } from '../../../components/features/search/hooks/use
 import {
   getMasonryItemHeight,
   getTabDockMetrics,
-} from '../../../core/constants/layout';
+} from '../../../shared/config/layout';
 import { Theme } from '../../../shared/theme';
 import { Product, PublicProduct } from '@selene/types';
 

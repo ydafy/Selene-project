@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import {
   resolveProductsQueryEnabled,
   resolveProductStatuses,
-} from './useProducts.helpers';
+} from './use-products.helpers';
 
 describe('resolveProductsQueryEnabled', () => {
   test('defaults to enabled for existing catalog consumers', () => {

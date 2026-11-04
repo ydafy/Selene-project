@@ -200,7 +200,7 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
       useShipmentLabelRefresh: () => {},
     }),
   );
-  mock.module('../../src/core/utils/biometrics', () => ({
+  mock.module('../../src/shared/lib/biometrics', () => ({
     authenticateAsync: authenticate,
   }));
   for (const image of [

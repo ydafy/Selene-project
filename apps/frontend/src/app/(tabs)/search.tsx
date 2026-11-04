@@ -19,14 +19,14 @@ import { CategorySnapCard } from '../../components/features/shop/CategorySnapCar
 import { BrandSnapCard } from '../../components/features/shop/BrandSnapCard';
 import { ShellTrustSnap } from '../../components/features/shop/ShellTrustSnap';
 import { ShopSkeleton } from '../../components/features/shop/ShopSkeleton';
-import { useProducts } from '../../core/hooks/useProducts';
+import { useProducts } from '../../shared/hooks/use-products';
 import { ACTIVE_LISTING_STATUSES } from '../../shared/utils/product-listing-status';
 import { Theme } from '../../shared/theme/index';
 import { useTheme } from '@shopify/restyle';
 import { ProductSnapCard } from '../../components/features/shop/sections/ProductSnapCard';
 
 import { ShellEndFeedCard2 } from '@/components/features/shop/sections/ShellEndFeedCard2';
-import { getTabDockMetrics } from '../../core/constants/layout';
+import { getTabDockMetrics } from '../../shared/config/layout';
 
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();

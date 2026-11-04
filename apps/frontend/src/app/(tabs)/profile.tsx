@@ -28,7 +28,7 @@ import { ConnectIncompleteBanner } from '../../components/features/profile/Conne
 import { ProfileHeader } from '../../components/features/profile/ProfileHeader';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getTabDockMetrics } from '../../core/constants/layout';
+import { getTabDockMetrics } from '../../shared/config/layout';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const logoIconPath = require('@/assets/images/SeleneLunaLogo.png');

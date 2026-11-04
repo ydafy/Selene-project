@@ -35,7 +35,7 @@ import { Skeleton } from '../../shared/ui/skeleton';
 
 // Hooks unificados de alto rendimiento
 import { useProfile } from '../../core/hooks/useProfile';
-import { useProducts } from '../../core/hooks/useProducts';
+import { useProducts } from '../../shared/hooks/use-products';
 import { useSellerReviews } from '../../core/hooks/useSellerReviews';
 import { formatCurrency } from '../../shared/utils/format';
 import { isClosedAccount } from '../../shared/utils/public-identity';

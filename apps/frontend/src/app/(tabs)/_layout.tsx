@@ -10,7 +10,7 @@ import { CartTabIcon } from '../../shared/ui/cart-tab-icon';
 import { Box } from '@/shared/ui/base';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getTabDockMetrics, TAB_DOCK } from '../../core/constants/layout';
+import { getTabDockMetrics, TAB_DOCK } from '../../shared/config/layout';
 
 export default function TabsLayout() {
   const theme = useTheme<Theme>();

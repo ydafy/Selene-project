@@ -2,7 +2,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import {
   resolveProductStatuses,
   type UseProductsOptions,
-} from './useProducts.helpers';
+} from './use-products.helpers';
 
 export const PRODUCTS_KEY_PREFIX = 'products';
 

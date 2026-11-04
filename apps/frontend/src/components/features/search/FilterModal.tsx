@@ -33,7 +33,7 @@ import {
   PRODUCT_CONDITIONS,
   PRICE_LIMITS,
   DEFAULT_MAX_PRICE,
-} from '../../../core/constants/product-data';
+} from '../../../shared/config/product-data';
 import { PriceRangeFilter } from './filters/PriceRangeFilter';
 import { FilterSection } from './filters/FilterSection';
 

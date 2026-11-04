@@ -13,7 +13,7 @@ import { useSellDetailsForm } from '@/core/hooks/useSellDetailsForm';
 import {
   PRODUCT_CONDITIONS,
   PRODUCT_USAGE_OPTIONS,
-} from '@/core/constants/product-data';
+} from '@/shared/config/product-data';
 import { useTheme } from '@shopify/restyle';
 import { Theme } from '@/shared/theme';
 

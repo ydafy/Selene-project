@@ -9,7 +9,7 @@ const root = join(import.meta.dir, '..', '..', '..');
 const read = (file: string) => readFileSync(join(root, file), 'utf8');
 
 const BUYER_LIST_READS = [
-  'core/hooks/useProducts.ts',
+  'shared/hooks/use-products.ts',
   'core/store/useRecentlyViewed.ts',
   'components/features/search/hooks/useSearchProducts.ts',
 ];

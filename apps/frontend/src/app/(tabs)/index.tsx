@@ -35,7 +35,7 @@ import { ShellPaymentsFeature } from '../../components/features/home/sections/Sh
 
 import { useCheckoutStore } from '../../core/store/useCheckoutStore';
 import { useAddresses } from '../../core/hooks/useAddresses';
-import { useProducts } from '../../core/hooks/useProducts';
+import { useProducts } from '../../shared/hooks/use-products';
 import { useExperienceStore } from '@/core/store/useExperienceStore';
 import { useUnreadNotifications } from '@/core/hooks/useUnreadNotifications';
 import { Theme } from '../../shared/theme';
@@ -46,7 +46,7 @@ import { useNetInfo } from '@react-native-community/netinfo';
 import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import { ErrorState } from '@/shared/ui/error-state';
 import { useTranslation } from 'react-i18next';
-import { getTabDockMetrics } from '../../core/constants/layout';
+import { getTabDockMetrics } from '../../shared/config/layout';
 import { formatNotificationBadgeCount } from '../../core/utils/notificationBadge';
 
 // --- RUTAS DEL APP ---

@@ -14,7 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Box, Text } from '../../../../shared/ui/base';
 import { ProductMiniCard } from '../../../../shared/ui/product/product-mini-card';
 import { useRecentlyViewed } from '../../../../core/store/useRecentlyViewed';
-import { getMasonryItemHeight } from '../../../../core/constants/layout';
+import { getMasonryItemHeight } from '../../../../shared/config/layout';
 import { getSharedStyles } from '../../../../shared/theme/shared-styles';
 import { Theme } from '../../../../shared/theme';
 import { Product } from '@selene/types';

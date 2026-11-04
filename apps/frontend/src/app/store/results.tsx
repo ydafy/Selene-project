@@ -35,7 +35,7 @@ import {
   useSearchProducts,
   SearchFilters,
 } from '../../components/features/search/hooks/useSearchProducts';
-import { getMasonryItemHeight } from '../../core/constants/layout';
+import { getMasonryItemHeight } from '../../shared/config/layout';
 import { Theme } from '../../shared/theme';
 import { Product, PublicProduct } from '@selene/types';
 

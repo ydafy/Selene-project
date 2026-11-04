@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { productsListKey } from '../productQueryKeys';
+import { productsListKey } from './product-query-keys';
 
 describe('productsListKey', () => {
   test('starts with the products prefix', () => {

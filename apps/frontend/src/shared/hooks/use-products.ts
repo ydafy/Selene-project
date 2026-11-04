@@ -1,17 +1,17 @@
 /**
- * @file core/hooks/useProducts.ts
+ * @file shared/hooks/use-products.ts
  * Hook flexible para traer listas de productos con filtros opcionales.
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '../../shared/lib/supabase';
+import { supabase } from '../lib/supabase';
 import type { PublicProduct } from '@selene/types';
-import { productsListKey } from './productQueryKeys';
+import { productsListKey } from './product-query-keys';
 import {
   resolveProductsQueryEnabled,
   resolveProductStatuses,
   type UseProductsOptions,
-} from './useProducts.helpers';
+} from './use-products.helpers';
 
 const fetchProducts = async (
   options?: UseProductsOptions,

@@ -5,7 +5,7 @@ import { Box, Text } from '../../../shared/ui/base';
 import { PrimaryButton } from '../../../shared/ui/primary-button';
 import { Theme } from '../../../shared/theme';
 import { formatCurrency } from '../../../shared/utils/format';
-import { getTabDockMetrics } from '../../../core/constants/layout';
+import { getTabDockMetrics } from '../../../shared/config/layout';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type CartSummaryProps = {

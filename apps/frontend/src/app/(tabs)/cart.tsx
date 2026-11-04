@@ -18,7 +18,7 @@ import { useAuthContext } from '../../shared/lib/auth/auth-provider';
 import { useAuthModal } from '../../core/auth/AuthModalProvider';
 import { useCartValidation } from '../../components/features/cart/hooks/useCartValidation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getTabDockMetrics } from '../../core/constants/layout';
+import { getTabDockMetrics } from '../../shared/config/layout';
 
 export default function CartScreen() {
   const theme = useTheme<Theme>();
