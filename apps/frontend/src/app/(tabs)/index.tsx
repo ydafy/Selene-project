@@ -21,19 +21,17 @@ import { AddressPickerModal } from '../../components/features/address/AddressPic
 import { GridShell } from '../../components/features/home/GridShell';
 import { HomeSkeleton } from '../../components/features/home/HomeSkeleton';
 
-import {
-  ShellHero,
-  ShellLogistics,
-  ShellCategoriesV2,
-  ShellRecentDrops,
-  ShellBenchmarksFeature,
-  ShellTrustPipeline,
-  ShellRecentlyViewed,
-  ShellEditorial,
-  ShellFooter,
-  ShellShippingLine,
-  ShellPaymentsFeature,
-} from '../../components/features/home/sections';
+import { ShellHero } from '../../components/features/home/sections/ShellHero';
+import { ShellLogistics } from '../../components/features/home/sections/ShellLogistics';
+import { ShellCategoriesV2 } from '../../components/features/home/sections/ShellCategoriesV2';
+import { ShellRecentDrops } from '../../components/features/home/sections/ShellRecentDrops';
+import { ShellBenchmarksFeature } from '../../components/features/home/sections/ShellBenchmarksFeature';
+import { ShellTrustPipeline } from '../../components/features/home/sections/ShellTrustPipeline';
+import { ShellRecentlyViewed } from '../../components/features/home/sections/ShellRecentlyViewed';
+import { ShellEditorial } from '../../components/features/home/sections/ShellEditorial';
+import { ShellFooter } from '../../components/features/home/sections/ShellFooter';
+import { ShellShippingLine } from '../../components/features/home/sections/ShellShippingLine';
+import { ShellPaymentsFeature } from '../../components/features/home/sections/ShellPaymentsFeature';
 
 import { useCheckoutStore } from '../../core/store/useCheckoutStore';
 import { useAddresses } from '../../core/hooks/useAddresses';

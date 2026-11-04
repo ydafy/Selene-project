@@ -15,11 +15,9 @@ import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 
 import { Box, Text } from '../../shared/ui/base';
-import {
-  CategorySnapCard,
-  BrandSnapCard,
-  ShellTrustSnap,
-} from '../../components/features/shop/index';
+import { CategorySnapCard } from '../../components/features/shop/CategorySnapCard';
+import { BrandSnapCard } from '../../components/features/shop/BrandSnapCard';
+import { ShellTrustSnap } from '../../components/features/shop/ShellTrustSnap';
 import { ShopSkeleton } from '../../components/features/shop/ShopSkeleton';
 import { useProducts } from '../../core/hooks/useProducts';
 import { ACTIVE_LISTING_STATUSES } from '../../shared/utils/product-listing-status';
