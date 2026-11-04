@@ -38,6 +38,10 @@ import { GlobalHeader } from '../../../shared/ui/global-header';
 import { ScreenHeader } from '../../../shared/ui/screen-header';
 import { OrderActionCard } from '../components/order-action-card';
 import { OrderStepper } from '../components/order-stepper';
+import { MultiSellerBanner } from '../components/multi-seller-banner';
+import { UnboxingWarning } from '../components/unboxing-warning';
+import { TrackingNumberCard } from '../components/tracking-number-card';
+import { cardStyles } from '../components/order-card-styles';
 import { ShippingInstructions } from '../components/shipping-instructions';
 import { ShippingRouteCard } from '../components/shipping-route-card';
 import { PrimaryButton } from '../../../shared/ui/primary-button';
@@ -457,13 +461,6 @@ export function OrderDetailScreen() {
     );
   }
 
-  const cardStyles = {
-    backgroundColor: 'cardBackground' as const,
-    padding: 'm' as const,
-    borderRadius: 'l' as const,
-    marginBottom: 'm' as const,
-  };
-
   return (
     <Box flex={1} backgroundColor="background">
       <Stack.Screen options={{ headerShown: false }} />
@@ -501,79 +498,13 @@ export function OrderDetailScreen() {
         {/* shipment_id en la URL (vista global).           */}
         {/* ─────────────────────────────────────────────── */}
         {order.shipments && order.shipments.length > 1 && !shipmentId && (
-          <Box
-            backgroundColor="cardBackground"
-            padding="m"
-            borderRadius="l"
-            borderWidth={1}
-            borderColor="primary"
-            marginBottom="m"
-          >
-            <Box
-              flexDirection="row"
-              alignItems="center"
-              gap="m"
-              marginBottom="m"
-            >
-              <MaterialCommunityIcons
-                name="account-group"
-                size={24}
-                color={theme.colors.primary}
-              />
-              <Box flex={1}>
-                <Text variant="body-md" fontWeight="bold" color="primary">
-                  {t('orders:detail.multiSellerTitle', {
-                    count: order.shipments.length,
-                  })}
-                </Text>
-              </Box>
-            </Box>
-
-            {order.shipments.map((shipment) => (
-              <Box
-                key={shipment.id}
-                flexDirection="row"
-                alignItems="center"
-                paddingVertical="s"
-                borderBottomWidth={1}
-                borderBottomColor="separator"
-              >
-                <Box flex={1}>
-                  <Text variant="body-sm" color="textPrimary">
-                    {shipment.items.length}{' '}
-                    {t('orders:detail.items', {
-                      count: shipment.items.length,
-                    })}
-                  </Text>
-                  <Text variant="caption-md" color="textSecondary">
-                    {t(`orders:status.${shipment.status}`)}
-                  </Text>
-                </Box>
-                <TouchableOpacity
-                  onPress={() => router.setParams({ shipment_id: shipment.id })}
-                >
-                  <Text
-                    variant="caption-md"
-                    color="primary"
-                    textDecorationLine="underline"
-                  >
-                    {t('orders:detail.viewShipment')}
-                  </Text>
-                </TouchableOpacity>
-              </Box>
-            ))}
-
-            <PrimaryButton
-              variant="outline"
-              onPress={() =>
-                router.push(`/profile/orders/summary/${order.id}` as any)
-              }
-              style={{ marginTop: 12, borderColor: theme.colors.primary }}
-              icon="truck-delivery-outline"
-            >
-              {t('orders:detail.viewShippingSummary')}
-            </PrimaryButton>
-          </Box>
+          <MultiSellerBanner
+            shipments={order.shipments}
+            onViewShipment={(id) => router.setParams({ shipment_id: id })}
+            onViewSummary={() =>
+              router.push(`/profile/orders/summary/${order.id}` as any)
+            }
+          />
         )}
 
         {/* ─────────────────────────────────────────────── */}
@@ -596,29 +527,7 @@ export function OrderDetailScreen() {
         {/* Solo para comprador en flujo normal (sin disputa)*/}
         {/* ─────────────────────────────────────────────── */}
         {currentShipment?.permissions.showUnboxingWarning && (
-          <Box
-            {...cardStyles}
-            borderColor="error"
-            backgroundColor="errorSubtle"
-            flexDirection="row"
-            alignItems="center"
-            gap="m"
-            borderWidth={1}
-          >
-            <MaterialCommunityIcons
-              name="alert-outline"
-              size={24}
-              color={theme.colors.primary}
-            />
-            <Box flex={1}>
-              <Text variant="body-md" fontWeight="bold" color="primary">
-                {t('orders:detail.videoWarningTitle')}
-              </Text>
-              <Text variant="caption-md" color="textPrimary" marginTop="xs">
-                {t('orders:detail.videoWarningMsg')}
-              </Text>
-            </Box>
-          </Box>
+          <UnboxingWarning />
         )}
 
         {/* ─────────────────────────────────────────────── */}
@@ -655,49 +564,13 @@ export function OrderDetailScreen() {
         {/* return_tracking_number según permisos).         */}
         {/* ─────────────────────────────────────────────── */}
         {!!activeTrackingNumber && (
-          <Box {...cardStyles} borderColor="primary" borderWidth={1}>
-            <Text variant="header-xl" color="primary" marginBottom="m">
-              {currentShipment?.permissions.showReturnTracking
-                ? t('orders:detail.returnTrackingTitle')
-                : t('orders:detail.trackingTitle')}
-            </Text>
-            <Box
-              flexDirection="row"
-              justifyContent="space-between"
-              alignItems="center"
-              backgroundColor="background"
-              padding="m"
-              borderRadius="m"
-            >
-              <Box flex={1}>
-                <Text variant="caption-md" color="textSecondary">
-                  {t('orders:detail.trackingProvider')}
-                </Text>
-                <Text variant="body-lg" style={{ letterSpacing: 1 }}>
-                  {activeTrackingNumber}
-                </Text>
-              </Box>
-              <TouchableOpacity
-                onPress={() => handleCopyTracking(activeTrackingNumber)}
-              >
-                <MaterialCommunityIcons
-                  name="content-copy"
-                  size={24}
-                  color={theme.colors.primary}
-                />
-              </TouchableOpacity>
-            </Box>
-            {trackingUrl.data?.url ? (
-              <PrimaryButton
-                variant="outline"
-                onPress={() => handleTrack(trackingUrl.data.url!)}
-                style={{ marginTop: 16, borderColor: theme.colors.primary }}
-                icon="truck-delivery"
-              >
-                {t('orders:actions.trackOrder')}
-              </PrimaryButton>
-            ) : null}
-          </Box>
+          <TrackingNumberCard
+            trackingNumber={activeTrackingNumber}
+            isReturn={!!currentShipment?.permissions.showReturnTracking}
+            trackingUrl={trackingUrl.data?.url ?? undefined}
+            onCopy={handleCopyTracking}
+            onTrack={handleTrack}
+          />
         )}
 
         {/* ─────────────────────────────────────────────── */}

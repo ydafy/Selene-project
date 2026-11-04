@@ -33,8 +33,9 @@ describe('unboxing notice', () => {
     expect(detail).toContain(
       compact('{currentShipment?.permissions.showUnboxingWarning && ('),
     );
-    expect(detail).toContain(compact("t('orders:detail.videoWarningTitle')"));
-    expect(detail).toContain(compact("t('orders:detail.videoWarningMsg')"));
+    const warning = flat('src/features/orders/components/unboxing-warning.tsx');
+    expect(warning).toContain(compact("t('orders:detail.videoWarningTitle')"));
+    expect(warning).toContain(compact("t('orders:detail.videoWarningMsg')"));
   });
 
   it('keeps the notice copy in both languages', () => {
