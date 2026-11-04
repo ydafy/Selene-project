@@ -111,7 +111,7 @@ describe('frontend import boundaries', () => {
       if (relativePath.split(/[\\/]/).includes('node_modules')) continue;
       const source = await Bun.file(new URL(relativePath, frontendRoot)).text();
       if (
-        /(?:from|import|require\(|mock\.module\()\s*['"]@expo\/vector-icons(\/[^'"]*)?['"]/.test(
+        /(?:from|import\(?|require\(|mock\.module\()\s*['"]@expo\/vector-icons(\/[^'"]*)?['"]/.test(
           source,
         )
       ) {
