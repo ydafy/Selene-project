@@ -76,7 +76,7 @@ describe('orders detail screen shipment-aware source guards', () => {
 });
 
 describe('OrderActionCard shipment-level timing guard', () => {
-  const card = read('src/components/features/orders/OrderActionCard.tsx');
+  const card = read('src/features/orders/components/order-action-card.tsx');
 
   it('starts the review countdown from the shipment delivered_at, not the order', () => {
     // In multi-seller orders, order.delivered_at is set when the LAST shipment
@@ -93,7 +93,7 @@ describe('OrderActionCard shipment-level timing guard', () => {
 });
 
 describe('OrderActionCard dispute banner title guard', () => {
-  const card = read('src/components/features/orders/OrderActionCard.tsx');
+  const card = read('src/features/orders/components/order-action-card.tsx');
   const title = card.slice(
     card.indexOf('const getBannerTitle ='),
     card.indexOf('const getBannerMessage ='),
@@ -115,7 +115,7 @@ describe('OrderActionCard dispute banner title guard', () => {
 });
 
 describe('OrderActionCard seller return problem navigation guard', () => {
-  const card = read('src/components/features/orders/OrderActionCard.tsx');
+  const card = read('src/features/orders/components/order-action-card.tsx');
   const action = card.slice(
     card.indexOf("{isSeller && dispute?.status === 'return_delivered' && ("),
     card.indexOf("{t('actionCard.reportReturnProblem')}"),
@@ -138,7 +138,9 @@ describe('orders index role-aware navigation guard', () => {
   const index = read('src/app/profile/orders/index.tsx');
 
   it('delegates navigation to the canonical shipment-aware resolver', () => {
-    expect(index).toContain("from './order-view-routing'");
+    expect(index).toContain(
+      "from '../../../features/orders/logic/order-view-routing'",
+    );
     expect(index).toContain('const view = resolveRoleAwareOrderView(');
     expect(index).toContain('shipments: item.shipments.map((shipment) => ({');
   });
@@ -223,7 +225,7 @@ describe('orders detail screen shipment_id param normalization guard', () => {
 });
 
 describe('useShipmentsByOrder query key hardening guard', () => {
-  const hook = read('src/core/hooks/useShipments.ts');
+  const hook = read('src/features/orders/hooks/use-shipments.ts');
 
   it('includes the viewer userId in the useShipmentsByOrder query key', () => {
     // Without userId in the key, a session rehydration between two logged-in
@@ -250,7 +252,7 @@ describe('orders summary canonical shipment source guard', () => {
 
 describe('OrderActionCard buyer return evidence navigation guard', () => {
   it('opens the return evidence screen for this order', () => {
-    const card = read('src/components/features/orders/OrderActionCard.tsx');
+    const card = read('src/features/orders/components/order-action-card.tsx');
     expect(card).toContain(
       'router.push(`/profile/orders/return/${order.id}` as Href)',
     );

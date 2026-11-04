@@ -11,7 +11,9 @@ describe('role-aware orders list routing', () => {
   const index = read('src/app/profile/orders/index.tsx');
 
   it('delegates buyer and seller navigation to the shared resolver', () => {
-    expect(index).toContain("from './order-view-routing'");
+    expect(index).toContain(
+      "from '../../../features/orders/logic/order-view-routing'",
+    );
     expect(index).toContain('resolveRoleAwareOrderView(');
     expect(index).toContain('router.push(view.href as Href)');
   });
@@ -25,7 +27,9 @@ describe('role-aware order summary isolation', () => {
   const summary = read('src/app/profile/orders/summary/[id].tsx');
 
   it('uses the shared resolver and redirects non-summary views to their canonical target', () => {
-    expect(summary).toContain("from '../order-view-routing'");
+    expect(summary).toContain(
+      "from '../../../../features/orders/logic/order-view-routing'",
+    );
     expect(summary).toContain('resolveRoleAwareOrderView(');
     expect(summary).toContain("view.kind !== 'summary'");
     expect(summary).toContain('router.replace(view.href as Href)');
@@ -46,7 +50,9 @@ describe('shipment detail identity guards', () => {
   const detail = read('src/app/profile/orders/[id].tsx');
 
   it('normalizes the addressed shipment id and delegates access to the resolver', () => {
-    expect(detail).toContain("from './order-view-routing'");
+    expect(detail).toContain(
+      "from '../../../features/orders/logic/order-view-routing'",
+    );
     expect(detail).toContain('const shipmentId = Array.isArray(shipment_id)');
     expect(detail).toContain('resolveRoleAwareOrderView(');
     expect(detail).not.toContain('?? source[0]');
@@ -54,7 +60,7 @@ describe('shipment detail identity guards', () => {
 
   it('redirects missing shipment ids and renders a safe state for invalid or unowned ids', () => {
     expect(detail).toContain(
-      "from '../../../components/features/orders/ShipmentNotFoundState'",
+      "from '../../../features/orders/components/shipment-not-found-state'",
     );
     expect(detail).toContain(
       "if (!shipmentId && orderView.kind !== 'unavailable')",

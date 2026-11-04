@@ -28,7 +28,7 @@ describe('shared seller payment explanation', () => {
   });
 
   it('gates help and visibility on the selected delivered or completed, dispute-free seller shipment', () => {
-    const card = read('src/components/features/orders/OrderActionCard.tsx');
+    const card = read('src/features/orders/components/order-action-card.tsx');
     expect(card).toContain(
       "const showSellerCompletedBanner = isSeller && shipment.status === 'completed' && !dispute;",
     );
@@ -44,7 +44,7 @@ describe('shared seller payment explanation', () => {
   });
 
   it('dismisses informational content without mutations and bounds scroll height', () => {
-    const card = read('src/components/features/orders/OrderActionCard.tsx');
+    const card = read('src/features/orders/components/order-action-card.tsx');
     const dialog = card.slice(
       card.indexOf('<ConfirmDialog'),
       card.indexOf('</ConfirmDialog>'),

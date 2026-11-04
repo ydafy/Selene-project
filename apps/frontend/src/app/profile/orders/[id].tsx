@@ -10,7 +10,7 @@
  * en lugar de propiedades directas de la orden. OrderActionCard conectado en 3.6.
  */
 
-import { canShowSellerLabelActions } from '@/core/utils/shipment-label-visibility';
+import { canShowSellerLabelActions } from '@/features/orders/logic/shipment-label-visibility';
 import React, {
   useState,
   useCallback,
@@ -36,26 +36,26 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Box, Text } from '../../../shared/ui/base';
 import { GlobalHeader } from '../../../shared/ui/global-header';
 import { ScreenHeader } from '../../../shared/ui/screen-header';
-import { OrderActionCard } from '../../../components/features/orders/OrderActionCard';
-import { OrderStepper } from '../../../components/features/orders/OrderStepper';
-import { ShippingInstructions } from '../../../components/features/orders/ShippingInstructions';
-import { ShippingRouteCard } from '../../../components/features/orders/ShippingRouteCard';
+import { OrderActionCard } from '../../../features/orders/components/order-action-card';
+import { OrderStepper } from '../../../features/orders/components/order-stepper';
+import { ShippingInstructions } from '../../../features/orders/components/shipping-instructions';
+import { ShippingRouteCard } from '../../../features/orders/components/shipping-route-card';
 import { PrimaryButton } from '../../../shared/ui/primary-button';
 import { ConfirmDialog } from '../../../shared/ui/confirm-dialog';
 import { Skeleton } from '../../../shared/ui/skeleton';
 import { AppImage } from '../../../shared/ui/app-image';
-import { ShipmentNotFoundState } from '../../../components/features/orders/ShipmentNotFoundState';
-import { ShipmentTrackingTimeline } from '../../../components/features/orders/ShipmentTrackingTimeline';
+import { ShipmentNotFoundState } from '../../../features/orders/components/shipment-not-found-state';
+import { ShipmentTrackingTimeline } from '../../../features/orders/components/shipment-tracking-timeline';
 import {
   useShipmentTrackingEvents,
   useShipmentTrackingUrl,
-} from '../../../core/hooks/useShipmentTracking';
+} from '../../../features/orders/hooks/use-shipment-tracking';
 import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
-import { useOrderById } from '../../../core/hooks/useOrders';
-import { useShipmentsByOrder } from '../../../core/hooks/useShipments';
-import { useOrderActions } from '../../../core/hooks/useOrderActions';
-import { useReturnPayment } from '../../../core/hooks/useReturnPayment';
-import { useShareLabel } from '../../../core/hooks/useShareLabel';
+import { useOrderById } from '../../../features/orders/hooks/use-orders';
+import { useShipmentsByOrder } from '../../../features/orders/hooks/use-shipments';
+import { useOrderActions } from '../../../features/orders/hooks/use-order-actions';
+import { useReturnPayment } from '../../../features/orders/hooks/use-return-payment';
+import { useShareLabel } from '../../../features/orders/hooks/use-share-label';
 import { formatCurrency } from '../../../shared/utils/format';
 import { Theme } from '../../../shared/theme';
 import { ReviewModal } from '@/components/features/profile/ReviewModal';
@@ -64,12 +64,12 @@ import { EnrichedOrder, EnrichedShipment } from '@selene/types';
 import {
   canReviewProduct,
   type CanReviewProductContext,
-} from './canReviewProduct';
-import { resolveRoleAwareOrderView } from './order-view-routing';
+} from '../../../features/orders/logic/can-review-product';
+import { resolveRoleAwareOrderView } from '../../../features/orders/logic/order-view-routing';
 import {
   resolveBuyerCheckoutRecoveryView,
   shouldSuppressShipmentActionsForBuyerRecovery,
-} from './order-recovery-view';
+} from '../../../features/orders/logic/order-recovery-view';
 import Toast from 'react-native-toast-message';
 import { describeError } from '../../../shared/utils/describe-error';
 

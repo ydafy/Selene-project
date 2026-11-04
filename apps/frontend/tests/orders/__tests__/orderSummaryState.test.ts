@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import {
   resolveSummaryState,
   summaryAmounts,
-} from '../../../src/core/utils/order-summary-state';
+} from '../../../src/features/orders/logic/order-summary-state';
 
 // Prettier may re-wrap the source files read below; compare without layout.
 const compact = (source: string) =>

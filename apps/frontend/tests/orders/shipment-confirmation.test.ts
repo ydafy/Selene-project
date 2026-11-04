@@ -5,7 +5,7 @@ import {
   buildShipmentConfirmationPayload,
   canConfirmShipmentDelivery,
   resolveShipmentConfirmationFailureToast,
-} from '../../src/core/utils/shipment-confirmation';
+} from '../../src/features/orders/logic/shipment-confirmation';
 
 // Prettier may re-wrap the source files read below; compare without layout.
 const compact = (source: string) =>
@@ -52,7 +52,9 @@ describe('shipment confirmation', () => {
   });
 
   it('blocks only unresolved dispute statuses and permits resolved or rejected disputes', () => {
-    const shipments = source('apps/frontend/src/core/hooks/useShipments.ts');
+    const shipments = source(
+      'apps/frontend/src/features/orders/hooks/use-shipments.ts',
+    );
     const activeStatuses = shipments
       .match(/const ACTIVE_DISPUTE_STATUSES[^=]*=\s*\[([\s\S]*?)\];/)?.[1]
       .match(/'[^']+'/g);
@@ -133,10 +135,10 @@ describe('shipment confirmation', () => {
 
   it('routes confirmation through the shipment Edge Function without the retired fallback', () => {
     const actions = compact(
-      source('apps/frontend/src/core/hooks/useOrderActions.ts'),
+      source('apps/frontend/src/features/orders/hooks/use-order-actions.ts'),
     );
     const shipments = compact(
-      source('apps/frontend/src/core/hooks/useShipments.ts'),
+      source('apps/frontend/src/features/orders/hooks/use-shipments.ts'),
     );
 
     expect(actions).toContain(

@@ -71,9 +71,9 @@ describe('role-aware orders localization', () => {
     expect(summary).toContain("t('summary.status')");
     expect(summary).not.toContain('defaultValue:');
     expect(
-      read('src/components/features/orders/ShipmentNotFoundState.tsx'),
+      read('src/features/orders/components/shipment-not-found-state.tsx'),
     ).toContain("t('notFound.title')");
-    const card = read('src/components/features/orders/OrderShipmentCard.tsx');
+    const card = read('src/features/orders/components/order-shipment-card.tsx');
     expect(card).toContain('const item = shipment.items[0];');
     expect(card).toContain("t('card.unknownProduct')");
     expect(card).toContain("t('card.unknownSeller')");
@@ -85,7 +85,7 @@ describe('role-aware orders localization', () => {
 
   it('uses translation keys for action-card banners and actions', () => {
     const actionCard = read(
-      'src/components/features/orders/OrderActionCard.tsx',
+      'src/features/orders/components/order-action-card.tsx',
     );
     for (const key of [
       'cancellationWindowTitle',

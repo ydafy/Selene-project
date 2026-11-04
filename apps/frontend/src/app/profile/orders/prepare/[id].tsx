@@ -32,12 +32,12 @@ import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog';
 import { ErrorState } from '../../../../shared/ui/error-state';
 import { Skeleton } from '../../../../shared/ui/skeleton';
 import { LabelWithHelp } from '../../../../shared/ui/label-with-help';
-import { PackagingGuideCard } from '../../../../components/features/orders/PackagingGuideCard';
-import { ShipmentLabelRecoveryCard } from '../../../../components/features/orders/ShipmentLabelRecoveryCard';
-import { useOrderById } from '../../../../core/hooks/useOrders';
-import { useOrderActions } from '../../../../core/hooks/useOrderActions';
-import { useShipmentLabelRefresh } from '../../../../core/hooks/useShipmentLabelRefresh';
-import { resolvePreparingBox } from '../../../../core/utils/preparing-box';
+import { PackagingGuideCard } from '../../../../features/orders/components/packaging-guide-card';
+import { ShipmentLabelRecoveryCard } from '../../../../features/orders/components/shipment-label-recovery-card';
+import { useOrderById } from '../../../../features/orders/hooks/use-orders';
+import { useOrderActions } from '../../../../features/orders/hooks/use-order-actions';
+import { useShipmentLabelRefresh } from '../../../../features/orders/hooks/use-shipment-label-refresh';
+import { resolvePreparingBox } from '../../../../features/orders/logic/preparing-box';
 import {
   PackagePreset,
   PackagePresetsMap,
@@ -48,14 +48,14 @@ import {
   generateLabelWithRecovery,
   openGeneratedLabel,
   type LabelDiagnostic,
-} from '../../../../core/utils/shipping-label-outcome';
+} from '../../../../features/orders/logic/shipping-label-outcome';
 import {
   isLabelRecoveryState,
   resolveShipmentLabelState,
-} from '../../../../core/utils/shipment-label-state';
+} from '../../../../features/orders/logic/shipment-label-state';
 import { Address } from '@selene/types';
 import { Theme } from '../../../../shared/theme';
-import { EvidenceUploadSection } from '@/components/features/orders/EvidenceUploadSection';
+import { EvidenceUploadSection } from '@/features/orders/components/evidence-upload-section';
 import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import { useConnectOnboarding } from '../../../../core/hooks/useConnectOnboarding';
 

@@ -18,7 +18,7 @@ const read = (relPath: string) =>
   readFileSync(join(FRONTEND, relPath), 'utf8').replace(/\s+/g, ' ');
 
 describe('useOrderById review select — V2 product/shipment linkage columns', () => {
-  const hook = read('src/core/hooks/useOrders.ts');
+  const hook = read('src/features/orders/hooks/use-orders.ts');
 
   it('selects product_id, shipment_id and seller_id from the review relation', () => {
     // The pipe (ReviewModal + useReviewAction) already writes these columns;
@@ -50,7 +50,9 @@ describe('orders detail screen V2 per-product review guards', () => {
   });
 
   it('imports the pure canReviewProduct gate', () => {
-    expect(detail).toContain("from './canReviewProduct'");
+    expect(detail).toContain(
+      "from '../../../features/orders/logic/can-review-product'",
+    );
   });
 
   it('replaces the V1 single boolean canReview with the per-product gate', () => {

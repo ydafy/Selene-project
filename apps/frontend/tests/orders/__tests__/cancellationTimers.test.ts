@@ -5,9 +5,9 @@ import { join } from 'node:path';
 const FRONTEND = join(import.meta.dir, '..', '..', '..');
 const read = (path: string) =>
   readFileSync(join(FRONTEND, path), 'utf8').replace(/\s+/g, ' ');
-const card = read('src/components/features/orders/OrderActionCard.tsx');
-const actions = read('src/core/hooks/useOrderActions.ts');
-const settings = read('src/core/hooks/cancellation-settings.ts');
+const card = read('src/features/orders/components/order-action-card.tsx');
+const actions = read('src/features/orders/hooks/use-order-actions.ts');
+const settings = read('src/features/orders/logic/cancellation-settings.ts');
 
 describe('cancellation timers without invented deadlines', () => {
   it('has no 48/72 fallback in the settings resolver', () => {

@@ -21,7 +21,7 @@ const en = JSON.parse(read('src/shared/i18n/locales/en/orders.json'));
 // and the render wiring in source.
 describe('unboxing notice', () => {
   it('shows only to the buyer, for paid/preparing/shipped/delivered shipments without a dispute', () => {
-    expect(flat('src/core/hooks/useShipments.ts')).toContain(
+    expect(flat('src/features/orders/hooks/use-shipments.ts')).toContain(
       compact(
         "showUnboxingWarning: isBuyer && ['paid', 'preparing', 'shipped', 'delivered'].includes( shipment.status, ) && !isDispute,",
       ),

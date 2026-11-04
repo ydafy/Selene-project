@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
-import { orderCardAmountCents } from '../../../src/core/utils/order-summary-state';
+import { orderCardAmountCents } from '../../../src/features/orders/logic/order-summary-state';
 
 const card = readFileSync(
-  `${import.meta.dir}/../../../src/components/features/orders/OrderCard.tsx`,
+  `${import.meta.dir}/../../../src/features/orders/components/order-card.tsx`,
   'utf8',
 ).replace(/\s+/g, ' ');
 

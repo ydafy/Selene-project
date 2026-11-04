@@ -4,10 +4,9 @@ import { join } from 'node:path';
 
 const FRONTEND = join(import.meta.dir, '..', '..', '..');
 const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
-const card = read('src/components/features/orders/OrderActionCard.tsx').replace(
-  /\s+/g,
-  ' ',
-);
+const card = read(
+  'src/features/orders/components/order-action-card.tsx',
+).replace(/\s+/g, ' ');
 const es = JSON.parse(read('src/shared/i18n/locales/es/orders.json'));
 const en = JSON.parse(read('src/shared/i18n/locales/en/orders.json'));
 

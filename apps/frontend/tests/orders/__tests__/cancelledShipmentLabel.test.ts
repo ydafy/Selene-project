@@ -2,8 +2,8 @@ import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { resolveCancelledShipmentCopy } from '../../../src/core/utils/shipment-cancellation-summary';
-import { canShowSellerLabelActions } from '../../../src/core/utils/shipment-label-visibility';
+import { resolveCancelledShipmentCopy } from '../../../src/features/orders/logic/shipment-cancellation-summary';
+import { canShowSellerLabelActions } from '../../../src/features/orders/logic/shipment-label-visibility';
 
 const FRONTEND = join(import.meta.dir, '..', '..', '..');
 const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
@@ -71,9 +71,12 @@ describe('cancelled banner label notice', () => {
 describe('screen wiring', () => {
   const screen = read('src/app/profile/orders/[id].tsx').replace(/\s+/g, ' ');
   const card = read(
-    'src/components/features/orders/OrderActionCard.tsx',
+    'src/features/orders/components/order-action-card.tsx',
   ).replace(/\s+/g, ' ');
-  const hook = read('src/core/hooks/useShipments.ts').replace(/\s+/g, ' ');
+  const hook = read('src/features/orders/hooks/use-shipments.ts').replace(
+    /\s+/g,
+    ' ',
+  );
 
   it('gates the label buttons with the visibility helper', () => {
     expect(screen).toContain('canShowSellerLabelActions({');

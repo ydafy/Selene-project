@@ -84,7 +84,7 @@ test('the product page reads the view first and falls back to the table for the 
 });
 
 test('purchases (buyer only) embed order item products through the view', () => {
-  const source = read('core/hooks/useOrders.ts');
+  const source = read('features/orders/hooks/use-orders.ts');
   const purchases = source.slice(
     source.indexOf('export const useMyPurchases'),
     source.indexOf('export const useMySales'),
@@ -94,7 +94,7 @@ test('purchases (buyer only) embed order item products through the view', () => 
 });
 
 test('sales keep the table embed for the seller own products', () => {
-  const source = read('core/hooks/useOrders.ts');
+  const source = read('features/orders/hooks/use-orders.ts');
   const sales = source.slice(source.indexOf('export const useMySales'));
   expect(sales).toContain('), product:products(*)');
 });
@@ -102,14 +102,14 @@ test('sales keep the table embed for the seller own products', () => {
 // Order and shipment detail serve buyers and sellers: the table embed answers
 // for the owner (including RESERVED/IN_DISPUTE), the view embed for everyone
 // else, and the result is merged into one `product`.
-test.each(['core/hooks/useOrders.ts', 'core/hooks/useShipments.ts'])(
-  '%s resolves shared order item products through both embeds',
-  (file) => {
-    const source = read(file);
-    expect(source).toContain('ITEM_PRODUCT_EMBED');
-    expect(source).toContain('mergeItemProducts');
-  },
-);
+test.each([
+  'features/orders/hooks/use-orders.ts',
+  'features/orders/hooks/use-shipments.ts',
+])('%s resolves shared order item products through both embeds', (file) => {
+  const source = read(file);
+  expect(source).toContain('ITEM_PRODUCT_EMBED');
+  expect(source).toContain('mergeItemProducts');
+});
 
 // The product page result depends on who asks (view row, or the owner's table
 // row), so the cache key carries the user: a session that arrives late refetches
