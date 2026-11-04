@@ -1,5 +1,5 @@
 /**
- * @file components/features/shop/CategorySnapCard.tsx
+ * @file features/shop/components/category-snap-card.tsx
  * @description Primera tarjeta del feed de Shop.
  * Presenta las 4 categorías reina en franjas horizontales con fondo de imagen.
  */

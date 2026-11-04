@@ -1,5 +1,5 @@
 /**
- * @file components/features/shop/sections/ProductSnapCard.tsx
+ * @file features/shop/components/product-snap-card.tsx
  * @description Versión 1.1: Pure Snap.
  * Diseño minimalista con imagen clickeable, bordes suavizados y fondo adaptativo.
  */
@@ -9,13 +9,13 @@ import { StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { BlurView } from 'expo-blur';
-import { Box, Text } from '../../../../shared/ui/base';
-import { AppImage } from '../../../../shared/ui/app-image';
-import { PrimaryButton } from '../../../../shared/ui/primary-button';
-import { formatCurrency } from '../../../../shared/utils/format';
+import { Box, Text } from '../../../shared/ui/base';
+import { AppImage } from '../../../shared/ui/app-image';
+import { PrimaryButton } from '../../../shared/ui/primary-button';
+import { formatCurrency } from '../../../shared/utils/format';
 import { PublicProduct } from '@selene/types';
-import { isInVerification } from '../../../../shared/utils/product-listing-status';
-import { VerificationPill } from '../../../../shared/ui/product/verification-pill';
+import { isInVerification } from '../../../shared/utils/product-listing-status';
+import { VerificationPill } from '../../../shared/ui/product/verification-pill';
 
 interface Props {
   product: PublicProduct;

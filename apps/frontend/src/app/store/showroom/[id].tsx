@@ -37,7 +37,7 @@ import { ProductCard } from '../../../shared/ui/product/product-card';
 import { ProductFavoriteButton } from '../../../components/features/product/ProductFavoriteButton';
 import { ProductCardSkeleton } from '../../../shared/ui/product/product-card-skeleton';
 import { ResultsFilterBar } from '../../../components/features/search/filters/ResultsFilterBar';
-import { ShowroomInsights } from '../../../components/features/shop/showroom/ShowroomInsights';
+import { ShowroomInsights } from '../../../features/shop/components/showroom-insights';
 import {
   FilterModal,
   FilterState,

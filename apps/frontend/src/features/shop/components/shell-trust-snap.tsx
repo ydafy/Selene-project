@@ -1,5 +1,5 @@
 /**
- * @file components/features/shop/sections/ShellTrustSnap.tsx
+ * @file features/shop/components/shell-trust-snap.tsx
  * @description Versión 3.0: Cinematic Edition.
  * Utiliza video nativo en loop para un impacto visual de alta gama.
  */

@@ -1,5 +1,5 @@
 /**
- * @file components/features/shop/sections/BrandSnapCard.tsx
+ * @file features/shop/components/brand-snap-card.tsx
  * @description Versión 16.0: Stable Frosted Edition.
  * Logra el efecto de vidrio exagerado mediante capas de contraste y máxima intensidad.
  */

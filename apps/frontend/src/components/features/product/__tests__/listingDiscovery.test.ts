@@ -19,7 +19,7 @@ describe('where listings in verification are discoverable', () => {
 
   test.each([
     'components/features/home/sections/ShellRecentDrops.tsx',
-    'components/features/shop/sections/ShellEndFeedCard2.tsx',
+    'features/shop/components/shell-end-feed-card2.tsx',
   ])('%s keeps showing verified listings only', (file) => {
     const source = read(file);
     expect(source).toContain('verifiedOnly: true');
@@ -38,7 +38,7 @@ describe('cards flag listings in verification', () => {
   test.each([
     'shared/ui/product/product-card.tsx',
     'shared/ui/product/product-mini-card.tsx',
-    'components/features/shop/sections/ProductSnapCard.tsx',
+    'features/shop/components/product-snap-card.tsx',
     'app/profile/[id].tsx',
   ])(
     '%s renders the verification pill for listings in verification',

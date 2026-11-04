@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /**
- * @file components/features/shop/showroom/ShowroomInsights.tsx
+ * @file features/shop/components/showroom-insights.tsx
  * @description Versión 3.0: Action Dispatcher.
  * Maneja búsquedas inteligentes y preparada para contenido multimedia futuro.
  */
@@ -11,8 +11,8 @@ import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { Box, Text } from '../../../../shared/ui/base';
-import { AppImage } from '../../../../shared/ui/app-image';
+import { Box, Text } from '../../../shared/ui/base';
+import { AppImage } from '../../../shared/ui/app-image';
 import { colors } from '@/shared/theme/tokens';
 
 type SearchAction = {

@@ -1,5 +1,5 @@
 /**
- * @file components/features/shop/sections/ShellEndFeedCard.tsx
+ * @file features/shop/components/shell-end-feed-card2.tsx
  * @description Versión 2.0: The Supply Line.
  * Carrusel automático de productos como cierre del Snap Feed.
  */
@@ -21,13 +21,13 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 
-import { Box, Text } from '../../../../shared/ui/base';
-import { ProductMiniCard } from '../../../../shared/ui/product/product-mini-card';
-import { PrimaryButton } from '../../../../shared/ui/primary-button';
-import { useProducts } from '../../../../shared/hooks/use-products';
-import { getMasonryItemHeight } from '../../../../shared/config/layout';
-import { Theme } from '../../../../shared/theme';
-import { getSharedStyles } from '../../../../shared/theme/shared-styles';
+import { Box, Text } from '../../../shared/ui/base';
+import { ProductMiniCard } from '../../../shared/ui/product/product-mini-card';
+import { PrimaryButton } from '../../../shared/ui/primary-button';
+import { useProducts } from '../../../shared/hooks/use-products';
+import { getMasonryItemHeight } from '../../../shared/config/layout';
+import { Theme } from '../../../shared/theme';
+import { getSharedStyles } from '../../../shared/theme/shared-styles';
 import { AppImage } from '@/shared/ui/app-image';
 import SeleneLogo from '@/assets/images/SeleneLunaLogo.png';
 

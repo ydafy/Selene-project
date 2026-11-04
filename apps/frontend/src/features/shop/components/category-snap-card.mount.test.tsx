@@ -82,7 +82,7 @@ if (process.env.SELENE_CATEGORY_SNAP_MOUNT_CHILD !== '1') {
   }));
 
   const { render, fireEvent } = await import('@testing-library/react-native');
-  const { CategorySnapCard } = await import('./CategorySnapCard');
+  const { CategorySnapCard } = await import('./category-snap-card');
 
   test('draws each category image with expo-image behind its gradient and label', async () => {
     const view = await render(<CategorySnapCard visibleHeight={800} />);
