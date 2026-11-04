@@ -19,9 +19,12 @@ import { FormSelect } from '../../shared/ui/form-select';
 import { PrimaryButton } from '../../shared/ui/primary-button';
 import { Checkbox } from '../../shared/ui/checkbox';
 
-import { useAddresses } from '../../core/hooks/useAddresses';
-import { useZipCode } from '../../core/hooks/useZipCode';
-import { addressSchema, AddressFormData } from '../../core/schemas/address';
+import { useAddresses } from '../../features/address/hooks/use-addresses';
+import { useZipCode } from '../../features/address/hooks/use-zip-code';
+import {
+  addressSchema,
+  AddressFormData,
+} from '../../features/address/logic/address-schema';
 import { useTheme } from '@shopify/restyle';
 import { Theme } from '../../shared/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

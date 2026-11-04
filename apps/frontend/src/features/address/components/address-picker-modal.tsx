@@ -12,8 +12,8 @@ import { useTranslation } from 'react-i18next';
 
 import { Box, Text } from '../../../shared/ui/base';
 import { Theme } from '../../../shared/theme';
-import { AddressCard } from './AddressCard';
-import { useAddresses } from '../../../core/hooks/useAddresses';
+import { AddressCard } from './address-card';
+import { useAddresses } from '../hooks/use-addresses';
 import { Address } from '@selene/types';
 import { EmptyState } from '../../../shared/ui/empty-state';
 import { ConfirmDialog } from '../../../shared/ui/confirm-dialog';

@@ -14,7 +14,7 @@ import { Box, Text } from '../../../shared/ui/base';
 import { GlobalHeader } from '../../../shared/ui/global-header';
 import { ScreenHeader } from '../../../shared/ui/screen-header';
 import { AddressSection } from '../../../components/features/checkout/AddressSection';
-import { AddressPickerModal } from '../../../components/features/address/AddressPickerModal';
+import { AddressPickerModal } from '../../address/components/address-picker-modal';
 import { PrimaryButton } from '../../../shared/ui/primary-button';
 import { ErrorState } from '../../../shared/ui/error-state';
 import { Skeleton } from '../../../shared/ui/skeleton';
