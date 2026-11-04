@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const FRONTEND = join(import.meta.dir, '..', '..', '..');
+const FRONTEND = join(import.meta.dir, '..', '..', '..', '..');
 const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
 const card = read(
   'src/features/orders/components/order-action-card.tsx',
@@ -41,7 +41,7 @@ describe('expired seller deadline banner', () => {
   });
 
   it('keeps the cancel button gate unchanged', () => {
-    const detail = read('src/app/profile/orders/[id].tsx');
+    const detail = read('src/features/orders/screens/order-detail-screen.tsx');
     expect(detail).toContain('currentShipment?.permissions.canCancel && (');
     expect(card).toContain(
       'permissions.canCancel && shipment.created_at && orderExpirationHours != null',

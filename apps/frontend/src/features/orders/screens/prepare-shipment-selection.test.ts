@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
 const source = readFileSync(
-  new URL('../../src/app/profile/orders/prepare/[id].tsx', import.meta.url),
+  new URL('./prepare-shipment-screen.tsx', import.meta.url),
   'utf8',
 );
 

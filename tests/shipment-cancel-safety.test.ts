@@ -64,7 +64,10 @@ describe('shipment cancel safety frontend helpers', () => {
 
   it('preserves the unboxing notice in order detail copy', () => {
     const detail = readFileSync(
-      join(REPO_ROOT, 'apps/frontend/src/app/profile/orders/[id].tsx'),
+      join(
+        REPO_ROOT,
+        'apps/frontend/src/features/orders/screens/order-detail-screen.tsx',
+      ),
       'utf8',
     );
 

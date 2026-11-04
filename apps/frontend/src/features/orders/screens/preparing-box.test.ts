@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { resolvePreparingBox } from '../../src/features/orders/logic/preparing-box';
-import en from '../../src/shared/i18n/locales/en/orders.json';
-import es from '../../src/shared/i18n/locales/es/orders.json';
+import { resolvePreparingBox } from '../logic/preparing-box';
+import en from '../../../shared/i18n/locales/en/orders.json';
+import es from '../../../shared/i18n/locales/es/orders.json';
 
 const presets = {
   gpu_1: {
@@ -73,7 +73,7 @@ describe('preparing box resolution', () => {
 
   it('blocks generation in the screen when no usable box exists', () => {
     const screen = readFileSync(
-      join(import.meta.dir, '../../src/app/profile/orders/prepare/[id].tsx'),
+      join(import.meta.dir, './prepare-shipment-screen.tsx'),
       'utf8',
     );
 

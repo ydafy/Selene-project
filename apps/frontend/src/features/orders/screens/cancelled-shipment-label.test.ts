@@ -2,10 +2,10 @@ import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { resolveCancelledShipmentCopy } from '../../../src/features/orders/logic/shipment-cancellation-summary';
-import { canShowSellerLabelActions } from '../../../src/features/orders/logic/shipment-label-visibility';
+import { resolveCancelledShipmentCopy } from '../logic/shipment-cancellation-summary';
+import { canShowSellerLabelActions } from '../logic/shipment-label-visibility';
 
-const FRONTEND = join(import.meta.dir, '..', '..', '..');
+const FRONTEND = join(import.meta.dir, '..', '..', '..', '..');
 const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
 const es = JSON.parse(read('src/shared/i18n/locales/es/orders.json'));
 const en = JSON.parse(read('src/shared/i18n/locales/en/orders.json'));
@@ -69,7 +69,9 @@ describe('cancelled banner label notice', () => {
 });
 
 describe('screen wiring', () => {
-  const screen = read('src/app/profile/orders/[id].tsx').replace(/\s+/g, ' ');
+  const screen = read(
+    'src/features/orders/screens/order-detail-screen.tsx',
+  ).replace(/\s+/g, ' ');
   const card = read(
     'src/features/orders/components/order-action-card.tsx',
   ).replace(/\s+/g, ' ');

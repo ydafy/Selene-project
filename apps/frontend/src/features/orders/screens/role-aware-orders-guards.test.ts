@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const FRONTEND = join(import.meta.dir, '..', '..', '..');
+const FRONTEND = join(import.meta.dir, '..', '..', '..', '..');
 
 const read = (relPath: string) =>
   readFileSync(join(FRONTEND, relPath), 'utf8').replace(/\s+/g, ' ');
@@ -47,21 +47,17 @@ describe('role-aware order summary isolation', () => {
 });
 
 describe('shipment detail identity guards', () => {
-  const detail = read('src/app/profile/orders/[id].tsx');
+  const detail = read('src/features/orders/screens/order-detail-screen.tsx');
 
   it('normalizes the addressed shipment id and delegates access to the resolver', () => {
-    expect(detail).toContain(
-      "from '../../../features/orders/logic/order-view-routing'",
-    );
+    expect(detail).toContain("from '../logic/order-view-routing'");
     expect(detail).toContain('const shipmentId = Array.isArray(shipment_id)');
     expect(detail).toContain('resolveRoleAwareOrderView(');
     expect(detail).not.toContain('?? source[0]');
   });
 
   it('redirects missing shipment ids and renders a safe state for invalid or unowned ids', () => {
-    expect(detail).toContain(
-      "from '../../../features/orders/components/shipment-not-found-state'",
-    );
+    expect(detail).toContain("from '../components/shipment-not-found-state'");
     expect(detail).toContain(
       "if (!shipmentId && orderView.kind !== 'unavailable')",
     );

@@ -12,7 +12,7 @@ import { join } from 'node:path';
  * future edit cannot silently regress the shipment-aware behavior.
  */
 
-const FRONTEND = join(import.meta.dir, '..', '..', '..');
+const FRONTEND = join(import.meta.dir, '..', '..', '..', '..');
 
 const read = (relPath: string) =>
   readFileSync(join(FRONTEND, relPath), 'utf8')
@@ -22,7 +22,7 @@ const read = (relPath: string) =>
     .replace(/,\)/g, ')');
 
 describe('orders detail screen shipment-aware source guards', () => {
-  const detail = read('src/app/profile/orders/[id].tsx');
+  const detail = read('src/features/orders/screens/order-detail-screen.tsx');
 
   it('prefers the per-shipment-enriched list from useShipmentsByOrder over raw order.shipments', () => {
     // The migration note used to fall back to order.shipments first; that
@@ -170,7 +170,7 @@ describe('ReviewModal shipment-aware seller target guard', () => {
 });
 
 describe('orders detail screen shipment-aware review identity guard', () => {
-  const detail = read('src/app/profile/orders/[id].tsx');
+  const detail = read('src/features/orders/screens/order-detail-screen.tsx');
 
   it('threads the per-shipment id and the active per-product id into ReviewModal', () => {
     // V2 expands reviews to one per product within a shipment. The screen must
@@ -185,7 +185,7 @@ describe('orders detail screen shipment-aware review identity guard', () => {
 });
 
 describe('orders detail screen shipment_id param normalization guard', () => {
-  const detail = read('src/app/profile/orders/[id].tsx');
+  const detail = read('src/features/orders/screens/order-detail-screen.tsx');
 
   it('normalizes the shipment_id search param to a scalar before any comparison', () => {
     // Expo Router surfaces `useLocalSearchParams` values as `string | string[]`.

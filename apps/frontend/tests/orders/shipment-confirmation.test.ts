@@ -150,7 +150,9 @@ describe('shipment confirmation', () => {
   });
 
   it('uses delivered-only copy that does not promise an immediate payout', () => {
-    const detail = source('apps/frontend/src/app/profile/orders/[id].tsx');
+    const detail = source(
+      'apps/frontend/src/features/orders/screens/order-detail-screen.tsx',
+    );
     const english = JSON.parse(
       source('apps/frontend/src/shared/i18n/locales/en/orders.json'),
     );

@@ -11,7 +11,7 @@ const compact = (source: string) =>
     .replace(/,([)\]}])/g, '$1')
     .replace(/ \./g, '.');
 
-const FRONTEND = join(import.meta.dir, '..', '..', '..');
+const FRONTEND = join(import.meta.dir, '..', '..', '..', '..');
 const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
 const flat = (path: string) => compact(read(path));
 const es = JSON.parse(read('src/shared/i18n/locales/es/orders.json'));
@@ -29,7 +29,7 @@ describe('unboxing notice', () => {
   });
 
   it('renders the notice in the order detail from that permission', () => {
-    const detail = flat('src/app/profile/orders/[id].tsx');
+    const detail = flat('src/features/orders/screens/order-detail-screen.tsx');
     expect(detail).toContain(
       compact('{currentShipment?.permissions.showUnboxingWarning && ('),
     );

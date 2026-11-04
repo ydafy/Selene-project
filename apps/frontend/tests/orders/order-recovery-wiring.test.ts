@@ -7,7 +7,9 @@ const source = (path: string) =>
 
 describe('buyer checkout recovery UI wiring', () => {
   it('renders the pending banner before shipment-only detail content and offers support', () => {
-    const detail = source('apps/frontend/src/app/profile/orders/[id].tsx');
+    const detail = source(
+      'apps/frontend/src/features/orders/screens/order-detail-screen.tsx',
+    );
 
     expect(detail).toContain('resolveBuyerCheckoutRecoveryView');
     expect(detail).toContain("t('recovery.pending')");

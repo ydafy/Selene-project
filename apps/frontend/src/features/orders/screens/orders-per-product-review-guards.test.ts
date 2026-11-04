@@ -12,7 +12,7 @@ import { join } from 'node:path';
  * edit cannot silently regress the per-product review behavior.
  */
 
-const FRONTEND = join(import.meta.dir, '..', '..', '..');
+const FRONTEND = join(import.meta.dir, '..', '..', '..', '..');
 
 const read = (relPath: string) =>
   readFileSync(join(FRONTEND, relPath), 'utf8').replace(/\s+/g, ' ');
@@ -39,7 +39,7 @@ describe('useOrderById review select — V2 product/shipment linkage columns', (
 });
 
 describe('orders detail screen V2 per-product review guards', () => {
-  const detail = read('src/app/profile/orders/[id].tsx');
+  const detail = read('src/features/orders/screens/order-detail-screen.tsx');
 
   it('declares ReviewData with the per-product linkage columns', () => {
     // The auxiliary type must carry product_id / shipment_id so the gate can
@@ -50,9 +50,7 @@ describe('orders detail screen V2 per-product review guards', () => {
   });
 
   it('imports the pure canReviewProduct gate', () => {
-    expect(detail).toContain(
-      "from '../../../features/orders/logic/can-review-product'",
-    );
+    expect(detail).toContain("from '../logic/can-review-product'");
   });
 
   it('replaces the V1 single boolean canReview with the per-product gate', () => {

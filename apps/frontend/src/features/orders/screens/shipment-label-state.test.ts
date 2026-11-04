@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { resolveShipmentLabelState } from '../../src/features/orders/logic/shipment-label-state';
+import { resolveShipmentLabelState } from '../logic/shipment-label-state';
 
 // Prettier may re-wrap the source files read below; compare without layout.
 const compact = (source: string) =>
@@ -25,7 +25,7 @@ describe('persisted shipment label state', () => {
       readFileSync(
         join(
           process.cwd(),
-          'apps/frontend/src/app/profile/orders/prepare/[id].tsx',
+          'apps/frontend/src/features/orders/screens/prepare-shipment-screen.tsx',
         ),
         'utf8',
       ),
