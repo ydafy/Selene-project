@@ -1,13 +1,13 @@
 /**
- * @file core/hooks/useSearchProducts.ts
+ * @file features/search/hooks/use-search-products.ts
  * @description Motor de búsqueda principal de Selene. Maneja paginación infinita,
  * Full Text Search y filtrado avanzado sobre columnas JSONB.
  */
 
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { supabase } from '../../../../shared/lib/supabase';
+import { supabase } from '../../../shared/lib/supabase';
 import { PublicProduct } from '@selene/types';
-import { BUYER_LISTED_STATUSES } from '../../../../shared/utils/product-listing-status';
+import { BUYER_LISTED_STATUSES } from '../../../shared/utils/product-listing-status';
 
 export type SearchFilters = {
   query?: string;

@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { Box } from '../../shared/ui/base';
 // Usamos GlobalHeader en lugar de ScreenHeader + IconButton manual
 import { GlobalHeader } from '../../shared/ui/global-header';
-import { CategoryCard } from '../../components/features/search/CategoryCard';
+import { CategoryCard } from '../../features/search/components/category-card';
 import { ScreenHeader } from '@/shared/ui/screen-header';
 
 import { useSellStore } from '../../core/store/useSellStore';

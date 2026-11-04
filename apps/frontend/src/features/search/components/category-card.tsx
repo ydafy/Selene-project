@@ -5,7 +5,7 @@ import MaterialCommunityIcons, {
 import { useTheme } from '@shopify/restyle';
 import { Box, Text } from '../../../shared/ui/base';
 import { Theme } from '../../../shared/theme';
-import { buildCategoryCardA11yProps } from './categoryA11y';
+import { buildCategoryCardA11yProps } from '../logic/category-a11y';
 
 const { width } = Dimensions.get('window');
 // We calculate the width for 2 columns with spacing.

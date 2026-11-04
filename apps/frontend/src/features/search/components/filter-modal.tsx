@@ -1,5 +1,5 @@
 /**
- * @file components/features/search/FilterModal.tsx
+ * @file features/search/components/filter-modal.tsx
  * @description Modal de filtrado avanzado con carga dinámica de especificaciones por categoría.
  * Implementa lógica de persistencia temporal y validaciones de integridad de datos (MVP++).
  */
@@ -28,14 +28,14 @@ import { Box, Text as ThemedText } from '../../../shared/ui/base';
 import { PrimaryButton } from '../../../shared/ui/primary-button';
 import { AppChip } from '../../../shared/ui/app-chip';
 import { Theme } from '../../../shared/theme';
-import { useCategoryConfig } from '../search/hooks/useCategoryConfig';
+import { useCategoryConfig } from '../hooks/use-category-config';
 import {
   PRODUCT_CONDITIONS,
   PRICE_LIMITS,
   DEFAULT_MAX_PRICE,
 } from '../../../shared/config/product-data';
-import { PriceRangeFilter } from './filters/PriceRangeFilter';
-import { FilterSection } from './filters/FilterSection';
+import { PriceRangeFilter } from './price-range-filter';
+import { FilterSection } from './filter-section';
 
 // Wrapper memoizado para secciones dinámicas de specs.
 // Asigna un onToggle estable por specId, desbloqueando memo en FilterSection.

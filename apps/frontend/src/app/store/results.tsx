@@ -29,12 +29,12 @@ import { ProductCardSkeleton } from '../../shared/ui/product/product-card-skelet
 import {
   FilterModal,
   FilterState,
-} from '../../components/features/search/FilterModal';
-import { ResultsFilterBar } from '../../components/features/search/filters/ResultsFilterBar';
+} from '../../features/search/components/filter-modal';
+import { ResultsFilterBar } from '../../features/search/components/results-filter-bar';
 import {
   useSearchProducts,
   SearchFilters,
-} from '../../components/features/search/hooks/useSearchProducts';
+} from '../../features/search/hooks/use-search-products';
 import { getMasonryItemHeight } from '../../shared/config/layout';
 import { Theme } from '../../shared/theme';
 import { Product, PublicProduct } from '@selene/types';
