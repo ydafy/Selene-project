@@ -104,6 +104,7 @@ Run from the repository or worktree root. `package.json` is the source of truth.
 
 ## How we work
 
+- Speak up. The maintainer is new to this work and relies on your judgment: when you notice a problem, a risk, a better practice, or a tool that would help (in the task or near it), say so briefly with a recommendation and ask for a decision. Do not wait to be asked, and do not act on it before approval; record it as a "Finding" or "Idea" issue when it is not done now.
 - Structure, naming, and test placement: `docs/conventions.md`.
 - Track work by its shape. One feature: `odd/tasks/<feature>.md`. Items with an order or dependencies across sessions or worktrees: a roadmap (`docs/roadmaps.md`), which you propose and the maintainer approves before you create it. Independent items: separate issues.
 - If an unrelated failure blocks verification, report the command and output and stop for a decision. Never weaken a test to get green.
