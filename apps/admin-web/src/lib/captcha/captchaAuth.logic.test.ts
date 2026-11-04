@@ -33,7 +33,12 @@ describe('signInWithPasswordCaptcha', () => {
 
   it('sends no token when CAPTCHA is not configured', async () => {
     const { auth, calls } = makeAuth();
-    await signInWithPasswordCaptcha(auth, async () => undefined, 'a@b.mx', 'pw');
+    await signInWithPasswordCaptcha(
+      auth,
+      async () => undefined,
+      'a@b.mx',
+      'pw',
+    );
     expect(calls).toEqual([
       { email: 'a@b.mx', password: 'pw', options: { captchaToken: undefined } },
     ]);
@@ -55,12 +60,22 @@ describe('loginErrorMessage', () => {
   it('maps captcha codes, local or from the server, to Spanish', () => {
     const failed = loginErrorMessage(new CaptchaError(CAPTCHA_FAILED_CODE));
     expect(failed).toContain('verificación');
-    expect(loginErrorMessage(Object.assign(new Error('x'), { code: 'captcha_failed' }))).toBe(failed);
-    expect(loginErrorMessage(new CaptchaError(CAPTCHA_CANCELLED_CODE))).not.toBe(failed);
+    expect(
+      loginErrorMessage(
+        Object.assign(new Error('x'), { code: 'captcha_failed' }),
+      ),
+    ).toBe(failed);
+    expect(
+      loginErrorMessage(new CaptchaError(CAPTCHA_CANCELLED_CODE)),
+    ).not.toBe(failed);
   });
 
   it('keeps other messages and the generic fallback', () => {
-    expect(loginErrorMessage(new Error('Invalid login credentials'))).toBe('Invalid login credentials');
-    expect(loginErrorMessage('boom')).toBe('Error inesperado al iniciar sesión.');
+    expect(loginErrorMessage(new Error('Invalid login credentials'))).toBe(
+      'Invalid login credentials',
+    );
+    expect(loginErrorMessage('boom')).toBe(
+      'Error inesperado al iniciar sesión.',
+    );
   });
 });

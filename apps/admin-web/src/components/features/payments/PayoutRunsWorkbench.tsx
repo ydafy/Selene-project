@@ -39,7 +39,10 @@ interface PayoutRunsWorkbenchProps {
   isLoading?: boolean;
   isRetrying: boolean;
   isReleasing: boolean;
-  onRetryFailedPayout: (runId: string, expected?: ReleaseQueueRun | ReleaseQueueActionRequiredRun) => Promise<void>;
+  onRetryFailedPayout: (
+    runId: string,
+    expected?: ReleaseQueueRun | ReleaseQueueActionRequiredRun,
+  ) => Promise<void>;
 }
 const batchControl = `rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-platinum transition-colors hover:border-lion/50 disabled:opacity-40 ${focus}`;
 const money = (cents: number) => formatCurrency(centsToMoney(cents));
@@ -91,18 +94,40 @@ export const PayoutRunsWorkbench = ({
   >(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [page, setPage] = useState(0);
-  const [retainedRuns, setRetainedRuns] = useState<(ReleaseQueueRun | ReleaseQueueActionRequiredRun)[]>([]);
+  const [retainedRuns, setRetainedRuns] = useState<
+    (ReleaseQueueRun | ReleaseQueueActionRequiredRun)[]
+  >([]);
   const [selecting, setSelecting] = useState(false);
-  const [retainedPageRevision, setRetainedPageRevision] = useState<string | null>(null);
-  const allRuns = !pagination ? runs : retainedPageRevision === pageRevision
-    ? [...retainedRuns, ...runs.filter((item) => !retainedRuns.some((next) => next.runId === item.runId))]
-    : [...retainedRuns.filter((item) => !runs.some((next) => next.runId === item.runId)), ...runs];
+  const [retainedPageRevision, setRetainedPageRevision] = useState<
+    string | null
+  >(null);
+  const allRuns = !pagination
+    ? runs
+    : retainedPageRevision === pageRevision
+      ? [
+          ...retainedRuns,
+          ...runs.filter(
+            (item) => !retainedRuns.some((next) => next.runId === item.runId),
+          ),
+        ]
+      : [
+          ...retainedRuns.filter(
+            (item) => !runs.some((next) => next.runId === item.runId),
+          ),
+          ...runs,
+        ];
   const [outcome, setOutcome] = useState<string | null>(null);
   const [retryError, setRetryError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const inFlight = useRef(false);
   const confirmationRef = useRef<HTMLElement>(null);
-  const latest = useRef({ runs: allRuns, mode, isLoading, isRetrying, isReleasing });
+  const latest = useRef({
+    runs: allRuns,
+    mode,
+    isLoading,
+    isRetrying,
+    isReleasing,
+  });
   const activeReview = useRef<typeof review>(null);
   const setReview = (next: typeof review) => {
     activeReview.current = next;
@@ -130,14 +155,15 @@ export const PayoutRunsWorkbench = ({
   const selectedRuns = allRuns.filter(
     (item) => selected.includes(item.runId) && eligible(item),
   );
-  const currentPage = pagination?.page ?? Math.min(
-    page,
-    Math.max(0, Math.ceil(runs.length / PAYOUT_PAGE_SIZE) - 1),
-  );
-  const visible = pagination ? runs : runs.slice(
-    currentPage * PAYOUT_PAGE_SIZE,
-    (currentPage + 1) * PAYOUT_PAGE_SIZE,
-  );
+  const currentPage =
+    pagination?.page ??
+    Math.min(page, Math.max(0, Math.ceil(runs.length / PAYOUT_PAGE_SIZE) - 1));
+  const visible = pagination
+    ? runs
+    : runs.slice(
+        currentPage * PAYOUT_PAGE_SIZE,
+        (currentPage + 1) * PAYOUT_PAGE_SIZE,
+      );
   const usesModal = mode !== 'processing';
   const run = usesModal
     ? allRuns.find((item) => item.runId === focusedRunId)
@@ -151,14 +177,21 @@ export const PayoutRunsWorkbench = ({
       ),
     );
   useLayoutEffect(() => {
-    latest.current = { runs: allRuns, mode, isLoading, isRetrying, isReleasing };
+    latest.current = {
+      runs: allRuns,
+      mode,
+      isLoading,
+      isRetrying,
+      isReleasing,
+    };
     if (!isReviewed) activeReview.current = null;
   }, [allRuns, mode, isLoading, isRetrying, isReleasing, isReviewed]);
   useLayoutEffect(() => {
     if (isReviewed && focusedRunId === null) confirmationRef.current?.focus();
   }, [isReviewed, focusedRunId]);
   if (review && !isReviewed && !submitting) setReviewState(null);
-  const busy = isLoading || isRetrying || isReleasing || submitting || selecting;
+  const busy =
+    isLoading || isRetrying || isReleasing || submitting || selecting;
   const Icon =
     mode === 'action-required'
       ? AlertTriangle
@@ -302,7 +335,9 @@ export const PayoutRunsWorkbench = ({
       >
         {mode === 'history' ? (
           <div className="text-sm text-platinum">
-            <p className="mb-1 text-xs text-blue-light">Fecha de pago observada</p>
+            <p className="mb-1 text-xs text-blue-light">
+              Fecha de pago observada
+            </p>
             {paymentTime(run)}
           </div>
         ) : null}
@@ -508,10 +543,15 @@ export const PayoutRunsWorkbench = ({
           selection={
             <>
               {selectedRuns.length} seleccionadas ·{' '}
-              {pagination ? `${pagination.totalGroups} ejecuciones en la consulta` : <>
-                {runs.filter(eligible).length} reintentables ·{' '}
-                {runs.filter((item) => !eligible(item)).length} requieren revisión
-              </>}
+              {pagination ? (
+                `${pagination.totalGroups} ejecuciones en la consulta`
+              ) : (
+                <>
+                  {runs.filter(eligible).length} reintentables ·{' '}
+                  {runs.filter((item) => !eligible(item)).length} requieren
+                  revisión
+                </>
+              )}
             </>
           }
           description="Solo se incluyen dispersiones con reintento disponible en esta consulta. El servidor verifica el fallo y el retorno de fondos; reintentar no confirma la llegada al banco."
@@ -524,7 +564,12 @@ export const PayoutRunsWorkbench = ({
                 onClick={async () => {
                   if (busy || inFlight.current) return;
                   setReview(null);
-                  if (!onSelectAll) { setSelected(runs.filter(eligible).map((item) => item.runId)); return; }
+                  if (!onSelectAll) {
+                    setSelected(
+                      runs.filter(eligible).map((item) => item.runId),
+                    );
+                    return;
+                  }
                   inFlight.current = true;
                   setSelecting(true);
                   onBusyChange?.(true);
@@ -535,8 +580,16 @@ export const PayoutRunsWorkbench = ({
                     setSelected(complete.map((item) => item.runId));
                     setRetryError(null);
                   } catch (error) {
-                    setRetryError(error instanceof Error ? error.message : 'No se pudo completar la selección.');
-                  } finally { inFlight.current = false; setSelecting(false); onBusyChange?.(false); }
+                    setRetryError(
+                      error instanceof Error
+                        ? error.message
+                        : 'No se pudo completar la selección.',
+                    );
+                  } finally {
+                    inFlight.current = false;
+                    setSelecting(false);
+                    onBusyChange?.(false);
+                  }
                 }}
               >
                 Seleccionar todos los reintentables
@@ -602,7 +655,9 @@ export const PayoutRunsWorkbench = ({
             <div className="flex items-center justify-between border-b border-white/5 px-5 py-4">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-light">
                 Ejecuciones{' '}
-                <span className="ml-2 text-platinum">{pagination?.totalGroups ?? runs.length}</span>
+                <span className="ml-2 text-platinum">
+                  {pagination?.totalGroups ?? runs.length}
+                </span>
               </p>
               <Icon size={16} className={tone} />
             </div>

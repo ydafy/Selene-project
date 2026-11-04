@@ -218,7 +218,8 @@ export function createTrackShipmentsHandler({
       if (
         deadline.signal.aborted ||
         error instanceof TrackingDeadlineExceededError ||
-        (error instanceof Error && error.message === 'TRACKING_DEADLINE_EXCEEDED')
+        (error instanceof Error &&
+          error.message === 'TRACKING_DEADLINE_EXCEEDED')
       ) {
         return json({ error: 'TRACKING_DEADLINE_EXCEEDED' }, 504);
       }

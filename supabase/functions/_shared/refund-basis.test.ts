@@ -60,7 +60,12 @@ describe('allocateCancellationLossCents', () => {
 
     expect(allocation?.get('ship-a')).toBe(10_000);
     expect(allocation?.get('ship-b')).toBe(10_000);
-    expect(Array.from(allocation?.values() ?? []).reduce((sum, value) => sum + value, 0)).toBe(20_000);
+    expect(
+      Array.from(allocation?.values() ?? []).reduce(
+        (sum, value) => sum + value,
+        0,
+      ),
+    ).toBe(20_000);
   });
 
   it('weights the actual fee by buyer refunds and excludes seller shipping reserve', () => {
@@ -102,7 +107,9 @@ describe('computeShipmentRefundAmountCents: last shipment rounding remainder', (
     { price_at_purchase: 6_000, shipping_amount: null, shipment_id: 'b' },
     { price_at_purchase: 5_000, shipping_amount: null, shipment_id: 'c' },
   ];
-  const lastShipment = [{ price_at_purchase: 5_000, shipping_amount: null, shipment_id: 'c' }];
+  const lastShipment = [
+    { price_at_purchase: 5_000, shipping_amount: null, shipment_id: 'c' },
+  ];
 
   it('refunds exactly what is left of the charge when only rounding exceeds it', () => {
     expect(
@@ -140,8 +147,20 @@ describe('computeShipmentRefundAmountCents: last shipment rounding remainder', (
   it('keeps a single-shipment order exact: one missing cent is not rounding', () => {
     expect(() =>
       computeShipmentRefundAmountCents({
-        shipmentItems: [{ price_at_purchase: 10_000, shipping_amount: null, shipment_id: 'only' }],
-        orderItems: [{ price_at_purchase: 10_000, shipping_amount: null, shipment_id: 'only' }],
+        shipmentItems: [
+          {
+            price_at_purchase: 10_000,
+            shipping_amount: null,
+            shipment_id: 'only',
+          },
+        ],
+        orderItems: [
+          {
+            price_at_purchase: 10_000,
+            shipping_amount: null,
+            shipment_id: 'only',
+          },
+        ],
         orderChargeCents: 1_000_350,
         remainingRefundableCents: 1_000_349,
       }),
@@ -151,7 +170,9 @@ describe('computeShipmentRefundAmountCents: last shipment rounding remainder', (
   it('never refunds less than the shipment subtotal', () => {
     expect(() =>
       computeShipmentRefundAmountCents({
-        shipmentItems: [{ price_at_purchase: 10, shipping_amount: null, shipment_id: 'x' }],
+        shipmentItems: [
+          { price_at_purchase: 10, shipping_amount: null, shipment_id: 'x' },
+        ],
         orderItems: [
           { price_at_purchase: 10, shipping_amount: null, shipment_id: 'x' },
           { price_at_purchase: 10, shipping_amount: null, shipment_id: 'y' },

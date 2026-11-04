@@ -98,15 +98,18 @@ async function run() {
           ('${ids.shipment}','${ids.order}','${ids.seller}','paid'),
           ('${ids.sibling}','${ids.order}','${ids.seller}','paid');
       `);
-      const migration = readdirSync(`${root}supabase/migrations/archive`).find((name) =>
-        name.endsWith('_shipment_cancellation_coordination.sql'),
+      const migration = readdirSync(`${root}supabase/migrations/archive`).find(
+        (name) => name.endsWith('_shipment_cancellation_coordination.sql'),
       );
       if (existsSync(canonical)) {
         assert.ok(migration, 'CLI-created migration must exist');
         const source = readFileSync(canonical, 'utf8');
         assert.equal(
           source,
-          readFileSync(`${root}supabase/migrations/archive/${migration}`, 'utf8'),
+          readFileSync(
+            `${root}supabase/migrations/archive/${migration}`,
+            'utf8',
+          ),
           'canonical SQL and migration must be identical',
         );
         await a.unsafe(source);
@@ -988,9 +991,10 @@ async function run() {
         return observed;
       };
       const baselineLabels = await preservation();
-      const labelMigrations = readdirSync(`${root}supabase/migrations/archive`).filter(
-        (name) =>
-          name.endsWith('_shipment_cancellation_label_coordination.sql'),
+      const labelMigrations = readdirSync(
+        `${root}supabase/migrations/archive`,
+      ).filter((name) =>
+        name.endsWith('_shipment_cancellation_label_coordination.sql'),
       );
       assert.ok(labelMigrations.length <= 1);
       if (labelMigrations.length)

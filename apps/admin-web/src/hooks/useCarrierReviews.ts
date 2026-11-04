@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { ReviewResolution } from '../lib/carrierReviews';
-import { fetchCarrierReviews, resolveCarrierReview } from '../services/carrierReviews';
+import {
+  fetchCarrierReviews,
+  resolveCarrierReview,
+} from '../services/carrierReviews';
 
 export const CARRIER_REVIEWS_KEY = ['carrier-reviews'] as const;
 
@@ -24,11 +27,20 @@ export function useCarrierReviews() {
 export function useResolveCarrierReview() {
   const queryClient = useQueryClient();
   const mutation = useMutation({
-    mutationFn: ({ shipmentId, resolution, note }: { shipmentId: string; resolution: ReviewResolution; note: string }) =>
-      resolveCarrierReview(shipmentId, resolution, note),
+    mutationFn: ({
+      shipmentId,
+      resolution,
+      note,
+    }: {
+      shipmentId: string;
+      resolution: ReviewResolution;
+      note: string;
+    }) => resolveCarrierReview(shipmentId, resolution, note),
     onSuccess: async (result) => {
       if (result.resolution === 'refund_approved') {
-        toast.success('Reembolso aprobado. El próximo ciclo automático lo ejecutará.');
+        toast.success(
+          'Reembolso aprobado. El próximo ciclo automático lo ejecutará.',
+        );
       } else {
         toast.success('Cancelación cerrada sin reembolso');
       }

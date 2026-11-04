@@ -16,7 +16,8 @@ import { z } from '../_shared/zod-runtime.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type',
 };
 const JSON_HEADERS = { ...CORS_HEADERS, 'Content-Type': 'application/json' };
 
@@ -31,14 +32,19 @@ const noteSchema = z.string().trim().min(1).max(MAX_NOTE_LENGTH);
 const referenceSchema = z.string().trim().min(1).max(MAX_REFERENCE_LENGTH);
 // The cost is integer cents, the unit the database stores; pesos with decimals are rejected here.
 const costSchema = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
-const labelUrlSchema = z.string().trim().min(1).max(MAX_URL_LENGTH).refine((value) => {
-  try {
-    const protocol = new URL(value).protocol;
-    return protocol === 'https:' || protocol === 'http:';
-  } catch {
-    return false;
-  }
-});
+const labelUrlSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(MAX_URL_LENGTH)
+  .refine((value) => {
+    try {
+      const protocol = new URL(value).protocol;
+      return protocol === 'https:' || protocol === 'http:';
+    } catch {
+      return false;
+    }
+  });
 
 export type ResolveShipmentLabelReconciliationInput = {
   shipmentId: string;
@@ -59,13 +65,18 @@ export type ResolveShipmentLabelReconciliationDeps = {
   resolve: (
     input: ResolveShipmentLabelReconciliationInput,
   ) => Promise<{ data: unknown; error: { message: string } | null }>;
-  log: (level: 'INFO' | 'WARN' | 'ERROR', msg: string, data?: Record<string, unknown>) => unknown;
+  log: (
+    level: 'INFO' | 'WARN' | 'ERROR',
+    msg: string,
+    data?: Record<string, unknown>,
+  ) => unknown;
 };
 
 const respond = (status: number, body: Record<string, unknown>): Response =>
   new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
 
-const fail = (status: number, code: string): Response => respond(status, { error: code });
+const fail = (status: number, code: string): Response =>
+  respond(status, { error: code });
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -75,24 +86,45 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
 /** Stable code for the RPC errors a caller can act on; everything else is INTERNAL_ERROR. */
 const RPC_ERRORS: readonly { sql: string; status: number; code: string }[] = [
   { sql: 'ADMIN_REQUIRED', status: 403, code: 'ADMIN_ONLY' },
-  { sql: 'INVALID_RESOLUTION_NOTE', status: 422, code: 'INVALID_RESOLUTION_NOTE' },
+  {
+    sql: 'INVALID_RESOLUTION_NOTE',
+    status: 422,
+    code: 'INVALID_RESOLUTION_NOTE',
+  },
   { sql: 'INVALID_RESOLUTION', status: 422, code: 'INVALID_RESOLUTION' },
   { sql: 'SHIPMENT_NOT_FOUND', status: 404, code: 'SHIPMENT_NOT_FOUND' },
-  { sql: 'INVALID_PROVIDER_RESULT', status: 422, code: 'INVALID_PROVIDER_RESULT' },
-  { sql: 'UNEXPECTED_PROVIDER_FIELDS', status: 422, code: 'UNEXPECTED_PROVIDER_FIELDS' },
+  {
+    sql: 'INVALID_PROVIDER_RESULT',
+    status: 422,
+    code: 'INVALID_PROVIDER_RESULT',
+  },
+  {
+    sql: 'UNEXPECTED_PROVIDER_FIELDS',
+    status: 422,
+    code: 'UNEXPECTED_PROVIDER_FIELDS',
+  },
   // The print settings are server configuration, so the caller cannot fix it: a 5xx reaches Sentry.
-  { sql: 'LABEL_SETTINGS_MISSING', status: 500, code: 'LABEL_SETTINGS_MISSING' },
+  {
+    sql: 'LABEL_SETTINGS_MISSING',
+    status: 500,
+    code: 'LABEL_SETTINGS_MISSING',
+  },
 ];
 
 function mapRpcError(message: string): { status: number; code: string } | null {
   return RPC_ERRORS.find((e) => message.includes(e.sql)) ?? null;
 }
 
-function parseResult(data: unknown): { status: number; body: Record<string, unknown> } | null {
+function parseResult(
+  data: unknown,
+): { status: number; body: Record<string, unknown> } | null {
   const result = asRecord(data);
   if (
-    !result || typeof result.shipment_id !== 'string' || result.shipment_id === '' ||
-    typeof result.status !== 'string' || typeof result.label_generation_state !== 'string'
+    !result ||
+    typeof result.shipment_id !== 'string' ||
+    result.shipment_id === '' ||
+    typeof result.status !== 'string' ||
+    typeof result.label_generation_state !== 'string'
   ) {
     return null;
   }
@@ -104,8 +136,14 @@ function parseResult(data: unknown): { status: number; body: Record<string, unkn
   if (result.result === 'already_resolved') {
     return { status: 409, body: { error: 'ALREADY_RESOLVED', ...state } };
   }
-  if (result.result === 'resolved' && (result.resolution === 'label_found' || result.resolution === 'no_label')) {
-    return { status: 200, body: { result: 'resolved', resolution: result.resolution, ...state } };
+  if (
+    result.result === 'resolved' &&
+    (result.resolution === 'label_found' || result.resolution === 'no_label')
+  ) {
+    return {
+      status: 200,
+      body: { result: 'resolved', resolution: result.resolution, ...state },
+    };
   }
   return null;
 }
@@ -120,11 +158,23 @@ function parseProviderFields(
   resolution: 'label_found' | 'no_label',
   body: Record<string, unknown> | null,
 ): { fields: ProviderFields } | { code: string } {
-  const raw = [body?.envia_shipment_id, body?.tracking_number, body?.label_url, body?.provider_cost_cents];
+  const raw = [
+    body?.envia_shipment_id,
+    body?.tracking_number,
+    body?.label_url,
+    body?.provider_cost_cents,
+  ];
   if (resolution === 'no_label') {
     return raw.some((v) => v !== undefined && v !== null)
       ? { code: 'UNEXPECTED_PROVIDER_FIELDS' }
-      : { fields: { enviaShipmentId: null, trackingNumber: null, labelUrl: null, providerCostCents: null } };
+      : {
+          fields: {
+            enviaShipmentId: null,
+            trackingNumber: null,
+            labelUrl: null,
+            providerCostCents: null,
+          },
+        };
   }
   const envia = referenceSchema.safeParse(body?.envia_shipment_id);
   const tracking = referenceSchema.safeParse(body?.tracking_number);
@@ -147,12 +197,15 @@ export function createResolveShipmentLabelReconciliationHandler(
   deps: ResolveShipmentLabelReconciliationDeps,
 ) {
   return async (req: Request): Promise<Response> => {
-    if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
+    if (req.method === 'OPTIONS')
+      return new Response('ok', { headers: CORS_HEADERS });
     if (req.method !== 'POST') return fail(405, 'METHOD_NOT_ALLOWED');
 
     try {
       const authorization = req.headers.get('Authorization') ?? '';
-      const token = authorization.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
+      const token = authorization.startsWith('Bearer ')
+        ? authorization.slice(7).trim()
+        : '';
       if (!token) return fail(401, 'AUTH_REQUIRED');
 
       const adminId = await deps.getUserId(token);
@@ -183,20 +236,28 @@ export function createResolveShipmentLabelReconciliationHandler(
           error: error.message,
         });
         const mapped = mapRpcError(error.message);
-        return mapped ? fail(mapped.status, mapped.code) : fail(500, 'INTERNAL_ERROR');
+        return mapped
+          ? fail(mapped.status, mapped.code)
+          : fail(500, 'INTERNAL_ERROR');
       }
 
       const result = parseResult(data);
       if (!result) {
-        deps.log('ERROR', 'Shipment label reconciliation returned an unusable result', {
-          shipmentId: shipmentId.data,
-        });
+        deps.log(
+          'ERROR',
+          'Shipment label reconciliation returned an unusable result',
+          {
+            shipmentId: shipmentId.data,
+          },
+        );
         return fail(500, 'INTERNAL_ERROR');
       }
 
       deps.log(
         result.status === 200 ? 'INFO' : 'WARN',
-        result.status === 200 ? 'Shipment label reconciliation resolved' : 'Shipment label reconciliation already resolved',
+        result.status === 200
+          ? 'Shipment label reconciliation resolved'
+          : 'Shipment label reconciliation already resolved',
         { shipmentId: shipmentId.data, adminId, resolution: resolution.data },
       );
       return respond(result.status, result.body);

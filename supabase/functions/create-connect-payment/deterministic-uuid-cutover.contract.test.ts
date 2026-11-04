@@ -20,9 +20,7 @@ describe('deterministic checkout UUID cutover contract', () => {
     expect(CHECKOUT_UUID_NAMESPACE).toBe(
       '7b0f4a20-5c30-4e0f-8f84-9a9f4b2e19c1',
     );
-    expect(builderSource).toContain(
-      'selene_order_group:${idempotencyKey}',
-    );
+    expect(builderSource).toContain('selene_order_group:${idempotencyKey}');
     expect(builderSource).toContain(
       'selene_shipment:${idempotencyKey}:product:${productId}',
     );
@@ -60,6 +58,8 @@ describe('deterministic checkout UUID cutover contract', () => {
       'supabase/queries/maintenance/reset-prelaunch-order-test-data.sql',
     );
     expect(runbook).toContain('Do not retry any pre-cutover key.');
-    expect(runbook).toContain('A production migration requires a separate approved');
+    expect(runbook).toContain(
+      'A production migration requires a separate approved',
+    );
   });
 });

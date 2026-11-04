@@ -92,20 +92,20 @@ The buyer's payment remains held while the order is fulfilled. Once the buyer co
 
 ### Buyer Experience
 
-* 🔎 **Product Discovery** — Search, categories, filters, and product browsing
-* 🛒 **Shopping & Checkout** — Cart, checkout, and purchase flows
-* ❤️ **Favorites** — Save products and track potential purchases
-* 📦 **Order Management** — Track orders, shipping, and delivery status
+- 🔎 **Product Discovery** — Search, categories, filters, and product browsing
+- 🛒 **Shopping & Checkout** — Cart, checkout, and purchase flows
+- ❤️ **Favorites** — Save products and track potential purchases
+- 📦 **Order Management** — Track orders, shipping, and delivery status
 
 ### Seller Experience
 
-* 🏷️ **Product Listings** — Publish products instantly and manage listings
-* 🔐 **Product Verification** — Submit products for verification before they become available for purchase
+- 🏷️ **Product Listings** — Publish products instantly and manage listings
+- 🔐 **Product Verification** — Submit products for verification before they become available for purchase
 
 ### Marketplace Operations
 
-* 💳 **Escrow Payments** — Hold buyer payments until order completion
-* ⚙️ **Admin Operations** — Manage verification, orders, payment releases, disputes, marketplace activity and users management
+- 💳 **Escrow Payments** — Hold buyer payments until order completion
+- ⚙️ **Admin Operations** — Manage verification, orders, payment releases, disputes, marketplace activity and users management
 
 ---
 
@@ -165,14 +165,16 @@ The mobile application brings together the main buyer and seller experiences, fr
 
 ## Project Highlights
 
-* **Multi-seller orders** — Support for carts containing products from different sellers
-* **Product verification** — Separate listing and verification workflows
-* **Escrow-based payments** — Buyer payments are held until order confirmation
-* **Shipping operations** — Seller shipping and order fulfillment workflows
-- **Payments** — Buyer payments processed through Stripe
-- **Seller payouts** — Seller payouts handled through Stripe Connect after order completion
-* **Dispute management** — Centralized handling of transaction disputes
-* **Marketplace operations** — Administrative dashboard for managing the platform
+- **Multi-seller orders** — Support for carts containing products from different sellers
+- **Product verification** — Separate listing and verification workflows
+- **Escrow-based payments** — Buyer payments are held until order confirmation
+- **Shipping operations** — Seller shipping and order fulfillment workflows
+
+* **Payments** — Buyer payments processed through Stripe
+* **Seller payouts** — Seller payouts handled through Stripe Connect after order completion
+
+- **Dispute management** — Centralized handling of transaction disputes
+- **Marketplace operations** — Administrative dashboard for managing the platform
 
 ---
 

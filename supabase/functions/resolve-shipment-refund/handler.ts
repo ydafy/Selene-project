@@ -11,7 +11,8 @@ import { isActiveAdmin } from '../_shared/admin-auth.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type',
 };
 const JSON_HEADERS = { ...CORS_HEADERS, 'Content-Type': 'application/json' };
 
@@ -32,7 +33,11 @@ export type ResolveShipmentRefundDeps = {
   resolveRefund: (
     input: ResolveShipmentRefundInput,
   ) => Promise<{ data: unknown; error: { message: string } | null }>;
-  log: (level: 'INFO' | 'WARN' | 'ERROR', msg: string, data?: Record<string, unknown>) => unknown;
+  log: (
+    level: 'INFO' | 'WARN' | 'ERROR',
+    msg: string,
+    data?: Record<string, unknown>,
+  ) => unknown;
 };
 
 export { isActiveAdmin };
@@ -40,7 +45,8 @@ export { isActiveAdmin };
 const respond = (status: number, body: Record<string, unknown>): Response =>
   new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
 
-const fail = (status: number, code: string): Response => respond(status, { error: code });
+const fail = (status: number, code: string): Response =>
+  respond(status, { error: code });
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -49,7 +55,8 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
 
 /** Stable code for the RPC errors a caller can act on; everything else is INTERNAL_ERROR. */
 function mapRpcError(message: string): { status: number; code: string } | null {
-  if (message.includes('REFUND_NOT_RESOLVABLE')) return { status: 409, code: 'REFUND_NOT_RESOLVABLE' };
+  if (message.includes('REFUND_NOT_RESOLVABLE'))
+    return { status: 409, code: 'REFUND_NOT_RESOLVABLE' };
   if (message.includes('SHIPMENT_STATUS_UNEXPECTED')) {
     return { status: 409, code: 'SHIPMENT_STATUS_UNEXPECTED' };
   }
@@ -79,14 +86,19 @@ function parseResult(data: unknown): Record<string, unknown> | null {
   };
 }
 
-export function createResolveShipmentRefundHandler(deps: ResolveShipmentRefundDeps) {
+export function createResolveShipmentRefundHandler(
+  deps: ResolveShipmentRefundDeps,
+) {
   return async (req: Request): Promise<Response> => {
-    if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
+    if (req.method === 'OPTIONS')
+      return new Response('ok', { headers: CORS_HEADERS });
     if (req.method !== 'POST') return fail(405, 'METHOD_NOT_ALLOWED');
 
     try {
       const authorization = req.headers.get('Authorization') ?? '';
-      const token = authorization.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
+      const token = authorization.startsWith('Bearer ')
+        ? authorization.slice(7).trim()
+        : '';
       if (!token) return fail(401, 'AUTH_REQUIRED');
 
       const adminId = await deps.getUserId(token);
@@ -99,21 +111,35 @@ export function createResolveShipmentRefundHandler(deps: ResolveShipmentRefundDe
       if (typeof shipmentId !== 'string' || !UUID.test(shipmentId)) {
         return fail(422, 'INVALID_SHIPMENT_ID');
       }
-      const reference = typeof body?.reference === 'string' ? body.reference.trim() : '';
+      const reference =
+        typeof body?.reference === 'string' ? body.reference.trim() : '';
       if (reference === '' || reference.length > MAX_REFERENCE_LENGTH) {
         return fail(422, 'INVALID_RESOLUTION_REFERENCE');
       }
 
-      const { data, error } = await deps.resolveRefund({ shipmentId, adminId, reference });
+      const { data, error } = await deps.resolveRefund({
+        shipmentId,
+        adminId,
+        reference,
+      });
       if (error) {
-        deps.log('ERROR', 'Shipment refund resolution failed', { shipmentId, error: error.message });
+        deps.log('ERROR', 'Shipment refund resolution failed', {
+          shipmentId,
+          error: error.message,
+        });
         const mapped = mapRpcError(error.message);
-        return mapped ? fail(mapped.status, mapped.code) : fail(500, 'INTERNAL_ERROR');
+        return mapped
+          ? fail(mapped.status, mapped.code)
+          : fail(500, 'INTERNAL_ERROR');
       }
 
       const result = parseResult(data);
       if (!result) {
-        deps.log('ERROR', 'Shipment refund resolution returned an unusable result', { shipmentId });
+        deps.log(
+          'ERROR',
+          'Shipment refund resolution returned an unusable result',
+          { shipmentId },
+        );
         return fail(500, 'INTERNAL_ERROR');
       }
 

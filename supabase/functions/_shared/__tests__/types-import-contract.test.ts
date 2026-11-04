@@ -8,7 +8,8 @@ const TYPES = join(FUNCTIONS, '..', '..', 'packages', 'types', 'src');
 const sources = (dir: string): string[] =>
   readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
-    if (statSync(path).isDirectory()) return name === '__tests__' ? [] : sources(path);
+    if (statSync(path).isDirectory())
+      return name === '__tests__' ? [] : sources(path);
     return name.endsWith('.ts') && !name.endsWith('.test.ts') ? [path] : [];
   });
 

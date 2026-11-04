@@ -35,7 +35,8 @@ const readSql = (relativePath: string) =>
  *    seller-grouped shipments.
  */
 
-const RPC_PATH = 'supabase/queries/orders/fn_create_shipments_from_single_payment.sql';
+const RPC_PATH =
+  'supabase/queries/orders/fn_create_shipments_from_single_payment.sql';
 
 describe('single-modal shipment RPC SQL guards', () => {
   const sql = readSql(RPC_PATH);
@@ -57,7 +58,7 @@ describe('single-modal shipment RPC SQL guards', () => {
 
   it('is idempotent on stripe_payment_intent_id (looks up an existing order first)', () => {
     expect(sql).toContain(
-      "WHERE stripe_payment_intent_id = p_stripe_payment_intent_id",
+      'WHERE stripe_payment_intent_id = p_stripe_payment_intent_id',
     );
     expect(sql).toContain('FOR UPDATE');
   });
@@ -76,7 +77,7 @@ describe('single-modal shipment RPC SQL guards', () => {
     // EXCEPTION WHEN OTHERS THEN handler, so a failed allocation leaves the
     // shell recoverable for admin ops. (We match the handler start, not bare
     // "EXCEPTION", which would falsely match RAISE EXCEPTION lines.)
-    const insertOrderIdx = sql.indexOf("VALUES (");
+    const insertOrderIdx = sql.indexOf('VALUES (');
     const allocateIdx = sql.indexOf('EXCEPTION WHEN OTHERS THEN');
     expect(insertOrderIdx).toBeGreaterThan(-1);
     expect(allocateIdx).toBeGreaterThan(insertOrderIdx);
@@ -210,11 +211,15 @@ describe('confirmed-payment notification producer', () => {
   const notice = sql.indexOf('INSERT INTO public.notifications');
 
   it('emits only inside successful allocation, after persisted paid shipments are checked', () => {
-    expect(notice).toBeGreaterThan(sql.indexOf('PERFORM fn_derive_order_status'));
+    expect(notice).toBeGreaterThan(
+      sql.indexOf('PERFORM fn_derive_order_status'),
+    );
     expect(notice).toBeLessThan(success);
     expect(notice).toBeLessThan(failure);
     expect(duplicate).toBeLessThan(notice);
-    expect(sql).toMatch(/OR EXISTS \( SELECT 1 FROM public\.shipments[\s\S]*?status <> 'paid'/);
+    expect(sql).toMatch(
+      /OR EXISTS \( SELECT 1 FROM public\.shipments[\s\S]*?status <> 'paid'/,
+    );
     expect(sql).toContain('COUNT(*)');
   });
 
@@ -227,11 +232,26 @@ describe('confirmed-payment notification producer', () => {
   });
 
   it('writes typed identity and legacy presentation per recipient with partial-index conflict', () => {
-    expect(sql).toContain("'order.payment_confirmed:' || v_existing_order_id::text");
+    expect(sql).toContain(
+      "'order.payment_confirmed:' || v_existing_order_id::text",
+    );
     expect(sql).toContain("'order.payment_confirmed'");
-    expect(sql).toMatch(/jsonb_build_object\('order_id', v_existing_order_id, 'recipient_role',\s*CASE WHEN recipients\.user_id = o\.buyer_id THEN 'buyer' ELSE 'seller' END\)/);
-    expect(sql).toContain('ON CONFLICT (source_event_key, user_id) WHERE source_event_key IS NOT NULL DO NOTHING');
-    for (const column of ['user_id', 'event_kind', 'source_event_key', 'event_payload', 'type', 'title', 'message', 'action_path']) {
+    expect(sql).toMatch(
+      /jsonb_build_object\('order_id', v_existing_order_id, 'recipient_role',\s*CASE WHEN recipients\.user_id = o\.buyer_id THEN 'buyer' ELSE 'seller' END\)/,
+    );
+    expect(sql).toContain(
+      'ON CONFLICT (source_event_key, user_id) WHERE source_event_key IS NOT NULL DO NOTHING',
+    );
+    for (const column of [
+      'user_id',
+      'event_kind',
+      'source_event_key',
+      'event_payload',
+      'type',
+      'title',
+      'message',
+      'action_path',
+    ]) {
       expect(sql.slice(notice, success)).toContain(column);
     }
   });

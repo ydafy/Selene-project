@@ -1,9 +1,11 @@
 # Stripe fee reconciliation recovery
 
 ## Goal
+
 Keep successful Stripe checkout settlement independent from temporary unavailability of the authoritative balance-transaction fee, then reconcile the fee idempotently after it becomes available.
 
 ## Invariants
+
 - Orders and shipments created from a successful PaymentIntent remain valid even if the fee is not yet available.
 - Only Stripe balance-transaction data may set `actual_stripe_fee_cents`.
 - A missing fee never produces a checkout webhook HTTP 500.

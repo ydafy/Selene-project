@@ -7,10 +7,20 @@ import { reportMessage, type SentryMessageOptions } from './sentry.ts';
  */
 export function createCancellationReporter(
   functionName: string,
-  log: (level: 'CRITICAL', msg: string, data?: Record<string, unknown>) => unknown,
-  report: (message: string, options: SentryMessageOptions) => unknown = reportMessage,
+  log: (
+    level: 'CRITICAL',
+    msg: string,
+    data?: Record<string, unknown>,
+  ) => unknown,
+  report: (
+    message: string,
+    options: SentryMessageOptions,
+  ) => unknown = reportMessage,
 ) {
-  return async (message: string, data: Record<string, unknown>): Promise<void> => {
+  return async (
+    message: string,
+    data: Record<string, unknown>,
+  ): Promise<void> => {
     log('CRITICAL', message, data);
     const tags: Record<string, string> = { edge_function: functionName };
     if (typeof data.shipmentId === 'string') tags.shipment_id = data.shipmentId;

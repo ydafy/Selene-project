@@ -69,7 +69,9 @@ describe('parseLabelReconciliations', () => {
       destination_postal_code: null,
       destination_city: null,
     };
-    expect(parseLabelReconciliations({ label_reconciliations: [row, sparse] })).toEqual([
+    expect(
+      parseLabelReconciliations({ label_reconciliations: [row, sparse] }),
+    ).toEqual([
       mapped,
       {
         ...mapped,
@@ -88,7 +90,9 @@ describe('parseLabelReconciliations', () => {
         destinationCity: null,
       },
     ]);
-    expect(parseLabelReconciliations({ label_reconciliations: [] })).toEqual([]);
+    expect(parseLabelReconciliations({ label_reconciliations: [] })).toEqual(
+      [],
+    );
   });
 
   const malformed: Array<[string, unknown]> = [
@@ -96,19 +100,62 @@ describe('parseLabelReconciliations', () => {
     ['missing key', {}],
     ['not an array', { label_reconciliations: 'x' }],
     ['a non-object row', { label_reconciliations: [row, 'x'] }],
-    ['empty shipment id', { label_reconciliations: [{ ...row, shipment_id: '' }] }],
-    ['missing order id', { label_reconciliations: [{ ...row, order_id: undefined }] }],
-    ['unknown state', { label_reconciliations: [{ ...row, label_generation_state: 'generated' }] }],
-    ['invalid stuck date', { label_reconciliations: [{ ...row, stuck_at: 'not a date' }] }],
-    ['null stuck date', { label_reconciliations: [{ ...row, stuck_at: null }] }],
-    ['invalid created date', { label_reconciliations: [{ ...row, shipment_created_at: 'x' }] }],
-    ['invalid claim date', { label_reconciliations: [{ ...row, claim_expires_at: 'x' }] }],
-    ['undefined seller name', { label_reconciliations: [{ ...row, seller_name: undefined }] }],
-    ['fractional cost', { label_reconciliations: [{ ...row, quote_cost_cents: 150.5 }] }],
-    ['negative cost', { label_reconciliations: [{ ...row, quote_cost_cents: -1 }] }],
-    ['string cost', { label_reconciliations: [{ ...row, quote_cost_cents: '15000' }] }],
-    ['numeric postal code', { label_reconciliations: [{ ...row, origin_postal_code: 64000 }] }],
-    ['one bad row among good ones', { label_reconciliations: [row, { ...row, buyer_id: null }] }],
+    [
+      'empty shipment id',
+      { label_reconciliations: [{ ...row, shipment_id: '' }] },
+    ],
+    [
+      'missing order id',
+      { label_reconciliations: [{ ...row, order_id: undefined }] },
+    ],
+    [
+      'unknown state',
+      {
+        label_reconciliations: [
+          { ...row, label_generation_state: 'generated' },
+        ],
+      },
+    ],
+    [
+      'invalid stuck date',
+      { label_reconciliations: [{ ...row, stuck_at: 'not a date' }] },
+    ],
+    [
+      'null stuck date',
+      { label_reconciliations: [{ ...row, stuck_at: null }] },
+    ],
+    [
+      'invalid created date',
+      { label_reconciliations: [{ ...row, shipment_created_at: 'x' }] },
+    ],
+    [
+      'invalid claim date',
+      { label_reconciliations: [{ ...row, claim_expires_at: 'x' }] },
+    ],
+    [
+      'undefined seller name',
+      { label_reconciliations: [{ ...row, seller_name: undefined }] },
+    ],
+    [
+      'fractional cost',
+      { label_reconciliations: [{ ...row, quote_cost_cents: 150.5 }] },
+    ],
+    [
+      'negative cost',
+      { label_reconciliations: [{ ...row, quote_cost_cents: -1 }] },
+    ],
+    [
+      'string cost',
+      { label_reconciliations: [{ ...row, quote_cost_cents: '15000' }] },
+    ],
+    [
+      'numeric postal code',
+      { label_reconciliations: [{ ...row, origin_postal_code: 64000 }] },
+    ],
+    [
+      'one bad row among good ones',
+      { label_reconciliations: [row, { ...row, buyer_id: null }] },
+    ],
   ];
   for (const [name, payload] of malformed) {
     it(`fails closed on ${name}`, () => {
@@ -127,11 +174,21 @@ describe('parseResolveResult', () => {
         status: 'paid',
         label_generation_state: 'unclaimed',
       }),
-    ).toEqual({ resolution: 'no_label', status: 'paid', labelGenerationState: 'unclaimed' });
+    ).toEqual({
+      resolution: 'no_label',
+      status: 'paid',
+      labelGenerationState: 'unclaimed',
+    });
   });
 
   it('fails closed on anything else', () => {
-    const ok = { result: 'resolved', resolution: 'label_found', shipment_id: 'x', status: 'preparing', label_generation_state: 'generated' };
+    const ok = {
+      result: 'resolved',
+      resolution: 'label_found',
+      shipment_id: 'x',
+      status: 'preparing',
+      label_generation_state: 'generated',
+    };
     for (const payload of [
       null,
       'x',
@@ -159,7 +216,22 @@ describe('pesosToCents', () => {
   });
 
   it('rejects non-numeric, negative, extra-decimal and empty input', () => {
-    for (const input of ['', '  ', 'abc', '12abc', '-5', '-0.50', '1.234', '1,50', '1e3', '.5', '5.', '$150', '1 50', '99999999']) {
+    for (const input of [
+      '',
+      '  ',
+      'abc',
+      '12abc',
+      '-5',
+      '-0.50',
+      '1.234',
+      '1,50',
+      '1e3',
+      '.5',
+      '5.',
+      '$150',
+      '1 50',
+      '99999999',
+    ]) {
       expect(pesosToCents(input)).toBeNull();
     }
   });
@@ -221,16 +293,24 @@ describe('resolveLabelReconciliationErrorMessage', () => {
     ]) {
       const message = resolveLabelReconciliationErrorMessage(code);
       expect(message).not.toBe(resolveLabelReconciliationErrorMessage(null));
-      expect(message).not.toBe(resolveLabelReconciliationErrorMessage('SOMETHING_ELSE'));
+      expect(message).not.toBe(
+        resolveLabelReconciliationErrorMessage('SOMETHING_ELSE'),
+      );
     }
   });
 
   it('says in friendly words that the shipment was already resolved', () => {
-    expect(resolveLabelReconciliationErrorMessage('ALREADY_RESOLVED')).toContain('ya no está pendiente');
+    expect(
+      resolveLabelReconciliationErrorMessage('ALREADY_RESOLVED'),
+    ).toContain('ya no está pendiente');
   });
 
   it('falls back to a generic message', () => {
-    expect(resolveLabelReconciliationErrorMessage(null)).toContain('Intenta de nuevo');
-    expect(resolveLabelReconciliationErrorMessage('UNKNOWN')).toContain('Intenta de nuevo');
+    expect(resolveLabelReconciliationErrorMessage(null)).toContain(
+      'Intenta de nuevo',
+    );
+    expect(resolveLabelReconciliationErrorMessage('UNKNOWN')).toContain(
+      'Intenta de nuevo',
+    );
   });
 });

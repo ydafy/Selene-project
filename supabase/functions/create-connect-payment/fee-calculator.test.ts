@@ -183,7 +183,12 @@ describe('create-connect-payment checkout allocation (single-modal)', () => {
       // 1_005 * 0.06 = 60.3 -> round to 60 (commission)
       // Gross-up formula returns 407 cents of buyer fee for a 1_005-cent subtotal.
       // net = 1_005 - 60 - 0 = 945
-      { sellerId: 'seller-round', shipmentId: 'ship-round', subtotalCents: 1_005, shippingCents: 0 },
+      {
+        sellerId: 'seller-round',
+        shipmentId: 'ship-round',
+        subtotalCents: 1_005,
+        shippingCents: 0,
+      },
     ]);
 
     const row = allocation.rows[0];
@@ -200,7 +205,14 @@ describe('create-connect-payment checkout allocation (single-modal)', () => {
 
   it('applies a custom platform commission rate per row', () => {
     const allocation = calculateCheckoutAllocation(
-      [{ sellerId: 'seller-x', shipmentId: 'ship-x', subtotalCents: 100_000, shippingCents: 0 }],
+      [
+        {
+          sellerId: 'seller-x',
+          shipmentId: 'ship-x',
+          subtotalCents: 100_000,
+          shippingCents: 0,
+        },
+      ],
       { commissionRate: 0.1 },
     );
 
@@ -287,8 +299,7 @@ describe('create-connect-payment checkout allocation (single-modal)', () => {
       'ship-product-b',
     ]);
     expect(allocation.rows.map((row) => row.seguroCents)).toEqual([
-      4_601,
-      2_300,
+      4_601, 2_300,
     ]);
   });
 
@@ -402,9 +413,9 @@ describe('create-connect-payment checkout allocation (single-modal)', () => {
     expect(allocation.rows[1].shipmentId).toBe('ship-b');
     expect(allocation.rows[2].shipmentId).toBe('ship-c');
     // Seller/shipment stay 1:1 aligned so release can address each shipment.
-    expect(
-      allocation.rows.map((r) => `${r.sellerId}:${r.shipmentId}`),
-    ).toEqual(['seller-a:ship-a', 'seller-b:ship-b', 'seller-c:ship-c']);
+    expect(allocation.rows.map((r) => `${r.sellerId}:${r.shipmentId}`)).toEqual(
+      ['seller-a:ship-a', 'seller-b:ship-b', 'seller-c:ship-c'],
+    );
   });
 
   it('rejects an allocation input with a missing or empty shipment id', () => {

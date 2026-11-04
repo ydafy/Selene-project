@@ -2,9 +2,8 @@ import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import '../_shared/__tests__/zod-runtime.bun.preload.ts';
 
-const { LabelRequestSchema, REQUIRED_SHIPPING_EVIDENCE_IMAGES } = await import(
-  './request-contract.ts'
-);
+const { LabelRequestSchema, REQUIRED_SHIPPING_EVIDENCE_IMAGES } =
+  await import('./request-contract.ts');
 
 const shipmentId = '7b8f3c1e-2a4d-4f6b-9c0e-1d2e3f4a5b6c';
 const originAddressId = '0c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f';
@@ -72,9 +71,9 @@ describe('generate-shipping-label request contract', () => {
       photo(1),
       photo(2),
     ]);
-    expect(evidenceIssues([photo(0), ` ${photo(0)} `, photo(1)])[0].message).toBe(
-      'Las fotos de evidencia no pueden repetirse',
-    );
+    expect(
+      evidenceIssues([photo(0), ` ${photo(0)} `, photo(1)])[0].message,
+    ).toBe('Las fotos de evidencia no pueden repetirse');
   });
 
   it('keeps accepting deterministic and previously accepted identifier formats', () => {
@@ -83,8 +82,10 @@ describe('generate-shipping-label request contract', () => {
     const formatOnlyGuid = '00000000-0000-0000-0000-000000000001';
 
     expect(
-      LabelRequestSchema.safeParse({ ...request(images), shipmentId: deterministicV5 })
-        .success,
+      LabelRequestSchema.safeParse({
+        ...request(images),
+        shipmentId: deterministicV5,
+      }).success,
     ).toBe(true);
     expect(
       LabelRequestSchema.safeParse({
@@ -118,8 +119,12 @@ describe('generate-shipping-label request contract', () => {
   it('validates the request before authentication, persistence, or provider work', () => {
     const source = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
     const parse = source.indexOf('LabelRequestSchema.safeParse(body)');
-    const clientCreation = source.indexOf('const supabaseAdmin = createClient(');
-    const evidenceWrite = source.indexOf('shipping_evidence: shippingEvidence.images');
+    const clientCreation = source.indexOf(
+      'const supabaseAdmin = createClient(',
+    );
+    const evidenceWrite = source.indexOf(
+      'shipping_evidence: shippingEvidence.images',
+    );
     const claim = source.indexOf('runLabelClaimOrchestration({');
 
     expect(source).toContain("from './request-contract.ts'");

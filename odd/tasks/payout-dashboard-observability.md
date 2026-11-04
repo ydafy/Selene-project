@@ -1,12 +1,15 @@
 # Payout dashboard observability
 
 ## Objective
+
 Redesign the admin Payments dashboard so an operator can understand the full payout-release lifecycle without changing money movement, Stripe behavior, database schema, or deployment configuration.
 
 ## Problem
+
 The current queue only renders release-ready shipment batches, retryable failed runs, and canceled manual-review runs. It silently drops payout runs in `pending_reconciliation`, `reconciliation_needed`, and `paid`, so it cannot explain an authorized payout that is processing or show a trustworthy payout history.
 
 ## Scope
+
 - Admin-only UI under `apps/admin-web`.
 - Four presentation buckets: Ready to release, Processing, Action required, and History.
 - Presentation-only grouping of rows already returned by `admin_connect_payout_release_view`.
@@ -14,6 +17,7 @@ The current queue only renders release-ready shipment batches, retryable failed 
 - Add focused mapper/hook/component tests.
 
 ## Constraints
+
 - Do not alter Stripe calls, money calculations, Edge Functions, SQL, migrations, generated types, remote configuration, secrets, cron, or E2E.
 - Do not change unrelated legacy payment UI in this task.
 - The current view does not expose `release_stage`, so Processing copy must remain generic and must not claim a specific awaiting-balance stage.
@@ -21,6 +25,7 @@ The current queue only renders release-ready shipment batches, retryable failed 
 - Preserve existing unrelated worktree changes.
 
 ## Delivery
+
 - Route: delegated direct.
 - Trigger: multi-file UI implementation after a mandatory four-file map.
 - Forecast: approximately 350 authored changed lines, excluding tests already present and generated artifacts.
@@ -39,6 +44,7 @@ The current queue only renders release-ready shipment batches, retryable failed 
 - [x] PD-09 Correct History navigation count semantics without expanding scope. Route: inline mechanical correction. Evidence: History nav aggregate count removed; each explicitly named axis retains its own accurate count; independent re-verification passed.
 
 ## Acceptance criteria
+
 - Every queue row is placed in one operator-visible bucket; no `pending_reconciliation`, `reconciliation_needed`, or `paid` row is dropped.
 - Ready keeps the existing server-authoritative release selection/action.
 - Processing and History are read-only.
@@ -48,6 +54,7 @@ The current queue only renders release-ready shipment batches, retryable failed 
 - No financial behavior or database contract changes.
 
 ## Progress
+
 - 2026-09-21: User authorized the admin payout-dashboard redesign. Read-only mapping confirmed that the existing mapper drops Processing, reconciliation-needed, and History rows.
 - 2026-09-21: Delegated PD-01 through PD-03. The mapper now classifies and deduplicates every payout run into Ready, Processing, Action required, or History; the page and new read-only bucket components render those buckets without changing money behavior.
 - 2026-09-21: Native assessment returned `unassessable` because native command output was empty. Under RDD-off policy this is treated as high risk.
@@ -61,6 +68,7 @@ The current queue only renders release-ready shipment batches, retryable failed 
 - 2026-09-21: Independent re-verification passed with no findings. The dashboard UI work is complete; no commit, deployment, or financial-runtime action was performed.
 
 ## Verification evidence
+
 - RED: `bun test src/lib/connectPayoutReleaseQueue.test.ts` before implementation: 8 new bucket tests failed, with the absent `processingRuns` shape and expected bucket mismatches.
 - GREEN: `bun test apps/admin-web/src/lib/connectPayoutReleaseQueue.test.ts apps/admin-web/src/hooks/useConnectPayoutReleaseQueue.test.ts` — 18 pass, 0 fail, 48 expectations.
 - Typecheck: `cd apps/admin-web && bunx tsc -b` — exit 0, no output.
@@ -72,4 +80,5 @@ The current queue only renders release-ready shipment batches, retryable failed 
 - PD-09 independent re-verification: PASS. `bun test apps/admin-web/src/lib/connectPayoutReleaseQueue.test.ts apps/admin-web/src/hooks/useConnectPayoutReleaseQueue.test.ts apps/admin-web/src/lib/connectEarnings.test.ts` — 23 pass, 0 fail, 60 expectations; `cd apps/admin-web && bunx tsc -b` — exit 0.
 
 ## Next step
+
 - Await user review; no commit, deployment, or financial-runtime action is authorized.

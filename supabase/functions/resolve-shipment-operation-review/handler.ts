@@ -13,7 +13,8 @@ import { z } from '../_shared/zod-runtime.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type',
 };
 const JSON_HEADERS = { ...CORS_HEADERS, 'Content-Type': 'application/json' };
 
@@ -40,13 +41,18 @@ export type ResolveShipmentOperationReviewDeps = {
   resolveReview: (
     input: ResolveShipmentOperationReviewInput,
   ) => Promise<{ data: unknown; error: { message: string } | null }>;
-  log: (level: 'INFO' | 'WARN' | 'ERROR', msg: string, data?: Record<string, unknown>) => unknown;
+  log: (
+    level: 'INFO' | 'WARN' | 'ERROR',
+    msg: string,
+    data?: Record<string, unknown>,
+  ) => unknown;
 };
 
 const respond = (status: number, body: Record<string, unknown>): Response =>
   new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
 
-const fail = (status: number, code: string): Response => respond(status, { error: code });
+const fail = (status: number, code: string): Response =>
+  respond(status, { error: code });
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -57,15 +63,31 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
 const RPC_ERRORS: readonly { sql: string; status: number; code: string }[] = [
   { sql: 'ADMIN_REQUIRED', status: 403, code: 'ADMIN_ONLY' },
   { sql: 'SHIPMENT_NOT_FOUND', status: 404, code: 'SHIPMENT_NOT_FOUND' },
-  { sql: 'CARRIER_REVIEW_NOT_PENDING', status: 409, code: 'CARRIER_REVIEW_NOT_PENDING' },
-  { sql: 'CARRIER_REVIEW_ALREADY_RESOLVED', status: 409, code: 'CARRIER_REVIEW_ALREADY_RESOLVED' },
+  {
+    sql: 'CARRIER_REVIEW_NOT_PENDING',
+    status: 409,
+    code: 'CARRIER_REVIEW_NOT_PENDING',
+  },
+  {
+    sql: 'CARRIER_REVIEW_ALREADY_RESOLVED',
+    status: 409,
+    code: 'CARRIER_REVIEW_ALREADY_RESOLVED',
+  },
   {
     sql: 'CANCELLATION_EXTERNAL_ALREADY_STARTED',
     status: 409,
     code: 'CANCELLATION_EXTERNAL_ALREADY_STARTED',
   },
-  { sql: 'SHIPMENT_NOT_CANCELABLE', status: 409, code: 'SHIPMENT_NOT_CANCELABLE' },
-  { sql: 'INVALID_REVIEW_RESOLUTION', status: 422, code: 'INVALID_REVIEW_RESOLUTION' },
+  {
+    sql: 'SHIPMENT_NOT_CANCELABLE',
+    status: 409,
+    code: 'SHIPMENT_NOT_CANCELABLE',
+  },
+  {
+    sql: 'INVALID_REVIEW_RESOLUTION',
+    status: 422,
+    code: 'INVALID_REVIEW_RESOLUTION',
+  },
   { sql: 'INVALID_REVIEW_NOTE', status: 422, code: 'INVALID_REVIEW_NOTE' },
 ];
 
@@ -76,22 +98,29 @@ function mapRpcError(message: string): { status: number; code: string } | null {
 /** A bigint arrives as a number or a decimal string; the loss is a non-negative safe integer, or NULL. */
 function toNullableCents(value: unknown): number | null | undefined {
   if (value === null) return null;
-  const cents = typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value;
-  return typeof cents === 'number' && Number.isSafeInteger(cents) && cents >= 0 ? cents : undefined;
+  const cents =
+    typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value;
+  return typeof cents === 'number' && Number.isSafeInteger(cents) && cents >= 0
+    ? cents
+    : undefined;
 }
 
 function parseResult(data: unknown): Record<string, unknown> | null {
   const result = asRecord(data);
   if (!result) return null;
   const resolution = resolutionSchema.safeParse(result.review_resolution);
-  const resolvedAt = typeof result.review_resolved_at === 'string'
-    ? new Date(result.review_resolved_at)
-    : null;
+  const resolvedAt =
+    typeof result.review_resolved_at === 'string'
+      ? new Date(result.review_resolved_at)
+      : null;
   const loss = toNullableCents(result.label_cost_loss_cents);
   if (
-    !resolution.success || !resolvedAt || Number.isNaN(resolvedAt.getTime()) ||
+    !resolution.success ||
+    !resolvedAt ||
+    Number.isNaN(resolvedAt.getTime()) ||
     typeof result.review_resolved_by !== 'string' ||
-    typeof result.review_resolution_note !== 'string' || loss === undefined
+    typeof result.review_resolution_note !== 'string' ||
+    loss === undefined
   ) {
     return null;
   }
@@ -108,12 +137,15 @@ export function createResolveShipmentOperationReviewHandler(
   deps: ResolveShipmentOperationReviewDeps,
 ) {
   return async (req: Request): Promise<Response> => {
-    if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
+    if (req.method === 'OPTIONS')
+      return new Response('ok', { headers: CORS_HEADERS });
     if (req.method !== 'POST') return fail(405, 'METHOD_NOT_ALLOWED');
 
     try {
       const authorization = req.headers.get('Authorization') ?? '';
-      const token = authorization.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
+      const token = authorization.startsWith('Bearer ')
+        ? authorization.slice(7).trim()
+        : '';
       if (!token) return fail(401, 'AUTH_REQUIRED');
 
       const adminId = await deps.getUserId(token);
@@ -141,14 +173,20 @@ export function createResolveShipmentOperationReviewHandler(
           error: error.message,
         });
         const mapped = mapRpcError(error.message);
-        return mapped ? fail(mapped.status, mapped.code) : fail(500, 'INTERNAL_ERROR');
+        return mapped
+          ? fail(mapped.status, mapped.code)
+          : fail(500, 'INTERNAL_ERROR');
       }
 
       const result = parseResult(data);
       if (!result) {
-        deps.log('ERROR', 'Shipment operation review resolution returned an unusable result', {
-          shipmentId: shipmentId.data,
-        });
+        deps.log(
+          'ERROR',
+          'Shipment operation review resolution returned an unusable result',
+          {
+            shipmentId: shipmentId.data,
+          },
+        );
         return fail(500, 'INTERNAL_ERROR');
       }
 

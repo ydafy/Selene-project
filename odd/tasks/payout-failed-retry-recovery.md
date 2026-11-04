@@ -1,15 +1,18 @@
 # Payout failed retry recovery
 
 ## Goal
+
 Allow an administrator to retry a Stripe Connect payout attempt only after it reaches `failed`, while keeping `canceled`, `paid`, and ambiguous states terminal or manually reviewed.
 
 ## Approved policy
+
 - `failed`: explicit admin retry allowed.
 - `canceled`: terminal and manual-review only.
 - `paid`: terminal.
 - `pending_reconciliation` and `reconciliation_needed`: never retryable.
 
 ## Invariants
+
 - A retry is a child payout run; the failed parent remains immutable evidence.
 - The server derives seller, shipments, amount, transfer, and Stripe idempotency key.
 - One failed parent has at most one child retry run.

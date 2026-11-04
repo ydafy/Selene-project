@@ -74,7 +74,9 @@ const json = (body: unknown, status: number): Response =>
     headers: { 'Content-Type': 'application/json' },
   });
 
-export function createAccountClosureCleanupHandler(deps: AccountClosureCleanupDeps) {
+export function createAccountClosureCleanupHandler(
+  deps: AccountClosureCleanupDeps,
+) {
   /** Best effort: a failing reporter never changes the response or aborts the run. */
   async function reportToSentry(
     message: string,
@@ -117,25 +119,36 @@ export function createAccountClosureCleanupHandler(deps: AccountClosureCleanupDe
     }
     try {
       // The claim already counted this attempt.
-      const { failures } = await runClosureCleanup(userId, closure, deps, { countAttempt: false });
+      const { failures } = await runClosureCleanup(userId, closure, deps, {
+        countAttempt: false,
+      });
       for (const failure of failures) failedSteps.add(failure);
       return failures.length === 0 ? 'completed' : 'failed';
     } catch (error: unknown) {
-      deps.log('ERROR', 'Account closure cleanup crashed', { userId, code: safeErrorCode(error) });
+      deps.log('ERROR', 'Account closure cleanup crashed', {
+        userId,
+        code: safeErrorCode(error),
+      });
       failedSteps.add(`crash:${safeErrorCode(error)}`);
       return 'failed';
     }
   }
 
   async function reportCapped(): Promise<CappedClosure[]> {
-    const { data, error } = await deps.listCappedClosures(MAX_ATTEMPTS, CAPPED_LIST_LIMIT);
+    const { data, error } = await deps.listCappedClosures(
+      MAX_ATTEMPTS,
+      CAPPED_LIST_LIMIT,
+    );
     if (error || !data) {
-      deps.log('ERROR', 'Capped account closures could not be listed', { code: error?.code });
+      deps.log('ERROR', 'Capped account closures could not be listed', {
+        code: error?.code,
+      });
       return [];
     }
     const capped = data.flatMap((entry) => {
       const record = asRecord(entry);
-      return typeof record?.user_id === 'string' && typeof record.attempts === 'number'
+      return typeof record?.user_id === 'string' &&
+        typeof record.attempts === 'number'
         ? [{ user_id: record.user_id, attempts: record.attempts }]
         : [];
     });
@@ -162,23 +175,39 @@ export function createAccountClosureCleanupHandler(deps: AccountClosureCleanupDe
     }
 
     try {
-      const { data, error } = await deps.claimClosures(BATCH_SIZE, MIN_IDLE_SECONDS, MAX_ATTEMPTS);
+      const { data, error } = await deps.claimClosures(
+        BATCH_SIZE,
+        MIN_IDLE_SECONDS,
+        MAX_ATTEMPTS,
+      );
       if (error || !data) {
         // The database error text is not forwarded or logged.
-        deps.log('ERROR', 'Account closure claim failed', { code: error?.code });
+        deps.log('ERROR', 'Account closure claim failed', {
+          code: error?.code,
+        });
         return json({ error: 'INTERNAL_ERROR' }, 500);
       }
 
-      const summary = { claimed: data.length, completed: 0, failed: 0, invalid: 0 };
+      const summary = {
+        claimed: data.length,
+        completed: 0,
+        failed: 0,
+        invalid: 0,
+      };
       const failedSteps = new Set<string>();
       for (const row of data) summary[await cleanRow(row, failedSteps)] += 1;
       for (const failure of failedSteps) await reportFailedStep(failure);
 
       const capped = await reportCapped();
-      deps.log('INFO', 'Account closure cleanup run finished', { ...summary, capped: capped.length });
+      deps.log('INFO', 'Account closure cleanup run finished', {
+        ...summary,
+        capped: capped.length,
+      });
       return json({ ...summary, capped }, 200);
     } catch (error: unknown) {
-      deps.log('ERROR', 'Account closure cleanup run crashed', { code: safeErrorCode(error) });
+      deps.log('ERROR', 'Account closure cleanup run crashed', {
+        code: safeErrorCode(error),
+      });
       return json({ error: 'INTERNAL_ERROR' }, 500);
     }
   };

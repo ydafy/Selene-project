@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 const help =
   'Usage: bun scripts/test-shipment-carrier-cancellation.ts [--help]\n' +
   'B4.2 SQL: carrier cancellation outcome (accepted/refused/ambiguous) and label-cost loss on the cancellation operation\n' +
-  "(fn_record_shipment_carrier_cancellation) and the CARRIER_CANCELLATION_NOT_CONFIRMED guard of fn_start_shipment_cancellation_refund.\n" +
+  '(fn_record_shipment_carrier_cancellation) and the CARRIER_CANCELLATION_NOT_CONFIRMED guard of fn_start_shipment_cancellation_refund.\n' +
   "Runs against this worktree's local Supabase stack (`supabase start`); every case rolls back.\n" +
   'Database URL: SELENE_LOCAL_DB_URL, else `supabase status --env`. Only 127.0.0.1/localhost is accepted.';
 
@@ -17,7 +17,10 @@ const ids = {
 };
 const paymentIntent = 'pi_b42_local';
 const labelCost = 8900;
-const amounts: Record<string, number> = { [ids.shipment]: 11000, [ids.paid]: 7000 };
+const amounts: Record<string, number> = {
+  [ids.shipment]: 11000,
+  [ids.paid]: 7000,
+};
 
 type Tx = SQL;
 type Source = 'preparing_timeout' | 'paid_timeout';
@@ -80,8 +83,13 @@ async function fixture(tx: Tx) {
   await asService(tx);
 }
 
-async function claim(tx: Tx, shipmentId = ids.shipment, source: Source = 'preparing_timeout') {
-  const [{ claim: claimed }] = await tx`SELECT public.fn_claim_shipment_cancellation(
+async function claim(
+  tx: Tx,
+  shipmentId = ids.shipment,
+  source: Source = 'preparing_timeout',
+) {
+  const [{ claim: claimed }] =
+    await tx`SELECT public.fn_claim_shipment_cancellation(
     ${shipmentId}::uuid, ${ids.order}::uuid, NULL::uuid, ${source}, ${`${source} test`}) AS claim`;
   assert.equal(claimed.status, 'claimed');
   return claimed.claim_token as string;
@@ -95,27 +103,39 @@ async function outcomeRpc(
   balanceReturnedAt: string | null = null,
   shipmentId = ids.shipment,
 ) {
-  const [{ result }] = await tx`SELECT public.fn_record_shipment_carrier_cancellation(
+  const [{ result }] =
+    await tx`SELECT public.fn_record_shipment_carrier_cancellation(
     ${shipmentId}::uuid, ${token}::uuid, ${outcome}, ${balanceReturned}::boolean,
     ${balanceReturnedAt}::timestamptz) AS result`;
   return result;
 }
 
 async function operation(tx: Tx, shipmentId = ids.shipment) {
-  const [row] = await tx`SELECT carrier_cancellation_outcome, carrier_cancellation_recorded_at,
+  const [row] =
+    await tx`SELECT carrier_cancellation_outcome, carrier_cancellation_recorded_at,
       carrier_balance_returned, carrier_balance_returned_at, label_cost_loss_cents,
       cancellation_loss_cents, external_started_at, refund_request
     FROM public.shipment_cancellation_operations WHERE shipment_id = ${shipmentId}`;
   return row;
 }
 
-async function startRefund(tx: Tx, token: string, shipmentId = ids.shipment, source: Source = 'preparing_timeout') {
-  const [{ result }] = await tx`SELECT public.fn_start_shipment_cancellation_refund(
+async function startRefund(
+  tx: Tx,
+  token: string,
+  shipmentId = ids.shipment,
+  source: Source = 'preparing_timeout',
+) {
+  const [{ result }] =
+    await tx`SELECT public.fn_start_shipment_cancellation_refund(
     ${shipmentId}::uuid, ${token}::uuid, ${JSON.stringify(request(shipmentId, source))}::text::jsonb, 0::bigint) AS result`;
   return result;
 }
 
-async function rejects(tx: Tx, action: (sp: Tx) => Promise<unknown>, message: string) {
+async function rejects(
+  tx: Tx,
+  action: (sp: Tx) => Promise<unknown>,
+  message: string,
+) {
   await assert.rejects(
     tx.savepoint((sp) => action(sp as Tx)),
     (error: Error) => error.message.includes(message),
@@ -139,7 +159,10 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       assert.equal(row.carrier_cancellation_outcome, 'accepted');
       assert.ok(row.carrier_cancellation_recorded_at);
       assert.equal(row.carrier_balance_returned, true);
-      assert.equal(new Date(row.carrier_balance_returned_at).toISOString(), '2026-10-23T10:00:00.000Z');
+      assert.equal(
+        new Date(row.carrier_balance_returned_at).toISOString(),
+        '2026-10-23T10:00:00.000Z',
+      );
       assert.equal(Number(row.label_cost_loss_cents), 0);
       assert.equal(row.cancellation_loss_cents, null);
       assert.equal(row.external_started_at, null);
@@ -195,12 +218,36 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     async (tx) => {
       const token = await claim(tx);
       const before = await operation(tx);
-      await rejects(tx, (sp) => outcomeRpc(sp, token, 'refused', true), 'INVALID_CARRIER_CANCELLATION_OUTCOME');
-      await rejects(tx, (sp) => outcomeRpc(sp, token, 'ambiguous', null, returnedAt), 'INVALID_CARRIER_CANCELLATION_OUTCOME');
-      await rejects(tx, (sp) => outcomeRpc(sp, token, 'accepted', null), 'INVALID_CARRIER_CANCELLATION_OUTCOME');
-      await rejects(tx, (sp) => outcomeRpc(sp, token, 'accepted', false, returnedAt), 'INVALID_CARRIER_CANCELLATION_OUTCOME');
-      await rejects(tx, (sp) => outcomeRpc(sp, token, 'cancelled', false), 'INVALID_CARRIER_CANCELLATION_OUTCOME');
-      await rejects(tx, (sp) => outcomeRpc(sp, token, '  ', false), 'INVALID_CARRIER_CANCELLATION_OUTCOME');
+      await rejects(
+        tx,
+        (sp) => outcomeRpc(sp, token, 'refused', true),
+        'INVALID_CARRIER_CANCELLATION_OUTCOME',
+      );
+      await rejects(
+        tx,
+        (sp) => outcomeRpc(sp, token, 'ambiguous', null, returnedAt),
+        'INVALID_CARRIER_CANCELLATION_OUTCOME',
+      );
+      await rejects(
+        tx,
+        (sp) => outcomeRpc(sp, token, 'accepted', null),
+        'INVALID_CARRIER_CANCELLATION_OUTCOME',
+      );
+      await rejects(
+        tx,
+        (sp) => outcomeRpc(sp, token, 'accepted', false, returnedAt),
+        'INVALID_CARRIER_CANCELLATION_OUTCOME',
+      );
+      await rejects(
+        tx,
+        (sp) => outcomeRpc(sp, token, 'cancelled', false),
+        'INVALID_CARRIER_CANCELLATION_OUTCOME',
+      );
+      await rejects(
+        tx,
+        (sp) => outcomeRpc(sp, token, '  ', false),
+        'INVALID_CARRIER_CANCELLATION_OUTCOME',
+      );
       assert.deepEqual(await operation(tx), before);
     },
   ],
@@ -222,8 +269,16 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       const token = await claim(tx);
       await outcomeRpc(tx, token, 'accepted', false);
       const stored = await operation(tx);
-      await rejects(tx, (sp) => outcomeRpc(sp, token, 'refused'), 'CARRIER_CANCELLATION_ALREADY_RECORDED');
-      await rejects(tx, (sp) => outcomeRpc(sp, token, 'accepted', true, returnedAt), 'CARRIER_CANCELLATION_ALREADY_RECORDED');
+      await rejects(
+        tx,
+        (sp) => outcomeRpc(sp, token, 'refused'),
+        'CARRIER_CANCELLATION_ALREADY_RECORDED',
+      );
+      await rejects(
+        tx,
+        (sp) => outcomeRpc(sp, token, 'accepted', true, returnedAt),
+        'CARRIER_CANCELLATION_ALREADY_RECORDED',
+      );
       assert.deepEqual(await operation(tx), stored);
     },
   ],
@@ -232,7 +287,12 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     async (tx) => {
       await claim(tx);
       const before = await operation(tx);
-      await rejects(tx, (sp) => outcomeRpc(sp, '7b400000-0000-4000-8000-0000000000ff', 'refused'), 'STALE_CANCELLATION_CLAIM');
+      await rejects(
+        tx,
+        (sp) =>
+          outcomeRpc(sp, '7b400000-0000-4000-8000-0000000000ff', 'refused'),
+        'STALE_CANCELLATION_CLAIM',
+      );
       assert.deepEqual(await operation(tx), before);
     },
   ],
@@ -242,7 +302,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       const token = await claim(tx);
       await tx`UPDATE public.shipment_cancellation_operations SET claim_expires_at = '-infinity' WHERE shipment_id = ${ids.shipment}`;
       const before = await operation(tx);
-      await rejects(tx, (sp) => outcomeRpc(sp, token, 'refused'), 'CANCELLATION_CLAIM_EXPIRED');
+      await rejects(
+        tx,
+        (sp) => outcomeRpc(sp, token, 'refused'),
+        'CANCELLATION_CLAIM_EXPIRED',
+      );
       assert.deepEqual(await operation(tx), before);
     },
   ],
@@ -251,7 +315,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     async (tx) => {
       const token = await claim(tx, ids.paid, 'paid_timeout');
       const before = await operation(tx, ids.paid);
-      await rejects(tx, (sp) => outcomeRpc(sp, token, 'accepted', true, returnedAt, ids.paid), 'INVALID_CARRIER_CANCELLATION_SOURCE');
+      await rejects(
+        tx,
+        (sp) => outcomeRpc(sp, token, 'accepted', true, returnedAt, ids.paid),
+        'INVALID_CARRIER_CANCELLATION_SOURCE',
+      );
       assert.deepEqual(await operation(tx, ids.paid), before);
     },
   ],
@@ -261,7 +329,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       const token = await claim(tx);
       await tx`UPDATE public.shipments SET status = 'shipped' WHERE id = ${ids.shipment}`;
       const before = await operation(tx);
-      await rejects(tx, (sp) => outcomeRpc(sp, token, 'refused'), 'SHIPMENT_NOT_CANCELABLE');
+      await rejects(
+        tx,
+        (sp) => outcomeRpc(sp, token, 'refused'),
+        'SHIPMENT_NOT_CANCELABLE',
+      );
       assert.deepEqual(await operation(tx), before);
     },
   ],
@@ -276,17 +348,33 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
           external_started_at = clock_timestamp() WHERE shipment_id = ${ids.shipment}`;
       const before = await operation(tx);
       assert.ok(before.external_started_at);
-      await rejects(tx, (sp) => outcomeRpc(sp, token, 'accepted', true, returnedAt), 'CANCELLATION_EXTERNAL_ALREADY_STARTED');
+      await rejects(
+        tx,
+        (sp) => outcomeRpc(sp, token, 'accepted', true, returnedAt),
+        'CANCELLATION_EXTERNAL_ALREADY_STARTED',
+      );
       assert.deepEqual(await operation(tx), before);
     },
   ],
   [
     'a missing operation or shipment is rejected',
     async (tx) => {
-      await rejects(tx, (sp) => outcomeRpc(sp, ids.buyer, 'refused'), 'STALE_CANCELLATION_CLAIM');
       await rejects(
         tx,
-        (sp) => outcomeRpc(sp, ids.buyer, 'refused', null, null, '7b400000-0000-4000-8000-0000000000fe'),
+        (sp) => outcomeRpc(sp, ids.buyer, 'refused'),
+        'STALE_CANCELLATION_CLAIM',
+      );
+      await rejects(
+        tx,
+        (sp) =>
+          outcomeRpc(
+            sp,
+            ids.buyer,
+            'refused',
+            null,
+            null,
+            '7b400000-0000-4000-8000-0000000000fe',
+          ),
         'SHIPMENT_NOT_FOUND',
       );
     },
@@ -298,7 +386,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       for (const role of ['anon', 'authenticated'] as const) {
         await tx.savepoint(async (sp) => {
           await asRole(sp as Tx, role);
-          await rejects(sp as Tx, (inner) => outcomeRpc(inner, token, 'refused'), 'permission denied');
+          await rejects(
+            sp as Tx,
+            (inner) => outcomeRpc(inner, token, 'refused'),
+            'permission denied',
+          );
         });
       }
       await tx`RESET ROLE`;
@@ -315,7 +407,8 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
           await asRole(sp as Tx, role);
           await rejects(
             sp as Tx,
-            (inner) => inner`SELECT public.fn_start_shipment_cancellation(${ids.shipment}::uuid, ${token}::uuid)`,
+            (inner) =>
+              inner`SELECT public.fn_start_shipment_cancellation(${ids.shipment}::uuid, ${token}::uuid)`,
             'permission denied',
           );
         });
@@ -331,7 +424,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       const token = await claim(tx);
       await tx`RESET ROLE`;
       await tx`SELECT set_config('request.jwt.claims', '{"role":"authenticated"}', true)`;
-      await rejects(tx, (sp) => outcomeRpc(sp, token, 'refused'), 'UNAUTHORIZED');
+      await rejects(
+        tx,
+        (sp) => outcomeRpc(sp, token, 'refused'),
+        'UNAUTHORIZED',
+      );
       await asService(tx);
       assert.equal((await operation(tx)).carrier_cancellation_outcome, null);
     },
@@ -341,7 +438,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     async (tx) => {
       const token = await claim(tx);
       const before = await operation(tx);
-      await rejects(tx, (sp) => startRefund(sp, token), 'CARRIER_CANCELLATION_NOT_CONFIRMED');
+      await rejects(
+        tx,
+        (sp) => startRefund(sp, token),
+        'CARRIER_CANCELLATION_NOT_CONFIRMED',
+      );
       assert.deepEqual(await operation(tx), before);
       assert.equal((await operation(tx)).external_started_at, null);
     },
@@ -353,7 +454,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         const token = await claim(tx);
         await outcomeRpc(tx, token, outcome);
         const before = await operation(tx);
-        await rejects(tx, (sp) => startRefund(sp, token), 'CARRIER_CANCELLATION_NOT_CONFIRMED');
+        await rejects(
+          tx,
+          (sp) => startRefund(sp, token),
+          'CARRIER_CANCELLATION_NOT_CONFIRMED',
+        );
         assert.deepEqual(await operation(tx), before);
         assert.equal((await operation(tx)).external_started_at, null);
         await tx`DELETE FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`;
@@ -367,7 +472,10 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       await outcomeRpc(tx, token, 'accepted', false);
       const result = await startRefund(tx, token);
       assert.equal(result.operation_key, `cancel_shipment_${ids.shipment}`);
-      assert.deepEqual(result.refund_request, request(ids.shipment, 'preparing_timeout'));
+      assert.deepEqual(
+        result.refund_request,
+        request(ids.shipment, 'preparing_timeout'),
+      );
       const row = await operation(tx);
       assert.ok(row.external_started_at);
       assert.equal(Number(row.cancellation_loss_cents), 0);
@@ -409,7 +517,8 @@ async function run() {
       }
     }
     // Every case rolled back: nothing from this harness may persist.
-    const [left] = await sql`SELECT count(*)::int AS n FROM public.orders WHERE id = ${ids.order}`;
+    const [left] =
+      await sql`SELECT count(*)::int AS n FROM public.orders WHERE id = ${ids.order}`;
     assert.equal(left.n, 0);
   } finally {
     await sql.close();

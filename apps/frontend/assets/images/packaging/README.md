@@ -15,16 +15,16 @@ does not decode it on iOS and needs extra Fresco modules on Android.
 - Image content carries **no baked-in text**: all labels and instructions are rendered
   by the app so they stay translatable.
 
-| File | Used by | Aspect ratio | Canvas | Size |
-| ---- | ------- | ------------ | ------ | ---- |
-| `paso-1-caja.webp` | Packing accordion, step 1 (choose the box) | 5:3 | 600 × 360 | 18 KB |
-| `paso-2-proteccion.webp` | Step 2 (protect the product) | 5:3 | 600 × 360 | 22 KB |
-| `paso-3-relleno.webp` | Step 3 (fill the gaps) | 5:3 | 600 × 360 | 23 KB |
-| `paso-4-sellado.webp` | Step 4 (seal the box — the "H" taping graphic) | 5:3 | 600 × 360 | 23 KB |
-| `paso-5-etiqueta.webp` | Step 5 (attach the label on top) | 5:3 | 600 × 360 | 23 KB |
-| `evidencia-1-producto.webp` | Evidence slot 1 intro dialog | 5:3 | 600 × 360 | 52 KB |
-| `evidencia-2-caja.webp` | Evidence slot 2 intro dialog | 5:3 | 600 × 360 | 40 KB |
-| `evidencia-3-caja-completa.webp` | Evidence slot 3 intro dialog | 5:3 | 600 × 360 | 40 KB |
+| File                             | Used by                                        | Aspect ratio | Canvas    | Size  |
+| -------------------------------- | ---------------------------------------------- | ------------ | --------- | ----- |
+| `paso-1-caja.webp`               | Packing accordion, step 1 (choose the box)     | 5:3          | 600 × 360 | 18 KB |
+| `paso-2-proteccion.webp`         | Step 2 (protect the product)                   | 5:3          | 600 × 360 | 22 KB |
+| `paso-3-relleno.webp`            | Step 3 (fill the gaps)                         | 5:3          | 600 × 360 | 23 KB |
+| `paso-4-sellado.webp`            | Step 4 (seal the box — the "H" taping graphic) | 5:3          | 600 × 360 | 23 KB |
+| `paso-5-etiqueta.webp`           | Step 5 (attach the label on top)               | 5:3          | 600 × 360 | 23 KB |
+| `evidencia-1-producto.webp`      | Evidence slot 1 intro dialog                   | 5:3          | 600 × 360 | 52 KB |
+| `evidencia-2-caja.webp`          | Evidence slot 2 intro dialog                   | 5:3          | 600 × 360 | 40 KB |
+| `evidencia-3-caja-completa.webp` | Evidence slot 3 intro dialog                   | 5:3          | 600 × 360 | 40 KB |
 
 The three `evidencia-*` files are our own photos of a real box: the product inside with
 its padding (slot 1), the closed box (slot 2), and the same box from another angle with

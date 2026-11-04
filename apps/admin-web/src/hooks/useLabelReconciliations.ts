@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { getErrorCode } from '../lib/shipmentRefundProblems';
-import { fetchLabelReconciliations, resolveLabelReconciliation } from '../services/labelReconciliations';
+import {
+  fetchLabelReconciliations,
+  resolveLabelReconciliation,
+} from '../services/labelReconciliations';
 
 export const LABEL_RECONCILIATIONS_KEY = ['label-reconciliations'] as const;
 
@@ -23,7 +26,8 @@ export function useLabelReconciliations() {
 
 export function useResolveLabelReconciliation() {
   const queryClient = useQueryClient();
-  const refresh = () => queryClient.invalidateQueries({ queryKey: LABEL_RECONCILIATIONS_KEY });
+  const refresh = () =>
+    queryClient.invalidateQueries({ queryKey: LABEL_RECONCILIATIONS_KEY });
   const mutation = useMutation({
     mutationFn: resolveLabelReconciliation,
     onSuccess: async (result) => {

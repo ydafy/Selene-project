@@ -3,7 +3,9 @@ import { isClosedAccount } from './accountStatus';
 
 describe('isClosedAccount', () => {
   test('a banned account with a deleted_ + 12 hex username is closed', () => {
-    expect(isClosedAccount({ status: 'banned', username: 'deleted_0123456789ab' })).toBe(true);
+    expect(
+      isClosedAccount({ status: 'banned', username: 'deleted_0123456789ab' }),
+    ).toBe(true);
   });
 
   test.each([

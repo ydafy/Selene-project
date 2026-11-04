@@ -61,12 +61,27 @@ describe('parseCarrierReviews', () => {
     ['reviews not an array', { reviews: 'x' }],
     ['a non-object row', { reviews: [review, 'x'] }],
     ['unknown reason', { reviews: [{ ...review, review_reason: 'other' }] }],
-    ['float cost', { reviews: [{ ...review, label_provider_cost_cents: 150.5 }] }],
-    ['negative cost', { reviews: [{ ...review, label_provider_cost_cents: -1 }] }],
-    ['string cost', { reviews: [{ ...review, label_provider_cost_cents: '15000' }] }],
+    [
+      'float cost',
+      { reviews: [{ ...review, label_provider_cost_cents: 150.5 }] },
+    ],
+    [
+      'negative cost',
+      { reviews: [{ ...review, label_provider_cost_cents: -1 }] },
+    ],
+    [
+      'string cost',
+      { reviews: [{ ...review, label_provider_cost_cents: '15000' }] },
+    ],
     ['missing shipment id', { reviews: [{ ...review, shipment_id: '' }] }],
-    ['undefined tracking number', { reviews: [{ ...review, tracking_number: undefined }] }],
-    ['invalid date', { reviews: [{ ...review, review_required_at: 'not a date' }] }],
+    [
+      'undefined tracking number',
+      { reviews: [{ ...review, tracking_number: undefined }] },
+    ],
+    [
+      'invalid date',
+      { reviews: [{ ...review, review_required_at: 'not a date' }] },
+    ],
   ];
   for (const [name, payload] of malformed) {
     it(`rejects the whole response for ${name}`, () => {
@@ -92,21 +107,36 @@ describe('parseResolveReviewResult', () => {
       labelCostLossCents: null,
     });
     expect(
-      parseResolveReviewResult({ ...result, review_resolution: 'refund_approved', label_cost_loss_cents: 15000 }),
-    ).toMatchObject({ resolution: 'refund_approved', labelCostLossCents: 15000 });
+      parseResolveReviewResult({
+        ...result,
+        review_resolution: 'refund_approved',
+        label_cost_loss_cents: 15000,
+      }),
+    ).toMatchObject({
+      resolution: 'refund_approved',
+      labelCostLossCents: 15000,
+    });
   });
 
   it('rejects malformed results', () => {
     expect(() => parseResolveReviewResult(null)).toThrow();
-    expect(() => parseResolveReviewResult({ ...result, review_resolution: 'other' })).toThrow();
-    expect(() => parseResolveReviewResult({ ...result, review_resolution_note: 1 })).toThrow();
-    expect(() => parseResolveReviewResult({ ...result, label_cost_loss_cents: 1.5 })).toThrow();
+    expect(() =>
+      parseResolveReviewResult({ ...result, review_resolution: 'other' }),
+    ).toThrow();
+    expect(() =>
+      parseResolveReviewResult({ ...result, review_resolution_note: 1 }),
+    ).toThrow();
+    expect(() =>
+      parseResolveReviewResult({ ...result, label_cost_loss_cents: 1.5 }),
+    ).toThrow();
   });
 });
 
 describe('normalizeReviewNote', () => {
   it('trims and accepts 1 to 500 characters', () => {
-    expect(normalizeReviewNote('  Paquete escaneado  ')).toBe('Paquete escaneado');
+    expect(normalizeReviewNote('  Paquete escaneado  ')).toBe(
+      'Paquete escaneado',
+    );
     expect(normalizeReviewNote('a'.repeat(500))).toHaveLength(500);
   });
 
@@ -146,12 +176,18 @@ describe('resolveCarrierReviewErrorMessage', () => {
     for (const code of codes) {
       expect(resolveCarrierReviewErrorMessage(code)).not.toBe(generic);
     }
-    expect(resolveCarrierReviewErrorMessage('INVALID_REVIEW_NOTE')).toContain('500');
+    expect(resolveCarrierReviewErrorMessage('INVALID_REVIEW_NOTE')).toContain(
+      '500',
+    );
   });
 
   it('falls back to a generic message for unknown codes', () => {
-    expect(resolveCarrierReviewErrorMessage('INTERNAL_ERROR')).toBe(resolveCarrierReviewErrorMessage(null));
-    expect(resolveCarrierReviewErrorMessage('SOMETHING_ELSE')).toBe(resolveCarrierReviewErrorMessage(null));
+    expect(resolveCarrierReviewErrorMessage('INTERNAL_ERROR')).toBe(
+      resolveCarrierReviewErrorMessage(null),
+    );
+    expect(resolveCarrierReviewErrorMessage('SOMETHING_ELSE')).toBe(
+      resolveCarrierReviewErrorMessage(null),
+    );
   });
 });
 

@@ -57,7 +57,9 @@ export function createCronWatchdogHandler(deps: CronWatchdogDeps) {
     try {
       return await deps.runMonitored(check);
     } catch (error) {
-      deps.log(`cron-watchdog failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+      deps.log(
+        `cron-watchdog failed: ${error instanceof Error ? error.message : 'unknown error'}`,
+      );
       return json({ error: 'INTERNAL_ERROR' }, 500);
     }
   };

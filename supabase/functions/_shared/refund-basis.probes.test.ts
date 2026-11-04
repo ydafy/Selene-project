@@ -7,7 +7,11 @@ let seed = 0x5eed1234;
 const rnd = () => (seed = (seed * 1103515245 + 12345) >>> 0) / 2 ** 32;
 const int = (lo: number, hi: number) => lo + Math.floor(rnd() * (hi - lo + 1));
 const items = (prices: number[]) =>
-  prices.map((p, i) => ({ price_at_purchase: p, shipping_amount: null, shipment_id: `s${i}` }));
+  prices.map((p, i) => ({
+    price_at_purchase: p,
+    shipping_amount: null,
+    shipment_id: `s${i}`,
+  }));
 function shuffled(n: number): number[] {
   const a = [...Array(n).keys()];
   for (let i = n - 1; i > 0; i--) {
@@ -21,7 +25,9 @@ describe('computeShipmentRefundAmountCents: cumulative multi-shipment cancellati
   it('refunds every shipment of random orders without exceeding the charge', () => {
     for (let o = 0; o < 3000; o++) {
       const n = int(1, 6);
-      const prices = Array.from({ length: n }, () => (rnd() < 0.35 ? [500, 1000, 5000][int(0, 2)] : int(1, 30000)));
+      const prices = Array.from({ length: n }, () =>
+        rnd() < 0.35 ? [500, 1000, 5000][int(0, 2)] : int(1, 30000),
+      );
       const subtotal = prices.reduce((a, b) => a + b, 0) * 100;
       const fee = Math.round(subtotal * rnd() * 0.05);
       const charge = subtotal + fee;
@@ -47,7 +53,14 @@ describe('computeShipmentRefundAmountCents: cumulative multi-shipment cancellati
 
   it('refunds FU1 in every cancellation order and ends exactly at the charge', () => {
     const orderItems = items([5000, 6000, 5000]);
-    for (const order of [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]]) {
+    for (const order of [
+      [0, 1, 2],
+      [0, 2, 1],
+      [1, 0, 2],
+      [1, 2, 0],
+      [2, 0, 1],
+      [2, 1, 0],
+    ]) {
       let refunded = 0;
       for (const i of order)
         refunded += computeShipmentRefundAmountCents({

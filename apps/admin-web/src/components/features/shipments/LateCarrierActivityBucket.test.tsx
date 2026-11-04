@@ -2,7 +2,10 @@ import { afterEach, expect, it, mock, spyOn } from 'bun:test';
 import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { LateCarrierActivityBucket } from './LateCarrierActivityBucket';
-import { resolveLateCarrierActivityErrorMessage, type LateCarrierActivity } from '../../../lib/lateCarrierActivity';
+import {
+  resolveLateCarrierActivityErrorMessage,
+  type LateCarrierActivity,
+} from '../../../lib/lateCarrierActivity';
 
 const base: LateCarrierActivity = {
   shipmentId: '11111111-aaaa-bbbb-cccc-000000000001',
@@ -26,7 +29,8 @@ function nodes(value: React.ReactNode): Element[] {
   return [value, ...nodes(value.props.children as React.ReactNode)];
 }
 function label(value: React.ReactNode): string {
-  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (typeof value === 'string' || typeof value === 'number')
+    return String(value);
   if (Array.isArray(value)) return value.map(label).join('');
   return React.isValidElement<Record<string, unknown>>(value)
     ? label(value.props.children as React.ReactNode)
@@ -40,9 +44,12 @@ function harness(overrides: Record<string, unknown> = {}) {
   spyOn(React, 'useState').mockImplementation(((initial: unknown) => {
     const index = stateIndex++;
     if (!(index in states)) states[index] = initial;
-    return [states[index], (next: unknown) => {
-      states[index] = typeof next === 'function' ? next(states[index]) : next;
-    }];
+    return [
+      states[index],
+      (next: unknown) => {
+        states[index] = typeof next === 'function' ? next(states[index]) : next;
+      },
+    ];
   }) as typeof React.useState);
   spyOn(React, 'useRef').mockImplementation(((initial: unknown) => {
     const index = refIndex++;
@@ -64,11 +71,17 @@ function harness(overrides: Record<string, unknown> = {}) {
   const render = () => {
     stateIndex = 0;
     refIndex = 0;
-    return LateCarrierActivityBucket(props as Parameters<typeof LateCarrierActivityBucket>[0]);
+    return LateCarrierActivityBucket(
+      props as Parameters<typeof LateCarrierActivityBucket>[0],
+    );
   };
   const html = () => renderToStaticMarkup(render());
   const button = (text: string) =>
-    nodes(render()).find((n) => n.type === 'button' && label(n.props.children as React.ReactNode) === text);
+    nodes(render()).find(
+      (n) =>
+        n.type === 'button' &&
+        label(n.props.children as React.ReactNode) === text,
+    );
   const click = async (text: string) => {
     const found = button(text);
     expect(found, `Missing button: ${text}`).toBeDefined();
@@ -77,10 +90,14 @@ function harness(overrides: Record<string, unknown> = {}) {
   const type = (value: string) => {
     const field = nodes(render()).find((n) => n.type === 'textarea')!;
     expect(field).toBeDefined();
-    (field.props.onChange as (e: { target: { value: string } }) => void)({ target: { value } });
+    (field.props.onChange as (e: { target: { value: string } }) => void)({
+      target: { value },
+    });
   };
   const chip = () => {
-    const found = nodes(render()).find((n) => n.props['data-testid'] === 'late-carrier-activity-count');
+    const found = nodes(render()).find(
+      (n) => n.props['data-testid'] === 'late-carrier-activity-count',
+    );
     return found ? label(found.props.children as React.ReactNode) : null;
   };
   return { render, html, button, click, type, chip, acknowledged };
@@ -92,7 +109,9 @@ it('explains in plain words what happened, what to do and what marking it does',
   expect(html).toContain('ya iniciamos el reembolso al comprador');
   expect(html).toContain('Habla con el vendedor o el comprador');
   expect(html).toContain('solo queda anotado y sale de la lista');
-  expect(html).not.toMatch(/carrier registró movimiento|empezó el reembolso de la cancelación/);
+  expect(html).not.toMatch(
+    /carrier registró movimiento|empezó el reembolso de la cancelación/,
+  );
 });
 
 it('shows the title and a dash instead of a count while loading, never rows or empty', () => {
@@ -148,7 +167,9 @@ it('renders the row fields with the carrier event, state and time since', () => 
 
 it('says so when the tracking number, carrier or refund state are unknown', () => {
   const html = harness({
-    cases: [{ ...base, trackingNumber: null, carrier: null, refundStatus: null }],
+    cases: [
+      { ...base, trackingNumber: null, carrier: null, refundStatus: null },
+    ],
   }).html();
   expect(html).not.toContain('TRK-998877');
   expect(html).toContain('Sin tracking');
@@ -157,7 +178,12 @@ it('says so when the tracking number, carrier or refund state are unknown', () =
 });
 
 it('counts several cases', () => {
-  const h = harness({ cases: [base, { ...base, shipmentId: '44444444-aaaa-bbbb-cccc-000000000001' }] });
+  const h = harness({
+    cases: [
+      base,
+      { ...base, shipmentId: '44444444-aaaa-bbbb-cccc-000000000001' },
+    ],
+  });
   expect(h.chip()).toBe('2');
 });
 
@@ -178,7 +204,9 @@ it('requires a note of 1 to 200 characters before sending anything', async () =>
   h.type('   ');
   await h.click(CONFIRM);
   expect(h.acknowledged).toEqual([]);
-  expect(h.html()).toContain(resolveLateCarrierActivityErrorMessage('INVALID_ACKNOWLEDGEMENT_NOTE'));
+  expect(h.html()).toContain(
+    resolveLateCarrierActivityErrorMessage('INVALID_ACKNOWLEDGEMENT_NOTE'),
+  );
   h.type('a'.repeat(201));
   await h.click(CONFIRM);
   expect(h.acknowledged).toEqual([]);
@@ -199,7 +227,9 @@ it('dispatches once on a double click and disables the confirmation while pendin
   const h = harness({
     onAcknowledge: (shipmentId: string) => {
       calls.push(shipmentId);
-      return new Promise<void>((resolve) => { finish = resolve; });
+      return new Promise<void>((resolve) => {
+        finish = resolve;
+      });
     },
   });
   await h.click(ACK);
@@ -215,7 +245,9 @@ it('dispatches once on a double click and disables the confirmation while pendin
 });
 
 it('disables the row action while the mutation is pending', () => {
-  expect(harness({ isAcknowledging: true }).button(ACK)?.props.disabled).toBe(true);
+  expect(harness({ isAcknowledging: true }).button(ACK)?.props.disabled).toBe(
+    true,
+  );
 });
 
 it('keeps the form open with a mapped message on server errors and allows a retry', async () => {
@@ -224,7 +256,10 @@ it('keeps the form open with a mapped message on server errors and allows a retr
   const h = harness({
     onAcknowledge: async (_id: string, note: string) => {
       calls.push(note);
-      if (fail) throw Object.assign(new Error('boom'), { code: 'LATE_CARRIER_ACTIVITY_NOT_FOUND' });
+      if (fail)
+        throw Object.assign(new Error('boom'), {
+          code: 'LATE_CARRIER_ACTIVITY_NOT_FOUND',
+        });
     },
   });
   await h.click(ACK);
@@ -232,7 +267,9 @@ it('keeps the form open with a mapped message on server errors and allows a retr
   await h.click(CONFIRM);
   let html = h.html();
   expect(html).toContain('<dialog');
-  expect(html).toContain(resolveLateCarrierActivityErrorMessage('LATE_CARRIER_ACTIVITY_NOT_FOUND'));
+  expect(html).toContain(
+    resolveLateCarrierActivityErrorMessage('LATE_CARRIER_ACTIVITY_NOT_FOUND'),
+  );
   expect(html).toContain('nota 1');
   fail = false;
   await h.click(CONFIRM);
@@ -242,7 +279,11 @@ it('keeps the form open with a mapped message on server errors and allows a retr
 });
 
 it('falls back to a generic message for an unknown failure', async () => {
-  const h = harness({ onAcknowledge: async () => { throw new Error('network'); } });
+  const h = harness({
+    onAcknowledge: async () => {
+      throw new Error('network');
+    },
+  });
   await h.click(ACK);
   h.type('nota');
   await h.click(CONFIRM);

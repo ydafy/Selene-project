@@ -21,8 +21,16 @@ const problem = {
 
 describe('parseRefundProblems', () => {
   it('accepts the server contract, including null refund fields', () => {
-    const escalated = { ...problem, kind: 'refund_not_found', refundId: null, refundFailureReason: null };
-    expect(parseRefundProblems({ problems: [problem, escalated] })).toEqual([problem, escalated]);
+    const escalated = {
+      ...problem,
+      kind: 'refund_not_found',
+      refundId: null,
+      refundFailureReason: null,
+    };
+    expect(parseRefundProblems({ problems: [problem, escalated] })).toEqual([
+      problem,
+      escalated,
+    ]);
     expect(parseRefundProblems({ problems: [] })).toEqual([]);
   });
 
@@ -36,7 +44,10 @@ describe('parseRefundProblems', () => {
     ['string amount', { problems: [{ ...problem, amountOwedCents: '11000' }] }],
     ['zero amount', { problems: [{ ...problem, amountOwedCents: 0 }] }],
     ['missing shipment id', { problems: [{ ...problem, shipmentId: '' }] }],
-    ['undefined refund id', { problems: [{ ...problem, refundId: undefined }] }],
+    [
+      'undefined refund id',
+      { problems: [{ ...problem, refundId: undefined }] },
+    ],
     ['invalid date', { problems: [{ ...problem, since: 'not a date' }] }],
   ];
   for (const [name, payload] of malformed) {
@@ -60,7 +71,12 @@ describe('normalizeResolutionReference', () => {
 
 describe('parseResolveResult', () => {
   it('accepts the server result', () => {
-    const result = { resolved: false, shipment_cancelled: true, amount_owed_cents: 11000, reference: 'SPEI-1' };
+    const result = {
+      resolved: false,
+      shipment_cancelled: true,
+      amount_owed_cents: 11000,
+      reference: 'SPEI-1',
+    };
     expect(parseResolveResult(result)).toEqual({
       resolved: false,
       shipmentCancelled: true,
@@ -76,20 +92,32 @@ describe('parseResolveResult', () => {
 
 describe('resolveRefundErrorMessage', () => {
   it('maps the stable server codes to readable messages', () => {
-    for (const code of ['REFUND_NOT_RESOLVABLE', 'SHIPMENT_STATUS_UNEXPECTED', 'INVALID_RESOLUTION_REFERENCE', 'ADMIN_ONLY']) {
+    for (const code of [
+      'REFUND_NOT_RESOLVABLE',
+      'SHIPMENT_STATUS_UNEXPECTED',
+      'INVALID_RESOLUTION_REFERENCE',
+      'ADMIN_ONLY',
+    ]) {
       const message = resolveRefundErrorMessage(code);
       expect(message).not.toContain(code);
       expect(message.length).toBeGreaterThan(10);
     }
     const messages = new Set(
-      ['REFUND_NOT_RESOLVABLE', 'SHIPMENT_STATUS_UNEXPECTED', 'INVALID_RESOLUTION_REFERENCE', 'ADMIN_ONLY'].map(
-        resolveRefundErrorMessage,
-      ),
+      [
+        'REFUND_NOT_RESOLVABLE',
+        'SHIPMENT_STATUS_UNEXPECTED',
+        'INVALID_RESOLUTION_REFERENCE',
+        'ADMIN_ONLY',
+      ].map(resolveRefundErrorMessage),
     );
     expect(messages.size).toBe(4);
   });
   it('uses one generic message for any other code', () => {
-    expect(resolveRefundErrorMessage('INTERNAL_ERROR')).toBe(resolveRefundErrorMessage('SOMETHING_NEW'));
-    expect(resolveRefundErrorMessage(null)).toBe(resolveRefundErrorMessage('SOMETHING_NEW'));
+    expect(resolveRefundErrorMessage('INTERNAL_ERROR')).toBe(
+      resolveRefundErrorMessage('SOMETHING_NEW'),
+    );
+    expect(resolveRefundErrorMessage(null)).toBe(
+      resolveRefundErrorMessage('SOMETHING_NEW'),
+    );
   });
 });

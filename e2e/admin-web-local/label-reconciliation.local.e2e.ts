@@ -14,7 +14,9 @@ import { expect, test } from '@playwright/test';
 import { readLocalStack } from './local-stack';
 
 const stack = readLocalStack();
-const db = createClient(stack.apiUrl, stack.serviceRoleKey, { auth: { persistSession: false } });
+const db = createClient(stack.apiUrl, stack.serviceRoleKey, {
+  auth: { persistSession: false },
+});
 
 const adminId = '00000000-0000-4000-8000-000000000001';
 const sellerId = '00000000-0000-4000-8000-000000000002';
@@ -24,24 +26,37 @@ const shipmentId = 'e2e60000-0000-4000-8000-0000000000b1';
 const paymentIntent = 'pi_e2e_label_reconciliation';
 const note = 'Revisé el panel de Envía y no hay ninguna guía';
 
-async function ok<T>(promise: PromiseLike<{ data: T; error: { message: string } | null }>, what: string): Promise<T> {
+async function ok<T>(
+  promise: PromiseLike<{ data: T; error: { message: string } | null }>,
+  what: string,
+): Promise<T> {
   const { data, error } = await promise;
   if (error) throw new Error(`${what}: ${error.message}`);
   return data;
 }
 
 async function cleanup() {
-  await ok(db.from('shipment_label_events').delete().eq('shipment_id', shipmentId), 'label events');
+  await ok(
+    db.from('shipment_label_events').delete().eq('shipment_id', shipmentId),
+    'label events',
+  );
   await ok(db.from('shipments').delete().eq('id', shipmentId), 'shipments');
   await ok(db.from('orders').delete().eq('id', orderId), 'orders');
 }
 
 test.beforeAll(async () => {
   // Fail fast with a clear message when the functions are not being served.
-  for (const name of ['list-shipment-label-reconciliations', 'resolve-shipment-label-reconciliation']) {
-    const probe = await fetch(`${stack.apiUrl}/functions/v1/${name}`, { method: 'OPTIONS' }).catch(() => null);
+  for (const name of [
+    'list-shipment-label-reconciliations',
+    'resolve-shipment-label-reconciliation',
+  ]) {
+    const probe = await fetch(`${stack.apiUrl}/functions/v1/${name}`, {
+      method: 'OPTIONS',
+    }).catch(() => null);
     if (!probe || probe.status >= 500 || probe.status === 404) {
-      throw new Error('FUNCTIONS_NOT_SERVED: run `supabase functions serve --no-verify-jwt --env-file supabase/functions/.env`.');
+      throw new Error(
+        'FUNCTIONS_NOT_SERVED: run `supabase functions serve --no-verify-jwt --env-file supabase/functions/.env`.',
+      );
     }
   }
 
@@ -71,7 +86,9 @@ test.beforeAll(async () => {
       label_quote_carrier: 'paquetexpress',
       label_quote_service: 'ground',
       label_quote_cost_cents: 9100,
-      label_quote_rated_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+      label_quote_rated_at: new Date(
+        Date.now() - 5 * 24 * 60 * 60 * 1000,
+      ).toISOString(),
     }),
     'shipment',
   );
@@ -82,14 +99,18 @@ test.beforeAll(async () => {
         event_type: 'claimed',
         actor_id: sellerId,
         metadata: {},
-        created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000 - 60 * 60 * 1000).toISOString(),
+        created_at: new Date(
+          Date.now() - 5 * 24 * 60 * 60 * 1000 - 60 * 60 * 1000,
+        ).toISOString(),
       },
       {
         shipment_id: shipmentId,
         event_type: 'orphaned',
         actor_id: null,
         metadata: { errorClass: 'timeout' },
-        created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+        created_at: new Date(
+          Date.now() - 5 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
       },
     ]),
     'label events',
@@ -100,17 +121,23 @@ test.afterAll(async () => {
   await cleanup();
 });
 
-test('admin sees a shipment stuck in label generation and releases it with "no hay guía"', async ({ page }) => {
+test('admin sees a shipment stuck in label generation and releases it with "no hay guía"', async ({
+  page,
+}) => {
   await page.goto('/login');
   await page.getByRole('textbox').first().fill('admin@selene.local');
   await page.locator('input[type="password"]').fill('password123');
-  await page.getByRole('button', { name: 'Entrar al Sistema', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Entrar al Sistema', exact: true })
+    .click();
 
   await expect(page).not.toHaveURL(/\/login/);
   await page.getByRole('button', { name: 'Envíos', exact: true }).click();
   await expect(page).toHaveURL(/\/shipments$/);
   // The stack serves each function call in seconds and the page fires three queries at once.
-  await expect(page.getByRole('heading', { name: 'Guías que no sabemos si se crearon' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Guías que no sabemos si se crearon' }),
+  ).toBeVisible();
 
   const row = page.getByRole('article').filter({ hasText: 'e2e60000' });
   await expect(row).toHaveCount(1, { timeout: 30_000 });
@@ -130,18 +157,38 @@ test('admin sees a shipment stuck in label generation and releases it with "no h
 
   // Released, not cancelled: the seller can generate again; the buyer's money is untouched.
   const shipment = await ok(
-    db.from('shipments').select('status, label_generation_state, claim_token, claim_expires_at').eq('id', shipmentId).single(),
+    db
+      .from('shipments')
+      .select('status, label_generation_state, claim_token, claim_expires_at')
+      .eq('id', shipmentId)
+      .single(),
     'shipment after',
   );
-  expect(shipment).toEqual({ status: 'paid', label_generation_state: 'unclaimed', claim_token: null, claim_expires_at: null });
-  const order = await ok(db.from('orders').select('status').eq('id', orderId).single(), 'order after');
+  expect(shipment).toEqual({
+    status: 'paid',
+    label_generation_state: 'unclaimed',
+    claim_token: null,
+    claim_expires_at: null,
+  });
+  const order = await ok(
+    db.from('orders').select('status').eq('id', orderId).single(),
+    'order after',
+  );
   expect(order.status).toBe('paid');
 
   const released = await ok(
-    db.from('shipment_label_events').select('actor_id, metadata').eq('shipment_id', shipmentId).eq('event_type', 'released'),
+    db
+      .from('shipment_label_events')
+      .select('actor_id, metadata')
+      .eq('shipment_id', shipmentId)
+      .eq('event_type', 'released'),
     'released event',
   );
   expect(released).toHaveLength(1);
   expect(released[0].actor_id).toBe(adminId);
-  expect(released[0].metadata).toEqual({ resolution: 'no_label', from_state: 'orphan_pending', note });
+  expect(released[0].metadata).toEqual({
+    resolution: 'no_label',
+    from_state: 'orphan_pending',
+    note,
+  });
 });

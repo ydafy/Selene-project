@@ -137,10 +137,14 @@ it('uses server page bounds without double slicing and reviews selected off-page
   const offPage = { ...batch, sellerId: 'seller-off' };
   let selections = 0;
   const h = harness({
-    batches: [batch], selectionBatches: [batch, offPage],
-    pagination: { page: 1, totalGroups: 21 }, onPageChange: () => undefined,
+    batches: [batch],
+    selectionBatches: [batch, offPage],
+    pagination: { page: 1, totalGroups: 21 },
+    onPageChange: () => undefined,
     selectedShipmentsBySeller: { 'seller-off': ['shipment-ready'] },
-    onSelectAll: async () => { selections++; },
+    onSelectAll: async () => {
+      selections++;
+    },
   });
   expect(renderToStaticMarkup(h.render())).toContain('Aurora');
   expect(renderToStaticMarkup(h.render())).toContain('Página 2 de 2');

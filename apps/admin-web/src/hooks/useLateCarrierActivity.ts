@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { acknowledgeLateCarrierActivity, fetchLateCarrierActivity } from '../services/lateCarrierActivity';
+import {
+  acknowledgeLateCarrierActivity,
+  fetchLateCarrierActivity,
+} from '../services/lateCarrierActivity';
 
 export const LATE_CARRIER_ACTIVITY_KEY = ['late-carrier-activity'] as const;
 
@@ -27,11 +30,14 @@ export function useAcknowledgeLateCarrierActivity() {
       acknowledgeLateCarrierActivity(shipmentId, note),
     onSuccess: async () => {
       toast.success('Caso marcado como revisado');
-      await queryClient.invalidateQueries({ queryKey: LATE_CARRIER_ACTIVITY_KEY });
+      await queryClient.invalidateQueries({
+        queryKey: LATE_CARRIER_ACTIVITY_KEY,
+      });
     },
   });
   return {
-    acknowledge: (shipmentId: string, note: string) => mutation.mutateAsync({ shipmentId, note }),
+    acknowledge: (shipmentId: string, note: string) =>
+      mutation.mutateAsync({ shipmentId, note }),
     isPending: mutation.isPending,
   };
 }

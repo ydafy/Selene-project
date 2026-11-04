@@ -13,7 +13,8 @@
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type',
 };
 const JSON_HEADERS = { ...CORS_HEADERS, 'Content-Type': 'application/json' };
 
@@ -24,14 +25,22 @@ export type ListShipmentLabelReconciliationsDeps = {
   getUserId: (accessToken: string) => Promise<string | null>;
   /** True only for an active admin (see isActiveAdmin); throws when the lookup fails. */
   isAdmin: (userId: string) => Promise<boolean>;
-  listLabelReconciliations: () => Promise<{ data: unknown; error: { message: string } | null }>;
-  log: (level: 'INFO' | 'WARN' | 'ERROR', msg: string, data?: Record<string, unknown>) => unknown;
+  listLabelReconciliations: () => Promise<{
+    data: unknown;
+    error: { message: string } | null;
+  }>;
+  log: (
+    level: 'INFO' | 'WARN' | 'ERROR',
+    msg: string,
+    data?: Record<string, unknown>,
+  ) => unknown;
 };
 
 const respond = (status: number, body: Record<string, unknown>): Response =>
   new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
 
-const fail = (status: number, code: string): Response => respond(status, { error: code });
+const fail = (status: number, code: string): Response =>
+  respond(status, { error: code });
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -53,10 +62,16 @@ const nullableTimestamp = (value: unknown): string | null | undefined =>
   value === null ? null : (timestamp(value) ?? undefined);
 
 const nullableCents = (value: unknown): number | null | undefined =>
-  value === null ? null : Number.isSafeInteger(value) && (value as number) >= 0 ? (value as number) : undefined;
+  value === null
+    ? null
+    : Number.isSafeInteger(value) && (value as number) >= 0
+      ? (value as number)
+      : undefined;
 
-const oneOf = <T extends string>(values: readonly T[], value: unknown): T | undefined =>
-  values.find((v) => v === value);
+const oneOf = <T extends string>(
+  values: readonly T[],
+  value: unknown,
+): T | undefined => values.find((v) => v === value);
 
 function toReconciliation(value: unknown): Record<string, unknown> | null {
   const row = asRecord(value);
@@ -85,21 +100,31 @@ function toReconciliation(value: unknown): Record<string, unknown> | null {
   };
   // null is a valid value for the nullable columns; undefined and a null id or date are not.
   return Object.values(fields).some((v) => v === undefined) ||
-      fields.shipment_id === null || fields.order_id === null || fields.seller_id === null ||
-      fields.buyer_id === null || fields.shipment_created_at === null || fields.stuck_at === null
+    fields.shipment_id === null ||
+    fields.order_id === null ||
+    fields.seller_id === null ||
+    fields.buyer_id === null ||
+    fields.shipment_created_at === null ||
+    fields.stuck_at === null
     ? null
     : fields;
 }
 
-export function createListShipmentLabelReconciliationsHandler(deps: ListShipmentLabelReconciliationsDeps) {
+export function createListShipmentLabelReconciliationsHandler(
+  deps: ListShipmentLabelReconciliationsDeps,
+) {
   return async (req: Request): Promise<Response> => {
-    if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
+    if (req.method === 'OPTIONS')
+      return new Response('ok', { headers: CORS_HEADERS });
     // POST is accepted because supabase-js `functions.invoke` sends POST by default.
-    if (req.method !== 'GET' && req.method !== 'POST') return fail(405, 'METHOD_NOT_ALLOWED');
+    if (req.method !== 'GET' && req.method !== 'POST')
+      return fail(405, 'METHOD_NOT_ALLOWED');
 
     try {
       const authorization = req.headers.get('Authorization') ?? '';
-      const token = authorization.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
+      const token = authorization.startsWith('Bearer ')
+        ? authorization.slice(7).trim()
+        : '';
       if (!token) return fail(401, 'AUTH_REQUIRED');
 
       const adminId = await deps.getUserId(token);
@@ -109,18 +134,26 @@ export function createListShipmentLabelReconciliationsHandler(deps: ListShipment
 
       const { data, error } = await deps.listLabelReconciliations();
       if (error) {
-        deps.log('ERROR', 'Listing shipment label reconciliations failed', { error: error.message });
+        deps.log('ERROR', 'Listing shipment label reconciliations failed', {
+          error: error.message,
+        });
         return fail(500, 'INTERNAL_ERROR');
       }
 
       const rows = Array.isArray(data) ? data : null;
       const cases = rows ? rows.map(toReconciliation) : null;
       if (!cases || cases.some((c) => c === null)) {
-        deps.log('ERROR', 'Shipment label reconciliations returned an unusable result');
+        deps.log(
+          'ERROR',
+          'Shipment label reconciliations returned an unusable result',
+        );
         return fail(500, 'INTERNAL_ERROR');
       }
 
-      deps.log('INFO', 'Shipment label reconciliations listed', { adminId, count: cases.length });
+      deps.log('INFO', 'Shipment label reconciliations listed', {
+        adminId,
+        count: cases.length,
+      });
       return respond(200, { label_reconciliations: cases });
     } catch (error: unknown) {
       deps.log('ERROR', 'Listing shipment label reconciliations crashed', {

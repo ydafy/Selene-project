@@ -30,6 +30,8 @@ describe('resolve-shipment-tracking-url request schema', () => {
     const source = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
 
     expect(source).toContain("from './request-schema.ts'");
-    expect(source).toContain('ShipmentTrackingUrlRequestSchema.safeParse(body)');
+    expect(source).toContain(
+      'ShipmentTrackingUrlRequestSchema.safeParse(body)',
+    );
   });
 });

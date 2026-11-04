@@ -28,12 +28,18 @@ type PackageDimensions = Omit<ShipmentPackage, 'fallbackPresetKeys'>;
 const isPositive = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value > 0;
 
-function readPreset(presets: unknown, key: string | null): PackageDimensions | null {
+function readPreset(
+  presets: unknown,
+  key: string | null,
+): PackageDimensions | null {
   if (!key || !presets || typeof presets !== 'object') return null;
   const preset = (presets as Record<string, unknown>)[key];
   if (!preset || typeof preset !== 'object') return null;
   const { length, width, height, weight } = preset as Record<string, unknown>;
-  return isPositive(length) && isPositive(width) && isPositive(height) && isPositive(weight)
+  return isPositive(length) &&
+    isPositive(width) &&
+    isPositive(height) &&
+    isPositive(weight)
     ? { length, width, height, weight }
     : null;
 }
@@ -72,7 +78,11 @@ export function resolveShipmentPackage(
 
 export function declaredContentForCategories(categories: string[]): string {
   const labels = [
-    ...new Set(categories.map((category) => CATEGORY_CONTENT[category] ?? GENERIC_CONTENT)),
+    ...new Set(
+      categories.map(
+        (category) => CATEGORY_CONTENT[category] ?? GENERIC_CONTENT,
+      ),
+    ),
   ];
   return labels.length > 0 ? labels.join(', ') : GENERIC_CONTENT;
 }

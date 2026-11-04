@@ -27,7 +27,10 @@ export type AutoCancelLease =
   | { acquired: true; leaseId: string; budgetExceeded: () => boolean }
   | { acquired: false; response: Response };
 
-const errorField = (error: unknown, field: 'code' | 'message'): string | undefined => {
+const errorField = (
+  error: unknown,
+  field: 'code' | 'message',
+): string | undefined => {
   if (error && typeof error === 'object' && field in error) {
     const value = (error as Record<string, unknown>)[field];
     return typeof value === 'string' ? value : undefined;
@@ -46,13 +49,17 @@ export async function acquireAutoCancelLease(
   log: AutoCancelLeaseLog,
   now: () => number = Date.now,
 ): Promise<AutoCancelLease> {
-  const { data, error } = await client.rpc('fn_acquire_auto_cancel_lease', { p_job: job });
+  const { data, error } = await client.rpc('fn_acquire_auto_cancel_lease', {
+    p_job: job,
+  });
   const row = (Array.isArray(data) ? data[0] : data) as
-    | { acquired?: unknown; lease_id?: unknown }
-    | null
-    | undefined;
+    { acquired?: unknown; lease_id?: unknown } | null | undefined;
 
-  if (error || !row || (row.acquired === true && typeof row.lease_id !== 'string')) {
+  if (
+    error ||
+    !row ||
+    (row.acquired === true && typeof row.lease_id !== 'string')
+  ) {
     log('ERROR', 'Auto-cancel lease could not be acquired', {
       job,
       code: errorField(error, 'code') ?? 'INVALID_LEASE_RESPONSE',
@@ -94,12 +101,20 @@ export async function releaseAutoCancelLease(
       p_job: job,
       p_lease_id: leaseId,
     });
-    if (error) reason = errorField(error, 'code') ?? errorField(error, 'message') ?? 'RELEASE_FAILED';
+    if (error)
+      reason =
+        errorField(error, 'code') ??
+        errorField(error, 'message') ??
+        'RELEASE_FAILED';
     else if (data !== true) reason = 'NOT_HOLDER';
   } catch (error) {
     reason = error instanceof Error ? error.message : 'RELEASE_FAILED';
   }
   if (reason) {
-    log('WARN', 'Auto-cancel lease not released; it expires on its own', { job, leaseId, reason });
+    log('WARN', 'Auto-cancel lease not released; it expires on its own', {
+      job,
+      leaseId,
+      reason,
+    });
   }
 }

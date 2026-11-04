@@ -144,15 +144,15 @@ async function invoke(
           data: options.recovery
             ? { status: 'recovery_required' }
             : options.busy
-            ? { status: 'busy' }
-            : {
-                status: 'claimed',
-                source: 'buyer',
-                actor_id: 'buyer',
-                reason: 'Current reason',
-                operation_key: 'cancel_shipment_target',
-                claim_token: 'token',
-              },
+              ? { status: 'busy' }
+              : {
+                  status: 'claimed',
+                  source: 'buyer',
+                  actor_id: 'buyer',
+                  reason: 'Current reason',
+                  operation_key: 'cancel_shipment_target',
+                  claim_token: 'token',
+                },
         };
       if (name === 'fn_start_shipment_cancellation_refund')
         return {
@@ -320,7 +320,9 @@ describe('manual cancellation HTTP preservation', () => {
     ]);
   });
   test('a claim RPC error returns a stable 409 and keeps the RPC text in the logs only', async () => {
-    const result = await invoke({ claimError: 'claim secret detail p_actor_id' });
+    const result = await invoke({
+      claimError: 'claim secret detail p_actor_id',
+    });
     expect(result.response.status).toBe(409);
     expect(result.body).toBe('{"error":"CANCELLATION_CLAIM_FAILED"}');
     expect(result.body).not.toContain('claim secret detail');
@@ -335,7 +337,9 @@ describe('manual cancellation HTTP preservation', () => {
     expect(result.after).toBe(result.before);
   });
   test('a start RPC error returns a stable 409 and keeps the RPC text in the logs only', async () => {
-    const result = await invoke({ startError: 'start secret detail p_claim_token' });
+    const result = await invoke({
+      startError: 'start secret detail p_claim_token',
+    });
     expect(result.response.status).toBe(409);
     expect(result.body).toBe('{"error":"CANCELLATION_START_FAILED"}');
     expect(result.body).not.toContain('start secret detail');
@@ -382,7 +386,9 @@ describe('manual cancellation HTTP preservation', () => {
     });
   }
   test('a record RPC error returns a stable 500 and never leaks the RPC text', async () => {
-    const result = await invoke({ recordError: 'secret rpc detail p_refund_id' });
+    const result = await invoke({
+      recordError: 'secret rpc detail p_refund_id',
+    });
     expect(result.response.status).toBe(500);
     expect(result.body).toBe('{"error":"CANCELLATION_REFUND_RECORD_FAILED"}');
     expect(result.body).not.toContain('secret rpc detail');
@@ -417,7 +423,11 @@ describe('manual cancellation HTTP preservation', () => {
       expect(result.after).toBe(result.before);
     });
     test.each([
-      ['list', { recovery: {}, listError: 'stripe list secret' }, 'stripe list secret'],
+      [
+        'list',
+        { recovery: {}, listError: 'stripe list secret' },
+        'stripe list secret',
+      ],
       [
         'retrieve',
         {
@@ -426,31 +436,38 @@ describe('manual cancellation HTTP preservation', () => {
         },
         'stripe retrieve secret',
       ],
-    ])('a Stripe %s failure returns CANCELLATION_REFUND_LOOKUP_FAILED and leaks no Stripe text', async (action, options, raw) => {
-      const result = await invoke(options);
-      expect(result.response.status).toBe(500);
-      expect(result.body).toBe('{"error":"CANCELLATION_REFUND_LOOKUP_FAILED"}');
-      expect(result.body).not.toContain(raw);
-      expect(result.logs).toContainEqual(
-        expect.objectContaining({
-          level: 'ERROR',
-          msg: 'Stripe refund lookup failed',
-          action,
-          error: raw,
-        }),
-      );
-      expect(result.stripeLookups).toEqual([action]);
-      expect(result.refunds).toEqual([]);
-      expect(result.completions).toEqual([]);
-      expect(result.after).toBe(result.before);
-    });
+    ])(
+      'a Stripe %s failure returns CANCELLATION_REFUND_LOOKUP_FAILED and leaks no Stripe text',
+      async (action, options, raw) => {
+        const result = await invoke(options);
+        expect(result.response.status).toBe(500);
+        expect(result.body).toBe(
+          '{"error":"CANCELLATION_REFUND_LOOKUP_FAILED"}',
+        );
+        expect(result.body).not.toContain(raw);
+        expect(result.logs).toContainEqual(
+          expect.objectContaining({
+            level: 'ERROR',
+            msg: 'Stripe refund lookup failed',
+            action,
+            error: raw,
+          }),
+        );
+        expect(result.stripeLookups).toEqual([action]);
+        expect(result.refunds).toEqual([]);
+        expect(result.completions).toEqual([]);
+        expect(result.after).toBe(result.before);
+      },
+    );
     test('a Stripe error during a recovery replay returns CANCELLATION_REFUND_PROVIDER_FAILED', async () => {
       const result = await invoke({
         recovery: {},
         providerError: 'replay provider secret',
       });
       expect(result.response.status).toBe(500);
-      expect(result.body).toBe('{"error":"CANCELLATION_REFUND_PROVIDER_FAILED"}');
+      expect(result.body).toBe(
+        '{"error":"CANCELLATION_REFUND_PROVIDER_FAILED"}',
+      );
       expect(result.body).not.toContain('replay provider secret');
       expect(result.refunds).toHaveLength(1);
       expect((result.refunds[0] as unknown[])[1]).toEqual({
@@ -485,7 +502,9 @@ describe('manual cancellation HTTP preservation', () => {
       expect(result.body).toBe('{"error":"CANCELLATION_RECOVERY_REQUIRED"}');
       expect(result.escalations).toHaveLength(1);
       expect(result.reports).toEqual([]);
-      expect(result.logs.filter((entry) => entry.level === 'CRITICAL')).toEqual([]);
+      expect(result.logs.filter((entry) => entry.level === 'CRITICAL')).toEqual(
+        [],
+      );
     });
     test('an escalated operation stops before any Stripe call, escalation or alert', async () => {
       const result = await invoke({

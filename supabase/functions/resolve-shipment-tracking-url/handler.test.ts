@@ -5,10 +5,13 @@ import { createResolveShipmentTrackingUrlHandler } from './handler.ts';
 const shipmentId = 'c61db80d-30df-4f93-8a3f-52e3708c3f42';
 
 const requestFor = () =>
-  new Request('https://example.com/functions/v1/resolve-shipment-tracking-url', {
-    method: 'POST',
-    body: JSON.stringify({ shipmentId }),
-  });
+  new Request(
+    'https://example.com/functions/v1/resolve-shipment-tracking-url',
+    {
+      method: 'POST',
+      body: JSON.stringify({ shipmentId }),
+    },
+  );
 
 const subject = {
   sellerId: 'seller-1',

@@ -14,7 +14,10 @@ import {
   mapConnectPayoutReleaseQueue,
   type ReleaseQueueBatch,
 } from '../lib/connectPayoutReleaseQueue';
-import { validatePayoutQueueResponse, type PayoutQueueRequest } from '../lib/connectPayoutQueuePagination';
+import {
+  validatePayoutQueueResponse,
+  type PayoutQueueRequest,
+} from '../lib/connectPayoutQueuePagination';
 import { formatConnectPayoutReleaseError } from '../lib/connectPayoutReleaseErrors';
 
 export const CONNECT_PAYOUT_RELEASE_QUEUE_KEY = [
@@ -29,13 +32,21 @@ interface ReleaseSelectedShipmentsInput {
 // Opaque read identities, not timestamps or claims about server snapshot order.
 let queueReadRevision = 0;
 
-async function fetchConnectPayoutReleaseQueue(search: string, request?: PayoutQueueRequest) {
+async function fetchConnectPayoutReleaseQueue(
+  search: string,
+  request?: PayoutQueueRequest,
+) {
   const revision = ++queueReadRevision;
   const trimmedSearch = search.trim();
   const { data, error } =
     await supabase.functions.invoke<ConnectPayoutReleaseQueueResponse>(
       'get-connect-payout-release-queue',
-      { body: { ...(trimmedSearch ? { search: trimmedSearch } : {}), ...request } },
+      {
+        body: {
+          ...(trimmedSearch ? { search: trimmedSearch } : {}),
+          ...request,
+        },
+      },
     );
 
   if (error) throw error;
@@ -45,9 +56,17 @@ async function fetchConnectPayoutReleaseQueue(search: string, request?: PayoutQu
 
   if (request) {
     const pagination = validatePayoutQueueResponse(data, request);
-    return { ...mapConnectPayoutReleaseQueue(pagination.rows), pagination, revision };
+    return {
+      ...mapConnectPayoutReleaseQueue(pagination.rows),
+      pagination,
+      revision,
+    };
   }
-  return { ...mapConnectPayoutReleaseQueue(data.rows ?? []), pagination: undefined, revision: undefined };
+  return {
+    ...mapConnectPayoutReleaseQueue(data.rows ?? []),
+    pagination: undefined,
+    revision: undefined,
+  };
 }
 
 async function releaseConnectPayout(payload: ConnectPayoutReleaseRequest) {
@@ -69,11 +88,22 @@ async function releaseConnectPayout(payload: ConnectPayoutReleaseRequest) {
   return data;
 }
 
-export function useConnectPayoutReleaseQueue(search: string, options?: { bucket: ConnectPayoutQueueBucket; page: number }) {
+export function useConnectPayoutReleaseQueue(
+  search: string,
+  options?: { bucket: ConnectPayoutQueueBucket; page: number },
+) {
   const queryClient = useQueryClient();
   const queueQuery = useQuery({
-    queryKey: [...CONNECT_PAYOUT_RELEASE_QUEUE_KEY, search, ...(options ? [options.bucket, options.page] : [])],
-    queryFn: () => fetchConnectPayoutReleaseQueue(search, options ? { ...options, scope: 'page' } : undefined),
+    queryKey: [
+      ...CONNECT_PAYOUT_RELEASE_QUEUE_KEY,
+      search,
+      ...(options ? [options.bucket, options.page] : []),
+    ],
+    queryFn: () =>
+      fetchConnectPayoutReleaseQueue(
+        search,
+        options ? { ...options, scope: 'page' } : undefined,
+      ),
     refetchInterval: 30000,
   });
 
@@ -123,13 +153,21 @@ export function useConnectPayoutReleaseQueue(search: string, options?: { bucket:
   });
 
   return {
-    lastSuccessfulFetchAt: queueQuery.dataUpdatedAt > 0 ? queueQuery.dataUpdatedAt : null,
+    lastSuccessfulFetchAt:
+      queueQuery.dataUpdatedAt > 0 ? queueQuery.dataUpdatedAt : null,
     pageRevision: queueQuery.data?.revision,
     pagination: queueQuery.data?.pagination,
     counts: queueQuery.data?.pagination?.counts,
     fetchSelection: () => {
-      if (!options) throw new Error('La selección completa requiere una consulta paginada.');
-      return fetchConnectPayoutReleaseQueue(search, { bucket: options.bucket, page: 0, scope: 'selection' });
+      if (!options)
+        throw new Error(
+          'La selección completa requiere una consulta paginada.',
+        );
+      return fetchConnectPayoutReleaseQueue(search, {
+        bucket: options.bucket,
+        page: 0,
+        scope: 'selection',
+      });
     },
     batches: queueQuery.data?.releaseBatches ?? [],
     processingRuns: queueQuery.data?.processingRuns ?? [],

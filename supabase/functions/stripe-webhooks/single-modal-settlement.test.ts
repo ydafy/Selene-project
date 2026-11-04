@@ -2,10 +2,10 @@ import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
 import {
-	buildSinglePaymentIntentParams,
-	deriveOrderGroupId,
-	deriveShipmentId,
-	SINGLE_MODAL_FLOW,
+  buildSinglePaymentIntentParams,
+  deriveOrderGroupId,
+  deriveShipmentId,
+  SINGLE_MODAL_FLOW,
 } from '../create-connect-payment/single-payment-builder.ts';
 import { calculateCheckoutAllocation } from '../create-connect-payment/fee-calculator.ts';
 import {
@@ -112,7 +112,8 @@ function compactAllocationJson(
 function chunk(json: string, maxLen = 500): string[] {
   if (json.length === 0) return [''];
   const out: string[] = [];
-  for (let i = 0; i < json.length; i += maxLen) out.push(json.slice(i, i + maxLen));
+  for (let i = 0; i < json.length; i += maxLen)
+    out.push(json.slice(i, i + maxLen));
   return out;
 }
 
@@ -330,9 +331,7 @@ describe('single-modal-settlement > reassembleAllocationMetadata', () => {
 
   it('throws missing_row_field when a row has no productIds (correlation lost)', () => {
     const rows = sampleRows();
-    const broken = rows.map((r, i) =>
-      i === 1 ? { ...r, productIds: [] } : r,
-    );
+    const broken = rows.map((r, i) => (i === 1 ? { ...r, productIds: [] } : r));
     const meta = buildFullMetadata(rows, { allocation_chunk_count: '1' });
     meta.allocation_json_0 = compactAllocationJson(broken);
     expect(() => reassembleAllocationMetadata(meta)).toThrow(
@@ -362,56 +361,60 @@ describe('single-modal-settlement > reassembleAllocationMetadata', () => {
 });
 
 describe('single-modal-settlement > parseSingleModalPayload', () => {
-	it('accepts producer-built UUID v5 metadata and preserves it through recovery', () => {
-		const idempotencyKey = 'settlement-contract-key';
-		const orderId = deriveOrderGroupId(idempotencyKey);
-		const shipmentId = deriveShipmentId(idempotencyKey, 'product_gpu');
-		const allocation = calculateCheckoutAllocation([
-			{
-				sellerId: 'cccccccc-0000-0000-0000-000000000001',
-				shipmentId,
-				subtotalCents: 100_000,
-				shippingCents: 20_000,
-			},
-		]);
-		const params = buildSinglePaymentIntentParams({
-			allocation,
-			orderId,
-			buyerId: VALID_BUYER_ID,
-			customerId: 'cus_contract',
-			addressId: VALID_ADDRESS_ID,
-			transferGroup: `selene_order_${orderId}`,
-			shipmentProductIds: { [shipmentId]: ['product_gpu'] },
-		});
-		const action = resolvePaymentIntentSucceededAction({
-			metadata: params.metadata,
-			amount: params.amount,
-		});
+  it('accepts producer-built UUID v5 metadata and preserves it through recovery', () => {
+    const idempotencyKey = 'settlement-contract-key';
+    const orderId = deriveOrderGroupId(idempotencyKey);
+    const shipmentId = deriveShipmentId(idempotencyKey, 'product_gpu');
+    const allocation = calculateCheckoutAllocation([
+      {
+        sellerId: 'cccccccc-0000-0000-0000-000000000001',
+        shipmentId,
+        subtotalCents: 100_000,
+        shippingCents: 20_000,
+      },
+    ]);
+    const params = buildSinglePaymentIntentParams({
+      allocation,
+      orderId,
+      buyerId: VALID_BUYER_ID,
+      customerId: 'cus_contract',
+      addressId: VALID_ADDRESS_ID,
+      transferGroup: `selene_order_${orderId}`,
+      shipmentProductIds: { [shipmentId]: ['product_gpu'] },
+    });
+    const action = resolvePaymentIntentSucceededAction({
+      metadata: params.metadata,
+      amount: params.amount,
+    });
 
-		expect(orderId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
-		expect(shipmentId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
-		expect(action).toMatchObject({
-			kind: 'single_modal',
-			payload: { orderId, transferGroup: `selene_order_${orderId}` },
-		});
-		if (action.kind !== 'single_modal') return;
-		expect(action.payload.rows).toEqual([
-			expect.objectContaining({ shipmentId, productIds: ['product_gpu'] }),
-		]);
-		expect(
-			buildSettlementOutcome({
-				rpcResult: {
-					success: false,
-					order_id: orderId,
-					error: 'ALLOCATION_WRITE_FAILED',
-					status: 'payment_processing',
-				},
-				rpcError: null,
-			}),
-		).toMatchObject({ kind: 'recovered', reason: 'ALLOCATION_WRITE_FAILED' });
-	});
+    expect(orderId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+    expect(shipmentId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+    expect(action).toMatchObject({
+      kind: 'single_modal',
+      payload: { orderId, transferGroup: `selene_order_${orderId}` },
+    });
+    if (action.kind !== 'single_modal') return;
+    expect(action.payload.rows).toEqual([
+      expect.objectContaining({ shipmentId, productIds: ['product_gpu'] }),
+    ]);
+    expect(
+      buildSettlementOutcome({
+        rpcResult: {
+          success: false,
+          order_id: orderId,
+          error: 'ALLOCATION_WRITE_FAILED',
+          status: 'payment_processing',
+        },
+        rpcError: null,
+      }),
+    ).toMatchObject({ kind: 'recovered', reason: 'ALLOCATION_WRITE_FAILED' });
+  });
 
-	it('returns a structured settlement input with the full allocation and ids', () => {
+  it('returns a structured settlement input with the full allocation and ids', () => {
     const rows = sampleRows();
     const meta = buildFullMetadata(rows);
     const intent = { metadata: meta, amount: 100_000 + 80_000 + 3_900 + 3_180 };
@@ -627,7 +630,9 @@ describe('single-modal-settlement > resolvePaymentIntentSucceededAction', () => 
   it('preserves the charged metadata and amount for a malformed single-modal recovery shell', () => {
     const meta = buildFullMetadata(sampleRows());
     delete meta.allocation_chunk_count;
-    expect(resolvePaymentIntentSucceededAction({ metadata: meta, amount: 187_080 })).toEqual({
+    expect(
+      resolvePaymentIntentSucceededAction({ metadata: meta, amount: 187_080 }),
+    ).toEqual({
       kind: 'invalid_single_modal_metadata',
       reason: 'INVALID_ALLOCATION_METADATA:missing_chunk_count',
       recoveryShell: {
@@ -644,7 +649,9 @@ describe('single-modal-settlement > resolvePaymentIntentSucceededAction', () => 
       product_ids: '[]',
     };
 
-    expect(resolvePaymentIntentSucceededAction({ metadata: meta, amount: 12_345 })).toEqual({
+    expect(
+      resolvePaymentIntentSucceededAction({ metadata: meta, amount: 12_345 }),
+    ).toEqual({
       kind: 'retired_grouped_settlement',
       reason: 'LEGACY_GROUPED_SETTLEMENT_METADATA',
       recoveryShell: {
@@ -749,14 +756,20 @@ describe('single-modal-settlement > buildSettlementOutcome', () => {
 
   it('treats a duplicate idempotent success (status=duplicate) as ok (not recovered)', () => {
     const outcome = buildSettlementOutcome({
-      rpcResult: { success: true, order_id: VALID_ORDER_ID, status: 'duplicate' },
+      rpcResult: {
+        success: true,
+        order_id: VALID_ORDER_ID,
+        status: 'duplicate',
+      },
       rpcError: null,
     });
     expect(outcome.kind).toBe('ok');
   });
 
   it('marks specified allocation failures as semantic and refund-required', () => {
-    expect(classifySettlementFailure('ONE_PRODUCT_PER_SHIPMENT_REQUIRED')).toEqual({
+    expect(
+      classifySettlementFailure('ONE_PRODUCT_PER_SHIPMENT_REQUIRED'),
+    ).toEqual({
       kind: 'semantic',
       refundRequired: true,
     });
@@ -782,7 +795,9 @@ describe('single-modal-settlement > buildSettlementOutcome', () => {
       kind: 'transient',
       refundRequired: false,
     });
-    expect(classifySettlementFailure('INVALID_ALLOCATION_METADATA:missing_chunk_0')).toEqual({
+    expect(
+      classifySettlementFailure('INVALID_ALLOCATION_METADATA:missing_chunk_0'),
+    ).toEqual({
       kind: 'semantic',
       refundRequired: true,
     });

@@ -4,7 +4,9 @@ export interface ReconcilePaymentIntentLike {
   localShipmentStatus: string | null;
 }
 
-export function shouldReconcilePaymentIntent(intent: ReconcilePaymentIntentLike) {
+export function shouldReconcilePaymentIntent(
+  intent: ReconcilePaymentIntentLike,
+) {
   return (
     intent.status === 'succeeded' &&
     intent.localShipmentStatus === 'draft' &&

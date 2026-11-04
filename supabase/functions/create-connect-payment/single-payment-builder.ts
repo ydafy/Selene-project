@@ -37,8 +37,7 @@ export const STRIPE_ALLOCATION_VALUE_MAX_LEN = 500;
 const STRIPE_TRANSFER_GROUP_MAX_LEN = 100;
 
 /** Immutable namespace for deterministic checkout order and shipment IDs. */
-export const CHECKOUT_UUID_NAMESPACE =
-  '7b0f4a20-5c30-4e0f-8f84-9a9f4b2e19c1';
+export const CHECKOUT_UUID_NAMESPACE = '7b0f4a20-5c30-4e0f-8f84-9a9f4b2e19c1';
 
 /**
  * Build a stable, Stripe-safe `transfer_group` for an order. Used as the
@@ -222,7 +221,9 @@ function uuidV5(namespace: string, name: string): string {
   bytes[6] = (bytes[6] & 0x0f) | 0x50;
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
 
-  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+  const hex = Array.from(bytes, (byte) =>
+    byte.toString(16).padStart(2, '0'),
+  ).join('');
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 

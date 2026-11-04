@@ -16,7 +16,8 @@ const supabaseAdmin = createClient(
 
 const handler = createResolveShipmentTrackingUrlHandler({
   authenticate: async (request) => {
-    const token = request.headers.get('Authorization')?.replace('Bearer ', '') ?? '';
+    const token =
+      request.headers.get('Authorization')?.replace('Bearer ', '') ?? '';
     const { data, error } = await supabaseAdmin.auth.getUser(token);
     return error || !data.user ? null : { id: data.user.id };
   },
@@ -49,19 +50,27 @@ const handler = createResolveShipmentTrackingUrlHandler({
     return data?.role ?? null;
   },
   resolveUrl: (trackingNumber) =>
-    resolveEnviaTrackingUrl(Deno.env.get('ENVIA_MODE') ?? 'sandbox', trackingNumber),
+    resolveEnviaTrackingUrl(
+      Deno.env.get('ENVIA_MODE') ?? 'sandbox',
+      trackingNumber,
+    ),
 });
 
-serve(withSentry('resolve-shipment-tracking-url', async (request) => {
-  if (request.method === 'OPTIONS') return new Response('ok');
+serve(
+  withSentry('resolve-shipment-tracking-url', async (request) => {
+    if (request.method === 'OPTIONS') return new Response('ok');
 
-  const body = await request.clone().json().catch(() => null);
-  if (!ShipmentTrackingUrlRequestSchema.safeParse(body).success) {
-    return new Response(JSON.stringify({ error: 'INVALID_SHIPMENT_ID' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
+    const body = await request
+      .clone()
+      .json()
+      .catch(() => null);
+    if (!ShipmentTrackingUrlRequestSchema.safeParse(body).success) {
+      return new Response(JSON.stringify({ error: 'INVALID_SHIPMENT_ID' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
 
-  return handler(request);
-}));
+    return handler(request);
+  }),
+);

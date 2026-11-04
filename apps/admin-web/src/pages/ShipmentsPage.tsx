@@ -17,9 +17,12 @@ export const ShipmentsPage = () => (
       <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.24em] text-lion">
         Selene · Operación logística
       </p>
-      <h1 className="text-2xl font-bold tracking-tight text-platinum sm:text-3xl">Envíos</h1>
+      <h1 className="text-2xl font-bold tracking-tight text-platinum sm:text-3xl">
+        Envíos
+      </h1>
       <p className="mt-2 text-sm text-blue-light">
-        Atiende los envíos y guías que necesitan una decisión de un administrador.
+        Atiende los envíos y guías que necesitan una decisión de un
+        administrador.
       </p>
     </header>
     {BUCKETS.map(({ id, Component }) => (

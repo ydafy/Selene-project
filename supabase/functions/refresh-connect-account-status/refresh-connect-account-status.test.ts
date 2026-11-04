@@ -9,13 +9,18 @@ import {
 
 const NOW = new Date('2026-06-15T12:00:00.000Z');
 
-function createDependencies(overrides: {
-  caller?: RefreshProfile;
-  target?: RefreshProfile;
-  retrieveAccount?: RefreshConnectAccountDependencies['retrieveAccount'];
-  updateProfileStatus?: RefreshConnectAccountDependencies['updateProfileStatus'];
-} = {}): RefreshConnectAccountDependencies & {
-  calls: { retrieve: string[]; updates: Array<{ sellerId: string; status: string }> };
+function createDependencies(
+  overrides: {
+    caller?: RefreshProfile;
+    target?: RefreshProfile;
+    retrieveAccount?: RefreshConnectAccountDependencies['retrieveAccount'];
+    updateProfileStatus?: RefreshConnectAccountDependencies['updateProfileStatus'];
+  } = {},
+): RefreshConnectAccountDependencies & {
+  calls: {
+    retrieve: string[];
+    updates: Array<{ sellerId: string; status: string }>;
+  };
 } {
   const caller =
     overrides.caller ??
@@ -27,7 +32,10 @@ function createDependencies(overrides: {
       stripe_onboarding_refreshed_at: null,
     } satisfies RefreshProfile);
   const target = overrides.target ?? caller;
-  const calls = { retrieve: [] as string[], updates: [] as Array<{ sellerId: string; status: string }> };
+  const calls = {
+    retrieve: [] as string[],
+    updates: [] as Array<{ sellerId: string; status: string }>,
+  };
 
   return {
     calls,
@@ -110,7 +118,9 @@ describe('refreshConnectAccountStatus', () => {
       cached: false,
     });
     expect(deps.calls.retrieve).toEqual(['acct_seller_2']);
-    expect(deps.calls.updates).toEqual([{ sellerId: 'seller-2', status: 'complete' }]);
+    expect(deps.calls.updates).toEqual([
+      { sellerId: 'seller-2', status: 'complete' },
+    ]);
   });
 
   it('denies cross-seller refresh and never calls Stripe', async () => {
@@ -132,7 +142,10 @@ describe('refreshConnectAccountStatus', () => {
     });
 
     await expect(
-      refreshConnectAccountStatus({ callerId: 'seller-1', sellerId: 'seller-2' }, deps),
+      refreshConnectAccountStatus(
+        { callerId: 'seller-1', sellerId: 'seller-2' },
+        deps,
+      ),
     ).rejects.toEqual(new RefreshConnectAccountError('FORBIDDEN', 403));
     expect(deps.calls.retrieve).toEqual([]);
   });
@@ -158,7 +171,9 @@ describe('refreshConnectAccountStatus', () => {
       payoutsEnabled: false,
       cached: false,
     });
-    expect(deps.calls.updates).toEqual([{ sellerId: 'seller-1', status: 'rejected' }]);
+    expect(deps.calls.updates).toEqual([
+      { sellerId: 'seller-1', status: 'rejected' },
+    ]);
   });
 
   it('returns cached status with an error flag when Stripe retrieval fails', async () => {
@@ -218,7 +233,9 @@ describe('refreshConnectAccountStatus', () => {
 
     await expect(
       refreshConnectAccountStatus({ callerId: 'seller-1' }, deps),
-    ).rejects.toEqual(new RefreshConnectAccountError('PROFILE_UPDATE_FAILED', 500));
+    ).rejects.toEqual(
+      new RefreshConnectAccountError('PROFILE_UPDATE_FAILED', 500),
+    );
     expect(deps.calls.retrieve).toEqual(['acct_seller_1']);
   });
 });

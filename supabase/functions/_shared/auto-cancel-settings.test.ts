@@ -40,7 +40,11 @@ describe('readAutoCancelExpirationHours', () => {
     ['1.5', { data: { preparing_expiration_hours: 1.5 } }, 1.5],
     ['a string', { data: { preparing_expiration_hours: '24' } }, '24'],
     ['a missing row', { data: null }, null],
-    ['a read error', { data: { preparing_expiration_hours: 24 }, error: { message: 'boom' } }, 24],
+    [
+      'a read error',
+      { data: { preparing_expiration_hours: 24 }, error: { message: 'boom' } },
+      24,
+    ],
   ] as const)
     test(`${label} yields the 500 AUTO_CANCEL_SETTINGS_INVALID response and one ERROR log`, async () => {
       const { client } = clientReturning(result);
@@ -52,10 +56,18 @@ describe('readAutoCancelExpirationHours', () => {
       );
       if (!('response' in outcome)) throw new Error('expected a response');
       expect(outcome.response.status).toBe(500);
-      expect(outcome.response.headers.get('Content-Type')).toBe('application/json');
-      expect(await outcome.response.text()).toBe('{"error":"AUTO_CANCEL_SETTINGS_INVALID"}');
+      expect(outcome.response.headers.get('Content-Type')).toBe(
+        'application/json',
+      );
+      expect(await outcome.response.text()).toBe(
+        '{"error":"AUTO_CANCEL_SETTINGS_INVALID"}',
+      );
       expect(logs).toEqual([
-        ['ERROR', 'Auto-cancel settings invalid', { setting: 'preparing_expiration_hours', value: logged }],
+        [
+          'ERROR',
+          'Auto-cancel settings invalid',
+          { setting: 'preparing_expiration_hours', value: logged },
+        ],
       ]);
     });
 });

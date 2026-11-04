@@ -150,7 +150,9 @@ describe('remove legacy wallet writes from the delivery, release, dispute and cr
         expect(migration).toContain(
           `REVOKE ALL ON FUNCTION ${target} FROM PUBLIC, anon, authenticated;`,
         );
-        expect(migration).toContain(`GRANT EXECUTE ON FUNCTION ${target} TO service_role;`);
+        expect(migration).toContain(
+          `GRANT EXECUTE ON FUNCTION ${target} TO service_role;`,
+        );
       });
     });
   }
@@ -202,22 +204,33 @@ describe('every other effect of the rewritten functions is kept', () => {
       expect(body).toContain(code);
     }
     expect(body).toContain('INSERT INTO public.shipment_completion_events');
-    expect(body).toContain("SET status = 'completed', completed_at = v_completed_at");
+    expect(body).toContain(
+      "SET status = 'completed', completed_at = v_completed_at",
+    );
     expect(body).toContain('buyer_confirmed_at = CASE WHEN p_source');
     expect(body).toContain('Connect shipment completion');
   });
 
   test('release keeps the not-found check, the Connect guard and the failure log', () => {
     const body = collapse(migrationBody('fn_release_shipment_funds'));
-    for (const code of ['SHIPMENT_NOT_FOUND', 'CONNECT_SHIPMENT_SKIPPED_WALLET']) {
+    for (const code of [
+      'SHIPMENT_NOT_FOUND',
+      'CONNECT_SHIPMENT_SKIPPED_WALLET',
+    ]) {
       expect(body).toContain(code);
     }
     // The non-Connect checks (delivery, dispute, grace period) only guarded the wallet release.
-    for (const code of ['SHIPMENT_NOT_DELIVERED', 'SHIPMENT_IN_ACTIVE_DISPUTE', 'GRACE_PERIOD_ACTIVE']) {
+    for (const code of [
+      'SHIPMENT_NOT_DELIVERED',
+      'SHIPMENT_IN_ACTIVE_DISPUTE',
+      'GRACE_PERIOD_ACTIVE',
+    ]) {
       expect(body).not.toContain(code);
     }
     expect(body).toContain('stripe_payment_intent_id IS NOT NULL');
-    expect(body).toContain("UPDATE public.shipments SET status = 'completed' WHERE id = p_shipment_id");
+    expect(body).toContain(
+      "UPDATE public.shipments SET status = 'completed' WHERE id = p_shipment_id",
+    );
     expect(body).toContain("'Fallo en fn_release_shipment_funds'");
   });
 
@@ -231,7 +244,9 @@ describe('every other effect of the rewritten functions is kept', () => {
       expect(body).toContain('DISPUTE_NOT_FOUND');
       expect(body).toContain('INVALID_DISPUTE_STATUS');
       expect(body).toContain("status = 'resolved', resolution_type = 'seller'");
-      expect(body).toContain("UPDATE public.shipments SET status = 'completed'");
+      expect(body).toContain(
+        "UPDATE public.shipments SET status = 'completed'",
+      );
       expect(body).toContain("UPDATE public.orders SET status = 'completed'");
       expect(body).toContain("'DISPUTE_RESOLVE_SELLER'");
       expect(body).toContain("'dispute.verdict'");
@@ -250,17 +265,27 @@ describe('every other effect of the rewritten functions is kept', () => {
 
   test('the cron functions keep their selection, refund and notification logic', () => {
     const payout = collapse(migrationBody('fn_cron_dispute_payout_timeout'));
-    expect(payout).toContain("d.status = 'waiting_return' AND d.return_payout_status = 'pending'");
-    expect(payout).toContain('fn_complete_shipment_refund(v_dispute.shipment_id)');
+    expect(payout).toContain(
+      "d.status = 'waiting_return' AND d.return_payout_status = 'pending'",
+    );
+    expect(payout).toContain(
+      'fn_complete_shipment_refund(v_dispute.shipment_id)',
+    );
     expect(payout).toContain("'Disputa Ganada'");
 
-    const shipping = collapse(migrationBody('fn_cron_dispute_shipping_timeout'));
-    expect(shipping).toContain('fn_release_shipment_funds(v_dispute.shipment_id)');
+    const shipping = collapse(
+      migrationBody('fn_cron_dispute_shipping_timeout'),
+    );
+    expect(shipping).toContain(
+      'fn_release_shipment_funds(v_dispute.shipment_id)',
+    );
     expect(shipping).toContain("resolution_type = 'seller_wins_timeout'");
 
     const returned = collapse(migrationBody('fn_cron_return_delivery_timeout'));
     expect(returned).toContain("d.status = 'return_delivered'");
-    expect(returned).toContain('fn_complete_shipment_refund(v_dispute.shipment_id)');
+    expect(returned).toContain(
+      'fn_complete_shipment_refund(v_dispute.shipment_id)',
+    );
     expect(returned).toContain('RETURN QUERY SELECT v_processed, v_errors');
   });
 });

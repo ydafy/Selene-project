@@ -31,7 +31,13 @@ const leaseId = '7e3a0000-0000-4000-8000-000000000013';
 describe('acquireCheckoutRecoveryLease', () => {
   it('acquires the lease through the service-only RPC and returns its id', async () => {
     const { client, calls } = fakeClient({
-      data: [{ acquired: true, lease_id: leaseId, lease_expires_at: '2026-10-26T00:10:00Z' }],
+      data: [
+        {
+          acquired: true,
+          lease_id: leaseId,
+          lease_expires_at: '2026-10-26T00:10:00Z',
+        },
+      ],
       error: null,
     });
 
@@ -39,7 +45,9 @@ describe('acquireCheckoutRecoveryLease', () => {
       acquired: true,
       leaseId,
     });
-    expect(calls).toEqual([{ fn: 'fn_acquire_checkout_recovery_lease', args: {} }]);
+    expect(calls).toEqual([
+      { fn: 'fn_acquire_checkout_recovery_lease', args: {} },
+    ]);
   });
 
   it('reports not acquired when another run holds the lease or recovery is disabled', async () => {
@@ -48,11 +56,16 @@ describe('acquireCheckoutRecoveryLease', () => {
       error: null,
     });
 
-    await expect(acquireCheckoutRecoveryLease(client)).resolves.toEqual({ acquired: false });
+    await expect(acquireCheckoutRecoveryLease(client)).resolves.toEqual({
+      acquired: false,
+    });
   });
 
   it('throws before any work when the RPC fails', async () => {
-    const { client } = fakeClient({ data: null, error: { message: 'permission denied' } });
+    const { client } = fakeClient({
+      data: null,
+      error: { message: 'permission denied' },
+    });
 
     await expect(acquireCheckoutRecoveryLease(client)).rejects.toThrow(
       'CHECKOUT_RECOVERY_LOCK_ACQUIRE_FAILED: permission denied',
@@ -78,7 +91,10 @@ describe('releaseCheckoutRecoveryLease', () => {
     await releaseCheckoutRecoveryLease(client, leaseId, warn);
 
     expect(calls).toEqual([
-      { fn: 'fn_release_checkout_recovery_lease', args: { p_lease_id: leaseId } },
+      {
+        fn: 'fn_release_checkout_recovery_lease',
+        args: { p_lease_id: leaseId },
+      },
     ]);
     expect(warned).toEqual([]);
   });

@@ -52,7 +52,9 @@ const handler = createListShipmentRefundProblemsHandler({
   },
   listProblems: async () => {
     // The RPC is not in the generated types until `bun run db:types` runs after it is applied.
-    const { data, error } = await getAdminClient().rpc('fn_list_shipment_refund_problems' as never);
+    const { data, error } = await getAdminClient().rpc(
+      'fn_list_shipment_refund_problems' as never,
+    );
     return { data: data as unknown, error };
   },
   log,

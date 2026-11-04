@@ -173,10 +173,15 @@ const createDependencies = (): TrackShipmentsDependencies => ({
   },
 });
 
-serve(withSentry('track-shipments', createTrackShipmentsHandler({
-  secret: Deno.env.get('TRACK_SHIPMENTS_CRON_SECRET'),
-  pollingEnabled: Deno.env.get('TRACK_SHIPMENTS_POLLING_ENABLED'),
-  dependencies: createDependencies(),
-  now: () => new Date(),
-  createDeadline,
-})));
+serve(
+  withSentry(
+    'track-shipments',
+    createTrackShipmentsHandler({
+      secret: Deno.env.get('TRACK_SHIPMENTS_CRON_SECRET'),
+      pollingEnabled: Deno.env.get('TRACK_SHIPMENTS_POLLING_ENABLED'),
+      dependencies: createDependencies(),
+      now: () => new Date(),
+      createDeadline,
+    }),
+  ),
+);

@@ -15,10 +15,17 @@ const healthyRow = (jobname: string): CronHealthRow => ({
 });
 
 function setup(
-  rpcResult: { data: CronHealthRow[] | null; error: { message: string } | null },
+  rpcResult: {
+    data: CronHealthRow[] | null;
+    error: { message: string } | null;
+  },
   secret: string | undefined = SECRET,
 ) {
-  const messages: Array<{ message: string; fingerprint: string[]; tags: Record<string, string> }> = [];
+  const messages: Array<{
+    message: string;
+    fingerprint: string[];
+    tags: Record<string, string>;
+  }> = [];
   const logs: string[] = [];
   let rpcCalls = 0;
   let monitorRuns = 0;
@@ -48,7 +55,10 @@ function setup(
 }
 
 const post = (headers: Record<string, string> = {}) =>
-  new Request('https://example.test/cron-watchdog', { method: 'POST', headers });
+  new Request('https://example.test/cron-watchdog', {
+    method: 'POST',
+    headers,
+  });
 
 describe('cron-watchdog handler', () => {
   it('returns 401 without calling the RPC when the secret header is missing', async () => {
@@ -78,7 +88,10 @@ describe('cron-watchdog handler', () => {
   });
 
   it('returns 500 when the RPC fails, without leaking the error text', async () => {
-    const ctx = setup({ data: null, error: { message: 'permission denied for schema cron' } });
+    const ctx = setup({
+      data: null,
+      error: { message: 'permission denied for schema cron' },
+    });
     const response = await ctx.handler(post({ 'x-cron-secret': SECRET }));
 
     expect(response.status).toBe(500);
@@ -87,7 +100,10 @@ describe('cron-watchdog handler', () => {
   });
 
   it('returns 200 with an empty list and sends nothing to Sentry when healthy', async () => {
-    const ctx = setup({ data: [healthyRow('a'), healthyRow('b')], error: null });
+    const ctx = setup({
+      data: [healthyRow('a'), healthyRow('b')],
+      error: null,
+    });
     const response = await ctx.handler(post({ 'x-cron-secret': SECRET }));
 
     expect(response.status).toBe(200);
@@ -135,7 +151,9 @@ describe('cron-watchdog handler', () => {
       return_message: 'ERROR: secret detail',
     } as CronHealthRow;
     const ctx = setup({ data: [leaky], error: null });
-    const body = await (await ctx.handler(post({ 'x-cron-secret': SECRET }))).text();
+    const body = await (
+      await ctx.handler(post({ 'x-cron-secret': SECRET }))
+    ).text();
 
     expect(body).not.toContain('*/5');
     expect(body).not.toContain('vault');

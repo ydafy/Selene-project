@@ -70,7 +70,11 @@ export interface ResumeMappingIntent {
   expectedStage: string | null;
   expectedVersion: number;
   shipmentIds: string[];
-  parent: { runId: string; stageVersion: number; stripePayoutId: string } | null;
+  parent: {
+    runId: string;
+    stageVersion: number;
+    stripePayoutId: string;
+  } | null;
 }
 
 /** Migration-owned boundary until maintainer applies SQL and regenerates types.
@@ -88,28 +92,61 @@ export interface AtomicResumeMappingArgs {
   p_expected_parent_payout_id: string | null;
 }
 
-export function atomicResumeMappingArgs(input: ResumeMappingIntent, mode: 'retry' | 'pending'): AtomicResumeMappingArgs {
+export function atomicResumeMappingArgs(
+  input: ResumeMappingIntent,
+  mode: 'retry' | 'pending',
+): AtomicResumeMappingArgs {
   return {
-    p_run_id: input.runId, p_mode: mode, p_expected_status: input.expectedStatus,
-    p_expected_stage: input.expectedStage, p_expected_version: input.expectedVersion,
-    p_shipment_ids: input.shipmentIds, p_parent_run_id: input.parent?.runId ?? null,
+    p_run_id: input.runId,
+    p_mode: mode,
+    p_expected_status: input.expectedStatus,
+    p_expected_stage: input.expectedStage,
+    p_expected_version: input.expectedVersion,
+    p_shipment_ids: input.shipmentIds,
+    p_parent_run_id: input.parent?.runId ?? null,
     p_expected_parent_version: input.parent?.stageVersion ?? null,
     p_expected_parent_payout_id: input.parent?.stripePayoutId ?? null,
   };
 }
 
-function snapshotResumeIntent(run: { id: string; status: ConnectPayoutRunStatus; release_stage?: string | null; release_stage_version?: number }, shipmentIds: string[], parent: ExistingConnectPayoutRun | null): ResumeMappingIntent {
-  if (!Number.isSafeInteger(run.release_stage_version) || (run.release_stage_version ?? 0) < 1 ||
-      (parent && (!Number.isSafeInteger(parent.release_stage_version) || !parent.stripe_payout_id))) {
+function snapshotResumeIntent(
+  run: {
+    id: string;
+    status: ConnectPayoutRunStatus;
+    release_stage?: string | null;
+    release_stage_version?: number;
+  },
+  shipmentIds: string[],
+  parent: ExistingConnectPayoutRun | null,
+): ResumeMappingIntent {
+  if (
+    !Number.isSafeInteger(run.release_stage_version) ||
+    (run.release_stage_version ?? 0) < 1 ||
+    (parent &&
+      (!Number.isSafeInteger(parent.release_stage_version) ||
+        !parent.stripe_payout_id))
+  ) {
     throw new ConnectPayoutReleaseError('PAYOUT_RESUME_SNAPSHOT_REQUIRED', 409);
   }
-  return { runId: run.id, expectedStatus: run.status, expectedStage: run.release_stage ?? null,
-    expectedVersion: run.release_stage_version!, shipmentIds: [...shipmentIds],
-    parent: parent ? { runId: parent.id, stageVersion: parent.release_stage_version!, stripePayoutId: parent.stripe_payout_id! } : null };
+  return {
+    runId: run.id,
+    expectedStatus: run.status,
+    expectedStage: run.release_stage ?? null,
+    expectedVersion: run.release_stage_version!,
+    shipmentIds: [...shipmentIds],
+    parent: parent
+      ? {
+          runId: parent.id,
+          stageVersion: parent.release_stage_version!,
+          stripePayoutId: parent.stripe_payout_id!,
+        }
+      : null,
+  };
 }
 
 function assertResumeApplied(version: number | null): number {
-  if (!Number.isSafeInteger(version) || (version ?? 0) < 1) throw new ConnectPayoutReleaseError('PAYOUT_RESUME_MAPPING_CONFLICT', 409);
+  if (!Number.isSafeInteger(version) || (version ?? 0) < 1)
+    throw new ConnectPayoutReleaseError('PAYOUT_RESUME_MAPPING_CONFLICT', 409);
   return version!;
 }
 
@@ -207,7 +244,9 @@ export interface ConnectPayoutReleaseDependencies {
     orderIds: string[];
   }) => Promise<{ id: string }>;
   markRunRetrying: (input: ResumeMappingIntent) => Promise<number | null>;
-  markRunPendingReconciliation: (input: ResumeMappingIntent) => Promise<number | null>;
+  markRunPendingReconciliation: (
+    input: ResumeMappingIntent,
+  ) => Promise<number | null>;
   /**
    * Phase 2B final slice: guarded post-Stripe sync fallback. Returns TRUE
    * when the guarded RPC applied the reconciliation park (the run sits in a
@@ -228,9 +267,7 @@ export interface ConnectPayoutReleaseDependencies {
    * already open or the run is not in a pre-payout stage; a fenced or
    * otherwise unopenable run must never reach Stripe.
    */
-  beginPayoutCreateFence: (input: {
-    runId: string;
-  }) => Promise<number>;
+  beginPayoutCreateFence: (input: { runId: string }) => Promise<number>;
   completePayoutCreateFence: (input: {
     runId: string;
     stageVersion: number;
@@ -483,10 +520,7 @@ async function assertAccountActionable(
     stripeAccountId,
   });
   if (!actionability.isActionable) {
-    throw new ConnectPayoutReleaseError(
-      'CONNECT_ACCOUNT_NOT_ACTIONABLE',
-      409,
-    );
+    throw new ConnectPayoutReleaseError('CONNECT_ACCOUNT_NOT_ACTIONABLE', 409);
   }
 }
 
@@ -675,9 +709,7 @@ function existingRunResponse(
   return {
     success: true,
     runId: run.id,
-    ...(run.stripe_payout_id
-      ? { stripePayoutId: run.stripe_payout_id }
-      : {}),
+    ...(run.stripe_payout_id ? { stripePayoutId: run.stripe_payout_id } : {}),
     status: run.status,
     amount: run.amount,
   };
@@ -701,7 +733,10 @@ export async function releaseConnectPayout(
   let retryParent: ExistingConnectPayoutRun | null = null;
 
   if ('retryRunId' in input) {
-    const retryRunId = assertNonEmptyString(input.retryRunId, 'RETRY_RUN_ID_REQUIRED');
+    const retryRunId = assertNonEmptyString(
+      input.retryRunId,
+      'RETRY_RUN_ID_REQUIRED',
+    );
     retryParent = await deps.findRunById(retryRunId);
     if (!retryParent) {
       throw new ConnectPayoutReleaseError('PAYOUT_RETRY_PARENT_NOT_FOUND', 404);
@@ -714,7 +749,10 @@ export async function releaseConnectPayout(
     }
 
     if (!retryParent.stripe_payout_id?.trim()) {
-      throw new ConnectPayoutReleaseError('PAYOUT_RETRY_EVIDENCE_REQUIRED', 409);
+      throw new ConnectPayoutReleaseError(
+        'PAYOUT_RETRY_EVIDENCE_REQUIRED',
+        409,
+      );
     }
 
     request = {
@@ -778,7 +816,9 @@ export async function releaseConnectPayout(
 
   // Capture server ownership BEFORE balance/evidence/transfer awaits. Never
   // refresh the version at the delayed write to legitimize stale intent.
-  const resumedIntent = resumedRun ? snapshotResumeIntent(resumedRun, resumedRun.shipment_ids, retryParent) : null;
+  const resumedIntent = resumedRun
+    ? snapshotResumeIntent(resumedRun, resumedRun.shipment_ids, retryParent)
+    : null;
   const parentSnapshot = retryParent ? { ...retryParent } : null;
 
   const activeMappings = await deps.findActiveShipmentMappings(
@@ -800,7 +840,12 @@ export async function releaseConnectPayout(
   };
 
   const rows = await deps.loadReleaseRows(request.shipmentIds);
-  assertEligibleRows(request.sellerId, request.shipmentIds, rows, eligibilityOptions);
+  assertEligibleRows(
+    request.sellerId,
+    request.shipmentIds,
+    rows,
+    eligibilityOptions,
+  );
 
   const currentAmount = rows.reduce(
     (total, row) => total + row.release_amount_cents,
@@ -814,14 +859,19 @@ export async function releaseConnectPayout(
 
   if (retryParent) {
     const payoutId = retryParent.stripe_payout_id!;
-    let payout: Awaited<ReturnType<ConnectPayoutReleaseDependencies['retrieveStripePayout']>>;
+    let payout: Awaited<
+      ReturnType<ConnectPayoutReleaseDependencies['retrieveStripePayout']>
+    >;
     try {
       payout = await deps.retrieveStripePayout({
         payoutId,
         stripeAccountId: rows[0].stripe_account_id,
       });
     } catch {
-      throw new ConnectPayoutReleaseError('PAYOUT_RETRY_EVIDENCE_UNAVAILABLE', 409);
+      throw new ConnectPayoutReleaseError(
+        'PAYOUT_RETRY_EVIDENCE_UNAVAILABLE',
+        409,
+      );
     }
     const balanceTransaction = payout?.failure_balance_transaction;
     const hasReturnedFundsEvidence =
@@ -836,12 +886,17 @@ export async function releaseConnectPayout(
       payout.amount !== amount ||
       payout.currency !== 'mxn'
     ) {
-      throw new ConnectPayoutReleaseError('PAYOUT_RETRY_EVIDENCE_REQUIRED', 409);
+      throw new ConnectPayoutReleaseError(
+        'PAYOUT_RETRY_EVIDENCE_REQUIRED',
+        409,
+      );
     }
   }
 
   if (retryParent) {
-    const existingChild = await deps.findRetryChildByParentRunId(retryParent.id);
+    const existingChild = await deps.findRetryChildByParentRunId(
+      retryParent.id,
+    );
     if (existingChild) return existingRunResponse(existingChild);
   }
 
@@ -862,8 +917,7 @@ export async function releaseConnectPayout(
   if (
     hasSingleModalSettlement &&
     orders.some(
-      (order) =>
-        !order.stripe_transfer_group || !order.stripe_charge_id,
+      (order) => !order.stripe_transfer_group || !order.stripe_charge_id,
     )
   ) {
     throw new ConnectPayoutReleaseError('MISSING_SETTLEMENT_CONTEXT', 400);
@@ -882,7 +936,8 @@ export async function releaseConnectPayout(
     if (!balancePreflight.isSufficient) {
       return {
         success: false,
-        error: 'Connected account available balance is insufficient for this payout.',
+        error:
+          'Connected account available balance is insufficient for this payout.',
         code: 'stripe_balance_insufficient',
         retryable: true,
         required_amount_cents: balancePreflight.requiredAmountCents,
@@ -902,10 +957,19 @@ export async function releaseConnectPayout(
       ...(retryParent ? { retryOfRunId: retryParent.id } : {}),
     }));
 
-  let resumeIntent = resumedIntent ?? snapshotResumeIntent(run, request.shipmentIds, parentSnapshot);
+  let resumeIntent =
+    resumedIntent ??
+    snapshotResumeIntent(run, request.shipmentIds, parentSnapshot);
   if (resumedRun) {
-    const version = assertResumeApplied(await deps.markRunRetrying(resumeIntent));
-    resumeIntent = { ...resumeIntent, expectedStatus: 'pending_reconciliation', expectedStage: 'awaiting_connected_balance', expectedVersion: version };
+    const version = assertResumeApplied(
+      await deps.markRunRetrying(resumeIntent),
+    );
+    resumeIntent = {
+      ...resumeIntent,
+      expectedStatus: 'pending_reconciliation',
+      expectedStage: 'awaiting_connected_balance',
+      expectedVersion: version,
+    };
   } else {
     await deps.createRunShipments({
       runId: run.id,
@@ -993,7 +1057,9 @@ export async function releaseConnectPayout(
     });
 
     if (!balancePreflight.isSufficient) {
-      assertResumeApplied(await deps.markRunPendingReconciliation(resumeIntent));
+      assertResumeApplied(
+        await deps.markRunPendingReconciliation(resumeIntent),
+      );
       return {
         success: true,
         runId: run.id,
@@ -1075,10 +1141,7 @@ export async function releaseConnectPayout(
     }
     // Actionability drift inside the fence: a destination that turned
     // non-actionable after the first gate must never reach payouts.create.
-    await assertAccountActionable(
-      deps,
-      currentRows[0].stripe_account_id,
-    );
+    await assertAccountActionable(deps, currentRows[0].stripe_account_id);
   } catch (error) {
     await deps
       .failPayoutCreateFromFence({

@@ -2,10 +2,17 @@ import { expect, test } from 'bun:test';
 import { verifyPayoutRecoveryAdapters } from './verify-payout-recovery-adapters.ts';
 
 const requiredCases = [
-  'faithful_dto_zero_match', 'mapping_incomplete', 'mapping_empty',
-  'mapping_duplicate', 'mapping_foreign', 'awaiting_validator',
-  'atomic_version_only_drift', 'atomic_supported_epoch',
-  'atomic_response_refusals', 'atomic_rpc_errors', 'network_guard',
+  'faithful_dto_zero_match',
+  'mapping_incomplete',
+  'mapping_empty',
+  'mapping_duplicate',
+  'mapping_foreign',
+  'awaiting_validator',
+  'atomic_version_only_drift',
+  'atomic_supported_epoch',
+  'atomic_response_refusals',
+  'atomic_rpc_errors',
+  'network_guard',
 ];
 
 test('same offline harness proves production adapter payloads and guarded orchestration', async () => {

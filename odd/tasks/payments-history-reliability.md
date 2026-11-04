@@ -1,4 +1,5 @@
 # Payments history reliability — B4/B5
+
 Expose authoritative payment chronology without adding an admin event timeline. Branch: `feat/admin-payments-redesign`; runner: Bun, strict TDD.
 Delivery: local closure commit `52ab67f7ff3990629d8fbfc91f94c5d11878bb0d` observed; no push/PR authority. Manual Supabase deployment and confirmation gate precedes generated types and dependent frontend work.
 
@@ -61,7 +62,6 @@ Verifier mv948814-1-452c found no concrete candidate-caused source blocker, S1-S
 L12 — Human visual acceptance and advancement, verbatim:
 okey confirmo, todo parece correcto master. podemos avanzar. quedo a tu dispociion
 User confirms the requested History date/card/modal/order visual review after receiving the recommendation to close with independent executable proof unavailable. T3 done and this read-path increment closed with that limitation recorded, not converted to GREEN/native approval. No repeated tests or verifiers; no commit/push/extra deployment. Broader B4 all-attempt historical completeness/missed-webhook monitoring remain outside this increment; existing internal evidence/reversal preserved. Next authorized continuation is B2 server-pagination exploration, with selection/grouping product decisions resolved before implementation. Current14source/test/docs/typepaths remain uncommitted and must be preserved.
-
 
 L13 — User authorized local closure commit:
 okey comitea master y continuamos con el core de esta sesion.

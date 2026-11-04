@@ -853,7 +853,9 @@ describe('shipment cancellation recovery', () => {
       });
       expect(await subject.run()).toEqual({ status: 'recovery_required' });
       expect(subject.criticals).toHaveLength(1);
-      expect(subject.criticals[0].message).toBe('CANCELLATION_REFUND_NOT_FOUND');
+      expect(subject.criticals[0].message).toBe(
+        'CANCELLATION_REFUND_NOT_FOUND',
+      );
       expect(subject.escalations).toEqual([['shipment-a', 'refund_not_found']]);
       expect(subject.effects).toEqual({ refunds: 0, cancellations: 0 });
     }
@@ -900,7 +902,10 @@ describe('shipment cancellation recovery', () => {
     ['fractional loss', { ...startedOperation, cancellation_loss_cents: 0.5 }],
     ['unparseable start', { ...startedOperation, external_started_at: 'nope' }],
     ['missing start', { ...startedOperation, external_started_at: null }],
-    ['unparseable escalation', { ...startedOperation, recovery_escalated_at: 'nope' }],
+    [
+      'unparseable escalation',
+      { ...startedOperation, recovery_escalated_at: 'nope' },
+    ],
     ['numeric escalation', { ...startedOperation, recovery_escalated_at: 123 }],
     [
       'missing escalation field',
@@ -943,7 +948,10 @@ describe('shipment cancellation recovery', () => {
         refund_id: 're_a',
         refund_status: 'succeeded',
       });
-      expect(await subject.run()).toEqual({ status: 'cancelled', value: 'done' });
+      expect(await subject.run()).toEqual({
+        status: 'cancelled',
+        value: 'done',
+      });
       expect(subject.calls).toEqual(['claim', 'load', 'complete']);
       expect(subject.criticals).toEqual([]);
     });
@@ -954,8 +962,17 @@ describe('shipment cancellation recovery', () => {
         refund_id: 're_a',
         refund_status: 'pending',
       });
-      expect(await subject.run()).toEqual({ status: 'cancelled', value: 'done' });
-      expect(subject.calls).toEqual(['claim', 'load', 'retrieve', 'record', 'complete']);
+      expect(await subject.run()).toEqual({
+        status: 'cancelled',
+        value: 'done',
+      });
+      expect(subject.calls).toEqual([
+        'claim',
+        'load',
+        'retrieve',
+        'record',
+        'complete',
+      ]);
       expect(subject.escalations).toEqual([]);
     });
 
@@ -970,47 +987,63 @@ describe('shipment cancellation recovery', () => {
         'CANCELLATION_REFUND_NOT_FOUND',
         { now: () => Date.parse(startedAt) + REFUND_REPLAY_WINDOW_MS },
       ],
-    ])('%s: reports CRITICAL only when the escalation was newly recorded', async (reason, message, overrides) => {
-      const first = recoveryHarness(startedOperation, overrides);
-      expect(await first.run()).toEqual({ status: 'recovery_required' });
-      expect(first.escalations).toEqual([['shipment-a', reason]]);
-      expect(first.criticals.map((entry) => entry.message)).toEqual([message]);
+    ])(
+      '%s: reports CRITICAL only when the escalation was newly recorded',
+      async (reason, message, overrides) => {
+        const first = recoveryHarness(startedOperation, overrides);
+        expect(await first.run()).toEqual({ status: 'recovery_required' });
+        expect(first.escalations).toEqual([['shipment-a', reason]]);
+        expect(first.criticals.map((entry) => entry.message)).toEqual([
+          message,
+        ]);
 
-      for (const result of [
-        { escalated: false },
-        { escalated: 'true' },
-        { escalated: true, extra: 1 },
-        {},
-        null,
-        undefined,
-        true,
-      ]) {
-        const later = recoveryHarness(startedOperation, {
-          ...overrides,
-          escalate: async () => result,
-        });
-        expect(await later.run()).toEqual({ status: 'recovery_required' });
-        expect(later.criticals).toEqual([]);
-        expect(later.effects).toEqual({ refunds: 0, cancellations: 0 });
-      }
-    });
+        for (const result of [
+          { escalated: false },
+          { escalated: 'true' },
+          { escalated: true, extra: 1 },
+          {},
+          null,
+          undefined,
+          true,
+        ]) {
+          const later = recoveryHarness(startedOperation, {
+            ...overrides,
+            escalate: async () => result,
+          });
+          expect(await later.run()).toEqual({ status: 'recovery_required' });
+          expect(later.criticals).toEqual([]);
+          expect(later.effects).toEqual({ refunds: 0, cancellations: 0 });
+        }
+      },
+    );
 
     test.each([
-      ['CANCELLATION_REFUND_AMBIGUOUS', { listRefunds: async () => [ownRefund, { ...ownRefund, id: 're_c' }] }],
-      ['CANCELLATION_REFUND_NOT_FOUND', { now: () => Date.parse(startedAt) + REFUND_REPLAY_WINDOW_MS }],
-    ])('%s: an escalate failure still needs an admin and fails safe toward alerting', async (message, overrides) => {
-      const subject = recoveryHarness(startedOperation, {
-        ...overrides,
-        escalate: async () => {
-          throw new Error('rpc down');
-        },
-      });
-      expect(await subject.run()).toEqual({ status: 'recovery_required' });
-      expect(subject.criticals).toHaveLength(1);
-      expect(subject.criticals[0].message).toBe(message);
-      expect(subject.criticals[0].data).toMatchObject({ shipmentId: 'shipment-a' });
-      expect(subject.effects).toEqual({ refunds: 0, cancellations: 0 });
-    });
+      [
+        'CANCELLATION_REFUND_AMBIGUOUS',
+        { listRefunds: async () => [ownRefund, { ...ownRefund, id: 're_c' }] },
+      ],
+      [
+        'CANCELLATION_REFUND_NOT_FOUND',
+        { now: () => Date.parse(startedAt) + REFUND_REPLAY_WINDOW_MS },
+      ],
+    ])(
+      '%s: an escalate failure still needs an admin and fails safe toward alerting',
+      async (message, overrides) => {
+        const subject = recoveryHarness(startedOperation, {
+          ...overrides,
+          escalate: async () => {
+            throw new Error('rpc down');
+          },
+        });
+        expect(await subject.run()).toEqual({ status: 'recovery_required' });
+        expect(subject.criticals).toHaveLength(1);
+        expect(subject.criticals[0].message).toBe(message);
+        expect(subject.criticals[0].data).toMatchObject({
+          shipmentId: 'shipment-a',
+        });
+        expect(subject.effects).toEqual({ refunds: 0, cancellations: 0 });
+      },
+    );
 
     test('a throwing reporter never changes the escalation outcome', async () => {
       const subject = recoveryHarness(startedOperation, {
@@ -1170,7 +1203,11 @@ describe('shipment cancellation carrier confirmation port (B4.4b)', () => {
     'without the port a %s cancellation runs exactly as before',
     async (source) => {
       const subject = harness({
-        context: { ...context, source, actorId: source === 'buyer' ? 'buyer-a' : null },
+        context: {
+          ...context,
+          source,
+          actorId: source === 'buyer' ? 'buyer-a' : null,
+        },
         claim: async () => {
           subject.calls.push('claim');
           return {
@@ -1258,37 +1295,43 @@ describe('shipment cancellation carrier confirmation port (B4.4b)', () => {
     ['proceed as a string', { proceed: 'true' }],
     ['a stop without a reason', { proceed: false }],
     ['a stop with a blank reason', { proceed: false, reason: '  ' }],
-  ])('%s fails closed without prepare or any money movement', async (_label, answer) => {
-    const subject = harness({
-      confirmBeforeRefund: async () => {
-        subject.calls.push('confirm');
-        return answer;
-      },
-    });
-    await expect(subject.run()).rejects.toMatchObject({
-      message: 'CANCELLATION_CONFIRMATION_INVALID',
-    });
-    expect(subject.calls).toEqual(['claim', 'confirm']);
-    expect(subject.effects).toEqual({ refunds: 0, cancellations: 0 });
-  });
+  ])(
+    '%s fails closed without prepare or any money movement',
+    async (_label, answer) => {
+      const subject = harness({
+        confirmBeforeRefund: async () => {
+          subject.calls.push('confirm');
+          return answer;
+        },
+      });
+      await expect(subject.run()).rejects.toMatchObject({
+        message: 'CANCELLATION_CONFIRMATION_INVALID',
+      });
+      expect(subject.calls).toEqual(['claim', 'confirm']);
+      expect(subject.effects).toEqual({ refunds: 0, cancellations: 0 });
+    },
+  );
 
   test.each([
     ['busy', { status: 'busy' }],
     ['recovery_required', { status: 'recovery_required' }],
-  ])('a %s claim never asks for carrier confirmation', async (_label, reservation) => {
-    const subject = harness({
-      claim: async () => {
-        subject.calls.push('claim');
-        return reservation;
-      },
-      loadRecovery: async () => null,
-      confirmBeforeRefund: async () => {
-        subject.calls.push('confirm');
-        return { proceed: true };
-      },
-    });
-    await subject.run();
-    expect(subject.calls).not.toContain('confirm');
-    expect(subject.calls).not.toContain('prepare');
-  });
+  ])(
+    'a %s claim never asks for carrier confirmation',
+    async (_label, reservation) => {
+      const subject = harness({
+        claim: async () => {
+          subject.calls.push('claim');
+          return reservation;
+        },
+        loadRecovery: async () => null,
+        confirmBeforeRefund: async () => {
+          subject.calls.push('confirm');
+          return { proceed: true };
+        },
+      });
+      await subject.run();
+      expect(subject.calls).not.toContain('confirm');
+      expect(subject.calls).not.toContain('prepare');
+    },
+  );
 });

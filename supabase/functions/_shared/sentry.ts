@@ -35,7 +35,11 @@ export interface SentrySdk {
   withScope<T>(callback: (scope: SentryScope) => T): T;
   captureException(error: unknown): unknown;
   captureMessage(message: string, level: 'error'): unknown;
-  withMonitor<T>(slug: string, callback: () => T, config: SentryMonitorConfig): T;
+  withMonitor<T>(
+    slug: string,
+    callback: () => T,
+    config: SentryMonitorConfig,
+  ): T;
   flush(timeout?: number): Promise<unknown>;
 }
 
@@ -94,7 +98,10 @@ export function createSentry(deps: SentryWrapperDeps) {
     return sdkPromise;
   };
 
-  const report = async (sdk: SentrySdk, capture: () => unknown): Promise<void> => {
+  const report = async (
+    sdk: SentrySdk,
+    capture: () => unknown,
+  ): Promise<void> => {
     try {
       capture();
       await sdk.flush(FLUSH_TIMEOUT_MS);
@@ -110,12 +117,16 @@ export function createSentry(deps: SentryWrapperDeps) {
   };
 
   /** Reports one error message in its own scope. No-op without a DSN; never throws. */
-  const reportMessage = async (message: string, options: SentryMessageOptions): Promise<void> => {
+  const reportMessage = async (
+    message: string,
+    options: SentryMessageOptions,
+  ): Promise<void> => {
     const sdk = await getActiveSdk();
     if (!sdk) return;
     await report(sdk, () =>
       sdk.withScope((scope) => {
-        for (const [key, value] of Object.entries(options.tags)) scope.setTag(key, value);
+        for (const [key, value] of Object.entries(options.tags))
+          scope.setTag(key, value);
         scope.setFingerprint(options.fingerprint);
         return sdk.captureMessage(message, 'error');
       }),
@@ -138,7 +149,8 @@ export function createSentry(deps: SentryWrapperDeps) {
     let started = false;
     // Typed through `as` so TypeScript does not narrow it to `null`: it is only
     // assigned inside the monitor callback, which control-flow analysis cannot see.
-    let outcome = null as { ok: true; value: T } | { ok: false; error: unknown } | null;
+    let outcome = null as
+      { ok: true; value: T } | { ok: false; error: unknown } | null;
     try {
       const value = await sdk.withMonitor(
         slug,
@@ -166,7 +178,10 @@ export function createSentry(deps: SentryWrapperDeps) {
     }
   };
 
-  const withSentry = function withSentry(functionName: string, handler: Handler): Handler {
+  const withSentry = function withSentry(
+    functionName: string,
+    handler: Handler,
+  ): Handler {
     return async (req: Request): Promise<Response> => {
       const dsn = deps.getEnv('SENTRY_DSN');
       if (!dsn) return handler(req);
@@ -197,8 +212,15 @@ export function createSentry(deps: SentryWrapperDeps) {
         if (response.status >= 500) {
           // The message's own stack points into this helper; group by function and status instead.
           await report(sdk, () => {
-            scope.setFingerprint(['edge-function-5xx', functionName, String(response.status)]);
-            return sdk.captureMessage(`${functionName} responded ${response.status}`, 'error');
+            scope.setFingerprint([
+              'edge-function-5xx',
+              functionName,
+              String(response.status),
+            ]);
+            return sdk.captureMessage(
+              `${functionName} responded ${response.status}`,
+              'error',
+            );
           });
         }
         return response;
@@ -209,10 +231,12 @@ export function createSentry(deps: SentryWrapperDeps) {
   return { withSentry, reportMessage, withMonitor };
 }
 
-export const createSentryWrapper = (deps: SentryWrapperDeps) => createSentry(deps).withSentry;
+export const createSentryWrapper = (deps: SentryWrapperDeps) =>
+  createSentry(deps).withSentry;
 
 export const { withSentry, reportMessage, withMonitor } = createSentry({
   getEnv: (name) => Deno.env.get(name),
-  loadSdk: async () => (await import('npm:@sentry/deno@11.8.0')) as unknown as SentrySdk,
+  loadSdk: async () =>
+    (await import('npm:@sentry/deno@11.8.0')) as unknown as SentrySdk,
   log: (message) => console.error(message),
 });

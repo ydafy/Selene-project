@@ -136,7 +136,10 @@ export function mapDisputeErrorCode(errorCode: string): ApiError {
     case 'SHIPMENT_CANCELLATION_OPERATION_ACTIVE':
       return new ApiError(409, errorCode);
     case 'DISPUTE_ALREADY_EXISTS':
-      return new ApiError(409, 'Ya existe una disputa abierta para este paquete.');
+      return new ApiError(
+        409,
+        'Ya existe una disputa abierta para este paquete.',
+      );
     default:
       return new ApiError(500, `Error al crear disputa: ${errorCode}`);
   }

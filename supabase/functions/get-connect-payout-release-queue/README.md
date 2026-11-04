@@ -9,7 +9,7 @@ Bearer authentication, `getUser`, and `profiles_private.role = admin` are requir
 Presence of `bucket` enables RPC mode:
 
 ```json
-{"search":"Ada","bucket":"ready","page":0,"scope":"page"}
+{ "search": "Ada", "bucket": "ready", "page": 0, "scope": "page" }
 ```
 
 - `bucket`: `ready`, `processing`, `action-required`, or `history` (required).

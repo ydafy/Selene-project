@@ -46,7 +46,7 @@ const locksThenChecksThenInserts = (sql: string): void => {
   expect(insert).toBeGreaterThan(order[order.length - 1]);
   expect(sql).toContain("auth.role() IS DISTINCT FROM 'service_role'");
   expect(sql).toContain("v_status NOT IN ('shipped', 'delivered')");
-  expect(sql).toContain('v_delivered_at < now() - interval \'48 hours\'');
+  expect(sql).toContain("v_delivered_at < now() - interval '48 hours'");
   expect(sql).toContain('operation.external_started_at IS NOT NULL');
 };
 

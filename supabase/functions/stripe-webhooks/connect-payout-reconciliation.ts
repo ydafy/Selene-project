@@ -6,11 +6,7 @@ export type ConnectPayoutRunStatus =
   | 'reconciliation_needed';
 
 export type StripePayoutStatus =
-  | 'pending'
-  | 'in_transit'
-  | 'paid'
-  | 'failed'
-  | 'canceled';
+  'pending' | 'in_transit' | 'paid' | 'failed' | 'canceled';
 
 export type ConnectPayoutEventType =
   | 'payout.created'
@@ -111,15 +107,15 @@ export interface ConnectPayoutReconciliationDeps {
     targetStage: 'payout_pending' | 'payout_in_transit';
     failureReason: string;
     eventId: string;
-  }) => Promise<'superseded_paid' | 'superseded_failed' | 'parked' | 'identity_conflict'>;
+  }) => Promise<
+    'superseded_paid' | 'superseded_failed' | 'parked' | 'identity_conflict'
+  >;
   attachRunPayoutId: (input: {
     runId: string;
     stripePayoutId: string;
     sellerId: string | null;
   }) => Promise<void>;
-  getSellerStripeAccountId: (
-    sellerId: string | null,
-  ) => Promise<string | null>;
+  getSellerStripeAccountId: (sellerId: string | null) => Promise<string | null>;
   resolveAuthoritativePayout: (input: {
     payoutId: string;
     stripeAccountId: string | null;
@@ -322,7 +318,10 @@ async function projectProgressEvent(
     if (toFailureReason(error) === 'PAYOUT_STAGE_PROJECTION_CONFLICT') {
       projected = false;
     } else {
-      await deps.markRunReconciliationNeeded({ runId, failureReason: toFailureReason(error) });
+      await deps.markRunReconciliationNeeded({
+        runId,
+        failureReason: toFailureReason(error),
+      });
       return { status: 'reconciliation_needed', runId };
     }
   }
@@ -331,10 +330,19 @@ async function projectProgressEvent(
     // Deliberately outside the projection catch: a failed decision must
     // propagate for webhook retry, never invoke an unfenced run-ID park.
     const decision = await deps.decideRejectedPayoutStagePark({
-      runId, payoutId: input.payoutId, targetStage,
-      failureReason: 'PAYOUT_STAGE_PROJECTION_CONFLICT', eventId: input.eventId,
+      runId,
+      payoutId: input.payoutId,
+      targetStage,
+      failureReason: 'PAYOUT_STAGE_PROJECTION_CONFLICT',
+      eventId: input.eventId,
     });
-    return { status: decision === 'superseded_paid' || decision === 'superseded_failed' ? 'evidence_recorded' : 'reconciliation_needed', runId };
+    return {
+      status:
+        decision === 'superseded_paid' || decision === 'superseded_failed'
+          ? 'evidence_recorded'
+          : 'reconciliation_needed',
+      runId,
+    };
   }
   return { status: 'evidence_recorded', runId };
 }
@@ -409,15 +417,17 @@ function toProgressStage(
   input: ConnectPayoutReconciliationInput,
 ): 'payout_pending' | 'payout_in_transit' | null {
   if (input.eventType === 'payout.created') return 'payout_pending';
-  if (input.eventType === 'payout.updated' && input.observedStatus === 'in_transit') {
+  if (
+    input.eventType === 'payout.updated' &&
+    input.observedStatus === 'in_transit'
+  ) {
     return 'payout_in_transit';
   }
   return null;
 }
 
 export type AccountActionabilityKind =
-  | 'account_updated'
-  | 'external_account_updated';
+  'account_updated' | 'external_account_updated';
 
 export interface AccountActionabilityInput {
   kind: AccountActionabilityKind;
@@ -527,7 +537,8 @@ export function extractSignedAccountEventData(input: {
     'account.external_account.updated',
     'account.external_account.deleted',
   ].includes(input.eventType);
-  if (!isExternalAccountEvent && input.eventType !== 'account.updated') return null;
+  if (!isExternalAccountEvent && input.eventType !== 'account.updated')
+    return null;
 
   const objectIdentity = isExternalAccountEvent ? record.account : record.id;
   const documentedAccountId = normalizeStripeAccountId(objectIdentity);
@@ -537,7 +548,12 @@ export function extractSignedAccountEventData(input: {
   // promote the bank object's own id into a connected-account identity.
   const eventAccountFallback = normalizeStripeAccountId(input.eventAccount);
   if (input.eventAccount != null && !eventAccountFallback) return null;
-  if (documentedAccountId && eventAccountFallback && documentedAccountId !== eventAccountFallback) return null;
+  if (
+    documentedAccountId &&
+    eventAccountFallback &&
+    documentedAccountId !== eventAccountFallback
+  )
+    return null;
   const accountId = documentedAccountId ?? eventAccountFallback;
 
   if (!accountId) return null;
@@ -683,31 +699,50 @@ export interface ConnectAccountCurrentSnapshot {
 
 export interface ConnectAccountActionabilityDeps {
   /** Idempotent append keyed by Stripe event identity; FALSE = duplicate. */
-  recordAccountEvent: (input: ApplyAccountActionabilityInput) => Promise<boolean>;
-  acquireAccountRefresh: (input: { accountId: string; sourceEventId: string }) => Promise<unknown>;
+  recordAccountEvent: (
+    input: ApplyAccountActionabilityInput,
+  ) => Promise<boolean>;
+  acquireAccountRefresh: (input: {
+    accountId: string;
+    sourceEventId: string;
+  }) => Promise<unknown>;
   retrieveCurrentAccount: (input: { accountId: string }) => Promise<unknown>;
-  listCurrentBankAccounts: (input: { accountId: string; startingAfter?: string }) => Promise<unknown>;
-  commitAccountRefresh: (input: ConnectAccountCurrentSnapshot) => Promise<boolean>;
+  listCurrentBankAccounts: (input: {
+    accountId: string;
+    startingAfter?: string;
+  }) => Promise<unknown>;
+  commitAccountRefresh: (
+    input: ConnectAccountCurrentSnapshot,
+  ) => Promise<boolean>;
 }
 
 function accountRecord(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>) : null;
+    ? (value as Record<string, unknown>)
+    : null;
 }
 
 // Stripe 17 BankAccount.account documents string | Stripe.Account | null.
 // Never infer ownership from the bank id or accept an arbitrary id-shaped object.
 function normalizeStripeAccountId(value: unknown): string | null {
   const record = accountRecord(value);
-  const id = typeof value === 'string' ? value
-    : record?.object === 'account' && record.deleted !== true ? record.id : null;
+  const id =
+    typeof value === 'string'
+      ? value
+      : record?.object === 'account' && record.deleted !== true
+        ? record.id
+        : null;
   return typeof id === 'string' && /^acct_[A-Za-z0-9]+$/.test(id) ? id : null;
 }
 
 /** Reject lossy BIGINT serialization before any authoritative network read. */
 export function parseAccountRefreshGeneration(value: unknown): number {
-  const generation = typeof value === 'number' ? value
-    : typeof value === 'string' && /^[1-9]\d*$/.test(value) ? Number(value) : NaN;
+  const generation =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && /^[1-9]\d*$/.test(value)
+        ? Number(value)
+        : NaN;
   if (!Number.isSafeInteger(generation) || generation <= 0) {
     throw new Error('ACCOUNT_REFRESH_INVALID_GENERATION');
   }
@@ -725,48 +760,82 @@ export async function applyConnectAccountActionability(
   deps: ConnectAccountActionabilityDeps,
 ): Promise<ConnectAccountCurrentSnapshot> {
   const appended = await deps.recordAccountEvent(input);
-  if (appended !== true && appended !== false) throw new Error('ACCOUNT_EVENT_APPEND_INVALID_RESULT');
-  const generation = parseAccountRefreshGeneration(await deps.acquireAccountRefresh({
-    accountId: input.accountId, sourceEventId: input.eventId,
-  }));
-  const account = accountRecord(await deps.retrieveCurrentAccount({ accountId: input.accountId }));
-  if (normalizeStripeAccountId(account?.id) !== input.accountId || account?.deleted === true) {
+  if (appended !== true && appended !== false)
+    throw new Error('ACCOUNT_EVENT_APPEND_INVALID_RESULT');
+  const generation = parseAccountRefreshGeneration(
+    await deps.acquireAccountRefresh({
+      accountId: input.accountId,
+      sourceEventId: input.eventId,
+    }),
+  );
+  const account = accountRecord(
+    await deps.retrieveCurrentAccount({ accountId: input.accountId }),
+  );
+  if (
+    normalizeStripeAccountId(account?.id) !== input.accountId ||
+    account?.deleted === true
+  ) {
     throw new Error('ACCOUNT_REFRESH_IDENTITY_MISMATCH');
   }
-  const payoutsEnabled = typeof account?.payouts_enabled === 'boolean' ? account.payouts_enabled : null;
+  const payoutsEnabled =
+    typeof account?.payouts_enabled === 'boolean'
+      ? account.payouts_enabled
+      : null;
   const defaults: Array<{ id: string; status: string | null }> = [];
   const seenBankIds = new Set<string>();
   let destinationUndetermined = false;
   let startingAfter: string | undefined;
   for (;;) {
-    const page = accountRecord(await deps.listCurrentBankAccounts({
-      accountId: input.accountId, ...(startingAfter ? { startingAfter } : {}),
-    }));
-    if (!page || !Array.isArray(page.data) || page.data.length > 100 || typeof page.has_more !== 'boolean') {
+    const page = accountRecord(
+      await deps.listCurrentBankAccounts({
+        accountId: input.accountId,
+        ...(startingAfter ? { startingAfter } : {}),
+      }),
+    );
+    if (
+      !page ||
+      !Array.isArray(page.data) ||
+      page.data.length > 100 ||
+      typeof page.has_more !== 'boolean'
+    ) {
       throw new Error('ACCOUNT_REFRESH_INVALID_BANK_PAGE');
     }
-    if (page.has_more && page.data.length === 0) throw new Error('ACCOUNT_REFRESH_PAGINATION_NO_PROGRESS');
+    if (page.has_more && page.data.length === 0)
+      throw new Error('ACCOUNT_REFRESH_PAGINATION_NO_PROGRESS');
     let lastId: string | undefined;
     for (const item of page.data) {
       const bank = accountRecord(item);
-      if (!bank || bank.object !== 'bank_account' || typeof bank.id !== 'string'
-        || !/^ba_[A-Za-z0-9]+$/.test(bank.id) || bank.deleted === true) {
+      if (
+        !bank ||
+        bank.object !== 'bank_account' ||
+        typeof bank.id !== 'string' ||
+        !/^ba_[A-Za-z0-9]+$/.test(bank.id) ||
+        bank.deleted === true
+      ) {
         throw new Error('ACCOUNT_REFRESH_INVALID_BANK_PAGE');
       }
-      if (seenBankIds.has(bank.id)) throw new Error('ACCOUNT_REFRESH_PAGINATION_NO_PROGRESS');
+      if (seenBankIds.has(bank.id))
+        throw new Error('ACCOUNT_REFRESH_PAGINATION_NO_PROGRESS');
       seenBankIds.add(bank.id);
       lastId = bank.id;
       if (normalizeStripeAccountId(bank.account) !== input.accountId) {
         throw new Error('ACCOUNT_REFRESH_IDENTITY_MISMATCH');
       }
-      const currency = typeof bank.currency === 'string' ? bank.currency.toLowerCase() : null;
+      const currency =
+        typeof bank.currency === 'string' ? bank.currency.toLowerCase() : null;
       if (!currency || !/^[a-z]{3}$/.test(currency)) {
         destinationUndetermined = true;
       } else if (currency === 'mxn') {
-        if (typeof bank.default_for_currency !== 'boolean') destinationUndetermined = true;
-        if (bank.default_for_currency === true) defaults.push({
-          id: bank.id, status: typeof bank.status === 'string' && bank.status.length > 0 ? bank.status : null,
-        });
+        if (typeof bank.default_for_currency !== 'boolean')
+          destinationUndetermined = true;
+        if (bank.default_for_currency === true)
+          defaults.push({
+            id: bank.id,
+            status:
+              typeof bank.status === 'string' && bank.status.length > 0
+                ? bank.status
+                : null,
+          });
       }
     }
     if (!page.has_more) break;
@@ -777,19 +846,36 @@ export async function applyConnectAccountActionability(
   const destination = mxnDefaultCount === 1 ? defaults[0] : null;
   const status = destination?.status ?? null;
   // Same precedence and conservative healthy allowlist as the A2 SQL boundary.
-  const blockedReason = payoutsEnabled === false ? 'payouts_disabled'
-    : destination && status !== null && NON_ACTIONABLE_EXTERNAL_ACCOUNT_STATUSES.includes(status) ? status
-    : payoutsEnabled === true && destination && status !== null && ['new', 'validated', 'verified'].includes(status)
-      ? null : 'destination_undetermined';
+  const blockedReason =
+    payoutsEnabled === false
+      ? 'payouts_disabled'
+      : destination &&
+          status !== null &&
+          NON_ACTIONABLE_EXTERNAL_ACCOUNT_STATUSES.includes(status)
+        ? status
+        : payoutsEnabled === true &&
+            destination &&
+            status !== null &&
+            ['new', 'validated', 'verified'].includes(status)
+          ? null
+          : 'destination_undetermined';
   const snapshot: ConnectAccountCurrentSnapshot = {
-    accountId: input.accountId, generation, sourceEventId: input.eventId,
-    actionable: blockedReason === null, blockedReason, payoutsEnabled,
-    externalAccountId: destination?.id ?? null, externalAccountStatus: status,
-    currency: destination ? 'mxn' : null, defaultForCurrency: destination ? true : null, mxnDefaultCount,
+    accountId: input.accountId,
+    generation,
+    sourceEventId: input.eventId,
+    actionable: blockedReason === null,
+    blockedReason,
+    payoutsEnabled,
+    externalAccountId: destination?.id ?? null,
+    externalAccountStatus: status,
+    currency: destination ? 'mxn' : null,
+    defaultForCurrency: destination ? true : null,
+    mxnDefaultCount,
   };
   const committed = await deps.commitAccountRefresh(snapshot);
   if (committed === false) throw new Error('ACCOUNT_REFRESH_SUPERSEDED');
-  if (committed !== true) throw new Error('ACCOUNT_REFRESH_COMMIT_INVALID_RESULT');
+  if (committed !== true)
+    throw new Error('ACCOUNT_REFRESH_COMMIT_INVALID_RESULT');
   return snapshot;
 }
 

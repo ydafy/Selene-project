@@ -19,13 +19,17 @@ const read = (name: string) =>
 const newMigrationName = readdirSync(DIR).find((f) =>
   f.endsWith('_remove_wallet_writes_core.sql'),
 );
-if (!newMigrationName) throw new Error('remove_wallet_writes_core migration missing');
+if (!newMigrationName)
+  throw new Error('remove_wallet_writes_core migration missing');
 const newMigration = read(newMigrationName);
 
 /** Header (before the first $$) and body (between the first two $$) of a function. */
 const definition = (sql: string, name: string) => {
   const start = sql.search(
-    new RegExp(`CREATE OR REPLACE FUNCTION\\s+"?public"?\\."?${name}"?\\(`, 'i'),
+    new RegExp(
+      `CREATE OR REPLACE FUNCTION\\s+"?public"?\\."?${name}"?\\(`,
+      'i',
+    ),
   );
   if (start < 0) throw new Error(`${name} not found`);
   const open = sql.indexOf('$$', start);
@@ -34,12 +38,16 @@ const definition = (sql: string, name: string) => {
 };
 
 const normalize = (sql: string) =>
-  sql.replace(/--[^\n]*/g, '').replace(/\s+/g, ' ').trim();
+  sql
+    .replace(/--[^\n]*/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 const headerTraits = (header: string) => ({
   securityDefiner: /SECURITY\s+DEFINER/i.test(header),
   searchPath: (
-    header.match(/SET\s+"?search_path"?\s*(?:=|TO)\s*([^\n]+)/i)?.[1] ?? 'MISSING'
+    header.match(/SET\s+"?search_path"?\s*(?:=|TO)\s*([^\n]+)/i)?.[1] ??
+    'MISSING'
   ).replace(/["'\s]/g, ''),
 });
 
@@ -118,7 +126,9 @@ describe('rewritten functions equal their previous definition minus the wallet b
       const next = definition(newMigration, fn.name);
 
       expect(headerTraits(next.header)).toEqual(headerTraits(previous.header));
-      expect(withoutWallet(previous.body, [...fn.blocks])).toBe(normalize(next.body));
+      expect(withoutWallet(previous.body, [...fn.blocks])).toBe(
+        normalize(next.body),
+      );
     });
   }
 });

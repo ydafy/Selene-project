@@ -317,7 +317,14 @@ interface Shipment {
   id: string;
   order_id: string;
   seller_id: string;
-  status: 'paid' | 'preparing' | 'shipped' | 'delivered' | 'completed' | 'cancelled' | 'refunded';
+  status:
+    | 'paid'
+    | 'preparing'
+    | 'shipped'
+    | 'delivered'
+    | 'completed'
+    | 'cancelled'
+    | 'refunded';
   tracking_number: string | null;
   label_url: string | null;
   carrier: string | null;
@@ -333,14 +340,14 @@ interface Shipment {
 
 ## RLS Policies (shipments)
 
-| Policy | Operation | Condition |
-|--------|-----------|-----------|
-| `shipments_select_buyer` | SELECT | `order.buyer_id = auth.uid()` via subquery on orders |
-| `shipments_select_seller` | SELECT | `seller_id = auth.uid()` |
-| `shipments_select_admin` | SELECT | `is_admin()` |
-| `shipments_insert_service_role` | INSERT | service_role only (client-side block for authenticated) |
-| `shipments_update_seller` | UPDATE | `seller_id = auth.uid()` AND `status IN ('paid','preparing','shipped')` |
-| `shipments_update_admin` | UPDATE | `is_admin()` |
+| Policy                          | Operation | Condition                                                               |
+| ------------------------------- | --------- | ----------------------------------------------------------------------- |
+| `shipments_select_buyer`        | SELECT    | `order.buyer_id = auth.uid()` via subquery on orders                    |
+| `shipments_select_seller`       | SELECT    | `seller_id = auth.uid()`                                                |
+| `shipments_select_admin`        | SELECT    | `is_admin()`                                                            |
+| `shipments_insert_service_role` | INSERT    | service_role only (client-side block for authenticated)                 |
+| `shipments_update_seller`       | UPDATE    | `seller_id = auth.uid()` AND `status IN ('paid','preparing','shipped')` |
+| `shipments_update_admin`        | UPDATE    | `is_admin()`                                                            |
 
 Seller can only update status/tracking/label while shipment is in early stages (before `delivered`).
 
@@ -351,6 +358,7 @@ Seller can only update status/tracking/label while shipment is in early stages (
 ### get-shipping-quote
 
 Accepts:
+
 ```typescript
 {
   items: Array<{ originZip: string; packageId: string; price: number; sellerId: string }>;
@@ -359,8 +367,11 @@ Accepts:
 ```
 
 Returns:
+
 ```typescript
-{ rates: Record<string, ShippingOption[] | null> }
+{
+  rates: Record<string, ShippingOption[] | null>;
+}
 // key = sellerId, null = Envia API failed for that origin
 ```
 
@@ -371,11 +382,13 @@ Returns:
 ### generate-shipping-label
 
 Accepts:
+
 ```typescript
 { shipmentId: string; originAddress: AddressObject; shippingEvidence: { images: string[] } }
 ```
 
 Validates:
+
 - Shipment exists and `status = 'paid'`
 - `tracking_number IS NULL`
 - Caller is seller (`shipment.seller_id = auth.uid()`) or admin
@@ -387,6 +400,7 @@ Updates atomically: `shipments.status = 'preparing'`, `tracking_number`, `label_
 ### track-shipments
 
 Cron: queries `shipments WHERE status IN ('preparing','shipped') AND tracking_number IS NOT NULL`
+
 - Batch size: 50, ordered by `last_tracked_at ASC NULLS FIRST`
 - Envia `generaltrack/` → delivered → call `fn_mark_shipment_delivered(shipment_id)`
 - Update `last_tracked_at` for all tracked shipments
@@ -394,6 +408,7 @@ Cron: queries `shipments WHERE status IN ('preparing','shipped') AND tracking_nu
 ### track-returns
 
 Cron: queries `disputes WHERE status = 'waiting_return' AND return_tracking_number IS NOT NULL`
+
 - Call `fn_mark_return_delivered(p_dispute_id)` on delivery detection
 - Updates `disputes.return_last_tracked_at`
 
@@ -402,11 +417,13 @@ Cron: queries `disputes WHERE status = 'waiting_return' AND return_tracking_numb
 Manual cancellation entry point. Legacy name preserved for deployed compatibility; behavior is shipment-scoped.
 
 Accepts:
+
 - `orderId: string`
 - `shipmentId: string` (required — missing scope rejected with 422)
 - `reason?: string`
 
 Auth & validation:
+
 - Rejects when `system_settings.is_maintenance` is true (503)
 - Buyer-only: JWT `auth.uid()` must match `order.buyer_id` (403)
 - Seller-only: JWT `auth.uid()` must match `shipment.seller_id` (403)
@@ -415,6 +432,7 @@ Auth & validation:
 - `stripe_transfer_id IS NOT NULL` logs CRITICAL and refuses refund
 
 Refund:
+
 - Amount: `SUM(price_at_purchase)` from shipment items + proportional buyer-paid fee share, excluding seller-paid shipping
 - Capped against `charge.amount - charge.amount_refunded` when charge is available
 - Idempotency key: `cancel_shipment_{shipmentId}`
@@ -430,6 +448,7 @@ DB mutation: calls `fn_cancel_shipment(p_shipment_id, p_cancelled_by_role : 'buy
 ### create-payment-intent
 
 After `fn_reserve_products`:
+
 1. Query `products` for each `product_id` → get `seller_id` and `shipping_cost`
 2. Group reserved items by `seller_id`
 3. Sum shipping costs per seller (buyer-pays only)
@@ -453,6 +472,7 @@ Input: `{ disputeId: string }`
 Auth: admin OR `dispute.seller_id === auth.uid()`
 
 Flow:
+
 1. Validate `dispute.status IN ('return_delivered', 'waiting_return')`
 2. Refuse with 422 when the shipment is missing, is not shipped or delivered, or has no `stripe_payment_intent_id`; this happens before any call to Stripe
 3. Stripe refund of the shipment amount with `reverse_transfer` (idempotent)
@@ -528,15 +548,15 @@ export interface EnrichedShipment extends Tables<'shipments'> {
   isBuyer: boolean;
   isSeller: boolean;
   permissions: {
-    canGenerateLabel: boolean;      // seller + status='paid' + no tracking
-    canConfirmDelivery: boolean;    // buyer + status in ('shipped','delivered')
-    canCancel: boolean;             // (isBuyer || isSeller) && status='paid'
-    canReport: boolean;             // buyer + dispute window
-    canPayReturn: boolean;          // seller + dispute.return_payout_status='pending'
+    canGenerateLabel: boolean; // seller + status='paid' + no tracking
+    canConfirmDelivery: boolean; // buyer + status in ('shipped','delivered')
+    canCancel: boolean; // (isBuyer || isSeller) && status='paid'
+    canReport: boolean; // buyer + dispute window
+    canPayReturn: boolean; // seller + dispute.return_payout_status='pending'
     canUploadReturnEvidence: boolean; // buyer + dispute.status='waiting_return'
-    canReview: boolean;             // buyer + completed + no review
-    showTracking: boolean;           // tracking_number not null
-    showDeliveredBanner: boolean;    // seller + status='delivered'
+    canReview: boolean; // buyer + completed + no review
+    showTracking: boolean; // tracking_number not null
+    showDeliveredBanner: boolean; // seller + status='delivered'
   };
 }
 ```
@@ -579,15 +599,15 @@ export interface EnrichedShipment extends Tables<'shipments'> {
 
 ### Dropped functions
 
-| Function | Replaced by |
-|----------|-------------|
-| `fn_mark_as_delivered` | `fn_mark_shipment_delivered` |
-| `fn_mark_return_as_delivered` | `fn_mark_return_delivered` |
-| `fn_release_order_funds` | `fn_release_shipment_funds` |
-| `fn_complete_dispute_refund` | `fn_record_dispute_refund` |
-| `fn_complete_shipment_refund` | `fn_record_dispute_refund` (Connect refunds only) |
-| `fn_create_order_from_payment` | `fn_create_shipments_from_single_payment` |
-| `fn_confirm_return_receipt` | `fn_seller_confirm_return_shipment` |
+| Function                       | Replaced by                                       |
+| ------------------------------ | ------------------------------------------------- |
+| `fn_mark_as_delivered`         | `fn_mark_shipment_delivered`                      |
+| `fn_mark_return_as_delivered`  | `fn_mark_return_delivered`                        |
+| `fn_release_order_funds`       | `fn_release_shipment_funds`                       |
+| `fn_complete_dispute_refund`   | `fn_record_dispute_refund`                        |
+| `fn_complete_shipment_refund`  | `fn_record_dispute_refund` (Connect refunds only) |
+| `fn_create_order_from_payment` | `fn_create_shipments_from_single_payment`         |
+| `fn_confirm_return_receipt`    | `fn_seller_confirm_return_shipment`               |
 
 ---
 

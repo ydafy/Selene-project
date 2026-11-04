@@ -16,11 +16,16 @@ const CUSTOMER = 'cus_test_123';
 const ACCOUNT = 'acct_test_123';
 const NOW_MS = 1_800_000_000_000;
 const NOW_S = NOW_MS / 1000;
-const RAW_DB_MESSAGE = 'duplicate key value violates constraint "secret_table_pkey"';
-const RAW_STRIPE_MESSAGE = 'You cannot delete acct_test_123 for jane@example.com: balance is 500';
+const RAW_DB_MESSAGE =
+  'duplicate key value violates constraint "secret_table_pkey"';
+const RAW_STRIPE_MESSAGE =
+  'You cannot delete acct_test_123 for jane@example.com: balance is 500';
 
 type Amr = { method: string; timestamp: number }[] | undefined;
-type RpcResult = { data: unknown; error: { code?: string; message: string } | null };
+type RpcResult = {
+  data: unknown;
+  error: { code?: string; message: string } | null;
+};
 type LogEntry = { level: string; msg: string; data?: Record<string, unknown> };
 
 const closedPayload = (overrides: Record<string, unknown> = {}) => ({
@@ -35,16 +40,19 @@ const closedPayload = (overrides: Record<string, unknown> = {}) => ({
 });
 
 function tokenWith(amr: Amr): string {
-  const payload = Buffer.from(JSON.stringify(amr === undefined ? { sub: USER } : { sub: USER, amr })).toString(
-    'base64url',
-  );
+  const payload = Buffer.from(
+    JSON.stringify(amr === undefined ? { sub: USER } : { sub: USER, amr }),
+  ).toString('base64url');
   return `header.${payload}.signature`;
 }
 
 const freshAmr: Amr = [{ method: 'password', timestamp: NOW_S - 60 }];
 
 function stripeError(code: string, message = RAW_STRIPE_MESSAGE) {
-  return Object.assign(new Error(message), { code, type: 'invalid_request_error' });
+  return Object.assign(new Error(message), {
+    code,
+    type: 'invalid_request_error',
+  });
 }
 
 function harness(
@@ -96,7 +104,8 @@ function harness(
     },
     log: (level, msg, data) => {
       logs.push({ level, msg, data });
-      if (overrides.warnThrows && level === 'WARN') throw new Error('log sink down');
+      if (overrides.warnThrows && level === 'WARN')
+        throw new Error('log sink down');
     },
   };
   return {
@@ -135,7 +144,9 @@ const nothingHappened = (h: ReturnType<typeof harness>) => {
 describe('delete-account handler: request and auth', () => {
   it('answers CORS preflight without authenticating', async () => {
     const h = harness();
-    const response = await h.handler(new Request('http://localhost/x', { method: 'OPTIONS' }));
+    const response = await h.handler(
+      new Request('http://localhost/x', { method: 'OPTIONS' }),
+    );
     expect(response.status).toBe(200);
     expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
     expect(h.tokens).toEqual([]);
@@ -184,7 +195,11 @@ describe('delete-account handler: recent sign-in (REAUTH_REQUIRED)', () => {
   });
 
   it('403 when amr is empty or malformed', async () => {
-    for (const amr of [[], [{ method: 'password' }], [{ method: 'password', timestamp: 'now' }]]) {
+    for (const amr of [
+      [],
+      [{ method: 'password' }],
+      [{ method: 'password', timestamp: 'now' }],
+    ]) {
       const h = harness();
       const { response, body } = await send(h, post(tokenWith(amr as Amr)));
       expect(response.status).toBe(403);
@@ -251,7 +266,9 @@ describe('delete-account handler: RPC outcomes', () => {
     'pending_refunds',
   ]) {
     it(`409 DELETE_BLOCKED with ${reason} and no cleanup`, async () => {
-      const h = harness({ rpc: { data: { status: 'blocked', reason }, error: null } });
+      const h = harness({
+        rpc: { data: { status: 'blocked', reason }, error: null },
+      });
       const { response, body } = await send(h, post());
       expect(response.status).toBe(409);
       expect(body).toEqual({ error: 'DELETE_BLOCKED', blocked_reason: reason });
@@ -263,7 +280,12 @@ describe('delete-account handler: RPC outcomes', () => {
   }
 
   it('500 INTERNAL for a blocked reason the app does not know', async () => {
-    const h = harness({ rpc: { data: { status: 'blocked', reason: 'something_new' }, error: null } });
+    const h = harness({
+      rpc: {
+        data: { status: 'blocked', reason: 'something_new' },
+        error: null,
+      },
+    });
     const { response, body } = await send(h, post());
     expect(response.status).toBe(500);
     expect(body).toEqual({ error: 'INTERNAL' });
@@ -278,13 +300,17 @@ describe('delete-account handler: RPC outcomes', () => {
   });
 
   it('500 INTERNAL on an RPC error without the database message in body or log', async () => {
-    const h = harness({ rpc: { data: null, error: { code: '23505', message: RAW_DB_MESSAGE } } });
+    const h = harness({
+      rpc: { data: null, error: { code: '23505', message: RAW_DB_MESSAGE } },
+    });
     const { response, text, body } = await send(h, post());
     expect(response.status).toBe(500);
     expect(body).toEqual({ error: 'INTERNAL' });
     expect(text).not.toContain('secret_table');
     expect(JSON.stringify(h.logs)).not.toContain('secret_table');
-    expect(h.logs.some((l) => l.level === 'ERROR' && l.data?.userId === USER)).toBe(true);
+    expect(
+      h.logs.some((l) => l.level === 'ERROR' && l.data?.userId === USER),
+    ).toBe(true);
     expect(h.customerCalls).toEqual([]);
   });
 
@@ -363,7 +389,8 @@ describe('delete-account handler: cleanup after closure', () => {
       { storage_cleanup: 'done' },
       { attempt: true, last_error: 'stripe_account:balance_insufficient' },
     ]);
-    const everything = text + JSON.stringify(h.records) + JSON.stringify(h.logs);
+    const everything =
+      text + JSON.stringify(h.records) + JSON.stringify(h.logs);
     expect(everything).not.toContain('jane@example.com');
     expect(everything).not.toContain('balance is 500');
   });
@@ -372,13 +399,21 @@ describe('delete-account handler: cleanup after closure', () => {
     const h = harness({ customer: new Error(RAW_STRIPE_MESSAGE) });
     const { response } = await send(h, post());
     expect(response.status).toBe(200);
-    expect(h.records.map((r) => r.update)).toContainEqual({ stripe_customer_cleanup: 'failed' });
-    expect(h.records.at(-1)?.update).toEqual({ attempt: true, last_error: 'stripe_customer:error' });
+    expect(h.records.map((r) => r.update)).toContainEqual({
+      stripe_customer_cleanup: 'failed',
+    });
+    expect(h.records.at(-1)?.update).toEqual({
+      attempt: true,
+      last_error: 'stripe_customer:error',
+    });
     expect(JSON.stringify(h.records)).not.toContain('jane@example.com');
   });
 
   it('resource_missing counts as done for the customer and the account', async () => {
-    const h = harness({ customer: stripeError('resource_missing'), account: stripeError('resource_missing') });
+    const h = harness({
+      customer: stripeError('resource_missing'),
+      account: stripeError('resource_missing'),
+    });
     const { response, body } = await send(h, post());
     expect(response.status).toBe(200);
     expect(body).toEqual({ success: true });
@@ -394,16 +429,25 @@ describe('delete-account handler: cleanup after closure', () => {
     const gone = harness({ account: stripeError('account_invalid') });
     const { response } = await send(gone, post());
     expect(response.status).toBe(200);
-    expect(gone.records.map((r) => r.update)).toContainEqual({ stripe_account_cleanup: 'done' });
-    expect(gone.records.at(-1)?.update).toEqual({ attempt: true, last_error: null });
+    expect(gone.records.map((r) => r.update)).toContainEqual({
+      stripe_account_cleanup: 'done',
+    });
+    expect(gone.records.at(-1)?.update).toEqual({
+      attempt: true,
+      last_error: null,
+    });
 
     const customer = harness({ customer: stripeError('account_invalid') });
     await send(customer, post());
-    expect(customer.records.map((r) => r.update)).toContainEqual({ stripe_customer_cleanup: 'failed' });
+    expect(customer.records.map((r) => r.update)).toContainEqual({
+      stripe_customer_cleanup: 'failed',
+    });
   });
 
   it('a storage failure still answers 200 and is recorded as failed', async () => {
-    const h = harness({ storage: new Error('bucket exploded for jane@example.com') });
+    const h = harness({
+      storage: new Error('bucket exploded for jane@example.com'),
+    });
     const { response, text, body } = await send(h, post());
     expect(response.status).toBe(200);
     expect(body).toEqual({ success: true });
@@ -413,7 +457,9 @@ describe('delete-account handler: cleanup after closure', () => {
       { storage_cleanup: 'failed' },
       { attempt: true, last_error: 'storage:error' },
     ]);
-    expect(text + JSON.stringify(h.records) + JSON.stringify(h.logs)).not.toContain('jane@example.com');
+    expect(
+      text + JSON.stringify(h.records) + JSON.stringify(h.logs),
+    ).not.toContain('jane@example.com');
   });
 
   it('joins every failed step in last_error', async () => {
@@ -425,7 +471,8 @@ describe('delete-account handler: cleanup after closure', () => {
     await send(h, post());
     expect(h.records.at(-1)?.update).toEqual({
       attempt: true,
-      last_error: 'stripe_customer:api_connection_error;stripe_account:balance_insufficient;storage:error',
+      last_error:
+        'stripe_customer:api_connection_error;stripe_account:balance_insufficient;storage:error',
     });
   });
 
@@ -465,7 +512,11 @@ describe('delete-account handler: cleanup after closure', () => {
   it('marks a pending Stripe step not_needed when the closure holds no id for it', async () => {
     const h = harness({
       rpc: {
-        data: closedPayload({ status: 'already_closed', stripe_customer_id: null, stripe_account_id: null }),
+        data: closedPayload({
+          status: 'already_closed',
+          stripe_customer_id: null,
+          stripe_account_id: null,
+        }),
         error: null,
       },
     });
@@ -502,7 +553,10 @@ describe('delete-account handler: cleanup after closure', () => {
 
   it('never logs the token, emails or raw messages', async () => {
     const token = tokenWith(freshAmr);
-    const h = harness({ account: stripeError('balance_insufficient'), storage: new Error(RAW_DB_MESSAGE) });
+    const h = harness({
+      account: stripeError('balance_insufficient'),
+      storage: new Error(RAW_DB_MESSAGE),
+    });
     await send(h, post(token));
     const logged = JSON.stringify(h.logs);
     expect(logged).not.toContain(token);
@@ -529,8 +583,10 @@ describe('delete-account handler: transient auth failures', () => {
   });
 
   it('classifies the auth error status: 4xx is an invalid token, the rest is transient', () => {
-    for (const status of [400, 401, 403, 404, 422]) expect(isTransientAuthError({ status })).toBe(false);
-    for (const status of [0, 429, 500, 502, 503]) expect(isTransientAuthError({ status })).toBe(true);
+    for (const status of [400, 401, 403, 404, 422])
+      expect(isTransientAuthError({ status })).toBe(false);
+    for (const status of [0, 429, 500, 502, 503])
+      expect(isTransientAuthError({ status })).toBe(true);
     expect(isTransientAuthError({})).toBe(true);
     expect(isTransientAuthError(new Error('fetch failed'))).toBe(true);
     expect(isTransientAuthError(null)).toBe(true);
@@ -556,12 +612,16 @@ describe('delete-account handler: malformed token payload', () => {
 describe('delete-account handler: crash logs', () => {
   it('logs a sanitized code, never the message, when the request crashes', async () => {
     const h = harness({
-      userIdError: Object.assign(new Error('boom for jane@example.com'), { code: 'upstream_down' }),
+      userIdError: Object.assign(new Error('boom for jane@example.com'), {
+        code: 'upstream_down',
+      }),
     });
     const { response, body } = await send(h, post());
     expect(response.status).toBe(500);
     expect(body).toEqual({ error: 'INTERNAL' });
-    const crash = h.logs.find((entry) => entry.msg === 'Account closure crashed');
+    const crash = h.logs.find(
+      (entry) => entry.msg === 'Account closure crashed',
+    );
     expect(crash?.data).toEqual({ code: 'upstream_down' });
     expect(JSON.stringify(h.logs)).not.toContain('jane@example.com');
   });
@@ -569,15 +629,22 @@ describe('delete-account handler: crash logs', () => {
   it('falls back to a generic code when the error has none', async () => {
     const h = harness({ userIdError: new Error('x') });
     await send(h, post());
-    expect(h.logs.find((entry) => entry.msg === 'Account closure crashed')?.data).toEqual({ code: 'error' });
+    expect(
+      h.logs.find((entry) => entry.msg === 'Account closure crashed')?.data,
+    ).toEqual({ code: 'error' });
   });
 
   it('logs the code when the cleanup itself crashes and still answers 200', async () => {
-    const h = harness({ warnThrows: true, customer: stripeError('api_connection_error') });
+    const h = harness({
+      warnThrows: true,
+      customer: stripeError('api_connection_error'),
+    });
     const { response, body } = await send(h, post());
     expect(response.status).toBe(200);
     expect(body).toEqual({ success: true });
-    const crash = h.logs.find((entry) => entry.msg === 'Account closure cleanup crashed');
+    const crash = h.logs.find(
+      (entry) => entry.msg === 'Account closure cleanup crashed',
+    );
     expect(crash?.data).toEqual({ userId: USER, code: 'error' });
   });
 });
@@ -613,15 +680,23 @@ describe('delete-account wiring (source contract)', () => {
   });
 
   it('is declared in config.toml with JWT verification on', () => {
-    const config = readFileSync(join(root, 'supabase/config.toml'), 'utf8').replace(/\r\n/g, '\n');
+    const config = readFileSync(
+      join(root, 'supabase/config.toml'),
+      'utf8',
+    ).replace(/\r\n/g, '\n');
     expect(config).toMatch(/\[functions\.delete-account\]\nverify_jwt = true/);
   });
 
   it('keeps the canonical fn_close_account.sql grants in line with the migration', () => {
-    const sql = readFileSync(join(root, 'supabase/queries/auth/fn_close_account.sql'), 'utf8');
+    const sql = readFileSync(
+      join(root, 'supabase/queries/auth/fn_close_account.sql'),
+      'utf8',
+    );
     expect(sql).toContain(
       'REVOKE EXECUTE ON FUNCTION public.fn_close_account(uuid) FROM PUBLIC, anon, authenticated;',
     );
-    expect(sql).toContain('GRANT EXECUTE ON FUNCTION public.fn_close_account(uuid) TO service_role;');
+    expect(sql).toContain(
+      'GRANT EXECUTE ON FUNCTION public.fn_close_account(uuid) TO service_role;',
+    );
   });
 });

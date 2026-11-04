@@ -25,7 +25,9 @@ import type {
  * contract. It rejects the legacy per-seller `paymentIntents[]` array shape and
  * requires the single `clientSecret` + `transferGroup` + `amount` fields.
  */
-function validateSingleSecretResponse(x: unknown): x is CreateConnectPaymentResponse {
+function validateSingleSecretResponse(
+  x: unknown,
+): x is CreateConnectPaymentResponse {
   if (x === null || typeof x !== 'object') return false;
   const o = x as Record<string, unknown>;
   return (
@@ -113,7 +115,13 @@ describe('CreateConnectPaymentResponse single-secret contract', () => {
       ephemeralKey: 'ek_1',
       expiresAt: '2026-01-01T00:00:00Z',
       paymentIntents: [
-        { sellerId: 's_1', shipmentId: 'sh_1', clientSecret: 'cs_1', amount: 2500, descriptor: 'd' },
+        {
+          sellerId: 's_1',
+          shipmentId: 'sh_1',
+          clientSecret: 'cs_1',
+          amount: 2500,
+          descriptor: 'd',
+        },
       ],
     };
     expect(validateSingleSecretResponse(legacy)).toBe(false);

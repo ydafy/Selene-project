@@ -28,9 +28,12 @@ if (process.env.B44D_PAGE_CHILD !== '1') {
     fetchLabelReconciliations: async () => [],
     resolveLabelReconciliation: async () => undefined,
   }));
-  const { LabelReconciliationsPanel } = await import('../components/features/shipments/LabelReconciliationsPanel');
-  const { LateCarrierActivityPanel } = await import('../components/features/shipments/LateCarrierActivityPanel');
-  const { CarrierReviewsPanel } = await import('../components/features/shipments/CarrierReviewsPanel');
+  const { LabelReconciliationsPanel } =
+    await import('../components/features/shipments/LabelReconciliationsPanel');
+  const { LateCarrierActivityPanel } =
+    await import('../components/features/shipments/LateCarrierActivityPanel');
+  const { CarrierReviewsPanel } =
+    await import('../components/features/shipments/CarrierReviewsPanel');
   const { ShipmentsPage } = await import('./ShipmentsPage');
 
   type Element = React.ReactElement<Record<string, unknown>>;
@@ -40,7 +43,8 @@ if (process.env.B44D_PAGE_CHILD !== '1') {
     return [value, ...nodes(value.props.children as React.ReactNode)];
   };
   const label = (value: React.ReactNode): string => {
-    if (typeof value === 'string' || typeof value === 'number') return String(value);
+    if (typeof value === 'string' || typeof value === 'number')
+      return String(value);
     if (Array.isArray(value)) return value.map(label).join('');
     return React.isValidElement<Record<string, unknown>>(value)
       ? label(value.props.children as React.ReactNode)
@@ -54,13 +58,24 @@ if (process.env.B44D_PAGE_CHILD !== '1') {
   });
 
   it('renders the carrier cancellations bucket', () => {
-    expect(nodes(ShipmentsPage()).some((n) => n.type === CarrierReviewsPanel)).toBe(true);
+    expect(
+      nodes(ShipmentsPage()).some((n) => n.type === CarrierReviewsPanel),
+    ).toBe(true);
   });
 
   it('renders the late carrier activity bucket after the carrier reviews bucket, then the label reconciliations bucket', () => {
     const order = nodes(ShipmentsPage())
-      .filter((n) => n.type === CarrierReviewsPanel || n.type === LateCarrierActivityPanel || n.type === LabelReconciliationsPanel)
+      .filter(
+        (n) =>
+          n.type === CarrierReviewsPanel ||
+          n.type === LateCarrierActivityPanel ||
+          n.type === LabelReconciliationsPanel,
+      )
       .map((n) => n.type);
-    expect(order).toEqual([CarrierReviewsPanel, LateCarrierActivityPanel, LabelReconciliationsPanel]);
+    expect(order).toEqual([
+      CarrierReviewsPanel,
+      LateCarrierActivityPanel,
+      LabelReconciliationsPanel,
+    ]);
   });
 }

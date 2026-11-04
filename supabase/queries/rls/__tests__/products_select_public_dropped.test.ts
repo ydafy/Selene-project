@@ -87,7 +87,10 @@ describe('canonical files', () => {
 
   test('get_profile_stats.sql reads the public view', () => {
     const sql = normalize(
-      readFileSync(join(QUERIES_DIR, 'profile', 'get_profile_stats.sql'), 'utf8'),
+      readFileSync(
+        join(QUERIES_DIR, 'profile', 'get_profile_stats.sql'),
+        'utf8',
+      ),
     );
     expect(sql).toMatch(/from public\.products_public where seller_id/i);
     expect(sql).not.toMatch(/from public\.products where/i);

@@ -2,7 +2,7 @@
 
 **Change type:** UI/UX redesign of one screen + its copy contract.
 **Target:** `apps/frontend/app/profile/orders/prepare/[id].tsx`
-**Status:** round 2 applied (uncommitted). The *Screen layout* section below is superseded by
+**Status:** round 2 applied (uncommitted). The _Screen layout_ section below is superseded by
 **Round 2 — applied**; T6–T10 remain deferred.
 **Scope boundary:** this screen only. No buyer-side flow, no disputes module, no report/return screens, no insurance fund, no state-machine changes.
 
@@ -43,9 +43,9 @@ replaced by a one-line context header plus a "what happens next" line under the 
 
 Packaging requirements shown on screen come from carrier/provider documents, not invention:
 
-- Paquetexpress, *Política de aceptación de mercancía*, "Línea blanca / Equipos e instrumentos":
+- Paquetexpress, _Política de aceptación de mercancía_, "Línea blanca / Equipos e instrumentos":
   used goods require a cardboard box with polybubble or foam inside, plus up arrows.
-- Envia, *Guía de embalaje* / *Packaging sealing*: pick a sturdy box with no empty space, pad
+- Envia, _Guía de embalaje_ / _Packaging sealing_: pick a sturdy box with no empty space, pad
   the contents, fill the gaps, and seal with the "H" method (centre joint + both edges) using
   polypropylene/PVC tape at least 5 cm wide.
 - Inadequate packaging excludes coverage (Paquetexpress cláusula SEXTA; Envia T&C 3.7.5).
@@ -56,6 +56,7 @@ Packaging requirements shown on screen come from carrier/provider documents, not
 ## Tasks
 
 ### T1 — i18n contract (en + es, parity enforced)
+
 Add the new `prepare.*` keys to `core/i18n/locales/en/orders.json` and
 `core/i18n/locales/es/orders.json`, **including the currently missing `prepare.securityReason`**
 (used today by the biometric prompt and absent from both locales — a live bug).
@@ -83,22 +84,26 @@ Reused unchanged: `headerTitle`, `originLabel`, `originPlaceholder`, `summaryTit
 `totalSale`, `disclaimer`, `confirmBtn`, `successTitle`, `successMsg`.
 
 ### T2 — `PackagingGuideCard` component
+
 New reusable component rendering the "pack it like this" block: four requirement rows
 (icon + label), one consequence line, and a "full guide" affordance opening a modal with the
 extended guide. Uses only Restyle tokens and existing UI primitives.
 
 ### T3 — `LabelWithHelp`: optional `confirmLabel`
+
 The shared component hardcodes `confirmLabel="Entendido"`, so its modal button cannot be
 translated. Add an optional `confirmLabel?: string` prop that defaults to today's behaviour.
 Additive and backward compatible — `LabelWithHelp` is used elsewhere.
 
 ### T4 — Screen rewrite
+
 Restructure `prepare/[id].tsx` to the agreed layout (see below), move every string to i18n
 (including the currently hardcoded Spanish Stripe Connect block), pass `slotsConfig` to
 `EvidenceUploadSection`, add the progress line and the "what happens next" line, and remove
 the three leftover `[DEBUG ...]` `console.log` calls that dump order and shipment payloads.
 
 ### T5 — Verification
+
 Focused i18n parity test, lint, and typecheck on the touched surface. Report commands and
 observed output.
 
@@ -130,13 +135,14 @@ observed output.
 
 Evidence slots:
 
-| # | Label (en / es) | Icon intent | What it proves |
-| - | --------------- | ----------- | -------------- |
-| 1 | Product and packaging / Producto y empaque | open package | The padding was adequate |
-| 2 | Closed box / Caja cerrada | closed package | It left whole, arrows visible |
-| 3 | Sealing / Sellado | tape/close-up | How the "H" seal was applied |
+| #   | Label (en / es)                            | Icon intent    | What it proves                |
+| --- | ------------------------------------------ | -------------- | ----------------------------- |
+| 1   | Product and packaging / Producto y empaque | open package   | The padding was adequate      |
+| 2   | Closed box / Caja cerrada                  | closed package | It left whole, arrows visible |
+| 3   | Sealing / Sellado                          | tape/close-up  | How the "H" seal was applied  |
 
 The "why" modal content, in three bullets, honest:
+
 1. If the buyer claims something else arrived, these are your backup.
 2. They are what lets us claim against the carrier.
 3. They do **not** prove the contents — the buyer's unboxing video does.
@@ -147,10 +153,10 @@ always visible — never a dead button with no explanation.
 
 ## Evidence
 
-| Task | Evidence |
-| ---- | -------- |
-| T1–T4 | Files: `prepare/[id].tsx` (+291/-… rewrite), `en/orders.json`, `es/orders.json`, new `PackagingGuideCard.tsx`, `LabelWithHelp.tsx` (+5, additive prop). Both debug `console.log` dumps removed. No commit (repository policy forbids committing unrequested; working tree also carries unrelated uncommitted work). |
-| T5 | `bun test tests/orders/__tests__/i18nOrdersParity.test.ts` → 3 pass, 0 fail, 57 expect() calls. `bunx eslint` on the three touched component/screen paths → exit 0, clean. `bunx tsc --noEmit -p tsconfig.json` → 51 errors, all in unrelated pre-existing files, none in the touched paths (baseline from existing uncommitted work, not fixed). |
+| Task  | Evidence                                                                                                                                                                                                                                                                                                                                          |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T1–T4 | Files: `prepare/[id].tsx` (+291/-… rewrite), `en/orders.json`, `es/orders.json`, new `PackagingGuideCard.tsx`, `LabelWithHelp.tsx` (+5, additive prop). Both debug `console.log` dumps removed. No commit (repository policy forbids committing unrequested; working tree also carries unrelated uncommitted work).                               |
+| T5    | `bun test tests/orders/__tests__/i18nOrdersParity.test.ts` → 3 pass, 0 fail, 57 expect() calls. `bunx eslint` on the three touched component/screen paths → exit 0, clean. `bunx tsc --noEmit -p tsconfig.json` → 51 errors, all in unrelated pre-existing files, none in the touched paths (baseline from existing uncommitted work, not fixed). |
 
 ## Round 2 — applied
 

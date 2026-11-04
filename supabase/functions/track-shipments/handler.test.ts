@@ -78,7 +78,11 @@ const handler = (
 
 describe('track shipments cron handler', () => {
   it('rejects missing, malformed, mismatched, and blank-configured Bearer credentials before side effects', async () => {
-    for (const authorization of ['', 'Basic cron-secret', 'Bearer wrong-secret']) {
+    for (const authorization of [
+      '',
+      'Basic cron-secret',
+      'Bearer wrong-secret',
+    ]) {
       const dependencies = createDependencies();
       const response = await handler(dependencies)(
         request({ lane: 'preparing' }, authorization),
@@ -135,7 +139,9 @@ describe('track shipments cron handler', () => {
       return { acquired: false };
     };
 
-    const response = await handler(dependencies)(request({ lane: 'preparing' }));
+    const response = await handler(dependencies)(
+      request({ lane: 'preparing' }),
+    );
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
@@ -217,9 +223,7 @@ describe('track shipments cron handler', () => {
       ];
     };
 
-    const response = await handler(dependencies)(
-      request({ lane: 'shipped' }),
-    );
+    const response = await handler(dependencies)(request({ lane: 'shipped' }));
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
@@ -312,9 +316,7 @@ describe('track shipments cron handler', () => {
       return { inserted: event.targetId === 'shipment-good' };
     };
 
-    const response = await handler(dependencies)(
-      request({ lane: 'shipped' }),
-    );
+    const response = await handler(dependencies)(request({ lane: 'shipped' }));
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({

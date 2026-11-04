@@ -18,9 +18,7 @@ export type SellerShippingReserveInput = {
 };
 
 const isCents = (value: unknown): value is number =>
-  typeof value === 'number' &&
-  Number.isSafeInteger(value) &&
-  value >= 0;
+  typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 
 const isRate = (value: unknown): value is number =>
   typeof value === 'number' &&
@@ -45,7 +43,8 @@ export function calculateEstimatedSellerShippingDeductionCents({
   }
 
   const insuranceCents = Math.ceil(priceCents * insuranceRate);
-  const reserveCents = quotedShippingCents + shippingBufferCents + insuranceCents;
+  const reserveCents =
+    quotedShippingCents + shippingBufferCents + insuranceCents;
   if (!Number.isSafeInteger(reserveCents)) {
     throw new Error('INVALID_PUBLICATION_ECONOMICS');
   }
@@ -82,5 +81,7 @@ export function resolvePublicationEconomics(
   snapshot: PublicationEconomicsSnapshot,
   resolveLegacyEconomics: () => PublicationEconomics,
 ): PublicationEconomics {
-  return validatePublicationEconomicsSnapshot(snapshot) ?? resolveLegacyEconomics();
+  return (
+    validatePublicationEconomicsSnapshot(snapshot) ?? resolveLegacyEconomics()
+  );
 }

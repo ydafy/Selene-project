@@ -34,7 +34,10 @@ describe('tracking ingestion idempotency contract', () => {
         records === 0
           ? { kind: 'new', id: 'db-delivery-1' }
           : { kind: 'duplicate' },
-      resolveSubject: async () => ({ shipmentId: 'shipment-1', disputeId: null }),
+      resolveSubject: async () => ({
+        shipmentId: 'shipment-1',
+        disputeId: null,
+      }),
       record: async () => {
         records += 1;
       },
@@ -42,8 +45,12 @@ describe('tracking ingestion idempotency contract', () => {
       schedule: async (work) => await work(),
     });
 
-    expect((await handler(webhookRequest(webhookPayload('Picked Up')))).status).toBe(200);
-    expect((await handler(webhookRequest(webhookPayload('Picked Up')))).status).toBe(200);
+    expect(
+      (await handler(webhookRequest(webhookPayload('Picked Up')))).status,
+    ).toBe(200);
+    expect(
+      (await handler(webhookRequest(webhookPayload('Picked Up')))).status,
+    ).toBe(200);
     expect(records).toBe(1);
   });
 
@@ -60,7 +67,10 @@ describe('tracking ingestion idempotency contract', () => {
         if (rawBody !== firstPayload) return { kind: 'collision' };
         return { kind: 'duplicate' };
       },
-      resolveSubject: async () => ({ shipmentId: 'shipment-1', disputeId: null }),
+      resolveSubject: async () => ({
+        shipmentId: 'shipment-1',
+        disputeId: null,
+      }),
       record: async () => {
         records += 1;
       },
@@ -69,15 +79,21 @@ describe('tracking ingestion idempotency contract', () => {
     });
 
     await handler(webhookRequest(webhookPayload('Picked Up')));
-    const collision = await handler(webhookRequest(webhookPayload('Delivered')));
+    const collision = await handler(
+      webhookRequest(webhookPayload('Delivered')),
+    );
 
     expect(collision.status).toBe(409);
-    expect(await collision.json()).toEqual({ error: 'DELIVERY_PAYLOAD_CONFLICT' });
+    expect(await collision.json()).toEqual({
+      error: 'DELIVERY_PAYLOAD_CONFLICT',
+    });
     expect(records).toBe(1);
   });
 
   it('uses one null-safe event key for webhook and polling collisions before monotonic transitions', () => {
-    const migration = read('supabase/migrations/archive/20260828030000_shipment_tracking_foundation.sql');
+    const migration = read(
+      'supabase/migrations/archive/20260828030000_shipment_tracking_foundation.sql',
+    );
     const webhook = read('supabase/functions/envia-webhook/index.ts');
     const polling = read('supabase/functions/track-shipments/index.ts');
     const rpc = migration.match(
@@ -89,8 +105,14 @@ describe('tracking ingestion idempotency contract', () => {
     expect(webhook).toMatch(/\.rpc\(\s*'fn_record_tracking_event'/);
     expect(polling).toMatch(/\.rpc\(\s*'fn_record_tracking_event'/);
     expect(rpc).toContain('ON CONFLICT DO NOTHING');
-    expect(rpc).toContain("IF v_event_id IS NULL THEN\n    RETURN jsonb_build_object('inserted', false");
-    expect(rpc).toContain("v_status = 'preparing' AND p_transition = 'shipped'");
-    expect(rpc).toContain("v_status = 'shipped' AND p_transition = 'delivered'");
+    expect(rpc).toContain(
+      "IF v_event_id IS NULL THEN\n    RETURN jsonb_build_object('inserted', false",
+    );
+    expect(rpc).toContain(
+      "v_status = 'preparing' AND p_transition = 'shipped'",
+    );
+    expect(rpc).toContain(
+      "v_status = 'shipped' AND p_transition = 'delivered'",
+    );
   });
 });

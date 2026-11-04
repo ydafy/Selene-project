@@ -27,13 +27,18 @@ const row = (overrides: Record<string, unknown> = {}) => ({
 });
 
 function harness(
-  overrides: { userId?: string | null; admin?: boolean | Error; rpc?: RpcResult | Error } = {},
+  overrides: {
+    userId?: string | null;
+    admin?: boolean | Error;
+    rpc?: RpcResult | Error;
+  } = {},
 ) {
   const adminChecks: string[] = [];
   const logs: LogEntry[] = [];
   let rpcCalls = 0;
   const deps: ListShipmentOperationReviewsDeps = {
-    getUserId: async () => (overrides.userId === undefined ? ADMIN : overrides.userId),
+    getUserId: async () =>
+      overrides.userId === undefined ? ADMIN : overrides.userId,
     isAdmin: async (userId) => {
       adminChecks.push(userId);
       if (overrides.admin instanceof Error) throw overrides.admin;
@@ -117,13 +122,18 @@ describe('list-shipment-operation-reviews handler', () => {
   });
 
   it('returns an empty list, keeps a NULL label cost null and converts a bigint string', async () => {
-    const empty = await harness({ rpc: { data: [], error: null } }).handler(request());
+    const empty = await harness({ rpc: { data: [], error: null } }).handler(
+      request(),
+    );
     expect(await empty.json()).toEqual({ reviews: [] });
 
     const res = await harness({
       rpc: {
         data: [
-          row({ label_provider_cost_cents: null, carrier_cancellation_outcome: null }),
+          row({
+            label_provider_cost_cents: null,
+            carrier_cancellation_outcome: null,
+          }),
           row({ label_provider_cost_cents: '15000' }),
         ],
         error: null,
@@ -150,7 +160,9 @@ describe('list-shipment-operation-reviews handler', () => {
       { carrier_cancellation_outcome: 5 },
     ];
     for (const overrides of bad) {
-      const h = harness({ rpc: { data: [row(), row(overrides)], error: null } });
+      const h = harness({
+        rpc: { data: [row(), row(overrides)], error: null },
+      });
       const res = await h.handler(request());
       expect(res.status).toBe(500);
       expect(await res.text()).toBe('{"error":"INTERNAL_ERROR"}');
@@ -160,14 +172,18 @@ describe('list-shipment-operation-reviews handler', () => {
 
   it('fails closed when the RPC data is not an array of objects', async () => {
     for (const data of [null, {}, 'x', [null], ['x']]) {
-      const res = await harness({ rpc: { data, error: null } }).handler(request());
+      const res = await harness({ rpc: { data, error: null } }).handler(
+        request(),
+      );
       expect(res.status).toBe(500);
       expect(await res.json()).toEqual({ error: 'INTERNAL_ERROR' });
     }
   });
 
   it('keeps raw RPC and crash text out of the response and in the log', async () => {
-    const rpc = harness({ rpc: { data: null, error: { message: 'secret db detail' } } });
+    const rpc = harness({
+      rpc: { data: null, error: { message: 'secret db detail' } },
+    });
     const res = await rpc.handler(request());
     expect(res.status).toBe(500);
     expect(await res.text()).toBe('{"error":"INTERNAL_ERROR"}');
@@ -183,7 +199,9 @@ describe('list-shipment-operation-reviews handler', () => {
   it('does not log seller ids or tracking numbers on success', async () => {
     const h = harness();
     await h.handler(request());
-    expect(JSON.stringify(h.logs)).not.toContain('7b310000-0000-4000-8000-000000000013');
+    expect(JSON.stringify(h.logs)).not.toContain(
+      '7b310000-0000-4000-8000-000000000013',
+    );
     expect(JSON.stringify(h.logs)).not.toContain('1234567890');
   });
 });
@@ -192,14 +210,21 @@ describe('list-shipment-operation-reviews wiring', () => {
   const index = readFileSync(join(import.meta.dir, 'index.ts'), 'utf8');
 
   it('wraps the handler with Sentry, checks role and status, and calls the service-only RPC', () => {
-    expect(index).toContain("serve(withSentry('list-shipment-operation-reviews', handler))");
+    expect(index).toContain(
+      "serve(withSentry('list-shipment-operation-reviews', handler))",
+    );
     expect(index).toContain(".select('role, status')");
     expect(index).toContain("from '../_shared/admin-auth.ts'");
     expect(index).toContain('fn_list_shipment_cancellation_reviews');
   });
 
   it('declares verify_jwt = true in config.toml', () => {
-    const config = readFileSync(join(import.meta.dir, '../../config.toml'), 'utf8');
-    expect(config).toMatch(/\[functions\.list-shipment-operation-reviews\]\r?\nverify_jwt = true/);
+    const config = readFileSync(
+      join(import.meta.dir, '../../config.toml'),
+      'utf8',
+    );
+    expect(config).toMatch(
+      /\[functions\.list-shipment-operation-reviews\]\r?\nverify_jwt = true/,
+    );
   });
 });

@@ -86,7 +86,10 @@ describe('resolveSellerOnboardingResponse', () => {
           stripe_account_id: null,
           stripe_onboarding_status: null,
         },
-        loadAdminRows: async () => ({ data: null, error: new Error('view failed') }),
+        loadAdminRows: async () => ({
+          data: null,
+          error: new Error('view failed'),
+        }),
       }),
     ).rejects.toMatchObject(
       new GetSellerOnboardingError('SELLER_ONBOARDING_UNAVAILABLE', 500),

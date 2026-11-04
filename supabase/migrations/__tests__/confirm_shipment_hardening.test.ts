@@ -22,7 +22,9 @@ test('migration adds the completion ledger and due index', async () => {
   expect(migration).toContain(
     'ADD COLUMN IF NOT EXISTS buyer_confirmed_at timestamptz',
   );
-  expect(migration).toContain('CREATE TABLE IF NOT EXISTS public.shipment_completion_events');
+  expect(migration).toContain(
+    'CREATE TABLE IF NOT EXISTS public.shipment_completion_events',
+  );
   expect(migration).toContain('UNIQUE (shipment_id)');
   expect(migration).toContain('UNIQUE (idempotency_key)');
   expect(migration).toContain("source IN ('buyer', 'auto')");
@@ -30,7 +32,7 @@ test('migration adds the completion ledger and due index', async () => {
     "(source = 'buyer' AND actor_id IS NOT NULL) OR (source = 'auto' AND actor_id IS NULL)",
   );
   expect(migration).toContain('ENABLE ROW LEVEL SECURITY');
-  expect(migration).toContain('WHERE status = \'delivered\'');
+  expect(migration).toContain("WHERE status = 'delivered'");
   expect(migration).toContain('AND buyer_confirmed_at IS NULL');
 });
 
@@ -54,7 +56,9 @@ test('canonical RPC enforces source-specific completion before one durable audit
   expect(migration).toContain('INSERT INTO public.shipment_completion_events');
   expect(canonicalFunction).toContain("v_status = 'delivered'");
   expect(canonicalFunction).toContain("p_source = 'auto'");
-  expect(canonicalFunction).toContain('INSERT INTO public.shipment_completion_events');
+  expect(canonicalFunction).toContain(
+    'INSERT INTO public.shipment_completion_events',
+  );
 });
 
 test('canonical RPC rejects active disputes before inserting a completion event', async () => {
@@ -114,9 +118,13 @@ test('completion refuses non-Connect shipments and keeps the Connect completion 
   expect(canonicalFunction).toContain('stripe_payment_intent_id IS NOT NULL');
   expect(canonicalFunction).toContain('IF NOT v_is_connect THEN');
   expect(canonicalFunction).toContain("'SHIPMENT_NOT_CONNECT'");
-  expect(canonicalFunction).not.toMatch(/\bwallets\b|wallet_transactions|SELLER_WALLET_NOT_FOUND/);
+  expect(canonicalFunction).not.toMatch(
+    /\bwallets\b|wallet_transactions|SELLER_WALLET_NOT_FOUND/,
+  );
   expect(canonicalFunction).toContain("'INFO'");
-  expect(canonicalFunction).toContain('Connect shipment completion skipped deprecated wallet release');
+  expect(canonicalFunction).toContain(
+    'Connect shipment completion skipped deprecated wallet release',
+  );
 });
 
 test('migration restricts RPC execution and retires the legacy order-level path', async () => {
@@ -128,6 +136,8 @@ test('migration restricts RPC execution and retires the legacy order-level path'
   expect(migration).toContain(
     'GRANT EXECUTE ON FUNCTION public.fn_confirm_shipment_delivery(uuid, text, uuid, text) TO service_role',
   );
-  expect(migration).toContain('DROP FUNCTION IF EXISTS public.fn_confirm_delivery(uuid)');
+  expect(migration).toContain(
+    'DROP FUNCTION IF EXISTS public.fn_confirm_delivery(uuid)',
+  );
   await expect(readFile(legacyFunctionPath, 'utf8')).rejects.toThrow();
 });

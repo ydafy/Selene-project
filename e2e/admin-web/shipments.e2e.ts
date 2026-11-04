@@ -5,7 +5,8 @@ const userId = '00000000-0000-4000-8000-000000000001';
 const listPath = '/functions/v1/list-shipment-operation-reviews';
 const resolvePath = '/functions/v1/resolve-shipment-operation-review';
 const lateListPath = '/functions/v1/list-shipment-late-carrier-activity';
-const acknowledgePath = '/functions/v1/acknowledge-shipment-late-carrier-activity';
+const acknowledgePath =
+  '/functions/v1/acknowledge-shipment-late-carrier-activity';
 const labelListPath = '/functions/v1/list-shipment-label-reconciliations';
 const labelResolvePath = '/functions/v1/resolve-shipment-label-reconciliation';
 
@@ -31,7 +32,9 @@ const lateCase = (n: number, overrides: Record<string, unknown> = {}) => ({
   shipment_status: 'cancelled',
   source: 'preparing_timeout',
   refund_status: 'succeeded',
-  late_carrier_activity_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+  late_carrier_activity_at: new Date(
+    Date.now() - 2 * 60 * 60 * 1000,
+  ).toISOString(),
   late_carrier_activity_event_type: 'delivered',
   ...overrides,
 });
@@ -76,7 +79,12 @@ interface Mock {
 }
 
 // Deny-by-default boundary installed BEFORE navigation or session setup.
-async function openShipments(page: Page, context: BrowserContext, baseURL: string, mock: Mock) {
+async function openShipments(
+  page: Page,
+  context: BrowserContext,
+  baseURL: string,
+  mock: Mock,
+) {
   const cors = {
     'access-control-allow-origin': baseURL,
     'access-control-allow-headers': '*',
@@ -95,12 +103,26 @@ async function openShipments(page: Page, context: BrowserContext, baseURL: strin
       await route.fulfill({ status: 204, headers: cors });
       return;
     }
-    if (isMock && request.method() === 'GET' && url.pathname === '/rest/v1/admin_user_directory_view') {
-      await route.fulfill({ headers: cors, json: {
-        id: userId, role: 'admin', username: 'Browser fixture', email: 'fixture@example.invalid',
-        avatar_url: null, status: 'active', is_verified_seller: false,
-        created_at: '2026-01-01T00:00:00.000Z', available_balance: 0, pending_balance: 0,
-      } });
+    if (
+      isMock &&
+      request.method() === 'GET' &&
+      url.pathname === '/rest/v1/admin_user_directory_view'
+    ) {
+      await route.fulfill({
+        headers: cors,
+        json: {
+          id: userId,
+          role: 'admin',
+          username: 'Browser fixture',
+          email: 'fixture@example.invalid',
+          avatar_url: null,
+          status: 'active',
+          is_verified_seller: false,
+          created_at: '2026-01-01T00:00:00.000Z',
+          available_balance: 0,
+          pending_balance: 0,
+        },
+      });
       return;
     }
     if (isMock && url.pathname === listPath) {
@@ -109,69 +131,128 @@ async function openShipments(page: Page, context: BrowserContext, baseURL: strin
     }
     if (isMock && url.pathname === lateListPath) {
       if (mock.lateListStatus && mock.lateListStatus !== 200) {
-        await route.fulfill({ status: mock.lateListStatus, headers: cors, json: { error: 'INTERNAL_ERROR' } });
+        await route.fulfill({
+          status: mock.lateListStatus,
+          headers: cors,
+          json: { error: 'INTERNAL_ERROR' },
+        });
         return;
       }
-      await route.fulfill({ headers: cors, json: { late_carrier_activity: mock.late ?? [] } });
+      await route.fulfill({
+        headers: cors,
+        json: { late_carrier_activity: mock.late ?? [] },
+      });
       return;
     }
-    if (isMock && request.method() === 'POST' && url.pathname === acknowledgePath) {
-      const body = request.postDataJSON() as { shipment_id: string; note: string };
+    if (
+      isMock &&
+      request.method() === 'POST' &&
+      url.pathname === acknowledgePath
+    ) {
+      const body = request.postDataJSON() as {
+        shipment_id: string;
+        note: string;
+      };
       mock.acknowledgeBodies?.push(body);
       if (mock.acknowledgeStatus && mock.acknowledgeStatus !== 200) {
-        await route.fulfill({ status: mock.acknowledgeStatus, headers: cors, json: { error: 'LATE_CARRIER_ACTIVITY_NOT_FOUND' } });
+        await route.fulfill({
+          status: mock.acknowledgeStatus,
+          headers: cors,
+          json: { error: 'LATE_CARRIER_ACTIVITY_NOT_FOUND' },
+        });
         return;
       }
-      mock.late = (mock.late ?? []).filter((item) => item.shipment_id !== body.shipment_id);
-      await route.fulfill({ headers: cors, json: {
-        acknowledged_at: new Date().toISOString(),
-        acknowledged_by: userId,
-        acknowledged_note: body.note,
-        already_acknowledged: false,
-      } });
+      mock.late = (mock.late ?? []).filter(
+        (item) => item.shipment_id !== body.shipment_id,
+      );
+      await route.fulfill({
+        headers: cors,
+        json: {
+          acknowledged_at: new Date().toISOString(),
+          acknowledged_by: userId,
+          acknowledged_note: body.note,
+          already_acknowledged: false,
+        },
+      });
       return;
     }
     if (isMock && url.pathname === labelListPath) {
       if (mock.labelListStatus && mock.labelListStatus !== 200) {
-        await route.fulfill({ status: mock.labelListStatus, headers: cors, json: { error: 'INTERNAL_ERROR' } });
+        await route.fulfill({
+          status: mock.labelListStatus,
+          headers: cors,
+          json: { error: 'INTERNAL_ERROR' },
+        });
         return;
       }
-      await route.fulfill({ headers: cors, json: { label_reconciliations: mock.labels ?? [] } });
+      await route.fulfill({
+        headers: cors,
+        json: { label_reconciliations: mock.labels ?? [] },
+      });
       return;
     }
-    if (isMock && request.method() === 'POST' && url.pathname === labelResolvePath) {
-      const body = request.postDataJSON() as { shipment_id: string; resolution: string };
+    if (
+      isMock &&
+      request.method() === 'POST' &&
+      url.pathname === labelResolvePath
+    ) {
+      const body = request.postDataJSON() as {
+        shipment_id: string;
+        resolution: string;
+      };
       mock.labelResolveBodies?.push(body);
       if (mock.labelResolveStatus && mock.labelResolveStatus !== 200) {
-        await route.fulfill({ status: mock.labelResolveStatus, headers: cors, json: { error: mock.labelResolveError ?? 'INTERNAL_ERROR' } });
+        await route.fulfill({
+          status: mock.labelResolveStatus,
+          headers: cors,
+          json: { error: mock.labelResolveError ?? 'INTERNAL_ERROR' },
+        });
         return;
       }
-      mock.labels = (mock.labels ?? []).filter((item) => item.shipment_id !== body.shipment_id);
+      mock.labels = (mock.labels ?? []).filter(
+        (item) => item.shipment_id !== body.shipment_id,
+      );
       const found = body.resolution === 'label_found';
-      await route.fulfill({ headers: cors, json: {
-        result: 'resolved',
-        resolution: body.resolution,
-        shipment_id: body.shipment_id,
-        status: found ? 'preparing' : 'paid',
-        label_generation_state: found ? 'generated' : 'unclaimed',
-      } });
+      await route.fulfill({
+        headers: cors,
+        json: {
+          result: 'resolved',
+          resolution: body.resolution,
+          shipment_id: body.shipment_id,
+          status: found ? 'preparing' : 'paid',
+          label_generation_state: found ? 'generated' : 'unclaimed',
+        },
+      });
       return;
     }
     if (isMock && request.method() === 'POST' && url.pathname === resolvePath) {
-      const body = request.postDataJSON() as { shipment_id: string; resolution: string; note: string };
+      const body = request.postDataJSON() as {
+        shipment_id: string;
+        resolution: string;
+        note: string;
+      };
       mock.resolveBodies.push(body);
       if (mock.resolveStatus !== 200) {
-        await route.fulfill({ status: mock.resolveStatus, headers: cors, json: { error: 'CARRIER_REVIEW_NOT_PENDING' } });
+        await route.fulfill({
+          status: mock.resolveStatus,
+          headers: cors,
+          json: { error: 'CARRIER_REVIEW_NOT_PENDING' },
+        });
         return;
       }
-      mock.pending = mock.pending.filter((item) => item.shipment_id !== body.shipment_id);
-      await route.fulfill({ headers: cors, json: {
-        review_resolution: body.resolution,
-        review_resolved_at: new Date().toISOString(),
-        review_resolved_by: userId,
-        review_resolution_note: body.note,
-        label_cost_loss_cents: null,
-      } });
+      mock.pending = mock.pending.filter(
+        (item) => item.shipment_id !== body.shipment_id,
+      );
+      await route.fulfill({
+        headers: cors,
+        json: {
+          review_resolution: body.resolution,
+          review_resolved_at: new Date().toISOString(),
+          review_resolved_by: userId,
+          review_resolution_note: body.note,
+          label_cost_loss_cents: null,
+        },
+      });
       return;
     }
     // Google Fonts is intentionally unavailable offline; every other unmocked
@@ -185,22 +266,48 @@ async function openShipments(page: Page, context: BrowserContext, baseURL: strin
 
   const expiresAt = Math.floor(Date.now() / 1000) + 3600;
   const token = `${Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url')}.${Buffer.from(JSON.stringify({ sub: userId, role: 'authenticated', exp: expiresAt })).toString('base64url')}.fake-signature`;
-  await context.addInitScript(({ userId, token, expiresAt }) => {
-    // SupabaseClient derives this project-specific key from its configured host.
-    localStorage.setItem('sb-payments-e2e-auth-token', JSON.stringify({
-      access_token: token, refresh_token: 'fake-refresh-token', token_type: 'bearer',
-      expires_in: 3600, expires_at: expiresAt,
-      user: { id: userId, aud: 'authenticated', role: 'authenticated',
-        email: 'fixture@example.invalid', app_metadata: {}, user_metadata: {},
-        created_at: '2026-01-01T00:00:00.000Z' },
-    }));
-  }, { userId, token, expiresAt });
+  await context.addInitScript(
+    ({ userId, token, expiresAt }) => {
+      // SupabaseClient derives this project-specific key from its configured host.
+      localStorage.setItem(
+        'sb-payments-e2e-auth-token',
+        JSON.stringify({
+          access_token: token,
+          refresh_token: 'fake-refresh-token',
+          token_type: 'bearer',
+          expires_in: 3600,
+          expires_at: expiresAt,
+          user: {
+            id: userId,
+            aud: 'authenticated',
+            role: 'authenticated',
+            email: 'fixture@example.invalid',
+            app_metadata: {},
+            user_metadata: {},
+            created_at: '2026-01-01T00:00:00.000Z',
+          },
+        }),
+      );
+    },
+    { userId, token, expiresAt },
+  );
   await page.goto('/shipments');
 }
 
-test('Envíos lists carrier cancellations under an active sidebar entry and a closed review leaves the list', async ({ page, context, baseURL }) => {
+test('Envíos lists carrier cancellations under an active sidebar entry and a closed review leaves the list', async ({
+  page,
+  context,
+  baseURL,
+}) => {
   const mock: Mock = {
-    pending: [review(1), review(2, { review_reason: 'tracking_unknown', tracking_number: null, label_provider_cost_cents: null })],
+    pending: [
+      review(1),
+      review(2, {
+        review_reason: 'tracking_unknown',
+        tracking_number: null,
+        label_provider_cost_cents: null,
+      }),
+    ],
     resolveStatus: 200,
     resolveBodies: [],
     unexpected: [],
@@ -210,8 +317,12 @@ test('Envíos lists carrier cancellations under an active sidebar entry and a cl
   const nav = page.getByRole('button', { name: 'Envíos', exact: true });
   await expect(nav).toBeVisible();
   await expect(nav).toHaveClass(/bg-lion/);
-  await expect(page.getByRole('heading', { name: 'Envíos', level: 1 })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Cancelaciones con el carrier' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Envíos', level: 1 }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Cancelaciones con el carrier' }),
+  ).toBeVisible();
 
   const cards = page.getByRole('article');
   await expect(cards).toHaveCount(2);
@@ -224,53 +335,98 @@ test('Envíos lists carrier cancellations under an active sidebar entry and a cl
   await expect(unknown).toContainText('Sin dato');
 
   await refused.getByRole('button', { name: 'Cerrar sin reembolso' }).click();
-  await expect(page.getByText('no se reembolsará', { exact: false })).toBeVisible();
+  await expect(
+    page.getByText('no se reembolsará', { exact: false }),
+  ).toBeVisible();
   await page.getByRole('button', { name: 'Confirmar cierre' }).click();
   await expect(page.getByRole('alert')).toContainText('nota');
   expect(mock.resolveBodies).toEqual([]);
 
-  await page.getByLabel('Nota para el registro').fill('  Paquete en tránsito  ');
+  await page
+    .getByLabel('Nota para el registro')
+    .fill('  Paquete en tránsito  ');
   await page.getByRole('button', { name: 'Confirmar cierre' }).click();
 
   await expect(cards).toHaveCount(1);
   await expect(cards).toContainText('No pudimos confirmar el tracking');
   expect(mock.resolveBodies).toEqual([
-    { shipment_id: review(1).shipment_id, resolution: 'closed_no_refund', note: 'Paquete en tránsito' },
+    {
+      shipment_id: review(1).shipment_id,
+      resolution: 'closed_no_refund',
+      note: 'Paquete en tránsito',
+    },
   ]);
   expect(mock.unexpected).toEqual([]);
 });
 
-test('a stale review shows the mapped Spanish error and keeps the confirmation open', async ({ page, context, baseURL }) => {
-  const mock: Mock = { pending: [review(1)], resolveStatus: 409, resolveBodies: [], unexpected: [] };
+test('a stale review shows the mapped Spanish error and keeps the confirmation open', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  const mock: Mock = {
+    pending: [review(1)],
+    resolveStatus: 409,
+    resolveBodies: [],
+    unexpected: [],
+  };
   await openShipments(page, context, baseURL!, mock);
 
   await page.getByRole('button', { name: 'Reembolsar al comprador' }).click();
-  await expect(page.getByText('próximo ciclo automático', { exact: false })).toBeVisible();
+  await expect(
+    page.getByText('próximo ciclo automático', { exact: false }),
+  ).toBeVisible();
   await page.getByLabel('Nota para el registro').fill('Aprobado');
   await page.getByRole('button', { name: 'Confirmar reembolso' }).click();
 
-  await expect(page.getByRole('alert')).toContainText('Esta revisión ya no está pendiente');
-  await expect(page.getByLabel('Nota para el registro')).toHaveValue('Aprobado');
+  await expect(page.getByRole('alert')).toContainText(
+    'Esta revisión ya no está pendiente',
+  );
+  await expect(page.getByLabel('Nota para el registro')).toHaveValue(
+    'Aprobado',
+  );
   expect(mock.resolveBodies).toEqual([
-    { shipment_id: review(1).shipment_id, resolution: 'refund_approved', note: 'Aprobado' },
+    {
+      shipment_id: review(1).shipment_id,
+      resolution: 'refund_approved',
+      note: 'Aprobado',
+    },
   ]);
   expect(mock.unexpected).toEqual([]);
 });
 
-test('Envíos lists carrier activity after the cancellation refund started and a reviewed case leaves the list', async ({ page, context, baseURL }) => {
+test('Envíos lists carrier activity after the cancellation refund started and a reviewed case leaves the list', async ({
+  page,
+  context,
+  baseURL,
+}) => {
   const mock: Mock = {
     pending: [],
     resolveStatus: 200,
     resolveBodies: [],
     unexpected: [],
-    late: [lateCase(1), lateCase(2, { tracking_number: null, carrier: null, refund_status: null, late_carrier_activity_event_type: 'in_transit' })],
+    late: [
+      lateCase(1),
+      lateCase(2, {
+        tracking_number: null,
+        carrier: null,
+        refund_status: null,
+        late_carrier_activity_event_type: 'in_transit',
+      }),
+    ],
     acknowledgeBodies: [],
   };
   await openShipments(page, context, baseURL!, mock);
 
-  await expect(page.getByRole('heading', { name: 'Paquetes que se movieron después de cancelar' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', {
+      name: 'Paquetes que se movieron después de cancelar',
+    }),
+  ).toBeVisible();
   await expect(page.getByTestId('late-carrier-activity-count')).toHaveText('2');
-  await expect(page.getByText('ya iniciamos el reembolso al comprador', { exact: false })).toBeVisible();
+  await expect(
+    page.getByText('ya iniciamos el reembolso al comprador', { exact: false }),
+  ).toBeVisible();
 
   const cards = page.getByRole('article');
   await expect(cards).toHaveCount(2);
@@ -289,7 +445,9 @@ test('Envíos lists carrier activity after the cancellation refund started and a
   await expect(page.getByRole('alert')).toContainText('nota');
   expect(mock.acknowledgeBodies).toEqual([]);
 
-  await page.getByLabel('Nota para el registro').fill('  Hablé con el vendedor  ');
+  await page
+    .getByLabel('Nota para el registro')
+    .fill('  Hablé con el vendedor  ');
   await page.getByRole('button', { name: 'Confirmar revisión' }).click();
 
   await expect(cards).toHaveCount(1);
@@ -301,10 +459,19 @@ test('Envíos lists carrier activity after the cancellation refund started and a
   expect(mock.unexpected).toEqual([]);
 });
 
-test('a case that is gone shows the mapped Spanish error and keeps the form open', async ({ page, context, baseURL }) => {
+test('a case that is gone shows the mapped Spanish error and keeps the form open', async ({
+  page,
+  context,
+  baseURL,
+}) => {
   const mock: Mock = {
-    pending: [], resolveStatus: 200, resolveBodies: [], unexpected: [],
-    late: [lateCase(1)], acknowledgeStatus: 404, acknowledgeBodies: [],
+    pending: [],
+    resolveStatus: 200,
+    resolveBodies: [],
+    unexpected: [],
+    late: [lateCase(1)],
+    acknowledgeStatus: 404,
+    acknowledgeBodies: [],
   };
   await openShipments(page, context, baseURL!, mock);
 
@@ -312,24 +479,52 @@ test('a case that is gone shows the mapped Spanish error and keeps the form open
   await page.getByLabel('Nota para el registro').fill('Revisado');
   await page.getByRole('button', { name: 'Confirmar revisión' }).click();
 
-  await expect(page.getByRole('alert')).toContainText('Este caso ya no está en la lista');
-  await expect(page.getByLabel('Nota para el registro')).toHaveValue('Revisado');
-  expect(mock.acknowledgeBodies).toEqual([{ shipment_id: lateCase(1).shipment_id, note: 'Revisado' }]);
+  await expect(page.getByRole('alert')).toContainText(
+    'Este caso ya no está en la lista',
+  );
+  await expect(page.getByLabel('Nota para el registro')).toHaveValue(
+    'Revisado',
+  );
+  expect(mock.acknowledgeBodies).toEqual([
+    { shipment_id: lateCase(1).shipment_id, note: 'Revisado' },
+  ]);
   expect(mock.unexpected).toEqual([]);
 });
 
-test('the carrier activity bucket shows a dash and an error, never an empty state, when the list fails', async ({ page, context, baseURL }) => {
-  const mock: Mock = { pending: [], resolveStatus: 200, resolveBodies: [], unexpected: [], lateListStatus: 500 };
+test('the carrier activity bucket shows a dash and an error, never an empty state, when the list fails', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  const mock: Mock = {
+    pending: [],
+    resolveStatus: 200,
+    resolveBodies: [],
+    unexpected: [],
+    lateListStatus: 500,
+  };
   await openShipments(page, context, baseURL!, mock);
 
-  await expect(page.getByText('Error al cargar la actividad del carrier')).toBeVisible();
+  await expect(
+    page.getByText('Error al cargar la actividad del carrier'),
+  ).toBeVisible();
   await expect(page.getByTestId('late-carrier-activity-count')).toHaveText('—');
   await expect(page.getByText('Ningún caso pendiente')).toHaveCount(0);
   expect(mock.unexpected).toEqual([]);
 });
 
-test('the carrier activity bucket shows its empty state with a zero count', async ({ page, context, baseURL }) => {
-  const mock: Mock = { pending: [], resolveStatus: 200, resolveBodies: [], unexpected: [], late: [] };
+test('the carrier activity bucket shows its empty state with a zero count', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  const mock: Mock = {
+    pending: [],
+    resolveStatus: 200,
+    resolveBodies: [],
+    unexpected: [],
+    late: [],
+  };
   await openShipments(page, context, baseURL!, mock);
 
   await expect(page.getByText('Ningún caso pendiente')).toBeVisible();
@@ -337,17 +532,35 @@ test('the carrier activity bucket shows its empty state with a zero count', asyn
   expect(mock.unexpected).toEqual([]);
 });
 
-test('Envíos lists shipments stuck in label generation and "no hay guía" releases one after a note', async ({ page, context, baseURL }) => {
+test('Envíos lists shipments stuck in label generation and "no hay guía" releases one after a note', async ({
+  page,
+  context,
+  baseURL,
+}) => {
   const mock: Mock = {
-    pending: [], resolveStatus: 200, resolveBodies: [], unexpected: [],
-    labels: [labelCase(1), labelCase(2, { label_generation_state: 'claimed', seller_name: null, quote_cost_cents: null })],
+    pending: [],
+    resolveStatus: 200,
+    resolveBodies: [],
+    unexpected: [],
+    labels: [
+      labelCase(1),
+      labelCase(2, {
+        label_generation_state: 'claimed',
+        seller_name: null,
+        quote_cost_cents: null,
+      }),
+    ],
     labelResolveBodies: [],
   };
   await openShipments(page, context, baseURL!, mock);
 
-  await expect(page.getByRole('heading', { name: 'Guías que no sabemos si se crearon' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Guías que no sabemos si se crearon' }),
+  ).toBeVisible();
   await expect(page.getByTestId('label-reconciliations-count')).toHaveText('2');
-  await expect(page.getByText('no supimos si Envía la creó', { exact: false })).toBeVisible();
+  await expect(
+    page.getByText('no supimos si Envía la creó', { exact: false }),
+  ).toBeVisible();
 
   const cards = page.getByRole('article');
   await expect(cards).toHaveCount(2);
@@ -362,33 +575,55 @@ test('Envíos lists shipments stuck in label generation and "no hay guía" relea
   await expect(second).toContainText('Cotización: paquetexpress · ground');
 
   await first.getByRole('button', { name: 'No hay guía' }).click();
-  await expect(page.getByText('regresa al vendedor para que genere la guía otra vez', { exact: false })).toBeVisible();
-  await expect(page.getByText('se cancela y se reembolsa al comprador', { exact: false })).toBeVisible();
+  await expect(
+    page.getByText('regresa al vendedor para que genere la guía otra vez', {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('se cancela y se reembolsa al comprador', { exact: false }),
+  ).toBeVisible();
   await page.getByRole('button', { name: 'Confirmar: no hay guía' }).click();
   await expect(page.getByRole('alert')).toContainText('nota');
   expect(mock.labelResolveBodies).toEqual([]);
 
-  await page.getByLabel('Nota para el registro').fill('  Revisé Envía, no hay guía  ');
+  await page
+    .getByLabel('Nota para el registro')
+    .fill('  Revisé Envía, no hay guía  ');
   await page.getByRole('button', { name: 'Confirmar: no hay guía' }).click();
 
   await expect(cards).toHaveCount(1);
   await expect(page.getByTestId('label-reconciliations-count')).toHaveText('1');
   expect(mock.labelResolveBodies).toEqual([
-    { shipment_id: labelCase(1).shipment_id, resolution: 'no_label', note: 'Revisé Envía, no hay guía' },
+    {
+      shipment_id: labelCase(1).shipment_id,
+      resolution: 'no_label',
+      note: 'Revisé Envía, no hay guía',
+    },
   ]);
   expect(mock.unexpected).toEqual([]);
 });
 
-test('"La guía existe" validates the form and sends the cost in integer cents', async ({ page, context, baseURL }) => {
+test('"La guía existe" validates the form and sends the cost in integer cents', async ({
+  page,
+  context,
+  baseURL,
+}) => {
   const mock: Mock = {
-    pending: [], resolveStatus: 200, resolveBodies: [], unexpected: [],
-    labels: [labelCase(1)], labelResolveBodies: [],
+    pending: [],
+    resolveStatus: 200,
+    resolveBodies: [],
+    unexpected: [],
+    labels: [labelCase(1)],
+    labelResolveBodies: [],
   };
   await openShipments(page, context, baseURL!, mock);
 
   await page.getByRole('button', { name: 'La guía existe' }).click();
   await page.getByLabel('Número de guía').fill('PX123');
-  await page.getByLabel('URL de la guía').fill('https://labels.example/px123.pdf');
+  await page
+    .getByLabel('URL de la guía')
+    .fill('https://labels.example/px123.pdf');
   await page.getByLabel('ID de envío en Envía').fill('98765');
   await page.getByLabel('Costo de la guía (MXN)').fill('-5');
   await page.getByLabel('Nota para el registro').fill('Está en el panel');
@@ -401,22 +636,34 @@ test('"La guía existe" validates the form and sends the cost in integer cents',
 
   await expect(page.getByRole('article')).toHaveCount(0);
   await expect(page.getByTestId('label-reconciliations-count')).toHaveText('0');
-  expect(mock.labelResolveBodies).toEqual([{
-    shipment_id: labelCase(1).shipment_id,
-    resolution: 'label_found',
-    note: 'Está en el panel',
-    envia_shipment_id: '98765',
-    tracking_number: 'PX123',
-    label_url: 'https://labels.example/px123.pdf',
-    provider_cost_cents: 9350,
-  }]);
+  expect(mock.labelResolveBodies).toEqual([
+    {
+      shipment_id: labelCase(1).shipment_id,
+      resolution: 'label_found',
+      note: 'Está en el panel',
+      envia_shipment_id: '98765',
+      tracking_number: 'PX123',
+      label_url: 'https://labels.example/px123.pdf',
+      provider_cost_cents: 9350,
+    },
+  ]);
   expect(mock.unexpected).toEqual([]);
 });
 
-test('an already resolved shipment shows a friendly message and the list refreshes', async ({ page, context, baseURL }) => {
+test('an already resolved shipment shows a friendly message and the list refreshes', async ({
+  page,
+  context,
+  baseURL,
+}) => {
   const mock: Mock = {
-    pending: [], resolveStatus: 200, resolveBodies: [], unexpected: [],
-    labels: [labelCase(1)], labelResolveStatus: 409, labelResolveError: 'ALREADY_RESOLVED', labelResolveBodies: [],
+    pending: [],
+    resolveStatus: 200,
+    resolveBodies: [],
+    unexpected: [],
+    labels: [labelCase(1)],
+    labelResolveStatus: 409,
+    labelResolveError: 'ALREADY_RESOLVED',
+    labelResolveBodies: [],
   };
   await openShipments(page, context, baseURL!, mock);
 
@@ -430,18 +677,40 @@ test('an already resolved shipment shows a friendly message and the list refresh
   expect(mock.unexpected).toEqual([]);
 });
 
-test('the stuck labels bucket shows a dash and an error, never an empty state, when the list fails', async ({ page, context, baseURL }) => {
-  const mock: Mock = { pending: [], resolveStatus: 200, resolveBodies: [], unexpected: [], labelListStatus: 500 };
+test('the stuck labels bucket shows a dash and an error, never an empty state, when the list fails', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  const mock: Mock = {
+    pending: [],
+    resolveStatus: 200,
+    resolveBodies: [],
+    unexpected: [],
+    labelListStatus: 500,
+  };
   await openShipments(page, context, baseURL!, mock);
 
-  await expect(page.getByText('Error al cargar las guías por revisar')).toBeVisible();
+  await expect(
+    page.getByText('Error al cargar las guías por revisar'),
+  ).toBeVisible();
   await expect(page.getByTestId('label-reconciliations-count')).toHaveText('—');
   await expect(page.getByText('Ninguna guía por revisar')).toHaveCount(0);
   expect(mock.unexpected).toEqual([]);
 });
 
-test('the stuck labels bucket shows its empty state with a zero count', async ({ page, context, baseURL }) => {
-  const mock: Mock = { pending: [], resolveStatus: 200, resolveBodies: [], unexpected: [], labels: [] };
+test('the stuck labels bucket shows its empty state with a zero count', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  const mock: Mock = {
+    pending: [],
+    resolveStatus: 200,
+    resolveBodies: [],
+    unexpected: [],
+    labels: [],
+  };
   await openShipments(page, context, baseURL!, mock);
 
   await expect(page.getByText('Ninguna guía por revisar')).toBeVisible();

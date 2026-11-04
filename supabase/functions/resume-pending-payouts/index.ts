@@ -47,9 +47,12 @@ const getStripeErrorLogMeta = (error: unknown): Record<string, unknown> => {
   };
 };
 
-const getSupabaseErrorLogMeta = (
-  error: { code?: string; message?: string; details?: string; hint?: string },
-): Record<string, unknown> => ({
+const getSupabaseErrorLogMeta = (error: {
+  code?: string;
+  message?: string;
+  details?: string;
+  hint?: string;
+}): Record<string, unknown> => ({
   supabaseErrorCode: error.code,
   supabaseErrorMessage: error.message,
   supabaseErrorDetails: error.details,
@@ -114,7 +117,9 @@ const serveHandler = async (req: Request): Promise<Response> => {
         });
         // The SQL-side guard text (STALE_CLAIM, STAGE_VERSION_CONFLICT, ...)
         // is preserved so the worker can classify stale claims.
-        throw new Error(`${error.code ?? ''} ${error.message}`.trim() || errorCode);
+        throw new Error(
+          `${error.code ?? ''} ${error.message}`.trim() || errorCode,
+        );
       }
       return data;
     };
@@ -291,18 +296,19 @@ const serveHandler = async (req: Request): Promise<Response> => {
         );
 
         return {
-          available: balance.available.map((entry: Stripe.Balance.Available) => ({
-            amount: entry.amount,
-            currency: entry.currency,
-          })),
+          available: balance.available.map(
+            (entry: Stripe.Balance.Available) => ({
+              amount: entry.amount,
+              currency: entry.currency,
+            }),
+          ),
         };
       },
       createStripePayout: async (input) => {
         const logMeta = {
           runId: input.metadata.run_id,
-          shipmentCount: input.metadata.shipment_ids
-            .split(',')
-            .filter(Boolean).length,
+          shipmentCount: input.metadata.shipment_ids.split(',').filter(Boolean)
+            .length,
         };
 
         log('INFO', 'Creating Stripe Connect payout', logMeta);
@@ -341,8 +347,7 @@ const serveHandler = async (req: Request): Promise<Response> => {
         // the results so no undocumented listing parameter is assumed.
         const gte = Math.max(
           0,
-          Math.floor(Date.parse(input.createdGte) / 1000) -
-            5 * 60,
+          Math.floor(Date.parse(input.createdGte) / 1000) - 5 * 60,
         );
         const payouts = await stripe.payouts.list(
           { created: { gte }, limit: RECONCILE_LIST_LIMIT },
@@ -351,8 +356,7 @@ const serveHandler = async (req: Request): Promise<Response> => {
         return payouts.data.map((payout: Stripe.Payout) => ({
           id: payout.id,
           metadata: (payout.metadata ?? undefined) as
-            | Record<string, unknown>
-            | undefined,
+            Record<string, unknown> | undefined,
         }));
       },
     });
@@ -372,8 +376,7 @@ const serveHandler = async (req: Request): Promise<Response> => {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error: unknown) {
-    const status =
-      error instanceof ResumePayoutsError ? error.status : 500;
+    const status = error instanceof ResumePayoutsError ? error.status : 500;
     const message = error instanceof Error ? error.message : String(error);
 
     log('ERROR', 'Awaiting-balance payout resume request failed', {

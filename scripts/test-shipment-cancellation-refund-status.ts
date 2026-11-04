@@ -16,7 +16,10 @@ const ids = {
   sibling: '7b200000-0000-4000-8000-000000000012',
 };
 const paymentIntent = 'pi_b21_local';
-const amounts: Record<string, number> = { [ids.shipment]: 11000, [ids.sibling]: 7000 };
+const amounts: Record<string, number> = {
+  [ids.shipment]: 11000,
+  [ids.sibling]: 7000,
+};
 
 type Tx = SQL;
 type Recorded = {
@@ -88,23 +91,27 @@ async function start(tx: Tx, shipmentId: string) {
 }
 
 async function claim(tx: Tx, shipmentId: string) {
-  const [{ claim: claimed }] = await tx`SELECT public.fn_claim_shipment_cancellation(
+  const [{ claim: claimed }] =
+    await tx`SELECT public.fn_claim_shipment_cancellation(
     ${shipmentId}::uuid, ${ids.order}::uuid, ${ids.buyer}::uuid, 'buyer', 'Changed my mind') AS claim`;
   assert.equal(claimed.status, 'claimed');
 }
 
 async function recovery(tx: Tx, shipmentId: string) {
-  const [{ result }] = await tx`SELECT public.fn_get_shipment_cancellation_recovery(${shipmentId}::uuid) AS result`;
+  const [{ result }] =
+    await tx`SELECT public.fn_get_shipment_cancellation_recovery(${shipmentId}::uuid) AS result`;
   return result;
 }
 
 async function escalate(tx: Tx, shipmentId: string, reason: string) {
-  const [{ result }] = await tx`SELECT public.fn_escalate_shipment_cancellation(${shipmentId}::uuid, ${reason}) AS result`;
+  const [{ result }] =
+    await tx`SELECT public.fn_escalate_shipment_cancellation(${shipmentId}::uuid, ${reason}) AS result`;
   return result;
 }
 
 async function escalationRow(tx: Tx, shipmentId: string) {
-  const [row] = await tx`SELECT recovery_escalated_at, recovery_escalation_reason
+  const [row] =
+    await tx`SELECT recovery_escalated_at, recovery_escalation_reason
     FROM public.shipment_cancellation_operations WHERE shipment_id = ${shipmentId}`;
   return row;
 }
@@ -114,9 +121,14 @@ async function record(
   shipmentId: string,
   refundId: string,
   status: string,
-  overrides: { paymentIntent?: string; amount?: number; reason?: string | null } = {},
+  overrides: {
+    paymentIntent?: string;
+    amount?: number;
+    reason?: string | null;
+  } = {},
 ): Promise<Recorded> {
-  const [{ result }] = await tx`SELECT public.fn_record_shipment_cancellation_refund(
+  const [{ result }] =
+    await tx`SELECT public.fn_record_shipment_cancellation_refund(
     ${shipmentId}::uuid, ${refundId}, ${overrides.paymentIntent ?? paymentIntent},
     ${overrides.amount ?? amounts[shipmentId]}::bigint, ${status},
     ${overrides.reason ?? null}) AS result`;
@@ -124,12 +136,17 @@ async function record(
 }
 
 async function operation(tx: Tx, shipmentId: string) {
-  const [row] = await tx`SELECT refund_id, refund_status, refund_failure_reason, refund_status_updated_at
+  const [row] =
+    await tx`SELECT refund_id, refund_status, refund_failure_reason, refund_status_updated_at
     FROM public.shipment_cancellation_operations WHERE shipment_id = ${shipmentId}`;
   return row;
 }
 
-async function rejects(tx: Tx, action: (sp: Tx) => Promise<unknown>, message: string) {
+async function rejects(
+  tx: Tx,
+  action: (sp: Tx) => Promise<unknown>,
+  message: string,
+) {
   await assert.rejects(
     tx.savepoint((sp) => action(sp as Tx)),
     (error: Error) => error.message.includes(message),
@@ -150,7 +167,10 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       });
       const first = await operation(tx, ids.shipment);
       assert.ok(first.refund_status_updated_at);
-      assert.equal((await record(tx, ids.shipment, 're_1', 'pending')).changed, false);
+      assert.equal(
+        (await record(tx, ids.shipment, 're_1', 'pending')).changed,
+        false,
+      );
       assert.deepEqual(await operation(tx, ids.shipment), first);
     },
   ],
@@ -159,9 +179,14 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     async (tx) => {
       await start(tx, ids.shipment);
       await record(tx, ids.shipment, 're_1', 'pending');
-      assert.equal((await record(tx, ids.shipment, 're_1', 'succeeded')).refund_status, 'succeeded');
+      assert.equal(
+        (await record(tx, ids.shipment, 're_1', 'succeeded')).refund_status,
+        'succeeded',
+      );
       assert.deepEqual(
-        await record(tx, ids.shipment, 're_1', 'failed', { reason: 'expired_or_canceled_card' }),
+        await record(tx, ids.shipment, 're_1', 'failed', {
+          reason: 'expired_or_canceled_card',
+        }),
         {
           refund_id: 're_1',
           refund_status: 'failed',
@@ -179,7 +204,9 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       const stale = await record(tx, ids.shipment, 're_1', 'pending');
       assert.equal(stale.changed, false);
       assert.equal(stale.refund_status, 'succeeded');
-      await record(tx, ids.shipment, 're_1', 'failed', { reason: 'lost_or_stolen_card' });
+      await record(tx, ids.shipment, 're_1', 'failed', {
+        reason: 'lost_or_stolen_card',
+      });
       for (const status of ['succeeded', 'pending', 'canceled']) {
         const terminal = await record(tx, ids.shipment, 're_1', status);
         assert.equal(terminal.changed, false);
@@ -193,9 +220,25 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       await start(tx, ids.shipment);
       await record(tx, ids.shipment, 're_1', 'pending');
       const before = await operation(tx, ids.shipment);
-      await rejects(tx, (sp) => record(sp, ids.shipment, 're_1', 'succeeded', { paymentIntent: 'pi_other' }), 'REFUND_PAYMENT_INTENT_MISMATCH');
-      await rejects(tx, (sp) => record(sp, ids.shipment, 're_1', 'succeeded', { amount: 10999 }), 'REFUND_AMOUNT_MISMATCH');
-      await rejects(tx, (sp) => record(sp, ids.shipment, 're_2', 'succeeded'), 'REFUND_ID_MISMATCH');
+      await rejects(
+        tx,
+        (sp) =>
+          record(sp, ids.shipment, 're_1', 'succeeded', {
+            paymentIntent: 'pi_other',
+          }),
+        'REFUND_PAYMENT_INTENT_MISMATCH',
+      );
+      await rejects(
+        tx,
+        (sp) =>
+          record(sp, ids.shipment, 're_1', 'succeeded', { amount: 10999 }),
+        'REFUND_AMOUNT_MISMATCH',
+      );
+      await rejects(
+        tx,
+        (sp) => record(sp, ids.shipment, 're_2', 'succeeded'),
+        'REFUND_ID_MISMATCH',
+      );
       assert.deepEqual(await operation(tx, ids.shipment), before);
     },
   ],
@@ -205,7 +248,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       await start(tx, ids.shipment);
       await start(tx, ids.sibling);
       await record(tx, ids.shipment, 're_1', 'succeeded');
-      await rejects(tx, (sp) => record(sp, ids.sibling, 're_1', 'succeeded', { amount: 7000 }), 'REFUND_ID_ALREADY_LINKED');
+      await rejects(
+        tx,
+        (sp) => record(sp, ids.sibling, 're_1', 'succeeded', { amount: 7000 }),
+        'REFUND_ID_ALREADY_LINKED',
+      );
       assert.equal((await operation(tx, ids.sibling)).refund_id, null);
     },
   ],
@@ -217,7 +264,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         await start(tx, ids.shipment);
         await start(tx, ids.sibling);
         await record(tx, ids.shipment, 're_1', 'succeeded');
-        await rejects(tx, (sp) => record(sp, ids.sibling, 're_1', 'succeeded'), 'REFUND_ID_ALREADY_LINKED');
+        await rejects(
+          tx,
+          (sp) => record(sp, ids.sibling, 're_1', 'succeeded'),
+          'REFUND_ID_ALREADY_LINKED',
+        );
         assert.equal((await operation(tx, ids.sibling)).refund_id, null);
       } finally {
         amounts[ids.sibling] = 7000;
@@ -229,20 +280,37 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     async (tx) => {
       await start(tx, ids.shipment);
       await record(tx, ids.shipment, 're_1', 'requires_action');
-      const [blocked] = await tx`SELECT * FROM public.fn_cancel_shipment(${ids.shipment}::uuid, 'buyer', 'Changed my mind', 0::bigint)`;
+      const [blocked] =
+        await tx`SELECT * FROM public.fn_cancel_shipment(${ids.shipment}::uuid, 'buyer', 'Changed my mind', 0::bigint)`;
       assert.equal(blocked.error_message, 'REFUND_NOT_SUCCEEDED');
-      assert.equal((await record(tx, ids.shipment, 're_1', 'succeeded')).changed, true);
-      const [done] = await tx`SELECT * FROM public.fn_cancel_shipment(${ids.shipment}::uuid, 'buyer', 'Changed my mind', 0::bigint)`;
+      assert.equal(
+        (await record(tx, ids.shipment, 're_1', 'succeeded')).changed,
+        true,
+      );
+      const [done] =
+        await tx`SELECT * FROM public.fn_cancel_shipment(${ids.shipment}::uuid, 'buyer', 'Changed my mind', 0::bigint)`;
       assert.deepEqual({ ...done }, { success: true, error_message: null });
     },
   ],
   [
     'rejects unstarted operations and unknown statuses',
     async (tx) => {
-      await rejects(tx, (sp) => record(sp, ids.shipment, 're_1', 'succeeded'), 'CANCELLATION_NOT_STARTED');
+      await rejects(
+        tx,
+        (sp) => record(sp, ids.shipment, 're_1', 'succeeded'),
+        'CANCELLATION_NOT_STARTED',
+      );
       await start(tx, ids.shipment);
-      await rejects(tx, (sp) => record(sp, ids.shipment, 're_1', 'refunded'), 'INVALID_REFUND_STATUS');
-      await rejects(tx, (sp) => record(sp, ids.shipment, '  ', 'succeeded'), 'INVALID_REFUND_ID');
+      await rejects(
+        tx,
+        (sp) => record(sp, ids.shipment, 're_1', 'refunded'),
+        'INVALID_REFUND_STATUS',
+      );
+      await rejects(
+        tx,
+        (sp) => record(sp, ids.shipment, '  ', 'succeeded'),
+        'INVALID_REFUND_ID',
+      );
       assert.equal((await operation(tx, ids.shipment)).refund_id, null);
     },
   ],
@@ -252,7 +320,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       await start(tx, ids.shipment);
       await tx`SELECT set_config('request.jwt.claims', '{"role":"authenticated"}', true)`;
       await tx`SET LOCAL ROLE authenticated`;
-      await rejects(tx, (sp) => record(sp, ids.shipment, 're_1', 'succeeded'), 'permission denied');
+      await rejects(
+        tx,
+        (sp) => record(sp, ids.shipment, 're_1', 'succeeded'),
+        'permission denied',
+      );
     },
   ],
   [
@@ -260,34 +332,54 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     async (tx) => {
       await start(tx, ids.shipment);
       await record(tx, ids.shipment, 're_1', 'pending');
-      const [pending] = await tx`SELECT * FROM public.fn_cancel_shipment(${ids.shipment}::uuid, 'buyer', 'Changed my mind', 0::bigint)`;
-      assert.deepEqual({ ...pending }, { success: false, error_message: 'REFUND_NOT_SUCCEEDED' });
-      const [still] = await tx`SELECT status FROM public.shipments WHERE id = ${ids.shipment}`;
+      const [pending] =
+        await tx`SELECT * FROM public.fn_cancel_shipment(${ids.shipment}::uuid, 'buyer', 'Changed my mind', 0::bigint)`;
+      assert.deepEqual(
+        { ...pending },
+        { success: false, error_message: 'REFUND_NOT_SUCCEEDED' },
+      );
+      const [still] =
+        await tx`SELECT status FROM public.shipments WHERE id = ${ids.shipment}`;
       assert.equal(still.status, 'paid');
 
       await record(tx, ids.shipment, 're_1', 'succeeded');
-      const [done] = await tx`SELECT * FROM public.fn_cancel_shipment(${ids.shipment}::uuid, 'buyer', 'Changed my mind', 0::bigint)`;
+      const [done] =
+        await tx`SELECT * FROM public.fn_cancel_shipment(${ids.shipment}::uuid, 'buyer', 'Changed my mind', 0::bigint)`;
       assert.deepEqual({ ...done }, { success: true, error_message: null });
-      const statuses = await tx`SELECT id, status FROM public.shipments WHERE order_id = ${ids.order} ORDER BY id`;
-      assert.deepEqual(statuses.map((s: { status: string }) => s.status), ['cancelled', 'paid']);
+      const statuses =
+        await tx`SELECT id, status FROM public.shipments WHERE order_id = ${ids.order} ORDER BY id`;
+      assert.deepEqual(
+        statuses.map((s: { status: string }) => s.status),
+        ['cancelled', 'paid'],
+      );
     },
   ],
   [
     'fn_cancel_shipment refuses a started operation with no recorded refund status',
     async (tx) => {
       await start(tx, ids.shipment);
-      const [blocked] = await tx`SELECT * FROM public.fn_cancel_shipment(${ids.shipment}::uuid, 'buyer', 'Changed my mind', 0::bigint)`;
-      assert.deepEqual({ ...blocked }, { success: false, error_message: 'REFUND_NOT_SUCCEEDED' });
-      const [still] = await tx`SELECT status FROM public.shipments WHERE id = ${ids.shipment}`;
+      const [blocked] =
+        await tx`SELECT * FROM public.fn_cancel_shipment(${ids.shipment}::uuid, 'buyer', 'Changed my mind', 0::bigint)`;
+      assert.deepEqual(
+        { ...blocked },
+        { success: false, error_message: 'REFUND_NOT_SUCCEEDED' },
+      );
+      const [still] =
+        await tx`SELECT status FROM public.shipments WHERE id = ${ids.shipment}`;
       assert.equal(still.status, 'paid');
     },
   ],
   [
     'fn_cancel_shipment refuses a shipment with no cancellation operation',
     async (tx) => {
-      const [blocked] = await tx`SELECT * FROM public.fn_cancel_shipment(${ids.shipment}::uuid, 'buyer', 'Changed my mind', 0::bigint)`;
-      assert.deepEqual({ ...blocked }, { success: false, error_message: 'REFUND_NOT_SUCCEEDED' });
-      const [still] = await tx`SELECT status FROM public.shipments WHERE id = ${ids.shipment}`;
+      const [blocked] =
+        await tx`SELECT * FROM public.fn_cancel_shipment(${ids.shipment}::uuid, 'buyer', 'Changed my mind', 0::bigint)`;
+      assert.deepEqual(
+        { ...blocked },
+        { success: false, error_message: 'REFUND_NOT_SUCCEEDED' },
+      );
+      const [still] =
+        await tx`SELECT status FROM public.shipments WHERE id = ${ids.shipment}`;
       assert.equal(still.status, 'paid');
     },
   ],
@@ -297,8 +389,12 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       await start(tx, ids.shipment);
       await record(tx, ids.shipment, 're_1', 'succeeded');
       await tx`SELECT * FROM public.fn_cancel_shipment(${ids.shipment}::uuid, 'buyer', 'Changed my mind', 0::bigint)`;
-      const [again] = await tx`SELECT * FROM public.fn_cancel_shipment(${ids.shipment}::uuid, 'buyer', 'Changed my mind', 0::bigint)`;
-      assert.deepEqual({ ...again }, { success: true, error_message: 'ALREADY_CANCELLED' });
+      const [again] =
+        await tx`SELECT * FROM public.fn_cancel_shipment(${ids.shipment}::uuid, 'buyer', 'Changed my mind', 0::bigint)`;
+      assert.deepEqual(
+        { ...again },
+        { success: true, error_message: 'ALREADY_CANCELLED' },
+      );
     },
   ],
   [
@@ -313,7 +409,8 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     'recovery read returns the frozen operation, reflects the recorded refund, and changes nothing',
     async (tx) => {
       await start(tx, ids.shipment);
-      const before = await tx`SELECT * FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`;
+      const before =
+        await tx`SELECT * FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`;
       const started = await recovery(tx, ids.shipment);
       assert.deepEqual(Object.keys(started).sort(), [
         'actor_id',
@@ -339,7 +436,10 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       assert.equal(started.refund_id, null);
       assert.equal(started.refund_status, null);
       assert.ok(started.external_started_at);
-      assert.deepEqual(await tx`SELECT * FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`, before);
+      assert.deepEqual(
+        await tx`SELECT * FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`,
+        before,
+      );
 
       await record(tx, ids.shipment, 're_1', 'pending');
       const pending = await recovery(tx, ids.shipment);
@@ -353,7 +453,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       await start(tx, ids.shipment);
       await tx`SELECT set_config('request.jwt.claims', '{"role":"authenticated"}', true)`;
       await tx`SET LOCAL ROLE authenticated`;
-      await rejects(tx, (sp) => recovery(sp, ids.shipment), 'permission denied');
+      await rejects(
+        tx,
+        (sp) => recovery(sp, ids.shipment),
+        'permission denied',
+      );
     },
   ],
   [
@@ -362,20 +466,33 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       await start(tx, ids.shipment);
       await tx`SELECT set_config('request.jwt.claims', '{"role":"anon"}', true)`;
       await tx`SET LOCAL ROLE anon`;
-      await rejects(tx, (sp) => recovery(sp, ids.shipment), 'permission denied');
+      await rejects(
+        tx,
+        (sp) => recovery(sp, ids.shipment),
+        'permission denied',
+      );
     },
   ],
   [
     'escalation is recorded once: the first call returns escalated true, a replay returns false and changes nothing',
     async (tx) => {
       await start(tx, ids.shipment);
-      assert.equal((await escalationRow(tx, ids.shipment)).recovery_escalated_at, null);
-      assert.deepEqual(await escalate(tx, ids.shipment, 'refund_not_found'), { escalated: true });
+      assert.equal(
+        (await escalationRow(tx, ids.shipment)).recovery_escalated_at,
+        null,
+      );
+      assert.deepEqual(await escalate(tx, ids.shipment, 'refund_not_found'), {
+        escalated: true,
+      });
       const first = await escalationRow(tx, ids.shipment);
       assert.ok(first.recovery_escalated_at);
       assert.equal(first.recovery_escalation_reason, 'refund_not_found');
-      assert.deepEqual(await escalate(tx, ids.shipment, 'refund_ambiguous'), { escalated: false });
-      assert.deepEqual(await escalate(tx, ids.shipment, 'refund_not_found'), { escalated: false });
+      assert.deepEqual(await escalate(tx, ids.shipment, 'refund_ambiguous'), {
+        escalated: false,
+      });
+      assert.deepEqual(await escalate(tx, ids.shipment, 'refund_not_found'), {
+        escalated: false,
+      });
       assert.deepEqual(await escalationRow(tx, ids.shipment), first);
     },
   ],
@@ -390,22 +507,52 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       assert.ok(read.recovery_escalated_at);
       assert.equal(read.refund_id, null);
       assert.deepEqual(await operation(tx, ids.shipment), before);
-      assert.equal((await recovery(tx, ids.sibling)).recovery_escalated_at, null);
-      assert.equal((await escalationRow(tx, ids.sibling)).recovery_escalated_at, null);
+      assert.equal(
+        (await recovery(tx, ids.sibling)).recovery_escalated_at,
+        null,
+      );
+      assert.equal(
+        (await escalationRow(tx, ids.sibling)).recovery_escalated_at,
+        null,
+      );
     },
   ],
   [
     'escalation rejects an unstarted or missing operation and an unknown reason, leaving the row unchanged',
     async (tx) => {
-      await rejects(tx, (sp) => escalate(sp, ids.shipment, 'refund_not_found'), 'CANCELLATION_NOT_STARTED');
+      await rejects(
+        tx,
+        (sp) => escalate(sp, ids.shipment, 'refund_not_found'),
+        'CANCELLATION_NOT_STARTED',
+      );
       await claim(tx, ids.shipment);
-      await rejects(tx, (sp) => escalate(sp, ids.shipment, 'refund_not_found'), 'CANCELLATION_NOT_STARTED');
-      assert.equal((await escalationRow(tx, ids.shipment)).recovery_escalated_at, null);
+      await rejects(
+        tx,
+        (sp) => escalate(sp, ids.shipment, 'refund_not_found'),
+        'CANCELLATION_NOT_STARTED',
+      );
+      assert.equal(
+        (await escalationRow(tx, ids.shipment)).recovery_escalated_at,
+        null,
+      );
       await start(tx, ids.sibling);
-      await rejects(tx, (sp) => escalate(sp, ids.sibling, 'because'), 'INVALID_ESCALATION_REASON');
-      await rejects(tx, (sp) => escalate(sp, ids.sibling, '  '), 'INVALID_ESCALATION_REASON');
-      assert.equal((await escalationRow(tx, ids.sibling)).recovery_escalated_at, null);
-      assert.deepEqual(await escalate(tx, ids.sibling, 'refund_not_found'), { escalated: true });
+      await rejects(
+        tx,
+        (sp) => escalate(sp, ids.sibling, 'because'),
+        'INVALID_ESCALATION_REASON',
+      );
+      await rejects(
+        tx,
+        (sp) => escalate(sp, ids.sibling, '  '),
+        'INVALID_ESCALATION_REASON',
+      );
+      assert.equal(
+        (await escalationRow(tx, ids.sibling)).recovery_escalated_at,
+        null,
+      );
+      assert.deepEqual(await escalate(tx, ids.sibling, 'refund_not_found'), {
+        escalated: true,
+      });
     },
   ],
   [
@@ -414,7 +561,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       await start(tx, ids.shipment);
       await tx`SELECT set_config('request.jwt.claims', '{"role":"authenticated"}', true)`;
       await tx`SET LOCAL ROLE authenticated`;
-      await rejects(tx, (sp) => escalate(sp, ids.shipment, 'refund_not_found'), 'permission denied');
+      await rejects(
+        tx,
+        (sp) => escalate(sp, ids.shipment, 'refund_not_found'),
+        'permission denied',
+      );
     },
   ],
   [
@@ -423,7 +574,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       await start(tx, ids.shipment);
       await tx`SELECT set_config('request.jwt.claims', '{"role":"anon"}', true)`;
       await tx`SET LOCAL ROLE anon`;
-      await rejects(tx, (sp) => escalate(sp, ids.shipment, 'refund_not_found'), 'permission denied');
+      await rejects(
+        tx,
+        (sp) => escalate(sp, ids.shipment, 'refund_not_found'),
+        'permission denied',
+      );
     },
   ],
 ];
@@ -449,7 +604,8 @@ async function run() {
       }
     }
     // Every case rolled back: nothing from this harness may persist.
-    const [left] = await sql`SELECT count(*)::int AS n FROM public.orders WHERE id = ${ids.order}`;
+    const [left] =
+      await sql`SELECT count(*)::int AS n FROM public.orders WHERE id = ${ids.order}`;
     assert.equal(left.n, 0);
   } finally {
     await sql.close();

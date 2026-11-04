@@ -1,8 +1,5 @@
 import { CircleCheck, Receipt } from 'lucide-react';
-import {
-  PayoutBucketEmptyState,
-  PayoutRunRow,
-} from './PayoutRunRow';
+import { PayoutBucketEmptyState, PayoutRunRow } from './PayoutRunRow';
 import type { ReleaseQueueRun } from '../../../lib/connectPayoutReleaseQueue';
 
 /**

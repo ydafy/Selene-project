@@ -31,8 +31,7 @@ const mirrorReleaseAmountContract = ({
     0,
   );
   const isEligible =
-    (flow === 'single-modal' || hasShippingCostCents) &&
-    releaseAmountCents > 0;
+    (flow === 'single-modal' || hasShippingCostCents) && releaseAmountCents > 0;
   const ineligibleReason = !isEligible
     ? flow === 'legacy' && !hasShippingCostCents
       ? 'missing_shipping_cost'

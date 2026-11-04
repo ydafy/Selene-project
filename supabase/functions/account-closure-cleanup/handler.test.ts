@@ -43,23 +43,37 @@ function harness(
     reporter?: CronMismatchReporter;
   } = {},
 ) {
-  const claimCalls: { limit: number; minIdleSeconds: number; maxAttempts: number }[] = [];
+  const claimCalls: {
+    limit: number;
+    minIdleSeconds: number;
+    maxAttempts: number;
+  }[] = [];
   const cappedCalls: { maxAttempts: number; limit: number }[] = [];
   const customerCalls: string[] = [];
   const accountCalls: string[] = [];
   const storageCalls: string[] = [];
   const records: { userId: string; update: ClosureCleanupUpdate }[] = [];
-  const logs: { level: string; msg: string; data?: Record<string, unknown> }[] = [];
-  const reports: { message: string; options: { fingerprint: string[]; tags: Record<string, string> } }[] = [];
+  const logs: { level: string; msg: string; data?: Record<string, unknown> }[] =
+    [];
+  const reports: {
+    message: string;
+    options: { fingerprint: string[]; tags: Record<string, string> };
+  }[] = [];
   const deps: AccountClosureCleanupDeps = {
     getCronSecret: () => ('secret' in overrides ? overrides.secret : SECRET),
     claimClosures: async (limit, minIdleSeconds, maxAttempts) => {
       claimCalls.push({ limit, minIdleSeconds, maxAttempts });
-      return { data: overrides.rows === undefined ? [] : overrides.rows, error: overrides.claimError ?? null };
+      return {
+        data: overrides.rows === undefined ? [] : overrides.rows,
+        error: overrides.claimError ?? null,
+      };
     },
     listCappedClosures: async (maxAttempts, limit) => {
       cappedCalls.push({ maxAttempts, limit });
-      return { data: overrides.capped ?? [], error: overrides.cappedError ?? null };
+      return {
+        data: overrides.capped ?? [],
+        error: overrides.cappedError ?? null,
+      };
     },
     deleteStripeCustomer: async (id) => {
       customerCalls.push(id);
@@ -107,7 +121,8 @@ const call = (
   h.handler(
     new Request('http://localhost/functions/v1/account-closure-cleanup', {
       method: init.method ?? 'POST',
-      headers: init.secret === null ? {} : { 'x-cron-secret': init.secret ?? SECRET },
+      headers:
+        init.secret === null ? {} : { 'x-cron-secret': init.secret ?? SECRET },
     }),
   );
 
@@ -138,7 +153,9 @@ describe('account-closure-cleanup: authentication', () => {
   it('compares the secret in constant time through the shared helper', () => {
     const source = readFileSync(join(import.meta.dir, 'handler.ts'), 'utf8');
     expect(source).toContain("from '../_shared/cron-auth.ts'");
-    expect(source).toContain('isAuthorizedCronRequest(req, deps.getCronSecret())');
+    expect(source).toContain(
+      'isAuthorizedCronRequest(req, deps.getCronSecret())',
+    );
     expect(source).not.toContain('supplied !== expected');
   });
 
@@ -164,7 +181,11 @@ describe('account-closure-cleanup: authentication', () => {
     await call(valid);
     const unset = harness({ secret: undefined });
     expect((await call(unset, { secret: '' })).status).toBe(401);
-    expect([missing.reports, valid.reports, unset.reports]).toEqual([[], [], []]);
+    expect([missing.reports, valid.reports, unset.reports]).toEqual([
+      [],
+      [],
+      [],
+    ]);
   });
 
   it('a throwing reporter does not change the 401', async () => {
@@ -195,7 +216,11 @@ describe('account-closure-cleanup: run', () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual(EMPTY);
     expect(h.claimCalls).toEqual([
-      { limit: BATCH_SIZE, minIdleSeconds: MIN_IDLE_SECONDS, maxAttempts: MAX_ATTEMPTS },
+      {
+        limit: BATCH_SIZE,
+        minIdleSeconds: MIN_IDLE_SECONDS,
+        maxAttempts: MAX_ATTEMPTS,
+      },
     ]);
     expect(h.records).toEqual([]);
   });
@@ -207,9 +232,18 @@ describe('account-closure-cleanup: run', () => {
   });
 
   it('finishes each claimed closure without counting a second attempt', async () => {
-    const h = harness({ rows: [row(U1), row(U2, { stripe_customer_cleanup: 'done', stripe_customer_id: null })] });
+    const h = harness({
+      rows: [
+        row(U1),
+        row(U2, { stripe_customer_cleanup: 'done', stripe_customer_id: null }),
+      ],
+    });
     const response = await call(h);
-    expect(await response.json()).toEqual({ ...EMPTY, claimed: 2, completed: 2 });
+    expect(await response.json()).toEqual({
+      ...EMPTY,
+      claimed: 2,
+      completed: 2,
+    });
     expect(h.customerCalls).toEqual(['cus_1']);
     expect(h.storageCalls).toEqual([U1, U2]);
     expect(h.records.filter((r) => 'attempt' in r.update)).toEqual([]);
@@ -217,12 +251,21 @@ describe('account-closure-cleanup: run', () => {
       { userId: U1, update: { finish: true, last_error: null } },
       { userId: U2, update: { finish: true, last_error: null } },
     ]);
-    expect(h.records).toContainEqual({ userId: U1, update: { storage_cleanup: 'done' } });
+    expect(h.records).toContainEqual({
+      userId: U1,
+      update: { storage_cleanup: 'done' },
+    });
   });
 
   it('retries only the open steps of a row', async () => {
     const h = harness({
-      rows: [row(U1, { stripe_customer_cleanup: 'done', stripe_account_cleanup: 'failed', storage_cleanup: 'done' })],
+      rows: [
+        row(U1, {
+          stripe_customer_cleanup: 'done',
+          stripe_account_cleanup: 'failed',
+          storage_cleanup: 'done',
+        }),
+      ],
     });
     await call(h);
     expect(h.customerCalls).toEqual([]);
@@ -233,14 +276,28 @@ describe('account-closure-cleanup: run', () => {
   it('a failing row is reported and does not stop the batch', async () => {
     const h = harness({
       rows: [row(U1), row(U2), row(U3)],
-      storage: (userId) => (userId === U2 ? new Error('bucket down for jane@example.com') : undefined),
+      storage: (userId) =>
+        userId === U2
+          ? new Error('bucket down for jane@example.com')
+          : undefined,
     });
     const response = await call(h);
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ ...EMPTY, claimed: 3, completed: 2, failed: 1 });
+    expect(await response.json()).toEqual({
+      ...EMPTY,
+      claimed: 3,
+      completed: 2,
+      failed: 1,
+    });
     expect(h.storageCalls).toEqual([U1, U2, U3]);
-    expect(h.records).toContainEqual({ userId: U2, update: { storage_cleanup: 'failed' } });
-    expect(h.records).toContainEqual({ userId: U2, update: { finish: true, last_error: 'storage:error' } });
+    expect(h.records).toContainEqual({
+      userId: U2,
+      update: { storage_cleanup: 'failed' },
+    });
+    expect(h.records).toContainEqual({
+      userId: U2,
+      update: { finish: true, last_error: 'storage:error' },
+    });
     expect(JSON.stringify(h.logs)).not.toContain('jane@example.com');
   });
 
@@ -259,26 +316,48 @@ describe('account-closure-cleanup: run', () => {
       recordCleanup: async () => {},
       log: (level, msg, data) => {
         h.logs.push({ level, msg, data });
-        if (level === 'WARN' && data?.userId === U1) throw new Error('log sink down');
+        if (level === 'WARN' && data?.userId === U1)
+          throw new Error('log sink down');
       },
       reportMessage: (message, options) => {
         h.reports.push({ message, options });
       },
     });
     const response = await crashing(
-      new Request('http://localhost/', { method: 'POST', headers: { 'x-cron-secret': SECRET } }),
+      new Request('http://localhost/', {
+        method: 'POST',
+        headers: { 'x-cron-secret': SECRET },
+      }),
     );
-    expect(await response.json()).toEqual({ ...EMPTY, claimed: 2, completed: 1, failed: 1 });
-    expect(h.logs.find((e) => e.msg === 'Account closure cleanup crashed')?.data).toEqual({
+    expect(await response.json()).toEqual({
+      ...EMPTY,
+      claimed: 2,
+      completed: 1,
+      failed: 1,
+    });
+    expect(
+      h.logs.find((e) => e.msg === 'Account closure cleanup crashed')?.data,
+    ).toEqual({
       userId: U1,
       code: 'error',
     });
   });
 
   it('counts a row with an unusable shape as invalid and skips it', async () => {
-    const h = harness({ rows: [row(U1, { storage_cleanup: 'weird' }), { stripe_customer_cleanup: 'failed' }, row(U2)] });
+    const h = harness({
+      rows: [
+        row(U1, { storage_cleanup: 'weird' }),
+        { stripe_customer_cleanup: 'failed' },
+        row(U2),
+      ],
+    });
     const response = await call(h);
-    expect(await response.json()).toEqual({ ...EMPTY, claimed: 3, completed: 1, invalid: 2 });
+    expect(await response.json()).toEqual({
+      ...EMPTY,
+      claimed: 3,
+      completed: 1,
+      invalid: 2,
+    });
     expect(h.storageCalls).toEqual([U2]);
   });
 });
@@ -286,10 +365,23 @@ describe('account-closure-cleanup: run', () => {
 describe('account-closure-cleanup: Sentry reports', () => {
   it('reports each failed cleanup step by step and code, without ids or provider text', async () => {
     const h = harness({
-      rows: [row(U1, { stripe_customer_cleanup: 'done', storage_cleanup: 'pending' }), row(U2)],
+      rows: [
+        row(U1, {
+          stripe_customer_cleanup: 'done',
+          storage_cleanup: 'pending',
+        }),
+        row(U2),
+      ],
       storage: (userId) =>
-        userId === U1 ? Object.assign(new Error('bucket down for jane@example.com'), { code: 'storage_down' }) : undefined,
-      customer: () => Object.assign(new Error('card 4242 4242 4242 4242'), { code: 'rate_limit' }),
+        userId === U1
+          ? Object.assign(new Error('bucket down for jane@example.com'), {
+              code: 'storage_down',
+            })
+          : undefined,
+      customer: () =>
+        Object.assign(new Error('card 4242 4242 4242 4242'), {
+          code: 'rate_limit',
+        }),
     });
     const response = await call(h);
     expect(await response.json()).toEqual({ ...EMPTY, claimed: 2, failed: 2 });
@@ -297,20 +389,44 @@ describe('account-closure-cleanup: Sentry reports', () => {
       {
         message: 'account-closure-cleanup step failed',
         options: {
-          fingerprint: ['account-closure-cleanup-step-failed', 'storage', 'storage_down'],
-          tags: { edge_function: 'account-closure-cleanup', step: 'storage', code: 'storage_down' },
+          fingerprint: [
+            'account-closure-cleanup-step-failed',
+            'storage',
+            'storage_down',
+          ],
+          tags: {
+            edge_function: 'account-closure-cleanup',
+            step: 'storage',
+            code: 'storage_down',
+          },
         },
       },
       {
         message: 'account-closure-cleanup step failed',
         options: {
-          fingerprint: ['account-closure-cleanup-step-failed', 'stripe_customer', 'rate_limit'],
-          tags: { edge_function: 'account-closure-cleanup', step: 'stripe_customer', code: 'rate_limit' },
+          fingerprint: [
+            'account-closure-cleanup-step-failed',
+            'stripe_customer',
+            'rate_limit',
+          ],
+          tags: {
+            edge_function: 'account-closure-cleanup',
+            step: 'stripe_customer',
+            code: 'rate_limit',
+          },
         },
       },
     ]);
     const text = JSON.stringify(h.reports);
-    for (const secret of [U1, U2, 'jane@example.com', '4242', 'cus_1', 'acct_1']) expect(text).not.toContain(secret);
+    for (const secret of [
+      U1,
+      U2,
+      'jane@example.com',
+      '4242',
+      'cus_1',
+      'acct_1',
+    ])
+      expect(text).not.toContain(secret);
   });
 
   it('reports a repeated step failure once per run, after every row was processed', async () => {
@@ -319,7 +435,8 @@ describe('account-closure-cleanup: Sentry reports', () => {
     let storageCalls: string[] = [];
     const h = harness({
       rows: [row(U1), row(U2), row(U3)],
-      storage: () => Object.assign(new Error('bucket down'), { code: 'storage_down' }),
+      storage: () =>
+        Object.assign(new Error('bucket down'), { code: 'storage_down' }),
       reporter: (_message, options) => {
         fingerprints.push(options.fingerprint);
         storageCallsAtReport.push(storageCalls.length);
@@ -328,7 +445,9 @@ describe('account-closure-cleanup: Sentry reports', () => {
     storageCalls = h.storageCalls;
     const response = await call(h);
     expect(await response.json()).toEqual({ ...EMPTY, claimed: 3, failed: 3 });
-    expect(fingerprints).toEqual([['account-closure-cleanup-step-failed', 'storage', 'storage_down']]);
+    expect(fingerprints).toEqual([
+      ['account-closure-cleanup-step-failed', 'storage', 'storage_down'],
+    ]);
     expect(storageCallsAtReport).toEqual([3]);
   });
 
@@ -339,7 +458,12 @@ describe('account-closure-cleanup: Sentry reports', () => {
   });
 
   it('reports closures that reached the attempt cap once per run, with the count only', async () => {
-    const h = harness({ capped: [{ user_id: U1, attempts: MAX_ATTEMPTS }, { user_id: U3, attempts: MAX_ATTEMPTS }] });
+    const h = harness({
+      capped: [
+        { user_id: U1, attempts: MAX_ATTEMPTS },
+        { user_id: U3, attempts: MAX_ATTEMPTS },
+      ],
+    });
     await call(h);
     expect(h.reports).toEqual([
       {
@@ -373,7 +497,11 @@ describe('account-closure-cleanup: Sentry reports', () => {
   });
 
   it('a rejecting async reporter does not change the response either', async () => {
-    const h = harness({ rows: [row(U1)], storage: () => new Error('x'), reporter: () => Promise.reject(new Error('down')) });
+    const h = harness({
+      rows: [row(U1)],
+      storage: () => new Error('x'),
+      reporter: () => Promise.reject(new Error('down')),
+    });
     const response = await call(h);
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ ...EMPTY, claimed: 1, failed: 1 });
@@ -398,7 +526,9 @@ describe('account-closure-cleanup: capped closures', () => {
     });
     expect(h.cappedCalls).toHaveLength(1);
     expect(h.cappedCalls[0].maxAttempts).toBe(MAX_ATTEMPTS);
-    const entry = h.logs.find((e) => e.msg === 'Account closure cleanup gave up');
+    const entry = h.logs.find(
+      (e) => e.msg === 'Account closure cleanup gave up',
+    );
     expect(entry?.level).toBe('ERROR');
     expect(entry?.data).toEqual({ count: 2, userIds: [U1, U3] });
   });
@@ -406,21 +536,38 @@ describe('account-closure-cleanup: capped closures', () => {
   it('logs nothing about capped rows when there are none', async () => {
     const h = harness();
     await call(h);
-    expect(h.logs.some((e) => e.msg === 'Account closure cleanup gave up')).toBe(false);
+    expect(
+      h.logs.some((e) => e.msg === 'Account closure cleanup gave up'),
+    ).toBe(false);
   });
 
   it('a failed capped lookup is logged and does not fail the run', async () => {
-    const h = harness({ rows: [row(U1)], cappedError: { code: '42P01', message: 'relation "secret_table" missing' } });
+    const h = harness({
+      rows: [row(U1)],
+      cappedError: {
+        code: '42P01',
+        message: 'relation "secret_table" missing',
+      },
+    });
     const response = await call(h);
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ ...EMPTY, claimed: 1, completed: 1 });
+    expect(await response.json()).toEqual({
+      ...EMPTY,
+      claimed: 1,
+      completed: 1,
+    });
     expect(JSON.stringify(h.logs)).not.toContain('secret_table');
   });
 });
 
 describe('account-closure-cleanup: failures', () => {
   it('500 INTERNAL_ERROR when the claim fails, without the database text', async () => {
-    const h = harness({ claimError: { code: 'XX000', message: 'relation "secret_table" exploded' } });
+    const h = harness({
+      claimError: {
+        code: 'XX000',
+        message: 'relation "secret_table" exploded',
+      },
+    });
     const response = await call(h);
     expect(response.status).toBe(500);
     const text = await response.text();
@@ -442,7 +589,10 @@ describe('account-closure-cleanup: failures', () => {
       },
     });
     const response = await throwing(
-      new Request('http://localhost/', { method: 'POST', headers: { 'x-cron-secret': SECRET } }),
+      new Request('http://localhost/', {
+        method: 'POST',
+        headers: { 'x-cron-secret': SECRET },
+      }),
     );
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ error: 'INTERNAL_ERROR' });
@@ -468,8 +618,13 @@ describe('account-closure-cleanup wiring (source contract)', () => {
   });
 
   it('is declared in config.toml without JWT verification (cron secret instead)', () => {
-    const config = readFileSync(join(root, 'supabase/config.toml'), 'utf8').replace(/\r\n/g, '\n');
-    expect(config).toMatch(/\[functions\.account-closure-cleanup\]\nverify_jwt = false/);
+    const config = readFileSync(
+      join(root, 'supabase/config.toml'),
+      'utf8',
+    ).replace(/\r\n/g, '\n');
+    expect(config).toMatch(
+      /\[functions\.account-closure-cleanup\]\nverify_jwt = false/,
+    );
   });
 
   it('is documented in go-live with an hourly schedule the watchdog supports', () => {

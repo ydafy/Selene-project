@@ -21,7 +21,10 @@ const ids = {
 };
 const paymentIntent = 'pi_b44a_local';
 const labelCost = 8900;
-const amounts: Record<string, number> = { [ids.shipment]: 11000, [ids.paid]: 7000 };
+const amounts: Record<string, number> = {
+  [ids.shipment]: 11000,
+  [ids.paid]: 7000,
+};
 const reasons = ['tracking_unknown', 'carrier_refused', 'carrier_ambiguous'];
 
 type Tx = SQL;
@@ -85,8 +88,13 @@ async function fixture(tx: Tx) {
   await asService(tx);
 }
 
-async function claim(tx: Tx, shipmentId = ids.shipment, source: Source = 'preparing_timeout') {
-  const [{ claim: claimed }] = await tx`SELECT public.fn_claim_shipment_cancellation(
+async function claim(
+  tx: Tx,
+  shipmentId = ids.shipment,
+  source: Source = 'preparing_timeout',
+) {
+  const [{ claim: claimed }] =
+    await tx`SELECT public.fn_claim_shipment_cancellation(
     ${shipmentId}::uuid, ${ids.order}::uuid, NULL::uuid, ${source}, ${`${source} test`}) AS claim`;
   assert.equal(claimed.status, 'claimed');
   return claimed.claim_token as string;
@@ -96,20 +104,33 @@ async function expireClaim(tx: Tx, shipmentId = ids.shipment) {
   await tx`UPDATE public.shipment_cancellation_operations SET claim_expires_at = '-infinity' WHERE shipment_id = ${shipmentId}`;
 }
 
-async function outcomeRpc(tx: Tx, token: string, outcome: string, shipmentId = ids.shipment) {
-  const [{ result }] = await tx`SELECT public.fn_record_shipment_carrier_cancellation(
+async function outcomeRpc(
+  tx: Tx,
+  token: string,
+  outcome: string,
+  shipmentId = ids.shipment,
+) {
+  const [{ result }] =
+    await tx`SELECT public.fn_record_shipment_carrier_cancellation(
     ${shipmentId}::uuid, ${token}::uuid, ${outcome}, NULL::boolean, NULL::timestamptz) AS result`;
   return result;
 }
 
-async function mark(tx: Tx, token: string, reason: string, shipmentId = ids.shipment) {
-  const [{ result }] = await tx`SELECT public.fn_mark_shipment_cancellation_review(
+async function mark(
+  tx: Tx,
+  token: string,
+  reason: string,
+  shipmentId = ids.shipment,
+) {
+  const [{ result }] =
+    await tx`SELECT public.fn_mark_shipment_cancellation_review(
     ${shipmentId}::uuid, ${token}::uuid, ${reason}) AS result`;
   return result;
 }
 
 async function getCarrier(tx: Tx, shipmentId = ids.shipment) {
-  const [{ result }] = await tx`SELECT public.fn_get_shipment_carrier_cancellation(${shipmentId}::uuid) AS result`;
+  const [{ result }] =
+    await tx`SELECT public.fn_get_shipment_carrier_cancellation(${shipmentId}::uuid) AS result`;
   return result;
 }
 
@@ -120,7 +141,8 @@ async function resolve(
   admin: string | null = ids.admin,
   shipmentId = ids.shipment,
 ) {
-  const [{ result }] = await tx`SELECT public.fn_resolve_shipment_cancellation_review(
+  const [{ result }] =
+    await tx`SELECT public.fn_resolve_shipment_cancellation_review(
     ${shipmentId}::uuid, ${admin}::uuid, ${resolution}, ${note}) AS result`;
   return result;
 }
@@ -130,17 +152,28 @@ async function list(tx: Tx) {
 }
 
 async function operation(tx: Tx, shipmentId = ids.shipment) {
-  const [row] = await tx`SELECT * FROM public.shipment_cancellation_operations WHERE shipment_id = ${shipmentId}`;
+  const [row] =
+    await tx`SELECT * FROM public.shipment_cancellation_operations WHERE shipment_id = ${shipmentId}`;
   return row;
 }
 
-async function startRefund(tx: Tx, token: string, shipmentId = ids.shipment, source: Source = 'preparing_timeout') {
-  const [{ result }] = await tx`SELECT public.fn_start_shipment_cancellation_refund(
+async function startRefund(
+  tx: Tx,
+  token: string,
+  shipmentId = ids.shipment,
+  source: Source = 'preparing_timeout',
+) {
+  const [{ result }] =
+    await tx`SELECT public.fn_start_shipment_cancellation_refund(
     ${shipmentId}::uuid, ${token}::uuid, ${JSON.stringify(request(shipmentId, source))}::text::jsonb, 0::bigint) AS result`;
   return result;
 }
 
-async function rejects(tx: Tx, action: (sp: Tx) => Promise<unknown>, message: string) {
+async function rejects(
+  tx: Tx,
+  action: (sp: Tx) => Promise<unknown>,
+  message: string,
+) {
   await assert.rejects(
     tx.savepoint((sp) => action(sp as Tx)),
     (error: Error) => error.message.includes(message),
@@ -170,7 +203,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         assert.ok(stored.review_required_at);
         assert.equal(stored.review_resolution, null);
         assert.equal(stored.external_started_at, null);
-        const again = await mark(tx, token, reasons.find((r) => r !== reason)!);
+        const again = await mark(
+          tx,
+          token,
+          reasons.find((r) => r !== reason)!,
+        );
         assert.equal(again.marked, false);
         assert.equal(again.review_reason, reason);
         assert.deepEqual(await operation(tx), stored);
@@ -183,33 +220,68 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     async (tx) => {
       const token = await claim(tx);
       const before = await operation(tx);
-      await rejects(tx, (sp) => mark(sp, token, 'because'), 'INVALID_REVIEW_REASON');
+      await rejects(
+        tx,
+        (sp) => mark(sp, token, 'because'),
+        'INVALID_REVIEW_REASON',
+      );
       await rejects(tx, (sp) => mark(sp, token, '  '), 'INVALID_REVIEW_REASON');
-      await rejects(tx, (sp) => mark(sp, '7b440000-0000-4000-8000-0000000000ff', 'carrier_refused'), 'STALE_CANCELLATION_CLAIM');
+      await rejects(
+        tx,
+        (sp) =>
+          mark(sp, '7b440000-0000-4000-8000-0000000000ff', 'carrier_refused'),
+        'STALE_CANCELLATION_CLAIM',
+      );
       assert.deepEqual(await operation(tx), before);
 
       await tx`UPDATE public.shipments SET status = 'shipped' WHERE id = ${ids.shipment}`;
-      await rejects(tx, (sp) => mark(sp, token, 'carrier_refused'), 'SHIPMENT_NOT_CANCELABLE');
+      await rejects(
+        tx,
+        (sp) => mark(sp, token, 'carrier_refused'),
+        'SHIPMENT_NOT_CANCELABLE',
+      );
       assert.deepEqual(await operation(tx), before);
       await tx`UPDATE public.shipments SET status = 'preparing' WHERE id = ${ids.shipment}`;
 
       await tx`UPDATE public.shipment_cancellation_operations SET external_started_at = clock_timestamp() WHERE shipment_id = ${ids.shipment}`;
       const started = await operation(tx);
-      await rejects(tx, (sp) => mark(sp, token, 'carrier_refused'), 'CANCELLATION_EXTERNAL_ALREADY_STARTED');
+      await rejects(
+        tx,
+        (sp) => mark(sp, token, 'carrier_refused'),
+        'CANCELLATION_EXTERNAL_ALREADY_STARTED',
+      );
       assert.deepEqual(await operation(tx), started);
       await tx`UPDATE public.shipment_cancellation_operations SET external_started_at = NULL WHERE shipment_id = ${ids.shipment}`;
 
       await expireClaim(tx);
       const expired = await operation(tx);
-      await rejects(tx, (sp) => mark(sp, token, 'carrier_refused'), 'CANCELLATION_CLAIM_EXPIRED');
+      await rejects(
+        tx,
+        (sp) => mark(sp, token, 'carrier_refused'),
+        'CANCELLATION_CLAIM_EXPIRED',
+      );
       assert.deepEqual(await operation(tx), expired);
 
       const paidToken = await claim(tx, ids.paid, 'paid_timeout');
       const paidBefore = await operation(tx, ids.paid);
-      await rejects(tx, (sp) => mark(sp, paidToken, 'carrier_refused', ids.paid), 'INVALID_CARRIER_CANCELLATION_SOURCE');
+      await rejects(
+        tx,
+        (sp) => mark(sp, paidToken, 'carrier_refused', ids.paid),
+        'INVALID_CARRIER_CANCELLATION_SOURCE',
+      );
       assert.deepEqual(await operation(tx, ids.paid), paidBefore);
 
-      await rejects(tx, (sp) => mark(sp, token, 'carrier_refused', '7b440000-0000-4000-8000-0000000000fe'), 'SHIPMENT_NOT_FOUND');
+      await rejects(
+        tx,
+        (sp) =>
+          mark(
+            sp,
+            token,
+            'carrier_refused',
+            '7b440000-0000-4000-8000-0000000000fe',
+          ),
+        'SHIPMENT_NOT_FOUND',
+      );
     },
   ],
   [
@@ -260,8 +332,16 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
   [
     'get rejects a missing shipment and a shipment without an operation',
     async (tx) => {
-      await rejects(tx, (sp) => getCarrier(sp, '7b440000-0000-4000-8000-0000000000fe'), 'SHIPMENT_NOT_FOUND');
-      await rejects(tx, (sp) => getCarrier(sp), 'CANCELLATION_OPERATION_NOT_FOUND');
+      await rejects(
+        tx,
+        (sp) => getCarrier(sp, '7b440000-0000-4000-8000-0000000000fe'),
+        'SHIPMENT_NOT_FOUND',
+      );
+      await rejects(
+        tx,
+        (sp) => getCarrier(sp),
+        'CANCELLATION_OPERATION_NOT_FOUND',
+      );
     },
   ],
   [
@@ -270,7 +350,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       const token = await reviewed(tx);
       await expireClaim(tx);
       const before = await operation(tx);
-      await rejects(tx, (sp) => claim(sp), 'SHIPMENT_CANCELLATION_UNDER_REVIEW');
+      await rejects(
+        tx,
+        (sp) => claim(sp),
+        'SHIPMENT_CANCELLATION_UNDER_REVIEW',
+      );
       assert.deepEqual(await operation(tx), before);
       assert.equal((await operation(tx)).claim_token, token);
     },
@@ -282,7 +366,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       await resolve(tx, 'closed_no_refund', 'the package travels');
       await expireClaim(tx);
       const before = await operation(tx);
-      await rejects(tx, (sp) => claim(sp), 'SHIPMENT_CANCELLATION_REVIEW_CLOSED');
+      await rejects(
+        tx,
+        (sp) => claim(sp),
+        'SHIPMENT_CANCELLATION_REVIEW_CLOSED',
+      );
       assert.deepEqual(await operation(tx), before);
       assert.equal((await operation(tx)).claim_token, token);
     },
@@ -291,7 +379,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     'resolve refund_approved sets the loss to the label provider cost and records who, when and why',
     async (tx) => {
       await reviewed(tx);
-      const result = await resolve(tx, 'refund_approved', '  checked with the carrier  ');
+      const result = await resolve(
+        tx,
+        'refund_approved',
+        '  checked with the carrier  ',
+      );
       assert.equal(result.review_resolution, 'refund_approved');
       assert.equal(Number(result.label_cost_loss_cents), labelCost);
       assert.equal(result.review_resolution_note, 'checked with the carrier');
@@ -335,7 +427,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     'resolve closed_no_refund leaves the loss NULL and records the resolution',
     async (tx) => {
       await reviewed(tx);
-      const result = await resolve(tx, 'closed_no_refund', 'the package was delivered');
+      const result = await resolve(
+        tx,
+        'closed_no_refund',
+        'the package was delivered',
+      );
       assert.equal(result.review_resolution, 'closed_no_refund');
       assert.equal(result.label_cost_loss_cents, null);
       const row = await operation(tx);
@@ -352,13 +448,41 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     async (tx) => {
       await reviewed(tx);
       const before = await operation(tx);
-      await rejects(tx, (sp) => resolve(sp, 'refund_approved', 'ok', ids.buyer), 'ADMIN_REQUIRED');
-      await rejects(tx, (sp) => resolve(sp, 'refund_approved', 'ok', ids.seller), 'ADMIN_REQUIRED');
-      await rejects(tx, (sp) => resolve(sp, 'refund_approved', 'ok', null), 'ADMIN_REQUIRED');
-      await rejects(tx, (sp) => resolve(sp, 'refund_approved', '   '), 'INVALID_REVIEW_NOTE');
-      await rejects(tx, (sp) => resolve(sp, 'refund_approved', null), 'INVALID_REVIEW_NOTE');
-      await rejects(tx, (sp) => resolve(sp, 'refund_approved', 'x'.repeat(501)), 'INVALID_REVIEW_NOTE');
-      await rejects(tx, (sp) => resolve(sp, 'approved'), 'INVALID_REVIEW_RESOLUTION');
+      await rejects(
+        tx,
+        (sp) => resolve(sp, 'refund_approved', 'ok', ids.buyer),
+        'ADMIN_REQUIRED',
+      );
+      await rejects(
+        tx,
+        (sp) => resolve(sp, 'refund_approved', 'ok', ids.seller),
+        'ADMIN_REQUIRED',
+      );
+      await rejects(
+        tx,
+        (sp) => resolve(sp, 'refund_approved', 'ok', null),
+        'ADMIN_REQUIRED',
+      );
+      await rejects(
+        tx,
+        (sp) => resolve(sp, 'refund_approved', '   '),
+        'INVALID_REVIEW_NOTE',
+      );
+      await rejects(
+        tx,
+        (sp) => resolve(sp, 'refund_approved', null),
+        'INVALID_REVIEW_NOTE',
+      );
+      await rejects(
+        tx,
+        (sp) => resolve(sp, 'refund_approved', 'x'.repeat(501)),
+        'INVALID_REVIEW_NOTE',
+      );
+      await rejects(
+        tx,
+        (sp) => resolve(sp, 'approved'),
+        'INVALID_REVIEW_RESOLUTION',
+      );
       await rejects(tx, (sp) => resolve(sp, ''), 'INVALID_REVIEW_RESOLUTION');
       assert.deepEqual(await operation(tx), before);
     },
@@ -366,31 +490,66 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
   [
     'resolve rejects a missing shipment, no operation, no pending review, an already resolved review, a started external call and a non-preparing shipment',
     async (tx) => {
-      await rejects(tx, (sp) => resolve(sp, 'refund_approved', 'ok', ids.admin, '7b440000-0000-4000-8000-0000000000fe'), 'SHIPMENT_NOT_FOUND');
-      await rejects(tx, (sp) => resolve(sp, 'refund_approved'), 'CARRIER_REVIEW_NOT_PENDING');
+      await rejects(
+        tx,
+        (sp) =>
+          resolve(
+            sp,
+            'refund_approved',
+            'ok',
+            ids.admin,
+            '7b440000-0000-4000-8000-0000000000fe',
+          ),
+        'SHIPMENT_NOT_FOUND',
+      );
+      await rejects(
+        tx,
+        (sp) => resolve(sp, 'refund_approved'),
+        'CARRIER_REVIEW_NOT_PENDING',
+      );
 
       const token = await claim(tx);
       const unmarked = await operation(tx);
-      await rejects(tx, (sp) => resolve(sp, 'refund_approved'), 'CARRIER_REVIEW_NOT_PENDING');
+      await rejects(
+        tx,
+        (sp) => resolve(sp, 'refund_approved'),
+        'CARRIER_REVIEW_NOT_PENDING',
+      );
       assert.deepEqual(await operation(tx), unmarked);
 
       await mark(tx, token, 'tracking_unknown');
       await tx`UPDATE public.shipments SET status = 'shipped' WHERE id = ${ids.shipment}`;
       const pending = await operation(tx);
-      await rejects(tx, (sp) => resolve(sp, 'refund_approved'), 'SHIPMENT_NOT_CANCELABLE');
+      await rejects(
+        tx,
+        (sp) => resolve(sp, 'refund_approved'),
+        'SHIPMENT_NOT_CANCELABLE',
+      );
       assert.deepEqual(await operation(tx), pending);
       await tx`UPDATE public.shipments SET status = 'preparing' WHERE id = ${ids.shipment}`;
 
       await tx`UPDATE public.shipment_cancellation_operations SET external_started_at = clock_timestamp() WHERE shipment_id = ${ids.shipment}`;
       const started = await operation(tx);
-      await rejects(tx, (sp) => resolve(sp, 'refund_approved'), 'CANCELLATION_EXTERNAL_ALREADY_STARTED');
+      await rejects(
+        tx,
+        (sp) => resolve(sp, 'refund_approved'),
+        'CANCELLATION_EXTERNAL_ALREADY_STARTED',
+      );
       assert.deepEqual(await operation(tx), started);
       await tx`UPDATE public.shipment_cancellation_operations SET external_started_at = NULL WHERE shipment_id = ${ids.shipment}`;
 
       await resolve(tx, 'closed_no_refund', 'first decision');
       const resolved = await operation(tx);
-      await rejects(tx, (sp) => resolve(sp, 'refund_approved', 'second decision'), 'CARRIER_REVIEW_ALREADY_RESOLVED');
-      await rejects(tx, (sp) => resolve(sp, 'closed_no_refund', 'again'), 'CARRIER_REVIEW_ALREADY_RESOLVED');
+      await rejects(
+        tx,
+        (sp) => resolve(sp, 'refund_approved', 'second decision'),
+        'CARRIER_REVIEW_ALREADY_RESOLVED',
+      );
+      await rejects(
+        tx,
+        (sp) => resolve(sp, 'closed_no_refund', 'again'),
+        'CARRIER_REVIEW_ALREADY_RESOLVED',
+      );
       assert.deepEqual(await operation(tx), resolved);
     },
   ],
@@ -406,7 +565,10 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       assert.notEqual(fresh, token);
       const result = await startRefund(tx, fresh);
       assert.equal(result.operation_key, `cancel_shipment_${ids.shipment}`);
-      assert.deepEqual(result.refund_request, request(ids.shipment, 'preparing_timeout'));
+      assert.deepEqual(
+        result.refund_request,
+        request(ids.shipment, 'preparing_timeout'),
+      );
       const row = await operation(tx);
       assert.ok(row.external_started_at);
       assert.equal(row.carrier_cancellation_outcome, 'refused');
@@ -430,12 +592,20 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     async (tx) => {
       const token = await reviewed(tx);
       const pending = await operation(tx);
-      await rejects(tx, (sp) => startRefund(sp, token), 'CARRIER_CANCELLATION_NOT_CONFIRMED');
+      await rejects(
+        tx,
+        (sp) => startRefund(sp, token),
+        'CARRIER_CANCELLATION_NOT_CONFIRMED',
+      );
       assert.deepEqual(await operation(tx), pending);
 
       await resolve(tx, 'closed_no_refund', 'no refund');
       const closed = await operation(tx);
-      await rejects(tx, (sp) => startRefund(sp, token), 'CARRIER_CANCELLATION_NOT_CONFIRMED');
+      await rejects(
+        tx,
+        (sp) => startRefund(sp, token),
+        'CARRIER_CANCELLATION_NOT_CONFIRMED',
+      );
       assert.deepEqual(await operation(tx), closed);
       assert.equal(closed.external_started_at, null);
     },
@@ -461,7 +631,10 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       await tx`UPDATE public.shipment_cancellation_operations SET review_required_at = '2026-10-21T00:00:00Z' WHERE shipment_id = ${ids.shipment}`;
 
       const rows = await list(tx);
-      assert.deepEqual(rows.map((row: { shipment_id: string }) => row.shipment_id), [ids.second, ids.shipment]);
+      assert.deepEqual(
+        rows.map((row: { shipment_id: string }) => row.shipment_id),
+        [ids.second, ids.shipment],
+      );
       assert.deepEqual(Object.keys(rows[0]).sort(), [
         'carrier',
         'carrier_cancellation_outcome',
@@ -492,18 +665,21 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       await outcomeRpc(tx, token, 'refused');
       await rejects(
         tx,
-        (sp) => sp`UPDATE public.shipment_cancellation_operations SET label_cost_loss_cents = 100 WHERE shipment_id = ${ids.shipment}`,
+        (sp) =>
+          sp`UPDATE public.shipment_cancellation_operations SET label_cost_loss_cents = 100 WHERE shipment_id = ${ids.shipment}`,
         'shipment_cancellation_operations_carrier_balance_consistent',
       );
       await mark(tx, token, 'carrier_refused');
       await rejects(
         tx,
-        (sp) => sp`UPDATE public.shipment_cancellation_operations SET label_cost_loss_cents = 100 WHERE shipment_id = ${ids.shipment}`,
+        (sp) =>
+          sp`UPDATE public.shipment_cancellation_operations SET label_cost_loss_cents = 100 WHERE shipment_id = ${ids.shipment}`,
         'shipment_cancellation_operations_carrier_balance_consistent',
       );
       await rejects(
         tx,
-        (sp) => sp`UPDATE public.shipment_cancellation_operations SET review_resolution = 'refund_approved' WHERE shipment_id = ${ids.shipment}`,
+        (sp) =>
+          sp`UPDATE public.shipment_cancellation_operations SET review_resolution = 'refund_approved' WHERE shipment_id = ${ids.shipment}`,
         'review',
       );
     },
@@ -515,13 +691,21 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       await tx`SELECT public.fn_record_shipment_carrier_cancellation(${ids.shipment}::uuid, ${token}::uuid, 'accepted', true, '2026-10-23T10:00:00Z'::timestamptz)`;
       await mark(tx, token, 'carrier_ambiguous');
       const pending = await operation(tx);
-      await rejects(tx, (sp) => startRefund(sp, token), 'CARRIER_CANCELLATION_NOT_CONFIRMED');
+      await rejects(
+        tx,
+        (sp) => startRefund(sp, token),
+        'CARRIER_CANCELLATION_NOT_CONFIRMED',
+      );
       assert.deepEqual(await operation(tx), pending);
       assert.equal(pending.external_started_at, null);
 
       await resolve(tx, 'closed_no_refund', 'no refund');
       const closed = await operation(tx);
-      await rejects(tx, (sp) => startRefund(sp, token), 'CARRIER_CANCELLATION_NOT_CONFIRMED');
+      await rejects(
+        tx,
+        (sp) => startRefund(sp, token),
+        'CARRIER_CANCELLATION_NOT_CONFIRMED',
+      );
       assert.deepEqual(await operation(tx), closed);
       assert.equal(closed.external_started_at, null);
     },
@@ -556,7 +740,8 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       await tx`RESET ROLE`;
       await rejects(
         tx,
-        (sp) => sp`UPDATE public.shipment_cancellation_operations SET label_cost_loss_cents = 100 WHERE shipment_id = ${ids.shipment}`,
+        (sp) =>
+          sp`UPDATE public.shipment_cancellation_operations SET label_cost_loss_cents = 100 WHERE shipment_id = ${ids.shipment}`,
         'shipment_cancellation_operations_carrier_balance_consistent',
       );
       await asService(tx);
@@ -564,7 +749,8 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       await tx`RESET ROLE`;
       await rejects(
         tx,
-        (sp) => sp`UPDATE public.shipment_cancellation_operations SET label_cost_loss_cents = 100 WHERE shipment_id = ${ids.shipment}`,
+        (sp) =>
+          sp`UPDATE public.shipment_cancellation_operations SET label_cost_loss_cents = 100 WHERE shipment_id = ${ids.shipment}`,
         'shipment_cancellation_operations_carrier_balance_consistent',
       );
       await tx`DELETE FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`;
@@ -589,7 +775,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       await tx`RESET ROLE`;
       await tx`UPDATE public.profiles_private SET status = 'suspended' WHERE id = ${ids.admin}`;
       await asService(tx);
-      await rejects(tx, (sp) => resolve(sp, 'refund_approved'), 'ADMIN_REQUIRED');
+      await rejects(
+        tx,
+        (sp) => resolve(sp, 'refund_approved'),
+        'ADMIN_REQUIRED',
+      );
       assert.deepEqual(await operation(tx), before);
     },
   ],
@@ -598,14 +788,16 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     async (tx) => {
       await reviewed(tx);
       const before = await operation(tx);
-      const [shipmentBefore] = await tx`SELECT status FROM public.shipments WHERE id = ${ids.shipment}`;
+      const [shipmentBefore] =
+        await tx`SELECT status FROM public.shipments WHERE id = ${ids.shipment}`;
       await resolve(tx, 'refund_approved', 'approved');
       const after = await operation(tx);
       assert.equal(after.claim_token, before.claim_token);
       assert.deepEqual(after.claim_expires_at, before.claim_expires_at);
       assert.equal(after.external_started_at, null);
       assert.equal(after.refund_request, before.refund_request);
-      const [shipmentAfter] = await tx`SELECT status FROM public.shipments WHERE id = ${ids.shipment}`;
+      const [shipmentAfter] =
+        await tx`SELECT status FROM public.shipments WHERE id = ${ids.shipment}`;
       assert.equal(shipmentAfter.status, shipmentBefore.status);
     },
   ],
@@ -615,7 +807,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       await reviewed(tx);
       const live = await operation(tx);
       assert.ok(new Date(live.claim_expires_at) > new Date());
-      await rejects(tx, (sp) => claim(sp), 'SHIPMENT_CANCELLATION_UNDER_REVIEW');
+      await rejects(
+        tx,
+        (sp) => claim(sp),
+        'SHIPMENT_CANCELLATION_UNDER_REVIEW',
+      );
       assert.deepEqual(await operation(tx), live);
     },
   ],
@@ -649,7 +845,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       const before = await operation(tx);
       await tx`RESET ROLE`;
       await tx`SELECT set_config('request.jwt.claims', '{"role":"authenticated"}', true)`;
-      await rejects(tx, (sp) => mark(sp, token, 'carrier_refused'), 'UNAUTHORIZED');
+      await rejects(
+        tx,
+        (sp) => mark(sp, token, 'carrier_refused'),
+        'UNAUTHORIZED',
+      );
       await rejects(tx, (sp) => getCarrier(sp), 'UNAUTHORIZED');
       await rejects(tx, (sp) => resolve(sp, 'refund_approved'), 'UNAUTHORIZED');
       await rejects(tx, (sp) => list(sp), 'UNAUTHORIZED');
@@ -665,7 +865,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         await tx.savepoint(async (sp) => {
           await asRole(sp as Tx, role);
           await rejects(sp as Tx, (inner) => claim(inner), 'permission denied');
-          await rejects(sp as Tx, (inner) => startRefund(inner, token), 'permission denied');
+          await rejects(
+            sp as Tx,
+            (inner) => startRefund(inner, token),
+            'permission denied',
+          );
         });
       }
       for (const role of ['anon', 'authenticated', 'service_role'] as const) {
@@ -673,7 +877,8 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
           await asRole(sp as Tx, role);
           await rejects(
             sp as Tx,
-            (inner) => inner`SELECT public.fn_start_shipment_cancellation(${ids.shipment}::uuid, ${token}::uuid)`,
+            (inner) =>
+              inner`SELECT public.fn_start_shipment_cancellation(${ids.shipment}::uuid, ${token}::uuid)`,
             'permission denied',
           );
         });
@@ -689,7 +894,8 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       assert.ok((await operation(tx, ids.paid)).external_started_at);
 
       const token = await claim(tx);
-      const [{ claim: busy }] = await tx`SELECT public.fn_claim_shipment_cancellation(
+      const [{ claim: busy }] =
+        await tx`SELECT public.fn_claim_shipment_cancellation(
         ${ids.shipment}::uuid, ${ids.order}::uuid, NULL::uuid, 'preparing_timeout', 'preparing_timeout test') AS claim`;
       assert.equal(busy.status, 'busy');
       await expireClaim(tx);
@@ -700,13 +906,15 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
   [
     'a preparing_timeout claim re-owns an expired pre-start operation of another source; record and mark then succeed',
     async (tx) => {
-      const [{ claim: buyerClaim }] = await tx`SELECT public.fn_claim_shipment_cancellation(
+      const [{ claim: buyerClaim }] =
+        await tx`SELECT public.fn_claim_shipment_cancellation(
         ${ids.paid}::uuid, ${ids.order}::uuid, ${ids.buyer}::uuid, 'buyer', 'buyer asked') AS claim`;
       assert.equal(buyerClaim.status, 'claimed');
       await expireClaim(tx, ids.paid);
       await tx`UPDATE public.shipments SET status = 'preparing', label_generation_state = 'generated',
         label_provider_cost_cents = ${labelCost}, tracking_number = 'TRK-B44B-1', carrier = 'estafeta' WHERE id = ${ids.paid}`;
-      const [{ claim: takeover }] = await tx`SELECT public.fn_claim_shipment_cancellation(
+      const [{ claim: takeover }] =
+        await tx`SELECT public.fn_claim_shipment_cancellation(
         ${ids.paid}::uuid, ${ids.order}::uuid, NULL::uuid, 'preparing_timeout', 'preparing timeout reason') AS claim`;
       assert.equal(takeover.status, 'claimed');
       assert.equal(takeover.source, 'preparing_timeout');
@@ -718,9 +926,19 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       assert.equal(stored.actor_id, null);
       assert.equal(stored.reason, 'preparing timeout reason');
       assert.equal(stored.external_started_at, null);
-      const recorded = await outcomeRpc(tx, takeover.claim_token, 'refused', ids.paid);
+      const recorded = await outcomeRpc(
+        tx,
+        takeover.claim_token,
+        'refused',
+        ids.paid,
+      );
       assert.equal(recorded.carrier_cancellation_outcome, 'refused');
-      const marked = await mark(tx, takeover.claim_token, 'carrier_refused', ids.paid);
+      const marked = await mark(
+        tx,
+        takeover.claim_token,
+        'carrier_refused',
+        ids.paid,
+      );
       assert.equal(marked.marked, true);
     },
   ],
@@ -728,14 +946,16 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     'after the preparing takeover of an expired buyer claim the old buyer token is stale for record, mark and start; the new token needs an accepted outcome to start',
     async (tx) => {
       // The takeover case above already asserts the re-owned source, actor, reason, a new token, and that record and mark succeed with it.
-      const [{ claim: buyerClaim }] = await tx`SELECT public.fn_claim_shipment_cancellation(
+      const [{ claim: buyerClaim }] =
+        await tx`SELECT public.fn_claim_shipment_cancellation(
         ${ids.paid}::uuid, ${ids.order}::uuid, ${ids.buyer}::uuid, 'buyer', 'buyer asked') AS claim`;
       assert.equal(buyerClaim.status, 'claimed');
       await expireClaim(tx, ids.paid);
       await tx`UPDATE public.shipments SET status = 'preparing', label_generation_state = 'generated',
         label_provider_cost_cents = ${labelCost}, tracking_number = 'TRK-B44B-2', carrier = 'estafeta' WHERE id = ${ids.paid}`;
       // The refund metadata reason must equal the stored operation reason, which the takeover re-owns.
-      const [{ claim: takeover }] = await tx`SELECT public.fn_claim_shipment_cancellation(
+      const [{ claim: takeover }] =
+        await tx`SELECT public.fn_claim_shipment_cancellation(
         ${ids.paid}::uuid, ${ids.order}::uuid, NULL::uuid, 'preparing_timeout', 'preparing_timeout test') AS claim`;
       assert.equal(takeover.status, 'claimed');
       assert.equal(takeover.operation_key, buyerClaim.operation_key);
@@ -744,17 +964,37 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
 
       const before = await operation(tx, ids.paid);
       assert.equal(before.operation_key, buyerClaim.operation_key);
-      await rejects(tx, (sp) => outcomeRpc(sp, buyerClaim.claim_token, 'refused', ids.paid), 'STALE_CANCELLATION_CLAIM');
-      await rejects(tx, (sp) => mark(sp, buyerClaim.claim_token, 'carrier_refused', ids.paid), 'STALE_CANCELLATION_CLAIM');
+      await rejects(
+        tx,
+        (sp) => outcomeRpc(sp, buyerClaim.claim_token, 'refused', ids.paid),
+        'STALE_CANCELLATION_CLAIM',
+      );
+      await rejects(
+        tx,
+        (sp) => mark(sp, buyerClaim.claim_token, 'carrier_refused', ids.paid),
+        'STALE_CANCELLATION_CLAIM',
+      );
       // The token check runs before the carrier-confirmation guard.
-      await rejects(tx, (sp) => startRefund(sp, buyerClaim.claim_token, ids.paid), 'STALE_CANCELLATION_CLAIM');
+      await rejects(
+        tx,
+        (sp) => startRefund(sp, buyerClaim.claim_token, ids.paid),
+        'STALE_CANCELLATION_CLAIM',
+      );
       assert.deepEqual(await operation(tx, ids.paid), before);
-      await rejects(tx, (sp) => startRefund(sp, takeover.claim_token, ids.paid), 'CARRIER_CANCELLATION_NOT_CONFIRMED');
+      await rejects(
+        tx,
+        (sp) => startRefund(sp, takeover.claim_token, ids.paid),
+        'CARRIER_CANCELLATION_NOT_CONFIRMED',
+      );
       assert.deepEqual(await operation(tx, ids.paid), before);
 
       await tx`SELECT public.fn_record_shipment_carrier_cancellation(${ids.paid}::uuid, ${takeover.claim_token}::uuid, 'accepted', true, '2026-10-23T10:00:00Z'::timestamptz)`;
       const accepted = await operation(tx, ids.paid);
-      await rejects(tx, (sp) => startRefund(sp, buyerClaim.claim_token, ids.paid), 'STALE_CANCELLATION_CLAIM');
+      await rejects(
+        tx,
+        (sp) => startRefund(sp, buyerClaim.claim_token, ids.paid),
+        'STALE_CANCELLATION_CLAIM',
+      );
       assert.deepEqual(await operation(tx, ids.paid), accepted);
       const result = await startRefund(tx, takeover.claim_token, ids.paid);
       assert.equal(result.operation_key, `cancel_shipment_${ids.paid}`);
@@ -767,14 +1007,16 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
   [
     'an expired buyer operation with a started external call stays recovery_required for the preparing claim, keeps the buyer source, returns no token and is byte-identical',
     async (tx) => {
-      const [{ claim: buyerClaim }] = await tx`SELECT public.fn_claim_shipment_cancellation(
+      const [{ claim: buyerClaim }] =
+        await tx`SELECT public.fn_claim_shipment_cancellation(
         ${ids.paid}::uuid, ${ids.order}::uuid, ${ids.buyer}::uuid, 'buyer', 'buyer asked') AS claim`;
       assert.equal(buyerClaim.status, 'claimed');
       await tx`UPDATE public.shipment_cancellation_operations SET external_started_at = clock_timestamp(), claim_expires_at = '-infinity' WHERE shipment_id = ${ids.paid}`;
       await tx`UPDATE public.shipments SET status = 'preparing', label_generation_state = 'generated',
         label_provider_cost_cents = ${labelCost}, tracking_number = 'TRK-B44B-3', carrier = 'estafeta' WHERE id = ${ids.paid}`;
       const before = await operation(tx, ids.paid);
-      const [{ claim: recovery }] = await tx`SELECT public.fn_claim_shipment_cancellation(
+      const [{ claim: recovery }] =
+        await tx`SELECT public.fn_claim_shipment_cancellation(
         ${ids.paid}::uuid, ${ids.order}::uuid, NULL::uuid, 'preparing_timeout', 'preparing timeout reason') AS claim`;
       assert.equal(recovery.status, 'recovery_required');
       assert.equal(recovery.source, 'buyer');
@@ -788,11 +1030,13 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
   [
     'a seller takeover of an expired buyer claim on a paid shipment keeps the buyer source, actor and reason; a paid_timeout claim then reports busy',
     async (tx) => {
-      const [{ claim: buyerClaim }] = await tx`SELECT public.fn_claim_shipment_cancellation(
+      const [{ claim: buyerClaim }] =
+        await tx`SELECT public.fn_claim_shipment_cancellation(
         ${ids.paid}::uuid, ${ids.order}::uuid, ${ids.buyer}::uuid, 'buyer', 'buyer asked') AS claim`;
       assert.equal(buyerClaim.status, 'claimed');
       await expireClaim(tx, ids.paid);
-      const [{ claim: takeover }] = await tx`SELECT public.fn_claim_shipment_cancellation(
+      const [{ claim: takeover }] =
+        await tx`SELECT public.fn_claim_shipment_cancellation(
         ${ids.paid}::uuid, ${ids.order}::uuid, ${ids.seller}::uuid, 'seller', 'seller asked') AS claim`;
       assert.equal(takeover.status, 'claimed');
       assert.equal(takeover.source, 'buyer');
@@ -806,7 +1050,8 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       assert.equal(live.actor_id, ids.buyer);
       assert.equal(live.reason, 'buyer asked');
       assert.equal(live.claim_token, takeover.claim_token);
-      const [{ claim: busy }] = await tx`SELECT public.fn_claim_shipment_cancellation(
+      const [{ claim: busy }] =
+        await tx`SELECT public.fn_claim_shipment_cancellation(
         ${ids.paid}::uuid, ${ids.order}::uuid, NULL::uuid, 'paid_timeout', 'paid_timeout test') AS claim`;
       assert.equal(busy.status, 'busy');
       assert.equal(busy.source, 'buyer');
@@ -821,7 +1066,8 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       await claim(tx, ids.paid, 'paid_timeout');
       await tx`UPDATE public.shipments SET status = 'preparing', label_generation_state = 'generated' WHERE id = ${ids.paid}`;
       const before = await operation(tx, ids.paid);
-      const [{ claim: busy }] = await tx`SELECT public.fn_claim_shipment_cancellation(
+      const [{ claim: busy }] =
+        await tx`SELECT public.fn_claim_shipment_cancellation(
         ${ids.paid}::uuid, ${ids.order}::uuid, NULL::uuid, 'preparing_timeout', 'preparing timeout reason') AS claim`;
       assert.equal(busy.status, 'busy');
       assert.equal(busy.source, 'paid_timeout');
@@ -829,7 +1075,8 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
 
       await tx`UPDATE public.shipment_cancellation_operations SET external_started_at = clock_timestamp(), claim_expires_at = '-infinity' WHERE shipment_id = ${ids.paid}`;
       const started = await operation(tx, ids.paid);
-      const [{ claim: recovery }] = await tx`SELECT public.fn_claim_shipment_cancellation(
+      const [{ claim: recovery }] =
+        await tx`SELECT public.fn_claim_shipment_cancellation(
         ${ids.paid}::uuid, ${ids.order}::uuid, NULL::uuid, 'preparing_timeout', 'preparing timeout reason') AS claim`;
       assert.equal(recovery.status, 'recovery_required');
       assert.equal(recovery.source, 'paid_timeout');
@@ -841,7 +1088,8 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     async (tx) => {
       await claim(tx, ids.paid, 'paid_timeout');
       await expireClaim(tx, ids.paid);
-      const [{ claim: takeover }] = await tx`SELECT public.fn_claim_shipment_cancellation(
+      const [{ claim: takeover }] =
+        await tx`SELECT public.fn_claim_shipment_cancellation(
         ${ids.paid}::uuid, ${ids.order}::uuid, ${ids.buyer}::uuid, 'buyer', 'buyer asked') AS claim`;
       assert.equal(takeover.status, 'claimed');
       assert.equal(takeover.source, 'paid_timeout');
@@ -872,7 +1120,8 @@ async function run() {
       }
     }
     // Every case rolled back: nothing from this harness may persist.
-    const [left] = await sql`SELECT count(*)::int AS n FROM public.orders WHERE id = ${ids.order}`;
+    const [left] =
+      await sql`SELECT count(*)::int AS n FROM public.orders WHERE id = ${ids.order}`;
     assert.equal(left.n, 0);
   } finally {
     await sql.close();

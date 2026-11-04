@@ -16,8 +16,7 @@ const fixtureEnvironment = {
   CONFIRMATION_DELIVERED_SHIPMENT_ID: '22222222-2222-4222-8222-222222222222',
   CONFIRMATION_SHIPPED_ORDER_ID: '33333333-3333-4333-8333-333333333333',
   CONFIRMATION_SHIPPED_SHIPMENT_ID: '44444444-4444-4444-8444-444444444444',
-  CONFIRMATION_ACTIVE_DISPUTE_ORDER_ID:
-    '55555555-5555-4555-8555-555555555555',
+  CONFIRMATION_ACTIVE_DISPUTE_ORDER_ID: '55555555-5555-4555-8555-555555555555',
   CONFIRMATION_ACTIVE_DISPUTE_SHIPMENT_ID:
     '66666666-6666-4666-8666-666666666666',
 };
@@ -54,7 +53,9 @@ describe('deployed confirmation harness configuration', () => {
   });
 
   it('defaults to full mode and requires the active-dispute fixture', () => {
-    expect(parseConfirmationHarnessConfig(fixtureEnvironment).mode).toBe('full');
+    expect(parseConfirmationHarnessConfig(fixtureEnvironment).mode).toBe(
+      'full',
+    );
     expect(() =>
       parseConfirmationHarnessConfig({
         ...fixtureEnvironment,
@@ -154,8 +155,10 @@ describe('deployed confirmation harness configuration', () => {
 describe('deployed confirmation harness assertions', () => {
   it('issues the four required requests in safe order and accepts their contract responses', async () => {
     const config = parseConfirmationHarnessConfig(fixtureEnvironment);
-    const requests: Array<{ body: Record<string, string>; init?: RequestInit }> =
-      [];
+    const requests: Array<{
+      body: Record<string, string>;
+      init?: RequestInit;
+    }> = [];
     const responses = [
       {
         status: 409,
@@ -194,7 +197,9 @@ describe('deployed confirmation harness assertions', () => {
         requests.push({ body: JSON.parse(init?.body as string), init });
         const response = responses.shift();
         if (!response) throw new Error('Unexpected request');
-        return new Response(JSON.stringify(response.body), { status: response.status });
+        return new Response(JSON.stringify(response.body), {
+          status: response.status,
+        });
       },
       (message) => reports.push(message),
     );
@@ -259,7 +264,9 @@ describe('deployed confirmation harness assertions', () => {
         requests.push({ body: JSON.parse(init?.body as string) });
         const response = responses.shift();
         if (!response) throw new Error('Unexpected request');
-        return new Response(JSON.stringify(response.body), { status: response.status });
+        return new Response(JSON.stringify(response.body), {
+          status: response.status,
+        });
       },
       (message) => reports.push(message),
     );

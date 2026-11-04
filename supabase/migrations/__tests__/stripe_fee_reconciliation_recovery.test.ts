@@ -46,9 +46,7 @@ describe('historical deferred Stripe fee reconciliation migrations', () => {
     expect(sql).toMatch(/order_id\s+UUID\s+NOT\s+NULL/i);
     expect(sql).toMatch(/stripe_payment_intent_id\s+TEXT\s+NOT\s+NULL/i);
     expect(
-      /UNIQUE\s*\(\s*order_id\s*,\s*stripe_payment_intent_id\s*\)/i.test(
-        sql,
-      ) ||
+      /UNIQUE\s*\(\s*order_id\s*,\s*stripe_payment_intent_id\s*\)/i.test(sql) ||
         new RegExp(
           `CREATE\\s+UNIQUE\\s+INDEX(?:\\s+IF\\s+NOT\\s+EXISTS)?[\\s\\S]+?ON\\s+public\\.${JOB_TABLE}\\s*\\(\\s*order_id\\s*,\\s*stripe_payment_intent_id\\s*\\)`,
           'i',
@@ -115,15 +113,11 @@ describe('historical deferred Stripe fee reconciliation migrations', () => {
     expect(transitionRpc).toMatch(
       /WHERE[\s\S]*?id\s*=\s*p_job_id[\s\S]*?status\s*=\s*'processing'/i,
     );
-    expect(transitionRpc).toMatch(
-      /IF\s+NOT\s+FOUND[\s\S]*?RAISE\s+EXCEPTION/i,
-    );
+    expect(transitionRpc).toMatch(/IF\s+NOT\s+FOUND[\s\S]*?RAISE\s+EXCEPTION/i);
   });
 
   test('persists the fee and completes its claimed job in one transaction', () => {
-    const completionRpc = findRpc(
-      'fn_complete_stripe_fee_reconciliation_job',
-    );
+    const completionRpc = findRpc('fn_complete_stripe_fee_reconciliation_job');
 
     expect(completionRpc).not.toBe('');
     expect(completionRpc).toMatch(/p_job_id\s+UUID/i);
@@ -144,9 +138,7 @@ describe('historical deferred Stripe fee reconciliation migrations', () => {
         'i',
       ),
     );
-    expect(completionRpc).toMatch(
-      /IF\s+NOT\s+FOUND[\s\S]*?RAISE\s+EXCEPTION/i,
-    );
+    expect(completionRpc).toMatch(/IF\s+NOT\s+FOUND[\s\S]*?RAISE\s+EXCEPTION/i);
   });
 
   test('keeps reconciliation job RPCs private to service_role', () => {

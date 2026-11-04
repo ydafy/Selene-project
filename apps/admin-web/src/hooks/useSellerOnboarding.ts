@@ -48,7 +48,10 @@ export function useSellerOnboarding() {
       const { data, error } = await supabase.functions.invoke<
         EdgeFunctionRegistry['refresh-connect-account-status']['response']
       >('refresh-connect-account-status', {
-        body: { sellerId, force: true } satisfies EdgeFunctionRegistry['refresh-connect-account-status']['payload'],
+        body: {
+          sellerId,
+          force: true,
+        } satisfies EdgeFunctionRegistry['refresh-connect-account-status']['payload'],
       });
 
       if (error) {

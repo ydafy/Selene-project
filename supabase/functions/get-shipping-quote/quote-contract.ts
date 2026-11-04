@@ -1,18 +1,18 @@
 import {
   buildEnviaQuoteConfiguration,
   buildPaquetexpressGroundQuote,
-} from "../_shared/envia-shipping.ts";
+} from '../_shared/envia-shipping.ts';
 
 const providerTimeoutMs = 10_000;
 
 export type QuoteErrorCode =
-  | "UNKNOWN_PACKAGE_PRESET"
-  | "INVALID_PACKAGE_PRESET"
-  | "PROVIDER_HTTP_ERROR"
-  | "PROVIDER_MALFORMED_RESPONSE"
-  | "PROVIDER_RATE_UNAVAILABLE"
-  | "PROVIDER_TIMEOUT"
-  | "PROVIDER_NETWORK_ERROR";
+  | 'UNKNOWN_PACKAGE_PRESET'
+  | 'INVALID_PACKAGE_PRESET'
+  | 'PROVIDER_HTTP_ERROR'
+  | 'PROVIDER_MALFORMED_RESPONSE'
+  | 'PROVIDER_RATE_UNAVAILABLE'
+  | 'PROVIDER_TIMEOUT'
+  | 'PROVIDER_NETWORK_ERROR';
 
 export class QuoteContractError extends Error {
   constructor(readonly code: QuoteErrorCode) {
@@ -29,12 +29,13 @@ export type ResolvedPackagePreset = {
 };
 
 const asSafePositiveNumber = (value: unknown): number | null => {
-  if (typeof value !== "number" && typeof value !== "string") return null;
-  if (typeof value === "string" && value.trim() === "") return null;
+  if (typeof value !== 'number' && typeof value !== 'string') return null;
+  if (typeof value === 'string' && value.trim() === '') return null;
 
   const number = Number(value);
-  return Number.isFinite(number) && number > 0 &&
-      number <= Number.MAX_SAFE_INTEGER
+  return Number.isFinite(number) &&
+    number > 0 &&
+    number <= Number.MAX_SAFE_INTEGER
     ? number
     : null;
 };
@@ -44,17 +45,18 @@ export function resolvePackagePreset(
   requestedPackageId: string,
 ): ResolvedPackagePreset {
   if (
-    typeof packagePresets !== "object" ||
+    typeof packagePresets !== 'object' ||
     packagePresets === null ||
     Array.isArray(packagePresets)
   ) {
-    throw new QuoteContractError("UNKNOWN_PACKAGE_PRESET");
+    throw new QuoteContractError('UNKNOWN_PACKAGE_PRESET');
   }
 
-  const preset =
-    (packagePresets as Record<string, unknown>)[requestedPackageId];
-  if (typeof preset !== "object" || preset === null || Array.isArray(preset)) {
-    throw new QuoteContractError("UNKNOWN_PACKAGE_PRESET");
+  const preset = (packagePresets as Record<string, unknown>)[
+    requestedPackageId
+  ];
+  if (typeof preset !== 'object' || preset === null || Array.isArray(preset)) {
+    throw new QuoteContractError('UNKNOWN_PACKAGE_PRESET');
   }
 
   const source = preset as Record<string, unknown>;
@@ -63,7 +65,7 @@ export function resolvePackagePreset(
   const width = asSafePositiveNumber(source.width);
   const height = asSafePositiveNumber(source.height);
   if (weight === null || length === null || width === null || height === null) {
-    throw new QuoteContractError("INVALID_PACKAGE_PRESET");
+    throw new QuoteContractError('INVALID_PACKAGE_PRESET');
   }
 
   return { id: requestedPackageId, weight, length, width, height };
@@ -77,7 +79,7 @@ type QuoteInput = {
   originZip: string;
   destinationZip: string;
   price: number;
-  runtimeMode: "sandbox" | "production";
+  runtimeMode: 'sandbox' | 'production';
   apiUrl: string;
   apiKey: string;
   fetch: typeof globalThis.fetch;
@@ -85,17 +87,17 @@ type QuoteInput = {
 };
 
 const providerChargeFields = [
-  "basePrice",
-  "additionalCharges",
-  "discount",
-  "tax",
-  "taxes",
-  "insurance",
-  "fuelSurcharge",
+  'basePrice',
+  'additionalCharges',
+  'discount',
+  'tax',
+  'taxes',
+  'insurance',
+  'fuelSurcharge',
 ] as const;
 
 const sanitizeProviderCharges = (rate: unknown): Record<string, number> => {
-  if (typeof rate !== "object" || rate === null || Array.isArray(rate)) {
+  if (typeof rate !== 'object' || rate === null || Array.isArray(rate)) {
     return {};
   }
   const source = rate as Record<string, unknown>;
@@ -108,7 +110,7 @@ const sanitizeProviderCharges = (rate: unknown): Record<string, number> => {
 };
 
 const totalProviderPrice = (rate: unknown): number | null => {
-  if (typeof rate !== "object" || rate === null || Array.isArray(rate)) {
+  if (typeof rate !== 'object' || rate === null || Array.isArray(rate)) {
     return null;
   }
   const source = rate as Record<string, unknown>;
@@ -120,11 +122,11 @@ const totalProviderPrice = (rate: unknown): number | null => {
 const classifyTransportError = (error: unknown): QuoteErrorCode => {
   if (
     error instanceof DOMException &&
-    (error.name === "TimeoutError" || error.name === "AbortError")
+    (error.name === 'TimeoutError' || error.name === 'AbortError')
   ) {
-    return "PROVIDER_TIMEOUT";
+    return 'PROVIDER_TIMEOUT';
   }
-  return "PROVIDER_NETWORK_ERROR";
+  return 'PROVIDER_NETWORK_ERROR';
 };
 
 export async function quoteListingShipment(input: QuoteInput): Promise<{
@@ -137,14 +139,15 @@ export async function quoteListingShipment(input: QuoteInput): Promise<{
       input.requestedPackageId,
     );
   } catch (error) {
-    const code = error instanceof QuoteContractError
-      ? error.code
-      : "INVALID_PACKAGE_PRESET";
+    const code =
+      error instanceof QuoteContractError
+        ? error.code
+        : 'INVALID_PACKAGE_PRESET';
     input.log?.({
-      event: "shipping_quote_preset_rejected",
+      event: 'shipping_quote_preset_rejected',
       requestedPresetId: input.requestedPackageId,
       resolvedPresetId: null,
-      presetFound: code !== "UNKNOWN_PACKAGE_PRESET",
+      presetFound: code !== 'UNKNOWN_PACKAGE_PRESET',
       errorCode: code,
     });
     throw error;
@@ -152,40 +155,40 @@ export async function quoteListingShipment(input: QuoteInput): Promise<{
 
   const payload = {
     origin: {
-      name: "Selene Seller",
-      company: "Selene Marketplace",
-      email: "soporte@selene.com",
-      phone: "5512345678",
-      street: "Av. Principal",
-      number: "123",
-      district: "Centro",
-      city: "Mexico",
-      state: "MX",
-      country: "MX",
-      postalCode: input.originZip.padStart(5, "0"),
+      name: 'Selene Seller',
+      company: 'Selene Marketplace',
+      email: 'soporte@selene.com',
+      phone: '5512345678',
+      street: 'Av. Principal',
+      number: '123',
+      district: 'Centro',
+      city: 'Mexico',
+      state: 'MX',
+      country: 'MX',
+      postalCode: input.originZip.padStart(5, '0'),
     },
     destination: {
-      name: "Selene Buyer",
-      company: "Particular",
-      email: "comprador@selene.com",
-      phone: "5512345678",
-      street: "Av. Destino",
-      number: "456",
-      district: "Centro",
-      city: "Mexico",
-      state: "MX",
-      country: "MX",
-      postalCode: input.destinationZip.padStart(5, "0"),
+      name: 'Selene Buyer',
+      company: 'Particular',
+      email: 'comprador@selene.com',
+      phone: '5512345678',
+      street: 'Av. Destino',
+      number: '456',
+      district: 'Centro',
+      city: 'Mexico',
+      state: 'MX',
+      country: 'MX',
+      postalCode: input.destinationZip.padStart(5, '0'),
     },
     packages: [
       {
-        type: "box",
-        content: "Hardware de PC",
+        type: 'box',
+        content: 'Hardware de PC',
         amount: 1,
         name: preset.id,
         declaredValue: input.price,
-        lengthUnit: "CM",
-        weightUnit: "KG",
+        lengthUnit: 'CM',
+        weightUnit: 'KG',
         weight: preset.weight,
         dimensions: {
           length: preset.length,
@@ -199,11 +202,11 @@ export async function quoteListingShipment(input: QuoteInput): Promise<{
 
   let response: Response;
   try {
-    response = await input.fetch(new URL("ship/rate/", input.apiUrl), {
-      method: "POST",
+    response = await input.fetch(new URL('ship/rate/', input.apiUrl), {
+      method: 'POST',
       headers: {
-        accept: "application/json",
-        "content-type": "application/json",
+        accept: 'application/json',
+        'content-type': 'application/json',
         authorization: `Bearer ${input.apiKey}`,
       },
       body: JSON.stringify(payload),
@@ -211,7 +214,7 @@ export async function quoteListingShipment(input: QuoteInput): Promise<{
     });
   } catch (error) {
     const code = classifyTransportError(error);
-    input.log?.({ event: "shipping_quote_provider_failed", errorCode: code });
+    input.log?.({ event: 'shipping_quote_provider_failed', errorCode: code });
     throw new QuoteContractError(code);
   }
 
@@ -220,38 +223,38 @@ export async function quoteListingShipment(input: QuoteInput): Promise<{
     body = await response.json();
   } catch {
     input.log?.({
-      event: "shipping_quote_provider_failed",
-      errorCode: "PROVIDER_MALFORMED_RESPONSE",
+      event: 'shipping_quote_provider_failed',
+      errorCode: 'PROVIDER_MALFORMED_RESPONSE',
       providerStatus: response.status,
     });
-    throw new QuoteContractError("PROVIDER_MALFORMED_RESPONSE");
+    throw new QuoteContractError('PROVIDER_MALFORMED_RESPONSE');
   }
 
   if (!response.ok) {
     input.log?.({
-      event: "shipping_quote_provider_failed",
-      errorCode: "PROVIDER_HTTP_ERROR",
+      event: 'shipping_quote_provider_failed',
+      errorCode: 'PROVIDER_HTTP_ERROR',
       providerStatus: response.status,
     });
-    throw new QuoteContractError("PROVIDER_HTTP_ERROR");
+    throw new QuoteContractError('PROVIDER_HTTP_ERROR');
   }
 
-  if (typeof body !== "object" || body === null || Array.isArray(body)) {
-    throw new QuoteContractError("PROVIDER_MALFORMED_RESPONSE");
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+    throw new QuoteContractError('PROVIDER_MALFORMED_RESPONSE');
   }
   const rates = (body as Record<string, unknown>).data;
   if (!Array.isArray(rates)) {
-    throw new QuoteContractError("PROVIDER_MALFORMED_RESPONSE");
+    throw new QuoteContractError('PROVIDER_MALFORMED_RESPONSE');
   }
 
   const quote = buildPaquetexpressGroundQuote(rates);
-  if (!quote) throw new QuoteContractError("PROVIDER_RATE_UNAVAILABLE");
+  if (!quote) throw new QuoteContractError('PROVIDER_RATE_UNAVAILABLE');
 
   const selectedRate = rates.find(
     (rate) => buildPaquetexpressGroundQuote([rate]) !== null,
   );
   input.log?.({
-    event: "shipping_quote_resolved",
+    event: 'shipping_quote_resolved',
     requestedPresetId: input.requestedPackageId,
     resolvedPresetId: preset.id,
     presetFound: true,
@@ -265,11 +268,11 @@ export async function quoteListingShipment(input: QuoteInput): Promise<{
     originZipFormatValidated: true,
     destinationZipPresent: input.destinationZip.length > 0,
     destinationZipFormatValidated: true,
-    destinationIsListingReference: input.destinationZip === "06500",
+    destinationIsListingReference: input.destinationZip === '06500',
     runtimeMode: input.runtimeMode,
     carrier: quote.carrier,
     service: quote.service,
-    currency: "MXN",
+    currency: 'MXN',
     providerTotalPrice: totalProviderPrice(selectedRate),
     providerCharges: sanitizeProviderCharges(selectedRate),
   });

@@ -14,7 +14,10 @@ if (process.env.B61C_HOOK_CHILD !== '1') {
     expect(result.exitCode, output).toBe(0);
   });
 } else {
-  type QueryOptions = { queryKey: readonly unknown[]; queryFn: () => Promise<unknown> };
+  type QueryOptions = {
+    queryKey: readonly unknown[];
+    queryFn: () => Promise<unknown>;
+  };
   type MutationOptions = {
     mutationFn: (input: unknown) => Promise<unknown>;
     onSuccess?: (result: unknown, input: unknown) => Promise<void> | void;
@@ -67,8 +70,11 @@ if (process.env.B61C_HOOK_CHILD !== '1') {
       return resolveResult;
     },
   }));
-  const { useLabelReconciliations, useResolveLabelReconciliation, LABEL_RECONCILIATIONS_KEY } =
-    await import('./useLabelReconciliations');
+  const {
+    useLabelReconciliations,
+    useResolveLabelReconciliation,
+    LABEL_RECONCILIATIONS_KEY,
+  } = await import('./useLabelReconciliations');
 
   beforeEach(() => {
     queryState = { data: undefined, isLoading: false, isError: false };
@@ -77,10 +83,18 @@ if (process.env.B61C_HOOK_CHILD !== '1') {
     toasts.length = 0;
     resolveCalls.length = 0;
     resolveError = null;
-    resolveResult = { resolution: 'no_label', status: 'paid', labelGenerationState: 'unclaimed' };
+    resolveResult = {
+      resolution: 'no_label',
+      status: 'paid',
+      labelGenerationState: 'unclaimed',
+    };
   });
 
-  const noLabel = { shipmentId: 'ship-1', resolution: 'no_label', note: 'ok' } as const;
+  const noLabel = {
+    shipmentId: 'ship-1',
+    resolution: 'no_label',
+    note: 'ok',
+  } as const;
 
   it('queries the service under a stable key', async () => {
     useLabelReconciliations();
@@ -97,7 +111,11 @@ if (process.env.B61C_HOOK_CHILD !== '1') {
     expect(loading.cases).toEqual([]);
     queryState = { data: [], isLoading: false, isError: false };
     expect(useLabelReconciliations().count).toBe(0);
-    queryState = { data: [{ shipmentId: 'a' }, { shipmentId: 'b' }], isLoading: false, isError: false };
+    queryState = {
+      data: [{ shipmentId: 'a' }, { shipmentId: 'b' }],
+      isLoading: false,
+      isError: false,
+    };
     expect(useLabelReconciliations().count).toBe(2);
     queryState = { data: undefined, isLoading: false, isError: true };
     const failed = useLabelReconciliations();
@@ -110,11 +128,17 @@ if (process.env.B61C_HOOK_CHILD !== '1') {
     expect(await resolve(noLabel)).toEqual(resolveResult);
     expect(resolveCalls).toEqual([[noLabel]]);
     expect(invalidations).toEqual([{ queryKey: ['label-reconciliations'] }]);
-    expect(toasts).toEqual([['success', 'Envío liberado: el vendedor puede generar la guía de nuevo']]);
+    expect(toasts).toEqual([
+      ['success', 'Envío liberado: el vendedor puede generar la guía de nuevo'],
+    ]);
   });
 
   it('confirms a found label with its own message', async () => {
-    resolveResult = { resolution: 'label_found', status: 'preparing', labelGenerationState: 'generated' };
+    resolveResult = {
+      resolution: 'label_found',
+      status: 'preparing',
+      labelGenerationState: 'generated',
+    };
     const { resolve } = useResolveLabelReconciliation();
     await resolve({
       shipmentId: 'ship-1',
@@ -125,11 +149,15 @@ if (process.env.B61C_HOOK_CHILD !== '1') {
       labelUrl: 'https://x.example/l.pdf',
       providerCostCents: 100,
     });
-    expect(toasts).toEqual([['success', 'Guía registrada: el envío sigue su curso']]);
+    expect(toasts).toEqual([
+      ['success', 'Guía registrada: el envío sigue su curso'],
+    ]);
   });
 
   it('does not refresh or confirm when the server rejects', async () => {
-    resolveError = Object.assign(new Error('INVALID_PROVIDER_RESULT'), { code: 'INVALID_PROVIDER_RESULT' });
+    resolveError = Object.assign(new Error('INVALID_PROVIDER_RESULT'), {
+      code: 'INVALID_PROVIDER_RESULT',
+    });
     const { resolve } = useResolveLabelReconciliation();
     await expect(resolve(noLabel)).rejects.toThrow('INVALID_PROVIDER_RESULT');
     expect(invalidations).toEqual([]);
@@ -137,7 +165,9 @@ if (process.env.B61C_HOOK_CHILD !== '1') {
   });
 
   it('refreshes the list when the shipment was already resolved', async () => {
-    resolveError = Object.assign(new Error('conflict'), { code: 'ALREADY_RESOLVED' });
+    resolveError = Object.assign(new Error('conflict'), {
+      code: 'ALREADY_RESOLVED',
+    });
     const { resolve } = useResolveLabelReconciliation();
     await expect(resolve(noLabel)).rejects.toThrow('conflict');
     expect(invalidations).toEqual([{ queryKey: ['label-reconciliations'] }]);

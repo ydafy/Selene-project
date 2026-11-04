@@ -105,7 +105,9 @@ export const PayoutRunRow = ({
               Ejecución: {run.runId}
             </p>
             {detail ? (
-              <p className="mt-1 text-xs capitalize text-blue-light">{detail}</p>
+              <p className="mt-1 text-xs capitalize text-blue-light">
+                {detail}
+              </p>
             ) : null}
           </div>
         </div>
@@ -143,9 +145,7 @@ export const PayoutBucketEmptyState = ({
   description,
 }: PayoutBucketEmptyStateProps) => (
   <div className="bg-state-gray border border-white/5 rounded-3xl p-10 text-center flex flex-col items-center justify-center">
-    <div
-      className={`p-4 rounded-full mb-3 ${EMPTY_STATE_PRESENTATION[tone]}`}
-    >
+    <div className={`p-4 rounded-full mb-3 ${EMPTY_STATE_PRESENTATION[tone]}`}>
       <Icon size={28} />
     </div>
     <h3 className="text-base font-bold text-platinum">{title}</h3>

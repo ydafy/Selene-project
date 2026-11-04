@@ -22,58 +22,60 @@ const jsonResponse = (body: SellerOnboardingResponse, status: number) =>
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 
-serve(withSentry('get-seller-onboarding', async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
-
-  try {
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    if (!serviceRoleKey || !supabaseUrl) {
-      throw new Error('MISSING_SERVER_CONFIG');
+serve(
+  withSentry('get-seller-onboarding', async (req) => {
+    if (req.method === 'OPTIONS') {
+      return new Response('ok', { headers: corsHeaders });
     }
 
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      throw new Error('AUTH_REQUIRED');
+    try {
+      const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      const supabaseUrl = Deno.env.get('SUPABASE_URL');
+      if (!serviceRoleKey || !supabaseUrl) {
+        throw new Error('MISSING_SERVER_CONFIG');
+      }
+
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader?.startsWith('Bearer ')) {
+        throw new Error('AUTH_REQUIRED');
+      }
+
+      const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+      const token = authHeader.slice('Bearer '.length);
+      const {
+        data: { user },
+        error: authError,
+      } = await supabaseAdmin.auth.getUser(token);
+      if (authError || !user) throw new Error('AUTH_REQUIRED');
+
+      const { data: profile, error: profileError } = await supabaseAdmin
+        .from('profiles_private')
+        .select('role, stripe_account_id, stripe_onboarding_status')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const response = await resolveSellerOnboardingResponse({
+        profile,
+        profileError,
+        loadAdminRows: async () => {
+          const { data, error } = await supabaseAdmin
+            .from('admin_seller_onboarding_view')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+          return { data, error };
+        },
+      });
+
+      return jsonResponse(response, 200);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      const status =
+        error instanceof GetSellerOnboardingError
+          ? error.status
+          : getSellerOnboardingErrorStatus(message);
+
+      return jsonResponse({ success: false, error: message }, status);
     }
-
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
-    const token = authHeader.slice('Bearer '.length);
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseAdmin.auth.getUser(token);
-    if (authError || !user) throw new Error('AUTH_REQUIRED');
-
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from('profiles_private')
-      .select('role, stripe_account_id, stripe_onboarding_status')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    const response = await resolveSellerOnboardingResponse({
-      profile,
-      profileError,
-      loadAdminRows: async () => {
-        const { data, error } = await supabaseAdmin
-          .from('admin_seller_onboarding_view')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        return { data, error };
-      },
-    });
-
-    return jsonResponse(response, 200);
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    const status =
-      error instanceof GetSellerOnboardingError
-        ? error.status
-        : getSellerOnboardingErrorStatus(message);
-
-    return jsonResponse({ success: false, error: message }, status);
-  }
-}));
+  }),
+);

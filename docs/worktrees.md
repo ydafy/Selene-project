@@ -11,13 +11,13 @@ The Git hooks set up a worktree on their own:
 
 ## What a worktree leaves behind
 
-| Item                                                                                               | Where                                          | Removed by deleting the folder?                                   |
-| -------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------- |
+| Item                                                                                                              | Where                                          | Removed by deleting the folder?                                   |
+| ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------- |
 | Worktree folder (`node_modules`, `.env` copies, `.local/`, `.codegraph/`, `bruno/.env`, `verification-evidence/`) | `C:/dev/School-portal-worktrees/<name>`        | Yes                                                               |
-| Worktree registration                                                                              | `.git/worktrees/<name>` in the main checkout   | No: needs `git worktree prune`                                    |
-| Local branch                                                                                       | main checkout                                  | No                                                                |
-| Remote branch                                                                                      | GitHub                                         | Yes, on merge: the repository deletes head branches automatically |
-| Local Supabase stack (stack mode creates one per worktree and branch)                              | `~/.supabase/stacks/<hash>`, Docker containers | No                                                                |
+| Worktree registration                                                                                             | `.git/worktrees/<name>` in the main checkout   | No: needs `git worktree prune`                                    |
+| Local branch                                                                                                      | main checkout                                  | No                                                                |
+| Remote branch                                                                                                     | GitHub                                         | Yes, on merge: the repository deletes head branches automatically |
+| Local Supabase stack (stack mode creates one per worktree and branch)                                             | `~/.supabase/stacks/<hash>`, Docker containers | No                                                                |
 
 ## Clean up a finished worktree
 

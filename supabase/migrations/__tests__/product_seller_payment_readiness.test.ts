@@ -53,16 +53,19 @@ describe('fn_product_seller_payment_readiness', () => {
   test.each([
     ['migration', migration],
     ['canonical file', canonical],
-  ])('%s is a read-only definer function with a pinned search_path', (_, sql) => {
-    const code = normalize(sql);
-    expect(code).toMatch(
-      /FUNCTION public\.fn_product_seller_payment_readiness\( ?p_product_ids UUID\[\] ?\) RETURNS TABLE ?\( ?product_id UUID, seller_accepts_payments BOOLEAN ?\)/i,
-    );
-    expect(code).toMatch(/\bSTABLE\b/);
-    expect(code).toMatch(/SECURITY DEFINER/);
-    expect(code).toMatch(/SET search_path = public, pg_temp/);
-    expect(code).not.toMatch(/\b(INSERT|UPDATE|DELETE)\b/i);
-  });
+  ])(
+    '%s is a read-only definer function with a pinned search_path',
+    (_, sql) => {
+      const code = normalize(sql);
+      expect(code).toMatch(
+        /FUNCTION public\.fn_product_seller_payment_readiness\( ?p_product_ids UUID\[\] ?\) RETURNS TABLE ?\( ?product_id UUID, seller_accepts_payments BOOLEAN ?\)/i,
+      );
+      expect(code).toMatch(/\bSTABLE\b/);
+      expect(code).toMatch(/SECURITY DEFINER/);
+      expect(code).toMatch(/SET search_path = public, pg_temp/);
+      expect(code).not.toMatch(/\b(INSERT|UPDATE|DELETE)\b/i);
+    },
+  );
 
   test.each([
     ['migration', migration],
@@ -81,12 +84,15 @@ describe('fn_product_seller_payment_readiness', () => {
   test.each([
     ['migration', migration],
     ['canonical file', canonical],
-  ])('%s only answers for live VERIFIED listings and caps the input', (_, sql) => {
-    const code = normalize(sql);
-    expect(code).toContain("p.status = 'VERIFIED'");
-    expect(code).toContain('p.deleted_at IS NULL');
-    expect(code).toContain('p_product_ids[1:50]');
-  });
+  ])(
+    '%s only answers for live VERIFIED listings and caps the input',
+    (_, sql) => {
+      const code = normalize(sql);
+      expect(code).toContain("p.status = 'VERIFIED'");
+      expect(code).toContain('p.deleted_at IS NULL');
+      expect(code).toContain('p_product_ids[1:50]');
+    },
+  );
 
   test('revokes PUBLIC and grants only the API roles that browse listings', () => {
     const code = normalize(migration);

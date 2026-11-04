@@ -29,13 +29,28 @@ const pending = (overrides: Partial<ClosureCleanup> = {}): ClosureCleanup => ({
 });
 
 function stripeError(code: string) {
-  return Object.assign(new Error('You cannot delete acct_test_123 for jane@example.com'), { code });
+  return Object.assign(
+    new Error('You cannot delete acct_test_123 for jane@example.com'),
+    { code },
+  );
 }
 
-function ports(overrides: { customer?: Error; account?: Error; storage?: Error; record?: Error } = {}) {
-  const calls = { customer: [] as string[], account: [] as string[], storage: [] as string[] };
+function ports(
+  overrides: {
+    customer?: Error;
+    account?: Error;
+    storage?: Error;
+    record?: Error;
+  } = {},
+) {
+  const calls = {
+    customer: [] as string[],
+    account: [] as string[],
+    storage: [] as string[],
+  };
   const records: ClosureCleanupUpdate[] = [];
-  const logs: { level: string; msg: string; data?: Record<string, unknown> }[] = [];
+  const logs: { level: string; msg: string; data?: Record<string, unknown> }[] =
+    [];
   const value: ClosureCleanupPorts = {
     deleteStripeCustomer: async (id) => {
       calls.customer.push(id);
@@ -62,8 +77,12 @@ function ports(overrides: { customer?: Error; account?: Error; storage?: Error; 
 
 describe('safeErrorCode', () => {
   it('keeps a lowercase snake_case code and hides everything else', () => {
-    expect(safeErrorCode(stripeError('balance_insufficient'))).toBe('balance_insufficient');
-    expect(safeErrorCode(stripeError('Has Spaces jane@example.com'))).toBe('error');
+    expect(safeErrorCode(stripeError('balance_insufficient'))).toBe(
+      'balance_insufficient',
+    );
+    expect(safeErrorCode(stripeError('Has Spaces jane@example.com'))).toBe(
+      'error',
+    );
     expect(safeErrorCode(new Error('plain'))).toBe('error');
     expect(safeErrorCode(null)).toBe('error');
     expect(safeErrorCode('text')).toBe('error');
@@ -90,7 +109,9 @@ describe('parseClosureCleanup', () => {
   });
 
   it('rejects a row with a wrong shape', () => {
-    expect(parseClosureCleanup({ ...row, storage_cleanup: 'weird' })).toBeNull();
+    expect(
+      parseClosureCleanup({ ...row, storage_cleanup: 'weird' }),
+    ).toBeNull();
     expect(parseClosureCleanup({ ...row, stripe_customer_id: 5 })).toBeNull();
     expect(parseClosureCleanup({})).toBeNull();
   });
@@ -101,7 +122,11 @@ describe('runClosureCleanup', () => {
     const p = ports();
     const result = await runClosureCleanup(USER, pending(), p.value);
     expect(result).toEqual({ failures: [] });
-    expect(p.calls).toEqual({ customer: [CUSTOMER], account: [ACCOUNT], storage: [USER] });
+    expect(p.calls).toEqual({
+      customer: [CUSTOMER],
+      account: [ACCOUNT],
+      storage: [USER],
+    });
     expect(p.records).toEqual([
       { stripe_customer_cleanup: 'done' },
       { stripe_account_cleanup: 'done' },
@@ -112,9 +137,14 @@ describe('runClosureCleanup', () => {
 
   it('stamps last_error without counting when the caller already counted the attempt', async () => {
     const p = ports({ storage: new Error('x') });
-    const result = await runClosureCleanup(USER, pending(), p.value, { countAttempt: false });
+    const result = await runClosureCleanup(USER, pending(), p.value, {
+      countAttempt: false,
+    });
     expect(result).toEqual({ failures: ['storage:error'] });
-    expect(p.records.at(-1)).toEqual({ finish: true, last_error: 'storage:error' });
+    expect(p.records.at(-1)).toEqual({
+      finish: true,
+      last_error: 'storage:error',
+    });
     expect(p.records.some((update) => 'attempt' in update)).toBe(false);
   });
 
@@ -122,18 +152,29 @@ describe('runClosureCleanup', () => {
     const p = ports();
     await runClosureCleanup(
       USER,
-      pending({ customerCleanup: 'done', accountCleanup: 'failed', storageCleanup: 'not_needed' }),
+      pending({
+        customerCleanup: 'done',
+        accountCleanup: 'failed',
+        storageCleanup: 'not_needed',
+      }),
       p.value,
     );
     expect(p.calls).toEqual({ customer: [], account: [ACCOUNT], storage: [] });
-    expect(p.records).toEqual([{ stripe_account_cleanup: 'done' }, { attempt: true, last_error: null }]);
+    expect(p.records).toEqual([
+      { stripe_account_cleanup: 'done' },
+      { attempt: true, last_error: null },
+    ]);
   });
 
   it('writes nothing when nothing is left', async () => {
     const p = ports();
     const result = await runClosureCleanup(
       USER,
-      pending({ customerCleanup: 'done', accountCleanup: 'not_needed', storageCleanup: 'done' }),
+      pending({
+        customerCleanup: 'done',
+        accountCleanup: 'not_needed',
+        storageCleanup: 'done',
+      }),
       p.value,
     );
     expect(result).toEqual({ failures: [] });
@@ -141,21 +182,34 @@ describe('runClosureCleanup', () => {
   });
 
   it('treats resource_missing and account_invalid as gone, other codes as failures', async () => {
-    const gone = ports({ customer: stripeError('resource_missing'), account: stripeError('account_invalid') });
-    expect((await runClosureCleanup(USER, pending(), gone.value)).failures).toEqual([]);
+    const gone = ports({
+      customer: stripeError('resource_missing'),
+      account: stripeError('account_invalid'),
+    });
+    expect(
+      (await runClosureCleanup(USER, pending(), gone.value)).failures,
+    ).toEqual([]);
 
     const balance = ports({ account: stripeError('balance_insufficient') });
     const result = await runClosureCleanup(USER, pending(), balance.value);
     expect(result.failures).toEqual(['stripe_account:balance_insufficient']);
-    expect(balance.records).toContainEqual({ stripe_account_cleanup: 'failed' });
+    expect(balance.records).toContainEqual({
+      stripe_account_cleanup: 'failed',
+    });
     // resource_missing is not "gone" for a Connect account.
     const missing = ports({ account: stripeError('resource_missing') });
-    expect((await runClosureCleanup(USER, pending(), missing.value)).failures).toEqual([]);
+    expect(
+      (await runClosureCleanup(USER, pending(), missing.value)).failures,
+    ).toEqual([]);
   });
 
   it('marks a Stripe step not_needed when the closure holds no id', async () => {
     const p = ports();
-    await runClosureCleanup(USER, pending({ customerId: null, accountId: null }), p.value);
+    await runClosureCleanup(
+      USER,
+      pending({ customerId: null, accountId: null }),
+      p.value,
+    );
     expect(p.calls.customer).toEqual([]);
     expect(p.calls.account).toEqual([]);
     expect(p.records.slice(0, 2)).toEqual([
@@ -165,7 +219,11 @@ describe('runClosureCleanup', () => {
   });
 
   it('survives a failing recorder and never logs raw messages', async () => {
-    const p = ports({ record: new Error('duplicate key value violates constraint "secret_table_pkey"') });
+    const p = ports({
+      record: new Error(
+        'duplicate key value violates constraint "secret_table_pkey"',
+      ),
+    });
     const result = await runClosureCleanup(USER, pending(), p.value);
     expect(result).toEqual({ failures: [] });
     expect(JSON.stringify(p.logs)).not.toContain('secret_table');
@@ -176,14 +234,18 @@ describe('ownProductPath', () => {
   const base = 'https://x.supabase.co/storage/v1/object/public/products/';
 
   it('returns the path inside the user folder only', () => {
-    expect(ownProductPath(`${base}${USER}/a%20b.jpg?t=1`, USER)).toBe(`${USER}/a b.jpg`);
+    expect(ownProductPath(`${base}${USER}/a%20b.jpg?t=1`, USER)).toBe(
+      `${USER}/a b.jpg`,
+    );
     expect(ownProductPath(`${base}other/a.jpg`, USER)).toBeNull();
     expect(ownProductPath(`${base}${USER}/../other/a.jpg`, USER)).toBeNull();
     expect(ownProductPath('https://elsewhere.test/a.jpg', USER)).toBeNull();
   });
 
   it('skips a URL whose path does not decode instead of throwing', () => {
-    expect(() => ownProductPath(`${base}${USER}/%E0%A4%A.jpg`, USER)).not.toThrow();
+    expect(() =>
+      ownProductPath(`${base}${USER}/%E0%A4%A.jpg`, USER),
+    ).not.toThrow();
     expect(ownProductPath(`${base}${USER}/%E0%A4%A.jpg`, USER)).toBeNull();
   });
 });
@@ -225,16 +287,33 @@ describe('removeAvatarFolder', () => {
 
   it('propagates a list or remove failure', async () => {
     await expect(
-      removeAvatarFolder({ list: async () => { throw new Error('list'); }, remove: async () => {} }, USER),
+      removeAvatarFolder(
+        {
+          list: async () => {
+            throw new Error('list');
+          },
+          remove: async () => {},
+        },
+        USER,
+      ),
     ).rejects.toThrow('list');
     await expect(
-      removeAvatarFolder({ list: async () => ['a'], remove: async () => { throw new Error('remove'); } }, USER),
+      removeAvatarFolder(
+        {
+          list: async () => ['a'],
+          remove: async () => {
+            throw new Error('remove');
+          },
+        },
+        USER,
+      ),
     ).rejects.toThrow('remove');
   });
 });
 
 describe('removeListingImages', () => {
-  const url = (name: string) => `https://x.supabase.co/storage/v1/object/public/products/${USER}/${name}`;
+  const url = (name: string) =>
+    `https://x.supabase.co/storage/v1/object/public/products/${USER}/${name}`;
 
   it('removes only own images of soft-deleted listings that never reached an order', async () => {
     const removed: string[][] = [];
@@ -278,7 +357,11 @@ describe('removeListingImages', () => {
 describe('createSupabaseClosurePorts.recordCleanup', () => {
   function fake() {
     const rpcCalls: { name: string; args: Record<string, unknown> }[] = [];
-    const updates: { values: Record<string, unknown>; column: string; value: string }[] = [];
+    const updates: {
+      values: Record<string, unknown>;
+      column: string;
+      value: string;
+    }[] = [];
     const admin = {
       rpc: async (name: string, args: Record<string, unknown>) => {
         rpcCalls.push({ name, args });
@@ -298,18 +381,28 @@ describe('createSupabaseClosurePorts.recordCleanup', () => {
     };
     const built = createSupabaseClosurePorts({
       getAdmin: () => admin as never,
-      getStripe: () => ({ customers: { del: async () => ({}) }, accounts: { del: async () => ({}) } }),
+      getStripe: () => ({
+        customers: { del: async () => ({}) },
+        accounts: { del: async () => ({}) },
+      }),
     });
     return { built, rpcCalls, updates };
   }
 
   it('counts an attempt through the atomic RPC, never a read then write', async () => {
     const { built, rpcCalls, updates } = fake();
-    await built.recordCleanup(USER, { attempt: true, last_error: 'storage:error' });
+    await built.recordCleanup(USER, {
+      attempt: true,
+      last_error: 'storage:error',
+    });
     expect(rpcCalls).toEqual([
       {
         name: 'fn_record_closure_attempt',
-        args: { p_user_id: USER, p_last_error: 'storage:error', p_count_attempt: true },
+        args: {
+          p_user_id: USER,
+          p_last_error: 'storage:error',
+          p_count_attempt: true,
+        },
       },
     ]);
     expect(updates).toEqual([]);
@@ -318,7 +411,11 @@ describe('createSupabaseClosurePorts.recordCleanup', () => {
   it('stamps last_error without counting', async () => {
     const { built, rpcCalls } = fake();
     await built.recordCleanup(USER, { finish: true, last_error: null });
-    expect(rpcCalls[0].args).toEqual({ p_user_id: USER, p_last_error: null, p_count_attempt: false });
+    expect(rpcCalls[0].args).toEqual({
+      p_user_id: USER,
+      p_last_error: null,
+      p_count_attempt: false,
+    });
   });
 
   it('writes a step state with a plain update stamped updated_at', async () => {
@@ -334,13 +431,22 @@ describe('createSupabaseClosurePorts.recordCleanup', () => {
   it('throws when the database refuses the write', async () => {
     const admin = {
       rpc: async () => ({ error: { message: 'boom' } }),
-      from: () => ({ update: () => ({ eq: async () => ({ error: { message: 'boom' } }) }) }),
+      from: () => ({
+        update: () => ({ eq: async () => ({ error: { message: 'boom' } }) }),
+      }),
     };
     const built = createSupabaseClosurePorts({
       getAdmin: () => admin as never,
-      getStripe: () => ({ customers: { del: async () => ({}) }, accounts: { del: async () => ({}) } }),
+      getStripe: () => ({
+        customers: { del: async () => ({}) },
+        accounts: { del: async () => ({}) },
+      }),
     });
-    await expect(built.recordCleanup(USER, { storage_cleanup: 'done' })).rejects.toThrow('boom');
-    await expect(built.recordCleanup(USER, { attempt: true, last_error: null })).rejects.toThrow('boom');
+    await expect(
+      built.recordCleanup(USER, { storage_cleanup: 'done' }),
+    ).rejects.toThrow('boom');
+    await expect(
+      built.recordCleanup(USER, { attempt: true, last_error: null }),
+    ).rejects.toThrow('boom');
   });
 });

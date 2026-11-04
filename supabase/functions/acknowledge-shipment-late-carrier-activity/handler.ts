@@ -14,7 +14,8 @@ import { z } from '../_shared/zod-runtime.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type',
 };
 const JSON_HEADERS = { ...CORS_HEADERS, 'Content-Type': 'application/json' };
 
@@ -38,13 +39,18 @@ export type AcknowledgeShipmentLateCarrierActivityDeps = {
   acknowledge: (
     input: AcknowledgeShipmentLateCarrierActivityInput,
   ) => Promise<{ data: unknown; error: { message: string } | null }>;
-  log: (level: 'INFO' | 'WARN' | 'ERROR', msg: string, data?: Record<string, unknown>) => unknown;
+  log: (
+    level: 'INFO' | 'WARN' | 'ERROR',
+    msg: string,
+    data?: Record<string, unknown>,
+  ) => unknown;
 };
 
 const respond = (status: number, body: Record<string, unknown>): Response =>
   new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
 
-const fail = (status: number, code: string): Response => respond(status, { error: code });
+const fail = (status: number, code: string): Response =>
+  respond(status, { error: code });
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -55,8 +61,16 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
 const RPC_ERRORS: readonly { sql: string; status: number; code: string }[] = [
   { sql: 'ADMIN_REQUIRED', status: 403, code: 'ADMIN_ONLY' },
   { sql: 'SHIPMENT_NOT_FOUND', status: 404, code: 'SHIPMENT_NOT_FOUND' },
-  { sql: 'LATE_CARRIER_ACTIVITY_NOT_FOUND', status: 404, code: 'LATE_CARRIER_ACTIVITY_NOT_FOUND' },
-  { sql: 'INVALID_ACKNOWLEDGEMENT_NOTE', status: 422, code: 'INVALID_ACKNOWLEDGEMENT_NOTE' },
+  {
+    sql: 'LATE_CARRIER_ACTIVITY_NOT_FOUND',
+    status: 404,
+    code: 'LATE_CARRIER_ACTIVITY_NOT_FOUND',
+  },
+  {
+    sql: 'INVALID_ACKNOWLEDGEMENT_NOTE',
+    status: 422,
+    code: 'INVALID_ACKNOWLEDGEMENT_NOTE',
+  },
 ];
 
 function mapRpcError(message: string): { status: number; code: string } | null {
@@ -66,12 +80,15 @@ function mapRpcError(message: string): { status: number; code: string } | null {
 function parseResult(data: unknown): Record<string, unknown> | null {
   const result = asRecord(data);
   if (!result) return null;
-  const acknowledgedAt = typeof result.acknowledged_at === 'string'
-    ? new Date(result.acknowledged_at)
-    : null;
+  const acknowledgedAt =
+    typeof result.acknowledged_at === 'string'
+      ? new Date(result.acknowledged_at)
+      : null;
   if (
-    !acknowledgedAt || Number.isNaN(acknowledgedAt.getTime()) ||
-    typeof result.acknowledged_by !== 'string' || result.acknowledged_by === '' ||
+    !acknowledgedAt ||
+    Number.isNaN(acknowledgedAt.getTime()) ||
+    typeof result.acknowledged_by !== 'string' ||
+    result.acknowledged_by === '' ||
     typeof result.acknowledged_note !== 'string' ||
     typeof result.already_acknowledged !== 'boolean'
   ) {
@@ -89,12 +106,15 @@ export function createAcknowledgeShipmentLateCarrierActivityHandler(
   deps: AcknowledgeShipmentLateCarrierActivityDeps,
 ) {
   return async (req: Request): Promise<Response> => {
-    if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
+    if (req.method === 'OPTIONS')
+      return new Response('ok', { headers: CORS_HEADERS });
     if (req.method !== 'POST') return fail(405, 'METHOD_NOT_ALLOWED');
 
     try {
       const authorization = req.headers.get('Authorization') ?? '';
-      const token = authorization.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
+      const token = authorization.startsWith('Bearer ')
+        ? authorization.slice(7).trim()
+        : '';
       if (!token) return fail(401, 'AUTH_REQUIRED');
 
       const adminId = await deps.getUserId(token);
@@ -114,19 +134,29 @@ export function createAcknowledgeShipmentLateCarrierActivityHandler(
         note: note.data,
       });
       if (error) {
-        deps.log('ERROR', 'Shipment late carrier activity acknowledgement failed', {
-          shipmentId: shipmentId.data,
-          error: error.message,
-        });
+        deps.log(
+          'ERROR',
+          'Shipment late carrier activity acknowledgement failed',
+          {
+            shipmentId: shipmentId.data,
+            error: error.message,
+          },
+        );
         const mapped = mapRpcError(error.message);
-        return mapped ? fail(mapped.status, mapped.code) : fail(500, 'INTERNAL_ERROR');
+        return mapped
+          ? fail(mapped.status, mapped.code)
+          : fail(500, 'INTERNAL_ERROR');
       }
 
       const result = parseResult(data);
       if (!result) {
-        deps.log('ERROR', 'Shipment late carrier activity acknowledgement returned an unusable result', {
-          shipmentId: shipmentId.data,
-        });
+        deps.log(
+          'ERROR',
+          'Shipment late carrier activity acknowledgement returned an unusable result',
+          {
+            shipmentId: shipmentId.data,
+          },
+        );
         return fail(500, 'INTERNAL_ERROR');
       }
 
@@ -137,9 +167,13 @@ export function createAcknowledgeShipmentLateCarrierActivityHandler(
       });
       return respond(200, result);
     } catch (error: unknown) {
-      deps.log('ERROR', 'Shipment late carrier activity acknowledgement crashed', {
-        error: error instanceof Error ? error.message : String(error),
-      });
+      deps.log(
+        'ERROR',
+        'Shipment late carrier activity acknowledgement crashed',
+        {
+          error: error instanceof Error ? error.message : String(error),
+        },
+      );
       return fail(500, 'INTERNAL_ERROR');
     }
   };

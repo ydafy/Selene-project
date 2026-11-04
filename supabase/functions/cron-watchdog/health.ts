@@ -51,7 +51,10 @@ const intervalMinutes = (schedule: string): number | null => {
   return null;
 };
 
-const classify = (row: CronHealthRow, now: Date): CronUnhealthyReason | null => {
+const classify = (
+  row: CronHealthRow,
+  now: Date,
+): CronUnhealthyReason | null => {
   if (row.last_status === 'failed') return 'failed';
 
   const interval = intervalMinutes(row.schedule);
@@ -59,7 +62,9 @@ const classify = (row: CronHealthRow, now: Date): CronUnhealthyReason | null => 
 
   if (!row.last_start) return 'overdue';
   const thresholdMs = (2 * interval + GRACE_MINUTES) * MINUTE_MS;
-  return now.getTime() - new Date(row.last_start).getTime() > thresholdMs ? 'overdue' : null;
+  return now.getTime() - new Date(row.last_start).getTime() > thresholdMs
+    ? 'overdue'
+    : null;
 };
 
 /**
@@ -67,12 +72,17 @@ const classify = (row: CronHealthRow, now: Date): CronUnhealthyReason | null => 
  * 2x their schedule interval + 5 minutes (or never ran), or whose schedule the
  * watchdog cannot interpret. One reason per job, ordered by jobname.
  */
-export function evaluateCronHealth(rows: CronHealthRow[], now: Date): CronUnhealthyJob[] {
+export function evaluateCronHealth(
+  rows: CronHealthRow[],
+  now: Date,
+): CronUnhealthyJob[] {
   return rows
     .filter((row) => row.active)
     .flatMap((row) => {
       const reason = classify(row, now);
       return reason ? [{ jobname: row.jobname, reason }] : [];
     })
-    .sort((a, b) => (a.jobname < b.jobname ? -1 : a.jobname > b.jobname ? 1 : 0));
+    .sort((a, b) =>
+      a.jobname < b.jobname ? -1 : a.jobname > b.jobname ? 1 : 0,
+    );
 }

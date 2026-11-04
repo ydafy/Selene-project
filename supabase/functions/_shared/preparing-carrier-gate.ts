@@ -8,7 +8,10 @@ import type { CancellationConfirmation } from './shipment-cancellation.ts';
 
 export type ReviewReason =
   'tracking_unknown' | 'carrier_refused' | 'carrier_ambiguous';
-type AcceptedCancellation = Extract<EnviaCancelOutcome, { outcome: 'accepted' }>;
+type AcceptedCancellation = Extract<
+  EnviaCancelOutcome,
+  { outcome: 'accepted' }
+>;
 
 export interface PreparingCarrierShipment {
   id: string;
@@ -23,7 +26,9 @@ export interface PreparingCarrierGatePorts {
   carrierAvailable: boolean;
   /** Service RPC `fn_get_shipment_carrier_cancellation`. */
   getStoredState: (shipmentId: string) => Promise<unknown>;
-  fetchFreshTracking: (trackingNumber: string) => Promise<FreshTrackingAssessment>;
+  fetchFreshTracking: (
+    trackingNumber: string,
+  ) => Promise<FreshTrackingAssessment>;
   /**
    * Service RPC `fn_record_tracking_event`; throws on failure. Returns the shipment status
    * after the event, so the gate can tell whether the shipment actually left `preparing`.

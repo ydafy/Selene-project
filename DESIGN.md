@@ -44,17 +44,17 @@ Selene must never look like:
 
 Both apps use the same palette and typeface. Names differ by platform.
 
-| Role               | Value     | App (Restyle)                   | Admin (Tailwind)  |
-| ------------------ | --------- | ------------------------------- | ----------------- |
-| Background         | `#121212` | `background` (`night`)          | `night`           |
-| Card / surface     | `#1e1e1e` | `cardBackground` (`stateGray`)  | `state-gray`      |
-| Primary text       | `#e4e4e4` | `textPrimary` (`platinum`)      | `platinum`        |
-| Secondary text     | `#6f839f` | `textSecondary` (`blueLight`)   | `blue-light`      |
-| Accent             | `#bd9f65` | `primary` (`lion`)              | `lion`            |
-| Success            | `#28a745` | `success` (`forest`)            | `forest`          |
-| Error              | `#dc3545` | `error` (`fire`)                | `fire`            |
-| Warning            | `#f59e0b` | `warning` (`amber`)             | (none)            |
-| Error panel        | `#dc35451a` | `errorSubtle` (`fireSubtle`)  | (none)            |
+| Role           | Value       | App (Restyle)                  | Admin (Tailwind) |
+| -------------- | ----------- | ------------------------------ | ---------------- |
+| Background     | `#121212`   | `background` (`night`)         | `night`          |
+| Card / surface | `#1e1e1e`   | `cardBackground` (`stateGray`) | `state-gray`     |
+| Primary text   | `#e4e4e4`   | `textPrimary` (`platinum`)     | `platinum`       |
+| Secondary text | `#6f839f`   | `textSecondary` (`blueLight`)  | `blue-light`     |
+| Accent         | `#bd9f65`   | `primary` (`lion`)             | `lion`           |
+| Success        | `#28a745`   | `success` (`forest`)           | `forest`         |
+| Error          | `#dc3545`   | `error` (`fire`)               | `fire`           |
+| Warning        | `#f59e0b`   | `warning` (`amber`)            | (none)           |
+| Error panel    | `#dc35451a` | `errorSubtle` (`fireSubtle`)   | (none)           |
 
 - `warning` is for caution icons, borders, and status dots. `errorSubtle` is the background of an error panel, always with an `error` border or text.
 - App only: `shadow` (`#000000`) for `shadowColor`, `mediaBackground` (`#000000`) behind full-screen photos and video.
