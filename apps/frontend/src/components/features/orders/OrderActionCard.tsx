@@ -6,9 +6,9 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 import Animated, { withSpring } from 'react-native-reanimated';
 import { useTheme } from '@shopify/restyle';
 
-import { Box, Text } from '../../base';
-import { PrimaryButton } from '../../ui/PrimaryButton';
-import { ConfirmDialog } from '../../ui/ConfirmDialog';
+import { Box, Text } from '../../../shared/ui/base';
+import { PrimaryButton } from '../../../shared/ui/primary-button';
+import { ConfirmDialog } from '../../../shared/ui/confirm-dialog';
 import { SellerPaymentExplanation } from '../payments/SellerPaymentExplanation';
 import { ShippingLabelCard } from './ShippingLabelCard';
 import { EnrichedOrder, EnrichedShipment } from '@selene/types';
@@ -18,7 +18,7 @@ import { useCancellationSettings } from '@/core/hooks/useCancellationSettings';
 import { useShipmentCancellationSummary } from '@/core/hooks/useShipmentCancellationSummary';
 import { resolveShipmentPreparingWindowMessage } from '@/core/utils/shipment-cancel-safety';
 import { resolveCancelledShipmentCopy } from '@/core/utils/shipment-cancellation-summary';
-import { Theme } from '@/core/theme';
+import { Theme } from '@/shared/theme';
 import { resolveOrderBannerKind } from './orderActionBanner';
 
 // Mount entrance: scale 0.9 -> 1 with a fade, driven by a spring.

@@ -10,12 +10,12 @@ import {
 import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
-import { Box, Text } from '../../base';
-import { PrimaryButton } from '../../ui/PrimaryButton';
-import { StarRating } from '../../ui/StarRating';
+import { Box, Text } from '../../../shared/ui/base';
+import { PrimaryButton } from '../../../shared/ui/primary-button';
+import { StarRating } from '../../../shared/ui/star-rating';
 import { useReviewAction } from '../../../core/hooks/useReviewAction';
-import { useAuthContext } from '../../auth/AuthProvider';
-import { Theme } from '../../../core/theme';
+import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
+import { Theme } from '../../../shared/theme';
 import { EnrichedOrder } from '@selene/types';
 
 interface Props {

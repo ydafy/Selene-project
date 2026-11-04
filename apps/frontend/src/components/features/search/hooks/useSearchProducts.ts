@@ -5,7 +5,7 @@
  */
 
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { supabase } from '../../../../core/db/supabase';
+import { supabase } from '../../../../shared/lib/supabase';
 import { PublicProduct } from '@selene/types';
 import { BUYER_LISTED_STATUSES } from '../../../../core/utils/productListingStatus';
 

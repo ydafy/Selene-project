@@ -43,7 +43,7 @@ Until the move, follow these rules in the current tree:
 
 ## Test placement
 
-- A unit test sits next to the file it tests: `foo.ts` and `foo.test.ts`. Example: `apps/frontend/src/core/i18n/authLocaleParity.test.ts` sits in `src/core/i18n/`.
+- A unit test sits next to the file it tests: `foo.ts` and `foo.test.ts`. Example: `apps/frontend/src/shared/i18n/auth-locale-parity.test.ts` sits in `src/shared/i18n/`.
 - A flow test that spans several modules sits in the feature folder.
 - Playwright specs stay in `e2e/` (`e2e/admin-web/`, `e2e/admin-web-local/`).
 - Do not create new `__tests__/` folders. Do not add files to `apps/frontend/tests/` or to the root `tests/`. Existing ones move during the layout migration.
@@ -69,7 +69,7 @@ The output is PascalCase, camelCase, and kebab-case counts, in that order.
 
 ## No barrel files
 
-Do not add an `index.ts` that only re-exports. Import the file directly. An `index.ts` that defines code, such as `apps/frontend/src/core/theme/index.ts`, is not a barrel and stays.
+Do not add an `index.ts` that only re-exports. Import the file directly. An `index.ts` that defines code, such as `apps/frontend/src/shared/theme/index.ts`, is not a barrel and stays.
 
 ## Formatting
 

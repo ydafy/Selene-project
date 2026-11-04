@@ -6,7 +6,7 @@ import { resolveCancelOrderFailureToast } from '../../src/core/utils/shipment-ca
 const FRONTEND = join(import.meta.dir, '..', '..');
 const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
 const locale = (lang: string) =>
-  JSON.parse(read(`src/core/i18n/locales/${lang}/orders.json`)) as Record<
+  JSON.parse(read(`src/shared/i18n/locales/${lang}/orders.json`)) as Record<
     string,
     unknown
   >;

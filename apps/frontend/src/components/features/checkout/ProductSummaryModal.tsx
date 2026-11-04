@@ -5,8 +5,8 @@ import {
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet';
 import { useTheme } from '@shopify/restyle';
-import { Box, Text } from '../../base';
-import { Theme } from '../../../core/theme';
+import { Box, Text } from '../../../shared/ui/base';
+import { Theme } from '../../../shared/theme';
 import { CheckoutItem } from './CheckoutItem';
 import { Product } from '@selene/types';
 

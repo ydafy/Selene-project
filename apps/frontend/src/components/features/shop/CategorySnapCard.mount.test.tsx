@@ -76,7 +76,10 @@ if (process.env.SELENE_CATEGORY_SNAP_MOUNT_CHILD !== '1') {
       t: (key: string) => `${namespace}:${key}`,
     }),
   }));
-  mock.module('../../base', () => ({ Box: host('Box'), Text: host('Text') }));
+  mock.module('../../../shared/ui/base', () => ({
+    Box: host('Box'),
+    Text: host('Text'),
+  }));
 
   const { render, fireEvent } = await import('@testing-library/react-native');
   const { CategorySnapCard } = await import('./CategorySnapCard');

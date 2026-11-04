@@ -21,12 +21,12 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import * as Crypto from 'expo-crypto';
 import { useTheme } from '@shopify/restyle';
-import { Theme } from '../../core/theme';
+import { Theme } from '../../shared/theme';
 
 import { useCartStore } from '../store/useCartStore';
 import { useCheckoutStore } from '../store/useCheckoutStore';
-import { supabase } from '../db/supabase';
-import { invokeEdge } from '../services/edge-client';
+import { supabase } from '../../shared/lib/supabase';
+import { invokeEdge } from '../../shared/lib/edge-client';
 import {
   buildConnectPaymentRequest,
   ConnectPaymentResponseSchema,

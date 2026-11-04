@@ -88,10 +88,10 @@ if (process.env.SELENE_NOTIFICATION_MOUNT_CHILD !== 'watcher') {
   mock.module('@tanstack/react-query', () => ({
     useQueryClient: () => queryClient,
   }));
-  mock.module('../../../auth/AuthProvider', () => ({
+  mock.module('../../../../shared/lib/auth/auth-provider', () => ({
     useAuthContext: () => ({ session: { user: { id: 'owner-1' } } }),
   }));
-  mock.module('../../../../core/db/supabase', () => ({
+  mock.module('../../../../shared/lib/supabase', () => ({
     supabase: { from, channel: () => channel, removeChannel },
   }));
   mock.module('../../../../core/hooks/useNotificationMutations', () => ({
@@ -104,10 +104,10 @@ if (process.env.SELENE_NOTIFICATION_MOUNT_CHILD !== 'watcher') {
     pushTapRouter: { consumeLaunchTap },
   }));
   mock.module('react-i18next', () => ({ useTranslation: () => ({ t }) }));
-  mock.module('../../../ui/ConfirmDialog', () => ({
+  mock.module('../../../../shared/ui/confirm-dialog', () => ({
     ConfirmDialog: host('ConfirmDialog'),
   }));
-  mock.module('../../../base', () => ({
+  mock.module('../../../../shared/ui/base', () => ({
     Box: host('Box'),
     Text: host('Text'),
   }));

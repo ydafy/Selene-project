@@ -8,12 +8,12 @@ import { IconButton } from 'react-native-paper';
 import { useState } from 'react';
 
 // Componentes Base y UI
-import { Box, Text } from '../../components/base';
-import { PrimaryButton } from '../../components/ui/PrimaryButton';
+import { Box, Text } from '../../shared/ui/base';
+import { PrimaryButton } from '../../shared/ui/primary-button';
 
 // Componentes de Layout
-import { GlobalHeader } from '../../components/layout/GlobalHeader';
-import { BottomActionBar } from '../../components/layout/BottomActionBar';
+import { GlobalHeader } from '../../shared/ui/global-header';
+import { BottomActionBar } from '../../shared/ui/bottom-action-bar';
 
 // Componentes de Feature (Producto)
 import { ProductImageGallery } from '../../components/features/product/ProductImageGallery';
@@ -21,17 +21,17 @@ import { ProductSpecificationsGrid } from '../../components/features/product/Pro
 import { ProductFavoriteButton } from '../../components/features/product/ProductFavoriteButton';
 import { ProductSellerCard } from '../../components/features/product/ProductSellerCard';
 import { ProductDetailSkeleton } from '../../components/features/product/ProductDetailSkeleton';
-import { OptionsMenu } from '../../components/ui/OptionsMenu';
+import { OptionsMenu } from '../../shared/ui/options-menu';
 //import { ViewCounter } from '../../components/features/product/ViewCounter';
-import { AppChip } from '../../components/ui/AppChip';
-import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { AppChip } from '../../shared/ui/app-chip';
+import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
 
 // Hooks y Utilidades
 import { useProductCart } from '../../components/features/product/hooks/useProductCart';
 import { useProductShare } from '../../components/features/product/hooks/useProductShare';
 import { useProduct } from '../../core/hooks/useProduct';
-import { useAuthContext } from '../../components/auth/AuthProvider';
-import { Theme } from '../../core/theme';
+import { useAuthContext } from '../../shared/lib/auth/auth-provider';
+import { Theme } from '../../shared/theme';
 import { useProductFavorite } from '../../core/hooks/useProductFavorite';
 import { useProductHistoryStore } from '../../core/store/useProductHistoryStore';
 import {

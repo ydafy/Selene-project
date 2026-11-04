@@ -5,9 +5,9 @@ import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 
-import { Box } from '../../base';
+import { Box } from '../../../shared/ui/base';
 import { ProfileActionButton } from './ProfileActionButton';
-import { Theme } from '../../../core/theme';
+import { Theme } from '../../../shared/theme';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useCallback, useRef } from 'react';
 import { AddressPickerModal } from '../../../components/features/address/AddressPickerModal';

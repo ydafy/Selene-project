@@ -13,7 +13,7 @@ type OrdersLocale = {
 const readJson = (locale: string) =>
   JSON.parse(
     readFileSync(
-      join(FRONTEND, `src/core/i18n/locales/${locale}/orders.json`),
+      join(FRONTEND, `src/shared/i18n/locales/${locale}/orders.json`),
       'utf8',
     ),
   ) as OrdersLocale;

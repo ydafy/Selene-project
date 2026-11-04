@@ -5,8 +5,8 @@ import * as WebBrowser from 'expo-web-browser';
 import { useFocusEffect } from 'expo-router/react-navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { supabase } from '../db/supabase';
-import { invokeEdge } from '../services/edge-client';
+import { supabase } from '../../shared/lib/supabase';
+import { invokeEdge } from '../../shared/lib/edge-client';
 import {
   buildConnectOnboardingDeepLinks,
   isConnectOnboardingUrl,

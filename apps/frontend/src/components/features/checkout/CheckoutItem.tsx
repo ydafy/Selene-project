@@ -1,9 +1,9 @@
 import React from 'react';
 
 import { Product } from '@selene/types';
-import { Box, Text } from '../../base';
-import { AppImage } from '../../ui/AppImage';
-import { AppChip } from '../../ui/AppChip';
+import { Box, Text } from '../../../shared/ui/base';
+import { AppImage } from '../../../shared/ui/app-image';
+import { AppChip } from '../../../shared/ui/app-chip';
 
 import { formatCurrency } from '../../../core/utils/format';
 

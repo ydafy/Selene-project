@@ -3,11 +3,11 @@ import { useTranslation } from 'react-i18next';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from '@shopify/restyle';
 
-import { Theme } from '../../core/theme';
+import { Theme } from '../../shared/theme';
 import { useCartStore } from '../../core/store/useCartStore';
 import { tabIconColor } from '../../core/utils/tabIconColor';
-import { CartTabIcon } from '../../components/ui/CartTabIcon';
-import { Box } from '@/components/base';
+import { CartTabIcon } from '../../shared/ui/cart-tab-icon';
+import { Box } from '@/shared/ui/base';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getTabDockMetrics, TAB_DOCK } from '../../core/constants/layout';

@@ -12,11 +12,11 @@ import { useTheme } from '@shopify/restyle';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import Toast from 'react-native-toast-message';
 
-import { Box, Text } from '../../components/base';
-import { ScreenLayout } from '../../components/layout/ScreenLayout';
-import { FormTextInput } from '../../components/ui/FormTextInput';
-import { AppImage } from '../../components/ui/AppImage';
-import { useAuthContext } from '../../components/auth/AuthProvider';
+import { Box, Text } from '../../shared/ui/base';
+import { ScreenLayout } from '../../shared/ui/screen-layout';
+import { FormTextInput } from '../../shared/ui/form-text-input';
+import { AppImage } from '../../shared/ui/app-image';
+import { useAuthContext } from '../../shared/lib/auth/auth-provider';
 import {
   useProfile,
   useUpdateProfile,
@@ -25,7 +25,7 @@ import {
 import { useImageUpload } from '../../core/hooks/useImageUpload';
 import { validateEditUsername } from '../../core/utils/editProfileValidation';
 import { stripSettingsNamespace } from '../../core/hooks/deleteAccountHelpers';
-import { Theme } from '../../core/theme';
+import { Theme } from '../../shared/theme';
 
 export default function EditProfileScreen() {
   const { t } = useTranslation(['settings', 'profile', 'common']);

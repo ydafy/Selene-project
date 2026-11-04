@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 
-import { useAuthContext } from '../../auth/AuthProvider';
-import { ConfirmDialog } from '../../ui/ConfirmDialog';
+import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
+import { ConfirmDialog } from '../../../shared/ui/confirm-dialog';
 import { pushRegistrar } from '../../../core/push/pushRegistration';
 import {
   closePushPermission,

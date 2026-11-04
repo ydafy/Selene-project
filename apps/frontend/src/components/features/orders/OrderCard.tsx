@@ -15,9 +15,9 @@ import Reanimated, { FadeInDown } from 'react-native-reanimated';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { Box, Text } from '../../base';
-import { AppImage } from '../../ui/AppImage';
-import { Theme } from '../../../core/theme';
+import { Box, Text } from '../../../shared/ui/base';
+import { AppImage } from '../../../shared/ui/app-image';
+import { Theme } from '../../../shared/theme';
 
 import { formatCurrency, formatDate } from '../../../core/utils/format';
 import { orderCardAmountCents } from '../../../core/utils/order-summary-state';
@@ -29,7 +29,7 @@ import {
 import { OrderStatus } from '@selene/types';
 import type { CompatEnrichedOrder } from '../../../core/hooks/useOrders';
 import { useTranslation } from 'react-i18next';
-import { colors } from '@/core/theme/tokens';
+import { colors } from '@/shared/theme/tokens';
 
 interface Props {
   order: CompatEnrichedOrder;

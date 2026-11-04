@@ -9,12 +9,12 @@ import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
 import { Stack } from 'expo-router';
 
-import { Box, Text } from '../../components/base';
-import { GlobalHeader } from '../../components/layout/GlobalHeader';
-import { AppVideo } from '../../components/ui/AppVideo';
+import { Box, Text } from '../../shared/ui/base';
+import { GlobalHeader } from '../../shared/ui/global-header';
+import { AppVideo } from '../../shared/ui/app-video';
 import { GridShell } from '../../components/features/home/GridShell';
-import { Theme } from '../../core/theme';
-import { getSharedStyles } from '../../components/features/home/sharedStyles';
+import { Theme } from '../../shared/theme';
+import { getSharedStyles } from '../../shared/theme/shared-styles';
 
 import TrustVideo from '@/assets/videos/shop/Trustvideo.mp4';
 import rtx from '@/assets/images/shop/5090.jpg';

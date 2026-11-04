@@ -4,9 +4,9 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
 
-import { Box, Text } from '../../base';
-import { PrimaryButton } from '../../ui/PrimaryButton';
-import { Theme } from '../../../core/theme';
+import { Box, Text } from '../../../shared/ui/base';
+import { PrimaryButton } from '../../../shared/ui/primary-button';
+import { Theme } from '../../../shared/theme';
 
 // Tipado estricto para los iconos de MaterialCommunityIcons
 type IconName = ComponentProps<typeof MaterialCommunityIcons>['name'];

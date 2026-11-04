@@ -1,8 +1,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../db/supabase';
+import { supabase } from '../../shared/lib/supabase';
 import { ProductWithSeller } from '@selene/types';
 import { findCachedProduct } from './productQueryKeys';
-import { useAuthContext } from '../../components/auth/AuthProvider';
+import { useAuthContext } from '../../shared/lib/auth/auth-provider';
 
 const PRODUCT_WITH_SELLER = `*, seller:profiles!products_seller_id_fkey(*)`;
 

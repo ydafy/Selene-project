@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
-import { Box, Text } from '../../../base';
-import { AppChip } from '../../../ui/AppChip';
+import { Box, Text } from '../../../../shared/ui/base';
+import { AppChip } from '../../../../shared/ui/app-chip';
 
 type FilterSectionProps = {
   title: string;

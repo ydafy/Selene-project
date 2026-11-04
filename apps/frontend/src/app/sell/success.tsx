@@ -6,9 +6,9 @@ import { useTheme } from '@shopify/restyle';
 import { TouchableOpacity, BackHandler } from 'react-native';
 import { useEffect } from 'react';
 
-import { Box, Text } from '../../components/base';
-import { PrimaryButton } from '../../components/ui/PrimaryButton';
-import { Theme } from '../../core/theme';
+import { Box, Text } from '../../shared/ui/base';
+import { PrimaryButton } from '../../shared/ui/primary-button';
+import { Theme } from '../../shared/theme';
 import { useSellStore } from '../../core/store/useSellStore';
 import { triggerHaptic } from '../../core/utils/haptics';
 

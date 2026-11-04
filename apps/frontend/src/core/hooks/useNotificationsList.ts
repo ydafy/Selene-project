@@ -1,5 +1,5 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { supabase } from '../db/supabase';
+import { supabase } from '../../shared/lib/supabase';
 import {
   fetchNotificationPage,
   type NotificationsListPage,

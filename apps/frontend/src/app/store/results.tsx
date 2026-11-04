@@ -19,12 +19,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton } from 'react-native-paper';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 
-import { Box } from '../../components/base';
-import { ScreenHeader } from '../../components/layout/ScreenHeader';
-import { GlobalHeader } from '../../components/layout/GlobalHeader';
-import { ProductCard } from '../../components/features/product/ProductCard';
-import { EmptyState } from '../../components/ui/EmptyState';
-import { ProductCardSkeleton } from '../../components/features/product/ProductCardSkeleton';
+import { Box } from '../../shared/ui/base';
+import { ScreenHeader } from '../../shared/ui/screen-header';
+import { GlobalHeader } from '../../shared/ui/global-header';
+import { ProductCard } from '../../shared/ui/product/product-card';
+import { EmptyState } from '../../shared/ui/empty-state';
+import { ProductCardSkeleton } from '../../shared/ui/product/product-card-skeleton';
 import {
   FilterModal,
   FilterState,
@@ -35,7 +35,7 @@ import {
   SearchFilters,
 } from '../../components/features/search/hooks/useSearchProducts';
 import { getMasonryItemHeight } from '../../core/constants/layout';
-import { Theme } from '../../core/theme';
+import { Theme } from '../../shared/theme';
 import { Product } from '@selene/types';
 
 const RESULTS_ANCHOR = 0; // Punto donde el header desaparece y los filtros quedan arriba

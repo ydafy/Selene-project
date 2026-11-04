@@ -1,9 +1,9 @@
 import { ScrollView, TouchableOpacity } from 'react-native';
 //import { useTheme } from '@shopify/restyle';
-import { Box } from '../../base';
+import { Box } from '../../../shared/ui/base';
 //import { Theme } from '../../../core/theme';
-import { BrandIcon } from '../../ui/BrandIcon';
-import { colors } from '@/core/theme/tokens';
+import { BrandIcon } from '../../../shared/ui/brand-icon';
+import { colors } from '@/shared/theme/tokens';
 
 type ProductBrandBarProps = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

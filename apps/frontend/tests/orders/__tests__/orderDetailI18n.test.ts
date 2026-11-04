@@ -6,8 +6,8 @@ const FRONTEND = join(import.meta.dir, '..', '..', '..');
 const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
 const detail = read('src/app/profile/orders/[id].tsx');
 const flat = detail.replace(/\s+/g, ' ');
-const es = JSON.parse(read('src/core/i18n/locales/es/orders.json'));
-const en = JSON.parse(read('src/core/i18n/locales/en/orders.json'));
+const es = JSON.parse(read('src/shared/i18n/locales/es/orders.json'));
+const en = JSON.parse(read('src/shared/i18n/locales/en/orders.json'));
 
 describe('order detail delivery confirmation toast', () => {
   it('never claims the seller was already paid', () => {

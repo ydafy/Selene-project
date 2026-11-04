@@ -31,10 +31,10 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 import { LinearGradient } from 'expo-linear-gradient';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 
-import { Box, Text } from '../../../components/base';
-import { GlobalHeader } from '../../../components/layout/GlobalHeader';
-import { ProductCard } from '../../../components/features/product/ProductCard';
-import { ProductCardSkeleton } from '../../../components/features/product/ProductCardSkeleton';
+import { Box, Text } from '../../../shared/ui/base';
+import { GlobalHeader } from '../../../shared/ui/global-header';
+import { ProductCard } from '../../../shared/ui/product/product-card';
+import { ProductCardSkeleton } from '../../../shared/ui/product/product-card-skeleton';
 import { ResultsFilterBar } from '../../../components/features/search/filters/ResultsFilterBar';
 import { ShowroomInsights } from '../../../components/features/shop/showroom/ShowroomInsights';
 import {
@@ -42,14 +42,14 @@ import {
   FilterState,
 } from '../../../components/features/search/FilterModal';
 import { SearchFilters } from '../../../components/features/search/hooks/useSearchProducts';
-import { AppImage } from '../../../components/ui/AppImage';
-import { EmptyState } from '../../../components/ui/EmptyState';
+import { AppImage } from '../../../shared/ui/app-image';
+import { EmptyState } from '../../../shared/ui/empty-state';
 import { useSearchProducts } from '../../../components/features/search/hooks/useSearchProducts';
 import {
   getMasonryItemHeight,
   getTabDockMetrics,
 } from '../../../core/constants/layout';
-import { Theme } from '../../../core/theme';
+import { Theme } from '../../../shared/theme';
 import { Product } from '@selene/types';
 
 //Imagenes

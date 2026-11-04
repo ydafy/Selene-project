@@ -75,7 +75,7 @@ describe('public profile route hardening', () => {
 
 describe('public profile accessibility and i18n wiring', () => {
   test('segmented control exposes tab semantics and selected state', () => {
-    const src = read('src/components/ui/SegmentedControl.tsx');
+    const src = read('src/shared/ui/segmented-control.tsx');
 
     expect(src).toContain('accessibilityRole="tab"');
     expect(src).toContain('accessibilityState');
@@ -83,8 +83,8 @@ describe('public profile accessibility and i18n wiring', () => {
   });
 
   test('profile locale files include public profile error and review date copy', () => {
-    const en = JSON.parse(read('src/core/i18n/locales/en/profile.json'));
-    const es = JSON.parse(read('src/core/i18n/locales/es/profile.json'));
+    const en = JSON.parse(read('src/shared/i18n/locales/en/profile.json'));
+    const es = JSON.parse(read('src/shared/i18n/locales/es/profile.json'));
 
     expect(en.public.errors.products).toBe('Could not load listings.');
     expect(en.public.reviewDatePrefix).toBe('Reviewed on');

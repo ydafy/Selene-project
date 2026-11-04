@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { invokeEdge } from '../services/edge-client';
+import { invokeEdge } from '../../shared/lib/edge-client';
 
 /**
  * Hook exclusivo para el flujo de venta.

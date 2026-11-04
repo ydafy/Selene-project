@@ -33,31 +33,31 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '@shopify/restyle';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Box, Text } from '../../../components/base';
-import { GlobalHeader } from '../../../components/layout/GlobalHeader';
-import { ScreenHeader } from '../../../components/layout/ScreenHeader';
+import { Box, Text } from '../../../shared/ui/base';
+import { GlobalHeader } from '../../../shared/ui/global-header';
+import { ScreenHeader } from '../../../shared/ui/screen-header';
 import { OrderActionCard } from '../../../components/features/orders/OrderActionCard';
 import { OrderStepper } from '../../../components/features/orders/OrderStepper';
 import { ShippingInstructions } from '../../../components/features/orders/ShippingInstructions';
 import { ShippingRouteCard } from '../../../components/features/orders/ShippingRouteCard';
-import { PrimaryButton } from '../../../components/ui/PrimaryButton';
-import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
-import { Skeleton } from '../../../components/ui/Skeleton';
-import { AppImage } from '../../../components/ui/AppImage';
+import { PrimaryButton } from '../../../shared/ui/primary-button';
+import { ConfirmDialog } from '../../../shared/ui/confirm-dialog';
+import { Skeleton } from '../../../shared/ui/skeleton';
+import { AppImage } from '../../../shared/ui/app-image';
 import { ShipmentNotFoundState } from '../../../components/features/orders/ShipmentNotFoundState';
 import { ShipmentTrackingTimeline } from '../../../components/features/orders/ShipmentTrackingTimeline';
 import {
   useShipmentTrackingEvents,
   useShipmentTrackingUrl,
 } from '../../../core/hooks/useShipmentTracking';
-import { useAuthContext } from '../../../components/auth/AuthProvider';
+import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
 import { useOrderById } from '../../../core/hooks/useOrders';
 import { useShipmentsByOrder } from '../../../core/hooks/useShipments';
 import { useOrderActions } from '../../../core/hooks/useOrderActions';
 import { useReturnPayment } from '../../../core/hooks/useReturnPayment';
 import { useShareLabel } from '../../../core/hooks/useShareLabel';
 import { formatCurrency } from '../../../core/utils/format';
-import { Theme } from '../../../core/theme';
+import { Theme } from '../../../shared/theme';
 import { ReviewModal } from '@/components/features/profile/ReviewModal';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { EnrichedOrder, EnrichedShipment } from '@selene/types';

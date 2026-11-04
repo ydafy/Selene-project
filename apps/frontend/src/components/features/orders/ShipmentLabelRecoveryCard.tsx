@@ -2,9 +2,9 @@ import React from 'react';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
-import { Box, Text } from '../../base';
-import { PrimaryButton } from '../../ui/PrimaryButton';
-import type { Theme } from '../../../core/theme';
+import { Box, Text } from '../../../shared/ui/base';
+import { PrimaryButton } from '../../../shared/ui/primary-button';
+import type { Theme } from '../../../shared/theme';
 import type { LabelRecoveryState } from '../../../core/utils/shipment-label-state';
 
 interface Props {

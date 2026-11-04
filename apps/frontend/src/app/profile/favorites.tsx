@@ -6,18 +6,18 @@ import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shopify/restyle';
 
-import { Box } from '../../components/base';
-import { GlobalHeader } from '../../components/layout/GlobalHeader';
-import { EmptyState } from '../../components/ui/EmptyState';
-import { ErrorState } from '../../components/ui/ErrorState';
-import { ProductCard } from '../../components/features/product/ProductCard';
-import { ProductCardSkeleton } from '../../components/features/product/ProductCardSkeleton';
-import { PrimaryButton } from '../../components/ui/PrimaryButton';
-import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { Box } from '../../shared/ui/base';
+import { GlobalHeader } from '../../shared/ui/global-header';
+import { EmptyState } from '../../shared/ui/empty-state';
+import { ErrorState } from '../../shared/ui/error-state';
+import { ProductCard } from '../../shared/ui/product/product-card';
+import { ProductCardSkeleton } from '../../shared/ui/product/product-card-skeleton';
+import { PrimaryButton } from '../../shared/ui/primary-button';
+import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
 import { useAllFavorites } from '../../core/hooks/useAllFavorites';
-import { useAuthContext } from '../../components/auth/AuthProvider';
+import { useAuthContext } from '../../shared/lib/auth/auth-provider';
 import { useSeleneRefresh } from '../../core/hooks/useSeleneRefresh';
-import { Theme } from '../../core/theme';
+import { Theme } from '../../shared/theme';
 import type { Product } from '@selene/types';
 
 export default function FavoritesScreen() {

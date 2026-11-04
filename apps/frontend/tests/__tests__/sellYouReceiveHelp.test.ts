@@ -14,8 +14,8 @@ const compact = (source: string) =>
 
 const FRONTEND = join(import.meta.dir, '..', '..');
 const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
-const es = JSON.parse(read('src/core/i18n/locales/es/sell.json'));
-const en = JSON.parse(read('src/core/i18n/locales/en/sell.json'));
+const es = JSON.parse(read('src/shared/i18n/locales/es/sell.json'));
+const en = JSON.parse(read('src/shared/i18n/locales/en/sell.json'));
 const form = compact(read('src/components/features/sell/SellDetailsForm.tsx'));
 const hook = compact(read('src/core/hooks/useSellDetailsForm.ts'));
 

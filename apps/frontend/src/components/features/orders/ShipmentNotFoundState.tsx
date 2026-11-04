@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 
-import { Box, Text } from '../../base';
-import { PrimaryButton } from '../../ui/PrimaryButton';
+import { Box, Text } from '../../../shared/ui/base';
+import { PrimaryButton } from '../../../shared/ui/primary-button';
 
 interface ShipmentNotFoundStateProps {
   onBack: () => void;

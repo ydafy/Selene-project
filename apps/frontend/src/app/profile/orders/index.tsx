@@ -5,23 +5,23 @@ import { useTranslation } from 'react-i18next';
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Box } from '../../../components/base';
-import { GlobalHeader } from '../../../components/layout/GlobalHeader';
-import { SegmentedControl } from '../../../components/ui/SegmentedControl';
-import { EmptyState } from '../../../components/ui/EmptyState';
+import { Box } from '../../../shared/ui/base';
+import { GlobalHeader } from '../../../shared/ui/global-header';
+import { SegmentedControl } from '../../../shared/ui/segmented-control';
+import { EmptyState } from '../../../shared/ui/empty-state';
 import { OrderCard } from '../../../components/features/orders/OrderCard';
-import { useAuthContext } from '../../../components/auth/AuthProvider';
+import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
 import {
   useMyPurchases,
   useMySales,
   type CompatEnrichedOrder,
 } from '../../../core/hooks/useOrders';
-import { Skeleton } from '../../../components/ui/Skeleton';
+import { Skeleton } from '../../../shared/ui/skeleton';
 import { useTheme } from 'react-native-paper';
-import { Theme } from '@/core/theme';
+import { Theme } from '@/shared/theme';
 import { RefreshControl } from 'react-native';
 import { useSeleneRefresh } from '../../../core/hooks/useSeleneRefresh';
-import { ErrorState } from '@/components/ui/ErrorState';
+import { ErrorState } from '@/shared/ui/error-state';
 import { resolveRoleAwareOrderView } from './order-view-routing';
 
 export default function OrdersScreen() {

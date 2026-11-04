@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { Product } from '@selene/types';
 import { useCartStore } from '../../../../core/store/useCartStore';
-import { supabase } from '../../../../core/db/supabase';
+import { supabase } from '../../../../shared/lib/supabase';
 import {
   fetchSellerPaymentReadiness,
   isSellerBlocked,

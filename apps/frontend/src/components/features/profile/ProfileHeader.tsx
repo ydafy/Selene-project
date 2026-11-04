@@ -4,9 +4,9 @@ import { useTheme } from '@shopify/restyle';
 
 import { User } from '@supabase/supabase-js';
 
-import { Box, Text } from '../../base';
-import { AppImage } from '../../ui/AppImage';
-import { Theme } from '../../../core/theme';
+import { Box, Text } from '../../../shared/ui/base';
+import { AppImage } from '../../../shared/ui/app-image';
+import { Theme } from '../../../shared/theme';
 
 import { Profile } from '@selene/types';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';

@@ -6,10 +6,10 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
-import { Box } from '../../base';
-import { AppImage } from '../../ui/AppImage';
+import { Box } from '../../../shared/ui/base';
+import { AppImage } from '../../../shared/ui/app-image';
 import { useTheme } from '@shopify/restyle';
-import { Theme } from '../../../core/theme';
+import { Theme } from '../../../shared/theme';
 
 const { width } = Dimensions.get('window');
 const HEIGHT = 350; // Altura imponente para la imagen

@@ -128,7 +128,7 @@ export function createMarkAsReadMutationOptions(
   return {
     mutationFn: async (id: string) => {
       if (!userId) throw new Error('AUTH_REQUIRED');
-      const { supabase } = await import('../db/supabase');
+      const { supabase } = await import('../../shared/lib/supabase');
       await markNotificationAsRead(supabase, userId, id);
     },
     onSuccess: () => invalidateNotificationKeys(queryClient, userId),
@@ -148,7 +148,7 @@ export function createMarkAllAsReadMutationOptions(
   return {
     mutationFn: async () => {
       if (!userId) throw new Error('AUTH_REQUIRED');
-      const { supabase } = await import('../db/supabase');
+      const { supabase } = await import('../../shared/lib/supabase');
       await markAllNotificationsAsRead(supabase, userId);
     },
     onSuccess: () => invalidateNotificationKeys(queryClient, userId),
@@ -168,7 +168,7 @@ export function createDismissNotificationMutationOptions(
   return {
     mutationFn: async (id: string) => {
       if (!userId) throw new Error('AUTH_REQUIRED');
-      const { supabase } = await import('../db/supabase');
+      const { supabase } = await import('../../shared/lib/supabase');
       await dismissNotification(supabase, userId, id);
     },
     onMutate: async (id: string): Promise<BadgeContext> => {
@@ -215,7 +215,7 @@ export function createDismissAllMutationOptions(
   return {
     mutationFn: async () => {
       if (!userId) throw new Error('AUTH_REQUIRED');
-      const { supabase } = await import('../db/supabase');
+      const { supabase } = await import('../../shared/lib/supabase');
       await dismissAllNotifications(supabase, userId);
     },
     onMutate: async (): Promise<BadgeContext> => {

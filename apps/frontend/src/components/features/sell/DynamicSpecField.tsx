@@ -17,9 +17,9 @@ import {
   FieldErrors,
 } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { Box, Text } from '../../base';
-import { FormSelect } from '../../ui/FormSelect';
-import { FormTextInput } from '../../ui/FormTextInput';
+import { Box, Text } from '../../../shared/ui/base';
+import { FormSelect } from '../../../shared/ui/form-select';
+import { FormTextInput } from '../../../shared/ui/form-text-input';
 import { SellFieldConfig } from '../../../core/config/sell-form-config';
 import { checkIfOther } from '../../../core/utils/form-helpers';
 

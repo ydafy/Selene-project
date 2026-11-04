@@ -2,8 +2,8 @@ import React from 'react';
 import { TouchableOpacity, ActivityIndicator } from 'react-native';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from '@shopify/restyle';
-import { Box, Text } from '../../base';
-import { Theme } from '../../../core/theme';
+import { Box, Text } from '../../../shared/ui/base';
+import { Theme } from '../../../shared/theme';
 import { ShippingOption, ShippingCarrier } from '@selene/types';
 import { formatCurrency } from '../../../core/utils/format';
 

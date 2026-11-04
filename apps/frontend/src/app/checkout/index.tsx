@@ -13,12 +13,12 @@ import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import Toast from 'react-native-toast-message';
 
 // Componentes Base
-import { Box, Text as ThemedText } from '../../components/base';
-import { GlobalHeader } from '../../components/layout/GlobalHeader';
-import { PrimaryButton } from '../../components/ui/PrimaryButton';
-import { ScreenHeader } from '../../components/layout/ScreenHeader';
-import { Checkbox } from '../../components/ui/Checkbox';
-import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { Box, Text as ThemedText } from '../../shared/ui/base';
+import { GlobalHeader } from '../../shared/ui/global-header';
+import { PrimaryButton } from '../../shared/ui/primary-button';
+import { ScreenHeader } from '../../shared/ui/screen-header';
+import { Checkbox } from '../../shared/ui/checkbox';
+import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
 import { AddressPickerModal } from '../../components/features/address/AddressPickerModal';
 import { PaymentMethodPickerModal } from '../../components/features/checkout/PaymentMethodPickerModal';
 
@@ -36,7 +36,7 @@ import { useOrderCalculations } from '../../core/hooks/useOrderCalculations';
 import { usePaymentMethods } from '../../core/hooks/usePaymentMethods';
 import { formatCurrency } from '../../core/utils/format';
 import { Address } from '@selene/types';
-import { useAuthContext } from '../../components/auth/AuthProvider';
+import { useAuthContext } from '../../shared/lib/auth/auth-provider';
 import { OrderService } from '../../core/services/order';
 import { checkoutValidationSchema } from '../../core/schemas/checkout.schema';
 

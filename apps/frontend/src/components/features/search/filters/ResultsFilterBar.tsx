@@ -9,12 +9,12 @@ import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { Box } from '../../../base';
-import { AppChip } from '../../../ui/AppChip';
-import { BrandCircle } from '../../../ui/BrandCircle';
-import { theme, Theme } from '../../../../core/theme';
+import { Box } from '../../../../shared/ui/base';
+import { AppChip } from '../../../../shared/ui/app-chip';
+import { BrandCircle } from '../../../../shared/ui/brand-circle';
+import { theme, Theme } from '../../../../shared/theme';
 import { SearchFilters } from '../hooks/useSearchProducts';
-import { hasBrandIcon } from '../../../ui/BrandIcon';
+import { hasBrandIcon } from '../../../../shared/ui/brand-icon';
 import { useCategoryConfig } from '../../search/hooks/useCategoryConfig';
 
 type ResultsFilterBarProps = {

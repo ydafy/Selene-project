@@ -3,11 +3,11 @@ import { TouchableOpacity, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
-import { AppImageViewer } from '../../ui/AppImageViewer';
+import { AppImageViewer } from '../../../shared/ui/app-image-viewer';
 
-import { Box, Text } from '../../base';
-import { AppImage } from '../../ui/AppImage';
-import { Theme } from '../../../core/theme';
+import { Box, Text } from '../../../shared/ui/base';
+import { AppImage } from '../../../shared/ui/app-image';
+import { Theme } from '../../../shared/theme';
 import {
   buildAddPhotosA11yLabel,
   buildCloseViewerA11yLabel,

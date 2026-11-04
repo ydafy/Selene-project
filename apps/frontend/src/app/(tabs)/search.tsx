@@ -14,7 +14,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 
-import { Box, Text } from '../../components/base';
+import { Box, Text } from '../../shared/ui/base';
 import {
   CategorySnapCard,
   BrandSnapCard,
@@ -23,7 +23,7 @@ import {
 import { ShopSkeleton } from '../../components/features/shop/ShopSkeleton';
 import { useProducts } from '../../core/hooks/useProducts';
 import { ACTIVE_LISTING_STATUSES } from '../../core/utils/productListingStatus';
-import { Theme } from '../../core/theme/index';
+import { Theme } from '../../shared/theme/index';
 import { useTheme } from '@shopify/restyle';
 import { ProductSnapCard } from '../../components/features/shop/sections/ProductSnapCard';
 

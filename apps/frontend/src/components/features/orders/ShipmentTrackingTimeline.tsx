@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import type { ShipmentTrackingEvent } from '@selene/types';
 
-import { Box, Text } from '../../../components/base';
+import { Box, Text } from '../../../shared/ui/base';
 import {
   getTrackingEventDescription,
   getTrackingEventLabelKey,

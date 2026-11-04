@@ -36,8 +36,8 @@ describe('where listings in verification are discoverable', () => {
 
 describe('cards flag listings in verification', () => {
   test.each([
-    'components/features/product/ProductCard.tsx',
-    'components/features/product/ProductMiniCard.tsx',
+    'shared/ui/product/product-card.tsx',
+    'shared/ui/product/product-mini-card.tsx',
     'components/features/shop/sections/ProductSnapCard.tsx',
     'app/profile/[id].tsx',
   ])(

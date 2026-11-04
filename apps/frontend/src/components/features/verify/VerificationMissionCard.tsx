@@ -7,10 +7,10 @@ import MaterialCommunityIcons, {
 import { TextInput } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 
-import { Box, Text } from '../../base';
-import { PrimaryButton } from '../../ui/PrimaryButton';
-import { Theme } from '../../../core/theme';
-import { colors } from '@/core/theme/tokens';
+import { Box, Text } from '../../../shared/ui/base';
+import { PrimaryButton } from '../../../shared/ui/primary-button';
+import { Theme } from '../../../shared/theme';
+import { colors } from '@/shared/theme/tokens';
 
 type VerificationMissionCardProps = {
   title: string;

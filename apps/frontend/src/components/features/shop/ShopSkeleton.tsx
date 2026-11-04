@@ -1,6 +1,6 @@
 import React from 'react';
-import { Box } from '../../base';
-import { Skeleton } from '../../ui/Skeleton';
+import { Box } from '../../../shared/ui/base';
+import { Skeleton } from '../../../shared/ui/skeleton';
 
 export const ShopSkeleton = ({ visibleHeight }: { visibleHeight: number }) => {
   const stripHeight = visibleHeight / 4;

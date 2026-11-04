@@ -272,7 +272,7 @@ describe('package.json drops the Chatwoot widget', () => {
 });
 
 describe('ConfirmDialog keyboard handling (L62)', () => {
-  const src = read('src/components/ui/ConfirmDialog.tsx');
+  const src = read('src/shared/ui/confirm-dialog.tsx');
 
   test('reserves the keyboard height below the dialog only when avoidKeyboard is set', () => {
     expect(src).toContain('avoidKeyboard?: boolean');

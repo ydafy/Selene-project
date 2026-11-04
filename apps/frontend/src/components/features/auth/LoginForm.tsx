@@ -11,11 +11,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import type { TextInputInstance } from 'react-native';
 import Toast from 'react-native-toast-message';
 
-import { Box, Text } from '../../base';
-import { FormTextInput } from '../../ui/FormTextInput';
-import { PrimaryButton } from '../../ui/PrimaryButton';
-import { GoogleButton } from '../../ui/GoogleButton';
-import { TextLink } from '../../ui/TextLink';
+import { Box, Text } from '../../../shared/ui/base';
+import { FormTextInput } from '../../../shared/ui/form-text-input';
+import { PrimaryButton } from '../../../shared/ui/primary-button';
+import { GoogleButton } from '../../../shared/ui/google-button';
+import { TextLink } from '../../../shared/ui/text-link';
 import { useAuth, loginSchema, LoginData } from '../../../core/hooks/useAuth';
 import { useGoogleAuth } from '../../../core/hooks/useGoogleAuth'; // <--- NUEVO
 import {

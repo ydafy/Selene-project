@@ -7,10 +7,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton } from 'react-native-paper';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
-import { Box, Text } from '../../components/base';
-import { SearchBar } from '../../components/ui/SearchBar';
+import { Box, Text } from '../../shared/ui/base';
+import { SearchBar } from '../../shared/ui/search-bar';
 import { useSearchStore } from '../../core/store/useSearchStore';
-import { Theme } from '../../core/theme';
+import { Theme } from '../../shared/theme';
 
 export default function SearchQueryScreen() {
   const theme = useTheme<Theme>();

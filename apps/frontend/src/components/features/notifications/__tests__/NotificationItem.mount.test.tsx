@@ -55,14 +55,14 @@ if (process.env.SELENE_NOTIFICATION_MOUNT_CHILD !== 'item') {
         `${key}${values ? ':' + JSON.stringify(values) : ''}`,
     }),
   }));
-  mock.module('../../../base', () => ({
+  mock.module('../../../../shared/ui/base', () => ({
     Box: host('Box'),
     Text: host('Text'),
   }));
   mock.module('../../../../core/utils/format', () => ({
     formatSmartTime: () => 'now',
   }));
-  mock.module('../../../ui/ConfirmDialog', () => ({
+  mock.module('../../../../shared/ui/confirm-dialog', () => ({
     ConfirmDialog: host('ConfirmDialog'),
   }));
 

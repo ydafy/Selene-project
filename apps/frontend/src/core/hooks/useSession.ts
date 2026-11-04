@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
-import { supabase } from '../db/supabase';
+import { supabase } from '../../shared/lib/supabase';
 import { Session } from '@supabase/supabase-js';
 
 import { clearUserScopedData } from '../auth/signOut';

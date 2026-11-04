@@ -14,7 +14,7 @@ const read = (relPath: string) => readFileSync(join(FRONTEND, relPath), 'utf8');
 const AUTH_SCREENS = ['forgotPassword', 'verify-code', 'resetPassword'];
 
 describe('ScreenLayout keyboard awareness is opt-in', () => {
-  const src = read('src/components/layout/ScreenLayout.tsx');
+  const src = read('src/shared/ui/screen-layout.tsx');
 
   test('declares an optional keyboardAware prop', () => {
     expect(src).toMatch(/keyboardAware\?: boolean/);

@@ -7,9 +7,9 @@ import { useTranslation } from 'react-i18next';
 import Animated, { withSpring } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 
-import { Box, Text } from '../../components/base';
-import { PrimaryButton } from '../../components/ui/PrimaryButton';
-import { Theme } from '../../core/theme';
+import { Box, Text } from '../../shared/ui/base';
+import { PrimaryButton } from '../../shared/ui/primary-button';
+import { Theme } from '../../shared/theme';
 import { useCheckoutStore } from '../../core/store/useCheckoutStore';
 import { offerPushPermission } from '../../core/push/pushPermission';
 

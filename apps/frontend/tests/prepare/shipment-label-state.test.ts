@@ -50,7 +50,7 @@ describe('persisted shipment label state', () => {
         readFileSync(
           join(
             process.cwd(),
-            `apps/frontend/src/core/i18n/locales/${locale}/orders.json`,
+            `apps/frontend/src/shared/i18n/locales/${locale}/orders.json`,
           ),
           'utf8',
         ),

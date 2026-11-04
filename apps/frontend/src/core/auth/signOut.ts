@@ -1,5 +1,5 @@
-import { supabase } from '../db/supabase';
-import { queryClient } from '../db/queryClient';
+import { supabase } from '../../shared/lib/supabase';
+import { queryClient } from '../../shared/lib/query-client';
 import { useCheckoutStore } from '../store/useCheckoutStore';
 import { useCartStore } from '../store/useCartStore';
 import { useDisputeStore } from '../store/useDisputeStore';

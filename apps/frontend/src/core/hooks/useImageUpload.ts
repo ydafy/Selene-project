@@ -7,9 +7,9 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { supabase } from '../db/supabase';
+import { supabase } from '../../shared/lib/supabase';
 import { decode } from 'base64-arraybuffer';
-import { uploadMediaFromBase64 } from '../storage/uploadMedia';
+import { uploadMediaFromBase64 } from '../../shared/lib/upload-media';
 import { useTranslation } from 'react-i18next';
 
 interface PickerOptions {

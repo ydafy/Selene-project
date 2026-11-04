@@ -2,8 +2,8 @@ import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import enCheckout from '../../../core/i18n/locales/en/checkout.json';
-import esCheckout from '../../../core/i18n/locales/es/checkout.json';
+import enCheckout from '../../../shared/i18n/locales/en/checkout.json';
+import esCheckout from '../../../shared/i18n/locales/es/checkout.json';
 
 // Source assertions: the repo has no React Native render harness for this sheet (#27).
 const source = readFileSync(

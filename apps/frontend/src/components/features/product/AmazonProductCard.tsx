@@ -3,10 +3,10 @@ import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
 import { Product } from '@selene/types';
 
-import { Box, Text } from '../../base';
-import { AppImage } from '../../ui/AppImage';
-import { PrimaryButton } from '../../ui/PrimaryButton';
-import { Theme } from '../../../core/theme';
+import { Box, Text } from '../../../shared/ui/base';
+import { AppImage } from '../../../shared/ui/app-image';
+import { PrimaryButton } from '../../../shared/ui/primary-button';
+import { Theme } from '../../../shared/theme';
 import { useProductCart } from './hooks/useProductCart';
 
 type ProductCardProps = {

@@ -1,6 +1,6 @@
 import { formatDistanceToNow, format, isValid } from 'date-fns';
 import { es, enUS } from 'date-fns/locale';
-import i18n from '../i18n';
+import i18n from '../../shared/i18n';
 import { formatCurrencyWithLocale } from './formatCurrency';
 
 // Helper interno para obtener el locale actual

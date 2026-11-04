@@ -10,13 +10,13 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
-import { Box, Text } from '../../base';
-import { Theme } from '../../../core/theme';
+import { Box, Text } from '../../../shared/ui/base';
+import { Theme } from '../../../shared/theme';
 import { AddressCard } from './AddressCard';
 import { useAddresses } from '../../../core/hooks/useAddresses';
 import { Address } from '@selene/types';
-import { EmptyState } from '../../ui/EmptyState';
-import { ConfirmDialog } from '../../ui/ConfirmDialog';
+import { EmptyState } from '../../../shared/ui/empty-state';
+import { ConfirmDialog } from '../../../shared/ui/confirm-dialog';
 
 const MAX_ADDRESSES = 3;
 

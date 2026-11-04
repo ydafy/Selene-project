@@ -7,11 +7,11 @@ import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 
-import { Box, Text } from '../../components/base';
-import { GlobalHeader } from '../../components/layout/GlobalHeader';
-import { ScreenHeader } from '../../components/layout/ScreenHeader';
+import { Box, Text } from '../../shared/ui/base';
+import { GlobalHeader } from '../../shared/ui/global-header';
+import { ScreenHeader } from '../../shared/ui/screen-header';
 import { WizardSteps } from '../../components/features/sell/WizardSteps';
-import { PrimaryButton } from '../../components/ui/PrimaryButton';
+import { PrimaryButton } from '../../shared/ui/primary-button';
 import { useSellStore } from '../../core/store/useSellStore';
 import { SELL_FORM_CONFIG } from '../../core/config/sell-form-config';
 import { DynamicSpecField } from '../../components/features/sell/DynamicSpecField';

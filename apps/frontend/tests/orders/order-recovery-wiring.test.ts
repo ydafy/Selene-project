@@ -19,10 +19,10 @@ describe('buyer checkout recovery UI wiring', () => {
       'apps/frontend/src/app/profile/orders/summary/[id].tsx',
     );
     const english = source(
-      'apps/frontend/src/core/i18n/locales/en/orders.json',
+      'apps/frontend/src/shared/i18n/locales/en/orders.json',
     );
     const spanish = source(
-      'apps/frontend/src/core/i18n/locales/es/orders.json',
+      'apps/frontend/src/shared/i18n/locales/es/orders.json',
     );
 
     expect(summary).toContain("t('recovery.confirmed')");

@@ -30,13 +30,13 @@ mock.module('@tanstack/react-query', () => ({
   useQueryClient: () => ({ invalidateQueries: async () => undefined }),
 }));
 
-mock.module('../db/supabase', () => ({
+mock.module('../../shared/lib/supabase', () => ({
   supabase: {
     functions: { invoke: async () => ({ data: null, error: null }) },
   },
 }));
 
-mock.module('../services/edge-client', () => ({
+mock.module('../../shared/lib/edge-client', () => ({
   invokeEdge: async () => ({}),
 }));
 

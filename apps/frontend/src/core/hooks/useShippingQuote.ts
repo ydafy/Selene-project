@@ -6,7 +6,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { invokeEdge } from '../services/edge-client';
+import { invokeEdge } from '../../shared/lib/edge-client';
 import { ShippingOption } from '@selene/types';
 import { RequestRaceGuard } from '../utils/requestRaceGuard';
 

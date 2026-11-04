@@ -2,9 +2,9 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
 import { Product } from '@selene/types';
 
-import { PrimaryButton } from '../../ui/PrimaryButton';
-import { useAuthContext } from '../../../components/auth/AuthProvider';
-import { Theme } from '../../../core/theme';
+import { PrimaryButton } from '../../../shared/ui/primary-button';
+import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
+import { Theme } from '../../../shared/theme';
 
 // Importamos el hook de acciones que ya teníamos para reutilizar la lógica de carrito
 import { useProductCart } from './hooks/useProductCart';

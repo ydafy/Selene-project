@@ -53,7 +53,7 @@ if (process.env.SELENE_EXIT_GUARD_CHILD !== '1') {
   mock.module('../store/useSellStore', () => ({
     useSellStore: () => ({ resetDraft }),
   }));
-  mock.module('../../components/ui/ConfirmDialog', () => ({
+  mock.module('../../shared/ui/confirm-dialog', () => ({
     ConfirmDialog: (props: NonNullable<typeof dialog>) => {
       dialog = props;
       return null;

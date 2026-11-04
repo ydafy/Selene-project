@@ -6,12 +6,12 @@ import { useTheme } from '@shopify/restyle';
 import Animated, { withSpring } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 
-import { Box, Text } from '../../components/base';
-import { PrimaryButton } from '../../components/ui/PrimaryButton';
-import { GlobalHeader } from '../../components/layout/GlobalHeader';
+import { Box, Text } from '../../shared/ui/base';
+import { PrimaryButton } from '../../shared/ui/primary-button';
+import { GlobalHeader } from '../../shared/ui/global-header';
 
-import { ErrorState } from '../../components/ui/ErrorState';
-import { Theme } from '../../core/theme';
+import { ErrorState } from '../../shared/ui/error-state';
+import { Theme } from '../../shared/theme';
 import { usePaymentProcess } from '../../core/hooks/usePaymentProcess';
 import { formatCurrency } from '../../core/utils/format';
 import { OrderPreviewStrip } from '../../components/features/checkout/OrderPreviewStrip';

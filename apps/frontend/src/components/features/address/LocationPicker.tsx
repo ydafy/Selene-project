@@ -3,8 +3,8 @@ import { TouchableOpacity, Dimensions } from 'react-native';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from '@shopify/restyle';
 
-import { Box, Text } from '../../base';
-import { Theme } from '../../../core/theme';
+import { Box, Text } from '../../../shared/ui/base';
+import { Theme } from '../../../shared/theme';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const MAP_HEIGHT = 250; // Altura estilo Uber

@@ -7,9 +7,9 @@ Snapshot of the tokens and component rules that already exist in code, for desig
 
 Sources:
 
-- App: `apps/frontend/src/core/theme/tokens.ts`, `apps/frontend/src/core/theme/index.ts`
+- App: `apps/frontend/src/shared/theme/tokens.ts`, `apps/frontend/src/shared/theme/index.ts`
 - Admin: `apps/admin-web/src/index.css`
-- Components: `apps/frontend/src/components/ui/PrimaryButton.tsx`, `apps/admin-web/src/components/ui/{StatusBadge,StatCard,Modal,ConfirmModal}.tsx`
+- Components: `apps/frontend/src/shared/ui/primary-button.tsx`, `apps/admin-web/src/components/ui/{StatusBadge,StatCard,Modal,ConfirmModal}.tsx`
 
 ## Colors
 

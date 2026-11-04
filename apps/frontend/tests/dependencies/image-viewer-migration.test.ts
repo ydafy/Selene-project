@@ -23,7 +23,7 @@ const VIEWER_SCREENS = [
 
 describe('image viewer migration to react-native-zoom-toolkit', () => {
   test('no app file imports the unmaintained react-native-image-viewing', () => {
-    const offenders = ['app', 'components', 'core']
+    const offenders = ['.']
       .flatMap((dir) => sourceFiles(join(FRONTEND, 'src', dir)))
       .filter((file) => !file.includes(`${sep}__tests__${sep}`))
       .filter((file) =>
@@ -42,7 +42,7 @@ describe('image viewer migration to react-native-zoom-toolkit', () => {
   });
 
   test('the shared viewer is built on the zoom toolkit gallery', () => {
-    const viewer = read('src/components/ui/AppImageViewer.tsx');
+    const viewer = read('src/shared/ui/app-image-viewer.tsx');
     expect(viewer).toContain("from 'react-native-zoom-toolkit'");
     expect(viewer).toContain('<Gallery');
     expect(viewer).toContain('<GestureHandlerRootView');

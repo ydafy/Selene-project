@@ -12,21 +12,21 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Toast from 'react-native-toast-message';
 
-import { Box, Text } from '../../components/base';
-import { GlobalHeader } from '../../components/layout/GlobalHeader';
-import { FormTextInput } from '../../components/ui/FormTextInput';
-import { FormSelect } from '../../components/ui/FormSelect';
-import { PrimaryButton } from '../../components/ui/PrimaryButton';
-import { Checkbox } from '../../components/ui/Checkbox';
+import { Box, Text } from '../../shared/ui/base';
+import { GlobalHeader } from '../../shared/ui/global-header';
+import { FormTextInput } from '../../shared/ui/form-text-input';
+import { FormSelect } from '../../shared/ui/form-select';
+import { PrimaryButton } from '../../shared/ui/primary-button';
+import { Checkbox } from '../../shared/ui/checkbox';
 
 import { useAddresses } from '../../core/hooks/useAddresses';
 import { useZipCode } from '../../core/hooks/useZipCode';
 import { addressSchema, AddressFormData } from '../../core/schemas/address';
 import { useTheme } from '@shopify/restyle';
-import { Theme } from '../../core/theme';
+import { Theme } from '../../shared/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppChip } from '@/components/ui/AppChip';
-import { ScreenHeader } from '@/components/layout/ScreenHeader';
+import { AppChip } from '@/shared/ui/app-chip';
+import { ScreenHeader } from '@/shared/ui/screen-header';
 
 export default function AddressFormScreen() {
   const { t } = useTranslation(['address', 'common']);

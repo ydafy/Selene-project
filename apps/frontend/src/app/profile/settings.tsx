@@ -3,9 +3,9 @@ import { Stack, Redirect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { GlobalHeader } from '../../components/layout/GlobalHeader';
-import { ScreenLayout } from '../../components/layout/ScreenLayout';
-import { useAuthContext } from '../../components/auth/AuthProvider';
+import { GlobalHeader } from '../../shared/ui/global-header';
+import { ScreenLayout } from '../../shared/ui/screen-layout';
+import { useAuthContext } from '../../shared/lib/auth/auth-provider';
 import { AccountSection } from '../../components/features/settings/AccountSection';
 import { SecuritySection } from '../../components/features/settings/SecuritySection';
 import { NotificationsSection } from '../../components/features/settings/NotificationsSection';

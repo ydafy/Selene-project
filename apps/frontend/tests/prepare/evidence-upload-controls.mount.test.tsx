@@ -68,14 +68,14 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
     impactAsync,
     ImpactFeedbackStyle: { Medium: 'medium' },
   }));
-  mock.module('../../src/components/base', () => ({
+  mock.module('../../src/shared/ui/base', () => ({
     Box: host('Box'),
     Text: host('Text'),
   }));
-  mock.module('../../src/components/ui/AppImage', () => ({
+  mock.module('../../src/shared/ui/app-image', () => ({
     AppImage: host('AppImage'),
   }));
-  mock.module('../../src/components/ui/ConfirmDialog', () => ({
+  mock.module('../../src/shared/ui/confirm-dialog', () => ({
     ConfirmDialog: host('ConfirmDialog'),
   }));
   mock.module('../../src/core/hooks/useImageUpload', () => ({
@@ -91,7 +91,7 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
     mock.module(`../../assets/images/packaging/${image}.webp`, () => ({
       default: 1,
     }));
-  mock.module('../../src/components/ui/Skeleton', () => ({
+  mock.module('../../src/shared/ui/skeleton', () => ({
     Skeleton: host('Skeleton'),
   }));
   const { act, fireEvent, render } =
@@ -110,8 +110,7 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
     await import('../../src/components/features/checkout/AddressSection');
   const { PackagingGuideCard } =
     await import('../../src/components/features/orders/PackagingGuideCard');
-  const { LabelWithHelp } =
-    await import('../../src/components/ui/LabelWithHelp');
+  const { LabelWithHelp } = await import('../../src/shared/ui/label-with-help');
 
   test('shared address, help and packing controls retain enabled defaults and reject disabled callbacks', async () => {
     const onPress = mock(() => {});

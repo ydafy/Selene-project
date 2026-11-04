@@ -5,8 +5,8 @@
 
 import React from 'react';
 import { Dimensions } from 'react-native';
-import { Box } from '../../../../components/base';
-import { Skeleton } from '../../../../components/ui/Skeleton';
+import { Box } from '../../../../shared/ui/base';
+import { Skeleton } from '../../../../shared/ui/skeleton';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const HERO_HEIGHT = SCREEN_HEIGHT * 0.6;

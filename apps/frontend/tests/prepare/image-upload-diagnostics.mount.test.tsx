@@ -46,7 +46,7 @@ if (process.env.SELENE_UPLOAD_CHILD !== '1') {
     useTranslation: () => ({ t: (key: string) => key }),
   }));
   mock.module('base64-arraybuffer', () => ({ decode }));
-  mock.module('../../src/core/db/supabase', () => ({
+  mock.module('../../src/shared/lib/supabase', () => ({
     supabase: { storage: { from } },
   }));
   const { act, render } = await import('@testing-library/react-native');

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../db/supabase';
+import { supabase } from '../../shared/lib/supabase';
 import { Profile } from '@selene/types';
 import { useImageUpload } from './useImageUpload';
 import {

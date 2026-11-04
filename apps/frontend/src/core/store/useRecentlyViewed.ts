@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '../db/supabase';
+import { supabase } from '../../shared/lib/supabase';
 import { PublicProduct } from '@selene/types';
 import { useProductHistoryStore } from '../store/useProductHistoryStore';
 import { BUYER_LISTED_STATUSES } from '../utils/productListingStatus';

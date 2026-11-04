@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { z } from 'zod';
 import { Session, User } from '@supabase/supabase-js';
-import { supabase } from '../db/supabase';
+import { supabase } from '../../shared/lib/supabase';
 import { validateRegisterUsername } from '../auth/registerUsername.logic';
 import { mapAuthErrorKey } from '../auth/authErrors.logic';
 import { completePasswordRecovery } from '../auth/passwordRecovery.logic';

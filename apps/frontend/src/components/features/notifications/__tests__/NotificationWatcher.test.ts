@@ -128,8 +128,10 @@ const TOAST_CONFIG_PATH = join(
   '..',
   '..',
   '..',
-  'config',
-  'ToastConfig.tsx',
+  '..',
+  'shared',
+  'ui',
+  'toast-config.tsx',
 );
 const toastConfigSource = () => readFileSync(TOAST_CONFIG_PATH, 'utf8');
 
@@ -139,7 +141,7 @@ describe('ToastConfig warning type', () => {
   });
 
   test('warning toast uses orange accent color', () => {
-    // The amber value itself is pinned in core/theme/__tests__/tokens.test.ts.
+    // The amber value itself is pinned in shared/theme/tokens.test.ts.
     expect(toastConfigSource()).toContain(
       'borderLeftColor: theme.colors.warning',
     );
@@ -154,7 +156,7 @@ const EN_I18N_PATH = join(
   '..',
   '..',
   '..',
-  'core',
+  'shared',
   'i18n',
   'locales',
   'en',
@@ -166,7 +168,7 @@ const ES_I18N_PATH = join(
   '..',
   '..',
   '..',
-  'core',
+  'shared',
   'i18n',
   'locales',
   'es',

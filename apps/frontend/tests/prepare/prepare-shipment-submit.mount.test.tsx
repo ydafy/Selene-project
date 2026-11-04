@@ -119,24 +119,30 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
   mock.module('react-native-safe-area-context', () => ({
     useSafeAreaInsets: () => ({ top: 0, bottom: 0 }),
   }));
-  mock.module('../../src/components/base', () => ({
+  mock.module('../../src/shared/ui/base', () => ({
     Box: host('Box'),
     Text: host('Text'),
   }));
   for (const [path, name] of [
-    ['layout/GlobalHeader', 'GlobalHeader'],
-    ['layout/ScreenHeader', 'ScreenHeader'],
-    ['features/checkout/AddressSection', 'AddressSection'],
-    ['ui/PrimaryButton', 'PrimaryButton'],
-    ['ui/ConfirmDialog', 'ConfirmDialog'],
-    ['ui/ErrorState', 'ErrorState'],
-    ['ui/Skeleton', 'Skeleton'],
-    ['ui/LabelWithHelp', 'LabelWithHelp'],
-    ['features/orders/PackagingGuideCard', 'PackagingGuideCard'],
-    ['features/orders/ShipmentLabelRecoveryCard', 'ShipmentLabelRecoveryCard'],
-    ['features/orders/EvidenceUploadSection', 'EvidenceUploadSection'],
+    ['shared/ui/global-header', 'GlobalHeader'],
+    ['shared/ui/screen-header', 'ScreenHeader'],
+    ['components/features/checkout/AddressSection', 'AddressSection'],
+    ['shared/ui/primary-button', 'PrimaryButton'],
+    ['shared/ui/confirm-dialog', 'ConfirmDialog'],
+    ['shared/ui/error-state', 'ErrorState'],
+    ['shared/ui/skeleton', 'Skeleton'],
+    ['shared/ui/label-with-help', 'LabelWithHelp'],
+    ['components/features/orders/PackagingGuideCard', 'PackagingGuideCard'],
+    [
+      'components/features/orders/ShipmentLabelRecoveryCard',
+      'ShipmentLabelRecoveryCard',
+    ],
+    [
+      'components/features/orders/EvidenceUploadSection',
+      'EvidenceUploadSection',
+    ],
   ])
-    mock.module(`../../src/components/${path}`, () => ({
+    mock.module(`../../src/${path}`, () => ({
       [name]: name === 'PrimaryButton' ? labelHost(name) : host(name),
     }));
   mock.module(
@@ -158,7 +164,7 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
       },
     }),
   );
-  mock.module('../../src/components/auth/AuthProvider', () => ({
+  mock.module('../../src/shared/lib/auth/auth-provider', () => ({
     useAuthContext: () => ({ session: { user: { id: viewer } } }),
   }));
   mock.module('../../src/core/hooks/useOrders', () => ({

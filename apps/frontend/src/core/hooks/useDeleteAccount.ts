@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { reauthenticateCurrentUser } from '../auth/reauth';
 import { signOutUser } from '../auth/signOut';
-import { supabase } from '../db/supabase';
+import { supabase } from '../../shared/lib/supabase';
 import { runDeleteAccount, type DeleteAccountInput } from './deleteAccountFlow';
 import {
   readInvokeFailure,

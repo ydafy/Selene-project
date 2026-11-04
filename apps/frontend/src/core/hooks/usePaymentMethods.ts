@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { invokeEdge } from '../services/edge-client';
+import { invokeEdge } from '../../shared/lib/edge-client';
 import { PaymentMethod } from '@selene/types';
-import { useAuthContext } from '@/components/auth/AuthProvider';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 
 const logDebug = (context: string, data?: unknown, error?: unknown) => {
   if (__DEV__) {

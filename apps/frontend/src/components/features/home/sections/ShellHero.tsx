@@ -16,11 +16,11 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { Box, Text } from '../../../base';
-import { AppImage } from '../../../ui/AppImage';
-import { PrimaryButton } from '../../../ui/PrimaryButton';
-import { Theme } from '../../../../core/theme';
-import { getSharedStyles } from '../sharedStyles';
+import { Box, Text } from '../../../../shared/ui/base';
+import { AppImage } from '../../../../shared/ui/app-image';
+import { PrimaryButton } from '../../../../shared/ui/primary-button';
+import { Theme } from '../../../../shared/theme';
+import { getSharedStyles } from '../../../../shared/theme/shared-styles';
 
 // --- CONSTANTES DE RUTA (Sincronizadas con index.tsx) ---
 const STORE_PATH = '/store/query';

@@ -3,7 +3,7 @@
  * @description Hook para obtener la configuración global del sistema (Comisiones, Mantenimiento).
  */
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '../db/supabase';
+import { supabase } from '../../shared/lib/supabase';
 
 export interface PackagePreset {
   category: string;

@@ -6,7 +6,7 @@ let rpcResult: { data: unknown; error: unknown } = { data: [], error: null };
 let rpcThrows = false;
 const rpcCalls: Array<[string, unknown]> = [];
 
-mock.module('../db/supabase', () => ({
+mock.module('../../shared/lib/supabase', () => ({
   supabase: {
     rpc: async (name: string, args: unknown) => {
       rpcCalls.push([name, args]);
@@ -134,10 +134,10 @@ describe('screen and hook wiring (S4)', () => {
   it('new strings exist in en and es', () => {
     for (const lang of ['en', 'es']) {
       const product = JSON.parse(
-        read(`core/i18n/locales/${lang}/product.json`),
+        read(`shared/i18n/locales/${lang}/product.json`),
       );
       const checkout = JSON.parse(
-        read(`core/i18n/locales/${lang}/checkout.json`),
+        read(`shared/i18n/locales/${lang}/checkout.json`),
       );
       expect(product.dialogs.sellerNotReadyTitle).toBeString();
       expect(product.actions.sellerNotReadyBtn).toBeUndefined();

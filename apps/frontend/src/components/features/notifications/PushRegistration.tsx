@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 
-import { useAuthContext } from '../../auth/AuthProvider';
+import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
 import { pushRegistrar } from '../../../core/push/pushRegistration';
 import { createOnlineTransition } from '../../../core/push/pushRegistration.logic';
 

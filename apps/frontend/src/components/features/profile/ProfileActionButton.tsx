@@ -3,8 +3,8 @@ import { useTheme } from '@shopify/restyle';
 import MaterialCommunityIcons, {
   type MaterialDesignIconsIconName,
 } from '@react-native-vector-icons/material-design-icons';
-import { Box, Text } from '../../base';
-import { Theme } from '../../../core/theme';
+import { Box, Text } from '../../../shared/ui/base';
+import { Theme } from '../../../shared/theme';
 
 type ProfileActionButtonProps = {
   label: string;

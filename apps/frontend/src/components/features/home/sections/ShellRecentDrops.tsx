@@ -18,11 +18,11 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 
-import { Box, Text } from '../../../base';
-import { ProductMiniCard } from '../../product/ProductMiniCard';
+import { Box, Text } from '../../../../shared/ui/base';
+import { ProductMiniCard } from '../../../../shared/ui/product/product-mini-card';
 import { useProducts } from '../../../../core/hooks/useProducts';
-import { Theme } from '../../../../core/theme';
-import { getSharedStyles } from '../sharedStyles';
+import { Theme } from '../../../../shared/theme';
+import { getSharedStyles } from '../../../../shared/theme/shared-styles';
 import { getMasonryItemHeight } from '../../../../core/constants/layout';
 import { Product } from '@selene/types';
 

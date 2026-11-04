@@ -2,8 +2,11 @@ import { useRef, useState } from 'react';
 import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useTranslation } from 'react-i18next';
-import { supabase } from '../db/supabase';
-import { resolveMediaType, uploadMediaFromUri } from '../storage/uploadMedia';
+import { supabase } from '../../shared/lib/supabase';
+import {
+  resolveMediaType,
+  uploadMediaFromUri,
+} from '../../shared/lib/upload-media';
 
 const MAX_VIDEO_SIZE_BYTES = 50 * 1024 * 1024; // 50MB (Límite Supabase Free)
 const MAX_VIDEO_DURATION_MS = 120000; // 2 Minutos

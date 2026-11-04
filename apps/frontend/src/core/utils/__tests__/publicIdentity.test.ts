@@ -102,7 +102,10 @@ describe('deleted-user copy', () => {
   const load = (locale: string, file: string) =>
     JSON.parse(
       readFileSync(
-        new URL(`../../i18n/locales/${locale}/${file}.json`, import.meta.url),
+        new URL(
+          `../../../shared/i18n/locales/${locale}/${file}.json`,
+          import.meta.url,
+        ),
         'utf8',
       ),
     );

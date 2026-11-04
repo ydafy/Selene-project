@@ -11,17 +11,17 @@ import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
-import { Box, Text } from '../../../../components/base';
-import { GlobalHeader } from '../../../../components/layout/GlobalHeader';
-import { ScreenHeader } from '../../../../components/layout/ScreenHeader';
-import { PrimaryButton } from '../../../../components/ui/PrimaryButton';
-import { ConfirmDialog } from '../../../../components/ui/ConfirmDialog';
+import { Box, Text } from '../../../../shared/ui/base';
+import { GlobalHeader } from '../../../../shared/ui/global-header';
+import { ScreenHeader } from '../../../../shared/ui/screen-header';
+import { PrimaryButton } from '../../../../shared/ui/primary-button';
+import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog';
 import { EvidenceUploadSection } from '@/components/features/orders/EvidenceUploadSection';
 import { useOrderById } from '../../../../core/hooks/useOrders';
 import { useOrderActions } from '../../../../core/hooks/useOrderActions';
 import { authenticateAsync } from '../../../../core/utils/biometrics';
 import Animated, { withSpring, withTiming } from 'react-native-reanimated';
-import { theme } from '@/core/theme';
+import { theme } from '@/shared/theme';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
 // Mount entrance: slides in from the left (spring, 2 s) while fading in (timing).

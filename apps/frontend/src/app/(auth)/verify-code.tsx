@@ -9,12 +9,12 @@ import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 
-import { ScreenLayout } from '../../components/layout/ScreenLayout';
+import { ScreenLayout } from '../../shared/ui/screen-layout';
 import { AuthBackButton } from '../../components/features/auth/AuthBackButton';
-import { OtpInput } from '../../components/ui/OtpInput';
-import { PrimaryButton } from '../../components/ui/PrimaryButton';
-import { TextLink } from '../../components/ui/TextLink';
-import { Box, Text } from '../../components/base';
+import { OtpInput } from '../../shared/ui/otp-input';
+import { PrimaryButton } from '../../shared/ui/primary-button';
+import { TextLink } from '../../shared/ui/text-link';
+import { Box, Text } from '../../shared/ui/base';
 import { useAuth } from '../../core/hooks/useAuth';
 import { mapAuthErrorKey } from '../../core/auth/authErrors.logic';
 import { shouldStartCooldown } from '../../core/auth/resendCooldown.logic';

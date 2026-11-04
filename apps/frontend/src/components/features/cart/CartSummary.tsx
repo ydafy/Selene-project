@@ -1,9 +1,9 @@
 import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
 
-import { Box, Text } from '../../base';
-import { PrimaryButton } from '../../ui/PrimaryButton';
-import { Theme } from '../../../core/theme';
+import { Box, Text } from '../../../shared/ui/base';
+import { PrimaryButton } from '../../../shared/ui/primary-button';
+import { Theme } from '../../../shared/theme';
 import { formatCurrency } from '../../../core/utils/format';
 import { getTabDockMetrics } from '../../../core/constants/layout';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
