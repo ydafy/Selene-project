@@ -2,7 +2,6 @@
   "title": "Ajustes",
   "sections": {
     "account": "Cuenta",
-    "general": "General",
     "security": "Seguridad",
     "privacy": "Privacidad",
     "legal": "Legales",
@@ -37,12 +36,6 @@
     "usernameLabel": "Nombre de usuario",
     "save": "Guardar",
     "cancel": "Cancelar"
-  },
-  "general": {
-    "addresses": "Direcciones",
-    "addressesDescription": "Administra tus direcciones de envío",
-    "notifications": "Notificaciones",
-    "notificationsDescription": "Revisa tus alertas y avisos"
   },
   "security": {
     "logout": "Cerrar sesión",

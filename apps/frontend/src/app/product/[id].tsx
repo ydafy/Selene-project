@@ -22,7 +22,6 @@ import { ProductFavoriteButton } from '../../components/features/product/Product
 import { ProductSellerCard } from '../../components/features/product/ProductSellerCard';
 import { ProductDetailSkeleton } from '../../components/features/product/ProductDetailSkeleton';
 import { OptionsMenu } from '../../shared/ui/options-menu';
-//import { ViewCounter } from '../../components/features/product/ViewCounter';
 import { AppChip } from '../../shared/ui/app-chip';
 import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
 
@@ -188,8 +187,6 @@ export default function ProductDetailScreen() {
                 <Text variant="header-xl" lineHeight={32}>
                   {product.name}
                 </Text>
-                {/* ViewCounter (Oculto por ahora según decisión de negocio, pero el código está listo) */}
-                {/* <ViewCounter count={product.views} /> */}
               </Box>
 
               {/* Etiquetas */}
