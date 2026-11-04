@@ -188,7 +188,7 @@ export default function SellSpecsScreen() {
             <Box height={30} />
 
             <PrimaryButton
-              onPress={handleSubmit(onSubmit)}
+              onPress={() => void handleSubmit(onSubmit)()}
               disabled={!isValid && formConfig.length > 0}
             >
               {t('sell:fields.next')}

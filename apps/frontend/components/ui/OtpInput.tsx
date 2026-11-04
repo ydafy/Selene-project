@@ -4,7 +4,12 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Pressable, StyleSheet, TextInput } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  TextInput,
+  type TextInputInstance,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { Box, Text } from '../base';
@@ -31,7 +36,7 @@ const sanitizeOtp = (text: string) =>
 export const OtpInput = forwardRef<OtpInputHandle, OtpInputProps>(
   function OtpInput({ onChangeText }, ref) {
     const { t } = useTranslation('auth');
-    const inputRef = useRef<TextInput>(null);
+    const inputRef = useRef<TextInputInstance>(null);
     const [value, setValue] = useState('');
     const [focused, setFocused] = useState(false);
 

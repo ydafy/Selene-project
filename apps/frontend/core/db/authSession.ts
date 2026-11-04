@@ -19,7 +19,7 @@ export type AutoRefreshControl = {
 };
 
 export type AppStateSource = {
-  currentState: string;
+  currentState: string | null | undefined;
   addEventListener: (
     type: 'change',
     listener: (state: string) => void,
@@ -51,11 +51,15 @@ export const bindAutoRefreshToAppState = (
 ): (() => void) => {
   let bound = true;
 
-  const apply = (state: string) => {
+  const apply = (state: string | null | undefined) => {
     if (state === 'active') {
-      auth.startAutoRefresh().catch((e) => logRefreshFailure('startAutoRefresh', e));
+      auth
+        .startAutoRefresh()
+        .catch((e) => logRefreshFailure('startAutoRefresh', e));
     } else {
-      auth.stopAutoRefresh().catch((e) => logRefreshFailure('stopAutoRefresh', e));
+      auth
+        .stopAutoRefresh()
+        .catch((e) => logRefreshFailure('stopAutoRefresh', e));
     }
   };
 

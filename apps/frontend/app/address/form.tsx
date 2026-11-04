@@ -356,7 +356,7 @@ export default function AddressFormScreen() {
           </Box>
 
           <PrimaryButton
-            onPress={handleSubmit(onSubmit)}
+            onPress={() => void handleSubmit(onSubmit)()}
             loading={isAdding}
             disabled={!isValid || isAdding}
           >

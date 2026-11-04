@@ -433,7 +433,7 @@ export const SellDetailsForm: React.FC<SellDetailsFormProps> = ({
       {/* BOTÓN DE ACCIÓN FINAL */}
       <Box height={30} />
       <PrimaryButton
-        onPress={handleSubmit(onSubmit)}
+        onPress={() => void handleSubmit(onSubmit)()}
         disabled={!isValid || isQuoting}
       >
         {t('fields.next')}

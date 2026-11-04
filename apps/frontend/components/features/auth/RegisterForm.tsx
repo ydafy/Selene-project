@@ -8,7 +8,7 @@ import React, { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { TextInput as RNTextInput } from 'react-native'; // <--- IMPORTANTE
+import type { TextInputInstance } from 'react-native'; // <--- IMPORTANTE
 import Toast from 'react-native-toast-message';
 import { router } from 'expo-router';
 import { TERMS_URL } from '@selene/types';
@@ -51,9 +51,9 @@ export const RegisterForm = ({
   const { signUp, loading } = useAuth();
 
   // 1. RESTAURACIÓN DE REFS (Para navegación de teclado)
-  const emailInputRef = useRef<RNTextInput>(null);
-  const passwordInputRef = useRef<RNTextInput>(null);
-  const confirmPasswordInputRef = useRef<RNTextInput>(null);
+  const emailInputRef = useRef<TextInputInstance>(null);
+  const passwordInputRef = useRef<TextInputInstance>(null);
+  const confirmPasswordInputRef = useRef<TextInputInstance>(null);
 
   // 2. MOTOR DE GOOGLE
   const { signInWithGoogle, isGoogleLoading } = useGoogleAuth(() => {
@@ -282,7 +282,7 @@ export const RegisterForm = ({
       {/* BOTONES DE ACCIÓN */}
       <Box paddingVertical="m">
         <PrimaryButton
-          onPress={handleSubmit(onSubmit)}
+          onPress={() => void handleSubmit(onSubmit)()}
           loading={loading}
           disabled={!isValid || isBusy}
         >

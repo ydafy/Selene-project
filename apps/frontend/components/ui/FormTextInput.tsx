@@ -4,7 +4,7 @@ import {
   TextInput as PaperTextInput,
   TextInputProps,
 } from 'react-native-paper';
-import type { TextInput as RNTextInput } from 'react-native';
+import type { TextInputInstance } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@shopify/restyle';
 
@@ -20,7 +20,7 @@ type FormTextInputProps = Omit<TextInputProps, 'theme'> & {
   labelMode?: 'floating' | 'static';
 };
 
-export const FormTextInput = forwardRef<RNTextInput, FormTextInputProps>(
+export const FormTextInput = forwardRef<TextInputInstance, FormTextInputProps>(
   (
     {
       leftIcon,

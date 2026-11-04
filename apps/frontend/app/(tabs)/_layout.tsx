@@ -5,6 +5,7 @@ import { useTheme } from '@shopify/restyle';
 
 import { Theme } from '../../core/theme';
 import { useCartStore } from '../../core/store/useCartStore';
+import { tabIconColor } from '../../core/utils/tabIconColor';
 import { CartTabIcon } from '../../components/ui/CartTabIcon';
 import { Box } from '@/components/base';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -82,7 +83,7 @@ export default function TabsLayout() {
             tabBarIcon: ({ color, size }) => (
               <MaterialCommunityIcons
                 name="home-outline"
-                color={color}
+                color={tabIconColor(color)}
                 size={size}
               />
             ),
@@ -97,7 +98,7 @@ export default function TabsLayout() {
             tabBarIcon: ({ color, size }) => (
               <MaterialCommunityIcons
                 name="magnify"
-                color={color}
+                color={tabIconColor(color)}
                 size={size}
               />
             ),
@@ -111,7 +112,7 @@ export default function TabsLayout() {
             tabBarIcon: ({ color, size }) => (
               <MaterialCommunityIcons
                 name="plus-circle-outline"
-                color={color}
+                color={tabIconColor(color)}
                 size={size}
               />
             ),
@@ -141,7 +142,7 @@ export default function TabsLayout() {
             tabBarIcon: ({ color, size }) => (
               <MaterialCommunityIcons
                 name="account-outline"
-                color={color}
+                color={tabIconColor(color)}
                 size={size}
               />
             ),

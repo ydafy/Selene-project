@@ -139,7 +139,7 @@ export default function ForgotPasswordScreen() {
         <Box height={24} />
 
         <PrimaryButton
-          onPress={handleSubmit(onSubmit)}
+          onPress={() => void handleSubmit(onSubmit)()}
           loading={loading}
           disabled={!isValid || loading}
         >
