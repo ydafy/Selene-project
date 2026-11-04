@@ -1,10 +1,19 @@
 import React, { useCallback, useState } from 'react';
-import { Modal, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
+import {
+  Modal,
+  Pressable,
+  StyleSheet,
+  useWindowDimensions,
+} from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Gallery, fitContainer, type SwipeDirection } from 'react-native-zoom-toolkit';
+import {
+  Gallery,
+  fitContainer,
+  type SwipeDirection,
+} from 'react-native-zoom-toolkit';
 import { Image, type ImageLoadEventData } from 'expo-image';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { useTranslation } from 'react-i18next';
 
 import { Box, Text } from '../base';
@@ -38,7 +47,8 @@ const ViewerImage = ({ source }: { source: ImageSource }) => {
 
   const handleLoad = useCallback((event: ImageLoadEventData) => {
     const { width: imageWidth, height: imageHeight } = event.source;
-    if (imageWidth > 0 && imageHeight > 0) setAspectRatio(imageWidth / imageHeight);
+    if (imageWidth > 0 && imageHeight > 0)
+      setAspectRatio(imageWidth / imageHeight);
   }, []);
 
   return (
@@ -76,7 +86,9 @@ export const AppImageViewer = ({
   );
   const keyExtractor = useCallback(
     (item: ImageSource, itemIndex: number) =>
-      typeof item === 'number' ? `${item}-${itemIndex}` : `${item.uri}-${itemIndex}`,
+      typeof item === 'number'
+        ? `${item}-${itemIndex}`
+        : `${item.uri}-${itemIndex}`,
     [],
   );
   const handleSwipe = useCallback(
@@ -115,15 +127,25 @@ export const AppImageViewer = ({
           <Pressable
             onPress={onClose}
             accessibilityRole="button"
-            accessibilityLabel={closeAccessibilityLabel ?? t('imageViewer.close')}
+            accessibilityLabel={
+              closeAccessibilityLabel ?? t('imageViewer.close')
+            }
             hitSlop={12}
             style={styles.closeButton}
           >
-            <MaterialCommunityIcons name="close" size={24} color={colors.textPrimary} />
+            <MaterialCommunityIcons
+              name="close"
+              size={24}
+              color={colors.textPrimary}
+            />
           </Pressable>
         </SafeAreaView>
 
-        <SafeAreaView edges={['bottom']} style={styles.footer} pointerEvents="none">
+        <SafeAreaView
+          edges={['bottom']}
+          style={styles.footer}
+          pointerEvents="none"
+        >
           <Box
             backgroundColor="background"
             opacity={0.8}
@@ -139,7 +161,9 @@ export const AppImageViewer = ({
             }
           >
             <Text variant="body-md" color="textPrimary" fontWeight="bold">
-              {footerText ? footerText(counter) : `${counter.current} / ${counter.total}`}
+              {footerText
+                ? footerText(counter)
+                : `${counter.current} / ${counter.total}`}
             </Text>
           </Box>
         </SafeAreaView>

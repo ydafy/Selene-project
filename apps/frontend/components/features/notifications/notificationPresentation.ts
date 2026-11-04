@@ -1,6 +1,6 @@
 import type { Notification } from '@selene/types';
 import type { ComponentProps } from 'react';
-import type { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
 type Icon = ComponentProps<typeof MaterialCommunityIcons>['name'];
 type Presentation = {

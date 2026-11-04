@@ -1,4 +1,4 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import type { MaterialDesignIconsIconName } from '@react-native-vector-icons/material-design-icons';
 import { ProductCategory } from '@selene/types';
 
 import { SELL_FORM_CONFIG } from './sell-form-config';
@@ -25,11 +25,12 @@ export const SELL_CATEGORY_META = {
   RAM: { labelKey: 'sell:categories.ram', icon: 'memory' },
 } as const satisfies Record<
   ProductCategory,
-  { labelKey: string; icon: keyof typeof MaterialCommunityIcons.glyphMap }
+  { labelKey: string; icon: MaterialDesignIconsIconName }
 >;
 
 /**
  * Returns the i18n label key for a sell category.
  */
 export const getSellCategoryLabelKey = (category: ProductCategory): string =>
-  SELL_CATEGORY_META[category]?.labelKey ?? `sell:categories.${category.toLowerCase()}`;
+  SELL_CATEGORY_META[category]?.labelKey ??
+  `sell:categories.${category.toLowerCase()}`;

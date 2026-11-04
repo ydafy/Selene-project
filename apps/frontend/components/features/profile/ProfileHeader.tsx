@@ -9,7 +9,7 @@ import { AppImage } from '../../ui/AppImage';
 import { Theme } from '../../../core/theme';
 
 import { Profile } from '@selene/types';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
 type ProfileHeaderProps = {
   user?: User | null;

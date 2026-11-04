@@ -2,7 +2,9 @@ import { useEffect, useRef } from 'react';
 import { Button, Dialog, Portal, Text as PaperText } from 'react-native-paper';
 import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons, {
+  type MaterialDesignIconsIconName,
+} from '@react-native-vector-icons/material-design-icons';
 import { AccessibilityInfo, findNodeHandle, View } from 'react-native';
 import { Box } from '../base';
 import { Theme } from '../../core/theme';
@@ -19,7 +21,7 @@ type ConfirmDialogProps = {
   cancelLabel?: string;
   isDangerous?: boolean;
   dismissable?: boolean; // Controls backdrop dismiss
-  icon?: keyof typeof MaterialCommunityIcons.glyphMap;
+  icon?: MaterialDesignIconsIconName;
   hideCancel?: boolean;
   loading?: boolean;
   disabled?: boolean; // Disables confirm button (e.g., phrase mismatch)

@@ -9,7 +9,7 @@ import React, { useEffect, useMemo } from 'react';
 import { ScrollView, RefreshControl, Linking } from 'react-native';
 import { Stack, type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from '@shopify/restyle';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -30,7 +30,10 @@ import {
   shouldSuppressShipmentActionsForBuyerRecovery,
 } from '../order-recovery-view';
 
-import { resolveSummaryState, summaryAmounts } from '../../../../core/utils/order-summary-state';
+import {
+  resolveSummaryState,
+  summaryAmounts,
+} from '../../../../core/utils/order-summary-state';
 
 export default function OrderSummaryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -130,7 +133,11 @@ export default function OrderSummaryScreen() {
         <GlobalHeader showBack />
         <Box padding="m" gap="m" style={{ paddingTop: insets.top + 100 }}>
           <Text variant="body-md" color="textSecondary" textAlign="center">
-            {t(summaryState === 'missing' ? 'summary.missing' : 'summary.loadError')}
+            {t(
+              summaryState === 'missing'
+                ? 'summary.missing'
+                : 'summary.loadError',
+            )}
           </Text>
           <PrimaryButton onPress={handleRefresh} disabled={isAnyLoading}>
             {t('summary.retry')}
@@ -207,7 +214,11 @@ export default function OrderSummaryScreen() {
   ].filter(Boolean) as string[];
 
   const orderCount = visibleShipments.length;
-  const amounts = summaryAmounts(view.role, visibleShipments.flatMap((shipment) => shipment.items), order.total_amount);
+  const amounts = summaryAmounts(
+    view.role,
+    visibleShipments.flatMap((shipment) => shipment.items),
+    order.total_amount,
+  );
   const visibleTotal = (amounts.totalPaidCents ?? 0) / 100;
 
   // ── Render ──
@@ -257,7 +268,11 @@ export default function OrderSummaryScreen() {
           </Box>
 
           {view.role === 'buyer' && (
-            <Box flexDirection="row" justifyContent="space-between" marginBottom="s">
+            <Box
+              flexDirection="row"
+              justifyContent="space-between"
+              marginBottom="s"
+            >
               <Text variant="body-md" color="textSecondary">
                 {t('summary.totalPaid')}
               </Text>

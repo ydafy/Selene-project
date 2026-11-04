@@ -43,8 +43,8 @@ if (process.env.SELENE_NOTIFICATION_MOUNT_CHILD !== 'item') {
     Pressable,
     StyleSheet: { flatten: (style: unknown) => style },
   }));
-  mock.module('@expo/vector-icons', () => ({
-    MaterialCommunityIcons: host('Icon'),
+  mock.module('@react-native-vector-icons/material-design-icons', () => ({
+    default: host('Icon'),
   }));
   mock.module('@shopify/restyle', () => ({
     useTheme: () => ({ colors: { primary: 'blue', error: 'red' } }),

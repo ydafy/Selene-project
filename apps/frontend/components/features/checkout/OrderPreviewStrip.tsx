@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { Box, Text } from '../../base';
 import { AppImage } from '../../ui/AppImage';
 import { Product } from '@selene/types';
@@ -60,7 +60,11 @@ export const OrderPreviewStrip = ({ items, onPress }: Props) => {
               </Box>
             ))}
           </Box>
-          <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textSecondary} />
+          <MaterialCommunityIcons
+            name="chevron-right"
+            size={20}
+            color={colors.textSecondary}
+          />
         </Box>
       </Box>
     </TouchableOpacity>

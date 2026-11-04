@@ -25,8 +25,8 @@ if (process.env.SELENE_LABEL_RECOVERY_CHILD !== '1') {
   mock.module('react-native', () => ({
     StyleSheet: { flatten: (style: unknown) => style },
   }));
-  mock.module('@expo/vector-icons', () => ({
-    MaterialCommunityIcons: host('Icon'),
+  mock.module('@react-native-vector-icons/material-design-icons', () => ({
+    default: host('Icon'),
   }));
   mock.module('@shopify/restyle', () => ({
     useTheme: () => ({ colors: { primary: 'blue' } }),

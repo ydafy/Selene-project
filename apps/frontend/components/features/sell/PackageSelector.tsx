@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react';
 import { TouchableOpacity, ActivityIndicator } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons, {
+  type MaterialDesignIconsIconName,
+} from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from '@shopify/restyle';
 import { Box, Text } from '../../base';
 import { Theme } from '../../../core/theme';
@@ -16,9 +18,7 @@ type PackageSelectorProps = {
   onSelect: (value: string) => void;
 };
 
-const getIconForPreset = (
-  presetId: string,
-): keyof typeof MaterialCommunityIcons.glyphMap => {
+const getIconForPreset = (presetId: string): MaterialDesignIconsIconName => {
   if (presetId.includes('ram')) return 'cube-send';
   if (presetId.includes('gpu_1')) return 'package-variant-closed';
   if (presetId.includes('gpu_2')) return 'package-variant';

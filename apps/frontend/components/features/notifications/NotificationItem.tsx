@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
 
@@ -8,17 +8,17 @@ import { Box, Text } from '../../base';
 import { Theme } from '../../../core/theme';
 import { Notification } from '@selene/types';
 import { formatSmartTime } from '../../../core/utils/format';
-import { getNotificationPresentation, getVerifiedEventIdentity } from './notificationPresentation';
+import {
+  getNotificationPresentation,
+  getVerifiedEventIdentity,
+} from './notificationPresentation';
 
 interface Props {
   notification: Notification;
   onPress: (notification: Notification) => void;
 }
 
-export const NotificationItem = ({
-  notification,
-  onPress,
-}: Props) => {
+export const NotificationItem = ({ notification, onPress }: Props) => {
   const theme = useTheme<Theme>();
   const { t } = useTranslation('notifications');
 
@@ -27,14 +27,18 @@ export const NotificationItem = ({
   const iconColor = theme.colors[presentation.accent];
 
   const identity = getVerifiedEventIdentity(notification);
-  const emphasizeMessage = identity?.kind === 'product.approved_with_note' || identity?.kind === 'product.rejected';
+  const emphasizeMessage =
+    identity?.kind === 'product.approved_with_note' ||
+    identity?.kind === 'product.rejected';
 
   return (
     <Pressable
       onPress={() => onPress(notification)}
       accessibilityLabel={t('notifications:itemLabel', {
         state: t(`notifications:states.${presentation.state}`),
-        readState: t(isUnread ? 'notifications:unreadState' : 'notifications:readState'),
+        readState: t(
+          isUnread ? 'notifications:unreadState' : 'notifications:readState',
+        ),
         title: notification.title,
         message: notification.message || '',
       })}
@@ -88,7 +92,12 @@ export const NotificationItem = ({
                 />
               )}
             </Box>
-            <Text variant="caption-md" color="textSecondary" marginTop="xs" fontStyle={emphasizeMessage ? 'italic' : 'normal'}>
+            <Text
+              variant="caption-md"
+              color="textSecondary"
+              marginTop="xs"
+              fontStyle={emphasizeMessage ? 'italic' : 'normal'}
+            >
               {notification.message}
             </Text>
             <Text variant="caption-md" color="textSecondary" marginTop="s">

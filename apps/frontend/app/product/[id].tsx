@@ -40,7 +40,7 @@ import {
 } from '../../core/utils/productPurchaseGate';
 import { PurchaseProgressSteps } from '../../components/features/product/PurchaseProgressSteps';
 import { formatCurrency } from '@/core/utils/format';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
 import { Box, Text } from '../../base';
@@ -18,7 +18,11 @@ interface Props {
   orderStatus: string;
 }
 
-export const ShippingRouteCard = ({ shipment, shippingAddress, orderStatus }: Props) => {
+export const ShippingRouteCard = ({
+  shipment,
+  shippingAddress,
+  orderStatus,
+}: Props) => {
   const theme = useTheme<Theme>();
   const { t } = useTranslation('orders');
 

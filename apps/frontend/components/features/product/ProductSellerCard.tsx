@@ -2,7 +2,7 @@ import { TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@shopify/restyle';
 import { IconButton } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
 // Importamos el tipo enriquecido que creamos en index.ts
 import { ProductWithSeller } from '@selene/types';

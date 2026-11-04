@@ -28,7 +28,7 @@ import {
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@shopify/restyle';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -856,29 +856,29 @@ export default function OrderDetailScreen() {
               status: currentShipment.status,
               labelUrl: currentShipment.label_url,
             }) && (
-            <Box gap="s">
-              <PrimaryButton onPress={handleOpenLabel} icon="printer-check">
-                {t('orders:actions.viewPdf')}
-              </PrimaryButton>
+              <Box gap="s">
+                <PrimaryButton onPress={handleOpenLabel} icon="printer-check">
+                  {t('orders:actions.viewPdf')}
+                </PrimaryButton>
 
-              <PrimaryButton
-                variant="outline"
-                onPress={handleShareLabel}
-                icon="share-variant"
-              >
-                {t('orders:actions.shareLabel')}
-              </PrimaryButton>
+                <PrimaryButton
+                  variant="outline"
+                  onPress={handleShareLabel}
+                  icon="share-variant"
+                >
+                  {t('orders:actions.shareLabel')}
+                </PrimaryButton>
 
-              <Text
-                variant="caption-md"
-                color="textSecondary"
-                textAlign="center"
-                marginTop="xs"
-              >
-                {t('orders:actions.printHint')}
-              </Text>
-            </Box>
-          )}
+                <Text
+                  variant="caption-md"
+                  color="textSecondary"
+                  textAlign="center"
+                  marginTop="xs"
+                >
+                  {t('orders:actions.printHint')}
+                </Text>
+              </Box>
+            )}
           {currentShipment?.permissions.canConfirmDelivery && (
             <PrimaryButton
               onPress={() => setShowDeliveryConfirm(true)}

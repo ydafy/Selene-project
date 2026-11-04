@@ -8,7 +8,7 @@ import {
 import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
 import { AppImageViewer } from '../../ui/AppImageViewer';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
 import { Box, Text } from '../../base';
 import { Theme } from '../../../core/theme';
@@ -331,7 +331,9 @@ export const BenchmarkGuideModal = ({
         initialIndex={currentImageIndex}
         visible={viewerVisible}
         onClose={() => setViewerVisible(false)}
-        footerText={({ current, total }) => t('guide.stepCounter', { current, total })}
+        footerText={({ current, total }) =>
+          t('guide.stepCounter', { current, total })
+        }
       />
     </>
   );

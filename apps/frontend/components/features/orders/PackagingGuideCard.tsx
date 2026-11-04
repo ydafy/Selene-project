@@ -1,7 +1,9 @@
 import React, { useRef, useState } from 'react';
 import { TouchableOpacity } from 'react-native';
 import type { ImageSource } from 'expo-image';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons, {
+  type MaterialDesignIconsIconName,
+} from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from '@shopify/restyle';
 
 import { Box, Text } from '../../base';
@@ -26,7 +28,7 @@ const DEFAULT_STEP_IMAGES: (ImageSource | number)[] = [
 ];
 
 type GuideStep = {
-  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  icon: MaterialDesignIconsIconName;
   /** Already-translated step title (always visible). */
   title: string;
   /** Already-translated hint shown under the image when expanded. */
@@ -36,7 +38,7 @@ type GuideStep = {
 };
 
 type WhereInfo = {
-  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  icon: MaterialDesignIconsIconName;
   /** Already-translated row title (always visible). */
   title: string;
   /** Already-translated bulleted items shown when expanded. */

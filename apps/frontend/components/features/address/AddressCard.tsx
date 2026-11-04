@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useTheme } from '@shopify/restyle';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { useTranslation } from 'react-i18next';
 import Animated, {
   FadeInDown,
