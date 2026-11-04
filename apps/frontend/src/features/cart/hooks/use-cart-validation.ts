@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { useCartStore } from '../../../../core/store/useCartStore';
-import { OrderService } from '../../../../core/services/order';
+import { useCartStore } from '../store/use-cart-store';
+import { OrderService } from '../../../core/services/order';
 import { useMemo } from 'react';
 
 export const useCartValidation = () => {
@@ -14,7 +14,7 @@ export const useCartValidation = () => {
     staleTime: 1000 * 60, // 1 min
   });
 
-  // Convertimos el array a un Set para que CartItem.tsx pueda hacer .has(id) eficientemente
+  // Convertimos el array a un Set para que cart-item.tsx pueda hacer .has(id) eficientemente
   const unavailableIds = useMemo(
     () => new Set(query.data?.unavailableIds || []),
     [query.data?.unavailableIds],

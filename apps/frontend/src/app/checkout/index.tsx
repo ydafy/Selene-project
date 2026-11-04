@@ -29,7 +29,7 @@ import { PaymentSection } from '../../components/features/checkout/PaymentSectio
 import { SummaryBreakdown } from '../../components/features/checkout/SummaryBreakdown';
 
 // Stores, Hooks y Servicios
-import { useCartStore } from '../../core/store/useCartStore';
+import { useCartStore } from '../../features/cart/store/use-cart-store';
 import { useCheckoutStore } from '../../core/store/useCheckoutStore';
 import { useAddresses } from '../../core/hooks/useAddresses';
 import { useOrderCalculations } from '../../core/hooks/useOrderCalculations';

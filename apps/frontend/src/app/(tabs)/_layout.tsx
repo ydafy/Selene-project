@@ -4,7 +4,7 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 import { useTheme } from '@shopify/restyle';
 
 import { Theme } from '../../shared/theme';
-import { useCartStore } from '../../core/store/useCartStore';
+import { useCartStore } from '../../features/cart/store/use-cart-store';
 import { tabIconColor } from '../../shared/utils/tab-icon-color';
 import { CartTabIcon } from '../../shared/ui/cart-tab-icon';
 import { Box } from '@/shared/ui/base';
