@@ -1,7 +1,5 @@
 import { expect, mock, test } from 'bun:test';
 import React from 'react';
-// @ts-expect-error The installed test-only renderer has no local type declarations.
-import { act, create } from 'react-test-renderer';
 
 // Bun shares its module registry across suite files; a child isolates the RN mocks
 // from unrelated tests that have already imported the native entrypoint.
@@ -37,8 +35,20 @@ if (process.env.SELENE_ANIMATED_UI_MOUNT_CHILD !== '1') {
   }
 
   mock.module('react-native', () => ({
-    TouchableOpacity: host('TouchableOpacity'),
-    StyleSheet: { create: <T,>(styles: T) => styles },
+    // Like the real TouchableOpacity, the host is accessible unless told otherwise.
+    TouchableOpacity: ({
+      children,
+      ...props
+    }: React.PropsWithChildren<Record<string, unknown>>) =>
+      React.createElement(
+        'TouchableOpacity',
+        { accessible: true, ...props },
+        children,
+      ),
+    StyleSheet: {
+      create: <T,>(styles: T) => styles,
+      flatten: (style: unknown) => style,
+    },
   }));
   mock.module('react-native-reanimated', () => ({
     default: { View: host('AnimatedView') },
@@ -75,79 +85,69 @@ if (process.env.SELENE_ANIMATED_UI_MOUNT_CHILD !== '1') {
   }));
   mock.module('@/core/theme/tokens', () => ({ colors: { shadow: '#000' } }));
 
-  type Node = { props: Record<string, unknown> & { children?: unknown } };
-  const texts = (tree: ReturnType<typeof create>) =>
-    tree.root
-      .findAllByType('Text')
-      .map((node: Node) => [node.props.children].flat().join(''));
+  const { act, fireEvent, render } =
+    await import('@testing-library/react-native');
+
+  type View = Awaited<ReturnType<typeof render>>;
+  const byType = (view: View, type: string) =>
+    view.container.queryAll((node) => node.type === type);
+  const texts = (view: View) =>
+    byType(view, 'Text').map((node) => [node.props.children].flat().join(''));
 
   test('SegmentedControl reports the pressed option and marks the selected one', async () => {
     const { SegmentedControl } = await import('../SegmentedControl');
     const onChange = mock(() => {});
-    let tree: ReturnType<typeof create>;
-    await act(async () => {
-      tree = create(
-        <SegmentedControl
-          options={['A', 'B']}
-          selectedIndex={1}
-          onChange={onChange}
-        />,
-      );
-    });
-    const tabs = tree!.root.findAllByType('TouchableOpacity');
-    expect(tabs.map((tab: Node) => tab.props.accessibilityState)).toEqual([
+    const view = await render(
+      <SegmentedControl
+        options={['A', 'B']}
+        selectedIndex={1}
+        onChange={onChange}
+      />,
+    );
+    const tabs = byType(view, 'TouchableOpacity');
+    expect(tabs.map((tab) => tab.props.accessibilityState)).toEqual([
       { selected: false },
       { selected: true },
     ]);
-    act(() => (tabs[0].props.onPress as () => void)());
+    await fireEvent.press(tabs[0]);
     expect(onChange).toHaveBeenCalledWith(0);
   });
 
   test('AnimatedHeartButton forwards the press and the icon for its state', async () => {
     const { AnimatedHeartButton } = await import('../AnimatedHeartButton');
     const onPress = mock(() => {});
-    let tree: ReturnType<typeof create>;
-    await act(async () => {
-      tree = create(<AnimatedHeartButton isFavorite onPress={onPress} />);
-    });
-    const button = tree!.root.findByType('IconButton');
+    const view = await render(
+      <AnimatedHeartButton isFavorite onPress={onPress} />,
+    );
+    const button = byType(view, 'IconButton')[0];
     expect(button.props.icon).toBe('heart');
-    act(() => (button.props.onPress as () => void)());
+    // IconButton is a bare host stand-in (not accessible), so fireEvent.press
+    // cannot reach it; call the handler the component passes.
+    await act(async () => (button.props.onPress as () => void)());
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
   test('OfflineNotice shows the offline message and hides when connected', async () => {
     const { OfflineNotice } = await import('../OfflineNotice');
     netInfo.isConnected = false;
-    let tree: ReturnType<typeof create>;
-    await act(async () => {
-      tree = create(<OfflineNotice />);
-    });
-    expect(texts(tree!)).toEqual(['Sin conexión a internet']);
+    const view = await render(<OfflineNotice />);
+    expect(texts(view)).toEqual(['Sin conexión a internet']);
     netInfo.isConnected = true;
-    await act(async () => {
-      tree!.update(<OfflineNotice />);
-    });
-    expect(texts(tree!)).toEqual(['Conexión restablecida']);
+    await view.rerender(<OfflineNotice />);
+    expect(texts(view)).toEqual(['Conexión restablecida']);
   });
 
   test('MaintenanceScreen renders the maintenance copy', async () => {
     const { MaintenanceScreen } = await import('../MaintenanceScreen');
-    let tree: ReturnType<typeof create>;
-    await act(async () => {
-      tree = create(<MaintenanceScreen />);
-    });
-    expect(texts(tree!)).toContain('Laboratorio en Optimización');
+    const view = await render(<MaintenanceScreen />);
+    expect(texts(view)).toContain('Laboratorio en Optimización');
   });
 
   test('Skeleton renders a block with the requested size', async () => {
     const { Skeleton } = await import('../Skeleton');
-    let tree: ReturnType<typeof create>;
-    await act(async () => {
-      tree = create(<Skeleton width={10} height={20} />);
-    });
+    const view = await render(<Skeleton width={10} height={20} />);
     const style = (
-      tree!.root.findByType('AnimatedView').props.style as object[]
+      byType(view, 'AnimatedView')[0].props.style as object[]
     ).flat();
     expect(style).toContainEqual(
       expect.objectContaining({ width: 10, height: 20 }),
