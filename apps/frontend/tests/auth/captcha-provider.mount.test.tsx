@@ -1,7 +1,5 @@
 import { expect, mock, test } from 'bun:test';
 import React from 'react';
-// @ts-expect-error The installed test-only renderer has no local type declarations.
-import { act, create } from 'react-test-renderer';
 
 // T8i (odd/tasks/auth-hardening.md, L98 and L101 review advisories): the mounted hCaptcha
 // provider, driven through the real registry the auth calls use. Module mocks stay in a child
@@ -14,18 +12,23 @@ if (process.env.SELENE_CAPTCHA_CHILD !== '1') {
       stdout: 'pipe',
       stderr: 'pipe',
     });
-    if (child.exitCode !== 0) throw new Error(new TextDecoder().decode(child.stderr));
+    if (child.exitCode !== 0)
+      throw new Error(new TextDecoder().decode(child.stderr));
     expect(child.exitCode).toBe(0);
   });
 } else {
-  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-  process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY = '10000000-ffff-ffff-ffff-000000000001';
+  process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY =
+    '10000000-ffff-ffff-ffff-000000000001';
 
   type WidgetProps = {
     siteKey: string;
     size: string;
     languageCode: string;
-    onMessage: (event: { success?: boolean; nativeEvent?: { data?: string }; markUsed?: () => void }) => void;
+    onMessage: (event: {
+      success?: boolean;
+      nativeEvent?: { data?: string };
+      markUsed?: () => void;
+    }) => void;
   };
   const show = mock(() => {});
   const hide = mock(() => {});
@@ -40,15 +43,31 @@ if (process.env.SELENE_CAPTCHA_CHILD !== '1') {
     }
   }
 
-  mock.module('@hcaptcha/react-native-hcaptcha', () => ({ default: FakeHcaptcha }));
-  mock.module('react-i18next', () => ({ useTranslation: () => ({ i18n: { language: 'es' } }) }));
+  mock.module('react-native', () => ({
+    StyleSheet: {
+      create: <T,>(styles: T) => styles,
+      flatten: (style: unknown) => style,
+    },
+  }));
+  mock.module('@hcaptcha/react-native-hcaptcha', () => ({
+    default: FakeHcaptcha,
+  }));
+  mock.module('react-i18next', () => ({
+    useTranslation: () => ({ i18n: { language: 'es' } }),
+  }));
 
-  const { CaptchaProvider } = await import('../../core/auth/captcha/CaptchaProvider');
+  // The pure entry skips the automatic cleanup after each test: one provider stays
+  // mounted for the whole file, as at the app root, and the last test unmounts it.
+  const { act, render } = await import('@testing-library/react-native/pure');
+  const { CaptchaProvider } =
+    await import('../../core/auth/captcha/CaptchaProvider');
   const { getCaptchaToken } = await import('../../core/auth/captcha/captcha');
 
-  const message = (data: string, success = false) => {
+  const message = async (data: string, success = false) => {
     const markUsed = mock(() => {});
-    act(() => widgetProps!.onMessage({ success, nativeEvent: { data }, markUsed }));
+    await act(() =>
+      widgetProps!.onMessage({ success, nativeEvent: { data }, markUsed }),
+    );
     return markUsed;
   };
   const codeOf = async (promise: Promise<unknown>) =>
@@ -61,10 +80,7 @@ if (process.env.SELENE_CAPTCHA_CHILD !== '1') {
     hide.mockClear();
   };
 
-  let root: { unmount: () => void };
-  act(() => {
-    root = create(<CaptchaProvider />);
-  });
+  const root = await render(<CaptchaProvider />);
 
   test('mounts one invisible widget with the site key and the app language', () => {
     expect(widgetProps?.siteKey).toBe('10000000-ffff-ffff-ffff-000000000001');
@@ -77,7 +93,7 @@ if (process.env.SELENE_CAPTCHA_CHILD !== '1') {
     const token = getCaptchaToken();
     await Promise.resolve();
     expect(show).toHaveBeenCalledTimes(1);
-    const markUsed = message('token-123', true);
+    const markUsed = await message('token-123', true);
     expect(await token).toBe('token-123');
     expect(markUsed).toHaveBeenCalledTimes(1);
     expect(hide).toHaveBeenCalledTimes(1);
@@ -85,21 +101,22 @@ if (process.env.SELENE_CAPTCHA_CHILD !== '1') {
 
   test('the open event keeps waiting; a cancel rejects with captcha_cancelled', async () => {
     reset();
-    const token = getCaptchaToken();
+    // Observe the rejection before the awaited act can flush it as unhandled.
+    const code = codeOf(getCaptchaToken());
     await Promise.resolve();
-    message('open');
+    await message('open');
     expect(hide).not.toHaveBeenCalled();
-    message('challenge-closed');
-    expect(await codeOf(token)).toBe('captcha_cancelled');
+    await message('challenge-closed');
+    expect(await code).toBe('captcha_cancelled');
     expect(hide).toHaveBeenCalledTimes(1);
   });
 
   test('an SDK error rejects with captcha_failed', async () => {
     reset();
-    const token = getCaptchaToken();
+    const code = codeOf(getCaptchaToken());
     await Promise.resolve();
-    message('network-error');
-    expect(await codeOf(token)).toBe('captcha_failed');
+    await message('network-error');
+    expect(await code).toBe('captcha_failed');
   });
 
   test('a new request cancels the pending one; a late event changes nothing', async () => {
@@ -109,15 +126,15 @@ if (process.env.SELENE_CAPTCHA_CHILD !== '1') {
     const second = getCaptchaToken();
     await Promise.resolve();
     expect(await codeOf(first)).toBe('captcha_cancelled');
-    message('token-2', true);
+    await message('token-2', true);
     expect(await second).toBe('token-2');
     hide.mockClear();
-    message('expired');
+    await message('expired');
     expect(hide).not.toHaveBeenCalled();
   });
 
   test('after unmount the auth calls fail closed', async () => {
-    act(() => root.unmount());
+    await root.unmount();
     expect(await codeOf(getCaptchaToken())).toBe('captcha_failed');
   });
 }
