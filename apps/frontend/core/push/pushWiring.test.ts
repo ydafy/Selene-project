@@ -43,3 +43,12 @@ test('a tap goes through the inbox press handler', () => {
     /ready: navigatorReady && !loading,\s*press: userId \? press : null,/,
   );
 });
+
+test('the registration does not listen for device token events', () => {
+  // On Android every token request emits the device token event, so a
+  // listener that registers again would loop (#213). Expo keeps the Expo push
+  // token current on its own when the FCM token rotates.
+  expect(
+    read('components/features/notifications/PushRegistration.tsx'),
+  ).not.toContain('addPushTokenListener');
+});

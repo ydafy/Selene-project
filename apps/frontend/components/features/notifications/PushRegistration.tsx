@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
-import * as Notifications from 'expo-notifications';
 
 import { useAuthContext } from '../../auth/AuthProvider';
 import { pushRegistrar } from '../../../core/push/pushRegistration';
@@ -17,9 +16,9 @@ export const PushRegistration = () => {
     const appState = AppState.addEventListener('change', (state) => {
       if (state === 'active') void pushRegistrar.register(userId);
     });
-    const tokenListener = Notifications.addPushTokenListener(() => {
-      void pushRegistrar.register(userId);
-    });
+    // No push token listener: Android emits it on every token request, which
+    // would register again in a loop (#213), and Expo keeps the Expo push
+    // token current when the FCM token rotates.
     // Back online: retry a pending unregister, then register this session.
     const backOnline = createOnlineTransition();
     const unsubscribeNetwork = NetInfo.addEventListener((state) => {
@@ -28,7 +27,6 @@ export const PushRegistration = () => {
     return () => {
       unsubscribeNetwork();
       appState.remove();
-      tokenListener.remove();
     };
   }, [userId]);
 
