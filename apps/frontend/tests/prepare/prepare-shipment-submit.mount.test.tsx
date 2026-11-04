@@ -1,7 +1,5 @@
 import { expect, mock, test } from 'bun:test';
 import React from 'react';
-// @ts-expect-error The installed test-only renderer has no local type declarations.
-import { act, create } from 'react-test-renderer';
 
 if (process.env.SELENE_SUBMIT_CHILD !== '1') {
   test('real preparing handler excludes same-turn submissions in isolation', () => {
@@ -24,6 +22,18 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
       ...props
     }: React.PropsWithChildren<Record<string, unknown>>) =>
       React.createElement(name, props, children);
+  // The library only accepts strings inside a text host, so the label sits in one.
+  const labelHost =
+    (name: string) =>
+    ({
+      children,
+      ...props
+    }: React.PropsWithChildren<Record<string, unknown>>) =>
+      React.createElement(
+        name,
+        props,
+        React.createElement('Text', null, children),
+      );
   const deferred = <T,>() => {
     let resolve!: (value: T) => void;
     let reject!: (reason: Error) => void;
@@ -64,8 +74,18 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
   const back = mock(() => {});
   const feedback = mock(async () => {});
   mock.module('react-native', () => ({
+    StyleSheet: { flatten: (style: unknown) => style },
     ScrollView: host('ScrollView'),
-    TouchableOpacity: host('TouchableOpacity'),
+    // Like the real touchable, the host is accessible unless told otherwise.
+    TouchableOpacity: ({
+      children,
+      ...props
+    }: React.PropsWithChildren<Record<string, unknown>>) =>
+      React.createElement(
+        'TouchableOpacity',
+        { accessible: true, ...props },
+        children,
+      ),
     Linking: { openURL },
   }));
   mock.module('expo-router', () => ({
@@ -116,7 +136,9 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
     ['features/orders/ShipmentLabelRecoveryCard', 'ShipmentLabelRecoveryCard'],
     ['features/orders/EvidenceUploadSection', 'EvidenceUploadSection'],
   ])
-    mock.module(`../../components/${path}`, () => ({ [name]: host(name) }));
+    mock.module(`../../components/${path}`, () => ({
+      [name]: name === 'PrimaryButton' ? labelHost(name) : host(name),
+    }));
   mock.module('../../components/features/address/AddressPickerModal', () => ({
     AddressPickerModal: ({
       innerRef,
@@ -177,32 +199,36 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
     mock.module(`../../assets/images/packaging/${image}.webp`, () => ({
       default: 1,
     }));
+  const { act, render } = await import('@testing-library/react-native');
+  type View = Awaited<ReturnType<typeof render>>;
+  const all = (view: View, type: string) =>
+    view.container.queryAll((node) => node.type === type);
+  const one = (view: View, type: string) => {
+    const found = all(view, type);
+    expect(found).toHaveLength(1);
+    return found[0];
+  };
   const { default: Screen } =
     await import('../../app/profile/orders/prepare/[id]');
 
   if (process.env.SELENE_CONTROLS_CHILD === '1')
     test('switches isolate drafts, stale callbacks and pre-auth dispatch; busy and submission lock callbacks', async () => {
-      let tree: ReturnType<typeof create>;
+      let tree: View;
       authentication = deferred();
-      await act(async () => {
-        tree = create(<Screen />);
-      });
-      const oldAddress =
-        tree.root.findByType('AddressPickerModal').props.onSelect;
-      const oldEvidence = tree.root.findByType('EvidenceUploadSection').props
+      tree = await render(<Screen />);
+      const oldAddress = one(tree, 'AddressPickerModal').props.onSelect;
+      const oldEvidence = one(tree, 'EvidenceUploadSection').props
         .onEvidenceComplete;
       await act(async () => {
         oldAddress({ id: 'old-origin' });
         oldEvidence(['a', 'b', 'c']);
       });
-      const confirm = () => tree.root.findByType('PrimaryButton');
+      const confirm = () => one(tree, 'PrimaryButton');
       expect(confirm().props.disabled).toBe(false);
       const oldSubmit = confirm().props.onPress;
-      await act(async () => {
-        selectedId = 'other';
-        tree.update(<Screen />);
-      });
-      expect(tree.root.findByType('AddressSection').props.address).toBeNull();
+      selectedId = 'other';
+      await tree.rerender(<Screen />);
+      expect(one(tree, 'AddressSection').props.address).toBeNull();
       expect(confirm().props.disabled).toBe(true);
       const authCount = authenticate.mock.calls.length;
       await act(async () => {
@@ -211,82 +237,65 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
         await oldSubmit();
       });
       expect(authenticate).toHaveBeenCalledTimes(authCount);
-      expect(tree.root.findByType('AddressSection').props.address).toBeNull();
+      expect(one(tree, 'AddressSection').props.address).toBeNull();
       await act(async () => {
-        tree.root
-          .findByType('AddressPickerModal')
-          .props.onSelect({ id: 'new-origin' });
-        tree.root
-          .findByType('EvidenceUploadSection')
-          .props.onEvidenceComplete(['d', 'e', 'f']);
+        one(tree, 'AddressPickerModal').props.onSelect({ id: 'new-origin' });
+        one(tree, 'EvidenceUploadSection').props.onEvidenceComplete([
+          'd',
+          'e',
+          'f',
+        ]);
       });
       const submit = confirm().props.onPress;
       await act(async () => {
-        tree.root.findByType('EvidenceUploadSection').props.onBusyChange(true);
+        one(tree, 'EvidenceUploadSection').props.onBusyChange(true);
         await submit();
       });
       expect(authenticate).toHaveBeenCalledTimes(authCount);
       expect(confirm().props.disabled).toBe(true);
       await act(async () => {
-        tree.root.findByType('EvidenceUploadSection').props.onBusyChange(false);
+        one(tree, 'EvidenceUploadSection').props.onBusyChange(false);
       });
       let pending!: Promise<void>;
       await act(async () => {
         pending = confirm().props.onPress();
-        tree.root.findAllByType('TouchableOpacity')[0].props.onPress();
-        tree.root
-          .findByType('AddressPickerModal')
-          .props.onSelect({ id: 'forbidden' });
+        all(tree, 'TouchableOpacity')[0].props.onPress();
+        one(tree, 'AddressPickerModal').props.onSelect({ id: 'forbidden' });
       });
       expect(setParams).not.toHaveBeenCalled();
-      expect(tree.root.findByType('AddressSection').props.address.id).toBe(
-        'new-origin',
-      );
-      expect(tree.root.findByType('EvidenceUploadSection').props.disabled).toBe(
-        true,
-      );
-      expect(tree.root.findByType('AddressSection').props.disabled).toBe(true);
-      expect(tree.root.findByType('PackagingGuideCard').props.disabled).toBe(
-        true,
-      );
-      expect(tree.root.findByType('LabelWithHelp').props.disabled).toBe(true);
+      expect(one(tree, 'AddressSection').props.address.id).toBe('new-origin');
+      expect(one(tree, 'EvidenceUploadSection').props.disabled).toBe(true);
+      expect(one(tree, 'AddressSection').props.disabled).toBe(true);
+      expect(one(tree, 'PackagingGuideCard').props.disabled).toBe(true);
+      expect(one(tree, 'LabelWithHelp').props.disabled).toBe(true);
       const generationCount = execute.mock.calls.length;
-      await act(async () => {
-        selectedId = 'selected';
-        tree.update(<Screen />);
-      });
+      selectedId = 'selected';
+      await tree.rerender(<Screen />);
       await act(async () => {
         authentication.resolve({ success: true });
         await pending;
       });
       expect(execute).toHaveBeenCalledTimes(generationCount);
       expect(confirm().props.disabled).toBe(true);
-      await act(async () => {
-        tree.unmount();
-      });
+      await tree?.unmount();
     });
 
   if (process.env.SELENE_CONTROLS_CHILD === '1') {
     test('order and auth boundaries clear drafts and reject old callbacks', async () => {
       for (const scope of ['order', 'auth']) {
-        let tree: ReturnType<typeof create>;
-        await act(async () => {
-          tree = create(<Screen />);
-        });
-        const address =
-          tree.root.findByType('AddressPickerModal').props.onSelect;
-        const evidence = tree.root.findByType('EvidenceUploadSection').props
+        let tree: View;
+        tree = await render(<Screen />);
+        const address = one(tree, 'AddressPickerModal').props.onSelect;
+        const evidence = one(tree, 'EvidenceUploadSection').props
           .onEvidenceComplete;
         await act(async () => {
           address({ id: 'old' });
           evidence(['a', 'b', 'c']);
         });
-        const submit = tree.root.findByType('PrimaryButton').props.onPress;
-        await act(async () => {
-          if (scope === 'order') orderId = 'different-order';
-          else viewer = 'different-seller';
-          tree.update(<Screen />);
-        });
+        const submit = one(tree, 'PrimaryButton').props.onPress;
+        if (scope === 'order') orderId = 'different-order';
+        else viewer = 'different-seller';
+        await tree.rerender(<Screen />);
         const count = authenticate.mock.calls.length;
         await act(async () => {
           address({ id: 'late' });
@@ -294,47 +303,36 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
           await submit();
         });
         expect(authenticate).toHaveBeenCalledTimes(count);
-        expect(tree.root.findByType('AddressSection').props.address).toBeNull();
-        expect(tree.root.findByType('PrimaryButton').props.disabled).toBe(true);
-        await act(async () => {
-          tree.unmount();
-        });
+        expect(one(tree, 'AddressSection').props.address).toBeNull();
+        expect(one(tree, 'PrimaryButton').props.disabled).toBe(true);
+        await tree?.unmount();
         orderId = 'order-123';
         viewer = 'seller';
       }
     });
 
     test('retained navigation, refresh and PDF callbacks are inert in the submission turn and dismiss is requested', async () => {
-      let tree: ReturnType<typeof create>;
+      let tree: View;
       onboarding = false;
-      await act(async () => {
-        tree = create(<Screen />);
-      });
-      const onboardingPress =
-        tree.root.findByType('PrimaryButton').props.onPress;
+      tree = await render(<Screen />);
+      const onboardingPress = one(tree, 'PrimaryButton').props.onPress;
       onboarding = true;
       persistedState = 'orphan_pending';
-      await act(async () => {
-        tree.update(<Screen />);
-      });
-      const recovery = tree.root.findByType('ShipmentLabelRecoveryCard').props;
+      await tree.rerender(<Screen />);
+      const recovery = one(tree, 'ShipmentLabelRecoveryCard').props;
       persistedLabel = 'https://example.test/persisted.pdf';
-      await act(async () => {
-        tree.update(<Screen />);
-      });
-      const pdf = tree.root.findByType('PrimaryButton').props.onPress;
+      await tree.rerender(<Screen />);
+      const pdf = one(tree, 'PrimaryButton').props.onPress;
       persistedLabel = null;
       persistedState = 'unclaimed';
+      await tree.rerender(<Screen />);
       await act(async () => {
-        tree.update(<Screen />);
-      });
-      await act(async () => {
-        tree.root
-          .findByType('AddressPickerModal')
-          .props.onSelect({ id: 'origin' });
-        tree.root
-          .findByType('EvidenceUploadSection')
-          .props.onEvidenceComplete(['a', 'b', 'c']);
+        one(tree, 'AddressPickerModal').props.onSelect({ id: 'origin' });
+        one(tree, 'EvidenceUploadSection').props.onEvidenceComplete([
+          'a',
+          'b',
+          'c',
+        ]);
       });
       authentication = deferred();
       const counts = [
@@ -345,7 +343,7 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
       ];
       let pending!: Promise<void>;
       await act(async () => {
-        pending = tree.root.findByType('PrimaryButton').props.onPress();
+        pending = one(tree, 'PrimaryButton').props.onPress();
         onboardingPress();
         recovery.onSupport();
         recovery.onRefresh();
@@ -358,8 +356,8 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
       await act(async () => {
         authentication.resolve({ success: false });
         await pending;
-        tree.unmount();
       });
+      await tree.unmount();
     });
   }
 
@@ -374,20 +372,18 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
     const warn = mock(() => {});
     const originalWarn = console.warn;
     console.warn = warn;
-    let tree: ReturnType<typeof create>;
+    let tree: View | undefined;
     try {
+      tree = await render(<Screen />);
       await act(async () => {
-        tree = create(<Screen />);
+        one(tree!, 'AddressPickerModal').props.onSelect({ id: 'origin' });
+        one(tree!, 'EvidenceUploadSection').props.onEvidenceComplete([
+          'one',
+          'two',
+          'three',
+        ]);
       });
-      await act(async () => {
-        tree.root
-          .findByType('AddressPickerModal')
-          .props.onSelect({ id: 'origin' });
-        tree.root
-          .findByType('EvidenceUploadSection')
-          .props.onEvidenceComplete(['one', 'two', 'three']);
-      });
-      const button = () => tree.root.findByType('PrimaryButton');
+      const button = () => one(tree!, 'PrimaryButton');
       const startTwice = async () => {
         const handler = button().props.onPress;
         let first!: Promise<void>;
@@ -422,7 +418,7 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
       });
       expect(refetch).toHaveBeenCalledTimes(1);
       expect(button().props.disabled).toBe(false);
-      expect(JSON.stringify(tree.toJSON())).toContain(
+      expect(JSON.stringify(tree!.toJSON())).toContain(
         'orders:prepare.errors.serviceUnavailable',
       );
       expect(execute).toHaveBeenCalledTimes(1);
@@ -447,17 +443,15 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
       });
       expect(button().props.disabled).toBe(false);
       expect(feedback).toHaveBeenCalledTimes(1);
-      expect(tree.root.findByType('ConfirmDialog').props.visible).toBe(true);
+      expect(one(tree!, 'ConfirmDialog').props.visible).toBe(true);
       await act(async () => {
-        await tree.root.findByType('ConfirmDialog').props.onConfirm();
+        await one(tree!, 'ConfirmDialog').props.onConfirm();
       });
       expect(openURL).toHaveBeenCalledWith('https://example.test/label.pdf');
       expect(back).toHaveBeenCalledTimes(1);
       expect(execute).toHaveBeenCalledTimes(2);
     } finally {
-      await act(async () => {
-        tree?.unmount();
-      });
+      await tree?.unmount();
       console.warn = originalWarn;
     }
   });
