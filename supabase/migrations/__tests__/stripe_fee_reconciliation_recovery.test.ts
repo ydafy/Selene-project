@@ -8,6 +8,7 @@ const JOB_TABLE = 'stripe_fee_reconciliation_jobs';
 const readMigrations = (): string[] =>
   readdirSync(MIGRATIONS_DIR)
     .filter((file) => file.endsWith('.sql'))
+    .sort()
     .map((file) => readFileSync(join(MIGRATIONS_DIR, file), 'utf8'));
 
 const findReconciliationJobMigration = (): string => {
