@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 // The push pre-prompt is offered at the three moments of L6 and nowhere else;
-// the hooks and screens have no render harness, so the wiring is pinned here.
+// the screens have no render harness, so their wiring is pinned here. The
+// favorite moment runs in core/hooks/useProductFavorite.test.tsx.
 const root = join(import.meta.dir, '..', '..');
 const read = (file: string) => readFileSync(join(root, file), 'utf8');
 
@@ -11,15 +12,6 @@ test('the checkout success screen offers the purchase moment', () => {
   expect(read('app/checkout/success.tsx')).toContain(
     "offerPushPermission('purchase')",
   );
-});
-
-test('only a confirmed favorite insert offers the favorite moment', () => {
-  const source = read('core/hooks/useProductFavorite.ts');
-  expect(source).toMatch(
-    /onSuccess:\s*\(result\)\s*=>\s*\{\s*if \(result === 'added'\) void offerPushPermission\('favorite'\);/,
-  );
-  expect(source).toContain("return 'added'");
-  expect(source).toContain("return 'removed'");
 });
 
 test('the listing moment is offered after a verification is sent, once its success dialog closes', () => {
@@ -61,5 +53,17 @@ test('no other file offers the pre-prompt', () => {
 test('settings shows the notifications section between security and privacy', () => {
   expect(read('app/profile/settings.tsx')).toMatch(
     /<SecuritySection \/>\s*<\/SettingsSection>\s*<SettingsSection title=\{t\('sections\.notifications'\)\}>\s*<NotificationsSection \/>\s*<\/SettingsSection>\s*<SettingsSection title=\{t\('sections\.privacy'\)\}>/,
+  );
+});
+
+test('the prompt host closes through closePushPermission, which frees the next offer', () => {
+  const host = read(
+    'components/features/notifications/PushPermissionPrompt.tsx',
+  );
+  expect(host).toContain('const close = closePushPermission;');
+  expect(host).toMatch(/const accept = \(\) => \{\s*close\(\);/);
+  expect(host).toContain('onCancel={close}');
+  expect(read('core/push/pushPermission.ts')).toMatch(
+    /export const closePushPermission = \(\): void => \{\s*usePushPromptStore\.setState\(\{ moment: null \}\);\s*pushPermissionPrompt\.dismiss\(\);/,
   );
 });
