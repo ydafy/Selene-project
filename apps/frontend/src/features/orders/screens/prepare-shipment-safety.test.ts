@@ -7,6 +7,8 @@ const read = (relPath: string) => readFileSync(join(FRONTEND, relPath), 'utf8');
 
 describe('prepare shipment safety & resilience policy', () => {
   const src = read('src/features/orders/screens/prepare-shipment-screen.tsx');
+  const component = (name: string) =>
+    read(`src/features/orders/components/${name}.tsx`);
 
   test('enforces native gesture & back button navigation lock', () => {
     // 1. Must use React Navigation prevent remove hook
@@ -52,7 +54,50 @@ describe('prepare shipment safety & resilience policy', () => {
     );
     // Recovery UI condition
     expect(src).toContain('hasExistingLabel ?');
-    expect(src).toContain('alreadyGeneratedTitle');
+    expect(src).toContain('<ExistingLabelCard');
+    expect(component('existing-label-card')).toContain('alreadyGeneratedTitle');
+  });
+
+  test('keeps the interaction guards on the extracted prepare sections', () => {
+    // The screen decides when each section shows and what its taps do.
+    expect(src).toMatch(
+      /sellerShipments\.length > 1 && \(\s*<PrepareShipmentSelector[\s\S]*?canInteract=\{canInteract\}[\s\S]*?isProcessing=\{isProcessing\}/,
+    );
+    expect(src).toMatch(
+      /!onboardingLoading && !onboardingDone && \(\s*<ConnectOnboardingNotice\s+isProcessing=\{isProcessing\}\s+onPress=\{\(\) => \{\s*if \(canInteract\(\)\)\s*router\.push\('\/sell\/onboarding' as RelativePathString\);/,
+    );
+    expect(src).toMatch(
+      /<ExistingLabelCard\s+isProcessing=\{isProcessing\}\s+onViewLabel=\{\(\) => \{\s*if \(selectedShipment\?\.label_url\)/,
+    );
+    expect(src).toMatch(
+      /<LabelSuccessDialog\s+visible=\{showSuccess && !isProcessing\}\s+labelOpenError=\{labelOpenError\}/,
+    );
+    // The extracted sections lock themselves while processing.
+    const selector = component('prepare-shipment-selector');
+    expect(selector).toContain('disabled={isProcessing}');
+    expect(selector).toContain(
+      'accessibilityState={{ disabled: isProcessing }}',
+    );
+    expect(selector).toMatch(
+      /if \(canInteract\(\)\) onSelect\(shipment\.id\);/,
+    );
+    for (const name of ['connect-onboarding-notice', 'existing-label-card']) {
+      const source = component(name);
+      expect(source).toContain('disabled={isProcessing}');
+    }
+    expect(component('connect-onboarding-notice')).toContain(
+      'onPress={onPress}',
+    );
+    expect(component('existing-label-card')).toContain('onPress={onViewLabel}');
+    expect(selector).toMatch(
+      /selectedShipmentId === shipment\.id\s*\?\s*'check-circle'\s*:\s*'chevron-right'/,
+    );
+    // The dialog confirms through the screen handler and never offers cancel.
+    const dialog = component('label-success-dialog');
+    expect(dialog).toContain('onConfirm={onConfirm}');
+    expect(dialog).toMatch(/\s+hideCancel\s+>/);
+    expect(dialog).toContain('{labelOpenError && (');
+    expect(dialog).toContain('entering={truckEntering}');
   });
 
   test('binds primary button states to isProcessing', () => {

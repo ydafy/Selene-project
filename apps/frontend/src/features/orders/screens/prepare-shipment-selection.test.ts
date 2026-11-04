@@ -27,7 +27,15 @@ test('requires a selected seller-owned product shipment before generating a labe
 });
 
 test('lists each seller-owned shipment and does not fall back to the first one', () => {
-  expect(source).toContain('sellerShipments.map((shipment) =>');
-  expect(source).toContain('router.setParams({ shipment_id: shipment.id })');
+  const selector = readFileSync(
+    new URL('../components/prepare-shipment-selector.tsx', import.meta.url),
+    'utf8',
+  );
+  expect(source).toContain('<PrepareShipmentSelector');
+  expect(source).toContain('shipments={sellerShipments}');
+  expect(source).toContain('selectedShipmentId={selectedShipment?.id}');
+  expect(source).toContain('router.setParams({ shipment_id: shipmentId })');
+  expect(selector).toContain('shipments.map((shipment) =>');
+  expect(selector).toContain('onSelect(shipment.id)');
   expect(source).not.toContain('find((s) => s.seller_id === userId)');
 });

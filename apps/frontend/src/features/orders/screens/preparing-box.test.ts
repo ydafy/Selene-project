@@ -80,6 +80,14 @@ describe('preparing box resolution', () => {
     expect(screen).toContain('resolvePreparingBox(presetId, packagePresets)');
     expect(screen.match(/boxBlocked \|\|/g)?.length).toBe(2);
     expect(screen).toContain("t('orders:prepare.statusBoxUnavailable')");
-    expect(screen).toContain("t('orders:prepare.boxFallbackNote')");
+    const card = readFileSync(
+      join(import.meta.dir, '../components/prepare-box-card.tsx'),
+      'utf8',
+    );
+    expect(screen).toContain('<PrepareBoxCard');
+    expect(screen).toContain("isFallback={preparingBox.status === 'fallback'}");
+    expect(card).toMatch(
+      /\{isFallback \? \(\s*<Text[^>]*>\s*\{t\('orders:prepare\.boxFallbackNote'\)\}/,
+    );
   });
 });

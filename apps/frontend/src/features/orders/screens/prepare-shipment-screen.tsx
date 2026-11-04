@@ -5,7 +5,7 @@ import React, {
   useMemo,
   useEffect,
 } from 'react';
-import { ScrollView, Linking, TouchableOpacity } from 'react-native';
+import { ScrollView, Linking } from 'react-native';
 import type { ImageSource } from 'expo-image';
 import {
   Stack,
@@ -17,7 +17,6 @@ import {
 import { useTranslation } from 'react-i18next';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
-import Animated, { withSpring, withTiming } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@shopify/restyle';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,10 +27,14 @@ import { ScreenHeader } from '../../../shared/ui/screen-header';
 import { AddressSection } from '../../../components/features/checkout/AddressSection';
 import { AddressPickerModal } from '../../../components/features/address/AddressPickerModal';
 import { PrimaryButton } from '../../../shared/ui/primary-button';
-import { ConfirmDialog } from '../../../shared/ui/confirm-dialog';
 import { ErrorState } from '../../../shared/ui/error-state';
 import { Skeleton } from '../../../shared/ui/skeleton';
 import { LabelWithHelp } from '../../../shared/ui/label-with-help';
+import { PrepareShipmentSelector } from '../components/prepare-shipment-selector';
+import { PrepareBoxCard } from '../components/prepare-box-card';
+import { ConnectOnboardingNotice } from '../components/connect-onboarding-notice';
+import { ExistingLabelCard } from '../components/existing-label-card';
+import { LabelSuccessDialog } from '../components/label-success-dialog';
 import { PackagingGuideCard } from '../components/packaging-guide-card';
 import { ShipmentLabelRecoveryCard } from '../components/shipment-label-recovery-card';
 import { useOrderById } from '../hooks/use-orders';
@@ -79,18 +82,6 @@ const PACK_STEP_ICONS = [
   'zip-box',
   'label-outline',
 ] as const;
-
-// Mount entrance: slides in from the left (spring, 2 s) while fading in (timing).
-const truckEntering = () => {
-  'worklet';
-  return {
-    initialValues: { opacity: 0, transform: [{ translateX: -100 }] },
-    animations: {
-      opacity: withTiming(1),
-      transform: [{ translateX: withSpring(0, { duration: 2000 }) }],
-    },
-  };
-};
 
 export function PrepareShipmentScreen() {
   const { id, shipment_id } = useLocalSearchParams<{
@@ -425,128 +416,22 @@ function PrepareShipmentContent() {
         />
 
         {sellerShipments.length > 1 && (
-          <Box
-            backgroundColor="cardBackground"
-            padding="m"
-            borderRadius="l"
-            marginTop="l"
-            marginBottom="l"
-            borderWidth={1}
-            borderColor="separator"
-          >
-            {sellerShipments.map((shipment) => (
-              <TouchableOpacity
-                key={shipment.id}
-                disabled={isProcessing}
-                accessibilityState={{ disabled: isProcessing }}
-                onPress={() => {
-                  if (canInteract())
-                    router.setParams({ shipment_id: shipment.id });
-                }}
-              >
-                <Box
-                  flexDirection="row"
-                  alignItems="center"
-                  justifyContent="space-between"
-                  paddingVertical="s"
-                  borderBottomWidth={1}
-                  borderBottomColor="separator"
-                >
-                  <Box flex={1}>
-                    <Text variant="body-md">
-                      {shipment.items[0]?.product?.name ??
-                        t('orders:card.unknownProduct')}
-                    </Text>
-                    <Text variant="caption-md" color="textSecondary">
-                      {t(`orders:status.${shipment.status}`)}
-                    </Text>
-                  </Box>
-                  <MaterialCommunityIcons
-                    name={
-                      selectedShipment?.id === shipment.id
-                        ? 'check-circle'
-                        : 'chevron-right'
-                    }
-                    size={20}
-                    color={theme.colors.primary}
-                  />
-                </Box>
-              </TouchableOpacity>
-            ))}
-          </Box>
+          <PrepareShipmentSelector
+            shipments={sellerShipments}
+            selectedShipmentId={selectedShipment?.id}
+            isProcessing={isProcessing}
+            canInteract={canInteract}
+            onSelect={(shipmentId) =>
+              router.setParams({ shipment_id: shipmentId })
+            }
+          />
         )}
 
-        <Text variant="subheader-lg" marginBottom="m" color="primary">
-          {t('orders:prepare.boxSectionTitle')}
-        </Text>
-        <Box
-          backgroundColor="cardBackground"
-          padding="m"
-          borderRadius="l"
-          marginBottom="l"
-          borderWidth={1}
-          borderColor="separator"
-        >
-          <Box>
-            <Text variant="caption-md" color="textSecondary">
-              {t('orders:prepare.yourProduct')}
-            </Text>
-            <Text variant="body-md" fontWeight="bold" marginTop="xs">
-              {selectedShipment?.items[0]?.product?.name ??
-                t('orders:card.unknownProduct')}
-            </Text>
-          </Box>
-
-          {boxPreset ? (
-            <Box flexDirection="row" alignItems="center" gap="s" marginTop="s">
-              <MaterialCommunityIcons
-                name="package-variant-closed"
-                size={20}
-                color={theme.colors.primary}
-              />
-              <Box flex={1}>
-                <Text variant="body-sm" color="textPrimary">
-                  {boxPreset.label}
-                </Text>
-                <Text variant="caption-md" color="textSecondary">
-                  {`${boxPreset.length} × ${boxPreset.width} × ${boxPreset.height} cm · ${boxPreset.weight} kg`}
-                </Text>
-                {preparingBox.status === 'fallback' ? (
-                  <Text
-                    variant="caption-md"
-                    color="textSecondary"
-                    marginTop="xs"
-                  >
-                    {t('orders:prepare.boxFallbackNote')}
-                  </Text>
-                ) : null}
-              </Box>
-            </Box>
-          ) : (
-            <Text variant="body-sm" color="textSecondary" marginTop="s">
-              {t('orders:prepare.boxUnavailable')}
-            </Text>
-          )}
-
-          <Box
-            flexDirection="row"
-            alignItems="flex-start"
-            gap="s"
-            marginTop="s"
-            padding="s"
-            backgroundColor="background"
-            borderRadius="m"
-          >
-            <MaterialCommunityIcons
-              name="alert-outline"
-              size={16}
-              color={theme.colors.warning}
-            />
-            <Text variant="caption-md" color="textSecondary" flex={1}>
-              {t('orders:prepare.boxWarning')}
-            </Text>
-          </Box>
-        </Box>
+        <PrepareBoxCard
+          productName={selectedShipment?.items[0]?.product?.name}
+          boxPreset={boxPreset}
+          isFallback={preparingBox.status === 'fallback'}
+        />
 
         <Text variant="subheader-lg" marginBottom="m" color="primary">
           {t('orders:prepare.originTitle')}
@@ -677,82 +562,25 @@ function PrepareShipmentContent() {
         )}
 
         {!onboardingLoading && !onboardingDone && (
-          <Box
-            backgroundColor="cardBackground"
-            padding="m"
-            borderRadius="l"
-            marginBottom="m"
-            borderWidth={1}
-            borderColor="warning"
-          >
-            <Box flexDirection="row" alignItems="flex-start" gap="s">
-              <MaterialCommunityIcons
-                name="alert-circle-outline"
-                size={20}
-                color={theme.colors.warning}
-              />
-              <Box flex={1}>
-                <Text variant="body-md" fontWeight="bold" marginBottom="xs">
-                  {t('orders:prepare.connectTitle')}
-                </Text>
-                <Text variant="body-sm" color="textSecondary" marginBottom="m">
-                  {t('orders:prepare.connectBody')}
-                </Text>
-                <PrimaryButton
-                  disabled={isProcessing}
-                  onPress={() => {
-                    if (canInteract())
-                      router.push('/sell/onboarding' as RelativePathString);
-                  }}
-                  icon="bank-outline"
-                >
-                  {t('orders:prepare.connectCta')}
-                </PrimaryButton>
-              </Box>
-            </Box>
-          </Box>
+          <ConnectOnboardingNotice
+            isProcessing={isProcessing}
+            onPress={() => {
+              if (canInteract())
+                router.push('/sell/onboarding' as RelativePathString);
+            }}
+          />
         )}
 
         {/* SI LA GUÍA YA EXISTE (POR CORTE DE RED O REAPERTURA), MUESTRA ESTO: */}
         {hasExistingLabel ? (
-          <Box
-            backgroundColor="cardBackground"
-            padding="m"
-            borderRadius="l"
-            marginBottom="m"
-            borderWidth={1}
-            borderColor="success"
-          >
-            <Box
-              flexDirection="row"
-              alignItems="center"
-              gap="s"
-              marginBottom="s"
-            >
-              <MaterialCommunityIcons
-                name="check-decagram"
-                size={22}
-                color={theme.colors.success}
-              />
-              <Text variant="body-md" fontWeight="bold">
-                {t('orders:prepare.alreadyGeneratedTitle')}
-              </Text>
-            </Box>
-            <Text variant="body-sm" color="textSecondary" marginBottom="m">
-              {t('orders:prepare.alreadyGeneratedDesc')}
-            </Text>
-            <PrimaryButton
-              disabled={isProcessing}
-              onPress={() => {
-                if (selectedShipment?.label_url) {
-                  void handleOpenLabel(selectedShipment.label_url);
-                }
-              }}
-              icon="printer-check"
-            >
-              {t('orders:actions.viewPdf')}
-            </PrimaryButton>
-          </Box>
+          <ExistingLabelCard
+            isProcessing={isProcessing}
+            onViewLabel={() => {
+              if (selectedShipment?.label_url) {
+                void handleOpenLabel(selectedShipment.label_url);
+              }
+            }}
+          />
         ) : selectedShipment && isLabelRecoveryState(labelState) ? (
           <ShipmentLabelRecoveryCard
             state={labelState}
@@ -799,9 +627,9 @@ function PrepareShipmentContent() {
         onSelect={handleAddressSelect}
       />
 
-      <ConfirmDialog
+      <LabelSuccessDialog
         visible={showSuccess && !isProcessing}
-        title={t('orders:prepare.successTitle')}
+        labelOpenError={labelOpenError}
         onConfirm={async () => {
           if (!labelUrl || !(await handleOpenLabel(labelUrl))) return;
           if (!mounted.current || submissionInFlight.current) return;
@@ -812,33 +640,7 @@ function PrepareShipmentContent() {
             router.replace(`/profile/orders/${id}`);
           }
         }}
-        onCancel={() => {}}
-        confirmLabel={t('orders:actions.viewPdf')}
-        hideCancel
-      >
-        <Box alignItems="center" paddingVertical="m">
-          <Animated.View entering={truckEntering}>
-            <MaterialCommunityIcons
-              name="truck-fast"
-              size={80}
-              color={theme.colors.primary}
-            />
-          </Animated.View>
-          <Text variant="body-md" textAlign="center" marginTop="m">
-            {t('orders:prepare.successMsg')}
-          </Text>
-          {labelOpenError && (
-            <Text
-              variant="body-sm"
-              color="error"
-              textAlign="center"
-              marginTop="m"
-            >
-              {t('orders:prepare.errors.labelOpenFailed')}
-            </Text>
-          )}
-        </Box>
-      </ConfirmDialog>
+      />
     </Box>
   );
 }
