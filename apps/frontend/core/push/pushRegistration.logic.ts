@@ -72,6 +72,12 @@ export const createPushRegistrar = (deps: PushRegistrarDeps) => {
   // The last register call got no answer: the server may still apply it,
   // even after a later unregister, so that unregister keeps its retry.
   let registerUnanswered = false;
+  // A registration still waiting at the end of the queue. Later calls join it
+  // instead of queueing another, so a burst of callers runs at most one more.
+  let queuedRegister: {
+    userId: string | undefined;
+    done: Promise<void>;
+  } | null = null;
 
   // A call that does not answer in time counts as failed; the step then
   // follows its failure path and the queue moves on.
@@ -143,8 +149,18 @@ export const createPushRegistrar = (deps: PushRegistrarDeps) => {
    */
   const register = (userId: string | undefined): Promise<void> => {
     currentUserId = userId;
+    if (queuedRegister) {
+      queuedRegister.userId = userId;
+      return queuedRegister.done;
+    }
+    const entry = { userId, done: Promise.resolve() };
     void enqueue(flushOnce);
-    return enqueue(() => registerOnce(userId));
+    entry.done = enqueue(() => {
+      if (queuedRegister === entry) queuedRegister = null;
+      return registerOnce(entry.userId);
+    });
+    queuedRegister = entry;
+    return entry.done;
   };
 
   const registerOnce = async (userId: string | undefined): Promise<void> => {
@@ -184,6 +200,9 @@ export const createPushRegistrar = (deps: PushRegistrarDeps) => {
   // left on the account after the session ends.
   const unregister = (): Promise<void> => {
     signedOutUserId = currentUserId;
+    // A registration after the sign-out must queue after it, never join one
+    // queued before it.
+    queuedRegister = null;
     // Marked at once, outside the queue: a step that is still running must
     // not delay the mark past the sign-out time limit.
     const marked = markPending();

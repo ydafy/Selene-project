@@ -621,3 +621,89 @@ describe('createOnlineTransition', () => {
     expect(backOnline(online)).toBe(true);
   });
 });
+
+describe('createPushRegistrar burst of callers', () => {
+  const blockFirstToken = (calls: string[]) => {
+    let release: () => void = () => {};
+    let blocked = true;
+    const getExpoPushToken = async (projectId: string) => {
+      calls.push(`token:${projectId}`);
+      if (blocked) {
+        blocked = false;
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+      }
+      return TOKEN;
+    };
+    return { getExpoPushToken, release: () => release() };
+  };
+
+  it('collapses registrations queued behind a running one into one', async () => {
+    const calls: string[] = [];
+    const gate = blockFirstToken(calls);
+    const { registrar } = setup({
+      getExpoPushToken: gate.getExpoPushToken,
+      registerToken: async (token, platform) => {
+        calls.push(`register:${token}:${platform}`);
+      },
+    });
+    const first = registrar.register('user-1');
+    await tick();
+    const burst = Array.from({ length: 10 }, () =>
+      registrar.register('user-1'),
+    );
+    gate.release();
+    await Promise.all([first, ...burst]);
+    expect(calls.filter((c) => c.startsWith('token:'))).toHaveLength(2);
+    expect(calls.filter((c) => c.startsWith('register:'))).toHaveLength(2);
+  });
+
+  it('a collapsed call settles when the queued registration finishes', async () => {
+    const calls: string[] = [];
+    const gate = blockFirstToken(calls);
+    const { registrar } = setup({ getExpoPushToken: gate.getExpoPushToken });
+    void registrar.register('user-1');
+    await tick();
+    const queued = registrar.register('user-1');
+    const collapsed = registrar.register('user-1');
+    let settled = false;
+    void collapsed.then(() => {
+      settled = true;
+    });
+    await tick();
+    expect(settled).toBe(false);
+    gate.release();
+    await queued;
+    await collapsed;
+    expect(settled).toBe(true);
+  });
+
+  it('never collapses a registration across a sign-out', async () => {
+    const calls: string[] = [];
+    const gate = blockFirstToken(calls);
+    const { registrar } = setup({
+      getExpoPushToken: gate.getExpoPushToken,
+      registerToken: async (token, platform) => {
+        calls.push(`register:${token}:${platform}`);
+      },
+      unregisterToken: async (token) => {
+        calls.push(`unregister:${token}`);
+      },
+    });
+    const first = registrar.register('user-1');
+    await tick();
+    const beforeSignOut = registrar.register('user-1');
+    const signingOut = registrar.unregister();
+    const nextAccount = registrar.register('user-2');
+    gate.release();
+    await Promise.all([first, beforeSignOut, signingOut, nextAccount]);
+    const unregisteredAt = calls.indexOf(`unregister:${TOKEN}`);
+    expect(unregisteredAt).toBeGreaterThan(-1);
+    // The second account registers after the sign-out, so the token stays on it.
+    expect(calls.at(-1)).toBe(`register:${TOKEN}:android`);
+    expect(calls.lastIndexOf(`register:${TOKEN}:android`)).toBeGreaterThan(
+      unregisteredAt,
+    );
+  });
+});
