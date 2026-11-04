@@ -5,12 +5,12 @@ import {
   buildVerificationData,
   canSubmitVerification,
   resolveVerificationRequirements,
-} from '../../src/core/utils/verification-submit';
+} from './verification-submit';
 
-const FRONTEND = join(import.meta.dir, '..', '..');
+const FRONTEND = join(import.meta.dir, '..', '..', '..', '..');
 const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
 const flat = (path: string) => read(path).replace(/\s+/g, ' ');
-const hook = flat('src/core/hooks/useVerificationLogic.ts');
+const hook = flat('src/features/verify/hooks/use-verification-logic.ts');
 const screen = flat('src/app/verify/[id].tsx');
 const success = flat('src/app/sell/success.tsx');
 const es = JSON.parse(read('src/shared/i18n/locales/es/verify.json'));

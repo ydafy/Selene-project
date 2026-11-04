@@ -17,7 +17,7 @@ const sourceFiles = (dir: string): string[] =>
 const VIEWER_SCREENS = [
   'src/components/features/product/ProductImageGallery.tsx',
   'src/components/features/sell/ImageGridPicker.tsx',
-  'src/components/features/verify/BenchmarkGuideModal.tsx',
+  'src/features/verify/components/benchmark-guide-modal.tsx',
   'src/app/sell/onboarding.tsx',
 ];
 
@@ -50,7 +50,7 @@ describe('image viewer migration to react-native-zoom-toolkit', () => {
 
   test('the benchmark guide step counter is translated', () => {
     const guide = read(
-      'src/components/features/verify/BenchmarkGuideModal.tsx',
+      'src/features/verify/components/benchmark-guide-modal.tsx',
     );
     expect(guide).not.toMatch(/Paso \{/);
     expect(guide).toContain("t('guide.stepCounter'");

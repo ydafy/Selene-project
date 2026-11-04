@@ -303,7 +303,7 @@ describe('uploadMediaFromBase64', () => {
 describe('upload call sites', () => {
   const hooks = [
     'src/core/hooks/usePublishProduct.ts',
-    'src/core/hooks/useVerificationLogic.ts',
+    'src/features/verify/hooks/use-verification-logic.ts',
   ];
   for (const file of hooks) {
     it(`${file} uses the shared helper`, () => {

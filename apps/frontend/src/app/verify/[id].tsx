@@ -15,15 +15,15 @@ import { Box, Text } from '../../shared/ui/base';
 import { PrimaryButton } from '../../shared/ui/primary-button';
 import { GlobalHeader } from '../../shared/ui/global-header';
 import { ScreenHeader } from '../../shared/ui/screen-header';
-import { VerificationMissionCard } from '../../components/features/verify/VerificationMissionCard';
-import { BenchmarkGuideModal } from '../../components/features/verify/BenchmarkGuideModal';
+import { VerificationMissionCard } from '../../features/verify/components/verification-mission-card';
+import { BenchmarkGuideModal } from '../../features/verify/components/benchmark-guide-modal';
 import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
 
-import { useVerificationLogic } from '../../core/hooks/useVerificationLogic';
+import { useVerificationLogic } from '../../features/verify/hooks/use-verification-logic';
 import {
   canSubmitVerification,
   resolveVerificationRequirements,
-} from '../../core/utils/verification-submit';
+} from '../../features/verify/logic/verification-submit';
 import { theme } from '@/shared/theme';
 import { offerPushPermission } from '@/core/push/pushPermission';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';

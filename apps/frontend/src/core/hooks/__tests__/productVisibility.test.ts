@@ -31,7 +31,7 @@ test.each([
   'useProduct.ts',
   'useProductFavorite.ts',
   'useMyListings.ts',
-  'useVerificationLogic.ts',
+  '../../features/verify/hooks/use-verification-logic.ts',
 ])('%s has no VERIFIED-only filter', (file) => {
   const source = read(file);
   expect(source).not.toMatch(explicitPublicStatuses);

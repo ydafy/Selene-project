@@ -1,5 +1,5 @@
 import type { ProductCategory } from '@selene/types';
-export { describeError } from '../../shared/utils/describe-error';
+export { describeError } from '../../../shared/utils/describe-error';
 
 export type VerificationLoadState = 'loading' | 'ready' | 'error';
 
