@@ -6,7 +6,7 @@ const FRONTEND = join(process.cwd(), 'apps/frontend');
 const read = (relPath: string) => readFileSync(join(FRONTEND, relPath), 'utf8');
 
 describe('prepare shipment safety & resilience policy', () => {
-  const src = read('app/profile/orders/prepare/[id].tsx');
+  const src = read('src/app/profile/orders/prepare/[id].tsx');
 
   test('enforces native gesture & back button navigation lock', () => {
     // 1. Must use React Navigation prevent remove hook

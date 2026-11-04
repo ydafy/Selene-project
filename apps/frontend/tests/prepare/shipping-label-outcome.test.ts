@@ -6,7 +6,7 @@ import {
   openGeneratedLabel,
   resolveLabelFailureKey,
   type LabelDiagnostic,
-} from '../../core/utils/shipping-label-outcome';
+} from '../../src/core/utils/shipping-label-outcome';
 
 const labelUrl = 'https://labels.example.test/shipment.pdf';
 
@@ -142,7 +142,7 @@ describe('shipping label outcome', () => {
         readFileSync(
           join(
             process.cwd(),
-            `apps/frontend/core/i18n/locales/${locale}/orders.json`,
+            `apps/frontend/src/core/i18n/locales/${locale}/orders.json`,
           ),
           'utf8',
         ),

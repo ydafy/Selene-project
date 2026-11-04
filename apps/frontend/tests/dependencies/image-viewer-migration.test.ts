@@ -15,16 +15,16 @@ const sourceFiles = (dir: string): string[] =>
   });
 
 const VIEWER_SCREENS = [
-  'components/features/product/ProductImageGallery.tsx',
-  'components/features/sell/ImageGridPicker.tsx',
-  'components/features/verify/BenchmarkGuideModal.tsx',
-  'app/sell/onboarding.tsx',
+  'src/components/features/product/ProductImageGallery.tsx',
+  'src/components/features/sell/ImageGridPicker.tsx',
+  'src/components/features/verify/BenchmarkGuideModal.tsx',
+  'src/app/sell/onboarding.tsx',
 ];
 
 describe('image viewer migration to react-native-zoom-toolkit', () => {
   test('no app file imports the unmaintained react-native-image-viewing', () => {
     const offenders = ['app', 'components', 'core']
-      .flatMap((dir) => sourceFiles(join(FRONTEND, dir)))
+      .flatMap((dir) => sourceFiles(join(FRONTEND, 'src', dir)))
       .filter((file) => !file.includes(`${sep}__tests__${sep}`))
       .filter((file) =>
         readFileSync(file, 'utf8').includes(
@@ -42,14 +42,16 @@ describe('image viewer migration to react-native-zoom-toolkit', () => {
   });
 
   test('the shared viewer is built on the zoom toolkit gallery', () => {
-    const viewer = read('components/ui/AppImageViewer.tsx');
+    const viewer = read('src/components/ui/AppImageViewer.tsx');
     expect(viewer).toContain("from 'react-native-zoom-toolkit'");
     expect(viewer).toContain('<Gallery');
     expect(viewer).toContain('<GestureHandlerRootView');
   });
 
   test('the benchmark guide step counter is translated', () => {
-    const guide = read('components/features/verify/BenchmarkGuideModal.tsx');
+    const guide = read(
+      'src/components/features/verify/BenchmarkGuideModal.tsx',
+    );
     expect(guide).not.toMatch(/Paso \{/);
     expect(guide).toContain("t('guide.stepCounter'");
   });

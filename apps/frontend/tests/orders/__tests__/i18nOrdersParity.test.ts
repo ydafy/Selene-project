@@ -13,7 +13,7 @@ type OrdersLocale = {
 const readJson = (locale: string) =>
   JSON.parse(
     readFileSync(
-      join(FRONTEND, `core/i18n/locales/${locale}/orders.json`),
+      join(FRONTEND, `src/core/i18n/locales/${locale}/orders.json`),
       'utf8',
     ),
   ) as OrdersLocale;
@@ -61,7 +61,7 @@ describe('role-aware orders localization', () => {
   });
 
   it('uses translation keys without fallback strings for scoped orders copy', () => {
-    const summary = read('app/profile/orders/summary/[id].tsx');
+    const summary = read('src/app/profile/orders/summary/[id].tsx');
     expect(summary).toContain("t('summary.title')");
     expect(summary).toContain("t('summary.subtotal')");
     expect(summary).toContain("t('summary.totalPaid')");
@@ -71,9 +71,9 @@ describe('role-aware orders localization', () => {
     expect(summary).toContain("t('summary.status')");
     expect(summary).not.toContain('defaultValue:');
     expect(
-      read('components/features/orders/ShipmentNotFoundState.tsx'),
+      read('src/components/features/orders/ShipmentNotFoundState.tsx'),
     ).toContain("t('notFound.title')");
-    const card = read('components/features/orders/OrderShipmentCard.tsx');
+    const card = read('src/components/features/orders/OrderShipmentCard.tsx');
     expect(card).toContain('const item = shipment.items[0];');
     expect(card).toContain("t('card.unknownProduct')");
     expect(card).toContain("t('card.unknownSeller')");
@@ -84,7 +84,9 @@ describe('role-aware orders localization', () => {
   });
 
   it('uses translation keys for action-card banners and actions', () => {
-    const actionCard = read('components/features/orders/OrderActionCard.tsx');
+    const actionCard = read(
+      'src/components/features/orders/OrderActionCard.tsx',
+    );
     for (const key of [
       'cancellationWindowTitle',
       'preparingShipmentTitle',

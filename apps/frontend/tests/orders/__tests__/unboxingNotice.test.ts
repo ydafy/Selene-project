@@ -14,14 +14,14 @@ const compact = (source: string) =>
 const FRONTEND = join(import.meta.dir, '..', '..', '..');
 const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
 const flat = (path: string) => compact(read(path));
-const es = JSON.parse(read('core/i18n/locales/es/orders.json'));
-const en = JSON.parse(read('core/i18n/locales/en/orders.json'));
+const es = JSON.parse(read('src/core/i18n/locales/es/orders.json'));
+const en = JSON.parse(read('src/core/i18n/locales/en/orders.json'));
 
 // The hook needs Expo and React Query, absent in this worktree: pin the rule
 // and the render wiring in source.
 describe('unboxing notice', () => {
   it('shows only to the buyer, for paid/preparing/shipped/delivered shipments without a dispute', () => {
-    expect(flat('core/hooks/useShipments.ts')).toContain(
+    expect(flat('src/core/hooks/useShipments.ts')).toContain(
       compact(
         "showUnboxingWarning: isBuyer && ['paid', 'preparing', 'shipped', 'delivered'].includes( shipment.status, ) && !isDispute,",
       ),
@@ -29,7 +29,7 @@ describe('unboxing notice', () => {
   });
 
   it('renders the notice in the order detail from that permission', () => {
-    const detail = flat('app/profile/orders/[id].tsx');
+    const detail = flat('src/app/profile/orders/[id].tsx');
     expect(detail).toContain(
       compact('{currentShipment?.permissions.showUnboxingWarning && ('),
     );

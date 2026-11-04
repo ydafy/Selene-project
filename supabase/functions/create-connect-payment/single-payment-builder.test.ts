@@ -25,7 +25,7 @@ import {
   calculateCheckoutAllocation,
   type CheckoutAllocation,
 } from './fee-calculator.ts';
-import { calculateOrderCalculations } from '../../../apps/frontend/core/hooks/useOrderCalculations.ts';
+import { calculateOrderCalculations } from '../../../apps/frontend/src/core/hooks/useOrderCalculations.ts';
 
 /**
  * Strict TDD tests for the Phase 3 single-modal multi-seller checkout

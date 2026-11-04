@@ -4,11 +4,11 @@ import { join } from 'node:path';
 
 const FRONTEND = join(import.meta.dir, '..', '..', '..');
 const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
-const card = read('components/features/orders/OrderActionCard.tsx');
+const card = read('src/components/features/orders/OrderActionCard.tsx');
 const flatCard = card.replace(/\s+/g, ' ');
-const detail = read('app/profile/orders/[id].tsx');
-const es = JSON.parse(read('core/i18n/locales/es/orders.json'));
-const en = JSON.parse(read('core/i18n/locales/en/orders.json'));
+const detail = read('src/app/profile/orders/[id].tsx');
+const es = JSON.parse(read('src/core/i18n/locales/es/orders.json'));
+const en = JSON.parse(read('src/core/i18n/locales/en/orders.json'));
 
 // Native rendering needs Expo dependencies, absent in this worktree. These
 // guards verify localized copy and wiring, not layout or device interactions.

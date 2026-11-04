@@ -8,7 +8,7 @@ const read = (relPath: string) =>
   readFileSync(join(FRONTEND, relPath), 'utf8').replace(/\s+/g, ' ');
 
 describe('role-aware orders list routing', () => {
-  const index = read('app/profile/orders/index.tsx');
+  const index = read('src/app/profile/orders/index.tsx');
 
   it('delegates buyer and seller navigation to the shared resolver', () => {
     expect(index).toContain("from './order-view-routing'");
@@ -22,7 +22,7 @@ describe('role-aware orders list routing', () => {
 });
 
 describe('role-aware order summary isolation', () => {
-  const summary = read('app/profile/orders/summary/[id].tsx');
+  const summary = read('src/app/profile/orders/summary/[id].tsx');
 
   it('uses the shared resolver and redirects non-summary views to their canonical target', () => {
     expect(summary).toContain("from '../order-view-routing'");
@@ -43,7 +43,7 @@ describe('role-aware order summary isolation', () => {
 });
 
 describe('shipment detail identity guards', () => {
-  const detail = read('app/profile/orders/[id].tsx');
+  const detail = read('src/app/profile/orders/[id].tsx');
 
   it('normalizes the addressed shipment id and delegates access to the resolver', () => {
     expect(detail).toContain("from './order-view-routing'");

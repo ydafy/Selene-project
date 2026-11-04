@@ -5,31 +5,33 @@ import { join } from 'node:path';
 const FRONTEND = join(import.meta.dir, '..', '..');
 const read = (file: string) => readFileSync(join(FRONTEND, file), 'utf8');
 const json = (locale: string) =>
-  JSON.parse(read(`core/i18n/locales/${locale}/disputes.json`));
+  JSON.parse(read(`src/core/i18n/locales/${locale}/disputes.json`));
 
 describe('media upload B3 source guards', () => {
   it('has no unchecked base64 assertions at the capture call sites', () => {
     expect(
-      read('components/features/orders/EvidenceUploadSection.tsx'),
+      read('src/components/features/orders/EvidenceUploadSection.tsx'),
     ).not.toContain('base64!');
-    expect(read('app/(tabs)/profile.tsx')).not.toContain('base64!');
+    expect(read('src/app/(tabs)/profile.tsx')).not.toContain('base64!');
   });
 
   it('uses the base64 helper and never image/jpg in useImageUpload', () => {
-    const source = read('core/hooks/useImageUpload.ts');
+    const source = read('src/core/hooks/useImageUpload.ts');
     expect(source).toContain('uploadMediaFromBase64');
     expect(source).not.toContain('image/jpg');
     expect(source).not.toContain('[IMAGE_UPLOAD]');
   });
 
   it('EvidenceUploadSection logs failures through describeError', () => {
-    const source = read('components/features/orders/EvidenceUploadSection.tsx');
+    const source = read(
+      'src/components/features/orders/EvidenceUploadSection.tsx',
+    );
     expect(source).toContain('describeError');
     expect(source).not.toContain("event: 'capture_or_upload_failed'");
   });
 
   it('useVideoUpload uses the shared helper, a submit guard and i18n', () => {
-    const source = read('core/hooks/useVideoUpload.ts');
+    const source = read('src/core/hooks/useVideoUpload.ts');
     expect(source).toContain('uploadMediaFromUri');
     expect(source).toContain('maxBytes');
     expect(source).toContain('useRef');
@@ -79,7 +81,8 @@ describe('media upload B3 source guards', () => {
 
 describe('dispute video cross-platform and size feedback', () => {
   it('accepts iOS QuickTime and Android MP4 videos', async () => {
-    const { resolveMediaType } = await import('../../core/storage/uploadMedia');
+    const { resolveMediaType } =
+      await import('../../src/core/storage/uploadMedia');
     expect(resolveMediaType('file:///var/mobile/IMG_0001.MOV')).toEqual({
       ext: 'mov',
       contentType: 'video/quicktime',
@@ -95,7 +98,7 @@ describe('dispute video cross-platform and size feedback', () => {
   });
 
   it('shows the too-large message when the real file size exceeds the limit', () => {
-    const screen = read('app/profile/orders/report/[id].tsx').replace(
+    const screen = read('src/app/profile/orders/report/[id].tsx').replace(
       /\s+/g,
       ' ',
     );
@@ -105,7 +108,7 @@ describe('dispute video cross-platform and size feedback', () => {
   });
 
   it('logs the screen failure without the raw error object', () => {
-    const screen = read('app/profile/orders/report/[id].tsx');
+    const screen = read('src/app/profile/orders/report/[id].tsx');
     expect(screen).not.toContain(
       "console.error('[VIDEO_UPLOAD_ERROR]', error)",
     );

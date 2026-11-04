@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
-import { orderCardAmountCents } from '../../../core/utils/order-summary-state';
+import { orderCardAmountCents } from '../../../src/core/utils/order-summary-state';
 
 const card = readFileSync(
-  `${import.meta.dir}/../../../components/features/orders/OrderCard.tsx`,
+  `${import.meta.dir}/../../../src/components/features/orders/OrderCard.tsx`,
   'utf8',
 ).replace(/\s+/g, ' ');
 
@@ -36,18 +36,18 @@ describe('order card amount by role', () => {
 
 describe('order detail total by role', () => {
   const detail = readFileSync(
-    `${import.meta.dir}/../../../app/profile/orders/[id].tsx`,
+    `${import.meta.dir}/../../../src/app/profile/orders/[id].tsx`,
     'utf8',
   ).replace(/\s+/g, ' ');
   const es = JSON.parse(
     readFileSync(
-      `${import.meta.dir}/../../../core/i18n/locales/es/orders.json`,
+      `${import.meta.dir}/../../../src/core/i18n/locales/es/orders.json`,
       'utf8',
     ),
   );
   const en = JSON.parse(
     readFileSync(
-      `${import.meta.dir}/../../../core/i18n/locales/en/orders.json`,
+      `${import.meta.dir}/../../../src/core/i18n/locales/en/orders.json`,
       'utf8',
     ),
   );

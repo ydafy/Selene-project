@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { resolveCancelOrderFailureToast } from '../../core/utils/shipment-cancel-safety';
+import { resolveCancelOrderFailureToast } from '../../src/core/utils/shipment-cancel-safety';
 
 const FRONTEND = join(import.meta.dir, '..', '..');
 const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
 const locale = (lang: string) =>
-  JSON.parse(read(`core/i18n/locales/${lang}/orders.json`)) as Record<
+  JSON.parse(read(`src/core/i18n/locales/${lang}/orders.json`)) as Record<
     string,
     unknown
   >;
@@ -122,8 +122,8 @@ describe('resolveCancelOrderFailureToast', () => {
   });
 
   it('translates the toast through i18n instead of a missing key or fixed Spanish', () => {
-    const hook = read('core/hooks/useOrderActions.ts');
-    const utility = read('core/utils/shipment-cancel-safety.ts');
+    const hook = read('src/core/hooks/useOrderActions.ts');
+    const utility = read('src/core/utils/shipment-cancel-safety.ts');
     expect(hook).toContain('text1: t(toast.titleKey)');
     expect(hook).toContain('text2: t(toast.messageKey)');
     expect(hook).not.toContain("t('errors.errorTitle', toast.title)");

@@ -2,11 +2,11 @@ import { expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
 const detail = readFileSync(
-  new URL('../../app/profile/orders/[id].tsx', import.meta.url),
+  new URL('../../src/app/profile/orders/[id].tsx', import.meta.url),
   'utf8',
 );
 const summary = readFileSync(
-  new URL('../../app/profile/orders/summary/[id].tsx', import.meta.url),
+  new URL('../../src/app/profile/orders/summary/[id].tsx', import.meta.url),
   'utf8',
 );
 

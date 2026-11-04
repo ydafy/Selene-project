@@ -20,11 +20,11 @@ const field = (src: string, label: string): string => {
   return src.slice(open, close);
 };
 
-const LOGIN = 'components/features/auth/LoginForm.tsx';
-const REGISTER = 'components/features/auth/RegisterForm.tsx';
-const FORGOT = 'app/(auth)/forgotPassword.tsx';
-const RESET = 'app/(auth)/resetPassword.tsx';
-const VERIFY = 'app/(auth)/verify-code.tsx';
+const LOGIN = 'src/components/features/auth/LoginForm.tsx';
+const REGISTER = 'src/components/features/auth/RegisterForm.tsx';
+const FORGOT = 'src/app/(auth)/forgotPassword.tsx';
+const RESET = 'src/app/(auth)/resetPassword.tsx';
+const VERIFY = 'src/app/(auth)/verify-code.tsx';
 
 const hints = (auto: string, content: string) => [
   `autoComplete="${auto}"`,

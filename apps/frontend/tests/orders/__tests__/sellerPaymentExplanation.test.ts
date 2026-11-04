@@ -10,14 +10,14 @@ const read = (path: string) =>
 describe('shared seller payment explanation', () => {
   it('uses one shared body in onboarding success and the seller payment dialog', () => {
     const component =
-      'components/features/payments/SellerPaymentExplanation.tsx';
+      'src/components/features/payments/SellerPaymentExplanation.tsx';
     expect(existsSync(join(FRONTEND, component))).toBe(true);
     const shared = read(component);
     for (const key of ['buyerReview', 'release', 'bank', 'delays']) {
       expect(shared).toContain(`t('paymentExplanation.${key}')`);
     }
     expect(shared).not.toContain('paymentExplanation.title');
-    const onboarding = read('app/sell/onboarding.tsx');
+    const onboarding = read('src/app/sell/onboarding.tsx');
     const success = onboarding.slice(
       onboarding.indexOf("if (onboardingUi.viewState === 'success')"),
       onboarding.indexOf('ref={scrollViewRef}'),
@@ -28,7 +28,7 @@ describe('shared seller payment explanation', () => {
   });
 
   it('gates help and visibility on the selected delivered or completed, dispute-free seller shipment', () => {
-    const card = read('components/features/orders/OrderActionCard.tsx');
+    const card = read('src/components/features/orders/OrderActionCard.tsx');
     expect(card).toContain(
       "const showSellerCompletedBanner = isSeller && shipment.status === 'completed' && !dispute;",
     );
@@ -44,7 +44,7 @@ describe('shared seller payment explanation', () => {
   });
 
   it('dismisses informational content without mutations and bounds scroll height', () => {
-    const card = read('components/features/orders/OrderActionCard.tsx');
+    const card = read('src/components/features/orders/OrderActionCard.tsx');
     const dialog = card.slice(
       card.indexOf('<ConfirmDialog'),
       card.indexOf('</ConfirmDialog>'),

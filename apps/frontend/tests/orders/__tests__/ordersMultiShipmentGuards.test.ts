@@ -22,7 +22,7 @@ const read = (relPath: string) =>
     .replace(/,\)/g, ')');
 
 describe('orders detail screen shipment-aware source guards', () => {
-  const detail = read('app/profile/orders/[id].tsx');
+  const detail = read('src/app/profile/orders/[id].tsx');
 
   it('prefers the per-shipment-enriched list from useShipmentsByOrder over raw order.shipments', () => {
     // The migration note used to fall back to order.shipments first; that
@@ -76,7 +76,7 @@ describe('orders detail screen shipment-aware source guards', () => {
 });
 
 describe('OrderActionCard shipment-level timing guard', () => {
-  const card = read('components/features/orders/OrderActionCard.tsx');
+  const card = read('src/components/features/orders/OrderActionCard.tsx');
 
   it('starts the review countdown from the shipment delivered_at, not the order', () => {
     // In multi-seller orders, order.delivered_at is set when the LAST shipment
@@ -93,7 +93,7 @@ describe('OrderActionCard shipment-level timing guard', () => {
 });
 
 describe('OrderActionCard dispute banner title guard', () => {
-  const card = read('components/features/orders/OrderActionCard.tsx');
+  const card = read('src/components/features/orders/OrderActionCard.tsx');
   const title = card.slice(
     card.indexOf('const getBannerTitle ='),
     card.indexOf('const getBannerMessage ='),
@@ -115,7 +115,7 @@ describe('OrderActionCard dispute banner title guard', () => {
 });
 
 describe('OrderActionCard seller return problem navigation guard', () => {
-  const card = read('components/features/orders/OrderActionCard.tsx');
+  const card = read('src/components/features/orders/OrderActionCard.tsx');
   const action = card.slice(
     card.indexOf("{isSeller && dispute?.status === 'return_delivered' && ("),
     card.indexOf("{t('actionCard.reportReturnProblem')}"),
@@ -135,7 +135,7 @@ describe('OrderActionCard seller return problem navigation guard', () => {
 });
 
 describe('orders index role-aware navigation guard', () => {
-  const index = read('app/profile/orders/index.tsx');
+  const index = read('src/app/profile/orders/index.tsx');
 
   it('delegates navigation to the canonical shipment-aware resolver', () => {
     expect(index).toContain("from './order-view-routing'");
@@ -145,7 +145,7 @@ describe('orders index role-aware navigation guard', () => {
 });
 
 describe('ReviewModal shipment-aware seller target guard', () => {
-  const modal = read('components/features/profile/ReviewModal.tsx');
+  const modal = read('src/components/features/profile/ReviewModal.tsx');
 
   it('accepts an optional sellerId and falls back to the first shipment seller', () => {
     expect(modal).toContain('sellerId?: string;');
@@ -168,7 +168,7 @@ describe('ReviewModal shipment-aware seller target guard', () => {
 });
 
 describe('orders detail screen shipment-aware review identity guard', () => {
-  const detail = read('app/profile/orders/[id].tsx');
+  const detail = read('src/app/profile/orders/[id].tsx');
 
   it('threads the per-shipment id and the active per-product id into ReviewModal', () => {
     // V2 expands reviews to one per product within a shipment. The screen must
@@ -183,7 +183,7 @@ describe('orders detail screen shipment-aware review identity guard', () => {
 });
 
 describe('orders detail screen shipment_id param normalization guard', () => {
-  const detail = read('app/profile/orders/[id].tsx');
+  const detail = read('src/app/profile/orders/[id].tsx');
 
   it('normalizes the shipment_id search param to a scalar before any comparison', () => {
     // Expo Router surfaces `useLocalSearchParams` values as `string | string[]`.
@@ -223,7 +223,7 @@ describe('orders detail screen shipment_id param normalization guard', () => {
 });
 
 describe('useShipmentsByOrder query key hardening guard', () => {
-  const hook = read('core/hooks/useShipments.ts');
+  const hook = read('src/core/hooks/useShipments.ts');
 
   it('includes the viewer userId in the useShipmentsByOrder query key', () => {
     // Without userId in the key, a session rehydration between two logged-in
@@ -234,7 +234,7 @@ describe('useShipmentsByOrder query key hardening guard', () => {
 });
 
 describe('orders summary canonical shipment source guard', () => {
-  const summary = read('app/profile/orders/summary/[id].tsx');
+  const summary = read('src/app/profile/orders/summary/[id].tsx');
 
   it('prefers order.shipments and falls back to the shipments hook', () => {
     // Already canonical before this cleanup; guard that it stays that way and
@@ -250,7 +250,7 @@ describe('orders summary canonical shipment source guard', () => {
 
 describe('OrderActionCard buyer return evidence navigation guard', () => {
   it('opens the return evidence screen for this order', () => {
-    const card = read('components/features/orders/OrderActionCard.tsx');
+    const card = read('src/components/features/orders/OrderActionCard.tsx');
     expect(card).toContain(
       'router.push(`/profile/orders/return/${order.id}` as Href)',
     );

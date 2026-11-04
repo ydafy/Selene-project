@@ -14,7 +14,7 @@ const read = (relPath: string) => readFileSync(join(FRONTEND, relPath), 'utf8');
 const AUTH_SCREENS = ['forgotPassword', 'verify-code', 'resetPassword'];
 
 describe('ScreenLayout keyboard awareness is opt-in', () => {
-  const src = read('components/layout/ScreenLayout.tsx');
+  const src = read('src/components/layout/ScreenLayout.tsx');
 
   test('declares an optional keyboardAware prop', () => {
     expect(src).toMatch(/keyboardAware\?: boolean/);
@@ -38,7 +38,7 @@ describe('ScreenLayout keyboard awareness is opt-in', () => {
 });
 
 describe.each(AUTH_SCREENS)('auth screen %s', (name) => {
-  const src = read(`app/(auth)/${name}.tsx`);
+  const src = read(`src/app/(auth)/${name}.tsx`);
 
   test('opts in to keyboard-aware layout', () => {
     expect(src).toContain('<ScreenLayout keyboardAware>');
@@ -56,7 +56,7 @@ describe.each(AUTH_SCREENS)('auth screen %s', (name) => {
 });
 
 describe('AuthBackButton', () => {
-  const src = read('components/features/auth/AuthBackButton.tsx');
+  const src = read('src/components/features/auth/AuthBackButton.tsx');
 
   test('keeps icon, size, color and router.back() behavior', () => {
     expect(src).toContain('icon="arrow-left"');

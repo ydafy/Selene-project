@@ -68,17 +68,17 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
     impactAsync,
     ImpactFeedbackStyle: { Medium: 'medium' },
   }));
-  mock.module('../../components/base', () => ({
+  mock.module('../../src/components/base', () => ({
     Box: host('Box'),
     Text: host('Text'),
   }));
-  mock.module('../../components/ui/AppImage', () => ({
+  mock.module('../../src/components/ui/AppImage', () => ({
     AppImage: host('AppImage'),
   }));
-  mock.module('../../components/ui/ConfirmDialog', () => ({
+  mock.module('../../src/components/ui/ConfirmDialog', () => ({
     ConfirmDialog: host('ConfirmDialog'),
   }));
-  mock.module('../../core/hooks/useImageUpload', () => ({
+  mock.module('../../src/core/hooks/useImageUpload', () => ({
     useImageUpload: () => ({ takePhoto, uploadFile, uploading: false }),
   }));
   for (const image of [
@@ -91,7 +91,7 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
     mock.module(`../../assets/images/packaging/${image}.webp`, () => ({
       default: 1,
     }));
-  mock.module('../../components/ui/Skeleton', () => ({
+  mock.module('../../src/components/ui/Skeleton', () => ({
     Skeleton: host('Skeleton'),
   }));
   const { act, fireEvent, render } =
@@ -105,12 +105,13 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
     return found[0];
   };
   const { EvidenceUploadSection } =
-    await import('../../components/features/orders/EvidenceUploadSection');
+    await import('../../src/components/features/orders/EvidenceUploadSection');
   const { AddressSection } =
-    await import('../../components/features/checkout/AddressSection');
+    await import('../../src/components/features/checkout/AddressSection');
   const { PackagingGuideCard } =
-    await import('../../components/features/orders/PackagingGuideCard');
-  const { LabelWithHelp } = await import('../../components/ui/LabelWithHelp');
+    await import('../../src/components/features/orders/PackagingGuideCard');
+  const { LabelWithHelp } =
+    await import('../../src/components/ui/LabelWithHelp');
 
   test('shared address, help and packing controls retain enabled defaults and reject disabled callbacks', async () => {
     const onPress = mock(() => {});

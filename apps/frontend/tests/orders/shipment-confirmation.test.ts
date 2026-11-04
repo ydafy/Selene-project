@@ -5,7 +5,7 @@ import {
   buildShipmentConfirmationPayload,
   canConfirmShipmentDelivery,
   resolveShipmentConfirmationFailureToast,
-} from '../../core/utils/shipment-confirmation';
+} from '../../src/core/utils/shipment-confirmation';
 
 // Prettier may re-wrap the source files read below; compare without layout.
 const compact = (source: string) =>
@@ -52,7 +52,7 @@ describe('shipment confirmation', () => {
   });
 
   it('blocks only unresolved dispute statuses and permits resolved or rejected disputes', () => {
-    const shipments = source('apps/frontend/core/hooks/useShipments.ts');
+    const shipments = source('apps/frontend/src/core/hooks/useShipments.ts');
     const activeStatuses = shipments
       .match(/const ACTIVE_DISPUTE_STATUSES[^=]*=\s*\[([\s\S]*?)\];/)?.[1]
       .match(/'[^']+'/g);
@@ -133,10 +133,10 @@ describe('shipment confirmation', () => {
 
   it('routes confirmation through the shipment Edge Function without the retired fallback', () => {
     const actions = compact(
-      source('apps/frontend/core/hooks/useOrderActions.ts'),
+      source('apps/frontend/src/core/hooks/useOrderActions.ts'),
     );
     const shipments = compact(
-      source('apps/frontend/core/hooks/useShipments.ts'),
+      source('apps/frontend/src/core/hooks/useShipments.ts'),
     );
 
     expect(actions).toContain(
@@ -148,12 +148,12 @@ describe('shipment confirmation', () => {
   });
 
   it('uses delivered-only copy that does not promise an immediate payout', () => {
-    const detail = source('apps/frontend/app/profile/orders/[id].tsx');
+    const detail = source('apps/frontend/src/app/profile/orders/[id].tsx');
     const english = JSON.parse(
-      source('apps/frontend/core/i18n/locales/en/orders.json'),
+      source('apps/frontend/src/core/i18n/locales/en/orders.json'),
     );
     const spanish = JSON.parse(
-      source('apps/frontend/core/i18n/locales/es/orders.json'),
+      source('apps/frontend/src/core/i18n/locales/es/orders.json'),
     );
 
     expect(detail).toContain("t('orders:dialogs.deliveryMsg')");

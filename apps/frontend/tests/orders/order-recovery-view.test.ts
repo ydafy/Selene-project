@@ -3,7 +3,7 @@ import { describe, expect, it } from 'bun:test';
 import {
   resolveBuyerCheckoutRecoveryView,
   shouldSuppressShipmentActionsForBuyerRecovery,
-} from '../../app/profile/orders/order-recovery-view';
+} from '../../src/app/profile/orders/order-recovery-view';
 
 describe('resolveBuyerCheckoutRecoveryView', () => {
   it('shows pending recovery only to the buyer while compensation is incomplete', () => {

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import {
   resolveSummaryState,
   summaryAmounts,
-} from '../../../core/utils/order-summary-state';
+} from '../../../src/core/utils/order-summary-state';
 
 // Prettier may re-wrap the source files read below; compare without layout.
 const compact = (source: string) =>
@@ -95,7 +95,7 @@ describe('saved summary amounts', () => {
   it('screen wires policy, amounts, localized retry and buyer-only total', () => {
     const source = compact(
       readFileSync(
-        `${import.meta.dir}/../../../app/profile/orders/summary/[id].tsx`,
+        `${import.meta.dir}/../../../src/app/profile/orders/summary/[id].tsx`,
         'utf8',
       ),
     );

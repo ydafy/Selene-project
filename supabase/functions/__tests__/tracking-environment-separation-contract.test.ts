@@ -26,7 +26,7 @@ describe('tracking environment separation contract', () => {
     const handler = read(
       'supabase/functions/resolve-shipment-tracking-url/handler.ts',
     );
-    const hook = read('apps/frontend/core/hooks/useShipmentTracking.ts');
+    const hook = read('apps/frontend/src/core/hooks/useShipmentTracking.ts');
 
     expect(resolver).toContain(
       "import { resolveEnviaTrackingUrl } from '../_shared/envia-tracking.ts';",

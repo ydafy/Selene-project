@@ -5,7 +5,7 @@ import {
   resolveMediaType,
   uploadMediaFromBase64,
   uploadMediaFromUri,
-} from '../../core/storage/uploadMedia';
+} from '../../src/core/storage/uploadMedia';
 
 const FRONTEND = join(import.meta.dir, '..', '..');
 
@@ -302,8 +302,8 @@ describe('uploadMediaFromBase64', () => {
 
 describe('upload call sites', () => {
   const hooks = [
-    'core/hooks/usePublishProduct.ts',
-    'core/hooks/useVerificationLogic.ts',
+    'src/core/hooks/usePublishProduct.ts',
+    'src/core/hooks/useVerificationLogic.ts',
   ];
   for (const file of hooks) {
     it(`${file} uses the shared helper`, () => {

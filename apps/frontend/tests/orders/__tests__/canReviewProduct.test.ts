@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { canReviewProduct } from '../../../app/profile/orders/canReviewProduct';
+import { canReviewProduct } from '../../../src/app/profile/orders/canReviewProduct';
 
 /**
  * V2 per-product review gating.

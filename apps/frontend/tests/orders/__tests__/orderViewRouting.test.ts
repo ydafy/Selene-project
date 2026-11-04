@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { resolveRoleAwareOrderView } from '../../../app/profile/orders/order-view-routing';
+import { resolveRoleAwareOrderView } from '../../../src/app/profile/orders/order-view-routing';
 
 const order = {
   id: 'order-1',

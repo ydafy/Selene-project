@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { resolveCancelledShipmentCopy } from '../../../core/utils/shipment-cancellation-summary';
+import { resolveCancelledShipmentCopy } from '../../../src/core/utils/shipment-cancellation-summary';
 
 const FRONTEND = join(import.meta.dir, '..', '..', '..');
 const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
@@ -12,8 +12,8 @@ const compact = (path: string) =>
     .replace(/\( /g, '(')
     .replace(/ \)/g, ')')
     .replace(/,\)/g, ')');
-const es = JSON.parse(read('core/i18n/locales/es/orders.json'));
-const en = JSON.parse(read('core/i18n/locales/en/orders.json'));
+const es = JSON.parse(read('src/core/i18n/locales/es/orders.json'));
+const en = JSON.parse(read('src/core/i18n/locales/en/orders.json'));
 
 const P = 'orders:actionCard.';
 
@@ -117,7 +117,7 @@ describe('resolveCancelledShipmentCopy', () => {
 });
 
 describe('cancellation summary hook wiring', () => {
-  const hook = compact('core/hooks/useShipmentCancellationSummary.ts');
+  const hook = compact('src/core/hooks/useShipmentCancellationSummary.ts');
 
   it('calls the RPC only for a cancelled shipment, keyed by shipment and viewer', () => {
     expect(hook).toContain(
@@ -136,13 +136,13 @@ describe('cancellation summary hook wiring', () => {
   });
 
   it('is refreshed after a cancellation', () => {
-    const logic = read('core/hooks/useOrderActions.logic.ts');
+    const logic = read('src/core/hooks/useOrderActions.logic.ts');
     expect(logic).toContain("['shipment-cancellation-summary']");
   });
 });
 
 describe('banner wiring', () => {
-  const card = compact('components/features/orders/OrderActionCard.tsx');
+  const card = compact('src/components/features/orders/OrderActionCard.tsx');
 
   it('reads the summary for the shipment and resolves the copy by role', () => {
     expect(card).toContain(
