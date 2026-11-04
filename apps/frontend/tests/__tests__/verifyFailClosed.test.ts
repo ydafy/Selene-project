@@ -5,16 +5,16 @@ import {
   buildVerificationData,
   canSubmitVerification,
   resolveVerificationRequirements,
-} from '../../core/utils/verification-submit';
+} from '../../src/core/utils/verification-submit';
 
 const FRONTEND = join(import.meta.dir, '..', '..');
 const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
 const flat = (path: string) => read(path).replace(/\s+/g, ' ');
-const hook = flat('core/hooks/useVerificationLogic.ts');
-const screen = flat('app/verify/[id].tsx');
-const success = flat('app/sell/success.tsx');
-const es = JSON.parse(read('core/i18n/locales/es/verify.json'));
-const en = JSON.parse(read('core/i18n/locales/en/verify.json'));
+const hook = flat('src/core/hooks/useVerificationLogic.ts');
+const screen = flat('src/app/verify/[id].tsx');
+const success = flat('src/app/sell/success.tsx');
+const es = JSON.parse(read('src/core/i18n/locales/es/verify.json'));
+const en = JSON.parse(read('src/core/i18n/locales/en/verify.json'));
 
 const ready = {
   loadState: 'ready' as const,
@@ -25,36 +25,81 @@ const ready = {
 
 describe('verification requirements', () => {
   it('requires a benchmark for GPU and CPU and info for RAM and Motherboard', () => {
-    expect(resolveVerificationRequirements('GPU')).toEqual({ requiresBenchmark: true, requiresInfo: false });
-    expect(resolveVerificationRequirements('CPU')).toEqual({ requiresBenchmark: true, requiresInfo: false });
-    expect(resolveVerificationRequirements('RAM')).toEqual({ requiresBenchmark: false, requiresInfo: true });
-    expect(resolveVerificationRequirements('Motherboard')).toEqual({ requiresBenchmark: false, requiresInfo: true });
+    expect(resolveVerificationRequirements('GPU')).toEqual({
+      requiresBenchmark: true,
+      requiresInfo: false,
+    });
+    expect(resolveVerificationRequirements('CPU')).toEqual({
+      requiresBenchmark: true,
+      requiresInfo: false,
+    });
+    expect(resolveVerificationRequirements('RAM')).toEqual({
+      requiresBenchmark: false,
+      requiresInfo: true,
+    });
+    expect(resolveVerificationRequirements('Motherboard')).toEqual({
+      requiresBenchmark: false,
+      requiresInfo: true,
+    });
   });
 });
 
 describe('canSubmitVerification', () => {
   it('blocks submit until the product has loaded', () => {
-    expect(canSubmitVerification({ ...ready, loadState: 'loading', category: 'GPU' })).toBe(false);
-    expect(canSubmitVerification({ ...ready, loadState: 'error', category: 'GPU' })).toBe(false);
+    expect(
+      canSubmitVerification({
+        ...ready,
+        loadState: 'loading',
+        category: 'GPU',
+      }),
+    ).toBe(false);
+    expect(
+      canSubmitVerification({ ...ready, loadState: 'error', category: 'GPU' }),
+    ).toBe(false);
   });
 
   it('blocks submit when the category is unknown instead of relaxing the requirements', () => {
-    expect(canSubmitVerification({ ...ready, category: null, performanceUri: null, score: '' })).toBe(false);
+    expect(
+      canSubmitVerification({
+        ...ready,
+        category: null,
+        performanceUri: null,
+        score: '',
+      }),
+    ).toBe(false);
   });
 
   it('requires the physical proof for every category', () => {
-    expect(canSubmitVerification({ ...ready, category: 'GPU', physicalUri: null })).toBe(false);
+    expect(
+      canSubmitVerification({ ...ready, category: 'GPU', physicalUri: null }),
+    ).toBe(false);
   });
 
   it('requires performance proof and a score for GPU and CPU', () => {
     expect(canSubmitVerification({ ...ready, category: 'GPU' })).toBe(true);
-    expect(canSubmitVerification({ ...ready, category: 'GPU', performanceUri: null })).toBe(false);
-    expect(canSubmitVerification({ ...ready, category: 'CPU', score: '  ' })).toBe(false);
+    expect(
+      canSubmitVerification({
+        ...ready,
+        category: 'GPU',
+        performanceUri: null,
+      }),
+    ).toBe(false);
+    expect(
+      canSubmitVerification({ ...ready, category: 'CPU', score: '  ' }),
+    ).toBe(false);
   });
 
   it('requires info proof but no score for RAM and Motherboard', () => {
-    expect(canSubmitVerification({ ...ready, category: 'RAM', score: '' })).toBe(true);
-    expect(canSubmitVerification({ ...ready, category: 'Motherboard', performanceUri: null })).toBe(false);
+    expect(
+      canSubmitVerification({ ...ready, category: 'RAM', score: '' }),
+    ).toBe(true);
+    expect(
+      canSubmitVerification({
+        ...ready,
+        category: 'Motherboard',
+        performanceUri: null,
+      }),
+    ).toBe(false);
   });
 });
 
@@ -63,7 +108,13 @@ describe('buildVerificationData', () => {
 
   it('builds benchmark data for GPU', () => {
     expect(
-      buildVerificationData({ ...base, category: 'GPU', score: '12000', physicalPath: 'p/1.jpg', performancePath: 'p/2.jpg' }),
+      buildVerificationData({
+        ...base,
+        category: 'GPU',
+        score: '12000',
+        physicalPath: 'p/1.jpg',
+        performancePath: 'p/2.jpg',
+      }),
     ).toEqual({
       proof_physical: 'p/1.jpg',
       proof_performance: 'p/2.jpg',
@@ -74,23 +125,46 @@ describe('buildVerificationData', () => {
 
   it('stores no score for info categories', () => {
     expect(
-      buildVerificationData({ ...base, category: 'RAM', score: '', physicalPath: 'p/1.jpg', performancePath: 'p/2.jpg' })
-        .benchmark_score,
+      buildVerificationData({
+        ...base,
+        category: 'RAM',
+        score: '',
+        physicalPath: 'p/1.jpg',
+        performancePath: 'p/2.jpg',
+      }).benchmark_score,
     ).toBeNull();
   });
 
   it('refuses to write data with a missing required proof', () => {
     expect(() =>
-      buildVerificationData({ ...base, category: 'GPU', score: '1', physicalPath: undefined, performancePath: 'p/2.jpg' }),
+      buildVerificationData({
+        ...base,
+        category: 'GPU',
+        score: '1',
+        physicalPath: undefined,
+        performancePath: 'p/2.jpg',
+      }),
     ).toThrow('VERIFICATION_PROOF_MISSING');
     expect(() =>
-      buildVerificationData({ ...base, category: 'RAM', score: '', physicalPath: 'p/1.jpg', performancePath: undefined }),
+      buildVerificationData({
+        ...base,
+        category: 'RAM',
+        score: '',
+        physicalPath: 'p/1.jpg',
+        performancePath: undefined,
+      }),
     ).toThrow('VERIFICATION_PROOF_MISSING');
   });
 
   it('refuses a non-numeric benchmark score', () => {
     expect(() =>
-      buildVerificationData({ ...base, category: 'CPU', score: 'abc', physicalPath: 'p/1.jpg', performancePath: 'p/2.jpg' }),
+      buildVerificationData({
+        ...base,
+        category: 'CPU',
+        score: 'abc',
+        physicalPath: 'p/1.jpg',
+        performancePath: 'p/2.jpg',
+      }),
     ).toThrow('VERIFICATION_SCORE_INVALID');
   });
 });
@@ -117,7 +191,9 @@ describe('verification hook fails closed', () => {
   });
 
   it('logs the real error without file paths', () => {
-    expect(hook).toContain("console.error('[verification] submit failed', describeError(error))");
+    expect(hook).toContain(
+      "console.error('[verification] submit failed', describeError(error))",
+    );
   });
 });
 
@@ -167,7 +243,9 @@ describe('verification screen', () => {
 
 describe('sell success handoff', () => {
   it('guards navigation with a ref and disables the buttons while navigating', () => {
-    expect(success).toContain('if (!productId || navigatingRef.current) return;');
+    expect(success).toContain(
+      'if (!productId || navigatingRef.current) return;',
+    );
     expect(success).toContain('if (navigatingRef.current) return;');
     expect(success).toContain('disabled={!productId || isNavigating}');
     expect(success).toContain('loading={isNavigating}');

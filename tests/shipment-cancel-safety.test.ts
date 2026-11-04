@@ -9,18 +9,24 @@ import {
   canCancelShipment,
   resolveCancelOrderFailureToast,
   resolveShipmentPreparingWindowMessage,
-} from '../apps/frontend/core/utils/shipment-cancel-safety';
+} from '../apps/frontend/src/core/utils/shipment-cancel-safety';
 
-import { resolveCancellationSettings } from '../apps/frontend/core/hooks/cancellation-settings';
+import { resolveCancellationSettings } from '../apps/frontend/src/core/hooks/cancellation-settings';
 
 const ROOT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(ROOT_DIR, '..');
 
 describe('shipment cancel safety frontend helpers', () => {
   it('keeps cancel eligibility buyer-only and paid-only', () => {
-    expect(canBuyerCancelShipment({ isBuyer: true, status: 'paid' })).toBe(true);
-    expect(canBuyerCancelShipment({ isBuyer: false, status: 'paid' })).toBe(false);
-    expect(canBuyerCancelShipment({ isBuyer: true, status: 'shipped' })).toBe(false);
+    expect(canBuyerCancelShipment({ isBuyer: true, status: 'paid' })).toBe(
+      true,
+    );
+    expect(canBuyerCancelShipment({ isBuyer: false, status: 'paid' })).toBe(
+      false,
+    );
+    expect(canBuyerCancelShipment({ isBuyer: true, status: 'shipped' })).toBe(
+      false,
+    );
   });
 
   it('allows seller cancellation only for paid shipments', () => {
@@ -28,7 +34,11 @@ describe('shipment cancel safety frontend helpers', () => {
       canCancelShipment({ isBuyer: false, isSeller: true, status: 'paid' }),
     ).toBe(true);
     expect(
-      canCancelShipment({ isBuyer: false, isSeller: true, status: 'preparing' }),
+      canCancelShipment({
+        isBuyer: false,
+        isSeller: true,
+        status: 'preparing',
+      }),
     ).toBe(false);
   });
 
@@ -54,7 +64,7 @@ describe('shipment cancel safety frontend helpers', () => {
 
   it('preserves the unboxing notice in order detail copy', () => {
     const detail = readFileSync(
-      join(REPO_ROOT, 'apps/frontend/app/profile/orders/[id].tsx'),
+      join(REPO_ROOT, 'apps/frontend/src/app/profile/orders/[id].tsx'),
       'utf8',
     );
 
@@ -119,6 +129,9 @@ describe('shipment cancel safety frontend helpers', () => {
         timeLeft: '0h',
         isExpired: true,
       }),
-    ).toEqual({ key: 'orders:actionCard.sellerShippingWindowClosed', params: {} });
+    ).toEqual({
+      key: 'orders:actionCard.sellerShippingWindowClosed',
+      params: {},
+    });
   });
 });

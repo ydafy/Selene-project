@@ -5,9 +5,9 @@ import { join } from 'node:path';
 const FRONTEND = join(import.meta.dir, '..', '..', '..');
 const read = (path: string) =>
   readFileSync(join(FRONTEND, path), 'utf8').replace(/\s+/g, ' ');
-const card = read('components/features/orders/OrderActionCard.tsx');
-const actions = read('core/hooks/useOrderActions.ts');
-const settings = read('core/hooks/cancellation-settings.ts');
+const card = read('src/components/features/orders/OrderActionCard.tsx');
+const actions = read('src/core/hooks/useOrderActions.ts');
+const settings = read('src/core/hooks/cancellation-settings.ts');
 
 describe('cancellation timers without invented deadlines', () => {
   it('has no 48/72 fallback in the settings resolver', () => {
@@ -16,13 +16,17 @@ describe('cancellation timers without invented deadlines', () => {
   });
 
   it('starts the paid and preparing countdowns only when their setting exists', () => {
-    expect(card).toContain('shipment.created_at && orderExpirationHours != null');
-    expect(card).toContain('shipment.updated_at && preparingExpirationHours != null');
+    expect(card).toContain(
+      'shipment.created_at && orderExpirationHours != null',
+    );
+    expect(card).toContain(
+      'shipment.updated_at && preparingExpirationHours != null',
+    );
   });
 
   it('shows no time message while the setting is missing', () => {
     expect(card).toContain(
-      '(permissions.canCancel && orderExpirationHours == null) || (shipment.status === \'preparing\' && preparingExpirationHours == null)',
+      "(permissions.canCancel && orderExpirationHours == null) || (shipment.status === 'preparing' && preparingExpirationHours == null)",
     );
   });
 
@@ -34,7 +38,10 @@ describe('cancellation timers without invented deadlines', () => {
 
 describe('other order mutations keep their refresh', () => {
   it('confirmDelivery still refreshes order, purchases and shipments', () => {
-    const block = actions.slice(actions.indexOf('const confirmDelivery'), actions.indexOf('const cancelOrder'));
+    const block = actions.slice(
+      actions.indexOf('const confirmDelivery'),
+      actions.indexOf('const cancelOrder'),
+    );
     expect(block).toContain("['order', orderId]");
     expect(block).toContain("['my-purchases']");
     expect(block).toContain("['shipments', orderId]");
@@ -42,7 +49,10 @@ describe('other order mutations keep their refresh', () => {
   });
 
   it('generateLabel still refreshes order, sales and shipments', () => {
-    const block = actions.slice(actions.indexOf('const generateLabel'), actions.indexOf('const confirmDelivery'));
+    const block = actions.slice(
+      actions.indexOf('const generateLabel'),
+      actions.indexOf('const confirmDelivery'),
+    );
     expect(block).toContain("['my-sales']");
     expect(block).toContain("['shipments', orderId]");
   });

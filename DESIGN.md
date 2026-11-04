@@ -2,7 +2,7 @@
 
 How Selene should look and feel, for anyone (human or agent) building UI in `apps/frontend` (Expo app) or `apps/admin-web` (admin dashboard). Read it before UI work. Token values live in code; this file explains intent. When a value here disagrees with code, the code wins and this file gets fixed.
 
-- App tokens: `apps/frontend/core/theme/index.ts` (Restyle, React Native Paper, navigation themes).
+- App tokens: `apps/frontend/src/core/theme/index.ts` (Restyle, React Native Paper, navigation themes).
 - Admin tokens: `apps/admin-web/src/index.css` (Tailwind v4 `@theme`).
 
 ## Product and people
@@ -70,7 +70,7 @@ Order and shipment states, identical in both apps:
 | shipped   | `#336084` | dispute   | `#782b2b` |
 | delivered | `#478560` |           |           |
 
-- `cancelled`, `refunded`, and `dispute` are too dark for small text on a dark background (about 2:1). In app status badges their color goes on the border, side bar, and dot, and the label uses `textPrimary` (`getOrderStatusTextColor` in `apps/frontend/core/utils/order-status.ts`).
+- `cancelled`, `refunded`, and `dispute` are too dark for small text on a dark background (about 2:1). In app status badges their color goes on the border, side bar, and dot, and the label uses `textPrimary` (`getOrderStatusTextColor` in `apps/frontend/src/core/utils/order-status.ts`).
 - **Type:** Montserrat only (Regular, Medium, Bold; Italic is loaded). Medium for headings, Regular for body. Use tabular figures for money and counts.
 - **Theme:** dark only. There is no light mode; do not add one without a product decision.
 - **Spacing (app):** `xs 4`, `s 8`, `m 16`, `l 24`, `xl 40`. **Radii (app):** `s 8`, `m 16`, `l 24`, `xl 40`, `full`. React Native Paper `roundness` is `s`; Paper multiplies it per component (Dialog x7, Chip x2), so set an explicit radius when a Paper component needs an exact one.

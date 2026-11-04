@@ -1,13 +1,27 @@
 import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { resolvePreparingBox } from '../../core/utils/preparing-box';
-import en from '../../core/i18n/locales/en/orders.json';
-import es from '../../core/i18n/locales/es/orders.json';
+import { resolvePreparingBox } from '../../src/core/utils/preparing-box';
+import en from '../../src/core/i18n/locales/en/orders.json';
+import es from '../../src/core/i18n/locales/es/orders.json';
 
 const presets = {
-  gpu_1: { category: 'GPU', label: 'Medium box', length: 40, width: 30, height: 15, weight: 2 },
-  mobo_1: { category: 'Motherboard', label: 'Standard box', length: 50, width: 40, height: 20, weight: 4 },
+  gpu_1: {
+    category: 'GPU',
+    label: 'Medium box',
+    length: 40,
+    width: 30,
+    height: 15,
+    weight: 2,
+  },
+  mobo_1: {
+    category: 'Motherboard',
+    label: 'Standard box',
+    length: 50,
+    width: 40,
+    height: 20,
+    weight: 4,
+  },
 };
 
 describe('preparing box resolution', () => {
@@ -34,8 +48,12 @@ describe('preparing box resolution', () => {
   });
 
   it('blocks only after presets loaded without any usable box', () => {
-    expect(resolvePreparingBox('gpu_1', undefined)).toEqual({ status: 'loading' });
-    expect(resolvePreparingBox('deleted_preset', { gpu_1: presets.gpu_1 })).toEqual({
+    expect(resolvePreparingBox('gpu_1', undefined)).toEqual({
+      status: 'loading',
+    });
+    expect(
+      resolvePreparingBox('deleted_preset', { gpu_1: presets.gpu_1 }),
+    ).toEqual({
       status: 'unavailable',
     });
   });
@@ -55,7 +73,7 @@ describe('preparing box resolution', () => {
 
   it('blocks generation in the screen when no usable box exists', () => {
     const screen = readFileSync(
-      join(import.meta.dir, '../../app/profile/orders/prepare/[id].tsx'),
+      join(import.meta.dir, '../../src/app/profile/orders/prepare/[id].tsx'),
       'utf8',
     );
 

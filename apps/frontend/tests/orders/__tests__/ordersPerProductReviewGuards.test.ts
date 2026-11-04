@@ -18,7 +18,7 @@ const read = (relPath: string) =>
   readFileSync(join(FRONTEND, relPath), 'utf8').replace(/\s+/g, ' ');
 
 describe('useOrderById review select — V2 product/shipment linkage columns', () => {
-  const hook = read('core/hooks/useOrders.ts');
+  const hook = read('src/core/hooks/useOrders.ts');
 
   it('selects product_id, shipment_id and seller_id from the review relation', () => {
     // The pipe (ReviewModal + useReviewAction) already writes these columns;
@@ -39,7 +39,7 @@ describe('useOrderById review select — V2 product/shipment linkage columns', (
 });
 
 describe('orders detail screen V2 per-product review guards', () => {
-  const detail = read('app/profile/orders/[id].tsx');
+  const detail = read('src/app/profile/orders/[id].tsx');
 
   it('declares ReviewData with the per-product linkage columns', () => {
     // The auxiliary type must carry product_id / shipment_id so the gate can
@@ -84,17 +84,13 @@ describe('orders detail screen V2 per-product review guards', () => {
   it('removes the V1 global review section that keyed off reviewData length', () => {
     // The global `reviewData && reviewData.length > 0 ? <ReviewCard .../>`
     // branch is gone; reviews surface per-product instead.
-    expect(detail).not.toContain(
-      'reviewData && reviewData.length > 0 ?',
-    );
-    expect(detail).not.toContain(
-      'reviewData[0].rating',
-    );
+    expect(detail).not.toContain('reviewData && reviewData.length > 0 ?');
+    expect(detail).not.toContain('reviewData[0].rating');
   });
 });
 
 describe('ReviewModal V2 product-name polish guard', () => {
-  const modal = read('components/features/profile/ReviewModal.tsx');
+  const modal = read('src/components/features/profile/ReviewModal.tsx');
 
   it('accepts an optional productName prop and renders it under the subtitle when provided', () => {
     expect(modal).toContain('productName?: string;');

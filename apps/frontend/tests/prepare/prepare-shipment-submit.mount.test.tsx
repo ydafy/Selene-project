@@ -119,7 +119,7 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
   mock.module('react-native-safe-area-context', () => ({
     useSafeAreaInsets: () => ({ top: 0, bottom: 0 }),
   }));
-  mock.module('../../components/base', () => ({
+  mock.module('../../src/components/base', () => ({
     Box: host('Box'),
     Text: host('Text'),
   }));
@@ -136,29 +136,32 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
     ['features/orders/ShipmentLabelRecoveryCard', 'ShipmentLabelRecoveryCard'],
     ['features/orders/EvidenceUploadSection', 'EvidenceUploadSection'],
   ])
-    mock.module(`../../components/${path}`, () => ({
+    mock.module(`../../src/components/${path}`, () => ({
       [name]: name === 'PrimaryButton' ? labelHost(name) : host(name),
     }));
-  mock.module('../../components/features/address/AddressPickerModal', () => ({
-    AddressPickerModal: ({
-      innerRef,
-      ...props
-    }: {
-      innerRef: React.RefObject<unknown>;
-    }) => {
-      React.useLayoutEffect(() => {
-        innerRef.current = { dismiss, present: () => {} };
-        return () => {
-          innerRef.current = null;
-        };
-      }, [innerRef]);
-      return React.createElement('AddressPickerModal', props);
-    },
-  }));
-  mock.module('../../components/auth/AuthProvider', () => ({
+  mock.module(
+    '../../src/components/features/address/AddressPickerModal',
+    () => ({
+      AddressPickerModal: ({
+        innerRef,
+        ...props
+      }: {
+        innerRef: React.RefObject<unknown>;
+      }) => {
+        React.useLayoutEffect(() => {
+          innerRef.current = { dismiss, present: () => {} };
+          return () => {
+            innerRef.current = null;
+          };
+        }, [innerRef]);
+        return React.createElement('AddressPickerModal', props);
+      },
+    }),
+  );
+  mock.module('../../src/components/auth/AuthProvider', () => ({
     useAuthContext: () => ({ session: { user: { id: viewer } } }),
   }));
-  mock.module('../../core/hooks/useOrders', () => ({
+  mock.module('../../src/core/hooks/useOrders', () => ({
     useOrderById: () => ({
       data: {
         ...order,
@@ -176,19 +179,19 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
       refetch,
     }),
   }));
-  mock.module('../../core/hooks/useOrderActions', () => ({
+  mock.module('../../src/core/hooks/useOrderActions', () => ({
     useOrderActions: () => ({ generateLabel: { isLoading: false, execute } }),
   }));
-  mock.module('../../core/hooks/useSystemConfig', () => ({
+  mock.module('../../src/core/hooks/useSystemConfig', () => ({
     useSystemConfig: () => ({ data: {} }),
   }));
-  mock.module('../../core/hooks/useConnectOnboarding', () => ({
+  mock.module('../../src/core/hooks/useConnectOnboarding', () => ({
     useConnectOnboarding: () => ({ isComplete: onboarding, isLoading: false }),
   }));
-  mock.module('../../core/hooks/useShipmentLabelRefresh', () => ({
+  mock.module('../../src/core/hooks/useShipmentLabelRefresh', () => ({
     useShipmentLabelRefresh: () => {},
   }));
-  mock.module('../../core/utils/biometrics', () => ({
+  mock.module('../../src/core/utils/biometrics', () => ({
     authenticateAsync: authenticate,
   }));
   for (const image of [
@@ -209,7 +212,7 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
     return found[0];
   };
   const { default: Screen } =
-    await import('../../app/profile/orders/prepare/[id]');
+    await import('../../src/app/profile/orders/prepare/[id]');
 
   if (process.env.SELENE_CONTROLS_CHILD === '1')
     test('switches isolate drafts, stale callbacks and pre-auth dispatch; busy and submission lock callbacks', async () => {

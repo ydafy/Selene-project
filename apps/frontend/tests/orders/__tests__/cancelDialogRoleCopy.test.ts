@@ -4,10 +4,10 @@ import { join } from 'node:path';
 
 const FRONTEND = join(import.meta.dir, '..', '..', '..');
 const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
-const detail = read('app/profile/orders/[id].tsx');
+const detail = read('src/app/profile/orders/[id].tsx');
 const flatDetail = detail.replace(/\s+/g, ' ');
-const es = JSON.parse(read('core/i18n/locales/es/orders.json'));
-const en = JSON.parse(read('core/i18n/locales/en/orders.json'));
+const es = JSON.parse(read('src/core/i18n/locales/es/orders.json'));
+const en = JSON.parse(read('src/core/i18n/locales/en/orders.json'));
 
 // Native rendering needs Expo dependencies, absent in this worktree. These
 // guards verify localized copy and role wiring, not device interactions.
@@ -52,9 +52,11 @@ describe('cancel dialog role copy', () => {
 
   it('selects dialog and toast copy by the selected shipment role', () => {
     expect(flatDetail).toContain(
-      "const isSellerCancel = currentShipment?.isSeller ?? false;",
+      'const isSellerCancel = currentShipment?.isSeller ?? false;',
     );
-    expect(flatDetail).toContain("text1: t('orders:dialogs.cancelSuccessTitle')");
+    expect(flatDetail).toContain(
+      "text1: t('orders:dialogs.cancelSuccessTitle')",
+    );
   });
 
   it('drops the buyer-only disclaimer and hardcoded toast fallbacks', () => {
@@ -66,7 +68,9 @@ describe('cancel dialog role copy', () => {
 
   it('keeps the shared cancel title and confirm action', () => {
     expect(detail).toContain("title={t('orders:dialogs.cancelTitle')}");
-    expect(detail).toContain("confirmLabel={t('orders:actions.confirmCancel')}");
+    expect(detail).toContain(
+      "confirmLabel={t('orders:actions.confirmCancel')}",
+    );
     expect(es.dialogs.cancelTitle).toBe('¿Deseas cancelar este envío?');
     expect(en.dialogs.cancelTitle).toBe('Do you want to cancel this shipment?');
     expect(es.actions.cancelOrder).toBe('Cancelar envío');
@@ -76,7 +80,9 @@ describe('cancel dialog role copy', () => {
   });
 
   it('adds the other-shipments note only when the order has several shipments', () => {
-    expect(detail).toContain('const isMultiShipment = (order?.shipments?.length ?? 0) > 1;');
+    expect(detail).toContain(
+      'const isMultiShipment = (order?.shipments?.length ?? 0) > 1;',
+    );
     expect(flatDetail).toContain(
       "const withOtherShipmentsNote = (message: string) => isMultiShipment ? `${message} ${t('orders:dialogs.otherShipmentsContinue')}` : message;",
     );

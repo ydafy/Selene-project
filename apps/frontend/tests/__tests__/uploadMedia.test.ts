@@ -5,7 +5,7 @@ import {
   resolveMediaType,
   uploadMediaFromBase64,
   uploadMediaFromUri,
-} from '../../core/storage/uploadMedia';
+} from '../../src/core/storage/uploadMedia';
 
 const FRONTEND = join(import.meta.dir, '..', '..');
 
@@ -91,7 +91,10 @@ describe('uploadMediaFromUri', () => {
   };
 
   it('throws MEDIA_READ_FAILED on a non-ok read and never uploads', async () => {
-    const { storage, calls } = makeStorage({ data: { path: 'p' }, error: null });
+    const { storage, calls } = makeStorage({
+      data: { path: 'p' },
+      error: null,
+    });
     await expect(
       uploadMediaFromUri({ ...base, storage, fetchImpl: makeFetch(false, 5) }),
     ).rejects.toThrow('MEDIA_READ_FAILED');
@@ -99,7 +102,10 @@ describe('uploadMediaFromUri', () => {
   });
 
   it('throws MEDIA_EMPTY on an empty body and never uploads', async () => {
-    const { storage, calls } = makeStorage({ data: { path: 'p' }, error: null });
+    const { storage, calls } = makeStorage({
+      data: { path: 'p' },
+      error: null,
+    });
     await expect(
       uploadMediaFromUri({ ...base, storage, fetchImpl: makeFetch(true, 0) }),
     ).rejects.toThrow('MEDIA_EMPTY');
@@ -177,7 +183,10 @@ describe('uploadMediaFromUri maxBytes', () => {
   };
 
   it('throws MEDIA_TOO_LARGE above the limit and never uploads', async () => {
-    const { storage, calls } = makeStorage({ data: { path: 'p' }, error: null });
+    const { storage, calls } = makeStorage({
+      data: { path: 'p' },
+      error: null,
+    });
     await expect(
       uploadMediaFromUri({ ...base, storage, fetchImpl: makeFetch(true, 11) }),
     ).rejects.toThrow('MEDIA_TOO_LARGE');
@@ -185,7 +194,10 @@ describe('uploadMediaFromUri maxBytes', () => {
   });
 
   it('uploads when the body is exactly at the limit', async () => {
-    const { storage, calls } = makeStorage({ data: { path: 'p' }, error: null });
+    const { storage, calls } = makeStorage({
+      data: { path: 'p' },
+      error: null,
+    });
     await expect(
       uploadMediaFromUri({ ...base, storage, fetchImpl: makeFetch(true, 10) }),
     ).resolves.toBe('p');
@@ -210,7 +222,10 @@ describe('uploadMediaFromBase64', () => {
   const decode = (bytes: number) => () => new ArrayBuffer(bytes);
 
   it('throws MEDIA_EMPTY for missing or empty base64 and never uploads', async () => {
-    const { storage, calls } = makeStorage({ data: { path: 'p' }, error: null });
+    const { storage, calls } = makeStorage({
+      data: { path: 'p' },
+      error: null,
+    });
     for (const value of [undefined, null, '']) {
       await expect(
         uploadMediaFromBase64({
@@ -225,7 +240,10 @@ describe('uploadMediaFromBase64', () => {
   });
 
   it('throws MEDIA_EMPTY when the decoded body has zero bytes', async () => {
-    const { storage, calls } = makeStorage({ data: { path: 'p' }, error: null });
+    const { storage, calls } = makeStorage({
+      data: { path: 'p' },
+      error: null,
+    });
     await expect(
       uploadMediaFromBase64({ ...base, storage, decode: decode(0) }),
     ).rejects.toThrow('MEDIA_EMPTY');
@@ -283,7 +301,10 @@ describe('uploadMediaFromBase64', () => {
 });
 
 describe('upload call sites', () => {
-  const hooks = ['core/hooks/usePublishProduct.ts', 'core/hooks/useVerificationLogic.ts'];
+  const hooks = [
+    'src/core/hooks/usePublishProduct.ts',
+    'src/core/hooks/useVerificationLogic.ts',
+  ];
   for (const file of hooks) {
     it(`${file} uses the shared helper`, () => {
       const source = readFileSync(join(FRONTEND, file), 'utf8');

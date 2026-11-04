@@ -46,7 +46,7 @@ if (process.env.SELENE_LABEL_REFRESH_CHILD !== '1') {
   }));
   const { act, render } = await import('@testing-library/react-native');
   const { useShipmentLabelRefresh } =
-    await import('../../core/hooks/useShipmentLabelRefresh');
+    await import('../../src/core/hooks/useShipmentLabelRefresh');
   const Probe = ({
     id,
     refresh,

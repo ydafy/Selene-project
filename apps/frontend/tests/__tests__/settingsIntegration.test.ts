@@ -18,7 +18,7 @@ const FRONTEND = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const read = (relPath: string) => readFileSync(join(FRONTEND, relPath), 'utf8');
 
 describe('settings.tsx renders new sections in spec-required order', () => {
-  const src = read('app/profile/settings.tsx');
+  const src = read('src/app/profile/settings.tsx');
 
   test('contains all base sections plus Legales and Soporte', () => {
     expect(src).toContain("t('sections.account')");
@@ -49,7 +49,7 @@ describe('settings.tsx renders new sections in spec-required order', () => {
 });
 
 describe('LegalesSection row order (Terms → Privacy → Version)', () => {
-  const src = read('components/features/settings/LegalesSection.tsx');
+  const src = read('src/components/features/settings/LegalesSection.tsx');
 
   test('terms row precedes privacy row', () => {
     const termsIdx = src.indexOf("'legales.terms'");
@@ -67,7 +67,7 @@ describe('LegalesSection row order (Terms → Privacy → Version)', () => {
 
   test('opens the pages through the shared browser hook', () => {
     expect(src).toContain('useOpenInBrowser');
-    expect(read('core/hooks/useOpenInBrowser.ts')).toContain(
+    expect(read('src/core/hooks/useOpenInBrowser.ts')).toContain(
       'openBrowserAsync',
     );
   });
@@ -84,11 +84,11 @@ describe('LegalesSection row order (Terms → Privacy → Version)', () => {
 });
 
 describe('modal configuration within the profile stack', () => {
-  const rootSrc = read('app/_layout.tsx');
-  const profileSrc = read('app/profile/_layout.tsx');
+  const rootSrc = read('src/app/_layout.tsx');
+  const profileSrc = read('src/app/profile/_layout.tsx');
 
   test('profile/edit declares modal presentation in its own screen', () => {
-    const editSrc = read('app/profile/edit.tsx');
+    const editSrc = read('src/app/profile/edit.tsx');
     expect(rootSrc).toMatch(
       /<Stack\.Screen\s+name="profile"\s+options=\{\{\s*headerShown:\s*false\s*\}\}\s*\/>/,
     );
@@ -107,14 +107,14 @@ describe('modal configuration within the profile stack', () => {
     expect(profileSrc).toMatch(
       /<Stack\.Screen\s+name="support"\s+options=\{\{[^}]*presentation:\s*'modal'[^}]*\}\}\s*\/>/,
     );
-    expect(read('app/profile/support.tsx')).toMatch(
+    expect(read('src/app/profile/support.tsx')).toMatch(
       /<Stack\.Screen\s+options=\{\{[^}]*presentation:\s*'modal'[^}]*\}\}\s*\/>/,
     );
   });
 });
 
 describe('AccountSection email-change wiring (CONF-016)', () => {
-  const src = read('components/features/settings/AccountSection.tsx');
+  const src = read('src/components/features/settings/AccountSection.tsx');
 
   test('imports validateEmail + buildEmailUpdatePayload helpers', () => {
     expect(src).toContain('validateEmail');
@@ -145,7 +145,7 @@ describe('AccountSection email-change wiring (CONF-016)', () => {
 });
 
 describe('SecuritySection password-change wiring (CONF-017)', () => {
-  const src = read('components/features/settings/SecuritySection.tsx');
+  const src = read('src/components/features/settings/SecuritySection.tsx');
 
   test('imports payload builder and error mapper, never a client nonce', () => {
     expect(src).toContain('buildPasswordUpdatePayload');
@@ -198,8 +198,10 @@ describe('SecuritySection password-change wiring (CONF-017)', () => {
 });
 
 describe('Soporte email wiring', () => {
-  const sectionSrc = read('components/features/settings/SoporteSection.tsx');
-  const supportSrc = read('app/profile/support.tsx');
+  const sectionSrc = read(
+    'src/components/features/settings/SoporteSection.tsx',
+  );
+  const supportSrc = read('src/app/profile/support.tsx');
 
   test('SoporteSection shows unavailable toast when the email is not configured', () => {
     expect(sectionSrc).toContain('resolveSupportEmail');
@@ -227,7 +229,7 @@ describe('Soporte email wiring', () => {
 });
 
 describe('profile/edit modal wiring (CONF-015)', () => {
-  const src = read('app/profile/edit.tsx');
+  const src = read('src/app/profile/edit.tsx');
 
   test('imports validateEditUsername pure validator', () => {
     expect(src).toContain('validateEditUsername');
@@ -270,7 +272,7 @@ describe('package.json drops the Chatwoot widget', () => {
 });
 
 describe('ConfirmDialog keyboard handling (L62)', () => {
-  const src = read('components/ui/ConfirmDialog.tsx');
+  const src = read('src/components/ui/ConfirmDialog.tsx');
 
   test('reserves the keyboard height below the dialog only when avoidKeyboard is set', () => {
     expect(src).toContain('avoidKeyboard?: boolean');

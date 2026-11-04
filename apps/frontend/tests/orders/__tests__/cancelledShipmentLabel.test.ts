@@ -2,17 +2,20 @@ import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { resolveCancelledShipmentCopy } from '../../../core/utils/shipment-cancellation-summary';
-import { canShowSellerLabelActions } from '../../../core/utils/shipment-label-visibility';
+import { resolveCancelledShipmentCopy } from '../../../src/core/utils/shipment-cancellation-summary';
+import { canShowSellerLabelActions } from '../../../src/core/utils/shipment-label-visibility';
 
 const FRONTEND = join(import.meta.dir, '..', '..', '..');
 const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
-const es = JSON.parse(read('core/i18n/locales/es/orders.json'));
-const en = JSON.parse(read('core/i18n/locales/en/orders.json'));
+const es = JSON.parse(read('src/core/i18n/locales/es/orders.json'));
+const en = JSON.parse(read('src/core/i18n/locales/en/orders.json'));
 
 describe('canShowSellerLabelActions', () => {
-  const show = (status: string, isSeller = true, labelUrl: string | null = 'https://x/l.pdf') =>
-    canShowSellerLabelActions({ isSeller, status, labelUrl });
+  const show = (
+    status: string,
+    isSeller = true,
+    labelUrl: string | null = 'https://x/l.pdf',
+  ) => canShowSellerLabelActions({ isSeller, status, labelUrl });
 
   it('shows the live label while the shipment is open', () => {
     expect(show('paid')).toBe(true);
@@ -35,18 +38,24 @@ describe('cancelled banner label notice', () => {
   const summary = { source: 'preparing_timeout', refundState: 'processing' };
 
   it('adds the invalid-label line for the seller only when a label existed', () => {
-    expect(resolveCancelledShipmentCopy(summary, false, true).labelNoticeKey).toBe(
-      'orders:actionCard.cancelledLabelInvalidSeller',
-    );
-    expect(resolveCancelledShipmentCopy(summary, false, false).labelNoticeKey).toBeNull();
+    expect(
+      resolveCancelledShipmentCopy(summary, false, true).labelNoticeKey,
+    ).toBe('orders:actionCard.cancelledLabelInvalidSeller');
+    expect(
+      resolveCancelledShipmentCopy(summary, false, false).labelNoticeKey,
+    ).toBeNull();
     expect(resolveCancelledShipmentCopy(null, false, true).labelNoticeKey).toBe(
       'orders:actionCard.cancelledLabelInvalidSeller',
     );
   });
 
   it('leaves the buyer copy unchanged', () => {
-    expect(resolveCancelledShipmentCopy(summary, true, true).labelNoticeKey).toBeNull();
-    expect(resolveCancelledShipmentCopy(summary, true).labelNoticeKey).toBeNull();
+    expect(
+      resolveCancelledShipmentCopy(summary, true, true).labelNoticeKey,
+    ).toBeNull();
+    expect(
+      resolveCancelledShipmentCopy(summary, true).labelNoticeKey,
+    ).toBeNull();
   });
 
   it('has the exact en and es copy', () => {
@@ -60,9 +69,11 @@ describe('cancelled banner label notice', () => {
 });
 
 describe('screen wiring', () => {
-  const screen = read('app/profile/orders/[id].tsx').replace(/\s+/g, ' ');
-  const card = read('components/features/orders/OrderActionCard.tsx').replace(/\s+/g, ' ');
-  const hook = read('core/hooks/useShipments.ts').replace(/\s+/g, ' ');
+  const screen = read('src/app/profile/orders/[id].tsx').replace(/\s+/g, ' ');
+  const card = read(
+    'src/components/features/orders/OrderActionCard.tsx',
+  ).replace(/\s+/g, ' ');
+  const hook = read('src/core/hooks/useShipments.ts').replace(/\s+/g, ' ');
 
   it('gates the label buttons with the visibility helper', () => {
     expect(screen).toContain('canShowSellerLabelActions({');

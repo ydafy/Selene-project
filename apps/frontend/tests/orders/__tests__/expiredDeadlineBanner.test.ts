@@ -4,9 +4,12 @@ import { join } from 'node:path';
 
 const FRONTEND = join(import.meta.dir, '..', '..', '..');
 const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
-const card = read('components/features/orders/OrderActionCard.tsx').replace(/\s+/g, ' ');
-const es = JSON.parse(read('core/i18n/locales/es/orders.json'));
-const en = JSON.parse(read('core/i18n/locales/en/orders.json'));
+const card = read('src/components/features/orders/OrderActionCard.tsx').replace(
+  /\s+/g,
+  ' ',
+);
+const es = JSON.parse(read('src/core/i18n/locales/es/orders.json'));
+const en = JSON.parse(read('src/core/i18n/locales/en/orders.json'));
 
 // S7: a paid shipment past its shipping window stays cancellable until the
 // cron cancels it, so the banner explains it instead of saying "closed".
@@ -39,8 +42,10 @@ describe('expired seller deadline banner', () => {
   });
 
   it('keeps the cancel button gate unchanged', () => {
-    const detail = read('app/profile/orders/[id].tsx');
+    const detail = read('src/app/profile/orders/[id].tsx');
     expect(detail).toContain('currentShipment?.permissions.canCancel && (');
-    expect(card).toContain('permissions.canCancel && shipment.created_at && orderExpirationHours != null');
+    expect(card).toContain(
+      'permissions.canCancel && shipment.created_at && orderExpirationHours != null',
+    );
   });
 });

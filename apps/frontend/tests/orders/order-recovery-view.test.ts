@@ -3,7 +3,7 @@ import { describe, expect, it } from 'bun:test';
 import {
   resolveBuyerCheckoutRecoveryView,
   shouldSuppressShipmentActionsForBuyerRecovery,
-} from '../../app/profile/orders/order-recovery-view';
+} from '../../src/app/profile/orders/order-recovery-view';
 
 describe('resolveBuyerCheckoutRecoveryView', () => {
   it('shows pending recovery only to the buyer while compensation is incomplete', () => {
@@ -46,10 +46,14 @@ describe('resolveBuyerCheckoutRecoveryView', () => {
     });
 
     expect(transient).toEqual({ kind: 'none' });
-    expect(shouldSuppressShipmentActionsForBuyerRecovery({ kind: 'pending_refund' })).toBe(
-      true,
+    expect(
+      shouldSuppressShipmentActionsForBuyerRecovery({ kind: 'pending_refund' }),
+    ).toBe(true);
+    expect(
+      shouldSuppressShipmentActionsForBuyerRecovery({ kind: 'refunded' }),
+    ).toBe(true);
+    expect(shouldSuppressShipmentActionsForBuyerRecovery(transient)).toBe(
+      false,
     );
-    expect(shouldSuppressShipmentActionsForBuyerRecovery({ kind: 'refunded' })).toBe(true);
-    expect(shouldSuppressShipmentActionsForBuyerRecovery(transient)).toBe(false);
   });
 });

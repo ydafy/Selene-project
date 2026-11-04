@@ -34,11 +34,11 @@ if (process.env.SELENE_LABEL_RECOVERY_CHILD !== '1') {
   mock.module('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key }),
   }));
-  mock.module('../../components/base', () => ({
+  mock.module('../../src/components/base', () => ({
     Box: host('Box'),
     Text: host('Text'),
   }));
-  mock.module('../../components/ui/PrimaryButton', () => ({
+  mock.module('../../src/components/ui/PrimaryButton', () => ({
     // The library only accepts strings inside a text host, so the label sits in one.
     PrimaryButton: ({
       children,
@@ -53,7 +53,7 @@ if (process.env.SELENE_LABEL_RECOVERY_CHILD !== '1') {
 
   const { act, render } = await import('@testing-library/react-native');
   const { ShipmentLabelRecoveryCard } =
-    await import('../../components/features/orders/ShipmentLabelRecoveryCard');
+    await import('../../src/components/features/orders/ShipmentLabelRecoveryCard');
 
   test('pending, uncertain and unavailable states expose only status and support actions', async () => {
     const onRefresh = mock(() => {});

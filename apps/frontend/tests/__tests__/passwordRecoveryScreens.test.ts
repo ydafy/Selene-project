@@ -17,7 +17,7 @@ const RAW_MESSAGE = /error\??\.message(?!Key)/;
 const read = (relPath: string) => readFileSync(join(FRONTEND, relPath), 'utf8');
 
 describe('resetPassword.tsx', () => {
-  const src = read('app/(auth)/resetPassword.tsx');
+  const src = read('src/app/(auth)/resetPassword.tsx');
 
   test('shows the localized messageKey, never the raw server message', () => {
     expect(src).toContain('messageKey');
@@ -48,7 +48,9 @@ describe('resetPassword.tsx', () => {
   });
 
   test('starts the cooldown on mount because the code was just sent', () => {
-    expect(src).toMatch(/useEffect\(\(\) => \{\s*if \(email\) startCooldown\(\);/);
+    expect(src).toMatch(
+      /useEffect\(\(\) => \{\s*if \(email\) startCooldown\(\);/,
+    );
   });
 
   test('uses i18n keys instead of hardcoded or missing copy', () => {
@@ -60,7 +62,7 @@ describe('resetPassword.tsx', () => {
 });
 
 describe('forgotPassword.tsx', () => {
-  const src = read('app/(auth)/forgotPassword.tsx');
+  const src = read('src/app/(auth)/forgotPassword.tsx');
 
   test('shows the localized messageKey, never the raw server message', () => {
     expect(src).toContain('messageKey');
@@ -69,7 +71,7 @@ describe('forgotPassword.tsx', () => {
 });
 
 describe('useAuth.ts recovery wiring', () => {
-  const src = read('core/hooks/useAuth.ts');
+  const src = read('src/core/hooks/useAuth.ts');
 
   test('resetPassword delegates to completePasswordRecovery', () => {
     expect(src).toContain('completePasswordRecovery(supabase.auth');
