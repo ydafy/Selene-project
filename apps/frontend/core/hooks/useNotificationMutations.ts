@@ -43,7 +43,8 @@ export const useNotificationMutations = (userId: string | undefined) => {
   return {
     markAsRead: (id: string) => markAsReadMutation.mutateAsync(id),
     markAllAsRead: () => markAllAsReadMutation.mutateAsync(undefined),
-    dismissNotification: (id: string) => dismissNotificationMutation.mutateAsync(id),
+    dismissNotification: (id: string) =>
+      dismissNotificationMutation.mutateAsync(id),
     dismissAll: () => dismissAllMutation.mutateAsync(undefined),
     isMarkingRead: markAsReadMutation.isPending,
     isMarkingAllRead: markAllAsReadMutation.isPending,

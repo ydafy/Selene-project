@@ -12,7 +12,9 @@ const summary = readFileSync(
 
 test('uses the product-shipment summary as the default order detail view', () => {
   expect(detail).toContain('router.replace(orderView.href as any);');
-  expect(detail).toContain('if (!source || source.length === 0 || !shipmentId) return null;');
+  expect(detail).toContain(
+    'if (!source || source.length === 0 || !shipmentId) return null;',
+  );
 });
 
 test('labels the summary count as packages rather than sellers', () => {

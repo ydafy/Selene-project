@@ -11,9 +11,7 @@ const RESERVED_PREFIX_REGEX = /^deleted_/i;
 const MIN_LEN = 3;
 const MAX_LEN = 30;
 
-export type UsernameValidation =
-  | { ok: true }
-  | { ok: false; errorKey: string };
+export type UsernameValidation = { ok: true } | { ok: false; errorKey: string };
 
 export const validateEditUsername = (raw: string): UsernameValidation => {
   const value = raw.trim();

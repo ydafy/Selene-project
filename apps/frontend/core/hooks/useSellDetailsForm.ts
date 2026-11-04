@@ -121,10 +121,17 @@ export const useSellDetailsForm = () => {
 
   // Calculadora de Ganancias
   const earnings = useMemo(() => {
-    const commissionPct = resolveCommissionPercent(systemConfig?.service_fee_pct);
+    const commissionPct = resolveCommissionPercent(
+      systemConfig?.service_fee_pct,
+    );
     const priceNum = parseFloat(price) || 0;
     if (priceNum === 0 || !systemConfig) {
-      return { commission: '0.00', shipping: '0.00', final: '0.00', commissionPct };
+      return {
+        commission: '0.00',
+        shipping: '0.00',
+        final: '0.00',
+        commissionPct,
+      };
     }
 
     const subtotalCents = Math.round(priceNum * 100);

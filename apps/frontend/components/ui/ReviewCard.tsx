@@ -26,12 +26,7 @@ export const ReviewCard = ({ rating, comment, createdAt }: Props) => {
   const { t } = useTranslation('profile');
 
   return (
-    <Box
-      backgroundColor="cardBackground"
-      borderRadius="m"
-      padding="m"
-      gap="s"
-    >
+    <Box backgroundColor="cardBackground" borderRadius="m" padding="m" gap="s">
       <Text variant="subheader-md" color="textPrimary">
         {t('review.yourReview', 'Tu calificación')}
       </Text>

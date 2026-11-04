@@ -5,7 +5,10 @@ import { join } from 'node:path';
 import enAuth from '../../core/i18n/locales/en/auth.json';
 import esAuth from '../../core/i18n/locales/es/auth.json';
 
-const guardSource = readFileSync(join(import.meta.dir, 'SystemGuard.tsx'), 'utf8');
+const guardSource = readFileSync(
+  join(import.meta.dir, 'SystemGuard.tsx'),
+  'utf8',
+);
 
 describe('banned account screen copy', () => {
   it('defines the banned screen copy in English and Spanish', () => {

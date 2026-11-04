@@ -9,17 +9,25 @@ import {
 describe('classifyLoginError', () => {
   it('detects an unconfirmed email by the error code, not the message', () => {
     expect(
-      classifyLoginError({ code: 'email_not_confirmed', message: 'Correo sin confirmar' }),
+      classifyLoginError({
+        code: 'email_not_confirmed',
+        message: 'Correo sin confirmar',
+      }),
     ).toBe('email_not_confirmed');
   });
 
   it('does not treat the English message alone as unconfirmed', () => {
-    expect(classifyLoginError({ message: 'Email not confirmed' })).toBe('other');
+    expect(classifyLoginError({ message: 'Email not confirmed' })).toBe(
+      'other',
+    );
   });
 
   it('keeps other errors as other', () => {
     expect(
-      classifyLoginError({ code: 'invalid_credentials', message: 'Invalid login credentials' }),
+      classifyLoginError({
+        code: 'invalid_credentials',
+        message: 'Invalid login credentials',
+      }),
     ).toBe('other');
   });
 });

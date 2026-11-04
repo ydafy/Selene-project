@@ -51,7 +51,11 @@ describe('resolvePublicIdentity', () => {
   test('an active account whose chosen username has the closure shape stays active when deleted_at is loaded', () => {
     expect(
       resolvePublicIdentity(
-        { username: 'deleted_0123456789ab', avatar_url: null, deleted_at: null },
+        {
+          username: 'deleted_0123456789ab',
+          avatar_url: null,
+          deleted_at: null,
+        },
         LABEL,
       ),
     ).toEqual({

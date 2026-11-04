@@ -8,7 +8,10 @@ const card = readFileSync(
 ).replace(/\s+/g, ' ');
 
 describe('order card amount by role', () => {
-  const sellerItems = [{ price_at_purchase: 0.1 }, { price_at_purchase: 19.99 }];
+  const sellerItems = [
+    { price_at_purchase: 0.1 },
+    { price_at_purchase: 19.99 },
+  ];
 
   it('shows the seller only the sum of their own items, never the buyer total', () => {
     expect(orderCardAmountCents('seller', sellerItems, 124.56)).toBe(2009);
@@ -37,10 +40,16 @@ describe('order detail total by role', () => {
     'utf8',
   ).replace(/\s+/g, ' ');
   const es = JSON.parse(
-    readFileSync(`${import.meta.dir}/../../../core/i18n/locales/es/orders.json`, 'utf8'),
+    readFileSync(
+      `${import.meta.dir}/../../../core/i18n/locales/es/orders.json`,
+      'utf8',
+    ),
   );
   const en = JSON.parse(
-    readFileSync(`${import.meta.dir}/../../../core/i18n/locales/en/orders.json`, 'utf8'),
+    readFileSync(
+      `${import.meta.dir}/../../../core/i18n/locales/en/orders.json`,
+      'utf8',
+    ),
   );
 
   it('shows the seller their shipment subtotal even on single-seller orders', () => {

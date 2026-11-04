@@ -3,7 +3,9 @@ import { supabase } from '../db/supabase';
 import { useAuthContext } from '../../components/auth/AuthProvider';
 import { Address } from '@selene/types';
 
-type PendingAddress = Omit<Address, 'id' | 'user_id'> & { street_number: string };
+type PendingAddress = Omit<Address, 'id' | 'user_id'> & {
+  street_number: string;
+};
 
 export const useAddresses = () => {
   const { session } = useAuthContext();

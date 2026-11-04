@@ -39,7 +39,12 @@ export const isProductHistory = (
   statusBeforeAccountHold?: string | null,
 ): boolean => {
   if (!status) return false;
-  if (isAccountHeld({ status, status_before_account_hold: statusBeforeAccountHold })) {
+  if (
+    isAccountHeld({
+      status,
+      status_before_account_hold: statusBeforeAccountHold,
+    })
+  ) {
     return false;
   }
   // Los estados que ya no están a la venta pero se guardan para registro
@@ -55,4 +60,5 @@ export const isProductHistory = (
 export const isAccountHeld = (product: {
   status: string | null | undefined;
   status_before_account_hold?: string | null;
-}): boolean => product.status === 'HIDDEN' && !!product.status_before_account_hold;
+}): boolean =>
+  product.status === 'HIDDEN' && !!product.status_before_account_hold;

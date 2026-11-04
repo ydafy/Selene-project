@@ -60,7 +60,9 @@ describe('delivered review polish', () => {
     expect(flatCard).toContain(
       'showDeliveredReviewBanner && shipment.delivered_at',
     );
-    expect(flatCard).toContain('return { startTime: shipment.delivered_at, limit: 48 };');
+    expect(flatCard).toContain(
+      'return { startTime: shipment.delivered_at, limit: 48 };',
+    );
     expect(card).not.toContain('startTime: order.delivered_at');
   });
 
@@ -74,8 +76,12 @@ describe('delivered review polish', () => {
     expect(flatCard).toContain(
       '{showDeliveredReviewBanner && timerConfig && !isExpired && (',
     );
-    expect(card).toContain("t('actionCard.sellerReviewCountdown', { timeLeft })");
-    expect(card).toContain("t('actionCard.buyerReviewCountdown', { timeLeft })");
+    expect(card).toContain(
+      "t('actionCard.sellerReviewCountdown', { timeLeft })",
+    );
+    expect(card).toContain(
+      "t('actionCard.buyerReviewCountdown', { timeLeft })",
+    );
   });
 
   it('does not invent a review deadline when the delivery timestamp is missing or invalid', () => {
@@ -88,7 +94,9 @@ describe('delivered review polish', () => {
   });
 
   it('shortens the buyer dialog while stating completion and how to report a problem', () => {
-    expect(es.dialogs.deliveryTitle).toBe('¿Recibiste y revisaste tu producto?');
+    expect(es.dialogs.deliveryTitle).toBe(
+      '¿Recibiste y revisaste tu producto?',
+    );
     expect(es.dialogs.deliveryMsg).toBe(
       'Al confirmar, la compra se completa. Si el producto no es el correcto o no funciona, no confirmes: reporta un problema.',
     );
@@ -98,8 +106,12 @@ describe('delivered review polish', () => {
       detail.indexOf('visible={showDeliveryConfirm}'),
       detail.indexOf('<ReviewModal'),
     );
-    expect(dialog).toContain("confirmLabel={t('orders:dialogs.deliveryConfirm')}");
-    expect(dialog).toContain("cancelLabel={t('orders:dialogs.deliveryCancel')}");
+    expect(dialog).toContain(
+      "confirmLabel={t('orders:dialogs.deliveryConfirm')}",
+    );
+    expect(dialog).toContain(
+      "cancelLabel={t('orders:dialogs.deliveryCancel')}",
+    );
     expect(dialog).toContain('onConfirm={handleConfirmDelivery}');
     expect(dialog).toContain('loading={actions.confirmDelivery.isLoading}');
     const handler = detail.slice(
@@ -112,8 +124,12 @@ describe('delivered review polish', () => {
 
   it('keeps equivalent English copy and interpolation without bank-arrival promises', () => {
     const keys = [
-      'buyerDeliveredTitle', 'buyerDeliveredMessage', 'sellerReviewCountdown',
-      'buyerReviewCountdown', 'deliveredReviewMessage', 'reviewWindowClosed',
+      'buyerDeliveredTitle',
+      'buyerDeliveredMessage',
+      'sellerReviewCountdown',
+      'buyerReviewCountdown',
+      'deliveredReviewMessage',
+      'reviewWindowClosed',
     ];
     for (const key of keys) {
       expect(en.actionCard[key]).toBeString();
@@ -122,7 +138,9 @@ describe('delivered review polish', () => {
         es.actionCard[key].match(/{{[^}]+}}/g) ?? [],
       );
     }
-    expect(en.dialogs.deliveryTitle).toBe('Did you receive and check your product?');
+    expect(en.dialogs.deliveryTitle).toBe(
+      'Did you receive and check your product?',
+    );
     expect(en.dialogs.deliveryMsg).toBe(
       'Confirming completes the purchase. If the product is incorrect or does not work, do not confirm: report a problem.',
     );
@@ -141,8 +159,12 @@ describe('delivered review polish', () => {
       "shipment.status === 'preparing' && shipment.updated_at && preparingExpirationHours != null",
     );
     expect(card).toContain('resolveShipmentPreparingWindowMessage({');
-    expect(card).toContain("t('actionCard.returnPayoutPendingBuyer', { timeLeft })");
-    expect(card).toContain("t('actionCard.returnPayoutPendingSeller', { timeLeft })");
+    expect(card).toContain(
+      "t('actionCard.returnPayoutPendingBuyer', { timeLeft })",
+    );
+    expect(card).toContain(
+      "t('actionCard.returnPayoutPendingSeller', { timeLeft })",
+    );
     expect(card).toContain("t('actionCard.completedMessage')");
     expect(flatCard).toContain(
       "const showSellerCompletedBanner = isSeller && shipment.status === 'completed' && !dispute;",

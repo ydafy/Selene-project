@@ -10,8 +10,7 @@ export const CAPTCHA_FAILED_CODE = 'captcha_failed';
 export const CAPTCHA_CANCELLED_CODE = 'captcha_cancelled';
 
 export type CaptchaErrorCode =
-  | typeof CAPTCHA_FAILED_CODE
-  | typeof CAPTCHA_CANCELLED_CODE;
+  typeof CAPTCHA_FAILED_CODE | typeof CAPTCHA_CANCELLED_CODE;
 
 export class CaptchaError extends Error {
   constructor(readonly code: CaptchaErrorCode) {

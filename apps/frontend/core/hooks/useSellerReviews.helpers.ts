@@ -7,8 +7,10 @@ export interface SellerReviewRow {
   comment: string | null;
   shipment_id: string | null;
   product_id: string | null;
-  reviewer: (Pick<Tables<'profiles'>, 'username' | 'avatar_url'> &
-    Partial<Pick<Tables<'profiles'>, 'deleted_at'>>) | null;
+  reviewer:
+    | (Pick<Tables<'profiles'>, 'username' | 'avatar_url'> &
+        Partial<Pick<Tables<'profiles'>, 'deleted_at'>>)
+    | null;
   product: {
     name: string;
   } | null;

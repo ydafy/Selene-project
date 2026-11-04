@@ -170,11 +170,15 @@ describe('validateDeleteConfirmation', () => {
 
 describe('stripSettingsNamespace', () => {
   test('strips settings: prefix', () => {
-    expect(stripSettingsNamespace('settings:errors.deleteFailed')).toBe('errors.deleteFailed');
+    expect(stripSettingsNamespace('settings:errors.deleteFailed')).toBe(
+      'errors.deleteFailed',
+    );
   });
 
   test('passes through non-namespaced keys', () => {
-    expect(stripSettingsNamespace('errors.deleteFailed')).toBe('errors.deleteFailed');
+    expect(stripSettingsNamespace('errors.deleteFailed')).toBe(
+      'errors.deleteFailed',
+    );
   });
 
   test('handles exact "settings:" prefix only', () => {

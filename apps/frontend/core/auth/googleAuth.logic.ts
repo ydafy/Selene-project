@@ -10,8 +10,7 @@ export const GOOGLE_NO_ID_TOKEN = 'google_no_id_token';
 export const GOOGLE_ERROR_KEY = 'auth:errors.googleSignInFailed';
 
 export type GoogleErrorResolution =
-  | { silent: true }
-  | { silent: false; key: string };
+  { silent: true } | { silent: false; key: string };
 
 export const resolveGoogleError = (
   error: unknown,
@@ -22,7 +21,8 @@ export const resolveGoogleError = (
       ? (error as { code?: unknown }).code
       : undefined;
   if (code === cancelledCode) return { silent: true };
-  if (code === GOOGLE_NO_ID_TOKEN) return { silent: false, key: GOOGLE_ERROR_KEY };
+  if (code === GOOGLE_NO_ID_TOKEN)
+    return { silent: false, key: GOOGLE_ERROR_KEY };
   const key = mapAuthErrorKey(error);
   return {
     silent: false,

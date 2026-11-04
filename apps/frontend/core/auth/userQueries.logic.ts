@@ -15,7 +15,5 @@ const isUserScoped = (query: Query) =>
  * refetches what is on screen.
  */
 export const resetUserQueries = (client: QueryClient): void => {
-  void client
-    .resetQueries({ predicate: isUserScoped })
-    .catch(() => undefined);
+  void client.resetQueries({ predicate: isUserScoped }).catch(() => undefined);
 };

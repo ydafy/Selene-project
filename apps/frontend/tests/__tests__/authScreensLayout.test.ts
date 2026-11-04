@@ -11,11 +11,7 @@ import { fileURLToPath } from 'node:url';
 const FRONTEND = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const read = (relPath: string) => readFileSync(join(FRONTEND, relPath), 'utf8');
 
-const AUTH_SCREENS = [
-  'forgotPassword',
-  'verify-code',
-  'resetPassword',
-];
+const AUTH_SCREENS = ['forgotPassword', 'verify-code', 'resetPassword'];
 
 describe('ScreenLayout keyboard awareness is opt-in', () => {
   const src = read('components/layout/ScreenLayout.tsx');

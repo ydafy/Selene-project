@@ -3,12 +3,14 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 const FRONTEND = join(import.meta.dir, '..', '..', '..');
-const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8').replace(/\s+/g, ' ');
+const read = (path: string) =>
+  readFileSync(join(FRONTEND, path), 'utf8').replace(/\s+/g, ' ');
 
 // Native imports are unavailable in Bun; pin the UI wiring with source guards.
 describe('shared seller payment explanation', () => {
   it('uses one shared body in onboarding success and the seller payment dialog', () => {
-    const component = 'components/features/payments/SellerPaymentExplanation.tsx';
+    const component =
+      'components/features/payments/SellerPaymentExplanation.tsx';
     expect(existsSync(join(FRONTEND, component))).toBe(true);
     const shared = read(component);
     for (const key of ['buyerReview', 'release', 'bank', 'delays']) {
@@ -16,7 +18,10 @@ describe('shared seller payment explanation', () => {
     }
     expect(shared).not.toContain('paymentExplanation.title');
     const onboarding = read('app/sell/onboarding.tsx');
-    const success = onboarding.slice(onboarding.indexOf("if (onboardingUi.viewState === 'success')"), onboarding.indexOf('ref={scrollViewRef}'));
+    const success = onboarding.slice(
+      onboarding.indexOf("if (onboardingUi.viewState === 'success')"),
+      onboarding.indexOf('ref={scrollViewRef}'),
+    );
     expect(success).toContain('<SellerPaymentExplanation />');
     expect(onboarding.match(/<SellerPaymentExplanation/g)).toHaveLength(1);
     expect(success).toContain('CONNECT_ONBOARDING_SUCCESS_CTA_ROUTE');
@@ -24,21 +29,36 @@ describe('shared seller payment explanation', () => {
 
   it('gates help and visibility on the selected delivered or completed, dispute-free seller shipment', () => {
     const card = read('components/features/orders/OrderActionCard.tsx');
-    expect(card).toContain("const showSellerCompletedBanner = isSeller && shipment.status === 'completed' && !dispute;");
+    expect(card).toContain(
+      "const showSellerCompletedBanner = isSeller && shipment.status === 'completed' && !dispute;",
+    );
     expect(card).toContain('{showSellerStatusBanner && ( <PrimaryButton');
-    expect(card).toContain('onPress={() => setIsPaymentExplanationVisible(true)}');
-    expect(card).toContain('visible={showSellerStatusBanner && isPaymentExplanationVisible}');
+    expect(card).toContain(
+      'onPress={() => setIsPaymentExplanationVisible(true)}',
+    );
+    expect(card).toContain(
+      'visible={showSellerStatusBanner && isPaymentExplanationVisible}',
+    );
     expect(card).toContain('<SellerPaymentExplanation />');
     expect(card).not.toContain("order.status === 'completed'");
   });
 
   it('dismisses informational content without mutations and bounds scroll height', () => {
     const card = read('components/features/orders/OrderActionCard.tsx');
-    const dialog = card.slice(card.indexOf('<ConfirmDialog'), card.indexOf('</ConfirmDialog>'));
-    expect(dialog).toContain('onConfirm={() => setIsPaymentExplanationVisible(false)}');
-    expect(dialog).toContain('onCancel={() => setIsPaymentExplanationVisible(false)}');
+    const dialog = card.slice(
+      card.indexOf('<ConfirmDialog'),
+      card.indexOf('</ConfirmDialog>'),
+    );
+    expect(dialog).toContain(
+      'onConfirm={() => setIsPaymentExplanationVisible(false)}',
+    );
+    expect(dialog).toContain(
+      'onCancel={() => setIsPaymentExplanationVisible(false)}',
+    );
     expect(dialog).toContain('hideCancel');
-    expect(dialog).toContain("confirmLabel={t('actionCard.paymentExplanationClose')}");
+    expect(dialog).toContain(
+      "confirmLabel={t('actionCard.paymentExplanationClose')}",
+    );
     expect(dialog).toContain('<ScrollView');
     expect(dialog).toContain('maxHeight: height * 0.45');
     expect(dialog).not.toContain('onRefresh');

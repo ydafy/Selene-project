@@ -10,7 +10,9 @@ describe('checkout buyer summary policy', () => {
   const src = read('app/checkout/index.tsx');
 
   test('renders SummaryBreakdown and does not reference SellerPaymentBreakdown', () => {
-    expect(src).toContain("from '../../components/features/checkout/SummaryBreakdown'");
+    expect(src).toContain(
+      "from '../../components/features/checkout/SummaryBreakdown'",
+    );
     expect(src).toContain('<SummaryBreakdown');
     expect(src).not.toContain('SellerPaymentBreakdown');
     expect(src).not.toMatch(/SellerPaymentBreakdown\.(tsx|ts|jsx|js)/);
@@ -19,7 +21,10 @@ describe('checkout buyer summary policy', () => {
   test('SellerPaymentBreakdown file is removed from the checkout feature folder', () => {
     expect(
       existsSync(
-        join(FRONTEND, 'components/features/checkout/SellerPaymentBreakdown.tsx'),
+        join(
+          FRONTEND,
+          'components/features/checkout/SellerPaymentBreakdown.tsx',
+        ),
       ),
     ).toBe(false);
   });

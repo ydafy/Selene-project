@@ -40,8 +40,14 @@ const isKnownReason = (value: unknown): value is KnownReason =>
   typeof value === 'string' &&
   (KNOWN_BLOCKED_REASONS as readonly string[]).includes(value);
 
-const DELETE_FAILED = { ok: false, errorKey: 'settings:errors.deleteFailed' } as const;
-const RETRY_LATER = { ok: false, errorKey: 'settings:errors.retryLater' } as const;
+const DELETE_FAILED = {
+  ok: false,
+  errorKey: 'settings:errors.deleteFailed',
+} as const;
+const RETRY_LATER = {
+  ok: false,
+  errorKey: 'settings:errors.retryLater',
+} as const;
 
 /**
  * `supabase.functions.invoke` reports every non-2xx as an error whose
@@ -77,7 +83,11 @@ export const mapDeleteAccountResponse = ({
 }: DeleteAccountHttpResponse): DeleteAccountResult => {
   const payload =
     typeof body === 'object' && body !== null
-      ? (body as { success?: unknown; error?: unknown; blocked_reason?: unknown })
+      ? (body as {
+          success?: unknown;
+          error?: unknown;
+          blocked_reason?: unknown;
+        })
       : {};
 
   if (status === 200) {

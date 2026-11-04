@@ -1,6 +1,10 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { supabase } from '../db/supabase';
-import { fetchNotificationPage, type NotificationsListPage, type NotificationCursor } from './notificationPagination';
+import {
+  fetchNotificationPage,
+  type NotificationsListPage,
+  type NotificationCursor,
+} from './notificationPagination';
 
 export const useNotificationsList = (userId: string | undefined) => {
   const query = useInfiniteQuery<NotificationsListPage, Error>({
@@ -8,7 +12,11 @@ export const useNotificationsList = (userId: string | undefined) => {
     queryFn: async ({ pageParam }) => {
       if (!userId) return { items: [], cursor: null };
 
-      return fetchNotificationPage(supabase, userId, pageParam as NotificationCursor | null);
+      return fetchNotificationPage(
+        supabase,
+        userId,
+        pageParam as NotificationCursor | null,
+      );
     },
     initialPageParam: null as NotificationCursor | null,
     getNextPageParam: (lastPage) => lastPage.cursor,
@@ -16,9 +24,7 @@ export const useNotificationsList = (userId: string | undefined) => {
     staleTime: 30_000,
   });
 
-  const data = query.data
-    ? query.data.pages.flatMap((page) => page.items)
-    : [];
+  const data = query.data ? query.data.pages.flatMap((page) => page.items) : [];
 
   return {
     data,

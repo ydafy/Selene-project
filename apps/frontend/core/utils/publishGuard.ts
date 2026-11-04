@@ -4,14 +4,10 @@ export type ImageUploadState = {
 };
 
 export type PublishGuardResult =
-  | { type: 'proceed' }
-  | { type: 'blocked'; reason: PublishBlockReason };
+  { type: 'proceed' } | { type: 'blocked'; reason: PublishBlockReason };
 
 export type PublishBlockReason =
-  | 'already_publishing'
-  | 'offline'
-  | 'no_images'
-  | 'no_session';
+  'already_publishing' | 'offline' | 'no_images' | 'no_session';
 
 export type PublishGuardInput = {
   isPublishing: boolean;
@@ -59,5 +55,3 @@ export const buildInitialUploadProgress = (
   }
   return progress;
 };
-
-

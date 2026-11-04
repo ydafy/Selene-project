@@ -37,14 +37,16 @@ describe('app components use theme color tokens', () => {
     for (const dir of SCANNED_DIRS) {
       for (const file of sourceFiles(join(FRONTEND_ROOT, dir))) {
         const rel = relative(FRONTEND_ROOT, file).split(sep).join('/');
-        if (EXCLUDED_PREFIXES.some((prefix) => rel.startsWith(prefix))) continue;
+        if (EXCLUDED_PREFIXES.some((prefix) => rel.startsWith(prefix)))
+          continue;
 
         const allowed = ALLOWED_BRAND_COLORS[rel] ?? [];
         readFileSync(file, 'utf8')
           .split('\n')
           .forEach((line, index) => {
             for (const [, hex] of line.matchAll(HEX_LITERAL)) {
-              if (!allowed.includes(hex)) offenders.push(`${rel}:${index + 1} ${hex}`);
+              if (!allowed.includes(hex))
+                offenders.push(`${rel}:${index + 1} ${hex}`);
             }
             for (const [, color] of line.matchAll(FUNCTIONAL_LITERAL)) {
               offenders.push(`${rel}:${index + 1} ${color}`);

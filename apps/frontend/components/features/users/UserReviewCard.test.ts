@@ -173,7 +173,10 @@ describe('getUserReviewCardPresentation', () => {
     expect(byFlag.accessibilityLabel).not.toContain('deleted_0123456789ab');
 
     const byShape = getUserReviewCardPresentation(
-      { ...base, reviewer: { username: 'deleted_0123456789ab', avatar_url: null } },
+      {
+        ...base,
+        reviewer: { username: 'deleted_0123456789ab', avatar_url: null },
+      },
       'en-US',
       copy,
     );

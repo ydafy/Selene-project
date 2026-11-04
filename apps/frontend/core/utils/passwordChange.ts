@@ -15,9 +15,7 @@ import { mapAuthErrorKey } from '../auth/authErrors.logic';
 
 const MIN_LENGTH = 8;
 
-export type PasswordValidation =
-  | { ok: true }
-  | { ok: false; errorKey: string };
+export type PasswordValidation = { ok: true } | { ok: false; errorKey: string };
 
 export const validatePasswordChange = (
   current: string,

@@ -13,7 +13,13 @@ export const ShipmentNotFoundState = ({
   const { t } = useTranslation('orders');
 
   return (
-    <Box flex={1} justifyContent="center" alignItems="center" padding="xl" gap="m">
+    <Box
+      flex={1}
+      justifyContent="center"
+      alignItems="center"
+      padding="xl"
+      gap="m"
+    >
       <Text variant="header-xl" color="primary" textAlign="center">
         {t('notFound.title')}
       </Text>

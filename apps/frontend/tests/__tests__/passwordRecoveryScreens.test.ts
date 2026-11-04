@@ -48,7 +48,9 @@ describe('resetPassword.tsx', () => {
   });
 
   test('starts the cooldown on mount because the code was just sent', () => {
-    expect(src).toMatch(/useEffect\(\(\) => \{\s*if \(email\) startCooldown\(\);/);
+    expect(src).toMatch(
+      /useEffect\(\(\) => \{\s*if \(email\) startCooldown\(\);/,
+    );
   });
 
   test('uses i18n keys instead of hardcoded or missing copy', () => {

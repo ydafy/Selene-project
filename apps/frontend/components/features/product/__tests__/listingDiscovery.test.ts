@@ -28,7 +28,9 @@ describe('where listings in verification are discoverable', () => {
 
   test('shop results and showroom start unfiltered and keep the verified chip', () => {
     expect(read('app/store/results.tsx')).toContain('verifiedOnly: false');
-    expect(read('app/store/showroom/[id].tsx')).toContain('verifiedOnly: false');
+    expect(read('app/store/showroom/[id].tsx')).toContain(
+      'verifiedOnly: false',
+    );
   });
 });
 
@@ -38,11 +40,14 @@ describe('cards flag listings in verification', () => {
     'components/features/product/ProductMiniCard.tsx',
     'components/features/shop/sections/ProductSnapCard.tsx',
     'app/profile/[id].tsx',
-  ])('%s renders the verification pill for listings in verification', (file) => {
-    const source = read(file);
-    expect(source).toContain('isInVerification(');
-    expect(source).toContain('<VerificationPill');
-  });
+  ])(
+    '%s renders the verification pill for listings in verification',
+    (file) => {
+      const source = read(file);
+      expect(source).toContain('isInVerification(');
+      expect(source).toContain('<VerificationPill');
+    },
+  );
 
   test('the pill uses the same label as the product page badge', () => {
     expect(read('components/features/product/VerificationPill.tsx')).toContain(

@@ -29,8 +29,7 @@ export type SinglePaymentSheetInput = PaymentSheetInitConfig &
   SinglePaymentSheetDependencies;
 
 export type SinglePaymentSheetResult =
-  | { success: true }
-  | { success: false; message: string; cancelled?: true };
+  { success: true } | { success: false; message: string; cancelled?: true };
 
 export async function presentSinglePaymentSheet({
   initPaymentSheet,

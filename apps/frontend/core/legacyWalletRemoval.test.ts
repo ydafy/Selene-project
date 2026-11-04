@@ -14,9 +14,9 @@ function listFiles(dir: string): string[] {
   });
 }
 
-const files = SCANNED_DIRS.flatMap((dir) => listFiles(join(FRONTEND_ROOT, dir))).filter(
-  (path) => relative(FRONTEND_ROOT, path) !== SELF,
-);
+const files = SCANNED_DIRS.flatMap((dir) =>
+  listFiles(join(FRONTEND_ROOT, dir)),
+).filter((path) => relative(FRONTEND_ROOT, path) !== SELF);
 
 describe('legacy wallet removal', () => {
   it('keeps no wallet or withdraw file names in the app', () => {

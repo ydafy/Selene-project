@@ -16,7 +16,10 @@ describe('resolveCancellationSettings', () => {
   });
 
   it('invents no deadline while system settings are missing or loading', () => {
-    const missing = { orderExpirationHours: null, preparingExpirationHours: null };
+    const missing = {
+      orderExpirationHours: null,
+      preparingExpirationHours: null,
+    };
 
     expect(resolveCancellationSettings(null)).toEqual(missing);
     expect(resolveCancellationSettings(undefined)).toEqual(missing);

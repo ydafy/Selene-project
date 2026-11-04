@@ -26,7 +26,10 @@ const CODE_KEYS: Record<string, string> = {
   captcha_cancelled: 'auth:errors.captchaCancelled',
 };
 
-const RATE_LIMIT_CODES = ['over_email_send_rate_limit', 'over_request_rate_limit'];
+const RATE_LIMIT_CODES = [
+  'over_email_send_rate_limit',
+  'over_request_rate_limit',
+];
 
 type ErrorFields = {
   name?: unknown;
@@ -60,7 +63,10 @@ const isNetworkFailure = ({ name, message, status }: ErrorFields) =>
 
 export const mapAuthErrorKey = (error: unknown): string => {
   const fields = fieldsOf(error);
-  if (typeof fields.code === 'string' && Object.hasOwn(CODE_KEYS, fields.code)) {
+  if (
+    typeof fields.code === 'string' &&
+    Object.hasOwn(CODE_KEYS, fields.code)
+  ) {
     return CODE_KEYS[fields.code];
   }
   if (isTriggerUsernameRejection(fields)) return USERNAME_TAKEN_KEY;

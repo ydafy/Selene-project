@@ -32,7 +32,9 @@ describe('role-aware order summary isolation', () => {
   });
 
   it('projects shipment cards, counts, and seller totals through visible shipment ids', () => {
-    expect(summary).toContain('const visibleShipments = shipmentsSource.filter(');
+    expect(summary).toContain(
+      'const visibleShipments = shipmentsSource.filter(',
+    );
     expect(summary).toContain('view.visibleShipmentIds.includes(shipment.id)');
     expect(summary).toContain('visibleShipments.reduce(');
     expect(summary).toContain('const orderCount = visibleShipments.length;');
@@ -51,8 +53,12 @@ describe('shipment detail identity guards', () => {
   });
 
   it('redirects missing shipment ids and renders a safe state for invalid or unowned ids', () => {
-    expect(detail).toContain("from '../../../components/features/orders/ShipmentNotFoundState'");
-    expect(detail).toContain("if (!shipmentId && orderView.kind !== 'unavailable')");
+    expect(detail).toContain(
+      "from '../../../components/features/orders/ShipmentNotFoundState'",
+    );
+    expect(detail).toContain(
+      "if (!shipmentId && orderView.kind !== 'unavailable')",
+    );
     expect(detail).toContain('<ShipmentNotFoundState');
   });
 });

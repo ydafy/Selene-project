@@ -21,15 +21,27 @@ export function ShipmentTrackingTimeline({
   const { t, i18n } = useTranslation('orders');
 
   if (isLoading) {
-    return <Text variant="body-sm" color="textSecondary">{t('tracking.loading')}</Text>;
+    return (
+      <Text variant="body-sm" color="textSecondary">
+        {t('tracking.loading')}
+      </Text>
+    );
   }
 
   if (error) {
-    return <Text variant="body-sm" color="error">{t('tracking.error')}</Text>;
+    return (
+      <Text variant="body-sm" color="error">
+        {t('tracking.error')}
+      </Text>
+    );
   }
 
   if (!events.length) {
-    return <Text variant="body-sm" color="textSecondary">{t('tracking.empty')}</Text>;
+    return (
+      <Text variant="body-sm" color="textSecondary">
+        {t('tracking.empty')}
+      </Text>
+    );
   }
 
   return (

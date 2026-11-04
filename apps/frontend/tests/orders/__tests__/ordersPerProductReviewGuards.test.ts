@@ -84,12 +84,8 @@ describe('orders detail screen V2 per-product review guards', () => {
   it('removes the V1 global review section that keyed off reviewData length', () => {
     // The global `reviewData && reviewData.length > 0 ? <ReviewCard .../>`
     // branch is gone; reviews surface per-product instead.
-    expect(detail).not.toContain(
-      'reviewData && reviewData.length > 0 ?',
-    );
-    expect(detail).not.toContain(
-      'reviewData[0].rating',
-    );
+    expect(detail).not.toContain('reviewData && reviewData.length > 0 ?');
+    expect(detail).not.toContain('reviewData[0].rating');
   });
 });
 

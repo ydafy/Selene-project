@@ -31,7 +31,9 @@ mock.module('@tanstack/react-query', () => ({
 }));
 
 mock.module('../db/supabase', () => ({
-  supabase: { functions: { invoke: async () => ({ data: null, error: null }) } },
+  supabase: {
+    functions: { invoke: async () => ({ data: null, error: null }) },
+  },
 }));
 
 mock.module('../services/edge-client', () => ({

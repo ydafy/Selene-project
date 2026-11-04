@@ -2,7 +2,8 @@ import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const source = (path: string) => readFileSync(join(process.cwd(), path), 'utf8');
+const source = (path: string) =>
+  readFileSync(join(process.cwd(), path), 'utf8');
 
 describe('buyer checkout recovery UI wiring', () => {
   it('renders the pending banner before shipment-only detail content and offers support', () => {

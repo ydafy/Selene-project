@@ -107,7 +107,11 @@ describe('createLatestRequest', () => {
     let state: StatusState = INITIAL_STATUS_STATE;
     const apply = (seq: number, status: 'active' | 'banned') => {
       if (!requests.isLatest(seq)) return;
-      state = applyStatusLoad(state, 'u1', 'u1', { ok: true, status, reason: null });
+      state = applyStatusLoad(state, 'u1', 'u1', {
+        ok: true,
+        status,
+        reason: null,
+      });
     };
 
     const older = requests.begin();

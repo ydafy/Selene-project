@@ -46,10 +46,14 @@ describe('resolveBuyerCheckoutRecoveryView', () => {
     });
 
     expect(transient).toEqual({ kind: 'none' });
-    expect(shouldSuppressShipmentActionsForBuyerRecovery({ kind: 'pending_refund' })).toBe(
-      true,
+    expect(
+      shouldSuppressShipmentActionsForBuyerRecovery({ kind: 'pending_refund' }),
+    ).toBe(true);
+    expect(
+      shouldSuppressShipmentActionsForBuyerRecovery({ kind: 'refunded' }),
+    ).toBe(true);
+    expect(shouldSuppressShipmentActionsForBuyerRecovery(transient)).toBe(
+      false,
     );
-    expect(shouldSuppressShipmentActionsForBuyerRecovery({ kind: 'refunded' })).toBe(true);
-    expect(shouldSuppressShipmentActionsForBuyerRecovery(transient)).toBe(false);
   });
 });

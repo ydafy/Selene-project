@@ -226,7 +226,9 @@ describe('isGoogleOnlyAccount (C7)', () => {
   });
 
   it('email accounts and a missing user are not Google-only', () => {
-    expect(isGoogleOnlyAccount({ identities: [{ provider: 'email' }] })).toBe(false);
+    expect(isGoogleOnlyAccount({ identities: [{ provider: 'email' }] })).toBe(
+      false,
+    );
     expect(isGoogleOnlyAccount(null)).toBe(false);
   });
 });
@@ -235,7 +237,15 @@ describe('settings sections (C7)', () => {
   it('decide Google-only accounts from identities, not app_metadata.provider', () => {
     for (const file of ['AccountSection.tsx', 'SecuritySection.tsx']) {
       const src = readFileSync(
-        join(import.meta.dir, '..', '..', 'components', 'features', 'settings', file),
+        join(
+          import.meta.dir,
+          '..',
+          '..',
+          'components',
+          'features',
+          'settings',
+          file,
+        ),
         'utf8',
       );
       expect(src).toContain('isGoogleOnlyAccount(session?.user ?? null)');
@@ -243,4 +253,3 @@ describe('settings sections (C7)', () => {
     }
   });
 });
-

@@ -4,7 +4,10 @@ import { join } from 'node:path';
 
 const FRONTEND = join(import.meta.dir, '..', '..', '..');
 const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
-const card = read('components/features/orders/OrderActionCard.tsx').replace(/\s+/g, ' ');
+const card = read('components/features/orders/OrderActionCard.tsx').replace(
+  /\s+/g,
+  ' ',
+);
 const es = JSON.parse(read('core/i18n/locales/es/orders.json'));
 const en = JSON.parse(read('core/i18n/locales/en/orders.json'));
 
@@ -41,6 +44,8 @@ describe('expired seller deadline banner', () => {
   it('keeps the cancel button gate unchanged', () => {
     const detail = read('app/profile/orders/[id].tsx');
     expect(detail).toContain('currentShipment?.permissions.canCancel && (');
-    expect(card).toContain('permissions.canCancel && shipment.created_at && orderExpirationHours != null');
+    expect(card).toContain(
+      'permissions.canCancel && shipment.created_at && orderExpirationHours != null',
+    );
   });
 });

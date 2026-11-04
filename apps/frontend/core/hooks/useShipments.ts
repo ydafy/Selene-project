@@ -113,14 +113,11 @@ const enrichShipment = (
       (isBuyer && phase.isWaitingShipment),
     showUnboxingWarning:
       isBuyer &&
-      ['paid', 'preparing', 'shipped', 'delivered'].includes(
-        shipment.status,
-      ) &&
+      ['paid', 'preparing', 'shipped', 'delivered'].includes(shipment.status) &&
       !isDispute,
     showReturnTracking: !!dispute?.return_tracking_number,
     showOriginalTracking: !!shipment.tracking_number && !isDispute,
-    canReview:
-      shipment.status === 'completed' && isBuyer && !shipment.dispute,
+    canReview: shipment.status === 'completed' && isBuyer && !shipment.dispute,
   };
 
   return {

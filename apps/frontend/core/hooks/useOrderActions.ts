@@ -8,7 +8,10 @@ import {
   getOpenDisputeInvalidationKeys,
 } from '../utils/disputeShipmentContext';
 import type { OpenDisputeParams } from '../utils/disputeShipmentContext';
-import { buildCancelOrderPayload, resolveCancelOrderFailureToast } from '../utils/shipment-cancel-safety';
+import {
+  buildCancelOrderPayload,
+  resolveCancelOrderFailureToast,
+} from '../utils/shipment-cancel-safety';
 import {
   getCancelOrderFailureInvalidationKeys,
   getCancelOrderSuccessInvalidationKeys,
@@ -46,7 +49,8 @@ export const useOrderActions = (orderId: string) => {
   // 2. Confirmar Entrega (Comprador)
   const confirmDelivery = useMutation({
     mutationFn: async (params: { shipmentId: string }) => {
-      return invokeEdge('confirm-shipment-delivery',
+      return invokeEdge(
+        'confirm-shipment-delivery',
         buildShipmentConfirmationPayload({
           orderId,
           shipmentId: params.shipmentId,
@@ -71,7 +75,8 @@ export const useOrderActions = (orderId: string) => {
   // 3. Cancelar Orden (Comprador)
   const cancelOrder = useMutation({
     mutationFn: async (params: { shipmentId: string; reason?: string }) => {
-      return invokeEdge('cancel-order',
+      return invokeEdge(
+        'cancel-order',
         buildCancelOrderPayload({
           orderId,
           shipmentId: params.shipmentId,
@@ -86,9 +91,11 @@ export const useOrderActions = (orderId: string) => {
         text1: t(toast.titleKey),
         text2: t(toast.messageKey),
       });
-      getCancelOrderFailureInvalidationKeys(orderId, error).forEach((queryKey) => {
-        queryClient.invalidateQueries({ queryKey: [...queryKey] });
-      });
+      getCancelOrderFailureInvalidationKeys(orderId, error).forEach(
+        (queryKey) => {
+          queryClient.invalidateQueries({ queryKey: [...queryKey] });
+        },
+      );
     },
     onSuccess: () => {
       getCancelOrderSuccessInvalidationKeys(orderId).forEach((queryKey) => {
@@ -100,7 +107,10 @@ export const useOrderActions = (orderId: string) => {
   // 4. Abrir Disputa (Comprador)
   const openDispute = useMutation({
     mutationFn: async (params: OpenDisputeParams) => {
-      return invokeEdge('create-dispute', buildOpenDisputeRequest(orderId, params));
+      return invokeEdge(
+        'create-dispute',
+        buildOpenDisputeRequest(orderId, params),
+      );
     },
     onSuccess: (_data, params) => {
       getOpenDisputeInvalidationKeys(orderId, params.shipmentId).forEach(

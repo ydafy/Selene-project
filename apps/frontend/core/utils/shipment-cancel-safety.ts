@@ -112,7 +112,11 @@ export function resolveCancelOrderFailureToast(
   error: unknown,
 ): CancelOrderFailureToast {
   const message = (
-    error instanceof Error ? error.message : typeof error === 'string' ? error : ''
+    error instanceof Error
+      ? error.message
+      : typeof error === 'string'
+        ? error
+        : ''
   ).trim();
 
   const group: CancelErrorGroup = message.startsWith(

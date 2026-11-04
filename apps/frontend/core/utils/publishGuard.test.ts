@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import {
-  checkPublishGuard,
-  buildInitialUploadProgress,
-} from './publishGuard';
+import { checkPublishGuard, buildInitialUploadProgress } from './publishGuard';
 
 describe('checkPublishGuard', () => {
   it('proceeds when all requirements are met', () => {
@@ -108,4 +105,3 @@ describe('buildInitialUploadProgress', () => {
     expect(progress).toEqual({});
   });
 });
-

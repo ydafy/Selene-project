@@ -39,10 +39,7 @@ export const useReviewAction = (orderId: string) => {
         throw error;
       }
 
-      console.log(
-        '[useReviewAction] success:',
-        JSON.stringify(data, null, 2),
-      );
+      console.log('[useReviewAction] success:', JSON.stringify(data, null, 2));
       return data;
     },
     onMutate: async () => {

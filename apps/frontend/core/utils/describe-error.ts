@@ -3,7 +3,9 @@
 const ERROR_CODE_PATTERN = /^(MEDIA|VERIFICATION|VIDEO)_[A-Z0-9_]+$/;
 
 const safeMessage = (value: unknown) =>
-  typeof value === 'string' && ERROR_CODE_PATTERN.test(value) ? value : undefined;
+  typeof value === 'string' && ERROR_CODE_PATTERN.test(value)
+    ? value
+    : undefined;
 
 /** Error summary safe to log: no file paths, URIs, or user data. */
 export function describeError(error: unknown) {

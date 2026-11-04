@@ -13,7 +13,9 @@ import {
  */
 describe('validatePasswordChange', () => {
   test('accepts current + new === confirm and >= 8 chars', () => {
-    expect(validatePasswordChange('oldpw123', 'newpw1234', 'newpw1234')).toEqual({
+    expect(
+      validatePasswordChange('oldpw123', 'newpw1234', 'newpw1234'),
+    ).toEqual({
       ok: true,
     });
   });

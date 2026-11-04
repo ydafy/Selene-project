@@ -43,7 +43,8 @@ export const isSameEmail = (
   raw: string,
   current: string | null | undefined,
 ): boolean =>
-  !!current && buildEmailUpdatePayload(raw).email === current.trim().toLowerCase();
+  !!current &&
+  buildEmailUpdatePayload(raw).email === current.trim().toLowerCase();
 
 const EMAIL_CHANGE_KEYS: Record<string, string> = {
   email_exists: 'settings:errors.emailAlreadyTaken',

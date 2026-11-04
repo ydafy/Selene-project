@@ -5,7 +5,8 @@ function isPermanentError(error: unknown): boolean {
   const m = error.message;
 
   if (m.includes('permission denied') || m.includes('42501')) return true;
-  if (m.includes('401') || m.includes('403') || m.includes('not authenticated')) return true;
+  if (m.includes('401') || m.includes('403') || m.includes('not authenticated'))
+    return true;
   if (m.includes('404') || m.includes('not found')) return true;
   if (m.includes('422') || m.includes('validation')) return true;
 
@@ -33,7 +34,10 @@ export const queryClient = new QueryClient({
     mutations: {
       onError: (error) => {
         if (__DEV__) {
-          console.error('[Mutation Error]', error instanceof Error ? error.message : error);
+          console.error(
+            '[Mutation Error]',
+            error instanceof Error ? error.message : error,
+          );
         }
       },
     },

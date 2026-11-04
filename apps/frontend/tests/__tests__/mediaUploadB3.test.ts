@@ -9,7 +9,9 @@ const json = (locale: string) =>
 
 describe('media upload B3 source guards', () => {
   it('has no unchecked base64 assertions at the capture call sites', () => {
-    expect(read('components/features/orders/EvidenceUploadSection.tsx')).not.toContain('base64!');
+    expect(
+      read('components/features/orders/EvidenceUploadSection.tsx'),
+    ).not.toContain('base64!');
     expect(read('app/(tabs)/profile.tsx')).not.toContain('base64!');
   });
 
@@ -53,9 +55,11 @@ describe('media upload B3 source guards', () => {
       permissionDeniedTitle: 'Permiso denegado',
       permissionDeniedMsg: 'Necesitamos acceso a tus videos.',
       tooLongTitle: 'Video muy largo',
-      tooLongMsg: 'El video no debe superar los 2 minutos. Por favor, recórtalo.',
+      tooLongMsg:
+        'El video no debe superar los 2 minutos. Por favor, recórtalo.',
       tooLargeTitle: 'Archivo muy pesado',
-      tooLargeMsg: 'El video supera los 50MB. Intenta grabar en una resolución menor.',
+      tooLargeMsg:
+        'El video supera los 50MB. Intenta grabar en una resolución menor.',
       pickerErrorTitle: 'Error',
       pickerErrorMsg: 'No se pudo abrir el selector de video.',
     });
@@ -65,7 +69,8 @@ describe('media upload B3 source guards', () => {
       tooLongTitle: 'Video too long',
       tooLongMsg: 'The video must not exceed 2 minutes. Please trim it.',
       tooLargeTitle: 'File too large',
-      tooLargeMsg: 'The video exceeds 50MB. Try recording at a lower resolution.',
+      tooLargeMsg:
+        'The video exceeds 50MB. Try recording at a lower resolution.',
       pickerErrorTitle: 'Error',
       pickerErrorMsg: 'Could not open the video picker.',
     });
@@ -75,13 +80,25 @@ describe('media upload B3 source guards', () => {
 describe('dispute video cross-platform and size feedback', () => {
   it('accepts iOS QuickTime and Android MP4 videos', async () => {
     const { resolveMediaType } = await import('../../core/storage/uploadMedia');
-    expect(resolveMediaType('file:///var/mobile/IMG_0001.MOV')).toEqual({ ext: 'mov', contentType: 'video/quicktime' });
-    expect(resolveMediaType('file:///data/user/0/video.mp4')).toEqual({ ext: 'mp4', contentType: 'video/mp4' });
-    expect(resolveMediaType('file:///var/mobile/clip.m4v')).toEqual({ ext: 'm4v', contentType: 'video/x-m4v' });
+    expect(resolveMediaType('file:///var/mobile/IMG_0001.MOV')).toEqual({
+      ext: 'mov',
+      contentType: 'video/quicktime',
+    });
+    expect(resolveMediaType('file:///data/user/0/video.mp4')).toEqual({
+      ext: 'mp4',
+      contentType: 'video/mp4',
+    });
+    expect(resolveMediaType('file:///var/mobile/clip.m4v')).toEqual({
+      ext: 'm4v',
+      contentType: 'video/x-m4v',
+    });
   });
 
   it('shows the too-large message when the real file size exceeds the limit', () => {
-    const screen = read('app/profile/orders/report/[id].tsx').replace(/\s+/g, ' ');
+    const screen = read('app/profile/orders/report/[id].tsx').replace(
+      /\s+/g,
+      ' ',
+    );
     expect(screen).toContain(
       "if (error instanceof Error && error.message === 'MEDIA_TOO_LARGE') { Alert.alert( t('disputes:video.tooLargeTitle'), t('disputes:video.tooLargeMsg'), ); return; }",
     );
@@ -89,7 +106,11 @@ describe('dispute video cross-platform and size feedback', () => {
 
   it('logs the screen failure without the raw error object', () => {
     const screen = read('app/profile/orders/report/[id].tsx');
-    expect(screen).not.toContain("console.error('[VIDEO_UPLOAD_ERROR]', error)");
-    expect(screen).toContain("console.error('[VIDEO_UPLOAD_ERROR]', describeError(error))");
+    expect(screen).not.toContain(
+      "console.error('[VIDEO_UPLOAD_ERROR]', error)",
+    );
+    expect(screen).toContain(
+      "console.error('[VIDEO_UPLOAD_ERROR]', describeError(error))",
+    );
   });
 });

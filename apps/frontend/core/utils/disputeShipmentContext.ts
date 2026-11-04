@@ -17,7 +17,10 @@ export type OpenDisputeParams = {
 export function resolveShipmentContext(
   shipmentIdParam: SearchParam,
 ): { shipmentId: string } | { error: string } {
-  if (typeof shipmentIdParam !== 'string' || shipmentIdParam.trim().length === 0) {
+  if (
+    typeof shipmentIdParam !== 'string' ||
+    shipmentIdParam.trim().length === 0
+  ) {
     return { error: MISSING_SHIPMENT_CONTEXT_ERROR };
   }
 

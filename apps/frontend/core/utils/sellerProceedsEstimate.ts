@@ -60,9 +60,7 @@ export const calculateSellerProceedsEstimate = ({
   const commissionCents = Math.round(safePriceCents * serviceFeePct);
   const shippingCents =
     safeQuoteCents > 0 ? safeQuoteCents + shippingBufferCents : 0;
-  const insuranceCents = Math.round(
-    safePriceCents * normalizedInsuranceRate,
-  );
+  const insuranceCents = Math.round(safePriceCents * normalizedInsuranceRate);
   const rawFinalCents =
     safePriceCents - commissionCents - shippingCents - insuranceCents;
 

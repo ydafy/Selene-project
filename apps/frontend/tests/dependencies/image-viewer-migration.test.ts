@@ -9,7 +9,8 @@ const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
 const sourceFiles = (dir: string): string[] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const path = join(dir, entry.name);
-    if (entry.isDirectory()) return entry.name === 'node_modules' ? [] : sourceFiles(path);
+    if (entry.isDirectory())
+      return entry.name === 'node_modules' ? [] : sourceFiles(path);
     return /\.tsx?$/.test(entry.name) ? [path] : [];
   });
 
@@ -25,7 +26,11 @@ describe('image viewer migration to react-native-zoom-toolkit', () => {
     const offenders = ['app', 'components', 'core']
       .flatMap((dir) => sourceFiles(join(FRONTEND, dir)))
       .filter((file) => !file.includes(`${sep}__tests__${sep}`))
-      .filter((file) => readFileSync(file, 'utf8').includes("from 'react-native-image-viewing'"))
+      .filter((file) =>
+        readFileSync(file, 'utf8').includes(
+          "from 'react-native-image-viewing'",
+        ),
+      )
       .map((file) => relative(FRONTEND, file));
     expect(offenders).toEqual([]);
   });
@@ -53,7 +58,11 @@ describe('image viewer migration to react-native-zoom-toolkit', () => {
     const pkg = JSON.parse(read('package.json'));
     expect(pkg.dependencies['react-native-image-viewing']).toBeUndefined();
     expect(pkg.dependencies['react-native-zoom-toolkit']).toBeDefined();
-    const rootPkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
-    expect(rootPkg.patchedDependencies?.['react-native-image-viewing@0.2.2']).toBeUndefined();
+    const rootPkg = JSON.parse(
+      readFileSync(join(ROOT, 'package.json'), 'utf8'),
+    );
+    expect(
+      rootPkg.patchedDependencies?.['react-native-image-viewing@0.2.2'],
+    ).toBeUndefined();
   });
 });

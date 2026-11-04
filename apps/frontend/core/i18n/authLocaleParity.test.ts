@@ -99,7 +99,10 @@ describe('auth locale parity', () => {
   });
 
   it('defines the modal copy used by AuthModal in both languages', () => {
-    for (const modal of [enAuth.modal, esAuth.modal] as Record<string, string>[]) {
+    for (const modal of [enAuth.modal, esAuth.modal] as Record<
+      string,
+      string
+    >[]) {
       expect(modal.welcomeBack).toBeString();
       expect(modal.createAccount).toBeString();
     }

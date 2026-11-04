@@ -35,7 +35,10 @@ describe('cancel-order failure refresh', () => {
       'CANCELLATION_RECOVERY_REQUIRED',
       'Dinero devuelto pero no se actualizó el envío',
     ]) {
-      const keys = getCancelOrderFailureInvalidationKeys(ORDER_ID, new Error(code));
+      const keys = getCancelOrderFailureInvalidationKeys(
+        ORDER_ID,
+        new Error(code),
+      );
       expect(keys).toContainEqual(['order', ORDER_ID]);
       expect(keys).toContainEqual(['shipments', ORDER_ID]);
       expect(keys).toContainEqual(['my-purchases']);
@@ -43,8 +46,15 @@ describe('cancel-order failure refresh', () => {
   });
 
   it('does not refresh for failures that changed nothing', () => {
-    for (const code of ['MAINTENANCE_MODE', 'AUTH_REQUIRED', 'BUYER_ONLY', 'SOMETHING_NEW']) {
-      expect(getCancelOrderFailureInvalidationKeys(ORDER_ID, new Error(code))).toEqual([]);
+    for (const code of [
+      'MAINTENANCE_MODE',
+      'AUTH_REQUIRED',
+      'BUYER_ONLY',
+      'SOMETHING_NEW',
+    ]) {
+      expect(
+        getCancelOrderFailureInvalidationKeys(ORDER_ID, new Error(code)),
+      ).toEqual([]);
     }
   });
 });

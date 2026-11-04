@@ -31,13 +31,16 @@ const reauthDeps: ReauthDeps = {
     reauthSignInWithPassword(supabase.auth, getCaptchaToken, email, password),
   signInWithGoogle: async () => {
     try {
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      await GoogleSignin.hasPlayServices({
+        showPlayServicesUpdateDialog: true,
+      });
       const response = await GoogleSignin.signIn();
       if (response.type !== 'success') {
         return { userId: null, error: { code: statusCodes.SIGN_IN_CANCELLED } };
       }
       const idToken = response.data.idToken;
-      if (!idToken) return { userId: null, error: { code: GOOGLE_NO_ID_TOKEN } };
+      if (!idToken)
+        return { userId: null, error: { code: GOOGLE_NO_ID_TOKEN } };
       const { data, error } = await supabase.auth.signInWithIdToken({
         provider: 'google',
         token: idToken,

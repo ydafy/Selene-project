@@ -101,10 +101,7 @@ export const useUpdateProfile = (userId: string) => {
     onError: (error, _vars, context) => {
       // Rollback the optimistic update.
       if (context?.previousProfile) {
-        queryClient.setQueryData(
-          ['profile', userId],
-          context.previousProfile,
-        );
+        queryClient.setQueryData(['profile', userId], context.previousProfile);
       }
       // Attach a localized error key so the screen can show the right toast.
       const errorKey = mapUpdateProfileError(

@@ -48,7 +48,9 @@ describe('order detail copy is fully localized', () => {
   });
 
   it('shows a translated review error instead of the raw error message', () => {
-    expect(flat).toContain("setReviewError(t('orders:dialogs.reviewErrorMsg'))");
+    expect(flat).toContain(
+      "setReviewError(t('orders:dialogs.reviewErrorMsg'))",
+    );
     expect(detail).not.toContain('e instanceof Error ? e.message');
     expect(es.dialogs.reviewErrorTitle).toBe('No pudimos actualizar');
     expect(es.dialogs.reviewErrorMsg).toBe(
@@ -66,20 +68,50 @@ describe('order detail copy is fully localized', () => {
 
   it('defines every previously missing key in both locales', () => {
     const keys: [string, string, string][] = [
-      ['actions.shareTitle', 'Guía de envío - Selene', 'Shipping label - Selene'],
-      ['actions.shareMessage', 'Guía de envío para imprimir: {{url}}', 'Shipping label to print: {{url}}'],
-      ['actions.printHint', '💡 ¿No tienes impresora? Compártela para imprimirla en tu papelería más cercana.', '💡 No printer? Share it to print at your nearest print shop.'],
-      ['actions.rateProductHint', 'Abre el formulario para calificar este producto', 'Opens the form to rate this product'],
-      ['detail.multiSellerTitle', 'Esta orden tiene {{count}} vendedores', 'This order has {{count}} sellers'],
+      [
+        'actions.shareTitle',
+        'Guía de envío - Selene',
+        'Shipping label - Selene',
+      ],
+      [
+        'actions.shareMessage',
+        'Guía de envío para imprimir: {{url}}',
+        'Shipping label to print: {{url}}',
+      ],
+      [
+        'actions.printHint',
+        '💡 ¿No tienes impresora? Compártela para imprimirla en tu papelería más cercana.',
+        '💡 No printer? Share it to print at your nearest print shop.',
+      ],
+      [
+        'actions.rateProductHint',
+        'Abre el formulario para calificar este producto',
+        'Opens the form to rate this product',
+      ],
+      [
+        'detail.multiSellerTitle',
+        'Esta orden tiene {{count}} vendedores',
+        'This order has {{count}} sellers',
+      ],
       ['detail.items_one', 'producto', 'product'],
       ['detail.items_other', 'productos', 'products'],
       ['detail.viewShipment', 'Ver envío', 'View shipment'],
-      ['detail.viewShippingSummary', 'Ver resumen de envíos', 'View shipping summary'],
+      [
+        'detail.viewShippingSummary',
+        'Ver resumen de envíos',
+        'View shipping summary',
+      ],
       ['detail.returnTrackingTitle', 'Rastreo de retorno', 'Return tracking'],
-      ['detail.noItems', 'No hay productos disponibles.', 'No products available.'],
+      [
+        'detail.noItems',
+        'No hay productos disponibles.',
+        'No products available.',
+      ],
     ];
     const get = (o: Record<string, unknown>, path: string) =>
-      path.split('.').reduce<unknown>((acc, k) => (acc as Record<string, unknown>)?.[k], o);
+      path
+        .split('.')
+        .reduce<unknown>((acc, k) => (acc as Record<string, unknown>)?.[k], o);
     for (const [key, esValue, enValue] of keys) {
       expect([key, get(es, key)]).toEqual([key, esValue]);
       expect([key, get(en, key)]).toEqual([key, enValue]);

@@ -44,11 +44,13 @@ export function resolveCancelledShipmentCopy(
   const reason = summary
     ? own(isBuyer ? BUYER_REASON : SELLER_REASON, summary.source)
     : undefined;
-  const refund = summary && isBuyer ? own(BUYER_REFUND, summary.refundState) : undefined;
+  const refund =
+    summary && isBuyer ? own(BUYER_REFUND, summary.refundState) : undefined;
 
   return {
     reasonKey: reason ? `${PREFIX}${reason}` : null,
     messageKey: `${PREFIX}${refund ?? (isBuyer ? 'cancelledBuyer' : 'cancelledSeller')}`,
-    labelNoticeKey: !isBuyer && hadLabel ? `${PREFIX}cancelledLabelInvalidSeller` : null,
+    labelNoticeKey:
+      !isBuyer && hadLabel ? `${PREFIX}cancelledLabelInvalidSeller` : null,
   };
 }

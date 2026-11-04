@@ -49,10 +49,7 @@ export const toastConfig: ToastConfig = {
   success: (props: BaseToastProps) => (
     <BaseToast
       {...props}
-      style={[
-        baseToastStyle,
-        { borderLeftColor: theme.colors.success },
-      ]}
+      style={[baseToastStyle, { borderLeftColor: theme.colors.success }]}
       contentContainerStyle={contentContainerStyle}
       text1Style={text1Style}
       text2Style={text2Style}
@@ -65,10 +62,7 @@ export const toastConfig: ToastConfig = {
   error: (props: BaseToastProps) => (
     <ErrorToast
       {...props}
-      style={[
-        baseToastStyle,
-        { borderLeftColor: theme.colors.error },
-      ]}
+      style={[baseToastStyle, { borderLeftColor: theme.colors.error }]}
       contentContainerStyle={contentContainerStyle}
       text1Style={text1Style}
       text2Style={text2Style}

@@ -55,7 +55,10 @@ describe('resend cooldown', () => {
 
   it('does not start after another failure', () => {
     expect(
-      shouldStartCooldown({ success: false, error: { code: 'validation_failed' } }),
+      shouldStartCooldown({
+        success: false,
+        error: { code: 'validation_failed' },
+      }),
     ).toBe(false);
     expect(shouldStartCooldown({ success: false, error: null })).toBe(false);
   });

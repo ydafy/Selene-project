@@ -12,7 +12,10 @@ type OrdersLocale = {
 };
 const readJson = (locale: string) =>
   JSON.parse(
-    readFileSync(join(FRONTEND, `core/i18n/locales/${locale}/orders.json`), 'utf8'),
+    readFileSync(
+      join(FRONTEND, `core/i18n/locales/${locale}/orders.json`),
+      'utf8',
+    ),
   ) as OrdersLocale;
 const read = (path: string) =>
   readFileSync(join(FRONTEND, path), 'utf8').replace(/\s+/g, ' ');
@@ -67,7 +70,9 @@ describe('role-aware orders localization', () => {
     expect(summary).toContain("t('summary.date')");
     expect(summary).toContain("t('summary.status')");
     expect(summary).not.toContain('defaultValue:');
-    expect(read('components/features/orders/ShipmentNotFoundState.tsx')).toContain("t('notFound.title')");
+    expect(
+      read('components/features/orders/ShipmentNotFoundState.tsx'),
+    ).toContain("t('notFound.title')");
     const card = read('components/features/orders/OrderShipmentCard.tsx');
     expect(card).toContain('const item = shipment.items[0];');
     expect(card).toContain("t('card.unknownProduct')");

@@ -80,7 +80,9 @@ describe('buildEmailUpdatePayload', () => {
  */
 describe('isSameEmail', () => {
   test('matches the current address after trim and lowercase', () => {
-    expect(isSameEmail('  Buyer@Selene.local ', 'buyer@selene.local')).toBe(true);
+    expect(isSameEmail('  Buyer@Selene.local ', 'buyer@selene.local')).toBe(
+      true,
+    );
   });
 
   test('a different address is not the same', () => {
@@ -116,7 +118,9 @@ describe('mapEmailChangeErrorKey', () => {
 
   test('never matches on the raw message text', () => {
     expect(
-      mapEmailChangeErrorKey({ message: 'A user with this email already exists' }),
+      mapEmailChangeErrorKey({
+        message: 'A user with this email already exists',
+      }),
     ).toBe('common:errors.generic');
   });
 });

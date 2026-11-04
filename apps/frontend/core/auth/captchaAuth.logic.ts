@@ -34,7 +34,11 @@ export const signInWithPasswordCaptcha = async (
   password: string,
 ) => {
   const captchaToken = await getToken();
-  return auth.signInWithPassword({ email, password, options: { captchaToken } });
+  return auth.signInWithPassword({
+    email,
+    password,
+    options: { captchaToken },
+  });
 };
 
 export const resendSignupCode = async (

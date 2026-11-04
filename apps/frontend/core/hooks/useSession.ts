@@ -142,12 +142,15 @@ export const useSession = () => {
     });
 
     // A ban applied while the app was open only shows after a resume reload.
-    const appStateSubscription = AppState.addEventListener('change', (state) => {
-      const userId = currentUserId.current;
-      if (userId && shouldReloadStatusOnResume(state, userId)) {
-        void fetchAccountStatus(userId);
-      }
-    });
+    const appStateSubscription = AppState.addEventListener(
+      'change',
+      (state) => {
+        const userId = currentUserId.current;
+        if (userId && shouldReloadStatusOnResume(state, userId)) {
+          void fetchAccountStatus(userId);
+        }
+      },
+    );
 
     return () => {
       isMounted.current = false;

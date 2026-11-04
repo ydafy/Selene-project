@@ -1,7 +1,5 @@
 export type BuyerCheckoutRecoveryView =
-  | { kind: 'none' }
-  | { kind: 'pending_refund' }
-  | { kind: 'refunded' };
+  { kind: 'none' } | { kind: 'pending_refund' } | { kind: 'refunded' };
 
 export function resolveBuyerCheckoutRecoveryView(input: {
   isBuyer: boolean;

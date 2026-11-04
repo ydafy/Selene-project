@@ -23,7 +23,9 @@ const makeAuth = (
   let updateCall = 0;
   return {
     verifyOtp: mock(async () => ({ error: verifyError })),
-    updateUser: mock(async () => ({ error: updateErrors[updateCall++] ?? null })),
+    updateUser: mock(async () => ({
+      error: updateErrors[updateCall++] ?? null,
+    })),
   };
 };
 
@@ -112,12 +114,19 @@ describe('completePasswordRecovery', () => {
 
   test('asks for a new code when the recovery session ended before the update', async () => {
     for (const sessionError of [
-      { name: 'AuthSessionMissingError', status: 400, message: 'Auth session missing!' },
+      {
+        name: 'AuthSessionMissingError',
+        status: 400,
+        message: 'Auth session missing!',
+      },
       authError('session_not_found', 403),
       authError('session_expired', 403),
     ]) {
       const auth = makeAuth(null, [sessionError]);
-      const result = await completePasswordRecovery(auth, { ...input, codeVerified: true });
+      const result = await completePasswordRecovery(auth, {
+        ...input,
+        codeVerified: true,
+      });
 
       expect(auth.verifyOtp).not.toHaveBeenCalled();
       expect(result).toEqual({
@@ -130,7 +139,10 @@ describe('completePasswordRecovery', () => {
 
   test('keeps the verified code for any other update failure', async () => {
     const auth = makeAuth(null, [authError('weak_password')]);
-    const result = await completePasswordRecovery(auth, { ...input, codeVerified: true });
+    const result = await completePasswordRecovery(auth, {
+      ...input,
+      codeVerified: true,
+    });
     expect(result.codeVerified).toBe(true);
   });
 });

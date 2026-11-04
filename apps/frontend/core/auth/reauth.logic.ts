@@ -13,8 +13,7 @@ import { resolveGoogleError } from './googleAuth.logic';
 export type ReauthMethod = 'password' | 'google';
 
 export type ReauthCredential =
-  | { kind: 'password'; password: string }
-  | { kind: 'google' };
+  { kind: 'password'; password: string } | { kind: 'google' };
 
 export type ReauthResult =
   | { ok: true }
@@ -33,7 +32,10 @@ type SignInOutcome = { userId: string | null; error: unknown };
 export type ReauthDeps = {
   googleCancelledCode: string;
   getSnapshot: () => Promise<ReauthSessionSnapshot | null>;
-  signInWithPassword: (email: string, password: string) => Promise<SignInOutcome>;
+  signInWithPassword: (
+    email: string,
+    password: string,
+  ) => Promise<SignInOutcome>;
   signInWithGoogle: () => Promise<SignInOutcome>;
   /** Resolves true when the previous session is active again. */
   restoreSession: (snapshot: ReauthSessionSnapshot) => Promise<boolean>;
@@ -89,7 +91,10 @@ export const reauthenticate = async (
   let outcome: SignInOutcome;
   if (credential.kind === 'password') {
     if (!previous.email) return { ok: false, errorKey: GENERIC_ERROR_KEY };
-    outcome = await deps.signInWithPassword(previous.email, credential.password);
+    outcome = await deps.signInWithPassword(
+      previous.email,
+      credential.password,
+    );
     if (outcome.error) {
       return {
         ok: false,

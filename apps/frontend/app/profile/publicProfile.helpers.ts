@@ -1,8 +1,5 @@
 export type PublicProfileCollectionState =
-  | 'error'
-  | 'loading'
-  | 'empty'
-  | 'ready';
+  'error' | 'loading' | 'empty' | 'ready';
 
 type PublicProfileCollectionStateInput = {
   error: unknown;

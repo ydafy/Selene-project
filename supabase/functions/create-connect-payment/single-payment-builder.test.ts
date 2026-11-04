@@ -3,20 +3,20 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 import {
-	CHECKOUT_UUID_NAMESPACE,
-	STRIPE_ALLOCATION_VALUE_MAX_LEN,
-	SINGLE_MODAL_FLOW,
+  CHECKOUT_UUID_NAMESPACE,
+  STRIPE_ALLOCATION_VALUE_MAX_LEN,
+  SINGLE_MODAL_FLOW,
   assertValidAllocationRows,
   assertReservationSucceeded,
   buildAllocationMetadata,
-   buildCheckoutIdentifiers,
-   buildCreateConnectPaymentResponse,
-   createSinglePaymentIntent,
-   buildSinglePaymentIntentParams,
-	buildTransferGroup,
-	chunkAllocationJson,
-	deriveOrderGroupId,
-	deriveShipmentId,
+  buildCheckoutIdentifiers,
+  buildCreateConnectPaymentResponse,
+  createSinglePaymentIntent,
+  buildSinglePaymentIntentParams,
+  buildTransferGroup,
+  chunkAllocationJson,
+  deriveOrderGroupId,
+  deriveShipmentId,
   normalizeCreateConnectPaymentRequest,
   type ReservationResult,
 } from './single-payment-builder.ts';
@@ -49,7 +49,11 @@ import { calculateOrderCalculations } from '../../../apps/frontend/core/hooks/us
  */
 
 const buildAllocation = (
-  rows: Array<{ shipmentId: string; subtotalCents: number; shippingCents: number }>,
+  rows: Array<{
+    shipmentId: string;
+    subtotalCents: number;
+    shippingCents: number;
+  }>,
 ): CheckoutAllocation => {
   const allocation = calculateCheckoutAllocation(
     rows.map((r, i) => ({
@@ -85,7 +89,9 @@ describe('single-payment-builder > chunkAllocationJson', () => {
     const chunks = chunkAllocationJson(json);
     expect(chunks).toHaveLength(1);
     expect(chunks[0]).toBe(json);
-    expect(chunks[0].length).toBeLessThanOrEqual(STRIPE_ALLOCATION_VALUE_MAX_LEN);
+    expect(chunks[0].length).toBeLessThanOrEqual(
+      STRIPE_ALLOCATION_VALUE_MAX_LEN,
+    );
   });
 
   it('splits a long JSON string into chunks that never exceed the value limit', () => {
@@ -163,7 +169,10 @@ describe('single-payment-builder > buildAllocationMetadata', () => {
     const meta = buildAllocationMetadata(allocation, sellerProductIds);
     const count = Number(meta.allocation_chunk_count);
     expect(count).toBeGreaterThan(1);
-    const joined = Array.from({ length: count }, (_, i) => meta[`allocation_json_${i}`]);
+    const joined = Array.from(
+      { length: count },
+      (_, i) => meta[`allocation_json_${i}`],
+    );
     // Metadata stores a COMPACT allocation projection (rows only, no aggregate
     // totals — the totals travel as individual metadata keys); verify it
     // round-trips to that compact shape, NOT the full CheckoutAllocation. The
@@ -218,9 +227,16 @@ describe('single-payment-builder > buildAllocationMetadata', () => {
     // The single chunked allocation blob carries the full durable allocation
     // (seller + shipment + product ids + per-shipment money breakdown).
     const count = Number(meta.allocation_chunk_count);
-    const joined = Array.from({ length: count }, (_, i) => meta[`allocation_json_${i}`]);
+    const joined = Array.from(
+      { length: count },
+      (_, i) => meta[`allocation_json_${i}`],
+    );
     const reconstructed = JSON.parse(joined.join('')) as unknown as {
-      rows: Array<{ sellerId: string; shipmentId: string; productIds: string[] }>;
+      rows: Array<{
+        sellerId: string;
+        shipmentId: string;
+        productIds: string[];
+      }>;
     };
     expect(reconstructed.rows).toHaveLength(14);
     expect(reconstructed.rows.every((r) => r.productIds.length > 0)).toBe(true);
@@ -272,7 +288,10 @@ describe('single-payment-builder > buildSinglePaymentIntentParams', () => {
     // Payment methods are dynamic/automatic per Stripe skill; no hardcoded
     // payment_method_types on this non-Terminal flow.
     expect(params.payment_method_types).toBeUndefined();
-    expect((params as { automatic_payment_methods?: { enabled: boolean } }).automatic_payment_methods).toEqual({
+    expect(
+      (params as { automatic_payment_methods?: { enabled: boolean } })
+        .automatic_payment_methods,
+    ).toEqual({
       enabled: true,
     });
   });
@@ -300,7 +319,9 @@ describe('single-payment-builder > buildSinglePaymentIntentParams', () => {
     expect(m.grossed_up_total_cents).toBe(String(allocation.buyerTotalCents));
     expect(m.domestic_seguro_cents).toBe(String(allocation.totalSeguroCents));
     expect(m.total_gross_cents).toBe(String(allocation.totalGrossCents));
-    expect(m.total_commission_cents).toBe(String(allocation.totalCommissionCents));
+    expect(m.total_commission_cents).toBe(
+      String(allocation.totalCommissionCents),
+    );
     expect(m.total_shipping_cents).toBe(String(allocation.totalShippingCents));
     expect(m.total_seguro_cents).toBe(String(allocation.totalSeguroCents));
     expect(m.total_release_cents).toBe(String(allocation.totalReleaseCents));
@@ -312,7 +333,10 @@ describe('single-payment-builder > buildSinglePaymentIntentParams', () => {
     expect(m).not.toHaveProperty('shipment_ids');
     expect(m).not.toHaveProperty('seller_product_ids');
     const count = Number(m.allocation_chunk_count);
-    const joined = Array.from({ length: count }, (_, i) => m[`allocation_json_${i}`]);
+    const joined = Array.from(
+      { length: count },
+      (_, i) => m[`allocation_json_${i}`],
+    );
     const reconstructed = JSON.parse(joined.join('')) as unknown as {
       rows: Array<{
         sellerId: string;
@@ -321,8 +345,14 @@ describe('single-payment-builder > buildSinglePaymentIntentParams', () => {
         shippingCents: number;
       }>;
     };
-    expect(reconstructed.rows.map((r) => r.sellerId)).toEqual(['seller_0', 'seller_1']);
-    expect(reconstructed.rows.map((r) => r.shipmentId)).toEqual(['ship_a', 'ship_b']);
+    expect(reconstructed.rows.map((r) => r.sellerId)).toEqual([
+      'seller_0',
+      'seller_1',
+    ]);
+    expect(reconstructed.rows.map((r) => r.shipmentId)).toEqual([
+      'ship_a',
+      'ship_b',
+    ]);
     expect(reconstructed.rows[0].productIds).toEqual(['p1']);
     expect(reconstructed.rows[1].productIds).toEqual(['p2', 'p3']);
     // Every metadata value remains within the Stripe 500-char value cap.
@@ -346,8 +376,9 @@ describe('single-payment-builder > buildSinglePaymentIntentParams', () => {
     // Single-seller shape: the chunked allocation blob carries the one
     // shipment + its product ids (no top-level shipment_ids metadata key).
     const count = Number(params.metadata.allocation_chunk_count);
-    const joined = Array.from({ length: count }, (_, i) =>
-      params.metadata[`allocation_json_${i}`],
+    const joined = Array.from(
+      { length: count },
+      (_, i) => params.metadata[`allocation_json_${i}`],
     );
     const reconstructed = JSON.parse(joined.join('')) as unknown as {
       rows: Array<{ shipmentId: string; productIds: string[] }>;
@@ -387,9 +418,24 @@ describe('single-payment-builder > buildSinglePaymentIntentParams', () => {
     // content — but pass the rows to the calculator in two different orders.
     const buildCart = (order: 'forward' | 'reversed'): CheckoutAllocation => {
       const specs = [
-        { sellerId: 'seller_2', shipmentId: 'ship_c', subtotalCents: 40_000, shippingCents: 5_000 },
-        { sellerId: 'seller_0', shipmentId: 'ship_b', subtotalCents: 80_000, shippingCents: 15_000 },
-        { sellerId: 'seller_1', shipmentId: 'ship_a', subtotalCents: 100_000, shippingCents: 20_000 },
+        {
+          sellerId: 'seller_2',
+          shipmentId: 'ship_c',
+          subtotalCents: 40_000,
+          shippingCents: 5_000,
+        },
+        {
+          sellerId: 'seller_0',
+          shipmentId: 'ship_b',
+          subtotalCents: 80_000,
+          shippingCents: 15_000,
+        },
+        {
+          sellerId: 'seller_1',
+          shipmentId: 'ship_a',
+          subtotalCents: 100_000,
+          shippingCents: 20_000,
+        },
       ];
       const rows = order === 'forward' ? specs : [...specs].reverse();
       const allocation = calculateCheckoutAllocation(
@@ -592,9 +638,9 @@ describe('single-payment-builder > normalizeCreateConnectPaymentRequest', () => 
 });
 
 describe('single-payment-builder > buildCheckoutIdentifiers', () => {
-	const dummyRandomUuid = (): string => '00000000-0000-4000-8000-000000000000';
-	const strictUuidPattern =
-		/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const dummyRandomUuid = (): string => '00000000-0000-4000-8000-000000000000';
+  const strictUuidPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
   it('derives DETERMINISTIC identifiers from the idempotency key (no randomness)', () => {
     const a = buildCheckoutIdentifiers('checkout-key-abc', dummyRandomUuid);
@@ -617,11 +663,15 @@ describe('single-payment-builder > buildCheckoutIdentifiers', () => {
 
   it('produces collision-free shipment ids per product for the same idempotency key', () => {
     const ids = buildCheckoutIdentifiers('shared-key', dummyRandomUuid);
-    expect(ids.shipmentIdFor('product_a')).not.toBe(ids.shipmentIdFor('product_b'));
+    expect(ids.shipmentIdFor('product_a')).not.toBe(
+      ids.shipmentIdFor('product_b'),
+    );
     // Stable on retrial per product — required so the webhook persists the same
     // shipment id on a retry without duplicating product shipments.
     const again = buildCheckoutIdentifiers('shared-key', dummyRandomUuid);
-    expect(again.shipmentIdFor('product_a')).toBe(ids.shipmentIdFor('product_a'));
+    expect(again.shipmentIdFor('product_a')).toBe(
+      ids.shipmentIdFor('product_a'),
+    );
   });
 
   it('does not collapse two listings from the same seller into one shipment id', () => {
@@ -632,79 +682,78 @@ describe('single-payment-builder > buildCheckoutIdentifiers', () => {
     );
   });
 
+  it('derives the pinned UUID v5 golden vectors with the checkout namespace', () => {
+    expect(CHECKOUT_UUID_NAMESPACE).toBe(
+      '7b0f4a20-5c30-4e0f-8f84-9a9f4b2e19c1',
+    );
+    expect(deriveOrderGroupId('checkout-key-abc')).toBe(
+      'b0b46a0e-4242-5b5f-85c8-2ff0581dd65a',
+    );
+    expect(deriveShipmentId('shared-key', 'product_gpu')).toBe(
+      '5f43fc9e-ec3b-5072-82a1-ce531a0280c9',
+    );
 
-	it('derives the pinned UUID v5 golden vectors with the checkout namespace', () => {
-		expect(CHECKOUT_UUID_NAMESPACE).toBe(
-			'7b0f4a20-5c30-4e0f-8f84-9a9f4b2e19c1',
-		);
-		expect(deriveOrderGroupId('checkout-key-abc')).toBe(
-			'b0b46a0e-4242-5b5f-85c8-2ff0581dd65a',
-		);
-		expect(deriveShipmentId('shared-key', 'product_gpu')).toBe(
-			'5f43fc9e-ec3b-5072-82a1-ce531a0280c9',
-		);
+    const buildParams = () => {
+      const orderId = deriveOrderGroupId('checkout-key-abc');
+      const shipmentId = deriveShipmentId('checkout-key-abc', 'product_gpu');
+      const allocation = buildAllocation([
+        { shipmentId, subtotalCents: 100_000, shippingCents: 20_000 },
+      ]);
+      return buildSinglePaymentIntentParams({
+        allocation,
+        orderId,
+        buyerId: 'buyer_1',
+        customerId: 'cus_1',
+        addressId: 'address_1',
+        transferGroup: buildTransferGroup(orderId),
+        shipmentProductIds: { [shipmentId]: ['product_gpu'] },
+      });
+    };
 
-		const buildParams = () => {
-			const orderId = deriveOrderGroupId('checkout-key-abc');
-			const shipmentId = deriveShipmentId('checkout-key-abc', 'product_gpu');
-			const allocation = buildAllocation([
-				{ shipmentId, subtotalCents: 100_000, shippingCents: 20_000 },
-			]);
-			return buildSinglePaymentIntentParams({
-				allocation,
-				orderId,
-				buyerId: 'buyer_1',
-				customerId: 'cus_1',
-				addressId: 'address_1',
-				transferGroup: buildTransferGroup(orderId),
-				shipmentProductIds: { [shipmentId]: ['product_gpu'] },
-			});
-		};
+    expect(buildParams()).toEqual(buildParams());
+  });
 
-		expect(buildParams()).toEqual(buildParams());
-	});
+  it('triangulates UUID v5 canonical UTF-8 names without normalizing them', () => {
+    expect(deriveOrderGroupId('checkout-ñ-😀')).toBe(
+      '42d33f19-6cf4-5c35-a0bd-94ac1bf7afc5',
+    );
+    expect(deriveShipmentId('shared-key', 'product_gpu')).not.toBe(
+      deriveShipmentId('shared-key', 'product_CPU'),
+    );
+  });
 
-	it('triangulates UUID v5 canonical UTF-8 names without normalizing them', () => {
-		expect(deriveOrderGroupId('checkout-ñ-😀')).toBe(
-			'42d33f19-6cf4-5c35-a0bd-94ac1bf7afc5',
-		);
-		expect(deriveShipmentId('shared-key', 'product_gpu')).not.toBe(
-			deriveShipmentId('shared-key', 'product_CPU'),
-		);
-	});
+  it('emits UUID v5 identifiers accepted by Zod and the strict consumer regex', () => {
+    const ids = [
+      deriveOrderGroupId('checkout-key-abc'),
+      deriveShipmentId('shared-key', 'product_gpu'),
+    ];
 
-	it('emits UUID v5 identifiers accepted by Zod and the strict consumer regex', () => {
-		const ids = [
-			deriveOrderGroupId('checkout-key-abc'),
-			deriveShipmentId('shared-key', 'product_gpu'),
-		];
+    for (const id of ids) {
+      expect(id[14]).toBe('5');
+      expect(id[19]).toMatch(/[89ab]/);
+      expect(z.string().uuid().safeParse(id).success).toBe(true);
+      expect(id).toMatch(strictUuidPattern);
+    }
+  });
 
-		for (const id of ids) {
-			expect(id[14]).toBe('5');
-			expect(id[19]).toMatch(/[89ab]/);
-			expect(z.string().uuid().safeParse(id).success).toBe(true);
-			expect(id).toMatch(strictUuidPattern);
-		}
-	});
+  it('keeps the per-product shipment bijection stable for a retry', () => {
+    const gpu = deriveShipmentId('shared-key', 'product_gpu');
+    const cpu = deriveShipmentId('shared-key', 'product_cpu');
 
-	it('keeps the per-product shipment bijection stable for a retry', () => {
-		const gpu = deriveShipmentId('shared-key', 'product_gpu');
-		const cpu = deriveShipmentId('shared-key', 'product_cpu');
+    expect(gpu).not.toBe(cpu);
+    expect(deriveShipmentId('shared-key', 'product_gpu')).toBe(gpu);
+  });
 
-		expect(gpu).not.toBe(cpu);
-		expect(deriveShipmentId('shared-key', 'product_gpu')).toBe(gpu);
-	});
+  it('changes from the known invalid legacy SHA-256 fixture at cutover', () => {
+    const legacyHex = createHash('sha256')
+      .update('selene_order_group:checkout-key-abc', 'utf8')
+      .digest('hex');
+    const legacyId = `${legacyHex.slice(0, 8)}-${legacyHex.slice(8, 12)}-${legacyHex.slice(12, 16)}-${legacyHex.slice(16, 20)}-${legacyHex.slice(20, 32)}`;
 
-	it('changes from the known invalid legacy SHA-256 fixture at cutover', () => {
-		const legacyHex = createHash('sha256')
-			.update('selene_order_group:checkout-key-abc', 'utf8')
-			.digest('hex');
-		const legacyId = `${legacyHex.slice(0, 8)}-${legacyHex.slice(8, 12)}-${legacyHex.slice(12, 16)}-${legacyHex.slice(16, 20)}-${legacyHex.slice(20, 32)}`;
-
-		expect(legacyId).toBe('8f84755c-131b-d742-9c52-ea720d94f264');
-		expect(legacyId).not.toMatch(strictUuidPattern);
-		expect(deriveOrderGroupId('checkout-key-abc')).not.toBe(legacyId);
-	});
+    expect(legacyId).toBe('8f84755c-131b-d742-9c52-ea720d94f264');
+    expect(legacyId).not.toMatch(strictUuidPattern);
+    expect(deriveOrderGroupId('checkout-key-abc')).not.toBe(legacyId);
+  });
 
   it('emits RFC-4122-formatted 36-char ids derived from the idempotency key', () => {
     const ids = buildCheckoutIdentifiers('checkout-key-1', dummyRandomUuid);
@@ -770,7 +819,9 @@ describe('single-payment-builder > buildCreateConnectPaymentResponse', () => {
     const response = buildCreateConnectPaymentResponse(pi, ctx);
 
     expect(response).not.toHaveProperty('paymentIntents');
-    expect((response as unknown as Record<string, unknown>).paymentIntents).toBeUndefined();
+    expect(
+      (response as unknown as Record<string, unknown>).paymentIntents,
+    ).toBeUndefined();
     expect(response.clientSecret).toBe('cs_1');
   });
 });
@@ -781,7 +832,10 @@ describe('single-payment-builder > createSinglePaymentIntent', () => {
       params: Record<string, unknown>;
       options: { idempotencyKey?: string };
     }> = [];
-    const createdByKey = new Map<string, { client_secret: string; amount: number }>();
+    const createdByKey = new Map<
+      string,
+      { client_secret: string; amount: number }
+    >();
     const stripe = {
       paymentIntents: {
         create: async (
@@ -794,7 +848,10 @@ describe('single-payment-builder > createSinglePaymentIntent', () => {
           const existing = createdByKey.get(key);
           if (existing) return existing;
 
-          const paymentIntent = { client_secret: 'pi_secret_retry', amount: 188_208 };
+          const paymentIntent = {
+            client_secret: 'pi_secret_retry',
+            amount: 188_208,
+          };
           createdByKey.set(key, paymentIntent);
           return paymentIntent;
         },
@@ -827,7 +884,9 @@ describe('single-payment-builder > createSinglePaymentIntent', () => {
       { idempotencyKey: 'selene_pi_checkout-retry-key' },
       { idempotencyKey: 'selene_pi_checkout-retry-key' },
     ]);
-    expect(JSON.stringify(calls[0].params)).toBe(JSON.stringify(calls[1].params));
+    expect(JSON.stringify(calls[0].params)).toBe(
+      JSON.stringify(calls[1].params),
+    );
   });
 });
 

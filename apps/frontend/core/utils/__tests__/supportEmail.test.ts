@@ -4,17 +4,23 @@ import { buildSupportMailto, resolveSupportEmail } from '../supportEmail';
 describe('resolveSupportEmail', () => {
   test('returns the trimmed address when it is configured', () => {
     expect(
-      resolveSupportEmail({ EXPO_PUBLIC_SUPPORT_EMAIL: '  soporte@selene.mx ' }),
+      resolveSupportEmail({
+        EXPO_PUBLIC_SUPPORT_EMAIL: '  soporte@selene.mx ',
+      }),
     ).toBe('soporte@selene.mx');
   });
 
   test('returns null when the variable is missing or blank', () => {
     expect(resolveSupportEmail({})).toBeNull();
-    expect(resolveSupportEmail({ EXPO_PUBLIC_SUPPORT_EMAIL: '   ' })).toBeNull();
+    expect(
+      resolveSupportEmail({ EXPO_PUBLIC_SUPPORT_EMAIL: '   ' }),
+    ).toBeNull();
   });
 
   test('returns null for a value that is not an email address', () => {
-    expect(resolveSupportEmail({ EXPO_PUBLIC_SUPPORT_EMAIL: 'soporte' })).toBeNull();
+    expect(
+      resolveSupportEmail({ EXPO_PUBLIC_SUPPORT_EMAIL: 'soporte' }),
+    ).toBeNull();
     expect(
       resolveSupportEmail({ EXPO_PUBLIC_SUPPORT_EMAIL: 'soporte@selene' }),
     ).toBeNull();

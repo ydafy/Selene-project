@@ -53,7 +53,10 @@ const GROUPS: Record<string, string[]> = {
     'Dinero devuelto, pero error al actualizar inventario. Soporte técnico ha sido notificado.',
   ],
   review: ['CANCELLATION_RECOVERY_REQUIRED', 'CANCELLATION_CARRIER_PENDING'],
-  needsSupport: ['STRIPE_TRANSFER_ALREADY_RELEASED', 'REFUND_AMOUNT_EXCEEDS_CAP'],
+  needsSupport: [
+    'STRIPE_TRANSFER_ALREADY_RELEASED',
+    'REFUND_AMOUNT_EXCEEDS_CAP',
+  ],
   generic: [
     'SYSTEM_SETTINGS_NOT_FOUND',
     'MISSING_STRIPE_SECRET_KEY',

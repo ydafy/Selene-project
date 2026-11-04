@@ -21,11 +21,14 @@ export function invalidateNotificationKeys(
 }
 
 export async function countUnreadNotifications(
-  client: SupabaseClient<Database>, userId: string,
+  client: SupabaseClient<Database>,
+  userId: string,
 ): Promise<number> {
-  const { count, error } = await client.from('notifications')
+  const { count, error } = await client
+    .from('notifications')
     .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId).is('deleted_at', null)
+    .eq('user_id', userId)
+    .is('deleted_at', null)
     .or('read.eq.false,read.is.null');
   if (error) throw error;
   return count ?? 0;
@@ -96,11 +99,11 @@ export async function snapshotBadge(
   queryClient: QueryClient,
   userId: string | undefined,
 ): Promise<BadgeContext> {
-  await queryClient.cancelQueries({ queryKey: ['unread-notifications', userId] });
-  const previousUnread = queryClient.getQueryData<number>([
-    'unread-notifications',
-    userId,
-  ]) ?? 0;
+  await queryClient.cancelQueries({
+    queryKey: ['unread-notifications', userId],
+  });
+  const previousUnread =
+    queryClient.getQueryData<number>(['unread-notifications', userId]) ?? 0;
   return { previousUnread };
 }
 
@@ -110,7 +113,10 @@ export function rollbackBadge(
   context: BadgeContext | undefined,
 ): void {
   if (!context) return;
-  queryClient.setQueryData(['unread-notifications', userId], context.previousUnread);
+  queryClient.setQueryData(
+    ['unread-notifications', userId],
+    context.previousUnread,
+  );
 }
 
 export function createMarkAsReadMutationOptions(
@@ -167,8 +173,18 @@ export function createDismissNotificationMutationOptions(
     },
     onMutate: async (id: string): Promise<BadgeContext> => {
       const ctx = await snapshotBadge(queryClient, userId);
-      const pages = queryClient.getQueryData<{ pages: { items: { id: string; read: boolean | null; deleted_at: string | null }[] }[] }>(['notifications', userId]);
-      const item = pages?.pages.flatMap((page) => page.items).find((row) => row.id === id);
+      const pages = queryClient.getQueryData<{
+        pages: {
+          items: {
+            id: string;
+            read: boolean | null;
+            deleted_at: string | null;
+          }[];
+        }[];
+      }>(['notifications', userId]);
+      const item = pages?.pages
+        .flatMap((page) => page.items)
+        .find((row) => row.id === id);
       if (item && !item.read && item.deleted_at === null) {
         queryClient.setQueryData(
           ['unread-notifications', userId],

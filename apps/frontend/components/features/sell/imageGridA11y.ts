@@ -21,17 +21,14 @@ export const buildRemovePhotoA11yLabel = (
   t: ImageGridTranslator,
 ): string => t('a11y.removePhoto', { index });
 
-export const buildCoverBadgeA11yLabel = (
-  t: ImageGridTranslator,
-): string => t('a11y.coverBadge');
+export const buildCoverBadgeA11yLabel = (t: ImageGridTranslator): string =>
+  t('a11y.coverBadge');
 
-export const buildAddPhotosA11yLabel = (
-  t: ImageGridTranslator,
-): string => t('a11y.addPhotos');
+export const buildAddPhotosA11yLabel = (t: ImageGridTranslator): string =>
+  t('a11y.addPhotos');
 
-export const buildCloseViewerA11yLabel = (
-  t: ImageGridTranslator,
-): string => t('a11y.closeViewer');
+export const buildCloseViewerA11yLabel = (t: ImageGridTranslator): string =>
+  t('a11y.closeViewer');
 
 export const buildMovePhotoUpA11yLabel = (
   index: number,

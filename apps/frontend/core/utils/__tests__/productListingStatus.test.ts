@@ -33,7 +33,13 @@ describe('product listing statuses', () => {
   it('flags only PENDING_VERIFICATION and IN_REVIEW as in verification', () => {
     expect(isInVerification('PENDING_VERIFICATION')).toBe(true);
     expect(isInVerification('IN_REVIEW')).toBe(true);
-    for (const status of ['VERIFIED', 'SOLD', 'REJECTED', 'HIDDEN', 'RESERVED']) {
+    for (const status of [
+      'VERIFIED',
+      'SOLD',
+      'REJECTED',
+      'HIDDEN',
+      'RESERVED',
+    ]) {
       expect(isInVerification(status)).toBe(false);
     }
   });

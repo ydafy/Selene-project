@@ -31,7 +31,8 @@ const normalizePublicationRate = (value: number | null): number => {
     throw new Error('PUBLICATION_ECONOMICS_ACCEPTANCE_REQUIRED');
   }
 
-  const normalized = value <= 1 ? value : value <= 100 ? value / 100 : value / 10_000;
+  const normalized =
+    value <= 1 ? value : value <= 100 ? value / 100 : value / 10_000;
   if (normalized > 1) {
     throw new Error('PUBLICATION_ECONOMICS_ACCEPTANCE_REQUIRED');
   }
@@ -66,9 +67,7 @@ export const buildPublicationEconomicsSnapshot = ({
 
   return {
     shippingReserveCents:
-      quoteCents +
-       shippingBufferCents +
-      Math.ceil(priceCents * insuranceRate),
+      quoteCents + shippingBufferCents + Math.ceil(priceCents * insuranceRate),
     commissionRate,
     insuranceRate,
   };

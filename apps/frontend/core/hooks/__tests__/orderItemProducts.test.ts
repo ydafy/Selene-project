@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import {
-  ITEM_PRODUCT_EMBED,
-  mergeItemProducts,
-} from '../orderItemProducts';
+import { ITEM_PRODUCT_EMBED, mergeItemProducts } from '../orderItemProducts';
 
 describe('mergeItemProducts', () => {
   it('keeps the table row when RLS shows it (owner or admin)', () => {
@@ -15,7 +12,10 @@ describe('mergeItemProducts', () => {
 
     mergeItemProducts(item);
 
-    expect(item as unknown).toEqual({ id: 'i1', product: { id: 'p1', origin_zip: '01000' } });
+    expect(item as unknown).toEqual({
+      id: 'i1',
+      product: { id: 'p1', origin_zip: '01000' },
+    });
   });
 
   it('falls back to the view row when the table row is hidden (buyer)', () => {

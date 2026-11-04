@@ -33,7 +33,11 @@ type AuthInternals = { storage: unknown; persistSession: boolean };
 describe('createNativeSupabaseClient', () => {
   it('stores the session in the injected device storage', async () => {
     const deps = createDeps('ios');
-    const client = createNativeSupabaseClient('http://127.0.0.1:54321', 'test-anon-key', deps);
+    const client = createNativeSupabaseClient(
+      'http://127.0.0.1:54321',
+      'test-anon-key',
+      deps,
+    );
     const auth = client.auth as unknown as AuthInternals;
 
     expect(auth.storage).toBe(deps.storage);
@@ -43,7 +47,11 @@ describe('createNativeSupabaseClient', () => {
 
   it('follows the app state on native platforms', async () => {
     const deps = createDeps('android');
-    const client = createNativeSupabaseClient('http://127.0.0.1:54321', 'test-anon-key', deps);
+    const client = createNativeSupabaseClient(
+      'http://127.0.0.1:54321',
+      'test-anon-key',
+      deps,
+    );
 
     expect(deps.listeners).toHaveLength(1);
     await client.auth.stopAutoRefresh();
@@ -51,7 +59,11 @@ describe('createNativeSupabaseClient', () => {
 
   it('leaves visibility handling to auth-js on web', async () => {
     const deps = createDeps('web');
-    const client = createNativeSupabaseClient('http://127.0.0.1:54321', 'test-anon-key', deps);
+    const client = createNativeSupabaseClient(
+      'http://127.0.0.1:54321',
+      'test-anon-key',
+      deps,
+    );
 
     expect(deps.listeners).toHaveLength(0);
     await client.auth.stopAutoRefresh();

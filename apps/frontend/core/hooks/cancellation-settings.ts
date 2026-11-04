@@ -17,6 +17,7 @@ export function resolveCancellationSettings(
 ): CancellationSettings {
   return {
     orderExpirationHours: systemSettings?.order_expiration_hours ?? null,
-    preparingExpirationHours: systemSettings?.preparing_expiration_hours ?? null,
+    preparingExpirationHours:
+      systemSettings?.preparing_expiration_hours ?? null,
   };
 }

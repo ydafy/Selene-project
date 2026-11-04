@@ -136,8 +136,7 @@ export const useImageUpload = () => {
     userId: string,
     base64: string | null | undefined,
     ext: string,
-  ) =>
-    uploadFile('Avatars', `${userId}/avatar.${ext}`, base64, ext);
+  ) => uploadFile('Avatars', `${userId}/avatar.${ext}`, base64, ext);
 
   return { pickImage, takePhoto, uploadFile, uploadAvatar, uploading };
 };

@@ -1,6 +1,7 @@
 import type { Enums, Tables } from '@selene/types';
 
-export type OrderBannerKind = 'cancelledShipment' | 'dispute' | 'refunded' | 'orderStatus';
+export type OrderBannerKind =
+  'cancelledShipment' | 'dispute' | 'refunded' | 'orderStatus';
 
 // A cancelled shipment keeps its own banner whatever the order status is:
 // another seller's dispute or refund says nothing about this shipment.

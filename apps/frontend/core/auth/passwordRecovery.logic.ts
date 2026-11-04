@@ -71,7 +71,11 @@ export const completePasswordRecovery = async (
 
     const { error } = await auth.updateUser({ password: input.newPassword });
     if (error && isSessionEnded(error)) {
-      return { ok: false, codeVerified: false, messageKey: RECOVERY_SESSION_ENDED_KEY };
+      return {
+        ok: false,
+        codeVerified: false,
+        messageKey: RECOVERY_SESSION_ENDED_KEY,
+      };
     }
     if (error) {
       return { ok: false, codeVerified, messageKey: recoveryErrorKey(error) };

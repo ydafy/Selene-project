@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import {
-  CAPTCHA_CANCELLED_CODE,
-  CaptchaError,
-} from './captcha/captcha.logic';
+import { CAPTCHA_CANCELLED_CODE, CaptchaError } from './captcha/captcha.logic';
 import {
   reauthSignInWithPassword,
   resendSignupCode,
@@ -62,9 +59,9 @@ describe('signUpWithCaptcha', () => {
 
   it('does not call Supabase when the challenge fails', async () => {
     const { auth, calls } = makeAuth();
-    await expect(signUpWithCaptcha(auth, cancelled, input)).rejects.toBeInstanceOf(
-      CaptchaError,
-    );
+    await expect(
+      signUpWithCaptcha(auth, cancelled, input),
+    ).rejects.toBeInstanceOf(CaptchaError);
     expect(calls).toHaveLength(0);
   });
 });
@@ -102,9 +99,9 @@ describe('resendSignupCode', () => {
 
   it('does not call Supabase when the challenge fails', async () => {
     const { auth, calls } = makeAuth();
-    await expect(resendSignupCode(auth, cancelled, 'a@b.mx')).rejects.toBeInstanceOf(
-      CaptchaError,
-    );
+    await expect(
+      resendSignupCode(auth, cancelled, 'a@b.mx'),
+    ).rejects.toBeInstanceOf(CaptchaError);
     expect(calls).toHaveLength(0);
   });
 });
@@ -118,9 +115,9 @@ describe('sendRecoveryCode', () => {
 
   it('does not call Supabase when the challenge fails', async () => {
     const { auth, calls } = makeAuth();
-    await expect(sendRecoveryCode(auth, cancelled, 'a@b.mx')).rejects.toBeInstanceOf(
-      CaptchaError,
-    );
+    await expect(
+      sendRecoveryCode(auth, cancelled, 'a@b.mx'),
+    ).rejects.toBeInstanceOf(CaptchaError);
     expect(calls).toHaveLength(0);
   });
 });
@@ -128,7 +125,12 @@ describe('sendRecoveryCode', () => {
 describe('reauthSignInWithPassword', () => {
   it('passes the token and returns the user id', async () => {
     const { auth, calls } = makeAuth();
-    const outcome = await reauthSignInWithPassword(auth, withToken, 'a@b.mx', 'pw');
+    const outcome = await reauthSignInWithPassword(
+      auth,
+      withToken,
+      'a@b.mx',
+      'pw',
+    );
     expect(outcome).toEqual({ userId: 'u1', error: null });
     expect(
       (calls[0].params[0] as { options: { captchaToken?: string } }).options
@@ -138,7 +140,12 @@ describe('reauthSignInWithPassword', () => {
 
   it('returns the captcha error without calling Supabase when the challenge fails', async () => {
     const { auth, calls } = makeAuth();
-    const outcome = await reauthSignInWithPassword(auth, cancelled, 'a@b.mx', 'pw');
+    const outcome = await reauthSignInWithPassword(
+      auth,
+      cancelled,
+      'a@b.mx',
+      'pw',
+    );
     expect(outcome.userId).toBeNull();
     expect((outcome.error as CaptchaError).code).toBe(CAPTCHA_CANCELLED_CODE);
     expect(calls).toHaveLength(0);

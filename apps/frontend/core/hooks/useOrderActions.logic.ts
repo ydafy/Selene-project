@@ -16,7 +16,12 @@ export const getCancelOrderSuccessInvalidationKeys = (
 
 // These groups mean the shipment is no longer (or not yet) in the state the
 // screen shows, so reload it instead of leaving a stale cancel button.
-const STATE_CHANGED_FAILURE_GROUPS = ['notCancelable', 'busy', 'inProgress', 'review'];
+const STATE_CHANGED_FAILURE_GROUPS = [
+  'notCancelable',
+  'busy',
+  'inProgress',
+  'review',
+];
 
 export const getCancelOrderFailureInvalidationKeys = (
   orderId: string,

@@ -6,8 +6,22 @@ import en from '../../core/i18n/locales/en/orders.json';
 import es from '../../core/i18n/locales/es/orders.json';
 
 const presets = {
-  gpu_1: { category: 'GPU', label: 'Medium box', length: 40, width: 30, height: 15, weight: 2 },
-  mobo_1: { category: 'Motherboard', label: 'Standard box', length: 50, width: 40, height: 20, weight: 4 },
+  gpu_1: {
+    category: 'GPU',
+    label: 'Medium box',
+    length: 40,
+    width: 30,
+    height: 15,
+    weight: 2,
+  },
+  mobo_1: {
+    category: 'Motherboard',
+    label: 'Standard box',
+    length: 50,
+    width: 40,
+    height: 20,
+    weight: 4,
+  },
 };
 
 describe('preparing box resolution', () => {
@@ -34,8 +48,12 @@ describe('preparing box resolution', () => {
   });
 
   it('blocks only after presets loaded without any usable box', () => {
-    expect(resolvePreparingBox('gpu_1', undefined)).toEqual({ status: 'loading' });
-    expect(resolvePreparingBox('deleted_preset', { gpu_1: presets.gpu_1 })).toEqual({
+    expect(resolvePreparingBox('gpu_1', undefined)).toEqual({
+      status: 'loading',
+    });
+    expect(
+      resolvePreparingBox('deleted_preset', { gpu_1: presets.gpu_1 }),
+    ).toEqual({
       status: 'unavailable',
     });
   });

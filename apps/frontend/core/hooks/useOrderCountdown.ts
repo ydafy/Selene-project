@@ -15,7 +15,9 @@ export const useOrderCountdown = (
   const [hoursRemaining, setHoursRemaining] = useState<number>(hoursLimit);
 
   useEffect(() => {
-    const startTime = startTimeString ? new Date(startTimeString).getTime() : NaN;
+    const startTime = startTimeString
+      ? new Date(startTimeString).getTime()
+      : NaN;
     if (isNaN(startTime)) {
       // No usable start time: drop the previous countdown instead of keeping it.
       setTimeLeft('--h --m');

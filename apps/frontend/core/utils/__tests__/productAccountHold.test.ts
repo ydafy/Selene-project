@@ -14,13 +14,17 @@ describe('listings held by an account suspension', () => {
   it('a HIDDEN listing with a recorded prior status is held, not history', () => {
     const held = { status: 'HIDDEN', status_before_account_hold: 'VERIFIED' };
     expect(isAccountHeld(held)).toBe(true);
-    expect(isProductHistory(held.status, held.status_before_account_hold)).toBe(false);
+    expect(isProductHistory(held.status, held.status_before_account_hold)).toBe(
+      false,
+    );
   });
 
   it('a HIDDEN listing without a prior status stays history', () => {
     const hidden = { status: 'HIDDEN', status_before_account_hold: null };
     expect(isAccountHeld(hidden)).toBe(false);
-    expect(isProductHistory(hidden.status, hidden.status_before_account_hold)).toBe(true);
+    expect(
+      isProductHistory(hidden.status, hidden.status_before_account_hold),
+    ).toBe(true);
   });
 
   it('keeps the previous classification for every other status', () => {
@@ -29,7 +33,12 @@ describe('listings held by an account suspension', () => {
     expect(isProductHistory('HIDDEN')).toBe(true);
     expect(isProductHistory('VERIFIED')).toBe(false);
     expect(isProductHistory(null)).toBe(false);
-    expect(isAccountHeld({ status: 'VERIFIED', status_before_account_hold: 'VERIFIED' })).toBe(false);
+    expect(
+      isAccountHeld({
+        status: 'VERIFIED',
+        status_before_account_hold: 'VERIFIED',
+      }),
+    ).toBe(false);
   });
 
   it('uses the warning color for a held listing', () => {
@@ -38,6 +47,8 @@ describe('listings held by an account suspension', () => {
 
   it('has the held label in both languages', () => {
     expect(en.listings.status.ACCOUNT_HOLD).toBe('Paused (account suspended)');
-    expect(es.listings.status.ACCOUNT_HOLD).toBe('En pausa (cuenta suspendida)');
+    expect(es.listings.status.ACCOUNT_HOLD).toBe(
+      'En pausa (cuenta suspendida)',
+    );
   });
 });

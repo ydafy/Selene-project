@@ -12,13 +12,25 @@ describe('describeError', () => {
   });
 
   it('drops free-text messages that may carry private details', () => {
-    expect(describeError(new Error('upload failed for shipments/order/user/a.jpg')).message).toBeUndefined();
+    expect(
+      describeError(new Error('upload failed for shipments/order/user/a.jpg'))
+        .message,
+    ).toBeUndefined();
     expect(describeError('private details')).toEqual({ message: undefined });
-    expect(describeError(new Error('SYNTHETIC_PRIVATE_UPLOAD_MARKER')).message).toBeUndefined();
+    expect(
+      describeError(new Error('SYNTHETIC_PRIVATE_UPLOAD_MARKER')).message,
+    ).toBeUndefined();
   });
 
   it('keeps provider code and status', () => {
-    expect(describeError({ name: 'StorageApiError', message: 'Bucket not found', statusCode: '404', code: 'NoSuchBucket' })).toEqual({
+    expect(
+      describeError({
+        name: 'StorageApiError',
+        message: 'Bucket not found',
+        statusCode: '404',
+        code: 'NoSuchBucket',
+      }),
+    ).toEqual({
       name: 'StorageApiError',
       message: undefined,
       code: 'NoSuchBucket',

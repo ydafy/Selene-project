@@ -31,17 +31,32 @@ describe('sell locale parity', () => {
   });
 
   it('has non-empty strings for shared base keys', () => {
-    const baseKeys = ['title', 'selectCategory', 'preview.title', 'preview.publish'];
+    const baseKeys = [
+      'title',
+      'selectCategory',
+      'preview.title',
+      'preview.publish',
+    ];
 
     for (const key of baseKeys) {
-      const enValue = key.split('.').reduce<unknown>(
-        (acc, k) => (acc && typeof acc === 'object' ? (acc as Record<string, unknown>)[k] : undefined),
-        enSell,
-      );
-      const esValue = key.split('.').reduce<unknown>(
-        (acc, k) => (acc && typeof acc === 'object' ? (acc as Record<string, unknown>)[k] : undefined),
-        esSell,
-      );
+      const enValue = key
+        .split('.')
+        .reduce<unknown>(
+          (acc, k) =>
+            acc && typeof acc === 'object'
+              ? (acc as Record<string, unknown>)[k]
+              : undefined,
+          enSell,
+        );
+      const esValue = key
+        .split('.')
+        .reduce<unknown>(
+          (acc, k) =>
+            acc && typeof acc === 'object'
+              ? (acc as Record<string, unknown>)[k]
+              : undefined,
+          esSell,
+        );
 
       expect(typeof enValue).toBe('string');
       expect(typeof esValue).toBe('string');

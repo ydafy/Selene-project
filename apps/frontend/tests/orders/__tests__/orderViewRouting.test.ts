@@ -72,25 +72,27 @@ describe('resolveRoleAwareOrderView', () => {
   });
 
   it('uses the canonical role target when a detail link has no shipment id', () => {
-    expect(resolveRoleAwareOrderView(order, 'buyer-1', undefined)).toMatchObject({
+    expect(
+      resolveRoleAwareOrderView(order, 'buyer-1', undefined),
+    ).toMatchObject({
       kind: 'summary',
       href: '/profile/orders/summary/order-1',
     });
   });
 
   it('only resolves an addressed detail when the shipment is visible to the viewer', () => {
-    expect(
-      resolveRoleAwareOrderView(order, 'seller-1', 'shipment-2'),
-    ).toEqual({ kind: 'unavailable', role: 'seller', visibleShipmentIds: [] });
+    expect(resolveRoleAwareOrderView(order, 'seller-1', 'shipment-2')).toEqual({
+      kind: 'unavailable',
+      role: 'seller',
+      visibleShipmentIds: [],
+    });
     expect(
       resolveRoleAwareOrderView(order, 'buyer-1', 'missing-shipment'),
     ).toEqual({ kind: 'unavailable', role: 'buyer', visibleShipmentIds: [] });
   });
 
   it('resolves a valid addressed shipment to its canonical detail target', () => {
-    expect(
-      resolveRoleAwareOrderView(order, 'buyer-1', 'shipment-2'),
-    ).toEqual({
+    expect(resolveRoleAwareOrderView(order, 'buyer-1', 'shipment-2')).toEqual({
       kind: 'detail',
       role: 'buyer',
       visibleShipmentIds: ['shipment-2'],

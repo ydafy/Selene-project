@@ -28,7 +28,8 @@ const collectKeys = (value: unknown, prefix = ''): string[] => {
 const readKeys = (dir: string, file: string): string[] =>
   collectKeys(JSON.parse(readFileSync(join(dir, file), 'utf8'))).sort();
 
-const listJson = (dir: string): string[] => readdirSync(dir).filter((f) => f.endsWith('.json'));
+const listJson = (dir: string): string[] =>
+  readdirSync(dir).filter((f) => f.endsWith('.json'));
 
 // #78: files are read from disk so a new locale file is covered without editing this test.
 describe('locale parity for every locale file', () => {

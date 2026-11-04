@@ -8,7 +8,11 @@ import {
   mapAuthErrorKey,
 } from './authErrors.logic';
 
-const apiError = (code: string, message = 'Raw English message', status = 400) => ({
+const apiError = (
+  code: string,
+  message = 'Raw English message',
+  status = 400,
+) => ({
   name: 'AuthApiError',
   code,
   message,

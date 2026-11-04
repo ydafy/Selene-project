@@ -41,7 +41,10 @@ export const CONNECT_ONBOARDING_ERROR = {
   refreshFailed: 'refreshFailed',
   onboardingUrlUnavailable: 'onboardingUrlUnavailable',
   unknown: 'unknown',
-} as const satisfies Record<ConnectOnboardingErrorKey, ConnectOnboardingErrorKey>;
+} as const satisfies Record<
+  ConnectOnboardingErrorKey,
+  ConnectOnboardingErrorKey
+>;
 
 const onboardingErrorKeys = new Set<ConnectOnboardingErrorKey>([
   CONNECT_ONBOARDING_ERROR.statusUnavailable,

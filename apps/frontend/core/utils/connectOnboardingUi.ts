@@ -1,10 +1,7 @@
 import type { StripeOnboardingStatus } from '@selene/types';
 
 export type ConnectOnboardingViewState =
-  | 'auth-required'
-  | 'loading'
-  | 'success'
-  | 'wizard';
+  'auth-required' | 'loading' | 'success' | 'wizard';
 
 export type ConnectOnboardingCtaKey = 'start' | 'continue' | 'review';
 export type ConnectOnboardingStatusGuidanceKey = 'new' | 'pending' | 'rejected';
@@ -60,21 +57,31 @@ export function resolveConnectOnboardingUiState({
   isStripeReturn,
 }: ResolveConnectOnboardingUiInput): ConnectOnboardingUiState {
   const hasCompleteStatus = isComplete || status === 'complete';
-  const effectiveStep = isStripeReturn && !hasCompleteStatus ? lastStepIndex : currentStep;
+  const effectiveStep =
+    isStripeReturn && !hasCompleteStatus ? lastStepIndex : currentStep;
   const isFinalStep = effectiveStep >= lastStepIndex;
-  const isNavigationDisabled = isStarting || isLoading || isRefreshingFromStripe;
+  const isNavigationDisabled =
+    isStarting || isLoading || isRefreshingFromStripe;
   const viewState: ConnectOnboardingViewState = !userId
     ? 'auth-required'
     : hasCompleteStatus
-        ? 'success'
-        : isLoading && status == null
-          ? 'loading'
-          : 'wizard';
+      ? 'success'
+      : isLoading && status == null
+        ? 'loading'
+        : 'wizard';
 
   const ctaKey: ConnectOnboardingCtaKey =
-    status === 'rejected' ? 'review' : status === 'pending' ? 'continue' : 'start';
+    status === 'rejected'
+      ? 'review'
+      : status === 'pending'
+        ? 'continue'
+        : 'start';
   const statusGuidanceKey: ConnectOnboardingStatusGuidanceKey | null =
-    status === 'rejected' ? 'rejected' : status === 'pending' ? 'pending' : null;
+    status === 'rejected'
+      ? 'rejected'
+      : status === 'pending'
+        ? 'pending'
+        : null;
   const effectiveStatusGuidanceKey =
     viewState === 'wizard' && isFinalStep ? (statusGuidanceKey ?? 'new') : null;
 

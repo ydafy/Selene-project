@@ -1,7 +1,10 @@
 import { expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
-const source = readFileSync(new URL('./OrderShipmentCard.tsx', import.meta.url), 'utf8');
+const source = readFileSync(
+  new URL('./OrderShipmentCard.tsx', import.meta.url),
+  'utf8',
+);
 const shipmentTypes = readFileSync(
   new URL('../../../../../packages/types/src/types.ts', import.meta.url),
   'utf8',
@@ -21,20 +24,30 @@ test('renders one purchased product as the shipment identity', () => {
 test('uses the joined seller profile for a clipped avatar and safe fallback', () => {
   expect(shipmentTypes).toContain('seller: Profile | null;');
   expect(shipmentHook).toContain('seller: shipment.seller,');
-  expect(source).toContain('const avatarUrl = sellerIdentity.avatarUrl?.trim();');
+  expect(source).toContain(
+    'const avatarUrl = sellerIdentity.avatarUrl?.trim();',
+  );
   expect(source).toContain('resolvePublicIdentity(');
   expect(source).toContain("t('common:deletedUser')");
-  expect(source).toContain('const hasAvatar = !!avatarUrl && failedAvatarUrl !== avatarUrl;');
+  expect(source).toContain(
+    'const hasAvatar = !!avatarUrl && failedAvatarUrl !== avatarUrl;',
+  );
   expect(source).toContain('source={{ uri: avatarUrl }}');
-  expect(source).toContain('onError={() => setFailedAvatarUrl(avatarUrl ?? null)}');
-  expect(source).toContain("sellerIdentity.displayName || t('card.unknownSeller')");
+  expect(source).toContain(
+    'onError={() => setFailedAvatarUrl(avatarUrl ?? null)}',
+  );
+  expect(source).toContain(
+    "sellerIdentity.displayName || t('card.unknownSeller')",
+  );
   expect(source).not.toContain('shipment as EnrichedShipment');
 });
 
 test('shows the shipment identity while preserving the complete shipment total', () => {
   expect(source).toContain('const item = shipment.items[0];');
-  expect(source).toContain('(sum, shipmentItem) => sum + Number(shipmentItem.price_at_purchase)');
-  expect(source).toContain("flexWrap=\"wrap\"");
+  expect(source).toContain(
+    '(sum, shipmentItem) => sum + Number(shipmentItem.price_at_purchase)',
+  );
+  expect(source).toContain('flexWrap="wrap"');
   expect(source).toContain('style={{ minWidth: 96, flexShrink: 1 }}');
   expect(source).toContain("alignSelf: 'flex-start'");
 });

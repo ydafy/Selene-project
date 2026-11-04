@@ -13,13 +13,15 @@ describe('dispute shipment context helpers', () => {
 
   it('rejects missing shipment context before dispute creation', () => {
     expect(resolveShipmentContext(undefined)).toEqual({
-      error: 'Missing shipment context. Please start the report from a shipment.',
+      error:
+        'Missing shipment context. Please start the report from a shipment.',
     });
   });
 
   it('rejects ambiguous multi-value shipment params before dispute creation', () => {
     expect(resolveShipmentContext(['ship-1', 'ship-2'])).toEqual({
-      error: 'Missing shipment context. Please start the report from a shipment.',
+      error:
+        'Missing shipment context. Please start the report from a shipment.',
     });
   });
 

@@ -26,8 +26,7 @@ export const authenticateAsync = async (
     }
     return { success: false, error: result.error };
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : 'UNKNOWN_ERROR';
+    const message = error instanceof Error ? error.message : 'UNKNOWN_ERROR';
     console.error('[BIOMETRICS]', error);
     return { success: false, error: message };
   }
