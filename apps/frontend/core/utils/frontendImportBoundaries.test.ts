@@ -63,4 +63,38 @@ describe('frontend import boundaries', () => {
 
     expect(polyfillImports).toEqual([]);
   });
+
+  // React deprecates react-test-renderer (#150); mount tests use
+  // @testing-library/react-native with test-renderer.
+  it('does not use react-test-renderer', async () => {
+    const rendererImports: string[] = [];
+
+    for await (const relativePath of new Bun.Glob('**/*.{ts,tsx}').scan({
+      cwd: fileURLToPath(frontendRoot),
+      absolute: false,
+    })) {
+      if (relativePath.split(/[\\/]/).includes('node_modules')) continue;
+      const source = await Bun.file(new URL(relativePath, frontendRoot)).text();
+      if (
+        /(?:from|import|require\(|mock\.module\()\s*['"]react-test-renderer['"]/.test(
+          source,
+        )
+      ) {
+        rendererImports.push(relativePath);
+      }
+    }
+    const manifest = (await Bun.file(
+      new URL('package.json', frontendRoot),
+    ).json()) as { dependencies?: object; devDependencies?: object };
+
+    expect({
+      rendererImports,
+      declared:
+        'react-test-renderer' in
+        {
+          ...manifest.dependencies,
+          ...manifest.devDependencies,
+        },
+    }).toEqual({ rendererImports: [], declared: false });
+  });
 });
