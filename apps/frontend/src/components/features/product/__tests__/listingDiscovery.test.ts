@@ -50,7 +50,7 @@ describe('cards flag listings in verification', () => {
   );
 
   test('the pill uses the same label as the product page badge', () => {
-    expect(read('components/features/product/VerificationPill.tsx')).toContain(
+    expect(read('shared/ui/product/verification-pill.tsx')).toContain(
       "t('product:visibilityBadge.verifying')",
     );
   });

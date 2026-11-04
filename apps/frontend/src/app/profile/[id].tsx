@@ -43,7 +43,7 @@ import {
   ACTIVE_LISTING_STATUSES,
   isInVerification,
 } from '../../shared/utils/product-listing-status';
-import { VerificationPill } from '../../components/features/product/VerificationPill';
+import { VerificationPill } from '../../shared/ui/product/verification-pill';
 import { Theme } from '../../shared/theme';
 import { GlobalHeader } from '@/shared/ui/global-header';
 import { LinearGradient } from 'expo-linear-gradient';

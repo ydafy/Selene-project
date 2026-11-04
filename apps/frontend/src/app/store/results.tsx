@@ -23,6 +23,7 @@ import { Box } from '../../shared/ui/base';
 import { ScreenHeader } from '../../shared/ui/screen-header';
 import { GlobalHeader } from '../../shared/ui/global-header';
 import { ProductCard } from '../../shared/ui/product/product-card';
+import { ProductFavoriteButton } from '../../components/features/product/ProductFavoriteButton';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { ProductCardSkeleton } from '../../shared/ui/product/product-card-skeleton';
 import {
@@ -36,7 +37,11 @@ import {
 } from '../../components/features/search/hooks/useSearchProducts';
 import { getMasonryItemHeight } from '../../core/constants/layout';
 import { Theme } from '../../shared/theme';
-import { Product } from '@selene/types';
+import { Product, PublicProduct } from '@selene/types';
+
+const renderFavoriteButton = (product: PublicProduct) => (
+  <ProductFavoriteButton productId={product.id} size={16} />
+);
 
 const RESULTS_ANCHOR = 0; // Punto donde el header desaparece y los filtros quedan arriba
 
@@ -147,6 +152,7 @@ export default function SearchResultsScreen() {
             onPress={handleProductPress}
             imageHeight={getMasonryItemHeight(item.aspect_ratio)}
             index={index}
+            renderFavoriteButton={renderFavoriteButton}
           />
         </Box>
       );

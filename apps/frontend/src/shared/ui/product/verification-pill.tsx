@@ -2,8 +2,8 @@ import React from 'react';
 import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
-import { Box, Text } from '../../../shared/ui/base';
-import { Theme } from '../../../shared/theme';
+import { Box, Text } from '../base';
+import { Theme } from '../../theme';
 
 /** Compact badge for listings that are not verified yet. Callers position it. */
 export const VerificationPill = () => {

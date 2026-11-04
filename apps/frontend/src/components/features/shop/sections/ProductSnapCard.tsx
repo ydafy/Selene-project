@@ -15,7 +15,7 @@ import { PrimaryButton } from '../../../../shared/ui/primary-button';
 import { formatCurrency } from '../../../../shared/utils/format';
 import { PublicProduct } from '@selene/types';
 import { isInVerification } from '../../../../shared/utils/product-listing-status';
-import { VerificationPill } from '../../product/VerificationPill';
+import { VerificationPill } from '../../../../shared/ui/product/verification-pill';
 
 interface Props {
   product: PublicProduct;

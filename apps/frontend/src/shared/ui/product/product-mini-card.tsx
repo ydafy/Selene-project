@@ -15,7 +15,7 @@ import { formatCurrency } from '../../utils/format';
 import { PublicProduct } from '@selene/types';
 import { getSharedStyles } from '../../theme/shared-styles';
 import { isInVerification } from '../../utils/product-listing-status';
-import { VerificationPill } from '../../../components/features/product/VerificationPill';
+import { VerificationPill } from './verification-pill';
 
 interface Props {
   product: PublicProduct;

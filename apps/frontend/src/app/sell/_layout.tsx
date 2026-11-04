@@ -6,7 +6,11 @@ import { isSellDraftDirty } from '../../core/utils/sellDraftDirty';
 
 export default function SellLayout() {
   const draft = useSellStore((state) => state.draft);
-  const { ExitDialog } = useExitGuard(isSellDraftDirty(draft));
+  const resetDraft = useSellStore((state) => state.resetDraft);
+  const { ExitDialog } = useExitGuard({
+    enabled: isSellDraftDirty(draft),
+    onDiscard: resetDraft,
+  });
 
   return (
     <>
