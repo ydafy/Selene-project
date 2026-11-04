@@ -32,10 +32,7 @@ const normalize = (sql: string): string =>
 
 const definition = (sql: string, name: string): string => {
   const match = normalize(sql).match(
-    new RegExp(
-      `CREATE OR REPLACE FUNCTION public\\.${name}.*?\\$\\$ ?;`,
-      'i',
-    ),
+    new RegExp(`CREATE OR REPLACE FUNCTION public\\.${name}.*?\\$\\$ ?;`, 'i'),
   );
   if (!match) throw new Error(`${name} definition not found`);
   return match[0];
@@ -138,6 +135,8 @@ describe('account closure cleanup migration', () => {
   test('adds no table, policy or client grant', () => {
     expect(sql).not.toMatch(/CREATE TABLE/i);
     expect(sql).not.toMatch(/CREATE POLICY/i);
-    expect(sql).not.toMatch(/GRANT [^;]* TO [^;]*\b(anon|authenticated|PUBLIC)\b/);
+    expect(sql).not.toMatch(
+      /GRANT [^;]* TO [^;]*\b(anon|authenticated|PUBLIC)\b/,
+    );
   });
 });

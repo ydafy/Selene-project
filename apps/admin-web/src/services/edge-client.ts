@@ -55,14 +55,23 @@ export class EdgeFunctionError extends Error {
  */
 export async function invokeEdgeJson(
   name: string,
-  options: { method: 'GET' } | { method: 'POST'; body: Record<string, unknown> },
+  options:
+    { method: 'GET' } | { method: 'POST'; body: Record<string, unknown> },
 ): Promise<unknown> {
   const { data, error } = await supabase.functions.invoke(name, options);
   if (error) {
     const body = await Promise.resolve()
-      .then(() => (error.context as Response).json() as Promise<{ error?: unknown } | null>)
+      .then(
+        () =>
+          (error.context as Response).json() as Promise<{
+            error?: unknown;
+          } | null>,
+      )
       .catch(() => null);
-    throw new EdgeFunctionError(error.message, typeof body?.error === 'string' ? body.error : null);
+    throw new EdgeFunctionError(
+      error.message,
+      typeof body?.error === 'string' ? body.error : null,
+    );
   }
   return data;
 }

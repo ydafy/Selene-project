@@ -24,7 +24,13 @@ const shortId = (id: string) => id.slice(0, 8);
 const place = (city: string | null, postalCode: string | null) =>
   [city, postalCode].filter(Boolean).join(' ') || 'Sin dato';
 
-const EMPTY_FORM: LabelFoundFormInput = { trackingNumber: '', labelUrl: '', enviaShipmentId: '', costPesos: '', note: '' };
+const EMPTY_FORM: LabelFoundFormInput = {
+  trackingNumber: '',
+  labelUrl: '',
+  enviaShipmentId: '',
+  costPesos: '',
+  note: '',
+};
 
 interface LabelReconciliationsBucketProps {
   cases: LabelReconciliation[];
@@ -87,11 +93,17 @@ export const LabelReconciliationsBucket = ({
         setError(checked.message);
         return;
       }
-      input = { shipmentId: item.shipmentId, resolution: 'label_found', ...checked.value };
+      input = {
+        shipmentId: item.shipmentId,
+        resolution: 'label_found',
+        ...checked.value,
+      };
     } else {
       const note = normalizeResolutionNote(form.note);
       if (!note) {
-        setError(resolveLabelReconciliationErrorMessage('INVALID_RESOLUTION_NOTE'));
+        setError(
+          resolveLabelReconciliationErrorMessage('INVALID_RESOLUTION_NOTE'),
+        );
         return;
       }
       input = { shipmentId: item.shipmentId, resolution: 'no_label', note };
@@ -128,7 +140,12 @@ export const LabelReconciliationsBucket = ({
       />
     </label>
   );
-  const textField = (name: keyof LabelFoundFormInput, text: string, placeholder: string, inputMode?: 'decimal') => (
+  const textField = (
+    name: keyof LabelFoundFormInput,
+    text: string,
+    placeholder: string,
+    inputMode?: 'decimal',
+  ) => (
     <label className="block text-xs font-semibold text-platinum">
       {text}
       <input
@@ -146,10 +163,17 @@ export const LabelReconciliationsBucket = ({
   );
 
   return (
-    <section className="space-y-4" aria-labelledby="label-reconciliations-title">
+    <section
+      className="space-y-4"
+      aria-labelledby="label-reconciliations-title"
+    >
       <div>
-        <h2 id="label-reconciliations-title" className="flex items-center gap-2 text-lg font-bold text-platinum">
-          <PackageX size={20} className="text-amber-400" /> Guías que no sabemos si se crearon
+        <h2
+          id="label-reconciliations-title"
+          className="flex items-center gap-2 text-lg font-bold text-platinum"
+        >
+          <PackageX size={20} className="text-amber-400" /> Guías que no sabemos
+          si se crearon
           <span
             data-testid="label-reconciliations-count"
             aria-label={`Envíos por revisar: ${unresolved ? 'consultando' : cases.length}`}
@@ -159,13 +183,19 @@ export const LabelReconciliationsBucket = ({
           </span>
         </h2>
         <p className="mt-1 max-w-2xl text-xs text-blue-light/70">
-          <span className="font-semibold text-platinum">El vendedor pidió su guía y no supimos si Envía la creó.</span>{' '}
-          El dinero del comprador sigue retenido. Busca el envío en el panel de Envía y elige qué pasó.
+          <span className="font-semibold text-platinum">
+            El vendedor pidió su guía y no supimos si Envía la creó.
+          </span>{' '}
+          El dinero del comprador sigue retenido. Busca el envío en el panel de
+          Envía y elige qué pasó.
         </p>
       </div>
 
       {isLoading ? (
-        <p role="status" className="rounded-3xl border border-white/5 bg-state-gray p-10 text-center text-sm text-blue-light">
+        <p
+          role="status"
+          className="rounded-3xl border border-white/5 bg-state-gray p-10 text-center text-sm text-blue-light"
+        >
           Consultando guías...
         </p>
       ) : isError ? (
@@ -184,43 +214,67 @@ export const LabelReconciliationsBucket = ({
       ) : (
         <div className="grid gap-3 lg:grid-cols-2">
           {cases.map((item) => (
-            <article key={item.shipmentId} className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4">
+            <article
+              key={item.shipmentId}
+              className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4"
+            >
               <div className="flex items-start justify-between gap-3">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/20 bg-amber-400/10 px-2.5 py-1 text-xs font-bold text-amber-400">
                   <PackageX size={13} />{' '}
-                  {item.state === 'orphan_pending' ? 'Envía no respondió' : 'El intento se quedó sin terminar'}
+                  {item.state === 'orphan_pending'
+                    ? 'Envía no respondió'
+                    : 'El intento se quedó sin terminar'}
                 </span>
-                <p className="text-xs font-semibold text-amber-400">Hace {formatWaiting(item.stuckAt)}</p>
+                <p className="text-xs font-semibold text-amber-400">
+                  Hace {formatWaiting(item.stuckAt)}
+                </p>
               </div>
               <dl className="mt-3 space-y-1 text-[11px] text-blue-light">
                 <div>
                   <dt className="inline">Envío: </dt>
-                  <dd className="inline font-mono" title={item.shipmentId}>{shortId(item.shipmentId)}</dd>
+                  <dd className="inline font-mono" title={item.shipmentId}>
+                    {shortId(item.shipmentId)}
+                  </dd>
                   <dt className="inline"> · Orden: </dt>
-                  <dd className="inline font-mono" title={item.orderId}>{shortId(item.orderId)}</dd>
+                  <dd className="inline font-mono" title={item.orderId}>
+                    {shortId(item.orderId)}
+                  </dd>
                 </div>
                 <div>
                   <dt className="inline">Vendedor: </dt>
-                  <dd className="inline" title={item.sellerId}>{item.sellerName ?? shortId(item.sellerId)}</dd>
+                  <dd className="inline" title={item.sellerId}>
+                    {item.sellerName ?? shortId(item.sellerId)}
+                  </dd>
                   <dt className="inline"> · Comprador: </dt>
-                  <dd className="inline" title={item.buyerId}>{item.buyerName ?? shortId(item.buyerId)}</dd>
+                  <dd className="inline" title={item.buyerId}>
+                    {item.buyerName ?? shortId(item.buyerId)}
+                  </dd>
                 </div>
                 <div>
                   <dt className="inline">Creado: </dt>
                   <dd className="inline">
-                    <time dateTime={item.createdAt}>{formatTime(item.createdAt)}</time>
+                    <time dateTime={item.createdAt}>
+                      {formatTime(item.createdAt)}
+                    </time>
                   </dd>
                 </div>
                 <div>
                   <dt className="inline">Ruta: </dt>
                   <dd className="inline">
-                    {place(item.originCity, item.originPostalCode)} → {place(item.destinationCity, item.destinationPostalCode)}
+                    {place(item.originCity, item.originPostalCode)} →{' '}
+                    {place(item.destinationCity, item.destinationPostalCode)}
                   </dd>
                 </div>
                 <div>
                   <dt className="inline">Cotización: </dt>
                   <dd className="inline">
-                    {[item.quoteCarrier, item.quoteService, item.quoteCostCents === null ? null : money(item.quoteCostCents)]
+                    {[
+                      item.quoteCarrier,
+                      item.quoteService,
+                      item.quoteCostCents === null
+                        ? null
+                        : money(item.quoteCostCents),
+                    ]
                       .filter(Boolean)
                       .join(' · ') || 'Sin dato'}
                   </dd>
@@ -250,7 +304,10 @@ export const LabelReconciliationsBucket = ({
       )}
 
       {dialog ? (
-        <Modal title={dialog.mode === 'found' ? 'La guía existe' : 'No hay guía'} onClose={close}>
+        <Modal
+          title={dialog.mode === 'found' ? 'La guía existe' : 'No hay guía'}
+          onClose={close}
+        >
           <form
             className="space-y-4 p-6"
             onSubmit={(event) => {
@@ -258,28 +315,51 @@ export const LabelReconciliationsBucket = ({
               void submit();
             }}
           >
-            <h3 className="flex items-center gap-2 text-lg font-bold text-platinum" aria-hidden="true">
-              <PackageX size={20} className="text-amber-400" /> {dialog.mode === 'found' ? 'La guía existe' : 'No hay guía'}
+            <h3
+              className="flex items-center gap-2 text-lg font-bold text-platinum"
+              aria-hidden="true"
+            >
+              <PackageX size={20} className="text-amber-400" />{' '}
+              {dialog.mode === 'found' ? 'La guía existe' : 'No hay guía'}
             </h3>
             {dialog.mode === 'found' ? (
               <>
                 <p className="text-sm text-blue-light">
-                  Copia estos datos del panel de Envía. El envío sigue su curso como si la guía se hubiera creado normal.
+                  Copia estos datos del panel de Envía. El envío sigue su curso
+                  como si la guía se hubiera creado normal.
                 </p>
-                {textField('trackingNumber', 'Número de guía', 'Ej. 1234567890')}
+                {textField(
+                  'trackingNumber',
+                  'Número de guía',
+                  'Ej. 1234567890',
+                )}
                 {textField('labelUrl', 'URL de la guía', 'https://...')}
-                {textField('enviaShipmentId', 'ID de envío en Envía', 'Ej. 98765')}
-                {textField('costPesos', 'Costo de la guía (MXN)', 'Ej. 93.50', 'decimal')}
+                {textField(
+                  'enviaShipmentId',
+                  'ID de envío en Envía',
+                  'Ej. 98765',
+                )}
+                {textField(
+                  'costPesos',
+                  'Costo de la guía (MXN)',
+                  'Ej. 93.50',
+                  'decimal',
+                )}
               </>
             ) : (
               <p className="text-sm text-blue-light">
-                Confirma solo si en el panel de Envía no hay ninguna guía de este envío. El envío regresa al vendedor
-                para que genere la guía otra vez. Si ya pasó el plazo, se cancela y se reembolsa al comprador. Es una
-                decisión que no se puede deshacer.
+                Confirma solo si en el panel de Envía no hay ninguna guía de
+                este envío. El envío regresa al vendedor para que genere la guía
+                otra vez. Si ya pasó el plazo, se cancela y se reembolsa al
+                comprador. Es una decisión que no se puede deshacer.
               </p>
             )}
             {noteField}
-            {error ? <p role="alert" className="text-xs text-fire">{error}</p> : null}
+            {error ? (
+              <p role="alert" className="text-xs text-fire">
+                {error}
+              </p>
+            ) : null}
             <div className="flex justify-end gap-2">
               <button
                 type="button"
@@ -295,7 +375,13 @@ export const LabelReconciliationsBucket = ({
                 disabled={busy}
                 className={`rounded-xl bg-amber-400 px-4 py-2.5 text-xs font-bold text-night hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-40 ${workbenchFocus}`}
               >
-                {busy ? (dialog.mode === 'found' ? 'Guardando...' : 'Confirmando...') : dialog.mode === 'found' ? 'Guardar guía' : 'Confirmar: no hay guía'}
+                {busy
+                  ? dialog.mode === 'found'
+                    ? 'Guardando...'
+                    : 'Confirmando...'
+                  : dialog.mode === 'found'
+                    ? 'Guardar guía'
+                    : 'Confirmar: no hay guía'}
               </button>
             </div>
           </form>

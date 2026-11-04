@@ -56,7 +56,9 @@ function requireEnvironmentValue(
 ): string {
   const value = environment[name]?.trim();
   if (!value) {
-    throw new HarnessValidationError(`Missing required environment variable: ${name}`);
+    throw new HarnessValidationError(
+      `Missing required environment variable: ${name}`,
+    );
   }
   return value;
 }
@@ -146,7 +148,10 @@ export function parseConfirmationHarnessConfig(
       ? {
           ...commonConfig,
           mode,
-          activeDispute: parseFixture(environment, 'CONFIRMATION_ACTIVE_DISPUTE'),
+          activeDispute: parseFixture(
+            environment,
+            'CONFIRMATION_ACTIVE_DISPUTE',
+          ),
         }
       : { ...commonConfig, mode };
 
@@ -191,7 +196,9 @@ async function invokeConfirmation(
   }
 
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
-    throw new HarnessAssertionError('Function returned an invalid JSON response body');
+    throw new HarnessAssertionError(
+      'Function returned an invalid JSON response body',
+    );
   }
 
   return { status: response.status, body: body as ConfirmationResponse };
@@ -202,7 +209,11 @@ function assertRejected(
   response: { status: number; body: ConfirmationResponse },
   expectedError: string,
 ): void {
-  if (response.status !== 409 || response.body.success !== false || response.body.error !== expectedError) {
+  if (
+    response.status !== 409 ||
+    response.body.success !== false ||
+    response.body.error !== expectedError
+  ) {
     throw new HarnessAssertionError(
       `${scenario} did not return the expected 409 ${expectedError} rejection`,
     );

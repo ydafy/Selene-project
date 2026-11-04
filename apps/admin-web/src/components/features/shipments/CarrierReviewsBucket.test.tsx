@@ -2,7 +2,10 @@ import { afterEach, expect, it, mock, spyOn } from 'bun:test';
 import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CarrierReviewsBucket } from './CarrierReviewsBucket';
-import { resolveCarrierReviewErrorMessage, type CarrierReview } from '../../../lib/carrierReviews';
+import {
+  resolveCarrierReviewErrorMessage,
+  type CarrierReview,
+} from '../../../lib/carrierReviews';
 
 const base: CarrierReview = {
   shipmentId: '11111111-aaaa-bbbb-cccc-000000000001',
@@ -32,7 +35,8 @@ function nodes(value: React.ReactNode): Element[] {
   return [value, ...nodes(value.props.children as React.ReactNode)];
 }
 function label(value: React.ReactNode): string {
-  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (typeof value === 'string' || typeof value === 'number')
+    return String(value);
   if (Array.isArray(value)) return value.map(label).join('');
   return React.isValidElement<Record<string, unknown>>(value)
     ? label(value.props.children as React.ReactNode)
@@ -46,9 +50,12 @@ function harness(overrides: Record<string, unknown> = {}) {
   spyOn(React, 'useState').mockImplementation(((initial: unknown) => {
     const index = stateIndex++;
     if (!(index in states)) states[index] = initial;
-    return [states[index], (next: unknown) => {
-      states[index] = typeof next === 'function' ? next(states[index]) : next;
-    }];
+    return [
+      states[index],
+      (next: unknown) => {
+        states[index] = typeof next === 'function' ? next(states[index]) : next;
+      },
+    ];
   }) as typeof React.useState);
   spyOn(React, 'useRef').mockImplementation(((initial: unknown) => {
     const index = refIndex++;
@@ -70,11 +77,17 @@ function harness(overrides: Record<string, unknown> = {}) {
   const render = () => {
     stateIndex = 0;
     refIndex = 0;
-    return CarrierReviewsBucket(props as Parameters<typeof CarrierReviewsBucket>[0]);
+    return CarrierReviewsBucket(
+      props as Parameters<typeof CarrierReviewsBucket>[0],
+    );
   };
   const html = () => renderToStaticMarkup(render());
   const button = (text: string) =>
-    nodes(render()).find((n) => n.type === 'button' && label(n.props.children as React.ReactNode) === text);
+    nodes(render()).find(
+      (n) =>
+        n.type === 'button' &&
+        label(n.props.children as React.ReactNode) === text,
+    );
   const click = async (text: string) => {
     const found = button(text);
     expect(found, `Missing button: ${text}`).toBeDefined();
@@ -83,7 +96,9 @@ function harness(overrides: Record<string, unknown> = {}) {
   const type = (value: string) => {
     const field = nodes(render()).find((n) => n.type === 'textarea')!;
     expect(field).toBeDefined();
-    (field.props.onChange as (e: { target: { value: string } }) => void)({ target: { value } });
+    (field.props.onChange as (e: { target: { value: string } }) => void)({
+      target: { value },
+    });
   };
   return { render, html, button, click, type, resolved };
 }
@@ -109,7 +124,9 @@ it('shows an error state, never empty or partial rows, and wires the retry', () 
 it('explains that these are the exceptions the carrier did not confirm, not every late shipment', () => {
   const html = harness().html();
   expect(html).toContain('Cancelaciones que necesitan tu decisión');
-  expect(html).toContain('Intentamos cancelar la guía, pero el carrier no lo confirmó');
+  expect(html).toContain(
+    'Intentamos cancelar la guía, pero el carrier no lo confirmó',
+  );
   expect(html).toContain('no reembolsamos automáticamente');
   expect(html).not.toContain('El vendedor no preparó el envío a tiempo');
 });
@@ -143,7 +160,15 @@ it('renders the row fields from integer cents with the waiting time', () => {
 
 it('says so when the tracking number, carrier or label cost are unknown', () => {
   const html = harness({
-    reviews: [{ ...base, trackingNumber: null, carrier: null, labelCostCents: null, reason: 'tracking_unknown' }],
+    reviews: [
+      {
+        ...base,
+        trackingNumber: null,
+        carrier: null,
+        labelCostCents: null,
+        reason: 'tracking_unknown',
+      },
+    ],
   }).html();
   expect(html).not.toContain('TRK-998877');
   expect(html).toContain('Sin tracking');
@@ -178,7 +203,12 @@ it('requires a note before sending anything', async () => {
   h.type('   ');
   await h.click(CONFIRM_CLOSE);
   expect(h.resolved).toEqual([]);
-  expect(h.html()).toContain(resolveCarrierReviewErrorMessage('INVALID_REVIEW_NOTE').replaceAll("'", '&#x27;'));
+  expect(h.html()).toContain(
+    resolveCarrierReviewErrorMessage('INVALID_REVIEW_NOTE').replaceAll(
+      "'",
+      '&#x27;',
+    ),
+  );
   h.type('a'.repeat(501));
   await h.click(CONFIRM_CLOSE);
   expect(h.resolved).toEqual([]);
@@ -189,14 +219,18 @@ it('sends the exact shipment, resolution and trimmed note, then closes the confi
   await h.click(REFUND);
   h.type('  El carrier confirmó que no escaneó  ');
   await h.click(CONFIRM_REFUND);
-  expect(h.resolved).toEqual([[base.shipmentId, 'refund_approved', 'El carrier confirmó que no escaneó']]);
+  expect(h.resolved).toEqual([
+    [base.shipmentId, 'refund_approved', 'El carrier confirmó que no escaneó'],
+  ]);
   expect(h.html()).not.toContain('<dialog');
 
   const close = harness();
   await close.click(CLOSE);
   close.type('Paquete en tránsito');
   await close.click(CONFIRM_CLOSE);
-  expect(close.resolved).toEqual([[base.shipmentId, 'closed_no_refund', 'Paquete en tránsito']]);
+  expect(close.resolved).toEqual([
+    [base.shipmentId, 'closed_no_refund', 'Paquete en tránsito'],
+  ]);
 });
 
 it('dispatches once on a double click and disables the confirmation while pending', async () => {
@@ -205,7 +239,9 @@ it('dispatches once on a double click and disables the confirmation while pendin
   const h = harness({
     onResolve: (shipmentId: string) => {
       calls.push(shipmentId);
-      return new Promise<void>((resolve) => { finish = resolve; });
+      return new Promise<void>((resolve) => {
+        finish = resolve;
+      });
     },
   });
   await h.click(CLOSE);
@@ -232,7 +268,10 @@ it('keeps the confirmation open with a mapped message on server errors and allow
   const h = harness({
     onResolve: async (_id: string, _resolution: string, note: string) => {
       calls.push(note);
-      if (fail) throw Object.assign(new Error('boom'), { code: 'CARRIER_REVIEW_NOT_PENDING' });
+      if (fail)
+        throw Object.assign(new Error('boom'), {
+          code: 'CARRIER_REVIEW_NOT_PENDING',
+        });
     },
   });
   await h.click(CLOSE);
@@ -240,7 +279,9 @@ it('keeps the confirmation open with a mapped message on server errors and allow
   await h.click(CONFIRM_CLOSE);
   let html = h.html();
   expect(html).toContain('<dialog');
-  expect(html).toContain(resolveCarrierReviewErrorMessage('CARRIER_REVIEW_NOT_PENDING'));
+  expect(html).toContain(
+    resolveCarrierReviewErrorMessage('CARRIER_REVIEW_NOT_PENDING'),
+  );
   expect(html).toContain('nota 1');
   fail = false;
   await h.click(CONFIRM_CLOSE);
@@ -261,14 +302,22 @@ it('maps each stable code and falls back to a generic message', async () => {
   ];
   for (const code of codes) {
     const h = harness({
-      onResolve: async () => { throw Object.assign(new Error('x'), { code }); },
+      onResolve: async () => {
+        throw Object.assign(new Error('x'), { code });
+      },
     });
     await h.click(REFUND);
     h.type('nota');
     await h.click(CONFIRM_REFUND);
-    expect(h.html()).toContain(resolveCarrierReviewErrorMessage(code).replaceAll("'", '&#x27;'));
+    expect(h.html()).toContain(
+      resolveCarrierReviewErrorMessage(code).replaceAll("'", '&#x27;'),
+    );
   }
-  const h = harness({ onResolve: async () => { throw new Error('network'); } });
+  const h = harness({
+    onResolve: async () => {
+      throw new Error('network');
+    },
+  });
   await h.click(REFUND);
   h.type('nota');
   await h.click(CONFIRM_REFUND);

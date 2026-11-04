@@ -1,8 +1,5 @@
 export type AdminAccessDenial =
-  | 'missing_profile'
-  | 'not_admin'
-  | 'inactive'
-  | 'unverified';
+  'missing_profile' | 'not_admin' | 'inactive' | 'unverified';
 
 export type AdminAccess =
   { allowed: true } | { allowed: false; reason: AdminAccessDenial };

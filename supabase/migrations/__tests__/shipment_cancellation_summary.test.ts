@@ -3,17 +3,23 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const root = join(import.meta.dir, '..', '..', '..');
-const read = (path: string) => readFileSync(join(root, path), 'utf8').replace(/\r\n/g, '\n');
-const migrations = readdirSync(join(root, 'supabase/migrations')).filter((name) =>
-  name.endsWith('_shipment_cancellation_summary.sql'),
+const read = (path: string) =>
+  readFileSync(join(root, path), 'utf8').replace(/\r\n/g, '\n');
+const migrations = readdirSync(join(root, 'supabase/migrations')).filter(
+  (name) => name.endsWith('_shipment_cancellation_summary.sql'),
 );
-const migration = migrations.length === 1 ? read(`supabase/migrations/${migrations[0]}`) : '';
+const migration =
+  migrations.length === 1 ? read(`supabase/migrations/${migrations[0]}`) : '';
 const statements = (sql: string) =>
   sql
     .split('\n')
-    .filter((line) => !/^\s*(--|BEGIN;|COMMIT;)/.test(line) && line.trim() !== '')
+    .filter(
+      (line) => !/^\s*(--|BEGIN;|COMMIT;)/.test(line) && line.trim() !== '',
+    )
     .join('\n');
-const canonical = read('supabase/queries/orders/shipment_cancellation_summary.sql');
+const canonical = read(
+  'supabase/queries/orders/shipment_cancellation_summary.sql',
+);
 const body = statements(canonical);
 
 // Text contracts only; the local `supabase db reset` + scripts/test-shipment-cancellation-summary.ts
@@ -32,8 +38,12 @@ describe('shipment cancellation summary migration (SQL text)', () => {
   });
 
   it('is a read-only definer function scoped by auth.uid() with a fixed search_path', () => {
-    expect(body).toContain('CREATE OR REPLACE FUNCTION public.fn_get_shipment_cancellation_summary(p_shipment_id UUID)');
-    expect(body).toContain('RETURNS TABLE (source TEXT, refund_state TEXT, refund_updated_at TIMESTAMPTZ)');
+    expect(body).toContain(
+      'CREATE OR REPLACE FUNCTION public.fn_get_shipment_cancellation_summary(p_shipment_id UUID)',
+    );
+    expect(body).toContain(
+      'RETURNS TABLE (source TEXT, refund_state TEXT, refund_updated_at TIMESTAMPTZ)',
+    );
     expect(body).toContain('STABLE');
     expect(body).toContain('SECURITY DEFINER');
     expect(body).toContain("SET search_path = ''");
@@ -44,8 +54,20 @@ describe('shipment cancellation summary migration (SQL text)', () => {
   });
 
   it('exposes no amount, refund id, payment intent, reason, actor or note', () => {
-    const select = body.slice(body.indexOf('SELECT o.source'), body.indexOf('FROM public.shipment_cancellation_operations'));
-    for (const hidden of ['refund_id', 'refund_request', 'reason', 'actor_id', 'note', 'amount', 'payment_intent', 'resolved_by']) {
+    const select = body.slice(
+      body.indexOf('SELECT o.source'),
+      body.indexOf('FROM public.shipment_cancellation_operations'),
+    );
+    for (const hidden of [
+      'refund_id',
+      'refund_request',
+      'reason',
+      'actor_id',
+      'note',
+      'amount',
+      'payment_intent',
+      'resolved_by',
+    ]) {
       expect(select).not.toContain(hidden);
     }
   });

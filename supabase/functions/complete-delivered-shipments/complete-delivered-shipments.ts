@@ -67,14 +67,17 @@ interface CompletionRpcResult {
   idempotent: boolean;
 }
 
-const isCompletionRpcResult = (value: unknown): value is CompletionRpcResult => {
+const isCompletionRpcResult = (
+  value: unknown,
+): value is CompletionRpcResult => {
   if (!value || typeof value !== 'object') return false;
 
   const result = value as Record<string, unknown>;
   return (
     typeof result.success === 'boolean' &&
     (typeof result.error === 'string' || result.error === null) &&
-    (typeof result.completion_source === 'string' || result.completion_source === null) &&
+    (typeof result.completion_source === 'string' ||
+      result.completion_source === null) &&
     typeof result.idempotent === 'boolean'
   );
 };
@@ -89,10 +92,15 @@ const isDue = (candidate: AutoCompletionCandidate, now: number): boolean => {
   }
 
   const deliveredAt = Date.parse(candidate.delivered_at);
-  return Number.isFinite(deliveredAt) && deliveredAt <= now - AUTO_COMPLETION_DELAY_MS;
+  return (
+    Number.isFinite(deliveredAt) &&
+    deliveredAt <= now - AUTO_COMPLETION_DELAY_MS
+  );
 };
 
-export function validateAutoCompletionRequest(context: CronRequestContext): void {
+export function validateAutoCompletionRequest(
+  context: CronRequestContext,
+): void {
   if (context.method !== 'POST') {
     throw new ApiError(400, 'INVALID_REQUEST');
   }
@@ -114,7 +122,10 @@ export function resolveAutoCompletionPlan(
   const disputed = new Set(context.activeDisputeShipmentIds ?? []);
   return {
     shipmentIds: context.candidates
-      .filter((candidate) => isDue(candidate, context.now) && !disputed.has(candidate.id))
+      .filter(
+        (candidate) =>
+          isDue(candidate, context.now) && !disputed.has(candidate.id),
+      )
       .slice(0, MAX_AUTO_COMPLETION_BATCH_SIZE)
       .map((candidate) => candidate.id),
   };
@@ -182,7 +193,9 @@ export function isNotConnectRefusal(value: unknown): boolean {
 // finishes it. The refusal is expected and must not fail the batch.
 export function isCancellationOperationActiveRefusal(value: unknown): boolean {
   if (!isCompletionRpcResult(value)) return false;
-  return !value.success && value.error === 'SHIPMENT_CANCELLATION_OPERATION_ACTIVE';
+  return (
+    !value.success && value.error === 'SHIPMENT_CANCELLATION_OPERATION_ACTIVE'
+  );
 }
 
 export function summarizeAutoCompletionResults(

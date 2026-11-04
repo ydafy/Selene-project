@@ -19,7 +19,10 @@ const findMigration = (): string => {
       `Expected exactly one *_function_execute_grants_parity.sql, found ${files.length}`,
     );
   }
-  return readFileSync(join(MIGRATIONS_DIR, files[0]), 'utf8').replace(/\r/g, '');
+  return readFileSync(join(MIGRATIONS_DIR, files[0]), 'utf8').replace(
+    /\r/g,
+    '',
+  );
 };
 
 const sql = findMigration()

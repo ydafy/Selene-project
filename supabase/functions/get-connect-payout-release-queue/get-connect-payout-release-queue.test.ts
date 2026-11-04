@@ -90,7 +90,14 @@ describe('buildConnectPayoutReleaseQueue', () => {
 describe('legacy helpers', () => {
   it('preserves literal ILIKE escaping and existing error statuses', () => {
     expect(escapeIlikePattern('a%_')).toBe(String.raw`a\%\_`);
-    for (const [message, status] of [['AUTH_REQUIRED', 401], ['ADMIN_REQUIRED', 403], ['MISSING_SERVER_CONFIG', 500], ['PROFILE_LOOKUP_FAILED', 400], ['RELEASE_QUEUE_LOOKUP_FAILED', 400], ['METHOD_NOT_ALLOWED', 400]] as const) {
+    for (const [message, status] of [
+      ['AUTH_REQUIRED', 401],
+      ['ADMIN_REQUIRED', 403],
+      ['MISSING_SERVER_CONFIG', 500],
+      ['PROFILE_LOOKUP_FAILED', 400],
+      ['RELEASE_QUEUE_LOOKUP_FAILED', 400],
+      ['METHOD_NOT_ALLOWED', 400],
+    ] as const) {
       expect(getQueueErrorStatus(message)).toBe(status);
     }
   });

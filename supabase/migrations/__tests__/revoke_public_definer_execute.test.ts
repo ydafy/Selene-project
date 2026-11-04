@@ -46,6 +46,8 @@ describe('revoke public SECURITY DEFINER execute (SQL structural only)', () => {
   });
 
   test('changes privileges only, never function bodies or data', () => {
-    expect(sql).not.toMatch(/CREATE OR REPLACE|ALTER FUNCTION|DROP |UPDATE |DELETE |INSERT /i);
+    expect(sql).not.toMatch(
+      /CREATE OR REPLACE|ALTER FUNCTION|DROP |UPDATE |DELETE |INSERT /i,
+    );
   });
 });

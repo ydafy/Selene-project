@@ -9,8 +9,7 @@ export const CAPTCHA_FAILED_CODE = 'captcha_failed';
 export const CAPTCHA_CANCELLED_CODE = 'captcha_cancelled';
 
 export type CaptchaErrorCode =
-  | typeof CAPTCHA_FAILED_CODE
-  | typeof CAPTCHA_CANCELLED_CODE;
+  typeof CAPTCHA_FAILED_CODE | typeof CAPTCHA_CANCELLED_CODE;
 
 export class CaptchaError extends Error {
   readonly code: CaptchaErrorCode;
@@ -56,7 +55,9 @@ export const createCaptchaGetter =
 export const toCaptchaError = (reason: unknown): CaptchaError => {
   if (reason instanceof CaptchaError) return reason;
   return new CaptchaError(
-    reason === 'challenge-closed' ? CAPTCHA_CANCELLED_CODE : CAPTCHA_FAILED_CODE,
+    reason === 'challenge-closed'
+      ? CAPTCHA_CANCELLED_CODE
+      : CAPTCHA_FAILED_CODE,
   );
 };
 

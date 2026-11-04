@@ -69,24 +69,43 @@ function toProblem(value: unknown): RefundProblem | null {
   const refundFailureReason = nullableText(row.refundFailureReason);
   const amountOwedCents = row.amountOwedCents;
   if (
-    !shipmentId || !orderId || !buyerId || !shipmentStatus || !paymentIntentId || !since || !kind ||
-    refundId === undefined || refundFailureReason === undefined ||
-    typeof amountOwedCents !== 'number' || !Number.isSafeInteger(amountOwedCents) || amountOwedCents <= 0 ||
+    !shipmentId ||
+    !orderId ||
+    !buyerId ||
+    !shipmentStatus ||
+    !paymentIntentId ||
+    !since ||
+    !kind ||
+    refundId === undefined ||
+    refundFailureReason === undefined ||
+    typeof amountOwedCents !== 'number' ||
+    !Number.isSafeInteger(amountOwedCents) ||
+    amountOwedCents <= 0 ||
     Number.isNaN(Date.parse(since))
   ) {
     return null;
   }
   return {
-    shipmentId, orderId, buyerId, shipmentStatus, kind, refundId, refundFailureReason,
-    amountOwedCents, paymentIntentId, since,
+    shipmentId,
+    orderId,
+    buyerId,
+    shipmentStatus,
+    kind,
+    refundId,
+    refundFailureReason,
+    amountOwedCents,
+    paymentIntentId,
+    since,
   };
 }
 
 export function parseRefundProblems(payload: unknown): RefundProblem[] {
   const rows = asRecord(payload)?.problems;
-  if (!Array.isArray(rows)) throw new MalformedRefundResponseError('refund problems');
+  if (!Array.isArray(rows))
+    throw new MalformedRefundResponseError('refund problems');
   const problems = rows.map(toProblem);
-  if (problems.some((problem) => problem === null)) throw new MalformedRefundResponseError('refund problems');
+  if (problems.some((problem) => problem === null))
+    throw new MalformedRefundResponseError('refund problems');
   return problems as RefundProblem[];
 }
 
@@ -113,16 +132,23 @@ export function parseResolveResult(payload: unknown): ResolveRefundResult {
 /** The trimmed reference, or null when it is empty or over the server limit. */
 export function normalizeResolutionReference(input: string): string | null {
   const reference = input.trim();
-  return reference === '' || reference.length > MAX_RESOLUTION_REFERENCE_LENGTH ? null : reference;
+  return reference === '' || reference.length > MAX_RESOLUTION_REFERENCE_LENGTH
+    ? null
+    : reference;
 }
 
 const ERROR_MESSAGES: Record<string, string> = {
-  REFUND_NOT_RESOLVABLE: 'Este reembolso ya no se puede resolver manualmente. Actualiza la lista.',
-  SHIPMENT_STATUS_UNEXPECTED: 'El estado del envío cambió y no se puede cancelar. Actualiza la lista y revisa el envío.',
-  INVALID_RESOLUTION_REFERENCE: 'Escribe una referencia del pago externo de entre 1 y 200 caracteres.',
-  ADMIN_ONLY: 'Tu cuenta no tiene permisos de administrador activos para esta acción.',
+  REFUND_NOT_RESOLVABLE:
+    'Este reembolso ya no se puede resolver manualmente. Actualiza la lista.',
+  SHIPMENT_STATUS_UNEXPECTED:
+    'El estado del envío cambió y no se puede cancelar. Actualiza la lista y revisa el envío.',
+  INVALID_RESOLUTION_REFERENCE:
+    'Escribe una referencia del pago externo de entre 1 y 200 caracteres.',
+  ADMIN_ONLY:
+    'Tu cuenta no tiene permisos de administrador activos para esta acción.',
 };
-const GENERIC_ERROR_MESSAGE = 'No se pudo marcar el reembolso como resuelto. Intenta de nuevo.';
+const GENERIC_ERROR_MESSAGE =
+  'No se pudo marcar el reembolso como resuelto. Intenta de nuevo.';
 
 export function resolveRefundErrorMessage(code: string | null): string {
   return (code && ERROR_MESSAGES[code]) || GENERIC_ERROR_MESSAGE;

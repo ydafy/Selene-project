@@ -31,7 +31,9 @@ describe('allocateCents', () => {
       { id: 'seller-c', cents: 3 },
     ]);
 
-    expect(Array.from(allocations.values()).reduce((sum, value) => sum + value, 0)).toBe(10);
+    expect(
+      Array.from(allocations.values()).reduce((sum, value) => sum + value, 0),
+    ).toBe(10);
     expect(allocations.get('seller-a')).toBe(2);
     expect(allocations.get('seller-b')).toBe(3);
     expect(allocations.get('seller-c')).toBe(5);

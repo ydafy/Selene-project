@@ -240,7 +240,10 @@ describe('account closure migration', () => {
       'connect_payout_run_shipments',
     ]) {
       expect(fn).not.toMatch(
-        new RegExp(`(UPDATE|DELETE FROM|INSERT INTO) public\\.${table}\\b`, 'i'),
+        new RegExp(
+          `(UPDATE|DELETE FROM|INSERT INTO) public\\.${table}\\b`,
+          'i',
+        ),
       );
     }
   });

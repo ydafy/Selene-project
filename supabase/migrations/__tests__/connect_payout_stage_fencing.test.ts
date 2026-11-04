@@ -38,22 +38,46 @@ const findFunction = (sql: string, name: string): string =>
 describe('complete failed terminal replay SQL contract (not DB execution)', () => {
   const canonicalDir = join(MIGRATIONS_DIR, '..', '..', 'queries', 'payments');
   const sources = {
-    standalone: readFileSync(join(canonicalDir, 'fn_project_payout_run_terminal.sql'), 'utf8'),
-    combined: [...readFileSync(join(canonicalDir, 'connect_payout_stage_fencing.sql'), 'utf8')
-      .matchAll(/CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.fn_project_payout_run_terminal\b[\s\S]*?\$\$;/gi)].at(-1)?.[0] ?? '',
+    standalone: readFileSync(
+      join(canonicalDir, 'fn_project_payout_run_terminal.sql'),
+      'utf8',
+    ),
+    combined:
+      [
+        ...readFileSync(
+          join(canonicalDir, 'connect_payout_stage_fencing.sql'),
+          'utf8',
+        ).matchAll(
+          /CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.fn_project_payout_run_terminal\b[\s\S]*?\$\$;/gi,
+        ),
+      ].at(-1)?.[0] ?? '',
   };
   for (const [name, rpc] of Object.entries(sources)) {
     test(`${name}: complete same-payout failed replay returns true before any writes`, () => {
-      const beforeWrites = rpc.split(/UPDATE\s+public\.connect_payout_runs/i)[0];
-      const branch = beforeWrites.match(/IF\s+v_status\s*=\s*'failed'\s+AND\s+p_target_status\s*=\s*'failed'\s+THEN([\s\S]*?)RETURN\s+TRUE;\s*END\s+IF;/i)?.[1] ?? '';
-      expect(branch, 'Missing locked complete failed no-op; current update excludes failed runs').not.toBe('');
-      expect(beforeWrites).toMatch(/cpr\.stripe_payout_id\s*=\s*p_payout_id[\s\S]*?FOR\s+UPDATE/i);
+      const beforeWrites = rpc.split(
+        /UPDATE\s+public\.connect_payout_runs/i,
+      )[0];
+      const branch =
+        beforeWrites.match(
+          /IF\s+v_status\s*=\s*'failed'\s+AND\s+p_target_status\s*=\s*'failed'\s+THEN([\s\S]*?)RETURN\s+TRUE;\s*END\s+IF;/i,
+        )?.[1] ?? '';
+      expect(
+        branch,
+        'Missing locked complete failed no-op; current update excludes failed runs',
+      ).not.toBe('');
+      expect(beforeWrites).toMatch(
+        /cpr\.stripe_payout_id\s*=\s*p_payout_id[\s\S]*?FOR\s+UPDATE/i,
+      );
       expect(beforeWrites).toMatch(/cpr\.failed_at/i);
-      expect(branch).toMatch(/v_stage\s+IS\s+DISTINCT\s+FROM\s+'payout_failed'/i);
+      expect(branch).toMatch(
+        /v_stage\s+IS\s+DISTINCT\s+FROM\s+'payout_failed'/i,
+      );
       expect(branch).toMatch(/v_failed_at\s+IS\s+NULL/i);
       expect(branch).toMatch(/v_claim_token\s+IS\s+NOT\s+NULL/i);
       expect(branch).toMatch(/v_claim_expires_at\s+IS\s+NOT\s+NULL/i);
-      expect(branch).toMatch(/NOT\s+EXISTS\s*\([\s\S]*?m\.run_id\s*=\s*p_run_id/i);
+      expect(branch).toMatch(
+        /NOT\s+EXISTS\s*\([\s\S]*?m\.run_id\s*=\s*p_run_id/i,
+      );
       expect(branch).toMatch(/m\.shipment_id\s+IS\s+NULL/i);
       expect(branch).toMatch(/m\.status\s+IS\s+DISTINCT\s+FROM\s+'failed'/i);
       expect(branch).toMatch(/s\.id\s+IS\s+NULL/i);
@@ -64,10 +88,16 @@ describe('complete failed terminal replay SQL contract (not DB execution)', () =
       expect(branch).not.toMatch(/\b(?:UPDATE|INSERT|DELETE)\b/i);
     });
     test(`${name}: identity, paid reversal and run-scoped clearing controls remain`, () => {
-      expect(rpc).toMatch(/cpr\.id\s*=\s*p_run_id\s+AND\s+cpr\.stripe_payout_id\s*=\s*p_payout_id/i);
-      expect(rpc).toMatch(/v_status\s*=\s*'paid'\s+AND\s+p_target_status\s*=\s*'failed'/i);
+      expect(rpc).toMatch(
+        /cpr\.id\s*=\s*p_run_id\s+AND\s+cpr\.stripe_payout_id\s*=\s*p_payout_id/i,
+      );
+      expect(rpc).toMatch(
+        /v_status\s*=\s*'paid'\s+AND\s+p_target_status\s*=\s*'failed'/i,
+      );
       expect(rpc).toMatch(/p_occurred_at\s*<\s*v_paid_at/i);
-      expect(rpc).toMatch(/SET\s+stripe_payout_id\s*=\s*NULL[\s\S]*?m\.run_id\s*=\s*p_run_id[\s\S]*?AND\s+stripe_payout_id\s*=\s*p_payout_id/i);
+      expect(rpc).toMatch(
+        /SET\s+stripe_payout_id\s*=\s*NULL[\s\S]*?m\.run_id\s*=\s*p_run_id[\s\S]*?AND\s+stripe_payout_id\s*=\s*p_payout_id/i,
+      );
     });
   }
 });
@@ -85,46 +115,89 @@ const FENCE_COLUMNS = [
 ];
 
 describe('additive terminal projection migration', () => {
-  const path = join(MIGRATIONS_DIR, '20260923000000_idempotent_connect_payout_terminal_projection.sql');
+  const path = join(
+    MIGRATIONS_DIR,
+    '20260923000000_idempotent_connect_payout_terminal_projection.sql',
+  );
   test('replaces only the terminal RPC with locked, complete paid equivalence', () => {
     const sql = readFileSync(path, 'utf8');
     const rpc = findFunction(sql, 'fn_project_payout_run_terminal');
     expect(rpc).not.toBe('');
     expect(sql.match(/CREATE\s+OR\s+REPLACE\s+FUNCTION/gi)).toHaveLength(1);
     expect(rpc).toMatch(/FOR\s+UPDATE/i);
-    expect(rpc).toMatch(/v_status\s*=\s*'paid'\s+AND\s+p_target_status\s*=\s*'paid'/i);
+    expect(rpc).toMatch(
+      /v_status\s*=\s*'paid'\s+AND\s+p_target_status\s*=\s*'paid'/i,
+    );
     expect(rpc).toMatch(/v_stage\s+IS\s+DISTINCT\s+FROM\s+'paid_observed'/i);
     expect(rpc).toMatch(/v_paid_at\s+IS\s+NULL/i);
-    expect(rpc).toMatch(/NOT\s+EXISTS\s*\([\s\S]*?m\.status\s+IS\s+DISTINCT\s+FROM\s+'paid'/i);
-    expect(rpc).toMatch(/s\.stripe_payout_id\s+IS\s+DISTINCT\s+FROM\s+p_payout_id/i);
+    expect(rpc).toMatch(
+      /NOT\s+EXISTS\s*\([\s\S]*?m\.status\s+IS\s+DISTINCT\s+FROM\s+'paid'/i,
+    );
+    expect(rpc).toMatch(
+      /s\.stripe_payout_id\s+IS\s+DISTINCT\s+FROM\s+p_payout_id/i,
+    );
     expect(rpc).toMatch(/RETURN\s+TRUE/i);
-    expect(rpc).toMatch(/status\s*=\s*'paid'\s+AND\s+p_target_status\s*=\s*'failed'/i);
+    expect(rpc).toMatch(
+      /status\s*=\s*'paid'\s+AND\s+p_target_status\s*=\s*'failed'/i,
+    );
     expect(rpc).toMatch(/SHIPMENT_ALREADY_RELEASED/i);
-    expect(rpc).toMatch(/SECURITY\s+DEFINER[\s\S]*?SET\s+search_path\s*=\s*public/i);
-    expect(sql).toMatch(/REVOKE EXECUTE ON FUNCTION public\.fn_project_payout_run_terminal FROM PUBLIC;/i);
-    expect(sql).toMatch(/REVOKE EXECUTE ON FUNCTION public\.fn_project_payout_run_terminal FROM anon, authenticated;/i);
-    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.fn_project_payout_run_terminal TO service_role;/i);
+    expect(rpc).toMatch(
+      /SECURITY\s+DEFINER[\s\S]*?SET\s+search_path\s*=\s*public/i,
+    );
+    expect(sql).toMatch(
+      /REVOKE EXECUTE ON FUNCTION public\.fn_project_payout_run_terminal FROM PUBLIC;/i,
+    );
+    expect(sql).toMatch(
+      /REVOKE EXECUTE ON FUNCTION public\.fn_project_payout_run_terminal FROM anon, authenticated;/i,
+    );
+    expect(sql).toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.fn_project_payout_run_terminal TO service_role;/i,
+    );
   });
 
   test('canonical operational SQL ends with the same terminal function as the additive migration', () => {
-    const migration = readFileSync(join(MIGRATIONS_DIR, '20261001070000_idempotent_failed_payout_terminal_projection.sql'), 'utf8');
+    const migration = readFileSync(
+      join(
+        MIGRATIONS_DIR,
+        '20261001070000_idempotent_failed_payout_terminal_projection.sql',
+      ),
+      'utf8',
+    );
     const canonical = readFileSync(
-      join(MIGRATIONS_DIR, '..', '..', 'queries', 'payments', 'connect_payout_stage_fencing.sql'),
+      join(
+        MIGRATIONS_DIR,
+        '..',
+        '..',
+        'queries',
+        'payments',
+        'connect_payout_stage_fencing.sql',
+      ),
       'utf8',
     );
     const name = 'fn_project_payout_run_terminal';
     const terminalDefinitions = [
-      ...canonical.matchAll(/CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.fn_project_payout_run_terminal\b[\s\S]*?\$\$;/gi),
+      ...canonical.matchAll(
+        /CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.fn_project_payout_run_terminal\b[\s\S]*?\$\$;/gi,
+      ),
     ];
     expect(terminalDefinitions.length).toBeGreaterThan(0);
     expect(terminalDefinitions.at(-1)?.[0]).toBe(findFunction(migration, name));
   });
 
   test('mismatched payout, incomplete mappings and late paid-to-failed remain distinct outcomes', () => {
-    const rpc = findFunction(readFileSync(path, 'utf8'), 'fn_project_payout_run_terminal');
-    const lock = rpc.match(/SELECT\s+cpr\.status[\s\S]*?FOR\s+UPDATE\s*;/i)?.[0] ?? '';
-    expect(lock).toMatch(/cpr\.id\s*=\s*p_run_id\s+AND\s+cpr\.stripe_payout_id\s*=\s*p_payout_id/i);
-    const noOp = rpc.match(/IF\s+v_status\s*=\s*'paid'\s+AND\s+p_target_status\s*=\s*'paid'\s+THEN([\s\S]*?)\n\s*END\s+IF;/i)?.[1] ?? '';
+    const rpc = findFunction(
+      readFileSync(path, 'utf8'),
+      'fn_project_payout_run_terminal',
+    );
+    const lock =
+      rpc.match(/SELECT\s+cpr\.status[\s\S]*?FOR\s+UPDATE\s*;/i)?.[0] ?? '';
+    expect(lock).toMatch(
+      /cpr\.id\s*=\s*p_run_id\s+AND\s+cpr\.stripe_payout_id\s*=\s*p_payout_id/i,
+    );
+    const noOp =
+      rpc.match(
+        /IF\s+v_status\s*=\s*'paid'\s+AND\s+p_target_status\s*=\s*'paid'\s+THEN([\s\S]*?)\n\s*END\s+IF;/i,
+      )?.[1] ?? '';
     expect(noOp).toMatch(/v_stage\s+IS\s+DISTINCT\s+FROM\s+'paid_observed'/i);
     expect(noOp).toMatch(/v_claim_token\s+IS\s+NOT\s+NULL/i);
     expect(noOp).toMatch(/v_claim_expires_at\s+IS\s+NOT\s+NULL/i);
@@ -133,29 +206,55 @@ describe('additive terminal projection migration', () => {
     expect(noOp).toMatch(/m\.shipment_id\s+IS\s+NULL/i);
     expect(noOp).toMatch(/m\.status\s+IS\s+DISTINCT\s+FROM\s+'paid'/i);
     expect(noOp).toMatch(/s\.id\s+IS\s+NULL/i);
-    expect(noOp).toMatch(/s\.stripe_payout_id\s+IS\s+DISTINCT\s+FROM\s+p_payout_id/i);
+    expect(noOp).toMatch(
+      /s\.stripe_payout_id\s+IS\s+DISTINCT\s+FROM\s+p_payout_id/i,
+    );
     expect(noOp).toMatch(/THEN\s+RETURN\s+FALSE;/i);
-    expect(rpc).toMatch(/END\s+IF;\s+RETURN\s+TRUE;\s+END\s+IF;[\s\S]*?IF v_status = 'paid' AND p_target_status = 'failed' THEN[\s\S]*?END IF;\s+UPDATE\s+public\.connect_payout_runs/i);
-    expect(rpc).toMatch(/status\s*=\s*'paid'\s+AND\s+p_target_status\s*=\s*'failed'/i);
-    expect(rpc).toMatch(/SET\s+stripe_payout_id\s*=\s*NULL[\s\S]*?AND\s+stripe_payout_id\s*=\s*p_payout_id/i);
-    expect(rpc).toMatch(/AND\s+NOT\s*\(p_target_status\s*=\s*'paid'\s+AND\s+status\s+IN\s*\('failed',\s*'canceled'\)\)/i);
+    expect(rpc).toMatch(
+      /END\s+IF;\s+RETURN\s+TRUE;\s+END\s+IF;[\s\S]*?IF v_status = 'paid' AND p_target_status = 'failed' THEN[\s\S]*?END IF;\s+UPDATE\s+public\.connect_payout_runs/i,
+    );
+    expect(rpc).toMatch(
+      /status\s*=\s*'paid'\s+AND\s+p_target_status\s*=\s*'failed'/i,
+    );
+    expect(rpc).toMatch(
+      /SET\s+stripe_payout_id\s*=\s*NULL[\s\S]*?AND\s+stripe_payout_id\s*=\s*p_payout_id/i,
+    );
+    expect(rpc).toMatch(
+      /AND\s+NOT\s*\(p_target_status\s*=\s*'paid'\s+AND\s+status\s+IN\s*\('failed',\s*'canceled'\)\)/i,
+    );
   });
 
   test('locked paid timestamp refuses stale failed downgrades without bypassing later failure', () => {
-    const rpc = findFunction(readFileSync(path, 'utf8'), 'fn_project_payout_run_terminal');
-    const gate = rpc.match(/IF v_status = 'paid' AND p_target_status = 'failed' THEN([\s\S]*?)END IF;/i)?.[1] ?? '';
+    const rpc = findFunction(
+      readFileSync(path, 'utf8'),
+      'fn_project_payout_run_terminal',
+    );
+    const gate =
+      rpc.match(
+        /IF v_status = 'paid' AND p_target_status = 'failed' THEN([\s\S]*?)END IF;/i,
+      )?.[1] ?? '';
     expect(gate).toMatch(/v_paid_at IS NULL/i);
     expect(gate).toMatch(/p_occurred_at IS NULL/i);
     expect(gate).toMatch(/p_occurred_at < v_paid_at/i);
     expect(gate).toMatch(/RETURN FALSE/i);
     expect(rpc).toMatch(/status = 'paid' AND p_target_status = 'failed'/i);
-    expect(rpc).toMatch(/IF NOT COALESCE\(v_updated, FALSE\) THEN\s+RETURN FALSE;/i);
+    expect(rpc).toMatch(
+      /IF NOT COALESCE\(v_updated, FALSE\) THEN\s+RETURN FALSE;/i,
+    );
   });
 
   test('initial paid projection rejects missing or terminal mappings atomically', () => {
-    const rpc = findFunction(readFileSync(path, 'utf8'), 'fn_project_payout_run_terminal');
-    const paid = rpc.match(/IF p_target_status = 'paid' THEN\s+IF NOT EXISTS[\s\S]*?ELSE\s+UPDATE public\.shipments/i)?.[0] ?? '';
-    expect(paid).toMatch(/LEFT JOIN public\.shipments s ON s\.id = m\.shipment_id/i);
+    const rpc = findFunction(
+      readFileSync(path, 'utf8'),
+      'fn_project_payout_run_terminal',
+    );
+    const paid =
+      rpc.match(
+        /IF p_target_status = 'paid' THEN\s+IF NOT EXISTS[\s\S]*?ELSE\s+UPDATE public\.shipments/i,
+      )?.[0] ?? '';
+    expect(paid).toMatch(
+      /LEFT JOIN public\.shipments s ON s\.id = m\.shipment_id/i,
+    );
     expect(paid).toMatch(/m\.status IS DISTINCT FROM 'paid'/i);
     expect(paid).toMatch(/s\.id IS NULL/i);
     expect(paid).toMatch(/s\.stripe_payout_id IS DISTINCT FROM p_payout_id/i);
@@ -169,7 +268,10 @@ describe('late progress after terminal additive override', () => {
     const files = readdirSync(MIGRATIONS_DIR).filter((file) =>
       /^\d+_.*late_payout_progress.*\.sql$/.test(file),
     );
-    expect(files, 'T2 must add a NEW migration; never rewrite the deployed stage migration').toHaveLength(1);
+    expect(
+      files,
+      'T2 must add a NEW migration; never rewrite the deployed stage migration',
+    ).toHaveLength(1);
     const sql = readFileSync(join(MIGRATIONS_DIR, files[0]), 'utf8');
     const rpc = findFunction(sql, 'fn_project_payout_run_stage');
     expect(rpc).not.toBe('');
@@ -177,117 +279,259 @@ describe('late progress after terminal additive override', () => {
     expect(lock).toMatch(/stripe_payout_id/i);
     expect(lock).toMatch(/paid_at/i);
     expect(lock).toMatch(/cpr\.stripe_payout_id\s*=\s*p_payout_id/i);
-    expect(rpc).toMatch(/v_status\s*=\s*'paid'[\s\S]*?v_stage\s+IS\s+DISTINCT\s+FROM\s+'paid_observed'/i);
+    expect(rpc).toMatch(
+      /v_status\s*=\s*'paid'[\s\S]*?v_stage\s+IS\s+DISTINCT\s+FROM\s+'paid_observed'/i,
+    );
     expect(rpc).toMatch(/v_payout_id\s+IS\s+DISTINCT\s+FROM\s+p_payout_id/i);
     expect(rpc).toMatch(/v_paid_at\s+IS\s+NULL/i);
-    expect(rpc).toMatch(/NOT\s+EXISTS\s*\([\s\S]*?m\.status\s+IS\s+DISTINCT\s+FROM\s+'paid'/i);
-    expect(rpc).toMatch(/s\.stripe_payout_id\s+IS\s+DISTINCT\s+FROM\s+v_payout_id/i);
+    expect(rpc).toMatch(
+      /NOT\s+EXISTS\s*\([\s\S]*?m\.status\s+IS\s+DISTINCT\s+FROM\s+'paid'/i,
+    );
+    expect(rpc).toMatch(
+      /s\.stripe_payout_id\s+IS\s+DISTINCT\s+FROM\s+v_payout_id/i,
+    );
     expect(rpc).toMatch(/RETURN\s+FALSE[\s\S]*?RETURN\s+TRUE/i);
-    expect(rpc).toMatch(/SECURITY\s+DEFINER[\s\S]*?SET\s+search_path\s*=\s*public/i);
-    expect(sql).toMatch(/REVOKE EXECUTE ON FUNCTION public\.fn_project_payout_run_stage FROM PUBLIC;/i);
-    expect(sql).toMatch(/REVOKE EXECUTE ON FUNCTION public\.fn_project_payout_run_stage FROM anon, authenticated;/i);
-    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.fn_project_payout_run_stage TO service_role;/i);
-    const paidBranch = rpc.match(/IF v_status = 'paid' THEN([\s\S]*?)END IF;/i)?.[1] ?? '';
+    expect(rpc).toMatch(
+      /SECURITY\s+DEFINER[\s\S]*?SET\s+search_path\s*=\s*public/i,
+    );
+    expect(sql).toMatch(
+      /REVOKE EXECUTE ON FUNCTION public\.fn_project_payout_run_stage FROM PUBLIC;/i,
+    );
+    expect(sql).toMatch(
+      /REVOKE EXECUTE ON FUNCTION public\.fn_project_payout_run_stage FROM anon, authenticated;/i,
+    );
+    expect(sql).toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.fn_project_payout_run_stage TO service_role;/i,
+    );
+    const paidBranch =
+      rpc.match(/IF v_status = 'paid' THEN([\s\S]*?)END IF;/i)?.[1] ?? '';
     expect(paidBranch).toMatch(/v_stage IS DISTINCT FROM 'paid_observed'/i);
-    expect(paidBranch).toMatch(/v_claim_token IS NOT NULL OR v_claim_expires_at IS NOT NULL/i);
-    expect(paidBranch).toMatch(/m\.shipment_id IS NULL OR m\.status IS DISTINCT FROM 'paid'/i);
-    expect(paidBranch).toMatch(/s\.id IS NULL OR s\.stripe_payout_id IS DISTINCT FROM v_payout_id/i);
+    expect(paidBranch).toMatch(
+      /v_claim_token IS NOT NULL OR v_claim_expires_at IS NOT NULL/i,
+    );
+    expect(paidBranch).toMatch(
+      /m\.shipment_id IS NULL OR m\.status IS DISTINCT FROM 'paid'/i,
+    );
+    expect(paidBranch).toMatch(
+      /s\.id IS NULL OR s\.stripe_payout_id IS DISTINCT FROM v_payout_id/i,
+    );
     expect(paidBranch).toMatch(/RETURN FALSE/i);
-    expect(rpc).toMatch(/status IN \('pending_reconciliation', 'reconciliation_needed'\)/i);
+    expect(rpc).toMatch(
+      /status IN \('pending_reconciliation', 'reconciliation_needed'\)/i,
+    );
     expect(rpc).not.toMatch(/EXCEPTION\s+WHEN\s+OTHERS/i);
   });
 
   test('canonical final stage definition equals the additive migration', () => {
     const migration = readFileSync(
-      join(MIGRATIONS_DIR, '20260923010000_late_payout_progress_after_paid.sql'), 'utf8',
+      join(
+        MIGRATIONS_DIR,
+        '20260923010000_late_payout_progress_after_paid.sql',
+      ),
+      'utf8',
     );
     const canonical = readFileSync(
-      join(MIGRATIONS_DIR, '..', '..', 'queries', 'payments', 'connect_payout_stage_fencing.sql'), 'utf8',
+      join(
+        MIGRATIONS_DIR,
+        '..',
+        '..',
+        'queries',
+        'payments',
+        'connect_payout_stage_fencing.sql',
+      ),
+      'utf8',
     );
-    const definitions = [...canonical.matchAll(
-      /CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.fn_project_payout_run_stage\b[\s\S]*?\$\$;/gi,
-    )];
+    const definitions = [
+      ...canonical.matchAll(
+        /CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.fn_project_payout_run_stage\b[\s\S]*?\$\$;/gi,
+      ),
+    ];
     expect(definitions).toHaveLength(3);
-    expect(definitions[1]?.[0]).toBe(findFunction(migration, 'fn_project_payout_run_stage'));
+    expect(definitions[1]?.[0]).toBe(
+      findFunction(migration, 'fn_project_payout_run_stage'),
+    );
   });
 });
 
 describe('idempotent payout progress regression override', () => {
   test('final canonical stage override accepts only healthy in-transit replay of pending', () => {
-    const migration = readFileSync(join(MIGRATIONS_DIR, '20260923030000_idempotent_payout_progress_regression.sql'), 'utf8');
-    const canonical = readFileSync(join(MIGRATIONS_DIR, '..', '..', 'queries', 'payments', 'connect_payout_stage_fencing.sql'), 'utf8');
-    const definitions = [...canonical.matchAll(/CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.fn_project_payout_run_stage\b[\s\S]*?\$\$;/gi)];
+    const migration = readFileSync(
+      join(
+        MIGRATIONS_DIR,
+        '20260923030000_idempotent_payout_progress_regression.sql',
+      ),
+      'utf8',
+    );
+    const canonical = readFileSync(
+      join(
+        MIGRATIONS_DIR,
+        '..',
+        '..',
+        'queries',
+        'payments',
+        'connect_payout_stage_fencing.sql',
+      ),
+      'utf8',
+    );
+    const definitions = [
+      ...canonical.matchAll(
+        /CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.fn_project_payout_run_stage\b[\s\S]*?\$\$;/gi,
+      ),
+    ];
     expect(definitions).toHaveLength(3);
     const rpc = findFunction(migration, 'fn_project_payout_run_stage');
     expect(definitions.at(-1)?.[0]).toBe(rpc);
     expect(rpc).toMatch(/FOR UPDATE/i);
-    expect(rpc).toMatch(/v_status = 'pending_reconciliation'\s+AND v_stage = 'payout_in_transit'\s+AND p_target_stage = 'payout_pending'/i);
-    expect(rpc).toMatch(/v_claim_token IS NULL AND v_claim_expires_at IS NULL/i);
-    expect(rpc).toMatch(/IF v_status IN \('pending_reconciliation', 'reconciliation_needed'\)\s+AND v_stage = p_target_stage/i);
+    expect(rpc).toMatch(
+      /v_status = 'pending_reconciliation'\s+AND v_stage = 'payout_in_transit'\s+AND p_target_stage = 'payout_pending'/i,
+    );
+    expect(rpc).toMatch(
+      /v_claim_token IS NULL AND v_claim_expires_at IS NULL/i,
+    );
+    expect(rpc).toMatch(
+      /IF v_status IN \('pending_reconciliation', 'reconciliation_needed'\)\s+AND v_stage = p_target_stage/i,
+    );
     expect(rpc).toMatch(/v_stage IS DISTINCT FROM 'paid_observed'/i);
     expect(rpc).toMatch(/m\.status IS DISTINCT FROM 'paid'/i);
-    expect(migration).toMatch(/REVOKE EXECUTE ON FUNCTION public\.fn_project_payout_run_stage FROM PUBLIC;/i);
+    expect(migration).toMatch(
+      /REVOKE EXECUTE ON FUNCTION public\.fn_project_payout_run_stage FROM PUBLIC;/i,
+    );
     expect(rpc).not.toMatch(/EXCEPTION WHEN OTHERS/i);
-    expect(migration).toMatch(/GRANT EXECUTE ON FUNCTION public\.fn_project_payout_run_stage TO service_role;/i);
+    expect(migration).toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.fn_project_payout_run_stage TO service_role;/i,
+    );
   });
 });
 
 describe('stage-specific guarded park additive migration', () => {
   test('late progress on a complete failed payout is evidence-only, but incomplete or mismatched runs are not', () => {
-    const migration = readFileSync(join(MIGRATIONS_DIR, '20260923040000_preserve_complete_failed_payout_progress.sql'), 'utf8');
-    const canonical = readFileSync(join(MIGRATIONS_DIR, '..', '..', 'queries', 'payments', 'fn_decide_rejected_payout_stage_park.sql'), 'utf8');
+    const migration = readFileSync(
+      join(
+        MIGRATIONS_DIR,
+        '20260923040000_preserve_complete_failed_payout_progress.sql',
+      ),
+      'utf8',
+    );
+    const canonical = readFileSync(
+      join(
+        MIGRATIONS_DIR,
+        '..',
+        '..',
+        'queries',
+        'payments',
+        'fn_decide_rejected_payout_stage_park.sql',
+      ),
+      'utf8',
+    );
     const rpc = findFunction(migration, 'fn_decide_rejected_payout_stage_park');
-    expect(findFunction(canonical, 'fn_decide_rejected_payout_stage_park').replaceAll('\r\n', '\n')).toBe(rpc.replaceAll('\r\n', '\n'));
+    expect(
+      findFunction(
+        canonical,
+        'fn_decide_rejected_payout_stage_park',
+      ).replaceAll('\r\n', '\n'),
+    ).toBe(rpc.replaceAll('\r\n', '\n'));
     expect(rpc).toMatch(/FOR UPDATE/i);
-    const failed = rpc.match(/IF v_status = 'failed'([\s\S]*?)RETURN 'superseded_failed';\s*END IF;/i)?.[1] ?? '';
+    const failed =
+      rpc.match(
+        /IF v_status = 'failed'([\s\S]*?)RETURN 'superseded_failed';\s*END IF;/i,
+      )?.[1] ?? '';
     expect(failed).toMatch(/v_stage\s*=\s*'payout_failed'/i);
     expect(failed).toMatch(/v_payout_id\s*=\s*p_payout_id/i);
-    expect(failed).toMatch(/v_claim_token IS NULL AND v_claim_expires_at IS NULL/i);
+    expect(failed).toMatch(
+      /v_claim_token IS NULL AND v_claim_expires_at IS NULL/i,
+    );
     expect(failed).toMatch(/EXISTS\s*\([\s\S]*?m\.run_id\s*=\s*p_run_id/i);
-    expect(failed).toMatch(/NOT EXISTS\s*\([\s\S]*?m\.status IS DISTINCT FROM 'failed'/i);
+    expect(failed).toMatch(
+      /NOT EXISTS\s*\([\s\S]*?m\.status IS DISTINCT FROM 'failed'/i,
+    );
     expect(failed).toMatch(/s\.stripe_payout_id IS NOT NULL/i);
-    expect(rpc).toMatch(/IF v_payout_id IS DISTINCT FROM p_payout_id THEN[\s\S]*?RETURN 'identity_conflict'/i);
+    expect(rpc).toMatch(
+      /IF v_payout_id IS DISTINCT FROM p_payout_id THEN[\s\S]*?RETURN 'identity_conflict'/i,
+    );
     expect(rpc).toMatch(/RETURN 'parked'/i);
   });
   test('combined canonical decision retains the final failed-run override and missing-run conflict', () => {
-    const migration = readFileSync(join(MIGRATIONS_DIR, '20260923040000_preserve_complete_failed_payout_progress.sql'), 'utf8');
-    const canonical = readFileSync(join(MIGRATIONS_DIR, '..', '..', 'queries', 'payments', 'connect_payout_stage_fencing.sql'), 'utf8');
+    const migration = readFileSync(
+      join(
+        MIGRATIONS_DIR,
+        '20260923040000_preserve_complete_failed_payout_progress.sql',
+      ),
+      'utf8',
+    );
+    const canonical = readFileSync(
+      join(
+        MIGRATIONS_DIR,
+        '..',
+        '..',
+        'queries',
+        'payments',
+        'connect_payout_stage_fencing.sql',
+      ),
+      'utf8',
+    );
     const name = 'fn_decide_rejected_payout_stage_park';
     const rpc = findFunction(canonical, name);
     expect(rpc).not.toBe('');
-    const body = (sql: string): string => sql.split(/\bAS\s+\$\$/i)[1]?.replaceAll('\r\n', '\n') ?? '';
+    const body = (sql: string): string =>
+      sql.split(/\bAS\s+\$\$/i)[1]?.replaceAll('\r\n', '\n') ?? '';
     expect(body(rpc)).not.toBe('');
     expect(body(rpc)).toBe(body(findFunction(migration, name)));
     expect(rpc).toMatch(/IF NOT FOUND THEN\s+RETURN 'identity_conflict'/i);
-    const mismatch = rpc.match(/IF v_payout_id IS DISTINCT FROM p_payout_id THEN([\s\S]*?RETURN 'identity_conflict';\s*END IF;)/i)?.[1] ?? '';
-    expect(mismatch).toMatch(/UPDATE public\.connect_payout_runs[\s\S]*?status = 'reconciliation_needed'[\s\S]*?release_stage = 'action_required'/i);
-    expect(mismatch).toMatch(/failure_reason = 'PAYOUT_STAGE_PAYOUT_ID_MISMATCH'/i);
+    const mismatch =
+      rpc.match(
+        /IF v_payout_id IS DISTINCT FROM p_payout_id THEN([\s\S]*?RETURN 'identity_conflict';\s*END IF;)/i,
+      )?.[1] ?? '';
+    expect(mismatch).toMatch(
+      /UPDATE public\.connect_payout_runs[\s\S]*?status = 'reconciliation_needed'[\s\S]*?release_stage = 'action_required'/i,
+    );
+    expect(mismatch).toMatch(
+      /failure_reason = 'PAYOUT_STAGE_PAYOUT_ID_MISMATCH'/i,
+    );
     expect(mismatch).toMatch(/RETURN 'identity_conflict'/i);
     expect(mismatch).not.toMatch(/SET stripe_payout_id\s*=/i);
   });
   test('locks run and accepts only complete same-payout paid as superseded_paid, otherwise parks or reports conflict', () => {
-    const files = readdirSync(MIGRATIONS_DIR).filter((file) => /^\d+_.*payout.*(?:park|conflict).*\.sql$/.test(file));
-    expect(files, 'T2 must add a NEW migration; never edit deployed migrations').toHaveLength(1);
+    const files = readdirSync(MIGRATIONS_DIR).filter((file) =>
+      /^\d+_.*payout.*(?:park|conflict).*\.sql$/.test(file),
+    );
+    expect(
+      files,
+      'T2 must add a NEW migration; never edit deployed migrations',
+    ).toHaveLength(1);
     const sql = readFileSync(join(MIGRATIONS_DIR, files[0]), 'utf8');
     const rpc = findFunction(sql, 'fn_decide_rejected_payout_stage_park');
     expect(rpc).not.toBe('');
-    expect(getSignature(sql, 'fn_decide_rejected_payout_stage_park')).toMatch(/p_run_id[\s\S]*p_payout_id[\s\S]*p_target_stage/i);
+    expect(getSignature(sql, 'fn_decide_rejected_payout_stage_park')).toMatch(
+      /p_run_id[\s\S]*p_payout_id[\s\S]*p_target_stage/i,
+    );
     expect(rpc).toMatch(/FOR\s+UPDATE/i);
     expect(rpc).toMatch(/v_status\s*=\s*'paid'/i);
     expect(rpc).toMatch(/v_stage\s*=\s*'paid_observed'/i);
     expect(rpc).toMatch(/v_payout_id\s*=\s*p_payout_id/i);
     expect(rpc).toMatch(/v_paid_at\s+IS\s+NOT\s+NULL/i);
-    expect(rpc).toMatch(/NOT\s+EXISTS\s*\([\s\S]*?m\.status\s+IS\s+DISTINCT\s+FROM\s+'paid'/i);
-    expect(rpc).toMatch(/s\.stripe_payout_id\s+IS\s+DISTINCT\s+FROM\s+p_payout_id/i);
+    expect(rpc).toMatch(
+      /NOT\s+EXISTS\s*\([\s\S]*?m\.status\s+IS\s+DISTINCT\s+FROM\s+'paid'/i,
+    );
+    expect(rpc).toMatch(
+      /s\.stripe_payout_id\s+IS\s+DISTINCT\s+FROM\s+p_payout_id/i,
+    );
     expect(rpc).toMatch(/superseded_paid/i);
     expect(rpc).toMatch(/reconciliation_needed/i);
     expect(rpc).toMatch(/action_required/i);
     expect(rpc).toMatch(/(?:conflict|incomplete)/i);
-    expect(rpc).toMatch(/SECURITY\s+DEFINER[\s\S]*?SET\s+search_path\s*=\s*public/i);
+    expect(rpc).toMatch(
+      /SECURITY\s+DEFINER[\s\S]*?SET\s+search_path\s*=\s*public/i,
+    );
     expect(rpc).not.toMatch(/EXCEPTION\s+WHEN\s+OTHERS/i);
-    expect(sql).toMatch(/REVOKE EXECUTE ON FUNCTION public\.fn_decide_rejected_payout_stage_park FROM PUBLIC;/i);
-    expect(sql).toMatch(/REVOKE EXECUTE ON FUNCTION public\.fn_decide_rejected_payout_stage_park FROM anon, authenticated;/i);
-    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.fn_decide_rejected_payout_stage_park TO service_role;/i);
+    expect(sql).toMatch(
+      /REVOKE EXECUTE ON FUNCTION public\.fn_decide_rejected_payout_stage_park FROM PUBLIC;/i,
+    );
+    expect(sql).toMatch(
+      /REVOKE EXECUTE ON FUNCTION public\.fn_decide_rejected_payout_stage_park FROM anon, authenticated;/i,
+    );
+    expect(sql).toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.fn_decide_rejected_payout_stage_park TO service_role;/i,
+    );
   });
 });
 
@@ -296,14 +540,8 @@ describe('connect payout stage fencing migration', () => {
     const sql = readStageFencingMigration();
 
     for (const column of FENCE_COLUMNS) {
-      expect(
-        sql,
-        `expected ADD COLUMN IF NOT EXISTS ${column}`,
-      ).toMatch(
-        new RegExp(
-          `ADD\\s+COLUMN\\s+IF\\s+NOT\\s+EXISTS\\s+${column}\\b`,
-          'i',
-        ),
+      expect(sql, `expected ADD COLUMN IF NOT EXISTS ${column}`).toMatch(
+        new RegExp(`ADD\\s+COLUMN\\s+IF\\s+NOT\\s+EXISTS\\s+${column}\\b`, 'i'),
       );
     }
 
@@ -377,9 +615,7 @@ describe('connect payout stage fencing migration', () => {
 
     // The migration must neither remove nor re-create the deployed status
     // CHECK constraint that Phase 2A code paths rely on.
-    expect(sql).not.toMatch(
-      /DROP\s+CONSTRAINT[\s\S]{0,120}?status/i,
-    );
+    expect(sql).not.toMatch(/DROP\s+CONSTRAINT[\s\S]{0,120}?status/i);
   });
 
   test('stage transition RPC is SECURITY DEFINER with pinned search_path and bounded validation', () => {
@@ -403,9 +639,7 @@ describe('connect payout stage fencing migration', () => {
     expect(rpc).toMatch(
       /paid_observed[\s\S]{0,200}?payout_failed[\s\S]{0,200}?payout_canceled/i,
     );
-    expect(rpc).toMatch(
-      /TERMINAL_STAGE_REGRESSION|STAGE_TRANSITION_BLOCKED/i,
-    );
+    expect(rpc).toMatch(/TERMINAL_STAGE_REGRESSION|STAGE_TRANSITION_BLOCKED/i);
   });
 
   test('stage transition RPC is conditional on the claim token and stage version', () => {
@@ -416,12 +650,8 @@ describe('connect payout stage fencing migration', () => {
 
     expect(rpc).toMatch(/p_claim_token/i);
     expect(rpc).toMatch(/p_expected_stage_version/i);
-    expect(rpc).toMatch(
-      /STALE_CLAIM|STALE_WORKER|CLAIM_CONFLICT/i,
-    );
-    expect(rpc).toMatch(
-      /STAGE_VERSION_CONFLICT|VERSION_CONFLICT/i,
-    );
+    expect(rpc).toMatch(/STALE_CLAIM|STALE_WORKER|CLAIM_CONFLICT/i);
+    expect(rpc).toMatch(/STAGE_VERSION_CONFLICT|VERSION_CONFLICT/i);
   });
 
   test('payout-create fence RPCs write the durable write-ahead fence conditionally', () => {
@@ -447,9 +677,7 @@ describe('connect payout stage fencing migration', () => {
   test('both claim-clear and fence writes clear the executor claim token', () => {
     const sql = readStageFencingMigration();
 
-    expect(sql).toMatch(
-      /payout_claim_token\s*=\s*NULL/i,
-    );
+    expect(sql).toMatch(/payout_claim_token\s*=\s*NULL/i);
   });
 
   test('indexes pre-payout executor candidates by stage and next attempt', () => {
@@ -700,15 +928,13 @@ describe('connect payout stage fencing migration', () => {
   test('PL/pgSQL bodies contain no C++-style // comments', () => {
     const sql = readStageFencingMigration();
 
-    const bodies = [
-      ...sql.matchAll(/AS\s+\$\$([\s\S]*?)\$\$;/gi),
-    ].map((match) => match[1]);
+    const bodies = [...sql.matchAll(/AS\s+\$\$([\s\S]*?)\$\$;/gi)].map(
+      (match) => match[1],
+    );
     expect(bodies.length).toBeGreaterThan(0);
 
     for (const body of bodies) {
-      const offenders = body
-        .split('\n')
-        .filter((line) => /\/\//.test(line));
+      const offenders = body.split('\n').filter((line) => /\/\//.test(line));
       expect(
         offenders,
         'C++-style // comments must use SQL -- comments (they make the migration unparseable)',
@@ -805,7 +1031,9 @@ describe('connect payout stage fencing migration', () => {
     // conflict instead of overwriting a newer decision.
     expect(rpc).toMatch(/status\s*=\s*'reconciliation_needed'/i);
     expect(rpc).toMatch(/release_stage\s*=\s*'action_required'/i);
-    expect(rpc).toMatch(/release_stage_version\s*=\s*release_stage_version\s*\+\s*1/i);
+    expect(rpc).toMatch(
+      /release_stage_version\s*=\s*release_stage_version\s*\+\s*1/i,
+    );
     // The webhook wins over an in-flight worker, exactly like the terminal
     // projection: the executor claim and its lease clear with the park.
     expect(rpc).toMatch(/payout_claim_token\s*=\s*NULL/i);
@@ -877,18 +1105,15 @@ describe('connect payout stage fencing migration', () => {
     // recorded failure); failure and cancellation projections may advance
     // both pending and paid mappings when the signed event documents the
     // downgrade.
-    const mappingFilters =
-      [
-        ...rpc.matchAll(
-          /UPDATE\s+public\.connect_payout_run_shipments[\s\S]*?status\s+IN\s*\(([^)]*)\)/gi,
-        ),
-      ].map((match) => match[1]);
+    const mappingFilters = [
+      ...rpc.matchAll(
+        /UPDATE\s+public\.connect_payout_run_shipments[\s\S]*?status\s+IN\s*\(([^)]*)\)/gi,
+      ),
+    ].map((match) => match[1]);
     expect(mappingFilters).toHaveLength(2);
     expect(mappingFilters[0]).toMatch(/'pending_reconciliation'/);
     expect(mappingFilters[0]).not.toMatch(/'paid'/);
-    expect(mappingFilters[1]).toMatch(
-      /'pending_reconciliation'\s*,\s*'paid'/,
-    );
+    expect(mappingFilters[1]).toMatch(/'pending_reconciliation'\s*,\s*'paid'/);
   });
 
   test('the post-Stripe sync fallback RPC is guarded and never regresses terminal authority', () => {
@@ -943,9 +1168,10 @@ describe('connect payout stage fencing migration', () => {
       ),
     );
 
-    expect(publicRevoke, 'missing PUBLIC revoke for the sync fallback RPC').toBeGreaterThan(
-      -1,
-    );
+    expect(
+      publicRevoke,
+      'missing PUBLIC revoke for the sync fallback RPC',
+    ).toBeGreaterThan(-1);
     expect(roleRevoke).toBeGreaterThan(publicRevoke);
     expect(rpcGrant).toBeGreaterThan(roleRevoke);
   });
@@ -973,9 +1199,10 @@ describe('connect payout stage fencing migration', () => {
       ),
     );
 
-    expect(publicRevoke, 'missing PUBLIC revoke for the park RPC').toBeGreaterThan(
-      -1,
-    );
+    expect(
+      publicRevoke,
+      'missing PUBLIC revoke for the park RPC',
+    ).toBeGreaterThan(-1);
     expect(roleRevoke).toBeGreaterThan(publicRevoke);
     expect(rpcGrant).toBeGreaterThan(roleRevoke);
   });

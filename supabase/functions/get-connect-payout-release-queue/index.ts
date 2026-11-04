@@ -23,62 +23,76 @@ const jsonResponse = (body: unknown, status: number) =>
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 
-serve(withSentry('get-connect-payout-release-queue', async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+serve(
+  withSentry('get-connect-payout-release-queue', async (req: Request) => {
+    if (req.method === 'OPTIONS') {
+      return new Response('ok', { headers: corsHeaders });
+    }
 
-  try {
-    if (req.method !== 'POST') throw new Error('METHOD_NOT_ALLOWED');
+    try {
+      if (req.method !== 'POST') throw new Error('METHOD_NOT_ALLOWED');
 
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    if (!serviceRoleKey || !supabaseUrl)
-      throw new Error('MISSING_SERVER_CONFIG');
+      const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      const supabaseUrl = Deno.env.get('SUPABASE_URL');
+      if (!serviceRoleKey || !supabaseUrl)
+        throw new Error('MISSING_SERVER_CONFIG');
 
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) throw new Error('AUTH_REQUIRED');
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader?.startsWith('Bearer ')) throw new Error('AUTH_REQUIRED');
 
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
-    return await createQueueHandler({
-      getUser: async (token) => {
-        const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-        return error ? null : user;
-      },
-      getProfile: async (id) => {
-        const { data, error } = await supabaseAdmin.from('profiles_private')
-          .select('role').eq('id', id).maybeSingle();
-        if (error) throw new Error('PROFILE_LOOKUP_FAILED');
-        return data;
-      },
-      rpc: async (args) => {
-        const { data, error } = await supabaseAdmin.rpc('fn_get_admin_payout_queue', args);
-        if (error) throw new Error('QUEUE_RPC_FAILED');
-        return data;
-      },
-      legacy: async (search) => {
-        let query = supabaseAdmin
-          .from('admin_connect_payout_release_view')
-          .select('*')
-          .order('seller_name', { ascending: true })
-          .order('completed_at', { ascending: true });
+      const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+      return await createQueueHandler({
+        getUser: async (token) => {
+          const {
+            data: { user },
+            error,
+          } = await supabaseAdmin.auth.getUser(token);
+          return error ? null : user;
+        },
+        getProfile: async (id) => {
+          const { data, error } = await supabaseAdmin
+            .from('profiles_private')
+            .select('role')
+            .eq('id', id)
+            .maybeSingle();
+          if (error) throw new Error('PROFILE_LOOKUP_FAILED');
+          return data;
+        },
+        rpc: async (args) => {
+          const { data, error } = await supabaseAdmin.rpc(
+            'fn_get_admin_payout_queue',
+            args,
+          );
+          if (error) throw new Error('QUEUE_RPC_FAILED');
+          return data;
+        },
+        legacy: async (search) => {
+          let query = supabaseAdmin
+            .from('admin_connect_payout_release_view')
+            .select('*')
+            .order('seller_name', { ascending: true })
+            .order('completed_at', { ascending: true });
 
-        if (search) {
-          query = query.ilike('seller_name', `%${escapeIlikePattern(search)}%`);
-        }
+          if (search) {
+            query = query.ilike(
+              'seller_name',
+              `%${escapeIlikePattern(search)}%`,
+            );
+          }
 
-        const { data, error } = await query;
-        if (error) throw new Error('RELEASE_QUEUE_LOOKUP_FAILED');
-        return (data ?? []) as ConnectPayoutReleaseQueueRow[];
-      },
-    })(req);
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    return jsonResponse(
-      { success: false, error: message },
-      getQueueErrorStatus(message),
-    );
-  }
-}));
+          const { data, error } = await query;
+          if (error) throw new Error('RELEASE_QUEUE_LOOKUP_FAILED');
+          return (data ?? []) as ConnectPayoutReleaseQueueRow[];
+        },
+      })(req);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      return jsonResponse(
+        { success: false, error: message },
+        getQueueErrorStatus(message),
+      );
+    }
+  }),
+);

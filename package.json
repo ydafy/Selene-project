@@ -34,6 +34,7 @@
     "lint": "bunx eslint . --ext .js,.jsx,.ts,.tsx",
     "typecheck": "bun run --filter '*' typecheck",
     "format": "bunx prettier --write .",
+    "format:check": "bunx prettier --check .",
     "prepare": "husky",
     "clean:all": "bun scripts/clean-all.ts",
     "doctor:frontend": "cd apps/frontend && bunx expo-doctor",
@@ -59,7 +60,8 @@
     "*.{js,jsx,ts,tsx}": [
       "prettier --write",
       "eslint --fix --no-warn-ignored"
-    ]
+    ],
+    "*.{md,json,yml,yaml}": "prettier --write"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.107.0"

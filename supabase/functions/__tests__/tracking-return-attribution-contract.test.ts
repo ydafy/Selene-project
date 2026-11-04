@@ -44,27 +44,33 @@ describe('tracking return attribution contract', () => {
     const response = await handler(returnWebhookRequest());
 
     expect(response.status).toBe(200);
-    expect(recorded).toEqual([expect.objectContaining({
-      shipmentId: 'outbound-shipment-1',
-      disputeId: 'return-dispute-1',
-      event: expect.objectContaining({
-        trackingNumber: 'RETURN-TRACK-1',
-        transition: 'delivered',
+    expect(recorded).toEqual([
+      expect.objectContaining({
+        shipmentId: 'outbound-shipment-1',
+        disputeId: 'return-dispute-1',
+        event: expect.objectContaining({
+          trackingNumber: 'RETURN-TRACK-1',
+          transition: 'delivered',
+        }),
       }),
-    })]);
+    ]);
   });
 
   it('persists polling return events with the matched dispute ID', () => {
     const returnsPolling = read('supabase/functions/track-returns/index.ts');
 
     expect(returnsPolling).toContain(".from('disputes')");
-    expect(returnsPolling).toContain(".select('id, shipment_id, return_tracking_number')");
+    expect(returnsPolling).toContain(
+      ".select('id, shipment_id, return_tracking_number')",
+    );
     expect(returnsPolling).toContain('p_shipment_id: dispute.shipmentId');
     expect(returnsPolling).toContain('p_dispute_id: dispute.id');
   });
 
   it('keeps return webhook and polling events ledger-only for the outbound shipment', () => {
-    const migration = read('supabase/migrations/archive/20260828030000_shipment_tracking_foundation.sql');
+    const migration = read(
+      'supabase/migrations/archive/20260828030000_shipment_tracking_foundation.sql',
+    );
     const rpc = migration
       .match(
         /CREATE OR REPLACE FUNCTION public\.fn_record_tracking_event\([\s\S]*?\n\$\$;/,
@@ -73,7 +79,11 @@ describe('tracking return attribution contract', () => {
 
     expect(rpc).toContain('shipment_id, dispute_id, event_type');
     expect(rpc).toContain('p_shipment_id, p_dispute_id, p_event_type');
-    expect(rpc).toContain("IF p_dispute_id IS NULL AND v_status = 'preparing' AND p_transition = 'shipped' THEN");
-    expect(rpc).toContain("ELSIF p_dispute_id IS NULL AND v_status = 'shipped' AND p_transition = 'delivered' THEN");
+    expect(rpc).toContain(
+      "IF p_dispute_id IS NULL AND v_status = 'preparing' AND p_transition = 'shipped' THEN",
+    );
+    expect(rpc).toContain(
+      "ELSIF p_dispute_id IS NULL AND v_status = 'shipped' AND p_transition = 'delivered' THEN",
+    );
   });
 });

@@ -67,7 +67,9 @@ export const LateCarrierActivityBucket = ({
     if (!selected || inFlight.current) return;
     const normalized = normalizeAcknowledgementNote(note);
     if (!normalized) {
-      setError(resolveLateCarrierActivityErrorMessage('INVALID_ACKNOWLEDGEMENT_NOTE'));
+      setError(
+        resolveLateCarrierActivityErrorMessage('INVALID_ACKNOWLEDGEMENT_NOTE'),
+      );
       return;
     }
     inFlight.current = true;
@@ -89,10 +91,17 @@ export const LateCarrierActivityBucket = ({
   const busy = submitting || isAcknowledging;
 
   return (
-    <section className="space-y-4" aria-labelledby="late-carrier-activity-title">
+    <section
+      className="space-y-4"
+      aria-labelledby="late-carrier-activity-title"
+    >
       <div>
-        <h2 id="late-carrier-activity-title" className="flex items-center gap-2 text-lg font-bold text-platinum">
-          <PackageSearch size={20} className="text-amber-400" /> Paquetes que se movieron después de cancelar
+        <h2
+          id="late-carrier-activity-title"
+          className="flex items-center gap-2 text-lg font-bold text-platinum"
+        >
+          <PackageSearch size={20} className="text-amber-400" /> Paquetes que se
+          movieron después de cancelar
           <span
             data-testid="late-carrier-activity-count"
             aria-label={`Casos por revisar: ${unresolved ? 'consultando' : cases.length}`}
@@ -102,14 +111,21 @@ export const LateCarrierActivityBucket = ({
           </span>
         </h2>
         <p className="mt-1 max-w-2xl text-xs text-blue-light/70">
-          <span className="font-semibold text-platinum">Cancelamos estos envíos y ya iniciamos el reembolso al comprador,
-            pero la paquetería reportó que el paquete se movió.</span> Habla con el vendedor o el comprador para saber dónde
-          está el paquete. Cuando lo resuelvas, márcalo como revisado: solo queda anotado y sale de la lista.
+          <span className="font-semibold text-platinum">
+            Cancelamos estos envíos y ya iniciamos el reembolso al comprador,
+            pero la paquetería reportó que el paquete se movió.
+          </span>{' '}
+          Habla con el vendedor o el comprador para saber dónde está el paquete.
+          Cuando lo resuelvas, márcalo como revisado: solo queda anotado y sale
+          de la lista.
         </p>
       </div>
 
       {isLoading ? (
-        <p role="status" className="rounded-3xl border border-white/5 bg-state-gray p-10 text-center text-sm text-blue-light">
+        <p
+          role="status"
+          className="rounded-3xl border border-white/5 bg-state-gray p-10 text-center text-sm text-blue-light"
+        >
           Consultando actividad del carrier...
         </p>
       ) : isError ? (
@@ -128,38 +144,60 @@ export const LateCarrierActivityBucket = ({
       ) : (
         <div className="grid gap-3 lg:grid-cols-2">
           {cases.map((item) => (
-            <article key={item.shipmentId} className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4">
+            <article
+              key={item.shipmentId}
+              className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4"
+            >
               <div className="flex items-start justify-between gap-3">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/20 bg-amber-400/10 px-2.5 py-1 text-xs font-bold text-amber-400">
-                  <PackageSearch size={13} /> {EVENT_TYPE_LABELS[item.eventType]}
+                  <PackageSearch size={13} />{' '}
+                  {EVENT_TYPE_LABELS[item.eventType]}
                 </span>
-                <p className="text-xs font-semibold text-amber-400">Hace {formatWaiting(item.activityAt)}</p>
+                <p className="text-xs font-semibold text-amber-400">
+                  Hace {formatWaiting(item.activityAt)}
+                </p>
               </div>
               <dl className="mt-3 space-y-1 text-[11px] text-blue-light">
                 <div>
                   <dt className="inline">Envío: </dt>
-                  <dd className="inline font-mono" title={item.shipmentId}>{shortId(item.shipmentId)}</dd>
+                  <dd className="inline font-mono" title={item.shipmentId}>
+                    {shortId(item.shipmentId)}
+                  </dd>
                   <dt className="inline"> · Orden: </dt>
-                  <dd className="inline font-mono" title={item.orderId}>{shortId(item.orderId)}</dd>
+                  <dd className="inline font-mono" title={item.orderId}>
+                    {shortId(item.orderId)}
+                  </dd>
                   <dt className="inline"> · Vendedor: </dt>
-                  <dd className="inline font-mono" title={item.sellerId}>{shortId(item.sellerId)}</dd>
+                  <dd className="inline font-mono" title={item.sellerId}>
+                    {shortId(item.sellerId)}
+                  </dd>
                 </div>
                 <div>
                   <dt className="inline">Guía: </dt>
-                  <dd className="inline font-mono">{item.trackingNumber ?? 'Sin tracking'}</dd>
+                  <dd className="inline font-mono">
+                    {item.trackingNumber ?? 'Sin tracking'}
+                  </dd>
                   <dt className="inline"> · Carrier: </dt>
                   <dd className="inline">{item.carrier ?? 'Sin carrier'}</dd>
                 </div>
                 <div>
                   <dt className="inline">Estado del envío: </dt>
-                  <dd className="inline">{SHIPMENT_STATUS_LABELS[item.shipmentStatus]}</dd>
+                  <dd className="inline">
+                    {SHIPMENT_STATUS_LABELS[item.shipmentStatus]}
+                  </dd>
                   <dt className="inline"> · Reembolso: </dt>
-                  <dd className="inline">{item.refundStatus ? REFUND_STATUS_LABELS[item.refundStatus] : 'Sin dato'}</dd>
+                  <dd className="inline">
+                    {item.refundStatus
+                      ? REFUND_STATUS_LABELS[item.refundStatus]
+                      : 'Sin dato'}
+                  </dd>
                 </div>
                 <div>
                   <dt className="inline">Actividad registrada: </dt>
                   <dd className="inline">
-                    <time dateTime={item.activityAt}>{formatTime(item.activityAt)}</time>
+                    <time dateTime={item.activityAt}>
+                      {formatTime(item.activityAt)}
+                    </time>
                   </dd>
                 </div>
               </dl>
@@ -187,12 +225,16 @@ export const LateCarrierActivityBucket = ({
               void submit();
             }}
           >
-            <h3 className="flex items-center gap-2 text-lg font-bold text-platinum" aria-hidden="true">
-              <PackageSearch size={20} className="text-amber-400" /> Marcar revisado
+            <h3
+              className="flex items-center gap-2 text-lg font-bold text-platinum"
+              aria-hidden="true"
+            >
+              <PackageSearch size={20} className="text-amber-400" /> Marcar
+              revisado
             </h3>
             <p className="text-sm text-blue-light">
-              Queda anotado que ya lo atendiste y el caso sale de la lista. No mueve dinero ni cambia el pedido, y no se
-              puede deshacer.
+              Queda anotado que ya lo atendiste y el caso sale de la lista. No
+              mueve dinero ni cambia el pedido, y no se puede deshacer.
             </p>
             <label className="block text-xs font-semibold text-platinum">
               Nota para el registro
@@ -206,7 +248,11 @@ export const LateCarrierActivityBucket = ({
                 className={`mt-1 w-full rounded-xl border border-white/10 bg-night px-3 py-2 text-sm text-platinum disabled:opacity-40 ${workbenchFocus}`}
               />
             </label>
-            {error ? <p role="alert" className="text-xs text-fire">{error}</p> : null}
+            {error ? (
+              <p role="alert" className="text-xs text-fire">
+                {error}
+              </p>
+            ) : null}
             <div className="flex justify-end gap-2">
               <button
                 type="button"

@@ -1,16 +1,16 @@
 {
-    "name": "@selene/types",
-    "version": "1.0.0",
-    "private": true,
-    "main": "./src/index.ts",
-    "types": "./src/index.ts",
-    "scripts": {
-        "typecheck": "tsc --noEmit -p ."
-    },
-    "devDependencies": {
-        "@types/bun": "latest"
-    },
-    "peerDependencies": {
-        "typescript": "~6.0.3"
-    }
+  "name": "@selene/types",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "~6.0.3"
+  }
 }

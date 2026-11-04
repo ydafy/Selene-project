@@ -38,9 +38,7 @@ describe('connect payout event ledger migration', () => {
 
     expect(sql).toMatch(/stripe_created\s+TIMESTAMPTZ\s+NOT\s+NULL/i);
     expect(sql).toMatch(/received_at\s+TIMESTAMPTZ\s+NOT\s+NULL/i);
-    expect(sql).toMatch(
-      /observed_payout_status\s+TEXT\s+NOT\s+NULL/i,
-    );
+    expect(sql).toMatch(/observed_payout_status\s+TEXT\s+NOT\s+NULL/i);
     expect(sql).toMatch(
       /observed_payout_status[\s\S]{0,400}CHECK[\s\S]{0,400}'pending'[\s\S]{0,400}'in_transit'[\s\S]{0,400}'paid'[\s\S]{0,400}'failed'[\s\S]{0,400}'canceled'/i,
     );
@@ -82,9 +80,7 @@ describe('connect payout event ledger migration', () => {
     expect(sql).toMatch(
       /CREATE\s+TRIGGER\s+trg_connect_payout_events_append_only[\s\S]+BEFORE\s+UPDATE\s+OR\s+DELETE\s+ON\s+public\.connect_payout_events/i,
     );
-    expect(sql).toMatch(
-      /RAISE\s+EXCEPTION[\s\S]*append-only[\s\S]*immutable/i,
-    );
+    expect(sql).toMatch(/RAISE\s+EXCEPTION[\s\S]*append-only[\s\S]*immutable/i);
   });
 
   test('adds an idempotent narrowly-granted append RPC', () => {
@@ -98,7 +94,9 @@ describe('connect payout event ledger migration', () => {
     expect(sql).toMatch(
       /ON\s+CONFLICT\s*\(\s*stripe_event_id\s*\)\s+DO\s+NOTHING/i,
     );
-    expect(sql).toMatch(/RETURN\s+COALESCE\s*\(\s*v_inserted\s*,\s*FALSE\s*\)/i);
+    expect(sql).toMatch(
+      /RETURN\s+COALESCE\s*\(\s*v_inserted\s*,\s*FALSE\s*\)/i,
+    );
   });
 
   test('keeps the ledger table and RPC out of public reach', () => {

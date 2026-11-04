@@ -14,7 +14,10 @@ if (process.env.B58B_HOOK_CHILD !== '1') {
     expect(result.exitCode, output).toBe(0);
   });
 } else {
-  type QueryOptions = { queryKey: readonly unknown[]; queryFn: () => Promise<unknown> };
+  type QueryOptions = {
+    queryKey: readonly unknown[];
+    queryFn: () => Promise<unknown>;
+  };
   type MutationOptions = {
     mutationFn: (input: unknown) => Promise<unknown>;
     onSuccess?: (result: unknown) => Promise<void> | void;
@@ -61,8 +64,11 @@ if (process.env.B58B_HOOK_CHILD !== '1') {
       return acknowledgeResult;
     },
   }));
-  const { useLateCarrierActivity, useAcknowledgeLateCarrierActivity, LATE_CARRIER_ACTIVITY_KEY } =
-    await import('./useLateCarrierActivity');
+  const {
+    useLateCarrierActivity,
+    useAcknowledgeLateCarrierActivity,
+    LATE_CARRIER_ACTIVITY_KEY,
+  } = await import('./useLateCarrierActivity');
 
   beforeEach(() => {
     queryState = { data: undefined, isLoading: false, isError: false };
@@ -71,7 +77,11 @@ if (process.env.B58B_HOOK_CHILD !== '1') {
     toasts.length = 0;
     acknowledgeCalls.length = 0;
     acknowledgeError = null;
-    acknowledgeResult = { acknowledgedAt: '2026-10-22T12:00:00.000Z', note: 'ok', alreadyAcknowledged: false };
+    acknowledgeResult = {
+      acknowledgedAt: '2026-10-22T12:00:00.000Z',
+      note: 'ok',
+      alreadyAcknowledged: false,
+    };
   });
 
   it('queries the service under a stable key', async () => {
@@ -89,7 +99,11 @@ if (process.env.B58B_HOOK_CHILD !== '1') {
     expect(loading.cases).toEqual([]);
     queryState = { data: [], isLoading: false, isError: false };
     expect(useLateCarrierActivity().count).toBe(0);
-    queryState = { data: [{ shipmentId: 'a' }, { shipmentId: 'b' }], isLoading: false, isError: false };
+    queryState = {
+      data: [{ shipmentId: 'a' }, { shipmentId: 'b' }],
+      isLoading: false,
+      isError: false,
+    };
     expect(useLateCarrierActivity().count).toBe(2);
     queryState = { data: undefined, isLoading: false, isError: true };
     const failed = useLateCarrierActivity();
@@ -108,7 +122,9 @@ if (process.env.B58B_HOOK_CHILD !== '1') {
   it('does not invalidate or confirm when the server rejects', async () => {
     acknowledgeError = new Error('LATE_CARRIER_ACTIVITY_NOT_FOUND');
     const { acknowledge } = useAcknowledgeLateCarrierActivity();
-    await expect(acknowledge('ship-1', 'ok')).rejects.toThrow('LATE_CARRIER_ACTIVITY_NOT_FOUND');
+    await expect(acknowledge('ship-1', 'ok')).rejects.toThrow(
+      'LATE_CARRIER_ACTIVITY_NOT_FOUND',
+    );
     expect(invalidations).toEqual([]);
     expect(toasts).toEqual([]);
   });

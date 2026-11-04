@@ -23,7 +23,11 @@ export function extractStripeChargeId(
   }
 
   const firstCharge = intent.charges?.data?.[0];
-  if (firstCharge && typeof firstCharge.id === 'string' && firstCharge.id.length > 0) {
+  if (
+    firstCharge &&
+    typeof firstCharge.id === 'string' &&
+    firstCharge.id.length > 0
+  ) {
     return firstCharge.id;
   }
 

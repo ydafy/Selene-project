@@ -119,14 +119,26 @@ function createDeps(overrides: Partial<RetryReleaseDependencies> = {}) {
     },
     retrieveStripePayout: async (input) => {
       calls.payoutRetrievals.push(input);
-      return { id: input.payoutId, status: 'failed', failure_balance_transaction: 'txn_returned_1', amount: 12_500, currency: 'mxn' };
+      return {
+        id: input.payoutId,
+        status: 'failed',
+        failure_balance_transaction: 'txn_returned_1',
+        amount: 12_500,
+        currency: 'mxn',
+      };
     },
     findActiveShipmentMappings: async () => [],
     loadReleaseRows: async () => [completedShipment()],
     createRun: async (input) => {
       calls.sequence.push('createRun');
       calls.createdRuns.push(input);
-      return { id: 'run-1', status: 'pending_reconciliation', release_stage: 'release_accepted', release_stage_version: 1, ...input };
+      return {
+        id: 'run-1',
+        status: 'pending_reconciliation',
+        release_stage: 'release_accepted',
+        release_stage_version: 1,
+        ...input,
+      };
     },
     createRunShipments: async (input) => {
       calls.sequence.push('createRunShipments');
@@ -227,7 +239,8 @@ function createDeps(overrides: Partial<RetryReleaseDependencies> = {}) {
   const loadRows = deps.loadReleaseRows;
   deps.loadReleaseRows = async (ids) => (releaseRows = await loadRows(ids));
   const loadOrders = deps.loadReleaseOrders;
-  deps.loadReleaseOrders = async (ids) => (releaseOrders = await loadOrders(ids));
+  deps.loadReleaseOrders = async (ids) =>
+    (releaseOrders = await loadOrders(ids));
   const createRun = deps.createRun;
   deps.createRun = async (input) => {
     releaseKey = input.idempotencyKey;
@@ -592,29 +605,69 @@ describe('shipment transfer arbitration', () => {
 });
 
 describe('atomic pre-payout transition refusal', () => {
-  const request = { actorId: 'admin-1', sellerId: 'seller-1', shipmentIds: ['shipment-1'], idempotencyKey: 'cas-key' };
+  const request = {
+    actorId: 'admin-1',
+    sellerId: 'seller-1',
+    shipmentIds: ['shipment-1'],
+    idempotencyKey: 'cas-key',
+  };
   it('stops on an explicit retry refusal without transfers, fence, or cleanup', async () => {
     const deps = createDeps({
-      findRunByIdempotencyKey: async () => ({ ...failedParentRun(), stripe_payout_id: null, release_stage: 'payout_failed', release_stage_version: 7 }),
+      findRunByIdempotencyKey: async () => ({
+        ...failedParentRun(),
+        stripe_payout_id: null,
+        release_stage: 'payout_failed',
+        release_stage_version: 7,
+      }),
       markRunRetrying: async () => null,
     });
-    await expect(releaseConnectPayout(request, deps)).rejects.toThrow('PAYOUT_RESUME_MAPPING_CONFLICT');
+    await expect(releaseConnectPayout(request, deps)).rejects.toThrow(
+      'PAYOUT_RESUME_MAPPING_CONFLICT',
+    );
     expect(deps.calls.transfers).toEqual([]);
     expect(deps.calls.fenceBegins).toEqual([]);
     expect(deps.calls.updates).toEqual([]);
     expect(deps.calls.fenceFailures).toEqual([]);
     expect(deps.calls.syncFailures).toEqual([]);
   });
-  for (const newer of ['paid', 'failed', 'canceled', 'payout', 'claim', 'fence', 'same-stage-new-version', 'mapping-paid']) {
+  for (const newer of [
+    'paid',
+    'failed',
+    'canceled',
+    'payout',
+    'claim',
+    'fence',
+    'same-stage-new-version',
+    'mapping-paid',
+  ]) {
     it(`preserves ${newer} authority after a delayed balance response`, async () => {
-      const state = { status: 'pending_reconciliation', stage: 'release_accepted', version: 11, payout: null as string | null, token: null as string | null, mapping: 'pending_reconciliation' };
+      const state = {
+        status: 'pending_reconciliation',
+        stage: 'release_accepted',
+        version: 11,
+        payout: null as string | null,
+        token: null as string | null,
+        mapping: 'pending_reconciliation',
+      };
       let intentSeen: unknown;
       const deps = createDeps({
-        createRun: async () => ({ id: 'run-1', status: 'pending_reconciliation', release_stage: state.stage, release_stage_version: state.version }),
-        loadReleaseOrders: async () => [{ id: 'order-1', stripe_charge_id: 'ch_1', stripe_transfer_group: 'group_1' }],
+        createRun: async () => ({
+          id: 'run-1',
+          status: 'pending_reconciliation',
+          release_stage: state.stage,
+          release_stage_version: state.version,
+        }),
+        loadReleaseOrders: async () => [
+          {
+            id: 'order-1',
+            stripe_charge_id: 'ch_1',
+            stripe_transfer_group: 'group_1',
+          },
+        ],
         retrieveConnectedBalance: async () => {
           state.version += 1;
-          if (['paid', 'failed', 'canceled'].includes(newer)) state.status = newer;
+          if (['paid', 'failed', 'canceled'].includes(newer))
+            state.status = newer;
           if (newer === 'payout') state.payout = 'po_newer';
           if (newer === 'claim') state.token = 'claim_newer';
           if (newer === 'fence') state.stage = 'payout_create_in_progress';
@@ -624,15 +677,28 @@ describe('atomic pre-payout transition refusal', () => {
         // Model the RPC's version CAS, not a PostgreSQL runtime assertion.
         markRunPendingReconciliation: async (intent) => {
           intentSeen = intent;
-          return intent.expectedVersion === state.version ? state.version + 1 : null;
+          return intent.expectedVersion === state.version
+            ? state.version + 1
+            : null;
         },
       });
-      await expect(releaseConnectPayout(request, deps)).rejects.toThrow('PAYOUT_RESUME_MAPPING_CONFLICT');
-      expect(intentSeen).toEqual({ runId: 'run-1', expectedStatus: 'pending_reconciliation', expectedStage: 'release_accepted', expectedVersion: 11, shipmentIds: ['shipment-1'], parent: null });
+      await expect(releaseConnectPayout(request, deps)).rejects.toThrow(
+        'PAYOUT_RESUME_MAPPING_CONFLICT',
+      );
+      expect(intentSeen).toEqual({
+        runId: 'run-1',
+        expectedStatus: 'pending_reconciliation',
+        expectedStage: 'release_accepted',
+        expectedVersion: 11,
+        shipmentIds: ['shipment-1'],
+        parent: null,
+      });
       expect(state.version).toBe(12);
       expect(state.payout).toBe(newer === 'payout' ? 'po_newer' : null);
       expect(state.token).toBe(newer === 'claim' ? 'claim_newer' : null);
-      expect(state.mapping).toBe(newer === 'mapping-paid' ? 'paid' : 'pending_reconciliation');
+      expect(state.mapping).toBe(
+        newer === 'mapping-paid' ? 'paid' : 'pending_reconciliation',
+      );
       expect(deps.calls.parentRunLookups).toEqual([]);
       expect(deps.calls.fenceBegins).toEqual([]);
       expect(deps.calls.fenceFailures).toEqual([]);
@@ -641,49 +707,120 @@ describe('atomic pre-payout transition refusal', () => {
     });
   }
   it('uses the original resumed snapshot after asynchronous balance work', async () => {
-    const run = { ...failedParentRun(), stripe_payout_id: null, release_stage: null, release_stage_version: 7 };
+    const run = {
+      ...failedParentRun(),
+      stripe_payout_id: null,
+      release_stage: null,
+      release_stage_version: 7,
+    };
     const deps = createDeps({
       findRunByIdempotencyKey: async () => run,
-      retrieveConnectedBalance: async () => { run.release_stage_version = 8; return { available: [{ amount: 99_999, currency: 'mxn' }] }; },
+      retrieveConnectedBalance: async () => {
+        run.release_stage_version = 8;
+        return { available: [{ amount: 99_999, currency: 'mxn' }] };
+      },
       markRunRetrying: async (intent) => {
         expect(intent.expectedVersion).toBe(7);
         return intent.expectedVersion === run.release_stage_version ? 9 : null;
       },
     });
-    await expect(releaseConnectPayout(request, deps)).rejects.toThrow('PAYOUT_RESUME_MAPPING_CONFLICT');
+    await expect(releaseConnectPayout(request, deps)).rejects.toThrow(
+      'PAYOUT_RESUME_MAPPING_CONFLICT',
+    );
     expect(run.release_stage_version).toBe(8);
     expect(deps.calls.fenceBegins).toEqual([]);
   });
   it('carries the successful retry epoch into an insufficient-balance park', async () => {
     const deps = createDeps({
-      findRunByIdempotencyKey: async () => ({ ...failedParentRun(), stripe_payout_id: null, release_stage: 'payout_failed', release_stage_version: 7 }),
-      loadReleaseOrders: async () => [{ id: 'order-1', stripe_charge_id: 'ch_1', stripe_transfer_group: 'group_1' }],
+      findRunByIdempotencyKey: async () => ({
+        ...failedParentRun(),
+        stripe_payout_id: null,
+        release_stage: 'payout_failed',
+        release_stage_version: 7,
+      }),
+      loadReleaseOrders: async () => [
+        {
+          id: 'order-1',
+          stripe_charge_id: 'ch_1',
+          stripe_transfer_group: 'group_1',
+        },
+      ],
       retrieveConnectedBalance: async () => ({ available: [] }),
     });
-    expect(await releaseConnectPayout(request, deps)).toMatchObject({ success: true, runId: 'run-failed' });
-    expect(deps.calls.updates).toEqual([{ runId: 'run-failed', expectedStatus: 'pending_reconciliation', expectedStage: 'awaiting_connected_balance', expectedVersion: 8, shipmentIds: ['shipment-1'], parent: null }]);
+    expect(await releaseConnectPayout(request, deps)).toMatchObject({
+      success: true,
+      runId: 'run-failed',
+    });
+    expect(deps.calls.updates).toEqual([
+      {
+        runId: 'run-failed',
+        expectedStatus: 'pending_reconciliation',
+        expectedStage: 'awaiting_connected_balance',
+        expectedVersion: 8,
+        shipmentIds: ['shipment-1'],
+        parent: null,
+      },
+    ]);
   });
   it('parks a new retry child using original parent authority without mutating parent history', async () => {
     const parent = failedParentRun({ release_stage_version: 19 });
     const before = structuredClone(parent);
     const deps = createDeps({
       findRunById: async () => parent,
-      loadReleaseRows: async () => [completedShipment({ is_eligible: false, ineligible_reason: 'payout_failed_retry_required', stripe_transfer_id: 'tr_original' })],
-      loadReleaseOrders: async () => [{ id: 'order-1', stripe_charge_id: 'ch_1', stripe_transfer_group: 'group_1' }],
+      loadReleaseRows: async () => [
+        completedShipment({
+          is_eligible: false,
+          ineligible_reason: 'payout_failed_retry_required',
+          stripe_transfer_id: 'tr_original',
+        }),
+      ],
+      loadReleaseOrders: async () => [
+        {
+          id: 'order-1',
+          stripe_charge_id: 'ch_1',
+          stripe_transfer_group: 'group_1',
+        },
+      ],
       retrieveConnectedBalance: async () => ({ available: [] }),
     });
-    expect(await releaseConnectPayout({ actorId: 'admin-1', retryRunId: parent.id }, deps)).toMatchObject({ success: true, runId: 'run-1' });
-    expect(deps.calls.updates).toEqual([{ runId: 'run-1', expectedStatus: 'pending_reconciliation', expectedStage: 'release_accepted', expectedVersion: 1, shipmentIds: ['shipment-1'], parent: { runId: parent.id, stageVersion: 19, stripePayoutId: 'po_failed_parent' } }]);
+    expect(
+      await releaseConnectPayout(
+        { actorId: 'admin-1', retryRunId: parent.id },
+        deps,
+      ),
+    ).toMatchObject({ success: true, runId: 'run-1' });
+    expect(deps.calls.updates).toEqual([
+      {
+        runId: 'run-1',
+        expectedStatus: 'pending_reconciliation',
+        expectedStage: 'release_accepted',
+        expectedVersion: 1,
+        shipmentIds: ['shipment-1'],
+        parent: {
+          runId: parent.id,
+          stageVersion: 19,
+          stripePayoutId: 'po_failed_parent',
+        },
+      },
+    ]);
     expect(parent).toEqual(before);
     expect(deps.calls.transfers).toEqual([]);
   });
   it('stops an insufficient-balance park refusal without a later fence or rollback', async () => {
     const deps = createDeps({
-      loadReleaseOrders: async () => [{ id: 'order-1', stripe_charge_id: 'ch_1', stripe_transfer_group: 'group_1' }],
+      loadReleaseOrders: async () => [
+        {
+          id: 'order-1',
+          stripe_charge_id: 'ch_1',
+          stripe_transfer_group: 'group_1',
+        },
+      ],
       retrieveConnectedBalance: async () => ({ available: [] }),
       markRunPendingReconciliation: async () => null,
     });
-    await expect(releaseConnectPayout(request, deps)).rejects.toThrow('PAYOUT_RESUME_MAPPING_CONFLICT');
+    await expect(releaseConnectPayout(request, deps)).rejects.toThrow(
+      'PAYOUT_RESUME_MAPPING_CONFLICT',
+    );
     expect(deps.calls.fenceBegins).toEqual([]);
     expect(deps.calls.fenceFailures).toEqual([]);
     expect(deps.calls.syncFailures).toEqual([]);
@@ -704,7 +841,10 @@ describe('releaseConnectPayout', () => {
     ).toBe(10_000);
 
     expect(
-      sumAvailableBalanceForCurrency([{ amount: 99_999, currency: 'usd' }], 'mxn'),
+      sumAvailableBalanceForCurrency(
+        [{ amount: 99_999, currency: 'usd' }],
+        'mxn',
+      ),
     ).toBe(0);
   });
 
@@ -769,7 +909,13 @@ describe('releaseConnectPayout', () => {
     const deps = createDeps();
     await expect(
       releaseConnectPayout(
-        { actorId: 'admin-1', retryRunId: undefined, sellerId: 'seller-1', shipmentIds: ['shipment-1'], idempotencyKey: 'fresh' },
+        {
+          actorId: 'admin-1',
+          retryRunId: undefined,
+          sellerId: 'seller-1',
+          shipmentIds: ['shipment-1'],
+          idempotencyKey: 'fresh',
+        },
         deps,
       ),
     ).rejects.toThrow('RETRY_RUN_ID_REQUIRED');
@@ -801,7 +947,12 @@ describe('releaseConnectPayout', () => {
       ],
       createRun: async (input) => {
         deps.calls.createdRuns.push(input);
-        return { id: 'run-retry-1', status: 'pending_reconciliation', release_stage: 'release_accepted', release_stage_version: 1 };
+        return {
+          id: 'run-retry-1',
+          status: 'pending_reconciliation',
+          release_stage: 'release_accepted',
+          release_stage_version: 1,
+        };
       },
     });
 
@@ -819,7 +970,9 @@ describe('releaseConnectPayout', () => {
     });
 
     expect(deps.calls.parentRunLookups).toEqual(['run-failed', 'run-retry-1']);
-    expect(deps.calls.payoutRetrievals).toEqual([{ payoutId: 'po_failed_parent', stripeAccountId: 'acct_seller_1' }]);
+    expect(deps.calls.payoutRetrievals).toEqual([
+      { payoutId: 'po_failed_parent', stripeAccountId: 'acct_seller_1' },
+    ]);
     expect(deps.calls.retryChildLookups).toEqual(['run-failed']);
     expect(deps.calls.createdRuns).toHaveLength(1);
     const createdRun = deps.calls.createdRuns[0] as {
@@ -863,8 +1016,15 @@ describe('releaseConnectPayout', () => {
   });
 
   it('denies a failed parent without a Stripe payout before child lookup or money operations', async () => {
-    const deps = createDeps({ findRunById: async () => failedParentRun({ stripe_payout_id: null }) });
-    await expect(retryFailedConnectPayout({ actorId: 'admin-1', retryRunId: 'run-failed' }, deps)).rejects.toThrow();
+    const deps = createDeps({
+      findRunById: async () => failedParentRun({ stripe_payout_id: null }),
+    });
+    await expect(
+      retryFailedConnectPayout(
+        { actorId: 'admin-1', retryRunId: 'run-failed' },
+        deps,
+      ),
+    ).rejects.toThrow();
     expect(deps.calls.payoutRetrievals).toEqual([]);
     expect(deps.calls.retryChildLookups).toEqual([]);
     expect(deps.calls.createdRuns).toEqual([]);
@@ -883,11 +1043,23 @@ describe('releaseConnectPayout', () => {
       const deps = createDeps({
         retrieveStripePayout: async (input) => {
           deps.calls.payoutRetrievals.push(input);
-          return { id: input.payoutId, ...evidence, amount: 12_500, currency: 'mxn' };
+          return {
+            id: input.payoutId,
+            ...evidence,
+            amount: 12_500,
+            currency: 'mxn',
+          };
         },
       });
-      await expect(retryFailedConnectPayout({ actorId: 'admin-1', retryRunId: 'run-failed' }, deps)).rejects.toThrow();
-      expect(deps.calls.payoutRetrievals).toEqual([{ payoutId: 'po_failed_parent', stripeAccountId: 'acct_seller_1' }]);
+      await expect(
+        retryFailedConnectPayout(
+          { actorId: 'admin-1', retryRunId: 'run-failed' },
+          deps,
+        ),
+      ).rejects.toThrow();
+      expect(deps.calls.payoutRetrievals).toEqual([
+        { payoutId: 'po_failed_parent', stripeAccountId: 'acct_seller_1' },
+      ]);
       expect(deps.calls.retryChildLookups).toEqual([]);
       expect(deps.calls.createdRuns).toEqual([]);
       expect(deps.calls.mappings).toEqual([]);
@@ -917,7 +1089,12 @@ describe('releaseConnectPayout', () => {
           };
         },
       });
-      await expect(retryFailedConnectPayout({ actorId: 'admin-1', retryRunId: 'run-failed' }, deps)).rejects.toThrow('PAYOUT_RETRY_EVIDENCE_REQUIRED');
+      await expect(
+        retryFailedConnectPayout(
+          { actorId: 'admin-1', retryRunId: 'run-failed' },
+          deps,
+        ),
+      ).rejects.toThrow('PAYOUT_RETRY_EVIDENCE_REQUIRED');
       expect(deps.calls.retryChildLookups).toEqual([]);
       expect(deps.calls.createdRuns).toEqual([]);
       expect(deps.calls.transfers).toEqual([]);
@@ -926,8 +1103,17 @@ describe('releaseConnectPayout', () => {
   }
 
   it('fails closed when Stripe payout retrieval throws', async () => {
-    const deps = createDeps({ retrieveStripePayout: async () => { throw new Error('Stripe retrieval unavailable'); } });
-    await expect(retryFailedConnectPayout({ actorId: 'admin-1', retryRunId: 'run-failed' }, deps)).rejects.toThrow();
+    const deps = createDeps({
+      retrieveStripePayout: async () => {
+        throw new Error('Stripe retrieval unavailable');
+      },
+    });
+    await expect(
+      retryFailedConnectPayout(
+        { actorId: 'admin-1', retryRunId: 'run-failed' },
+        deps,
+      ),
+    ).rejects.toThrow();
     expect(deps.calls.retryChildLookups).toEqual([]);
     expect(deps.calls.createdRuns).toEqual([]);
     expect(deps.calls.mappings).toEqual([]);
@@ -1407,7 +1593,16 @@ describe('releaseConnectPayout', () => {
 
     expect(deps.calls.transfers).toHaveLength(1);
     expect(deps.calls.payouts).toEqual([]);
-    expect(deps.calls.updates).toEqual([{ runId: 'run-1', expectedStatus: 'pending_reconciliation', expectedStage: 'release_accepted', expectedVersion: 1, shipmentIds: ['shipment-1'], parent: null }]);
+    expect(deps.calls.updates).toEqual([
+      {
+        runId: 'run-1',
+        expectedStatus: 'pending_reconciliation',
+        expectedStage: 'release_accepted',
+        expectedVersion: 1,
+        shipmentIds: ['shipment-1'],
+        parent: null,
+      },
+    ]);
   });
 
   it('rejects single-modal settlement rows without a charge id when a transfer group exists', async () => {
@@ -1696,7 +1891,8 @@ describe('releaseConnectPayout', () => {
       ),
     ).resolves.toEqual({
       success: false,
-      error: 'Connected account available balance is insufficient for this payout.',
+      error:
+        'Connected account available balance is insufficient for this payout.',
       code: 'stripe_balance_insufficient',
       retryable: true,
       required_amount_cents: 12_500,
@@ -1719,7 +1915,8 @@ describe('releaseConnectPayout', () => {
         shipmentCount: 2,
         response: {
           success: false,
-          error: 'Connected account available balance is insufficient for this payout.',
+          error:
+            'Connected account available balance is insufficient for this payout.',
           code: 'stripe_balance_insufficient',
           retryable: true,
           required_amount_cents: 12_500,
@@ -1810,7 +2007,10 @@ describe('releaseConnectPayout', () => {
     const deps = createDeps({
       completePayoutCreateFence: async (input) => {
         deps.calls.fenceCompletions.push(input);
-        throw new ConnectPayoutReleaseError('PAYOUT_CREATE_COMPLETE_RPC_FAILED', 500);
+        throw new ConnectPayoutReleaseError(
+          'PAYOUT_CREATE_COMPLETE_RPC_FAILED',
+          500,
+        );
       },
     });
 
@@ -2074,7 +2274,16 @@ describe('releaseConnectPayout', () => {
 
     expect(deps.calls.createdRuns).toEqual([]);
     expect(deps.calls.mappings).toEqual([]);
-    expect(deps.calls.retries).toEqual([{ runId: 'run-failed', expectedStatus: 'failed', expectedStage: null, expectedVersion: 1, shipmentIds: ['shipment-1'], parent: null }]);
+    expect(deps.calls.retries).toEqual([
+      {
+        runId: 'run-failed',
+        expectedStatus: 'failed',
+        expectedStage: null,
+        expectedVersion: 1,
+        shipmentIds: ['shipment-1'],
+        parent: null,
+      },
+    ]);
     expect(deps.calls.fenceCompletions).toEqual([
       {
         runId: 'run-failed',
@@ -2379,7 +2588,10 @@ describe('releaseConnectPayout', () => {
     const deps = createDeps({
       completePayoutCreateFence: async (input) => {
         deps.calls.fenceCompletions.push(input);
-        throw new ConnectPayoutReleaseError('PAYOUT_CREATE_COMPLETE_RPC_FAILED', 500);
+        throw new ConnectPayoutReleaseError(
+          'PAYOUT_CREATE_COMPLETE_RPC_FAILED',
+          500,
+        );
       },
       // The guarded fn_mark_payout_run_sync_failed RPC refused: the run sits
       // in a terminal status (paid/failed/canceled) projected by the webhook.
@@ -2422,12 +2634,18 @@ describe('releaseConnectPayout', () => {
     const deps = createDeps({
       completePayoutCreateFence: async (input) => {
         deps.calls.fenceCompletions.push(input);
-        throw new ConnectPayoutReleaseError('PAYOUT_CREATE_COMPLETE_RPC_FAILED', 500);
+        throw new ConnectPayoutReleaseError(
+          'PAYOUT_CREATE_COMPLETE_RPC_FAILED',
+          500,
+        );
       },
       // Total persistence loss: even the reconciliation-mark write fails.
       markRunPayoutSyncFailed: async (input) => {
         deps.calls.syncFailures.push(input);
-        throw new ConnectPayoutReleaseError('RUN_RECONCILIATION_MARK_FAILED', 500);
+        throw new ConnectPayoutReleaseError(
+          'RUN_RECONCILIATION_MARK_FAILED',
+          500,
+        );
       },
     });
 
@@ -2492,7 +2710,11 @@ describe('releaseConnectPayout', () => {
       runId: string;
       status: 'pending_reconciliation' | 'paid' | 'reconciliation_needed';
     }> = [
-      { shipmentId: 'shipment-1', runId: 'run-1', status: 'pending_reconciliation' },
+      {
+        shipmentId: 'shipment-1',
+        runId: 'run-1',
+        status: 'pending_reconciliation',
+      },
     ];
     const newKeyDeps = createDeps({
       findActiveShipmentMappings: async () => activeMappings,
@@ -2557,7 +2779,7 @@ describe('releaseConnectPayout', () => {
     expect(deps.calls.fenceCompletions).toEqual([]);
   });
 
-  it('admits only the fenced run\'s own already_released mapping at fence-time revalidation', async () => {
+  it("admits only the fenced run's own already_released mapping at fence-time revalidation", async () => {
     // Regression: a fresh manual release creates its run mapping, then the
     // fence-time queue re-read sees that same mapping as already_released and
     // failed the run before Stripe payouts.create. The run being fenced may
@@ -2786,10 +3008,7 @@ describe('releaseConnectPayout', () => {
   });
 
   it('writes the post-Stripe sync failure only through the guarded RPC, never a direct terminal-capable update', () => {
-    const source = readFileSync(
-      join(import.meta.dir, 'index.ts'),
-      'utf8',
-    );
+    const source = readFileSync(join(import.meta.dir, 'index.ts'), 'utf8');
 
     // Defect 2: the post-Stripe fallback must not direct-UPDATE
     // connect_payout_runs with status='reconciliation_needed' by run id (that

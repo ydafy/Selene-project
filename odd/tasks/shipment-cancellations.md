@@ -63,7 +63,7 @@ Objective: symmetric shipment-scoped exclusion between cancellation, label gener
 ### Log
 
 - B13-L1 — Original request, verbatim: "Retomemos shipment cancellations, ahora B1.3: coordinar cancelaciones con generación de etiquetas y transferencias.\n\n Worktree: C:/dev/School-portal-worktrees/shipment-cancellations\n Branch: feat/shipment-cancellations\n\n Recuperá Engram de selene-project, resumen 2415, y leé odd/tasks/shipment-cancellations.md. B1.2 quedó en b3d4dff. Primero\n revisemos el alcance; todavía no desplegamos nada."
-- B13-L2 — Scope review completed read-only, Engram 2416. Maintainer accepts plan and clarifies deployment, verbatim: "Perfecto master  me gutsa el plan, rceuerda que debes analisar loq ue ya esta y mejorarlo y edtectar bugs. Sobre tu pregunta, si no eh desplegado ninguna edge fuction, osea si anteiormente se toco una edeg fuction en el repo, no recuerdo haer deplegado esa version, igual no pasa nada, al final depslego todo, osea, dime cuales edge fcutions se modificaron en este woktree y yo las depsplego de una,". Existing modified deployable functions against main: cancel-order, auto-cancel-orders, auto-cancel-preparing; shared helper is imported, tests are not deployments. No remote inspection.
+- B13-L2 — Scope review completed read-only, Engram 2416. Maintainer accepts plan and clarifies deployment, verbatim: "Perfecto master me gutsa el plan, rceuerda que debes analisar loq ue ya esta y mejorarlo y edtectar bugs. Sobre tu pregunta, si no eh desplegado ninguna edge fuction, osea si anteiormente se toco una edeg fuction en el repo, no recuerdo haer deplegado esa version, igual no pasa nada, al final depslego todo, osea, dime cuales edge fcutions se modificaron en este woktree y yo las depsplego de una,". Existing modified deployable functions against main: cancel-order, auto-cancel-orders, auto-cancel-preparing; shared helper is imported, tests are not deployments. No remote inspection.
 - B13-L3 — Implementation continuation, verbatim: "a si, obvio yo etsoy a la espera que tu me digas cuando deplsegar. Puedes continyuar master." Accepted scope: reuse existing shipment lock/claims/fences, labels then transfers, focused checks with each behavior. B2 refund recovery, B3 global cron locks, B4 carrier cancellation/tracking, UI and payout redesign excluded. No remote/provider calls or Edge deployment authorized.
 - B13-L4 — Important readback correction: generated types show fn_claim_shipment_label has THREE arguments including p_origin_address_id; the older foundation migration read during initial scope mapping has two. Implementation must use latest canonical/migrations and current tests, not copy that historical body. Existing transfer eligibility is completed-only, reducing ordinary overlap; no deployed incident claimed. Parent must route next multi-step unit to bounded worker after runtime context backstop.
 - B13-L5 — Infrastructure prerequisite failed: `docker compose -f docker-compose.postgres-test.yml -p selene-pg-shipment-cancellations ps --all` reports missing Docker Linux engine named pipe `npipe:////./pipe/dockerDesktopLinuxEngine` / `The system cannot find the file specified`. No retry/start by agent. Bun 1.4.2 available, `supabase migration new --help` succeeds; no migration created, source/test edits or behavioral RED/GREEN executed. Wait for maintainer to start Docker Desktop/Linux engine; this is unavailable infrastructure, not a product RED. Only tracker changed; unrelated bun.lock preserved.
@@ -121,7 +121,7 @@ Objective: prepare frozen-request SQL, then integrate manual and both cancellati
 
 ### Log
 
-- B12-L1 — Original request, verbatim: "Retomemos shipment cancellations, ahora B1.2 solamente: integrar la reserva de cancelación en manual y cron.\n\n   Worktree: C:/dev/School-portal-worktrees/shipment-cancellations\n   Branch: feat/shipment-cancellations\n\n   Recuperá Engram de selene-project, resumen 2380, y leé odd/tasks/shipment-cancellations.md y\n docs/shipment-cancellation-coordination.md.\n\n   B1.1 quedó en 1dc8149, probado localmente y con revisión nativa aprobada. Primero revisá el estado y proponé el cambio\n acotado de B1.2.\n\n   Ojo: la migración B1.1 todavía NO está aplicada remotamente. Coordinemos ese paso antes de activar handlers; tipos después\n de mi confirmación."
+- B12-L1 — Original request, verbatim: "Retomemos shipment cancellations, ahora B1.2 solamente: integrar la reserva de cancelación en manual y cron.\n\n Worktree: C:/dev/School-portal-worktrees/shipment-cancellations\n Branch: feat/shipment-cancellations\n\n Recuperá Engram de selene-project, resumen 2380, y leé odd/tasks/shipment-cancellations.md y\n docs/shipment-cancellation-coordination.md.\n\n B1.1 quedó en 1dc8149, probado localmente y con revisión nativa aprobada. Primero revisá el estado y proponé el cambio\n acotado de B1.2.\n\n Ojo: la migración B1.1 todavía NO está aplicada remotamente. Coordinemos ese paso antes de activar handlers; tipos después\n de mi confirmación."
 - B12-L2 — Maintainer: "migracion aplicada y tipos regenerados master. que sigue ?" Local type diff contains B1.1 table and both RPCs, plus unrelated generated payout fields/function and PostgrestVersion drift; preserve all. Remote SQL is maintainer-confirmed, not independently queried. Engram 2380 supersedes old native-unavailable B1.1 history below: commit `1dc8149` reviewed and approved.
 - B12-L3 — Maintainer: "si autorizo master dale." SQL-first B1.2 implementation authorized. Baseline: only regenerated `packages/types/src/database.types.ts` and unrelated `bun.lock` modified; lock SHA256 `c27c0f1ec570142f227b15d996348c1d6338ba96db51b67102e97b8d793ebfce`. Preserve both, no hand-edited generated types.
 - B12-L4 — Plan: freeze provider request and write-ahead start in one short SQL transaction through one new service-only RPC; reuse B1.1 start guards rather than duplicate them. Revoke its direct service-role entry to prevent starting without a frozen request. No network transaction. Return the persisted request/key to the future caller. No refund status/recovery implementation. SQL gate spans sessions, so tracked as large. Forecast: SQL/tests/docs preparation ~350–450 authored lines, handler integration separately scoped at gate; no PR/commit requested.
@@ -138,7 +138,7 @@ Objective: prepare frozen-request SQL, then integrate manual and both cancellati
 - B12-L11 — Isolation deviation: parent requested inside-worktree scratch; verifier reports governing rules required system-temp scratch `/tmp/tmp.xaAprgsVT8`. Its cleanup `rm -rf -- /tmp/tmp.xaAprgsVT8` was denied before execution; directory remains, no bypass. Database harnesses cleaned their generated DB/owned roles. Parent has not inspected/deleted outside paths or retroactively granted consent. Record separate cleanup/disposition blocker, not a product SQL failure.
 - B12-L12 — Parent spot-check `bun test scripts/test-shipment-cancellation-coordination.test.ts` exit0,7pass/0fail/23assertions. Source/SQL files unchanged by verifier. Git scope unchanged; lock SHA256 `c27c0f1ec570142f227b15d996348c1d6338ba96db51b67102e97b8d793ebfce` and generated types SHA256 `ffdd240288d1941d9a1119a5c244b97f9ef3762907ba531014e3aa8ab63be1de` match verifier entry/final. Stop at maintainer gate: no remote B1.2 SQL, provider calls, handlers, generated-type edits, deployments or commits. Native assessment unavailable/no approval; independent high-risk fallback is complete. Risk items1/2/4. No additional verification or optional changes authorized by findings.
 
-- B12-L13 — Maintainer gate confirmation verbatim: "listo  master, mifgracion aplicada, y los types regenerados. qeu sigue ?" Generated type diff confirms refund_request, cancellation_loss_cents and fn_start_shipment_cancellation_refund; unrelated prior generated drift preserved. B1.2-G satisfied by human application evidence and local type readback, not a remote grant/runtime audit. Continue already-authorized handler integration, no additional deployment/remote permission. Shared-core inline; two substantial adapters can then run in parallel on disjoint files (manual vs both crons), so Writer rule fires there.
+- B12-L13 — Maintainer gate confirmation verbatim: "listo master, mifgracion aplicada, y los types regenerados. qeu sigue ?" Generated type diff confirms refund_request, cancellation_loss_cents and fn_start_shipment_cancellation_refund; unrelated prior generated drift preserved. B1.2-G satisfied by human application evidence and local type readback, not a remote grant/runtime audit. Continue already-authorized handler integration, no additional deployment/remote permission. Shared-core inline; two substantial adapters can then run in parallel on disjoint files (manual vs both crons), so Writer rule fires there.
 
 - B12-L14 — Shared handler orchestration `supabase/functions/_shared/shipment-cancellation.ts` + test: module-missing RED observed; then typed helper GREEN, Deno check caught and fixed three narrowing/test annotation errors. Explicit refund-unconfirmed RED (14pass/1fail) then GREEN15pass/0fail/130assertions and Deno check exit0. Helper claims before prepare, uses winning context and exact persisted payload/key/loss, returns busy/recovery without provider/business effects, rejects malformed envelopes and never retries. A returned refund must explicitly be succeeded before DB completion; all errors including charge_already_refunded remain fenced. This is the minimum existing refund-before-cancellation invariant, not B2 persistence/status reconciliation/recovery; no provider result ID stored or asynchronous recovery added.
 - B12-L15 — Adapter handoff interface fixed: runShipmentCancellation({context,claim,prepare,start,refund,complete}); see exported CancellationContext/Plan/StartInput/FrozenCancellation in the shared module. claim/start callbacks return unwrapped RPC data and throw on RPC errors. prepare runs only for the winner, reconstructs trusted financial basis; complete receives original winning context and frozen values. Parallel writer surfaces: manual `supabase/functions/cancel-order/**`; cron `supabase/functions/auto-cancel-orders/index.ts`, `supabase/functions/auto-cancel-preparing/index.ts`, new focused `supabase/functions/__tests__/cronCancellationCoordination.test.ts`. Parent owns shared helper, legacy source guards, SQL harness and docs/tracker; workers must not edit them. Tests before behavior edits; no new deps/config, remote operations or commits.
@@ -173,6 +173,7 @@ Objective: prepare frozen-request SQL, then integrate manual and both cancellati
 ## Latest handoff — authoritative current state
 
 This section supersedes historical instructions and intermediate pending states below.
+
 - Latest implementation scope: the maintainer authorized B1.1 only: "okey dicho esto en esta seison podemos empezar por b1.1 te principio a fin." After a separate infrastructure session committed `9b69ba0`, the maintainer resumed with "okey dale master." B1.1 repository artifacts and local verification are complete (see work-unit Log); maintainer authorized its scoped local commit. Not deployed. B1.2–B1.4/B2–B5, remote deployment and money movement remain out of scope. Preserve unrelated `bun.lock`.
 - Current Git checkpoint confirmed during the B1 audit: commits `482f672` and `e97e9a9` are present on `feat/shipment-cancellations`; the buyer banner and this task document are committed. At audit entry, only unrelated `bun.lock` was modified and preserved. Historical uncommitted-file statements below do not describe the current checkpoint.
 - Current scope: maintainer authorized second-cancellation audit and post-redeploy sandbox regressions. Initial baseline-only restrictions are historical. No agent money movement, remote writes/deployment or new source fixes authorized.
@@ -210,16 +211,16 @@ The parent owns the Engram mirror and task/todo projection.
 Deliver MVP++ financial safety without redesigning checkout or payouts.
 The current contract is [shipments](../../docs/specs/shipments.md).
 
-| Topic | Current contract / constraint |
-|---|---|
-| Manual cancellation | Buyer and seller may cancel their own `paid` shipment. |
-| Preparing | Cancellation is cron-only, not a buyer/seller action. |
-| Later states | `shipped`, `delivered`, `completed`: dispute/support path. |
-| Paid timeout | Default 48 hours from `created_at`; deployed settings unknown. |
-| Preparing timeout | Default 72 hours from `updated_at`; deployed cadence unknown. |
-| Buyer refund | Paid allocation including proportional buyer fee; exclude seller shipping. |
-| Approved timeout loss | Selene absorbs loss; no seller debt. |
-| Shipment model | One product per shipment currently; count persisted fixture shipments anyway. |
+| Topic                 | Current contract / constraint                                                 |
+| --------------------- | ----------------------------------------------------------------------------- |
+| Manual cancellation   | Buyer and seller may cancel their own `paid` shipment.                        |
+| Preparing             | Cancellation is cron-only, not a buyer/seller action.                         |
+| Later states          | `shipped`, `delivered`, `completed`: dispute/support path.                    |
+| Paid timeout          | Default 48 hours from `created_at`; deployed settings unknown.                |
+| Preparing timeout     | Default 72 hours from `updated_at`; deployed cadence unknown.                 |
+| Buyer refund          | Paid allocation including proportional buyer fee; exclude seller shipping.    |
+| Approved timeout loss | Selene absorbs loss; no seller debt.                                          |
+| Shipment model        | One product per shipment currently; count persisted fixture shipments anyway. |
 
 Never infer two items mean two shipments without checking persisted records.
 Buyer allocation and actual Stripe processing-fee loss are separate measurements.
@@ -227,17 +228,17 @@ Do not substitute estimated processing fees for authoritative transaction data.
 
 ## Stable checklist
 
-| ID | Status | Work / dependencies |
-|---|---|---|
-| A0 | Complete | Audit: 52 pass, 0 fail, 9 files, 125 assertions. |
-| P0 | Complete | Plan read back, independently verified, and mirrored in Engram. |
-| E0 | Closed with mixed results | Sequential M1–M4 baseline: M1, fresh M2 comparison and M4 passed within evidence limits; original M2 and M3 failed on second cancellation (REFUND_AMOUNT_EXCEEDS_CAP). No retries/root cause/fixes. Extended tests and remediation deferred. |
-| B1 | Complete | B1.1–B1.4 committed, SQL applied, Edge Functions deployed to sandbox; evidence and limits in docs/shipment-cancellation-coordination.md. Follow-ups FU1–FU4 in B14-L5. |
-| B2 | Complete | Refund identity/status, recovery, refund webhooks, admin refund resolution and "Reembolsos" bucket, FU1 rounding fix; deployed and on main. Evidence in `odd/tasks/shipment-cancellations-b2.md` and docs/shipment-cancellation-coordination.md. FU1 fixed, FU3 covered by B2.5; FU2 (B4) and FU4 (B3) remain. |
-| B3 | Complete | Expiring leases instead of the boolean cron locks (FU4 fixed, booleans dropped), `CRON_SECRET` on both auto-cancel functions with a Vault-based job, fail-closed timeout settings, live harnesses and a real sandbox run (200). Evidence in `odd/tasks/shipment-cancellations-b3.md` and docs/shipment-cancellation-coordination.md. `auto-cancel-preparing` scheduling and the oldest-first/FU2 starvation risk move to B4. |
-| B4 | Complete | Carrier cancellation before preparing refunds, review queue and admin "Envíos" section, FU2 orphan exclusion, preparing cron scheduled. Evidence in `odd/tasks/shipment-cancellations-b4.md` and docs/shipment-cancellation-coordination.md. Two sandbox runs proved the review path and the automatic path. |
-| B5 | Complete | Shipment-scoped cancellation copy and errors, `AUTH_REQUIRED` in seven functions, participant cancellation summary with reason and refund state, `fn_cancel_order` dropped, tracking and delivery guard during a started refund with an admin "Envíos" bucket, label hidden on cancelled shipments. PR #61, deployed 2026-10-28. Evidence in `odd/tasks/shipment-cancellations-b5.md` and docs/shipment-cancellation-coordination.md. |
-| B6 | Complete | Admin resolution of shipments stuck in label generation (SQL #73, Edge Functions and "Envíos" bucket #76, issue #43) and Bruno tests for the M5/M6 manual-cancellation rejections. Evidence in `odd/tasks/shipment-cancellations-b6.md` and docs/shipment-cancellation-coordination.md. Module complete. |
+| ID  | Status                    | Work / dependencies                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| --- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A0  | Complete                  | Audit: 52 pass, 0 fail, 9 files, 125 assertions.                                                                                                                                                                                                                                                                                                                                                                                      |
+| P0  | Complete                  | Plan read back, independently verified, and mirrored in Engram.                                                                                                                                                                                                                                                                                                                                                                       |
+| E0  | Closed with mixed results | Sequential M1–M4 baseline: M1, fresh M2 comparison and M4 passed within evidence limits; original M2 and M3 failed on second cancellation (REFUND_AMOUNT_EXCEEDS_CAP). No retries/root cause/fixes. Extended tests and remediation deferred.                                                                                                                                                                                          |
+| B1  | Complete                  | B1.1–B1.4 committed, SQL applied, Edge Functions deployed to sandbox; evidence and limits in docs/shipment-cancellation-coordination.md. Follow-ups FU1–FU4 in B14-L5.                                                                                                                                                                                                                                                                |
+| B2  | Complete                  | Refund identity/status, recovery, refund webhooks, admin refund resolution and "Reembolsos" bucket, FU1 rounding fix; deployed and on main. Evidence in `odd/tasks/shipment-cancellations-b2.md` and docs/shipment-cancellation-coordination.md. FU1 fixed, FU3 covered by B2.5; FU2 (B4) and FU4 (B3) remain.                                                                                                                        |
+| B3  | Complete                  | Expiring leases instead of the boolean cron locks (FU4 fixed, booleans dropped), `CRON_SECRET` on both auto-cancel functions with a Vault-based job, fail-closed timeout settings, live harnesses and a real sandbox run (200). Evidence in `odd/tasks/shipment-cancellations-b3.md` and docs/shipment-cancellation-coordination.md. `auto-cancel-preparing` scheduling and the oldest-first/FU2 starvation risk move to B4.          |
+| B4  | Complete                  | Carrier cancellation before preparing refunds, review queue and admin "Envíos" section, FU2 orphan exclusion, preparing cron scheduled. Evidence in `odd/tasks/shipment-cancellations-b4.md` and docs/shipment-cancellation-coordination.md. Two sandbox runs proved the review path and the automatic path.                                                                                                                          |
+| B5  | Complete                  | Shipment-scoped cancellation copy and errors, `AUTH_REQUIRED` in seven functions, participant cancellation summary with reason and refund state, `fn_cancel_order` dropped, tracking and delivery guard during a started refund with an admin "Envíos" bucket, label hidden on cancelled shipments. PR #61, deployed 2026-10-28. Evidence in `odd/tasks/shipment-cancellations-b5.md` and docs/shipment-cancellation-coordination.md. |
+| B6  | Complete                  | Admin resolution of shipments stuck in label generation (SQL #73, Edge Functions and "Envíos" bucket #76, issue #43) and Bruno tests for the M5/M6 manual-cancellation rejections. Evidence in `odd/tasks/shipment-cancellations-b6.md` and docs/shipment-cancellation-coordination.md. Module complete.                                                                                                                              |
 
 A0 covered pure tests/source guards, **not** handler, SQL, or provider E2E.
 E0 does not authorize fixes; passing a manual baseline does not prove race safety.
@@ -249,12 +250,12 @@ Avoid a giant rewrite or a permanent database lock held over network calls.
 
 ### B1 session guide — adaptable, not exhaustive
 
-| Substep | Intended outcome | Boundary |
-|---|---|---|
-| B1.1 | Coordination foundation: atomic shipment reservation, stable cancellation identity, conditional ownership writes and a durable fence for uncertain external outcomes; focused local tests. | Preparatory only: this alone does not protect existing handlers. Design for B2 extension without implementing refund reconciliation. |
-| B1.2 | Integrate manual cancellation and both cancellation cron paths with the same reservation before refund calls; test concurrent and repeated attempts. | Preserve existing financial allocation and authorization rules. No redesign of global cron scheduling/locks (B3). |
-| B1.3 | Symmetric exclusion with label generation and transfer creation, including operations in flight; focused tests. | Reuse existing claim/fencing patterns. No carrier cancellation policy (B4) or payout redesign. |
-| B1.4 | Integrated verification of incompatible operations, rejection without business side effects, and sibling-shipment isolation; document evidence and remaining limits. | Each earlier substep already includes its own tests; this is not a deferred testing phase or production certification. |
+| Substep | Intended outcome                                                                                                                                                                           | Boundary                                                                                                                             |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| B1.1    | Coordination foundation: atomic shipment reservation, stable cancellation identity, conditional ownership writes and a durable fence for uncertain external outcomes; focused local tests. | Preparatory only: this alone does not protect existing handlers. Design for B2 extension without implementing refund reconciliation. |
+| B1.2    | Integrate manual cancellation and both cancellation cron paths with the same reservation before refund calls; test concurrent and repeated attempts.                                       | Preserve existing financial allocation and authorization rules. No redesign of global cron scheduling/locks (B3).                    |
+| B1.3    | Symmetric exclusion with label generation and transfer creation, including operations in flight; focused tests.                                                                            | Reuse existing claim/fencing patterns. No carrier cancellation policy (B4) or payout redesign.                                       |
+| B1.4    | Integrated verification of incompatible operations, rejection without business side effects, and sibling-shipment isolation; document evidence and remaining limits.                       | Each earlier substep already includes its own tests; this is not a deferred testing phase or production certification.               |
 
 Recommended first implementation session: B1.1 only, after explicit implementation authorization. Do not activate or describe B1 as complete until its participating paths are integrated and verified. Repository SQL preparation, maintainer application, regenerated types and function deployment remain separate gates under the existing deployment policy. No remote operations are authorized by this guide.
 
@@ -265,6 +266,7 @@ The guide may change when concrete bugs, cases or dependencies are discovered. R
 Build a clean, professional and understandable cancellation flow, not an advanced-security showcase or a generic workflow framework. Use ordinary financial correctness controls where justified: short atomic database arbitration before external effects, stable idempotency, and no automatic second refund after an ambiguous outcome. Reuse existing patterns and prefer the smallest complete solution; introduce an abstraction only when the concrete flow needs it. Do not trade away money safety for fewer lines, or add speculative infrastructure, checkout/payout redesigns or unrelated hardening.
 
 Maintainer clarification (verbatim):
+
 > okey ahora si MAS claro, guarda esto en engram y repo, obvioamenet esolo como guia, ay que siempre nos podemos encontrar con mas bugs o mas casos que no guardamos explicitamente. Ahroa quiero pensar que etsamos aplicando un sistema que sigue como que las reglas estandar de las apps no? tienes qeu recordar que estamos contriyendo una mvp++, osea no quiero un sistema ultra complejos ni que la app se destaque por su seguridad vanguardista ni anda de eso, pero tapco que este contruida mal o que cancelaciones sea un codigo spagguiethi propenso a fallar. Solo aclaro esto, quiero un sistema limpio y de un nivel pro sin sobreingenieria.
 
 ## B1.1 work unit
@@ -302,17 +304,17 @@ Use one `shipment_cancellation_operations` row per shipment and two service-only
 These findings describe conditional/race risks supported by supplied code evidence.
 They have not been reproduced as deployed incidents.
 
-| Risk | Repository evidence | Consequence / remediation direction |
-|---|---|---|
-| Cross-path duplicate refunds | [manual key](../../supabase/functions/cancel-order/cancel-order.ts), lines 125–126; [cron key](../../supabase/functions/auto-cancel-orders/index.ts), lines 292–294 | Different keys can refund the same shipment; coordinate before money. |
-| Shared payment exposure | [shipment creation](../../supabase/queries/orders/fn_create_shipments_from_single_payment.sql), lines 270–283 | Multiple shipments share a PaymentIntent; charge-level headroom is not shipment ownership. |
-| Stripe success, DB failure | [manual handler](../../supabase/functions/cancel-order/index.ts), lines 205–233 | Persist provider identity and recover DB completion without issuing another refund. |
-| Retry cap insufficient | [refund basis](../../supabase/functions/_shared/refund-basis.ts), lines 63–71 | Rejects only target > remaining; single full-refund retry has zero headroom. |
-| Cancellation vs label | [cancellation RPC](../../supabase/migrations/20260926000000_shipment_cancelled_notification.sql), lines 101–107 accepts preparing; [label foundation](../../supabase/migrations/20260824001426_post_purchase_label_generation_foundation.sql), lines 149–152 | Coordinate before Stripe; post-refund RPC rejection is too late. |
-| Refund status ignored | Manual and both cron cancellation paths | `pending` is not success; `charge_already_refunded` is not shipment proof. |
-| Preparing evidence gap | Preparing cron cancellation path | No fresh carrier check or label cancellation; fail closed on uncertainty. |
-| Tracking overwrite | [tracking handler](../../supabase/functions/track-shipments/index.ts), lines 125–128 | ID-only update can overwrite terminal state; guard writes. |
-| Cron coordination gap | [automatic cancellation](../../supabase/functions/auto-cancel-orders/index.ts) | Missing transfer guards and non-atomic boolean locks need bounded coordination. |
+| Risk                         | Repository evidence                                                                                                                                                                                                                                          | Consequence / remediation direction                                                        |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| Cross-path duplicate refunds | [manual key](../../supabase/functions/cancel-order/cancel-order.ts), lines 125–126; [cron key](../../supabase/functions/auto-cancel-orders/index.ts), lines 292–294                                                                                          | Different keys can refund the same shipment; coordinate before money.                      |
+| Shared payment exposure      | [shipment creation](../../supabase/queries/orders/fn_create_shipments_from_single_payment.sql), lines 270–283                                                                                                                                                | Multiple shipments share a PaymentIntent; charge-level headroom is not shipment ownership. |
+| Stripe success, DB failure   | [manual handler](../../supabase/functions/cancel-order/index.ts), lines 205–233                                                                                                                                                                              | Persist provider identity and recover DB completion without issuing another refund.        |
+| Retry cap insufficient       | [refund basis](../../supabase/functions/_shared/refund-basis.ts), lines 63–71                                                                                                                                                                                | Rejects only target > remaining; single full-refund retry has zero headroom.               |
+| Cancellation vs label        | [cancellation RPC](../../supabase/migrations/20260926000000_shipment_cancelled_notification.sql), lines 101–107 accepts preparing; [label foundation](../../supabase/migrations/20260824001426_post_purchase_label_generation_foundation.sql), lines 149–152 | Coordinate before Stripe; post-refund RPC rejection is too late.                           |
+| Refund status ignored        | Manual and both cron cancellation paths                                                                                                                                                                                                                      | `pending` is not success; `charge_already_refunded` is not shipment proof.                 |
+| Preparing evidence gap       | Preparing cron cancellation path                                                                                                                                                                                                                             | No fresh carrier check or label cancellation; fail closed on uncertainty.                  |
+| Tracking overwrite           | [tracking handler](../../supabase/functions/track-shipments/index.ts), lines 125–128                                                                                                                                                                         | ID-only update can overwrite terminal state; guard writes.                                 |
+| Cron coordination gap        | [automatic cancellation](../../supabase/functions/auto-cancel-orders/index.ts)                                                                                                                                                                               | Missing transfer guards and non-atomic boolean locks need bounded coordination.            |
 
 ### Concrete monetary example (integer cents)
 
@@ -330,6 +332,7 @@ are deferred to separate sessions. Close with recorded evidence and a handoff.
 
 M1 fixture: order `e23479fc-7701-5e74-84ad-d72aa65b29fb`, supplied by the maintainer.
 Maintainer supplied read-only DB preflight at `2026-10-11T23:38:03.781517+00:00`:
+
 - One paid shipment: `cb81ef35-1be2-5535-9c5d-e3bcdc585e3a`, created `2026-10-11T23:32:38.503543+00:00`.
 - Product 500,000 cents; buyer charge 522,154 cents; actual Stripe fee recorded 22,154 cents.
 - Seller-paid shipping 26,200 cents is excluded from buyer refund. Expected M1 refund: 522,154 cents MXN, pending Stripe verification.
@@ -337,61 +340,61 @@ Maintainer supplied read-only DB preflight at `2026-10-11T23:38:03.781517+00:00`
 - No label/tracking/claim/transfer/payout; label state unclaimed; order refund ID null (not proof of no Stripe refunds).
 - Maintenance false, paid timeout 48h, preparing timeout 72h; both job flags false; pg_cron installed.
 - Snapshot age about 5m25s: not timed out at observation. Job flags do not establish schedules or exclude future overlap.
-Maintainer-supplied cron metadata:
+  Maintainer-supplied cron metadata:
 - Job 6 `auto-cancel-orders-job`: active, `0 * * * *`; latest pg_cron status succeeded, `2026-10-11 23:00:00.659392+00` to `23:00:00.784191+00`.
 - Job 7 `track-shipments-every-6-hours`: active, `0 */6 * * *`; latest pg_cron status succeeded, `2026-10-11 18:00:00.748749+00` to `18:00:00.872025+00`.
 - Filtered query returned no preparing-cancellation job; absence under this filter is not proof no other scheduler invokes it. Revisit in B4, not current manual baseline.
 - pg_cron succeeded proves the SQL job completed, not Edge HTTP success or business execution.
-Maintainer confirms the requested Stripe Dashboard checks: sandbox/test context,
-payment `Succeeded`, expected charge amount, and no existing refunds. This is
-maintainer-reported provider evidence; no screenshot/API response was supplied.
-Maintainer performed the controlled M1 app cancellation and supplied an INFO log:
-`2026-10-11T23:55:10.544Z`, cancel-order, shipment cancellation completed successfully,
-matching order `e23479fc-7701-5e74-84ad-d72aa65b29fb` and shipment `cb81ef35-1be2-5535-9c5d-e3bcdc585e3a`.
-Stripe Dashboard reportedly shows the PI refunded and 'Successfully refunded due
-to customer request'; exact refund ID/amount/status object remain uncollected.
-No relevant stripe-webhooks invocation was observed by the maintainer; this alone
-is not a defect or proof of event handling. App response/screens not yet supplied.
-Maintainer supplied post-cancellation DB evidence:
+  Maintainer confirms the requested Stripe Dashboard checks: sandbox/test context,
+  payment `Succeeded`, expected charge amount, and no existing refunds. This is
+  maintainer-reported provider evidence; no screenshot/API response was supplied.
+  Maintainer performed the controlled M1 app cancellation and supplied an INFO log:
+  `2026-10-11T23:55:10.544Z`, cancel-order, shipment cancellation completed successfully,
+  matching order `e23479fc-7701-5e74-84ad-d72aa65b29fb` and shipment `cb81ef35-1be2-5535-9c5d-e3bcdc585e3a`.
+  Stripe Dashboard reportedly shows the PI refunded and 'Successfully refunded due
+  to customer request'; exact refund ID/amount/status object remain uncollected.
+  No relevant stripe-webhooks invocation was observed by the maintainer; this alone
+  is not a defect or proof of event handling. App response/screens not yet supplied.
+  Maintainer supplied post-cancellation DB evidence:
 - Order and shipment both cancelled; shipment updated `2026-10-11 23:55:10.272307+00`.
 - Original charge 522,154 cents; actual Stripe fee and cancellation loss both 22,154 cents.
 - Order stripe_refund_id remains null; transfer, payout and tracking remain null; label state unclaimed.
 - Stripe payment summary reports 5,221.54 MXN and fee 221.54 MXN, matching stored charge/fee. Payment summary is not exact refund evidence.
-Maintainer further reports Stripe refund detail: refunded amount 5,221.54 MXN,
-matching expected 522,154 cents; payment/refund displayed as refunded/successful.
-Refund ID `re_...` could not be located; ARN was shown but is not stored here.
-Financial amount and success are maintainer-confirmed, not an independently retrieved refund object.
-Maintainer supplied product snapshot: `85742784-add6-46f5-b2a8-d2c88ca09ef0`
-is VERIFIED, reserved_at null, deleted_at null, updated at the cancellation
-transaction timestamp `2026-10-11 23:55:10.272307+00`. Product release is confirmed.
-M1 notification SQL returned exactly two shipment.cancelled rows: buyer and seller,
-correct order/shipment IDs and action path, not deleted, timestamp matching cancellation.
-No broader notification re-audit is planned; the module was previously validated.
-M1 remains partial: refreshed app views pending; legacy wallet effects were not
-captured before cancellation and must not be claimed as independently verified.
-Manual E2E is temporarily paused for a maintainer-authorized buyer-only banner copy change.
-The maintainer explicitly leaves this small copy candidate without TDD/native RDD;
-ordinary JSON/i18n/source checks still apply and visual app confirmation is pending.
-Do not claim confirmed refund success from cancelled state alone. Seller copy,
-financial behavior, titles/layout and other lifecycle states remain out of scope.
-Early B5 copy implemented: OrderActionCard selects actionCard.cancelledBuyer for
-buyer/cancelled shipment outside dispute orders; English and Spanish keys added.
-Seller/shared/refunded copy and financial logic unchanged. JSON parsing and new-key
-parity passed; full locale parity has verified pre-existing mismatches left untouched.
-Independent bounded verification passed: JSON parses, both new keys present,
-seller/shared/refund/dispute paths unchanged. Existing parity differences (2 EN-only,
-10 ES-only keys) are identical to HEAD. Maintainer confirms buyer banner looks correct.
-After the requested refreshed seller-view check, maintainer replies 'okey todo perfecto'.
-Buyer and seller visual checks are accepted as maintainer-confirmed; no automated
-runtime rendering or screenshots were collected.
-No TDD, test suite or native RDD run; no commit. This does not complete B5 or
-authorize other source fixes.
-Refund identity remains unavailable; do not demand an ARN as a substitute refund ID.
-Null DB refund ID is consistent with audited missing durable linkage; do not repair here.
-Do not retry cancellation.
-Guide the maintainer one query/action at a time, waiting for its result.
-Maintainer performed M1 cancellation/refund. Agent changed only the authorized buyer
-banner copy; no agent money movement, remote configuration/deployment or core fix occurred.
+  Maintainer further reports Stripe refund detail: refunded amount 5,221.54 MXN,
+  matching expected 522,154 cents; payment/refund displayed as refunded/successful.
+  Refund ID `re_...` could not be located; ARN was shown but is not stored here.
+  Financial amount and success are maintainer-confirmed, not an independently retrieved refund object.
+  Maintainer supplied product snapshot: `85742784-add6-46f5-b2a8-d2c88ca09ef0`
+  is VERIFIED, reserved_at null, deleted_at null, updated at the cancellation
+  transaction timestamp `2026-10-11 23:55:10.272307+00`. Product release is confirmed.
+  M1 notification SQL returned exactly two shipment.cancelled rows: buyer and seller,
+  correct order/shipment IDs and action path, not deleted, timestamp matching cancellation.
+  No broader notification re-audit is planned; the module was previously validated.
+  M1 remains partial: refreshed app views pending; legacy wallet effects were not
+  captured before cancellation and must not be claimed as independently verified.
+  Manual E2E is temporarily paused for a maintainer-authorized buyer-only banner copy change.
+  The maintainer explicitly leaves this small copy candidate without TDD/native RDD;
+  ordinary JSON/i18n/source checks still apply and visual app confirmation is pending.
+  Do not claim confirmed refund success from cancelled state alone. Seller copy,
+  financial behavior, titles/layout and other lifecycle states remain out of scope.
+  Early B5 copy implemented: OrderActionCard selects actionCard.cancelledBuyer for
+  buyer/cancelled shipment outside dispute orders; English and Spanish keys added.
+  Seller/shared/refunded copy and financial logic unchanged. JSON parsing and new-key
+  parity passed; full locale parity has verified pre-existing mismatches left untouched.
+  Independent bounded verification passed: JSON parses, both new keys present,
+  seller/shared/refund/dispute paths unchanged. Existing parity differences (2 EN-only,
+  10 ES-only keys) are identical to HEAD. Maintainer confirms buyer banner looks correct.
+  After the requested refreshed seller-view check, maintainer replies 'okey todo perfecto'.
+  Buyer and seller visual checks are accepted as maintainer-confirmed; no automated
+  runtime rendering or screenshots were collected.
+  No TDD, test suite or native RDD run; no commit. This does not complete B5 or
+  authorize other source fixes.
+  Refund identity remains unavailable; do not demand an ARN as a substitute refund ID.
+  Null DB refund ID is consistent with audited missing durable linkage; do not repair here.
+  Do not retry cancellation.
+  Guide the maintainer one query/action at a time, waiting for its result.
+  Maintainer performed M1 cancellation/refund. Agent changed only the authorized buyer
+  banner copy; no agent money movement, remote configuration/deployment or core fix occurred.
 
 The maintainer must approve remote preflight before executing any scenario.
 Record identity using non-secret identifiers; never record keys or credentials.
@@ -417,14 +420,14 @@ Execute cancellation as the specified authenticated actor via the real app or
 its official endpoint. For sequential cases, **observe after the first action**;
 do not batch two cancellations and inspect only the final result.
 
-| ID | Fresh fixture / actor | Action and required observation |
-|---|---|---|
-| M1 | Single paid shipment; buyer | Cancel; exact full buyer allocation refunded, only target cancelled. |
-| M2 | Two same-seller paid shipments; buyer | Cancel first; second remains paid/reserved/unrefunded. Then cancel second; cumulative refund equals full original allocation. |
-| M3 | Two different-seller paid shipments; buyer | Cancel first; other shipment stays paid and other seller has no cancellation notification, wallet, or inventory effect. Then cancel second; cumulative refund matches original charge. |
-| M4 | Own paid shipment; seller | Cancel; buyer sees exact refund and both actors see refreshed target state. |
-| M5 | Paid shipment; nonowner | Reject before money; no refund, state, inventory, wallet, or notification effect. |
-| M6 | Preparing/shipped/delivered/completed; buyer and seller separately | Reject manual cancellation in every state/role; no refund or state effects. |
+| ID  | Fresh fixture / actor                                              | Action and required observation                                                                                                                                                        |
+| --- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M1  | Single paid shipment; buyer                                        | Cancel; exact full buyer allocation refunded, only target cancelled.                                                                                                                   |
+| M2  | Two same-seller paid shipments; buyer                              | Cancel first; second remains paid/reserved/unrefunded. Then cancel second; cumulative refund equals full original allocation.                                                          |
+| M3  | Two different-seller paid shipments; buyer                         | Cancel first; other shipment stays paid and other seller has no cancellation notification, wallet, or inventory effect. Then cancel second; cumulative refund matches original charge. |
+| M4  | Own paid shipment; seller                                          | Cancel; buyer sees exact refund and both actors see refreshed target state.                                                                                                            |
+| M5  | Paid shipment; nonowner                                            | Reject before money; no refund, state, inventory, wallet, or notification effect.                                                                                                      |
+| M6  | Preparing/shipped/delivered/completed; buyer and seller separately | Reject manual cancellation in every state/role; no refund or state effects.                                                                                                            |
 
 For M2 distinguish logical notification events from recipient delivery counts.
 For every successful case inspect target cancellation data, products/reservations,
@@ -454,6 +457,7 @@ Maintainer corrected cancelled shipment ID to `224c8476-b3f0-5596-883d-780436fb4
 Authorized read of `C:/Temp/log.json` contains supplied DB snapshot at
 `2026-10-13 03:21:51.435468+00`: exactly two shipments, same seller
 `cb22a0ff-88f3-40f2-8b6e-2e38eed00fcf`, same PI `pi_3UPwCWACloWdhaxv19GQCxRV`.
+
 - Target `224c8476-b3f0-5596-883d-780436fb4454` cancelled, product
   `85742784-add6-46f5-b2a8-d2c88ca09ef0`, price 5000 MXN.
 - Other `cc7a1d6d-0690-5926-a045-86687402633f` paid, updated_at still creation
@@ -469,76 +473,76 @@ Authorized read of `C:/Temp/log.json` contains supplied DB snapshot at
   status anomaly requiring contract/consumer verification, not proof other money
   was refunded. Do not repair or assert deployed root cause here.
 - Supplied HTTP200 success log at2026-10-13T03:18:10.174Z matches corrected target.
-Maintainer confirms both shipment rows visible in Dashboard. Explains parent
-cancelled precedence was deliberate for list UI; explicitly requests leave it as-is.
-Preserve that policy; verify remaining shipment UI remains usable, not redesign it.
-Maintainer Stripe summary: charge 730870 cents MXN, payment 'Partial refund',
-refunded 522050 cents (expected target amount), fee 30869 cents inclusive of tax
-4258 plus processing 26611, net177951 cents. These reconcile exactly; tax is not
-an additional fee beyond30869. Refund object final status/ID and refund count not
-explicitly supplied; payment-level partial-refund label is not substituted for them.
-Authorized external file reread now contains payment metadata replacing prior DB
-snapshot: buyer_total/grossed_up730870, gross700000, total_seguro30870;
-allocation chunks correlate both shipments and same seller, target seguro22050
-and sibling8820. Commission42000 explains order service_fee_amount420; do not
-use seller commission as buyer refund basis. Metadata total_sellers2 despite same
-seller in both rows is a count-label follow-up, not evidence of different sellers;
-no checkout redesign or fix authorized. Metadata is not a refund-status object.
-Maintainer additionally supplies explicit Stripe text: 'Successfully refunded
-$5,220.50 due to customer request. It may take a few days for the money to reach
-the customer's bank account.' Accept current successful refund as Dashboard
-maintainer evidence; do not keep demanding bank receipt in sandbox. Current total
-refunded522050matches target; refundobjectID/explicitlistcount uncollected and
-recorded as evidence limitations, not repeated Dashboard gating requests.
-Maintainer confirms refreshed app shows target cancelled and sibling active/usable
-correctly after requested buyer/seller checks. UI isolation accepted as human evidence.
-Maintainer snapshot2026-10-13T04:18:36.728826+00 confirms cancelled product85742784
-VERIFIED/reserved_atnull/deleted_atnull with cancellation timestamp; sibling206b71f5
-SOLD/stillreserved/deleted_atnull, updated_at original creation, shipmentpaid.
-Exactly2target cancellation notifications: correct sellercb22a0ff andbuyer43a78f2c,
-notdeleted, matching targetsource/payload; none for sibling in queriedscope.
-M2first-action financial/UI/inventory/notification isolation passed within evidence
-limits. Next: fresh remaining shipment label/claim/transfer/payout eligibility snapshot
-(last complete safety snapshot about1hour old); then controlled second cancellation
-expected208820cents with cumulative730870. Fresh maintainer snapshot at
-2026-10-13T04:19:53.178369+00 confirms siblingcc7a1d6d paid/unclaimed,
-noactiveclaim/label/providerID/tracking/transfer/payout; created/updated03:17:36.049436.
-Normal second-action eligibility passed (~62minutesold vs observed48h paidtimeout).
-Next single action: maintainer cancels that sibling once as buyer via real app;
-observe endpointresponse/log before any additional action. Error/timeout stops,
-no blindretry. Snapshot is not a concurrency guarantee.
-Second buyer attempt failed: maintainer toast calculatedrefundexceedsavailable;
-ERROR2026-10-13T04:20:51.571Z REFUND_AMOUNT_EXCEEDS_CAP, invocationreported401.
-M2blocked, no retry or newfixture until current outcome preserved/understood.
-Current source helper throws422, not401; observedresponse difference unverified.
-With recordedinputs730870original minus522050refunded =208820remaining, exactly
-expectedsecond208820, so no caperror predicted from recordedinputs/currentcode.
-Parent readback: index.ts118–121 allorder_items byorder,172–181 charge.amount and
-amount_refunded; helper uses price_at_purchase not publicationage. Maintainer
-staleproductcorruption hypothesis not proven; newfixture may later compare but
-cannot explain or erase currentfailure. Nextsingleaction freshStripecharge/refunds
-read-only check; then DBinputs/deployedversion as necessary, no blindmoneyretry.
-Maintainer refreshed sameStripePI after error: charge730870/refunded522050/
-fee30869/net177951 cents unchanged; no additional refunded amount shown.
-Expected remaining208820 persists. Next single read-only currentDBorder/item/
-shipment mapping snapshot before deployedcode comparison. No claim about absent
-pending refund objects from payment summary alone. No retry/newcheckout/fix.
-CurrentDBsnapshot2026-10-13T04:33:57.843079+00 confirms2unchangedorderitems
-5000+2000, correctshipmentmapping, order7308.70 andsamePI/charge; siblingstillpaid.
-Read-only local numericfixture reproduction through actualrefund-basis.ts helper
-returnedrefund208820=remaining208820, bun-eexit0. No file/API/money mutation.
-This is purehelper evidence, not deployedhandler reproduction or rootcauseproof.
-Next: read deployedcancel-order calculation/code context from Dashboard to compare
-runtimebasis/cap to repository. No blanketstaleproductcorruptionclaim or guardbypass.
-Maintainer states deployedcodeidenticaltorepo (human assertion, no deployedcopy
-independently collected), and explicitly elects freshorderwith2newlypublished
-same-seller products tocompare legacydata hypothesis. Preserve originalfailedM2;
-no retries/repairs to originalfixture. New comparison is not proof oldpublication
-causedfailure, even if it passes. Guide new IDs/preflight beforefirstcancel, observe
-first outcome beforesecond, stoponerror. No sourcefix/deployment authorized.
-Errorguard/toast behaved defensively but second normal cancellation did not pass.
-No observed pre-action baseline exists. Normal first action success does not prove
-concurrency, recovery or delayed-failure safety.
+  Maintainer confirms both shipment rows visible in Dashboard. Explains parent
+  cancelled precedence was deliberate for list UI; explicitly requests leave it as-is.
+  Preserve that policy; verify remaining shipment UI remains usable, not redesign it.
+  Maintainer Stripe summary: charge 730870 cents MXN, payment 'Partial refund',
+  refunded 522050 cents (expected target amount), fee 30869 cents inclusive of tax
+  4258 plus processing 26611, net177951 cents. These reconcile exactly; tax is not
+  an additional fee beyond30869. Refund object final status/ID and refund count not
+  explicitly supplied; payment-level partial-refund label is not substituted for them.
+  Authorized external file reread now contains payment metadata replacing prior DB
+  snapshot: buyer_total/grossed_up730870, gross700000, total_seguro30870;
+  allocation chunks correlate both shipments and same seller, target seguro22050
+  and sibling8820. Commission42000 explains order service_fee_amount420; do not
+  use seller commission as buyer refund basis. Metadata total_sellers2 despite same
+  seller in both rows is a count-label follow-up, not evidence of different sellers;
+  no checkout redesign or fix authorized. Metadata is not a refund-status object.
+  Maintainer additionally supplies explicit Stripe text: 'Successfully refunded
+  $5,220.50 due to customer request. It may take a few days for the money to reach
+  the customer's bank account.' Accept current successful refund as Dashboard
+  maintainer evidence; do not keep demanding bank receipt in sandbox. Current total
+  refunded522050matches target; refundobjectID/explicitlistcount uncollected and
+  recorded as evidence limitations, not repeated Dashboard gating requests.
+  Maintainer confirms refreshed app shows target cancelled and sibling active/usable
+  correctly after requested buyer/seller checks. UI isolation accepted as human evidence.
+  Maintainer snapshot2026-10-13T04:18:36.728826+00 confirms cancelled product85742784
+  VERIFIED/reserved_atnull/deleted_atnull with cancellation timestamp; sibling206b71f5
+  SOLD/stillreserved/deleted_atnull, updated_at original creation, shipmentpaid.
+  Exactly2target cancellation notifications: correct sellercb22a0ff andbuyer43a78f2c,
+  notdeleted, matching targetsource/payload; none for sibling in queriedscope.
+  M2first-action financial/UI/inventory/notification isolation passed within evidence
+  limits. Next: fresh remaining shipment label/claim/transfer/payout eligibility snapshot
+  (last complete safety snapshot about1hour old); then controlled second cancellation
+  expected208820cents with cumulative730870. Fresh maintainer snapshot at
+  2026-10-13T04:19:53.178369+00 confirms siblingcc7a1d6d paid/unclaimed,
+  noactiveclaim/label/providerID/tracking/transfer/payout; created/updated03:17:36.049436.
+  Normal second-action eligibility passed (~62minutesold vs observed48h paidtimeout).
+  Next single action: maintainer cancels that sibling once as buyer via real app;
+  observe endpointresponse/log before any additional action. Error/timeout stops,
+  no blindretry. Snapshot is not a concurrency guarantee.
+  Second buyer attempt failed: maintainer toast calculatedrefundexceedsavailable;
+  ERROR2026-10-13T04:20:51.571Z REFUND_AMOUNT_EXCEEDS_CAP, invocationreported401.
+  M2blocked, no retry or newfixture until current outcome preserved/understood.
+  Current source helper throws422, not401; observedresponse difference unverified.
+  With recordedinputs730870original minus522050refunded =208820remaining, exactly
+  expectedsecond208820, so no caperror predicted from recordedinputs/currentcode.
+  Parent readback: index.ts118–121 allorder_items byorder,172–181 charge.amount and
+  amount_refunded; helper uses price_at_purchase not publicationage. Maintainer
+  staleproductcorruption hypothesis not proven; newfixture may later compare but
+  cannot explain or erase currentfailure. Nextsingleaction freshStripecharge/refunds
+  read-only check; then DBinputs/deployedversion as necessary, no blindmoneyretry.
+  Maintainer refreshed sameStripePI after error: charge730870/refunded522050/
+  fee30869/net177951 cents unchanged; no additional refunded amount shown.
+  Expected remaining208820 persists. Next single read-only currentDBorder/item/
+  shipment mapping snapshot before deployedcode comparison. No claim about absent
+  pending refund objects from payment summary alone. No retry/newcheckout/fix.
+  CurrentDBsnapshot2026-10-13T04:33:57.843079+00 confirms2unchangedorderitems
+  5000+2000, correctshipmentmapping, order7308.70 andsamePI/charge; siblingstillpaid.
+  Read-only local numericfixture reproduction through actualrefund-basis.ts helper
+  returnedrefund208820=remaining208820, bun-eexit0. No file/API/money mutation.
+  This is purehelper evidence, not deployedhandler reproduction or rootcauseproof.
+  Next: read deployedcancel-order calculation/code context from Dashboard to compare
+  runtimebasis/cap to repository. No blanketstaleproductcorruptionclaim or guardbypass.
+  Maintainer states deployedcodeidenticaltorepo (human assertion, no deployedcopy
+  independently collected), and explicitly elects freshorderwith2newlypublished
+  same-seller products tocompare legacydata hypothesis. Preserve originalfailedM2;
+  no retries/repairs to originalfixture. New comparison is not proof oldpublication
+  causedfailure, even if it passes. Guide new IDs/preflight beforefirstcancel, observe
+  first outcome beforesecond, stoponerror. No sourcefix/deployment authorized.
+  Errorguard/toast behaved defensively but second normal cancellation did not pass.
+  No observed pre-action baseline exists. Normal first action success does not prove
+  concurrency, recovery or delayed-failure safety.
 
 ## M1 result and follow-ups before launch
 
@@ -550,13 +554,13 @@ before/after delta was not captured, and no concurrency/failure test ran.
 
 Maintainer request: 'anota esos mini detalles que noaste para luego arreglarlos o verificar si son vredad'.
 
-| Follow-up | Evidence category | Next action |
-|---|---|---|
-| Refund ID absent from DB | Observed in M1: stripe_refund_id null | B2: verify intended persisted shipment linkage and implement durable provider ID/status. |
-| Returned refund status not validated | Source-audit finding, not reproduced pending/failed provider incident | B2: confirm handler behavior with controlled tests; no cancellation completion for unconfirmed refund. |
-| Manual/cron duplicate-refund exposure | Source-supported concurrency risk; not reproduced in M1 | B1/R1: reproduce safely in sandbox and coordinate before money movement. |
-| Cancellation/label race | Source-supported concurrency risk; not reproduced in M1 | B1/R2: test both orderings and prevent unsafe overlap. |
-| Full locale key parity mismatch | Verified unchanged baseline: 2 EN-only/10 ES-only keys | Separate authorized localization follow-up; not a financial defect. |
+| Follow-up                             | Evidence category                                                     | Next action                                                                                            |
+| ------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Refund ID absent from DB              | Observed in M1: stripe_refund_id null                                 | B2: verify intended persisted shipment linkage and implement durable provider ID/status.               |
+| Returned refund status not validated  | Source-audit finding, not reproduced pending/failed provider incident | B2: confirm handler behavior with controlled tests; no cancellation completion for unconfirmed refund. |
+| Manual/cron duplicate-refund exposure | Source-supported concurrency risk; not reproduced in M1               | B1/R1: reproduce safely in sandbox and coordinate before money movement.                               |
+| Cancellation/label race               | Source-supported concurrency risk; not reproduced in M1               | B1/R2: test both orderings and prevent unsafe overlap.                                                 |
+| Full locale key parity mismatch       | Verified unchanged baseline: 2 EN-only/10 ES-only keys                | Separate authorized localization follow-up; not a financial defect.                                    |
 
 Refund coordination/status/recovery are launch-safety concerns, not merely cosmetic
 mini-details. No refund/core fixes are authorized by this note. M2–M4 and B1–B4
@@ -568,29 +572,29 @@ Source fixes require explicit approval of the block and exact edit surface.
 Start with deterministic local behavior tests; sandbox races need a separately
 approved controlled setup. The following is future validation, not claimed passes.
 
-| Block | Scope and exit evidence |
-|---|---|
-| B1 | Shared pre-money operation coordination across manual, cron, label; transfer guard; unaffected shipments protected. |
-| B2 | Durable refund identity/status; recover existing operation/refund and DB completion without new money movement. |
-| B3 | Paid timeout honors live settings/boundaries; authenticated runtime and observed cron execution; atomic expiring coordination. |
-| B4 | Fresh carrier evidence and explicit label outcome; tracking cannot resurrect cancellation; uncertainty routes to review. |
-| B5 | Correct UI scopes/reasons/errors, refreshed state and settings-based timers; preserve unboxing notice. |
+| Block | Scope and exit evidence                                                                                                        |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------ |
+| B1    | Shared pre-money operation coordination across manual, cron, label; transfer guard; unaffected shipments protected.            |
+| B2    | Durable refund identity/status; recover existing operation/refund and DB completion without new money movement.                |
+| B3    | Paid timeout honors live settings/boundaries; authenticated runtime and observed cron execution; atomic expiring coordination. |
+| B4    | Fresh carrier evidence and explicit label outcome; tracking cannot resurrect cancellation; uncertainty routes to review.       |
+| B5    | Correct UI scopes/reasons/errors, refreshed state and settings-based timers; preserve unboxing notice.                         |
 
-| Regression ID | Block | Required cases |
-|---|---|---|
-| R1 | B1 | Simultaneous manual + paid cron; buyer + seller; repeated manual same shipment. |
-| R2 | B1 | Cancellation vs label in both orderings; transfer-present rejection; unaffected shipments. |
-| R3 | B2 | Stripe succeeds, DB fails: converge without another refund. |
-| R4 | B2 | `pending`, `requires_action`, `failed`, `canceled`, unknown refund outcomes: no premature completion. |
-| R5 | B2 | Network timeout recovers existing refund; changed caller/reason; retry after 24-hour retention. |
-| R6 | B2 | Single/full and partial orders; exact cumulative caps and shipment ownership. |
-| R7 | B3 | Expired vs unexpired paid boundaries using live settings; rerun idempotence/concurrent jobs. |
-| R8 | B3 | Runtime authorization and actual cron-run evidence, not repository schedule inference. |
-| R9 | B4 | Old preparing/no handoff: label cancellation confirmation separate from label money returned. |
-| R10 | B4 | Handoff, stale/missing/unrecognized tracking: fail closed/manual review. |
-| R11 | B4 | Carrier refusal/ambiguous cancel; tracking cannot resurrect cancelled shipment. |
-| R12 | B4 | Label-cost loss recorded separately; no guaranteed label refund. |
-| R13 | B5 | Target/other UI scopes, reasons/errors, refreshed state, timers/settings, unboxing notice. |
+| Regression ID | Block | Required cases                                                                                        |
+| ------------- | ----- | ----------------------------------------------------------------------------------------------------- |
+| R1            | B1    | Simultaneous manual + paid cron; buyer + seller; repeated manual same shipment.                       |
+| R2            | B1    | Cancellation vs label in both orderings; transfer-present rejection; unaffected shipments.            |
+| R3            | B2    | Stripe succeeds, DB fails: converge without another refund.                                           |
+| R4            | B2    | `pending`, `requires_action`, `failed`, `canceled`, unknown refund outcomes: no premature completion. |
+| R5            | B2    | Network timeout recovers existing refund; changed caller/reason; retry after 24-hour retention.       |
+| R6            | B2    | Single/full and partial orders; exact cumulative caps and shipment ownership.                         |
+| R7            | B3    | Expired vs unexpired paid boundaries using live settings; rerun idempotence/concurrent jobs.          |
+| R8            | B3    | Runtime authorization and actual cron-run evidence, not repository schedule inference.                |
+| R9            | B4    | Old preparing/no handoff: label cancellation confirmation separate from label money returned.         |
+| R10           | B4    | Handoff, stale/missing/unrecognized tracking: fail closed/manual review.                              |
+| R11           | B4    | Carrier refusal/ambiguous cancel; tracking cannot resurrect cancelled shipment.                       |
+| R12           | B4    | Label-cost loss recorded separately; no guaranteed label refund.                                      |
+| R13           | B5    | Target/other UI scopes, reasons/errors, refreshed state, timers/settings, unboxing notice.            |
 
 B4 carrier-refusal policy decided in `odd/tasks/shipment-cancellations-b4.md` S8 and L3: automatic refund only when the carrier accepts the cancellation; a refusal re-reads tracking; refusal without a scan or an ambiguous answer goes to admin review with no refund.
 
@@ -646,16 +650,16 @@ webhooks/jobs, and generated types are separate steps.
 
 Use one record per action/snapshot; no secrets or personal data.
 
-| Field | Record |
-|---|---|
-| Case / environment / actor | M or R ID; sandbox identifiers; role and synthetic actor reference. |
-| Order / shipment references | Order ID, actual shipment count/IDs, target and unaffected IDs. |
-| Original charge | PaymentIntent/charge ID, currency, frozen items and buyer-fee allocation. |
-| Expected / actual refund | Integer cents; refund ID/status; cumulative amount. |
-| Timeline | Request, provider observation, DB completion, refresh timestamps; sanitized errors. |
-| Before / after | Target and other shipment states; cancellation data; product/reservation state. |
-| Side effects | Logical notifications/recipients, inventory, wallet, actual fee/label loss separately. |
-| Result | Pass / fail / pending, evidence references, reason and stop condition if applicable. |
+| Field                       | Record                                                                                 |
+| --------------------------- | -------------------------------------------------------------------------------------- |
+| Case / environment / actor  | M or R ID; sandbox identifiers; role and synthetic actor reference.                    |
+| Order / shipment references | Order ID, actual shipment count/IDs, target and unaffected IDs.                        |
+| Original charge             | PaymentIntent/charge ID, currency, frozen items and buyer-fee allocation.              |
+| Expected / actual refund    | Integer cents; refund ID/status; cumulative amount.                                    |
+| Timeline                    | Request, provider observation, DB completion, refresh timestamps; sanitized errors.    |
+| Before / after              | Target and other shipment states; cancellation data; product/reservation state.        |
+| Side effects                | Logical notifications/recipients, inventory, wallet, actual fee/label loss separately. |
+| Result                      | Pass / fail / pending, evidence references, reason and stop condition if applicable.   |
 
 ## Planning verification
 
@@ -683,145 +687,135 @@ fallback independent verifier completed without blockers. No native review appro
 - Provider refund success and database cancellation are separate recoverable outcomes.
 - Repository job definitions alone do not prove deployed schedules or execution.
 
-
 ### Fresh M2 comparison — preflight 2026-10-13 04:50:26 UTC
 
 Maintainer supplied read-only DB snapshot for order `b4b224b8-f22a-5cae-8b48-c2b1204a357f`: `paid`, MXN 7569.59, PI `pi_3UPxbRACloWdhaxv1mQNsiQ8`, charge `ch_3UPxbRACloWdhaxv1GArhfnG`, order refund ID null.
+
 - Shipment `8c3b9b6e-bb76-5974-bb9e-4ef13f02049f`: product `96962009-1d3f-4aa0-b74b-e6a62ee2771a`, purchase price MXN 3250, seller-paid shipping MXN 227.
 - Shipment `a1a07baf-bcc6-522f-af8f-a439287c6d68`: product `e01db16d-652f-40ed-ba85-af822c2184b6`, purchase price MXN 4000, seller-paid shipping MXN 250.
-Both shipments share seller `cb22a0ff-88f3-40f2-8b6e-2e38eed00fcf` and order PI; both paid/unclaimed, no claim token/expiry, label, tracking, Envia ID, transfer or payout. DB snapshot alone does not prove Stripe payment success or absence of refunds. Await sandbox Stripe payment baseline before first cancellation; no cancellation verified for this comparison. Original M2 cap failure remains unresolved.
-
+  Both shipments share seller `cb22a0ff-88f3-40f2-8b6e-2e38eed00fcf` and order PI; both paid/unclaimed, no claim token/expiry, label, tracking, Envia ID, transfer or payout. DB snapshot alone does not prove Stripe payment success or absence of refunds. Await sandbox Stripe payment baseline before first cancellation; no cancellation verified for this comparison. Original M2 cap failure remains unresolved.
 
 ### Fresh M2 comparison — Stripe baseline and first action
 
 Maintainer confirms Dashboard payment `pi_3UPxbRACloWdhaxv1mQNsiQ8` is `Succeeded`, charged MXN 7569.59, fees MXN 319.59 (tax 44.08 + processing 275.51), net MXN 7250.00, and no refunds displayed. This is human Dashboard evidence, not an API refund-list capture.
 Next authorized manual action: buyer cancels only shipment `8c3b9b6e-bb76-5974-bb9e-4ef13f02049f` once via app; expected full allocation MXN 3393.26 (3250 + 143.26 proportional buyer fee). Wait for action/provider outcome before sibling cancellation; stop without retry on error. No new cancellation outcome observed yet; original M2 failure remains unresolved.
 
-
 ### Fresh M2 comparison — first cancellation observed
 
 First fresh M2 cancellation: user reports app success/no errors; cancel-order INFO at 2026-10-13T04:53:38.897Z, order b4b224b8-f22a-5cae-8b48-c2b1204a357f, shipment 8c3b9b6e-bb76-5974-bb9e-4ef13f02049f, message `Cancelación de shipment completada con éxito`. Stripe Dashboard Partial refund; charge 756959 cents, fee 31959, refunded amount 339326, net 385674. Amount matches expected allocation; remaining original charge 417633 cents (not net). No refund re_ ID or explicit individual refund status collected; ARN is not refund ID. DB/product/notification/sibling outcomes not yet verified. Original M2 cap failure remains unresolved; no second action yet.
 Next: repeat the previous read-only preflight query for current order/shipment/items snapshot. Do not cancel sibling or retry before outcomes are checked.
 
-
 ### Fresh M2 comparison — first cancellation DB snapshot
 
 Fresh M2 DB snapshot 2026-10-13T04:55:55.323994+00: order b4b224b8-f22a-5cae-8b48-c2b1204a357f cancelled (intentional parent precedence); shipment 8c3b9b6e-bb76-5974-bb9e-4ef13f02049f cancelled; sibling a1a07baf-bcc6-522f-af8f-a439287c6d68 still paid. Both unclaimed, no claim token/expiry, label/tracking/Envia ID, transfer/payout. Purchase prices/shipping/PI/charge unchanged from preflight. Order stripe_refund_id null persists. Shipment state isolation observed; product, notifications and sibling UI not yet verified. Await individual Stripe refund success status before further money movement; original M2 failure unresolved.
-
 
 ### Fresh M2 comparison — first provider success and ARN discussion
 
 Maintainer confirms Stripe Recent activity: `Successfully refunded $3,393.26 due to customer request. It may take a few days for the money to reach the customer's bank account.` ARN supplied `6561632030637368`. Accept human Dashboard evidence of current first refund success; not bank receipt or future irrevocability; re_ ID not collected. Official docs https://docs.stripe.com/refunds Trace a refund: ARN is bank tracing reference, can take up to 7 business days, unavailable for reversals and some partners. Recommendation only (not adopted requirement/no implementation authorized): keep primary buyer UI focused on refund amount/status/timeline; supply ARN via support when needed, optional later detail. ARN differs from Stripe refund ID and does not prove customer receipt.
 Product/notification/sibling UI checks remain outstanding. No second cancellation outcome, source change or adopted ARN feature requirement.
 
-
 ### Fresh M2 comparison — second manual action
 
 Maintainer asks to proceed with second cancellation in fresh same-seller comparison. Financial and shipment-state checks for first action are observed (current Stripe success MXN3393.26; cancelled target and paid/unclaimed sibling without label/claim/transfer/payout). Guide one buyer-app cancellation of sibling a1a07baf-bcc6-522f-af8f-a439287c6d68, expected allocation MXN4176.33; cumulative expected7569.59. Stop on error/no retry. Product/notification/sibling UI isolation checks remain uncollected; proceeding is the bounded financial comparison, not a declaration full E2E passed. Preserve original M2 failure as unresolved.
-
 
 ### Fresh M2 comparison — second refund observed
 
 Maintainer reports second fresh M2 buyer-app cancellation succeeded without error. Stripe Dashboard payment status Refunded; Recent activity `Successfully refunded due to customer request. It may take a few days for the money to reach the customer's bank account.` Charge MXN7569.59; second refund4176.33 (ARN7451856498861405), first3393.26 (ARN6561632030637368), cumulative7569.59, retained totalfee319.59 (tax44.08+processing275.51), net -319.59. Human Dashboard confirms successful full refund in this fresh fixture; not bank receipt, API refund-list or Edge second-action log capture. This comparison did not reproduce original second-cancel cap failure, but cannot establish old products as root cause (prices/allocations also differ). Await final read-only DB snapshot; inventory/notification/UI evidence still incomplete; original M2 failure unresolved.
 Next: repeat same read-only preflight SQL for final DB snapshot. No retries, fixes or new money movement requested.
 
-
 ### Fresh M2 comparison — final shipment DB state
 
 Fresh M2 final DB snapshot2026-10-13T05:02:04.265051+00 confirms orderb4b224b8-f22a-5cae-8b48-c2b1204a357f cancelled and both shipments8c3b9b6e-bb76-5974-bb9e-4ef13f02049f/a1a07baf-bcc6-522f-af8f-a439287c6d68 cancelled. Bothunclaimed/no claims/labels/tracking/EnviaID/transfers/payouts. Purchaseprices/shipping/PI/charge unchanged; orderstripe_refund_id null despite full successful Dashboard refund. Freshfixture financial+shipment-state comparison passed within human Dashboard limitations; complete E2E still needs productrelease/notifications/UI. Maintainer remains confident legacyproducthypothesis; recorded as hypothesisnotrootcause. Original M2 error unresolved.
 Next one read-only action: inspect both fixture products for release (`VERIFIED`, no reservation, not deleted). No additional refunds/retries/source changes.
 
-
 ### Fresh M2 comparison — verbal product release confirmation
 
 Maintainer verbally confirms product query matched expected VERIFIED status with reserved_at/deleted_at null for both fresh M2 products. Raw product-query rows not pasted; record as human confirmation not inspected JSON. Fresh comparison financial/shipment/product checks observed; notifications and buyer/seller UI still outstanding. Original M2 failure unresolved.
-
 
 ### Fresh M2 comparison — notification evidence and proposed next route
 
 Fresh M2 notification query returned exactly four undeleted shipment.cancelled records: buyer43a78f2c-17c8-466d-b255-05a8f52bd2cc andsellercb22a0ff-88f3-40f2-8b6e-2e38eed00fcf foreachshipment8c3b9b6e-bb76-5974-bb9e-4ef13f02049f/a1a07baf-bcc6-522f-af8f-a439287c6d68. Correct orderpayload/source keys/action_path /profile/orders/b4b224b8-f22a-5cae-8b48-c2b1204a357f; firstpair04:53:38.691564+00, secondpair05:00:15.137013+00. No duplicates within returned filtered scope. User asks whether divert to async-error test cards or finishTODO. Recommendation: finish freshM2 finalhumanbuyer/sellerUI then baselineM3/M4; asyncStripecards plannedB2/R4 separatelyauthorized, no newfixture/action now. Originalcapfailureunresolved.
 Next read-only action: refresh buyer and seller order detail, verify both shipments cancelled and no remaining cancellation/preparation/label actions. Await human confirmation; full E0 remains open.
 
-
 ### Fresh M2 comparison — final UI confirmation and next baseline
 
 Maintainer confirms final refreshed buyer and seller UI for fresh M2: both shipments cancelled, no cancellation/preparation/label actions. Close fresh same-seller happy-path comparison within recorded limitations: full Dashboard refund7569.59, bothDBcancelled/no labels/transfers/payouts, productrelease verballyconfirmed, fourcorrectnotifications, finalUIhumanconfirmed. Original M2 cap-error fixture remains unresolved. Walletbefore/after notcollected and firstaction siblingproduct/UI isolation notindependentlycaptured innewfixture; do notclaimrace/async/wallet/fullsystem proof. Next plannedbaseline M3: onepaidorder withtwo differentsellers' shipments, cancel sequentially asbuyer withother sellerisolation; awaitneworder/shipmentIDs andpreflight beforefirstcancel. M4sellerinitiatedpending; no asynccards/sourcefixes/deployment.
-
 
 ### M3 — fixture registration and internal wallet scope
 
 M3 fixture supplied: order48419ff0-b28f-5a20-86e2-b0e8cfd38377; shipment1 68ac6560-2047-5ec1-9b42-3f7b9b77b060; shipment2 d6dbccdf-f3e5-53f2-aaa7-75dd8775d274. Human Stripe reports Succeeded, charged600422 cents,totalfee25421(tax3506+processing21915),net575001. Stripe PI/charge IDs, explicit absence of refunds, seller distinction/DB eligibility and inventory baseline not yet observed. User asks wallets meaning/outsideSelene. Repo fn_cancel_shipment.sql65-130 explicitly mutates internal public.wallets pending_balance and writes public.wallet_transactions if seller wallet exists; this is DB seller accounting, not an external wallet provider or customerwallet feature. Limited read-only before/after isolation check remains relevant; no walletmodule redesign/source changes.
 Next one read-only action: DB order/shipments/items/product preflight before any cancellation. Collect narrow seller-accounting baseline after seller IDs confirmed; do not cancel yet.
 
-
 ### Architecture correction — retired legacy wallets
 
 **Active Selene money flow uses Stripe Connect. Wallets are retired legacy, not an active product/accounting feature. Do not require a legacy wallet baseline or revive/audit that module for E0.** Engram observation 198 already records wallet/payout deprecation; 199 records Connect legacy double-write guards. Prior M3 wallet-baseline instruction is withdrawn. Residual wallet writes in repository SQL are not proof of active remote behavior; any observed Connect mutation of retired wallets is a separate bounded integration follow-up, not permission to modify sources. Maintainer's legal concern is recorded as rationale, not a verified legal conclusion.
 
 Maintainer correction, verbatim:
+
 > eso master, de walets etsa fuera de selene, ess legacy, ya no se usa, de echo en engram deve habera lgo comoentado sobre esto, si no lo esta comentalo y resaltalo, ay que wallets era un sistema que implemente, y que ahora toma cargo stripe connect, wallets para empezar era ilegal, ay que actuabamos como fintech jajja, asi que ya no esta. marcalo y te paso el log del preflught que me pasaste,
 
 Current next step: await the already supplied M3 read-only order/shipments/items/products preflight. Check current Connect financial and other-seller isolation, not legacy wallet feature behavior. M3 not cancelled; M4 pending; original M2 failure unresolved.
 
-
 ### M3 — preflight snapshot and allocation basis
 
 M3 preflight 2026-10-13T05:27:24.325031+00: order48419ff0-b28f-5a20-86e2-b0e8cfd38377 paidMXN6004.22; PIpi_3UPy5ZACloWdhaxv1MJQcf9c chargech_3UPy5ZACloWdhaxv1UcWMl8J. Shipment68ac6560-2047-5ec1-9b42-3f7b9b77b060 sellercb22a0ff-88f3-40f2-8b6e-2e38eed00fcf product96962009-1d3f-4aa0-b74b-e6a62ee2771a price3250,sellershipping227,net_payout2828. Shipmentd6dbccdf-f3e5-53f2-aaa7-75dd8775d274 seller15403acb-c014-458f-8e83-fa04065aadea product3ff13f67-4cb3-4d66-8c3e-d47876b48d50 price2500,sellershipping232,net_payout2118. Both paid/unclaimed; no claims/expiry/labels/tracking/EnviaID/transfers/payouts. Bothproducts SOLD, reserved2026-10-13T05:17:24.841631+00,notdeleted. Different sellers confirmed, samePI. Productsubtotal575000cents; buyerallocation surcharge25422 differs actualStripefee25421 by1cent. Conditional proportional refunds first339369 second261053,sum600422. Don'tsubstituteactualStripefee inbuyerallocation. AwaitexplicitzeroStripe refunds baseline for this PI before firstcancel; no cancelsyet; retiredwalletbaselinewithdrawn.
-
 
 ### M3 — zero-refund confirmation and first app outcome
 
 Maintainer previously explicitly confirmed zero refunds for M3 PIpi_3UPy5ZACloWdhaxv1MJQcf9c. Parent guided sequential first-only buyer cancellation68ac6560-2047-5ec1-9b42-3f7b9b77b060(expected339369cents), not concurrency. Maintainer now reports app no error/behaved well. No Edge log, Stripe first refund amount/status or postaction DB/isolation supplied yet. Do not infer refundsuccess from app. Siblingd6dbccdf-f3e5-53f2-aaa7-75dd8775d274 must remain untouched until verification; no retry iferror.
 Next: inspect current Stripe refund amount and individual refund status before any second action.
 
-
 ### M3 — first successful provider refund
 
 M3 first refund human Stripe evidence: charged6004.22,fee254.21(tax35.06+processing219.15),refunded3393.69,net2356.32; activity `Successfully refunded $3,393.69 due to customer request. It may take a few days for the money to reach the customer's bank account.` ARN145240951843745, not re_ ID. Amount exactly expected for firstshipment68ac6560-2047-5ec1-9b42-3f7b9b77b060; remainingoriginalcharge2610.53(notnet). Appnoerror previouslyconfirmed. Currentprovider success accepted fromDashboard, notbankreceipt. PostfirstDB/product/other-sellernotifications/UIisolation unverified; siblingd6dbccdf-f3e5-53f2-aaa7-75dd8775d274 notauthorizedtocanceluntilisolationchecked.
 Next: repeat the existing M3 read-only preflight query to inspect shipment/product isolation. Do not cancel the second shipment yet. Legacy wallets remain retired/out of scope; no source changes authorized.
-
 
 ### M3 — first cancellation shipment and inventory isolation
 
 M3 post-first DB snapshot2026-10-13T05:34:05.004575+00: order48419ff0-b28f-5a20-86e2-b0e8cfd38377 cancelled intentionalparentprecedence. Firstshipment68ac6560-2047-5ec1-9b42-3f7b9b77b060 cancelled; product96962009-1d3f-4aa0-b74b-e6a62ee2771a VERIFIED/reserved_atnull/notdeleted. Other-sellershipmentd6dbccdf-f3e5-53f2-aaa7-75dd8775d274 remains paid; product3ff13f67-4cb3-4d66-8c3e-d47876b48d50 SOLD/samepreflightreservation2026-10-13T05:17:24.841631+00/notdeleted; seller15403acb-c014-458f-8e83-fa04065aadea. Bothunclaimed/no claims/labels/tracking/EnviaID/transfers/payouts. Purchaseprices/shipping/net_payout/PI/charge unchanged. Shipment+inventoryisolation confirmedwithinqueriedfields; no transfer/payout observed, notcompleteConnectbalanceledgerproof. AwaitnotificationsandhumanUIisolationbeforesecondcancel. Walletlegacyexcluded.
 Next: read cancellation notifications for this order before the second cancellation. Expect first-shipment buyer/first-seller notices only; no notice to the other seller.
 
-
 ### M3 — first cancellation notification isolation
 
 M3 post-first notification query returns exactly two undeleted shipment.cancelled records at2026-10-13T05:31:37.983828+00 for buyer43a78f2c-17c8-466d-b255-05a8f52bd2cc andfirstsellercb22a0ff-88f3-40f2-8b6e-2e38eed00fcf. Correctsource/payloadshipment68ac6560-2047-5ec1-9b42-3f7b9b77b060/order48419ff0-b28f-5a20-86e2-b0e8cfd38377/actionpath. None for other seller15403acb-c014-458f-8e83-fa04065aadea orsecondshipment withinqueriedcancellation scope. DBnotificationisolationpassed; notpushdeliveryproof. AwaithumanUIisolationbeforesecondcancel. OriginalM2causeunresolved; walletsretired.
 Next: human refreshed buyer and both seller views, checking second-shipment actions remain available without executing fulfillment. Do not cancel the second shipment until this observation.
 
-
 ### M3 — first-action UI isolation confirmed
 
 Maintainer confirms refreshed M3 buyer andbothsellerUI afterfirstcancellation: buyerfirstcancelled/secondactive; firstsellerownshipmentcancelled; secondsellerownshipmentpaid withactionsavailable. No fulfillmentexecutionreported. CombinedwithfirstStripe3393.69 success, DB/inventoryisolation andtwofirsttargetnotifications, proceedonesecondbuyerappcancellationd6dbccdf-f3e5-53f2-aaa7-75dd8775d274 expected2610.53/cumulative6004.22. Stoponerror/no retry. Secondoutcomenotobserved; finalDB/product/notifications/UIpending. Walletsretired; originalM2capfailureunresolved.
-
 
 ### M3 — reported second cancellation error: financial stop
 
 Maintainer reports recurrence of prior cancellation error on M3 second action (guided shipmentd6dbccdf-f3e5-53f2-aaa7-75dd8775d274, order48419ff0-b28f-5a20-86e2-b0e8cfd38377) after firstsuccessfulrefund3393.69. Exacterrorcode/timestamp/HTTP/Stripepostfailure outcome not yet supplied; recurrence ishumanreportnotcapturedREFUND_AMOUNT_EXCEEDS_CAP log. Stopfinancialtesting/no retries/newfixtures/sourcefixes/deployments. OriginalM2 andM3 failures now need sharedsecond-refund investigation; M2freshcomparisonhadpassed so notuniversally failing. Cannotattributeonlytooriginalfixture ordeclarelegacyproductcause; M3secondproductpublicationageunknown. Expectedremaining/secondallocation261053cents fromlastknowncharge600422/refunded339369; currentprovider capinputs unobserved.
 Next single evidence request: exact `cancel-order` error log (timestamp, code/message). Then inspect provider/DB outcome read-only, one action at a time. M3 failed second action; not passed. M4 paused; no automatic retries or additional fixtures.
 
-
 ### Session scope correction — E2E observations only
 
 Maintainer correction, verbatim:
-> master no seria mejor atacar este bug en otra sesion? digo esta sesion solo es para hacer los e2e y ver que esat fallando e ir anotando esos fallos o mini bugs que se detecten para luego irlos acotando parte por parte. que opinas? iguale stoy equivocado pero no se
 
+> master no seria mejor atacar este bug en otra sesion? digo esta sesion solo es para hacer los e2e y ver que esat fallando e ir anotando esos fallos o mini bugs que se detecten para luego irlos acotando parte por parte. que opinas? iguale stoy equivocado pero no se
 
 Scope correction: this session is E2E execution and bug evidence recording only. Diagnosis and remediation belong in separate bounded sessions. Do not turn a reproduced failure into source investigation.
 
 ### M3 confirmed bug — second cancellation cap rejection
 
 Exact supplied Edge log:
+
 ```json
-{"timestamp":"2026-10-13T05:44:56.432Z","function":"cancel-order","level":"ERROR","msg":"Fallo en proceso de cancelación","error":"REFUND_AMOUNT_EXCEEDS_CAP"}
+{
+  "timestamp": "2026-10-13T05:44:56.432Z",
+  "function": "cancel-order",
+  "level": "ERROR",
+  "msg": "Fallo en proceso de cancelación",
+  "error": "REFUND_AMOUNT_EXCEEDS_CAP"
+}
 ```
+
 App message as supplied, verbatim: `La devolucion calculada supera el monto disponioble`.
 Order `48419ff0-b28f-5a20-86e2-b0e8cfd38377`; rejected second shipment `d6dbccdf-f3e5-53f2-aaa7-75dd8775d274`; PI `pi_3UPy5ZACloWdhaxv1MJQcf9c`; charge `ch_3UPy5ZACloWdhaxv1UcWMl8J`.
 
 Maintainer scope instruction, verbatim:
+
 > te lo paso el log y todo eso para que lo guardes, y anotes como bug, pero no nos desviemos, el porposito de esta seson es testear lo que ya esta implementado en el proyecto y ver como se comporta la logica actual, una evz que terminesmos vemso que salio bien, que aslio mal, que ocupa refactorizarse, que cosa ocupa un mini cambio etc etc.
 
 The same error code was observed in original M2. No root cause, HTTP status for M3, or post-failure DB proof is asserted. Preserve evidence; no financial retry or fix.
@@ -829,12 +823,12 @@ The same error code was observed in original M2. No root cause, HTTP status for 
 ### M3 failure disposition and explicit continuation to M4
 
 Maintainer evidence/decision, verbatim:
+
 > tODO bien en stripe master, osea la ccion nunca llego, la app freno poeuqe aparece ese error. mantenemos este e2e como fallido, y el anterior a este tambien, osea 2 del mismo vendedor y 2 productos de diferente venedor. Avanzemos al siguiente e2e
 
 M3 second cancellation is **failed**, as is original M2 second cancellation. Stripe after M3 failure is reported unchanged by the maintainer, with no second refund/action; this is human Dashboard evidence, not an independently retrieved provider/API or handler-stage trace. Exact total/list statuses were not pasted. Post-failure DB snapshot was not collected. No automatic assertion of unchanged DB, no root cause established. Preserve failed fixtures without retries. Fresh M2 comparison stays recorded as passed within its evidence limits; it does not override the original M2 failure.
 
 Maintainer explicitly requests advancing to the next E2E. Resume M4: seller cancellation of own paid shipment in sandbox. First obtain fixture order ID and run read-only preflight, one action/query at a time; no cancellation before confirming fixture and Stripe baseline. Scope remains existing-logic testing/bug recording only; no fixes, extended investigation or deployment.
-
 
 ### M4 — seller cancellation reported before preflight
 
@@ -846,21 +840,22 @@ Maintainer subsequently confirms both refreshed buyer/seller views are correct a
 ### M4 — final post-action snapshot and result
 
 Supplied snapshot observed `2026-10-14T06:28:21.996745+00:00` confirms exactly one shipment/item. Order and target shipment cancelled; both updated `2026-10-14T05:52:12.99116+00:00` (created `2026-10-14T05:51:31.506574+00:00`). Buyer `43a78f2c-17c8-466d-b255-05a8f52bd2cc`; seller `cb22a0ff-88f3-40f2-8b6e-2e38eed00fcf`. PI `pi_3UQL60ACloWdhaxv1Mjv9jvw`; charge `ch_3UQL60ACloWdhaxv1NDHdOZO`.
+
 - Sole product `96962009-1d3f-4aa0-b74b-e6a62ee2771a`: purchase price MXN3250, seller shipping MXN227; charge/refund MXN3395.27 implies buyer surcharge MXN145.27. Seller shipping is not included in the observed refund. Product VERIFIED, reserved_at/deleted_at null, updated at cancellation timestamp.
 - Actual Stripe fee and cancellation loss both 14527 cents, matching Dashboard retained fee. Order stripe_refund_id null persists; record durable refund linkage follow-up without diagnosis/fix.
 - Shipment unclaimed, no claim token/expiry, label URL/generated timestamp/provider cost, tracking/Envia ID, transfer or payout.
 - Exactly two undeleted shipment.cancelled notifications in queried scope, same cancellation timestamp: seller `249b8bdd-a198-4a34-91b0-ceb03495d416`, buyer `ab276870-7522-4b20-8295-6554c78ac8b1`. Correct target/order, recipient roles, action path and shared logical source_event_key. Not push-delivery proof.
-**Result: M4 seller cancellation passed within recorded evidence limits.** No before snapshot, independently retrieved refund object/re_ ID, raw Edge log/timestamp, automated UI or concurrency/failure proof. Historical paid eligibility/absence of prior effects cannot be established from this post-action snapshot alone.
+  **Result: M4 seller cancellation passed within recorded evidence limits.** No before snapshot, independently retrieved refund object/re_ ID, raw Edge log/timestamp, automated UI or concurrency/failure proof. Historical paid eligibility/absence of prior effects cannot be established from this post-action snapshot alone.
 
 ### E0 — sequential baseline outcome summary
 
-| Case | Outcome | Evidence / limitation |
-|---|---|---|
-| M1 buyer, sole paid shipment | Passed within recorded limits | Human provider/UI plus DB/product/notification evidence; refund object/ID not independently captured. |
-| Original M2 buyer, same-seller pair | Failed second cancellation | REFUND_AMOUNT_EXCEEDS_CAP; failed fixture preserved without retry. |
-| Fresh M2 comparison | Passed within recorded limits | Full refund, both cancelled, released products, correct notices/UI; does not erase original M2 failure or establish its cause. |
-| M3 buyer, different-seller pair | Failed second cancellation | First refund339369 cents of600422; second expected261053 rejected REFUND_AMOUNT_EXCEEDS_CAP. Stripe unchanged per maintainer; no post-failure DB/API proof. |
-| M4 seller, sole shipment | Passed within recorded limits | Refund339527 cents, DB/product/notices and refreshed UI consistent; no pre-action snapshot. |
+| Case                                | Outcome                       | Evidence / limitation                                                                                                                                       |
+| ----------------------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M1 buyer, sole paid shipment        | Passed within recorded limits | Human provider/UI plus DB/product/notification evidence; refund object/ID not independently captured.                                                       |
+| Original M2 buyer, same-seller pair | Failed second cancellation    | REFUND_AMOUNT_EXCEEDS_CAP; failed fixture preserved without retry.                                                                                          |
+| Fresh M2 comparison                 | Passed within recorded limits | Full refund, both cancelled, released products, correct notices/UI; does not erase original M2 failure or establish its cause.                              |
+| M3 buyer, different-seller pair     | Failed second cancellation    | First refund339369 cents of600422; second expected261053 rejected REFUND_AMOUNT_EXCEEDS_CAP. Stripe unchanged per maintainer; no post-failure DB/API proof. |
+| M4 seller, sole shipment            | Passed within recorded limits | Refund339527 cents, DB/product/notices and refreshed UI consistent; no pre-action snapshot.                                                                 |
 
 Recorded follow-ups for later scoped evaluation: reproduced second-cancellation rejection (M2/M3), missing durable refund identity observed in DB, and previously listed source-supported risks/evidence gaps. No new root cause or remediation design is asserted. M5/M6, async, concurrency and cron remain deferred. E0 sequential baseline closes with mixed results; not full-system/launch certification. Next at initial baseline closure: maintainer discussion of outcome priorities and separate authorization for investigation or remediation. Subsequent authorized audit/regression state is recorded in Latest handoff.
 

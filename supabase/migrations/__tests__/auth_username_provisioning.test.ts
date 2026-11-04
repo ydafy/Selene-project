@@ -73,7 +73,9 @@ describe('auth username provisioning migration (SQL structural only)', () => {
 
   test('the suffix search is bounded so the auth insert can never loop forever', () => {
     expect(migration).toMatch(/IF v_attempt > 50 THEN\s+RAISE EXCEPTION/);
-    expect(canonicalHelper()).toMatch(/IF v_attempt > 50 THEN\s+RAISE EXCEPTION/);
+    expect(canonicalHelper()).toMatch(
+      /IF v_attempt > 50 THEN\s+RAISE EXCEPTION/,
+    );
   });
 
   test('profiles_private provisioning is unchanged and idempotent', () => {

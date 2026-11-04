@@ -1,4 +1,7 @@
-import { allocateCents, grossUpDomesticMx } from '../_shared/stripe-fee-gross-up.ts';
+import {
+  allocateCents,
+  grossUpDomesticMx,
+} from '../_shared/stripe-fee-gross-up.ts';
 import {
   resolvePublicationEconomics,
   type PublicationEconomics,
@@ -105,8 +108,7 @@ export function calculateEstimatedSellerShippingDeductionCents({
   assertCents('priceCents', priceCents);
   assertCents('quotedShippingCents', quotedShippingCents);
 
-  const safeBufferCents =
-    shippingBufferCents ?? DEFAULT_SHIPPING_BUFFER_CENTS;
+  const safeBufferCents = shippingBufferCents ?? DEFAULT_SHIPPING_BUFFER_CENTS;
   assertCents('shippingBufferCents', safeBufferCents);
 
   if (quotedShippingCents === 0) {
@@ -243,15 +245,12 @@ export function calculateCheckoutAllocation(
     );
 
     const economics = input.publicationSnapshot
-      ? resolvePublicationEconomics(
-        input.publicationSnapshot,
-        () => {
+      ? resolvePublicationEconomics(input.publicationSnapshot, () => {
           if (!input.legacyEconomics) {
             throw new Error('LEGACY_PUBLICATION_ECONOMICS_UNAVAILABLE');
           }
           return input.legacyEconomics;
-        },
-      )
+        })
       : null;
 
     const moneyFlow = calculateConnectMoneyFlow({

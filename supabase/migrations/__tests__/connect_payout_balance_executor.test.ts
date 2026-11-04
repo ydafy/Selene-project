@@ -6,12 +6,16 @@ const MIGRATIONS_DIR = join(import.meta.dir, '..', 'archive');
 
 const readExecutorMigration = (): string => {
   const migrationFile = readdirSync(MIGRATIONS_DIR)
-    .filter((file) => file.endsWith('_connect_payout_balance_executor_claim.sql'))
+    .filter((file) =>
+      file.endsWith('_connect_payout_balance_executor_claim.sql'),
+    )
     .sort()
     .pop();
 
   if (!migrationFile) {
-    throw new Error('Connect payout balance executor claim migration not found');
+    throw new Error(
+      'Connect payout balance executor claim migration not found',
+    );
   }
 
   return readFileSync(join(MIGRATIONS_DIR, migrationFile), 'utf8');
@@ -88,9 +92,7 @@ describe('connect payout balance executor claim migration', () => {
   test('claim persists a fresh claim token and returns it with the current stage version', () => {
     const claimRpc = findFunction('fn_claim_awaiting_balance_payout_run');
 
-    expect(claimRpc).toMatch(
-      /payout_claim_token\s*=\s*gen_random_uuid\(\)/i,
-    );
+    expect(claimRpc).toMatch(/payout_claim_token\s*=\s*gen_random_uuid\(\)/i);
     expect(claimRpc).toMatch(
       /RETURNS\s+TABLE[\s\S]*claim_token[\s\S]*stage_version/i,
     );
@@ -172,7 +174,9 @@ describe('connect payout balance executor claim migration', () => {
     // The deferral is token-conditional so a stale worker cannot defer a run a
     // newer worker already claimed.
     expect(deferRpc).toMatch(/p_claim_token/i);
-    expect(deferRpc).toMatch(/next_attempt_at\s*=\s*now\(\)\s*\+\s*make_interval/i);
+    expect(deferRpc).toMatch(
+      /next_attempt_at\s*=\s*now\(\)\s*\+\s*make_interval/i,
+    );
     expect(deferRpc).toMatch(/attempt_count\s*=\s*attempt_count\s*\+\s*1/i);
     expect(deferRpc).toMatch(/payout_claim_token\s*=\s*NULL/i);
   });
@@ -286,11 +290,7 @@ describe('connect payout balance executor claim migration', () => {
     expect(deferRpc).toMatch(
       /release_stage_version\s*=\s*p_expected_stage_version/i,
     );
-    expect(deferRpc).toMatch(
-      /payout_claim_expires_at\s+IS\s+NOT\s+NULL/i,
-    );
-    expect(deferRpc).toMatch(
-      /payout_claim_expires_at\s*>\s*now\(\)/i,
-    );
+    expect(deferRpc).toMatch(/payout_claim_expires_at\s+IS\s+NOT\s+NULL/i);
+    expect(deferRpc).toMatch(/payout_claim_expires_at\s*>\s*now\(\)/i);
   });
 });

@@ -6,9 +6,9 @@ import { extractStripeChargeId } from '../stripe-charge.ts';
 
 describe('extractStripeChargeId', () => {
   it('uses a non-empty latest_charge string', () => {
-    expect(
-      extractStripeChargeId({ latest_charge: 'ch_latest' }),
-    ).toBe('ch_latest');
+    expect(extractStripeChargeId({ latest_charge: 'ch_latest' })).toBe(
+      'ch_latest',
+    );
   });
 
   it('uses an expanded latest charge before the legacy charge list', () => {
@@ -28,7 +28,10 @@ describe('extractStripeChargeId', () => {
 
   it('returns null when Stripe did not provide usable charge evidence', () => {
     expect(
-      extractStripeChargeId({ latest_charge: '', charges: { data: [{ id: '' }] } }),
+      extractStripeChargeId({
+        latest_charge: '',
+        charges: { data: [{ id: '' }] },
+      }),
     ).toBeNull();
   });
 });

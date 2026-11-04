@@ -37,13 +37,18 @@ const row = (overrides: Record<string, unknown> = {}) => ({
 });
 
 function harness(
-  overrides: { userId?: string | null; admin?: boolean | Error; rpc?: RpcResult | Error } = {},
+  overrides: {
+    userId?: string | null;
+    admin?: boolean | Error;
+    rpc?: RpcResult | Error;
+  } = {},
 ) {
   const adminChecks: string[] = [];
   const logs: LogEntry[] = [];
   let rpcCalls = 0;
   const deps: ListShipmentLabelReconciliationsDeps = {
-    getUserId: async () => (overrides.userId === undefined ? ADMIN : overrides.userId),
+    getUserId: async () =>
+      overrides.userId === undefined ? ADMIN : overrides.userId,
     isAdmin: async (userId) => {
       adminChecks.push(userId);
       if (overrides.admin instanceof Error) throw overrides.admin;
@@ -127,7 +132,9 @@ describe('list-shipment-label-reconciliations handler', () => {
   });
 
   it('returns an empty list and keeps nullable fields null', async () => {
-    const empty = await harness({ rpc: { data: [], error: null } }).handler(request());
+    const empty = await harness({ rpc: { data: [], error: null } }).handler(
+      request(),
+    );
     expect(await empty.json()).toEqual({ label_reconciliations: [] });
 
     const nulls = {
@@ -145,8 +152,12 @@ describe('list-shipment-label-reconciliations handler', () => {
       destination_postal_code: null,
       destination_city: null,
     };
-    const res = await harness({ rpc: { data: [row(nulls)], error: null } }).handler(request());
-    expect(((await res.json()) as Body).label_reconciliations[0]).toEqual(row(nulls));
+    const res = await harness({
+      rpc: { data: [row(nulls)], error: null },
+    }).handler(request());
+    expect(((await res.json()) as Body).label_reconciliations[0]).toEqual(
+      row(nulls),
+    );
   });
 
   it('fails closed on an unusable row instead of returning partial data', async () => {
@@ -177,7 +188,9 @@ describe('list-shipment-label-reconciliations handler', () => {
       { destination_city: 5 },
     ];
     for (const overrides of bad) {
-      const h = harness({ rpc: { data: [row(), row(overrides)], error: null } });
+      const h = harness({
+        rpc: { data: [row(), row(overrides)], error: null },
+      });
       const res = await h.handler(request());
       expect(res.status).toBe(500);
       expect(await res.text()).toBe('{"error":"INTERNAL_ERROR"}');
@@ -187,14 +200,18 @@ describe('list-shipment-label-reconciliations handler', () => {
 
   it('fails closed when the RPC data is not an array of objects', async () => {
     for (const data of [null, {}, 'x', [null], ['x']]) {
-      const res = await harness({ rpc: { data, error: null } }).handler(request());
+      const res = await harness({ rpc: { data, error: null } }).handler(
+        request(),
+      );
       expect(res.status).toBe(500);
       expect(await res.json()).toEqual({ error: 'INTERNAL_ERROR' });
     }
   });
 
   it('keeps raw RPC and crash text out of the response and in the log', async () => {
-    const rpc = harness({ rpc: { data: null, error: { message: 'secret db detail' } } });
+    const rpc = harness({
+      rpc: { data: null, error: { message: 'secret db detail' } },
+    });
     const res = await rpc.handler(request());
     expect(res.status).toBe(500);
     expect(await res.text()).toBe('{"error":"INTERNAL_ERROR"}');
@@ -221,15 +238,21 @@ describe('list-shipment-label-reconciliations wiring', () => {
   const index = readFileSync(join(import.meta.dir, 'index.ts'), 'utf8');
 
   it('wraps the handler with Sentry, checks role and status, and calls the service-only RPC', () => {
-    expect(index).toContain("serve(withSentry('list-shipment-label-reconciliations', handler))");
+    expect(index).toContain(
+      "serve(withSentry('list-shipment-label-reconciliations', handler))",
+    );
     expect(index).toContain(".select('role, status')");
     expect(index).toContain("from '../_shared/admin-auth.ts'");
     expect(index).toContain('fn_list_shipment_label_reconciliations');
   });
 
   it('declares verify_jwt = true in config.toml', () => {
-    const config = readFileSync(join(import.meta.dir, '../../config.toml'), 'utf8');
-    expect(config).toMatch(/\[functions\.list-shipment-label-reconciliations\]\r?\nverify_jwt = true/);
+    const config = readFileSync(
+      join(import.meta.dir, '../../config.toml'),
+      'utf8',
+    );
+    expect(config).toMatch(
+      /\[functions\.list-shipment-label-reconciliations\]\r?\nverify_jwt = true/,
+    );
   });
 });
-

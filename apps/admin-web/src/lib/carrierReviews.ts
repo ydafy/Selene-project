@@ -4,10 +4,17 @@
  * row fails the whole response, so the UI never shows partial money data.
  */
 
-export const REVIEW_REASONS = ['tracking_unknown', 'carrier_refused', 'carrier_ambiguous'] as const;
+export const REVIEW_REASONS = [
+  'tracking_unknown',
+  'carrier_refused',
+  'carrier_ambiguous',
+] as const;
 export type ReviewReason = (typeof REVIEW_REASONS)[number];
 
-export const REVIEW_RESOLUTIONS = ['refund_approved', 'closed_no_refund'] as const;
+export const REVIEW_RESOLUTIONS = [
+  'refund_approved',
+  'closed_no_refund',
+] as const;
 export type ReviewResolution = (typeof REVIEW_RESOLUTIONS)[number];
 
 export interface CarrierReview {
@@ -75,41 +82,73 @@ function toReview(value: unknown): CarrierReview | null {
   const trackingNumber = nullableText(row.tracking_number);
   const carrier = nullableText(row.carrier);
   const labelCostCents = nullableCents(row.label_provider_cost_cents);
-  const reason = REVIEW_REASONS.find((candidate) => candidate === row.review_reason);
+  const reason = REVIEW_REASONS.find(
+    (candidate) => candidate === row.review_reason,
+  );
   const carrierOutcome = nullableText(row.carrier_cancellation_outcome);
   const requiredAt = text(row.review_required_at);
   if (
-    !shipmentId || !orderId || !sellerId || trackingNumber === undefined || carrier === undefined ||
-    labelCostCents === undefined || !reason || carrierOutcome === undefined || !requiredAt ||
+    !shipmentId ||
+    !orderId ||
+    !sellerId ||
+    trackingNumber === undefined ||
+    carrier === undefined ||
+    labelCostCents === undefined ||
+    !reason ||
+    carrierOutcome === undefined ||
+    !requiredAt ||
     Number.isNaN(Date.parse(requiredAt))
   ) {
     return null;
   }
   return {
-    shipmentId, orderId, sellerId, trackingNumber, carrier, labelCostCents, reason, carrierOutcome, requiredAt,
+    shipmentId,
+    orderId,
+    sellerId,
+    trackingNumber,
+    carrier,
+    labelCostCents,
+    reason,
+    carrierOutcome,
+    requiredAt,
   };
 }
 
 export function parseCarrierReviews(payload: unknown): CarrierReview[] {
   const rows = asRecord(payload)?.reviews;
-  if (!Array.isArray(rows)) throw new MalformedCarrierReviewResponseError('carrier reviews');
+  if (!Array.isArray(rows))
+    throw new MalformedCarrierReviewResponseError('carrier reviews');
   const reviews = rows.map(toReview);
-  if (reviews.some((review) => review === null)) throw new MalformedCarrierReviewResponseError('carrier reviews');
+  if (reviews.some((review) => review === null))
+    throw new MalformedCarrierReviewResponseError('carrier reviews');
   return reviews as CarrierReview[];
 }
 
-export function parseResolveReviewResult(payload: unknown): ResolveReviewResult {
+export function parseResolveReviewResult(
+  payload: unknown,
+): ResolveReviewResult {
   const result = asRecord(payload);
-  const resolution = REVIEW_RESOLUTIONS.find((candidate) => candidate === result?.review_resolution);
+  const resolution = REVIEW_RESOLUTIONS.find(
+    (candidate) => candidate === result?.review_resolution,
+  );
   const resolvedAt = text(result?.review_resolved_at);
   const labelCostLossCents = nullableCents(result?.label_cost_loss_cents);
   if (
-    !result || !resolution || !resolvedAt || Number.isNaN(Date.parse(resolvedAt)) ||
-    typeof result.review_resolution_note !== 'string' || labelCostLossCents === undefined
+    !result ||
+    !resolution ||
+    !resolvedAt ||
+    Number.isNaN(Date.parse(resolvedAt)) ||
+    typeof result.review_resolution_note !== 'string' ||
+    labelCostLossCents === undefined
   ) {
     throw new MalformedCarrierReviewResponseError('carrier review resolution');
   }
-  return { resolution, resolvedAt, note: result.review_resolution_note, labelCostLossCents };
+  return {
+    resolution,
+    resolvedAt,
+    note: result.review_resolution_note,
+    labelCostLossCents,
+  };
 }
 
 /** The trimmed note, or null when it is empty or over the server limit. */
@@ -120,19 +159,25 @@ export function normalizeReviewNote(input: string): string | null {
 
 const ERROR_MESSAGES: Record<string, string> = {
   AUTH_REQUIRED: 'Tu sesión expiró. Vuelve a iniciar sesión.',
-  ADMIN_ONLY: 'Tu cuenta no tiene permisos de administrador activos para esta acción.',
+  ADMIN_ONLY:
+    'Tu cuenta no tiene permisos de administrador activos para esta acción.',
   SHIPMENT_NOT_FOUND: 'No encontramos este envío. Actualiza la lista.',
-  CARRIER_REVIEW_NOT_PENDING: 'Esta revisión ya no está pendiente. Actualiza la lista.',
-  CARRIER_REVIEW_ALREADY_RESOLVED: 'Esta revisión ya fue resuelta. Actualiza la lista.',
+  CARRIER_REVIEW_NOT_PENDING:
+    'Esta revisión ya no está pendiente. Actualiza la lista.',
+  CARRIER_REVIEW_ALREADY_RESOLVED:
+    'Esta revisión ya fue resuelta. Actualiza la lista.',
   CANCELLATION_EXTERNAL_ALREADY_STARTED:
     'La cancelación ya inició el reembolso y no se puede decidir desde aquí. Actualiza la lista.',
   SHIPMENT_NOT_CANCELABLE:
     'El estado del envío cambió y ya no se puede cancelar. Actualiza la lista y revisa el envío.',
   INVALID_REVIEW_NOTE: `Escribe una nota de entre 1 y ${MAX_REVIEW_NOTE_LENGTH} caracteres.`,
-  INVALID_REVIEW_RESOLUTION: 'La decisión no es válida. Actualiza la página e intenta de nuevo.',
-  INVALID_SHIPMENT_ID: 'El envío no es válido. Actualiza la página e intenta de nuevo.',
+  INVALID_REVIEW_RESOLUTION:
+    'La decisión no es válida. Actualiza la página e intenta de nuevo.',
+  INVALID_SHIPMENT_ID:
+    'El envío no es válido. Actualiza la página e intenta de nuevo.',
 };
-const GENERIC_ERROR_MESSAGE = 'No se pudo registrar la decisión. Intenta de nuevo.';
+const GENERIC_ERROR_MESSAGE =
+  'No se pudo registrar la decisión. Intenta de nuevo.';
 
 export function resolveCarrierReviewErrorMessage(code: string | null): string {
   return (code && ERROR_MESSAGES[code]) || GENERIC_ERROR_MESSAGE;

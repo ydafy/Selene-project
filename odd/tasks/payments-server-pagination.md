@@ -1,4 +1,5 @@
 # Payments server pagination — B2
+
 Load complete seller/run groups in pages of20; select all available matching results across unloaded pages. Branch: `feat/admin-payments-redesign`; runner: Bun, strict TDD.
 Local closure commit: `52ab67f7ff3990629d8fbfc91f94c5d11878bb0d`; no push authority. SQL/type generation and Edge deployment remain separate maintainer-controlled gates. Preserve the accepted, uncommitted History chronology increment.
 

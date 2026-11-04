@@ -1,14 +1,17 @@
 # Payout release self-blocking fence
 
 ## Objective
+
 Repair the deployed payout-release regression where a new manual release creates its own shipment mapping and Transfer, then the fence-time eligibility re-read treats that same mapping as a prior release (`already_released`) and marks the run failed before Stripe Payout creation.
 
 ## Authorized scope
+
 - `supabase/functions/release-connect-payout/release-connect-payout.ts`
 - `supabase/functions/release-connect-payout/release-connect-payout.test.ts`
 - This ODD task record
 
 ## Constraints
+
 - Preserve all financial safety gates, durable fencing, idempotency, and no-duplicate Transfer/Payout behavior.
 - The `already_released` exception must be owner-scoped to the current run; it must never admit a mapping owned by another run.
 - No remote SQL, deployment, cron, secrets, types regeneration, database mutation, or commit.
@@ -40,6 +43,7 @@ Independent verification flagged that the first repair was batch-global: `some` 
 - Evidence: RED observed (batch-global code admitted the run), then GREEN — `bun test supabase/functions/release-connect-payout/release-connect-payout.test.ts` → 53 pass, 0 fail.
 
 ## Live incident evidence
+
 - Order: `a411e8ae-816a-5425-91ae-7bda6b37ad1f`
 - Shipment: `f69663d6-69df-569d-a11a-849630692e0a`
 - Run: `7b3ce005-53af-4066-8bcf-887477be7ca4`

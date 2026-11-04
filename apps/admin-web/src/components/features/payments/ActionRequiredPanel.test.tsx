@@ -1,4 +1,12 @@
-import { afterAll, afterEach, beforeEach, expect, it, mock, spyOn } from 'bun:test';
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  expect,
+  it,
+  mock,
+  spyOn,
+} from 'bun:test';
 import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
@@ -16,43 +24,77 @@ if (process.env.B24_PANEL_CHILD !== '1') {
     expect(result.exitCode, output).toBe(0);
   });
 } else {
-  const offlineFetch: typeof fetch = Object.assign(() => {
-    throw new Error('Unexpected external request');
-  }, {
-    preconnect: () => { throw new Error('Unexpected external preconnect'); },
-  });
+  const offlineFetch: typeof fetch = Object.assign(
+    () => {
+      throw new Error('Unexpected external request');
+    },
+    {
+      preconnect: () => {
+        throw new Error('Unexpected external preconnect');
+      },
+    },
+  );
   const denyFetch = spyOn(globalThis, 'fetch').mockImplementation(offlineFetch);
   afterAll(() => denyFetch.mockRestore());
 
   const problem = {
-    shipmentId: 'aaaaaaaa-1111', orderId: 'bbbbbbbb-2222', buyerId: 'buyer-1', shipmentStatus: 'paid',
-    kind: 'refund_ambiguous', refundId: null, refundFailureReason: null, amountOwedCents: 5000,
-    paymentIntentId: 'pi_1', since: '2026-10-22T10:00:00.000Z',
+    shipmentId: 'aaaaaaaa-1111',
+    orderId: 'bbbbbbbb-2222',
+    buyerId: 'buyer-1',
+    shipmentStatus: 'paid',
+    kind: 'refund_ambiguous',
+    refundId: null,
+    refundFailureReason: null,
+    amountOwedCents: 5000,
+    paymentIntentId: 'pi_1',
+    since: '2026-10-22T10:00:00.000Z',
   };
   let refunds: Record<string, unknown>;
   mock.module('../../../hooks/useShipmentRefundProblems', () => ({
     useShipmentRefundProblems: () => refunds,
-    useResolveShipmentRefund: () => ({ resolve: async () => undefined, isPending: false }),
+    useResolveShipmentRefund: () => ({
+      resolve: async () => undefined,
+      isPending: false,
+    }),
   }));
-  mock.module('../../../lib/supabase', () => ({ supabase: {
-    functions: { invoke: () => { throw new Error('Unexpected external request'); } },
-  } }));
+  mock.module('../../../lib/supabase', () => ({
+    supabase: {
+      functions: {
+        invoke: () => {
+          throw new Error('Unexpected external request');
+        },
+      },
+    },
+  }));
   const { ActionRequiredPanel } = await import('./ActionRequiredPanel');
   const realUseState = React.useState;
 
   const payouts = <p>EXISTING-PAYOUT-CONTENT</p>;
   function render(view: 'payouts' | 'refunds', payoutCount = 3) {
-    const state = spyOn(React, 'useState').mockImplementation(((initial: unknown) =>
-      realUseState(initial === 'payouts' ? view : initial)
-    ) as typeof React.useState);
+    const state = spyOn(React, 'useState').mockImplementation(((
+      initial: unknown,
+    ) =>
+      realUseState(
+        initial === 'payouts' ? view : initial,
+      )) as typeof React.useState);
     try {
-      return renderToStaticMarkup(<ActionRequiredPanel payoutCount={payoutCount}>{payouts}</ActionRequiredPanel>);
+      return renderToStaticMarkup(
+        <ActionRequiredPanel payoutCount={payoutCount}>
+          {payouts}
+        </ActionRequiredPanel>,
+      );
     } finally {
       state.mockRestore();
     }
   }
   beforeEach(() => {
-    refunds = { problems: [problem], count: 1, isLoading: false, isError: false, refetch: async () => undefined };
+    refunds = {
+      problems: [problem],
+      count: 1,
+      isLoading: false,
+      isError: false,
+      refetch: async () => undefined,
+    };
   });
   afterEach(() => mock.restore());
 

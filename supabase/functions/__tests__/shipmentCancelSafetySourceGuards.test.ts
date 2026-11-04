@@ -34,7 +34,9 @@ describe('shipment cancel source guards', () => {
       'supabase/functions/_shared/shipment-cancellation.ts',
     );
     const orchestration = orchestrationFile.slice(
-      orchestrationFile.indexOf('export async function runShipmentCancellation'),
+      orchestrationFile.indexOf(
+        'export async function runShipmentCancellation',
+      ),
     );
     expect(orchestration.indexOf('await ports.claim(')).toBeLessThan(
       orchestration.indexOf('await ports.prepare('),
@@ -56,7 +58,9 @@ describe('shipment cancel source guards', () => {
     expect(settle.indexOf('await ports.recordRefund(')).toBeLessThan(
       settle.indexOf('await ports.complete('),
     );
-    expect(orchestrationFile).toContain("recorded.refund_status !== 'succeeded'");
+    expect(orchestrationFile).toContain(
+      "recorded.refund_status !== 'succeeded'",
+    );
   });
   it('uses the service-role RPC path after refund in cancel-order', () => {
     const indexTs = read('supabase/functions/cancel-order/index.ts');

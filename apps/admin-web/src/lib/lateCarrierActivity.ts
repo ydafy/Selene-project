@@ -6,7 +6,14 @@
  * boundary: one unusable row fails the whole response, so the UI never shows partial data.
  */
 
-export const EVENT_TYPES = ['created', 'information', 'in_transit', 'delivered', 'exception', 'returned'] as const;
+export const EVENT_TYPES = [
+  'created',
+  'information',
+  'in_transit',
+  'delivered',
+  'exception',
+  'returned',
+] as const;
 export type CarrierEventType = (typeof EVENT_TYPES)[number];
 
 export const SHIPMENT_STATUSES = [
@@ -22,10 +29,21 @@ export const SHIPMENT_STATUSES = [
 ] as const;
 export type ShipmentStatus = (typeof SHIPMENT_STATUSES)[number];
 
-export const CANCELLATION_SOURCES = ['buyer', 'seller', 'paid_timeout', 'preparing_timeout'] as const;
+export const CANCELLATION_SOURCES = [
+  'buyer',
+  'seller',
+  'paid_timeout',
+  'preparing_timeout',
+] as const;
 export type CancellationSource = (typeof CANCELLATION_SOURCES)[number];
 
-export const REFUND_STATUSES = ['pending', 'requires_action', 'succeeded', 'failed', 'canceled'] as const;
+export const REFUND_STATUSES = [
+  'pending',
+  'requires_action',
+  'succeeded',
+  'failed',
+  'canceled',
+] as const;
 export type RefundStatus = (typeof REFUND_STATUSES)[number];
 
 export interface LateCarrierActivity {
@@ -100,8 +118,10 @@ const text = (value: unknown): string | null =>
 const nullableText = (value: unknown): string | null | undefined =>
   value === null ? null : typeof value === 'string' ? value : undefined;
 
-const oneOf = <T extends string>(values: readonly T[], value: unknown): T | undefined =>
-  values.find((candidate) => candidate === value);
+const oneOf = <T extends string>(
+  values: readonly T[],
+  value: unknown,
+): T | undefined => values.find((candidate) => candidate === value);
 
 function toActivity(value: unknown): LateCarrierActivity | null {
   const row = asRecord(value);
@@ -113,26 +133,54 @@ function toActivity(value: unknown): LateCarrierActivity | null {
   const carrier = nullableText(row.carrier);
   const shipmentStatus = oneOf(SHIPMENT_STATUSES, row.shipment_status);
   const source = oneOf(CANCELLATION_SOURCES, row.source);
-  const refundStatus = row.refund_status === null ? null : oneOf(REFUND_STATUSES, row.refund_status);
+  const refundStatus =
+    row.refund_status === null
+      ? null
+      : oneOf(REFUND_STATUSES, row.refund_status);
   const eventType = oneOf(EVENT_TYPES, row.late_carrier_activity_event_type);
   const activityAt = text(row.late_carrier_activity_at);
   if (
-    !shipmentId || !orderId || !sellerId || trackingNumber === undefined || carrier === undefined ||
-    !shipmentStatus || !source || refundStatus === undefined || !eventType || !activityAt ||
+    !shipmentId ||
+    !orderId ||
+    !sellerId ||
+    trackingNumber === undefined ||
+    carrier === undefined ||
+    !shipmentStatus ||
+    !source ||
+    refundStatus === undefined ||
+    !eventType ||
+    !activityAt ||
     Number.isNaN(Date.parse(activityAt))
   ) {
     return null;
   }
   return {
-    shipmentId, orderId, sellerId, trackingNumber, carrier, shipmentStatus, source, refundStatus, activityAt, eventType,
+    shipmentId,
+    orderId,
+    sellerId,
+    trackingNumber,
+    carrier,
+    shipmentStatus,
+    source,
+    refundStatus,
+    activityAt,
+    eventType,
   };
 }
 
-export function parseLateCarrierActivity(payload: unknown): LateCarrierActivity[] {
+export function parseLateCarrierActivity(
+  payload: unknown,
+): LateCarrierActivity[] {
   const rows = asRecord(payload)?.late_carrier_activity;
-  if (!Array.isArray(rows)) throw new MalformedLateCarrierActivityResponseError('late carrier activity');
+  if (!Array.isArray(rows))
+    throw new MalformedLateCarrierActivityResponseError(
+      'late carrier activity',
+    );
   const cases = rows.map(toActivity);
-  if (cases.some((item) => item === null)) throw new MalformedLateCarrierActivityResponseError('late carrier activity');
+  if (cases.some((item) => item === null))
+    throw new MalformedLateCarrierActivityResponseError(
+      'late carrier activity',
+    );
   return cases as LateCarrierActivity[];
 }
 
@@ -140,10 +188,15 @@ export function parseAcknowledgement(payload: unknown): AcknowledgementResult {
   const result = asRecord(payload);
   const acknowledgedAt = text(result?.acknowledged_at);
   if (
-    !result || !acknowledgedAt || Number.isNaN(Date.parse(acknowledgedAt)) ||
-    typeof result.acknowledged_note !== 'string' || typeof result.already_acknowledged !== 'boolean'
+    !result ||
+    !acknowledgedAt ||
+    Number.isNaN(Date.parse(acknowledgedAt)) ||
+    typeof result.acknowledged_note !== 'string' ||
+    typeof result.already_acknowledged !== 'boolean'
   ) {
-    throw new MalformedLateCarrierActivityResponseError('late carrier activity acknowledgement');
+    throw new MalformedLateCarrierActivityResponseError(
+      'late carrier activity acknowledgement',
+    );
   }
   return {
     acknowledgedAt,
@@ -155,19 +208,27 @@ export function parseAcknowledgement(payload: unknown): AcknowledgementResult {
 /** The trimmed note, or null when it is empty or over the server limit. */
 export function normalizeAcknowledgementNote(input: string): string | null {
   const note = input.trim();
-  return note === '' || note.length > MAX_ACKNOWLEDGEMENT_NOTE_LENGTH ? null : note;
+  return note === '' || note.length > MAX_ACKNOWLEDGEMENT_NOTE_LENGTH
+    ? null
+    : note;
 }
 
 const ERROR_MESSAGES: Record<string, string> = {
   AUTH_REQUIRED: 'Tu sesión expiró. Vuelve a iniciar sesión.',
-  ADMIN_ONLY: 'Tu cuenta no tiene permisos de administrador activos para esta acción.',
+  ADMIN_ONLY:
+    'Tu cuenta no tiene permisos de administrador activos para esta acción.',
   SHIPMENT_NOT_FOUND: 'No encontramos este envío. Actualiza la lista.',
-  LATE_CARRIER_ACTIVITY_NOT_FOUND: 'Este caso ya no está en la lista. Actualiza la lista.',
+  LATE_CARRIER_ACTIVITY_NOT_FOUND:
+    'Este caso ya no está en la lista. Actualiza la lista.',
   INVALID_ACKNOWLEDGEMENT_NOTE: `Escribe una nota de entre 1 y ${MAX_ACKNOWLEDGEMENT_NOTE_LENGTH} caracteres.`,
-  INVALID_SHIPMENT_ID: 'El envío no es válido. Actualiza la página e intenta de nuevo.',
+  INVALID_SHIPMENT_ID:
+    'El envío no es válido. Actualiza la página e intenta de nuevo.',
 };
-const GENERIC_ERROR_MESSAGE = 'No se pudo marcar el caso como revisado. Intenta de nuevo.';
+const GENERIC_ERROR_MESSAGE =
+  'No se pudo marcar el caso como revisado. Intenta de nuevo.';
 
-export function resolveLateCarrierActivityErrorMessage(code: string | null): string {
+export function resolveLateCarrierActivityErrorMessage(
+  code: string | null,
+): string {
   return (code && ERROR_MESSAGES[code]) || GENERIC_ERROR_MESSAGE;
 }

@@ -14,8 +14,11 @@ const ids = {
   seller: '00000000-0000-4000-8000-000000000002',
   order: '7b420000-0000-4000-8000-000000000001',
 };
-const productIds = [1, 2, 3, 4].map((n) => `00000000-0000-4000-8000-0000000000b${n}`);
-const shipmentId = (n: number) => `7b420000-0000-4000-8000-0000000000${String(n).padStart(2, '0')}`;
+const productIds = [1, 2, 3, 4].map(
+  (n) => `00000000-0000-4000-8000-0000000000b${n}`,
+);
+const shipmentId = (n: number) =>
+  `7b420000-0000-4000-8000-0000000000${String(n).padStart(2, '0')}`;
 const paymentIntent = (n: number) => `pi_b24a_${n}`;
 const amount = (n: number) => 1000 * n;
 const reference = 'SPEI-2026-10-22-0001';
@@ -37,15 +40,21 @@ type Problem = {
 function databaseUrl(): string {
   let url = process.env.SELENE_LOCAL_DB_URL;
   if (!url) {
-    const status = Bun.spawnSync(['supabase', 'status', '--env'], { stdout: 'pipe', stderr: 'pipe' });
+    const status = Bun.spawnSync(['supabase', 'status', '--env'], {
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
     if (status.exitCode !== 0)
-      throw new Error('Local Supabase stack is not running for this worktree: run `supabase start`.');
+      throw new Error(
+        'Local Supabase stack is not running for this worktree: run `supabase start`.',
+      );
     url = JSON.parse(status.stdout.toString()).DB_URL as string | undefined;
   }
   if (!url) throw new Error('No local database URL found.');
   // Never touch a remote project: this harness writes (and rolls back) data.
   const host = new URL(url).hostname;
-  if (host !== '127.0.0.1' && host !== 'localhost') throw new Error(`Refusing non-local database host: ${host}`);
+  if (host !== '127.0.0.1' && host !== 'localhost')
+    throw new Error(`Refusing non-local database host: ${host}`);
   return url;
 }
 
@@ -89,23 +98,44 @@ async function start(tx: Tx, n: number) {
     payment_intent: paymentIntent(n),
     amount: amount(n),
     reason: 'requested_by_customer',
-    metadata: { shipment_id: shipmentId(n), order_id: ids.order, caller_role: 'buyer', reason: 'Changed my mind', seguro_share_cents: 500 },
+    metadata: {
+      shipment_id: shipmentId(n),
+      order_id: ids.order,
+      caller_role: 'buyer',
+      reason: 'Changed my mind',
+      seguro_share_cents: 500,
+    },
   };
   await tx`SELECT public.fn_start_shipment_cancellation_refund(
     ${shipmentId(n)}::uuid, ${claim_token}::uuid, ${JSON.stringify(body)}::text::jsonb, 0::bigint)`;
 }
 
-async function apply(tx: Tx, n: number, refundId: string, status: string, reason: string | null = null) {
+async function apply(
+  tx: Tx,
+  n: number,
+  refundId: string,
+  status: string,
+  reason: string | null = null,
+) {
   await tx`SELECT public.fn_apply_shipment_cancellation_refund_event(
     ${shipmentId(n)}::uuid, ${refundId}, ${paymentIntent(n)}, ${amount(n)}::bigint, ${status}, ${reason})`;
 }
 
-async function escalate(tx: Tx, n: number, reason: 'refund_not_found' | 'refund_ambiguous') {
+async function escalate(
+  tx: Tx,
+  n: number,
+  reason: 'refund_not_found' | 'refund_ambiguous',
+) {
   await tx`SELECT public.fn_escalate_shipment_cancellation(${shipmentId(n)}::uuid, ${reason})`;
 }
 
 /** Pins a known timestamp as owner, so the oldest-first order is deterministic. */
-async function setSince(tx: Tx, n: number, column: 'refund_status_updated_at' | 'recovery_escalated_at', iso: string) {
+async function setSince(
+  tx: Tx,
+  n: number,
+  column: 'refund_status_updated_at' | 'recovery_escalated_at',
+  iso: string,
+) {
   await asOwner(tx);
   if (column === 'refund_status_updated_at')
     await tx`UPDATE public.shipment_cancellation_operations SET refund_status_updated_at = ${iso}::timestamptz WHERE shipment_id = ${shipmentId(n)}`;
@@ -115,14 +145,20 @@ async function setSince(tx: Tx, n: number, column: 'refund_status_updated_at' | 
 }
 
 async function list(tx: Tx) {
-  return [...(await tx`SELECT * FROM public.fn_list_shipment_refund_problems()`)] as Problem[];
+  return [
+    ...(await tx`SELECT * FROM public.fn_list_shipment_refund_problems()`),
+  ] as Problem[];
 }
 
 async function resolve(tx: Tx, n: number) {
   await tx`SELECT public.fn_resolve_shipment_cancellation_refund(${shipmentId(n)}::uuid, ${ids.admin}::uuid, ${reference})`;
 }
 
-async function rejects(tx: Tx, action: (sp: Tx) => Promise<unknown>, message: string) {
+async function rejects(
+  tx: Tx,
+  action: (sp: Tx) => Promise<unknown>,
+  message: string,
+) {
   await assert.rejects(
     tx.savepoint((sp) => action(sp as Tx)),
     (error: Error) => error.message.includes(message),
@@ -238,7 +274,8 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       await start(tx, 1);
       await escalate(tx, 1, 'refund_not_found');
       await apply(tx, 1, 're_1', 'failed', 'expired_or_canceled_card');
-      for (const n of [3, 2]) await setSince(tx, n, 'recovery_escalated_at', '2026-10-20T10:00:00Z');
+      for (const n of [3, 2])
+        await setSince(tx, n, 'recovery_escalated_at', '2026-10-20T10:00:00Z');
       await setSince(tx, 1, 'refund_status_updated_at', '2026-10-20T10:00:00Z');
       assert.deepEqual(
         (await list(tx)).map((row) => [row.shipment_id, row.kind]),
@@ -256,11 +293,13 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       await seedScenario(tx);
       assert.equal((await list(tx)).length, 4);
       await resolve(tx, 3);
-      assert.deepEqual(
-        (await list(tx)).map((row) => row.shipment_id).sort(),
-        [shipmentId(1), shipmentId(2), shipmentId(4)],
-      );
-      const [shipment] = await tx`SELECT status FROM public.shipments WHERE id = ${shipmentId(3)}`;
+      assert.deepEqual((await list(tx)).map((row) => row.shipment_id).sort(), [
+        shipmentId(1),
+        shipmentId(2),
+        shipmentId(4),
+      ]);
+      const [shipment] =
+        await tx`SELECT status FROM public.shipments WHERE id = ${shipmentId(3)}`;
       assert.equal(shipment.status, 'cancelled');
       await resolve(tx, 1);
       await resolve(tx, 2);
@@ -329,7 +368,8 @@ async function run() {
       }
     }
     // Every case rolled back: nothing from this harness may persist.
-    const [left] = await sql`SELECT count(*)::int AS n FROM public.orders WHERE id = ${ids.order}`;
+    const [left] =
+      await sql`SELECT count(*)::int AS n FROM public.orders WHERE id = ${ids.order}`;
     assert.equal(left.n, 0);
   } finally {
     await sql.close();

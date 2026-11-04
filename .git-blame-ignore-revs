@@ -1,0 +1,12 @@
+# Formatting-only commits. GitHub's blame view skips them; locally run once per clone:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+# Add the full hash of every new formatting-only commit (docs/conventions.md, "Formatting").
+
+# style(functions): apply Prettier to the files the lint fixes touch
+12da93e10a180d8607dd7be1c085643981182316
+# style(tests): apply Prettier to the source guard tests
+e432c36536451bf2692a674ebd3cadb68c9c30ec
+# style(frontend): format files with Prettier before the src/ move
+8cf48a29619658179e86fdbd2defc8550a73ce85
+# style: format the repository with Prettier
+76a78b63744049290a9b603d4555b6d7fba4e9a6

@@ -106,7 +106,10 @@ function fixture() {
     },
     retrieveRefund: async () => {
       effects.push('retrieve');
-      return { ...refundResult('pending'), metadata: { shipment_id: 'shipment' } };
+      return {
+        ...refundResult('pending'),
+        metadata: { shipment_id: 'shipment' },
+      };
     },
     escalate: async () => {
       effects.push('escalate');

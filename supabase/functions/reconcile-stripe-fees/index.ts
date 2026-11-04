@@ -12,10 +12,11 @@ const PRODUCTION_POLICY = {
 
 // Intended future RPC contract from 20261007000000, NOT deployed generated types.
 // Replace this bridge only after maintainer SQL confirmation and type regeneration.
-type ClaimedJobRow = Database['public']['Tables']['stripe_fee_reconciliation_jobs']['Row'] & {
-  claim_token: string;
-  claim_expires_at: string;
-};
+type ClaimedJobRow =
+  Database['public']['Tables']['stripe_fee_reconciliation_jobs']['Row'] & {
+    claim_token: string;
+    claim_expires_at: string;
+  };
 type CompleteJobArgs = {
   p_job_id: string;
   p_claim_token: string;
@@ -126,7 +127,9 @@ type ReconciliationDependencies = {
   ) => Promise<boolean>;
   scheduleRetry: (retry: PendingRetry) => Promise<boolean>;
   markFailed: (failure: FailedReconciliation) => Promise<boolean>;
-  loadOrderStripeChargeId?: (input: { orderId: string }) => Promise<string | null>;
+  loadOrderStripeChargeId?: (input: {
+    orderId: string;
+  }) => Promise<string | null>;
   reportJobError?: (error: JobError) => void;
 };
 
@@ -203,7 +206,9 @@ export const reconcileStripeFeeJobs = async (
   const report = (job: StripeFeeJob, code: JobError['code']): void => {
     result.errors += 1;
     // Only allowlisted codes and ledger IDs leave this boundary, never provider details.
-    try { dependencies.reportJobError?.({ jobId: job.id, code }); } catch {
+    try {
+      dependencies.reportJobError?.({ jobId: job.id, code });
+    } catch {
       // A failed observer must not abort the remaining claimed batch.
     }
   };
@@ -221,8 +226,14 @@ export const reconcileStripeFeeJobs = async (
       if (chargeId) {
         const charge = await dependencies.retrieveCharge(chargeId);
         if (charge.balanceTransactionId) {
-          const transaction = await dependencies.retrieveBalanceTransaction(charge.balanceTransactionId);
-          if (typeof transaction.fee === 'number' && Number.isSafeInteger(transaction.fee) && transaction.fee >= 0) {
+          const transaction = await dependencies.retrieveBalanceTransaction(
+            charge.balanceTransactionId,
+          );
+          if (
+            typeof transaction.fee === 'number' &&
+            Number.isSafeInteger(transaction.fee) &&
+            transaction.fee >= 0
+          ) {
             authoritativeFee = transaction.fee;
           }
         }
@@ -234,8 +245,12 @@ export const reconcileStripeFeeJobs = async (
     if (authoritativeFee !== null) {
       try {
         const completed = await dependencies.persistFeeAndMarkSucceeded({
-          jobId: job.id, claimToken: job.claimToken, orderId: job.orderId,
-          actualStripeFeeCents: authoritativeFee, reconciledAt: policy.now, status: 'succeeded',
+          jobId: job.id,
+          claimToken: job.claimToken,
+          orderId: job.orderId,
+          actualStripeFeeCents: authoritativeFee,
+          reconciledAt: policy.now,
+          status: 'succeeded',
         });
         if (requireMutationResult(completed)) result.succeeded += 1;
         else report(job, 'STRIPE_FEE_CLAIM_LOST');
@@ -252,15 +267,23 @@ export const reconcileStripeFeeJobs = async (
       const exhausted = attemptCount >= policy.maxAttempts;
       const transitioned = exhausted
         ? await dependencies.markFailed({
-            jobId: job.id, claimToken: job.claimToken, attemptCount,
-            nextRetryAt: null, lastError: FEE_UNAVAILABLE, status: 'failed',
+            jobId: job.id,
+            claimToken: job.claimToken,
+            attemptCount,
+            nextRetryAt: null,
+            lastError: FEE_UNAVAILABLE,
+            status: 'failed',
           })
         : await dependencies.scheduleRetry({
-            jobId: job.id, claimToken: job.claimToken, attemptCount,
+            jobId: job.id,
+            claimToken: job.claimToken,
+            attemptCount,
             nextRetryAt: retryAt(policy.now, attemptCount, policy),
-            lastError: FEE_UNAVAILABLE, status: 'pending',
+            lastError: FEE_UNAVAILABLE,
+            status: 'pending',
           });
-      if (!requireMutationResult(transitioned)) report(job, 'STRIPE_FEE_CLAIM_LOST');
+      if (!requireMutationResult(transitioned))
+        report(job, 'STRIPE_FEE_CLAIM_LOST');
       else if (exhausted) result.failed += 1;
       else result.retryScheduled += 1;
     } catch {
@@ -315,11 +338,13 @@ export const createReconcileStripeFeesHandler =
   };
 
 const isUuid = (value: unknown): value is string =>
-  typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+  typeof value === 'string' &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
 /** Validates the intended future scalar RPC response; malformed data is never success. */
 export const requireMutationResult = (value: unknown): boolean => {
-  if (typeof value !== 'boolean') throw new Error('INVALID_FEE_MUTATION_RESPONSE');
+  if (typeof value !== 'boolean')
+    throw new Error('INVALID_FEE_MUTATION_RESPONSE');
   return value;
 };
 
@@ -327,21 +352,38 @@ export const requireMutationResult = (value: unknown): boolean => {
 export const parseClaimedFeeJobs = (value: unknown): ClaimedStripeFeeJob[] => {
   if (!Array.isArray(value)) throw new Error('INVALID_FEE_CLAIM_RESPONSE');
   return value.map((row: unknown) => {
-    if (typeof row !== 'object' || row === null || !('id' in row) || !isUuid(row.id)
-      || !('order_id' in row) || !isUuid(row.order_id)
-      || !('stripe_payment_intent_id' in row) || typeof row.stripe_payment_intent_id !== 'string'
-      || row.stripe_payment_intent_id.length < 1 || row.stripe_payment_intent_id.length > 255
-      || !('claim_token' in row) || !isUuid(row.claim_token)
-      || !('claim_expires_at' in row) || typeof row.claim_expires_at !== 'string'
-      || !Number.isFinite(Date.parse(row.claim_expires_at))
-      || !('status' in row) || row.status !== 'processing'
-      || !('attempt_count' in row) || typeof row.attempt_count !== 'number'
-      || !Number.isInteger(row.attempt_count) || row.attempt_count < 1 || row.attempt_count > 100) {
+    if (
+      typeof row !== 'object' ||
+      row === null ||
+      !('id' in row) ||
+      !isUuid(row.id) ||
+      !('order_id' in row) ||
+      !isUuid(row.order_id) ||
+      !('stripe_payment_intent_id' in row) ||
+      typeof row.stripe_payment_intent_id !== 'string' ||
+      row.stripe_payment_intent_id.length < 1 ||
+      row.stripe_payment_intent_id.length > 255 ||
+      !('claim_token' in row) ||
+      !isUuid(row.claim_token) ||
+      !('claim_expires_at' in row) ||
+      typeof row.claim_expires_at !== 'string' ||
+      !Number.isFinite(Date.parse(row.claim_expires_at)) ||
+      !('status' in row) ||
+      row.status !== 'processing' ||
+      !('attempt_count' in row) ||
+      typeof row.attempt_count !== 'number' ||
+      !Number.isInteger(row.attempt_count) ||
+      row.attempt_count < 1 ||
+      row.attempt_count > 100
+    ) {
       throw new Error('INVALID_FEE_CLAIM_RESPONSE');
     }
     return {
-      id: row.id, orderId: row.order_id, stripePaymentIntentId: row.stripe_payment_intent_id,
-      claimToken: row.claim_token, attemptCount: row.attempt_count - 1,
+      id: row.id,
+      orderId: row.order_id,
+      stripePaymentIntentId: row.stripe_payment_intent_id,
+      claimToken: row.claim_token,
+      attemptCount: row.attempt_count - 1,
     };
   });
 };
@@ -374,9 +416,13 @@ if (denoRuntime) {
   const productionHandler =
     supabaseUrl && serviceRoleKey && stripeSecret
       ? (() => {
-          const supabase = createClient<FeeWorkerDatabase>(supabaseUrl, serviceRoleKey, {
-            auth: { autoRefreshToken: false, persistSession: false },
-          });
+          const supabase = createClient<FeeWorkerDatabase>(
+            supabaseUrl,
+            serviceRoleKey,
+            {
+              auth: { autoRefreshToken: false, persistSession: false },
+            },
+          );
           const stripe = new Stripe(stripeSecret, {
             apiVersion: STRIPE_API_VERSION,
             httpClient: Stripe.createFetchHttpClient(),
@@ -390,9 +436,7 @@ if (denoRuntime) {
               args,
             );
             if (error) {
-              throw new Error(
-                'STRIPE_FEE_RECONCILIATION_TRANSITION_FAILED',
-              );
+              throw new Error('STRIPE_FEE_RECONCILIATION_TRANSITION_FAILED');
             }
             return requireMutationResult(data);
           };
@@ -401,7 +445,8 @@ if (denoRuntime) {
             workerServiceRoleJwt: workerBearerSecret,
             now: () => new Date().toISOString(),
             policy: PRODUCTION_POLICY,
-            reportJobError: (error) => console.error('stripe_fee_job_error', error),
+            reportJobError: (error) =>
+              console.error('stripe_fee_job_error', error),
             claimDueJobsAtomically: async (selection) => {
               const args = {
                 p_limit: selection.limit,
@@ -412,9 +457,7 @@ if (denoRuntime) {
                 args,
               );
               if (error) {
-                throw new Error(
-                  'STRIPE_FEE_RECONCILIATION_CLAIM_FAILED',
-                );
+                throw new Error('STRIPE_FEE_RECONCILIATION_CLAIM_FAILED');
               }
 
               return parseClaimedFeeJobs(data);
@@ -426,9 +469,7 @@ if (denoRuntime) {
                 .eq('id', orderId)
                 .maybeSingle();
               if (error) {
-                throw new Error(
-                  'ORDER_STRIPE_CHARGE_LOOKUP_FAILED',
-                );
+                throw new Error('ORDER_STRIPE_CHARGE_LOOKUP_FAILED');
               }
 
               return data?.stripe_charge_id ?? null;
@@ -466,9 +507,7 @@ if (denoRuntime) {
                 args,
               );
               if (error) {
-                throw new Error(
-                  'STRIPE_FEE_RECONCILIATION_COMPLETION_FAILED',
-                );
+                throw new Error('STRIPE_FEE_RECONCILIATION_COMPLETION_FAILED');
               }
               return requireMutationResult(data);
             },
@@ -493,17 +532,21 @@ if (denoRuntime) {
         })()
       : null;
 
-  serve(withSentry('reconcile-stripe-fees', (request: Request) => {
-    if (
-      !workerBearerSecret ||
-      request.headers.get('authorization') !== `Bearer ${workerBearerSecret}`
-    ) {
-      return new Response('Unauthorized', { status: 401 });
-    }
-    if (!productionHandler) {
-      return new Response('Server configuration unavailable', { status: 500 });
-    }
+  serve(
+    withSentry('reconcile-stripe-fees', (request: Request) => {
+      if (
+        !workerBearerSecret ||
+        request.headers.get('authorization') !== `Bearer ${workerBearerSecret}`
+      ) {
+        return new Response('Unauthorized', { status: 401 });
+      }
+      if (!productionHandler) {
+        return new Response('Server configuration unavailable', {
+          status: 500,
+        });
+      }
 
-    return productionHandler(request);
-  }));
+      return productionHandler(request);
+    }),
+  );
 }

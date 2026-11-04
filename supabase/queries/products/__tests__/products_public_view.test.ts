@@ -3,7 +3,9 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const root = join(import.meta.dir, '..', '..', '..');
-const migrationName = readdirSync(join(root, 'migrations')).find((f) => f.endsWith('_products_public_view.sql'));
+const migrationName = readdirSync(join(root, 'migrations')).find((f) =>
+  f.endsWith('_products_public_view.sql'),
+);
 
 const ALLOWED = [
   'id',
@@ -42,8 +44,13 @@ const HIDDEN = [
 const stripComments = (sql: string) => sql.replace(/--.*$/gm, '');
 
 const files: Record<string, string | undefined> = {
-  migration: migrationName && readFileSync(join(root, 'migrations', migrationName), 'utf8'),
-  canonical: readFileSync(join(root, 'queries', 'products', 'products_public.sql'), 'utf8'),
+  migration:
+    migrationName &&
+    readFileSync(join(root, 'migrations', migrationName), 'utf8'),
+  canonical: readFileSync(
+    join(root, 'queries', 'products', 'products_public.sql'),
+    'utf8',
+  ),
 };
 
 describe('products_public view', () => {
@@ -71,7 +78,9 @@ describe('products_public view', () => {
       });
 
       it('runs with the owner rights behind a security barrier', () => {
-        expect(sql).toMatch(/CREATE OR REPLACE VIEW public\.products_public\s+WITH \(security_barrier = true\)/i);
+        expect(sql).toMatch(
+          /CREATE OR REPLACE VIEW public\.products_public\s+WITH \(security_barrier = true\)/i,
+        );
         expect(sql).not.toMatch(/security_invoker\s*=\s*true/i);
       });
 
@@ -82,8 +91,12 @@ describe('products_public view', () => {
       });
 
       it('revokes everything and grants SELECT only to anon, authenticated, service_role', () => {
-        expect(sql).toMatch(/REVOKE ALL ON public\.products_public FROM PUBLIC, anon, authenticated, service_role;/);
-        expect(sql).toMatch(/GRANT SELECT ON public\.products_public TO anon, authenticated, service_role;/);
+        expect(sql).toMatch(
+          /REVOKE ALL ON public\.products_public FROM PUBLIC, anon, authenticated, service_role;/,
+        );
+        expect(sql).toMatch(
+          /GRANT SELECT ON public\.products_public TO anon, authenticated, service_role;/,
+        );
         expect(sql).not.toMatch(/GRANT\s+(?!SELECT)\w+[^;]*products_public/i);
       });
     });

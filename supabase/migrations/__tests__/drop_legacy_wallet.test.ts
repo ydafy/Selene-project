@@ -12,10 +12,15 @@ const MIGRATIONS_DIR = join(import.meta.dir, '..');
 const REPO_ROOT = join(MIGRATIONS_DIR, '..', '..');
 const QUERIES_DIR = join(REPO_ROOT, 'supabase', 'queries');
 
-const migrationFiles = readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith('_drop_legacy_wallet.sql'));
+const migrationFiles = readdirSync(MIGRATIONS_DIR).filter((f) =>
+  f.endsWith('_drop_legacy_wallet.sql'),
+);
 const migrationName = migrationFiles[0] ?? '';
 const migration = migrationName
-  ? readFileSync(join(MIGRATIONS_DIR, migrationName), 'utf8').replace(/\r\n/g, '\n')
+  ? readFileSync(join(MIGRATIONS_DIR, migrationName), 'utf8').replace(
+      /\r\n/g,
+      '\n',
+    )
   : '';
 const code = migration.replace(/^\s*--.*$/gm, '');
 
@@ -37,10 +42,18 @@ describe('drop_legacy_wallet migration', () => {
   });
 
   test('drops the retired functions by exact signature', () => {
-    expect(code).toContain('DROP FUNCTION public.fn_request_payout(numeric, uuid);');
-    expect(code).toContain('DROP FUNCTION public.fn_save_bank_account(text, text);');
-    expect(code).toContain('DROP FUNCTION internal.fn_save_bank_account(text, text);');
-    expect(code).toContain('DROP FUNCTION public.fn_cron_release_shipment_funds();');
+    expect(code).toContain(
+      'DROP FUNCTION public.fn_request_payout(numeric, uuid);',
+    );
+    expect(code).toContain(
+      'DROP FUNCTION public.fn_save_bank_account(text, text);',
+    );
+    expect(code).toContain(
+      'DROP FUNCTION internal.fn_save_bank_account(text, text);',
+    );
+    expect(code).toContain(
+      'DROP FUNCTION public.fn_cron_release_shipment_funds();',
+    );
   });
 
   test('keeps fn_release_shipment_funds', () => {
@@ -50,13 +63,16 @@ describe('drop_legacy_wallet migration', () => {
   test('drops admin_payments_overview and recreates admin_user_directory_view without balances', () => {
     expect(code).toContain('DROP VIEW public.admin_payments_overview;');
     expect(code).toContain('DROP VIEW public.admin_user_directory_view;');
-    const create = code.match(/CREATE VIEW public\.admin_user_directory_view[\s\S]*?;/)?.[0] ?? '';
+    const create =
+      code.match(
+        /CREATE VIEW public\.admin_user_directory_view[\s\S]*?;/,
+      )?.[0] ?? '';
     expect(create).toContain('security_invoker = true');
     expect(create).toContain('p.created_at');
     expect(create).not.toMatch(/wallets|available_balance|pending_balance/);
-    expect(code.indexOf('DROP VIEW public.admin_user_directory_view;')).toBeLessThan(
-      code.indexOf('DROP TABLE public.wallets'),
-    );
+    expect(
+      code.indexOf('DROP VIEW public.admin_user_directory_view;'),
+    ).toBeLessThan(code.indexOf('DROP TABLE public.wallets'));
   });
 
   test('drops the tables in dependency order, the enum and connect_enabled, without CASCADE', () => {
@@ -89,12 +105,18 @@ describe('drop_legacy_wallet migration', () => {
   test('no later migration references a dropped object', () => {
     const later = readdirSync(MIGRATIONS_DIR)
       .filter((f) => f.endsWith('.sql') && f > migrationName)
-      .filter((f) => DROPPED_NAMES.test(readFileSync(join(MIGRATIONS_DIR, f), 'utf8')));
+      .filter((f) =>
+        DROPPED_NAMES.test(readFileSync(join(MIGRATIONS_DIR, f), 'utf8')),
+      );
     expect(later).toEqual([]);
   });
 
   test('the release-funds Edge Function and its config entry are gone', () => {
-    expect(existsSync(join(REPO_ROOT, 'supabase', 'functions', 'release-funds'))).toBe(false);
-    expect(readFileSync(join(REPO_ROOT, 'supabase', 'config.toml'), 'utf8')).not.toContain('release-funds');
+    expect(
+      existsSync(join(REPO_ROOT, 'supabase', 'functions', 'release-funds')),
+    ).toBe(false);
+    expect(
+      readFileSync(join(REPO_ROOT, 'supabase', 'config.toml'), 'utf8'),
+    ).not.toContain('release-funds');
   });
 });

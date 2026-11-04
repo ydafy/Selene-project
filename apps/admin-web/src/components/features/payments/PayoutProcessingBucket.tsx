@@ -1,8 +1,5 @@
 import { Clock, Loader2 } from 'lucide-react';
-import {
-  PayoutBucketEmptyState,
-  PayoutRunRow,
-} from './PayoutRunRow';
+import { PayoutBucketEmptyState, PayoutRunRow } from './PayoutRunRow';
 import type { ReleaseQueueRun } from '../../../lib/connectPayoutReleaseQueue';
 
 /**
@@ -15,7 +12,9 @@ interface PayoutProcessingBucketProps {
   runs: ReleaseQueueRun[];
 }
 
-export const PayoutProcessingBucket = ({ runs }: PayoutProcessingBucketProps) => {
+export const PayoutProcessingBucket = ({
+  runs,
+}: PayoutProcessingBucketProps) => {
   if (runs.length === 0) {
     return (
       <PayoutBucketEmptyState

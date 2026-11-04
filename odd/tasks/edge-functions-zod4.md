@@ -22,7 +22,7 @@ Route: inline. Each function: request schema moved to `<fn>/request-schema.ts` o
 - [x] T5 (S1, S2, S5): generate-return-label (1210003)
 - [x] T6 (S1, S2, S5): get-connect-earnings (126c41b)
 - [x] T7 (S1, S2, S5): checkout-recovery-worker (b86274c)
-T8-T14 route: `gentle-ai-worker` (parent context backstop); the parent reviews each diff and commits per function.
+      T8-T14 route: `gentle-ai-worker` (parent context backstop); the parent reviews each diff and commits per function.
 
 - [x] T8 (S1, S2, S5): rollback-connect-payment (money) (de19c7a)
 - [x] T9 (S1, S2, S5): reconcile-connect-payments (money) (7f8c912)

@@ -32,10 +32,22 @@ describe('mapDisputeErrorCode', () => {
     ['SHIPMENT_NOT_FOUND', 404, 'Envío no encontrado'],
     ['SHIPMENT_ORDER_MISMATCH', 400, 'SHIPMENT_ORDER_MISMATCH'],
     ['ORDER_BUYER_MISMATCH', 403, 'ORDER_BUYER_MISMATCH'],
-    ['DISPUTE_STATUS_NOT_ALLOWED:completed', 422, 'DISPUTE_STATUS_NOT_ALLOWED:completed'],
+    [
+      'DISPUTE_STATUS_NOT_ALLOWED:completed',
+      422,
+      'DISPUTE_STATUS_NOT_ALLOWED:completed',
+    ],
     ['DISPUTE_WINDOW_EXPIRED', 422, 'DISPUTE_WINDOW_EXPIRED'],
-    ['SHIPMENT_CANCELLATION_OPERATION_ACTIVE', 409, 'SHIPMENT_CANCELLATION_OPERATION_ACTIVE'],
-    ['DISPUTE_ALREADY_EXISTS', 409, 'Ya existe una disputa abierta para este paquete.'],
+    [
+      'SHIPMENT_CANCELLATION_OPERATION_ACTIVE',
+      409,
+      'SHIPMENT_CANCELLATION_OPERATION_ACTIVE',
+    ],
+    [
+      'DISPUTE_ALREADY_EXISTS',
+      409,
+      'Ya existe una disputa abierta para este paquete.',
+    ],
   ])('maps %s to HTTP %d', (code, status, message) => {
     expect(mapDisputeErrorCode(code)).toEqual(new ApiError(status, message));
   });
@@ -53,6 +65,8 @@ describe('Edge notice cutover', () => {
     expect(source).toContain('.rpc(');
     expect(source).toContain("'fn_open_shipment_dispute'");
     expect(source).not.toContain(".from('disputes')");
-    expect(source).not.toMatch(/\.from\('notifications'\)|const notifications =/);
+    expect(source).not.toMatch(
+      /\.from\('notifications'\)|const notifications =/,
+    );
   });
 });

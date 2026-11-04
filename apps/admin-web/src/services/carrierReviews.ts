@@ -8,7 +8,9 @@ import {
 import { invokeEdgeJson } from './edge-client';
 
 export async function fetchCarrierReviews(): Promise<CarrierReview[]> {
-  return parseCarrierReviews(await invokeEdgeJson('list-shipment-operation-reviews', { method: 'GET' }));
+  return parseCarrierReviews(
+    await invokeEdgeJson('list-shipment-operation-reviews', { method: 'GET' }),
+  );
 }
 
 /** The server validates the note and the shipment state; only the ids, the decision and the note are sent. */

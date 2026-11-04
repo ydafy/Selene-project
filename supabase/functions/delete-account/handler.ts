@@ -34,7 +34,8 @@ export type { ClosureCleanupUpdate };
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type',
 };
 const JSON_HEADERS = { ...CORS_HEADERS, 'Content-Type': 'application/json' };
 
@@ -69,6 +70,11 @@ export function isTransientAuthError(error: unknown): boolean {
   return status === 0 || status === 429 || status >= 500;
 }
 
+type CloseAccountResult = {
+  data: unknown;
+  error: { code?: string; message: string } | null;
+};
+
 export type DeleteAccountDeps = {
   /**
    * The user id behind the access token, or null when it does not resolve to a user.
@@ -76,15 +82,14 @@ export type DeleteAccountDeps = {
    */
   getUserId: (accessToken: string) => Promise<string | null>;
   now: () => number;
-  closeAccount: (
-    userId: string,
-  ) => Promise<{ data: unknown; error: { code?: string; message: string } | null }>;
+  closeAccount: (userId: string) => Promise<CloseAccountResult>;
 } & ClosureCleanupPorts;
 
 const respond = (status: number, body: Record<string, unknown>): Response =>
   new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
 
-const fail = (status: number, code: string): Response => respond(status, { error: code });
+const fail = (status: number, code: string): Response =>
+  respond(status, { error: code });
 
 /** Newest `amr` timestamp (seconds) of an already validated access token, or null. */
 export function latestSignInSeconds(accessToken: string): number | null {
@@ -92,7 +97,9 @@ export function latestSignInSeconds(accessToken: string): number | null {
     const payload = accessToken.split('.')[1];
     if (!payload) return null;
     const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const claims = asRecord(JSON.parse(atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '='))));
+    const claims = asRecord(
+      JSON.parse(atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '='))),
+    );
     const amr = claims?.amr;
     if (!Array.isArray(amr)) return null;
     let newest: number | null = null;
@@ -110,12 +117,15 @@ export function latestSignInSeconds(accessToken: string): number | null {
 
 export function createDeleteAccountHandler(deps: DeleteAccountDeps) {
   return async (req: Request): Promise<Response> => {
-    if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
+    if (req.method === 'OPTIONS')
+      return new Response('ok', { headers: CORS_HEADERS });
     if (req.method !== 'POST') return fail(405, 'METHOD_NOT_ALLOWED');
 
     try {
       const authorization = req.headers.get('Authorization') ?? '';
-      const token = authorization.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
+      const token = authorization.startsWith('Bearer ')
+        ? authorization.slice(7).trim()
+        : '';
       if (!token) return fail(401, 'AUTH_REQUIRED');
 
       let userId: string | null;
@@ -131,14 +141,20 @@ export function createDeleteAccountHandler(deps: DeleteAccountDeps) {
       // The token is validated, so its claims can be read: a missing or stale
       // sign-in proof stops everything before any data is touched.
       const signedInAt = latestSignInSeconds(token);
-      if (signedInAt === null || deps.now() / 1000 - signedInAt > MAX_SIGN_IN_AGE_SECONDS) {
+      if (
+        signedInAt === null ||
+        deps.now() / 1000 - signedInAt > MAX_SIGN_IN_AGE_SECONDS
+      ) {
         deps.log('WARN', 'Account closure needs a recent sign-in', { userId });
         return fail(403, 'REAUTH_REQUIRED');
       }
 
       const { data, error } = await deps.closeAccount(userId);
       if (error) {
-        deps.log('ERROR', 'Account closure failed', { userId, code: error.code });
+        deps.log('ERROR', 'Account closure failed', {
+          userId,
+          code: error.code,
+        });
         return fail(500, 'INTERNAL');
       }
 
@@ -150,7 +166,10 @@ export function createDeleteAccountHandler(deps: DeleteAccountDeps) {
           const reason = result.reason;
           if (!BLOCKED_REASONS.includes(reason as BlockedReason)) break;
           deps.log('WARN', 'Account closure blocked', { userId, reason });
-          return respond(409, { error: 'DELETE_BLOCKED', blocked_reason: reason });
+          return respond(409, {
+            error: 'DELETE_BLOCKED',
+            blocked_reason: reason,
+          });
         }
         case 'closed':
         case 'already_closed': {
@@ -161,16 +180,23 @@ export function createDeleteAccountHandler(deps: DeleteAccountDeps) {
             await runClosureCleanup(userId, closure, deps);
           } catch (error: unknown) {
             // The account is already closed: the retry worker finishes the cleanup.
-            deps.log('ERROR', 'Account closure cleanup crashed', { userId, code: safeErrorCode(error) });
+            deps.log('ERROR', 'Account closure cleanup crashed', {
+              userId,
+              code: safeErrorCode(error),
+            });
           }
           return respond(200, { success: true });
         }
       }
 
-      deps.log('ERROR', 'Account closure returned an unusable result', { userId });
+      deps.log('ERROR', 'Account closure returned an unusable result', {
+        userId,
+      });
       return fail(500, 'INTERNAL');
     } catch (error: unknown) {
-      deps.log('ERROR', 'Account closure crashed', { code: safeErrorCode(error) });
+      deps.log('ERROR', 'Account closure crashed', {
+        code: safeErrorCode(error),
+      });
       return fail(500, 'INTERNAL');
     }
   };

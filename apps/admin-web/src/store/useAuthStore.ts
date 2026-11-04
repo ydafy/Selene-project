@@ -81,7 +81,9 @@ export const useAuthStore = create<AuthState>((set, get) => {
 
       const { user: currentUser, profile: currentProfile } = get();
       const allowedProfile =
-        currentUser?.id === user.id && currentProfile ? currentProfile : undefined;
+        currentUser?.id === user.id && currentProfile
+          ? currentProfile
+          : undefined;
 
       const promise = resolveAdminSession(
         user.id,

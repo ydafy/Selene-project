@@ -1,11 +1,13 @@
 # Payout Foundation & Funds Contract
 
 ## Goal
+
 Close Phase 1 by defining the authoritative Selene payout operating model before runtime implementation.
 
 ## Scope
 
 ### In scope
+
 - Stripe Transfer vs Payout money location and ownership.
 - Admin release semantics.
 - Payout lifecycle states and allowed transitions.
@@ -16,6 +18,7 @@ Close Phase 1 by defining the authoritative Selene payout operating model before
 - Deployment prerequisites and bounded Phase 2 handoff.
 
 ### Out of scope
+
 - Runtime code and database migrations.
 - Admin dashboard implementation.
 - Cancellation, refund, and dispute behavior.
@@ -46,12 +49,14 @@ Close Phase 1 by defining the authoritative Selene payout operating model before
   - Defined bounded Phase 2 slices 2A–2D with focused TDD and manual E2E boundaries.
 
 ## Verification
+
 - Documentation-only Phase 1 has no meaningful runtime RED/GREEN cycle.
 - Read back every modified contract in full.
 - Search for contradictory terminal-`paid` and retry language in canonical payout specs.
 - Confirm no runtime, migration, frontend, generated type, deployment, or configuration file changed.
 
 ## Evidence
+
 - Engram mirror: `odd/payout-foundation-funds-contract/tasks`.
 - Writer self-verification completed for all three canonical specs.
 - Independent verification: PASS; Phase 1 contract may close.

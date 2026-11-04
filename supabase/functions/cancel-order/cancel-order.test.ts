@@ -72,14 +72,14 @@ describe('buildCancelShipmentRefundParams', () => {
       payment_intent: 'pi_123',
       amount: 21_700,
       reason: 'requested_by_customer',
-        metadata: {
-          shipment_id: '22222222-2222-4222-8222-222222222222',
-          order_id: '11111111-1111-4111-8111-111111111111',
-          caller_role: 'buyer',
-          reason: 'Cancelación solicitada por el usuario',
-          seguro_share_cents: 1_700,
-        },
-      });
+      metadata: {
+        shipment_id: '22222222-2222-4222-8222-222222222222',
+        order_id: '11111111-1111-4111-8111-111111111111',
+        caller_role: 'buyer',
+        reason: 'Cancelación solicitada por el usuario',
+        seguro_share_cents: 1_700,
+      },
+    });
     expect(params).not.toHaveProperty('reverse_transfer');
     expect(options).toEqual({
       idempotencyKey: 'cancel_shipment_22222222-2222-4222-8222-222222222222',
@@ -90,8 +90,16 @@ describe('buildCancelShipmentRefundParams', () => {
 describe('resolveManualShipmentCancelPlan', () => {
   it('supports sequential shipment cancellations without exceeding the actual fee', () => {
     const orderItems = [
-      { price_at_purchase: 3_000, shipping_amount: 110, shipment_id: 'shipment-a' },
-      { price_at_purchase: 2_000, shipping_amount: 75, shipment_id: 'shipment-b' },
+      {
+        price_at_purchase: 3_000,
+        shipping_amount: 110,
+        shipment_id: 'shipment-a',
+      },
+      {
+        price_at_purchase: 2_000,
+        shipping_amount: 75,
+        shipment_id: 'shipment-b',
+      },
     ];
     const baseInput = {
       isMaintenance: false,
@@ -167,7 +175,8 @@ describe('resolveManualShipmentCancelPlan', () => {
           },
         },
         options: {
-          idempotencyKey: 'cancel_shipment_22222222-2222-4222-8222-222222222222',
+          idempotencyKey:
+            'cancel_shipment_22222222-2222-4222-8222-222222222222',
         },
       },
       rpcInput: {
@@ -354,7 +363,8 @@ describe('resolveManualShipmentCancelPlan', () => {
           },
         },
         options: {
-          idempotencyKey: 'cancel_shipment_22222222-2222-4222-8222-222222222222',
+          idempotencyKey:
+            'cancel_shipment_22222222-2222-4222-8222-222222222222',
         },
       },
       rpcInput: {

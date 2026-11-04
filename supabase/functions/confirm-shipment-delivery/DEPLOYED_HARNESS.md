@@ -12,11 +12,11 @@ The harness does not create fixtures, query the database, modify cron, or perfor
 
 In `full` mode (the default), prepare three distinct disposable fixtures for the same authenticated buyer:
 
-| Scenario | Required initial state | Expected result |
-|---|---|---|
-| Delivered | `delivered`, no active dispute | First request completes it; second request returns idempotent buyer success. |
-| Shipped | `shipped`, no active dispute | HTTP 409 with `SHIPMENT_NOT_IN_CONFIRMABLE_STATE`. |
-| Active dispute | `delivered`, unresolved dispute | HTTP 409 with `SHIPMENT_HAS_ACTIVE_DISPUTE`. |
+| Scenario       | Required initial state          | Expected result                                                              |
+| -------------- | ------------------------------- | ---------------------------------------------------------------------------- |
+| Delivered      | `delivered`, no active dispute  | First request completes it; second request returns idempotent buyer success. |
+| Shipped        | `shipped`, no active dispute    | HTTP 409 with `SHIPMENT_NOT_IN_CONFIRMABLE_STATE`.                           |
+| Active dispute | `delivered`, unresolved dispute | HTTP 409 with `SHIPMENT_HAS_ACTIVE_DISPUTE`.                                 |
 
 Use an access token belonging to the buyer that owns all three fixture orders. Do not use a service-role key, an anon key, a cron secret, or a token copied into shell history.
 

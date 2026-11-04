@@ -14,7 +14,10 @@ if (process.env.B44D_HOOK_CHILD !== '1') {
     expect(result.exitCode, output).toBe(0);
   });
 } else {
-  type QueryOptions = { queryKey: readonly unknown[]; queryFn: () => Promise<unknown> };
+  type QueryOptions = {
+    queryKey: readonly unknown[];
+    queryFn: () => Promise<unknown>;
+  };
   type MutationOptions = {
     mutationFn: (input: unknown) => Promise<unknown>;
     onSuccess?: (result: unknown) => Promise<void> | void;
@@ -61,7 +64,8 @@ if (process.env.B44D_HOOK_CHILD !== '1') {
       return resolveResult;
     },
   }));
-  const { useCarrierReviews, useResolveCarrierReview, CARRIER_REVIEWS_KEY } = await import('./useCarrierReviews');
+  const { useCarrierReviews, useResolveCarrierReview, CARRIER_REVIEWS_KEY } =
+    await import('./useCarrierReviews');
 
   beforeEach(() => {
     queryState = { data: undefined, isLoading: false, isError: false };
@@ -71,7 +75,10 @@ if (process.env.B44D_HOOK_CHILD !== '1') {
     resolveCalls.length = 0;
     resolveError = null;
     resolveResult = {
-      resolution: 'closed_no_refund', resolvedAt: '2026-10-22T12:00:00.000Z', note: 'ok', labelCostLossCents: null,
+      resolution: 'closed_no_refund',
+      resolvedAt: '2026-10-22T12:00:00.000Z',
+      note: 'ok',
+      labelCostLossCents: null,
     };
   });
 
@@ -90,7 +97,11 @@ if (process.env.B44D_HOOK_CHILD !== '1') {
     expect(loading.reviews).toEqual([]);
     queryState = { data: [], isLoading: false, isError: false };
     expect(useCarrierReviews().count).toBe(0);
-    queryState = { data: [{ shipmentId: 'a' }, { shipmentId: 'b' }], isLoading: false, isError: false };
+    queryState = {
+      data: [{ shipmentId: 'a' }, { shipmentId: 'b' }],
+      isLoading: false,
+      isError: false,
+    };
     expect(useCarrierReviews().count).toBe(2);
     queryState = { data: undefined, isLoading: false, isError: true };
     const failed = useCarrierReviews();
@@ -100,7 +111,9 @@ if (process.env.B44D_HOOK_CHILD !== '1') {
 
   it('resolves with the exact arguments, invalidates the query and confirms', async () => {
     const { resolve } = useResolveCarrierReview();
-    expect(await resolve('ship-1', 'closed_no_refund', 'ok')).toEqual(resolveResult);
+    expect(await resolve('ship-1', 'closed_no_refund', 'ok')).toEqual(
+      resolveResult,
+    );
     expect(resolveCalls).toEqual([['ship-1', 'closed_no_refund', 'ok']]);
     expect(invalidations).toEqual([{ queryKey: ['carrier-reviews'] }]);
     expect(toasts).toHaveLength(1);
@@ -110,7 +123,10 @@ if (process.env.B44D_HOOK_CHILD !== '1') {
 
   it('says the refund runs on the next automatic cycle when it is approved', async () => {
     resolveResult = {
-      resolution: 'refund_approved', resolvedAt: '2026-10-22T12:00:00.000Z', note: 'ok', labelCostLossCents: 15000,
+      resolution: 'refund_approved',
+      resolvedAt: '2026-10-22T12:00:00.000Z',
+      note: 'ok',
+      labelCostLossCents: 15000,
     };
     const { resolve } = useResolveCarrierReview();
     await resolve('ship-1', 'refund_approved', 'ok');
@@ -121,7 +137,9 @@ if (process.env.B44D_HOOK_CHILD !== '1') {
   it('does not invalidate or confirm when the server rejects', async () => {
     resolveError = new Error('CARRIER_REVIEW_NOT_PENDING');
     const { resolve } = useResolveCarrierReview();
-    await expect(resolve('ship-1', 'closed_no_refund', 'ok')).rejects.toThrow('CARRIER_REVIEW_NOT_PENDING');
+    await expect(resolve('ship-1', 'closed_no_refund', 'ok')).rejects.toThrow(
+      'CARRIER_REVIEW_NOT_PENDING',
+    );
     expect(invalidations).toEqual([]);
     expect(toasts).toEqual([]);
   });

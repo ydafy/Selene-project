@@ -3,7 +3,10 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 import type { Database } from '../../../packages/types/src/database.types.ts';
 import { withSentry } from '../_shared/sentry.ts';
-import { createResolveShipmentRefundHandler, isActiveAdmin } from './handler.ts';
+import {
+  createResolveShipmentRefundHandler,
+  isActiveAdmin,
+} from './handler.ts';
 
 const log = (
   level: 'INFO' | 'WARN' | 'ERROR',

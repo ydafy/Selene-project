@@ -13,7 +13,9 @@ import { expect, test } from '@playwright/test';
 import { readLocalStack } from './local-stack';
 
 const stack = readLocalStack();
-const db = createClient(stack.apiUrl, stack.serviceRoleKey, { auth: { persistSession: false } });
+const db = createClient(stack.apiUrl, stack.serviceRoleKey, {
+  auth: { persistSession: false },
+});
 
 const adminId = '00000000-0000-4000-8000-000000000001';
 const sellerId = '00000000-0000-4000-8000-000000000002';
@@ -25,26 +27,48 @@ const trackingNumber = 'TRK-E2E-B44D';
 const labelCostCents = 8900;
 const note = 'El carrier confirmó que el paquete ya viaja';
 
-async function ok<T>(promise: PromiseLike<{ data: T; error: { message: string } | null }>, what: string): Promise<T> {
+async function ok<T>(
+  promise: PromiseLike<{ data: T; error: { message: string } | null }>,
+  what: string,
+): Promise<T> {
   const { data, error } = await promise;
   if (error) throw new Error(`${what}: ${error.message}`);
   return data;
 }
 
 async function cleanup() {
-  await ok(db.from('notifications').delete().eq('event_payload->>order_id', orderId), 'notifications');
-  await ok(db.from('admin_audit_logs').delete().eq('target_id', shipmentId), 'admin_audit_logs');
-  await ok(db.from('shipment_cancellation_operations').delete().eq('shipment_id', shipmentId), 'operations');
+  await ok(
+    db.from('notifications').delete().eq('event_payload->>order_id', orderId),
+    'notifications',
+  );
+  await ok(
+    db.from('admin_audit_logs').delete().eq('target_id', shipmentId),
+    'admin_audit_logs',
+  );
+  await ok(
+    db
+      .from('shipment_cancellation_operations')
+      .delete()
+      .eq('shipment_id', shipmentId),
+    'operations',
+  );
   await ok(db.from('shipments').delete().eq('id', shipmentId), 'shipments');
   await ok(db.from('orders').delete().eq('id', orderId), 'orders');
 }
 
 test.beforeAll(async () => {
   // Fail fast with a clear message when the functions are not being served.
-  for (const name of ['list-shipment-operation-reviews', 'resolve-shipment-operation-review']) {
-    const probe = await fetch(`${stack.apiUrl}/functions/v1/${name}`, { method: 'OPTIONS' }).catch(() => null);
+  for (const name of [
+    'list-shipment-operation-reviews',
+    'resolve-shipment-operation-review',
+  ]) {
+    const probe = await fetch(`${stack.apiUrl}/functions/v1/${name}`, {
+      method: 'OPTIONS',
+    }).catch(() => null);
     if (!probe || probe.status >= 500 || probe.status === 404) {
-      throw new Error('FUNCTIONS_NOT_SERVED: run `supabase functions serve --no-verify-jwt --env-file supabase/functions/.env`.');
+      throw new Error(
+        'FUNCTIONS_NOT_SERVED: run `supabase functions serve --no-verify-jwt --env-file supabase/functions/.env`.',
+      );
     }
   }
 
@@ -101,16 +125,22 @@ test.afterAll(async () => {
   await cleanup();
 });
 
-test('admin sees the pending carrier review and closes it without refund against the local stack', async ({ page }) => {
+test('admin sees the pending carrier review and closes it without refund against the local stack', async ({
+  page,
+}) => {
   await page.goto('/login');
   await page.getByRole('textbox').first().fill('admin@selene.local');
   await page.locator('input[type="password"]').fill('password123');
-  await page.getByRole('button', { name: 'Entrar al Sistema', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Entrar al Sistema', exact: true })
+    .click();
 
   await expect(page).not.toHaveURL(/\/login/);
   await page.getByRole('button', { name: 'Envíos', exact: true }).click();
   await expect(page).toHaveURL(/\/shipments$/);
-  await expect(page.getByRole('heading', { name: 'Cancelaciones con el carrier' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Cancelaciones con el carrier' }),
+  ).toBeVisible();
 
   const row = page.getByRole('article').filter({ hasText: trackingNumber });
   await expect(row).toHaveCount(1);
@@ -128,7 +158,9 @@ test('admin sees the pending carrier review and closes it without refund against
   const operation = await ok(
     db
       .from('shipment_cancellation_operations')
-      .select('review_resolution, review_resolved_by, review_resolution_note, review_resolved_at')
+      .select(
+        'review_resolution, review_resolved_by, review_resolution_note, review_resolved_at',
+      )
       .eq('shipment_id', shipmentId)
       .single(),
     'operation',
@@ -138,6 +170,9 @@ test('admin sees the pending carrier review and closes it without refund against
   expect(operation.review_resolution_note).toBe(note);
   expect(operation.review_resolved_at).not.toBeNull();
 
-  const shipment = await ok(db.from('shipments').select('status').eq('id', shipmentId).single(), 'shipment');
+  const shipment = await ok(
+    db.from('shipments').select('status').eq('id', shipmentId).single(),
+    'shipment',
+  );
   expect(shipment.status).toBe('preparing');
 });

@@ -3,15 +3,19 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const root = join(import.meta.dir, '..', '..', '..');
-const read = (path: string) => readFileSync(join(root, path), 'utf8').replace(/\r\n/g, '\n');
-const migrations = readdirSync(join(root, 'supabase/migrations')).filter((name) =>
-  name.endsWith('_shipment_cancellation_recovery.sql'),
+const read = (path: string) =>
+  readFileSync(join(root, path), 'utf8').replace(/\r\n/g, '\n');
+const migrations = readdirSync(join(root, 'supabase/migrations')).filter(
+  (name) => name.endsWith('_shipment_cancellation_recovery.sql'),
 );
-const migration = migrations.length === 1 ? read(`supabase/migrations/${migrations[0]}`) : '';
+const migration =
+  migrations.length === 1 ? read(`supabase/migrations/${migrations[0]}`) : '';
 const statements = (sql: string) =>
   sql
     .split('\n')
-    .filter((line) => !/^\s*(--|BEGIN;|COMMIT;)/.test(line) && line.trim() !== '')
+    .filter(
+      (line) => !/^\s*(--|BEGIN;|COMMIT;)/.test(line) && line.trim() !== '',
+    )
     .join('\n');
 
 // Text contracts only; the local `supabase db reset` + scripts/test-shipment-cancellation-refund-status.ts
@@ -21,7 +25,9 @@ describe('shipment cancellation recovery migration (SQL text)', () => {
     expect(migrations).toHaveLength(1);
     // The recovery read's canonical copy moved on in B2.2.1 (shipment_cancellation_escalation.test.ts) and
     // fn_cancel_shipment's canonical copy in B2.3.1 (shipment_cancellation_refund_resolution.test.ts).
-    expect(statements(migration)).toContain("IF v_refund_status IS DISTINCT FROM 'succeeded' THEN");
+    expect(statements(migration)).toContain(
+      "IF v_refund_status IS DISTINCT FROM 'succeeded' THEN",
+    );
   });
 
   it('drops nothing and grants the recovery read to service_role only', () => {
@@ -29,21 +35,31 @@ describe('shipment cancellation recovery migration (SQL text)', () => {
     expect(migration).toMatch(
       /REVOKE EXECUTE ON FUNCTION public\.fn_get_shipment_cancellation_recovery\([^)]*\) FROM PUBLIC, anon, authenticated;/,
     );
-    expect(migration).toMatch(/GRANT EXECUTE ON FUNCTION public\.fn_get_shipment_cancellation_recovery\([^)]*\) TO service_role;/);
-    expect(migration).not.toMatch(/GRANT[^;]*TO[^;]*\b(anon|authenticated|PUBLIC)\b/i);
+    expect(migration).toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.fn_get_shipment_cancellation_recovery\([^)]*\) TO service_role;/,
+    );
+    expect(migration).not.toMatch(
+      /GRANT[^;]*TO[^;]*\b(anon|authenticated|PUBLIC)\b/i,
+    );
   });
 
   it('runs the recovery read as a locked-down SECURITY DEFINER and rejects non-service callers', () => {
-    const body = statements(read('supabase/queries/orders/shipment_cancellation_recovery.sql'));
+    const body = statements(
+      read('supabase/queries/orders/shipment_cancellation_recovery.sql'),
+    );
     expect(body).toContain('SECURITY DEFINER');
     expect(body).toContain("SET search_path = ''");
-    expect(body).toContain("IF auth.role() IS DISTINCT FROM 'service_role' THEN RAISE EXCEPTION 'UNAUTHORIZED'; END IF;");
+    expect(body).toContain(
+      "IF auth.role() IS DISTINCT FROM 'service_role' THEN RAISE EXCEPTION 'UNAUTHORIZED'; END IF;",
+    );
   });
 
   it('fn_cancel_shipment requires a recorded succeeded refund', () => {
     const cancel = read('supabase/queries/orders/fn_cancel_shipment.sql');
     // B2.3.1 also accepts an admin-resolved refund; any unresolved non-succeeded status is still refused.
-    expect(cancel).toContain("IF v_refund_status IS DISTINCT FROM 'succeeded' AND v_refund_resolved_at IS NULL THEN");
+    expect(cancel).toContain(
+      "IF v_refund_status IS DISTINCT FROM 'succeeded' AND v_refund_resolved_at IS NULL THEN",
+    );
     expect(cancel).not.toContain('IS NOT NULL AND v_refund_status');
   });
 });

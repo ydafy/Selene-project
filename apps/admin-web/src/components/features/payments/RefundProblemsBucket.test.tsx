@@ -2,7 +2,10 @@ import { afterEach, expect, it, mock, spyOn } from 'bun:test';
 import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { RefundProblemsBucket } from './RefundProblemsBucket';
-import { resolveRefundErrorMessage, type RefundProblem } from '../../../lib/shipmentRefundProblems';
+import {
+  resolveRefundErrorMessage,
+  type RefundProblem,
+} from '../../../lib/shipmentRefundProblems';
 
 const base: RefundProblem = {
   shipmentId: '11111111-aaaa-bbbb-cccc-000000000001',
@@ -30,7 +33,8 @@ function nodes(value: React.ReactNode): Element[] {
   return [value, ...nodes(value.props.children as React.ReactNode)];
 }
 function label(value: React.ReactNode): string {
-  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (typeof value === 'string' || typeof value === 'number')
+    return String(value);
   if (Array.isArray(value)) return value.map(label).join('');
   return React.isValidElement<Record<string, unknown>>(value)
     ? label(value.props.children as React.ReactNode)
@@ -44,9 +48,12 @@ function harness(overrides: Record<string, unknown> = {}) {
   spyOn(React, 'useState').mockImplementation(((initial: unknown) => {
     const index = stateIndex++;
     if (!(index in states)) states[index] = initial;
-    return [states[index], (next: unknown) => {
-      states[index] = typeof next === 'function' ? next(states[index]) : next;
-    }];
+    return [
+      states[index],
+      (next: unknown) => {
+        states[index] = typeof next === 'function' ? next(states[index]) : next;
+      },
+    ];
   }) as typeof React.useState);
   spyOn(React, 'useRef').mockImplementation(((initial: unknown) => {
     const index = refIndex++;
@@ -68,11 +75,17 @@ function harness(overrides: Record<string, unknown> = {}) {
   const render = () => {
     stateIndex = 0;
     refIndex = 0;
-    return RefundProblemsBucket(props as Parameters<typeof RefundProblemsBucket>[0]);
+    return RefundProblemsBucket(
+      props as Parameters<typeof RefundProblemsBucket>[0],
+    );
   };
   const html = () => renderToStaticMarkup(render());
   const button = (text: string) =>
-    nodes(render()).find((n) => n.type === 'button' && label(n.props.children as React.ReactNode) === text);
+    nodes(render()).find(
+      (n) =>
+        n.type === 'button' &&
+        label(n.props.children as React.ReactNode) === text,
+    );
   const click = async (text: string) => {
     const found = button(text);
     expect(found, `Missing button: ${text}`).toBeDefined();
@@ -81,7 +94,9 @@ function harness(overrides: Record<string, unknown> = {}) {
   const type = (value: string) => {
     const input = nodes(render()).find((n) => n.type === 'input')!;
     expect(input).toBeDefined();
-    (input.props.onChange as (e: { target: { value: string } }) => void)({ target: { value } });
+    (input.props.onChange as (e: { target: { value: string } }) => void)({
+      target: { value },
+    });
   };
   return { render, html, button, click, type, resolved };
 }
@@ -131,7 +146,14 @@ it('renders the row fields from integer cents', () => {
 
 it('omits the refund id and reason when the server has none', () => {
   const html = harness({
-    problems: [{ ...base, kind: 'refund_not_found', refundId: null, refundFailureReason: null }],
+    problems: [
+      {
+        ...base,
+        kind: 'refund_not_found',
+        refundId: null,
+        refundFailureReason: null,
+      },
+    ],
   }).html();
   expect(html).toContain('Reembolso no encontrado');
   expect(html).not.toContain('Reembolso Stripe');
@@ -155,7 +177,9 @@ it('requires a reference before sending anything', async () => {
   h.type('   ');
   await h.click('Confirmar resolución');
   expect(h.resolved).toEqual([]);
-  expect(h.html()).toContain(resolveRefundErrorMessage('INVALID_RESOLUTION_REFERENCE'));
+  expect(h.html()).toContain(
+    resolveRefundErrorMessage('INVALID_RESOLUTION_REFERENCE'),
+  );
   h.type('a'.repeat(201));
   await h.click('Confirmar resolución');
   expect(h.resolved).toEqual([]);
@@ -176,12 +200,15 @@ it('dispatches once on a double click and disables the confirmation while pendin
   const h = harness({
     onResolve: (shipmentId: string) => {
       calls.push(shipmentId);
-      return new Promise<void>((resolve) => { finish = resolve; });
+      return new Promise<void>((resolve) => {
+        finish = resolve;
+      });
     },
   });
   await h.click('Marcar resuelto');
   h.type('SPEI-1');
-  const confirm = h.button('Confirmar resolución')!.props.onClick as () => Promise<void>;
+  const confirm = h.button('Confirmar resolución')!.props
+    .onClick as () => Promise<void>;
   const first = confirm();
   const second = confirm();
   expect(calls).toHaveLength(1);
@@ -203,7 +230,10 @@ it('keeps the confirmation open with a mapped message on server errors and allow
   const h = harness({
     onResolve: async (_id: string, reference: string) => {
       calls.push(reference);
-      if (fail) throw Object.assign(new Error('boom'), { code: 'REFUND_NOT_RESOLVABLE' });
+      if (fail)
+        throw Object.assign(new Error('boom'), {
+          code: 'REFUND_NOT_RESOLVABLE',
+        });
     },
   });
   await h.click('Marcar resuelto');
@@ -221,16 +251,29 @@ it('keeps the confirmation open with a mapped message on server errors and allow
 });
 
 it('maps each stable code and falls back to a generic message', async () => {
-  for (const code of ['SHIPMENT_STATUS_UNEXPECTED', 'INVALID_RESOLUTION_REFERENCE', 'ADMIN_ONLY', 'INTERNAL_ERROR']) {
+  for (const code of [
+    'SHIPMENT_STATUS_UNEXPECTED',
+    'INVALID_RESOLUTION_REFERENCE',
+    'ADMIN_ONLY',
+    'INTERNAL_ERROR',
+  ]) {
     const h = harness({
-      onResolve: async () => { throw Object.assign(new Error('x'), { code }); },
+      onResolve: async () => {
+        throw Object.assign(new Error('x'), { code });
+      },
     });
     await h.click('Marcar resuelto');
     h.type('SPEI-1');
     await h.click('Confirmar resolución');
-    expect(h.html()).toContain(resolveRefundErrorMessage(code).replaceAll("'", '&#x27;'));
+    expect(h.html()).toContain(
+      resolveRefundErrorMessage(code).replaceAll("'", '&#x27;'),
+    );
   }
-  const h = harness({ onResolve: async () => { throw new Error('network'); } });
+  const h = harness({
+    onResolve: async () => {
+      throw new Error('network');
+    },
+  });
   await h.click('Marcar resuelto');
   h.type('SPEI-1');
   await h.click('Confirmar resolución');

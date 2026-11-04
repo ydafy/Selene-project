@@ -25,14 +25,23 @@
  *     multiple matches become action_required, not a new payout.
  */
 import type { ReleaseQueueRow } from '../release-connect-payout/release-connect-payout.ts';
-import type { Database, ConnectPayoutRunShipment } from '../../../packages/types/src/types.ts';
+import type {
+  Database,
+  ConnectPayoutRunShipment,
+} from '../../../packages/types/src/types.ts';
 
 /** Exact deployed reconciliation RPC DTO: intentionally has no shipment_ids. */
-export type ReconciliationClaim = Omit<Database['public']['Functions']['fn_claim_payout_create_reconciliation']['Returns'][number], 'stripe_account_id'> & {
+export type ReconciliationClaim = Omit<
+  Database['public']['Functions']['fn_claim_payout_create_reconciliation']['Returns'][number],
+  'stripe_account_id'
+> & {
   /** SQL LEFT JOIN can return NULL despite generated TABLE-return nullability. */
   stripe_account_id: string | null;
 };
-export type ReconciliationMapping = Pick<ConnectPayoutRunShipment, 'id' | 'run_id' | 'shipment_id' | 'net_payout' | 'status'>;
+export type ReconciliationMapping = Pick<
+  ConnectPayoutRunShipment,
+  'id' | 'run_id' | 'shipment_id' | 'net_payout' | 'status'
+>;
 
 export class ResumePayoutsError extends Error {
   constructor(
@@ -298,48 +307,90 @@ export function assertClaimedRun(value: unknown): ClaimedRun | null {
   };
 }
 
-export function assertReconciliationClaim(value: unknown): ReconciliationClaim | null {
+export function assertReconciliationClaim(
+  value: unknown,
+): ReconciliationClaim | null {
   if (value == null) return null;
-  if (typeof value !== 'object' || Array.isArray(value)) throw new ResumePayoutsError(500, 'INVALID_CLAIMED_RUN');
+  if (typeof value !== 'object' || Array.isArray(value))
+    throw new ResumePayoutsError(500, 'INVALID_CLAIMED_RUN');
   const row = value as Record<string, unknown>;
-  if (typeof row.amount_cents !== 'number' || !Number.isSafeInteger(row.amount_cents) || row.amount_cents <= 0 ||
-      typeof row.stage_version !== 'number' || !Number.isSafeInteger(row.stage_version) || row.stage_version < 1 ||
-      typeof row.claim_expires_at !== 'string' || !Number.isFinite(Date.parse(row.claim_expires_at)) ||
-      typeof row.payout_create_attempted_at !== 'string' || !Number.isFinite(Date.parse(row.payout_create_attempted_at))) {
+  if (
+    typeof row.amount_cents !== 'number' ||
+    !Number.isSafeInteger(row.amount_cents) ||
+    row.amount_cents <= 0 ||
+    typeof row.stage_version !== 'number' ||
+    !Number.isSafeInteger(row.stage_version) ||
+    row.stage_version < 1 ||
+    typeof row.claim_expires_at !== 'string' ||
+    !Number.isFinite(Date.parse(row.claim_expires_at)) ||
+    typeof row.payout_create_attempted_at !== 'string' ||
+    !Number.isFinite(Date.parse(row.payout_create_attempted_at))
+  ) {
     throw new ResumePayoutsError(500, 'INVALID_CLAIMED_RUN');
   }
   return {
-    run_id: assertNonEmptyString(row.run_id), actor_id: assertNonEmptyString(row.actor_id),
-    seller_id: assertNonEmptyString(row.seller_id), idempotency_key: assertNonEmptyString(row.idempotency_key),
-    claim_token: assertNonEmptyString(row.claim_token), amount_cents: row.amount_cents,
-    stage_version: row.stage_version, claim_expires_at: row.claim_expires_at,
-    stripe_account_id: row.stripe_account_id === null ? null : assertNonEmptyString(row.stripe_account_id),
+    run_id: assertNonEmptyString(row.run_id),
+    actor_id: assertNonEmptyString(row.actor_id),
+    seller_id: assertNonEmptyString(row.seller_id),
+    idempotency_key: assertNonEmptyString(row.idempotency_key),
+    claim_token: assertNonEmptyString(row.claim_token),
+    amount_cents: row.amount_cents,
+    stage_version: row.stage_version,
+    claim_expires_at: row.claim_expires_at,
+    stripe_account_id:
+      row.stripe_account_id === null
+        ? null
+        : assertNonEmptyString(row.stripe_account_id),
     payout_create_attempted_at: row.payout_create_attempted_at,
   };
 }
 
-async function reconstructReconciliationRun(deps: ResumePendingPayoutsDeps, claim: ReconciliationClaim): Promise<ClaimedRun> {
-  const { rows: mappings, total } = await deps.loadReconciliationMappings(claim.run_id);
+async function reconstructReconciliationRun(
+  deps: ResumePendingPayoutsDeps,
+  claim: ReconciliationClaim,
+): Promise<ClaimedRun> {
+  const { rows: mappings, total } = await deps.loadReconciliationMappings(
+    claim.run_id,
+  );
   const ids = new Set<string>();
   const mappingIds = new Set<string>();
   let amount = 0;
-  if (total === null || total !== mappings.length || total < 1) throw new ResumePayoutsError(500, 'RUN_SHAPE_INVALID');
+  if (total === null || total !== mappings.length || total < 1)
+    throw new ResumePayoutsError(500, 'RUN_SHAPE_INVALID');
   for (const mapping of mappings) {
-    if (mapping.run_id !== claim.run_id || !mapping.shipment_id || !mapping.id || ids.has(mapping.shipment_id) || mappingIds.has(mapping.id) ||
-        !['pending_reconciliation', 'reconciliation_needed'].includes(mapping.status) ||
-        !Number.isSafeInteger(mapping.net_payout) || mapping.net_payout <= 0) throw new ResumePayoutsError(500, 'RUN_SHAPE_INVALID');
+    if (
+      mapping.run_id !== claim.run_id ||
+      !mapping.shipment_id ||
+      !mapping.id ||
+      ids.has(mapping.shipment_id) ||
+      mappingIds.has(mapping.id) ||
+      !['pending_reconciliation', 'reconciliation_needed'].includes(
+        mapping.status,
+      ) ||
+      !Number.isSafeInteger(mapping.net_payout) ||
+      mapping.net_payout <= 0
+    )
+      throw new ResumePayoutsError(500, 'RUN_SHAPE_INVALID');
     ids.add(mapping.shipment_id);
     mappingIds.add(mapping.id);
     amount += mapping.net_payout;
   }
-  if (amount !== claim.amount_cents) throw new ResumePayoutsError(500, 'RUN_SHAPE_INVALID');
+  if (amount !== claim.amount_cents)
+    throw new ResumePayoutsError(500, 'RUN_SHAPE_INVALID');
   const run = assertClaimedRun({ ...claim, shipment_ids: [...ids] })!;
   const rows = await deps.loadReleaseRows(run.shipment_ids);
   assertRunShapeMatches(run, rows);
   const seen = new Set<string>();
   for (const row of rows) {
-    if (!row.shipment_id || seen.has(row.shipment_id) || (claim.stripe_account_id !== null && row.stripe_account_id !== claim.stripe_account_id) ||
-        mappings.find((mapping) => mapping.shipment_id === row.shipment_id)?.net_payout !== row.release_amount_cents) throw new ResumePayoutsError(500, 'RUN_SHAPE_INVALID');
+    if (
+      !row.shipment_id ||
+      seen.has(row.shipment_id) ||
+      (claim.stripe_account_id !== null &&
+        row.stripe_account_id !== claim.stripe_account_id) ||
+      mappings.find((mapping) => mapping.shipment_id === row.shipment_id)
+        ?.net_payout !== row.release_amount_cents
+    )
+      throw new ResumePayoutsError(500, 'RUN_SHAPE_INVALID');
     seen.add(row.shipment_id);
   }
   return run;
@@ -954,7 +1005,12 @@ export async function resumePendingPayoutRuns(
     } catch (error: unknown) {
       const stale = classifyStaleClaim(error);
       // Token-only cleanup cannot clear a newer claim; no mapping/park write.
-      await deps.releasePayoutClaim({ runId: claim.run_id, claimToken: claim.claim_token }).catch(() => undefined);
+      await deps
+        .releasePayoutClaim({
+          runId: claim.run_id,
+          claimToken: claim.claim_token,
+        })
+        .catch(() => undefined);
       results.push(
         stale
           ? {

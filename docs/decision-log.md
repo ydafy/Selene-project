@@ -142,7 +142,6 @@ It was shown that using only `bun npm cache clean` and `bun pm cache rm` solves 
         bun pm cache clean
         bun pm cache rm
 
-
 Only right this comands in the main root of the project and start de server whit 'bun run frontend --clear'
 
 Validate status:

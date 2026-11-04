@@ -1,17 +1,20 @@
 # Payout Release SQL Baseline Repair
 
 ## Goal
+
 Repair only the three broad-suite failures blocking Phase 2A closure: payout release amount/view contract parity and guard expectations.
 
 ## Scope
 
 ### In scope
+
 - `admin_connect_payout_release_view_shipping_cost_fix.sql` and directly matching canonical payout release SQL.
 - Matching payout release amount/view migration contract if parity requires it.
 - Directly relevant static SQL guard tests.
 - Focused TDD and re-running the broader Phase 2A triangulation suite.
 
 ### Out of scope
+
 - Event ledger/reconciliation implementation changes.
 - Phase 2B payout executor/stage persistence.
 - Phase 2C fee worker.
@@ -44,5 +47,6 @@ Repair only the three broad-suite failures blocking Phase 2A closure: payout rel
   - TRIANGULATE: old ordered-token check PASSES the mutated 23-column projection (weakness observed); new cardinality guard REJECTS it (count 23 vs expected 22 throws). SQL file untouched.
 
 ## Evidence
+
 - Engram mirror: `odd/payout-release-sql-baseline-repair/tasks`.
 - Phase 2A remains paused; no deploy, migration application, type regeneration, or E2E is authorized.

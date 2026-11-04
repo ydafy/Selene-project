@@ -1,8 +1,7 @@
 import type { AutoCancelLeaseLog } from './auto-cancel-lease.ts';
 
 export type AutoCancelHoursColumn =
-  | 'order_expiration_hours'
-  | 'preparing_expiration_hours';
+  'order_expiration_hours' | 'preparing_expiration_hours';
 
 type SettingsRead = PromiseLike<{ data: unknown; error: unknown }>;
 

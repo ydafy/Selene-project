@@ -2,7 +2,10 @@ import type { AccountStatus } from '@selene/types';
 
 export type AccountStatusAction = 'suspend' | 'reactivate' | 'ban';
 
-export const ACCOUNT_STATUS_ACTION_TARGET: Record<AccountStatusAction, AccountStatus> = {
+export const ACCOUNT_STATUS_ACTION_TARGET: Record<
+  AccountStatusAction,
+  AccountStatus
+> = {
   suspend: 'suspended',
   reactivate: 'active',
   ban: 'banned',

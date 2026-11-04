@@ -1,6 +1,12 @@
 import type { ReactNode } from 'react';
 
-export function PublicPage({ title, children }: { title: string; children: ReactNode }) {
+export function PublicPage({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
   return (
     <div className="flex min-h-screen items-start justify-center bg-night p-4">
       <main className="w-full max-w-2xl space-y-6 rounded-2xl bg-state-gray p-8 shadow-2xl border border-white/5">
@@ -14,7 +20,13 @@ export function PublicPage({ title, children }: { title: string; children: React
   );
 }
 
-export function PublicSection({ title, children }: { title: string; children: ReactNode }) {
+export function PublicSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
   return (
     <section className="space-y-2">
       <h2 className="text-base font-semibold text-lion">{title}</h2>

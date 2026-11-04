@@ -34,7 +34,9 @@ describe('createCaptchaGetter', () => {
 
   it('fails closed when no provider is mounted', async () => {
     const getToken = createCaptchaGetter(() => null);
-    await expect(getToken()).rejects.toMatchObject({ code: CAPTCHA_FAILED_CODE });
+    await expect(getToken()).rejects.toMatchObject({
+      code: CAPTCHA_FAILED_CODE,
+    });
   });
 
   it('propagates a cancelled challenge', async () => {
@@ -43,7 +45,9 @@ describe('createCaptchaGetter', () => {
         throw new CaptchaError(CAPTCHA_CANCELLED_CODE);
       }),
     );
-    await expect(getToken()).rejects.toMatchObject({ code: CAPTCHA_CANCELLED_CODE });
+    await expect(getToken()).rejects.toMatchObject({
+      code: CAPTCHA_CANCELLED_CODE,
+    });
   });
 
   it('fails with captcha_failed when the widget stays silent', async () => {
@@ -51,13 +55,17 @@ describe('createCaptchaGetter', () => {
       () => provider(() => new Promise<string>(() => {})),
       10,
     );
-    await expect(getToken()).rejects.toMatchObject({ code: CAPTCHA_FAILED_CODE });
+    await expect(getToken()).rejects.toMatchObject({
+      code: CAPTCHA_FAILED_CODE,
+    });
   });
 });
 
 describe('toCaptchaError', () => {
   it('maps a closed challenge to cancelled and anything else to failed', () => {
-    expect(toCaptchaError('challenge-closed').code).toBe(CAPTCHA_CANCELLED_CODE);
+    expect(toCaptchaError('challenge-closed').code).toBe(
+      CAPTCHA_CANCELLED_CODE,
+    );
     expect(toCaptchaError('challenge-expired').code).toBe(CAPTCHA_FAILED_CODE);
     expect(toCaptchaError(new Error('x')).code).toBe(CAPTCHA_FAILED_CODE);
   });
@@ -81,7 +89,9 @@ describe('createCaptchaGetter timeout cleanup', () => {
       }),
       10,
     );
-    await expect(getToken()).rejects.toMatchObject({ code: CAPTCHA_FAILED_CODE });
+    await expect(getToken()).rejects.toMatchObject({
+      code: CAPTCHA_FAILED_CODE,
+    });
     expect(cancels).toBe(1);
   });
 

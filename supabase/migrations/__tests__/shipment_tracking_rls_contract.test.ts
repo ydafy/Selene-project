@@ -42,7 +42,9 @@ describe('shipment tracking event RLS contract', () => {
     const policy = trackingEventsPolicy().replace(/\s+/g, ' ');
 
     expect(policy).toContain('EXISTS ( SELECT 1 FROM public.shipments s');
-    expect(policy).toContain('OR EXISTS ( SELECT 1 FROM public.profiles_private pp');
+    expect(policy).toContain(
+      'OR EXISTS ( SELECT 1 FROM public.profiles_private pp',
+    );
     expect(policy).not.toContain('USING (true)');
     expect(policy).not.toContain('USING ( true )');
   });

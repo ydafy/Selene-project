@@ -1,9 +1,17 @@
 import { describe, expect, it } from 'bun:test';
 import { createCancellationReporter } from '../cancellation-alerts.ts';
 
-function subject(report?: (message: string, options: { fingerprint: string[]; tags: Record<string, string> }) => unknown) {
+function subject(
+  report?: (
+    message: string,
+    options: { fingerprint: string[]; tags: Record<string, string> },
+  ) => unknown,
+) {
   const logs: unknown[][] = [];
-  const reports: { message: string; options: { fingerprint: string[]; tags: Record<string, string> } }[] = [];
+  const reports: {
+    message: string;
+    options: { fingerprint: string[]; tags: Record<string, string> };
+  }[] = [];
   const reporter = createCancellationReporter(
     'cancel-order',
     (...args: unknown[]) => logs.push(args),
@@ -27,15 +35,27 @@ describe('createCancellationReporter', () => {
       [
         'CRITICAL',
         'CANCELLATION_REFUND_NOT_FOUND',
-        { shipmentId: 'ship-1', refundId: 're_1', externalStartedAt: '2026-10-20T00:00:00.000Z' },
+        {
+          shipmentId: 'ship-1',
+          refundId: 're_1',
+          externalStartedAt: '2026-10-20T00:00:00.000Z',
+        },
       ],
     ]);
     expect(reports).toEqual([
       {
         message: 'cancel-order CANCELLATION_REFUND_NOT_FOUND',
         options: {
-          fingerprint: ['shipment-cancellation', 'cancel-order', 'CANCELLATION_REFUND_NOT_FOUND'],
-          tags: { edge_function: 'cancel-order', shipment_id: 'ship-1', refund_id: 're_1' },
+          fingerprint: [
+            'shipment-cancellation',
+            'cancel-order',
+            'CANCELLATION_REFUND_NOT_FOUND',
+          ],
+          tags: {
+            edge_function: 'cancel-order',
+            shipment_id: 'ship-1',
+            refund_id: 're_1',
+          },
         },
       },
     ]);
@@ -43,7 +63,12 @@ describe('createCancellationReporter', () => {
 
   it('tags only string shipment and refund ids and never forwards other data', async () => {
     const { reports, reporter } = subject();
-    await reporter('X', { shipmentId: 12, refundId: null, refundIds: ['re_1', 're_2'], dbError: 'secret' });
+    await reporter('X', {
+      shipmentId: 12,
+      refundId: null,
+      refundIds: ['re_1', 're_2'],
+      dbError: 'secret',
+    });
     expect(reports).toHaveLength(1);
     expect(reports[0]!.options.tags).toEqual({ edge_function: 'cancel-order' });
     expect(JSON.stringify(reports[0])).not.toContain('secret');
@@ -52,14 +77,27 @@ describe('createCancellationReporter', () => {
   });
 
   it('uses its own function name in the message, fingerprint and tag', async () => {
-    const reports: { message: string; options: { fingerprint: string[]; tags: Record<string, string> } }[] = [];
-    const reporter = createCancellationReporter('auto-cancel-preparing', () => undefined, async (message, options) => {
-      reports.push({ message, options });
-    });
+    const reports: {
+      message: string;
+      options: { fingerprint: string[]; tags: Record<string, string> };
+    }[] = [];
+    const reporter = createCancellationReporter(
+      'auto-cancel-preparing',
+      () => undefined,
+      async (message, options) => {
+        reports.push({ message, options });
+      },
+    );
     await reporter('M', { shipmentId: 's' });
     expect(reports[0]!.message).toBe('auto-cancel-preparing M');
-    expect(reports[0]!.options.fingerprint).toEqual(['shipment-cancellation', 'auto-cancel-preparing', 'M']);
-    expect(reports[0]!.options.tags.edge_function).toBe('auto-cancel-preparing');
+    expect(reports[0]!.options.fingerprint).toEqual([
+      'shipment-cancellation',
+      'auto-cancel-preparing',
+      'M',
+    ]);
+    expect(reports[0]!.options.tags.edge_function).toBe(
+      'auto-cancel-preparing',
+    );
   });
 
   it('swallows a rejecting or throwing Sentry call and still logs', async () => {

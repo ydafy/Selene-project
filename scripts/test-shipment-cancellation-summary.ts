@@ -55,10 +55,15 @@ async function asService(tx: Tx) {
 
 /** Same session state PostgREST sets for a signed-in user or the anon key. */
 async function as(tx: Tx, who: Who) {
-  const claims = who === 'anon' ? { role: 'anon' } : { role: 'authenticated', sub: ids[who] };
+  const claims =
+    who === 'anon'
+      ? { role: 'anon' }
+      : { role: 'authenticated', sub: ids[who] };
   await tx`RESET ROLE`;
   await tx`SELECT set_config('request.jwt.claims', ${JSON.stringify(claims)}, true)`;
-  await tx.unsafe(`SET LOCAL ROLE ${who === 'anon' ? 'anon' : 'authenticated'}`);
+  await tx.unsafe(
+    `SET LOCAL ROLE ${who === 'anon' ? 'anon' : 'authenticated'}`,
+  );
 }
 
 async function fixture(tx: Tx) {
@@ -71,8 +76,10 @@ async function fixture(tx: Tx) {
 }
 
 async function claim(tx: Tx, source: Source = 'seller') {
-  const actor = source === 'buyer' ? ids.buyer : source === 'seller' ? ids.seller : null;
-  const [{ claim: claimed }] = await tx`SELECT public.fn_claim_shipment_cancellation(
+  const actor =
+    source === 'buyer' ? ids.buyer : source === 'seller' ? ids.seller : null;
+  const [{ claim: claimed }] =
+    await tx`SELECT public.fn_claim_shipment_cancellation(
     ${ids.shipment}::uuid, ${ids.order}::uuid, ${actor}::uuid, ${source}, 'private free-text reason') AS claim`;
   assert.equal(claimed.status, 'claimed');
 }
@@ -86,7 +93,8 @@ async function set(tx: Tx, assignments: string) {
 
 async function summary(tx: Tx, who: Who, shipmentId = ids.shipment) {
   await as(tx, who);
-  const rows = await tx`SELECT * FROM public.fn_get_shipment_cancellation_summary(${shipmentId}::uuid)`;
+  const rows =
+    await tx`SELECT * FROM public.fn_get_shipment_cancellation_summary(${shipmentId}::uuid)`;
   await asService(tx);
   return rows;
 }
@@ -138,7 +146,8 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         (error: Error) => error.message.includes('permission denied'),
       );
       await asService(tx);
-      const rows = await tx`SELECT * FROM public.fn_get_shipment_cancellation_summary(${ids.shipment}::uuid)`;
+      const rows =
+        await tx`SELECT * FROM public.fn_get_shipment_cancellation_summary(${ids.shipment}::uuid)`;
       assert.equal(rows.length, 0);
     },
   ],
@@ -154,7 +163,10 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       await tx`DELETE FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`;
       await tx`UPDATE public.shipments SET status = 'preparing', label_generation_state = 'generated' WHERE id = ${ids.shipment}`;
       await claim(tx, 'preparing_timeout');
-      assert.equal((await summary(tx, 'seller'))[0].source, 'preparing_timeout');
+      assert.equal(
+        (await summary(tx, 'seller'))[0].source,
+        'preparing_timeout',
+      );
     },
   ],
   [
@@ -169,7 +181,10 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         );
         assert.equal(await stateFor(tx), 'processing');
         const [row] = await summary(tx, 'seller');
-        assert.equal(new Date(row.refund_updated_at).toISOString(), '2026-01-02T03:04:05.000Z');
+        assert.equal(
+          new Date(row.refund_updated_at).toISOString(),
+          '2026-01-02T03:04:05.000Z',
+        );
       }
       await set(
         tx,
@@ -184,9 +199,15 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     'refunded: succeeded; a failed refund an admin marked resolved',
     async (tx) => {
       await claim(tx);
-      await set(tx, `refund_id = 're_b55', refund_status = 'succeeded', refund_status_updated_at = now()`);
+      await set(
+        tx,
+        `refund_id = 're_b55', refund_status = 'succeeded', refund_status_updated_at = now()`,
+      );
       assert.equal(await stateFor(tx), 'refunded');
-      await set(tx, `refund_status = 'failed', refund_failure_reason = 'lost_or_stolen_card'`);
+      await set(
+        tx,
+        `refund_status = 'failed', refund_failure_reason = 'lost_or_stolen_card'`,
+      );
       assert.equal(await stateFor(tx), 'delayed');
       await set(
         tx,
@@ -237,7 +258,9 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       await tx`SELECT set_config('request.jwt.claims', ${JSON.stringify({ role: 'authenticated', sub: ids.admin })}, true)`;
       await tx`SET LOCAL ROLE authenticated`;
       assert.equal(
-        (await tx`SELECT * FROM public.fn_get_shipment_cancellation_summary(${ids.shipment}::uuid)`).length,
+        (
+          await tx`SELECT * FROM public.fn_get_shipment_cancellation_summary(${ids.shipment}::uuid)`
+        ).length,
         0,
       );
       await asService(tx);
@@ -274,10 +297,12 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     'reading writes nothing: the operation row is unchanged',
     async (tx) => {
       await claim(tx);
-      const [before] = await tx`SELECT * FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`;
+      const [before] =
+        await tx`SELECT * FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`;
       await summary(tx, 'buyer');
       await summary(tx, 'other');
-      const [after] = await tx`SELECT * FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`;
+      const [after] =
+        await tx`SELECT * FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`;
       assert.deepEqual(after, before);
     },
   ],

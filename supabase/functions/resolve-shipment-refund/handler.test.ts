@@ -55,10 +55,19 @@ function harness(
       logs.push({ level, msg, data });
     },
   };
-  return { handler: createResolveShipmentRefundHandler(deps), calls, adminChecks, tokens, logs };
+  return {
+    handler: createResolveShipmentRefundHandler(deps),
+    calls,
+    adminChecks,
+    tokens,
+    logs,
+  };
 }
 
-function post(body: unknown, headers: Record<string, string> = { Authorization: 'Bearer user-jwt' }) {
+function post(
+  body: unknown,
+  headers: Record<string, string> = { Authorization: 'Bearer user-jwt' },
+) {
   return new Request('http://localhost/functions/v1/resolve-shipment-refund', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
@@ -77,10 +86,14 @@ async function send(h: ReturnType<typeof harness>, request: Request) {
 describe('resolve-shipment-refund handler', () => {
   it('answers CORS preflight without authenticating', async () => {
     const h = harness();
-    const response = await h.handler(new Request('http://localhost/x', { method: 'OPTIONS' }));
+    const response = await h.handler(
+      new Request('http://localhost/x', { method: 'OPTIONS' }),
+    );
     expect(response.status).toBe(200);
     expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
-    expect(response.headers.get('Access-Control-Allow-Headers')).toContain('authorization');
+    expect(response.headers.get('Access-Control-Allow-Headers')).toContain(
+      'authorization',
+    );
     expect(h.tokens).toEqual([]);
   });
 
@@ -88,7 +101,10 @@ describe('resolve-shipment-refund handler', () => {
     const h = harness();
     const { response, body } = await send(
       h,
-      new Request('http://localhost/x', { method: 'GET', headers: { Authorization: 'Bearer t' } }),
+      new Request('http://localhost/x', {
+        method: 'GET',
+        headers: { Authorization: 'Bearer t' },
+      }),
     );
     expect(response.status).toBe(405);
     expect(body).toEqual({ error: 'METHOD_NOT_ALLOWED' });
@@ -99,15 +115,18 @@ describe('resolve-shipment-refund handler', () => {
     ['no Authorization header', {}],
     ['a non-Bearer scheme', { Authorization: 'Basic abc' }],
     ['an empty bearer token', { Authorization: 'Bearer ' }],
-  ])('401 AUTH_REQUIRED for %s, before any lookup or RPC', async (_name, headers) => {
-    const h = harness();
-    const { response, body } = await send(h, post(valid, headers));
-    expect(response.status).toBe(401);
-    expect(body).toEqual({ error: 'AUTH_REQUIRED' });
-    expect(h.tokens).toEqual([]);
-    expect(h.adminChecks).toEqual([]);
-    expect(h.calls).toEqual([]);
-  });
+  ])(
+    '401 AUTH_REQUIRED for %s, before any lookup or RPC',
+    async (_name, headers) => {
+      const h = harness();
+      const { response, body } = await send(h, post(valid, headers));
+      expect(response.status).toBe(401);
+      expect(body).toEqual({ error: 'AUTH_REQUIRED' });
+      expect(h.tokens).toEqual([]);
+      expect(h.adminChecks).toEqual([]);
+      expect(h.calls).toEqual([]);
+    },
+  );
 
   it('401 AUTH_REQUIRED when the JWT does not resolve to a user, without checking admin or resolving', async () => {
     const h = harness({ userId: null });
@@ -129,7 +148,9 @@ describe('resolve-shipment-refund handler', () => {
   });
 
   it('500 INTERNAL_ERROR when the admin lookup fails; the raw error goes to the log only', async () => {
-    const h = harness({ admin: new Error('relation profiles_private timeout 10.0.0.5') });
+    const h = harness({
+      admin: new Error('relation profiles_private timeout 10.0.0.5'),
+    });
     const { response, text, body } = await send(h, post(valid));
     expect(response.status).toBe(500);
     expect(body).toEqual({ error: 'INTERNAL_ERROR' });
@@ -160,8 +181,14 @@ describe('resolve-shipment-refund handler', () => {
     ['a numeric reference', { shipment_id: SHIPMENT, reference: 42 }],
     ['an empty reference', { shipment_id: SHIPMENT, reference: '' }],
     ['a blank reference', { shipment_id: SHIPMENT, reference: '   \n\t ' }],
-    ['a 201 character reference', { shipment_id: SHIPMENT, reference: 'x'.repeat(201) }],
-    ['a padded 201 character reference', { shipment_id: SHIPMENT, reference: ` ${'x'.repeat(201)} ` }],
+    [
+      'a 201 character reference',
+      { shipment_id: SHIPMENT, reference: 'x'.repeat(201) },
+    ],
+    [
+      'a padded 201 character reference',
+      { shipment_id: SHIPMENT, reference: ` ${'x'.repeat(201)} ` },
+    ],
   ])('422 INVALID_RESOLUTION_REFERENCE for %s', async (_name, payload) => {
     const h = harness();
     const { response, body } = await send(h, post(payload));
@@ -185,20 +212,37 @@ describe('resolve-shipment-refund handler', () => {
       amount_owed_cents: 11000,
       reference: 'x'.repeat(200),
     });
-    expect(h.calls).toEqual([{ shipmentId: SHIPMENT, adminId: ADMIN, reference: 'x'.repeat(200) }]);
+    expect(h.calls).toEqual([
+      { shipmentId: SHIPMENT, adminId: ADMIN, reference: 'x'.repeat(200) },
+    ]);
     expect(h.logs.some((entry) => entry.level === 'INFO')).toBe(true);
   });
 
   it('never takes the admin id or an amount from the body', async () => {
     const h = harness();
-    await send(h, post({ ...valid, admin_id: 'forged', amount_owed_cents: 1, adminId: 'forged' }));
-    expect(h.calls).toEqual([{ shipmentId: SHIPMENT, adminId: ADMIN, reference: REFERENCE }]);
+    await send(
+      h,
+      post({
+        ...valid,
+        admin_id: 'forged',
+        amount_owed_cents: 1,
+        adminId: 'forged',
+      }),
+    );
+    expect(h.calls).toEqual([
+      { shipmentId: SHIPMENT, adminId: ADMIN, reference: REFERENCE },
+    ]);
   });
 
   it('returns the idempotent result of an already resolved refund as 200', async () => {
     const h = harness({
       rpc: {
-        data: { resolved: false, shipment_cancelled: false, amount_owed_cents: 11000, reference: 'FIRST' },
+        data: {
+          resolved: false,
+          shipment_cancelled: false,
+          amount_owed_cents: 11000,
+          reference: 'FIRST',
+        },
         error: null,
       },
     });
@@ -216,28 +260,34 @@ describe('resolve-shipment-refund handler', () => {
     ['REFUND_NOT_RESOLVABLE', 'REFUND_NOT_RESOLVABLE', 409],
     ['SHIPMENT_STATUS_UNEXPECTED: shipped', 'SHIPMENT_STATUS_UNEXPECTED', 409],
     ['INVALID_RESOLUTION_REFERENCE', 'INVALID_RESOLUTION_REFERENCE', 422],
-  ])('maps the RPC error %s to a stable %s / %d without echoing the database text', async (message, code, status) => {
-    const h = harness({ rpc: { data: null, error: { message } } });
-    const { response, text, body } = await send(h, post(valid));
-    expect(response.status).toBe(status);
-    expect(body).toEqual({ error: code });
-    expect(text).not.toContain('shipped');
-    expect(JSON.stringify(h.logs)).toContain(message);
-  });
+  ])(
+    'maps the RPC error %s to a stable %s / %d without echoing the database text',
+    async (message, code, status) => {
+      const h = harness({ rpc: { data: null, error: { message } } });
+      const { response, text, body } = await send(h, post(valid));
+      expect(response.status).toBe(status);
+      expect(body).toEqual({ error: code });
+      expect(text).not.toContain('shipped');
+      expect(JSON.stringify(h.logs)).toContain(message);
+    },
+  );
 
   it.each([
     'CANCELLATION_COMPLETE_FAILED: INTERNAL_SERVER_ERROR',
     'UNAUTHORIZED',
     'ADMIN_REQUIRED',
     'insert or update on table "admin_audit_logs" violates foreign key constraint',
-  ])('500 INTERNAL_ERROR for the unexpected RPC error %s; raw text only in the log', async (message) => {
-    const h = harness({ rpc: { data: null, error: { message } } });
-    const { response, text, body } = await send(h, post(valid));
-    expect(response.status).toBe(500);
-    expect(body).toEqual({ error: 'INTERNAL_ERROR' });
-    expect(text).not.toContain(message);
-    expect(h.logs.some((entry) => entry.data?.error === message)).toBe(true);
-  });
+  ])(
+    '500 INTERNAL_ERROR for the unexpected RPC error %s; raw text only in the log',
+    async (message) => {
+      const h = harness({ rpc: { data: null, error: { message } } });
+      const { response, text, body } = await send(h, post(valid));
+      expect(response.status).toBe(500);
+      expect(body).toEqual({ error: 'INTERNAL_ERROR' });
+      expect(text).not.toContain(message);
+      expect(h.logs.some((entry) => entry.data?.error === message)).toBe(true);
+    },
+  );
 
   it('500 INTERNAL_ERROR when the RPC throws', async () => {
     const h = harness({ rpc: new Error('socket hang up') });
@@ -251,15 +301,32 @@ describe('resolve-shipment-refund handler', () => {
   it.each([
     ['null', null],
     ['an array', []],
-    ['missing resolved', { shipment_cancelled: true, amount_owed_cents: 1, reference: 'r' }],
-    ['a string amount', { resolved: true, shipment_cancelled: true, amount_owed_cents: '1', reference: 'r' }],
-    ['a missing reference', { resolved: true, shipment_cancelled: false, amount_owed_cents: 1 }],
-  ])('500 INTERNAL_ERROR for a malformed RPC result (%s) instead of reporting success', async (_name, data) => {
-    const h = harness({ rpc: { data, error: null } });
-    const { response, body } = await send(h, post(valid));
-    expect(response.status).toBe(500);
-    expect(body).toEqual({ error: 'INTERNAL_ERROR' });
-  });
+    [
+      'missing resolved',
+      { shipment_cancelled: true, amount_owed_cents: 1, reference: 'r' },
+    ],
+    [
+      'a string amount',
+      {
+        resolved: true,
+        shipment_cancelled: true,
+        amount_owed_cents: '1',
+        reference: 'r',
+      },
+    ],
+    [
+      'a missing reference',
+      { resolved: true, shipment_cancelled: false, amount_owed_cents: 1 },
+    ],
+  ])(
+    '500 INTERNAL_ERROR for a malformed RPC result (%s) instead of reporting success',
+    async (_name, data) => {
+      const h = harness({ rpc: { data, error: null } });
+      const { response, body } = await send(h, post(valid));
+      expect(response.status).toBe(500);
+      expect(body).toEqual({ error: 'INTERNAL_ERROR' });
+    },
+  );
 });
 
 describe('resolve-shipment-refund wiring (source contract)', () => {
@@ -278,12 +345,19 @@ describe('resolve-shipment-refund wiring (source contract)', () => {
     expect(index).toContain('fn_resolve_shipment_cancellation_refund');
     expect(index).toContain('p_admin_id');
     expect(index).toContain('SUPABASE_SERVICE_ROLE_KEY');
-    expect(index).toContain("from '../../../packages/types/src/database.types.ts'");
+    expect(index).toContain(
+      "from '../../../packages/types/src/database.types.ts'",
+    );
   });
 
   it('is declared in config.toml with JWT verification on', () => {
-    const config = readFileSync(join(root, 'supabase/config.toml'), 'utf8').replace(/\r\n/g, '\n');
-    expect(config).toMatch(/\[functions\.resolve-shipment-refund\]\nverify_jwt = true/);
+    const config = readFileSync(
+      join(root, 'supabase/config.toml'),
+      'utf8',
+    ).replace(/\r\n/g, '\n');
+    expect(config).toMatch(
+      /\[functions\.resolve-shipment-refund\]\nverify_jwt = true/,
+    );
   });
 });
 

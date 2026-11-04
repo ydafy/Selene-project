@@ -27,13 +27,18 @@ const resolved = (overrides: Record<string, unknown> = {}) => ({
 });
 
 function harness(
-  overrides: { userId?: string | null; admin?: boolean | Error; rpc?: RpcResult | Error } = {},
+  overrides: {
+    userId?: string | null;
+    admin?: boolean | Error;
+    rpc?: RpcResult | Error;
+  } = {},
 ) {
   const calls: ResolveShipmentLabelReconciliationInput[] = [];
   const adminChecks: string[] = [];
   const logs: LogEntry[] = [];
   const deps: ResolveShipmentLabelReconciliationDeps = {
-    getUserId: async () => (overrides.userId === undefined ? ADMIN : overrides.userId),
+    getUserId: async () =>
+      overrides.userId === undefined ? ADMIN : overrides.userId,
     isAdmin: async (userId) => {
       adminChecks.push(userId);
       if (overrides.admin instanceof Error) throw overrides.admin;
@@ -56,12 +61,18 @@ function harness(
   };
 }
 
-function post(body: unknown, headers: Record<string, string> = { Authorization: 'Bearer user-jwt' }) {
-  return new Request('http://localhost/functions/v1/resolve-shipment-label-reconciliation', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
-    body: typeof body === 'string' ? body : JSON.stringify(body),
-  });
+function post(
+  body: unknown,
+  headers: Record<string, string> = { Authorization: 'Bearer user-jwt' },
+) {
+  return new Request(
+    'http://localhost/functions/v1/resolve-shipment-label-reconciliation',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: typeof body === 'string' ? body : JSON.stringify(body),
+    },
+  );
 }
 
 const noLabel = { shipment_id: SHIPMENT, resolution: 'no_label', note: NOTE };
@@ -84,7 +95,9 @@ async function send(h: ReturnType<typeof harness>, request: Request) {
 describe('resolve-shipment-label-reconciliation handler', () => {
   it('answers CORS preflight without authenticating', async () => {
     const h = harness();
-    const res = await h.handler(new Request('http://localhost/x', { method: 'OPTIONS' }));
+    const res = await h.handler(
+      new Request('http://localhost/x', { method: 'OPTIONS' }),
+    );
     expect(res.status).toBe(200);
     expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*');
     expect(h.adminChecks).toEqual([]);
@@ -92,7 +105,9 @@ describe('resolve-shipment-label-reconciliation handler', () => {
 
   it('rejects other methods with 405', async () => {
     const h = harness();
-    const res = await h.handler(new Request('http://localhost/x', { method: 'GET' }));
+    const res = await h.handler(
+      new Request('http://localhost/x', { method: 'GET' }),
+    );
     expect(res.status).toBe(405);
     expect(await res.json()).toEqual({ error: 'METHOD_NOT_ALLOWED' });
     expect(h.calls).toEqual([]);
@@ -140,19 +155,40 @@ describe('resolve-shipment-label-reconciliation handler', () => {
       [{ ...noLabel, note: '   ' }, 'INVALID_RESOLUTION_NOTE'],
       [{ ...noLabel, note: 'x'.repeat(201) }, 'INVALID_RESOLUTION_NOTE'],
       [{ ...noLabel, note: 7 }, 'INVALID_RESOLUTION_NOTE'],
-      [{ shipment_id: SHIPMENT, resolution: 'no_label' }, 'INVALID_RESOLUTION_NOTE'],
+      [
+        { shipment_id: SHIPMENT, resolution: 'no_label' },
+        'INVALID_RESOLUTION_NOTE',
+      ],
       // label_found needs the whole provider result
-      [{ ...labelFound, envia_shipment_id: undefined }, 'INVALID_PROVIDER_RESULT'],
+      [
+        { ...labelFound, envia_shipment_id: undefined },
+        'INVALID_PROVIDER_RESULT',
+      ],
       [{ ...labelFound, envia_shipment_id: '  ' }, 'INVALID_PROVIDER_RESULT'],
-      [{ ...labelFound, tracking_number: undefined }, 'INVALID_PROVIDER_RESULT'],
+      [
+        { ...labelFound, tracking_number: undefined },
+        'INVALID_PROVIDER_RESULT',
+      ],
       [{ ...labelFound, tracking_number: 5 }, 'INVALID_PROVIDER_RESULT'],
       [{ ...labelFound, label_url: undefined }, 'INVALID_PROVIDER_RESULT'],
       [{ ...labelFound, label_url: 'not a url' }, 'INVALID_PROVIDER_RESULT'],
-      [{ ...labelFound, label_url: 'javascript:alert(1)' }, 'INVALID_PROVIDER_RESULT'],
-      [{ ...labelFound, provider_cost_cents: undefined }, 'INVALID_PROVIDER_RESULT'],
-      [{ ...labelFound, provider_cost_cents: 150.5 }, 'INVALID_PROVIDER_RESULT'],
+      [
+        { ...labelFound, label_url: 'javascript:alert(1)' },
+        'INVALID_PROVIDER_RESULT',
+      ],
+      [
+        { ...labelFound, provider_cost_cents: undefined },
+        'INVALID_PROVIDER_RESULT',
+      ],
+      [
+        { ...labelFound, provider_cost_cents: 150.5 },
+        'INVALID_PROVIDER_RESULT',
+      ],
       [{ ...labelFound, provider_cost_cents: -1 }, 'INVALID_PROVIDER_RESULT'],
-      [{ ...labelFound, provider_cost_cents: '15050' }, 'INVALID_PROVIDER_RESULT'],
+      [
+        { ...labelFound, provider_cost_cents: '15050' },
+        'INVALID_PROVIDER_RESULT',
+      ],
       [{ ...labelFound, provider_cost_cents: 1e21 }, 'INVALID_PROVIDER_RESULT'],
       // no_label takes no provider result
       [{ ...noLabel, tracking_number: '123' }, 'UNEXPECTED_PROVIDER_FIELDS'],
@@ -173,7 +209,13 @@ describe('resolve-shipment-label-reconciliation handler', () => {
     const a = harness();
     const nulls = await send(
       a,
-      post({ ...noLabel, envia_shipment_id: null, tracking_number: null, label_url: null, provider_cost_cents: null }),
+      post({
+        ...noLabel,
+        envia_shipment_id: null,
+        tracking_number: null,
+        label_url: null,
+        provider_cost_cents: null,
+      }),
     );
     expect(nulls.response.status).toBe(200);
     expect(a.calls).toHaveLength(1);
@@ -204,13 +246,22 @@ describe('resolve-shipment-label-reconciliation handler', () => {
   it('passes a trimmed label_found request with the provider result', async () => {
     const h = harness({
       rpc: {
-        data: resolved({ resolution: 'label_found', status: 'preparing', label_generation_state: 'generated' }),
+        data: resolved({
+          resolution: 'label_found',
+          status: 'preparing',
+          label_generation_state: 'generated',
+        }),
         error: null,
       },
     });
     const res = await send(
       h,
-      post({ ...labelFound, envia_shipment_id: ' 98765 ', tracking_number: ' 1234567890 ', label_url: ` ${LABEL_URL} ` }),
+      post({
+        ...labelFound,
+        envia_shipment_id: ' 98765 ',
+        tracking_number: ' 1234567890 ',
+        label_url: ` ${LABEL_URL} `,
+      }),
     );
     expect(res.response.status).toBe(200);
     expect(h.calls).toEqual([
@@ -229,7 +280,16 @@ describe('resolve-shipment-label-reconciliation handler', () => {
 
   it('takes the admin id from the verified user, never from the body', async () => {
     const h = harness();
-    await send(h, post({ ...noLabel, admin_id: OTHER, adminId: OTHER, actor_id: OTHER, p_actor_id: OTHER }));
+    await send(
+      h,
+      post({
+        ...noLabel,
+        admin_id: OTHER,
+        adminId: OTHER,
+        actor_id: OTHER,
+        p_actor_id: OTHER,
+      }),
+    );
     expect(h.calls).toHaveLength(1);
     expect(h.calls[0].adminId).toBe(ADMIN);
     expect(h.adminChecks).toEqual([ADMIN]);
@@ -244,7 +304,12 @@ describe('resolve-shipment-label-reconciliation handler', () => {
   it('answers 409 ALREADY_RESOLVED when the shipment is no longer stuck', async () => {
     const h = harness({
       rpc: {
-        data: { result: 'already_resolved', shipment_id: SHIPMENT, status: 'paid', label_generation_state: 'generated' },
+        data: {
+          result: 'already_resolved',
+          shipment_id: SHIPMENT,
+          status: 'paid',
+          label_generation_state: 'generated',
+        },
         error: null,
       },
     });
@@ -269,7 +334,9 @@ describe('resolve-shipment-label-reconciliation handler', () => {
       ['LABEL_SETTINGS_MISSING', 500, 'LABEL_SETTINGS_MISSING'],
     ];
     for (const [message, status, code] of mapped) {
-      const h = harness({ rpc: { data: null, error: { message: `${message}: detail` } } });
+      const h = harness({
+        rpc: { data: null, error: { message: `${message}: detail` } },
+      });
       const res = await send(h, post(labelFound));
       expect(res.response.status).toBe(status);
       expect(res.body).toEqual({ error: code });
@@ -277,7 +344,9 @@ describe('resolve-shipment-label-reconciliation handler', () => {
   });
 
   it('maps unknown RPC errors, crashes and unusable results to 500 without leaking text', async () => {
-    const unknown = harness({ rpc: { data: null, error: { message: 'secret db detail' } } });
+    const unknown = harness({
+      rpc: { data: null, error: { message: 'secret db detail' } },
+    });
     const a = await send(unknown, post(noLabel));
     expect(a.response.status).toBe(500);
     expect(a.text).toBe('{"error":"INTERNAL_ERROR"}');
@@ -309,7 +378,9 @@ describe('resolve-shipment-label-reconciliation handler', () => {
   it('never logs the note, the label URL, the tracking number or the bearer token', async () => {
     const ok = harness();
     await send(ok, post(labelFound));
-    const failing = harness({ rpc: { data: null, error: { message: 'ADMIN_REQUIRED' } } });
+    const failing = harness({
+      rpc: { data: null, error: { message: 'ADMIN_REQUIRED' } },
+    });
     await send(failing, post(labelFound));
     for (const logs of [ok.logs, failing.logs]) {
       const dump = JSON.stringify(logs);
@@ -326,7 +397,9 @@ describe('resolve-shipment-label-reconciliation wiring', () => {
   const index = readFileSync(join(import.meta.dir, 'index.ts'), 'utf8');
 
   it('wraps the handler with Sentry, checks role and status, and calls the service-only RPC', () => {
-    expect(index).toContain("serve(withSentry('resolve-shipment-label-reconciliation', handler))");
+    expect(index).toContain(
+      "serve(withSentry('resolve-shipment-label-reconciliation', handler))",
+    );
     expect(index).toContain(".select('role, status')");
     expect(index).toContain("from '../_shared/admin-auth.ts'");
     expect(index).toContain('fn_resolve_shipment_label_reconciliation');
@@ -337,7 +410,12 @@ describe('resolve-shipment-label-reconciliation wiring', () => {
   });
 
   it('declares verify_jwt = true in config.toml', () => {
-    const config = readFileSync(join(import.meta.dir, '../../config.toml'), 'utf8');
-    expect(config).toMatch(/\[functions\.resolve-shipment-label-reconciliation\]\r?\nverify_jwt = true/);
+    const config = readFileSync(
+      join(import.meta.dir, '../../config.toml'),
+      'utf8',
+    );
+    expect(config).toMatch(
+      /\[functions\.resolve-shipment-label-reconciliation\]\r?\nverify_jwt = true/,
+    );
   });
 });

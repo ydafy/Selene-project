@@ -61,13 +61,13 @@ GROUP BY payout_run_status;
 
 ## Deployment boundaries
 
-| Item | Required for this increment |
-| --- | --- |
-| SQL | The single incremental migration above, before type regeneration |
-| Edge Functions | No code change/redeployment: existing `get-connect-payout-release-queue` uses `select('*')` and returns the raw rows; verify the deployed endpoint does too |
-| Secrets, cron, webhooks | No new settings or changes |
-| Generated types | Separate step after maintainer confirmation; never hand-edit generated schema |
-| Frontend | Implemented locally: History-only observed date in cards/modal; parsed payment instant descending, run ID descending for ties; missing/invalid dates last and shown unavailable |
+| Item                    | Required for this increment                                                                                                                                                     |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SQL                     | The single incremental migration above, before type regeneration                                                                                                                |
+| Edge Functions          | No code change/redeployment: existing `get-connect-payout-release-queue` uses `select('*')` and returns the raw rows; verify the deployed endpoint does too                     |
+| Secrets, cron, webhooks | No new settings or changes                                                                                                                                                      |
+| Generated types         | Separate step after maintainer confirmation; never hand-edit generated schema                                                                                                   |
+| Frontend                | Implemented locally: History-only observed date in cards/modal; parsed payment instant descending, run ID descending for ties; missing/invalid dates last and shown unavailable |
 
 The existing webhook/event-ledger/late-failure projection must already be deployed for B4's existing guarantees to hold. This view migration neither installs nor proves that infrastructure. Review its deployed state separately if unknown; do not trigger real payouts or synthetic production failures to test it.
 

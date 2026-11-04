@@ -27,7 +27,12 @@ const PRODUCTS_BUCKET = 'products';
 const PRODUCT_URL_MARKER = `/storage/v1/object/public/${PRODUCTS_BUCKET}/`;
 
 export type CleanupState = 'pending' | 'done' | 'failed' | 'not_needed';
-const CLEANUP_STATES: readonly string[] = ['pending', 'done', 'failed', 'not_needed'];
+const CLEANUP_STATES: readonly string[] = [
+  'pending',
+  'done',
+  'failed',
+  'not_needed',
+];
 
 /**
  * One write to `account_closures`. `attempt` adds one to `attempts` and stamps
@@ -54,8 +59,15 @@ export type ClosureCleanupPorts = {
   deleteStripeAccount: (accountId: string) => Promise<void>;
   /** Removes the avatar folder and the images of the listings the closure soft-deleted. */
   removeStorageFiles: (userId: string) => Promise<void>;
-  recordCleanup: (userId: string, update: ClosureCleanupUpdate) => Promise<void>;
-  log: (level: 'INFO' | 'WARN' | 'ERROR', msg: string, data?: Record<string, unknown>) => unknown;
+  recordCleanup: (
+    userId: string,
+    update: ClosureCleanupUpdate,
+  ) => Promise<void>;
+  log: (
+    level: 'INFO' | 'WARN' | 'ERROR',
+    msg: string,
+    data?: Record<string, unknown>,
+  ) => unknown;
 };
 
 export const asRecord = (value: unknown): Record<string, unknown> | null =>
@@ -66,18 +78,27 @@ export const asRecord = (value: unknown): Record<string, unknown> | null =>
 /** A short machine code that is safe to store and log; never the provider message. */
 export function safeErrorCode(error: unknown): string {
   const code = asRecord(error)?.code;
-  return typeof code === 'string' && /^[a-z0-9_]{1,64}$/.test(code) ? code : 'error';
+  return typeof code === 'string' && /^[a-z0-9_]{1,64}$/.test(code)
+    ? code
+    : 'error';
 }
 
 const isCleanupState = (value: unknown): value is CleanupState =>
   typeof value === 'string' && CLEANUP_STATES.includes(value);
 
-const needsWork = (state: CleanupState): boolean => state === 'pending' || state === 'failed';
+const needsWork = (state: CleanupState): boolean =>
+  state === 'pending' || state === 'failed';
 
 /** Reads the Stripe ids and step states from the RPC result or an `account_closures` row. */
-export function parseClosureCleanup(result: Record<string, unknown>): ClosureCleanup | null {
-  const { stripe_customer_id: customerId, stripe_account_id: accountId } = result;
-  const { stripe_customer_cleanup: customerCleanup, stripe_account_cleanup: accountCleanup } = result;
+export function parseClosureCleanup(
+  result: Record<string, unknown>,
+): ClosureCleanup | null {
+  const { stripe_customer_id: customerId, stripe_account_id: accountId } =
+    result;
+  const {
+    stripe_customer_cleanup: customerCleanup,
+    stripe_account_cleanup: accountCleanup,
+  } = result;
   const storageCleanup = result.storage_cleanup;
   if (
     (customerId !== null && typeof customerId !== 'string') ||
@@ -88,7 +109,13 @@ export function parseClosureCleanup(result: Record<string, unknown>): ClosureCle
   ) {
     return null;
   }
-  return { customerId, accountId, customerCleanup, accountCleanup, storageCleanup };
+  return {
+    customerId,
+    accountId,
+    customerCleanup,
+    accountCleanup,
+    storageCleanup,
+  };
 }
 
 /**
@@ -123,14 +150,19 @@ export async function runClosureCleanup(
     goneCodes: readonly string[],
   ) => {
     worked = true;
-    if (id === null) return record({ [column]: 'not_needed' } as ClosureCleanupUpdate);
+    if (id === null)
+      return record({ [column]: 'not_needed' } as ClosureCleanupUpdate);
     try {
       await remove(id);
     } catch (error: unknown) {
       const code = safeErrorCode(error);
       if (!goneCodes.includes(code)) {
         failures.push(`${label}:${code}`);
-        ports.log('WARN', 'Account closure cleanup step failed', { userId, step: label, code });
+        ports.log('WARN', 'Account closure cleanup step failed', {
+          userId,
+          step: label,
+          code,
+        });
         return record({ [column]: 'failed' } as ClosureCleanupUpdate);
       }
     }
@@ -163,14 +195,22 @@ export async function runClosureCleanup(
     } catch (error: unknown) {
       const code = safeErrorCode(error);
       failures.push(`storage:${code}`);
-      ports.log('WARN', 'Account closure cleanup step failed', { userId, step: 'storage', code });
+      ports.log('WARN', 'Account closure cleanup step failed', {
+        userId,
+        step: 'storage',
+        code,
+      });
       await record({ storage_cleanup: 'failed' });
     }
   }
 
   if (worked) {
     const last_error = failures.length > 0 ? failures.join(';') : null;
-    await record(countAttempt ? { attempt: true, last_error } : { finish: true, last_error });
+    await record(
+      countAttempt
+        ? { attempt: true, last_error }
+        : { finish: true, last_error },
+    );
   }
   return { failures };
 }
@@ -181,7 +221,9 @@ export function ownProductPath(url: string, userId: string): string | null {
   if (at < 0) return null;
   let path: string;
   try {
-    path = decodeURIComponent(url.slice(at + PRODUCT_URL_MARKER.length).split('?')[0]);
+    path = decodeURIComponent(
+      url.slice(at + PRODUCT_URL_MARKER.length).split('?')[0],
+    );
   } catch {
     // A URL that does not decode points at nothing we could have written: skip it so
     // one bad value cannot fail the whole step on every retry.
@@ -196,7 +238,10 @@ export type AvatarStorage = {
   remove: (paths: string[]) => Promise<void>;
 };
 
-export async function removeAvatarFolder(storage: AvatarStorage, userId: string): Promise<void> {
+export async function removeAvatarFolder(
+  storage: AvatarStorage,
+  userId: string,
+): Promise<void> {
   // Each pass removes what it lists, so listing from 0 again reaches the rest.
   for (let page = 0; page < MAX_AVATAR_PAGES; page += 1) {
     const names = await storage.list(userId, STORAGE_PAGE_SIZE);
@@ -204,14 +249,19 @@ export async function removeAvatarFolder(storage: AvatarStorage, userId: string)
     await storage.remove(names.map((name) => `${userId}/${name}`));
   }
   // Still not empty: fail the step so the next retry keeps going instead of looping here.
-  throw Object.assign(new Error('avatar folder not empty after the page limit'), {
-    code: 'storage_page_limit',
-  });
+  throw Object.assign(
+    new Error('avatar folder not empty after the page limit'),
+    {
+      code: 'storage_page_limit',
+    },
+  );
 }
 
 export type ListingImagePorts = {
   /** Listings of the user that the closure soft-deleted. */
-  listSoftDeletedProducts: (userId: string) => Promise<{ id: string; images: string[] | null }[]>;
+  listSoftDeletedProducts: (
+    userId: string,
+  ) => Promise<{ id: string; images: string[] | null }[]>;
   /** Of the given product ids, the ones that appear in an order item. */
   findOrderedProductIds: (productIds: string[]) => Promise<string[]>;
   removeProductImages: (paths: string[]) => Promise<void>;
@@ -221,13 +271,18 @@ export type ListingImagePorts = {
 // not in any order item. Listings tied to an order keep their images, and the
 // `evidence` and `verification` buckets are not touched: they back orders and
 // disputes that the ledger retention (5 years, S8) keeps for claims.
-export async function removeListingImages(ports: ListingImagePorts, userId: string): Promise<void> {
+export async function removeListingImages(
+  ports: ListingImagePorts,
+  userId: string,
+): Promise<void> {
   const products = await ports.listSoftDeletedProducts(userId);
   if (products.length === 0) return;
 
   const sold = new Set<string>();
   for (let i = 0; i < products.length; i += STORAGE_PAGE_SIZE) {
-    const ids = products.slice(i, i + STORAGE_PAGE_SIZE).map((product) => product.id);
+    const ids = products
+      .slice(i, i + STORAGE_PAGE_SIZE)
+      .map((product) => product.id);
     for (const id of await ports.findOrderedProductIds(ids)) sold.add(id);
   }
 
@@ -255,7 +310,13 @@ export type StripeCleanupClient = {
 export function createSupabaseClosurePorts(deps: {
   getAdmin: () => SupabaseClient<Database>;
   getStripe: () => StripeCleanupClient;
-}): Pick<ClosureCleanupPorts, 'deleteStripeCustomer' | 'deleteStripeAccount' | 'removeStorageFiles' | 'recordCleanup'> {
+}): Pick<
+  ClosureCleanupPorts,
+  | 'deleteStripeCustomer'
+  | 'deleteStripeAccount'
+  | 'removeStorageFiles'
+  | 'recordCleanup'
+> {
   return {
     deleteStripeCustomer: async (customerId) => {
       await deps.getStripe().customers.del(customerId);
@@ -292,12 +353,17 @@ export function createSupabaseClosurePorts(deps: {
             return data ?? [];
           },
           findOrderedProductIds: async (ids) => {
-            const { data, error } = await admin.from('order_items').select('product_id').in('product_id', ids);
+            const { data, error } = await admin
+              .from('order_items')
+              .select('product_id')
+              .in('product_id', ids);
             if (error) throw new Error(error.message);
             return (data ?? []).map((item) => item.product_id);
           },
           removeProductImages: async (paths) => {
-            const { error } = await admin.storage.from(PRODUCTS_BUCKET).remove(paths);
+            const { error } = await admin.storage
+              .from(PRODUCTS_BUCKET)
+              .remove(paths);
             if (error) throw new Error(error.message);
           },
         },

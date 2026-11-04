@@ -19,7 +19,11 @@ describe('product publication economics migration', () => {
     const sql = (await Bun.file(migrationPath).text()).toLowerCase();
 
     expect(sql).toContain('backfill_product_publication_economics');
-    expect(sql).toContain('revoke all on function public.backfill_product_publication_economics');
-    expect(sql).toContain('grant execute on function public.backfill_product_publication_economics');
+    expect(sql).toContain(
+      'revoke all on function public.backfill_product_publication_economics',
+    );
+    expect(sql).toContain(
+      'grant execute on function public.backfill_product_publication_economics',
+    );
   });
 });

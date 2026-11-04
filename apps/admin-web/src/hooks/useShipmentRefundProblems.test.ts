@@ -14,7 +14,10 @@ if (process.env.B24_HOOK_CHILD !== '1') {
     expect(result.exitCode, output).toBe(0);
   });
 } else {
-  type QueryOptions = { queryKey: readonly unknown[]; queryFn: () => Promise<unknown> };
+  type QueryOptions = {
+    queryKey: readonly unknown[];
+    queryFn: () => Promise<unknown>;
+  };
   type MutationOptions = {
     mutationFn: (input: unknown) => Promise<unknown>;
     onSuccess?: (result: unknown) => Promise<void> | void;
@@ -61,8 +64,11 @@ if (process.env.B24_HOOK_CHILD !== '1') {
       return resolveResult;
     },
   }));
-  const { useShipmentRefundProblems, useResolveShipmentRefund, SHIPMENT_REFUND_PROBLEMS_KEY } =
-    await import('./useShipmentRefundProblems');
+  const {
+    useShipmentRefundProblems,
+    useResolveShipmentRefund,
+    SHIPMENT_REFUND_PROBLEMS_KEY,
+  } = await import('./useShipmentRefundProblems');
 
   beforeEach(() => {
     queryState = { data: undefined, isLoading: false, isError: false };
@@ -71,7 +77,12 @@ if (process.env.B24_HOOK_CHILD !== '1') {
     toasts.length = 0;
     resolveCalls.length = 0;
     resolveError = null;
-    resolveResult = { resolved: true, shipmentCancelled: true, amountOwedCents: 5000, reference: 'SPEI-1' };
+    resolveResult = {
+      resolved: true,
+      shipmentCancelled: true,
+      amountOwedCents: 5000,
+      reference: 'SPEI-1',
+    };
   });
 
   it('queries the service under a stable key', async () => {
@@ -89,7 +100,11 @@ if (process.env.B24_HOOK_CHILD !== '1') {
     expect(loading.problems).toEqual([]);
     queryState = { data: [], isLoading: false, isError: false };
     expect(useShipmentRefundProblems().count).toBe(0);
-    queryState = { data: [{ shipmentId: 'a' }, { shipmentId: 'b' }], isLoading: false, isError: false };
+    queryState = {
+      data: [{ shipmentId: 'a' }, { shipmentId: 'b' }],
+      isLoading: false,
+      isError: false,
+    };
     expect(useShipmentRefundProblems().count).toBe(2);
     queryState = { data: undefined, isLoading: false, isError: true };
     const failed = useShipmentRefundProblems();
@@ -107,7 +122,12 @@ if (process.env.B24_HOOK_CHILD !== '1') {
   });
 
   it('tells the admin when the refund was already resolved and still refreshes', async () => {
-    resolveResult = { resolved: false, shipmentCancelled: true, amountOwedCents: 5000, reference: 'SPEI-OLD' };
+    resolveResult = {
+      resolved: false,
+      shipmentCancelled: true,
+      amountOwedCents: 5000,
+      reference: 'SPEI-OLD',
+    };
     const { resolve } = useResolveShipmentRefund();
     await resolve('ship-1', 'SPEI-NEW');
     expect(invalidations).toEqual([{ queryKey: ['shipment-refund-problems'] }]);
@@ -120,7 +140,9 @@ if (process.env.B24_HOOK_CHILD !== '1') {
   it('does not invalidate or confirm when the server rejects', async () => {
     resolveError = new Error('REFUND_NOT_RESOLVABLE');
     const { resolve } = useResolveShipmentRefund();
-    await expect(resolve('ship-1', 'SPEI-1')).rejects.toThrow('REFUND_NOT_RESOLVABLE');
+    await expect(resolve('ship-1', 'SPEI-1')).rejects.toThrow(
+      'REFUND_NOT_RESOLVABLE',
+    );
     expect(invalidations).toEqual([]);
     expect(toasts).toEqual([]);
   });

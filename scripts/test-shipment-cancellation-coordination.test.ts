@@ -6,8 +6,8 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const script = 'scripts/test-shipment-cancellation-coordination.ts';
 
 test('label coordination replaces only latest signatures and mirrors body-only canonical files', () => {
-  const migrations = readdirSync(`${root}supabase/migrations/archive`).filter((name) =>
-    name.endsWith('_shipment_cancellation_label_coordination.sql'),
+  const migrations = readdirSync(`${root}supabase/migrations/archive`).filter(
+    (name) => name.endsWith('_shipment_cancellation_label_coordination.sql'),
   );
   expect(migrations).toHaveLength(1);
   const sql = readFileSync(
@@ -79,8 +79,8 @@ test.each(['0', '65536', 'abc'])(
 );
 
 test('canonical refund-request SQL matches exactly one additive migration', () => {
-  const migrations = readdirSync(`${root}supabase/migrations/archive`).filter((name) =>
-    name.endsWith('_shipment_cancellation_refund_request.sql'),
+  const migrations = readdirSync(`${root}supabase/migrations/archive`).filter(
+    (name) => name.endsWith('_shipment_cancellation_refund_request.sql'),
   );
   expect(migrations).toHaveLength(1);
   const sql = readFileSync(
@@ -102,8 +102,8 @@ test('canonical refund-request SQL matches exactly one additive migration', () =
 });
 
 test('canonical coordination SQL matches exactly one additive migration', () => {
-  const migrations = readdirSync(`${root}supabase/migrations/archive`).filter((name) =>
-    name.endsWith('_shipment_cancellation_coordination.sql'),
+  const migrations = readdirSync(`${root}supabase/migrations/archive`).filter(
+    (name) => name.endsWith('_shipment_cancellation_coordination.sql'),
   );
   expect(migrations).toHaveLength(1);
   const sql = readFileSync(

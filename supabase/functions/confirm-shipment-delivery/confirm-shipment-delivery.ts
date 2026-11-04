@@ -123,7 +123,10 @@ export function resolveBuyerConfirmationPlan(
     throw new ApiError(409, 'SHIPMENT_ORDER_MISMATCH');
   }
 
-  if (context.shipment.status !== 'delivered' && context.shipment.status !== 'completed') {
+  if (
+    context.shipment.status !== 'delivered' &&
+    context.shipment.status !== 'completed'
+  ) {
     throw new ApiError(409, 'SHIPMENT_NOT_IN_CONFIRMABLE_STATE');
   }
 
@@ -149,7 +152,8 @@ export function mapConfirmationRpcResult(
 
   if (value.success) {
     if (
-      (value.completion_source !== 'buyer' && value.completion_source !== 'auto') ||
+      (value.completion_source !== 'buyer' &&
+        value.completion_source !== 'auto') ||
       value.error !== null
     ) {
       throw new ApiError(500, 'INTERNAL_ERROR');

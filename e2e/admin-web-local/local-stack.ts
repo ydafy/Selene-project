@@ -12,23 +12,31 @@ export interface LocalStack {
 
 export function parseLocalStack(statusEnv: string): LocalStack {
   const parsed = JSON.parse(statusEnv.trim()) as Record<string, unknown>;
-  const read = (key: string) => (typeof parsed[key] === 'string' ? (parsed[key] as string) : '');
+  const read = (key: string) =>
+    typeof parsed[key] === 'string' ? (parsed[key] as string) : '';
   const apiUrl = read('API_URL');
   const anonKey = read('ANON_KEY');
   const serviceRoleKey = read('SERVICE_ROLE_KEY');
-  if (!apiUrl || !anonKey || !serviceRoleKey) throw new Error('LOCAL_STACK_NOT_RUNNING');
+  if (!apiUrl || !anonKey || !serviceRoleKey)
+    throw new Error('LOCAL_STACK_NOT_RUNNING');
 
   const { hostname } = new URL(apiUrl);
-  if (hostname !== '127.0.0.1' && hostname !== 'localhost') throw new Error('LOCAL_API_URL_REQUIRED');
+  if (hostname !== '127.0.0.1' && hostname !== 'localhost')
+    throw new Error('LOCAL_API_URL_REQUIRED');
   return { apiUrl, anonKey, serviceRoleKey };
 }
 
 export function readLocalStack(): LocalStack {
   let output: string;
   try {
-    output = execSync('supabase status --env', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    output = execSync('supabase status --env', {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
   } catch {
-    throw new Error('LOCAL_STACK_NOT_RUNNING: run `supabase start` in this worktree.');
+    throw new Error(
+      'LOCAL_STACK_NOT_RUNNING: run `supabase start` in this worktree.',
+    );
   }
   return parseLocalStack(output);
 }

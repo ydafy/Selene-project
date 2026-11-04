@@ -20,13 +20,17 @@ const read = (name: string) =>
 const newMigrationName = readdirSync(DIR).find((f) =>
   f.endsWith('_remove_wallet_writes_disputes.sql'),
 );
-if (!newMigrationName) throw new Error('remove_wallet_writes_disputes migration missing');
+if (!newMigrationName)
+  throw new Error('remove_wallet_writes_disputes migration missing');
 const newMigration = read(newMigrationName);
 
 /** Header (before the first $$) and body (between the first two $$) of a function. */
 const definition = (sql: string, name: string) => {
   const start = sql.search(
-    new RegExp(`CREATE OR REPLACE FUNCTION\\s+"?public"?\\."?${name}"?\\(`, 'i'),
+    new RegExp(
+      `CREATE OR REPLACE FUNCTION\\s+"?public"?\\."?${name}"?\\(`,
+      'i',
+    ),
   );
   if (start < 0) throw new Error(`${name} not found`);
   const open = sql.indexOf('$$', start);
@@ -35,12 +39,16 @@ const definition = (sql: string, name: string) => {
 };
 
 const normalize = (sql: string) =>
-  sql.replace(/--[^\n]*/g, '').replace(/\s+/g, ' ').trim();
+  sql
+    .replace(/--[^\n]*/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 const headerTraits = (header: string) => ({
   securityDefiner: /SECURITY\s+DEFINER/i.test(header),
   searchPath: (
-    header.match(/SET\s+"?search_path"?\s*(?:=|TO)\s*([^\n]+)/i)?.[1] ?? 'MISSING'
+    header.match(/SET\s+"?search_path"?\s*(?:=|TO)\s*([^\n]+)/i)?.[1] ??
+    'MISSING'
   ).replace(/["'\s]/g, ''),
 });
 
@@ -66,18 +74,23 @@ const REFUSE_CONFIRM =
 const DISPUTE_PAYOUT_SECTION =
   /IF v_shipment_id IS NOT NULL AND EXISTS \( SELECT 1 FROM public\.shipments WHERE id = v_shipment_id AND stripe_payment_intent_id IS NOT NULL \) THEN NULL; RAISE NOTICE [\s\S]*?'Resolución de disputa a favor del vendedor' \); END IF;/;
 
-const DISPUTE_CASES = ['fn_resolve_dispute_to_seller', 'fn_resolve_dispute_to_seller_as_admin'].map(
-  (name) => ({
-    name,
-    previous: BASELINE,
-    blocks: [
-      [/v_total_payout NUMERIC; v_new_balance NUMERIC; v_wallet_id UUID;/],
-      [DISPUTE_PAYOUT_SECTION],
-    ] as readonly Block[],
-  }),
-);
+const DISPUTE_CASES = [
+  'fn_resolve_dispute_to_seller',
+  'fn_resolve_dispute_to_seller_as_admin',
+].map((name) => ({
+  name,
+  previous: BASELINE,
+  blocks: [
+    [/v_total_payout NUMERIC; v_new_balance NUMERIC; v_wallet_id UUID;/],
+    [DISPUTE_PAYOUT_SECTION],
+  ] as readonly Block[],
+}));
 
-const CASES: readonly { name: string; previous: string; blocks: readonly Block[] }[] = [
+const CASES: readonly {
+  name: string;
+  previous: string;
+  blocks: readonly Block[];
+}[] = [
   {
     // BL36: the wallet credit of non-Connect shipments becomes a stable refusal.
     name: 'fn_confirm_shipment_delivery',
@@ -121,12 +134,17 @@ const CASES: readonly { name: string; previous: string; blocks: readonly Block[]
     name: 'fn_log_return_payment',
     previous: BASELINE,
     blocks: [
-      [/v_seller_id UUID; v_wallet_id UUID; v_order_id UUID; v_shipment_id UUID;/, 'v_locked_id UUID;'],
+      [
+        /v_seller_id UUID; v_wallet_id UUID; v_order_id UUID; v_shipment_id UUID;/,
+        'v_locked_id UUID;',
+      ],
       [
         /SELECT seller_id, order_id, shipment_id INTO v_seller_id, v_order_id, v_shipment_id FROM/,
         'SELECT id INTO v_locked_id FROM',
       ],
-      [/SELECT id INTO v_wallet_id FROM public\.wallets [\s\S]*?FROM public\.wallets WHERE id = v_wallet_id;/],
+      [
+        /SELECT id INTO v_wallet_id FROM public\.wallets [\s\S]*?FROM public\.wallets WHERE id = v_wallet_id;/,
+      ],
     ],
   },
   // Comment-only rewrites: these crons never touched the wallet tables.
@@ -142,7 +160,9 @@ describe('rewritten functions equal their previous definition minus the wallet b
       const next = definition(newMigration, fn.name);
 
       expect(headerTraits(next.header)).toEqual(headerTraits(previous.header));
-      expect(withoutWallet(previous.body, fn.blocks)).toBe(normalize(next.body));
+      expect(withoutWallet(previous.body, fn.blocks)).toBe(
+        normalize(next.body),
+      );
     });
   }
 });

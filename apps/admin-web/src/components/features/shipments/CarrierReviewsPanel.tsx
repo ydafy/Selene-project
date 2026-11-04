@@ -1,5 +1,8 @@
 import { CarrierReviewsBucket } from './CarrierReviewsBucket';
-import { useCarrierReviews, useResolveCarrierReview } from '../../../hooks/useCarrierReviews';
+import {
+  useCarrierReviews,
+  useResolveCarrierReview,
+} from '../../../hooks/useCarrierReviews';
 
 /** Wires the carrier reviews query and resolution into their bucket. */
 export const CarrierReviewsPanel = () => {

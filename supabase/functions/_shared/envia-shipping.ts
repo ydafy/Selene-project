@@ -420,7 +420,10 @@ export async function runLabelClaimOrchestration<T>(dependencies: {
   markSent: (claimToken: string) => Promise<boolean>;
   provider: () => Promise<LabelProviderResult<T>>;
   finalize: (claimToken: string, accepted: T | null) => Promise<boolean>;
-  rejected: (claimToken: string, reason?: 'evidence_persistence_failed') => Promise<boolean>;
+  rejected: (
+    claimToken: string,
+    reason?: 'evidence_persistence_failed',
+  ) => Promise<boolean>;
   orphan: (claimToken: string) => Promise<boolean>;
 }): Promise<LabelClaimOrchestrationResult<T>> {
   const preflight = await dependencies.preflight?.();

@@ -74,7 +74,10 @@ interface PayoutReleaseWorkbenchProps {
   onToggleShipment: (sellerId: string, shipmentId: string) => void;
   onSelectEligibleBatch: (sellerId: string, shipmentIds: string[]) => void;
   onClearAllSelections: () => void;
-  onRelease: (sellerId: string, expected?: ReturnType<typeof snapshotFor>[number]) => Promise<void>;
+  onRelease: (
+    sellerId: string,
+    expected?: ReturnType<typeof snapshotFor>[number],
+  ) => Promise<void>;
   onBusyChange?: (busy: boolean) => void;
 }
 
@@ -137,14 +140,18 @@ export const PayoutReleaseWorkbench = ({
     activeReview.current = isReviewed ? reviewKey : null;
   }, [isReviewed, reviewKey]);
   if (reviewKey !== null && !isReviewed) setReviewKey(null);
-  const currentPage = pagination?.page ?? Math.min(
-    page,
-    Math.max(0, Math.ceil(batches.length / PAYOUT_PAGE_SIZE) - 1),
-  );
-  const visible = pagination ? batches : batches.slice(
-    currentPage * PAYOUT_PAGE_SIZE,
-    (currentPage + 1) * PAYOUT_PAGE_SIZE,
-  );
+  const currentPage =
+    pagination?.page ??
+    Math.min(
+      page,
+      Math.max(0, Math.ceil(batches.length / PAYOUT_PAGE_SIZE) - 1),
+    );
+  const visible = pagination
+    ? batches
+    : batches.slice(
+        currentPage * PAYOUT_PAGE_SIZE,
+        (currentPage + 1) * PAYOUT_PAGE_SIZE,
+      );
   // Keep outcomes outside queue-specific states so refresh cannot hide uncertainty.
   const outcome = progress ? (
     <p
@@ -160,9 +167,15 @@ export const PayoutReleaseWorkbench = ({
         ? ` · ${releaseError}. Actualiza la cola antes de volver a actuar.`
         : ''}
     </p>
-  ) : releaseError ? <p role="alert" className="mb-3 text-sm text-blue-light">{releaseError}</p> : null;
+  ) : releaseError ? (
+    <p role="alert" className="mb-3 text-sm text-blue-light">
+      {releaseError}
+    </p>
+  ) : null;
   const batch = batches[0];
-  const detailBatch = selectionBatches.find((item) => item.sellerId === focusedSellerId);
+  const detailBatch = selectionBatches.find(
+    (item) => item.sellerId === focusedSellerId,
+  );
   const busy = isReleasing || submitting || selecting;
 
   if (isLoading)
@@ -297,15 +310,27 @@ export const PayoutReleaseWorkbench = ({
                 if (busy || inFlight.current) return;
                 setReviewKey(null);
                 if (!onSelectAll) {
-                  for (const item of batches) onSelectEligibleBatch(item.sellerId, eligibleIdsFor(item));
+                  for (const item of batches)
+                    onSelectEligibleBatch(item.sellerId, eligibleIdsFor(item));
                   return;
                 }
                 inFlight.current = true;
                 setSelecting(true);
                 onBusyChange?.(true);
-                try { await onSelectAll(); setReleaseError(null); }
-                catch (error) { setReleaseError(error instanceof Error ? error.message : 'No se pudo completar la selección.'); }
-                finally { inFlight.current = false; setSelecting(false); onBusyChange?.(false); }
+                try {
+                  await onSelectAll();
+                  setReleaseError(null);
+                } catch (error) {
+                  setReleaseError(
+                    error instanceof Error
+                      ? error.message
+                      : 'No se pudo completar la selección.',
+                  );
+                } finally {
+                  inFlight.current = false;
+                  setSelecting(false);
+                  onBusyChange?.(false);
+                }
               }}
             >
               Seleccionar todos los elegibles
@@ -369,7 +394,9 @@ export const PayoutReleaseWorkbench = ({
         <div className="flex items-center justify-between border-b border-white/5 px-5 py-4">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-light">
             Vendedores{' '}
-            <span className="ml-2 text-platinum">{pagination?.totalGroups ?? batches.length}</span>
+            <span className="ml-2 text-platinum">
+              {pagination?.totalGroups ?? batches.length}
+            </span>
           </p>
           <Wallet size={16} className="text-lion" />
         </div>

@@ -12,8 +12,12 @@ test('event evidence adapter accepts only explicit inserted or duplicate RPC boo
 
   expect(adapter).toBeDefined();
   expect(adapter).toContain("'fn_append_connect_payout_event' as never");
-  expect(adapter).toMatch(/if \(data !== true && data !== false\)\s*\{\s*throw new Error\('PAYOUT_EVENT_APPEND_INVALID_RESULT'\);\s*}/);
-  expect(adapter).toMatch(/if \(data !== true && data !== false\)[\s\S]*?}\s*return data\s*;/);
+  expect(adapter).toMatch(
+    /if \(data !== true && data !== false\)\s*\{\s*throw new Error\('PAYOUT_EVENT_APPEND_INVALID_RESULT'\);\s*}/,
+  );
+  expect(adapter).toMatch(
+    /if \(data !== true && data !== false\)[\s\S]*?}\s*return data\s*;/,
+  );
 });
 
 test('terminal adapter returns the accepted RPC boolean to reconciliation', () => {
@@ -24,6 +28,10 @@ test('terminal adapter returns the accepted RPC boolean to reconciliation', () =
 
   expect(adapter).toBeDefined();
   expect(adapter).toContain("'fn_project_payout_run_terminal' as never");
-  expect(adapter).toMatch(/if \(projected !== true\)\s*\{\s*throw new Error\('PAYOUT_RUN_TERMINAL_PROJECTION_CONFLICT'\);\s*}/);
-  expect(adapter).toMatch(/if \(projected !== true\)[\s\S]*?}\s*return projected\s*;/);
+  expect(adapter).toMatch(
+    /if \(projected !== true\)\s*\{\s*throw new Error\('PAYOUT_RUN_TERMINAL_PROJECTION_CONFLICT'\);\s*}/,
+  );
+  expect(adapter).toMatch(
+    /if \(projected !== true\)[\s\S]*?}\s*return projected\s*;/,
+  );
 });

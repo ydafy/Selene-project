@@ -1,11 +1,13 @@
 # Payout Event Ledger and Late Failure
 
 ## Goal
+
 Implement only Phase 2A: append-only Stripe payout evidence and reconciliation of late `paid_observed` to `payout_failed`.
 
 ## Scope
 
 ### In scope
+
 - Minimal database evidence ledger, constraints, RLS, grants, and indexes.
 - Idempotent Stripe event ingestion keyed by Stripe event identity.
 - Aggregate payout-run projection and shipment release-state downgrade for late `paid → failed`.
@@ -14,6 +16,7 @@ Implement only Phase 2A: append-only Stripe payout evidence and reconciliation o
 - Focused strict TDD and deployment handoff.
 
 ### Out of scope
+
 - Phase 2B: explicit release-stage persistence and awaiting-balance executor.
 - Phase 2C: fee-worker lease/recovery.
 - Phase 2D: remote deployment, webhook configuration, scheduler work, and manual E2E execution.
@@ -65,12 +68,14 @@ Implement only Phase 2A: append-only Stripe payout evidence and reconciliation o
   - Deployment handoff recorded below; SQL/deploy/E2E not executed.
 
 ## Verification
+
 - Strict TDD: observe focused RED before implementation, then GREEN and triangulation.
 - Run focused Bun tests for changed payout migration, reconciliation, and webhook paths.
 - Run targeted type checks only if changed surfaces provide a stable command.
 - Do not apply SQL, deploy functions, configure Stripe webhooks, rotate secrets, or execute E2E.
 
 ## Evidence
+
 - Engram mirror: `odd/payout-event-ledger-late-failure/tasks`.
 - Strict TDD RED observed before implementation; GREEN observed after; triangulation and eslint evidence recorded in task 4.
 - Independent final verification: PASS for Phase 2A functionality; direct ledger privileges are revoked from PUBLIC, anon, authenticated, and service_role, while service_role retains only append-RPC EXECUTE.
@@ -79,6 +84,7 @@ Implement only Phase 2A: append-only Stripe payout evidence and reconciliation o
 - Not executed: Stripe webhook subscription confirmation and the specified Stripe test-mode E2E.
 
 ## Maintainer deployment handoff (do in this order)
+
 1. Apply migration `supabase/migrations/20260919023427_connect_payout_event_ledger.sql` in the Supabase Dashboard (single transaction; after existing migrations in file order).
 2. Deploy Edge Function `stripe-webhooks` (contains reconciliation + wiring changes).
 3. Stripe Dashboard: ensure the webhook subscription covers `payout.created`, `payout.updated`, `payout.paid`, `payout.failed`, `payout.canceled` (Connect/account webhook endpoint for connected-account payout events). `account.external_account.updated` is intentionally NOT required in 2A.

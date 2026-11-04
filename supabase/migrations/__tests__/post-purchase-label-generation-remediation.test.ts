@@ -2,12 +2,11 @@ import { expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import {
-  resolvePaymentIntentSucceededAction,
-} from '../../functions/stripe-webhooks/single-modal-settlement.ts';
+import { resolvePaymentIntentSucceededAction } from '../../functions/stripe-webhooks/single-modal-settlement.ts';
 import '../../functions/_shared/__tests__/zod-runtime.bun.preload.ts';
 
-const { selectPaquetexpressGroundRate } = await import('../../functions/_shared/envia-shipping.ts');
+const { selectPaquetexpressGroundRate } =
+  await import('../../functions/_shared/envia-shipping.ts');
 
 const root = process.cwd();
 const readSql = (path: string) => readFileSync(join(root, path), 'utf8');
@@ -23,8 +22,12 @@ test('requires a maintainer-owned clean reset before adding the one-item shipmen
   expect(sql).toMatch(
     /CREATE OR REPLACE FUNCTION public\.fn_create_shipment_from_payment[\s\S]*?LEGACY_GROUPED_SHIPMENT_SETTLEMENT_RETIRED/i,
   );
-  expect(sql.indexOf('PRELAUNCH_RESET_REQUIRED:LEGACY_GROUPED_SHIPMENTS')).toBeLessThan(
-    sql.indexOf('CREATE UNIQUE INDEX IF NOT EXISTS order_items_shipment_id_unique'),
+  expect(
+    sql.indexOf('PRELAUNCH_RESET_REQUIRED:LEGACY_GROUPED_SHIPMENTS'),
+  ).toBeLessThan(
+    sql.indexOf(
+      'CREATE UNIQUE INDEX IF NOT EXISTS order_items_shipment_id_unique',
+    ),
   );
 });
 
@@ -57,15 +60,17 @@ test('preserves the INTEGER payout-view column with a final output cast only', (
 });
 
 test('accepts only the exact Paquetexpress ground rating', () => {
-  expect(selectPaquetexpressGroundRate([
-    {
-      carrier: 'Paquetexpress',
-      service: 'Ground',
-      totalPrice: '168.75',
-      currency: 'MXN',
-      quoteId: 'ground-quote',
-    },
-  ])).toEqual({
+  expect(
+    selectPaquetexpressGroundRate([
+      {
+        carrier: 'Paquetexpress',
+        service: 'Ground',
+        totalPrice: '168.75',
+        currency: 'MXN',
+        quoteId: 'ground-quote',
+      },
+    ]),
+  ).toEqual({
     carrier: 'Paquetexpress',
     service: 'Ground',
     quoteReference: 'ground-quote',

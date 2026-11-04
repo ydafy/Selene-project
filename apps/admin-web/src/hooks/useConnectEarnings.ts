@@ -20,9 +20,7 @@ export interface ConnectEarningsRow {
   created_at: string | null;
 }
 
-function normalizeStatus(
-  status: string | null,
-): ConnectEarningsRow['status'] {
+function normalizeStatus(status: string | null): ConnectEarningsRow['status'] {
   if (status === 'succeeded' || status === 'refunded' || status === 'failed') {
     return status;
   }

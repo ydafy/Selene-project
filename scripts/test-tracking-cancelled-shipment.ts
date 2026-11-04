@@ -76,12 +76,14 @@ async function record(
 }
 
 async function shipment(tx: Tx, shipmentId: string) {
-  const [row] = await tx`SELECT status, shipped_at, delivered_at FROM public.shipments WHERE id = ${shipmentId}`;
+  const [row] =
+    await tx`SELECT status, shipped_at, delivered_at FROM public.shipments WHERE id = ${shipmentId}`;
   return row;
 }
 
 async function eventCount(tx: Tx, shipmentId: string) {
-  const [{ n }] = await tx`SELECT count(*)::int AS n FROM public.shipment_tracking_events WHERE shipment_id = ${shipmentId}`;
+  const [{ n }] =
+    await tx`SELECT count(*)::int AS n FROM public.shipment_tracking_events WHERE shipment_id = ${shipmentId}`;
   return n as number;
 }
 
@@ -117,8 +119,22 @@ cases.push(
   [
     'a shipped then delivered sequence on a cancelled shipment moves nothing and keeps both events',
     async (tx) => {
-      await record(tx, ids.cancelled, 'in_transit', 'shipped', '2026-10-22T10:00:00Z', 'Picked up');
-      const second = await record(tx, ids.cancelled, 'delivered', 'delivered', '2026-10-23T10:00:00Z', 'Delivered');
+      await record(
+        tx,
+        ids.cancelled,
+        'in_transit',
+        'shipped',
+        '2026-10-22T10:00:00Z',
+        'Picked up',
+      );
+      const second = await record(
+        tx,
+        ids.cancelled,
+        'delivered',
+        'delivered',
+        '2026-10-23T10:00:00Z',
+        'Delivered',
+      );
       assert.equal(second.shipment_status, 'cancelled');
       const row = await shipment(tx, ids.cancelled);
       assert.equal(row.status, 'cancelled');
@@ -130,8 +146,22 @@ cases.push(
   [
     'replaying the same event on a cancelled shipment is a no-op that stays cancelled',
     async (tx) => {
-      await record(tx, ids.cancelled, 'in_transit', 'shipped', '2026-10-22T10:00:00Z', 'Picked up');
-      const replay = await record(tx, ids.cancelled, 'in_transit', 'shipped', '2026-10-22T10:00:00Z', 'Picked up');
+      await record(
+        tx,
+        ids.cancelled,
+        'in_transit',
+        'shipped',
+        '2026-10-22T10:00:00Z',
+        'Picked up',
+      );
+      const replay = await record(
+        tx,
+        ids.cancelled,
+        'in_transit',
+        'shipped',
+        '2026-10-22T10:00:00Z',
+        'Picked up',
+      );
       assert.equal(replay.inserted, false);
       assert.equal(replay.shipment_status, 'cancelled');
       assert.equal((await shipment(tx, ids.cancelled)).status, 'cancelled');
@@ -141,7 +171,14 @@ cases.push(
   [
     'control: a preparing shipment still advances to shipped on a shipped transition (the check can detect movement)',
     async (tx) => {
-      const result = await record(tx, ids.preparing, 'in_transit', 'shipped', '2026-10-22T10:00:00Z', 'Picked up');
+      const result = await record(
+        tx,
+        ids.preparing,
+        'in_transit',
+        'shipped',
+        '2026-10-22T10:00:00Z',
+        'Picked up',
+      );
       assert.equal(result.inserted, true);
       assert.equal(result.shipment_status, 'shipped');
       const row = await shipment(tx, ids.preparing);
@@ -172,7 +209,8 @@ async function run() {
       }
     }
     // Every case rolled back: nothing from this harness may persist.
-    const [left] = await sql`SELECT count(*)::int AS n FROM public.orders WHERE id = ${ids.order}`;
+    const [left] =
+      await sql`SELECT count(*)::int AS n FROM public.orders WHERE id = ${ids.order}`;
     assert.equal(left.n, 0);
   } finally {
     await sql.close();

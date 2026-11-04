@@ -24,7 +24,9 @@ export function TaxWithholdingCell({ tax }: TaxWithholdingCellProps) {
       <button
         onClick={() => setExpanded(!expanded)}
         className="flex items-center gap-1.5 group cursor-pointer"
-        aria-label={expanded ? 'Ocultar desglose fiscal' : 'Ver desglose fiscal'}
+        aria-label={
+          expanded ? 'Ocultar desglose fiscal' : 'Ver desglose fiscal'
+        }
         aria-expanded={expanded}
       >
         <span className="text-xs font-medium text-fire">

@@ -59,7 +59,8 @@ describe('resolve-dispute request schema', () => {
     expect(result.error?.issues[0]).toMatchObject({
       code: 'too_small',
       path: ['adminNote'],
-      message: 'La nota del administrador es obligatoria y debe ser descriptiva',
+      message:
+        'La nota del administrador es obligatoria y debe ser descriptiva',
     });
   });
 

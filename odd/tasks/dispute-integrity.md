@@ -11,12 +11,12 @@ Hardens how disputes are opened, confirmed and refunded so every refund state in
 
 ## Tasks
 
-| ID | Specs | Route | Commit |
-| --- | --- | --- | --- |
-| T1 | S1 | inline | b396380 |
-| T2 | S2 | worker | 55ef13e |
-| T3 | S3 | worker | f681c4a |
-| T4 | S4 | inline | none (read-only, see L5) |
+| ID  | Specs | Route  | Commit                   |
+| --- | ----- | ------ | ------------------------ |
+| T1  | S1    | inline | b396380                  |
+| T2  | S2    | worker | 55ef13e                  |
+| T3  | S3    | worker | f681c4a                  |
+| T4  | S4    | inline | none (read-only, see L5) |
 
 ## Log
 

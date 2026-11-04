@@ -13,27 +13,52 @@ import { expect, test } from '@playwright/test';
 import { readLocalStack } from './local-stack';
 
 const stack = readLocalStack();
-const db = createClient(stack.apiUrl, stack.serviceRoleKey, { auth: { persistSession: false } });
+const db = createClient(stack.apiUrl, stack.serviceRoleKey, {
+  auth: { persistSession: false },
+});
 
 const adminId = '00000000-0000-4000-8000-000000000001';
 const sellerId = '00000000-0000-4000-8000-000000000002';
 const buyerId = '00000000-0000-4000-8000-000000000003';
 const orderId = 'e2e10000-0000-4000-8000-000000000001';
-const failed = { shipment: 'e2e10000-0000-4000-8000-0000000000a1', amount: 123456, paymentIntent: 'pi_e2e_failed' };
-const escalated = { shipment: 'e2e10000-0000-4000-8000-0000000000a2', amount: 98765, paymentIntent: 'pi_e2e_escalated' };
+const failed = {
+  shipment: 'e2e10000-0000-4000-8000-0000000000a1',
+  amount: 123456,
+  paymentIntent: 'pi_e2e_failed',
+};
+const escalated = {
+  shipment: 'e2e10000-0000-4000-8000-0000000000a2',
+  amount: 98765,
+  paymentIntent: 'pi_e2e_escalated',
+};
 const shipmentIds = [failed.shipment, escalated.shipment];
 const reference = 'SPEI-E2E-0001';
 
-async function ok<T>(promise: PromiseLike<{ data: T; error: { message: string } | null }>, what: string): Promise<T> {
+async function ok<T>(
+  promise: PromiseLike<{ data: T; error: { message: string } | null }>,
+  what: string,
+): Promise<T> {
   const { data, error } = await promise;
   if (error) throw new Error(`${what}: ${error.message}`);
   return data;
 }
 
 async function cleanup() {
-  await ok(db.from('notifications').delete().eq('event_payload->>order_id', orderId), 'notifications');
-  await ok(db.from('admin_audit_logs').delete().in('target_id', shipmentIds), 'admin_audit_logs');
-  await ok(db.from('shipment_cancellation_operations').delete().in('shipment_id', shipmentIds), 'operations');
+  await ok(
+    db.from('notifications').delete().eq('event_payload->>order_id', orderId),
+    'notifications',
+  );
+  await ok(
+    db.from('admin_audit_logs').delete().in('target_id', shipmentIds),
+    'admin_audit_logs',
+  );
+  await ok(
+    db
+      .from('shipment_cancellation_operations')
+      .delete()
+      .in('shipment_id', shipmentIds),
+    'operations',
+  );
   await ok(db.from('shipments').delete().in('id', shipmentIds), 'shipments');
   await ok(db.from('orders').delete().eq('id', orderId), 'orders');
 }
@@ -58,7 +83,13 @@ async function start(item: typeof failed) {
         payment_intent: item.paymentIntent,
         amount: item.amount,
         reason: 'requested_by_customer',
-        metadata: { shipment_id: item.shipment, order_id: orderId, caller_role: 'buyer', reason: 'Changed my mind', seguro_share_cents: 500 },
+        metadata: {
+          shipment_id: item.shipment,
+          order_id: orderId,
+          caller_role: 'buyer',
+          reason: 'Changed my mind',
+          seguro_share_cents: 500,
+        },
       },
       p_cancellation_loss_cents: 0,
     }),
@@ -68,11 +99,16 @@ async function start(item: typeof failed) {
 
 test.beforeAll(async () => {
   // Fail fast with a clear message when the functions are not being served.
-  const probe = await fetch(`${stack.apiUrl}/functions/v1/list-shipment-refund-problems`, {
-    method: 'OPTIONS',
-  }).catch(() => null);
+  const probe = await fetch(
+    `${stack.apiUrl}/functions/v1/list-shipment-refund-problems`,
+    {
+      method: 'OPTIONS',
+    },
+  ).catch(() => null);
   if (!probe || probe.status >= 500 || probe.status === 404) {
-    throw new Error('FUNCTIONS_NOT_SERVED: run `supabase functions serve --no-verify-jwt --env-file supabase/functions/.env`.');
+    throw new Error(
+      'FUNCTIONS_NOT_SERVED: run `supabase functions serve --no-verify-jwt --env-file supabase/functions/.env`.',
+    );
   }
 
   await cleanup();
@@ -110,12 +146,27 @@ test.beforeAll(async () => {
     p_status: status,
     p_failure_reason: reason,
   });
-  await ok(db.rpc('fn_apply_shipment_cancellation_refund_event', applyArgs('pending', null)), 'pending');
-  await ok(db.rpc('fn_apply_shipment_cancellation_refund_event', applyArgs('failed', 'lost_or_stolen_card')), 'failed');
+  await ok(
+    db.rpc(
+      'fn_apply_shipment_cancellation_refund_event',
+      applyArgs('pending', null),
+    ),
+    'pending',
+  );
+  await ok(
+    db.rpc(
+      'fn_apply_shipment_cancellation_refund_event',
+      applyArgs('failed', 'lost_or_stolen_card'),
+    ),
+    'failed',
+  );
 
   await start(escalated);
   await ok(
-    db.rpc('fn_escalate_shipment_cancellation', { p_shipment_id: escalated.shipment, p_reason: 'refund_not_found' }),
+    db.rpc('fn_escalate_shipment_cancellation', {
+      p_shipment_id: escalated.shipment,
+      p_reason: 'refund_not_found',
+    }),
     'escalate',
   );
 });
@@ -124,11 +175,15 @@ test.afterAll(async () => {
   await cleanup();
 });
 
-test('admin lists both refund problems and resolves one against the local stack', async ({ page }) => {
+test('admin lists both refund problems and resolves one against the local stack', async ({
+  page,
+}) => {
   await page.goto('/login');
   await page.getByRole('textbox').first().fill('admin@selene.local');
   await page.locator('input[type="password"]').fill('password123');
-  await page.getByRole('button', { name: 'Entrar al Sistema', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Entrar al Sistema', exact: true })
+    .click();
 
   await expect(page).not.toHaveURL(/\/login/);
   await page.goto('/payments');
@@ -157,7 +212,9 @@ test('admin lists both refund problems and resolves one against the local stack'
   const operation = await ok(
     db
       .from('shipment_cancellation_operations')
-      .select('refund_resolved_at, refund_resolved_by, refund_resolution_reference')
+      .select(
+        'refund_resolved_at, refund_resolved_by, refund_resolution_reference',
+      )
       .eq('shipment_id', failed.shipment)
       .single(),
     'operation',
@@ -176,10 +233,19 @@ test('admin lists both refund problems and resolves one against the local stack'
   );
   expect(audit).toHaveLength(1);
   expect(audit[0].admin_id).toBe(adminId);
-  expect(audit[0].details).toMatchObject({ reference, amount_owed_cents: failed.amount });
+  expect(audit[0].details).toMatchObject({
+    reference,
+    amount_owed_cents: failed.amount,
+  });
 
-  const shipment = await ok(db.from('shipments').select('status').eq('id', failed.shipment).single(), 'shipment');
+  const shipment = await ok(
+    db.from('shipments').select('status').eq('id', failed.shipment).single(),
+    'shipment',
+  );
   expect(shipment.status).toBe('cancelled');
-  const untouched = await ok(db.from('shipments').select('status').eq('id', escalated.shipment).single(), 'escalated');
+  const untouched = await ok(
+    db.from('shipments').select('status').eq('id', escalated.shipment).single(),
+    'escalated',
+  );
   expect(untouched.status).toBe('paid');
 });

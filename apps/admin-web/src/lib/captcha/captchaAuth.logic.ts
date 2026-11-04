@@ -15,7 +15,11 @@ export const signInWithPasswordCaptcha = async (
   password: string,
 ) => {
   const captchaToken = await getToken();
-  return auth.signInWithPassword({ email, password, options: { captchaToken } });
+  return auth.signInWithPassword({
+    email,
+    password,
+    options: { captchaToken },
+  });
 };
 
 /** Message for the login error box; handles local challenge failures and the server's `captcha_failed`. */
@@ -27,5 +31,7 @@ export const loginErrorMessage = (err: unknown): string => {
   if (code === CAPTCHA_FAILED_CODE) {
     return 'No se pudo completar la verificación de seguridad. Inténtalo de nuevo.';
   }
-  return err instanceof Error ? err.message : 'Error inesperado al iniciar sesión.';
+  return err instanceof Error
+    ? err.message
+    : 'Error inesperado al iniciar sesión.';
 };

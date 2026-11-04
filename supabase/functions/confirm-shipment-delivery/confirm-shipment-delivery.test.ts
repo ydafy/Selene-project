@@ -8,8 +8,8 @@ import {
   resolveBuyerConfirmationPlan,
 } from './confirm-shipment-delivery';
 import {
-	deriveOrderGroupId,
-	deriveShipmentId,
+  deriveOrderGroupId,
+  deriveShipmentId,
 } from '../create-connect-payment/single-payment-builder.ts';
 
 const orderId = '11111111-1111-4111-8111-111111111111';
@@ -31,37 +31,37 @@ const validContext = {
 };
 
 describe('parseConfirmationRequestBody', () => {
-	it('accepts real UUID v5 identifiers produced by create-connect-payment', () => {
-		const producerOrderId = deriveOrderGroupId('confirmation-contract-key');
-		const producerShipmentId = deriveShipmentId(
-			'confirmation-contract-key',
-			'product_gpu',
-		);
-		const request = parseConfirmationRequestBody({
-			orderId: producerOrderId,
-			shipmentId: producerShipmentId,
-			idempotencyKey: `confirm_shipment_${producerShipmentId}`,
-		});
+  it('accepts real UUID v5 identifiers produced by create-connect-payment', () => {
+    const producerOrderId = deriveOrderGroupId('confirmation-contract-key');
+    const producerShipmentId = deriveShipmentId(
+      'confirmation-contract-key',
+      'product_gpu',
+    );
+    const request = parseConfirmationRequestBody({
+      orderId: producerOrderId,
+      shipmentId: producerShipmentId,
+      idempotencyKey: `confirm_shipment_${producerShipmentId}`,
+    });
 
-		expect(request).toEqual({
-			orderId: producerOrderId,
-			shipmentId: producerShipmentId,
-			idempotencyKey: `confirm_shipment_${producerShipmentId}`,
-		});
-		expect(
-			resolveBuyerConfirmationPlan({
-				...validContext,
-				order: { id: producerOrderId, buyer_id: buyerId },
-				shipment: {
-					id: producerShipmentId,
-					order_id: producerOrderId,
-					status: 'delivered',
-				},
-			}),
-		).toMatchObject({ p_shipment_id: producerShipmentId });
-	});
+    expect(request).toEqual({
+      orderId: producerOrderId,
+      shipmentId: producerShipmentId,
+      idempotencyKey: `confirm_shipment_${producerShipmentId}`,
+    });
+    expect(
+      resolveBuyerConfirmationPlan({
+        ...validContext,
+        order: { id: producerOrderId, buyer_id: buyerId },
+        shipment: {
+          id: producerShipmentId,
+          order_id: producerOrderId,
+          status: 'delivered',
+        },
+      }),
+    ).toMatchObject({ p_shipment_id: producerShipmentId });
+  });
 
-	it('accepts UUID-scoped confirmation with its deterministic idempotency key', () => {
+  it('accepts UUID-scoped confirmation with its deterministic idempotency key', () => {
     expect(parseConfirmationRequestBody(validRequest)).toEqual(validRequest);
   });
 
@@ -165,12 +165,15 @@ describe('resolveBuyerConfirmationPlan', () => {
 describe('mapConfirmationRpcResult', () => {
   it('maps a canonical completion result to the public success contract', () => {
     expect(
-      mapConfirmationRpcResult({
-        success: true,
-        error: null,
-        completion_source: 'buyer',
-        idempotent: false,
-      }, shipmentId),
+      mapConfirmationRpcResult(
+        {
+          success: true,
+          error: null,
+          completion_source: 'buyer',
+          idempotent: false,
+        },
+        shipmentId,
+      ),
     ).toEqual({
       success: true,
       shipmentId,
@@ -182,12 +185,15 @@ describe('mapConfirmationRpcResult', () => {
 
   it('preserves a duplicate completion as idempotent success', () => {
     expect(
-      mapConfirmationRpcResult({
-        success: true,
-        error: null,
-        completion_source: 'auto',
-        idempotent: true,
-      }, shipmentId),
+      mapConfirmationRpcResult(
+        {
+          success: true,
+          error: null,
+          completion_source: 'auto',
+          idempotent: true,
+        },
+        shipmentId,
+      ),
     ).toEqual({
       success: true,
       shipmentId,
@@ -230,7 +236,12 @@ describe('mapConfirmationRpcResult', () => {
   it('no longer maps the removed wallet error code to a conflict', () => {
     expect(() =>
       mapConfirmationRpcResult(
-        { success: false, error: 'SELLER_WALLET_NOT_FOUND', completion_source: null, idempotent: false },
+        {
+          success: false,
+          error: 'SELLER_WALLET_NOT_FOUND',
+          completion_source: null,
+          idempotent: false,
+        },
         shipmentId,
       ),
     ).toThrow(new ApiError(500, 'INTERNAL_ERROR'));

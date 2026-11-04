@@ -20,19 +20,31 @@ interface ActionRequiredPanelProps {
  * component and query so seller payouts and buyer refunds never share a list.
  * The refunds query runs whichever chip is selected, so its count is always shown.
  */
-export const ActionRequiredPanel = ({ payoutCount, children }: ActionRequiredPanelProps) => {
+export const ActionRequiredPanel = ({
+  payoutCount,
+  children,
+}: ActionRequiredPanelProps) => {
   const [view, setView] = useState<ActionRequiredView>('payouts');
   const refunds = useShipmentRefundProblems();
   const resolver = useResolveShipmentRefund();
 
-  const chips: Array<{ id: ActionRequiredView; label: string; count: string }> = [
-    { id: 'payouts', label: 'Dispersiones', count: String(payoutCount) },
-    { id: 'refunds', label: 'Reembolsos', count: refunds.count === null ? '—' : String(refunds.count) },
-  ];
+  const chips: Array<{ id: ActionRequiredView; label: string; count: string }> =
+    [
+      { id: 'payouts', label: 'Dispersiones', count: String(payoutCount) },
+      {
+        id: 'refunds',
+        label: 'Reembolsos',
+        count: refunds.count === null ? '—' : String(refunds.count),
+      },
+    ];
 
   return (
     <div className="space-y-4">
-      <div role="group" aria-label="Tipo de pendiente" className="flex flex-wrap gap-2">
+      <div
+        role="group"
+        aria-label="Tipo de pendiente"
+        className="flex flex-wrap gap-2"
+      >
         {chips.map(({ id, label, count }) => (
           <button
             key={id}

@@ -56,7 +56,10 @@ export const RefundProblemsBucket = ({
 
   if (isLoading) {
     return (
-      <p role="status" className="rounded-3xl border border-white/5 bg-state-gray p-10 text-center text-sm text-blue-light">
+      <p
+        role="status"
+        className="rounded-3xl border border-white/5 bg-state-gray p-10 text-center text-sm text-blue-light"
+      >
         Consultando reembolsos con problema...
       </p>
     );
@@ -116,33 +119,51 @@ export const RefundProblemsBucket = ({
   return (
     <section className="space-y-4" aria-labelledby="refund-problems-title">
       <div>
-        <h2 id="refund-problems-title" className="flex items-center gap-2 text-lg font-bold text-platinum">
-          <AlertTriangle size={20} className="text-amber-400" /> Reembolsos con problema
+        <h2
+          id="refund-problems-title"
+          className="flex items-center gap-2 text-lg font-bold text-platinum"
+        >
+          <AlertTriangle size={20} className="text-amber-400" /> Reembolsos con
+          problema
         </h2>
         <p className="mt-0.5 text-xs text-blue-light">
-          {problems.length} {problems.length === 1 ? 'reembolso necesita' : 'reembolsos necesitan'} revisión
+          {problems.length}{' '}
+          {problems.length === 1
+            ? 'reembolso necesita'
+            : 'reembolsos necesitan'}{' '}
+          revisión
         </p>
         <p className="mt-1 max-w-2xl text-xs text-blue-light/70">
-          Verifica en Stripe o repaga al comprador por otro medio (por ejemplo SPEI) y registra la referencia. Selene no
-          crea reembolsos desde este panel.
+          Verifica en Stripe o repaga al comprador por otro medio (por ejemplo
+          SPEI) y registra la referencia. Selene no crea reembolsos desde este
+          panel.
         </p>
       </div>
 
       <div className="grid gap-3 lg:grid-cols-2">
         {problems.map((problem) => (
-          <article key={problem.shipmentId} className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4">
+          <article
+            key={problem.shipmentId}
+            className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4"
+          >
             <div className="flex items-start justify-between gap-3">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/20 bg-amber-400/10 px-2.5 py-1 text-xs font-bold text-amber-400">
                 <AlertTriangle size={13} /> {KIND_LABELS[problem.kind]}
               </span>
-              <p className="text-sm font-bold text-amber-400">{money(problem.amountOwedCents)}</p>
+              <p className="text-sm font-bold text-amber-400">
+                {money(problem.amountOwedCents)}
+              </p>
             </div>
             <dl className="mt-3 space-y-1 text-[11px] text-blue-light">
               <div>
                 <dt className="inline">Envío: </dt>
-                <dd className="inline font-mono" title={problem.shipmentId}>{shortId(problem.shipmentId)}</dd>
+                <dd className="inline font-mono" title={problem.shipmentId}>
+                  {shortId(problem.shipmentId)}
+                </dd>
                 <dt className="inline"> · Orden: </dt>
-                <dd className="inline font-mono" title={problem.orderId}>{shortId(problem.orderId)}</dd>
+                <dd className="inline font-mono" title={problem.orderId}>
+                  {shortId(problem.orderId)}
+                </dd>
               </div>
               <div>
                 <dt className="inline">Estado del envío: </dt>
@@ -157,13 +178,17 @@ export const RefundProblemsBucket = ({
               {problem.refundFailureReason ? (
                 <div>
                   <dt className="inline">Motivo: </dt>
-                  <dd className="inline">{problem.refundFailureReason.replaceAll('_', ' ')}</dd>
+                  <dd className="inline">
+                    {problem.refundFailureReason.replaceAll('_', ' ')}
+                  </dd>
                 </div>
               ) : null}
               <div>
                 <dt className="inline">Desde: </dt>
                 <dd className="inline">
-                  <time dateTime={problem.since}>{formatTime(problem.since)}</time>
+                  <time dateTime={problem.since}>
+                    {formatTime(problem.since)}
+                  </time>
                 </dd>
               </div>
             </dl>
@@ -188,12 +213,17 @@ export const RefundProblemsBucket = ({
               void submit();
             }}
           >
-            <h3 className="flex items-center gap-2 text-lg font-bold text-platinum" aria-hidden="true">
-              <CheckCircle2 size={20} className="text-forest" /> Marcar reembolso como resuelto
+            <h3
+              className="flex items-center gap-2 text-lg font-bold text-platinum"
+              aria-hidden="true"
+            >
+              <CheckCircle2 size={20} className="text-forest" /> Marcar
+              reembolso como resuelto
             </h3>
             <p className="text-sm text-blue-light">
-              Esto registra que repagaste {money(selected.amountOwedCents)} al comprador fuera de Stripe. Si el envío
-              sigue abierto, también se cancelará. No se crea ningún reembolso nuevo.
+              Esto registra que repagaste {money(selected.amountOwedCents)} al
+              comprador fuera de Stripe. Si el envío sigue abierto, también se
+              cancelará. No se crea ningún reembolso nuevo.
             </p>
             <label className="block text-xs font-semibold text-platinum">
               Referencia del pago externo
@@ -208,7 +238,9 @@ export const RefundProblemsBucket = ({
               />
             </label>
             {error ? (
-              <p role="alert" className="text-xs text-fire">{error}</p>
+              <p role="alert" className="text-xs text-fire">
+                {error}
+              </p>
             ) : null}
             <div className="flex justify-end gap-2">
               <button

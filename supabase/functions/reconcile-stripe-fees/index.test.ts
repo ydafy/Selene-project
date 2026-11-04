@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'bun:test';
 
 import * as reconciliationModule from './index.ts';
-import { parseClaimedFeeJobs, reconcileStripeFeeJobs, requireMutationResult } from './index.ts';
-
+import {
+  parseClaimedFeeJobs,
+  reconcileStripeFeeJobs,
+  requireMutationResult,
+} from './index.ts';
 
 type ClaimedStripeFeeJob = {
   id: string;
@@ -37,7 +40,9 @@ type StripeFeeReconciliationAdapterDependencies = {
     id: string;
     fee: unknown;
   }>;
-  persistFeeAndMarkSucceededAtomically: (completion: unknown) => Promise<boolean>;
+  persistFeeAndMarkSucceededAtomically: (
+    completion: unknown,
+  ) => Promise<boolean>;
   scheduleRetryAtomically: (retry: unknown) => Promise<boolean>;
   markFailedAtomically: (failure: unknown) => Promise<boolean>;
 };
@@ -287,7 +292,8 @@ describe('reconcile Stripe fees worker', () => {
       createOrModifyPayment: async () => forbiddenEffects.push('payments'),
       createOrModifyPayout: async () => forbiddenEffects.push('payouts'),
       createOrModifyTransfer: async () => forbiddenEffects.push('transfers'),
-      createOrModifyCancellation: async () => forbiddenEffects.push('cancellations'),
+      createOrModifyCancellation: async () =>
+        forbiddenEffects.push('cancellations'),
       createOrModifyRefund: async () => forbiddenEffects.push('refunds'),
     };
 
@@ -461,14 +467,21 @@ describe('reconcile Stripe fees production adapter', () => {
 describe('fee worker crash recovery and per-job containment (mocked IO)', () => {
   const token = '33333333-3333-4333-8333-333333333333';
   const leasedJob = { ...JOB, claimToken: token };
-  const secondJob = { ...leasedJob, id: '44444444-4444-4444-8444-444444444444', orderId: 'second-order' };
+  const secondJob = {
+    ...leasedJob,
+    id: '44444444-4444-4444-8444-444444444444',
+    orderId: 'second-order',
+  };
   const adapter = (overrides: Record<string, unknown> = {}) => ({
     workerServiceRoleJwt: 'fee-worker.jwt',
     now: () => NOW,
     policy: POLICY,
     claimDueJobsAtomically: async () => [leasedJob, secondJob],
     loadOrderStripeChargeId: async () => JOB.stripeChargeId,
-    retrieveCharge: async (id: string) => ({ id, balanceTransactionId: 'txn_fee' }),
+    retrieveCharge: async (id: string) => ({
+      id,
+      balanceTransactionId: 'txn_fee',
+    }),
     retrieveBalanceTransaction: async () => ({ id: 'txn_fee', fee: 123 }),
     persistFeeAndMarkSucceededAtomically: async () => true,
     scheduleRetryAtomically: async () => true,
@@ -477,10 +490,17 @@ describe('fee worker crash recovery and per-job containment (mocked IO)', () => 
     ...overrides,
   });
   const invoke = async (overrides: Record<string, unknown>) => {
-    const handler = requireProductionAdapter()(adapter(overrides) as unknown as StripeFeeReconciliationAdapterDependencies);
-    return handler(new Request('https://example.com/reconcile-stripe-fees', {
-      method: 'POST', headers: { authorization: 'Bearer fee-worker.jwt' },
-    }));
+    const handler = requireProductionAdapter()(
+      adapter(
+        overrides,
+      ) as unknown as StripeFeeReconciliationAdapterDependencies,
+    );
+    return handler(
+      new Request('https://example.com/reconcile-stripe-fees', {
+        method: 'POST',
+        headers: { authorization: 'Bearer fee-worker.jwt' },
+      }),
+    );
   };
 
   it('isolates order charge lookup rejection and still completes the next claimed job', async () => {
@@ -490,7 +510,10 @@ describe('fee worker crash recovery and per-job containment (mocked IO)', () => 
         if (orderId === JOB.orderId) throw new Error('lookup rejected');
         return JOB.stripeChargeId;
       },
-      persistFeeAndMarkSucceededAtomically: async (input: unknown) => { completed.push(input); return true; },
+      persistFeeAndMarkSucceededAtomically: async (input: unknown) => {
+        completed.push(input);
+        return true;
+      },
     });
     expect(response.status).toBe(200);
     expect(completed).toHaveLength(1);
@@ -502,11 +525,22 @@ describe('fee worker crash recovery and per-job containment (mocked IO)', () => 
       const completed: unknown[] = [];
       const errors: unknown[] = [];
       const response = await invoke({
-        claimDueJobsAtomically: async () => [{ ...leasedJob, attemptCount: outcome === 'failed' ? 2 : 0 }, secondJob],
-        loadOrderStripeChargeId: async ({ orderId }: { orderId: string }) => orderId === JOB.orderId ? null : JOB.stripeChargeId,
-        [outcome === 'failed' ? 'markFailedAtomically' : 'scheduleRetryAtomically']: async () => { throw new Error(`${outcome} rejected`); },
+        claimDueJobsAtomically: async () => [
+          { ...leasedJob, attemptCount: outcome === 'failed' ? 2 : 0 },
+          secondJob,
+        ],
+        loadOrderStripeChargeId: async ({ orderId }: { orderId: string }) =>
+          orderId === JOB.orderId ? null : JOB.stripeChargeId,
+        [outcome === 'failed'
+          ? 'markFailedAtomically'
+          : 'scheduleRetryAtomically']: async () => {
+          throw new Error(`${outcome} rejected`);
+        },
         reportJobError: (error: unknown) => errors.push(error),
-        persistFeeAndMarkSucceededAtomically: async (input: unknown) => { completed.push(input); return true; },
+        persistFeeAndMarkSucceededAtomically: async (input: unknown) => {
+          completed.push(input);
+          return true;
+        },
       });
       expect(response.status).toBe(200);
       expect(completed).toHaveLength(1);
@@ -519,10 +553,19 @@ describe('fee worker crash recovery and per-job containment (mocked IO)', () => 
     it(`propagates the opaque claim token to ${outcome}`, async () => {
       const mutations: unknown[] = [];
       const response = await invoke({
-        claimDueJobsAtomically: async () => [{ ...leasedJob, attemptCount: outcome === 'failed' ? 2 : 0 }],
-        loadOrderStripeChargeId: async () => outcome === 'complete' ? JOB.stripeChargeId : null,
-        [outcome === 'complete' ? 'persistFeeAndMarkSucceededAtomically' : outcome === 'retry' ? 'scheduleRetryAtomically' : 'markFailedAtomically']:
-          async (input: unknown) => { mutations.push(input); return true; },
+        claimDueJobsAtomically: async () => [
+          { ...leasedJob, attemptCount: outcome === 'failed' ? 2 : 0 },
+        ],
+        loadOrderStripeChargeId: async () =>
+          outcome === 'complete' ? JOB.stripeChargeId : null,
+        [outcome === 'complete'
+          ? 'persistFeeAndMarkSucceededAtomically'
+          : outcome === 'retry'
+            ? 'scheduleRetryAtomically'
+            : 'markFailedAtomically']: async (input: unknown) => {
+          mutations.push(input);
+          return true;
+        },
       });
       expect(response.status).toBe(200);
       expect(mutations).toHaveLength(1);
@@ -537,12 +580,21 @@ describe('fee worker crash recovery and per-job containment (mocked IO)', () => 
       claimDueJobsAtomically: async () => [leasedJob],
       persistFeeAndMarkSucceededAtomically: async () => false,
       reportJobError: (error: unknown) => errors.push(error),
-      scheduleRetryAtomically: async (input: unknown) => { transitions.push(input); return true; },
-      markFailedAtomically: async (input: unknown) => { transitions.push(input); return true; },
+      scheduleRetryAtomically: async (input: unknown) => {
+        transitions.push(input);
+        return true;
+      },
+      markFailedAtomically: async (input: unknown) => {
+        transitions.push(input);
+        return true;
+      },
     });
     expect(await response.json()).toMatchObject({ succeeded: 0, errors: 1 });
     expect(errors).toHaveLength(1);
-    expect(errors[0]).toMatchObject({ jobId: JOB.id, code: 'STRIPE_FEE_CLAIM_LOST' });
+    expect(errors[0]).toMatchObject({
+      jobId: JOB.id,
+      code: 'STRIPE_FEE_CLAIM_LOST',
+    });
     expect(transitions).toEqual([]);
   });
 
@@ -552,19 +604,38 @@ describe('fee worker crash recovery and per-job containment (mocked IO)', () => 
     let owner = token;
     let fee: number | null = null;
     let writes = 0;
-    const persist = async (input: { claimToken?: string; actualStripeFeeCents: number }) => {
+    const persist = async (input: {
+      claimToken?: string;
+      actualStripeFeeCents: number;
+    }) => {
       if (input.claimToken !== owner) return false;
-      if (fee === null) { fee = input.actualStripeFeeCents; writes += 1; }
+      if (fee === null) {
+        fee = input.actualStripeFeeCents;
+        writes += 1;
+      }
       return true;
     };
     owner = reclaimedToken; // Simulated interrupted worker expiry and new DB claim.
-    const stale = await invoke({ claimDueJobsAtomically: async () => [leasedJob], persistFeeAndMarkSucceededAtomically: persist });
+    const stale = await invoke({
+      claimDueJobsAtomically: async () => [leasedJob],
+      persistFeeAndMarkSucceededAtomically: persist,
+    });
     expect(await stale.json()).toMatchObject({ succeeded: 0, errors: 1 });
     expect(fee).toBeNull();
-    const current = await invoke({ claimDueJobsAtomically: async () => [{ ...leasedJob, claimToken: reclaimedToken }], persistFeeAndMarkSucceededAtomically: persist });
+    const current = await invoke({
+      claimDueJobsAtomically: async () => [
+        { ...leasedJob, claimToken: reclaimedToken },
+      ],
+      persistFeeAndMarkSucceededAtomically: persist,
+    });
     expect(await current.json()).toMatchObject({ succeeded: 1 });
     expect(fee).toBe(123);
-    const duplicate = await invoke({ claimDueJobsAtomically: async () => [{ ...leasedJob, claimToken: reclaimedToken }], persistFeeAndMarkSucceededAtomically: persist });
+    const duplicate = await invoke({
+      claimDueJobsAtomically: async () => [
+        { ...leasedJob, claimToken: reclaimedToken },
+      ],
+      persistFeeAndMarkSucceededAtomically: persist,
+    });
     expect(await duplicate.json()).toMatchObject({ succeeded: 1 });
     expect(writes).toBe(1);
   });
@@ -574,15 +645,37 @@ describe('fee worker crash recovery and per-job containment (mocked IO)', () => 
       it(`does not count ${outcome} with RPC response ${JSON.stringify(refused)}`, async () => {
         const errors: unknown[] = [];
         const response = await invoke({
-          claimDueJobsAtomically: async () => [{ ...leasedJob, attemptCount: outcome === 'failed' ? 2 : 0 }, secondJob],
+          claimDueJobsAtomically: async () => [
+            { ...leasedJob, attemptCount: outcome === 'failed' ? 2 : 0 },
+            secondJob,
+          ],
           loadOrderStripeChargeId: async ({ orderId }: { orderId: string }) =>
-            orderId === JOB.orderId && outcome !== 'complete' ? null : JOB.stripeChargeId,
-          [outcome === 'complete' ? 'persistFeeAndMarkSucceededAtomically' : outcome === 'retry' ? 'scheduleRetryAtomically' : 'markFailedAtomically']:
-            async (input: { jobId: string }) => input.jobId === JOB.id ? refused : true,
+            orderId === JOB.orderId && outcome !== 'complete'
+              ? null
+              : JOB.stripeChargeId,
+          [outcome === 'complete'
+            ? 'persistFeeAndMarkSucceededAtomically'
+            : outcome === 'retry'
+              ? 'scheduleRetryAtomically'
+              : 'markFailedAtomically']: async (input: { jobId: string }) =>
+            input.jobId === JOB.id ? refused : true,
           reportJobError: (error: unknown) => errors.push(error),
         });
-        expect(await response.json()).toMatchObject({ succeeded: 1, retryScheduled: 0, failed: 0, errors: 1 });
-        expect(errors).toEqual([{ jobId: JOB.id, code: refused === false ? 'STRIPE_FEE_CLAIM_LOST' : 'STRIPE_FEE_JOB_IO_FAILED' }]);
+        expect(await response.json()).toMatchObject({
+          succeeded: 1,
+          retryScheduled: 0,
+          failed: 0,
+          errors: 1,
+        });
+        expect(errors).toEqual([
+          {
+            jobId: JOB.id,
+            code:
+              refused === false
+                ? 'STRIPE_FEE_CLAIM_LOST'
+                : 'STRIPE_FEE_JOB_IO_FAILED',
+          },
+        ]);
       });
     }
   }
@@ -591,24 +684,38 @@ describe('fee worker crash recovery and per-job containment (mocked IO)', () => 
     const errors: unknown[] = [];
     const transitions: unknown[] = [];
     const response = await invoke({
-      persistFeeAndMarkSucceededAtomically: async (input: { jobId: string }) => {
-        if (input.jobId === JOB.id) throw new Error('arbitrary provider detail must not escape');
+      persistFeeAndMarkSucceededAtomically: async (input: {
+        jobId: string;
+      }) => {
+        if (input.jobId === JOB.id)
+          throw new Error('arbitrary provider detail must not escape');
         return true;
       },
-      scheduleRetryAtomically: async (input: unknown) => { transitions.push(input); return true; },
+      scheduleRetryAtomically: async (input: unknown) => {
+        transitions.push(input);
+        return true;
+      },
       reportJobError: (error: unknown) => errors.push(error),
     });
     expect(await response.json()).toMatchObject({ succeeded: 1, errors: 1 });
     expect(transitions).toEqual([]);
-    expect(errors).toEqual([{ jobId: JOB.id, code: 'STRIPE_FEE_JOB_IO_FAILED' }]);
+    expect(errors).toEqual([
+      { jobId: JOB.id, code: 'STRIPE_FEE_JOB_IO_FAILED' },
+    ]);
   });
 
   it('rejects tokenless jobs before Stripe or mutation', async () => {
     let touched = false;
     const response = await invoke({
       claimDueJobsAtomically: async () => [{ ...leasedJob, claimToken: null }],
-      retrieveCharge: async () => { touched = true; throw new Error('not reachable'); },
-      persistFeeAndMarkSucceededAtomically: async () => { touched = true; return true; },
+      retrieveCharge: async () => {
+        touched = true;
+        throw new Error('not reachable');
+      },
+      persistFeeAndMarkSucceededAtomically: async () => {
+        touched = true;
+        return true;
+      },
     });
     expect(await response.json()).toMatchObject({ succeeded: 0, errors: 1 });
     expect(touched).toBe(false);
@@ -617,28 +724,51 @@ describe('fee worker crash recovery and per-job containment (mocked IO)', () => 
 
 describe('intended leased RPC response validation', () => {
   const row = {
-    id: JOB.id, order_id: JOB.orderId, stripe_payment_intent_id: JOB.stripePaymentIntentId,
-    claim_token: JOB.claimToken, claim_expires_at: NOW, status: 'processing', attempt_count: 1,
+    id: JOB.id,
+    order_id: JOB.orderId,
+    stripe_payment_intent_id: JOB.stripePaymentIntentId,
+    claim_token: JOB.claimToken,
+    claim_expires_at: NOW,
+    status: 'processing',
+    attempt_count: 1,
   };
   it('maps the already-counted active attempt and opaque token', () => {
-    expect(parseClaimedFeeJobs([row])).toEqual([{
-      id: JOB.id, orderId: JOB.orderId, stripePaymentIntentId: JOB.stripePaymentIntentId,
-      attemptCount: 0, claimToken: JOB.claimToken,
-    }]);
+    expect(parseClaimedFeeJobs([row])).toEqual([
+      {
+        id: JOB.id,
+        orderId: JOB.orderId,
+        stripePaymentIntentId: JOB.stripePaymentIntentId,
+        attemptCount: 0,
+        claimToken: JOB.claimToken,
+      },
+    ]);
     expect(parseClaimedFeeJobs([])).toEqual([]);
     expect(requireMutationResult(true)).toBe(true);
     expect(requireMutationResult(false)).toBe(false);
   });
-  for (const value of [null, undefined, {}, [null], [{ ...row, claim_token: null }],
-    [{ ...row, claim_expires_at: 'invalid' }], [{ ...row, status: 'succeeded' }],
-    [{ ...row, attempt_count: 0 }], [{ ...row, attempt_count: 101 }], [{ ...row, order_id: 'invalid' }]]) {
+  for (const value of [
+    null,
+    undefined,
+    {},
+    [null],
+    [{ ...row, claim_token: null }],
+    [{ ...row, claim_expires_at: 'invalid' }],
+    [{ ...row, status: 'succeeded' }],
+    [{ ...row, attempt_count: 0 }],
+    [{ ...row, attempt_count: 101 }],
+    [{ ...row, order_id: 'invalid' }],
+  ]) {
     it(`refuses malformed claim data ${JSON.stringify(value)}`, () => {
-      expect(() => parseClaimedFeeJobs(value)).toThrow('INVALID_FEE_CLAIM_RESPONSE');
+      expect(() => parseClaimedFeeJobs(value)).toThrow(
+        'INVALID_FEE_CLAIM_RESPONSE',
+      );
     });
   }
   for (const value of [null, undefined, {}, 'true', 1]) {
     it(`refuses malformed mutation data ${JSON.stringify(value)}`, () => {
-      expect(() => requireMutationResult(value)).toThrow('INVALID_FEE_MUTATION_RESPONSE');
+      expect(() => requireMutationResult(value)).toThrow(
+        'INVALID_FEE_MUTATION_RESPONSE',
+      );
     });
   }
 });

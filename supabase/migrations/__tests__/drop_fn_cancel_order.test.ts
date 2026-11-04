@@ -16,7 +16,9 @@ const all = readdirSync(MIGRATIONS_DIR)
   .sort();
 const dropFiles = all.filter((f) => f.endsWith('_drop_fn_cancel_order.sql'));
 const dropName = dropFiles[0] ?? '';
-const migration = dropName ? readFileSync(join(MIGRATIONS_DIR, dropName), 'utf8').replace(/\r\n/g, '\n') : '';
+const migration = dropName
+  ? readFileSync(join(MIGRATIONS_DIR, dropName), 'utf8').replace(/\r\n/g, '\n')
+  : '';
 const code = migration.replace(/^\s*--.*$/gm, '');
 
 describe('drop_fn_cancel_order migration', () => {
@@ -27,7 +29,9 @@ describe('drop_fn_cancel_order migration', () => {
   });
 
   test('drops the exact signature, idempotently and without CASCADE', () => {
-    expect(code).toContain('DROP FUNCTION IF EXISTS public.fn_cancel_order(uuid, text, text);');
+    expect(code).toContain(
+      'DROP FUNCTION IF EXISTS public.fn_cancel_order(uuid, text, text);',
+    );
     expect(code).not.toMatch(/CASCADE/i);
   });
 
@@ -37,7 +41,9 @@ describe('drop_fn_cancel_order migration', () => {
 
   test('is newer than the migration that last defined the function', () => {
     const definers = all.filter((f) =>
-      /CREATE (OR REPLACE )?FUNCTION public\.fn_cancel_order\(/.test(readFileSync(join(MIGRATIONS_DIR, f), 'utf8')),
+      /CREATE (OR REPLACE )?FUNCTION public\.fn_cancel_order\(/.test(
+        readFileSync(join(MIGRATIONS_DIR, f), 'utf8'),
+      ),
     );
     expect(definers.length).toBeGreaterThan(0);
     for (const definer of definers) expect(definer < dropName).toBe(true);
@@ -53,6 +59,8 @@ describe('drop_fn_cancel_order migration', () => {
   });
 
   test('the canonical query file is removed', () => {
-    expect(existsSync(join(QUERIES_DIR, 'orders', 'fn_cancel_order.sql'))).toBe(false);
+    expect(existsSync(join(QUERIES_DIR, 'orders', 'fn_cancel_order.sql'))).toBe(
+      false,
+    );
   });
 });

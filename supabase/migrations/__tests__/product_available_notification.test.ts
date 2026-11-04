@@ -16,7 +16,9 @@ const findMigration = (): string => {
     f.endsWith('_product_available_notification.sql'),
   );
   if (files.length !== 1) {
-    throw new Error(`Expected exactly one *_product_available_notification.sql, found ${files.length}`);
+    throw new Error(
+      `Expected exactly one *_product_available_notification.sql, found ${files.length}`,
+    );
   }
   return readFileSync(join(MIGRATIONS_DIR, files[0]), 'utf8');
 };
@@ -29,7 +31,10 @@ const normalize = (sql: string): string =>
 
 const definition = (sql: string, name: string): string | undefined =>
   normalize(sql).match(
-    new RegExp(String.raw`CREATE OR REPLACE FUNCTION public\.${name}\(.*?\$\$ ?;`, 'i'),
+    new RegExp(
+      String.raw`CREATE OR REPLACE FUNCTION public\.${name}\(.*?\$\$ ?;`,
+      'i',
+    ),
   )?.[0];
 
 const triggerStatement = (sql: string, name: string): string | undefined =>
@@ -41,7 +46,8 @@ const code = normalize(migration);
 const files = {
   fn_notify_product_available: 'fn_notify_product_available.sql',
   fn_tr_product_available_on_verify: 'fn_tr_product_available_on_verify.sql',
-  fn_tr_product_available_on_connect_complete: 'fn_tr_product_available_on_connect_complete.sql',
+  fn_tr_product_available_on_connect_complete:
+    'fn_tr_product_available_on_connect_complete.sql',
 } as const;
 
 // Must keep every kind already allowed remotely. All branches share one
@@ -64,7 +70,9 @@ const KINDS = [
 
 describe('product.available event kind', () => {
   test('the catalogue keeps every remote kind and adds product.available', () => {
-    expect(code).toContain('DROP CONSTRAINT notifications_event_kind_catalogue_chk');
+    expect(code).toContain(
+      'DROP CONSTRAINT notifications_event_kind_catalogue_chk',
+    );
     const list = code.match(
       /ADD CONSTRAINT notifications_event_kind_catalogue_chk CHECK ?\(event_kind IS NULL OR event_kind IN ?\((.*?)\) ?\)/i,
     )?.[1];
@@ -94,7 +102,9 @@ describe('fn_notify_product_available', () => {
   const def = definition(migration, 'fn_notify_product_available')!;
 
   test('has the helper signature', () => {
-    expect(def).toMatch(/fn_notify_product_available\( ?p_product_ids UUID\[\] ?\) RETURNS void/i);
+    expect(def).toMatch(
+      /fn_notify_product_available\( ?p_product_ids UUID\[\] ?\) RETURNS void/i,
+    );
   });
 
   test('only notifies for listings purchasable now', () => {
@@ -114,15 +124,21 @@ describe('fn_notify_product_available', () => {
   test('writes one typed notice per buyer per listing and ignores repeats', () => {
     expect(def).toContain("'product.available'");
     expect(def).toContain("'product.available:' || p.id::text");
-    expect(def).toContain("jsonb_build_object('product_id', p.id, 'recipient_role', 'buyer')");
+    expect(def).toContain(
+      "jsonb_build_object('product_id', p.id, 'recipient_role', 'buyer')",
+    );
     expect(def).toContain("'/product/' || p.id::text");
     expect(def).toContain("'success'");
-    expect(def).toContain('ON CONFLICT (source_event_key, user_id) WHERE source_event_key IS NOT NULL DO NOTHING');
+    expect(def).toContain(
+      'ON CONFLICT (source_event_key, user_id) WHERE source_event_key IS NOT NULL DO NOTHING',
+    );
   });
 
   test('is callable only by the service role', () => {
     const sig = 'public.fn_notify_product_available(UUID[])';
-    expect(code).toContain(`REVOKE EXECUTE ON FUNCTION ${sig} FROM PUBLIC, anon, authenticated;`);
+    expect(code).toContain(
+      `REVOKE EXECUTE ON FUNCTION ${sig} FROM PUBLIC, anon, authenticated;`,
+    );
     expect(code).toContain(`GRANT EXECUTE ON FUNCTION ${sig} TO service_role;`);
   });
 });
@@ -131,45 +147,66 @@ describe('triggers', () => {
   test('the verify trigger fires only when a listing first reaches VERIFIED', () => {
     const def = definition(migration, 'fn_tr_product_available_on_verify')!;
     expect(def).toMatch(/RETURNS trigger/i);
-    expect(def).toContain('PERFORM public.fn_notify_product_available(ARRAY[NEW.id]);');
+    expect(def).toContain(
+      'PERFORM public.fn_notify_product_available(ARRAY[NEW.id]);',
+    );
     const trg = triggerStatement(migration, 'trg_product_available_on_verify')!;
-    expect(trg).toContain('AFTER UPDATE OF status ON public.products FOR EACH ROW');
+    expect(trg).toContain(
+      'AFTER UPDATE OF status ON public.products FOR EACH ROW',
+    );
     expect(trg).toContain(
       "WHEN (OLD.status IN ('PENDING_VERIFICATION', 'IN_REVIEW') AND NEW.status = 'VERIFIED')",
     );
-    expect(trg).toContain('EXECUTE FUNCTION public.fn_tr_product_available_on_verify()');
-    const canonical = readFileSync(join(QUERIES_DIR, files.fn_tr_product_available_on_verify), 'utf8');
-    expect(triggerStatement(canonical, 'trg_product_available_on_verify')).toBe(trg);
+    expect(trg).toContain(
+      'EXECUTE FUNCTION public.fn_tr_product_available_on_verify()',
+    );
+    const canonical = readFileSync(
+      join(QUERIES_DIR, files.fn_tr_product_available_on_verify),
+      'utf8',
+    );
+    expect(triggerStatement(canonical, 'trg_product_available_on_verify')).toBe(
+      trg,
+    );
   });
 
   test('the Connect trigger fires only when onboarding first becomes complete', () => {
-    const def = definition(migration, 'fn_tr_product_available_on_connect_complete')!;
+    const def = definition(
+      migration,
+      'fn_tr_product_available_on_connect_complete',
+    )!;
     expect(def).toMatch(/RETURNS trigger/i);
     expect(def).toContain('fn_notify_product_available(');
     expect(def).toContain('seller_id = NEW.id');
     expect(def).toContain("status = 'VERIFIED'");
     expect(def).toContain('deleted_at IS NULL');
-    const trg = triggerStatement(migration, 'trg_product_available_on_connect_complete')!;
+    const trg = triggerStatement(
+      migration,
+      'trg_product_available_on_connect_complete',
+    )!;
     expect(trg).toContain(
       'AFTER UPDATE OF stripe_onboarding_status ON public.profiles_private FOR EACH ROW',
     );
     expect(trg).toContain(
       "WHEN (OLD.stripe_onboarding_status IS DISTINCT FROM 'complete' AND NEW.stripe_onboarding_status = 'complete')",
     );
-    expect(trg).toContain('EXECUTE FUNCTION public.fn_tr_product_available_on_connect_complete()');
+    expect(trg).toContain(
+      'EXECUTE FUNCTION public.fn_tr_product_available_on_connect_complete()',
+    );
     const canonical = readFileSync(
       join(QUERIES_DIR, files.fn_tr_product_available_on_connect_complete),
       'utf8',
     );
-    expect(triggerStatement(canonical, 'trg_product_available_on_connect_complete')).toBe(trg);
+    expect(
+      triggerStatement(canonical, 'trg_product_available_on_connect_complete'),
+    ).toBe(trg);
   });
 
-  test.each(['fn_tr_product_available_on_verify', 'fn_tr_product_available_on_connect_complete'])(
-    'revokes EXECUTE on %s from every API role',
-    (name) => {
-      expect(code).toContain(
-        `REVOKE EXECUTE ON FUNCTION public.${name}() FROM PUBLIC, anon, authenticated;`,
-      );
-    },
-  );
+  test.each([
+    'fn_tr_product_available_on_verify',
+    'fn_tr_product_available_on_connect_complete',
+  ])('revokes EXECUTE on %s from every API role', (name) => {
+    expect(code).toContain(
+      `REVOKE EXECUTE ON FUNCTION public.${name}() FROM PUBLIC, anon, authenticated;`,
+    );
+  });
 });

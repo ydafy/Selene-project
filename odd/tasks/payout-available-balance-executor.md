@@ -1,14 +1,17 @@
 # Payout Available-Balance Executor (Phase 2B)
 
 ## Goal
+
 Continue a seller payout run automatically after Stripe moves connected-account funds from pending/available-soon to available, without requiring a second admin release action.
 
 ## Context
+
 Phase 2A is deployed: it records payout webhook evidence and reconciles terminal outcomes. Manual E2E showed the intended pre-payout state: a successful buyer payment and connected-account transfer can leave the seller balance unavailable for payout, so the release run is retained as `pending_reconciliation` with no Stripe Payout ID. Current scope has no executor to resume it.
 
 ## Scope
 
 ### In scope
+
 - Identify `pending_reconciliation` runs with no `stripe_payout_id`.
 - Recheck the connected-account available MXN balance server-side.
 - Create exactly one payout when sufficient balance becomes available.
@@ -17,9 +20,11 @@ Phase 2A is deployed: it records payout webhook evidence and reconciles terminal
 - Bounded server-side scheduling/trigger mechanism plus focused tests and deployment handoff.
 
 ### Scope decision
+
 - The user authorized the complete safe 2B slice after independent review: remediate all executor races and add explicit stages/external-account actionability rather than shipping a worker-only repair.
 
 ### Out of scope
+
 - Phase 2A ledger/reconciliation changes unless a discovered compatibility defect requires a separately approved correction.
 - Fee worker recovery, UI redesign, refunds, cancellations, disputes, remote deployment, generated types, or manual E2E execution.
 
@@ -153,7 +158,7 @@ Final independent static/unit verification approved the candidate. The maintaine
    1. `supabase/migrations/20260919090000_connect_payout_stage_fencing.sql`
    2. `supabase/migrations/20260919100000_connect_account_actionability.sql`
    3. `supabase/migrations/20260920000000_connect_payout_balance_executor_claim.sql`
-   No other SQL files are pending for Phase 2B. The migration that was previously listed for the rejected candidate has been restructured in place; the previous version must not be applied. Remediation Slice 2 changed the actionability RPC signatures (`fn_record_connect_account_event` gains optional `p_external_account_id`; `fn_apply_connect_account_actionability` gains required `p_stripe_created`), so the Stripe-webhooks function must be deployed in the same remediation batch — the pre-Slice-2 webhook build will fail against the new RPC signatures.
+      No other SQL files are pending for Phase 2B. The migration that was previously listed for the rejected candidate has been restructured in place; the previous version must not be applied. Remediation Slice 2 changed the actionability RPC signatures (`fn_record_connect_account_event` gains optional `p_external_account_id`; `fn_apply_connect_account_actionability` gains required `p_stripe_created`), so the Stripe-webhooks function must be deployed in the same remediation batch — the pre-Slice-2 webhook build will fail against the new RPC signatures.
 2. Deploy the Edge Functions: `resume-pending-payouts` (new) and `stripe-webhooks` (updated: account actionability + fenced projections) and `release-connect-payout` (additive stage writes). Deploy the webhooks function only after the migrations are applied so the new RPCs exist.
 3. Secrets: no new secrets required — the worker reuses `CRON_SECRET`, `STRIPE_SECRET_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_URL`.
 4. Cron configuration in Supabase Dashboard (no cron schedule migration in this change):

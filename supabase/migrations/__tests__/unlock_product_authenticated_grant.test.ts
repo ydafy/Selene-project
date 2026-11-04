@@ -19,7 +19,10 @@ const findMigration = (): string => {
       `Expected exactly one *_unlock_product_authenticated_grant.sql, found ${files.length}`,
     );
   }
-  return readFileSync(join(MIGRATIONS_DIR, files[0]), 'utf8').replace(/\r/g, '');
+  return readFileSync(join(MIGRATIONS_DIR, files[0]), 'utf8').replace(
+    /\r/g,
+    '',
+  );
 };
 
 const sql = findMigration()
@@ -42,16 +45,22 @@ describe('fn_unlock_product authenticated grant', () => {
   });
 
   test('checks admin through is_admin(), which refuses suspended and banned admins', () => {
-    expect(sql).toContain('CREATE OR REPLACE FUNCTION public.fn_unlock_product(p_product_id uuid)');
+    expect(sql).toContain(
+      'CREATE OR REPLACE FUNCTION public.fn_unlock_product(p_product_id uuid)',
+    );
     expect(sql).toContain('IF NOT public.is_admin() THEN');
     expect(sql).not.toContain('profiles_private');
     expect(sql).toContain("RAISE EXCEPTION 'UNAUTHORIZED_NO_SESSION'");
   });
 
   test('touches fn_unlock_product only and keeps the function owner-safe', () => {
-    expect(sql).not.toMatch(/ALTER FUNCTION|DROP |DELETE FROM|INSERT INTO public\.(?!admin_audit_logs)/i);
+    expect(sql).not.toMatch(
+      /ALTER FUNCTION|DROP |DELETE FROM|INSERT INTO public\.(?!admin_audit_logs)/i,
+    );
     const functions = sql.match(/FUNCTION public\.\w+/g) ?? [];
-    expect(new Set(functions)).toEqual(new Set(['FUNCTION public.fn_unlock_product']));
+    expect(new Set(functions)).toEqual(
+      new Set(['FUNCTION public.fn_unlock_product']),
+    );
     expect(sql).toContain('SECURITY DEFINER');
     expect(sql).toMatch(/SET search_path TO 'public', 'pg_temp'/);
   });
@@ -60,9 +69,13 @@ describe('fn_unlock_product authenticated grant', () => {
     const files = readdirSync(MIGRATIONS_DIR)
       .filter((f) => f.endsWith('.sql'))
       .sort();
-    const own = files.findIndex((f) => f.endsWith('_unlock_product_authenticated_grant.sql'));
+    const own = files.findIndex((f) =>
+      f.endsWith('_unlock_product_authenticated_grant.sql'),
+    );
     for (const f of files.slice(own + 1)) {
-      expect(readFileSync(join(MIGRATIONS_DIR, f), 'utf8')).not.toMatch(/fn_unlock_product/);
+      expect(readFileSync(join(MIGRATIONS_DIR, f), 'utf8')).not.toMatch(
+        /fn_unlock_product/,
+      );
     }
   });
 });

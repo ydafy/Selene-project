@@ -54,9 +54,17 @@ function fakePorts(
 
 describe('shipment refund events: verifier probes', () => {
   it('S3 ignores null, non-string, blank and non-UUID shipment ids without calling the RPC', async () => {
-    for (const metadata of [null, { shipment_id: 123 }, { shipment_id: 'abc' }, { shipment_id: '' }, { shipment_id: '   ' }]) {
+    for (const metadata of [
+      null,
+      { shipment_id: 123 },
+      { shipment_id: 'abc' },
+      { shipment_id: '' },
+      { shipment_id: '   ' },
+    ]) {
       const fake = fakePorts();
-      expect(await handleShipmentRefundEvent(refundEvent({}, metadata), fake.ports)).toEqual({
+      expect(
+        await handleShipmentRefundEvent(refundEvent({}, metadata), fake.ports),
+      ).toEqual({
         handled: false,
         reason: 'not_a_shipment_refund',
       });
@@ -67,7 +75,9 @@ describe('shipment refund events: verifier probes', () => {
   it('S3 accepts a padded uppercase UUID and passes it trimmed', async () => {
     const fake = fakePorts();
     const metadata = { shipment_id: `  ${SHIPMENT_ID.toUpperCase()} ` };
-    expect(await handleShipmentRefundEvent(refundEvent({}, metadata), fake.ports)).toEqual({
+    expect(
+      await handleShipmentRefundEvent(refundEvent({}, metadata), fake.ports),
+    ).toEqual({
       handled: true,
       outcome: 'completed',
     });
@@ -78,7 +88,9 @@ describe('shipment refund events: verifier probes', () => {
     for (const disputeId of ['dispute-1', ' ', 0, 5]) {
       const fake = fakePorts();
       const metadata = { shipment_id: SHIPMENT_ID, dispute_id: disputeId };
-      expect(await handleShipmentRefundEvent(refundEvent({}, metadata), fake.ports)).toEqual({
+      expect(
+        await handleShipmentRefundEvent(refundEvent({}, metadata), fake.ports),
+      ).toEqual({
         handled: false,
         reason: 'dispute_refund',
       });
@@ -87,7 +99,10 @@ describe('shipment refund events: verifier probes', () => {
     for (const disputeId of ['', null]) {
       const fake = fakePorts();
       const metadata = { shipment_id: SHIPMENT_ID, dispute_id: disputeId };
-      expect((await handleShipmentRefundEvent(refundEvent({}, metadata), fake.ports)).handled).toBe(true);
+      expect(
+        (await handleShipmentRefundEvent(refundEvent({}, metadata), fake.ports))
+          .handled,
+      ).toBe(true);
     }
   });
 
@@ -107,9 +122,9 @@ describe('shipment refund events: verifier probes', () => {
     ];
     for (const overrides of malformed) {
       const fake = fakePorts();
-      await expect(handleShipmentRefundEvent(refundEvent(overrides), fake.ports)).rejects.toThrow(
-        /^REFUND_EVENT_MALFORMED$/,
-      );
+      await expect(
+        handleShipmentRefundEvent(refundEvent(overrides), fake.ports),
+      ).rejects.toThrow(/^REFUND_EVENT_MALFORMED$/);
       expect(fake.calls).toHaveLength(0);
     }
   });
@@ -139,9 +154,18 @@ describe('shipment refund events: verifier probes', () => {
   });
 
   it('other refund-related event types are not handled', async () => {
-    for (const type of ['refund.created', 'charge.refunded', 'charge.refund.updated']) {
+    for (const type of [
+      'refund.created',
+      'charge.refunded',
+      'charge.refund.updated',
+    ]) {
       const fake = fakePorts();
-      expect(await handleShipmentRefundEvent(refundEvent({}, undefined, type), fake.ports)).toEqual({
+      expect(
+        await handleShipmentRefundEvent(
+          refundEvent({}, undefined, type),
+          fake.ports,
+        ),
+      ).toEqual({
         handled: false,
         reason: 'unsupported_event_type',
       });
@@ -150,7 +174,9 @@ describe('shipment refund events: verifier probes', () => {
   });
 
   it('an RPC error throws REFUND_EVENT_RPC_FAILED, keeps the raw message in the log only and never alerts', async () => {
-    const fake = fakePorts(null, { message: 'CANCELLATION_COMPLETE_FAILED: raw detail' });
+    const fake = fakePorts(null, {
+      message: 'CANCELLATION_COMPLETE_FAILED: raw detail',
+    });
     let thrown = '';
     try {
       await handleShipmentRefundEvent(refundEvent(), fake.ports);
@@ -158,18 +184,26 @@ describe('shipment refund events: verifier probes', () => {
       thrown = (error as Error).message;
     }
     expect(thrown).toBe('REFUND_EVENT_RPC_FAILED');
-    expect(JSON.stringify(fake.logs)).toContain('CANCELLATION_COMPLETE_FAILED: raw detail');
+    expect(JSON.stringify(fake.logs)).toContain(
+      'CANCELLATION_COMPLETE_FAILED: raw detail',
+    );
     expect(fake.reports).toHaveLength(0);
   });
 
   it('S3/S6 sends exactly one CRITICAL per failure outcome with the frozen amount owed', async () => {
-    for (const outcome of ['failed_after_cancellation', 'failed_before_cancellation']) {
+    for (const outcome of [
+      'failed_after_cancellation',
+      'failed_before_cancellation',
+    ]) {
       const fake = fakePorts({
         outcome,
         amount_owed_cents: 11000,
         refund_failure_reason: 'lost_or_stolen_card',
       });
-      await handleShipmentRefundEvent(refundEvent({ status: 'failed' }), fake.ports);
+      await handleShipmentRefundEvent(
+        refundEvent({ status: 'failed' }),
+        fake.ports,
+      );
       expect(fake.reports).toEqual([
         [
           `SHIPMENT_REFUND_${outcome.toUpperCase()}`,
@@ -194,11 +228,17 @@ describe('shipment refund events: verifier probes', () => {
   });
 
   it('an unusable RPC result throws REFUND_EVENT_RESULT_INVALID', async () => {
-    for (const result of [null, [], 'completed', { outcome: 'FAILED' }, { outcome: 1 }]) {
+    for (const result of [
+      null,
+      [],
+      'completed',
+      { outcome: 'FAILED' },
+      { outcome: 1 },
+    ]) {
       const fake = fakePorts(result);
-      await expect(handleShipmentRefundEvent(refundEvent(), fake.ports)).rejects.toThrow(
-        /^REFUND_EVENT_RESULT_INVALID$/,
-      );
+      await expect(
+        handleShipmentRefundEvent(refundEvent(), fake.ports),
+      ).rejects.toThrow(/^REFUND_EVENT_RESULT_INVALID$/);
     }
   });
 });

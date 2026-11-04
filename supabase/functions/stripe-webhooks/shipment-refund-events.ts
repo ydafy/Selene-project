@@ -1,8 +1,17 @@
 // Pure decision logic for Stripe refund.updated / refund.failed events that belong to a
 // shipment cancellation. index.ts only wires the RPC and the reporter into these ports.
 
-const SHIPMENT_REFUND_EVENT_TYPES = ['refund.updated', 'refund.failed'] as const;
-const REFUND_STATUSES = ['pending', 'requires_action', 'succeeded', 'failed', 'canceled'] as const;
+const SHIPMENT_REFUND_EVENT_TYPES = [
+  'refund.updated',
+  'refund.failed',
+] as const;
+const REFUND_STATUSES = [
+  'pending',
+  'requires_action',
+  'succeeded',
+  'failed',
+  'canceled',
+] as const;
 const OUTCOMES = [
   'ignored',
   'completed',
@@ -40,11 +49,19 @@ export type ShipmentRefundEventPorts = {
     input: ShipmentRefundEventInput,
   ) => Promise<{ data: unknown; error: { message: string } | null }>;
   report: (message: string, data: Record<string, unknown>) => Promise<void>;
-  log: (level: 'WARN' | 'ERROR', msg: string, data?: Record<string, unknown>) => unknown;
+  log: (
+    level: 'WARN' | 'ERROR',
+    msg: string,
+    data?: Record<string, unknown>,
+  ) => unknown;
 };
 
 export type ShipmentRefundEventResult =
-  | { handled: false; reason: 'unsupported_event_type' | 'not_a_shipment_refund' | 'dispute_refund' }
+  | {
+      handled: false;
+      reason:
+        'unsupported_event_type' | 'not_a_shipment_refund' | 'dispute_refund';
+    }
   | { handled: true; outcome: Outcome };
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
@@ -61,7 +78,9 @@ export async function handleShipmentRefundEvent(
   event: { id?: unknown; type: string; data: { object: unknown } },
   ports: ShipmentRefundEventPorts,
 ): Promise<ShipmentRefundEventResult> {
-  if (!(SHIPMENT_REFUND_EVENT_TYPES as readonly string[]).includes(event.type)) {
+  if (
+    !(SHIPMENT_REFUND_EVENT_TYPES as readonly string[]).includes(event.type)
+  ) {
     return { handled: false, reason: 'unsupported_event_type' };
   }
 
@@ -69,7 +88,12 @@ export async function handleShipmentRefundEvent(
   const metadata = asRecord(refund?.metadata);
   const shipmentId = metadata?.shipment_id;
   // Not ours: refunds created elsewhere never carry a shipment id of ours.
-  if (!refund || !metadata || !nonBlankString(shipmentId) || !UUID.test(shipmentId.trim())) {
+  if (
+    !refund ||
+    !metadata ||
+    !nonBlankString(shipmentId) ||
+    !UUID.test(shipmentId.trim())
+  ) {
     return { handled: false, reason: 'not_a_shipment_refund' };
   }
   // resolve-dispute-refund also sets shipment_id, so shipment metadata alone is not proof.
@@ -100,18 +124,23 @@ export async function handleShipmentRefundEvent(
     paymentIntentId,
     amountCents: refund.amount,
     status: refund.status,
-    failureReason: typeof refund.failure_reason === 'string' ? refund.failure_reason : null,
+    failureReason:
+      typeof refund.failure_reason === 'string' ? refund.failure_reason : null,
   };
   const { data, error } = await ports.apply(input);
   const mismatch = error
     ? MISMATCH_CODES.find((code) => error.message.includes(code))
     : undefined;
   if (mismatch) {
-    ports.log('WARN', 'Shipment refund event does not match the cancellation request', {
-      shipmentId: input.shipmentId,
-      refundId: input.refundId,
-      reason: mismatch,
-    });
+    ports.log(
+      'WARN',
+      'Shipment refund event does not match the cancellation request',
+      {
+        shipmentId: input.shipmentId,
+        refundId: input.refundId,
+        reason: mismatch,
+      },
+    );
     await ports.report('SHIPMENT_REFUND_EVENT_MISMATCH', {
       shipmentId: input.shipmentId,
       refundId: input.refundId,
@@ -134,19 +163,30 @@ export async function handleShipmentRefundEvent(
 
   const result = asRecord(data);
   const outcome = result?.outcome;
-  if (!result || typeof outcome !== 'string' || !(OUTCOMES as readonly string[]).includes(outcome)) {
+  if (
+    !result ||
+    typeof outcome !== 'string' ||
+    !(OUTCOMES as readonly string[]).includes(outcome)
+  ) {
     throw new Error('REFUND_EVENT_RESULT_INVALID');
   }
 
-  if (outcome === 'failed_after_cancellation' || outcome === 'failed_before_cancellation') {
+  if (
+    outcome === 'failed_after_cancellation' ||
+    outcome === 'failed_before_cancellation'
+  ) {
     // The RPC already committed; the alert must not be lost to an unusable detail.
     await ports.report(`SHIPMENT_REFUND_${outcome.toUpperCase()}`, {
       shipmentId: shipmentId.trim(),
       refundId: refund.id,
       amountOwedCents:
-        typeof result.amount_owed_cents === 'number' ? result.amount_owed_cents : null,
+        typeof result.amount_owed_cents === 'number'
+          ? result.amount_owed_cents
+          : null,
       failureReason:
-        typeof result.refund_failure_reason === 'string' ? result.refund_failure_reason : null,
+        typeof result.refund_failure_reason === 'string'
+          ? result.refund_failure_reason
+          : null,
       outcome,
     });
   }
@@ -159,9 +199,13 @@ export async function handleShipmentRefundEvent(
       refundId: refund.id,
       status: refund.status,
       amountOwedCents:
-        typeof result.amount_owed_cents === 'number' ? result.amount_owed_cents : null,
+        typeof result.amount_owed_cents === 'number'
+          ? result.amount_owed_cents
+          : null,
       resolutionReference:
-        typeof result.resolution_reference === 'string' ? result.resolution_reference : null,
+        typeof result.resolution_reference === 'string'
+          ? result.resolution_reference
+          : null,
       outcome,
     });
   }

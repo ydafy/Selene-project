@@ -228,12 +228,21 @@ describe('preparing carrier gate (B4.4b, S3/S4/S8)', () => {
       state: 'scanned',
       observations: [{ trackingNumber: 'TRK-1', status: 'Delivered' }],
     };
-    const subject = harness({ tracking: [delivered], shipmentStatus: 'preparing' });
+    const subject = harness({
+      tracking: [delivered],
+      shipmentStatus: 'preparing',
+    });
     expect(await subject.run()).toEqual({
       proceed: false,
       reason: 'tracking_unknown',
     });
-    expect(subject.calls).toEqual(['stored', 'tracking', 'event', 'mark', 'critical']);
+    expect(subject.calls).toEqual([
+      'stored',
+      'tracking',
+      'event',
+      'mark',
+      'critical',
+    ]);
     expect(subject.marks).toEqual([
       ['shipment-a', claimToken, 'tracking_unknown'],
     ]);
@@ -267,13 +276,16 @@ describe('preparing carrier gate (B4.4b, S3/S4/S8)', () => {
     ['a non-matching source', 'buyer'],
     ['a paid_timeout source', 'paid_timeout'],
     ['a missing source', undefined],
-  ])('%s stops with source_mismatch before any port call', async (_label, source) => {
-    const subject = harness({ tracking: [unscanned], cancel: accepted });
-    expect(
-      await subject.run({ source: source as unknown as string }),
-    ).toEqual({ proceed: false, reason: 'source_mismatch' });
-    expect(subject.calls).toEqual([]);
-  });
+  ])(
+    '%s stops with source_mismatch before any port call',
+    async (_label, source) => {
+      const subject = harness({ tracking: [unscanned], cancel: accepted });
+      expect(
+        await subject.run({ source: source as unknown as string }),
+      ).toEqual({ proceed: false, reason: 'source_mismatch' });
+      expect(subject.calls).toEqual([]);
+    },
+  );
 
   test('a refused tracking read (unavailable) stops with carrier_unavailable and marks nothing', async () => {
     const subject = harness({
@@ -351,7 +363,9 @@ describe('preparing carrier gate (B4.4b, S3/S4/S8)', () => {
     'an invalid mark answer %p fails closed',
     async (marked) => {
       const subject = harness({ tracking: [unknown], marked });
-      await expect(subject.run()).rejects.toThrow('CARRIER_REVIEW_MARK_INVALID');
+      await expect(subject.run()).rejects.toThrow(
+        'CARRIER_REVIEW_MARK_INVALID',
+      );
       expect(subject.criticals).toEqual([]);
     },
   );
@@ -380,28 +394,31 @@ describe('preparing carrier gate (B4.4b, S3/S4/S8)', () => {
   test.each([
     ['unscanned', unscanned],
     ['unknown', unknown],
-  ])('a refusal with %s tracking marks carrier_refused and alerts once', async (_label, second) => {
-    const subject = harness({
-      tracking: [unscanned, second],
-      cancel: { outcome: 'refused', errorCode: null },
-    });
-    expect(await subject.run()).toEqual({
-      proceed: false,
-      reason: 'carrier_refused',
-    });
-    expect(subject.calls).toEqual([
-      'stored',
-      'tracking',
-      'cancel',
-      'tracking',
-      'mark',
-      'critical',
-    ]);
-    expect(subject.marks).toEqual([
-      ['shipment-a', claimToken, 'carrier_refused'],
-    ]);
-    expect(subject.outcomes).toEqual([]);
-  });
+  ])(
+    'a refusal with %s tracking marks carrier_refused and alerts once',
+    async (_label, second) => {
+      const subject = harness({
+        tracking: [unscanned, second],
+        cancel: { outcome: 'refused', errorCode: null },
+      });
+      expect(await subject.run()).toEqual({
+        proceed: false,
+        reason: 'carrier_refused',
+      });
+      expect(subject.calls).toEqual([
+        'stored',
+        'tracking',
+        'cancel',
+        'tracking',
+        'mark',
+        'critical',
+      ]);
+      expect(subject.marks).toEqual([
+        ['shipment-a', claimToken, 'carrier_refused'],
+      ]);
+      expect(subject.outcomes).toEqual([]);
+    },
+  );
 
   test('an ambiguous answer marks carrier_ambiguous with no second tracking read', async () => {
     const subject = harness({
@@ -442,17 +459,20 @@ describe('preparing carrier gate (B4.4b, S3/S4/S8)', () => {
     ['a blank tracking number', { trackingNumber: '  ' }],
     ['a missing carrier', { carrier: null }],
     ['a blank carrier', { carrier: '' }],
-  ])('%s marks tracking_unknown without any Envia call', async (_label, override) => {
-    const subject = harness();
-    expect(await subject.run(override)).toEqual({
-      proceed: false,
-      reason: 'tracking_unknown',
-    });
-    expect(subject.calls).toEqual(['stored', 'mark', 'critical']);
-    expect(subject.marks).toEqual([
-      ['shipment-a', claimToken, 'tracking_unknown'],
-    ]);
-  });
+  ])(
+    '%s marks tracking_unknown without any Envia call',
+    async (_label, override) => {
+      const subject = harness();
+      expect(await subject.run(override)).toEqual({
+        proceed: false,
+        reason: 'tracking_unknown',
+      });
+      expect(subject.calls).toEqual(['stored', 'mark', 'critical']);
+      expect(subject.marks).toEqual([
+        ['shipment-a', claimToken, 'tracking_unknown'],
+      ]);
+    },
+  );
 
   test('missing Envia configuration stops without Envia calls or marks, but still honours a stored acceptance', async () => {
     const stopped = harness({ available: false });

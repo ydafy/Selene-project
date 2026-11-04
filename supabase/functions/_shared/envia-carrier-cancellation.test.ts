@@ -341,9 +341,9 @@ describe('classifyEnviaCancelResponse with data as an array', () => {
       balanceReturned: true,
       balanceReturnedAt: new Date('2025-10-01 12:31:00').toISOString(),
     });
-    expect(
-      (result as { balanceReturnedAt: string }).balanceReturnedAt,
-    ).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    expect((result as { balanceReturnedAt: string }).balanceReturnedAt).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+    );
   });
 
   test('accepts a numeric tracking number equal to the requested one', () => {
@@ -383,9 +383,9 @@ describe('classifyEnviaCancelResponse with data as an array', () => {
     ['a missing tracking number', [{ balanceReturned: true }]],
     ['a boolean tracking number', [{ ...entry, trackingNumber: true }]],
   ])('%s is ambiguous', (_name, data) => {
-    expect(
-      classifyEnviaCancelResponse(TRACKING, cancelResponse(data)),
-    ).toEqual({ outcome: 'ambiguous' });
+    expect(classifyEnviaCancelResponse(TRACKING, cancelResponse(data))).toEqual(
+      { outcome: 'ambiguous' },
+    );
   });
 });
 

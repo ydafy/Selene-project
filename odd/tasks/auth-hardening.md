@@ -1,24 +1,29 @@
 # Auth MVP++ hardening
+
 Objective: audit and harden the existing auth system end to end, reusing Supabase rather than rewriting it.
 Branch: `audit/auth` | Delivery: separate sessions and scoped block commits; no push/PR/deployment authorization | Runner: Bun, plus isolated PostgreSQL and device/environment checks where applicable.
 
 ## Specs
 
 ### S1 — Product target and audit standard
+
 User requirement (verbatim): "Obvio no quereos un sistema ultra vanguardista, simplemente uno MVP++, sencillo, profesional, y escalable."
 User requirement (verbatim): "quiero que indagues y idenifiques posibles bugs, bad practices, code smell, DRY, etc etc, osea literalmente que me digas si esta lsito para producion o no."
 Acceptance: distinguish confirmed defects, hypotheses and unavailable deployment evidence. Correct only in-scope confirmed problems; do not rewrite auth or add enterprise features merely for abstraction/DRY.
 
 ### S2 — Session and commit boundaries
+
 User requirement (verbatim): "ya que cada bloque lo trabajare en una seison diferente con sus commits propios para llevar un trabajo ordenado y mas facil."
 Current authorization (verbatim): "perefcto guarda el plan, y en esta sesion empezaremos por el bloqque 1 por asi decirlo, y cada bloque con su commit respectuvo."
 Acceptance: this session owns block 1. Blocks 2–6 are deliberately reserved for later sessions, not implicitly authorized for execution now. Keep a block's tests and relevant docs with its behavior; if a block needs multiple coherent commits, explain the split instead of mixing unrelated changes.
 
 ### S3 — Scoped end-to-end audit in every block
+
 User requirement (verbatim): "puedes hacer otra auditoria pero ya mas acotada que cuvbra desde backend hasta forntedn ya que cuando tienes un scoop definido es mas facil identificar los bugs o errores"
 Acceptance: establish rules and executable outcomes, inspect the full affected path, reproduce confirmed issues where runnable, apply minimal fixes, verify expected behavior and rejections, and record evidence plus a next-session handoff. A repository SQL file does not prove remote deployment.
 
 ### S4 — Block 1: identity, permissions and account states
+
 Accepted roadmap: identity and relationships across `auth.users`, `profiles`, `profiles_private`; trusted role/status source; relevant RLS, grants, views and RPCs; admin authorization; Edge identity validation; server enforcement of account-state rules; inconsistent account-status RPC definitions.
 Exit: clients cannot elevate privileges or access other users' protected data; account restrictions are enforced server-side according to an explicitly agreed action matrix, not just screen guards.
 Accepted policy (user approval in L8; detailed clarification in L7): suspension is temporary seller-risk containment, not a fraud verdict. Opening a dispute alone does not automatically suspend the account; an administrator decides account suspension. Apply the existing disputed-operation fund protections without assuming that a dispute freezes the entire account.
@@ -29,46 +34,56 @@ Deployment evidence: the baseline deployed authorization inventory (L15–L16) a
 Implementation decisions derived from the accepted policy (L18): suspended/banned accounts lose admin authority and an admin cannot change their own status; restore products on suspension lift only to the status each product had before the account hold; gate direct product inserts/owner edits, new-sale reservation and legacy payout requests on an active seller account; restrict client profile writes to user-editable columns.
 
 ### S5 — Block 2: mobile and admin session engine
+
 Accepted roadmap: native persistence/restore, refresh/expiry, cold start/background/resume, listener lifecycle, stale responses and rapid user changes, logout/failure handling, user-scoped cache cleanup and navigation guards.
 Exit: restoring, expiring, closing or switching a session cannot mix identities, retain old privileges or expose previous-user data. Logout implementation belongs here.
 
 ### S6 — Block 3: login and account creation
+
 Accepted roadmap: email/password login, signup, OTP verification/resend, Google first/subsequent login, consistent dependent-record provisioning, partial/duplicate registration and retries, validation/errors, and same-email provider-linking policy.
 Exit: each supported entry path produces the intended identity and usable account without duplicate provisioning or unrecoverable partial state. Provider-linking rules must be established, not invented in the client.
 Accepted policy (L44): a username typed in the registration form that is taken or breaks the profile rules is rejected with a clear message; a username derived from Google metadata or the email prefix is normalized and suffixed by the server so provisioning never fails. Registering with an email that already has an account shows that the account exists and leads to login.
 Provider-linking policy (L50): Supabase automatic linking by verified email; manual linking disabled.
 
 ### S7 — Block 4: recovery and credential changes
+
 Accepted roadmap: forgot/reset password, actual OTP/link mechanism, invalid/expired/reused credentials, partial recovery sessions, authenticated password/email changes, confirmation/synchronization, reauthentication and Google-only accounts.
 Exit: changes meet the agreed security conditions; UI reflects the actual result and failures permit safe recovery. Reconcile existing contracts with installed SDK behavior before changing either.
 Accepted policy (L54): an authenticated password change is proven with the current password (Dashboard: "Require current password" on, "Secure password change" off). Recovery sessions keep working without it (GoTrue skips the check in recovery). The recovery email sends the 6-digit code.
 
 ### S8 — Block 5: account deletion
+
 Accepted roadmap: confirmation/actor authorization, blockers for existing obligations, deletion versus retention, existing external dependencies, retries/partial failures, session and access after deletion.
 Exit: denied deletion does not partially delete the account; accepted deletion has a consistent verifiable outcome. Do not redesign payments beyond necessary deletion boundaries.
 Accepted policy (L68, research L67): "anonymize and close", not hard deletion. Maintainer approval (verbatim): "i dale, arma el plan de nuevo y dale master".
+
 - Deleted at once: email, phone, addresses, avatar, saved cards (Stripe customer), favorites, blocks, notifications, unsold listings.
 - Public profile and reviews remain as "Usuario eliminado"; other users keep their history.
 - Orders, shipments, payouts and disputes are kept blocked (LFPDPPP "bloqueo") for 5 years (Codigo Fiscal art. 30), visible only for claims, disputes or tax requests; anonymized after that.
 - Login is closed for good; the same email or Google account can register again as a new account.
 - Deletion is refused, with nothing changed, while a shipment, order, dispute, refund or unreleased payout is pending.
-Derived decisions (L68): a recent sign-in (10 minutes) proves the actor for password and Google accounts alike; suspended and banned accounts cannot self-delete (S4 evidence retention); the auth and database part is one SQL transaction; Stripe and Storage cleanup run after it and retry until done.
+  Derived decisions (L68): a recent sign-in (10 minutes) proves the actor for password and Google accounts alike; suspended and banned accounts cannot self-delete (S4 evidence retention); the auth and database part is one SQL transaction; Stripe and Storage cleanup run after it and retry until done.
 
 ### S9 — Block 6: production readiness and integrated validation
+
 Accepted roadmap: deployed Auth settings, providers/SMTP, redirect URLs and links where applicable, expiry/rate limits/proportionate abuse protection, secret-free logs, actual SQL/function deployment evidence and integrated mobile/admin smoke tests.
 Exit: critical journeys pass in the intended environment with no unresolved critical configuration unknowns. Check prerequisites in each earlier block; do not defer discovering configuration failures until block 6.
 
 ### S10 — Scope and deployment constraints
+
 Preserve existing work and repository tooling. Cosmetic profile/avatar redesign, unrelated business hardening, new auth providers/frameworks and auth rewrites are excluded.
 Follow repository manual Supabase workflow: supply SQL/function/config handoff, wait for maintainer application confirmation, then regenerate types and verify them. No remote SQL execution, deployment, secret changes, push or PR is authorized by this roadmap.
 
 ### S11 — T10a: listings keep their publication economics (#120)
+
 User decision (verbatim): "Decisión de producto (opción B): la publicación respeta la economía con la que se publicó. Una transición que solo cambia el estado (volver a VERIFIED o RESERVED, liberar una reserva, levantar una suspensión, cancelar un envío) acepta el snapshot sin revalidar contra las tarifas actuales. Un cambio de precio es un trato nuevo: recalcula el snapshot con las tarifas vigentes. Antes de implementar, verificá si create-connect-payment cobra con el snapshot o con las tarifas actuales y alinealo con el snapshot si hace falta."
 Acceptance: an update that leaves `price` and `shipping_cost` unchanged keeps the snapshot as is (still immutable) and is never refused for stale economics; an update that changes either must carry a snapshot equal to the current settings, as an insert does, and cannot clear it; checkout charges from the snapshot.
 
 ### S12 — T11: auth close-out before the worktree closes
+
 User decision (verbatim, 2026-11-01): "#141: ¿qué ediciones de una publicación VERIFIED pueden guardarse sin volver a revisión? — Nombre, descripción, condition y usage"; "#174: ¿cómo cargamos los tipos de Expo en CI? — Paso nuevo en ci.yml"; scope "#141 y #174, #154 trigger duplicado, pgTAP de 2 bloqueos de cierre, Cierre del worktree".
 Acceptance:
+
 - An owner edit of a VERIFIED listing that changes only `name`, `description`, `condition` or `usage` is stored and keeps the listing VERIFIED.
 - An owner edit that keeps the listing VERIFIED and changes any other column is refused. Changing those other columns still requires PENDING_VERIFICATION, as today.
 - Admin edits are not limited by this rule.
@@ -167,41 +182,51 @@ Acceptance:
 ## Log
 
 ### L1 — Original request (verbatim)
+
 MSATER EL porposito de este woltree es auditoriar el sistema de auth que esta implementado en el proyecto, quiero que indagues y idenifiques posibles bugs, bad practices, code smell, DRY, etc etc, osea literalmente que me digas si esta lsito para producion o no. Obvio no quereos un sistema ultra vanguardista, simplemente uno MVP++, sencillo, profesional, y escalable. Se que auth es un modulo grarnde ya que implica, login, register, forgot pasword, frontend, backend, supabase y no se si mas cosas, entonces no se como quieras atacar esto, si gustaas primero una como que vsita general, de las cosas mas criticas o de las cosas que deven estar al 100% o mejor dicho como que las bases, y luego nos vamos aduitoriando bloque por bloque. sOLO investoiga, no implementes,ya que despeus tenemos queplanear como dividir las tareas para no meter un commit gigante.
 
 ### L2 — Roadmap request (verbatim)
+
 va va, priemro arreglemos esto que comentaste, osea arreglemos los bloques 1-5 l;uego cuando temrinesmos o incluso en esas mismas seisones peudes hacer otra auditoria pero ya mas acotada que cuvbra desde backend hasta forntedn ya que cuando tienes un scoop definido es mas facil identificar los bugs o errores, o al menos asi lo veo yo. Antes de dar por centado el plan, analiza de nuevo los bloques y dime si esta correctoq ue este definido asi, ya que de ahi se van a basar todas las sesiones,ya que cada bloque lo trabajare en una seison diferente con sus commits propios para llevar un trabajo ordenado y mas facil. Entonces si quieres mi opinion, puedes hacer el roadmap o el plan como si no tuvieramos modulo auth contruido, pensadno que roadmap harias si tuvbieras qeu hacer un modulo auth, simple, oprofesional, y que siga buenas practicas y modernas. te esccho
 
 ### L3 — Roadmap acceptance and block-1 implementation authorization (verbatim)
+
 perefcto guarda el plan, y en esta sesion empezaremos por el bloqque 1 por asi decirlo, y cada bloque con su commit respectuvo.
 
 ### L4 — Initial audit evidence
+
 Initial read-only audit: branch `audit/auth`, clean working tree. Focused command `bun test ./apps/frontend/core/utils/__tests__/passwordChange.test.ts ./supabase/migrations/__tests__/on_auth_user_updated.test.ts`: exit 0, 18 pass, 0 fail. These helper/source tests do not prove runtime auth/security. No remote project accessed.
 
 ### L5 — Block-1 focused investigation and blockers
+
 Generated types separate public profile fields from private role/status fields. `supabase/migrations/20260608000000_product_deletion_hardening.sql:172-235` recreates the account-status RPC against `public.profiles`; canonical query body targets `profiles_private`. The migration uses a TEXT status argument, while generated RPC types describe an enum argument; admin UI also sends `p_admin_id`, absent from the inspected migration signature. Verify live overloads before planning a corrective migration; do not edit historical SQL as a substitute for a forward deployment.
 `is_admin()` and the admin directory view are referenced, but definitions were not located by the focused exploration. Repository RLS/grants JSON files are snapshots, not live evidence. Broad grants alone are not proof of a role-escalation vulnerability.
 `apps/frontend/app/sell/index.tsx:27-43` prevents suspended users starting the sell flow. The system guard blocks banned users globally. `apps/admin-web/src/components/features/verify/UserSafetyActions.tsx` labels bans permanent but offers reactivation for all non-active users. The status RPC reactivates non-deleted HIDDEN products without recording why each was hidden. These behaviors do not define a coherent intended policy.
 No source mutation is safe for broad account-state enforcement until the user confirms the action matrix. No production-readiness claim is safe without live authorization evidence. No implementation or remote writes performed.
 
 ### L6 — Delivery and resume
+
 Current scope: T1 only. Future T2–T6 sessions are intentionally deferred under L2/L3. Delivery strategy defaults to ask-on-risk; no PR shape selected and no publishing authorized. T1 authored-line forecast is not reliable before policy/live-inventory reconciliation; pause for scope agreement before a multi-area expansion. Documentation currently adds only this tracker; no source diff or block commit yet.
 On resume, read Engram topic `odd/auth-hardening/tasks` and reconcile this file. T1 policy is now accepted in L8; the remaining prerequisite is live authorization evidence. Keep the local file, full memory mirror and visible task projection synchronized. Security changes require independent verification; native review remains governed by the user-owned RDD switch and exact candidate consent.
 
 ### L7 — User clarification of account states (verbatim)
+
 okey suspension, es mas par cunado se abre una disputa, ejemplo, uisario publica 3 productos, se le vende 1, el paquete llega al compardor y este reporta y abre un ticket, ahi podemos supsender al usario para que otra gebte mn compmre sus productos o haga auna accion fiunanciera hasat que se resuelvva el caso. Bneado ya es el estado critico y final de una cuenta, cunado el usario ejemplo si estafo de maanera clara oq uizo estafar de manera clara a un usario, ahi ay es banned, que actualmente peude inciciar seiosn pero lo manda a una pantalla en espesifico. Ya masomenos distinguiste como es? digo se parece a lo que comentaste, ojo lo que digo no es 100% lo quie deve sweri, simepre me gusta que debatamos y cuestiones si algo no te gusta o basicamnete yo estoy mal. QUE OPINAS?
 
 ### L8 — Approval to record refined policy (verbatim)
+
 me gusta, me gusta ese plan, anotalo.
 
 Accepted proposal: administrator-decided suspension rather than automatic account-wide sanction on dispute creation; block new listings/sales/withdrawal requests, preserve evidence and existing fulfillment, allow controlled refunds/resolution, and do not automatically interrupt in-flight financial processes. Accepted recommendation: seller-scoped suspension leaves own purchases allowed. Banned accounts retain dedicated login/blocked-screen behavior, not regular app access; remove routine ban reactivation. Never indiscriminately re-verify hidden products on suspension recovery. S4 and the T1 blocker were updated accordingly. This turn records policy only; source implementation, migration, remote changes, and block commit remain pending live authorization inventory. Earlier L5 policy gaps are historical, superseded by this entry; deployment gaps remain open.
 
 ### L9 — Start block 1 (verbatim)
+
 koey esta seison la usamos para bloque 1, peudes empezar a trabjar master.
 
 Reconciled local document with Engram observation 2462; only the untracked roadmap exists before this step. No Supabase MCP resources/templates or remote query tools are available in this session. T1a prepares a single catalog-only SELECT and instructions so the maintainer can supply live evidence without changing remote state. Do not guess deployed overloads or run remote SQL through alternate credential paths. Allowed T1a artifacts: `supabase/queries/auth/auth_deployed_inventory.sql`, `supabase/queries/auth/auth_deployed_inventory.md`, `supabase/queries/auth/__tests__/auth_deployed_inventory.test.ts`. Worker does not edit this tracker or commit. No existing command/API is changed; no differential runtime check is applicable to this additive diagnostic. SQL execution against PostgreSQL remains distinct from static safety checks. No block-1 completion or security claim is authorized by the diagnostic alone.
 
 ### L10 — T1a diagnostic handoff and verification
+
 Created only the three allowed inventory artifacts: SQL 184 lines, guide 31 lines, tests 33 lines (248 authored lines). Parent read all three; catalog sources are PostgreSQL catalogs/builtins, not application data or user-defined function invocations. Output includes static-discovery and metadata-sanitization caveats; it is not exhaustive dependency discovery or effective behavior proof.
 Worker: focused RED exited 1 with both artifacts missing; an intermediate test exit 1 identified an incomplete permitted-builtin test allowlist, then focused GREEN exited 0 (2 pass/81 assertions). Existing catalog diagnostic test exited 0 (1 pass/61 assertions). Parent command `bun test ./supabase/queries/auth/__tests__/auth_deployed_inventory.test.ts ./supabase/queries/rls/__tests__/notification_cutover_preflight.test.ts` exited 0: 3 pass, 0 fail, 142 assertions. `git diff --check` passed; only the untracked tracker and new diagnostic directory are present. No existing command/API changed, so a differential baseline check is inapplicable.
 PostgreSQL execution is unavailable: worker `command -v psql` returned exit 1; no install, infrastructure start or alternative remote credential path attempted. Static guards are not PostgreSQL parser/runtime evidence. Whole-app tests/lint/device checks do not establish catalog SQL correctness and were not run for this additive diagnostic.
@@ -209,35 +234,42 @@ Native ASSESS returned `nativeRisk: unassessable` because untracked files requir
 T1a is done as a prepared/structurally checked handoff, not as a remotely executed inventory. T1 remains blocked: maintainer must run `supabase/queries/auth/auth_deployed_inventory.sql` in the intended Supabase Dashboard SQL Editor and provide the complete sanitized JSONB `inventory`, or the exact execution error. The query changes no data/schema/grants and deploys no functions. Do not regenerate DB types for this read-only collection. No auth runtime edits, migration, block commit, push or deployment performed. Next authorized step after inventory arrives: reconcile live signatures/permissions, then bound T1 fixes and tests.
 
 ### L11 — Dashboard failure report (verbatim)
-okey mastre el preflight me salio error: Failed to run sql query: ERROR:  42725: operator is not unique: text || "char"
-LINE 154:   UNION ALL SELECT 'default_acls', d.defaclrole || '.' || d.defaclnamespace || '.' || d.defaclobjtype,
-                                                                                             ^
-HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
+
+okey mastre el preflight me salio error: Failed to run sql query: ERROR: 42725: operator is not unique: text || "char"
+LINE 154: UNION ALL SELECT 'default_acls', d.defaclrole || '.' || d.defaclnamespace || '.' || d.defaclobjtype,
+^
+HINT: Could not choose a best candidate operator. You might need to add explicit type casts.
 
 ### L12 — Bounded inventory compatibility correction
+
 Maintainer supplied the real PostgreSQL failure. Local runtime reproduction was unavailable: no `psql`; Docker context `desktop-linux` resolves to local `npipe:////./pipe/dockerDesktopLinuxEngine`, and `docker ps --format '{{.Names}} {{.Image}}'` succeeded with no running containers. No infrastructure was started or installed and no remote commands were run.
 Added a source-only regression assertion for explicit text casts in the default-ACL sort key. RED command `bun test ./supabase/queries/auth/__tests__/auth_deployed_inventory.test.ts --test-name-pattern 'default ACL sort key'` exited 1 (0 pass, 1 fail, 2 filtered). This reproduces the missing-cast source defect, not the PostgreSQL runtime error. Cast `defaclrole`, `defaclnamespace` and internal `"char"` `defaclobjtype` to `text` before concatenation; no other query section or permissions changed. Updated the handoff guide to acknowledge the failed original Dashboard execution rather than continuing to claim it never ran.
 GREEN command `bun test ./supabase/queries/auth/__tests__/auth_deployed_inventory.test.ts ./supabase/queries/rls/__tests__/notification_cutover_preflight.test.ts` exited 0: 4 pass, 0 fail, 143 assertions. `git diff --check` passed. Other existing catalog diagnostic still passes; no existing runtime command/parser/helper is changed, so a git-history differential check is inapplicable. Risk: none for the bounded diagnostic correction (no runtime auth/security control changed). Corrected PostgreSQL execution and complete inventory still require maintainer rerun of the entire SQL file. T1a is complete only as a corrected source-checked handoff; T1 remains blocked and no block commit has been created.
 
 ### L13 — Second Dashboard failure report (verbatim)
+
 ,e sa;iop este error ahora: Error: Failed to run sql query: ERROR: 22023: ACL arrays must be one-dimensional
 
 ### L14 — Empty-ACL correction and execution-proof gate
+
 Reviewed Supabase monitoring/debugging documentation and PostgreSQL REL_17_STABLE `src/backend/utils/adt/acl.c`: `check_acl` rejects arrays unless `ARR_NDIM(acl) == 1`; `aclexplode` invokes it before expansion. The inventory feeds SQL `'{}'::aclitem[]` as the no-column-grants fallback, which can be zero-dimensional. This is a query defect, not evidence of broken deployed permissions.
 Guarded both `aclexplode` inputs (object/column fallback and configured default ACL) with `CASE WHEN pg_catalog.cardinality(acl) > 0 THEN acl END`. Empty input now becomes NULL for expansion; retain empty raw fields and do not replace empty explicit ACLs with default privileges. No change to access checks or underlying permissions.
 Source regression RED: `bun test ./supabase/queries/auth/__tests__/auth_deployed_inventory.test.ts --test-name-pattern 'ACL expansion skips'`, exit 1 (0 pass, 1 fail, 3 filtered). Source GREEN: `bun test ./supabase/queries/auth/__tests__/auth_deployed_inventory.test.ts ./supabase/queries/rls/__tests__/notification_cutover_preflight.test.ts`, exit 0 (5 pass, 0 fail, 146 assertions); `git diff --check` passed. Updated guide to record both failed real Dashboard attempts and lack of execution of the latest corrected query.
 Local PostgreSQL remains unavailable as previously established; did not retry discovery, install/start infrastructure or run remotely. T1a is reopened/blocked on actual execution proof, rather than calling another set of static checks sufficient. Proposed next proof route needs human authorization: download a PostgreSQL image if absent, create an isolated disposable local container with no host ports or persistent volumes, run the full inventory and empty/default/explicit-ACL cases, then remove only that owned test container. Alternatively, the maintainer may choose to run the corrected full SELECT in Dashboard. No source auth change, financial mutation, deployment, commit, or test-runner/config change. Risk: none for this diagnostic-only correction; no shared runtime helper or existing auth control changed.
 
 ### L15 — Corrected inventory execution confirmation (verbatim)
-no hace falta master ya paso. Nomas detalle, es un log muy largo, de 22k lineas jajja, obvio es un json pero pues es algo largo, te lo paso todo? osea te lo puedo guardar en algun lado en el repo si es que queremos tenerlo a  la mano simepre o te o guardo en un archivo en mi carpeta temp.
+
+no hace falta master ya paso. Nomas detalle, es un log muy largo, de 22k lineas jajja, obvio es un json pero pues es algo largo, te lo paso todo? osea te lo puedo guardar en algun lado en el repo si es que queremos tenerlo a la mano simepre o te o guardo en un archivo en mi carpeta temp.
 
 listo la ubicaicon es esta: C:\Temp\deployed-inventory.json
 
 User prefers keeping the raw export outside the worktree. Do not copy the raw export into the repository or memory.
 
 ### L16 — Sanitized baseline inventory evidence
+
 Parent validated `C:/Temp/deployed-inventory.json`: SHA256 `cdc639799b2d58533e7cb40362ac24941aab49b0e47e85f1bff8b623450c00cb`, 1,034,459 bytes, valid wrapper `[{inventory}]`, 14 array sections, 27 functions, 28 policies, 2700 effective checks, 198 columns, 91 triggers. No expected objects missing except the `private` schema (not a failure). This temp file is provenance for that capture, not automatically current future state.
 Findings:
+
 - Deployed account-status RPC has one four-argument overload (target uuid, admin uuid, status `account_status`, reason text), targets `profiles_private` and validates the JWT actor plus `is_admin()`. The L5 historical migration mismatch is NOT a current deployed signature/target defect.
 - The actual RPC allows banned reactivation and indiscriminate nondeleted HIDDEN->VERIFIED product restoration, conflicting with L8 policy.
 - `is_admin()` reads the private role for `auth.uid()` but ignores account status.
@@ -246,14 +278,17 @@ Findings:
 - Admin directory view uses `security_invoker=true`; no public data leak is proven from grants alone.
 - Direct publish uses `products` INSERT; `fn_request_payout` is still called by the wallet store despite the disabled withdrawal UI.
 - `fn_reserve_products`/`fn_request_payout` bodies are absent from the 27 captured functions and `products` triggers were not collected: one bounded supplemental result is required before policy-gate implementation.
-No code, DB or security change, commit or deployment; no production-ready claim. T1a done; T1 blocked only on the supplemental result. Parent supplies the read-only catalog SELECT in its final answer; no additional diagnostic file or tests created.
+  No code, DB or security change, commit or deployment; no production-ready claim. T1a done; T1 blocked only on the supplemental result. Parent supplies the read-only catalog SELECT in its final answer; no additional diagnostic file or tests created.
 
 ### L17 — Supplemental result location (verbatim)
+
 Litsoo master lo puse aqui: C:\Temp\supplemental.json
 
 ### L18 — Supplemental evidence and block-1 implementation plan
+
 Parent read `C:/Temp/supplemental.json` (10,874 bytes, SHA256 `9597fca36a9b3d52c9a874d77feb6fc7024280960cc2e82a61577ede8b67d041`): one overload each of `fn_request_payout(numeric,uuid)` (SECURITY DEFINER, `search_path=""`, EXECUTE authenticated) and `fn_reserve_products(uuid,uuid[])` (SECURITY DEFINER, EXECUTE service_role only); `products` triggers `tr_product_fts_update` and `validate_product_publication_economics` (neither checks status or seller account); no noninternal `profiles` triggers.
 Confirmed permission-model defects (catalog evidence, not live exploitation):
+
 - D1: `products_insert` WITH CHECK only `auth.uid() = seller_id` and no trigger constrains `status`, so a client can insert a listing directly as `VERIFIED`, skipping admin verification; suspended/banned sellers can also insert.
 - D2: `products_update_owner` lets a suspended seller move HIDDEN products back to `PENDING_VERIFICATION`, re-entering the review queue.
 - D3: the deployed status RPC hides VERIFIED, PENDING_VERIFICATION and IN_REVIEW products on suspension but restores every nondeleted HIDDEN product to `VERIFIED`; pending listings therefore skip review, and unrelated hidden listings are published. It also allows `banned -> active`.
@@ -261,25 +296,30 @@ Confirmed permission-model defects (catalog evidence, not live exploitation):
 - D5: `fn_reserve_products` has no seller-status check; suspension currently blocks sales only indirectly by hiding listings (D1/D3 undermine that).
 - D6: `fn_request_payout` authenticates the JWT caller and is disabled by the `connect_enabled` guard, but has no account-status check (defense in depth for a legacy path still called by `useWalletStore`).
 - D7: `is_admin()` ignores account status, so a suspended or banned admin keeps admin authority.
-Controls confirmed sound: admin RPCs derive the actor from the JWT (ignore `p_admin_id`); `fn_reserve_products` is not client-callable; publication economics are server-validated; `fn_request_payout` uses an empty search_path and row lock.
-Plan: two high-risk work units, each its own commit, migration, canonical `supabase/queries` copy and focused source tests (no local PostgreSQL by maintainer choice, so behavioral proof is a rollback-only post-deploy script supplied with the deployment handoff). T1b fixes D3/D7 plus admin UI; T1c fixes D1/D2/D4/D5/D6. Existing purchases, fulfillment, disputes and refunds remain untouched. Out of scope, flagged for the user: whether admin-controlled Connect payout releases must refuse suspended sellers. Listings already hidden by a current suspension at deployment have no recorded prior status and stay HIDDEN for admin review.
+  Controls confirmed sound: admin RPCs derive the actor from the JWT (ignore `p_admin_id`); `fn_reserve_products` is not client-callable; publication economics are server-validated; `fn_request_payout` uses an empty search_path and row lock.
+  Plan: two high-risk work units, each its own commit, migration, canonical `supabase/queries` copy and focused source tests (no local PostgreSQL by maintainer choice, so behavioral proof is a rollback-only post-deploy script supplied with the deployment handoff). T1b fixes D3/D7 plus admin UI; T1c fixes D1/D2/D4/D5/D6. Existing purchases, fulfillment, disputes and refunds remain untouched. Out of scope, flagged for the user: whether admin-controlled Connect payout releases must refuse suspended sellers. Listings already hidden by a current suspension at deployment have no recorded prior status and stay HIDDEN for admin review.
 
 ### L19 — T1b/T1c implementation and verification evidence
+
 T1b worker: RED 2 pass/21 fail (exit 1), GREEN 40 pass/0 fail. T1c worker: RED 3 pass/21 fail (exit 1), GREEN 46 pass/0 fail; existing `reservation_lifecycle_hardening.test.ts` 18 pass/0 fail.
 Parent drift check against `C:/Temp/supplemental.json`: `fn_reserve_products` matched the deployed body; `fn_request_payout` had been rebuilt from the 20260613 migration with English notification/ledger/log text that differs from the deployed Spanish text. Added a regression test (RED: 2 fail), restored the deployed literals in the migration and canonical copy (GREEN); a literal-level comparison now reports no deployed literal missing for either RPC. Deployed product column defaults confirmed NULL for verified_at/deleted_at/reserved_at/locked_by/rejection_reason and PENDING_VERIFICATION for status, so the new insert predicates accept the real publish payload.
 Independent verifier (gentle-ai-verify): D1, D2, D4, D5, D7 pass pending runtime proof; D6 pass; S10 met; blocker D3: a NULL `p_new_status` skipped the banned-final guard and wrote NULL, which every gate reads as active (un-ban). Fixed with an `INVALID_ACCOUNT_STATUS` guard before the lock/write, plus non-blocking note 1 (clear stale holds on listings an admin moved out of HIDDEN during a suspension). RED 4 fail, GREEN. Combined block-1 run: 92 pass/0 fail, 341 assertions, exit 0; `git diff --check` clean.
 Not run / unavailable: admin-web typecheck (`bunx tsc --noEmit -p tsconfig.app.json` failed with TS2688 `vite/client` because this worktree has no node_modules; no repo files changed); lint (no node_modules); PostgreSQL execution (maintainer declined local Docker). Pre-existing, out of scope: `validate_product_publication_economics` recomputes economics from current settings on every UPDATE, so status-only updates on listings published under older settings can raise `INVALID_OR_STALE_PUBLICATION_ECONOMICS` (already true of deployed RPCs). Risk: items 1, 2 and 6 (RLS/grants/SECURITY DEFINER changes; stored product status data; no executable regression test against PostgreSQL).
 
 ### L20 — Full-suite parity and commit gate
+
 Full `bun test` on the candidate: 1696 pass, 28 fail, 19 errors (exit 1). Every error is a missing package (`react`, `zustand`, `zod`, `react/jsx-dev-runtime`) because this worktree has no node_modules. Differential check: the same suite on a clean `git archive HEAD` copy fails the identical set of 18 distinct test names, with nothing only in the candidate and nothing only in the base, so no regression is attributable to block 1. The Husky pre-commit hook runs `bun test`, so commits are blocked by this environment baseline until dependencies are installed in the worktree. Waiting for the user to authorize installing dependencies from the existing lockfile (or another commit route); `--no-verify` is not used without explicit permission. Engram mirror of this tracker is behind L19–L20 until the next sync.
 
 ### L21 — Dependencies installed and commits
+
 User installed dependencies (verbatim): "okey master, hasta aqui todo bien no? sobre el bun install, ya lo corri, no ocupas correlo, dihco esto avanzamos o quieres ocmentar algo?"
 `bun.lock` shows as modified only by line endings (empty content diff); excluded from block commits. With dependencies: admin-web `tsc --noEmit -p tsconfig.app.json` exit 0; ESLint on touched TS files exit 0; full `bun test` 1873 pass, 0 fail, exit 0 (the earlier 28 failures were the missing-dependency baseline). Commits on `audit/auth` with the Husky hook passing: 7211f8c (catalog inventory diagnostic), 502c72f (T1b account-status lifecycle), then the T1c trust-boundary commit including this tracker. Split rationale (S2): two independent high-risk units plus a low-risk diagnostic, each reviewable and revertible alone. Native ASSESS per commit was unassessable while untracked files remained; rerun on the committed range once the tree is clean.
 Next: maintainer applies `20261018120000_account_status_lifecycle.sql` then `20261018130000_account_trust_boundaries.sql` in the Dashboard (no Edge Function deploy), confirms, then `bun db:types` and post-deploy verification. T1 closes only after that evidence.
 
 ### L22 — Native review and deployment handoff
+
 Native ASSESS on the committed range: risk high, review due. Ordinary review `review-a07b22ddefa0ef9c` over base a56662c → 69c2530 (lenses risk + reliability, 2 host-relay reviewer runs): **approved**, acknowledged, authority burned. Advisory, non-blocking findings (separate later work, not a reason to re-review this candidate):
+
 - R1 (warning): between applying 20261018120000 and 20261018130000 an owner could still write `status_before_account_hold`; apply both migrations back-to-back in one session.
 - R3 profiles revoke (warning): any unlisted invoker-rights writer of `profiles` would now fail; post-deploy smoke must cover username/avatar edits and review/stat refresh paths.
 - R3 RESERVED not held (warning): listings RESERVED at suspension are not held; when that reservation expires, cleanup returns them to VERIFIED (visible), though the new reservation gate still blocks their sale. Follow-up candidate.
@@ -287,30 +327,35 @@ Native ASSESS on the committed range: risk high, review due. Ordinary review `re
 - R3 reactivation copy (warning): modal promises restore to prior status, but listings hidden before deployment have no recorded prior status and stay hidden.
 - R3 SQL behavior unproved (warning): tests are source contracts; runtime proof is the post-deploy check.
 - R3 component wiring string test and inventory doc staleness (suggestions).
-Deployment handoff given to maintainer: run pre-check (admins by status), apply 20261018120000 then 20261018130000 back-to-back in Dashboard SQL Editor, no Edge Function/secret/cron change, run catalog verification query and app smoke checks, confirm, then `bun db:types` (expect `products.status_before_account_hold` and `fn_current_account_is_active`) and commit regenerated types. T1 stays in_progress until that evidence arrives.
+  Deployment handoff given to maintainer: run pre-check (admins by status), apply 20261018120000 then 20261018130000 back-to-back in Dashboard SQL Editor, no Edge Function/secret/cron change, run catalog verification query and app smoke checks, confirm, then `bun db:types` (expect `products.status_before_account_hold` and `fn_current_account_is_active`) and commit regenerated types. T1 stays in_progress until that evidence arrives.
 
 ### L23 — Deployment confirmation and regenerated types (verbatim excerpt)
-"okey master detalles. En  una de las migraciones que por dcierto alique ambas y tdas pasaron y el preflight qe me pasaste muestra todo lo que dijiste  hold_column en true, Cada función con exactamente 1 overload., etc etc."
+
+"okey master detalles. En una de las migraciones que por dcierto alique ambas y tdas pasaron y el preflight qe me pasaste muestra todo lo que dijiste hold_column en true, Cada función con exactamente 1 overload., etc etc."
 Maintainer applied 20261018120000 and 20261018130000 without errors; catalog verification matched expectations (hold column present, exactly one overload per function, profile UPDATE limited to username/avatar_url/updated_at, helper not executable by anon). App smoke checks (suspend/reactivate/ban/publish/profile edits) not yet reported.
 `bun run db:types` exit 0. Generated diff: 12 hunks, 138 added lines; only 4 hunks (10 lines) belong to block 1 (`products.status_before_account_hold` Row/Insert/Update, `fn_current_account_is_active`). The other 8 hunks are already-deployed schema from other worktrees (shipment cancellation operations, shipment transfer functions, transfer_token/transfer_started_at); left unstaged so this branch does not carry another feature's types. Only the block-1 hunks were committed.
 User note: wallets and everything related are legacy and slated for deletion in a separate session. Block 1 only added an account-status gate to `fn_request_payout`; no new wallet dependency. Known blocker for that removal: `admin_user_directory_view` LEFT JOINs `wallets` and the admin login (`apps/admin-web/src/store/useAuthStore.ts`) reads that view, so the view must change before dropping wallets.
 T1 remains open only for the app smoke checks.
 
 ### L24 — Post-deploy smoke checks (verbatim)
+
 1: si me deja entrar como admin. 2. SUpender una cuenta en efceto oculta el prodcuto. problema minimo, cunado usario entra a 'mis publicaciones', todo lo que esta publciado desaparece, y se va a historial, esto queda mal ui/ux anotalo paar evr cuando lo arreglamos. 3. En efceto todo vuelve al estado normal. 4. si, un usario baneado entra y sale el mensaje y el boton de cerrar sesion. 5. listo. todo parce estar bien, nomas el pequeno detalle de ui que comente, si quieres commitea o no se si loquieras commitear ya opara poder avanzar a lo siguiente, no se que quieres hacer ?
 
 Passed: active admin keeps dashboard access after the `is_admin()` change; suspension hides listings; reactivation restores prior statuses; banned login reaches the blocked screen with sign-out; own-row status actions absent. Not explicitly reported: mobile publish, username and avatar edits on an active account (the profiles column-grant change, R3 warning) — confirm before closing T1.
 New follow-up F1 (UI/UX, user-reported): during a suspension the seller's "Mis publicaciones" moves held listings to history because `product-status.ts:41` treats every HIDDEN as history. Distinguish account holds via `status_before_account_hold`. Not a block-1 security defect.
 
 ### L25 — Mobile smoke confirmation and block-1 closure (verbatim)
-si master lo puede hacer. que sigue ? no hagas nada dime que sigue y refrescame que lleavmos echo de todo el plan por asi  decirlo
+
+si master lo puede hacer. que sigue ? no hagas nada dime que sigue y refrescame que lleavmos echo de todo el plan por asi decirlo
 
 Active-account mobile publish, username and avatar edits work after the profiles column-grant change. Block 1 (T1) closed. Open follow-ups: F1 (suspension-held listings shown as history), RESERVED listings not held on suspension, missing default branch in `getAccountStatusActions`, user decision on blocking admin Connect payout releases for suspended sellers, and the separate legacy wallet removal (`admin_user_directory_view` depends on `wallets`). Next: block 2 (sessions) in a new session on a new branch from updated main.
 
 ### L26 — Block 2 start and session audit
+
 User request (verbatim): "Retomemos el bloque 2 de auth (sesiones). Creá la rama desde main, auditá el bloque y planeá los commits antes de implementar."
 Branch `audit/auth-sessions` created from `main` at daea364 (main already contains block 1). Audit is source-only; no code changed. Installed SDK: `@supabase/auth-js` 2.116.0.
 Confirmed findings:
+
 - A1 (high): `apps/frontend/core/db/supabase.ts:23` creates the client without `auth.storage`. auth-js `GoTrueClient.js:249-260` falls back to an in-memory adapter when `localStorage` is unavailable (React Native), so the native session is lost on every cold start or process kill.
 - A2 (medium): no `AppState` handling of `startAutoRefresh`/`stopAutoRefresh` (Supabase React Native guidance); matters once A1 persists sessions.
 - A3 (medium): `core/hooks/useSession.ts:28-52` applies status responses without checking they still belong to the current user; a late response for a previous user can paint a banned/suspended state onto the next user or a guest. A failed load keeps the previous status.
@@ -321,103 +366,127 @@ Confirmed findings:
 - A8 (medium): admin client gate checks only `role` (`apps/admin-web/src/store/useAuthStore.ts:60`, `App.tsx:29`), not status; server `is_admin()` rejects inactive admins since block 1, so a suspended admin sees a dashboard where every call fails.
 - A9 (low-medium): three admin auth-state writers (store listener, `App.tsx` `AuthListener`, `Login.tsx` manual `setUser` with a duplicated profile query).
 - A10 (low): admin React Query cache (`main.tsx:7`, 5 min stale time) is not cleared on sign-out.
-Discarded hypotheses: nested `getUser` inside `onAuthStateChange` deadlocking (2.116 is lockless and documents it as safe); offline sign-out keeping the local session (2.116 removes it even on network errors); `NotificationWatcher` identity mixing (already owner-guarded); user data query keys are user-scoped and the cache is cleared on `SIGNED_OUT`.
-Not verifiable from source: deployed Auth settings (JWT expiry, refresh token rotation/reuse interval, session time-box); checked in block 6.
-Testing approach: no session-engine tests exist; extract pure modules (client auth options, status-load owner guard, sign-out cleanup, admin access evaluation) following the existing `*.logic.ts` pattern and test them with `bun test`; lifecycle behavior also needs a device smoke check.
-Open decision before T2a: native session storage (AsyncStorage, already installed, official Supabase Expo pattern) versus encrypted storage (new native dependency and rebuild). Proposed default for routine logout: this device only (`scope: 'local'`).
+  Discarded hypotheses: nested `getUser` inside `onAuthStateChange` deadlocking (2.116 is lockless and documents it as safe); offline sign-out keeping the local session (2.116 removes it even on network errors); `NotificationWatcher` identity mixing (already owner-guarded); user data query keys are user-scoped and the cache is cleared on `SIGNED_OUT`.
+  Not verifiable from source: deployed Auth settings (JWT expiry, refresh token rotation/reuse interval, session time-box); checked in block 6.
+  Testing approach: no session-engine tests exist; extract pure modules (client auth options, status-load owner guard, sign-out cleanup, admin access evaluation) following the existing `*.logic.ts` pattern and test them with `bun test`; lifecycle behavior also needs a device smoke check.
+  Open decision before T2a: native session storage (AsyncStorage, already installed, official Supabase Expo pattern) versus encrypted storage (new native dependency and rebuild). Proposed default for routine logout: this device only (`scope: 'local'`).
 
 ### L27 — Branch updated to latest main (local Supabase setup)
-User request (verbatim): "actualice main, ocupo que antes de emepzar utilicemos la ultima version de main aqu tambeinn, ya que mplemente el setup de supabase  + doker [...] dime si podemos haecrlo y me confimaar, no empeices todabovia el t2a ni nada"
+
+User request (verbatim): "actualice main, ocupo que antes de emepzar utilicemos la ultima version de main aqu tambeinn, ya que mplemente el setup de supabase + doker [...] dime si podemos haecrlo y me confimaar, no empeices todabovia el t2a ni nada"
 `audit/auth-sessions` fast-forwarded from daea364 to `main` 058455c (schema baseline, seed, local Supabase docs); the uncommitted tracker edit was untouched because `main` does not change this file. Supabase CLI 2.121.0 and Docker 29.8.2 respond. The running local stack belongs to project id `School-portal` (started from the main checkout); `supabase/config.toml` has no `project_id`, so the CLI in this worktree derives `auth` and `supabase status` fails with `No such container: supabase_db_auth`. Running `supabase start` here would try a second stack on the same ports. `config.toml` also has no `[auth]` section, so local Auth uses CLI defaults. Block 2 has no planned SQL; the local stack is optional for its device smoke test. T2a not started.
 
 ### L28 — Branch updated to origin/main with per-worktree stacks
+
 User request (verbatim): "master ya arregle lo de los ports, de echo ocupo que te traigas la ultima version de main para que la utilices antes de comenzar ya que se agrearion bastantes cosas nuevas y una de ellas el soporte de varios ports o lo que sea para poder trabajr en varioos wokktrees."
 Local `main` (0ac4ff1) was behind `origin/main`; fast-forwarded `audit/auth-sessions` from 058455c to `origin/main` d7e6115. Tracker edit untouched (origin/main does not change it). Commit 4e911b9 enables `[experimental] stack = true`: each worktree gets its own ports and data; read them with `supabase status --env`, never assume 54321. This supersedes the L27 port conflict. Local stack not started for this worktree yet. T2a not started.
 
 ### L29 — Storage decision and second main update
+
 User decision (verbatim): "me gusta el asyncStorage, pero master, actualice de nuevo main, ocupo que lo traigas ya que ocupamos los cmabios de ahi ademas de que leas los cambios por asi desicl, sobre todo agents.md de main para que veas lo nuevo."
 Decision: native session storage is AsyncStorage (unblocks T2a). Fast-forwarded `audit/auth-sessions` from d7e6115 to `origin/main` 5c3c406 (Sentry, cron-watchdog, Bruno collection, worktree env copy, dependency audit); tracker edit untouched. New AGENTS.md "Verifying a change" table: block 2 is frontend only, so the required proof is `bun test` for the touched behavior plus typecheck of the touched files; the local stack and `bruno/auth/login-buyer.bru` are optional for the device smoke test against local Auth. `bun.lock` changed upstream, so this worktree needs `bun install` before tests and typecheck are meaningful. `supabase/functions/.env` is missing here (not needed for block 2; `bun run worktree:env` copies it if required).
 
 ### L30 — T2a implementation and evidence
+
 User authorization (verbatim): "correlo tu, y arranca"
 `bun install` exit 0 (22 packages); `bun.lock` differs only by line endings and stays out of commits. auth-js 2.116.0 `GoTrueClient.js:4719-4723` confirms that outside a browser the refresh ticker runs permanently, so A2 is real once sessions persist.
 Added `apps/frontend/core/db/authSession.ts` (pure: `createNativeAuthOptions(storage)` with persistSession/autoRefreshToken on and detectSessionInUrl off; `bindAutoRefreshToAppState` applies the current state, starts on `active`, stops otherwise, returns an unbind) and wired `core/db/supabase.ts` to AsyncStorage plus the AppState binding on native only (web keeps auth-js visibility handling).
 RED: `bun test apps/frontend/core/db/authSession.test.ts` exit 1 (module missing). The client test `core/db/supabase.test.ts` against the base `supabase.ts` failed (storage was the in-memory adapter), so it pins A1. GREEN: `bun test apps/frontend/core/db/` 7 pass, 0 fail, exit 0. Full `bun test` 2269 pass, 0 fail, exit 0. `tsc --noEmit -p apps/frontend`: no diagnostics in the touched files. ESLint on the four touched files exit 0. No SQL, Edge Function or config change. Not yet proven: cold-start restore and background/resume refresh on a device (block-2 smoke check). Risk: item 2 (session persistence is a security boundary).
 
 ### L31 — T2a native review and T2b scope
+
 T2a committed as d8f9079 (Husky `bun test` 2269 pass). Native ordinary review `review-d6a435f689bc851d` over 5c3c406..d8f9079, lenses risk + resilience + reliability (3 host-relay runs): approved, acknowledged, authority burned. Advisory, non-blocking warnings:
+
 - R3 fire-and-forget refresh (`authSession.ts:42-46`): `void auth.startAutoRefresh()` drops rejections. Folded into T2b.
 - R3 initial non-active state (`authSession.ts:41-49`): auth-js `initialize()` starts its own ticker outside a browser, so a background launch can re-enable refresh after our stop. Folded into T2b: re-apply the current AppState after `getSession()` resolves.
 - R1 web `detectSessionInUrl` (`supabase.ts:27-29`): web is not a shipped target and sign-in uses `signInWithIdToken`; follow-up only.
 - R3 client test isolation and wiring coverage (`supabase.test.ts`): global `mock.module`; follow-up only.
 
 ### L32 — T2b implementation and evidence
+
 Delegated to `gentle-ai-worker` (context backstop) with the T2b handoff; parent reviewed the diff and reran checks.
+
 - A3: `core/auth/sessionStatus.logic.ts` (`applyStatusLoad`, `syncStatusOwner`) applies a status only for the current session user; a failed load keeps the same user's last status (a ban is not downgraded) and never carries another user's. `useSession.ts` tracks the owner in a ref; the status `console.log` was removed.
 - A5: `shouldReloadStatusOnResume` + an `AppState` listener in `useSession.ts` reload the status on resume through the same guard.
 - A4/A6: `core/auth/signOut.logic.ts` (`runSignOut`, `runCleanupSteps`) and `core/auth/signOut.ts` (`signOutUser(scope = 'local')`, `clearUserScopedData`). Cleanup always runs, even when sign-out errors or throws, and one failing step does not skip the rest: query cache, checkout, cart, dispute draft, search history, product history, sell draft, ignored reviews; `useExperienceStore` (device preference) and the deprecated wallet store are untouched. The SIGNED_OUT listener uses the same cleanup. Callers: `SecuritySection` (error toast `settings:errors.signOutFailed`, en + es), `SystemGuard` (onPress only), `useDeleteAccount` (`'global'` explicitly).
 - L31 follow-ups: `authSession.ts` catches and logs start/stop rejections (message only); `bindAutoRefreshToAppState` takes a readiness promise (`supabase.auth.getSession()`) and re-applies the then-current AppState, no-op after unbind.
-Worker RED: `bun test apps/frontend/core/auth apps/frontend/core/db/authSession.test.ts` exit 1 (6 pass, 6 fail, 3 errors). Parent GREEN: `bun test apps/frontend/core/auth apps/frontend/core/db` 27 pass, 0 fail; full `bun test` 2289 pass, 0 fail. Worker: `tsc --noEmit -p apps/frontend` no diagnostics in touched files; ESLint on touched files exit 0. Not unit-tested (needs a renderer or a device): the `useSession` wiring, `signOut.ts` store wiring and the toast; device smoke must cover resume after a ban, background launch, logout and user switch. Risk: items 2 and 6 (session identity boundary; hook wiring has no automated test).
+  Worker RED: `bun test apps/frontend/core/auth apps/frontend/core/db/authSession.test.ts` exit 1 (6 pass, 6 fail, 3 errors). Parent GREEN: `bun test apps/frontend/core/auth apps/frontend/core/db` 27 pass, 0 fail; full `bun test` 2289 pass, 0 fail. Worker: `tsc --noEmit -p apps/frontend` no diagnostics in touched files; ESLint on touched files exit 0. Not unit-tested (needs a renderer or a device): the `useSession` wiring, `signOut.ts` store wiring and the toast; device smoke must cover resume after a ban, background launch, logout and user switch. Risk: items 2 and 6 (session identity boundary; hook wiring has no automated test).
 
 ### L33 — T2b native review and slice boundary
+
 T2b committed as e3e9a36 (Husky `bun test` 2289 pass). Native ordinary review `review-c8776c5a24f91d89` over 5c3c406..e3e9a36 (inspect offered only the full range; d8f9079 inside it was already approved), lenses risk + resilience + reliability (3 host-relay runs): approved, acknowledged, authority burned. Advisory, non-blocking warnings:
+
 - R1 local sign-out default (`signOut.ts:33-35`): routine logout ends only this device's session, as proposed in L26; other devices stay signed in. Revisit if the maintainer wants global logout.
 - R3 first load fails open (`sessionStatus.logic.ts:41-42`): a failed first status load for a new user shows `active`; the server-side gates from block 1 still enforce the account state.
 - R3 `useSession` wiring unproved and `supabase.test.ts` global mocks: covered only by the device smoke check.
 - R4 delete-account sign-out error dropped (`useDeleteAccount.ts:44`): the account is already deleted server-side; cleanup still runs.
-Slice boundary: d8f9079 (T2a, 259 lines) and e3e9a36 (T2b, ~550 lines) are separate reviewable work units; T2c and T2d follow as their own commits.
+  Slice boundary: d8f9079 (T2a, 259 lines) and e3e9a36 (T2b, ~550 lines) are separate reviewable work units; T2c and T2d follow as their own commits.
 
 ### L34 — T2c implementation and evidence
+
 `components/auth/SystemGuard.tsx` banned screen now reads `auth:bannedAccount.{title,defaultMessage,signOut}` (en "Account banned", es "Cuenta bloqueada"; the server `status_reason` still wins when present) and passes the resolved `theme.colors.error` to the icon instead of the literal string `"theme.colors.error"`. Maintenance and version screens keep their existing hardcoded copy (out of A7 scope).
 RED: `bun test apps/frontend/components/auth/SystemGuard.banned.test.ts` 0 pass, 4 fail, exit 1. GREEN: 4 pass, exit 0. Full `bun test` 2293 pass, 0 fail. ESLint on both files exit 0; `tsc` shows no diagnostics in SystemGuard.tsx. Risk: none (copy and icon color only; the guard condition is unchanged).
 
 ### L35 — T2d implementation and evidence
+
 Delegated to `gentle-ai-worker` (context backstop); parent read the store and access module and reran the checks.
+
 - A8: `apps/admin-web/src/lib/adminAccess.ts` `evaluateAdminAccess` allows only `role === 'admin'` and `status === 'active'`; a missing profile or any other status (null, unknown, wrong case) is denied. Used by the store and `ProtectedRoute`; new Spanish message for inactive accounts.
 - A9: `src/store/useAuthStore.ts` is the only auth-state writer: one idempotent `initialize()` with a single `onAuthStateChange` listener; `App.tsx` `AuthListener` removed; `Login.tsx` no longer queries the profile or calls `setUser`, it awaits the store's `evaluateAccess` and shows the denial inline. `src/lib/adminSession.logic.ts` (`resolveAdminSession`, `createLoadGuard`) discards profiles for a previous user or after sign-out; concurrent evaluations for the same user share one promise. Profile load errors now fail closed (sign-out), as Login already did.
 - A10: `src/lib/queryClient.ts` (same options) is cleared on sign-out, SIGNED_OUT and denial.
-Worker RED: `bun test apps/admin-web/src/lib/adminAccess.test.ts apps/admin-web/src/lib/adminSession.logic.test.ts` exit 1 (0 pass, 2 fail, modules missing); GREEN 15 pass, exit 0. Parent: full `bun test` 2308 pass, 0 fail; `cd apps/admin-web && bunx tsc --noEmit -p tsconfig.app.json` exit 0. Worker: ESLint on touched files exit 0. The store wiring has no automated test (the Supabase client needs Vite env); admin logout keeps the SDK default global scope. Browser smoke: active admin, non-admin, suspended/banned admin login; admin suspended mid-session (ejected on next token refresh or reload); admin A logout then admin B sees no cached A data; expired session toast and redirect. Risk: items 2 and 6 (admin authorization UI; store wiring untested).
+  Worker RED: `bun test apps/admin-web/src/lib/adminAccess.test.ts apps/admin-web/src/lib/adminSession.logic.test.ts` exit 1 (0 pass, 2 fail, modules missing); GREEN 15 pass, exit 0. Parent: full `bun test` 2308 pass, 0 fail; `cd apps/admin-web && bunx tsc --noEmit -p tsconfig.app.json` exit 0. Worker: ESLint on touched files exit 0. The store wiring has no automated test (the Supabase client needs Vite env); admin logout keeps the SDK default global scope. Browser smoke: active admin, non-admin, suspended/banned admin login; admin suspended mid-session (ejected on next token refresh or reload); admin A logout then admin B sees no cached A data; expired session toast and redirect. Risk: items 2 and 6 (admin authorization UI; store wiring untested).
 
 ### L36 — T2c+T2d native review and block-2 status
+
 T2c b0a1a94 and T2d 8b693f6 committed (Husky `bun test` 2293 and 2308 pass). Native ordinary review `review-52bb7909bf05b5a0` over 5c3c406..8b693f6 (inspect offered only the full range; earlier commits already approved), lenses risk + resilience + readability + reliability (4 host-relay runs): approved, acknowledged, authority burned. 16 advisory findings, none blocking. Candidates for a follow-up commit, pending maintainer decision:
+
 - R4 admin transient profile failure (`adminSession.logic.ts:55-60`): a network error while reloading the profile on the hourly token refresh signs the admin out (fail closed) instead of keeping an already-allowed session; it should deny only on a confirmed profile.
 - R3 same-user out-of-order status responses (`useSession.ts:66-68`): two loads for the same user can resolve out of order and the older one wins until the next reload.
-Lower priority: shared pending evaluation across a stale sign-out (`useAuthStore.ts:78-81`), dead branch and misnamed/duplicate test in `adminSession.logic`, store action naming, source-text tests for the banned screen, global mocks in `supabase.test.ts`, cold-start offline status fails open (server still enforces), routine logout is device-local (L26), AsyncStorage tokens unencrypted (L29 decision).
-Block 2 code is complete in four commits (d8f9079, e3e9a36, b0a1a94, 8b693f6). T2 closes after the device and browser smoke checks (L32, L35) pass. No SQL, Edge Function, secret or Dashboard change in this block; nothing to deploy beyond the app builds. No push or PR performed.
+  Lower priority: shared pending evaluation across a stale sign-out (`useAuthStore.ts:78-81`), dead branch and misnamed/duplicate test in `adminSession.logic`, store action naming, source-text tests for the banned screen, global mocks in `supabase.test.ts`, cold-start offline status fails open (server still enforces), routine logout is device-local (L26), AsyncStorage tokens unencrypted (L29 decision).
+  Block 2 code is complete in four commits (d8f9079, e3e9a36, b0a1a94, 8b693f6). T2 closes after the device and browser smoke checks (L32, L35) pass. No SQL, Edge Function, secret or Dashboard change in this block; nothing to deploy beyond the app builds. No push or PR performed.
 
 ### L37 — Sign-out white screen (user report) and fix
+
 User report (verbatim): "abir +inciar seison no surge anda de probelma, el tema es cerrar sesion viia la app, osea desde Ajustes → Cerrar sesión, literammente cuando aplcio eso, se pone en blanco la pantalla y ahi se queda, ojo antes pasaba que se ponia en blanco jusato cuando se presonaba el boton de cerrar sesion, pero a los segundos volvia la app y aterruzaba en home. En mi terminal donde levanto la app no sale nada."
 Root cause: `SystemGuard` wraps the whole navigator and returns `null` while `system-settings` loads. Sign-out cleanup ran `queryClient.clear()`, which also dropped that app-wide config: before block 2 this blanked and remounted the app (the brief white flash that landed on home). T2b (e3e9a36) added a second cleanup in `signOutUser` after the SIGNED_OUT listener's cleanup; it destroyed the config query while SystemGuard was refetching it, TanStack cancels a removed query silently, and the guard stayed `pending` forever (no log).
 Reproduced with installed `@tanstack/react-query` (query-core 5.102.8) in a scratch script: one clear recovers (`success`), a second clear during the refetch stays `status=pending fetchStatus=fetching`.
 Fix: `core/auth/userQueries.logic.ts` `resetUserQueries` resets user-scoped queries (keeps observers attached, drops data, refetches what is on screen) and keeps `system-settings`; `signOut.ts` uses it instead of `clear()`. RED: `bun test apps/frontend/core/auth/userQueries.logic.test.ts` with the old `clear()` behavior: 1 pass, 2 fail (config `pending`; mounted screen stuck `pending`), exit 1. GREEN: `bun test apps/frontend/core/auth` 19 pass, 0 fail; full `bun test` 2311 pass, 0 fail; ESLint on touched files exit 0; `tsc` no diagnostics in touched files. Admin keeps `queryClient.clear()`: its data screens unmount through `ProtectedRoute` and no query gates the whole admin app. Risk: item 1-adjacent (cache cleanup of user data) and item 6 (device-only proof); the device check must confirm logout returns to the app without a blank screen.
 
 ### L38 — Device smoke progress (verbatim)
+
 "haora los test que me diijiste, el caso a, del cel, si todo bine, cierro app y abro y sigo logeado."
 Passed on device: cold-start session restore (A1). Pending: ban while the app is open, user switch cleanup, logout without blank screen after b3b256c, and the admin browser checks.
 
 ### L39 — Block-2 smoke confirmation and closure (verbatim)
+
 "si master proibe todo eso y todo luce bien, ue sigue ?"
 Maintainer confirmed the remaining device and browser checks: ban while the app is open shows the blocked screen on resume, user switch clears the previous user's cart and search history, logout no longer leaves a blank screen, a suspended admin is denied, and admin data reloads after sign-out. Block 2 (T2) closed. Open: L36 follow-up candidates (admin signed out on a transient profile load error; same-user out-of-order status responses) pending maintainer decision; push/PR of `audit/auth-sessions` is the maintainer's decision. Next: block 3 (login and account creation) in a new session.
 
 ### L40 — Git workflow delegation and L36 follow-ups
-User decision (verbatim): "no mater lo que es git, tu decides, yo la verdad soy novato, osea no tenog idea, lo unicoq ue te peudeo decir es que commits garndes y eso pues si los tenemos que acotar, digo, sigo aprendidendo por eso mi comentario anbterior, pero tu eres el que recomeidnas, cuando commitear, cuando hacer merge cunado push y todo eso, para que este todo clean o buenas parcticas y sobre todo para evitar fallos. Tienes que recoradr que trabajamos en varios woktrees a la vez digo no se si esa info cambia algo, peor en conlcucoin, tu me vas diciendo cunado hacre git y todo eso, yo te  leeo y as puedo aprender el porque de las cosas. Dicho esto dale, trabaja en lo que comenatste y me avisas cunado termines"
+
+User decision (verbatim): "no mater lo que es git, tu decides, yo la verdad soy novato, osea no tenog idea, lo unicoq ue te peudeo decir es que commits garndes y eso pues si los tenemos que acotar, digo, sigo aprendidendo por eso mi comentario anbterior, pero tu eres el que recomeidnas, cuando commitear, cuando hacer merge cunado push y todo eso, para que este todo clean o buenas parcticas y sobre todo para evitar fallos. Tienes que recoradr que trabajamos en varios woktrees a la vez digo no se si esa info cambia algo, peor en conlcucoin, tu me vas diciendo cunado hacre git y todo eso, yo te leeo y as puedo aprender el porque de las cosas. Dicho esto dale, trabaja en lo que comenatste y me avisas cunado termines"
 Plan: fix both L36 follow-ups on this branch in one commit, then update from origin/main, rerun the suite and merge `audit/auth-sessions` into main and push, so other worktrees can pick up block 2.
+
 - Admin transient failure: `fetchAdminProfile` uses `maybeSingle()` (no row -> `null`) and throws on request errors. `resolveAdminSession` keeps an already-allowed session for the same user when the reload fails (`allowedProfile` option) and denies a new session as `unverified` ("No pudimos verificar tu acceso. Revisa tu conexión e inténtalo de nuevo."). A confirmed inactive profile still denies.
 - Mobile out-of-order status: `createLatestRequest` in `sessionStatus.logic.ts`; `useSession` applies only the latest status load.
-RED: `bun test apps/frontend/core/auth/sessionStatus.logic.test.ts apps/admin-web/src/lib/adminSession.logic.test.ts apps/admin-web/src/lib/adminAccess.test.ts` 16 pass, 4 fail, exit 1 (the "reload confirms inactive" case already passed and stays as a regression guard). GREEN: `bun test apps/frontend/core/auth apps/admin-web/src/lib` 117 pass, 0 fail; full `bun test` 2317 pass, 0 fail; ESLint on touched files exit 0; admin `tsc --noEmit -p tsconfig.app.json` exit 0; no frontend `tsc` diagnostics in touched files. Risk: item 2 (admin access decision on load failure) and item 6 (hook wiring has no automated test).
+  RED: `bun test apps/frontend/core/auth/sessionStatus.logic.test.ts apps/admin-web/src/lib/adminSession.logic.test.ts apps/admin-web/src/lib/adminAccess.test.ts` 16 pass, 4 fail, exit 1 (the "reload confirms inactive" case already passed and stays as a regression guard). GREEN: `bun test apps/frontend/core/auth apps/admin-web/src/lib` 117 pass, 0 fail; full `bun test` 2317 pass, 0 fail; ESLint on touched files exit 0; admin `tsc --noEmit -p tsconfig.app.json` exit 0; no frontend `tsc` diagnostics in touched files. Risk: item 2 (admin access decision on load failure) and item 6 (hook wiring has no automated test).
 
 ### L41 — Block 2 merged into main
+
 facbe99 (L40 follow-ups) review `review-160d79c2f980417a` approved. Merged origin/main (4 commits from other worktrees, no overlapping files) into `audit/auth-sessions` as 974323b; full `bun test` 2376 pass, admin `tsc` exit 0; pushed the branch and fast-forwarded origin/main to 974323b.
 
 ### L42 — CI red on main after 974323b (user report) and fix
+
 User report (verbatim): "El CI de main falla desde 974323b en un test de este worktree: apps/frontend/core/db/supabase.test.ts:41 \"native supabase client > stores the session in device storage and follows the app state\" TypeError: undefined is not an object (evaluating 'auth.storage') Pasa en local pero falla en CI (Linux, sin .env). Lo introdujo d8f9079. Hipótesis: el test depende de apps/frontend/.env (EXPO_PUBLIC_SUPABASE_*), que no existe en CI, o del orden de carga de los tests. Reproducilo primero corriendo solo ese archivo sin el .env, arreglá el test para que no dependa del entorno, y verificá que el CI de main quede verde. Detalle en Engram 2541."
 Reproduction: alone without `apps/frontend/.env` the test passed (1 pass), so the env hypothesis is ruled out (the test sets its own env). Root cause is load order: `apps/frontend/core/hooks/useConnectOnboarding.test.ts` and `tests/prepare/image-upload-diagnostics.mount.test.tsx` replace `../db/supabase` with a fake that has no `auth` through process-wide `mock.module`; in the CI file order (from run 39694239802) both run before ours (#197 of 268), so `import('./supabase')` returned the fake. `bun test ./apps/frontend/core/hooks/useConnectOnboarding.test.ts ./apps/frontend/core/db/supabase.test.ts` reproduced it locally: 7 pass, 1 fail with the same TypeError. The old test also leaked its own global `react-native` and AsyncStorage mocks into later files.
 Fix: `apps/frontend/core/db/nativeClient.ts` `createNativeSupabaseClient(url, key, { storage, appState, platformOS })` builds the real client with injected platform dependencies; `supabase.ts` calls it with AsyncStorage, AppState and Platform.OS. `nativeClient.test.ts` replaces `supabase.test.ts` and uses no `mock.module`. RED: missing module, exit 1. GREEN: mocker files first then ours, 11 pass, 0 fail; `core/db` without `.env` 13 pass. CI-like run (exact CI file order, no `.env`): 2378 pass, 0 fail; full `bun test` without `.env`: 2378 pass, 0 fail. ESLint on touched files exit 0; no `tsc` diagnostics in `core/db`. Risk: none for runtime behavior (same client options and AppState binding, now built by a function); item 6 for the wiring of `supabase.ts` itself, still covered only by the device check already passed in L38.
 
 ### L43 — Block 3 start and login/registration audit
+
 User request (verbatim): "Arranquemos el bloque 3 de auth (login y registro). Creá la rama desde main, auditá el bloque y planeá los commits antes de implementar."
 Branch `audit/auth-login` created from origin/main at 5674b58 (contains blocks 1 and 2). Audit is source plus read-only remote evidence (Supabase MCP); no code changed. Remote: 13 auth users (12 email, 1 Google identity), 0 unconfirmed, 0 multi-provider users; auth.users triggers match `20261020100003_auth_user_triggers.sql`.
 Confirmed findings:
+
 - B1 (high): `fn_on_auth_user_created` inserts `profiles.username` from metadata `username`, then `full_name`, then the email prefix, with only `ON CONFLICT (id)`. `profiles` has `UNIQUE (username)` and `CHECK (char_length(username) BETWEEN 3 AND 20)`. Any violation re-raises inside the auth insert, so the whole signup fails ("Database error saving new user"). Google first login fails for any user whose full name has more than 20 characters or matches an existing username; there is no retry path for that person.
 - B2 (medium): `registerSchema` (`core/hooks/useAuth.ts:22`) checks only `min(3)`: a username over 20 characters or already taken reaches the trigger and the user sees the raw database error.
 - B3 (medium, data): remote auth user `20197325…` (email, confirmed, created 2025-11-13, before the first profile row on 2025-11-15) has no `profiles` and no `profiles_private` row: unrecoverable partial account.
@@ -428,51 +497,62 @@ Confirmed findings:
 - B8 (low): resend has no client cooldown; the server rate limit surfaces as a raw error.
 - B9 (decision): same-email provider linking is left to Supabase defaults and not written down anywhere (S6 requires an established rule). Manual linking is not used by the app.
 - B10 (evidence gap): `supabase/config.toml` has no `[auth]` section, so the local stack runs Supabase defaults (email confirmation off) and does not reproduce the remote signup flow; deployed Auth settings (confirm email, OTP length/expiry, password policy, rate limits, Google client IDs) are not readable through the MCP.
-Not defects / out of scope: provisioning is atomic (trigger runs in the auth insert transaction, so no partial rows for new users); admin login already goes through the block-2 access gate. Follow-ups: unused legacy functions `handle_new_user`, `handle_sync_user_data`, `handle_sync_user_email`, `handle_update_user_email` (no trigger uses them); the trigger still provisions deprecated `wallets` (legacy wallet removal follow-up); duplicate email-update triggers (block 4).
-Proposed commits: T3a (own commit, high risk), T3b, T3c, T3d (docs/config). Waiting for the maintainer's decision on the username and existing-email policies before T3a.
+  Not defects / out of scope: provisioning is atomic (trigger runs in the auth insert transaction, so no partial rows for new users); admin login already goes through the block-2 access gate. Follow-ups: unused legacy functions `handle_new_user`, `handle_sync_user_data`, `handle_sync_user_email`, `handle_update_user_email` (no trigger uses them); the trigger still provisions deprecated `wallets` (legacy wallet removal follow-up); duplicate email-update triggers (block 4).
+  Proposed commits: T3a (own commit, high risk), T3b, T3c, T3d (docs/config). Waiting for the maintainer's decision on the username and existing-email policies before T3a.
 
 ### L44 — Block-3 policy decisions (maintainer answers)
+
 Username (verbatim choice): "Elegido: rechazar; derivado: sufijo (Recomendado)". A username typed in the registration form that is taken or outside the rules is rejected with a clear "username already exists" message so the user picks another; a username derived from Google metadata or the email prefix is normalized by the server to the profile rules and gets a unique suffix (e.g. `mariafernanda_4821`), so provisioning never fails.
 Existing email (verbatim choice): "Mensaje claro + ir a login (Recomendado)". Registering with an email that already has an account shows "this email already has an account, sign in" and leads to login (the Supabase response already reveals this to any API caller).
 
 ### L45 — T3a implementation and evidence
+
 Delegated writer (context backstop). Migration `supabase/migrations/20261022001509_auth_username_provisioning.sql` (helper `fn_generate_profile_username`, rewritten `fn_on_auth_user_created`, generic idempotent backfill without wallets), canonical files under `supabase/queries/triggers/auth/`, client `core/auth/registerUsername.logic.ts` (charset from the profile editor plus the 20-character cap, injected availability check against `profiles`; a failed lookup does not block signup), `useAuth.ts` `registerSchema`, `RegisterForm.tsx` pre-check, Bruno `bruno/auth/username-availability-*.bru`. Decisions: derived names are lowercased, Spanish accents transliterated, other characters dropped, short bases get `user`, suffix `_` plus 4 to 8 random digits within 20 characters; typed names are length/uniqueness-checked on the server and charset-checked on the client.
 RED: 0 pass, 11 fail, exit 1 (module missing). GREEN: 16 pass, 0 fail; full `bun test` 2396 pass, 0 fail. Local stack (`supabase db reset`, GoTrue admin API): long full name -> `mariafernandadelosan`; duplicate full name -> `juanperez` and `juanperez_5201`; short email prefix -> `abuser`; taken typed username -> HTTP 500 `23505` and no leftover auth/profile rows; out-of-range typed username -> `23514`; backfill restored deleted rows and a second run changed nothing; seed users provisioned. Grants: anon/authenticated cannot execute either function. Bruno: the two new requests pass; two `functions` requests fail because this worktree has no `supabase/functions/.env` (unrelated, pending `bun run worktree:env`).
 Independent verify: PASS for S6 (L44 username part), S10, B1, B2, B3 (remote B3 repair needs the migration applied). Parent follow-up from verify notes: suffix search bounded at 50 attempts (RED 10 pass/1 fail, then GREEN) and the grant comment corrected. Open notes: `ç`/`ã` dropped rather than transliterated; case-sensitive uniqueness (pre-existing); a pre-check race still shows the generic error until T3c maps it.
 
 ### L46 — T3a committed and reviewed
+
 Commit d00cbb8 `fix(auth): provision a valid unique username for every new account` (pre-commit `bun test` 2397 pass, 0 fail). Native review `review-71da6185ff4f077f` (lenses risk, resilience, reliability; tier high) approved and acknowledged. Advisory, non-blocking: typed-username charset enforced only on the client (R1); RegisterForm pre-check paths and some structural SQL assertions lack behavior tests (R3-001..R3-006); the derived-name insert retry has no explicit cap of its own (R4; the helper is capped at 50). Pending maintainer action: apply `supabase/migrations/20261022001509_auth_username_provisioning.sql`, then `bun run db:types`.
 
 ### L47 — T3b implementation and evidence
+
 Delegated writer (context backstop). `core/auth/authOutcome.logic.ts`: `classifyLoginError` (auth-js 2.116 `AuthError.code === 'email_not_confirmed'`, `error-codes.ts:47`; the message alone no longer counts), `recoverUnconfirmedLogin` (resend, then always open verification even if the resend fails), `classifySignUpResult` (`account_exists` only for a user with `identities: []` and no session). `LoginForm` gets `onEmailNotConfirmed(email)`, `RegisterForm` gets `onAccountExists()`; `login.tsx` and `AuthModal` open verify-code, `register.tsx` goes to login and `AuthModal` switches to the login view. i18n: `verificationRequired`, `resendingCode`, `resendCodeSuccessTitle`, `resendCodeSuccessMsg`, `accountAlreadyExistsTitle`, `accountAlreadyExistsMsg` in both locales and the English `modal` block; inline Spanish defaults removed. New `core/i18n/authLocaleParity.test.ts`.
 RED: 0 pass, 3 fail, 1 error (module and English `modal` block missing). GREEN: 13 pass; parent rerun `bun test apps/frontend/core/auth apps/frontend/core/i18n/authLocaleParity.test.ts` 40 pass, 0 fail, exit 0; full `bun test` 2410 pass, 0 fail. ESLint: 14 pre-existing errors on untouched lines only; no `tsc` diagnostics in touched files. Covers B4, B5, B6 (S6, L44 existing-email policy).
 Not reproducible locally (local stack has email confirmation off, B10): device checks pending for unconfirmed login from screen and modal (including resend failure), existing-email signup from screen and modal, new signup, and the copy in both languages. Risk: none of items 1-5 (client navigation only; server enforcement unchanged); item 6 for the screen wiring, covered only by the device check.
 
 ### L48 — T3b review and T3c implementation
+
 T3b commit 349216e: native review `review-3ef319c3246a9d5f` (lenses readability, reliability) approved and acknowledged; advisory only (the `message` field accepted by `classifyLoginError` is unused; LoginForm wiring has no component test).
 T3c (delegated writer, context backstop): `core/auth/authErrors.logic.ts` maps auth-js 2.116 `AuthError.code` to `auth` i18n keys (`invalid_credentials`, `email_not_confirmed`, `user_already_exists`/`email_exists`, `weak_password`, rate limits, `otp_expired`, `validation_failed`, `email_address_invalid`, `signup_disabled`, network, generic fallback); toasts show only `messageKey`, never a raw server message. A T3a trigger rejection reaches auth-js as `AuthRetryableFetchError` with status 500 and no code (`src/lib/fetch.ts:96-97`), so a taken typed username is detected by status plus the trigger's message text and shown as the username field error; if the remote GoTrue reformats it, the user sees the generic message (unverified remotely). Google errors and the missing-email guard use i18n keys; Google logs only name/code/status. Resend cooldown 60 s (`resendCooldown.logic.ts`, injected clock) after a successful or rate-limited resend.
 RED: 40 pass, 5 fail, 3 errors, exit 1. GREEN: 75 pass, 0 fail, exit 0 (T3a/T3b tests preserved); full `bun test` 2445 pass, 0 fail. ESLint: 9 pre-existing errors on untouched lines; no `tsc` diagnostics in touched files. Covers B7, B8. Device checks pending: wrong password (both languages), taken username, existing email, resend countdown and server rate limit, wrong/expired code, offline login and resend, Google cancel and failure. Out of scope: forgot/reset password screens still show raw messages (block 4).
 
 ### L49 — T3a deployed and verified; email delivery decision
+
 Maintainer (verbatim excerpt): "ya hie la migarcion, paso sin errores." Remote check (Supabase MCP, read-only): 0 auth users without `profiles`/`profiles_private` (user `20197325…` repaired), helper present with the 50-attempt cap, anon/authenticated cannot execute either function, no usernames outside 3..20. `bun run db:types` also pulled schema deployed from the shipment-cancellations branch (recovery columns and RPCs); only the `fn_generate_profile_username` line is committed here. T3c commit 2054a13: native review `review-9fe3a8fdeb2a7fab` approved and acknowledged (advisory only). Bruno with `supabase/functions/.env` present: 9/9 requests pass, exit 0.
 Maintainer question on Resend vs Supabase email (verbatim): "recuerdoq ue una sesion me dijo que usramos resend mejor, no se si esto es lo mejor o es sobreingeniera". Answer: required, not over-engineering; the built-in mailer only delivers to organization members and is not for production (Supabase SMTP guide). Custom SMTP (Resend) is Dashboard configuration only, recorded in `docs/go-live.md` section 10 as a go-live prerequisite. Until then, emulator signups must use an organization member's email.
 
 ### L50 — Deployed Auth settings and maintainer changes (T3d input)
+
 Maintainer report (verbatim excerpt): "Enable email provider: true, Secure email change:ffalse , Secure password change:true, Require current password when updating:false, Prevent use of leaked passwords:false (only for pro plans), Minimum password length: 6 , Password requirements: empty [...] Email OTP expiration: 3600, Email OTP length: 6. [...] Rate limit for sending emails: 2, Rate limit for sending SMS messages: 30 , Rate limit for token refreshes:150, Rate limit for token verifications: 30, Rate limit for anonymous users: 30, Rate limit for sign-ups and sign-ins: 30, rate limit for Web3 sign-ups and sign-ins:30, Minimum interval per user: 60."
 Recommendations given (NIST SP 800-63B: length over composition rules; Supabase docs): minimum password length 8 (the app already requires 8; the server allowed 6), no composition requirements, secure email change on, email OTP expiry 900 s; keep "require current password" off until block 4 sends `currentPassword` from `SecuritySection.tsx`; leaked password protection needs the Pro plan; CAPTCHA on signup/sign-in before launch.
 Maintainer follow-up (verbatim): "Confirm email, calro que esta activado, y lo de Skip nonce check" , no estaba marcado, ya lo marque. Hice lo de 6-8, y lo de EMAIL OPT ade 3600 a 900 y lo de secure email. Require current password lo deje igual". Current remote: confirm email on, secure email change on, secure password change on, require current password off, minimum length 8, no composition rules, OTP length 6 and expiry 900 s, rate limits as above. Correction: Google "Skip nonce check" was turned on after a misread question; it weakens ID-token replay protection and is only needed for iOS with the current native library, so the maintainer was asked to turn it off again (revisit when iOS ships).
 Provider-linking policy (S6): Supabase automatic linking. A Google sign-in whose verified email matches an existing user links to that user; unconfirmed identities of that user are removed to prevent pre-account takeover. Manual linking (`linkIdentity`) stays disabled and unused.
 
 ### L51 — T3d implementation and evidence
+
 Delegated writer (context backstop) plus a parent fix. `supabase/config.toml` gains `[auth]`, `[auth.rate_limit]` and `[auth.email]` mirroring L50 (keys taken from the CLI 2.121.0 `supabase init` template): confirmations required, double-confirm email change, secure password change, OTP 6 digits / 900 s, minimum password 8 with no composition rules, `max_frequency` 60 s, manual linking off, remote rate limits (`email_sent` only applies with custom SMTP). Not expressible locally: require current password, leaked password protection, Google (needs secrets). `docs/go-live.md` section 10 records the deployed values, the linking policy and the pending items (Skip nonce check off, require current password with block 4, leaked passwords on Pro, CAPTCHA).
 Local proof after `supabase stop`/`start` and `supabase db reset`: signup returns no session and an unconfirmed user, and the mail catcher receives the email; 7-character password -> `422 weak_password`, 8 accepted; unconfirmed login -> `email_not_confirmed`; repeat signup within 60 s -> `429 over_email_send_rate_limit`; signup for a confirmed email -> `422 user_already_exists` (already mapped to the account-exists flow by T3c); seed users log in. The local email carries the default link, not the 6-digit code: experimental stack mode rejects custom templates (`content_path requires template serving`), so a parent attempt with a code template was reverted and the limitation is noted in config.toml; the code flow is proven by the maintainer's emulator test against the remote. Bruno 9/9 pass; full `bun test` 2445 pass, 0 fail. Covers B9, B10.
 
 ### L52 — Block 3 closed and merged into main
+
 T3d commit abd6344: native review `review-0f5e483cbd9937dc` (risk, readability) approved and acknowledged; advisory: Google "Skip nonce check" is still on remotely until the maintainer turns it off. Maintainer reported every emulator check passing (verbatim: "OKey todo lo primero paso"). Merged origin/main (16 commits) as d8adc21; the only conflict was `supabase/config.toml` (new `resolve-shipment-refund` verify_jwt entry next to the new `[auth]` sections), resolved by keeping both. After the merge: `supabase db reset` ok, `bun test` 2692 pass, 0 fail, admin-web typecheck exit 0. Pushed `audit/auth-login` and fast-forwarded origin/main to d8adc21 (CI run 39867925547 success). The accumulated-branch review offered after the merge was not started: every work-unit commit (d00cbb8, 349216e, 2054a13, d09e61d, abd6344) has its own approved review.
 Open after block 3: maintainer turns off Google "Skip nonce check"; custom SMTP (Resend) and CAPTCHA before go-live; "require current password" with block 4; forgot/reset password screens still show raw errors (block 4); follow-ups from L43 (unused legacy `handle_*` functions, `wallets` provisioning, duplicate email-update triggers). Next: block 4 (recovery and credential changes) in a new session.
 
 ### L53 — Block 4 start and recovery/credential audit
+
 User authorization (verbatim): "arranca master." Branch `audit/auth-recovery` created from `origin/main` 0115250 (block 3 merged). Audit is source-only plus the GoTrue `internal/api/user.go` source (master) for `UserUpdate`; no code changed. Paths: `app/(auth)/forgotPassword.tsx`, `app/(auth)/resetPassword.tsx`, `core/hooks/useAuth.ts` (`sendPasswordResetOtp`, `resetPassword`), `components/features/settings/{SecuritySection,AccountSection}.tsx`, `core/utils/{passwordChange,emailChange}.ts`.
+
 - C1 (high, confirmed in GoTrue source): password change sends a random client `nonce` (`generatePasswordNonce`). With "Secure password change" on (L50), GoTrue requires a reauthentication nonce when the session is older than 24 h and verifies it (`verifyReauthentication`); a random value fails, so every mobile user whose login is older than a day cannot change the password and sees the generic `updateFailed`. With a recent session the nonce is ignored. The real nonce is the code `auth.reauthenticate()` emails; it is never requested. The code comment "Supabase ignores currentPassword" is also outdated: GoTrue checks `current_password` when "Require current password" is on (except in recovery sessions).
 - C2 (medium): the biometric gate is device-local and skipped without enrolled hardware; it is not a server control. Server-side proof today is only C1's broken reauthentication.
 - C3 (medium): `resetPassword` verifies the recovery OTP (creates a session) and then calls `updateUser`. If `updateUser` fails (`same_password`, `weak_password`, network), the user is left signed in with a recovery session and a retry re-verifies the already consumed code (`otp_expired`), so the screen cannot recover. No resend action on the reset screen (OTP expiry 900 s).
@@ -480,29 +560,34 @@ User authorization (verbatim): "arranca master." Branch `audit/auth-recovery` cr
 - C5 (medium): with "Secure email change" on, both the current and the new inbox must confirm; the success toast only mentions the new inbox.
 - C6 (unverified, Dashboard): the recovery flow expects a 6-digit code, so the remote "Reset password" email template must contain `{{ .Token }}` (Supabase default sends only a link). The email-change link redirects to `selene://profile/settings`; it must be in the Auth redirect URL allow list or GoTrue falls back to the Site URL. Not readable through the Supabase MCP.
 - C7 (low): "Google-only" is detected from `app_metadata.provider` (first provider). A Google user who set a password through recovery still cannot change it in Settings; email/password users that later linked Google are unaffected.
-Out of scope: account deletion (block 5); local stack cannot render custom templates (L51), so code-based recovery is proven on the emulator against the remote.
-Open decision before implementation: password-change proof (current password vs emailed reauthentication code).
+  Out of scope: account deletion (block 5); local stack cannot render custom templates (L51), so code-based recovery is proven on the emulator against the remote.
+  Open decision before implementation: password-change proof (current password vs emailed reauthentication code).
 
 ### L54 — Password-change policy and recovery template (maintainer answers)
+
 Question: how a user proves identity before changing the password in Settings. Answer (verbatim choice): "Contraseña actual (Recomendado)" — turn on "Require current password", turn off "Secure password change"; one current-password prompt, no email round trip. Recovery template (verbatim choice): "Manda el código" — the remote "Reset password" template contains `{{ .Token }}`, so C6 is resolved for recovery. Still open in C6: whether `selene://profile/settings` is in the redirect allow list.
 Rollout order: "Secure password change" can be turned off at any time; "Require current password" must be turned on only after the app build that sends `currentPassword` is installed, otherwise every password change returns `current_password_required`.
 Plan: T4a (own commit, high risk: credentials), T4b, T4c.
 
 ### L55 — T4a implementation and evidence
+
 Installed auth-js 2.116 forwards `updateUser` attributes as the request body and types the field `current_password` (snake_case); the previous helper built `currentPassword`, which GoTrue ignores. GoTrue error codes (`apierrors/errorcode.go`): `current_password_required`, `current_password_invalid`, `same_password`, `reauthentication_needed`, `reauthentication_not_valid`.
 `core/utils/passwordChange.ts`: `validatePasswordChange(current, next, confirm)` (current required, min 8, match, differs from current), `buildPasswordUpdatePayload(current, next)` -> `{ password, current_password }`, `mapPasswordChangeErrorKey` (code-based; falls back to `mapAuthErrorKey`). The random client nonce is removed. `SecuritySection.tsx` asks for the current password and drops the biometric gate, which only stood in for it (comment "Supabase ignores currentPassword"); the email-change biometric gate is unchanged. New `settings.security` keys in en/es: `passwordCurrent`, `currentPasswordRequired`, `samePassword`, `recentLoginRequired`.
 RED: 108 pass, 14 fail, 1 error (missing export, wiring, keys). GREEN: 146 pass, 0 fail; full `bun test` 2707 pass, 0 fail. ESLint clean and no `tsc` diagnostics in touched files. Local GoTrue (stack mode): `PUT /auth/v1/user` with the same password -> `422 same_password`; with a new password and `current_password` -> 200 and the new password logs in. The local stack cannot enable "Require current password" (L51), so `current_password_invalid` is proven only on the emulator against the remote after the Dashboard switch.
 Covers C1, C2 and C4 for the Settings password. Risk: item 2 (credential change).
 
 ### L56 — T4a review and T4b handoff
+
 T4a commit 3c4a941: native review `review-46f18c8a1bab450a` (risk, reliability) approved and acknowledged. Advisory only: R1 rollout window (old builds and the Dashboard switch, already ordered in L54); R3 the `not.toContain('nonce')` wiring assertion is a broad text check. T4b delegated (context backstop); the RED test `apps/frontend/core/auth/passwordRecovery.logic.test.ts` was written by the parent before the handoff.
 
 ### L57 — T4b implementation and evidence
+
 Delegated writer. `core/auth/passwordRecovery.logic.ts`: `completePasswordRecovery(auth, { email, code, newPassword, codeVerified })` with injected `supabase.auth`; verifies the code only when not yet verified, maps `same_password` to `auth:errors.samePassword` and everything else through `mapAuthErrorKey`, catches thrown errors. `useAuth.resetPassword` delegates to it; `sendPasswordResetOtp` returns `toAuthFailure`. `resetPassword.tsx` keeps `codeVerified` (hides the code input once verified), shows `t(messageKey)` under `auth:recoveryErrorTitle`, uses `auth:errors.missingEmail` instead of the hardcoded Spanish text, and adds resend with the shared 60 s cooldown (started on mount; a successful resend resets `codeVerified`). `forgotPassword.tsx` shows the mapped key.
 Worker RED: logic test 0 pass, 1 fail, 1 error (module missing); screen contract test 0 pass, 9 fail. GREEN: 182 pass focused; full `bun test` 2721 pass, 0 fail. Parent spot check: keys present in en/es, cooldown `start` is stable (no effect loop). ESLint: only pre-existing `no-explicit-any`/`no-require-imports` on untouched lines; `tsc` only the usual `bun:test` resolution in test files. Not reproducible locally (local recovery email carries a link, L51). Device checks pending: wrong then correct code; same password then a different one without a new code; resend before and after the cooldown; copy in both languages.
 Covers C3, C4 (recovery screens). Risk: item 6 (screen wiring is covered by source-contract tests and the device check only).
 
 ### L58 — T4b review and T4c implementation
+
 T4b commit 314d23a: native review `review-40aa08cdb0c15a7c` (risk, resilience, reliability; base 3c4a941 so T4a was not re-reviewed) approved and acknowledged. Advisory: the OTP input keeps the old digits after a resend (R3/R4 WARNING, `resetPassword.tsx:147`); `codeVerified` is never invalidated if the recovery session ends (R3 WARNING); no test for a thrown update after a verified code; screen tests are source-text contracts. The stale-code warning gets its own small fix next.
 New finding C8 (low, confirmed locally): GoTrue sends no email when the new address equals the current one but answers 200, so the app showed "confirmation sent" for nothing.
 T4c: `core/utils/emailChange.ts` adds `isSameEmail` and `mapEmailChangeErrorKey` (`email_exists`/`user_already_exists` -> `settings:errors.emailAlreadyTaken`, `email_address_invalid` -> `settings:errors.invalidEmail`, else `mapAuthErrorKey`); `AccountSection.tsx` rejects an unchanged address (`errors.sameEmail`) and shows the mapped key instead of matching `'already'`. Copy for `account.emailChangeMessage` and `toasts.emailSentMessage` (en/es) now says both inboxes confirm.
@@ -511,30 +596,36 @@ Still open in C6: whether `selene://profile/settings` is in the remote redirect 
 Covers C4 (email change), C5, C8. Risk: none of items 1-5 (client validation and copy; server unchanged); item 6 for the screen wiring (source-contract test and device check).
 
 ### L59 — T4c review and T4d follow-ups
+
 T4c commit 941fa2f: native review `review-0bdf5a5ac134c8dd` (reliability) approved and acknowledged. Advisory: `code in MAP` lookups also match Object prototype keys (`constructor`, `toString`); source-text wiring contract; cross-namespace keys not proven by a render test.
 T4d (inline): `resetPassword.tsx` clears the OTP input (`OTPTextInput.clear()` through a ref) and `otpCode` after a successful resend (T4b advisory); `mapAuthErrorKey`, `mapPasswordChangeErrorKey` and `mapEmailChangeErrorKey` use `Object.hasOwn`. RED: 4 fail (one per behavior); GREEN: 362 pass across `core/auth`, `core/utils`, `core/i18n` and the recovery screen test; ESLint clean; no `tsc` diagnostics in touched files. Not done: invalidating `codeVerified` when the recovery session ends (T4b advisory, low: GoTrue then returns `session_not_found`/generic and the user goes back to request a new code).
 Risk: none of items 1-5; item 6 for the OTP clear (device check).
 
 ### L60 — T4d review and block-4 handoff
+
 T4d commit 7ed565c: native review `review-578559f2ca94b2e4` (reliability) approved with no findings and acknowledged. `docs/go-live.md` section 10 records the password-change rollout order, the code-based recovery template and the email-change redirect URL.
 Pending before closing block 4 (maintainer): (1) Dashboard: "Secure password change" off now; "Require current password" on after installing the new build. (2) Confirm `selene://profile/settings` (or `selene://**`) is in Authentication > URL Configuration > Redirect URLs (C6). (3) Emulator checks against the remote: Settings password change with a wrong current password, the same password, and a correct change; forgot password -> wrong code -> correct code; same password then a different one without a new code; resend before and after 60 s (old digits cleared); email change to the same address, to a taken address and to a new one (both inboxes receive a link); copy in both languages. Then merge to main.
 Open follow-ups: C7 (Google-only detection from `app_metadata.provider`); `codeVerified` not invalidated when the recovery session ends; the email-change biometric gate is device-local only (same reasoning as C2, not changed because email change also needs both inboxes).
 
 ### L61 — Accumulated-branch review declined (verbatim)
+
 The stop hook offered a native review of the whole branch (base 0115250, target `sha256:1a418c84…`). Recommendation: do not start it; every code commit (3c4a941, 314d23a, 941fa2f, 7ed565c) has its own approved review and e250706 is documentation only. Maintainer decision (verbatim): "si dale, sin revisar entonces master." The accumulated-branch candidate stays unreviewed by explicit user choice.
 
 ### L62 — Emulator results and Dashboard changes (maintainer, verbatim excerpts)
+
 "A: todo quedo asi. C.1: Actualice la contrasena, todo sin errores. C.2: cORRECTO EL CASO 1 y 2, nomas que no me gusta dodne queda el aviso [...] queda abajo de 'confrmar contrasena' entonces esta confuso ahi la ui". C.3: countdown, wrong-code message and same-password message correct; "el corro que me lleog es de 8 digitos, y en la app 6". C.4: same and taken email pass; a new address showed "not a valid email". C.5: language switch works. Keyboard: "en cambiar contrasena, como abrimos una modal, el teclado tapa el ultimo campo". Requested a later UI/UX pass on all auth screens (forgot password responsiveness).
 Remote Auth logs (Supabase MCP): only one recovery `/verify` (the wrong code, `otp_expired`), so the correct code never reached the server: the remote "Email OTP Length" was 8, not 6 as recorded in L50. The email-change "invalid" was `email_address_invalid` for the account's current address `tester1@test.com` (secure email change also mails the current inbox), followed by `429 over_email_send_rate_limit`; not an app defect.
 Maintainer then confirmed (verbatim): "ya puse la config de supabse como dijsite y lo de gogole tambein": Email OTP length 6, secure password change off, require current password on, Google "Skip nonce check" off. Pending: retest C.3 with the 6-digit code.
 Decisions: T4e (field-level errors and keyboard in the password dialog) belongs to this block; the auth-screen UI/UX pass is a separate later block.
 
 ### L63 — T4e implementation and evidence
+
 `core/utils/passwordChange.ts` adds `passwordErrorField(errorKey)` (current password required/wrong -> current; too short, same or weak -> new; mismatch -> confirm; anything else -> form). `SecuritySection.tsx` keeps one error per field and renders it under that field with the input in error state; network and other errors stay at the bottom. `ConfirmDialog` gets an opt-in `avoidKeyboard` prop (default false) that wraps the dialog in a `KeyboardAvoidingView` (`behavior="padding"`; Expo 54 is edge-to-edge, so Android no longer resizes the window for the keyboard); only the password and email-change dialogs use it, the other 23 dialogs are unchanged. The `ConfirmDialog` diff is mostly the re-indent of the extracted `dialog` element.
 RED: 4 fail (field mapping, field wiring, dialog prop, keyboard wrapper). GREEN: 321 pass across `core/utils`, `core/i18n` and the settings contract test; ESLint clean; no `tsc` diagnostics in touched files. Device check pending: wrong current password shows under the current field, mismatch under confirm, and the keyboard no longer covers the last field (password and email dialogs).
 Risk: item 3 (shared `ConfirmDialog`, mitigated by the opt-in default); item 6 for the keyboard layout (device check only).
 
 ### L64 — Recovery retest and keyboard follow-up (maintainer, verbatim excerpts)
+
 "master el caso 1, paso": forgot password with the 6-digit code works end to end. Question (verbatim): "que pasa si es un correo que no ecxiste y envio el codigo y luego se inica sesion?". Answer: GoTrue `/recover` answers 200 for unknown addresses (no account enumeration) and sends nothing; `verifyOtp` then fails (remote log: `otp_expired` "User not found"), so no session is created and nothing is skipped. Signup still requires a confirmed email (L50) before any login.
 Keyboard (verbatim): "el teclado, sigue tapando el tecaldo el dialog"; field errors: "todo es lo esperado de ver". T4e review `review-de62be0c9fe54b2d` (readability, reliability) approved and acknowledged; advisory only.
 Fix: the `KeyboardAvoidingView` wrapper had no effect on the Paper dialog, so it is removed. `core/hooks/keyboardHeight.logic.ts` (`subscribeKeyboardHeight`, injected keyboard source; iOS `keyboardWill*`, Android `keyboardDid*`) and `useKeyboardHeight(enabled)` feed `ConfirmDialog`, which adds `marginBottom: keyboardHeight` when `avoidKeyboard` is set: Paper centers the dialog, so the margin centers it in the space above the keyboard. The `ConfirmDialog` diff against main is now +12/-2.
@@ -542,15 +633,18 @@ RED: 2 fail (module missing, dialog wiring). GREEN: 225 pass (`core/hooks` keybo
 Risk: item 3 (shared `ConfirmDialog`, opt-in only); item 6 (layout, device check only).
 
 ### L65 — Block 4 closed and merged into main
+
 Maintainer (verbatim): "Listo lo del teclado quedo hermoso master, todo ok, puedes cerrar bloque 4". f0ed6d5 review `review-cc71aee02ea05dbb` (reliability) approved and acknowledged; advisory: the hook and dialog layout are proven by the device check only; keyboard state when the dialog mounts with the keyboard already open.
 All emulator checks passed (L62, L64, L65). Block 4 commits: 3c4a941, 314d23a, 941fa2f, 7ed565c, ec6185e, f0ed6d5 (each with an approved native review), docs e250706 and 66071dc; the accumulated-branch review was declined by the maintainer (L61).
 Open after block 4: C7 (Google-only detection from `app_metadata.provider`); `codeVerified` not invalidated when the recovery session ends; the email-change biometric gate is device-local only; custom SMTP (Resend) and CAPTCHA before go-live (built-in mailer: 2 emails per hour, organization members only); test account `tester1@test.com` cannot receive email. Next blocks: 5 (account deletion) and the auth-screen UI/UX pass (L62), each in a new session.
 
 ### L66 — Block 5 start and account-deletion audit
+
 Maintainer (verbatim): "Arrancamos el bloque 5 del roadmap de auth (eliminación de cuenta, S8 en odd/tasks/auth-hardening.md). Leé el tracker hasta L65 y Engram del proyecto school-portal. Creá una rama nueva desde origin/main y empezá por la auditoría de solo lectura antes de tocar código."
 Branch `audit/auth-deletion` from origin/main 2acc4c1 (upstream unset). Read-only audit: `supabase/functions/delete-account/index.ts`, `core/hooks/useDeleteAccount.ts`, `deleteAccountHelpers.ts`, `DeleteAccountSection.tsx`, `core/auth/signOut*.ts`, baseline FKs and storage policies. Remote (Supabase MCP, read-only): `delete-account` v25 is deployed with `verify_jwt = true` and its source is identical to the repository; remote FK delete rules match the baseline.
 Findings:
-- D1 (critical) Deletion fails for anyone with history. `auth.admin.deleteUser` cascades `auth.users` -> `profiles`, but `orders.buyer_id` and `order_items.seller_id` (NO ACTION to `auth.users`), `shipments.seller_id`, `connect_payout_runs.seller_id/actor_id`, `shipment_completion_events.actor_id` (RESTRICT to `profiles`) and `disputes.buyer_id/seller_id`, `admin_audit_logs.admin_id` (NO ACTION) block it. The pre-checks only look for *active* rows, so the user passes them and gets `500 DELETE_FAILED` (shown as "No pudimos eliminar tu cuenta"). Remote count: 11 of 14 users can never delete. The failure is atomic (no partial delete), but the feature is unusable. Local reproduction pending.
+
+- D1 (critical) Deletion fails for anyone with history. `auth.admin.deleteUser` cascades `auth.users` -> `profiles`, but `orders.buyer_id` and `order_items.seller_id` (NO ACTION to `auth.users`), `shipments.seller_id`, `connect_payout_runs.seller_id/actor_id`, `shipment_completion_events.actor_id` (RESTRICT to `profiles`) and `disputes.buyer_id/seller_id`, `admin_audit_logs.admin_id` (NO ACTION) block it. The pre-checks only look for _active_ rows, so the user passes them and gets `500 DELETE_FAILED` (shown as "No pudimos eliminar tu cuenta"). Remote count: 11 of 14 users can never delete. The failure is atomic (no partial delete), but the feature is unusable. Local reproduction pending.
 - D2 (critical, policy) Hard delete conflicts with retention: where it succeeds it cascades reviews written and received (other users' reputation), listings, favorites, reports and admin notes; the ledger (orders, shipments, payouts, disputes) must survive. Needs a deletion-versus-retention decision.
 - D3 (high) Blockers are pre-Connect: they read the deprecated `wallets` and `payout_requests` and ignore Connect: completed shipments whose payout Selene has not released, `connect_payout_runs` pending reconciliation, shipment refunds still in flight.
 - D4 (high) No Stripe cleanup: the Stripe customer and saved payment methods (7 users) and the Connect account (12 users, 4 without shipments) are left behind; the function logs `stripe_customer_id`.
@@ -560,18 +654,21 @@ Findings:
 - D8 (low, policy) The function ignores account status: a suspended seller (S4) could delete once no dispute is open.
 - D9 (hypothesis) After deletion, `signOutUser('global')` calls GoTrue `/logout` with the deleted user's token; local cleanup always runs (`runSignOut`), but whether supabase-js drops the stored session on that error needs local proof. GoTrue deletes refresh tokens, so other devices lose the session at the next refresh; the access token stays valid until it expires.
 - D10 (info, block 6) App Store 5.1.1(v) and Google Play require in-app deletion; Google Play also asks for a web deletion URL.
-No source changes. Open decision before any design: hard deletion versus anonymize-and-close.
+  No source changes. Open decision before any design: hard deletion versus anonymize-and-close.
 
 ### L67 — Retention research (maintainer question and findings)
+
 Maintainer (verbatim): "SIEMPRE PARA este tipop de acciones me gusta basarme en las otras apps, como lo manejan las apps la acciion de eliminar cuenta? me refeiro a que hacen? porque si mal no etsoy ae incluso hasta algo legal involucrado no? algo como que tenemos que si borrar datos no nomas bloquear la cuenta y quedarnos con datos o algo asi, aclarame esto y en base a lo que investigues y comentes devcidimos"
 Findings: the LFPDPPP published 2025-03-20 defines "bloqueo" as keeping data only to settle possible liabilities until they prescribe, with no other processing, and requires suppression after it (art. 10). Codigo Fiscal art. 30 keeps accounting records 5 years. Vinted requires finished orders and withdrawn funds, then deactivates at once and keeps legally required data; Mercado Libre keeps data only while the law requires and then deletes or anonymizes it. Apple 5.1.1(v) requires in-app deletion and allows keeping legally required data; Google Play also asks for a web deletion link. Platform tax duties of Selene over sellers need confirmation from an accountant (not legal advice).
 
 ### L68 — Deletion model accepted and plan
+
 Maintainer (verbatim): "i dale, arma el plan de nuevo y dale master". Model and derived decisions recorded in S8; tasks T5a-T5e.
 Remote check (Supabase MCP): role `postgres` has UPDATE and DELETE on `auth.users`, `auth.identities`, `auth.sessions`, `auth.refresh_tokens`, `auth.mfa_factors`, so one SECURITY DEFINER transaction can close the auth side and the app side together. Keeping the `auth.users` row (email and password removed, `banned_until` set, identities and sessions deleted) keeps every ledger FK valid; deleting the identities lets the same Google account register again.
 Order of effects: the RPC commits the closure (source of truth) and returns the Stripe ids; the Edge Function then deletes the Stripe customer, closes the Connect account and removes Storage files, recording each result so T5c retries failures. A blocked request changes nothing.
 
 ### L69 — T5a implementation and evidence
+
 Migration `20261023043220_account_closure.sql`, canonical `supabase/queries/auth/{account_closures,fn_close_account}.sql`, text tests `supabase/migrations/__tests__/account_closure.test.ts`, Bruno `bruno/auth/close-account-*.bru`. `fn_close_account` is service-only (`auth.role()` guard, EXECUTE only for `service_role`); `account_closures` has RLS on, no policies, and only SELECT/INSERT/UPDATE for `service_role`. Blocker codes: `account_restricted`, `active_shipments` (seller shipments, seller orders, RESERVED or IN_DISPUTE listings), `active_orders`, `open_disputes`, `pending_payouts` (completed Connect shipment whose latest payout run is not `paid`, runs pending reconciliation, legacy wallet balance or payout requests), `pending_refunds` (unsettled cancellation refunds, `compensation_state`).
 Decisions: `profiles.deleted_at` added (profiles had no marker); addresses a shipment points to (`origin_address_id`) are scrubbed in place; the closed account is set to `banned` with reason `account_closed` so a still-valid access token cannot sell, publish or request payouts and no admin action reactivates it; listings in `order_items` are hidden, never-sold listings soft-deleted; products are locked `ORDER BY id` like `fn_reserve_products` (verifier finding); `auth.flow_state` and `auth.webauthn_credentials` are deleted as well (verifier finding); the username is `deleted_` plus 12 hex characters of `md5(uuid || attempt)`, moving to the next attempt when taken (runtime proof found the uuid-prefix version colliding on seed ids and aborting the closure).
 RED: 14 tests failed to load before the SQL (worker); after the verifier findings 3 failed (lock order, auth tables, grant), then 1 (username retry). GREEN: `bun test supabase/migrations/__tests__ supabase/queries` 542 pass, 0 fail. Local runtime (`supabase db reset`, psql as `service_role`): a suspended seller gets `blocked/account_restricted` with an identical row hash before and after; the buyer closes (`closed`), a second call returns `already_closed`; the seller closes with its candidate username pre-taken (resolved on the next attempt) and its 4 listings become hidden and soft-deleted; `authenticated` gets `permission denied`; GoTrue then answers `invalid_credentials` for the old password, the admin API reads `banned_until` 9999-01-01 and an empty email, and a new user with the same email is created and signs in (200). The worker also proved `active_orders` with an identical 7-group snapshot and each other blocker in rolled-back transactions. Bruno after a clean reset: 27 of 29 pass; `cancel-order-no-auth` and `resolve-shipment-refund-no-auth` fail as before this change (gateway answers first). Independent verify: no blockers. Remote (MCP, read-only): every referenced auth and public column and table exists, so the migration applies as written.
@@ -579,63 +676,76 @@ Open: deprecated `seller_bank_accounts` (CLABE) is kept as legacy payout audit h
 Risk: items 1 and 2 (data rewrite, auth rows, grants).
 
 ### L70 — T5a review and T5b handoff
+
 03f8dd9 review `review-6a41a2bba43feeca` (risk, resilience, reliability) approved and acknowledged. Advisory findings, carried as follow-ups: (FU-a) the buyer-side order check cannot lock rows that do not exist yet, so an order the same user creates while closing could commit after the check; (FU-b) `profiles.deleted_at` is client-writable on the local stack (remote: no client UPDATE on `profiles`); (FU-c) the canonical `fn_close_account.sql` lacks the REVOKE/GRANT lines that only the migration has; (FU-d) a products trigger error (`validate_product_publication_economics`) aborts the closure as an error instead of `blocked`. FU-a is accepted as residual risk (see L71 for T5b): it needs the same user to pay and close at the same moment, the order stays valid because the `auth.users` row is kept, and serializing checkout on the buyer row would change payments (S8 forbids redesigning them). FU-c is fixed with T5b; FU-b is checked in T5d; FU-d stays open (pre-existing trigger).
 
 ### L71 — T5b implementation and evidence
+
 `supabase/functions/delete-account/` is now a pure `handler.ts` (injected ports) plus `index.ts` wiring under `withSentry`. Response codes (documented in `handler.ts`): 401 `AUTH_REQUIRED`; 403 `REAUTH_REQUIRED` when the newest `amr` timestamp is older than 10 minutes; 409 `DELETE_BLOCKED` with `blocked_reason`; 404 `NOT_FOUND`; 500 `INTERNAL` without database text; 200 `{success:true}` after `closed` or `already_closed`, even when a cleanup step failed (recorded for T5c). Cleanup runs only steps still `pending` or `failed`: Stripe customer `customers.del` (`resource_missing` = done), Connect account `accounts.del` (`account_invalid` = done, because Stripe answers a deleted connected account that way), Storage `Avatars/<uid>/` and the images of listings the closure soft-deleted; evidence and verification files and images of listings in `order_items` are kept (ledger retention). `account_closures` gets per-step status, `attempts` and a sanitized `last_error` code. `supabase/config.toml` mirrors `verify_jwt = true`; the canonical `fn_close_account.sql` now carries the grants (FU-c).
 RED: `bun test supabase/functions/delete-account` failed (handler missing), then once more for `account_invalid`. GREEN: 41 pass; `deno check supabase/functions/delete-account/index.ts` clean; `bun test supabase/functions supabase/migrations/__tests__ supabase/queries` 1737 pass, 0 fail. Local stack with `functions:serve`: Bruno 41 requests, 39 pass (the 2 known gateway failures); delete-account requests prove no auth 401, anon key 401, seeded buyer with a wallet balance 409 `pending_payouts` (setup and cleanup restore the seed), a real session with a one-hour-old `amr` 403, a fresh throwaway user 200 and its closure row `attempts 1`. A refreshed token keeps the original `amr` timestamp, so the 10-minute rule measures the real sign-in. After closure the same token gets 401 because the sessions are gone; the `already_closed` retry is reachable only by a service-role caller (T5c) and is unit-tested. Stripe sandbox: a CLI-created customer and Express account attached to a throwaway user were deleted (`deleted: true`, `account_invalid`); with an invalid Stripe key the function still answered 200 and recorded both Stripe steps `failed`. Storage: avatar and two listing images removed, an evidence file kept.
 Unproven: a real Stripe refusal for a non-zero Connect balance (an Express test account cannot be funded non-interactively); the Storage branch for listings in `order_items` (code and unit tests only); Accounts v2. Deploy handoff: deploy `delete-account` after the T5a migration, then `bun run db:types` so the `account_closures` casts in `index.ts` can go. Sandbox leftover from the worker: Express account `acct_1UTao9PEpHJkyYH0` and a test charge.
 Risk: items 2 and 5 (auth gate, external Stripe and Storage deletions).
 
 ### L72 — T5b review and T5c handoff
+
 f4d7b9a review `review-f503b88c03bb46eb` (risk, resilience, reliability) approved and acknowledged. Advisory findings: the avatar listing/removal loop in `index.ts` has no bound; a transient `auth.getUser` failure is answered as 401 instead of a retryable 5xx; a malformed JWT payload fails the whole cleanup step; cleanup failures have no retry path yet (T5c); the crash log has no detail; `attempts` is read then written; the Storage retention branch is proven by unit tests only. T5c moves the cleanup into a shared module and absorbs the bounded loop, the transient-auth 503 and the crash-log code (same code, backlog policy).
 
 ### L73 — T5c implementation and evidence
+
 The cleanup lives in `supabase/functions/_shared/account-closure-cleanup.ts` (injected ports plus `createSupabaseClosurePorts`), used by `delete-account` and the new cron function `account-closure-cleanup` (`x-cron-secret` against `CRON_SECRET`, 401 without it). Migration `20261023052842_account_closure_cleanup.sql` (canonical `supabase/queries/auth/account_closure_cleanup.sql`) adds service-only `fn_claim_account_closures(limit, idle, max_attempts)` (one `UPDATE ... attempts = attempts + 1` over `FOR UPDATE SKIP LOCKED` rows) and `fn_record_closure_attempt`, so attempts are atomic and two runs never claim the same row. Each run claims up to 20 rows with a `pending` or `failed` step, idle for 10 minutes (longer than the 150 s function limit), and gives up after 24 attempts (about a day hourly), returning and logging the capped ids for an admin. Absorbed L72 findings: the avatar loop is bounded (100 per page, 20 pages, `storage_page_limit` resumes next run); a 5xx/429/network `auth.getUser` failure answers 503 `TEMPORARILY_UNAVAILABLE` (an invalid token stays 401); an undecodable listing image URL is skipped instead of failing the step forever; crash logs carry a sanitized code. `docs/go-live.md` lists the function, the Vault secret `account_closure_cleanup_cron_secret`, the hourly job and its `cron.schedule` SQL; `supabase/config.toml` sets `verify_jwt = false`.
 RED: shared module, worker and migration tests missing; `delete-account` failed on the missing `AuthUnavailableError`. GREEN: shared 21, worker 20, `delete-account` 50, migration 7 pass; `bun test supabase/functions supabase/migrations/__tests__ supabase/queries` 1794 pass, 0 fail; `deno check` clean for both functions. Local (`db reset`, psql per role): `anon` and `authenticated` get permission denied, `service_role` works, two concurrent claims over 3 rows split them with every row at `attempts` 1, the idle window and the cap exclude rows. Bruno (after `supabase stop`/`start`, needed for a new `verify_jwt = false` function locally): 48 requests, 46 pass (the 2 known gateway failures); the worker answers 401 without the secret, 200 with an empty summary, and finishes a throwaway closure whose storage step was `failed`. Stripe sandbox: a closure with its customer step marked `failed` was completed by the worker (`deleted: true`), and a second run claimed nothing.
 Unproven: the 503 path against a real GoTrue outage, the `storage_page_limit` path (over 2000 files) and the Sentry 5xx report (unit tests only).
 Risk: items 1, 4 and 5 (claim SQL, concurrency, cron delivery).
 
 ### L74 — T5c review
+
 37d1bdf review `review-a880e5b6eb40c0ca` (risk, resilience, reliability) approved and acknowledged. Advisory findings (later work, not blocking): compare the cron secret in constant time; the claim has no deadline, so a slow batch can outlive the function limit (rows become claimable again after the idle window); failed steps are only logged, not reported to Sentry; the migration tests read SQL text only and the empty-run Bruno request depends on no open closures from earlier runs.
 
 ### L75 — T5d implementation and evidence
+
 Root cause found on the way: `invokeEdge` throws a bare `Error` without the status, and the old hook read a non-existent `err.context.body`, so blocked reasons never reached the UI. The hook now calls `supabase.functions.invoke` and reads status and JSON from `error.context`. `deleteAccountHelpers.ts` maps 200, 409 with the six blocked reasons, 403 `REAUTH_REQUIRED`, 401, and 503/500/404/429/network to a retry-later message (`available_balance` removed). `deleteAccountFlow.ts` re-signs in once and retries once. `core/auth/reauth.logic.ts` picks password (email identity) or Google from `user.identities`, then `app_metadata.providers`, then `app_metadata.provider`; a different user id after re-sign-in restores the previous session (or signs out locally) and aborts with `accountMismatch`. Success signs out with `signOutUser('local')` (D9) and shows the existing `toasts.deleteSuccess*` toast. Copy (es/en) lists what is deleted, what is kept blocked up to 5 years, "Usuario eliminado" on reviews and that the email can register again. FU-b: no app path writes `profiles.deleted_at` (client writes are `username` and `avatar_url` only).
 RED: missing `readInvokeFailure` export and modules. GREEN: 56 pass; `bun test apps/frontend/core apps/frontend/components/features/settings` 557 pass, 0 fail (with i18n parity); ESLint clean on touched files; frontend typecheck has no diagnostics in touched files (the package fails elsewhere on main). Local end to end with a throwaway user against the local functions: one-hour-old `amr` 403, wrong password `invalid_credentials`, fresh `signInWithPassword` keeps the user id, retry 200, closure row `attempts` 1, a further call 401.
 Device check pending (maintainer): first-confirmation copy and layout on a small screen; the identity dialog above the keyboard with the wrong-password error and the Google variant; Google re-sign-in (picker, cancel, a different Google account shows the mismatch message and keeps the session); toast and logged-out landing after success; the reauth step on a session older than 10 minutes. Unproven: native Google re-sign-in and the `setSession` restore (fakes only); accounts with both Google and email identities.
 Risk: item 2 (reauthentication and session switching).
 
 ### L76 — T5d review
+
 2bc6f67 review `review-78e6344ea0a924cf` (risk, readability, reliability) approved and acknowledged. Advisory findings (later work): the Google adapter in `reauth.ts` and the session restore are untested against the native SDK; a cancelled re-sign-in is signalled with a silent sentinel instead of a typed outcome; the success toast is built in two places; the flow and hook tests use fakes for `supabase.functions.invoke`.
 
 ### L77 — T5f implementation and evidence
+
 `apps/frontend/core/utils/publicIdentity.ts` resolves another user's display name, avatar and profile link; a closed account shows `common:deletedUser` ("Usuario eliminado" / "Deleted user"), a placeholder icon and no link. Applied to the product seller card, review cards (and their screen-reader text), order shipment cards and the public profile route (`profile:public.deleted.*` state instead of the old profile); `deleted_at` added to the review and order selects (product, profile and shipment queries already select `*`). No other app surface renders another user's identity (no chat; disputes, notifications, listing cards and order detail show none). `deleted_at` is not in the generated types until the maintainer applies the T5a migration and `bun run db:types` runs, so a local `PublicIdentitySource` type is used. Parent fix after the worker: the `deleted_<12 hex>` username fallback applies only when a query does not load `deleted_at`; a loaded `deleted_at: null` wins, so a user who registered that exact username is not shown as deleted.
 RED: helper module missing; review mapping showed `@deleted_...`; parent RED for the look-alike username (1 fail). GREEN: helper 8 pass; `bun test` (repo root) 3046 pass, 0 fail; ESLint clean on touched files; no `tsc` diagnostics in touched source files. Local stack, one rolled-back transaction: after `fn_close_account` on the seed seller, `authenticated` and `anon` read the renamed username, a null avatar and `deleted_at` under RLS; the PostgREST embeds themselves were not exercised.
 Device check pending: seller card, reviews from a closed buyer, order shipment card and `/profile/<closed id>` in es and en. Follow-up: the server does not reserve the `deleted_` username prefix, so a user can still pick a name that looks like a closed account in admin-web and in any future query that does not load `deleted_at`.
 Risk: none of items 1-5; item 6 for layout (device check only).
 
 ### L78 — T5f review and block 5 close
+
 0a2b36e review `review-72b20175c191a3d6` (readability, reliability) approved and acknowledged. Advisory findings: the review-card helper defaults the label to English when no translation is passed; the `@handle` format is built in two places; the seller card has no render test; selecting `deleted_at` fails on a database without the T5a migration, so `docs/go-live.md` section 7 now says to apply it before shipping a mobile build.
 Block 5 commits on `audit/auth-deletion` (from origin/main 2acc4c1, not pushed): cdec6db (plan), 03f8dd9 (T5a), f4d7b9a (T5b), 37d1bdf (T5c), 2bc6f67 (T5d), 0a2b36e (T5f), each code commit with an approved native review, plus this docs commit.
 Deploy handoff (maintainer; nothing applied): (1) SQL in order `20261023043220_account_closure.sql`, `20261023052842_account_closure_cleanup.sql`; then `bun run db:types` and remove the `as never` casts and the local `deleted_at` types. (2) Deploy `delete-account` (verify_jwt true) and `account-closure-cleanup` (verify_jwt false). (3) Vault secret `account_closure_cleanup_cron_secret` = `CRON_SECRET`, then the `cron.schedule` SQL in `docs/go-live.md` section 8. (4) Ship the mobile build only after (1). Device checks pending: L75 and L77 lists.
 Open after block 5 (backlog): 5-year anonymization of the blocked ledger (S8; nothing reaches 5 years before 2031); the privacy notice must describe deletion, the blocked retention and its period (legal copy, maintainer); Google Play web deletion URL (D10, block 6); reserve the `deleted_` username prefix on the server (L77); `seller_bank_accounts` CLABE and `auth.audit_log_entries` emails kept (L69); FU-a buyer race and FU-d trigger abort (L70); constant-time cron secret compare and Sentry report for failed cleanup steps (L74); typed cancel outcome and single success toast (L76); admin-web shows closed accounts as banned with reason `account_closed`; sandbox leftover Express account `acct_1UTao9PEpHJkyYH0`.
 
 ### L79 — Deployment confirmed and types regenerated
+
 Maintainer (verbatim): "listo, dale con la ejecucion y el bun run db:types y me dices. Y si ya desplegue las dos edge fuctions."
 Remote (Supabase MCP, read-only): `account_closures` and `fn_claim_account_closures` exist; Vault has `account_closure_cleanup_cron_secret`, `project_url` and `project_anon_jwt`; cron job 25 `account-closure-cleanup` `0 * * * *` active with no runs yet; `delete-account` v26 (verify_jwt true) and `account-closure-cleanup` v1 (verify_jwt false) deployed from this worktree. Security advisors: no finding for `fn_close_account`, `fn_claim_account_closures` or `fn_record_closure_attempt`; `account_closures` appears only as INFO "RLS enabled, no policy", which is intended (service-only).
 `bun run db:types`: 14 hunks; committed only the 7 of block 5 (`account_closures`, `profiles.deleted_at`, the three RPCs) in 66bfe45; the B3 auto-cancel lease columns and RPCs and the purchase-intent notification and readiness functions belong to other branches and were left out. Follow-up: drop the `as never` casts in `delete-account`, `account-closure-cleanup` and the shared cleanup now that the types exist. Pending: the first cron run (verify in `cron.job_run_details` and the function logs) and the device checks.
 
 ### L80 — Production check, merge and push
+
 Maintainer (verbatim): "si master account_closure_cleanup_cron_secret ya quedo. Ya elimine una cuenta, y todo paso bien al parecer. Chectae lo de la hora y nomas conrimamre si ya podemos mergear a main y psuhear paar qeu qeude en github". The Vault secret matches `CRON_SECRET`.
 Remote (Supabase MCP, read-only): the maintainer's closure at 23:58:08 UTC has `stripe_account_cleanup` done, `storage_cleanup` done, `stripe_customer_cleanup` not_needed, `attempts` 1, no `last_error`, auth email cleared and username `deleted_e41f46d26e69`. Cron run at 00:00:01: `account-closure-cleanup` answered 200 `{claimed:0, completed:0, failed:0, invalid:0, capped:[]}` and logged "Account closure cleanup run finished". Out of scope: two other 00:00 jobs answered 401 `UNAUTHORIZED` and 500 (`attempted 1, failed 1`); not from block 5, reported to the maintainer.
 Merged origin/main (0d9e59e, clean) into `audit/auth-deletion`; `bun test` 3160 pass, 0 fail; pushed fast-forward to `main` (ab5c408). Block 5 closed; the device checks in L75 and L77 passed per the maintainer's report.
 
 ### L81 — Module status and consolidated auth backlog
+
 Maintainer (verbatim): "okey anota todos esos puntos, ya ue cuando temrinoemos como que lo critico me gusta ver si le dedciamos tiempo a esos backlog para resolverlos. Me husta tu plan quieres empezar otra sesion para el siguiente bloqe o abrimos uno nuevo ?"
 Agreed order: T7 (auth-screen UI/UX pass), then T6 (block 6, production readiness), then T8 (this backlog). Findings outside auth go to `odd/tasks/cross-module-backlog.md` (BL14 cron failures, BL15 hardcoded cron JWT).
 Assessment: server-side enforcement, tests and per-commit reviews are in place; not production-ready until block 6 (custom SMTP is the hard blocker: the built-in mailer sends 2 emails per hour to organization members only); scalable for an MVP++ on Supabase Auth. Weak spots: many SQL tests read source text instead of running it; several SECURITY DEFINER functions are executable by `authenticated` (BL3).
 Block 6 inputs (T6): custom SMTP (Resend); CAPTCHA on signup and login; leaked password protection; production redirect URLs and deep links; Google Play web deletion URL (D10); privacy notice describing deletion and the 5-year blocked retention (legal copy, maintainer); integrated mobile and admin smoke run.
 Consolidated backlog (T8):
+
 - Block 1: F1 suspension-held listings shown as history; RESERVED listings not held on suspension (L22); `getAccountStatusActions` has no default branch (L22); reactivation copy promises a prior status that pre-deployment holds lack (L22); decision on refusing Connect payout releases for suspended sellers (L18).
 - Block 2: the open follow-ups in L36.
 - Block 4: C7 Google-only detection from `app_metadata.provider` (block 5 resolves it from identities only in the delete flow); `codeVerified` not invalidated when the recovery session ends; the email-change biometric gate is device-local only.
@@ -643,8 +753,10 @@ Consolidated backlog (T8):
 - Cross-cutting: run SQL behavior against PostgreSQL in tests instead of source-text checks for auth migrations.
 
 ### L82 — T7 start and auth-screen audit
+
 Maintainer (verbatim): "Arrancamos T7 del roadmap de auth (pasada de UI/UX de las pantallas de auth). Leé odd/tasks/auth-hardening.md hasta L81 y Engram del proyecto selene-project. Creá una rama nueva desde origin/main y empezá auditando las pantallas de auth (login, registro, OTP, forgot/reset password) antes de tocar código. p.d trate main antes de empezar."
 Branch `audit/auth-ui` from origin/main (ac347ea), no upstream. Read-only audit of `app/(auth)/*`, `LoginForm`, `RegisterForm`, `AuthModal`, `ScreenLayout`, `FormTextInput` and the `auth` locales:
+
 - U1 (confirmed in code, likely root cause of the L62 keyboard and forgot-password reports): `components/layout/ScreenLayout.tsx:43` uses `KeyboardAvoidingView` with `behavior={undefined}` on Android; Expo 54 is edge-to-edge (L63), so Android no longer resizes the window and the keyboard covers the lower fields and the submit button (reset password: code + 2 passwords; register: 4 fields + terms). `ScreenLayout` is shared by 11 screens, so the fix must be opt-in for auth screens. Device check only.
 - U2 (confirmed): English shows raw keys: `loginErrorTitle` (`LoginForm.tsx:77,87`) and `verificationErrorTitle` (`verify-code.tsx:58,76,97`) exist only under `errors.*` in `en/auth.json`; `auth:enter6DigitCode` (`verify-code.tsx:60`) is missing in both locales. No parity test covers the `auth` namespace.
 - U3 (confirmed): no `autoComplete`/`textContentType` on email, password and new-password fields (password managers, autofill); login and forgot password have no `returnKeyType`/`onSubmitEditing` (register has them).
@@ -653,12 +765,14 @@ Branch `audit/auth-ui` from origin/main (ac347ea), no upstream. Read-only audit 
 - U6 (hypothesis, device): `AuthModal` renders the forms in a fixed `BottomSheetView` (85%) with Paper inputs instead of `BottomSheetTextInput`, so `keyboardBehavior="interactive"` may not apply and the register view may clip on small devices.
 - U7 (confirmed, consistency): field errors use two styles (`RegisterForm` inline `style` with marginTop 4; the rest `marginTop="s" marginLeft="s"`); hardcoded Spanish fallback `'Bienvenido'` in `login.tsx:52`; the resend row does not wrap for long copy.
 - Out of T7 scope, recorded for block 6: the terms text in `RegisterForm` is not a link to any terms or privacy page (S9 privacy notice).
-Proposed split: T7a U2 i18n keys plus an `auth` locale parity test; T7b U1 + U5 opt-in keyboard-aware auth layout; T7c U3 + U7 field behavior and error consistency; T7d U4 + U6 after a device check confirms them.
+  Proposed split: T7a U2 i18n keys plus an `auth` locale parity test; T7b U1 + U5 opt-in keyboard-aware auth layout; T7c U3 + U7 field behavior and error consistency; T7d U4 + U6 after a device check confirms them.
 
 ### L83 — T7 split approved
+
 Maintainer (verbatim): "apruebo el todo, me lo puedes traer en forma ed tabla, solo para evr como queda el roadmap". T7a-T7d recorded in Tasks; T7d waits for the device check of U4 and U6.
 
 ### L84 — T7a implementation and evidence
+
 The existing `authLocaleParity.test.ts` checked a hand-written key list (L82 said no test covered `auth`; corrected). New test: every literal `t('...')` key in the auth screens, `LoginForm`, `RegisterForm` and `AuthModal` must resolve to a string in en and es (`auth` and `common` namespaces).
 RED: 1 fail, 11 missing entries: en `loginErrorTitle`, en `verificationErrorTitle`, `auth:enter6DigitCode` (both) and, found by the test, `common:errors.errorTitle` (both; the key is `common:errors.title`) in `verify-code` and `resetPassword`. Fix: the two en root keys added; the screens use `auth:errors.enter6DigitCode` and `common:errors.title`.
 GREEN: 5 pass in the file; `core/i18n` 100 pass, 0 fail. ESLint on touched files: only the 4 pre-existing errors (`require` logo import, `as any` OTP styles); the test file is clean.
@@ -666,6 +780,7 @@ Out of scope (backlog T8): `common:errors.errorTitle` is still used by 5 non-aut
 Risk: none (copy keys only; no shared code changed).
 
 ### L85 — T7b implementation and evidence
+
 Maintainer (verbatim): "okey dime master". T7a review approved (advisories: hand-written source list, the regex misses dynamic or double-quoted keys, the T7a Commit field; fixed here).
 `ScreenLayout` gets an opt-in `keyboardAware` prop: on Android it reuses `useKeyboardHeight` (T4e) and adds the keyboard height as bottom padding of the scroll content; iOS keeps the `KeyboardAvoidingView` padding and never subscribes. Without the prop the other 6 users are unchanged (the hook is disabled and the extra style entry is `null`). The five auth screens opt in and use a new `components/features/auth/AuthBackButton.tsx`: a normal row inside the already safe-area-padded layout instead of an absolute box offset by `insets.top` a second time (U5); same icon, size, color and `router.back()`.
 RED: `tests/__tests__/authScreensLayout.test.ts` 18 fail, 1 error (component missing). GREEN: 170 pass (new test plus `core/hooks`); full `bun test` 3182 pass, 0 fail. ESLint: only the 8 pre-existing errors in the screens (`require` logos, `as any` OTP styles); new files clean. No typecheck diagnostics in touched files.
@@ -673,11 +788,13 @@ Device check pending (Android emulator): reset password and register, focus the 
 Risk: item 3 (shared `ScreenLayout`, opt-in default); item 6 (layout, device check only).
 
 ### L86 — Device check, accumulated review and duplicate registration
+
 Maintainer (verbatim): "master todo paso, qeudo bein, un detalle que note, tenemos dos como que maeras de que un sario se registre, una es la pantalla del stack que lleva a register y la otra es una modal, queria preguntarte, podemos quedarnos solo con lo de la modal? o esto romperia algo? osea el login ya es via modal, peroahorita peudes acceder a los dos registros ue uiqero pensar que no afecta en nada pero queda raro en la ux. Sobre lo demas, no entendi muy bien, ya sabes el wokflow , cad cambio va con su commit y review indibidual."
 The 7 device checks of L85 passed: T7b verified; OTP paste (U4) and the modal register view (U6) showed no defect, so T7d closes without code. T7b review advisories: the source-contract tests cannot prove the padding at runtime (covered by this device check); `login.tsx` router unused is a false positive (it navigates). The stop hook offered a review of the accumulated branch (origin/main..1f65253); not started: every commit has its own approved review, per the maintainer's per-commit workflow (same as L61).
 Duplicate registration (read-only): the stack `register` screen is reached only from the guest profile link (`app/(tabs)/profile.tsx:66`, `router.push('/register')`) and the `verify-code` missing-email fallback (`verify-code.tsx:46`); the stack `login` screen only from stack `register`. Everything else uses `AuthModal` (cart presents `register`). No deep link, email redirect or notification targets either route. Proposal T7e: the profile link presents the modal (`register`), the fallback goes to `/(tabs)`, and the stack `login` and `register` screens are removed; `forgotPassword`, `resetPassword` and `verify-code` stay stack screens because the modal navigates to them.
 
 ### L87 — T7e implementation and evidence
+
 Maintainer (verbatim): "si dale master apruebo". Done before T7c so T7c does not touch removed screens.
 `app/(auth)/login.tsx` and `register.tsx` removed, with their `Stack.Screen` entries; the guest profile "create account" link calls `present('register')` (sign-in already used `present('login')`); the `verify-code` missing-email fallback replaces to `/(tabs)`. `forgotPassword`, `resetPassword` and `verify-code` stay stack screens because `AuthModal` navigates to them. The two removed screens are dropped from the T7a and T7b source lists.
 RED: `tests/__tests__/authEntryPoints.test.ts` 5 fail. GREEN: 120 pass (entry points, layout, `core/i18n`). ESLint on touched files: only the pre-existing `as any` OTP style in `verify-code`. Typecheck: `bun run --filter frontend typecheck` matched no workspace (the package is `@selene/frontend`), so the T7b "no typecheck diagnostics" claim in L85 was unproven; rerun with `--filter @selene/frontend`: 74 pre-existing errors, none in the T7b or T7e files. The root `auth` keys `loginTitle` and `joinSelene` are now unused (left; backlog T8).
@@ -685,6 +802,7 @@ Device check: guest profile "create account" opens the modal on the register vie
 Risk: item 3 (removes two routes; no deep link, email redirect, notification or other source targets them).
 
 ### L88 — T7c implementation and evidence
+
 T7e review (risk, reliability) approved; advisory: the removed-route scan in `authEntryPoints.test.ts` covers only three files.
 Autofill hints (`autoComplete`/`textContentType`) on every auth field: email, current password (login), new password and confirm (register, reset), username (register). Keyboard flow: login email Next -> password, Done submits; forgot password Send submits; reset new password Next -> confirm, Done submits. Keyboard submit goes through `submitFromKeyboard`, which applies the same guard as the button (`resetPassword` `canSubmit` is the old disabled condition negated). `RegisterForm` field errors use the shared `color="error" marginTop="s" marginLeft="s"`; the resend rows in `verify-code` and `resetPassword` wrap. `FormTextInput` unchanged (it already forwards props and ref).
 RED: `tests/__tests__/authFormFields.test.ts` 17 fail. GREEN: 17 pass; `auth*` tests and `core/i18n` 137 pass; full `bun test` 3198 pass, 0 fail. ESLint: only pre-existing errors (`require` logos, `as any`, unused `theme` in `LoginForm`). Typecheck (`--filter @selene/frontend`): no diagnostics in touched files.
@@ -693,13 +811,16 @@ Device check pending: autofill offered on the modal login; Next/Done flow on log
 Risk: item 6 (autofill and keyboard, device check only).
 
 ### L89 — Device check and T7 close
+
 Maintainer (verbatim): "todo perfecto master, ahora pregunta porque en varias partes ay el agente me ha dicho esto: 'No arranqué la review que pidió el hook. Esta vez quería revisar la rama entera desde origin/main' osea porque pasa? es error mio o que onda? contestame etso y luego avanzamos paar cerarr 76 y ver si continuamos con 76 y t8"
 The 8 device checks of T7c and T7e passed. T7c review (readability, reliability) approved; advisories only (source-contract tests; minor readability). Answer: the stop hook computes its candidate as the accumulated branch diff against origin/main, a different identity from each per-commit review, so every new commit yields a new reminder; it never starts a review and disappears once the branch is merged. Per-commit review stays the workflow (L86).
 T7 closed: d358b9e (audit), 813ec98 (T7a), 1f65253 (T7b), 117aba0 (T7e), 4e0977b (T7c), each with an approved review; T7d closed without code. Backlog for T8 from this block: `common:errors.errorTitle` in 5 non-auth sites (L84); unused `auth` keys `loginTitle`, `joinSelene` (L87); `RegisterForm` confirm `onSubmitEditing` without the button guard and unused `theme` in `LoginForm` (L88).
 
 ### L90 — T7 merged; T6 start and production-readiness audit
+
 Maintainer (verbatim): "si master mergea y pushea a main y que quede subida a giththub, luego te trase main y continuamos con T6". Merged origin/main (4866296, clean) into `audit/auth-ui` as cc701a3; `bun test` 3219 pass, 0 fail; pushed to `main`. New branch `audit/auth-production` from cc701a3, no upstream.
 Read-only audit (repo, `docs/go-live.md` section 10, `supabase/config.toml`, Supabase MCP advisors and 24 h auth logs):
+
 - P1 (confirmed, docs drift): `docs/go-live.md` still lists as pending what L62 confirmed done (secure password change off, require current password on, Google "Skip nonce check" off, OTP 6); `config.toml` keeps `secure_password_change = true`. Site URL, redirect URLs, Google provider and email templates are not inventoried (Dashboard only; the MCP cannot read Auth settings).
 - P2 (blocker, maintainer): custom SMTP is not configured; the built-in mailer delivers only to organization members (2 per hour). Needs a sending domain with SPF/DKIM/DMARC.
 - P3 (confirmed): CAPTCHA is not implemented anywhere (no `captchaToken` in the app, no `[auth.captcha]` locally). Enabling it in the Dashboard without app support would break every sign-up and sign-in, so the app change must ship first. Provider (Turnstile or hCaptcha) and the React Native widget are open questions (research).
@@ -708,9 +829,10 @@ Read-only audit (repo, `docs/go-live.md` section 10, `supabase/config.toml`, Sup
 - P6 (hypothesis): 23 auth `/user` requests in 24 h answered 403 `invalid claim: missing sub claim` (an anon-key JWT sent as a user token); source not identified yet.
 - P7 (pending): integrated mobile and admin smoke run (S9 exit).
 - Out of auth scope (cross-module backlog): advisor `anon_security_definer_function_executable` on `fn_product_seller_payment_readiness` (purchase-intent work; may be intended for signed-out browsing) and `is_admin`; BL3 already covers the `authenticated` SECURITY DEFINER list.
-Proposed split (pending approval): T6a docs and config reconciliation plus the Dashboard inventory (P1); T6b custom SMTP with the maintainer and delivery proof from auth logs (P2); T6c CAPTCHA in the app, then the Dashboard switch (P3, research first); T6d public deletion and privacy pages (P5); T6e P6 diagnosis; T6f smoke run (P7). P4 waits for the plan decision.
+  Proposed split (pending approval): T6a docs and config reconciliation plus the Dashboard inventory (P1); T6b custom SMTP with the maintainer and delivery proof from auth logs (P2); T6c CAPTCHA in the app, then the Dashboard switch (P3, research first); T6d public deletion and privacy pages (P5); T6e P6 diagnosis; T6f smoke run (P7). P4 waits for the plan decision.
 
 ### L91 — Placeholder domain
+
 Maintainer (verbatim): "no master todaviia no etngo domnio, pon uno de prueba por asi decirlo, y anota eso en go-live o donde sea, ay que en mucuos otrso odulos piden el dominio, digo no invetigues donde solo anota esto, deja uno de prueba o falso, o si te queres ver mas pro, crea una constante, y cunado tenga el dominio real, nomas cambiarlo en un lugar para que funcione."
 `SELENE_DOMAIN = 'selene.example'` (RFC 2606 reserved, never resolves) and `SELENE_WEB_URL` in `packages/types/src/domain.ts`, exported from `@selene/types`; `docs/go-live.md` section 1 "Domain" lists the change point and the settings outside code (SMTP sender and DNS, Auth Site URL and redirects, store deletion URL). Other modules were not searched, per the request. Edge Functions do not import `@selene/types`; one that needs the domain must take it from this constant's value through its own config, recorded when that need appears.
 RED: `packages/types/src/__tests__/domain.test.ts` 1 fail, 1 error (export missing). GREEN: `packages/types` 16 pass. Typecheck `@selene/types`: no diagnostics in touched files (1 pre-existing error in `connectPayoutContracts.test.ts`, missing `payout_run_paid_at`); ESLint clean.
@@ -718,6 +840,7 @@ Consequence for T6: P2 (SMTP) is blocked until a real domain exists; P3 and P5 c
 Risk: none (new constant, no consumer yet).
 
 ### L92 — T6a part 1: docs and config reconciliation
+
 Maintainer (verbatim): "si sigue, mientras en la otra sesion hago lo que comenatsmos, mejor, lo dejare hasta que terminemos, igual no urge ese cambio. COntnua master" (the AGENTS.md backlog rule is deferred to a main session; prompt given in chat).
 Backlog rule applied to this block: BL38 added to `odd/tasks/cross-module-backlog.md` (`common:errors.errorTitle` in 5 non-auth sites, L84) and BL10 updated (`fn_product_seller_payment_readiness` and `is_admin` still anon-executable, L90).
 `docs/go-live.md` section 10: secure password change off, require current password on, Google "Skip nonce check" off recorded as deployed (L62); the two done items removed from "Pending"; CAPTCHA must follow the app build that sends `captchaToken` (T6c). `supabase/config.toml`: `secure_password_change = false`; "Require current password" has no config key (Supabase docs, password security), so the local stack cannot mirror it. Proof: `bun` parses the file and reads `auth.email.secure_password_change = false`; the local stack was not restarted.
@@ -725,6 +848,7 @@ Pending (part 2): Site URL, redirect URLs, Google provider client IDs and email 
 Risk: item 5 (local environment config; a boolean that only affects the local stack).
 
 ### L93 — T6e diagnosis: 403 missing sub claim after sign-out
+
 T6a part 1 review (risk, readability) approved for 87441bd; advisories only (local password change unguarded is the intended local mirror; L92 wording).
 Evidence (Supabase MCP, read-only): auth logs at 2026-10-24 02:18 show `/logout` 204 at :17 and `/user` 403 `missing sub claim` at :19; `function_edge_logs` at :19.844 show `get-seller-onboarding` POST 401 from the mobile app (`supabase-js; runtime=react-native`) with `Authorization` role `anon` and no subject, 2 s after the same user's authenticated call. Over 24 h `get-seller-onboarding` has 22 anon 401s, matching the 23 auth 403s. The `referer: http://localhost:5173` and AWS IPs in the auth log are the Edge Function's own `getUser` call, not admin-web.
 Root cause (code): sign-out runs `resetUserQueries` (`core/auth/userQueries.logic.ts`), which resets and refetches every mounted user query on purpose (block 2: keeps observers attached). `ConnectIncompleteBanner` keeps `useConnectOnboarding(oldUserId)` mounted (`enabled: !!userId` is still true for the old id during that render), so its `queryFn` invokes `get-seller-onboarding` after the session is gone; supabase-js falls back to the anon key. No data is exposed (the function rejects it); the effect is a failed query, log noise and a 403 per sign-out. PostgREST queries in the same reset return empty rows under RLS instead of erroring, so only Edge Function invokes show it.
@@ -732,6 +856,7 @@ Proposed fix (pending approval): skip the invoke when there is no current sessio
 Side finding, cross-module: `complete-delivered-shipments` answers 500 to every cron call (285 in 24 h); BL14 updated as confirmed.
 
 ### L94 — T6e fix and a T6g regression
+
 Maintainer (verbatim): "master muy buen ojo sobre complete-delivered-shipments, se me hace raro ya que el modulo de 'complete shimpent' se supone que ya esta acabdo y listo para procuion pero bueno. Ahora sobre el arrgelo, si dale, si piensa que s critico y que es mejor arreglarlo ahora, dale."
 Fix: `core/hooks/useConnectOnboarding.ts` exports `fetchSellerOnboardingStatus({ userId, getSessionUserId, invoke })`; it returns the empty status, without invoking, when there is no user, no session, or a session for another user; the hook passes `supabase.auth.getSession()` and `supabase.functions.invoke`. `resetUserQueries` (block 2) is unchanged.
 RED: 4 new tests fail (function missing). GREEN: `useConnectOnboarding.test.ts` 11 pass (no session, other user, signed-in user, function error still `statusUnavailable`). ESLint clean on touched files.
@@ -740,6 +865,7 @@ Device check: sign out from the profile; no error state flashes; the remote auth
 Risk: item 2 (session gate before an authenticated call; it only skips calls, never widens access).
 
 ### L95 — T6c research: CAPTCHA
+
 T6e review (risk, reliability) approved for b9d136a; advisories: the adapter and the no-user branch have no direct test; a failed `getSession` reads as the empty status (backlog T8); the tracker marks T6e done before the device check.
 Which calls need a token (Supabase Auth source, `internal/api/api.go` and `middleware.go`, master): `verifyCaptcha` guards `/signup`, `/recover`, `/resend`, `/magiclink`, `/otp`, `/token` (and SSO, passkeys); on `/token` it skips `pkce`, `refresh_token` and `id_token` grants and requires it for `password`. `/verify` and `/user` are not guarded; requests with an admin (service role) Authorization skip it. The token travels as `gotrue_meta_security.captcha_token` (supabase-js `options.captchaToken`) and is verified against the client IP.
 Calls in this repository that would need a token: mobile `signUp` and `signInWithPassword` (`core/hooks/useAuth.ts`), `resend` (verify-code), `resetPasswordForEmail` (forgot and reset resend), the delete-account re-sign-in `signInWithPassword` (`core/auth/reauth.ts`), and the admin-web login (`apps/admin-web/src/pages/Login.tsx`). Google sign-in (`id_token`), `verifyOtp`, session refresh and password or email changes are exempt. Enabling CAPTCHA before all six send a token would break each of them.
@@ -747,16 +873,19 @@ Providers: hCaptcha has an official React Native package (`@hcaptcha/react-nativ
 Proposal (pending decision): hCaptcha; split into T6c1 mobile (one shared invisible challenge before the five mobile calls, i18n errors for `captcha_failed`) and T6c2 admin-web login, each its own commit; the Dashboard switch only after both ship, recorded in `docs/go-live.md`; local `[auth.captcha]` with the hCaptcha test secret so the local stack exercises the path.
 
 ### L96 — CAPTCHA scope challenge and provider research
+
 Maintainer (verbatim): "master primero, no es sonreingenieria el captcha? osea para el admin web entiendo, pero para app? osea porque lo estas proponiendo?". Answer: CAPTCHA protects the project-wide Auth endpoints (bots call `/auth/v1/signup` with the public anon key, not the app UI), so it cannot be enabled for admin-web only; it was listed as a launch item in `docs/go-live.md`; recommendation was to defer it with a trigger.
-Maintainer (verbatim): "a no, dicho esto si lo hacemos, de una vez, nos evitamos dolores de cabeza depues. Vamos con  hCaptcha, pero invetiga si sigue siendo como que el estandar de 2026, y si ae como una opcion mas inovadora y avnguadista que puede entrar envez de lo funcoinal y clasico."
+Maintainer (verbatim): "a no, dicho esto si lo hacemos, de una vez, nos evitamos dolores de cabeza depues. Vamos con hCaptcha, pero invetiga si sigue siendo como que el estandar de 2026, y si ae como una opcion mas inovadora y avnguadista que puede entrar envez de lo funcoinal y clasico."
 Research: Supabase Auth `CaptchaConfiguration.Validate()` accepts only `hcaptcha` and `turnstile` (supabase/auth #2416, v2.189.0, 2026-04). Turnstile is the 2026 low-friction web default but has no native SDK (community WebView wrappers, one needs an allow-listed domain). hCaptcha has official React Native and React SDKs and shows image challenges more often. Proof-of-work captchas (Procaptcha, Friendly Captcha) are not accepted by Supabase Auth (would need an auth proxy, out of scope S10). Play Integrity and App Attest attest the app, not the person, and are not integrated in Supabase Auth; a possible later Edge Function layer, not a replacement.
 Decision proposed: hCaptcha behind one swappable component/hook so a later switch to Turnstile (once a domain exists) changes only that component, the site key and the Dashboard secret. Consequences: native dependencies `@hcaptcha/react-native-hcaptcha` and `react-native-webview` (new app build), `@hcaptcha/react-hcaptcha` in admin-web, `bun audit` after installing, hCaptcha test keys until the real site key exists.
 
 ### L97 — CAPTCHA approved
+
 Maintainer (verbatim): "me parece perfecto, y muy buen pensamiento de hacer todo reutilizable y aplicando el DRY, y clean code. conrifmo todo master luz verde."
 Note: the chat said L96 was recorded before it was; written here.
 
 ### L98 — T6c1 implementation and evidence
+
 Dependencies (parent): `npx expo install` added `react-native-webview@13.15.0` (the SDK 54 pin) and `@hcaptcha/react-native-hcaptcha@4.1.0` (released 2026-07-20, older than the `bunfig.toml` 3-day floor); `bun.lock` +16 lines. `bun audit --audit-level=high` with the documented ignore list reports 3 high advisories, none on a path through the new packages (`body-parser` via backend express, `undici` via `@expo/cli`, `zod@4.1.12` direct): BL39 in the cross-module backlog.
 Design (worker): `core/auth/captcha/captcha.logic.ts` is the provider-agnostic contract (`getCaptchaToken()` resolves `undefined` without a site key, fails closed with `captcha_failed` when no provider is mounted); `captcha/captcha.ts` the registry; `captcha/CaptchaProvider.tsx` the only hCaptcha file (invisible `ConfirmHcaptcha`, i18n language, single pending request, late events ignored), mounted in `app/_layout.tsx` around `AuthModalProvider` and `RootStack`; `captcha/hcaptchaEvent.logic.ts` maps SDK events. `core/auth/captchaAuth.logic.ts` wraps the five guarded calls (`signUp`, `signInWithPassword`, `resend`, `resetPasswordForEmail` in `useAuth.ts`; the delete-account re-sign-in in `reauth.ts`), each awaiting a fresh token before calling Supabase; `captcha_failed` and `captcha_cancelled` map to `auth:errors.captchaFailed`/`captchaCancelled` (en, es). Screens unchanged (they already show `messageKey`; `finally` resets loading). `supabase/config.toml`: commented `[auth.captcha]` (off, mirrors the remote; enabling it requires the Bruno password-grant requests to send the hCaptcha test token). `docs/go-live.md` section 10: the four-step order (site key in the build, ship the app, ship T6c2, then the Dashboard switch) and the six token senders.
 Split for review size: 8398895 (dependencies, contract, provider, mount; inert because no caller yet; review risk, resilience, reliability approved; advisories include no request timeout, untested provider component, webview pin) and the call-site commit. Parent follow-up in the second commit: `createCaptchaGetter` races the request against `CAPTCHA_TIMEOUT_MS` (120 s) and fails with `captcha_failed` (RED: the new test hung; GREEN: `core/auth` 125 pass).
@@ -766,6 +895,7 @@ Device check pending (new dev build; `EXPO_PUBLIC_HCAPTCHA_SITE_KEY` = hCaptcha 
 Risk: item 2 (auth calls), item 5 (new native dependency, new build), item 6 (challenge UI on device only).
 
 ### L99 — T6c1 review and T6c2 implementation
+
 T6c1 call-site review (53af2a2; risk, resilience, reliability) approved; advisory: after a timeout the widget and its pending request stay open (backlog T8, with the untested provider component from the 8398895 review).
 T6c2 (worker): `apps/admin-web/src/lib/captcha/captcha.logic.ts` mirrors the mobile contract (not configured resolves `undefined`, unmounted fails closed, 120 s timeout, `challenge-closed` as cancelled); `captchaAuth.logic.ts` `signInWithPasswordCaptcha` awaits the token before `signInWithPassword`, and `loginErrorMessage` gives Spanish copy for local and server `captcha_failed`/`captcha_cancelled`; `useCaptcha.tsx` is the only file importing `@hcaptcha/react-hcaptcha@2.2.0` (parent-installed; invisible widget, `execute({ async: true })`, reset after each use, `languageOverride=es`), site key `VITE_HCAPTCHA_SITE_KEY`. `Login.tsx` keeps `evaluateAccess`, navigation and disabled states. `docs/go-live.md` section 10 adds the admin-web site key step.
 Evidence: RED 2 fail (modules missing); GREEN `apps/admin-web/src/lib/captcha` 12 pass, `apps/admin-web` 232 pass; full `bun test` 3268 pass; `admin-web` typecheck exit 0; ESLint clean; `bun run test:e2e` 8 passed, including the new `e2e/admin-web/login-captcha.e2e.ts` (no hCaptcha iframe or request without a key; the token POST carries no `captcha_token`). `bun audit` after adding the package: the same 3 BL39 advisories, none new.
@@ -775,12 +905,14 @@ Browser check pending (`VITE_HCAPTCHA_SITE_KEY` = test key): login works; a canc
 Risk: item 2 (admin authentication), item 5 (new dependency), item 6 (widget UX in a real browser).
 
 ### L100 — Second main sync and pending manual steps
+
 Maintainer (verbatim): "master anets de codnitnuar, primero que nada traete la ultima version de main, ae demasiados cambios realcionados a el wokrflow y el repo, luego me dices donde nos quedamos y que me falta aplciar a mano a mi ya ue hace dos dias que no trabajamos eneste woktree, enotnees no se si aplique migraciones o deploy o cosas manuales."
 Found: on 2026-10-25 another session rebased `audit/auth-production` onto main 8359625 (commit hashes changed: c616063 is now 2822c77, 87441bd ab60732, 122a064 6f91503, b9d136a 0a3408d, 8398895 9d4500e, 53af2a2 538687f, a7f7f5f 8535073) and added 3660b67 (backlog renumbering) and d67ed1a (webview peer test). Main then moved 107 commits (Expo SDK 57, Sentry on every function, legacy wallet SQL removal, cron watchdog, BL13-BL15 done). Branch not pushed.
 Merged origin/main (a7735fc) into the branch; only conflict `odd/tasks/cross-module-backlog.md`: BL10-BL15 taken from main (newer status); this branch's BL30/BL31 collided with main's new BL30/BL31 and became BL38 (i18n `common:errors.errorTitle`) and BL39 (dependency audit duplicate); tracker references updated. `react-native-webview` is now 13.16.1 (SDK 57 pin, from main), superseding the 13.15.0 in L98; hCaptcha packages kept. `bun install --frozen-lockfile` left `bun.lock` unchanged; full `bun test` 3526 pass, 0 fail.
 This block (T6) adds no migration, Edge Function, secret or cron change: nothing to apply remotely yet.
 
 ### L101 — .env.example committed and CAPTCHA timeout cleanup
+
 Maintainer (verbatim): "ya quedo lo de env, tanto en env y el de env example. Cntinua con lo que comensate yo hare la build nueva". 18af859 commits both `.env.example` blocks (empty keys; review readability approved). The maintainer is building a new dev build (native hCaptcha dependency, Expo SDK 57); JS changes after it load through Metro.
 T6c3: `CaptchaProviderHandle` gets an optional `cancel()`; `createCaptchaGetter` calls it when the request times out, then rejects `captcha_failed`. Mobile `CaptchaProvider` cancels by clearing the pending request and hiding the widget (a late event cannot answer a later request); admin-web `useCaptcha` cancels with `resetCaptcha()`. Same contract change in both apps.
 RED: 2 fail (one per app: cancel not called on timeout). GREEN: `apps/frontend/core/auth/captcha` + `apps/admin-web/src/lib/captcha` 45 pass. ESLint clean; `admin-web` typecheck exit 0; `@selene/frontend` typecheck 16 errors after the main sync (was 74), none in touched files. The provider components still have no mount test (T8).
@@ -788,17 +920,21 @@ Device check: folded into the T6c1/T6c2 checks (a challenge left unanswered for 
 Risk: item 6 (widget close behavior on device and browser only).
 
 ### L102 — T6c3 review follow-up
+
 Review of c2b28d3 (resilience, reliability) approved; both lenses flagged that a throwing `cancel()` would skip `reject` and hang the getter. Fixed in both contracts: the timer rejects first, then calls `cancel()` inside `try`. RED: new test (`cancel` throws) surfaced an uncaught error and no rejection; GREEN: 47 pass across both captcha folders; ESLint clean; `admin-web` typecheck exit 0.
 
 ### L103 — T6a part 2: Dashboard inventory
+
 Maintainer values (Supabase Dashboard, verbatim): "Site URL: http://localhost:5173 / Redirect URLs: selene://, selene://auth-verified, http://localhost:5173/**, selene://profile/settings / Google Client IDs: 332992495631-gnackhq8269n8v4k7e12sefsfs0cj5ep.apps.googleusercontent.com / Skip nonce check: off / Confirm signup: Token / Reset password: Token / Change email address: ConfirmationURL / Reauthentication: Token pero este template no lo uso osea no tiene nigun ocdigo html con estilo". The maintainer only runs admin-web locally; the existing Vercel deployment is unused.
 Checked against the code: `EMAIL_REDIRECT_URL` = `selene://profile/settings` is allowed; the app scheme is `selene`; the Google client ID matches `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` in `apps/frontend/.env` (count match only); sign-up and recovery screens expect the 6-digit code and both templates send `{{ .Token }}`; email change is link-based as designed (L62); `selene://auth-verified` has no code reference (cleanup candidate); reauthentication is unused. Recorded in `docs/go-live.md` section 10 with the production changes (Site URL and the localhost redirect). No mismatch blocks the app today.
 
 ### L104 — Findings move to GitHub issues
+
 Maintainer (verbatim): "no entendi muy bien la verdad, y ya no usamos lo del backlog, mejor abrimos issues master." `AGENTS.md` on main: `odd/tasks/cross-module-backlog.md` is legacy (add nothing); findings go to GitHub issues with the Finding form, vulnerabilities to private Security Advisories. Module check: open issue #15 (Edge Functions answer "No autorizado" instead of a code) is not covered by T6; no open advisory concerns auth.
 Opened #49 (admin-web production deploy on Vercel needs `VITE_HCAPTCHA_SITE_KEY`, the deployed URL in Supabase Site URL and Redirect URLs, and public routes for the deletion and privacy pages; handed to the maintainer's separate Vercel session) and #50 (BL38: `common:errors.errorTitle` in 4 mobile files (one call site each; L84 said 5, a miscount)). Vercel deployment stays out of this branch.
 
 ### L105 — T6d public pages in admin-web
+
 Maintainer (verbatim): "si me gusta mas ese plan, osea ya cunado deployemos y le dediqeumos tiempoo al deploy de el panel ya que ya esten esas pantallas. dale master".
 Worker: `packages/types/src/domain.ts` adds `SELENE_SUPPORT_EMAIL` (`soporte@${SELENE_DOMAIN}`), `ACCOUNT_DELETION_PATH` (`/eliminar-cuenta`), `PRIVACY_PATH` (`/privacidad`) and the derived `ACCOUNT_DELETION_URL`/`PRIVACY_URL`, exported without a `.ts` extension. `apps/admin-web/src/App.tsx` adds both routes next to `/login`, outside `ProtectedRoute` (guard and existing routes unchanged). `AccountDeletionPage` (in-app path Perfil > Ajustes > Privacidad > Eliminar cuenta from `settings.json`, recent sign-in, email alternative, deleted vs kept and refusal rules from S8) and `PrivacyPage` (facts summary only, with a visible note that the full notice is pending legal review) share `components/public/PublicPage.tsx`. The email subject "Eliminar mi cuenta" is new wording. `docs/go-live.md`: constants in "Domain"; "Public pages" in section 10 (Google Play deletion URL after #49; legal privacy notice is a maintainer go-live blocker).
 Evidence: RED `bun test packages/types` 1 fail, 1 error; GREEN `bun test packages/types apps/admin-web` 224 pass; `admin-web` typecheck exit 0; `@selene/frontend` typecheck 16 (baseline); ESLint clean; full `bun test` 3534 pass; `bun run test:e2e` 12 passed, 1 failed: `login-captcha.e2e.ts`, which also fails with `App.tsx` at HEAD. Cause (parent): `playwright.config.ts` webServer sets the Supabase variables but not `VITE_HCAPTCHA_SITE_KEY`, so the maintainer's local `apps/admin-web/.env` test key reaches the e2e build (the L99 caveat). Fix is a one-line webServer env entry; test-runner config needs maintainer approval (AGENTS.md).
@@ -806,6 +942,7 @@ Pending for the maintainer: `apps/frontend/.env.example` `EXPO_PUBLIC_PRIVACY_UR
 Risk: item 6 (page layout, browser only); legal copy remains a blocker (not a code risk).
 
 ### L106 — T8 start: backlog triage and block-6 status
+
 Maintainer (verbatim): "Retomamos el roadmap de auth en el worktree C:/dev/School-portal-worktrees/auth. Leé odd/tasks/auth-hardening.md (sobre todo Tasks y el Log desde L82 hasta el final) y Engram del proyecto selene-project (el resumen de sesión más reciente y los topic keys odd/auth-hardening/*). Antes de tocar nada, traé origin/main y creá una rama nueva desde ahí. Revisá también los issues abiertos de auth (#49 y #50) y decime cuáles cubre este trabajo. [...] Mientras tanto, decime qué falta para cerrar el bloque 6 (T6b SMTP espera dominio, los switches de go-live, los textos legales y T6f) y arrancá T8, el backlog de auth, con el plan de commits antes de implementar. Mismo workflow de siempre: un commit por cambio, cada uno con su review."
 Branch `audit/auth-backlog` from origin/main 4c1cf69, no upstream. An uncommitted `docs/go-live.md` note about #64 (fee-free launch sellers) was in the worktree; it is not part of this block and was carried over untouched.
 Issues: #49 (admin-web Vercel deploy settings) stays with the deploy session; T6d already covers its point 3 (public routes exist). #50 is proposed as T8h. No open security advisory concerns auth (the two drafts are disputes).
@@ -818,12 +955,15 @@ Open decision (L18): whether an admin payout release must refuse a suspended sel
 Proposed split: T8a-T8i in Tasks, one commit each with its own review.
 
 ### L107 — T8 plan approved; payout decision
+
 Maintainer (verbatim): "si master me gusta apruebo. SObre Cuando un admin libera un payout.. , no master, si algo esta para pagarse, es que esta todo beim, inculso si esta suspendido o baneado, si un payout esta libre para liberar significa qeu paso todo, si tiene problemas en otro pedidod que todavia no esta en sattus 'complete' pues ahi obvioamente esta en revision todo, pero recuerda, si esat sattus complete esporque todo paso para ese shimpent. Y master ya tengo la build nueva, siquieres dame las intrusiiones de lo que tenia que hacer para de una vz tachar eso y conitnuar"
 T8a-T8i approved, including #50 (T8h) and the four proposed issues. L18 decision: an admin payout release does not check the seller's account status; a completed shipment is payable even for a suspended or banned seller (problems on other shipments are handled while those are not completed). No code change.
 L106 plan review (readability) approved; advisories applied: T6d commit hashes, T6h split into T6h (switches) and T6i (legal), own-commit notes moved into the task text; the #64 `docs/go-live.md` note stays out of every commit of this branch.
+
 - Issues opened for the triage: #67 (5-year anonymization), #68 (auth SQL tests against PostgreSQL), #69 (publication-economics trigger aborts a closure), #70 (RESERVED listings at suspension).
 
 ### L108 — Block 6 device and browser checks
+
 Maintainer (verbatim): "Todo parece bien master, solo el de la app punto 6, no enetndi mouy bien, dejemoslo asi sin hacer, igual maser, s tu hiciste etst y todo y el codigo apunta a que esta bien, todo eso qeu comenatste va etsar bien. Puedes continuar op dime que hacemos ?"
 New dev build (Expo SDK 57, native hCaptcha), Metro and admin-web from the main checkout with the hCaptcha test key; CAPTCHA still off in the Dashboard. Passed: app register, resend code, login, forgot password and delete-account re-sign-in with the challenge; app sign-out without an error (T6e); admin-web login with the challenge and its Spanish error on a cancelled or failed challenge; `/eliminar-cuenta` and `/privacidad` open signed out and signed in.
 Not run, by the maintainer's decision: app check 6 (cancelling the challenge shows the localized error and stops the spinner). Covered only by the unit tests of L98, L101 and L102 (cancel and timeout map to `captchaCancelled`/`captchaFailed`; the screens reset loading in `finally`).
@@ -831,12 +971,14 @@ Remote logs (Supabase MCP, read-only, 24 h): sign-out `/logout` 204 at 23:14:07 
 Block 6 stays open only for T6b (custom SMTP, needs the domain), T6h (go-live switches) and T6i (legal text, terms page and link).
 
 ### L109 — T8a: listings held by a suspension
+
 F1: `isProductHistory(status, statusBeforeAccountHold)` treats a HIDDEN listing with `status_before_account_hold` set as active; new `isAccountHeld(product)` in `core/utils/product-status.ts`. `app/profile/listings.tsx` passes the field (the query already selects `*`); `MyListingCard` shows the new `listings.status.ACCOUNT_HOLD` label ("En pausa (cuenta suspendida)" / "Paused (account suspended)") with the warning color and no edit, fix or delete actions, because the server refuses owner writes while the account is suspended (T1c). A HIDDEN listing without a recorded prior status stays in history.
 RED: `core/utils/__tests__/productAccountHold.test.ts` failed to load (`isAccountHeld` missing). GREEN: `core/utils` + `core/i18n` 332 pass. ESLint clean on touched files; `@selene/frontend` typecheck: no diagnostics in touched files.
 Device check (with a suspended seller): "Mis publicaciones" > "En Venta" shows the held listing as "En pausa (cuenta suspendida)" without buttons; after reactivation it shows its restored status.
 Risk: none (display only; the server enforces the suspension).
 
 ### L110 — T8a review and T8b implementation
+
 T8a review (readability, reliability) approved for 3933485. Advisories: the "Hide trash when IN_DISPUTE" comment now reads as part of the `showActions` comment (fixed in T8e); `ACCOUNT_HOLD` is a display key, not a database status; the card wiring has no render test; "held listing still shows the trash button" is a false positive (the trash is inside the action bar that `showActions` hides).
 T8b (worker): `account-closure-cleanup/handler.ts` authenticates with the shared constant-time `isAuthorizedCronRequest` and reports a present but wrong `x-cron-secret` through `reportCronSecretMismatch` (a missing header stays silent); 401 `CRON_UNAUTHORIZED`, fail-closed on an unset secret and 405 after auth are unchanged. Each failed cleanup step is reported to Sentry as "account-closure-cleanup step failed" with fingerprint and tags `step` and `code` only (no user ids, emails, Stripe ids or provider text; ids stay in the logs); a crashed row reports step `crash`; closures that reached the attempt cap are reported once per run with the count. The reporter is injected (`reportMessage` from `_shared/sentry.ts`) and a throwing reporter changes neither the response nor the run. New Bruno request `bruno/functions/account-closure-cleanup-wrong-secret.bru`.
 RED: 4 of 29 failed (shared constant-time helper, wrong-secret mismatch report, failed-step report, cap report). GREEN: `account-closure-cleanup` + `_shared` 593 pass; parent rerun 29 pass. `deno check` clean; ESLint clean. Local stack: the three closure-cleanup Bruno requests pass, full `bun run api:test` 312/312 (the two L69 pre-existing failures did not occur).
@@ -845,10 +987,12 @@ Deploy (maintainer): redeploy `account-closure-cleanup`; no secret, SQL or cron 
 Risk: item 2 (cron authentication guard).
 
 ### L111 — T8b review follow-up
+
 d7349da review (risk, resilience, reliability) approved. Resilience and reliability both warned that each failed step awaited its own Sentry flush inside the row loop (`reportMessage` flushes with `FLUSH_TIMEOUT_MS` per report), so a batch of 20 closures with several failed steps could spend most of the function time limit waiting on Sentry. Fixed: the run collects failures as `step:code` and reports each distinct one once after the batch. Other advisories, not changed: the crash-path report and the source-text check that the shared helper is used have no behavioral test beyond the unit harness; the mismatch report awaits before the 401 (bounded by the same flush timeout, same as the other cron functions).
 RED: new test "reports a repeated step failure once per run, after every row was processed" (3 reports instead of 1). GREEN: `account-closure-cleanup` 30 pass. `deno check` clean; ESLint clean.
 
 ### L112 — T8h: #50 error toast titles
+
 2ccc9b7 review (resilience, reliability) approved. Advisories accepted: reports deferred to the end of the run are lost if the run aborts mid-batch (the 500 is reported by `withSentry`); deduplication drops the per-step count (the per-closure detail stays in the logs).
 #50: the order report and return screens, `useProductCart` and `useProductManagement` used `common:errors.errorTitle`, which does not exist; they now use `common:errors.title` ("Something went wrong." / "Algo salió mal"). New `core/i18n/commonKeyUsage.test.ts` resolves every literal `common:` key of those four files in en and es.
 RED: 1 fail, 8 missing entries (4 files x 2 languages). GREEN: `core/i18n` + `core/hooks` 308 pass. ESLint clean.
@@ -856,6 +1000,7 @@ Finding while scanning the whole app with the same test: eight other `common:` k
 Risk: none (copy keys only).
 
 ### L113 — Delivery slice 1 boundary; T8c generated types in the closure functions
+
 Slice boundary: the branch passed ~400 authored lines at 28193ba. Slice 1 (for a pull request when the maintainer asks) is origin/main..28193ba: tracker plan and block-6 checks, T8a, T8b with its follow-up, T8h. Later commits form slice 2.
 28193ba review (reliability) approved; advisory: the key test would pass vacuously if its regex matched nothing (fixed in T8e).
 T8c: `delete-account/index.ts`, `account-closure-cleanup/index.ts` and `_shared/account-closure-cleanup.ts` call `fn_close_account`, `fn_claim_account_closures`, `fn_record_closure_attempt` and the `account_closures` table through the typed admin client; the `as never` casts, the hand-written `ClaimRpc`/`CappedQuery`/`ClosureTable`/`RecordRpc` types and the "not in the generated types" comments are gone. One narrow cast stays: `p_last_error` is NULL-able in SQL but generated as `string`, so `update.last_error as string` with a comment. Test helpers keep `admin as never` for their fakes.
@@ -864,6 +1009,7 @@ Deploy (maintainer): redeploy `delete-account` and `account-closure-cleanup` wit
 Risk: none (types only; the same calls run, proven by Bruno).
 
 ### L114 — T8e: auth form tidy
+
 98b1f41 review (reliability) approved with no findings.
 `RegisterForm` confirm-password "Done" now calls `submitFromKeyboard`, which returns unless `isValid && !isBusy` (the register button's guard) before `handleSubmit(onSubmit)` (L88). `LoginForm` drops the unused `useTheme`/`Theme` (L88). The root `auth` keys `loginTitle` and `joinSelene` are removed in en and es (unused since L87; `guestScreen.joinSelene` stays). `PublicIdentitySource` and the review row's `reviewer` use `Tables<'profiles'>` instead of hand-written `deleted_at` types (L79); `deleted_at` stays optional on purpose, because queries that do not select it use the closed-username fallback. `MyListingCard`: the "Hide trash when IN_DISPUTE" comment moved to `showTrash` (T8a review). `commonKeyUsage.test.ts` now fails when a file yields no `common:` match (T8h review).
 RED: `authFormFields.test.ts` "register confirm password submits from the keyboard with the button guards" failed (1 of 18). GREEN: auth tests + `core/utils` + `core/hooks` + `core/i18n` 566 pass; ESLint clean on touched files; `@selene/frontend` typecheck 17 errors, all in untouched test files (current main baseline, was 16 on L101).
@@ -871,6 +1017,7 @@ Device check: on register, "Done" on the confirm field with an invalid form does
 Risk: none (UI guard, types and unused code).
 
 ### L115 — T8d: Google-only detection and an ended recovery session
+
 b53d0a5 review (readability, reliability) approved; suggestions only (the empty-scan assertion does not name the file; the keyboard-guard test is a source contract; L114 wording).
 C7: `AccountSection` and `SecuritySection` decided "Google user" from `app_metadata.provider === 'google'`, which names only the first provider, so a Google sign-up that later added a password lost its password change. New `isGoogleOnlyAccount(user)` in `core/auth/reauth.logic.ts` reuses the identity-first `resolveReauthMethod` (block 5); both sections use it.
 Recovery: `completePasswordRecovery` kept `codeVerified` after any `updateUser` failure; when the recovery session itself ended (`AuthSessionMissingError`, `session_not_found`, `session_expired`) the screen hid the code field and every retry failed. It now returns `codeVerified: false` with the new `auth:errors.recoverySessionEnded` ("Your reset session ended. Request a new code to continue." / "Tu sesión de recuperación terminó. Solicita un código nuevo para continuar."), so the code field and its resend row come back. Other failures keep the verified code (C3 unchanged).
@@ -879,6 +1026,7 @@ Device check: an email account signed in with Google too still sees "Change pass
 Risk: item 2 (which credential UI a user sees; the server still requires the current password).
 
 ### L116 — Slice 1 merged; T8i CAPTCHA provider tests
+
 Maintainer (verbatim): "dale abrimos pr no? y lo mergeamos a maain? Ya hide el redeploy de las EF, sobre el etst maunal porfa se un poco mas descriptivo de lo que quieres que haga, y dime si ocupas priero esos test o si peudes continuar a la par"
 `delete-account` and `account-closure-cleanup` redeployed by the maintainer (T8b, T8c). Slice 1 opened as PR #75 from `fix/auth-backlog-1` (origin/main..28193ba); CI `test` and the Vercel previews passed; merged as 60057ee, which closed #50. origin/main merged back into `audit/auth-backlog` (23dd5a0, clean; `bun test` 4123 pass, 0 fail). Slice 2 starts after 60057ee.
 e63efee review (risk, reliability) approved; advisory: the settings wiring test reads source text.
@@ -887,13 +1035,15 @@ T8i, admin-web: `react-test-renderer` is not installed there, so instead of a ne
 Risk: none (tests, and a behavior-preserving move in the admin hook covered by its tests and the login e2e).
 
 ### L117 — Slice 2 merged, go-live note committed, T8d device check
+
 T8i (8bc5a4c): the admin login e2e also ran after the hook change, `bun run test:e2e` 19 passed. Review (readability, reliability) approved; advisory: the wiring between `useCaptcha` and `createHcaptchaHandle` is covered only by the login e2e, which runs without a site key.
 Slice 2 (60057ee..8bc5a4c: T8c, T8e, T8d, T8i) merged as PR #80 (e1ff5bd) after CI `test` and the Vercel previews passed. The uncommitted #64 note in `docs/go-live.md` (another session's work, present in the main checkout and this worktree) blocked `git pull`; at the maintainer's request it was committed alone and merged as PR #83 (a70db98, `Refs #64`); both checkouts now match main with no local changes.
 Maintainer (verbatim): "key si, mejor hacemos la dos nomas" — of the three device checks, only the Settings check runs now; T8a (held listing) and T8e (register "Done") move to the go-live verification pass (`docs/go-live.md`), both covered by unit tests and low risk.
-Maintainer (verbatim): "Probado master, la prueba 2 paso, todo luce bien  tanto cuentas creadas como cunetas google." T8d device check passed: an email account sees "Change password" and the email change; a Google-only account does not see "Change password".
+Maintainer (verbatim): "Probado master, la prueba 2 paso, todo luce bien tanto cuentas creadas como cunetas google." T8d device check passed: an email account sees "Change password" and the email change; a Google-only account does not see "Change password".
 Slice 3 (T8f, T8g) starts after a70db98.
 
 ### L118 — T8f: closed accounts in admin-web
+
 f703129 review (readability) approved; suggestion: the T8e row does not say its device check moved to the go-live pass (it never had one pending).
 T8f (worker, parent fixes): closed accounts (L69, L78) show as "Cuenta eliminada" instead of a red ban, with "El usuario cerró su cuenta. No se puede reactivar." on the detail page and no verify, suspend, ban or reactivate actions (a lock icon labelled "Cuenta eliminada (sin acciones)"). `admin_user_directory_view` exposes neither `status_reason` nor `deleted_at`, so the new `src/lib/accountStatus.ts` `isClosedAccount` uses `status = 'banned'` plus the `deleted_<12 hex>` username that `fn_close_account` sets; T8g makes that prefix server-reserved, and a look-alike banned account would only get a different label (banned accounts already had no actions). `getAccountStatusActions` returns no actions for an unknown status (L22). The reactivation confirmation no longer promises the prior status: "Sus publicaciones que estaban activas antes de la suspensión vuelven a su estado previo; las demás siguen ocultas hasta revisarlas." (parent fix: the worker's text had lost its subject).
 RED: 3 fail, 1 error (unknown status returned `undefined`, old reactivation copy, helper module missing). GREEN: `bun test apps/admin-web` 346 pass; `bun run test:e2e` 27 passed, including the new `e2e/admin-web/closedAccounts.e2e.ts` (list badge, detail without actions, reactivation copy). `admin-web` typecheck exit 0; ESLint clean on touched files.
@@ -901,10 +1051,12 @@ Not done: the users page "Baneados" filter still lists closed accounts; not run 
 Risk: none of items 1-5 (display and button visibility for accounts the server already refuses to reactivate); item 6 for the badge look.
 
 ### L119 — T8f review follow-up
+
 1a75bd6 review (readability, reliability) approved. Both lenses flagged that `UserSafetyActions` took `username` as optional, so a caller that omitted it would show a closed account as an ordinary ban: `VerificationDetail` (product verification) did omit it. Fixed: `username` is required and `VerificationDetail` passes the seller's username. Other advisories, not changed: the closed label and badge markup repeat in `UserCard` and `UserDetailPage`; the `default` branch hides missing-case exhaustiveness at compile time (accepted: an unknown runtime status must yield no actions).
 Evidence: `admin-web` typecheck exit 0 (the required prop compiles at both call sites); `bun test apps/admin-web` 346 pass; `bun run test:e2e` 27 passed; ESLint clean.
 
 ### L120 — T8g: server reserves the deleted_ username prefix
+
 6200299 review (reliability) approved; advisory: `VerificationDetail` with a closed seller has no test (the required prop is enforced by the typecheck).
 Migration `20261030000000_reserve_deleted_username_prefix.sql` (worker; not applied): trigger `tr_profiles_reserve_deleted_username` (BEFORE INSERT OR UPDATE OF username on `profiles`) calls `fn_reserve_deleted_username()`, which rejects `username ILIKE 'deleted\_%'` with `check_violation` (23514) "Username "x" is reserved", the code the signup trigger already uses for a bad username. The prefix passes only on an UPDATE by a role other than `anon`/`authenticated` that sets `deleted_at` from NULL in the same statement, which is what `fn_close_account` (SECURITY DEFINER) does. The role test is needed because the local stack lets clients write `deleted_at` (#88; the deployed project does not). An unchanged username is never rejected; the migration reads and writes no rows. `fn_generate_profile_username` prefixes `user_` to a derived base that starts with `deleted_`. Canonical copies in `supabase/queries/triggers/auth/`. The new function is SECURITY INVOKER with a fixed `search_path`, revoked from PUBLIC, anon and authenticated (grant review in the migration).
 Remote (Supabase MCP, read-only): no active profile has a `deleted_` username (1 closed account); `authenticated` may UPDATE only `username` and `avatar_url`, `anon` nothing. The worker's suspected over-wide grant is local-only, opened as #88.
@@ -914,27 +1066,32 @@ Maintainer: apply the migration (one transaction, no data change, no function, s
 Risk: item 1 and 2 (trigger on `profiles` writes; account identity).
 
 ### L121 — T8g client check in the profile editor
+
 `validateEditUsername` (`core/utils/editProfileValidation.ts`, used by `app/profile/edit.tsx`) rejects a username starting with `deleted_` (any case) with `settings:errors.usernameReserved` ("That username is reserved. Please choose another." / "Ese nombre de usuario está reservado. Elige otro."), so the editor answers before the server's 23514. The register form's rules (`core/auth/registerUsername.logic.ts`) are unchanged: the server rejects the prefix at sign-up and the screen shows its generic username error.
 RED: 1 of 2 new tests failed (prefix accepted). GREEN: `editProfileValidation` + `core/i18n` 125 pass.
 Risk: none (client-side message before an existing server rule).
 
 ### L122 — T8g review follow-up: bare "deleted" base
+
 2c2b15d review (risk, resilience, reliability) approved; 5807db4 review (reliability) approved with no findings. The risk lens warned that a derived base of exactly `deleted` (e.g. `deleted@...`) escaped the `deleted\_%` check, so a collision suffix would build `deleted_1234`, the new trigger would reject it and that sign-up would fail with 500. Fixed in the unapplied migration and the canonical generator: `IF v_base = 'deleted' OR v_base LIKE 'deleted\_%'` prefixes `user_`. Other advisories, not changed: the generator body is duplicated in the migration and its canonical copy (repository convention); the closure and update paths are proven on the local stack, the migration tests are structural.
 RED: new structural test failed. GREEN: 8/8. Local stack (`supabase db reset`, psql in the database container, rolled back): with `deleted` taken, `fn_generate_profile_username('deleted')` and `('Deleted')` return `user_deleted`; `('deletedfan')` stays `deletedfan`.
 Slice 3 (a70db98..HEAD: L117 tracker, T8f, T8g) is ready for a pull request once the maintainer applies the migration.
 
 ### L123 — T8g migration applied
+
 3b5e962 review (risk, reliability) approved with no findings.
 Maintainer (verbatim): "Migracion aplicada master, paso todo succes. continua". The read-only check right after found nothing applied (no guard function, no trigger, generator unchanged), so the maintainer reran the whole file. Maintainer (verbatim): "a vre master checa de nuevo, ojko no regenere types con el comadno dle repo".
 Remote (Supabase MCP, read-only): trigger `tr_profiles_reserve_deleted_username` present and enabled (`BEFORE INSERT OR UPDATE OF username ON public.profiles FOR EACH ROW EXECUTE FUNCTION fn_reserve_deleted_username()`); the guard is SECURITY INVOKER, not executable by `anon` or `authenticated`; `fn_generate_profile_username` contains the bare-`deleted` fix. Security advisors: no finding for the new objects. `db:types` not needed (no table or column change).
 
 ### L124 — T8 closed
+
 f8796ee review (readability) approved with no findings. Slice 3 (a70db98..f8796ee: L117, T8f, T8g) merged as PR #90 (138342e) after CI `test` and the Vercel previews passed.
 T8 is closed: T8a-T8i done and on main (PRs #75, #80, #90), each commit with an approved native review; #50 closed by #75; migration `20261030000000_reserve_deleted_username_prefix.sql` applied and read back (L123); `delete-account` and `account-closure-cleanup` redeployed (L116).
 Deferred to the go-live verification pass (maintainer, L117): T8a held listing and T8e register "Done" device checks.
 Still open in the auth roadmap: block 6 T6b (custom SMTP, needs the domain), T6h (go-live switches: real hCaptcha keys then the Dashboard CAPTCHA switch, leaked-password protection on Pro, production Site URL and redirects with #49), T6i (legal privacy and terms text, terms page and register link, `legalUrls.ts` defaults). Issues from this pass: #67, #68, #69, #70, #72, #88.
 
 ### L125 — Main sync and the T9 proposal
+
 Maintainer (verbatim): "master trata de actualizar este woktree con lo utlimo de main, para evr si los cambiso nuevos afectan algo en nuetsrow orkflow sobre todo o cosas que ya se arregalron que tal evz auth necesite. lUEGO CMABIARE de seiosn para empezar a trabjar ene se ultimo roadmap que es el final boss que tenemos que hacer para decir que auth y todo lo relacionado con el ya quedo al 100%"
 Merged origin/main (f5c70c48, 18 commits: repo hygiene #91, worktree clean #87) into `audit/auth-backlog` as aa3f7513, no conflicts. `bun test` 4366 pass, 0 fail; `bun run lint` clean.
 Workflow changes that apply to T9 (read `AGENTS.md`, `docs/conventions.md`, `apps/frontend/AGENTS.md`): lint and typecheck are gated in CI and must stay at zero (an `eslint-disable` needs the rule and a reason); pre-commit runs `lint-staged` (Prettier and ESLint on staged files), pre-push runs `bun test`, commit-msg rejects non-Conventional headers; tests sit next to their file and no new `__tests__/` folders; no domain logic added to `core/utils`; no barrel files; `apps/backend`, `openspec/` and `sdd/` were removed; TypeScript 6.0 in the root, admin-web and types.
@@ -943,12 +1100,14 @@ Issues: #72 closed by another session; #49, #68, #69, #70, #88 still open.
 T9 proposal (from chat, not yet approved): T9a legal pages and links in code (`legalUrls.ts` from `SELENE_WEB_URL`, `/terminos` page, register terms link); T9b auth email templates versioned in `supabase/templates/` and wired in `config.toml`; T9c one auth "switch-on" runbook in `docs/go-live.md` (domain, Resend DNS, SMTP, rate limit, Site URL and redirects, hCaptcha keys, Dashboard CAPTCHA, leaked-password protection), each step with an MCP check; T9d CAPTCHA on in the local stack with the hCaptcha test secret and Bruno sending the test token; T9e #70; T9f #69; T9g #88; T9h #68. Open decision for T9h: (1) local `bun run test:db` only, recommended; (2) also a CI job (CI change, needs approval); (3) leave it out.
 
 ### L126 — T9 approved; T9a start
+
 Maintainer (verbatim): "Retomamos auth en el worktree C:/dev/School-portal-worktrees/auth. Leé odd/tasks/auth-hardening.md (Tasks y Log desde L117) y Engram. Apruebo el plan T9 de L125; para T9h elijo la opción [1/2/3]. Arrancá por T9a, mismo workflow de siempre."
 The T9h choice arrived as the literal placeholder "[1/2/3]": T9h stays blocked until the maintainer picks an option. Merged origin/main (fc4ce147, dependency-audit CI only) as 06bb96a4.
 Module check: open auth-related issues #49, #67, #68, #69, #70, #88; T9 covers #68 (T9h), #69 (T9f), #70 (T9e), #88 (T9g); #49 stays with the deploy session; #67 is long horizon (2031). The only open advisory (draft) is about disputes, not auth.
 T9a finding: the maintainer's `apps/frontend/.env` sets `EXPO_PUBLIC_TERMS_URL=https://selene.mx/terminos`, and the env value wins over the `legalUrls.ts` default, so changing the default alone would not change the app. Decision: the legal links come only from `packages/types/src/domain.ts` (`TERMS_URL`, `PRIVACY_URL`); `EXPO_PUBLIC_TERMS_URL` and `EXPO_PUBLIC_PRIVACY_URL` are no longer read and `core/utils/legalUrls.ts` is removed.
 
 ### L127 — T9a: legal links, terms page, register link
+
 `packages/types/src/domain.ts` adds `TERMS_PATH` (`/terminos`) and `TERMS_URL`. Settings > Legales opens `TERMS_URL` and `PRIVACY_URL` from `@selene/types`; `core/utils/legalUrls.ts`, its test and the `EXPO_PUBLIC_TERMS_URL`/`EXPO_PUBLIC_PRIVACY_URL` reads are gone. The register terms text is a link (`accessibilityRole="link"`) that opens `TERMS_URL`; the rest of the row still toggles the checkbox. The browser-open callback with its error toast moved from `LegalesSection` to `core/hooks/useOpenInBrowser.ts`, used by both. admin-web: public `TermsPage` at `/terminos`, outside `ProtectedRoute`, with the "pendientes de revisión legal" note; it summarizes only decided rules (marketplace and verification, Seguro Selene, payout after a completed shipment, refunds and disputes per shipment before completion, suspension and ban) and links to `/privacidad` and `/eliminar-cuenta`. `docs/go-live.md`: "Domain" and "Public pages" updated; the full terms join the legal go-live blocker.
 RED: `domain.test.ts` failed to load (`TERMS_PATH` missing); 3 source-contract tests failed (Legales hook and constants, register link). GREEN: `packages/types` + `core/i18n` + both form test files 205 pass. Full checks: `bun run lint` exit 0; `admin-web` and `@selene/types` typecheck exit 0; `@selene/frontend` typecheck only the 2 Windows-only TS2322 of L125; `bun test` 4363 pass, 0 fail on the rerun (the first run had 1 fail, not reproduced in 2 later runs; its name was cut from the log); `bun run test:e2e` 28 passed after fixing the new spec's expected text ("pendientes"). `npx expo export --platform android` exit 0: the first runtime value import of `@selene/types` in the app bundles through Metro.
 Removed tests: the two `settingsIntegration` checks that `.env.example` contains `EXPO_PUBLIC_TERMS_URL`/`EXPO_PUBLIC_PRIVACY_URL`. Agents cannot edit `apps/frontend/.env.example`; the maintainer removes both lines there and in `apps/frontend/.env` (unused now, harmless if left).
@@ -956,14 +1115,17 @@ Device check: on register, tapping "Términos y Condiciones" opens `/terminos` w
 Risk: item 3 (two env vars no longer read), item 6 (link tap on device).
 
 ### L128 — Delivery slice T9-1
+
 Maintainer (verbatim): "Master a que te reieres borrar EXPO_PUBLIC_TERMS_URL y EXPO_PUBLIC_PRIVACY_URL? osea porque? SObre lo del pr, si master, tu toma esa iniciativa, osea no se porque me preguntas a mi, creo que es por culpa de mi agents md, pero en realdiad tanto tu como gentle-shell son los que dcen como se aplcian las bets pracices sobre git, pero si, haz el pr y merge, te doy persmio."
 Answered in chat: the two env vars overrode the code default (`EXPO_PUBLIC_TERMS_URL` pointed to `selene.mx`), and after T9a nothing reads them; `SELENE_DOMAIN` is the only place to change. Removing them from `.env.example` and `.env` is cleanup, not a fix.
 Slice boundary: slice T9-1 is origin/main..HEAD (L124 and L125 tracker commits, the main syncs, T9a bc4e44b6 and this entry), about 460 authored lines. Native review of bc4e44b6: assess said due (auth hot path), the inspect timed out (`operation_timeout`, not retry-safe) and was not retried; delivered under the maintainer's PR and merge permission without that review.
 
 ### L129 — T9a review approved
+
 The RDD reminder offered a fresh start for the slice target; review of origin/main..1042619d (readability, reliability) approved and acknowledged, superseding the "without that review" note in L128. Advisories, not blocking: `useOpenInBrowser` reads the `settings` namespace for its toast, so a caller outside Settings depends on those keys (both lenses); the register link is pinned only by a source-contract test (device check pending); the legal links point to the `selene.example` placeholder until the domain exists (L91); `App.tsx` import reformatting by Prettier; T9b-T9h rows lacked the route column (fixed here).
 
 ### L130 — T9b: auth email templates
+
 Slice T9-1 merged as PR #94 (da32036d) after CI `test` and the Vercel previews passed; the branch fast-forwarded to main.
 T9b (worker, parent checks): `supabase/templates/confirmation.html`, `recovery.html`, `email_change.html`, `reauthentication.html`: Spanish, table layout with inline styles and the DESIGN.md colors, no external assets. Confirmation, recovery and reauthentication show `{{ .Token }}` and say it expires in 15 minutes and never `{{ .ConfirmationURL }}`; email_change has the `{{ .ConfirmationURL }}` button plus the plain link and says both addresses confirm; each says what to do if the user did not ask for it.
 Finding: CLI 2.122.0's experimental stack (`[experimental] stack = true`) refuses `content_path` at `supabase start` ("content_path requires template serving, which is not supported by the experimental stack"). The four `[auth.email.template.*]` blocks (subject + `content_path`) therefore ship commented out in `config.toml`, with the preview recipe (uncomment, `SUPABASE_EXPERIMENTAL_STACK=0 supabase start`). With that recipe the worker's local signup mail in Mailpit had the subject "Tu código de confirmación de Selene", a 6-digit code and the styled code box. The local stack keeps the default link mail; nothing in `bruno/`, `scripts/`, `e2e/` or `package.json` reads the mail catcher.
@@ -973,15 +1135,18 @@ Not proven: recovery, email-change and reauthentication mails not sent locally; 
 Risk: item 6 (mail rendering is visible only in a mail client).
 
 ### L131 — T9b review follow-up
+
 abb9c82a review (readability, reliability) approved. Fixed: Prettier had wrapped `{{ .Email }}` in `email_change.html` across two lines; Go templates accept that since Go 1.16, but the paragraph is now `<!-- prettier-ignore -->` and a new test fails when any template action spans a line (RED: 1 fail on email_change; GREEN: 16 pass). L130 corrected: all three code templates state the 15-minute expiry. Other advisories, not changed: the 15-minute literal is not derived from `otp_expiry` (templates and config change together); the four templates repeat the same layout (Auth has no partials); the test pins the commented wiring but not that it stays commented (the experimental stack would refuse to start, which is loud).
 
 ### L132 — T9c: auth switch-on runbook
+
 T9b follow-up c3c7bb7b review (reliability) approved with no findings. Slice T9-2 (T9b) merged as PR #109 (4f5d2dbc): CI `test` passed; the four Vercel previews failed with "Deployment rate limited — retry in 24 hours" (account build quota; the slice does not touch admin-web), merged without them.
 `docs/go-live.md` section 10 gets "Auth switch-on order": nine ordered steps (domain, Resend domain verification, custom SMTP, templates, email rate limit, Site URL and redirects with #49, CAPTCHA in its four-step order, leaked-password protection, close), each with its check. The Supabase MCP cannot read Dashboard Auth settings, so steps without an MCP check end with a Dashboard readback recorded in "Deployed Auth settings"; steps 3 and 7 use the auth logs (`query_logs`), steps 8 and 9 `get_advisors`. Read-only check now: `get_advisors` (security) reports `auth_leaked_password_protection`, the lint name step 8 expects to disappear.
 Proof: documentation only, no runnable test; the advisor name was read from the remote.
 Risk: none (docs).
 
 ### L133 — T9d: local CAPTCHA, and the admin widget never renders
+
 T9c f09aa5f4 review (readability) approved; suggestion only (T9c row wording).
 T9d (worker, uncommitted): `[auth.captcha]` on in `supabase/config.toml` with hCaptcha's public test secret inline (an `env()` secret would need a gitignored file per worktree); `bruno/environments/local.bru` `captchaToken` = the hCaptcha test response token; the 12 password grants and 3 signups send `gotrue_meta_security.captcha_token`; new `bruno/auth/login-without-captcha-rejected.bru` (400 `captcha_failed`; RED with CAPTCHA off, GREEN on). `bun run api:test` 447/447 twice (parent rerun after `db reset`). Scripts and test helpers call no guarded endpoint; the `/auth/v1/admin/users` requests use the service role and skip CAPTCHA.
 `bun run test:e2e:local` failed 4/4: the admin login shows "Error inesperado al iniciar sesión." and never calls `/auth/v1/token`. Maintainer approved adding the hCaptcha public test site key to `playwright.local.config.ts` `webServer.env` (choice: "Aprobar el cambio en playwright.local.config.ts"); still 4/4 failed.
@@ -990,21 +1155,25 @@ Maintainer decision (choice): "Usar la API de hCaptcha directo (recomendado)". N
 Maintainer (verbatim): "matse si te sirve, vi como se me abro el navegador en el dahbor, no se si hice algo raro yo" — that window was the headed probe.
 
 ### L134 — T9d1: admin hCaptcha through the JS API
+
 Worker: `useCaptcha.tsx` no longer uses `@hcaptcha/react-hcaptcha` (removed from `apps/admin-web/package.json` and `bun.lock`; `@hcaptcha/loader` stays for the mobile SDK). It renders an empty `<div>` and, in an effect, creates the widget through the new `hcaptchaApi.logic.ts`: a module-level loader appends `https://js.hcaptcha.com/1/api.js?render=explicit&onload=onHcaptchaApiLoaded&hl=es` once (reuses an existing `window.hcaptcha`; a failed load is forgotten), and `createHcaptchaWidget` renders the invisible widget on the first request (a request before the API is ready waits; the 120 s getter timeout bounds it) and maps `execute`/`reset`/`remove` to the API; `dispose` on unmount is safe twice and before the API loads (React 19 StrictMode mounts twice in dev). `hcaptchaHandle.logic.ts` resets through `resetQuietly`, so a reset that throws (hCaptcha's plain `{cause:'missing-captcha'}`) never replaces the token or the `CaptchaError`. `src/types/hcaptcha.d.ts` types `window.hcaptcha`.
 RED: 3 of 4 new handle tests failed (a throwing reset replaced the token, replaced the `CaptchaError`, and broke `cancel`). GREEN: `bun test apps/admin-web` 359 pass, 0 fail (4 handle tests, 9 adapter tests); `admin-web` typecheck exit 0; `bun run lint` zero; `bun audit --audit-level=high` with the workflow ignores: no vulnerabilities (768 packages). `bun run test:e2e` 28 passed (no hCaptcha request without a site key). Local stack with CAPTCHA on (T9d config): `bun run test:e2e:local` 4/4 with the real GoTrue verifying the hCaptcha test token.
 Not proven: the StrictMode double mount only by a logic test; a failed first load leaves that widget's `ready` rejected until the page reloads (the loader itself retries).
 Risk: item 2 (admin authentication), item 5 (dependency removed).
 
 ### L135 — T9d committed after T9d1
+
 With T9d1 in place, T9d commits as recorded in L133: local `[auth.captcha]` on with the hCaptcha public test secret, Bruno sends the test token (15 requests plus the negative `login-without-captcha-rejected`), `playwright.local.config.ts` passes the public test site key to the admin-web build (maintainer approval, L133), `docs/go-live.md` step 7 and `supabase/AGENTS.md` say so. Evidence: `bun run api:test` 447/447; `bun run test:e2e:local` 4/4 with CAPTCHA on (L134).
 Consequence: the local stack no longer mirrors the remote's CAPTCHA (off until go-live); a client pointed at the local stack must use the hCaptcha test site key (`EXPO_PUBLIC_HCAPTCHA_SITE_KEY`, `VITE_HCAPTCHA_SITE_KEY` = `10000000-ffff-ffff-ffff-000000000001`) or its password sign-ins and sign-ups get `captcha_failed`. GoTrue verifies the token with hCaptcha's servers, so local sign-ins need internet.
 Slice T9-3: origin/main..HEAD (T9c f09aa5f4, T9d1 cbeb1841, T9d), about 530 authored lines, over the ~400 target because T9d1 had to land before T9d.
 Risk: item 2 (local Auth guard), item 6 (third-party widget only in a browser).
 
 ### L136 — T9d1/T9d review follow-up
+
 Review of f09aa5f4..9aea1c6c (T9d1 cbeb1841 and T9d 9aea1c6c together; risk, resilience, reliability) approved and acknowledged. Fixed: resilience and reliability both found that a failed first API load left the widget's `ready` promise rejected, so the login could not recover without a reload (the L134 "not proven" note); `createHcaptchaWidget` now forgets a failed load and the next request tries again (RED: new test "a failed API load is retried on the next request" failed; GREEN: `bun test apps/admin-web` 360 pass, typecheck exit 0, ESLint clean). Risk advisory: `supabase config push` would replace the Dashboard secret with the test secret; the `[auth.captcha]` comment now says never to push this file (go-live already forbids it).
 
 ### L137 — T9e: #70, a reservation that ends for a suspended seller is held
+
 Slice T9-3 (T9c, T9d1, T9d and the follow-up) merged as PR #110 (8bb6ad62) after CI and the Vercel previews passed; the follow-up beeda2a0 review (resilience) approved, advisory: local CAPTCHA needs internet (L135).
 Root cause (worker): `fn_release_stale_reservations` (`supabase/queries/products/fn_release_stale_reservations.sql`) and `fn_release_products` (`fn_release_products.sql`, the checkout-failure path) set every RESERVED row to VERIFIED without looking at the seller. Remote (Supabase MCP, read-only, parent): both deployed bodies match the repository copies before this change.
 Fix: migration `20261030120000_release_reservation_account_hold.sql` (+ canonical copies) decides at release time from the seller's current `profiles_private.status` (NULL reads as active): an active seller's listing returns to VERIFIED as before; a suspended or banned seller's listing becomes HIDDEN with `status_before_account_hold = COALESCE(existing, 'VERIFIED')`, so lifting the suspension restores it through the existing path. The seller rows are share-locked in id order before the update, so a concurrent suspension (FOR UPDATE) and a release serialize. Both functions stay SECURITY INVOKER, service_role only (REVOKE/GRANT restated). The migration writes no existing row; `db:types` is not needed.
@@ -1015,17 +1184,20 @@ Maintainer: apply the migration (two `CREATE OR REPLACE FUNCTION`, no data chang
 Risk: item 1 (product status writes), item 4 (lock order with the suspension RPC).
 
 ### L138 — T9e review and session stop
+
 cf2c9bb2 review (risk, resilience, reliability) approved and acknowledged. Reliability warned that `SELECT ... FOR SHARE` needs UPDATE privilege and the local proof ran as postgres, not service_role; remote check (Supabase MCP, read-only): `service_role` has UPDATE and SELECT on `profiles_private` and UPDATE on `products`, so the lock works for the caller. Other advisories, not changed: the status mapping is pinned by a structural test plus the rolled-back local run (no committed runtime test, #68/T9h); the lock subquery could read only the needed seller ids (suggestion); the T9e2 row names the refund path (not a vulnerability: listing visibility only).
 Maintainer (verbatim): "master cuando termines para porfa, coninutamos el dia de manana". Stopped after this review.
 State for the next session: branch `audit/auth-backlog` at cf2c9bb2 plus this entry, not pushed; slice T9-4 (T9e) is about 440 lines and needs the migration applied before its PR. Next: maintainer applies `20261030120000_release_reservation_account_hold.sql`, parent reads both functions back through the MCP, PR T9-4; then T9e2, T9f (#69), T9g (#88); T9h waits for the option.
 
 ### L139 — Session resume; T9e2 scope
+
 Maintainer (verbatim): "master peudes arrancar de nuevo".
 Remote (Supabase MCP, read-only): the T9e migration is not applied yet (neither release function holds or locks; grants unchanged: service_role only). The T9-4 PR waits for it.
 Merged origin/main (c3c44ddf: dependency patch updates, worktree-clean on Windows, "Idea" issue form, legacy backlog files removed) as d32facd6; `bun install --frozen-lockfile` clean. AGENTS.md now asks `bun run lint` and `bun run typecheck` for frontend changes.
 T9e2 scope (repository search for `SET status = 'VERIFIED'`): besides the two T9e functions, three more paths put a listing back in the catalog without the seller check: the refund branch of `fn_finalize_checkout_recovery` (`supabase/queries/orders/checkout_recovery.sql` ~397), `fn_reserve_products` (stale-reservation cleanup ~60 and the partial-cart rollback ~101) and `fn_cancel_shipment` (~95, a cancelled shipment's listings). All are the #70 class. `fn_resolve_product_verdict` (admin verification) is out of scope: it is an admin decision, and the T1c gates already stop a suspended seller's listing from being sold. T9e2 moves the rule into one internal helper used by all five paths, so it lives in one place. `fn_cancel_shipment` is mapped in `docs/formal/shipment-transfer-cancellation/`; the model does not track product status, so the mapping table gets a "changes since the sync" note.
 
 ### L140 — T9e migration applied
+
 Maintainer (verbatim): "Master migracion aplciada,, y te rpegunte, porque borar esas constantes de los env?"
 Remote (Supabase MCP, read-only): `fn_release_stale_reservations` and `fn_release_products` now carry the hold and the `FOR SHARE` lock, stay SECURITY INVOKER, and only `service_role` may execute them (anon and authenticated may not). `db:types` not needed (no table or column change).
 Env question answered in chat (the L128 entry said it was answered, but the chat reply only asked for the deletion): see the reply that follows this entry. Removing the two lines is optional cleanup.
@@ -1033,6 +1205,7 @@ The T9-4 PR (T9e) waits for the T9e2 worker to finish, because the pre-push hook
 Maintainer (verbatim): "ya las quite master, es celan code, no me gusta que etsen ahi." `apps/frontend/.env.example` no longer lists `EXPO_PUBLIC_TERMS_URL` and `EXPO_PUBLIC_PRIVACY_URL` (maintainer edit, committed with this entry; agents cannot read that file).
 
 ### L141 — T9e2: one seller-hold rule for every listing release
+
 Worker, parent review: new internal helper `public.fn_release_listings(p_product_ids uuid[], p_only_reserved boolean, p_only_expired boolean) RETURNS SETOF uuid` (SECURITY INVOKER; canonical `supabase/queries/products/fn_release_listings.sql`) share-locks the sellers' `profiles_private` rows in id order, then runs one UPDATE with the T9e rule (active or NULL → VERIFIED; otherwise HIDDEN with `status_before_account_hold = COALESCE(existing, 'VERIFIED')`); the two flags re-apply the caller's row filter inside that UPDATE. Migration `20261030130000_release_listings_helper.sql` redefines the five callers with only their release statement changed (parent read the canonical diffs): `fn_release_stale_reservations` (true, true), `fn_release_products` (true, false), `fn_reserve_products` stale cleanup (true, true) and partial rollback (true, false), the refund branch of `fn_finalize_checkout_recovery` (true, false), and `fn_cancel_shipment` (false, false; the per-row loop became one set-based call, unused `v_item` dropped). Bodies copied from the canonical files, which matched their latest migrations (`fn_cancel_shipment` 20261026015438; the other two the schema baseline).
 Grant review (migration header): the helper is revoked from PUBLIC, anon and authenticated and granted to service_role; the two INVOKER callers run as service_role (UPDATE and SELECT on `profiles_private`, so `FOR SHARE` works, L138), the three DEFINER callers run as their owner postgres. Caller signatures and ACLs unchanged.
 RED/GREEN on the local stack (psql in the database container, rolled back, each path as the role that calls it; suspend and lift through the real `fn_admin_update_user_status`): before the migration the three new paths (`fn_reserve_products` cleanup and rollback, `fn_finalize_checkout_recovery` refund, `fn_cancel_shipment`) returned VERIFIED for a suspended seller; after it every path gives HIDDEN with hold VERIFIED, every active-seller case VERIFIED with no hold, and every lift VERIFIED with the hold cleared. The rollback case simulates a suspension landing mid-call with a temporary trigger in the rolled-back transaction. New structural test `release_listings_helper.test.ts` (RED: file missing) pins the helper, its grants, each caller's flags and canonical == migration per caller; seven older structural tests now accept the helper call where they pinned the in-place UPDATE (their migration-body checks stay). `bun test supabase` 2659 pass; `bun test supabase/migrations/__tests__ supabase/queries/__tests__` 818 pass (parent); `bun run lint` clean; Bruno 458/458 after `db reset` (11 new requests: helper denied to anon and buyer, and a nine-step `bruno/products/release-hold-*` suspend → reserve → release → held → lift → restored flow). A first run had one 503 on `cancel-M6-delivered-seller` from a cold functions server; the rerun was clean.
@@ -1042,15 +1215,18 @@ Maintainer: apply `20261030130000_release_listings_helper.sql` (one new function
 Risk: item 1 (product status writes in money paths: refund finalization, shipment cancellation), item 4 (lock order).
 
 ### L142 — T9e merged; T9e2 migration applied
+
 Slice T9-4 (T9e and the `.env.example` cleanup) merged as PR #117 (be285fec) after CI `test` and the Vercel previews passed; it closed #70. origin/main merged back.
 T9e2 native review: the `inspect` timed out (`operation_timeout`, not retry-safe) and was not retried.
 Maintainer (verbatim): "Migracion aplicad master con succes". Remote (Supabase MCP, read-only): `fn_release_listings` exists (SECURITY INVOKER, `FOR SHARE` lock, executable by service_role only); `fn_release_stale_reservations`, `fn_release_products`, `fn_reserve_products`, `fn_finalize_checkout_recovery` and `fn_cancel_shipment` all call it; caller security modes and grants unchanged (the three DEFINER callers stay DEFINER; anon and authenticated execute none of the six). Security advisors: the same findings as before (L132), none for the new function.
 T9f (#69) runs in a worker; T9e2 and T9f go to main together as slice T9-5.
 
 ### L143 — T9h option chosen
+
 Maintainer (verbatim): "dale con la 1 master". T9h (#68) is option 1 from L125: auth SQL tests run against the local PostgreSQL through a new `bun run test:db` script, with no CI job. This is the explicit approval AGENTS.md requires to add a test script to `package.json`; it does not cover a CI change. T9h starts after T9f, because both use this worktree's local stack.
 
 ### L144 — T9f: #69, a stale listing no longer blocks an account closure
+
 Root cause (worker): `validate_product_publication_economics` (BEFORE INSERT OR UPDATE on `products`, defined only in the schema baseline `20261020100000_remote_schema_baseline.sql:7524`) recomputed the economics on every write carrying a snapshot, whatever the new status, and raised `INVALID_OR_STALE_PUBLICATION_ECONOMICS` (baseline line 7568). `fn_close_account` hit it at its soft-delete UPDATE (line 203), so the closure failed with a generic error.
 Fix: migration `20261030140000_publication_economics_sellable_only.sql` plus the first canonical copy `supabase/queries/triggers/product/validate_product_publication_economics.sql`. After the snapshot-immutability check, an UPDATE whose new row is soft-deleted or HIDDEN, SOLD, REJECTED or IN_DISPUTE returns early. INSERT and UPDATEs into PENDING_VERIFICATION, IN_REVIEW, VERIFIED or RESERVED validate as before with the same errors. Fixing the trigger covers every writer that takes a listing off sale (closure, suspension, admin soft delete, sale); `fn_close_account` is unchanged. Grants unchanged (SECURITY DEFINER trigger function, not an RPC; the header restates the revoke). No schema or type change.
 RED (local stack, rolled back): a seller with a copy of seed listing b1, `shipping_buffer_cents` raised by 500, `fn_close_account` as service_role: `ERROR: INVALID_OR_STALE_PUBLICATION_ECONOMICS ... fn_close_account(uuid) line 203`. GREEN after `supabase db reset`: closure returns `closed` with the listing HIDDEN and soft-deleted; suspension through `fn_admin_update_user_status` succeeds with the listing HIDDEN; HIDDEN → VERIFIED with the stale snapshot and a price change on a stale VERIFIED listing are still rejected with the same error. Structural test `publication_economics_sellable_only.test.ts` (4 tests, written after the SQL reproduction, no separate RED). `bun test supabase` 2726 pass; `bun run lint` exit 0. Bruno: 9 new `bruno/functions/delete-account-stale-listing-*` requests (throwaway seller, stale listing, `delete-account` returns 200, setting restored, listing hidden and soft-deleted) all pass; the collection had 504/507: the 3 failures are `dispatch-push-run` (500) and the two reads after it.
@@ -1059,7 +1235,9 @@ New finding #120 (opened, not fixed): writes back into VERIFIED or RESERVED stil
 Risk: item 1 (trigger on every products write), item 6 (only the cases above are proven).
 
 ### L145 — T9e2 and T9f review
+
 A later `inspect` worked: review of be285fec..e485418d (T9e2 4be77b8c and T9f e485418d together; risk, resilience, reliability). The first group capture was refused at admission (the risk reviewer declared the candidate inspected while its evidence said it could not); bound STATUS reoffered the same group and the relaunch was approved and acknowledged. Advisories, not blocking:
+
 - Lifting a suspension restores held listings to VERIFIED, which the economics trigger still validates, so a seller with a listing published before a fee change cannot be reactivated. Same cause as #120; added there as a comment.
 - Lock order (resilience and reliability): `fn_reserve_products` and `fn_finalize_checkout_recovery` hold product locks before the helper share-locks sellers, the reverse of the suspension RPC; a race ends in 40P01 for one side (recorded in L141).
 - The trigger skips validation for any soft-deleted row, whatever its status (risk): a soft-deleted row is out of the catalog and the reservation gates; restoring it (clearing `deleted_at`) validates again.
@@ -1067,10 +1245,12 @@ A later `inspect` worked: review of be285fec..e485418d (T9e2 4be77b8c and T9f e4
 - Bruno `release-hold-1-suspend` suspends seeded seller 002; if a later step fails, the seller stays suspended for the rest of the run (resilience). A failing run is reset with `supabase db reset`.
 
 ### L146 — T9f migration applied
+
 Maintainer (verbatim): "Migracion aplicada master con succes. Pueds contnuar". Remote (Supabase MCP, read-only): `validate_product_publication_economics` carries the non-sellable early return (soft-deleted, HIDDEN, SOLD, REJECTED, IN_DISPUTE) and keeps the `PUBLICATION_ECONOMICS_IMMUTABLE` check; still SECURITY DEFINER, not executable by anon or authenticated; trigger `validate_product_publication_economics` enabled. `db:types` not needed.
 Slice T9-5 (T9e2, T9f, tracker L141-L146) is ready for its PR; it is pushed after the T9g worker finishes, because the pre-push hook runs `bun test` on the working tree the worker is editing.
 
 ### L147 — T9g: #88, local grants match production
+
 Production snapshot (parent, Supabase MCP read-only): `has_table_privilege`/`has_column_privilege` for anon and authenticated on every public table and view (L145 session). Cause (worker): the restricting migration `account_trust_boundaries` now lives in `supabase/migrations/archive/` and is not replayed; the schema baseline dump only emits GRANT lines, so it cannot undo the default grants a fresh local database gives every table; production never ran the baseline.
 Local was more permissive than production on 16 objects and less permissive nowhere: `profiles` (UPDATE on every column for anon and authenticated); full DML for anon and authenticated on the server-only `checkout_recovery_shells`, `connect_account_actionability`, `connect_account_events`, `connect_payout_events`, `connect_payout_run_shipments`, `connect_payout_runs`, `shipment_cancellation_operations`, `shipment_completion_events`, `stripe_fee_reconciliation_jobs`, `webhook_deliveries` and `admin_connect_payout_release_view`; authenticated DML on `admin_connect_earnings_view` and `admin_seller_onboarding_view`; full DML on `notifications` and `shipment_tracking_events`.
 Migration `20261030150000_local_grants_parity.sql` (56 lines) only REVOKEs and re-GRANTs exactly the production privileges: `profiles` REVOKE UPDATE from anon and authenticated, GRANT UPDATE(avatar_url, updated_at, username) to authenticated; REVOKE ALL on the server-only objects from both roles (from authenticated only on the two admin views, where production keeps anon); `notifications` back to authenticated SELECT plus UPDATE(deleted_at, read); `shipment_tracking_events` back to authenticated SELECT. `service_role` untouched. Parent check: production has no MAINTAIN for those roles on the revoked objects, so the migration is a no-op there.
@@ -1078,13 +1258,16 @@ RED/GREEN: structural test `local_grants_parity.test.ts` (RED: migration missing
 Risk: item 2 (grants; local only in effect, no-op on production).
 
 ### L148 — Slice T9-5 merged; T9g review
+
 Slice T9-5 (T9e2, T9f) merged as PR #121 (1d761f3d) after CI `test` passed; two Vercel previews failed with "build-rate-limit" (account quota; the PR touches no `apps/` file). It closed #69. origin/main merged back; its new migration `20261030214855_shipment_milestone_notifications.sql` does not redefine any function changed in T9e-T9f.
 T9g review of e485418d..82ecb695 (risk, reliability) approved. Its acknowledgement could not burn the approval: the origin/main merge moved HEAD to a range that includes another session's push work, so the provider offered a new review for that range instead; not started (not this feature's code). Advisories, not blocking:
+
 - Production keeps `anon` ALL on `admin_connect_earnings_view` and `admin_seller_onboarding_view` (risk). Parent check: all six admin views are `security_invoker=true`, so reads go through the base tables' RLS. The wider least-privilege gap (default full grants for anon and authenticated, TRUNCATE included, on many tables) is #122.
 - The structural test pins the migration text; the runtime parity rests on the comparison script and Bruno (reliability, T9h).
 - L147 does not name the three failing Bruno requests (reliability). They are the `dispatch-push` ones known from L144.
 
 ### L149 — T9h: #68, auth SQL rules tested against PostgreSQL
+
 Worker, parent rerun: `bun run test:db` (new root script `"test:db": "supabase test db"`, the maintainer-approved change of L143) runs the Supabase CLI's pgTAP runner on `supabase/tests/database/*.test.sql` against this worktree's local database; it works with `[experimental] stack = true` and needs no new dependency. Each file is one transaction (`begin; plan(n); ... finish(); rollback;`), creates its own users and rows, impersonates roles with `request.jwt.claims` plus `set local role`, and uses no seed or Bruno state.
 Files (assertions): `profile_grants` (64: own username/avatar update stored; 42501 on `is_verified_seller`, `deleted_at`, anon profile writes, every server-only table of L147, notification and tracking writes), `reserved_usernames` (8: client `deleted_` and `Deleted_` names 23514, typed signup name 23514, `deleted@` email → `user_deleted`, closure writes `deleted_<12 hex>`), `account_closure` (24: anon/authenticated cannot execute; a reserved listing blocks with nothing changed; a clean account is anonymized and closed, re-run `already_closed`; closes with a stale-economics listing), `suspension_hold` (19: suspended and banned sellers' releases are held, active seller's return to VERIFIED, a fresh reservation is not released, lift restores held listings only, release functions denied to anon/authenticated), `publication_economics` (7: HIDDEN → VERIFIED/RESERVED with a stale snapshot rejected, hiding and soft delete allowed, snapshot rewrite `PUBLICATION_ECONOMICS_IMMUTABLE`, passes once settings are restored).
 Failure evidence (worker, local database broken outside the tests, then `db reset`): the pre-T9f trigger made `account_closure` abort with the #69 error and `publication_economics` 1-2 fail; an extra `UPDATE (is_verified_seller)` grant and anon EXECUTE on `fn_release_listings` failed grants 2 and 9 and suspension 3; a helper that always returns VERIFIED failed suspension 8, 12 and 15; a no-op reserved-username trigger failed reserved 1-4.
@@ -1093,14 +1276,17 @@ Not covered: the other release callers (`fn_reserve_products`, `fn_cancel_shipme
 Risk: item 5 (new test script; no CI change).
 
 ### L150 — T9g migration applied; slice T9-6
+
 Maintainer (verbatim): "listo migarcion aplicada con succes." Remote (Supabase MCP, read-only): the grants of the objects the migration touches equal the L145 snapshot (profiles: authenticated UPDATE only avatar_url, updated_at, username; anon no UPDATE; notifications and shipment_tracking_events as before; server-only tables none; the two admin views keep anon), so it was a no-op as intended. Correction to L148/L149: the remote migration history lists only the four baseline migrations (`list_migrations`), because the maintainer applies SQL through the editor; applying a no-op migration does not align a history the remote does not record.
 T9h native review: the `inspect` timed out (`operation_timeout`, not retry-safe) and was not retried.
 Slice T9-6: T9g 82ecb695, T9h e264b502 and the tracker entries L147-L150.
 
 ### L151 — T9 closed
+
 Slice T9-6 merged as PR #123 (d4c6f01c) after CI `test` passed; three Vercel previews failed with "build-rate-limit" (account quota; the PR touches no `apps/` file). It closed #88 and #68.
 T9 is closed. T9a-T9h, T9d1 and T9e2 are on main through PRs #94, #109, #110, #117, #121 and #123, and they closed #68, #69, #70 and #88. Every commit had an approved native review except bc4e44b6 before its later review (L129), and T9e2 and T9h, whose `inspect` timed out (T9e2 was then reviewed together with T9f, L145). The maintainer applied and the parent read back every migration: `20261030120000`, `20261030130000`, `20261030140000` and `20261030150000`.
 Open after T9 (each with its owner):
+
 - #120 (needs a product decision): a listing published before a fee change cannot go back on sale. This blocks the stale-reservation batch, cancellation after a refund and suspension lift.
 - #122 (low): default full grants for anon and authenticated; RLS is the only layer.
 - #49: admin-web production deploy settings, with the deploy session.
@@ -1110,41 +1296,50 @@ Open after T9 (each with its owner):
 - Local environment: `EXPO_PUBLIC_HCAPTCHA_SITE_KEY`/`VITE_HCAPTCHA_SITE_KEY` must be the hCaptcha test key against the local stack (L135); `EXPO_ACCESS_TOKEN` in `supabase/functions/.env` for the `dispatch-push` Bruno requests (L144).
 
 ### L152 — T10a starts (#120)
+
 User request (verbatim): "Retomamos auth en el worktree C:/dev/School-portal-worktrees/auth. 1. Antes de tocar nada: traé origin/main (está más adelante que la rama local), creá una rama nueva desde main para T10 y corré `bun install --frozen-lockfile`. 2. Leé Engram del proyecto selene-project, topic `odd/auth-hardening/t10-plan` (el plan T10 aprobado), y en odd/tasks/auth-hardening.md los Specs, Tasks y Log desde L145 hasta el final (L151). 3. En esta sesión trabajamos SOLO T10a (#120). Decisión de producto (opción B): la publicación respeta la economía con la que se publicó. Una transición que solo cambia el estado (volver a VERIFIED o RESERVED, liberar una reserva, levantar una suspensión, cancelar un envío) acepta el snapshot sin revalidar contra las tarifas actuales. Un cambio de precio es un trato nuevo: recalcula el snapshot con las tarifas vigentes. Antes de implementar, verificá si create-connect-payment cobra con el snapshot o con las tarifas actuales y alinealo con el snapshot si hace falta. 4. Agregá T10 al tracker antes del primer cambio. Si T10a es grande, dividilo en T10a.1, T10a.2, etc., cada uno con su commit y su review. 5. Mismo workflow de siempre: test primero (pgTAP con `bun run test:db` contra el stack local, más Bruno), commit por cambio con su review nativa, la migración la aplico yo y vos la leés de vuelta por el MCP, y abrís el PR y lo mergeás vos. 6. Al cerrar T10a, decime si el contexto alcanza para seguir con T10b o si conviene otra sesión."
 Branch `fix/auth-t10a-listing-economics` from origin/main c9f043d5; `bun install --frozen-lockfile` no changes.
 Findings (parent): `create-connect-payment` already charges from the snapshot: commission rate and seller shipping reserve come from `publication_*` (`fee-calculator.ts` `calculateCheckoutAllocation`); Seguro Selene is the buyer-paid Stripe gross-up, not part of the snapshot. Nothing to align there. Today a price edit can never succeed: the snapshot is immutable and the reserve depends on the price (Envia insurance), so any new price is `INVALID_OR_STALE_PUBLICATION_ECONOMICS`. Production `products_update_owner` (MCP) only lets an owner edit end in PENDING_VERIFICATION, HIDDEN or IN_REVIEW.
 Design: a price or shipping-cost change carries a client snapshot that the trigger checks against current settings, like an insert (the seller saves the numbers it computed; a fee change in between fails instead of silently changing the seller's net). Split: T10a.1 SQL, T10a.2 app.
 
 ### L153 — T10a.1: the trigger keeps the snapshot
+
 Parent RED: `supabase/tests/database/publication_economics.test.sql` rewritten for S11 (23 assertions: status-only HIDDEN -> VERIFIED, VERIFIED -> RESERVED, admin approval and a rename accepted with a stale snapshot; `fn_release_stale_reservations`, `fn_release_listings` (the helper `fn_cancel_shipment` uses) and a suspension lift complete on stale listings; snapshot rewrite without a price change `PUBLICATION_ECONOMICS_IMMUTABLE`; a new price or shipping cost with the old snapshot, a re-price while hiding, and a snapshot computed for the old price `INVALID_OR_STALE_PUBLICATION_ECONOMICS`; clearing the snapshot on a price change `PUBLICATION_SNAPSHOT_REQUIRED`; the owner re-prices through RLS to PENDING_VERIFICATION with a fresh snapshot and the listing is approved). Before the change tests 1-4 failed with `INVALID_OR_STALE_PUBLICATION_ECONOMICS` and the file aborted.
 Worker: migration `20261031120000_publication_economics_keep_snapshot.sql` (function only, same REVOKE/GRANT as `20261030140000`), canonical file, structural test `publication_economics_keep_snapshot.test.ts` (RED: file missing), the T9f structural test now pins only its own migration, Bruno `bruno/products/stale-economics-1..10` (price-only owner PATCH 400 `INVALID_OR_STALE_PUBLICATION_ECONOMICS` with the row unchanged; service-role HIDDEN -> VERIFIED on a stale listing 200; owner re-price to PENDING_VERIFICATION with a fresh snapshot 200; restores the buffer and soft-deletes). Fixture fixes in the pgTAP file: `fresh_reserve` is SECURITY DEFINER (authenticated cannot execute `normalize_publication_rate`), numeric text without scale, `plan(23)`.
 Checks: `bun run test:db` Files=5, Tests=138, PASS (parent rerun); `bun test supabase` 2749 pass; `bun run lint` exit 0; `bun run api:test` 566/569 requests (the 3 `dispatch-push-run` failures, L144), second run identical.
 Risk: item 1 and item 3 (trigger on money inputs; owner updates that change price now pass when the snapshot is fresh).
 
 ### L154 — T10a.1 review
+
 Native review of c9f043d5..7a293391 (risk, resilience, reliability; tier high). Blocking finding R1 (risk, CRITICAL, introduced): on a re-price a partial snapshot (one `publication_*` field NULL) passed, because `NULL <> x` is NULL and the stale check did not raise; production's `product_publication_economics_snapshot_check` does not stop it either (a NULL makes the CHECK NULL, which passes). Correction 7a293391: the final comparison uses `IS DISTINCT FROM`; pgTAP adds "a price change with a partial snapshot is rejected" (RED: tests 18-19 failed; GREEN: `bun run test:db` Files=5, Tests=139, PASS; `bun test supabase/migrations` 793 pass). The targeted validator approved; acknowledged and burned. Advisories, not blocking:
+
 - If a `stale-economics` Bruno step fails before step 9, the shipping buffer stays raised by 500 (same as the stale-listing sequence); reset with `supabase db reset`.
 - The legacy paths (an all-null snapshot receiving one through the backfill, a legacy row re-priced) have no runtime test; legacy rows are disposable test data.
 - Partial clear of the snapshot: covered by the R1 correction.
-Migration to apply: `supabase/migrations/20261031120000_publication_economics_keep_snapshot.sql` (function only; same REVOKE/GRANT as before).
+  Migration to apply: `supabase/migrations/20261031120000_publication_economics_keep_snapshot.sql` (function only; same REVOKE/GRANT as before).
 
 ### L155 — T10a.2: the app re-prices with a fresh snapshot
+
 Worker: `apps/frontend/core/utils/listingEdit.ts` (`classifyListingEdit`: sacred changes as before, economics = price or shipping cost differ in cents; `buildEditEconomicsFields`: the three `publication_*` fields through `buildPublicationEconomicsSnapshot`), 9 co-located tests (RED: module missing; GREEN 9/0). `usePublishProduct` edit branch: an economics change fetches `system_settings` and sends the fresh snapshot; a sacred or economics change sets PENDING_VERIFICATION. `sell/preview.tsx`: a price or shipping change without sacred changes shows a new dialog (`sell:dialogs.repriceTitle`, `repriceMessage`, en and es).
 Checks: `bun test apps/frontend` 1220 pass, 0 fail (locale parity included); `bun run lint` exit 0; frontend typecheck only the known T10e TS2322 errors. Local stack (worker, rolled-back SQL as the owner): a VERIFIED listing re-priced to PENDING_VERIFICATION with a fresh snapshot returns UPDATE 1. Device check (maintainer, go-live pass): edit the price of a listing, see the dialog, the listing goes to review.
 Finding outside T10a (worker, local stack): an owner update of a VERIFIED listing that keeps it VERIFIED (for example description only) fails `products_update_owner` RLS, so the app's no-review edit path fails for every VERIFIED listing.
 Risk: none beyond S11 (the edit branch only changes when price or shipping cost change).
 
 ### L156 — T10a.2 review; finding #141
+
 Native review of 7a293391..809ed043 (risk, reliability; tier high) approved and acknowledged; no blocking finding. Three reliability advisories (R3-001 `listingEdit.ts:46-47`, R3-002 `preview.tsx:89-90`, R3-003 `usePublishProduct.ts:222-239`), not blocking. The L155 RLS finding is #141 (owner edit that keeps a listing VERIFIED is refused; needs a product decision).
 
 ### L157 — T10a.1 migration applied
+
 Maintainer (verbatim): "Migracion aplciada con succes master." Remote (Supabase MCP, read-only): `validate_product_publication_economics` has the price/shipping gate and the `IS DISTINCT FROM` check, no status skip list; SECURITY DEFINER, `search_path=public, pg_temp`; not executable by anon or authenticated; trigger enabled. Its body equals the local one after whitespace normalization (md5 7db445a9...; the remote copy has CRLF line ends from the editor). `db:types` not needed (no schema change).
 Slice T10a: e025d9f3, 7a293391, c1c66de3, 809ed043, cc6fb5dc and this entry; one PR closing #120.
 
 ### L158 — T10a closed
+
 PR #142 merged (34bc46fa) after CI `test` passed; it closed #120. T10a.1 and T10a.2 are on main, both with approved native reviews; the migration is applied and read back (L157). Open from T10a: #141 (owner edit that keeps a listing VERIFIED, needs a product decision); device check of the re-price dialog in the go-live pass. Next: T10b (plan in Engram `odd/auth-hardening/t10-plan`).
 
 ### L159 — T10b starts
+
 User request (verbatim): "Retomamos auth en el worktree C:/dev/School-portal-worktrees/auth. 1. Traé origin/main, creá una rama nueva desde main para T10b y corré `bun install --frozen-lockfile`. Ojo: la rama local docs/auth-t10a-close tiene un commit sin pushear (1d13de45, L158 del tracker); traelo a la rama nueva con cherry-pick. 2. Leé Engram del proyecto selene-project, topics `odd/auth-hardening/t10-plan` y `odd/auth-hardening/tasks`, y en odd/tasks/auth-hardening.md los Specs y el Log desde L152 hasta el final. 3. En esta sesión hacemos SOLO T10b: pgTAP para las reglas de cuenta del bloque 1. Un vendedor suspendido no puede publicar, editar ni recibir reservas; levantar la suspensión restaura solo las publicaciones retenidas por la cuenta; el ban es final; los clientes no pueden escribir role ni status. Para flujos de admin, como mucho un smoke test. 4. Agregá T10b al tracker antes del primer cambio. Si es grande, dividilo en T10b.1, T10b.2, etc., cada uno con su commit y su review. 5. El workflow de siempre: test primero con `bun run test:db` contra el stack local. Si un test destapa un bug, reproducilo, contámelo y lo arreglamos con su migración (la aplico yo y vos la leés de vuelta por el MCP). Commit por cambio con su review nativa; abrís el PR y lo mergeás vos. 6. Al cerrar T10b, decime si el contexto alcanza para seguir con T10c o si conviene otra sesión."
 Branch `test/auth-t10b-account-rules` from origin/main 34bc46fa with 1d13de45 cherry-picked (616e2fd9); `bun install --frozen-lockfile` no changes.
 Already covered: `suspension_hold.test.sql` (lift restores held VERIFIED listings, an unrelated HIDDEN stays hidden, release paths hold), `profile_grants.test.sql` (a client update of its own `profiles_private` row changes nothing). Gaps this task closes: insert and edit gates (`products_insert`, `products_update_owner` through `fn_current_account_is_active`), the seller gate and banned-buyer gate in `fn_reserve_products`, lift restoring PENDING_VERIFICATION and IN_REVIEW to their own status, `BANNED_IS_FINAL`, and the other escalation paths (another user's row, signup metadata, `auth.users` metadata updates, JWT claims, a non-admin calling the status RPC). No open issue or advisory covers these rules.
@@ -1154,16 +1349,20 @@ Checks: `bun run test:db` Files=6, Tests=183, PASS.
 Risk: none (test-only; it closes the item 6 gap for these rules).
 
 ### L160 — T10b review
+
 Native review of 34bc46fa..f7d8a62b (reliability; tier high) approved and acknowledged; no blocking finding. Two suggestions, not blocking: the Auth metadata step (`account_rules.test.sql:308-315`) updates the row as postgres, so it proves the `auth.users` update trigger ignores metadata but not GoTrue's own handling of `updateUser`; and the T10b row cited this entry before it existed (fixed here). No bug found, so no migration. Slice T10b: 616e2fd9 (L158), f7d8a62b and this entry; one PR.
 
 ### L161 — T10b closed
+
 PR #152 merged (4149a57b) after CI `test` passed. T10b is on main with an approved native review; no bug found, so no migration and nothing to apply. Findings outside T10b, recorded as issues: #153 (four functions write `system_logs` in an EXCEPTION handler and then re-raise, so the log row is rolled back; reproduced locally with `fn_admin_update_user_status`) and #154 (two AFTER UPDATE triggers on `auth.users` run `fn_on_auth_user_updated`, so every sign-in rewrites `profiles_private`; both present in production per the Supabase MCP). This entry is commit-only on local branch `docs/auth-t10b-close`; it goes out with the next slice. Next: T10c (plan in Engram `odd/auth-hardening/t10-plan`).
 
 ### L162 — T10c starts
+
 User request (verbatim): "contnua master, nokmas que trate lo mas reciente que este en main porfa, y lees d enuevo agnets md"
 Branch `test/auth-t10c-closure-release` from origin/main 4149a57b (newest) with the L161 close cherry-picked (5f457c3b). AGENTS.md reread: a fix in `fn_cancel_shipment` would also need TLC on `docs/formal/shipment-transfer-cancellation/`; the roadmap rule (`docs/roadmaps.md`) postdates the T10 plan, which stays in this tracker and Engram unless the maintainer asks to move it. No open issue covers T10c; #103 (local function grants) belongs to T10f. Split: T10c.1 closure blockers, T10c.2 release callers, each its own commit and review.
 
 ### L163 — T10c.1: closure blockers
+
 Worker: `supabase/tests/database/account_closure_blockers.test.sql`, 36 assertions. `pending_payouts` covers three cases: a completed Connect shipment with no payout run, a run in `pending_reconciliation`, and a run in `reconciliation_needed`. `open_disputes` covers a buyer with an `open` dispute and a seller with a `return_shipped` one. `pending_refunds` covers a started cancellation with a `pending` refund and an order with `compensation_state = 'refund_pending'`. Each refusal asserts `blocked`, its exact reason (so no earlier blocker fires), and that nothing changed (`deleted_at` NULL, no `account_closures` row, emails intact). Control: once each blocker is settled (paid run mapped to the shipment, runs paid, disputes resolved, failed refund resolved by an admin, compensation `refunded`), the same user closes with `closed` and `deleted_at` set. Fixture note: the dispute triggers need the service-role claim and move the order to `dispute` and the listing to `IN_DISPUTE`, so the fixture puts the sale back to finished to let only the dispute block.
 No bug found (the rules hold locally), so there is nothing to apply.
 Stack note: this worktree had two local stacks (`246c0a8d...` from an earlier session and `30386468...` started in L159); the T10b mutation check and the worker's runs used the older one's database. All of them were rolled back. The parent reran both mutation checks against the current stack: T10b 19 of 44 fail; T10c.1 with the three blockers disabled 28 of 36 fail (the worker also saw 12, 8 and 8 with one blocker disabled at a time). Functions intact and pgTAP not left installed afterwards.
@@ -1171,33 +1370,40 @@ Checks: `bun run test:db` Files=7, Tests=219, PASS.
 Risk: none (test-only).
 
 ### L164 — T10c.1 review
+
 Native review of 4149a57b..a2744ca7 (reliability; tier high) approved and acknowledged; no blocking finding. Advisories:
+
 - WARNING: the fixture check `payout_run_status IS NULL` would also pass with no row in the view. Fixed: it now counts exactly one releasable completed row with no run.
 - WARNING: the refusal snapshot missed the other anonymization effects. Fixed: it now includes the username and the user's live listings, and every user has an unsold VERIFIED listing that a closure would soft-delete.
 - SUGGESTION: the T10c.1 row was still "in progress" because a tracker edit had not matched. Fixed here, along with the stale T10a.1 and T10a.2 rows.
 - SUGGESTION, kept as is: the control settles every blocker in one step. Each user has only its own blocker, and the exact reason asserted earlier shows that no other blocker fires first.
-Follow-up checks: `bun run test:db` Files=7, Tests=219, PASS. Mutation check on the current stack with the three blockers disabled: still 28 of 36 fail; the function is intact afterwards.
+  Follow-up checks: `bun run test:db` Files=7, Tests=219, PASS. Mutation check on the current stack with the three blockers disabled: still 28 of 36 fail; the function is intact afterwards.
 
 ### L165 — T10c.2: release callers
+
 Worker: `supabase/tests/database/release_callers.test.sql`, 50 assertions; users are a suspended seller, an active seller, a buyer, and an active seller whom a trigger suspends mid-call.
+
 - `fn_reserve_products` stale pre-release: an expired reservation of a suspended seller is held (`HIDDEN:VERIFIED`, `reserved_at` cleared) and the cart returns `SOME_PRODUCTS_UNAVAILABLE`. An active seller's expired reservation returns to sale and this call reserves it. Mixed carts end held for the suspended seller and VERIFIED for the active one, and fresh reservations inside and outside the cart are unchanged.
 - `fn_reserve_products` partial rollback: the tentatively reserved listing of an active seller returns to VERIFIED, not held, and nothing stays RESERVED. When a trigger suspends the seller right after the reservation (the same stand-in as L141; a real race needs two sessions), the rollback holds the listing.
 - `fn_cancel_shipment`: anon and authenticated get 42501 and nothing is cancelled. The cancelled shipment's listing returns to VERIFIED for an active seller and is held for a suspended one. The order's other shipment and another order's listings are unchanged (`order_items.shipment_id` is unique, so there is one listing per shipment).
 - `fn_finalize_checkout_recovery` refund: anon and authenticated get 42501. Active, suspended, and two-seller orders end `refunded`, with each reserved listing VERIFIED or held according to its seller. A non-reserved listing of the order and a reserved listing in no order are unchanged.
-The suspension is set on `profiles_private.status` directly (the rule reads that column; `suspension_hold` covers the RPC route). Banned is not run separately because the helper treats it like suspended (`COALESCE(pp.status, 'active') = 'active'`).
-No bug found, so there is nothing to apply.
-Parent mutation check (current stack, rolled back): `fn_release_listings` never holding fails 6 of 50 (one hold assertion per caller path); always holding fails 10 of 50. The function is intact and pgTAP is not left installed.
-Checks: `bun run test:db` Files=8, Tests=269, PASS.
-Risk: none (test-only). TLC not run: `fn_cancel_shipment` is unchanged.
+  The suspension is set on `profiles_private.status` directly (the rule reads that column; `suspension_hold` covers the RPC route). Banned is not run separately because the helper treats it like suspended (`COALESCE(pp.status, 'active') = 'active'`).
+  No bug found, so there is nothing to apply.
+  Parent mutation check (current stack, rolled back): `fn_release_listings` never holding fails 6 of 50 (one hold assertion per caller path); always holding fails 10 of 50. The function is intact and pgTAP is not left installed.
+  Checks: `bun run test:db` Files=8, Tests=269, PASS.
+  Risk: none (test-only). TLC not run: `fn_cancel_shipment` is unchanged.
 
 ### L166 — T10c.2 review; slice T10c
+
 Native review of 383b0bd0..208a8738 (reliability; tier high) approved and acknowledged; no blocking finding. One suggestion, kept as is: the bystander fingerprint (`release_callers.test.sql:49`) includes `updated_at`, which cannot change inside the test's single transaction because `now()` is fixed. Status, hold and `reserved_at` still detect a change.
 Slice T10c: 5f457c3b (L161), the L162 tracker entry, a2744ca7, 383b0bd0, 208a8738 and this entry. That is about 640 authored lines, over the ~400 target, so they ship as one PR whose commits were each reviewed on their own (each under 400 lines). The slice boundary is the end of T10c.
 
 ### L167 — T10c closed
+
 PR #160 merged (536780cc) after CI `test` passed. T10c.1 and T10c.2 are on main with approved native reviews; no bug found, nothing to apply. The pgTAP suite now has 8 files and 269 assertions. This entry is commit-only on local branch `docs/auth-t10c-close`; it goes out with the next slice. Open decision for the maintainer: whether to move the remaining T10 items (T10d-T10h) into a roadmap issue with sub-issues (`docs/roadmaps.md`). Next: T10d needs explicit CI approval; T10e (frontend typecheck) does not.
 
 ### L168 — Roadmap #162; T10d starts
+
 User decision (verbatim): "hmm, sobre tus preguntas, has lo que creas que es mejor, osea lo del roadmap, si quieres pasasr a el nuevo wokrflow y cres que es lo mejor hazo, si quieres puedes hacer una esepcion en este woktree ya que arranco antes de eso. SObre lo de correr bun run test:db en CI tiens mi auth."
 Parent decision: move the remaining items to the roadmap workflow (`docs/roadmaps.md`). They span several sessions, and the merges close them. Parent issue #162; sub-issues #163 T10d, #164 T10e, #165 T10f (#122), #166 T10g, #167 T10h. Engram topic `roadmap/auth-code-complete`. Specs, tasks and log stay in this document. T10e still holds: on Windows `bun run typecheck` shows the two TS2322 errors (`resetPassword.tsx:208`, `verify-code.tsx:133`).
 T10d (CI change, approved above): job `db-test` in `.github/workflows/ci.yml` runs `supabase/setup-cli@v1` pinned to 2.122.0 (the local CLI), then `supabase start` and `supabase test db`. The stack is local to the runner, and `config.toml` has no `env()` secrets, so the job needs no secrets. The header comment, which said lint and typecheck were not gated, is corrected. `supabase/AGENTS.md` no longer says the suite is not a CI job.
@@ -1205,9 +1411,11 @@ RED (local): a throwaway pgTAP file asserting `is(1, 2)` made `supabase test db`
 Risk: item 5 (CI). The job is new and runs alongside `test`, and nothing in the existing job changes.
 
 ### L169 — T10d closed
+
 The first `db-test` run on PR #168 passed in 33 s (Files=8, Tests=269, Result: PASS). The native review (resilience, readability; tier high) approved it with no findings, and it was acknowledged. PR #168 merged (bcb22fe1) and closed roadmap item #163. The `main` ruleset required only `test`. On the agent's recommendation the maintainer added `db-test`. The first attempt saved it as `db:test` with no source, which would have blocked every PR; that was corrected. Read back through the API: `test` and `db-test`, both from GitHub Actions (integration 15368), ruleset active. This entry is commit-only on local branch `docs/auth-t10d-close` and goes out with the next slice. Next roadmap item: #164 (T10e).
 
 ### L170 — T10e: frontend typecheck at zero
+
 Root cause: `react-native-otp-textinput` types `textInputStyle` as `ViewStyle`, although it applies the style to its `TextInput`. Both screens passed `{...} as TextStyle`. With Expo's types, which `apps/frontend/expo-env.d.ts` loads, `TextStyle` gains the web prop `cursor?: string`, so it no longer fits `ViewStyle` (TS2322). Expo generates that file on `expo start`, and it is gitignored. CI never has it, so CI reported 0 errors.
 Ruled out first: stale `node_modules` links from before the Expo 57 upgrade, which pointed `@react-navigation/native` at react-native 0.81.5. A clean reinstall removed them, and the two errors remained.
 Fix: in `verify-code.tsx` and `resetPassword.tsx` the style is asserted as `ViewStyle`, the type the library declares, with a comment that the library applies it to a `TextInput` and that #148 replaces the library.
@@ -1218,42 +1426,49 @@ Risk: none (type assertion only; runtime style unchanged).
 Review: native review of bcb22fe1..9dcf0bc0 (readability; tier high) approved and acknowledged; one suggestion (the task row cited L170 instead of the commit) fixed here.
 
 ### L171 — T10e closed
+
 PR #176 merged (89a6ccd6) after the required checks `test` and `db-test` passed; it closed roadmap item #164. Open from T10e: #174 (the CI typecheck runs without Expo's types; the fix is a CI change and needs approval). This entry is commit-only on local branch `docs/auth-t10e-close` and goes out with the next slice. Next roadmap item: #165 (T10f, #122 limited to the auth tables; migration, the maintainer applies it).
 
 ### L172 — T10f starts: grant matrix
+
 Inventory: production grants read through the Supabase MCP (read-only, `has_table_privilege` and `has_column_privilege`). `anon` and `authenticated` hold every table privilege on `profiles_private`, `admin_audit_logs` and `admin_user_notes`. `anon` also holds every privilege on `admin_user_directory_view`, `admin_disputes_monitor_view`, `admin_connect_earnings_view` and `admin_seller_onboarding_view`. `profiles` has INSERT, DELETE, TRUNCATE, REFERENCES and TRIGGER for both roles. Client usage comes from the `.from(...)` calls in `apps/frontend`, `apps/admin-web` and `bruno/`; Edge Functions use `service_role` and are unaffected.
 Target matrix (everything not listed is revoked from that role; service_role and postgres are unchanged):
-| Relation | anon | authenticated |
-| --- | --- | --- |
-| profiles | SELECT | SELECT; UPDATE (username, avatar_url, updated_at) as today |
-| profiles_private | none | SELECT |
-| admin_audit_logs | none | SELECT |
-| admin_user_notes | none | SELECT, INSERT |
-| admin_user_directory_view | none | SELECT |
-| admin_disputes_monitor_view | none | SELECT |
-| admin_product_queue_view | none | SELECT (as today) |
-| admin_connect_earnings_view | none | none |
-| admin_seller_onboarding_view | none | none |
-| admin_connect_payout_release_view, account_closures | none | none (as today) |
-RLS stays the row control. This is the auth part of #122; the other tables and the default privileges stay in #122.
-Finding #178: admin-web `useAdminStats` reads `admin_connect_payout_release_view` without a grant, so the dashboard always shows 0 funds to release. Granting it is out of scope (it would widen access to payout data).
+
+| Relation                                                                                                                                                                                                                 | anon   | authenticated                                              |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ | ---------------------------------------------------------- |
+| profiles                                                                                                                                                                                                                 | SELECT | SELECT; UPDATE (username, avatar_url, updated_at) as today |
+| profiles_private                                                                                                                                                                                                         | none   | SELECT                                                     |
+| admin_audit_logs                                                                                                                                                                                                         | none   | SELECT                                                     |
+| admin_user_notes                                                                                                                                                                                                         | none   | SELECT, INSERT                                             |
+| admin_user_directory_view                                                                                                                                                                                                | none   | SELECT                                                     |
+| admin_disputes_monitor_view                                                                                                                                                                                              | none   | SELECT                                                     |
+| admin_product_queue_view                                                                                                                                                                                                 | none   | SELECT (as today)                                          |
+| admin_connect_earnings_view                                                                                                                                                                                              | none   | none                                                       |
+| admin_seller_onboarding_view                                                                                                                                                                                             | none   | none                                                       |
+| admin_connect_payout_release_view, account_closures                                                                                                                                                                      | none   | none (as today)                                            |
+| RLS stays the row control. This is the auth part of #122; the other tables and the default privileges stay in #122.                                                                                                      |
+| Finding #178: admin-web `useAdminStats` reads `admin_connect_payout_release_view` without a grant, so the dashboard always shows 0 funds to release. Granting it is out of scope (it would widen access to payout data). |
 
 ### L173 — T10f: migration and pgTAP
+
 The worker wrote `supabase/migrations/20261101120000_auth_grants_least_privilege.sql`: one REVOKE ALL from anon and authenticated on the nine relations, then GRANTs that leave exactly the L172 matrix. The `profiles` UPDATE columns are granted again because a table-level REVOKE also removes column privileges. It is idempotent and has no anon grant except SELECT on `profiles`. It also wrote `supabase/tests/database/auth_grants.test.sql` with 44 assertions:
+
 - every relation and role holds exactly its L172 privilege set (`has_table_privilege`, plus `has_column_privilege` for the `profiles` UPDATE columns);
 - the client paths still work: anon reads `profiles`; a user renames itself and reads its own `profiles_private` row; an admin reads the audit log and both admin views, and adds and reads notes;
 - forbidden actions raise 42501: anon on `profiles_private` and the admin views, and client INSERT, UPDATE or DELETE on `profiles_private`.
-It also added the structural test `supabase/migrations/__tests__/auth_grants_least_privilege.test.ts`.
-RED: before the migration, 20 of the 44 assertions failed (old full grants, anon reads of the admin views, client UPDATE and DELETE of `profiles_private` running without error).
-Tests the new grants made wrong:
+  It also added the structural test `supabase/migrations/__tests__/auth_grants_least_privilege.test.ts`.
+  RED: before the migration, 20 of the 44 assertions failed (old full grants, anon reads of the admin views, client UPDATE and DELETE of `profiles_private` running without error).
+  Tests the new grants made wrong:
 - `profile_grants.test.sql`: three client writes to `profiles_private` now `throws_ok 42501` (were `lives_ok` with 0 rows), and its header comment now describes the new grants.
 - `account_rules.test.sql`: "a client cannot write another user role or status" now expects 42501 (parent).
-GREEN: `supabase db reset`, then `bun run test:db` Files=9, Tests=313, PASS; `bun test supabase` 2789 pass (worker); `bun test supabase/migrations` 830 pass (parent); Bruno full collection 594 of 597, and the 3 failures are the known `dispatch-push-run` ones (L144). The profile, verification and admin requests pass.
-Risk: item 2 (security: grants) and item 3 (a client relying on a revoked privilege would break). Usage mapped in L172; nothing in the matrix broke on the local stack.
-Migration to apply: `supabase/migrations/20261101120000_auth_grants_least_privilege.sql` (grants only, no schema change, so `db:types` is not needed).
+  GREEN: `supabase db reset`, then `bun run test:db` Files=9, Tests=313, PASS; `bun test supabase` 2789 pass (worker); `bun test supabase/migrations` 830 pass (parent); Bruno full collection 594 of 597, and the 3 failures are the known `dispatch-push-run` ones (L144). The profile, verification and admin requests pass.
+  Risk: item 2 (security: grants) and item 3 (a client relying on a revoked privilege would break). Usage mapped in L172; nothing in the matrix broke on the local stack.
+  Migration to apply: `supabase/migrations/20261101120000_auth_grants_least_privilege.sql` (grants only, no schema change, so `db:types` is not needed).
 
 ### L174 — T10f review
+
 Native review of 63abca56..a49e1324 (risk, reliability; tier high) approved and acknowledged; no blocking finding.
+
 - WARNING R3-001, fixed: the structural test "never writes on profiles_private" would have passed with a `GRANT UPDATE` on `profiles_private`. It now requires the only grant that names `profiles_private` to be the SELECT. Proof: with an UPDATE grant injected into a copy of the migration, 1 of 4 tests fails; with the original migration, 4 pass.
 - Suggestions, kept as is:
   - R1-001 (migration lines 34-41): the SELECT grants rely on RLS for the rows, as the comment says.
@@ -1261,21 +1476,26 @@ Native review of 63abca56..a49e1324 (risk, reliability; tier high) approved and 
   - R3-003 (pgTAP lines 128-142): the admin view checks run on views with few or no rows; the matrix assertions cover the privileges.
 
 ### L175 — T10f migration applied
+
 Maintainer (verbatim): "okey ya lo hice de nuevo, revisa de nuevo master, ojo no corri el comadno bun typess". The first apply did not reach the project: the readback showed the grants unchanged, and owner and grantor were both `postgres`, so a REVOKE would have removed them. The second apply did.
 Remote readback (Supabase MCP, read-only, `has_table_privilege` for SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER and MAINTAIN, plus `has_column_privilege` for UPDATE) matches L172 exactly:
+
 - `profiles`: anon SELECT; authenticated SELECT and UPDATE on `avatar_url`, `updated_at`, `username`.
 - `profiles_private`, `admin_audit_logs`, `admin_user_directory_view`, `admin_disputes_monitor_view`, `admin_product_queue_view`: authenticated SELECT only.
 - `admin_user_notes`: authenticated SELECT and INSERT.
 - `admin_connect_earnings_view`, `admin_seller_onboarding_view`, `admin_connect_payout_release_view`, `account_closures`: no client privilege.
 - anon has nothing beyond SELECT on `profiles`.
-`db:types` is not needed (grants only, no schema change).
+  `db:types` is not needed (grants only, no schema change).
 
 ### L176 — T10f closed; T10g starts
+
 PR #180 merged (45eff03e) after `test` and `db-test` passed. It closed roadmap item #165 and is part of #122 (the other tables and the default privileges stay there). Open from T10f: #178 (the admin dashboard reads `admin_connect_payout_release_view` without a grant).
 T10g (#166) starts on branch `test/auth-t10g-retire-structural`. Rule for each structural test (a `bun:test` file under `supabase/migrations/__tests__/` or `supabase/queries/**/__tests__/` that reads SQL text): retire it only when a pgTAP file in `supabase/tests/database/` proves the same rule at runtime, and CI now gates that with `db-test`. Keep tests that check something pgTAP does not, for example that a migration file exists, that a canonical query file matches its migration, or rules with no runtime test yet.
 
 ### L177 — T10g: structural tests retired
+
 The worker retired 11 cases in 7 files, each one only where a named pgTAP assertion proves the same rule; the parent deleted the one fully covered file (the worker cannot delete files). The test diff is deletions only (228 lines); the commit also adds this tracker entry.
+
 - `auth_grants_least_privilege.test.ts`, deleted: all 4 cases are covered by the `auth_grants.test.sql` matrix and its column-grant assertions.
 - `account_trust_boundaries.test.ts`: the inactive-caller rule and the profiles client writes (D4), covered by `account_rules` and `auth_grants`.
 - `account_status_lifecycle.test.ts`: banned is final, the lift restores only tracked listings, and no blanket restore to VERIFIED, covered by `account_rules` and `suspension_hold`.
@@ -1283,32 +1503,37 @@ The worker retired 11 cases in 7 files, each one only where a named pgTAP assert
 - `release_products_authorization.test.ts`: no session check, covered by `suspension_hold`.
 - `reservation_lifecycle_hardening.test.ts`: the all-or-nothing reservation, covered by `release_callers`.
 - `checkoutRecoverySqlGuards.test.ts`: the refund releases the listings through the helper, covered by `release_callers`.
-Kept on purpose: migration and canonical-file text, function grants with no pgTAP grant assertion, lock order, TTL boundaries, and the parts pgTAP does not exercise. Two cases are kept as unsure: recording the prior status without overwriting an existing hold, and the checkout release touching RESERVED rows only. Nothing was retired in `account_closure`, `reserve_deleted_username_prefix`, the publication-economics tests or the shipment cancellation tests.
-Checks (parent): `bun test supabase` 2770 pass, 0 fail, 226 files (was 2800 across 227); `bun run test:db` Files=9, Tests=313, PASS; `bun run lint` exit 0.
-Risk: item 6 (fewer tests). Each retired case maps to a pgTAP assertion that the required `db-test` check runs.
-Review: native review of ce6b3ecb..d3c5f503 (reliability; tier high) approved and acknowledged. Two warnings, both answered in the tracker:
+  Kept on purpose: migration and canonical-file text, function grants with no pgTAP grant assertion, lock order, TTL boundaries, and the parts pgTAP does not exercise. Two cases are kept as unsure: recording the prior status without overwriting an existing hold, and the checkout release touching RESERVED rows only. Nothing was retired in `account_closure`, `reserve_deleted_username_prefix`, the publication-economics tests or the shipment cancellation tests.
+  Checks (parent): `bun test supabase` 2770 pass, 0 fail, 226 files (was 2800 across 227); `bun run test:db` Files=9, Tests=313, PASS; `bun run lint` exit 0.
+  Risk: item 6 (fewer tests). Each retired case maps to a pgTAP assertion that the required `db-test` check runs.
+  Review: native review of ce6b3ecb..d3c5f503 (reliability; tier high) approved and acknowledged. Two warnings, both answered in the tracker:
 - The note said "deletions only", but the commit also adds the tracker entry. The wording is corrected above.
 - Deleting `auth_grants_least_privilege.test.ts` also dropped its check that the migration file exists, which L176 says to keep. Kept as an exception, because the check is still enforced: without the migration, `supabase db reset` leaves the full grants of `20261030150000_local_grants_parity.sql`, and every matrix assertion in `auth_grants.test.sql` fails in the required `db-test` check.
 
 ### L178 — T10g closed; T10h starts
+
 PR #182 merged (772e68d1) after `test` and `db-test` passed; it closed roadmap item #166. T10h (#167), the last roadmap item, starts on branch `docs/auth-t10h-auth-doc`.
 
 ### L179 — T10h: docs/auth.md
+
 The worker wrote `docs/auth.md` (157 lines). Sections: identity, account states with the action table, how a state changes, who can do what, sign-in and sessions and recovery, account closure with the blocker table, CAPTCHA, where each rule lives (rule, enforcing object, test), how to test, and pitfalls. Every named path, function, trigger, policy and reason code was checked against the repository and the local database. Parent edits: the client-readable admin views are named exactly, and the duplicate `auth.users` triggers point to #154.
 Gaps found and stated in the doc as the code's actual behaviour:
+
 - "closed" is not an `account_status` value: a closed account is `banned` with `status_reason = 'account_closed'` and `profiles.deleted_at`.
 - S4's withdrawal gate has no object any more: `fn_request_payout` was dropped with the legacy wallet, and payouts are admin-released through `release-connect-payout`, which does not check the seller's status.
 - The `account_restricted` and `active_orders` closure blockers have only a source-text test, with no pgTAP assertion.
 - The 5-year ledger anonymization of S8 is still #67.
-Checks: `bunx prettier --check docs/auth.md` clean. Docs only, so nothing else ran.
-Risk: none (documentation).
-Review: native review of 92611d92..0c3126d7 (readability; tier high) approved and acknowledged; it raised three suggestions, all applied in the follow-up commit:
+  Checks: `bunx prettier --check docs/auth.md` clean. Docs only, so nothing else ran.
+  Risk: none (documentation).
+  Review: native review of 92611d92..0c3126d7 (readability; tier high) approved and acknowledged; it raised three suggestions, all applied in the follow-up commit:
 - R2-path-root-scope: the path note now covers the closure section and Edge Functions too.
 - R2-unsourced-constants: the 10-minute rule cites `MAX_SIGN_IN_AGE_SECONDS`, the 24-attempt limit cites `MAX_ATTEMPTS`, and the hourly retry cites the cron.
 - R2-unexplained-rule-row: the closure row in the rule map now states its rule.
 
 ### L180 — T10 code-complete
+
 With T10h every item of roadmap #162 is merged or in its last PR. Auth is code-complete: what remains for launch is the configuration in `docs/go-live.md` section 10, plus these open issues outside the roadmap:
+
 - #141, the owner edit of a VERIFIED listing (needs a product decision);
 - #153 and #154, Low database cleanups;
 - #174, the CI typecheck without Expo's types (a CI change, needs approval);
@@ -1317,41 +1542,49 @@ With T10h every item of roadmap #162 is merged or in its last PR. Auth is code-c
 - the rest of #122, the grants outside the auth tables.
 
 ### L181 — T11 starts: auth close-out
+
 User request (verbatim): "okey si me gusta, pregunta, lo que uiqero saber yo es que mas cabe en este woktree de auth, ya que como etsamos en las ultimas ya lo ocupo cerrar, entoncees dime que mas quieres meter aqui para que quede ya a un buen nivel. SObre 141 y 174, me gusta, dicutamos un poco sobre eso aqui, pero igual te pregunto lo de que mas meterias o nomas esos dos?" The decisions are quoted in S12.
 Left out on purpose: #178 (admin payouts, its own worktree), #153 (two of its four functions are disputes), the rest of #122 (non-auth tables).
 Design note for #141: opening only the policy would let a modified client change images, specifications or price while keeping VERIFIED. A guard trigger therefore limits a VERIFIED-to-VERIFIED owner edit to the four columns plus the server-maintained `updated_at` and `fts`.
 
 ### L182 — T11a: CI typecheck loads Expo's types (#174)
+
 In the `test` job of `.github/workflows/ci.yml`, a new step before `bun run typecheck` writes `apps/frontend/expo-env.d.ts` with `/// <reference types="expo/types" />`, the content `expo start` generates.
 RED/GREEN (a local simulation of the CI checkout, with no `expo-env.d.ts`): the T10e regression, reintroduced in a scratch copy, passed the old typecheck (exit 0); with the new step's file it fails with TS2322; the current code passes with the file (exit 0). The workflow parses with `Bun.YAML`, and the step order is lint, then the new step, then typecheck.
 Risk: item 5 (CI); a new step only, approved by the maintainer in S12.
 
 ### L183 — T11b: the last two closure blockers get pgTAP
+
 `account_closure_blockers.test.sql` gains 13 assertions (plan 49):
+
 - A suspended account and a banned account each get `blocked` / `account_restricted`.
 - A buyer with a `paid` order gets `blocked` / `active_orders`.
 - None of those refusals changes the snapshot.
 - Once the suspension is lifted and the order completes, both users close (`closed`, `deleted_at` set). The banned account has no control case, because banned is final.
-Checks: `bun run test:db` Files=9, Tests=326, PASS. Mutation check (one rolled-back transaction, both `RETURN`s disabled): 11 of 49 fail; the function is intact afterwards.
-Every `fn_close_account` blocker now has a runtime test. `docs/auth.md` is updated to match in T11e.
-Risk: none (test-only).
+  Checks: `bun run test:db` Files=9, Tests=326, PASS. Mutation check (one rolled-back transaction, both `RETURN`s disabled): 11 of 49 fail; the function is intact afterwards.
+  Every `fn_close_account` blocker now has a runtime test. `docs/auth.md` is updated to match in T11e.
+  Risk: none (test-only).
 
 ### L184 — T11c: one auth.users update trigger (#154)
+
 New pgTAP `supabase/tests/database/auth_user_triggers.test.sql` (5 assertions):
+
 - exactly one trigger on `auth.users` runs `fn_on_auth_user_updated`, and it fires only on an email change;
 - a sign-in (an update of `last_sign_in_at`) leaves `profiles_private.updated_at` unchanged;
 - an email change is still mirrored and moves `updated_at`.
-RED: the count was 2, and the file aborted on the guard check ("more than one row returned by a subquery").
-Migration `supabase/migrations/20261101180000_drop_duplicate_auth_user_update_trigger.sql`: `DROP TRIGGER IF EXISTS tr_on_auth_user_updated ON auth.users`; the email-guarded `on_auth_user_updated` stays.
-GREEN: `supabase db reset`, `bun run test:db` Files=10, Tests=331, PASS; `bun test supabase` 2770 pass. `docs/auth.md` now describes the single trigger.
-Risk: item 1 (a trigger in production). The function and grants are unchanged, and pgTAP covers the email mirror.
-Migration to apply: `20261101180000_drop_duplicate_auth_user_update_trigger.sql` (no schema change for `db:types`).
+  RED: the count was 2, and the file aborted on the guard check ("more than one row returned by a subquery").
+  Migration `supabase/migrations/20261101180000_drop_duplicate_auth_user_update_trigger.sql`: `DROP TRIGGER IF EXISTS tr_on_auth_user_updated ON auth.users`; the email-guarded `on_auth_user_updated` stays.
+  GREEN: `supabase db reset`, `bun run test:db` Files=10, Tests=331, PASS; `bun test supabase` 2770 pass. `docs/auth.md` now describes the single trigger.
+  Risk: item 1 (a trigger in production). The function and grants are unchanged, and pgTAP covers the email mirror.
+  Migration to apply: `20261101180000_drop_duplicate_auth_user_update_trigger.sql` (no schema change for `db:types`).
 
 ### L185 — T11d: owner text edits keep a listing VERIFIED (#141)
+
 Worker: migration `supabase/migrations/20261101190000_owner_verified_text_edits.sql` makes two changes.
+
 - `products_update_owner`: the WITH CHECK also accepts VERIFIED. Every other USING and WITH CHECK condition is copied from the live definition unchanged.
 - New BEFORE UPDATE trigger `tr_product_verified_edit_guard` (`guard_owner_verified_edit`, SECURITY INVOKER, EXECUTE revoked from PUBLIC, anon and authenticated; canonical copy in `supabase/queries/triggers/product/guard_owner_verified_edit.sql`). For a client owner (`current_user = 'authenticated'` and not `is_admin()`) writing VERIFIED, it requires OLD.status VERIFIED and a whole row unchanged except `name`, `description`, `condition`, `usage`, `updated_at` and `fts` (`to_jsonb` comparison). Otherwise it raises 42501 `VERIFIED_EDIT_REQUIRES_REVIEW`.
-New pgTAP `supabase/tests/database/owner_verified_edits.test.sql`, 23 assertions:
+  New pgTAP `supabase/tests/database/owner_verified_edits.test.sql`, 23 assertions:
 - the four-field edit is stored and the listing stays VERIFIED;
 - keeping VERIFIED while changing images, specifications, price (with a fresh snapshot), category or shipping cost is refused, with the row unchanged;
 - HIDDEN, REJECTED or PENDING_VERIFICATION to VERIFIED is refused;
@@ -1359,44 +1592,49 @@ New pgTAP `supabase/tests/database/owner_verified_edits.test.sql`, 23 assertions
 - a suspended owner is refused;
 - an admin can change images while the listing stays VERIFIED;
 - another user changes 0 rows.
-RED: the file aborted at the first owner edit with the #141 RLS error (planned 23, ran 1). GREEN after `supabase db reset`: `bun run test:db` Files=11, Tests=354, PASS (parent rerun); `bun test supabase` 2770 pass.
-Mutation check: with the guard trigger dropped (rolled back), 10 of 23 assertions fail.
-Bruno: new `bruno/products/verified-edit-1..5` (an owner text edit returns 200; an image change while VERIFIED returns 403 42501, with the row unchanged; then cleanup). `stale-economics-4` now sends `status: PENDING_VERIFICATION` with the price, as the app does, so it still reaches the stale-economics check. Full collection: 615 of 619 requests passed. The failures were the 3 known `dispatch-push-run` ones plus 1 Edge Function cold-start 503 that changed between runs, none in the touched files.
-App: `classifyListingEdit` already matches S12, so the app needs no change. The full no-review payload ran as an owner against the seed listings in a rolled-back transaction (UPDATE 4).
-Note: a price change that keeps VERIFIED now gets 42501 from the guard before the economics trigger runs. The app always sends PENDING_VERIFICATION with a price change.
-Risk: item 2 (RLS and owner write rules). Each bypass path is pinned by pgTAP, and the mutation check fails without the guard.
-Migration to apply: `20261101190000_owner_verified_text_edits.sql`. No schema change, so `db:types` is not needed.
-Review: native review of 580e545b..03af24ee (risk, reliability; tier high) approved and acknowledged; no blocking finding. Both advisories are fixed in the follow-up commit (`owner_verified_edits.test.sql` plan 25):
+  RED: the file aborted at the first owner edit with the #141 RLS error (planned 23, ran 1). GREEN after `supabase db reset`: `bun run test:db` Files=11, Tests=354, PASS (parent rerun); `bun test supabase` 2770 pass.
+  Mutation check: with the guard trigger dropped (rolled back), 10 of 23 assertions fail.
+  Bruno: new `bruno/products/verified-edit-1..5` (an owner text edit returns 200; an image change while VERIFIED returns 403 42501, with the row unchanged; then cleanup). `stale-economics-4` now sends `status: PENDING_VERIFICATION` with the price, as the app does, so it still reaches the stale-economics check. Full collection: 615 of 619 requests passed. The failures were the 3 known `dispatch-push-run` ones plus 1 Edge Function cold-start 503 that changed between runs, none in the touched files.
+  App: `classifyListingEdit` already matches S12, so the app needs no change. The full no-review payload ran as an owner against the seed listings in a rolled-back transaction (UPDATE 4).
+  Note: a price change that keeps VERIFIED now gets 42501 from the guard before the economics trigger runs. The app always sends PENDING_VERIFICATION with a price change.
+  Risk: item 2 (RLS and owner write rules). Each bypass path is pinned by pgTAP, and the mutation check fails without the guard.
+  Migration to apply: `20261101190000_owner_verified_text_edits.sql`. No schema change, so `db:types` is not needed.
+  Review: native review of 580e545b..03af24ee (risk, reliability; tier high) approved and acknowledged; no blocking finding. Both advisories are fixed in the follow-up commit (`owner_verified_edits.test.sql` plan 25):
 - WARNING: no case combined a text edit with a stale snapshot, the place where T10a meets T11d. A text edit after a fee change now affects 1 row and the listing stays VERIFIED.
 - SUGGESTION: the three refused status moves now also pin the message `VERIFIED_EDIT_REQUIRES_REVIEW`, which shows the guard fires before the policy.
-`bun run test:db` Files=11, Tests=356, PASS.
+  `bun run test:db` Files=11, Tests=356, PASS.
 
 ### L186 — T11a-T11c review; PR
+
 Native review of 820423df..580e545b (T11a-T11c; resilience, reliability; tier high) approved and acknowledged with no findings. The review candidate is the working tree, so the parent checked out 580e545b detached for this review and switched back to the branch afterwards.
 
 ### L187 — T11 migrations applied
+
 Maintainer (verbatim): "migracion aplicada master con susces las dos, checaals y dime que falta". Remote readback (Supabase MCP, read-only):
+
 - `auth.users` has only `on_auth_user_updated` (`WHEN old.email IS DISTINCT FROM new.email`); `tr_on_auth_user_updated` is gone.
 - `products` has `tr_product_verified_edit_guard` (BEFORE UPDATE).
 - `products_update_owner` WITH CHECK lists PENDING_VERIFICATION, VERIFIED, HIDDEN and IN_REVIEW. The other USING and WITH CHECK conditions are unchanged.
 - `guard_owner_verified_edit` is SECURITY INVOKER, has `search_path=public, pg_temp`, and EXECUTE only for postgres and service_role. Its body has the `to_jsonb(NEW)` comparison and the `VERIFIED_EDIT_REQUIRES_REVIEW` raise.
-`db:types` is not needed (no schema change).
+  `db:types` is not needed (no schema change).
 
 ### L188 — Auth closed; the worktree can go
+
 PR #188 merged (f14c7a8d) after `test` and `db-test` passed. It closed #141, #154 and #174.
 Final state:
+
 - Auth is code-complete. 11 pgTAP files (356 assertions) run as the required `db-test` check.
 - `docs/auth.md` maps every rule to the object that enforces it and to its test.
 - Every migration from this feature is applied to production and read back.
-Open, outside auth:
+  Open, outside auth:
 - #178: the admin dashboard payout total;
 - #153: EXCEPTION-handler logs (disputes);
 - the rest of #122 (the non-auth grants);
 - #67: the 5-year ledger anonymization (2031).
-Launch-week configuration: `docs/go-live.md` section 10 (T6b SMTP, T6h CAPTCHA keys, leaked-password protection and Site URL, T6i legal text).
-Device checks for the go-live pass:
+  Launch-week configuration: `docs/go-live.md` section 10 (T6b SMTP, T6h CAPTCHA keys, leaked-password protection and Site URL, T6i legal text).
+  Device checks for the go-live pass:
 - the re-price dialog;
 - editing the description of a VERIFIED listing (it saves and stays on sale);
 - the account-deletion flow and "Usuario eliminado";
 - the blocked-account screen.
-Worktree removal (maintainer, from the main checkout, per `docs/worktrees.md`): `bun run worktree:clean auth` to see the plan, then the same command with `--yes`.
+  Worktree removal (maintainer, from the main checkout, per `docs/worktrees.md`): `bun run worktree:clean auth` to see the plan, then the same command with `--yes`.

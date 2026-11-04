@@ -4,7 +4,12 @@ import { join } from 'node:path';
 
 const migration = () =>
   readFileSync(
-    join(import.meta.dir, '..', 'archive', '20260824020000_envia_address_origin_remediation.sql'),
+    join(
+      import.meta.dir,
+      '..',
+      'archive',
+      '20260824020000_envia_address_origin_remediation.sql',
+    ),
     'utf8',
   );
 
@@ -18,5 +23,7 @@ test('persists a seller-owned immutable origin snapshot with a street number', (
   expect(sql).toContain('a.user_id = v_seller_id');
   expect(sql).toContain("RAISE EXCEPTION 'SELLER_ORIGIN_CORRECTION_REQUIRED'");
   expect(sql).toContain('origin_address IS NULL');
-  expect(sql).toMatch(/REVOKE EXECUTE ON FUNCTION public\.fn_claim_shipment_label[\s\S]*FROM PUBLIC, anon, authenticated/i);
+  expect(sql).toMatch(
+    /REVOKE EXECUTE ON FUNCTION public\.fn_claim_shipment_label[\s\S]*FROM PUBLIC, anon, authenticated/i,
+  );
 });

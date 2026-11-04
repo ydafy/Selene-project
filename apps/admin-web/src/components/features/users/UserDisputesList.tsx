@@ -108,9 +108,11 @@ export const UserDisputesList = ({
                   </div>
 
                   <span className="text-[10px] text-blue-light/40 font-medium">
-                    {d.created_at ? new Date(d.created_at).toLocaleDateString(undefined, {
-                      dateStyle: 'medium',
-                    }) : ''}
+                    {d.created_at
+                      ? new Date(d.created_at).toLocaleDateString(undefined, {
+                          dateStyle: 'medium',
+                        })
+                      : ''}
                   </span>
                 </div>
               </div>

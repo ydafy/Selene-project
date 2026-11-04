@@ -18,7 +18,10 @@ const FUNCTIONS = [
 describe('AUTH_REQUIRED contract', () => {
   for (const name of FUNCTIONS) {
     it(`${name} answers 401 AUTH_REQUIRED when getUser finds no user`, () => {
-      const source = readFileSync(join(FUNCTIONS_DIR, name, 'index.ts'), 'utf8');
+      const source = readFileSync(
+        join(FUNCTIONS_DIR, name, 'index.ts'),
+        'utf8',
+      );
       expect(source).not.toContain('No autorizado');
       expect(source).toMatch(
         /if \(authError \|\| !user\)\s*(throw new ApiError\(401, 'AUTH_REQUIRED'\)|return new Response\(JSON\.stringify\(\{ error: 'AUTH_REQUIRED' \}\),\s*\{\s*status: 401,)/,

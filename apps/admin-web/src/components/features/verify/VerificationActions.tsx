@@ -41,7 +41,10 @@ export const VerificationActions = ({
 
   const handleConfirm = () => {
     if (!confirmData?.verdict) return;
-    if (confirmData.verdict === 'REJECT' && !isValidRejectionReason(adminNote)) {
+    if (
+      confirmData.verdict === 'REJECT' &&
+      !isValidRejectionReason(adminNote)
+    ) {
       toast.error(
         'Debes escribir un motivo de rechazo claro (mínimo 10 caracteres) en la nota antes de continuar.',
       );

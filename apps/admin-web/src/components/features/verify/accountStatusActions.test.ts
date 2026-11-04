@@ -17,12 +17,17 @@ describe('getAccountStatusActions', () => {
     [null, true, []],
   ];
 
-  test.each(cases)('status %p with isSelf %p allows %p', (status, isSelf, expected) => {
-    expect(getAccountStatusActions(status, isSelf)).toEqual(expected);
-  });
+  test.each(cases)(
+    'status %p with isSelf %p allows %p',
+    (status, isSelf, expected) => {
+      expect(getAccountStatusActions(status, isSelf)).toEqual(expected);
+    },
+  );
 
   test('an unexpected status allows no actions', () => {
-    expect(getAccountStatusActions('deleted' as AccountStatus, false)).toEqual([]);
+    expect(getAccountStatusActions('deleted' as AccountStatus, false)).toEqual(
+      [],
+    );
   });
 
   test('maps each action to the RPC target status', () => {
@@ -35,13 +40,21 @@ describe('getAccountStatusActions', () => {
 });
 
 test('UserSafetyActions renders only helper-allowed status actions', async () => {
-  const component = await Bun.file(new URL('./UserSafetyActions.tsx', import.meta.url)).text();
-  expect(component).toContain('getAccountStatusActions(user.status, user.id === admin?.id)');
+  const component = await Bun.file(
+    new URL('./UserSafetyActions.tsx', import.meta.url),
+  ).text();
+  expect(component).toContain(
+    'getAccountStatusActions(user.status, user.id === admin?.id)',
+  );
   expect(component).toContain("actions.includes('suspend')");
   expect(component).toContain("actions.includes('reactivate')");
   expect(component).toContain("actions.includes('ban')");
   expect(component).not.toContain('volverán a ser VERIFIED');
-  expect(component).not.toContain('regresarán al estado que tenían antes de la suspensión');
-  expect(component).toContain('Sus publicaciones que estaban activas antes de la suspensión');
+  expect(component).not.toContain(
+    'regresarán al estado que tenían antes de la suspensión',
+  );
+  expect(component).toContain(
+    'Sus publicaciones que estaban activas antes de la suspensión',
+  );
   expect(component).toContain('las demás siguen ocultas hasta revisarlas');
 });

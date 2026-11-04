@@ -7,7 +7,11 @@ describe('reconcile-connect-payments helpers', () => {
     expect(
       shouldReconcilePaymentIntent({
         status: 'succeeded',
-        metadata: { seller_id: 'seller-a', order_id: 'order-1', shipment_id: 'ship-1' },
+        metadata: {
+          seller_id: 'seller-a',
+          order_id: 'order-1',
+          shipment_id: 'ship-1',
+        },
         localShipmentStatus: 'draft',
       }),
     ).toBe(true);
@@ -25,7 +29,11 @@ describe('reconcile-connect-payments helpers', () => {
     expect(
       shouldReconcilePaymentIntent({
         status: 'succeeded',
-        metadata: { seller_id: 'seller-a', order_id: 'order-1', shipment_id: 'ship-1' },
+        metadata: {
+          seller_id: 'seller-a',
+          order_id: 'order-1',
+          shipment_id: 'ship-1',
+        },
         localShipmentStatus: 'paid',
       }),
     ).toBe(false);

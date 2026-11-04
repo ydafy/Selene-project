@@ -140,7 +140,8 @@ export function buildRecoveryShellInput(input: {
     sourceMetadata: { ...input.metadata },
     chargedAmountCents:
       typeof input.amount === 'number' &&
-      Number.isSafeInteger(input.amount) && input.amount >= 0
+      Number.isSafeInteger(input.amount) &&
+      input.amount >= 0
         ? input.amount
         : null,
   };

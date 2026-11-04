@@ -107,10 +107,7 @@ export type ReleaseConnectPayoutResponse =
     };
 
 export type ConnectPayoutQueueBucket =
-  | 'ready'
-  | 'processing'
-  | 'action-required'
-  | 'history';
+  'ready' | 'processing' | 'action-required' | 'history';
 export type ConnectPayoutQueueScope = 'page' | 'selection';
 export type ConnectPayoutQueueCounts = Record<ConnectPayoutQueueBucket, number>;
 
@@ -137,9 +134,7 @@ export type ConnectPayoutReleaseQueueResponse = {
 };
 
 export type ConnectPaymentErrorCode =
-  | 'RESERVATION_EXPIRED'
-  | 'RESERVATION_FAILED'
-  | 'PI_CREATION_FAILED';
+  'RESERVATION_EXPIRED' | 'RESERVATION_FAILED' | 'PI_CREATION_FAILED';
 
 /**
  * Legacy per-seller destination-charge client secret shape. Retained for the

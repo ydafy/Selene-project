@@ -33,14 +33,18 @@ const canonical = (...parts: string[]): string =>
   normalize(readFileSync(join(QUERIES_DIR, ...parts), 'utf8'));
 
 const OWNER_EXISTS =
-  "EXISTS ( SELECT 1 FROM public.products p WHERE p.id::text = (storage.foldername(objects.name))[1] AND p.seller_id = (SELECT auth.uid()) )";
+  'EXISTS ( SELECT 1 FROM public.products p WHERE p.id::text = (storage.foldername(objects.name))[1] AND p.seller_id = (SELECT auth.uid()) )';
 
 describe('verification bucket policies', () => {
   const sql = findMigration();
 
   test('drops the permissive policies by exact name', () => {
-    expect(sql).toContain('DROP POLICY IF EXISTS "Allow Select Own Files 1ahc6qj_0" ON storage.objects;');
-    expect(sql).toContain('DROP POLICY IF EXISTS "Allow Uploads 1ahc6qj_0" ON storage.objects;');
+    expect(sql).toContain(
+      'DROP POLICY IF EXISTS "Allow Select Own Files 1ahc6qj_0" ON storage.objects;',
+    );
+    expect(sql).toContain(
+      'DROP POLICY IF EXISTS "Allow Uploads 1ahc6qj_0" ON storage.objects;',
+    );
   });
 
   test('SELECT is admin or the listing owner, authenticated only', () => {

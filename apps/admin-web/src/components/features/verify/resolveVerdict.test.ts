@@ -15,7 +15,9 @@ test('admin action and RPC hook use canonical verdict payload', async () => {
   expect(actions).toContain("verdict: 'APPROVE'");
   expect(hook).toContain('resolveVerdictPayload(verdict, note)');
   expect(actions.match(/isValidRejectionReason\(adminNote\)/g)).toHaveLength(2);
-  expect(actions).toMatch(/handleConfirm[\s\S]*isValidRejectionReason\(adminNote\)[\s\S]*resolve\.mutate\(/);
+  expect(actions).toMatch(
+    /handleConfirm[\s\S]*isValidRejectionReason\(adminNote\)[\s\S]*resolve\.mutate\(/,
+  );
 });
 
 test('rejection requires at least ten non-padding characters', () => {
@@ -25,10 +27,12 @@ test('rejection requires at least ten non-padding characters', () => {
 });
 
 test('approval with public note uses APPROVE and sends trimmed seller-facing text', () => {
-  expect(resolveVerdictPayload('APPROVE', '  Please improve photos  ')).toEqual({
-    p_verdict: 'APPROVE',
-    p_public_note: 'Please improve photos',
-  });
+  expect(resolveVerdictPayload('APPROVE', '  Please improve photos  ')).toEqual(
+    {
+      p_verdict: 'APPROVE',
+      p_public_note: 'Please improve photos',
+    },
+  );
 });
 
 test('whitespace-only approval note is omitted', () => {
