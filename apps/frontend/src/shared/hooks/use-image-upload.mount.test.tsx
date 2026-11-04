@@ -46,12 +46,11 @@ if (process.env.SELENE_UPLOAD_CHILD !== '1') {
     useTranslation: () => ({ t: (key: string) => key }),
   }));
   mock.module('base64-arraybuffer', () => ({ decode }));
-  mock.module('../../src/shared/lib/supabase', () => ({
+  mock.module('../lib/supabase', () => ({
     supabase: { storage: { from } },
   }));
   const { act, render } = await import('@testing-library/react-native');
-  const { useImageUpload } =
-    await import('../../src/shared/hooks/use-image-upload');
+  const { useImageUpload } = await import('./use-image-upload');
   test('failure rethrows original identity without private logs; success preserves upload and cleanup', async () => {
     let api!: ReturnType<typeof useImageUpload>;
     function Probe() {

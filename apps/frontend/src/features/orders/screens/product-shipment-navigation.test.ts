@@ -2,21 +2,15 @@ import { expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
 const detail = readFileSync(
-  new URL(
-    '../../src/features/orders/screens/order-detail-screen.tsx',
-    import.meta.url,
-  ),
+  new URL('order-detail-screen.tsx', import.meta.url),
   'utf8',
 );
 const hook = readFileSync(
-  new URL(
-    '../../src/features/orders/hooks/use-order-detail.ts',
-    import.meta.url,
-  ),
+  new URL('../hooks/use-order-detail.ts', import.meta.url),
   'utf8',
 );
 const summary = readFileSync(
-  new URL('../../src/app/profile/orders/summary/[id].tsx', import.meta.url),
+  new URL('../../../app/profile/orders/summary/[id].tsx', import.meta.url),
   'utf8',
 );
 

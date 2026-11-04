@@ -68,17 +68,17 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
     impactAsync,
     ImpactFeedbackStyle: { Medium: 'medium' },
   }));
-  mock.module('../../src/shared/ui/base', () => ({
+  mock.module('../../../shared/ui/base', () => ({
     Box: host('Box'),
     Text: host('Text'),
   }));
-  mock.module('../../src/shared/ui/app-image', () => ({
+  mock.module('../../../shared/ui/app-image', () => ({
     AppImage: host('AppImage'),
   }));
-  mock.module('../../src/shared/ui/confirm-dialog', () => ({
+  mock.module('../../../shared/ui/confirm-dialog', () => ({
     ConfirmDialog: host('ConfirmDialog'),
   }));
-  mock.module('../../src/shared/hooks/use-image-upload', () => ({
+  mock.module('../../../shared/hooks/use-image-upload', () => ({
     useImageUpload: () => ({ takePhoto, uploadFile, uploading: false }),
   }));
   for (const image of [
@@ -88,10 +88,10 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
     'paso-4-sellado',
     'paso-5-etiqueta',
   ])
-    mock.module(`../../assets/images/packaging/${image}.webp`, () => ({
+    mock.module(`../../../../assets/images/packaging/${image}.webp`, () => ({
       default: 1,
     }));
-  mock.module('../../src/shared/ui/skeleton', () => ({
+  mock.module('../../../shared/ui/skeleton', () => ({
     Skeleton: host('Skeleton'),
   }));
   const { act, fireEvent, render } =
@@ -104,13 +104,11 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
     expect(found).toHaveLength(1);
     return found[0];
   };
-  const { EvidenceUploadSection } =
-    await import('../../src/features/orders/components/evidence-upload-section');
+  const { EvidenceUploadSection } = await import('./evidence-upload-section');
   const { AddressSection } =
-    await import('../../src/components/features/checkout/AddressSection');
-  const { PackagingGuideCard } =
-    await import('../../src/features/orders/components/packaging-guide-card');
-  const { LabelWithHelp } = await import('../../src/shared/ui/label-with-help');
+    await import('../../../components/features/checkout/AddressSection');
+  const { PackagingGuideCard } = await import('./packaging-guide-card');
+  const { LabelWithHelp } = await import('../../../shared/ui/label-with-help');
 
   test('shared address, help and packing controls retain enabled defaults and reject disabled callbacks', async () => {
     const onPress = mock(() => {});

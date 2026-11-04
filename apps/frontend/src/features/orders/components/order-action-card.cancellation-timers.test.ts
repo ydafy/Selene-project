@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const FRONTEND = join(import.meta.dir, '..', '..', '..');
+const FRONTEND = join(import.meta.dir, '..', '..', '..', '..');
 const read = (path: string) =>
   readFileSync(join(FRONTEND, path), 'utf8').replace(/\s+/g, ' ');
 const card = read('src/features/orders/components/order-action-card.tsx');

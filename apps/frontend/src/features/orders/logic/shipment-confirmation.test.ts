@@ -5,7 +5,7 @@ import {
   buildShipmentConfirmationPayload,
   canConfirmShipmentDelivery,
   resolveShipmentConfirmationFailureToast,
-} from '../../src/features/orders/logic/shipment-confirmation';
+} from './shipment-confirmation';
 
 // Prettier may re-wrap the source files read below; compare without layout.
 const compact = (source: string) =>

@@ -119,7 +119,7 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
   mock.module('react-native-safe-area-context', () => ({
     useSafeAreaInsets: () => ({ top: 0, bottom: 0 }),
   }));
-  mock.module('../../src/shared/ui/base', () => ({
+  mock.module('../../../shared/ui/base', () => ({
     Box: host('Box'),
     Text: host('Text'),
   }));
@@ -142,11 +142,11 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
       'EvidenceUploadSection',
     ],
   ])
-    mock.module(`../../src/${path}`, () => ({
+    mock.module(`../../../${path}`, () => ({
       [name]: name === 'PrimaryButton' ? labelHost(name) : host(name),
     }));
   mock.module(
-    '../../src/components/features/address/AddressPickerModal',
+    '../../../components/features/address/AddressPickerModal',
     () => ({
       AddressPickerModal: ({
         innerRef,
@@ -164,10 +164,10 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
       },
     }),
   );
-  mock.module('../../src/shared/lib/auth/auth-provider', () => ({
+  mock.module('../../../shared/lib/auth/auth-provider', () => ({
     useAuthContext: () => ({ session: { user: { id: viewer } } }),
   }));
-  mock.module('../../src/features/orders/hooks/use-orders', () => ({
+  mock.module('../hooks/use-orders', () => ({
     useOrderById: () => ({
       data: {
         ...order,
@@ -185,22 +185,19 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
       refetch,
     }),
   }));
-  mock.module('../../src/features/orders/hooks/use-order-actions', () => ({
+  mock.module('../hooks/use-order-actions', () => ({
     useOrderActions: () => ({ generateLabel: { isLoading: false, execute } }),
   }));
-  mock.module('../../src/shared/hooks/use-system-config', () => ({
+  mock.module('../../../shared/hooks/use-system-config', () => ({
     useSystemConfig: () => ({ data: {} }),
   }));
-  mock.module('../../src/core/hooks/useConnectOnboarding', () => ({
+  mock.module('../../../core/hooks/useConnectOnboarding', () => ({
     useConnectOnboarding: () => ({ isComplete: onboarding, isLoading: false }),
   }));
-  mock.module(
-    '../../src/features/orders/hooks/use-shipment-label-refresh',
-    () => ({
-      useShipmentLabelRefresh: () => {},
-    }),
-  );
-  mock.module('../../src/shared/lib/biometrics', () => ({
+  mock.module('../hooks/use-shipment-label-refresh', () => ({
+    useShipmentLabelRefresh: () => {},
+  }));
+  mock.module('../../../shared/lib/biometrics', () => ({
     authenticateAsync: authenticate,
   }));
   for (const image of [
@@ -208,7 +205,7 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
     'evidencia-2-caja',
     'evidencia-3-caja-completa',
   ])
-    mock.module(`../../assets/images/packaging/${image}.webp`, () => ({
+    mock.module(`../../../../assets/images/packaging/${image}.webp`, () => ({
       default: 1,
     }));
   const { act, render } = await import('@testing-library/react-native');
@@ -221,7 +218,7 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
     return found[0];
   };
   const { default: Screen } =
-    await import('../../src/app/profile/orders/prepare/[id]');
+    await import('../../../app/profile/orders/prepare/[id]');
 
   if (process.env.SELENE_CONTROLS_CHILD === '1')
     test('switches isolate drafts, stale callbacks and pre-auth dispatch; busy and submission lock callbacks', async () => {
