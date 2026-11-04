@@ -188,7 +188,7 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
   mock.module('../../../shared/hooks/use-system-config', () => ({
     useSystemConfig: () => ({ data: {} }),
   }));
-  mock.module('../../../core/hooks/useConnectOnboarding', () => ({
+  mock.module('../../payments/hooks/use-connect-onboarding', () => ({
     useConnectOnboarding: () => ({ isComplete: onboarding, isLoading: false }),
   }));
   mock.module('../hooks/use-shipment-label-refresh', () => ({

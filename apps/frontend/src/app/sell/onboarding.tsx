@@ -25,17 +25,17 @@ import { PrimaryButton } from '../../shared/ui/primary-button';
 import { ErrorState } from '../../shared/ui/error-state';
 import { Skeleton } from '../../shared/ui/skeleton';
 import { WizardSteps } from '../../components/features/sell/WizardSteps';
-import { SellerPaymentExplanation } from '../../components/features/payments/SellerPaymentExplanation';
+import { SellerPaymentExplanation } from '../../features/payments/components/seller-payment-explanation';
 import { AppImageViewer } from '../../shared/ui/app-image-viewer';
 import { useAuthContext } from '../../shared/lib/auth/auth-provider';
-import { useConnectOnboarding } from '../../core/hooks/useConnectOnboarding';
+import { useConnectOnboarding } from '../../features/payments/hooks/use-connect-onboarding';
 import {
   CONNECT_ONBOARDING_SUCCESS_CTA_ROUTE,
   resolveConnectOnboardingUiState,
   resolveConnectOnboardingVisibleError,
-} from '../../core/utils/connectOnboardingUi';
+} from '../../features/payments/logic/connect-onboarding-ui';
 import type { StripeOnboardingStatus } from '@selene/types';
-import type { ConnectOnboardingStatusGuidanceKey } from '../../core/utils/connectOnboardingUi';
+import type { ConnectOnboardingStatusGuidanceKey } from '../../features/payments/logic/connect-onboarding-ui';
 import { Theme } from '../../shared/theme';
 
 import {
@@ -45,7 +45,7 @@ import {
   OnboardingStep1,
   OnboardingStep2,
   OnboardingStep3,
-} from '../../components/features/onboarding/OnboardingSteps';
+} from '../../features/payments/components/onboarding-steps';
 
 type OnboardingStepRenderContext = {
   openViewer: (index: number) => void;

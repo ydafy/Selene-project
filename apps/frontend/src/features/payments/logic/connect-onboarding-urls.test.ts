@@ -4,7 +4,7 @@ import {
   buildConnectOnboardingDeepLinks,
   isConnectOnboardingUrl,
   shouldAttemptConnectStatusRefresh,
-} from './connectOnboardingUrls';
+} from './connect-onboarding-urls';
 
 describe('buildConnectOnboardingDeepLinks', () => {
   it('delegates to Expo Linking-compatible URL creation for return and refresh', () => {

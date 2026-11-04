@@ -1,5 +1,5 @@
 /**
- * @file components/features/onboarding/OnboardingSteps.tsx
+ * @file features/payments/components/onboarding-steps.tsx
  * @description Stateless presentation steps for Stripe Connect onboarding.
  */
 import React from 'react';
@@ -14,7 +14,7 @@ import { Box, Text } from '../../../shared/ui/base';
 import { AppImage } from '../../../shared/ui/app-image';
 import { Theme } from '../../../shared/theme';
 import type { StripeOnboardingStatus } from '@selene/types';
-import type { ConnectOnboardingStatusGuidanceKey } from '../../../core/utils/connectOnboardingUi';
+import type { ConnectOnboardingStatusGuidanceKey } from '../logic/connect-onboarding-ui';
 import stripeStep2Image from '@/assets/images/stripe/stripe-step-2.webp';
 import stripeStep3Image from '@/assets/images/stripe/stripe-step-3.webp';
 

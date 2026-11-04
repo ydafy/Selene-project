@@ -10,7 +10,7 @@ const read = (path: string) =>
 describe('shared seller payment explanation', () => {
   it('uses one shared body in onboarding success and the seller payment dialog', () => {
     const component =
-      'src/components/features/payments/SellerPaymentExplanation.tsx';
+      'src/features/payments/components/seller-payment-explanation.tsx';
     expect(existsSync(join(FRONTEND, component))).toBe(true);
     const shared = read(component);
     for (const key of ['buyerReview', 'release', 'bank', 'delays']) {

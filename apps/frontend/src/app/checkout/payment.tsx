@@ -22,7 +22,7 @@ import { useCartStore } from '@/features/cart/store/use-cart-store';
 import {
   useSellerPaymentReadiness,
   isSellerBlocked,
-} from '../../core/hooks/useSellerPaymentReadiness';
+} from '../../features/payments/hooks/use-seller-payment-readiness';
 
 // Mount entrance: scale 0.8 -> 1 with a fade, driven by a spring.
 const iconEntering = () => {

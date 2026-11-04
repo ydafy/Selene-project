@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { grossUpDomesticMx } from './stripeFeeGrossUp';
+import { grossUpDomesticMx } from './stripe-fee-gross-up';
 
 describe('grossUpDomesticMx', () => {
   it.each([

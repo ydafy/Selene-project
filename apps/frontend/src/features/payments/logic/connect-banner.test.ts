@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { resolveConnectBanner } from '../connectBanner';
+import { resolveConnectBanner } from './connect-banner';
 
 const base = {
   listingsCount: 1,

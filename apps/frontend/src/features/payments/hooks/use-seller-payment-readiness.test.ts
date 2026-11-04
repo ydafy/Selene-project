@@ -6,7 +6,7 @@ let rpcResult: { data: unknown; error: unknown } = { data: [], error: null };
 let rpcThrows = false;
 const rpcCalls: Array<[string, unknown]> = [];
 
-mock.module('../../shared/lib/supabase', () => ({
+mock.module('../../../shared/lib/supabase', () => ({
   supabase: {
     rpc: async (name: string, args: unknown) => {
       rpcCalls.push([name, args]);
@@ -25,9 +25,9 @@ mock.module('@tanstack/react-query', () => ({
 }));
 
 const { fetchSellerPaymentReadiness, parseReadinessRows, isSellerBlocked } =
-  await import('./useSellerPaymentReadiness');
+  await import('./use-seller-payment-readiness');
 
-const frontendRoot = join(import.meta.dir, '..', '..');
+const frontendRoot = join(import.meta.dir, '..', '..', '..');
 const read = (p: string) => readFileSync(join(frontendRoot, p), 'utf8');
 
 beforeEach(() => {

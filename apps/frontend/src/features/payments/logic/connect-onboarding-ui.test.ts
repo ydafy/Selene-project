@@ -5,7 +5,7 @@ import {
   resolveConnectOnboardingUiState,
   resolveConnectOnboardingVisibleError,
   type ResolveConnectOnboardingUiInput,
-} from './connectOnboardingUi';
+} from './connect-onboarding-ui';
 
 const baseInput: ResolveConnectOnboardingUiInput = {
   userId: 'user-1',

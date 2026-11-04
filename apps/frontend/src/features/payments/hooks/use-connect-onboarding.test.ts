@@ -30,17 +30,17 @@ mock.module('@tanstack/react-query', () => ({
   useQueryClient: () => ({ invalidateQueries: async () => undefined }),
 }));
 
-mock.module('../../shared/lib/supabase', () => ({
+mock.module('../../../shared/lib/supabase', () => ({
   supabase: {
     functions: { invoke: async () => ({ data: null, error: null }) },
   },
 }));
 
-mock.module('../../shared/lib/edge-client', () => ({
+mock.module('../../../shared/lib/edge-client', () => ({
   invokeEdge: async () => ({}),
 }));
 
-const loadHelpers = () => import('./useConnectOnboarding');
+const loadHelpers = () => import('./use-connect-onboarding');
 
 describe('normalizeSellerOnboardingResponse', () => {
   it('exports the onboarding status query stale-time contract', async () => {
