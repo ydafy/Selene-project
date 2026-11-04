@@ -23,19 +23,25 @@ const read = (relPath: string) =>
 
 describe('orders detail screen shipment-aware source guards', () => {
   const detail = read('src/features/orders/screens/order-detail-screen.tsx');
+  const hook = read('src/features/orders/hooks/use-order-detail.ts');
+
+  it('reads the shipment data through useOrderDetail', () => {
+    expect(detail).toContain('useOrderDetail(');
+  });
 
   it('prefers the per-shipment-enriched list from useShipmentsByOrder over raw order.shipments', () => {
     // The migration note used to fall back to order.shipments first; that
     // shipped RAW rows (no isBuyer/isSeller/permissions) and clobbered them
     // with order-level permissions. The cleanup flips the preference.
-    expect(detail).toContain('const source = shipments ?? order?.shipments;');
+    expect(hook).toContain('const source = shipments ?? order?.shipments;');
   });
 
   it('no longer hard-overrides permissions with the order-level object', () => {
     // The stale `permissions: order?.permissions ?? {}` hard override is gone;
     // we only borrow it when the shipment itself has none (transient fallback).
+    expect(hook).not.toContain('permissions: order?.permissions ?? {},');
     expect(detail).not.toContain('permissions: order?.permissions ?? {},');
-    expect(detail).toContain(
+    expect(hook).toContain(
       'permissions: rawShipment.permissions ?? order?.permissions ?? {},',
     );
   });
@@ -47,13 +53,13 @@ describe('orders detail screen shipment-aware source guards', () => {
   });
 
   it('reads tracking permissions from the shipment, not the order', () => {
-    expect(detail).toContain('const p = currentShipment.permissions;');
+    expect(hook).toContain('const p = currentShipment.permissions;');
   });
 
   it('shows the shipment subtotal for multi-shipment orders', () => {
-    expect(detail).toContain('const shipmentSubtotal = useMemo(');
-    expect(detail).toContain('const isMultiShipment =');
-    expect(detail).toContain(
+    expect(hook).toContain('const shipmentSubtotal = useMemo(');
+    expect(hook).toContain('const isMultiShipment =');
+    expect(hook).toContain(
       'const displayedTotal = isMultiShipment || currentShipment?.isSeller ? shipmentSubtotal : (order?.total_amount ?? 0);',
     );
     expect(detail).toContain('<ShipmentItemsCard');
@@ -202,6 +208,7 @@ describe('orders detail screen shipment-aware review identity guard', () => {
 
 describe('orders detail screen shipment_id param normalization guard', () => {
   const detail = read('src/features/orders/screens/order-detail-screen.tsx');
+  const hook = read('src/features/orders/hooks/use-order-detail.ts');
 
   it('normalizes the shipment_id search param to a scalar before any comparison', () => {
     // Expo Router surfaces `useLocalSearchParams` values as `string | string[]`.
@@ -209,7 +216,8 @@ describe('orders detail screen shipment_id param normalization guard', () => {
     // false and silently falls back to `source[0]` (the PAID shipment), which
     // hides the per-product review button on the COMPLETED shipment. The
     // normalized scalar `shipmentId` must drive the find().
-    expect(detail).toContain(
+    expect(detail).toContain('useOrderDetail(');
+    expect(hook).toContain(
       'const shipmentId = Array.isArray(shipment_id) ? shipment_id[0] : (shipment_id ?? undefined);',
     );
   });
@@ -219,7 +227,8 @@ describe('orders detail screen shipment_id param normalization guard', () => {
     // shipment. When a shipment_id is present but no loaded row matches, the
     // screen must NOT invent a shipment — it must short-circuit instead.
     expect(detail).not.toContain('?? source[0])');
-    expect(detail).toContain(
+    expect(hook).not.toContain('?? source[0])');
+    expect(hook).toContain(
       'const rawShipment = shipmentId ? source.find((s) => s.id === shipmentId) : source[0];',
     );
   });
@@ -228,7 +237,7 @@ describe('orders detail screen shipment_id param normalization guard', () => {
     // Without this guard, `rawShipment` would be undefined and downstream
     // `currentShipment` would collapse to null silently; the review gate would
     // fail on an empty status string instead of a clear "not found" state.
-    expect(detail).toContain('if (shipmentId && !rawShipment) return null;');
+    expect(hook).toContain('if (shipmentId && !rawShipment) return null;');
   });
 
   it('uses the normalized shipmentId in the multi-seller banner visibility gate', () => {

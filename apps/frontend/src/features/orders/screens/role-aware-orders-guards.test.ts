@@ -48,12 +48,15 @@ describe('role-aware order summary isolation', () => {
 
 describe('shipment detail identity guards', () => {
   const detail = read('src/features/orders/screens/order-detail-screen.tsx');
+  const hook = read('src/features/orders/hooks/use-order-detail.ts');
 
   it('normalizes the addressed shipment id and delegates access to the resolver', () => {
-    expect(detail).toContain("from '../logic/order-view-routing'");
-    expect(detail).toContain('const shipmentId = Array.isArray(shipment_id)');
-    expect(detail).toContain('resolveRoleAwareOrderView(');
+    expect(detail).toContain('useOrderDetail(');
+    expect(hook).toContain("from '../logic/order-view-routing'");
+    expect(hook).toContain('const shipmentId = Array.isArray(shipment_id)');
+    expect(hook).toContain('resolveRoleAwareOrderView(');
     expect(detail).not.toContain('?? source[0]');
+    expect(hook).not.toContain('?? source[0]');
   });
 
   it('redirects missing shipment ids and renders a safe state for invalid or unowned ids', () => {

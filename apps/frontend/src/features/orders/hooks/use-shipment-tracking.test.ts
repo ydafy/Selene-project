@@ -19,6 +19,7 @@ describe('shipment tracking frontend boundaries', () => {
   it('keeps Envia mode server-side and integrates the URL and timeline into order detail', () => {
     const hook = read('features/orders/hooks/use-shipment-tracking.ts');
     const detail = read('features/orders/screens/order-detail-screen.tsx');
+    const detailHook = read('features/orders/hooks/use-order-detail.ts');
     const timeline = read(
       'features/orders/components/shipment-tracking-timeline.tsx',
     );
@@ -29,8 +30,11 @@ describe('shipment tracking frontend boundaries', () => {
       "invokeEdge('resolve-shipment-tracking-url', { shipmentId })",
     );
     expect(hook).not.toContain('ENVIA_MODE');
-    expect(detail).toContain('useShipmentTrackingEvents(currentShipment?.id)');
-    expect(detail).toContain('useShipmentTrackingUrl(currentShipment?.id)');
+    expect(detail).toContain('useOrderDetail(');
+    expect(detailHook).toContain(
+      'useShipmentTrackingEvents(currentShipment?.id)',
+    );
+    expect(detailHook).toContain('useShipmentTrackingUrl(currentShipment?.id)');
     expect(timeline).toContain('getTrackingEventLabelKey(event.event_type)');
     expect(english).toContain('"title": "Tracking updates"');
     expect(spanish).toContain('"title": "Actualizaciones de rastreo"');

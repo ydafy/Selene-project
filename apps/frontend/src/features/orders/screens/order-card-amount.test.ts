@@ -39,6 +39,10 @@ describe('order detail total by role', () => {
     `${import.meta.dir}/../../../features/orders/screens/order-detail-screen.tsx`,
     'utf8',
   ).replace(/\s+/g, ' ');
+  const detailHook = readFileSync(
+    `${import.meta.dir}/../hooks/use-order-detail.ts`,
+    'utf8',
+  ).replace(/\s+/g, ' ');
   const es = JSON.parse(
     readFileSync(
       `${import.meta.dir}/../../../shared/i18n/locales/es/orders.json`,
@@ -53,7 +57,8 @@ describe('order detail total by role', () => {
   );
 
   it('shows the seller their shipment subtotal even on single-seller orders', () => {
-    expect(detail).toContain(
+    expect(detail).toContain('useOrderDetail(');
+    expect(detailHook).toContain(
       'const displayedTotal = isMultiShipment || currentShipment?.isSeller ? shipmentSubtotal : (order?.total_amount ?? 0);',
     );
   });

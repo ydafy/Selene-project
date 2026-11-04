@@ -8,14 +8,22 @@ const detail = readFileSync(
   ),
   'utf8',
 );
+const hook = readFileSync(
+  new URL(
+    '../../src/features/orders/hooks/use-order-detail.ts',
+    import.meta.url,
+  ),
+  'utf8',
+);
 const summary = readFileSync(
   new URL('../../src/app/profile/orders/summary/[id].tsx', import.meta.url),
   'utf8',
 );
 
 test('uses the product-shipment summary as the default order detail view', () => {
-  expect(detail).toContain('router.replace(orderView.href as any);');
-  expect(detail).toContain(
+  expect(detail).toContain('useOrderDetail(');
+  expect(hook).toContain('router.replace(orderView.href as any);');
+  expect(hook).toContain(
     'if (!source || source.length === 0 || !shipmentId) return null;',
   );
 });

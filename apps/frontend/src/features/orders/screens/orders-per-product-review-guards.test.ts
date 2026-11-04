@@ -40,31 +40,38 @@ describe('useOrderById review select — V2 product/shipment linkage columns', (
 
 describe('orders detail screen V2 per-product review guards', () => {
   const detail = read('src/features/orders/screens/order-detail-screen.tsx');
+  const hook = read('src/features/orders/hooks/use-order-detail.ts');
+
+  it('reads the review gate through useOrderDetail', () => {
+    expect(detail).toContain('useOrderDetail(');
+  });
 
   it('declares ReviewData with the per-product linkage columns', () => {
     // The auxiliary type must carry product_id / shipment_id so the gate can
     // match reviews by product_id instead of by array length.
-    expect(detail).toContain('product_id: string | null;');
-    expect(detail).toContain('shipment_id: string | null;');
-    expect(detail).toContain('seller_id: string;');
+    expect(hook).toContain('product_id: string | null;');
+    expect(hook).toContain('shipment_id: string | null;');
+    expect(hook).toContain('seller_id: string;');
   });
 
   it('imports the pure canReviewProduct gate', () => {
-    expect(detail).toContain("from '../logic/can-review-product'");
+    expect(hook).toContain("from '../logic/can-review-product'");
   });
 
   it('replaces the V1 single boolean canReview with the per-product gate', () => {
     // V1 `canReview = ... && !reviewData?.length` hid the button for every
     // product once any review landed. V2 must NOT keep that boolean.
     expect(detail).not.toContain('!reviewData?.length');
-    expect(detail).toContain('const canReviewProductFn = useCallback(');
+    expect(hook).not.toContain('!reviewData?.length');
+    expect(hook).toContain('const canReviewProductFn = useCallback(');
   });
 
   it('gates review on shipment status (completed), not order status (multi-seller timing)', () => {
     // V2 gate: shipment must be `completed`, not just `delivered`
     // (post-delivery disputes block the gate). Order-level status is ignored.
-    expect(detail).toContain('shipmentStatus: currentShipment?.status ??');
+    expect(hook).toContain('shipmentStatus: currentShipment?.status ??');
     expect(detail).not.toContain('status: order.status');
+    expect(hook).not.toContain('status: order.status');
   });
 
   it('renders a per-item review affordance inside the shipment items loop', () => {
@@ -96,6 +103,7 @@ describe('orders detail screen V2 per-product review guards', () => {
     // The global `reviewData && reviewData.length > 0 ? <ReviewCard .../>`
     // branch is gone; reviews surface per-product instead.
     expect(detail).not.toContain('reviewData && reviewData.length > 0 ?');
+    expect(hook).not.toContain('reviewData && reviewData.length > 0 ?');
     expect(detail).not.toContain('reviewData[0].rating');
   });
 });

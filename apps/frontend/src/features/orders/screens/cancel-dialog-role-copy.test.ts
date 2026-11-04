@@ -12,6 +12,7 @@ const handlerText = (name: string) => {
   const start = hook.indexOf(`const ${name} = async () => {`);
   return hook.slice(start, hook.indexOf('\n  };\n', start));
 };
+const detailHook = read('src/features/orders/hooks/use-order-detail.ts');
 const dialogs = read('src/features/orders/components/order-detail-dialogs.tsx');
 const es = JSON.parse(read('src/shared/i18n/locales/es/orders.json'));
 const en = JSON.parse(read('src/shared/i18n/locales/en/orders.json'));
@@ -58,7 +59,8 @@ describe('cancel dialog role copy', () => {
   });
 
   it('selects dialog and toast copy by the selected shipment role', () => {
-    expect(flatDetail).toContain(
+    expect(detail).toContain('useOrderDetail(');
+    expect(detailHook.replace(/\s+/g, ' ')).toContain(
       'const isSellerCancel = currentShipment?.isSeller ?? false;',
     );
     expect(detail).toContain('useOrderDetailActions({');
@@ -106,7 +108,8 @@ describe('cancel dialog role copy', () => {
   });
 
   it('adds the other-shipments note only when the order has several shipments', () => {
-    expect(detail).toContain(
+    expect(detail).toContain('useOrderDetail(');
+    expect(detailHook).toContain(
       'const isMultiShipment = (order?.shipments?.length ?? 0) > 1;',
     );
     expect(flatHook).toContain(

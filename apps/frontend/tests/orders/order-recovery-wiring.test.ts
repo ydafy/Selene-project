@@ -11,7 +11,12 @@ describe('buyer checkout recovery UI wiring', () => {
       'apps/frontend/src/features/orders/screens/order-detail-screen.tsx',
     );
 
-    expect(detail).toContain('resolveBuyerCheckoutRecoveryView');
+    const hook = source(
+      'apps/frontend/src/features/orders/hooks/use-order-detail.ts',
+    );
+
+    expect(detail).toContain('useOrderDetail(');
+    expect(hook).toContain('resolveBuyerCheckoutRecoveryView');
     expect(detail).toContain("t('recovery.pending')");
     expect(detail).toContain("t('recovery.contactSupport')");
   });
