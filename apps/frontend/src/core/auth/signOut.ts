@@ -1,6 +1,6 @@
 import { supabase } from '../../shared/lib/supabase';
 import { queryClient } from '../../shared/lib/query-client';
-import { useCheckoutStore } from '../store/useCheckoutStore';
+import { useCheckoutStore } from '../../features/checkout/store/use-checkout-store';
 import { useCartStore } from '../../features/cart/store/use-cart-store';
 import { useDisputeStore } from '../../features/orders/store/use-dispute-store';
 import { useSearchStore } from '../../features/search/store/use-search-store';

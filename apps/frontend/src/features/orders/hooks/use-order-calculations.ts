@@ -1,5 +1,5 @@
 /**
- * @file apps/frontend/src/core/hooks/useOrderCalculations.ts
+ * @file apps/frontend/src/features/orders/hooks/use-order-calculations.ts
  * @description Custom React Hook for computing real-time order breakdown figures in the client-side cart.
  *
  * Implements:
@@ -15,7 +15,7 @@
 
 import { useMemo } from 'react';
 import { Product } from '@selene/types';
-import { grossUpDomesticMx } from '../../features/payments/logic/stripe-fee-gross-up';
+import { grossUpDomesticMx } from '../../payments/logic/stripe-fee-gross-up';
 
 export const calculateOrderCalculations = (items: Product[] = []) => {
   if (!items || items.length === 0) {

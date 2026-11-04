@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { calculateOrderCalculations } from './useOrderCalculations';
+import { calculateOrderCalculations } from './use-order-calculations';
 
 describe('calculateOrderCalculations', () => {
   it('returns the grossed-up buyer total from integer-cent math', () => {

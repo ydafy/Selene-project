@@ -7,7 +7,7 @@ import {
 import { useTheme } from '@shopify/restyle';
 import { Box, Text } from '../../../shared/ui/base';
 import { Theme } from '../../../shared/theme';
-import { CheckoutItem } from './CheckoutItem';
+import { CheckoutItem } from './checkout-item';
 import { Product } from '@selene/types';
 
 interface Props {

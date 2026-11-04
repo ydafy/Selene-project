@@ -8,7 +8,7 @@ mock.module('@react-native-async-storage/async-storage', () => ({
   },
 }));
 
-const loadStore = async () => import('./useCheckoutStore');
+const loadStore = async () => import('./use-checkout-store');
 
 describe('useCheckoutStore', () => {
   beforeEach(async () => {

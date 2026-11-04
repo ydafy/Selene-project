@@ -34,7 +34,7 @@ apps/frontend/src/
     ui/  hooks/  utils/  theme/  i18n/  config/  lib/
 ```
 
-`logic/` holds pure TypeScript with no React imports. Test it without React. Example: `apps/frontend/src/core/utils/checkoutPaymentFlow.ts` and its test belong in `features/checkout/logic/`.
+`logic/` holds pure TypeScript with no React imports. Test it without React. Example: `apps/frontend/src/features/checkout/logic/checkout-payment-flow.ts` and its test belong in `features/checkout/logic/`.
 
 Until the move, follow these rules in the current tree:
 

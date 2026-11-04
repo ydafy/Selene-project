@@ -106,7 +106,7 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
   };
   const { EvidenceUploadSection } = await import('./evidence-upload-section');
   const { AddressSection } =
-    await import('../../../components/features/checkout/AddressSection');
+    await import('../../address/components/address-section');
   const { PackagingGuideCard } = await import('./packaging-guide-card');
   const { LabelWithHelp } = await import('../../../shared/ui/label-with-help');
 

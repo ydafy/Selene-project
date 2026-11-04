@@ -1,5 +1,5 @@
 /**
- * @file core/schemas/checkout.schema.ts
+ * @file apps/frontend/src/features/checkout/logic/checkout-schema.ts
  * @description Esquema de validación estricto para el checkout de Selene (Sintaxis Universal Zod).
  */
 

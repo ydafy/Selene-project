@@ -4,7 +4,7 @@ import {
   buildConnectPaymentRequest,
   calculateSeguroSelene,
   normalizeConnectPaymentResponse,
-} from './connectPayment';
+} from './connect-payment';
 
 describe('connect payment helpers', () => {
   it('builds the create-connect-payment payload from cart items and address', () => {

@@ -33,7 +33,7 @@ import { ShellFooter } from '../../features/home/components/shell-footer';
 import { ShellShippingLine } from '../../features/home/components/shell-shipping-line';
 import { ShellPaymentsFeature } from '../../features/home/components/shell-payments-feature';
 
-import { useCheckoutStore } from '../../core/store/useCheckoutStore';
+import { useCheckoutStore } from '../../features/checkout/store/use-checkout-store';
 import { useAddresses } from '../../features/address/hooks/use-addresses';
 import { useProducts } from '../../shared/hooks/use-products';
 import { useExperienceStore } from '@/features/home/store/use-experience-store';

@@ -1,10 +1,10 @@
 /**
- * @file core/services/OrderService.ts
+ * @file apps/frontend/src/features/orders/logic/order-service.ts
  * @description Servicios de orquestación para el ciclo de vida de las órdenes.
  * Incluye validaciones de integridad de stock antes de iniciar procesos de pago.
  */
 
-import { supabase } from '../../shared/lib/supabase';
+import { supabase } from '../../../shared/lib/supabase';
 
 export class OrderService {
   /**

@@ -12,10 +12,10 @@ import { GlobalHeader } from '../../shared/ui/global-header';
 
 import { ErrorState } from '../../shared/ui/error-state';
 import { Theme } from '../../shared/theme';
-import { usePaymentProcess } from '../../core/hooks/usePaymentProcess';
+import { usePaymentProcess } from '../../features/checkout/hooks/use-payment-process';
 import { formatCurrency } from '../../shared/utils/format';
-import { OrderPreviewStrip } from '../../components/features/checkout/OrderPreviewStrip';
-import { ProductSummaryModal } from '../../components/features/checkout/ProductSummaryModal';
+import { OrderPreviewStrip } from '../../features/checkout/components/order-preview-strip';
+import { ProductSummaryModal } from '../../features/checkout/components/product-summary-modal';
 import { Stack } from 'expo-router';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useCartStore } from '@/features/cart/store/use-cart-store';

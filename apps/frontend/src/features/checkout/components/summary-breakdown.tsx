@@ -2,7 +2,7 @@ import React from 'react';
 import { TouchableOpacity } from 'react-native';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { Box, Text } from '../../../shared/ui/base';
-import { CheckoutRow } from './CheckoutRow';
+import { CheckoutRow } from './checkout-row';
 import { formatCurrency } from '../../../shared/utils/format';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';

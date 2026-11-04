@@ -7,7 +7,7 @@ import esCheckout from '../../../shared/i18n/locales/es/checkout.json';
 
 // Source assertions: the repo has no React Native render harness for this sheet (#27).
 const source = readFileSync(
-  join(import.meta.dir, 'PaymentMethodPickerModal.tsx'),
+  join(import.meta.dir, 'payment-method-picker-modal.tsx'),
   'utf8',
 );
 

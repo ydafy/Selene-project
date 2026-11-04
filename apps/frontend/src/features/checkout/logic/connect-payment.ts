@@ -1,5 +1,5 @@
 /**
- * @file apps/frontend/src/core/utils/connectPayment.ts
+ * @file apps/frontend/src/features/checkout/logic/connect-payment.ts
  * @description Checkout Connect response contracts and request builders.
  *
  * This module keeps the single-secret checkout contract aligned with the shared
@@ -15,7 +15,7 @@ import type {
   CreateConnectPaymentResponse,
   EdgeFunctionRegistry,
 } from '@selene/types';
-import { grossUpDomesticMx } from '../../features/payments/logic/stripe-fee-gross-up';
+import { grossUpDomesticMx } from '../../payments/logic/stripe-fee-gross-up';
 
 export const SEGURO_SELENE_RATE = 0.036;
 export const SEGURO_SELENE_FIXED_CENTS = 300;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { googlePayTestEnv } from './stripeMode';
+import { googlePayTestEnv } from './stripe-mode';
 
 describe('googlePayTestEnv', () => {
   it('runs Google Pay in production with a live publishable key', () => {

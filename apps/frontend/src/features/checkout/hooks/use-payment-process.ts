@@ -1,5 +1,5 @@
 /**
- * @file apps/frontend/src/core/hooks/usePaymentProcess.ts
+ * @file apps/frontend/src/features/checkout/hooks/use-payment-process.ts
  * @description Core Custom React Hook for orchestrating sequential multi-seller Stripe Connect payments.
  *
  * Implements:
@@ -21,20 +21,20 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import * as Crypto from 'expo-crypto';
 import { useTheme } from '@shopify/restyle';
-import { Theme } from '../../shared/theme';
+import { Theme } from '../../../shared/theme';
 
-import { useCartStore } from '../../features/cart/store/use-cart-store';
-import { useCheckoutStore } from '../store/useCheckoutStore';
-import { supabase } from '../../shared/lib/supabase';
-import { invokeEdge } from '../../shared/lib/edge-client';
+import { useCartStore } from '../../cart/store/use-cart-store';
+import { useCheckoutStore } from '../store/use-checkout-store';
+import { supabase } from '../../../shared/lib/supabase';
+import { invokeEdge } from '../../../shared/lib/edge-client';
 import {
   buildConnectPaymentRequest,
   ConnectPaymentResponseSchema,
   normalizeConnectPaymentResponse,
   paymentIntentIdFromClientSecret,
   type NormalizedConnectPayment,
-} from '../utils/connectPayment';
-import { presentSinglePaymentSheet } from '../utils/checkoutPaymentFlow';
+} from '../logic/connect-payment';
+import { presentSinglePaymentSheet } from '../logic/checkout-payment-flow';
 
 interface CheckoutInputSnapshot {
   addressId: string | null;

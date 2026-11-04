@@ -120,7 +120,7 @@ describe('screen and hook wiring (S4)', () => {
   });
 
   it('usePaymentProcess uses an i18n key for SELLER_NOT_ONBOARDED', () => {
-    const src = read('core/hooks/usePaymentProcess.ts');
+    const src = read('features/checkout/hooks/use-payment-process.ts');
     expect(src).not.toContain('Seller onboarding is required');
     expect(src).toContain("t('payment.sellerNotReadyError')");
   });

@@ -3,7 +3,7 @@ import { describe, expect, it, mock } from 'bun:test';
 import {
   presentSinglePaymentSheet,
   type SinglePaymentSheetDependencies,
-} from './checkoutPaymentFlow';
+} from './checkout-payment-flow';
 
 describe('presentSinglePaymentSheet', () => {
   it('initializes and presents the Stripe sheet exactly once', async () => {

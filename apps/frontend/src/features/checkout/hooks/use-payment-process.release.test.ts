@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 const frontendRoot = join(import.meta.dir, '..', '..', '..');
 const hookSource = readFileSync(
-  join(frontendRoot, 'core/hooks/usePaymentProcess.ts'),
+  join(frontendRoot, 'features/checkout/hooks/use-payment-process.ts'),
   'utf8',
 );
 

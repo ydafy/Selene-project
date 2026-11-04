@@ -17,7 +17,7 @@ const BUYER_LIST_READS = [
 const BUYER_POINT_READS = [
   'core/hooks/useProductFavorite.ts',
   'components/features/product/hooks/useProductCart.ts',
-  'core/services/order.ts',
+  'features/orders/logic/order-service.ts',
 ];
 
 const OWNER_READS = [

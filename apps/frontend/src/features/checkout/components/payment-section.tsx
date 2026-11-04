@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Text } from '../../../shared/ui/base';
-import { PaymentMethodRow } from './PaymentMethodRow';
+import { PaymentMethodRow } from './payment-method-row';
 import { PaymentMethod } from '@selene/types';
 import { Skeleton } from '../../../shared/ui/skeleton';
 
