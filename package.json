@@ -12,6 +12,7 @@
   "scripts": {
     "frontend": "cd apps/frontend && bun run start",
     "dev:install": "cd apps/frontend && bunx eas-cli build:dev --platform=android",
+    "build:release:android": "cd apps/frontend && bunx eas-cli build --profile preview --platform android",
     "dashboard": "cd apps/admin-web && bun run dev",
     "db:test:up": "docker compose -f docker-compose.postgres-test.yml -p selene-pg-shipment-cancellations up -d --wait --wait-timeout 90",
     "db:test:check": "bun scripts/postgres-smoke.ts",

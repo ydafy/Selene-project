@@ -372,4 +372,5 @@ Sentry creates the `cron-watchdog` Cron Monitor on its first check-in (free plan
    - Delete an account: the re-sign-in step, the "what is deleted and what is kept" copy, and other users then see "Usuario eliminado".
    - A suspended account sees the suspension notice; a banned account sees only the blocked-account screen with its reason.
    - Admin-web: log in with the CAPTCHA; a non-admin account is refused.
-4. Every cron job shows successful runs in `cron.job_run_details`.
+4. The first Android release build, on a physical device: `bun run build:release:android` (EAS `preview` profile). Since Expo SDK 58, release builds shrink and optimize the code with R8, and development builds do not, so this is the first build that runs it. Check that the app starts, Google Sign-In (its library ships no R8 rules), a Stripe payment with card and Google Pay, and a push notification received and tapped. A crash such as `ClassNotFoundException` in `adb logcat` needs a keep rule through `expo-build-properties` (`odd/tasks/expo-sdk-58.md` L26).
+5. Every cron job shows successful runs in `cron.job_run_details`.
