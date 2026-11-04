@@ -29,10 +29,14 @@ export const canAskForPush = (permission: PushPermission): boolean =>
 /**
  * Decides when to show the push pre-prompt. Each moment is offered at most
  * once per device, and only while the OS dialog is still available, so the
- * one-time iOS dialog is never spent without the user's consent.
+ * one-time iOS dialog is never spent without the user's consent. One
+ * pre-prompt at a time: a moment that arrives while another is being decided
+ * or is on screen is skipped without its mark, so it is offered later.
  */
 export const createPushPermissionPrompt = (deps: PushPermissionPromptDeps) => {
-  const inFlight = new Set<PushPermissionMoment>();
+  // True from the start of an offer until its pre-prompt is dismissed, or
+  // until the offer ends without showing one.
+  let busy = false;
 
   const decide = async (moment: PushPermissionMoment): Promise<boolean> => {
     if (deps.platform === 'web') return false;
@@ -51,13 +55,15 @@ export const createPushPermissionPrompt = (deps: PushPermissionPromptDeps) => {
   return {
     /** True when the caller should show the pre-prompt for this moment now. */
     offer: async (moment: PushPermissionMoment): Promise<boolean> => {
-      if (inFlight.has(moment)) return false;
-      inFlight.add(moment);
-      try {
-        return await decide(moment);
-      } finally {
-        inFlight.delete(moment);
-      }
+      if (busy) return false;
+      busy = true;
+      const shown = await decide(moment);
+      if (!shown) busy = false;
+      return shown;
+    },
+    /** The pre-prompt was closed; the next moment can be offered. */
+    dismiss: (): void => {
+      busy = false;
     },
     /** Opens the OS dialog; true when the OS granted the permission. */
     request: async (): Promise<boolean> => {

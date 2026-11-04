@@ -4,6 +4,7 @@ import { useAuthContext } from '../../auth/AuthProvider';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import { pushRegistrar } from '../../../core/push/pushRegistration';
 import {
+  closePushPermission,
   pushPermissionPrompt,
   usePushPromptStore,
 } from '../../../core/push/pushPermission';
@@ -30,7 +31,7 @@ export const PushPermissionPrompt = () => {
 
   if (!moment) return null;
 
-  const close = () => usePushPromptStore.setState({ moment: null });
+  const close = closePushPermission;
   const accept = () => {
     close();
     void pushPermissionPrompt.request().then((granted) => {

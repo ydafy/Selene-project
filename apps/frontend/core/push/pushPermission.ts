@@ -40,9 +40,14 @@ export const usePushPromptStore = create<{
 export const offerPushPermission = async (
   moment: PushPermissionMoment,
 ): Promise<void> => {
-  // One dialog at a time; a moment skipped here is not used up.
-  if (usePushPromptStore.getState().moment) return;
+  // The prompt logic allows one dialog at a time; a skipped moment is not used up.
   if (await pushPermissionPrompt.offer(moment)) {
     usePushPromptStore.setState({ moment });
   }
+};
+
+/** Closes the pre-prompt on screen, so the next moment can be offered. */
+export const closePushPermission = (): void => {
+  usePushPromptStore.setState({ moment: null });
+  pushPermissionPrompt.dismiss();
 };

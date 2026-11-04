@@ -55,13 +55,16 @@ describe('createPushPermissionPrompt.offer', () => {
   it('offers each moment at most once per device', async () => {
     const { prompt } = setup();
     expect(await prompt.offer('favorite')).toBe(true);
+    prompt.dismiss();
     expect(await prompt.offer('favorite')).toBe(false);
   });
 
   it('keeps the three moments independent', async () => {
     const { prompt, store } = setup();
     expect(await prompt.offer('purchase')).toBe(true);
+    prompt.dismiss();
     expect(await prompt.offer('favorite')).toBe(true);
+    prompt.dismiss();
     expect(await prompt.offer('listing')).toBe(true);
     expect([...store.keys()].sort()).toEqual([
       'push:prompted:favorite',
@@ -129,6 +132,38 @@ describe('createPushPermissionPrompt.offer', () => {
       prompt.offer('favorite'),
     ]);
     expect(results.filter(Boolean)).toHaveLength(1);
+  });
+
+  it('offers one moment when two different moments fire at the same time', async () => {
+    const { prompt, store } = setup();
+    const [purchase, favorite] = await Promise.all([
+      prompt.offer('purchase'),
+      prompt.offer('favorite'),
+    ]);
+    expect([purchase, favorite].filter(Boolean)).toHaveLength(1);
+    // The moment that was not shown keeps no mark, so it is offered later.
+    expect([...store.keys()]).toEqual([
+      purchase ? 'push:prompted:purchase' : 'push:prompted:favorite',
+    ]);
+  });
+
+  it('does not offer while a pre-prompt is on screen, and leaves no mark', async () => {
+    const { prompt, store } = setup();
+    expect(await prompt.offer('purchase')).toBe(true);
+    expect(await prompt.offer('favorite')).toBe(false);
+    expect(store.has('push:prompted:favorite')).toBe(false);
+    prompt.dismiss();
+    expect(await prompt.offer('favorite')).toBe(true);
+  });
+
+  it('a moment that is not shown does not block the next one', async () => {
+    const permission: PushPermission = { status: 'granted', canAskAgain: true };
+    const { prompt } = setup(UNDETERMINED, {
+      getPermission: async () => permission,
+    });
+    expect(await prompt.offer('purchase')).toBe(false);
+    permission.status = 'undetermined';
+    expect(await prompt.offer('favorite')).toBe(true);
   });
 });
 
