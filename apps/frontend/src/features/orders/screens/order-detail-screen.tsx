@@ -43,8 +43,9 @@ import { ShippingInstructions } from '../components/shipping-instructions';
 import { ShippingRouteCard } from '../components/shipping-route-card';
 import { ShipmentItemsCard } from '../components/shipment-items-card';
 import { OrderDetailActions } from '../components/order-detail-actions';
+import { OrderDetailDialogs } from '../components/order-detail-dialogs';
+import { ReviewProductButtons } from '../components/review-product-buttons';
 import { PrimaryButton } from '../../../shared/ui/primary-button';
-import { ConfirmDialog } from '../../../shared/ui/confirm-dialog';
 import { Skeleton } from '../../../shared/ui/skeleton';
 import { ShipmentNotFoundState } from '../components/shipment-not-found-state';
 import { ShipmentTrackingTimeline } from '../components/shipment-tracking-timeline';
@@ -59,7 +60,6 @@ import { useOrderActions } from '../hooks/use-order-actions';
 import { useReturnPayment } from '../hooks/use-return-payment';
 import { useShareLabel } from '../hooks/use-share-label';
 import { Theme } from '../../../shared/theme';
-import { ReviewModal } from '@/components/features/profile/ReviewModal';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { EnrichedOrder, EnrichedShipment } from '@selene/types';
 import {
@@ -523,9 +523,7 @@ export function OrderDetailScreen() {
         {/* SLOT B: ADVERTENCIA DE UNBOXING                  */}
         {/* Solo para comprador en flujo normal (sin disputa)*/}
         {/* ─────────────────────────────────────────────── */}
-        {currentShipment?.permissions.showUnboxingWarning && (
-          <UnboxingWarning />
-        )}
+        {currentShipment.permissions.showUnboxingWarning && <UnboxingWarning />}
 
         {/* ─────────────────────────────────────────────── */}
         {/* SLOT C: STEPPER DE PROGRESO                      */}
@@ -537,7 +535,7 @@ export function OrderDetailScreen() {
           </Text>
           {/* El stepper refleja el progreso logístico del envío actual (per-shipment). */}
           <OrderStepper
-            status={currentShipment?.status ?? order.visualStatus}
+            status={currentShipment.status ?? order.visualStatus}
             isSeller={order.isSeller}
           />
         </Box>
@@ -563,7 +561,7 @@ export function OrderDetailScreen() {
         {!!activeTrackingNumber && (
           <TrackingNumberCard
             trackingNumber={activeTrackingNumber}
-            isReturn={!!currentShipment?.permissions.showReturnTracking}
+            isReturn={!!currentShipment.permissions.showReturnTracking}
             trackingUrl={trackingUrl.data?.url ?? undefined}
             onCopy={handleCopyTracking}
             onTrack={handleTrack}
@@ -574,7 +572,7 @@ export function OrderDetailScreen() {
         {/* SLOT E: INSTRUCCIONES DE ENVÍO                   */}
         {/* Controlado por permissions.showInstructions     */}
         {/* ─────────────────────────────────────────────── */}
-        {currentShipment?.permissions.showInstructions && (
+        {currentShipment.permissions.showInstructions && (
           <Box marginBottom="m">
             <ShippingInstructions
               carrierName="Paquetexpress"
@@ -600,9 +598,9 @@ export function OrderDetailScreen() {
         {/* order.items (que fue removido de EnrichedOrder).*/}
         {/* ─────────────────────────────────────────────── */}
         <ShipmentItemsCard
-          items={currentShipment?.items}
+          items={currentShipment.items}
           isBuyer={order.isBuyer}
-          isSeller={currentShipment?.isSeller}
+          isSeller={currentShipment.isSeller}
           total={displayedTotal}
           isReviewed={(productId) =>
             reviewData.some(
@@ -642,68 +640,37 @@ export function OrderDetailScreen() {
 
         {/* ─────────────────────────────────────────────── */}
         {/* V2: REVIEWS */}
-        {currentShipment?.items
-          .filter((item) => canReviewProductFn(item.product_id))
-          .map((item) => (
-            <PrimaryButton
-              key={`review-${item.id}`}
-              onPress={() => openReviewFor(item.product_id)}
-              icon="star-outline"
-              style={{ marginTop: 8 }}
-              accessibilityLabel={t('orders:actions.rateProduct')}
-              accessibilityHint={t('orders:actions.rateProductHint')}
-            >
-              {t('orders:actions.rateProduct')}
-            </PrimaryButton>
-          ))}
+        <ReviewProductButtons
+          items={currentShipment.items}
+          canReview={canReviewProductFn}
+          onRate={openReviewFor}
+        />
       </ScrollView>
 
       {/* ─────────────────────────────────────────────── */}
       {/* DIÁLOGOS DE CONFIRMACIÓN                         */}
       {/* ─────────────────────────────────────────────── */}
-      <ConfirmDialog
-        visible={showCancelConfirm}
-        title={t('orders:dialogs.cancelTitle')}
-        description={withOtherShipmentsNote(
+      <OrderDetailDialogs
+        order={order as any}
+        shipment={currentShipment}
+        cancelVisible={showCancelConfirm}
+        cancelDescription={withOtherShipmentsNote(
           t(
             isSellerCancel
               ? 'orders:dialogs.cancelMsgSeller'
               : 'orders:dialogs.cancelMsgBuyer',
           ),
         )}
-        onConfirm={handleCancelOrder}
-        onCancel={() => setShowCancelConfirm(false)}
-        isDangerous
-        confirmLabel={t('orders:actions.confirmCancel')}
-        loading={actions.cancelOrder.isLoading}
-      />
-
-      <ConfirmDialog
-        visible={showDeliveryConfirm}
-        title={t('orders:dialogs.deliveryTitle')}
-        description={t('orders:dialogs.deliveryMsg')}
-        onConfirm={handleConfirmDelivery}
-        onCancel={() => setShowDeliveryConfirm(false)}
-        confirmLabel={t('orders:dialogs.deliveryConfirm')}
-        cancelLabel={t('orders:dialogs.deliveryCancel')}
-        loading={actions.confirmDelivery.isLoading}
-        icon="package-variant"
-      />
-
-      <ReviewModal
-        ref={reviewModalRef}
-        order={order as any}
-        sellerId={currentShipment?.seller_id}
-        shipmentId={currentShipment?.id}
-        productId={activeReviewProductId ?? undefined}
-        productName={
-          activeReviewProductId
-            ? currentShipment?.items?.find(
-                (i) => i.product_id === activeReviewProductId,
-              )?.product?.name
-            : undefined
-        }
-        onSuccess={async () => {
+        isCancelling={actions.cancelOrder.isLoading}
+        onConfirmCancel={handleCancelOrder}
+        onDismissCancel={() => setShowCancelConfirm(false)}
+        deliveryVisible={showDeliveryConfirm}
+        isConfirmingDelivery={actions.confirmDelivery.isLoading}
+        onConfirmDelivery={handleConfirmDelivery}
+        onDismissDelivery={() => setShowDeliveryConfirm(false)}
+        reviewModalRef={reviewModalRef}
+        activeReviewProductId={activeReviewProductId}
+        onReviewSuccess={async () => {
           try {
             await refetchOrder();
           } catch (e) {
@@ -711,19 +678,12 @@ export function OrderDetailScreen() {
             setReviewError(t('orders:dialogs.reviewErrorMsg'));
           }
         }}
-      />
-
-      <ConfirmDialog
-        visible={!!reviewError}
-        title={t('orders:dialogs.reviewErrorTitle')}
-        description={reviewError ?? ''}
-        onConfirm={async () => {
+        reviewError={reviewError}
+        onRetryReview={async () => {
           setReviewError(null);
           await refetchOrder();
         }}
-        onCancel={() => setReviewError(null)}
-        confirmLabel={t('orders:dialogs.reviewErrorRetry')}
-        cancelLabel={t('orders:dialogs.reviewErrorClose')}
+        onDismissReviewError={() => setReviewError(null)}
       />
     </Box>
   );

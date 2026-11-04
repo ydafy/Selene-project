@@ -68,16 +68,27 @@ describe('orders detail screen V2 per-product review guards', () => {
   });
 
   it('renders a per-item review affordance inside the shipment items loop', () => {
-    expect(detail).toContain('canReviewProductFn(item.product_id)');
-    expect(detail).toContain('openReviewFor(item.product_id)');
+    const buttons = read(
+      'src/features/orders/components/review-product-buttons.tsx',
+    );
+    expect(detail).toContain('<ReviewProductButtons');
+    expect(detail).toContain('canReview={canReviewProductFn}');
+    expect(detail).toContain('onRate={openReviewFor}');
+    expect(buttons).toContain('?.filter((item) => canReview(item.product_id))');
+    expect(buttons).toContain('onRate(item.product_id)');
     expect(detail).toContain('activeReviewProductId');
   });
 
   it('passes the active product id (state) to ReviewModal instead of the first shipment item', () => {
     // The hard constraint: no `order.items[0]` fallback and no
     // `currentShipment?.items?.[0]?.product_id` V1 scoping.
-    expect(detail).toContain('productId={activeReviewProductId ?? undefined}');
+    const dialogs = read(
+      'src/features/orders/components/order-detail-dialogs.tsx',
+    );
+    expect(detail).toContain('<OrderDetailDialogs');
+    expect(dialogs).toContain('productId={activeReviewProductId ?? undefined}');
     expect(detail).not.toContain('productId={currentShipment?.items?.[0]');
+    expect(dialogs).not.toContain('productId={shipment.items?.[0]');
     expect(detail).not.toContain('order.items[0]');
   });
 

@@ -42,7 +42,7 @@ describe('orders detail screen shipment-aware source guards', () => {
 
   it('drives the order stepper from the current shipment status', () => {
     expect(detail).toContain(
-      'status={currentShipment?.status ?? order.visualStatus}',
+      'status={currentShipment.status ?? order.visualStatus}',
     );
   });
 
@@ -64,7 +64,11 @@ describe('orders detail screen shipment-aware source guards', () => {
   });
 
   it('passes the current shipment seller id to the review modal', () => {
-    expect(detail).toContain('sellerId={currentShipment?.seller_id}');
+    expect(detail).toContain('<OrderDetailDialogs');
+    expect(detail).toContain('shipment={currentShipment}');
+    expect(
+      read('src/features/orders/components/order-detail-dialogs.tsx'),
+    ).toContain('sellerId={shipment.seller_id}');
   });
 
   it('gates the generate-label button on the shipment seller, not the order', () => {
@@ -184,8 +188,13 @@ describe('orders detail screen shipment-aware review identity guard', () => {
     // drive ReviewModal.productId from the per-item button's active state
     // (activeReviewProductId) — NOT from currentShipment?.items?.[0] (V1) and
     // never from order.items[0] (the multi-seller bug).
-    expect(detail).toContain('shipmentId={currentShipment?.id}');
-    expect(detail).toContain('productId={activeReviewProductId ?? undefined}');
+    const dialogs = read(
+      'src/features/orders/components/order-detail-dialogs.tsx',
+    );
+    expect(detail).toContain('<OrderDetailDialogs');
+    expect(detail).toContain('activeReviewProductId={activeReviewProductId}');
+    expect(dialogs).toContain('shipmentId={shipment.id}');
+    expect(dialogs).toContain('productId={activeReviewProductId ?? undefined}');
     expect(detail).not.toContain('productId={currentShipment?.items?.[0]');
     expect(detail).not.toContain('productId={order.items[0]');
   });

@@ -160,7 +160,12 @@ describe('shipment confirmation', () => {
       source('apps/frontend/src/shared/i18n/locales/es/orders.json'),
     );
 
-    expect(detail).toContain("t('orders:dialogs.deliveryMsg')");
+    const dialogs = source(
+      'apps/frontend/src/features/orders/components/order-detail-dialogs.tsx',
+    );
+
+    expect(detail).toContain('<OrderDetailDialogs');
+    expect(dialogs).toContain("t('orders:dialogs.deliveryMsg')");
     expect(english.actions.confirmDelivery).toBe('Confirm Delivered Package');
     expect(english.dialogs.deliveryMsg).toContain(
       'Confirming completes the purchase',

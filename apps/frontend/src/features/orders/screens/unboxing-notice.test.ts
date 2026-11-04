@@ -31,7 +31,9 @@ describe('unboxing notice', () => {
   it('renders the notice in the order detail from that permission', () => {
     const detail = flat('src/features/orders/screens/order-detail-screen.tsx');
     expect(detail).toContain(
-      compact('{currentShipment?.permissions.showUnboxingWarning && ('),
+      compact(
+        '{currentShipment.permissions.showUnboxingWarning && <UnboxingWarning />}',
+      ),
     );
     expect(detail).toContain(compact('<UnboxingWarning />'));
     const warning = flat('src/features/orders/components/unboxing-warning.tsx');

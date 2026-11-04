@@ -7,6 +7,7 @@ const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
 const card = read('src/features/orders/components/order-action-card.tsx');
 const flatCard = card.replace(/\s+/g, ' ');
 const detail = read('src/features/orders/screens/order-detail-screen.tsx');
+const dialogs = read('src/features/orders/components/order-detail-dialogs.tsx');
 const es = JSON.parse(read('src/shared/i18n/locales/es/orders.json'));
 const en = JSON.parse(read('src/shared/i18n/locales/en/orders.json'));
 
@@ -102,9 +103,10 @@ describe('delivered review polish', () => {
     );
     expect(es.dialogs.deliveryConfirm).toBe('Sí, confirmar');
     expect(es.dialogs.deliveryCancel).toBe('Volver');
-    const dialog = detail.slice(
-      detail.indexOf('visible={showDeliveryConfirm}'),
-      detail.indexOf('<ReviewModal'),
+    expect(detail).toContain('<OrderDetailDialogs');
+    const dialog = dialogs.slice(
+      dialogs.indexOf('visible={deliveryVisible}'),
+      dialogs.indexOf('<ReviewModal'),
     );
     expect(dialog).toContain(
       "confirmLabel={t('orders:dialogs.deliveryConfirm')}",
@@ -112,11 +114,15 @@ describe('delivered review polish', () => {
     expect(dialog).toContain(
       "cancelLabel={t('orders:dialogs.deliveryCancel')}",
     );
-    expect(dialog).toContain('onConfirm={handleConfirmDelivery}');
-    expect(dialog).toContain('loading={actions.confirmDelivery.isLoading}');
+    expect(dialog).toContain('onConfirm={onConfirmDelivery}');
+    expect(dialog).toContain('loading={isConfirmingDelivery}');
+    expect(detail).toContain('onConfirmDelivery={handleConfirmDelivery}');
+    expect(detail).toContain(
+      'isConfirmingDelivery={actions.confirmDelivery.isLoading}',
+    );
     const handler = detail.slice(
       detail.indexOf('const handleConfirmDelivery = async () => {'),
-      detail.indexOf('visible={showDeliveryConfirm}'),
+      detail.indexOf('const withOtherShipmentsNote'),
     );
     expect(handler).toContain('actions.confirmDelivery.execute({');
     expect(handler).toContain('shipmentId: currentShipment.id');

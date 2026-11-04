@@ -64,7 +64,7 @@ describe('order detail total by role', () => {
       'utf8',
     ).replace(/\s+/g, ' ');
     expect(detail).toContain('<ShipmentItemsCard');
-    expect(detail).toContain('isSeller={currentShipment?.isSeller}');
+    expect(detail).toContain('isSeller={currentShipment.isSeller}');
     expect(items).toContain(
       "{isSeller ? t('orders:detail.totalSold') : t('orders:detail.total')}",
     );

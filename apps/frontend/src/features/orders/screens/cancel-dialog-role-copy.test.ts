@@ -6,6 +6,7 @@ const FRONTEND = join(import.meta.dir, '..', '..', '..', '..');
 const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
 const detail = read('src/features/orders/screens/order-detail-screen.tsx');
 const flatDetail = detail.replace(/\s+/g, ' ');
+const dialogs = read('src/features/orders/components/order-detail-dialogs.tsx');
 const es = JSON.parse(read('src/shared/i18n/locales/es/orders.json'));
 const en = JSON.parse(read('src/shared/i18n/locales/en/orders.json'));
 
@@ -67,8 +68,9 @@ describe('cancel dialog role copy', () => {
   });
 
   it('keeps the shared cancel title and confirm action', () => {
-    expect(detail).toContain("title={t('orders:dialogs.cancelTitle')}");
-    expect(detail).toContain(
+    expect(detail).toContain('<OrderDetailDialogs');
+    expect(dialogs).toContain("title={t('orders:dialogs.cancelTitle')}");
+    expect(dialogs).toContain(
       "confirmLabel={t('orders:actions.confirmCancel')}",
     );
     expect(es.dialogs.cancelTitle).toBe('¿Deseas cancelar este envío?');
@@ -86,9 +88,11 @@ describe('cancel dialog role copy', () => {
     expect(flatDetail).toContain(
       "const withOtherShipmentsNote = (message: string) => isMultiShipment ? `${message} ${t('orders:dialogs.otherShipmentsContinue')}` : message;",
     );
+    expect(detail).toContain('<OrderDetailDialogs');
     expect(flatDetail).toContain(
-      "description={withOtherShipmentsNote( t( isSellerCancel ? 'orders:dialogs.cancelMsgSeller' : 'orders:dialogs.cancelMsgBuyer', ), )}",
+      "cancelDescription={withOtherShipmentsNote( t( isSellerCancel ? 'orders:dialogs.cancelMsgSeller' : 'orders:dialogs.cancelMsgBuyer', ), )}",
     );
+    expect(dialogs).toContain('description={cancelDescription}');
     expect(flatDetail).toContain(
       "text2: withOtherShipmentsNote( t( isSellerCancel ? 'orders:dialogs.cancelSuccessMsgSeller' : 'orders:dialogs.cancelSuccessMsgBuyer', ), )",
     );
