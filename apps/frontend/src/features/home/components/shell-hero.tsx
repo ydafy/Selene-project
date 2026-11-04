@@ -1,5 +1,5 @@
 /**
- * @file components/features/home/sections/ShellHero.tsx
+ * @file features/home/components/shell-hero.tsx
  * @description Sección Hero de la Home.
  * Auditada para rendimiento (Memo) e internacionalización (i18n).
  */
@@ -16,11 +16,11 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { Box, Text } from '../../../../shared/ui/base';
-import { AppImage } from '../../../../shared/ui/app-image';
-import { PrimaryButton } from '../../../../shared/ui/primary-button';
-import { Theme } from '../../../../shared/theme';
-import { getSharedStyles } from '../../../../shared/theme/shared-styles';
+import { Box, Text } from '../../../shared/ui/base';
+import { AppImage } from '../../../shared/ui/app-image';
+import { PrimaryButton } from '../../../shared/ui/primary-button';
+import { Theme } from '../../../shared/theme';
+import { getSharedStyles } from '../../../shared/theme/shared-styles';
 
 // --- CONSTANTES DE RUTA (Sincronizadas con index.tsx) ---
 const STORE_PATH = '/store/query';

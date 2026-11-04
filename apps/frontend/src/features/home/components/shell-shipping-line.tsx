@@ -1,11 +1,11 @@
 /**
- * @file components/features/home/sections/ShellShippingLine.tsx
+ * @file features/home/components/shell-shipping-line.tsx
  * @description Implementación específica para la línea de envíos nacionales.
  */
 
 import React, { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ShellFeatureLine } from './ShellFeatureLine';
+import { ShellFeatureLine } from './shell-feature-line';
 
 export const ShellShippingLine = memo(() => {
   const { t } = useTranslation('home');

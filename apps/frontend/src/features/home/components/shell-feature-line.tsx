@@ -1,5 +1,5 @@
 /**
- * @file components/features/home/sections/ShellFeatureLine.tsx
+ * @file features/home/components/shell-feature-line.tsx
  * @description Layout genérico para líneas editoriales con badges.
  */
 
@@ -15,8 +15,8 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import { Box, Text } from '../../../../shared/ui/base';
-import { Theme } from '../../../../shared/theme';
+import { Box, Text } from '../../../shared/ui/base';
+import { Theme } from '../../../shared/theme';
 
 interface BadgeProps {
   icon: MaterialDesignIconsIconName;

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-require-imports */
 /**
- * @file components/features/home/sections/ShellCategoriesV2.tsx
+ * @file features/home/components/shell-categories-v2.tsx
  * @description Selector de categorías auditado.
  * Optimizado para evitar re-renders innecesarios y con i18n completo.
  */
@@ -21,10 +21,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 
-import { Box, Text } from '../../../../shared/ui/base';
-import { AppImage } from '../../../../shared/ui/app-image';
-import { Theme } from '../../../../shared/theme';
-import { getSharedStyles } from '../../../../shared/theme/shared-styles';
+import { Box, Text } from '../../../shared/ui/base';
+import { AppImage } from '../../../shared/ui/app-image';
+import { Theme } from '../../../shared/theme';
+import { getSharedStyles } from '../../../shared/theme/shared-styles';
 
 // --- CONSTANTES ESTÁTICAS ---
 const BITS = [...Array(6)];

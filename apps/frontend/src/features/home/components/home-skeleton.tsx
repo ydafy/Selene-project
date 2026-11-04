@@ -1,5 +1,5 @@
 /**
- * @file components/features/home/HomeSkeleton.tsx
+ * @file features/home/components/home-skeleton.tsx
  * @description Esqueleto de carga sincronizado con las dimensiones reales de las secciones.
  */
 
@@ -8,7 +8,7 @@ import { Dimensions } from 'react-native';
 import { colors } from '@/shared/theme/tokens';
 import { Box } from '../../../shared/ui/base';
 import { Skeleton } from '../../../shared/ui/skeleton';
-import { GridShell } from './GridShell';
+import { GridShell } from '../../../shared/ui/grid-shell';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 

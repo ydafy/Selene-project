@@ -12,7 +12,7 @@ import { Stack } from 'expo-router';
 import { Box, Text } from '../../shared/ui/base';
 import { GlobalHeader } from '../../shared/ui/global-header';
 import { AppVideo } from '../../shared/ui/app-video';
-import { GridShell } from '../../components/features/home/GridShell';
+import { GridShell } from '../../shared/ui/grid-shell';
 import { Theme } from '../../shared/theme';
 import { getSharedStyles } from '../../shared/theme/shared-styles';
 

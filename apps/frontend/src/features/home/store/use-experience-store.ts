@@ -1,5 +1,5 @@
 /**
- * @file core/store/useExperienceStore.ts
+ * @file features/home/store/use-experience-store.ts
  * @description Gestión de experiencia de usuario con persistencia selectiva.
  */
 

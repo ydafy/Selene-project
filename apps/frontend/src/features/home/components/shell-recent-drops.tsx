@@ -1,5 +1,5 @@
 /**
- * @file components/features/home/sections/ShellRecentDrops.tsx
+ * @file features/home/components/shell-recent-drops.tsx
  * @description Sección de productos recientes auditada.
  * Optimización de renderizado y limpieza de i18n.
  */
@@ -18,12 +18,12 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 
-import { Box, Text } from '../../../../shared/ui/base';
-import { ProductMiniCard } from '../../../../shared/ui/product/product-mini-card';
-import { useProducts } from '../../../../shared/hooks/use-products';
-import { Theme } from '../../../../shared/theme';
-import { getSharedStyles } from '../../../../shared/theme/shared-styles';
-import { getMasonryItemHeight } from '../../../../shared/config/layout';
+import { Box, Text } from '../../../shared/ui/base';
+import { ProductMiniCard } from '../../../shared/ui/product/product-mini-card';
+import { useProducts } from '../../../shared/hooks/use-products';
+import { Theme } from '../../../shared/theme';
+import { getSharedStyles } from '../../../shared/theme/shared-styles';
+import { getMasonryItemHeight } from '../../../shared/config/layout';
 import { Product } from '@selene/types';
 
 const STORE_RESULTS_PATH = '/store/results';

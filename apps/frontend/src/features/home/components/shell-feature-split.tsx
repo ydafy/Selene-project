@@ -3,8 +3,8 @@ import React, { memo } from 'react';
 import { StyleSheet } from 'react-native';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from '@shopify/restyle';
-import { Box, Text } from '../../../../shared/ui/base';
-import { Theme } from '../../../../shared/theme';
+import { Box, Text } from '../../../shared/ui/base';
+import { Theme } from '../../../shared/theme';
 
 // --- CONSTANTES FUERA DEL RENDER ---
 const GRID_LINES = [...Array(5)];

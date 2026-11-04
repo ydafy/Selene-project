@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ShellFeatureSplit } from './ShellFeatureSplit';
+import { ShellFeatureSplit } from './shell-feature-split';
 
 export const ShellBenchmarksFeature = memo(() => {
   const { t } = useTranslation('home');

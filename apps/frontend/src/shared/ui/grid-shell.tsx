@@ -1,12 +1,12 @@
 /**
- * @file components/features/home/GridShell.tsx
+ * @file shared/ui/grid-shell.tsx
  * @description Contenedor maestro con rejilla técnica optimizada.
  * Utiliza memoización para alto rendimiento y constantes para mantenibilidad.
  */
 
 import React, { useMemo, memo } from 'react';
 import { StyleSheet } from 'react-native';
-import { Box } from '../../../shared/ui/base';
+import { Box } from './base';
 import { colors } from '@/shared/theme/tokens';
 
 // --- CONFIGURACIÓN TÉCNICA ---
