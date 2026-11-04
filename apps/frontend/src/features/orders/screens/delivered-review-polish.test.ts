@@ -7,6 +7,7 @@ const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
 const card = read('src/features/orders/components/order-action-card.tsx');
 const flatCard = card.replace(/\s+/g, ' ');
 const detail = read('src/features/orders/screens/order-detail-screen.tsx');
+const hook = read('src/features/orders/hooks/use-order-detail-actions.ts');
 const dialogs = read('src/features/orders/components/order-detail-dialogs.tsx');
 const es = JSON.parse(read('src/shared/i18n/locales/es/orders.json'));
 const en = JSON.parse(read('src/shared/i18n/locales/en/orders.json'));
@@ -120,12 +121,21 @@ describe('delivered review polish', () => {
     expect(detail).toContain(
       'isConfirmingDelivery={actions.confirmDelivery.isLoading}',
     );
-    const handler = detail.slice(
-      detail.indexOf('const handleConfirmDelivery = async () => {'),
-      detail.indexOf('const withOtherShipmentsNote'),
+    expect(detail).toContain('useOrderDetailActions(');
+    const handlerStart = hook.indexOf(
+      'const handleConfirmDelivery = async () => {',
     );
+    const handler = hook.slice(
+      handlerStart,
+      hook.indexOf('\n  };\n', handlerStart),
+    );
+    expect(handler).toContain('if (!currentShipment) {');
+    expect(handler).toContain('setShowDeliveryConfirm(false);');
     expect(handler).toContain('actions.confirmDelivery.execute({');
     expect(handler).toContain('shipmentId: currentShipment.id');
+    expect(handler.replace(/\s+/g, ' ')).toContain(
+      "await actions.confirmDelivery.execute({ shipmentId: currentShipment.id, }); setShowDeliveryConfirm(false); await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); Toast.show({ type: 'success',",
+    );
   });
 
   it('keeps equivalent English copy and interpolation without bank-arrival promises', () => {

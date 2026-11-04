@@ -17,16 +17,9 @@ import React, {
   useRef,
   useMemo,
 } from 'react';
-import {
-  ScrollView,
-  RefreshControl,
-  Linking,
-  Share,
-  Clipboard,
-} from 'react-native';
+import { ScrollView, RefreshControl, Linking } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import * as Haptics from 'expo-haptics';
 import { useTheme } from '@shopify/restyle';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -57,6 +50,7 @@ import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
 import { useOrderById } from '../hooks/use-orders';
 import { useShipmentsByOrder } from '../hooks/use-shipments';
 import { useOrderActions } from '../hooks/use-order-actions';
+import { useOrderDetailActions } from '../hooks/use-order-detail-actions';
 import { useReturnPayment } from '../hooks/use-return-payment';
 import { useShareLabel } from '../hooks/use-share-label';
 import { Theme } from '../../../shared/theme';
@@ -71,7 +65,6 @@ import {
   resolveBuyerCheckoutRecoveryView,
   shouldSuppressShipmentActionsForBuyerRecovery,
 } from '../logic/order-recovery-view';
-import Toast from 'react-native-toast-message';
 import { describeError } from '../../../shared/utils/describe-error';
 
 // --- TIPO AUXILIAR PARA REVIEW (viene en la query de useOrderById pero no en EnrichedOrder) ---
@@ -164,8 +157,6 @@ export function OrderDetailScreen() {
   const { shareLabel, isSharing } = useShareLabel();
 
   // --- 3. LOCAL STATE ---
-  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-  const [showDeliveryConfirm, setShowDeliveryConfirm] = useState(false);
   // V2 per-product reviews: the product the buyer tapped "Calificar producto"
   // for. Drives ReviewModal.productId so the modal scopes the review to the
   // tapped product instead of always the first item in the shipment.
@@ -262,107 +253,25 @@ export function OrderDetailScreen() {
   });
 
   // --- 5. HANDLERS ---
-  const handleConfirmDelivery = async () => {
-    if (!currentShipment) {
-      setShowDeliveryConfirm(false);
-      return;
-    }
-
-    try {
-      await actions.confirmDelivery.execute({
-        shipmentId: currentShipment.id,
-      });
-      setShowDeliveryConfirm(false);
-
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-      Toast.show({
-        type: 'success',
-        text1: t('orders:dialogs.deliverySuccessTitle'),
-        text2: t('orders:dialogs.deliverySuccessMsg'),
-      });
-    } catch {
-      // El hook dispara el toast de error; el diálogo queda abierto para reintentar
-    }
-  };
-
-  // Only one shipment is cancelled; say so when the order has others.
-  const withOtherShipmentsNote = (message: string) =>
-    isMultiShipment
-      ? `${message} ${t('orders:dialogs.otherShipmentsContinue')}`
-      : message;
-
-  const handleCancelOrder = async () => {
-    if (!currentShipment) {
-      setShowCancelConfirm(false);
-      return;
-    }
-
-    try {
-      await actions.cancelOrder.execute({
-        shipmentId: currentShipment.id,
-      });
-      setShowCancelConfirm(false);
-
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-      Toast.show({
-        type: 'info',
-        text1: t('orders:dialogs.cancelSuccessTitle'),
-        text2: withOtherShipmentsNote(
-          t(
-            isSellerCancel
-              ? 'orders:dialogs.cancelSuccessMsgSeller'
-              : 'orders:dialogs.cancelSuccessMsgBuyer',
-          ),
-        ),
-      });
-    } catch {
-      // El hook dispara el toast de error; el diálogo queda abierto para reintentar
-    }
-  };
-  const handleCopyTracking = useCallback((tracking: string) => {
-    Clipboard.setString(tracking);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  }, []);
-
-  const handleOpenLabel = async () => {
-    if (!currentShipment?.label_url) return;
-
-    try {
-      await Linking.openURL(currentShipment.label_url);
-    } catch {
-      Toast.show({
-        type: 'error',
-        text1: t('common:errors.generic'),
-      });
-    }
-  };
-
-  const handleShareLabel = async () => {
-    if (!currentShipment?.label_url) return;
-
-    try {
-      await Share.share({
-        title: t('orders:actions.shareTitle'),
-        message: t('orders:actions.shareMessage', {
-          url: currentShipment.label_url,
-        }),
-        url: currentShipment.label_url,
-      });
-    } catch {
-      Toast.show({
-        type: 'error',
-        text1: t('common:errors.generic'),
-      });
-    }
-  };
-
-  const handleTrack = useCallback((url: string) => {
-    Linking.openURL(url).catch(() =>
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error),
-    );
-  }, []);
+  const {
+    showCancelConfirm,
+    setShowCancelConfirm,
+    showDeliveryConfirm,
+    setShowDeliveryConfirm,
+    withOtherShipmentsNote,
+    handleConfirmDelivery,
+    handleCancelOrder,
+    handleCopyTracking,
+    handleOpenLabel,
+    handleShareLabel,
+    handleTrack,
+  } = useOrderDetailActions({
+    actions,
+    currentShipment,
+    isMultiShipment,
+    isSellerCancel,
+    t,
+  });
 
   // V2 Compat: `enrichOrder` normaliza `review` para que siempre sea un array.
   // Al mover este bloque arriba del Skeleton de carga para cumplir con las reglas de React,

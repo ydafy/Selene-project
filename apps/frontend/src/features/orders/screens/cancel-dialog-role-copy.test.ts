@@ -6,6 +6,12 @@ const FRONTEND = join(import.meta.dir, '..', '..', '..', '..');
 const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
 const detail = read('src/features/orders/screens/order-detail-screen.tsx');
 const flatDetail = detail.replace(/\s+/g, ' ');
+const hook = read('src/features/orders/hooks/use-order-detail-actions.ts');
+const flatHook = hook.replace(/\s+/g, ' ');
+const handlerText = (name: string) => {
+  const start = hook.indexOf(`const ${name} = async () => {`);
+  return hook.slice(start, hook.indexOf('\n  };\n', start));
+};
 const dialogs = read('src/features/orders/components/order-detail-dialogs.tsx');
 const es = JSON.parse(read('src/shared/i18n/locales/es/orders.json'));
 const en = JSON.parse(read('src/shared/i18n/locales/en/orders.json'));
@@ -55,14 +61,32 @@ describe('cancel dialog role copy', () => {
     expect(flatDetail).toContain(
       'const isSellerCancel = currentShipment?.isSeller ?? false;',
     );
-    expect(flatDetail).toContain(
-      "text1: t('orders:dialogs.cancelSuccessTitle')",
+    expect(detail).toContain('useOrderDetailActions({');
+    expect(flatDetail).toContain('isSellerCancel, t, });');
+    expect(flatHook).toContain("text1: t('orders:dialogs.cancelSuccessTitle')");
+  });
+
+  it('keeps the cancel handler guard, call and dialog wiring', () => {
+    const handler = handlerText('handleCancelOrder');
+    expect(handler).toContain('if (!currentShipment) {');
+    expect(handler).toContain('setShowCancelConfirm(false);');
+    expect(handler).toContain('actions.cancelOrder.execute({');
+    expect(handler).toContain('shipmentId: currentShipment.id');
+    expect(handler.replace(/\s+/g, ' ')).toContain(
+      "await actions.cancelOrder.execute({ shipmentId: currentShipment.id, }); setShowCancelConfirm(false); await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); Toast.show({ type: 'info',",
+    );
+    expect(detail).toContain('useOrderDetailActions(');
+    expect(detail).toContain('onConfirmCancel={handleCancelOrder}');
+    expect(detail).toContain(
+      'onDismissCancel={() => setShowCancelConfirm(false)}',
     );
   });
 
   it('drops the buyer-only disclaimer and hardcoded toast fallbacks', () => {
     expect(detail).not.toContain('orders:detail.cancelDisclaimer');
     expect(detail).not.toContain("'orders:dialogs.cancelSuccessMsg'");
+    expect(hook).not.toContain('orders:detail.cancelDisclaimer');
+    expect(hook).not.toContain("'orders:dialogs.cancelSuccessMsg'");
     expect(es.detail.cancelDisclaimer).toBeUndefined();
     expect(en.detail.cancelDisclaimer).toBeUndefined();
   });
@@ -85,7 +109,7 @@ describe('cancel dialog role copy', () => {
     expect(detail).toContain(
       'const isMultiShipment = (order?.shipments?.length ?? 0) > 1;',
     );
-    expect(flatDetail).toContain(
+    expect(flatHook).toContain(
       "const withOtherShipmentsNote = (message: string) => isMultiShipment ? `${message} ${t('orders:dialogs.otherShipmentsContinue')}` : message;",
     );
     expect(detail).toContain('<OrderDetailDialogs');
@@ -93,7 +117,7 @@ describe('cancel dialog role copy', () => {
       "cancelDescription={withOtherShipmentsNote( t( isSellerCancel ? 'orders:dialogs.cancelMsgSeller' : 'orders:dialogs.cancelMsgBuyer', ), )}",
     );
     expect(dialogs).toContain('description={cancelDescription}');
-    expect(flatDetail).toContain(
+    expect(flatHook).toContain(
       "text2: withOtherShipmentsNote( t( isSellerCancel ? 'orders:dialogs.cancelSuccessMsgSeller' : 'orders:dialogs.cancelSuccessMsgBuyer', ), )",
     );
   });
