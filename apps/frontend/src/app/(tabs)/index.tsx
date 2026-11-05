@@ -16,8 +16,8 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 
 import { Box, Text } from '../../shared/ui/base';
 import { GlobalHeader } from '../../shared/ui/global-header';
-import { LocationHeaderButton } from '../../components/features/address/LocationHeaderButton';
-import { AddressPickerModal } from '../../components/features/address/AddressPickerModal';
+import { LocationHeaderButton } from '../../features/address/components/location-header-button';
+import { AddressPickerModal } from '../../features/address/components/address-picker-modal';
 import { GridShell } from '../../components/features/home/GridShell';
 import { HomeSkeleton } from '../../components/features/home/HomeSkeleton';
 
@@ -34,7 +34,7 @@ import { ShellShippingLine } from '../../components/features/home/sections/Shell
 import { ShellPaymentsFeature } from '../../components/features/home/sections/ShellPaymentsFeature';
 
 import { useCheckoutStore } from '../../core/store/useCheckoutStore';
-import { useAddresses } from '../../core/hooks/useAddresses';
+import { useAddresses } from '../../features/address/hooks/use-addresses';
 import { useProducts } from '../../shared/hooks/use-products';
 import { useExperienceStore } from '@/core/store/useExperienceStore';
 import { useUnreadNotifications } from '@/core/hooks/useUnreadNotifications';

@@ -1,9 +1,9 @@
 import { supabase } from '../../shared/lib/supabase';
 import { queryClient } from '../../shared/lib/query-client';
 import { useCheckoutStore } from '../store/useCheckoutStore';
-import { useCartStore } from '../store/useCartStore';
+import { useCartStore } from '../../features/cart/store/use-cart-store';
 import { useDisputeStore } from '../../features/orders/store/use-dispute-store';
-import { useSearchStore } from '../store/useSearchStore';
+import { useSearchStore } from '../../features/search/store/use-search-store';
 import { useProductHistoryStore } from '../store/useProductHistoryStore';
 import { useSellStore } from '../store/useSellStore';
 import { useReviewStore } from '../store/useReviewStore';

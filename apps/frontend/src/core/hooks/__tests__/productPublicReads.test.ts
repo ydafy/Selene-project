@@ -11,7 +11,7 @@ const read = (file: string) => readFileSync(join(root, file), 'utf8');
 const BUYER_LIST_READS = [
   'shared/hooks/use-products.ts',
   'core/store/useRecentlyViewed.ts',
-  'components/features/search/hooks/useSearchProducts.ts',
+  'features/search/hooks/use-search-products.ts',
 ];
 
 const BUYER_POINT_READS = [

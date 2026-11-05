@@ -5,7 +5,7 @@ import { useTheme } from '@shopify/restyle';
 
 import { Box, Text } from '../../../shared/ui/base';
 import { Theme } from '../../../shared/theme';
-import { useAddresses } from '../../../core/hooks/useAddresses';
+import { useAddresses } from '../hooks/use-addresses';
 
 type LocationHeaderButtonProps = {
   onPress: () => void;

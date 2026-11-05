@@ -9,7 +9,7 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 
 import { Box, Text } from '../../shared/ui/base';
 import { SearchBar } from '../../shared/ui/search-bar';
-import { useSearchStore } from '../../core/store/useSearchStore';
+import { useSearchStore } from '../../features/search/store/use-search-store';
 import { Theme } from '../../shared/theme';
 
 export default function SearchQueryScreen() {

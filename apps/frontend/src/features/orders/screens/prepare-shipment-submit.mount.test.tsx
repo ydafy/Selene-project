@@ -145,25 +145,22 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
     mock.module(`../../../${path}`, () => ({
       [name]: name === 'PrimaryButton' ? labelHost(name) : host(name),
     }));
-  mock.module(
-    '../../../components/features/address/AddressPickerModal',
-    () => ({
-      AddressPickerModal: ({
-        innerRef,
-        ...props
-      }: {
-        innerRef: React.RefObject<unknown>;
-      }) => {
-        React.useLayoutEffect(() => {
-          innerRef.current = { dismiss, present: () => {} };
-          return () => {
-            innerRef.current = null;
-          };
-        }, [innerRef]);
-        return React.createElement('AddressPickerModal', props);
-      },
-    }),
-  );
+  mock.module('../../address/components/address-picker-modal', () => ({
+    AddressPickerModal: ({
+      innerRef,
+      ...props
+    }: {
+      innerRef: React.RefObject<unknown>;
+    }) => {
+      React.useLayoutEffect(() => {
+        innerRef.current = { dismiss, present: () => {} };
+        return () => {
+          innerRef.current = null;
+        };
+      }, [innerRef]);
+      return React.createElement('AddressPickerModal', props);
+    },
+  }));
   mock.module('../../../shared/lib/auth/auth-provider', () => ({
     useAuthContext: () => ({ session: { user: { id: viewer } } }),
   }));

@@ -19,7 +19,7 @@ import { PrimaryButton } from '../../shared/ui/primary-button';
 import { ScreenHeader } from '../../shared/ui/screen-header';
 import { Checkbox } from '../../shared/ui/checkbox';
 import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
-import { AddressPickerModal } from '../../components/features/address/AddressPickerModal';
+import { AddressPickerModal } from '../../features/address/components/address-picker-modal';
 import { PaymentMethodPickerModal } from '../../components/features/checkout/PaymentMethodPickerModal';
 
 // Componentes de Checkout
@@ -29,9 +29,9 @@ import { PaymentSection } from '../../components/features/checkout/PaymentSectio
 import { SummaryBreakdown } from '../../components/features/checkout/SummaryBreakdown';
 
 // Stores, Hooks y Servicios
-import { useCartStore } from '../../core/store/useCartStore';
+import { useCartStore } from '../../features/cart/store/use-cart-store';
 import { useCheckoutStore } from '../../core/store/useCheckoutStore';
-import { useAddresses } from '../../core/hooks/useAddresses';
+import { useAddresses } from '../../features/address/hooks/use-addresses';
 import { useOrderCalculations } from '../../core/hooks/useOrderCalculations';
 import { usePaymentMethods } from '../../core/hooks/usePaymentMethods';
 import { formatCurrency } from '../../shared/utils/format';

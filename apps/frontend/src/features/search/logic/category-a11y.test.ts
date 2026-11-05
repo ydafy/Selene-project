@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { buildCategoryCardA11yProps } from './categoryA11y';
+import { buildCategoryCardA11yProps } from './category-a11y';
 
 describe('buildCategoryCardA11yProps', () => {
   it('returns a button role with the category label', () => {

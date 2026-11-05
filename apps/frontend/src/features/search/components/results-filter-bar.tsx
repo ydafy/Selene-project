@@ -1,5 +1,5 @@
 /**
- * @file components/features/search/filters/ResultsFilterBar.tsx
+ * @file features/search/components/results-filter-bar.tsx
  * Versión Final Auditada: Optimizada para scroll y marcas dinámicas.
  */
 
@@ -9,13 +9,13 @@ import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { Box } from '../../../../shared/ui/base';
-import { AppChip } from '../../../../shared/ui/app-chip';
-import { BrandCircle } from '../../../../shared/ui/brand-circle';
-import { theme, Theme } from '../../../../shared/theme';
-import { SearchFilters } from '../hooks/useSearchProducts';
-import { hasBrandIcon } from '../../../../shared/ui/brand-icon';
-import { useCategoryConfig } from '../../search/hooks/useCategoryConfig';
+import { Box } from '../../../shared/ui/base';
+import { AppChip } from '../../../shared/ui/app-chip';
+import { BrandCircle } from '../../../shared/ui/brand-circle';
+import { theme, Theme } from '../../../shared/theme';
+import { SearchFilters } from '../hooks/use-search-products';
+import { hasBrandIcon } from '../../../shared/ui/brand-icon';
+import { useCategoryConfig } from '../hooks/use-category-config';
 
 type ResultsFilterBarProps = {
   filters: SearchFilters;

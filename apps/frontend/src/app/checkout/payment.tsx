@@ -18,7 +18,7 @@ import { OrderPreviewStrip } from '../../components/features/checkout/OrderPrevi
 import { ProductSummaryModal } from '../../components/features/checkout/ProductSummaryModal';
 import { Stack } from 'expo-router';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { useCartStore } from '@/core/store/useCartStore';
+import { useCartStore } from '@/features/cart/store/use-cart-store';
 import {
   useSellerPaymentReadiness,
   isSellerBlocked,

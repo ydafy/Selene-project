@@ -36,16 +36,16 @@ import { GlobalHeader } from '../../../shared/ui/global-header';
 import { ProductCard } from '../../../shared/ui/product/product-card';
 import { ProductFavoriteButton } from '../../../components/features/product/ProductFavoriteButton';
 import { ProductCardSkeleton } from '../../../shared/ui/product/product-card-skeleton';
-import { ResultsFilterBar } from '../../../components/features/search/filters/ResultsFilterBar';
+import { ResultsFilterBar } from '../../../features/search/components/results-filter-bar';
 import { ShowroomInsights } from '../../../features/shop/components/showroom-insights';
 import {
   FilterModal,
   FilterState,
-} from '../../../components/features/search/FilterModal';
-import { SearchFilters } from '../../../components/features/search/hooks/useSearchProducts';
+} from '../../../features/search/components/filter-modal';
+import { SearchFilters } from '../../../features/search/hooks/use-search-products';
 import { AppImage } from '../../../shared/ui/app-image';
 import { EmptyState } from '../../../shared/ui/empty-state';
-import { useSearchProducts } from '../../../components/features/search/hooks/useSearchProducts';
+import { useSearchProducts } from '../../../features/search/hooks/use-search-products';
 import {
   getMasonryItemHeight,
   getTabDockMetrics,
