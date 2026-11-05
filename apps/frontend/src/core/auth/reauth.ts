@@ -10,11 +10,10 @@ import {
   type ReauthDeps,
   type ReauthResult,
 } from './reauth.logic';
-import { signOutUser } from './signOut';
 import { getCaptchaToken } from './captcha/captcha';
 import { reauthSignInWithPassword } from './captchaAuth.logic';
 
-const reauthDeps: ReauthDeps = {
+const reauthDeps: Omit<ReauthDeps, 'signOutLocal'> = {
   googleCancelledCode: statusCodes.SIGN_IN_CANCELLED,
   getSnapshot: async () => {
     const { data } = await supabase.auth.getSession();
@@ -57,10 +56,14 @@ const reauthDeps: ReauthDeps = {
     });
     return !error && data.user?.id === snapshot.userId;
   },
-  signOutLocal: () => signOutUser('local'),
 };
 
-/** Re-signs in the current user with the real Supabase and Google clients. */
+/**
+ * Re-signs in the current user with the real Supabase and Google clients.
+ * `signOutLocal` is the context's sign-out, injected by the caller.
+ */
 export const reauthenticateCurrentUser = (
   credential: ReauthCredential,
-): Promise<ReauthResult> => reauthenticate(credential, reauthDeps);
+  signOutLocal: ReauthDeps['signOutLocal'],
+): Promise<ReauthResult> =>
+  reauthenticate(credential, { ...reauthDeps, signOutLocal });

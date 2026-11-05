@@ -27,6 +27,8 @@ import { paperTheme, theme, navigationTheme } from '../shared/theme';
 
 // Proveedores y Hooks
 import { AuthProvider } from '../shared/lib/auth/auth-provider';
+import type { SignOutWiring } from '../shared/lib/auth/create-sign-out';
+import { resetUserQueries } from '../shared/lib/auth/user-queries.logic';
 import { AuthModalProvider } from '../core/auth/AuthModalProvider';
 import { CaptchaProvider } from '../core/auth/captcha/CaptchaProvider';
 import { NotificationWatcher } from '../features/notifications/components/notification-watcher';
@@ -37,6 +39,14 @@ import { PushTapHandler } from '../features/notifications/components/push-tap-ha
 import { OfflineNotice } from '../shared/ui/offline-notice';
 
 import { queryClient } from '../shared/lib/query-client';
+import { useCheckoutStore } from '../features/checkout/store/use-checkout-store';
+import { useCartStore } from '../features/cart/store/use-cart-store';
+import { useDisputeStore } from '../features/orders/store/use-dispute-store';
+import { useSearchStore } from '../features/search/store/use-search-store';
+import { useProductHistoryStore } from '../shared/store/use-product-history-store';
+import { useSellStore } from '../features/sell/store/use-sell-store';
+import { useReviewStore } from '../features/orders/store/use-review-store';
+import { pushRegistrar } from '../features/notifications/lib/push-registration';
 
 import { SystemGuard } from '../shared/ui/system-guard';
 
@@ -57,6 +67,38 @@ if (GOOGLE_ID) {
 }
 
 const STRIPE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+
+// D. Sign-out: everything tied to the signed-in user. This is the only layer that may import
+// every feature, so the list lives here and `AuthProvider` receives it. A store that persists
+// to AsyncStorage also clears its key, so no previous user's data stays on the device
+// (`sign-out-resets.guard.test.ts` fails when one is missing). Device preferences such as
+// `useExperienceStore` are deliberately kept.
+const SIGN_OUT_WIRING: SignOutWiring = {
+  userDataResets: [
+    () => resetUserQueries(queryClient),
+    () => useCheckoutStore.getState().resetCheckout(),
+    () => {
+      useCartStore.getState().clearCart();
+      useCartStore.persist.clearStorage();
+    },
+    () => {
+      useDisputeStore.getState().reset();
+      useDisputeStore.persist.clearStorage();
+    },
+    () => {
+      useSearchStore.getState().clearHistory();
+      useSearchStore.persist.clearStorage();
+    },
+    () => {
+      useProductHistoryStore.getState().clearHistory();
+      useProductHistoryStore.persist.clearStorage();
+    },
+    () => useSellStore.getState().resetDraft(),
+    () => useReviewStore.getState().resetIgnored(),
+  ],
+  unregisterPush: pushRegistrar.unregister,
+  signOutFinished: pushRegistrar.signOutFinished,
+};
 
 // --- COMPONENTE SPLASH SCREEN ANIMADA (Transición fluida sin parpadeos) ---
 function AnimatedSplashOverlay({
@@ -140,7 +182,7 @@ export default function RootLayout() {
         <PaperProvider theme={paperTheme}>
           <QueryClientProvider client={queryClient}>
             <NavThemeProvider value={navigationTheme}>
-              <AuthProvider>
+              <AuthProvider signOutWiring={SIGN_OUT_WIRING}>
                 <CaptchaProvider>
                   <AuthModalProvider>
                     <OfflineNotice />

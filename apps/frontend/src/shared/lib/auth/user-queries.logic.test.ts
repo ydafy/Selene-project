@@ -49,7 +49,7 @@ describe('resetUserQueries', () => {
     const home = observe(client, ['products', 'home'], ['listing']);
     await sleep(50);
 
-    // SIGNED_OUT listener cleanup, the screen refetches, then signOutUser cleans again.
+    // SIGNED_OUT listener cleanup, the screen refetches, then the context's signOut cleans again.
     resetUserQueries(client);
     home.observer.setOptions(home.options);
     await sleep(5);
