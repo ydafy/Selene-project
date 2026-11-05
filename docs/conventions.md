@@ -10,7 +10,7 @@ Imports go one way: `shared -> features -> app`.
 - A feature never imports another feature. If two features need the same code, move it to `shared`.
 - Routes compose features. A route imports screens from features and shared code.
 
-`apps/frontend/tests/guards/frontend-import-boundaries.test.ts` is a `bun:test` that scans imports and already forbids imports of `supabase/functions/`. The layout migration extends it to enforce this direction, and adds the same rule to ESLint (`import/no-restricted-paths`, as bulletproof-react does) so the editor flags a wrong import as you type. Until then, review enforces it.
+`apps/frontend/tests/guards/frontend-import-boundaries.test.ts` is a `bun:test` that scans imports, forbids imports of `supabase/functions/`, and enforces this direction. ESLint enforces the same rule (`import-x/no-restricted-paths` in `eslint.config.js`, as bulletproof-react does), so the editor flags a wrong import as you type. When a feature needs another feature's piece, compose both in the route or move the piece to `shared/`.
 
 ## Keep routes thin
 
