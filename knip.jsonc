@@ -1,0 +1,22 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
+  // CI runs `bun run knip`, which checks apps/frontend only (#134, B3).
+  "workspaces": {
+    ".": {
+      // Loading playwright.local.config.ts throws unless the local Supabase stack
+      // runs, and the root e2e specs are outside the frontend check.
+      "playwright": false,
+    },
+    "apps/frontend": {
+      // `bun test` finds these by name; nothing imports them.
+      "entry": ["src/**/*.test.{ts,tsx}", "tests/**/*.test.{ts,tsx}"],
+      "ignoreDependencies": [
+        // @hcaptcha/react-native-hcaptcha imports it without declaring it; the
+        // Android bundle fails without it (odd/tasks/frontend-layout.md, L10).
+        "prop-types",
+        // Named only in Expo config (app.json, app.config.ts), never imported.
+        "expo-updates",
+      ],
+    },
+  },
+}

@@ -26,6 +26,8 @@ jobs:
       - run: bun run lint
       # Prettier on every file, not only the staged ones lint-staged formats.
       - run: bun run format:check
+      # Unused files, exports and dependencies in apps/frontend (knip.jsonc).
+      - run: bun run knip
       # `expo start` writes this gitignored file locally; without it the frontend
       # typecheck runs without Expo's types and misses errors developers see (#174).
       - name: Write apps/frontend/expo-env.d.ts
