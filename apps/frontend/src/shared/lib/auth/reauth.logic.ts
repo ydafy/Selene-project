@@ -1,5 +1,5 @@
 /**
- * @file features/settings/logic/reauth.logic.ts
+ * @file shared/lib/auth/reauth.logic.ts
  * @description Pure recent-sign-in step for sensitive actions (account
  * deletion, S8). A fresh sign-in gives the session a new `amr` timestamp,
  * which is what the Edge Function checks. The step must never switch the
@@ -7,11 +7,8 @@
  * session otherwise.
  */
 
-import {
-  GENERIC_ERROR_KEY,
-  mapAuthErrorKey,
-} from '../../../shared/lib/auth/auth-errors.logic';
-import { resolveGoogleError } from '../../auth/logic/google-auth.logic';
+import { GENERIC_ERROR_KEY, mapAuthErrorKey } from './auth-errors.logic';
+import { resolveGoogleError } from './google-auth.logic';
 
 export type ReauthMethod = 'password' | 'google';
 

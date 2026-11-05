@@ -1,5 +1,5 @@
 /**
- * @file features/profile/logic/edit-profile-validation.ts
+ * @file shared/utils/edit-profile-validation.ts
  * @description Pure validator for the /profile/edit modal username field.
  * Covers CONF-015. Regex matches the existing AccountSection rule
  * (letters, digits, underscore, dot) and length 3..30 per the new modal spec.

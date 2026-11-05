@@ -164,7 +164,7 @@ describe('orders index role-aware navigation guard', () => {
 });
 
 describe('ReviewModal shipment-aware seller target guard', () => {
-  const modal = read('src/features/profile/components/review-modal.tsx');
+  const modal = read('src/features/orders/components/review-modal.tsx');
 
   it('accepts an optional sellerId and falls back to the first shipment seller', () => {
     expect(modal).toContain('sellerId?: string;');

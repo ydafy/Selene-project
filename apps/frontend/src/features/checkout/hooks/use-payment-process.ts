@@ -23,8 +23,8 @@ import * as Crypto from 'expo-crypto';
 import { useTheme } from '@shopify/restyle';
 import { Theme } from '../../../shared/theme';
 
-import { useCartStore } from '../../cart/store/use-cart-store';
-import { useCheckoutStore } from '../store/use-checkout-store';
+import { useCartStore } from '../../../shared/store/use-cart-store';
+import { useCheckoutStore } from '../../../shared/store/use-checkout-store';
 import { supabase } from '../../../shared/lib/supabase';
 import { invokeEdge } from '../../../shared/lib/edge-client';
 import {

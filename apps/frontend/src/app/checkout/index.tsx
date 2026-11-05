@@ -19,19 +19,19 @@ import { PrimaryButton } from '../../shared/ui/primary-button';
 import { ScreenHeader } from '../../shared/ui/screen-header';
 import { Checkbox } from '../../shared/ui/checkbox';
 import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
-import { AddressPickerModal } from '../../features/address/components/address-picker-modal';
+import { AddressPickerModal } from '../../shared/ui/address-picker-modal';
 import { PaymentMethodPickerModal } from '../../features/checkout/components/payment-method-picker-modal';
 
 // Componentes de Checkout
 import { CheckoutItem } from '../../features/checkout/components/checkout-item';
-import { AddressSection } from '../../features/address/components/address-section';
+import { AddressSection } from '../../shared/ui/address-section';
 import { PaymentSection } from '../../features/checkout/components/payment-section';
 import { SummaryBreakdown } from '../../features/checkout/components/summary-breakdown';
 
 // Stores, Hooks y Servicios
-import { useCartStore } from '../../features/cart/store/use-cart-store';
-import { useCheckoutStore } from '../../features/checkout/store/use-checkout-store';
-import { useAddresses } from '../../features/address/hooks/use-addresses';
+import { useCartStore } from '../../shared/store/use-cart-store';
+import { useCheckoutStore } from '../../shared/store/use-checkout-store';
+import { useAddresses } from '../../shared/hooks/use-addresses';
 import { useOrderCalculations } from '../../features/orders/hooks/use-order-calculations';
 import { usePaymentMethods } from '../../features/checkout/hooks/use-payment-methods';
 import { formatCurrency } from '../../shared/utils/format';

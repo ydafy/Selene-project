@@ -7,7 +7,7 @@ import { ConfirmDialog } from '../../../shared/ui/confirm-dialog';
 import { FormTextInput } from '../../../shared/ui/form-text-input';
 import { SettingsRow } from '../../../shared/ui/settings-row';
 import { supabase } from '../../../shared/lib/supabase';
-import { isGoogleOnlyAccount } from '../logic/reauth.logic';
+import { isGoogleOnlyAccount } from '../../../shared/lib/auth/reauth.logic';
 import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
 import {
   validatePasswordChange,

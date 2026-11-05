@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { Box, Text } from '../../../shared/ui/base';
 import { Theme } from '../../../shared/theme';
 import { usePaymentMethods } from '../hooks/use-payment-methods';
-import { useCheckoutStore } from '../store/use-checkout-store';
+import { useCheckoutStore } from '../../../shared/store/use-checkout-store';
 import { PaymentMethod } from '@selene/types';
 import { EmptyState } from '../../../shared/ui/empty-state';
 import { ErrorState } from '../../../shared/ui/error-state'; // Importado

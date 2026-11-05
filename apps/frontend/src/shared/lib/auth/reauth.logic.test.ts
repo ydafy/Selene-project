@@ -237,7 +237,16 @@ describe('settings sections (C7)', () => {
   it('decide Google-only accounts from identities, not app_metadata.provider', () => {
     for (const file of ['account-section.tsx', 'security-section.tsx']) {
       const src = readFileSync(
-        join(import.meta.dir, '..', 'components', file),
+        join(
+          import.meta.dir,
+          '..',
+          '..',
+          '..',
+          'features',
+          'settings',
+          'components',
+          file,
+        ),
         'utf8',
       );
       expect(src).toContain('isGoogleOnlyAccount(session?.user ?? null)');

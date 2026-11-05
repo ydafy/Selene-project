@@ -109,7 +109,7 @@ describe('orders detail screen V2 per-product review guards', () => {
 });
 
 describe('ReviewModal V2 product-name polish guard', () => {
-  const modal = read('src/features/profile/components/review-modal.tsx');
+  const modal = read('src/features/orders/components/review-modal.tsx');
 
   it('accepts an optional productName prop and renders it under the subtitle when provided', () => {
     expect(modal).toContain('productName?: string;');

@@ -1,13 +1,10 @@
 /**
- * @file features/auth/logic/google-auth.logic.ts
+ * @file shared/lib/auth/google-auth.logic.ts
  * @description Pure decision for Google sign-in failures: a user cancel stays
  * silent, everything else becomes an i18n key (never a raw message).
  */
 
-import {
-  GENERIC_ERROR_KEY,
-  mapAuthErrorKey,
-} from '../../../shared/lib/auth/auth-errors.logic';
+import { GENERIC_ERROR_KEY, mapAuthErrorKey } from './auth-errors.logic';
 
 export const GOOGLE_NO_ID_TOKEN = 'google_no_id_token';
 export const GOOGLE_ERROR_KEY = 'auth:errors.googleSignInFailed';

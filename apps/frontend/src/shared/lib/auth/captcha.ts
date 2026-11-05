@@ -1,5 +1,5 @@
 /**
- * @file features/auth/logic/captcha.ts
+ * @file shared/lib/auth/captcha.ts
  * @description Process-wide access to the mounted CAPTCHA provider, for the
  * auth calls that live outside React (hooks and `reauth.ts`).
  */

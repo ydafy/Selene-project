@@ -1,5 +1,5 @@
 /**
- * @file features/auth/logic/captcha.logic.ts
+ * @file shared/lib/auth/captcha.logic.ts
  * @description Provider-agnostic CAPTCHA contract. Auth calls only know
  * `getCaptchaToken()`; the widget (hCaptcha today, Turnstile later) lives in
  * the provider component that registers itself as a `CaptchaProviderHandle`.

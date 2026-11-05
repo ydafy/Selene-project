@@ -10,7 +10,7 @@ import * as Haptics from 'expo-haptics';
 import { Box, Text } from '../../shared/ui/base';
 import { PrimaryButton } from '../../shared/ui/primary-button';
 import { Theme } from '../../shared/theme';
-import { useCheckoutStore } from '../../features/checkout/store/use-checkout-store';
+import { useCheckoutStore } from '../../shared/store/use-checkout-store';
 import { offerPushPermission } from '../../features/notifications/lib/push-permission';
 
 // Mount entrance: scale 0.5 -> 1 with a fade, driven by a spring.

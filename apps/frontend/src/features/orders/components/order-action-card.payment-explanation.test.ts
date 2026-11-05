@@ -9,8 +9,7 @@ const read = (path: string) =>
 // Native imports are unavailable in Bun; pin the UI wiring with source guards.
 describe('shared seller payment explanation', () => {
   it('uses one shared body in onboarding success and the seller payment dialog', () => {
-    const component =
-      'src/features/payments/components/seller-payment-explanation.tsx';
+    const component = 'src/shared/ui/seller-payment-explanation.tsx';
     expect(existsSync(join(FRONTEND, component))).toBe(true);
     const shared = read(component);
     for (const key of ['buyerReview', 'release', 'bank', 'delays']) {

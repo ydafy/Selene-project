@@ -25,10 +25,10 @@ import { PrimaryButton } from '../../shared/ui/primary-button';
 import { ErrorState } from '../../shared/ui/error-state';
 import { Skeleton } from '../../shared/ui/skeleton';
 import { WizardSteps } from '../../features/sell/components/wizard-steps';
-import { SellerPaymentExplanation } from '../../features/payments/components/seller-payment-explanation';
+import { SellerPaymentExplanation } from '../../shared/ui/seller-payment-explanation';
 import { AppImageViewer } from '../../shared/ui/app-image-viewer';
 import { useAuthContext } from '../../shared/lib/auth/auth-provider';
-import { useConnectOnboarding } from '../../features/payments/hooks/use-connect-onboarding';
+import { useConnectOnboarding } from '../../shared/hooks/use-connect-onboarding';
 import {
   CONNECT_ONBOARDING_SUCCESS_CTA_ROUTE,
   resolveConnectOnboardingUiState,

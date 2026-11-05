@@ -10,7 +10,7 @@ import { CartSummary } from '../../features/cart/components/cart-summary';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { ScreenHeader } from '../../shared/ui/screen-header';
 import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
-import { useCartStore } from '../../features/cart/store/use-cart-store';
+import { useCartStore } from '../../shared/store/use-cart-store';
 import { Theme } from '../../shared/theme';
 import { Product } from '@selene/types';
 import { useState } from 'react';

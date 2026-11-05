@@ -210,33 +210,13 @@ for await (const importer of new Bun.Glob('**/*.{ts,tsx}').scan({
 // shrink: fix a violation, then delete its entry. Remove the array and the
 // equality check when it is empty.
 const KNOWN_VIOLATIONS: string[] = [
-  'features/auth/logic/register-username.logic.ts -> features/profile/logic/edit-profile-validation',
   'features/cart/hooks/use-cart-validation.ts -> features/orders/logic/order-service',
-  'features/checkout/hooks/use-payment-process.ts -> features/cart/store/use-cart-store',
   'features/checkout/logic/connect-payment.ts -> features/payments/logic/stripe-fee-gross-up',
-  'features/orders/components/evidence-upload-section.mount.test.tsx -> features/address/components/address-section',
-  'features/orders/components/order-action-card.tsx -> features/payments/components/seller-payment-explanation',
-  'features/orders/components/order-detail-dialogs.tsx -> features/profile/components/review-modal',
   'features/orders/hooks/use-order-calculations.ts -> features/payments/logic/stripe-fee-gross-up',
-  'features/orders/hooks/use-prepare-shipment.ts -> features/payments/hooks/use-connect-onboarding',
-  'features/orders/screens/prepare-shipment-screen.tsx -> features/address/components/address-picker-modal',
-  'features/orders/screens/prepare-shipment-screen.tsx -> features/address/components/address-section',
   'features/orders/screens/prepare-shipment-submit.mount.test.tsx -> app/profile/orders/prepare/[id]',
-  'features/orders/screens/prepare-shipment-submit.mount.test.tsx -> features/address/components/address-picker-modal',
-  'features/orders/screens/prepare-shipment-submit.mount.test.tsx -> features/payments/hooks/use-connect-onboarding',
-  'features/product/hooks/use-product-cart.ts -> features/cart/store/use-cart-store',
   'features/product/hooks/use-product-cart.ts -> features/payments/hooks/use-seller-payment-readiness',
   'features/product/hooks/use-product-favorite.test.tsx -> features/notifications/lib/push-permission',
   'features/product/hooks/use-product-favorite.ts -> features/notifications/lib/push-permission',
-  'features/profile/components/connect-incomplete-banner.tsx -> features/payments/hooks/use-connect-onboarding',
-  'features/profile/components/connect-incomplete-banner.tsx -> features/payments/logic/connect-banner',
-  'features/profile/components/profile-actions-bar.tsx -> features/address/components/address-picker-modal',
-  'features/profile/components/profile-actions-bar.tsx -> features/address/hooks/use-addresses',
-  'features/profile/components/profile-actions-bar.tsx -> features/checkout/store/use-checkout-store',
-  'features/settings/logic/reauth.logic.ts -> features/auth/logic/google-auth.logic',
-  'features/settings/logic/reauth.ts -> features/auth/logic/captcha',
-  'features/settings/logic/reauth.ts -> features/auth/logic/captcha-auth.logic',
-  'features/settings/logic/reauth.ts -> features/auth/logic/google-auth.logic',
 ];
 
 describe('dependency rule', () => {

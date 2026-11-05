@@ -8,12 +8,12 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import ConfirmHcaptcha from '@hcaptcha/react-native-hcaptcha';
 import { useTranslation } from 'react-i18next';
-import { registerCaptchaProvider } from '../logic/captcha';
+import { registerCaptchaProvider } from '../../../shared/lib/auth/captcha';
 import {
   CAPTCHA_CANCELLED_CODE,
   CAPTCHA_FAILED_CODE,
   CaptchaError,
-} from '../logic/captcha.logic';
+} from '../../../shared/lib/auth/captcha.logic';
 import {
   interpretHcaptchaEvent,
   type HcaptchaEventLike,
