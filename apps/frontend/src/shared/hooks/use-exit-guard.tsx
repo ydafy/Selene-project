@@ -3,13 +3,20 @@ import React, { useState, useCallback, useRef } from 'react';
 import { usePreventRemove } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { ConfirmDialog } from '../ui/confirm-dialog'; // Ajusta la ruta si es necesario
-import { useSellStore } from '../../core/store/useSellStore';
 import { routeBlockedRemove } from '../utils/navigation-guard';
 
-export const useExitGuard = (enabled: boolean = true) => {
+type ExitGuardOptions = {
+  enabled?: boolean;
+  /** Runs when the user confirms leaving, right before the blocked action replays. */
+  onDiscard: () => void;
+};
+
+export const useExitGuard = ({
+  enabled = true,
+  onDiscard,
+}: ExitGuardOptions) => {
   const [showDialog, setShowDialog] = useState(false);
   const { t } = useTranslation('common');
-  const { resetDraft } = useSellStore();
 
   // repeat() apaga la prevención y repite la acción bloqueada; se guarda para
   // llamarla si el usuario confirma. Despachar la acción a mano no alcanza: con
@@ -35,9 +42,9 @@ export const useExitGuard = (enabled: boolean = true) => {
     if (!repeat) return;
     pendingRepeat.current = null;
 
-    resetDraft(); // Limpiamos el store porque el usuario decidió salir
+    onDiscard(); // El usuario decidió salir: el llamador descarta su estado
     repeat();
-  }, [resetDraft]);
+  }, [onDiscard]);
 
   const handleCancel = useCallback(() => {
     setShowDialog(false);

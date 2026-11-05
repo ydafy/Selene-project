@@ -13,12 +13,11 @@ import { PublicProduct } from '@selene/types';
 
 import { Box, Text } from '../base';
 import { AppImage } from '../app-image';
-import { ProductFavoriteButton } from '../../../components/features/product/ProductFavoriteButton';
 import { Theme } from '../../theme';
 import { formatCurrency } from '../../utils/format';
 import { getSharedStyles } from '../../theme/shared-styles';
 import { isInVerification } from '../../utils/product-listing-status';
-import { VerificationPill } from '../../../components/features/product/VerificationPill';
+import { VerificationPill } from './verification-pill';
 import { colors } from '@/shared/theme/tokens';
 
 type ProductCardProps = {
@@ -27,8 +26,9 @@ type ProductCardProps = {
   onPress(product: PublicProduct): void;
   imageHeight: number;
   index?: number;
-  onFavoriteToggle?: (productId: string, willBeFavorite: boolean) => void;
-  onBeforeUnfavorite?: (productId: string) => boolean | Promise<boolean>;
+  // Favourite button slot: the feature that owns favourites renders it. Pass a
+  // stable function so the memoized card does not re-render.
+  renderFavoriteButton?: (product: PublicProduct) => React.ReactNode;
 };
 
 export const ProductCard = memo(
@@ -37,8 +37,7 @@ export const ProductCard = memo(
     onPress,
     imageHeight,
     index = 0,
-    onFavoriteToggle,
-    onBeforeUnfavorite,
+    renderFavoriteButton,
   }: ProductCardProps) => {
     const theme = useTheme<Theme>();
     const sharedStyles = getSharedStyles(theme);
@@ -172,24 +171,21 @@ export const ProductCard = memo(
                   )}
 
                   {/* Botón de Favoritos */}
-                  <Box position="absolute" top={4} right={4}>
-                    <Box
-                      backgroundColor="cardBackground"
-                      borderRadius="full"
-                      opacity={0.8}
-                      width={28}
-                      height={28}
-                      justifyContent="center"
-                      alignItems="center"
-                    >
-                      <ProductFavoriteButton
-                        productId={product.id}
-                        size={16}
-                        onFavoriteToggle={onFavoriteToggle}
-                        onBeforeUnfavorite={onBeforeUnfavorite}
-                      />
+                  {renderFavoriteButton && (
+                    <Box position="absolute" top={4} right={4}>
+                      <Box
+                        backgroundColor="cardBackground"
+                        borderRadius="full"
+                        opacity={0.8}
+                        width={28}
+                        height={28}
+                        justifyContent="center"
+                        alignItems="center"
+                      >
+                        {renderFavoriteButton(product)}
+                      </Box>
                     </Box>
-                  </Box>
+                  )}
                 </>
               )}
             </Box>

@@ -34,9 +34,10 @@ import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { Box, Text } from '../../../shared/ui/base';
 import { GlobalHeader } from '../../../shared/ui/global-header';
 import { ProductCard } from '../../../shared/ui/product/product-card';
+import { ProductFavoriteButton } from '../../../components/features/product/ProductFavoriteButton';
 import { ProductCardSkeleton } from '../../../shared/ui/product/product-card-skeleton';
 import { ResultsFilterBar } from '../../../components/features/search/filters/ResultsFilterBar';
-import { ShowroomInsights } from '../../../components/features/shop/showroom/ShowroomInsights';
+import { ShowroomInsights } from '../../../features/shop/components/showroom-insights';
 import {
   FilterModal,
   FilterState,
@@ -48,9 +49,9 @@ import { useSearchProducts } from '../../../components/features/search/hooks/use
 import {
   getMasonryItemHeight,
   getTabDockMetrics,
-} from '../../../core/constants/layout';
+} from '../../../shared/config/layout';
 import { Theme } from '../../../shared/theme';
-import { Product } from '@selene/types';
+import { Product, PublicProduct } from '@selene/types';
 
 //Imagenes
 import gpuHero from '@/assets/images/shop/news/gpu/gpuHero2.webp';
@@ -65,6 +66,10 @@ import ddr4Ram from '@/assets/images/shop/news/ram/ddr4Ram.webp';
 import moboHero from '@/assets/images/shop/news/mobo/moboHero.webp';
 import moboAtx from '@/assets/images/shop/news/mobo/moboAtx.webp';
 import micro_atxMobo from '@/assets/images/shop/news/mobo/micro_atxMobo.webp';
+
+const renderFavoriteButton = (product: PublicProduct) => (
+  <ProductFavoriteButton productId={product.id} size={16} />
+);
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const HERO_HEIGHT = SCREEN_HEIGHT * 0.6;
@@ -292,6 +297,7 @@ export default function ShowroomScreen() {
             }
             imageHeight={getMasonryItemHeight(product.aspect_ratio)}
             index={index}
+            renderFavoriteButton={renderFavoriteButton}
           />
         </Box>
       );

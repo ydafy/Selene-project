@@ -11,7 +11,7 @@ import {
   PackagePresetsMap,
   useSystemConfig,
 } from '../../../shared/hooks/use-system-config';
-import { authenticateAsync } from '../../../core/utils/biometrics';
+import { authenticateAsync } from '../../../shared/lib/biometrics';
 import { useConnectOnboarding } from '../../../core/hooks/useConnectOnboarding';
 import { useOrderById } from './use-orders';
 import { useOrderActions } from './use-order-actions';

@@ -8,7 +8,7 @@ const read = (file: string) =>
 const explicitPublicStatuses = /\.in\('status', \['VERIFIED', 'SOLD'\]\)/;
 
 test('useProducts pins status explicitly instead of relying on RLS', () => {
-  expect(read('useProducts.ts')).toContain(
+  expect(read('../../shared/hooks/use-products.ts')).toContain(
     ".in('status', resolveProductStatuses(options))",
   );
 });
@@ -16,7 +16,7 @@ test('useProducts pins status explicitly instead of relying on RLS', () => {
 // products_public already enforces deleted_at IS NULL and hides HIDDEN rows
 // (T4d2); it has no deleted_at column, so filtering on it would fail.
 test('useProducts keeps verifiedOnly, ordering and limit on the view', () => {
-  const source = read('useProducts.ts');
+  const source = read('../../shared/hooks/use-products.ts');
   expect(source).toContain(".from('products_public')");
   expect(source).not.toContain('deleted_at');
   expect(source).not.toContain(".neq('status', 'HIDDEN')");
@@ -31,7 +31,7 @@ test.each([
   'useProduct.ts',
   'useProductFavorite.ts',
   'useMyListings.ts',
-  'useVerificationLogic.ts',
+  '../../features/verify/hooks/use-verification-logic.ts',
 ])('%s has no VERIFIED-only filter', (file) => {
   const source = read(file);
   expect(source).not.toMatch(explicitPublicStatuses);

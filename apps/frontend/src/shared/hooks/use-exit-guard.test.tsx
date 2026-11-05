@@ -26,8 +26,13 @@ if (process.env.SELENE_EXIT_GUARD_CHILD !== '1') {
 
   const dispatch = mock<(action: Action) => void>(() => {});
   // SDK 58: repeat() turns prevention off and replays the blocked action.
-  const repeated = mock<(action: Action) => void>(() => {});
-  const resetDraft = mock(() => {});
+  const order: string[] = [];
+  const repeated = mock<(action: Action) => void>(() => {
+    order.push('repeat');
+  });
+  const resetDraft = mock(() => {
+    order.push('discard');
+  });
   let guard: { prevent: boolean; callback: Callback } | null = null;
   let dialog: {
     visible: boolean;
@@ -50,9 +55,6 @@ if (process.env.SELENE_EXIT_GUARD_CHILD !== '1') {
   mock.module('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key }),
   }));
-  mock.module('../../core/store/useSellStore', () => ({
-    useSellStore: () => ({ resetDraft }),
-  }));
   mock.module('../ui/confirm-dialog', () => ({
     ConfirmDialog: (props: NonNullable<typeof dialog>) => {
       dialog = props;
@@ -64,13 +66,14 @@ if (process.env.SELENE_EXIT_GUARD_CHILD !== '1') {
   const { useExitGuard } = await import('./use-exit-guard');
 
   const Harness = ({ enabled }: { enabled: boolean }) => {
-    const { ExitDialog } = useExitGuard(enabled);
+    const { ExitDialog } = useExitGuard({ enabled, onDiscard: resetDraft });
     return React.createElement(ExitDialog);
   };
   const mount = async (enabled: boolean) => {
     dispatch.mockClear();
     repeated.mockClear();
     resetDraft.mockClear();
+    order.length = 0;
     dialog = null;
     return render(React.createElement(Harness, { enabled }));
   };
@@ -116,6 +119,7 @@ if (process.env.SELENE_EXIT_GUARD_CHILD !== '1') {
       expect(repeated).toHaveBeenCalledWith(action);
       expect(dispatch).not.toHaveBeenCalled();
       expect(resetDraft).toHaveBeenCalledTimes(1);
+      expect(order).toEqual(['discard', 'repeat']);
       expect(dialog!.visible).toBe(false);
     },
   );

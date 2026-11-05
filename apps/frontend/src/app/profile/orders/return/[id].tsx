@@ -19,7 +19,7 @@ import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog';
 import { EvidenceUploadSection } from '@/features/orders/components/evidence-upload-section';
 import { useOrderById } from '../../../../features/orders/hooks/use-orders';
 import { useOrderActions } from '../../../../features/orders/hooks/use-order-actions';
-import { authenticateAsync } from '../../../../core/utils/biometrics';
+import { authenticateAsync } from '../../../../shared/lib/biometrics';
 import Animated, { withSpring, withTiming } from 'react-native-reanimated';
 import { theme } from '@/shared/theme';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';

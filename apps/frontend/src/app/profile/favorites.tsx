@@ -11,6 +11,7 @@ import { GlobalHeader } from '../../shared/ui/global-header';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { ErrorState } from '../../shared/ui/error-state';
 import { ProductCard } from '../../shared/ui/product/product-card';
+import { ProductFavoriteButton } from '../../components/features/product/ProductFavoriteButton';
 import { ProductCardSkeleton } from '../../shared/ui/product/product-card-skeleton';
 import { PrimaryButton } from '../../shared/ui/primary-button';
 import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
@@ -18,7 +19,7 @@ import { useAllFavorites } from '../../core/hooks/useAllFavorites';
 import { useAuthContext } from '../../shared/lib/auth/auth-provider';
 import { useSeleneRefresh } from '../../shared/hooks/use-selene-refresh';
 import { Theme } from '../../shared/theme';
-import type { Product } from '@selene/types';
+import type { Product, PublicProduct } from '@selene/types';
 
 export default function FavoritesScreen() {
   const { t } = useTranslation('profile');
@@ -126,6 +127,18 @@ export default function FavoritesScreen() {
     [],
   );
 
+  const renderFavoriteButton = useCallback(
+    (product: PublicProduct) => (
+      <ProductFavoriteButton
+        productId={product.id}
+        size={16}
+        onFavoriteToggle={handleFavoriteToggle}
+        onBeforeUnfavorite={handleBeforeUnfavorite}
+      />
+    ),
+    [handleFavoriteToggle, handleBeforeUnfavorite],
+  );
+
   // Show skeletons on initial load AND during pull-to-refresh (user gesture).
   // Background refetches from mutation invalidation do NOT trigger skeletons.
   const showSkeletons = isLoading || isRefreshing;
@@ -166,8 +179,7 @@ export default function FavoritesScreen() {
               onPress={handleProductPress}
               imageHeight={200}
               index={index}
-              onFavoriteToggle={handleFavoriteToggle}
-              onBeforeUnfavorite={handleBeforeUnfavorite}
+              renderFavoriteButton={renderFavoriteButton}
             />
           )}
           ListEmptyComponent={

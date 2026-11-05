@@ -15,18 +15,18 @@ import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 
 import { Box, Text } from '../../shared/ui/base';
-import { CategorySnapCard } from '../../components/features/shop/CategorySnapCard';
-import { BrandSnapCard } from '../../components/features/shop/BrandSnapCard';
-import { ShellTrustSnap } from '../../components/features/shop/ShellTrustSnap';
-import { ShopSkeleton } from '../../components/features/shop/ShopSkeleton';
-import { useProducts } from '../../core/hooks/useProducts';
+import { CategorySnapCard } from '../../features/shop/components/category-snap-card';
+import { BrandSnapCard } from '../../features/shop/components/brand-snap-card';
+import { ShellTrustSnap } from '../../features/shop/components/shell-trust-snap';
+import { ShopSkeleton } from '../../features/shop/components/shop-skeleton';
+import { useProducts } from '../../shared/hooks/use-products';
 import { ACTIVE_LISTING_STATUSES } from '../../shared/utils/product-listing-status';
 import { Theme } from '../../shared/theme/index';
 import { useTheme } from '@shopify/restyle';
-import { ProductSnapCard } from '../../components/features/shop/sections/ProductSnapCard';
+import { ProductSnapCard } from '../../features/shop/components/product-snap-card';
 
-import { ShellEndFeedCard2 } from '@/components/features/shop/sections/ShellEndFeedCard2';
-import { getTabDockMetrics } from '../../core/constants/layout';
+import { ShellEndFeedCard2 } from '@/features/shop/components/shell-end-feed-card2';
+import { getTabDockMetrics } from '../../shared/config/layout';
 
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
