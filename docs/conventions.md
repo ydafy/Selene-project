@@ -10,17 +10,13 @@ Imports go one way: `shared -> features -> app`.
 - A feature never imports another feature. If two features need the same code, move it to `shared`.
 - Routes compose features. A route imports screens from features and shared code.
 
-`apps/frontend/tests/guards/frontend-import-boundaries.test.ts` is a `bun:test` that scans imports, forbids imports of `supabase/functions/`, and enforces this direction. ESLint enforces the same rule (`import-x/no-restricted-paths` in `eslint.config.js`, as bulletproof-react does), so the editor flags a wrong import as you type. When a feature needs another feature's piece, compose both in the route or move the piece to `shared/`.
+`apps/frontend/frontend-import-boundaries.test.ts` is a `bun:test` that scans imports, forbids imports of `supabase/functions/`, and enforces this direction. ESLint enforces the same rule (`import-x/no-restricted-paths` in `eslint.config.js`, as bulletproof-react does), so the editor flags a wrong import as you type. When a feature needs another feature's piece, compose both in the route or move the piece to `shared/`.
 
 ## Keep routes thin
 
-A file under the Expo Router `app/` directory reads route params and renders one screen from a feature. It holds no business logic, data fetching, or large JSX.
-
-Counterexample today: `apps/frontend/src/app/profile/orders/[id].tsx` has about 1000 lines. Do not copy that shape.
+A file under the Expo Router `app/` directory reads route params and renders one screen from a feature. It holds no business logic, data fetching, or large JSX. Example: `apps/frontend/src/app/profile/orders/[id].tsx` only renders `OrderDetailScreen` from `features/orders/screens/`.
 
 ## Frontend layout
-
-The current tree under `apps/frontend/src/` is `app/`, `core/`, and `components/` (#133 moved them under `src/`). The `features/` and `shared/` folders below are not in place yet; #134 migrates to them, one domain at a time (`odd/tasks/frontend-layout.md`).
 
 ```text
 apps/frontend/src/
@@ -39,17 +35,13 @@ apps/frontend/src/
 
 `lib/` holds a feature's I/O wrappers: clients, device APIs, and other side effects, mirroring `shared/lib/`. Keep the pure rules next to them in `logic/`. Example: `apps/frontend/src/features/notifications/lib/push-permission.ts` wraps the device permission and `logic/push-permission.logic.ts` holds the decisions.
 
-Until the move, follow these rules in the current tree:
-
-- Do not add domain logic to `core/utils`. It is a grab bag today and must not grow.
-- Put new domain components in `apps/frontend/src/features/<domain>/components/`, as the tree above shows.
-
 ## Test placement
 
 - A unit test sits next to the file it tests: `foo.ts` and `foo.test.ts`. Example: `apps/frontend/src/shared/i18n/auth-locale-parity.test.ts` sits in `src/shared/i18n/`.
 - A flow test that spans several modules sits in the feature folder.
 - Playwright specs stay in `e2e/` (`e2e/admin-web/`, `e2e/admin-web-local/`).
-- Do not create new `__tests__/` folders. Do not add files to `apps/frontend/tests/` or to the root `tests/`. Existing ones move during the layout migration.
+- A guard that scans all of `apps/frontend/src/` sits at the `apps/frontend/` root, so it does not scan its own text: `frontend-import-boundaries.test.ts`, `legacy-wallet-removal.test.ts`. A guard over the whole repository sits in `scripts/` (`test-only-guard.test.ts`).
+- Do not create new `__tests__/` folders or a top-level `tests/` folder. The `__tests__/` folders under `supabase/` and `packages/types/` predate this rule; do not add to them.
 
 ## File naming
 
