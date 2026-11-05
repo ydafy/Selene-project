@@ -206,13 +206,6 @@ for await (const importer of new Bun.Glob('**/*.{ts,tsx}').scan({
   }
 }
 
-// The B2 migration list (odd/tasks/frontend-layout.md L43). It must only
-// shrink: fix a violation, then delete its entry. Remove the array and the
-// equality check when it is empty.
-const KNOWN_VIOLATIONS: string[] = [
-  'features/orders/screens/prepare-shipment-submit.mount.test.tsx -> app/profile/orders/prepare/[id]',
-];
-
 describe('dependency rule', () => {
   // A wrong root or a broken resolver would find nothing and pass silently.
   it('scans src/ and resolves relative and @/ specifiers', () => {
@@ -242,8 +235,8 @@ describe('dependency rule', () => {
   });
 
   // shared/ never imports features/ or app/; a feature never imports another
-  // feature or app/.
-  it('has no violations beyond the known migration list', () => {
-    expect([...foundViolations].sort()).toEqual(KNOWN_VIOLATIONS);
+  // feature or app/. B2 adds the same rule to ESLint.
+  it('has no violations', () => {
+    expect([...foundViolations].sort()).toEqual([]);
   });
 });

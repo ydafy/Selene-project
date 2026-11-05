@@ -214,8 +214,8 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
     expect(found).toHaveLength(1);
     return found[0];
   };
-  const { default: Screen } =
-    await import('../../../app/profile/orders/prepare/[id]');
+  const { PrepareShipmentScreen: Screen } =
+    await import('./prepare-shipment-screen');
 
   if (process.env.SELENE_CONTROLS_CHILD === '1')
     test('switches isolate drafts, stale callbacks and pre-auth dispatch; busy and submission lock callbacks', async () => {
