@@ -5,9 +5,9 @@ import {
   resolveMediaType,
   uploadMediaFromBase64,
   uploadMediaFromUri,
-} from '../../src/shared/lib/upload-media';
+} from './upload-media';
 
-const FRONTEND = join(import.meta.dir, '..', '..');
+const FRONTEND = join(import.meta.dir, '..', '..', '..');
 
 type UploadResult = { data: { path: string } | null; error: unknown };
 

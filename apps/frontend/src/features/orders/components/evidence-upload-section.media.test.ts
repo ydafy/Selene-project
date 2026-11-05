@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const FRONTEND = join(import.meta.dir, '..', '..');
+const FRONTEND = join(import.meta.dir, '..', '..', '..', '..');
 const read = (file: string) => readFileSync(join(FRONTEND, file), 'utf8');
 const json = (locale: string) =>
   JSON.parse(read(`src/shared/i18n/locales/${locale}/disputes.json`));
@@ -82,7 +82,7 @@ describe('media upload B3 source guards', () => {
 describe('dispute video cross-platform and size feedback', () => {
   it('accepts iOS QuickTime and Android MP4 videos', async () => {
     const { resolveMediaType } =
-      await import('../../src/shared/lib/upload-media');
+      await import('../../../shared/lib/upload-media');
     expect(resolveMediaType('file:///var/mobile/IMG_0001.MOV')).toEqual({
       ext: 'mov',
       contentType: 'video/quicktime',

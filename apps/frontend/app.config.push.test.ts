@@ -4,10 +4,10 @@ import { join } from 'node:path';
 
 import type { ConfigContext, ExpoConfig } from 'expo/config';
 
-import appJson from '../../app.json';
-import appConfig, { resolveGoogleServicesFile } from '../../app.config';
+import appJson from './app.json';
+import appConfig, { resolveGoogleServicesFile } from './app.config';
 
-const frontendRoot = join(import.meta.dir, '..', '..');
+const frontendRoot = import.meta.dir;
 const configContext: ConfigContext = {
   // JSON imports widen literal unions such as `orientation` to string.
   config: appJson.expo as ExpoConfig,

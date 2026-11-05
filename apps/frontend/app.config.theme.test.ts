@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import appConfig from '../../app.json';
+import appConfig from './app.json';
 
 /**
  * DESIGN.md: "Theme: dark only." With `automatic`, a phone in light mode

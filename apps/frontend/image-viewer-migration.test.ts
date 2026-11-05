@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 
-const FRONTEND = join(import.meta.dir, '..', '..');
+const FRONTEND = import.meta.dir;
 const ROOT = join(FRONTEND, '..', '..');
 const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
 
