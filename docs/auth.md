@@ -71,7 +71,7 @@ Paths in this section and the next are relative to `apps/frontend` for the mobil
 - Password change: Settings asks for the current password and sends it as `current_password` (`features/settings/logic/password-change.ts`, `features/settings/components/security-section.tsx`). The Dashboard has "Require current password" on and "Secure password change" off. Google-only accounts are detected from their identities in `core/auth/reauth.logic.ts`.
 - Recovery: `app/(auth)/forgotPassword.tsx` and `resetPassword.tsx` with `core/auth/passwordRecovery.logic.ts`. The email carries a 6-digit code. A recovery session does not need the current password. The email templates are in `supabase/templates/`.
 - Email change: `features/settings/logic/email-change.ts`. The user confirms from both inboxes through the link that opens `selene://profile/settings`.
-- Mobile session: `core/hooks/useSession.ts` owns the listener, loads `status` and `status_reason` from `profiles_private`, and ignores late responses for a previous user (`core/auth/sessionStatus.logic.ts`). `core/auth/signOut.ts` clears user-scoped data.
+- Mobile session: `shared/lib/auth/use-session.ts` owns the listener, loads `status` and `status_reason` from `profiles_private`, and ignores late responses for a previous user (`shared/lib/auth/session-status.logic.ts`). `core/auth/signOut.ts` clears user-scoped data.
 - Admin-web session: `store/useAuthStore.ts` with `lib/adminSession.logic.ts` and `lib/adminAccess.ts`. A user gets in only with role `admin` and status `active`. The page is `pages/Login.tsx`.
 
 ## Account closure

@@ -12,9 +12,9 @@ import {
   runSignOut,
   type SignOutResult,
   type SignOutScope,
-} from './signOut.logic';
+} from '../../shared/lib/auth/sign-out.logic';
 import { pushRegistrar } from '../../features/notifications/lib/push-registration';
-import { resetUserQueries } from './userQueries.logic';
+import { resetUserQueries } from '../../shared/lib/auth/user-queries.logic';
 
 /**
  * Clears everything tied to the signed-in user. Device preferences such as

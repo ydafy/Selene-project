@@ -1,5 +1,5 @@
 /**
- * @file core/hooks/useSession.ts
+ * @file shared/lib/auth/use-session.ts
  * @description Motor de gestión de sesiones de Selene.
  * Implementa el patrón "Identity Anchor" para asegurar sincronización entre
  * Supabase Auth y la tabla profiles_private (estados de baneo y suspensión).
@@ -7,10 +7,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
-import { supabase } from '../../shared/lib/supabase';
+import { supabase } from '../supabase';
 import { Session } from '@supabase/supabase-js';
 
-import { clearUserScopedData } from '../auth/signOut';
+import { clearUserScopedData } from '../../../core/auth/signOut';
 import {
   INITIAL_STATUS_STATE,
   applyStatusLoad,
@@ -18,7 +18,7 @@ import {
   shouldReloadStatusOnResume,
   syncStatusOwner,
   type StatusLoadResult,
-} from '../auth/sessionStatus.logic';
+} from './session-status.logic';
 
 const INITIALIZATION_TIMEOUT = 10000;
 

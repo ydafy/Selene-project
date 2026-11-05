@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { QueryClient, QueryObserver } from '@tanstack/react-query';
 
-import { resetUserQueries } from './userQueries.logic';
+import { resetUserQueries } from './user-queries.logic';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 

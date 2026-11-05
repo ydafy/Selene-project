@@ -1,6 +1,6 @@
 import React, { createContext, useContext } from 'react';
 import { Session } from '@supabase/supabase-js';
-import { useSession } from '../../../core/hooks/useSession';
+import { useSession } from './use-session';
 import { AccountStatus } from '@selene/types';
 
 // 1. Definimos la forma de los datos expuestos
