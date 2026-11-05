@@ -7,7 +7,7 @@ import { join } from 'node:path';
  *
  * The React Native detail screen imports modules Bun cannot resolve in a pure
  * Node runner, so — matching the established pattern in
- * `ordersMultiShipmentGuards.test.ts` and `publicProfileProductionAudit.test.ts`
+ * `ordersMultiShipmentGuards.test.ts` and `public-profile.audit.test.ts`
  * — we guard the *source* strings. Each guard pins one V2 decision so a future
  * edit cannot silently regress the per-product review behavior.
  */
@@ -109,7 +109,7 @@ describe('orders detail screen V2 per-product review guards', () => {
 });
 
 describe('ReviewModal V2 product-name polish guard', () => {
-  const modal = read('src/components/features/profile/ReviewModal.tsx');
+  const modal = read('src/features/profile/components/review-modal.tsx');
 
   it('accepts an optional productName prop and renders it under the subtitle when provided', () => {
     expect(modal).toContain('productName?: string;');

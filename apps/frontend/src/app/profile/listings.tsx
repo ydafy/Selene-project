@@ -8,16 +8,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { IconButton } from 'react-native-paper';
 
 import { Box } from '../../shared/ui/base';
-import { MyListingCard } from '../../components/features/profile/MyListingCard';
+import { MyListingCard } from '../../features/profile/components/my-listing-card';
 import { GlobalHeader } from '../../shared/ui/global-header';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
 import { ProductCardSkeleton } from '../../shared/ui/product/product-card-skeleton';
 import { SegmentedControl } from '../../shared/ui/segmented-control';
-import { isProductHistory } from '../../core/utils/product-status';
+import { isProductHistory } from '../../features/profile/logic/product-status';
 
-import { useMyListings } from '../../core/hooks/useMyListings';
-import { useProductManagement } from '../../core/hooks/useProductManagement';
+import { useMyListings } from '../../features/profile/hooks/use-my-listings';
+import { useProductManagement } from '../../features/profile/hooks/use-product-management';
 import { useSellStore } from '../../features/sell/store/use-sell-store';
 
 import { Theme } from '../../shared/theme';

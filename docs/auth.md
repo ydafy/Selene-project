@@ -68,9 +68,9 @@ Paths in this section and the next are relative to `apps/frontend` for the mobil
 
 - Email and password: sign-up with a 6-digit email code. The code lives in `core/hooks/useAuth.ts` (`signUp`, `signInWithPassword`, `verifyOtp`, `resend`), `components/features/auth/RegisterForm.tsx`, and `app/(auth)/verify-code.tsx`. The auth screens open through `core/auth/AuthModalProvider.tsx`. The server rules (confirmation on, minimum 8 characters, code length and expiry) mirror the Dashboard in `[auth]` of `supabase/config.toml`.
 - Google: `core/hooks/useGoogleAuth.tsx` calls `signInWithIdToken`, and `core/auth/googleAuth.logic.ts` maps its errors. Supabase links a Google sign-in to an existing user with the same verified email. Manual linking stays off (`enable_manual_linking = false`).
-- Password change: Settings asks for the current password and sends it as `current_password` (`core/utils/passwordChange.ts`, `components/features/settings/SecuritySection.tsx`). The Dashboard has "Require current password" on and "Secure password change" off. Google-only accounts are detected from their identities in `core/auth/reauth.logic.ts`.
+- Password change: Settings asks for the current password and sends it as `current_password` (`features/settings/logic/password-change.ts`, `features/settings/components/security-section.tsx`). The Dashboard has "Require current password" on and "Secure password change" off. Google-only accounts are detected from their identities in `core/auth/reauth.logic.ts`.
 - Recovery: `app/(auth)/forgotPassword.tsx` and `resetPassword.tsx` with `core/auth/passwordRecovery.logic.ts`. The email carries a 6-digit code. A recovery session does not need the current password. The email templates are in `supabase/templates/`.
-- Email change: `core/utils/emailChange.ts`. The user confirms from both inboxes through the link that opens `selene://profile/settings`.
+- Email change: `features/settings/logic/email-change.ts`. The user confirms from both inboxes through the link that opens `selene://profile/settings`.
 - Mobile session: `core/hooks/useSession.ts` owns the listener, loads `status` and `status_reason` from `profiles_private`, and ignores late responses for a previous user (`core/auth/sessionStatus.logic.ts`). `core/auth/signOut.ts` clears user-scoped data.
 - Admin-web session: `store/useAuthStore.ts` with `lib/adminSession.logic.ts` and `lib/adminAccess.ts`. A user gets in only with role `admin` and status `active`. The page is `pages/Login.tsx`.
 
@@ -78,7 +78,7 @@ Paths in this section and the next are relative to `apps/frontend` for the mobil
 
 The product rule is "anonymize and close", not hard deletion. The flow is:
 
-1. The app asks for a fresh sign-in (`core/auth/reauth.ts`, `core/hooks/useDeleteAccount.ts`, `core/hooks/deleteAccountFlow.ts`) and calls `delete-account` from `DeleteAccountSection.tsx`.
+1. The app asks for a fresh sign-in (`core/auth/reauth.ts`, `features/settings/hooks/use-delete-account.ts`, `features/settings/logic/delete-account-flow.ts`) and calls `delete-account` from `delete-account-section.tsx`.
 2. `delete-account` validates the token, then requires a sign-in no older than 10 minutes (the newest `amr` timestamp; `MAX_SIGN_IN_AGE_SECONDS` in `delete-account/handler.ts`). Older means `403 REAUTH_REQUIRED`.
 3. It calls `fn_close_account(p_user_id)`, one SQL transaction. A blocker returns `409 DELETE_BLOCKED` with `blocked_reason`, and nothing changes.
 4. After the commit, the function deletes the Stripe customer, closes the Connect account, and removes Storage files. It records each result in `account_closures`.
@@ -134,7 +134,7 @@ Locally, `[auth.captcha]` in `supabase/config.toml` is on with hCaptcha's public
 | Cleanup retry accepts only the cron secret                  | `account-closure-cleanup`, `_shared/cron-auth.ts`                          | `account-closure-cleanup/handler.test.ts`, Bruno `functions/account-closure-cleanup-*`     |
 | Admin Edge Functions need an active admin                   | `_shared/admin-auth.ts`                                                    | `_shared/__tests__/admin-auth.test.ts`                                                     |
 | Admin-web admits only an active admin                       | `lib/adminAccess.ts`                                                       | `lib/adminAccess.test.ts`                                                                  |
-| Password change needs the current password                  | `core/utils/passwordChange.ts` and the Dashboard setting                   | `core/utils/__tests__/passwordChange.test.ts`                                              |
+| Password change needs the current password                  | `features/settings/logic/password-change.ts` and the Dashboard setting     | `features/settings/logic/password-change.test.ts`                                          |
 | Password sign-in needs a CAPTCHA token                      | Supabase Auth `[auth.captcha]`                                             | Bruno `auth/login-without-captcha-rejected`, `captchaAuth.logic.test.ts` in both apps      |
 
 The pgTAP files are in `supabase/tests/database/`. The `account_restricted` and `active_orders` blockers have only the source-text check in `account_closure.test.ts`, with no pgTAP assertion yet.

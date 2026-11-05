@@ -7,7 +7,7 @@ import { join } from 'node:path';
  *
  * These UI files import React Native / Expo modules that Bun cannot resolve in
  * a pure Node test runner, so we guard the *source* strings (same pattern as
- * `connectMoneyFlowGuards.test.ts` and `publicProfileProductionAudit.test.ts`)
+ * `connectMoneyFlowGuards.test.ts` and `public-profile.audit.test.ts`)
  * instead of importing them. Each guard pins one of the cleanup decisions so a
  * future edit cannot silently regress the shipment-aware behavior.
  */
@@ -164,7 +164,7 @@ describe('orders index role-aware navigation guard', () => {
 });
 
 describe('ReviewModal shipment-aware seller target guard', () => {
-  const modal = read('src/components/features/profile/ReviewModal.tsx');
+  const modal = read('src/features/profile/components/review-modal.tsx');
 
   it('accepts an optional sellerId and falls back to the first shipment seller', () => {
     expect(modal).toContain('sellerId?: string;');

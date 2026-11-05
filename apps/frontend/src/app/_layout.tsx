@@ -29,11 +29,11 @@ import { paperTheme, theme, navigationTheme } from '../shared/theme';
 import { AuthProvider } from '../shared/lib/auth/auth-provider';
 import { AuthModalProvider } from '../core/auth/AuthModalProvider';
 import { CaptchaProvider } from '../core/auth/captcha/CaptchaProvider';
-import { NotificationWatcher } from '../components/features/notifications/NotificationWatcher';
+import { NotificationWatcher } from '../features/notifications/components/notification-watcher';
 
-import { PushRegistration } from '../components/features/notifications/PushRegistration';
-import { PushPermissionPrompt } from '../components/features/notifications/PushPermissionPrompt';
-import { PushTapHandler } from '../components/features/notifications/PushTapHandler';
+import { PushRegistration } from '../features/notifications/components/push-registration';
+import { PushPermissionPrompt } from '../features/notifications/components/push-permission-prompt';
+import { PushTapHandler } from '../features/notifications/components/push-tap-handler';
 import { OfflineNotice } from '../shared/ui/offline-notice';
 
 import { queryClient } from '../shared/lib/query-client';

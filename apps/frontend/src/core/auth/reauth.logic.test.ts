@@ -235,15 +235,15 @@ describe('isGoogleOnlyAccount (C7)', () => {
 
 describe('settings sections (C7)', () => {
   it('decide Google-only accounts from identities, not app_metadata.provider', () => {
-    for (const file of ['AccountSection.tsx', 'SecuritySection.tsx']) {
+    for (const file of ['account-section.tsx', 'security-section.tsx']) {
       const src = readFileSync(
         join(
           import.meta.dir,
           '..',
           '..',
-          'components',
           'features',
           'settings',
+          'components',
           file,
         ),
         'utf8',

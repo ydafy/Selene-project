@@ -3,13 +3,16 @@ import { useTranslation } from 'react-i18next';
 import { ActivityIndicator } from 'react-native-paper';
 import { Alert } from 'react-native';
 
-import { useProfile, useUpdateAvatar } from '../../core/hooks/useProfile';
+import {
+  useProfile,
+  useUpdateAvatar,
+} from '../../features/profile/hooks/use-profile';
 
 // Hooks y Contextos
 import { useAuthContext } from '../../shared/lib/auth/auth-provider';
 import { useAuthModal } from '../../core/auth/AuthModalProvider';
 
-import { useMyFavorites } from '../../core/hooks/useMyFavorites';
+import { useMyFavorites } from '../../features/profile/hooks/use-my-favorites';
 import { useImageUpload } from '../../shared/hooks/use-image-upload';
 
 // Componentes UI y Base
@@ -18,14 +21,14 @@ import { AppImage } from '../../shared/ui/app-image';
 import { PrimaryButton } from '../../shared/ui/primary-button';
 import { TextLink } from '../../shared/ui/text-link';
 import { ScreenLayout } from '../../shared/ui/screen-layout';
-import { ProfileActionsBar } from '../../components/features/profile/ProfileActionsBar';
+import { ProfileActionsBar } from '../../features/profile/components/profile-actions-bar';
 import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
-import { ProfileFavoritesGrid } from '../../components/features/profile/ProfileFavoritesGrid';
-import { ProfileSkeleton } from '../../components/features/profile/ProfileSkeleton';
-import { ConnectIncompleteBanner } from '../../components/features/profile/ConnectIncompleteBanner';
+import { ProfileFavoritesGrid } from '../../features/profile/components/profile-favorites-grid';
+import { ProfileSkeleton } from '../../features/profile/components/profile-skeleton';
+import { ConnectIncompleteBanner } from '../../features/profile/components/connect-incomplete-banner';
 
 // Componentes de Feature (Perfil)
-import { ProfileHeader } from '../../components/features/profile/ProfileHeader';
+import { ProfileHeader } from '../../features/profile/components/profile-header';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getTabDockMetrics } from '../../shared/config/layout';

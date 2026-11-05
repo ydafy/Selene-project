@@ -15,7 +15,7 @@ import { ProductFavoriteButton } from '../../features/product/components/product
 import { ProductCardSkeleton } from '../../shared/ui/product/product-card-skeleton';
 import { PrimaryButton } from '../../shared/ui/primary-button';
 import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
-import { useAllFavorites } from '../../core/hooks/useAllFavorites';
+import { useAllFavorites } from '../../features/profile/hooks/use-all-favorites';
 import { useAuthContext } from '../../shared/lib/auth/auth-provider';
 import { useSeleneRefresh } from '../../shared/hooks/use-selene-refresh';
 import { Theme } from '../../shared/theme';

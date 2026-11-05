@@ -21,10 +21,10 @@ const BUYER_POINT_READS = [
 ];
 
 const OWNER_READS = [
-  'core/hooks/useMyListings.ts',
+  'features/profile/hooks/use-my-listings.ts',
   'features/verify/hooks/use-verification-logic.ts',
   'features/sell/hooks/use-publish-product.ts',
-  'core/hooks/useProductManagement.ts',
+  'features/profile/hooks/use-product-management.ts',
 ];
 
 test.each([...BUYER_LIST_READS, ...BUYER_POINT_READS])(
@@ -55,8 +55,8 @@ test.each(OWNER_READS)('%s keeps reading the products table', (file) => {
 
 test('favorites embed the product through the view', () => {
   for (const file of [
-    'core/hooks/fetchMyFavorites.ts',
-    'core/hooks/fetchAllFavorites.ts',
+    'features/profile/hooks/fetch-my-favorites.ts',
+    'features/profile/hooks/fetch-all-favorites.ts',
   ]) {
     const source = read(file);
     expect(source).toContain('product:products_public!inner');
@@ -66,7 +66,7 @@ test('favorites embed the product through the view', () => {
 });
 
 test('seller reviews embed the product name through the view', () => {
-  const source = read('core/hooks/useSellerReviews.ts');
+  const source = read('features/profile/hooks/use-seller-reviews.ts');
   expect(source).toContain('product:products_public(name)');
   expect(source).not.toContain('product:products(');
 });

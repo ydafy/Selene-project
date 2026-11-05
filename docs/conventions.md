@@ -30,11 +30,14 @@ apps/frontend/src/
     components/
     hooks/
     logic/              pure domain code, no React
+    lib/                I/O wrappers: clients, device APIs, side effects
   shared/
     ui/  hooks/  utils/  theme/  i18n/  config/  lib/
 ```
 
 `logic/` holds pure TypeScript with no React imports. Test it without React. Example: `apps/frontend/src/features/checkout/logic/checkout-payment-flow.ts` and its test belong in `features/checkout/logic/`.
+
+`lib/` holds a feature's I/O wrappers: clients, device APIs, and other side effects, mirroring `shared/lib/`. Keep the pure rules next to them in `logic/`. Example: `apps/frontend/src/features/notifications/lib/push-permission.ts` wraps the device permission and `logic/push-permission.logic.ts` holds the decisions.
 
 Until the move, follow these rules in the current tree:
 

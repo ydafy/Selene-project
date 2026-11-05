@@ -25,7 +25,7 @@ import {
   resolveVerificationRequirements,
 } from '../../features/verify/logic/verification-submit';
 import { theme } from '@/shared/theme';
-import { offerPushPermission } from '@/core/push/pushPermission';
+import { offerPushPermission } from '@/features/notifications/lib/push-permission';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
 export default function VerifyProductScreen() {

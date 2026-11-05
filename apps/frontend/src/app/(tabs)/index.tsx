@@ -37,7 +37,7 @@ import { useCheckoutStore } from '../../features/checkout/store/use-checkout-sto
 import { useAddresses } from '../../features/address/hooks/use-addresses';
 import { useProducts } from '../../shared/hooks/use-products';
 import { useExperienceStore } from '@/features/home/store/use-experience-store';
-import { useUnreadNotifications } from '@/core/hooks/useUnreadNotifications';
+import { useUnreadNotifications } from '@/features/notifications/hooks/use-unread-notifications';
 import { Theme } from '../../shared/theme';
 import { Address } from '@selene/types';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -47,7 +47,7 @@ import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import { ErrorState } from '@/shared/ui/error-state';
 import { useTranslation } from 'react-i18next';
 import { getTabDockMetrics } from '../../shared/config/layout';
-import { formatNotificationBadgeCount } from '../../core/utils/notificationBadge';
+import { formatNotificationBadgeCount } from '../../features/notifications/logic/notification-badge';
 
 // --- RUTAS DEL APP ---
 const ROUTES = {

@@ -30,7 +30,7 @@ test('useProducts keeps verifiedOnly, ordering and limit on the view', () => {
 test.each([
   'use-product.ts',
   'use-product-favorite.ts',
-  '../../../core/hooks/useMyListings.ts',
+  '../../profile/hooks/use-my-listings.ts',
   '../../verify/hooks/use-verification-logic.ts',
 ])('%s has no VERIFIED-only filter', (file) => {
   const source = read(file);
@@ -39,8 +39,8 @@ test.each([
 });
 
 test.each([
-  '../../../core/hooks/fetchMyFavorites.ts',
-  '../../../core/hooks/fetchAllFavorites.ts',
+  '../../profile/hooks/fetch-my-favorites.ts',
+  '../../profile/hooks/fetch-all-favorites.ts',
 ])('%s has no status filter', (file) => {
   expect(read(file)).not.toMatch(/status/);
 });
