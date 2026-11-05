@@ -28,11 +28,21 @@ function tempDir(prefix: string): string {
   return dir;
 }
 
+function withoutGitVariables(): Record<string, string> {
+  const env: Record<string, string> = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined && !key.startsWith('GIT_')) env[key] = value;
+  }
+  return env;
+}
+
 function gitRepo(): { cwd: string; toplevel: string } {
   const cwd = tempDir('codegraph-refresh-repo-');
-  Bun.spawnSync(['git', 'init', '-q'], { cwd });
+  const env = withoutGitVariables();
+  Bun.spawnSync(['git', 'init', '-q'], { cwd, env });
   const toplevel = Bun.spawnSync(['git', 'rev-parse', '--show-toplevel'], {
     cwd,
+    env,
   })
     .stdout.toString()
     .trim();
@@ -55,9 +65,9 @@ function pathWithoutCodegraph(): string {
 
 function environment(options: { stub: boolean }) {
   const log = join(tempDir('codegraph-refresh-log-'), 'calls.log');
-  const env: Record<string, string> = {};
-  for (const [key, value] of Object.entries(process.env)) {
-    if (value !== undefined && key.toUpperCase() !== 'PATH') env[key] = value;
+  const env = withoutGitVariables();
+  for (const key of Object.keys(env)) {
+    if (key.toUpperCase() === 'PATH') delete env[key];
   }
   let path = pathWithoutCodegraph();
   if (options.stub) {
@@ -140,6 +150,66 @@ describe('codegraph-refresh.sh', () => {
     expect(result).toEqual({ exitCode: 0, stdout: '', stderr: '' });
     expect(existsSync(join(repo.cwd, '.codegraph'))).toBe(false);
   });
+});
+
+describe('under a hook from a linked worktree', () => {
+  // Git exports GIT_DIR and GIT_INDEX_FILE to the hooks of a linked worktree, and
+  // pre-push runs this suite. A git command that inherits them acts on that
+  // repository: `git init` there writes core.bare=true into the shared config.
+  it('leaves the calling repository untouched', async () => {
+    const caller = tempDir('codegraph-refresh-caller-');
+    const git = (args: string[], cwd: string) =>
+      Bun.spawnSync(['git', ...args], { cwd, env: withoutGitVariables() })
+        .stdout.toString()
+        .trim();
+    git(['init', '-q', '-b', 'main', 'main'], caller);
+    const main = join(caller, 'main');
+    git(
+      [
+        '-c',
+        'user.name=t',
+        '-c',
+        'user.email=t@t',
+        'commit',
+        '-q',
+        '--allow-empty',
+        '-m',
+        'init',
+      ],
+      main,
+    );
+    git(['worktree', 'add', '-q', '-b', 'wt', join(caller, 'wt')], main);
+    const hookGitDir = git(
+      ['rev-parse', '--absolute-git-dir'],
+      join(caller, 'wt'),
+    );
+
+    // Bun hands a child the environment it started with, so the hook case is a
+    // child run of this file's other tests with the hook's variables.
+    const child = Bun.spawnSync(
+      [
+        'bun',
+        'test',
+        import.meta.path,
+        '-t',
+        '^(codegraph-refresh.sh|Git hooks)',
+      ],
+      {
+        cwd: REPO_ROOT,
+        env: {
+          ...withoutGitVariables(),
+          GIT_DIR: hookGitDir,
+          GIT_INDEX_FILE: join(hookGitDir, 'index'),
+        },
+        stdout: 'pipe',
+        stderr: 'pipe',
+      },
+    );
+
+    expect(child.exitCode).toBe(0);
+    expect(git(['config', 'core.bare'], main)).toBe('false');
+    expect(git(['config', 'core.bare'], join(caller, 'wt'))).toBe('false');
+  }, 30_000);
 });
 
 describe('Git hooks refresh the CodeGraph index', () => {
