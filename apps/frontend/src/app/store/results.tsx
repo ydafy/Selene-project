@@ -23,6 +23,7 @@ import { Box } from '../../shared/ui/base';
 import { ScreenHeader } from '../../shared/ui/screen-header';
 import { GlobalHeader } from '../../shared/ui/global-header';
 import { ProductCard } from '../../shared/ui/product/product-card';
+import { offerPushPermission } from '../../features/notifications/lib/push-permission';
 import { ProductFavoriteButton } from '../../features/product/components/product-favorite-button';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { ProductCardSkeleton } from '../../shared/ui/product/product-card-skeleton';
@@ -40,7 +41,11 @@ import { Theme } from '../../shared/theme';
 import { Product, PublicProduct } from '@selene/types';
 
 const renderFavoriteButton = (product: PublicProduct) => (
-  <ProductFavoriteButton productId={product.id} size={16} />
+  <ProductFavoriteButton
+    productId={product.id}
+    offerPushPermission={offerPushPermission}
+    size={16}
+  />
 );
 
 const RESULTS_ANCHOR = 0; // Punto donde el header desaparece y los filtros quedan arriba

@@ -20,6 +20,25 @@ test('the listing moment is offered after a verification is sent, once its succe
   );
 });
 
+// Routes compose features (L4, decision C): the favorite hook and button take
+// offerPushPermission from the route instead of importing notifications.
+test.each([
+  'app/product/[id].tsx',
+  'app/profile/favorites.tsx',
+  'app/store/results.tsx',
+  'app/store/showroom/[id].tsx',
+])('%s passes offerPushPermission to the favorite hook or button', (file) => {
+  const source = read(file);
+  expect(source).toContain("import { offerPushPermission } from '");
+  expect(source).toContain('offerPushPermission={offerPushPermission}');
+});
+
+test('the product route also passes it to useProductFavorite', () => {
+  expect(read('app/product/[id].tsx')).toMatch(
+    /useProductFavorite\(\s*id,\s*offerPushPermission,?\s*\)/,
+  );
+});
+
 test('creating or editing a listing does not offer push', () => {
   expect(read('features/sell/hooks/use-publish-product.ts')).not.toContain(
     'offerPushPermission',

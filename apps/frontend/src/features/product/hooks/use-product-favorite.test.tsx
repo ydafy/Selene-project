@@ -1,10 +1,12 @@
 import { expect, mock, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // mock.module leaks across files, so the mount test runs in its own process.
 if (process.env.SELENE_FAVORITE_CHILD !== '1') {
-  test('only a confirmed favorite insert offers the push pre-prompt', () => {
+  test('only a confirmed favorite insert offers the injected push pre-prompt', () => {
     const child = Bun.spawnSync({
       cmd: [process.execPath, 'test', import.meta.path],
       env: { ...process.env, SELENE_FAVORITE_CHILD: '1' },
@@ -17,6 +19,17 @@ if (process.env.SELENE_FAVORITE_CHILD !== '1') {
           new TextDecoder().decode(child.stderr),
       );
     expect(child.exitCode).toBe(0);
+  });
+
+  test('the hook imports no other feature', () => {
+    const source = readFileSync(
+      join(import.meta.dir, 'use-product-favorite.ts'),
+      'utf8',
+    );
+    expect(source).not.toMatch(
+      /(?:from\s+|import\(\s*|require\(\s*)['"][^'"]*features\//,
+    );
+    expect(source).not.toMatch(/from\s+['"]\.\.\/\.\.\/(?!\.\.\/|product\/)/);
   });
 } else {
   const db = {
@@ -63,9 +76,6 @@ if (process.env.SELENE_FAVORITE_CHILD !== '1') {
   mock.module('../../../shared/lib/auth/auth-provider', () => ({
     useAuthContext: () => ({ session: { user: { id: 'user-1' } } }),
   }));
-  mock.module('../../notifications/lib/push-permission', () => ({
-    offerPushPermission,
-  }));
 
   const { act, render } = await import('@testing-library/react-native');
   const { useProductFavorite } = await import('./use-product-favorite');
@@ -73,7 +83,7 @@ if (process.env.SELENE_FAVORITE_CHILD !== '1') {
   type Hook = ReturnType<typeof useProductFavorite>;
   let hook: Hook | null = null;
   const Harness = () => {
-    hook = useProductFavorite('product-1');
+    hook = useProductFavorite('product-1', offerPushPermission);
     return null;
   };
 

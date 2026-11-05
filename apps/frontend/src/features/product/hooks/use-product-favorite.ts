@@ -1,9 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../../shared/lib/supabase';
 import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
-import { offerPushPermission } from '../../notifications/lib/push-permission';
 
-export const useProductFavorite = (productId: string) => {
+/** Offers the push pre-prompt; the route passes it so this feature imports no other. */
+export type OfferFavoritePush = (moment: 'favorite') => Promise<void>;
+
+export const useProductFavorite = (
+  productId: string,
+  offerPushPermission: OfferFavoritePush,
+) => {
   const { session } = useAuthContext();
   const queryClient = useQueryClient();
   const userId = session?.user.id;

@@ -34,6 +34,7 @@ import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { Box, Text } from '../../../shared/ui/base';
 import { GlobalHeader } from '../../../shared/ui/global-header';
 import { ProductCard } from '../../../shared/ui/product/product-card';
+import { offerPushPermission } from '../../../features/notifications/lib/push-permission';
 import { ProductFavoriteButton } from '../../../features/product/components/product-favorite-button';
 import { ProductCardSkeleton } from '../../../shared/ui/product/product-card-skeleton';
 import { ResultsFilterBar } from '../../../features/search/components/results-filter-bar';
@@ -68,7 +69,11 @@ import moboAtx from '@/assets/images/shop/news/mobo/moboAtx.webp';
 import micro_atxMobo from '@/assets/images/shop/news/mobo/micro_atxMobo.webp';
 
 const renderFavoriteButton = (product: PublicProduct) => (
-  <ProductFavoriteButton productId={product.id} size={16} />
+  <ProductFavoriteButton
+    productId={product.id}
+    offerPushPermission={offerPushPermission}
+    size={16}
+  />
 );
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');

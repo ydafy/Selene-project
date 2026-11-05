@@ -18,6 +18,7 @@ import { BottomActionBar } from '../../shared/ui/bottom-action-bar';
 // Componentes de Feature (Producto)
 import { ProductImageGallery } from '../../features/product/components/product-image-gallery';
 import { ProductSpecificationsGrid } from '../../features/product/components/product-specifications-grid';
+import { offerPushPermission } from '../../features/notifications/lib/push-permission';
 import { ProductFavoriteButton } from '../../features/product/components/product-favorite-button';
 import { ProductSellerCard } from '../../features/product/components/product-seller-card';
 import { ProductDetailSkeleton } from '../../features/product/components/product-detail-skeleton';
@@ -54,7 +55,10 @@ export default function ProductDetailScreen() {
   const { data: product, isLoading, error } = useProduct(id || '');
   const { handleAddToCart, isAddingToCart, isAdded } = useProductCart(product);
   const { handleShare } = useProductShare(product);
-  const { toggleFavorite, isFavorite } = useProductFavorite(id);
+  const { toggleFavorite, isFavorite } = useProductFavorite(
+    id,
+    offerPushPermission,
+  );
   const { addProductToHistory } = useProductHistoryStore();
 
   useEffect(() => {
@@ -263,7 +267,11 @@ export default function ProductDetailScreen() {
       <BottomActionBar>
         <Box flexDirection="row" gap="m" alignItems="center">
           <Box flex={0.2} alignItems="center" justifyContent="center">
-            <ProductFavoriteButton productId={product.id} size={24} />
+            <ProductFavoriteButton
+              productId={product.id}
+              offerPushPermission={offerPushPermission}
+              size={24}
+            />
           </Box>
 
           <Box flex={1}>
