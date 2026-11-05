@@ -160,28 +160,6 @@ export const useAuth = () => {
   };
 
   /**
-   * Cierre de sesión.
-   */
-  const signOut = async (): Promise<{
-    success: boolean;
-    error: { message: string } | null;
-  }> => {
-    setLoading(true);
-    setError(null);
-    try {
-      const { error: signOutError } = await supabase.auth.signOut();
-      if (signOutError) throw signOutError;
-      return { success: true, error: null };
-    } catch (err) {
-      const message = (err as { message?: string }).message || String(err);
-      setError(message);
-      return { success: false, error: { message } };
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /**
    * Verificación de código OTP para registro.
    */
   const verifyOtp = async (
@@ -283,7 +261,6 @@ export const useAuth = () => {
     error,
     signUp,
     signIn,
-    signOut,
     verifyOtp,
     resendSignUpOtp,
     sendPasswordResetOtp,

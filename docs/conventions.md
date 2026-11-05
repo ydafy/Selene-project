@@ -10,7 +10,7 @@ Imports go one way: `shared -> features -> app`.
 - A feature never imports another feature. If two features need the same code, move it to `shared`.
 - Routes compose features. A route imports screens from features and shared code.
 
-`apps/frontend/src/core/utils/frontendImportBoundaries.test.ts` is a `bun:test` that scans imports and already forbids imports of `supabase/functions/`. The layout migration extends it to enforce this direction, and adds the same rule to ESLint (`import/no-restricted-paths`, as bulletproof-react does) so the editor flags a wrong import as you type. Until then, review enforces it.
+`apps/frontend/tests/guards/frontend-import-boundaries.test.ts` is a `bun:test` that scans imports and already forbids imports of `supabase/functions/`. The layout migration extends it to enforce this direction, and adds the same rule to ESLint (`import/no-restricted-paths`, as bulletproof-react does) so the editor flags a wrong import as you type. Until then, review enforces it.
 
 ## Keep routes thin
 
@@ -42,7 +42,7 @@ apps/frontend/src/
 Until the move, follow these rules in the current tree:
 
 - Do not add domain logic to `core/utils`. It is a grab bag today and must not grow.
-- Put new domain components in the existing domain folder under `apps/frontend/src/components/features/<domain>/`, for example `components/features/orders/`.
+- Put new domain components in `apps/frontend/src/features/<domain>/components/`, as the tree above shows.
 
 ## Test placement
 

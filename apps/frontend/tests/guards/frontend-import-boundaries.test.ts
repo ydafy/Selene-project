@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { fileURLToPath } from 'node:url';
 
-const frontendRoot = new URL('../../../', import.meta.url);
+const frontendRoot = new URL('../../', import.meta.url);
 
 describe('frontend import boundaries', () => {
   it('does not import Supabase Edge Function sources', async () => {
