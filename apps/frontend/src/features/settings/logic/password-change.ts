@@ -1,5 +1,5 @@
 /**
- * @file core/utils/passwordChange.ts
+ * @file features/settings/logic/password-change.ts
  * @description Pure helpers for the password-change flow (CONF-017, auth block 4).
  * - validatePasswordChange: current + new + confirm validation
  * - buildPasswordUpdatePayload: payload for supabase.auth.updateUser
@@ -11,7 +11,7 @@
  * body, so the field must use GoTrue's snake_case name.
  */
 
-import { mapAuthErrorKey } from '../auth/authErrors.logic';
+import { mapAuthErrorKey } from '../../../core/auth/authErrors.logic';
 
 const MIN_LENGTH = 8;
 

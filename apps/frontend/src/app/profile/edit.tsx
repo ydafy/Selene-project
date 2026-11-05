@@ -24,7 +24,7 @@ import {
 } from '../../features/profile/hooks/use-profile';
 import { useImageUpload } from '../../shared/hooks/use-image-upload';
 import { validateEditUsername } from '../../features/profile/logic/edit-profile-validation';
-import { stripSettingsNamespace } from '../../core/hooks/deleteAccountHelpers';
+import { stripSettingsNamespace } from '../../features/settings/logic/delete-account-helpers';
 import { Theme } from '../../shared/theme';
 
 export default function EditProfileScreen() {

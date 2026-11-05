@@ -1,13 +1,16 @@
 import { useMutation } from '@tanstack/react-query';
-import { reauthenticateCurrentUser } from '../auth/reauth';
-import { signOutUser } from '../auth/signOut';
-import { supabase } from '../../shared/lib/supabase';
-import { runDeleteAccount, type DeleteAccountInput } from './deleteAccountFlow';
+import { reauthenticateCurrentUser } from '../../../core/auth/reauth';
+import { signOutUser } from '../../../core/auth/signOut';
+import { supabase } from '../../../shared/lib/supabase';
+import {
+  runDeleteAccount,
+  type DeleteAccountInput,
+} from '../logic/delete-account-flow';
 import {
   readInvokeFailure,
   type DeleteAccountHttpResponse,
   type DeleteAccountResult,
-} from './deleteAccountHelpers';
+} from '../logic/delete-account-helpers';
 
 /**
  * `invokeEdge` drops the HTTP status, and the status is the contract here

@@ -5,7 +5,7 @@ import {
   validateDeleteConfirmation,
   stripSettingsNamespace,
   DELETE_CONFIRMATION_PHRASE,
-} from './deleteAccountHelpers';
+} from './delete-account-helpers';
 
 const FAILED = 'settings:errors.deleteFailed';
 const RETRY = 'settings:errors.retryLater';

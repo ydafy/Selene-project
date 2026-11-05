@@ -1,5 +1,5 @@
 /**
- * @file core/utils/emailChange.ts
+ * @file features/settings/logic/email-change.ts
  * @description Pure helpers for the email-change flow (CONF-016).
  * Validation + payload for supabase.auth.updateUser({ email }).
  *
@@ -8,7 +8,7 @@
  * scheme configured in the Supabase dashboard (e.g. selene://).
  */
 
-import { mapAuthErrorKey } from '../auth/authErrors.logic';
+import { mapAuthErrorKey } from '../../../core/auth/authErrors.logic';
 
 // Practical RFC-5322 subset: local@domain.tld where local and domain
 // are non-empty and contain no whitespace / @ / double-dot.

@@ -1,9 +1,12 @@
-import type { ReauthCredential, ReauthResult } from '../auth/reauth.logic';
+import type {
+  ReauthCredential,
+  ReauthResult,
+} from '../../../core/auth/reauth.logic';
 import {
   mapDeleteAccountResponse,
   type DeleteAccountHttpResponse,
   type DeleteAccountResult,
-} from './deleteAccountHelpers';
+} from './delete-account-helpers';
 
 export type DeleteAccountInput = {
   /** Present only on the second attempt, after `REAUTH_REQUIRED`. */

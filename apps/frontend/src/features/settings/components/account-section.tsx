@@ -6,7 +6,7 @@ import * as LocalAuthentication from 'expo-local-authentication';
 import { Box, Text } from '../../../shared/ui/base';
 import { FormTextInput } from '../../../shared/ui/form-text-input';
 import { ConfirmDialog } from '../../../shared/ui/confirm-dialog';
-import { SettingsRow } from './SettingsRow';
+import { SettingsRow } from '../../../shared/ui/settings-row';
 import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
 import { supabase } from '../../../shared/lib/supabase';
 import { isGoogleOnlyAccount } from '../../../core/auth/reauth.logic';
@@ -16,7 +16,7 @@ import {
   isSameEmail,
   mapEmailChangeErrorKey,
   EMAIL_REDIRECT_URL,
-} from '../../../core/utils/emailChange';
+} from '../logic/email-change';
 
 type AccountSectionProps = {
   /** Current user email, used as display value on the row. */

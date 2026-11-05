@@ -13,7 +13,13 @@ import { fileURLToPath } from 'node:url';
  * They prevent regressions where a wiring step is silently removed.
  */
 
-const FRONTEND = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const FRONTEND = join(
+  dirname(fileURLToPath(import.meta.url)),
+  '..',
+  '..',
+  '..',
+  '..',
+);
 
 const read = (relPath: string) => readFileSync(join(FRONTEND, relPath), 'utf8');
 
@@ -49,7 +55,7 @@ describe('settings.tsx renders new sections in spec-required order', () => {
 });
 
 describe('LegalesSection row order (Terms → Privacy → Version)', () => {
-  const src = read('src/components/features/settings/LegalesSection.tsx');
+  const src = read('src/features/settings/components/legales-section.tsx');
 
   test('terms row precedes privacy row', () => {
     const termsIdx = src.indexOf("'legales.terms'");
@@ -114,7 +120,7 @@ describe('modal configuration within the profile stack', () => {
 });
 
 describe('AccountSection email-change wiring (CONF-016)', () => {
-  const src = read('src/components/features/settings/AccountSection.tsx');
+  const src = read('src/features/settings/components/account-section.tsx');
 
   test('imports validateEmail + buildEmailUpdatePayload helpers', () => {
     expect(src).toContain('validateEmail');
@@ -145,7 +151,7 @@ describe('AccountSection email-change wiring (CONF-016)', () => {
 });
 
 describe('SecuritySection password-change wiring (CONF-017)', () => {
-  const src = read('src/components/features/settings/SecuritySection.tsx');
+  const src = read('src/features/settings/components/security-section.tsx');
 
   test('imports payload builder and error mapper, never a client nonce', () => {
     expect(src).toContain('buildPasswordUpdatePayload');
@@ -199,7 +205,7 @@ describe('SecuritySection password-change wiring (CONF-017)', () => {
 
 describe('Soporte email wiring', () => {
   const sectionSrc = read(
-    'src/components/features/settings/SoporteSection.tsx',
+    'src/features/settings/components/soporte-section.tsx',
   );
   const supportSrc = read('src/app/profile/support.tsx');
 

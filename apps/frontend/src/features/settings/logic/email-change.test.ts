@@ -4,7 +4,7 @@ import {
   buildEmailUpdatePayload,
   isSameEmail,
   mapEmailChangeErrorKey,
-} from '../emailChange';
+} from './email-change';
 
 /**
  * Covers EXTD-TASK-007 (CONF-016): email validation + auth.updateUser payload.

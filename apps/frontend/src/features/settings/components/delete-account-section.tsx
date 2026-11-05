@@ -5,15 +5,15 @@ import Toast from 'react-native-toast-message';
 import { Box, Text } from '../../../shared/ui/base';
 import { ConfirmDialog } from '../../../shared/ui/confirm-dialog';
 import { FormTextInput } from '../../../shared/ui/form-text-input';
-import { SettingsRow } from './SettingsRow';
+import { SettingsRow } from '../../../shared/ui/settings-row';
 import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
 import { resolveReauthMethod } from '../../../core/auth/reauth.logic';
-import { useDeleteAccount } from '../../../core/hooks/useDeleteAccount';
-import type { DeleteAccountResult } from '../../../core/hooks/deleteAccountHelpers';
+import { useDeleteAccount } from '../hooks/use-delete-account';
+import type { DeleteAccountResult } from '../logic/delete-account-helpers';
 import {
   DELETE_CONFIRMATION_PHRASE,
   validateDeleteConfirmation,
-} from '../../../core/hooks/deleteAccountHelpers';
+} from '../logic/delete-account-helpers';
 
 type DeleteAccountSectionProps = {
   disabled?: boolean;

@@ -5,7 +5,7 @@ import {
   mapPasswordChangeErrorKey,
   passwordErrorField,
   type PasswordField,
-} from '../passwordChange';
+} from './password-change';
 
 /**
  * Covers CONF-017 and auth block 4 (S7, L54): the current password proves the
