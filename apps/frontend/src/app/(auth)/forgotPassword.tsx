@@ -13,13 +13,13 @@ import Toast from 'react-native-toast-message';
 import { z } from 'zod';
 
 import { ScreenLayout } from '../../shared/ui/screen-layout';
-import { AuthBackButton } from '../../components/features/auth/AuthBackButton';
+import { AuthBackButton } from '../../features/auth/components/auth-back-button';
 import { FormTextInput } from '../../shared/ui/form-text-input';
 import { PrimaryButton } from '../../shared/ui/primary-button';
 import { AppImage } from '../../shared/ui/app-image';
 import type { TFunction } from 'i18next';
 import { Box, Text } from '../../shared/ui/base';
-import { useAuth } from '../../core/hooks/useAuth';
+import { useAuth } from '../../features/auth/hooks/use-auth';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- Metro resolves static asset requires at bundle time
 const logoIconPath = require('@/assets/images/SeleneLunaLogo.png');

@@ -10,7 +10,7 @@ import {
 
 // Hooks y Contextos
 import { useAuthContext } from '../../shared/lib/auth/auth-provider';
-import { useAuthModal } from '../../core/auth/AuthModalProvider';
+import { useAuthModal } from '../../shared/lib/auth/auth-modal-context';
 
 import { useMyFavorites } from '../../features/profile/hooks/use-my-favorites';
 import { useImageUpload } from '../../shared/hooks/use-image-upload';

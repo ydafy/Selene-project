@@ -13,7 +13,7 @@ import { ScreenHeader } from '@/shared/ui/screen-header';
 import { useSellStore } from '../../features/sell/store/use-sell-store';
 import { ProductCategory } from '@selene/types';
 import { useAuthContext } from '../../shared/lib/auth/auth-provider';
-import { useAuthModal } from '../../core/auth/AuthModalProvider';
+import { useAuthModal } from '../../shared/lib/auth/auth-modal-context';
 import { triggerHaptic } from '../../shared/utils/haptics';
 import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
 import {

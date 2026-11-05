@@ -8,7 +8,7 @@
  * scheme configured in the Supabase dashboard (e.g. selene://).
  */
 
-import { mapAuthErrorKey } from '../../../core/auth/authErrors.logic';
+import { mapAuthErrorKey } from '../../../shared/lib/auth/auth-errors.logic';
 
 // Practical RFC-5322 subset: local@domain.tld where local and domain
 // are non-empty and contain no whitespace / @ / double-dot.

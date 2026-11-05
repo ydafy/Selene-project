@@ -9,7 +9,7 @@ import { ConfirmDialog } from '../../../shared/ui/confirm-dialog';
 import { SettingsRow } from '../../../shared/ui/settings-row';
 import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
 import { supabase } from '../../../shared/lib/supabase';
-import { isGoogleOnlyAccount } from '../../../core/auth/reauth.logic';
+import { isGoogleOnlyAccount } from '../logic/reauth.logic';
 import {
   validateEmail,
   buildEmailUpdatePayload,
