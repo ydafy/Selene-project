@@ -1,13 +1,18 @@
 //import Toast from 'react-native-toast-message';
 //import { useTranslation } from 'react-i18next'; // <-- Importamos i18n
 
-import { useProductFavorite } from '../hooks/use-product-favorite';
+import {
+  useProductFavorite,
+  type OfferFavoritePush,
+} from '../hooks/use-product-favorite';
 import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
 import { AnimatedHeartButton } from '../../../shared/ui/animated-heart-button';
 import { useAuthModal } from '../../../shared/lib/auth/auth-modal-context';
 
 type ProductFavoriteButtonProps = {
   productId: string;
+  /** Offers the push pre-prompt after a favorite is added. */
+  offerPushPermission: OfferFavoritePush;
   size?: number;
   onFavoriteToggle?: (productId: string, willBeFavorite: boolean) => void;
   /** Called BEFORE unfavoriting. Return false to cancel the toggle. */
@@ -19,13 +24,17 @@ type ProductFavoriteButtonProps = {
  */
 export const ProductFavoriteButton = ({
   productId,
+  offerPushPermission,
   size = 24,
   onFavoriteToggle,
   onBeforeUnfavorite,
 }: ProductFavoriteButtonProps) => {
   //const { t } = useTranslation(['common', 'auth']); // Usamos el namespace common
   const { session } = useAuthContext();
-  const { isFavorite, toggleFavorite } = useProductFavorite(productId);
+  const { isFavorite, toggleFavorite } = useProductFavorite(
+    productId,
+    offerPushPermission,
+  );
 
   // 1. Hook del Modal
   const { present } = useAuthModal();

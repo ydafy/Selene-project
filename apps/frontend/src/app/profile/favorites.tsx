@@ -11,6 +11,7 @@ import { GlobalHeader } from '../../shared/ui/global-header';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { ErrorState } from '../../shared/ui/error-state';
 import { ProductCard } from '../../shared/ui/product/product-card';
+import { offerPushPermission } from '../../features/notifications/lib/push-permission';
 import { ProductFavoriteButton } from '../../features/product/components/product-favorite-button';
 import { ProductCardSkeleton } from '../../shared/ui/product/product-card-skeleton';
 import { PrimaryButton } from '../../shared/ui/primary-button';
@@ -131,6 +132,7 @@ export default function FavoritesScreen() {
     (product: PublicProduct) => (
       <ProductFavoriteButton
         productId={product.id}
+        offerPushPermission={offerPushPermission}
         size={16}
         onFavoriteToggle={handleFavoriteToggle}
         onBeforeUnfavorite={handleBeforeUnfavorite}

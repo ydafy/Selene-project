@@ -39,8 +39,8 @@ import { PushTapHandler } from '../features/notifications/components/push-tap-ha
 import { OfflineNotice } from '../shared/ui/offline-notice';
 
 import { queryClient } from '../shared/lib/query-client';
-import { useCheckoutStore } from '../features/checkout/store/use-checkout-store';
-import { useCartStore } from '../features/cart/store/use-cart-store';
+import { useCheckoutStore } from '../shared/store/use-checkout-store';
+import { useCartStore } from '../shared/store/use-cart-store';
 import { useDisputeStore } from '../features/orders/store/use-dispute-store';
 import { useSearchStore } from '../features/search/store/use-search-store';
 import { useProductHistoryStore } from '../shared/store/use-product-history-store';

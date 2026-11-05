@@ -1,5 +1,5 @@
 /**
- * @file features/auth/logic/captcha-auth.logic.ts
+ * @file shared/lib/auth/captcha-auth.logic.ts
  * @description The Supabase Auth calls the server guards with CAPTCHA. Each
  * one awaits a fresh token (single use) and only then calls Supabase, so a
  * cancelled or failed challenge rejects with `CaptchaError` and sends nothing.

@@ -1,15 +1,21 @@
 import { useQuery } from '@tanstack/react-query';
-import { useCartStore } from '../store/use-cart-store';
-import { OrderService } from '../../orders/logic/order-service';
+import { useCartStore } from '../../../shared/store/use-cart-store';
 import { useMemo } from 'react';
 
-export const useCartValidation = () => {
+/** Reads which products can no longer be bought; the route passes the orders feature's check. */
+export type ValidateProductStock = (
+  productIds: string[],
+) => Promise<{ unavailableIds: string[] }>;
+
+export const useCartValidation = (
+  validateProductStock: ValidateProductStock,
+) => {
   const cartItems = useCartStore((state) => state.items);
   const cartIds = useMemo(() => cartItems.map((item) => item.id), [cartItems]);
 
   const query = useQuery({
     queryKey: ['cart-validation', cartIds],
-    queryFn: () => OrderService.validateProductStock(cartIds),
+    queryFn: () => validateProductStock(cartIds),
     enabled: cartIds.length > 0,
     staleTime: 1000 * 60, // 1 min
   });

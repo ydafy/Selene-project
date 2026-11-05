@@ -7,7 +7,7 @@ import { ConfirmDialog } from '../../../shared/ui/confirm-dialog';
 import { FormTextInput } from '../../../shared/ui/form-text-input';
 import { SettingsRow } from '../../../shared/ui/settings-row';
 import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
-import { resolveReauthMethod } from '../logic/reauth.logic';
+import { resolveReauthMethod } from '../../../shared/lib/auth/reauth.logic';
 import { useDeleteAccount } from '../hooks/use-delete-account';
 import type { DeleteAccountResult } from '../logic/delete-account-helpers';
 import {

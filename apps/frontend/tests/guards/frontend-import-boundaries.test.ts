@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'bun:test';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const frontendRoot = new URL('../../', import.meta.url);
@@ -131,5 +133,111 @@ describe('frontend import boundaries', () => {
           ...manifest.devDependencies,
         },
     }).toEqual({ expoIconImports: [], declared: false });
+  });
+});
+
+const srcRoot = join(fileURLToPath(frontendRoot), 'src');
+const SPECIFIER_PATTERN =
+  /(?:from\s+|import\(\s*|require\(\s*|mock\.module\(\s*)['"]([^'"]+)['"]/g;
+
+// Paths are relative to src/ with forward slashes. Bare package names and
+// `@/assets/*` (which tsconfig maps outside src/) resolve to null.
+function resolveSpecifier(importerDir: string, specifier: string) {
+  let absolute: string;
+  if (specifier.startsWith('.')) {
+    absolute = resolve(importerDir, specifier);
+  } else if (specifier.startsWith('@/') && !specifier.startsWith('@/assets/')) {
+    absolute = join(srcRoot, specifier.slice(2));
+  } else {
+    return null;
+  }
+  return relative(srcRoot, absolute).split(sep).join('/');
+}
+
+// A source-text assertion can quote an import line from another file's
+// directory; only a specifier that points at a real module counts.
+function moduleExists(target: string) {
+  const base = join(srcRoot, target);
+  return ['', '.ts', '.tsx', '.js', '.json', '/index.ts', '/index.tsx'].some(
+    (suffix) => existsSync(base + suffix),
+  );
+}
+
+function violationReason(importer: string, target: string) {
+  const importerParts = importer.split('/');
+  const targetParts = target.split('/');
+  if (targetParts[0] === 'app' || targetParts[0] === 'features') {
+    if (importerParts[0] === 'shared') return 'shared';
+    if (importerParts[0] === 'features' && targetParts[0] === 'app')
+      return 'app';
+  }
+  if (
+    importerParts[0] === 'features' &&
+    targetParts[0] === 'features' &&
+    importerParts[1] !== targetParts[1]
+  ) {
+    return 'feature';
+  }
+  return null;
+}
+
+const scannedFiles: string[] = [];
+const foundViolations = new Set<string>();
+
+for await (const importer of new Bun.Glob('**/*.{ts,tsx}').scan({
+  cwd: srcRoot,
+  absolute: false,
+})) {
+  const importerPath = importer.split(sep).join('/');
+  scannedFiles.push(importerPath);
+  const source = await Bun.file(join(srcRoot, importerPath)).text();
+  for (const match of source.matchAll(SPECIFIER_PATTERN)) {
+    const target = resolveSpecifier(
+      dirname(join(srcRoot, importerPath)),
+      match[1],
+    );
+    if (
+      target !== null &&
+      violationReason(importerPath, target) !== null &&
+      moduleExists(target)
+    ) {
+      foundViolations.add(`${importerPath} -> ${target}`);
+    }
+  }
+}
+
+describe('dependency rule', () => {
+  // A wrong root or a broken resolver would find nothing and pass silently.
+  it('scans src/ and resolves relative and @/ specifiers', () => {
+    expect(scannedFiles).toContain('features/auth/hooks/use-auth.ts');
+    expect(
+      resolveSpecifier(
+        join(srcRoot, 'features/profile/components'),
+        '@/features/auth/hooks/use-auth',
+      ),
+    ).toBe('features/auth/hooks/use-auth');
+    expect(
+      resolveSpecifier(
+        join(srcRoot, 'features/profile/components'),
+        '../../auth/hooks/use-auth',
+      ),
+    ).toBe('features/auth/hooks/use-auth');
+    expect(resolveSpecifier(srcRoot, 'react')).toBeNull();
+    const profileActionsBar = readFileSync(
+      join(srcRoot, 'features/profile/components/profile-actions-bar.tsx'),
+      'utf8',
+    );
+    expect(
+      [...profileActionsBar.matchAll(SPECIFIER_PATTERN)].some((match) =>
+        match[1].startsWith('@/'),
+      ),
+    ).toBe(true);
+  });
+
+  // shared/ never imports features/ or app/; a feature never imports another
+  // feature or app/. ESLint enforces the same rule (`import-x/no-restricted-paths`
+  // in eslint.config.js).
+  it('has no violations', () => {
+    expect([...foundViolations].sort()).toEqual([]);
   });
 });

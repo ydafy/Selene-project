@@ -18,6 +18,7 @@ import { BottomActionBar } from '../../shared/ui/bottom-action-bar';
 // Componentes de Feature (Producto)
 import { ProductImageGallery } from '../../features/product/components/product-image-gallery';
 import { ProductSpecificationsGrid } from '../../features/product/components/product-specifications-grid';
+import { offerPushPermission } from '../../features/notifications/lib/push-permission';
 import { ProductFavoriteButton } from '../../features/product/components/product-favorite-button';
 import { ProductSellerCard } from '../../features/product/components/product-seller-card';
 import { ProductDetailSkeleton } from '../../features/product/components/product-detail-skeleton';
@@ -26,6 +27,10 @@ import { AppChip } from '../../shared/ui/app-chip';
 import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
 
 // Hooks y Utilidades
+import {
+  fetchSellerPaymentReadiness,
+  isSellerBlocked,
+} from '../../features/payments/hooks/use-seller-payment-readiness';
 import { useProductCart } from '../../features/product/hooks/use-product-cart';
 import { useProductShare } from '../../features/product/hooks/use-product-share';
 import { useProduct } from '../../features/product/hooks/use-product';
@@ -41,6 +46,10 @@ import { PurchaseProgressSteps } from '../../features/product/components/purchas
 import { formatCurrency } from '@/shared/utils/format';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
+// Fresh read at press time; an unknown readiness never blocks (the server decides).
+const checkSellerBlocked = async (productId: string) =>
+  isSellerBlocked(await fetchSellerPaymentReadiness([productId]), productId);
+
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme<Theme>();
@@ -52,9 +61,15 @@ export default function ProductDetailScreen() {
     useState<PurchaseDialogVariant | null>(null);
 
   const { data: product, isLoading, error } = useProduct(id || '');
-  const { handleAddToCart, isAddingToCart, isAdded } = useProductCart(product);
+  const { handleAddToCart, isAddingToCart, isAdded } = useProductCart(
+    product,
+    checkSellerBlocked,
+  );
   const { handleShare } = useProductShare(product);
-  const { toggleFavorite, isFavorite } = useProductFavorite(id);
+  const { toggleFavorite, isFavorite } = useProductFavorite(
+    id,
+    offerPushPermission,
+  );
   const { addProductToHistory } = useProductHistoryStore();
 
   useEffect(() => {
@@ -263,7 +278,11 @@ export default function ProductDetailScreen() {
       <BottomActionBar>
         <Box flexDirection="row" gap="m" alignItems="center">
           <Box flex={0.2} alignItems="center" justifyContent="center">
-            <ProductFavoriteButton productId={product.id} size={24} />
+            <ProductFavoriteButton
+              productId={product.id}
+              offerPushPermission={offerPushPermission}
+              size={24}
+            />
           </Box>
 
           <Box flex={1}>

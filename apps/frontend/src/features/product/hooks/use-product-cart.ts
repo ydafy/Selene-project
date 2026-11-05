@@ -9,12 +9,8 @@ import Toast from 'react-native-toast-message';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { Product } from '@selene/types';
-import { useCartStore } from '../../cart/store/use-cart-store';
+import { useCartStore } from '../../../shared/store/use-cart-store';
 import { supabase } from '../../../shared/lib/supabase';
-import {
-  fetchSellerPaymentReadiness,
-  isSellerBlocked,
-} from '../../payments/hooks/use-seller-payment-readiness';
 import {
   decidePurchaseGate,
   PurchaseDialogVariant,
@@ -23,7 +19,16 @@ import {
 export type AddToCartResult =
   'SUCCESS' | 'UNAVAILABLE' | 'ERROR' | PurchaseDialogVariant;
 
-export const useProductCart = (product: Product | null | undefined) => {
+/**
+ * Reads the seller's payment readiness at press time and says whether it blocks
+ * the purchase. The route composes it from the payments feature.
+ */
+export type CheckSellerBlocked = (productId: string) => Promise<boolean>;
+
+export const useProductCart = (
+  product: Product | null | undefined,
+  checkSellerBlocked: CheckSellerBlocked,
+) => {
   const { t } = useTranslation(['product', 'common']);
   const { addItem, isInCart } = useCartStore();
   const queryClient = useQueryClient();
@@ -63,11 +68,7 @@ export const useProductCart = (product: Product | null | undefined) => {
 
       // 2. CHECK: el vendedor puede recibir pagos (advisory; fail-open, el servidor decide)
       const sellerBlocked =
-        freshStatus === 'VERIFIED' &&
-        isSellerBlocked(
-          await fetchSellerPaymentReadiness([product.id]),
-          product.id,
-        );
+        freshStatus === 'VERIFIED' && (await checkSellerBlocked(product.id));
 
       // 3. VALIDAR: la pantalla abre el diálogo según el resultado
       const decision = decidePurchaseGate(freshStatus, sellerBlocked);

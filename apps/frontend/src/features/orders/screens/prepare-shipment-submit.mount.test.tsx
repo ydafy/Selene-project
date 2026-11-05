@@ -126,7 +126,7 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
   for (const [path, name] of [
     ['shared/ui/global-header', 'GlobalHeader'],
     ['shared/ui/screen-header', 'ScreenHeader'],
-    ['features/address/components/address-section', 'AddressSection'],
+    ['shared/ui/address-section', 'AddressSection'],
     ['shared/ui/primary-button', 'PrimaryButton'],
     ['shared/ui/confirm-dialog', 'ConfirmDialog'],
     ['shared/ui/error-state', 'ErrorState'],
@@ -145,7 +145,7 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
     mock.module(`../../../${path}`, () => ({
       [name]: name === 'PrimaryButton' ? labelHost(name) : host(name),
     }));
-  mock.module('../../address/components/address-picker-modal', () => ({
+  mock.module('../../../shared/ui/address-picker-modal', () => ({
     AddressPickerModal: ({
       innerRef,
       ...props
@@ -188,7 +188,7 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
   mock.module('../../../shared/hooks/use-system-config', () => ({
     useSystemConfig: () => ({ data: {} }),
   }));
-  mock.module('../../payments/hooks/use-connect-onboarding', () => ({
+  mock.module('../../../shared/hooks/use-connect-onboarding', () => ({
     useConnectOnboarding: () => ({ isComplete: onboarding, isLoading: false }),
   }));
   mock.module('../hooks/use-shipment-label-refresh', () => ({
@@ -214,8 +214,8 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
     expect(found).toHaveLength(1);
     return found[0];
   };
-  const { default: Screen } =
-    await import('../../../app/profile/orders/prepare/[id]');
+  const { PrepareShipmentScreen: Screen } =
+    await import('./prepare-shipment-screen');
 
   if (process.env.SELENE_CONTROLS_CHILD === '1')
     test('switches isolate drafts, stale callbacks and pre-auth dispatch; busy and submission lock callbacks', async () => {

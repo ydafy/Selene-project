@@ -19,7 +19,7 @@ import { FormSelect } from '../../shared/ui/form-select';
 import { PrimaryButton } from '../../shared/ui/primary-button';
 import { Checkbox } from '../../shared/ui/checkbox';
 
-import { useAddresses } from '../../features/address/hooks/use-addresses';
+import { useAddresses } from '../../shared/hooks/use-addresses';
 import { useZipCode } from '../../features/address/hooks/use-zip-code';
 import {
   addressSchema,

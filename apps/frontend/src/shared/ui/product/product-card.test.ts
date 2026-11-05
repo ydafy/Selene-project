@@ -29,6 +29,7 @@ describe('ProductCard callers pass the favourite button', () => {
     const source = read('app/profile/favorites.tsx');
     expect(source).toContain('<ProductFavoriteButton');
     expect(source).toContain('productId={product.id}');
+    expect(source).toContain('offerPushPermission={offerPushPermission}');
     expect(source).toContain('size={16}');
     expect(source).toContain('onFavoriteToggle={handleFavoriteToggle}');
     expect(source).toContain('onBeforeUnfavorite={handleBeforeUnfavorite}');
@@ -39,9 +40,10 @@ describe('ProductCard callers pass the favourite button', () => {
     '%s shows the button with the id of the card product',
     (file) => {
       const source = read(file);
-      expect(source).toContain(
-        '<ProductFavoriteButton productId={product.id} size={16} />',
-      );
+      expect(source).toContain('<ProductFavoriteButton');
+      expect(source).toContain('productId={product.id}');
+      expect(source).toContain('offerPushPermission={offerPushPermission}');
+      expect(source).toContain('size={16}');
       expect(source).toContain('renderFavoriteButton={renderFavoriteButton}');
     },
   );

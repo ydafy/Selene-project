@@ -7,7 +7,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { validateEditUsername } from '../../profile/logic/edit-profile-validation';
+import { validateEditUsername } from '../../../shared/utils/edit-profile-validation';
 
 const MAX_LEN = 20;
 

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../../../shared/lib/supabase';
-import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
+import { supabase } from '../lib/supabase';
+import { useAuthContext } from '../lib/auth/auth-provider';
 import { Address } from '@selene/types';
 
 type PendingAddress = Omit<Address, 'id' | 'user_id'> & {

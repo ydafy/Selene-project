@@ -24,7 +24,9 @@ if (process.env.SELENE_AUTH_MODAL_CHILD !== '1') {
       join(import.meta.dir, 'auth-modal-context.ts'),
       'utf8',
     );
-    expect(source).not.toMatch(/from\s+['"][^'"]*features\//);
+    expect(source).not.toMatch(
+      /(?:from\s+|import\(\s*|require\(\s*)['"][^'"]*features\//,
+    );
   });
 } else {
   mock.module('react-native', () => ({}));

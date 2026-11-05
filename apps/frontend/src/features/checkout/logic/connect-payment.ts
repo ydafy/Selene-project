@@ -15,7 +15,7 @@ import type {
   CreateConnectPaymentResponse,
   EdgeFunctionRegistry,
 } from '@selene/types';
-import { grossUpDomesticMx } from '../../payments/logic/stripe-fee-gross-up';
+import { grossUpDomesticMx } from '../../../shared/utils/stripe-fee-gross-up';
 
 export const SEGURO_SELENE_RATE = 0.036;
 export const SEGURO_SELENE_FIXED_CENTS = 300;

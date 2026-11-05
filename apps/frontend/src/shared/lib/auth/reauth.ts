@@ -2,16 +2,16 @@ import {
   GoogleSignin,
   statusCodes,
 } from '@react-native-google-signin/google-signin';
-import { supabase } from '../../../shared/lib/supabase';
-import { GOOGLE_NO_ID_TOKEN } from '../../auth/logic/google-auth.logic';
+import { supabase } from '../supabase';
+import { GOOGLE_NO_ID_TOKEN } from './google-auth.logic';
 import {
   reauthenticate,
   type ReauthCredential,
   type ReauthDeps,
   type ReauthResult,
 } from './reauth.logic';
-import { getCaptchaToken } from '../../auth/logic/captcha';
-import { reauthSignInWithPassword } from '../../auth/logic/captcha-auth.logic';
+import { getCaptchaToken } from './captcha';
+import { reauthSignInWithPassword } from './captcha-auth.logic';
 
 const reauthDeps: Omit<ReauthDeps, 'signOutLocal'> = {
   googleCancelledCode: statusCodes.SIGN_IN_CANCELLED,
