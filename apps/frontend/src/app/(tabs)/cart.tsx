@@ -15,7 +15,7 @@ import { Theme } from '../../shared/theme';
 import { Product } from '@selene/types';
 import { useState } from 'react';
 import { useAuthContext } from '../../shared/lib/auth/auth-provider';
-import { useAuthModal } from '../../core/auth/AuthModalProvider';
+import { useAuthModal } from '../../shared/lib/auth/auth-modal-context';
 import { useCartValidation } from '../../features/cart/hooks/use-cart-validation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getTabDockMetrics } from '../../shared/config/layout';

@@ -1,32 +1,19 @@
 /**
- * @file core/auth/AuthModalProvider.tsx
+ * @file features/auth/components/auth-modal-provider.tsx
  * @description Proveedor de contexto para el Modal de Autenticación global.
  * Gestiona el estado de la vista (Login/Register) y la visibilidad del BottomSheet.
  */
 
-import React, {
-  createContext,
-  useContext,
-  useRef,
-  useCallback,
-  useState,
-} from 'react';
+import React, { useRef, useCallback, useState } from 'react';
 import {
   BottomSheetModalProvider,
   BottomSheetModal,
 } from '@gorhom/bottom-sheet';
-import { AuthModal } from '../../features/auth/components/auth-modal';
-
-type AuthView = 'login' | 'register';
-
-type AuthModalContextType = {
-  present: (view?: AuthView) => void;
-  dismiss: () => void;
-};
-
-const AuthModalContext = createContext<AuthModalContextType | undefined>(
-  undefined,
-);
+import {
+  AuthModalContext,
+  type AuthView,
+} from '../../../shared/lib/auth/auth-modal-context';
+import { AuthModal } from './auth-modal';
 
 export const AuthModalProvider = ({
   children,
@@ -59,12 +46,4 @@ export const AuthModalProvider = ({
       </BottomSheetModalProvider>
     </AuthModalContext.Provider>
   );
-};
-
-export const useAuthModal = () => {
-  const context = useContext(AuthModalContext);
-  if (!context) {
-    throw new Error('useAuthModal must be used within an AuthModalProvider');
-  }
-  return context;
 };
