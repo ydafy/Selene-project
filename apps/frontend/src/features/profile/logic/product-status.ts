@@ -25,13 +25,6 @@ export const getStatusColor = (
 };
 
 /**
- * (Opcional) Helper para obtener la clave de traducción del estado
- */
-export const getStatusTranslationKey = (status: string) => {
-  return `listings.status.${status}`;
-};
-
-/**
  * Determina si un estado de producto pertenece al historial (no activo).
  */
 export const isProductHistory = (

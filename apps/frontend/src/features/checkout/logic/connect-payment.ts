@@ -17,9 +17,6 @@ import type {
 } from '@selene/types';
 import { grossUpDomesticMx } from '../../../shared/utils/stripe-fee-gross-up';
 
-export const SEGURO_SELENE_RATE = 0.036;
-export const SEGURO_SELENE_FIXED_CENTS = 300;
-
 type CartLikeItem = {
   id: string;
   seller_id?: string;

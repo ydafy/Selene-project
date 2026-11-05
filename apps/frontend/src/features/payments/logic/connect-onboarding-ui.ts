@@ -1,9 +1,9 @@
 import type { StripeOnboardingStatus } from '@selene/types';
 
-export type ConnectOnboardingViewState =
+type ConnectOnboardingViewState =
   'auth-required' | 'loading' | 'success' | 'wizard';
 
-export type ConnectOnboardingCtaKey = 'start' | 'continue' | 'review';
+type ConnectOnboardingCtaKey = 'start' | 'continue' | 'review';
 export type ConnectOnboardingStatusGuidanceKey = 'new' | 'pending' | 'rejected';
 export type ConnectOnboardingVisibleErrorKey =
   | 'statusUnavailable'

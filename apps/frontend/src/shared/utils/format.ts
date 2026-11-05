@@ -54,24 +54,6 @@ export const formatSmartTime = (
 };
 
 /**
- * Formatea una fecha relativa (ej. "hace 2 horas").
- */
-export const formatRelativeTime = (
-  dateString: string | Date | null | undefined,
-): string => {
-  if (!dateString) return '---';
-  const date =
-    typeof dateString === 'string' ? new Date(dateString) : dateString;
-
-  if (!isValid(date)) return '---';
-
-  return formatDistanceToNow(date, {
-    addSuffix: true,
-    locale: getLocale(),
-  });
-};
-
-/**
  * Formatea una fecha absoluta (ej. "12 oct 2025").
  */
 export const formatDate = (

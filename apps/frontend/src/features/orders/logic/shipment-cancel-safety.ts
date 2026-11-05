@@ -1,7 +1,6 @@
 import type { Shipment } from '@selene/types';
 
-export const DEFAULT_CANCEL_ORDER_REASON =
-  'Cancelación solicitada por el usuario';
+const DEFAULT_CANCEL_ORDER_REASON = 'Cancelación solicitada por el usuario';
 
 type ShipmentStatus = Shipment['status'];
 
@@ -17,7 +16,7 @@ export interface CancelOrderPayload {
   reason: string;
 }
 
-export type CancelErrorGroup =
+type CancelErrorGroup =
   | 'maintenance'
   | 'session'
   | 'notAllowed'
@@ -40,6 +39,7 @@ export interface ShipmentPreparingWindowCopyInput {
   isExpired?: boolean;
 }
 
+/** @public Used by tests/shipment-cancel-safety.test.ts, outside the knip frontend run; drop the tag when that test moves next to this file (#134, B4). */
 export function canBuyerCancelShipment(input: {
   isBuyer: boolean;
   status: ShipmentStatus;
@@ -59,7 +59,7 @@ export function canCancelShipment(input: {
   return (input.isBuyer || input.isSeller) && input.status === 'paid';
 }
 
-export function normalizeCancelOrderReason(reason?: string | null): string {
+function normalizeCancelOrderReason(reason?: string | null): string {
   const trimmed = reason?.trim();
   return trimmed?.length ? trimmed : DEFAULT_CANCEL_ORDER_REASON;
 }

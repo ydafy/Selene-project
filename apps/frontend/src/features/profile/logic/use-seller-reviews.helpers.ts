@@ -20,7 +20,7 @@ export interface SellerReview extends SellerReviewRow {
   isVerifiedPurchase: boolean;
 }
 
-export const hasRenderableReviewComment = (comment: string | null) =>
+const hasRenderableReviewComment = (comment: string | null) =>
   typeof comment === 'string' && comment.trim().length > 0;
 
 export const normalizeSellerReviewRows = (

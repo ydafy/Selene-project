@@ -22,8 +22,6 @@ import { Theme } from '../../../shared/theme';
 import { useTranslation } from 'react-i18next';
 import { getUserReviewCardPresentation } from '../logic/user-review-card.helpers';
 
-export { getUserReviewCardPresentation } from '../logic/user-review-card.helpers';
-
 type UserReviewCardProps = {
   /** The full relational review data from the useSellerReviews query */
   review: SellerReview;

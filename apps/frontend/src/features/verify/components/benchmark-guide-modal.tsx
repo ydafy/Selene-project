@@ -61,7 +61,7 @@ const mobo5 = require('@/assets/images/moboStep5.jpg');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const mobo6 = require('@/assets/images/moboStep6.jpg');
 
-export type GuideType = 'benchmark' | 'info' | 'mobo';
+type GuideType = 'benchmark' | 'info' | 'mobo';
 
 type BenchmarkGuideModalProps = {
   innerRef: React.RefObject<BottomSheetModal | null>;

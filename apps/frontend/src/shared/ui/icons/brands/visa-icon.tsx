@@ -31,5 +31,3 @@ export const VisaIcon = (props: SvgProps) => {
     </Svg>
   );
 };
-
-export default VisaIcon;

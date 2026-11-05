@@ -1,13 +1,6 @@
 import { Dimensions, Platform } from 'react-native';
 
-const { width, height } = Dimensions.get('window');
-
-const BASE_WIDTH = 375;
-
-export const scale = (size: number) => (width / BASE_WIDTH) * size;
-
-export const SCREEN_WIDTH = width;
-export const SCREEN_HEIGHT = height;
+const { width } = Dimensions.get('window');
 
 // Definimos el espaciado del grid aquí para usarlo en toda la app
 const GRID_SPACING = 16;
@@ -41,7 +34,7 @@ export const getTabDockMetrics = (bottomInset: number) => {
   };
 };
 
-export const LAYOUT = {
+const LAYOUT = {
   screenPadding: HORIZONTAL_PADDING,
 
   // Cálculo exacto del ancho de columna para Masonry (2 columnas)

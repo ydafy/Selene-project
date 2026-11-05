@@ -8,7 +8,7 @@
 export const GENERIC_ERROR_KEY = 'common:errors.generic';
 export const USERNAME_TAKEN_KEY = 'auth:errors.usernameAlreadyTaken';
 export const ACCOUNT_EXISTS_KEY = 'auth:accountAlreadyExistsMsg';
-export const NETWORK_ERROR_KEY = 'auth:errors.network';
+const NETWORK_ERROR_KEY = 'auth:errors.network';
 
 const CODE_KEYS: Record<string, string> = {
   invalid_credentials: 'auth:errors.invalidCredentials',

@@ -6,17 +6,14 @@
 import { z } from 'zod';
 import { ProductCategory, ShippingPayer } from '@selene/types';
 
-export const productCategories: [ProductCategory, ...ProductCategory[]] = [
+const productCategories: [ProductCategory, ...ProductCategory[]] = [
   'GPU',
   'CPU',
   'Motherboard',
   'RAM',
 ];
 
-export const shippingPayers: [ShippingPayer, ...ShippingPayer[]] = [
-  'seller',
-  'buyer',
-];
+const shippingPayers: [ShippingPayer, ...ShippingPayer[]] = ['seller', 'buyer'];
 
 // --- 1. ESQUEMA MAESTRO (Validación Final de Publicación) ---
 export const publishProductSchema = z.object({
@@ -87,5 +84,4 @@ export const sellDetailsSchema = publishProductSchema.pick({
   insurance_enabled: true,
 });
 
-export type PublishProductInput = z.infer<typeof publishProductSchema>;
 export type SellDetailsInput = z.infer<typeof sellDetailsSchema>;

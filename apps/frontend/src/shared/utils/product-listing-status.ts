@@ -5,7 +5,7 @@ import type { ProductStatus } from '@selene/types';
  * these lists decide what each screen shows. Only VERIFIED is purchasable
  * (fn_reserve_products), so listings in verification carry a badge.
  */
-export const IN_VERIFICATION_STATUSES = [
+const IN_VERIFICATION_STATUSES = [
   'PENDING_VERIFICATION',
   'IN_REVIEW',
 ] as const satisfies readonly ProductStatus[];

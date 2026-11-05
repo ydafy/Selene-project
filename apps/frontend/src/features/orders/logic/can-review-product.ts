@@ -13,7 +13,7 @@
  * delegates the decision here.
  */
 
-export interface ReviewRow {
+interface ReviewRow {
   /** Nullable on legacy order-first reviews (V0 rows). */
   product_id: string | null;
 }

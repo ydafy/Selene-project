@@ -20,7 +20,7 @@ export type ReauthResult =
   /** `errorKey: null` means the user cancelled: nothing to show. */
   | { ok: false; errorKey: string | null; field?: 'password' };
 
-export type ReauthSessionSnapshot = {
+type ReauthSessionSnapshot = {
   userId: string;
   email: string | null;
   accessToken: string;
