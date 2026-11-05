@@ -235,7 +235,8 @@ describe('dependency rule', () => {
   });
 
   // shared/ never imports features/ or app/; a feature never imports another
-  // feature or app/. B2 adds the same rule to ESLint.
+  // feature or app/. ESLint enforces the same rule (`import-x/no-restricted-paths`
+  // in eslint.config.js).
   it('has no violations', () => {
     expect([...foundViolations].sort()).toEqual([]);
   });
