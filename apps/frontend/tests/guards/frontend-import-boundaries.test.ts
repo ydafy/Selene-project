@@ -211,8 +211,6 @@ for await (const importer of new Bun.Glob('**/*.{ts,tsx}').scan({
 // equality check when it is empty.
 const KNOWN_VIOLATIONS: string[] = [
   'features/cart/hooks/use-cart-validation.ts -> features/orders/logic/order-service',
-  'features/checkout/logic/connect-payment.ts -> features/payments/logic/stripe-fee-gross-up',
-  'features/orders/hooks/use-order-calculations.ts -> features/payments/logic/stripe-fee-gross-up',
   'features/orders/screens/prepare-shipment-submit.mount.test.tsx -> app/profile/orders/prepare/[id]',
   'features/product/hooks/use-product-cart.ts -> features/payments/hooks/use-seller-payment-readiness',
   'features/product/hooks/use-product-favorite.test.tsx -> features/notifications/lib/push-permission',
