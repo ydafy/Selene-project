@@ -1,6 +1,6 @@
 import type { CreateDisputeRequest } from '@selene/types';
 
-export const MISSING_SHIPMENT_CONTEXT_ERROR =
+const MISSING_SHIPMENT_CONTEXT_ERROR =
   'Missing shipment context. Please start the report from a shipment.';
 
 type SearchParam = string | string[] | undefined;

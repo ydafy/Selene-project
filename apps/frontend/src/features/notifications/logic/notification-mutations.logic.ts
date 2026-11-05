@@ -95,7 +95,7 @@ export interface BadgeContext {
   previousUnread: number;
 }
 
-export async function snapshotBadge(
+async function snapshotBadge(
   queryClient: QueryClient,
   userId: string | undefined,
 ): Promise<BadgeContext> {
@@ -107,7 +107,7 @@ export async function snapshotBadge(
   return { previousUnread };
 }
 
-export function rollbackBadge(
+function rollbackBadge(
   queryClient: QueryClient,
   userId: string | undefined,
   context: BadgeContext | undefined,

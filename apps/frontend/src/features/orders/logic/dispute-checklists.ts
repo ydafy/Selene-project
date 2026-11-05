@@ -17,7 +17,7 @@ type ChecklistMap = {
   DEFAULT: TriageQuestion[]; // Cambiamos 'Other' por 'DEFAULT' para evitar confusiones
 };
 
-export const DISPUTE_CHECKLISTS: ChecklistMap = {
+const DISPUTE_CHECKLISTS: ChecklistMap = {
   GPU: [
     { id: 'gpu_power', labelKey: 'triage.gpu.power' },
     { id: 'gpu_port', labelKey: 'triage.gpu.port' },

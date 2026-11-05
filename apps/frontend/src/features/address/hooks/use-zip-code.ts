@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../../shared/lib/supabase';
 
-export interface ZipLocationResult {
+interface ZipLocationResult {
   state_code: string;
   state_name: string;
   city: string;

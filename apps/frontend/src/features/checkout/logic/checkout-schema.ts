@@ -20,5 +20,3 @@ export const checkoutValidationSchema = z.object({
     message: 'Debes aceptar los términos y condiciones de compra.',
   }),
 });
-
-export type CheckoutValidationInput = z.infer<typeof checkoutValidationSchema>;

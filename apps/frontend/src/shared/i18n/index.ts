@@ -39,7 +39,7 @@ import enHelp from './locales/en/help.json';
 import esSettings from './locales/es/settings.json';
 import enSettings from './locales/en/settings.json';
 
-export const namespaces = [
+const namespaces = [
   'common',
   'auth',
   'product',
@@ -59,11 +59,9 @@ export const namespaces = [
   'help',
   'settings',
 ];
-// Definimos un tipo para asegurar que solo usamos namespaces que existen
-export type Namespace = (typeof namespaces)[number];
 
 // ✨ 2. DEFINE LOS IDIOMAS
-export const supportedLngs = ['en', 'es'];
+const supportedLngs = ['en', 'es'];
 
 // ✨ 3. DETECTA EL IDIOMA DEL DISPOSITIVO DE FORMA SEGURA
 const deviceLanguage = Localization.getLocales()[0]?.languageCode ?? 'en';

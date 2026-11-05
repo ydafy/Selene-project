@@ -23,7 +23,7 @@ const promptedKey = (moment: PushPermissionMoment) => `push:prompted:${moment}`;
  * The OS dialog can still be shown. iOS reports this as undetermined; Android
  * 13+ reports denied until it is granted, so `canAskAgain` is the signal.
  */
-export const canAskForPush = (permission: PushPermission): boolean =>
+const canAskForPush = (permission: PushPermission): boolean =>
   permission.status !== 'granted' && permission.canAskAgain;
 
 /**

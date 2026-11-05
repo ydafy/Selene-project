@@ -1,7 +1,7 @@
 export type PushPlatform = 'ios' | 'android';
 
 /** Small key-value store that survives an app restart. */
-export type PushStorage = {
+type PushStorage = {
   get: (key: string) => Promise<string | null>;
   set: (key: string, value: string) => Promise<void>;
   remove: (key: string) => Promise<void>;

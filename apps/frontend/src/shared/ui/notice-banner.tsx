@@ -8,7 +8,7 @@ import MaterialCommunityIcons, {
 import { Box, Text } from './base';
 import { Theme } from '../theme';
 
-export type NoticeTone = 'info' | 'warning' | 'critical';
+type NoticeTone = 'info' | 'warning' | 'critical';
 
 const TONE_COLOR: Record<NoticeTone, keyof Theme['colors']> = {
   info: 'textSecondary',

@@ -1,4 +1,4 @@
-export interface OrderViewShipment {
+interface OrderViewShipment {
   id: string;
   sellerId: string;
 }

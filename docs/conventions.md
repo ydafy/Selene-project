@@ -56,19 +56,12 @@ Until the move, follow these rules in the current tree:
 - Every file uses kebab-case: `product-card.tsx` exports `ProductCard`, `use-auth.ts` exports `useAuth`, `format-price.ts` exports `formatPrice`. Identifiers inside the file keep their usual case.
 - Why: Windows and macOS file systems ignore case and the Linux CI does not, so an import that differs only in case works locally and fails in CI. All-lowercase names remove that class of error. The Expo SDK 55 template and bulletproof-react use the same style.
 - Exception: route files under the Expo Router `app/` directory. Their names are URLs and deep links (`(auth)/resetPassword.tsx` is `/resetPassword`), so rename one only as a deliberate route change.
-- Rename an existing PascalCase or camelCase file when its area migrates to `features/` or `shared/` (#134), in the same `git mv`. Do not rename it earlier.
+- `bun run lint` enforces it for `apps/frontend/src` outside `app/` (`check-file/filename-naming-convention` in `eslint.config.js`). Only the part before the first dot is checked, so `order-action-card.cancelled-banner.test.ts` and `captcha.logic.ts` pass.
 - Edge Function directories under `supabase/functions/` are kebab-case because they are the function names (`create-connect-payment`). The Deno files inside them are kebab-case too (`fee-calculator.ts`). Keep that style in Deno code. These rules do not apply to it.
 
-At the commit that introduced this file, the non-test `.ts` and `.tsx` files in `apps/frontend/app`, `core`, and `components` (now under `apps/frontend/src/`) were 162 PascalCase, 207 camelCase, and 21 kebab-case. Regenerate the counts from the repository root to follow the move to kebab-case:
+## File size
 
-```bash
-git ls-files apps/frontend/src \
-  | grep -vE '\.test\.' | grep -E '\.(ts|tsx)$' \
-  | xargs -n1 basename | sed 's/\.[^.]*$//' \
-  | awk '/-/{k++;next} /^[A-Z]/{p++;next} {c++} END{print p, c, k}'
-```
-
-The output is PascalCase, camelCase, and kebab-case counts, in that order.
+A non-test file under `apps/frontend/src` past 400 lines of code (blank lines and comments not counted) gets a `max-lines` lint warning (#135). It does not block lint. When a file you change shows it, split the screen into a thin screen plus components and hooks, as the order screens were (`features/orders/screens/`), in its own commit.
 
 ## No barrel files
 

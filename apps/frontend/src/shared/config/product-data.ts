@@ -194,13 +194,6 @@ export const GPU_MODELS_INTEL = [
   'Arc A310',
   'Intel Other',
 ];
-// LISTA MASIVA (Para el futuro formulario de venta)
-export const GPU_MODELS = [
-  ...GPU_MODELS_NVIDIA,
-  ...GPU_MODELS_AMD,
-  ...GPU_MODELS_INTEL,
-  'Other / Model Not Listed',
-];
 
 // --- CPU (Procesadores) ---
 
@@ -460,13 +453,6 @@ export const CPU_MODELS_AMD = [
   'Other',
 ];
 
-// LISTA MASIVA (Para el futuro formulario de venta)
-export const CPU_MODELS = [
-  ...CPU_MODELS_INTEL,
-  ...CPU_MODELS_AMD,
-  'Other / Model Not Listed',
-];
-
 // --- MOTHERBOARD ---
 
 export const MOBO_BRANDS = [
@@ -580,20 +566,6 @@ export const RAM_SPEEDS = [
   '6400 MHz',
   '6800 MHz',
   '7200 MHz+',
-  'Other',
-];
-
-// --- STORAGE ---
-
-export const STORAGE_TYPE = ['SSD NVMe (M.2)', 'SSD SATA', 'HDD', 'Other'];
-
-export const STORAGE_CAPACITY = [
-  '250 GB',
-  '500 GB',
-  '1 TB',
-  '2 TB',
-  '4 TB',
-  '8 TB+',
   'Other',
 ];
 

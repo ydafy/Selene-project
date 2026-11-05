@@ -2,7 +2,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '@selene/types';
 import { PublicProduct } from '@selene/types';
 
-export const PAGE_SIZE = 20;
+const PAGE_SIZE = 20;
 
 export const fetchAllFavorites = async (
   userId: string,

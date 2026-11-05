@@ -4,7 +4,7 @@ import {
   type UseProductsOptions,
 } from './use-products.helpers';
 
-export const PRODUCTS_KEY_PREFIX = 'products';
+const PRODUCTS_KEY_PREFIX = 'products';
 
 /**
  * Key of a product list. Only the options that change the fetched rows are

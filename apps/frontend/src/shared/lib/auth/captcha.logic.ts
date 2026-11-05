@@ -48,7 +48,7 @@ export const createCaptchaGetter =
   };
 
 /** Long enough to solve an image challenge; a silent widget must not leave a spinner forever. */
-export const CAPTCHA_TIMEOUT_MS = 120_000;
+const CAPTCHA_TIMEOUT_MS = 120_000;
 
 const withTimeout = (
   request: Promise<string>,

@@ -7,7 +7,7 @@
 import { Image, ImageProps } from 'expo-image';
 import Animated from 'react-native-reanimated';
 
-export const AnimatedExpoImage = Animated.createAnimatedComponent(Image);
+const AnimatedExpoImage = Animated.createAnimatedComponent(Image);
 
 type AppImageProps = ImageProps & {
   sharedTransitionTag?: string;

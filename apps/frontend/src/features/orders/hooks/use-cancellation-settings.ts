@@ -6,7 +6,6 @@ import {
   type CancellationSettings,
 } from '../logic/cancellation-settings';
 
-export { resolveCancellationSettings } from '../logic/cancellation-settings';
 export type { CancellationSettings } from '../logic/cancellation-settings';
 
 export function useCancellationSettings(): CancellationSettings {

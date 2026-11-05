@@ -51,10 +51,3 @@ export const getOrderStatusTextColor = (
 export const getOrderStatusLabel = (status: OrderStatus) => {
   return `status.${status}`;
 };
-
-/**
- * Determina si una orden requiere acción inmediata del vendedor.
- */
-export const requiresSellerAction = (status: OrderStatus): boolean => {
-  return status === 'paid'; // Solo cuando está pagada y falta la guía
-};

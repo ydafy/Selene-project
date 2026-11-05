@@ -9,7 +9,7 @@
 
 import { mapAuthErrorKey } from '../../../shared/lib/auth/auth-errors.logic';
 
-export const SAME_PASSWORD_KEY = 'auth:errors.samePassword';
+const SAME_PASSWORD_KEY = 'auth:errors.samePassword';
 export const RECOVERY_SESSION_ENDED_KEY = 'auth:errors.recoverySessionEnded';
 
 const SESSION_ENDED_CODES = ['session_not_found', 'session_expired'];
