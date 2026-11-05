@@ -103,7 +103,7 @@ describe('isSellerBlocked', () => {
 
 describe('screen and hook wiring (S4)', () => {
   it('useProductCart decides through the gate after reading the fresh status', () => {
-    const src = read('components/features/product/hooks/useProductCart.ts');
+    const src = read('features/product/hooks/use-product-cart.ts');
     expect(src).toContain('decidePurchaseGate');
     expect(src).toContain('fetchSellerPaymentReadiness');
     expect(src).not.toContain('sellerNotReady');

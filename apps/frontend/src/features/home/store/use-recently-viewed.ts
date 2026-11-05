@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../../shared/lib/supabase';
 import { PublicProduct } from '@selene/types';
-import { useProductHistoryStore } from '../../../core/store/useProductHistoryStore';
+import { useProductHistoryStore } from '../../../shared/store/use-product-history-store';
 import { BUYER_LISTED_STATUSES } from '../../../shared/utils/product-listing-status';
 
 export const useRecentlyViewed = () => {

@@ -9,7 +9,7 @@ import { useEffect } from 'react';
 import { Box, Text } from '../../shared/ui/base';
 import { PrimaryButton } from '../../shared/ui/primary-button';
 import { Theme } from '../../shared/theme';
-import { useSellStore } from '../../core/store/useSellStore';
+import { useSellStore } from '../../features/sell/store/use-sell-store';
 import { triggerHaptic } from '../../shared/utils/haptics';
 
 export default function SellSuccessScreen() {

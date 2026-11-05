@@ -24,7 +24,7 @@ import { ScreenHeader } from '../../shared/ui/screen-header';
 import { PrimaryButton } from '../../shared/ui/primary-button';
 import { ErrorState } from '../../shared/ui/error-state';
 import { Skeleton } from '../../shared/ui/skeleton';
-import { WizardSteps } from '../../components/features/sell/WizardSteps';
+import { WizardSteps } from '../../features/sell/components/wizard-steps';
 import { SellerPaymentExplanation } from '../../features/payments/components/seller-payment-explanation';
 import { AppImageViewer } from '../../shared/ui/app-image-viewer';
 import { useAuthContext } from '../../shared/lib/auth/auth-provider';

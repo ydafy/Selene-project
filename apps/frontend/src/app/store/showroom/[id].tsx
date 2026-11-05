@@ -34,7 +34,7 @@ import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { Box, Text } from '../../../shared/ui/base';
 import { GlobalHeader } from '../../../shared/ui/global-header';
 import { ProductCard } from '../../../shared/ui/product/product-card';
-import { ProductFavoriteButton } from '../../../components/features/product/ProductFavoriteButton';
+import { ProductFavoriteButton } from '../../../features/product/components/product-favorite-button';
 import { ProductCardSkeleton } from '../../../shared/ui/product/product-card-skeleton';
 import { ResultsFilterBar } from '../../../features/search/components/results-filter-bar';
 import { ShowroomInsights } from '../../../features/shop/components/showroom-insights';
