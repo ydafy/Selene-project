@@ -12,7 +12,7 @@ import {
   useSystemConfig,
 } from '../../../shared/hooks/use-system-config';
 import { authenticateAsync } from '../../../shared/lib/biometrics';
-import { useConnectOnboarding } from '../../../core/hooks/useConnectOnboarding';
+import { useConnectOnboarding } from '../../payments/hooks/use-connect-onboarding';
 import { useOrderById } from './use-orders';
 import { useOrderActions } from './use-order-actions';
 import { useShipmentLabelRefresh } from './use-shipment-label-refresh';

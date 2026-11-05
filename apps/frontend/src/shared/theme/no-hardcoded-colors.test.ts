@@ -11,8 +11,8 @@ const EXCLUDED_PREFIXES = ['shared/theme/', 'shared/ui/icons/'];
 
 // Third-party brand colors outside the icons folder, by file.
 const ALLOWED_BRAND_COLORS: Record<string, string[]> = {
-  'components/features/home/sections/ShellBenchmarksFeature.tsx': ['#FF5722'], // 3DMark
-  'components/features/home/sections/ShellPaymentsFeature.tsx': ['#635BFF'], // Stripe
+  'features/home/components/shell-benchmarks-feature.tsx': ['#FF5722'], // 3DMark
+  'features/home/components/shell-payments-feature.tsx': ['#635BFF'], // Stripe
 };
 
 const HEX_LITERAL = /['"`](#[0-9a-fA-F]{3,8})['"`]/g;

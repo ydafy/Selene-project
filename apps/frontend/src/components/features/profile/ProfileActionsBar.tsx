@@ -13,7 +13,7 @@ import { useCallback, useRef } from 'react';
 import { AddressPickerModal } from '../../../features/address/components/address-picker-modal';
 import { Address } from '@selene/types';
 import { useAddresses } from '@/features/address/hooks/use-addresses';
-import { useCheckoutStore } from '@/core/store/useCheckoutStore';
+import { useCheckoutStore } from '@/features/checkout/store/use-checkout-store';
 
 export const ProfileActionsBar = () => {
   const theme = useTheme<Theme>();

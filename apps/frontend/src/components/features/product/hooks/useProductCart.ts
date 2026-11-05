@@ -14,7 +14,7 @@ import { supabase } from '../../../../shared/lib/supabase';
 import {
   fetchSellerPaymentReadiness,
   isSellerBlocked,
-} from '../../../../core/hooks/useSellerPaymentReadiness';
+} from '../../../../features/payments/hooks/use-seller-payment-readiness';
 import {
   decidePurchaseGate,
   PurchaseDialogVariant,

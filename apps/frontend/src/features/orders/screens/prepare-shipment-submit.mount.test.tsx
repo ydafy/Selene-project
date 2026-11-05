@@ -126,7 +126,7 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
   for (const [path, name] of [
     ['shared/ui/global-header', 'GlobalHeader'],
     ['shared/ui/screen-header', 'ScreenHeader'],
-    ['components/features/checkout/AddressSection', 'AddressSection'],
+    ['features/address/components/address-section', 'AddressSection'],
     ['shared/ui/primary-button', 'PrimaryButton'],
     ['shared/ui/confirm-dialog', 'ConfirmDialog'],
     ['shared/ui/error-state', 'ErrorState'],
@@ -188,7 +188,7 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
   mock.module('../../../shared/hooks/use-system-config', () => ({
     useSystemConfig: () => ({ data: {} }),
   }));
-  mock.module('../../../core/hooks/useConnectOnboarding', () => ({
+  mock.module('../../payments/hooks/use-connect-onboarding', () => ({
     useConnectOnboarding: () => ({ isComplete: onboarding, isLoading: false }),
   }));
   mock.module('../hooks/use-shipment-label-refresh', () => ({

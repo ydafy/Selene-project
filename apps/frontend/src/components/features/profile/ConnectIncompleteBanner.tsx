@@ -3,9 +3,9 @@ import { useRouter } from 'expo-router';
 
 import { NoticeBanner } from '../../../shared/ui/notice-banner';
 import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
-import { useConnectOnboarding } from '../../../core/hooks/useConnectOnboarding';
+import { useConnectOnboarding } from '../../../features/payments/hooks/use-connect-onboarding';
 import { useMyListings } from '../../../core/hooks/useMyListings';
-import { resolveConnectBanner } from '../../../core/utils/connectBanner';
+import { resolveConnectBanner } from '../../../features/payments/logic/connect-banner';
 
 /**
  * Tells sellers with listings why buyers cannot pay them until Stripe Connect

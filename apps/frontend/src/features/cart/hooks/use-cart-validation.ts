@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useCartStore } from '../store/use-cart-store';
-import { OrderService } from '../../../core/services/order';
+import { OrderService } from '../../orders/logic/order-service';
 import { useMemo } from 'react';
 
 export const useCartValidation = () => {

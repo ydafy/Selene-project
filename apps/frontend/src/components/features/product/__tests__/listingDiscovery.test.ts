@@ -18,7 +18,7 @@ describe('where listings in verification are discoverable', () => {
   );
 
   test.each([
-    'components/features/home/sections/ShellRecentDrops.tsx',
+    'features/home/components/shell-recent-drops.tsx',
     'features/shop/components/shell-end-feed-card2.tsx',
   ])('%s keeps showing verified listings only', (file) => {
     const source = read(file);
