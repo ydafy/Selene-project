@@ -17,6 +17,14 @@ function listFiles(dir: string): string[] {
 const files = SCANNED_DIRS.flatMap((dir) => listFiles(join(SRC_ROOT, dir)));
 
 describe('legacy wallet removal', () => {
+  // A wrong root that still exists would scan nothing and pass silently.
+  it('scans the app sources', () => {
+    const scanned = files.map((path) =>
+      relative(SRC_ROOT, path).split(sep).join('/'),
+    );
+    expect(scanned).toContain('features/auth/hooks/use-auth.ts');
+  });
+
   it('keeps no wallet or withdraw file names in the app', () => {
     const offenders = files
       .map((path) => relative(SRC_ROOT, path).split(sep).join('/'))
