@@ -13,7 +13,7 @@ import {
   type SignOutResult,
   type SignOutScope,
 } from './signOut.logic';
-import { pushRegistrar } from '../push/pushRegistration';
+import { pushRegistrar } from '../../features/notifications/lib/push-registration';
 import { resetUserQueries } from './userQueries.logic';
 
 /**

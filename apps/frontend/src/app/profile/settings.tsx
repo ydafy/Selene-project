@@ -8,7 +8,7 @@ import { ScreenLayout } from '../../shared/ui/screen-layout';
 import { useAuthContext } from '../../shared/lib/auth/auth-provider';
 import { AccountSection } from '../../features/settings/components/account-section';
 import { SecuritySection } from '../../features/settings/components/security-section';
-import { NotificationsSection } from '../../components/features/settings/NotificationsSection';
+import { NotificationsSection } from '../../features/notifications/components/notifications-section';
 import { DeleteAccountSection } from '../../features/settings/components/delete-account-section';
 import { LegalesSection } from '../../features/settings/components/legales-section';
 import { SoporteSection } from '../../features/settings/components/soporte-section';

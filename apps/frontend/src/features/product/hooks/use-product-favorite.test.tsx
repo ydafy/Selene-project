@@ -63,7 +63,7 @@ if (process.env.SELENE_FAVORITE_CHILD !== '1') {
   mock.module('../../../shared/lib/auth/auth-provider', () => ({
     useAuthContext: () => ({ session: { user: { id: 'user-1' } } }),
   }));
-  mock.module('../../../core/push/pushPermission', () => ({
+  mock.module('../../notifications/lib/push-permission', () => ({
     offerPushPermission,
   }));
 
