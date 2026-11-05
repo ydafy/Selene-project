@@ -7,7 +7,7 @@ import {
   shouldReloadStatusOnResume,
   syncStatusOwner,
   type StatusState,
-} from './sessionStatus.logic';
+} from './session-status.logic';
 
 const bannedA: StatusState = {
   userId: 'user-a',

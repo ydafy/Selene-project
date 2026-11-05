@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { reauthenticateCurrentUser } from '../../../core/auth/reauth';
-import { signOutUser } from '../../../core/auth/signOut';
+import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
 import { supabase } from '../../../shared/lib/supabase';
 import {
   runDeleteAccount,
@@ -38,15 +38,17 @@ const invokeDeleteAccount = async (): Promise<DeleteAccountHttpResponse> => {
  * local sign-out (no network call) and clears user-scoped data.
  */
 export const useDeleteAccount = () => {
+  const { signOut } = useAuthContext();
   return useMutation<DeleteAccountResult, Error, DeleteAccountInput | void>({
     mutationFn: (input) =>
       runDeleteAccount(input ?? {}, {
         invoke: invokeDeleteAccount,
-        reauthenticate: reauthenticateCurrentUser,
+        reauthenticate: (credential) =>
+          reauthenticateCurrentUser(credential, () => signOut('local')),
       }),
     onSuccess: async (result) => {
       if (result.ok) {
-        await signOutUser('local');
+        await signOut('local');
       }
     },
   });

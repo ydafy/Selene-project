@@ -1,5 +1,5 @@
 /**
- * @file core/hooks/useSession.ts
+ * @file shared/lib/auth/use-session.ts
  * @description Motor de gestión de sesiones de Selene.
  * Implementa el patrón "Identity Anchor" para asegurar sincronización entre
  * Supabase Auth y la tabla profiles_private (estados de baneo y suspensión).
@@ -7,10 +7,9 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
-import { supabase } from '../../shared/lib/supabase';
+import { supabase } from '../supabase';
 import { Session } from '@supabase/supabase-js';
 
-import { clearUserScopedData } from '../auth/signOut';
 import {
   INITIAL_STATUS_STATE,
   applyStatusLoad,
@@ -18,11 +17,12 @@ import {
   shouldReloadStatusOnResume,
   syncStatusOwner,
   type StatusLoadResult,
-} from '../auth/sessionStatus.logic';
+} from './session-status.logic';
 
 const INITIALIZATION_TIMEOUT = 10000;
 
-export const useSession = () => {
+/** `onSignedOut` clears the previous user's data when the session ends, however it ended. */
+export const useSession = ({ onSignedOut }: { onSignedOut: () => void }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -31,6 +31,8 @@ export const useSession = () => {
   // Mirrors the session user so late status responses can be checked against it.
   const currentUserId = useRef<string | null>(null);
   const statusRequests = useRef(createLatestRequest()).current;
+  const onSignedOutRef = useRef(onSignedOut);
+  onSignedOutRef.current = onSignedOut;
 
   const applySession = (next: Session | null) => {
     const nextUserId = next?.user.id ?? null;
@@ -133,7 +135,7 @@ export const useSession = () => {
           setLoading(false);
           setStatusState(INITIAL_STATUS_STATE);
           try {
-            clearUserScopedData();
+            onSignedOutRef.current();
           } catch (e) {
             console.error('[AUTH] Fallo al limpiar datos de usuario:', e);
           }

@@ -12,7 +12,6 @@ import { useTranslation } from 'react-i18next';
 
 import { Box, Text } from './base';
 import { PrimaryButton } from './primary-button';
-import { signOutUser } from '../../core/auth/signOut';
 import { ErrorState } from './error-state';
 import { MaintenanceScreen } from './maintenance-screen';
 
@@ -23,7 +22,7 @@ import { Theme } from '../theme';
 
 export function SystemGuard({ children }: { children: React.ReactNode }) {
   const { data: config, isLoading, isError, refetch } = useSystemConfig();
-  const { isBanned, statusReason } = useAuthContext();
+  const { isBanned, statusReason, signOut } = useAuthContext();
   const { t } = useTranslation('auth');
   const theme = useTheme<Theme>();
   const currentVersion = Constants.expoConfig?.version || '1.0.0';
@@ -80,7 +79,7 @@ export function SystemGuard({ children }: { children: React.ReactNode }) {
           {statusReason || t('auth:bannedAccount.defaultMessage')}
         </Text>
 
-        <PrimaryButton onPress={() => signOutUser()}>
+        <PrimaryButton onPress={() => signOut()}>
           {t('auth:bannedAccount.signOut')}
         </PrimaryButton>
       </Box>

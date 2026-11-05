@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { QueryClient, QueryObserver } from '@tanstack/react-query';
 
-import { resetUserQueries } from './userQueries.logic';
+import { resetUserQueries } from './user-queries.logic';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -49,7 +49,7 @@ describe('resetUserQueries', () => {
     const home = observe(client, ['products', 'home'], ['listing']);
     await sleep(50);
 
-    // SIGNED_OUT listener cleanup, the screen refetches, then signOutUser cleans again.
+    // SIGNED_OUT listener cleanup, the screen refetches, then the context's signOut cleans again.
     resetUserQueries(client);
     home.observer.setOptions(home.options);
     await sleep(5);

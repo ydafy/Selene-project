@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { runSignOut, runCleanupSteps } from './signOut.logic';
+import { runSignOut, runCleanupSteps } from './sign-out.logic';
 
 describe('runSignOut', () => {
   it('signs out with the requested scope, then cleans up', async () => {
