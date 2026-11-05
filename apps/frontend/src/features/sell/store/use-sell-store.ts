@@ -7,7 +7,7 @@
 import { create } from 'zustand';
 import { Product, ProductCategory, ShippingPayer } from '@selene/types';
 
-import { getCategoryResetFields } from '../../../core/utils/sellCategoryReset';
+import { getCategoryResetFields } from '../logic/sell-category-reset';
 
 type PublicationEconomicsSettings = Pick<
   ProductPublicationSettings,

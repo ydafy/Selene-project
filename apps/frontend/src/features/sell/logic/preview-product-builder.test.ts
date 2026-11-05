@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'bun:test';
 
-import { SellDraft } from '../../features/sell/store/use-sell-store';
+import { SellDraft } from '../store/use-sell-store';
 import {
   buildPreviewProduct,
   PreviewSellerInfo,
-} from './previewProductBuilder';
+} from './preview-product-builder';
 
 const seller: PreviewSellerInfo = {
   id: 'user-1',

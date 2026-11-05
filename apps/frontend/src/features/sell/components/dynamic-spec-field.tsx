@@ -21,7 +21,7 @@ import { Box, Text } from '../../../shared/ui/base';
 import { FormSelect } from '../../../shared/ui/form-select';
 import { FormTextInput } from '../../../shared/ui/form-text-input';
 import { SellFieldConfig } from '../logic/sell-form-config';
-import { checkIfOther } from '../../../core/utils/form-helpers';
+import { checkIfOther } from '../logic/form-helpers';
 
 interface DynamicSpecFieldProps<T extends FieldValues> {
   field: SellFieldConfig;

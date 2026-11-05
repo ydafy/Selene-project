@@ -15,7 +15,7 @@ import { PrimaryButton } from '../../shared/ui/primary-button';
 import { useSellStore } from '../../features/sell/store/use-sell-store';
 import { SELL_FORM_CONFIG } from '../../features/sell/logic/sell-form-config';
 import { DynamicSpecField } from '../../features/sell/components/dynamic-spec-field';
-import { checkIfOther } from '@/core/utils/form-helpers';
+import { checkIfOther } from '@/features/sell/logic/form-helpers';
 import { SELL_STEP_DEFINITIONS } from '@/features/sell/logic/sell-steps';
 
 export default function SellSpecsScreen() {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 
-import { countUploadState } from './countUploadState';
-import type { ImageUploadState } from './publishGuard';
+import { countUploadState } from './count-upload-state';
+import type { ImageUploadState } from './publish-guard';
 
 describe('countUploadState', () => {
   it('counts completed images against the total', () => {

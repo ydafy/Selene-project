@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
-import type { SellDraft } from '../../features/sell/store/use-sell-store';
-import { buildEditEconomicsFields, classifyListingEdit } from './listingEdit';
+import type { SellDraft } from '../store/use-sell-store';
+import { buildEditEconomicsFields, classifyListingEdit } from './listing-edit';
 
 const original = {
   category: 'GPU',

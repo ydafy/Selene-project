@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { reorderImages } from './imageReorder';
+import { reorderImages } from './image-reorder';
 
 describe('reorderImages', () => {
   it('moves an image left', () => {

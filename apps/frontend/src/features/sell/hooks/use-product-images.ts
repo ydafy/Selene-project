@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import {
   formatMaxImageSizeMB,
   isImageTooLarge,
-} from '../../../core/utils/imageSizeGuard';
+} from '../logic/image-size-guard';
 
 export const useProductImages = () => {
   const { t } = useTranslation('sell');

@@ -1,6 +1,6 @@
 import { ProductCategory, ProductWithSeller, Profile } from '@selene/types';
 
-import { SellDraft } from '../../features/sell/store/use-sell-store';
+import { SellDraft } from '../store/use-sell-store';
 
 /**
  * Subset of seller fields needed to render the preview card.

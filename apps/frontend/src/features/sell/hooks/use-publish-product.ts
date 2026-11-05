@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useNetInfo } from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
 
-import { publishProductSchema } from '../../../core/schemas/sell.schema';
+import { publishProductSchema } from '../logic/sell-schema';
 
 import { supabase } from '../../../shared/lib/supabase';
 import {
@@ -21,13 +21,13 @@ import {
 import {
   buildEditEconomicsFields,
   classifyListingEdit,
-} from '../../../core/utils/listingEdit';
+} from '../logic/listing-edit';
 import { useTranslation } from 'react-i18next';
 import {
   checkPublishGuard,
   buildInitialUploadProgress,
   ImageUploadState,
-} from '../../../core/utils/publishGuard';
+} from '../logic/publish-guard';
 
 export const usePublishProduct = () => {
   const [isPublishing, setIsPublishing] = useState(false);

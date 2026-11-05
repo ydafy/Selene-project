@@ -1,5 +1,5 @@
 /**
- * @file core/utils/form-helpers.ts
+ * @file features/sell/logic/form-helpers.ts
  * @description Utilidades compartidas para la gestión de formularios dinámicos.
  */
 

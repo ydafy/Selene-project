@@ -1,5 +1,5 @@
 /**
- * @file core/schemas/sell.schema.ts
+ * @file features/sell/logic/sell-schema.ts
  * @description Única Fuente de la Verdad (SSOT) para la validación de productos en Selene.
  */
 

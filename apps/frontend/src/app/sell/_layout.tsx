@@ -2,7 +2,7 @@ import { Stack } from 'expo-router';
 
 import { useExitGuard } from '../../shared/hooks/use-exit-guard';
 import { useSellStore } from '../../features/sell/store/use-sell-store';
-import { isSellDraftDirty } from '../../core/utils/sellDraftDirty';
+import { isSellDraftDirty } from '../../features/sell/logic/sell-draft-dirty';
 
 export default function SellLayout() {
   const draft = useSellStore((state) => state.draft);

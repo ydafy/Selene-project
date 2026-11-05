@@ -4,7 +4,7 @@ import {
   formatMaxImageSizeMB,
   isImageTooLarge,
   MAX_IMAGE_SIZE_BYTES,
-} from './imageSizeGuard';
+} from './image-size-guard';
 
 describe('MAX_IMAGE_SIZE_BYTES', () => {
   it('equals 8 MB', () => {

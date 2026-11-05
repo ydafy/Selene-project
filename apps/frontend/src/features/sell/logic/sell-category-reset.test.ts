@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { getCategoryResetFields } from './sellCategoryReset';
+import { getCategoryResetFields } from './sell-category-reset';
 
 describe('getCategoryResetFields', () => {
   it('resets condition, usage, and specifications', () => {

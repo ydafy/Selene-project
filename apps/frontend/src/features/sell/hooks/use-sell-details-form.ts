@@ -17,12 +17,12 @@ import {
   calculateSellerProceedsEstimate,
   formatCentsAsMx,
   resolveCommissionPercent,
-} from '@/core/utils/sellerProceedsEstimate';
-import { getCategoryResetFields } from '@/core/utils/sellCategoryReset';
+} from '@/features/sell/logic/seller-proceeds-estimate';
+import { getCategoryResetFields } from '@/features/sell/logic/sell-category-reset';
 import {
   sellDetailsSchema,
   SellDetailsInput,
-} from '@/core/schemas/sell.schema';
+} from '@/features/sell/logic/sell-schema';
 
 export const useSellDetailsForm = () => {
   const { t } = useTranslation(['sell']);

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'bun:test';
 import {
   calculateSellerProceedsEstimate,
   normalizeInsuranceRate,
-} from './sellerProceedsEstimate';
+} from './seller-proceeds-estimate';
 
 const baseSettings = {
   service_fee_pct: 0.06,

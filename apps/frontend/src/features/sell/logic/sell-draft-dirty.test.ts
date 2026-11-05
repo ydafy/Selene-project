@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 
-import { SellDraft } from '../../features/sell/store/use-sell-store';
-import { isSellDraftDirty } from './sellDraftDirty';
+import { SellDraft } from '../store/use-sell-store';
+import { isSellDraftDirty } from './sell-draft-dirty';
 
 const emptyDraft: SellDraft = {
   category: null,

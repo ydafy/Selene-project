@@ -14,7 +14,7 @@ import { useSellStore } from '../../features/sell/store/use-sell-store';
 import { useProductImages } from '../../features/sell/hooks/use-product-images';
 import { SELL_STEP_DEFINITIONS } from '@/features/sell/logic/sell-steps';
 import { triggerHaptic } from '../../shared/utils/haptics';
-import { reorderImages } from '../../core/utils/imageReorder';
+import { reorderImages } from '../../features/sell/logic/image-reorder';
 
 const MAX_IMAGES = 5;
 

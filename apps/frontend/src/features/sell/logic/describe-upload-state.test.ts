@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 
-import { describeUploadState } from './describeUploadState';
-import type { ImageUploadState } from './publishGuard';
+import { describeUploadState } from './describe-upload-state';
+import type { ImageUploadState } from './publish-guard';
 
 describe('describeUploadState', () => {
   it('describes a pending image', () => {

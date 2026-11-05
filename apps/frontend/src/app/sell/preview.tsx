@@ -23,11 +23,11 @@ import { ProductSellerCard } from '../../features/product/components/product-sel
 import { useSellStore } from '../../features/sell/store/use-sell-store';
 import { usePublishProduct } from '../../features/sell/hooks/use-publish-product';
 import { useAuthContext } from '../../shared/lib/auth/auth-provider';
-import { classifyListingEdit } from '../../core/utils/listingEdit';
+import { classifyListingEdit } from '../../features/sell/logic/listing-edit';
 import { formatCurrency } from '../../shared/utils/format';
-import { buildPreviewProduct } from '../../core/utils/previewProductBuilder';
-import { describeUploadState } from '../../core/utils/describeUploadState';
-import { countUploadState } from '../../core/utils/countUploadState';
+import { buildPreviewProduct } from '../../features/sell/logic/preview-product-builder';
+import { describeUploadState } from '../../features/sell/logic/describe-upload-state';
+import { countUploadState } from '../../features/sell/logic/count-upload-state';
 
 import { ProductWithSeller } from '@selene/types';
 

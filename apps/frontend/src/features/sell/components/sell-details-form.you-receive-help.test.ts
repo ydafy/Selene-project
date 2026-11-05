@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { resolveCommissionPercent } from '../../src/core/utils/sellerProceedsEstimate';
+import { resolveCommissionPercent } from '../logic/seller-proceeds-estimate';
 
 // Prettier may re-wrap the source files read below; compare without layout.
 const compact = (source: string) =>
@@ -12,7 +12,7 @@ const compact = (source: string) =>
     .replace(/,([)\]}])/g, '$1')
     .replace(/ \./g, '.');
 
-const FRONTEND = join(import.meta.dir, '..', '..');
+const FRONTEND = join(import.meta.dir, '..', '..', '..', '..');
 const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
 const es = JSON.parse(read('src/shared/i18n/locales/es/sell.json'));
 const en = JSON.parse(read('src/shared/i18n/locales/en/sell.json'));

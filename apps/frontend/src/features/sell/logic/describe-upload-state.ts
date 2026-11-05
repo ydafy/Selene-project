@@ -1,4 +1,4 @@
-import type { ImageUploadState } from './publishGuard';
+import type { ImageUploadState } from './publish-guard';
 
 export type UploadStateDescription = {
   labelKey: string;
