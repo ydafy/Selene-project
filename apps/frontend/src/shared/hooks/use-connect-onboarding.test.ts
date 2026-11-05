@@ -20,7 +20,11 @@ mock.module('expo-router/react-navigation', () => ({
   useFocusEffect: () => undefined,
 }));
 
+// Bun module mocks are process-wide: keep the real exports so later test files that
+// import QueryClient (or anything else) still find them.
+const reactQuery = await import('@tanstack/react-query');
 mock.module('@tanstack/react-query', () => ({
+  ...reactQuery,
   useQuery: () => ({
     data: null,
     isError: false,
