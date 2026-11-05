@@ -15,7 +15,7 @@ import {
   BottomSheetModalProvider,
   BottomSheetModal,
 } from '@gorhom/bottom-sheet';
-import { AuthModal } from '../../components/features/auth/AuthModal';
+import { AuthModal } from '../../features/auth/components/auth-modal';
 
 type AuthView = 'login' | 'register';
 

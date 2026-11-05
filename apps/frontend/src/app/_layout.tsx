@@ -30,7 +30,7 @@ import { AuthProvider } from '../shared/lib/auth/auth-provider';
 import type { SignOutWiring } from '../shared/lib/auth/create-sign-out';
 import { resetUserQueries } from '../shared/lib/auth/user-queries.logic';
 import { AuthModalProvider } from '../core/auth/AuthModalProvider';
-import { CaptchaProvider } from '../core/auth/captcha/CaptchaProvider';
+import { CaptchaProvider } from '../features/auth/components/captcha-provider';
 import { NotificationWatcher } from '../features/notifications/components/notification-watcher';
 
 import { PushRegistration } from '../features/notifications/components/push-registration';

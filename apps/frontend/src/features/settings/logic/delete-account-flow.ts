@@ -1,7 +1,4 @@
-import type {
-  ReauthCredential,
-  ReauthResult,
-} from '../../../core/auth/reauth.logic';
+import type { ReauthCredential, ReauthResult } from './reauth.logic';
 import {
   mapDeleteAccountResponse,
   type DeleteAccountHttpResponse,

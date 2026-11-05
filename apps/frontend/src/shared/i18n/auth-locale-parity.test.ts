@@ -14,9 +14,9 @@ const AUTH_SOURCES = [
   'app/(auth)/forgotPassword.tsx',
   'app/(auth)/verify-code.tsx',
   'app/(auth)/resetPassword.tsx',
-  'components/features/auth/LoginForm.tsx',
-  'components/features/auth/RegisterForm.tsx',
-  'components/features/auth/AuthModal.tsx',
+  'features/auth/components/login-form.tsx',
+  'features/auth/components/register-form.tsx',
+  'features/auth/components/auth-modal.tsx',
 ];
 
 const LOCALES: Record<string, [unknown, unknown]> = {
