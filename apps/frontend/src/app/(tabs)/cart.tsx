@@ -17,8 +17,12 @@ import { useState } from 'react';
 import { useAuthContext } from '../../shared/lib/auth/auth-provider';
 import { useAuthModal } from '../../shared/lib/auth/auth-modal-context';
 import { useCartValidation } from '../../features/cart/hooks/use-cart-validation';
+import { OrderService } from '../../features/orders/logic/order-service';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getTabDockMetrics } from '../../shared/config/layout';
+
+const validateProductStock = (productIds: string[]) =>
+  OrderService.validateProductStock(productIds);
 
 export default function CartScreen() {
   const theme = useTheme<Theme>();
@@ -33,7 +37,7 @@ export default function CartScreen() {
     unavailableIds,
     hasUnavailableItems,
     isLoading: isValidating,
-  } = useCartValidation();
+  } = useCartValidation(validateProductStock);
 
   const { items, removeItem } = useCartStore();
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
