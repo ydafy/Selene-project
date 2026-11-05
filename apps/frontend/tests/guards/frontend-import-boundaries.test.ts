@@ -212,7 +212,6 @@ for await (const importer of new Bun.Glob('**/*.{ts,tsx}').scan({
 const KNOWN_VIOLATIONS: string[] = [
   'features/cart/hooks/use-cart-validation.ts -> features/orders/logic/order-service',
   'features/orders/screens/prepare-shipment-submit.mount.test.tsx -> app/profile/orders/prepare/[id]',
-  'features/product/hooks/use-product-cart.ts -> features/payments/hooks/use-seller-payment-readiness',
 ];
 
 describe('dependency rule', () => {

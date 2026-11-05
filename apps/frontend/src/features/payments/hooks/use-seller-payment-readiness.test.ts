@@ -105,11 +105,20 @@ describe('screen and hook wiring (S4)', () => {
   it('useProductCart decides through the gate after reading the fresh status', () => {
     const src = read('features/product/hooks/use-product-cart.ts');
     expect(src).toContain('decidePurchaseGate');
-    expect(src).toContain('fetchSellerPaymentReadiness');
     expect(src).not.toContain('sellerNotReady');
-    const call = src.indexOf('await fetchSellerPaymentReadiness(');
+    const call = src.indexOf('await checkSellerBlocked(');
     expect(src.indexOf("'VERIFIED'")).toBeLessThan(call);
     expect(call).toBeLessThan(src.indexOf('addItem(product)'));
+  });
+
+  it('the product route reads readiness fresh at press time and hands it to useProductCart', () => {
+    const src = read('app/product/[id].tsx');
+    expect(src).toMatch(
+      /const checkSellerBlocked = async \(productId: string\) =>\s*isSellerBlocked\(await fetchSellerPaymentReadiness\(\[productId\]\), productId\);/,
+    );
+    expect(src).toMatch(
+      /useProductCart\(\s*product,\s*checkSellerBlocked,?\s*\)/,
+    );
   });
 
   it('product screen keeps the normal button and opens a dialog per state', () => {
