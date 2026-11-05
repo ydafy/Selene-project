@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 
 import {
   buildCancelOrderPayload,
@@ -9,12 +8,11 @@ import {
   canCancelShipment,
   resolveCancelOrderFailureToast,
   resolveShipmentPreparingWindowMessage,
-} from '../apps/frontend/src/features/orders/logic/shipment-cancel-safety';
+} from './shipment-cancel-safety';
 
-import { resolveCancellationSettings } from '../apps/frontend/src/features/orders/logic/cancellation-settings';
+import { resolveCancellationSettings } from './cancellation-settings';
 
-const ROOT_DIR = dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = join(ROOT_DIR, '..');
+const SCREENS_DIR = join(import.meta.dir, '..', 'screens');
 
 describe('shipment cancel safety frontend helpers', () => {
   it('keeps cancel eligibility buyer-only and paid-only', () => {
@@ -64,10 +62,7 @@ describe('shipment cancel safety frontend helpers', () => {
 
   it('preserves the unboxing notice in order detail copy', () => {
     const detail = readFileSync(
-      join(
-        REPO_ROOT,
-        'apps/frontend/src/features/orders/screens/order-detail-screen.tsx',
-      ),
+      join(SCREENS_DIR, 'order-detail-screen.tsx'),
       'utf8',
     );
 

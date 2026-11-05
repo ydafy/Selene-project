@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 
-const SRC_ROOT = join(import.meta.dir, '..', '..', 'src');
+const SRC_ROOT = join(import.meta.dir, 'src');
 // Every folder under src/, so moved code and locales stay covered.
 const SCANNED_DIRS = ['.'];
 const LEGACY_PATTERN = /wallet|withdraw/i;

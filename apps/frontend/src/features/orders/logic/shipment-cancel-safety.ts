@@ -39,7 +39,6 @@ export interface ShipmentPreparingWindowCopyInput {
   isExpired?: boolean;
 }
 
-/** @public Used by tests/shipment-cancel-safety.test.ts, outside the knip frontend run; drop the tag when that test moves next to this file (#134, B4). */
 export function canBuyerCancelShipment(input: {
   isBuyer: boolean;
   status: ShipmentStatus;

@@ -9,7 +9,7 @@
     },
     "apps/frontend": {
       // `bun test` finds these by name; nothing imports them.
-      "entry": ["src/**/*.test.{ts,tsx}", "tests/**/*.test.{ts,tsx}"],
+      "entry": ["*.test.ts", "src/**/*.test.{ts,tsx}"],
       "ignoreDependencies": [
         // @hcaptcha/react-native-hcaptcha imports it without declaring it; the
         // Android bundle fails without it (odd/tasks/frontend-layout.md, L10).
