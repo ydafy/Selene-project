@@ -158,4 +158,5 @@ These protect real money and user data. They hold for every change:
 - Inside an authorized feature on its feature branch, commit each work unit as soon as its checks pass; do not wait to be asked. Target about 400 authored changed lines per commit (larger commits exceed the native review budget). A change to money, SQL, RLS, or auth goes in its own commit.
 - In a roadmap ("How we work"), size each item so it lands as one such commit; if one will clearly exceed that, split it in the plan, not at commit time. Check that an item still holds before you start it.
 - Generated files (`packages/types/src/database.types.ts`) go in the same commit as the migration that produced them.
+- Pass commits to tools as ref names (`HEAD~1`, a branch) or as the exact output of `git rev-parse`; never type or complete a SHA by hand, and check any SHA you cite with `git rev-parse --verify <sha>^{commit}`.
 - Keep commits scoped: code, tests, migration, and contract updates for one behavior go together. Use Conventional Commits.
