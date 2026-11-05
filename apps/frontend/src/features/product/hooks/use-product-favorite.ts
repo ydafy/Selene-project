@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../../shared/lib/supabase';
-import { useAuthContext } from '../../shared/lib/auth/auth-provider';
-import { offerPushPermission } from '../push/pushPermission';
+import { supabase } from '../../../shared/lib/supabase';
+import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
+import { offerPushPermission } from '../../../core/push/pushPermission';
 
 export const useProductFavorite = (productId: string) => {
   const { session } = useAuthContext();

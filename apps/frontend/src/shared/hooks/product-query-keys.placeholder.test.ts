@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { QueryClient } from '@tanstack/react-query';
-import { productsListKey } from '../../../shared/hooks/product-query-keys';
-import { findCachedProduct } from '../../../shared/hooks/product-query-keys';
+import { productsListKey } from './product-query-keys';
+import { findCachedProduct } from './product-query-keys';
 
 const product = (id: string) => ({ id, title: `Product ${id}` });
 

@@ -15,7 +15,7 @@ const sourceFiles = (dir: string): string[] =>
   });
 
 const VIEWER_SCREENS = [
-  'src/components/features/product/ProductImageGallery.tsx',
+  'src/features/product/components/product-image-gallery.tsx',
   'src/components/features/sell/ImageGridPicker.tsx',
   'src/features/verify/components/benchmark-guide-modal.tsx',
   'src/app/sell/onboarding.tsx',

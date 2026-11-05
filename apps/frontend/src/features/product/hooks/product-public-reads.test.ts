@@ -15,8 +15,8 @@ const BUYER_LIST_READS = [
 ];
 
 const BUYER_POINT_READS = [
-  'core/hooks/useProductFavorite.ts',
-  'components/features/product/hooks/useProductCart.ts',
+  'features/product/hooks/use-product-favorite.ts',
+  'features/product/hooks/use-product-cart.ts',
   'features/orders/logic/order-service.ts',
 ];
 
@@ -72,7 +72,7 @@ test('seller reviews embed the product name through the view', () => {
 });
 
 test('the product page reads the view first and falls back to the table for the owner', () => {
-  const source = read('core/hooks/useProduct.ts');
+  const source = read('features/product/hooks/use-product.ts');
   const view = source.indexOf(".from('products_public')");
   const table = source.indexOf(".from('products')");
   expect(view).toBeGreaterThan(-1);
@@ -115,13 +115,13 @@ test.each([
 // row), so the cache key carries the user: a session that arrives late refetches
 // instead of keeping a cached "not found" for the owner.
 test('the product page caches per user', () => {
-  expect(read('core/hooks/useProduct.ts')).toContain(
+  expect(read('features/product/hooks/use-product.ts')).toContain(
     "queryKey: ['product', id, userId ?? null]",
   );
 });
 
 test('the cart status refresh updates every user-scoped product cache entry', () => {
-  const source = read('components/features/product/hooks/useProductCart.ts');
+  const source = read('features/product/hooks/use-product-cart.ts');
   expect(source).toMatch(
     /setQueriesData\(\s*\{ queryKey: \['product', product\.id\] \},/,
   );

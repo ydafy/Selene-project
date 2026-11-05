@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 // The push pre-prompt is offered at the three moments of L6 and nowhere else;
 // the screens have no render harness, so their wiring is pinned here. The
-// favorite moment runs in core/hooks/useProductFavorite.test.tsx.
+// favorite moment runs in features/product/hooks/use-product-favorite.test.tsx.
 const root = join(import.meta.dir, '..', '..');
 const read = (file: string) => readFileSync(join(root, file), 'utf8');
 
@@ -35,7 +35,7 @@ test('the prompt host is mounted next to the push registration', () => {
 test('no other file offers the pre-prompt', () => {
   const callers = [
     'app/checkout/success.tsx',
-    'core/hooks/useProductFavorite.ts',
+    'features/product/hooks/use-product-favorite.ts',
     'app/verify/[id].tsx',
   ];
   const all = new Bun.Glob('**/*.{ts,tsx}');

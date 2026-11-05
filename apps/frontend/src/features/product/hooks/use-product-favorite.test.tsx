@@ -59,14 +59,16 @@ if (process.env.SELENE_FAVORITE_CHILD !== '1') {
       flatten: (style: unknown) => style,
     },
   }));
-  mock.module('../../shared/lib/supabase', () => ({ supabase: { from } }));
-  mock.module('../../shared/lib/auth/auth-provider', () => ({
+  mock.module('../../../shared/lib/supabase', () => ({ supabase: { from } }));
+  mock.module('../../../shared/lib/auth/auth-provider', () => ({
     useAuthContext: () => ({ session: { user: { id: 'user-1' } } }),
   }));
-  mock.module('../push/pushPermission', () => ({ offerPushPermission }));
+  mock.module('../../../core/push/pushPermission', () => ({
+    offerPushPermission,
+  }));
 
   const { act, render } = await import('@testing-library/react-native');
-  const { useProductFavorite } = await import('./useProductFavorite');
+  const { useProductFavorite } = await import('./use-product-favorite');
 
   type Hook = ReturnType<typeof useProductFavorite>;
   let hook: Hook | null = null;

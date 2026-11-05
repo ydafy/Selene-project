@@ -1,7 +1,7 @@
 //import Toast from 'react-native-toast-message';
 //import { useTranslation } from 'react-i18next'; // <-- Importamos i18n
 
-import { useProductFavorite } from '../../../core/hooks/useProductFavorite';
+import { useProductFavorite } from '../hooks/use-product-favorite';
 import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
 import { AnimatedHeartButton } from '../../../shared/ui/animated-heart-button';
 import { useAuthModal } from '../../../core/auth/AuthModalProvider';

@@ -15,9 +15,9 @@ import { GlobalHeader } from '../../shared/ui/global-header';
 import { BottomActionBar } from '../../shared/ui/bottom-action-bar';
 
 // Componentes de Feature (Producto)
-import { ProductImageGallery } from '../../components/features/product/ProductImageGallery';
-import { ProductSpecificationsGrid } from '../../components/features/product/ProductSpecificationsGrid';
-import { ProductSellerCard } from '../../components/features/product/ProductSellerCard';
+import { ProductImageGallery } from '../../features/product/components/product-image-gallery';
+import { ProductSpecificationsGrid } from '../../features/product/components/product-specifications-grid';
+import { ProductSellerCard } from '../../features/product/components/product-seller-card';
 
 // Hooks y Utilidades
 import { useSellStore } from '../../core/store/useSellStore';

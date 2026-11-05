@@ -23,7 +23,7 @@ import { Box } from '../../shared/ui/base';
 import { ScreenHeader } from '../../shared/ui/screen-header';
 import { GlobalHeader } from '../../shared/ui/global-header';
 import { ProductCard } from '../../shared/ui/product/product-card';
-import { ProductFavoriteButton } from '../../components/features/product/ProductFavoriteButton';
+import { ProductFavoriteButton } from '../../features/product/components/product-favorite-button';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { ProductCardSkeleton } from '../../shared/ui/product/product-card-skeleton';
 import {

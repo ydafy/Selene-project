@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const frontendRoot = join(import.meta.dir, '..', '..', '..', '..');
+const frontendRoot = join(import.meta.dir, '..', '..', '..');
 const read = (file: string) => readFileSync(join(frontendRoot, file), 'utf8');
 
 // L31: listings in verification show everywhere except components whose

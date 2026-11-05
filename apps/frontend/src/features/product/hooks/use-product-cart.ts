@@ -1,5 +1,5 @@
 /**
- * @file core/hooks/useProductCart.ts
+ * @file features/product/hooks/use-product-cart.ts
  * @description Hook de orquestación para la adición de productos al carrito.
  * Aplica JIT (Just-In-Time) Validation contra la DB antes de permitir el alta local.
  */
@@ -9,16 +9,16 @@ import Toast from 'react-native-toast-message';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { Product } from '@selene/types';
-import { useCartStore } from '../../../../features/cart/store/use-cart-store';
-import { supabase } from '../../../../shared/lib/supabase';
+import { useCartStore } from '../../cart/store/use-cart-store';
+import { supabase } from '../../../shared/lib/supabase';
 import {
   fetchSellerPaymentReadiness,
   isSellerBlocked,
-} from '../../../../features/payments/hooks/use-seller-payment-readiness';
+} from '../../payments/hooks/use-seller-payment-readiness';
 import {
   decidePurchaseGate,
   PurchaseDialogVariant,
-} from '../../../../core/utils/productPurchaseGate';
+} from '../logic/product-purchase-gate';
 
 export type AddToCartResult =
   'SUCCESS' | 'UNAVAILABLE' | 'ERROR' | PurchaseDialogVariant;

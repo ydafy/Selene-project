@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import {
   decidePurchaseGate,
   purchaseDialogContent,
-} from '../productPurchaseGate';
+} from './product-purchase-gate';
 
 describe('decidePurchaseGate', () => {
   it('adds a VERIFIED product whose seller is not blocked (ready or unknown)', () => {

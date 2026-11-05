@@ -4,7 +4,7 @@ import { useCheckoutStore } from '../../features/checkout/store/use-checkout-sto
 import { useCartStore } from '../../features/cart/store/use-cart-store';
 import { useDisputeStore } from '../../features/orders/store/use-dispute-store';
 import { useSearchStore } from '../../features/search/store/use-search-store';
-import { useProductHistoryStore } from '../store/useProductHistoryStore';
+import { useProductHistoryStore } from '../../shared/store/use-product-history-store';
 import { useSellStore } from '../store/useSellStore';
 import { useReviewStore } from '../store/useReviewStore';
 import {
