@@ -7,9 +7,15 @@ import {
   resolvePublicProfileCollectionState,
   resolvePublicProfileSellerId,
   shouldHidePublicProfileModerationActions,
-} from '../../src/app/profile/publicProfile.helpers';
+} from './public-profile.helpers';
 
-const FRONTEND = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const FRONTEND = join(
+  dirname(fileURLToPath(import.meta.url)),
+  '..',
+  '..',
+  '..',
+  '..',
+);
 
 const read = (relPath: string) => readFileSync(join(FRONTEND, relPath), 'utf8');
 

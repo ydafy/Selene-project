@@ -1,4 +1,4 @@
-import type { SellerReview } from '../../../core/hooks/useSellerReviews.helpers';
+import type { SellerReview } from './use-seller-reviews.helpers';
 import {
   resolvePublicIdentity,
   type PublicIdentity,

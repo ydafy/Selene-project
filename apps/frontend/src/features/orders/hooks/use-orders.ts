@@ -15,7 +15,7 @@ import {
   Product,
 } from '@selene/types';
 import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
-import { useReviewStore } from '../../../core/store/useReviewStore';
+import { useReviewStore } from '../store/use-review-store';
 import {
   ITEM_PRODUCT_EMBED,
   mergeItemProducts,

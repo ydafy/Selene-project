@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '../../shared/lib/supabase';
+import { supabase } from '../../../shared/lib/supabase';
 import { Product } from '@selene/types';
-import { useAuthContext } from '../../shared/lib/auth/auth-provider';
+import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
 
 export const useMyListings = () => {
   const { session } = useAuthContext();

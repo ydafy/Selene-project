@@ -1,11 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../../shared/lib/supabase';
+import { supabase } from '../../../shared/lib/supabase';
 import { Profile } from '@selene/types';
-import { useImageUpload } from '../../shared/hooks/use-image-upload';
+import { useImageUpload } from '../../../shared/hooks/use-image-upload';
 import {
   updateProfileUsername,
   mapUpdateProfileError,
-} from './updateProfileUsername';
+} from './update-profile-username';
 
 // 1. Hook de Lectura (Actualizado para usar el tipo global)
 export const useProfile = (userId: string) => {

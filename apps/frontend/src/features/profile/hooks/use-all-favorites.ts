@@ -1,7 +1,7 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { supabase } from '../../shared/lib/supabase';
+import { supabase } from '../../../shared/lib/supabase';
 import { Product } from '@selene/types';
-import { fetchAllFavorites, PAGE_SIZE } from './fetchAllFavorites';
+import { fetchAllFavorites, PAGE_SIZE } from './fetch-all-favorites';
 
 export const useAllFavorites = (userId: string | undefined) => {
   return useInfiniteQuery({

@@ -1,5 +1,5 @@
 import { expect, test, describe } from 'bun:test';
-import { validateEditUsername } from '../editProfileValidation';
+import { validateEditUsername } from './edit-profile-validation';
 
 /**
  * Covers CONF-015 + EXTD-TASK-011: username regex ^[A-Za-z0-9_.]+$ and

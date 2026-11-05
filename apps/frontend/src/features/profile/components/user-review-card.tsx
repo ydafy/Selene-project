@@ -1,5 +1,5 @@
 /**
- * @file components/features/users/UserReviewCard.tsx
+ * @file features/profile/components/user-review-card.tsx
  * @description Reusable, atomic review card component for seller profiles.
  *
  * Implements:
@@ -17,12 +17,12 @@ import { useTheme } from '@shopify/restyle';
 
 import { Box, Text } from '../../../shared/ui/base';
 import { AppImage } from '../../../shared/ui/app-image';
-import { SellerReview } from '../../../core/hooks/useSellerReviews';
+import { SellerReview } from '../hooks/use-seller-reviews';
 import { Theme } from '../../../shared/theme';
 import { useTranslation } from 'react-i18next';
-import { getUserReviewCardPresentation } from './UserReviewCard.helpers';
+import { getUserReviewCardPresentation } from '../logic/user-review-card.helpers';
 
-export { getUserReviewCardPresentation } from './UserReviewCard.helpers';
+export { getUserReviewCardPresentation } from '../logic/user-review-card.helpers';
 
 type UserReviewCardProps = {
   /** The full relational review data from the useSellerReviews query */

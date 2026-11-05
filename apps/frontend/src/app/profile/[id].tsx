@@ -24,19 +24,19 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { FlashList } from '@shopify/flash-list';
-import { UserReviewCard } from '../../components/features/users/UserReviewCard';
+import { UserReviewCard } from '../../features/profile/components/user-review-card';
 
 import { Box, Text } from '../../shared/ui/base';
 import { SegmentedControl } from '../../shared/ui/segmented-control';
-import { ProfileHeader } from '../../components/features/profile/ProfileHeader';
+import { ProfileHeader } from '../../features/profile/components/profile-header';
 import { OptionsMenu } from '../../shared/ui/options-menu';
 import { AppImage } from '../../shared/ui/app-image';
 import { Skeleton } from '../../shared/ui/skeleton';
 
 // Hooks unificados de alto rendimiento
-import { useProfile } from '../../core/hooks/useProfile';
+import { useProfile } from '../../features/profile/hooks/use-profile';
 import { useProducts } from '../../shared/hooks/use-products';
-import { useSellerReviews } from '../../core/hooks/useSellerReviews';
+import { useSellerReviews } from '../../features/profile/hooks/use-seller-reviews';
 import { formatCurrency } from '../../shared/utils/format';
 import { isClosedAccount } from '../../shared/utils/public-identity';
 import {
@@ -52,7 +52,7 @@ import {
   resolvePublicProfileCollectionState,
   resolvePublicProfileSellerId,
   shouldHidePublicProfileModerationActions,
-} from './publicProfile.helpers';
+} from '../../features/profile/logic/public-profile.helpers';
 
 const { width } = Dimensions.get('window');
 const PRODUCT_CARD_WIDTH = (width - 48) / 2; // Dos columnas responsivas

@@ -1,5 +1,5 @@
 /**
- * @file core/hooks/useProductManagement.ts
+ * @file features/profile/hooks/use-product-management.ts
  * @description Hook for seller product management with optimistic delete,
  *   pre-flight guards (ownership, dispute, SOLD/RESERVED), and iOS haptics.
  */
@@ -8,14 +8,14 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { supabase } from '../../shared/lib/supabase';
-import { useAuthContext } from '../../shared/lib/auth/auth-provider';
+import { supabase } from '../../../shared/lib/supabase';
+import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
 import { Product } from '@selene/types';
 import {
   removeProductFromCachedLists,
   restoreCachedLists,
   type CachedListsSnapshot,
-} from './optimisticListRemoval';
+} from './optimistic-list-removal';
 
 // Lists are cached as ['my-listings', userId] and ['products', filters] (#82)
 const LIST_PREFIXES = ['my-listings', 'products'];

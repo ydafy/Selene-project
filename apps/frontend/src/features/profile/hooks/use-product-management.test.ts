@@ -2,11 +2,11 @@ import { expect, test, describe } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { QueryClient } from '@tanstack/react-query';
-import { getStatusColor, isProductHistory } from '../../utils/product-status';
+import { getStatusColor, isProductHistory } from '../logic/product-status';
 import {
   removeProductFromCachedLists,
   restoreCachedLists,
-} from '../optimisticListRemoval';
+} from './optimistic-list-removal';
 
 // ─── Product Status Utilities ─────────────────────────────────────────────
 
@@ -173,7 +173,7 @@ describe('optimistic delete contract', () => {
 
   test('the hook uses the prefix helpers, never the exact list keys', () => {
     const hook = readFileSync(
-      join(import.meta.dir, '..', 'useProductManagement.ts'),
+      join(import.meta.dir, 'use-product-management.ts'),
       'utf8',
     );
     expect(hook).not.toMatch(/getQueryData\(\['(products|my-listings)'\]\)/);

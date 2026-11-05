@@ -4,7 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   updateProfileUsername,
   mapUpdateProfileError,
-} from './updateProfileUsername';
+} from './update-profile-username';
 
 interface MockUpdateQuery {
   from: (table: string) => MockUpdateQuery;

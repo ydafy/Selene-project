@@ -6,7 +6,7 @@ import { useDisputeStore } from '../../features/orders/store/use-dispute-store';
 import { useSearchStore } from '../../features/search/store/use-search-store';
 import { useProductHistoryStore } from '../../shared/store/use-product-history-store';
 import { useSellStore } from '../../features/sell/store/use-sell-store';
-import { useReviewStore } from '../store/useReviewStore';
+import { useReviewStore } from '../../features/orders/store/use-review-store';
 import {
   runCleanupSteps,
   runSignOut,

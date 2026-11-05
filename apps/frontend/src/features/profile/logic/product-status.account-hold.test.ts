@@ -3,7 +3,7 @@ import {
   getStatusColor,
   isAccountHeld,
   isProductHistory,
-} from '../product-status';
+} from './product-status';
 import en from '../../../shared/i18n/locales/en/profile.json';
 import es from '../../../shared/i18n/locales/es/profile.json';
 

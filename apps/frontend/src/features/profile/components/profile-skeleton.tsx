@@ -1,5 +1,5 @@
 /**
- * @file components/features/profile/ProfileSkeleton.tsx
+ * @file features/profile/components/profile-skeleton.tsx
  * @description Estado de carga de alta fidelidad para la pantalla de perfil.
  * Imita la jerarquía visual de ProfileHeader y ActionsBar para evitar Layout Shifts.
  */

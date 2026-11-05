@@ -1,7 +1,7 @@
 import { expect, test, describe } from 'bun:test';
 import type { Database } from '@selene/types';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { fetchAllFavorites } from './fetchAllFavorites';
+import { fetchAllFavorites } from './fetch-all-favorites';
 
 // Test doubles use a minimal chainable interface — not a full SupabaseClient.
 // The pure function accepts any object with the query builder methods it calls.

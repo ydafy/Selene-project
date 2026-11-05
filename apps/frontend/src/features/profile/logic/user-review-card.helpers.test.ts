@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { getUserReviewCardPresentation } from './UserReviewCard.helpers';
+import { getUserReviewCardPresentation } from './user-review-card.helpers';
 
 describe('getUserReviewCardPresentation', () => {
   test('describes verified linked reviews with product and localized date', () => {

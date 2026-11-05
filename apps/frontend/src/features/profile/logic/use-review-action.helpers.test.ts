@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { buildReviewInsertPayload } from './useReviewAction.helpers';
+import { buildReviewInsertPayload } from './use-review-action.helpers';
 
 describe('buildReviewInsertPayload', () => {
   test('maps a shipment-linked review to a supabase insert payload with linkage', () => {

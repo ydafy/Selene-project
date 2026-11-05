@@ -21,9 +21,9 @@ import {
   useProfile,
   useUpdateProfile,
   useUpdateAvatar,
-} from '../../core/hooks/useProfile';
+} from '../../features/profile/hooks/use-profile';
 import { useImageUpload } from '../../shared/hooks/use-image-upload';
-import { validateEditUsername } from '../../core/utils/editProfileValidation';
+import { validateEditUsername } from '../../features/profile/logic/edit-profile-validation';
 import { stripSettingsNamespace } from '../../core/hooks/deleteAccountHelpers';
 import { Theme } from '../../shared/theme';
 

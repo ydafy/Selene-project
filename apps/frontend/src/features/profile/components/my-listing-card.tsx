@@ -13,7 +13,7 @@ import {
   getStatusColor,
   isAccountHeld,
   isProductHistory,
-} from '../../../core/utils/product-status';
+} from '../logic/product-status';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
 type MyListingCardProps = {

@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../../shared/lib/supabase';
+import { supabase } from '../../../shared/lib/supabase';
 import {
   buildReviewInsertPayload,
   ReviewMutationInput,
-} from './useReviewAction.helpers';
+} from '../logic/use-review-action.helpers';
 
 export const useReviewAction = (orderId: string) => {
   const queryClient = useQueryClient();

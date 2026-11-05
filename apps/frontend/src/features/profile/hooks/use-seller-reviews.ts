@@ -1,5 +1,5 @@
 /**
- * @file core/hooks/useSellerReviews.ts
+ * @file features/profile/hooks/use-seller-reviews.ts
  * @description Hook de lectura para obtener las opiniones y calificaciones del vendedor.
  * Realiza un Join relacional para traer el perfil del comprador y el nombre del producto vendido.
  *
@@ -10,14 +10,14 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '../../shared/lib/supabase';
+import { supabase } from '../../../shared/lib/supabase';
 import {
   normalizeSellerReviewRows,
   type SellerReview,
   type SellerReviewRow,
-} from './useSellerReviews.helpers';
+} from '../logic/use-seller-reviews.helpers';
 
-export type { SellerReview } from './useSellerReviews.helpers';
+export type { SellerReview } from '../logic/use-seller-reviews.helpers';
 
 const fetchSellerReviews = async (
   sellerId: string,

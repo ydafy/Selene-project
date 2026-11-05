@@ -4,7 +4,7 @@ import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import type { EnrichedOrder, EnrichedShipment } from '@selene/types';
 
 import { ConfirmDialog } from '../../../shared/ui/confirm-dialog';
-import { ReviewModal } from '@/components/features/profile/ReviewModal';
+import { ReviewModal } from '@/features/profile/components/review-modal';
 
 interface OrderDetailDialogsProps {
   order: EnrichedOrder;

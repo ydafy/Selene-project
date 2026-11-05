@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { normalizeSellerReviewRows } from './useSellerReviews.helpers';
+import { normalizeSellerReviewRows } from './use-seller-reviews.helpers';
 
 describe('normalizeSellerReviewRows', () => {
   test('marks linked reviews as verified purchases and preserves linkage fields', () => {
