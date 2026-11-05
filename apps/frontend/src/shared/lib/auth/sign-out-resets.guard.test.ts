@@ -20,14 +20,77 @@ const KEPT_ON_SIGN_OUT: Record<string, string> = {
     'device preferences (onboarding and tour flags), not tied to the user',
 };
 
+/** A Zustand `persist(` call, with or without a type argument (`persist<S>(`). */
+const PERSIST_CALL = /\bpersist\s*(?:<[^>]*>)?\s*\(/;
+
+/** The `SIGN_OUT_WIRING` object only, without comments, so a mention elsewhere does not count. */
+const wiringBlock = (source: string): string => {
+  const start = source.indexOf('const SIGN_OUT_WIRING');
+  if (start === -1) return '';
+  const end = source.indexOf('\n};', start);
+  return source
+    .slice(start, end === -1 ? undefined : end)
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/.*$/gm, '');
+};
+
+const missingResets = (
+  wiring: string,
+  stores: { path: string; name: string | null }[],
+): string[] => {
+  const missing: string[] = [];
+  for (const { path, name } of stores) {
+    if (!name || name in KEPT_ON_SIGN_OUT) continue;
+    if (!wiring.includes(`${name}.getState()`)) {
+      missing.push(`${name} (${path}): not reset in _layout`);
+    }
+    if (!wiring.includes(`${name}.persist.clearStorage()`)) {
+      missing.push(`${name} (${path}): persist.clearStorage() not called`);
+    }
+  }
+  return missing;
+};
+
 const persistedStores = () =>
   sourceFiles('.')
     .map((path) => ({ path, source: readFileSync(join(SRC, path), 'utf8') }))
-    .filter(({ source }) => /\bpersist\(/.test(source))
+    .filter(({ source }) => PERSIST_CALL.test(source))
     .map(({ path, source }) => ({
       path: path.replaceAll('\\', '/'),
       name: /export const (use\w+Store)\b/.exec(source)?.[1] ?? null,
     }));
+
+describe('sign-out guard helpers', () => {
+  it('detects persist calls with or without a type argument', () => {
+    expect(
+      PERSIST_CALL.test('create<S>()(persist<S>((set) => ({}), {}))'),
+    ).toBe(true);
+    expect(PERSIST_CALL.test('create()(persist ((set) => ({}), {}))')).toBe(
+      true,
+    );
+    expect(PERSIST_CALL.test('const persisted = true;')).toBe(false);
+  });
+
+  it('ignores resets that only appear in comments or outside the wiring', () => {
+    const fixture = [
+      '// useCartStore.persist.clearStorage();',
+      'const OTHER = () => useCartStore.persist.clearStorage();',
+      'const SIGN_OUT_WIRING: SignOutWiring = {',
+      '  userDataResets: [',
+      '    () => {',
+      '      useCartStore.getState().clearCart();',
+      '      /* useCartStore.persist.clearStorage(); */',
+      '    },',
+      '  ],',
+      '};',
+    ].join('\n');
+    expect(
+      missingResets(wiringBlock(fixture), [
+        { path: 'cart.ts', name: 'useCartStore' },
+      ]),
+    ).toEqual(['useCartStore (cart.ts): persist.clearStorage() not called']);
+  });
+});
 
 describe('sign-out reset list in app/_layout.tsx', () => {
   it('finds the persisted stores it is meant to guard', () => {
@@ -37,17 +100,9 @@ describe('sign-out reset list in app/_layout.tsx', () => {
   });
 
   it('resets every persisted store and clears its AsyncStorage key', () => {
-    const missing: string[] = [];
-    for (const { path, name } of persistedStores()) {
-      if (!name || name in KEPT_ON_SIGN_OUT) continue;
-      if (!layoutSource.includes(`${name}.getState()`)) {
-        missing.push(`${name} (${path}): not reset in _layout`);
-      }
-      if (!layoutSource.includes(`${name}.persist.clearStorage()`)) {
-        missing.push(`${name} (${path}): persist.clearStorage() not called`);
-      }
-    }
-    expect(missing).toEqual([]);
+    const wiring = wiringBlock(layoutSource);
+    expect(wiring).toContain('userDataResets');
+    expect(missingResets(wiring, persistedStores())).toEqual([]);
   });
 
   it('keeps only stores that exist in the allow-list', () => {
