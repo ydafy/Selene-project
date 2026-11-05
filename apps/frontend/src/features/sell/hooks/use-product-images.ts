@@ -3,7 +3,10 @@ import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useTranslation } from 'react-i18next';
 
-import { formatMaxImageSizeMB, isImageTooLarge } from '../utils/imageSizeGuard';
+import {
+  formatMaxImageSizeMB,
+  isImageTooLarge,
+} from '../../../core/utils/imageSizeGuard';
 
 export const useProductImages = () => {
   const { t } = useTranslation('sell');

@@ -1,5 +1,5 @@
 /**
- * @file components/features/sell/DynamicSpecField.tsx
+ * @file features/sell/components/dynamic-spec-field.tsx
  * @description Componente de formulario dinámico que gestiona campos dependientes,
  * lógica de valores "Otros" y resets automáticos en cascada.
  * Nivel: Senior / Industrial.
@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { Box, Text } from '../../../shared/ui/base';
 import { FormSelect } from '../../../shared/ui/form-select';
 import { FormTextInput } from '../../../shared/ui/form-text-input';
-import { SellFieldConfig } from '../../../core/config/sell-form-config';
+import { SellFieldConfig } from '../logic/sell-form-config';
 import { checkIfOther } from '../../../core/utils/form-helpers';
 
 interface DynamicSpecFieldProps<T extends FieldValues> {

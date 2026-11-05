@@ -7,12 +7,12 @@ import { KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Box } from '@/shared/ui/base';
 import { GlobalHeader } from '@/shared/ui/global-header';
 import { ScreenHeader } from '@/shared/ui/screen-header';
-import { WizardSteps } from '@/components/features/sell/WizardSteps';
-import { SellDetailsForm } from '@/components/features/sell/SellDetailsForm';
-import { SELL_STEP_DEFINITIONS } from '@/core/constants/sellSteps';
+import { WizardSteps } from '@/features/sell/components/wizard-steps';
+import { SellDetailsForm } from '@/features/sell/components/sell-details-form';
+import { SELL_STEP_DEFINITIONS } from '@/features/sell/logic/sell-steps';
 
-import { useSellDetailsForm } from '@/core/hooks/useSellDetailsForm';
-import { useSellStore } from '@/core/store/useSellStore';
+import { useSellDetailsForm } from '@/features/sell/hooks/use-sell-details-form';
+import { useSellStore } from '@/features/sell/store/use-sell-store';
 
 export default function SellDetailsScreen() {
   const { t } = useTranslation(['sell']);

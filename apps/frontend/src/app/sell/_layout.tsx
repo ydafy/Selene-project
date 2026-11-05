@@ -1,7 +1,7 @@
 import { Stack } from 'expo-router';
 
 import { useExitGuard } from '../../shared/hooks/use-exit-guard';
-import { useSellStore } from '../../core/store/useSellStore';
+import { useSellStore } from '../../features/sell/store/use-sell-store';
 import { isSellDraftDirty } from '../../core/utils/sellDraftDirty';
 
 export default function SellLayout() {

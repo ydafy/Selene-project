@@ -16,7 +16,7 @@ import {
   buildMovePhotoUpA11yLabel,
   buildPhotoCounterA11yLabel,
   buildRemovePhotoA11yLabel,
-} from './imageGridA11y';
+} from '../logic/image-grid-a11y';
 
 const MAX_IMAGES = 5;
 

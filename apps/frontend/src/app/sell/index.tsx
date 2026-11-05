@@ -10,7 +10,7 @@ import { GlobalHeader } from '../../shared/ui/global-header';
 import { CategoryCard } from '../../features/search/components/category-card';
 import { ScreenHeader } from '@/shared/ui/screen-header';
 
-import { useSellStore } from '../../core/store/useSellStore';
+import { useSellStore } from '../../features/sell/store/use-sell-store';
 import { ProductCategory } from '@selene/types';
 import { useAuthContext } from '../../shared/lib/auth/auth-provider';
 import { useAuthModal } from '../../core/auth/AuthModalProvider';
@@ -19,7 +19,7 @@ import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
 import {
   SELL_CATEGORIES,
   SELL_CATEGORY_META,
-} from '../../core/config/sellCategories';
+} from '../../features/sell/logic/sell-categories';
 
 export default function SelectCategoryScreen() {
   const { t } = useTranslation(['sell', 'product', 'auth', 'common']);

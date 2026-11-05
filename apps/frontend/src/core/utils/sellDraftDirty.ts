@@ -1,4 +1,4 @@
-import { SellDraft } from '../store/useSellStore';
+import { SellDraft } from '../../features/sell/store/use-sell-store';
 
 /**
  * Determines whether the sell draft has user-entered data that should be

@@ -5,29 +5,29 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useNetInfo } from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
 
-import { publishProductSchema } from '../schemas/sell.schema';
+import { publishProductSchema } from '../../../core/schemas/sell.schema';
 
-import { supabase } from '../../shared/lib/supabase';
+import { supabase } from '../../../shared/lib/supabase';
 import {
   buildPublicationEconomicsSnapshot,
   useSellStore,
-} from '../store/useSellStore';
-import { useAuthContext } from '../../shared/lib/auth/auth-provider';
+} from '../store/use-sell-store';
+import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
 import { ProductCategory } from '@selene/types';
 import {
   resolveMediaType,
   uploadMediaFromUri,
-} from '../../shared/lib/upload-media';
+} from '../../../shared/lib/upload-media';
 import {
   buildEditEconomicsFields,
   classifyListingEdit,
-} from '../utils/listingEdit';
+} from '../../../core/utils/listingEdit';
 import { useTranslation } from 'react-i18next';
 import {
   checkPublishGuard,
   buildInitialUploadProgress,
   ImageUploadState,
-} from '../utils/publishGuard';
+} from '../../../core/utils/publishGuard';
 
 export const usePublishProduct = () => {
   const [isPublishing, setIsPublishing] = useState(false);

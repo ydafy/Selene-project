@@ -21,7 +21,7 @@ test('the listing moment is offered after a verification is sent, once its succe
 });
 
 test('creating or editing a listing does not offer push', () => {
-  expect(read('core/hooks/usePublishProduct.ts')).not.toContain(
+  expect(read('features/sell/hooks/use-publish-product.ts')).not.toContain(
     'offerPushPermission',
   );
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { SellDraft } from '../store/useSellStore';
+import { SellDraft } from '../../features/sell/store/use-sell-store';
 import { isSellDraftDirty } from './sellDraftDirty';
 
 const emptyDraft: SellDraft = {

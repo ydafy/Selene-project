@@ -3,7 +3,7 @@ import { describe, expect, it } from 'bun:test';
 import {
   buildWizardStepA11yLabel,
   buildWizardParentA11yLabel,
-} from './wizardA11y';
+} from './wizard-a11y';
 
 const fakeT = (key: string, options?: Record<string, unknown>): string => {
   const map: Record<string, string> = {

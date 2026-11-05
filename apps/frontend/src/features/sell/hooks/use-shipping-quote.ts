@@ -1,14 +1,14 @@
 /**
- * @file core/hooks/useShippingQuote.ts
+ * @file features/sell/hooks/use-shipping-quote.ts
  * @description Hook para obtener cotizaciones de envío dinámicas.
  * Conectado a la Edge Function 'get-shipping-quote'.
  */
 
 import { useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { invokeEdge } from '../../shared/lib/edge-client';
+import { invokeEdge } from '../../../shared/lib/edge-client';
 import { ShippingOption } from '@selene/types';
-import { RequestRaceGuard } from '../../shared/utils/request-race-guard';
+import { RequestRaceGuard } from '../../../shared/utils/request-race-guard';
 
 export const useShippingQuote = () => {
   const { t } = useTranslation('sell');

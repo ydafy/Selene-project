@@ -8,8 +8,8 @@ import { FormTextInput } from '@/shared/ui/form-text-input';
 import { FormSelect } from '@/shared/ui/form-select';
 import { PrimaryButton } from '@/shared/ui/primary-button';
 import { LabelWithHelp } from '@/shared/ui/label-with-help';
-import { PackageSelector } from './PackageSelector';
-import { useSellDetailsForm } from '@/core/hooks/useSellDetailsForm';
+import { PackageSelector } from './package-selector';
+import { useSellDetailsForm } from '@/features/sell/hooks/use-sell-details-form';
 import {
   PRODUCT_CONDITIONS,
   PRODUCT_USAGE_OPTIONS,

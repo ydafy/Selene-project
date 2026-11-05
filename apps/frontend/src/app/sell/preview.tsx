@@ -20,8 +20,8 @@ import { ProductSpecificationsGrid } from '../../features/product/components/pro
 import { ProductSellerCard } from '../../features/product/components/product-seller-card';
 
 // Hooks y Utilidades
-import { useSellStore } from '../../core/store/useSellStore';
-import { usePublishProduct } from '../../core/hooks/usePublishProduct';
+import { useSellStore } from '../../features/sell/store/use-sell-store';
+import { usePublishProduct } from '../../features/sell/hooks/use-publish-product';
 import { useAuthContext } from '../../shared/lib/auth/auth-provider';
 import { classifyListingEdit } from '../../core/utils/listingEdit';
 import { formatCurrency } from '../../shared/utils/format';

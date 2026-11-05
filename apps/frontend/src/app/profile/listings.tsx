@@ -18,7 +18,7 @@ import { isProductHistory } from '../../core/utils/product-status';
 
 import { useMyListings } from '../../core/hooks/useMyListings';
 import { useProductManagement } from '../../core/hooks/useProductManagement';
-import { useSellStore } from '../../core/store/useSellStore';
+import { useSellStore } from '../../features/sell/store/use-sell-store';
 
 import { Theme } from '../../shared/theme';
 import { Product } from '@selene/types';

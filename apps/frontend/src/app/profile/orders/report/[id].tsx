@@ -42,7 +42,7 @@ import {
 } from '@/features/orders/logic/dispute-checklists';
 import { useOrderById } from '@/features/orders/hooks/use-orders';
 import { useOrderActions } from '@/features/orders/hooks/use-order-actions';
-import { WizardSteps } from '@/components/features/sell/WizardSteps';
+import { WizardSteps } from '@/features/sell/components/wizard-steps';
 import { FormTextInput } from '@/shared/ui/form-text-input';
 import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import { resolveShipmentContext } from '@/features/orders/logic/dispute-shipment-context';

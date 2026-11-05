@@ -302,7 +302,7 @@ describe('uploadMediaFromBase64', () => {
 
 describe('upload call sites', () => {
   const hooks = [
-    'src/core/hooks/usePublishProduct.ts',
+    'src/features/sell/hooks/use-publish-product.ts',
     'src/features/verify/hooks/use-verification-logic.ts',
   ];
   for (const file of hooks) {

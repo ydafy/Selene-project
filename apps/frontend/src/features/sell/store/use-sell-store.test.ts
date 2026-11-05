@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 import {
   buildPublicationEconomicsSnapshot,
   useSellStore,
-} from './useSellStore';
+} from './use-sell-store';
 
 describe('useSellStore', () => {
   beforeEach(() => {

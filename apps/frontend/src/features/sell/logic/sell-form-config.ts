@@ -25,7 +25,7 @@ import {
   RAM_TYPE,
   RAM_CAPACITY,
   RAM_SPEEDS,
-} from '../../shared/config/product-data';
+} from '../../../shared/config/product-data';
 
 export type SellFieldConfig = {
   name: string;

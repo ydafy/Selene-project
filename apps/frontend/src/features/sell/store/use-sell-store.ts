@@ -1,5 +1,5 @@
 /**
- * @file core/store/useSellStore.ts
+ * @file features/sell/store/use-sell-store.ts
  * @description Gestión de estado global para el flujo de publicación de productos (Sell Wizard).
  * Mantiene un borrador (draft) y los datos originales para detectar cambios críticos en edición.
  */
@@ -7,7 +7,7 @@
 import { create } from 'zustand';
 import { Product, ProductCategory, ShippingPayer } from '@selene/types';
 
-import { getCategoryResetFields } from '../utils/sellCategoryReset';
+import { getCategoryResetFields } from '../../../core/utils/sellCategoryReset';
 
 type PublicationEconomicsSettings = Pick<
   ProductPublicationSettings,

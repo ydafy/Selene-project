@@ -8,7 +8,7 @@ import {
   buildMovePhotoUpA11yLabel,
   buildPhotoCounterA11yLabel,
   buildRemovePhotoA11yLabel,
-} from './imageGridA11y';
+} from './image-grid-a11y';
 
 const fakeT = (key: string, options?: Record<string, unknown>): string => {
   const map: Record<string, string> = {

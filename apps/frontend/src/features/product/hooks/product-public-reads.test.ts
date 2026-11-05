@@ -23,7 +23,7 @@ const BUYER_POINT_READS = [
 const OWNER_READS = [
   'core/hooks/useMyListings.ts',
   'features/verify/hooks/use-verification-logic.ts',
-  'core/hooks/usePublishProduct.ts',
+  'features/sell/hooks/use-publish-product.ts',
   'core/hooks/useProductManagement.ts',
 ];
 

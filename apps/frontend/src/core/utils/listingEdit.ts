@@ -1,7 +1,7 @@
 import {
   buildPublicationEconomicsSnapshot,
   type SellDraft,
-} from '../store/useSellStore';
+} from '../../features/sell/store/use-sell-store';
 import { normalize } from '../../shared/utils/compare';
 
 type EconomicsSettings = Parameters<

@@ -7,12 +7,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Box, Text } from '../../shared/ui/base';
 import { GlobalHeader } from '../../shared/ui/global-header';
 import { ScreenHeader } from '../../shared/ui/screen-header';
-import { WizardSteps } from '../../components/features/sell/WizardSteps';
+import { WizardSteps } from '../../features/sell/components/wizard-steps';
 import { PrimaryButton } from '../../shared/ui/primary-button';
-import { ImageGridPicker } from '../../components/features/sell/ImageGridPicker';
-import { useSellStore } from '../../core/store/useSellStore';
-import { useProductImages } from '../../core/hooks/useProductImages';
-import { SELL_STEP_DEFINITIONS } from '@/core/constants/sellSteps';
+import { ImageGridPicker } from '../../features/sell/components/image-grid-picker';
+import { useSellStore } from '../../features/sell/store/use-sell-store';
+import { useProductImages } from '../../features/sell/hooks/use-product-images';
+import { SELL_STEP_DEFINITIONS } from '@/features/sell/logic/sell-steps';
 import { triggerHaptic } from '../../shared/utils/haptics';
 import { reorderImages } from '../../core/utils/imageReorder';
 

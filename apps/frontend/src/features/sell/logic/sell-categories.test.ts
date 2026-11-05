@@ -4,7 +4,7 @@ import {
   SELL_CATEGORIES,
   SELL_CATEGORY_META,
   getSellCategoryLabelKey,
-} from './sellCategories';
+} from './sell-categories';
 
 describe('SELL_CATEGORIES', () => {
   it('includes all configured categories', () => {

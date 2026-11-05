@@ -7,7 +7,7 @@ import { Theme } from '../../../shared/theme';
 import {
   buildWizardStepA11yLabel,
   buildWizardParentA11yLabel,
-} from './wizardA11y';
+} from '../logic/wizard-a11y';
 
 type WizardStepsProps = {
   currentStep: number;

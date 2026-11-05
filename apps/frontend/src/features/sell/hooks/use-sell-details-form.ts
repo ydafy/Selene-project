@@ -1,5 +1,5 @@
 /**
- * @file core/hooks/useSellDetailsForm.ts
+ * @file features/sell/hooks/use-sell-details-form.ts
  * @description Orquestador del formulario de detalles de venta.
  * Maneja validación Zod centralizada, cotización JIT (Just-In-Time) y calculadora de ganancias.
  */
@@ -10,9 +10,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
-import { useSellStore } from '@/core/store/useSellStore';
-import { useShippingQuote } from '@/core/hooks/useShippingQuote';
-import { useSystemConfig } from '../../shared/hooks/use-system-config';
+import { useSellStore } from '@/features/sell/store/use-sell-store';
+import { useShippingQuote } from '@/features/sell/hooks/use-shipping-quote';
+import { useSystemConfig } from '../../../shared/hooks/use-system-config';
 import {
   calculateSellerProceedsEstimate,
   formatCentsAsMx,

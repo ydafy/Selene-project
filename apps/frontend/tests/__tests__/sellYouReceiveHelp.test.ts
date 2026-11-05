@@ -16,8 +16,10 @@ const FRONTEND = join(import.meta.dir, '..', '..');
 const read = (path: string) => readFileSync(join(FRONTEND, path), 'utf8');
 const es = JSON.parse(read('src/shared/i18n/locales/es/sell.json'));
 const en = JSON.parse(read('src/shared/i18n/locales/en/sell.json'));
-const form = compact(read('src/components/features/sell/SellDetailsForm.tsx'));
-const hook = compact(read('src/core/hooks/useSellDetailsForm.ts'));
+const form = compact(
+  read('src/features/sell/components/sell-details-form.tsx'),
+);
+const hook = compact(read('src/features/sell/hooks/use-sell-details-form.ts'));
 
 describe('resolveCommissionPercent', () => {
   it('turns the configured fraction into a whole percent', () => {
