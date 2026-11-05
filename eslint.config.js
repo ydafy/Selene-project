@@ -3,6 +3,7 @@ const tsParser = require('@typescript-eslint/parser');
 const prettierConfig = require('eslint-config-prettier');
 const { readdirSync } = require('node:fs');
 const importX = require('eslint-plugin-import-x');
+const checkFile = require('eslint-plugin-check-file');
 const {
   createTypeScriptImportResolver,
 } = require('eslint-import-resolver-typescript');
@@ -89,6 +90,34 @@ module.exports = [
     },
     rules: {
       'import-x/no-restricted-paths': ['error', { zones: dependencyZones }],
+    },
+  },
+  {
+    // File names are kebab-case (docs/conventions.md, "File naming"). Route
+    // files under app/ are excepted: Expo Router turns their names into URLs.
+    files: [`${FRONTEND_SRC}/**/*.{js,jsx,ts,tsx}`],
+    ignores: [`${FRONTEND_SRC}/app/**`],
+    plugins: {
+      'check-file': checkFile,
+    },
+    rules: {
+      'check-file/filename-naming-convention': [
+        'error',
+        { '**/*.{js,jsx,ts,tsx}': 'KEBAB_CASE' },
+        { ignoreMiddleExtensions: true },
+      ],
+    },
+  },
+  {
+    // Size warning (#135): a file past 400 lines of code mixes concerns and is
+    // hard to review. Tests are excluded; long test files are a list of cases.
+    files: [`${FRONTEND_SRC}/**/*.{js,jsx,ts,tsx}`],
+    ignores: [`${FRONTEND_SRC}/**/*.test.{ts,tsx}`],
+    rules: {
+      'max-lines': [
+        'warn',
+        { max: 400, skipBlankLines: true, skipComments: true },
+      ],
     },
   },
 ];
