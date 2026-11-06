@@ -129,6 +129,11 @@ describe('agent instruction references (probes)', () => {
     expect(readLineBudget('Keep it short.')).toBeUndefined();
   });
 
+  it('fails a file over its line budget', () => {
+    const text = 'Keep it at most 3 lines\nb\nc\nd\n';
+    expect(countLines(text)).toBeGreaterThan(readLineBudget(text)!);
+  });
+
   it('counts lines without the trailing newline', () => {
     expect(countLines('a\r\nb\n')).toBe(2);
   });

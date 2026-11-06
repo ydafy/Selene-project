@@ -83,7 +83,7 @@ Write to `verification-evidence/<feature>/<YYYYMMDD-HHMM>/` (gitignored, survive
 ## Gotchas
 
 - Windows/bash: use forward slashes; `bun run` passes extra flags after `--`. `supabase db query` and `status` print an update notice on stderr; redirect `2>/dev/null` when parsing.
-- Every service except the database sleeps about 60 s after its last request and starts on the next one, so the first call after a pause is slow (about 1 s, and a cold function can answer 503 `BOOT_ERROR` once); retry once before calling it a failure.
+- Every service except the database is lazy: it sleeps after its last request (about 60 s, measured on REST and Edge Functions) and starts on the next one, so the first call after a pause is slow (about 1 s, and a cold function can answer 503 `BOOT_ERROR` once); retry once before calling it a failure.
 - Never start functions with `--no-verify-jwt`: it turns gateway JWT verification off for every function until `supabase stop` and `supabase start`. `bun run functions:serve` already honors each function's `verify_jwt`.
 - `supabase/config.toml` mirrors the deployed `verify_jwt` flags; a function whose auth changed needs both updated, or local calls differ from production.
 - `e2e/admin-web-local/refund-problems.local.e2e.ts` expects no other refund problems (count `2`): `supabase db reset` first.
