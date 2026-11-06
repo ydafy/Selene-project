@@ -18,11 +18,16 @@ const HEADER_FORMAT =
 const MAX_HEADER_LENGTH = 100;
 // `git commit -v` appends the diff below this line; the hook sees it uncleaned.
 const SCISSORS = /^# -+ >8 -+$/;
+const AI_TOOLS =
+  '(claude|anthropic|chatgpt|openai|copilot|codex|gemini|cursor|aider)';
 const ATTRIBUTION = [
-  /^co-authored-by:/i,
-  /^🤖/u,
-  /^generated (with|by)\b.*\b(claude|chatgpt|openai|copilot|codex|gemini|cursor|aider)\b/i,
+  /^co-authored-by\s*:/i,
+  /🤖/u,
+  new RegExp(`^generated[ -](with|by|using)\\b.*\\b${AI_TOOLS}\\b`, 'i'),
+  // Any `*-by:` trailer naming an AI tool: Signed-off-by, Assisted-by, ...
+  new RegExp(`^[a-z]+(-[a-z]+)*-by\\s*:.*\\b${AI_TOOLS}\\b`, 'i'),
 ];
+const ZERO_WIDTH = /[\u200B-\u200D\uFEFF]/g;
 
 const FORMAT_ERROR =
   'commit-msg: the header must follow Conventional Commits, for example "fix(orders): keep the shipment status after a refund". Allowed types: feat, fix, docs, chore, refactor, test, perf, build, ci, style, revert.';
@@ -35,7 +40,9 @@ export function checkCommitMessage(message: string): CommitMessageCheck {
   );
 
   const attribution = content.find((line) =>
-    ATTRIBUTION.some((pattern) => pattern.test(line.trim())),
+    ATTRIBUTION.some((pattern) =>
+      pattern.test(line.replace(ZERO_WIDTH, '').trim()),
+    ),
   );
   if (attribution !== undefined)
     return {
@@ -82,7 +89,8 @@ function checkCommitRange(range: string): string[] {
 if (import.meta.main) {
   const [first, second] = process.argv.slice(2);
   if (first === '--range') {
-    if (!second) {
+    const sides = second?.split('..') ?? [];
+    if (sides.length !== 2 || sides.some((side) => side === '')) {
       console.error('commit-msg: --range expects <base>..<head>.');
       process.exit(1);
     }
