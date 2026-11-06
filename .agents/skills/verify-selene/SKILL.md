@@ -55,7 +55,7 @@ Pick the entry for your change from `features/README.md`.
 - Role per request: service role = `Authorization: Bearer {{serviceRoleKey}}`; buyer/seller/admin = their login token; anon = only `apikey: {{anonKey}}`. A new check covers each role that should be allowed and denied, and goes in the folder of its area.
 - Seeded accounts (`password123`): `admin@`, `seller@`, `buyer@`, `fixture-seller@`, `fixture-buyer@selene.local`. Header of `supabase/seed.sql` is the source.
 
-**Playwright** (admin-web, real backend): `bun run test:e2e:local`. Specs live in `e2e/admin-web-local/*.local.e2e.ts`; stack URL and keys come from `local-stack.ts`. Use `bun run test:e2e` (mocked, no stack) only for UI logic.
+**Playwright** (admin-web, real backend): `bun run test:e2e:local`. Specs live in `e2e/admin-web-local/*.local.e2e.ts`; stack URL and keys come from `e2e/admin-web-local/local-stack.ts`. Use `bun run test:e2e` (mocked, no stack) only for UI logic.
 
 **Stripe CLI**: with `stripe:listen` running, `stripe trigger payment_intent.succeeded`. Then read the DB state and cross-check the event in the sandbox via the Stripe MCP.
 
@@ -84,7 +84,7 @@ Write to `verification-evidence/<feature>/<YYYYMMDD-HHMM>/` (gitignored, survive
 
 - Windows/bash: use forward slashes; `bun run` passes extra flags after `--`. `supabase db query` and `status` print an update notice on stderr; redirect `2>/dev/null` when parsing.
 - Idle services sleep ~60 s and start on the next request, so the first call after a pause is slow; retry once before calling it a failure.
-- `config.toml` mirrors the deployed `verify_jwt` flags; a function whose auth changed needs both updated, or local calls differ from production.
+- `supabase/config.toml` mirrors the deployed `verify_jwt` flags; a function whose auth changed needs both updated, or local calls differ from production.
 - `e2e/admin-web-local/refund-problems.local.e2e.ts` expects no other refund problems (count `2`): `supabase db reset` first.
 - Bruno setup requests that change seeded rows are undone by a later request in the same run; an aborted run leaves the row changed, so run `supabase db reset`.
 - The Playwright local config uses `reuseExistingServer: false` on port 5188; a stray Vite there fails the run. Check who owns the port and kill only your own process.

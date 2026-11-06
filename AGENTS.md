@@ -3,7 +3,8 @@
 <!-- Maintainer note:
 Every line loads into every agent session. Add a rule only when an agent made the
 same mistake twice or when it cannot be inferred from the code. Prefer pointers to
-docs over copies. Keep it under ~150 lines; put area procedures in the nested files. -->
+docs over copies. Keep it at most 170 lines (`scripts/agent-instructions.test.ts`
+checks it and every path and script cited here); put area procedures in the nested files. -->
 
 Selene is a peer-to-peer marketplace in Mexico for used PC hardware. Its product is trust: technical verification of listings and safe money flow between buyers and sellers. It is in active development, and every module is built as if it shipped to production tomorrow. Do not add sandbox-only shortcuts, mocks in production paths, or "fine for now" workarounds.
 
@@ -13,15 +14,15 @@ Existing rows in the Supabase project and the Stripe sandbox are disposable test
 
 Bun monorepo with strict TypeScript. Stack: Expo, React Native, and React in `apps/frontend`; React and Vite in `apps/admin-web`. Each workspace's `package.json` is the source of truth for versions; read it instead of assuming one. Before changing files under a path below, read its guide; it holds the procedures for that area.
 
-| Path                  | What                                                                     | Read first                     |
-| --------------------- | ------------------------------------------------------------------------ | ------------------------------ |
-| `apps/frontend/`      | Expo React Native app (user-facing); styled with Restyle, not NativeWind | `apps/frontend/AGENTS.md`      |
-| `apps/admin-web/`     | React + Vite admin dashboard                                             |                                |
-| `packages/types/`     | Shared types, including generated Supabase types                         |                                |
-| `supabase/`           | Migrations, canonical SQL (`queries/`), local stack, remote project      | `supabase/AGENTS.md`           |
-| `supabase/functions/` | Edge Functions (Deno), Sentry wrapper, Bruno and Stripe local loops      | `supabase/functions/AGENTS.md` |
-| `design/`             | Gentle Design mockups (HTML artboards) and the synced token catalog      | `DESIGN.md`                    |
-| `odd/tasks/`          | One tracking document per feature (verbatim specs, tasks, decision log)  |                                |
+| Path                  | What                                                                         | Read first                     |
+| --------------------- | ---------------------------------------------------------------------------- | ------------------------------ |
+| `apps/frontend/`      | Expo React Native app (user-facing); styled with Restyle, not NativeWind     | `apps/frontend/AGENTS.md`      |
+| `apps/admin-web/`     | React + Vite admin dashboard                                                 |                                |
+| `packages/types/`     | Shared types, including generated Supabase types                             |                                |
+| `supabase/`           | Migrations, canonical SQL (`supabase/queries/`), local stack, remote project | `supabase/AGENTS.md`           |
+| `supabase/functions/` | Edge Functions (Deno), Sentry wrapper, Bruno and Stripe local loops          | `supabase/functions/AGENTS.md` |
+| `design/`             | Gentle Design mockups (HTML artboards) and the synced token catalog          | `DESIGN.md`                    |
+| `odd/tasks/`          | One tracking document per feature (verbatim specs, tasks, decision log)      |                                |
 
 ## Verifying a change
 
