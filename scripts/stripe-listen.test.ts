@@ -6,6 +6,7 @@ import {
   STRIPE_WEBHOOK_EVENTS,
   buildStripeListenArgs,
   parseLocalApiUrl,
+  readGoLiveWebhookEvents,
 } from './stripe-listen.ts';
 
 describe('parseLocalApiUrl', () => {
@@ -83,4 +84,56 @@ test('package.json runs the script instead of a fixed port', () => {
     readFileSync(join(import.meta.dir, '..', 'package.json'), 'utf8'),
   ) as { scripts: Record<string, string> };
   expect(pkg.scripts['stripe:listen']).toBe('bun scripts/stripe-listen.ts');
+});
+
+function describeDrift(markdown: string): string | undefined {
+  const documented = new Set(readGoLiveWebhookEvents(markdown));
+  const forwarded = new Set<string>(STRIPE_WEBHOOK_EVENTS);
+  const notInDoc = [...forwarded].filter((event) => !documented.has(event));
+  const notInListen = [...documented].filter((event) => !forwarded.has(event));
+  if (notInDoc.length === 0 && notInListen.length === 0) return undefined;
+  return `docs/go-live.md and STRIPE_WEBHOOK_EVENTS differ. Not in docs/go-live.md: ${notInDoc.join(', ') || 'none'}. Not in scripts/stripe-listen.ts: ${notInListen.join(', ') || 'none'}.`;
+}
+
+describe('docs/go-live.md webhook events', () => {
+  const platform = STRIPE_WEBHOOK_EVENTS.slice(0, 6);
+  const connect = STRIPE_WEBHOOK_EVENTS.slice(6);
+  const toDoc = (first: readonly string[], second: readonly string[]) =>
+    [
+      `- Platform events: ${first.map((e) => `\`${e}\``).join(', ')}.`,
+      `  - Connect events: ${second.map((e) => `\`${e}\``).join(', ')}.`,
+    ].join('\n');
+
+  test('reads the platform and Connect lists', () => {
+    expect(readGoLiveWebhookEvents(toDoc(platform, connect))).toEqual([
+      ...STRIPE_WEBHOOK_EVENTS,
+    ]);
+  });
+
+  test('fails loudly when a list is missing or empty, so a rewrite cannot pass silently', () => {
+    expect(() => readGoLiveWebhookEvents('nothing here')).toThrow(
+      'GO_LIVE_EVENTS_NOT_FOUND',
+    );
+    expect(() =>
+      readGoLiveWebhookEvents(
+        '- Platform events: none.\n- Connect events: `a.b`.',
+      ),
+    ).toThrow('GO_LIVE_EVENTS_NOT_FOUND');
+  });
+
+  test('names an event missing from the doc and one missing from the script', () => {
+    const message = describeDrift(
+      toDoc(platform.slice(1), [...connect, 'extra.event']),
+    );
+    expect(message).toContain(`Not in docs/go-live.md: ${platform[0]}.`);
+    expect(message).toContain('Not in scripts/stripe-listen.ts: extra.event.');
+  });
+
+  test('the list in docs/go-live.md equals STRIPE_WEBHOOK_EVENTS', () => {
+    const markdown = readFileSync(
+      join(import.meta.dir, '..', 'docs', 'go-live.md'),
+      'utf8',
+    );
+    expect(describeDrift(markdown)).toBeUndefined();
+  });
 });

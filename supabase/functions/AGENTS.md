@@ -20,7 +20,7 @@ Read the root `AGENTS.md` and `../AGENTS.md` first; they win over this file. Edg
 
 ## Local payments loop
 
-With the local Supabase stack running: `bun run functions:serve` (reads `supabase/functions/.env`, maintainer-owned and gitignored), then `bun run stripe:listen` to forward sandbox webhooks to the local `stripe-webhooks`, then `stripe trigger <event>`. `stripe:listen` (`scripts/stripe-listen.ts`) reads the current worktree's API URL and refuses non-local targets. When `stripe-webhooks` handles a new event type, add it to `STRIPE_WEBHOOK_EVENTS` in that script and to `docs/go-live.md`.
+With the local Supabase stack running: `bun run functions:serve` (reads `supabase/functions/.env`, maintainer-owned and gitignored), then `bun run stripe:listen` to forward sandbox webhooks to the local `stripe-webhooks`, then `stripe trigger <event>`. `stripe:listen` (`scripts/stripe-listen.ts`) reads the current worktree's API URL and refuses non-local targets. When `stripe-webhooks` handles a new event type, add it to `STRIPE_WEBHOOK_EVENTS` in that script and to `docs/go-live.md`; `scripts/stripe-listen.test.ts` fails if those two differ, but nothing checks the handler itself (#257).
 
 - Create test scenarios with the Stripe CLI, not through the MCP.
 - Cross-check webhook events in the sandbox (Stripe MCP) with Edge Function logs (Supabase MCP).
