@@ -306,7 +306,7 @@ Sentry creates the `cron-watchdog` Cron Monitor on its first check-in (free plan
   - Platform events: `payment_intent.succeeded`, `payment_intent.payment_failed`, `payment_intent.canceled`, `setup_intent.succeeded`, `refund.updated`, `refund.failed`.
   - The refund events complete a shipment cancellation whose refund settles asynchronously, and flag a refund that failed (buyer notification plus a Sentry CRITICAL). Subscribe the platform endpoint to both, and apply `supabase/migrations/20261022005940_shipment_cancellation_refund_events.sql` (new service-only `fn_apply_shipment_cancellation_refund_event`, new `shipment.refund_failed` notification kind) before deploying `stripe-webhooks`.
   - Connect events: `account.updated`, `account.external_account.created`, `account.external_account.updated`, `account.external_account.deleted`, `payout.created`, `payout.updated`, `payout.paid`, `payout.failed`, `payout.canceled`.
-  - Keep this list in sync with `STRIPE_WEBHOOK_EVENTS` in `scripts/stripe-listen.ts`.
+  - `scripts/stripe-listen.test.ts` checks this list against `STRIPE_WEBHOOK_EVENTS` in `scripts/stripe-listen.ts`.
 - Stripe Account Links return/refresh URLs → `connect-onboarding-return`.
 - Envia tracking webhook → `envia-webhook`; secret into `ENVIA_WEBHOOK_SECRET_PROD`.
 

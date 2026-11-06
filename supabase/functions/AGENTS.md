@@ -5,7 +5,7 @@ Read the root `AGENTS.md` and `../AGENTS.md` first; they win over this file. Edg
 ## Types and checks
 
 - `bun run typecheck` does not cover Edge Functions: check one with `deno check supabase/functions/<name>/index.ts`. CI runs `deno check --frozen */index.ts` from `supabase/functions`, so every function must pass and `deno.lock` must be current (run `deno check` without `--frozen` to update it, and commit the lock).
-- Deno resolves `npm:` imports from the root `node_modules`, so every `npm:` package an Edge Function imports must also be an exact root dev dependency (as `zod`, `@sentry/deno`, and `@types/node` are).
+- Deno resolves `npm:` imports from the root `node_modules`, so every `npm:<name>@<version>` an Edge Function uses must equal an exact root `devDependencies` pin; `scripts/edge-function-npm-pins.test.ts` enforces it.
 - An untyped `createClient` infers selected rows as `{}`; pass the generated `Database` type or declare a local row type.
 
 ## Sentry
@@ -20,7 +20,7 @@ Read the root `AGENTS.md` and `../AGENTS.md` first; they win over this file. Edg
 
 ## Local payments loop
 
-With the local Supabase stack running: `bun run functions:serve` (reads `supabase/functions/.env`, maintainer-owned and gitignored), then `bun run stripe:listen` to forward sandbox webhooks to the local `stripe-webhooks`, then `stripe trigger <event>`. `stripe:listen` (`scripts/stripe-listen.ts`) reads the current worktree's API URL and refuses non-local targets. When `stripe-webhooks` handles a new event type, add it to `STRIPE_WEBHOOK_EVENTS` in that script and to `docs/go-live.md`.
+With the local Supabase stack running: `bun run functions:serve` (reads `supabase/functions/.env`, maintainer-owned and gitignored), then `bun run stripe:listen` to forward sandbox webhooks to the local `stripe-webhooks`, then `stripe trigger <event>`. `stripe:listen` (`scripts/stripe-listen.ts`) reads the current worktree's API URL and refuses non-local targets. When `stripe-webhooks` handles a new event type, add it to `STRIPE_WEBHOOK_EVENTS` in that script and to `docs/go-live.md`; `scripts/stripe-listen.test.ts` fails if those two differ, but nothing checks the handler itself (#257).
 
 - Create test scenarios with the Stripe CLI, not through the MCP.
 - Cross-check webhook events in the sandbox (Stripe MCP) with Edge Function logs (Supabase MCP).

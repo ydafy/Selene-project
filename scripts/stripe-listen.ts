@@ -2,7 +2,7 @@
 // Supabase stack running for this worktree. Each worktree gets its own ports,
 // so the target URL is read from `supabase status` instead of being fixed.
 
-/** Events handled by supabase/functions/stripe-webhooks. Keep docs/go-live.md in sync. */
+/** Events handled by supabase/functions/stripe-webhooks. scripts/stripe-listen.test.ts checks docs/go-live.md against it. */
 export const STRIPE_WEBHOOK_EVENTS = [
   'payment_intent.succeeded',
   'payment_intent.payment_failed',
@@ -20,6 +20,22 @@ export const STRIPE_WEBHOOK_EVENTS = [
   'payout.failed',
   'payout.canceled',
 ] as const;
+
+/** Reads the events on the "Platform events:" and "Connect events:" lines of docs/go-live.md. */
+export function readGoLiveWebhookEvents(markdown: string): string[] {
+  const events: string[] = [];
+  for (const label of ['Platform events:', 'Connect events:']) {
+    const line = markdown
+      .split(/\r?\n/)
+      .find((entry) => entry.trimStart().startsWith(`- ${label}`));
+    const found = [...(line?.matchAll(/`([a-z_.]+)`/g) ?? [])].map(
+      (m) => m[1]!,
+    );
+    if (found.length === 0) throw new Error('GO_LIVE_EVENTS_NOT_FOUND');
+    events.push(...found);
+  }
+  return events;
+}
 
 function readApiUrl(statusEnv: string): string | undefined {
   const trimmed = statusEnv.trim();
