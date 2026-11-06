@@ -31,7 +31,7 @@ Run from the worktree root. Docker must be running.
 1. `supabase start`. A new stack runs every migration and `supabase/seed.sql`. Ready = the output ends with `Stack is ready.` (about 15 s warm).
 2. `supabase db reset` before a run that needs the baseline (see Gotchas); it reapplies migrations and seed.
 3. `bun run bruno:env` writes the gitignored `bruno/.env` (URL, keys, `CRON_SECRET`); rerun it after any `db reset` or `supabase start` on a fresh stack. Ports are per worktree: never assume `54321`.
-4. Edge Functions: stack mode serves them lazily from `supabase/functions/` with `supabase/functions/.env`. If a call returns 404 or a connection error, or you changed function code, run `bun run functions:serve` in the background right before the calls. It exits by itself about 60 s after start when idle; this is not a failure. Save its PID and log under `.local/` (gitignored).
+4. Edge Functions: stack mode serves them lazily from `supabase/functions/` with `supabase/functions/.env`. If a call returns 404 or a connection error, or you changed function code, run `bun run functions:serve` in the background right before the calls. It exits by itself about 60 s after the last request, also under `supabase start --eager`; this is not a failure. Save its PID and log under `.local/` (gitignored).
 5. Webhooks: `bun run stripe:listen` in the background (needs `stripe login` to the sandbox), then `stripe trigger <event>`. Events outside `STRIPE_WEBHOOK_EVENTS` in `scripts/stripe-listen.ts` are not forwarded.
 6. Admin-web: no manual launch. `bun run test:e2e:local` starts Vite on `127.0.0.1:5188` pointed at the local stack and stops it.
 
@@ -83,7 +83,7 @@ Write to `verification-evidence/<feature>/<YYYYMMDD-HHMM>/` (gitignored, survive
 ## Gotchas
 
 - Windows/bash: use forward slashes; `bun run` passes extra flags after `--`. `supabase db query` and `status` print an update notice on stderr; redirect `2>/dev/null` when parsing.
-- Idle services sleep ~60 s and start on the next request, so the first call after a pause is slow; retry once before calling it a failure.
+- Every service except the database sleeps about 60 s after its last request and starts on the next one, so the first call after a pause is slow (about 1 s, and a cold function can answer 503 `BOOT_ERROR` once); retry once before calling it a failure.
 - `supabase/config.toml` mirrors the deployed `verify_jwt` flags; a function whose auth changed needs both updated, or local calls differ from production.
 - `e2e/admin-web-local/refund-problems.local.e2e.ts` expects no other refund problems (count `2`): `supabase db reset` first.
 - Bruno setup requests that change seeded rows are undone by a later request in the same run; an aborted run leaves the row changed, so run `supabase db reset`.

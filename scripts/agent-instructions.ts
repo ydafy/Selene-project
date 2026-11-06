@@ -25,7 +25,6 @@ export const NOT_IN_REPO: Record<string, string> = {
   '.link.json': 'gitignored Supabase CLI file',
   'bruno/.env': 'gitignored, written by bun run bruno:env',
   'supabase/functions/.env': 'gitignored, maintainer-owned secrets',
-  '.atl/skill-registry.md': 'gitignored local skill index',
   '.local/': 'gitignored scratch folder',
   '.local/*.pid': 'gitignored scratch files',
   'verification-evidence/': 'gitignored evidence folder',

@@ -147,7 +147,7 @@ The pgTAP files are in `supabase/tests/database/`. The `account_restricted` and 
 
 Pitfalls:
 
-- The local stack goes to sleep when idle. Run `supabase start` before any check, from the same shell that runs the tests.
+- Every local service except the database sleeps about 60 s after its last request and wakes on the next one, so the first call after a pause is slower. Run `supabase start` before any check.
 - To run a pgTAP file by hand, wrap it in a transaction and run `create extension if not exists pgtap` first. The files already end with `rollback`.
 - A migration applied by hand to the remote project does not prove itself. Read the result back through the Supabase MCP (`has_table_privilege`, `pg_get_functiondef`) before you call it done.
 - Prove that a new test can fail: break the function or grant locally, run the test, then run `supabase db reset`.
