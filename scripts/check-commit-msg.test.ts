@@ -125,6 +125,21 @@ describe('checkCommitMessage', () => {
     );
   });
 
+  it('reads a stored message whole when committed is set', () => {
+    const message =
+      'fix: x\n\n# ------------------------ >8 ------------------------\nCo-authored-by: A <a@b>\n';
+    expect(checkCommitMessage(message)).toEqual({ ok: true });
+    expect(checkCommitMessage(message, { committed: true })).toEqual({
+      ok: false,
+      error:
+        'commit-msg: remove "Co-authored-by: A <a@b>"; commits carry no Co-authored-by or AI attribution lines.',
+    });
+    expect(checkCommitMessage('# note\nfix: y', { committed: true })).toEqual({
+      ok: false,
+      error: FORMAT_ERROR,
+    });
+  });
+
   it('ignores the diff below a CRLF scissors line', () => {
     expect(
       checkCommitMessage(
@@ -287,6 +302,26 @@ describe('check-commit-msg CLI --range', () => {
     expect(await runRange(root, 'HEAD~1..HEAD')).toEqual({
       stdout: '',
       stderr: `${sha}: commit-msg: remove "Co-authored-by: Claude <noreply@anthropic.com>"; commits carry no Co-authored-by or AI attribution lines.\n`,
+      code: 1,
+    });
+  });
+
+  it('rejects a verbatim commit whose header line starts with #', async () => {
+    const { root } = repoWith([]);
+    git(
+      root,
+      'commit',
+      '-q',
+      '--allow-empty',
+      '--no-verify',
+      '--cleanup=verbatim',
+      '-m',
+      '# note\nfix: y',
+    );
+    const sha = git(root, 'rev-parse', 'HEAD');
+    expect(await runRange(root, 'HEAD~1..HEAD')).toEqual({
+      stdout: '',
+      stderr: `${sha}: ${FORMAT_ERROR}\n`,
       code: 1,
     });
   });
