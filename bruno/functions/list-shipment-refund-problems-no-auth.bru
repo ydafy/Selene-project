@@ -22,5 +22,5 @@ tests {
 }
 
 docs {
-  Needs the functions server started with --no-verify-jwt. Proves the list refuses anonymous callers.
+  Needs the functions server: run `bun run functions:serve` right before the calls (it exits about 60 s after the last request). Proves the list refuses anonymous callers.
 }

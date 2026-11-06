@@ -102,7 +102,7 @@ Answer these before running `bun add`. If an answer is bad, do not add the packa
    - `bun run lint`
    - `bun run typecheck`
    - `bun test`
-   - `bun audit --audit-level=high` with the `--ignore` list from `.github/workflows/dependency-audit.yml`
+   - `bun audit --audit-level=high` exactly as `.github/workflows/dependency-audit.yml` runs it, with its `--ignore` flags if it has any
    - A device check when the package is native (see the Expo SDK rule above).
 5. Commit only when every check passes.
 

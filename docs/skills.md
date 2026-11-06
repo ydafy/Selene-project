@@ -21,7 +21,7 @@ Project skills live in `.agents/skills/`. The rules agents follow are in the roo
 2. `npx skills add <source> --skill <name> -a pi --copy -y`.
 3. Review every file of the new skill (step 3 above), then refresh the registry.
 
-Reject a skill that downloads and runs unpinned code, installs hooks, or follows instructions fetched at run time.
+Reject a skill that downloads and runs unpinned code, installs hooks, or follows instructions fetched at run time. Reading official documentation at run time is fine when the skill treats it as reference data (the `envia-integration` skill reads `docs.envia.com`).
 
 ## Restore
 
