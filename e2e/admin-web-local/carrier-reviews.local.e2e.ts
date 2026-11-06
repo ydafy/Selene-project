@@ -2,7 +2,7 @@
 // real list-shipment-operation-reviews / resolve-shipment-operation-review functions, real SQL.
 //
 //   supabase start
-//   supabase functions serve --no-verify-jwt --env-file supabase/functions/.env   (other terminal)
+//   bun run functions:serve   (other terminal, right before the specs; it exits about 60 s after the last request)
 //   bun run test:e2e:local
 //
 // Expects the seeded local database (`supabase db reset`). Seeded rows are removed in
@@ -66,9 +66,7 @@ test.beforeAll(async () => {
       method: 'OPTIONS',
     }).catch(() => null);
     if (!probe || probe.status >= 500 || probe.status === 404) {
-      throw new Error(
-        'FUNCTIONS_NOT_SERVED: run `supabase functions serve --no-verify-jwt --env-file supabase/functions/.env`.',
-      );
+      throw new Error('FUNCTIONS_NOT_SERVED: run `bun run functions:serve`.');
     }
   }
 

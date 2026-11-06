@@ -22,6 +22,6 @@ tests {
 }
 
 docs {
-  Needs `supabase functions serve --no-verify-jwt --env-file supabase/functions/.env`.
+  Needs the functions server: run `bun run functions:serve` right before the calls (it exits about 60 s after the last request).
   Proves the webhook refuses unsigned calls before touching any data.
 }

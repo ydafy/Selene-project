@@ -4,7 +4,7 @@ import { readLocalStack } from './e2e/admin-web-local/local-stack';
 // Real-backend admin-web specs: the browser talks to this worktree's local Supabase
 // stack (never the remote project). The mocked suite stays in playwright.config.ts.
 // Needs `supabase start` and, in another terminal:
-//   supabase functions serve --no-verify-jwt --env-file supabase/functions/.env
+//   bun run functions:serve (right before the specs; it exits about 60 s after the last request)
 const baseURL = 'http://127.0.0.1:5188';
 const stack = readLocalStack();
 

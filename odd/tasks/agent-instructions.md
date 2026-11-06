@@ -32,8 +32,8 @@ Item 1, maintainer decisions (L2):
 - T1 [done] | - | inline | Create this document and its Engram mirror | commit: 2f4697d9
 - T2 [done] | S7-S10, S12, S13 | inline | Guard `scripts/agent-instructions.test.ts`, test first | commit: 2f4697d9
 - T3 [done] | S2, S14 | worker | Measure the idle behavior of `functions serve` and the stack, and `--eager` | commit: none (evidence in Log)
-- T4 [in_progress] | S15 | worker | Run Bruno in three modes (done, L6); replace the `--no-verify-jwt` citations and prove the local e2e specs without it | commit: pending
-- T5 [done] | S1-S6 | inline | Fix the drifts in the instruction files and the docs that repeat them | commit: pending
+- T4 [done] | S15 | worker | Run Bruno in three modes (L6); replace the `--no-verify-jwt` citations and prove the local e2e specs without it | commit: the next commit after 640867a8
+- T5 [done] | S1-S6 | inline | Fix the drifts in the instruction files and the docs that repeat them | commit: 640867a8
 - T6 [done] | S11 | inline | Full checks and close | commit: none
 
 ## Log

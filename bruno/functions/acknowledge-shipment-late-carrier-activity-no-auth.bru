@@ -26,5 +26,5 @@ tests {
 }
 
 docs {
-  Needs the functions server started with --no-verify-jwt. Refuses anonymous callers before any lookup or database call.
+  Needs the functions server: run `bun run functions:serve` right before the calls (it exits about 60 s after the last request). Refuses anonymous callers before any lookup or database call.
 }

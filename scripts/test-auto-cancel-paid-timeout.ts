@@ -13,7 +13,7 @@ const help =
   'Fixtures have no Stripe payment intent, so every selected shipment stops at the AUTO_CANCEL_MISSING_PAYMENT_INTENT\n' +
   'gate after its cancellation operation is claimed: Stripe is never reached and no money moves.\n' +
   "Runs against this worktree's local Supabase stack (`supabase start`) with the function served:\n" +
-  '  supabase functions serve --no-verify-jwt --env-file supabase/functions/.env\n' +
+  '  bun run functions:serve (right before the run; it exits about 60 s after the last request)\n' +
   'Database URL: SELENE_LOCAL_DB_URL, else `supabase status --env`. Only 127.0.0.1/localhost is accepted.\n' +
   'Fixtures, created operations, the setting and the lease columns are restored at the end, also on failure.';
 
@@ -123,7 +123,7 @@ async function post(
   } catch (error) {
     throw new Error(
       `auto-cancel-orders is not reachable (${(error as Error).message}). Serve it with: ` +
-        'supabase functions serve --no-verify-jwt --env-file supabase/functions/.env',
+        'bun run functions:serve',
     );
   }
   return { status: response.status, text: await response.text() };
