@@ -32,11 +32,18 @@ const ZERO_WIDTH = /[\u200B-\u200D\uFEFF]/g;
 const FORMAT_ERROR =
   'commit-msg: the header must follow Conventional Commits, for example "fix(orders): keep the shipment status after a refund". Allowed types: feat, fix, docs, chore, refactor, test, perf, build, ci, style, revert.';
 
-export function checkCommitMessage(message: string): CommitMessageCheck {
+// `committed` reads a message as stored in a commit: git already removed the
+// comments and the scissors diff, so any line left there is real content.
+export function checkCommitMessage(
+  message: string,
+  { committed = false }: { committed?: boolean } = {},
+): CommitMessageCheck {
   const lines = message.split(/\r?\n/);
-  const scissors = lines.findIndex((line) => SCISSORS.test(line));
+  const scissors = committed
+    ? -1
+    : lines.findIndex((line) => SCISSORS.test(line));
   const content = (scissors === -1 ? lines : lines.slice(0, scissors)).filter(
-    (line) => !line.startsWith('#'),
+    (line) => committed || !line.startsWith('#'),
   );
 
   const attribution = content.find((line) =>
@@ -81,7 +88,10 @@ function checkCommitRange(range: string): string[] {
     .split('\n')
     .filter(Boolean)
     .flatMap((sha) => {
-      const result = checkCommitMessage(git(['log', '-1', '--format=%B', sha]));
+      const result = checkCommitMessage(
+        git(['log', '-1', '--format=%B', sha]),
+        { committed: true },
+      );
       return result.ok ? [] : [`${sha}: ${result.error}`];
     });
 }

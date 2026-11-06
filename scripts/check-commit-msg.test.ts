@@ -271,6 +271,26 @@ describe('check-commit-msg CLI --range', () => {
     expect((await runRange(root, 'HEAD~1..HEAD')).code).toBe(0);
   });
 
+  it('rejects attribution hidden below a scissors line in a verbatim commit', async () => {
+    const { root } = repoWith([]);
+    git(
+      root,
+      'commit',
+      '-q',
+      '--allow-empty',
+      '--no-verify',
+      '--cleanup=verbatim',
+      '-m',
+      'fix: keep it\n\n# ------------------------ >8 ------------------------\nCo-authored-by: Claude <noreply@anthropic.com>',
+    );
+    const sha = git(root, 'rev-parse', 'HEAD');
+    expect(await runRange(root, 'HEAD~1..HEAD')).toEqual({
+      stdout: '',
+      stderr: `${sha}: commit-msg: remove "Co-authored-by: Claude <noreply@anthropic.com>"; commits carry no Co-authored-by or AI attribution lines.\n`,
+      code: 1,
+    });
+  });
+
   it('exits 0 on an empty range', async () => {
     const { root } = repoWith(['did some stuff']);
     expect(await runRange(root, 'HEAD..HEAD')).toEqual({
