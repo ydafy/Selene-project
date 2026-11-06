@@ -81,7 +81,7 @@ Never:
 
 - Point Bruno, `stripe:listen`, or data-mutating SQL at the remote project.
 - Apply migrations, deploy functions, change secrets, or configure cron or webhooks, unless the maintainer asks for that specific action.
-- Add AI attribution or `Co-Authored-By` lines.
+- Add AI attribution or `Co-Authored-By` lines to PRs or issues (`scripts/check-commit-msg.ts` rejects them in commits).
 
 ## Skills
 
@@ -97,7 +97,7 @@ Vendor skills in `.agents/skills/` are installed with the `skills` CLI and never
 
 Run from the repository or worktree root. `package.json` is the source of truth.
 
-- `bun test`: full suite (`bun:test`). The pre-push hook and CI run the full suite; pre-commit runs `lint-staged` (Prettier and ESLint on staged code, Prettier on staged Markdown, JSON and YAML), and the commit-msg hook rejects headers that are not Conventional Commits (`scripts/check-commit-msg.ts`). Run one file with `bun test <path>`.
+- `bun test`: full suite (`bun:test`). The pre-push hook and CI run the full suite; pre-commit runs `lint-staged` (Prettier and ESLint on staged code, Prettier on staged Markdown, JSON and YAML), and the commit-msg hook and CI reject non-Conventional headers and attribution lines (`scripts/check-commit-msg.ts`). Run one file with `bun test <path>`.
 - `bun run lint`, `bun run format:check`, and `bun run typecheck` (one workspace: `bun run --filter <package> typecheck`) pass with zero errors, and CI runs all three. A formatting-only change is its own `style(...)` commit, listed in `.git-blame-ignore-revs` (`docs/conventions.md`, "Formatting"). Keep them at zero; an inline `eslint-disable` needs the rule and a reason after `--`. CI also runs `bun run knip` (unused files, exports, and dependencies in `apps/frontend`; config in `knip.jsonc`): delete what it reports instead of ignoring it. Edge Functions: see `supabase/functions/AGENTS.md`.
 - `bun run db:types`: regenerates types from the remote project. Run it only after the maintainer confirms the SQL was applied.
 - Run `expo install` from `apps/frontend`, never from the root, or native autolinking breaks.
