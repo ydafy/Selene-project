@@ -21,7 +21,6 @@ export const NOT_IN_REPO: Record<string, string> = {
   'ydafy/Selene-project': 'GitHub repository slug',
   'foo.ts': 'example file name',
   'foo.test.ts': 'example file name',
-  '__tests__/': 'folder name the frontend guide forbids, not a path',
   '.link.json': 'gitignored Supabase CLI file',
   'bruno/.env': 'gitignored, written by bun run bruno:env',
   'supabase/functions/.env': 'gitignored, maintainer-owned secrets',

@@ -41,7 +41,7 @@ apps/frontend/src/
 - A flow test that spans several modules sits in the feature folder.
 - Playwright specs stay in `e2e/` (`e2e/admin-web/`, `e2e/admin-web-local/`).
 - A guard that scans all of `apps/frontend/src/` sits at the `apps/frontend/` root, so it does not scan its own text: `frontend-import-boundaries.test.ts`, `legacy-wallet-removal.test.ts`. A guard over the whole repository sits in `scripts/` (`test-only-guard.test.ts`).
-- Do not create new `__tests__/` folders or a top-level `tests/` folder. The `__tests__/` folders under `supabase/` and `packages/types/` predate this rule; do not add to them.
+- Do not create new `__tests__/` folders or a top-level `tests/` folder; `scripts/test-placement.test.ts` fails on one. The folders in its legacy list predate this rule; do not add to them.
 
 ## File naming
 
