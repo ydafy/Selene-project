@@ -1,7 +1,7 @@
 # Agent instructions (roadmap #228, items 1-3)
 
 Fix the drifts in the agent instruction files and guard their references (#247), turn rules into checks (#248), and restructure the root `AGENTS.md` (#249). Items 2 and 3 add their specs here when they start.
-Branch for item 1: `docs/agent-instructions-guard`.
+Branch for item 1: `docs/agent-instructions-guard`. Branch for item 2: `chore/agent-rules-checks`.
 
 ## Specs
 
@@ -27,6 +27,29 @@ Item 1, maintainer decisions (L2):
 - S14: Measure the idle behavior on the local stack and try `supabase start --eager` before rewriting the timing sentences (S2).
 - S15: One canonical command serves functions locally. Rewritten after L6: `bun run functions:serve` stays without `--no-verify-jwt` (the CLI already honors each function's `verify_jwt` from `supabase/config.toml`, and the flag turns gateway verification off for every function until `supabase stop`). Every instruction that tells a human or agent to start functions with `--no-verify-jwt` points to `bun run functions:serve` instead, and the nested Supabase guides warn against the flag.
 
+Item 2, #248 (verbatim from the issue):
+
+- S16: "`scripts/check-commit-msg.ts` rejects `Co-Authored-By` and AI attribution trailers."
+- S17: "A guard rejects new `__tests__/` folders under `apps/` (tests sit next to their code, `docs/conventions.md`)."
+- S18: "Edge Function `npm:` specifiers match the exact root `devDependencies` pins (`supabase/functions/AGENTS.md`, "Types and checks")."
+- S19: "`scripts/stripe-listen.ts` `STRIPE_WEBHOOK_EVENTS` covers every event that `stripe-webhooks` handles."
+- S20: "Then delete or shorten the prose each check replaces, or turn it into a pointer to the check."
+- S21: "Each check was seen failing first."
+- S22: "The prose line for each check is gone or is a pointer."
+- S23: "`bun run lint`, `bun run typecheck`, `bun run format:check`, and `bun test` pass."
+- Out of scope: "a guard for fee rates used outside `supabase/functions/create-connect-payment/fee-calculator.ts`."
+
+Item 2, carried over from the item 1 review (Engram `odd/agent-instructions/a2-carryover`):
+
+- S24: Extract `checkLineBudget(text)` that returns the problem, probe it, and use it in the repository test (the probe at `scripts/agent-instructions.test.ts:132-135` only compares `countLines` with `readLineBudget`).
+
+Item 2, maintainer decisions (L13):
+
+- S25: S16 rejects every `Co-authored-by` trailer (any letter case) and AI attribution lines such as "Generated with Claude" or "🤖", also on messages whose header is exempt (merge, revert, fixup, squash, amend).
+- S26: CI runs the commit message check on every commit of a pull request.
+- S27: S17 covers the whole repository: any `__tests__/` folder or top-level `tests/` folder fails unless it is one of the legacy folders in an allowlist, and an allowlist entry that no longer exists also fails.
+- S28: S19 is rewritten: the `docs/go-live.md` event list equals `STRIPE_WEBHOOK_EVENTS`; the handler side stays prose pointing to that list, and an Idea issue records a single source of event types for `stripe-webhooks`.
+
 ## Tasks
 
 - T1 [done] | - | inline | Create this document and its Engram mirror | commit: 2f4697d9
@@ -35,6 +58,12 @@ Item 1, maintainer decisions (L2):
 - T4 [done] | S15 | worker | Run Bruno in three modes (L6); replace the `--no-verify-jwt` citations and prove the local e2e specs without it | commit: daeb7459
 - T5 [done] | S1-S6 | inline | Fix the drifts in the instruction files and the docs that repeat them | commit: 640867a8
 - T6 [done] | S11 | inline | Full checks and close | commit: none
+- T7 [pending] | S24 | inline | `checkLineBudget` and a probe that calls it | commit: -
+- T8 [pending] | S16, S20-S22, S25, S26 | inline | Reject attribution trailers; CI step; shorten `AGENTS.md` | commit: -
+- T9 [pending] | S17, S20-S22, S27 | inline | Test placement guard; pointers in `docs/conventions.md` and `apps/frontend/AGENTS.md` | commit: -
+- T10 [pending] | S18, S20-S22 | inline | `npm:` pin guard (with `bunfig.toml`); pointer in `supabase/functions/AGENTS.md` | commit: -
+- T11 [pending] | S19, S20-S22, S28 | inline | `docs/go-live.md` equals `STRIPE_WEBHOOK_EVENTS`; pointers; Idea issue | commit: -
+- T12 [pending] | S23 | inline | Full checks and close | commit: -
 
 ## Log
 
@@ -48,3 +77,6 @@ Item 1, maintainer decisions (L2):
 - L8: Commits. 2f4697d9 holds the guard, its tests, the citation fixes it needed, and this document (476 authored lines, past the ~400 slice; the guard and its tests stay together). The drifts S1-S6 follow in their own commit, and the `--no-verify-jwt` change (S15) in a third. T6: `bun test` 4920 pass, 0 fail; `typecheck` clean; `lint` 0 errors (9 old `max-lines` warnings) after removing session scratch `.ts` files from the gitignored `.local/`, which ESLint lints; `format:check` clean. Local e2e (`bun run test:e2e:local`) 4/4 without the flag.
 - L9: Native review of daeb7459 (lenses risk and readability, lineage `review-ba9b1a35705873a6`): approved and acknowledged. The trigger was the `auth` path signal on the `*-no-auth.bru` file names; the commit changes only their docs blocks. Two non-blocking notes: this task line cited the commit by position instead of by hash (fixed here), and `playwright.local.config.ts:7` could say "exits" more precisely (left as is).
 - L10: Independent verification (`gentle-ai-verify`): S1-S13 and S15 pass, S14 not provable without the stack (evidence in L6). Checks: guard 18 pass, `lint` 0 errors, `format:check` and `typecheck` clean, full `bun test` 4920 pass; a scratch probe of the module reported fake paths, scripts, globs, links, gitignored paths, stale allowlist entries, and a root file over budget. Two advisories applied: the sleep sentence now says the 60 s was measured on REST and Edge Functions only (the other lazy services were seen sleeping but not timed), and a probe test proves the line budget check fails (19 pass).
+- L11: "eguimos con el roadmap #228: toca el ítem 2, #248 (A2, reglas → checks). Cargá contexto de Engram: roadmap/repo-layout-228, odd/agent-instructions/tasks y odd/agent-instructions/a2-carryover. Creá una rama nueva desde origin/main y agregá las specs de A2 a odd/tasks/agent-instructions.md (ese doc lo comparten los ítems 1-3). Antes de implementar, decime qué opinás y el plan, con qué es must-have y qué está de más. No des por hecho que el issue es definitivo. trate lo ultimo de main para que estes actualizado"
+- L12: Pre-plan evidence (explorer, read-only, on `origin/main` 6b8d4d88). S16: `checkCommitMessage` reads only the header; no AI trailer check exists; CI does not run the check, so `--no-verify` or a clone without hooks skips it. S17: no `__tests__/` exists under `apps/`; ten legacy ones exist under `supabase/` and `packages/types/`; `docs/conventions.md:44` already bans new ones anywhere and any top-level `tests/`. S18: `npm:zod@4.6.7` and `npm:@sentry/deno@11.8.0` match the root pins today; `sentry-sdk-install.test.ts` checks only the Sentry pin; the `bunfig.toml` mock key `npm:zod@4.6.7` is tied to nothing. S19: the 15 events handled by `stripe-webhooks/index.ts` (literals and constant arrays, no handler map) match the 15 in `STRIPE_WEBHOOK_EVENTS` and the `docs/go-live.md` list; `scripts/stripe-listen.test.ts` snapshots the literal array; `index.ts` runs on Deno (`Deno.serve`), so Bun tests cannot import it. Related open issues: #226 (move off source-text tests), #255 (`typecheck` skips `scripts/`). The two draft advisories do not touch these files.
+- L13: Maintainer answers to the plan: trailers "Todo Co-authored-by + firmas IA (Recomendado)"; CI "Sí, en CI (Recomendado)"; `__tests__` "Todo el repo + allowlist (Recomendado)"; Stripe "go-live.md == lista de listen (Recomendado)". The guard gap for `.agents/skills/verify-selene/features/*.md` becomes an Idea issue, not part of item 2.

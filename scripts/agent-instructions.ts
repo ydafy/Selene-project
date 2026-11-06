@@ -162,6 +162,20 @@ export function countLines(text: string): number {
   return text.replace(/\r?\n$/, '').split(/\r?\n/).length;
 }
 
+// Anthropic's guidance for always-loaded instruction files.
+const MAX_LINE_BUDGET = 200;
+
+export function checkLineBudget(markdown: string): string | undefined {
+  const budget = readLineBudget(markdown);
+  if (budget === undefined) return 'no "Keep it at most N lines" note';
+  if (budget > MAX_LINE_BUDGET) {
+    return `the budget of ${budget} lines is over the ${MAX_LINE_BUDGET}-line maximum`;
+  }
+  const lines = countLines(markdown);
+  if (lines > budget) return `${lines} lines, over the budget of ${budget}`;
+  return undefined;
+}
+
 // Tracked and untracked-but-not-ignored files, so a gitignored path counts as
 // missing here exactly as it is missing in CI.
 export function listRepoFiles(root: string): string[] {

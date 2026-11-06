@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import {
+  checkLineBudget,
   collectInstructionFiles,
   countLines,
   extractPathReferences,
@@ -129,9 +130,26 @@ describe('agent instruction references (probes)', () => {
     expect(readLineBudget('Keep it short.')).toBeUndefined();
   });
 
-  it('fails a file over its line budget', () => {
-    const text = 'Keep it at most 3 lines\nb\nc\nd\n';
-    expect(countLines(text)).toBeGreaterThan(readLineBudget(text)!);
+  it('reports a file over its line budget', () => {
+    expect(checkLineBudget('Keep it at most 3 lines\nb\nc\nd\n')).toBe(
+      '4 lines, over the budget of 3',
+    );
+  });
+
+  it('accepts a file at its line budget', () => {
+    expect(checkLineBudget('Keep it at most 3 lines\nb\nc\n')).toBeUndefined();
+  });
+
+  it('reports a missing budget note', () => {
+    expect(checkLineBudget('Keep it short.\n')).toBe(
+      'no "Keep it at most N lines" note',
+    );
+  });
+
+  it('reports a budget over the 200-line maximum', () => {
+    expect(checkLineBudget('Keep it at most 201 lines\n')).toBe(
+      'the budget of 201 lines is over the 200-line maximum',
+    );
   });
 
   it('counts lines without the trailing newline', () => {
@@ -167,10 +185,6 @@ describe('agent instruction references (repository)', () => {
 
   it('keeps the root AGENTS.md within its line budget', () => {
     const text = readFileSync(join(root, 'AGENTS.md'), 'utf8');
-    const budget = readLineBudget(text);
-    expect(budget).toBeDefined();
-    // Anthropic's guidance for always-loaded instruction files.
-    expect(budget!).toBeLessThanOrEqual(200);
-    expect(countLines(text)).toBeLessThanOrEqual(budget!);
+    expect(checkLineBudget(text)).toBeUndefined();
   });
 });
