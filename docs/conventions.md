@@ -43,6 +43,14 @@ apps/frontend/src/
 - A guard that scans all of `apps/frontend/src/` sits at the `apps/frontend/` root, so it does not scan its own text: `frontend-import-boundaries.test.ts`, `legacy-wallet-removal.test.ts`. A guard over the whole repository sits in `scripts/` (`test-only-guard.test.ts`).
 - Do not create new `__tests__/` folders or a top-level `tests/` folder; `scripts/test-placement.test.ts` fails on one. The folders in its legacy list predate this rule; do not add to them.
 
+## Source-text tests
+
+A test runs the code it tests. Call the function, call the Edge Function handler with fake dependencies, mount the screen, or run the SQL with pgTAP (`bun run test:db`, `supabase/tests/database/`). A test that only checks the text of a source file passes when the behavior is broken, and fails when the code is only reformatted (#138).
+
+- Read a file in a test only when the text is the contract (for example, a module must not import another one) or the file is a fixture. Put a line `// source-text: <reason>` in that test file.
+- `scripts/source-text-tests.test.ts` counts, per area, the test files that read files (`readFileSync`, `Bun.file(`, `readFile(`) without that line. It fails when an area's count grows. When you convert or delete one of those tests, it fails until you lower the area's number in `scripts/source-text-tests.ts`.
+- Roadmap #272 converts the older tests. When you touch a frontend or admin-web file whose test checks its wiring as text, mount the screen in that test instead.
+
 ## File naming
 
 - Every file uses kebab-case: `product-card.tsx` exports `ProductCard`, `use-auth.ts` exports `useAuth`, `format-price.ts` exports `formatPrice`. Identifiers inside the file keep their usual case.
