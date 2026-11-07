@@ -16,4 +16,4 @@ Anything that lets someone read or change data they should not, move or block mo
 
 ## Disclosure
 
-A fix is deployed first. Details become public only after that, usually by publishing the advisory.
+A fix is deployed first. The advisory is then closed, not published: Selene is an application, not a package anyone installs, so publishing would expose the details without protecting anyone.
