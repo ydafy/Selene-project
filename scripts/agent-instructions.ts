@@ -14,13 +14,9 @@ export const NOT_IN_REPO: Record<string, string> = {
     'worktree parent on the maintainer machine',
   '~/.supabase/stacks': 'per-user Supabase CLI state',
   '~/.supabase/stacks/': 'per-user Supabase CLI state',
-  'Pendientes.md': 'maintainer vault, outside the repository',
-  'Costos/': 'maintainer vault, outside the repository',
   'mcp.json': 'user-level MCP configuration',
   'selene-ze/selene-edge-functions': 'Sentry organization and project slug',
   'ydafy/Selene-project': 'GitHub repository slug',
-  'foo.ts': 'example file name',
-  'foo.test.ts': 'example file name',
   '.link.json': 'gitignored Supabase CLI file',
   'bruno/.env': 'gitignored, written by bun run bruno:env',
   'supabase/functions/.env': 'gitignored, maintainer-owned secrets',
@@ -192,8 +188,8 @@ export function listRepoFiles(root: string): string[] {
   return result.stdout.toString().split('\0').filter(Boolean);
 }
 
-// Every AGENTS.md and our own skills: the ones under .agents/skills that the
-// skills CLI does not manage (skills-lock.json).
+// Every AGENTS.md and every Markdown file of our own skills: the ones under
+// .agents/skills that the skills CLI does not manage (skills-lock.json).
 export function collectInstructionFiles(
   root: string,
   repoFiles: string[],
@@ -205,7 +201,7 @@ export function collectInstructionFiles(
       if (file === 'AGENTS.md' || file.endsWith('/AGENTS.md')) {
         return !file.startsWith('.agents/');
       }
-      const skill = /^\.agents\/skills\/([^/]+)\/SKILL\.md$/.exec(file);
+      const skill = /^\.agents\/skills\/([^/]+)\/.+\.md$/.exec(file);
       return skill !== null && !vendor.has(skill[1]);
     })
     .sort()

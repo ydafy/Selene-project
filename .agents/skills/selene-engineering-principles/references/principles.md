@@ -22,7 +22,7 @@ For every state-mutating step ask: what if it runs twice? What if the previous r
 
 - Validate and parse at boundaries: Edge Function request bodies, Stripe event payloads, Envia responses, env vars, rows read with untyped clients. Convert into domain types there.
 - Inside the boundary, trust the types. Do not re-validate the same data in every layer.
-- Business logic lives in pure functions (for example `_shared/` helpers or `fee-calculator.ts`) that the handler shell calls. The shell does I/O, auth, and logging.
+- Business logic lives in pure functions (for example the helpers in `supabase/functions/_shared/` or `supabase/functions/create-connect-payment/fee-calculator.ts`) that the handler shell calls. The shell does I/O, auth, and logging.
 - Do not re-export wire types (Stripe or Envia shapes) as your domain types.
 
 ## 4. Type-system discipline (TypeScript)
@@ -32,7 +32,7 @@ For every state-mutating step ask: what if it runs twice? What if the previous r
 - No `as` except after validation. Prefer `satisfies`.
 - Brand ids that share a primitive but mean different things (`ShipmentId` vs `OrderId`).
 - Exhaustive switch: `const _exhaustive: never = x` in the default branch.
-- Derive from `database.types.ts` with `Pick` / `Omit` before declaring a new interface.
+- Derive from `packages/types/src/database.types.ts` with `Pick` / `Omit` before declaring a new interface.
 - Money stays integer cents at application boundaries.
 
 ## 5. Test behavior, not implementation
@@ -89,7 +89,7 @@ Fix it at the highest level that works:
 
 1. Architecture: one owner per piece of state, one supported way per task, and no dead code an agent could copy.
 2. Types: the bad state does not compile.
-3. Lint or a guard test whose error names the file or function to use instead. `noHardcodedColors.test.ts` and `dependency-audit-exceptions.test.ts` are this level.
+3. Lint or a guard test whose error names the file or function to use instead. `apps/frontend/src/shared/theme/no-hardcoded-colors.test.ts` and `scripts/dependency-audit-exceptions.test.ts` are this level.
 4. A behavior test.
 5. A rule in `AGENTS.md` or a skill, only for judgment calls no check can make.
 

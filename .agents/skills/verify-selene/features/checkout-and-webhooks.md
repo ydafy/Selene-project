@@ -17,8 +17,8 @@ Buyer opens a listing, goes to checkout, pays by card or SPEI. Stripe then calls
 
 Preconditions: stack running, fresh seed, functions reachable.
 
-- `guards`: `run auth/login-buyer.bru functions/checkout-oversized-product-ids.bru products/checkout-in-review-refused.bru products/checkout-in-review-unchanged.bru --env local`. In review listing `...0b6` returns 409 `RESERVATION_FAILED`, and stays unchanged. `functions/checkout-seller-onboarding-pending.bru` and `-pending-released.bru` run as a pair, in that order.
-- `recovery-lease`: `functions/checkout-recovery-lease-service-acquire.bru`, `-service-held.bru`, `-release-holder.bru`, `-release-not-holder.bru`, plus `-anon-denied` and `-buyer-denied`. Run as one invocation in that order.
+- `guards`: `run auth/login-buyer.bru functions/checkout-oversized-product-ids.bru products/checkout-in-review-refused.bru products/checkout-in-review-unchanged.bru --env local`. In review listing `...0b6` returns 409 `RESERVATION_FAILED`, and stays unchanged. `functions/checkout-seller-onboarding-pending.bru` and `functions/checkout-seller-onboarding-pending-released.bru` run as a pair, in that order.
+- `recovery-lease`: `functions/checkout-recovery-lease-service-acquire.bru`, `functions/checkout-recovery-lease-service-held.bru`, `functions/checkout-recovery-lease-release-holder.bru`, `functions/checkout-recovery-lease-release-not-holder.bru`, plus `functions/checkout-recovery-lease-anon-denied.bru` and `functions/checkout-recovery-lease-buyer-denied.bru`. Run as one invocation in that order.
 - `webhook-signature`: `run functions/stripe-webhooks-unsigned.bru --env local` returns 400 `No signature`.
 - `webhook-events`: `bun run stripe:listen` in the background, then `stripe trigger payment_intent.succeeded`. Read the resulting rows with `supabase db query --local`, the event in the sandbox through the Stripe MCP (`livemode: false`), and Edge Function logs through the Supabase MCP only if the failure needs it.
 

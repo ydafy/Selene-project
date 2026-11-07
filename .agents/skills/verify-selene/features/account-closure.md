@@ -14,7 +14,7 @@ Signed-in user opens account settings and requests deletion. No admin-web screen
 
 ## Driving it with Bruno
 
-Preconditions: fresh seed; the seeded buyer has no orders or disputes (`seed.sql` header).
+Preconditions: fresh seed; the seeded buyer has no orders or disputes (`supabase/seed.sql` header).
 
 - `bun run api:test` runs the whole collection (116/116 on a fresh seed), including `delete-account-*` and `account-closure-cleanup-*` in `seq` order (setup, action, row check, cleanup; throwaway users come from the Auth admin API). `run functions` alone fails 15 requests on missing tokens: the login requests live in `auth/`.
 - `run auth/login-buyer.bru auth/close-account-as-anon-denied.bru auth/close-account-as-buyer-denied.bru auth/close-account-as-service-role-not-found.bru --env local` for the RPC per role.

@@ -16,7 +16,7 @@ Read the root `AGENTS.md` and `../AGENTS.md` first; they win over this file. Edg
 
 ## Bruno collection
 
-`bruno/` holds the HTTP requests (`.bru`) for the local stack of the current worktree. Run `bun run bruno:env` to generate the gitignored `bruno/.env` from `supabase status --env`, then `bun run api:test` to run everything (the `functions` folder needs `bun run functions:serve`, started right before the calls; it exits about 60 s after the last request). Do not use `--no-verify-jwt`: it turns gateway JWT verification off for every function until `supabase stop` and `supabase start`, and `bun run functions:serve` already honors each function's `verify_jwt` from `supabase/config.toml`. `bruno:env` refuses non-local URLs.
+`bruno/` holds the HTTP requests (`.bru`) for the local stack of the current worktree. Run `bun run bruno:env` to generate the gitignored `bruno/.env` from `supabase status --env`, then `bun run api:test` to run everything (the `functions` folder needs `bun run functions:serve`, started right before the calls; it exits about 60 s after the last request, also under `supabase start --eager`). When you change an Edge Function, add or extend its request in `bruno/` and keep the whole collection passing. Do not use `--no-verify-jwt`: it turns gateway JWT verification off for every function until `supabase stop` and `supabase start`, and `bun run functions:serve` already honors each function's `verify_jwt` from `supabase/config.toml`. `bruno:env` refuses non-local URLs.
 
 ## Local payments loop
 

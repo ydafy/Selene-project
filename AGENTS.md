@@ -3,7 +3,7 @@
 <!-- Maintainer note:
 Every line loads into every agent session. Add a rule only when an agent made the
 same mistake twice or when it cannot be inferred from the code. Prefer pointers to
-docs over copies. Keep it at most 170 lines (`scripts/agent-instructions.test.ts`
+docs over copies. Keep it at most 140 lines (`scripts/agent-instructions.test.ts`
 checks it and every path and script cited here); put area procedures in the nested files. -->
 
 Selene is a peer-to-peer marketplace in Mexico for used PC hardware. Its product is trust: technical verification of listings and safe money flow between buyers and sellers. It is in active development, and every module is built as if it shipped to production tomorrow. Do not add sandbox-only shortcuts, mocks in production paths, or "fine for now" workarounds.
@@ -12,34 +12,30 @@ Existing rows in the Supabase project and the Stripe sandbox are disposable test
 
 ## Map
 
-Bun monorepo with strict TypeScript. Stack: Expo, React Native, and React in `apps/frontend`; React and Vite in `apps/admin-web`. Each workspace's `package.json` is the source of truth for versions; read it instead of assuming one. Before changing files under a path below, read its guide; it holds the procedures for that area.
+Each workspace's `package.json` is the source of truth for versions; read it instead of assuming one. Before changing files under a path below, read its guide; it holds the procedures for that area.
 
-| Path                  | What                                                                         | Read first                     |
-| --------------------- | ---------------------------------------------------------------------------- | ------------------------------ |
-| `apps/frontend/`      | Expo React Native app (user-facing); styled with Restyle, not NativeWind     | `apps/frontend/AGENTS.md`      |
-| `apps/admin-web/`     | React + Vite admin dashboard                                                 |                                |
-| `packages/types/`     | Shared types, including generated Supabase types                             |                                |
-| `supabase/`           | Migrations, canonical SQL (`supabase/queries/`), local stack, remote project | `supabase/AGENTS.md`           |
-| `supabase/functions/` | Edge Functions (Deno), Sentry wrapper, Bruno and Stripe local loops          | `supabase/functions/AGENTS.md` |
-| `design/`             | Gentle Design mockups (HTML artboards) and the synced token catalog          | `DESIGN.md`                    |
-| `odd/tasks/`          | One tracking document per feature (verbatim specs, tasks, decision log)      |                                |
+| Path                  | What                                                                            | Read first                     |
+| --------------------- | ------------------------------------------------------------------------------- | ------------------------------ |
+| `apps/frontend/`      | Expo React Native app (user-facing); styled with Restyle, not NativeWind        | `apps/frontend/AGENTS.md`      |
+| `apps/admin-web/`     | React + Vite admin dashboard                                                    |                                |
+| `packages/types/`     | Shared types, including generated Supabase types                                |                                |
+| `supabase/`           | Migrations, canonical SQL (`supabase/queries/`), local stack, remote project    | `supabase/AGENTS.md`           |
+| `supabase/functions/` | Edge Functions (Deno), Sentry wrapper, Bruno and Stripe local loops             | `supabase/functions/AGENTS.md` |
+| `design/`             | Gentle Design mockups (HTML artboards) and the synced token catalog             | `DESIGN.md`                    |
+| `odd/tasks/`          | One document per feature; its `## Specs` and `## Log` say what the feature asks |                                |
 
 ## Verifying a change
 
-You choose and run these checks, without being asked, based on what your change touches. Unit tests alone do not prove SQL, permissions, Edge Functions, or webhooks. If Docker is not running or a tool fails, report the exact blocker instead of skipping the check.
+You choose and run these checks, without being asked, based on what your change touches. Unit tests alone do not prove SQL, permissions, Edge Functions, or webhooks. If Docker is not running or a tool fails, report the exact blocker instead of skipping the check. Report which checks you ran and their results.
 
-| Your change touches                | Prove it with                                                                                                                                                                                                                                 |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| SQL, migrations, RPCs, RLS, grants | `supabase start` (once per worktree), `supabase db reset`, then call the RPC or table per role (service role, buyer, anon) with a Bruno request                                                                                               |
-| An Edge Function                   | `bun run functions:serve` started right before the calls (it exits about 60 s after the last request), `bun run bruno:env`, `bun run api:test`; add or extend the request for that function in `bruno/` and keep the whole collection passing |
-| Payments or Stripe webhooks        | The above plus `bun run stripe:listen` and `stripe trigger <event>`; read the result in the sandbox through the Stripe MCP                                                                                                                    |
-| Shipment transfer or cancellation  | The above plus TLC on `docs/formal/shipment-transfer-cancellation/` (command in its README); update its code mapping table and sync commit                                                                                                    |
-| A production bug report            | Sentry MCP first, then Supabase logs through the Supabase MCP; reproduce it on the local stack before deciding it works                                                                                                                       |
-| Dependencies                       | The `bun audit` command in "Commands"                                                                                                                                                                                                         |
-| Frontend only                      | `bun test` for the touched behavior, `bun run lint`, and `bun run typecheck`                                                                                                                                                                  |
-| An admin-web screen                | The above plus a Playwright spec in `e2e/admin-web/` (`bun run test:e2e`) driving the real page; when the screen calls a new or changed endpoint, also run that flow against the local stack (`bun run test:e2e:local`)                       |
-
-Report which of these you ran and their results.
+| Your change touches                | Where the procedure lives                                                                                                                                                                                                                                                                   |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SQL, migrations, RPCs, RLS, grants | `supabase/AGENTS.md`, "When a change touches Supabase"; the `verify-selene` skill                                                                                                                                                                                                           |
+| An Edge Function                   | `supabase/functions/AGENTS.md`, "Bruno collection"                                                                                                                                                                                                                                          |
+| Payments or Stripe webhooks        | The Edge Function row plus `supabase/functions/AGENTS.md`, "Local payments loop"                                                                                                                                                                                                            |
+| Shipment transfer or cancellation  | The rows above plus TLC, as `docs/formal/shipment-transfer-cancellation/README.md` describes (update its code mapping table and sync commit)                                                                                                                                                |
+| Frontend only                      | `apps/frontend/AGENTS.md`, "Tests and checks"                                                                                                                                                                                                                                               |
+| An admin-web screen                | `bun test` for the touched behavior, `bun run lint`, and `bun run typecheck`, plus a Playwright spec in `e2e/admin-web/` (`bun run test:e2e`) driving the real page; when the screen calls a new or changed endpoint, also run that flow against the local stack (`bun run test:e2e:local`) |
 
 The Supabase, Stripe, and Sentry MCP servers are read-only and configured per user; if one is missing from your session, say so instead of working around it. Use them before asking the maintainer to look something up.
 
@@ -50,17 +46,12 @@ Manual testing: never ask the maintainer to repeat by hand what these checks alr
 | Question                                | Source                                                                                                 |
 | --------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | How does the product behave today?      | The code and its tests                                                                                 |
-| How should the UI look and feel?        | `DESIGN.md`                                                                                            |
-| What is the current feature asking for? | `odd/tasks/<feature>.md`, especially its `## Specs` and `## Log`                                       |
 | What was decided before, and why?       | Engram memory for project `selene-project`, when your harness has it; `docs/decision-log.md` for setup |
 | Which tables, columns, and enums exist? | `packages/types/src/database.types.ts` and aliases in `packages/types/src/types.ts`                    |
 | What is deployed right now?             | The Supabase MCP, not the repository                                                                   |
 | What does production need?              | `docs/go-live.md`                                                                                      |
 | When and how do I update a dependency?  | `docs/dependencies.md`                                                                                 |
-| Which skills apply?                     | `docs/skills.md` (`.agents/skills/`, `skills-lock.json`)                                               |
 | Which conventions apply to new code?    | `docs/conventions.md`                                                                                  |
-| What is pending outside a feature?      | GitHub Issues ("Finding" and "Idea" forms); private Security Advisories for vulnerabilities            |
-| What is planned across sessions?        | Roadmap issues and their sub-issues (label `roadmap`), as `docs/roadmaps.md` describes                 |
 
 Use the typed aliases (`Tables<'orders'>`, `Enums<'order_status_enum'>`). Never invent table, column, enum, or relationship names.
 
@@ -99,45 +90,31 @@ Run from the repository or worktree root. `package.json` is the source of truth.
 
 - `bun test`: full suite (`bun:test`). The pre-push hook and CI run the full suite; pre-commit runs `lint-staged` (Prettier and ESLint on staged code, Prettier on staged Markdown, JSON and YAML), and the commit-msg hook and CI reject non-Conventional headers and attribution lines (`scripts/check-commit-msg.ts`). Run one file with `bun test <path>`.
 - `bun run lint`, `bun run format:check`, and `bun run typecheck` (one workspace: `bun run --filter <package> typecheck`) pass with zero errors, and CI runs all three. A formatting-only change is its own `style(...)` commit, listed in `.git-blame-ignore-revs` (`docs/conventions.md`, "Formatting"). Keep them at zero; an inline `eslint-disable` needs the rule and a reason after `--`. CI also runs `bun run knip` (unused files, exports, and dependencies in `apps/frontend`; config in `knip.jsonc`): delete what it reports instead of ignoring it. Edge Functions: see `supabase/functions/AGENTS.md`.
-- `bun run db:types`: regenerates types from the remote project. Run it only after the maintainer confirms the SQL was applied.
-- Run `expo install` from `apps/frontend`, never from the root, or native autolinking breaks.
 - `bunfig.toml` blocks package versions newer than 3 days. If an install fails, pick an older version; do not change the setting.
 - `bun audit --audit-level=high` must stay clean. An accepted exception is an `--ignore=<GHSA>` flag in `.github/workflows/dependency-audit.yml` (weekly job) with its reason in a comment; never add one without it. After changing dependencies, run the command exactly as that workflow does.
 
 ## How we work
 
-- Speak up. The maintainer is new to this work and relies on your judgment: when you notice a problem, a risk, a better practice, or a tool that would help (in the task or near it), say so briefly with a recommendation and ask for a decision. Do not wait to be asked. Fixing or changing anything outside the request needs approval; recording it does not: when it is not done now, open the "Finding" or "Idea" issue without asking ("Findings outside the current work").
-- Structure, naming, and test placement: `docs/conventions.md`.
+- Speak up. The maintainer is new to this work and relies on your judgment: when you notice a problem, a risk, a better practice, or a tool that would help (in the task or near it), say so briefly with a recommendation and ask for a decision. Do not wait to be asked. Sort each recommendation into must-have, nice-to-have, or overengineering for a solo-developer MVP++, and record the nice-to-haves as Idea issues. Fixing or changing anything outside the request needs approval; recording it does not: when it is not done now, open the "Finding" or "Idea" issue without asking ("Findings outside the current work").
 - Track work by its shape. One feature: `odd/tasks/<feature>.md`. Items with an order or dependencies across sessions or worktrees: a roadmap (`docs/roadmaps.md`), which you propose and the maintainer approves before you create it. Independent items: separate issues.
 - If an unrelated failure blocks verification, report the command and output and stop for a decision. Never weaken a test to get green.
-- Code, identifiers, comments, tests, commits, and docs are in English. User-facing strings go through i18n with both English and Spanish (`apps/frontend/src/shared/i18n/locales`); locale parity tests enforce it.
+- Code, identifiers, comments, tests, commits, and docs are in English. User-facing strings go through i18n with both English and Spanish (`apps/frontend/AGENTS.md`, "Strings").
 - Several features are developed in parallel worktrees under `C:/dev/School-portal-worktrees/`. Stay inside the worktree you were given. A new worktree gets the gitignored env files through the `post-checkout` hook; in an older one run `bun run worktree:env`. To remove a finished worktree, run `bun run worktree:clean <name>` from the main checkout to show the plan, and add `--yes` only when the maintainer asks (`docs/worktrees.md`). Never delete worktrees, branches, or `~/.supabase/stacks` by hand.
-- The maintainer keeps a private Obsidian vault outside this repository for what fits neither the repository nor Engram; its path is in the maintainer's personal Engram memory (search "maintainer vault"; if you cannot find it, skip this). The main session writes to it on its own initiative, without being asked; subagents do not. A manual step you need from the maintainer goes to `Pendientes.md`, a cost or subscription to `Costos/`, a legal, tax, or contact fact to `Legal y contactos.md`, and a session that delivered something gets 3-4 lines in `Bitácora/<YYYY-MM>.md`. Write in Spanish, then commit and push the vault (its own private Git repository). Findings and feature ideas still go to GitHub issues; secrets and unfixed vulnerability details never go in the vault.
 
 ## Findings outside the current work
 
 Before starting work on a module, read the open issues and the draft Security Advisories that mention it (`gh issue list --search <module>`, `gh api repos/ydafy/Selene-project/security-advisories`), and say which ones the work covers.
 
-When you find a bug or gap that is not part of the task, do not fix it: record it and continue.
+When you find a bug, gap, or idea that is not part of the task, do not fix it: open a GitHub issue without asking first and continue. A vulnerability is the exception: while it is unfixed, never describe it in an issue, a PR, a commit message, or any repository file; tell the maintainer and draft a private Security Advisory. A PR that fixes an issue says `Closes #N`. The procedure is in `docs/findings.md`.
 
-- Ordinary findings: open a GitHub issue with the "Finding" form (`.github/ISSUE_TEMPLATE/finding.yml`) using the `gentle-ai-issue-creation` skill, without asking first. Search open and closed issues for a duplicate first. Write it so the maintainer understands it without the code open, and cite the issue number in the feature's `## Log`. Keep the form's `### Priority` and `### Area` headings with the exact option text: `.github/workflows/issue-labels.yml` sets the `priority:*` and `area:*` labels from them, so change a priority by editing the body, not the label.
-- Ideas (a feature, tool, or process worth doing later, short, medium, or long term; not a defect): when one comes up, found in the work or discussed with the maintainer, open an issue with the "Idea" form (`.github/ISSUE_TEMPLATE/idea.yml`) so no session loses it. Search open and closed issues for a duplicate first, fill "When to revisit", tell the maintainer the issue number, and cite it in the feature's `## Log`. Do not keep backlog lists in `odd/tasks/`.
-- Vulnerabilities (auth, permissions, secrets, money integrity, data exposure): this repository is public. While unfixed, never describe them in an issue, PR, commit message, or any file in the repository. Tell the maintainer in the session and draft a private Security Advisory (`SECURITY.md`); details go public only after the fix is deployed. When the maintainer confirms the fix is deployed, close the advisory yourself (`gh api -X PATCH repos/ydafy/Selene-project/security-advisories/<GHSA-id> -f state=closed`); do not publish it.
-- A PR that fixes an issue says `Closes #N`. Close an issue by hand only with the maintainer's decision.
+## Money and security rules
 
-## How money moves
-
-For money, webhook, cron, or order and shipment state work, also load the `selene-engineering-principles` skill.
+For money, webhook, cron, or order and shipment state work, also load the `selene-engineering-principles` skill. These rules protect real money and user data and hold for every change:
 
 - The buyer pays the product price plus "Seguro Selene", which covers the Stripe processing fee. The seller absorbs shipping and the Selene marketplace fee. Rates live in `supabase/functions/create-connect-payment/fee-calculator.ts`; do not hardcode them elsewhere.
 - Payments go through Stripe Connect with manual payouts. Selene holds the seller's funds until the shipment is completed, then an admin releases them. Never enable automatic payouts: they would pay sellers before delivery or before disputes and refunds are resolved.
 - A payout releases the full shipment amount or nothing. Partial payouts would make the database ledger diverge from Stripe.
 - Refunds and disputes are only possible before a shipment is completed, and they always target one `shipment_id`, never a whole multi-seller order.
-
-## Money and security invariants
-
-These protect real money and user data. They hold for every change:
-
 - Money is integer cents at application boundaries. Convert to decimals only where a database or display contract requires it.
 - Orders are multi-seller. A `shipment` is the seller-scoped boundary for fulfillment, cancellation, disputes, payouts, and audit.
 - The server rebuilds and validates every amount before releasing, refunding, cancelling, or transferring money. Never trust a client-provided amount.
@@ -151,14 +128,12 @@ These protect real money and user data. They hold for every change:
 
 ## External services
 
-- **Supabase.** The maintainer applies SQL and deploys Edge Functions manually; a file in `supabase/` does not mean it is live. The remote project is treated as production: read it only through the read-only Supabase MCP, never run data-mutating tests against it, and never try to bypass read-only mode. Procedures: `supabase/AGENTS.md`.
 - **Stripe.** Read the sandbox (`Selene sandbox`, test mode) through the Stripe MCP instead of asking for Dashboard screenshots: payment intents, charges, refunds, balance, payouts, transfers, and events. It is authorized by OAuth for the sandbox only (not for connected seller accounts), and write and money-moving tools are hidden in the user-level `mcp.json`. Always pass `livemode: false`; never request live-mode access or try to reach hidden write tools.
-- **Sentry.** Project `selene-ze/selene-edge-functions` receives Edge Function errors. Read it through the Sentry MCP (`search_issues`, `search_errors`, `get_sentry_resource`, ...); search it before reading logs when investigating a production bug. Never resolve, assign, or edit issues.
+- **Sentry.** Project `selene-ze/selene-edge-functions` receives Edge Function errors. Read it through the Sentry MCP (`search_issues`, `search_errors`, `get_sentry_resource`, ...). For a production bug report, search it first, then read the Supabase logs through the Supabase MCP, and reproduce the bug on the local stack before deciding it works. Never resolve, assign, or edit issues.
 
 ## Git
 
 - Inside an authorized feature on its feature branch, commit each work unit as soon as its checks pass; do not wait to be asked. Target about 400 authored changed lines per commit (larger commits exceed the native review budget). A change to money, SQL, RLS, or auth goes in its own commit.
-- In a roadmap ("How we work"), size each item so it lands as one such commit; if one will clearly exceed that, split it in the plan, not at commit time. Check that an item still holds before you start it.
 - Generated files (`packages/types/src/database.types.ts`) go in the same commit as the migration that produced them.
 - Pass commits to tools as ref names (`HEAD~1`, a branch) or as the exact output of `git rev-parse`; never type or complete a SHA by hand, and check any SHA you cite with `git rev-parse --verify <sha>^{commit}`.
 - Keep commits scoped: code, tests, migration, and contract updates for one behavior go together. Use Conventional Commits.

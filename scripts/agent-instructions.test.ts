@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 
 import {
   checkLineBudget,
@@ -123,6 +130,35 @@ describe('agent instruction references (probes)', () => {
     expect(
       findStaleAllowlistEntries(files, { 'Costos/': 'maintainer vault' }),
     ).toEqual(['Costos/']);
+  });
+
+  it('collects every Markdown file of our own skills, not vendor ones', () => {
+    const fake = mkdtempSync(join(tmpdir(), 'agent-instructions-'));
+    try {
+      const files = [
+        '.agents/skills/own/SKILL.md',
+        '.agents/skills/own/features/x.md',
+        '.agents/skills/own/features/y.bru',
+        '.agents/skills/vendor/SKILL.md',
+        '.agents/skills/vendor/references/z.md',
+      ];
+      writeFileSync(
+        join(fake, 'skills-lock.json'),
+        JSON.stringify({ skills: { vendor: {} } }),
+      );
+      for (const file of files) {
+        mkdirSync(dirname(join(fake, file)), { recursive: true });
+        writeFileSync(join(fake, file), 'text');
+      }
+      expect(
+        collectInstructionFiles(fake, files).map((file) => file.path),
+      ).toEqual([
+        '.agents/skills/own/SKILL.md',
+        '.agents/skills/own/features/x.md',
+      ]);
+    } finally {
+      rmSync(fake, { recursive: true, force: true });
+    }
   });
 
   it('reads the line budget from the maintainer note', () => {

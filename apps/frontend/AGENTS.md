@@ -15,10 +15,10 @@ Expo React Native app. Read `docs/conventions.md` first for structure, naming, a
 ## Dependencies and types
 
 - Run `expo install` from `apps/frontend`, never from the repository root.
-- Import database types from `@selene/types` and use the typed aliases (`Tables<'orders'>`, `Enums<'order_status_enum'>`).
+- Import database types from `@selene/types`.
 
 ## Tests and checks
 
-- Put a unit test next to its file (`foo.ts`, `foo.test.ts`).
 - Run the touched tests with `bun test <path>`.
+- Lint with `bun run lint`. It passes with zero errors; keep it that way.
 - Typecheck with `bun run --filter @selene/frontend typecheck`. It passes with zero errors; keep it that way.

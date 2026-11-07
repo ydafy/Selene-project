@@ -19,12 +19,12 @@ An agent proposes a roadmap and the maintainer approves it before the issues are
 
 ## How a roadmap is built
 
-- **One parent issue** (the "Idea" form) states the goal, the order of the items, and why.
+- **One parent issue** (the "Idea" form) states the goal, the order of the items, and why. It also states the roadmap's working philosophy in one short sentence.
 - **One sub-issue per item**, with the `roadmap` label and the title `[Roadmap] <N>. <what>`. Its body says what to do, when it can start, `Part of #<parent>`, and `Closes #<this issue>` for its PR.
 - **A large item gets a feature document** (`odd/tasks/<feature>.md`) when it starts. The roadmap tracks the items; the feature document tracks the specs, tasks, and log inside one item.
 - **Engram topic** `roadmap/<slug>` mirrors the parent issue for agent sessions.
 
-Size each item to land in one or a few commits of about 400 lines. If an item clearly exceeds that, split it into several sub-issues.
+Size each item so it lands as one commit of about 400 lines. If one clearly exceeds that, split it into several sub-issues in the plan, not at commit time.
 
 Example: #127 (Expo SDK 58, frontend layout, and tooling checks).
 
