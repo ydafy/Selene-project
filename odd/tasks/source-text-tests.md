@@ -1,7 +1,7 @@
 # Source-text tests plan (#226)
 
 Research for #226: recount the tests that read source files as text (#138), sort them by area and kind, say what the moves in #250, #251, #221, and #252 must do about them, and plan the conversion as its own roadmap. No code changes in this item.
-Branch: `docs/source-text-tests-plan`. Roadmap: see `## Tasks`, T5.
+Branch: `docs/source-text-tests-plan`. Roadmap: #272 (items #273 to #278).
 
 ## Specs
 
@@ -24,14 +24,14 @@ From the maintainer (L1, verbatim):
 
 ## Tasks
 
-| ID  | Specs       | Route                                          | Status | Commit        |
-| --- | ----------- | ---------------------------------------------- | ------ | ------------- |
-| T1  | S1, S2, S8  | Inline count, two read-only explorers          | done   | this document |
-| T2  | S7, S9      | Explorer, inline spot checks                   | done   | this document |
-| T3  | S10, S11    | Inline, maintainer decisions L6 and L8         | done   | this document |
-| T4  | S3          | Inline                                         | done   | this document |
-| T5  | S3, S4, S10 | Inline: roadmap parent, six items, one Idea    | open   | GitHub issues |
-| T6  | S7          | Inline: edit #250, comment on #251, #221, #252 | open   | GitHub issues |
+| ID  | Specs       | Route                                          | Status | Commit                                                     |
+| --- | ----------- | ---------------------------------------------- | ------ | ---------------------------------------------------------- |
+| T1  | S1, S2, S8  | Inline count, two read-only explorers          | done   | this document                                              |
+| T2  | S7, S9      | Explorer, inline spot checks                   | done   | this document                                              |
+| T3  | S10, S11    | Inline, maintainer decisions L6 and L8         | done   | this document                                              |
+| T4  | S3          | Inline                                         | done   | this document                                              |
+| T5  | S3, S4, S10 | Inline: roadmap parent, six items, one Idea    | done   | #272, #273 to #278, Idea #279                              |
+| T6  | S7          | Inline: edit #250, comment on #251, #221, #252 | done   | #250 body and comments; comments on #226, #127, #228, #138 |
 
 ## Log
 
