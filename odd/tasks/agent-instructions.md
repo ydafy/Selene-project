@@ -1,7 +1,7 @@
 # Agent instructions (roadmap #228, items 1-3)
 
 Fix the drifts in the agent instruction files and guard their references (#247), turn rules into checks (#248), and restructure the root `AGENTS.md` (#249). Items 2 and 3 add their specs here when they start.
-Branch for item 1: `docs/agent-instructions-guard`. Branch for item 2: `chore/agent-rules-checks`.
+Branch for item 1: `docs/agent-instructions-guard`. Branch for item 2: `chore/agent-rules-checks`. Branch for item 3: `docs/agents-root-restructure`.
 
 ## Specs
 
@@ -50,6 +50,28 @@ Item 2, maintainer decisions (L13):
 - S27: S17 covers the whole repository: any `__tests__/` folder or top-level `tests/` folder fails unless it is one of the legacy folders in an allowlist, and an allowlist entry that no longer exists also fails.
 - S28: S19 is rewritten: the `docs/go-live.md` event list equals `STRIPE_WEBHOOK_EVENTS`; the handler side stays prose pointing to that list, and an Idea issue records a single source of event types for `stripe-webhooks`.
 
+Item 3, #249 (verbatim from the issue):
+
+- S29: "Bring the root file to about 100 to 120 lines. The line budget is enforced by the guard from item 1."
+- S30: "Keep in the root file: The product preamble. The Map. Its "Read first" column is what makes nested files load. Drop what `package.json` already says. Boundaries, Commands, and Git. Money flow and the money and security invariants, merged into one section. They stay in the root file because skills are often not invoked when needed."
+- S31: ""Verifying a change" keeps the rule to choose and run checks without being asked. Its table says only where each procedure lives. Each command appears in one place (a nested `AGENTS.md` or `verify-selene`)."
+- S32: ""Findings outside the current work" goes from 11 lines to about 3 in the root file. The full procedure moves to `docs/`."
+- S33: "The Supabase part of "External services" lives only in `supabase/AGENTS.md`. The root file keeps the Never lines."
+- S34: "Nested files stop restating the root file. Items such as i18n, typed aliases, and test placement become pointers."
+- S35: "The Obsidian vault paragraph moves to the maintainer's user-level agent instructions (the maintainer applies this one, outside the repository)."
+- S36: "A table in the feature document maps every old line to its new home or to "dropped: <reason>". No rule is lost without a reason."
+- S37: "The guard from item 1 passes." "`bun run lint`, `bun run typecheck`, `bun run format:check`, and `bun test` pass."
+- Out of scope: "changing what a rule means or adding rules." S41 and S43 are maintainer-approved exceptions.
+
+Item 3, maintainer additions (L25, L27, L28):
+
+- S38: "El root está en 164 líneas y el budget en 170. checkLineBudget (scripts/agent-instructions.ts) lee el número de la nota del maintainer, así que al bajarlo a ~120 cambiás nota y número juntos." The budget is the honest result of the content cuts (target 120, up to about 130), never reached by packing several rules into one line (L28).
+- S39: "la frase del sleep de ~60 s está repetida en tres lugares (supabase/AGENTS.md, verify-selene, docs/auth.md). Dejala en supabase/AGENTS.md y en los otros dos poné un puntero." The `functions:serve` exit timing (and `--eager`) likewise lives only in `supabase/functions/AGENTS.md` ("Bruno collection"); `verify-selene` points there.
+- S40: "A2 ya convirtió varias reglas en punteros a checks (commit-msg, **tests**, versiones npm:, eventos de Stripe). No las vuelvas a escribir como prosa."
+- S41: #258, verbatim: "Extend the agent instruction guard (`scripts/agent-instructions.ts`, `collectInstructionFiles`) to scan every Markdown file of our local skills, not only their `SKILL.md`." Seen failing first; the stale citations it finds are fixed.
+- S42: `SECURITY.md` "Disclosure" says the fix is deployed first and the advisory is then closed, not published ("Cerrar, sin publicar (recomendado)"), matching the root rule and the practice (L27).
+- S43: Roadmap philosophy (L27, "AGENTS.md de Selene (recomendado)"): the root "Speak up" bullet asks to sort each recommendation into must-have, nice-to-have, or overengineering for a solo-developer MVP++ and to record nice-to-haves as Idea issues. The time-bound part (clean structure before production, no deferred moves) goes in the #228 body and Engram, and `docs/roadmaps.md` says the parent issue states its working philosophy.
+
 ## Tasks
 
 - T1 [done] | - | inline | Create this document and its Engram mirror | commit: 2f4697d9
@@ -64,6 +86,12 @@ Item 2, maintainer decisions (L13):
 - T10 [done] | S18, S20-S22 | worker | `npm:` pin guard (with `bunfig.toml`); pointer in `supabase/functions/AGENTS.md` | commit: eb1e0c34
 - T11 [done] | S19, S20-S22, S28 | worker | `docs/go-live.md` equals `STRIPE_WEBHOOK_EVENTS`; pointers; Idea issue | commit: 166db756
 - T12 [done] | S23 | inline | Full checks and close | commit: this document's closing commit
+- T13 [done] | S29-S43 | inline | Item 3 specs and tasks in this document | commit: -
+- T14 [pending] | S41 | worker | Guard scans every Markdown file of our skills, test first; fix the citations it reports | commit: -
+- T15 [pending] | S42 | inline | `SECURITY.md` "Disclosure" | commit: -
+- T16 [pending] | S29-S36, S38-S40, S43 | worker | Restructure the root, move procedures to their homes (`docs/findings.md`, `supabase/AGENTS.md`, nested pointers), old-line table | commit: -
+- T17 [pending] | S43 | inline | Working philosophy in the #228 body; vault text for the maintainer | commit: none
+- T18 [pending] | S36, S37 | verify | Full checks; independent check of the old-line table | commit: -
 
 ## Log
 
@@ -91,3 +119,7 @@ Item 2, maintainer decisions (L13):
 - L22: Native review of the branch (base 6b8d4d88, through 6652ce9f; lenses risk, readability, reliability; lineage `review-b824de3cead08cb2`): approved and acknowledged, six non-blocking findings. Warnings: (1) in `--range` mode a committed message kept verbatim (`git commit --cleanup=verbatim`) can hide an attribution line below a literal scissors line, because the check drops everything below it, which only makes sense for the uncleaned hook file; (2) the CI job will also fail a pull request that contains commits made by other actors, such as an edit in the GitHub web editor ("Update README.md"); no bot commits to this repository today (no Dependabot or Renovate). Suggestions: the GIT_* environment scrub is repeated in the test, the go-live parser could live next to its test, the npm-pin file filter is dense, and this document has stale references.
 - L23: Maintainer: "dale master continua" (fix warning 1 now). Warning 1 fixed test-first: RED, a `--cleanup=verbatim` commit with a literal scissors line and `Co-authored-by` below it passed `--range` with exit 0; GREEN 46 pass. `checkCommitMessage` takes `{ committed: true }` from `--range`, which reads the whole stored message (no scissors cut, no comment skip); the hook keeps reading its uncleaned file as before. `--range origin/main~300..origin/main` still reports the same 8 pre-hook commits and nothing new; `--range origin/main..HEAD` passes. Warning 2 is accepted as intended: commits from the GitHub web editor must follow the format too.
 - L24: Independent verification of 03c0afd4 (`gentle-ai-verify`): S16, S25, S26 met. The hook path gives identical stdout, stderr, and exit codes before and after on 10 hook-style message files; `--range` over all of `origin/main` gives byte-identical output before and after (12 pre-hook failures). The native review (lineage `review-a599004d20723e85`, risk and reliability) approved it with one warning: committed `#` lines were untested; two tests now pin them (unit `{ committed: true }` and a verbatim `# note` header through `--range`). Known and accepted: `git commit -m` keeps `#` and scissors lines that the hook skips, so such a message passes the hook and fails the CI job; both fail closed, and CI is the backstop.
+- L25: "Seguimos con el roadmap #228, toca el ítem 3: #249 (A3, reestructurar el AGENTS.md raíz). Todo el alcance está en el issue. Cargá Engram (roadmap/repo-layout-228, odd/agent-instructions/tasks, preference/repo-structure-before-production), traé lo último de main y creá una rama nueva desde origin/main en este worktree. El doc es el mismo: odd/tasks/agent-instructions.md, agregale las specs de A3. Lo que no está en el issue: - El root está en 164 líneas y el budget en 170. checkLineBudget (scripts/agent-instructions.ts) lee el número de la nota del maintainer, así que al bajarlo a ~120 cambiás nota y número juntos. - Pendiente de A1: la frase del sleep de ~60 s está repetida en tres lugares (supabase/AGENTS.md, verify-selene, docs/auth.md). Dejala en supabase/AGENTS.md y en los otros dos poné un puntero. - A2 ya convirtió varias reglas en punteros a checks (commit-msg, **tests**, versiones npm:, eventos de Stripe). No las vuelvas a escribir como prosa. - Si te da, la Idea #258 (que el guard también revise verify-selene/features/*.md) se puede meter acá, porque igual vas a tocar esos archivos. Si no, queda para después. - La rama local chore/agent-rules-checks sigue en este worktree. Cuando crees la nueva podés dejarla, no la borres a mano. Antes de implementar, decime qué opinás y el plan con must-have, nice-to-have y overengineering. Discutamos dónde va la filosofía del roadmap (la decisión abierta del issue) antes de escribir nada."
+- L26: Pre-plan evidence (explorer, read-only, on `origin/main` 4ae88620). The "60 s" fact covers two mechanisms: the stack's lazy services sleep (`supabase/AGENTS.md:23`, `verify-selene` Gotchas, `docs/auth.md` Pitfalls) and `functions:serve` exits (root "Verifying a change", `supabase/functions/AGENTS.md:19`, `verify-selene` Launch step 4); about 15 more copies sit in `.bru` docs blocks, e2e specs, and scripts, left as code comments. Attribution is stated twice in the root (Never and Commands). `apps/frontend/AGENTS.md` restates i18n, typed aliases, test placement, and `expo install`. `docs/` has no findings procedure. Scanning every Markdown file of our skills would report about 10 stale citations (bare names in `selene-engineering-principles/references/principles.md`, `.bru` suffix fragments in `verify-selene/features/*.md`); not run, read by eye. Related open issues: #249, #258.
+- L27: `SECURITY.md:19` ("Details become public only after that, usually by publishing the advisory.") is from 9aa70498 (2026-10-25); the root rule "close the advisory yourself ...; do not publish it" came one day later in f58e0328 (PR #40) without updating `SECURITY.md`. Practice follows the root rule: 7 advisories closed, none published, 2 drafts. Publishing makes an advisory public and feeds the GitHub Advisory Database and Dependabot alerts for repositories that depend on a package; Selene is an application nobody installs, so publishing protects no one and only exposes the details. Maintainer answers: philosophy "AGENTS.md de Selene (recomendado)"; SECURITY.md "Cerrar, sin publicar (recomendado)"; #258 and the SECURITY.md fix go in this item ("lo de #258 y lo de securty si metelo aqui").
+- L28: Maintainer, on the line target: "Al menos que sea como una regla ultra cierta, pues si nos ponemos exagerados, pero recyerda lo que se econtro cuando se invetigo que deve de ir en un agents.md y como los devs mas pros + estudios dicen sobre esto." Decision: the cuts follow content (task-specific text, duplicates, rules that are checks), as the #228 research found length alone is not the problem; no packing rules into longer lines to meet 120. The budget is set to the honest result.
