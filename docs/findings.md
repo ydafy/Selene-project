@@ -38,7 +38,7 @@ Do not keep backlog lists in `odd/tasks/`.
 A vulnerability affects auth, permissions, secrets, money integrity, or data exposure. This repository is public, so while the vulnerability is unfixed, never describe it in an issue, a PR, a commit message, or any file in the repository.
 
 1. Tell the maintainer in the session.
-2. Draft a private Security Advisory (`SECURITY.md`). Details go public only after the fix is deployed.
+2. Draft a private Security Advisory (`SECURITY.md`).
 3. When the maintainer confirms the fix is deployed, close the advisory yourself. Do not publish it.
 
 ```bash
