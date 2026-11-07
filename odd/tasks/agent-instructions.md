@@ -89,9 +89,9 @@ Item 3, maintainer additions (L25, L27, L28):
 - T13 [done] | S29-S43 | inline | Item 3 specs and tasks in this document | commit: 4d38b5ab
 - T14 [done] | S41 | worker | Guard scans every Markdown file of our skills, test first; fix the citations it reports | commit: 245b736e
 - T15 [done] | S42 | inline | `SECURITY.md` "Disclosure" | commit: d4ff7c15
-- T16 [done] | S29-S36, S38-S40, S43 | worker | Restructure the root, move procedures to their homes (`docs/findings.md`, `supabase/AGENTS.md`, nested pointers), old-line table | commit: -
+- T16 [done] | S29-S36, S38-S40, S43 | worker | Restructure the root, move procedures to their homes (`docs/findings.md`, `supabase/AGENTS.md`, nested pointers), old-line table | commit: a91b3338
 - T17 [done] | S43 | inline | Working philosophy in the #228 body; vault text for the maintainer | commit: none
-- T18 [pending] | S36, S37 | verify | Full checks; independent check of the old-line table | commit: -
+- T18 [done] | S36, S37 | verify | Full checks; independent check of the old-line table | commit: a91b3338 (verifier fixes), evidence in L30-L31
 
 ## Item 3 line map
 
