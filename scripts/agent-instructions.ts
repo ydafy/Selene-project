@@ -192,8 +192,8 @@ export function listRepoFiles(root: string): string[] {
   return result.stdout.toString().split('\0').filter(Boolean);
 }
 
-// Every AGENTS.md and our own skills: the ones under .agents/skills that the
-// skills CLI does not manage (skills-lock.json).
+// Every AGENTS.md and every Markdown file of our own skills: the ones under
+// .agents/skills that the skills CLI does not manage (skills-lock.json).
 export function collectInstructionFiles(
   root: string,
   repoFiles: string[],
@@ -205,7 +205,7 @@ export function collectInstructionFiles(
       if (file === 'AGENTS.md' || file.endsWith('/AGENTS.md')) {
         return !file.startsWith('.agents/');
       }
-      const skill = /^\.agents\/skills\/([^/]+)\/SKILL\.md$/.exec(file);
+      const skill = /^\.agents\/skills\/([^/]+)\/.+\.md$/.exec(file);
       return skill !== null && !vendor.has(skill[1]);
     })
     .sort()

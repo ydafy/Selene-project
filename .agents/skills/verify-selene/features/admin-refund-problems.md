@@ -10,13 +10,13 @@ An admin sees shipment cancellations whose refund failed or was not found, and m
 
 ## How to get to it (user POV)
 
-Admin signs in at `/login` (`admin@selene.local`), opens `/payments`, tab "Necesita atención", chip "Reembolsos". Each problem is an `article` with a "Marcar resuelto" button, then the field "Referencia del pago externo" and "Confirmar resolución".
+Admin signs in at `http://127.0.0.1:5188/login` (`admin@selene.local`), opens `http://127.0.0.1:5188/payments`, tab "Necesita atención", chip "Reembolsos". Each problem is an `article` with a "Marcar resuelto" button, then the field "Referencia del pago externo" and "Confirmar resolución".
 
 ## Driving it with Bruno and Playwright
 
 Preconditions: stack running, fresh `supabase db reset` (no other refund problems).
 
-- `deny`, from `bruno/`: `run auth/login-buyer.bru functions/resolve-shipment-refund-buyer.bru --env local` returns 403 `ADMIN_ONLY`. Also `functions/resolve-shipment-refund-no-auth.bru`, `-anon-key.bru`, `-invalid-shipment.bru`, `-unknown-shipment.bru`.
+- `deny`, from `bruno/`: `run auth/login-buyer.bru functions/resolve-shipment-refund-buyer.bru --env local` returns 403 `ADMIN_ONLY`. Also `functions/resolve-shipment-refund-no-auth.bru`, `functions/resolve-shipment-refund-anon-key.bru`, `functions/resolve-shipment-refund-invalid-shipment.bru`, `functions/resolve-shipment-refund-unknown-shipment.bru`.
 - `list`: `run functions/login-admin.bru functions/list-shipment-refund-problems-admin.bru --env local` returns 200 with `problems` array (empty on a fresh seed). Buyer and no-auth variants sit beside it.
 - `list` + `resolve` end to end: `bun run test:e2e:local` runs `e2e/admin-web-local/refund-problems.local.e2e.ts`. It seeds two problems through the service role (shipments `e2e10000-...-0a1` failed, `...0a2` escalated), drives the UI, then asserts the operation row, the audit row, and shipment statuses. Observable proof: `1 passed`, and a DB read of `shipments where id::text like 'e2e10000%'` returns 0 rows afterwards.
 
