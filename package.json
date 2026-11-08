@@ -37,7 +37,6 @@
     "format": "bunx prettier --write .",
     "format:check": "bunx prettier --check .",
     "prepare": "husky",
-    "clean:all": "bun scripts/clean-all.ts",
     "doctor:frontend": "cd apps/frontend && bunx expo-doctor",
     "fix:frontend": "cd apps/frontend && bunx expo install --fix"
   },
