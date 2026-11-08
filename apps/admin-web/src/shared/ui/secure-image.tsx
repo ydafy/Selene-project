@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { Maximize2 } from 'lucide-react';
-import { getStoragePath } from '../../lib/utils/StoragePath';
+import { getStoragePath } from '../utils/storage-path';
 
 interface Props {
   path: string;

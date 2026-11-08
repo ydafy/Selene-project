@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { CreditCard } from 'lucide-react';
-import { formatCurrency } from '../../../lib/utils/formatCurrency';
+import { formatCurrency } from '../../../shared/utils/format-currency';
 import { centsToMoney } from '../../../lib/connectEarnings';
 
 interface PaymentIntentsTableProps {

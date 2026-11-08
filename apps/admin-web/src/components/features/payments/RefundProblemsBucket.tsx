@@ -1,12 +1,12 @@
 import { useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle2, ShieldCheck } from 'lucide-react';
-import { ErrorState } from '../../ui/ErrorState';
-import { Modal } from '../../ui/Modal';
+import { ErrorState } from '../../../shared/ui/error-state';
+import { Modal } from '../../../shared/ui/modal';
 import { PayoutBucketEmptyState } from './PayoutRunRow';
 import { workbenchFocus } from './PayoutWorkbenchLayout';
 import { centsToMoney } from '../../../lib/connectEarnings';
-import { formatCurrency } from '../../../lib/utils/formatCurrency';
-import { formatTime } from '../../../lib/utils/formatDate';
+import { formatCurrency } from '../../../shared/utils/format-currency';
+import { formatTime } from '../../../shared/utils/format-date';
 import {
   getErrorCode,
   normalizeResolutionReference,

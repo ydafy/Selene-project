@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { formatCurrency } from './formatCurrency';
+import { formatCurrency } from './format-currency';
 
 test('formatCurrency formats zero as MX$0', () => {
   expect(formatCurrency(0)).toBe('$0');

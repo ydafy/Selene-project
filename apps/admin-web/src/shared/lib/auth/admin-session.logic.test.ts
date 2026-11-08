@@ -4,7 +4,7 @@ import {
   createLoadGuard,
   resolveAdminSession,
   type AdminSessionDeps,
-} from './adminSession.logic';
+} from './admin-session.logic';
 
 type Profile = { role: string | null; status: string | null };
 

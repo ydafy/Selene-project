@@ -1,17 +1,17 @@
 import { useState } from 'react';
 import { Lock, AlertCircle, ShieldAlert, Cpu } from 'lucide-react';
-import { UserAvatar } from '../../ui/UserAvatar';
-import { UserSafetyActions } from './UserSafetyActions';
+import { UserAvatar } from '../../../shared/ui/user-avatar';
+import { UserSafetyActions } from '../../../shared/ui/user-safety-actions';
 import { RankInfoPanel } from './RankInfoPanel';
 import { ProductSpecsGrid } from './ProductSpecsGrid';
 import { EvidenceViewer } from './EvidenceViewer';
 import { VerificationActions } from './VerificationActions';
-import { getRank } from '../../../lib/utils/ranks';
-import { supabase } from '../../../lib/supabase';
-import { useAuthStore } from '../../../store/useAuthStore';
+import { getRank } from '../../../shared/utils/ranks';
+import { supabase } from '../../../shared/lib/supabase';
+import { useAuthStore } from '../../../shared/store/use-auth-store';
 import { toast } from 'sonner';
 import type { PendingProduct, AccountStatus } from '@selene/types';
-import { formatTime } from '../../../lib/utils/formatDate';
+import { formatTime } from '../../../shared/utils/format-date';
 import type { ProductVerdict } from './resolveVerdict';
 
 interface LockStatus {

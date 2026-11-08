@@ -5,7 +5,7 @@ import {
   Maximize2,
   FileQuestion,
 } from 'lucide-react';
-import { SecureImage } from '../../ui/SecureImage';
+import { SecureImage } from '../../../shared/ui/secure-image';
 import type { VerificationData } from '@selene/types';
 
 interface EvidenceViewerProps {

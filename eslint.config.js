@@ -24,13 +24,11 @@ const ADMIN_WEB_FILES = ['apps/admin-web/**/*.{ts,tsx}'];
 // (#221). Their files keep their old names until they move; remove an entry
 // when its folder is empty.
 const ADMIN_WEB_LEGACY = [
-  `${ADMIN_WEB_SRC}/App.tsx`,
   `${ADMIN_WEB_SRC}/components/**`,
   `${ADMIN_WEB_SRC}/hooks/**`,
   `${ADMIN_WEB_SRC}/lib/**`,
   `${ADMIN_WEB_SRC}/pages/**`,
   `${ADMIN_WEB_SRC}/services/**`,
-  `${ADMIN_WEB_SRC}/store/**`,
   `${ADMIN_WEB_SRC}/types/**`,
 ];
 const FIX =

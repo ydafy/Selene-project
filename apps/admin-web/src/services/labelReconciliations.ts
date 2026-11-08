@@ -5,7 +5,7 @@ import {
   type ResolveLabelReconciliationInput,
   type ResolveLabelReconciliationResult,
 } from '../lib/labelReconciliations';
-import { invokeEdgeJson } from './edge-client';
+import { invokeEdgeJson } from '../shared/lib/edge-client';
 
 export async function fetchLabelReconciliations(): Promise<
   LabelReconciliation[]

@@ -15,14 +15,14 @@ import { useDisputeDetail } from '../hooks/useDisputeDetail';
 
 import { useDisputeActions, useDisputeLock } from '../hooks/useDisputeActions';
 // UI Components
-import { StatusBadge } from '../components/ui/StatusBadge';
-import { SecureImage } from '../components/ui/SecureImage';
-import { SecureVideo } from '../components/ui/SecureVideo';
-import { ErrorState } from '../components/ui/ErrorState';
-import { ImageModal } from '../components/ui/ImageModal';
-import { InputModal } from '../components/ui/InputModal';
-import { Skeleton } from '../components/ui/Skeleton';
-import { formatTime } from '../lib/utils/formatDate';
+import { StatusBadge } from '../shared/ui/status-badge';
+import { SecureImage } from '../shared/ui/secure-image';
+import { SecureVideo } from '../shared/ui/secure-video';
+import { ErrorState } from '../shared/ui/error-state';
+import { ImageModal } from '../shared/ui/image-modal';
+import { InputModal } from '../shared/ui/input-modal';
+import { Skeleton } from '../shared/ui/skeleton';
+import { formatTime } from '../shared/utils/format-date';
 
 export const DisputeDetailPage = () => {
   const { id } = useParams();

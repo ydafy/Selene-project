@@ -5,7 +5,7 @@ import {
   type ResolveReviewResult,
   type ReviewResolution,
 } from '../lib/carrierReviews';
-import { invokeEdgeJson } from './edge-client';
+import { invokeEdgeJson } from '../shared/lib/edge-client';
 
 export async function fetchCarrierReviews(): Promise<CarrierReview[]> {
   return parseCarrierReviews(

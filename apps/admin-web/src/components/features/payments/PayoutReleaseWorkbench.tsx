@@ -6,14 +6,14 @@ import {
   ShieldCheck,
   Wallet,
 } from 'lucide-react';
-import { SelectionActionSummary } from '../../ui/SelectionActionSummary';
-import { Modal } from '../../ui/Modal';
+import { SelectionActionSummary } from '../../../shared/ui/selection-action-summary';
+import { Modal } from '../../../shared/ui/modal';
 import { centsToMoney } from '../../../lib/connectEarnings';
 import {
   getSelectedEligibleShipmentIds,
   type ReleaseQueueBatch,
 } from '../../../lib/connectPayoutReleaseQueue';
-import { formatCurrency } from '../../../lib/utils/formatCurrency';
+import { formatCurrency } from '../../../shared/utils/format-currency';
 
 import {
   PAYOUT_PAGE_SIZE,

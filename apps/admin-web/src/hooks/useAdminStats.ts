@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../shared/lib/supabase';
 
 function calcTrend(current: number, previous: number) {
   if (previous === 0) return { direction: 'neutral' as const, percentage: 0 };

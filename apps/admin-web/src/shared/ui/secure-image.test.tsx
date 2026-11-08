@@ -1,7 +1,7 @@
 import { afterEach, expect, it, mock } from 'bun:test';
 import { renderToStaticMarkup } from 'react-dom/server';
 
-mock.module('../../lib/supabase', () => ({
+mock.module('../lib/supabase', () => ({
   supabase: {
     storage: {
       from: () => ({
@@ -11,7 +11,7 @@ mock.module('../../lib/supabase', () => ({
   },
 }));
 
-const { SecureImage } = await import('./SecureImage');
+const { SecureImage } = await import('./secure-image');
 
 afterEach(() => mock.restore());
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { adminAccessMessage, evaluateAdminAccess } from './adminAccess';
+import { adminAccessMessage, evaluateAdminAccess } from './admin-access';
 
 describe('evaluateAdminAccess', () => {
   it('allows an active admin', () => {

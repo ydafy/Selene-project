@@ -57,7 +57,7 @@ if (process.env.B24_PANEL_CHILD !== '1') {
       isPending: false,
     }),
   }));
-  mock.module('../../../lib/supabase', () => ({
+  mock.module('../../../shared/lib/supabase', () => ({
     supabase: {
       functions: {
         invoke: () => {

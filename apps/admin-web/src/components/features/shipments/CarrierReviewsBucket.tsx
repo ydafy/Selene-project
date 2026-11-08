@@ -1,12 +1,12 @@
 import { useRef, useState } from 'react';
 import { AlertTriangle, PackageCheck, Truck } from 'lucide-react';
-import { ErrorState } from '../../ui/ErrorState';
-import { Modal } from '../../ui/Modal';
+import { ErrorState } from '../../../shared/ui/error-state';
+import { Modal } from '../../../shared/ui/modal';
 import { PayoutBucketEmptyState } from '../payments/PayoutRunRow';
 import { workbenchFocus } from '../payments/PayoutWorkbenchLayout';
 import { centsToMoney } from '../../../lib/connectEarnings';
-import { formatCurrency } from '../../../lib/utils/formatCurrency';
-import { formatTime } from '../../../lib/utils/formatDate';
+import { formatCurrency } from '../../../shared/utils/format-currency';
+import { formatTime } from '../../../shared/utils/format-date';
 import { getErrorCode } from '../../../lib/shipmentRefundProblems';
 import {
   formatWaiting,

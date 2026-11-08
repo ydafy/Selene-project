@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../shared/lib/supabase';
 
 /** Shape of the evidence JSON stored by the buyer and seller flows. */
 interface DisputeEvidence {

@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { ShieldCheck, Ban, RefreshCcw, UserX, Lock } from 'lucide-react';
-import { supabase } from '../../../lib/supabase';
-import { useAuthStore } from '../../../store/useAuthStore';
+import { supabase } from '../lib/supabase';
+import { useAuthStore } from '../store/use-auth-store';
 import { toast } from 'sonner';
-import { InputModal } from '../../ui/InputModal';
+import { InputModal } from './input-modal';
 import type { AccountStatus } from '@selene/types';
-import { getAccountStatusActions } from './accountStatusActions';
-import { isClosedAccount } from '../../../lib/accountStatus';
+import { getAccountStatusActions } from '../lib/account-status-actions';
+import { isClosedAccount } from '../lib/account-status';
 
 interface Props {
   user: {

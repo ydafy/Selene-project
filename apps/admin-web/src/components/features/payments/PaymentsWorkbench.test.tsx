@@ -92,7 +92,7 @@ if (process.env.PAYMENTS_WORKBENCH_CHILD !== '1') {
   const chargeSearches: string[] = [];
   let queueRefreshes = 0;
   let chargeRefreshes = 0;
-  mock.module('../../../hooks/useDebounce', () => ({
+  mock.module('../../../shared/hooks/use-debounce', () => ({
     useDebounce: (value: string) => value,
   }));
   mock.module('../../../hooks/useConnectPayoutReleaseQueue', () => ({
@@ -149,7 +149,7 @@ if (process.env.PAYMENTS_WORKBENCH_CHILD !== '1') {
       };
     },
   }));
-  mock.module('../../../lib/supabase', () => ({
+  mock.module('../../../shared/lib/supabase', () => ({
     supabase: {
       functions: {
         invoke: () => {

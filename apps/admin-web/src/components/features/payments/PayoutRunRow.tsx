@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { User } from 'lucide-react';
-import { formatCurrency } from '../../../lib/utils/formatCurrency';
+import { formatCurrency } from '../../../shared/utils/format-currency';
 import { centsToMoney } from '../../../lib/connectEarnings';
 import type { ReleaseQueueRun } from '../../../lib/connectPayoutReleaseQueue';
 

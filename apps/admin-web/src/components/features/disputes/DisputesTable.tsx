@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
 import { Gavel, ChevronRight, Calendar } from 'lucide-react';
-import { StatusBadge } from '../../ui/StatusBadge';
-import { DataTable, type ColumnDef } from '../../ui/DataTable';
-import { formatCurrency } from '../../../lib/utils/formatCurrency';
-import { formatTime } from '../../../lib/utils/formatDate';
-import type { StatusType } from '../../ui/StatusBadge';
+import { StatusBadge } from '../../../shared/ui/status-badge';
+import { DataTable, type ColumnDef } from '../../../shared/ui/data-table';
+import { formatCurrency } from '../../../shared/utils/format-currency';
+import { formatTime } from '../../../shared/utils/format-date';
+import type { StatusType } from '../../../shared/ui/status-badge';
 import type { DisputeSummary } from '@selene/types';
 
 interface Props {

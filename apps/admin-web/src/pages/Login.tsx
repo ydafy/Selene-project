@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
-import { useAuthStore } from '../store/useAuthStore';
-import { adminAccessMessage } from '../lib/adminAccess';
+import { supabase } from '../shared/lib/supabase';
+import { useAuthStore } from '../shared/store/use-auth-store';
+import { adminAccessMessage } from '../shared/lib/auth/admin-access';
 import { useCaptcha } from '../lib/captcha/useCaptcha';
 import {
   loginErrorMessage,

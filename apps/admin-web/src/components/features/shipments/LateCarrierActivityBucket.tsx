@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react';
 import { PackageSearch, PackageCheck } from 'lucide-react';
-import { ErrorState } from '../../ui/ErrorState';
-import { Modal } from '../../ui/Modal';
+import { ErrorState } from '../../../shared/ui/error-state';
+import { Modal } from '../../../shared/ui/modal';
 import { PayoutBucketEmptyState } from '../payments/PayoutRunRow';
 import { workbenchFocus } from '../payments/PayoutWorkbenchLayout';
-import { formatTime } from '../../../lib/utils/formatDate';
+import { formatTime } from '../../../shared/utils/format-date';
 import { getErrorCode } from '../../../lib/shipmentRefundProblems';
 import { formatWaiting } from '../../../lib/carrierReviews';
 import {

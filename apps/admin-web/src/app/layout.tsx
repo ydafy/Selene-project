@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { ErrorBoundary } from '../ui/ErrorBoundary';
+import { ErrorBoundary } from '../shared/ui/error-boundary';
 
 import {
   LayoutDashboard,
@@ -15,7 +15,7 @@ import {
   ChevronRight,
   Menu,
 } from 'lucide-react';
-import { useAuthStore } from '../../store/useAuthStore';
+import { useAuthStore } from '../shared/store/use-auth-store';
 
 export const Layout = () => {
   const { signOut, profile } = useAuthStore();

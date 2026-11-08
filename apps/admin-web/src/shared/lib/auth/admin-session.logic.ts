@@ -1,4 +1,4 @@
-import { evaluateAdminAccess, type AdminAccessDenial } from './adminAccess';
+import { evaluateAdminAccess, type AdminAccessDenial } from './admin-access';
 
 export interface LoadToken {
   seq: number;

@@ -1,6 +1,6 @@
 import { afterEach, expect, it, mock, spyOn } from 'bun:test';
 import * as React from 'react';
-import { CopyableReference } from './CopyableReference';
+import { CopyableReference } from './copyable-reference';
 
 const originalNavigator = Object.getOwnPropertyDescriptor(
   globalThis,

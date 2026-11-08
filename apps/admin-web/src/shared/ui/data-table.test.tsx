@@ -1,7 +1,7 @@
 import { expect, it } from 'bun:test';
 import { renderToStaticMarkup } from 'react-dom/server';
 
-import { DataTable, type ColumnDef } from './DataTable';
+import { DataTable, type ColumnDef } from './data-table';
 
 interface Row {
   name: string;

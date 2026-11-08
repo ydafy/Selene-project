@@ -1,7 +1,7 @@
 import { afterEach, expect, it, mock, spyOn } from 'bun:test';
 import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { InputModal } from './InputModal';
+import { InputModal } from './input-modal';
 
 afterEach(() => mock.restore());
 

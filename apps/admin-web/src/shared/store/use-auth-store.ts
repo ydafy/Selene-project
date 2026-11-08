@@ -2,13 +2,16 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import { toast } from 'sonner';
-import { queryClient } from '../lib/queryClient';
-import { adminAccessMessage, type AdminAccessDenial } from '../lib/adminAccess';
+import { queryClient } from '../lib/query-client';
+import {
+  adminAccessMessage,
+  type AdminAccessDenial,
+} from '../lib/auth/admin-access';
 import {
   createLoadGuard,
   resolveAdminSession,
   type AdminSessionOutcome,
-} from '../lib/adminSession.logic';
+} from '../lib/auth/admin-session.logic';
 
 export interface AdminProfile {
   id: string;

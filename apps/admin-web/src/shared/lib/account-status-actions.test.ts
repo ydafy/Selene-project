@@ -4,7 +4,7 @@ import {
   ACCOUNT_STATUS_ACTION_TARGET,
   getAccountStatusActions,
   type AccountStatusAction,
-} from './accountStatusActions';
+} from './account-status-actions';
 
 describe('getAccountStatusActions', () => {
   const cases: [AccountStatus | null, boolean, AccountStatusAction[]][] = [
@@ -42,7 +42,7 @@ describe('getAccountStatusActions', () => {
 
 test('UserSafetyActions renders only helper-allowed status actions', async () => {
   const component = await Bun.file(
-    new URL('./UserSafetyActions.tsx', import.meta.url),
+    new URL('../ui/user-safety-actions.tsx', import.meta.url),
   ).text();
   expect(component).toContain(
     'getAccountStatusActions(user.status, user.id === admin?.id)',

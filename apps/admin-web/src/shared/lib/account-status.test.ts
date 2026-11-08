@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { isClosedAccount } from './accountStatus';
+import { isClosedAccount } from './account-status';
 
 describe('isClosedAccount', () => {
   test('a banned account with a deleted_ + 12 hex username is closed', () => {

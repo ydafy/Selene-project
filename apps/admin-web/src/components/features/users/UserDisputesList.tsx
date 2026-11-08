@@ -1,5 +1,5 @@
 import { Gavel, CheckCircle2, XCircle, Clock } from 'lucide-react';
-import { StatusBadge } from '../../ui/StatusBadge';
+import { StatusBadge } from '../../../shared/ui/status-badge';
 
 type DisputeStatus =
   | 'open'

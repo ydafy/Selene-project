@@ -1,6 +1,6 @@
 import { expect, it } from 'bun:test';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { SelectionActionSummary } from './SelectionActionSummary';
+import { SelectionActionSummary } from './selection-action-summary';
 
 it('shares a content-sized surface with prominent amount and configurable actions', () => {
   const html = renderToStaticMarkup(

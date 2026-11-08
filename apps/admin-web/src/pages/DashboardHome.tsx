@@ -8,10 +8,10 @@ import {
 } from 'lucide-react';
 import { useAdminStats } from '../hooks/useAdminStats';
 import { ActivityFeed } from '../components/features/verify/ActivityFeed';
-import { StatCard } from '../components/ui/StatCard';
-import { formatCurrency } from '../lib/utils/formatCurrency';
+import { StatCard } from '../shared/ui/stat-card';
+import { formatCurrency } from '../shared/utils/format-currency';
 import { CatalogHealthCard } from '../components/features/home/CatalogHealthCard';
-import { ErrorState } from '../components/ui/ErrorState';
+import { ErrorState } from '../shared/ui/error-state';
 
 export const DashboardHome = () => {
   const {

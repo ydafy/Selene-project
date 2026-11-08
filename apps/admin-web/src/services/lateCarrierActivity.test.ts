@@ -29,7 +29,7 @@ if (process.env.B58B_SERVICE_CHILD !== '1') {
 
   const calls: Array<{ name: string; options: Record<string, unknown> }> = [];
   let result: { data: unknown; error: unknown };
-  mock.module('../lib/supabase', () => ({
+  mock.module('../shared/lib/supabase', () => ({
     supabase: {
       functions: {
         invoke: async (name: string, options: Record<string, unknown>) => {
@@ -41,7 +41,7 @@ if (process.env.B58B_SERVICE_CHILD !== '1') {
   }));
   const { fetchLateCarrierActivity, acknowledgeLateCarrierActivity } =
     await import('./lateCarrierActivity');
-  const { EdgeFunctionError } = await import('./edge-client');
+  const { EdgeFunctionError } = await import('../shared/lib/edge-client');
 
   const row = {
     shipment_id: 'ship-1',

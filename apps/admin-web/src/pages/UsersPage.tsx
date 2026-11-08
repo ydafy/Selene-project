@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useUsers } from '../hooks/useUsers';
-import { useDebounce } from '../hooks/useDebounce';
+import { useDebounce } from '../shared/hooks/use-debounce';
 import { UserCard } from '../components/features/users/UserCard';
-import { Skeleton } from '../components/ui/Skeleton';
+import { Skeleton } from '../shared/ui/skeleton';
 import type { AdminUser } from '@selene/types';
-import { ErrorState } from '../components/ui/ErrorState';
+import { ErrorState } from '../shared/ui/error-state';
 
 export const UsersPage = () => {
   const [search, setSearch] = useState('');

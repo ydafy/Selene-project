@@ -7,16 +7,16 @@ import {
   FileSearch,
   ShieldCheck,
 } from 'lucide-react';
-import { Modal } from '../../ui/Modal';
-import { CopyableReference } from '../../ui/CopyableReference';
-import { SelectionActionSummary } from '../../ui/SelectionActionSummary';
+import { Modal } from '../../../shared/ui/modal';
+import { CopyableReference } from '../../../shared/ui/copyable-reference';
+import { SelectionActionSummary } from '../../../shared/ui/selection-action-summary';
 import { centsToMoney } from '../../../lib/connectEarnings';
 import type {
   ReleaseQueueActionRequiredRun,
   ReleaseQueueRun,
 } from '../../../lib/connectPayoutReleaseQueue';
-import { formatCurrency } from '../../../lib/utils/formatCurrency';
-import { formatTime } from '../../../lib/utils/formatDate';
+import { formatCurrency } from '../../../shared/utils/format-currency';
+import { formatTime } from '../../../shared/utils/format-date';
 
 import {
   PAYOUT_PAGE_SIZE,

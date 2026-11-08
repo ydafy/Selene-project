@@ -1,7 +1,7 @@
 import { Clock, AlertCircle, Inbox, User } from 'lucide-react';
 import { useAuditLogs } from '../../../hooks/useAuditLogs';
 import { getActionMeta } from '../../../lib/constants/auditActions';
-import { formatTime } from '../../../lib/utils/formatDate';
+import { formatTime } from '../../../shared/utils/format-date';
 import type { Json } from '@selene/types';
 
 function isRecord(value: Json): value is Record<string, Json> {

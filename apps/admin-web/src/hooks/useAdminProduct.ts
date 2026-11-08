@@ -4,8 +4,8 @@ import {
   useQueryClient,
   keepPreviousData,
 } from '@tanstack/react-query';
-import { supabase } from '../lib/supabase';
-import { useAuthStore } from '../store/useAuthStore';
+import { supabase } from '../shared/lib/supabase';
+import { useAuthStore } from '../shared/store/use-auth-store';
 import { toast } from 'sonner';
 import type { ProductStatus } from '@selene/types';
 
