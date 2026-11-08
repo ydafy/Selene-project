@@ -8,8 +8,8 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { Modal } from '../../../shared/ui/modal';
-import { CopyableReference } from '../../../shared/ui/copyable-reference';
-import { SelectionActionSummary } from '../../../shared/ui/selection-action-summary';
+import { CopyableReference } from './copyable-reference';
+import { SelectionActionSummary } from './selection-action-summary';
 import { centsToMoney } from '../../../shared/utils/cents-to-money';
 import type {
   ReleaseQueueActionRequiredRun,

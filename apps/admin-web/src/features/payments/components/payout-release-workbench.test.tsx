@@ -1,4 +1,4 @@
-import { SelectionActionSummary } from '../../../shared/ui/selection-action-summary';
+import { SelectionActionSummary } from './selection-action-summary';
 import { afterEach, expect, it, mock, spyOn } from 'bun:test';
 import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';

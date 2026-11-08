@@ -6,7 +6,7 @@ import {
   ShieldCheck,
   Wallet,
 } from 'lucide-react';
-import { SelectionActionSummary } from '../../../shared/ui/selection-action-summary';
+import { SelectionActionSummary } from './selection-action-summary';
 import { Modal } from '../../../shared/ui/modal';
 import { centsToMoney } from '../../../shared/utils/cents-to-money';
 import {

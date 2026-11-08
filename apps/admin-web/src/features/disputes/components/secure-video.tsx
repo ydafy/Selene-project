@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
-import { getStoragePath } from '../utils/storage-path';
+import { supabase } from '../../../shared/lib/supabase';
+import { getStoragePath } from '../../../shared/utils/storage-path';
 
 interface Props {
   path: string;

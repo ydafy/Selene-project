@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { ErrorBoundary } from '../shared/ui/error-boundary';
+import { ErrorBoundary } from './error-boundary';
 
 import {
   LayoutDashboard,

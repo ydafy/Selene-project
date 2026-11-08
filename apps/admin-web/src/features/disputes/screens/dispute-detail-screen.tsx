@@ -20,7 +20,7 @@ import {
 // UI Components
 import { StatusBadge } from '../../../shared/ui/status-badge';
 import { SecureImage } from '../../../shared/ui/secure-image';
-import { SecureVideo } from '../../../shared/ui/secure-video';
+import { SecureVideo } from '../components/secure-video';
 import { ErrorState } from '../../../shared/ui/error-state';
 import { ImageModal } from '../../../shared/ui/image-modal';
 import { InputModal } from '../../../shared/ui/input-modal';

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { CheckCircle, XCircle } from 'lucide-react';
-import { ConfirmModal } from '../../../shared/ui/confirm-modal';
+import { ConfirmModal } from './confirm-modal';
 import type { PendingProduct } from '@selene/types';
 import type { ResolveProductVariables } from './verification-detail';
 import {
