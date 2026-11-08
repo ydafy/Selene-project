@@ -96,6 +96,33 @@ describe('root ESLint config', () => {
       expect(result.ruleIds).toEqual(['react-hooks/rules-of-hooks']);
     }, 60_000);
 
+    test(`flags an admin-web shared file importing app/ when run from ${cwd}`, async () => {
+      const result = await lintText(
+        cwd,
+        `${prefix}src/shared/ui/probe.ts`,
+        "import '../../app/app';\nimport '@/app/layout';\n",
+      );
+
+      expect(result.stderr).toBe('');
+      expect(result.exitCode).toBe(1);
+      expect(result.ruleIds).toEqual([
+        'import-x/no-restricted-paths',
+        'import-x/no-restricted-paths',
+      ]);
+    }, 60_000);
+
+    test(`accepts an admin-web shared file importing shared code when run from ${cwd}`, async () => {
+      const result = await lintText(
+        cwd,
+        `${prefix}src/shared/ui/probe.ts`,
+        "import '@/shared/lib/supabase';\nimport './modal';\n",
+      );
+
+      expect(result.stderr).toBe('');
+      expect(result.exitCode).toBe(0);
+      expect(result.ruleIds).toEqual([]);
+    }, 60_000);
+
     test(`flags a non-kebab-case admin-web file outside the legacy folders when run from ${cwd}`, async () => {
       const result = await lintText(
         cwd,
