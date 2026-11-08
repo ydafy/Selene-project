@@ -4,7 +4,7 @@ import { User } from 'lucide-react';
 import { formatCurrency } from '../../../shared/utils/format-currency';
 import { centsToMoney } from '../../../shared/utils/cents-to-money';
 import type { ReleaseQueueRun } from '../logic/connect-payout-release-queue';
-import type { PayoutRunTone } from '../../../shared/ui/payout-bucket-empty-state';
+import type { AccentTone } from '../../../shared/ui/accent-tone';
 
 interface TonePresentation {
   card: string;
@@ -13,7 +13,7 @@ interface TonePresentation {
   chip: string;
 }
 
-const TONE_PRESENTATION: Record<PayoutRunTone, TonePresentation> = {
+const TONE_PRESENTATION: Record<AccentTone, TonePresentation> = {
   lion: {
     card: 'bg-state-gray border border-white/5 transition-all hover:border-lion/20',
     avatarIcon: 'text-lion',
@@ -42,7 +42,7 @@ const TONE_PRESENTATION: Record<PayoutRunTone, TonePresentation> = {
 
 interface PayoutRunRowProps {
   run: ReleaseQueueRun;
-  tone: PayoutRunTone;
+  tone: AccentTone;
   chipIcon: LucideIcon;
   chipLabel: string;
   chipIconClassName?: string;

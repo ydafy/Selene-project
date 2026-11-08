@@ -6,6 +6,8 @@
  * never shows partial data. Money is integer cents; pesos typed by the admin are converted here.
  */
 
+import { asRecord } from '../../../shared/utils/as-record';
+
 export const STUCK_STATES = [
   'orphan_pending',
   'claimed',
@@ -65,11 +67,6 @@ export class MalformedLabelReconciliationResponseError extends Error {
     this.name = 'MalformedLabelReconciliationResponseError';
   }
 }
-
-const asRecord = (value: unknown): Record<string, unknown> | null =>
-  value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
 
 const text = (value: unknown): string | null =>
   typeof value === 'string' && value !== '' ? value : null;

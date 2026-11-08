@@ -12,6 +12,7 @@ import { useAuthStore } from '../../../shared/store/use-auth-store';
 import { toast } from 'sonner';
 import type { PendingProduct, AccountStatus } from '@selene/types';
 import { formatTime } from '../../../shared/utils/format-date';
+import { isRecord } from '../../../shared/utils/as-record';
 import type { ProductVerdict } from '../logic/resolve-verdict';
 
 interface LockStatus {
@@ -41,10 +42,6 @@ interface VerificationDetailProps {
   refetch: () => void;
   onImageClick: (url: string) => void;
   onVerdictComplete: () => void;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 export const VerificationDetail = ({

@@ -4,6 +4,7 @@ import type {
   ConnectPayoutQueueScope,
   ConnectPayoutReleaseQueueRow,
 } from '@selene/types';
+import { isRecord } from '../../../shared/utils/as-record';
 
 export interface PayoutQueueRequest {
   bucket: ConnectPayoutQueueBucket;
@@ -22,8 +23,6 @@ export interface ValidatedPayoutQueueResponse extends PayoutQueueRequest {
 }
 
 const buckets = ['ready', 'processing', 'action-required', 'history'] as const;
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 const count = (value: unknown): value is number =>
   typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 const invalid = (): never => {

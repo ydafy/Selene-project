@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { PackageCheck, PackageX } from 'lucide-react';
 import { ErrorState } from '../../../shared/ui/error-state';
 import { Modal } from '../../../shared/ui/modal';
-import { PayoutBucketEmptyState } from '../../../shared/ui/payout-bucket-empty-state';
+import { BucketEmptyState } from '../../../shared/ui/bucket-empty-state';
 import { workbenchFocus } from '../../../shared/ui/workbench-focus';
 import { centsToMoney } from '../../../shared/utils/cents-to-money';
 import { formatCurrency } from '../../../shared/utils/format-currency';
@@ -205,7 +205,7 @@ export const LabelReconciliationsBucket = ({
           onRetry={onRetry}
         />
       ) : cases.length === 0 ? (
-        <PayoutBucketEmptyState
+        <BucketEmptyState
           icon={PackageCheck}
           tone="forest"
           title="Ninguna guía por revisar"

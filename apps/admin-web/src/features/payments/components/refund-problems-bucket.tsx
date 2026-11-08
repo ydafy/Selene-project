@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { ErrorState } from '../../../shared/ui/error-state';
 import { Modal } from '../../../shared/ui/modal';
-import { PayoutBucketEmptyState } from '../../../shared/ui/payout-bucket-empty-state';
+import { BucketEmptyState } from '../../../shared/ui/bucket-empty-state';
 import { workbenchFocus } from '../../../shared/ui/workbench-focus';
 import { centsToMoney } from '../../../shared/utils/cents-to-money';
 import { formatCurrency } from '../../../shared/utils/format-currency';
@@ -75,7 +75,7 @@ export const RefundProblemsBucket = ({
   }
   if (problems.length === 0) {
     return (
-      <PayoutBucketEmptyState
+      <BucketEmptyState
         icon={ShieldCheck}
         tone="forest"
         title="Ningún reembolso pendiente"

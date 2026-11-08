@@ -1,7 +1,4 @@
-const asRecord = (value: unknown): Record<string, unknown> | null =>
-  value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
+import { asRecord } from './as-record';
 
 /** The stable server error code carried by a thrown error, if any. */
 export function getErrorCode(error: unknown): string | null {

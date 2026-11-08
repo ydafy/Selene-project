@@ -4,6 +4,8 @@
  * row fails the whole response, so the UI never shows partial money data.
  */
 
+import { asRecord } from '../../../shared/utils/as-record';
+
 export const REFUND_PROBLEM_KINDS = [
   'refund_failed',
   'refund_canceled',
@@ -43,11 +45,6 @@ export class MalformedRefundResponseError extends Error {
     this.name = 'MalformedRefundResponseError';
   }
 }
-
-const asRecord = (value: unknown): Record<string, unknown> | null =>
-  value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
 
 const text = (value: unknown): string | null =>
   typeof value === 'string' && value !== '' ? value : null;

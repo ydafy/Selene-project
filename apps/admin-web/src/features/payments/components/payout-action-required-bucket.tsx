@@ -4,10 +4,8 @@ import {
   ShieldAlert,
   ShieldCheck,
 } from 'lucide-react';
-import {
-  PayoutBucketEmptyState,
-  type PayoutRunTone,
-} from '../../../shared/ui/payout-bucket-empty-state';
+import { BucketEmptyState } from '../../../shared/ui/bucket-empty-state';
+import type { AccentTone } from '../../../shared/ui/accent-tone';
 import { PayoutRunRow } from './payout-run-row';
 import type {
   ReleaseQueueActionRequiredReason,
@@ -16,7 +14,7 @@ import type {
 
 const REASON_PRESENTATION: Record<
   ReleaseQueueActionRequiredReason,
-  { label: string; tone: PayoutRunTone }
+  { label: string; tone: AccentTone }
 > = {
   retryable_failed: { label: 'Fallida — reintentable', tone: 'amber' },
   failed: { label: 'Fallida', tone: 'amber' },
@@ -49,7 +47,7 @@ export const PayoutActionRequiredBucket = ({
 }: PayoutActionRequiredBucketProps) => {
   if (runs.length === 0) {
     return (
-      <PayoutBucketEmptyState
+      <BucketEmptyState
         icon={ShieldCheck}
         tone="forest"
         title="Nada requiere atención"

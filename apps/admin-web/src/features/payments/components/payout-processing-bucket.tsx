@@ -1,5 +1,5 @@
 import { Clock, Loader2 } from 'lucide-react';
-import { PayoutBucketEmptyState } from '../../../shared/ui/payout-bucket-empty-state';
+import { BucketEmptyState } from '../../../shared/ui/bucket-empty-state';
 import { PayoutRunRow } from './payout-run-row';
 import type { ReleaseQueueRun } from '../logic/connect-payout-release-queue';
 
@@ -18,7 +18,7 @@ export const PayoutProcessingBucket = ({
 }: PayoutProcessingBucketProps) => {
   if (runs.length === 0) {
     return (
-      <PayoutBucketEmptyState
+      <BucketEmptyState
         icon={Clock}
         tone="lion"
         title="No hay dispersiones en proceso"

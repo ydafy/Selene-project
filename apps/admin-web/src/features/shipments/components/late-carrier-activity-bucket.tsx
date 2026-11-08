@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { PackageSearch, PackageCheck } from 'lucide-react';
 import { ErrorState } from '../../../shared/ui/error-state';
 import { Modal } from '../../../shared/ui/modal';
-import { PayoutBucketEmptyState } from '../../../shared/ui/payout-bucket-empty-state';
+import { BucketEmptyState } from '../../../shared/ui/bucket-empty-state';
 import { workbenchFocus } from '../../../shared/ui/workbench-focus';
 import { formatTime } from '../../../shared/utils/format-date';
 import { getErrorCode } from '../../../shared/utils/get-error-code';
@@ -135,7 +135,7 @@ export const LateCarrierActivityBucket = ({
           onRetry={onRetry}
         />
       ) : cases.length === 0 ? (
-        <PayoutBucketEmptyState
+        <BucketEmptyState
           icon={PackageCheck}
           tone="forest"
           title="Ningún caso pendiente"

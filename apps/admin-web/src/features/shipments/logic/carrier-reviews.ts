@@ -4,6 +4,8 @@
  * row fails the whole response, so the UI never shows partial money data.
  */
 
+import { asRecord } from '../../../shared/utils/as-record';
+
 export const REVIEW_REASONS = [
   'tracking_unknown',
   'carrier_refused',
@@ -54,11 +56,6 @@ export class MalformedCarrierReviewResponseError extends Error {
     this.name = 'MalformedCarrierReviewResponseError';
   }
 }
-
-const asRecord = (value: unknown): Record<string, unknown> | null =>
-  value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
 
 const text = (value: unknown): string | null =>
   typeof value === 'string' && value !== '' ? value : null;

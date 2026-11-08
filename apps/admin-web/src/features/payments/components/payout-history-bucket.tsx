@@ -1,5 +1,5 @@
 import { CircleCheck, Receipt } from 'lucide-react';
-import { PayoutBucketEmptyState } from '../../../shared/ui/payout-bucket-empty-state';
+import { BucketEmptyState } from '../../../shared/ui/bucket-empty-state';
 import { PayoutRunRow } from './payout-run-row';
 import type { ReleaseQueueRun } from '../logic/connect-payout-release-queue';
 
@@ -17,7 +17,7 @@ interface PayoutHistoryBucketProps {
 export const PayoutHistoryBucket = ({ runs }: PayoutHistoryBucketProps) => {
   if (runs.length === 0) {
     return (
-      <PayoutBucketEmptyState
+      <BucketEmptyState
         icon={Receipt}
         tone="forest"
         title="Sin dispersiones pagadas todavía"

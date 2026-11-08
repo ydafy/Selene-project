@@ -6,6 +6,8 @@
  * boundary: one unusable row fails the whole response, so the UI never shows partial data.
  */
 
+import { asRecord } from '../../../shared/utils/as-record';
+
 export const EVENT_TYPES = [
   'created',
   'information',
@@ -106,11 +108,6 @@ export class MalformedLateCarrierActivityResponseError extends Error {
     this.name = 'MalformedLateCarrierActivityResponseError';
   }
 }
-
-const asRecord = (value: unknown): Record<string, unknown> | null =>
-  value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
 
 const text = (value: unknown): string | null =>
   typeof value === 'string' && value !== '' ? value : null;
