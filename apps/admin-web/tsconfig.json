@@ -1,4 +1,11 @@
 {
+  // Bun reads this file, not the referenced projects, so the alias is repeated
+  // here for `bun test`; tsconfig.app.json holds it for tsc and Vite.
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
   "files": [],
   "references": [
     { "path": "./tsconfig.app.json" },

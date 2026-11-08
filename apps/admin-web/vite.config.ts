@@ -9,6 +9,8 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react(), tailwindcss()],
+    // `@/` resolves from the `paths` in tsconfig.app.json.
+    resolve: { tsconfigPaths: true },
     // 2. INYECCIÓN FORZADA: Garantiza que Vercel nunca las deje en 'undefined'
     define: {
       'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(
