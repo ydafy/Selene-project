@@ -26,7 +26,7 @@ const fnStart =
   'CREATE OR REPLACE FUNCTION public.fn_apply_shipment_cancellation_refund_event(';
 const fromFunction = (sql: string) => sql.slice(sql.indexOf(fnStart));
 
-// Text contracts only; the local `supabase db reset` + scripts/test-shipment-cancellation-refund-events.ts
+// Text contracts only; the local `supabase db reset` + scripts/verify/test-shipment-cancellation-refund-events.ts
 // prove the behavior in PostgreSQL.
 describe('shipment refund failure re-alert migration (SQL text)', () => {
   it('is exactly one active migration, sorted after the after-resolution migration', () => {

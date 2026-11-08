@@ -43,7 +43,7 @@ jobs:
         run: deno check --frozen */index.ts
       - run: bun test
 
-  # Every commit of the pull request goes through scripts/check-commit-msg.ts,
+  # Every commit of the pull request goes through scripts/ci/check-commit-msg.ts,
   # so a commit made with --no-verify or in a clone without hooks still fails.
   commit-messages:
     if: github.event_name == 'pull_request'
@@ -58,7 +58,7 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: bun scripts/check-commit-msg.ts --range "$BASE_SHA..$HEAD_SHA"
+        run: bun scripts/ci/check-commit-msg.ts --range "$BASE_SHA..$HEAD_SHA"
 
   # pgTAP files in supabase/tests/database/ (`bun run test:db`). The stack is
   # local to the runner; this job never reaches the remote project.

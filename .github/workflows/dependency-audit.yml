@@ -28,5 +28,5 @@ jobs:
       # Reads bun.lock directly; no install needed.
       # No accepted exceptions. An exception is an --ignore=<GHSA> flag with its reason
       # in a comment here (docs/dependencies.md, "An override would be unsafe"), and
-      # scripts/dependency-audit-exceptions.test.ts checks that every flag has one.
+      # scripts/ci/dependency-audit-exceptions.test.ts checks that every flag has one.
       - run: bun audit --audit-level=high

@@ -89,7 +89,7 @@ Fix it at the highest level that works:
 
 1. Architecture: one owner per piece of state, one supported way per task, and no dead code an agent could copy.
 2. Types: the bad state does not compile.
-3. Lint or a guard test whose error names the file or function to use instead. `apps/frontend/src/shared/theme/no-hardcoded-colors.test.ts` and `scripts/dependency-audit-exceptions.test.ts` are this level.
+3. Lint or a guard test whose error names the file or function to use instead. `apps/frontend/src/shared/theme/no-hardcoded-colors.test.ts` and `scripts/ci/dependency-audit-exceptions.test.ts` are this level.
 4. A behavior test.
 5. A rule in `AGENTS.md` or a skill, only for judgment calls no check can make.
 

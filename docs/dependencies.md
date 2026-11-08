@@ -21,11 +21,11 @@ A package below `1.0.0` can break on a minor. Treat its minor like a major.
 - **Monthly, by hand.** Run `bun outdated --filter @selene/frontend` and `bun outdated --filter admin-web`. Update the in-range updates together in one commit. Update each major in its own commit after reading its changelog. Check Node and Bun too ("Keep Node and Bun current").
 - **Expo SDK, 4 to 8 weeks after a release.** Upgrade one SDK at a time, in its own worktree. Merge to `main` only when the whole upgrade passes. Follow `odd/tasks/expo-sdk-upgrade.md` and run its device checklist (L12, updated by L21) on a new development build.
 
-**The weekly report does the looking for you.** The `Dependency report` workflow (`.github/workflows/dependency-report.yml`) runs every Monday after the audit. It runs `bun scripts/dependency-report.ts` and writes the result into one open issue, **Reporte de dependencias**, then comments a one-line summary so you get an email. The report lists safe updates, majors with changelog links, majors held back on purpose with the reason, the Expo SDK status, packages off the SDK, Expo-pinned packages with a newer major (they move with the SDK upgrade, not one by one; the pin list is `apps/frontend/node_modules/expo/bundledNativeModules.json`), the Node and Bun runtimes, the GitHub Actions pins, and the audit. It never opens pull requests. Run the script locally for the same report, or start the workflow from the **Actions** tab.
+**The weekly report does the looking for you.** The `Dependency report` workflow (`.github/workflows/dependency-report.yml`) runs every Monday after the audit. It runs `bun scripts/ci/dependency-report.ts` and writes the result into one open issue, **Reporte de dependencias**, then comments a one-line summary so you get an email. The report lists safe updates, majors with changelog links, majors held back on purpose with the reason, the Expo SDK status, packages off the SDK, Expo-pinned packages with a newer major (they move with the SDK upgrade, not one by one; the pin list is `apps/frontend/node_modules/expo/bundledNativeModules.json`), the Node and Bun runtimes, the GitHub Actions pins, and the audit. It never opens pull requests. Run the script locally for the same report, or start the workflow from the **Actions** tab.
 
 GitHub can delay a scheduled run by hours or skip it, and a skipped audit sends no email, the same as a clean one. If the Monday comment on the report issue has not arrived by the afternoon, start both workflows by hand, the audit first: `gh workflow run dependency-audit.yml`, then `gh workflow run dependency-report.yml`.
 
-When you hold a major back, add it to `HELD_BACK` in `scripts/dependency-report.ts` with its reason, and write the case in "When not to update" below. Remove the entry when the blocker is gone. `@types/node` is the exception: the report derives its hold from `.nvmrc`, so it needs no entry.
+When you hold a major back, add it to `HELD_BACK` in `scripts/ci/dependency-report.ts` with its reason, and write the case in "When not to update" below. Remove the entry when the blocker is gone. `@types/node` is the exception: the report derives its hold from `.nvmrc`, so it needs no entry.
 
 ## Keep Node and Bun current
 
@@ -40,7 +40,7 @@ Each runtime has one source of truth:
 
 The weekly report's **Runtimes** section applies these rules. It flags a newer patch of the pinned Node line (and says when it is a security release), a line that ends within six months, a new LTS line once it is about three months old, and a new Bun release once it is 3 days old.
 
-CI reads Bun from `packageManager` through `oven-sh/setup-bun`. The dependency report workflow reads Node from `.nvmrc`. EAS Build reads neither, so `scripts/runtime-versions.test.ts` fails when an `apps/frontend/eas.json` profile disagrees.
+CI reads Bun from `packageManager` through `oven-sh/setup-bun`. The dependency report workflow reads Node from `.nvmrc`. EAS Build reads neither, so `scripts/guards/runtime-versions.test.ts` fails when an `apps/frontend/eas.json` profile disagrees.
 
 Follow these rules:
 
@@ -49,7 +49,7 @@ Follow these rules:
 
 To change a runtime version:
 
-1. Change the source of truth and every `apps/frontend/eas.json` profile in the same commit. Run `bun test scripts/runtime-versions.test.ts`.
+1. Change the source of truth and every `apps/frontend/eas.json` profile in the same commit. Run `bun test scripts/guards/runtime-versions.test.ts`.
 2. Switch your local runtime. For Node with nvm-windows, which does not read `.nvmrc`, run `nvm install <version>`, then `nvm use <version>`. For Bun, run `bun upgrade`, or `bun upgrade --version <version>` for an exact one.
 3. Run the checks in "Update without breaking things", then a development EAS build.
 
@@ -61,7 +61,7 @@ A workflow runs third-party actions with the job token. A tag such as `v4` can b
 - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 ```
 
-`scripts/workflow-actions.test.ts` fails when a `uses:` has no SHA or no exact tag, or when two workflows pin the same action differently.
+`scripts/ci/workflow-actions.test.ts` fails when a `uses:` has no SHA or no exact tag, or when two workflows pin the same action differently.
 
 The weekly report's **GitHub Actions** section flags a new release once it is 3 days old, and a SHA that no longer matches the commit of its tag.
 
@@ -74,7 +74,7 @@ To change an action version:
    gh api repos/<owner>/<action>/commits/<tag> --jq .sha
    ```
 
-3. Replace the SHA and the comment in every workflow that uses the action, and run `bun test scripts/workflow-actions.test.ts`. CI on the pull request runs `.github/workflows/ci.yml`. Start `.github/workflows/dependency-audit.yml` on the branch with `gh workflow run dependency-audit.yml --ref <branch>`. `.github/workflows/dependency-report.yml` also edits the report issue, and `.github/workflows/issue-labels.yml` runs only from `main`, so check those two after the merge.
+3. Replace the SHA and the comment in every workflow that uses the action, and run `bun test scripts/ci/workflow-actions.test.ts`. CI on the pull request runs `.github/workflows/ci.yml`. Start `.github/workflows/dependency-audit.yml` on the branch with `gh workflow run dependency-audit.yml --ref <branch>`. `.github/workflows/dependency-report.yml` also edits the report issue, and `.github/workflows/issue-labels.yml` runs only from `main`, so check those two after the merge.
 
 ## Move Expo-pinned packages only with Expo
 
@@ -147,7 +147,7 @@ Sometimes the fixed version of an indirect package is outside the range its depe
 
 The audit has no accepted exceptions today: Expo SDK 58 removed the last two (`GHSA-qr28-fpjm-wq7f` for `decode-uri-component` and `GHSA-mrhx-c7xc-m3w5` for the zod 3 copy in `@expo/cli`). If you need one:
 
-- `.github/workflows/dependency-audit.yml` passes `--ignore=<GHSA>` and states the reason in a comment. `scripts/dependency-audit-exceptions.test.ts` fails if a flag has no reason.
+- `.github/workflows/dependency-audit.yml` passes `--ignore=<GHSA>` and states the reason in a comment. `scripts/ci/dependency-audit-exceptions.test.ts` fails if a flag has no reason.
 - Add a guard test in that file that fails if the exception would also hide another copy of the package. bun ignores a GHSA for every copy.
 
 The general rule: when an override is unsafe, accept the finding with a written reason in the workflow, add a guard test that limits what the exception hides, and review the exception on every Expo SDK upgrade. Drop the `--ignore` once a fixed version fits the dependent's range. Never add an `--ignore` without its reason in the workflow file.

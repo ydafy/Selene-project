@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 
 /**
  * Static guards for the label deadline reminder call in auto-cancel-orders
- * (expo-push-notifications T7/S4). scripts/test-auto-cancel-paid-timeout.ts drives the
+ * (expo-push-notifications T7/S4). scripts/verify/test-auto-cancel-paid-timeout.ts drives the
  * served function and proves the notices it writes.
  */
 

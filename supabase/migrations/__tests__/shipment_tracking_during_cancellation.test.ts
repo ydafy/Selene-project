@@ -21,7 +21,7 @@ const bodyOf = (sql: string) => {
   return open === -1 ? sql : sql.slice(open + 6, sql.lastIndexOf('\n$$;'));
 };
 
-// Text contracts only; `supabase db reset` + scripts/test-shipment-tracking-during-cancellation.ts
+// Text contracts only; `supabase db reset` + scripts/verify/test-shipment-tracking-during-cancellation.ts
 // prove the behavior in PostgreSQL.
 describe('shipment tracking during cancellation migration (SQL text)', () => {
   it('is one migration after the fn_cancel_order drop, in one transaction', () => {

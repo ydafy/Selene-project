@@ -32,7 +32,7 @@ Run from the worktree root. Docker must be running.
 2. `supabase db reset` before a run that needs the baseline (see Gotchas); it reapplies migrations and seed.
 3. `bun run bruno:env` writes the gitignored `bruno/.env` (URL, keys, `CRON_SECRET`); rerun it after any `db reset` or `supabase start` on a fresh stack. Ports are per worktree: never assume `54321`.
 4. Edge Functions: stack mode serves them lazily from `supabase/functions/` with `supabase/functions/.env`. If a call returns 404 or a connection error, or you changed function code, run `bun run functions:serve` in the background right before the calls. It exits by itself after the last request (timing in `supabase/functions/AGENTS.md`, "Bruno collection"); this is not a failure. Save its PID and log under `.local/` (gitignored).
-5. Webhooks: `bun run stripe:listen` in the background (needs `stripe login` to the sandbox), then `stripe trigger <event>`. Events outside `STRIPE_WEBHOOK_EVENTS` in `scripts/stripe-listen.ts` are not forwarded.
+5. Webhooks: `bun run stripe:listen` in the background (needs `stripe login` to the sandbox), then `stripe trigger <event>`. Events outside `STRIPE_WEBHOOK_EVENTS` in `scripts/dev/stripe-listen.ts` are not forwarded.
 6. Admin-web: no manual launch. `bun run test:e2e:local` starts Vite on `127.0.0.1:5188` pointed at the local stack and stops it.
 
 ## Doctor

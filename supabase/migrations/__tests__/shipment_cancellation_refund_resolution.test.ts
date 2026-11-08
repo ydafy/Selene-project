@@ -74,7 +74,7 @@ const columnsSection = (sql: string) =>
     '',
   );
 
-// Text contracts only; the local `supabase db reset` + scripts/test-shipment-cancellation-refund-resolution.ts
+// Text contracts only; the local `supabase db reset` + scripts/verify/test-shipment-cancellation-refund-resolution.ts
 // prove the behavior in PostgreSQL.
 describe('shipment cancellation refund resolution migration (SQL text)', () => {
   it('is exactly one active migration containing both canonical copies', () => {

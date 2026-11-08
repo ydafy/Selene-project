@@ -40,15 +40,15 @@ apps/frontend/src/
 - A unit test sits next to the file it tests: `<name>.ts` and `<name>.test.ts`. Example: `apps/frontend/src/shared/i18n/auth-locale-parity.test.ts` sits in `apps/frontend/src/shared/i18n/`.
 - A flow test that spans several modules sits in the feature folder.
 - Playwright specs stay in `e2e/` (`e2e/admin-web/`, `e2e/admin-web-local/`).
-- A guard that scans all of `apps/frontend/src/` sits at the `apps/frontend/` root, so it does not scan its own text: `apps/frontend/frontend-import-boundaries.test.ts`, `apps/frontend/legacy-wallet-removal.test.ts`. A guard over the whole repository sits in `scripts/` (`scripts/test-only-guard.test.ts`).
-- Do not create new `__tests__` folders or a top-level `tests` folder; `scripts/test-placement.test.ts` fails on one. The folders in its legacy list predate this rule; do not add to them.
+- A guard that scans all of `apps/frontend/src/` sits at the `apps/frontend/` root, so it does not scan its own text: `apps/frontend/frontend-import-boundaries.test.ts`, `apps/frontend/legacy-wallet-removal.test.ts`. A guard over the whole repository sits in `scripts/guards/` (`scripts/guards/test-only-guard.test.ts`).
+- Do not create new `__tests__` folders or a top-level `tests` folder; `scripts/guards/test-placement.test.ts` fails on one. The folders in its legacy list predate this rule; do not add to them.
 
 ## Source-text tests
 
 A test runs the code it tests. Call the function, call the Edge Function handler with fake dependencies, mount the screen, or run the SQL with pgTAP (`bun run test:db`, `supabase/tests/database/`). A test that only checks the text of a source file passes when the behavior is broken, and fails when the code is only reformatted (#138).
 
 - Read a file in a test only when the text is the contract (for example, a module must not import another one) or the file is a fixture. Put a line `// source-text: <reason>` in that test file.
-- `scripts/source-text-tests.test.ts` counts, per area, the test files that read files (`readFileSync`, `Bun.file(`, `readFile(`) without that line. It fails when an area's count grows. When you convert or delete one of those tests, it fails until you lower the area's number in `scripts/source-text-tests.ts`.
+- `scripts/guards/source-text-tests.test.ts` counts, per area, the test files that read files (`readFileSync`, `Bun.file(`, `readFile(`) without that line. It fails when an area's count grows. When you convert or delete one of those tests, it fails until you lower the area's number in `scripts/guards/source-text-tests.ts`.
 - Roadmap #272 converts the older tests. When you touch a frontend or admin-web file whose test checks its wiring as text, mount the screen in that test instead.
 
 ## File naming
@@ -76,7 +76,18 @@ Markdown goes under `docs/`, never next to code. Name new files in kebab-case.
 - A decision and its reason go in `docs/decision-log.md` as one dated entry.
 - A deployment note for one change goes in the PR description or the feature document under `odd/tasks/`. Once it is applied, it is history: do not keep a separate file for it.
 
-Other Markdown homes are `odd/`, `design/`, `.agents/`, `.github/`, `AGENTS.md` and `README.md` files, and the root `DESIGN.md` and `SECURITY.md`. `scripts/markdown-placement.test.ts` fails on a Markdown file anywhere else.
+Other Markdown homes are `odd/`, `design/`, `.agents/`, `.github/`, `AGENTS.md` and `README.md` files, and the root `DESIGN.md` and `SECURITY.md`. `scripts/guards/markdown-placement.test.ts` fails on a Markdown file anywhere else.
+
+## Repository scripts
+
+A script in `scripts/` goes in the folder for its purpose, with its test next to it:
+
+- `scripts/dev/`: tools a developer or a Git hook runs (`worktree-env`, `stripe-listen`).
+- `scripts/ci/`: helpers a workflow runs (`check-commit-msg`, `dependency-report`).
+- `scripts/guards/`: tests over the whole repository that fail on a broken rule (`agent-instructions`, `markdown-placement`).
+- `scripts/verify/`: manual verification harnesses against the local stack (`test-shipment-*`, `postgres-smoke`). No CI job runs them.
+
+A script under `scripts/<folder>/` reaches the repository root with `join(import.meta.dir, '..', '..')`. `scripts/guards/script-folders.test.ts` fails on a file anywhere else in `scripts/`.
 
 ## Formatting
 

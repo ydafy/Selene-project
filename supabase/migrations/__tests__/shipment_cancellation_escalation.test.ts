@@ -21,7 +21,7 @@ const escalation = read(
   'supabase/queries/orders/shipment_cancellation_escalation.sql',
 );
 
-// Text contracts only; the local `supabase db reset` + scripts/test-shipment-cancellation-refund-status.ts
+// Text contracts only; the local `supabase db reset` + scripts/verify/test-shipment-cancellation-refund-status.ts
 // prove the behavior in PostgreSQL.
 describe('shipment cancellation escalation migration (SQL text)', () => {
   it('is exactly one active migration containing both canonical copies', () => {

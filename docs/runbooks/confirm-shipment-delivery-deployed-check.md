@@ -112,7 +112,7 @@ To use core mode, set `CONFIRMATION_HARNESS_MODE=core` and omit both `CONFIRMATI
 Run from the repository root:
 
 ```text
-bun scripts/confirm-shipment-delivery-harness.ts
+bun scripts/verify/confirm-shipment-delivery-harness.ts
 ```
 
 Validation runs before network access. The URL must be HTTPS, contain no credentials/query/fragment, and end exactly in `/functions/v1/confirm-shipment-delivery`. Every required ID must be an RFC UUID and each selected scenario must use a different shipment. The explicit approval value is required.

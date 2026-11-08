@@ -18,7 +18,7 @@ const statements = (sql: string) =>
     )
     .join('\n');
 
-// Text contracts only; the local `supabase db reset` + scripts/test-shipment-cancellation-refund-status.ts
+// Text contracts only; the local `supabase db reset` + scripts/verify/test-shipment-cancellation-refund-status.ts
 // prove the behavior in PostgreSQL.
 describe('shipment cancellation recovery migration (SQL text)', () => {
   it('is exactly one active migration holding the strict fn_cancel_shipment guard as deployed in B2.2', () => {

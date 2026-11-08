@@ -6,8 +6,8 @@ Features are developed in parallel worktrees under `C:/dev/School-portal-worktre
 
 The Git hooks set up a worktree on their own:
 
-- `post-checkout` copies the gitignored env files from the main checkout (`scripts/worktree-env.ts`) when `git worktree add` creates it.
-- `post-checkout`, `post-merge`, `post-commit`, and `post-rewrite` keep the local CodeGraph index current (`scripts/codegraph-refresh.sh`): the first one builds `.codegraph/` in the background, and the next ones sync only the changed files. The native Gentle `codegraph` tool has no file watcher, so this is what keeps its results current. It does nothing when `codegraph` is not installed. Uncommitted edits reach the index at the next commit or checkout; run `codegraph sync` to catch them up earlier.
+- `post-checkout` copies the gitignored env files from the main checkout (`scripts/dev/worktree-env.ts`) when `git worktree add` creates it.
+- `post-checkout`, `post-merge`, `post-commit`, and `post-rewrite` keep the local CodeGraph index current (`scripts/dev/codegraph-refresh.sh`): the first one builds `.codegraph/` in the background, and the next ones sync only the changed files. The native Gentle `codegraph` tool has no file watcher, so this is what keeps its results current. It does nothing when `codegraph` is not installed. Uncommitted edits reach the index at the next commit or checkout; run `codegraph sync` to catch them up earlier.
 
 ## What a worktree leaves behind
 

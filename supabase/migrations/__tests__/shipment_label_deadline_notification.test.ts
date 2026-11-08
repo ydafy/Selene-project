@@ -6,7 +6,7 @@ import { withoutShipmentLink } from './shipmentNoticeLink';
 /**
  * Static guards for the seller label deadline reminder (expo-push-notifications T7/S4).
  * These tests read SQL text; `supabase db reset`, the psql probes in the task log, Bruno
- * and scripts/test-auto-cancel-paid-timeout.ts prove which shipments get a notice.
+ * and scripts/verify/test-auto-cancel-paid-timeout.ts prove which shipments get a notice.
  */
 
 const root = join(import.meta.dir, '..', '..', '..');

@@ -19,7 +19,7 @@ const definition = (sql: string, name: string) => {
   return start === -1 || end === -1 ? '' : sql.slice(start, end + 4);
 };
 
-// Text contracts only; `supabase db reset` + scripts/test-shipment-tracking-during-cancellation.ts
+// Text contracts only; `supabase db reset` + scripts/verify/test-shipment-tracking-during-cancellation.ts
 // prove the behavior in PostgreSQL.
 describe('shipment late carrier activity acknowledge migration (SQL text)', () => {
   it('is one migration after the tracking-during-cancellation migration, in one transaction', () => {

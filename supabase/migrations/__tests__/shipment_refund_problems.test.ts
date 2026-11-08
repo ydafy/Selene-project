@@ -30,7 +30,7 @@ const statusCheck = (sql: string) =>
     /ADD CONSTRAINT shipment_cancellation_operations_refund_resolution_status CHECK \([\s\S]*?\n {2}\)/,
   )?.[0] ?? '';
 
-// Text contracts only; the local `supabase db reset` + scripts/test-shipment-refund-problems.ts
+// Text contracts only; the local `supabase db reset` + scripts/verify/test-shipment-refund-problems.ts
 // prove the behavior in PostgreSQL.
 describe('shipment refund problems migration (SQL text)', () => {
   it('is exactly one active migration, sorted after the refund resolution migration', () => {

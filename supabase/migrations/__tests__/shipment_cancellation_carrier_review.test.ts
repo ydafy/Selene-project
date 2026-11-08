@@ -27,7 +27,7 @@ const functionBody = (name: string) => {
   return start === -1 || end === -1 ? '' : body.slice(start, end);
 };
 
-// Text contracts only; the local `supabase db reset` + scripts/test-shipment-carrier-review.ts
+// Text contracts only; the local `supabase db reset` + scripts/verify/test-shipment-carrier-review.ts
 // prove the behavior in PostgreSQL.
 describe('shipment cancellation carrier review migration (SQL text)', () => {
   it('is exactly one active migration identical to the canonical copy', () => {

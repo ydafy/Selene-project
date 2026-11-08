@@ -18,13 +18,13 @@ Skip for patch and minor updates (`docs/dependencies.md` covers them) and for th
 - `AGENTS.md` wins over this skill.
 - Change nothing until the maintainer decides: no `bun add`, `bun update`, `expo install`, edits to any `package.json` or lockfile, branches, commits, or PRs. If you must try a new version, install it in a scratch directory from `mktemp -d`, outside the worktree, and report the directory.
 - Never recommend an Expo-pinned package alone. The pin list is `apps/frontend/node_modules/expo/bundledNativeModules.json`. These packages move with the SDK (report section "Expo-pinned packages with a newer major"). Recommend the SDK upgrade instead.
-- Respect `HELD_BACK` in `scripts/dependency-report.ts`. A held package is not reviewed again until its blocker changes: check only whether the blocker is gone.
+- Respect `HELD_BACK` in `scripts/ci/dependency-report.ts`. A held package is not reviewed again until its blocker changes: check only whether the blocker is gone.
 - Cite a source URL for every breaking change you claim. Cite `file:line` for every "affects us: yes". For "no", write the grep that found nothing.
 - Write "could not verify" when you could not read the changelog, run the check, or find the code. Never fill the gap with what you remember about the package.
 
 ## Steps
 
-1. Get the list. Run `bun scripts/dependency-report.ts` (needs network), or read the issue body with `gh issue view <number> -R ydafy/Selene-project`. The issue can be a week old. Take rows from "Majors available" and the Expo section. Skip "Safe updates" and "Held back on purpose".
+1. Get the list. Run `bun scripts/ci/dependency-report.ts` (needs network), or read the issue body with `gh issue view <number> -R ydafy/Selene-project`. The issue can be a week old. Take rows from "Majors available" and the Expo section. Skip "Safe updates" and "Held back on purpose".
 2. Classify each row: runtime (shipped in the app or admin bundle), dev tooling (lint, hooks, build), types (`@types/*`), or Expo-pinned.
 3. Read the official changelog for the jump from the current version to the latest. Use a migration guide when one exists, else the GitHub releases of every major in between: `gh release view <tag> -R <owner>/<repo>`, the migration guide through `curl https://raw.githubusercontent.com/<owner>/<repo>/main/<path>`, and `curl https://registry.npmjs.org/<name>/<version>` for metadata. A tool dropping a Node.js version counts: compare it with the Node.js version we run (`node -v`, `engines` of the package).
 4. Grep the code for each breaking change: imported symbols, renamed options, config files (`eslint.config.js`, `apps/admin-web/eslint.config.js`, `apps/admin-web/vite.config.ts`, `package.json`, `.husky/`). Search `apps/`, `packages/`, `scripts/`, `e2e/`, and `supabase/functions/`.
