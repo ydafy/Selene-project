@@ -1,6 +1,6 @@
 # Notification cutover: supplemental preflight
 
-This is a **read-only, bounded catalog diagnostic**, not a migration or deployment approval. Run only `notification_cutover_preflight.sql` as **one SELECT** in the intended project's Supabase SQL Editor. Confirm the project selector first. Export its single JSONB result, inspect and sanitize before sharing: remove any identifiers or unexpected sensitive fields; share only the minimum needed for review. If it errors, report the error instead of retrying a migration. Do not apply SQL migrations, deploy Edge Functions, or regenerate types based on this result.
+This is a **read-only, bounded catalog diagnostic**, not a migration or deployment approval. Run only `supabase/queries/rls/notification_cutover_preflight.sql` as **one SELECT** in the intended project's Supabase SQL Editor. Confirm the project selector first. Export its single JSONB result, inspect and sanitize before sharing: remove any identifiers or unexpected sensitive fields; share only the minimum needed for review. If it errors, report the error instead of retrying a migration. Do not apply SQL migrations, deploy Edge Functions, or regenerate types based on this result.
 
 ## Interpret the result
 

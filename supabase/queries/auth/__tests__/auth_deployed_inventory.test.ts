@@ -1,7 +1,10 @@
 import { expect, test } from 'bun:test';
 
 const sqlPath = new URL('../auth_deployed_inventory.sql', import.meta.url);
-const docPath = new URL('../auth_deployed_inventory.md', import.meta.url);
+const docPath = new URL(
+  '../../../../docs/runbooks/auth-deployed-inventory.md',
+  import.meta.url,
+);
 
 test('auth inventory source stays a single catalog-only SELECT (not a PostgreSQL execution test)', async () => {
   const sql = await Bun.file(sqlPath).text();
