@@ -1,0 +1,35 @@
+# Feature layout for admin-web (#221)
+
+Item 9 of roadmap #127, scheduled by roadmap #228: give `apps/admin-web/src` the frontend's feature layout in blocks C0 to C4 (plan in the #221 comment of 2026-11-05). Worktree `repo-hygiene`, branch `refactor/admin-web-layout`.
+
+## Specs
+
+- S1. Layout: "`src/app/` (router, providers, thin pages), `src/features/<domain>/` (`components`, `hooks`, `api`, `logic`), and `src/shared/` (`ui`, `hooks`, `lib`, `utils`)", with "No `api/` folder. Use `lib/`, as `docs/conventions.md` says." Pages move into `features/<domain>/screens/` (the frontend's word), and `app/` keeps only the router and providers (L2).
+- S2. "Imports go `shared -> features -> app`, enforced with the same ESLint `import/no-restricted-paths` rule and kebab-case file names (`docs/conventions.md`)."
+- S3. C0 tooling: make the root `eslint.config.js` paths independent of the working directory (`__dirname`, the file is CommonJS; L2); "Generalize the `import-x/no-restricted-paths` zones per app."; "Apply the #134 rules to admin-web from the root config. [...] Start with a shrinking allowlist of files that still break the rules."; "Typecheck the admin-web tests. `tsconfig.app.json` excludes `src/**/*.test.ts(x)` today."; "Add the `@/` alias (check Vite 8 support first)."; the move codemod already in `.local/move-files.ts` is committed to `scripts/dev/` with its test (L2).
+- S4. Homes the plan did not name (L2): same-name `services/` and `lib/` files merge into the feature's `lib/`; `store/useAuthStore`, `lib/captcha*`, `adminSession`, `adminAccess`, and `Login` go to `features/auth`; `lib/legacyWalletRemoval.test.ts` moves to the `apps/admin-web/` root, as its frontend twin did (`docs/conventions.md`, "Tests").
+- S5. "When a test fails after a move, fix its path. Do not delete it, weaken it, or convert it in the move commit."
+- S6. "**Done when, for each of C1 to C4:** `bun run test:e2e` passes locally (Playwright is not in CI, see #254), the `bun test` count is unchanged, and lint, typecheck, and knip are green."
+- S7. C1: "`app/` and `shared/` (ui, layout, generic hooks, lib, utils, kebab-case file names)." C2: "Payments and shipments (they share `lib` files)." C3: "Disputes, users, verify, home, and the public pages." One domain per commit.
+- S8. C4: "Bring the allowlist to zero, raise the rules to `error`, and extend knip to admin-web (today knip covers only `apps/frontend`)." `docs/conventions.md` describes the admin-web layout, and docs citing a moved path are updated in the commit that moves it.
+- S9. Out of scope: "Splitting `PayoutRunsWorkbench` (776 lines), `PayoutReleaseWorkbench` (640), `PaymentsPage` (577), `UserDetailPage` (471), and `DisputeDetailPage` (431) is a separate later issue". Router changes (data mode, lazy routes, `react-router` package) go to an Idea issue (L3).
+- S10. Apply current best practice for the folder layout, inspired by experienced developers, adapted to Selene (L3).
+
+## Tasks
+
+- T1 | S3 | inline | root ESLint paths via `__dirname`; zones generalized per app (`dependencyZones(src)`, `basePath: __dirname`); `scripts/guards/eslint-config.test.ts` (RED: from `apps/frontend` ESLint threw `ENOENT ... apps\frontend\apps\frontend\src\features`) | commit: `fix(lint)` (done); 5003 pass (4998 + 5 new), lint 0 errors (9 old warnings), format:check and knip clean
+- T2 | S2-S3 | inline | admin-web under the root ESLint rules (boundaries, kebab-case, max-lines) as warnings with a shrinking allowlist | commit: pending
+- T3 | S3 | inline | typecheck admin-web tests | commit: pending
+- T4 | S3 | inline | `@/` alias in admin-web (tsconfig `paths`, Vite 8 `resolve.tsconfigPaths`) | commit: pending
+- T5 | S3 | inline | commit the move codemod to `scripts/dev/` with its test | commit: pending
+- T6 | S1-S2, S4-S7 | inline | C1: `app/` and `shared/` | commit: pending
+- T7 | S1, S4-S7 | inline | C2: payments and shipments | commit: pending
+- T8 | S1, S4-S7 | inline | C3: disputes, users, verify, home, auth, public pages | commit: pending
+- T9 | S6, S8 | inline | C4: allowlist to zero, rules to `error`, knip on admin-web, `docs/conventions.md` | commit: pending
+- T10 | S9 | inline | Idea issue for the router changes; #221 plan comment updated | done: Idea #288; plan comment edited 2026-11-07
+
+## Log
+
+- L1. User (2026-11-07): "Seguimos con el roadmap #228: toca #221 (admin-web, el plan C0-C4 está en un comentario del issue). Cargá Engram: roadmap/repo-layout-228, odd/scripts-layout/tasks y preference/repo-structure-before-production. Traé lo último de main en este worktree (repo-hygiene), en una rama nueva. Antes de arrancar, revisá que el issue y su plan sigan vigentes y decime si cambiarías algo."
+- L2. Recheck (2026-11-07) on origin/main 4b974545: 173 files and 46 tests under `src`, no alias, big files as planned (±1 line), no open branch or PR touching `apps/admin-web`. Changes proposed: `__dirname` instead of `import.meta.dirname` (root `eslint.config.js` is CommonJS); pages into `features/<domain>/screens/` with `app/` for router and providers only (`PayoutBuckets.test.tsx:4` imports `pages/PaymentsPage` from a feature); homes for `services/` duplicates, auth, and `legacyWalletRemoval.test.ts`; update `docs/specs/auth.md`, `design/system.md:12`, `docs/decision-log.md:181` with the moves; count test type errors before fixing them in C0; commit `.local/move-files.ts` to `scripts/dev/` (#252 will reuse it). Move commits will not fit native review (`lens_context_budget_exceeded`, as in #251 and the frontend); evidence is the unchanged test count, lint, typecheck, format, knip, and local e2e.
+- L3. User (2026-11-07): "todo me parece bien master. Rceurda que le punto de admn-web, es aplicar o tratar de aplicar las mejores parctcias para una estructura de carpetas, inspirandonos en los devs pros y obviamente tratandolo de adaptar a selene y a la par aplciando practicas vanguardistas por asi decirlo." Research (2026-11-07): bulletproof-react splits `src` into `app` (router, provider, routes), `features`, and shared folders, with `shared -> features -> app` enforced by `import/no-restricted-paths`; Vite 8 adds `resolve.tsconfigPaths` (experimental, off by default), so the alias lives once in `tsconfig.app.json` and Bun reads it too; React Router 7.5 adds granular `route.lazy`, and v7 ships everything from `react-router` (admin-web still imports the `react-router-dom` shim and uses `BrowserRouter`). Router changes are behavior and dependency work, recorded as an Idea instead of mixed into the moves.

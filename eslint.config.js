@@ -1,7 +1,8 @@
 const tseslint = require('@typescript-eslint/eslint-plugin');
 const tsParser = require('@typescript-eslint/parser');
 const prettierConfig = require('eslint-config-prettier');
-const { readdirSync } = require('node:fs');
+const { existsSync, readdirSync } = require('node:fs');
+const { join } = require('node:path');
 const importX = require('eslint-plugin-import-x');
 const checkFile = require('eslint-plugin-check-file');
 const {
@@ -10,34 +11,38 @@ const {
 
 // Dependency rule of docs/conventions.md: shared/ and features/ never reach up
 // into app/, and a feature never reaches into another feature. Zones are
-// repository-relative; the config is loaded from the repository root.
+// repository-relative and resolved from this file's directory (`basePath`),
+// so ESLint gives the same result when run from an app directory.
 const FRONTEND_SRC = 'apps/frontend/src';
-const features = readdirSync(`${FRONTEND_SRC}/features`, {
-  withFileTypes: true,
-})
-  .filter((entry) => entry.isDirectory())
-  .map((entry) => entry.name);
 const FIX =
   'Compose it in the route (app/) or move the shared piece to shared/. See docs/conventions.md.';
 
-const dependencyZones = [
-  {
-    target: `${FRONTEND_SRC}/shared`,
-    from: [`${FRONTEND_SRC}/features`, `${FRONTEND_SRC}/app`],
-    message: `shared/ must not import features/ or app/. ${FIX}`,
-  },
-  {
-    target: `${FRONTEND_SRC}/features`,
-    from: `${FRONTEND_SRC}/app`,
-    message: `features/ must not import app/ (routes). ${FIX}`,
-  },
-  ...features.map((feature) => ({
-    target: `${FRONTEND_SRC}/features/${feature}`,
-    from: `${FRONTEND_SRC}/features`,
-    except: [`./${feature}`],
-    message: `features/${feature} must not import another feature. ${FIX}`,
-  })),
-];
+function dependencyZones(src) {
+  const featuresDir = join(__dirname, src, 'features');
+  const features = existsSync(featuresDir)
+    ? readdirSync(featuresDir, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => entry.name)
+    : [];
+  return [
+    {
+      target: `${src}/shared`,
+      from: [`${src}/features`, `${src}/app`],
+      message: `shared/ must not import features/ or app/. ${FIX}`,
+    },
+    {
+      target: `${src}/features`,
+      from: `${src}/app`,
+      message: `features/ must not import app/ (routes). ${FIX}`,
+    },
+    ...features.map((feature) => ({
+      target: `${src}/features/${feature}`,
+      from: `${src}/features`,
+      except: [`./${feature}`],
+      message: `features/${feature} must not import another feature. ${FIX}`,
+    })),
+  ];
+}
 
 module.exports = [
   {
@@ -84,12 +89,15 @@ module.exports = [
     settings: {
       'import-x/resolver-next': [
         createTypeScriptImportResolver({
-          project: 'apps/frontend/tsconfig.json',
+          project: join(__dirname, 'apps/frontend/tsconfig.json'),
         }),
       ],
     },
     rules: {
-      'import-x/no-restricted-paths': ['error', { zones: dependencyZones }],
+      'import-x/no-restricted-paths': [
+        'error',
+        { zones: dependencyZones(FRONTEND_SRC), basePath: __dirname },
+      ],
     },
   },
   {
