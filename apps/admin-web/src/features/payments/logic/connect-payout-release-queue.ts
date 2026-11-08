@@ -3,11 +3,11 @@ import type {
   ConnectPayoutReleaseRequest,
 } from '@selene/types';
 
-export type ReleaseQueueShipmentIndicator = 'ready_for_release' | 'blocked';
+type ReleaseQueueShipmentIndicator = 'ready_for_release' | 'blocked';
 
-export type ReleaseQueueBatchState = 'ready' | 'partial' | 'blocked';
+type ReleaseQueueBatchState = 'ready' | 'partial' | 'blocked';
 
-export interface ReleaseQueueShipment {
+interface ReleaseQueueShipment {
   completedAt: string | null;
   ineligibleReason: string | null;
   isEligible: boolean;
@@ -51,7 +51,7 @@ export interface ReleaseQueueRun {
  * Why a payout run needs operator attention. Only `retryable_failed` runs
  * carry retry authority; every other reason is presentation-only.
  */
-export type ReleaseQueueActionRequiredReason =
+type ReleaseQueueActionRequiredReason =
   | 'reconciliation_needed'
   | 'retryable_failed'
   | 'failed'
@@ -170,7 +170,7 @@ export function groupConnectPayoutReleaseQueue(
  * Action required so no run row is ever silently dropped. A missing seller
  * attribution never blocks classification.
  */
-export function classifyPayoutRunRow(row: ConnectPayoutReleaseQueueRow): {
+function classifyPayoutRunRow(row: ConnectPayoutReleaseQueueRow): {
   processing?: ReleaseQueueRun;
   actionRequired?: ReleaseQueueActionRequiredRun;
   history?: ReleaseQueueRun;

@@ -8,12 +8,8 @@
 
 import { asRecord } from '../../../shared/utils/as-record';
 
-export const STUCK_STATES = [
-  'orphan_pending',
-  'claimed',
-  'generation_sent',
-] as const;
-export type StuckState = (typeof STUCK_STATES)[number];
+const STUCK_STATES = ['orphan_pending', 'claimed', 'generation_sent'] as const;
+type StuckState = (typeof STUCK_STATES)[number];
 
 export interface LabelReconciliation {
   shipmentId: string;
@@ -61,7 +57,7 @@ export const MAX_RESOLUTION_NOTE_LENGTH = 200;
 const MAX_REFERENCE_LENGTH = 200;
 const MAX_URL_LENGTH = 2048;
 
-export class MalformedLabelReconciliationResponseError extends Error {
+class MalformedLabelReconciliationResponseError extends Error {
   constructor(what: string) {
     super(`Malformed ${what} response`);
     this.name = 'MalformedLabelReconciliationResponseError';
@@ -196,7 +192,7 @@ export interface LabelFoundFormInput {
   note: string;
 }
 
-export type LabelFoundField = keyof LabelFoundFormInput;
+type LabelFoundField = keyof LabelFoundFormInput;
 
 export type LabelFoundValidation =
   | {

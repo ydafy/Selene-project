@@ -9,7 +9,7 @@ import { useAuthStore } from '../../../shared/store/use-auth-store';
 import { toast } from 'sonner';
 import type { ProductStatus } from '@selene/types';
 
-export interface AdminProduct {
+interface AdminProduct {
   id: string;
   name: string;
   price: number;

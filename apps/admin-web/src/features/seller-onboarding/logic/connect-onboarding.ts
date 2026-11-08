@@ -3,7 +3,7 @@ import type { Database } from '@selene/types';
 export type SellerOnboardingViewRow =
   Database['public']['Views']['admin_seller_onboarding_view']['Row'];
 
-export type SellerOnboardingStatus = 'pending' | 'complete' | 'rejected';
+type SellerOnboardingStatus = 'pending' | 'complete' | 'rejected';
 
 export interface SellerOnboardingRow {
   id: string;

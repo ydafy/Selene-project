@@ -6,17 +6,14 @@
 
 import { asRecord } from '../../../shared/utils/as-record';
 
-export const REVIEW_REASONS = [
+const REVIEW_REASONS = [
   'tracking_unknown',
   'carrier_refused',
   'carrier_ambiguous',
 ] as const;
 export type ReviewReason = (typeof REVIEW_REASONS)[number];
 
-export const REVIEW_RESOLUTIONS = [
-  'refund_approved',
-  'closed_no_refund',
-] as const;
+const REVIEW_RESOLUTIONS = ['refund_approved', 'closed_no_refund'] as const;
 export type ReviewResolution = (typeof REVIEW_RESOLUTIONS)[number];
 
 export interface CarrierReview {
@@ -50,7 +47,7 @@ export const REVIEW_REASON_LABELS: Record<ReviewReason, string> = {
 /** Same rule as the server: trimmed, 1 to 500 characters. */
 export const MAX_REVIEW_NOTE_LENGTH = 500;
 
-export class MalformedCarrierReviewResponseError extends Error {
+class MalformedCarrierReviewResponseError extends Error {
   constructor(what: string) {
     super(`Malformed ${what} response`);
     this.name = 'MalformedCarrierReviewResponseError';

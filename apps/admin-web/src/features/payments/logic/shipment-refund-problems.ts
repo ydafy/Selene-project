@@ -6,7 +6,7 @@
 
 import { asRecord } from '../../../shared/utils/as-record';
 
-export const REFUND_PROBLEM_KINDS = [
+const REFUND_PROBLEM_KINDS = [
   'refund_failed',
   'refund_canceled',
   'refund_not_found',
@@ -37,9 +37,9 @@ export interface ResolveRefundResult {
 }
 
 /** Same rule as the server: trimmed, 1 to 200 characters. */
-export const MAX_RESOLUTION_REFERENCE_LENGTH = 200;
+const MAX_RESOLUTION_REFERENCE_LENGTH = 200;
 
-export class MalformedRefundResponseError extends Error {
+class MalformedRefundResponseError extends Error {
   constructor(what: string) {
     super(`Malformed ${what} response`);
     this.name = 'MalformedRefundResponseError';

@@ -11,7 +11,7 @@ type SellerOnboardingResponse =
   | { success: true; rows: SellerOnboardingViewRow[] }
   | { success: false; error?: string };
 
-export const SELLER_ONBOARDING_REFETCH_INTERVAL_MS = 30_000;
+const SELLER_ONBOARDING_REFETCH_INTERVAL_MS = 30_000;
 
 export function useSellerOnboarding() {
   const queryClient = useQueryClient();

@@ -15,26 +15,13 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
-export type AdminAuditActionType =
-  | 'PRODUCT_APPROVE'
-  | 'PRODUCT_REJECT'
-  | 'PRODUCT_SOFT_DELETE'
-  | 'PRODUCT_RESTORE'
-  | 'DISPUTE_WAITING_RETURN'
-  | 'DISPUTE_RESOLVE_SELLER'
-  | 'DISPUTE_RESOLVE_BUYER'
-  | 'DISPUTE_RESOLVE_INSURANCE'
-  | 'USER_VERIFICATION_TOGGLE'
-  | 'USER_STATUS_UPDATE'
-  | string;
-
 export interface ActionMeta {
   icon: LucideIcon;
   color: string;
   verb: string;
 }
 
-export const ADMIN_ACTION_CONFIG: Record<string, ActionMeta> = {
+const ADMIN_ACTION_CONFIG: Record<string, ActionMeta> = {
   // ── Moderación de Productos ──
   PRODUCT_APPROVE: {
     icon: CheckCircle2,
@@ -92,7 +79,7 @@ export const ADMIN_ACTION_CONFIG: Record<string, ActionMeta> = {
   },
 };
 
-export const DEFAULT_ACTION_META: ActionMeta = {
+const DEFAULT_ACTION_META: ActionMeta = {
   icon: Activity,
   color: 'text-blue-light',
   verb: 'procesó una acción en',

@@ -33,7 +33,7 @@ export type CaptchaProviderHandle = {
 export type CaptchaTokenSource = () => Promise<string | undefined>;
 
 /** Long enough to solve an image challenge; a silent widget must not leave a spinner forever. */
-export const CAPTCHA_TIMEOUT_MS = 120_000;
+const CAPTCHA_TIMEOUT_MS = 120_000;
 
 /**
  * Resolves `undefined` when CAPTCHA is not configured (works while the server

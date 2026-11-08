@@ -13,7 +13,7 @@ import {
   type AdminSessionOutcome,
 } from '../lib/auth/admin-session.logic';
 
-export interface AdminProfile {
+interface AdminProfile {
   id: string;
   username: string | null;
   avatar_url: string | null;

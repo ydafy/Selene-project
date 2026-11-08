@@ -28,7 +28,7 @@ type DisputeRow = NonNullable<
   Awaited<ReturnType<typeof fetchDisputeRow>>['data']
 >;
 
-export type DisputeDetail = Omit<
+type DisputeDetail = Omit<
   DisputeRow,
   'status' | 'buyer_evidence' | 'shipment'
 > & {

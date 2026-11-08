@@ -68,15 +68,6 @@ if (process.env.A65_SSR_CHILD !== '1') {
     { ...row, payout_run_status: 'failed', payout_run_id: 'run-failed' },
     row,
   ]);
-  mock.module('../hooks/use-connect-earnings', () => ({
-    useConnectEarnings: () => ({
-      data: [],
-      isLoading: false,
-      isFetching: false,
-      isError: false,
-      refetch: async () => undefined,
-    }),
-  }));
   mock.module('../hooks/use-connect-payout-release-queue', () => ({
     useConnectPayoutReleaseQueue: () => ({
       batches: [],

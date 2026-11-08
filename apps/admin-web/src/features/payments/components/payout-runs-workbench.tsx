@@ -27,7 +27,7 @@ import {
 } from './payout-workbench-layout';
 import { workbenchFocus as focus } from '../../../shared/ui/workbench-focus';
 
-export type PayoutRunsMode = 'processing' | 'action-required' | 'history';
+type PayoutRunsMode = 'processing' | 'action-required' | 'history';
 interface PayoutRunsWorkbenchProps {
   mode: PayoutRunsMode;
   runs: (ReleaseQueueRun | ReleaseQueueActionRequiredRun)[];

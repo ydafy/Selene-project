@@ -83,15 +83,12 @@ if (process.env.PAYMENTS_WORKBENCH_CHILD !== '1') {
   };
   let queueError = false;
   let queueLoading = false;
-  let earningsError = false;
   let releaseRejects = false;
   const releaseCalls: { batch: ReleaseQueueBatch; shipmentIds: string[] }[] =
     [];
   const retryCalls: { retryRunId: string }[] = [];
   const queueSearches: string[] = [];
-  const chargeSearches: string[] = [];
   let queueRefreshes = 0;
-  let chargeRefreshes = 0;
   mock.module('../../../shared/hooks/use-debounce', () => ({
     useDebounce: (value: string) => value,
   }));
@@ -120,31 +117,6 @@ if (process.env.PAYMENTS_WORKBENCH_CHILD !== '1') {
         },
         retryFailedPayout: async (input: { retryRunId: string }) => {
           retryCalls.push(input);
-        },
-      };
-    },
-  }));
-  mock.module('../hooks/use-connect-earnings', () => ({
-    useConnectEarnings: (search: string) => {
-      chargeSearches.push(search);
-      return {
-        data: [
-          {
-            id: 'charge-1',
-            stripe_payment_intent_id: 'pi_buyer',
-            seller_name: 'Aurora',
-            amount: 25000,
-            application_fee_amount: 1000,
-            status: 'succeeded',
-            created_at: new Date().toISOString(),
-          },
-        ],
-        isLoading: false,
-        isFetching: false,
-        isError: earningsError,
-        refetch: async () => {
-          chargeRefreshes++;
-          return { isError: false };
         },
       };
     },
@@ -360,13 +332,10 @@ if (process.env.PAYMENTS_WORKBENCH_CHILD !== '1') {
       h.restore();
     }
   });
-  it('removes buyer charge navigation and never subscribes to its legacy feed', () => {
-    chargeSearches.length = 0;
+  it('removes buyer charge navigation', () => {
     const html = publicHtml();
     expect(html).not.toContain('Cobros de compradores');
     expect(html).not.toContain('Cargos de Compradores');
-    expect(chargeSearches).toEqual([]);
-    expect(chargeRefreshes).toBe(0);
   });
   it('keeps the single seller search and refresh scoped to the payout queue', async () => {
     const h = harness();
@@ -382,7 +351,6 @@ if (process.env.PAYMENTS_WORKBENCH_CHILD !== '1') {
       await h.click('Necesita atención');
       await h.click('Actualizar consulta');
       expect(queueRefreshes).toBe(refreshesBefore + 2);
-      expect(chargeRefreshes).toBe(0);
     } finally {
       h.restore();
     }
@@ -442,16 +410,6 @@ if (process.env.PAYMENTS_WORKBENCH_CHILD !== '1') {
       expect(releaseCalls.at(-1)?.shipmentIds).toEqual(['ready-1']);
     } finally {
       h.restore();
-    }
-  });
-  it('a failed earnings feed does not block the payout workspace', () => {
-    earningsError = true;
-    try {
-      const html = publicHtml();
-      expect(html).toContain('Detalle de liberación');
-      expect(html).not.toContain('Error al cargar datos financieros');
-    } finally {
-      earningsError = false;
     }
   });
   it('queue failure preserves the workbench instance but removes its authority and blocks mutations', async () => {

@@ -32,7 +32,7 @@
     "eas:configure": "cd apps/frontend && bunx eas-cli build:configure",
     "eas:credentials": "cd apps/frontend && bunx eas-cli credentials",
     "lint": "bunx eslint . --ext .js,.jsx,.ts,.tsx",
-    "knip": "knip --workspace apps/frontend",
+    "knip": "knip --workspace apps/frontend --workspace apps/admin-web",
     "typecheck": "bun run --filter '*' typecheck",
     "format": "bunx prettier --write .",
     "format:check": "bunx prettier --check .",

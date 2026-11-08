@@ -8,7 +8,7 @@
 
 import { asRecord } from '../../../shared/utils/as-record';
 
-export const EVENT_TYPES = [
+const EVENT_TYPES = [
   'created',
   'information',
   'in_transit',
@@ -18,7 +18,7 @@ export const EVENT_TYPES = [
 ] as const;
 export type CarrierEventType = (typeof EVENT_TYPES)[number];
 
-export const SHIPMENT_STATUSES = [
+const SHIPMENT_STATUSES = [
   'pending',
   'paid',
   'preparing',
@@ -31,15 +31,15 @@ export const SHIPMENT_STATUSES = [
 ] as const;
 export type ShipmentStatus = (typeof SHIPMENT_STATUSES)[number];
 
-export const CANCELLATION_SOURCES = [
+const CANCELLATION_SOURCES = [
   'buyer',
   'seller',
   'paid_timeout',
   'preparing_timeout',
 ] as const;
-export type CancellationSource = (typeof CANCELLATION_SOURCES)[number];
+type CancellationSource = (typeof CANCELLATION_SOURCES)[number];
 
-export const REFUND_STATUSES = [
+const REFUND_STATUSES = [
   'pending',
   'requires_action',
   'succeeded',
@@ -102,7 +102,7 @@ export const REFUND_STATUS_LABELS: Record<RefundStatus, string> = {
 /** Same rule as the server: trimmed, 1 to 200 characters. */
 export const MAX_ACKNOWLEDGEMENT_NOTE_LENGTH = 200;
 
-export class MalformedLateCarrierActivityResponseError extends Error {
+class MalformedLateCarrierActivityResponseError extends Error {
   constructor(what: string) {
     super(`Malformed ${what} response`);
     this.name = 'MalformedLateCarrierActivityResponseError';
