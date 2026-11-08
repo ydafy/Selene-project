@@ -21,7 +21,7 @@ The scattered runbooks and deployment notes are item 4b (#282), not this documen
 - T2 | S3 | inline | needs Docker | commit: pending
 - T3 | S4, S7 | inline | commit: 122e4f86 (done)
 - T4 | S5, S7 | inline | commit: c3341754 (done); the test reads nothing itself (the module does), so the `scripts` count stays 15
-- T5 | S6, S8 | worker (context backstop) | slice 2: starts after the slice 1 commits 87a450b3, 122e4f86, c3341754 (T1, T3, T4) | commit: this commit (done); 164 problems to 0, rule: a leading `/` is an app route
+- T5 | S6, S8 | worker (context backstop) | slice 2: starts after the slice 1 commits 87a450b3, 122e4f86, c3341754 (T1, T3, T4) | commit: this commit (done); 164 problems to 0, rule: a leading `/` is an app route unless it starts at a top-level repository entry (review advisory R3, follow-up commit)
 
 ## Log
 

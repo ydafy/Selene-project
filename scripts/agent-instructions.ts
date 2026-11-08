@@ -50,10 +50,8 @@ export const NOT_IN_REPO: Record<string, string> = {
 
 const PATH_EXTENSION =
   /\.(md|ts|tsx|js|json|jsonc|toml|ya?ml|sql|lock|bru|sh|ps1)$/;
-// Placeholders (`<feature>`), shell syntax, and assignments are not paths. A
-// leading slash is an app route (`/privacidad`): the files cite repository
-// paths from the root, without one.
-const NOT_A_PATH = /:\/\/|^@|^\/|[<>{}$='"]|^\.\w+$/;
+// Placeholders (`<feature>`), shell syntax, and assignments are not paths.
+const NOT_A_PATH = /:\/\/|^@|[<>{}$='"]|^\.\w+$/;
 
 const trimPunctuation = (token: string) =>
   token.replace(/^\(+/, '').replace(/[,.;:)]+$/, '');
@@ -137,6 +135,15 @@ export function findBrokenReferences(input: {
       const path = inCommand ? reference.slice(1) : reference;
       if (path in input.notInRepo) continue;
       if (inCommand && !topLevel.has(path.split('/')[0])) continue;
+      // A leading slash is an app route (`/privacidad`) unless it starts at a
+      // top-level repository entry; then it is a root path such as `/docs/x.md`.
+      if (path.startsWith('/')) {
+        if (!topLevel.has(path.split('/')[1])) continue;
+        if (!exists(path.slice(1))) {
+          problems.push(`${file.path}: path \`${path}\` does not exist`);
+        }
+        continue;
+      }
       // Paths resolve from the repository root, from the citing file, or, for
       // request names, from the Bruno collection.
       const bases = ['', directory, 'bruno'];

@@ -119,10 +119,13 @@ describe('agent instruction references (probes)', () => {
     ).toEqual(['AGENTS.md: path `docs/nope.ts` does not exist']);
   });
 
-  it('skips an app route, which starts with a slash', () => {
-    expect(extractPathReferences('Open `/privacidad` or `/signup`.')).toEqual(
-      [],
-    );
+  it('skips an app route but checks a slash path into the repository', () => {
+    expect(
+      check(
+        'docs/go-live.md',
+        'Open `/privacidad`, `/signup`, or `/docs/nope.md`.',
+      ),
+    ).toEqual(['docs/go-live.md: path `/docs/nope.md` does not exist']);
   });
 
   it('strips sentence punctuation from a cited path', () => {
