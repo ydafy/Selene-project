@@ -10,7 +10,7 @@ import {
   SELENE_WEB_URL,
   TERMS_PATH,
   TERMS_URL,
-} from '../index.ts';
+} from './index.ts';
 
 describe('Selene domain', () => {
   it('uses the reserved placeholder until the real domain exists', () => {

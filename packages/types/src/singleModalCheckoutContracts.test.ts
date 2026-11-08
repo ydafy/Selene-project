@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import type {
   CreateConnectPaymentResponse,
   ReleaseConnectPayoutResponse,
-} from '../index';
+} from './index';
 
 /**
  * Contract tests for the single-modal multi-seller checkout type foundation

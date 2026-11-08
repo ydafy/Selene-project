@@ -19,7 +19,7 @@ The scattered runbooks and deployment notes are item 4b (#282), not this documen
 
 - T1 | S1-S2 | inline | commit: this commit (done)
 - T2 | S3 | inline | needs Docker | commit: pending
-- T3 | S4, S7 | inline | commit: pending
+- T3 | S4, S7 | inline | commit: this commit (done)
 - T4 | S5, S7 | inline | commit: pending
 - T5 | S6, S8 | inline | commit: pending
 

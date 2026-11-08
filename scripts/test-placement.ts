@@ -1,7 +1,6 @@
 // Tests sit next to the file they test (docs/conventions.md, "Test placement").
 // These `__tests__/` folders predate the rule; nothing new goes in this list.
 export const LEGACY_TEST_FOLDERS = [
-  'packages/types/src/__tests__',
   'supabase/functions/__tests__',
   'supabase/functions/_shared/__tests__',
   'supabase/migrations/__tests__',
