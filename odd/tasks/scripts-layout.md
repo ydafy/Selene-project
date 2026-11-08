@@ -12,11 +12,13 @@ Item 5 of roadmap #228: move the flat files in `scripts/` into four folders by p
 - S6. "The test count is unchanged."
 - S7. "The guards from items 1 and 4 pass."
 - S8. "Harness `--help` text shows the new paths."
+- S9. A guard fails when a file sits in `scripts/` outside the four purpose folders (L7).
 
 ## Tasks
 
 - T1 | S1-S4, S8 | inline | `git mv` into the four folders; fix repository-root resolution, sibling imports, spawned paths, `--help` text, and every citation outside `odd/`; `docs/conventions.md` "Repository scripts" | commit: this commit (done)
 - T2 | S5-S7 | inline + verify | full suite count against the baseline, lint, typecheck, format:check, knip, a rejected bad commit message through the hook; independent verifier (Risk item 5: hooks and CI) | 4995 pass before and after; lint 0 errors; typecheck, format:check, knip clean; `git commit -m "moved some scripts"` rejected by the commit-msg hook; old paths reverted in `docs/worktrees.md` and `package.json` fail the two guards | commit: this commit (done; checked inline and by the independent verifier, see L4-L5)
+- T3 | S9 | inline | `scripts/guards/script-folders.{ts,test.ts}` (RED: a stub returning `[]` failed the misplaced-files probe), one sentence in `docs/conventions.md` "Repository scripts" | commit: this commit (done)
 
 ## Log
 
@@ -26,3 +28,4 @@ Item 5 of roadmap #228: move the flat files in `scripts/` into four folders by p
 - L4. Verification (2026-11-07): the runtime did not admit the independent verifier because the launch text lacked a `Risk: item N` line; it was not relaunched. The same checks ran inline: no flat `scripts/<file>` path remains outside `odd/` (only the guards' deliberate nonexistent fixtures), every root resolution uses `'..', '..'`, `--help` prints `bun scripts/verify/<name>.ts`, the diff outside paths is the new conventions section, this document, and Prettier realigning one table in `docs/specs/shipment-cancellation-coordination.md`.
 - L5. After `gentle_review assess` escalated item 5, the independent verifier ran read-only on 7f0c76df: S1-S8 met, 4995 pass, guards 67 pass, no blockers or advisories. Native review did not start: `lens_context_budget_exceeded` (renames count as full delete plus add, about 39,700 lines); retrying the same candidate cannot succeed. Verifier suggestion: a `scripts/guards/script-folders.test.ts` guard that fails on a file outside the four folders.
 - L6. User (2026-11-07): "hagamos la opcion 2 ' Desactivar la revisión nativa en este clon' pero olo para esto, una ves lo hagamos la volvemos activar para que qeede como antes". `gentle-ai review mode disable --scope clone` then `enable --scope clone`; status is back to "on (decided by default)", clone-local unset. This commit stays without native review.
+- L7. User (2026-11-07): "si agrega lo del guarda, y si, push y pr con merge. autorizo". The guard the verifier suggested goes in a second commit.

@@ -87,7 +87,7 @@ A script in `scripts/` goes in the folder for its purpose, with its test next to
 - `scripts/guards/`: tests over the whole repository that fail on a broken rule (`agent-instructions`, `markdown-placement`).
 - `scripts/verify/`: manual verification harnesses against the local stack (`test-shipment-*`, `postgres-smoke`). No CI job runs them.
 
-A script under `scripts/<folder>/` reaches the repository root with `join(import.meta.dir, '..', '..')`.
+A script under `scripts/<folder>/` reaches the repository root with `join(import.meta.dir, '..', '..')`. `scripts/guards/script-folders.test.ts` fails on a file anywhere else in `scripts/`.
 
 ## Formatting
 
