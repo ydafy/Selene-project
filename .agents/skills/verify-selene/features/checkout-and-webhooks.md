@@ -7,7 +7,7 @@ A buyer pays for verified listings through Stripe Connect; Stripe events reach `
 - `guards`: `create-connect-payment` rejects oversized `productIds`, listings that are not reservable, and sellers pending onboarding.
 - `recovery-lease`: the checkout recovery lease RPCs are service-role only and exclusive.
 - `webhook-signature`: `stripe-webhooks` refuses unsigned calls before touching data.
-- `webhook-events`: forwarded sandbox events update local rows (events in `STRIPE_WEBHOOK_EVENTS`, `scripts/stripe-listen.ts`).
+- `webhook-events`: forwarded sandbox events update local rows (events in `STRIPE_WEBHOOK_EVENTS`, `scripts/dev/stripe-listen.ts`).
 
 ## How to get to it (user POV)
 

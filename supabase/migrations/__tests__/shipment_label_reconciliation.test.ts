@@ -31,7 +31,7 @@ const signatures = {
     'UUID, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, BIGINT',
 };
 
-// Text contracts only; `supabase db reset` + scripts/test-shipment-label-reconciliation.ts
+// Text contracts only; `supabase db reset` + scripts/verify/test-shipment-label-reconciliation.ts
 // prove the behavior in PostgreSQL.
 describe('shipment label reconciliation migration (SQL text)', () => {
   it('is one migration after the grants parity migration, in one transaction', () => {

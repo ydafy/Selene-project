@@ -21,7 +21,7 @@ const events = read(
   'supabase/queries/orders/shipment_cancellation_refund_events.sql',
 );
 
-// Text contracts only; the local `supabase db reset` + scripts/test-shipment-cancellation-refund-events.ts
+// Text contracts only; the local `supabase db reset` + scripts/verify/test-shipment-cancellation-refund-events.ts
 // prove the behavior in PostgreSQL.
 describe('shipment cancellation refund events migration (SQL text)', () => {
   it('is exactly one active migration containing its canonical copy', () => {

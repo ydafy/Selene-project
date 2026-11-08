@@ -214,7 +214,7 @@ It is established as the standard procedure for structural inconsistencies.
 **Decision:**
 
 - Node `24.22.2` (LTS "Krypton", supported until 2028-04-30). `.nvmrc` is the source of truth. Bun `1.4.4`, with `packageManager` in the root `package.json` as the source of truth, as before.
-- Every `apps/frontend/eas.json` profile repeats both versions, because EAS Build reads neither file. `scripts/runtime-versions.test.ts` fails when a profile disagrees, so a bump cannot miss a copy.
+- Every `apps/frontend/eas.json` profile repeats both versions, because EAS Build reads neither file. `scripts/guards/runtime-versions.test.ts` fails when a profile disagrees, so a bump cannot miss a copy.
 - The dependency report workflow installs Node from `.nvmrc`. The other workflows run only Bun.
 - Runtimes follow the update rule in `docs/dependencies.md`, "Keep Node and Bun current". This replaces "Node stays at `22.13.1` for EAS" from the 2026-10-20 entry.
 - Node 26 became LTS on 2026-10-28. Move to it about three months later, near the Expo SDK 58 upgrade (#132).

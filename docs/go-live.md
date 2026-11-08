@@ -221,7 +221,7 @@ select cron.schedule(
 );
 ```
 
-`cron-watchdog-every-15-minutes` calls `cron-watchdog`, which reads `fn_cron_health()` and reports failed, overdue, or unsupported-schedule jobs to Sentry. In order: apply `supabase/migrations/20261021025844_cron_health.sql` (creates `fn_cron_health()`, service role only) and `supabase/migrations/20261026014010_cron_health_index_scan.sql` (reads `cron.job_run_details` by primary key; without it the read timed out on 86k rows), deploy `cron-watchdog`, and create the Vault secret `cron_watchdog_cron_secret` with the same value as the `CRON_SECRET` function secret (the function compares the `x-cron-secret` header against `CRON_SECRET`). Before deploying a change to it, run `bun scripts/test-cron-health.ts` against the local stack (6 cases; every case rolls back). Then run, in the SQL Editor:
+`cron-watchdog-every-15-minutes` calls `cron-watchdog`, which reads `fn_cron_health()` and reports failed, overdue, or unsupported-schedule jobs to Sentry. In order: apply `supabase/migrations/20261021025844_cron_health.sql` (creates `fn_cron_health()`, service role only) and `supabase/migrations/20261026014010_cron_health_index_scan.sql` (reads `cron.job_run_details` by primary key; without it the read timed out on 86k rows), deploy `cron-watchdog`, and create the Vault secret `cron_watchdog_cron_secret` with the same value as the `CRON_SECRET` function secret (the function compares the `x-cron-secret` header against `CRON_SECRET`). Before deploying a change to it, run `bun scripts/verify/test-cron-health.ts` against the local stack (6 cases; every case rolls back). Then run, in the SQL Editor:
 
 ```sql
 select cron.schedule(
@@ -306,7 +306,7 @@ Sentry creates the `cron-watchdog` Cron Monitor on its first check-in (free plan
   - Platform events: `payment_intent.succeeded`, `payment_intent.payment_failed`, `payment_intent.canceled`, `setup_intent.succeeded`, `refund.updated`, `refund.failed`.
   - The refund events complete a shipment cancellation whose refund settles asynchronously, and flag a refund that failed (buyer notification plus a Sentry CRITICAL). Subscribe the platform endpoint to both, and apply `supabase/migrations/20261022005940_shipment_cancellation_refund_events.sql` (new service-only `fn_apply_shipment_cancellation_refund_event`, new `shipment.refund_failed` notification kind) before deploying `stripe-webhooks`.
   - Connect events: `account.updated`, `account.external_account.created`, `account.external_account.updated`, `account.external_account.deleted`, `payout.created`, `payout.updated`, `payout.paid`, `payout.failed`, `payout.canceled`.
-  - `scripts/stripe-listen.test.ts` checks this list against `STRIPE_WEBHOOK_EVENTS` in `scripts/stripe-listen.ts`.
+  - `scripts/dev/stripe-listen.test.ts` checks this list against `STRIPE_WEBHOOK_EVENTS` in `scripts/dev/stripe-listen.ts`.
 - Stripe Account Links return/refresh URLs → `connect-onboarding-return`.
 - Envia tracking webhook → `envia-webhook`; secret into `ENVIA_WEBHOOK_SECRET_PROD`.
 

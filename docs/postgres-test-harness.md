@@ -30,7 +30,7 @@ docker compose -f docker-compose.postgres-test.yml -p selene-pg-shipment-cancell
 docker ps --format "table {{.Names}}\t{{.Ports}}"
 # Start only if that project name is unused or belongs to your own test environment.
 docker compose -f docker-compose.postgres-test.yml -p selene-pg-shipment-cancellations up -d --wait --wait-timeout 90
-bun scripts/postgres-smoke.ts
+bun scripts/verify/postgres-smoke.ts
 ```
 
 Default endpoint: `127.0.0.1:55432`. If occupied, **do not stop the owner**. Choose an available port and set `SELENE_TEST_PG_PORT` for both Compose and the probe:
@@ -70,7 +70,7 @@ Open that command in two terminals for manual independent sessions. `SELECT pg_b
 
 ## What the smoke check proves
 
-`bun scripts/postgres-smoke.ts`:
+`bun scripts/verify/postgres-smoke.ts`:
 
 1. Authenticates over the published localhost port; checks database, role and PostgreSQL major version.
 2. Reserves two physical SQL connections and asserts different `pg_backend_pid()` values.
@@ -99,9 +99,9 @@ docker compose -f docker-compose.postgres-test.yml -p selene-pg-shipment-cancell
 Image: **`postgres:17.6-bookworm`**, an explicit upstream PostgreSQL patch and Debian variant, not `latest`. Local `supabase/.temp/postgres-version` reported `17.6.1.043`; `odd/tasks/in-app-notifications.md` also records maintainer-supplied PostgreSQL 17.6 catalog evidence. The Supabase build suffix is not an upstream Docker tag. This chooses matching upstream major/minor behavior, not an identical Supabase build. The tracked `supabase/config.toml` has no database version setting. No remote server was queried; cached local evidence does not establish its current version. This image intentionally stays pinned until a deliberate update; it does not automatically receive newer security patches.
 
 ```sh
-bun test scripts/postgres-smoke.test.ts
+bun test scripts/verify/postgres-smoke.test.ts
 docker compose -f docker-compose.postgres-test.yml -p selene-pg-shipment-cancellations config --quiet
-bun scripts/postgres-smoke.ts --help
+bun scripts/verify/postgres-smoke.ts --help
 ```
 
 Static tests guard the service boundary, version pin, localhost binding, healthcheck, local credentials and project-scoped storage. They do not substitute for `up --wait` plus the live smoke check. The healthcheck uses `pg_isready` (server readiness, **not** credential validation); the live probe performs authentication.
@@ -111,11 +111,11 @@ Static tests guard the service boundary, version pin, localhost binding, healthc
 - Initial preflight: Docker and host `psql` not found; WSL not installed. No remote access or existing resource deletion.
 - Host preparation: user authorized WSL 2, Docker Desktop and required Windows components. WSL installer returned exit 0; `wsl --version` reported WSL 3.0.3.0. Winget installed Docker Desktop 4.95.0 (exit 0); CLI reports Docker 29.8.2 and Compose 5.6.0.
 - Activation blocker: elevated `dism.exe /Online /Enable-Feature /FeatureName:VirtualMachinePlatform /All /NoRestart /Quiet` returned Windows exit **3010** (shell exit 194), explicitly requiring a reboot. No automatic reboot was performed. Reboot Windows, open Docker Desktop and wait for the Linux engine to become available before running the start/probe commands above.
-- Test-first: `bun test scripts/postgres-smoke.test.ts` returned exit 1, 0 pass / 6 fail before the Compose/probe files existed (expected RED).
-- Static GREEN: `bun test scripts/postgres-smoke.test.ts` returned exit 0, 6 pass / 0 fail, 16 assertions. `docker compose -f docker-compose.postgres-test.yml -p selene-pg-shipment-cancellations config --quiet` returned exit 0. Scoped ESLint and Prettier checks returned exit 0 after formatting the new files.
+- Test-first: `bun test scripts/verify/postgres-smoke.test.ts` returned exit 1, 0 pass / 6 fail before the Compose/probe files existed (expected RED).
+- Static GREEN: `bun test scripts/verify/postgres-smoke.test.ts` returned exit 0, 6 pass / 0 fail, 16 assertions. `docker compose -f docker-compose.postgres-test.yml -p selene-pg-shipment-cancellations config --quiet` returned exit 0. Scoped ESLint and Prettier checks returned exit 0 after formatting the new files.
 - Broader suite: `bun test` returned exit 0, **1683 pass / 0 fail**, 5845 assertions across 187 files (7.98 seconds). This suite does not start the standalone live probe.
 - Independent static verification: focused suite 6/6 and expanded scratch-only checks 19/19 passed; Compose validation and exact help/error output passed. No concrete static code blocker found. A full scratch-copy attempt timed out at 200 seconds during node_modules copying; it was not a test result. Built-in-only checks ran in a scratch copy excluding node_modules. No live database was contacted.
-- Live verification after maintainer reboot: local named-pipe `desktop-linux` engine reported Docker 29.8.2/Linux; container and volume inventories were empty and localhost port 55432 was free. `docker --context desktop-linux compose -f docker-compose.postgres-test.yml -p selene-pg-shipment-cancellations up -d --wait --wait-timeout 90 && bun scripts/postgres-smoke.ts` returned **exit 0** in 28 seconds. Image pull succeeded and the container became healthy.
+- Live verification after maintainer reboot: local named-pipe `desktop-linux` engine reported Docker 29.8.2/Linux; container and volume inventories were empty and localhost port 55432 was free. `docker --context desktop-linux compose -f docker-compose.postgres-test.yml -p selene-pg-shipment-cancellations up -d --wait --wait-timeout 90 && bun scripts/verify/postgres-smoke.ts` returned **exit 0** in 28 seconds. Image pull succeeded and the container became healthy.
 - Exact live probe output:
 
 ```text

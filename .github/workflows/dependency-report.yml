@@ -1,5 +1,5 @@
 # Weekly dependency report (docs/dependencies.md).
-# Writes scripts/dependency-report.ts output into one open issue titled
+# Writes scripts/ci/dependency-report.ts output into one open issue titled
 # "Reporte de dependencias" and comments the summary line, so the maintainer gets
 # an email. It never opens pull requests and never changes dependencies.
 name: Dependency report
@@ -37,7 +37,7 @@ jobs:
       - id: report
         run: |
           set +e
-          bun scripts/dependency-report.ts > report.md
+          bun scripts/ci/dependency-report.ts > report.md
           echo "exit=$?" >> "$GITHUB_OUTPUT"
       - name: Update the report issue
         run: |

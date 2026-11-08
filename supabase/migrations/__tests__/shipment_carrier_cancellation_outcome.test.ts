@@ -22,7 +22,7 @@ const outcome = read(
 );
 const body = statements(outcome);
 
-// Text contracts only; the local `supabase db reset` + scripts/test-shipment-carrier-cancellation.ts
+// Text contracts only; the local `supabase db reset` + scripts/verify/test-shipment-carrier-cancellation.ts
 // prove the behavior in PostgreSQL.
 describe('shipment carrier cancellation outcome migration (SQL text)', () => {
   it('is exactly one active migration identical to the canonical copy', () => {

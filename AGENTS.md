@@ -3,7 +3,7 @@
 <!-- Maintainer note:
 Every line loads into every agent session. Add a rule only when an agent made the
 same mistake twice or when it cannot be inferred from the code. Prefer pointers to
-docs over copies. Keep it at most 140 lines (`scripts/agent-instructions.test.ts`
+docs over copies. Keep it at most 140 lines (`scripts/guards/agent-instructions.test.ts`
 checks it and every path and script cited here); put area procedures in the nested files. -->
 
 Selene is a peer-to-peer marketplace in Mexico for used PC hardware. Its product is trust: technical verification of listings and safe money flow between buyers and sellers. It is in active development, and every module is built as if it shipped to production tomorrow. Do not add sandbox-only shortcuts, mocks in production paths, or "fine for now" workarounds.
@@ -72,7 +72,7 @@ Never:
 
 - Point Bruno, `stripe:listen`, or data-mutating SQL at the remote project.
 - Apply migrations, deploy functions, change secrets, or configure cron or webhooks, unless the maintainer asks for that specific action.
-- Add AI attribution or `Co-Authored-By` lines to PRs or issues (`scripts/check-commit-msg.ts` rejects them in commits).
+- Add AI attribution or `Co-Authored-By` lines to PRs or issues (`scripts/ci/check-commit-msg.ts` rejects them in commits).
 
 ## Skills
 
@@ -88,7 +88,7 @@ Vendor skills in `.agents/skills/` are installed with the `skills` CLI and never
 
 Run from the repository or worktree root. `package.json` is the source of truth.
 
-- `bun test`: full suite (`bun:test`). The pre-push hook and CI run the full suite; pre-commit runs `lint-staged` (Prettier and ESLint on staged code, Prettier on staged Markdown, JSON and YAML), and the commit-msg hook and CI reject non-Conventional headers and attribution lines (`scripts/check-commit-msg.ts`). Run one file with `bun test <path>`.
+- `bun test`: full suite (`bun:test`). The pre-push hook and CI run the full suite; pre-commit runs `lint-staged` (Prettier and ESLint on staged code, Prettier on staged Markdown, JSON and YAML), and the commit-msg hook and CI reject non-Conventional headers and attribution lines (`scripts/ci/check-commit-msg.ts`). Run one file with `bun test <path>`.
 - `bun run lint`, `bun run format:check`, and `bun run typecheck` (one workspace: `bun run --filter <package> typecheck`) pass with zero errors, and CI runs all three. A formatting-only change is its own `style(...)` commit, listed in `.git-blame-ignore-revs` (`docs/conventions.md`, "Formatting"). Keep them at zero; an inline `eslint-disable` needs the rule and a reason after `--`. CI also runs `bun run knip` (unused files, exports, and dependencies in `apps/frontend`; config in `knip.jsonc`): delete what it reports instead of ignoring it. Edge Functions: see `supabase/functions/AGENTS.md`.
 - `bunfig.toml` blocks package versions newer than 3 days. If an install fails, pick an older version; do not change the setting.
 - `bun audit --audit-level=high` must stay clean. An accepted exception is an `--ignore=<GHSA>` flag in `.github/workflows/dependency-audit.yml` (weekly job) with its reason in a comment; never add one without it. After changing dependencies, run the command exactly as that workflow does.

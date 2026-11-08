@@ -22,7 +22,7 @@ const canonical = read(
 );
 const body = statements(canonical);
 
-// Text contracts only; the local `supabase db reset` + scripts/test-shipment-cancellation-summary.ts
+// Text contracts only; the local `supabase db reset` + scripts/verify/test-shipment-cancellation-summary.ts
 // and the Bruno requests prove the behavior in PostgreSQL.
 describe('shipment cancellation summary migration (SQL text)', () => {
   it('is exactly one active migration identical to the canonical copy, after the carrier review one', () => {
