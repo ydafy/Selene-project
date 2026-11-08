@@ -67,6 +67,17 @@ A non-test file under `apps/frontend/src` past 400 lines of code (blank lines an
 
 Do not add an index file that only re-exports. Import the file directly. An index file that defines code, such as `apps/frontend/src/shared/theme/index.ts`, is not a barrel and stays.
 
+## Operational docs
+
+Markdown goes under `docs/`, never next to code. Name new files in kebab-case.
+
+- A procedure someone will run again (a recovery, a deployed check, an inventory to collect) goes in `docs/runbooks/`.
+- How a feature behaves, its rules, and its limits go in `docs/specs/`.
+- A decision and its reason go in `docs/decision-log.md` as one dated entry.
+- A deployment note for one change goes in the PR description or the feature document under `odd/tasks/`. Once it is applied, it is history: do not keep a separate file for it.
+
+Other Markdown homes are `odd/`, `design/`, `.agents/`, `.github/`, `AGENTS.md` and `README.md` files, and the root `DESIGN.md` and `SECURITY.md`. `scripts/markdown-placement.test.ts` fails on a Markdown file anywhere else.
+
 ## Formatting
 
 Prettier formats the repository (`.prettierrc.js`; `bun run format` writes every file). The pre-commit hook formats staged code, Markdown, JSON, and YAML, and CI runs `bun run format:check` on every file. `.gitattributes` checks text files out with LF on every OS, as Prettier writes them.
