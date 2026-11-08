@@ -18,7 +18,7 @@ Item 4b of roadmap #228: move the runbooks, inventories, and decision records sc
 
 - T1 | S1-S2, S6 | inline | delete the four done deployment notes and fix their citations (only `payments-workbench.md` linked them outside `odd/`) | commit: f1e22385 (done); slice note: its 470 changed lines are almost all deleted notes
 - T2 | S3, S6 | inline | move `DEPLOYED_HARNESS.md` and the three inventories to `docs/runbooks/`; delete the prelaunch retry runbook (L4); fix the `auth_deployed_inventory.test.ts` path and two relative citations | commit: this commit (done)
-- T3 | S4, S6 | inline | `payments-workbench.md` to `docs/specs/`, `CARD_LIST_DECISION.md` to the decision log | commit: pending
+- T3 | S4, S6 | inline | `payments-workbench.md` to `docs/specs/admin-payments-workbench.md` (cited from `DESIGN.md`; its `cd apps/admin-web && bun run` commands became `bun run --filter admin-web`), `CARD_LIST_DECISION.md` to a 2026-05-28 decision-log entry | commit: this commit (done)
 - T4 | S5, S6 | inline | `docs/auth.md` to `docs/specs/`; check B1-B6 for the coordination doc | commit: pending
 - T5 | S7, S9 | inline | Markdown placement test and the `docs/conventions.md` rule | commit: pending
 

@@ -90,7 +90,7 @@ Clarity and the same premium identity count equally. The partners must understan
 - **Accent:** `text-lion` for key figures and active states, `bg-lion` only for the main action, `bg-lion/10` + `border-lion/20` for selected or highlighted areas.
 - **Text:** `text-xs` / `text-sm` for dense data, larger sizes only for page titles and the main figure of a panel.
 - **Every state has a label**, every action says what it does ("Liberar", "Confirmar reintento"), and money actions show the exact total before confirming.
-- **Reference screens:** the Payments workbench (`apps/admin-web/docs/payments-workbench.md`) is the approved pattern: content-sized tabs, full-width cards, a shared modal for details, page numbers instead of internal scroll. Reuse it; do not redesign approved screens unless asked.
+- **Reference screens:** the Payments workbench (`docs/specs/admin-payments-workbench.md`) is the approved pattern: content-sized tabs, full-width cards, a shared modal for details, page numbers instead of internal scroll. Reuse it; do not redesign approved screens unless asked.
 - Icons: `lucide-react`.
 - Charts and KPIs: load the `kpi-dashboard-design` skill; use real data only, never decorative numbers.
 

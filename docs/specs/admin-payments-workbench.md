@@ -61,11 +61,11 @@ PostgreSQL behavior, browser focus, or Stripe behavior.
 
 ```bash
 bun test apps/admin-web/src
-cd apps/admin-web && bun run build
+bun run --filter admin-web build
 ```
 
 Component tests exercise public rendered controls and mocked callbacks offline. Page/hook module mocks use isolated Bun subprocesses; page probes stub child rendering, while dedicated component tests exercise the workbenches themselves. No tests call financial endpoints. SSR/control-tree checks do not replace browser layout, keyboard focus or real DOM interaction proof.
 
 Payment-date chronology (B5) and the accepted current-paid History increment (B4) are delivered. Existing late-failure reconciliation is not reopened. Proactive missed-event monitoring (B4.2) is an optional, unconfirmed resilience extension requiring separate scope, not a confirmed defect or a redesign-closure blocker. A broader all-attempt admin timeline is not included; the current success-only view is not an immutable audit ledger or a guarantee of irreversible bank receipt. See `odd/tasks/admin-payments-redesign.md` for the current backlog disposition.
 
-For visual review, run `cd apps/admin-web && bun run dev` with normal local Supabase public URL/anon configuration and an authorized admin session. Review desktop/narrow layouts, page scrolling of the seller list, green full/partial selection indicators, seller page numbers, dialog opening/closing/Escape/focus return, tabs, search/loading/empty/error states, cross-page selection and confirmation placement. Do not confirm real releases or retries merely to review the design; money-moving checks require a separately approved sandbox.
+For visual review, run `bun run --filter admin-web dev` with normal local Supabase public URL/anon configuration and an authorized admin session. Review desktop/narrow layouts, page scrolling of the seller list, green full/partial selection indicators, seller page numbers, dialog opening/closing/Escape/focus return, tabs, search/loading/empty/error states, cross-page selection and confirmation placement. Do not confirm real releases or retries merely to review the design; money-moving checks require a separately approved sandbox.
