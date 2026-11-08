@@ -122,10 +122,10 @@ const cases: Array<
   [string, (tx: Tx) => Promise<void>, ('paid' | 'preparing')?]
 > = [
   [
-    'P1 the resolution columns are writable only through the definer: RLS on with no write policy, so an admin JWT updates 0 rows',
+    'P1 the resolution columns are writable only through the definer: authenticated has no table grant (and RLS has no write policy), so an admin JWT is denied',
     async (tx) => {
       await asOwner(tx);
-      // anon/authenticated keep Supabase's default table grants; RLS (no policies) is the barrier.
+      // The table grants to anon and authenticated are revoked; RLS with no write policy stays as a second barrier.
       const [rls] =
         await tx`SELECT relrowsecurity AS on FROM pg_class WHERE oid = 'public.shipment_cancellation_operations'::regclass`;
       assert.equal(rls.on, true);
@@ -137,10 +137,13 @@ const cases: Array<
       await apply(tx, 're_p1', 'failed');
       await tx`SELECT set_config('request.jwt.claims', ${JSON.stringify({ role: 'authenticated', sub: ids.admin })}, true)`;
       await tx`SET LOCAL ROLE authenticated`;
-      const updated = await tx`UPDATE public.shipment_cancellation_operations
-      SET refund_resolved_at = now(), refund_resolved_by = ${ids.admin}, refund_resolution_reference = 'x'
-      WHERE shipment_id = ${ids.shipment} RETURNING shipment_id`;
-      assert.equal(updated.length, 0);
+      await rejects(
+        tx,
+        (sp) => sp`UPDATE public.shipment_cancellation_operations
+        SET refund_resolved_at = now(), refund_resolved_by = ${ids.admin}, refund_resolution_reference = 'x'
+        WHERE shipment_id = ${ids.shipment}`,
+        'permission denied for table shipment_cancellation_operations',
+      );
       // fn_cancel_shipment is granted to service_role only (T4 restates it), so a non-service caller never reaches the refund guard.
       await rejects(
         tx,

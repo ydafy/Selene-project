@@ -1,4 +1,4 @@
-import type { ShipmentTrackingEvent } from '../index';
+import type { ShipmentTrackingEvent } from './index';
 
 // This compile-time contract must remain aligned with the generated
 // `shipment_tracking_events` row after `bun db:types` completes.
