@@ -38,7 +38,7 @@ A bank rejection may require correcting account details rather than repeating an
 - Queue errors and pending searches must not authorize stale results. The footer explicitly labels counters as the current query, not global totals: sellers in **Por liberar**, executions in the other tabs. Search filters those query-wide counts; they are not counts of only the visible page.
 - **Última consulta exitosa de esta página** uses TanStack Query's successful `dataUpdatedAt` for the active search/bucket/page key, displayed in local time with a machine-readable timestamp. Before a successful read it shows **Sin consulta exitosa todavía.** A failed refresh retains the prior successful timestamp; changing query keys uses that key's own cached success or no success. The 30-second polling interval is separate: neither this timestamp nor a successful request means Stripe is synchronized. It never substitutes for payout `paid_at` or authorizes money.
 - All calculations stay in integer cents. Queue totals are not Stripe balances; Connect account IDs are not bank destination details.
-- The original redesign did not change financial hooks, backend APIs or money authority. The B4/B5 follow-up adds the nullable selected-run payment date to the admin SQL view/generated types and maps/sorts it only for History. Processing/attention order, release/retry callbacks, amounts and authority remain unchanged; no event timeline is added. See [deployment and verification boundaries](payments-history-deployment.md).
+- The original redesign did not change financial hooks, backend APIs or money authority. The B4/B5 follow-up adds the nullable selected-run payment date to the admin SQL view/generated types and maps/sorts it only for History. Processing/attention order, release/retry callbacks, amounts and authority remain unchanged; no event timeline is added.
 
 ## Grouped-pagination deployment boundary
 
@@ -52,7 +52,6 @@ Each read is a fresh snapshot, not a stable cursor under concurrent queue change
 Complete selection intentionally loads all selectable group details and may exceed
 resource/time limits; errors must not be interpreted as partial success. The UI
 does not add a bulk monetary endpoint or automatic mutation retries.
-See [manual deployment and read-contract checks](payments-pagination-deployment.md).
 The maintainer confirmed SQL application, generated types and deployment of the
 read Edge Function; do not repeat those steps for this closeout. Repository tests
 do not independently prove remote deployment, effective privileges,
