@@ -89,6 +89,8 @@ A script in `scripts/` goes in the folder for its purpose, with its test next to
 
 A script under `scripts/<folder>/` reaches the repository root with `join(import.meta.dir, '..', '..')`. `scripts/guards/script-folders.test.ts` fails on a file anywhere else in `scripts/`.
 
+Move files with `scripts/dev/move-files.ts`, not by hand. Write a JSON array of `[oldPath, newPath]` pairs of repo-relative file paths and run `bun scripts/dev/move-files.ts <mapping.json> --dry-run`, then again without `--dry-run`: it moves the files with `git mv`, rewrites the imports (each app's `@/` alias included) and path strings that point at them, and lists the strings it could not rewrite.
+
 ## Formatting
 
 Prettier formats the repository (`.prettierrc.js`; `bun run format` writes every file). The pre-commit hook formats staged code, Markdown, JSON, and YAML, and CI runs `bun run format:check` on every file. `.gitattributes` checks text files out with LF on every OS, as Prettier writes them.
