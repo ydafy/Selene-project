@@ -18,7 +18,7 @@ The scattered runbooks and deployment notes are item 4b (#282), not this documen
 ## Tasks
 
 - T1 | S1-S2 | inline | commit: 87a450b3 (done)
-- T2 | S3 | inline | needs Docker | commit: pending
+- T2 | S3 | inline | `test-cron-health.ts` 6/6, cited from `docs/go-live.md`; refund probes P1 updated to the revoked table grant (L5), 8/8, cited from `docs/shipment-cancellation-coordination.md` | commit: this commit (done)
 - T3 | S4, S7 | inline | commit: 122e4f86 (done)
 - T4 | S5, S7 | inline | commit: c3341754 (done); the test reads nothing itself (the module does), so the `scripts` count stays 15
 - T5 | S6, S8 | worker (context backstop) | slice 2: starts after the slice 1 commits 87a450b3, 122e4f86, c3341754 (T1, T3, T4) | commit: this commit (done); 164 problems to 0, rule: a leading `/` is an app route unless it starts at a top-level repository entry (review advisory R3, follow-up commit)
@@ -41,3 +41,5 @@ The scattered runbooks and deployment notes are item 4b (#282), not this documen
   - (d) become `<placeholder>` names.
   - (e) and (f) need a general extractor rule only when the class is unambiguous (for example a leading `/` is an app route, because instructions cite repository paths without one); otherwise they go into `NOT_IN_REPO` with a reason.
   - No basename lookup and no per-app bases.
+
+- L5 (user, 2026-11-07): "1) A, 2) tienes mi ok, 3) si, si es lo que recoemidnas, si hagamoslo." (A: update probe P1, which expected Supabase's default table grants that are now revoked, to expect `permission denied`, and cite the file. 2: push and PR. 3: delete the worker's scratch files in `/tmp`.) "CUndo termnes me dices que fue lo que se hizo en esta sesion y que cosas buenas va traer este cambio."

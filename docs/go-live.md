@@ -221,7 +221,7 @@ select cron.schedule(
 );
 ```
 
-`cron-watchdog-every-15-minutes` calls `cron-watchdog`, which reads `fn_cron_health()` and reports failed, overdue, or unsupported-schedule jobs to Sentry. In order: apply `supabase/migrations/20261021025844_cron_health.sql` (creates `fn_cron_health()`, service role only) and `supabase/migrations/20261026014010_cron_health_index_scan.sql` (reads `cron.job_run_details` by primary key; without it the read timed out on 86k rows), deploy `cron-watchdog`, and create the Vault secret `cron_watchdog_cron_secret` with the same value as the `CRON_SECRET` function secret (the function compares the `x-cron-secret` header against `CRON_SECRET`). Then run, in the SQL Editor:
+`cron-watchdog-every-15-minutes` calls `cron-watchdog`, which reads `fn_cron_health()` and reports failed, overdue, or unsupported-schedule jobs to Sentry. In order: apply `supabase/migrations/20261021025844_cron_health.sql` (creates `fn_cron_health()`, service role only) and `supabase/migrations/20261026014010_cron_health_index_scan.sql` (reads `cron.job_run_details` by primary key; without it the read timed out on 86k rows), deploy `cron-watchdog`, and create the Vault secret `cron_watchdog_cron_secret` with the same value as the `CRON_SECRET` function secret (the function compares the `x-cron-secret` header against `CRON_SECRET`). Before deploying a change to it, run `bun scripts/test-cron-health.ts` against the local stack (6 cases; every case rolls back). Then run, in the SQL Editor:
 
 ```sql
 select cron.schedule(
