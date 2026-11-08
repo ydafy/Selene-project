@@ -41,6 +41,7 @@
     "fix:frontend": "cd apps/frontend && bunx expo install --fix"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.64.1",
     "@sentry/deno": "11.8.0",
     "@types/bun": "^1.3.14",
@@ -53,6 +54,9 @@
     "eslint-plugin-check-file": "^3.3.2",
     "eslint-plugin-import-x": "^4.17.1",
     "eslint-plugin-prettier": "^5.5.7",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^17.13.0",
     "husky": "^9",
     "knip": "^6.44.1",
     "lint-staged": "^17.6.0",

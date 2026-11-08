@@ -79,4 +79,45 @@ describe('root ESLint config', () => {
     expect(result.exitCode).toBe(1);
     expect(result.ruleIds).toEqual(['import-x/no-restricted-paths']);
   }, 60_000);
+
+  for (const { cwd, prefix } of [
+    { cwd: '.', prefix: 'apps/admin-web/' },
+    { cwd: 'apps/admin-web', prefix: '' },
+  ]) {
+    test(`keeps the admin-web React hooks rules when run from ${cwd}`, async () => {
+      const result = await lintText(
+        cwd,
+        `${prefix}src/hooks/probe.ts`,
+        "import { useState } from 'react';\nexport function probe(flag: boolean) {\n  if (flag) useState(0);\n}\n",
+      );
+
+      expect(result.stderr).toBe('');
+      expect(result.exitCode).toBe(1);
+      expect(result.ruleIds).toEqual(['react-hooks/rules-of-hooks']);
+    }, 60_000);
+
+    test(`flags a non-kebab-case admin-web file outside the legacy folders when run from ${cwd}`, async () => {
+      const result = await lintText(
+        cwd,
+        `${prefix}src/shared/ui/StatusProbe.ts`,
+        'export const probe = 1;\n',
+      );
+
+      expect(result.stderr).toBe('');
+      expect(result.exitCode).toBe(1);
+      expect(result.ruleIds).toEqual(['check-file/filename-naming-convention']);
+    }, 60_000);
+
+    test(`allows a non-kebab-case admin-web file in a legacy folder when run from ${cwd}`, async () => {
+      const result = await lintText(
+        cwd,
+        `${prefix}src/components/ui/StatusProbe.ts`,
+        'export const probe = 1;\n',
+      );
+
+      expect(result.stderr).toBe('');
+      expect(result.exitCode).toBe(0);
+      expect(result.ruleIds).toEqual([]);
+    }, 60_000);
+  }
 });

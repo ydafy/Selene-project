@@ -1,6 +1,10 @@
 const tseslint = require('@typescript-eslint/eslint-plugin');
 const tsParser = require('@typescript-eslint/parser');
 const prettierConfig = require('eslint-config-prettier');
+const js = require('@eslint/js');
+const globals = require('globals');
+const reactHooks = require('eslint-plugin-react-hooks');
+const { reactRefresh } = require('eslint-plugin-react-refresh');
 const { existsSync, readdirSync } = require('node:fs');
 const { join } = require('node:path');
 const importX = require('eslint-plugin-import-x');
@@ -14,6 +18,21 @@ const {
 // repository-relative and resolved from this file's directory (`basePath`),
 // so ESLint gives the same result when run from an app directory.
 const FRONTEND_SRC = 'apps/frontend/src';
+const ADMIN_WEB_SRC = 'apps/admin-web/src';
+const ADMIN_WEB_FILES = ['apps/admin-web/**/*.{ts,tsx}'];
+// Type-first folders admin-web is leaving for app/, features/ and shared/
+// (#221). Their files keep their old names until they move; remove an entry
+// when its folder is empty.
+const ADMIN_WEB_LEGACY = [
+  `${ADMIN_WEB_SRC}/App.tsx`,
+  `${ADMIN_WEB_SRC}/components/**`,
+  `${ADMIN_WEB_SRC}/hooks/**`,
+  `${ADMIN_WEB_SRC}/lib/**`,
+  `${ADMIN_WEB_SRC}/pages/**`,
+  `${ADMIN_WEB_SRC}/services/**`,
+  `${ADMIN_WEB_SRC}/store/**`,
+  `${ADMIN_WEB_SRC}/types/**`,
+];
 const FIX =
   'Compose it in the route (app/) or move the shared piece to shared/. See docs/conventions.md.';
 
@@ -62,6 +81,16 @@ module.exports = [
     ],
   },
   {
+    // admin-web also runs the core JavaScript rules, minus the ones TypeScript
+    // already checks (no-undef and others), as its own config did before #221.
+    files: ADMIN_WEB_FILES,
+    languageOptions: { globals: globals.browser },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...tseslint.configs['flat/eslint-recommended'].rules,
+    },
+  },
+  {
     // Configuración para archivos TypeScript/JavaScript
     files: ['**/*.{js,jsx,ts,tsx}'],
     languageOptions: {
@@ -80,6 +109,8 @@ module.exports = [
       'prettier/prettier': 'off',
     },
   },
+  { ...reactHooks.configs.flat.recommended, files: ADMIN_WEB_FILES },
+  { ...reactRefresh.configs.vite(), files: ADMIN_WEB_FILES },
   {
     // Dependency rule between shared/, features/ and app/ (see dependencyZones).
     files: [`${FRONTEND_SRC}/**/*.{ts,tsx}`],
@@ -97,6 +128,40 @@ module.exports = [
       'import-x/no-restricted-paths': [
         'error',
         { zones: dependencyZones(FRONTEND_SRC), basePath: __dirname },
+      ],
+    },
+  },
+  {
+    files: [`${ADMIN_WEB_SRC}/**/*.{ts,tsx}`],
+    plugins: {
+      'import-x': importX,
+    },
+    settings: {
+      'import-x/resolver-next': [
+        createTypeScriptImportResolver({
+          project: join(__dirname, 'apps/admin-web/tsconfig.app.json'),
+        }),
+      ],
+    },
+    rules: {
+      'import-x/no-restricted-paths': [
+        'error',
+        { zones: dependencyZones(ADMIN_WEB_SRC), basePath: __dirname },
+      ],
+    },
+  },
+  {
+    // admin-web file names follow the same rule, outside the legacy folders.
+    files: [`${ADMIN_WEB_SRC}/**/*.{ts,tsx}`],
+    ignores: ADMIN_WEB_LEGACY,
+    plugins: {
+      'check-file': checkFile,
+    },
+    rules: {
+      'check-file/filename-naming-convention': [
+        'error',
+        { '**/*.{ts,tsx}': 'KEBAB_CASE' },
+        { ignoreMiddleExtensions: true },
       ],
     },
   },
@@ -119,8 +184,11 @@ module.exports = [
   {
     // Size warning (#135): a file past 400 lines of code mixes concerns and is
     // hard to review. Tests are excluded; long test files are a list of cases.
-    files: [`${FRONTEND_SRC}/**/*.{js,jsx,ts,tsx}`],
-    ignores: [`${FRONTEND_SRC}/**/*.test.{ts,tsx}`],
+    files: [
+      `${FRONTEND_SRC}/**/*.{js,jsx,ts,tsx}`,
+      `${ADMIN_WEB_SRC}/**/*.{ts,tsx}`,
+    ],
+    ignores: ['**/*.test.{ts,tsx}'],
     rules: {
       'max-lines': [
         'warn',

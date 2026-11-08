@@ -8,6 +8,7 @@
         "@supabase/supabase-js": "^2.107.0",
       },
       "devDependencies": {
+        "@eslint/js": "^10.0.1",
         "@playwright/test": "^1.64.1",
         "@sentry/deno": "11.8.0",
         "@types/bun": "^1.3.14",
@@ -20,6 +21,9 @@
         "eslint-plugin-check-file": "^3.3.2",
         "eslint-plugin-import-x": "^4.17.1",
         "eslint-plugin-prettier": "^5.5.7",
+        "eslint-plugin-react-hooks": "^7.0.1",
+        "eslint-plugin-react-refresh": "^0.5.7",
+        "globals": "^17.13.0",
         "husky": "^9",
         "knip": "^6.44.1",
         "lint-staged": "^17.6.0",
@@ -47,20 +51,14 @@
         "zustand": "^5.0.11",
       },
       "devDependencies": {
-        "@eslint/js": "^10.0.1",
         "@types/node": "^24.19.2",
         "@types/react": "^19.3.0",
         "@types/react-dom": "^19.2.3",
         "@vitejs/plugin-react": "^6.1.2",
         "autoprefixer": "^10.6.2",
-        "eslint": "^10.13.0",
-        "eslint-plugin-react-hooks": "^7.0.1",
-        "eslint-plugin-react-refresh": "^0.5.7",
-        "globals": "^17.13.0",
         "postcss": "^8.5.32",
         "tailwindcss": "^4.2.1",
         "typescript": "~6.0.3",
-        "typescript-eslint": "^8.72.1",
         "vite": "^8.3.5",
       },
     },
@@ -1724,8 +1722,6 @@
     "type-fest": ["type-fest@0.7.1", "", {}, "sha512-Ne2YiiGN8bmrmJJEuTWTLJR32nh/JdL1+PSicowtNb0WFpn59GK8/lfD61bVtzguz7b3PBt74nxpv/Pw5po5Rg=="],
 
     "typescript": ["typescript@6.0.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
-
-    "typescript-eslint": ["typescript-eslint@8.72.1", "", { "dependencies": { "@typescript-eslint/eslint-plugin": "8.72.1", "@typescript-eslint/parser": "8.72.1", "@typescript-eslint/typescript-estree": "8.72.1", "@typescript-eslint/utils": "8.72.1" }, "peerDependencies": { "eslint": "^8.57.0 || ^9.0.0 || ^10.0.0", "typescript": ">=4.8.4 <6.1.0" } }, "sha512-3Li9FfPmQp45nxEtFD1ZCrYFI3cYK5kpyNtmm1H7lMagm8u9sy6PTjy3ytwQZs7KNukOyKFHAZ6z6GjYFeaeXw=="],
 
     "ua-parser-js": ["ua-parser-js@1.0.41", "", { "bin": { "ua-parser-js": "script/cli.js" } }, "sha512-LbBDqdIC5s8iROCUjMbW1f5dJQTEFB1+KO9ogbvlb3nm9n4YHa5p4KTvFPWvh2Hs8gZMBuiB1/8+pdfe/tDPug=="],
 
