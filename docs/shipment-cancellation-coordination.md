@@ -45,10 +45,10 @@ Tracker: `odd/tasks/shipment-cancellations-b5.md` (specs S1–S8, Log L1–L27).
 
 The four migrations were applied in this order on 2026-10-27 and the types regenerated (`3dbe98d`):
 
-1. `20261027020000_shipment_cancellation_summary.sql`
-2. `20261027030000_drop_fn_cancel_order.sql`
-3. `20261027040000_shipment_tracking_during_cancellation.sql`
-4. `20261027050000_shipment_late_carrier_activity_acknowledge.sql`
+1. `supabase/migrations/20261027020000_shipment_cancellation_summary.sql`
+2. `supabase/migrations/20261027030000_drop_fn_cancel_order.sql`
+3. `supabase/migrations/20261027040000_shipment_tracking_during_cancellation.sql`
+4. `supabase/migrations/20261027050000_shipment_late_carrier_activity_acknowledge.sql`
 
 Deploy these Edge Functions from this branch (or from `main` after it merges), all at once:
 
@@ -61,9 +61,9 @@ Release the mobile app (B5.1 to B5.6) together with the B5.2 functions: the app 
 ### B5 evidence
 
 - B5.1: 39 mapping tests; full `bun test` 3832/0.
-- B5.2: 16 tests including the source scan `auth-required-contract.test.ts`; Bruno 255/255 at that point.
+- B5.2: 16 tests including the source scan `supabase/functions/_shared/__tests__/auth-required-contract.test.ts`; Bruno 255/255 at that point.
 - B5.5: SQL-text tests 4/4; harness `scripts/test-shipment-cancellation-summary.ts` 11/11 (buyer, seller, other user, anon, service role, co-seller, each state); 25 Bruno requests.
-- B5.7: SQL-text test `drop_fn_cancel_order.test.ts` 6 tests; Bruno 275/275 from a fresh reset.
+- B5.7: SQL-text test `supabase/migrations/__tests__/drop_fn_cancel_order.test.ts` 6 tests; Bruno 275/275 from a fresh reset.
 - B5.8: harness `scripts/test-shipment-tracking-during-cancellation.ts` 17/0; TLC on `docs/formal/shipment-transfer-cancellation/`: the faithful configuration finds no error (1,321,384 states, 505,816 distinct, depth 29) and the broken variant `G_ProgressOp=FALSE` violates `RefundStartedStaysOpen` and `RefundStartedOnlyCancels`. Bruno 282/282.
 - B5.8b: Edge tests 40/0 and 28/0; SQL-text 6/6; harness 27/0; admin-web 266/0; Bruno 292/292 after a fresh reset; `deno check` on four functions clean; `bun test` 3954/0; Playwright `test:e2e` 16/16 and `test:e2e:local` 3/3.
 - B5.6: mapping and wiring tests; `bun test` 3965/0.
@@ -85,7 +85,7 @@ Tracker: `odd/tasks/shipment-cancellations-b4.md` (specs S1–S9, Log L1–L40).
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | B4.1          | `auto-cancel-orders` only selects paid shipments whose label state is `unclaimed` or `retryable_rejected`; shipments blocked by a label operation (`orphan_pending`, in-flight claims) are reported once per run in a WARN instead of being retried forever (FU2).                                                                                                                                                                                                                                            |
 | B4.2          | The cancellation operation records the carrier answer (`accepted`, `refused`, `ambiguous`), whether the label money came back, and `label_cost_loss_cents` computed in SQL, separate from the Stripe fee loss. `fn_start_shipment_cancellation_refund` refuses a `preparing_timeout` refund without an accepted carrier cancellation (`CARRIER_CANCELLATION_NOT_CONFIRMED`).                                                                                                                                  |
-| B4.3 / B4.5b  | `_shared/envia-carrier-cancellation.ts` reads fresh tracking (`scanned`, `unscanned`, `unknown`, `unavailable`) and classifies `POST /ship/cancel/`. Envia's real accepted answer is `data` as a one-element list and `balanceReturned` as a number (`1`), not the documented object and boolean; both forms are accepted. Each classification logs only the response shape (key and type names).                                                                                                             |
+| B4.3 / B4.5b  | `supabase/functions/_shared/envia-carrier-cancellation.ts` reads fresh tracking (`scanned`, `unscanned`, `unknown`, `unavailable`) and classifies `POST /ship/cancel/`. Envia's real accepted answer is `data` as a one-element list and `balanceReturned` as a number (`1`), not the documented object and boolean; both forms are accepted. Each classification logs only the response shape (key and type names).                                                                                          |
 | B4.4a         | A review marker (`tracking_unknown`, `carrier_refused`, `carrier_ambiguous`), a final admin resolution (`refund_approved` or `closed_no_refund`, required note) and a pending-review list. Claims on a shipment under review or closed without refund are refused before any token rotation. An admin approval moves no money; the next preparing run refunds.                                                                                                                                                |
 | B4.4b         | `auto-cancel-preparing` asks the carrier before any refund: stored `accepted` or admin approval continues without calling Envia; otherwise a scan lets tracking advance the shipment (no refund), an unscanned label is cancelled with Envia, and only `accepted` continues. Refused without a scan, ambiguous answers and unclear tracking go to review with one CRITICAL alert. A preparing claim re-owns an expired pre-start operation left by another source. Tracking never moves a cancelled shipment. |
 | B4.4c / B4.4d | Admin functions `list-shipment-operation-reviews` and `resolve-shipment-operation-review` (same admin check as the refund pair) and the admin-web "Envíos" section, built as buckets so later shipping queues are one component each.                                                                                                                                                                                                                                                                         |
@@ -136,7 +136,7 @@ Tracker: `odd/tasks/shipment-cancellations-b2.md` (specs S1–S8, Log L1–L45).
 
 - Live Stripe sandbox + local stack through the real `cancel-order`: `pm_card_pendingRefund` (409 `CANCELLATION_REFUND_UNCONFIRMED`, then `refund.updated` completes) and `pm_card_refundFail` (cancelled, `refund.failed`, listed in the bucket, resolved, replay `unchanged`). One refund per PaymentIntent in Stripe.
 - Local-stack Playwright E2E of the admin bucket: `bun run test:e2e:local` (`e2e/admin-web-local/`).
-- Randomized cumulative-cancellation probe (`_shared/refund-basis.probes.test.ts`): no order stranded; the previous rounding stranded about 10% of random multi-shipment orders.
+- Randomized cumulative-cancellation probe (`supabase/functions/_shared/refund-basis.probes.test.ts`): no order stranded; the previous rounding stranded about 10% of random multi-shipment orders.
 - Native reviews approved for every high-risk commit; independent verification for every money change.
 
 ### Remaining limits
@@ -179,12 +179,12 @@ Local checkpoints: label SQL `bb759c2`, transfer SQL `23bacdd` (native review ap
 
 Edge Functions changed on this branch (deployed to sandbox):
 
-| Function                 | Change                                   | Shared imports                                          |
-| ------------------------ | ---------------------------------------- | ------------------------------------------------------- |
-| `cancel-order`           | B1.2 manual cancellation reservation     | `_shared/shipment-cancellation.ts`                      |
-| `auto-cancel-orders`     | B1.2 paid-timeout reservation            | `_shared/shipment-cancellation.ts`                      |
-| `auto-cancel-preparing`  | B1.2 preparing-timeout reservation       | `_shared/shipment-cancellation.ts`                      |
-| `release-connect-payout` | B1.3 transfer begin/complete arbitration | `release-connect-payout.ts`, `atomic-resume-adapter.ts` |
+| Function                 | Change                                   | Shared imports                                                                                                                              |
+| ------------------------ | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cancel-order`           | B1.2 manual cancellation reservation     | `supabase/functions/_shared/shipment-cancellation.ts`                                                                                       |
+| `auto-cancel-orders`     | B1.2 paid-timeout reservation            | `supabase/functions/_shared/shipment-cancellation.ts`                                                                                       |
+| `auto-cancel-preparing`  | B1.2 preparing-timeout reservation       | `supabase/functions/_shared/shipment-cancellation.ts`                                                                                       |
+| `release-connect-payout` | B1.3 transfer begin/complete arbitration | `supabase/functions/release-connect-payout/release-connect-payout.ts`, `supabase/functions/release-connect-payout/atomic-resume-adapter.ts` |
 
 `generate-shipping-label` is unchanged; label exclusion lives entirely in the applied SQL. No SQL replay, new secrets, cron schedules or webhooks are required. Deploy the four functions together in a quiet window: pause or let finish all cancellation crons and release invocations first, deploy, then resume. Mixed old/new callers are not covered by these guarantees.
 
@@ -212,7 +212,7 @@ The required offline endpoint Deno check failed on uncached `https://deno.land/s
 
 ### Deployment sources and caller drain — maintainer action only
 
-No new SQL or type generation is required: `20261017233608_shipment_transfer_coordination.sql` and its prerequisite migrations are already maintainer-confirmed applied. Do not replay them. Future deployment source for this unit is `supabase/functions/release-connect-payout/index.ts`, importing `release-connect-payout.ts` and the unchanged `atomic-resume-adapter.ts`. Existing cancellation sources `cancel-order`, `auto-cancel-orders` and `auto-cancel-preparing` must be deployed in the same window with their shared dependencies. `generate-shipping-label` is unchanged and needs no deployment. No deployment has been performed here.
+No new SQL or type generation is required: `supabase/migrations/archive/20261017233608_shipment_transfer_coordination.sql` and its prerequisite migrations are already maintainer-confirmed applied. Do not replay them. Future deployment source for this unit is `supabase/functions/release-connect-payout/index.ts`, importing `supabase/functions/release-connect-payout/release-connect-payout.ts` and the unchanged `supabase/functions/release-connect-payout/atomic-resume-adapter.ts`. Existing cancellation sources `cancel-order`, `auto-cancel-orders` and `auto-cancel-preparing` must be deployed in the same window with their shared dependencies. `generate-shipping-label` is unchanged and needs no deployment. No deployment has been performed here.
 
 Before rollout, separately pause/drain all old release and cancellation invocations, including jobs and any old in-flight provider attempts. Old release writers lack the start marker and old cancellation callers may bypass claims. Inspect unresolved historical runs before resumption: absence of the marker is not evidence of no old provider effect. Drain old callers before enabling the coordinated callers; do not claim mixed-version safety. No new secrets, cron schedules or webhooks are required. After separately authorized deployment, verify service-role begin/complete permissions, old-caller drain, loser/no-provider behavior and normal/stored-ID/legacy releases with disposable controlled fixtures. Remote inspection, provider operations, deployment and resumption require maintainer authorization and are not performed by these local tests.
 
@@ -244,11 +244,11 @@ A confirmed committed begin response is the ONLY authority for one Transfer call
 
 ### Maintainer SQL/type gate — confirmed complete, not deployment approval
 
-1. Prerequisites: already applied current payout release/read-model, actionability, stage/executor and `20261008090000_atomic_payout_resume_mapping.sql`; B1.1/B1.2 cancellation SQL and the separately confirmed label coordination migration. Do not replay those migrations or canonical body copies.
-2. After independent verification and separate maintainer acceptance, apply **only** `supabase/migrations/20261017233608_shipment_transfer_coordination.sql`. Its full canonical reference `supabase/queries/payments/shipment_transfer_coordination.sql` is identical, not a second script to execute. No backfill guesses old provider outcomes.
+1. Prerequisites: already applied current payout release/read-model, actionability, stage/executor and `supabase/migrations/archive/20261008090000_atomic_payout_resume_mapping.sql`; B1.1/B1.2 cancellation SQL and the separately confirmed label coordination migration. Do not replay those migrations or canonical body copies.
+2. After independent verification and separate maintainer acceptance, apply **only** `supabase/migrations/archive/20261017233608_shipment_transfer_coordination.sql`. Its full canonical reference `supabase/queries/payments/shipment_transfer_coordination.sql` is identical, not a second script to execute. No backfill guesses old provider outcomes.
 3. Confirm remote SQL application before `bun db:types`. Expected generated shape: the two nullable mapping columns in Row/Insert/Update, begin Args `{p_run_id, p_shipment_id, p_expected_stage_version}` returning `Json`, complete Args adding `{p_transfer_token, p_stripe_transfer_id}` returning `boolean`. UUIDs are strings, version is number. Existing cancellation signatures do not change. No generated types are edited or regenerated in T0.
 4. Verify deployed grants/search paths, paired columns/index and unchanged cancellation RLS/private-start denial. Remote runtime checks require separate authorization and disposable fixtures. T0 neither applies SQL remotely nor proves the remote schema.
-5. Only after this gate may B1.3-T change `supabase/functions/release-connect-payout/release-connect-payout.ts`, `index.ts`, and focused adjacent tests/adapters as separately scoped. Required adapter tests: real SQL/fake-provider race and loser effects; response/malformed-envelope refusal; stopped progression on false/uncertain completion; transfer error/DB ambiguity without retries; current-run snapshot ownership; exact Stripe params/key/allocation; stored-reference reuse, failed-child transfer reuse, legacy no-transfer branch; unchanged request/status/log contracts and account-actionability gates.
+5. Only after this gate may B1.3-T change `supabase/functions/release-connect-payout/release-connect-payout.ts`, `supabase/functions/release-connect-payout/index.ts`, and focused adjacent tests/adapters as separately scoped. Required adapter tests: real SQL/fake-provider race and loser effects; response/malformed-envelope refusal; stopped progression on false/uncertain completion; transfer error/DB ambiguity without retries; current-run snapshot ownership; exact Stripe params/key/allocation; stored-reference reuse, failed-child transfer reuse, legacy no-transfer branch; unchanged request/status/log contracts and account-actionability gates.
 6. No Edge source is changed or deployed here. Future affected deployable function is `release-connect-payout`, alongside already-undeployed `cancel-order`, `auto-cancel-orders`, `auto-cancel-preparing` and label participation. Coordinate a quiet rollout and drain **all old release/cancellation invocations** before enabling the coordinated callers: old transfer writers do not mark starts, and old cancellation callers may bypass claims. Inspect unresolved old runs/provider attempts before any resumption; absence of the new marker is not proof of no historical effect. Pausing jobs, remote inspection/configuration and deployment require separate maintainer action. No new secrets, webhook or cron configuration is introduced by T0. SQL alone does not establish symmetric deployed safety.
 
 ### Local verification and limitations
@@ -280,7 +280,7 @@ The maintainer confirmed application of the B1.3 label migration and type regene
 ### Maintainer deployment gate (confirmed complete)
 
 1. Already confirmed B1.1/B1.2 SQL must be present, along with the latest address-origin and label-rate migrations. Do not replay historical migrations.
-2. After separate approval, manually apply **only** `supabase/migrations/20261017063755_shipment_cancellation_label_coordination.sql`. The two files in `supabase/queries/shipments/` are BODY-ONLY reference copies, not standalone deployment scripts; do not apply them again.
+2. After separate approval, manually apply **only** `supabase/migrations/archive/20261017063755_shipment_cancellation_label_coordination.sql`. The two files in `supabase/queries/shipments/` are BODY-ONLY reference copies, not standalone deployment scripts; do not apply them again.
 3. Report SQL application before any `bun db:types`. No table, column, argument or return signature changes, so no new generated API shape is expected. Preserve the repository's post-application type synchronization gate; no types were regenerated here.
 4. Check the three-argument claim signature, both service-only grants (no PUBLIC/anon/authenticated execution), search paths and cancellation RLS/direct-write denial. Use separately authorized disposable fixtures for remote runtime checks.
 5. This SQL unit requires no Edge deployment, new secrets, cron or webhook configuration. Existing undeployed B1.2 cancellation function sources and future transfer coordination remain separate rollout gates; do not advertise symmetric deployed safety with old cancellation callers still active.
@@ -299,8 +299,8 @@ The maintainer confirmed both B1.1 and B1.2 SQL application and regenerated type
 
 ### SQL/type gate (maintainer confirmed complete)
 
-1. B1.1 `20261016011954_shipment_cancellation_coordination.sql` must already be applied; do not replay it.
-2. B1.2 `supabase/migrations/20261016051001_shipment_cancellation_refund_request.sql` was subsequently applied. Do not replay it or its identical canonical reference copy `supabase/queries/orders/shipment_cancellation_refund_request.sql`.
+1. B1.1 `supabase/migrations/archive/20261016011954_shipment_cancellation_coordination.sql` must already be applied; do not replay it.
+2. B1.2 `supabase/migrations/archive/20261016051001_shipment_cancellation_refund_request.sql` was subsequently applied. Do not replay it or its identical canonical reference copy `supabase/queries/orders/shipment_cancellation_refund_request.sql`.
 3. Confirm application before regenerating types with `bun db:types`. Check `refund_request`, `cancellation_loss_cents`, and `fn_start_shipment_cancellation_refund` (shipment UUID, token UUID, request JSONB, optional loss BIGINT; result JSON).
 4. Verify RLS/direct-table denial remains intact, the new RPC grants execution only to `service_role`, and `service_role` no longer has direct execution of bare `fn_start_shipment_cancellation`. Remote runtime probes require separately authorized disposable fixtures.
 5. No Edge Functions, secrets, cron jobs or webhooks were deployed/changed in this SQL step. After the satisfied SQL/type gate, B1.2 integrates `cancel-order`, `auto-cancel-orders` and `auto-cancel-preparing` in the repository. Their deployment remains a separate maintainer action.
@@ -359,7 +359,7 @@ The helper's deterministic tests cover callback order/effects and response valid
 
 ### Future Edge deployment handoff (not authorized here)
 
-After repository verification and maintainer acceptance, affected deployment sources are `cancel-order`, `auto-cancel-orders`, and `auto-cancel-preparing` plus their imported `_shared/shipment-cancellation.ts` and existing shared dependencies. No new migration beyond the two already confirmed, new secrets, cron schedules or webhooks are required by the adapter integration.
+After repository verification and maintainer acceptance, affected deployment sources are `cancel-order`, `auto-cancel-orders`, and `auto-cancel-preparing` plus their imported `supabase/functions/_shared/shipment-cancellation.ts` and existing shared dependencies. No new migration beyond the two already confirmed, new secrets, cron schedules or webhooks are required by the adapter integration.
 
 Coordinate a quiet deployment window and let old cancellation invocations finish before enabling all updated paths: old cron versions used different idempotency keys and did not participate in this reservation. Do not mix old/new active callers and call that safe. Pausing jobs/configuration or deploying functions requires separate maintainer action/authorization; the agent does neither automatically. Label SQL now joins this lock in repository preparation only (B1.3-A above); transfer writers still do not, durable refund recovery remains B2, and preparing carrier policy remains B4. This is not full-module or production safety certification.
 
@@ -419,7 +419,7 @@ Plain `bun test` runs only offline CLI/mirror checks and does not require Docker
 
 Repository verification does not establish remote deployment. No remote operation is authorized by this document.
 
-1. When separately approved, apply **only** `supabase/migrations/20261016011954_shipment_cancellation_coordination.sql`. `supabase/queries/orders/shipment_cancellation_coordination.sql` is an identical canonical copy, **not a second script to run**. This additive migration is intended to run once; use normal migration bookkeeping rather than replaying its table creation.
+1. When separately approved, apply **only** `supabase/migrations/archive/20261016011954_shipment_cancellation_coordination.sql`. `supabase/queries/orders/shipment_cancellation_coordination.sql` is an identical canonical copy, **not a second script to run**. This additive migration is intended to run once; use normal migration bookkeeping rather than replaying its table creation.
 2. No Edge Functions, new secrets, cron jobs or webhooks need deployment for B1.1. Do not switch any existing handler to these RPCs yet.
 3. After the maintainer confirms SQL was applied, run `bun db:types`. Verify the new table and both RPC signatures are generated. Do not hand-edit types or claim the current generated types include these undeployed objects.
 4. Inspect the deployed table's RLS, function grants/search paths and signatures. Any remote runtime checks require separately authorized disposable fixtures. Preserve the old handler behavior until the next scoped integration.

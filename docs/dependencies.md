@@ -40,7 +40,7 @@ Each runtime has one source of truth:
 
 The weekly report's **Runtimes** section applies these rules. It flags a newer patch of the pinned Node line (and says when it is a security release), a line that ends within six months, a new LTS line once it is about three months old, and a new Bun release once it is 3 days old.
 
-CI reads Bun from `packageManager` through `oven-sh/setup-bun`. The dependency report workflow reads Node from `.nvmrc`. EAS Build reads neither, so `scripts/runtime-versions.test.ts` fails when an `eas.json` profile disagrees.
+CI reads Bun from `packageManager` through `oven-sh/setup-bun`. The dependency report workflow reads Node from `.nvmrc`. EAS Build reads neither, so `scripts/runtime-versions.test.ts` fails when an `apps/frontend/eas.json` profile disagrees.
 
 Follow these rules:
 
@@ -49,7 +49,7 @@ Follow these rules:
 
 To change a runtime version:
 
-1. Change the source of truth and every `eas.json` profile in the same commit. Run `bun test scripts/runtime-versions.test.ts`.
+1. Change the source of truth and every `apps/frontend/eas.json` profile in the same commit. Run `bun test scripts/runtime-versions.test.ts`.
 2. Switch your local runtime. For Node with nvm-windows, which does not read `.nvmrc`, run `nvm install <version>`, then `nvm use <version>`. For Bun, run `bun upgrade`, or `bun upgrade --version <version>` for an exact one.
 3. Run the checks in "Update without breaking things", then a development EAS build.
 
@@ -74,7 +74,7 @@ To change an action version:
    gh api repos/<owner>/<action>/commits/<tag> --jq .sha
    ```
 
-3. Replace the SHA and the comment in every workflow that uses the action, and run `bun test scripts/workflow-actions.test.ts`. CI on the pull request runs `ci.yml`. Start `dependency-audit.yml` on the branch with `gh workflow run dependency-audit.yml --ref <branch>`. `dependency-report.yml` also edits the report issue, and `issue-labels.yml` runs only from `main`, so check those two after the merge.
+3. Replace the SHA and the comment in every workflow that uses the action, and run `bun test scripts/workflow-actions.test.ts`. CI on the pull request runs `.github/workflows/ci.yml`. Start `.github/workflows/dependency-audit.yml` on the branch with `gh workflow run dependency-audit.yml --ref <branch>`. `.github/workflows/dependency-report.yml` also edits the report issue, and `.github/workflows/issue-labels.yml` runs only from `main`, so check those two after the merge.
 
 ## Move Expo-pinned packages only with Expo
 

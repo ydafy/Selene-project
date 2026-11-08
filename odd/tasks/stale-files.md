@@ -17,11 +17,11 @@ The scattered runbooks and deployment notes are item 4b (#282), not this documen
 
 ## Tasks
 
-- T1 | S1-S2 | inline | commit: this commit (done)
+- T1 | S1-S2 | inline | commit: 87a450b3 (done)
 - T2 | S3 | inline | needs Docker | commit: pending
-- T3 | S4, S7 | inline | commit: this commit (done)
-- T4 | S5, S7 | inline | commit: this commit (done); the test reads nothing itself (the module does), so the `scripts` count stays 15
-- T5 | S6, S8 | inline | commit: pending
+- T3 | S4, S7 | inline | commit: 122e4f86 (done)
+- T4 | S5, S7 | inline | commit: c3341754 (done); the test reads nothing itself (the module does), so the `scripts` count stays 15
+- T5 | S6, S8 | worker (context backstop) | slice 2: starts after the slice 1 commits 87a450b3, 122e4f86, c3341754 (T1, T3, T4) | commit: this commit (done); 164 problems to 0, rule: a leading `/` is an app route
 
 ## Log
 

@@ -521,14 +521,14 @@ WHERE seller_id = v_seller_id;
 ### auto-cancel-orders
 
 - Cancels shipments where no tracking label was created within `order_expiration_hours` (default 48h)
-- Uses shared `computeShipmentRefundAmountCents` from `_shared/refund-basis.ts` for buyer-paid refund amount
+- Uses shared `computeShipmentRefundAmountCents` from `supabase/functions/_shared/refund-basis.ts` for buyer-paid refund amount
 - Refund excludes seller-paid shipping; caps against actual charge when available
 - Calls `fn_cancel_shipment(p_shipment_id, 'system', ...)` via service-role client for atomic rollback
 
 ### auto-cancel-preparing
 
 - Cancels shipments in `preparing` without carrier scan after `preparing_expiration_hours` (default 72h)
-- Uses shared `computeShipmentRefundAmountCents` from `_shared/refund-basis.ts` for buyer-paid refund amount
+- Uses shared `computeShipmentRefundAmountCents` from `supabase/functions/_shared/refund-basis.ts` for buyer-paid refund amount
 - Refund excludes seller-paid shipping; caps against actual charge when available
 - Calls `fn_cancel_shipment(p_shipment_id, 'system', ...)` via service-role client for atomic rollback
 
@@ -615,7 +615,7 @@ export interface EnrichedShipment extends Tables<'shipments'> {
 
 1. **Edge Functions**: `supabase functions deploy <name>` to previous version. Old paths untouched.
 2. **SQL**: Old functions kept as fallback for pre-migration disputes. Cron references updated point-by-point.
-3. **Frontend**: `summary/[id]` is additive. Old `orders/[id]` unchanged. `useShipments` returns empty for no shipments.
+3. **Frontend**: `/profile/orders/summary/[id]` is additive. Old `/profile/orders/[id]` unchanged. `useShipments` returns empty for no shipments.
 4. **Column drop**: Columns preserved in `shipments` (backfilled). Can be re-added from backup before Fase 9.3.
 
 ---
@@ -637,5 +637,5 @@ export interface EnrichedShipment extends Tables<'shipments'> {
 - [x] Shipments RLS restricts reads to buyer/seller/admin
 - [x] No `fn_confirm_return_receipt` references remain in codebase
 - [x] `tracking_number`, `label_url` columns dropped from `orders`
-- [x] `return_shipped` dead code removed from `useOrders.ts`
-- [x] `confirmReturnReceipt` dead mutation removed from `useOrderActions.ts`
+- [x] `return_shipped` dead code removed from `apps/frontend/src/features/orders/hooks/use-orders.ts`
+- [x] `confirmReturnReceipt` dead mutation removed from `apps/frontend/src/features/orders/hooks/use-order-actions.ts`

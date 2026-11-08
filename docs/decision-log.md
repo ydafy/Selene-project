@@ -79,7 +79,7 @@ bunx: command not found
 
 - Avoid running Husky in CI.
 
-- Align local environment with `eas.json`.
+- Align local environment with `apps/frontend/eas.json`.
 
 --
 **Result**
@@ -178,14 +178,14 @@ It is established as the standard procedure for structural inconsistencies.
 
 ## 2026-10-20: Bun 1.4.2 Everywhere, Pinned in package.json
 
-**Context:** The 2026-01-27 decision pinned Bun `1.3.11` in `eas.json` and asked to keep the local environment aligned with it. Local development and CI had since moved to Bun `1.4.2`, which also wrote `bun.lock`, so EAS was the only place still on `1.3.11`.
+**Context:** The 2026-01-27 decision pinned Bun `1.3.11` in `apps/frontend/eas.json` and asked to keep the local environment aligned with it. Local development and CI had since moved to Bun `1.4.2`, which also wrote `bun.lock`, so EAS was the only place still on `1.3.11`.
 
 **Decision:**
 
 - Bun `1.4.2` is the single version: `packageManager` in the root `package.json` is the source of truth.
 - CI (`oven-sh/setup-bun`) reads it from `package.json`; every `apps/frontend/eas.json` build profile sets `bun` and `node` explicitly.
 - Node stays at `22.13.1` for EAS.
-- When bumping Bun, change `packageManager` and the `eas.json` profiles in the same commit, then run a development EAS build.
+- When bumping Bun, change `packageManager` and the `apps/frontend/eas.json` profiles in the same commit, then run a development EAS build.
 
 **Deno:** Edge Functions do not run on the local Deno CLI. `supabase functions serve` and deploys use the Supabase Edge Runtime, whose Deno major is declared in `supabase/config.toml` (`[edge_runtime] deno_version`). The local Deno CLI only serves the editor (LSP) and `deno check`, so its exact version is not pinned. On 2026-10-20 the runtime reported "supabase-edge-runtime-0.1.0 (compatible with Deno v2.1.4)" while the local CLI was 2.6.6: a local `deno check` can accept APIs the runtime lacks, so `supabase functions serve` is the real check.
 
@@ -201,7 +201,7 @@ It is established as the standard procedure for structural inconsistencies.
 
 ## 2026-10-31: Node 24 LTS and Bun 1.4.4, Each With One Source of Truth
 
-**Context:** Node `22.13.1` came from the 2026-01-27 decision. Its problem was misalignment: local Bun differed from EAS Bun. The fix was a fixed version written in `eas.json`. Nothing tracked the pins afterwards. On 2026-10-31 EAS still built with Node `22.13.1` (January 2025, many security releases behind), local Node was `22.19.0`, and the repository had no Node file at all. `lint-staged` 17 needs Node `>=22.22.1`, so the stale pin started to block updates. Roadmap item #156, `odd/tasks/runtime-versions.md`.
+**Context:** Node `22.13.1` came from the 2026-01-27 decision. Its problem was misalignment: local Bun differed from EAS Bun. The fix was a fixed version written in `apps/frontend/eas.json`. Nothing tracked the pins afterwards. On 2026-10-31 EAS still built with Node `22.13.1` (January 2025, many security releases behind), local Node was `22.19.0`, and the repository had no Node file at all. `lint-staged` 17 needs Node `>=22.22.1`, so the stale pin started to block updates. Roadmap item #156, `odd/tasks/runtime-versions.md`.
 
 **Decision:**
 

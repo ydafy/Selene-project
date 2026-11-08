@@ -54,6 +54,17 @@ describe('agent instruction references (probes)', () => {
     ]);
   });
 
+  it('reports a path cited in a docs subfolder that does not exist', () => {
+    expect(
+      check(
+        'docs/formal/x/README.md',
+        'See `docs/go-live.md` and `supabase/missing.sql`.',
+      ),
+    ).toEqual([
+      'docs/formal/x/README.md: path `supabase/missing.sql` does not exist',
+    ]);
+  });
+
   it('reports a cited script that no package.json defines', () => {
     expect(check('AGENTS.md', 'Run `bun run fake:script`.')).toEqual([
       'AGENTS.md: script `fake:script` is not in the root package.json',
@@ -106,6 +117,12 @@ describe('agent instruction references (probes)', () => {
     expect(
       check('AGENTS.md', '`deno check docs/nope.ts` and `gh api repos/x/y`'),
     ).toEqual(['AGENTS.md: path `docs/nope.ts` does not exist']);
+  });
+
+  it('skips an app route, which starts with a slash', () => {
+    expect(extractPathReferences('Open `/privacidad` or `/signup`.')).toEqual(
+      [],
+    );
   });
 
   it('strips sentence punctuation from a cited path', () => {
@@ -161,6 +178,31 @@ describe('agent instruction references (probes)', () => {
     }
   });
 
+  it('collects every Markdown file under docs, subfolders included', () => {
+    const fake = mkdtempSync(join(tmpdir(), 'agent-instructions-'));
+    try {
+      const files = [
+        'docs/go-live.md',
+        'docs/formal/x/README.md',
+        'docs/formal/x/model.tla',
+        'README.md',
+      ];
+      writeFileSync(
+        join(fake, 'skills-lock.json'),
+        JSON.stringify({ skills: {} }),
+      );
+      for (const file of files) {
+        mkdirSync(dirname(join(fake, file)), { recursive: true });
+        writeFileSync(join(fake, file), 'text');
+      }
+      expect(
+        collectInstructionFiles(fake, files).map((file) => file.path),
+      ).toEqual(['docs/formal/x/README.md', 'docs/go-live.md']);
+    } finally {
+      rmSync(fake, { recursive: true, force: true });
+    }
+  });
+
   it('reads the line budget from the maintainer note', () => {
     expect(readLineBudget('Keep it at most 170 lines (checked)')).toBe(170);
     expect(readLineBudget('Keep it short.')).toBeUndefined();
@@ -196,8 +238,12 @@ describe('agent instruction references (probes)', () => {
 describe('agent instruction references (repository)', () => {
   const files = collectInstructionFiles(root, listRepoFiles(root));
 
-  it('covers every AGENTS.md file and every local skill', () => {
+  it('covers every AGENTS.md file, every local skill, and every docs file', () => {
     const paths = files.map((file) => file.path);
+    expect(paths).toContain('docs/go-live.md');
+    expect(paths).toContain(
+      'docs/formal/shipment-transfer-cancellation/README.md',
+    );
     expect(paths).toContain('AGENTS.md');
     expect(paths).toContain('supabase/functions/AGENTS.md');
     expect(paths).toContain('.agents/skills/verify-selene/SKILL.md');

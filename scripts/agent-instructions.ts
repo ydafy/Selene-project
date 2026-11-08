@@ -1,6 +1,7 @@
-// Guard for the agent instruction files: every repository path and `bun run`
-// script they cite must exist, so a rename or a moved script cannot leave
-// agents following a dead reference. Checked by agent-instructions.test.ts.
+// Guard for the agent instruction files and the docs: every repository path and
+// `bun run` script they cite must exist, so a rename or a moved script cannot
+// leave agents or readers following a dead reference. Checked by
+// agent-instructions.test.ts.
 import { readFileSync } from 'node:fs';
 import { posix, join } from 'node:path';
 
@@ -10,6 +11,8 @@ export type ScriptReference = { workspace: string; script: string };
 // Cited paths that are not in the repository. Each needs a reason, and the test
 // fails when no instruction file cites it anymore.
 export const NOT_IN_REPO: Record<string, string> = {
+  'C:/dev/School-portal': 'main checkout on the maintainer machine',
+  'C:/dev/School-portal-worktrees': 'worktree parent on the maintainer machine',
   'C:/dev/School-portal-worktrees/':
     'worktree parent on the maintainer machine',
   '~/.supabase/stacks': 'per-user Supabase CLI state',
@@ -26,12 +29,31 @@ export const NOT_IN_REPO: Record<string, string> = {
   'test-results/': 'gitignored Playwright output',
   'apps/frontend/node_modules/expo/bundledNativeModules.json':
     'installed dependency file',
+  'apps/frontend/credentials.json': 'gitignored EAS signing file',
+  'apps/frontend/credentials/': 'gitignored EAS signing files',
+  'apps/frontend/credentials/android/keystore.jks':
+    'deleted from the tree, still in Git history',
+  'apps/frontend/google-services.json': 'gitignored Firebase file',
+  'supabase/.temp/postgres-version': 'gitignored Supabase CLI file',
+  '.atl/skill-registry.md':
+    'gitignored index, written by gentle-ai skill-registry refresh',
+  'state.json': 'per-user Supabase stack file in ~/.supabase/stacks',
+  'origin/main': 'Git remote-tracking branch',
+  'feat/shipment-cancellations-b5': 'Git branch name',
+  'oven-sh/setup-bun': 'GitHub Actions action id',
+  'git/ref': 'GitHub REST API endpoint name',
+  'generaltrack/': 'Envia API endpoint',
+  'import-x/no-restricted-paths': 'ESLint rule id',
+  'check-file/filename-naming-convention': 'ESLint rule id',
+  '*/N': 'cron schedule syntax',
 };
 
 const PATH_EXTENSION =
   /\.(md|ts|tsx|js|json|jsonc|toml|ya?ml|sql|lock|bru|sh|ps1)$/;
-// Placeholders (`<feature>`), shell syntax, and assignments are not paths.
-const NOT_A_PATH = /:\/\/|^@|[<>{}$='"]|^\.\w+$/;
+// Placeholders (`<feature>`), shell syntax, and assignments are not paths. A
+// leading slash is an app route (`/privacidad`): the files cite repository
+// paths from the root, without one.
+const NOT_A_PATH = /:\/\/|^@|^\/|[<>{}$='"]|^\.\w+$/;
 
 const trimPunctuation = (token: string) =>
   token.replace(/^\(+/, '').replace(/[,.;:)]+$/, '');
@@ -188,8 +210,9 @@ export function listRepoFiles(root: string): string[] {
   return result.stdout.toString().split('\0').filter(Boolean);
 }
 
-// Every AGENTS.md and every Markdown file of our own skills: the ones under
-// .agents/skills that the skills CLI does not manage (skills-lock.json).
+// Every AGENTS.md, every Markdown file of our own skills (the ones under
+// .agents/skills that the skills CLI does not manage, see skills-lock.json),
+// and every Markdown file under docs/, subfolders included.
 export function collectInstructionFiles(
   root: string,
   repoFiles: string[],
@@ -198,6 +221,7 @@ export function collectInstructionFiles(
   const vendor = new Set(Object.keys(lock.skills));
   return repoFiles
     .filter((file) => {
+      if (/^docs\/.+\.md$/.test(file)) return true;
       if (file === 'AGENTS.md' || file.endsWith('/AGENTS.md')) {
         return !file.startsWith('.agents/');
       }
