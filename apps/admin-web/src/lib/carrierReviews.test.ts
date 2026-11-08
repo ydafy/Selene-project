@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import {
+  type CarrierReview,
   formatWaiting,
   normalizeReviewNote,
   parseCarrierReviews,
@@ -19,7 +20,7 @@ const review = {
   carrier_cancellation_outcome: 'refused',
   review_required_at: '2026-10-22T10:00:00.000Z',
 };
-const mapped = {
+const mapped: CarrierReview = {
   shipmentId: review.shipment_id,
   orderId: review.order_id,
   sellerId: review.seller_id,

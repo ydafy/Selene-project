@@ -3,10 +3,11 @@ import type { AccountStatus } from '@selene/types';
 import {
   ACCOUNT_STATUS_ACTION_TARGET,
   getAccountStatusActions,
+  type AccountStatusAction,
 } from './accountStatusActions';
 
 describe('getAccountStatusActions', () => {
-  const cases: [AccountStatus | null, boolean, string[]][] = [
+  const cases: [AccountStatus | null, boolean, AccountStatusAction[]][] = [
     ['active', false, ['suspend', 'ban']],
     ['suspended', false, ['reactivate', 'ban']],
     ['banned', false, []],

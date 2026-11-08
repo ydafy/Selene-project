@@ -1,5 +1,7 @@
 import { beforeEach, expect, it, mock } from 'bun:test';
 
+import type { AcknowledgementResult } from '../lib/lateCarrierActivity';
+
 // Keep query/provider mocks out of the shared Bun module cache.
 if (process.env.B58B_HOOK_CHILD !== '1') {
   it('checks the late carrier activity hook in an isolated process', () => {
@@ -28,7 +30,7 @@ if (process.env.B58B_HOOK_CHILD !== '1') {
   const invalidations: unknown[] = [];
   const toasts: Array<[string, string]> = [];
   const acknowledgeCalls: unknown[][] = [];
-  let acknowledgeResult: unknown;
+  let acknowledgeResult: AcknowledgementResult;
   let acknowledgeError: Error | null;
 
   mock.module('@tanstack/react-query', () => ({

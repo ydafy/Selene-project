@@ -1,5 +1,7 @@
 import { beforeEach, expect, it, mock } from 'bun:test';
 
+import type { ResolveReviewResult } from '../lib/carrierReviews';
+
 // Keep query/provider mocks out of the shared Bun module cache.
 if (process.env.B44D_HOOK_CHILD !== '1') {
   it('checks the carrier reviews hook in an isolated process', () => {
@@ -28,7 +30,7 @@ if (process.env.B44D_HOOK_CHILD !== '1') {
   const invalidations: unknown[] = [];
   const toasts: Array<[string, string]> = [];
   const resolveCalls: unknown[][] = [];
-  let resolveResult: unknown;
+  let resolveResult: ResolveReviewResult;
   let resolveError: Error | null;
 
   mock.module('@tanstack/react-query', () => ({

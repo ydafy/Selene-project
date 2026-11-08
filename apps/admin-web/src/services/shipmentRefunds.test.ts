@@ -1,5 +1,7 @@
 import { afterAll, beforeEach, expect, it, mock, spyOn } from 'bun:test';
 
+import type { RefundProblem } from '../lib/shipmentRefundProblems';
+
 // Keep the supabase mock out of the shared Bun module cache.
 if (process.env.B24_SERVICE_CHILD !== '1') {
   it('checks the shipment refund service in an isolated process', () => {
@@ -43,7 +45,7 @@ if (process.env.B24_SERVICE_CHILD !== '1') {
     await import('./shipmentRefunds');
   const { EdgeFunctionError } = await import('./edge-client');
 
-  const problem = {
+  const problem: RefundProblem = {
     shipmentId: 'ship-1',
     orderId: 'order-1',
     buyerId: 'buyer-1',

@@ -41,8 +41,10 @@ const row = (overrides: Partial<QueueRow>): QueueRow => ({
   shipment_id: 'shipment-1',
   status: 'completed',
   stripe_account_id: 'acct_123',
-  stripe_onboarding_status: 'completed',
+  stripe_onboarding_status: 'complete',
   stripe_payment_intent_id: 'pi_123',
+  stripe_transfer_id: null,
+  transfer_group: null,
   ...overrides,
 });
 

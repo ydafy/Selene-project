@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import {
+  type LabelReconciliation,
   MAX_RESOLUTION_NOTE_LENGTH,
   parseLabelReconciliations,
   parseResolveResult,
@@ -29,7 +30,7 @@ const row = {
   destination_postal_code: '06600',
   destination_city: 'Ciudad de México',
 };
-const mapped = {
+const mapped: LabelReconciliation = {
   shipmentId: row.shipment_id,
   orderId: row.order_id,
   sellerId: row.seller_id,

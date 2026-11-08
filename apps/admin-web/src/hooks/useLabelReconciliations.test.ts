@@ -1,5 +1,7 @@
 import { beforeEach, expect, it, mock } from 'bun:test';
 
+import type { ResolveLabelReconciliationResult } from '../lib/labelReconciliations';
+
 // Keep query/provider mocks out of the shared Bun module cache.
 if (process.env.B61C_HOOK_CHILD !== '1') {
   it('checks the label reconciliations hook in an isolated process', () => {
@@ -29,7 +31,7 @@ if (process.env.B61C_HOOK_CHILD !== '1') {
   const invalidations: unknown[] = [];
   const toasts: Array<[string, string]> = [];
   const resolveCalls: unknown[][] = [];
-  let resolveResult: unknown;
+  let resolveResult: ResolveLabelReconciliationResult;
   let resolveError: Error | null;
 
   mock.module('@tanstack/react-query', () => ({

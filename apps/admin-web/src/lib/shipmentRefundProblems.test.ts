@@ -3,10 +3,11 @@ import {
   normalizeResolutionReference,
   parseRefundProblems,
   parseResolveResult,
+  type RefundProblem,
   resolveRefundErrorMessage,
 } from './shipmentRefundProblems';
 
-const problem = {
+const problem: RefundProblem = {
   shipmentId: 'ship-1',
   orderId: 'order-1',
   buyerId: 'buyer-1',
@@ -21,7 +22,7 @@ const problem = {
 
 describe('parseRefundProblems', () => {
   it('accepts the server contract, including null refund fields', () => {
-    const escalated = {
+    const escalated: RefundProblem = {
       ...problem,
       kind: 'refund_not_found',
       refundId: null,

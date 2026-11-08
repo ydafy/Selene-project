@@ -278,7 +278,13 @@ if (process.env.A65_HOOK_CHILD !== '1') {
         'new seller',
       ]);
       const error = new Error('Queue unavailable');
-      queryState = { data: undefined, isLoading: false, isError: true, error };
+      queryState = {
+        data: undefined,
+        isLoading: false,
+        isError: true,
+        error,
+        dataUpdatedAt: 0,
+      };
       const failed = useConnectPayoutReleaseQueue('new seller');
       expect(failed.isError).toBe(true);
       expect(failed.error).toBe(error);

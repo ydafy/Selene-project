@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import {
   EVENT_TYPE_LABELS,
+  type LateCarrierActivity,
   normalizeAcknowledgementNote,
   parseAcknowledgement,
   parseLateCarrierActivity,
@@ -21,7 +22,7 @@ const row = {
   late_carrier_activity_at: '2026-10-22T10:00:00.000Z',
   late_carrier_activity_event_type: 'delivered',
 };
-const mapped = {
+const mapped: LateCarrierActivity = {
   shipmentId: row.shipment_id,
   orderId: row.order_id,
   sellerId: row.seller_id,
