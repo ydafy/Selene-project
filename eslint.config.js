@@ -28,7 +28,6 @@ const ADMIN_WEB_LEGACY = [
   `${ADMIN_WEB_SRC}/hooks/**`,
   `${ADMIN_WEB_SRC}/lib/**`,
   `${ADMIN_WEB_SRC}/pages/**`,
-  `${ADMIN_WEB_SRC}/services/**`,
   `${ADMIN_WEB_SRC}/types/**`,
 ];
 const FIX =

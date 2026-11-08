@@ -15,8 +15,8 @@ import { UsersPage } from '../pages/UsersPage';
 import { UserDetailPage } from '../pages/UserDetailPage';
 import { DisputesPage } from '../pages/DisputesPage';
 import { DisputeDetailPage } from '../pages/DisputeDetailPage';
-import { PaymentsPage } from '../pages/PaymentsPage';
-import { ShipmentsPage } from '../pages/ShipmentsPage';
+import { PaymentsPage } from '../features/payments/screens/payments-screen';
+import { ShipmentsPage } from '../features/shipments/screens/shipments-screen';
 import { ProductManagementPage } from '../pages/ProductManagementPage';
 import { SellerOnboardingPage } from '../pages/SellerOnboardingPage';
 
