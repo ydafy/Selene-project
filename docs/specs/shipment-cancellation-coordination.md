@@ -400,7 +400,7 @@ Claim/start reject with `UNAUTHORIZED`, `SHIPMENT_NOT_FOUND`, `SHIPMENT_ORDER_MI
 
 ## Local verification
 
-Prerequisite: the existing [local PostgreSQL environment](postgres-test-harness.md), running on a local Docker engine. No new infrastructure or JavaScript dependency is needed.
+Prerequisite: the existing [local PostgreSQL environment](../postgres-test-harness.md), running on a local Docker engine. No new infrastructure or JavaScript dependency is needed.
 
 ```sh
 bun run db:test:up

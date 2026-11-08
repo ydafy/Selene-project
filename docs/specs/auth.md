@@ -1,6 +1,6 @@
 # Auth
 
-How identity, account states, sign-in, account closure, and CAPTCHA work today, and which object enforces each rule. This page is a map: it names files and functions instead of copying them. For Dashboard settings and the switch-on order, read [`docs/go-live.md`](go-live.md), section 10. For the decisions behind these rules, read [`odd/tasks/auth-hardening.md`](../odd/tasks/auth-hardening.md).
+How identity, account states, sign-in, account closure, and CAPTCHA work today, and which object enforces each rule. This page is a map: it names files and functions instead of copying them. For Dashboard settings and the switch-on order, read [`docs/go-live.md`](../go-live.md), section 10. For the decisions behind these rules, read [`odd/tasks/auth-hardening.md`](../../odd/tasks/auth-hardening.md).
 
 ## Identity
 
@@ -154,4 +154,4 @@ Pitfalls:
 
 ## Decisions
 
-The reasons behind these rules, and the evidence from each change, are in the `## Log` of [`odd/tasks/auth-hardening.md`](../odd/tasks/auth-hardening.md).
+The reasons behind these rules, and the evidence from each change, are in the `## Log` of [`odd/tasks/auth-hardening.md`](../../odd/tasks/auth-hardening.md).
