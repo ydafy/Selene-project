@@ -1,0 +1,471 @@
+import { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import {
+  ArrowLeft,
+  Mail,
+  Calendar,
+  Phone,
+  CreditCard,
+  Package,
+  ShieldAlert,
+  History,
+  ShieldCheck,
+  Zap,
+  Star,
+  TrendingUp,
+  Gavel,
+  Clock,
+} from 'lucide-react';
+import { useUserDetail } from '../hooks/use-user-detail';
+import { UserAvatar } from '../../../shared/ui/user-avatar';
+import { UserSafetyActions } from '../../../shared/ui/user-safety-actions';
+import { getRank } from '../../../shared/utils/ranks';
+import { isClosedAccount } from '../../../shared/lib/account-status';
+import { ErrorState } from '../../../shared/ui/error-state';
+import { StatCard } from '../../../shared/ui/stat-card';
+import { Skeleton } from '../../../shared/ui/skeleton';
+import { InventoryTable } from '../components/inventory-table';
+import { PurchasesTable } from '../components/purchases-table';
+import { UserReviewsList } from '../components/user-reviews-list';
+
+import { UserAddressesList } from '../components/user-addresses-list';
+import { UserReportsList } from '../components/user-reports-list';
+import { UserAdminHistory } from '../components/user-admin-history';
+import { UserDisputesList } from '../components/user-disputes-list';
+
+export const UserDetailPage = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('overview');
+
+  const { data, isLoading, isError, refetch } = useUserDetail(id!);
+
+  if (isLoading)
+    return (
+      <div className="space-y-6">
+        {/* Back button skeleton */}
+        <Skeleton className="w-32 h-5" />
+
+        {/* Header card skeleton */}
+        <div className="bg-state-gray border border-white/5 rounded-3xl overflow-hidden">
+          <div className="h-2 bg-white/5" />
+          <div className="p-8 flex flex-col lg:flex-row gap-8">
+            <div className="flex items-center gap-6">
+              <Skeleton variant="circular" width={80} height={80} />
+              <div className="space-y-3">
+                <Skeleton className="w-48 h-7" />
+                <Skeleton className="w-64 h-4" />
+                <Skeleton className="w-56 h-4" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs skeleton */}
+        <div className="flex gap-4 border-b border-white/5">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="w-28 h-10" />
+          ))}
+        </div>
+
+        {/* Stat cards skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="bg-state-gray rounded-2xl border border-white/5 p-5"
+            >
+              <Skeleton className="w-20 h-3 mb-2" />
+              <Skeleton className="w-16 h-8" />
+            </div>
+          ))}
+        </div>
+
+        {/* Content panels skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="bg-state-gray rounded-2xl border border-white/5 p-6">
+            <Skeleton className="w-32 h-5 mb-4" />
+            <div className="space-y-3">
+              <Skeleton className="h-4" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+            </div>
+          </div>
+          <div className="bg-state-gray rounded-2xl border border-white/5 p-6">
+            <Skeleton className="w-32 h-5 mb-4" />
+            <div className="space-y-3">
+              <Skeleton className="h-4" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  if (isError) return <ErrorState onRetry={() => refetch()} />;
+  if (!data?.profile)
+    return <div className="p-8 text-platinum">Usuario no encontrado.</div>;
+
+  const {
+    profile,
+
+    addresses,
+    metrics,
+    disputes,
+    internalNotes,
+    auditLogs,
+    reports,
+    sellerTrustStats,
+    phoneNumber,
+    lastSignInAt,
+  } = data;
+
+  const processedCount = sellerTrustStats?.processed_count ?? 0;
+  const verifiedCount = sellerTrustStats?.verified_count ?? 0;
+  const soldCount = metrics.sales;
+  const totalListings = data.products.length;
+  const displayRatio =
+    processedCount > 0 ? Math.round((verifiedCount / processedCount) * 100) : 0;
+
+  const rank = getRank(soldCount, displayRatio);
+  const closed = isClosedAccount(profile);
+
+  return (
+    <div className="space-y-6">
+      {/* BOTÓN VOLVER */}
+      <button
+        onClick={() => navigate('/users')}
+        className="flex items-center gap-2 text-blue-light hover:text-platinum transition-colors group"
+      >
+        <ArrowLeft
+          size={18}
+          className="group-hover:-translate-x-1 transition-transform"
+        />
+        Volver al directorio
+      </button>
+
+      {/* HEADER DE EXPEDIENTE */}
+
+      <div className="bg-state-gray border border-white/5 rounded-3xl overflow-hidden shadow-2xl relative">
+        {/* Banner decorativo sutil según status */}
+        <div
+          className={`h-2 w-full ${profile.status === 'active' ? 'bg-forest' : 'bg-fire'}`}
+        />
+
+        <div className="p-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
+          <div className="flex items-center gap-6">
+            <div className="relative">
+              <UserAvatar
+                path={profile.avatar_url ?? undefined}
+                fallback={profile.username ?? ''}
+                size="md"
+              />
+              {profile.is_verified_seller && (
+                <div className="absolute -bottom-2 -right-2 bg-lion text-night rounded-full p-1 border-4 border-state-gray">
+                  <ShieldCheck size={16} strokeWidth={3} />
+                </div>
+              )}
+            </div>
+
+            <div>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-3xl font-bold text-platinum tracking-tight">
+                  @{profile.username}
+                </h1>
+                <span
+                  className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border ${rank.color}`}
+                >
+                  {rank.icon} {rank.label}
+                </span>
+                <span
+                  className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border ${
+                    profile.status === 'active'
+                      ? 'border-forest/30 text-forest bg-forest/5'
+                      : closed
+                        ? 'border-white/10 text-blue-light bg-white/5'
+                        : 'border-fire/30 text-fire bg-fire/5'
+                  }`}
+                >
+                  {closed ? 'Cuenta eliminada' : profile.status}
+                </span>
+              </div>
+              {closed && (
+                <p className="mt-2 text-sm text-blue-light">
+                  El usuario cerró su cuenta. No se puede reactivar.
+                </p>
+              )}
+
+              <div className="flex flex-col sm:flex-row sm:items-center gap-y-2 gap-x-6 mt-4">
+                <div className="flex items-center gap-2 text-blue-light text-sm">
+                  <Mail size={14} className="text-lion" />
+                  <span className="font-medium">{profile.email}</span>
+                </div>
+                <div className="flex items-center gap-2 text-blue-light text-sm">
+                  <Calendar size={14} className="text-lion" />
+                  <span>
+                    Miembro desde{' '}
+                    {profile.created_at
+                      ? new Date(profile.created_at).toLocaleDateString()
+                      : 'Desconocido'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-blue-light text-sm">
+                  <Phone size={14} className="text-lion" />
+                  <span>{phoneNumber || 'Sin teléfono'}</span>
+                </div>
+                <div className="flex items-center gap-2 text-blue-light text-sm">
+                  <Clock size={14} className="text-lion" />
+                  <span>
+                    Última conexión:{' '}
+                    {lastSignInAt
+                      ? new Date(lastSignInAt).toLocaleString()
+                      : 'N/A'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ACCIONES RÁPIDAS */}
+          <div className="flex items-center gap-3 bg-night/40 p-3 rounded-2xl border border-white/5">
+            <UserSafetyActions
+              user={{
+                id: profile.id!,
+                username: profile.username,
+                status: profile.status ?? 'active',
+                is_verified_seller: profile.is_verified_seller,
+              }}
+              onUpdate={() => refetch()}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* TABS DE NAVEGACIÓN INTERNA */}
+      <div className="flex gap-4 border-b border-white/5">
+        {[
+          { id: 'overview', label: 'Resumen Operativo', icon: Package },
+          { id: 'finance', label: 'Finanzas y Pagos', icon: CreditCard },
+          { id: 'security', label: 'Seguridad y Logs', icon: ShieldAlert },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-2 px-4 py-3 text-sm font-bold transition-all border-b-2 ${
+              activeTab === tab.id
+                ? 'border-lion text-lion'
+                : 'border-transparent text-blue-light hover:text-platinum'
+            }`}
+          >
+            <tab.icon size={16} />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* CONTENIDO DINÁMICO SEGÚN TAB */}
+      <div className="py-4">
+        {activeTab === 'overview' && (
+          <div className="space-y-8 animate-in fade-in duration-500">
+            {/* NIVEL 1: MÉTRICAS DE NEGOCIO */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <StatCard
+                title="Ventas Exitosas"
+                value={metrics.sales}
+                icon={Package}
+                color="text-platinum"
+              />
+              <StatCard
+                title="Compras Totales"
+                value={metrics.purchases}
+                icon={History}
+                color="text-platinum"
+              />
+              <StatCard
+                title="Efectividad"
+                value={`${displayRatio}%`}
+                icon={Zap}
+                color="text-lion"
+              />
+              <StatCard
+                title="Volumen Total de Ventas"
+                value={`$${metrics.totalVolume.toLocaleString()}`}
+                icon={TrendingUp}
+                color="text-lion"
+              />
+            </div>
+
+            {/* NIVEL 2: MÉTRICAS DE CONFIANZA (MVP++ UNIFICADO) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* 1. RATING */}
+              <StatCard
+                title="Rating Promedio"
+
+                value={data.avgRating.toFixed(1)}
+                icon={Star}
+              >
+                <div className="flex text-lion">
+                  {[...Array(5)].map((_, i) => (
+                    <Star
+                      key={i}
+                      size={12}
+                      fill={
+                        i < Math.round(data.avgRating) ? 'currentColor' : 'none'
+                      }
+                    />
+                  ))}
+                </div>
+              </StatCard>
+
+              {/* 2. REPORTES AL PERFIL */}
+              <StatCard
+                title="Reportes Recibidos"
+                value={data.reportsCount}
+                icon={ShieldAlert}
+                color={data.reportsCount > 0 ? 'text-fire' : 'text-platinum'}
+              />
+
+              {/* 3. DISPUTAS DE ÓRDENES */}
+              <StatCard
+                title="Disputas"
+                value={metrics.totalDisputes}
+                icon={Gavel}
+              >
+                <div className="flex flex-col gap-1">
+                  <div className="flex justify-between">
+                    <span className="text-[9px] text-forest font-bold uppercase">
+                      Ganadas
+                    </span>
+                    <span className="text-[10px] font-bold text-forest">
+                      {metrics.wonDisputes}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[9px] text-fire font-bold uppercase">
+                      Perdidas
+                    </span>
+                    <span className="text-[10px] font-bold text-fire">
+                      {metrics.lostDisputes}
+                    </span>
+                  </div>
+                  <div className="flex justify-between border-t border-white/5 mt-1 pt-1">
+                    <span className="text-[9px] text-blue-light uppercase font-bold">
+                      En Revisión
+                    </span>
+                    <span className="text-[10px] font-bold text-platinum">
+                      {metrics.pendingDisputes}
+                    </span>
+                  </div>
+                </div>
+              </StatCard>
+
+              {/* 4. CANCELACIONES */}
+              <StatCard
+                title="Cancelaciones"
+                value={metrics.totalCancellations}
+                icon={History}
+                color={
+                  metrics.cancelledSales > 0 ? 'text-fire' : 'text-platinum'
+                }
+              >
+                <div className="flex flex-col gap-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[9px] text-blue-light uppercase font-bold">
+                      Como Vendedor
+                    </span>
+                    <span
+                      className={`text-[10px] font-bold ${metrics.cancelledSales > 0 ? 'text-fire' : 'text-platinum/40'}`}
+                    >
+                      {metrics.cancelledSales}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[9px] text-blue-light uppercase font-bold">
+                      Como Comprador
+                    </span>
+                    <span className="text-[10px] font-bold text-platinum/40">
+                      {metrics.cancelledPurchases}
+                    </span>
+                  </div>
+                </div>
+              </StatCard>
+            </div>
+
+            {/* NIVEL 3: ACTIVIDAD DETALLADA */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+              {/* LISTA DE PRODUCTOS (Lo que ya tenías) */}
+              <InventoryTable products={data.products} total={totalListings} />
+              <PurchasesTable items={data.purchasedItems} />
+            </div>
+            {/* ÚLTIMAS RESEÑAS (MVP++) */}
+            <div className="w-full">
+              <UserReviewsList
+                reviews={data.reviews}
+                avgRating={data.avgRating}
+              />
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'finance' && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            {/* Stripe Connect Onboarding Status */}
+            {data.stripeAccountId && (
+              <div className="bg-state-gray border border-white/5 rounded-2xl p-5 space-y-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium text-blue-light">
+                    Stripe Connect
+                  </span>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                      data.stripeOnboardingStatus === 'complete'
+                        ? 'bg-forest/10 text-forest'
+                        : data.stripeOnboardingStatus === 'rejected'
+                          ? 'bg-fire/10 text-fire'
+                          : 'bg-sand/10 text-sand-dark'
+                    }`}
+                  >
+                    {data.stripeOnboardingStatus === 'complete'
+                      ? 'Onboarding completo'
+                      : data.stripeOnboardingStatus === 'rejected'
+                        ? 'Rechazado'
+                        : 'Pendiente'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <code className="text-xs bg-night/40 px-2 py-1 rounded font-mono text-blue-light truncate max-w-[260px]">
+                    {data.stripeAccountId}
+                  </code>
+                  <button
+                    onClick={() =>
+                      navigator.clipboard.writeText(data.stripeAccountId!)
+                    }
+                    className="text-xs text-lion hover:underline shrink-0"
+                    title="Copiar ID"
+                  >
+                    Copiar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* LIBRETA DE DIRECCIONES (MVP++ COMPONENTE) */}
+            <UserAddressesList addresses={addresses} />
+          </div>
+        )}
+        {activeTab === 'security' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-2 duration-500 items-start">
+            {/* COLUMNA 1: CONFLICTOS (DISPUTAS + REPORTES) */}
+            <div className="space-y-6">
+              <UserDisputesList disputes={disputes} currentUserId={id!} />
+              <UserReportsList reports={reports} />
+            </div>
+
+            {/* COLUMNA 2: ACCIONES DE ADMIN Y NOTAS */}
+            <UserAdminHistory logs={auditLogs} notes={internalNotes} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};

@@ -178,7 +178,7 @@ It is established as the standard procedure for structural inconsistencies.
 
 ## 2026-05-28: Admin-web User Lists Stay as Cards
 
-**Decision:** The five card lists in `apps/admin-web/src/components/features/users/` (`UserReviewsList`, `UserReportsList`, `UserDisputesList`, `UserAddressesList`, `UserAdminHistory`) stay as cards and do not move to `DataTable<TData>`.
+**Decision:** The five card lists in `apps/admin-web/src/features/users/components/` (`UserReviewsList`, `UserReportsList`, `UserDisputesList`, `UserAddressesList`, `UserAdminHistory`) stay as cards and do not move to `DataTable<TData>`.
 
 **Context:** The admin-web type-safety and TanStack Table migration (phase 2, PH2-REQ-015) asked which lists should become tables. These lists are not tabular data: reviews have an avatar, a star rating, and a comment block; reports are a feed with quoted reasons; disputes show per-user win or loss badges and role badges; addresses are multi-line documents with a default badge; the admin history holds two streams (audit log and notes) with different shapes. Table cells would flatten all of that. The migration still replaced their `any` types with typed interfaces or `Tables<...>` aliases.
 
