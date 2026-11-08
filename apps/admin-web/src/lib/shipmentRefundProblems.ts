@@ -153,9 +153,3 @@ const GENERIC_ERROR_MESSAGE =
 export function resolveRefundErrorMessage(code: string | null): string {
   return (code && ERROR_MESSAGES[code]) || GENERIC_ERROR_MESSAGE;
 }
-
-/** The stable server error code carried by a thrown error, if any. */
-export function getErrorCode(error: unknown): string | null {
-  const code = asRecord(error)?.code;
-  return typeof code === 'string' ? code : null;
-}

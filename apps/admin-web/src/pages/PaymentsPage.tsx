@@ -22,7 +22,7 @@ import { formatTime } from '../shared/utils/format-date';
 import { PayoutReleaseWorkbench } from '../components/features/payments/PayoutReleaseWorkbench';
 import { ActionRequiredPanel } from '../components/features/payments/ActionRequiredPanel';
 import { PayoutRunsWorkbench } from '../components/features/payments/PayoutRunsWorkbench';
-import { workbenchFocus } from '../components/features/payments/PayoutWorkbenchLayout';
+import { workbenchFocus } from '../shared/ui/workbench-focus';
 
 export type PaymentTab = 'ready' | 'processing' | 'action-required' | 'history';
 

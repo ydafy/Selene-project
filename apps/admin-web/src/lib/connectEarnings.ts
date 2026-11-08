@@ -4,10 +4,6 @@ export interface ConnectEarningsLikeRow {
   status: 'succeeded' | 'refunded' | 'failed' | string | null;
 }
 
-export function centsToMoney(cents: number): number {
-  return cents / 100;
-}
-
 export function summarizeConnectEarnings(rows: ConnectEarningsLikeRow[]) {
   return rows.reduce(
     (summary, row) => {

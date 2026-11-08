@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { RefundProblemsBucket } from './RefundProblemsBucket';
-import { workbenchFocus } from './PayoutWorkbenchLayout';
+import { workbenchFocus } from '../../../shared/ui/workbench-focus';
 import {
   useResolveShipmentRefund,
   useShipmentRefundProblems,

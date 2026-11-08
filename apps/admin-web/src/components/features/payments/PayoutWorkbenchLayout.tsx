@@ -1,8 +1,7 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { workbenchFocus } from '../../../shared/ui/workbench-focus';
 
 export const PAYOUT_PAGE_SIZE = 20;
-export const workbenchFocus =
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lion focus-visible:ring-offset-2 focus-visible:ring-offset-night';
 export const workbenchGrid = 'grid min-w-0 items-stretch gap-5 lg:grid-cols-2';
 export const workbenchPanel =
   'flex min-h-0 min-w-0 flex-col overflow-hidden rounded-3xl border border-white/5 bg-state-gray shadow-xl shadow-black/10 lg:h-[min(65vh,640px)]';

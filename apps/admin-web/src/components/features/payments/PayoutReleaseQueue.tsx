@@ -8,7 +8,7 @@ import {
   Square,
 } from 'lucide-react';
 import { formatCurrency } from '../../../shared/utils/format-currency';
-import { centsToMoney } from '../../../lib/connectEarnings';
+import { centsToMoney } from '../../../shared/utils/cents-to-money';
 import {
   getSelectedEligibleShipmentIds,
   type ReleaseQueueBatch,

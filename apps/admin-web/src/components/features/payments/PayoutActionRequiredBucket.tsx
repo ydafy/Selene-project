@@ -6,9 +6,9 @@ import {
 } from 'lucide-react';
 import {
   PayoutBucketEmptyState,
-  PayoutRunRow,
   type PayoutRunTone,
-} from './PayoutRunRow';
+} from '../../../shared/ui/payout-bucket-empty-state';
+import { PayoutRunRow } from './PayoutRunRow';
 import type {
   ReleaseQueueActionRequiredReason,
   ReleaseQueueActionRequiredRun,

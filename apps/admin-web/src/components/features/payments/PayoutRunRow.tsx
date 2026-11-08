@@ -2,21 +2,9 @@ import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { User } from 'lucide-react';
 import { formatCurrency } from '../../../shared/utils/format-currency';
-import { centsToMoney } from '../../../lib/connectEarnings';
+import { centsToMoney } from '../../../shared/utils/cents-to-money';
 import type { ReleaseQueueRun } from '../../../lib/connectPayoutReleaseQueue';
-
-/**
- * Shared accent tones for the payout-run presentation language. Every
- * read-only bucket renders rows through `PayoutRunRow` so status color,
- * amount emphasis, and row anatomy stay identical across Processing,
- * Action required, and History.
- *
- * - `lion`: run authorized and still in flight.
- * - `amber`: outcome that needs operator attention.
- * - `forest`: server-confirmed paid outcome.
- * - `muted`: informational outcome without a corrective action.
- */
-export type PayoutRunTone = 'lion' | 'amber' | 'forest' | 'muted';
+import type { PayoutRunTone } from '../../../shared/ui/payout-bucket-empty-state';
 
 interface TonePresentation {
   card: string;
@@ -50,13 +38,6 @@ const TONE_PRESENTATION: Record<PayoutRunTone, TonePresentation> = {
     amount: 'text-platinum',
     chip: 'border-white/10 bg-white/5 text-blue-light',
   },
-};
-
-const EMPTY_STATE_PRESENTATION: Record<PayoutRunTone, string> = {
-  lion: 'bg-lion/10 text-lion',
-  amber: 'bg-amber-400/10 text-amber-400',
-  forest: 'bg-forest/10 text-forest',
-  muted: 'bg-white/5 text-blue-light',
 };
 
 interface PayoutRunRowProps {
@@ -129,26 +110,3 @@ export const PayoutRunRow = ({
     </article>
   );
 };
-
-interface PayoutBucketEmptyStateProps {
-  icon: LucideIcon;
-  tone: PayoutRunTone;
-  title: string;
-  description: string;
-}
-
-/** Shared empty state for the read-only payout-run buckets. */
-export const PayoutBucketEmptyState = ({
-  icon: Icon,
-  tone,
-  title,
-  description,
-}: PayoutBucketEmptyStateProps) => (
-  <div className="bg-state-gray border border-white/5 rounded-3xl p-10 text-center flex flex-col items-center justify-center">
-    <div className={`p-4 rounded-full mb-3 ${EMPTY_STATE_PRESENTATION[tone]}`}>
-      <Icon size={28} />
-    </div>
-    <h3 className="text-base font-bold text-platinum">{title}</h3>
-    <p className="text-xs text-blue-light mt-1 max-w-sm">{description}</p>
-  </div>
-);

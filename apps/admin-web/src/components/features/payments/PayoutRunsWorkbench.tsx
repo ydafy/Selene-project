@@ -10,7 +10,7 @@ import {
 import { Modal } from '../../../shared/ui/modal';
 import { CopyableReference } from '../../../shared/ui/copyable-reference';
 import { SelectionActionSummary } from '../../../shared/ui/selection-action-summary';
-import { centsToMoney } from '../../../lib/connectEarnings';
+import { centsToMoney } from '../../../shared/utils/cents-to-money';
 import type {
   ReleaseQueueActionRequiredRun,
   ReleaseQueueRun,
@@ -21,11 +21,11 @@ import { formatTime } from '../../../shared/utils/format-date';
 import {
   PAYOUT_PAGE_SIZE,
   PayoutPagination,
-  workbenchFocus as focus,
   workbenchGrid,
   workbenchPanel,
   workbenchScroll,
 } from './PayoutWorkbenchLayout';
+import { workbenchFocus as focus } from '../../../shared/ui/workbench-focus';
 
 export type PayoutRunsMode = 'processing' | 'action-required' | 'history';
 interface PayoutRunsWorkbenchProps {

@@ -1,5 +1,6 @@
 import { Clock, Loader2 } from 'lucide-react';
-import { PayoutBucketEmptyState, PayoutRunRow } from './PayoutRunRow';
+import { PayoutBucketEmptyState } from '../../../shared/ui/payout-bucket-empty-state';
+import { PayoutRunRow } from './PayoutRunRow';
 import type { ReleaseQueueRun } from '../../../lib/connectPayoutReleaseQueue';
 
 /**

@@ -8,18 +8,15 @@ import {
 } from 'lucide-react';
 import { SelectionActionSummary } from '../../../shared/ui/selection-action-summary';
 import { Modal } from '../../../shared/ui/modal';
-import { centsToMoney } from '../../../lib/connectEarnings';
+import { centsToMoney } from '../../../shared/utils/cents-to-money';
 import {
   getSelectedEligibleShipmentIds,
   type ReleaseQueueBatch,
 } from '../../../lib/connectPayoutReleaseQueue';
 import { formatCurrency } from '../../../shared/utils/format-currency';
 
-import {
-  PAYOUT_PAGE_SIZE,
-  PayoutPagination,
-  workbenchFocus,
-} from './PayoutWorkbenchLayout';
+import { PAYOUT_PAGE_SIZE, PayoutPagination } from './PayoutWorkbenchLayout';
+import { workbenchFocus } from '../../../shared/ui/workbench-focus';
 
 const eligibleIdsFor = (batch: ReleaseQueueBatch) =>
   getSelectedEligibleShipmentIds(
