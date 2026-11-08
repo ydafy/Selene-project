@@ -34,6 +34,7 @@ const repoFiles = [
   'apps/frontend/src/shared/theme/index.ts',
   'apps/frontend/src/shared/i18n/en-locale-parity.test.ts',
   'bruno/auth/login-buyer.bru',
+  'odd/tasks/auth-hardening.md',
 ];
 const scripts = new Map([
   ['', new Set(['lint', 'api:test'])],
@@ -103,6 +104,17 @@ describe('agent instruction references (probes)', () => {
     const text =
       '`src/shared/theme/index.ts`, `src/shared/i18n/*locale-parity.test.ts`, `auth/login-buyer.bru`';
     expect(check('apps/frontend/AGENTS.md', text)).toEqual([]);
+  });
+
+  it('resolves a ./ or ../ path only from the citing file', () => {
+    const text = [
+      '[a](../go-live.md), [b](../../odd/tasks/auth-hardening.md),',
+      '[c](../odd/tasks/auth-hardening.md), `./nope.md`',
+    ].join('\n');
+    expect(check('docs/specs/auth.md', text)).toEqual([
+      'docs/specs/auth.md: path `./nope.md` does not exist',
+      'docs/specs/auth.md: path `../odd/tasks/auth-hardening.md` does not exist',
+    ]);
   });
 
   it('skips placeholders, URLs, packages, bare extensions, and listed paths', () => {

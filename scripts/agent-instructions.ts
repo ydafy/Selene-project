@@ -144,9 +144,11 @@ export function findBrokenReferences(input: {
         }
         continue;
       }
-      // Paths resolve from the repository root, from the citing file, or, for
+      // A `./` or `../` path resolves only from the citing file. Other paths
+      // resolve from the repository root, from the citing file, or, for
       // request names, from the Bruno collection.
-      const bases = ['', directory, 'bruno'];
+      const relative = path.startsWith('./') || path.startsWith('../');
+      const bases = relative ? [directory] : ['', directory, 'bruno'];
       if (!bases.some((base) => exists(posix.join(base, path)))) {
         problems.push(`${file.path}: path \`${path}\` does not exist`);
       }
