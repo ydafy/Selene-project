@@ -68,7 +68,7 @@ if (process.env.SELENE_IMAGE_VIEWER_MOUNT_CHILD !== '1') {
         `${namespace}:${key}${values ? ':' + JSON.stringify(values) : ''}`,
     }),
   }));
-  mock.module('./base', () => ({ Box: host('Box'), Text: host('Text') }));
+  mock.module('../base', () => ({ Box: host('Box'), Text: host('Text') }));
   mock.module('@/shared/theme/tokens', () => ({
     colors: { mediaBackground: '#000000', textPrimary: '#E4E4E4' },
   }));

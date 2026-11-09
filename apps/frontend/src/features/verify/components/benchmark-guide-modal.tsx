@@ -7,7 +7,7 @@ import {
 } from '@gorhom/bottom-sheet';
 import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
-import { AppImageViewer } from '@/shared/ui/app-image-viewer';
+import { AppImageViewer } from '@/shared/ui/media/app-image-viewer';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
 import { Box, Text } from '@/shared/ui/base';

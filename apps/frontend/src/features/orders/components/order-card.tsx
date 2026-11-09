@@ -16,7 +16,7 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { Box, Text } from '@/shared/ui/base';
-import { AppImage } from '@/shared/ui/app-image';
+import { AppImage } from '@/shared/ui/media/app-image';
 import { Theme } from '@/shared/theme';
 
 import { formatCurrency, formatDate } from '@/shared/utils/format';

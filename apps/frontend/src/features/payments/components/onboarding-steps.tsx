@@ -11,7 +11,7 @@ import MaterialCommunityIcons, {
 } from '@react-native-vector-icons/material-design-icons';
 
 import { Box, Text } from '@/shared/ui/base';
-import { AppImage } from '@/shared/ui/app-image';
+import { AppImage } from '@/shared/ui/media/app-image';
 import { Theme } from '@/shared/theme';
 import type { StripeOnboardingStatus } from '@selene/types';
 import type { ConnectOnboardingStatusGuidanceKey } from '../logic/connect-onboarding-ui';

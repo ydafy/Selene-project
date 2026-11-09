@@ -12,7 +12,7 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { Box, Text } from '@/shared/ui/base';
-import { AppImage } from '@/shared/ui/app-image';
+import { AppImage } from '@/shared/ui/media/app-image';
 import { colors } from '@/shared/theme/tokens';
 
 type SearchAction = {

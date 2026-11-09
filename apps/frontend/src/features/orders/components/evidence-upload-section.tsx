@@ -6,7 +6,7 @@ import { useTheme } from '@shopify/restyle';
 import * as Haptics from 'expo-haptics';
 
 import { Box, Text } from '@/shared/ui/base';
-import { AppImage } from '@/shared/ui/app-image';
+import { AppImage } from '@/shared/ui/media/app-image';
 import { ConfirmDialog } from '@/shared/ui/feedback/confirm-dialog';
 import { useImageUpload } from '@/shared/hooks/use-image-upload';
 import { describeError } from '@/shared/utils/describe-error';

@@ -2,7 +2,7 @@ import React from 'react';
 
 import { Product } from '@selene/types';
 import { Box, Text } from '@/shared/ui/base';
-import { AppImage } from '@/shared/ui/app-image';
+import { AppImage } from '@/shared/ui/media/app-image';
 import { AppChip } from '@/shared/ui/app-chip';
 
 import { formatCurrency } from '@/shared/utils/format';

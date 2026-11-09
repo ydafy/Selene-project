@@ -9,7 +9,7 @@ import { TouchableOpacity, StyleSheet } from 'react-native';
 import { useTheme } from '@shopify/restyle';
 import { IconButton } from 'react-native-paper';
 import { Box, Text } from '../base';
-import { AppImage } from '../app-image';
+import { AppImage } from '../media/app-image';
 import { Theme } from '../../theme';
 import { formatCurrency } from '../../utils/format';
 import { PublicProduct } from '@selene/types';

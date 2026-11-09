@@ -26,7 +26,7 @@ import { ErrorState } from '@/shared/ui/feedback/error-state';
 import { Skeleton } from '@/shared/ui/feedback/skeleton';
 import { WizardSteps } from '@/features/sell/components/wizard-steps';
 import { SellerPaymentExplanation } from '@/shared/ui/seller-payment-explanation';
-import { AppImageViewer } from '@/shared/ui/app-image-viewer';
+import { AppImageViewer } from '@/shared/ui/media/app-image-viewer';
 import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import { useConnectOnboarding } from '@/shared/hooks/use-connect-onboarding';
 import {

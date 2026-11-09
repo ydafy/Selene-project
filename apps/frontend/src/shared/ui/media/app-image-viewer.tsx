@@ -16,7 +16,7 @@ import { Image, type ImageLoadEventData } from 'expo-image';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { useTranslation } from 'react-i18next';
 
-import { Box, Text } from './base';
+import { Box, Text } from '../base';
 import { colors } from '@/shared/theme/tokens';
 
 export type ImageSource = { uri: string } | number;

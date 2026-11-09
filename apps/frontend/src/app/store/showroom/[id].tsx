@@ -44,7 +44,7 @@ import {
   FilterState,
 } from '@/features/search/components/filter-modal';
 import { SearchFilters } from '@/features/search/hooks/use-search-products';
-import { AppImage } from '@/shared/ui/app-image';
+import { AppImage } from '@/shared/ui/media/app-image';
 import { EmptyState } from '@/shared/ui/feedback/empty-state';
 import { useSearchProducts } from '@/features/search/hooks/use-search-products';
 import {

@@ -16,7 +16,7 @@ import { ScreenLayout } from '@/shared/ui/layout/screen-layout';
 import { AuthBackButton } from '@/features/auth/components/auth-back-button';
 import { FormTextInput } from '@/shared/ui/form/form-text-input';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';
-import { AppImage } from '@/shared/ui/app-image';
+import { AppImage } from '@/shared/ui/media/app-image';
 import type { TFunction } from 'i18next';
 import { Box, Text } from '@/shared/ui/base';
 import { useAuth } from '@/features/auth/hooks/use-auth';

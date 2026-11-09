@@ -3,8 +3,8 @@ import { TouchableOpacity } from 'react-native';
 import { useTheme } from '@shopify/restyle';
 
 import { Box } from '@/shared/ui/base';
-import { AppImage } from '@/shared/ui/app-image';
-import { AppImageViewer } from '@/shared/ui/app-image-viewer';
+import { AppImage } from '@/shared/ui/media/app-image';
+import { AppImageViewer } from '@/shared/ui/media/app-image-viewer';
 import { Theme } from '@/shared/theme';
 
 type ProductImageGalleryProps = {

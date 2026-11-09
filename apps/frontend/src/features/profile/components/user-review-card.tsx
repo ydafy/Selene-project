@@ -16,7 +16,7 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 import { useTheme } from '@shopify/restyle';
 
 import { Box, Text } from '@/shared/ui/base';
-import { AppImage } from '@/shared/ui/app-image';
+import { AppImage } from '@/shared/ui/media/app-image';
 import { SellerReview } from '../hooks/use-seller-reviews';
 import { Theme } from '@/shared/theme';
 import { useTranslation } from 'react-i18next';

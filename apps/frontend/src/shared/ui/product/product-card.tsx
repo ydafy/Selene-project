@@ -12,7 +12,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { PublicProduct } from '@selene/types';
 
 import { Box, Text } from '../base';
-import { AppImage } from '../app-image';
+import { AppImage } from '../media/app-image';
 import { Theme } from '../../theme';
 import { formatCurrency } from '../../utils/format';
 import { getSharedStyles } from '../../theme/shared-styles';

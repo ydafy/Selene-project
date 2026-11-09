@@ -28,7 +28,7 @@ import { useProducts } from '@/shared/hooks/use-products';
 import { getMasonryItemHeight } from '@/shared/config/layout';
 import { Theme } from '@/shared/theme';
 import { getSharedStyles } from '@/shared/theme/shared-styles';
-import { AppImage } from '@/shared/ui/app-image';
+import { AppImage } from '@/shared/ui/media/app-image';
 import SeleneLogo from '@/assets/images/SeleneLunaLogo.png';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');

@@ -72,7 +72,7 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
     Box: host('Box'),
     Text: host('Text'),
   }));
-  mock.module('@/shared/ui/app-image', () => ({
+  mock.module('@/shared/ui/media/app-image', () => ({
     AppImage: host('AppImage'),
   }));
   mock.module('@/shared/ui/feedback/confirm-dialog', () => ({

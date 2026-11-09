@@ -9,7 +9,7 @@ import { StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@shopify/restyle';
 import { BlurView } from 'expo-blur';
-import { AppVideo } from '@/shared/ui/app-video';
+import { AppVideo } from '@/shared/ui/media/app-video';
 import { useTranslation } from 'react-i18next';
 
 import { Box, Text } from '@/shared/ui/base';
