@@ -219,9 +219,8 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
 
   if (process.env.SELENE_CONTROLS_CHILD === '1')
     test('switches isolate drafts, stale callbacks and pre-auth dispatch; busy and submission lock callbacks', async () => {
-      let tree: View;
       authentication = deferred();
-      tree = await render(<Screen />);
+      const tree = await render(<Screen />);
       const oldAddress = one(tree, 'AddressPickerModal').props.onSelect;
       const oldEvidence = one(tree, 'EvidenceUploadSection').props
         .onEvidenceComplete;
@@ -289,8 +288,7 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
   if (process.env.SELENE_CONTROLS_CHILD === '1') {
     test('order and auth boundaries clear drafts and reject old callbacks', async () => {
       for (const scope of ['order', 'auth']) {
-        let tree: View;
-        tree = await render(<Screen />);
+        const tree = await render(<Screen />);
         const address = one(tree, 'AddressPickerModal').props.onSelect;
         const evidence = one(tree, 'EvidenceUploadSection').props
           .onEvidenceComplete;
@@ -334,9 +332,8 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
     });
 
     test('retained navigation, refresh and PDF callbacks are inert in the submission turn and dismiss is requested', async () => {
-      let tree: View;
       onboarding = false;
-      tree = await render(<Screen />);
+      const tree = await render(<Screen />);
       const onboardingPress = one(tree, 'PrimaryButton').props.onPress;
       onboarding = true;
       persistedState = 'orphan_pending';

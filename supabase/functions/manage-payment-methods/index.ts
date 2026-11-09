@@ -62,7 +62,7 @@ Deno.serve(
         ManagePaymentMethodsRequestSchema.parse(body);
 
       // 3. Asegurar Stripe Customer
-      let { data: profile } = await supabaseAdmin
+      const { data: profile } = await supabaseAdmin
         .from('profiles_private')
         .select('stripe_customer_id')
         .eq('id', user.id)

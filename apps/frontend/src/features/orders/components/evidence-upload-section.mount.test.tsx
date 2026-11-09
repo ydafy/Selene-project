@@ -135,7 +135,6 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
       },
       consequence: 'safe',
     };
-    let tree: View;
     let locked = false;
     const canInteract = () => !locked;
     const controls = (disabled?: boolean) => (
@@ -153,7 +152,7 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
         />
       </>
     );
-    tree = await render(controls());
+    const tree = await render(controls());
     locked = true;
     await fireEvent.press(all(tree, 'TouchableOpacity')[1]);
     expect(one(tree, 'ConfirmDialog').props.visible).toBe(false);
@@ -199,8 +198,7 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
   test('default capture remains enabled; busy excludes duplicate callbacks and haptics cannot lose a photo', async () => {
     const complete = mock<(...args: unknown[]) => void>(() => {});
     const busy = mock<(...args: unknown[]) => void>(() => {});
-    let tree: View;
-    tree = await render(
+    const tree = await render(
       <EvidenceUploadSection
         orderId="order"
         userId="seller"
@@ -315,8 +313,7 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
     delayedUpload = deferred();
     const complete = mock<(...args: unknown[]) => void>(() => {});
     const busy = mock<(...args: unknown[]) => void>(() => {});
-    let tree: View;
-    tree = await render(
+    const tree = await render(
       <EvidenceUploadSection
         orderId="old"
         userId="seller"
@@ -340,14 +337,13 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
 
   test('disabled stale portal callback cannot open the camera', async () => {
     const complete = mock<(...args: unknown[]) => void>(() => {});
-    let tree: View;
     const props = {
       orderId: 'order',
       userId: 'seller',
       onEvidenceComplete: complete,
       slotsConfig: [{ label: 'photo', icon: 'camera', description: 'intro' }],
     };
-    tree = await render(<EvidenceUploadSection {...props} />);
+    const tree = await render(<EvidenceUploadSection {...props} />);
     await act(async () => {
       await all(tree, 'TouchableOpacity')[0].props.onPress();
     });
@@ -368,8 +364,7 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
 
   test('a synchronous parent capture gate excludes camera side effects before rerender', async () => {
     let blocked = false;
-    let tree: View;
-    tree = await render(
+    const tree = await render(
       <EvidenceUploadSection
         orderId="order"
         userId="seller"
@@ -389,8 +384,7 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
   test('blocked retained portal confirmation leaves the intro and photos unchanged', async () => {
     let blocked = false;
     const complete = mock<(...args: unknown[]) => void>(() => {});
-    let tree: View;
-    tree = await render(
+    const tree = await render(
       <EvidenceUploadSection
         orderId="order"
         userId="seller"
@@ -418,8 +412,7 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
   test('unmounted camera completion cannot upload or populate a new form', async () => {
     camera = deferred();
     const complete = mock<(...args: unknown[]) => void>(() => {});
-    let tree: View;
-    tree = await render(
+    const tree = await render(
       <EvidenceUploadSection
         orderId="old"
         userId="seller"
