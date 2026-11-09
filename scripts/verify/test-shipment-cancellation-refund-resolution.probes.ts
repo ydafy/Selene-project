@@ -1,4 +1,4 @@
-import { SQL } from 'bun';
+import { SQL, type TransactionSQL } from 'bun';
 import assert from 'node:assert/strict';
 
 // Verifier probes for B2.3.1 (fn_resolve_shipment_cancellation_refund). Every case rolls back.
@@ -13,7 +13,7 @@ const ids = {
 const pi = 'pi_b231_probe';
 const amount = 11000;
 const reference = 'SPEI-PROBE-0001';
-type Tx = SQL;
+type Tx = TransactionSQL;
 
 function databaseUrl(): string {
   let url = process.env.SELENE_LOCAL_DB_URL;

@@ -26,10 +26,12 @@ const shipmentId = 'e2e60000-0000-4000-8000-0000000000b1';
 const paymentIntent = 'pi_e2e_label_reconciliation';
 const note = 'Revisé el panel de Envía y no hay ninguna guía';
 
-async function ok<T>(
-  promise: PromiseLike<{ data: T; error: { message: string } | null }>,
+async function ok<
+  R extends { data: unknown; error: { message: string } | null },
+>(
+  promise: PromiseLike<R>,
   what: string,
-): Promise<T> {
+): Promise<Extract<R, { error: null }>['data']> {
   const { data, error } = await promise;
   if (error) throw new Error(`${what}: ${error.message}`);
   return data;

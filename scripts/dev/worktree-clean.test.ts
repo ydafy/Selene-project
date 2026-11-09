@@ -143,10 +143,10 @@ describe('findOrphanStacks', () => {
 
 describe('parseArgs', () => {
   it('reads one worktree or the orphans mode, and rejects every other combination', () => {
-    const worktree = { mode: 'worktree', target: 'auth' };
+    const worktree = { mode: 'worktree', target: 'auth' } as const;
     expect(parseArgs(['auth'])).toEqual({ ...worktree, apply: false });
     expect(parseArgs(['auth', '--yes'])).toEqual({ ...worktree, apply: true });
-    const orphans = { mode: 'orphans', apply: true };
+    const orphans = { mode: 'orphans', apply: true } as const;
     expect(parseArgs(['--orphans', '--yes'])).toEqual(orphans);
     expect(parseArgs(['auth', '--orphans', '--yes'])).toBeNull();
     expect(parseArgs(['auth', '--force'])).toBeNull();

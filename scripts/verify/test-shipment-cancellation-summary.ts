@@ -1,4 +1,4 @@
-import { SQL } from 'bun';
+import { SQL, type TransactionSQL } from 'bun';
 import assert from 'node:assert/strict';
 
 const help =
@@ -20,7 +20,7 @@ const ids = {
 };
 const paymentIntent = 'pi_b55_local';
 
-type Tx = SQL;
+type Tx = TransactionSQL;
 type Who = 'buyer' | 'seller' | 'other' | 'anon';
 type Source = 'buyer' | 'seller' | 'paid_timeout' | 'preparing_timeout';
 

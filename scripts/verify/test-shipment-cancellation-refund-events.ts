@@ -1,4 +1,4 @@
-import { SQL } from 'bun';
+import { SQL, type TransactionSQL } from 'bun';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -25,7 +25,7 @@ const amounts: Record<string, number> = {
   [ids.sibling]: 7000,
 };
 
-type Tx = SQL;
+type Tx = TransactionSQL;
 type Outcome = {
   outcome: string;
   refund_id?: string;

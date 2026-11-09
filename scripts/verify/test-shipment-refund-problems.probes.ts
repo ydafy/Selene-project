@@ -1,6 +1,6 @@
 // Verifier probes for B2.4a (resolved escalated operations, list edges). Same harness rules: local stack only, every case rolls back.
 // Usage: bun scripts/verify/test-shipment-refund-problems.probes.ts
-import { SQL } from 'bun';
+import { SQL, type TransactionSQL } from 'bun';
 import assert from 'node:assert/strict';
 
 const ids = {
@@ -18,7 +18,7 @@ const paymentIntent = (n: number) => `pi_b24a_${n}`;
 const amount = (n: number) => 1000 * n;
 const reference = 'SPEI-2026-10-22-0001';
 
-type Tx = SQL;
+type Tx = TransactionSQL;
 type Problem = {
   shipment_id: string;
   order_id: string;

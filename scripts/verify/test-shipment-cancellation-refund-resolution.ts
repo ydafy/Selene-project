@@ -1,4 +1,4 @@
-import { SQL } from 'bun';
+import { SQL, type TransactionSQL } from 'bun';
 import assert from 'node:assert/strict';
 
 const help =
@@ -26,7 +26,7 @@ const amounts: Record<string, number> = {
 };
 const reference = 'SPEI-2026-10-21-0001';
 
-type Tx = SQL;
+type Tx = TransactionSQL;
 type Resolution = {
   resolved: boolean;
   shipment_cancelled: boolean;

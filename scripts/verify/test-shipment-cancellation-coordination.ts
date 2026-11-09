@@ -726,6 +726,10 @@ async function run() {
       // but synthetic provider/business ports. No Stripe/network is involved.
       await reset();
       const effects = { prepares: 0, refunds: 0, completions: 0 };
+      const criticals: string[] = [];
+      const unexpectedPort = (name: string) => async () => {
+        throw new Error(`unexpected ${name} call`);
+      };
       const orchestrate = (
         source: CancellationContext['source'],
         connection = a,
@@ -775,7 +779,30 @@ async function run() {
             effects.refunds++;
             assert.equal(options.idempotencyKey, `cancel_shipment_${shipment}`);
             assert.equal(payload.metadata.shipment_id, shipment);
-            return { status: 'succeeded' };
+            return {
+              id: `re_${shipment}`,
+              status: 'succeeded',
+              payment_intent: payload.payment_intent,
+              amount: payload.amount,
+              metadata: payload.metadata,
+            };
+          },
+          recordRefund: async (input) => {
+            assert.equal(input.refundId, `re_${shipment}`);
+            assert.equal(input.status, 'succeeded');
+            return {
+              refund_id: input.refundId,
+              refund_status: input.status,
+            };
+          },
+          // The disposable database has no recovery RPC: a reservation that
+          // needs recovery stops at recovery_required with no provider call.
+          loadRecovery: async () => null,
+          listRefunds: unexpectedPort('listRefunds'),
+          retrieveRefund: unexpectedPort('retrieveRefund'),
+          escalate: unexpectedPort('escalate'),
+          reportCritical: (message) => {
+            criticals.push(message);
           },
           complete: async () => {
             effects.completions++;
@@ -808,6 +835,7 @@ async function run() {
         'cancelled',
       );
       assert.deepEqual(effects, { prepares: 2, refunds: 2, completions: 2 });
+      assert.deepEqual(criticals, []);
       const businessAfter = await snapshot();
       assert.deepEqual(businessAfter.shipments, businessBefore.shipments);
       assert.deepEqual(businessAfter.orders, businessBefore.orders);
@@ -986,7 +1014,7 @@ async function run() {
         observed.push(
           (
             await a`SELECT event_type FROM public.shipment_label_events ORDER BY event_type`
-          ).map((row) => row.event_type),
+          ).map((row: { event_type: string }) => row.event_type),
         );
         return observed;
       };

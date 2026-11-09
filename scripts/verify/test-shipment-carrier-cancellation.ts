@@ -1,4 +1,4 @@
-import { SQL } from 'bun';
+import { SQL, type TransactionSQL } from 'bun';
 import assert from 'node:assert/strict';
 
 const help =
@@ -22,7 +22,7 @@ const amounts: Record<string, number> = {
   [ids.paid]: 7000,
 };
 
-type Tx = SQL;
+type Tx = TransactionSQL;
 type Source = 'preparing_timeout' | 'paid_timeout';
 
 function databaseUrl(): string {
