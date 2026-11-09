@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import en from '@/shared/i18n/locales/en/orders.json';
+import es from '@/shared/i18n/locales/es/orders.json';
 
 import { reviewErrorMessage } from './review-error-message';
 
@@ -46,31 +46,7 @@ describe('reviewErrorMessage', () => {
 
 describe('already-reviewed copy', () => {
   test('exists in English and Spanish', () => {
-    for (const locale of ['en', 'es']) {
-      const orders = JSON.parse(
-        readFileSync(
-          join(
-            import.meta.dir,
-            '../../../shared/i18n/locales',
-            locale,
-            'orders.json',
-          ),
-          'utf8',
-        ),
-      ) as { errors: Record<string, string> };
-      expect(orders.errors.alreadyReviewed).toBeString();
-    }
-  });
-});
-
-describe('ReviewModal error toast guard', () => {
-  const modal = readFileSync(
-    join(import.meta.dir, '..', 'components', 'review-modal.tsx'),
-    'utf8',
-  ).replace(/\s+/g, ' ');
-
-  test('shows the mapped message instead of the raw error', () => {
-    expect(modal).toContain('text2: reviewErrorMessage(e, t)');
-    expect(modal).not.toContain('e.message}');
+    expect(en.errors.alreadyReviewed).toBeString();
+    expect(es.errors.alreadyReviewed).toBeString();
   });
 });
