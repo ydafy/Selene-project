@@ -23,7 +23,7 @@ The remote migration history lists 4 of 75 migrations (before this branch); the 
 | T8  | S2     | Move local tooling off service_role access to the four revoked tables (harnesses, Bruno, Playwright) | worker | 61f76d2a, 77ef7f66, 301d73de |
 | T5  | S3     | Hand the maintainer the exact link, repair and push commands                                         | inline | (none)                       |
 | T6  | S6     | Re-run the comparison and migration history check after the maintainer's commands                    | inline | (none)                       |
-| T7  | S5     | Push, PR with `Closes #301`, merge                                                                   | inline |                              |
+| T7  | S5     | Push, PR with `Closes #301`, merge                                                                   | inline | PR #354                      |
 
 ## Log
 
@@ -39,3 +39,4 @@ The remote migration history lists 4 of 75 migrations (before this branch); the 
 - L7 (user, 2026-11-09): "master esos comandos, no los puedes hacer tu?", then "Sí, corrélos vos". The session ran `supabase link --project-ref acoiclkeymgtlwcxilun` (no password needed), `supabase migration repair --linked --status applied` with the 71 versions, `supabase db push --linked --dry-run` (listed only 20261109083744 and 20261109083745) and `supabase db push --linked`.
 - L8 (T6 evidence, 2026-11-09): remote history has 77 versions with the same hash as the 77 migration files; `supabase migration list --linked` shows local equal to remote on every row; the remote fingerprint gives the 14 rows recorded in L3. Security advisors show no new finding. `supabase link` rewrote `supabase/supabase.lock` (linked metadata and the Storage image moved to the hosted v1.89.13); the change was reverted and recorded in #353.
 - L9 (user, 2026-11-09): asked which documents change with the new workflow. `supabase/AGENTS.md` ("Reading the remote project") and `docs/decision-log.md` now say migrations reach the remote through `supabase db push`.
+- L10 (T7, 2026-11-09): PR #354. Native review lineages `review-1d0f9f3b9782384e` (risk, reliability) and `review-818b6494eea6210b` (readability) approved and acknowledged. A readability advisory showed the fingerprint ordered policy roles by a constant; 3efa46d9 sorts them by name (local and remote still give `policy 52 417e170262af`).
