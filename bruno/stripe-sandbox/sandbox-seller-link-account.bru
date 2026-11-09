@@ -1,0 +1,48 @@
+meta {
+  name: sandbox-seller-link-account
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/profiles_private?id=eq.{{sandboxSellerId}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+script:pre-request {
+  if (!bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID") || !bru.getProcessEnv("STRIPE_SECRET_KEY")) {
+    bru.runner.skipRequest();
+  } else {
+    req.setBody({
+      stripe_account_id: bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID"),
+      stripe_onboarding_status: "pending",
+      stripe_onboarding_refreshed_at: null,
+    });
+  }
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("the throwaway seller points at the sandbox account, onboarding still pending", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(1);
+    expect(res.getBody()[0].stripe_account_id).to.equal(bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID"));
+    expect(res.getBody()[0].stripe_onboarding_status).to.equal("pending");
+  });
+}
+
+docs {
+  Service-role precondition, the state create-connect-account leaves for a new seller: the
+  account id is stored and onboarding is still pending, so only the refresh below can turn
+  it complete.
+}

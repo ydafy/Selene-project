@@ -1,0 +1,50 @@
+meta {
+  name: sandbox-seller-create
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/auth/v1/admin/users
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:pre-request {
+  if (!bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID") || !bru.getProcessEnv("STRIPE_SECRET_KEY")) {
+    bru.runner.skipRequest();
+  } else {
+    bru.setVar("sandboxSellerEmail", "bruno-sandbox-seller-" + Date.now() + "@selene.local");
+  }
+}
+
+body:json {
+  {
+    "email": "{{sandboxSellerEmail}}",
+    "password": "password123",
+    "email_confirm": true
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("sandboxSellerId", res.getBody().id);
+  }
+}
+
+tests {
+  test("creates a confirmed throwaway seller for the sandbox flows", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().id).to.be.a("string");
+  });
+}
+
+docs {
+  Local stack only. Each run makes its own seller, so the folder is repeatable; every run
+  links its seller to the same persistent sandbox connected account.
+}
