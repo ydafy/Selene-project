@@ -133,6 +133,30 @@ describe('rewrites relative specifiers that leave the top-level folder', () => {
       "mock.module('@/shared/lib/supabase', () => ({}));\nconst m = await import('@/shared/lib/edge-client');\nexport { z } from '@/features/home/z';\nconst own = await import('./page');\n",
     );
   });
+
+  test('require() and jest.mock()', () => {
+    const root = makeRepo({
+      [`${F}/src/app/a.test.ts`]:
+        "jest.mock('../shared/lib/supabase');\nconst h = require('../shared/utils/haptics');\n",
+    });
+    run(root, [F, '--apply']);
+    expect(read(root, `${F}/src/app/a.test.ts`)).toBe(
+      "jest.mock('@/shared/lib/supabase');\nconst h = require('@/shared/utils/haptics');\n",
+    );
+  });
+
+  test('a nested folder index in another top-level folder', () => {
+    const root = makeRepo({
+      [`${F}/src/features/cart/hooks/use-cart.ts`]:
+        "import { ui } from '../../../shared/ui';\nimport { p } from '../../payments';\n",
+      [`${F}/src/shared/ui/index.ts`]: 'export const ui = 1;\n',
+      [`${F}/src/features/payments/index.ts`]: 'export const p = 1;\n',
+    });
+    run(root, [F, '--apply']);
+    expect(read(root, `${F}/src/features/cart/hooks/use-cart.ts`)).toBe(
+      "import { ui } from '@/shared/ui';\nimport { p } from '@/features/payments';\n",
+    );
+  });
 });
 
 describe('leaves everything else untouched', () => {
@@ -150,6 +174,53 @@ describe('leaves everything else untouched', () => {
     const root = makeRepo({ [`${A}/src/app/version.ts`]: text });
     run(root, [A, '--apply']);
     expect(read(root, `${A}/src/app/version.ts`)).toBe(text);
+  });
+
+  test('a specifier that resolves to the folder above src/ stays relative', () => {
+    const text = "import app from '../..';\nimport cfg from '../../';\n";
+    const root = makeRepo({ [`${A}/src/app/root.ts`]: text });
+    const r = run(root, [A, '--apply']);
+    expect(r.code).toBe(0);
+    expect(read(root, `${A}/src/app/root.ts`)).toBe(text);
+    expect(r.out).toContain('0 specifiers rewritten');
+  });
+
+  test('a specifier that names src/ itself is reported, not rewritten', () => {
+    const text = "import a from '..';\nimport b from '../';\n";
+    const root = makeRepo({ [`${A}/src/app/root.ts`]: text });
+    const r = run(root, [A, '--apply']);
+    expect(r.code).toBe(0);
+    expect(read(root, `${A}/src/app/root.ts`)).toBe(text);
+    expect(r.out).toContain(
+      `${A}/src/app/root.ts:1: .. names src/ itself; not rewritten`,
+    );
+    expect(r.out).toContain(
+      `${A}/src/app/root.ts:2: ../ names src/ itself; not rewritten`,
+    );
+    expect(r.out).toContain(
+      'Summary: 0 files edited, 0 specifiers rewritten, 2 items to check manually',
+    );
+  });
+
+  test('bare . and .. inside their own folder stay relative', () => {
+    const text = "import { a } from '.';\nimport { b } from '..';\n";
+    const root = makeRepo({
+      [`${F}/src/shared/theme/styles/s.ts`]: text,
+    });
+    const r = run(root, [F, '--apply']);
+    expect(read(root, `${F}/src/shared/theme/styles/s.ts`)).toBe(text);
+    expect(r.out).toContain('0 items to check manually');
+  });
+
+  test('a bare .. that leaves its top-level folder is rewritten', () => {
+    const root = makeRepo({
+      [`${F}/src/features/cart/index.ts`]: "export { s } from '..';\n",
+      [`${F}/src/features/index.ts`]: 'export const s = 1;\n',
+    });
+    run(root, [F, '--apply']);
+    expect(read(root, `${F}/src/features/cart/index.ts`)).toBe(
+      "export { s } from '@/features';\n",
+    );
   });
 
   test('files outside src/ are not scanned', () => {
@@ -237,5 +308,13 @@ describe('plan and options', () => {
     const option = run(root, [A, '--write']);
     expect(option.code).toBe(1);
     expect(option.err).toContain('Unknown option --write.');
+  });
+
+  test('fails when the app has no src/ folder', () => {
+    const root = makeRepo({ [`${A}/package.json`]: '{}\n' });
+    const r = run(root, [A, '--apply']);
+    expect(r.code).toBe(1);
+    expect(r.err).toContain(`${A}/src does not exist under ${root}.`);
+    expect(r.out).toBe('');
   });
 });
