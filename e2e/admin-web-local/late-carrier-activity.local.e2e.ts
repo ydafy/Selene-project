@@ -11,7 +11,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { expect, test } from '@playwright/test';
-import { readLocalStack } from './local-stack';
+import { ownerExec, ownerQuery, readLocalStack, sqlText } from './local-stack';
 
 const stack = readLocalStack();
 const db = createClient(stack.apiUrl, stack.serviceRoleKey, {
@@ -51,12 +51,9 @@ async function cleanup() {
     db.from('admin_audit_logs').delete().eq('target_id', shipmentId),
     'admin_audit_logs',
   );
-  await ok(
-    db
-      .from('shipment_cancellation_operations')
-      .delete()
-      .eq('shipment_id', shipmentId),
-    'operations',
+  ownerExec(
+    stack,
+    `DELETE FROM public.shipment_cancellation_operations WHERE shipment_id = ${sqlText(shipmentId)}`,
   );
   await ok(db.from('shipments').delete().eq('id', shipmentId), 'shipments');
   await ok(db.from('orders').delete().eq('id', orderId), 'orders');
@@ -183,16 +180,13 @@ test.afterAll(async () => {
 test('admin sees carrier activity after the refund started and marks it reviewed without changing the cancellation', async ({
   page,
 }) => {
-  const operationBefore = await ok(
-    db
-      .from('shipment_cancellation_operations')
-      .select(
-        'source, refund_status, refund_id, external_started_at, late_carrier_activity_at, late_carrier_activity_event_type',
-      )
-      .eq('shipment_id', shipmentId)
-      .single(),
-    'operation before',
+  const operationsBefore = ownerQuery<Record<string, unknown>>(
+    stack,
+    `SELECT source, refund_status, refund_id, external_started_at, late_carrier_activity_at, late_carrier_activity_event_type
+       FROM public.shipment_cancellation_operations WHERE shipment_id = ${sqlText(shipmentId)}`,
   );
+  expect(operationsBefore).toHaveLength(1);
+  const [operationBefore] = operationsBefore;
   expect(operationBefore.late_carrier_activity_event_type).toBe('in_transit');
   // The order status follows its shipments; the acknowledgement must leave both as they are.
   const orderBefore = await ok(
@@ -234,16 +228,14 @@ test('admin sees carrier activity after the refund started and marks it reviewed
 
   await expect(row).toHaveCount(0, { timeout: 30_000 });
 
-  const operation = await ok(
-    db
-      .from('shipment_cancellation_operations')
-      .select(
-        'source, refund_status, refund_id, external_started_at, late_carrier_activity_at, late_carrier_activity_event_type, late_carrier_activity_acknowledged_at, late_carrier_activity_acknowledged_by, late_carrier_activity_acknowledged_note',
-      )
-      .eq('shipment_id', shipmentId)
-      .single(),
-    'operation after',
+  const operations = ownerQuery<Record<string, unknown>>(
+    stack,
+    `SELECT source, refund_status, refund_id, external_started_at, late_carrier_activity_at, late_carrier_activity_event_type,
+            late_carrier_activity_acknowledged_at, late_carrier_activity_acknowledged_by, late_carrier_activity_acknowledged_note
+       FROM public.shipment_cancellation_operations WHERE shipment_id = ${sqlText(shipmentId)}`,
   );
+  expect(operations).toHaveLength(1);
+  const [operation] = operations;
   expect(operation.late_carrier_activity_acknowledged_by).toBe(adminId);
   expect(operation.late_carrier_activity_acknowledged_note).toBe(note);
   expect(operation.late_carrier_activity_acknowledged_at).not.toBeNull();
