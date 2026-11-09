@@ -1,0 +1,60 @@
+meta {
+  name: sandbox-buyer-address
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/addresses
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+script:pre-request {
+  if (
+    bru.getProcessEnv("BRUNO_STRIPE_SANDBOX") !== "1" ||
+    !bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID") ||
+    !bru.getProcessEnv("STRIPE_SECRET_KEY")
+  ) {
+    bru.runner.skipRequest();
+  }
+}
+
+body:json {
+  {
+    "user_id": "{{sandboxBuyerId}}",
+    "label": "Casa",
+    "full_name": "Comprador Bruno",
+    "phone": "3322222222",
+    "street_line1": "Avenida Chapultepec",
+    "street_number": "45",
+    "district": "Ladrón de Guevara",
+    "city": "Guadalajara",
+    "state": "Jalisco",
+    "zip_code": "44600",
+    "is_default": true
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    bru.setVar("sandboxAddressId", res.getBody()[0].id);
+  }
+}
+
+tests {
+  test("the throwaway buyer has a shipping address", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody()[0].user_id).to.equal(bru.getVar("sandboxBuyerId"));
+  });
+}
+
+docs {
+  The order snapshot copies this address.
+}

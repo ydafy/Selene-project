@@ -1,0 +1,46 @@
+meta {
+  name: fees-order-row
+  type: http
+  seq: 24
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/orders?id=eq.{{releaseOrderId}}&select=actual_stripe_fee_cents,stripe_fee_reconciled_at,stripe_fee_reconciliation_jobs(id,status,attempt_count,last_error,claim_token)
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:pre-request {
+  if (
+    bru.getProcessEnv("BRUNO_STRIPE_SANDBOX") !== "1" ||
+    !bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID") ||
+    !bru.getProcessEnv("STRIPE_SECRET_KEY")
+  ) {
+    bru.runner.skipRequest();
+  }
+}
+
+tests {
+  test("the order holds the fee of the charge's balance transaction", function () {
+    expect(res.getStatus()).to.equal(200);
+    const order = res.getBody()[0];
+    expect(order.actual_stripe_fee_cents).to.equal(Number(bru.getVar("releaseChargeFee")));
+    expect(order.actual_stripe_fee_cents).to.be.above(0);
+    expect(Number.isNaN(Date.parse(order.stripe_fee_reconciled_at))).to.equal(false);
+    expect(order.stripe_fee_reconciliation_jobs.length).to.equal(1);
+    expect(order.stripe_fee_reconciliation_jobs[0].id).to.equal(bru.getVar("sandboxFeeJobId"));
+    expect(order.stripe_fee_reconciliation_jobs[0].status).to.equal("succeeded");
+    expect(order.stripe_fee_reconciliation_jobs[0].attempt_count).to.equal(1);
+    expect(order.stripe_fee_reconciliation_jobs[0].last_error).to.equal(null);
+  });
+}
+
+docs {
+  releaseChargeFee is the fee Stripe reported on the charge's balance transaction when
+  release-order-from-real-charge created it.
+}

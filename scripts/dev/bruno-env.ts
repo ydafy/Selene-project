@@ -1,8 +1,9 @@
 // Writes bruno/.env for the Bruno collection from the local Supabase stack of
 // the current worktree (each worktree has its own ports and keys), plus the
-// optional worker secrets of supabase/functions/.env (FUNCTIONS_ENV_KEYS). The
-// file is gitignored and never printed: the CLI only reports which variable
-// names were written.
+// optional worker secrets and Stripe sandbox settings of supabase/functions/.env
+// (FUNCTIONS_ENV_KEYS). The file is gitignored and never printed: the CLI only
+// reports which variable names were written. A Stripe key that is not a test
+// key stops the run, so the collection can never reach live mode.
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -13,14 +14,24 @@ const STATUS_KEYS = [
   ['SERVICE_ROLE_KEY', 'SUPABASE_SERVICE_ROLE_KEY'],
 ] as const;
 
-// Each key is copied when present; the CLI names the requests that fail without it.
+// Each key is copied when present; the CLI says what happens without it.
 const FUNCTIONS_ENV_KEYS = [
-  ['CRON_SECRET', 'the cron-secret requests (cron-watchdog-with-secret, ...)'],
+  [
+    'CRON_SECRET',
+    'the cron-secret requests (cron-watchdog-with-secret, ...) will fail',
+  ],
   [
     'STRIPE_FEE_RECONCILIATION_WORKER_SECRET',
-    'the reconcile-stripe-fees requests',
+    'the reconcile-stripe-fees requests will fail',
+  ],
+  ['STRIPE_SECRET_KEY', 'the stripe-sandbox requests will be skipped'],
+  [
+    'BRUNO_STRIPE_TEST_ACCOUNT_ID',
+    'the stripe-sandbox requests will be skipped',
   ],
 ] as const;
+
+const STRIPE_TEST_KEY_PREFIXES = ['sk_test_', 'rk_test_'];
 
 function unquote(value: string): string {
   return value.trim().replace(/^(["'])(.*)\1$/, '$2');
@@ -78,6 +89,13 @@ export function buildBrunoEnv(
     ([key, name]) => `${name}=${formatValue(status[key])}`,
   );
   const functionsValues = functionsEnv ? readEnvLines(functionsEnv) : {};
+  const stripeKey = functionsValues.STRIPE_SECRET_KEY;
+  if (
+    stripeKey &&
+    !STRIPE_TEST_KEY_PREFIXES.some((prefix) => stripeKey.startsWith(prefix))
+  ) {
+    throw new Error('STRIPE_TEST_KEY_REQUIRED');
+  }
   for (const [key] of FUNCTIONS_ENV_KEYS) {
     const value = functionsValues[key];
     if (value) lines.push(`${key}=${formatValue(value)}`);
@@ -110,9 +128,11 @@ if (import.meta.main) {
     console.error(
       code === 'LOCAL_API_URL_REQUIRED'
         ? 'Refusing to write bruno/.env: the API URL is not local.'
-        : code.startsWith('MISSING_STATUS_KEYS')
-          ? `Local stack output is incomplete (${code}).`
-          : 'Local Supabase stack is not running. Run `supabase start` first.',
+        : code === 'STRIPE_TEST_KEY_REQUIRED'
+          ? 'Refusing to write bruno/.env: STRIPE_SECRET_KEY in supabase/functions/.env is not a Stripe test key (sk_test_ or rk_test_).'
+          : code.startsWith('MISSING_STATUS_KEYS')
+            ? `Local stack output is incomplete (${code}).`
+            : 'Local Supabase stack is not running. Run `supabase start` first.',
     );
     process.exit(1);
   }
@@ -120,10 +140,10 @@ if (import.meta.main) {
   writeFileSync(join(root, 'bruno', '.env'), envText);
   const names = brunoEnvVariableNames(envText);
   console.log(`Wrote bruno/.env with: ${names.join(', ')}`);
-  for (const [key, requests] of FUNCTIONS_ENV_KEYS) {
+  for (const [key, consequence] of FUNCTIONS_ENV_KEYS) {
     if (!names.includes(key)) {
       console.log(
-        `${key} not found in supabase/functions/.env; ${requests} will fail.`,
+        `${key} not found in supabase/functions/.env; ${consequence}.`,
       );
     }
   }

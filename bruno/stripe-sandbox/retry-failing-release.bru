@@ -1,0 +1,63 @@
+meta {
+  name: retry-failing-release
+  type: http
+  seq: 16
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/release-connect-payout
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+script:pre-request {
+  if (
+    bru.getProcessEnv("BRUNO_STRIPE_SANDBOX") !== "1" ||
+    !bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID") ||
+    !bru.getProcessEnv("STRIPE_SECRET_KEY")
+  ) {
+    bru.runner.skipRequest();
+  } else {
+    req.setBody({
+      sellerId: bru.getVar("sandboxSellerId"),
+      shipmentIds: [bru.getVar("retryShipmentId")],
+      idempotencyKey: "bruno-sandbox-failing-" + Date.now(),
+    });
+  }
+}
+
+body:json {
+  {}
+}
+
+script:post-response {
+  if (res.getStatus() === 200 && res.getBody().success === true) {
+    bru.setVar("failedRunId", res.getBody().runId);
+    bru.setVar("failedPayoutId", res.getBody().stripePayoutId);
+  }
+}
+
+tests {
+  test("the release is accepted and Stripe creates the payout to the failing CLABE", function () {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body).to.deep.equal({
+      success: true,
+      runId: body.runId,
+      stripePayoutId: body.stripePayoutId,
+      status: "pending_reconciliation",
+      amount: 210600,
+    });
+    expect(body.stripePayoutId).to.match(/^po_/);
+  });
+}
+
+docs {
+  Same release as release-payout; Stripe accepts the payout and fails it about a second
+  later, asynchronously, because the default CLABE does not exist.
+}

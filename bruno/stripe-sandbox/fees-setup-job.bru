@@ -1,0 +1,53 @@
+meta {
+  name: fees-setup-job
+  type: http
+  seq: 22
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/stripe_fee_reconciliation_jobs
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+script:pre-request {
+  if (
+    bru.getProcessEnv("BRUNO_STRIPE_SANDBOX") !== "1" ||
+    !bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID") ||
+    !bru.getProcessEnv("STRIPE_SECRET_KEY")
+  ) {
+    bru.runner.skipRequest();
+  }
+}
+
+body:json {
+  {
+    "order_id": "{{releaseOrderId}}",
+    "stripe_payment_intent_id": "{{releaseIntentId}}"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    bru.setVar("sandboxFeeJobId", res.getBody()[0].id);
+  }
+}
+
+tests {
+  test("the service role adds a due fee job for the order with the real charge", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody()[0].status).to.equal("pending");
+    expect(res.getBody()[0].attempt_count).to.equal(0);
+  });
+}
+
+docs {
+  Seeds one due job on the order of release-order-from-real-charge, whose stripe_charge_id
+  is a real sandbox charge.
+}

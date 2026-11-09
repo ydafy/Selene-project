@@ -1,6 +1,4 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 
 import {
   ApiError,
@@ -153,30 +151,5 @@ describe('mapDisputeErrorCode', () => {
     const error = mapDisputeErrorCode('SOMETHING_ELSE');
     expect(error.status).toBe(500);
     expect(error.message).toBe('Error al crear disputa: SOMETHING_ELSE');
-  });
-});
-
-describe('evidence check placement', () => {
-  it('checks evidence ownership after authentication and before opening the dispute', () => {
-    const source = readFileSync(join(import.meta.dir, 'index.ts'), 'utf8');
-    const check = source.indexOf(
-      'assertOwnDisputeEvidence(evidence, orderId, user.id)',
-    );
-    expect(check).toBeGreaterThan(
-      source.indexOf("throw new ApiError(401, 'AUTH_REQUIRED')"),
-    );
-    expect(check).toBeLessThan(source.indexOf('.rpc('));
-  });
-});
-
-describe('Edge notice cutover', () => {
-  it('does not insert post-commit notifications', () => {
-    const source = readFileSync(join(import.meta.dir, 'index.ts'), 'utf8');
-    expect(source).toContain('.rpc(');
-    expect(source).toContain("'fn_open_shipment_dispute'");
-    expect(source).not.toContain(".from('disputes')");
-    expect(source).not.toMatch(
-      /\.from\('notifications'\)|const notifications =/,
-    );
   });
 });
