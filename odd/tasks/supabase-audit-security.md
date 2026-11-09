@@ -14,7 +14,7 @@ Item 1 of roadmap #299 (issue #300): fixes for the findings of the 2026-11-08 Su
 
 | ID  | Specs      | Route  | Commit   |
 | --- | ---------- | ------ | -------- |
-| T1  | S1, S2, S4 | inline | 2c76e9c9 |
+| T1  | S1, S2, S4 | inline | f22e38fc |
 | T2  | S1, S2     | inline | pending  |
 | T3  | S1, S2     | inline | pending  |
 | T4  | S3         | inline | pending  |
@@ -31,3 +31,4 @@ Item 1 of roadmap #299 (issue #300): fixes for the findings of the 2026-11-08 Su
 - **L3** Independent verification of T1: met for S1, S2 and S4, no blockers. Follow-up in the next commit: a corrected migration comment and two catalog assertions in the pgTAP file (each shown to fail against a rolled-back regression). The snapshots in `supabase/queries/rls/` are regenerated in T4, after the deploy.
 - **L4** (2026-11-08, maintainer): chose "Cerrarlo ahora dentro de GHSA-4983" for a related gap the verifier found. Same migration file (not deployed yet), red then green in the pgTAP file.
 - **L5** Independent verification of f444a84a: met, no blockers. Follow-ups: one more pgTAP case (next commit); after the deploy, update the review comments in `apps/frontend/src/features/orders/logic/use-review-action.helpers.ts` and `review-modal.tsx` together with the `supabase/queries/rls/` snapshots (T4). Outside this work: #319.
+- **L6** (2026-11-08, maintainer): "Ya aploque la migracion, sobre el punto 4, si, tienes mi luz verde". Remote read after the deploy: the policies, client privileges and the review constraint match the local stack; the security and performance advisors show nothing new from this change. T1 squashed into one commit. The `supabase/queries/rls/` JSON snapshots were already stale before this work (they still list policies dropped on 2026-10-28) and #303 replaces `supabase/queries/`, so they stay as they are. The review comments in the app now match the insert policy.
