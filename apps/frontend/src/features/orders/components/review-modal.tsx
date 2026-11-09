@@ -14,6 +14,7 @@ import { Box, Text } from '@/shared/ui/base';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { StarRating } from '@/features/orders/components/star-rating';
 import { useReviewAction } from '../hooks/use-review-action';
+import { reviewErrorMessage } from '../logic/review-error-message';
 import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import { Theme } from '@/shared/theme';
 import { EnrichedOrder } from '@selene/types';
@@ -52,7 +53,7 @@ interface Props {
 export const ReviewModal = forwardRef<BottomSheetModal, Props>(
   ({ order, sellerId, shipmentId, productId, productName, onSuccess }, ref) => {
     const theme = useTheme<Theme>();
-    const { t } = useTranslation(['profile', 'common']);
+    const { t } = useTranslation(['profile', 'common', 'orders']);
     const { session } = useAuthContext();
     const [rating, setRating] = useState(0);
     const [comment, setComment] = useState('');
@@ -110,10 +111,7 @@ export const ReviewModal = forwardRef<BottomSheetModal, Props>(
         Toast.show({
           type: 'error',
           text1: t('common:states.errorTitle'),
-          text2:
-            e instanceof Error
-              ? `[${(e as Error & { code?: string }).code || 'ERROR'}] ${e.message}`
-              : t('common:errors.generic'),
+          text2: reviewErrorMessage(e, t),
         });
         if (typeof ref !== 'function' && ref?.current) {
           ref.current.dismiss();

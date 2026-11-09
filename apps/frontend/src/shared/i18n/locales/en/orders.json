@@ -113,7 +113,8 @@
     "salesMsg": "When you sell a component, you can manage shipping and your profit here."
   },
   "errors": {
-    "cannotCancel": "An order that is already being prepared cannot be canceled."
+    "cannotCancel": "An order that is already being prepared cannot be canceled.",
+    "alreadyReviewed": "You already rated this purchase."
   },
   "cancelErrors": {
     "maintenance": {
