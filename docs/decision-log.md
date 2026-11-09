@@ -218,3 +218,15 @@ It is established as the standard procedure for structural inconsistencies.
 - The dependency report workflow installs Node from `.nvmrc`. The other workflows run only Bun.
 - Runtimes follow the update rule in `docs/dependencies.md`, "Keep Node and Bun current". This replaces "Node stays at `22.13.1` for EAS" from the 2026-10-20 entry.
 - Node 26 became LTS on 2026-10-28. Move to it about three months later, near the Expo SDK 58 upgrade (#132).
+
+## 2026-11-09: The `main` Ruleset Requires Up-to-Date Branches and Every CI Job
+
+**Context:** The GitHub ruleset `main` already required a pull request and the `test` and `db-test` checks, with no bypass actors. It did not require a branch to be up to date with `main`. On 2026-11-09, #343 and #341 merged with CI runs that had never seen each other: #343 added a spec that used a DOM type, and #341 added a root type check without the DOM lib. `main` failed `bun run typecheck` until #347 fixed it.
+
+**Decision:**
+
+- The ruleset requires branches to be up to date before merging (`strict_required_status_checks_policy`).
+- The required checks are every job in `.github/workflows/ci.yml`: `test`, `db-test`, `e2e`, and `commit-messages`. A new CI job is added to the ruleset when it lands.
+- Pull requests still need no approving review, since the maintainer works alone.
+
+**Consequence:** After a merge, an open pull request must be updated from `main` (`gh pr update-branch <N>`) and pass CI again before it can merge. With several parallel worktrees, merge one pull request at a time.
