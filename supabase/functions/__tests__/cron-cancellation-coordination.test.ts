@@ -788,7 +788,6 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
       };
       const held = new Response(JSON.stringify({ message: 'Already running' }));
       new Function(
-        'serve',
         'createClient',
         'Stripe',
         'Deno',
@@ -812,9 +811,6 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         'confirmPreparingCarrier',
         executable,
       )(
-        (callback: typeof handler) => {
-          handler = callback;
-        },
         () => {
           clientsCreated += 1;
           return {
@@ -842,7 +838,12 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
             return {};
           }
         },
-        { env: { get: () => 'fake' } },
+        {
+          env: { get: () => 'fake' },
+          serve: (callback: typeof handler) => {
+            handler = callback;
+          },
+        },
         { log: (value: string) => logs.push(JSON.parse(value)) },
         (_name: string, callback: typeof handler) => callback,
         () => async () => undefined,

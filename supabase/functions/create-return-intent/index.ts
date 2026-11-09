@@ -1,5 +1,4 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { createClient } from '../_shared/supabase-js.ts';
 import Stripe from 'https://esm.sh/stripe@17.0.0';
 
 import { buildReturnShippingPaymentIntentParams } from './create-return-intent.ts';
@@ -40,7 +39,7 @@ const log = (
   );
 };
 
-serve(
+Deno.serve(
   withSentry('create-return-intent', async (req) => {
     if (req.method === 'OPTIONS')
       return new Response('ok', { headers: corsHeaders });

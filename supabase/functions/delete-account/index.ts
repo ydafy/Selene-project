@@ -1,5 +1,4 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { createClient } from '../_shared/supabase-js.ts';
 import Stripe from 'https://esm.sh/stripe@17.0.0';
 
 import type { Database } from '../../../packages/types/src/database.types.ts';
@@ -69,4 +68,4 @@ const handler = createDeleteAccountHandler({
   log,
 });
 
-serve(withSentry('delete-account', handler));
+Deno.serve(withSentry('delete-account', handler));

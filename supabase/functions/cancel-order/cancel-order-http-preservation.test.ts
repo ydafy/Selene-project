@@ -217,7 +217,6 @@ async function invoke(
     source.replace(/^import\s[\s\S]*?from\s+['"][^'"]+['"];\s*/gm, ''),
   );
   new Function(
-    'serve',
     'createClient',
     'Stripe',
     'Deno',
@@ -231,12 +230,14 @@ async function invoke(
     'createCancellationReporter',
     executable,
   )(
-    (callback: typeof handler) => {
-      handler = callback;
-    },
     () => supabase,
     FakeStripe,
-    { env: { get: () => 'fake' } },
+    {
+      env: { get: () => 'fake' },
+      serve: (callback: typeof handler) => {
+        handler = callback;
+      },
+    },
     { log: (value: string) => logs.push(JSON.parse(value)) },
     ApiError,
     parseCancelOrderRequestBody,

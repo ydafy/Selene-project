@@ -1,5 +1,4 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { createClient } from '../_shared/supabase-js.ts';
 import Stripe from 'https://esm.sh/stripe@17.0.0';
 
 import {
@@ -34,7 +33,7 @@ const log = (
   );
 };
 
-serve(
+Deno.serve(
   withSentry('refresh-connect-account-status', async (req: Request) => {
     if (req.method === 'OPTIONS') {
       return new Response('ok', { headers: corsHeaders });

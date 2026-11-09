@@ -6,8 +6,7 @@
  * to Sentry as an error. The run itself is a Sentry Cron Monitor, so a missed
  * or failed watchdog run alerts too. See odd/tasks/sentry-observability.md (L12).
  */
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { createClient } from '../_shared/supabase-js.ts';
 
 import { reportMessage, withMonitor, withSentry } from '../_shared/sentry.ts';
 import { createCronWatchdogHandler } from './handler.ts';
@@ -41,4 +40,4 @@ const handler = createCronWatchdogHandler({
   log: (message) => console.error(message),
 });
 
-serve(withSentry('cron-watchdog', handler));
+Deno.serve(withSentry('cron-watchdog', handler));

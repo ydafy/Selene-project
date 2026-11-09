@@ -392,15 +392,17 @@ type EdgeRuntime = {
   env: {
     get: (name: string) => string | undefined;
   };
+  serve: (
+    handler: (request: Request) => Response | Promise<Response>,
+  ) => unknown;
 };
 
 const denoRuntime = (globalThis as typeof globalThis & { Deno?: EdgeRuntime })
   .Deno;
 
 if (denoRuntime) {
-  const [{ serve }, { createClient }, { default: Stripe }] = await Promise.all([
-    import('https://deno.land/std@0.168.0/http/server.ts'),
-    import('https://esm.sh/@supabase/supabase-js@2.39.3'),
+  const [{ createClient }, { default: Stripe }] = await Promise.all([
+    import('../_shared/supabase-js.ts'),
     import('https://esm.sh/stripe@17.0.0'),
   ]);
 
@@ -532,7 +534,7 @@ if (denoRuntime) {
         })()
       : null;
 
-  serve(
+  denoRuntime.serve(
     withSentry('reconcile-stripe-fees', (request: Request) => {
       if (
         !workerBearerSecret ||

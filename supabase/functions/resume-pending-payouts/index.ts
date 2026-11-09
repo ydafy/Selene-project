@@ -13,8 +13,7 @@
  * reconciled by server-side Stripe listing — never by a second create. Cron
  * scheduling is configured in the Supabase Dashboard (handoff only).
  */
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { createClient } from '../_shared/supabase-js.ts';
 import Stripe from 'https://esm.sh/stripe@17.0.0';
 
 import {
@@ -391,4 +390,4 @@ const serveHandler = async (req: Request): Promise<Response> => {
   }
 };
 
-serve(withSentry('resume-pending-payouts', serveHandler));
+Deno.serve(withSentry('resume-pending-payouts', serveHandler));

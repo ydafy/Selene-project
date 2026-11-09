@@ -1,5 +1,4 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { createClient } from '../_shared/supabase-js.ts';
 import Stripe from 'https://esm.sh/stripe@17.0.0';
 
 import { ReconcileConnectPaymentsRequestSchema } from './request-schema.ts';
@@ -14,7 +13,7 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-serve(
+Deno.serve(
   withSentry('reconcile-connect-payments', async (req) => {
     if (req.method === 'OPTIONS') {
       return new Response('ok', { headers: corsHeaders });

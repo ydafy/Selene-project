@@ -7,8 +7,8 @@
  * shipment-scoped Transfers keyed by an order-level `transfer_group`.
  *
  * These functions are intentionally free of Stripe/Supabase/Deno imports so
- * they can be unit-tested with `bun test` (the `serve()` handler in `index.ts`
- * imports `https://deno.land/std` + `https://esm.sh`, which `bun test` cannot
+ * they can be unit-tested with `bun test` (the `Deno.serve()` handler in `index.ts`
+ * imports `npm:` specifiers, which `bun test` cannot
  * resolve). `index.ts` wires these pure builders around the Stripe/Supabase
  * calls; all single-PI correctness lives here and is covered by tests.
  *
