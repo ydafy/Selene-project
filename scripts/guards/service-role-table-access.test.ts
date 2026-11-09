@@ -22,16 +22,20 @@ const SCANNED = [
 const SKIP_DIRS = new Set(['node_modules', '.git']);
 
 const TABLES = RPC_ONLY_TABLES.join('|');
+// Matched over the whole file (`\s*` spans newlines), so a `.from(` split across
+// lines is caught; the reported line is where the match starts.
 const ACCESS = new RegExp(
   `rest/v1/(?:${TABLES})\\b|\\.from\\(\\s*['"\`](?:public\\.)?(?:${TABLES})['"\`]`,
+  'g',
 );
 
 function findTableAccess(files: { path: string; text: string }[]): string[] {
   const offenders: string[] = [];
   for (const { path, text } of files) {
-    text.split('\n').forEach((line, index) => {
-      if (ACCESS.test(line)) offenders.push(`${path}:${index + 1}`);
-    });
+    for (const match of text.matchAll(ACCESS)) {
+      const line = text.slice(0, match.index).split('\n').length;
+      offenders.push(`${path}:${line}`);
+    }
   }
   return offenders;
 }
@@ -65,6 +69,17 @@ describe('service_role table access guard (probes)', () => {
     expect(findTableAccess(files)).toEqual(
       RPC_ONLY_TABLES.map((table) => `e2e/${table}.ts:1`),
     );
+  });
+
+  it('reports a .from() call split across lines', () => {
+    expect(
+      findTableAccess([
+        {
+          path: 'e2e/z.ts',
+          text: "await db\n  .from(\n    'connect_payout_events',\n  )\n  .delete();",
+        },
+      ]),
+    ).toEqual(['e2e/z.ts:2']);
   });
 
   it('ignores other tables, RPCs and names that only share a prefix', () => {
