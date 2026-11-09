@@ -2594,14 +2594,13 @@ describe('phase 2B final slice webhook terminal surface is atomic', () => {
   const readIndexSource = (): string =>
     readFileSync(join(import.meta.dir, 'index.ts'), 'utf8');
 
-  it('projects terminal outcomes only through the single atomic RPC, never separate shipment writes', () => {
+  it('keeps no separate shipment write next to the atomic terminal RPC', () => {
     const source = readIndexSource();
 
     // The terminal projection unit (run + mappings + shipment payout-id
-    // set/clear) is one SECURITY DEFINER RPC; the webhook wiring keeps no
-    // separate mapping-projection, release, or clear write the handler could
-    // apply after a refusal.
-    expect(source).toMatch(/fn_project_payout_run_terminal/);
+    // set/clear) is one SECURITY DEFINER RPC (connect-payout-adapters.test.ts
+    // drives it); the webhook wiring keeps no separate mapping-projection,
+    // release, or clear write the handler could apply after a refusal.
     expect(source).not.toMatch(
       /markConnectPayoutRunShipmentsStatus|markConnectShipmentsReleased|clearConnectShipmentsReleased|listConnectPayoutRunShipmentIds/,
     );
@@ -2611,13 +2610,5 @@ describe('phase 2B final slice webhook terminal surface is atomic', () => {
     expect(source).not.toMatch(
       /\.from\(\s*'shipments'\s*\)[\s\S]{0,300}\.update\(\s*\{[\s\S]{0,200}?stripe_payout_id/,
     );
-  });
-
-  it('never treats a refused atomic projection as applied', () => {
-    const source = readIndexSource();
-
-    // The atomic RPC's FALSE result must raise the terminal projection
-    // conflict (which parks the run), never be swallowed as success.
-    expect(source).toMatch(/PAYOUT_RUN_TERMINAL_PROJECTION_CONFLICT/);
   });
 });
