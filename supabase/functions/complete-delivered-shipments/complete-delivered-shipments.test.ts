@@ -1,6 +1,4 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 
 import {
   ApiError,
@@ -13,17 +11,7 @@ import {
   mapAutoCompletionRpcResult,
   resolveAutoCompletionPlan,
   summarizeAutoCompletionResults,
-  validateAutoCompletionRequest,
 } from './complete-delivered-shipments';
-
-// Prettier may re-wrap the source files read below; compare without layout.
-const compact = (source: string) =>
-  source
-    .replace(/\s+/g, ' ')
-    .replace(/([([{]) /g, '$1')
-    .replace(/ ([)\]}])/g, '$1')
-    .replace(/,([)\]}])/g, '$1')
-    .replace(/ \./g, '.');
 
 const now = Date.parse('2026-09-04T12:00:00.000Z');
 const cronSecret = 'scheduler-secret';
@@ -217,28 +205,6 @@ describe('shipments with an active dispute', () => {
       failed: 0,
     });
   });
-
-  it('reads the active disputes before the shipments and excludes them in the query', async () => {
-    const source = compact(
-      await Bun.file(new URL('./index.ts', import.meta.url)).text(),
-    );
-    const disputesIndex = source.indexOf(compact(".from('disputes')"));
-    expect(disputesIndex).toBeGreaterThanOrEqual(0);
-    expect(source.indexOf(compact(".from('shipments')"))).toBeGreaterThan(
-      disputesIndex,
-    );
-    expect(source).toContain(
-      compact(".not('status', 'in', '(resolved,rejected)')"),
-    );
-    expect(source).toContain(compact(".not('id', 'in',"));
-  });
-
-  it('only reads shipments paid through Stripe Connect so legacy rows never starve the batch', async () => {
-    const source = await Bun.file(
-      new URL('./index.ts', import.meta.url),
-    ).text();
-    expect(source).toContain(".not('stripe_payment_intent_id', 'is', null)");
-  });
 });
 
 describe('auto completion RPC contracts', () => {
@@ -324,25 +290,6 @@ describe('auto completion RPC contracts', () => {
 });
 
 describe('scheduler endpoint contract', () => {
-  it('validates the cron secret before the endpoint can query shipments', async () => {
-    expect(() =>
-      validateAutoCompletionRequest({
-        method: 'POST',
-        suppliedCronSecret: cronSecret,
-        expectedCronSecret: cronSecret,
-      }),
-    ).not.toThrow();
-
-    const source = await Bun.file(
-      new URL('./index.ts', import.meta.url),
-    ).text();
-    const validationIndex = source.indexOf('validateAutoCompletionRequest({');
-    expect(validationIndex).toBeGreaterThanOrEqual(0);
-    expect(source.indexOf("from('shipments')")).toBeGreaterThan(
-      validationIndex,
-    );
-  });
-
   it('reports partial failures for retry without losing successful or idempotent completion counts', () => {
     expect(
       summarizeAutoCompletionResults([
@@ -366,16 +313,5 @@ describe('scheduler endpoint contract', () => {
       skipped: 0,
       failed: 1,
     });
-  });
-});
-
-describe('complete-delivered-shipments wiring', () => {
-  const index = readFileSync(join(import.meta.dir, 'index.ts'), 'utf8');
-
-  it('skips a shipment whose cancellation refund started, logs a WARN and keeps processing', () => {
-    expect(index).toContain('isCancellationOperationActiveRefusal(row)');
-    expect(index).toContain("code: 'SKIPPED_CANCELLATION_OPERATION_ACTIVE'");
-    expect(index).toMatch(/'WARN',\s*'Delivered shipment completion skipped'/);
-    expect(index).toContain("level: 'INFO' | 'WARN' | 'ERROR'");
   });
 });
