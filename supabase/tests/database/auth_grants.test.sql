@@ -4,7 +4,7 @@
 -- control; these grants only remove privileges nobody needs.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(44);
+select plan(42);
 
 -- Exact table privileges per relation and role ---------------------------------
 select is(
@@ -28,8 +28,6 @@ from (values
   ('authenticated', 'public.admin_disputes_monitor_view', 'SELECT'),
   ('anon', 'public.admin_product_queue_view', ''),
   ('authenticated', 'public.admin_product_queue_view', 'SELECT'),
-  ('anon', 'public.admin_connect_earnings_view', ''),
-  ('authenticated', 'public.admin_connect_earnings_view', ''),
   ('anon', 'public.admin_seller_onboarding_view', ''),
   ('authenticated', 'public.admin_seller_onboarding_view', ''),
   ('anon', 'public.admin_connect_payout_release_view', ''),
@@ -37,6 +35,10 @@ from (values
   ('anon', 'public.account_closures', ''),
   ('authenticated', 'public.account_closures', '')
 ) as m(role_name, rel, expected);
+
+-- admin_connect_earnings_view lost its only reader and was dropped (#293).
+select hasnt_view('public', 'admin_connect_earnings_view',
+  'admin_connect_earnings_view no longer exists');
 
 -- profiles UPDATE is column-level -----------------------------------------------
 select is(
@@ -81,8 +83,6 @@ select throws_ok($$select 1 from public.admin_user_directory_view$$, '42501', nu
   'anon cannot select from admin_user_directory_view');
 select throws_ok($$select 1 from public.admin_disputes_monitor_view$$, '42501', null,
   'anon cannot select from admin_disputes_monitor_view');
-select throws_ok($$select 1 from public.admin_connect_earnings_view$$, '42501', null,
-  'anon cannot select from admin_connect_earnings_view');
 select throws_ok($$select 1 from public.admin_seller_onboarding_view$$, '42501', null,
   'anon cannot select from admin_seller_onboarding_view');
 
