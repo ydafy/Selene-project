@@ -53,6 +53,7 @@
     "eslint-plugin-check-file": "^3.3.2",
     "eslint-plugin-import-x": "^4.17.1",
     "eslint-plugin-prettier": "^5.5.7",
+    "fast-check": "^4.10.2",
     "husky": "^9",
     "knip": "^6.44.1",
     "lint-staged": "^17.6.0",
