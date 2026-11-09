@@ -3,7 +3,7 @@
   // repository scripts, Playwright specs and the root Playwright configs.
   // Each workspace under apps/ and packages/ keeps its own tsconfig.json.
   "compilerOptions": {
-    "lib": ["ESNext"],
+    "lib": ["ESNext", "DOM"],
     "target": "ESNext",
     "module": "Preserve",
     "moduleDetection": "force",
