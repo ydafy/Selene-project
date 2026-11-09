@@ -638,13 +638,6 @@ export type Database = {
             foreignKeyName: "connect_payout_run_shipments_shipment_id_fkey"
             columns: ["shipment_id"]
             isOneToOne: false
-            referencedRelation: "admin_connect_earnings_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "connect_payout_run_shipments_shipment_id_fkey"
-            columns: ["shipment_id"]
-            isOneToOne: false
             referencedRelation: "admin_connect_payout_release_view"
             referencedColumns: ["shipment_id"]
           },
@@ -1052,13 +1045,6 @@ export type Database = {
             foreignKeyName: "disputes_shipment_id_fkey"
             columns: ["shipment_id"]
             isOneToOne: true
-            referencedRelation: "admin_connect_earnings_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "disputes_shipment_id_fkey"
-            columns: ["shipment_id"]
-            isOneToOne: true
             referencedRelation: "admin_connect_payout_release_view"
             referencedColumns: ["shipment_id"]
           },
@@ -1301,13 +1287,6 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products_public"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "order_items_shipment_id_fkey"
-            columns: ["shipment_id"]
-            isOneToOne: false
-            referencedRelation: "admin_connect_earnings_view"
             referencedColumns: ["id"]
           },
           {
@@ -2063,13 +2042,6 @@ export type Database = {
             foreignKeyName: "reviews_shipment_id_fkey"
             columns: ["shipment_id"]
             isOneToOne: false
-            referencedRelation: "admin_connect_earnings_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reviews_shipment_id_fkey"
-            columns: ["shipment_id"]
-            isOneToOne: false
             referencedRelation: "admin_connect_payout_release_view"
             referencedColumns: ["shipment_id"]
           },
@@ -2225,13 +2197,6 @@ export type Database = {
             foreignKeyName: "shipment_cancellation_operations_shipment_id_fkey"
             columns: ["shipment_id"]
             isOneToOne: true
-            referencedRelation: "admin_connect_earnings_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "shipment_cancellation_operations_shipment_id_fkey"
-            columns: ["shipment_id"]
-            isOneToOne: true
             referencedRelation: "admin_connect_payout_release_view"
             referencedColumns: ["shipment_id"]
           },
@@ -2332,13 +2297,6 @@ export type Database = {
             foreignKeyName: "shipment_completion_events_shipment_id_fkey"
             columns: ["shipment_id"]
             isOneToOne: true
-            referencedRelation: "admin_connect_earnings_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "shipment_completion_events_shipment_id_fkey"
-            columns: ["shipment_id"]
-            isOneToOne: true
             referencedRelation: "admin_connect_payout_release_view"
             referencedColumns: ["shipment_id"]
           },
@@ -2377,13 +2335,6 @@ export type Database = {
           shipment_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "shipment_label_events_shipment_id_fkey"
-            columns: ["shipment_id"]
-            isOneToOne: false
-            referencedRelation: "admin_connect_earnings_view"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "shipment_label_events_shipment_id_fkey"
             columns: ["shipment_id"]
@@ -2456,13 +2407,6 @@ export type Database = {
             columns: ["dispute_id"]
             isOneToOne: false
             referencedRelation: "disputes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "shipment_tracking_events_shipment_id_fkey"
-            columns: ["shipment_id"]
-            isOneToOne: false
-            referencedRelation: "admin_connect_earnings_view"
             referencedColumns: ["id"]
           },
           {
@@ -2988,55 +2932,6 @@ export type Database = {
       }
     }
     Views: {
-      admin_connect_earnings_view: {
-        Row: {
-          amount: number | null
-          application_fee_amount: number | null
-          created_at: string | null
-          id: string | null
-          seller_id: string | null
-          seller_name: string | null
-          status: string | null
-          stripe_payment_intent_id: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "shipments_seller_id_fkey"
-            columns: ["seller_id"]
-            isOneToOne: false
-            referencedRelation: "admin_disputes_monitor_view"
-            referencedColumns: ["buyer_id"]
-          },
-          {
-            foreignKeyName: "shipments_seller_id_fkey"
-            columns: ["seller_id"]
-            isOneToOne: false
-            referencedRelation: "admin_disputes_monitor_view"
-            referencedColumns: ["seller_id"]
-          },
-          {
-            foreignKeyName: "shipments_seller_id_fkey"
-            columns: ["seller_id"]
-            isOneToOne: false
-            referencedRelation: "admin_seller_onboarding_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "shipments_seller_id_fkey"
-            columns: ["seller_id"]
-            isOneToOne: false
-            referencedRelation: "admin_user_directory_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "shipments_seller_id_fkey"
-            columns: ["seller_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       admin_connect_payout_release_view: {
         Row: {
           completed_at: string | null

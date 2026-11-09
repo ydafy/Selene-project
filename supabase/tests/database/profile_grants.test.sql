@@ -3,7 +3,7 @@
 -- write raises 42501 before RLS is reached; the full matrix is in auth_grants.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(64);
+select plan(63);
 
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -106,8 +106,8 @@ set local role authenticated;
 
 select throws_ok(format('select 1 from public.%I', t), '42501', null, 'authenticated cannot read ' || t)
 from unnest(array[
-  'admin_connect_payout_release_view', 'admin_connect_earnings_view',
-  'admin_seller_onboarding_view', 'checkout_recovery_shells',
+  'admin_connect_payout_release_view', 'admin_seller_onboarding_view',
+  'checkout_recovery_shells',
   'connect_account_actionability', 'connect_account_events', 'connect_payout_events',
   'connect_payout_run_shipments', 'connect_payout_runs',
   'shipment_cancellation_operations', 'shipment_completion_events',
