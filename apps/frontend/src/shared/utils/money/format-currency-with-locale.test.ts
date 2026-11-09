@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { formatCurrencyWithLocale } from './format-currency';
+import { formatCurrencyWithLocale } from './format-currency-with-locale';
 
 describe('formatCurrencyWithLocale', () => {
   it('formats MXN with en-US locale', () => {

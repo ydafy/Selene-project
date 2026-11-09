@@ -37,7 +37,7 @@ import { Skeleton } from '@/shared/ui/feedback/skeleton';
 import { useProfile } from '@/features/profile/hooks/use-profile';
 import { useProducts } from '@/shared/hooks/use-products';
 import { useSellerReviews } from '@/features/profile/hooks/use-seller-reviews';
-import { formatCurrency } from '@/shared/utils/format';
+import { formatCurrency } from '@/shared/utils/money/format-currency';
 import { isClosedAccount } from '@/shared/utils/public-identity';
 import {
   ACTIVE_LISTING_STATUSES,

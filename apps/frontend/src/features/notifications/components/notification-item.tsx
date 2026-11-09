@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { Box, Text } from '@/shared/ui/base';
 import { Theme } from '@/shared/theme';
 import { Notification } from '@selene/types';
-import { formatSmartTime } from '@/shared/utils/format';
+import { formatSmartTime } from '@/shared/utils/format-date';
 import {
   getNotificationPresentation,
   getVerifiedEventIdentity,

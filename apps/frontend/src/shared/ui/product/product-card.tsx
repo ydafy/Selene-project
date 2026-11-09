@@ -14,7 +14,7 @@ import { PublicProduct } from '@selene/types';
 import { Box, Text } from '../base';
 import { AppImage } from '../media/app-image';
 import { Theme } from '../../theme';
-import { formatCurrency } from '../../utils/format';
+import { formatCurrency } from '../../utils/money/format-currency';
 import { getSharedStyles } from '../../theme/shared-styles';
 import { isInVerification } from '../../utils/product-listing-status';
 import { VerificationPill } from './verification-pill';

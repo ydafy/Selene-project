@@ -24,7 +24,7 @@ import { useSellStore } from '@/features/sell/store/use-sell-store';
 import { usePublishProduct } from '@/features/sell/hooks/use-publish-product';
 import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import { classifyListingEdit } from '@/features/sell/logic/listing-edit';
-import { formatCurrency } from '@/shared/utils/format';
+import { formatCurrency } from '@/shared/utils/money/format-currency';
 import { buildPreviewProduct } from '@/features/sell/logic/preview-product-builder';
 import { describeUploadState } from '@/features/sell/logic/describe-upload-state';
 import { countUploadState } from '@/features/sell/logic/count-upload-state';

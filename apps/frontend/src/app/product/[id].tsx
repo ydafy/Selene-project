@@ -43,7 +43,7 @@ import {
   purchaseDialogContent,
 } from '@/features/product/logic/product-purchase-gate';
 import { PurchaseProgressSteps } from '@/features/product/components/purchase-progress-steps';
-import { formatCurrency } from '@/shared/utils/format';
+import { formatCurrency } from '@/shared/utils/money/format-currency';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
 // Fresh read at press time; an unknown readiness never blocks (the server decides).

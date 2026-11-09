@@ -8,7 +8,8 @@ import { Product } from '@selene/types';
 import { Box, Text } from '@/shared/ui/base';
 import { AppImage } from '@/shared/ui/media/app-image';
 import { Theme } from '@/shared/theme';
-import { formatCurrency, formatDate } from '@/shared/utils/format';
+import { formatCurrency } from '@/shared/utils/money/format-currency';
+import { formatDate } from '@/shared/utils/format-date';
 import {
   getStatusColor,
   isAccountHeld,

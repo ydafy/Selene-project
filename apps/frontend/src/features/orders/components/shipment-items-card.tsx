@@ -7,7 +7,7 @@ import type { EnrichedShipment } from '@selene/types';
 
 import { Box, Text } from '@/shared/ui/base';
 import { AppImage } from '@/shared/ui/media/app-image';
-import { formatCurrency } from '@/shared/utils/format';
+import { formatCurrency } from '@/shared/utils/money/format-currency';
 import { Theme } from '@/shared/theme';
 import { cardStyles } from './order-card-styles';
 

@@ -76,7 +76,7 @@ A test runs the code it tests. Call the function, call the Edge Function handler
 
 ## File naming
 
-- Every file uses kebab-case: `apps/frontend/src/shared/ui/product/product-card.tsx` exports `ProductCard`, `apps/frontend/src/features/auth/hooks/use-auth.ts` exports `useAuth`, `apps/frontend/src/shared/utils/format-currency.ts` exports `formatCurrencyWithLocale`. Identifiers inside the file keep their usual case.
+- Every file uses kebab-case: `apps/frontend/src/shared/ui/product/product-card.tsx` exports `ProductCard`, `apps/frontend/src/features/auth/hooks/use-auth.ts` exports `useAuth`, `apps/frontend/src/shared/utils/money/format-currency.ts` exports `formatCurrency`. Identifiers inside the file keep their usual case.
 - Why: Windows and macOS file systems ignore case and the Linux CI does not, so an import that differs only in case works locally and fails in CI. All-lowercase names remove that class of error. The Expo SDK 55 template and bulletproof-react use the same style.
 - Exception: route files under the Expo Router `apps/frontend/src/app/` directory. Their names are URLs and deep links (`apps/frontend/src/app/(auth)/resetPassword.tsx` is `/resetPassword`), so rename one only as a deliberate route change.
 - `bun run lint` enforces it for all of `apps/admin-web/src` and `supabase/functions`, and for `apps/frontend/src` outside `apps/frontend/src/app/` (`check-file/filename-naming-convention` in `eslint.config.js`). Only the part before the first dot is checked, so `apps/frontend/src/features/orders/components/order-action-card.cancelled-banner.test.ts` and `apps/frontend/src/shared/lib/auth/captcha.logic.ts` pass.
