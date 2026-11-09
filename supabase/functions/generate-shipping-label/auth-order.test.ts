@@ -21,9 +21,7 @@ test('replays a concurrently finalized label instead of treating the second requ
 test('writes packing evidence only through the claim-token guarded orchestration step', () => {
   const source = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
   const orchestration = source.indexOf('runLabelClaimOrchestration({');
-  const evidenceWrite = source.indexOf(
-    'shipping_evidence: shippingEvidence.images',
-  );
+  const evidenceWrite = source.indexOf('shipping_evidence: storedEvidence');
   const persistStep = source.indexOf('persistEvidence: async (token) => {');
   const guardedWrite = source.slice(
     persistStep,
@@ -33,6 +31,7 @@ test('writes packing evidence only through the claim-token guarded orchestration
   expect(source.match(/shipping_evidence:/g)).toHaveLength(1);
   expect(evidenceWrite).toBeGreaterThan(orchestration);
   expect(persistStep).toBeGreaterThan(orchestration);
+  expect(guardedWrite).toContain('buildStoredShippingEvidence(');
   expect(guardedWrite).toContain(".eq('claim_token', token)");
   expect(guardedWrite).toContain(".eq('label_generation_state', 'claimed')");
   expect(guardedWrite).toContain('.select(');

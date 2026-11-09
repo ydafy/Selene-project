@@ -1,10 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '@/shared/lib/supabase';
-import {
-  resolveMediaType,
-  uploadMediaFromUri,
-} from '@/shared/lib/upload-media';
+import { uploadMediaFromUri } from '@/shared/lib/upload-media';
 import { ProductCategory, ProductStatus } from '@selene/types';
 import {
   buildVerificationData,
@@ -12,6 +9,7 @@ import {
   resolveVerificationRequirements,
   type VerificationLoadState,
 } from '../logic/verification-submit';
+import { buildVerificationProofUpload } from '../logic/verification-proof-upload';
 
 export const useVerificationLogic = (productId?: string) => {
   const [loadState, setLoadState] = useState<VerificationLoadState>('loading');
@@ -102,19 +100,12 @@ export const useVerificationLogic = (productId?: string) => {
   };
 
   //  Subida (Interna)
-  const uploadProof = async (uri: string, prefix: string) => {
-    const { ext, contentType } = resolveMediaType(uri);
-    const path = `${productId}/${prefix}_${Date.now()}.${ext}`;
-
-    return uploadMediaFromUri({
+  const uploadProof = async (uri: string, prefix: string) =>
+    uploadMediaFromUri({
       storage: supabase.storage,
-      bucket: 'verification',
-      path,
       uri,
-      contentType,
-      upsert: true,
+      ...buildVerificationProofUpload(productId, prefix, uri, Date.now()),
     });
-  };
 
   //  Submit
   const submitVerification = async () => {

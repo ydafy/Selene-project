@@ -113,7 +113,8 @@
     "salesMsg": "Cuando vendas un componente, aquí podrás gestionar el envío y tu ganancia."
   },
   "errors": {
-    "cannotCancel": "No se puede cancelar una orden que ya está en preparación"
+    "cannotCancel": "No se puede cancelar una orden que ya está en preparación",
+    "alreadyReviewed": "Ya calificaste esta compra."
   },
   "cancelErrors": {
     "maintenance": {

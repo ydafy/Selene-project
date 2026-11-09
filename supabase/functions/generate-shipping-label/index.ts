@@ -21,6 +21,7 @@ import {
   LabelRequestSchema,
   isOwnShippingEvidencePath,
 } from './request-contract.ts';
+import { buildStoredShippingEvidence } from './shipping-evidence.ts';
 import {
   declaredContentForCategories,
   FALLBACK_PACKAGE_PRESET,
@@ -398,9 +399,12 @@ Deno.serve(
         },
         persistEvidence: async (token) => {
           // Only the request holding the active claim may replace stored evidence.
+          const storedEvidence = buildStoredShippingEvidence(
+            shippingEvidence.images,
+          );
           const { data, error } = await supabaseAdmin
             .from('shipments')
-            .update({ shipping_evidence: shippingEvidence.images })
+            .update({ shipping_evidence: storedEvidence })
             .eq('id', shipmentId)
             .eq('claim_token', token)
             .eq('label_generation_state', 'claimed')
