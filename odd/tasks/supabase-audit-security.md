@@ -12,12 +12,12 @@ Item 1 of roadmap #299 (issue #300): fixes for the findings of the 2026-11-08 Su
 
 ## Tasks
 
-| ID  | Specs      | Route  | Commit   |
-| --- | ---------- | ------ | -------- |
-| T1  | S1, S2, S4 | inline | f22e38fc |
-| T2  | S1, S2     | worker | 05673b95 |
-| T3  | S1, S2     | worker | 7ed37758 |
-| T4  | S3         | inline | pending  |
+| ID  | Specs      | Route  | Commit                             |
+| --- | ---------- | ------ | ---------------------------------- |
+| T1  | S1, S2, S4 | inline | f22e38fc                           |
+| T2  | S1, S2     | worker | 05673b95                           |
+| T3  | S1, S2     | worker | 7ed37758                           |
+| T4  | S3         | inline | none (advisories closed on GitHub) |
 
 - T1: fix for GHSA-4983-wpx7-6c2x.
 - T2: fix for GHSA-33mw-fxr7-2rvx.
@@ -38,3 +38,4 @@ Item 1 of roadmap #299 (issue #300): fixes for the findings of the 2026-11-08 Su
 - **L10** T2 decisions (2026-11-08, maintainer, moved here after the deploy from Engram `odd/supabase-audit-security/t2-decisions`): the evidence bucket is private and the database stores object paths, not URLs; product uploads go only into the seller's own folder; the nightly evidence purge stays in #29; the unused `public-assets` bucket is deleted and `Avatars` keeps public reads with a 2 MiB image-only limit.
 - **L11** (2026-11-08, maintainer): "master ya hice el deploy de las edge fuctions en este woktree". Remote read: both migrations applied, buckets and storage policies match the migration, `create-dispute` (v39) and `generate-shipping-label` (v65) deployed from this worktree; the security advisor shows nothing new. GHSA-33mw closed. Still manual: delete `public-assets` (its logo file is tracked in #326), deploy admin-web, reload the app bundle.
 - **L12** (2026-11-08, maintainer): chose "Borrar las dos" for T3. Remote read: no pg_cron job calls the `track-returns` or `return-delivery-timeout` Edge Functions (the `return-delivery-timeout` job runs the SQL function directly) and no client calls them. Both functions are removed with their source-text assertions and docs; the maintainer deletes the deployed copies with `supabase functions delete`.
+- **L13** (2026-11-08, maintainer): "listo, no le di confrimar, ya qudeo". Remote read: neither `track-returns` nor `return-delivery-timeout` exists. GHSA-h9px closed on 2026-11-09 04:19 UTC; with GHSA-4983 and GHSA-33mw closed earlier, item 1 of #299 is done. Still manual from T2: deploy admin-web, reload the app bundle, delete `public-assets` after keeping its logo (#326).
