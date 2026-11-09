@@ -1,0 +1,44 @@
+meta {
+  name: fees-reconcile
+  type: http
+  seq: 23
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/reconcile-stripe-fees
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{process.env.STRIPE_FEE_RECONCILIATION_WORKER_SECRET}}
+}
+
+script:pre-request {
+  if (!bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID") || !bru.getProcessEnv("STRIPE_SECRET_KEY")) {
+    bru.runner.skipRequest();
+  }
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("the worker reads the real fee and completes the job", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal({
+      selected: 1,
+      succeeded: 1,
+      retryScheduled: 0,
+      failed: 0,
+      errors: 0,
+    });
+  });
+}
+
+docs {
+  reconcile-stripe-fees claims the job, reads the order's charge with charges.retrieve and
+  its balance transaction with balanceTransactions.retrieve, and stores the fee
+  (reconcile-stripe-fees/index.ts:223-256).
+}
