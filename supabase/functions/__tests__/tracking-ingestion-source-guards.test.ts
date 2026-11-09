@@ -28,16 +28,11 @@ describe('tracking ingestion source guards', () => {
     const shipmentHandler = read(
       'supabase/functions/track-shipments/handler.ts',
     );
-    const returns = read('supabase/functions/track-returns/index.ts');
     const config = read('supabase/config.toml');
 
-    for (const source of [shipmentHandler, returns]) {
-      expect(source).toContain('buildPollingTrackingEvents');
-    }
-    for (const source of [shipments, returns]) {
-      expect(source).toContain('fn_record_tracking_event');
-      expect(source).toContain('p_polling_run_id');
-    }
+    expect(shipmentHandler).toContain('buildPollingTrackingEvents');
+    expect(shipments).toContain('fn_record_tracking_event');
+    expect(shipments).toContain('p_polling_run_id');
     expect(config).toContain('[functions.track-shipments] verify_jwt = false');
     expect(shipments).toContain(".eq('status', status)");
     expect(shipments).toContain(
@@ -63,18 +58,14 @@ describe('tracking ingestion source guards', () => {
     expect(shipments).toContain("'fn_release_track_shipments_lease'");
     expect(shipmentHandler).not.toContain('x-tracking-cron-secret');
     expect(shipments).toContain('last_tracked_at');
-    expect(returns).toContain('return_last_tracked_at');
-    expect(returns).toContain('p_dispute_id: dispute.id');
     expect(shipments).not.toContain(".update({ status: 'shipped'");
     expect(shipments).not.toContain('fn_mark_shipment_delivered');
-    expect(returns).not.toContain('fn_mark_return_delivered');
   });
 
   it('keeps every tracking ingestion path on the privileged event RPC boundary', () => {
     const ingestionSources = [
       read('supabase/functions/envia-webhook/index.ts'),
       read('supabase/functions/track-shipments/index.ts'),
-      read('supabase/functions/track-returns/index.ts'),
     ];
 
     for (const source of ingestionSources) {

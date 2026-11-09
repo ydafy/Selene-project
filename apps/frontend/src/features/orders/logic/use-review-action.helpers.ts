@@ -4,10 +4,11 @@
  * without mocking TanStack Query / Supabase (see Extract-Before-Mock rule).
  *
  * The `reviews` table columns `shipment_id` and `product_id` are nullable
- * (see `packages/types/src/database.types.ts`). For V1 we write explicit
- * `null` when the caller cannot prove shipment-product linkage, so legacy
- * rows stay distinguishable from verified-purchase rows in the
- * `(reviewer_id, shipment_id, product_id)` identity contract.
+ * (see `packages/types/src/database.types.ts`), but the insert policy only
+ * accepts a review that names a completed shipment of the seller in the
+ * buyer's order; `product_id`, when sent, must be an item of that shipment.
+ * The database keeps one review per `(reviewer_id, shipment_id, product_id)`,
+ * counting a review without a product once per shipment.
  */
 export interface ReviewMutationInput {
   orderId: string;
@@ -15,9 +16,9 @@ export interface ReviewMutationInput {
   comment: string;
   sellerId: string;
   reviewerId: string;
-  /** Shipment being reviewed. `null`/omitted for legacy order-first reviews. */
+  /** Shipment being reviewed. Required by the database; omitting it is rejected. */
   shipmentId?: string | null;
-  /** Product within the shipment being reviewed. `null`/omitted for legacy. */
+  /** Product within the shipment being reviewed. `null`/omitted reviews the seller only. */
   productId?: string | null;
 }
 

@@ -36,6 +36,14 @@ BEGIN
     ) THEN
         RETURN QUERY SELECT false, 'INVALID_DISPUTE_RELATIONSHIP'::TEXT; RETURN;
     END IF;
+    -- Evidence paths: each image and the video are the caller's uploads for this order in the evidence bucket.
+    IF EXISTS (
+        SELECT 1 FROM unnest(p_images || p_video_url) AS evidence(path)
+        WHERE (evidence.path ~ ('^disputes/' || v_order_id::text || '/' || v_auth_user_id::text || '/[A-Za-z0-9_-][A-Za-z0-9._-]{0,199}$')
+               AND strpos(evidence.path, '..') = 0) IS NOT TRUE
+    ) THEN
+        RETURN QUERY SELECT false, 'INVALID_EVIDENCE_PATH'::TEXT; RETURN;
+    END IF;
 
     UPDATE public.disputes
     SET seller_evidence = jsonb_build_object(

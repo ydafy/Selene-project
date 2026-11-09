@@ -50,6 +50,24 @@ describe('media upload B3 source guards', () => {
     }
   });
 
+  it('useVideoUpload returns the stored evidence path, not a public URL', () => {
+    const source = read('src/features/orders/hooks/use-video-upload.ts');
+    expect(source).not.toContain('getPublicUrl');
+    expect(source).toContain('return await uploadMediaFromUri({');
+  });
+
+  it('report screen stores photos and video under the signed-in user folder', () => {
+    const screen = read('src/app/profile/orders/report/[id].tsx').replace(
+      /\s+/g,
+      ' ',
+    );
+    expect(screen).not.toContain('userId={order.buyer_id}');
+    expect(screen).toContain("userId={session?.user.id ?? ''}");
+    expect(screen).toContain(
+      "await uploadVideo( order.id, session?.user.id ?? '', asset.uri, )",
+    );
+  });
+
   it('adds the video picker i18n keys in es and en', () => {
     const es = json('es').video;
     const en = json('en').video;

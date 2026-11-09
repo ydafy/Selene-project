@@ -178,11 +178,15 @@ export default function ReportProblemScreen() {
       const asset = await pickVideo();
       if (!asset) return;
 
-      // Usamos el ID del comprador para el folder si es disputa, o el del vendedor si es contra-disputa
-      const folderUserId = isSeller ? session?.user.id : order.buyer_id;
-      const url = await uploadVideo(order.id, folderUserId || '', asset.uri);
+      // Evidence lives under the signed-in user's folder: the buyer opening the
+      // dispute or the seller contesting the return.
+      const path = await uploadVideo(
+        order.id,
+        session?.user.id ?? '',
+        asset.uri,
+      );
 
-      store.setVideoUrl(url);
+      store.setVideoUrl(path);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error: unknown) {
       console.error('[VIDEO_UPLOAD_ERROR]', describeError(error));
@@ -424,7 +428,7 @@ export default function ReportProblemScreen() {
 
         <EvidenceUploadSection
           orderId={order.id}
-          userId={order.buyer_id}
+          userId={session?.user.id ?? ''}
           maxPhotos={3}
           folder="disputes"
           bucket="evidence"

@@ -3,12 +3,14 @@ DECLARE
 v_buyer_id UUID;
 v_auth_user_id UUID;
 v_status public.dispute_status;
+v_order_id UUID;
 BEGIN
 -- 1. Identidad
 v_auth_user_id := (current_setting('request.jwt.claims', true)::json->>'sub')::UUID;
+IF v_auth_user_id IS NULL THEN RETURN QUERY SELECT false, 'UNAUTHORIZED'::TEXT; RETURN; END IF;
 
     -- 2. Bloqueo y Validación
-    SELECT buyer_id, status INTO v_buyer_id, v_status
+    SELECT buyer_id, status, order_id INTO v_buyer_id, v_status, v_order_id
     FROM public.disputes WHERE id = p_dispute_id FOR UPDATE;
 
     IF NOT FOUND THEN RETURN QUERY SELECT false, 'DISPUTE_NOT_FOUND'::TEXT; RETURN; END IF;
@@ -18,6 +20,14 @@ v_auth_user_id := (current_setting('request.jwt.claims', true)::json->>'sub')::U
     -- 3. Validar input
     IF p_images IS NULL OR array_length(p_images, 1) < 1 THEN
         RETURN QUERY SELECT false, 'AT_LEAST_ONE_IMAGE_REQUIRED'::TEXT; RETURN;
+    END IF;
+    -- Evidence paths: each image is the caller's upload for this order in the evidence bucket.
+    IF EXISTS (
+        SELECT 1 FROM unnest(p_images) AS evidence(path)
+        WHERE (evidence.path ~ ('^returns/' || v_order_id::text || '/' || v_auth_user_id::text || '/[A-Za-z0-9_-][A-Za-z0-9._-]{0,199}$')
+               AND strpos(evidence.path, '..') = 0) IS NOT TRUE
+    ) THEN
+        RETURN QUERY SELECT false, 'INVALID_EVIDENCE_PATH'::TEXT; RETURN;
     END IF;
 
     -- 4. Ejecutar

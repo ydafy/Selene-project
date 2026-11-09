@@ -37,12 +37,39 @@ function assertUuid(value: string, message: string): string {
   return value;
 }
 
-function assertUrl(value: string, message: string): string {
-  try {
-    new URL(value);
-    return value;
-  } catch {
-    throw new Error(message);
+const EVIDENCE_FILE_NAME = /^[A-Za-z0-9_-][A-Za-z0-9._-]{0,199}$/;
+
+/** True when `path` is exactly `<folder>/<orderId>/<userId>/<file>` in the evidence bucket. */
+function isOwnEvidencePath(
+  path: string,
+  folder: string,
+  orderId: string,
+  userId: string,
+): boolean {
+  const prefix = `${folder}/${orderId}/${userId}/`;
+  if (!path.startsWith(prefix) || path.includes('..')) return false;
+  return EVIDENCE_FILE_NAME.test(path.slice(prefix.length));
+}
+
+/** Dispute evidence must be files the caller uploaded for this order. */
+export function assertOwnDisputeEvidence(
+  evidence: CreateDisputeEvidence,
+  orderId: string,
+  userId: string,
+): void {
+  const own = (path: string) =>
+    isOwnEvidencePath(path, 'disputes', orderId, userId);
+  if (!evidence.images.every(own)) {
+    throw new ApiError(
+      400,
+      'Evidence images must be your uploads for this order',
+    );
+  }
+  if (evidence.video_url && !own(evidence.video_url)) {
+    throw new ApiError(
+      400,
+      'Evidence video must be your upload for this order',
+    );
   }
 }
 
@@ -56,10 +83,7 @@ function parseEvidence(value: unknown): CreateDisputeEvidence {
   }
 
   const images = record.images.map((image) =>
-    assertUrl(
-      assertString(image, 'Evidence image URL is required'),
-      'Evidence images must be valid URLs',
-    ),
+    assertString(image, 'Evidence image path is required'),
   );
 
   if (!record.tech_checklist || typeof record.tech_checklist !== 'object') {
@@ -75,10 +99,7 @@ function parseEvidence(value: unknown): CreateDisputeEvidence {
   const videoUrl =
     record.video_url === undefined || record.video_url === null
       ? null
-      : assertUrl(
-          assertString(record.video_url, 'Video URL is invalid'),
-          'Video URL is invalid',
-        );
+      : assertString(record.video_url, 'Video path is invalid');
 
   return {
     images,

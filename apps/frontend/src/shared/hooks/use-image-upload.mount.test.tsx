@@ -18,14 +18,16 @@ if (process.env.SELENE_UPLOAD_CHILD !== '1') {
   const privateError = new Error('SYNTHETIC_PRIVATE_UPLOAD_MARKER');
   let fail = true;
   let release!: () => void;
-  const upload = mock<(...args: unknown[]) => Promise<unknown>>(async () => {
-    await new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    return fail
-      ? { data: null, error: privateError }
-      : { data: { path: 'avatar.jpg' }, error: null };
-  });
+  const upload = mock<(...args: unknown[]) => Promise<unknown>>(
+    async (path) => {
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return fail
+        ? { data: null, error: privateError }
+        : { data: { path }, error: null };
+    },
+  );
   const getPublicUrl = mock<(...args: unknown[]) => unknown>(() => ({
     data: { publicUrl: 'https://example.test/photo' },
   }));
@@ -51,7 +53,7 @@ if (process.env.SELENE_UPLOAD_CHILD !== '1') {
   }));
   const { act, render } = await import('@testing-library/react-native');
   const { useImageUpload } = await import('./use-image-upload');
-  test('failure rethrows original identity without private logs; success preserves upload and cleanup', async () => {
+  test('failure rethrows original identity without private logs; success returns a public URL for avatars and the object path for evidence', async () => {
     let api!: ReturnType<typeof useImageUpload>;
     function Probe() {
       api = useImageUpload();
@@ -118,6 +120,21 @@ if (process.env.SELENE_UPLOAD_CHILD !== '1') {
         expect.any(ArrayBuffer),
         { contentType: 'image/png', upsert: true },
       ]);
+      expect(getPublicUrl.mock.calls).toEqual([['avatar.jpg']]);
+      await act(async () => {
+        pending = api.uploadFile(
+          'evidence',
+          'shipments/order/user/photo.jpg',
+          'encoded',
+          'jpg',
+        );
+      });
+      await act(async () => {
+        release();
+        result = await pending;
+      });
+      expect(api.uploading).toBe(false);
+      expect(result).toBe('shipments/order/user/photo.jpg');
       expect(getPublicUrl.mock.calls).toEqual([['avatar.jpg']]);
     } finally {
       await view?.unmount();

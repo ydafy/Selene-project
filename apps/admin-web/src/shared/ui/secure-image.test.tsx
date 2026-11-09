@@ -51,3 +51,27 @@ it('shows the loading placeholder while a storage path is being signed', () => {
   expect(html).toContain('animate-pulse');
   expect(html).not.toContain('<img');
 });
+
+it('signs an evidence object path instead of loading it directly', () => {
+  const html = renderToStaticMarkup(
+    <SecureImage
+      path="disputes/order/user/slot_0.jpg"
+      alt="Foto"
+      bucket="evidence"
+    />,
+  );
+  expect(html).toContain('animate-pulse');
+  expect(html).not.toContain('<img');
+});
+
+it('never loads an evidence public URL directly', () => {
+  const html = renderToStaticMarkup(
+    <SecureImage
+      path="https://project.supabase.co/storage/v1/object/public/evidence/disputes/order/user/slot_0.jpg"
+      alt="Foto"
+      bucket="evidence"
+    />,
+  );
+  expect(html).toContain('animate-pulse');
+  expect(html).not.toContain('<img');
+});

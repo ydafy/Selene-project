@@ -45,15 +45,14 @@ Install `pg_net` in the `extensions` schema, not `public` (security advisor `ext
 
 ## 4. Storage buckets
 
-| Bucket          | Public                               |
-| --------------- | ------------------------------------ |
-| `Avatars`       | yes                                  |
-| `products`      | yes                                  |
-| `public-assets` | yes                                  |
-| `evidence`      | yes (review: holds dispute evidence) |
-| `verification`  | no                                   |
+| Bucket         | Public | Size limit | Allowed types                                    |
+| -------------- | ------ | ---------- | ------------------------------------------------ |
+| `Avatars`      | yes    | 2 MiB      | JPEG, PNG, WebP, HEIC, HEIF                      |
+| `products`     | yes    | 10 MiB     | JPEG, PNG, WebP, HEIC, HEIF                      |
+| `evidence`     | no     | 50 MiB     | JPEG, PNG, WebP, HEIC, HEIF, MP4, QuickTime, M4V |
+| `verification` | no     | none       | any                                              |
 
-Bucket policies on `storage.objects` must come from migrations.
+Bucket settings and policies on `storage.objects` come from migrations (`supabase/migrations/20261109020901_storage_bucket_access.sql` sets the limits above). Delete the unused `public-assets` bucket in the Dashboard (Storage, bucket menu, Delete bucket): Storage blocks deleting it with SQL.
 
 ## 5. Vault secrets
 
@@ -86,6 +85,8 @@ Production uses live Stripe keys and `ENVIA_MODE` set to production.
 Deploy every directory in `supabase/functions/` except `supabase/functions/_shared/`. `supabase/config.toml` holds the `verify_jwt` flags; deploy with the CLI so they apply.
 
 `create-payment-intent` was retired (replaced by `create-connect-payment`; it no longer exists in the repository). Its deployed copy was deleted from the development project on 2026-10-25, so a project still listing it is out of date: remove it with `supabase functions delete create-payment-intent`.
+
+`track-returns` and `return-delivery-timeout` were removed from the repository: no cron job or client called them, and the `return-delivery-timeout` cron job runs `fn_cron_return_delivery_timeout()` directly. Return tracking is rebuilt in #266. A project still listing either function is out of date: remove them with `supabase functions delete track-returns` and `supabase functions delete return-delivery-timeout`.
 
 `resolve-shipment-refund` is called by admins with their own session, so it keeps `verify_jwt = true` (declared in `supabase/config.toml`) and checks `profiles_private.role = 'admin'` itself. It needs no new secret. Apply `supabase/migrations/20261022013846_shipment_cancellation_refund_resolution.sql` (new resolution columns, service-only `fn_resolve_shipment_cancellation_refund`, `fn_cancel_shipment` accepting an admin-resolved refund) before deploying it.
 

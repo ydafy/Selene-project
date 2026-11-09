@@ -98,6 +98,8 @@ export const useImageUpload = () => {
 
   /**
    * Sube un archivo base64 a un bucket específico de Supabase.
+   * The private `evidence` bucket returns the object path (readers sign it);
+   * public buckets return a cache-busted public URL.
    */
   const uploadFile = async (
     bucket: 'Avatars' | 'evidence',
@@ -107,7 +109,7 @@ export const useImageUpload = () => {
   ) => {
     setUploading(true);
     try {
-      await uploadMediaFromBase64({
+      const storedPath = await uploadMediaFromBase64({
         storage: supabase.storage,
         bucket,
         path,
@@ -116,6 +118,8 @@ export const useImageUpload = () => {
         upsert: true, // Si el archivo existe, lo sobreescribe
         decode,
       });
+
+      if (bucket === 'evidence') return storedPath;
 
       const { data: urlData } = supabase.storage
         .from(bucket)

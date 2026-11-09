@@ -28,6 +28,7 @@ interface Props {
   userId: string;
   maxPhotos?: number;
   slotsConfig?: SlotConfig[];
+  /** Receives the stored values: object paths for `evidence`, public URLs otherwise. */
   onEvidenceComplete: (urls: string[]) => void;
   bucket?: AllowedBuckets;
   folder?: string;
@@ -60,10 +61,11 @@ export const EvidenceUploadSection = ({
   const theme = useTheme<Theme>();
   const { takePhoto, uploadFile, uploading } = useImageUpload();
 
-  // Inicializamos el array según maxPhotos
-  const [photos, setPhotos] = useState<(string | null)[]>(
-    new Array(maxPhotos).fill(null),
-  );
+  // Inicializamos el array según maxPhotos. Each slot keeps the stored value
+  // and the local file shown as preview (the evidence bucket is private).
+  const [photos, setPhotos] = useState<
+    ({ stored: string; preview: string } | null)[]
+  >(new Array(maxPhotos).fill(null));
 
   // Index of the slot whose intro dialog is open, or null when none.
   const [slotDialogIndex, setSlotDialogIndex] = useState<number | null>(null);
@@ -98,13 +100,15 @@ export const EvidenceUploadSection = ({
       if (!result || !mounted.current || disabledRef.current) return;
 
       const path = `${folder}/${orderId}/${userId}/slot_${index}_${Date.now()}.jpg`;
-      const url = await uploadFile(bucket, path, result.base64, 'jpg');
+      const stored = await uploadFile(bucket, path, result.base64, 'jpg');
       if (!mounted.current || disabledRef.current) return;
 
       const newPhotos = [...photos];
-      newPhotos[index] = url;
+      newPhotos[index] = { stored, preview: result.uri };
       setPhotos(newPhotos);
-      onEvidenceComplete(newPhotos.filter((p): p is string => p !== null));
+      onEvidenceComplete(
+        newPhotos.flatMap((photo) => (photo ? [photo.stored] : [])),
+      );
       // Feedback cannot turn a saved upload into a failed capture.
       try {
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -181,7 +185,7 @@ export const EvidenceUploadSection = ({
             >
               {photo ? (
                 <AppImage
-                  source={{ uri: photo }}
+                  source={{ uri: photo.preview }}
                   style={{ width: '100%', height: '100%' }}
                 />
               ) : (

@@ -28,8 +28,10 @@ export const SecureImage = ({
   } | null>(null);
   const [failedSource, setFailedSource] = useState<string | null>(null);
 
-  // External URLs or Supabase public URLs — load directly, no signing needed
+  // External URLs or Supabase public URLs — load directly, no signing needed.
+  // The evidence bucket is private, so its objects are always signed.
   const isDirect =
+    bucket !== 'evidence' &&
     path.startsWith('http') &&
     (!path.includes('supabase.co') || path.includes('/object/public/'));
 
