@@ -1,0 +1,26 @@
+meta {
+  name: refresh-connect-account-status-throwaway-cleanup
+  type: http
+  seq: 144
+}
+
+delete {
+  url: {{baseUrl}}/auth/v1/admin/users/{{refreshThrowawayId}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("deletes the throwaway user", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}
+
+docs {
+  Cleanup of refresh-connect-account-status-throwaway-create through the local admin API.
+}
