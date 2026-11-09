@@ -18,10 +18,10 @@ A package below `1.0.0` can break on a minor. Treat its minor like a major.
 ## Follow the cadence
 
 - **Weekly, automatic.** The `Dependency audit` workflow (`.github/workflows/dependency-audit.yml`) runs `bun audit --audit-level=high` every Monday. It fails on high or critical vulnerabilities.
-- **Monthly, by hand.** Run `bun outdated --filter @selene/frontend` and `bun outdated --filter admin-web`. Update the in-range updates together in one commit. Update each major in its own commit after reading its changelog. Check Node and Bun too ("Keep Node and Bun current").
+- **Monthly, by hand.** Run `bun outdated --filter @selene/frontend` and `bun outdated --filter admin-web`. Update the in-range updates together in one commit. Update each major in its own commit after reading its changelog. Check Node and Bun too ("Keep Node and Bun current"), and update Docker Desktop ("Keep the Supabase CLI and Docker current").
 - **Expo SDK, 4 to 8 weeks after a release.** Upgrade one SDK at a time, in its own worktree. Merge to `main` only when the whole upgrade passes. Follow `odd/tasks/expo-sdk-upgrade.md` and run its device checklist (L12, updated by L21) on a new development build.
 
-**The weekly report does the looking for you.** The `Dependency report` workflow (`.github/workflows/dependency-report.yml`) runs every Monday after the audit. It runs `bun scripts/ci/dependency-report.ts` and writes the result into one open issue, **Reporte de dependencias**, then comments a one-line summary so you get an email. The report lists safe updates, majors with changelog links, majors held back on purpose with the reason, the Expo SDK status, packages off the SDK, Expo-pinned packages with a newer major (they move with the SDK upgrade, not one by one; the pin list is `apps/frontend/node_modules/expo/bundledNativeModules.json`), the Node and Bun runtimes, the GitHub Actions pins, and the audit. It never opens pull requests. Run the script locally for the same report, or start the workflow from the **Actions** tab.
+**The weekly report does the looking for you.** The `Dependency report` workflow (`.github/workflows/dependency-report.yml`) runs every Monday after the audit. It runs `bun scripts/ci/dependency-report.ts` and writes the result into one open issue, **Reporte de dependencias**, then comments a one-line summary so you get an email. The report lists safe updates, majors with changelog links, majors held back on purpose with the reason, the Expo SDK status, packages off the SDK, Expo-pinned packages with a newer major (they move with the SDK upgrade, not one by one; the pin list is `apps/frontend/node_modules/expo/bundledNativeModules.json`), the Node and Bun runtimes, the Supabase CLI, the GitHub Actions pins, and the audit. It never opens pull requests. Run the script locally for the same report, or start the workflow from the **Actions** tab.
 
 GitHub can delay a scheduled run by hours or skip it, and a skipped audit sends no email, the same as a clean one. If the Monday comment on the report issue has not arrived by the afternoon, start both workflows by hand, the audit first: `gh workflow run dependency-audit.yml`, then `gh workflow run dependency-report.yml`.
 
@@ -75,6 +75,34 @@ To change an action version:
    ```
 
 3. Replace the SHA and the comment in every workflow that uses the action, and run `bun test scripts/ci/workflow-actions.test.ts`. CI on the pull request runs `.github/workflows/ci.yml`. Start `.github/workflows/dependency-audit.yml` on the branch with `gh workflow run dependency-audit.yml --ref <branch>`. `.github/workflows/dependency-report.yml` also edits the report issue, and `.github/workflows/issue-labels.yml` runs only from `main`, so check those two after the merge.
+
+## Keep the Supabase CLI and Docker current
+
+The Supabase CLI and Docker Desktop run the local stack that every SQL, Edge Function and webhook check uses (`supabase/AGENTS.md`, "Local stack"). Neither is an npm dependency, so `bun outdated` never lists them.
+
+### Supabase CLI
+
+The source of truth is the `version:` of the Supabase setup-cli step in `.github/workflows/ci.yml` (job `db-test`). Your machine runs the same version, installed with Scoop. Check it with `supabase --version`. Run `scoop hold supabase` once, so `scoop update *` never moves the CLI to a new major behind your back.
+
+The weekly report's **Supabase CLI** section compares the pin with the latest release on npm. It flags a release once it is 3 days old, links its release notes, and marks a new major. It fails when no setup-cli step pins an exact version, or when two steps pin different ones.
+
+To change the CLI version:
+
+1. Read the release notes. For a major, also read the migration guide the notes link, and do the upgrade in its own worktree and commit.
+2. Search the repository for every command and flag the notes change: `git grep -n "supabase "`. Fix the scripts and docs in the same commit.
+3. For a major, run `supabase stop` in every worktree first. A major can rename the local containers, and the old stack would keep running beside the new one.
+4. Change the `version:` in `.github/workflows/ci.yml`.
+5. Install the same version locally: `scoop unhold supabase`, `scoop update supabase`, `scoop hold supabase`. If the latest release is newer than the one you pinned, run `scoop uninstall supabase` and `scoop install supabase@<version>` instead.
+6. Run `supabase start`, `supabase db reset` and `bun run test:db`. CI's `db-test` job proves the pin on the pull request.
+
+### Docker Desktop
+
+The weekly report does not check Docker. It runs on GitHub's runner, which brings its own Docker and cannot see your machine.
+
+Every month, with the in-range updates:
+
+1. Open Docker Desktop, then **Settings** > **Software updates**. If an update is available, read its entry in the [Docker Desktop release notes](https://docs.docker.com/desktop/release-notes/). Install it once it is 3 days old.
+2. In one worktree, run `supabase start` and `bun run test:db`. If the stack does not start, roll back to the previous version from the same release notes page and open a Finding issue (`docs/findings.md`).
 
 ## Move Expo-pinned packages only with Expo
 
