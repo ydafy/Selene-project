@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
-import { buildVerdictRpc } from './verdictRpc.ts';
+import { buildVerdictRpc } from './verdict-rpc.ts';
 
 const payload = {
   disputeId: 'dispute',
