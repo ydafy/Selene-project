@@ -25,3 +25,15 @@ export const withoutVerdictShipmentRead = (sql: string) =>
       'INTO v_order_id, v_status, v_buyer_id, v_seller_id, v_shipment_id',
       'INTO v_order_id, v_status, v_buyer_id, v_seller_id',
     );
+
+/**
+ * supabase-audit-security T2 (evidence_object_paths) added one evidence path check to
+ * fn_seller_submit_return_evidence, pinned in
+ * supabase/queries/return/__tests__/returnEvidencePaths.test.ts. Tests that compare
+ * an older migration with the canonical file strip that block first.
+ */
+export const withoutEvidencePathCheck = (sql: string) =>
+  sql.replace(
+    /\r?\n {4}-- Evidence paths: [^\n]*\r?\n {4}IF EXISTS \([\s\S]*?'INVALID_EVIDENCE_PATH'::TEXT; RETURN;\r?\n {4}END IF;/,
+    '',
+  );

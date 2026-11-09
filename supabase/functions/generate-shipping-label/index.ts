@@ -18,7 +18,10 @@ import {
   runLabelClaimOrchestration,
   selectPaquetexpressGroundRate,
 } from '../_shared/envia-shipping.ts';
-import { LabelRequestSchema } from './request-contract.ts';
+import {
+  LabelRequestSchema,
+  isOwnShippingEvidencePath,
+} from './request-contract.ts';
 import {
   declaredContentForCategories,
   FALLBACK_PACKAGE_PRESET,
@@ -209,6 +212,15 @@ serve(
       // D. Validaciones de Negocio
       if (shipment.seller_id !== user.id)
         throw new ApiError(403, 'No tienes permiso para gestionar este envío');
+      if (
+        !shippingEvidence.images.every((image) =>
+          isOwnShippingEvidencePath(image, shipment.order.id, user.id),
+        )
+      )
+        throw new ApiError(
+          400,
+          'Las fotos de evidencia deben ser tuyas y de este pedido',
+        );
       if (shipment.tracking_number)
         return new Response(
           JSON.stringify({

@@ -71,7 +71,8 @@ export const useVideoUpload = () => {
       const path = `disputes/${orderId}/${userId}/unboxing_${Date.now()}.${ext}`;
 
       // The picker can omit fileSize, so the limit is enforced on the real bytes.
-      await uploadMediaFromUri({
+      // The evidence bucket is private: callers keep the object path and readers sign it.
+      return await uploadMediaFromUri({
         storage: supabase.storage,
         bucket: 'evidence',
         path,
@@ -80,11 +81,6 @@ export const useVideoUpload = () => {
         upsert: true,
         maxBytes: MAX_VIDEO_SIZE_BYTES,
       });
-
-      const { data: urlData } = supabase.storage
-        .from('evidence')
-        .getPublicUrl(path);
-      return urlData.publicUrl;
     } finally {
       uploadingRef.current = false;
       setUploading(false);

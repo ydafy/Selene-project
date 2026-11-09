@@ -45,15 +45,14 @@ Install `pg_net` in the `extensions` schema, not `public` (security advisor `ext
 
 ## 4. Storage buckets
 
-| Bucket          | Public                               |
-| --------------- | ------------------------------------ |
-| `Avatars`       | yes                                  |
-| `products`      | yes                                  |
-| `public-assets` | yes                                  |
-| `evidence`      | yes (review: holds dispute evidence) |
-| `verification`  | no                                   |
+| Bucket         | Public | Size limit | Allowed types                                    |
+| -------------- | ------ | ---------- | ------------------------------------------------ |
+| `Avatars`      | yes    | 2 MiB      | JPEG, PNG, WebP, HEIC, HEIF                      |
+| `products`     | yes    | 10 MiB     | JPEG, PNG, WebP, HEIC, HEIF                      |
+| `evidence`     | no     | 50 MiB     | JPEG, PNG, WebP, HEIC, HEIF, MP4, QuickTime, M4V |
+| `verification` | no     | none       | any                                              |
 
-Bucket policies on `storage.objects` must come from migrations.
+Bucket settings and policies on `storage.objects` come from migrations (`supabase/migrations/20261109020901_storage_bucket_access.sql` sets the limits above). Delete the unused `public-assets` bucket in the Dashboard (Storage, bucket menu, Delete bucket): Storage blocks deleting it with SQL.
 
 ## 5. Vault secrets
 

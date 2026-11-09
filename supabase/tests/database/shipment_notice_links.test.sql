@@ -99,7 +99,9 @@ select is(pg_temp.rows_of('return.delivered'), 2::bigint, 'return.delivered is w
 select set_config('request.jwt.claims', '{"sub": "d0000000-0000-4000-8000-000000000023", "role": "authenticated"}', true);
 set local role authenticated;
 select is((select success from public.fn_seller_submit_return_evidence(
-    'd0000000-0000-4000-8000-0000000d0021', array['https://example.test/e.png'], 'https://example.test/e.mp4')),
+    'd0000000-0000-4000-8000-0000000d0021',
+    array['disputes/d0000000-0000-4000-8000-0000000b0021/d0000000-0000-4000-8000-000000000023/e.png'],
+    'disputes/d0000000-0000-4000-8000-0000000b0021/d0000000-0000-4000-8000-000000000023/e.mp4')),
   true, 'fn_seller_submit_return_evidence succeeds as the seller');
 reset role;
 select is(pg_temp.links('return.seller_evidence_submitted'),

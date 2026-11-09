@@ -2,13 +2,19 @@ import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import '../_shared/__tests__/zod-runtime.bun.preload.ts';
 
-const { LabelRequestSchema, REQUIRED_SHIPPING_EVIDENCE_IMAGES } =
-  await import('./request-contract.ts');
+const {
+  LabelRequestSchema,
+  REQUIRED_SHIPPING_EVIDENCE_IMAGES,
+  isOwnShippingEvidencePath,
+} = await import('./request-contract.ts');
 
 const shipmentId = '7b8f3c1e-2a4d-4f6b-9c0e-1d2e3f4a5b6c';
 const originAddressId = '0c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f';
+const orderId = '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
+const sellerId = '9f8e7d6c-5b4a-4392-8170-6f5e4d3c2b1a';
+const otherId = '5d4c3b2a-1f0e-4d9c-8b7a-695847362514';
 const photo = (slot: number) =>
-  `https://storage.example.com/evidence/order/seller/slot_${slot}.jpg`;
+  `shipments/${orderId}/${sellerId}/slot_${slot}_1700000000000.jpg`;
 
 const request = (images: unknown) => ({
   shipmentId,
@@ -61,7 +67,7 @@ describe('generate-shipping-label request contract', () => {
     );
   });
 
-  it('stores trimmed evidence URLs and treats whitespace-padded repeats as duplicates', () => {
+  it('stores trimmed evidence paths and treats whitespace-padded repeats as duplicates', () => {
     const padded = [` ${photo(0)} `, ` ${photo(1)}`, `${photo(2)} `];
     const result = LabelRequestSchema.safeParse(request(padded));
 
@@ -96,7 +102,7 @@ describe('generate-shipping-label request contract', () => {
     ).toBe(true);
   });
 
-  it('keeps rejecting invalid identifiers and non-URL evidence', () => {
+  it('keeps rejecting invalid identifiers and blank evidence', () => {
     const invalidIds = LabelRequestSchema.safeParse({
       ...request([photo(0), photo(1), photo(2)]),
       shipmentId: 'not-a-uuid',
@@ -109,11 +115,23 @@ describe('generate-shipping-label request contract', () => {
         : invalidIds.error.issues.map((issue) => issue.path.join('.')),
     ).toEqual(['shipmentId', 'originAddressId']);
 
-    expect(evidenceIssues([photo(0), photo(1), 'not-a-url'])).toEqual([]);
+    expect(evidenceIssues([photo(0), photo(1), '  '])).toEqual([]);
     expect(
-      LabelRequestSchema.safeParse(request([photo(0), photo(1), 'not-a-url']))
-        .success,
+      LabelRequestSchema.safeParse(request([photo(0), photo(1), '  '])).success,
     ).toBe(false);
+  });
+
+  it('checks evidence ownership after the seller check and before the claim', () => {
+    const source = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
+    const check = source.indexOf(
+      'isOwnShippingEvidencePath(image, shipment.order.id, user.id)',
+    );
+
+    expect(check).toBeGreaterThan(
+      source.indexOf('if (shipment.seller_id !== user.id)'),
+    );
+    expect(check).toBeLessThan(source.indexOf('if (shipment.tracking_number)'));
+    expect(check).toBeLessThan(source.indexOf('runLabelClaimOrchestration({'));
   });
 
   it('validates the request before authentication, persistence, or provider work', () => {
@@ -133,5 +151,27 @@ describe('generate-shipping-label request contract', () => {
     expect(clientCreation).toBeGreaterThan(parse);
     expect(evidenceWrite).toBeGreaterThan(parse);
     expect(claim).toBeGreaterThan(parse);
+  });
+});
+
+describe('isOwnShippingEvidencePath', () => {
+  it("accepts a packing photo stored under the seller's folder for the order", () => {
+    expect(isOwnShippingEvidencePath(photo(0), orderId, sellerId)).toBe(true);
+  });
+
+  it.each([
+    ['another user folder', `shipments/${orderId}/${otherId}/slot_0.jpg`],
+    ['another order folder', `shipments/${otherId}/${sellerId}/slot_0.jpg`],
+    ['another evidence folder', `disputes/${orderId}/${sellerId}/slot_0.jpg`],
+    [
+      'a URL',
+      `https://example.test/storage/v1/object/public/evidence/${photo(0)}`,
+    ],
+    ['a parent segment', `shipments/${orderId}/${sellerId}/../slot_0.jpg`],
+    ['a leading slash', `/${photo(0)}`],
+    ['a nested folder', `shipments/${orderId}/${sellerId}/a/slot_0.jpg`],
+    ['a missing file name', `shipments/${orderId}/${sellerId}/`],
+  ])('rejects a path in %s', (_case, path) => {
+    expect(isOwnShippingEvidencePath(path, orderId, sellerId)).toBe(false);
   });
 });

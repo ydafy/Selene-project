@@ -29,7 +29,7 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
     });
     return { promise, resolve };
   };
-  let camera = deferred<{ base64: string } | null>();
+  let camera = deferred<{ base64: string; uri: string } | null>();
   let cameraFails = false;
   let uploadFails = false;
   let delayedUpload: ReturnType<typeof deferred<string>> | null = null;
@@ -195,7 +195,7 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
     await tree?.unmount();
   });
 
-  test('default capture remains enabled; busy excludes duplicate callbacks and haptics cannot lose a photo', async () => {
+  test('default capture remains enabled; busy excludes duplicate callbacks, haptics cannot lose a photo and the preview shows the local file', async () => {
     const complete = mock<(...args: unknown[]) => void>(() => {});
     const busy = mock<(...args: unknown[]) => void>(() => {});
     let tree: View;
@@ -216,18 +216,18 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
     expect(takePhoto).toHaveBeenCalledTimes(1);
     expect(busy.mock.calls).toEqual([[true]]);
     await act(async () => {
-      camera.resolve({ base64: 'photo' });
+      camera.resolve({ base64: 'photo', uri: 'file:///photo.jpg' });
       await pending;
     });
     expect(complete.mock.calls).toEqual([['saved-photo']].map((url) => [url]));
     expect(busy.mock.calls).toEqual([[true], [false]]);
-    expect(all(tree, 'AppImage')[0].props.source.uri).toBe('saved-photo');
+    expect(all(tree, 'AppImage')[0].props.source.uri).toBe('file:///photo.jpg');
     await tree?.unmount();
   });
 
   test('camera and replacement-upload failures preserve saved photos, report fixed diagnostics and unlock', async () => {
     camera = deferred();
-    camera.resolve({ base64: 'photo' });
+    camera.resolve({ base64: 'photo', uri: 'file:///photo.jpg' });
     const complete = mock<(...args: unknown[]) => void>(() => {});
     const failure = mock(() => {});
     const busy = mock<(...args: unknown[]) => void>(() => {});
@@ -262,7 +262,9 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
       uploadFails = false;
       expect(failure).toHaveBeenCalledTimes(2);
       expect(complete).toHaveBeenCalledTimes(1);
-      expect(all(tree!, 'AppImage')[0].props.source.uri).toBe('saved-photo');
+      expect(all(tree!, 'AppImage')[0].props.source.uri).toBe(
+        'file:///photo.jpg',
+      );
       expect(all(tree!, 'TouchableOpacity')[0].props.disabled).toBe(false);
       expect(busy.mock.calls).toEqual([
         [true],
@@ -310,7 +312,7 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
 
   test('late upload completion does not notify an unmounted form', async () => {
     camera = deferred();
-    camera.resolve({ base64: 'photo' });
+    camera.resolve({ base64: 'photo', uri: 'file:///photo.jpg' });
     delayedUpload = deferred();
     const complete = mock<(...args: unknown[]) => void>(() => {});
     const busy = mock<(...args: unknown[]) => void>(() => {});
@@ -432,7 +434,7 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
     await tree?.unmount();
     const count = uploadFile.mock.calls.length;
     await act(async () => {
-      camera.resolve({ base64: 'late' });
+      camera.resolve({ base64: 'late', uri: 'file:///late.jpg' });
       await pending;
     });
     expect(uploadFile).toHaveBeenCalledTimes(count);

@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import {
   ApiError,
+  assertOwnDisputeEvidence,
   mapDisputeErrorCode,
   parseCreateDisputeRequestBody,
 } from './create-dispute.ts';
@@ -59,6 +60,7 @@ serve(
         authHeader?.replace('Bearer ', '') || '',
       );
       if (authError || !user) throw new ApiError(401, 'AUTH_REQUIRED');
+      assertOwnDisputeEvidence(evidence, orderId, user.id);
 
       // 2. Abrir la disputa en una sola transacción que bloquea el envío
       const { data, error: rpcError } = await supabaseAdmin.rpc(
