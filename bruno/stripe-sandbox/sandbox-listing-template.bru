@@ -1,0 +1,46 @@
+meta {
+  name: sandbox-listing-template
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/products?id=eq.00000000-0000-4000-8000-0000000000b4&select=*
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:pre-request {
+  if (
+    bru.getProcessEnv("BRUNO_STRIPE_SANDBOX") !== "1" ||
+    !bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID") ||
+    !bru.getProcessEnv("STRIPE_SECRET_KEY")
+  ) {
+    bru.runner.skipRequest();
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200 && res.getBody().length === 1) {
+    const { id, created_at, updated_at, seller_id, fts, status, ...listing } = res.getBody()[0];
+    bru.setVar("sandboxListingTemplate", JSON.stringify({ ...listing, seller_id: bru.getVar("sandboxSellerId") }));
+  }
+}
+
+tests {
+  test("reads the seeded listing b4 (price 2400) as a template", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(1);
+    expect(Number(res.getBody()[0].price)).to.equal(2400);
+  });
+}
+
+docs {
+  The sandbox seller's listings copy b4 (a valid publication snapshot) with a new owner, so
+  the allocation amounts below match the ones in orders/order-A-create-from-payment.
+}

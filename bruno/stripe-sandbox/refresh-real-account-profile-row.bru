@@ -1,0 +1,40 @@
+meta {
+  name: refresh-real-account-profile-row
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/profiles_private?id=eq.{{sandboxSellerId}}&select=stripe_account_id,stripe_onboarding_status,stripe_onboarding_refreshed_at
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:pre-request {
+  if (
+    bru.getProcessEnv("BRUNO_STRIPE_SANDBOX") !== "1" ||
+    !bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID") ||
+    !bru.getProcessEnv("STRIPE_SECRET_KEY")
+  ) {
+    bru.runner.skipRequest();
+  }
+}
+
+tests {
+  test("the refresh stored the complete status and its timestamp", function () {
+    expect(res.getStatus()).to.equal(200);
+    const rows = res.getBody();
+    expect(rows.length).to.equal(1);
+    expect(rows[0].stripe_onboarding_status).to.equal("complete");
+    expect(Date.parse(rows[0].stripe_onboarding_refreshed_at)).to.equal(Date.parse(bru.getVar("sandboxRefreshedAt")));
+  });
+}
+
+docs {
+  Reads profiles_private with the service role after the refresh.
+}

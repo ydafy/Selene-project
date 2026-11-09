@@ -1,0 +1,53 @@
+meta {
+  name: sandbox-login-admin
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/auth/v1/token?grant_type=password
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+body:json {
+  {
+    "gotrue_meta_security": { "captcha_token": "{{captchaToken}}" },
+    "email": "admin@selene.local",
+    "password": "password123"
+  }
+}
+
+script:pre-request {
+  if (
+    bru.getProcessEnv("BRUNO_STRIPE_SANDBOX") !== "1" ||
+    !bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID") ||
+    !bru.getProcessEnv("STRIPE_SECRET_KEY")
+  ) {
+    bru.runner.skipRequest();
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("adminToken", res.getBody().access_token);
+  }
+}
+
+tests {
+  test("logs in the seeded admin", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().access_token).to.be.a("string");
+  });
+}
+
+docs {
+  Every request in this folder reaches the Stripe sandbox through the local functions. Each
+  one is skipped when the generated Bruno env file lacks BRUNO_STRIPE_TEST_ACCOUNT_ID or
+  STRIPE_SECRET_KEY (`bun run bruno:env` copies both and refuses a key that is not sk_test_
+  or rk_test_). Needs `bun run functions:serve` and `bun run stripe:listen` (payout webhooks).
+}

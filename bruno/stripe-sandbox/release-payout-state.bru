@@ -1,0 +1,109 @@
+meta {
+  name: release-payout-state
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/connect_payout_runs?id=eq.{{releaseRunId}}&select=id,seller_id,amount,status,release_stage,stripe_payout_id,paid_at,retry_of_run_id,connect_payout_run_shipments(shipment_id,net_payout,status)
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:pre-request {
+  if (
+    bru.getProcessEnv("BRUNO_STRIPE_SANDBOX") !== "1" ||
+    !bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID") ||
+    !bru.getProcessEnv("STRIPE_SECRET_KEY")
+  ) {
+    bru.runner.skipRequest();
+  } else {
+    const stripe = async (path, account) => {
+      const headers = { Authorization: "Bearer " + bru.getProcessEnv("STRIPE_SECRET_KEY") };
+      if (account) headers["Stripe-Account"] = account;
+      let res;
+      try {
+        res = await bru.sendRequest({ method: "GET", url: "https://api.stripe.com/v1/" + path, headers });
+      } catch (error) {
+        res = error.response;
+        if (!res) throw new Error("Stripe " + path + " unreachable");
+      }
+      if (res.status !== 200 || res.data.livemode === true) {
+        throw new Error("Stripe GET " + path + ": " + res.status + " " + ((res.data.error || {}).code || ""));
+      }
+      return res.data;
+    };
+    const key = bru.getEnvVar("serviceRoleKey");
+    const rest = async (path) => {
+      const res = await bru.sendRequest({
+        method: "GET",
+        url: bru.getEnvVar("baseUrl") + "/rest/v1/" + path,
+        headers: { apikey: key, Authorization: "Bearer " + key },
+      });
+      return res.data;
+    };
+    let status = null;
+    for (let attempt = 0; attempt < 30 && status !== "paid"; attempt += 1) {
+      if (attempt > 0) await bru.sleep(2000);
+      status = (await rest("connect_payout_runs?id=eq." + bru.getVar("releaseRunId") + "&select=status"))[0].status;
+    }
+    const shipment = (await rest("shipments?id=eq." + bru.getVar("releaseShipmentId") + "&select=stripe_transfer_id,stripe_payout_id"))[0];
+    bru.setVar("releaseTransferId", shipment.stripe_transfer_id);
+    const transfer = await stripe("transfers/" + shipment.stripe_transfer_id);
+    const payout = await stripe("payouts/" + bru.getVar("releasePayoutId"), bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID"));
+    bru.setVar("releaseStripeEvidence", JSON.stringify({
+      transfer: {
+        amount: transfer.amount,
+        currency: transfer.currency,
+        destination: transfer.destination,
+        source_transaction: transfer.source_transaction,
+        transfer_group: transfer.transfer_group,
+        run_id: transfer.metadata.run_id,
+        shipment_id: transfer.metadata.shipment_id,
+      },
+      payout: { amount: payout.amount, currency: payout.currency, status: payout.status, run_id: payout.metadata.run_id },
+    }));
+  }
+}
+
+tests {
+  test("the run is paid through the payout.paid webhook and holds the payout id", function () {
+    expect(res.getStatus()).to.equal(200);
+    const run = res.getBody()[0];
+    expect(run.status).to.equal("paid");
+    expect(run.release_stage).to.equal("paid_observed");
+    expect(run.amount).to.equal(210600);
+    expect(run.stripe_payout_id).to.equal(bru.getVar("releasePayoutId"));
+    expect(run.retry_of_run_id).to.equal(null);
+    expect(run.connect_payout_run_shipments).to.deep.equal([
+      { shipment_id: bru.getVar("releaseShipmentId"), net_payout: 210600, status: "paid" },
+    ]);
+  });
+
+  test("Stripe has the transfer from the real charge and the paid payout", function () {
+    expect(bru.getVar("releaseTransferId")).to.match(/^tr_/);
+    expect(JSON.parse(bru.getVar("releaseStripeEvidence"))).to.deep.equal({
+      transfer: {
+        amount: 210600,
+        currency: "mxn",
+        destination: bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID"),
+        source_transaction: bru.getVar("releaseChargeId"),
+        transfer_group: bru.getVar("releaseTransferGroup"),
+        run_id: bru.getVar("releaseRunId"),
+        shipment_id: bru.getVar("releaseShipmentId"),
+      },
+      payout: { amount: 210600, currency: "mxn", status: "paid", run_id: bru.getVar("releaseRunId") },
+    });
+  });
+}
+
+docs {
+  Waits up to 60 s for `bun run stripe:listen` to deliver payout.paid (a sandbox payout to
+  the default CLABE is paid within a second), then reads the run, the shipment's transfer id,
+  and, in the sandbox, the transfer and the payout on the connected account.
+}

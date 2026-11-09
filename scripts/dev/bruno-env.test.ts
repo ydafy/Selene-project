@@ -83,6 +83,45 @@ describe('buildBrunoEnv', () => {
     expect(output).toContain('CRON_SECRET="has space#and\\"quote"\n');
   });
 
+  test('writes a Stripe test key and the sandbox account after the worker secrets', () => {
+    for (const key of ['sk_test_value', 'rk_test_value']) {
+      const output = buildBrunoEnv(
+        JSON.stringify(keys),
+        `BRUNO_STRIPE_TEST_ACCOUNT_ID=acct_fixture\nSTRIPE_SECRET_KEY="${key}"\nCRON_SECRET=cron-value\n`,
+      );
+      expect(brunoEnvVariableNames(output)).toEqual([
+        'SUPABASE_URL',
+        'SUPABASE_ANON_KEY',
+        'SUPABASE_SERVICE_ROLE_KEY',
+        'CRON_SECRET',
+        'STRIPE_SECRET_KEY',
+        'BRUNO_STRIPE_TEST_ACCOUNT_ID',
+      ]);
+      expect(output).toContain(`STRIPE_SECRET_KEY=${key}\n`);
+      expect(output).toContain('BRUNO_STRIPE_TEST_ACCOUNT_ID=acct_fixture\n');
+    }
+    const without = buildBrunoEnv(JSON.stringify(keys), 'CRON_SECRET=x\n');
+    expect(without).not.toContain('STRIPE_SECRET_KEY');
+    expect(without).not.toContain('BRUNO_STRIPE_TEST_ACCOUNT_ID');
+  });
+
+  test('refuses a Stripe key that is not a test key, without echoing it', () => {
+    for (const key of [
+      'sk_live_value',
+      'rk_live_value',
+      'pk_test_value',
+      'x',
+    ]) {
+      let message = '';
+      try {
+        buildBrunoEnv(JSON.stringify(keys), `STRIPE_SECRET_KEY=${key}\n`);
+      } catch (error) {
+        message = error instanceof Error ? error.message : String(error);
+      }
+      expect(message).toBe('STRIPE_TEST_KEY_REQUIRED');
+    }
+  });
+
   test('refuses a non-local API URL', () => {
     expect(() =>
       buildBrunoEnv(

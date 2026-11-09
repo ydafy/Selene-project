@@ -1,0 +1,58 @@
+meta {
+  name: refresh-real-account
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/refresh-connect-account-status
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+script:pre-request {
+  if (
+    bru.getProcessEnv("BRUNO_STRIPE_SANDBOX") !== "1" ||
+    !bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID") ||
+    !bru.getProcessEnv("STRIPE_SECRET_KEY")
+  ) {
+    bru.runner.skipRequest();
+  }
+}
+
+body:json {
+  { "sellerId": "{{sandboxSellerId}}", "force": true }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("sandboxRefreshedAt", res.getBody().refreshedAt);
+  }
+}
+
+tests {
+  test("an admin force-refresh reads the sandbox account and normalizes it to complete", function () {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body).to.deep.equal({
+      status: "complete",
+      hasStripeAccount: true,
+      chargesEnabled: true,
+      payoutsEnabled: true,
+      refreshedAt: body.refreshedAt,
+      cached: false,
+    });
+    expect(Number.isNaN(Date.parse(body.refreshedAt))).to.equal(false);
+  });
+}
+
+docs {
+  The handler calls stripe.accounts.retrieve on the sandbox account (charges and payouts
+  enabled), so this is the fresh branch of refresh-connect-account-status.ts (lines
+  153-160). A Stripe failure would answer cached: true with status pending instead.
+}

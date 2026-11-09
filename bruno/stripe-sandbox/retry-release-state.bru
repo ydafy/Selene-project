@@ -1,0 +1,90 @@
+meta {
+  name: retry-release-state
+  type: http
+  seq: 20
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/connect_payout_runs?id=in.({{failedRunId}},{{retryRunId}})&select=id,amount,status,stripe_payout_id,retry_of_run_id,connect_payout_run_shipments(shipment_id,net_payout,status)&order=created_at
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:pre-request {
+  if (
+    bru.getProcessEnv("BRUNO_STRIPE_SANDBOX") !== "1" ||
+    !bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID") ||
+    !bru.getProcessEnv("STRIPE_SECRET_KEY")
+  ) {
+    bru.runner.skipRequest();
+  } else {
+    const key = bru.getEnvVar("serviceRoleKey");
+    let status = null;
+    for (let attempt = 0; attempt < 30 && status !== "paid"; attempt += 1) {
+      if (attempt > 0) await bru.sleep(2000);
+      const res = await bru.sendRequest({
+        method: "GET",
+        url: bru.getEnvVar("baseUrl") + "/rest/v1/connect_payout_runs?id=eq." + bru.getVar("retryRunId") + "&select=status",
+        headers: { apikey: key, Authorization: "Bearer " + key },
+      });
+      status = res.data[0].status;
+    }
+    let payout;
+    try {
+      payout = (await bru.sendRequest({
+        method: "GET",
+        url: "https://api.stripe.com/v1/payouts/" + bru.getVar("retryPayoutId"),
+        headers: { Authorization: "Bearer " + bru.getProcessEnv("STRIPE_SECRET_KEY"), "Stripe-Account": bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID") },
+      })).data;
+    } catch (error) {
+      throw new Error("Stripe payouts/" + bru.getVar("retryPayoutId") + ": " + (error.response ? error.response.status : "unreachable"));
+    }
+    if (payout.livemode === true) throw new Error("live mode payout");
+    bru.setVar("retryStripeEvidence", JSON.stringify({
+      amount: payout.amount,
+      currency: payout.currency,
+      status: payout.status,
+      destination: payout.destination,
+      run_id: payout.metadata.run_id,
+    }));
+  }
+}
+
+tests {
+  test("the child run is paid and points at the failed parent", function () {
+    expect(res.getStatus()).to.equal(200);
+    const [parent, child] = res.getBody();
+    expect(parent.id).to.equal(bru.getVar("failedRunId"));
+    expect(parent.status).to.equal("failed");
+    expect(child).to.deep.equal({
+      id: bru.getVar("retryRunId"),
+      amount: 210600,
+      status: "paid",
+      stripe_payout_id: bru.getVar("retryPayoutId"),
+      retry_of_run_id: bru.getVar("failedRunId"),
+      connect_payout_run_shipments: [
+        { shipment_id: bru.getVar("retryShipmentId"), net_payout: 210600, status: "paid" },
+      ],
+    });
+  });
+
+  test("Stripe paid the retry to the restored healthy CLABE", function () {
+    expect(JSON.parse(bru.getVar("retryStripeEvidence"))).to.deep.equal({
+      amount: 210600,
+      currency: "mxn",
+      status: "paid",
+      destination: bru.getVar("sandboxHealthyBankId"),
+      run_id: bru.getVar("retryRunId"),
+    });
+  });
+}
+
+docs {
+  Waits up to 60 s for payout.paid on the retry payout, then reads both runs and the retry
+  payout on the connected account.
+}

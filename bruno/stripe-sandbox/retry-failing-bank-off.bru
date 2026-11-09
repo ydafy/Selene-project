@@ -1,0 +1,92 @@
+meta {
+  name: retry-failing-bank-off
+  type: http
+  seq: 18
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_get_connect_account_actionability
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:pre-request {
+  if (
+    bru.getProcessEnv("BRUNO_STRIPE_SANDBOX") !== "1" ||
+    !bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID") ||
+    !bru.getProcessEnv("STRIPE_SECRET_KEY")
+  ) {
+    bru.runner.skipRequest();
+  } else {
+    const account = bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID");
+    const stripe = async (method, path, params, connected) => {
+      const form = Object.entries(params || {}).map(([k, v]) => encodeURIComponent(k) + "=" + encodeURIComponent(v)).join("&");
+      const headers = { Authorization: "Bearer " + bru.getProcessEnv("STRIPE_SECRET_KEY"), "Content-Type": "application/x-www-form-urlencoded" };
+      if (connected) headers["Stripe-Account"] = connected;
+      let res;
+      try {
+        res = await bru.sendRequest({ method, url: "https://api.stripe.com/v1/" + path, headers, data: form });
+      } catch (error) {
+        res = error.response;
+        if (!res) throw new Error("Stripe " + path + " unreachable");
+      }
+      if (res.status !== 200 || res.data.livemode === true) {
+        throw new Error("Stripe " + method + " " + path + ": " + res.status + " " + ((res.data.error || {}).code || ""));
+      }
+      return res.data;
+    };
+    const key = bru.getEnvVar("serviceRoleKey");
+    const rest = async (path) => (await bru.sendRequest({
+      method: "GET",
+      url: bru.getEnvVar("baseUrl") + "/rest/v1/" + path,
+      headers: { apikey: key, Authorization: "Bearer " + key },
+    })).data;
+    // Waits until stripe-webhooks recorded every account event Stripe emitted since the
+    // cursor (including the one named by `required`) and the projection is not refreshing,
+    // so the release that follows does not race a pending account refresh.
+    const waitForAccountEvents = async (cursor, required, bankId) => {
+      for (let attempt = 0; attempt < 40; attempt += 1) {
+        if (attempt > 0) await bru.sleep(2000);
+        const events = (await stripe("GET", "events?limit=100" + (cursor ? "&ending_before=" + cursor : ""), null, account)).data
+          .filter((event) => event.type.startsWith("account."));
+        if (!events.some((event) => event.type === required && event.data.object.id === bankId.required)) continue;
+        const recorded = await rest("connect_account_events?select=stripe_event_id&stripe_event_id=in.(" + events.map((event) => event.id).join(",") + ")");
+        const row = (await rest("connect_account_actionability?stripe_account_id=eq." + account + "&select=is_actionable,refresh_pending,current_external_account_id"))[0];
+        if (recorded.length === events.length && row && row.refresh_pending === false && row.is_actionable === true && row.current_external_account_id === bankId.current) return;
+      }
+      throw new Error("the account webhooks did not settle in 80 s; is `bun run stripe:listen` running?");
+    };
+    const healthyId = bru.getVar("sandboxHealthyBankId");
+    const failingId = bru.getVar("sandboxFailingBankId");
+    if (!healthyId) throw new Error("retry-failing-bank-on did not record the healthy bank account");
+    await stripe("POST", "accounts/" + account + "/external_accounts/" + healthyId, { default_for_currency: "true" });
+    if (failingId) {
+      await stripe("DELETE", "accounts/" + account + "/external_accounts/" + failingId);
+    }
+    await waitForAccountEvents(bru.getVar("sandboxEventCursor"), "account.external_account.deleted", { required: failingId, current: healthyId });
+  }
+}
+
+body:json {
+  { "p_stripe_account_id": "{{process.env.BRUNO_STRIPE_TEST_ACCOUNT_ID}}" }
+}
+
+tests {
+  test("with the healthy CLABE back as default the account is actionable again", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ is_actionable: true, blocked_reason: null }]);
+  });
+}
+
+docs {
+  Restores the healthy default bank account of the sandbox account and deletes this run's
+  failing CLABE (it runs even when the requests before it failed), then waits up to 80 s
+  until stripe-webhooks recorded every account event since retry-failing-bank-on (including
+  the late external_account.updated that marks the failing CLABE errored) and the
+  projection is not refreshing.
+}
