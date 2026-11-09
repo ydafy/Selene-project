@@ -1,0 +1,49 @@
+meta {
+  name: sandbox-buyer-create
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/auth/v1/admin/users
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:pre-request {
+  if (!bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID") || !bru.getProcessEnv("STRIPE_SECRET_KEY")) {
+    bru.runner.skipRequest();
+  } else {
+    bru.setVar("sandboxBuyerEmail", "bruno-sandbox-buyer-" + Date.now() + "@selene.local");
+  }
+}
+
+body:json {
+  {
+    "email": "{{sandboxBuyerEmail}}",
+    "password": "password123",
+    "email_confirm": true
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("sandboxBuyerId", res.getBody().id);
+  }
+}
+
+tests {
+  test("creates a confirmed throwaway buyer for the sandbox orders", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().id).to.be.a("string");
+  });
+}
+
+docs {
+  Local stack only. Each run makes its own buyer, so the folder is repeatable.
+}

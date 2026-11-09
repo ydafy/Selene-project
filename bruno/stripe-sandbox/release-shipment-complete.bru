@@ -1,0 +1,42 @@
+meta {
+  name: release-shipment-complete
+  type: http
+  seq: 10
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/shipments?id=eq.{{releaseShipmentId}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+script:pre-request {
+  if (!bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID") || !bru.getProcessEnv("STRIPE_SECRET_KEY")) {
+    bru.runner.skipRequest();
+  } else {
+    req.setBody({ status: "completed", completed_at: new Date().toISOString() });
+  }
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("the shipment is completed", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(1);
+    expect(res.getBody()[0].status).to.equal("completed");
+  });
+}
+
+docs {
+  Service-role precondition: delivery and the dispute window are out of scope here, the
+  action under test is the admin release that follows.
+}

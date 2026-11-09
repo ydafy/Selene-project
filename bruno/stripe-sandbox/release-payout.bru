@@ -1,0 +1,60 @@
+meta {
+  name: release-payout
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/release-connect-payout
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+script:pre-request {
+  if (!bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID") || !bru.getProcessEnv("STRIPE_SECRET_KEY")) {
+    bru.runner.skipRequest();
+  } else {
+    req.setBody({
+      sellerId: bru.getVar("sandboxSellerId"),
+      shipmentIds: [bru.getVar("releaseShipmentId")],
+      idempotencyKey: "bruno-sandbox-release-" + Date.now(),
+    });
+  }
+}
+
+body:json {
+  {}
+}
+
+script:post-response {
+  if (res.getStatus() === 200 && res.getBody().success === true) {
+    bru.setVar("releaseRunId", res.getBody().runId);
+    bru.setVar("releasePayoutId", res.getBody().stripePayoutId);
+  }
+}
+
+tests {
+  test("the admin release transfers the shipment net and creates the payout", function () {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body).to.deep.equal({
+      success: true,
+      runId: body.runId,
+      stripePayoutId: body.stripePayoutId,
+      status: "pending_reconciliation",
+      amount: 210600,
+    });
+    expect(body.stripePayoutId).to.match(/^po_/);
+  });
+}
+
+docs {
+  release-connect-payout on the sandbox: one transfer per shipment with source_transaction
+  (the order's real charge) and transfer_group, then payouts.create on the connected
+  account. The success response is release-connect-payout.ts lines 1235-1241.
+}
