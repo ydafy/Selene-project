@@ -6,7 +6,7 @@ import { useTheme } from '@shopify/restyle';
 import { Box, Text } from '@/shared/ui/base';
 import { Theme } from '@/shared/theme';
 import { PaymentMethod } from '@selene/types';
-import { BrandIcon } from '@/shared/ui/brand-icon';
+import { BrandIcon } from '@/shared/ui/icons/brand-icon';
 
 interface PaymentMethodRowProps {
   method?: PaymentMethod | null;

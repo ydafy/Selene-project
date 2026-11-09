@@ -14,7 +14,7 @@ import { AppChip } from '@/shared/ui/app-chip';
 import { BrandCircle } from '@/features/search/components/brand-circle';
 import { theme, Theme } from '@/shared/theme';
 import { SearchFilters } from '../hooks/use-search-products';
-import { hasBrandIcon } from '@/shared/ui/brand-icon';
+import { hasBrandIcon } from '@/shared/ui/icons/brand-icon';
 import { useCategoryConfig } from '../hooks/use-category-config';
 
 type ResultsFilterBarProps = {

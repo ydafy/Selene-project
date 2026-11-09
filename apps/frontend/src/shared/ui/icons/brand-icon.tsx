@@ -1,24 +1,24 @@
 import React from 'react';
 import { SvgProps } from 'react-native-svg';
-import { Box } from './base';
+import { Box } from '../base';
 
 // Importamos los iconos
-import { NvidiaIcon } from './icons/brands/nvidia-icon';
-import { AmdIcon } from './icons/brands/amd-icon';
-import { IntelIcon } from './icons/brands/intel-icon';
-import { AsusIcon } from './icons/brands/asus-icon';
-import { GigabyteIcon } from './icons/brands/gigabyte-icon';
-import { CorsairIcon } from './icons/brands/corsair-icon';
-import { GSkillIcon } from './icons/brands/g-skill-icon';
-import { AsrockIcon } from './icons/brands/asrock-icon';
-import { MsiIcon } from './icons/brands/msi-icon';
-import { HyperXIcon } from './icons/brands/hyper-x-icon';
-import { KingstonIcon } from './icons/brands/kingston-icon';
-import { TForceIcon } from './icons/brands/t-force-icon';
-import { XpgIcon } from './icons/brands/xpg-icon';
-import { VisaIcon } from './icons/brands/visa-icon';
-import { MasterCardIcon } from './icons/brands/master-card-icon';
-import { AmexIcon } from './icons/brands/amex-icon';
+import { NvidiaIcon } from './brands/nvidia-icon';
+import { AmdIcon } from './brands/amd-icon';
+import { IntelIcon } from './brands/intel-icon';
+import { AsusIcon } from './brands/asus-icon';
+import { GigabyteIcon } from './brands/gigabyte-icon';
+import { CorsairIcon } from './brands/corsair-icon';
+import { GSkillIcon } from './brands/g-skill-icon';
+import { AsrockIcon } from './brands/asrock-icon';
+import { MsiIcon } from './brands/msi-icon';
+import { HyperXIcon } from './brands/hyper-x-icon';
+import { KingstonIcon } from './brands/kingston-icon';
+import { TForceIcon } from './brands/t-force-icon';
+import { XpgIcon } from './brands/xpg-icon';
+import { VisaIcon } from './brands/visa-icon';
+import { MasterCardIcon } from './brands/master-card-icon';
+import { AmexIcon } from './brands/amex-icon';
 
 // 1. Definimos la configuración para cada marca
 type BrandConfig = {

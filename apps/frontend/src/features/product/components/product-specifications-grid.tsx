@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
 import { Box, Text } from '@/shared/ui/base';
 import { Theme } from '@/shared/theme';
-import { BrandIcon } from '@/shared/ui/brand-icon';
+import { BrandIcon } from '@/shared/ui/icons/brand-icon';
 import { colors } from '@/shared/theme/tokens';
 
 type ProductSpecificationsProps = {

@@ -23,7 +23,7 @@ import { useCheckoutStore } from '@/shared/store/use-checkout-store';
 import { PaymentMethod } from '@selene/types';
 import { EmptyState } from '@/shared/ui/feedback/empty-state';
 import { ErrorState } from '@/shared/ui/feedback/error-state'; // Importado
-import { BrandIcon } from '@/shared/ui/brand-icon';
+import { BrandIcon } from '@/shared/ui/icons/brand-icon';
 import { ConfirmDialog } from '@/shared/ui/feedback/confirm-dialog';
 import { googlePayTestEnv } from '../logic/stripe-mode';
 
