@@ -9,7 +9,7 @@ Sources:
 
 - App: `apps/frontend/src/shared/theme/tokens.ts`, `apps/frontend/src/shared/theme/index.ts`
 - Admin: `apps/admin-web/src/index.css`
-- Components: `apps/frontend/src/shared/ui/primary-button.tsx`, `apps/admin-web/src/components/ui/{StatusBadge,StatCard,Modal,ConfirmModal}.tsx`
+- Components: `apps/frontend/src/shared/ui/primary-button.tsx`, `apps/admin-web/src/shared/ui/{status-badge,stat-card,modal}.tsx`, `apps/admin-web/src/features/verify/components/confirm-modal.tsx`
 
 ## Colors
 
@@ -46,7 +46,7 @@ Translucent roles (app only, `tokens.ts`):
 | `skeleton`        | `rgba(255,255,255,0.08)` | Loading placeholder                    |
 | `skeletonShimmer` | `rgba(255,255,255,0.5)`  | Loading shimmer                        |
 
-Admin translucent equivalents are Tailwind opacity modifiers on the base tokens, not separate tokens: `border-white/5` to `border-white/10` for hairlines, `bg-white/5` for subtle fills, `bg-lion/10` + `border-lion/20` for selection, `bg-night/80` + `backdrop-blur-sm` behind modals (`Modal.tsx`, `ConfirmModal.tsx`).
+Admin translucent equivalents are Tailwind opacity modifiers on the base tokens, not separate tokens: `border-white/5` to `border-white/10` for hairlines, `bg-white/5` for subtle fills, `bg-lion/10` + `border-lion/20` for selection, `bg-night/80` + `backdrop-blur-sm` behind modals (`modal.tsx`, `confirm-modal.tsx`).
 
 Order and shipment states, same values in both apps (app: `colors.<state>`; admin: `status-<state>`):
 
@@ -104,7 +104,7 @@ React Native Paper `roundness` is `s` (8); Paper multiplies it per component. Ad
 | Component              | Rule                                                                                                                                                                      | Source              |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
 | Primary button (app)   | Pill (radius 30), 2 px `primary` border, bold 16 label. `solid`: `primary` fill, `background` text. `outline`: `background` fill, `primary` text. Disabled: opacity 0.5.  | `PrimaryButton.tsx` |
-| Primary action (admin) | `rounded-xl px-4 py-2 font-bold text-night` on `bg-lion` (danger: `bg-fire`); secondary is `bg-white/5 text-platinum`, hover `bg-white/10`.                               | `ConfirmModal.tsx`  |
+| Primary action (admin) | `rounded-xl px-4 py-2 font-bold text-night` on `bg-lion` (danger: `bg-fire`); secondary is `bg-white/5 text-platinum`, hover `bg-white/10`.                               | `confirm-modal.tsx` |
 | Status badge (admin)   | `rounded-full border px-2 py-0.5`, uppercase, `bg-status-<state>/10 text-status-<state> border-status-<state>/20`; active states pulse with `motion-safe`.                | `StatusBadge.tsx`   |
 | Stat card (admin)      | `bg-state-gray p-5 rounded-2xl border border-white/5`, uppercase `blue-light` label, `text-2xl font-bold` value, icon in `bg-white/5 rounded-lg`, hover `border-lion/30`. | `StatCard.tsx`      |
 | Modal (admin)          | `bg-state-gray rounded-3xl border border-white/10 shadow-2xl`, backdrop `night/80` with blur, close button with `ring-lion` focus.                                        | `Modal.tsx`         |

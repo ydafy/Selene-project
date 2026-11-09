@@ -35,6 +35,7 @@ tests {
 }
 
 docs {
-  The body `error` is zod 4's `ZodError.message` (JSON of issues); `useConnectEarnings` only
-  checks for an error. Validation runs after the admin check, so this needs auth/login-admin.
+  The body `error` is zod 4's `ZodError.message` (JSON of issues). admin-web no longer calls
+  this function: #221 deleted its `useConnectEarnings` hook (see #293). Validation runs after
+  the admin check, so this needs auth/login-admin.
 }

@@ -10,7 +10,7 @@ Imports go one way: `shared -> features -> app`.
 - A feature never imports another feature. If two features need the same code, move it to `shared`.
 - Routes compose features. A route imports screens from features and shared code.
 
-`apps/frontend/frontend-import-boundaries.test.ts` is a `bun:test` that scans imports, forbids imports of `supabase/functions/`, and enforces this direction. ESLint enforces the same rule (`import-x/no-restricted-paths` in `eslint.config.js`, as bulletproof-react does), so the editor flags a wrong import as you type. When a feature needs another feature's piece, compose both in the route or move the piece to `apps/frontend/src/shared/`.
+`apps/frontend/frontend-import-boundaries.test.ts` is a `bun:test` that scans imports, forbids imports of `supabase/functions/`, and enforces this direction. ESLint enforces the same rule in both apps (`import-x/no-restricted-paths` in `eslint.config.js`, as bulletproof-react does), so the editor flags a wrong import as you type. When a feature needs another feature's piece, compose both in the route or move the piece to `apps/frontend/src/shared/`.
 
 ## Keep routes thin
 
@@ -35,6 +35,28 @@ apps/frontend/src/
 
 `apps/frontend/src/features/<domain>/lib/` holds a feature's I/O wrappers: clients, device APIs, and other side effects, mirroring `apps/frontend/src/shared/lib/`. Keep the pure rules next to them in `apps/frontend/src/features/<domain>/logic/`. Example: `apps/frontend/src/features/notifications/lib/push-permission.ts` wraps the device permission and `apps/frontend/src/features/notifications/logic/push-permission.logic.ts` holds the decisions.
 
+## admin-web layout
+
+```text
+apps/admin-web/src/
+  main.tsx  index.css   entry point and global styles
+  app/                  router, providers, layout, error boundary
+  features/<domain>/
+    screens/
+    components/
+    hooks/
+    logic/              pure domain code, no React
+    lib/                I/O wrappers: Edge Function calls, scripts
+  shared/
+    ui/  hooks/  lib/  store/  utils/
+```
+
+The same rules as the frontend apply: a screen lives in its feature (`apps/admin-web/src/features/payments/screens/payments-screen.tsx`), and `apps/admin-web/src/app/app.tsx` only maps routes to screens. There is no api folder: Edge Function calls go in the feature's lib folder (`apps/admin-web/src/features/shipments/lib/carrier-reviews-api.ts`) and the parsers they use in its logic folder (`apps/admin-web/src/features/shipments/logic/carrier-reviews.ts`).
+
+`apps/admin-web/src/shared/` holds only code that two or more features use, or that other shared code uses. The session lives there (`apps/admin-web/src/shared/store/use-auth-store.ts`, `apps/admin-web/src/shared/lib/auth/`), because most features read it; the login screen and the captcha live in `apps/admin-web/src/features/auth/`. When only one feature uses a shared file, move it into that feature with `scripts/dev/move-files.ts`.
+
+An import that leaves its top-level folder (the app folder, the shared folder, or one feature; the files directly in `apps/admin-web/src/` are one group) uses the `@/` alias, which maps to `apps/admin-web/src/`: `import { Modal } from '@/shared/ui/modal'`. Imports inside the same folder stay relative. `bun run lint` enforces it with the local rule `relative-import-outside-folder` in `eslint.config.js`. The frontend adopts the same rule in #291.
+
 ## Test placement
 
 - A unit test sits next to the file it tests: `<name>.ts` and `<name>.test.ts`. Example: `apps/frontend/src/shared/i18n/auth-locale-parity.test.ts` sits in `apps/frontend/src/shared/i18n/`.
@@ -56,7 +78,7 @@ A test runs the code it tests. Call the function, call the Edge Function handler
 - Every file uses kebab-case: `apps/frontend/src/shared/ui/product/product-card.tsx` exports `ProductCard`, `apps/frontend/src/features/auth/hooks/use-auth.ts` exports `useAuth`, `apps/frontend/src/shared/utils/format-currency.ts` exports `formatCurrencyWithLocale`. Identifiers inside the file keep their usual case.
 - Why: Windows and macOS file systems ignore case and the Linux CI does not, so an import that differs only in case works locally and fails in CI. All-lowercase names remove that class of error. The Expo SDK 55 template and bulletproof-react use the same style.
 - Exception: route files under the Expo Router `apps/frontend/src/app/` directory. Their names are URLs and deep links (`apps/frontend/src/app/(auth)/resetPassword.tsx` is `/resetPassword`), so rename one only as a deliberate route change.
-- `bun run lint` enforces it for `apps/frontend/src` outside `apps/frontend/src/app/` (`check-file/filename-naming-convention` in `eslint.config.js`). Only the part before the first dot is checked, so `apps/frontend/src/features/orders/components/order-action-card.cancelled-banner.test.ts` and `apps/frontend/src/shared/lib/auth/captcha.logic.ts` pass.
+- `bun run lint` enforces it for all of `apps/admin-web/src` and for `apps/frontend/src` outside `apps/frontend/src/app/` (`check-file/filename-naming-convention` in `eslint.config.js`). Only the part before the first dot is checked, so `apps/frontend/src/features/orders/components/order-action-card.cancelled-banner.test.ts` and `apps/frontend/src/shared/lib/auth/captcha.logic.ts` pass.
 - Edge Function directories under `supabase/functions/` are kebab-case because they are the function names (`create-connect-payment`). The Deno files inside them are kebab-case too (`supabase/functions/create-connect-payment/fee-calculator.ts`). Keep that style in Deno code. These rules do not apply to it.
 
 ## File size
@@ -88,6 +110,10 @@ A script in `scripts/` goes in the folder for its purpose, with its test next to
 - `scripts/verify/`: manual verification harnesses against the local stack (`test-shipment-*`, `postgres-smoke`). No CI job runs them.
 
 A script under `scripts/<folder>/` reaches the repository root with `join(import.meta.dir, '..', '..')`. `scripts/guards/script-folders.test.ts` fails on a file anywhere else in `scripts/`.
+
+Move files with `scripts/dev/move-files.ts`, not by hand. Write a JSON array of `[oldPath, newPath]` pairs of repo-relative file paths and run `bun scripts/dev/move-files.ts <mapping.json> --dry-run`, then again without `--dry-run`: it moves the files with `git mv`, rewrites the imports (each app's `@/` alias included) and path strings that point at them, and lists the strings it could not rewrite.
+
+Convert relative imports to the `@/` alias with `scripts/dev/alias-imports.ts`. Run `bun scripts/dev/alias-imports.ts <app>` (for example `apps/admin-web`) to print the plan, then again with `--apply`: in the app's source folder, tests included, it rewrites every relative specifier that leaves its top-level folder (the app folder, the shared folder, or one feature; the files directly in the source folder are one group) to `@/`, keeps the ones that stay inside it, and lists the template specifiers it could not rewrite.
 
 ## Formatting
 
