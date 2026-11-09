@@ -5,12 +5,14 @@ Project skills live in `.agents/skills/`. The rules agents follow are in the roo
 ## Sources
 
 - Vendor skills are installed from their upstream repositories with the [`skills` CLI](https://github.com/vercel-labs/skills) and recorded in `skills-lock.json`. Never edit them: an update overwrites local changes.
-- `envia-integration`, `selene-dependency-review`, `selene-engineering-principles`, `selene-technical-writing`, and `verify-selene` are written and maintained in this repository. They are not in the lock.
+- `envia-integration`, `selene-dependency-review`, `selene-engineering-principles`, `selene-maintenance-routine`, `selene-technical-writing`, and `verify-selene` are written and maintained in this repository. They are not in the lock.
 - `.atl/skill-registry.md` is the local, gitignored index the harness reads. Regenerate it with `gentle-ai skill-registry refresh`.
 
 ## Update
 
-1. `npx skills check` lists skills with upstream changes.
+The monthly routine (`docs/maintenance.md`) runs step 1.
+
+1. `npx skills check` lists skills with upstream changes. It takes about 2 minutes because it fetches every source, so give it a timeout of at least 5 minutes.
 2. `npx skills update <name>` installs the new version.
 3. Read the diff before committing, like any third-party code: scripts, network calls, and instructions that conflict with `AGENTS.md`.
 4. `gentle-ai skill-registry refresh`.
