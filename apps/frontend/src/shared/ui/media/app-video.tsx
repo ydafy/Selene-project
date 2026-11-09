@@ -1,5 +1,5 @@
 /**
- * @file apps/frontend/src/shared/ui/app-video.tsx
+ * @file apps/frontend/src/shared/ui/media/app-video.tsx
  * @description Versión corregida: Usa arquitectura de capas para el poster.
  * Evita errores de tipos y garantiza que la imagen de carga sea visible.
  */

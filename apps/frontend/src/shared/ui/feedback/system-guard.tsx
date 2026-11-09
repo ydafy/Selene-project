@@ -1,5 +1,5 @@
 /**
- * @file apps/frontend/src/shared/ui/system-guard.tsx
+ * @file apps/frontend/src/shared/ui/feedback/system-guard.tsx
  * @description Guardia de seguridad del sistema (Baneo permanente, Modo Mantenimiento y Versión Mínima).
  */
 

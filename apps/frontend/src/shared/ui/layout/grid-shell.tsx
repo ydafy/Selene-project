@@ -1,5 +1,5 @@
 /**
- * @file shared/ui/grid-shell.tsx
+ * @file shared/ui/layout/grid-shell.tsx
  * @description Contenedor maestro con rejilla técnica optimizada.
  * Utiliza memoización para alto rendimiento y constantes para mantenibilidad.
  */

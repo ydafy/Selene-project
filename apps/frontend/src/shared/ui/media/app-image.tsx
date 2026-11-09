@@ -1,5 +1,5 @@
 /**
- * @file apps/frontend/src/shared/ui/app-image.tsx
+ * @file apps/frontend/src/shared/ui/media/app-image.tsx
  * @description Componente de imagen optimizado con expo-image.
  * Versión auditada: Blindaje de memoria y consistencia multiplataforma.
  */

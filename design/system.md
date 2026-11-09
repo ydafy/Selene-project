@@ -9,7 +9,7 @@ Sources:
 
 - App: `apps/frontend/src/shared/theme/tokens.ts`, `apps/frontend/src/shared/theme/index.ts`
 - Admin: `apps/admin-web/src/index.css`
-- Components: `apps/frontend/src/shared/ui/primary-button.tsx`, `apps/admin-web/src/shared/ui/{status-badge,stat-card,modal}.tsx`, `apps/admin-web/src/features/verify/components/confirm-modal.tsx`
+- Components: `apps/frontend/src/shared/ui/button/primary-button.tsx`, `apps/admin-web/src/shared/ui/{status-badge,stat-card,modal}.tsx`, `apps/admin-web/src/features/verify/components/confirm-modal.tsx`
 
 ## Colors
 
