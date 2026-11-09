@@ -57,6 +57,17 @@ async function asService(tx: Tx) {
   await tx`SET LOCAL ROLE service_role`;
 }
 
+// service_role has no privilege on shipment_cancellation_operations (only RPCs reach it), so
+// direct reads and writes run as the owner and then return to the caller's role.
+async function asOwnerFor<T>(tx: Tx, body: () => Promise<T>): Promise<T> {
+  const [{ role, session }] =
+    await tx`SELECT current_user::text AS role, session_user::text AS session`;
+  await tx`RESET ROLE`;
+  const result = await body();
+  if (role !== session) await tx.unsafe(`SET LOCAL ROLE ${role}`);
+  return result;
+}
+
 function request(shipmentId: string) {
   return {
     payment_intent: paymentIntent,
@@ -110,9 +121,11 @@ async function escalate(tx: Tx, shipmentId: string, reason: string) {
 }
 
 async function escalationRow(tx: Tx, shipmentId: string) {
-  const [row] =
-    await tx`SELECT recovery_escalated_at, recovery_escalation_reason
-    FROM public.shipment_cancellation_operations WHERE shipment_id = ${shipmentId}`;
+  const [row] = await asOwnerFor(
+    tx,
+    () => tx`SELECT recovery_escalated_at, recovery_escalation_reason
+    FROM public.shipment_cancellation_operations WHERE shipment_id = ${shipmentId}`,
+  );
   return row;
 }
 
@@ -136,9 +149,11 @@ async function record(
 }
 
 async function operation(tx: Tx, shipmentId: string) {
-  const [row] =
-    await tx`SELECT refund_id, refund_status, refund_failure_reason, refund_status_updated_at
-    FROM public.shipment_cancellation_operations WHERE shipment_id = ${shipmentId}`;
+  const [row] = await asOwnerFor(
+    tx,
+    () => tx`SELECT refund_id, refund_status, refund_failure_reason, refund_status_updated_at
+    FROM public.shipment_cancellation_operations WHERE shipment_id = ${shipmentId}`,
+  );
   return row;
 }
 
@@ -409,8 +424,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     'recovery read returns the frozen operation, reflects the recorded refund, and changes nothing',
     async (tx) => {
       await start(tx, ids.shipment);
-      const before =
-        await tx`SELECT * FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`;
+      const before = await asOwnerFor(
+        tx,
+        () =>
+          tx`SELECT * FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`,
+      );
       const started = await recovery(tx, ids.shipment);
       assert.deepEqual(Object.keys(started).sort(), [
         'actor_id',
@@ -437,7 +455,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       assert.equal(started.refund_status, null);
       assert.ok(started.external_started_at);
       assert.deepEqual(
-        await tx`SELECT * FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`,
+        await asOwnerFor(
+          tx,
+          () =>
+            tx`SELECT * FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`,
+        ),
         before,
       );
 

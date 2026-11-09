@@ -43,6 +43,16 @@ const asService = async (tx: Tx) => {
 const asOwner = async (tx: Tx) => {
   await tx`RESET ROLE`;
 };
+// service_role has no privilege on shipment_cancellation_operations (only RPCs reach it), so
+// direct reads and writes run as the owner and then return to the caller's role.
+const asOwnerFor = async <T>(tx: Tx, body: () => Promise<T>): Promise<T> => {
+  const [{ role, session }] =
+    await tx`SELECT current_user::text AS role, session_user::text AS session`;
+  await asOwner(tx);
+  const result = await body();
+  if (role !== session) await tx.unsafe(`SET LOCAL ROLE ${role}`);
+  return result;
+};
 
 async function fixture(tx: Tx, status: 'paid' | 'preparing' = 'paid') {
   await tx`INSERT INTO public.orders (id, buyer_id, total_amount, shipping_address, status, stripe_payment_intent_id, actual_stripe_fee_cents)
@@ -98,9 +108,13 @@ const resolve = async (
     await tx`SELECT public.fn_resolve_shipment_cancellation_refund(${ids.shipment}::uuid, ${admin}::uuid, ${ref}) AS r`
   )[0].r;
 const op = async (tx: Tx) =>
-  (
-    await tx`SELECT * FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`
-  )[0];
+  asOwnerFor(
+    tx,
+    async () =>
+      (
+        await tx`SELECT * FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`
+      )[0],
+  );
 const shipmentStatus = async (tx: Tx) =>
   (
     await tx`SELECT status::text AS s FROM public.shipments WHERE id = ${ids.shipment}`

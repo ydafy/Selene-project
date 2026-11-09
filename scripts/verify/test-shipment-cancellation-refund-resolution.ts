@@ -66,6 +66,17 @@ async function asOwner(tx: Tx) {
   await tx`RESET ROLE`;
 }
 
+// service_role has no privilege on shipment_cancellation_operations (only RPCs reach it), so
+// direct reads and writes run as the owner and then return to the caller's role.
+async function asOwnerFor<T>(tx: Tx, body: () => Promise<T>): Promise<T> {
+  const [{ role, session }] =
+    await tx`SELECT current_user::text AS role, session_user::text AS session`;
+  await tx`RESET ROLE`;
+  const result = await body();
+  if (role !== session) await tx.unsafe(`SET LOCAL ROLE ${role}`);
+  return result;
+}
+
 function request(shipmentId: string, callerRole: string) {
   return {
     payment_intent: paymentIntent,
@@ -139,8 +150,11 @@ async function resolve(
 async function snapshot(tx: Tx, shipmentId: string) {
   const [shipment] =
     await tx`SELECT status FROM public.shipments WHERE id = ${shipmentId}`;
-  const [operation] =
-    await tx`SELECT * FROM public.shipment_cancellation_operations WHERE shipment_id = ${shipmentId}`;
+  const [operation] = await asOwnerFor(
+    tx,
+    () =>
+      tx`SELECT * FROM public.shipment_cancellation_operations WHERE shipment_id = ${shipmentId}`,
+  );
   return { shipment: shipment.status as string, operation };
 }
 

@@ -55,6 +55,17 @@ function databaseUrl(): string {
 
 class Rollback extends Error {}
 
+// service_role has no privilege on shipment_cancellation_operations (only RPCs reach it), so
+// direct reads and writes run as the owner and then return to the caller's role.
+async function asOwnerFor<T>(tx: Tx, body: () => Promise<T>): Promise<T> {
+  const [{ role, session }] =
+    await tx`SELECT current_user::text AS role, session_user::text AS session`;
+  await tx`RESET ROLE`;
+  const result = await body();
+  if (role !== session) await tx.unsafe(`SET LOCAL ROLE ${role}`);
+  return result;
+}
+
 async function asService(tx: Tx) {
   await tx`SELECT set_config('request.jwt.claims', '{"role":"service_role"}', true)`;
   await tx`SET LOCAL ROLE service_role`;
@@ -184,8 +195,11 @@ async function resolveResult(tx: Tx, n: number, ref = reference) {
   };
 }
 async function state(tx: Tx, n: number) {
-  const [op] =
-    await tx`SELECT to_jsonb(o) AS j FROM public.shipment_cancellation_operations o WHERE shipment_id = ${shipmentId(n)}`;
+  const [op] = await asOwnerFor(
+    tx,
+    () =>
+      tx`SELECT to_jsonb(o) AS j FROM public.shipment_cancellation_operations o WHERE shipment_id = ${shipmentId(n)}`,
+  );
   const [sh] =
     await tx`SELECT status::text AS s FROM public.shipments WHERE id = ${shipmentId(n)}`;
   const [nt] =
@@ -395,8 +409,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
           1000,
         ],
       );
-      const [op] =
-        await tx`SELECT refund_status_updated_at FROM public.shipment_cancellation_operations WHERE shipment_id = ${shipmentId(1)}`;
+      const [op] = await asOwnerFor(
+        tx,
+        () =>
+          tx`SELECT refund_status_updated_at FROM public.shipment_cancellation_operations WHERE shipment_id = ${shipmentId(1)}`,
+      );
       assert.equal(
         row.since.toISOString(),
         op.refund_status_updated_at.toISOString(),
@@ -438,8 +455,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         );
         assert.match(msg, /refund_resolution_status/);
       }
-      await tx`UPDATE public.shipment_cancellation_operations
-      SET refund_resolved_at = now(), refund_resolved_by = ${ids.admin}, refund_resolution_reference = 'X' WHERE shipment_id = ${shipmentId(3)}`;
+      await asOwnerFor(
+        tx,
+        () => tx`UPDATE public.shipment_cancellation_operations
+      SET refund_resolved_at = now(), refund_resolved_by = ${ids.admin}, refund_resolution_reference = 'X' WHERE shipment_id = ${shipmentId(3)}`,
+      );
       const msg = await rejectsWith(
         tx,
         (sp) => sp`UPDATE public.shipment_cancellation_operations

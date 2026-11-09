@@ -51,6 +51,17 @@ function databaseUrl(): string {
 
 class Rollback extends Error {}
 
+// service_role has no privilege on shipment_cancellation_operations (only RPCs reach it), so
+// direct reads and writes run as the owner and then return to the caller's role.
+async function asOwnerFor<T>(tx: Tx, body: () => Promise<T>): Promise<T> {
+  const [{ role, session }] =
+    await tx`SELECT current_user::text AS role, session_user::text AS session`;
+  await tx`RESET ROLE`;
+  const result = await body();
+  if (role !== session) await tx.unsafe(`SET LOCAL ROLE ${role}`);
+  return result;
+}
+
 async function fixture(tx: Tx) {
   await tx`INSERT INTO public.orders (id, buyer_id, total_amount, shipping_address, status, stripe_payment_intent_id)
     VALUES (${ids.order}, ${ids.buyer}, 900, '{"city":"Guadalajara","zip_code":"44100"}'::jsonb, 'paid', ${paymentIntent})`;
@@ -121,12 +132,15 @@ const labelFound = (
   });
 
 async function snapshot(tx: Tx) {
-  const [row] = await tx`SELECT
+  const [row] = await asOwnerFor(
+    tx,
+    () => tx`SELECT
     (SELECT jsonb_agg(to_jsonb(s) ORDER BY s.id) FROM public.shipments s WHERE s.order_id = ${ids.order}) AS shipments,
     (SELECT count(*)::int FROM public.shipment_label_events e JOIN public.shipments s ON s.id = e.shipment_id WHERE s.order_id = ${ids.order}) AS events,
     (SELECT to_jsonb(o) FROM public.orders o WHERE o.id = ${ids.order}) AS orders,
     (SELECT count(*)::int FROM public.shipment_cancellation_operations) AS operations,
-    (SELECT count(*)::int FROM public.notifications) AS notifications`;
+    (SELECT count(*)::int FROM public.notifications) AS notifications`,
+  );
   return JSON.stringify(row);
 }
 

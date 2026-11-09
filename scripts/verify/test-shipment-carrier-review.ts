@@ -53,6 +53,17 @@ function databaseUrl(): string {
 
 class Rollback extends Error {}
 
+// service_role has no privilege on shipment_cancellation_operations (only RPCs reach it), so
+// direct reads and writes run as the owner and then return to the caller's role.
+async function asOwnerFor<T>(tx: Tx, body: () => Promise<T>): Promise<T> {
+  const [{ role, session }] =
+    await tx`SELECT current_user::text AS role, session_user::text AS session`;
+  await tx`RESET ROLE`;
+  const result = await body();
+  if (role !== session) await tx.unsafe(`SET LOCAL ROLE ${role}`);
+  return result;
+}
+
 async function asService(tx: Tx) {
   await tx`SELECT set_config('request.jwt.claims', '{"role":"service_role"}', true)`;
   await tx`SET LOCAL ROLE service_role`;
@@ -101,7 +112,11 @@ async function claim(
 }
 
 async function expireClaim(tx: Tx, shipmentId = ids.shipment) {
-  await tx`UPDATE public.shipment_cancellation_operations SET claim_expires_at = '-infinity' WHERE shipment_id = ${shipmentId}`;
+  await asOwnerFor(
+    tx,
+    () =>
+      tx`UPDATE public.shipment_cancellation_operations SET claim_expires_at = '-infinity' WHERE shipment_id = ${shipmentId}`,
+  );
 }
 
 async function outcomeRpc(
@@ -152,8 +167,11 @@ async function list(tx: Tx) {
 }
 
 async function operation(tx: Tx, shipmentId = ids.shipment) {
-  const [row] =
-    await tx`SELECT * FROM public.shipment_cancellation_operations WHERE shipment_id = ${shipmentId}`;
+  const [row] = await asOwnerFor(
+    tx,
+    () =>
+      tx`SELECT * FROM public.shipment_cancellation_operations WHERE shipment_id = ${shipmentId}`,
+  );
   return row;
 }
 
@@ -211,7 +229,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         assert.equal(again.marked, false);
         assert.equal(again.review_reason, reason);
         assert.deepEqual(await operation(tx), stored);
-        await tx`DELETE FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`;
+        await asOwnerFor(
+          tx,
+          () =>
+            tx`DELETE FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`,
+        );
       }
     },
   ],
@@ -243,7 +265,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       assert.deepEqual(await operation(tx), before);
       await tx`UPDATE public.shipments SET status = 'preparing' WHERE id = ${ids.shipment}`;
 
-      await tx`UPDATE public.shipment_cancellation_operations SET external_started_at = clock_timestamp() WHERE shipment_id = ${ids.shipment}`;
+      await asOwnerFor(
+        tx,
+        () =>
+          tx`UPDATE public.shipment_cancellation_operations SET external_started_at = clock_timestamp() WHERE shipment_id = ${ids.shipment}`,
+      );
       const started = await operation(tx);
       await rejects(
         tx,
@@ -251,7 +277,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         'CANCELLATION_EXTERNAL_ALREADY_STARTED',
       );
       assert.deepEqual(await operation(tx), started);
-      await tx`UPDATE public.shipment_cancellation_operations SET external_started_at = NULL WHERE shipment_id = ${ids.shipment}`;
+      await asOwnerFor(
+        tx,
+        () =>
+          tx`UPDATE public.shipment_cancellation_operations SET external_started_at = NULL WHERE shipment_id = ${ids.shipment}`,
+      );
 
       await expireClaim(tx);
       const expired = await operation(tx);
@@ -318,7 +348,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       assert.equal(resolved.carrier_balance_returned, null);
 
       // An accepted outcome with the balance returned is visible too.
-      await tx`DELETE FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`;
+      await asOwnerFor(
+        tx,
+        () =>
+          tx`DELETE FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`,
+      );
       const next = await claim(tx);
       await tx`SELECT public.fn_record_shipment_carrier_cancellation(${ids.shipment}::uuid, ${next}::uuid, 'accepted', true, '2026-10-23T10:00:00Z'::timestamptz)`;
       const accepted = await getCarrier(tx);
@@ -528,7 +562,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       assert.deepEqual(await operation(tx), pending);
       await tx`UPDATE public.shipments SET status = 'preparing' WHERE id = ${ids.shipment}`;
 
-      await tx`UPDATE public.shipment_cancellation_operations SET external_started_at = clock_timestamp() WHERE shipment_id = ${ids.shipment}`;
+      await asOwnerFor(
+        tx,
+        () =>
+          tx`UPDATE public.shipment_cancellation_operations SET external_started_at = clock_timestamp() WHERE shipment_id = ${ids.shipment}`,
+      );
       const started = await operation(tx);
       await rejects(
         tx,
@@ -536,7 +574,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         'CANCELLATION_EXTERNAL_ALREADY_STARTED',
       );
       assert.deepEqual(await operation(tx), started);
-      await tx`UPDATE public.shipment_cancellation_operations SET external_started_at = NULL WHERE shipment_id = ${ids.shipment}`;
+      await asOwnerFor(
+        tx,
+        () =>
+          tx`UPDATE public.shipment_cancellation_operations SET external_started_at = NULL WHERE shipment_id = ${ids.shipment}`,
+      );
 
       await resolve(tx, 'closed_no_refund', 'first decision');
       const resolved = await operation(tx);
@@ -627,8 +669,16 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       await mark(tx, third, 'carrier_refused', ids.third);
       // The third is decided, so it leaves the list; the first becomes the newest pending.
       await resolve(tx, 'closed_no_refund', 'done', ids.admin, ids.third);
-      await tx`UPDATE public.shipment_cancellation_operations SET review_required_at = '2026-10-20T00:00:00Z' WHERE shipment_id = ${ids.second}`;
-      await tx`UPDATE public.shipment_cancellation_operations SET review_required_at = '2026-10-21T00:00:00Z' WHERE shipment_id = ${ids.shipment}`;
+      await asOwnerFor(
+        tx,
+        () =>
+          tx`UPDATE public.shipment_cancellation_operations SET review_required_at = '2026-10-20T00:00:00Z' WHERE shipment_id = ${ids.second}`,
+      );
+      await asOwnerFor(
+        tx,
+        () =>
+          tx`UPDATE public.shipment_cancellation_operations SET review_required_at = '2026-10-21T00:00:00Z' WHERE shipment_id = ${ids.shipment}`,
+      );
 
       const rows = await list(tx);
       assert.deepEqual(
@@ -663,25 +713,29 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     async (tx) => {
       const token = await claim(tx);
       await outcomeRpc(tx, token, 'refused');
-      await rejects(
-        tx,
-        (sp) =>
-          sp`UPDATE public.shipment_cancellation_operations SET label_cost_loss_cents = 100 WHERE shipment_id = ${ids.shipment}`,
-        'shipment_cancellation_operations_carrier_balance_consistent',
+      await asOwnerFor(tx, () =>
+        rejects(
+          tx,
+          (sp) =>
+            sp`UPDATE public.shipment_cancellation_operations SET label_cost_loss_cents = 100 WHERE shipment_id = ${ids.shipment}`,
+          'shipment_cancellation_operations_carrier_balance_consistent',
+        ),
       );
       await mark(tx, token, 'carrier_refused');
-      await rejects(
-        tx,
-        (sp) =>
-          sp`UPDATE public.shipment_cancellation_operations SET label_cost_loss_cents = 100 WHERE shipment_id = ${ids.shipment}`,
-        'shipment_cancellation_operations_carrier_balance_consistent',
-      );
-      await rejects(
-        tx,
-        (sp) =>
-          sp`UPDATE public.shipment_cancellation_operations SET review_resolution = 'refund_approved' WHERE shipment_id = ${ids.shipment}`,
-        'review',
-      );
+      await asOwnerFor(tx, async () => {
+        await rejects(
+          tx,
+          (sp) =>
+            sp`UPDATE public.shipment_cancellation_operations SET label_cost_loss_cents = 100 WHERE shipment_id = ${ids.shipment}`,
+          'shipment_cancellation_operations_carrier_balance_consistent',
+        );
+        await rejects(
+          tx,
+          (sp) =>
+            sp`UPDATE public.shipment_cancellation_operations SET review_resolution = 'refund_approved' WHERE shipment_id = ${ids.shipment}`,
+          'review',
+        );
+      });
     },
   ],
   [
@@ -753,7 +807,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
           sp`UPDATE public.shipment_cancellation_operations SET label_cost_loss_cents = 100 WHERE shipment_id = ${ids.shipment}`,
         'shipment_cancellation_operations_carrier_balance_consistent',
       );
-      await tx`DELETE FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`;
+      await asOwnerFor(
+        tx,
+        () =>
+          tx`DELETE FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`,
+      );
       await asService(tx);
       await claim(tx);
       await tx`RESET ROLE`;
@@ -1011,7 +1069,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         await tx`SELECT public.fn_claim_shipment_cancellation(
         ${ids.paid}::uuid, ${ids.order}::uuid, ${ids.buyer}::uuid, 'buyer', 'buyer asked') AS claim`;
       assert.equal(buyerClaim.status, 'claimed');
-      await tx`UPDATE public.shipment_cancellation_operations SET external_started_at = clock_timestamp(), claim_expires_at = '-infinity' WHERE shipment_id = ${ids.paid}`;
+      await asOwnerFor(
+        tx,
+        () =>
+          tx`UPDATE public.shipment_cancellation_operations SET external_started_at = clock_timestamp(), claim_expires_at = '-infinity' WHERE shipment_id = ${ids.paid}`,
+      );
       await tx`UPDATE public.shipments SET status = 'preparing', label_generation_state = 'generated',
         label_provider_cost_cents = ${labelCost}, tracking_number = 'TRK-B44B-3', carrier = 'estafeta' WHERE id = ${ids.paid}`;
       const before = await operation(tx, ids.paid);
@@ -1073,7 +1135,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       assert.equal(busy.source, 'paid_timeout');
       assert.deepEqual(await operation(tx, ids.paid), before);
 
-      await tx`UPDATE public.shipment_cancellation_operations SET external_started_at = clock_timestamp(), claim_expires_at = '-infinity' WHERE shipment_id = ${ids.paid}`;
+      await asOwnerFor(
+        tx,
+        () =>
+          tx`UPDATE public.shipment_cancellation_operations SET external_started_at = clock_timestamp(), claim_expires_at = '-infinity' WHERE shipment_id = ${ids.paid}`,
+      );
       const started = await operation(tx, ids.paid);
       const [{ claim: recovery }] =
         await tx`SELECT public.fn_claim_shipment_cancellation(
