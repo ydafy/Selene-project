@@ -42,7 +42,7 @@ describe('image viewer migration to react-native-zoom-toolkit', () => {
   });
 
   test('the shared viewer is built on the zoom toolkit gallery', () => {
-    const viewer = read('src/shared/ui/app-image-viewer.tsx');
+    const viewer = read('src/shared/ui/media/app-image-viewer.tsx');
     expect(viewer).toContain("from 'react-native-zoom-toolkit'");
     expect(viewer).toContain('<Gallery');
     expect(viewer).toContain('<GestureHandlerRootView');

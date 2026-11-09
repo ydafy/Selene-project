@@ -24,16 +24,16 @@ import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Box, Text as ThemedText } from '../../../shared/ui/base';
-import { PrimaryButton } from '../../../shared/ui/primary-button';
-import { AppChip } from '../../../shared/ui/app-chip';
-import { Theme } from '../../../shared/theme';
+import { Box, Text as ThemedText } from '@/shared/ui/base';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
+import { AppChip } from '@/shared/ui/app-chip';
+import { Theme } from '@/shared/theme';
 import { useCategoryConfig } from '../hooks/use-category-config';
 import {
   PRODUCT_CONDITIONS,
   PRICE_LIMITS,
   DEFAULT_MAX_PRICE,
-} from '../../../shared/config/product-data';
+} from '@/shared/config/product-data';
 import { PriceRangeFilter } from './price-range-filter';
 import { FilterSection } from './filter-section';
 

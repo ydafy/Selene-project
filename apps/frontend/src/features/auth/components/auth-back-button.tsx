@@ -9,8 +9,8 @@ import { useRouter } from 'expo-router';
 import { useTheme } from '@shopify/restyle';
 import { IconButton } from 'react-native-paper';
 
-import { Box } from '../../../shared/ui/base';
-import { Theme } from '../../../shared/theme';
+import { Box } from '@/shared/ui/base';
+import { Theme } from '@/shared/theme';
 
 export const AuthBackButton = () => {
   const theme = useTheme<Theme>();

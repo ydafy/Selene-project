@@ -60,7 +60,7 @@ if (process.env.SELENE_CAPTCHA_CHILD !== '1') {
   // mounted for the whole file, as at the app root, and the last test unmounts it.
   const { act, render } = await import('@testing-library/react-native/pure');
   const { CaptchaProvider } = await import('./captcha-provider');
-  const { getCaptchaToken } = await import('../../../shared/lib/auth/captcha');
+  const { getCaptchaToken } = await import('@/shared/lib/auth/captcha');
 
   const message = async (data: string, success = false) => {
     const markUsed = mock(() => {});

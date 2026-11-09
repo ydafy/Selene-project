@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
-import { reauthenticateCurrentUser } from '../../../shared/lib/auth/reauth';
-import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
-import { supabase } from '../../../shared/lib/supabase';
+import { reauthenticateCurrentUser } from '@/shared/lib/auth/reauth';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
+import { supabase } from '@/shared/lib/supabase';
 import {
   runDeleteAccount,
   type DeleteAccountInput,

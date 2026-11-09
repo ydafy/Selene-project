@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { invokeEdge } from '../../../shared/lib/edge-client';
+import { invokeEdge } from '@/shared/lib/edge-client';
 import { PaymentMethod } from '@selene/types';
 import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 

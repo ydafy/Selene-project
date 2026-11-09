@@ -3,8 +3,8 @@ import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
-import i18n from '../../../shared/i18n';
-import { supabase } from '../../../shared/lib/supabase';
+import i18n from '@/shared/i18n';
+import { supabase } from '@/shared/lib/supabase';
 import { createPushRegistrar } from '../logic/push-registration.logic';
 
 const getProjectId = (): string | undefined =>

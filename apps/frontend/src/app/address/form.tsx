@@ -12,24 +12,24 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Toast from 'react-native-toast-message';
 
-import { Box, Text } from '../../shared/ui/base';
-import { GlobalHeader } from '../../shared/ui/global-header';
-import { FormTextInput } from '../../shared/ui/form-text-input';
-import { FormSelect } from '../../shared/ui/form-select';
-import { PrimaryButton } from '../../shared/ui/primary-button';
-import { Checkbox } from '../../shared/ui/checkbox';
+import { Box, Text } from '@/shared/ui/base';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
+import { FormTextInput } from '@/shared/ui/form/form-text-input';
+import { FormSelect } from '@/shared/ui/form/form-select';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
+import { Checkbox } from '@/shared/ui/form/checkbox';
 
-import { useAddresses } from '../../shared/hooks/use-addresses';
-import { useZipCode } from '../../features/address/hooks/use-zip-code';
+import { useAddresses } from '@/shared/hooks/use-addresses';
+import { useZipCode } from '@/features/address/hooks/use-zip-code';
 import {
   addressSchema,
   AddressFormData,
-} from '../../features/address/logic/address-schema';
+} from '@/features/address/logic/address-schema';
 import { useTheme } from '@shopify/restyle';
-import { Theme } from '../../shared/theme';
+import { Theme } from '@/shared/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppChip } from '@/shared/ui/app-chip';
-import { ScreenHeader } from '@/shared/ui/screen-header';
+import { ScreenHeader } from '@/shared/ui/layout/screen-header';
 
 export default function AddressFormScreen() {
   const { t } = useTranslation(['address', 'common']);

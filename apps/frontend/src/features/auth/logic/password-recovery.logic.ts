@@ -7,7 +7,7 @@
  * message text.
  */
 
-import { mapAuthErrorKey } from '../../../shared/lib/auth/auth-errors.logic';
+import { mapAuthErrorKey } from '@/shared/lib/auth/auth-errors.logic';
 
 const SAME_PASSWORD_KEY = 'auth:errors.samePassword';
 export const RECOVERY_SESSION_ENDED_KEY = 'auth:errors.recoverySessionEnded';

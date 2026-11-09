@@ -85,8 +85,7 @@ if (process.env.SELENE_ANIMATED_UI_MOUNT_CHILD !== '1') {
   }));
   mock.module('@/shared/theme/tokens', () => ({ colors: { shadow: '#000' } }));
 
-  const { act, fireEvent, render } =
-    await import('@testing-library/react-native');
+  const { fireEvent, render } = await import('@testing-library/react-native');
 
   type View = Awaited<ReturnType<typeof render>>;
   const byType = (view: View, type: string) =>
@@ -95,7 +94,7 @@ if (process.env.SELENE_ANIMATED_UI_MOUNT_CHILD !== '1') {
     byType(view, 'Text').map((node) => [node.props.children].flat().join(''));
 
   test('SegmentedControl reports the pressed option and marks the selected one', async () => {
-    const { SegmentedControl } = await import('./segmented-control');
+    const { SegmentedControl } = await import('./form/segmented-control');
     const onChange = mock(() => {});
     const view = await render(
       <SegmentedControl
@@ -113,22 +112,8 @@ if (process.env.SELENE_ANIMATED_UI_MOUNT_CHILD !== '1') {
     expect(onChange).toHaveBeenCalledWith(0);
   });
 
-  test('AnimatedHeartButton forwards the press and the icon for its state', async () => {
-    const { AnimatedHeartButton } = await import('./animated-heart-button');
-    const onPress = mock(() => {});
-    const view = await render(
-      <AnimatedHeartButton isFavorite onPress={onPress} />,
-    );
-    const button = byType(view, 'IconButton')[0];
-    expect(button.props.icon).toBe('heart');
-    // IconButton is a bare host stand-in (not accessible), so fireEvent.press
-    // cannot reach it; call the handler the component passes.
-    await act(async () => (button.props.onPress as () => void)());
-    expect(onPress).toHaveBeenCalledTimes(1);
-  });
-
   test('OfflineNotice shows the offline message and hides when connected', async () => {
-    const { OfflineNotice } = await import('./offline-notice');
+    const { OfflineNotice } = await import('./feedback/offline-notice');
     netInfo.isConnected = false;
     const view = await render(<OfflineNotice />);
     expect(texts(view)).toEqual(['Sin conexión a internet']);
@@ -138,13 +123,13 @@ if (process.env.SELENE_ANIMATED_UI_MOUNT_CHILD !== '1') {
   });
 
   test('MaintenanceScreen renders the maintenance copy', async () => {
-    const { MaintenanceScreen } = await import('./maintenance-screen');
+    const { MaintenanceScreen } = await import('./feedback/maintenance-screen');
     const view = await render(<MaintenanceScreen />);
     expect(texts(view)).toContain('Laboratorio en Optimización');
   });
 
   test('Skeleton renders a block with the requested size', async () => {
-    const { Skeleton } = await import('./skeleton');
+    const { Skeleton } = await import('./feedback/skeleton');
     const view = await render(<Skeleton width={10} height={20} />);
     const style = (
       byType(view, 'AnimatedView')[0].props.style as object[]

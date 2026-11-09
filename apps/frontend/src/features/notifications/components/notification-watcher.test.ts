@@ -126,6 +126,7 @@ const TOAST_CONFIG_PATH = join(
   '..',
   'shared',
   'ui',
+  'feedback',
   'toast-config.tsx',
 );
 const toastConfigSource = () => readFileSync(TOAST_CONFIG_PATH, 'utf8');

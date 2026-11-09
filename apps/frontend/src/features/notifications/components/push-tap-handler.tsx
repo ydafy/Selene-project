@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import { useRootNavigationState } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 
-import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import { useNotificationMutations } from '../hooks/use-notification-mutations';
 import { pushTapRouter } from '../lib/push-tap';
 import { NotificationLinking } from '../lib/notification-linking';

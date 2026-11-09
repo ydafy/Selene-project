@@ -35,7 +35,35 @@ function topLevelFolder(srcPath, isDir) {
 
 // A relative import that leaves its top-level folder must use the `@/` alias.
 // It resolves the path, so `../../payments/x` from inside features/payments
-// stays allowed, and it also checks `export ... from` and `import()`.
+// stays allowed, and it also checks `export ... from`, `import()`, and the
+// first argument of `mock.module()`, `jest.mock()`, and `require()`.
+const MODULE_CALLS = new Set(['mock.module', 'jest.mock', 'require']);
+
+function calleeName(callee) {
+  if (callee.type === 'Identifier') return callee.name;
+  if (
+    callee.type === 'MemberExpression' &&
+    !callee.computed &&
+    callee.object.type === 'Identifier' &&
+    callee.property.type === 'Identifier'
+  ) {
+    return `${callee.object.name}.${callee.property.name}`;
+  }
+  return null;
+}
+
+// The string value of a literal or expression-free template specifier.
+function specifierOf(node) {
+  if (!node) return null;
+  if (node.type === 'Literal' && typeof node.value === 'string') {
+    return node.value;
+  }
+  if (node.type === 'TemplateLiteral' && node.expressions.length === 0) {
+    return node.quasis[0].value.cooked;
+  }
+  return null;
+}
+
 function relativeImportOutsideFolder(src) {
   const srcDir = join(__dirname, src);
   return {
@@ -52,11 +80,20 @@ function relativeImportOutsideFolder(src) {
       if (file.startsWith('../')) return {};
       const folder = topLevelFolder(file, false);
       const check = (source) => {
-        if (!source || typeof source.value !== 'string') return;
-        const spec = source.value;
-        if (!spec.startsWith('./') && !spec.startsWith('../')) return;
-        const target = posix.normalize(posix.join(posix.dirname(file), spec));
-        if (target.startsWith('../')) return;
+        const spec = specifierOf(source);
+        if (spec === null) return;
+        const relativeSpec =
+          spec === '.' ||
+          spec === '..' ||
+          spec.startsWith('./') ||
+          spec.startsWith('../');
+        if (!relativeSpec) return;
+        const target = posix
+          .normalize(posix.join(posix.dirname(file), spec))
+          .replace(/\/$/, '');
+        if (target === '..' || target.startsWith('../')) return;
+        // `.` from a file directly under src/ is its own group's index.
+        if (target === '.' && folder === '.') return;
         const abs = join(srcDir, target);
         const isDir =
           !target.includes('/') &&
@@ -79,7 +116,25 @@ function relativeImportOutsideFolder(src) {
         ExportNamedDeclaration: (node) => check(node.source),
         ImportExpression: (node) =>
           node.source.type === 'Literal' && check(node.source),
+        CallExpression: (node) =>
+          MODULE_CALLS.has(calleeName(node.callee)) && check(node.arguments[0]),
       };
+    },
+  };
+}
+
+function relativeImportConfig(src) {
+  return {
+    files: [`${src}/**/*.{ts,tsx}`],
+    plugins: {
+      selene: {
+        rules: {
+          'relative-import-outside-folder': relativeImportOutsideFolder(src),
+        },
+      },
+    },
+    rules: {
+      'selene/relative-import-outside-folder': 'error',
     },
   };
 }
@@ -198,20 +253,8 @@ module.exports = [
       ],
     },
   },
-  {
-    files: [`${ADMIN_WEB_SRC}/**/*.{ts,tsx}`],
-    plugins: {
-      selene: {
-        rules: {
-          'relative-import-outside-folder':
-            relativeImportOutsideFolder(ADMIN_WEB_SRC),
-        },
-      },
-    },
-    rules: {
-      'selene/relative-import-outside-folder': 'error',
-    },
-  },
+  relativeImportConfig(ADMIN_WEB_SRC),
+  relativeImportConfig(FRONTEND_SRC),
   {
     // admin-web file names follow the same rule.
     files: [`${ADMIN_WEB_SRC}/**/*.{ts,tsx}`],

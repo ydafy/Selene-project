@@ -1,5 +1,5 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { supabase } from '../../../shared/lib/supabase';
+import { supabase } from '@/shared/lib/supabase';
 import { Product } from '@selene/types';
 import { fetchAllFavorites } from './fetch-all-favorites';
 

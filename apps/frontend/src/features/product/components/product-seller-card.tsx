@@ -8,10 +8,10 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 import { ProductWithSeller } from '@selene/types';
 import { useTranslation } from 'react-i18next';
 
-import { Box, Text } from '../../../shared/ui/base';
-import { AppImage } from '../../../shared/ui/app-image';
-import { Theme } from '../../../shared/theme';
-import { resolvePublicIdentity } from '../../../shared/utils/public-identity';
+import { Box, Text } from '@/shared/ui/base';
+import { AppImage } from '@/shared/ui/media/app-image';
+import { Theme } from '@/shared/theme';
+import { resolvePublicIdentity } from '@/shared/utils/public-identity';
 
 type ProductSellerCardProps = {
   product: ProductWithSeller;

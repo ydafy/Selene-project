@@ -68,17 +68,17 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
     impactAsync,
     ImpactFeedbackStyle: { Medium: 'medium' },
   }));
-  mock.module('../../../shared/ui/base', () => ({
+  mock.module('@/shared/ui/base', () => ({
     Box: host('Box'),
     Text: host('Text'),
   }));
-  mock.module('../../../shared/ui/app-image', () => ({
+  mock.module('@/shared/ui/media/app-image', () => ({
     AppImage: host('AppImage'),
   }));
-  mock.module('../../../shared/ui/confirm-dialog', () => ({
+  mock.module('@/shared/ui/feedback/confirm-dialog', () => ({
     ConfirmDialog: host('ConfirmDialog'),
   }));
-  mock.module('../../../shared/hooks/use-image-upload', () => ({
+  mock.module('@/shared/hooks/use-image-upload', () => ({
     useImageUpload: () => ({ takePhoto, uploadFile, uploading: false }),
   }));
   for (const image of [
@@ -88,10 +88,10 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
     'paso-4-sellado',
     'paso-5-etiqueta',
   ])
-    mock.module(`../../../../assets/images/packaging/${image}.webp`, () => ({
+    mock.module(`@/assets/images/packaging/${image}.webp`, () => ({
       default: 1,
     }));
-  mock.module('../../../shared/ui/skeleton', () => ({
+  mock.module('@/shared/ui/feedback/skeleton', () => ({
     Skeleton: host('Skeleton'),
   }));
   const { act, fireEvent, render } =
@@ -105,9 +105,10 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
     return found[0];
   };
   const { EvidenceUploadSection } = await import('./evidence-upload-section');
-  const { AddressSection } = await import('../../../shared/ui/address-section');
+  const { AddressSection } =
+    await import('@/shared/ui/address/address-section');
   const { PackagingGuideCard } = await import('./packaging-guide-card');
-  const { LabelWithHelp } = await import('../../../shared/ui/label-with-help');
+  const { LabelWithHelp } = await import('@/shared/ui/form/label-with-help');
 
   test('shared address, help and packing controls retain enabled defaults and reject disabled callbacks', async () => {
     const onPress = mock(() => {});

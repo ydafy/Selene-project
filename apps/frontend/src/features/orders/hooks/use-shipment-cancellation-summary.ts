@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '../../../shared/lib/supabase';
-import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
+import { supabase } from '@/shared/lib/supabase';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import type { ShipmentCancellationSummary } from '../logic/shipment-cancellation-summary';
 
 // The RPC also answers for unfinished cancellation operations, so it is only

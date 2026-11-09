@@ -81,7 +81,7 @@ describe('public profile route hardening', () => {
 
 describe('public profile accessibility and i18n wiring', () => {
   test('segmented control exposes tab semantics and selected state', () => {
-    const src = read('src/shared/ui/segmented-control.tsx');
+    const src = read('src/shared/ui/form/segmented-control.tsx');
 
     expect(src).toContain('accessibilityRole="tab"');
     expect(src).toContain('accessibilityState');

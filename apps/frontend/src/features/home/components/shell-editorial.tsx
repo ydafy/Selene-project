@@ -12,9 +12,9 @@ import { useTheme } from '@shopify/restyle';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
-import { Box, Text } from '../../../shared/ui/base';
-import { Theme } from '../../../shared/theme';
-import { getSharedStyles } from '../../../shared/theme/shared-styles';
+import { Box, Text } from '@/shared/ui/base';
+import { Theme } from '@/shared/theme';
+import { getSharedStyles } from '@/shared/theme/shared-styles';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH * 0.83;

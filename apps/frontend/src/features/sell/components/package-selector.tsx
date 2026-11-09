@@ -4,12 +4,12 @@ import MaterialCommunityIcons, {
   type MaterialDesignIconsIconName,
 } from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from '@shopify/restyle';
-import { Box, Text } from '../../../shared/ui/base';
-import { Theme } from '../../../shared/theme';
+import { Box, Text } from '@/shared/ui/base';
+import { Theme } from '@/shared/theme';
 import {
   useSystemConfig,
   PackagePresetsMap,
-} from '../../../shared/hooks/use-system-config';
+} from '@/shared/hooks/use-system-config';
 import { useTranslation } from 'react-i18next';
 
 type PackageSelectorProps = {

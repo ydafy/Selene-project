@@ -8,13 +8,13 @@ import {
   GoogleSignin,
   statusCodes,
 } from '@react-native-google-signin/google-signin';
-import { supabase } from '../../../shared/lib/supabase';
+import { supabase } from '@/shared/lib/supabase';
 import Toast from 'react-native-toast-message';
 import { useTranslation } from 'react-i18next';
 import {
   GOOGLE_NO_ID_TOKEN,
   resolveGoogleError,
-} from '../../../shared/lib/auth/google-auth.logic';
+} from '@/shared/lib/auth/google-auth.logic';
 
 export const useGoogleAuth = (onSuccess?: () => void) => {
   const { t } = useTranslation('auth');

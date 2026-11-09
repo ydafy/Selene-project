@@ -3,7 +3,7 @@
  * @description Obtiene la configuración de campos de filtro y venta para una categoría específica.
  */
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '../../../shared/lib/supabase';
+import { supabase } from '@/shared/lib/supabase';
 import { Tables } from '@selene/types';
 
 export const useCategoryConfig = (category?: string) => {

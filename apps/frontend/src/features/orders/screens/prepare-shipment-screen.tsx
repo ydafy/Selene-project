@@ -10,15 +10,15 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Box, Text } from '../../../shared/ui/base';
-import { GlobalHeader } from '../../../shared/ui/global-header';
-import { ScreenHeader } from '../../../shared/ui/screen-header';
-import { AddressSection } from '../../../shared/ui/address-section';
-import { AddressPickerModal } from '../../../shared/ui/address-picker-modal';
-import { PrimaryButton } from '../../../shared/ui/primary-button';
-import { ErrorState } from '../../../shared/ui/error-state';
-import { Skeleton } from '../../../shared/ui/skeleton';
-import { LabelWithHelp } from '../../../shared/ui/label-with-help';
+import { Box, Text } from '@/shared/ui/base';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
+import { ScreenHeader } from '@/shared/ui/layout/screen-header';
+import { AddressSection } from '@/shared/ui/address/address-section';
+import { AddressPickerModal } from '@/shared/ui/address/address-picker-modal';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
+import { ErrorState } from '@/shared/ui/feedback/error-state';
+import { Skeleton } from '@/shared/ui/feedback/skeleton';
+import { LabelWithHelp } from '@/shared/ui/form/label-with-help';
 import { PrepareShipmentSelector } from '../components/prepare-shipment-selector';
 import { PrepareBoxCard } from '../components/prepare-box-card';
 import { PrepareStatusCard } from '../components/prepare-status-card';

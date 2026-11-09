@@ -1,8 +1,8 @@
 import React from 'react';
-import { Box, Text } from '../../../shared/ui/base';
+import { Box, Text } from '@/shared/ui/base';
 import { PaymentMethodRow } from './payment-method-row';
 import { PaymentMethod } from '@selene/types';
-import { Skeleton } from '../../../shared/ui/skeleton';
+import { Skeleton } from '@/shared/ui/feedback/skeleton';
 
 interface PaymentSectionProps {
   method: PaymentMethod | null | undefined;

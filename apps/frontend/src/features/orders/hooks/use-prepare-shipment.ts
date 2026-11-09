@@ -5,14 +5,14 @@ import { useTranslation } from 'react-i18next';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import * as Haptics from 'expo-haptics';
 import { Address } from '@selene/types';
-import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import {
   PackagePreset,
   PackagePresetsMap,
   useSystemConfig,
-} from '../../../shared/hooks/use-system-config';
-import { authenticateAsync } from '../../../shared/lib/biometrics';
-import { useConnectOnboarding } from '../../../shared/hooks/use-connect-onboarding';
+} from '@/shared/hooks/use-system-config';
+import { authenticateAsync } from '@/shared/lib/biometrics';
+import { useConnectOnboarding } from '@/shared/hooks/use-connect-onboarding';
 import { useOrderById } from './use-orders';
 import { useOrderActions } from './use-order-actions';
 import { useShipmentLabelRefresh } from './use-shipment-label-refresh';

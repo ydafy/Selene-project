@@ -53,7 +53,7 @@ if (process.env.SELENE_CART_VALIDATION_CHILD !== '1') {
       flatten: (style: unknown) => style,
     },
   }));
-  mock.module('../../../shared/store/use-cart-store', () => ({
+  mock.module('@/shared/store/use-cart-store', () => ({
     useCartStore: (select: (state: typeof cart) => unknown) => select(cart),
   }));
 

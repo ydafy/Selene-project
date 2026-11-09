@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../../../shared/lib/supabase';
-import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
+import { supabase } from '@/shared/lib/supabase';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 
 /** Offers the push pre-prompt; the route passes it so this feature imports no other. */
 export type OfferFavoritePush = (moment: 'favorite') => Promise<void>;

@@ -4,7 +4,7 @@
  * countdown is testable; the screen only renders `remainingSeconds`.
  */
 
-import { isRateLimitError } from '../../../shared/lib/auth/auth-errors.logic';
+import { isRateLimitError } from '@/shared/lib/auth/auth-errors.logic';
 
 export const RESEND_COOLDOWN_SECONDS = 60;
 

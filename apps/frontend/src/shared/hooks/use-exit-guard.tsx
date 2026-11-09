@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 
 import { usePreventRemove } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { ConfirmDialog } from '../ui/confirm-dialog'; // Ajusta la ruta si es necesario
+import { ConfirmDialog } from '../ui/feedback/confirm-dialog'; // Ajusta la ruta si es necesario
 import { routeBlockedRemove } from '../utils/navigation-guard';
 
 type ExitGuardOptions = {

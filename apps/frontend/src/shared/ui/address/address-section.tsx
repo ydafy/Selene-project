@@ -1,0 +1,106 @@
+import React, { useRef } from 'react';
+import { TouchableOpacity } from 'react-native';
+import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
+import { useTheme } from '@shopify/restyle';
+import { Box, Text } from '../base';
+import { Address } from '@selene/types';
+import { Theme } from '../../theme';
+import { Skeleton } from '../feedback/skeleton';
+
+interface AddressSectionProps {
+  address: Address | null;
+  onPress: () => void;
+  showError: boolean;
+  label: string;
+  placeholder: string;
+  isLoading?: boolean;
+  disabled?: boolean;
+}
+
+export const AddressSection = ({
+  address,
+  onPress,
+  showError,
+  label,
+  placeholder,
+  isLoading,
+  disabled = false,
+}: AddressSectionProps) => {
+  const disabledRef = useRef(disabled);
+  disabledRef.current = disabled;
+  const theme = useTheme<Theme>();
+
+  if (isLoading) {
+    return (
+      <Box marginBottom="l">
+        <Skeleton width={120} height={20} borderRadius={4} />
+        <Box marginTop="s">
+          <Skeleton width="100%" height={80} borderRadius={12} />
+        </Box>
+      </Box>
+    );
+  }
+
+  return (
+    <Box marginBottom="l">
+      <Text variant="subheader-lg" marginBottom="s" color="primary">
+        {label}
+      </Text>
+      <TouchableOpacity
+        disabled={disabled}
+        accessibilityState={{ disabled }}
+        onPress={() => {
+          if (!disabledRef.current) onPress();
+        }}
+        activeOpacity={0.7}
+      >
+        <Box
+          backgroundColor="cardBackground"
+          padding="m"
+          borderRadius="m"
+          flexDirection="row"
+          alignItems="center"
+          justifyContent="space-between"
+          borderWidth={1}
+          borderColor={showError && !address ? 'error' : 'background'}
+        >
+          <Box flex={1} flexDirection="row" alignItems="center">
+            <MaterialCommunityIcons
+              name="map-marker-outline"
+              size={24}
+              color={theme.colors.primary}
+            />
+            <Box marginLeft="m" flex={1}>
+              {address ? (
+                <>
+                  <Text variant="body-md" fontWeight="bold" color="textPrimary">
+                    {address.full_name}
+                  </Text>
+                  <Text
+                    variant="caption-md"
+                    color="textSecondary"
+                    numberOfLines={1}
+                  >
+                    {address.street_line1}, Col. {address.district}
+                  </Text>
+                  <Text variant="caption-md" color="textSecondary">
+                    {address.city}, {address.state} CP {address.zip_code}
+                  </Text>
+                </>
+              ) : (
+                <Text variant="body-md" color="textSecondary">
+                  {placeholder}
+                </Text>
+              )}
+            </Box>
+          </Box>
+          <MaterialCommunityIcons
+            name="chevron-right"
+            size={24}
+            color={theme.colors.textSecondary}
+          />
+        </Box>
+      </TouchableOpacity>
+    </Box>
+  );
+};

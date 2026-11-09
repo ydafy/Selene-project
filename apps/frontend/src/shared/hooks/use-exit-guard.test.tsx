@@ -55,7 +55,7 @@ if (process.env.SELENE_EXIT_GUARD_CHILD !== '1') {
   mock.module('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key }),
   }));
-  mock.module('../ui/confirm-dialog', () => ({
+  mock.module('../ui/feedback/confirm-dialog', () => ({
     ConfirmDialog: (props: NonNullable<typeof dialog>) => {
       dialog = props;
       return null;

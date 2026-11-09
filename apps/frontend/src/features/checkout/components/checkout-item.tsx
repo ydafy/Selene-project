@@ -1,11 +1,11 @@
 import React from 'react';
 
 import { Product } from '@selene/types';
-import { Box, Text } from '../../../shared/ui/base';
-import { AppImage } from '../../../shared/ui/app-image';
-import { AppChip } from '../../../shared/ui/app-chip';
+import { Box, Text } from '@/shared/ui/base';
+import { AppImage } from '@/shared/ui/media/app-image';
+import { AppChip } from '@/shared/ui/app-chip';
 
-import { formatCurrency } from '../../../shared/utils/format';
+import { formatCurrency } from '@/shared/utils/money/format-currency';
 
 interface CheckoutItemProps {
   product: Product;

@@ -17,9 +17,9 @@ import {
   FieldErrors,
 } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { Box, Text } from '../../../shared/ui/base';
-import { FormSelect } from '../../../shared/ui/form-select';
-import { FormTextInput } from '../../../shared/ui/form-text-input';
+import { Box, Text } from '@/shared/ui/base';
+import { FormSelect } from '@/shared/ui/form/form-select';
+import { FormTextInput } from '@/shared/ui/form/form-text-input';
 import { SellFieldConfig } from '../logic/sell-form-config';
 import { checkIfOther } from '../logic/form-helpers';
 

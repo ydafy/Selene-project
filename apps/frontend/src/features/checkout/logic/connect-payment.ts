@@ -15,7 +15,7 @@ import type {
   CreateConnectPaymentResponse,
   EdgeFunctionRegistry,
 } from '@selene/types';
-import { grossUpDomesticMx } from '../../../shared/utils/stripe-fee-gross-up';
+import { grossUpDomesticMx } from '@/shared/utils/money/stripe-fee-gross-up';
 
 type CartLikeItem = {
   id: string;

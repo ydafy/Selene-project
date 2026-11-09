@@ -24,35 +24,35 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { FlashList } from '@shopify/flash-list';
-import { UserReviewCard } from '../../features/profile/components/user-review-card';
+import { UserReviewCard } from '@/features/profile/components/user-review-card';
 
-import { Box, Text } from '../../shared/ui/base';
-import { SegmentedControl } from '../../shared/ui/segmented-control';
-import { ProfileHeader } from '../../features/profile/components/profile-header';
-import { OptionsMenu } from '../../shared/ui/options-menu';
-import { AppImage } from '../../shared/ui/app-image';
-import { Skeleton } from '../../shared/ui/skeleton';
+import { Box, Text } from '@/shared/ui/base';
+import { SegmentedControl } from '@/shared/ui/form/segmented-control';
+import { ProfileHeader } from '@/features/profile/components/profile-header';
+import { OptionsMenu } from '@/shared/ui/options-menu';
+import { AppImage } from '@/shared/ui/media/app-image';
+import { Skeleton } from '@/shared/ui/feedback/skeleton';
 
 // Hooks unificados de alto rendimiento
-import { useProfile } from '../../features/profile/hooks/use-profile';
-import { useProducts } from '../../shared/hooks/use-products';
-import { useSellerReviews } from '../../features/profile/hooks/use-seller-reviews';
-import { formatCurrency } from '../../shared/utils/format';
-import { isClosedAccount } from '../../shared/utils/public-identity';
+import { useProfile } from '@/features/profile/hooks/use-profile';
+import { useProducts } from '@/shared/hooks/use-products';
+import { useSellerReviews } from '@/features/profile/hooks/use-seller-reviews';
+import { formatCurrency } from '@/shared/utils/money/format-currency';
+import { isClosedAccount } from '@/shared/utils/public-identity';
 import {
   ACTIVE_LISTING_STATUSES,
   isInVerification,
-} from '../../shared/utils/product-listing-status';
-import { VerificationPill } from '../../shared/ui/product/verification-pill';
-import { Theme } from '../../shared/theme';
-import { GlobalHeader } from '@/shared/ui/global-header';
+} from '@/shared/utils/product-listing-status';
+import { VerificationPill } from '@/shared/ui/product/verification-pill';
+import { Theme } from '@/shared/theme';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAuthContext } from '../../shared/lib/auth/auth-provider';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import {
   resolvePublicProfileCollectionState,
   resolvePublicProfileSellerId,
   shouldHidePublicProfileModerationActions,
-} from '../../features/profile/logic/public-profile.helpers';
+} from '@/features/profile/logic/public-profile.helpers';
 
 const { width } = Dimensions.get('window');
 const PRODUCT_CARD_WIDTH = (width - 48) / 2; // Dos columnas responsivas

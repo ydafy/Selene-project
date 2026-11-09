@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
-import { supabase } from '../../../shared/lib/supabase';
-import { invokeEdge } from '../../../shared/lib/edge-client';
+import { supabase } from '@/shared/lib/supabase';
+import { invokeEdge } from '@/shared/lib/edge-client';
 import {
   buildOpenDisputeRequest,
   getOpenDisputeInvalidationKeys,

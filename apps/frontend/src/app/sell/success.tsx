@@ -6,11 +6,11 @@ import { useTheme } from '@shopify/restyle';
 import { TouchableOpacity, BackHandler } from 'react-native';
 import { useEffect } from 'react';
 
-import { Box, Text } from '../../shared/ui/base';
-import { PrimaryButton } from '../../shared/ui/primary-button';
-import { Theme } from '../../shared/theme';
-import { useSellStore } from '../../features/sell/store/use-sell-store';
-import { triggerHaptic } from '../../shared/utils/haptics';
+import { Box, Text } from '@/shared/ui/base';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
+import { Theme } from '@/shared/theme';
+import { useSellStore } from '@/features/sell/store/use-sell-store';
+import { triggerHaptic } from '@/shared/utils/haptics';
 
 export default function SellSuccessScreen() {
   const { t } = useTranslation('sell');

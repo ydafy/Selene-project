@@ -7,17 +7,17 @@
 import { useState } from 'react';
 import { z } from 'zod';
 import { Session, User } from '@supabase/supabase-js';
-import { supabase } from '../../../shared/lib/supabase';
+import { supabase } from '@/shared/lib/supabase';
 import { validateRegisterUsername } from '../logic/register-username.logic';
-import { mapAuthErrorKey } from '../../../shared/lib/auth/auth-errors.logic';
+import { mapAuthErrorKey } from '@/shared/lib/auth/auth-errors.logic';
 import { completePasswordRecovery } from '../logic/password-recovery.logic';
-import { getCaptchaToken } from '../../../shared/lib/auth/captcha';
+import { getCaptchaToken } from '@/shared/lib/auth/captcha';
 import {
   resendSignupCode,
   sendRecoveryCode,
   signInWithPasswordCaptcha,
   signUpWithCaptcha,
-} from '../../../shared/lib/auth/captcha-auth.logic';
+} from '@/shared/lib/auth/captcha-auth.logic';
 
 // --- 1. ESQUEMAS DE VALIDACIÓN (ZOD) ---
 
