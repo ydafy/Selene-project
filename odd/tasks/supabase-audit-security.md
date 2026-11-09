@@ -16,7 +16,7 @@ Item 1 of roadmap #299 (issue #300): fixes for the findings of the 2026-11-08 Su
 | --- | ---------- | ------ | -------- |
 | T1  | S1, S2, S4 | inline | f22e38fc |
 | T2  | S1, S2     | worker | 05673b95 |
-| T3  | S1, S2     | worker | next     |
+| T3  | S1, S2     | worker | 7ed37758 |
 | T4  | S3         | inline | pending  |
 
 - T1: fix for GHSA-4983-wpx7-6c2x.
