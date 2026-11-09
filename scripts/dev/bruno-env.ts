@@ -1,7 +1,8 @@
 // Writes bruno/.env for the Bruno collection from the local Supabase stack of
 // the current worktree (each worktree has its own ports and keys), plus the
-// optional CRON_SECRET of supabase/functions/.env. The file is gitignored and
-// never printed: the CLI only reports which variable names were written.
+// optional worker secrets of supabase/functions/.env (FUNCTIONS_ENV_KEYS). The
+// file is gitignored and never printed: the CLI only reports which variable
+// names were written.
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -10,6 +11,15 @@ const STATUS_KEYS = [
   ['API_URL', 'SUPABASE_URL'],
   ['ANON_KEY', 'SUPABASE_ANON_KEY'],
   ['SERVICE_ROLE_KEY', 'SUPABASE_SERVICE_ROLE_KEY'],
+] as const;
+
+// Each key is copied when present; the CLI names the requests that fail without it.
+const FUNCTIONS_ENV_KEYS = [
+  ['CRON_SECRET', 'the cron-secret requests (cron-watchdog-with-secret, ...)'],
+  [
+    'STRIPE_FEE_RECONCILIATION_WORKER_SECRET',
+    'the reconcile-stripe-fees requests',
+  ],
 ] as const;
 
 function unquote(value: string): string {
@@ -67,10 +77,11 @@ export function buildBrunoEnv(
   const lines = STATUS_KEYS.map(
     ([key, name]) => `${name}=${formatValue(status[key])}`,
   );
-  const cronSecret = functionsEnv
-    ? readEnvLines(functionsEnv).CRON_SECRET
-    : undefined;
-  if (cronSecret) lines.push(`CRON_SECRET=${formatValue(cronSecret)}`);
+  const functionsValues = functionsEnv ? readEnvLines(functionsEnv) : {};
+  for (const [key] of FUNCTIONS_ENV_KEYS) {
+    const value = functionsValues[key];
+    if (value) lines.push(`${key}=${formatValue(value)}`);
+  }
   return `${lines.join('\n')}\n`;
 }
 
@@ -109,9 +120,11 @@ if (import.meta.main) {
   writeFileSync(join(root, 'bruno', '.env'), envText);
   const names = brunoEnvVariableNames(envText);
   console.log(`Wrote bruno/.env with: ${names.join(', ')}`);
-  if (!names.includes('CRON_SECRET')) {
-    console.log(
-      'CRON_SECRET not found in supabase/functions/.env; cron-watchdog-with-secret will fail.',
-    );
+  for (const [key, requests] of FUNCTIONS_ENV_KEYS) {
+    if (!names.includes(key)) {
+      console.log(
+        `${key} not found in supabase/functions/.env; ${requests} will fail.`,
+      );
+    }
   }
 }
