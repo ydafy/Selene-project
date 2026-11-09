@@ -1,6 +1,10 @@
 # supabase/functions/AGENTS.md
 
-Read the root `AGENTS.md` and `../AGENTS.md` first; they win over this file. Edge Functions run on Deno; shared pure helpers live in `_shared/`.
+Read the root `AGENTS.md` and `../AGENTS.md` first; they win over this file. Edge Functions run on Deno.
+
+## Shared modules
+
+Code that two or more functions use lives in `_shared/`, grouped by topic: `_shared/auth/`, `_shared/auto-cancel/`, `_shared/cancellation/`, `_shared/envia/`, and `_shared/stripe/`. `_shared/sentry.ts`, `_shared/zod-runtime.ts`, and `_shared/account-closure-cleanup.ts` stay directly in `_shared/`. A module's tests sit next to it; `_shared/__tests__/` holds only the guards that scan every function and the zod preload. Move files with `scripts/dev/move-files.ts`, which rewrites the imports; it does not rewrite path strings inside `toContain` assertions, so fix those by hand.
 
 ## Types and checks
 
