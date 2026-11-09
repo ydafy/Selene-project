@@ -1,4 +1,4 @@
-import { SQL } from 'bun';
+import { SQL, type TransactionSQL } from 'bun';
 import assert from 'node:assert/strict';
 
 const help =
@@ -10,7 +10,7 @@ const help =
   'concurrency case restores the lease columns it committed.\n' +
   'Database URL: SELENE_LOCAL_DB_URL, else `supabase status --env`. Only 127.0.0.1/localhost is accepted.';
 
-type Tx = SQL;
+type Tx = TransactionSQL;
 type Lease = {
   acquired: boolean;
   lease_id: string | null;

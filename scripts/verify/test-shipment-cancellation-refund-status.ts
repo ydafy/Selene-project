@@ -1,4 +1,4 @@
-import { SQL } from 'bun';
+import { SQL, type TransactionSQL } from 'bun';
 import assert from 'node:assert/strict';
 
 const help =
@@ -21,7 +21,7 @@ const amounts: Record<string, number> = {
   [ids.sibling]: 7000,
 };
 
-type Tx = SQL;
+type Tx = TransactionSQL;
 type Recorded = {
   refund_id: string;
   refund_status: string;
