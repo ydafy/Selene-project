@@ -172,7 +172,7 @@ export function allocateCancellationLossCents(
     };
   });
 
-  let allocated = allocations.reduce((sum, entry) => sum + entry.amount, 0);
+  const allocated = allocations.reduce((sum, entry) => sum + entry.amount, 0);
   let remaining = actualStripeFeeCents - allocated;
 
   const ranked = [...allocations].sort((left, right) => {

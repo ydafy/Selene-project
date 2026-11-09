@@ -206,7 +206,7 @@ module.exports = [
       '@typescript-eslint': tseslint,
     },
     rules: {
-      ...tseslint.configs['eslint-recommended'].rules,
+      ...tseslint.configs['flat/eslint-recommended'].rules,
       ...tseslint.configs.recommended.rules,
       ...prettierConfig.rules,
       'prettier/prettier': 'off',
