@@ -138,7 +138,7 @@ export const DisputeDetailPage = () => {
   const seller = dispute?.seller || {};
 
   const buyerEvidence = dispute?.buyer_evidence || {};
-  const sellerEvidence = dispute?.shipment?.shipping_evidence || {};
+  const sellerPackingPhotos = dispute.shipment?.shipping_evidence?.images ?? [];
 
   return (
     <div className="space-y-6 pb-32">
@@ -246,7 +246,7 @@ export const DisputeDetailPage = () => {
 
             {/* Grid de Fotos del Vendedor */}
             <div className="grid grid-cols-2 gap-4">
-              {(sellerEvidence?.images || []).map((path: string, i: number) => (
+              {sellerPackingPhotos.map((path, i) => (
                 <div
                   key={i}
                   className="aspect-square bg-night rounded-2xl overflow-hidden border border-white/5 group relative"

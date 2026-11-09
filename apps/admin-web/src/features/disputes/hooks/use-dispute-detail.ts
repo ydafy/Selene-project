@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
+import type { ShippingEvidence } from '@selene/types';
 import { supabase } from '@/shared/lib/supabase';
 
-/** Shape of the evidence JSON stored by the buyer and seller flows. */
+/** Shape of the evidence JSON stored by the buyer dispute flow. */
 interface DisputeEvidence {
   images?: string[];
   video_url?: string;
@@ -36,7 +37,7 @@ type DisputeDetail = Omit<
   buyer_evidence: DisputeEvidence | null;
   shipment:
     | (Omit<NonNullable<DisputeRow['shipment']>, 'shipping_evidence'> & {
-        shipping_evidence: DisputeEvidence | null;
+        shipping_evidence: ShippingEvidence | null;
       })
     | null;
 };

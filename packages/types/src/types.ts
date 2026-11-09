@@ -334,6 +334,11 @@ export interface SellerEvidence {
   video_url?: string | null;
 }
 
+/** `shipments.shipping_evidence`: the seller's packing photos (evidence bucket paths). */
+export interface ShippingEvidence {
+  images: string[];
+}
+
 // --- 5. TIPOS DE UI Y LOGÍSTICA ---
 
 export type ShippingCarrier = 'dhl' | 'estafeta' | 'paquetexpress' | 'fedex';

@@ -140,9 +140,7 @@ describe('generate-shipping-label request contract', () => {
     const clientCreation = source.indexOf(
       'const supabaseAdmin = createClient(',
     );
-    const evidenceWrite = source.indexOf(
-      'shipping_evidence: shippingEvidence.images',
-    );
+    const evidenceWrite = source.indexOf('shipping_evidence: storedEvidence');
     const claim = source.indexOf('runLabelClaimOrchestration({');
 
     expect(source).toContain("from './request-contract.ts'");
