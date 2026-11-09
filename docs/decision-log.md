@@ -218,3 +218,13 @@ It is established as the standard procedure for structural inconsistencies.
 - The dependency report workflow installs Node from `.nvmrc`. The other workflows run only Bun.
 - Runtimes follow the update rule in `docs/dependencies.md`, "Keep Node and Bun current". This replaces "Node stays at `22.13.1` for EAS" from the 2026-10-20 entry.
 - Node 26 became LTS on 2026-10-28. Move to it about three months later, near the Expo SDK 58 upgrade (#132).
+
+## 2026-11-09: Migrations Reach the Remote Through `supabase db push`
+
+**Context:** Migrations were applied by hand in the SQL Editor, so the remote history listed 4 of 75 migrations and nothing showed which files were live. The Supabase GitHub integration failed on that gap on 2026-10-21 (`docs/go-live.md`, section 1). On 2026-11-09 (#301) the schema of a fresh `supabase db reset` was compared with the remote: every migration was already applied, and the only differences were privileges from archived pre-baseline migrations and a bucket deleted in the Dashboard.
+
+**Decision:**
+
+- The maintainer applies migrations with `supabase db push`, which records each version in the remote history. A file run in the SQL Editor also needs `supabase migration repair --status applied <version>`.
+- The remote is the reference when a database rebuilt from migrations differs from it; the repository gets a migration that matches it (`20261109083744_local_privilege_parity`), and local tooling follows the remote privileges.
+- `supabase/AGENTS.md`, "Schema drift check", is the check: the remote history must list every migration file, and `scripts/verify/schema-fingerprint.sql` must give the same rows locally and on the remote.
