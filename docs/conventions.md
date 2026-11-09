@@ -91,6 +91,8 @@ A script under `scripts/<folder>/` reaches the repository root with `join(import
 
 Move files with `scripts/dev/move-files.ts`, not by hand. Write a JSON array of `[oldPath, newPath]` pairs of repo-relative file paths and run `bun scripts/dev/move-files.ts <mapping.json> --dry-run`, then again without `--dry-run`: it moves the files with `git mv`, rewrites the imports (each app's `@/` alias included) and path strings that point at them, and lists the strings it could not rewrite.
 
+Convert relative imports to the `@/` alias with `scripts/dev/alias-imports.ts`. Run `bun scripts/dev/alias-imports.ts <app>` (for example `apps/admin-web`) to print the plan, then again with `--apply`: in the app's source folder, tests included, it rewrites every relative specifier that leaves its top-level folder (the app folder, the shared folder, or one feature; the files directly in the source folder are one group) to `@/`, keeps the ones that stay inside it, and lists the template specifiers it could not rewrite.
+
 ## Formatting
 
 Prettier formats the repository (`.prettierrc.js`; `bun run format` writes every file). The pre-commit hook formats staged code, Markdown, JSON, and YAML, and CI runs `bun run format:check` on every file. `.gitattributes` checks text files out with LF on every OS, as Prettier writes them.

@@ -24,7 +24,7 @@ const posix = path.posix;
 
 // The `@/` alias of each app, as its tsconfig `paths` define it. A file under
 // an app resolves `@/` against that app only; the more specific prefix goes first.
-const ALIAS_APPS: Record<string, [prefix: string, dir: string][]> = {
+export const ALIAS_APPS: Record<string, [prefix: string, dir: string][]> = {
   'apps/frontend': [
     ['@/assets/', 'assets'],
     ['@/', 'src'],
@@ -64,7 +64,7 @@ const RESOLVE_EXTS = [
   '.ico',
 ];
 const INDEX_FILES = ['index.ts', 'index.tsx'];
-const SPEC_CONTEXTS = [
+export const SPEC_CONTEXTS = [
   /\bfrom\s*$/,
   /\bimport\s*$/,
   /\bimport\s*\(\s*$/,
@@ -100,7 +100,7 @@ interface Quasi {
   prevExpr: string | null;
 }
 
-interface Token {
+export interface Token {
   /** Index of the opening quote or backtick. */
   open: number;
   quasis: Quasi[];
@@ -123,7 +123,7 @@ interface FileResult {
 // ---------- tokenizer ----------
 
 /** Finds string literals and template literals, skipping comments and regexes. */
-function tokenize(text: string): Token[] {
+export function tokenize(text: string): Token[] {
   const tokens: Token[] = [];
   const n = text.length;
 
@@ -775,4 +775,4 @@ function applyMoves(root: string, pairs: Pair[]): void {
   for (const [o, n] of tricky) move(temp(o), n);
 }
 
-process.exit(main());
+if (import.meta.main) process.exit(main());
