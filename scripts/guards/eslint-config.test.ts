@@ -193,4 +193,38 @@ describe('root ESLint config', () => {
       expect(result.ruleIds).toEqual(['check-file/filename-naming-convention']);
     }, 60_000);
   }
+
+  test('flags a non-kebab-case Edge Function file', async () => {
+    const result = await lintText(
+      '.',
+      'supabase/functions/_shared/envia/EnviaProbe.ts',
+      'export const probe = 1;\n',
+    );
+
+    expect(result.stderr).toBe('');
+    expect(result.exitCode).toBe(1);
+    expect(result.ruleIds).toEqual(['check-file/filename-naming-convention']);
+  }, 60_000);
+
+  test('warns on an Edge Function file past 400 lines of code, but not on a test', async () => {
+    const long = Array.from(
+      { length: 401 },
+      (_, i) => `export const v${i} = ${i};`,
+    ).join('\n');
+    const module = await lintText(
+      '.',
+      'supabase/functions/_shared/envia/size-probe.ts',
+      `${long}\n`,
+    );
+    const testFile = await lintText(
+      '.',
+      'supabase/functions/_shared/envia/size-probe.test.ts',
+      `${long}\n`,
+    );
+
+    expect([module.stderr, testFile.stderr]).toEqual(['', '']);
+    expect([module.exitCode, testFile.exitCode]).toEqual([0, 0]);
+    expect(module.ruleIds).toEqual(['max-lines']);
+    expect(testFile.ruleIds).toEqual([]);
+  }, 60_000);
 });
