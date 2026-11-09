@@ -211,6 +211,13 @@ describe('complete-delivered-shipments handler: cron secret', () => {
       'INTERNAL_ERROR',
     ],
     [
+      'a server with an empty CRON_SECRET',
+      cronRequest({ 'x-cron-secret': '' }),
+      '',
+      500,
+      'INTERNAL_ERROR',
+    ],
+    [
       'a GET request',
       cronRequest({ 'x-cron-secret': CRON_SECRET }, 'GET'),
       CRON_SECRET,
