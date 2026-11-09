@@ -1,0 +1,32 @@
+meta {
+  name: refresh-connect-account-status-no-account
+  type: http
+  seq: 142
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/refresh-connect-account-status
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{refreshThrowawayToken}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("a user without a connected account gets CONNECT_ACCOUNT_NOT_FOUND", function () {
+    expect(res.getStatus()).to.equal(404);
+    expect(res.getBody()).to.deep.equal({ error: "CONNECT_ACCOUNT_NOT_FOUND" });
+  });
+}
+
+docs {
+  Run after refresh-connect-account-status-throwaway-login. The caller refreshes its own
+  profile, which has no stripe_account_id, so Stripe is never called.
+}

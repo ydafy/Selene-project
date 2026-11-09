@@ -1,0 +1,40 @@
+meta {
+  name: refresh-connect-account-status-throwaway-login
+  type: http
+  seq: 141
+}
+
+post {
+  url: {{baseUrl}}/auth/v1/token?grant_type=password
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+body:json {
+  {
+    "gotrue_meta_security": { "captcha_token": "{{captchaToken}}" },
+    "email": "{{refreshThrowawayEmail}}",
+    "password": "password123"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("refreshThrowawayToken", res.getBody().access_token);
+  }
+}
+
+tests {
+  test("signs in the throwaway user", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().access_token).to.be.a("string");
+  });
+}
+
+docs {
+  Stores the token in `refreshThrowawayToken` for the next request.
+}

@@ -1,0 +1,32 @@
+meta {
+  name: reconcile-stripe-fees-anon-key
+  type: http
+  seq: 133
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/reconcile-stripe-fees
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{anonKey}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("a valid JWT that is not the worker secret is refused by the handler", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody()).to.equal("Unauthorized");
+  });
+}
+
+docs {
+  The anon key passes the gateway JWT check, so this reaches the handler's own comparison
+  with STRIPE_FEE_RECONCILIATION_WORKER_SECRET.
+}

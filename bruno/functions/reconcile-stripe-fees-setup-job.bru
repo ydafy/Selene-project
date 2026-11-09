@@ -1,0 +1,44 @@
+meta {
+  name: reconcile-stripe-fees-setup-job
+  type: http
+  seq: 135
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/stripe_fee_reconciliation_jobs
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "order_id": "00000000-0000-4000-8000-0000000000f0",
+    "stripe_payment_intent_id": "pi_bruno_fee_no_charge"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    bru.setVar("feeJobId", res.getBody()[0].id);
+  }
+}
+
+tests {
+  test("the service role adds a pending fee job for an order without a charge", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody()[0].status).to.equal("pending");
+    expect(res.getBody()[0].attempt_count).to.equal(0);
+  });
+}
+
+docs {
+  Seeds one due job on the seeded auto-completion order f0, whose stripe_charge_id is null,
+  so the worker has no charge to ask Stripe about. reconcile-stripe-fees-cleanup-job
+  deletes it.
+}

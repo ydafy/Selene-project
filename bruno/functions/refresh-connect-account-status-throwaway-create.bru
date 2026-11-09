@@ -1,0 +1,46 @@
+meta {
+  name: refresh-connect-account-status-throwaway-create
+  type: http
+  seq: 140
+}
+
+post {
+  url: {{baseUrl}}/auth/v1/admin/users
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:pre-request {
+  bru.setVar("refreshThrowawayEmail", "bruno-refresh-" + Date.now() + "@selene.local");
+}
+
+body:json {
+  {
+    "email": "{{refreshThrowawayEmail}}",
+    "password": "password123",
+    "email_confirm": true
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("refreshThrowawayId", res.getBody().id);
+  }
+}
+
+tests {
+  test("creates a confirmed throwaway user through the local admin API", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().id).to.be.a("string");
+  });
+}
+
+docs {
+  Local stack only. The new user has no Stripe connected account.
+  refresh-connect-account-status-throwaway-cleanup deletes it.
+}

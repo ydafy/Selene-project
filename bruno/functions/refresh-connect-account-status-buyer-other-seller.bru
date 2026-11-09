@@ -1,0 +1,32 @@
+meta {
+  name: refresh-connect-account-status-buyer-other-seller
+  type: http
+  seq: 143
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/refresh-connect-account-status
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  { "sellerId": "00000000-0000-4000-8000-000000000002" }
+}
+
+tests {
+  test("a buyer cannot refresh another user's connected account", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody()).to.deep.equal({ error: "FORBIDDEN" });
+  });
+}
+
+docs {
+  Run after auth/login-buyer (needs buyerToken). The target is the seeded seller, who has a
+  connected account; only an admin may refresh someone else's, so Stripe is never called.
+}
