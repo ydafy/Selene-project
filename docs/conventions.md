@@ -28,8 +28,14 @@ apps/frontend/src/
     logic/              pure domain code, no React
     lib/                I/O wrappers: clients, device APIs, side effects
   shared/
-    ui/  hooks/  utils/  theme/  i18n/  config/  lib/
+    ui/  hooks/  utils/  theme/  i18n/  config/  lib/  store/
 ```
+
+`apps/frontend/src/shared/` holds only code that two or more features use, that `apps/frontend/src/app/` uses, or that other shared code uses. When only one feature uses a shared file, move it into that feature with `scripts/dev/move-files.ts`, then run `bun scripts/dev/alias-imports.ts apps/frontend --apply`, because the move leaves the moved file's own imports relative.
+
+Large shared folders group files by topic, not by type, one level deep: `apps/frontend/src/shared/ui/` has the topic folders address, button, feedback, form, icons, layout, media, and product, and `apps/frontend/src/shared/utils/` has money. A topic folder needs at least two modules; a file with no topic yet stays directly in the parent folder, as `apps/frontend/src/shared/utils/format-date.ts` does. Smaller folders (`apps/frontend/src/shared/hooks/`, `apps/frontend/src/shared/lib/`) stay flat until a clear cluster appears, as `apps/frontend/src/shared/lib/auth/` did.
+
+An import that leaves its top-level folder (the app folder, the shared folder, or one feature) uses the `@/` alias, which maps to `apps/frontend/src/`: `import { formatCurrency } from '@/shared/utils/money/format-currency'`. Imports inside the same folder stay relative. `bun run lint` enforces it with the local rule `relative-import-outside-folder` in `eslint.config.js`, which also checks the first argument of `mock.module()`, `jest.mock()`, and `require()`.
 
 `apps/frontend/src/features/<domain>/logic/` holds pure TypeScript with no React imports. Test it without React. Example: `apps/frontend/src/features/checkout/logic/checkout-payment-flow.ts` and its test belong in `apps/frontend/src/features/checkout/logic/`.
 
@@ -55,7 +61,7 @@ The same rules as the frontend apply: a screen lives in its feature (`apps/admin
 
 `apps/admin-web/src/shared/` holds only code that two or more features use, or that other shared code uses. The session lives there (`apps/admin-web/src/shared/store/use-auth-store.ts`, `apps/admin-web/src/shared/lib/auth/`), because most features read it; the login screen and the captcha live in `apps/admin-web/src/features/auth/`. When only one feature uses a shared file, move it into that feature with `scripts/dev/move-files.ts`.
 
-An import that leaves its top-level folder (the app folder, the shared folder, or one feature; the files directly in `apps/admin-web/src/` are one group) uses the `@/` alias, which maps to `apps/admin-web/src/`: `import { Modal } from '@/shared/ui/modal'`. Imports inside the same folder stay relative. `bun run lint` enforces it with the local rule `relative-import-outside-folder` in `eslint.config.js`. The frontend adopts the same rule in #291.
+An import that leaves its top-level folder (the app folder, the shared folder, or one feature; the files directly in `apps/admin-web/src/` are one group) uses the `@/` alias, which maps to `apps/admin-web/src/`: `import { Modal } from '@/shared/ui/modal'`. Imports inside the same folder stay relative. `bun run lint` enforces it with the local rule `relative-import-outside-folder` in `eslint.config.js`, the same rule the frontend uses.
 
 ## Test placement
 
