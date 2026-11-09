@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { getErrorCode } from '../../../shared/utils/get-error-code';
+import { getErrorCode } from '@/shared/utils/get-error-code';
 import {
   fetchLabelReconciliations,
   resolveLabelReconciliation,

@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useActiveDisputes } from '../hooks/use-active-disputes';
 import { DisputesTable } from '../components/disputes-table';
-import { useDebounce } from '../../../shared/hooks/use-debounce';
+import { useDebounce } from '@/shared/hooks/use-debounce';
 import { Search, X } from 'lucide-react';
-import { ErrorState } from '../../../shared/ui/error-state';
+import { ErrorState } from '@/shared/ui/error-state';
 
 export type DisputeFilter = 'open' | 'resolved' | 'all';
 export type DisputeSortOption =

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '../../../shared/lib/supabase';
-import { useAuthStore } from '../../../shared/store/use-auth-store';
+import { supabase } from '@/shared/lib/supabase';
+import { useAuthStore } from '@/shared/store/use-auth-store';
 import { ACTIVE_STATUSES, HISTORY_STATUSES } from './use-admin-product';
 
 export const useAdminProductCounts = () => {

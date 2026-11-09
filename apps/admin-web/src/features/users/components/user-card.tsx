@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Mail, ChevronRight, Copy, Check, Fingerprint } from 'lucide-react';
-import { UserAvatar } from '../../../shared/ui/user-avatar';
-import { getRank } from '../../../shared/utils/ranks';
+import { UserAvatar } from '@/shared/ui/user-avatar';
+import { getRank } from '@/shared/utils/ranks';
 import type { AdminUser } from '@selene/types';
-import { isClosedAccount } from '../../../shared/lib/account-status';
+import { isClosedAccount } from '@/shared/lib/account-status';
 
 export const UserCard = ({
   user,

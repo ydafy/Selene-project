@@ -4,7 +4,7 @@ import {
   type AcknowledgementResult,
   type LateCarrierActivity,
 } from '../logic/late-carrier-activity';
-import { invokeEdgeJson } from '../../../shared/lib/edge-client';
+import { invokeEdgeJson } from '@/shared/lib/edge-client';
 
 export async function fetchLateCarrierActivity(): Promise<
   LateCarrierActivity[]

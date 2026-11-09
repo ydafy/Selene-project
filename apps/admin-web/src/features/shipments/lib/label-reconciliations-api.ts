@@ -5,7 +5,7 @@ import {
   type ResolveLabelReconciliationInput,
   type ResolveLabelReconciliationResult,
 } from '../logic/label-reconciliations';
-import { invokeEdgeJson } from '../../../shared/lib/edge-client';
+import { invokeEdgeJson } from '@/shared/lib/edge-client';
 
 export async function fetchLabelReconciliations(): Promise<
   LabelReconciliation[]

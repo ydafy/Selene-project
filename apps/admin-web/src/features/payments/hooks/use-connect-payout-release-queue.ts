@@ -7,7 +7,7 @@ import type {
   ReleaseConnectPayoutResponse,
 } from '@selene/types';
 
-import { supabase } from '../../../shared/lib/supabase';
+import { supabase } from '@/shared/lib/supabase';
 import {
   buildReleasePayload,
   createReleaseIdempotencyKey,

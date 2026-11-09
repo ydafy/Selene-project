@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
-import { supabase } from '../../../shared/lib/supabase';
-import { useAuthStore } from '../../../shared/store/use-auth-store';
+import { supabase } from '@/shared/lib/supabase';
+import { useAuthStore } from '@/shared/store/use-auth-store';
 import { toast } from 'sonner';
 
 interface LockStatus {

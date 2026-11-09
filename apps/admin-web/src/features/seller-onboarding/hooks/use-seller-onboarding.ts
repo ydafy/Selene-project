@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../../../shared/lib/supabase';
+import { supabase } from '@/shared/lib/supabase';
 import type { EdgeFunctionRegistry } from '@selene/types';
 import {
   normalizeSellerOnboardingRow,

@@ -1,18 +1,18 @@
 import { useState } from 'react';
 import { Lock, AlertCircle, ShieldAlert, Cpu } from 'lucide-react';
-import { UserAvatar } from '../../../shared/ui/user-avatar';
-import { UserSafetyActions } from '../../../shared/ui/user-safety-actions';
+import { UserAvatar } from '@/shared/ui/user-avatar';
+import { UserSafetyActions } from '@/shared/ui/user-safety-actions';
 import { RankInfoPanel } from './rank-info-panel';
 import { ProductSpecsGrid } from './product-specs-grid';
 import { EvidenceViewer } from './evidence-viewer';
 import { VerificationActions } from './verification-actions';
-import { getRank } from '../../../shared/utils/ranks';
-import { supabase } from '../../../shared/lib/supabase';
-import { useAuthStore } from '../../../shared/store/use-auth-store';
+import { getRank } from '@/shared/utils/ranks';
+import { supabase } from '@/shared/lib/supabase';
+import { useAuthStore } from '@/shared/store/use-auth-store';
 import { toast } from 'sonner';
 import type { PendingProduct, AccountStatus } from '@selene/types';
-import { formatTime } from '../../../shared/utils/format-date';
-import { isRecord } from '../../../shared/utils/as-record';
+import { formatTime } from '@/shared/utils/format-date';
+import { isRecord } from '@/shared/utils/as-record';
 import type { ProductVerdict } from '../logic/resolve-verdict';
 
 interface LockStatus {

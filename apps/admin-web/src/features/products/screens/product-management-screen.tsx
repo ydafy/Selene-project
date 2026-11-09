@@ -3,10 +3,10 @@ import { useState, useCallback } from 'react';
 import { Package, Trash2, Lock, Search, Archive } from 'lucide-react';
 import { useAdminProduct, type ProductTab } from '../hooks/use-admin-product';
 import { useAdminProductCounts } from '../hooks/use-admin-product-counts';
-import { useDebounce } from '../../../shared/hooks/use-debounce';
-import { StatusBadge } from '../../../shared/ui/status-badge';
-import { InputModal } from '../../../shared/ui/input-modal';
-import { ErrorState } from '../../../shared/ui/error-state';
+import { useDebounce } from '@/shared/hooks/use-debounce';
+import { StatusBadge } from '@/shared/ui/status-badge';
+import { InputModal } from '@/shared/ui/input-modal';
+import { ErrorState } from '@/shared/ui/error-state';
 
 const TABS: { id: ProductTab; label: string }[] = [
   { id: 'active', label: 'Activos' },

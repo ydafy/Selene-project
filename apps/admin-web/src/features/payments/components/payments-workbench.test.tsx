@@ -89,7 +89,7 @@ if (process.env.PAYMENTS_WORKBENCH_CHILD !== '1') {
   const retryCalls: { retryRunId: string }[] = [];
   const queueSearches: string[] = [];
   let queueRefreshes = 0;
-  mock.module('../../../shared/hooks/use-debounce', () => ({
+  mock.module('@/shared/hooks/use-debounce', () => ({
     useDebounce: (value: string) => value,
   }));
   mock.module('../hooks/use-connect-payout-release-queue', () => ({
@@ -121,7 +121,7 @@ if (process.env.PAYMENTS_WORKBENCH_CHILD !== '1') {
       };
     },
   }));
-  mock.module('../../../shared/lib/supabase', () => ({
+  mock.module('@/shared/lib/supabase', () => ({
     supabase: {
       functions: {
         invoke: () => {

@@ -10,19 +10,19 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useConnectPayoutReleaseQueue } from '../hooks/use-connect-payout-release-queue';
-import { useDebounce } from '../../../shared/hooks/use-debounce';
+import { useDebounce } from '@/shared/hooks/use-debounce';
 import {
   getSelectedEligibleShipmentIds,
   type ReleaseQueueBatch,
   type ReleaseQueueRun,
   type ReleaseQueueActionRequiredRun,
 } from '../logic/connect-payout-release-queue';
-import { ErrorState } from '../../../shared/ui/error-state';
-import { formatTime } from '../../../shared/utils/format-date';
+import { ErrorState } from '@/shared/ui/error-state';
+import { formatTime } from '@/shared/utils/format-date';
 import { PayoutReleaseWorkbench } from '../components/payout-release-workbench';
 import { ActionRequiredPanel } from '../components/action-required-panel';
 import { PayoutRunsWorkbench } from '../components/payout-runs-workbench';
-import { workbenchFocus } from '../../../shared/ui/workbench-focus';
+import { workbenchFocus } from '@/shared/ui/workbench-focus';
 
 export type PaymentTab = 'ready' | 'processing' | 'action-required' | 'history';
 

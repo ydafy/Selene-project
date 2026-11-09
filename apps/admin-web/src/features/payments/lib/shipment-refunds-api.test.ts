@@ -31,7 +31,7 @@ if (process.env.B24_SERVICE_CHILD !== '1') {
 
   const calls: Array<{ name: string; options: Record<string, unknown> }> = [];
   let result: { data: unknown; error: unknown };
-  mock.module('../../../shared/lib/supabase', () => ({
+  mock.module('@/shared/lib/supabase', () => ({
     supabase: {
       functions: {
         invoke: async (name: string, options: Record<string, unknown>) => {
@@ -43,7 +43,7 @@ if (process.env.B24_SERVICE_CHILD !== '1') {
   }));
   const { fetchShipmentRefundProblems, resolveShipmentRefund } =
     await import('./shipment-refunds-api');
-  const { EdgeFunctionError } = await import('../../../shared/lib/edge-client');
+  const { EdgeFunctionError } = await import('@/shared/lib/edge-client');
 
   const problem: RefundProblem = {
     shipmentId: 'ship-1',

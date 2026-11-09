@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
 import { ShoppingBag } from 'lucide-react';
-import { StatusBadge } from '../../../shared/ui/status-badge';
-import { DataTable, type ColumnDef } from '../../../shared/ui/data-table';
-import { SecureImage } from '../../../shared/ui/secure-image';
-import type { StatusType } from '../../../shared/ui/status-badge';
+import { StatusBadge } from '@/shared/ui/status-badge';
+import { DataTable, type ColumnDef } from '@/shared/ui/data-table';
+import { SecureImage } from '@/shared/ui/secure-image';
+import type { StatusType } from '@/shared/ui/status-badge';
 import type { OrderItemWithProduct } from '@selene/types';
 
 interface Props {

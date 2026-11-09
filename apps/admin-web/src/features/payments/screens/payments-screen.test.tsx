@@ -88,7 +88,7 @@ if (process.env.PAYOUT_PAGING_PAGE_CHILD !== '1') {
   let pageRevision = 1;
   let queryLastSuccess: number | null = null;
   let visibleOverride: ReleaseQueueBatch[] | null = null;
-  mock.module('../../../shared/hooks/use-debounce', () => ({
+  mock.module('@/shared/hooks/use-debounce', () => ({
     useDebounce: (value: string) => value,
   }));
   mock.module('../hooks/use-connect-payout-release-queue', () => ({

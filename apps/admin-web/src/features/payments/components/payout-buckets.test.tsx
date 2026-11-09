@@ -102,7 +102,7 @@ if (process.env.A65_SSR_CHILD !== '1') {
     }),
   }));
   // No actual client module/environment loading or external requests.
-  mock.module('../../../shared/lib/supabase', () => ({
+  mock.module('@/shared/lib/supabase', () => ({
     supabase: {
       functions: {
         invoke: () => {

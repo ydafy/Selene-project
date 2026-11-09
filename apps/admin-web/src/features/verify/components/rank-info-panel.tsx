@@ -1,5 +1,5 @@
 import { ShieldCheck, AlertCircle } from 'lucide-react';
-import { RANK_CONFIG } from '../../../shared/utils/ranks';
+import { RANK_CONFIG } from '@/shared/utils/ranks';
 
 export const RankInfoPanel = () => {
   return (

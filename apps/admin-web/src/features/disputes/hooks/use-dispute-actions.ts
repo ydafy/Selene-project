@@ -1,8 +1,8 @@
 import { useState, useCallback, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../../../shared/lib/supabase';
-import { invokeEdge } from '../../../shared/lib/edge-client';
-import { useAuthStore } from '../../../shared/store/use-auth-store';
+import { supabase } from '@/shared/lib/supabase';
+import { invokeEdge } from '@/shared/lib/edge-client';
+import { useAuthStore } from '@/shared/store/use-auth-store';
 import { toast } from 'sonner';
 
 // --- HOOK 1: GESTIÓN DE BLOQUEO (SOFT LOCK) ---

@@ -7,16 +7,16 @@ import {
   FileSearch,
   ShieldCheck,
 } from 'lucide-react';
-import { Modal } from '../../../shared/ui/modal';
+import { Modal } from '@/shared/ui/modal';
 import { CopyableReference } from './copyable-reference';
 import { SelectionActionSummary } from './selection-action-summary';
-import { centsToMoney } from '../../../shared/utils/cents-to-money';
+import { centsToMoney } from '@/shared/utils/cents-to-money';
 import type {
   ReleaseQueueActionRequiredRun,
   ReleaseQueueRun,
 } from '../logic/connect-payout-release-queue';
-import { formatCurrency } from '../../../shared/utils/format-currency';
-import { formatTime } from '../../../shared/utils/format-date';
+import { formatCurrency } from '@/shared/utils/format-currency';
+import { formatTime } from '@/shared/utils/format-date';
 
 import {
   PAYOUT_PAGE_SIZE,
@@ -25,7 +25,7 @@ import {
   workbenchPanel,
   workbenchScroll,
 } from './payout-workbench-layout';
-import { workbenchFocus as focus } from '../../../shared/ui/workbench-focus';
+import { workbenchFocus as focus } from '@/shared/ui/workbench-focus';
 
 type PayoutRunsMode = 'processing' | 'action-required' | 'history';
 interface PayoutRunsWorkbenchProps {

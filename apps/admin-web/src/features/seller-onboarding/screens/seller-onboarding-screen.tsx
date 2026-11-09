@@ -16,7 +16,7 @@
 import { RefreshCw } from 'lucide-react';
 import { useSellerOnboarding } from '../hooks/use-seller-onboarding';
 import { summarizeSellerOnboarding } from '../logic/connect-onboarding';
-import { ErrorState } from '../../../shared/ui/error-state';
+import { ErrorState } from '@/shared/ui/error-state';
 
 const statusLabel: Record<string, string> = {
   complete: 'Complete',

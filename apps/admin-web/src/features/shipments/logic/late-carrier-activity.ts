@@ -6,7 +6,7 @@
  * boundary: one unusable row fails the whole response, so the UI never shows partial data.
  */
 
-import { asRecord } from '../../../shared/utils/as-record';
+import { asRecord } from '@/shared/utils/as-record';
 
 const EVENT_TYPES = [
   'created',

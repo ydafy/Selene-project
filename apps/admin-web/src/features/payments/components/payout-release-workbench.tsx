@@ -7,16 +7,16 @@ import {
   Wallet,
 } from 'lucide-react';
 import { SelectionActionSummary } from './selection-action-summary';
-import { Modal } from '../../../shared/ui/modal';
-import { centsToMoney } from '../../../shared/utils/cents-to-money';
+import { Modal } from '@/shared/ui/modal';
+import { centsToMoney } from '@/shared/utils/cents-to-money';
 import {
   getSelectedEligibleShipmentIds,
   type ReleaseQueueBatch,
 } from '../logic/connect-payout-release-queue';
-import { formatCurrency } from '../../../shared/utils/format-currency';
+import { formatCurrency } from '@/shared/utils/format-currency';
 
 import { PAYOUT_PAGE_SIZE, PayoutPagination } from './payout-workbench-layout';
-import { workbenchFocus } from '../../../shared/ui/workbench-focus';
+import { workbenchFocus } from '@/shared/ui/workbench-focus';
 
 const eligibleIdsFor = (batch: ReleaseQueueBatch) =>
   getSelectedEligibleShipmentIds(

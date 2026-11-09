@@ -6,7 +6,7 @@
  * never shows partial data. Money is integer cents; pesos typed by the admin are converted here.
  */
 
-import { asRecord } from '../../../shared/utils/as-record';
+import { asRecord } from '@/shared/utils/as-record';
 
 const STUCK_STATES = ['orphan_pending', 'claimed', 'generation_sent'] as const;
 type StuckState = (typeof STUCK_STATES)[number];

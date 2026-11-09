@@ -4,7 +4,7 @@ import type {
   ConnectPayoutQueueScope,
   ConnectPayoutReleaseQueueRow,
 } from '@selene/types';
-import { isRecord } from '../../../shared/utils/as-record';
+import { isRecord } from '@/shared/utils/as-record';
 
 export interface PayoutQueueRequest {
   bucket: ConnectPayoutQueueBucket;

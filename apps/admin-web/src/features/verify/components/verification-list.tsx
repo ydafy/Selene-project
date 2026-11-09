@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMemo, useState } from 'react';
 import { Search, Clock } from 'lucide-react';
-import { UserAvatar } from '../../../shared/ui/user-avatar';
+import { UserAvatar } from '@/shared/ui/user-avatar';
 import type { PendingProduct } from '@selene/types';
 
 interface VerificationListProps {

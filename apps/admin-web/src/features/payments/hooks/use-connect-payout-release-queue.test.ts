@@ -131,7 +131,7 @@ if (process.env.A65_HOOK_CHILD !== '1') {
     },
   }));
 
-  mock.module('../../../shared/lib/supabase', () => ({
+  mock.module('@/shared/lib/supabase', () => ({
     supabase: {
       functions: {
         invoke: async (functionName: string, options: { body: unknown }) => {

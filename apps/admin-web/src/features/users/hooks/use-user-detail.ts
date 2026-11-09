@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '../../../shared/lib/supabase';
+import { supabase } from '@/shared/lib/supabase';
 
 /** Wrap a non-critical query so one failure doesn't crash the whole hook */
 async function safeQuery<T>(

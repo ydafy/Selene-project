@@ -6,8 +6,8 @@ import { useProductLock } from '../hooks/use-product-lock';
 
 import { VerificationList } from '../components/verification-list';
 import { VerificationDetail } from '../components/verification-detail';
-import { ImageModal } from '../../../shared/ui/image-modal';
-import { ErrorState } from '../../../shared/ui/error-state';
+import { ImageModal } from '@/shared/ui/image-modal';
+import { ErrorState } from '@/shared/ui/error-state';
 import type { PendingProduct } from '@selene/types';
 
 export const VerificationPage = () => {

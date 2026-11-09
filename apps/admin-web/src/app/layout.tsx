@@ -15,7 +15,7 @@ import {
   ChevronRight,
   Menu,
 } from 'lucide-react';
-import { useAuthStore } from '../shared/store/use-auth-store';
+import { useAuthStore } from '@/shared/store/use-auth-store';
 
 export const Layout = () => {
   const { signOut, profile } = useAuthStore();

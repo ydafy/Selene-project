@@ -4,7 +4,7 @@
  * row fails the whole response, so the UI never shows partial money data.
  */
 
-import { asRecord } from '../../../shared/utils/as-record';
+import { asRecord } from '@/shared/utils/as-record';
 
 const REVIEW_REASONS = [
   'tracking_unknown',

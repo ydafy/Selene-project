@@ -17,13 +17,13 @@ import {
   Clock,
 } from 'lucide-react';
 import { useUserDetail } from '../hooks/use-user-detail';
-import { UserAvatar } from '../../../shared/ui/user-avatar';
-import { UserSafetyActions } from '../../../shared/ui/user-safety-actions';
-import { getRank } from '../../../shared/utils/ranks';
-import { isClosedAccount } from '../../../shared/lib/account-status';
-import { ErrorState } from '../../../shared/ui/error-state';
-import { StatCard } from '../../../shared/ui/stat-card';
-import { Skeleton } from '../../../shared/ui/skeleton';
+import { UserAvatar } from '@/shared/ui/user-avatar';
+import { UserSafetyActions } from '@/shared/ui/user-safety-actions';
+import { getRank } from '@/shared/utils/ranks';
+import { isClosedAccount } from '@/shared/lib/account-status';
+import { ErrorState } from '@/shared/ui/error-state';
+import { StatCard } from '@/shared/ui/stat-card';
+import { Skeleton } from '@/shared/ui/skeleton';
 import { InventoryTable } from '../components/inventory-table';
 import { PurchasesTable } from '../components/purchases-table';
 import { UserReviewsList } from '../components/user-reviews-list';

@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { workbenchFocus } from '../../../shared/ui/workbench-focus';
+import { workbenchFocus } from '@/shared/ui/workbench-focus';
 
 export const PAYOUT_PAGE_SIZE = 20;
 export const workbenchGrid = 'grid min-w-0 items-stretch gap-5 lg:grid-cols-2';

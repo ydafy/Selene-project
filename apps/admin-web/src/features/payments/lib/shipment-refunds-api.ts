@@ -4,7 +4,7 @@ import {
   type RefundProblem,
   type ResolveRefundResult,
 } from '../logic/shipment-refund-problems';
-import { invokeEdgeJson } from '../../../shared/lib/edge-client';
+import { invokeEdgeJson } from '@/shared/lib/edge-client';
 
 export async function fetchShipmentRefundProblems(): Promise<RefundProblem[]> {
   return parseRefundProblems(

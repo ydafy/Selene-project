@@ -1,13 +1,13 @@
 import { useRef, useState } from 'react';
 import { AlertTriangle, PackageCheck, Truck } from 'lucide-react';
-import { ErrorState } from '../../../shared/ui/error-state';
-import { Modal } from '../../../shared/ui/modal';
-import { BucketEmptyState } from '../../../shared/ui/bucket-empty-state';
-import { workbenchFocus } from '../../../shared/ui/workbench-focus';
-import { centsToMoney } from '../../../shared/utils/cents-to-money';
-import { formatCurrency } from '../../../shared/utils/format-currency';
-import { formatTime } from '../../../shared/utils/format-date';
-import { getErrorCode } from '../../../shared/utils/get-error-code';
+import { ErrorState } from '@/shared/ui/error-state';
+import { Modal } from '@/shared/ui/modal';
+import { BucketEmptyState } from '@/shared/ui/bucket-empty-state';
+import { workbenchFocus } from '@/shared/ui/workbench-focus';
+import { centsToMoney } from '@/shared/utils/cents-to-money';
+import { formatCurrency } from '@/shared/utils/format-currency';
+import { formatTime } from '@/shared/utils/format-date';
+import { getErrorCode } from '@/shared/utils/get-error-code';
 import {
   formatWaiting,
   MAX_REVIEW_NOTE_LENGTH,

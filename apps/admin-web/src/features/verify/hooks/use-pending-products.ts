@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../../../shared/lib/supabase';
+import { supabase } from '@/shared/lib/supabase';
 import { toast } from 'sonner';
 import {
   resolveVerdictPayload,
