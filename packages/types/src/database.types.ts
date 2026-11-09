@@ -4222,6 +4222,14 @@ export type Database = {
         Args: { p_lease_id: string }
         Returns: boolean
       }
+      fn_release_listings: {
+        Args: {
+          p_only_expired: boolean
+          p_only_reserved: boolean
+          p_product_ids: string[]
+        }
+        Returns: string[]
+      }
       fn_release_payout_claim: {
         Args: { p_claim_token: string; p_run_id: string }
         Returns: boolean
