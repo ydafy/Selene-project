@@ -164,6 +164,11 @@ describe('create-dispute handler: authentication', () => {
       { Authorization: 'Bearer anon-key' },
       'anon-key',
     ],
+    [
+      'a Basic authorization header',
+      { Authorization: `Basic ${BUYER_TOKEN}` },
+      `Basic ${BUYER_TOKEN}`,
+    ],
   ] as const) {
     it(`refuses ${name} with 401 AUTH_REQUIRED before checking evidence or calling the RPC`, async () => {
       const supabase = fakeSupabase();
@@ -189,6 +194,27 @@ describe('create-dispute handler: authentication', () => {
 });
 
 describe('create-dispute handler: evidence ownership', () => {
+  it('checks evidence against the session user, not a buyerId in the body', async () => {
+    const supabase = fakeSupabase();
+
+    const response = await handlerFor(supabase)(
+      disputeRequest(
+        validBody({
+          buyerId: otherId,
+          evidence: {
+            images: [`disputes/${orderId}/${otherId}/slot_0_1.jpg`],
+            tech_checklist: { powers_on: false },
+          },
+        }),
+      ),
+    );
+
+    const error = 'Evidence images must be your uploads for this order';
+    await expectJsonResponse(response, 400, { error });
+    expect(supabase.rpcCalls).toEqual([]);
+    expect(supabase.fromCalls).toEqual([]);
+  });
+
   it('refuses images outside the caller folder for the order before calling the RPC', async () => {
     const supabase = fakeSupabase();
 
@@ -267,6 +293,18 @@ describe('create-dispute handler: opening the dispute', () => {
         shipmentId,
       }),
     ]);
+  });
+
+  it('sends the session user as p_buyer_id even when the body names another buyer', async () => {
+    const supabase = fakeSupabase();
+
+    const response = await handlerFor(supabase)(
+      disputeRequest(validBody({ buyerId: otherId })),
+    );
+
+    await expectJsonResponse(response, 200, { success: true, disputeId });
+    expect(supabase.rpcCalls).toHaveLength(1);
+    expect(supabase.rpcCalls[0]?.args.p_buyer_id).toBe(buyerId);
   });
 
   it('accepts an RPC answer that is a single row instead of a list', async () => {
