@@ -43,6 +43,8 @@ SET file_size_limit = 2097152,
 WHERE id = 'Avatars';
 
 -- evidence
+-- Despite its name, "Admins can read verification files" applies to the evidence
+-- bucket; admins keep reading `verification` through "Allow Select Own Files 1ahc6qj_0".
 DROP POLICY IF EXISTS "Admins can read verification files" ON storage.objects;
 DROP POLICY IF EXISTS "Evidence Read Access" ON storage.objects;
 DROP POLICY IF EXISTS "Allow authenticated uploads to evidence" ON storage.objects;

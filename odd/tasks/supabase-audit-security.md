@@ -15,7 +15,7 @@ Item 1 of roadmap #299 (issue #300): fixes for the findings of the 2026-11-08 Su
 | ID  | Specs      | Route  | Commit   |
 | --- | ---------- | ------ | -------- |
 | T1  | S1, S2, S4 | inline | f22e38fc |
-| T2  | S1, S2     | inline | pending  |
+| T2  | S1, S2     | worker | 05673b95 |
 | T3  | S1, S2     | inline | pending  |
 | T4  | S3         | inline | pending  |
 
@@ -34,3 +34,4 @@ Item 1 of roadmap #299 (issue #300): fixes for the findings of the 2026-11-08 Su
 - **L6** (2026-11-08, maintainer): "Ya aploque la migracion, sobre el punto 4, si, tienes mi luz verde". Remote read after the deploy: the policies, client privileges and the review constraint match the local stack; the security and performance advisors show nothing new from this change. T1 squashed into one commit. The `supabase/queries/rls/` JSON snapshots were already stale before this work (they still list policies dropped on 2026-10-28) and #303 replaces `supabase/queries/`, so they stay as they are. The review comments in the app now match the insert policy.
 - **L7** (2026-11-08, maintainer): chose the four recommended options for the T2 design questions. The questions and answers stay in Engram (`odd/supabase-audit-security/t2-decisions`) until T2 is deployed, then move here. A related cleanup stays in #29.
 - **L8** T2 implemented by two parallel workers (storage SQL; app, admin-web and Edge Function changes) plus an integration worker. Each new pgTAP file fails against the previous SQL (rolled back) and passes after it; `bun run test:db` passes (15 files, 483 tests) and the `bruno/dispute-integrity` folder passes on the local stack. Outside this work: #322, #323. Deleting one storage bucket is a manual Dashboard step (`docs/go-live.md`).
+- **L9** T2 independent verification: met for S1 and S2, no blockers. Native review (risk, resilience, reliability) approved with non-blocking notes. Follow-up commit: more malformed-path cases in `evidence_paths.test.sql` and a comment on a misnamed dropped policy (checked on the remote: it applies to the evidence bucket only). Awaiting the maintainer's deploy.

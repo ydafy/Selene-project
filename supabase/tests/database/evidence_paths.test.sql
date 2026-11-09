@@ -5,7 +5,7 @@
 -- Any other value returns INVALID_EVIDENCE_PATH and leaves the dispute unchanged.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(26);
+select plan(35);
 
 create function pg_temp.as_user(p_id uuid) returns void language sql as $$
   select set_config('request.jwt.claims',
@@ -109,6 +109,25 @@ select is(
 select is(pg_temp.dispute_state('f3000000-0000-4000-8000-0000000d0001'),
   'return_delivered {"images": [], "video_url": null} {"images": [], "video_url": null, "tech_checklist": {}}',
   'a rejected video leaves the dispute unchanged');
+-- Malformed paths inside the seller's own folder are rejected too.
+select is(
+  (select row(success, error_message)::text from public.fn_seller_submit_return_evidence(
+    'f3000000-0000-4000-8000-0000000d0001', array[c.p],
+    'disputes/f3000000-0000-4000-8000-0000000b0001/f3000000-0000-4000-8000-000000000002/v.mp4')),
+  '(f,INVALID_EVIDENCE_PATH)', 'the seller cannot submit a path with ' || c.label)
+from (values
+  ('an encoded traversal', 'disputes/f3000000-0000-4000-8000-0000000b0001/f3000000-0000-4000-8000-000000000002/%2e%2e%2fa.jpg'),
+  ('a backslash', 'disputes/f3000000-0000-4000-8000-0000000b0001/f3000000-0000-4000-8000-000000000002/..' || chr(92) || 'a.jpg'),
+  ('a double slash', 'disputes/f3000000-0000-4000-8000-0000000b0001/f3000000-0000-4000-8000-000000000002//a.jpg'),
+  ('an empty file name', 'disputes/f3000000-0000-4000-8000-0000000b0001/f3000000-0000-4000-8000-000000000002/'),
+  ('a 201-character file name', 'disputes/f3000000-0000-4000-8000-0000000b0001/f3000000-0000-4000-8000-000000000002/' || repeat('a', 201)),
+  ('a capitalized folder', 'Disputes/f3000000-0000-4000-8000-0000000b0001/f3000000-0000-4000-8000-000000000002/a.jpg'),
+  ('an extra segment', 'disputes/f3000000-0000-4000-8000-0000000b0001/f3000000-0000-4000-8000-000000000002/x/a.jpg'),
+  ('a trailing newline', 'disputes/f3000000-0000-4000-8000-0000000b0001/f3000000-0000-4000-8000-000000000002/a.jpg' || chr(10))
+) as c(label, p);
+select is(pg_temp.dispute_state('f3000000-0000-4000-8000-0000000d0001'),
+  'return_delivered {"images": [], "video_url": null} {"images": [], "video_url": null, "tech_checklist": {}}',
+  'rejected malformed paths leave the dispute unchanged');
 select is(
   (select row(success, error_message)::text from public.fn_seller_submit_return_evidence(
     'f3000000-0000-4000-8000-0000000d0001',
