@@ -15,6 +15,13 @@ import path from 'node:path';
 const SCRIPT = path.join(import.meta.dir, 'move-files.ts');
 const scratch: string[] = [];
 
+// Without GIT_* variables: a git hook exports GIT_DIR for the real repository,
+// and a scratch command that inherits it writes there (#221, L24).
+const ENV: Record<string, string> = {};
+for (const [key, value] of Object.entries(process.env)) {
+  if (value !== undefined && !key.startsWith('GIT_')) ENV[key] = value;
+}
+
 afterAll(() => {
   for (const dir of scratch) rmSync(dir, { recursive: true, force: true });
 });
@@ -31,7 +38,7 @@ function git(root: string, ...args: string[]): string {
       'commit.gpgsign=false',
       ...args,
     ],
-    { cwd: root, stdout: 'pipe', stderr: 'pipe' },
+    { cwd: root, env: ENV, stdout: 'pipe', stderr: 'pipe' },
   );
   if (r.exitCode !== 0) throw new Error(r.stderr.toString());
   return r.stdout.toString();
@@ -65,6 +72,7 @@ function run(root: string, pairs: unknown, extra: string[] = []) {
   const r = Bun.spawnSync(
     [process.execPath, SCRIPT, mapping, '--root', root, ...extra],
     {
+      env: ENV,
       stdout: 'pipe',
       stderr: 'pipe',
     },
@@ -80,6 +88,47 @@ const read = (root: string, rel: string) =>
   readFileSync(path.join(root, rel), 'utf8');
 const F = 'apps/frontend';
 const A = 'apps/admin-web';
+
+describe('scratch repositories', () => {
+  // A git hook (pre-push runs `bun test`) exports GIT_DIR for the real
+  // repository; a scratch command that inherits it writes there instead.
+  test('ignore a GIT_DIR inherited from a git hook', () => {
+    const victim = mkdtempSync(path.join(tmpdir(), 'move-files-victim-'));
+    scratch.push(victim);
+    const victimGit = (...args: string[]) =>
+      Bun.spawnSync(
+        ['git', '-c', 'user.email=v@v.test', '-c', 'user.name=v', ...args],
+        { cwd: victim, env: ENV, stdout: 'pipe', stderr: 'pipe' },
+      )
+        .stdout.toString()
+        .trim();
+    victimGit('init', '-q');
+    writeFileSync(path.join(victim, 'keep.txt'), 'keep\n');
+    victimGit('add', '-A');
+    victimGit('commit', '-qm', 'victim');
+    const head = victimGit('rev-parse', 'HEAD');
+
+    // Bun spawns with the environment the process started with, so the
+    // hook's GIT_DIR has to reach a child test run, as it does in pre-push.
+    const child = Bun.spawnSync(
+      [
+        process.execPath,
+        'test',
+        import.meta.path,
+        '-t',
+        'rewrites alias imports of a moved file',
+      ],
+      {
+        env: { ...ENV, GIT_DIR: path.join(victim, '.git') },
+        stdout: 'pipe',
+        stderr: 'pipe',
+      },
+    );
+    expect(child.exitCode, child.stderr.toString()).toBe(0);
+    expect(victimGit('rev-parse', 'HEAD')).toBe(head);
+    expect(victimGit('config', '--local', '--get', 'core.autocrlf')).toBe('');
+  });
+});
 
 describe('module specifiers', () => {
   test('rewrites alias imports of a moved file', () => {
