@@ -20,8 +20,10 @@ import {
   parseNodeReleases,
   parseNodeSchedule,
   parseOutdated,
+  parseStripeApi,
   parseSupabaseCliPin,
   runReport,
+  stripeApiStatus,
   supabaseCliStatus,
   type ActionRow,
   type Collectors,
@@ -298,6 +300,24 @@ const SUPABASE_CLI_REGISTRY = JSON.stringify({
 });
 const SETUP_CLI_STEP =
   '      - uses: supabase/setup-cli@1111111111111111111111111111111111111111 # v3.0.1\n        with:\n          version: 2.122.0\n';
+// Trimmed copies of the shared api-version.ts, the root package.json, and the
+// installed stripe package's esm/apiVersion.js and package.json.
+const stripeFiles = (
+  overrides: Partial<{
+    apiVersion: string;
+    packageJson: string;
+    sdkApiVersion: string;
+    sdkPackageJson: string;
+  }> = {},
+) => ({
+  apiVersion:
+    "import type Stripe from './sdk.ts';\n\n// The API version every Stripe client sends.\nexport const STRIPE_API_VERSION: Stripe.LatestApiVersion = '2026-10-28.endive';\n",
+  packageJson: JSON.stringify({ devDependencies: { stripe: '23.1.0' } }),
+  sdkApiVersion:
+    "// File generated from our OpenAPI spec\nexport const ApiVersion = '2026-10-28.endive';\nexport const ApiMajorVersion = 'endive';\n",
+  sdkPackageJson: JSON.stringify({ name: 'stripe', version: '23.1.0' }),
+  ...overrides,
+});
 const SHA_A = 'a'.repeat(40);
 const SHA_B = 'b'.repeat(40);
 const actionRow = (overrides: Partial<ActionRow> = {}): ActionRow => ({
@@ -355,6 +375,7 @@ function baseInput(overrides: Partial<ReportInput> = {}): ReportInput {
         latest: { version: '3.0.0', releasedAt: '2026-10-21T00:00:00.000Z' },
       },
     },
+    stripeApi: { ok: true, value: parseStripeApi(stripeFiles()) },
     actions: { ok: true, value: [actionRow()] },
     ...overrides,
   };
@@ -734,6 +755,7 @@ describe('runReport', () => {
       packageManager: 'bun@1.4.2',
     }),
     supabaseCliRegistry: async () => SUPABASE_CLI_REGISTRY,
+    stripeApi: async () => stripeFiles(),
     workflows: async () => [
       `steps:\n  - uses: actions/checkout@${SHA_A} # v4.4.0\n  - uses: actions/checkout@${SHA_A} # v4.4.0\n`,
       `steps:\n${SETUP_CLI_STEP}`,
@@ -940,6 +962,45 @@ describe('runReport', () => {
     expect(result.exitCode).toBe(1);
     expect(result.errors).toEqual([
       'github actions: owner/repo has no release tag comment',
+    ]);
+  });
+
+  test('reads the Stripe files and exits 1 with the reason when they cannot be read', async () => {
+    const ok = await runReport(collectors(), NOW);
+    expect(ok.errors).toEqual([]);
+    expect(section(ok.markdown, 'Stripe API version')).toContain(
+      '| 2026-10-28.endive | stripe 23.1.0 | 2026-10-28.endive | Matches the SDK |',
+    );
+    const missing = await runReport(
+      collectors({
+        stripeApi: async () => {
+          throw new Error(
+            "ENOENT: no such file or directory, open 'node_modules/stripe/esm/apiVersion.js'",
+          );
+        },
+      }),
+      NOW,
+    );
+    expect(missing.exitCode).toBe(1);
+    expect(missing.errors).toEqual([
+      "stripe api version: ENOENT: no such file or directory, open 'node_modules/stripe/esm/apiVersion.js'",
+    ]);
+    expect(section(missing.markdown, 'Stripe API version')).toContain(
+      "Could not check: ENOENT: no such file or directory, open 'node_modules/stripe/esm/apiVersion.js'",
+    );
+    expect(missing.markdown).toContain('No high or critical vulnerabilities');
+    const stale = await runReport(
+      collectors({
+        stripeApi: async () =>
+          stripeFiles({
+            sdkPackageJson: JSON.stringify({ version: '22.1.0' }),
+          }),
+      }),
+      NOW,
+    );
+    expect(stale.exitCode).toBe(1);
+    expect(stale.errors).toEqual([
+      'stripe api version: installed stripe 22.1.0 is not the pinned 23.1.0: run `bun install`',
     ]);
   });
 });
@@ -1233,7 +1294,7 @@ describe('Supabase CLI section', () => {
       report.indexOf('## GitHub Actions'),
     );
     expect(report.split('\n')[2]).toContain(
-      'runtimes up to date, Supabase CLI up to date, actions up to date',
+      'runtimes up to date, Supabase CLI up to date, Stripe API version matches the SDK, actions up to date',
     );
   });
 
@@ -1249,6 +1310,121 @@ describe('Supabase CLI section', () => {
     expect(line({ ok: false, error: 'boom' })).toContain(
       'Supabase CLI check failed,',
     );
+  });
+});
+
+describe('Stripe API version section', () => {
+  const DAHLIA =
+    "export const STRIPE_API_VERSION: Stripe.LatestApiVersion = '2026-04-22.dahlia';\n";
+
+  test('reads the version the functions send, the pin and the API version the installed SDK ships', () => {
+    expect(parseStripeApi(stripeFiles())).toEqual({
+      sent: '2026-10-28.endive',
+      pinned: '23.1.0',
+      sdkApiVersion: '2026-10-28.endive',
+    });
+    expect(parseStripeApi(stripeFiles({ apiVersion: DAHLIA }))).toEqual({
+      sent: '2026-04-22.dahlia',
+      pinned: '23.1.0',
+      sdkApiVersion: '2026-10-28.endive',
+    });
+  });
+
+  test('rejects a missing literal, a missing pin and an installed SDK that is not the pin', () => {
+    expect(() =>
+      parseStripeApi(
+        stripeFiles({
+          apiVersion:
+            "export const STRIPE_API_VERSION = process.env.VERSION ?? '';\n",
+        }),
+      ),
+    ).toThrow(
+      'no STRIPE_API_VERSION literal in supabase/functions/_shared/stripe/api-version.ts',
+    );
+    expect(() =>
+      parseStripeApi(
+        stripeFiles({ packageJson: JSON.stringify({ devDependencies: {} }) }),
+      ),
+    ).toThrow('no stripe devDependency in package.json');
+    expect(() =>
+      parseStripeApi(stripeFiles({ sdkApiVersion: 'export {};\n' })),
+    ).toThrow('no ApiVersion in node_modules/stripe/esm/apiVersion.js');
+    expect(() =>
+      parseStripeApi(
+        stripeFiles({
+          sdkPackageJson: JSON.stringify({ name: 'stripe', version: '22.1.0' }),
+        }),
+      ),
+    ).toThrow(
+      'installed stripe 22.1.0 is not the pinned 23.1.0: run `bun install`',
+    );
+  });
+
+  test('matches when the functions send the API version the SDK ships', () => {
+    expect(stripeApiStatus(parseStripeApi(stripeFiles()))).toEqual({
+      actions: [],
+      notes: [],
+    });
+  });
+
+  test('flags a mismatch with both versions and the SDK version', () => {
+    expect(
+      stripeApiStatus(parseStripeApi(stripeFiles({ apiVersion: DAHLIA }))),
+    ).toEqual({
+      actions: [
+        'Mismatch: the functions send 2026-04-22.dahlia, stripe 23.1.0 ships 2026-10-28.endive. Bump the SDK pin and STRIPE_API_VERSION together in one change',
+      ],
+      notes: [],
+    });
+  });
+
+  test('renders the table and the guide pointer between Supabase CLI and GitHub Actions', () => {
+    const report = buildDependencyReport(baseInput(), NOW);
+    expect(section(report, 'Stripe API version')).toBe(
+      [
+        '## Stripe API version',
+        '',
+        '| STRIPE_API_VERSION | SDK pin | SDK API version | Status |',
+        '| --- | --- | --- | --- |',
+        '| 2026-10-28.endive | stripe 23.1.0 | 2026-10-28.endive | Matches the SDK |',
+        '',
+        'The functions send `STRIPE_API_VERSION` from `supabase/functions/_shared/stripe/api-version.ts`. The SDK pin is the root `stripe` devDependency, which only `supabase/functions/_shared/stripe/sdk.ts` imports. Move both in one change (see `docs/dependencies.md`, "Keep the Stripe SDK and API version together").',
+        '',
+      ].join('\n'),
+    );
+    expect(report.indexOf('## Stripe API version')).toBeGreaterThan(
+      report.indexOf('## Supabase CLI'),
+    );
+    expect(report.indexOf('## Stripe API version')).toBeLessThan(
+      report.indexOf('## GitHub Actions'),
+    );
+    expect(report.split('\n')[2]).toContain(
+      'Supabase CLI up to date, Stripe API version matches the SDK, actions up to date',
+    );
+  });
+
+  test('renders a mismatch row and words the summary for a mismatch and a failed check', () => {
+    const report = buildDependencyReport(
+      baseInput({
+        stripeApi: {
+          ok: true,
+          value: parseStripeApi(stripeFiles({ apiVersion: DAHLIA })),
+        },
+      }),
+      NOW,
+    );
+    expect(section(report, 'Stripe API version')).toContain(
+      '| 2026-04-22.dahlia | stripe 23.1.0 | 2026-10-28.endive | Mismatch: the functions send 2026-04-22.dahlia, stripe 23.1.0 ships 2026-10-28.endive. Bump the SDK pin and STRIPE_API_VERSION together in one change |',
+    );
+    expect(report.split('\n')[2]).toContain('Stripe API version mismatch,');
+    const failedReport = buildDependencyReport(
+      baseInput({ stripeApi: { ok: false, error: 'boom' } }),
+      NOW,
+    );
+    expect(section(failedReport, 'Stripe API version')).toContain(
+      'Could not check: boom',
+    );
+    expect(failedReport.split('\n')[2]).toContain('Stripe API check failed,');
   });
 });
 
