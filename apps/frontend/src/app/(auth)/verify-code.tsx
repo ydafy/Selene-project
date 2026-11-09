@@ -9,16 +9,16 @@ import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 
-import { ScreenLayout } from '../../shared/ui/screen-layout';
-import { AuthBackButton } from '../../features/auth/components/auth-back-button';
-import { OtpInput } from '../../shared/ui/otp-input';
-import { PrimaryButton } from '../../shared/ui/primary-button';
-import { TextLink } from '../../shared/ui/text-link';
-import { Box, Text } from '../../shared/ui/base';
-import { useAuth } from '../../features/auth/hooks/use-auth';
-import { mapAuthErrorKey } from '../../shared/lib/auth/auth-errors.logic';
-import { shouldStartCooldown } from '../../features/auth/logic/resend-cooldown.logic';
-import { useResendCooldown } from '../../features/auth/hooks/use-resend-cooldown';
+import { ScreenLayout } from '@/shared/ui/screen-layout';
+import { AuthBackButton } from '@/features/auth/components/auth-back-button';
+import { OtpInput } from '@/shared/ui/otp-input';
+import { PrimaryButton } from '@/shared/ui/primary-button';
+import { TextLink } from '@/shared/ui/text-link';
+import { Box, Text } from '@/shared/ui/base';
+import { useAuth } from '@/features/auth/hooks/use-auth';
+import { mapAuthErrorKey } from '@/shared/lib/auth/auth-errors.logic';
+import { shouldStartCooldown } from '@/features/auth/logic/resend-cooldown.logic';
+import { useResendCooldown } from '@/features/auth/hooks/use-resend-cooldown';
 
 export default function VerifyCodeScreen() {
   const { t } = useTranslation(['auth', 'common']);

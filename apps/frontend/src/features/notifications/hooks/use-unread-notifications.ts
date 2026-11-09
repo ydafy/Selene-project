@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '../../../shared/lib/supabase';
+import { supabase } from '@/shared/lib/supabase';
 import { countUnreadNotifications } from '../logic/notification-mutations.logic';
 
 export const useUnreadNotifications = (userId: string | undefined) => {

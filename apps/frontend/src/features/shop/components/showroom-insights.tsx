@@ -11,8 +11,8 @@ import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { Box, Text } from '../../../shared/ui/base';
-import { AppImage } from '../../../shared/ui/app-image';
+import { Box, Text } from '@/shared/ui/base';
+import { AppImage } from '@/shared/ui/app-image';
 import { colors } from '@/shared/theme/tokens';
 
 type SearchAction = {

@@ -4,9 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
 import type { EnrichedShipment } from '@selene/types';
 
-import { Box, Text } from '../../../shared/ui/base';
-import { PrimaryButton } from '../../../shared/ui/primary-button';
-import { Theme } from '../../../shared/theme';
+import { Box, Text } from '@/shared/ui/base';
+import { PrimaryButton } from '@/shared/ui/primary-button';
+import { Theme } from '@/shared/theme';
 import { canShowSellerLabelActions } from '../logic/shipment-label-visibility';
 
 interface OrderDetailActionsProps {

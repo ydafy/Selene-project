@@ -11,18 +11,18 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import type { TextInputInstance } from 'react-native';
 import Toast from 'react-native-toast-message';
 
-import { Box, Text } from '../../../shared/ui/base';
-import { FormTextInput } from '../../../shared/ui/form-text-input';
-import { PrimaryButton } from '../../../shared/ui/primary-button';
-import { GoogleButton } from '../../../shared/ui/google-button';
-import { TextLink } from '../../../shared/ui/text-link';
+import { Box, Text } from '@/shared/ui/base';
+import { FormTextInput } from '@/shared/ui/form-text-input';
+import { PrimaryButton } from '@/shared/ui/primary-button';
+import { GoogleButton } from '@/shared/ui/google-button';
+import { TextLink } from '@/shared/ui/text-link';
 import { useAuth, loginSchema, LoginData } from '../hooks/use-auth';
 import { useGoogleAuth } from '../hooks/use-google-auth'; // <--- NUEVO
 import {
   classifyLoginError,
   recoverUnconfirmedLogin,
 } from '../logic/auth-outcome.logic';
-import { mapAuthErrorKey } from '../../../shared/lib/auth/auth-errors.logic';
+import { mapAuthErrorKey } from '@/shared/lib/auth/auth-errors.logic';
 
 type LoginFormProps = {
   onSuccess: () => void;

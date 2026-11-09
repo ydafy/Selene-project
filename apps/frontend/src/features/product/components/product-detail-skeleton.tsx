@@ -1,9 +1,9 @@
 import { Dimensions } from 'react-native';
 import { useTheme } from '@shopify/restyle';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Box } from '../../../shared/ui/base';
-import { Skeleton } from '../../../shared/ui/skeleton'; // Nuestro componente Moti
-import { Theme } from '../../../shared/theme';
+import { Box } from '@/shared/ui/base';
+import { Skeleton } from '@/shared/ui/skeleton'; // Nuestro componente Moti
+import { Theme } from '@/shared/theme';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 

@@ -21,10 +21,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 
-import { Box, Text } from '../../../shared/ui/base';
-import { AppImage } from '../../../shared/ui/app-image';
-import { Theme } from '../../../shared/theme';
-import { getSharedStyles } from '../../../shared/theme/shared-styles';
+import { Box, Text } from '@/shared/ui/base';
+import { AppImage } from '@/shared/ui/app-image';
+import { Theme } from '@/shared/theme';
+import { getSharedStyles } from '@/shared/theme/shared-styles';
 
 // --- CONSTANTES ESTÁTICAS ---
 const BITS = [...Array(6)];

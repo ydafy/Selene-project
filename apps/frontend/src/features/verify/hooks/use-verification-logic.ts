@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import * as ImagePicker from 'expo-image-picker';
-import { supabase } from '../../../shared/lib/supabase';
+import { supabase } from '@/shared/lib/supabase';
 import {
   resolveMediaType,
   uploadMediaFromUri,
-} from '../../../shared/lib/upload-media';
+} from '@/shared/lib/upload-media';
 import { ProductCategory, ProductStatus } from '@selene/types';
 import {
   buildVerificationData,

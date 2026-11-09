@@ -19,25 +19,25 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton } from 'react-native-paper';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 
-import { Box } from '../../shared/ui/base';
-import { ScreenHeader } from '../../shared/ui/screen-header';
-import { GlobalHeader } from '../../shared/ui/global-header';
-import { ProductCard } from '../../shared/ui/product/product-card';
-import { offerPushPermission } from '../../features/notifications/lib/push-permission';
-import { ProductFavoriteButton } from '../../features/product/components/product-favorite-button';
-import { EmptyState } from '../../shared/ui/empty-state';
-import { ProductCardSkeleton } from '../../shared/ui/product/product-card-skeleton';
+import { Box } from '@/shared/ui/base';
+import { ScreenHeader } from '@/shared/ui/screen-header';
+import { GlobalHeader } from '@/shared/ui/global-header';
+import { ProductCard } from '@/shared/ui/product/product-card';
+import { offerPushPermission } from '@/features/notifications/lib/push-permission';
+import { ProductFavoriteButton } from '@/features/product/components/product-favorite-button';
+import { EmptyState } from '@/shared/ui/empty-state';
+import { ProductCardSkeleton } from '@/shared/ui/product/product-card-skeleton';
 import {
   FilterModal,
   FilterState,
-} from '../../features/search/components/filter-modal';
-import { ResultsFilterBar } from '../../features/search/components/results-filter-bar';
+} from '@/features/search/components/filter-modal';
+import { ResultsFilterBar } from '@/features/search/components/results-filter-bar';
 import {
   useSearchProducts,
   SearchFilters,
-} from '../../features/search/hooks/use-search-products';
-import { getMasonryItemHeight } from '../../shared/config/layout';
-import { Theme } from '../../shared/theme';
+} from '@/features/search/hooks/use-search-products';
+import { getMasonryItemHeight } from '@/shared/config/layout';
+import { Theme } from '@/shared/theme';
 import { Product, PublicProduct } from '@selene/types';
 
 const renderFavoriteButton = (product: PublicProduct) => (

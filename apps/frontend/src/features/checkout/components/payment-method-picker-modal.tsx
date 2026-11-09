@@ -16,15 +16,15 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 import { useStripe } from '@stripe/stripe-react-native';
 import { useTranslation } from 'react-i18next';
 
-import { Box, Text } from '../../../shared/ui/base';
-import { Theme } from '../../../shared/theme';
+import { Box, Text } from '@/shared/ui/base';
+import { Theme } from '@/shared/theme';
 import { usePaymentMethods } from '../hooks/use-payment-methods';
-import { useCheckoutStore } from '../../../shared/store/use-checkout-store';
+import { useCheckoutStore } from '@/shared/store/use-checkout-store';
 import { PaymentMethod } from '@selene/types';
-import { EmptyState } from '../../../shared/ui/empty-state';
-import { ErrorState } from '../../../shared/ui/error-state'; // Importado
-import { BrandIcon } from '../../../shared/ui/brand-icon';
-import { ConfirmDialog } from '../../../shared/ui/confirm-dialog';
+import { EmptyState } from '@/shared/ui/empty-state';
+import { ErrorState } from '@/shared/ui/error-state'; // Importado
+import { BrandIcon } from '@/shared/ui/brand-icon';
+import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
 import { googlePayTestEnv } from '../logic/stripe-mode';
 
 const MAX_CARDS = 3;

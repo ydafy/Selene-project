@@ -12,14 +12,14 @@ import { useTheme } from '@shopify/restyle';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import Toast from 'react-native-toast-message';
 
-import { Box, Text } from '../../shared/ui/base';
-import { ScreenLayout } from '../../shared/ui/screen-layout';
-import { PrimaryButton } from '../../shared/ui/primary-button';
-import { Theme } from '../../shared/theme';
+import { Box, Text } from '@/shared/ui/base';
+import { ScreenLayout } from '@/shared/ui/screen-layout';
+import { PrimaryButton } from '@/shared/ui/primary-button';
+import { Theme } from '@/shared/theme';
 import {
   buildSupportMailto,
   resolveSupportEmail,
-} from '../../shared/utils/support-email';
+} from '@/shared/utils/support-email';
 
 export default function SupportScreen() {
   const { t } = useTranslation('settings');

@@ -11,12 +11,12 @@ import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { Box, Text } from '../../../shared/ui/base';
-import { ProductMiniCard } from '../../../shared/ui/product/product-mini-card';
+import { Box, Text } from '@/shared/ui/base';
+import { ProductMiniCard } from '@/shared/ui/product/product-mini-card';
 import { useRecentlyViewed } from '../store/use-recently-viewed';
-import { getMasonryItemHeight } from '../../../shared/config/layout';
-import { getSharedStyles } from '../../../shared/theme/shared-styles';
-import { Theme } from '../../../shared/theme';
+import { getMasonryItemHeight } from '@/shared/config/layout';
+import { getSharedStyles } from '@/shared/theme/shared-styles';
+import { Theme } from '@/shared/theme';
 import { Product } from '@selene/types';
 
 const ShellRecentlyViewedComponent = () => {

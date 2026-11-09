@@ -5,9 +5,9 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 import { useTheme } from '@shopify/restyle';
 import { EnrichedShipment } from '@selene/types';
 
-import { Box, Text } from '../../../shared/ui/base';
-import { PrimaryButton } from '../../../shared/ui/primary-button';
-import { Theme } from '../../../shared/theme';
+import { Box, Text } from '@/shared/ui/base';
+import { PrimaryButton } from '@/shared/ui/primary-button';
+import { Theme } from '@/shared/theme';
 
 interface MultiSellerBannerProps {
   shipments: EnrichedShipment[];

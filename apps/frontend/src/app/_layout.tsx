@@ -21,34 +21,34 @@ import { onlineManager, focusManager } from '@tanstack/react-query';
 import NetInfo from '@react-native-community/netinfo';
 
 // Configuración y Temas
-import { toastConfig } from '../shared/ui/toast-config';
-import '../shared/i18n';
-import { paperTheme, theme, navigationTheme } from '../shared/theme';
+import { toastConfig } from '@/shared/ui/toast-config';
+import '@/shared/i18n';
+import { paperTheme, theme, navigationTheme } from '@/shared/theme';
 
 // Proveedores y Hooks
-import { AuthProvider } from '../shared/lib/auth/auth-provider';
-import type { SignOutWiring } from '../shared/lib/auth/create-sign-out';
-import { resetUserQueries } from '../shared/lib/auth/user-queries.logic';
-import { AuthModalProvider } from '../features/auth/components/auth-modal-provider';
-import { CaptchaProvider } from '../features/auth/components/captcha-provider';
-import { NotificationWatcher } from '../features/notifications/components/notification-watcher';
+import { AuthProvider } from '@/shared/lib/auth/auth-provider';
+import type { SignOutWiring } from '@/shared/lib/auth/create-sign-out';
+import { resetUserQueries } from '@/shared/lib/auth/user-queries.logic';
+import { AuthModalProvider } from '@/features/auth/components/auth-modal-provider';
+import { CaptchaProvider } from '@/features/auth/components/captcha-provider';
+import { NotificationWatcher } from '@/features/notifications/components/notification-watcher';
 
-import { PushRegistration } from '../features/notifications/components/push-registration';
-import { PushPermissionPrompt } from '../features/notifications/components/push-permission-prompt';
-import { PushTapHandler } from '../features/notifications/components/push-tap-handler';
-import { OfflineNotice } from '../shared/ui/offline-notice';
+import { PushRegistration } from '@/features/notifications/components/push-registration';
+import { PushPermissionPrompt } from '@/features/notifications/components/push-permission-prompt';
+import { PushTapHandler } from '@/features/notifications/components/push-tap-handler';
+import { OfflineNotice } from '@/shared/ui/offline-notice';
 
-import { queryClient } from '../shared/lib/query-client';
-import { useCheckoutStore } from '../shared/store/use-checkout-store';
-import { useCartStore } from '../shared/store/use-cart-store';
-import { useDisputeStore } from '../features/orders/store/use-dispute-store';
-import { useSearchStore } from '../features/search/store/use-search-store';
-import { useProductHistoryStore } from '../shared/store/use-product-history-store';
-import { useSellStore } from '../features/sell/store/use-sell-store';
-import { useReviewStore } from '../features/orders/store/use-review-store';
-import { pushRegistrar } from '../features/notifications/lib/push-registration';
+import { queryClient } from '@/shared/lib/query-client';
+import { useCheckoutStore } from '@/shared/store/use-checkout-store';
+import { useCartStore } from '@/shared/store/use-cart-store';
+import { useDisputeStore } from '@/features/orders/store/use-dispute-store';
+import { useSearchStore } from '@/features/search/store/use-search-store';
+import { useProductHistoryStore } from '@/shared/store/use-product-history-store';
+import { useSellStore } from '@/features/sell/store/use-sell-store';
+import { useReviewStore } from '@/features/orders/store/use-review-store';
+import { pushRegistrar } from '@/features/notifications/lib/push-registration';
 
-import { SystemGuard } from '../shared/ui/system-guard';
+import { SystemGuard } from '@/shared/ui/system-guard';
 
 // --- 1. BOOTSTRAP (Configuración Global Permanente - FUERA DEL COMPONENTE) ---
 SplashScreen.preventAutoHideAsync();

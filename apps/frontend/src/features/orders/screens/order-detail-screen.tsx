@@ -17,9 +17,9 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Box, Text } from '../../../shared/ui/base';
-import { GlobalHeader } from '../../../shared/ui/global-header';
-import { ScreenHeader } from '../../../shared/ui/screen-header';
+import { Box, Text } from '@/shared/ui/base';
+import { GlobalHeader } from '@/shared/ui/global-header';
+import { ScreenHeader } from '@/shared/ui/screen-header';
 import { OrderActionCard } from '../components/order-action-card';
 import { OrderStepper } from '../components/order-stepper';
 import { MultiSellerBanner } from '../components/multi-seller-banner';
@@ -32,15 +32,15 @@ import { ShipmentItemsCard } from '../components/shipment-items-card';
 import { OrderDetailActions } from '../components/order-detail-actions';
 import { OrderDetailDialogs } from '../components/order-detail-dialogs';
 import { ReviewProductButtons } from '../components/review-product-buttons';
-import { PrimaryButton } from '../../../shared/ui/primary-button';
-import { Skeleton } from '../../../shared/ui/skeleton';
+import { PrimaryButton } from '@/shared/ui/primary-button';
+import { Skeleton } from '@/shared/ui/skeleton';
 import { ShipmentNotFoundState } from '../components/shipment-not-found-state';
 import { ShipmentTrackingTimeline } from '../components/shipment-tracking-timeline';
 import { useOrderDetail, type ReviewData } from '../hooks/use-order-detail';
 import { useOrderDetailActions } from '../hooks/use-order-detail-actions';
-import { Theme } from '../../../shared/theme';
+import { Theme } from '@/shared/theme';
 import { shouldSuppressShipmentActionsForBuyerRecovery } from '../logic/order-recovery-view';
-import { describeError } from '../../../shared/utils/describe-error';
+import { describeError } from '@/shared/utils/describe-error';
 
 export function OrderDetailScreen() {
   const { t } = useTranslation(['orders', 'common']);

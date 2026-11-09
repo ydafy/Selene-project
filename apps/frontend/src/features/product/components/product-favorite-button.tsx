@@ -5,9 +5,9 @@ import {
   useProductFavorite,
   type OfferFavoritePush,
 } from '../hooks/use-product-favorite';
-import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
-import { AnimatedHeartButton } from '../../../shared/ui/animated-heart-button';
-import { useAuthModal } from '../../../shared/lib/auth/auth-modal-context';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
+import { AnimatedHeartButton } from '@/shared/ui/animated-heart-button';
+import { useAuthModal } from '@/shared/lib/auth/auth-modal-context';
 
 type ProductFavoriteButtonProps = {
   productId: string;

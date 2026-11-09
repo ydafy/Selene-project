@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import type { EnrichedOrder, EnrichedShipment } from '@selene/types';
 
-import { ConfirmDialog } from '../../../shared/ui/confirm-dialog';
+import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
 import { ReviewModal } from '@/features/orders/components/review-modal';
 
 interface OrderDetailDialogsProps {

@@ -11,19 +11,19 @@ import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 
-import { Box, Text } from '../../shared/ui/base';
-import { PrimaryButton } from '../../shared/ui/primary-button';
-import { GlobalHeader } from '../../shared/ui/global-header';
-import { ScreenHeader } from '../../shared/ui/screen-header';
-import { VerificationMissionCard } from '../../features/verify/components/verification-mission-card';
-import { BenchmarkGuideModal } from '../../features/verify/components/benchmark-guide-modal';
-import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
+import { Box, Text } from '@/shared/ui/base';
+import { PrimaryButton } from '@/shared/ui/primary-button';
+import { GlobalHeader } from '@/shared/ui/global-header';
+import { ScreenHeader } from '@/shared/ui/screen-header';
+import { VerificationMissionCard } from '@/features/verify/components/verification-mission-card';
+import { BenchmarkGuideModal } from '@/features/verify/components/benchmark-guide-modal';
+import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
 
-import { useVerificationLogic } from '../../features/verify/hooks/use-verification-logic';
+import { useVerificationLogic } from '@/features/verify/hooks/use-verification-logic';
 import {
   canSubmitVerification,
   resolveVerificationRequirements,
-} from '../../features/verify/logic/verification-submit';
+} from '@/features/verify/logic/verification-submit';
 import { theme } from '@/shared/theme';
 import { offerPushPermission } from '@/features/notifications/lib/push-permission';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';

@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { AppState, Linking, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { SettingsRow } from '../../../shared/ui/settings-row';
-import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
+import { SettingsRow } from '@/shared/ui/settings-row';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import { pushRegistrar } from '../lib/push-registration';
 import {
   getPushPermission,

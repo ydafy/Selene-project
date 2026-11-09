@@ -10,20 +10,20 @@ import { FlashList } from '@shopify/flash-list';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Box } from '../../shared/ui/base';
-import { GlobalHeader } from '../../shared/ui/global-header';
-import { EmptyState } from '../../shared/ui/empty-state';
-import { NotificationItem } from '../../features/notifications/components/notification-item';
-import { createNotificationPressHandler } from '../../features/notifications/logic/notification-press';
-import { useNotificationsList } from '../../features/notifications/hooks/use-notifications-list';
-import { useNotificationMutations } from '../../features/notifications/hooks/use-notification-mutations';
-import { useUnreadNotifications } from '../../features/notifications/hooks/use-unread-notifications';
-import { NotificationLinking } from '../../features/notifications/lib/notification-linking';
-import { useAuthContext } from '../../shared/lib/auth/auth-provider';
-import { Skeleton } from '../../shared/ui/skeleton';
-import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
+import { Box } from '@/shared/ui/base';
+import { GlobalHeader } from '@/shared/ui/global-header';
+import { EmptyState } from '@/shared/ui/empty-state';
+import { NotificationItem } from '@/features/notifications/components/notification-item';
+import { createNotificationPressHandler } from '@/features/notifications/logic/notification-press';
+import { useNotificationsList } from '@/features/notifications/hooks/use-notifications-list';
+import { useNotificationMutations } from '@/features/notifications/hooks/use-notification-mutations';
+import { useUnreadNotifications } from '@/features/notifications/hooks/use-unread-notifications';
+import { NotificationLinking } from '@/features/notifications/lib/notification-linking';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
+import { Skeleton } from '@/shared/ui/skeleton';
+import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
 import { useTheme } from '@shopify/restyle';
-import { Theme } from '../../shared/theme';
+import { Theme } from '@/shared/theme';
 
 export default function NotificationsScreen() {
   const { t } = useTranslation(['orders', 'common', 'notifications']);

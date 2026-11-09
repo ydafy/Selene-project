@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
-import { SettingsRow } from '../../../shared/ui/settings-row';
-import { resolveSupportEmail } from '../../../shared/utils/support-email';
+import { SettingsRow } from '@/shared/ui/settings-row';
+import { resolveSupportEmail } from '@/shared/utils/support-email';
 
 /**
  * Soporte section: opens the /profile/support modal, where users write to

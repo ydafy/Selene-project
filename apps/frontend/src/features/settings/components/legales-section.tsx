@@ -3,9 +3,9 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { PRIVACY_URL, TERMS_URL } from '@selene/types';
 
-import { SettingsRow } from '../../../shared/ui/settings-row';
-import { formatVersionLabel } from '../../../shared/utils/version-label';
-import { useOpenInBrowser } from '../../../shared/hooks/use-open-in-browser';
+import { SettingsRow } from '@/shared/ui/settings-row';
+import { formatVersionLabel } from '@/shared/utils/version-label';
+import { useOpenInBrowser } from '@/shared/hooks/use-open-in-browser';
 
 /**
  * Legales section: Terms + Privacy (tappable via expo-web-browser) and

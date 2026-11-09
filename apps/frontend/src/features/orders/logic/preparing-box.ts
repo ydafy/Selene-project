@@ -1,4 +1,4 @@
-import type { PackagePreset } from '../../../shared/hooks/use-system-config';
+import type { PackagePreset } from '@/shared/hooks/use-system-config';
 
 /** Mirrors FALLBACK_PACKAGE_PRESET in the generate-shipping-label Edge Function. */
 const FALLBACK_PACKAGE_PRESET = 'mobo_1';

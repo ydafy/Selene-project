@@ -156,7 +156,7 @@ describe('orders index role-aware navigation guard', () => {
 
   it('delegates navigation to the canonical shipment-aware resolver', () => {
     expect(index).toContain(
-      "from '../../../features/orders/logic/order-view-routing'",
+      "from '@/features/orders/logic/order-view-routing'",
     );
     expect(index).toContain('const view = resolveRoleAwareOrderView(');
     expect(index).toContain('shipments: item.shipments.map((shipment) => ({');

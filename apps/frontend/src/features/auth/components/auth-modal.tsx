@@ -23,11 +23,11 @@ import { useTheme } from '@shopify/restyle';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
-import { Box, Text } from '../../../shared/ui/base';
-import { Theme } from '../../../shared/theme';
+import { Box, Text } from '@/shared/ui/base';
+import { Theme } from '@/shared/theme';
 import { LoginForm } from './login-form';
 import { RegisterForm } from './register-form';
-import { AppImage } from '../../../shared/ui/app-image';
+import { AppImage } from '@/shared/ui/app-image';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- Metro resolves static asset requires at bundle time
 const logoPath = require('@/assets/images/SeleneLunaLogo.png');

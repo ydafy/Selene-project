@@ -6,7 +6,7 @@ let rpcResult: { data: unknown; error: unknown } = { data: [], error: null };
 let rpcThrows = false;
 const rpcCalls: Array<[string, unknown]> = [];
 
-mock.module('../../../shared/lib/supabase', () => ({
+mock.module('@/shared/lib/supabase', () => ({
   supabase: {
     rpc: async (name: string, args: unknown) => {
       rpcCalls.push([name, args]);

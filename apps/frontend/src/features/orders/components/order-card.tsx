@@ -15,11 +15,11 @@ import Reanimated, { FadeInDown } from 'react-native-reanimated';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { Box, Text } from '../../../shared/ui/base';
-import { AppImage } from '../../../shared/ui/app-image';
-import { Theme } from '../../../shared/theme';
+import { Box, Text } from '@/shared/ui/base';
+import { AppImage } from '@/shared/ui/app-image';
+import { Theme } from '@/shared/theme';
 
-import { formatCurrency, formatDate } from '../../../shared/utils/format';
+import { formatCurrency, formatDate } from '@/shared/utils/format';
 import { orderCardAmountCents } from '../logic/order-summary-state';
 import {
   getOrderStatusColor,

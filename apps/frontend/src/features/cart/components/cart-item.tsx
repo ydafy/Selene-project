@@ -7,11 +7,11 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 
 import { Product } from '@selene/types';
 
-import { Box, Text } from '../../../shared/ui/base';
-import { AppImage } from '../../../shared/ui/app-image';
-import { AppChip } from '../../../shared/ui/app-chip';
-import { Theme } from '../../../shared/theme';
-import { formatCurrency } from '../../../shared/utils/format'; // <--- AGREGADO
+import { Box, Text } from '@/shared/ui/base';
+import { AppImage } from '@/shared/ui/app-image';
+import { AppChip } from '@/shared/ui/app-chip';
+import { Theme } from '@/shared/theme';
+import { formatCurrency } from '@/shared/utils/format'; // <--- AGREGADO
 
 type CartItemProps = {
   product: Product;

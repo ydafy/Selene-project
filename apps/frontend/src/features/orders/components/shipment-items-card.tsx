@@ -5,10 +5,10 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 import { useTheme } from '@shopify/restyle';
 import type { EnrichedShipment } from '@selene/types';
 
-import { Box, Text } from '../../../shared/ui/base';
-import { AppImage } from '../../../shared/ui/app-image';
-import { formatCurrency } from '../../../shared/utils/format';
-import { Theme } from '../../../shared/theme';
+import { Box, Text } from '@/shared/ui/base';
+import { AppImage } from '@/shared/ui/app-image';
+import { formatCurrency } from '@/shared/utils/format';
+import { Theme } from '@/shared/theme';
 import { cardStyles } from './order-card-styles';
 
 interface ShipmentItemsCardProps {

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Box, Text } from '../../../shared/ui/base';
+import { Box, Text } from '@/shared/ui/base';
 
 const STEP_KEYS = [
   'purchaseProgress.published',

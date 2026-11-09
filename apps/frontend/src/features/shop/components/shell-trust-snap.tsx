@@ -9,12 +9,12 @@ import { StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@shopify/restyle';
 import { BlurView } from 'expo-blur';
-import { AppVideo } from '../../../shared/ui/app-video';
+import { AppVideo } from '@/shared/ui/app-video';
 import { useTranslation } from 'react-i18next';
 
-import { Box, Text } from '../../../shared/ui/base';
-import { PrimaryButton } from '../../../shared/ui/primary-button';
-import { Theme } from '../../../shared/theme';
+import { Box, Text } from '@/shared/ui/base';
+import { PrimaryButton } from '@/shared/ui/primary-button';
+import { Theme } from '@/shared/theme';
 
 import TrustVideo from '@/assets/videos/shop/Trustvideo.mp4';
 import rtx from '@/assets/images/shop/5090.jpg';

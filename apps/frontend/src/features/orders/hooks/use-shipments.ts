@@ -5,7 +5,7 @@
  */
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '../../../shared/lib/supabase';
+import { supabase } from '@/shared/lib/supabase';
 import {
   EnrichedShipment,
   Dispute,
@@ -15,7 +15,7 @@ import {
   Product,
   Enums,
 } from '@selene/types';
-import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import { canCancelShipment } from '../logic/shipment-cancel-safety';
 import { canConfirmShipmentDelivery } from '../logic/shipment-confirmation';
 import { ITEM_PRODUCT_EMBED, mergeItemProducts } from './use-orders';

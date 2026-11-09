@@ -4,12 +4,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { Notification } from '@selene/types';
 import { useTranslation } from 'react-i18next';
 
-import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
-import { supabase } from '../../../shared/lib/supabase';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
+import { supabase } from '@/shared/lib/supabase';
 import { invalidateNotificationKeys } from '../hooks/use-notification-mutations';
 import { pushTapRouter } from '../lib/push-tap';
 import { NotificationLinking } from '../lib/notification-linking';
-import { ConfirmDialog } from '../../../shared/ui/confirm-dialog';
+import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
 import {
   createLaunchDigestGate,
   scanLaunchDigest,

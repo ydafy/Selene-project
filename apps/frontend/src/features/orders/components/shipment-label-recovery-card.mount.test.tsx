@@ -34,11 +34,11 @@ if (process.env.SELENE_LABEL_RECOVERY_CHILD !== '1') {
   mock.module('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key }),
   }));
-  mock.module('../../../shared/ui/base', () => ({
+  mock.module('@/shared/ui/base', () => ({
     Box: host('Box'),
     Text: host('Text'),
   }));
-  mock.module('../../../shared/ui/primary-button', () => ({
+  mock.module('@/shared/ui/primary-button', () => ({
     // The library only accepts strings inside a text host, so the label sits in one.
     PrimaryButton: ({
       children,

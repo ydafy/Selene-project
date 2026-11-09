@@ -58,10 +58,10 @@ if (process.env.SELENE_PRODUCT_CART_CHILD !== '1') {
   mock.module('@tanstack/react-query', () => ({
     useQueryClient: () => ({ setQueriesData: () => {} }),
   }));
-  mock.module('../../../shared/lib/supabase', () => ({
+  mock.module('@/shared/lib/supabase', () => ({
     supabase: { from: () => query },
   }));
-  mock.module('../../../shared/store/use-cart-store', () => ({
+  mock.module('@/shared/store/use-cart-store', () => ({
     useCartStore: () => ({ addItem, isInCart: () => false }),
   }));
 

@@ -4,17 +4,17 @@ import { useRouter, Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Box, Text } from '../../shared/ui/base';
-import { GlobalHeader } from '../../shared/ui/global-header';
-import { ScreenHeader } from '../../shared/ui/screen-header';
-import { WizardSteps } from '../../features/sell/components/wizard-steps';
-import { PrimaryButton } from '../../shared/ui/primary-button';
-import { ImageGridPicker } from '../../features/sell/components/image-grid-picker';
-import { useSellStore } from '../../features/sell/store/use-sell-store';
-import { useProductImages } from '../../features/sell/hooks/use-product-images';
+import { Box, Text } from '@/shared/ui/base';
+import { GlobalHeader } from '@/shared/ui/global-header';
+import { ScreenHeader } from '@/shared/ui/screen-header';
+import { WizardSteps } from '@/features/sell/components/wizard-steps';
+import { PrimaryButton } from '@/shared/ui/primary-button';
+import { ImageGridPicker } from '@/features/sell/components/image-grid-picker';
+import { useSellStore } from '@/features/sell/store/use-sell-store';
+import { useProductImages } from '@/features/sell/hooks/use-product-images';
 import { SELL_STEP_DEFINITIONS } from '@/features/sell/logic/sell-steps';
-import { triggerHaptic } from '../../shared/utils/haptics';
-import { reorderImages } from '../../features/sell/logic/image-reorder';
+import { triggerHaptic } from '@/shared/utils/haptics';
+import { reorderImages } from '@/features/sell/logic/image-reorder';
 
 const MAX_IMAGES = 5;
 

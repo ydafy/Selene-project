@@ -5,24 +5,24 @@ import { useTranslation } from 'react-i18next';
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Box } from '../../../shared/ui/base';
-import { GlobalHeader } from '../../../shared/ui/global-header';
-import { SegmentedControl } from '../../../shared/ui/segmented-control';
-import { EmptyState } from '../../../shared/ui/empty-state';
-import { OrderCard } from '../../../features/orders/components/order-card';
-import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
+import { Box } from '@/shared/ui/base';
+import { GlobalHeader } from '@/shared/ui/global-header';
+import { SegmentedControl } from '@/shared/ui/segmented-control';
+import { EmptyState } from '@/shared/ui/empty-state';
+import { OrderCard } from '@/features/orders/components/order-card';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import {
   useMyPurchases,
   useMySales,
   type CompatEnrichedOrder,
-} from '../../../features/orders/hooks/use-orders';
-import { Skeleton } from '../../../shared/ui/skeleton';
+} from '@/features/orders/hooks/use-orders';
+import { Skeleton } from '@/shared/ui/skeleton';
 import { useTheme } from 'react-native-paper';
 import { Theme } from '@/shared/theme';
 import { RefreshControl } from 'react-native';
-import { useSeleneRefresh } from '../../../shared/hooks/use-selene-refresh';
+import { useSeleneRefresh } from '@/shared/hooks/use-selene-refresh';
 import { ErrorState } from '@/shared/ui/error-state';
-import { resolveRoleAwareOrderView } from '../../../features/orders/logic/order-view-routing';
+import { resolveRoleAwareOrderView } from '@/features/orders/logic/order-view-routing';
 
 export default function OrdersScreen() {
   const { t } = useTranslation('orders');

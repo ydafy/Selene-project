@@ -8,41 +8,41 @@ import { IconButton } from 'react-native-paper';
 import { useState } from 'react';
 
 // Componentes Base y UI
-import { Box, Text } from '../../shared/ui/base';
-import { PrimaryButton } from '../../shared/ui/primary-button';
+import { Box, Text } from '@/shared/ui/base';
+import { PrimaryButton } from '@/shared/ui/primary-button';
 
 // Componentes de Layout
-import { GlobalHeader } from '../../shared/ui/global-header';
-import { BottomActionBar } from '../../shared/ui/bottom-action-bar';
+import { GlobalHeader } from '@/shared/ui/global-header';
+import { BottomActionBar } from '@/shared/ui/bottom-action-bar';
 
 // Componentes de Feature (Producto)
-import { ProductImageGallery } from '../../features/product/components/product-image-gallery';
-import { ProductSpecificationsGrid } from '../../features/product/components/product-specifications-grid';
-import { offerPushPermission } from '../../features/notifications/lib/push-permission';
-import { ProductFavoriteButton } from '../../features/product/components/product-favorite-button';
-import { ProductSellerCard } from '../../features/product/components/product-seller-card';
-import { ProductDetailSkeleton } from '../../features/product/components/product-detail-skeleton';
-import { OptionsMenu } from '../../shared/ui/options-menu';
-import { AppChip } from '../../shared/ui/app-chip';
-import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
+import { ProductImageGallery } from '@/features/product/components/product-image-gallery';
+import { ProductSpecificationsGrid } from '@/features/product/components/product-specifications-grid';
+import { offerPushPermission } from '@/features/notifications/lib/push-permission';
+import { ProductFavoriteButton } from '@/features/product/components/product-favorite-button';
+import { ProductSellerCard } from '@/features/product/components/product-seller-card';
+import { ProductDetailSkeleton } from '@/features/product/components/product-detail-skeleton';
+import { OptionsMenu } from '@/shared/ui/options-menu';
+import { AppChip } from '@/shared/ui/app-chip';
+import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
 
 // Hooks y Utilidades
 import {
   fetchSellerPaymentReadiness,
   isSellerBlocked,
-} from '../../features/payments/hooks/use-seller-payment-readiness';
-import { useProductCart } from '../../features/product/hooks/use-product-cart';
-import { useProductShare } from '../../features/product/hooks/use-product-share';
-import { useProduct } from '../../features/product/hooks/use-product';
-import { useAuthContext } from '../../shared/lib/auth/auth-provider';
-import { Theme } from '../../shared/theme';
-import { useProductFavorite } from '../../features/product/hooks/use-product-favorite';
-import { useProductHistoryStore } from '../../shared/store/use-product-history-store';
+} from '@/features/payments/hooks/use-seller-payment-readiness';
+import { useProductCart } from '@/features/product/hooks/use-product-cart';
+import { useProductShare } from '@/features/product/hooks/use-product-share';
+import { useProduct } from '@/features/product/hooks/use-product';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
+import { Theme } from '@/shared/theme';
+import { useProductFavorite } from '@/features/product/hooks/use-product-favorite';
+import { useProductHistoryStore } from '@/shared/store/use-product-history-store';
 import {
   PurchaseDialogVariant,
   purchaseDialogContent,
-} from '../../features/product/logic/product-purchase-gate';
-import { PurchaseProgressSteps } from '../../features/product/components/purchase-progress-steps';
+} from '@/features/product/logic/product-purchase-gate';
+import { PurchaseProgressSteps } from '@/features/product/components/purchase-progress-steps';
 import { formatCurrency } from '@/shared/utils/format';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 

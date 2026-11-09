@@ -7,12 +7,12 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ErrorBoundaryProps } from 'expo-router';
 import Animated, { withSpring } from 'react-native-reanimated';
-import { Box, Text } from '../shared/ui/base';
-import { PrimaryButton } from '../shared/ui/primary-button';
-import { getSharedStyles } from '../shared/theme/shared-styles';
+import { Box, Text } from '@/shared/ui/base';
+import { PrimaryButton } from '@/shared/ui/primary-button';
+import { getSharedStyles } from '@/shared/theme/shared-styles';
 import { useTheme } from '@shopify/restyle';
-import { Theme } from '../shared/theme';
-import { supabase } from '../shared/lib/supabase';
+import { Theme } from '@/shared/theme';
+import { supabase } from '@/shared/lib/supabase';
 
 // Mount entrance: scale 0.9 -> 1 with a fade, driven by a spring.
 const contentEntering = () => {

@@ -13,27 +13,27 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 import { useTheme } from '@shopify/restyle';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Box, Text } from '../../../../shared/ui/base';
-import { GlobalHeader } from '../../../../shared/ui/global-header';
-import { PrimaryButton } from '../../../../shared/ui/primary-button';
-import { Skeleton } from '../../../../shared/ui/skeleton';
-import { OrderShipmentCard } from '../../../../features/orders/components/order-shipment-card';
-import { useOrderById } from '../../../../features/orders/hooks/use-orders';
-import { useShipmentsByOrder } from '../../../../features/orders/hooks/use-shipments';
-import { formatCurrency, formatDate } from '../../../../shared/utils/format';
-import { Theme } from '../../../../shared/theme';
-import { useAuthContext } from '../../../../shared/lib/auth/auth-provider';
-import { resolveRoleAwareOrderView } from '../../../../features/orders/logic/order-view-routing';
+import { Box, Text } from '@/shared/ui/base';
+import { GlobalHeader } from '@/shared/ui/global-header';
+import { PrimaryButton } from '@/shared/ui/primary-button';
+import { Skeleton } from '@/shared/ui/skeleton';
+import { OrderShipmentCard } from '@/features/orders/components/order-shipment-card';
+import { useOrderById } from '@/features/orders/hooks/use-orders';
+import { useShipmentsByOrder } from '@/features/orders/hooks/use-shipments';
+import { formatCurrency, formatDate } from '@/shared/utils/format';
+import { Theme } from '@/shared/theme';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
+import { resolveRoleAwareOrderView } from '@/features/orders/logic/order-view-routing';
 import { getOrderStatusLabel } from '@/features/orders/logic/order-status';
 import {
   resolveBuyerCheckoutRecoveryView,
   shouldSuppressShipmentActionsForBuyerRecovery,
-} from '../../../../features/orders/logic/order-recovery-view';
+} from '@/features/orders/logic/order-recovery-view';
 
 import {
   resolveSummaryState,
   summaryAmounts,
-} from '../../../../features/orders/logic/order-summary-state';
+} from '@/features/orders/logic/order-summary-state';
 
 export default function OrderSummaryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

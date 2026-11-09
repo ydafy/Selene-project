@@ -6,10 +6,10 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 import Animated, { withSpring } from 'react-native-reanimated';
 import { useTheme } from '@shopify/restyle';
 
-import { Box, Text } from '../../../shared/ui/base';
-import { PrimaryButton } from '../../../shared/ui/primary-button';
-import { ConfirmDialog } from '../../../shared/ui/confirm-dialog';
-import { SellerPaymentExplanation } from '../../../shared/ui/seller-payment-explanation';
+import { Box, Text } from '@/shared/ui/base';
+import { PrimaryButton } from '@/shared/ui/primary-button';
+import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
+import { SellerPaymentExplanation } from '@/shared/ui/seller-payment-explanation';
 import { ShippingLabelCard } from './shipping-label-card';
 import { EnrichedOrder, EnrichedShipment } from '@selene/types';
 import { useOrderCountdown } from '@/features/orders/hooks/use-order-countdown';

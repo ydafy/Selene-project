@@ -7,11 +7,11 @@ import {
 } from '@gorhom/bottom-sheet';
 import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
-import { AppImageViewer } from '../../../shared/ui/app-image-viewer';
+import { AppImageViewer } from '@/shared/ui/app-image-viewer';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
-import { Box, Text } from '../../../shared/ui/base';
-import { Theme } from '../../../shared/theme';
+import { Box, Text } from '@/shared/ui/base';
+import { Theme } from '@/shared/theme';
 
 // --- 1. ASSETS: BENCHMARK (GPU/CPU) ---
 // eslint-disable-next-line @typescript-eslint/no-require-imports

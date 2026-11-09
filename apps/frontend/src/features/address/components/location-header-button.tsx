@@ -3,9 +3,9 @@ import { TouchableOpacity } from 'react-native';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from '@shopify/restyle';
 
-import { Box, Text } from '../../../shared/ui/base';
-import { Theme } from '../../../shared/theme';
-import { useAddresses } from '../../../shared/hooks/use-addresses';
+import { Box, Text } from '@/shared/ui/base';
+import { Theme } from '@/shared/theme';
+import { useAddresses } from '@/shared/hooks/use-addresses';
 
 type LocationHeaderButtonProps = {
   onPress: () => void;

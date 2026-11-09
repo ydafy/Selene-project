@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '../../../shared/lib/supabase';
+import { supabase } from '@/shared/lib/supabase';
 import { fetchMyFavorites } from './fetch-my-favorites';
 
 export const useMyFavorites = (

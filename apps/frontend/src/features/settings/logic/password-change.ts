@@ -11,7 +11,7 @@
  * body, so the field must use GoTrue's snake_case name.
  */
 
-import { mapAuthErrorKey } from '../../../shared/lib/auth/auth-errors.logic';
+import { mapAuthErrorKey } from '@/shared/lib/auth/auth-errors.logic';
 
 const MIN_LENGTH = 8;
 

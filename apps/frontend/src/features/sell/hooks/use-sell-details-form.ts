@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useSellStore } from '@/features/sell/store/use-sell-store';
 import { useShippingQuote } from '@/features/sell/hooks/use-shipping-quote';
-import { useSystemConfig } from '../../../shared/hooks/use-system-config';
+import { useSystemConfig } from '@/shared/hooks/use-system-config';
 import {
   calculateSellerProceedsEstimate,
   formatCentsAsMx,

@@ -12,7 +12,7 @@ describe('role-aware orders list routing', () => {
 
   it('delegates buyer and seller navigation to the shared resolver', () => {
     expect(index).toContain(
-      "from '../../../features/orders/logic/order-view-routing'",
+      "from '@/features/orders/logic/order-view-routing'",
     );
     expect(index).toContain('resolveRoleAwareOrderView(');
     expect(index).toContain('router.push(view.href as Href)');
@@ -28,7 +28,7 @@ describe('role-aware order summary isolation', () => {
 
   it('uses the shared resolver and redirects non-summary views to their canonical target', () => {
     expect(summary).toContain(
-      "from '../../../../features/orders/logic/order-view-routing'",
+      "from '@/features/orders/logic/order-view-routing'",
     );
     expect(summary).toContain('resolveRoleAwareOrderView(');
     expect(summary).toContain("view.kind !== 'summary'");

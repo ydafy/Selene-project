@@ -9,8 +9,8 @@ import Toast from 'react-native-toast-message';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { Product } from '@selene/types';
-import { useCartStore } from '../../../shared/store/use-cart-store';
-import { supabase } from '../../../shared/lib/supabase';
+import { useCartStore } from '@/shared/store/use-cart-store';
+import { supabase } from '@/shared/lib/supabase';
 import {
   decidePurchaseGate,
   PurchaseDialogVariant,

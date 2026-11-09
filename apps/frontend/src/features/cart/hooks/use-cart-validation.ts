@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useCartStore } from '../../../shared/store/use-cart-store';
+import { useCartStore } from '@/shared/store/use-cart-store';
 import { useMemo } from 'react';
 
 /** Reads which products can no longer be bought; the route passes the orders feature's check. */

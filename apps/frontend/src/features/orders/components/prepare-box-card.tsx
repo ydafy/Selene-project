@@ -3,9 +3,9 @@ import { useTranslation } from 'react-i18next';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from '@shopify/restyle';
 
-import { Box, Text } from '../../../shared/ui/base';
-import type { PackagePreset } from '../../../shared/hooks/use-system-config';
-import { Theme } from '../../../shared/theme';
+import { Box, Text } from '@/shared/ui/base';
+import type { PackagePreset } from '@/shared/hooks/use-system-config';
+import { Theme } from '@/shared/theme';
 
 interface PrepareBoxCardProps {
   productName: string | null | undefined;

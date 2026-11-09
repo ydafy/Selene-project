@@ -6,20 +6,20 @@ import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shopify/restyle';
 
-import { Box } from '../../shared/ui/base';
-import { GlobalHeader } from '../../shared/ui/global-header';
-import { EmptyState } from '../../shared/ui/empty-state';
-import { ErrorState } from '../../shared/ui/error-state';
-import { ProductCard } from '../../shared/ui/product/product-card';
-import { offerPushPermission } from '../../features/notifications/lib/push-permission';
-import { ProductFavoriteButton } from '../../features/product/components/product-favorite-button';
-import { ProductCardSkeleton } from '../../shared/ui/product/product-card-skeleton';
-import { PrimaryButton } from '../../shared/ui/primary-button';
-import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
-import { useAllFavorites } from '../../features/profile/hooks/use-all-favorites';
-import { useAuthContext } from '../../shared/lib/auth/auth-provider';
-import { useSeleneRefresh } from '../../shared/hooks/use-selene-refresh';
-import { Theme } from '../../shared/theme';
+import { Box } from '@/shared/ui/base';
+import { GlobalHeader } from '@/shared/ui/global-header';
+import { EmptyState } from '@/shared/ui/empty-state';
+import { ErrorState } from '@/shared/ui/error-state';
+import { ProductCard } from '@/shared/ui/product/product-card';
+import { offerPushPermission } from '@/features/notifications/lib/push-permission';
+import { ProductFavoriteButton } from '@/features/product/components/product-favorite-button';
+import { ProductCardSkeleton } from '@/shared/ui/product/product-card-skeleton';
+import { PrimaryButton } from '@/shared/ui/primary-button';
+import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
+import { useAllFavorites } from '@/features/profile/hooks/use-all-favorites';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
+import { useSeleneRefresh } from '@/shared/hooks/use-selene-refresh';
+import { Theme } from '@/shared/theme';
 import type { Product, PublicProduct } from '@selene/types';
 
 export default function FavoritesScreen() {

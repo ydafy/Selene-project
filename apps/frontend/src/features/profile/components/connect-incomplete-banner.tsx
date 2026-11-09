@@ -1,11 +1,11 @@
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 
-import { NoticeBanner } from '../../../shared/ui/notice-banner';
-import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
-import { useConnectOnboarding } from '../../../shared/hooks/use-connect-onboarding';
+import { NoticeBanner } from '@/shared/ui/notice-banner';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
+import { useConnectOnboarding } from '@/shared/hooks/use-connect-onboarding';
 import { useMyListings } from '../hooks/use-my-listings';
-import { resolveConnectBanner } from '../../../shared/utils/connect-banner';
+import { resolveConnectBanner } from '@/shared/utils/connect-banner';
 
 /**
  * Tells sellers with listings why buyers cannot pay them until Stripe Connect

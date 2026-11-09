@@ -14,31 +14,31 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton } from 'react-native-paper';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
-import { Box, Text } from '../../shared/ui/base';
-import { GlobalHeader } from '../../shared/ui/global-header';
-import { LocationHeaderButton } from '../../features/address/components/location-header-button';
-import { AddressPickerModal } from '../../shared/ui/address-picker-modal';
-import { GridShell } from '../../shared/ui/grid-shell';
-import { HomeSkeleton } from '../../features/home/components/home-skeleton';
+import { Box, Text } from '@/shared/ui/base';
+import { GlobalHeader } from '@/shared/ui/global-header';
+import { LocationHeaderButton } from '@/features/address/components/location-header-button';
+import { AddressPickerModal } from '@/shared/ui/address-picker-modal';
+import { GridShell } from '@/shared/ui/grid-shell';
+import { HomeSkeleton } from '@/features/home/components/home-skeleton';
 
-import { ShellHero } from '../../features/home/components/shell-hero';
-import { ShellLogistics } from '../../features/home/components/shell-logistics';
-import { ShellCategoriesV2 } from '../../features/home/components/shell-categories-v2';
-import { ShellRecentDrops } from '../../features/home/components/shell-recent-drops';
-import { ShellBenchmarksFeature } from '../../features/home/components/shell-benchmarks-feature';
-import { ShellTrustPipeline } from '../../features/home/components/shell-trust-pipeline';
-import { ShellRecentlyViewed } from '../../features/home/components/shell-recently-viewed';
-import { ShellEditorial } from '../../features/home/components/shell-editorial';
-import { ShellFooter } from '../../features/home/components/shell-footer';
-import { ShellShippingLine } from '../../features/home/components/shell-shipping-line';
-import { ShellPaymentsFeature } from '../../features/home/components/shell-payments-feature';
+import { ShellHero } from '@/features/home/components/shell-hero';
+import { ShellLogistics } from '@/features/home/components/shell-logistics';
+import { ShellCategoriesV2 } from '@/features/home/components/shell-categories-v2';
+import { ShellRecentDrops } from '@/features/home/components/shell-recent-drops';
+import { ShellBenchmarksFeature } from '@/features/home/components/shell-benchmarks-feature';
+import { ShellTrustPipeline } from '@/features/home/components/shell-trust-pipeline';
+import { ShellRecentlyViewed } from '@/features/home/components/shell-recently-viewed';
+import { ShellEditorial } from '@/features/home/components/shell-editorial';
+import { ShellFooter } from '@/features/home/components/shell-footer';
+import { ShellShippingLine } from '@/features/home/components/shell-shipping-line';
+import { ShellPaymentsFeature } from '@/features/home/components/shell-payments-feature';
 
-import { useCheckoutStore } from '../../shared/store/use-checkout-store';
-import { useAddresses } from '../../shared/hooks/use-addresses';
-import { useProducts } from '../../shared/hooks/use-products';
+import { useCheckoutStore } from '@/shared/store/use-checkout-store';
+import { useAddresses } from '@/shared/hooks/use-addresses';
+import { useProducts } from '@/shared/hooks/use-products';
 import { useExperienceStore } from '@/features/home/store/use-experience-store';
 import { useUnreadNotifications } from '@/features/notifications/hooks/use-unread-notifications';
-import { Theme } from '../../shared/theme';
+import { Theme } from '@/shared/theme';
 import { Address } from '@selene/types';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSeleneRefresh } from '@/shared/hooks/use-selene-refresh';
@@ -46,8 +46,8 @@ import { useNetInfo } from '@react-native-community/netinfo';
 import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import { ErrorState } from '@/shared/ui/error-state';
 import { useTranslation } from 'react-i18next';
-import { getTabDockMetrics } from '../../shared/config/layout';
-import { formatNotificationBadgeCount } from '../../features/notifications/logic/notification-badge';
+import { getTabDockMetrics } from '@/shared/config/layout';
+import { formatNotificationBadgeCount } from '@/features/notifications/logic/notification-badge';
 
 // --- RUTAS DEL APP ---
 const ROUTES = {

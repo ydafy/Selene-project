@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { EnrichedOrder, EnrichedShipment } from '@selene/types';
-import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import {
   useShipmentTrackingEvents,
   useShipmentTrackingUrl,
