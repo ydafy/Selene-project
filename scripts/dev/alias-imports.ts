@@ -131,6 +131,8 @@ function main(): number {
         .replace(/\/$/, '');
       if (target === '..' || target.startsWith('../')) continue;
       if (target === '.') {
+        // From a file directly under `src/`, `.` is its own group's index.
+        if (owner === '.') continue;
         manual.push(
           `${file}:${lineAt(first.start)}: ${spec} names src/ itself; not rewritten`,
         );

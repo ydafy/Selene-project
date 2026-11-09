@@ -202,6 +202,16 @@ describe('leaves everything else untouched', () => {
     );
   });
 
+  test('a file directly under src/ importing . stays relative without a report', () => {
+    const text = "import { a } from '.';\nimport { b } from './';\n";
+    const root = makeRepo({ [`${A}/src/main.tsx`]: text });
+    const r = run(root, [A, '--apply']);
+    expect(read(root, `${A}/src/main.tsx`)).toBe(text);
+    expect(r.out).toContain(
+      'Summary: 0 files edited, 0 specifiers rewritten, 0 items to check manually',
+    );
+  });
+
   test('bare . and .. inside their own folder stay relative', () => {
     const text = "import { a } from '.';\nimport { b } from '..';\n";
     const root = makeRepo({
