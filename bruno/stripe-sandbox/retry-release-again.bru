@@ -1,0 +1,50 @@
+meta {
+  name: retry-release-again
+  type: http
+  seq: 21
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/release-connect-payout
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+script:pre-request {
+  if (!bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID") || !bru.getProcessEnv("STRIPE_SECRET_KEY")) {
+    bru.runner.skipRequest();
+  }
+}
+
+body:json {
+  { "retryRunId": "{{failedRunId}}" }
+}
+
+script:post-response {
+  const key = bru.getEnvVar("serviceRoleKey");
+  const children = await bru.sendRequest({
+    method: "GET",
+    url: bru.getEnvVar("baseUrl") + "/rest/v1/connect_payout_runs?retry_of_run_id=eq." + bru.getVar("failedRunId") + "&select=id",
+    headers: { apikey: key, Authorization: "Bearer " + key },
+  });
+  bru.setVar("retryChildIds", JSON.stringify(children.data.map((row) => row.id)));
+}
+
+tests {
+  test("a second retry of the same failed run is refused and pays nothing twice", function () {
+    expect(res.getStatus()).to.equal(409);
+    expect(res.getBody()).to.deep.equal({ success: false, error: "PAYOUT_RELEASE_ALREADY_ACTIVE" });
+    expect(JSON.parse(bru.getVar("retryChildIds"))).to.deep.equal([bru.getVar("retryRunId")]);
+  });
+}
+
+docs {
+  The paid child run keeps an active mapping on the shipment, so the retry stops at the
+  active-release check (release-connect-payout.ts:824-832) before any Stripe write; the
+  failed run still has exactly one child.
+}
