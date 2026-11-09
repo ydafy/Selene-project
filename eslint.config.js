@@ -5,8 +5,8 @@ const js = require('@eslint/js');
 const globals = require('globals');
 const reactHooks = require('eslint-plugin-react-hooks');
 const { reactRefresh } = require('eslint-plugin-react-refresh');
-const { existsSync, readdirSync } = require('node:fs');
-const { join } = require('node:path');
+const { existsSync, readdirSync, statSync } = require('node:fs');
+const { dirname, join, posix, relative } = require('node:path');
 const importX = require('eslint-plugin-import-x');
 const checkFile = require('eslint-plugin-check-file');
 const {
@@ -22,6 +22,66 @@ const ADMIN_WEB_SRC = 'apps/admin-web/src';
 const ADMIN_WEB_FILES = ['apps/admin-web/**/*.{ts,tsx}'];
 const FIX =
   'Compose it in the route (app/) or move the shared piece to shared/. See docs/conventions.md.';
+
+// Top-level folder of a path relative to src/: `app`, `shared`,
+// `features/<domain>`, or `.` for the files directly under src/. Same grouping
+// as scripts/dev/alias-imports.ts, which converted these imports.
+function topLevelFolder(srcPath, isDir) {
+  const parts = srcPath.split('/');
+  if (parts.length === 1) return isDir ? srcPath : '.';
+  return parts[0] === 'features' ? parts.slice(0, 2).join('/') : parts[0];
+}
+
+// A relative import that leaves its top-level folder must use the `@/` alias.
+// It resolves the path, so `../../payments/x` from inside features/payments
+// stays allowed, and it also checks `export ... from` and `import()`.
+function relativeImportOutsideFolder(src) {
+  const srcDir = join(__dirname, src);
+  return {
+    meta: {
+      type: 'suggestion',
+      schema: [],
+      messages: {
+        useAlias:
+          "'{{spec}}' leaves {{folder}}; import it as '@/{{target}}' (docs/conventions.md).",
+      },
+    },
+    create(context) {
+      const file = relative(srcDir, context.filename).replace(/\\/g, '/');
+      if (file.startsWith('../')) return {};
+      const folder = topLevelFolder(file, false);
+      const check = (source) => {
+        if (!source || typeof source.value !== 'string') return;
+        const spec = source.value;
+        if (!spec.startsWith('./') && !spec.startsWith('../')) return;
+        const target = posix.normalize(posix.join(posix.dirname(file), spec));
+        if (target.startsWith('../')) return;
+        const abs = join(srcDir, target);
+        const isDir =
+          !target.includes('/') &&
+          existsSync(abs) &&
+          statSync(abs).isDirectory();
+        if (topLevelFolder(target, isDir) === folder) return;
+        context.report({
+          node: source,
+          messageId: 'useAlias',
+          data: {
+            spec,
+            folder: folder === '.' ? 'src/' : `${folder}/`,
+            target,
+          },
+        });
+      };
+      return {
+        ImportDeclaration: (node) => check(node.source),
+        ExportAllDeclaration: (node) => check(node.source),
+        ExportNamedDeclaration: (node) => check(node.source),
+        ImportExpression: (node) =>
+          node.source.type === 'Literal' && check(node.source),
+      };
+    },
+  };
+}
 
 function dependencyZones(src) {
   const featuresDir = join(__dirname, src, 'features');
@@ -135,6 +195,20 @@ module.exports = [
         'error',
         { zones: dependencyZones(ADMIN_WEB_SRC), basePath: __dirname },
       ],
+    },
+  },
+  {
+    files: [`${ADMIN_WEB_SRC}/**/*.{ts,tsx}`],
+    plugins: {
+      selene: {
+        rules: {
+          'relative-import-outside-folder':
+            relativeImportOutsideFolder(ADMIN_WEB_SRC),
+        },
+      },
+    },
+    rules: {
+      'selene/relative-import-outside-folder': 'error',
     },
   },
   {

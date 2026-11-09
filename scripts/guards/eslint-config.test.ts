@@ -36,6 +36,8 @@ async function lintText(cwd: string, filePath: string, source: string) {
   return { exitCode, stderr, ruleIds: messages.map((m) => m.ruleId) };
 }
 
+const RELATIVE_OUTSIDE = 'selene/relative-import-outside-folder';
+
 const FRONTEND_CASES = [
   { cwd: '.', prefix: 'apps/frontend/' },
   { cwd: 'apps/frontend', prefix: '' },
@@ -107,6 +109,7 @@ describe('root ESLint config', () => {
       expect(result.exitCode).toBe(1);
       expect(result.ruleIds).toEqual([
         'import-x/no-restricted-paths',
+        RELATIVE_OUTSIDE,
         'import-x/no-restricted-paths',
       ]);
     }, 60_000);
@@ -121,6 +124,49 @@ describe('root ESLint config', () => {
       expect(result.stderr).toBe('');
       expect(result.exitCode).toBe(0);
       expect(result.ruleIds).toEqual([]);
+    }, 60_000);
+
+    test(`flags an admin-web app/ file importing shared/ relatively when run from ${cwd}`, async () => {
+      const result = await lintText(
+        cwd,
+        `${prefix}src/app/probe.ts`,
+        "import '../shared/ui/modal';\n",
+      );
+
+      expect(result.stderr).toBe('');
+      expect(result.exitCode).toBe(1);
+      expect(result.ruleIds).toEqual([RELATIVE_OUTSIDE]);
+    }, 60_000);
+
+    test(`flags an admin-web feature reaching shared/ and another feature relatively when run from ${cwd}`, async () => {
+      const result = await lintText(
+        cwd,
+        `${prefix}src/features/payments/components/probe.ts`,
+        "export * from '../../../shared/utils/as-record';\nawait import('../../shipments/logic/carrier-reviews');\n",
+      );
+
+      expect(result.stderr).toBe('');
+      expect(result.exitCode).toBe(1);
+      expect(
+        result.ruleIds.filter((id) => id === RELATIVE_OUTSIDE),
+      ).toHaveLength(2);
+    }, 60_000);
+
+    test(`accepts admin-web relative imports inside their folder and @/ imports when run from ${cwd}`, async () => {
+      const feature = await lintText(
+        cwd,
+        `${prefix}src/features/payments/components/probe.ts`,
+        "import '../logic/shipment-refund-problems';\nimport './copyable-reference';\nimport '../../payments/logic/connect-payout-release-queue';\nimport '@/shared/utils/as-record';\n",
+      );
+      const root = await lintText(
+        cwd,
+        `${prefix}src/main.tsx`,
+        "import './index.css';\n",
+      );
+
+      expect([feature.stderr, root.stderr]).toEqual(['', '']);
+      expect([feature.exitCode, root.exitCode]).toEqual([0, 0]);
+      expect([...feature.ruleIds, ...root.ruleIds]).toEqual([]);
     }, 60_000);
 
     test(`flags a non-kebab-case admin-web file in shared/ when run from ${cwd}`, async () => {
