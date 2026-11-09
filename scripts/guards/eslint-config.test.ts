@@ -43,6 +43,22 @@ const FRONTEND_CASES = [
   { cwd: 'apps/frontend', prefix: '' },
 ];
 
+const ADMIN_WEB_CASES = [
+  { cwd: '.', prefix: 'apps/admin-web/' },
+  { cwd: 'apps/admin-web', prefix: '' },
+];
+
+// Test-only and CommonJS module specifiers (`mock.module`, `jest.mock`,
+// `require`) follow the same rule as imports, in both apps.
+const CALL_CASES = [
+  ...ADMIN_WEB_CASES.map((c) => ({
+    ...c,
+    app: 'admin-web',
+    feature: 'payments',
+  })),
+  ...FRONTEND_CASES.map((c) => ({ ...c, app: 'frontend', feature: 'cart' })),
+];
+
 describe('root ESLint config', () => {
   for (const { cwd, prefix } of FRONTEND_CASES) {
     test(`flags a frontend shared file importing a feature when run from ${cwd}`, async () => {
@@ -54,7 +70,10 @@ describe('root ESLint config', () => {
 
       expect(result.stderr).toBe('');
       expect(result.exitCode).toBe(1);
-      expect(result.ruleIds).toEqual(['import-x/no-restricted-paths']);
+      expect(result.ruleIds).toEqual([
+        'import-x/no-restricted-paths',
+        RELATIVE_OUTSIDE,
+      ]);
     }, 60_000);
 
     test(`accepts a frontend shared file importing shared code when run from ${cwd}`, async () => {
@@ -79,13 +98,89 @@ describe('root ESLint config', () => {
 
     expect(result.stderr).toBe('');
     expect(result.exitCode).toBe(1);
-    expect(result.ruleIds).toEqual(['import-x/no-restricted-paths']);
+    expect(result.ruleIds).toEqual([
+      'import-x/no-restricted-paths',
+      RELATIVE_OUTSIDE,
+    ]);
   }, 60_000);
 
-  for (const { cwd, prefix } of [
-    { cwd: '.', prefix: 'apps/admin-web/' },
-    { cwd: 'apps/admin-web', prefix: '' },
-  ]) {
+  for (const { cwd, prefix } of FRONTEND_CASES) {
+    test(`flags frontend relative imports leaving a feature or app/ when run from ${cwd}`, async () => {
+      const feature = await lintText(
+        cwd,
+        `${prefix}src/features/cart/hooks/probe.ts`,
+        "import '../../../shared/utils/probe';\n",
+      );
+      const route = await lintText(
+        cwd,
+        `${prefix}src/app/probe.tsx`,
+        "export * from '../shared/ui/probe';\n",
+      );
+
+      expect([feature.stderr, route.stderr]).toEqual(['', '']);
+      expect([feature.exitCode, route.exitCode]).toEqual([1, 1]);
+      expect([...feature.ruleIds, ...route.ruleIds]).toEqual([
+        RELATIVE_OUTSIDE,
+        RELATIVE_OUTSIDE,
+      ]);
+    }, 60_000);
+
+    test(`accepts frontend relative imports inside their folder and @/ imports when run from ${cwd}`, async () => {
+      const result = await lintText(
+        cwd,
+        `${prefix}src/features/cart/hooks/probe.ts`,
+        "import '../logic/probe';\nimport './use-cart-validation';\nimport '..';\nimport '@/shared/utils/probe';\n",
+      );
+
+      expect(result.stderr).toBe('');
+      expect(result.exitCode).toBe(0);
+      expect(result.ruleIds).toEqual([]);
+    }, 60_000);
+  }
+
+  for (const { cwd, prefix, app, feature } of CALL_CASES) {
+    test(`flags relative mock.module, jest.mock and require specifiers leaving a ${app} feature when run from ${cwd}`, async () => {
+      const result = await lintText(
+        cwd,
+        `${prefix}src/features/${feature}/hooks/probe.test.ts`,
+        [
+          "mock.module('../../../shared/x', () => ({}));",
+          "jest.mock('../../../shared/x');",
+          'jest.mock(`../../../shared/x`);',
+          "require('../../../shared/x');",
+          '',
+        ].join('\n'),
+      );
+
+      expect(result.stderr).toBe('');
+      expect(result.exitCode).toBe(1);
+      expect(
+        result.ruleIds.filter((id) => id === RELATIVE_OUTSIDE),
+      ).toHaveLength(4);
+    }, 60_000);
+
+    test(`accepts @/ mocks, template specifiers with expressions and other calls in ${app} when run from ${cwd}`, async () => {
+      const result = await lintText(
+        cwd,
+        `${prefix}src/features/${feature}/hooks/probe.test.ts`,
+        [
+          'declare const name: string;',
+          'declare function foo(spec: string): void;',
+          "mock.module('@/shared/x', () => ({}));",
+          'jest.mock(`../../../shared/${name}`);',
+          "foo('../../../shared/x');",
+          "mock.module('../logic/x', () => ({}));",
+          '',
+        ].join('\n'),
+      );
+
+      expect(result.stderr).toBe('');
+      expect(result.exitCode).toBe(0);
+      expect(result.ruleIds).toEqual([]);
+    }, 60_000);
+  }
+
+  for (const { cwd, prefix } of ADMIN_WEB_CASES) {
     test(`keeps the admin-web React hooks rules when run from ${cwd}`, async () => {
       const result = await lintText(
         cwd,
