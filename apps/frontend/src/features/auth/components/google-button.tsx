@@ -1,8 +1,8 @@
 import { TouchableOpacity, TouchableOpacityProps } from 'react-native';
 import { useTheme } from '@shopify/restyle';
-import { Text } from './base';
-import { Theme } from '../theme';
-import GoogleLogoIcon from './icons/google-logo-icon'; // <-- Importamos nuestro nuevo componente de icono
+import { Text } from '@/shared/ui/base';
+import { Theme } from '@/shared/theme';
+import GoogleLogoIcon from '@/shared/ui/icons/google-logo-icon'; // <-- Importamos nuestro nuevo componente de icono
 
 type GoogleButtonProps = Omit<TouchableOpacityProps, 'children'> & {
   onPress: () => void;

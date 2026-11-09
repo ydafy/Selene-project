@@ -1,9 +1,9 @@
 import React from 'react';
 import { TouchableOpacity } from 'react-native';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
-import { Box } from './base';
+import { Box } from '@/shared/ui/base';
 import { useTheme } from '@shopify/restyle';
-import { Theme } from '../theme';
+import { Theme } from '@/shared/theme';
 import * as Haptics from 'expo-haptics';
 
 interface Props {

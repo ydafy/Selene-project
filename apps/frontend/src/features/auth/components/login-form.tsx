@@ -14,7 +14,7 @@ import Toast from 'react-native-toast-message';
 import { Box, Text } from '@/shared/ui/base';
 import { FormTextInput } from '@/shared/ui/form-text-input';
 import { PrimaryButton } from '@/shared/ui/primary-button';
-import { GoogleButton } from '@/shared/ui/google-button';
+import { GoogleButton } from '@/features/auth/components/google-button';
 import { TextLink } from '@/shared/ui/text-link';
 import { useAuth, loginSchema, LoginData } from '../hooks/use-auth';
 import { useGoogleAuth } from '../hooks/use-google-auth'; // <--- NUEVO

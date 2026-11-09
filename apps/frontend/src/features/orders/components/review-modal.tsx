@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import { Box, Text } from '@/shared/ui/base';
 import { PrimaryButton } from '@/shared/ui/primary-button';
-import { StarRating } from '@/shared/ui/star-rating';
+import { StarRating } from '@/features/orders/components/star-rating';
 import { useReviewAction } from '../hooks/use-review-action';
 import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import { Theme } from '@/shared/theme';

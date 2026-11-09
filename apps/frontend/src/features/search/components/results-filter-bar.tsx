@@ -11,7 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { Box } from '@/shared/ui/base';
 import { AppChip } from '@/shared/ui/app-chip';
-import { BrandCircle } from '@/shared/ui/brand-circle';
+import { BrandCircle } from '@/features/search/components/brand-circle';
 import { theme, Theme } from '@/shared/theme';
 import { SearchFilters } from '../hooks/use-search-products';
 import { hasBrandIcon } from '@/shared/ui/brand-icon';

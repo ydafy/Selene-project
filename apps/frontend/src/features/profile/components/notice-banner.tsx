@@ -5,8 +5,8 @@ import MaterialCommunityIcons, {
   type MaterialDesignIconsIconName,
 } from '@react-native-vector-icons/material-design-icons';
 
-import { Box, Text } from './base';
-import { Theme } from '../theme';
+import { Box, Text } from '@/shared/ui/base';
+import { Theme } from '@/shared/theme';
 
 type NoticeTone = 'info' | 'warning' | 'critical';
 

@@ -7,8 +7,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { IconButton } from 'react-native-paper';
 import { useTheme } from '@shopify/restyle';
-import { Theme } from '../theme';
-import { Box } from './base';
+import { Theme } from '@/shared/theme';
+import { Box } from '@/shared/ui/base';
 
 type AnimatedHeartButtonProps = {
   isFavorite: boolean;

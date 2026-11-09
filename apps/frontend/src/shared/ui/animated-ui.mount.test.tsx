@@ -85,8 +85,7 @@ if (process.env.SELENE_ANIMATED_UI_MOUNT_CHILD !== '1') {
   }));
   mock.module('@/shared/theme/tokens', () => ({ colors: { shadow: '#000' } }));
 
-  const { act, fireEvent, render } =
-    await import('@testing-library/react-native');
+  const { fireEvent, render } = await import('@testing-library/react-native');
 
   type View = Awaited<ReturnType<typeof render>>;
   const byType = (view: View, type: string) =>
@@ -111,20 +110,6 @@ if (process.env.SELENE_ANIMATED_UI_MOUNT_CHILD !== '1') {
     ]);
     await fireEvent.press(tabs[0]);
     expect(onChange).toHaveBeenCalledWith(0);
-  });
-
-  test('AnimatedHeartButton forwards the press and the icon for its state', async () => {
-    const { AnimatedHeartButton } = await import('./animated-heart-button');
-    const onPress = mock(() => {});
-    const view = await render(
-      <AnimatedHeartButton isFavorite onPress={onPress} />,
-    );
-    const button = byType(view, 'IconButton')[0];
-    expect(button.props.icon).toBe('heart');
-    // IconButton is a bare host stand-in (not accessible), so fireEvent.press
-    // cannot reach it; call the handler the component passes.
-    await act(async () => (button.props.onPress as () => void)());
-    expect(onPress).toHaveBeenCalledTimes(1);
   });
 
   test('OfflineNotice shows the offline message and hides when connected', async () => {

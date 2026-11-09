@@ -1,8 +1,8 @@
 import { TouchableOpacity } from 'react-native';
 import { useTheme } from '@shopify/restyle';
-import { Box } from './base';
-import { Theme } from '../theme';
-import { BrandIcon } from './brand-icon';
+import { Box } from '@/shared/ui/base';
+import { Theme } from '@/shared/theme';
+import { BrandIcon } from '@/shared/ui/brand-icon';
 
 type BrandCircleProps = {
   brandName: string;
