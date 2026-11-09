@@ -55,6 +55,26 @@ describe('buildBrunoEnv', () => {
     ).not.toContain('CRON_SECRET');
   });
 
+  test('writes the fee reconciliation worker secret after the cron secret', () => {
+    const output = buildBrunoEnv(
+      JSON.stringify(keys),
+      'STRIPE_FEE_RECONCILIATION_WORKER_SECRET="worker.jwt.value"\nCRON_SECRET=cron-value\n',
+    );
+    expect(brunoEnvVariableNames(output)).toEqual([
+      'SUPABASE_URL',
+      'SUPABASE_ANON_KEY',
+      'SUPABASE_SERVICE_ROLE_KEY',
+      'CRON_SECRET',
+      'STRIPE_FEE_RECONCILIATION_WORKER_SECRET',
+    ]);
+    expect(output).toContain(
+      'STRIPE_FEE_RECONCILIATION_WORKER_SECRET=worker.jwt.value\n',
+    );
+    expect(
+      buildBrunoEnv(JSON.stringify(keys), 'CRON_SECRET=cron-value\n'),
+    ).not.toContain('STRIPE_FEE_RECONCILIATION_WORKER_SECRET');
+  });
+
   test('reads a quoted CRON_SECRET and double-quotes values with #, quotes or spaces', () => {
     const output = buildBrunoEnv(
       JSON.stringify(keys),

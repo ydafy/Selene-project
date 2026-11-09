@@ -27,10 +27,12 @@ const trackingNumber = 'TRK-E2E-B44D';
 const labelCostCents = 8900;
 const note = 'El carrier confirmó que el paquete ya viaja';
 
-async function ok<T>(
-  promise: PromiseLike<{ data: T; error: { message: string } | null }>,
+async function ok<
+  R extends { data: unknown; error: { message: string } | null },
+>(
+  promise: PromiseLike<R>,
   what: string,
-): Promise<T> {
+): Promise<Extract<R, { error: null }>['data']> {
   const { data, error } = await promise;
   if (error) throw new Error(`${what}: ${error.message}`);
   return data;

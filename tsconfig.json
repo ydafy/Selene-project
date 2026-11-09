@@ -1,0 +1,23 @@
+{
+  // Type-checks the TypeScript that lives outside the workspace packages:
+  // repository scripts, Playwright specs and the root Playwright configs.
+  // Each workspace under apps/ and packages/ keeps its own tsconfig.json.
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM"],
+    "target": "ESNext",
+    "module": "Preserve",
+    "moduleDetection": "force",
+    "types": ["bun"],
+
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+
+    "strict": true,
+    "skipLibCheck": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true
+  },
+  "include": ["scripts/**/*.ts", "e2e/**/*.ts", "playwright*.config.ts"]
+}

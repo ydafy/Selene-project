@@ -1,0 +1,39 @@
+meta {
+  name: reconcile-stripe-fees-empty
+  type: http
+  seq: 134
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/reconcile-stripe-fees
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{process.env.STRIPE_FEE_RECONCILIATION_WORKER_SECRET}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("accepts the worker secret and finds no due job", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal({
+      selected: 0,
+      succeeded: 0,
+      retryScheduled: 0,
+      failed: 0,
+      errors: 0,
+    });
+  });
+}
+
+docs {
+  Needs the functions server and STRIPE_FEE_RECONCILIATION_WORKER_SECRET in
+  supabase/functions/.env (`bun run bruno:env` copies it to bruno/.env). verify_jwt is true,
+  so the secret must also be a JWT the local gateway accepts. Runs before the job setup
+  below; the seed has no fee reconciliation job.
+}

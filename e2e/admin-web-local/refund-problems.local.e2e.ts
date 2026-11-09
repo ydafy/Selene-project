@@ -34,10 +34,12 @@ const escalated = {
 const shipmentIds = [failed.shipment, escalated.shipment];
 const reference = 'SPEI-E2E-0001';
 
-async function ok<T>(
-  promise: PromiseLike<{ data: T; error: { message: string } | null }>,
+async function ok<
+  R extends { data: unknown; error: { message: string } | null },
+>(
+  promise: PromiseLike<R>,
   what: string,
-): Promise<T> {
+): Promise<Extract<R, { error: null }>['data']> {
   const { data, error } = await promise;
   if (error) throw new Error(`${what}: ${error.message}`);
   return data;

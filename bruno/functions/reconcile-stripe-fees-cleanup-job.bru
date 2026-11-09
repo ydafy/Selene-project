@@ -1,0 +1,28 @@
+meta {
+  name: reconcile-stripe-fees-cleanup-job
+  type: http
+  seq: 138
+}
+
+delete {
+  url: {{baseUrl}}/rest/v1/stripe_fee_reconciliation_jobs?id=eq.{{feeJobId}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+  Prefer: return=representation
+}
+
+tests {
+  test("deletes the seeded fee job", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(1);
+  });
+}
+
+docs {
+  Cleanup of reconcile-stripe-fees-setup-job, so the next run starts with no job.
+}

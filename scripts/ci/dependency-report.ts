@@ -200,20 +200,20 @@ export function parseOutdated(text: string, workspace: string): OutdatedRow[] {
       columns = row;
     }
     // A changed format must fail the check, not look like "nothing to update".
+    const header = columns;
     const known =
-      columns !== undefined &&
-      ['Current', 'Update', 'Latest'].every((c) => columns!.includes(c));
+      header !== undefined &&
+      ['Current', 'Update', 'Latest'].every((c) => header.includes(c));
     if (!known) {
       throw new Error(`unrecognized \`bun outdated\` output: ${line.trim()}`);
     }
     if (row[0] === 'Package') continue;
-    const at = (column: string) =>
-      stripStar(row[columns!.indexOf(column)] ?? '');
+    const at = (column: string) => stripStar(row[header.indexOf(column)] ?? '');
     const rawName = row[0];
     const dev = rawName.endsWith(' (dev)');
     rows.push({
       name: dev ? rawName.slice(0, -' (dev)'.length) : rawName,
-      workspace: columns.includes('Workspace') ? at('Workspace') : workspace,
+      workspace: header.includes('Workspace') ? at('Workspace') : workspace,
       dev,
       current: at('Current'),
       update: at('Update'),

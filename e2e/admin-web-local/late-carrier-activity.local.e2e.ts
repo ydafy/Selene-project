@@ -29,10 +29,12 @@ const labelCostCents = 8900;
 const refundCents = 11000;
 const note = 'El vendedor confirmó que el paquete ya salió';
 
-async function ok<T>(
-  promise: PromiseLike<{ data: T; error: { message: string } | null }>,
+async function ok<
+  R extends { data: unknown; error: { message: string } | null },
+>(
+  promise: PromiseLike<R>,
   what: string,
-): Promise<T> {
+): Promise<Extract<R, { error: null }>['data']> {
   const { data, error } = await promise;
   if (error) throw new Error(`${what}: ${error.message}`);
   return data;

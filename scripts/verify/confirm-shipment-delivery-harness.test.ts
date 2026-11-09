@@ -155,6 +155,7 @@ describe('deployed confirmation harness configuration', () => {
 describe('deployed confirmation harness assertions', () => {
   it('issues the four required requests in safe order and accepts their contract responses', async () => {
     const config = parseConfirmationHarnessConfig(fixtureEnvironment);
+    if (config.mode !== 'full') throw new Error('expected the full mode');
     const requests: Array<{
       body: Record<string, string>;
       init?: RequestInit;

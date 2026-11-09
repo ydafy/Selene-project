@@ -5,6 +5,7 @@ const FUNCTION_PATH = '/functions/v1/confirm-shipment-delivery';
 
 type HarnessEnvironment = Record<string, string | undefined>;
 type HarnessMode = 'core' | 'full';
+type FetchCall = (input: string, init?: RequestInit) => Promise<Response>;
 
 type CommonConfirmationHarnessConfig = {
   endpoint: string;
@@ -172,7 +173,7 @@ export function parseConfirmationHarnessConfig(
 async function invokeConfirmation(
   config: ConfirmationHarnessConfig,
   fixture: Fixture,
-  fetchImpl: typeof fetch,
+  fetchImpl: FetchCall,
 ): Promise<{ status: number; body: ConfirmationResponse }> {
   const response = await fetchImpl(config.endpoint, {
     method: 'POST',
@@ -242,7 +243,7 @@ function assertSuccess(
 
 export async function runConfirmationHarness(
   config: ConfirmationHarnessConfig,
-  fetchImpl: typeof fetch = fetch,
+  fetchImpl: FetchCall = fetch,
   report: (message: string) => void = console.log,
 ): Promise<void> {
   assertRejected(

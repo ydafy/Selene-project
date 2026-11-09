@@ -1,0 +1,27 @@
+meta {
+  name: reconcile-stripe-fees-no-auth
+  type: http
+  seq: 132
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/reconcile-stripe-fees
+  body: json
+  auth: none
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("rejects the fee worker without a bearer token", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody().code).to.equal("UNAUTHORIZED_NO_AUTH_HEADER");
+  });
+}
+
+docs {
+  Needs the functions server. verify_jwt is true, so the gateway refuses the call before
+  the handler runs.
+}

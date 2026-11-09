@@ -1,0 +1,30 @@
+meta {
+  name: refresh-connect-account-status-no-auth
+  type: http
+  seq: 139
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/refresh-connect-account-status
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("rejects a refresh without a user token", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody()).to.deep.equal({ error: "AUTH_REQUIRED" });
+  });
+}
+
+docs {
+  Needs the functions server. No Stripe call: the handler stops before reading a profile.
+}

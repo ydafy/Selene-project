@@ -1,0 +1,32 @@
+meta {
+  name: release-connect-payout-admin-unknown-retry
+  type: http
+  seq: 127
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/release-connect-payout
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+body:json {
+  { "retryRunId": "00000000-0000-4000-8000-000000b00332" }
+}
+
+tests {
+  test("an admin retry of a run that does not exist is refused", function () {
+    expect(res.getStatus()).to.equal(404);
+    expect(res.getBody()).to.deep.equal({ success: false, error: "PAYOUT_RETRY_PARENT_NOT_FOUND" });
+  });
+}
+
+docs {
+  Run after functions/login-admin. The id is a well-formed UUID with no run behind it, so
+  the lookup finds nothing and the retry stops before Stripe.
+}

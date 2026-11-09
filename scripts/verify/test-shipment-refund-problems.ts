@@ -1,4 +1,4 @@
-import { SQL } from 'bun';
+import { SQL, type TransactionSQL } from 'bun';
 import assert from 'node:assert/strict';
 
 const help =
@@ -23,7 +23,7 @@ const paymentIntent = (n: number) => `pi_b24a_${n}`;
 const amount = (n: number) => 1000 * n;
 const reference = 'SPEI-2026-10-22-0001';
 
-type Tx = SQL;
+type Tx = TransactionSQL;
 type Problem = {
   shipment_id: string;
   order_id: string;
