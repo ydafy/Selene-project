@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { colors } from '../theme/tokens';
+import { colors } from '../../theme/tokens';
 import { getTextColor } from './primary-button-colors';
 
 describe('PrimaryButton text color', () => {

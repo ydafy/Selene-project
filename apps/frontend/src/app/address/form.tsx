@@ -16,7 +16,7 @@ import { Box, Text } from '@/shared/ui/base';
 import { GlobalHeader } from '@/shared/ui/global-header';
 import { FormTextInput } from '@/shared/ui/form-text-input';
 import { FormSelect } from '@/shared/ui/form-select';
-import { PrimaryButton } from '@/shared/ui/primary-button';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { Checkbox } from '@/shared/ui/checkbox';
 
 import { useAddresses } from '@/shared/hooks/use-addresses';

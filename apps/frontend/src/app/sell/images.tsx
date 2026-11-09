@@ -8,7 +8,7 @@ import { Box, Text } from '@/shared/ui/base';
 import { GlobalHeader } from '@/shared/ui/global-header';
 import { ScreenHeader } from '@/shared/ui/screen-header';
 import { WizardSteps } from '@/features/sell/components/wizard-steps';
-import { PrimaryButton } from '@/shared/ui/primary-button';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { ImageGridPicker } from '@/features/sell/components/image-grid-picker';
 import { useSellStore } from '@/features/sell/store/use-sell-store';
 import { useProductImages } from '@/features/sell/hooks/use-product-images';

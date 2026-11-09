@@ -11,7 +11,7 @@ import { Box, Text } from '@/shared/ui/base';
 import { GlobalHeader } from '@/shared/ui/global-header';
 import { ScreenHeader } from '@/shared/ui/screen-header';
 import { WizardSteps } from '@/features/sell/components/wizard-steps';
-import { PrimaryButton } from '@/shared/ui/primary-button';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { useSellStore } from '@/features/sell/store/use-sell-store';
 import { SELL_FORM_CONFIG } from '@/features/sell/logic/sell-form-config';
 import { DynamicSpecField } from '@/features/sell/components/dynamic-spec-field';

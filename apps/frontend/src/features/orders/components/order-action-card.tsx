@@ -7,7 +7,7 @@ import Animated, { withSpring } from 'react-native-reanimated';
 import { useTheme } from '@shopify/restyle';
 
 import { Box, Text } from '@/shared/ui/base';
-import { PrimaryButton } from '@/shared/ui/primary-button';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
 import { SellerPaymentExplanation } from '@/shared/ui/seller-payment-explanation';
 import { ShippingLabelCard } from './shipping-label-card';

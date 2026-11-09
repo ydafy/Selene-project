@@ -1,7 +1,7 @@
 import { TextProps as RNTextProps } from 'react-native';
-import { Text } from './base';
+import { Text } from '../base';
 import { useTheme } from '@shopify/restyle';
-import { Theme } from '../theme';
+import { Theme } from '../../theme';
 
 // Heredamos las props de Text de React Native y hacemos 'children' obligatorio.
 type TextLinkProps = RNTextProps & {

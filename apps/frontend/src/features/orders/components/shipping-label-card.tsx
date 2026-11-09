@@ -4,7 +4,7 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 import { useTranslation } from 'react-i18next';
 
 import { Box, Text } from '@/shared/ui/base';
-import { PrimaryButton } from '@/shared/ui/primary-button';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
 
 interface Props {
   labelUrl: string;

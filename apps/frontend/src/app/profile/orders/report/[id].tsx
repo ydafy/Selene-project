@@ -27,7 +27,7 @@ import { useVideoUpload } from '@/features/orders/hooks/use-video-upload';
 import { Box, Text } from '@/shared/ui/base';
 import { GlobalHeader } from '@/shared/ui/global-header';
 import { ScreenHeader } from '@/shared/ui/screen-header';
-import { PrimaryButton } from '@/shared/ui/primary-button';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { Checkbox } from '@/shared/ui/checkbox';
 import { EvidenceUploadSection } from '@/features/orders/components/evidence-upload-section';
 import { Theme } from '@/shared/theme';

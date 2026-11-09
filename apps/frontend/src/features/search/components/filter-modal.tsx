@@ -25,7 +25,7 @@ import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Box, Text as ThemedText } from '@/shared/ui/base';
-import { PrimaryButton } from '@/shared/ui/primary-button';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { AppChip } from '@/shared/ui/app-chip';
 import { Theme } from '@/shared/theme';
 import { useCategoryConfig } from '../hooks/use-category-config';

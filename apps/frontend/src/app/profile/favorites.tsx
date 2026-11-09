@@ -14,7 +14,7 @@ import { ProductCard } from '@/shared/ui/product/product-card';
 import { offerPushPermission } from '@/features/notifications/lib/push-permission';
 import { ProductFavoriteButton } from '@/features/product/components/product-favorite-button';
 import { ProductCardSkeleton } from '@/shared/ui/product/product-card-skeleton';
-import { PrimaryButton } from '@/shared/ui/primary-button';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
 import { useAllFavorites } from '@/features/profile/hooks/use-all-favorites';
 import { useAuthContext } from '@/shared/lib/auth/auth-provider';

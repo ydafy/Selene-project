@@ -11,7 +11,7 @@ import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
 
 import { Box, Text } from './base';
-import { PrimaryButton } from './primary-button';
+import { PrimaryButton } from './button/primary-button';
 import { ErrorState } from './error-state';
 import { MaintenanceScreen } from './maintenance-screen';
 

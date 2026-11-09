@@ -8,7 +8,7 @@ import Animated, { withSpring } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 
 import { Box, Text } from '@/shared/ui/base';
-import { PrimaryButton } from '@/shared/ui/primary-button';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { Theme } from '@/shared/theme';
 import { useCheckoutStore } from '@/shared/store/use-checkout-store';
 import { offerPushPermission } from '@/features/notifications/lib/push-permission';

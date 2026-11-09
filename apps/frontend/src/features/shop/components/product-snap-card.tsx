@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { BlurView } from 'expo-blur';
 import { Box, Text } from '@/shared/ui/base';
 import { AppImage } from '@/shared/ui/app-image';
-import { PrimaryButton } from '@/shared/ui/primary-button';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { formatCurrency } from '@/shared/utils/format';
 import { PublicProduct } from '@selene/types';
 import { isInVerification } from '@/shared/utils/product-listing-status';

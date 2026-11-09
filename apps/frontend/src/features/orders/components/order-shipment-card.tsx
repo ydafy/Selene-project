@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
 import { Box, Text } from '@/shared/ui/base';
 import { AppImage } from '@/shared/ui/app-image';
-import { PrimaryButton } from '@/shared/ui/primary-button';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { EnrichedShipment } from '@selene/types';
 import { Theme } from '@/shared/theme';
 import { formatCurrency } from '@/shared/utils/format';

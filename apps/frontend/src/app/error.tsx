@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { ErrorBoundaryProps } from 'expo-router';
 import Animated, { withSpring } from 'react-native-reanimated';
 import { Box, Text } from '@/shared/ui/base';
-import { PrimaryButton } from '@/shared/ui/primary-button';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { getSharedStyles } from '@/shared/theme/shared-styles';
 import { useTheme } from '@shopify/restyle';
 import { Theme } from '@/shared/theme';

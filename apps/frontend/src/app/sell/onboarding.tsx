@@ -21,7 +21,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { Box, Text } from '@/shared/ui/base';
 import { GlobalHeader } from '@/shared/ui/global-header';
 import { ScreenHeader } from '@/shared/ui/screen-header';
-import { PrimaryButton } from '@/shared/ui/primary-button';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { ErrorState } from '@/shared/ui/error-state';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { WizardSteps } from '@/features/sell/components/wizard-steps';

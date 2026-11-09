@@ -1,4 +1,4 @@
-import { Theme } from '../theme';
+import { Theme } from '../../theme';
 
 type ThemeColors = Theme['colors'];
 type Variant = 'solid' | 'outline';

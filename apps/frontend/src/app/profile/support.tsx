@@ -14,7 +14,7 @@ import Toast from 'react-native-toast-message';
 
 import { Box, Text } from '@/shared/ui/base';
 import { ScreenLayout } from '@/shared/ui/screen-layout';
-import { PrimaryButton } from '@/shared/ui/primary-button';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { Theme } from '@/shared/theme';
 import {
   buildSupportMailto,

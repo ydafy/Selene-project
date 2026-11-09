@@ -9,7 +9,7 @@ import { useState } from 'react';
 
 // Componentes Base y UI
 import { Box, Text } from '@/shared/ui/base';
-import { PrimaryButton } from '@/shared/ui/primary-button';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
 
 // Componentes de Layout
 import { GlobalHeader } from '@/shared/ui/global-header';

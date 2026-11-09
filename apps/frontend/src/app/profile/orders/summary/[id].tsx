@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Box, Text } from '@/shared/ui/base';
 import { GlobalHeader } from '@/shared/ui/global-header';
-import { PrimaryButton } from '@/shared/ui/primary-button';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { OrderShipmentCard } from '@/features/orders/components/order-shipment-card';
 import { useOrderById } from '@/features/orders/hooks/use-orders';

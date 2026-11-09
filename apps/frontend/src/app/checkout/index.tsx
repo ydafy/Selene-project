@@ -15,16 +15,16 @@ import Toast from 'react-native-toast-message';
 // Componentes Base
 import { Box, Text as ThemedText } from '@/shared/ui/base';
 import { GlobalHeader } from '@/shared/ui/global-header';
-import { PrimaryButton } from '@/shared/ui/primary-button';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { ScreenHeader } from '@/shared/ui/screen-header';
 import { Checkbox } from '@/shared/ui/checkbox';
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
-import { AddressPickerModal } from '@/shared/ui/address-picker-modal';
+import { AddressPickerModal } from '@/shared/ui/address/address-picker-modal';
 import { PaymentMethodPickerModal } from '@/features/checkout/components/payment-method-picker-modal';
 
 // Componentes de Checkout
 import { CheckoutItem } from '@/features/checkout/components/checkout-item';
-import { AddressSection } from '@/shared/ui/address-section';
+import { AddressSection } from '@/shared/ui/address/address-section';
 import { PaymentSection } from '@/features/checkout/components/payment-section';
 import { SummaryBreakdown } from '@/features/checkout/components/summary-breakdown';
 

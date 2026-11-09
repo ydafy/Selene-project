@@ -126,8 +126,8 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
   for (const [path, name] of [
     ['shared/ui/global-header', 'GlobalHeader'],
     ['shared/ui/screen-header', 'ScreenHeader'],
-    ['shared/ui/address-section', 'AddressSection'],
-    ['shared/ui/primary-button', 'PrimaryButton'],
+    ['shared/ui/address/address-section', 'AddressSection'],
+    ['shared/ui/button/primary-button', 'PrimaryButton'],
     ['shared/ui/confirm-dialog', 'ConfirmDialog'],
     ['shared/ui/error-state', 'ErrorState'],
     ['shared/ui/skeleton', 'Skeleton'],
@@ -145,7 +145,7 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
     mock.module(`@/${path}`, () => ({
       [name]: name === 'PrimaryButton' ? labelHost(name) : host(name),
     }));
-  mock.module('@/shared/ui/address-picker-modal', () => ({
+  mock.module('@/shared/ui/address/address-picker-modal', () => ({
     AddressPickerModal: ({
       innerRef,
       ...props

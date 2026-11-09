@@ -15,10 +15,10 @@ import { TERMS_URL } from '@selene/types';
 
 import { Box, Text } from '@/shared/ui/base';
 import { FormTextInput } from '@/shared/ui/form-text-input';
-import { PrimaryButton } from '@/shared/ui/primary-button';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { GoogleButton } from '@/features/auth/components/google-button';
 import { Checkbox } from '@/shared/ui/checkbox';
-import { TextLink } from '@/shared/ui/text-link';
+import { TextLink } from '@/shared/ui/button/text-link';
 import { useAuth, registerSchema, RegisterData } from '../hooks/use-auth';
 import { useGoogleAuth } from '../hooks/use-google-auth';
 import { useOpenInBrowser } from '@/shared/hooks/use-open-in-browser';

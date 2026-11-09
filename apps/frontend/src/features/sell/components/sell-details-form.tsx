@@ -6,7 +6,7 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 import { Box, Text } from '@/shared/ui/base';
 import { FormTextInput } from '@/shared/ui/form-text-input';
 import { FormSelect } from '@/shared/ui/form-select';
-import { PrimaryButton } from '@/shared/ui/primary-button';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { LabelWithHelp } from '@/shared/ui/label-with-help';
 import { PackageSelector } from './package-selector';
 import { useSellDetailsForm } from '@/features/sell/hooks/use-sell-details-form';

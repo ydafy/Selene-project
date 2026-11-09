@@ -7,7 +7,7 @@ import Animated, { withSpring } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 
 import { Box, Text } from '@/shared/ui/base';
-import { PrimaryButton } from '@/shared/ui/primary-button';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { GlobalHeader } from '@/shared/ui/global-header';
 
 import { ErrorState } from '@/shared/ui/error-state';

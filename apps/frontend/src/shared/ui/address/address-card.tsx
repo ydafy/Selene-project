@@ -9,8 +9,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { Box, Text } from './base';
-import { Theme } from '../theme';
+import { Box, Text } from '../base';
+import { Theme } from '../../theme';
 import { Address } from '@selene/types';
 
 type AddressCardProps = {

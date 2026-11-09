@@ -18,8 +18,8 @@ import { useImageUpload } from '@/shared/hooks/use-image-upload';
 // Componentes UI y Base
 import { Box, Text } from '@/shared/ui/base';
 import { AppImage } from '@/shared/ui/app-image';
-import { PrimaryButton } from '@/shared/ui/primary-button';
-import { TextLink } from '@/shared/ui/text-link';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
+import { TextLink } from '@/shared/ui/button/text-link';
 import { ScreenLayout } from '@/shared/ui/screen-layout';
 import { ProfileActionsBar } from '@/features/profile/components/profile-actions-bar';
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog';

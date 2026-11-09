@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Componentes Base y UI
 import { Box, Text } from '@/shared/ui/base';
-import { PrimaryButton } from '@/shared/ui/primary-button';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { AppChip } from '@/shared/ui/app-chip';
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
 

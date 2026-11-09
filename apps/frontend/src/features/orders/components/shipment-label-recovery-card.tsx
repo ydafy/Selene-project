@@ -3,7 +3,7 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
 import { Box, Text } from '@/shared/ui/base';
-import { PrimaryButton } from '@/shared/ui/primary-button';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import type { Theme } from '@/shared/theme';
 import type { LabelRecoveryState } from '../logic/shipment-label-state';
 

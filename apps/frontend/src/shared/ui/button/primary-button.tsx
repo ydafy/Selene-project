@@ -1,6 +1,6 @@
 import { Button as PaperButton, ButtonProps } from 'react-native-paper';
 import { useTheme } from '@shopify/restyle';
-import { Theme } from '../theme';
+import { Theme } from '../../theme';
 import { getBackgroundColor, getTextColor } from './primary-button-colors';
 
 type PrimaryButtonProps = Omit<ButtonProps, 'theme'> & {
