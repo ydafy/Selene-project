@@ -1,4 +1,4 @@
-import type { StripeOnboardingStatus } from '../_shared/connect-status.ts';
+import type { StripeOnboardingStatus } from '../_shared/stripe/connect-status.ts';
 
 export interface SellerPaymentProfile {
   id: string;

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'bun:test';
 import {
   normalizeEnviaTrackingStatus,
   resolveEnviaTrackingUrl,
-} from '../envia-tracking.ts';
+} from './envia-tracking.ts';
 
 const statusCases = [
   ['Created', 'created', null],

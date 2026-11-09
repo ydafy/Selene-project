@@ -7,7 +7,7 @@
  * Raw database text only reaches the log, never the response.
  */
 
-import { isActiveAdmin } from '../_shared/admin-auth.ts';
+import { isActiveAdmin } from '../_shared/auth/admin-auth.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',

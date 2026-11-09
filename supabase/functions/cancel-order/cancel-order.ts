@@ -2,15 +2,15 @@ export {
   ApiError,
   allocateCancellationLossCents,
   computeShipmentRefundAmountCents,
-} from '../_shared/refund-basis.ts';
-export type { ShipmentCancelItem } from '../_shared/refund-basis.ts';
+} from '../_shared/cancellation/refund-basis.ts';
+export type { ShipmentCancelItem } from '../_shared/cancellation/refund-basis.ts';
 
 import {
   ApiError,
   allocateCancellationLossCents,
   computeShipmentRefundAmountCents as computeShipmentRefundAmountCentsShared,
   type ShipmentCancelItem,
-} from '../_shared/refund-basis.ts';
+} from '../_shared/cancellation/refund-basis.ts';
 
 export interface CancelOrderRequestBody {
   orderId: string;

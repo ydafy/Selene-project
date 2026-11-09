@@ -6,7 +6,7 @@ import {
   parseCancelOrderRequestBody,
   resolveManualShipmentCancelPlan,
 } from './cancel-order';
-import { computeShipmentRefundAmountCents } from '../_shared/refund-basis';
+import { computeShipmentRefundAmountCents } from '../_shared/cancellation/refund-basis';
 
 describe('parseCancelOrderRequestBody', () => {
   it('requires shipmentId and applies the default cancel reason', () => {

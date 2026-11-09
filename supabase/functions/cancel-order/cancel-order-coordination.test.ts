@@ -5,7 +5,7 @@ import {
   runShipmentCancellation,
   type CancellationContext,
   type ShipmentCancellationPorts,
-} from '../_shared/shipment-cancellation.ts';
+} from '../_shared/cancellation/shipment-cancellation.ts';
 
 const context: CancellationContext = {
   orderId: 'order',

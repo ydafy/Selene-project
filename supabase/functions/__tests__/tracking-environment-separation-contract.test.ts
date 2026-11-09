@@ -31,7 +31,7 @@ describe('tracking environment separation contract', () => {
     );
 
     expect(resolver).toContain(
-      "import { resolveEnviaTrackingUrl } from '../_shared/envia-tracking.ts';",
+      "import { resolveEnviaTrackingUrl } from '../_shared/envia/envia-tracking.ts';",
     );
     expect(resolver).toContain("Deno.env.get('ENVIA_MODE') ?? 'sandbox'");
     expect(handler).toContain(

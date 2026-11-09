@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import type { ClosureCleanupUpdate } from '../_shared/account-closure-cleanup.ts';
-import type { CronMismatchReporter } from '../_shared/cron-auth.ts';
+import type { CronMismatchReporter } from '../_shared/auth/cron-auth.ts';
 import {
   BATCH_SIZE,
   MAX_ATTEMPTS,
@@ -152,7 +152,7 @@ describe('account-closure-cleanup: authentication', () => {
 
   it('compares the secret in constant time through the shared helper', () => {
     const source = readFileSync(join(import.meta.dir, 'handler.ts'), 'utf8');
-    expect(source).toContain("from '../_shared/cron-auth.ts'");
+    expect(source).toContain("from '../_shared/auth/cron-auth.ts'");
     expect(source).toContain(
       'isAuthorizedCronRequest(req, deps.getCronSecret())',
     );

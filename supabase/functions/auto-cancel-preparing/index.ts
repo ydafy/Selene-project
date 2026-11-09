@@ -3,32 +3,32 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import Stripe from 'https://esm.sh/stripe@17.0.0';
 
 import type { Tables } from '../../../packages/types/src/types.ts';
-import { createCancellationReporter } from '../_shared/cancellation-alerts.ts';
+import { createCancellationReporter } from '../_shared/cancellation/cancellation-alerts.ts';
 import {
   acquireAutoCancelLease,
   releaseAutoCancelLease,
-} from '../_shared/auto-cancel-lease.ts';
-import { readAutoCancelExpirationHours } from '../_shared/auto-cancel-settings.ts';
+} from '../_shared/auto-cancel/auto-cancel-lease.ts';
+import { readAutoCancelExpirationHours } from '../_shared/auto-cancel/auto-cancel-settings.ts';
 import {
   isAuthorizedCronRequest,
   reportCronSecretMismatch,
-} from '../_shared/cron-auth.ts';
+} from '../_shared/auth/cron-auth.ts';
 import {
   fetchFreshTracking,
   requestEnviaLabelCancellation,
-} from '../_shared/envia-carrier-cancellation.ts';
-import { resolveEnviaRuntimeConfiguration } from '../_shared/envia-shipping.ts';
+} from '../_shared/envia/envia-carrier-cancellation.ts';
+import { resolveEnviaRuntimeConfiguration } from '../_shared/envia/envia-shipping.ts';
 import {
   confirmPreparingCarrier,
   type PreparingCarrierGatePorts,
-} from '../_shared/preparing-carrier-gate.ts';
+} from '../_shared/cancellation/preparing-carrier-gate.ts';
 import { reportMessage, withSentry } from '../_shared/sentry.ts';
-import { runShipmentCancellation } from '../_shared/shipment-cancellation.ts';
-import { resolveAutoCancelShipmentCancellationGate } from '../_shared/auto-cancel-safety.ts';
+import { runShipmentCancellation } from '../_shared/cancellation/shipment-cancellation.ts';
+import { resolveAutoCancelShipmentCancellationGate } from '../_shared/auto-cancel/auto-cancel-safety.ts';
 import {
   allocateCancellationLossCents,
   computeShipmentRefundAmountCents,
-} from '../_shared/refund-basis.ts';
+} from '../_shared/cancellation/refund-basis.ts';
 import { buildStripeFeeReconciliationPlan } from '../stripe-webhooks/single-modal-settlement.ts';
 
 const STRIPE_API_VERSION = '2026-04-22.dahlia';
