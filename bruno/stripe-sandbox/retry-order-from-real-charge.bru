@@ -1,0 +1,131 @@
+meta {
+  name: retry-order-from-real-charge
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_create_shipments_from_single_payment
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:pre-request {
+  if (!bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID") || !bru.getProcessEnv("STRIPE_SECRET_KEY")) {
+    bru.runner.skipRequest();
+  } else {
+    const stripe = async (method, path, params) => {
+      const form = Object.entries(params || {}).map(([k, v]) => encodeURIComponent(k) + "=" + encodeURIComponent(v)).join("&");
+      let res;
+      try {
+        res = await bru.sendRequest({
+          method,
+          url: "https://api.stripe.com/v1/" + path,
+          headers: { Authorization: "Bearer " + bru.getProcessEnv("STRIPE_SECRET_KEY"), "Content-Type": "application/x-www-form-urlencoded" },
+          data: form,
+        });
+      } catch (error) {
+        res = error.response;
+        if (!res) throw new Error("Stripe " + path + " unreachable");
+      }
+      if (res.status !== 200 || res.data.livemode === true) {
+        throw new Error("Stripe " + method + " " + path + ": " + res.status + " " + ((res.data.error || {}).code || ""));
+      }
+      return res.data;
+    };
+    const base = Date.now();
+    const uuid = (n) => "00000000-0000-4000-8a36-" + (base * 64 + n).toString(16).padStart(12, "0");
+    const key = bru.getEnvVar("serviceRoleKey");
+    let listing;
+    try {
+      listing = await bru.sendRequest({
+        method: "POST",
+        url: bru.getEnvVar("baseUrl") + "/rest/v1/products",
+        headers: { apikey: key, Authorization: "Bearer " + key, "Content-Type": "application/json", Prefer: "return=representation" },
+        data: { ...JSON.parse(bru.getVar("sandboxListingTemplate")), status: "RESERVED" },
+      });
+    } catch (error) {
+      listing = error.response || { status: 0, data: String(error) };
+    }
+    if (listing.status !== 201) {
+      throw new Error("the sandbox listing could not be created: " + listing.status + " " + JSON.stringify(listing.data));
+    }
+    const orderId = uuid(1);
+    const shipmentId = uuid(2);
+    const intent = await stripe("POST", "payment_intents", {
+      amount: "251000",
+      currency: "mxn",
+      payment_method: "pm_card_bypassPending",
+      confirm: "true",
+      "automatic_payment_methods[enabled]": "true",
+      "automatic_payment_methods[allow_redirects]": "never",
+      transfer_group: "selene_order_" + orderId,
+      "metadata[purpose]": "bruno-sandbox-retry",
+    });
+    // The balance transaction of an automatic_async capture appears shortly after confirm.
+    let charge = null;
+    for (let attempt = 0; attempt < 15 && !(charge && charge.balance_transaction); attempt += 1) {
+      if (attempt > 0) await bru.sleep(1000);
+      charge = await stripe("GET", "charges/" + intent.latest_charge + "?expand[]=balance_transaction");
+    }
+    const transaction = charge.balance_transaction;
+    if (intent.status !== "succeeded" || !transaction || transaction.status !== "available") {
+      throw new Error("the sandbox charge is not in the available balance: " + intent.status + " " + (transaction && transaction.status));
+    }
+    bru.setVar("retryOrderId", orderId);
+    bru.setVar("retryShipmentId", shipmentId);
+    bru.setVar("retryIntentId", intent.id);
+    bru.setVar("retryChargeId", charge.id);
+    bru.setVar("retryChargeFee", transaction.fee);
+    bru.setVar("retryTransferGroup", "selene_order_" + orderId);
+    req.setBody({
+      p_stripe_payment_intent_id: intent.id,
+      p_stripe_charge_id: charge.id,
+      p_amount_received: 251000,
+      p_transfer_group: "selene_order_" + orderId,
+      p_allocation: {
+        buyer_id: bru.getVar("sandboxBuyerId"),
+        address_id: bru.getVar("sandboxAddressId"),
+        order_id: orderId,
+        total_amount: 2510,
+        rows: [
+          {
+            seller_id: bru.getVar("sandboxSellerId"),
+            shipment_id: shipmentId,
+            product_ids: [listing.data[0].id],
+            gross_cents: 240000,
+            commission_cents: 14400,
+            shipping_cents: 15000,
+            seguro_cents: 11000,
+            net_cents: 210600,
+          },
+        ],
+      },
+    });
+  }
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("the real sandbox charge becomes a paid order of the sandbox seller", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal({
+      success: true,
+      order_id: bru.getVar("retryOrderId"),
+      status: "created",
+    });
+  });
+}
+
+docs {
+  Same as release-order-from-real-charge: a second real sandbox charge and its paid order,
+  for the failed payout and its retry.
+}

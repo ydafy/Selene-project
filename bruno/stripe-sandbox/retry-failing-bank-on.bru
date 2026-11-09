@@ -1,0 +1,108 @@
+meta {
+  name: retry-failing-bank-on
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_get_connect_account_actionability
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:pre-request {
+  if (!bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID") || !bru.getProcessEnv("STRIPE_SECRET_KEY")) {
+    bru.runner.skipRequest();
+  } else {
+    const account = bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID");
+    const stripe = async (method, path, params, connected) => {
+      const form = Object.entries(params || {}).map(([k, v]) => encodeURIComponent(k) + "=" + encodeURIComponent(v)).join("&");
+      const headers = { Authorization: "Bearer " + bru.getProcessEnv("STRIPE_SECRET_KEY"), "Content-Type": "application/x-www-form-urlencoded" };
+      if (connected) headers["Stripe-Account"] = connected;
+      let res;
+      try {
+        res = await bru.sendRequest({ method, url: "https://api.stripe.com/v1/" + path, headers, data: form });
+      } catch (error) {
+        res = error.response;
+        if (!res) throw new Error("Stripe " + path + " unreachable");
+      }
+      if (res.status !== 200 || res.data.livemode === true) {
+        throw new Error("Stripe " + method + " " + path + ": " + res.status + " " + ((res.data.error || {}).code || ""));
+      }
+      return res.data;
+    };
+    const key = bru.getEnvVar("serviceRoleKey");
+    const rest = async (path) => (await bru.sendRequest({
+      method: "GET",
+      url: bru.getEnvVar("baseUrl") + "/rest/v1/" + path,
+      headers: { apikey: key, Authorization: "Bearer " + key },
+    })).data;
+    // Waits until stripe-webhooks recorded every account event Stripe emitted since the
+    // cursor (including the one named by `required`) and the projection is not refreshing,
+    // so the release that follows does not race a pending account refresh.
+    const waitForAccountEvents = async (cursor, required, bankId) => {
+      for (let attempt = 0; attempt < 40; attempt += 1) {
+        if (attempt > 0) await bru.sleep(2000);
+        const events = (await stripe("GET", "events?limit=100" + (cursor ? "&ending_before=" + cursor : ""), null, account)).data
+          .filter((event) => event.type.startsWith("account."));
+        if (!events.some((event) => event.type === required && event.data.object.id === bankId.required)) continue;
+        const recorded = await rest("connect_account_events?select=stripe_event_id&stripe_event_id=in.(" + events.map((event) => event.id).join(",") + ")");
+        const row = (await rest("connect_account_actionability?stripe_account_id=eq." + account + "&select=is_actionable,refresh_pending,current_external_account_id"))[0];
+        if (recorded.length === events.length && row && row.refresh_pending === false && row.is_actionable === true && row.current_external_account_id === bankId.current) return;
+      }
+      throw new Error("the account webhooks did not settle in 80 s; is `bun run stripe:listen` running?");
+    };
+    const latest = (await stripe("GET", "events?limit=1", null, account)).data[0];
+    bru.setVar("sandboxEventCursor", latest ? latest.id : "");
+    const banks = (await stripe("GET", "accounts/" + account + "/external_accounts?object=bank_account&limit=100")).data;
+    const isRunBank = (bank) => (bank.metadata || {}).purpose === "bruno-sandbox-failing-payout";
+    const healthy = banks.filter((bank) => !isRunBank(bank) && bank.currency === "mxn" && bank.status !== "errored");
+    const restore = healthy.find((bank) => bank.default_for_currency) || healthy[0];
+    if (!restore) throw new Error("the sandbox account has no healthy MXN bank account to restore");
+    if (!restore.default_for_currency) {
+      await stripe("POST", "accounts/" + account + "/external_accounts/" + restore.id, { default_for_currency: "true" });
+    }
+    for (const leftover of banks.filter(isRunBank)) {
+      await stripe("DELETE", "accounts/" + account + "/external_accounts/" + leftover.id);
+    }
+    bru.setVar("sandboxHealthyBankId", restore.id);
+    const failing = await stripe("POST", "accounts/" + account + "/external_accounts", {
+      "external_account[object]": "bank_account",
+      "external_account[country]": "MX",
+      "external_account[currency]": "mxn",
+      "external_account[account_holder_name]": "Bruno Seller",
+      "external_account[account_holder_type]": "individual",
+      "external_account[account_number]": "000000111111111117",
+      "external_account[metadata][purpose]": "bruno-sandbox-failing-payout",
+      default_for_currency: "true",
+    });
+    if (failing.default_for_currency !== true) throw new Error("the failing CLABE did not become the default");
+    bru.setVar("sandboxFailingBankId", failing.id);
+    await waitForAccountEvents(bru.getVar("sandboxEventCursor"), "account.external_account.created", { required: failing.id, current: failing.id });
+  }
+}
+
+body:json {
+  { "p_stripe_account_id": "{{process.env.BRUNO_STRIPE_TEST_ACCOUNT_ID}}" }
+}
+
+tests {
+  test("with the failing CLABE as default the account is still actionable", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([{ is_actionable: true, blocked_reason: null }]);
+  });
+}
+
+docs {
+  Adds, per run, a MXN bank account with the sandbox CLABE 000000111111111117 (payouts to it
+  fail with no_account) as the default of the sandbox account, after restoring the healthy
+  default and deleting leftovers of an aborted run. Then waits up to 80 s until stripe-webhooks
+  recorded every account event of the connected account since the run started and
+  connect_account_actionability is not refreshing, so the release below does not race a
+  pending refresh (fence-time CONNECT_ACCOUNT_NOT_ACTIONABLE). retry-failing-bank-off undoes it.
+}

@@ -1,0 +1,90 @@
+meta {
+  name: retry-failed-run
+  type: http
+  seq: 17
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/connect_payout_runs?id=eq.{{failedRunId}}&select=id,amount,status,release_stage,stripe_payout_id,failure_reason,failed_at,connect_payout_run_shipments(shipment_id,net_payout,status)
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+script:pre-request {
+  if (!bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID") || !bru.getProcessEnv("STRIPE_SECRET_KEY")) {
+    bru.runner.skipRequest();
+  } else {
+    const key = bru.getEnvVar("serviceRoleKey");
+    let status = null;
+    for (let attempt = 0; attempt < 30 && status !== "failed"; attempt += 1) {
+      if (attempt > 0) await bru.sleep(2000);
+      const res = await bru.sendRequest({
+        method: "GET",
+        url: bru.getEnvVar("baseUrl") + "/rest/v1/connect_payout_runs?id=eq." + bru.getVar("failedRunId") + "&select=status",
+        headers: { apikey: key, Authorization: "Bearer " + key },
+      });
+      status = res.data[0].status;
+    }
+    let payout;
+    try {
+      payout = (await bru.sendRequest({
+        method: "GET",
+        url: "https://api.stripe.com/v1/payouts/" + bru.getVar("failedPayoutId"),
+        headers: { Authorization: "Bearer " + bru.getProcessEnv("STRIPE_SECRET_KEY"), "Stripe-Account": bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID") },
+      })).data;
+    } catch (error) {
+      throw new Error("Stripe payouts/" + bru.getVar("failedPayoutId") + ": " + (error.response ? error.response.status : "unreachable"));
+    }
+    if (payout.livemode === true) throw new Error("live mode payout");
+    bru.setVar("failedStripeEvidence", JSON.stringify({
+      amount: payout.amount,
+      status: payout.status,
+      failure_code: payout.failure_code,
+      destination: payout.destination,
+      failure_balance_transaction: payout.failure_balance_transaction,
+    }));
+  }
+}
+
+tests {
+  test("payout.failed turns the run failed and keeps the failed payout id", function () {
+    expect(res.getStatus()).to.equal(200);
+    const run = res.getBody()[0];
+    expect(run.status).to.equal("failed");
+    expect(run.amount).to.equal(210600);
+    expect(run.stripe_payout_id).to.equal(bru.getVar("failedPayoutId"));
+    expect(run.release_stage).to.equal("payout_failed");
+    const evidence = JSON.parse(bru.getVar("failedStripeEvidence"));
+    expect(run.failure_reason).to.equal(
+      "The bank account details on file are probably incorrect. No bank account could be located with those details." +
+        " | failure_balance_transaction: " + evidence.failure_balance_transaction,
+    );
+    expect(Number.isNaN(Date.parse(run.failed_at))).to.equal(false);
+    expect(run.connect_payout_run_shipments).to.deep.equal([
+      { shipment_id: bru.getVar("retryShipmentId"), net_payout: 210600, status: "failed" },
+    ]);
+  });
+
+  test("Stripe failed the payout to this run's CLABE with no_account and returned the funds", function () {
+    const evidence = JSON.parse(bru.getVar("failedStripeEvidence"));
+    expect(evidence.failure_balance_transaction).to.match(/^txn_/);
+    expect(evidence).to.deep.equal({
+      amount: 210600,
+      status: "failed",
+      failure_code: "no_account",
+      destination: bru.getVar("sandboxFailingBankId"),
+      failure_balance_transaction: evidence.failure_balance_transaction,
+    });
+  });
+}
+
+docs {
+  Waits up to 60 s for `bun run stripe:listen` to deliver payout.failed from the connected
+  account; stripe-webhooks is the only path that marks a run failed. failure_reason is
+  Stripe's failure_message plus the failure balance transaction (stripe-webhooks/index.ts:367-372).
+}
