@@ -1,0 +1,31 @@
+meta {
+  name: release-connect-payout-admin-empty-body
+  type: http
+  seq: 125
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/release-connect-payout
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("an admin release without a seller is refused", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody()).to.deep.equal({ success: false, error: "SELLER_ID_REQUIRED" });
+  });
+}
+
+docs {
+  Run after functions/login-admin (needs adminToken). Body validation runs before any lookup.
+}

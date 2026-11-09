@@ -1,0 +1,36 @@
+meta {
+  name: release-connect-payout-buyer
+  type: http
+  seq: 124
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/release-connect-payout
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  {
+    "sellerId": "00000000-0000-4000-8000-000000000002",
+    "shipmentIds": ["00000000-0000-4000-8000-000000b00332"],
+    "idempotencyKey": "bruno-release-buyer"
+  }
+}
+
+tests {
+  test("a signed-in buyer cannot release a payout", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody()).to.deep.equal({ success: false, error: "ADMIN_REQUIRED" });
+  });
+}
+
+docs {
+  Run after auth/login-buyer (needs buyerToken). The body is parsed before the role check,
+  so it must be a valid release body to reach ADMIN_REQUIRED; nothing is written.
+}

@@ -1,0 +1,37 @@
+meta {
+  name: release-connect-payout-admin-unknown-shipment
+  type: http
+  seq: 126
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/release-connect-payout
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+body:json {
+  {
+    "sellerId": "00000000-0000-4000-8000-000000000002",
+    "shipmentIds": ["00000000-0000-4000-8000-000000b00332"],
+    "idempotencyKey": "bruno-release-unknown-shipment"
+  }
+}
+
+tests {
+  test("an admin release of a shipment that does not exist is refused", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody()).to.deep.equal({ success: false, error: "SHIPMENT_NOT_FOUND" });
+  });
+}
+
+docs {
+  Run after functions/login-admin. The release view returns no row for the id, so the
+  eligibility check refuses before the payout run is created or Stripe is called.
+  release-connect-payout-no-run-row checks that no run was written.
+}

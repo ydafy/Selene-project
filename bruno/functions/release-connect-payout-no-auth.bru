@@ -1,0 +1,31 @@
+meta {
+  name: release-connect-payout-no-auth
+  type: http
+  seq: 123
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/release-connect-payout
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("rejects a release without a user token", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody()).to.deep.equal({ success: false, error: "AUTH_REQUIRED" });
+  });
+}
+
+docs {
+  Needs the functions server: run `bun run functions:serve` right before the calls (it exits
+  about 60 s after the last request). No Stripe call: the handler stops before the body is read.
+}

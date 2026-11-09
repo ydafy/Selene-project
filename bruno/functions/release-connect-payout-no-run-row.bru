@@ -1,0 +1,27 @@
+meta {
+  name: release-connect-payout-no-run-row
+  type: http
+  seq: 128
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/connect_payout_runs?idempotency_key=in.(bruno-release-buyer,bruno-release-unknown-shipment)&select=id
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{serviceRoleKey}}
+  Authorization: Bearer {{serviceRoleKey}}
+}
+
+tests {
+  test("the refused releases left no payout run", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([]);
+  });
+}
+
+docs {
+  Reads connect_payout_runs with the service role after the refused requests above.
+}
