@@ -75,8 +75,9 @@ objs(kind, grp, ident, detail) as (
   where tp.pronamespace in (select oid from ns)
   union all
   select 'policy', h.name, h.name || '.' || p.polname, concat_ws('|', p.polcmd, p.polpermissive,
-    (select string_agg(case when x = 0 then 'public' else pg_get_userbyid(x) end, ',' order by 1)
-     from unnest(p.polroles) x),
+    (select string_agg(r, ',' order by r)
+     from (select case when x = 0 then 'public' else pg_get_userbyid(x) end r
+           from unnest(p.polroles) x) roles),
     regexp_replace(pg_get_expr(p.polqual, p.polrelid), '\s+', '', 'g'),
     regexp_replace(pg_get_expr(p.polwithcheck, p.polrelid), '\s+', '', 'g'))
   from hooked h join pg_policy p on p.polrelid = h.oid
