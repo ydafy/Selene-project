@@ -1,5 +1,5 @@
 //import { useTheme } from '@shopify/restyle';
-import { Box, Text } from './base';
+import { Box, Text } from '../base';
 import { colors } from '@/shared/theme/tokens';
 //import { Theme } from '../../core/theme';
 

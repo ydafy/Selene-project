@@ -8,7 +8,7 @@ import * as Haptics from 'expo-haptics';
 
 import { Box, Text } from '@/shared/ui/base';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';
-import { GlobalHeader } from '@/shared/ui/global-header';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
 
 import { ErrorState } from '@/shared/ui/feedback/error-state';
 import { Theme } from '@/shared/theme';

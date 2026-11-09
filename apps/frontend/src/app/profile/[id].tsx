@@ -45,7 +45,7 @@ import {
 } from '@/shared/utils/product-listing-status';
 import { VerificationPill } from '@/shared/ui/product/verification-pill';
 import { Theme } from '@/shared/theme';
-import { GlobalHeader } from '@/shared/ui/global-header';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import {

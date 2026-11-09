@@ -9,7 +9,7 @@ import { IconButton } from 'react-native-paper';
 
 import { Box } from '@/shared/ui/base';
 import { MyListingCard } from '@/features/profile/components/my-listing-card';
-import { GlobalHeader } from '@/shared/ui/global-header';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
 import { EmptyState } from '@/shared/ui/feedback/empty-state';
 import { ConfirmDialog } from '@/shared/ui/feedback/confirm-dialog';
 import { ProductCardSkeleton } from '@/shared/ui/product/product-card-skeleton';

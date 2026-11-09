@@ -12,7 +12,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import Toast from 'react-native-toast-message';
 import { z } from 'zod';
 
-import { ScreenLayout } from '@/shared/ui/screen-layout';
+import { ScreenLayout } from '@/shared/ui/layout/screen-layout';
 import { AuthBackButton } from '@/features/auth/components/auth-back-button';
 import { FormTextInput } from '@/shared/ui/form/form-text-input';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';

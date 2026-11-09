@@ -6,7 +6,7 @@
 
 import React, { useMemo, memo } from 'react';
 import { StyleSheet } from 'react-native';
-import { Box } from './base';
+import { Box } from '../base';
 import { colors } from '@/shared/theme/tokens';
 
 // --- CONFIGURACIÓN TÉCNICA ---

@@ -15,10 +15,10 @@ import { IconButton } from 'react-native-paper';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
 import { Box, Text } from '@/shared/ui/base';
-import { GlobalHeader } from '@/shared/ui/global-header';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
 import { LocationHeaderButton } from '@/features/address/components/location-header-button';
 import { AddressPickerModal } from '@/shared/ui/address/address-picker-modal';
-import { GridShell } from '@/shared/ui/grid-shell';
+import { GridShell } from '@/shared/ui/layout/grid-shell';
 import { HomeSkeleton } from '@/features/home/components/home-skeleton';
 
 import { ShellHero } from '@/features/home/components/shell-hero';

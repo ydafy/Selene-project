@@ -1,6 +1,6 @@
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 //import { useTheme } from '@shopify/restyle';
-import { Box } from './base';
+import { Box } from '../base';
 //import { Theme } from '../../core/theme';
 
 type BottomActionBarProps = {

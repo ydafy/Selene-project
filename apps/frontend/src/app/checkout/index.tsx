@@ -14,9 +14,9 @@ import Toast from 'react-native-toast-message';
 
 // Componentes Base
 import { Box, Text as ThemedText } from '@/shared/ui/base';
-import { GlobalHeader } from '@/shared/ui/global-header';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';
-import { ScreenHeader } from '@/shared/ui/screen-header';
+import { ScreenHeader } from '@/shared/ui/layout/screen-header';
 import { Checkbox } from '@/shared/ui/form/checkbox';
 import { ConfirmDialog } from '@/shared/ui/feedback/confirm-dialog';
 import { AddressPickerModal } from '@/shared/ui/address/address-picker-modal';

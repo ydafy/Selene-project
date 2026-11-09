@@ -11,8 +11,8 @@ import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Box, Text } from '@/shared/ui/base';
-import { GlobalHeader } from '@/shared/ui/global-header';
-import { ScreenHeader } from '@/shared/ui/screen-header';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
+import { ScreenHeader } from '@/shared/ui/layout/screen-header';
 import { AddressSection } from '@/shared/ui/address/address-section';
 import { AddressPickerModal } from '@/shared/ui/address/address-picker-modal';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';

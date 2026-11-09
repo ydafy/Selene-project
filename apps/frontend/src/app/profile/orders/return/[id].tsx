@@ -12,8 +12,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
 import { Box, Text } from '@/shared/ui/base';
-import { GlobalHeader } from '@/shared/ui/global-header';
-import { ScreenHeader } from '@/shared/ui/screen-header';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
+import { ScreenHeader } from '@/shared/ui/layout/screen-header';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { ConfirmDialog } from '@/shared/ui/feedback/confirm-dialog';
 import { EvidenceUploadSection } from '@/features/orders/components/evidence-upload-section';

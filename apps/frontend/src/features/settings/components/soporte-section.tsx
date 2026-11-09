@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
-import { SettingsRow } from '@/shared/ui/settings-row';
+import { SettingsRow } from '@/shared/ui/layout/settings-row';
 import { resolveSupportEmail } from '@/shared/utils/support-email';
 
 /**

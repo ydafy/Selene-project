@@ -13,7 +13,7 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 import Toast from 'react-native-toast-message';
 
 import { Box, Text } from '@/shared/ui/base';
-import { ScreenLayout } from '@/shared/ui/screen-layout';
+import { ScreenLayout } from '@/shared/ui/layout/screen-layout';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { Theme } from '@/shared/theme';
 import {

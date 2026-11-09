@@ -9,7 +9,7 @@ import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 
-import { ScreenLayout } from '@/shared/ui/screen-layout';
+import { ScreenLayout } from '@/shared/ui/layout/screen-layout';
 import { AuthBackButton } from '@/features/auth/components/auth-back-button';
 import { OtpInput } from '@/shared/ui/form/otp-input';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';

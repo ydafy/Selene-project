@@ -20,7 +20,7 @@ import { Box, Text } from '@/shared/ui/base';
 import { AppImage } from '@/shared/ui/app-image';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { TextLink } from '@/shared/ui/button/text-link';
-import { ScreenLayout } from '@/shared/ui/screen-layout';
+import { ScreenLayout } from '@/shared/ui/layout/screen-layout';
 import { ProfileActionsBar } from '@/features/profile/components/profile-actions-bar';
 import { ConfirmDialog } from '@/shared/ui/feedback/confirm-dialog';
 import { ProfileFavoritesGrid } from '@/features/profile/components/profile-favorites-grid';

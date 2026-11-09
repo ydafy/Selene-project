@@ -13,8 +13,8 @@ import { BottomSheetModal } from '@gorhom/bottom-sheet';
 
 import { Box, Text } from '@/shared/ui/base';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';
-import { GlobalHeader } from '@/shared/ui/global-header';
-import { ScreenHeader } from '@/shared/ui/screen-header';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
+import { ScreenHeader } from '@/shared/ui/layout/screen-header';
 import { VerificationMissionCard } from '@/features/verify/components/verification-mission-card';
 import { BenchmarkGuideModal } from '@/features/verify/components/benchmark-guide-modal';
 import { ConfirmDialog } from '@/shared/ui/feedback/confirm-dialog';

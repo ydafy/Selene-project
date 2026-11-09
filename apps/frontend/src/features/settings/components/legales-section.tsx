@@ -3,7 +3,7 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { PRIVACY_URL, TERMS_URL } from '@selene/types';
 
-import { SettingsRow } from '@/shared/ui/settings-row';
+import { SettingsRow } from '@/shared/ui/layout/settings-row';
 import { formatVersionLabel } from '@/features/settings/logic/version-label';
 import { useOpenInBrowser } from '@/shared/hooks/use-open-in-browser';
 

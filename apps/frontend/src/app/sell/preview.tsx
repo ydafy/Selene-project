@@ -11,8 +11,8 @@ import { AppChip } from '@/shared/ui/app-chip';
 import { ConfirmDialog } from '@/shared/ui/feedback/confirm-dialog';
 
 // Componentes de Layout
-import { GlobalHeader } from '@/shared/ui/global-header';
-import { BottomActionBar } from '@/shared/ui/bottom-action-bar';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
+import { BottomActionBar } from '@/shared/ui/layout/bottom-action-bar';
 
 // Componentes de Feature (Producto)
 import { ProductImageGallery } from '@/features/product/components/product-image-gallery';

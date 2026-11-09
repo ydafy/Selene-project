@@ -19,8 +19,8 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { Box, Text } from '@/shared/ui/base';
-import { GlobalHeader } from '@/shared/ui/global-header';
-import { ScreenHeader } from '@/shared/ui/screen-header';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
+import { ScreenHeader } from '@/shared/ui/layout/screen-header';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { ErrorState } from '@/shared/ui/feedback/error-state';
 import { Skeleton } from '@/shared/ui/feedback/skeleton';

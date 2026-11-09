@@ -5,8 +5,8 @@ import {
   ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context'; // <-- 1. Importamos el hook
-import { Box } from './base';
-import { useKeyboardHeight } from '../hooks/use-keyboard-height';
+import { Box } from '../base';
+import { useKeyboardHeight } from '../../hooks/use-keyboard-height';
 
 type ScreenLayoutProps = {
   children: React.ReactNode;

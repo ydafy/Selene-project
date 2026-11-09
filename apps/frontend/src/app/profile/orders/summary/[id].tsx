@@ -14,7 +14,7 @@ import { useTheme } from '@shopify/restyle';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Box, Text } from '@/shared/ui/base';
-import { GlobalHeader } from '@/shared/ui/global-header';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { Skeleton } from '@/shared/ui/feedback/skeleton';
 import { OrderShipmentCard } from '@/features/orders/components/order-shipment-card';

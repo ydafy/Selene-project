@@ -4,8 +4,8 @@ import MaterialCommunityIcons, {
 } from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from '@shopify/restyle';
 
-import { Box, Text } from './base';
-import { Theme } from '../theme';
+import { Box, Text } from '../base';
+import { Theme } from '../../theme';
 
 type SettingsRowProps = {
   icon?: MaterialDesignIconsIconName;

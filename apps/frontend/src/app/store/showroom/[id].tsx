@@ -32,7 +32,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 
 import { Box, Text } from '@/shared/ui/base';
-import { GlobalHeader } from '@/shared/ui/global-header';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
 import { ProductCard } from '@/shared/ui/product/product-card';
 import { offerPushPermission } from '@/features/notifications/lib/push-permission';
 import { ProductFavoriteButton } from '@/features/product/components/product-favorite-button';

@@ -18,8 +18,8 @@ import { useTheme } from '@shopify/restyle';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Box, Text } from '@/shared/ui/base';
-import { GlobalHeader } from '@/shared/ui/global-header';
-import { ScreenHeader } from '@/shared/ui/screen-header';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
+import { ScreenHeader } from '@/shared/ui/layout/screen-header';
 import { OrderActionCard } from '../components/order-action-card';
 import { OrderStepper } from '../components/order-stepper';
 import { MultiSellerBanner } from '../components/multi-seller-banner';

@@ -14,7 +14,7 @@ import type { TextInputInstance } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { z } from 'zod';
 
-import { ScreenLayout } from '@/shared/ui/screen-layout';
+import { ScreenLayout } from '@/shared/ui/layout/screen-layout';
 import { AuthBackButton } from '@/features/auth/components/auth-back-button';
 import { FormTextInput } from '@/shared/ui/form/form-text-input';
 import { OtpInput, type OtpInputHandle } from '@/shared/ui/form/otp-input';

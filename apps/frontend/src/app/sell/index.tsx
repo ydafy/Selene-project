@@ -6,9 +6,9 @@ import { useState } from 'react';
 
 import { Box } from '@/shared/ui/base';
 // Usamos GlobalHeader en lugar de ScreenHeader + IconButton manual
-import { GlobalHeader } from '@/shared/ui/global-header';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
 import { CategoryCard } from '@/features/search/components/category-card';
-import { ScreenHeader } from '@/shared/ui/screen-header';
+import { ScreenHeader } from '@/shared/ui/layout/screen-header';
 
 import { useSellStore } from '@/features/sell/store/use-sell-store';
 import { ProductCategory } from '@selene/types';

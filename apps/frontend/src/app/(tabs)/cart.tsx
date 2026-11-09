@@ -8,7 +8,7 @@ import { Box } from '@/shared/ui/base';
 import { CartItem } from '@/features/cart/components/cart-item';
 import { CartSummary } from '@/features/cart/components/cart-summary';
 import { EmptyState } from '@/shared/ui/feedback/empty-state';
-import { ScreenHeader } from '@/shared/ui/screen-header';
+import { ScreenHeader } from '@/shared/ui/layout/screen-header';
 import { ConfirmDialog } from '@/shared/ui/feedback/confirm-dialog';
 import { useCartStore } from '@/shared/store/use-cart-store';
 import { Theme } from '@/shared/theme';

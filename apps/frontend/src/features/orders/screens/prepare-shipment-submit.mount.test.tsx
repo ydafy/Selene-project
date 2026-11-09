@@ -124,8 +124,8 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
     Text: host('Text'),
   }));
   for (const [path, name] of [
-    ['shared/ui/global-header', 'GlobalHeader'],
-    ['shared/ui/screen-header', 'ScreenHeader'],
+    ['shared/ui/layout/global-header', 'GlobalHeader'],
+    ['shared/ui/layout/screen-header', 'ScreenHeader'],
     ['shared/ui/address/address-section', 'AddressSection'],
     ['shared/ui/button/primary-button', 'PrimaryButton'],
     ['shared/ui/feedback/confirm-dialog', 'ConfirmDialog'],

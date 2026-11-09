@@ -8,8 +8,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 
 import { Box, Text } from '@/shared/ui/base';
-import { GlobalHeader } from '@/shared/ui/global-header';
-import { ScreenHeader } from '@/shared/ui/screen-header';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
+import { ScreenHeader } from '@/shared/ui/layout/screen-header';
 import { WizardSteps } from '@/features/sell/components/wizard-steps';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { useSellStore } from '@/features/sell/store/use-sell-store';

@@ -2,8 +2,8 @@ import { useRouter } from 'expo-router';
 import { IconButton } from 'react-native-paper';
 import { useTheme } from '@shopify/restyle';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Box, Text } from './base';
-import { Theme } from '../theme';
+import { Box, Text } from '../base';
+import { Theme } from '../../theme';
 import { LinearGradient } from 'expo-linear-gradient';
 
 type GlobalHeaderProps = {

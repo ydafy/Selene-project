@@ -13,7 +13,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import Toast from 'react-native-toast-message';
 
 import { Box, Text } from '@/shared/ui/base';
-import { GlobalHeader } from '@/shared/ui/global-header';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
 import { FormTextInput } from '@/shared/ui/form/form-text-input';
 import { FormSelect } from '@/shared/ui/form/form-select';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';
@@ -29,7 +29,7 @@ import { useTheme } from '@shopify/restyle';
 import { Theme } from '@/shared/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppChip } from '@/shared/ui/app-chip';
-import { ScreenHeader } from '@/shared/ui/screen-header';
+import { ScreenHeader } from '@/shared/ui/layout/screen-header';
 
 export default function AddressFormScreen() {
   const { t } = useTranslation(['address', 'common']);

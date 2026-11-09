@@ -11,7 +11,7 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Box } from '@/shared/ui/base';
-import { GlobalHeader } from '@/shared/ui/global-header';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
 import { EmptyState } from '@/shared/ui/feedback/empty-state';
 import { NotificationItem } from '@/features/notifications/components/notification-item';
 import { createNotificationPressHandler } from '@/features/notifications/logic/notification-press';

@@ -20,8 +20,8 @@ import { IconButton } from 'react-native-paper';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 
 import { Box } from '@/shared/ui/base';
-import { ScreenHeader } from '@/shared/ui/screen-header';
-import { GlobalHeader } from '@/shared/ui/global-header';
+import { ScreenHeader } from '@/shared/ui/layout/screen-header';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
 import { ProductCard } from '@/shared/ui/product/product-card';
 import { offerPushPermission } from '@/features/notifications/lib/push-permission';
 import { ProductFavoriteButton } from '@/features/product/components/product-favorite-button';

@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@shopify/restyle';
 
 import { Box } from '@/shared/ui/base';
-import { GlobalHeader } from '@/shared/ui/global-header';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
 import { EmptyState } from '@/shared/ui/feedback/empty-state';
 import { ErrorState } from '@/shared/ui/feedback/error-state';
 import { ProductCard } from '@/shared/ui/product/product-card';
