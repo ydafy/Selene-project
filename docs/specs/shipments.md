@@ -405,12 +405,7 @@ Cron: queries `shipments WHERE status IN ('preparing','shipped') AND tracking_nu
 - Envia `generaltrack/` → delivered → call `fn_mark_shipment_delivered(shipment_id)`
 - Update `last_tracked_at` for all tracked shipments
 
-### track-returns
-
-Cron: queries `disputes WHERE status = 'waiting_return' AND return_tracking_number IS NOT NULL`
-
-- Call `fn_mark_return_delivered(p_dispute_id)` on delivery detection
-- Updates `disputes.return_last_tracked_at`
+Return tracking has no Edge Function; it is rebuilt in #266.
 
 ### cancel-order
 
@@ -532,7 +527,7 @@ WHERE seller_id = v_seller_id;
 - Refund excludes seller-paid shipping; caps against actual charge when available
 - Calls `fn_cancel_shipment(p_shipment_id, 'system', ...)` via service-role client for atomic rollback
 
-### track-shipments / track-returns
+### track-shipments
 
 - Cron triggers (described above)
 

@@ -16,7 +16,7 @@ Item 1 of roadmap #299 (issue #300): fixes for the findings of the 2026-11-08 Su
 | --- | ---------- | ------ | -------- |
 | T1  | S1, S2, S4 | inline | f22e38fc |
 | T2  | S1, S2     | worker | 05673b95 |
-| T3  | S1, S2     | inline | pending  |
+| T3  | S1, S2     | worker | next     |
 | T4  | S3         | inline | pending  |
 
 - T1: fix for GHSA-4983-wpx7-6c2x.
@@ -37,3 +37,4 @@ Item 1 of roadmap #299 (issue #300): fixes for the findings of the 2026-11-08 Su
 - **L9** T2 independent verification: met for S1 and S2, no blockers. Native review (risk, resilience, reliability) approved with non-blocking notes. Follow-up commit: more malformed-path cases in `evidence_paths.test.sql` and a comment on a misnamed dropped policy (checked on the remote: it applies to the evidence bucket only). Awaiting the maintainer's deploy.
 - **L10** T2 decisions (2026-11-08, maintainer, moved here after the deploy from Engram `odd/supabase-audit-security/t2-decisions`): the evidence bucket is private and the database stores object paths, not URLs; product uploads go only into the seller's own folder; the nightly evidence purge stays in #29; the unused `public-assets` bucket is deleted and `Avatars` keeps public reads with a 2 MiB image-only limit.
 - **L11** (2026-11-08, maintainer): "master ya hice el deploy de las edge fuctions en este woktree". Remote read: both migrations applied, buckets and storage policies match the migration, `create-dispute` (v39) and `generate-shipping-label` (v65) deployed from this worktree; the security advisor shows nothing new. GHSA-33mw closed. Still manual: delete `public-assets` (its logo file is tracked in #326), deploy admin-web, reload the app bundle.
+- **L12** (2026-11-08, maintainer): chose "Borrar las dos" for T3. Remote read: no pg_cron job calls the `track-returns` or `return-delivery-timeout` Edge Functions (the `return-delivery-timeout` job runs the SQL function directly) and no client calls them. Both functions are removed with their source-text assertions and docs; the maintainer deletes the deployed copies with `supabase functions delete`.

@@ -56,17 +56,6 @@ describe('tracking return attribution contract', () => {
     ]);
   });
 
-  it('persists polling return events with the matched dispute ID', () => {
-    const returnsPolling = read('supabase/functions/track-returns/index.ts');
-
-    expect(returnsPolling).toContain(".from('disputes')");
-    expect(returnsPolling).toContain(
-      ".select('id, shipment_id, return_tracking_number')",
-    );
-    expect(returnsPolling).toContain('p_shipment_id: dispute.shipmentId');
-    expect(returnsPolling).toContain('p_dispute_id: dispute.id');
-  });
-
   it('keeps return webhook and polling events ledger-only for the outbound shipment', () => {
     const migration = read(
       'supabase/migrations/archive/20260828030000_shipment_tracking_foundation.sql',

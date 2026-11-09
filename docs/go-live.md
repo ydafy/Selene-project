@@ -86,6 +86,8 @@ Deploy every directory in `supabase/functions/` except `supabase/functions/_shar
 
 `create-payment-intent` was retired (replaced by `create-connect-payment`; it no longer exists in the repository). Its deployed copy was deleted from the development project on 2026-10-25, so a project still listing it is out of date: remove it with `supabase functions delete create-payment-intent`.
 
+`track-returns` and `return-delivery-timeout` were removed from the repository: no cron job or client called them, and the `return-delivery-timeout` cron job runs `fn_cron_return_delivery_timeout()` directly. Return tracking is rebuilt in #266. A project still listing either function is out of date: remove them with `supabase functions delete track-returns` and `supabase functions delete return-delivery-timeout`.
+
 `resolve-shipment-refund` is called by admins with their own session, so it keeps `verify_jwt = true` (declared in `supabase/config.toml`) and checks `profiles_private.role = 'admin'` itself. It needs no new secret. Apply `supabase/migrations/20261022013846_shipment_cancellation_refund_resolution.sql` (new resolution columns, service-only `fn_resolve_shipment_cancellation_refund`, `fn_cancel_shipment` accepting an admin-resolved refund) before deploying it.
 
 `list-shipment-refund-problems` is the admin read of unresolved refund problems (GET, returns `{ problems }`). Like `resolve-shipment-refund` it keeps `verify_jwt = true` (declared in `supabase/config.toml`) and checks `profiles_private.role = 'admin'` itself. It needs no new secret. Apply `supabase/migrations/20261022223302_shipment_refund_problems.sql` (service-only `fn_list_shipment_refund_problems`) before deploying it.
