@@ -1,5 +1,6 @@
 import { createClient } from '../_shared/supabase-js.ts';
-import Stripe from 'https://esm.sh/stripe@17.0.0';
+import Stripe from '../_shared/stripe/sdk.ts';
+import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 
 import {
   ApiError,
@@ -17,8 +18,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers':
     'authorization, x-client-info, apikey, content-type',
 };
-
-const STRIPE_API_VERSION = '2026-04-22.dahlia';
 
 const log = (
   level: 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL',

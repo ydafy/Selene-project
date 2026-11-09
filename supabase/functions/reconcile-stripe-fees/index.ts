@@ -1,7 +1,7 @@
 import type { Database } from '../../../packages/types/src/database.types.ts';
 import { withSentry } from '../_shared/sentry.ts';
+import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 
-const STRIPE_API_VERSION = '2026-04-22.dahlia';
 const WORKER_BEARER_SECRET_ENV = 'STRIPE_FEE_RECONCILIATION_WORKER_SECRET';
 const PRODUCTION_POLICY = {
   batchSize: 25,
@@ -403,7 +403,7 @@ const denoRuntime = (globalThis as typeof globalThis & { Deno?: EdgeRuntime })
 if (denoRuntime) {
   const [{ createClient }, { default: Stripe }] = await Promise.all([
     import('../_shared/supabase-js.ts'),
-    import('https://esm.sh/stripe@17.0.0'),
+    import('../_shared/stripe/sdk.ts'),
   ]);
 
   const workerBearerSecret = denoRuntime.env

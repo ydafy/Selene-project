@@ -1,5 +1,6 @@
 import { createClient } from '../_shared/supabase-js.ts';
-import Stripe from 'https://esm.sh/stripe@17.0.0';
+import Stripe from '../_shared/stripe/sdk.ts';
+import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import {
   extractRefundId,
@@ -40,7 +41,7 @@ Deno.serve(
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
       );
       const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
-        apiVersion: '2026-04-22.dahlia',
+        apiVersion: STRIPE_API_VERSION,
         httpClient: Stripe.createFetchHttpClient(),
       });
 

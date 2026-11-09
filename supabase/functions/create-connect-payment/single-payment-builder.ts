@@ -527,7 +527,7 @@ export interface CreateConnectPaymentResponseBuilderInput {
 }
 
 export interface StripePaymentIntentLike {
-  client_secret: string;
+  client_secret: string | null;
   amount: number;
 }
 

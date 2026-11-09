@@ -7,7 +7,8 @@
  * payouts.
  */
 import { createClient } from '../_shared/supabase-js.ts';
-import Stripe from 'https://esm.sh/stripe@17.0.0';
+import Stripe from '../_shared/stripe/sdk.ts';
+import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 
 import {
   ConnectPayoutReleaseError,
@@ -22,8 +23,6 @@ import {
 
 import { createAtomicResumeAdapters } from './atomic-resume-adapter.ts';
 import { withSentry } from '../_shared/sentry.ts';
-
-const STRIPE_API_VERSION = '2026-04-22.dahlia';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -368,9 +367,11 @@ Deno.serve(
             }
           },
           retrieveStripePayout: async (input) => {
-            const payout = await stripe.payouts.retrieve(input.payoutId, {
-              stripeAccount: input.stripeAccountId,
-            });
+            const payout = await stripe.payouts.retrieve(
+              input.payoutId,
+              {},
+              { stripeAccount: input.stripeAccountId },
+            );
             return {
               id: payout.id,
               status: payout.status,

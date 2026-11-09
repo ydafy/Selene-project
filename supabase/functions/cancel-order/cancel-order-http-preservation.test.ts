@@ -9,6 +9,7 @@ import {
 import { runShipmentCancellation } from '../_shared/cancellation/shipment-cancellation';
 import { createCancellationReporter } from '../_shared/cancellation/cancellation-alerts';
 import { buildStripeFeeReconciliationPlan } from '../stripe-webhooks/single-modal-settlement';
+import { STRIPE_API_VERSION } from '../_shared/stripe/api-version';
 
 // Run the full serve callback with real domain helpers and no remote SDK imports.
 async function invoke(
@@ -228,6 +229,7 @@ async function invoke(
     'buildStripeFeeReconciliationPlan',
     'withSentry',
     'createCancellationReporter',
+    'STRIPE_API_VERSION',
     executable,
   )(
     () => supabase,
@@ -249,6 +251,7 @@ async function invoke(
       createCancellationReporter(name, log, async (message, reportOptions) => {
         reports.push({ message, options: reportOptions });
       }),
+    STRIPE_API_VERSION,
   );
   const response = await handler(
     new Request('https://test.invalid/cancel-order', {

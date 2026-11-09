@@ -63,6 +63,7 @@
     "knip": "^6.44.1",
     "lint-staged": "^17.6.0",
     "prettier": "^3.9.10",
+    "stripe": "23.1.0",
     "typescript": "~6.0.3",
     "zod": "4.6.7"
   },

@@ -15,7 +15,10 @@ test('resume entrypoint uses the validated claim boundary and correct release ro
   );
   expect(index).toContain("from './reconciliation-adapter.ts'");
   expect(index).toContain(
-    '...createReconciliationAdapters(rpcOrThrow, supabaseAdmin)',
+    '...createReconciliationAdapters(rpcOrThrow, reconciliationMappingClient)',
+  );
+  expect(index).toMatch(
+    /supabaseAdmin\s*\.from\(table\)\s*\.select\(columns, options\)\s*\.eq\(column, runId\)/,
   );
   expect(adapter).toContain('assertClaimedRun(');
   expect(adapter).toContain('assertReconciliationClaim(list[0] ?? null)');

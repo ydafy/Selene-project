@@ -11,6 +11,7 @@ import {
   reportCronSecretMismatch,
 } from '../_shared/auth/cron-auth';
 import { readAutoCancelExpirationHours } from '../_shared/auto-cancel/auto-cancel-settings';
+import { STRIPE_API_VERSION } from '../_shared/stripe/api-version';
 import type {
   PreparingCarrierGatePorts,
   PreparingCarrierShipment,
@@ -809,6 +810,7 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         'fetchFreshTracking',
         'requestEnviaLabelCancellation',
         'confirmPreparingCarrier',
+        'STRIPE_API_VERSION',
         executable,
       )(
         () => {
@@ -903,6 +905,7 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
             ? extra.gate(shipment, claimToken, ports)
             : { proceed: true };
         },
+        STRIPE_API_VERSION,
       );
       // The stubbed Deno.env returns 'fake' for every key, including CRON_SECRET.
       const call = (

@@ -26,7 +26,8 @@
  */
 
 import { createClient } from '../_shared/supabase-js.ts';
-import Stripe from 'https://esm.sh/stripe@17.0.0';
+import Stripe from '../_shared/stripe/sdk.ts';
+import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import { z } from '../_shared/zod-runtime.ts';
 import {
@@ -51,7 +52,6 @@ import {
   type SellerPaymentProfile,
 } from './seller-payment-readiness.ts';
 
-const STRIPE_API_VERSION = '2026-04-22.dahlia';
 const APP_NAME = 'selene';
 
 type ProductPublicationEconomicsRow = {
@@ -411,6 +411,9 @@ Deno.serve(
         { customer: customerId },
         { apiVersion: STRIPE_API_VERSION },
       );
+      // Stripe returns the secret only on create, and the PaymentSheet needs it.
+      const ephemeralKeySecret = ephemeralKey.secret;
+      if (!ephemeralKeySecret) throw new Error('EPHEMERAL_KEY_FAILED');
 
       // 10. Build the per-product allocation inputs with durable shipment ids, then
       // compute + validate the single-modal allocation. `shipmentId` correlation
@@ -520,7 +523,7 @@ Deno.serve(
       const response = buildCreateConnectPaymentResponse(pi, {
         orderId: orderGroupId,
         customerId,
-        ephemeralKeySecret: ephemeralKey.secret,
+        ephemeralKeySecret,
         transferGroup,
       });
 
@@ -539,6 +542,7 @@ Deno.serve(
         PRODUCTS_NOT_FOUND: 404,
         PROFILES_LOAD_FAILED: 500,
         PI_CREATION_FAILED: 500,
+        EPHEMERAL_KEY_FAILED: 500,
         MISSING_SERVER_CONFIG: 500,
         INVALID_CONNECT_ECONOMICS: 422,
         ONE_PRODUCT_PER_SHIPMENT_REQUIRED: 422,
