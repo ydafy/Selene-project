@@ -16,7 +16,11 @@ headers {
 }
 
 script:pre-request {
-  if (!bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID") || !bru.getProcessEnv("STRIPE_SECRET_KEY")) {
+  if (
+    bru.getProcessEnv("BRUNO_STRIPE_SANDBOX") !== "1" ||
+    !bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID") ||
+    !bru.getProcessEnv("STRIPE_SECRET_KEY")
+  ) {
     bru.runner.skipRequest();
   } else {
     const key = bru.getEnvVar("serviceRoleKey");
