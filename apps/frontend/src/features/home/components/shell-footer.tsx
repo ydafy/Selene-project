@@ -10,10 +10,10 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
 
-import { Box, Text } from '../../../shared/ui/base';
-import { AppImage } from '../../../shared/ui/app-image';
-import { Theme } from '../../../shared/theme';
-import { getSharedStyles } from '../../../shared/theme/shared-styles';
+import { Box, Text } from '@/shared/ui/base';
+import { AppImage } from '@/shared/ui/media/app-image';
+import { Theme } from '@/shared/theme';
+import { getSharedStyles } from '@/shared/theme/shared-styles';
 
 // --- CONFIGURACIÓN DE REDES SOCIALES ---
 const SOCIAL_LINKS = {

@@ -4,8 +4,8 @@ import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
 import { Slider } from '@miblanchard/react-native-slider';
 
-import { Box, Text } from '../../../shared/ui/base';
-import { Theme } from '../../../shared/theme';
+import { Box, Text } from '@/shared/ui/base';
+import { Theme } from '@/shared/theme';
 
 const CURRENCY_SYMBOL = '$';
 

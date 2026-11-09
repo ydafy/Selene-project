@@ -12,7 +12,7 @@ import {
 import {
   AuthModalContext,
   type AuthView,
-} from '../../../shared/lib/auth/auth-modal-context';
+} from '@/shared/lib/auth/auth-modal-context';
 import { AuthModal } from './auth-modal';
 
 export const AuthModalProvider = ({

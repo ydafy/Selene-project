@@ -5,29 +5,29 @@ import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Componentes Base y UI
-import { Box, Text } from '../../shared/ui/base';
-import { PrimaryButton } from '../../shared/ui/primary-button';
-import { AppChip } from '../../shared/ui/app-chip';
-import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
+import { Box, Text } from '@/shared/ui/base';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
+import { AppChip } from '@/shared/ui/app-chip';
+import { ConfirmDialog } from '@/shared/ui/feedback/confirm-dialog';
 
 // Componentes de Layout
-import { GlobalHeader } from '../../shared/ui/global-header';
-import { BottomActionBar } from '../../shared/ui/bottom-action-bar';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
+import { BottomActionBar } from '@/shared/ui/layout/bottom-action-bar';
 
 // Componentes de Feature (Producto)
-import { ProductImageGallery } from '../../features/product/components/product-image-gallery';
-import { ProductSpecificationsGrid } from '../../features/product/components/product-specifications-grid';
-import { ProductSellerCard } from '../../features/product/components/product-seller-card';
+import { ProductImageGallery } from '@/features/product/components/product-image-gallery';
+import { ProductSpecificationsGrid } from '@/features/product/components/product-specifications-grid';
+import { ProductSellerCard } from '@/features/product/components/product-seller-card';
 
 // Hooks y Utilidades
-import { useSellStore } from '../../features/sell/store/use-sell-store';
-import { usePublishProduct } from '../../features/sell/hooks/use-publish-product';
-import { useAuthContext } from '../../shared/lib/auth/auth-provider';
-import { classifyListingEdit } from '../../features/sell/logic/listing-edit';
-import { formatCurrency } from '../../shared/utils/format';
-import { buildPreviewProduct } from '../../features/sell/logic/preview-product-builder';
-import { describeUploadState } from '../../features/sell/logic/describe-upload-state';
-import { countUploadState } from '../../features/sell/logic/count-upload-state';
+import { useSellStore } from '@/features/sell/store/use-sell-store';
+import { usePublishProduct } from '@/features/sell/hooks/use-publish-product';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
+import { classifyListingEdit } from '@/features/sell/logic/listing-edit';
+import { formatCurrency } from '@/shared/utils/money/format-currency';
+import { buildPreviewProduct } from '@/features/sell/logic/preview-product-builder';
+import { describeUploadState } from '@/features/sell/logic/describe-upload-state';
+import { countUploadState } from '@/features/sell/logic/count-upload-state';
 
 import { ProductWithSeller } from '@selene/types';
 

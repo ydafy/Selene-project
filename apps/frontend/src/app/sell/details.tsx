@@ -5,8 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 
 import { Box } from '@/shared/ui/base';
-import { GlobalHeader } from '@/shared/ui/global-header';
-import { ScreenHeader } from '@/shared/ui/screen-header';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
+import { ScreenHeader } from '@/shared/ui/layout/screen-header';
 import { WizardSteps } from '@/features/sell/components/wizard-steps';
 import { SellDetailsForm } from '@/features/sell/components/sell-details-form';
 import { SELL_STEP_DEFINITIONS } from '@/features/sell/logic/sell-steps';

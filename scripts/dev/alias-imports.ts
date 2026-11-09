@@ -3,8 +3,9 @@
  * Converts relative imports that leave their top-level folder to the app's
  * `@/` alias. The top-level folder of a file under `src/` is `app/`,
  * `shared/`, or `features/<domain>/`; files directly under `src/` form one group.
- * Rewrites import, export, `import()`, `require()`, and `mock.module`
- * specifiers in `src/**`, tests included, and leaves the rest as they are.
+ * Rewrites import, export, `import()`, `require()`, `mock.module`, and
+ * `jest.mock` specifiers in `src/**`, tests included, and leaves the rest as
+ * they are. A specifier that names `src/` itself is reported, not rewritten.
  *
  *   bun scripts/dev/alias-imports.ts <app> [--apply] [--root <repoRoot>]
  *
@@ -113,15 +114,30 @@ function main(): number {
       if (!SPEC_CONTEXTS.some((re) => re.test(before))) continue;
       const first = token.quasis[0];
       const spec = text.slice(first.start, first.end);
-      if (!spec.startsWith('./') && !spec.startsWith('../')) continue;
+      const relative =
+        spec === '.' ||
+        spec === '..' ||
+        spec.startsWith('./') ||
+        spec.startsWith('../');
+      if (!relative) continue;
       if (token.hasExpr) {
         manual.push(
           `${file}:${lineAt(token.open)}: template specifier not rewritten`,
         );
         continue;
       }
-      const target = posix.normalize(posix.join(posix.dirname(srcFile), spec));
-      if (target.startsWith('../')) continue;
+      const target = posix
+        .normalize(posix.join(posix.dirname(srcFile), spec))
+        .replace(/\/$/, '');
+      if (target === '..' || target.startsWith('../')) continue;
+      if (target === '.') {
+        // From a file directly under `src/`, `.` is its own group's index.
+        if (owner === '.') continue;
+        manual.push(
+          `${file}:${lineAt(first.start)}: ${spec} names src/ itself; not rewritten`,
+        );
+        continue;
+      }
       // `./shared` from a root file names the folder (its index), not a sibling.
       const isDir =
         !target.includes('/') &&

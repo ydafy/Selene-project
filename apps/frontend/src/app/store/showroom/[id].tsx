@@ -31,27 +31,27 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 import { LinearGradient } from 'expo-linear-gradient';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 
-import { Box, Text } from '../../../shared/ui/base';
-import { GlobalHeader } from '../../../shared/ui/global-header';
-import { ProductCard } from '../../../shared/ui/product/product-card';
-import { offerPushPermission } from '../../../features/notifications/lib/push-permission';
-import { ProductFavoriteButton } from '../../../features/product/components/product-favorite-button';
-import { ProductCardSkeleton } from '../../../shared/ui/product/product-card-skeleton';
-import { ResultsFilterBar } from '../../../features/search/components/results-filter-bar';
-import { ShowroomInsights } from '../../../features/shop/components/showroom-insights';
+import { Box, Text } from '@/shared/ui/base';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
+import { ProductCard } from '@/shared/ui/product/product-card';
+import { offerPushPermission } from '@/features/notifications/lib/push-permission';
+import { ProductFavoriteButton } from '@/features/product/components/product-favorite-button';
+import { ProductCardSkeleton } from '@/shared/ui/product/product-card-skeleton';
+import { ResultsFilterBar } from '@/features/search/components/results-filter-bar';
+import { ShowroomInsights } from '@/features/shop/components/showroom-insights';
 import {
   FilterModal,
   FilterState,
-} from '../../../features/search/components/filter-modal';
-import { SearchFilters } from '../../../features/search/hooks/use-search-products';
-import { AppImage } from '../../../shared/ui/app-image';
-import { EmptyState } from '../../../shared/ui/empty-state';
-import { useSearchProducts } from '../../../features/search/hooks/use-search-products';
+} from '@/features/search/components/filter-modal';
+import { SearchFilters } from '@/features/search/hooks/use-search-products';
+import { AppImage } from '@/shared/ui/media/app-image';
+import { EmptyState } from '@/shared/ui/feedback/empty-state';
+import { useSearchProducts } from '@/features/search/hooks/use-search-products';
 import {
   getMasonryItemHeight,
   getTabDockMetrics,
-} from '../../../shared/config/layout';
-import { Theme } from '../../../shared/theme';
+} from '@/shared/config/layout';
+import { Theme } from '@/shared/theme';
 import { Product, PublicProduct } from '@selene/types';
 
 //Imagenes

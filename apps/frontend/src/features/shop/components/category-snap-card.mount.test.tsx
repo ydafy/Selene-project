@@ -76,7 +76,7 @@ if (process.env.SELENE_CATEGORY_SNAP_MOUNT_CHILD !== '1') {
       t: (key: string) => `${namespace}:${key}`,
     }),
   }));
-  mock.module('../../../shared/ui/base', () => ({
+  mock.module('@/shared/ui/base', () => ({
     Box: host('Box'),
     Text: host('Text'),
   }));

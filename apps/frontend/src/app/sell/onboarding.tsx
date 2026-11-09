@@ -18,25 +18,25 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
-import { Box, Text } from '../../shared/ui/base';
-import { GlobalHeader } from '../../shared/ui/global-header';
-import { ScreenHeader } from '../../shared/ui/screen-header';
-import { PrimaryButton } from '../../shared/ui/primary-button';
-import { ErrorState } from '../../shared/ui/error-state';
-import { Skeleton } from '../../shared/ui/skeleton';
-import { WizardSteps } from '../../features/sell/components/wizard-steps';
-import { SellerPaymentExplanation } from '../../shared/ui/seller-payment-explanation';
-import { AppImageViewer } from '../../shared/ui/app-image-viewer';
-import { useAuthContext } from '../../shared/lib/auth/auth-provider';
-import { useConnectOnboarding } from '../../shared/hooks/use-connect-onboarding';
+import { Box, Text } from '@/shared/ui/base';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
+import { ScreenHeader } from '@/shared/ui/layout/screen-header';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
+import { ErrorState } from '@/shared/ui/feedback/error-state';
+import { Skeleton } from '@/shared/ui/feedback/skeleton';
+import { WizardSteps } from '@/features/sell/components/wizard-steps';
+import { SellerPaymentExplanation } from '@/shared/ui/seller-payment-explanation';
+import { AppImageViewer } from '@/shared/ui/media/app-image-viewer';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
+import { useConnectOnboarding } from '@/shared/hooks/use-connect-onboarding';
 import {
   CONNECT_ONBOARDING_SUCCESS_CTA_ROUTE,
   resolveConnectOnboardingUiState,
   resolveConnectOnboardingVisibleError,
-} from '../../features/payments/logic/connect-onboarding-ui';
+} from '@/features/payments/logic/connect-onboarding-ui';
 import type { StripeOnboardingStatus } from '@selene/types';
-import type { ConnectOnboardingStatusGuidanceKey } from '../../features/payments/logic/connect-onboarding-ui';
-import { Theme } from '../../shared/theme';
+import type { ConnectOnboardingStatusGuidanceKey } from '@/features/payments/logic/connect-onboarding-ui';
+import { Theme } from '@/shared/theme';
 
 import {
   ONBOARDING_GUIDE_IMAGE_INDEX,
@@ -45,7 +45,7 @@ import {
   OnboardingStep1,
   OnboardingStep2,
   OnboardingStep3,
-} from '../../features/payments/components/onboarding-steps';
+} from '@/features/payments/components/onboarding-steps';
 
 type OnboardingStepRenderContext = {
   openViewer: (index: number) => void;

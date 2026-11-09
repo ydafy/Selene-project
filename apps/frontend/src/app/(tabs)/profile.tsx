@@ -6,32 +6,32 @@ import { Alert } from 'react-native';
 import {
   useProfile,
   useUpdateAvatar,
-} from '../../features/profile/hooks/use-profile';
+} from '@/features/profile/hooks/use-profile';
 
 // Hooks y Contextos
-import { useAuthContext } from '../../shared/lib/auth/auth-provider';
-import { useAuthModal } from '../../shared/lib/auth/auth-modal-context';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
+import { useAuthModal } from '@/shared/lib/auth/auth-modal-context';
 
-import { useMyFavorites } from '../../features/profile/hooks/use-my-favorites';
-import { useImageUpload } from '../../shared/hooks/use-image-upload';
+import { useMyFavorites } from '@/features/profile/hooks/use-my-favorites';
+import { useImageUpload } from '@/shared/hooks/use-image-upload';
 
 // Componentes UI y Base
-import { Box, Text } from '../../shared/ui/base';
-import { AppImage } from '../../shared/ui/app-image';
-import { PrimaryButton } from '../../shared/ui/primary-button';
-import { TextLink } from '../../shared/ui/text-link';
-import { ScreenLayout } from '../../shared/ui/screen-layout';
-import { ProfileActionsBar } from '../../features/profile/components/profile-actions-bar';
-import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
-import { ProfileFavoritesGrid } from '../../features/profile/components/profile-favorites-grid';
-import { ProfileSkeleton } from '../../features/profile/components/profile-skeleton';
-import { ConnectIncompleteBanner } from '../../features/profile/components/connect-incomplete-banner';
+import { Box, Text } from '@/shared/ui/base';
+import { AppImage } from '@/shared/ui/media/app-image';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
+import { TextLink } from '@/shared/ui/button/text-link';
+import { ScreenLayout } from '@/shared/ui/layout/screen-layout';
+import { ProfileActionsBar } from '@/features/profile/components/profile-actions-bar';
+import { ConfirmDialog } from '@/shared/ui/feedback/confirm-dialog';
+import { ProfileFavoritesGrid } from '@/features/profile/components/profile-favorites-grid';
+import { ProfileSkeleton } from '@/features/profile/components/profile-skeleton';
+import { ConnectIncompleteBanner } from '@/features/profile/components/connect-incomplete-banner';
 
 // Componentes de Feature (Perfil)
-import { ProfileHeader } from '../../features/profile/components/profile-header';
+import { ProfileHeader } from '@/features/profile/components/profile-header';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getTabDockMetrics } from '../../shared/config/layout';
+import { getTabDockMetrics } from '@/shared/config/layout';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const logoIconPath = require('@/assets/images/SeleneLunaLogo.png');

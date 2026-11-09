@@ -5,12 +5,12 @@ import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 
-import { Box } from '../../../shared/ui/base';
+import { Box } from '@/shared/ui/base';
 import { ProfileActionButton } from './profile-action-button';
-import { Theme } from '../../../shared/theme';
+import { Theme } from '@/shared/theme';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useCallback, useRef } from 'react';
-import { AddressPickerModal } from '../../../shared/ui/address-picker-modal';
+import { AddressPickerModal } from '@/shared/ui/address/address-picker-modal';
 import { Address } from '@selene/types';
 import { useAddresses } from '@/shared/hooks/use-addresses';
 import { useCheckoutStore } from '@/shared/store/use-checkout-store';

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
-import { supabase } from '../../../shared/lib/supabase';
+import { supabase } from '@/shared/lib/supabase';
 
 /** Max ids accepted by fn_product_seller_payment_readiness per call. */
 const RPC_MAX_IDS = 50;

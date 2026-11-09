@@ -3,14 +3,14 @@ import { useTranslation } from 'react-i18next';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from '@shopify/restyle';
 
-import { Theme } from '../../shared/theme';
-import { useCartStore } from '../../shared/store/use-cart-store';
-import { tabIconColor } from '../../shared/utils/tab-icon-color';
-import { CartTabIcon } from '../../shared/ui/cart-tab-icon';
+import { Theme } from '@/shared/theme';
+import { useCartStore } from '@/shared/store/use-cart-store';
+import { tabIconColor } from '@/shared/utils/tab-icon-color';
+import { CartTabIcon } from '@/shared/ui/cart-tab-icon';
 import { Box } from '@/shared/ui/base';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getTabDockMetrics, TAB_DOCK } from '../../shared/config/layout';
+import { getTabDockMetrics, TAB_DOCK } from '@/shared/config/layout';
 
 export default function TabsLayout() {
   const theme = useTheme<Theme>();

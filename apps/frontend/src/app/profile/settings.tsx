@@ -3,16 +3,16 @@ import { Stack, Redirect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { GlobalHeader } from '../../shared/ui/global-header';
-import { ScreenLayout } from '../../shared/ui/screen-layout';
-import { useAuthContext } from '../../shared/lib/auth/auth-provider';
-import { AccountSection } from '../../features/settings/components/account-section';
-import { SecuritySection } from '../../features/settings/components/security-section';
-import { NotificationsSection } from '../../features/notifications/components/notifications-section';
-import { DeleteAccountSection } from '../../features/settings/components/delete-account-section';
-import { LegalesSection } from '../../features/settings/components/legales-section';
-import { SoporteSection } from '../../features/settings/components/soporte-section';
-import { SettingsSection } from '../../features/settings/components/settings-section';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
+import { ScreenLayout } from '@/shared/ui/layout/screen-layout';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
+import { AccountSection } from '@/features/settings/components/account-section';
+import { SecuritySection } from '@/features/settings/components/security-section';
+import { NotificationsSection } from '@/features/notifications/components/notifications-section';
+import { DeleteAccountSection } from '@/features/settings/components/delete-account-section';
+import { LegalesSection } from '@/features/settings/components/legales-section';
+import { SoporteSection } from '@/features/settings/components/soporte-section';
+import { SettingsSection } from '@/features/settings/components/settings-section';
 
 export default function SettingsScreen() {
   const { t } = useTranslation('settings');

@@ -12,20 +12,20 @@ import { useTheme } from '@shopify/restyle';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import Toast from 'react-native-toast-message';
 
-import { Box, Text } from '../../shared/ui/base';
-import { ScreenLayout } from '../../shared/ui/screen-layout';
-import { FormTextInput } from '../../shared/ui/form-text-input';
-import { AppImage } from '../../shared/ui/app-image';
-import { useAuthContext } from '../../shared/lib/auth/auth-provider';
+import { Box, Text } from '@/shared/ui/base';
+import { ScreenLayout } from '@/shared/ui/layout/screen-layout';
+import { FormTextInput } from '@/shared/ui/form/form-text-input';
+import { AppImage } from '@/shared/ui/media/app-image';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import {
   useProfile,
   useUpdateProfile,
   useUpdateAvatar,
-} from '../../features/profile/hooks/use-profile';
-import { useImageUpload } from '../../shared/hooks/use-image-upload';
-import { validateEditUsername } from '../../shared/utils/edit-profile-validation';
-import { stripSettingsNamespace } from '../../features/settings/logic/delete-account-helpers';
-import { Theme } from '../../shared/theme';
+} from '@/features/profile/hooks/use-profile';
+import { useImageUpload } from '@/shared/hooks/use-image-upload';
+import { validateEditUsername } from '@/shared/utils/edit-profile-validation';
+import { stripSettingsNamespace } from '@/features/settings/logic/delete-account-helpers';
+import { Theme } from '@/shared/theme';
 
 export default function EditProfileScreen() {
   const { t } = useTranslation(['settings', 'profile', 'common']);

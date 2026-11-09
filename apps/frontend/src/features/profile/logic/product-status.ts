@@ -1,4 +1,4 @@
-import { Theme } from '../../../shared/theme';
+import { Theme } from '@/shared/theme';
 
 /**
  * Devuelve el color del tema asociado al estado del producto.

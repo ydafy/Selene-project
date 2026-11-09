@@ -6,9 +6,9 @@ import MaterialCommunityIcons, {
 } from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from '@shopify/restyle';
 
-import { Box, Text } from '../../../shared/ui/base';
-import { AppImage } from '../../../shared/ui/app-image';
-import { Theme } from '../../../shared/theme';
+import { Box, Text } from '@/shared/ui/base';
+import { AppImage } from '@/shared/ui/media/app-image';
+import { Theme } from '@/shared/theme';
 
 /**
  * Default 16:9 illustration per packing step, keyed by step index in the

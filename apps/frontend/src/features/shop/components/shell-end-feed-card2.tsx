@@ -21,14 +21,14 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 
-import { Box, Text } from '../../../shared/ui/base';
-import { ProductMiniCard } from '../../../shared/ui/product/product-mini-card';
-import { PrimaryButton } from '../../../shared/ui/primary-button';
-import { useProducts } from '../../../shared/hooks/use-products';
-import { getMasonryItemHeight } from '../../../shared/config/layout';
-import { Theme } from '../../../shared/theme';
-import { getSharedStyles } from '../../../shared/theme/shared-styles';
-import { AppImage } from '@/shared/ui/app-image';
+import { Box, Text } from '@/shared/ui/base';
+import { ProductMiniCard } from '@/shared/ui/product/product-mini-card';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
+import { useProducts } from '@/shared/hooks/use-products';
+import { getMasonryItemHeight } from '@/shared/config/layout';
+import { Theme } from '@/shared/theme';
+import { getSharedStyles } from '@/shared/theme/shared-styles';
+import { AppImage } from '@/shared/ui/media/app-image';
 import SeleneLogo from '@/assets/images/SeleneLunaLogo.png';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');

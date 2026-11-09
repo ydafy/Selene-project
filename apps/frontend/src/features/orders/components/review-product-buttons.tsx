@@ -2,7 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { EnrichedShipment } from '@selene/types';
 
-import { PrimaryButton } from '../../../shared/ui/primary-button';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
 
 interface ReviewProductButtonsProps {
   items: EnrichedShipment['items'] | undefined;

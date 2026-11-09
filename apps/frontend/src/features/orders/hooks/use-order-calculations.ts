@@ -15,7 +15,7 @@
 
 import { useMemo } from 'react';
 import { Product } from '@selene/types';
-import { grossUpDomesticMx } from '../../../shared/utils/stripe-fee-gross-up';
+import { grossUpDomesticMx } from '@/shared/utils/money/stripe-fee-gross-up';
 
 export const calculateOrderCalculations = (items: Product[] = []) => {
   if (!items || items.length === 0) {

@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import type { ShipmentTrackingEvent } from '@selene/types';
 
-import { supabase } from '../../../shared/lib/supabase';
-import { invokeEdge } from '../../../shared/lib/edge-client';
+import { supabase } from '@/shared/lib/supabase';
+import { invokeEdge } from '@/shared/lib/edge-client';
 
 export const useShipmentTrackingEvents = (shipmentId: string | undefined) =>
   useQuery({

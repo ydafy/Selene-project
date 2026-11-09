@@ -4,7 +4,7 @@
  */
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '../../../shared/lib/supabase';
+import { supabase } from '@/shared/lib/supabase';
 import {
   EnrichedOrder,
   OrderStatus,
@@ -14,7 +14,7 @@ import {
   Tables,
   Product,
 } from '@selene/types';
-import { useAuthContext } from '../../../shared/lib/auth/auth-provider';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import { useReviewStore } from '../store/use-review-store';
 import {
   ITEM_PRODUCT_EMBED,

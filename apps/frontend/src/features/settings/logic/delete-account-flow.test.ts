@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { runDeleteAccount } from './delete-account-flow';
 import type { DeleteAccountHttpResponse } from './delete-account-helpers';
-import type { ReauthResult } from '../../../shared/lib/auth/reauth.logic';
+import type { ReauthResult } from '@/shared/lib/auth/reauth.logic';
 
 const REAUTH: DeleteAccountHttpResponse = {
   status: 403,

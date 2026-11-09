@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Box, Text } from '../../../shared/ui/base';
+import { Box, Text } from '@/shared/ui/base';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@shopify/restyle';
 import { Theme } from '@/shared/theme';

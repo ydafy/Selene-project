@@ -25,10 +25,10 @@ import { ProductCategory } from '@selene/types';
 import { useVideoUpload } from '@/features/orders/hooks/use-video-upload';
 
 import { Box, Text } from '@/shared/ui/base';
-import { GlobalHeader } from '@/shared/ui/global-header';
-import { ScreenHeader } from '@/shared/ui/screen-header';
-import { PrimaryButton } from '@/shared/ui/primary-button';
-import { Checkbox } from '@/shared/ui/checkbox';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
+import { ScreenHeader } from '@/shared/ui/layout/screen-header';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
+import { Checkbox } from '@/shared/ui/form/checkbox';
 import { EvidenceUploadSection } from '@/features/orders/components/evidence-upload-section';
 import { Theme } from '@/shared/theme';
 
@@ -43,7 +43,7 @@ import {
 import { useOrderById } from '@/features/orders/hooks/use-orders';
 import { useOrderActions } from '@/features/orders/hooks/use-order-actions';
 import { WizardSteps } from '@/features/sell/components/wizard-steps';
-import { FormTextInput } from '@/shared/ui/form-text-input';
+import { FormTextInput } from '@/shared/ui/form/form-text-input';
 import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import { resolveShipmentContext } from '@/features/orders/logic/dispute-shipment-context';
 import { describeError } from '@/shared/utils/describe-error';

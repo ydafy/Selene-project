@@ -1,12 +1,12 @@
 import React from 'react';
 import { TouchableOpacity } from 'react-native';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
-import { Box, Text } from '../../../shared/ui/base';
+import { Box, Text } from '@/shared/ui/base';
 import { CheckoutRow } from './checkout-row';
-import { formatCurrency } from '../../../shared/utils/format';
+import { formatCurrency } from '@/shared/utils/money/format-currency';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
-import { Theme } from '../../../shared/theme';
+import { Theme } from '@/shared/theme';
 
 interface SummaryBreakdownProps {
   subtotal: number;

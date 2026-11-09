@@ -7,20 +7,20 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IconButton } from 'react-native-paper';
 
-import { Box } from '../../shared/ui/base';
-import { MyListingCard } from '../../features/profile/components/my-listing-card';
-import { GlobalHeader } from '../../shared/ui/global-header';
-import { EmptyState } from '../../shared/ui/empty-state';
-import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
-import { ProductCardSkeleton } from '../../shared/ui/product/product-card-skeleton';
-import { SegmentedControl } from '../../shared/ui/segmented-control';
-import { isProductHistory } from '../../features/profile/logic/product-status';
+import { Box } from '@/shared/ui/base';
+import { MyListingCard } from '@/features/profile/components/my-listing-card';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
+import { EmptyState } from '@/shared/ui/feedback/empty-state';
+import { ConfirmDialog } from '@/shared/ui/feedback/confirm-dialog';
+import { ProductCardSkeleton } from '@/shared/ui/product/product-card-skeleton';
+import { SegmentedControl } from '@/shared/ui/form/segmented-control';
+import { isProductHistory } from '@/features/profile/logic/product-status';
 
-import { useMyListings } from '../../features/profile/hooks/use-my-listings';
-import { useProductManagement } from '../../features/profile/hooks/use-product-management';
-import { useSellStore } from '../../features/sell/store/use-sell-store';
+import { useMyListings } from '@/features/profile/hooks/use-my-listings';
+import { useProductManagement } from '@/features/profile/hooks/use-product-management';
+import { useSellStore } from '@/features/sell/store/use-sell-store';
 
-import { Theme } from '../../shared/theme';
+import { Theme } from '@/shared/theme';
 import { Product } from '@selene/types';
 import { useSeleneRefresh } from '@/shared/hooks/use-selene-refresh';
 

@@ -13,32 +13,32 @@ import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import Toast from 'react-native-toast-message';
 
 // Componentes Base
-import { Box, Text as ThemedText } from '../../shared/ui/base';
-import { GlobalHeader } from '../../shared/ui/global-header';
-import { PrimaryButton } from '../../shared/ui/primary-button';
-import { ScreenHeader } from '../../shared/ui/screen-header';
-import { Checkbox } from '../../shared/ui/checkbox';
-import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
-import { AddressPickerModal } from '../../shared/ui/address-picker-modal';
-import { PaymentMethodPickerModal } from '../../features/checkout/components/payment-method-picker-modal';
+import { Box, Text as ThemedText } from '@/shared/ui/base';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
+import { ScreenHeader } from '@/shared/ui/layout/screen-header';
+import { Checkbox } from '@/shared/ui/form/checkbox';
+import { ConfirmDialog } from '@/shared/ui/feedback/confirm-dialog';
+import { AddressPickerModal } from '@/shared/ui/address/address-picker-modal';
+import { PaymentMethodPickerModal } from '@/features/checkout/components/payment-method-picker-modal';
 
 // Componentes de Checkout
-import { CheckoutItem } from '../../features/checkout/components/checkout-item';
-import { AddressSection } from '../../shared/ui/address-section';
-import { PaymentSection } from '../../features/checkout/components/payment-section';
-import { SummaryBreakdown } from '../../features/checkout/components/summary-breakdown';
+import { CheckoutItem } from '@/features/checkout/components/checkout-item';
+import { AddressSection } from '@/shared/ui/address/address-section';
+import { PaymentSection } from '@/features/checkout/components/payment-section';
+import { SummaryBreakdown } from '@/features/checkout/components/summary-breakdown';
 
 // Stores, Hooks y Servicios
-import { useCartStore } from '../../shared/store/use-cart-store';
-import { useCheckoutStore } from '../../shared/store/use-checkout-store';
-import { useAddresses } from '../../shared/hooks/use-addresses';
-import { useOrderCalculations } from '../../features/orders/hooks/use-order-calculations';
-import { usePaymentMethods } from '../../features/checkout/hooks/use-payment-methods';
-import { formatCurrency } from '../../shared/utils/format';
+import { useCartStore } from '@/shared/store/use-cart-store';
+import { useCheckoutStore } from '@/shared/store/use-checkout-store';
+import { useAddresses } from '@/shared/hooks/use-addresses';
+import { useOrderCalculations } from '@/features/orders/hooks/use-order-calculations';
+import { usePaymentMethods } from '@/features/checkout/hooks/use-payment-methods';
+import { formatCurrency } from '@/shared/utils/money/format-currency';
 import { Address } from '@selene/types';
-import { useAuthContext } from '../../shared/lib/auth/auth-provider';
-import { OrderService } from '../../features/orders/logic/order-service';
-import { checkoutValidationSchema } from '../../features/checkout/logic/checkout-schema';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
+import { OrderService } from '@/features/orders/logic/order-service';
+import { checkoutValidationSchema } from '@/features/checkout/logic/checkout-schema';
 
 export default function CheckoutSummaryScreen() {
   const { t } = useTranslation('checkout');

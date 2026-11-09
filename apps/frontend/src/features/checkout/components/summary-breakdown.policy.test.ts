@@ -11,7 +11,7 @@ describe('checkout buyer summary policy', () => {
 
   test('renders SummaryBreakdown and does not reference SellerPaymentBreakdown', () => {
     expect(src).toContain(
-      "from '../../features/checkout/components/summary-breakdown'",
+      "from '@/features/checkout/components/summary-breakdown'",
     );
     expect(src).toContain('<SummaryBreakdown');
     expect(src).not.toContain('SellerPaymentBreakdown');

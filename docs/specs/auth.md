@@ -35,7 +35,7 @@ The canonical SQL of the auth functions is in `supabase/queries/auth/` and `supa
 Notes on the table:
 
 - Reading orders, submitting evidence, and fulfilling existing shipments and returns are not gated by status. Refunds and dispute resolution stay under admin and server control. A suspension does not cancel anything or move money.
-- A banned user keeps a session so the app can show the blocked-account screen with the reason (`apps/frontend/src/shared/ui/system-guard.tsx`). The same component shows the suspension notice. The server gates are the ones in the table.
+- A banned user keeps a session so the app can show the blocked-account screen with the reason (`apps/frontend/src/shared/ui/feedback/system-guard.tsx`). The same component shows the suspension notice. The server gates are the ones in the table.
 - A closed account cannot sign in because `fn_close_account` removes its credentials and identities and sets `auth.users.banned_until` far in the future.
 - There is no seller-initiated payout request: `fn_request_payout` was dropped with the legacy wallet. An admin releases payouts through `release-connect-payout`, and that function does not look at the seller's account status.
 

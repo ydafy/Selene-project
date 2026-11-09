@@ -4,9 +4,9 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 import Animated, { withSpring, withTiming } from 'react-native-reanimated';
 import { useTheme } from '@shopify/restyle';
 
-import { Box, Text } from '../../../shared/ui/base';
-import { ConfirmDialog } from '../../../shared/ui/confirm-dialog';
-import { Theme } from '../../../shared/theme';
+import { Box, Text } from '@/shared/ui/base';
+import { ConfirmDialog } from '@/shared/ui/feedback/confirm-dialog';
+import { Theme } from '@/shared/theme';
 
 // Mount entrance: slides in from the left (spring, 2 s) while fading in (timing).
 const truckEntering = () => {

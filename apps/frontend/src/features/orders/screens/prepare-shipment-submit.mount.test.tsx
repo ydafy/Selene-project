@@ -119,19 +119,19 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
   mock.module('react-native-safe-area-context', () => ({
     useSafeAreaInsets: () => ({ top: 0, bottom: 0 }),
   }));
-  mock.module('../../../shared/ui/base', () => ({
+  mock.module('@/shared/ui/base', () => ({
     Box: host('Box'),
     Text: host('Text'),
   }));
   for (const [path, name] of [
-    ['shared/ui/global-header', 'GlobalHeader'],
-    ['shared/ui/screen-header', 'ScreenHeader'],
-    ['shared/ui/address-section', 'AddressSection'],
-    ['shared/ui/primary-button', 'PrimaryButton'],
-    ['shared/ui/confirm-dialog', 'ConfirmDialog'],
-    ['shared/ui/error-state', 'ErrorState'],
-    ['shared/ui/skeleton', 'Skeleton'],
-    ['shared/ui/label-with-help', 'LabelWithHelp'],
+    ['shared/ui/layout/global-header', 'GlobalHeader'],
+    ['shared/ui/layout/screen-header', 'ScreenHeader'],
+    ['shared/ui/address/address-section', 'AddressSection'],
+    ['shared/ui/button/primary-button', 'PrimaryButton'],
+    ['shared/ui/feedback/confirm-dialog', 'ConfirmDialog'],
+    ['shared/ui/feedback/error-state', 'ErrorState'],
+    ['shared/ui/feedback/skeleton', 'Skeleton'],
+    ['shared/ui/form/label-with-help', 'LabelWithHelp'],
     ['features/orders/components/packaging-guide-card', 'PackagingGuideCard'],
     [
       'features/orders/components/shipment-label-recovery-card',
@@ -142,10 +142,10 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
       'EvidenceUploadSection',
     ],
   ])
-    mock.module(`../../../${path}`, () => ({
+    mock.module(`@/${path}`, () => ({
       [name]: name === 'PrimaryButton' ? labelHost(name) : host(name),
     }));
-  mock.module('../../../shared/ui/address-picker-modal', () => ({
+  mock.module('@/shared/ui/address/address-picker-modal', () => ({
     AddressPickerModal: ({
       innerRef,
       ...props
@@ -161,7 +161,7 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
       return React.createElement('AddressPickerModal', props);
     },
   }));
-  mock.module('../../../shared/lib/auth/auth-provider', () => ({
+  mock.module('@/shared/lib/auth/auth-provider', () => ({
     useAuthContext: () => ({ session: { user: { id: viewer } } }),
   }));
   mock.module('../hooks/use-orders', () => ({
@@ -185,16 +185,16 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
   mock.module('../hooks/use-order-actions', () => ({
     useOrderActions: () => ({ generateLabel: { isLoading: false, execute } }),
   }));
-  mock.module('../../../shared/hooks/use-system-config', () => ({
+  mock.module('@/shared/hooks/use-system-config', () => ({
     useSystemConfig: () => ({ data: {} }),
   }));
-  mock.module('../../../shared/hooks/use-connect-onboarding', () => ({
+  mock.module('@/shared/hooks/use-connect-onboarding', () => ({
     useConnectOnboarding: () => ({ isComplete: onboarding, isLoading: false }),
   }));
   mock.module('../hooks/use-shipment-label-refresh', () => ({
     useShipmentLabelRefresh: () => {},
   }));
-  mock.module('../../../shared/lib/biometrics', () => ({
+  mock.module('@/shared/lib/biometrics', () => ({
     authenticateAsync: authenticate,
   }));
   for (const image of [
@@ -202,7 +202,7 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
     'evidencia-2-caja',
     'evidencia-3-caja-completa',
   ])
-    mock.module(`../../../../assets/images/packaging/${image}.webp`, () => ({
+    mock.module(`@/assets/images/packaging/${image}.webp`, () => ({
       default: 1,
     }));
   const { act, render } = await import('@testing-library/react-native');

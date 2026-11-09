@@ -6,23 +6,23 @@ import { useTheme } from '@shopify/restyle';
 import Animated, { withSpring } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 
-import { Box, Text } from '../../shared/ui/base';
-import { PrimaryButton } from '../../shared/ui/primary-button';
-import { GlobalHeader } from '../../shared/ui/global-header';
+import { Box, Text } from '@/shared/ui/base';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
+import { GlobalHeader } from '@/shared/ui/layout/global-header';
 
-import { ErrorState } from '../../shared/ui/error-state';
-import { Theme } from '../../shared/theme';
-import { usePaymentProcess } from '../../features/checkout/hooks/use-payment-process';
-import { formatCurrency } from '../../shared/utils/format';
-import { OrderPreviewStrip } from '../../features/checkout/components/order-preview-strip';
-import { ProductSummaryModal } from '../../features/checkout/components/product-summary-modal';
+import { ErrorState } from '@/shared/ui/feedback/error-state';
+import { Theme } from '@/shared/theme';
+import { usePaymentProcess } from '@/features/checkout/hooks/use-payment-process';
+import { formatCurrency } from '@/shared/utils/money/format-currency';
+import { OrderPreviewStrip } from '@/features/checkout/components/order-preview-strip';
+import { ProductSummaryModal } from '@/features/checkout/components/product-summary-modal';
 import { Stack } from 'expo-router';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useCartStore } from '@/shared/store/use-cart-store';
 import {
   useSellerPaymentReadiness,
   isSellerBlocked,
-} from '../../features/payments/hooks/use-seller-payment-readiness';
+} from '@/features/payments/hooks/use-seller-payment-readiness';
 
 // Mount entrance: scale 0.8 -> 1 with a fade, driven by a spring.
 const iconEntering = () => {

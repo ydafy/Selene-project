@@ -4,7 +4,7 @@
  * Incluye validaciones de integridad de stock antes de iniciar procesos de pago.
  */
 
-import { supabase } from '../../../shared/lib/supabase';
+import { supabase } from '@/shared/lib/supabase';
 
 export class OrderService {
   /**

@@ -9,13 +9,13 @@ import { StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { BlurView } from 'expo-blur';
-import { Box, Text } from '../../../shared/ui/base';
-import { AppImage } from '../../../shared/ui/app-image';
-import { PrimaryButton } from '../../../shared/ui/primary-button';
-import { formatCurrency } from '../../../shared/utils/format';
+import { Box, Text } from '@/shared/ui/base';
+import { AppImage } from '@/shared/ui/media/app-image';
+import { PrimaryButton } from '@/shared/ui/button/primary-button';
+import { formatCurrency } from '@/shared/utils/money/format-currency';
 import { PublicProduct } from '@selene/types';
-import { isInVerification } from '../../../shared/utils/product-listing-status';
-import { VerificationPill } from '../../../shared/ui/product/verification-pill';
+import { isInVerification } from '@/shared/utils/product-listing-status';
+import { VerificationPill } from '@/shared/ui/product/verification-pill';
 
 interface Props {
   product: PublicProduct;

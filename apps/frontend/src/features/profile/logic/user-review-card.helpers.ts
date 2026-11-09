@@ -2,7 +2,7 @@ import type { SellerReview } from './use-seller-reviews.helpers';
 import {
   resolvePublicIdentity,
   type PublicIdentity,
-} from '../../../shared/utils/public-identity';
+} from '@/shared/utils/public-identity';
 
 type ReviewCardPresentation = {
   shouldRender: boolean;

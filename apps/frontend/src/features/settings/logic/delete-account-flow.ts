@@ -1,7 +1,7 @@
 import type {
   ReauthCredential,
   ReauthResult,
-} from '../../../shared/lib/auth/reauth.logic';
+} from '@/shared/lib/auth/reauth.logic';
 import {
   mapDeleteAccountResponse,
   type DeleteAccountHttpResponse,

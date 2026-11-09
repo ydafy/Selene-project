@@ -14,19 +14,19 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 
-import { Box, Text } from '../../shared/ui/base';
-import { CategorySnapCard } from '../../features/shop/components/category-snap-card';
-import { BrandSnapCard } from '../../features/shop/components/brand-snap-card';
-import { ShellTrustSnap } from '../../features/shop/components/shell-trust-snap';
-import { ShopSkeleton } from '../../features/shop/components/shop-skeleton';
-import { useProducts } from '../../shared/hooks/use-products';
-import { ACTIVE_LISTING_STATUSES } from '../../shared/utils/product-listing-status';
-import { Theme } from '../../shared/theme/index';
+import { Box, Text } from '@/shared/ui/base';
+import { CategorySnapCard } from '@/features/shop/components/category-snap-card';
+import { BrandSnapCard } from '@/features/shop/components/brand-snap-card';
+import { ShellTrustSnap } from '@/features/shop/components/shell-trust-snap';
+import { ShopSkeleton } from '@/features/shop/components/shop-skeleton';
+import { useProducts } from '@/shared/hooks/use-products';
+import { ACTIVE_LISTING_STATUSES } from '@/shared/utils/product-listing-status';
+import { Theme } from '@/shared/theme/index';
 import { useTheme } from '@shopify/restyle';
-import { ProductSnapCard } from '../../features/shop/components/product-snap-card';
+import { ProductSnapCard } from '@/features/shop/components/product-snap-card';
 
 import { ShellEndFeedCard2 } from '@/features/shop/components/shell-end-feed-card2';
-import { getTabDockMetrics } from '../../shared/config/layout';
+import { getTabDockMetrics } from '@/shared/config/layout';
 
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
