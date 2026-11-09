@@ -13,19 +13,18 @@
  * Idempotency:
  *   - If the caller already has `profiles_private.stripe_account_id`, we reuse
  *     it and just mint a fresh AccountLink (the previous link is short-lived).
- *   - If not, we create a new Accounts v2 account with the controller payload
- *     dictated by design.md and proposal.md.
+ *   - If not, we create a new v1 Express account (country MX, transfers and
+ *     card_payments requested) with a manual payout schedule.
  */
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import Stripe from 'https://esm.sh/stripe@17.0.0';
+import { createClient } from '../_shared/supabase-js.ts';
+import Stripe from '../_shared/stripe/sdk.ts';
+import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 
 import { resolveConnectOnboardingUrls } from './connect-onboarding-urls.ts';
 import { CreateConnectAccountRequestSchema } from './request-schema.ts';
 import { withSentry } from '../_shared/sentry.ts';
 
-const STRIPE_API_VERSION = '2026-04-22.dahlia';
 const APP_NAME = 'selene';
 
 const corsHeaders = {
@@ -51,7 +50,7 @@ const log = (
   );
 };
 
-serve(
+Deno.serve(
   withSentry('create-connect-account', async (req: Request) => {
     if (req.method === 'OPTIONS') {
       return new Response('ok', { headers: corsHeaders });
@@ -114,87 +113,31 @@ serve(
       let accountId = profile?.stripe_account_id ?? null;
 
       if (!accountId) {
-        log('info', 'Creating Stripe Connect Account v2', {
+        log('info', 'Creating Stripe Connect Express account', {
           sellerId: user.id,
         });
 
-        // Accounts v2 payload per design.md decision matrix:
-        //  - losses.payments: 'stripe'         → Stripe absorbs chargebacks
-        //  - fees.payer: 'application'         → Selene pays processing fees
-        //  - stripe_dashboard.type: 'full'     → seller uses Stripe dashboard
-        //  - requirement_collection: 'stripe'  → Stripe collects KYC
-        //
-        // The Accounts v2 endpoint lives at `stripe.v2.core.accounts.create`.
-        // The official Stripe SDK exposes it via the v2 namespace; if a runtime
-        // doesn't yet expose `stripe.v2`, fall back to v1 Express accounts to
-        // avoid bricking onboarding (logged as a warning for ops).
-
-        try {
-          const account = await stripe.v2.core.accounts.create({
-            contact_email: user.email ?? profile?.email ?? undefined,
-            identity: { country: 'mx' },
-            configuration: {
-              merchant: {
-                mcc: '5734', // Computer software stores — placeholder for HW resale
-              },
+        // Manual payout schedule: funds stay in the seller's Connect account
+        // until Selene triggers the payout, after the order completes.
+        const account = await stripe.accounts.create({
+          type: 'express',
+          country: 'MX',
+          email: user.email ?? profile?.email ?? undefined,
+          capabilities: {
+            transfers: { requested: true },
+            card_payments: { requested: true },
+          },
+          settings: {
+            payouts: {
+              schedule: { interval: 'manual' },
             },
-            defaults: {
-              currency: 'mxn',
-            },
-            metadata: {
-              supabase_user_id: user.id,
-              app_name: APP_NAME,
-            },
-            // The controller block is the heart of the Accounts v2 contract.
-            // It explicitly models who absorbs losses, who pays fees, what
-            // dashboard the seller sees, and who collects requirements (KYC).
-            controller: {
-              losses: { payments: 'stripe' },
-              fees: { payer: 'application' },
-              stripe_dashboard: { type: 'full' },
-              requirement_collection: 'stripe',
-            },
-            // Manual payout schedule: funds are frozen in the seller's Connect
-            // account until Selene explicitly triggers payouts via Stripe API.
-            // This is the true escrow — money only reaches the seller's bank
-            // when the order is completed in Selene's DB, not on Stripe's 7-day
-            // rolling schedule. Prevents sellers from withdrawing before delivery.
-            settings: {
-              payouts: {
-                schedule: { interval: 'manual' },
-              },
-            },
-          });
-          accountId = account.id;
-        } catch (v2Err) {
-          // If Accounts v2 isn't available on this SDK/runtime, fall back to v1
-          // Express with the closest-equivalent capabilities. This keeps the
-          // onboarding flow available; the proposal explicitly approves either
-          // path during the migration window.
-          log('warn', 'Accounts v2 unavailable, falling back to v1 Express', {
-            error: v2Err instanceof Error ? v2Err.message : String(v2Err),
-          });
-          const fallback = await stripe.accounts.create({
-            type: 'express',
-            country: 'MX',
-            email: user.email ?? profile?.email ?? undefined,
-            capabilities: {
-              transfers: { requested: true },
-              card_payments: { requested: true },
-            },
-            settings: {
-              payouts: {
-                schedule: { interval: 'manual' },
-              },
-            },
-            metadata: {
-              supabase_user_id: user.id,
-              app_name: APP_NAME,
-              fallback_reason: 'v2_unavailable',
-            },
-          });
-          accountId = fallback.id;
-        }
+          },
+          metadata: {
+            supabase_user_id: user.id,
+            app_name: APP_NAME,
+          },
+        });
+        accountId = account.id;
 
         // Persist account id and set status to 'pending'
         const { error: updateError } = await supabaseAdmin
@@ -222,35 +165,15 @@ serve(
       // (`connect-onboarding-return?state=return|refresh`). The bridge redirects
       // back to `selene://...` today; a future production domain can replace the
       // bridge target via env without changing this AccountLink code.
-      // Same v2 fallback strategy as above: prefer v2.core.accountLinks; fall
-      // back to v1 stripe.accountLinks if the SDK shape doesn't expose v2 yet.
       let onboardingUrl: string | null = null;
 
-      try {
-        const link = await stripe.v2.core.accountLinks.create({
-          account: accountId,
-          use_case: {
-            type: 'account_onboarding',
-            account_onboarding: {
-              configurations: ['merchant'],
-              refresh_url: onboardingUrls.refreshUrl,
-              return_url: onboardingUrls.returnUrl,
-            },
-          },
-        });
-        onboardingUrl = link.url;
-      } catch (v2Err) {
-        log('warn', 'AccountLink v2 unavailable, falling back to v1', {
-          error: v2Err instanceof Error ? v2Err.message : String(v2Err),
-        });
-        const link = await stripe.accountLinks.create({
-          account: accountId,
-          refresh_url: onboardingUrls.refreshUrl,
-          return_url: onboardingUrls.returnUrl,
-          type: 'account_onboarding',
-        });
-        onboardingUrl = link.url;
-      }
+      const link = await stripe.accountLinks.create({
+        account: accountId,
+        refresh_url: onboardingUrls.refreshUrl,
+        return_url: onboardingUrls.returnUrl,
+        type: 'account_onboarding',
+      });
+      onboardingUrl = link.url;
 
       if (!onboardingUrl) throw new Error('ACCOUNT_LINK_FAILED');
 

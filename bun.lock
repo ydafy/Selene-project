@@ -4,13 +4,11 @@
   "workspaces": {
     "": {
       "name": "selene-monorepo",
-      "dependencies": {
-        "@supabase/supabase-js": "^2.107.0",
-      },
       "devDependencies": {
         "@eslint/js": "^10.0.1",
         "@playwright/test": "^1.64.1",
         "@sentry/deno": "11.8.0",
+        "@supabase/supabase-js": "2.118.0",
         "@types/bun": "^1.3.14",
         "@types/node": "26.5.1",
         "@typescript-eslint/eslint-plugin": "^8.72.1",
@@ -29,6 +27,7 @@
         "knip": "^6.44.1",
         "lint-staged": "^17.6.0",
         "prettier": "^3.9.10",
+        "stripe": "23.1.0",
         "typescript": "~6.0.3",
         "zod": "4.6.7",
       },
@@ -1667,6 +1666,8 @@
     "strip-indent": ["strip-indent@3.0.0", "", { "dependencies": { "min-indent": "^1.0.0" } }, "sha512-laJTa3Jb+VQpaC6DseHhF7dXVqHTfJPCRDaEbid/drOhgitgYku/letMUqOXFoWV0zIIUbjpdH2t+tYj4bQMRQ=="],
 
     "strip-json-comments": ["strip-json-comments@5.0.3", "", {}, "sha512-1tB5mhVo7U+ETBKNf92xT4hrQa3pm0MZ0PQvuDnWgAAGHDsfp4lPSpiS6psrSiet87wyGPh9ft6wmhOMQ0hDiw=="],
+
+    "stripe": ["stripe@23.1.0", "", { "peerDependencies": { "@types/node": ">=20" }, "optionalPeers": ["@types/node"] }, "sha512-fVUfMSfTPoukfoV//MUKAx2+YxyKmYaYtnAL9VkfnHfaPNQylFdWZMD+zgUFerI8rjbaiER8Vzj2XEUQ2AhAsQ=="],
 
     "structured-headers": ["structured-headers@0.4.1", "", {}, "sha512-0MP/Cxx5SzeeZ10p/bZI0S6MpgD+yxAhi1BOQ34jgnMXsCq3j1t6tQnZu+KdlL7dvJTLT3g9xN8tl10TqgFMcg=="],
 

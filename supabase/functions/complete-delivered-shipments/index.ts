@@ -1,5 +1,4 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { createClient } from '../_shared/supabase-js.ts';
 
 import { withSentry } from '../_shared/sentry.ts';
 
@@ -35,7 +34,7 @@ const log = (
   );
 };
 
-serve(
+Deno.serve(
   withSentry(
     'complete-delivered-shipments',
     async (req: Request): Promise<Response> => {
@@ -67,20 +66,21 @@ serve(
           ...new Set(disputes.map((dispute) => dispute.shipment_id as string)),
         ];
 
-        let candidatesQuery = supabaseAdmin
+        const deliveredQuery = supabaseAdmin
           .from('shipments')
           .select('id, status, delivered_at, buyer_confirmed_at')
           .eq('status', 'delivered')
           .not('stripe_payment_intent_id', 'is', null)
           .is('buyer_confirmed_at', null)
           .lte('delivered_at', dueAt);
-        if (activeDisputeShipmentIds.length > 0) {
-          candidatesQuery = candidatesQuery.not(
-            'id',
-            'in',
-            `(${activeDisputeShipmentIds.join(',')})`,
-          );
-        }
+        const candidatesQuery =
+          activeDisputeShipmentIds.length > 0
+            ? deliveredQuery.not(
+                'id',
+                'in',
+                `(${activeDisputeShipmentIds.join(',')})`,
+              )
+            : deliveredQuery;
         const { data: candidates, error: candidatesError } =
           await candidatesQuery
             .order('delivered_at', { ascending: true })

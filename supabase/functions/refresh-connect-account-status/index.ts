@@ -1,6 +1,6 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import Stripe from 'https://esm.sh/stripe@17.0.0';
+import { createClient } from '../_shared/supabase-js.ts';
+import Stripe from '../_shared/stripe/sdk.ts';
+import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 
 import {
   refreshConnectAccountStatus,
@@ -8,8 +8,6 @@ import {
   type RefreshProfile,
 } from './refresh-connect-account-status.ts';
 import { withSentry } from '../_shared/sentry.ts';
-
-const STRIPE_API_VERSION = '2026-04-22.dahlia';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -34,7 +32,7 @@ const log = (
   );
 };
 
-serve(
+Deno.serve(
   withSentry('refresh-connect-account-status', async (req: Request) => {
     if (req.method === 'OPTIONS') {
       return new Response('ok', { headers: corsHeaders });

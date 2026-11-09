@@ -1,5 +1,4 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { createClient } from '../_shared/supabase-js.ts';
 import { QuoteContractError, quoteListingShipment } from './quote-contract.ts';
 import { ShippingQuoteRequestSchema } from './request-schema.ts';
 import { resolveProductionQuoteRuntime } from './runtime.ts';
@@ -24,7 +23,7 @@ const log = (level: string, message: string, meta?: unknown) => {
   );
 };
 
-serve(
+Deno.serve(
   withSentry('get-shipping-quote', async (req: Request) => {
     if (req.method === 'OPTIONS') {
       return new Response('ok', { headers: corsHeaders });

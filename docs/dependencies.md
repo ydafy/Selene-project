@@ -21,7 +21,7 @@ A package below `1.0.0` can break on a minor. Treat its minor like a major.
 - **Monthly, by hand.** Run `bun outdated --filter @selene/frontend` and `bun outdated --filter admin-web`. Update the in-range updates together in one commit. Update each major in its own commit after reading its changelog. Check Node and Bun too ("Keep Node and Bun current"), and update Docker Desktop ("Keep the Supabase CLI and Docker current").
 - **Expo SDK, 4 to 8 weeks after a release.** Upgrade one SDK at a time, in its own worktree. Merge to `main` only when the whole upgrade passes. Follow `odd/tasks/expo-sdk-upgrade.md` and run its device checklist (L12, updated by L21) on a new development build.
 
-**The weekly report does the looking for you.** The `Dependency report` workflow (`.github/workflows/dependency-report.yml`) runs every Monday after the audit. It runs `bun scripts/ci/dependency-report.ts` and writes the result into one open issue, **Reporte de dependencias**, then comments a one-line summary so you get an email. The report lists safe updates, majors with changelog links, majors held back on purpose with the reason, the Expo SDK status, packages off the SDK, Expo-pinned packages with a newer major (they move with the SDK upgrade, not one by one; the pin list is `apps/frontend/node_modules/expo/bundledNativeModules.json`), the Node and Bun runtimes, the Supabase CLI, the GitHub Actions pins, and the audit. It never opens pull requests. Run the script locally for the same report, or start the workflow from the **Actions** tab.
+**The weekly report does the looking for you.** The `Dependency report` workflow (`.github/workflows/dependency-report.yml`) runs every Monday after the audit. It runs `bun scripts/ci/dependency-report.ts` and writes the result into one open issue, **Reporte de dependencias**, then comments a one-line summary so you get an email. The report lists safe updates, majors with changelog links, majors held back on purpose with the reason, the Expo SDK status, packages off the SDK, Expo-pinned packages with a newer major (they move with the SDK upgrade, not one by one; the pin list is `apps/frontend/node_modules/expo/bundledNativeModules.json`), the Node and Bun runtimes, the Supabase CLI, the Stripe API version against the pinned SDK, the GitHub Actions pins, and the audit. It never opens pull requests. Run the script locally for the same report, or start the workflow from the **Actions** tab.
 
 GitHub can delay a scheduled run by hours or skip it, and a skipped audit sends no email, the same as a clean one. If the Monday comment on the report issue has not arrived by the afternoon, start both workflows by hand, the audit first: `gh workflow run dependency-audit.yml`, then `gh workflow run dependency-report.yml`.
 
@@ -103,6 +103,15 @@ Every month, with the in-range updates:
 
 1. Open Docker Desktop, then **Settings** > **Software updates**. If an update is available, read its entry in the [Docker Desktop release notes](https://docs.docker.com/desktop/release-notes/). Install it once it is 3 days old.
 2. In one worktree, run `supabase start` and `bun run test:db`. If the stack does not start, roll back to the previous version from the same release notes page and open a Finding issue (`docs/findings.md`).
+
+## Keep the Stripe SDK and API version together
+
+The Edge Functions call Stripe through one SDK pin and send one API version. The pin is the root `stripe` devDependency, and `supabase/functions/_shared/stripe/sdk.ts` holds the only `npm:stripe@<version>` specifier. `STRIPE_API_VERSION` lives in `supabase/functions/_shared/stripe/api-version.ts`. Each SDK major ships one API version, and `STRIPE_API_VERSION` is typed as that version (`Stripe.LatestApiVersion`), so `deno check` fails when the pin moves without it.
+
+- **SDK minors and patches.** Take them with the other in-range updates. They keep the same API version.
+- **A new Stripe API major (about twice a year).** Plan it as its own task. Read the breaking changes in the Stripe API changelog, then move the root pin, the SDK specifier, and `STRIPE_API_VERSION` together in one change. The `upgrade-stripe` skill covers the upgrade. It touches money paths, so run the local payments loop (`supabase/functions/AGENTS.md`, "Local payments loop").
+
+The weekly report's **Stripe API version** section compares `STRIPE_API_VERSION` with the API version the installed `stripe` package ships and flags a mismatch. It fails when it cannot read either version, or when the installed SDK is not the pinned one.
 
 ## Move Expo-pinned packages only with Expo
 

@@ -30,8 +30,8 @@ import { calculateOrderCalculations } from '../../../apps/frontend/src/features/
 /**
  * Strict TDD tests for the Phase 3 single-modal multi-seller checkout
  * create-connect-payment runtime. `index.ts` is a Deno/Supabase Edge Function
- * whose `serve()` handler cannot run under `bun test` (it imports
- * `https://deno.land/std` and `https://esm.sh/...`). To honour Strict TDD the
+ * whose `Deno.serve()` handler cannot run under `bun test` (it imports
+ * `npm:` specifiers). To honour Strict TDD the
  * single-PI concerns are extracted as PURE, side-effect-free builder functions
  * in `single-payment-builder.ts`; `index.ts` only wires Stripe/Supabase calls
  * around them.

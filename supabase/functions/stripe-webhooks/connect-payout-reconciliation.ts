@@ -584,7 +584,7 @@ export function extractSignedAccountEventData(input: {
     // documented bank-account entries contribute evidence: a card entry's
     // status never gates payout actionability.
     //
-    // Destination selection (stripe@17.0.0 BankAccount type): the bank
+    // Destination selection (stripe@23.1.0 BankAccount type): the bank
     // account documents `default_for_currency` ("Whether this bank account
     // is the default external account for its currency") and the account
     // documents `default_currency` (the account's payout currency — MXN for

@@ -21,8 +21,8 @@ import {
 /**
  * Strict TDD tests for the Phase 4 single-modal webhook settlement helpers.
  *
- * `stripe-webhooks/index.ts` is a Deno Edge Function (`serve()` from
- * `https://deno.land/std`, `https://esm.sh/...`) that `bun test` cannot run.
+ * `stripe-webhooks/index.ts` is a Deno Edge Function (`Deno.serve()`,
+ * `npm:` specifiers) that `bun test` cannot run.
  * To honour Strict TDD the single-modal correctness is extracted as PURE,
  * side-effect-free helpers in `single-modal-settlement.ts`; `index.ts` only
  * wires Supabase RPC calls around them.

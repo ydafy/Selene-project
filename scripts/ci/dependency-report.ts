@@ -1,6 +1,6 @@
 // Weekly dependency report in Markdown: safe updates, available majors, the
-// Expo SDK status, the Node and Bun runtimes, the Supabase CLI, the GitHub
-// Actions pins, and the `bun audit` result. Collectors run the tools and the
+// Expo SDK status, the Node and Bun runtimes, the Supabase CLI, the Stripe API
+// version, the GitHub Actions pins, and the `bun audit` result. Collectors run the tools and the
 // registry calls; every parser and the report builder are pure so tests need
 // no network. The report is informational: the CLI exits 0 even when updates
 // or findings exist, and 1 only when a collector itself fails.
@@ -21,6 +21,12 @@ const ACTION_MIN_AGE_DAYS = BUN_MIN_AGE_DAYS;
 // docs/dependencies.md, "Keep the Supabase CLI and Docker current".
 const SUPABASE_CLI_MIN_AGE_DAYS = BUN_MIN_AGE_DAYS;
 const SUPABASE_CLI_SECTION = 'Keep the Supabase CLI and Docker current';
+// docs/dependencies.md, "Keep the Stripe SDK and API version together".
+const STRIPE_SECTION = 'Keep the Stripe SDK and API version together';
+const STRIPE_API_VERSION_PATH =
+  'supabase/functions/_shared/stripe/api-version.ts';
+const STRIPE_SDK_PATH = 'supabase/functions/_shared/stripe/sdk.ts';
+const STRIPE_SDK_API_VERSION_PATH = 'node_modules/stripe/esm/apiVersion.js';
 const DAY_MS = 86_400_000;
 const GUIDE = 'docs/dependencies.md';
 
@@ -108,6 +114,23 @@ export type RuntimesInput = {
 // `pinned` is the `version:` of every supabase/setup-cli step in the workflows.
 export type SupabaseCliInput = { pinned: string; latest: BunRelease };
 
+// The source texts the Stripe check reads: the shared api-version.ts, the root
+// package.json, and the installed SDK's esm/apiVersion.js and package.json.
+export type StripeApiFiles = {
+  apiVersion: string;
+  packageJson: string;
+  sdkApiVersion: string;
+  sdkPackageJson: string;
+};
+
+// `sent` is the STRIPE_API_VERSION the functions send; `pinned` is the root
+// `stripe` devDependency, which is also the installed SDK.
+export type StripeApiInput = {
+  sent: string;
+  pinned: string;
+  sdkApiVersion: string;
+};
+
 export type ActionRow = {
   action: string;
   pinnedSha: string;
@@ -126,6 +149,7 @@ export type ReportInput = {
   repositories: Result<Record<string, string | undefined>>;
   runtimes: Result<RuntimesInput>;
   supabaseCli: Result<SupabaseCliInput>;
+  stripeApi: Result<StripeApiInput>;
   actions: Result<ActionRow[]>;
 };
 
@@ -144,6 +168,7 @@ export type Collectors = {
   bunRegistry: () => Promise<string>;
   runtimePins: () => Promise<{ nvmrc: string; packageManager: string }>;
   supabaseCliRegistry: () => Promise<string>;
+  stripeApi: () => Promise<StripeApiFiles>;
   // The text of every workflow file.
   workflows: () => Promise<string[]>;
   // A GitHub REST API path such as `repos/<owner>/<repo>/releases/latest`.
@@ -378,6 +403,39 @@ export function parseSupabaseCliPin(workflows: string[]): string {
   return [...versions][0];
 }
 
+// The SDK pin and STRIPE_API_VERSION move together, so the installed SDK must be
+// the pinned one before its API version says anything about the pin.
+export function parseStripeApi(files: StripeApiFiles): StripeApiInput {
+  const sent = files.apiVersion.match(
+    /export const STRIPE_API_VERSION(?::[^=]+)?=\s*['"]([^'"]+)['"]/,
+  )?.[1];
+  if (!sent) {
+    throw new Error(
+      `no STRIPE_API_VERSION literal in ${STRIPE_API_VERSION_PATH}`,
+    );
+  }
+  const pinned = (
+    JSON.parse(files.packageJson) as {
+      devDependencies?: Record<string, string>;
+    }
+  ).devDependencies?.stripe;
+  if (!pinned) throw new Error('no stripe devDependency in package.json');
+  const sdkApiVersion = files.sdkApiVersion.match(
+    /export const ApiVersion\s*=\s*['"]([^'"]+)['"]/,
+  )?.[1];
+  if (!sdkApiVersion) {
+    throw new Error(`no ApiVersion in ${STRIPE_SDK_API_VERSION_PATH}`);
+  }
+  const installed = (JSON.parse(files.sdkPackageJson) as { version?: string })
+    .version;
+  if (installed !== pinned) {
+    throw new Error(
+      `installed stripe ${installed} is not the pinned ${pinned}: run \`bun install\``,
+    );
+  }
+  return { sent, pinned, sdkApiVersion };
+}
+
 // `releases/latest`: the tag must be a plain vX.Y.Z so it can be compared.
 export function parseLatestRelease(json: string): {
   tag: string;
@@ -565,6 +623,16 @@ export function supabaseCliStatus(
   };
 }
 
+export function stripeApiStatus(input: StripeApiInput): RuntimeStatus {
+  if (input.sent === input.sdkApiVersion) return { actions: [], notes: [] };
+  return {
+    actions: [
+      `Mismatch: the functions send ${input.sent}, stripe ${input.pinned} ships ${input.sdkApiVersion}. Bump the SDK pin and STRIPE_API_VERSION together in one change`,
+    ],
+    notes: [],
+  };
+}
+
 // A pin that does not match its tag comment is an action; so is a release at
 // least ACTION_MIN_AGE_DAYS old. A younger one only gets a note.
 export function actionStatus(row: ActionRow, now: Date): RuntimeStatus {
@@ -710,6 +778,10 @@ export function buildDependencyReport(input: ReportInput, now: Date): string {
       )
     : undefined;
 
+  const stripeStatus = input.stripeApi.ok
+    ? stripeApiStatus(input.stripeApi.value)
+    : undefined;
+
   const actions = input.actions.ok ? input.actions.value : undefined;
   const actionUpdates = actions
     ? actions.filter((row) => actionStatus(row, now).actions.length).length
@@ -737,6 +809,11 @@ export function buildDependencyReport(input: ReportInput, now: Date): string {
       : cliStatus.actions.length
         ? 'Supabase CLI update'
         : 'Supabase CLI up to date',
+    !stripeStatus
+      ? 'Stripe API check failed'
+      : stripeStatus.actions.length
+        ? 'Stripe API version mismatch'
+        : 'Stripe API version matches the SDK',
     !actions
       ? 'actions check failed'
       : actionUpdates
@@ -918,6 +995,30 @@ export function buildDependencyReport(input: ReportInput, now: Date): string {
     );
     parts.push(
       `Pinned: the \`version:\` of \`supabase/setup-cli\` in \`.github/workflows/ci.yml\`. Update it and the CLI on your machine together. Docker Desktop is not checked here: update it by hand every month (see \`${GUIDE}\`, "${SUPABASE_CLI_SECTION}").`,
+    );
+  }
+
+  parts.push('## Stripe API version');
+  if (!input.stripeApi.ok) parts.push(failed(input.stripeApi.error));
+  else {
+    const { sent, pinned, sdkApiVersion } = input.stripeApi.value;
+    parts.push(
+      table(
+        ['STRIPE_API_VERSION', 'SDK pin', 'SDK API version', 'Status'],
+        [
+          [
+            sent,
+            `stripe ${pinned}`,
+            sdkApiVersion,
+            stripeStatus!.actions.length
+              ? stripeStatus!.actions.join('. ')
+              : 'Matches the SDK',
+          ],
+        ],
+      ),
+    );
+    parts.push(
+      `The functions send \`STRIPE_API_VERSION\` from \`${STRIPE_API_VERSION_PATH}\`. The SDK pin is the root \`stripe\` devDependency, which only \`${STRIPE_SDK_PATH}\` imports. Move both in one change (see \`${GUIDE}\`, "${STRIPE_SECTION}").`,
     );
   }
 
@@ -1113,6 +1214,10 @@ export async function runReport(
     };
   });
 
+  const stripeApi = await settle('stripe api version', errors, async () =>
+    parseStripeApi(await collectors.stripeApi()),
+  );
+
   const actions = await settle('github actions', errors, async () => {
     const pinned = new Map<string, { ref: string; tag: string }>();
     for (const text of await collectors.workflows()) {
@@ -1150,6 +1255,7 @@ export async function runReport(
       repositories,
       runtimes,
       supabaseCli,
+      stripeApi,
       actions,
     },
     now,
@@ -1260,6 +1366,17 @@ export const realCollectors: Collectors = {
   bunRegistry: () => fetchJson('https://registry.npmjs.org/bun'),
   supabaseCliRegistry: () => fetchJson('https://registry.npmjs.org/supabase'),
   githubApi,
+  // bun install puts the pinned SDK in node_modules; the weekly workflow runs it first.
+  stripeApi: () => {
+    const read = (path: string) =>
+      readFileSync(join(ROOT, path), { encoding: 'utf8' });
+    return Promise.resolve({
+      apiVersion: read(STRIPE_API_VERSION_PATH),
+      packageJson: read('package.json'),
+      sdkApiVersion: read(STRIPE_SDK_API_VERSION_PATH),
+      sdkPackageJson: read('node_modules/stripe/package.json'),
+    });
+  },
   workflows: () => {
     const dir = join(ROOT, '.github', 'workflows');
     return Promise.resolve(
