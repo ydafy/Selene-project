@@ -1,7 +1,7 @@
 /**
  * Pure, locale-aware currency formatter.
  *
- * Kept separate from `format.ts` so it can be unit-tested in Bun without
+ * Kept separate from `format-currency.ts` so it can be unit-tested in Bun without
  * pulling in the React Native i18n runtime.
  */
 
