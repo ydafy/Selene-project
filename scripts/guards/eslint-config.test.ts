@@ -123,7 +123,7 @@ describe('root ESLint config', () => {
       expect(result.ruleIds).toEqual([]);
     }, 60_000);
 
-    test(`flags a non-kebab-case admin-web file outside the legacy folders when run from ${cwd}`, async () => {
+    test(`flags a non-kebab-case admin-web file in shared/ when run from ${cwd}`, async () => {
       const result = await lintText(
         cwd,
         `${prefix}src/shared/ui/StatusProbe.ts`,
@@ -135,7 +135,7 @@ describe('root ESLint config', () => {
       expect(result.ruleIds).toEqual(['check-file/filename-naming-convention']);
     }, 60_000);
 
-    test(`allows a non-kebab-case admin-web file in a legacy folder when run from ${cwd}`, async () => {
+    test(`flags a non-kebab-case admin-web file in a former legacy folder when run from ${cwd}`, async () => {
       const result = await lintText(
         cwd,
         `${prefix}src/components/ui/StatusProbe.ts`,
@@ -143,8 +143,8 @@ describe('root ESLint config', () => {
       );
 
       expect(result.stderr).toBe('');
-      expect(result.exitCode).toBe(0);
-      expect(result.ruleIds).toEqual([]);
+      expect(result.exitCode).toBe(1);
+      expect(result.ruleIds).toEqual(['check-file/filename-naming-convention']);
     }, 60_000);
   }
 });

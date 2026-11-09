@@ -20,16 +20,6 @@ const {
 const FRONTEND_SRC = 'apps/frontend/src';
 const ADMIN_WEB_SRC = 'apps/admin-web/src';
 const ADMIN_WEB_FILES = ['apps/admin-web/**/*.{ts,tsx}'];
-// Type-first folders admin-web is leaving for app/, features/ and shared/
-// (#221). Their files keep their old names until they move; remove an entry
-// when its folder is empty.
-const ADMIN_WEB_LEGACY = [
-  `${ADMIN_WEB_SRC}/components/**`,
-  `${ADMIN_WEB_SRC}/hooks/**`,
-  `${ADMIN_WEB_SRC}/lib/**`,
-  `${ADMIN_WEB_SRC}/pages/**`,
-  `${ADMIN_WEB_SRC}/types/**`,
-];
 const FIX =
   'Compose it in the route (app/) or move the shared piece to shared/. See docs/conventions.md.';
 
@@ -148,9 +138,8 @@ module.exports = [
     },
   },
   {
-    // admin-web file names follow the same rule, outside the legacy folders.
+    // admin-web file names follow the same rule.
     files: [`${ADMIN_WEB_SRC}/**/*.{ts,tsx}`],
-    ignores: ADMIN_WEB_LEGACY,
     plugins: {
       'check-file': checkFile,
     },

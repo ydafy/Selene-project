@@ -52,9 +52,9 @@ describe('kebab-case file names under apps/frontend/src', () => {
   }
 
   test('does not check files outside apps/frontend/src', async () => {
-    expect(
-      await ruleHits('apps/admin-web/src/hooks/useFooBar.ts'),
-    ).not.toContain(KEBAB_ERROR);
+    expect(await ruleHits('scripts/dev/useFooBar.ts')).not.toContain(
+      KEBAB_ERROR,
+    );
   });
 });
 
