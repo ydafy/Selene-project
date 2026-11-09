@@ -20,7 +20,9 @@ import {
   parseNodeReleases,
   parseNodeSchedule,
   parseOutdated,
+  parseSupabaseCliPin,
   runReport,
+  supabaseCliStatus,
   type ActionRow,
   type Collectors,
   type ReportInput,
@@ -287,6 +289,15 @@ const nodeData = {
   schedule: parseNodeSchedule(NODE_SCHEDULE),
 };
 
+const SUPABASE_CLI_REGISTRY = JSON.stringify({
+  'dist-tags': { latest: '3.0.0' },
+  time: {
+    '2.122.0': '2026-10-20T00:00:00.000Z',
+    '3.0.0': '2026-10-21T00:00:00.000Z',
+  },
+});
+const SETUP_CLI_STEP =
+  '      - uses: supabase/setup-cli@1111111111111111111111111111111111111111 # v3.0.1\n        with:\n          version: 2.122.0\n';
 const SHA_A = 'a'.repeat(40);
 const SHA_B = 'b'.repeat(40);
 const actionRow = (overrides: Partial<ActionRow> = {}): ActionRow => ({
@@ -335,6 +346,13 @@ function baseInput(overrides: Partial<ReportInput> = {}): ReportInput {
         pins: { node: '24.23.0', bun: '1.4.4' },
         ...nodeData,
         bun: parseBunRegistry(BUN_REGISTRY),
+      },
+    },
+    supabaseCli: {
+      ok: true,
+      value: {
+        pinned: '3.0.0',
+        latest: { version: '3.0.0', releasedAt: '2026-10-21T00:00:00.000Z' },
       },
     },
     actions: { ok: true, value: [actionRow()] },
@@ -715,8 +733,10 @@ describe('runReport', () => {
       nvmrc: '24.22.2\n',
       packageManager: 'bun@1.4.2',
     }),
+    supabaseCliRegistry: async () => SUPABASE_CLI_REGISTRY,
     workflows: async () => [
       `steps:\n  - uses: actions/checkout@${SHA_A} # v4.4.0\n  - uses: actions/checkout@${SHA_A} # v4.4.0\n`,
+      `steps:\n${SETUP_CLI_STEP}`,
     ],
     githubApi: async (path) =>
       path.endsWith('/releases/latest')
@@ -843,9 +863,12 @@ describe('runReport', () => {
       }),
       NOW,
     );
-    expect(calls).toEqual([
+    // The actions resolve concurrently, so only the set of calls is stable.
+    expect(calls.sort()).toEqual([
       'repos/actions/checkout/commits/v4.4.0',
       'repos/actions/checkout/releases/latest',
+      'repos/supabase/setup-cli/commits/v3.0.1',
+      'repos/supabase/setup-cli/releases/latest',
     ]);
     expect(section(ok.markdown, 'GitHub Actions')).toContain(
       '| actions/checkout | v4.4.0 | v7.0.1 | Update to v7.0.1 (major: read the release notes) |',
@@ -866,9 +889,52 @@ describe('runReport', () => {
     expect(bad.markdown).toContain('No high or critical vulnerabilities');
   });
 
+  test('compares the setup-cli pin with the npm release of the Supabase CLI', async () => {
+    const result = await runReport(collectors(), NOW);
+    expect(result.errors).toEqual([]);
+    expect(section(result.markdown, 'Supabase CLI')).toContain(
+      '| 2.122.0 | 3.0.0 | https://github.com/supabase/cli/releases/tag/v3.0.0 | Update to 3.0.0 (major: read the release notes and the migration guide) |',
+    );
+  });
+
+  test('exits 1 when the Supabase CLI release cannot be read', async () => {
+    const result = await runReport(
+      collectors({
+        supabaseCliRegistry: async () => {
+          throw new Error('npm answered 503');
+        },
+      }),
+      NOW,
+    );
+    expect(result.exitCode).toBe(1);
+    expect(result.errors).toEqual(['supabase cli: npm answered 503']);
+    expect(section(result.markdown, 'Supabase CLI')).toContain(
+      'Could not check: npm answered 503',
+    );
+    expect(result.markdown.split('\n')[2]).toContain(
+      'Supabase CLI check failed',
+    );
+    expect(result.markdown).toContain('No high or critical vulnerabilities');
+  });
+
+  test('exits 1 when no workflow pins the Supabase CLI version', async () => {
+    const result = await runReport(
+      collectors({
+        workflows: async () => [`- uses: actions/checkout@${SHA_A} # v4.4.0\n`],
+      }),
+      NOW,
+    );
+    expect(result.exitCode).toBe(1);
+    expect(result.errors).toEqual([
+      'supabase cli: no supabase/setup-cli step pins a version',
+    ]);
+  });
+
   test('exits 1 when a uses line has no tag comment', async () => {
     const result = await runReport(
-      collectors({ workflows: async () => ['- uses: owner/repo@abc\n'] }),
+      collectors({
+        workflows: async () => ['- uses: owner/repo@abc\n', SETUP_CLI_STEP],
+      }),
       NOW,
     );
     expect(result.exitCode).toBe(1);
@@ -1062,6 +1128,127 @@ describe('Runtimes section', () => {
     );
     expect(report.split('\n')[2]).toContain('runtime check failed');
     expect(report).toContain('## Security (bun audit)');
+  });
+});
+
+describe('Supabase CLI section', () => {
+  const cli = (
+    pinned: string,
+    version: string,
+    releasedAt: string,
+  ): ReportInput['supabaseCli'] => ({
+    ok: true,
+    value: { pinned, latest: { version, releasedAt } },
+  });
+
+  test('reads the version pinned on supabase/setup-cli', () => {
+    expect(parseSupabaseCliPin([`steps:\n${SETUP_CLI_STEP}`])).toBe('2.122.0');
+    expect(
+      parseSupabaseCliPin([
+        `steps:\n${SETUP_CLI_STEP}`,
+        `jobs:\n${SETUP_CLI_STEP.replace('2.122.0', "'2.122.0'")}`,
+      ]),
+    ).toBe('2.122.0');
+  });
+
+  test('rejects a missing, inexact or conflicting pin', () => {
+    expect(() =>
+      parseSupabaseCliPin([`- uses: actions/checkout@${SHA_A} # v4.4.0\n`]),
+    ).toThrow('no supabase/setup-cli step pins a version');
+    expect(() =>
+      parseSupabaseCliPin([SETUP_CLI_STEP.replace('2.122.0', 'latest')]),
+    ).toThrow('supabase/setup-cli version "latest" is not an exact version');
+    expect(() =>
+      parseSupabaseCliPin([
+        SETUP_CLI_STEP,
+        SETUP_CLI_STEP.replace('2.122.0', '3.0.0'),
+      ]),
+    ).toThrow('supabase/setup-cli pins differ: 2.122.0, 3.0.0');
+  });
+
+  test('says nothing to do when the pin is the latest release', () => {
+    expect(
+      supabaseCliStatus(
+        '3.0.0',
+        { version: '3.0.0', releasedAt: daysAgo(10) },
+        NOW,
+      ),
+    ).toEqual({ actions: [], notes: [] });
+  });
+
+  test('asks for a minor or patch update without the major warning', () => {
+    expect(
+      supabaseCliStatus(
+        '2.122.0',
+        { version: '2.123.1', releasedAt: daysAgo(3) },
+        NOW,
+      ),
+    ).toEqual({ actions: ['Update to 2.123.1'], notes: [] });
+  });
+
+  test('asks to read the release notes and the migration guide on a major', () => {
+    expect(
+      supabaseCliStatus(
+        '2.122.0',
+        { version: '3.0.0', releasedAt: daysAgo(7) },
+        NOW,
+      ),
+    ).toEqual({
+      actions: [
+        'Update to 3.0.0 (major: read the release notes and the migration guide)',
+      ],
+      notes: [],
+    });
+  });
+
+  test('waits for a release younger than the minimum age', () => {
+    expect(
+      supabaseCliStatus(
+        '2.122.0',
+        { version: '3.0.1', releasedAt: '2026-10-27T12:00:00Z' },
+        NOW,
+      ),
+    ).toEqual({
+      actions: [],
+      notes: ['Supabase CLI 3.0.1 is 2 days old: update after 2026-10-30'],
+    });
+  });
+
+  test('renders the table, the guide pointer and the summary between Runtimes and GitHub Actions', () => {
+    const report = buildDependencyReport(baseInput(), NOW);
+    const cliSection = section(report, 'Supabase CLI');
+    expect(cliSection).toContain(
+      '| Pinned | Latest | Release notes | Status |',
+    );
+    expect(cliSection).toContain(
+      '| 3.0.0 | 3.0.0 | https://github.com/supabase/cli/releases/tag/v3.0.0 | Up to date |',
+    );
+    expect(cliSection).toContain('.github/workflows/ci.yml');
+    expect(cliSection).toContain('Docker Desktop');
+    expect(cliSection).toContain('Keep the Supabase CLI and Docker current');
+    expect(report.indexOf('## Supabase CLI')).toBeGreaterThan(
+      report.indexOf('## Runtimes'),
+    );
+    expect(report.indexOf('## Supabase CLI')).toBeLessThan(
+      report.indexOf('## GitHub Actions'),
+    );
+    expect(report.split('\n')[2]).toContain(
+      'runtimes up to date, Supabase CLI up to date, actions up to date',
+    );
+  });
+
+  test('words the summary for an update and a failed check', () => {
+    const line = (supabaseCli: ReportInput['supabaseCli']) =>
+      buildDependencyReport(baseInput({ supabaseCli }), NOW).split('\n')[2];
+    expect(line(cli('2.122.0', '3.0.0', daysAgo(7)))).toContain(
+      'Supabase CLI update,',
+    );
+    expect(line(cli('2.122.0', '3.0.1', daysAgo(1)))).toContain(
+      'Supabase CLI up to date,',
+    );
+    expect(line({ ok: false, error: 'boom' })).toContain(
+      'Supabase CLI check failed,',
+    );
   });
 });
 
