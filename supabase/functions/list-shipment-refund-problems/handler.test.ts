@@ -269,7 +269,7 @@ describe('list-shipment-refund-problems wiring', () => {
       "serve(withSentry('list-shipment-refund-problems', handler))",
     );
     expect(index).toContain(".select('role, status')");
-    expect(index).toContain("from '../_shared/admin-auth.ts'");
+    expect(index).toContain("from '../_shared/auth/admin-auth.ts'");
     expect(index).toContain('fn_list_shipment_refund_problems');
   });
 

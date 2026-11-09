@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import Stripe from 'https://esm.sh/stripe@17.0.0';
 
 import type { Database } from '../../../packages/types/src/database.types.ts';
-import { extractStripeChargeId } from '../_shared/stripe-charge.ts';
+import { extractStripeChargeId } from '../_shared/stripe/stripe-charge.ts';
 import { RecoveryChargeEvidenceSchema } from './charge-evidence-schema.ts';
 import {
   acquireCheckoutRecoveryLease,

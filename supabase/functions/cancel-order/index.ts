@@ -8,9 +8,9 @@ import {
   resolveManualShipmentCancelPlan,
   type ShipmentCancelItem,
 } from './cancel-order.ts';
-import { createCancellationReporter } from '../_shared/cancellation-alerts.ts';
+import { createCancellationReporter } from '../_shared/cancellation/cancellation-alerts.ts';
 import { withSentry } from '../_shared/sentry.ts';
-import { runShipmentCancellation } from '../_shared/shipment-cancellation.ts';
+import { runShipmentCancellation } from '../_shared/cancellation/shipment-cancellation.ts';
 import { buildStripeFeeReconciliationPlan } from '../stripe-webhooks/single-modal-settlement.ts';
 
 const corsHeaders = {

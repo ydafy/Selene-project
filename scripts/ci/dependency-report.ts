@@ -1,6 +1,6 @@
 // Weekly dependency report in Markdown: safe updates, available majors, the
-// Expo SDK status, the Node and Bun runtimes, the GitHub Actions pins, and the
-// `bun audit` result. Collectors run the tools and the
+// Expo SDK status, the Node and Bun runtimes, the Supabase CLI, the GitHub
+// Actions pins, and the `bun audit` result. Collectors run the tools and the
 // registry calls; every parser and the report builder are pure so tests need
 // no network. The report is informational: the CLI exits 0 even when updates
 // or findings exist, and 1 only when a collector itself fails.
@@ -18,6 +18,9 @@ const NODE_END_WARNING_DAYS = 180;
 const BUN_MIN_AGE_DAYS = 3;
 // docs/dependencies.md, "Keep GitHub Actions pinned".
 const ACTION_MIN_AGE_DAYS = BUN_MIN_AGE_DAYS;
+// docs/dependencies.md, "Keep the Supabase CLI and Docker current".
+const SUPABASE_CLI_MIN_AGE_DAYS = BUN_MIN_AGE_DAYS;
+const SUPABASE_CLI_SECTION = 'Keep the Supabase CLI and Docker current';
 const DAY_MS = 86_400_000;
 const GUIDE = 'docs/dependencies.md';
 
@@ -102,6 +105,9 @@ export type RuntimesInput = {
   bun: BunRelease;
 };
 
+// `pinned` is the `version:` of every supabase/setup-cli step in the workflows.
+export type SupabaseCliInput = { pinned: string; latest: BunRelease };
+
 export type ActionRow = {
   action: string;
   pinnedSha: string;
@@ -119,6 +125,7 @@ export type ReportInput = {
   expo: Result<{ installed: string; latest: ExpoRegistry }>;
   repositories: Result<Record<string, string | undefined>>;
   runtimes: Result<RuntimesInput>;
+  supabaseCli: Result<SupabaseCliInput>;
   actions: Result<ActionRow[]>;
 };
 
@@ -136,6 +143,7 @@ export type Collectors = {
   nodeSchedule: () => Promise<string>;
   bunRegistry: () => Promise<string>;
   runtimePins: () => Promise<{ nvmrc: string; packageManager: string }>;
+  supabaseCliRegistry: () => Promise<string>;
   // The text of every workflow file.
   workflows: () => Promise<string[]>;
   // A GitHub REST API path such as `repos/<owner>/<repo>/releases/latest`.
@@ -328,15 +336,46 @@ export function parseNodeSchedule(json: string): Map<number, NodeLine> {
   return new Map([...lines].sort(([a], [b]) => a - b));
 }
 
-export function parseBunRegistry(json: string): BunRelease {
+function parseNpmLatest(json: string, name: string): BunRelease {
   const doc = JSON.parse(json) as {
     'dist-tags'?: { latest?: string };
     time?: Record<string, string>;
   };
   const version = doc['dist-tags']?.latest;
   const releasedAt = version ? doc.time?.[version] : undefined;
-  if (!version || !releasedAt) throw new Error('no latest version for bun');
+  if (!version || !releasedAt) throw new Error(`no latest version for ${name}`);
   return { version, releasedAt };
+}
+
+export function parseBunRegistry(json: string): BunRelease {
+  return parseNpmLatest(json, 'bun');
+}
+
+// The `version:` under each `uses: supabase/setup-cli@...` step. Every step
+// must pin the same exact version, so CI and the maintainer's machine agree.
+export function parseSupabaseCliPin(workflows: string[]): string {
+  const pattern =
+    /uses:\s*supabase\/setup-cli@\S+[^\n]*\n\s*with:\s*\n\s*version:\s*['"]?([^\s'"]+)/g;
+  const versions = new Set<string>();
+  for (const text of workflows) {
+    for (const match of text.matchAll(pattern)) versions.add(match[1]);
+  }
+  if (!versions.size) {
+    throw new Error('no supabase/setup-cli step pins a version');
+  }
+  for (const version of versions) {
+    if (!/^\d+\.\d+\.\d+$/.test(version)) {
+      throw new Error(
+        `supabase/setup-cli version "${version}" is not an exact version`,
+      );
+    }
+  }
+  if (versions.size > 1) {
+    throw new Error(
+      `supabase/setup-cli pins differ: ${[...versions].sort(compareVersions).join(', ')}`,
+    );
+  }
+  return [...versions][0];
 }
 
 // `releases/latest`: the tag must be a plain vX.Y.Z so it can be compared.
@@ -500,6 +539,32 @@ export function bunRuntimeStatus(
   return { actions: [`Update to ${latest.version}`], notes: [] };
 }
 
+export function supabaseCliStatus(
+  pinned: string,
+  latest: BunRelease,
+  now: Date,
+): RuntimeStatus {
+  if (compareVersions(latest.version, pinned) <= 0) {
+    return { actions: [], notes: [] };
+  }
+  const age = daysSince(latest.releasedAt, now);
+  if (age < SUPABASE_CLI_MIN_AGE_DAYS) {
+    return {
+      actions: [],
+      notes: [
+        `Supabase CLI ${latest.version} is ${age} days old: update after ${addDays(latest.releasedAt, SUPABASE_CLI_MIN_AGE_DAYS)}`,
+      ],
+    };
+  }
+  const isMajor = major(latest.version) > major(pinned);
+  return {
+    actions: [
+      `Update to ${latest.version}${isMajor ? ' (major: read the release notes and the migration guide)' : ''}`,
+    ],
+    notes: [],
+  };
+}
+
 // A pin that does not match its tag comment is an action; so is a release at
 // least ACTION_MIN_AGE_DAYS old. A younger one only gets a note.
 export function actionStatus(row: ActionRow, now: Date): RuntimeStatus {
@@ -637,6 +702,14 @@ export function buildDependencyReport(input: ReportInput, now: Date): string {
     ? runtimes.filter((row) => row.status.actions.length).length
     : 0;
 
+  const cliStatus = input.supabaseCli.ok
+    ? supabaseCliStatus(
+        input.supabaseCli.value.pinned,
+        input.supabaseCli.value.latest,
+        now,
+      )
+    : undefined;
+
   const actions = input.actions.ok ? input.actions.value : undefined;
   const actionUpdates = actions
     ? actions.filter((row) => actionStatus(row, now).actions.length).length
@@ -659,6 +732,11 @@ export function buildDependencyReport(input: ReportInput, now: Date): string {
       : runtimeUpdates
         ? `${runtimeUpdates} runtime update${runtimeUpdates === 1 ? '' : 's'}`
         : 'runtimes up to date',
+    !cliStatus
+      ? 'Supabase CLI check failed'
+      : cliStatus.actions.length
+        ? 'Supabase CLI update'
+        : 'Supabase CLI up to date',
     !actions
       ? 'actions check failed'
       : actionUpdates
@@ -818,6 +896,28 @@ export function buildDependencyReport(input: ReportInput, now: Date): string {
     );
     parts.push(
       `Node: latest release of the pinned line, from \`.nvmrc\`. Bun: latest release, from \`packageManager\`. Change both sources and every \`apps/frontend/eas.json\` profile together (see \`${GUIDE}\`, "Keep Node and Bun current").`,
+    );
+  }
+
+  parts.push('## Supabase CLI');
+  if (!input.supabaseCli.ok) parts.push(failed(input.supabaseCli.error));
+  else {
+    const { pinned, latest } = input.supabaseCli.value;
+    parts.push(
+      table(
+        ['Pinned', 'Latest', 'Release notes', 'Status'],
+        [
+          [
+            pinned,
+            latest.version,
+            `https://github.com/supabase/cli/releases/tag/v${latest.version}`,
+            describeRuntime(cliStatus!),
+          ],
+        ],
+      ),
+    );
+    parts.push(
+      `Pinned: the \`version:\` of \`supabase/setup-cli\` in \`.github/workflows/ci.yml\`. Update it and the CLI on your machine together. Docker Desktop is not checked here: update it by hand every month (see \`${GUIDE}\`, "${SUPABASE_CLI_SECTION}").`,
     );
   }
 
@@ -1002,6 +1102,17 @@ export async function runReport(
     return value;
   });
 
+  const supabaseCli = await settle('supabase cli', errors, async () => {
+    const [workflows, registry] = await Promise.all([
+      collectors.workflows(),
+      collectors.supabaseCliRegistry(),
+    ]);
+    return {
+      pinned: parseSupabaseCliPin(workflows),
+      latest: parseNpmLatest(registry, 'supabase'),
+    };
+  });
+
   const actions = await settle('github actions', errors, async () => {
     const pinned = new Map<string, { ref: string; tag: string }>();
     for (const text of await collectors.workflows()) {
@@ -1030,7 +1141,17 @@ export async function runReport(
   });
 
   const markdown = buildDependencyReport(
-    { outdated, expoCheck, pins, audit, expo, repositories, runtimes, actions },
+    {
+      outdated,
+      expoCheck,
+      pins,
+      audit,
+      expo,
+      repositories,
+      runtimes,
+      supabaseCli,
+      actions,
+    },
     now,
   );
   return { markdown, exitCode: errors.length ? 1 : 0, errors };
@@ -1137,6 +1258,7 @@ export const realCollectors: Collectors = {
       'https://raw.githubusercontent.com/nodejs/Release/main/schedule.json',
     ),
   bunRegistry: () => fetchJson('https://registry.npmjs.org/bun'),
+  supabaseCliRegistry: () => fetchJson('https://registry.npmjs.org/supabase'),
   githubApi,
   workflows: () => {
     const dir = join(ROOT, '.github', 'workflows');

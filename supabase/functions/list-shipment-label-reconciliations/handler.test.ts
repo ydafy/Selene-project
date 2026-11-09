@@ -242,7 +242,7 @@ describe('list-shipment-label-reconciliations wiring', () => {
       "serve(withSentry('list-shipment-label-reconciliations', handler))",
     );
     expect(index).toContain(".select('role, status')");
-    expect(index).toContain("from '../_shared/admin-auth.ts'");
+    expect(index).toContain("from '../_shared/auth/admin-auth.ts'");
     expect(index).toContain('fn_list_shipment_label_reconciliations');
   });
 

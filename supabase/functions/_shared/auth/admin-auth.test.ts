@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { isActiveAdmin } from '../admin-auth.ts';
+import { isActiveAdmin } from './admin-auth.ts';
 import { isActiveAdmin as reExported } from '../../resolve-shipment-refund/handler.ts';
 
 describe('isActiveAdmin', () => {

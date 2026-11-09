@@ -49,7 +49,7 @@ for (const { name, job, flag, column } of handlers) {
       const authAt = source.indexOf(
         "isAuthorizedCronRequest(req, Deno.env.get('CRON_SECRET'))",
       );
-      expect(source).toContain("from '../_shared/cron-auth.ts'");
+      expect(source).toContain("from '../_shared/auth/cron-auth.ts'");
       expect(authAt).toBeGreaterThan(0);
       expect(authAt).toBeLessThan(source.indexOf('createClient('));
       expect(authAt).toBeLessThan(source.indexOf('new Stripe('));
@@ -62,7 +62,9 @@ for (const { name, job, flag, column } of handlers) {
     });
 
     test('imports the lease helper', () => {
-      expect(source).toContain("from '../_shared/auto-cancel-lease.ts'");
+      expect(source).toContain(
+        "from '../_shared/auto-cancel/auto-cancel-lease.ts'",
+      );
       expect(source).toContain('acquireAutoCancelLease');
       expect(source).toContain('releaseAutoCancelLease');
     });
@@ -102,7 +104,9 @@ for (const { name, job, flag, column } of handlers) {
     });
 
     test('reads the expiration window through the shared settings reader', () => {
-      expect(source).toContain("from '../_shared/auto-cancel-settings.ts'");
+      expect(source).toContain(
+        "from '../_shared/auto-cancel/auto-cancel-settings.ts'",
+      );
       expect(source.replace(/\s+/g, ' ')).toContain(
         `readAutoCancelExpirationHours( supabaseAdmin, '${column}', log, )`,
       );

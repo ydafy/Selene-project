@@ -1,12 +1,12 @@
 import {
   allocateCents,
   grossUpDomesticMx,
-} from '../_shared/stripe-fee-gross-up.ts';
+} from '../_shared/stripe/stripe-fee-gross-up.ts';
 import {
   resolvePublicationEconomics,
   type PublicationEconomics,
   type PublicationEconomicsSnapshot,
-} from '../_shared/publication-economics.ts';
+} from '../_shared/stripe/publication-economics.ts';
 
 export const CONNECT_COMMISSION_RATE = 0.06;
 export const SEGURO_SELENE_RATE = 0.036;

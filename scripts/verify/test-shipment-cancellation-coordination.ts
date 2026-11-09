@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import {
   runShipmentCancellation,
   type CancellationContext,
-} from '../../supabase/functions/_shared/shipment-cancellation.ts';
+} from '../../supabase/functions/_shared/cancellation/shipment-cancellation.ts';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const canonical = `${root}supabase/queries/orders/shipment_cancellation_coordination.sql`;

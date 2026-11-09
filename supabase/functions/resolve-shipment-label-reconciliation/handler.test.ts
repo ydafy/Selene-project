@@ -401,7 +401,7 @@ describe('resolve-shipment-label-reconciliation wiring', () => {
       "serve(withSentry('resolve-shipment-label-reconciliation', handler))",
     );
     expect(index).toContain(".select('role, status')");
-    expect(index).toContain("from '../_shared/admin-auth.ts'");
+    expect(index).toContain("from '../_shared/auth/admin-auth.ts'");
     expect(index).toContain('fn_resolve_shipment_label_reconciliation');
   });
 

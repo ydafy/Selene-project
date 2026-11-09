@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
-import { extractEnviaPollingObservations } from '../_shared/envia-tracking-ingestion.ts';
+import { extractEnviaPollingObservations } from '../_shared/envia/envia-tracking-ingestion.ts';
 import {
   createTrackShipmentsHandler,
   type TrackShipmentsDependencies,

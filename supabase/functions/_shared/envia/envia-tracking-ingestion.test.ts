@@ -6,7 +6,7 @@ import {
   extractEnviaPollingObservations,
   successfulPollingTargetIds,
   webhookReceipt,
-} from '../envia-tracking-ingestion.ts';
+} from './envia-tracking-ingestion.ts';
 
 describe('webhook tracking ingestion', () => {
   it('acknowledges a claimed delivery and produces a carrier-timed tracking event', () => {

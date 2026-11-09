@@ -3,7 +3,7 @@ import { describe, expect, it } from 'bun:test';
 import {
   constantTimeEqual,
   verifyEnviaWebhook,
-} from '../envia-webhook-verify.ts';
+} from './envia-webhook-verify.ts';
 
 const secret = 'test-webhook-secret';
 const event = 'tracking.simple';

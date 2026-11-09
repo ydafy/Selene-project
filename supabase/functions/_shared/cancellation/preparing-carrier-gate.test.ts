@@ -3,7 +3,7 @@ import { confirmPreparingCarrier } from './preparing-carrier-gate.ts';
 import type {
   EnviaCancelOutcome,
   FreshTrackingAssessment,
-} from './envia-carrier-cancellation.ts';
+} from '../envia/envia-carrier-cancellation.ts';
 
 const shipment = {
   id: 'shipment-a',

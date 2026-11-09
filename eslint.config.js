@@ -19,6 +19,7 @@ const {
 // so ESLint gives the same result when run from an app directory.
 const FRONTEND_SRC = 'apps/frontend/src';
 const ADMIN_WEB_SRC = 'apps/admin-web/src';
+const EDGE_FUNCTIONS = 'supabase/functions';
 const ADMIN_WEB_FILES = ['apps/admin-web/**/*.{ts,tsx}'];
 const FIX =
   'Compose it in the route (app/) or move the shared piece to shared/. See docs/conventions.md.';
@@ -226,6 +227,20 @@ module.exports = [
     },
   },
   {
+    // Edge Function file names follow the same rule (#252).
+    files: [`${EDGE_FUNCTIONS}/**/*.ts`],
+    plugins: {
+      'check-file': checkFile,
+    },
+    rules: {
+      'check-file/filename-naming-convention': [
+        'error',
+        { '**/*.ts': 'KEBAB_CASE' },
+        { ignoreMiddleExtensions: true },
+      ],
+    },
+  },
+  {
     // File names are kebab-case (docs/conventions.md, "File naming"). Route
     // files under app/ are excepted: Expo Router turns their names into URLs.
     files: [`${FRONTEND_SRC}/**/*.{js,jsx,ts,tsx}`],
@@ -247,6 +262,7 @@ module.exports = [
     files: [
       `${FRONTEND_SRC}/**/*.{js,jsx,ts,tsx}`,
       `${ADMIN_WEB_SRC}/**/*.{ts,tsx}`,
+      `${EDGE_FUNCTIONS}/**/*.ts`,
     ],
     ignores: ['**/*.test.{ts,tsx}'],
     rules: {

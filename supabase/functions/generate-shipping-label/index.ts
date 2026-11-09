@@ -17,7 +17,7 @@ import {
   runPaquetexpressAddressPreflight,
   runLabelClaimOrchestration,
   selectPaquetexpressGroundRate,
-} from '../_shared/envia-shipping.ts';
+} from '../_shared/envia/envia-shipping.ts';
 import {
   LabelRequestSchema,
   isOwnShippingEvidencePath,

@@ -1,7 +1,7 @@
 import {
   buildEnviaQuoteConfiguration,
   buildPaquetexpressGroundQuote,
-} from '../_shared/envia-shipping.ts';
+} from '../_shared/envia/envia-shipping.ts';
 
 const providerTimeoutMs = 10_000;
 
