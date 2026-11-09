@@ -5,7 +5,7 @@ import * as LocalAuthentication from 'expo-local-authentication';
 
 import { Box, Text } from '@/shared/ui/base';
 import { FormTextInput } from '@/shared/ui/form-text-input';
-import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
+import { ConfirmDialog } from '@/shared/ui/feedback/confirm-dialog';
 import { SettingsRow } from '@/shared/ui/settings-row';
 import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import { supabase } from '@/shared/lib/supabase';

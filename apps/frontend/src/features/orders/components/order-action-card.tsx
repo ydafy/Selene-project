@@ -8,7 +8,7 @@ import { useTheme } from '@shopify/restyle';
 
 import { Box, Text } from '@/shared/ui/base';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';
-import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
+import { ConfirmDialog } from '@/shared/ui/feedback/confirm-dialog';
 import { SellerPaymentExplanation } from '@/shared/ui/seller-payment-explanation';
 import { ShippingLabelCard } from './shipping-label-card';
 import { EnrichedOrder, EnrichedShipment } from '@selene/types';

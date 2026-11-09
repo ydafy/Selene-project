@@ -9,7 +9,7 @@ import { supabase } from '@/shared/lib/supabase';
 import { invalidateNotificationKeys } from '../hooks/use-notification-mutations';
 import { pushTapRouter } from '../lib/push-tap';
 import { NotificationLinking } from '../lib/notification-linking';
-import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
+import { ConfirmDialog } from '@/shared/ui/feedback/confirm-dialog';
 import {
   createLaunchDigestGate,
   scanLaunchDigest,

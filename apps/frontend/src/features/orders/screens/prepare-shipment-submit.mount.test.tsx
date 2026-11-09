@@ -128,9 +128,9 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
     ['shared/ui/screen-header', 'ScreenHeader'],
     ['shared/ui/address/address-section', 'AddressSection'],
     ['shared/ui/button/primary-button', 'PrimaryButton'],
-    ['shared/ui/confirm-dialog', 'ConfirmDialog'],
-    ['shared/ui/error-state', 'ErrorState'],
-    ['shared/ui/skeleton', 'Skeleton'],
+    ['shared/ui/feedback/confirm-dialog', 'ConfirmDialog'],
+    ['shared/ui/feedback/error-state', 'ErrorState'],
+    ['shared/ui/feedback/skeleton', 'Skeleton'],
     ['shared/ui/label-with-help', 'LabelWithHelp'],
     ['features/orders/components/packaging-guide-card', 'PackagingGuideCard'],
     [

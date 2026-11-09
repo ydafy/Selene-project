@@ -6,7 +6,7 @@
 
 import React from 'react';
 import { Box } from '@/shared/ui/base';
-import { Skeleton } from '@/shared/ui/skeleton';
+import { Skeleton } from '@/shared/ui/feedback/skeleton';
 
 export const ProfileSkeleton = () => {
   return (

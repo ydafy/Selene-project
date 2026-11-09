@@ -2,8 +2,8 @@ import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import enAuth from '../i18n/locales/en/auth.json';
-import esAuth from '../i18n/locales/es/auth.json';
+import enAuth from '../../i18n/locales/en/auth.json';
+import esAuth from '../../i18n/locales/es/auth.json';
 
 const guardSource = readFileSync(
   join(import.meta.dir, 'system-guard.tsx'),

@@ -21,7 +21,7 @@ import { onlineManager, focusManager } from '@tanstack/react-query';
 import NetInfo from '@react-native-community/netinfo';
 
 // Configuración y Temas
-import { toastConfig } from '@/shared/ui/toast-config';
+import { toastConfig } from '@/shared/ui/feedback/toast-config';
 import '@/shared/i18n';
 import { paperTheme, theme, navigationTheme } from '@/shared/theme';
 
@@ -36,7 +36,7 @@ import { NotificationWatcher } from '@/features/notifications/components/notific
 import { PushRegistration } from '@/features/notifications/components/push-registration';
 import { PushPermissionPrompt } from '@/features/notifications/components/push-permission-prompt';
 import { PushTapHandler } from '@/features/notifications/components/push-tap-handler';
-import { OfflineNotice } from '@/shared/ui/offline-notice';
+import { OfflineNotice } from '@/shared/ui/feedback/offline-notice';
 
 import { queryClient } from '@/shared/lib/query-client';
 import { useCheckoutStore } from '@/shared/store/use-checkout-store';
@@ -48,7 +48,7 @@ import { useSellStore } from '@/features/sell/store/use-sell-store';
 import { useReviewStore } from '@/features/orders/store/use-review-store';
 import { pushRegistrar } from '@/features/notifications/lib/push-registration';
 
-import { SystemGuard } from '@/shared/ui/system-guard';
+import { SystemGuard } from '@/shared/ui/feedback/system-guard';
 
 // --- 1. BOOTSTRAP (Configuración Global Permanente - FUERA DEL COMPONENTE) ---
 SplashScreen.preventAutoHideAsync();

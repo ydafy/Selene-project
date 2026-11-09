@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 
 import { Box, Text } from '@/shared/ui/base';
-import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
+import { ConfirmDialog } from '@/shared/ui/feedback/confirm-dialog';
 import { FormTextInput } from '@/shared/ui/form-text-input';
 import { SettingsRow } from '@/shared/ui/settings-row';
 import { supabase } from '@/shared/lib/supabase';

@@ -17,7 +17,7 @@ import { GlobalHeader } from '@/shared/ui/global-header';
 import { ScreenHeader } from '@/shared/ui/screen-header';
 import { VerificationMissionCard } from '@/features/verify/components/verification-mission-card';
 import { BenchmarkGuideModal } from '@/features/verify/components/benchmark-guide-modal';
-import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
+import { ConfirmDialog } from '@/shared/ui/feedback/confirm-dialog';
 
 import { useVerificationLogic } from '@/features/verify/hooks/use-verification-logic';
 import {

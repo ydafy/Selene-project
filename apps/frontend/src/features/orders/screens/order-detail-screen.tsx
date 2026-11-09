@@ -33,7 +33,7 @@ import { OrderDetailActions } from '../components/order-detail-actions';
 import { OrderDetailDialogs } from '../components/order-detail-dialogs';
 import { ReviewProductButtons } from '../components/review-product-buttons';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';
-import { Skeleton } from '@/shared/ui/skeleton';
+import { Skeleton } from '@/shared/ui/feedback/skeleton';
 import { ShipmentNotFoundState } from '../components/shipment-not-found-state';
 import { ShipmentTrackingTimeline } from '../components/shipment-tracking-timeline';
 import { useOrderDetail, type ReviewData } from '../hooks/use-order-detail';

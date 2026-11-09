@@ -113,7 +113,7 @@ if (process.env.SELENE_ANIMATED_UI_MOUNT_CHILD !== '1') {
   });
 
   test('OfflineNotice shows the offline message and hides when connected', async () => {
-    const { OfflineNotice } = await import('./offline-notice');
+    const { OfflineNotice } = await import('./feedback/offline-notice');
     netInfo.isConnected = false;
     const view = await render(<OfflineNotice />);
     expect(texts(view)).toEqual(['Sin conexión a internet']);
@@ -123,13 +123,13 @@ if (process.env.SELENE_ANIMATED_UI_MOUNT_CHILD !== '1') {
   });
 
   test('MaintenanceScreen renders the maintenance copy', async () => {
-    const { MaintenanceScreen } = await import('./maintenance-screen');
+    const { MaintenanceScreen } = await import('./feedback/maintenance-screen');
     const view = await render(<MaintenanceScreen />);
     expect(texts(view)).toContain('Laboratorio en Optimización');
   });
 
   test('Skeleton renders a block with the requested size', async () => {
-    const { Skeleton } = await import('./skeleton');
+    const { Skeleton } = await import('./feedback/skeleton');
     const view = await render(<Skeleton width={10} height={20} />);
     const style = (
       byType(view, 'AnimatedView')[0].props.style as object[]

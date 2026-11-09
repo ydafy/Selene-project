@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Box } from '@/shared/ui/base';
 import { GlobalHeader } from '@/shared/ui/global-header';
-import { EmptyState } from '@/shared/ui/empty-state';
+import { EmptyState } from '@/shared/ui/feedback/empty-state';
 import { NotificationItem } from '@/features/notifications/components/notification-item';
 import { createNotificationPressHandler } from '@/features/notifications/logic/notification-press';
 import { useNotificationsList } from '@/features/notifications/hooks/use-notifications-list';
@@ -20,8 +20,8 @@ import { useNotificationMutations } from '@/features/notifications/hooks/use-not
 import { useUnreadNotifications } from '@/features/notifications/hooks/use-unread-notifications';
 import { NotificationLinking } from '@/features/notifications/lib/notification-linking';
 import { useAuthContext } from '@/shared/lib/auth/auth-provider';
-import { Skeleton } from '@/shared/ui/skeleton';
-import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
+import { Skeleton } from '@/shared/ui/feedback/skeleton';
+import { ConfirmDialog } from '@/shared/ui/feedback/confirm-dialog';
 import { useTheme } from '@shopify/restyle';
 import { Theme } from '@/shared/theme';
 

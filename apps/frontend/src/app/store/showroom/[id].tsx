@@ -45,7 +45,7 @@ import {
 } from '@/features/search/components/filter-modal';
 import { SearchFilters } from '@/features/search/hooks/use-search-products';
 import { AppImage } from '@/shared/ui/app-image';
-import { EmptyState } from '@/shared/ui/empty-state';
+import { EmptyState } from '@/shared/ui/feedback/empty-state';
 import { useSearchProducts } from '@/features/search/hooks/use-search-products';
 import {
   getMasonryItemHeight,

@@ -7,7 +7,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useTheme } from '@shopify/restyle';
-import { Theme } from '../theme';
+import { Theme } from '../../theme';
 
 type SkeletonProps = {
   width?: number | string;

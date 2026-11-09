@@ -5,7 +5,7 @@ import { useTheme } from '@shopify/restyle';
 import { Box, Text } from '../base';
 import { Address } from '@selene/types';
 import { Theme } from '../../theme';
-import { Skeleton } from '../skeleton';
+import { Skeleton } from '../feedback/skeleton';
 
 interface AddressSectionProps {
   address: Address | null;

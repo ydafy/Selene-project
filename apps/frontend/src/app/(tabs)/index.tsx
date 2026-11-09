@@ -44,7 +44,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSeleneRefresh } from '@/shared/hooks/use-selene-refresh';
 import { useNetInfo } from '@react-native-community/netinfo';
 import { useAuthContext } from '@/shared/lib/auth/auth-provider';
-import { ErrorState } from '@/shared/ui/error-state';
+import { ErrorState } from '@/shared/ui/feedback/error-state';
 import { useTranslation } from 'react-i18next';
 import { getTabDockMetrics } from '@/shared/config/layout';
 import { formatNotificationBadgeCount } from '@/features/notifications/logic/notification-badge';

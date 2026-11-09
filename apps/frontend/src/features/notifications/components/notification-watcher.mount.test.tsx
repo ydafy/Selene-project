@@ -104,7 +104,7 @@ if (process.env.SELENE_NOTIFICATION_MOUNT_CHILD !== 'watcher') {
     pushTapRouter: { consumeLaunchTap },
   }));
   mock.module('react-i18next', () => ({ useTranslation: () => ({ t }) }));
-  mock.module('@/shared/ui/confirm-dialog', () => ({
+  mock.module('@/shared/ui/feedback/confirm-dialog', () => ({
     ConfirmDialog: host('ConfirmDialog'),
   }));
   mock.module('@/shared/ui/base', () => ({

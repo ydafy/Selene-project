@@ -8,10 +8,10 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { Box, Text } from './base';
-import { getSharedStyles } from '../theme/shared-styles';
+import { Box, Text } from '../base';
+import { getSharedStyles } from '../../theme/shared-styles';
 import { useTheme } from '@shopify/restyle';
-import { Theme } from '../theme';
+import { Theme } from '../../theme';
 
 const fadeScaleIn = new Keyframe({
   0: { opacity: 0, transform: [{ scale: 0.9 }] },

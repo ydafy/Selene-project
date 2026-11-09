@@ -6,8 +6,8 @@ import {
   BaseToastProps,
   ToastConfig,
 } from 'react-native-toast-message';
-import { theme } from '../theme';
-import { Box, Text } from './base';
+import { theme } from '../../theme';
+import { Box, Text } from '../base';
 
 // 1. Estilos base compartidos (100% DRY y apoyados en tus tokens de Restyle)
 const baseToastStyle = {

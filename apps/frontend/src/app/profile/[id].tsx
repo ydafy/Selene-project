@@ -31,7 +31,7 @@ import { SegmentedControl } from '@/shared/ui/segmented-control';
 import { ProfileHeader } from '@/features/profile/components/profile-header';
 import { OptionsMenu } from '@/shared/ui/options-menu';
 import { AppImage } from '@/shared/ui/app-image';
-import { Skeleton } from '@/shared/ui/skeleton';
+import { Skeleton } from '@/shared/ui/feedback/skeleton';
 
 // Hooks unificados de alto rendimiento
 import { useProfile } from '@/features/profile/hooks/use-profile';

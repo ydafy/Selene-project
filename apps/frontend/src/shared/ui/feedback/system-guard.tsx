@@ -10,15 +10,15 @@ import MaterialCommunityIcons from '@react-native-vector-icons/material-design-i
 import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
 
-import { Box, Text } from './base';
-import { PrimaryButton } from './button/primary-button';
+import { Box, Text } from '../base';
+import { PrimaryButton } from '../button/primary-button';
 import { ErrorState } from './error-state';
 import { MaintenanceScreen } from './maintenance-screen';
 
-import { useSystemConfig } from '../hooks/use-system-config';
-import { useAuthContext } from '../lib/auth/auth-provider';
-import { isVersionLower } from '../utils/version';
-import { Theme } from '../theme';
+import { useSystemConfig } from '../../hooks/use-system-config';
+import { useAuthContext } from '../../lib/auth/auth-provider';
+import { isVersionLower } from '../../utils/version';
+import { Theme } from '../../theme';
 
 export function SystemGuard({ children }: { children: React.ReactNode }) {
   const { data: config, isLoading, isError, refetch } = useSystemConfig();

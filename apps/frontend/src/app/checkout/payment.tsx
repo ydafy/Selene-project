@@ -10,7 +10,7 @@ import { Box, Text } from '@/shared/ui/base';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { GlobalHeader } from '@/shared/ui/global-header';
 
-import { ErrorState } from '@/shared/ui/error-state';
+import { ErrorState } from '@/shared/ui/feedback/error-state';
 import { Theme } from '@/shared/theme';
 import { usePaymentProcess } from '@/features/checkout/hooks/use-payment-process';
 import { formatCurrency } from '@/shared/utils/format';

@@ -6,9 +6,9 @@ import MaterialCommunityIcons, {
   type MaterialDesignIconsIconName,
 } from '@react-native-vector-icons/material-design-icons';
 import { AccessibilityInfo, findNodeHandle, View } from 'react-native';
-import { Box } from './base';
-import { Theme } from '../theme';
-import { useKeyboardHeight } from '../hooks/use-keyboard-height';
+import { Box } from '../base';
+import { Theme } from '../../theme';
+import { useKeyboardHeight } from '../../hooks/use-keyboard-height';
 
 type ConfirmDialogProps = {
   visible: boolean;

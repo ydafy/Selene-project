@@ -1,9 +1,9 @@
 import { IconButton } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
-import { Box, Text } from './base';
-import { PrimaryButton } from './button/primary-button';
-import { Theme } from '../theme';
+import { Box, Text } from '../base';
+import { PrimaryButton } from '../button/primary-button';
+import { Theme } from '../../theme';
 
 type ErrorStateProps = {
   title?: string;

@@ -22,7 +22,7 @@ import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { TextLink } from '@/shared/ui/button/text-link';
 import { ScreenLayout } from '@/shared/ui/screen-layout';
 import { ProfileActionsBar } from '@/features/profile/components/profile-actions-bar';
-import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
+import { ConfirmDialog } from '@/shared/ui/feedback/confirm-dialog';
 import { ProfileFavoritesGrid } from '@/features/profile/components/profile-favorites-grid';
 import { ProfileSkeleton } from '@/features/profile/components/profile-skeleton';
 import { ConnectIncompleteBanner } from '@/features/profile/components/connect-incomplete-banner';

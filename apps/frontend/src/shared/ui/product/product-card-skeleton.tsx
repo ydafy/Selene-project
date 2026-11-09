@@ -1,5 +1,5 @@
 import { Box } from '../base';
-import { Skeleton } from '../skeleton';
+import { Skeleton } from '../feedback/skeleton';
 
 type ProductCardSkeletonProps = {
   height?: number; // Altura dinámica

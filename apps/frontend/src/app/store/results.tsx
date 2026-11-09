@@ -25,7 +25,7 @@ import { GlobalHeader } from '@/shared/ui/global-header';
 import { ProductCard } from '@/shared/ui/product/product-card';
 import { offerPushPermission } from '@/features/notifications/lib/push-permission';
 import { ProductFavoriteButton } from '@/features/product/components/product-favorite-button';
-import { EmptyState } from '@/shared/ui/empty-state';
+import { EmptyState } from '@/shared/ui/feedback/empty-state';
 import { ProductCardSkeleton } from '@/shared/ui/product/product-card-skeleton';
 import {
   FilterModal,

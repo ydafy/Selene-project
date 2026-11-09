@@ -75,7 +75,7 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
   mock.module('@/shared/ui/app-image', () => ({
     AppImage: host('AppImage'),
   }));
-  mock.module('@/shared/ui/confirm-dialog', () => ({
+  mock.module('@/shared/ui/feedback/confirm-dialog', () => ({
     ConfirmDialog: host('ConfirmDialog'),
   }));
   mock.module('@/shared/hooks/use-image-upload', () => ({
@@ -91,7 +91,7 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
     mock.module(`@/assets/images/packaging/${image}.webp`, () => ({
       default: 1,
     }));
-  mock.module('@/shared/ui/skeleton', () => ({
+  mock.module('@/shared/ui/feedback/skeleton', () => ({
     Skeleton: host('Skeleton'),
   }));
   const { act, fireEvent, render } =

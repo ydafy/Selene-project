@@ -24,7 +24,7 @@ import { ProductSellerCard } from '@/features/product/components/product-seller-
 import { ProductDetailSkeleton } from '@/features/product/components/product-detail-skeleton';
 import { OptionsMenu } from '@/shared/ui/options-menu';
 import { AppChip } from '@/shared/ui/app-chip';
-import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
+import { ConfirmDialog } from '@/shared/ui/feedback/confirm-dialog';
 
 // Hooks y Utilidades
 import {

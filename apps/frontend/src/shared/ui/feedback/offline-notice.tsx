@@ -7,8 +7,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useTheme } from '@shopify/restyle';
-import { Text, Box } from './base';
-import { Theme } from '../theme';
+import { Text, Box } from '../base';
+import { Theme } from '../../theme';
 
 export const OfflineNotice = () => {
   const netInfo = useNetInfo();

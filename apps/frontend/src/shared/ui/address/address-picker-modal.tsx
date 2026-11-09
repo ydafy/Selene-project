@@ -15,8 +15,8 @@ import { Theme } from '../../theme';
 import { AddressCard } from './address-card';
 import { useAddresses } from '../../hooks/use-addresses';
 import { Address } from '@selene/types';
-import { EmptyState } from '../empty-state';
-import { ConfirmDialog } from '../confirm-dialog';
+import { EmptyState } from '../feedback/empty-state';
+import { ConfirmDialog } from '../feedback/confirm-dialog';
 
 const MAX_ADDRESSES = 3;
 

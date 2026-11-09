@@ -15,7 +15,7 @@ import { ProductCategory } from '@selene/types';
 import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import { useAuthModal } from '@/shared/lib/auth/auth-modal-context';
 import { triggerHaptic } from '@/shared/utils/haptics';
-import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
+import { ConfirmDialog } from '@/shared/ui/feedback/confirm-dialog';
 import {
   SELL_CATEGORIES,
   SELL_CATEGORY_META,

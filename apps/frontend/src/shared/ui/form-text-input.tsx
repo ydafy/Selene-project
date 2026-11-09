@@ -10,7 +10,7 @@ import { useTheme } from '@shopify/restyle';
 
 import { Box, Text } from './base';
 import { Theme } from '../theme';
-import { ConfirmDialog } from './confirm-dialog';
+import { ConfirmDialog } from './feedback/confirm-dialog';
 
 type FormTextInputProps = Omit<TextInputProps, 'theme'> & {
   leftIcon?: string;
