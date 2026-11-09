@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
-import { verifyEnviaWebhook } from '../_shared/envia-webhook-verify.ts';
+import { verifyEnviaWebhook } from '../_shared/envia/envia-webhook-verify.ts';
 import { createEnviaWebhookHandler } from './handler.ts';
 import { withSentry } from '../_shared/sentry.ts';
 

@@ -31,7 +31,7 @@ describe('shipment cancel source guards', () => {
     }
     // The first-attempt flow; recovery replays use their own ordered calls.
     const orchestrationFile = read(
-      'supabase/functions/_shared/shipment-cancellation.ts',
+      'supabase/functions/_shared/cancellation/shipment-cancellation.ts',
     );
     const orchestration = orchestrationFile.slice(
       orchestrationFile.indexOf(
@@ -93,7 +93,9 @@ describe('shipment cancel source guards', () => {
     const autoCancelPreparing = read(
       'supabase/functions/auto-cancel-preparing/index.ts',
     );
-    const safetyGate = read('supabase/functions/_shared/auto-cancel-safety.ts');
+    const safetyGate = read(
+      'supabase/functions/_shared/auto-cancel/auto-cancel-safety.ts',
+    );
 
     expect(autoCancelOrders).toContain(
       'resolveAutoCancelShipmentCancellationGate',
@@ -110,7 +112,7 @@ describe('shipment cancel source guards', () => {
     expect(autoCancelOrders).toContain('seguroShareCents');
     expect(autoCancelPreparing).toContain('seguroShareCents');
     const orchestration = read(
-      'supabase/functions/_shared/shipment-cancellation.ts',
+      'supabase/functions/_shared/cancellation/shipment-cancellation.ts',
     );
     expect(orchestration).toContain('seguro_share_cents');
   });

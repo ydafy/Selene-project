@@ -1,20 +1,20 @@
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
-import { runShipmentCancellation } from '../_shared/shipment-cancellation';
+import { runShipmentCancellation } from '../_shared/cancellation/shipment-cancellation';
 import {
   allocateCancellationLossCents,
   computeShipmentRefundAmountCents,
-} from '../_shared/refund-basis';
-import { resolveAutoCancelShipmentCancellationGate } from '../_shared/auto-cancel-safety';
+} from '../_shared/cancellation/refund-basis';
+import { resolveAutoCancelShipmentCancellationGate } from '../_shared/auto-cancel/auto-cancel-safety';
 import {
   isAuthorizedCronRequest,
   reportCronSecretMismatch,
-} from '../_shared/cron-auth';
-import { readAutoCancelExpirationHours } from '../_shared/auto-cancel-settings';
+} from '../_shared/auth/cron-auth';
+import { readAutoCancelExpirationHours } from '../_shared/auto-cancel/auto-cancel-settings';
 import type {
   PreparingCarrierGatePorts,
   PreparingCarrierShipment,
-} from '../_shared/preparing-carrier-gate';
+} from '../_shared/cancellation/preparing-carrier-gate';
 
 // Execute the actual per-shipment adapter, without importing serve or remote SDKs.
 function adapter(name: string) {

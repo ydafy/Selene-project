@@ -2,7 +2,7 @@ import {
   buildWebhookTrackingEvent,
   type TrackingEventInput,
   webhookReceipt,
-} from '../_shared/envia-tracking-ingestion.ts';
+} from '../_shared/envia/envia-tracking-ingestion.ts';
 
 export interface TrackingSubject {
   shipmentId: string;

@@ -103,7 +103,7 @@ describe('checkout recovery worker cron claims', () => {
 
     expect(source).toContain(
       compact(
-        'import { extractStripeChargeId } from "../_shared/stripe-charge.ts";',
+        'import { extractStripeChargeId } from "../_shared/stripe/stripe-charge.ts";',
       ),
     );
     expect(source).toContain(compact('await stripe.paymentIntents.retrieve('));

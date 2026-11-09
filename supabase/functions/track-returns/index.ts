@@ -5,7 +5,7 @@ import {
   buildPollingTrackingEvents,
   extractEnviaPollingObservations,
   successfulPollingTargetIds,
-} from '../_shared/envia-tracking-ingestion.ts';
+} from '../_shared/envia/envia-tracking-ingestion.ts';
 import { withSentry } from '../_shared/sentry.ts';
 
 const BATCH_SIZE = 50;

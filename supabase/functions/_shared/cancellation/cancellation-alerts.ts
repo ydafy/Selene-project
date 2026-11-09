@@ -1,4 +1,4 @@
-import { reportMessage, type SentryMessageOptions } from './sentry.ts';
+import { reportMessage, type SentryMessageOptions } from '../sentry.ts';
 
 /**
  * CRITICAL log plus a Sentry message for shipment cancellations that need a

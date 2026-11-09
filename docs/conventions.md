@@ -64,6 +64,7 @@ An import that leaves its top-level folder (the app folder, the shared folder, o
 - Playwright specs stay in `e2e/` (`e2e/admin-web/`, `e2e/admin-web-local/`).
 - A guard that scans all of `apps/frontend/src/` sits at the `apps/frontend/` root, so it does not scan its own text: `apps/frontend/frontend-import-boundaries.test.ts`, `apps/frontend/legacy-wallet-removal.test.ts`. A guard over the whole repository sits in `scripts/guards/` (`scripts/guards/test-only-guard.test.ts`).
 - Do not create new `__tests__` folders or a top-level `tests` folder; `scripts/guards/test-placement.test.ts` fails on one. The folders in its legacy list predate this rule; do not add to them.
+- `supabase/migrations/__tests__/` and `supabase/queries/__tests__/` keep their folders: a migration file name starts with a timestamp, so its test cannot sit next to it under a matching name. `supabase/functions/_shared/__tests__/` keeps only the guards that scan every Edge Function and the zod preload `bunfig.toml` loads.
 
 ## Source-text tests
 
@@ -78,12 +79,12 @@ A test runs the code it tests. Call the function, call the Edge Function handler
 - Every file uses kebab-case: `apps/frontend/src/shared/ui/product/product-card.tsx` exports `ProductCard`, `apps/frontend/src/features/auth/hooks/use-auth.ts` exports `useAuth`, `apps/frontend/src/shared/utils/format-currency.ts` exports `formatCurrencyWithLocale`. Identifiers inside the file keep their usual case.
 - Why: Windows and macOS file systems ignore case and the Linux CI does not, so an import that differs only in case works locally and fails in CI. All-lowercase names remove that class of error. The Expo SDK 55 template and bulletproof-react use the same style.
 - Exception: route files under the Expo Router `apps/frontend/src/app/` directory. Their names are URLs and deep links (`apps/frontend/src/app/(auth)/resetPassword.tsx` is `/resetPassword`), so rename one only as a deliberate route change.
-- `bun run lint` enforces it for all of `apps/admin-web/src` and for `apps/frontend/src` outside `apps/frontend/src/app/` (`check-file/filename-naming-convention` in `eslint.config.js`). Only the part before the first dot is checked, so `apps/frontend/src/features/orders/components/order-action-card.cancelled-banner.test.ts` and `apps/frontend/src/shared/lib/auth/captcha.logic.ts` pass.
-- Edge Function directories under `supabase/functions/` are kebab-case because they are the function names (`create-connect-payment`). The Deno files inside them are kebab-case too (`supabase/functions/create-connect-payment/fee-calculator.ts`). Keep that style in Deno code. These rules do not apply to it.
+- `bun run lint` enforces it for all of `apps/admin-web/src` and `supabase/functions`, and for `apps/frontend/src` outside `apps/frontend/src/app/` (`check-file/filename-naming-convention` in `eslint.config.js`). Only the part before the first dot is checked, so `apps/frontend/src/features/orders/components/order-action-card.cancelled-banner.test.ts` and `apps/frontend/src/shared/lib/auth/captcha.logic.ts` pass.
+- Edge Function directories under `supabase/functions/` are kebab-case because they are the function names (`create-connect-payment`). The Deno files inside them are kebab-case too (`supabase/functions/create-connect-payment/fee-calculator.ts`).
 
 ## File size
 
-A non-test file under `apps/frontend/src` past 400 lines of code (blank lines and comments not counted) gets a `max-lines` lint warning (#135). It does not block lint. When a file you change shows it, split the screen into a thin screen plus components and hooks, as the order screens were (`apps/frontend/src/features/orders/screens/`), in its own commit.
+A non-test file under `apps/frontend/src`, `apps/admin-web/src`, or `supabase/functions` past 400 lines of code (blank lines and comments not counted) gets a `max-lines` lint warning (#135). It does not block lint. When a file you change shows it, split the screen into a thin screen plus components and hooks, as the order screens were (`apps/frontend/src/features/orders/screens/`), in its own commit.
 
 ## No barrel files
 

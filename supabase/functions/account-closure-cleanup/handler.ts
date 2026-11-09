@@ -27,7 +27,7 @@ import {
   isAuthorizedCronRequest,
   reportCronSecretMismatch,
   type CronMismatchReporter,
-} from '../_shared/cron-auth.ts';
+} from '../_shared/auth/cron-auth.ts';
 
 /** Rows per run. Steps run one after another, so this keeps a run far below the function time limit. */
 export const BATCH_SIZE = 20;

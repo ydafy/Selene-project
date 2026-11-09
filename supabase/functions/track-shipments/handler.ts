@@ -4,7 +4,7 @@ import {
   type EnviaPollingObservation,
   type PollingTrackingEvent,
   type PollingTrackingTarget,
-} from '../_shared/envia-tracking-ingestion.ts';
+} from '../_shared/envia/envia-tracking-ingestion.ts';
 
 export type TrackingStatus = 'preparing' | 'shipped';
 

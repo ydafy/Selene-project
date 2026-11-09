@@ -10,12 +10,12 @@ import type {
   Json,
 } from '../../../packages/types/src/database.types.ts';
 import { withSentry } from '../_shared/sentry.ts';
-import { createCancellationReporter } from '../_shared/cancellation-alerts.ts';
+import { createCancellationReporter } from '../_shared/cancellation/cancellation-alerts.ts';
 import {
   normalizeAccountStatus,
   type ConnectAccountLike,
-} from '../_shared/connect-status.ts';
-import { extractStripeChargeId } from '../_shared/stripe-charge.ts';
+} from '../_shared/stripe/connect-status.ts';
+import { extractStripeChargeId } from '../_shared/stripe/stripe-charge.ts';
 import { verifyStripeWebhookSignature } from './signature.ts';
 import { compensateRecoveryShell } from '../checkout-recovery-worker/recovery.ts';
 import {

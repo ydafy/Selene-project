@@ -1,9 +1,9 @@
-import { buildPollingTrackingEvents } from './envia-tracking-ingestion.ts';
-import type { PollingTrackingEvent } from './envia-tracking-ingestion.ts';
+import { buildPollingTrackingEvents } from '../envia/envia-tracking-ingestion.ts';
+import type { PollingTrackingEvent } from '../envia/envia-tracking-ingestion.ts';
 import type {
   EnviaCancelOutcome,
   FreshTrackingAssessment,
-} from './envia-carrier-cancellation.ts';
+} from '../envia/envia-carrier-cancellation.ts';
 import type { CancellationConfirmation } from './shipment-cancellation.ts';
 
 export type ReviewReason =

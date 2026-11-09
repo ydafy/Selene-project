@@ -29,7 +29,7 @@ const readSource = (relativePath: string) =>
 const INDEX_PATH = 'supabase/functions/stripe-webhooks/index.ts';
 const BUILDER_PATH =
   'supabase/functions/stripe-webhooks/single-modal-settlement.ts';
-const STRIPE_CHARGE_PATH = 'supabase/functions/_shared/stripe-charge.ts';
+const STRIPE_CHARGE_PATH = 'supabase/functions/_shared/stripe/stripe-charge.ts';
 
 describe('single-modal webhook wiring guards', () => {
   const index = readSource(INDEX_PATH);
@@ -56,7 +56,7 @@ describe('single-modal webhook wiring guards', () => {
     // The shared helper supports both modern latest_charge and legacy charges
     // data, while the webhook remains explicitly wired to that tested contract.
     expect(index).toContain(
-      "import { extractStripeChargeId } from '../_shared/stripe-charge.ts';",
+      "import { extractStripeChargeId } from '../_shared/stripe/stripe-charge.ts';",
     );
     expect(stripeCharge).toContain('latest_charge');
     expect(stripeCharge).toContain('charges?.data?.[0]');

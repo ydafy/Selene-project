@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { extractStripeChargeId } from '../stripe-charge.ts';
+import { extractStripeChargeId } from './stripe-charge.ts';
 
 describe('extractStripeChargeId', () => {
   it('uses a non-empty latest_charge string', () => {
@@ -44,7 +44,7 @@ describe('stripe webhook charge extraction wiring', () => {
     );
 
     expect(webhookSource).toContain(
-      "import { extractStripeChargeId } from '../_shared/stripe-charge.ts';",
+      "import { extractStripeChargeId } from '../_shared/stripe/stripe-charge.ts';",
     );
   });
 });

@@ -2,7 +2,7 @@ import {
   normalizeAccountStatus,
   type ConnectAccountLike,
   type StripeOnboardingStatus,
-} from '../_shared/connect-status.ts';
+} from '../_shared/stripe/connect-status.ts';
 
 const THROTTLE_MS = 60_000;
 

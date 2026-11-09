@@ -23,7 +23,7 @@ import {
   isAuthorizedCronRequest,
   reportCronSecretMismatch,
   type CronMismatchReporter,
-} from '../_shared/cron-auth.ts';
+} from '../_shared/auth/cron-auth.ts';
 import { getPushReceipts, sendPushMessages, type ExpoMessage } from './expo.ts';
 
 /** Rows per Expo request (the API limit). */

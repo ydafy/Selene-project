@@ -521,14 +521,14 @@ WHERE seller_id = v_seller_id;
 ### auto-cancel-orders
 
 - Cancels shipments where no tracking label was created within `order_expiration_hours` (default 48h)
-- Uses shared `computeShipmentRefundAmountCents` from `supabase/functions/_shared/refund-basis.ts` for buyer-paid refund amount
+- Uses shared `computeShipmentRefundAmountCents` from `supabase/functions/_shared/cancellation/refund-basis.ts` for buyer-paid refund amount
 - Refund excludes seller-paid shipping; caps against actual charge when available
 - Calls `fn_cancel_shipment(p_shipment_id, 'system', ...)` via service-role client for atomic rollback
 
 ### auto-cancel-preparing
 
 - Cancels shipments in `preparing` without carrier scan after `preparing_expiration_hours` (default 72h)
-- Uses shared `computeShipmentRefundAmountCents` from `supabase/functions/_shared/refund-basis.ts` for buyer-paid refund amount
+- Uses shared `computeShipmentRefundAmountCents` from `supabase/functions/_shared/cancellation/refund-basis.ts` for buyer-paid refund amount
 - Refund excludes seller-paid shipping; caps against actual charge when available
 - Calls `fn_cancel_shipment(p_shipment_id, 'system', ...)` via service-role client for atomic rollback
 

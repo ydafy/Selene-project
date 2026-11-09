@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { createCancellationReporter } from '../cancellation-alerts.ts';
+import { createCancellationReporter } from './cancellation-alerts.ts';
 
 function subject(
   report?: (
