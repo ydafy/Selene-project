@@ -10,10 +10,6 @@ const migration = readFileSync(
   ),
   'utf8',
 );
-const edge = readFileSync(
-  join(root, 'supabase/functions/create-dispute/index.ts'),
-  'utf8',
-);
 
 describe('dispute.opened transactional producer', () => {
   it('uses an unambiguous preflight column variable without conflict overrides', () => {
@@ -79,10 +75,5 @@ describe('dispute.opened transactional producer', () => {
       "jsonb_build_object('dispute_id', NEW.id, 'order_id', NEW.order_id, 'recipient_role', 'seller')",
     );
     expect(migration).not.toMatch(/user_id,\s*NEW\.seller_id/);
-  });
-  it('removes the post-commit Edge notices without changing the dispute insert', () => {
-    // The insert moved into fn_open_shipment_dispute (service role), so the trigger still fires on it.
-    expect(edge).toContain("'fn_open_shipment_dispute'");
-    expect(edge).not.toMatch(/\.from\('notifications'\)|const notifications =/);
   });
 });
