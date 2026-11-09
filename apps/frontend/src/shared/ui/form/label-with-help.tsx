@@ -3,9 +3,9 @@ import { TouchableOpacity } from 'react-native';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from '@shopify/restyle';
 
-import { Box, Text } from './base';
-import { Theme } from '../theme';
-import { ConfirmDialog } from './feedback/confirm-dialog';
+import { Box, Text } from '../base';
+import { Theme } from '../../theme';
+import { ConfirmDialog } from '../feedback/confirm-dialog';
 
 type LabelWithHelpProps = {
   label: string;

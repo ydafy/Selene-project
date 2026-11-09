@@ -8,7 +8,7 @@ import { IconButton } from 'react-native-paper';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
 import { Box, Text } from '@/shared/ui/base';
-import { SearchBar } from '@/shared/ui/search-bar';
+import { SearchBar } from '@/shared/ui/form/search-bar';
 import { useSearchStore } from '@/features/search/store/use-search-store';
 import { Theme } from '@/shared/theme';
 

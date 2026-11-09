@@ -9,8 +9,8 @@ import { IconButton } from 'react-native-paper';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Box, Text } from './base';
-import { Theme } from '../theme';
+import { Box, Text } from '../base';
+import { Theme } from '../../theme';
 
 type OptionSelectorProps = {
   options: string[];

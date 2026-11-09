@@ -4,7 +4,7 @@ import Toast from 'react-native-toast-message';
 
 import { Box, Text } from '@/shared/ui/base';
 import { ConfirmDialog } from '@/shared/ui/feedback/confirm-dialog';
-import { FormTextInput } from '@/shared/ui/form-text-input';
+import { FormTextInput } from '@/shared/ui/form/form-text-input';
 import { SettingsRow } from '@/shared/ui/settings-row';
 import { supabase } from '@/shared/lib/supabase';
 import { isGoogleOnlyAccount } from '@/shared/lib/auth/reauth.logic';

@@ -13,7 +13,7 @@ import { GlobalHeader } from '@/shared/ui/global-header';
 import { EmptyState } from '@/shared/ui/feedback/empty-state';
 import { ConfirmDialog } from '@/shared/ui/feedback/confirm-dialog';
 import { ProductCardSkeleton } from '@/shared/ui/product/product-card-skeleton';
-import { SegmentedControl } from '@/shared/ui/segmented-control';
+import { SegmentedControl } from '@/shared/ui/form/segmented-control';
 import { isProductHistory } from '@/features/profile/logic/product-status';
 
 import { useMyListings } from '@/features/profile/hooks/use-my-listings';

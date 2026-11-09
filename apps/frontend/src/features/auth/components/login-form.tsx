@@ -12,7 +12,7 @@ import type { TextInputInstance } from 'react-native';
 import Toast from 'react-native-toast-message';
 
 import { Box, Text } from '@/shared/ui/base';
-import { FormTextInput } from '@/shared/ui/form-text-input';
+import { FormTextInput } from '@/shared/ui/form/form-text-input';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { GoogleButton } from '@/features/auth/components/google-button';
 import { TextLink } from '@/shared/ui/button/text-link';

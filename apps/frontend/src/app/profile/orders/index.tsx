@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Box } from '@/shared/ui/base';
 import { GlobalHeader } from '@/shared/ui/global-header';
-import { SegmentedControl } from '@/shared/ui/segmented-control';
+import { SegmentedControl } from '@/shared/ui/form/segmented-control';
 import { EmptyState } from '@/shared/ui/feedback/empty-state';
 import { OrderCard } from '@/features/orders/components/order-card';
 import { useAuthContext } from '@/shared/lib/auth/auth-provider';

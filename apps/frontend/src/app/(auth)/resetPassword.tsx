@@ -16,8 +16,8 @@ import { z } from 'zod';
 
 import { ScreenLayout } from '@/shared/ui/screen-layout';
 import { AuthBackButton } from '@/features/auth/components/auth-back-button';
-import { FormTextInput } from '@/shared/ui/form-text-input';
-import { OtpInput, type OtpInputHandle } from '@/shared/ui/otp-input';
+import { FormTextInput } from '@/shared/ui/form/form-text-input';
+import { OtpInput, type OtpInputHandle } from '@/shared/ui/form/otp-input';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { AppImage } from '@/shared/ui/app-image';
 import { Box, Text } from '@/shared/ui/base';

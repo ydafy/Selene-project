@@ -18,7 +18,7 @@ import { AddressPickerModal } from '@/shared/ui/address/address-picker-modal';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { ErrorState } from '@/shared/ui/feedback/error-state';
 import { Skeleton } from '@/shared/ui/feedback/skeleton';
-import { LabelWithHelp } from '@/shared/ui/label-with-help';
+import { LabelWithHelp } from '@/shared/ui/form/label-with-help';
 import { PrepareShipmentSelector } from '../components/prepare-shipment-selector';
 import { PrepareBoxCard } from '../components/prepare-box-card';
 import { PrepareStatusCard } from '../components/prepare-status-card';

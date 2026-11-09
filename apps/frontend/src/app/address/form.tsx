@@ -14,10 +14,10 @@ import Toast from 'react-native-toast-message';
 
 import { Box, Text } from '@/shared/ui/base';
 import { GlobalHeader } from '@/shared/ui/global-header';
-import { FormTextInput } from '@/shared/ui/form-text-input';
-import { FormSelect } from '@/shared/ui/form-select';
+import { FormTextInput } from '@/shared/ui/form/form-text-input';
+import { FormSelect } from '@/shared/ui/form/form-select';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';
-import { Checkbox } from '@/shared/ui/checkbox';
+import { Checkbox } from '@/shared/ui/form/checkbox';
 
 import { useAddresses } from '@/shared/hooks/use-addresses';
 import { useZipCode } from '@/features/address/hooks/use-zip-code';

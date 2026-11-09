@@ -7,8 +7,8 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { Box, Text } from './base';
-import { Theme } from '../theme';
+import { Box, Text } from '../base';
+import { Theme } from '../../theme';
 import { colors } from '@/shared/theme/tokens';
 
 type SegmentedControlProps = {

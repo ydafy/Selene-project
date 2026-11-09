@@ -1,8 +1,8 @@
 import { TextInput, TouchableOpacity } from 'react-native';
 import { useTheme } from '@shopify/restyle';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
-import { Box } from './base';
-import { Theme } from '../theme';
+import { Box } from '../base';
+import { Theme } from '../../theme';
 
 type SearchBarProps = {
   placeholder?: string;

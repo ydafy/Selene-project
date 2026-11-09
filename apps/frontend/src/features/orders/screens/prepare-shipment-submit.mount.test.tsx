@@ -131,7 +131,7 @@ if (process.env.SELENE_SUBMIT_CHILD !== '1') {
     ['shared/ui/feedback/confirm-dialog', 'ConfirmDialog'],
     ['shared/ui/feedback/error-state', 'ErrorState'],
     ['shared/ui/feedback/skeleton', 'Skeleton'],
-    ['shared/ui/label-with-help', 'LabelWithHelp'],
+    ['shared/ui/form/label-with-help', 'LabelWithHelp'],
     ['features/orders/components/packaging-guide-card', 'PackagingGuideCard'],
     [
       'features/orders/components/shipment-label-recovery-card',

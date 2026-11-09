@@ -14,7 +14,7 @@ import Toast from 'react-native-toast-message';
 
 import { Box, Text } from '@/shared/ui/base';
 import { ScreenLayout } from '@/shared/ui/screen-layout';
-import { FormTextInput } from '@/shared/ui/form-text-input';
+import { FormTextInput } from '@/shared/ui/form/form-text-input';
 import { AppImage } from '@/shared/ui/app-image';
 import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import {

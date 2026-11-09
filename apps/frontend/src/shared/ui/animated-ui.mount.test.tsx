@@ -94,7 +94,7 @@ if (process.env.SELENE_ANIMATED_UI_MOUNT_CHILD !== '1') {
     byType(view, 'Text').map((node) => [node.props.children].flat().join(''));
 
   test('SegmentedControl reports the pressed option and marks the selected one', async () => {
-    const { SegmentedControl } = await import('./segmented-control');
+    const { SegmentedControl } = await import('./form/segmented-control');
     const onChange = mock(() => {});
     const view = await render(
       <SegmentedControl

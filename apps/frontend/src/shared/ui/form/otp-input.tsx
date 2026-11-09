@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { Box, Text } from './base';
+import { Box, Text } from '../base';
 
 const OTP_LENGTH = 6;
 

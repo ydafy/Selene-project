@@ -45,7 +45,7 @@ if (process.env.SELENE_OTP_INPUT_MOUNT_CHILD !== '1') {
       t: (key: string) => `${namespace}:${key}`,
     }),
   }));
-  mock.module('./base', () => ({ Box: host('Box'), Text: host('Text') }));
+  mock.module('../base', () => ({ Box: host('Box'), Text: host('Text') }));
 
   const { act, fireEvent, render } =
     await import('@testing-library/react-native');

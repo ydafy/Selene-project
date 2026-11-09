@@ -17,7 +17,7 @@ import { Box, Text as ThemedText } from '@/shared/ui/base';
 import { GlobalHeader } from '@/shared/ui/global-header';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { ScreenHeader } from '@/shared/ui/screen-header';
-import { Checkbox } from '@/shared/ui/checkbox';
+import { Checkbox } from '@/shared/ui/form/checkbox';
 import { ConfirmDialog } from '@/shared/ui/feedback/confirm-dialog';
 import { AddressPickerModal } from '@/shared/ui/address/address-picker-modal';
 import { PaymentMethodPickerModal } from '@/features/checkout/components/payment-method-picker-modal';

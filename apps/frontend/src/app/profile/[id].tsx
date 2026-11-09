@@ -27,7 +27,7 @@ import { FlashList } from '@shopify/flash-list';
 import { UserReviewCard } from '@/features/profile/components/user-review-card';
 
 import { Box, Text } from '@/shared/ui/base';
-import { SegmentedControl } from '@/shared/ui/segmented-control';
+import { SegmentedControl } from '@/shared/ui/form/segmented-control';
 import { ProfileHeader } from '@/features/profile/components/profile-header';
 import { OptionsMenu } from '@/shared/ui/options-menu';
 import { AppImage } from '@/shared/ui/app-image';

@@ -11,7 +11,7 @@ import Toast from 'react-native-toast-message';
 
 import { ScreenLayout } from '@/shared/ui/screen-layout';
 import { AuthBackButton } from '@/features/auth/components/auth-back-button';
-import { OtpInput } from '@/shared/ui/otp-input';
+import { OtpInput } from '@/shared/ui/form/otp-input';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { TextLink } from '@/shared/ui/button/text-link';
 import { Box, Text } from '@/shared/ui/base';

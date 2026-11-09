@@ -1,8 +1,8 @@
 import { TouchableOpacity } from 'react-native';
 import { Checkbox as PaperCheckbox } from 'react-native-paper';
-import { Box } from './base';
+import { Box } from '../base';
 import { useTheme } from '@shopify/restyle';
-import { Theme } from '../theme';
+import { Theme } from '../../theme';
 
 type CheckboxProps = {
   status: 'checked' | 'unchecked' | 'indeterminate';

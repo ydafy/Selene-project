@@ -14,7 +14,7 @@ import { z } from 'zod';
 
 import { ScreenLayout } from '@/shared/ui/screen-layout';
 import { AuthBackButton } from '@/features/auth/components/auth-back-button';
-import { FormTextInput } from '@/shared/ui/form-text-input';
+import { FormTextInput } from '@/shared/ui/form/form-text-input';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { AppImage } from '@/shared/ui/app-image';
 import type { TFunction } from 'i18next';

@@ -108,7 +108,7 @@ if (process.env.SELENE_EVIDENCE_CHILD !== '1') {
   const { AddressSection } =
     await import('@/shared/ui/address/address-section');
   const { PackagingGuideCard } = await import('./packaging-guide-card');
-  const { LabelWithHelp } = await import('@/shared/ui/label-with-help');
+  const { LabelWithHelp } = await import('@/shared/ui/form/label-with-help');
 
   test('shared address, help and packing controls retain enabled defaults and reject disabled callbacks', async () => {
     const onPress = mock(() => {});
