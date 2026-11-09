@@ -1,6 +1,6 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import Stripe from 'https://esm.sh/stripe@17.0.0';
+import { createClient } from '../_shared/supabase-js.ts';
+import Stripe from '../_shared/stripe/sdk.ts';
+import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 
 import { ManagePaymentMethodsRequestSchema } from './request-schema.ts';
 import { withSentry } from '../_shared/sentry.ts';
@@ -13,7 +13,6 @@ const corsHeaders = {
 };
 
 const APP_NAME = 'selene';
-const STRIPE_API_VERSION = '2026-04-22.dahlia';
 
 const log = (
   level: 'INFO' | 'WARN' | 'ERROR',
@@ -31,7 +30,7 @@ const log = (
   );
 };
 
-serve(
+Deno.serve(
   withSentry('manage-payment-methods', async (req) => {
     if (req.method === 'OPTIONS')
       return new Response('ok', { headers: corsHeaders });
@@ -102,7 +101,7 @@ serve(
             stripe.setupIntents.create(
               {
                 customer: customerId,
-                payment_method_types: ['card'],
+                allowed_payment_method_types: ['card'],
                 metadata: { user_id: user.id, app_name: APP_NAME },
               },
               {

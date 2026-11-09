@@ -4,8 +4,7 @@
  * Cron-invoked delivery of queued push notifications through the Expo Push API (every minute,
  * authenticated by `x-cron-secret` against `CRON_SECRET`). See handler.ts.
  */
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { createClient } from '../_shared/supabase-js.ts';
 
 import type { Database } from '../../../packages/types/src/database.types.ts';
 import { reportMessage, withSentry } from '../_shared/sentry.ts';
@@ -70,4 +69,4 @@ const handler = createDispatchPushHandler({
   reportMessage,
 });
 
-serve(withSentry('dispatch-push', handler));
+Deno.serve(withSentry('dispatch-push', handler));

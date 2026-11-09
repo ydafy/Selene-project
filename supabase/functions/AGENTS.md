@@ -4,7 +4,7 @@ Read the root `AGENTS.md` and `../AGENTS.md` first; they win over this file. Edg
 
 ## Shared modules
 
-Code that two or more functions use lives in `_shared/`, grouped by topic: `_shared/auth/`, `_shared/auto-cancel/`, `_shared/cancellation/`, `_shared/envia/`, and `_shared/stripe/`. `_shared/sentry.ts`, `_shared/zod-runtime.ts`, and `_shared/account-closure-cleanup.ts` stay directly in `_shared/`. A module's tests sit next to it; `_shared/__tests__/` holds only the guards that scan every function and the zod preload. Move files with `scripts/dev/move-files.ts`, which rewrites the imports; it does not rewrite path strings inside `toContain` assertions, so fix those by hand.
+Code that two or more functions use lives in `_shared/`, grouped by topic: `_shared/auth/`, `_shared/auto-cancel/`, `_shared/cancellation/`, `_shared/envia/`, and `_shared/stripe/`. `_shared/sentry.ts`, `_shared/zod-runtime.ts`, `_shared/supabase-js.ts`, and `_shared/account-closure-cleanup.ts` stay directly in `_shared/`. Import a third-party package through its one shared re-export (`_shared/zod-runtime.ts`, `_shared/supabase-js.ts`, `_shared/stripe/sdk.ts`), so a version bump edits one specifier plus the root pin. `STRIPE_API_VERSION` lives in `_shared/stripe/api-version.ts` and moves with the Stripe SDK pin (`docs/dependencies.md`, "Keep the Stripe SDK and API version together"). A module's tests sit next to it; `_shared/__tests__/` holds only the guards that scan every function and the zod preload. Move files with `scripts/dev/move-files.ts`, which rewrites the imports; it does not rewrite path strings inside `toContain` assertions, so fix those by hand.
 
 ## Types and checks
 
@@ -14,7 +14,7 @@ Code that two or more functions use lives in `_shared/`, grouped by topic: `_sha
 
 ## Sentry
 
-- Wrap every handler: `serve(withSentry('<folder-name>', handler))` from `_shared/sentry.ts`. It reports thrown errors and 5xx responses only, never bodies, headers, URLs, or user data. Do not call the Sentry SDK directly.
+- Wrap every handler: `Deno.serve(withSentry('<folder-name>', handler))` from `_shared/sentry.ts`. It reports thrown errors and 5xx responses only, never bodies, headers, URLs, or user data. Do not call the Sentry SDK directly.
 - `cron-watchdog` checks every pg_cron job through `fn_cron_health()` and reports failed or overdue jobs; it is the only Sentry Cron Monitor the plan allows. A new cron job needs a schedule `cron-watchdog/health.ts` supports.
 - `SENTRY_DSN` is a Supabase secret; locally it lives in `supabase/functions/.env` with `SENTRY_ENVIRONMENT=local`. Without a DSN the helper does nothing.
 

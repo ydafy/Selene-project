@@ -1,7 +1,7 @@
 import type { Database } from '../../../packages/types/src/database.types.ts';
 import { withSentry } from '../_shared/sentry.ts';
+import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 
-const STRIPE_API_VERSION = '2026-04-22.dahlia';
 const WORKER_BEARER_SECRET_ENV = 'STRIPE_FEE_RECONCILIATION_WORKER_SECRET';
 const PRODUCTION_POLICY = {
   batchSize: 25,
@@ -392,16 +392,18 @@ type EdgeRuntime = {
   env: {
     get: (name: string) => string | undefined;
   };
+  serve: (
+    handler: (request: Request) => Response | Promise<Response>,
+  ) => unknown;
 };
 
 const denoRuntime = (globalThis as typeof globalThis & { Deno?: EdgeRuntime })
   .Deno;
 
 if (denoRuntime) {
-  const [{ serve }, { createClient }, { default: Stripe }] = await Promise.all([
-    import('https://deno.land/std@0.168.0/http/server.ts'),
-    import('https://esm.sh/@supabase/supabase-js@2.39.3'),
-    import('https://esm.sh/stripe@17.0.0'),
+  const [{ createClient }, { default: Stripe }] = await Promise.all([
+    import('../_shared/supabase-js.ts'),
+    import('../_shared/stripe/sdk.ts'),
   ]);
 
   const workerBearerSecret = denoRuntime.env
@@ -532,7 +534,7 @@ if (denoRuntime) {
         })()
       : null;
 
-  serve(
+  denoRuntime.serve(
     withSentry('reconcile-stripe-fees', (request: Request) => {
       if (
         !workerBearerSecret ||

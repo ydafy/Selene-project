@@ -1,0 +1,38 @@
+meta {
+  name: manage-payment-methods-get-setup-config
+  type: http
+  seq: 122
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/manage-payment-methods
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  {
+    "action": "get_setup_config"
+  }
+}
+
+tests {
+  test("returns a card SetupIntent, an ephemeral key and the buyer's customer", function () {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body.setupIntent).to.match(/^seti_\w+_secret_\w+$/);
+    expect(body.ephemeralKey).to.match(/^ek_test_/);
+    expect(body.customer).to.match(/^cus_/);
+  });
+}
+
+docs {
+  Calls the Stripe sandbox: the SetupIntent is created with `allowed_payment_method_types: ['card']`
+  on STRIPE_API_VERSION (endive removed `payment_method_types`), and the ephemeral key with the same
+  version. The first run creates a sandbox customer for the buyer. Run after auth/login-buyer.
+}

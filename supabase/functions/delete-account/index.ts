@@ -1,6 +1,6 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import Stripe from 'https://esm.sh/stripe@17.0.0';
+import { createClient } from '../_shared/supabase-js.ts';
+import Stripe from '../_shared/stripe/sdk.ts';
+import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 
 import type { Database } from '../../../packages/types/src/database.types.ts';
 import { createSupabaseClosurePorts } from '../_shared/account-closure-cleanup.ts';
@@ -10,8 +10,6 @@ import {
   createDeleteAccountHandler,
   isTransientAuthError,
 } from './handler.ts';
-
-const STRIPE_API_VERSION = '2026-04-22.dahlia';
 
 const log = (
   level: 'INFO' | 'WARN' | 'ERROR',
@@ -69,4 +67,4 @@ const handler = createDeleteAccountHandler({
   log,
 });
 
-serve(withSentry('delete-account', handler));
+Deno.serve(withSentry('delete-account', handler));

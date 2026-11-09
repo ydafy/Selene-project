@@ -10,8 +10,7 @@
  * Destination = Seller (origin_address from the disputed shipment)
  */
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { createClient } from '../_shared/supabase-js.ts';
 
 import { ReturnLabelRequestSchema } from './request-schema.ts';
 import { withSentry } from '../_shared/sentry.ts';
@@ -53,7 +52,7 @@ const cleanPhone = (p: string) =>
     .replace(/\D/g, '')
     .slice(-10);
 
-serve(
+Deno.serve(
   withSentry('generate-return-label', async (req: Request) => {
     if (req.method === 'OPTIONS')
       return new Response('ok', { headers: corsHeaders });

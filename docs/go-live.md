@@ -303,7 +303,7 @@ Sentry creates the `cron-watchdog` Cron Monitor on its first check-in (free plan
 
 ## 9. External webhooks
 
-- Stripe (live mode): platform and Connect endpoints → `stripe-webhooks`; copy each signing secret into `STRIPE_WEBHOOK_SECRET` and `STRIPE_CONNECT_WEBHOOK_SECRET`. Each endpoint has its own secret, unlike the single local `stripe listen` secret.
+- Stripe (live mode): platform and Connect endpoints → `stripe-webhooks`; copy each signing secret into `STRIPE_WEBHOOK_SECRET` and `STRIPE_CONNECT_WEBHOOK_SECRET`. Each endpoint has its own secret, unlike the single local `stripe listen` secret. Create both endpoints with the API version in `STRIPE_API_VERSION` (`supabase/functions/_shared/stripe/api-version.ts`): snapshot event payloads follow the endpoint version, not the SDK, and the sandbox account default (`2025-12-15.clover`) is older. When `STRIPE_API_VERSION` moves, move the endpoints with it.
   - Platform events: `payment_intent.succeeded`, `payment_intent.payment_failed`, `payment_intent.canceled`, `setup_intent.succeeded`, `refund.updated`, `refund.failed`.
   - The refund events complete a shipment cancellation whose refund settles asynchronously, and flag a refund that failed (buyer notification plus a Sentry CRITICAL). Subscribe the platform endpoint to both, and apply `supabase/migrations/20261022005940_shipment_cancellation_refund_events.sql` (new service-only `fn_apply_shipment_cancellation_refund_event`, new `shipment.refund_failed` notification kind) before deploying `stripe-webhooks`.
   - Connect events: `account.updated`, `account.external_account.created`, `account.external_account.updated`, `account.external_account.deleted`, `payout.created`, `payout.updated`, `payout.paid`, `payout.failed`, `payout.canceled`.

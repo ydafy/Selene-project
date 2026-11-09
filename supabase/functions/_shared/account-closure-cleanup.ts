@@ -8,7 +8,7 @@
  * Raw Stripe, database and Storage text never reaches a record or a log: only a
  * short machine code does.
  */
-import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import type { SupabaseClient } from './supabase-js.ts';
 
 import type { Database } from '../../../packages/types/src/database.types.ts';
 

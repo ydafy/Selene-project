@@ -6,9 +6,9 @@
  * called, so retries can reuse the idempotent run instead of creating duplicate
  * payouts.
  */
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import Stripe from 'https://esm.sh/stripe@17.0.0';
+import { createClient } from '../_shared/supabase-js.ts';
+import Stripe from '../_shared/stripe/sdk.ts';
+import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 
 import {
   ConnectPayoutReleaseError,
@@ -23,8 +23,6 @@ import {
 
 import { createAtomicResumeAdapters } from './atomic-resume-adapter.ts';
 import { withSentry } from '../_shared/sentry.ts';
-
-const STRIPE_API_VERSION = '2026-04-22.dahlia';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -86,7 +84,7 @@ const getSupabaseErrorLogMeta = (error: {
   supabaseErrorHint: error.hint,
 });
 
-serve(
+Deno.serve(
   withSentry('release-connect-payout', async (req: Request) => {
     if (req.method === 'OPTIONS') {
       return new Response('ok', { headers: corsHeaders });
@@ -369,9 +367,11 @@ serve(
             }
           },
           retrieveStripePayout: async (input) => {
-            const payout = await stripe.payouts.retrieve(input.payoutId, {
-              stripeAccount: input.stripeAccountId,
-            });
+            const payout = await stripe.payouts.retrieve(
+              input.payoutId,
+              {},
+              { stripeAccount: input.stripeAccountId },
+            );
             return {
               id: payout.id,
               status: payout.status,

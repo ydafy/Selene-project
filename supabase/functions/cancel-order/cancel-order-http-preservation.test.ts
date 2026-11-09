@@ -9,6 +9,7 @@ import {
 import { runShipmentCancellation } from '../_shared/cancellation/shipment-cancellation';
 import { createCancellationReporter } from '../_shared/cancellation/cancellation-alerts';
 import { buildStripeFeeReconciliationPlan } from '../stripe-webhooks/single-modal-settlement';
+import { STRIPE_API_VERSION } from '../_shared/stripe/api-version';
 
 // Run the full serve callback with real domain helpers and no remote SDK imports.
 async function invoke(
@@ -217,7 +218,6 @@ async function invoke(
     source.replace(/^import\s[\s\S]*?from\s+['"][^'"]+['"];\s*/gm, ''),
   );
   new Function(
-    'serve',
     'createClient',
     'Stripe',
     'Deno',
@@ -229,14 +229,17 @@ async function invoke(
     'buildStripeFeeReconciliationPlan',
     'withSentry',
     'createCancellationReporter',
+    'STRIPE_API_VERSION',
     executable,
   )(
-    (callback: typeof handler) => {
-      handler = callback;
-    },
     () => supabase,
     FakeStripe,
-    { env: { get: () => 'fake' } },
+    {
+      env: { get: () => 'fake' },
+      serve: (callback: typeof handler) => {
+        handler = callback;
+      },
+    },
     { log: (value: string) => logs.push(JSON.parse(value)) },
     ApiError,
     parseCancelOrderRequestBody,
@@ -248,6 +251,7 @@ async function invoke(
       createCancellationReporter(name, log, async (message, reportOptions) => {
         reports.push({ message, options: reportOptions });
       }),
+    STRIPE_API_VERSION,
   );
   const response = await handler(
     new Request('https://test.invalid/cancel-order', {

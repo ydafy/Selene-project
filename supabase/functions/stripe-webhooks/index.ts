@@ -1,9 +1,6 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import {
-  createClient,
-  type SupabaseClient,
-} from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import Stripe from 'https://esm.sh/stripe@17.0.0';
+import { createClient, type SupabaseClient } from '../_shared/supabase-js.ts';
+import Stripe from '../_shared/stripe/sdk.ts';
+import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 
 import type {
   Database,
@@ -68,7 +65,7 @@ const log = (
 };
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-  apiVersion: '2026-04-22.dahlia',
+  apiVersion: STRIPE_API_VERSION,
   httpClient: Stripe.createFetchHttpClient(),
 });
 
@@ -620,9 +617,11 @@ async function retrieveAuthoritativeConnectPayout(input: {
 
   // Stripe Payout state is authoritative when evidence conflicts or arrives
   // out of order; the connected-account context is derived server-side.
-  const payout = await stripe.payouts.retrieve(input.payoutId, {
-    stripeAccount: input.stripeAccountId,
-  });
+  const payout = await stripe.payouts.retrieve(
+    input.payoutId,
+    {},
+    { stripeAccount: input.stripeAccountId },
+  );
 
   const status = normalizeStripePayoutStatus(payout.status);
   if (!status) {
@@ -639,7 +638,7 @@ async function retrieveAuthoritativeConnectPayout(input: {
   };
 }
 
-serve(
+Deno.serve(
   withSentry('stripe-webhooks', async (req: Request) => {
     if (req.method === 'OPTIONS')
       return new Response('ok', { headers: corsHeaders });
@@ -1118,16 +1117,26 @@ serve(
         if (app_name === APP_NAME && user_id) {
           const pmId = si.payment_method as string;
           const pm = await stripe.paymentMethods.retrieve(pmId);
+          const card = pm.card;
 
-          await supabaseAdmin.from('payment_methods').insert({
-            user_id,
-            stripe_payment_method_id: pmId,
-            brand: pm.card?.brand,
-            last4: pm.card?.last4,
-            exp_month: pm.card?.exp_month,
-            exp_year: pm.card?.exp_year,
-          });
-          log('INFO', 'Nuevo método de pago guardado', { user_id });
+          // The saved-cards SetupIntent allows only cards, and payment_methods
+          // stores card details only.
+          if (!card) {
+            log('WARN', 'SetupIntent payment method is not a card; not saved', {
+              user_id,
+              paymentMethodType: pm.type,
+            });
+          } else {
+            await supabaseAdmin.from('payment_methods').insert({
+              user_id,
+              stripe_payment_method_id: pmId,
+              brand: card.brand,
+              last4: card.last4,
+              exp_month: card.exp_month,
+              exp_year: card.exp_year,
+            });
+            log('INFO', 'Nuevo método de pago guardado', { user_id });
+          }
         }
       }
 

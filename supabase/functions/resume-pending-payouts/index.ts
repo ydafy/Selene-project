@@ -13,20 +13,21 @@
  * reconciled by server-side Stripe listing — never by a second create. Cron
  * scheduling is configured in the Supabase Dashboard (handoff only).
  */
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import Stripe from 'https://esm.sh/stripe@17.0.0';
+import { createClient } from '../_shared/supabase-js.ts';
+import Stripe from '../_shared/stripe/sdk.ts';
+import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 
 import {
   ResumePayoutsError,
   resumePendingPayoutRuns,
   validateResumeRequest,
 } from './resume-pending-payouts.ts';
-import { createReconciliationAdapters } from './reconciliation-adapter.ts';
+import {
+  createReconciliationAdapters,
+  type ReconciliationMappingClient,
+} from './reconciliation-adapter.ts';
 import type { ReleaseQueueRow } from '../release-connect-payout/release-connect-payout.ts';
 import { withSentry } from '../_shared/sentry.ts';
-
-const STRIPE_API_VERSION = '2026-04-22.dahlia';
 
 const getStripeErrorLogMeta = (error: unknown): Record<string, unknown> => {
   if (!error || typeof error !== 'object') {
@@ -124,8 +125,23 @@ const serveHandler = async (req: Request): Promise<Response> => {
       return data;
     };
 
+    // Passing supabaseAdmin itself makes TypeScript compare the untyped client
+    // with ReconciliationMappingClient, which exceeds its instantiation depth
+    // (TS2589); this wrapper runs the same query.
+    const reconciliationMappingClient: ReconciliationMappingClient = {
+      from: (table) => ({
+        select: (columns, options) => ({
+          eq: (column, runId) =>
+            supabaseAdmin
+              .from(table)
+              .select(columns, options)
+              .eq(column, runId),
+        }),
+      }),
+    };
+
     const summary = await resumePendingPayoutRuns({
-      ...createReconciliationAdapters(rpcOrThrow, supabaseAdmin),
+      ...createReconciliationAdapters(rpcOrThrow, reconciliationMappingClient),
       getActorProfile: async (actorId) => {
         const { data, error } = await supabaseAdmin
           .from('profiles_private')
@@ -391,4 +407,4 @@ const serveHandler = async (req: Request): Promise<Response> => {
   }
 };
 
-serve(withSentry('resume-pending-payouts', serveHandler));
+Deno.serve(withSentry('resume-pending-payouts', serveHandler));

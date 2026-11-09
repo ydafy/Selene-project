@@ -1,6 +1,6 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import Stripe from 'https://esm.sh/stripe@17.0.0';
+import { createClient } from '../_shared/supabase-js.ts';
+import Stripe from '../_shared/stripe/sdk.ts';
+import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 
 import type { Database } from '../../../packages/types/src/database.types.ts';
 import { extractStripeChargeId } from '../_shared/stripe/stripe-charge.ts';
@@ -18,7 +18,7 @@ import {
 import { withSentry } from '../_shared/sentry.ts';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-  apiVersion: '2026-04-22.dahlia',
+  apiVersion: STRIPE_API_VERSION,
   httpClient: Stripe.createFetchHttpClient(),
 });
 
@@ -31,7 +31,7 @@ const warnLeaseNotReleased = (data: { leaseId: string; reason: string }) =>
     }),
   );
 
-serve(
+Deno.serve(
   withSentry('checkout-recovery-worker', async (request) => {
     const workerServiceRoleJwt = Deno.env
       .get('CHECKOUT_RECOVERY_SERVICE_ROLE_JWT')

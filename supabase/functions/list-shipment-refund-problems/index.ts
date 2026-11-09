@@ -1,5 +1,4 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { createClient } from '../_shared/supabase-js.ts';
 
 import type { Database } from '../../../packages/types/src/database.types.ts';
 import { isActiveAdmin } from '../_shared/auth/admin-auth.ts';
@@ -60,4 +59,4 @@ const handler = createListShipmentRefundProblemsHandler({
   log,
 });
 
-serve(withSentry('list-shipment-refund-problems', handler));
+Deno.serve(withSentry('list-shipment-refund-problems', handler));
