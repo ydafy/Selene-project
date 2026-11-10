@@ -110,22 +110,14 @@ const logLine = (level: string, msg: string, data: Row = {}) => ({
   ...data,
 });
 
-const CORS_HEADERS = {
-  'access-control-allow-origin': '*',
-  'access-control-allow-headers':
-    'authorization, x-client-info, apikey, content-type',
-};
-
 const expectJsonResponse = async (
   response: Response,
   status: number,
   body: unknown,
 ) => {
   expect(response.status).toBe(status);
-  expect(response.headers.get('content-type')).toBe('application/json');
-  for (const [name, value] of Object.entries(CORS_HEADERS)) {
-    expect(response.headers.get(name)).toBe(value);
-  }
+  // Content-Type is the only header: no CORS header on any response.
+  expect([...response.headers]).toEqual([['content-type', 'application/json']]);
   expect(await response.json()).toEqual(body);
 };
 
@@ -138,21 +130,17 @@ const startLog = logLine('INFO', 'Iniciando creación de disputa', {
 const failureLog = (error: string) =>
   logLine('ERROR', 'Fallo al crear disputa', { error });
 
-describe('create-dispute handler: CORS preflight', () => {
-  it('answers OPTIONS with the CORS headers and never builds a client', async () => {
+describe('create-dispute handler: no CORS', () => {
+  it('refuses OPTIONS with 400 and no CORS headers, and never builds a client', async () => {
     const supabase = fakeSupabase();
 
     const response = await handlerFor(supabase)(
       disputeRequest(undefined, {}, 'OPTIONS'),
     );
 
-    expect(response.status).toBe(200);
-    expect(await response.text()).toBe('ok');
-    for (const [name, value] of Object.entries(CORS_HEADERS)) {
-      expect(response.headers.get(name)).toBe(value);
-    }
+    await expectJsonResponse(response, 400, { error: 'Order ID is required' });
     expect(supabase.clientsCreated()).toBe(0);
-    expect(logLines()).toEqual([]);
+    expect(logLines()).toEqual([failureLog('Order ID is required')]);
   });
 });
 

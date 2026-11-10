@@ -10,12 +10,6 @@ import {
 import { ConfirmationRequestSchema } from './request-schema.ts';
 import { withSentry } from '../_shared/sentry.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
-};
-
 const log = (
   level: 'INFO' | 'ERROR',
   msg: string,
@@ -34,10 +28,6 @@ const log = (
 
 Deno.serve(
   withSentry('confirm-shipment-delivery', async (req) => {
-    if (req.method === 'OPTIONS') {
-      return new Response('ok', { headers: corsHeaders });
-    }
-
     let request:
       | { orderId: string; shipmentId: string; idempotencyKey: string }
       | undefined;
@@ -142,7 +132,7 @@ Deno.serve(
       );
 
       return new Response(JSON.stringify(result), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
       });
     } catch (error: unknown) {
       const apiError =
@@ -165,7 +155,7 @@ Deno.serve(
         JSON.stringify({ success: false, error: apiError.code }),
         {
           status: apiError.status,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json' },
         },
       );
     }

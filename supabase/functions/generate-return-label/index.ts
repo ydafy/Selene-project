@@ -15,12 +15,6 @@ import { createClient } from '../_shared/supabase-js.ts';
 import { ReturnLabelRequestSchema } from './request-schema.ts';
 import { withSentry } from '../_shared/sentry.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
-};
-
 class ApiError extends Error {
   constructor(
     public status: number,
@@ -54,9 +48,6 @@ const cleanPhone = (p: string) =>
 
 Deno.serve(
   withSentry('generate-return-label', async (req: Request) => {
-    if (req.method === 'OPTIONS')
-      return new Response('ok', { headers: corsHeaders });
-
     try {
       const body = await req.json().catch(() => ({}));
       const { disputeId } = ReturnLabelRequestSchema.parse(body);
@@ -285,7 +276,7 @@ Deno.serve(
           }),
           {
             status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json' },
           },
         );
       }
@@ -298,7 +289,7 @@ Deno.serve(
         }),
         {
           status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json' },
         },
       );
     } catch (error: unknown) {
@@ -307,7 +298,7 @@ Deno.serve(
       log('ERROR', 'Fallo al generar guía de retorno', { error: message });
       return new Response(JSON.stringify({ error: message }), {
         status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
       });
     }
   }),

@@ -82,16 +82,6 @@ async function send(h: ReturnType<typeof harness>, request: Request) {
 }
 
 describe('acknowledge-shipment-late-carrier-activity handler', () => {
-  it('answers CORS preflight without authenticating', async () => {
-    const h = harness();
-    const res = await h.handler(
-      new Request('http://localhost/x', { method: 'OPTIONS' }),
-    );
-    expect(res.status).toBe(200);
-    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*');
-    expect(h.adminChecks).toEqual([]);
-  });
-
   it('rejects other methods with 405', async () => {
     const h = harness();
     const res = await h.handler(
@@ -262,8 +252,8 @@ describe('acknowledge-shipment-late-carrier-activity wiring', () => {
   const index = readFileSync(join(import.meta.dir, 'index.ts'), 'utf8');
 
   it('wraps the handler with Sentry, checks role and status, and calls the service-only RPC', () => {
-    expect(index).toContain(
-      "serve(withSentry('acknowledge-shipment-late-carrier-activity', handler))",
+    expect(index.replace(/\s+/g, ' ')).toContain(
+      "serveAdminWeb( withSentry('acknowledge-shipment-late-carrier-activity', handler), );",
     );
     expect(index).toContain(".select('role, status')");
     expect(index).toContain("from '../_shared/auth/admin-auth.ts'");

@@ -11,22 +11,12 @@
 import { resolveConnectOnboardingRedirect } from './connect-onboarding-return.ts';
 import { withSentry } from '../_shared/sentry.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'content-type',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-};
-
 Deno.serve(
   withSentry('connect-onboarding-return', (req: Request) => {
-    if (req.method === 'OPTIONS') {
-      return new Response('ok', { headers: corsHeaders });
-    }
-
     if (req.method !== 'GET') {
       return new Response(JSON.stringify({ error: 'METHOD_NOT_ALLOWED' }), {
         status: 405,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
       });
     }
 
@@ -48,14 +38,13 @@ Deno.serve(
     if (!redirect.ok) {
       return new Response(JSON.stringify({ error: redirect.error }), {
         status: redirect.status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
       });
     }
 
     return new Response(null, {
       status: 302,
       headers: {
-        ...corsHeaders,
         Location: redirect.url,
         'Cache-Control': 'no-store',
       },

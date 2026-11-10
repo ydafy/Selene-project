@@ -29,12 +29,6 @@ import {
 } from './shipment-package.ts';
 import { withSentry } from '../_shared/sentry.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
-};
-
 // --- 1. UTILIDADES CORE ---
 
 class ApiError extends Error {
@@ -117,9 +111,6 @@ const hashRateInput = async (payload: Record<string, unknown>) => {
 
 Deno.serve(
   withSentry('generate-shipping-label', async (req: Request) => {
-    if (req.method === 'OPTIONS')
-      return new Response('ok', { headers: corsHeaders });
-
     try {
       // A. Parseo y Validación de Input
       const body = await req.json().catch(() => ({}));
@@ -229,7 +220,7 @@ Deno.serve(
             trackingNumber: shipment.tracking_number,
           }),
           {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json' },
           },
         );
       if (shipment.status !== 'paid')
@@ -580,7 +571,7 @@ Deno.serve(
             labelUrl: result.accepted.labelUrl,
             trackingNumber: result.accepted.trackingNumber,
           }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+          { headers: { 'Content-Type': 'application/json' } },
         );
       if (result.status === 'generated' && !result.accepted) {
         const finalizedLabelRes = await supabaseAdmin
@@ -601,7 +592,7 @@ Deno.serve(
               labelUrl: finalizedLabel.label_url,
               trackingNumber: finalizedLabel.tracking_number,
             }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+            { headers: { 'Content-Type': 'application/json' } },
           );
       }
       if (
@@ -651,7 +642,7 @@ Deno.serve(
 
       return new Response(JSON.stringify({ error: message }), {
         status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
       });
     }
   }),

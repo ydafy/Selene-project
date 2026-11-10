@@ -7,27 +7,17 @@ import {
 } from './get-connect-payout-release-queue.ts';
 
 import { createQueueHandler } from './handler.ts';
+import { serveAdminWeb } from '../_shared/cors.ts';
 import { withSentry } from '../_shared/sentry.ts';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
 
 const jsonResponse = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json' },
   });
 
-Deno.serve(
+serveAdminWeb(
   withSentry('get-connect-payout-release-queue', async (req: Request) => {
-    if (req.method === 'OPTIONS') {
-      return new Response('ok', { headers: corsHeaders });
-    }
-
     try {
       if (req.method !== 'POST') throw new Error('METHOD_NOT_ALLOWED');
 

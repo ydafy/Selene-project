@@ -2,13 +2,8 @@ import { createClient } from '../_shared/supabase-js.ts';
 
 import { buildVerdictRpc } from './verdict-rpc.ts';
 import { ResolveDisputeRequestSchema } from './request-schema.ts';
+import { serveAdminWeb } from '../_shared/cors.ts';
 import { withSentry } from '../_shared/sentry.ts';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
-};
 
 const log = (
   level: 'INFO' | 'WARN' | 'ERROR',
@@ -26,11 +21,8 @@ const log = (
   );
 };
 
-Deno.serve(
+serveAdminWeb(
   withSentry('resolve-dispute', async (req) => {
-    if (req.method === 'OPTIONS')
-      return new Response('ok', { headers: corsHeaders });
-
     try {
       const supabaseAdmin = createClient(
         Deno.env.get('SUPABASE_URL')!,
@@ -48,7 +40,6 @@ Deno.serve(
       if (authError || !user)
         return new Response(JSON.stringify({ error: 'AUTH_REQUIRED' }), {
           status: 401,
-          headers: corsHeaders,
         });
 
       const { data: profile } = await supabaseAdmin
@@ -61,7 +52,6 @@ Deno.serve(
           JSON.stringify({ error: 'Permisos insuficientes' }),
           {
             status: 403,
-            headers: corsHeaders,
           },
         );
 
@@ -94,14 +84,12 @@ Deno.serve(
 
       return new Response(JSON.stringify({ success: true }), {
         status: 200,
-        headers: corsHeaders,
       });
     } catch (caught) {
       const error = caught as Error;
       log('ERROR', 'Fallo en resolución', { error: error.message });
       return new Response(JSON.stringify({ error: error.message }), {
         status: 400,
-        headers: corsHeaders,
       });
     }
   }),

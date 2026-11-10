@@ -2,6 +2,7 @@ import { createClient } from '../_shared/supabase-js.ts';
 
 import type { Database } from '../../../packages/types/src/database.types.ts';
 import { isActiveAdmin } from '../_shared/auth/admin-auth.ts';
+import { serveAdminWeb } from '../_shared/cors.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import { createListShipmentLateCarrierActivityHandler } from './handler.ts';
 
@@ -59,4 +60,4 @@ const handler = createListShipmentLateCarrierActivityHandler({
   log,
 });
 
-Deno.serve(withSentry('list-shipment-late-carrier-activity', handler));
+serveAdminWeb(withSentry('list-shipment-late-carrier-activity', handler));

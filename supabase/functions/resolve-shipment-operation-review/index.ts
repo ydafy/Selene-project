@@ -2,6 +2,7 @@ import { createClient } from '../_shared/supabase-js.ts';
 
 import type { Database } from '../../../packages/types/src/database.types.ts';
 import { isActiveAdmin } from '../_shared/auth/admin-auth.ts';
+import { serveAdminWeb } from '../_shared/cors.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import { createResolveShipmentOperationReviewHandler } from './handler.ts';
 
@@ -65,4 +66,4 @@ const handler = createResolveShipmentOperationReviewHandler({
   log,
 });
 
-Deno.serve(withSentry('resolve-shipment-operation-review', handler));
+serveAdminWeb(withSentry('resolve-shipment-operation-review', handler));

@@ -78,12 +78,6 @@ const request = (token: string | null = 'jwt', method = 'GET') =>
   });
 
 describe('list-shipment-label-reconciliations handler', () => {
-  it('answers CORS preflight', async () => {
-    const res = await harness().handler(request(null, 'OPTIONS'));
-    expect(res.status).toBe(200);
-    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*');
-  });
-
   it('rejects methods other than GET and POST before any lookup', async () => {
     const h = harness();
     const res = await h.handler(request('jwt', 'DELETE'));
@@ -239,7 +233,7 @@ describe('list-shipment-label-reconciliations wiring', () => {
 
   it('wraps the handler with Sentry, checks role and status, and calls the service-only RPC', () => {
     expect(index).toContain(
-      "serve(withSentry('list-shipment-label-reconciliations', handler))",
+      "serveAdminWeb(withSentry('list-shipment-label-reconciliations', handler))",
     );
     expect(index).toContain(".select('role, status')");
     expect(index).toContain("from '../_shared/auth/admin-auth.ts'");
