@@ -47,13 +47,6 @@ import {
   type ShipmentRefundEventInput,
 } from './shipment-refund-events.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '\*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-
 const log = (
   level: 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL',
   msg: string,
@@ -533,9 +526,6 @@ async function retrieveAuthoritativeConnectPayout(input: {
 
 Deno.serve(
   withSentry('stripe-webhooks', async (req: Request) => {
-    if (req.method === 'OPTIONS')
-      return new Response('ok', { headers: corsHeaders });
-
     const signature = req.headers.get('stripe-signature');
     if (!signature) return new Response('No signature', { status: 400 });
 

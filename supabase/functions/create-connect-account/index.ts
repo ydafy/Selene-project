@@ -27,13 +27,6 @@ import { withSentry } from '../_shared/sentry.ts';
 
 const APP_NAME = 'selene';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-
 const log = (
   level: 'info' | 'warn' | 'error',
   msg: string,
@@ -52,10 +45,6 @@ const log = (
 
 Deno.serve(
   withSentry('create-connect-account', async (req: Request) => {
-    if (req.method === 'OPTIONS') {
-      return new Response('ok', { headers: corsHeaders });
-    }
-
     try {
       // 1. Secrets
       const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY');
@@ -179,7 +168,7 @@ Deno.serve(
 
       return new Response(JSON.stringify({ url: onboardingUrl }), {
         status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
@@ -198,7 +187,7 @@ Deno.serve(
 
       return new Response(JSON.stringify({ error: message }), {
         status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
       });
     }
   }),

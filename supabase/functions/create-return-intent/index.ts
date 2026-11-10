@@ -6,12 +6,6 @@ import { buildReturnShippingPaymentIntentParams } from './create-return-intent.t
 import { ReturnIntentRequestSchema } from './request-schema.ts';
 import { withSentry } from '../_shared/sentry.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
-};
-
 class ApiError extends Error {
   constructor(
     public status: number,
@@ -40,9 +34,6 @@ const log = (
 
 Deno.serve(
   withSentry('create-return-intent', async (req) => {
-    if (req.method === 'OPTIONS')
-      return new Response('ok', { headers: corsHeaders });
-
     try {
       const body = await req.json().catch(() => ({}));
       const { disputeId } = ReturnIntentRequestSchema.parse(body);
@@ -159,7 +150,7 @@ Deno.serve(
           amount: returnFeeCents / 100,
         }),
         {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json' },
         },
       );
     } catch (caught) {
@@ -170,7 +161,7 @@ Deno.serve(
       });
       return new Response(JSON.stringify({ error: error.message }), {
         status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
       });
     }
   }),

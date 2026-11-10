@@ -8,12 +8,6 @@ import {
   refundIntentBlockedReason,
 } from './resolve-dispute-refund.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
-};
-
 const log = (
   level: 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL',
   msg: string,
@@ -32,9 +26,6 @@ const log = (
 
 Deno.serve(
   withSentry('resolve-dispute-refund', async (req: Request) => {
-    if (req.method === 'OPTIONS')
-      return new Response('ok', { headers: corsHeaders });
-
     try {
       const supabaseAdmin = createClient(
         Deno.env.get('SUPABASE_URL')!,
@@ -56,7 +47,6 @@ Deno.serve(
       if (authError || !user)
         return new Response(JSON.stringify({ error: 'AUTH_REQUIRED' }), {
           status: 401,
-          headers: corsHeaders,
         });
 
       const { data: profile } = await supabaseAdmin
@@ -72,7 +62,6 @@ Deno.serve(
           JSON.stringify({ error: 'disputeId es requerido' }),
           {
             status: 422,
-            headers: corsHeaders,
           },
         );
 
@@ -95,7 +84,6 @@ Deno.serve(
           JSON.stringify({ error: 'Disputa no encontrada' }),
           {
             status: 404,
-            headers: corsHeaders,
           },
         );
 
@@ -108,7 +96,7 @@ Deno.serve(
             error:
               'Solo administradores o el vendedor de la disputa pueden ejecutar reembolsos',
           }),
-          { status: 403, headers: corsHeaders },
+          { status: 403 },
         );
 
       // 5. Validar status de la disputa
@@ -118,7 +106,7 @@ Deno.serve(
           JSON.stringify({
             error: `Estado inválido: ${dispute.status}. Debe ser return_delivered o waiting_return.`,
           }),
-          { status: 422, headers: corsHeaders },
+          { status: 422 },
         );
 
       // 6. Resolve the PI ID from the shipment (Connect). A dispute without a
@@ -139,7 +127,6 @@ Deno.serve(
       if (blockedReason || !shipment?.stripe_payment_intent_id)
         return new Response(JSON.stringify({ error: blockedReason }), {
           status: 422,
-          headers: corsHeaders,
         });
       const connectStripeIntentId = shipment.stripe_payment_intent_id;
 
@@ -169,7 +156,7 @@ Deno.serve(
               error:
                 'No se pudieron recuperar los artículos del envío para calcular el monto del reembolso.',
             }),
-            { status: 500, headers: corsHeaders },
+            { status: 500 },
           );
         }
 
@@ -276,13 +263,12 @@ Deno.serve(
               'Dinero devuelto en Stripe, pero falló la actualización en Selene. Contacta a soporte.',
             dbError: rpcErrorMsg,
           }),
-          { status: 500, headers: corsHeaders },
+          { status: 500 },
         );
       }
 
       return new Response(JSON.stringify({ success: true }), {
         status: 200,
-        headers: corsHeaders,
       });
     } catch (error: unknown) {
       const message =
@@ -290,7 +276,6 @@ Deno.serve(
       log('ERROR', 'Fallo en resolución de reembolso', { error: message });
       return new Response(JSON.stringify({ error: message }), {
         status: 400,
-        headers: corsHeaders,
       });
     }
   }),

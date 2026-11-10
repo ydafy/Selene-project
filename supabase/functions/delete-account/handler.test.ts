@@ -142,14 +142,20 @@ const nothingHappened = (h: ReturnType<typeof harness>) => {
 };
 
 describe('delete-account handler: request and auth', () => {
-  it('answers CORS preflight without authenticating', async () => {
+  it('refuses OPTIONS with 405 and no CORS headers, without authenticating', async () => {
     const h = harness();
-    const response = await h.handler(
+    const { response, body } = await send(
+      h,
       new Request('http://localhost/x', { method: 'OPTIONS' }),
     );
-    expect(response.status).toBe(200);
-    expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
+    expect(response.status).toBe(405);
+    expect(body).toEqual({ error: 'METHOD_NOT_ALLOWED' });
+    // Content-Type is the only header: no CORS header.
+    expect([...response.headers]).toEqual([
+      ['content-type', 'application/json'],
+    ]);
     expect(h.tokens).toEqual([]);
+    nothingHappened(h);
   });
 
   it('rejects methods other than POST', async () => {

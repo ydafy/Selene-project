@@ -13,12 +13,6 @@ import { withSentry } from '../_shared/sentry.ts';
 import { runShipmentCancellation } from '../_shared/cancellation/shipment-cancellation.ts';
 import { buildStripeFeeReconciliationPlan } from '../stripe-webhooks/single-modal-settlement.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
-};
-
 const log = (
   level: 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL',
   msg: string,
@@ -41,9 +35,6 @@ const reportCritical = createCancellationReporter('cancel-order', log);
 // Manual cancellations are shipment-scoped and never whole-order here.
 Deno.serve(
   withSentry('cancel-order', async (req: Request) => {
-    if (req.method === 'OPTIONS')
-      return new Response('ok', { headers: corsHeaders });
-
     try {
       const body = await req.json().catch(() => ({}));
       const { orderId, shipmentId, reason } = parseCancelOrderRequestBody(body);
@@ -438,7 +429,7 @@ Deno.serve(
           message: 'Shipment canceled and refund processed',
         }),
         {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json' },
         },
       );
     } catch (error: unknown) {
@@ -447,7 +438,7 @@ Deno.serve(
       log('ERROR', 'Fallo en proceso de cancelación', { error: message });
       return new Response(JSON.stringify({ error: message }), {
         status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
       });
     }
   }),
