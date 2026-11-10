@@ -73,6 +73,10 @@ jobs:
           version: 2.122.0
       - run: supabase start
       - run: supabase test db
+      # supabase/schemas/ must describe the same database as supabase/migrations/.
+      # The check script imports nothing from node_modules, so no install step.
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - run: bun run db:schema:check
 
   # Playwright specs in e2e/admin-web/ (`bun run test:e2e`). Every backend call
   # is mocked, so the job needs no stack and no secrets; playwright.config.ts
