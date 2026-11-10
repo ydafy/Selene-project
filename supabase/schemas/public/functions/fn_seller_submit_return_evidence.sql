@@ -1,0 +1,111 @@
+CREATE OR REPLACE FUNCTION public.fn_seller_submit_return_evidence (
+  p_dispute_id uuid,
+  p_images     text[],
+  p_video_url  text   DEFAULT NULL::text
+)
+  RETURNS TABLE (
+    success       boolean,
+    error_message text
+  )
+  LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path TO 'public', 'pg_temp'
+  AS $function$
+DECLARE
+    v_seller_id UUID;
+    v_buyer_id UUID;
+    v_shipment_id UUID;
+    v_auth_user_id UUID;
+    v_status public.dispute_status;
+    v_order_id UUID;
+    v_occurrence_id TEXT;
+BEGIN
+    v_auth_user_id := NULLIF(current_setting('request.jwt.claims', true)::jsonb->>'sub', '')::UUID;
+    IF v_auth_user_id IS NULL THEN
+        RETURN QUERY SELECT false, 'UNAUTHORIZED'::TEXT; RETURN;
+    END IF;
+
+    SELECT d.seller_id, d.buyer_id, d.shipment_id, d.status, d.order_id
+    INTO v_seller_id, v_buyer_id, v_shipment_id, v_status, v_order_id
+    FROM public.disputes d WHERE d.id = p_dispute_id FOR UPDATE;
+
+    IF NOT FOUND THEN RETURN QUERY SELECT false, 'DISPUTE_NOT_FOUND'::TEXT; RETURN; END IF;
+    IF v_seller_id IS DISTINCT FROM v_auth_user_id THEN
+        RETURN QUERY SELECT false, 'UNAUTHORIZED'::TEXT; RETURN;
+    END IF;
+    IF v_status IS DISTINCT FROM 'return_delivered' THEN
+        RETURN QUERY SELECT false, 'INVALID_STATUS_FOR_EVIDENCE'::TEXT; RETURN;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM unnest(p_images) AS evidence_url(url) WHERE NULLIF(btrim(evidence_url.url), '') IS NOT NULL)
+       OR NULLIF(btrim(p_video_url), '') IS NULL THEN
+        RETURN QUERY SELECT false, 'EVIDENCE_REQUIRED'::TEXT; RETURN;
+    END IF;
+    IF v_buyer_id IS NULL OR v_order_id IS NULL OR v_shipment_id IS NULL OR NOT EXISTS (
+        SELECT 1 FROM public.orders o
+        JOIN public.shipments s ON s.order_id = o.id
+        WHERE o.id = v_order_id AND s.id = v_shipment_id
+          AND o.buyer_id = v_buyer_id AND s.seller_id = v_seller_id
+    ) THEN
+        RETURN QUERY SELECT false, 'INVALID_DISPUTE_RELATIONSHIP'::TEXT; RETURN;
+    END IF;
+    -- Evidence paths: each image and the video are the caller's uploads for this order in the evidence bucket.
+    IF EXISTS (
+        SELECT 1 FROM unnest(p_images || p_video_url) AS evidence(path)
+        WHERE (evidence.path ~ ('^disputes/' || v_order_id::text || '/' || v_auth_user_id::text || '/[A-Za-z0-9_-][A-Za-z0-9._-]{0,199}$')
+               AND strpos(evidence.path, '..') = 0) IS NOT TRUE
+    ) THEN
+        RETURN QUERY SELECT false, 'INVALID_EVIDENCE_PATH'::TEXT; RETURN;
+    END IF;
+
+    UPDATE public.disputes
+    SET seller_evidence = jsonb_build_object(
+            'images', p_images,
+            'video_url', p_video_url,
+            'submitted_at', now(),
+            'notification_event_id', gen_random_uuid()
+        ),
+        status = 'open',
+        admin_notes = COALESCE(admin_notes, '') || E'\n[SYSTEM]: Vendedor ha impugnado el retorno y subido evidencia de video.',
+        updated_at = now()
+    WHERE id = p_dispute_id
+    RETURNING seller_evidence->>'notification_event_id' INTO v_occurrence_id;
+
+    IF v_occurrence_id IS NULL THEN
+        RAISE EXCEPTION 'Missing seller evidence occurrence';
+    END IF;
+
+    IF v_buyer_id IS DISTINCT FROM v_auth_user_id THEN
+        INSERT INTO public.notifications (
+            user_id, type, title, message, action_path,
+            event_kind, source_event_key, event_payload
+        ) VALUES (
+            v_buyer_id, 'info', 'Tu disputa se reabrió para revisión',
+            'El vendedor reportó un problema con el producto devuelto y presentó evidencia. La misma disputa se reabrió para revisar esa evidencia. Consulta los detalles del caso en tu pedido.',
+            '/profile/orders/' || v_order_id::text
+              || COALESCE('?shipment_id=' || v_shipment_id::text, ''),
+            'return.seller_evidence_submitted',
+            'return.seller_evidence_submitted:' || p_dispute_id::text || ':' || v_occurrence_id,
+            jsonb_build_object('dispute_id', p_dispute_id, 'order_id', v_order_id,
+                               'recipient_role', 'buyer')
+        )
+        ON CONFLICT (source_event_key, user_id) WHERE source_event_key IS NOT NULL DO NOTHING;
+    END IF;
+
+    RETURN QUERY SELECT true, NULL::TEXT;
+EXCEPTION WHEN OTHERS THEN
+    INSERT INTO public.system_logs (level, message, metadata)
+    VALUES ('ERROR', 'Fallo en fn_seller_submit_return_evidence',
+            jsonb_build_object('dispute_id', p_dispute_id, 'error', SQLERRM));
+    RETURN QUERY SELECT false, 'EVIDENCE_SUBMISSION_FAILED'::TEXT;
+END;
+$function$;
+
+GRANT EXECUTE ON FUNCTION "public"."fn_seller_submit_return_evidence"(uuid, text[], text) TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "public"."fn_seller_submit_return_evidence"(uuid, text[], text) TO "service_role";
+
+REVOKE ALL ON FUNCTION "public"."fn_seller_submit_return_evidence"(uuid, text[], text) FROM "postgres";
+
+GRANT EXECUTE ON FUNCTION "public"."fn_seller_submit_return_evidence"(uuid, text[], text) TO "postgres";
+
+REVOKE ALL ON FUNCTION "public"."fn_seller_submit_return_evidence"(uuid, text[], text) FROM PUBLIC, "anon";

@@ -157,3 +157,8 @@ deno_version = 2
 # Experimental in the CLI; set SUPABASE_EXPERIMENTAL_STACK=0 to fall back.
 [experimental]
 stack = true
+
+# Declarative schemas: supabase/schemas/ is the source of truth for the schema and
+# `supabase db schema declarative sync` writes each migration (supabase/AGENTS.md).
+[experimental.pgdelta]
+enabled = true
