@@ -17,7 +17,7 @@ Inserting a row in `auth.users` fires the trigger `tr_on_auth_user_created`, whi
 - The trigger `tr_profiles_reserve_deleted_username` (`fn_reserve_deleted_username`) keeps the `deleted_` prefix for closed accounts.
 - The trigger `on_auth_user_updated` runs `fn_on_auth_user_updated` only when the email changes, and the function mirrors the new email into `profiles_private.email`. A sign-in does not touch `profiles_private`.
 
-The canonical SQL of the auth functions is in `supabase/queries/auth/` and `supabase/queries/admin/fn_admin_update_user_status.sql`.
+The canonical SQL of the auth functions is in `supabase/schemas/public/functions/` (one file per function, for example `fn_close_account` and `fn_admin_update_user_status`) and `supabase/schemas/internal/functions/is_admin.sql`.
 
 ## Account states
 

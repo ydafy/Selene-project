@@ -1,6 +1,6 @@
 # Export deployed auth authorization catalogs
 
-Use [`supabase/queries/auth/auth_deployed_inventory.sql`](../../supabase/queries/auth/auth_deployed_inventory.sql) to collect the block-1 prerequisite: a single JSONB `inventory` row, not behavioral proof of secure auth. The original Dashboard execution failed with `42725` (`text || "char"`) in the default-ACL sort key; its catalog identifiers now use explicit `::text` casts. A subsequent Dashboard execution failed with `22023` (`ACL arrays must be one-dimensional`); both ACL expansion sites now pass NULL for empty arrays. This latest corrected diagnostic has **not executed** against PostgreSQL. No deployment, migration, function invocation, grant change, `db:types`, or runtime auth change is part of this handoff.
+Use [`supabase/snippets/auth_deployed_inventory.sql`](../../supabase/snippets/auth_deployed_inventory.sql) to collect the block-1 prerequisite: a single JSONB `inventory` row, not behavioral proof of secure auth. The original Dashboard execution failed with `42725` (`text || "char"`) in the default-ACL sort key; its catalog identifiers now use explicit `::text` casts. A subsequent Dashboard execution failed with `22023` (`ACL arrays must be one-dimensional`); both ACL expansion sites now pass NULL for empty arrays. This latest corrected diagnostic has **not executed** against PostgreSQL. No deployment, migration, function invocation, grant change, `db:types`, or runtime auth change is part of this handoff.
 
 ## Maintainer quick path
 

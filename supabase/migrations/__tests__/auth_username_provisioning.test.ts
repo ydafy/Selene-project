@@ -9,30 +9,6 @@ const name = readdirSync(migrationsDir).find((f) =>
 const migration = name
   ? readFileSync(join(migrationsDir, name), 'utf8').replace(/\r\n/g, '\n')
   : '';
-const canonical = readFileSync(
-  join(
-    migrationsDir,
-    '..',
-    'queries',
-    'triggers',
-    'auth',
-    'fn_on_auth_user_created.sql',
-  ),
-  'utf8',
-).replace(/\r\n/g, '\n');
-
-const canonicalHelper = () =>
-  readFileSync(
-    join(
-      migrationsDir,
-      '..',
-      'queries',
-      'triggers',
-      'auth',
-      'fn_generate_profile_username.sql',
-    ),
-    'utf8',
-  );
 
 describe('auth username provisioning migration (SQL structural only)', () => {
   test('the migration exists and is a single transaction', () => {
@@ -73,9 +49,6 @@ describe('auth username provisioning migration (SQL structural only)', () => {
 
   test('the suffix search is bounded so the auth insert can never loop forever', () => {
     expect(migration).toMatch(/IF v_attempt > 50 THEN\s+RAISE EXCEPTION/);
-    expect(canonicalHelper()).toMatch(
-      /IF v_attempt > 50 THEN\s+RAISE EXCEPTION/,
-    );
   });
 
   test('profiles_private provisioning is unchanged and idempotent', () => {
@@ -104,11 +77,5 @@ describe('auth username provisioning migration (SQL structural only)', () => {
     expect(backfill).toMatch(/LEFT JOIN public\.profiles_private /);
     expect(backfill).toMatch(/ON CONFLICT \(id\) DO NOTHING/);
     expect(backfill).not.toMatch(/wallets/);
-  });
-
-  test('the canonical trigger source matches the migration body', () => {
-    expect(canonical).toContain('char_length(v_typed) NOT BETWEEN 3 AND 20');
-    expect(canonical).toContain('fn_generate_profile_username');
-    expect(canonical).toContain("ERRCODE = 'unique_violation'");
   });
 });

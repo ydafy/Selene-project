@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { withoutShipmentLink } from './shipmentNoticeLink';
 
 const root = join(import.meta.dir, '..', '..', '..');
 const read = (path: string) =>
@@ -18,31 +17,11 @@ const statements = (sql: string) =>
       (line) => !/^\s*(--|BEGIN;|COMMIT;)/.test(line) && line.trim() !== '',
     )
     .join('\n');
-const resolution = read(
-  'supabase/queries/orders/shipment_cancellation_refund_resolution.sql',
-);
-const cancel = withoutShipmentLink(
-  read('supabase/queries/orders/fn_cancel_shipment.sql'),
-);
 const body = (sql: string) =>
   sql.match(
     /CREATE OR REPLACE FUNCTION public\.fn_cancel_shipment\([\s\S]*?\$\$;/,
   )?.[0] ?? '';
 const normalize = (sql: string) => sql.replace(/\s+/g, ' ').trim();
-// remove-legacy-wallet T4 dropped the seller wallet reversal from the canonical fn_cancel_shipment; the
-// deployed bodies in older migrations still carry it, so strip it before comparing.
-const withoutWalletReversal = (sql: string) =>
-  sql
-    .replace(
-      /\n {2}v_(wallet_id|wallet_pending|wallet_available|total_refund) [A-Z]+;/g,
-      '',
-    )
-    .replace(
-      / {2}-- 4\. Sum the shipment[\s\S]*?(?= {2}-- 6\. Release products)/,
-      '',
-    )
-    .replace('-- 6. Release products', '-- 4. Release products')
-    .replace('-- 7. Mark the shipment', '-- 5. Mark the shipment');
 // release_listings_helper replaced the per-row release loop (and its v_item declaration) with one
 // fn_release_listings call, pinned in release_listings_helper.test.ts; strip both forms to compare.
 const withoutListingRelease = (sql: string) =>
@@ -64,35 +43,14 @@ const withoutResolutionGuard = (sql: string) =>
       ),
   );
 
-// B2.4a replaced the status CHECK and the resolve function in a later migration, so this (deployed)
-// migration is compared with the canonical columns section minus that CHECK.
-const columnsSection = (sql: string) =>
-  statements(
-    sql.slice(0, sql.indexOf('-- Marks a failed/canceled shipment refund')),
-  ).replace(
-    /,\n {2}ADD CONSTRAINT shipment_cancellation_operations_refund_resolution_status CHECK \([\s\S]*?\n {2}\)/,
-    '',
-  );
-
 // Text contracts only; the local `supabase db reset` + scripts/verify/test-shipment-cancellation-refund-resolution.ts
 // prove the behavior in PostgreSQL.
 describe('shipment cancellation refund resolution migration (SQL text)', () => {
-  it('is exactly one active migration containing both canonical copies', () => {
+  it('is exactly one active migration', () => {
     expect(migrations).toHaveLength(1);
-    expect(columnsSection(migration)).toContain(columnsSection(resolution));
-    expect(columnsSection(resolution)).toContain(
-      'ADD COLUMN refund_resolved_at TIMESTAMPTZ',
-    );
+    expect(migration).toContain('ADD COLUMN refund_resolved_at TIMESTAMPTZ');
     expect(migration).toContain(
       'CREATE OR REPLACE FUNCTION public.fn_resolve_shipment_cancellation_refund(',
-    );
-    expect(
-      statements(withoutListingRelease(withoutWalletReversal(migration))),
-    ).toContain(
-      statements(withoutListingRelease(cancel)).replace(
-        /^DROP FUNCTION[^\n]*\n/m,
-        '',
-      ),
     );
     expect(migration.match(/^BEGIN;$/gm)).toHaveLength(1);
     expect(migration.match(/^COMMIT;$/gm)).toHaveLength(1);
@@ -106,6 +64,7 @@ describe('shipment cancellation refund resolution migration (SQL text)', () => {
     expect(migration).toContain(
       'p_cancellation_loss_cents BIGINT DEFAULT NULL',
     );
+    const cancel = body(migration);
     expect(cancel).toContain(
       "IF v_refund_status IS DISTINCT FROM 'succeeded' AND v_refund_resolved_at IS NULL THEN",
     );
@@ -121,14 +80,14 @@ describe('shipment cancellation refund resolution migration (SQL text)', () => {
     const deployed = read(
       'supabase/migrations/20261021052336_shipment_cancellation_recovery.sql',
     );
-    expect(withoutResolutionGuard(cancel)).toBe(
-      withoutResolutionGuard(withoutWalletReversal(deployed)),
+    expect(withoutResolutionGuard(migration)).toBe(
+      withoutResolutionGuard(deployed),
     );
-    expect(withoutResolutionGuard(cancel)).not.toBe('');
+    expect(withoutResolutionGuard(migration)).not.toBe('');
   });
 
   it('adds the resolution columns with all-or-nothing and failed/canceled-only CHECKs', () => {
-    const sql = statements(resolution);
+    const sql = statements(migration);
     for (const column of [
       'refund_resolved_at TIMESTAMPTZ',
       'refund_resolved_by UUID',
@@ -164,7 +123,7 @@ describe('shipment cancellation refund resolution migration (SQL text)', () => {
   });
 
   it('is a locked-down SECURITY DEFINER that audits and completes through fn_cancel_shipment with the stored winner', () => {
-    const sql = statements(resolution);
+    const sql = statements(migration);
     expect(sql).toContain('SECURITY DEFINER');
     expect(sql).toContain("SET search_path = ''");
     expect(sql).toContain(

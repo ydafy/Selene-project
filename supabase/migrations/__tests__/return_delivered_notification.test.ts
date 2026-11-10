@@ -1,14 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { withoutShipmentLink } from './shipmentNoticeLink';
 const root = join(import.meta.dir, '..', '..', '..');
-const source = withoutShipmentLink(
-  readFileSync(
-    join(root, 'supabase/queries/return/fn_mark_return_delivered.sql'),
-    'utf8',
-  ),
-);
 const migration = () =>
   readFileSync(
     join(
@@ -17,13 +10,9 @@ const migration = () =>
     ),
     'utf8',
   );
-const normalize = (s: string) => s.replace(/\s+/g, ' ').trim();
 describe('return delivered cutover', () => {
-  it('wraps the full canonical body with unchanged service-only signature', () => {
+  it('keeps the service-only signature', () => {
     const sql = migration();
-    expect(
-      normalize(sql.match(/AS \$function\$([\s\S]*?)\$function\$;/)?.[1] ?? ''),
-    ).toBe(normalize(source));
     expect(sql).toContain('public.fn_mark_return_delivered(p_dispute_id UUID)');
     expect(sql).toContain('RETURNS TABLE(success BOOLEAN, error_message TEXT)');
     expect(sql).toContain('SECURITY DEFINER');

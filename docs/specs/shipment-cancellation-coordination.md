@@ -245,7 +245,7 @@ A confirmed committed begin response is the ONLY authority for one Transfer call
 ### Maintainer SQL/type gate — confirmed complete, not deployment approval
 
 1. Prerequisites: already applied current payout release/read-model, actionability, stage/executor and `supabase/migrations/archive/20261008090000_atomic_payout_resume_mapping.sql`; B1.1/B1.2 cancellation SQL and the separately confirmed label coordination migration. Do not replay those migrations or canonical body copies.
-2. After independent verification and separate maintainer acceptance, apply **only** `supabase/migrations/archive/20261017233608_shipment_transfer_coordination.sql`. Its full canonical reference `supabase/queries/payments/shipment_transfer_coordination.sql` is identical, not a second script to execute. No backfill guesses old provider outcomes.
+2. After independent verification and separate maintainer acceptance, apply **only** `supabase/migrations/archive/20261017233608_shipment_transfer_coordination.sql`. No backfill guesses old provider outcomes.
 3. Confirm remote SQL application before `bun db:types`. Expected generated shape: the two nullable mapping columns in Row/Insert/Update, begin Args `{p_run_id, p_shipment_id, p_expected_stage_version}` returning `Json`, complete Args adding `{p_transfer_token, p_stripe_transfer_id}` returning `boolean`. UUIDs are strings, version is number. Existing cancellation signatures do not change. No generated types are edited or regenerated in T0.
 4. Verify deployed grants/search paths, paired columns/index and unchanged cancellation RLS/private-start denial. Remote runtime checks require separate authorization and disposable fixtures. T0 neither applies SQL remotely nor proves the remote schema.
 5. Only after this gate may B1.3-T change `supabase/functions/release-connect-payout/release-connect-payout.ts`, `supabase/functions/release-connect-payout/index.ts`, and focused adjacent tests/adapters as separately scoped. Required adapter tests: real SQL/fake-provider race and loser effects; response/malformed-envelope refusal; stopped progression on false/uncertain completion; transfer error/DB ambiguity without retries; current-run snapshot ownership; exact Stripe params/key/allocation; stored-reference reuse, failed-child transfer reuse, legacy no-transfer branch; unchanged request/status/log contracts and account-actionability gates.
@@ -280,7 +280,7 @@ The maintainer confirmed application of the B1.3 label migration and type regene
 ### Maintainer deployment gate (confirmed complete)
 
 1. Already confirmed B1.1/B1.2 SQL must be present, along with the latest address-origin and label-rate migrations. Do not replay historical migrations.
-2. After separate approval, manually apply **only** `supabase/migrations/archive/20261017063755_shipment_cancellation_label_coordination.sql`. The two files in `supabase/queries/shipments/` are BODY-ONLY reference copies, not standalone deployment scripts; do not apply them again.
+2. After separate approval, manually apply **only** `supabase/migrations/archive/20261017063755_shipment_cancellation_label_coordination.sql`.
 3. Report SQL application before any `bun db:types`. No table, column, argument or return signature changes, so no new generated API shape is expected. Preserve the repository's post-application type synchronization gate; no types were regenerated here.
 4. Check the three-argument claim signature, both service-only grants (no PUBLIC/anon/authenticated execution), search paths and cancellation RLS/direct-write denial. Use separately authorized disposable fixtures for remote runtime checks.
 5. This SQL unit requires no Edge deployment, new secrets, cron or webhook configuration. Existing undeployed B1.2 cancellation function sources and future transfer coordination remain separate rollout gates; do not advertise symmetric deployed safety with old cancellation callers still active.
@@ -300,7 +300,7 @@ The maintainer confirmed both B1.1 and B1.2 SQL application and regenerated type
 ### SQL/type gate (maintainer confirmed complete)
 
 1. B1.1 `supabase/migrations/archive/20261016011954_shipment_cancellation_coordination.sql` must already be applied; do not replay it.
-2. B1.2 `supabase/migrations/archive/20261016051001_shipment_cancellation_refund_request.sql` was subsequently applied. Do not replay it or its identical canonical reference copy `supabase/queries/orders/shipment_cancellation_refund_request.sql`.
+2. B1.2 `supabase/migrations/archive/20261016051001_shipment_cancellation_refund_request.sql` was subsequently applied. Do not replay it.
 3. Confirm application before regenerating types with `bun db:types`. Check `refund_request`, `cancellation_loss_cents`, and `fn_start_shipment_cancellation_refund` (shipment UUID, token UUID, request JSONB, optional loss BIGINT; result JSON).
 4. Verify RLS/direct-table denial remains intact, the new RPC grants execution only to `service_role`, and `service_role` no longer has direct execution of bare `fn_start_shipment_cancellation`. Remote runtime probes require separately authorized disposable fixtures.
 5. No Edge Functions, secrets, cron jobs or webhooks were deployed/changed in this SQL step. After the satisfied SQL/type gate, B1.2 integrates `cancel-order`, `auto-cancel-orders` and `auto-cancel-preparing` in the repository. Their deployment remains a separate maintainer action.
@@ -419,7 +419,7 @@ Plain `bun test` runs only offline CLI/mirror checks and does not require Docker
 
 Repository verification does not establish remote deployment. No remote operation is authorized by this document.
 
-1. When separately approved, apply **only** `supabase/migrations/archive/20261016011954_shipment_cancellation_coordination.sql`. `supabase/queries/orders/shipment_cancellation_coordination.sql` is an identical canonical copy, **not a second script to run**. This additive migration is intended to run once; use normal migration bookkeeping rather than replaying its table creation.
+1. When separately approved, apply **only** `supabase/migrations/archive/20261016011954_shipment_cancellation_coordination.sql`. This additive migration is intended to run once; use normal migration bookkeeping rather than replaying its table creation.
 2. No Edge Functions, new secrets, cron jobs or webhooks need deployment for B1.1. Do not switch any existing handler to these RPCs yet.
 3. After the maintainer confirms SQL was applied, run `bun db:types`. Verify the new table and both RPC signatures are generated. Do not hand-edit types or claim the current generated types include these undeployed objects.
 4. Inspect the deployed table's RLS, function grants/search paths and signatures. Any remote runtime checks require separately authorized disposable fixtures. Preserve the old handler behavior until the next scoped integration.

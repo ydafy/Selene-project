@@ -1,18 +1,16 @@
 import { describe, expect, test } from 'bun:test';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
  * A Connect shipment is marked refunded only by resolve-dispute-refund, after
  * the Stripe refund: fn_seller_confirm_return_shipment is dropped and
  * fn_complete_shipment_refund refused Connect shipments until
- * *_remove_non_connect_order_refund_path.sql dropped it with its canonical
- * file. These tests read the migration text; `supabase db reset` proves the
+ * *_remove_non_connect_order_refund_path.sql dropped it. These tests read the migration text; `supabase db reset` proves the
  * SQL runs.
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..');
-const QUERIES_DIR = join(import.meta.dir, '..', '..', 'queries');
 
 const files = readdirSync(MIGRATIONS_DIR).filter((f) =>
   f.endsWith('_connect_refund_requires_stripe.sql'),
@@ -42,11 +40,6 @@ describe('connect_refund_requires_stripe migration', () => {
     expect(code).toContain(
       'DROP FUNCTION IF EXISTS public.fn_seller_confirm_return_shipment(uuid);',
     );
-    expect(
-      existsSync(
-        join(QUERIES_DIR, 'shipments', 'fn_seller_confirm_return_shipment.sql'),
-      ),
-    ).toBe(false);
   });
 
   test('fn_complete_shipment_refund refuses Connect shipments before any write', () => {

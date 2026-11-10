@@ -4,13 +4,11 @@ import { join } from 'node:path';
 
 /**
  * Static guards for remove-legacy-wallet T5: the delivery, release, dispute and
- * cron functions no longer read or write the wallet tables, and the canonical
- * query files carry the same bodies. These tests read SQL text; `supabase db
- * reset` plus the Bruno requests prove the SQL runs.
+ * cron functions no longer read or write the wallet tables. These tests read
+ * SQL text; `supabase db reset` plus the Bruno requests prove the SQL runs.
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..');
-const QUERIES_DIR = join(import.meta.dir, '..', '..', 'queries');
 
 const findMigration = (): string => {
   const files = readdirSync(MIGRATIONS_DIR).filter((f) =>
@@ -28,42 +26,34 @@ const FUNCTIONS = [
   {
     name: 'fn_confirm_shipment_delivery',
     args: 'uuid, text, uuid, text',
-    file: 'orders/fn_confirm_shipment_delivery.sql',
   },
   {
     name: 'fn_release_shipment_funds',
     args: 'uuid',
-    file: 'shipments/fn_release_shipment_funds.sql',
   },
   {
     name: 'fn_resolve_dispute_to_seller',
     args: 'uuid, text',
-    file: 'disputes/fn_resolve_dispute_to_seller.sql',
   },
   {
     name: 'fn_resolve_dispute_to_seller_as_admin',
     args: 'uuid, text, uuid',
-    file: 'disputes/fn_resolve_dispute_to_seller_as_admin.sql',
   },
   {
     name: 'fn_log_return_payment',
     args: 'uuid, text, numeric',
-    file: 'disputes/fn_log_return_payment.sql',
   },
   {
     name: 'fn_cron_dispute_payout_timeout',
     args: '',
-    file: 'disputes/fn_cron_dispute_payout_timeout.sql',
   },
   {
     name: 'fn_cron_dispute_shipping_timeout',
     args: '',
-    file: 'disputes/fn_cron_dispute_shipping_timeout.sql',
   },
   {
     name: 'fn_cron_return_delivery_timeout',
     args: '',
-    file: 'disputes/fn_cron_return_delivery_timeout.sql',
   },
 ] as const;
 
@@ -85,9 +75,9 @@ const migrationBody = (name: string): string => {
 };
 
 /**
- * The canonical file follows the newest migration that defines the function, so a later
- * migration that changes one of these functions (B5.8 changed fn_confirm_shipment_delivery; the release-funds guard changed fn_release_shipment_funds and fn_cron_dispute_shipping_timeout)
- * does not make this migration's body the reference.
+ * The newest migration that defines the function: a later migration that changes one of
+ * these functions (B5.8 changed fn_confirm_shipment_delivery; the release-funds guard changed fn_release_shipment_funds and fn_cron_dispute_shipping_timeout)
+ * must not bring the wallet back.
  */
 const latestBody = (name: string): string => {
   const pattern = new RegExp(`CREATE OR REPLACE FUNCTION public\\.${name}\\(`);
@@ -100,19 +90,6 @@ const latestBody = (name: string): string => {
   const start = sql.search(pattern);
   const open = sql.indexOf('$$', start);
   return sql.slice(open + 2, sql.indexOf('$$;', open + 2));
-};
-
-/** Canonical files are either a full CREATE statement or a bare body. */
-const canonicalBody = (file: string): string => {
-  const sql = readFileSync(join(QUERIES_DIR, file), 'utf8');
-  if (sql.includes('$$')) {
-    const open = sql.indexOf('$$');
-    return sql.slice(open + 2, sql.indexOf('$$;', open + 2));
-  }
-  return sql
-    .split('\n')
-    .filter((line) => !line.startsWith('--'))
-    .join('\n');
 };
 
 describe('remove legacy wallet writes from the delivery, release, dispute and cron functions (SQL structural only)', () => {
@@ -139,10 +116,8 @@ describe('remove legacy wallet writes from the delivery, release, dispute and cr
         expect(body).not.toContain('payout_requests');
       });
 
-      test('the canonical query file carries the migration body', () => {
-        const canonical = canonicalBody(fn.file);
-        expect(canonical).not.toMatch(WALLET_REFERENCE);
-        expect(collapse(canonical)).toBe(collapse(latestBody(fn.name)));
+      test('the newest migration body does not reference the wallet tables', () => {
+        expect(latestBody(fn.name)).not.toMatch(WALLET_REFERENCE);
       });
 
       test('execute is limited to service_role, restated explicitly', () => {

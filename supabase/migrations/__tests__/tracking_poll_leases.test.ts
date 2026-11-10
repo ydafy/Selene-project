@@ -1,15 +1,8 @@
 import { describe, expect, it } from 'bun:test';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const migrationsDirectory = join(import.meta.dir, '..', 'archive');
-const queriesDirectory = join(
-  import.meta.dir,
-  '..',
-  '..',
-  'queries',
-  'tracking',
-);
 
 const findLeaseMigration = (): string => {
   const matches = readdirSync(migrationsDirectory).filter((file) =>
@@ -86,26 +79,5 @@ describe('tracking polling TTL lease migration', () => {
       'GRANT EXECUTE ON FUNCTION public.fn_release_track_shipments_lease',
     );
     expect(migration).toContain('TO service_role');
-  });
-
-  it('keeps canonical acquire and release SQL sources alongside the deployable migration', () => {
-    const migration = sql().replace(/\r\n/g, '\n');
-    const acquirePath = join(
-      queriesDirectory,
-      'fn_acquire_track_shipments_lease.sql',
-    );
-    const releasePath = join(
-      queriesDirectory,
-      'fn_release_track_shipments_lease.sql',
-    );
-
-    expect(existsSync(acquirePath)).toBeTrue();
-    expect(existsSync(releasePath)).toBeTrue();
-    expect(migration).toContain(
-      readFileSync(acquirePath, 'utf8').replace(/\r\n/g, '\n'),
-    );
-    expect(migration).toContain(
-      readFileSync(releasePath, 'utf8').replace(/\r\n/g, '\n'),
-    );
   });
 });

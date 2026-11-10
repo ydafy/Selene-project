@@ -9,7 +9,6 @@ import { join } from 'node:path';
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..');
-const QUERIES_DIR = join(import.meta.dir, '..', '..', 'queries');
 
 const findMigration = (name: string): string => {
   const files = readdirSync(MIGRATIONS_DIR).filter((f) =>
@@ -36,16 +35,6 @@ const definition = (sql: string, name: string): string | undefined =>
       'i',
     ),
   )?.[0];
-
-const rawDefinition = (sql: string, name: string): string | undefined =>
-  sql
-    .replace(/\r/g, '')
-    .match(
-      new RegExp(
-        String.raw`CREATE OR REPLACE FUNCTION public\.${name}\(.*?\n\$\$;`,
-        's',
-      ),
-    )?.[0];
 
 const migration = findMigration('push_receipts_and_purge');
 const code = normalize(migration);
@@ -174,19 +163,4 @@ describe('fn_purge_push_deliveries', () => {
     expect(def()).toContain('FOR UPDATE SKIP LOCKED');
     expect(def()).toContain('DELETE FROM public.push_deliveries');
   });
-});
-
-describe('canonical SQL parity', () => {
-  for (const [name] of FUNCTIONS) {
-    test(`${name} canonical file matches the migration`, () => {
-      const canonical = readFileSync(
-        join(QUERIES_DIR, 'push', `${name}.sql`),
-        'utf8',
-      );
-      expect(rawDefinition(canonical, name)).toBeDefined();
-      expect(rawDefinition(canonical, name)).toBe(
-        rawDefinition(migration, name),
-      );
-    });
-  }
 });

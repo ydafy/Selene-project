@@ -17,10 +17,6 @@ const statements = (sql: string) =>
       (line) => !/^\s*(--|BEGIN;|COMMIT;)/.test(line) && line.trim() !== '',
     )
     .join('\n');
-const resolution = read(
-  'supabase/queries/orders/shipment_cancellation_refund_resolution.sql',
-);
-const problems = read('supabase/queries/orders/shipment_refund_problems.sql');
 const resolveFunction = (sql: string) =>
   sql.match(
     /CREATE OR REPLACE FUNCTION public\.fn_resolve_shipment_cancellation_refund\([\s\S]*?\$\$;/,
@@ -45,29 +41,26 @@ describe('shipment refund problems migration (SQL text)', () => {
     expect(migrations[0] > (resolutionMigration ?? '~')).toBe(true);
   });
 
-  it('contains the canonical resolution function, the replaced status CHECK and the list function', () => {
-    expect(resolveFunction(resolution)).not.toBe('');
-    expect(statements(migration)).toContain(
-      statements(resolveFunction(resolution)),
+  it('contains the resolution function, the replaced status CHECK and the list function', () => {
+    expect(resolveFunction(migration)).not.toBe('');
+    expect(statusCheck(migration)).not.toBe('');
+    expect(migration).toContain(
+      'CREATE OR REPLACE FUNCTION public.fn_list_shipment_refund_problems()',
     );
-    expect(statements(migration)).toContain(statements(problems));
-    const check = statusCheck(resolution);
-    expect(check).not.toBe('');
-    expect(statements(migration)).toContain(statements(check));
     expect(migration).toContain(
       'DROP CONSTRAINT shipment_cancellation_operations_refund_resolution_status',
     );
   });
 
   it('lets an escalated operation without a recorded refund be resolved, nothing else', () => {
-    const check = statements(statusCheck(resolution));
+    const check = statements(statusCheck(migration));
     expect(check).toContain(
       "COALESCE(refund_status IN ('failed', 'canceled'), FALSE)",
     );
     expect(check).toContain(
       'refund_id IS NULL AND refund_status IS NULL AND recovery_escalated_at IS NOT NULL',
     );
-    const body = statements(resolveFunction(resolution));
+    const body = statements(resolveFunction(migration));
     expect(body).toContain("'escalation_reason'");
     expect(body).toContain('v_operation.recovery_escalation_reason');
     // Escalation markers are history: the resolution never writes them.
@@ -86,7 +79,7 @@ describe('shipment refund problems migration (SQL text)', () => {
   });
 
   it('lists unresolved refund problems through a locked-down service-only SECURITY DEFINER', () => {
-    const sql = statements(problems);
+    const sql = statements(migration);
     expect(sql).toContain(
       'CREATE OR REPLACE FUNCTION public.fn_list_shipment_refund_problems()',
     );
@@ -115,7 +108,7 @@ describe('shipment refund problems migration (SQL text)', () => {
     expect(sql).not.toMatch(
       /GRANT[^;]*TO[^;]*\b(anon|authenticated|PUBLIC)\b/i,
     );
-    expect(problems).toContain('-- Service-only');
+    expect(migration).toContain('-- Service-only');
     expect(sql).toContain(
       'COMMENT ON FUNCTION public.fn_list_shipment_refund_problems()',
     );

@@ -1,16 +1,15 @@
 import { describe, expect, test } from 'bun:test';
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
  * Static guards for remove-legacy-wallet T6: one migration drops the wallet
- * objects and nothing in the repository's SQL still points at them. These tests
+ * objects and no later migration still points at them. These tests
  * read SQL text; `supabase db reset` proves the migration runs.
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..');
 const REPO_ROOT = join(MIGRATIONS_DIR, '..', '..');
-const QUERIES_DIR = join(REPO_ROOT, 'supabase', 'queries');
 
 const migrationFiles = readdirSync(MIGRATIONS_DIR).filter((f) =>
   f.endsWith('_drop_legacy_wallet.sql'),
@@ -26,13 +25,6 @@ const code = migration.replace(/^\s*--.*$/gm, '');
 
 const DROPPED_NAMES =
   /\bwallets\b|wallet_transactions|wallet_transaction_type|payout_requests|seller_bank_accounts|mexico_banks|fn_request_payout|fn_save_bank_account|fn_cron_release_shipment_funds|admin_payments_overview|connect_enabled/;
-
-const walk = (dir: string): string[] =>
-  readdirSync(dir).flatMap((entry) => {
-    const path = join(dir, entry);
-    if (entry === '__tests__') return [];
-    return statSync(path).isDirectory() ? walk(path) : [path];
-  });
 
 describe('drop_legacy_wallet migration', () => {
   test('exists exactly once and runs in one transaction', () => {
@@ -92,14 +84,6 @@ describe('drop_legacy_wallet migration', () => {
       last = at;
     }
     expect(code).not.toMatch(/CASCADE/i);
-  });
-
-  test('no canonical query file references a dropped object', () => {
-    const offenders = walk(QUERIES_DIR)
-      .filter((f) => /\.(sql|json)$/.test(f))
-      .filter((f) => DROPPED_NAMES.test(readFileSync(f, 'utf8')))
-      .map((f) => f.slice(REPO_ROOT.length + 1));
-    expect(offenders).toEqual([]);
   });
 
   test('no later migration references a dropped object', () => {

@@ -1,6 +1,6 @@
 import { SQL } from 'bun';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
   runShipmentCancellation,
@@ -8,7 +8,6 @@ import {
 } from '../../supabase/functions/_shared/cancellation/shipment-cancellation.ts';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
-const canonical = `${root}supabase/queries/orders/shipment_cancellation_coordination.sql`;
 const help =
   'Usage: bun scripts/verify/test-shipment-cancellation-coordination.ts [--help]\n' +
   'B1.1/B1.2/B1.3 SQL: cancellation/label arbitration, frozen refund request, ownership and contention in a new disposable local database.\n' +
@@ -101,19 +100,10 @@ async function run() {
       const migration = readdirSync(`${root}supabase/migrations/archive`).find(
         (name) => name.endsWith('_shipment_cancellation_coordination.sql'),
       );
-      if (existsSync(canonical)) {
-        assert.ok(migration, 'CLI-created migration must exist');
-        const source = readFileSync(canonical, 'utf8');
-        assert.equal(
-          source,
-          readFileSync(
-            `${root}supabase/migrations/archive/${migration}`,
-            'utf8',
-          ),
-          'canonical SQL and migration must be identical',
-        );
-        await a.unsafe(source);
-      }
+      assert.ok(migration, 'CLI-created migration must exist');
+      await a.unsafe(
+        readFileSync(`${root}supabase/migrations/archive/${migration}`, 'utf8'),
+      );
       const [pidA] = await a`SELECT pg_backend_pid() AS pid`;
       const [pidB] = await b`SELECT pg_backend_pid() AS pid`;
       assert.notEqual(pidA.pid, pidB.pid);
@@ -428,24 +418,18 @@ async function run() {
 
       // B1.2 is additive: first prove the original B1.1 contract above, then
       // prove the new entry point and the intentional direct-start revocation.
-      const requestCanonical = `${root}supabase/queries/orders/shipment_cancellation_refund_request.sql`;
-      if (existsSync(requestCanonical)) {
-        const requestMigration = readdirSync(
-          `${root}supabase/migrations/archive`,
-        ).filter((name) =>
-          name.endsWith('_shipment_cancellation_refund_request.sql'),
-        );
-        assert.equal(requestMigration.length, 1);
-        const source = readFileSync(requestCanonical, 'utf8');
-        assert.equal(
-          source,
-          readFileSync(
-            `${root}supabase/migrations/archive/${requestMigration[0]}`,
-            'utf8',
-          ),
-        );
-        await a.unsafe(source);
-      }
+      const requestMigration = readdirSync(
+        `${root}supabase/migrations/archive`,
+      ).filter((name) =>
+        name.endsWith('_shipment_cancellation_refund_request.sql'),
+      );
+      assert.equal(requestMigration.length, 1);
+      await a.unsafe(
+        readFileSync(
+          `${root}supabase/migrations/archive/${requestMigration[0]}`,
+          'utf8',
+        ),
+      );
       const legacyFence = await snapshot();
       assert.equal((await claim()).status, 'recovery_required');
       assert.deepEqual(await snapshot(), legacyFence);

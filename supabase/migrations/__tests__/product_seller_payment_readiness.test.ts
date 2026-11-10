@@ -10,14 +10,6 @@ import { join } from 'node:path';
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..');
-const CANONICAL_PATH = join(
-  import.meta.dir,
-  '..',
-  '..',
-  'queries',
-  'products',
-  'fn_product_seller_payment_readiness.sql',
-);
 
 const findMigration = (): string => {
   const files = readdirSync(MIGRATIONS_DIR).filter((f) =>
@@ -39,21 +31,16 @@ const normalize = (sql: string): string =>
 
 describe('fn_product_seller_payment_readiness', () => {
   const migration = findMigration();
-  const canonical = readFileSync(CANONICAL_PATH, 'utf8');
 
-  test('the migration and the canonical file define the same function', () => {
+  test('the migration defines the function', () => {
     const definition = (sql: string) =>
       normalize(sql).match(
         /CREATE OR REPLACE FUNCTION public\.fn_product_seller_payment_readiness.*?\$\$ ?;/i,
       )?.[0];
     expect(definition(migration)).toBeDefined();
-    expect(definition(migration)).toBe(definition(canonical));
   });
 
-  test.each([
-    ['migration', migration],
-    ['canonical file', canonical],
-  ])(
+  test.each([['migration', migration]])(
     '%s is a read-only definer function with a pinned search_path',
     (_, sql) => {
       const code = normalize(sql);
@@ -67,24 +54,21 @@ describe('fn_product_seller_payment_readiness', () => {
     },
   );
 
-  test.each([
-    ['migration', migration],
-    ['canonical file', canonical],
-  ])('%s applies the same seller rules as checkout', (_, sql) => {
-    const code = normalize(sql);
-    expect(code).toContain('pp.stripe_account_id IS NOT NULL');
-    expect(code).toContain("pp.stripe_onboarding_status = 'complete'");
-    // profiles_private.status is nullable; NULL must not block, matching
-    // fn_reserve_products (NOT EXISTS ... status IN ('suspended', 'banned')).
-    expect(code).toContain("pp.status IS DISTINCT FROM 'suspended'");
-    expect(code).toContain("pp.status IS DISTINCT FROM 'banned'");
-    expect(code).not.toMatch(/pp\.status NOT IN/);
-  });
+  test.each([['migration', migration]])(
+    '%s applies the same seller rules as checkout',
+    (_, sql) => {
+      const code = normalize(sql);
+      expect(code).toContain('pp.stripe_account_id IS NOT NULL');
+      expect(code).toContain("pp.stripe_onboarding_status = 'complete'");
+      // profiles_private.status is nullable; NULL must not block, matching
+      // fn_reserve_products (NOT EXISTS ... status IN ('suspended', 'banned')).
+      expect(code).toContain("pp.status IS DISTINCT FROM 'suspended'");
+      expect(code).toContain("pp.status IS DISTINCT FROM 'banned'");
+      expect(code).not.toMatch(/pp\.status NOT IN/);
+    },
+  );
 
-  test.each([
-    ['migration', migration],
-    ['canonical file', canonical],
-  ])(
+  test.each([['migration', migration]])(
     '%s only answers for live VERIFIED listings and caps the input',
     (_, sql) => {
       const code = normalize(sql);

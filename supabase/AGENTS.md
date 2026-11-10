@@ -6,13 +6,13 @@ Read the root `AGENTS.md` first; it wins over this file. This file holds the pro
 
 - `schemas/`: the declarative schema, the source of truth for tables, views, functions, triggers, policies, grants and comments (Declarative Schemas 2.0, pg-delta engine, `[experimental.pgdelta]` in `config.toml`). One file per object, by schema; our triggers on `auth.users` and policies on `storage.objects` live under `schemas/auth/` and `schemas/storage/`.
 - `migrations/`: deployable SQL deltas, generated from `schemas/` or hand-written. `supabase db reset` and `supabase db push` apply these; nothing applies `schemas/` directly.
-- `queries/`: being retired (#303). Do not update it.
+- `snippets/`: SQL that is not schema: read-only inventories and diagnostics, and manual repair or reset scripts that the runbooks in `docs/runbooks/` run by hand. Never apply them as migrations.
 - `migrations/archive/`: pre-baseline history. Never edit or replay it.
 
 ## When a change touches Supabase
 
 1. Write the change as a migration (see "Declarative schema"): edit `supabase/schemas/`, then let the CLI generate the migration.
-2. Apply it locally with `supabase db reset` (see "Local stack"; run `supabase start` once per worktree first). Tests in `supabase/migrations/__tests__/` and `supabase/queries/**/__tests__/` only read SQL text; the local reset and `bun run test:db` (see "Database tests") are what prove the SQL runs in PostgreSQL. Then call the RPC or table per role (service role, buyer, anon) with a Bruno request (`verify-selene`, "Drive"). Report which you ran.
+2. Apply it locally with `supabase db reset` (see "Local stack"; run `supabase start` once per worktree first). Tests in `supabase/migrations/__tests__/` only read SQL text; the local reset and `bun run test:db` (see "Database tests") are what prove the SQL runs in PostgreSQL. Then call the RPC or table per role (service role, buyer, anon) with a Bruno request (`verify-selene`, "Drive"). Report which you ran.
 3. Stop and report: SQL files in execution order, Edge Functions to deploy, and any secrets, cron jobs, webhooks, or Dashboard settings. The maintainer applies migrations with `supabase db push`, which records them in the remote history; a file run in the SQL Editor instead also needs `supabase migration repair --status applied <version>` (see "Schema drift check").
 4. After the maintainer confirms the SQL was applied, run `bun run db:types`, which regenerates the types from the remote project, and check that the expected changes appear. Then check that the remote history lists the new versions ("Schema drift check", step 1).
 5. When a change adds a secret, cron job, bucket, webhook, or Dashboard setting, update `docs/go-live.md` in the same commit.

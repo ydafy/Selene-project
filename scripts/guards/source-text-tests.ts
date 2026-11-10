@@ -1,15 +1,16 @@
 // Tests run the code they test (docs/conventions.md, "Source-text tests").
 // These are the test files per area that still read files without a
 // `// source-text: <reason>` marker. Roadmap #272 converts them; a number may
-// only go down. Areas never change when files move inside them.
+// only go down. Areas never change when files move inside them; a file that
+// moves to another area takes its count with it (#303 moved five out of
+// supabase/queries, which no longer exists).
 export const SOURCE_TEXT_TEST_COUNTS: Record<string, number> = {
   'apps/admin-web': 3,
   'apps/frontend': 75,
   'packages/types': 1,
   scripts: 15,
-  'supabase/functions': 55,
-  'supabase/migrations': 86,
-  'supabase/queries': 15,
+  'supabase/functions': 57,
+  'supabase/migrations': 89,
   'supabase/templates': 1,
 };
 

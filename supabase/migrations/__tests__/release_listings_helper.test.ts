@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { withoutShipmentLink } from './shipmentNoticeLink';
 
 /**
  * Static guards for T9e2 (#70 class): every path that returns a listing to the
@@ -11,7 +10,6 @@ import { withoutShipmentLink } from './shipmentNoticeLink';
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..');
-const QUERIES_DIR = join(import.meta.dir, '..', '..', 'queries');
 
 const migration = (() => {
   const files = readdirSync(MIGRATIONS_DIR).filter((f) =>
@@ -42,56 +40,40 @@ const functionStatement = (sql: string, name: string): string => {
   return match[0];
 };
 
-const canonicalFile = (path: string): string =>
-  readFileSync(join(QUERIES_DIR, path), 'utf8');
-
 const callers = [
-  [
-    'fn_release_stale_reservations',
-    'products/fn_release_stale_reservations.sql',
-  ],
-  ['fn_release_products', 'products/fn_release_products.sql'],
-  ['fn_reserve_products', 'products/fn_reserve_products.sql'],
-  ['fn_finalize_checkout_recovery', 'orders/checkout_recovery.sql'],
-  ['fn_cancel_shipment', 'orders/fn_cancel_shipment.sql'],
+  'fn_release_stale_reservations',
+  'fn_release_products',
+  'fn_reserve_products',
+  'fn_finalize_checkout_recovery',
+  'fn_cancel_shipment',
 ] as const;
 
 describe('fn_release_listings helper', () => {
-  const canonical = canonicalFile('products/fn_release_listings.sql');
-
-  test.each([
-    ['migration', migration],
-    ['canonical file', canonical],
-  ])('%s applies the seller account rule under a seller lock', (_, sql) => {
-    const body = functionStatement(sql, 'fn_release_listings');
-    expect(body).toContain(
-      'fn_release_listings( p_product_ids UUID[], p_only_reserved BOOLEAN, p_only_expired BOOLEAN ) RETURNS SETOF UUID',
-    );
-    expect(body).not.toMatch(/SECURITY DEFINER/i);
-    expect(body).toMatch(/SET search_path = public, pg_temp/i);
-    expect(body).toMatch(/ORDER BY pp\.id FOR SHARE/i);
-    expect(body).toMatch(/COALESCE\(pp\.status, 'active'\) = 'active'/i);
-    expect(body).toContain("'HIDDEN'::public.product_status_enum");
-    expect(body).toMatch(
-      /COALESCE\(p\.status_before_account_hold, 'VERIFIED'::public\.product_status_enum\)/i,
-    );
-    expect(body).toMatch(/NOT p_only_reserved OR p\.status = 'RESERVED'/i);
-    expect(body).toMatch(/NOT p_only_expired OR p\.reserved_at < now\(\)/i);
-  });
-
-  test('canonical body matches the migration body', () => {
-    expect(functionStatement(canonical, 'fn_release_listings')).toBe(
-      functionStatement(migration, 'fn_release_listings'),
-    );
-  });
+  test.each([['migration', migration]])(
+    '%s applies the seller account rule under a seller lock',
+    (_, sql) => {
+      const body = functionStatement(sql, 'fn_release_listings');
+      expect(body).toContain(
+        'fn_release_listings( p_product_ids UUID[], p_only_reserved BOOLEAN, p_only_expired BOOLEAN ) RETURNS SETOF UUID',
+      );
+      expect(body).not.toMatch(/SECURITY DEFINER/i);
+      expect(body).toMatch(/SET search_path = public, pg_temp/i);
+      expect(body).toMatch(/ORDER BY pp\.id FOR SHARE/i);
+      expect(body).toMatch(/COALESCE\(pp\.status, 'active'\) = 'active'/i);
+      expect(body).toContain("'HIDDEN'::public.product_status_enum");
+      expect(body).toMatch(
+        /COALESCE\(p\.status_before_account_hold, 'VERIFIED'::public\.product_status_enum\)/i,
+      );
+      expect(body).toMatch(/NOT p_only_reserved OR p\.status = 'RESERVED'/i);
+      expect(body).toMatch(/NOT p_only_expired OR p\.reserved_at < now\(\)/i);
+    },
+  );
 });
 
-describe.each(callers)('%s uses the helper', (name, path) => {
-  const canonical = canonicalFile(path);
-
-  test('canonical body matches the migration body', () => {
-    expect(functionStatement(withoutShipmentLink(canonical), name)).toBe(
-      functionStatement(migration, name),
+describe.each(callers)('%s uses the helper', (name) => {
+  test('the migration body calls fn_release_listings', () => {
+    expect(functionStatement(migration, name)).toContain(
+      'public.fn_release_listings(',
     );
   });
 });

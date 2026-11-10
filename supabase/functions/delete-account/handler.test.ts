@@ -686,17 +686,4 @@ describe('delete-account wiring (source contract)', () => {
     ).replace(/\r\n/g, '\n');
     expect(config).toMatch(/\[functions\.delete-account\]\nverify_jwt = true/);
   });
-
-  it('keeps the canonical fn_close_account.sql grants in line with the migration', () => {
-    const sql = readFileSync(
-      join(root, 'supabase/queries/auth/fn_close_account.sql'),
-      'utf8',
-    );
-    expect(sql).toContain(
-      'REVOKE EXECUTE ON FUNCTION public.fn_close_account(uuid) FROM PUBLIC, anon, authenticated;',
-    );
-    expect(sql).toContain(
-      'GRANT EXECUTE ON FUNCTION public.fn_close_account(uuid) TO service_role;',
-    );
-  });
 });

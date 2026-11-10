@@ -9,7 +9,6 @@ import { join } from 'node:path';
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..');
-const QUERIES_DIR = join(import.meta.dir, '..', '..', 'queries');
 
 const normalize = (sql: string): string =>
   sql
@@ -28,9 +27,6 @@ const findMigration = (): string => {
   }
   return normalize(readFileSync(join(MIGRATIONS_DIR, files[0]), 'utf8'));
 };
-
-const canonical = (...parts: string[]): string =>
-  normalize(readFileSync(join(QUERIES_DIR, ...parts), 'utf8'));
 
 const OWNER_EXISTS =
   'EXISTS ( SELECT 1 FROM public.products p WHERE p.id::text = (storage.foldername(objects.name))[1] AND p.seller_id = (SELECT auth.uid()) )';
@@ -63,16 +59,12 @@ describe('verification bucket policies', () => {
     expect(sql).not.toMatch(/CREATE POLICY[^;]*TO (anon|public)/i);
     expect(sql).not.toMatch(/FOR (UPDATE|DELETE|ALL)/i);
   });
-
-  test('migration contains the canonical policies', () => {
-    expect(sql).toContain(canonical('rls', 'verification_bucket_policies.sql'));
-  });
 });
 
 describe.each([
-  ['admin_product_queue_view', 'admin_product_queue_view.sql', 'created_at'],
-  ['seller_trust_stats', 'seller_trust_stats.sql', 'seller_id'],
-])('%s', (view, file) => {
+  ['admin_product_queue_view', 'created_at'],
+  ['seller_trust_stats', 'seller_id'],
+])('%s', (view) => {
   const sql = findMigration();
 
   test('stays security_invoker and only returns rows to admins', () => {
@@ -89,9 +81,5 @@ describe.each([
     // authenticated had GRANT ALL; admins only need to read these views.
     expect(sql).toContain(`REVOKE ALL ON public.${view} FROM authenticated;`);
     expect(sql).toContain(`GRANT SELECT ON public.${view} TO authenticated;`);
-  });
-
-  test('migration contains the canonical definition', () => {
-    expect(sql).toContain(canonical('admin', file));
   });
 });

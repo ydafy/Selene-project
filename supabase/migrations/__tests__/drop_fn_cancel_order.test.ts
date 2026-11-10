@@ -1,15 +1,14 @@
 import { describe, expect, test } from 'bun:test';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
  * Static guards for issue #39 (B5.7): the legacy fn_cancel_order is dropped by one
- * migration, no later migration recreates it, and its canonical file is gone.
+ * migration and no later migration recreates it.
  * These tests read SQL text; `supabase db reset` proves the migration runs.
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..');
-const QUERIES_DIR = join(MIGRATIONS_DIR, '..', 'queries');
 
 const all = readdirSync(MIGRATIONS_DIR)
   .filter((f) => f.endsWith('.sql'))
@@ -56,11 +55,5 @@ describe('drop_fn_cancel_order migration', () => {
         /CREATE (OR REPLACE )?FUNCTION public\.fn_cancel_order\b/,
       );
     }
-  });
-
-  test('the canonical query file is removed', () => {
-    expect(existsSync(join(QUERIES_DIR, 'orders', 'fn_cancel_order.sql'))).toBe(
-      false,
-    );
   });
 });

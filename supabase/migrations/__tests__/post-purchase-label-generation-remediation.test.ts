@@ -48,17 +48,6 @@ test('removes the retired grouped settlement RPC from background reconciliation'
   expect(source).not.toContain('fn_create_shipment_from_payment');
 });
 
-test('preserves the INTEGER payout-view column with a final output cast only', () => {
-  const sql = readSql(
-    'supabase/queries/payments/admin_connect_payout_release_view_shipping_cost_fix.sql',
-  );
-
-  expect(sql).toMatch(
-    /GREATEST\([\s\S]*?END,\s*0\s*\)\s*::INTEGER\s+AS release_amount_cents/i,
-  );
-  expect(sql).not.toMatch(/label_provider_cost_cents\s*::\s*INTEGER/i);
-});
-
 test('accepts only the exact Paquetexpress ground rating', () => {
   expect(
     selectPaquetexpressGroundRate([

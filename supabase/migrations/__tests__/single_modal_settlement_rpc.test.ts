@@ -7,29 +7,17 @@ import { join } from 'node:path';
  * (Blocker 2 fix: settlement RPC missing from migration path).
  *
  * Before this migration, the webhook invoked `fn_create_shipments_from_single_payment`
- * but the RPC only existed in `supabase/queries/orders/fn_create_shipments_from_single_payment.sql`
- * — no migration contained it, so `supabase db push` / migration replay would
- * NOT deploy the function and the webhook call would fail at runtime. These
- * guards ensure the deployable migration path contains the RPC and that the
- * migration body stays byte-identical to the canonical `queries/` source so
- * the two never silently drift.
+ * but no migration contained the RPC, so `supabase db push` / migration replay
+ * would NOT deploy the function and the webhook call would fail at runtime.
+ * These guards ensure the deployable migration path contains the RPC.
  *
  * These tests do NOT exercise a live Postgres database (Supabase changes are
  * applied manually by the user per workflow/supabase-manual-apply). They guard
  * the SQL source artifact statically so the migration stays deployable and
- * consistent with the spec/design + the existing singleModalSettlementSqlGuards
- * contract for the queries/ file.
+ * consistent with the spec/design.
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..', 'archive');
-const QUERIES_RPC_PATH = join(
-  import.meta.dir,
-  '..',
-  '..',
-  'queries',
-  'orders',
-  'fn_create_shipments_from_single_payment.sql',
-);
 
 const RPC_MIGRATION_NAME_FRAGMENT = 'single_modal_settlement_rpc';
 
@@ -204,14 +192,8 @@ describe('single-modal settlement RPC migration', () => {
     expect(sql).toContain('i.indimmediate');
   });
 
-  test('the latest forward replacement matches canonical while the original remains intact', () => {
+  test('the latest forward replacement redefines the RPC while the original remains intact', () => {
     // Blocker 2 requires the deployable migration path to contain the RPC.
-    // We embed the exact CREATE OR REPLACE FUNCTION block from
-    // supabase/queries/orders/fn_create_shipments_from_single_payment.sql and
-    // guard against the two copies drifting: extracting the function block
-    // (from `CREATE OR REPLACE FUNCTION` to the final `TO service_role;` grant)
-    // from BOTH files and asserting equality catches any future edit that
-    // updates only one copy.
     const originalSql = readFileSync(findRpcMigrationPath(), 'utf8');
     const replacementName =
       '20260925000000_single_modal_order_confirmation_notification.sql';
@@ -219,7 +201,6 @@ describe('single-modal settlement RPC migration', () => {
       join(MIGRATIONS_DIR, replacementName),
       'utf8',
     );
-    const queriesSql = readFileSync(QUERIES_RPC_PATH, 'utf8');
     expect(
       replacementName.localeCompare(findRpcMigrationName()),
     ).toBeGreaterThan(0);
@@ -232,20 +213,8 @@ describe('single-modal settlement RPC migration', () => {
     expect(migrationSql).toContain('SECURITY DEFINER');
     expect(migrationSql).toContain("has_function_privilege('service_role'");
 
-    const extractFunctionBlock = (src: string): string => {
-      const start = src.indexOf(
-        'CREATE OR REPLACE FUNCTION public.fn_create_shipments_from_single_payment',
-      );
-      expect(start).toBeGreaterThan(-1);
-      const end = src.indexOf('$$;', start);
-      expect(end).toBeGreaterThan(start);
-      // Normalize line endings so CRLF/LF differences between the two files
-      // do not cause a false drift failure.
-      return src.slice(start, end + '$$;'.length).replace(/\r\n/g, '\n');
-    };
-
-    expect(extractFunctionBlock(migrationSql)).toBe(
-      extractFunctionBlock(queriesSql),
+    expect(migrationSql).toContain(
+      'CREATE OR REPLACE FUNCTION public.fn_create_shipments_from_single_payment',
     );
   });
 
@@ -261,8 +230,8 @@ describe('single-modal settlement RPC migration', () => {
 
 describe('migration path contains the single-modal settlement RPC (Blocker 2 regression)', () => {
   test('at least one migration declares fn_create_shipments_from_single_payment', () => {
-    // The original Blocker 2 evidence: the webhook called the RPC, the RPC
-    // existed only under queries/, and NO migration contained it. This guard
+    // The original Blocker 2 evidence: the webhook called the RPC and NO
+    // migration contained it. This guard
     // scans the whole migrations directory so the deployable path can never
     // quietly lose the RPC again.
     const files = readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith('.sql'));

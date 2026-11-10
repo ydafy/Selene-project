@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { withoutShipmentLink } from './shipmentNoticeLink';
 
 /**
  * A dispute refund is recorded under the shipment row lock after the Stripe
@@ -10,7 +9,6 @@ import { withoutShipmentLink } from './shipmentNoticeLink';
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..');
-const QUERIES_DIR = join(import.meta.dir, '..', '..', 'queries');
 
 const files = readdirSync(MIGRATIONS_DIR).filter((f) =>
   f.endsWith('_record_dispute_refund.sql'),
@@ -20,13 +18,6 @@ const migration =
     ? readFileSync(join(MIGRATIONS_DIR, files[0]), 'utf8').replace(/\r/g, '')
     : '';
 const code = migration.replace(/--[^\n]*/g, '');
-
-const canonical = withoutShipmentLink(
-  readFileSync(
-    join(QUERIES_DIR, 'disputes', 'fn_record_dispute_refund.sql'),
-    'utf8',
-  ),
-).replace(/\r/g, '');
 
 const locksThenChecksThenWrites = (sql: string): void => {
   const lock = sql.search(/FROM public\.shipments AS s[\s\S]*?FOR UPDATE/);
@@ -82,17 +73,15 @@ describe('record_dispute_refund migration', () => {
     locksThenChecksThenWrites(code);
   });
 
-  test('the canonical copy carries the newest migration body', () => {
+  test('the newest migration body keeps the lock, check and write order', () => {
     // 20261101030000_shipment_refunded_notification.sql redefined the function
-    // with the buyer notice; its own test pins the canonical file to that body.
+    // with the buyer notice.
     const newest = readFileSync(
       join(MIGRATIONS_DIR, '20261101030000_shipment_refunded_notification.sql'),
       'utf8',
     ).replace(/\r/g, '');
     const open = newest.indexOf('$$');
     const body = newest.slice(open + 2, newest.indexOf('$$;', open + 2));
-    const collapse = (sql: string): string => sql.replace(/\s+/g, ' ').trim();
-    expect(collapse(canonical)).toBe(collapse(body));
-    locksThenChecksThenWrites(canonical);
+    locksThenChecksThenWrites(body);
   });
 });

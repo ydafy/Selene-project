@@ -8,14 +8,6 @@ import { join } from 'node:path';
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..', 'archive');
-const TRIGGERS_DIR = join(
-  import.meta.dir,
-  '..',
-  '..',
-  'queries',
-  'triggers',
-  'auth',
-);
 
 const findMigration = (): string => {
   const files = readdirSync(MIGRATIONS_DIR).filter(
@@ -70,16 +62,5 @@ describe('on_auth_user_updated migration', () => {
     const sql = findMigration();
     expect(sql).toContain('SECURITY DEFINER');
     expect(sql).toContain('search_path = public, pg_temp');
-  });
-});
-
-describe('fn_on_auth_user_updated source file', () => {
-  test('queries/triggers SQL targets profiles_private (not profiles)', () => {
-    const body = readFileSync(
-      join(TRIGGERS_DIR, 'fn_on_auth_user_updated.sql'),
-      'utf8',
-    );
-    expect(body).toMatch(/UPDATE\s+public\.profiles_private/i);
-    expect(body).not.toMatch(/UPDATE\s+public\.profiles\s+SET\s+email/i);
   });
 });

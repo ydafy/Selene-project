@@ -9,7 +9,6 @@ import { join } from 'node:path';
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..');
-const QUERIES_DIR = join(import.meta.dir, '..', '..', 'queries');
 
 const findMigration = (name: string): string => {
   const files = readdirSync(MIGRATIONS_DIR).filter((f) =>
@@ -39,21 +38,7 @@ const definition = (sql: string): string | undefined =>
     ),
   )?.[0];
 
-const rawDefinition = (sql: string): string | undefined =>
-  sql
-    .replace(/\r/g, '')
-    .match(
-      new RegExp(
-        String.raw`CREATE OR REPLACE FUNCTION public\.${NAME}\(.*?\n\$\$;`,
-        's',
-      ),
-    )?.[0];
-
 const migration = findMigration('unregister_push_token_by_device');
-const canonical = readFileSync(
-  join(QUERIES_DIR, 'push', `${NAME}.sql`),
-  'utf8',
-);
 const code = normalize(migration);
 const def = definition(migration)!;
 
@@ -108,12 +93,5 @@ describe('fn_unregister_push_token by device', () => {
   test('grant review is explained in the header', () => {
     expect(migration).toContain('Grant review');
     expect(migration).toContain('anon');
-  });
-});
-
-describe('canonical SQL parity', () => {
-  test(`${NAME} canonical file matches the migration`, () => {
-    expect(rawDefinition(canonical)).toBeDefined();
-    expect(rawDefinition(canonical)).toBe(rawDefinition(migration));
   });
 });

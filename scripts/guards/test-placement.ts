@@ -4,12 +4,6 @@ export const LEGACY_TEST_FOLDERS = [
   'supabase/functions/__tests__',
   'supabase/functions/_shared/__tests__',
   'supabase/migrations/__tests__',
-  'supabase/queries/__tests__',
-  'supabase/queries/auth/__tests__',
-  'supabase/queries/disputes/__tests__',
-  'supabase/queries/products/__tests__',
-  'supabase/queries/return/__tests__',
-  'supabase/queries/rls/__tests__',
 ] as const;
 
 // Every `__tests__/` folder and a top-level `tests/` folder, from file paths.
