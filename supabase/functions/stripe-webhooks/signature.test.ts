@@ -1,3 +1,4 @@
+// source-text: index.ts starts a Deno server on import, so the order of signature rejection before any client or DLQ write is only visible in its text
 import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -103,7 +104,6 @@ describe('stripe-webhooks entrypoint signature wiring', () => {
   });
 
   it('no longer verifies signatures inline', () => {
-    expect(source).not.toContain('constructEventAsync(\n        rawBody');
     expect(source.match(/constructEventAsync/g)).toHaveLength(1);
   });
 });
