@@ -8,7 +8,7 @@ export const SOURCE_TEXT_TEST_COUNTS: Record<string, number> = {
   'packages/types': 1,
   scripts: 15,
   'supabase/functions': 55,
-  'supabase/migrations': 93,
+  'supabase/migrations': 89,
   'supabase/queries': 15,
   'supabase/templates': 1,
 };
