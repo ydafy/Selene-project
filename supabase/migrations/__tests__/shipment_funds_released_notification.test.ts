@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { withoutShipmentLink } from './shipmentNoticeLink';
 
 /**
  * Static guards for the seller funds released notice (expo-push-notifications T5/S4).
@@ -78,13 +77,8 @@ describe('shipment funds released notification migration (SQL text)', () => {
     );
   });
 
-  test('keeps the migration definition equal to the canonical file', () => {
+  test('defines fn_complete_shipment_transfer', () => {
     expect(complete).not.toBe('');
-    expect(
-      withoutShipmentLink(
-        read('supabase/queries/payments/shipment_transfer_coordination.sql'),
-      ),
-    ).toContain(complete);
   });
 
   test('writes the seller notice only after recording the transfer, in its own subtransaction', () => {

@@ -9,7 +9,6 @@ import { join } from 'node:path';
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..');
-const QUERIES_DIR = join(import.meta.dir, '..', '..', 'queries');
 
 const files = readdirSync(MIGRATIONS_DIR).filter((f) =>
   f.endsWith('_open_shipment_dispute.sql'),
@@ -19,11 +18,6 @@ const migration =
     ? readFileSync(join(MIGRATIONS_DIR, files[0]), 'utf8').replace(/\r/g, '')
     : '';
 const code = migration.replace(/--[^\n]*/g, '');
-
-const canonical = readFileSync(
-  join(QUERIES_DIR, 'disputes', 'fn_open_shipment_dispute.sql'),
-  'utf8',
-).replace(/\r/g, '');
 
 const locksThenChecksThenInserts = (sql: string): void => {
   const lock = sql.search(/FROM public\.shipments AS s[\s\S]*?FOR UPDATE/);
@@ -73,13 +67,5 @@ describe('open_shipment_dispute migration', () => {
 
   test('locks the shipment, then checks, then inserts', () => {
     locksThenChecksThenInserts(code);
-  });
-
-  test('the canonical copy carries the migration body', () => {
-    const open = migration.indexOf('$$');
-    const body = migration.slice(open + 2, migration.indexOf('$$;', open + 2));
-    const collapse = (sql: string): string => sql.replace(/\s+/g, ' ').trim();
-    expect(collapse(canonical)).toBe(collapse(body));
-    locksThenChecksThenInserts(canonical);
   });
 });

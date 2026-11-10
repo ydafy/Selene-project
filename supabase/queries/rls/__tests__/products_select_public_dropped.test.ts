@@ -8,8 +8,7 @@ import { join } from 'node:path';
  * prove that a non-owner reads no table row and the owner and admin still do.
  */
 
-const QUERIES_DIR = join(import.meta.dir, '..', '..');
-const MIGRATIONS_DIR = join(QUERIES_DIR, '..', 'migrations');
+const MIGRATIONS_DIR = join(import.meta.dir, '..', '..', '..', 'migrations');
 
 const normalize = (sql: string): string =>
   sql
@@ -70,29 +69,5 @@ describe('drop products_select_public', () => {
     expect(sql).toMatch(
       /GRANT EXECUTE ON FUNCTION public\.get_profile_stats\(uuid\) TO anon, authenticated, service_role;/,
     );
-  });
-});
-
-describe('canonical files', () => {
-  const policyFile = readFileSync(
-    join(QUERIES_DIR, 'rls', 'products_select_public.sql'),
-    'utf8',
-  );
-
-  test('products_select_public.sql states the policy was dropped', () => {
-    expect(policyFile).toMatch(/dropped/i);
-    expect(policyFile).toContain('products_public');
-    expect(normalize(policyFile)).toBe('');
-  });
-
-  test('get_profile_stats.sql reads the public view', () => {
-    const sql = normalize(
-      readFileSync(
-        join(QUERIES_DIR, 'profile', 'get_profile_stats.sql'),
-        'utf8',
-      ),
-    );
-    expect(sql).toMatch(/from public\.products_public where seller_id/i);
-    expect(sql).not.toMatch(/from public\.products where/i);
   });
 });

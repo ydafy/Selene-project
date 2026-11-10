@@ -7,7 +7,7 @@ import { join } from 'node:path';
  *
  * These tests do NOT exercise a live Postgres database (Supabase changes are
  * applied manually by the user per workflow/supabase-manual-apply). They guard
- * the SQL source artifacts statically so the migration and query files stay
+ * the SQL source artifacts statically so the migration stays
  * deployable, self-contained, and consistent with the spec/design.
  *
  * Covered acceptance criteria (from spec/design):
@@ -20,7 +20,6 @@ import { join } from 'node:path';
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..', 'archive');
-const QUERIES_DIR = join(import.meta.dir, '..', '..', 'queries', 'products');
 
 const findMigration = (): string => {
   const files = readdirSync(MIGRATIONS_DIR).filter(
@@ -33,9 +32,6 @@ const findMigration = (): string => {
   }
   return readFileSync(join(MIGRATIONS_DIR, files[0]), 'utf8');
 };
-
-const readQuery = (name: string): string =>
-  readFileSync(join(QUERIES_DIR, name), 'utf8');
 
 describe('reservation lifecycle hardening migration', () => {
   test('migration file exists in supabase/migrations/archive', () => {
@@ -148,85 +144,4 @@ describe('reservation lifecycle hardening migration', () => {
     expect(sql).not.toMatch(/SET\s+status\s*=\s*'AVAILABLE'/i);
     expect(sql).not.toMatch(/CREATE\s+TABLE[\s\S]*?checkout_sessions/i);
   });
-});
-
-describe('reservation lifecycle hardening query source files', () => {
-  test('fn_release_stale_reservations.sql is deployable and self-contained', () => {
-    const sql = readQuery('fn_release_stale_reservations.sql');
-    expect(sql).toMatch(
-      /CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.fn_release_stale_reservations/i,
-    );
-    expect(sql).toMatch(/p_product_ids\s+UUID\[\]\s+DEFAULT\s+'\{\}'/i);
-    expect(sql).toMatch(
-      /reserved_at\s*<\s*now\(\)\s*-\s*interval\s+'10\s+minutes'/i,
-    );
-  });
-
-  test('fn_reserve_products.sql includes expired pre-release and VERIFIED-only reserve', () => {
-    const sql = readQuery('fn_reserve_products.sql');
-    expect(sql).toMatch(
-      /CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.fn_reserve_products/i,
-    );
-    expect(sql).toMatch(
-      /PERFORM\s+public\.fn_release_listings\(\s*p_product_ids\s*,\s*true\s*,\s*true\s*\)/i,
-    );
-    expect(sql).toMatch(
-      /AND\s+status\s*=\s*'VERIFIED'[\s\S]*?seller_id\s*<>\s*p_buyer_id/i,
-    );
-    expect(sql).toMatch(/SOME_PRODUCTS_UNAVAILABLE/);
-  });
-
-  test('fn_release_products.sql guards RESERVED -> VERIFIED and clears reserved_at', () => {
-    const sql = readQuery('fn_release_products.sql');
-    expect(sql).toMatch(
-      /CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.fn_release_products/i,
-    );
-    // The RESERVED guard and reserved_at = NULL live in fn_release_listings
-    // (release_listings_helper.test.ts); the caller asks for RESERVED rows only.
-    expect(sql).toMatch(
-      /PERFORM\s+public\.fn_release_listings\(\s*p_product_ids\s*,\s*true\s*,\s*false\s*\)/i,
-    );
-    expect(sql).toMatch(/RETURN\s+QUERY\s+SELECT\s+true/i);
-  });
-});
-
-describe('reservation lifecycle hardening RPC permission hardening', () => {
-  const rpcFiles = [
-    {
-      name: 'fn_release_stale_reservations.sql',
-      signature:
-        'public\\.fn_release_stale_reservations\\s*\\(\\s*UUID\\[\\]\\s*\\)',
-    },
-    {
-      name: 'fn_reserve_products.sql',
-      signature:
-        'public\\.fn_reserve_products\\s*\\(\\s*UUID\\s*,\\s*UUID\\[\\]\\s*\\)',
-    },
-    {
-      name: 'fn_release_products.sql',
-      signature: 'public\\.fn_release_products\\s*\\(\\s*UUID\\[\\]\\s*\\)',
-    },
-  ];
-
-  for (const rpc of rpcFiles) {
-    test(`${rpc.name} explicitly revokes EXECUTE from PUBLIC, anon, authenticated before granting to service_role`, () => {
-      const sql = readQuery(rpc.name);
-      const revokeRe = new RegExp(
-        `REVOKE\\s+EXECUTE\\s+ON\\s+FUNCTION\\s+${rpc.signature}\\s+FROM\\s+PUBLIC\\s*,\\s*anon\\s*,\\s*authenticated`,
-        'i',
-      );
-      const grantRe = new RegExp(
-        `GRANT\\s+EXECUTE\\s+ON\\s+FUNCTION\\s+${rpc.signature}\\s+TO\\s+service_role`,
-        'i',
-      );
-      expect(sql).toMatch(revokeRe);
-      expect(sql).toMatch(grantRe);
-      // REVOKE must appear before GRANT so default PUBLIC execute is removed
-      // before the service_role grant is issued.
-      const revokeIdx = sql.search(revokeRe);
-      const grantIdx = sql.search(grantRe);
-      expect(revokeIdx).toBeGreaterThan(-1);
-      expect(grantIdx).toBeGreaterThan(revokeIdx);
-    });
-  }
 });

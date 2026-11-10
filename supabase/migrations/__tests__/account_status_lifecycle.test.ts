@@ -17,15 +17,10 @@ const read = (path: string) => {
     ? readFileSync(absolute, 'utf8').replace(/\r\n/g, '\n')
     : '';
 };
-const normalize = (sql: string) => sql.replace(/\s+/g, ' ').trim();
 
 const migration = read(
   'supabase/migrations/archive/20261018120000_account_status_lifecycle.sql',
 );
-const statusSource = read(
-  'supabase/queries/admin/fn_admin_update_user_status.sql',
-);
-const isAdminSource = read('supabase/queries/auth/is_admin.sql');
 
 const functionBlock = (name: string) =>
   migration.match(
@@ -77,19 +72,11 @@ describe('account status lifecycle migration', () => {
     );
     expect(migration).toContain("to_regprocedure('public.is_admin()')");
   });
-
-  test('migration bodies equal the canonical query copies', () => {
-    expect(statusSource).not.toBe('');
-    expect(isAdminSource).not.toBe('');
-    expect(normalize(statusBody)).toBe(normalize(statusSource));
-    expect(normalize(isAdminBody)).toBe(normalize(isAdminSource));
-  });
 });
 
-describe.each([
-  ['migration body', () => statusBody],
-  ['canonical copy', () => statusSource],
-])('fn_admin_update_user_status %s', (_label, body) => {
+describe('fn_admin_update_user_status migration body', () => {
+  const body = () => statusBody;
+
   test('keeps JWT actor, admin check and error logging contract', () => {
     const sql = body();
     expect(sql).toContain(
@@ -167,10 +154,9 @@ describe.each([
   });
 });
 
-describe.each([
-  ['migration body', () => isAdminBody],
-  ['canonical copy', () => isAdminSource],
-])('is_admin %s', (_label, body) => {
+describe('is_admin migration body', () => {
+  const body = () => isAdminBody;
+
   test('requires the admin role and an active account for auth.uid()', () => {
     const sql = body();
     expect(sql).toMatch(

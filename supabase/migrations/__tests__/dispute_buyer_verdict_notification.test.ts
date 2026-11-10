@@ -1,20 +1,8 @@
 import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import {
-  withoutShipmentLink,
-  withoutVerdictShipmentRead,
-} from './shipmentNoticeLink';
 
 const root = join(import.meta.dir, '..', '..', '..');
-const source = withoutVerdictShipmentRead(
-  withoutShipmentLink(
-    readFileSync(
-      join(root, 'supabase/queries/disputes/fn_resolve_dispute_to_buyer.sql'),
-      'utf8',
-    ),
-  ),
-);
 const migration = readFileSync(
   join(
     root,
@@ -22,13 +10,9 @@ const migration = readFileSync(
   ),
   'utf8',
 ).replace(/\r\n/g, '\n');
-const normalize = (sql: string) => sql.replace(/\s+/g, ' ').trim();
 
 describe('buyer dispute verdict cutover', () => {
-  it('wraps the canonical body with the existing signature and unchanged ACL', () => {
-    expect(
-      normalize(migration.match(/AS \$\$([\s\S]*?)\$\$;/)?.[1] ?? ''),
-    ).toBe(normalize(source));
+  it('keeps the existing signature and unchanged ACL', () => {
     expect(migration).toContain(
       'public.fn_resolve_dispute_to_buyer(\n  p_dispute_id UUID,\n  p_admin_note TEXT',
     );

@@ -1,6 +1,6 @@
 import { SQL } from 'bun';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
@@ -113,9 +113,15 @@ async function run() {
           'supabase/migrations/archive/20260621000000_connect_manual_payout_release.sql',
         ),
       );
+      // The retry column and index, then the current release view (with paid_at).
       await a.unsafe(
         source(
-          'supabase/queries/payments/admin_connect_payout_release_view_shipping_cost_fix.sql',
+          'supabase/migrations/archive/20260917032655_add_connect_payout_failed_retry_contract.sql',
+        ),
+      );
+      await a.unsafe(
+        source(
+          'supabase/migrations/archive/20261015022449_expose_payout_history_paid_at.sql',
         ),
       );
       await a.unsafe(`ALTER TABLE public.connect_payout_runs
@@ -130,12 +136,12 @@ async function run() {
       );
       await a.unsafe(resumeSql);
       const cancellationSql = source(
-        'supabase/queries/orders/shipment_cancellation_coordination.sql',
+        'supabase/migrations/archive/20261016011954_shipment_cancellation_coordination.sql',
       );
       await a.unsafe(cancellationSql);
       await a.unsafe(
         source(
-          'supabase/queries/orders/shipment_cancellation_refund_request.sql',
+          'supabase/migrations/archive/20261016051001_shipment_cancellation_refund_request.sql',
         ),
       );
       const claim = async (connection = a, shipment = ids.shipment) => {
@@ -274,48 +280,24 @@ async function run() {
         ];
       };
       const baseline = await preservation();
-      const canonical =
-        'supabase/queries/payments/shipment_transfer_coordination.sql';
-      if (existsSync(`${root}${canonical}`)) {
-        const migrations = readdirSync(
-          `${root}supabase/migrations/archive`,
-        ).filter((name) =>
-          name.endsWith('_shipment_transfer_coordination.sql'),
-        );
-        assert.equal(migrations.length, 1);
-        // Equal to the archived migration except fn_complete_shipment_transfer, which
-        // later migrations redefine (seller notice, then its shipment link in T13).
-        const lf = (text: string) => text.replace(/\r\n/g, '\n');
-        const withoutComplete = (text: string) => {
-          const start = text.indexOf(
-            'CREATE OR REPLACE FUNCTION public.fn_complete_shipment_transfer(',
-          );
-          return (
-            text.slice(0, start) + text.slice(text.indexOf('\n$$;', start) + 4)
-          );
-        };
-        assert.equal(
-          withoutComplete(lf(source(canonical))),
-          withoutComplete(
-            lf(source(`supabase/migrations/archive/${migrations[0]}`)),
-          ),
-        );
-        const redefinitions = readdirSync(`${root}supabase/migrations`).filter(
-          (name) => name.endsWith('_shipment_funds_released_notice_link.sql'),
-        );
-        assert.equal(redefinitions.length, 1);
-        const completeBody = (text: string) => {
-          const start = text.indexOf(
-            'CREATE OR REPLACE FUNCTION public.fn_complete_shipment_transfer(',
-          );
-          return text.slice(start, text.indexOf('\n$$;', start) + 4);
-        };
-        assert.equal(
-          completeBody(lf(source(canonical))),
-          completeBody(lf(source(`supabase/migrations/${redefinitions[0]}`))),
-        );
-        await a.unsafe(source(canonical));
-      }
+      const transferMigrations = readdirSync(
+        `${root}supabase/migrations/archive`,
+      ).filter((name) => name.endsWith('_shipment_transfer_coordination.sql'));
+      assert.equal(transferMigrations.length, 1);
+      const transferMigration = `supabase/migrations/archive/${transferMigrations[0]}`;
+      // Later migrations redefine fn_complete_shipment_transfer (seller notice, then
+      // its shipment link in T13); the newest body replaces the archived one.
+      const redefinitions = readdirSync(`${root}supabase/migrations`).filter(
+        (name) => name.endsWith('_shipment_funds_released_notice_link.sql'),
+      );
+      assert.equal(redefinitions.length, 1);
+      await a.unsafe(source(transferMigration));
+      await a.unsafe(
+        definition(
+          `supabase/migrations/${redefinitions[0]}`,
+          'fn_complete_shipment_transfer',
+        ),
+      );
       assert.deepEqual(await preservation(), baseline);
       console.log(
         'PASS differential: previous/current cancellation, refund start, resume and payout fence public contracts',
@@ -556,14 +538,14 @@ async function run() {
       await reset();
       await begin();
       await a`UPDATE public.shipments SET status = 'paid' WHERE id = ${ids.shipment}::uuid`;
-      const replacements = source(canonical);
+      const replacements = source(transferMigration);
       for (const name of [
         'fn_claim_shipment_cancellation',
         'fn_start_shipment_cancellation',
       ])
         await a.unsafe(
           definition(
-            'supabase/queries/orders/shipment_cancellation_coordination.sql',
+            'supabase/migrations/archive/20261016011954_shipment_cancellation_coordination.sql',
             name,
           ),
         );

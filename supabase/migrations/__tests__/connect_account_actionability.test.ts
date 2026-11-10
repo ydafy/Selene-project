@@ -111,27 +111,6 @@ describe('current account refresh additive migration (SQL structural only)', () 
       );
     }
   });
-  test('new canonical current-state SQL matches the additive deployment source', () => {
-    const sql = readCurrentStateMigration();
-    expect(
-      sql.length,
-      'Additive migration must exist before canonical equality is meaningful',
-    ).toBeGreaterThan(0);
-    const canonicalPath = join(
-      MIGRATIONS_DIR,
-      '..',
-      '..',
-      'queries',
-      'payments',
-      'connect_account_current_state.sql',
-    );
-    // No file-open RED: absent proposed canonical is represented as empty text.
-    const canonical = Bun.file(canonicalPath);
-    return canonical.exists().then(async (exists) => {
-      expect(exists).toBe(true);
-      expect(exists ? await canonical.text() : '').toBe(sql);
-    });
-  });
 });
 
 describe('connect account actionability migration', () => {

@@ -1,15 +1,8 @@
 import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { withoutShipmentLink } from './shipmentNoticeLink';
 
 const root = join(import.meta.dir, '..', '..', '..');
-const source = withoutShipmentLink(
-  readFileSync(
-    join(root, 'supabase/queries/disputes/fn_resolve_dispute_to_seller.sql'),
-    'utf8',
-  ),
-);
 const migration = readFileSync(
   join(
     root,
@@ -17,29 +10,9 @@ const migration = readFileSync(
   ),
   'utf8',
 ).replace(/\r\n/g, '\n');
-const normalize = (sql: string) => sql.replace(/\s+/g, ' ').trim();
-// remove-legacy-wallet T5: the canonical body no longer moves wallet funds, the archived one still does.
-const withoutWalletPayout = (body: string) =>
-  body
-    .replace(
-      '    v_total_payout NUMERIC;\n    v_new_balance NUMERIC;\n    v_wallet_id UUID;\n',
-      '',
-    )
-    .replace(
-      /   -- D\. LÓGICA FINANCIERA[\s\S]*?    END IF;\n\n    -- F\. ACTUALIZAR ESTADOS/,
-      () =>
-        "    -- D. PAGO: Stripe Connect releases the seller's funds from the admin payout\n    -- queue once the shipment is completed (F.1). Nothing moves in this function.\n\n    -- F. ACTUALIZAR ESTADOS",
-    );
 
 describe('seller dispute verdict cutover', () => {
-  it('wraps the canonical body without changing RPC authority', () => {
-    expect(
-      normalize(
-        withoutWalletPayout(
-          migration.match(/AS \$\$([\s\S]*?)\$\$;/)?.[1] ?? '',
-        ),
-      ),
-    ).toBe(normalize(source));
+  it('keeps the RPC signature and authority', () => {
     expect(migration).toContain(
       'public.fn_resolve_dispute_to_seller(\n  p_dispute_id UUID,\n  p_admin_note TEXT',
     );

@@ -12,14 +12,6 @@ import { join } from 'node:path';
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..');
-const CANONICAL_PATH = join(
-  import.meta.dir,
-  '..',
-  '..',
-  'queries',
-  'products',
-  'fn_release_products.sql',
-);
 
 const findMigration = (): string => {
   const files = readdirSync(MIGRATIONS_DIR).filter((f) =>
@@ -40,12 +32,8 @@ const normalize = (sql: string): string =>
 
 describe('fn_release_products authorization migration', () => {
   const migration = findMigration();
-  const canonical = readFileSync(CANONICAL_PATH, 'utf8');
 
-  test.each([
-    ['migration', migration],
-    ['canonical file', canonical],
-  ])(
+  test.each([['migration', migration]])(
     '%s defines a SECURITY INVOKER function with the original signature',
     (_, sql) => {
       const code = stripComments(sql);
@@ -66,21 +54,7 @@ describe('fn_release_products authorization migration', () => {
     expect(body).toContain('RETURN QUERY SELECT true');
   });
 
-  // The account-hold migration (release_reservation_account_hold) replaced the
-  // body, and release_listings_helper moved the release into fn_release_listings
-  // (RESERVED rows only); their own tests pin the canonical text.
-  test('canonical file releases RESERVED rows only, through the helper', () => {
-    const body = normalize(canonical);
-    expect(body).toContain(
-      'PERFORM public.fn_release_listings(p_product_ids, true, false)',
-    );
-    expect(body).toContain('RETURN QUERY SELECT true');
-  });
-
-  test.each([
-    ['migration', migration],
-    ['canonical file', canonical],
-  ])(
+  test.each([['migration', migration]])(
     '%s revokes from PUBLIC, anon, authenticated and grants only service_role',
     (_, sql) => {
       const code = stripComments(sql);
@@ -95,8 +69,4 @@ describe('fn_release_products authorization migration', () => {
       );
     },
   );
-
-  test('canonical header points at the new migration', () => {
-    expect(canonical).toContain('release_products_service_role_only');
-  });
 });

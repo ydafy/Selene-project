@@ -19,10 +19,6 @@ const normalize = (sql: string) => sql.replace(/\s+/g, ' ').trim();
 const migration = read(
   'supabase/migrations/archive/20261018130000_account_trust_boundaries.sql',
 );
-const helperSource = read(
-  'supabase/queries/auth/fn_current_account_is_active.sql',
-);
-const reserveSource = read('supabase/queries/products/fn_reserve_products.sql');
 
 const functionBlock = (sql: string, name: string) =>
   sql.match(
@@ -40,11 +36,8 @@ const policyBlock = (name: string) =>
 const helperBlock = functionBlock(migration, 'fn_current_account_is_active');
 const reserveBlock = functionBlock(migration, 'fn_reserve_products');
 const payoutBlock = functionBlock(migration, 'fn_request_payout');
-const helperBody = helperBlock?.[1] ?? '';
 const reserveBody = reserveBlock?.[1] ?? '';
 const payoutBody = payoutBlock?.[1] ?? '';
-const reserveCanonicalBody =
-  functionBlock(reserveSource, 'fn_reserve_products')?.[1] ?? '';
 
 const ACTIVE = '(SELECT public.fn_current_account_is_active())';
 
@@ -100,14 +93,6 @@ describe('account trust boundaries migration', () => {
     expect(migration).not.toMatch(
       /(GRANT|REVOKE) EXECUTE ON FUNCTION public\.fn_request_payout/i,
     );
-  });
-
-  test('migration bodies equal the canonical query copies', () => {
-    expect(helperSource).not.toBe('');
-    expect(reserveCanonicalBody).not.toBe('');
-    expect(normalize(helperBody)).toBe(normalize(helperSource));
-    // The canonical reserve body later moved its releases into fn_release_listings
-    // (release_listings_helper); that migration's own test pins the canonical text.
   });
 });
 
@@ -203,15 +188,11 @@ describe('fn_reserve_products (D5)', () => {
     expect(reserveBlock?.[0]).toContain(
       'CREATE OR REPLACE FUNCTION public.fn_reserve_products(\n  p_buyer_id UUID,\n  p_product_ids UUID[]\n)\nRETURNS TABLE(total_price NUMERIC, success BOOLEAN, error_message TEXT)\nLANGUAGE plpgsql\nSECURITY DEFINER\nSET search_path = public, pg_temp\nAS $$',
     );
-    expect(reserveSource).toContain(
-      reserveBlock?.[0].split('\n').slice(0, 8).join('\n') ?? 'missing',
-    );
   });
 
-  describe.each([
-    ['migration body', () => reserveBody],
-    ['canonical copy', () => reserveCanonicalBody],
-  ])('%s', (_label, body) => {
+  describe('migration body', () => {
+    const body = () => reserveBody;
+
     test('rejects a banned buyer after the empty-cart guard and before any write', () => {
       const sql = body();
       expect(sql).toMatch(
@@ -234,32 +215,18 @@ describe('fn_reserve_products (D5)', () => {
 
     test('keeps stale release, row lock and the all-or-nothing contract', () => {
       const sql = body();
-      // The deployed (migration) body releases in place; the canonical copy goes
-      // through fn_release_listings (release_listings_helper.test.ts).
-      if (_label === 'migration body') {
-        expect(sql).toMatch(
-          /AND status = 'RESERVED'\s+AND reserved_at < now\(\) - interval '10 minutes';/,
-        );
-      } else {
-        expect(sql).toMatch(
-          /PERFORM public\.fn_release_listings\(p_product_ids, true, true\);/,
-        );
-      }
+      expect(sql).toMatch(
+        /AND status = 'RESERVED'\s+AND reserved_at < now\(\) - interval '10 minutes';/,
+      );
       expect(sql).toMatch(
         /PERFORM 1\s+FROM public\.products\s+WHERE id = ANY\(p_product_ids\)\s+ORDER BY id\s+FOR UPDATE;/,
       );
       expect(sql).toMatch(
         /IF v_count = cardinality\(p_product_ids\) THEN\s+RETURN QUERY SELECT v_sum, true, NULL::TEXT;/,
       );
-      if (_label === 'migration body') {
-        expect(sql).toMatch(
-          /WHERE id = ANY\(v_reserved_ids\)\s+AND status = 'RESERVED';/,
-        );
-      } else {
-        expect(sql).toMatch(
-          /PERFORM public\.fn_release_listings\(v_reserved_ids, true, false\);/,
-        );
-      }
+      expect(sql).toMatch(
+        /WHERE id = ANY\(v_reserved_ids\)\s+AND status = 'RESERVED';/,
+      );
       expect(sql).toContain(
         "RETURN QUERY SELECT 0::NUMERIC, false, 'SOME_PRODUCTS_UNAVAILABLE'::TEXT;",
       );

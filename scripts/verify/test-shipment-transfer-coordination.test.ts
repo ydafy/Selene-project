@@ -40,7 +40,7 @@ test.each(['0', '65536', 'abc'])(
   },
 );
 
-test('full canonical SQL equals exactly one CLI migration; no extra workflow table', () => {
+test('transfer coordination is exactly one CLI migration; no extra workflow table', () => {
   const migrations = readdirSync(`${root}supabase/migrations/archive`).filter(
     (name) => name.endsWith('_shipment_transfer_coordination.sql'),
   );
@@ -49,27 +49,17 @@ test('full canonical SQL equals exactly one CLI migration; no extra workflow tab
     `${root}supabase/migrations/archive/${migrations[0]}`,
     'utf8',
   );
-  // The canonical file equals the archived migration except for
-  // fn_complete_shipment_transfer, which later migrations redefine (seller notice, then
-  // its shipment link in expo-push-notifications T13); it equals the newest one.
+  // Later migrations redefine fn_complete_shipment_transfer (seller notice, then its
+  // shipment link in expo-push-notifications T13); the harness applies the newest one.
   const lf = (text: string) => text.replace(/\r\n/g, '\n');
   const completeDefinition = (text: string) => {
     const start = text.indexOf(
       'CREATE OR REPLACE FUNCTION public.fn_complete_shipment_transfer(',
     );
     const end = text.indexOf('\n$$;', start) + 4;
-    return { start, end, body: text.slice(start, end) };
+    return { start, body: text.slice(start, end) };
   };
-  const withoutComplete = (text: string, d: { start: number; end: number }) =>
-    text.slice(0, d.start) + text.slice(d.end);
-  const canonical = lf(
-    readFileSync(
-      `${root}supabase/queries/payments/shipment_transfer_coordination.sql`,
-      'utf8',
-    ),
-  );
   const archived = completeDefinition(lf(sql));
-  const current = completeDefinition(canonical);
   const redefinitions = readdirSync(`${root}supabase/migrations`).filter(
     (name) => name.endsWith('_shipment_funds_released_notice_link.sql'),
   );
@@ -78,11 +68,8 @@ test('full canonical SQL equals exactly one CLI migration; no extra workflow tab
     lf(readFileSync(`${root}supabase/migrations/${redefinitions[0]}`, 'utf8')),
   );
   expect(archived.start).toBeGreaterThan(-1);
-  expect(current.body).toBe(redefined.body);
-  expect(current.body).not.toBe(archived.body);
-  expect(withoutComplete(canonical, current)).toBe(
-    withoutComplete(lf(sql), archived),
-  );
+  expect(redefined.start).toBeGreaterThan(-1);
+  expect(redefined.body).not.toBe(archived.body);
   expect(sql).not.toMatch(/CREATE TABLE/i);
   expect(sql.match(/CREATE OR REPLACE FUNCTION public\.[a-z_]+/g)).toEqual([
     'CREATE OR REPLACE FUNCTION public.fn_begin_shipment_transfer',

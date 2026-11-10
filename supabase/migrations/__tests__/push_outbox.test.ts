@@ -9,7 +9,6 @@ import { join } from 'node:path';
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..');
-const QUERIES_DIR = join(import.meta.dir, '..', '..', 'queries');
 
 const findMigration = (name: string): string => {
   const files = readdirSync(MIGRATIONS_DIR).filter((f) =>
@@ -36,16 +35,6 @@ const definition = (sql: string, name: string): string | undefined =>
       'i',
     ),
   )?.[0];
-
-const rawDefinition = (sql: string, name: string): string | undefined =>
-  sql
-    .replace(/\r/g, '')
-    .match(
-      new RegExp(
-        String.raw`CREATE OR REPLACE FUNCTION public\.${name}\(.*?\n\$\$;`,
-        's',
-      ),
-    )?.[0];
 
 const migration = findMigration('push_outbox');
 const code = normalize(migration);
@@ -310,25 +299,12 @@ describe('dispatcher RPCs', () => {
 
 describe('closed account cannot register a token', () => {
   const closed = findMigration('register_push_token_closed_account');
-  const canonical = readFileSync(
-    join(QUERIES_DIR, 'push', 'fn_register_push_token.sql'),
-    'utf8',
-  );
 
-  test('the migration and the canonical function raise ACCOUNT_CLOSED', () => {
-    for (const sql of [closed, canonical]) {
-      const def = definition(sql, 'fn_register_push_token')!;
-      expect(def).toContain('ACCOUNT_CLOSED');
-      expect(def).toContain('profiles');
-      expect(def).toContain('deleted_at IS NOT NULL');
-    }
-  });
-
-  test('the migration body equals the canonical function', () => {
-    expect(rawDefinition(closed, 'fn_register_push_token')).toBeDefined();
-    expect(rawDefinition(closed, 'fn_register_push_token')).toBe(
-      rawDefinition(canonical, 'fn_register_push_token'),
-    );
+  test('the migration raises ACCOUNT_CLOSED', () => {
+    const def = definition(closed, 'fn_register_push_token')!;
+    expect(def).toContain('ACCOUNT_CLOSED');
+    expect(def).toContain('profiles');
+    expect(def).toContain('deleted_at IS NOT NULL');
   });
 
   test('the grants stay authenticated-only', () => {
@@ -340,23 +316,4 @@ describe('closed account cannot register a token', () => {
       'GRANT EXECUTE ON FUNCTION public.fn_register_push_token(text, text) TO authenticated;',
     );
   });
-});
-
-describe('canonical SQL parity', () => {
-  for (const name of [
-    'fn_enqueue_push_deliveries',
-    'fn_claim_push_deliveries',
-    'fn_record_push_results',
-  ]) {
-    test(`${name} canonical file matches the migration`, () => {
-      const canonical = readFileSync(
-        join(QUERIES_DIR, 'push', `${name}.sql`),
-        'utf8',
-      );
-      expect(rawDefinition(canonical, name)).toBeDefined();
-      expect(rawDefinition(canonical, name)).toBe(
-        rawDefinition(migration, name),
-      );
-    });
-  }
 });

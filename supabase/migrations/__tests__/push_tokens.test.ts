@@ -9,7 +9,6 @@ import { join } from 'node:path';
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..');
-const QUERIES_DIR = join(import.meta.dir, '..', '..', 'queries');
 
 const findMigration = (name: string): string => {
   const files = readdirSync(MIGRATIONS_DIR).filter((f) =>
@@ -37,18 +36,7 @@ const definition = (sql: string, name: string): string | undefined =>
     ),
   )?.[0];
 
-const rawDefinition = (sql: string, name: string): string | undefined =>
-  sql
-    .replace(/\r/g, '')
-    .match(
-      new RegExp(
-        String.raw`CREATE OR REPLACE FUNCTION public\.${name}\(.*?\n\$\$;`,
-        's',
-      ),
-    )?.[0];
-
 const migration = findMigration('push_tokens');
-const newestRegister = findMigration('register_push_token_closed_account');
 const code = normalize(migration);
 
 describe('push_tokens table', () => {
@@ -144,23 +132,11 @@ describe('push token RPCs', () => {
 
 describe('account closure removes push tokens', () => {
   const closure = findMigration('close_account_push_tokens');
-  const canonical = readFileSync(
-    join(QUERIES_DIR, 'auth', 'fn_close_account.sql'),
-    'utf8',
-  );
   const deleteTokens =
     'DELETE FROM public.push_tokens WHERE user_id = p_user_id;';
 
-  test('the migration and the canonical function delete the user tokens', () => {
+  test('the migration deletes the user tokens', () => {
     expect(definition(closure, 'fn_close_account')).toContain(deleteTokens);
-    expect(definition(canonical, 'fn_close_account')).toContain(deleteTokens);
-  });
-
-  test('the migration body equals the canonical function', () => {
-    expect(rawDefinition(closure, 'fn_close_account')).toBeDefined();
-    expect(rawDefinition(closure, 'fn_close_account')).toBe(
-      rawDefinition(canonical, 'fn_close_account'),
-    );
   });
 
   test('the closure stays service-role only', () => {
@@ -171,20 +147,4 @@ describe('account closure removes push tokens', () => {
       'GRANT EXECUTE ON FUNCTION public.fn_close_account(uuid) TO service_role;',
     );
   });
-});
-
-describe('canonical SQL parity', () => {
-  for (const name of ['fn_register_push_token']) {
-    test(`${name} canonical file matches the migration`, () => {
-      const canonical = readFileSync(
-        join(QUERIES_DIR, 'push', `${name}.sql`),
-        'utf8',
-      );
-      expect(rawDefinition(canonical, name)).toBeDefined();
-      // fn_register_push_token was redefined by the closed-account migration; the canonical file tracks the newest.
-      expect(rawDefinition(canonical, name)).toBe(
-        rawDefinition(newestRegister, name),
-      );
-    });
-  }
 });

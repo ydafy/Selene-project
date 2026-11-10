@@ -8,14 +8,6 @@ import { join } from 'node:path';
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..');
-const CANONICAL_PATH = join(
-  import.meta.dir,
-  '..',
-  '..',
-  'queries',
-  'maintenance',
-  'fn_cron_health.sql',
-);
 
 /** Every migration that (re)defines fn_cron_health, oldest first. */
 const findMigrations = (): Array<[string, string]> => {
@@ -44,11 +36,7 @@ const normalize = (sql: string): string =>
 describe('fn_cron_health migration', () => {
   const migrations = findMigrations();
   const migration = migrations[migrations.length - 1][1];
-  const canonical = readFileSync(CANONICAL_PATH, 'utf8');
-  const sources: Array<[string, string]> = [
-    ...migrations,
-    ['canonical file', canonical],
-  ];
+  const sources: Array<[string, string]> = migrations;
 
   test('the original migration and the BL33 primary-key rewrite both define it', () => {
     expect(migrations.map(([file]) => file)).toEqual([
@@ -124,9 +112,5 @@ describe('fn_cron_health migration', () => {
       'WHERE r.jobid = j.jobid AND r.start_time IS NOT NULL ORDER BY r.runid DESC LIMIT 1',
     );
     expect(code).not.toContain('ORDER BY r.start_time DESC');
-  });
-
-  test('canonical body equals the latest migration body (whitespace-normalized)', () => {
-    expect(normalize(canonical)).toBe(normalize(migration));
   });
 });

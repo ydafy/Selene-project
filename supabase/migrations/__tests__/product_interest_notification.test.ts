@@ -9,7 +9,6 @@ import { join } from 'node:path';
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..');
-const QUERIES_DIR = join(import.meta.dir, '..', '..', 'queries', 'products');
 
 const findMigration = (): string => {
   const files = readdirSync(MIGRATIONS_DIR).filter((f) =>
@@ -43,10 +42,10 @@ const triggerStatement = (sql: string, name: string): string | undefined =>
 const migration = findMigration();
 const code = normalize(migration);
 
-const files = {
-  fn_notify_product_interest: 'fn_notify_product_interest.sql',
-  fn_tr_product_interest_on_favorite: 'fn_tr_product_interest_on_favorite.sql',
-} as const;
+const FUNCTIONS = [
+  'fn_notify_product_interest',
+  'fn_tr_product_interest_on_favorite',
+] as const;
 
 // Must keep every kind already allowed remotely. All branches share one
 // remote project: dropping a kind here would break its producer.
@@ -84,12 +83,9 @@ describe('product.interest event kind', () => {
   });
 });
 
-describe.each(Object.entries(files))('%s', (name, file) => {
-  const canonical = readFileSync(join(QUERIES_DIR, file), 'utf8');
-
-  test('the migration and the canonical file define the same function', () => {
+describe.each(FUNCTIONS)('%s', (name) => {
+  test('the migration defines the function', () => {
     expect(definition(migration, name)).toBeDefined();
-    expect(definition(migration, name)).toBe(definition(canonical, name));
   });
 
   test('is a definer function with a pinned search_path', () => {
@@ -190,28 +186,13 @@ describe('favorites trigger', () => {
     expect(trg).toContain(
       'EXECUTE FUNCTION public.fn_tr_product_interest_on_favorite()',
     );
-    const canonical = readFileSync(
-      join(QUERIES_DIR, files.fn_tr_product_interest_on_favorite),
-      'utf8',
-    );
-    expect(
-      triggerStatement(canonical, 'trg_product_interest_on_favorite'),
-    ).toBe(trg);
   });
 
   test('never blocks the buyer favorite when the seller notice fails', () => {
     // The favorite is the buyer's own action; the seller notice is best effort.
-    for (const sql of [
-      migration,
-      readFileSync(
-        join(QUERIES_DIR, files.fn_tr_product_interest_on_favorite),
-        'utf8',
-      ),
-    ]) {
-      const def = definition(sql, 'fn_tr_product_interest_on_favorite')!;
-      expect(def).toMatch(/EXCEPTION WHEN OTHERS THEN RAISE WARNING/i);
-      expect(def).toMatch(/RETURN NULL; END; \$\$/i);
-    }
+    const def = definition(migration, 'fn_tr_product_interest_on_favorite')!;
+    expect(def).toMatch(/EXCEPTION WHEN OTHERS THEN RAISE WARNING/i);
+    expect(def).toMatch(/RETURN NULL; END; \$\$/i);
   });
 
   test('revokes EXECUTE on the trigger function from every API role', () => {

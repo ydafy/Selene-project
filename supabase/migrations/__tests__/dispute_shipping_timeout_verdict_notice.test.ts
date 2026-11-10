@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { withoutShipmentLink } from './shipmentNoticeLink';
 
 /**
  * Static guards for the shipping-timeout verdict notices (expo-push-notifications T6c/S4).
@@ -50,20 +49,8 @@ describe('dispute shipping timeout verdict notice migration (SQL text)', () => {
     expect(migration).toMatch(/Grant review/);
   });
 
-  test('keeps the canonical file equal to the migration body', () => {
-    expect(body).not.toBe('');
-    expect(
-      collapse(
-        withoutShipmentLink(
-          read(
-            'supabase/queries/disputes/fn_cron_dispute_shipping_timeout.sql',
-          ),
-        ),
-      ),
-    ).toBe(collapse(body));
-  });
-
   test('changes only the notification insert of the previous definition', () => {
+    expect(body).not.toBe('');
     const before = bodyOf(previous);
     expect(before).not.toBe('');
     expect(withoutNotice(body)).toBe(withoutNotice(before));

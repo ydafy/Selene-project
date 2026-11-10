@@ -23,8 +23,8 @@ const statements = (sql: string) =>
 describe('shipment cancellation recovery migration (SQL text)', () => {
   it('is exactly one active migration holding the strict fn_cancel_shipment guard as deployed in B2.2', () => {
     expect(migrations).toHaveLength(1);
-    // The recovery read's canonical copy moved on in B2.2.1 (shipment_cancellation_escalation.test.ts) and
-    // fn_cancel_shipment's canonical copy in B2.3.1 (shipment_cancellation_refund_resolution.test.ts).
+    // B2.2.1 changed the recovery read (shipment_cancellation_escalation.test.ts) and B2.3.1
+    // fn_cancel_shipment (shipment_cancellation_refund_resolution.test.ts).
     expect(statements(migration)).toContain(
       "IF v_refund_status IS DISTINCT FROM 'succeeded' THEN",
     );
@@ -44,22 +44,11 @@ describe('shipment cancellation recovery migration (SQL text)', () => {
   });
 
   it('runs the recovery read as a locked-down SECURITY DEFINER and rejects non-service callers', () => {
-    const body = statements(
-      read('supabase/queries/orders/shipment_cancellation_recovery.sql'),
-    );
+    const body = statements(migration);
     expect(body).toContain('SECURITY DEFINER');
     expect(body).toContain("SET search_path = ''");
     expect(body).toContain(
       "IF auth.role() IS DISTINCT FROM 'service_role' THEN RAISE EXCEPTION 'UNAUTHORIZED'; END IF;",
     );
-  });
-
-  it('fn_cancel_shipment requires a recorded succeeded refund', () => {
-    const cancel = read('supabase/queries/orders/fn_cancel_shipment.sql');
-    // B2.3.1 also accepts an admin-resolved refund; any unresolved non-succeeded status is still refused.
-    expect(cancel).toContain(
-      "IF v_refund_status IS DISTINCT FROM 'succeeded' AND v_refund_resolved_at IS NULL THEN",
-    );
-    expect(cancel).not.toContain('IS NOT NULL AND v_refund_status');
   });
 });

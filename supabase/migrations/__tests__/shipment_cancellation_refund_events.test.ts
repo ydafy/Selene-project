@@ -17,24 +17,13 @@ const statements = (sql: string) =>
       (line) => !/^\s*(--|BEGIN;|COMMIT;)/.test(line) && line.trim() !== '',
     )
     .join('\n');
-const events = read(
-  'supabase/queries/orders/shipment_cancellation_refund_events.sql',
-);
 
 // Text contracts only; the local `supabase db reset` + scripts/verify/test-shipment-cancellation-refund-events.ts
 // prove the behavior in PostgreSQL.
 describe('shipment cancellation refund events migration (SQL text)', () => {
-  it('is exactly one active migration containing its canonical copy', () => {
+  it('is exactly one active migration', () => {
     expect(migrations).toHaveLength(1);
     // B2.4a.1 replaced the function in a later migration: this one holds the catalogue and the original body.
-    expect(statements(migration)).toContain(
-      statements(
-        events.slice(
-          0,
-          events.indexOf('-- Applies one Stripe refund snapshot'),
-        ),
-      ),
-    );
     expect(migration.match(/^BEGIN;$/gm)).toHaveLength(1);
     expect(migration.match(/^COMMIT;$/gm)).toHaveLength(1);
   });
@@ -53,7 +42,7 @@ describe('shipment cancellation refund events migration (SQL text)', () => {
   });
 
   it('is a locked-down SECURITY DEFINER that reuses the record RPC and the cancel RPC', () => {
-    const body = statements(events);
+    const body = statements(migration);
     expect(body).toContain('SECURITY DEFINER');
     expect(body).toContain("SET search_path = ''");
     expect(body).toContain(
@@ -78,7 +67,7 @@ describe('shipment cancellation refund events migration (SQL text)', () => {
   });
 
   it('adds the refund_failed event kind to the notification catalogue and inserts it idempotently', () => {
-    const body = statements(events);
+    const body = statements(migration);
     expect(body).toContain(
       'DROP CONSTRAINT IF EXISTS notifications_event_kind_catalogue_chk',
     );

@@ -9,7 +9,6 @@ import { join } from 'node:path';
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..');
-const QUERIES_DIR = join(import.meta.dir, '..', '..', 'queries');
 
 const normalize = (sql: string): string =>
   sql
@@ -29,12 +28,7 @@ const findMigration = (): string => {
   return normalize(readFileSync(join(MIGRATIONS_DIR, files[0]), 'utf8'));
 };
 
-// The policy was dropped by *_drop_products_select_public.sql (T4d3), so the
-// canonical file is now a history note instead of the policy definition.
-const canonical = readFileSync(
-  join(QUERIES_DIR, 'rls', 'products_select_public.sql'),
-  'utf8',
-);
+// The policy was dropped later by *_drop_products_select_public.sql (T4d3).
 
 describe('products_select_public', () => {
   const sql = findMigration();
@@ -64,10 +58,5 @@ describe('products_select_public', () => {
     for (const hidden of ['REJECTED', 'HIDDEN', 'RESERVED', 'IN_DISPUTE']) {
       expect(create).not.toContain(hidden);
     }
-  });
-
-  test('canonical file records that a later migration dropped the policy', () => {
-    expect(canonical).toMatch(/dropped/i);
-    expect(canonical).toContain('products_public');
   });
 });

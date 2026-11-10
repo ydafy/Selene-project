@@ -18,9 +18,6 @@ const statements = (sql: string) =>
       (line) => !/^\s*(--|BEGIN;|COMMIT;)/.test(line) && line.trim() !== '',
     )
     .join('\n');
-const events = read(
-  'supabase/queries/orders/shipment_cancellation_refund_events.sql',
-);
 const fnStart =
   'CREATE OR REPLACE FUNCTION public.fn_apply_shipment_cancellation_refund_event(';
 const fromFunction = (sql: string) => sql.slice(sql.indexOf(fnStart));
@@ -38,10 +35,10 @@ describe('shipment refund events after resolution migration (SQL text)', () => {
     expect(migrations[0] > (problems ?? '~')).toBe(true);
   });
 
-  it('contains the canonical function and its grants, and replaces only that function', () => {
-    expect(events.indexOf(fnStart)).toBeGreaterThan(-1);
+  it('contains the function and its grants, and replaces only that function', () => {
+    expect(migration.indexOf(fnStart)).toBeGreaterThan(-1);
     // BL7 replaced the function in a later migration: this one holds the resolved-operation path.
-    const body = fromFunction(events);
+    const body = fromFunction(migration);
     const resolvedPath = body.slice(
       body.indexOf('IF v_operation.refund_resolved_at IS NOT NULL THEN'),
       body.indexOf(
@@ -49,7 +46,6 @@ describe('shipment refund events after resolution migration (SQL text)', () => {
       ),
     );
     expect(resolvedPath.length).toBeGreaterThan(0);
-    expect(statements(migration)).toContain(statements(resolvedPath));
     expect(migration).not.toMatch(/DROP\s+(FUNCTION|TABLE)/i);
     expect(migration).not.toContain('notifications_event_kind_catalogue_chk');
     expect(migration).toMatch(
@@ -64,7 +60,7 @@ describe('shipment refund events after resolution migration (SQL text)', () => {
   });
 
   it('never writes on a resolved operation: it validates, then returns unchanged or after_resolution before recording', () => {
-    const body = statements(fromFunction(events));
+    const body = statements(fromFunction(migration));
     const resolved = body.indexOf('refund_resolved_at IS NOT NULL');
     expect(resolved).toBeGreaterThan(-1);
     expect(body.indexOf('FROM public.shipments')).toBeLessThan(
@@ -94,7 +90,7 @@ describe('shipment refund events after resolution migration (SQL text)', () => {
   });
 
   it('keeps the earlier outcomes listed', () => {
-    const body = statements(fromFunction(events));
+    const body = statements(fromFunction(migration));
     for (const outcome of [
       'ignored',
       'completed',

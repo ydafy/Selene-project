@@ -10,7 +10,6 @@ import { join } from 'node:path';
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..');
-const QUERIES_DIR = join(import.meta.dir, '..', '..', 'queries', 'auth');
 
 const findMigration = (): string => {
   const files = readdirSync(MIGRATIONS_DIR).filter((f) =>
@@ -40,18 +39,9 @@ const definition = (sql: string, name: string): string => {
 
 describe('account closure cleanup migration', () => {
   const migration = findMigration();
-  const canonical = readFileSync(
-    join(QUERIES_DIR, 'account_closure_cleanup.sql'),
-    'utf8',
-  );
   const sql = normalize(migration);
   const claim = definition(migration, 'fn_claim_account_closures');
   const record = definition(migration, 'fn_record_closure_attempt');
-
-  test('the migration and the canonical file define the same functions', () => {
-    expect(definition(canonical, 'fn_claim_account_closures')).toBe(claim);
-    expect(definition(canonical, 'fn_record_closure_attempt')).toBe(record);
-  });
 
   test('both functions are service-role only with an empty search_path', () => {
     for (const fn of [claim, record]) {

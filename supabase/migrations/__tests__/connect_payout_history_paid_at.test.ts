@@ -10,14 +10,6 @@ const previous = readFileSync(
   ),
   'utf8',
 );
-const canonical = () =>
-  readFileSync(
-    join(
-      migrationsDir,
-      '../../queries/payments/admin_connect_payout_release_view_shipping_cost_fix.sql',
-    ),
-    'utf8',
-  );
 const migration = () => {
   const file = readdirSync(migrationsDir).find((name) =>
     name.endsWith('_expose_payout_history_paid_at.sql'),
@@ -67,9 +59,5 @@ describe('payout history paid_at SQL contract (structural, not PostgreSQL execut
     expect(sql).not.toMatch(
       /ALTER TABLE|CREATE.*FUNCTION|GRANT.*TO (PUBLIC|anon|authenticated)/i,
     );
-  });
-
-  test('keeps the canonical operational view identical to the deployable view', () => {
-    expect(view(canonical())).toBe(view(migration()));
   });
 });

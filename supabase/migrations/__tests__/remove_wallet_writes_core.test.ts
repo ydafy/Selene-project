@@ -4,13 +4,12 @@ import { join } from 'node:path';
 
 /**
  * Static guards for remove-legacy-wallet T4: the six core money, signup and
- * account functions no longer read or write the wallet tables, and the
- * canonical query files carry the same bodies. These tests read SQL text;
+ * account functions no longer read or write the wallet tables. These tests
+ * read SQL text;
  * `supabase db reset` plus the Bruno requests prove the SQL runs.
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..');
-const QUERIES_DIR = join(import.meta.dir, '..', '..', 'queries');
 
 const findMigration = (): string => {
   const files = readdirSync(MIGRATIONS_DIR).filter((f) =>
@@ -24,50 +23,20 @@ const findMigration = (): string => {
   return readFileSync(join(MIGRATIONS_DIR, files[0]), 'utf8');
 };
 
-// fn_cancel_order was rewritten here and dropped later by *_drop_fn_cancel_order.sql: it has no
-// canonical file left, so only the migration-body checks below still cover it.
+// fn_cancel_order was rewritten here and dropped later by *_drop_fn_cancel_order.sql; only the
+// migration-body checks below cover it.
 const FUNCTIONS = [
-  {
-    name: 'fn_on_auth_user_created',
-    args: '',
-    file: 'triggers/auth/fn_on_auth_user_created.sql',
-  },
+  { name: 'fn_on_auth_user_created', args: '' },
   {
     name: 'fn_create_order_from_payment',
     args: 'uuid, text, numeric, numeric, uuid, uuid[]',
-    file: 'orders/fn_create_order_from_payment.sql',
   },
-  {
-    name: 'fn_cancel_shipment',
-    args: 'uuid, text, text, bigint',
-    file: 'orders/fn_cancel_shipment.sql',
-  },
-  {
-    name: 'fn_complete_shipment_refund',
-    args: 'uuid',
-    file: 'shipments/fn_complete_shipment_refund.sql',
-  },
-  { name: 'fn_close_account', args: 'uuid', file: 'auth/fn_close_account.sql' },
+  { name: 'fn_cancel_shipment', args: 'uuid, text, text, bigint' },
+  { name: 'fn_complete_shipment_refund', args: 'uuid' },
+  { name: 'fn_close_account', args: 'uuid' },
 ] as const;
 
 const WALLET_REFERENCE = /\bwallets\b|wallet_transactions|payout_requests/i;
-
-// Rewritten again by a later migration, whose test checks that the canonical file carries the
-// newer body: *_close_account_push_tokens.sql (fn_close_account, checked in account_closure.test.ts).
-// *_release_listings_helper.sql (fn_cancel_shipment: the release goes through
-// fn_release_listings, pinned in release_listings_helper.test.ts).
-const SUPERSEDED: ReadonlySet<string> = new Set([
-  'fn_close_account',
-  'fn_cancel_shipment',
-]);
-
-// Dropped by *_remove_non_connect_order_refund_path.sql, which also deleted their canonical
-// files (pinned in remove_non_connect_order_refund_path.test.ts); only the migration-body
-// checks below still cover them.
-const DROPPED: ReadonlySet<string> = new Set([
-  'fn_create_order_from_payment',
-  'fn_complete_shipment_refund',
-]);
 
 const collapse = (sql: string): string => sql.replace(/\s+/g, ' ').trim();
 
@@ -84,19 +53,6 @@ const migrationBody = (name: string): string => {
   return migration.slice(open + 2, close);
 };
 
-/** Canonical files are either a full CREATE statement or a bare body. */
-const canonicalBody = (file: string): string => {
-  const sql = readFileSync(join(QUERIES_DIR, file), 'utf8');
-  if (sql.includes('$$')) {
-    const open = sql.indexOf('$$');
-    return sql.slice(open + 2, sql.indexOf('$$;', open + 2));
-  }
-  return sql
-    .split('\n')
-    .filter((line) => !line.startsWith('--'))
-    .join('\n');
-};
-
 describe('remove legacy wallet writes from the core functions (SQL structural only)', () => {
   test('runs in one transaction', () => {
     expect(migration).toContain('BEGIN;');
@@ -107,14 +63,6 @@ describe('remove legacy wallet writes from the core functions (SQL structural on
     describe(fn.name, () => {
       test('the migration body does not reference the wallet tables', () => {
         expect(migrationBody(fn.name)).not.toMatch(WALLET_REFERENCE);
-      });
-
-      test('the canonical query file carries the migration body', () => {
-        if (DROPPED.has(fn.name)) return;
-        const canonical = canonicalBody(fn.file);
-        expect(canonical).not.toMatch(WALLET_REFERENCE);
-        if (SUPERSEDED.has(fn.name)) return;
-        expect(collapse(canonical)).toBe(collapse(migrationBody(fn.name)));
       });
 
       test('execute is limited to service_role, restated explicitly', () => {

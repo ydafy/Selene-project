@@ -9,7 +9,6 @@ import { join } from 'node:path';
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..');
-const QUERIES_DIR = join(import.meta.dir, '..', '..', 'queries', 'products');
 
 const findMigration = (): string => {
   const files = readdirSync(MIGRATIONS_DIR).filter((f) =>
@@ -43,12 +42,11 @@ const triggerStatement = (sql: string, name: string): string | undefined =>
 const migration = findMigration();
 const code = normalize(migration);
 
-const files = {
-  fn_notify_product_available: 'fn_notify_product_available.sql',
-  fn_tr_product_available_on_verify: 'fn_tr_product_available_on_verify.sql',
-  fn_tr_product_available_on_connect_complete:
-    'fn_tr_product_available_on_connect_complete.sql',
-} as const;
+const FUNCTIONS = [
+  'fn_notify_product_available',
+  'fn_tr_product_available_on_verify',
+  'fn_tr_product_available_on_connect_complete',
+] as const;
 
 // Must keep every kind already allowed remotely. All branches share one
 // remote project: shipment.refund_failed comes from the unmerged
@@ -82,12 +80,9 @@ describe('product.available event kind', () => {
   });
 });
 
-describe.each(Object.entries(files))('%s', (name, file) => {
-  const canonical = readFileSync(join(QUERIES_DIR, file), 'utf8');
-
-  test('the migration and the canonical file define the same function', () => {
+describe.each(FUNCTIONS)('%s', (name) => {
+  test('the migration defines the function', () => {
     expect(definition(migration, name)).toBeDefined();
-    expect(definition(migration, name)).toBe(definition(canonical, name));
   });
 
   test('is a definer function with a pinned search_path', () => {
@@ -160,13 +155,6 @@ describe('triggers', () => {
     expect(trg).toContain(
       'EXECUTE FUNCTION public.fn_tr_product_available_on_verify()',
     );
-    const canonical = readFileSync(
-      join(QUERIES_DIR, files.fn_tr_product_available_on_verify),
-      'utf8',
-    );
-    expect(triggerStatement(canonical, 'trg_product_available_on_verify')).toBe(
-      trg,
-    );
   });
 
   test('the Connect trigger fires only when onboarding first becomes complete', () => {
@@ -192,13 +180,6 @@ describe('triggers', () => {
     expect(trg).toContain(
       'EXECUTE FUNCTION public.fn_tr_product_available_on_connect_complete()',
     );
-    const canonical = readFileSync(
-      join(QUERIES_DIR, files.fn_tr_product_available_on_connect_complete),
-      'utf8',
-    );
-    expect(
-      triggerStatement(canonical, 'trg_product_available_on_connect_complete'),
-    ).toBe(trg);
   });
 
   test.each([

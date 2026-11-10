@@ -1,4 +1,4 @@
-// source-text: the migration must install the canonical bodies; pgTAP proves the path rule runs
+// source-text: the migration must install the path rule; pgTAP proves the path rule runs
 import { describe, expect, it } from 'bun:test';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -11,14 +11,17 @@ import { join } from 'node:path';
 const root = join(import.meta.dir, '..', '..', '..', '..');
 const read = (path: string) =>
   readFileSync(join(root, path), 'utf8').replace(/\r\n/g, '\n');
-const buyer = () =>
-  read('supabase/queries/return/fn_buyer_submit_return_evidence.sql');
-const seller = () =>
-  read('supabase/queries/return/fn_seller_submit_return_evidence.sql');
 const migrationName = readdirSync(join(root, 'supabase/migrations')).find(
   (name) => name.endsWith('_evidence_object_paths.sql'),
 );
 const migration = () => read(`supabase/migrations/${migrationName}`);
+// The migration installs the buyer body first, then the seller body.
+const bodies = () =>
+  [...migration().matchAll(/AS \$\$\n([\s\S]*?)\n\$\$;/g)].map(
+    (match) => match[1],
+  );
+const buyer = () => bodies()[0] ?? '';
+const seller = () => bodies()[1] ?? '';
 const collapse = (sql: string) => sql.replace(/\s+/g, ' ').trim();
 const FILE_NAME = "/[A-Za-z0-9_-][A-Za-z0-9._-]{0,199}$'";
 
@@ -62,16 +65,10 @@ describe('seller return evidence paths', () => {
 });
 
 describe('evidence object paths migration', () => {
-  it('installs both canonical bodies and keeps owners and grants', () => {
+  it('installs both bodies and keeps owners and grants', () => {
     expect(migrationName).toBeDefined();
     const sql = migration();
-    const bodies = [...sql.matchAll(/AS \$\$\n([\s\S]*?)\n\$\$;/g)].map(
-      (match) => match[1],
-    );
-    expect(bodies.map(collapse)).toEqual([
-      collapse(buyer()),
-      collapse(seller()),
-    ]);
+    expect(bodies()).toHaveLength(2);
     expect(sql).toContain(
       'CREATE OR REPLACE FUNCTION "public"."fn_buyer_submit_return_evidence"("p_dispute_id" "uuid", "p_images" "text"[])',
     );

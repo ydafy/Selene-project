@@ -93,15 +93,4 @@ describe('admin payout group pagination (SQL structural guards, not DB execution
     expect(sql.trim()).toMatch(/COMMIT;$/);
     expect(sql).toContain('BEGIN;');
   });
-
-  test('canonical read RPC and incremental migration are identical', () => {
-    const canonical = readFileSync(
-      join(
-        migrations,
-        '../../queries/payments/admin_payout_queue_pagination.sql',
-      ),
-      'utf8',
-    ).replace(/\r\n/g, '\n');
-    expect(readMigration()).toBe(canonical);
-  });
 });

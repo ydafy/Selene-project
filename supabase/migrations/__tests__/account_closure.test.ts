@@ -10,7 +10,6 @@ import { join } from 'node:path';
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..');
-const QUERIES_DIR = join(import.meta.dir, '..', '..', 'queries', 'auth');
 
 const findMigration = (): string => {
   const files = readdirSync(MIGRATIONS_DIR).filter((f) =>
@@ -39,8 +38,7 @@ const functionBody = (sql: string): string => {
 };
 
 // remove-legacy-wallet T4 replaced fn_close_account (no wallet blockers), and
-// expo-push-notifications T1 replaced it again (closing deletes push tokens);
-// the canonical file carries that newest body.
+// expo-push-notifications T1 replaced it again (closing deletes push tokens).
 const findLatestCloseAccountMigration = (): string => {
   const files = readdirSync(MIGRATIONS_DIR).filter((f) =>
     f.endsWith('_close_account_push_tokens.sql'),
@@ -55,27 +53,13 @@ const findLatestCloseAccountMigration = (): string => {
 
 describe('account closure migration', () => {
   const migration = findMigration();
-  const canonicalFunction = readFileSync(
-    join(QUERIES_DIR, 'fn_close_account.sql'),
-    'utf8',
-  );
-  const canonicalTable = readFileSync(
-    join(QUERIES_DIR, 'account_closures.sql'),
-    'utf8',
-  );
   const sql = normalize(migration);
   const fn = functionBody(migration);
 
-  test('the migration and the canonical files define the same function and table', () => {
-    expect(functionBody(canonicalFunction)).toBe(
-      functionBody(findLatestCloseAccountMigration()),
+  test('the migration defines the account_closures table', () => {
+    expect(sql).toMatch(
+      /CREATE TABLE IF NOT EXISTS public\.account_closures.*?\) ?;/i,
     );
-    const table = (text: string) =>
-      normalize(text).match(
-        /CREATE TABLE IF NOT EXISTS public\.account_closures.*?\) ?;/i,
-      )?.[0];
-    expect(table(migration)).toBeDefined();
-    expect(table(canonicalTable)).toBe(table(migration));
   });
 
   test('account_closures keeps one row per user with RLS on and no client access', () => {
@@ -184,7 +168,7 @@ describe('account closure migration', () => {
     expect(fn).toContain('public.shipment_cancellation_operations');
     expect(fn).toContain('refund_resolved_at IS NULL');
     expect(fn).toContain('compensation_state');
-    expect(functionBody(canonicalFunction)).not.toMatch(
+    expect(functionBody(findLatestCloseAccountMigration())).not.toMatch(
       /wallets|payout_requests/,
     );
   });

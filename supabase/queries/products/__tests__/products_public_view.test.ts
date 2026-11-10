@@ -47,10 +47,6 @@ const files: Record<string, string | undefined> = {
   migration:
     migrationName &&
     readFileSync(join(root, 'migrations', migrationName), 'utf8'),
-  canonical: readFileSync(
-    join(root, 'queries', 'products', 'products_public.sql'),
-    'utf8',
-  ),
 };
 
 describe('products_public view', () => {
@@ -104,10 +100,5 @@ describe('products_public view', () => {
 
   it('documents the grant review in the migration', () => {
     expect(files.migration).toMatch(/Grant review/i);
-  });
-
-  it('keeps the migration and the canonical body identical', () => {
-    const body = (s: string) => stripComments(s).replace(/\s+/g, ' ').trim();
-    expect(body(files.migration ?? '')).toBe(body(files.canonical ?? ''));
   });
 });

@@ -4,18 +4,15 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const migrations = join(import.meta.dir, '..', 'archive');
-const canonical = join(migrations, '..', '..', 'queries', 'payments');
 const cases = [
   {
     name: 'fn_begin_payout_create_fence',
-    canonical: 'connect_payout_stage_fencing.sql',
     historical: '20260919090000_connect_payout_stage_fencing.sql',
     blob: '077a80d9345a9c12d060c60209266fce7c300233',
     result: 'INTEGER',
   },
   {
     name: 'fn_verify_payout_claim',
-    canonical: 'connect_payout_balance_executor.sql',
     historical: '20260920000000_connect_payout_balance_executor_claim.sql',
     blob: '4b041b5e6364dc4e330d30b2d18f3dbf3ad3b6b2',
     result: 'BOOLEAN',
@@ -69,7 +66,7 @@ const forward = forwardFile ? read(migrations, forwardFile) : '';
 // caller exploitability proof, or JavaScript reimplementation of SQL semantics.
 describe('payout claim NULL rejection (source contracts, not DB execution)', () => {
   for (const entry of cases) {
-    const current = rpc(read(canonical, entry.canonical), entry.name);
+    const current = rpc(forward, entry.name);
     const previous = rpc(read(migrations, entry.historical), entry.name);
     test(`${entry.name}: NULL caller token rejects in STALE_CLAIM before success/write`, () => {
       expect(current).not.toBe('');
@@ -159,12 +156,9 @@ describe('payout claim NULL rejection (source contracts, not DB execution)', () 
     );
   });
   for (const entry of cases) {
-    test(`${entry.name}: forward definition matches canonical and preserves signature/security`, () => {
+    test(`${entry.name}: forward definition preserves signature/security`, () => {
       const replacement = rpc(forward, entry.name);
       expect(replacement, 'Missing forward RPC definition').not.toBe('');
-      expect(normalize(replacement)).toBe(
-        normalize(rpc(read(canonical, entry.canonical), entry.name)),
-      );
       expect(replacement).toMatch(
         new RegExp(
           `\\(\\s*p_run_id UUID,\\s*p_claim_token TEXT,\\s*p_expected_stage_version INTEGER\\s*\\)\\s*RETURNS ${entry.result}\\s*LANGUAGE plpgsql\\s*SECURITY DEFINER\\s*SET search_path = public`,

@@ -15,10 +15,6 @@ const migration = join(
   import.meta.dir,
   '../archive/20261008090000_atomic_payout_resume_mapping.sql',
 );
-const canonical = join(
-  import.meta.dir,
-  '../../queries/payments/atomic_payout_resume_mapping.sql',
-);
 const sql = existsSync(migration) ? readFileSync(migration, 'utf8') : '';
 test('specialized atomic RPC exists with locked server CAS and a version increment', () => {
   expect(sql).toContain('fn_atomic_payout_resume_mapping');
@@ -129,9 +125,4 @@ test('manual adapters use only the specialized RPC with explicit response refusa
     ),
   );
   expect(orchestrator).not.toContain('Database &');
-});
-test('canonical is byte-identical to the forward migration', () => {
-  expect(existsSync(canonical)).toBe(true);
-  if (existsSync(canonical))
-    expect(readFileSync(canonical)).toEqual(readFileSync(migration));
 });

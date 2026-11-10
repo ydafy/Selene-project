@@ -12,7 +12,6 @@ import { join } from 'node:path';
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..');
-const QUERIES_DIR = join(import.meta.dir, '..', '..', 'queries');
 
 const findMigration = (): string => {
   const files = readdirSync(MIGRATIONS_DIR).filter((f) =>
@@ -53,44 +52,14 @@ const migrationHeader = (name: string): string => {
   return collapse(migration.slice(start, migration.indexOf('$$', start)));
 };
 
-/**
- * The canonical file follows the newest migration that defines the function, so a
- * later migration (20261101031000 changed the notices of fn_cron_dispute_shipping_timeout)
- * does not make this migration's body the reference.
- */
-const latestBody = (name: string): string => {
-  const pattern = new RegExp(`CREATE OR REPLACE FUNCTION public\\.${name}\\(`);
-  const newest = readdirSync(MIGRATIONS_DIR)
-    .filter((f) => f.endsWith('.sql'))
-    .sort()
-    .filter((f) => pattern.test(readFileSync(join(MIGRATIONS_DIR, f), 'utf8')))
-    .pop();
-  const sql = readFileSync(
-    join(MIGRATIONS_DIR, newest as string),
-    'utf8',
-  ).replace(/\r/g, '');
-  const start = sql.search(pattern);
-  const open = sql.indexOf('$$', start);
-  return sql.slice(open + 2, sql.indexOf('$$;', open + 2));
-};
-
-const canonicalBody = (file: string): string =>
-  readFileSync(join(QUERIES_DIR, file), 'utf8')
-    .replace(/\r/g, '')
-    .split('\n')
-    .filter((line) => !line.startsWith('--'))
-    .join('\n');
-
 const FUNCTIONS = [
   {
     name: 'fn_release_shipment_funds',
     args: 'uuid',
-    file: 'shipments/fn_release_shipment_funds.sql',
   },
   {
     name: 'fn_cron_dispute_shipping_timeout',
     args: '',
-    file: 'disputes/fn_cron_dispute_shipping_timeout.sql',
   },
 ] as const;
 
@@ -102,12 +71,6 @@ describe('release_shipment_funds_guard migration (SQL structural only)', () => {
   });
 
   for (const fn of FUNCTIONS) {
-    test(`${fn.name}: the canonical query file carries the newest migration body`, () => {
-      expect(collapse(canonicalBody(fn.file))).toBe(
-        collapse(latestBody(fn.name)),
-      );
-    });
-
     test(`${fn.name}: execute is limited to service_role, restated explicitly`, () => {
       const target = `public.${fn.name}(${fn.args})`;
       expect(migration).toContain(

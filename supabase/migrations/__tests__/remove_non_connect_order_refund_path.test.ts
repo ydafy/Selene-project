@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { withoutShipmentLink } from './shipmentNoticeLink';
 
 /**
  * expo-push-notifications T6a (S8, L27): the non-Connect order and refund path
@@ -14,7 +13,6 @@ import { withoutShipmentLink } from './shipmentNoticeLink';
  */
 
 const MIGRATIONS_DIR = join(import.meta.dir, '..');
-const QUERIES_DIR = join(import.meta.dir, '..', '..', 'queries');
 const FUNCTIONS_DIR = join(import.meta.dir, '..', '..', 'functions');
 
 const read = (path: string): string =>
@@ -41,14 +39,8 @@ const bodyOf = (sql: string, name: string): string => {
 };
 
 const CRONS = [
-  {
-    name: 'fn_cron_dispute_payout_timeout',
-    file: 'disputes/fn_cron_dispute_payout_timeout.sql',
-  },
-  {
-    name: 'fn_cron_return_delivery_timeout',
-    file: 'disputes/fn_cron_return_delivery_timeout.sql',
-  },
+  { name: 'fn_cron_dispute_payout_timeout' },
+  { name: 'fn_cron_return_delivery_timeout' },
 ] as const;
 
 describe('remove_non_connect_order_refund_path migration', () => {
@@ -86,7 +78,7 @@ describe('remove_non_connect_order_refund_path migration', () => {
     expect(migration).toMatch(/Grant review/);
   });
 
-  for (const { name, file } of CRONS) {
+  for (const { name } of CRONS) {
     describe(name, () => {
       const body = collapse(bodyOf(migration, name));
 
@@ -97,7 +89,7 @@ describe('remove_non_connect_order_refund_path migration', () => {
         );
       });
 
-      test('everything but the non-Connect branch equals the previous canonical body', () => {
+      test('everything but the non-Connect branch equals the previous migration body', () => {
         const previous = collapse(bodyOf(PREVIOUS, name));
         const legacyStart = previous.indexOf(
           'ELSE -- Legacy path: refund via fn_complete_shipment_refund',
@@ -144,14 +136,6 @@ describe('remove_non_connect_order_refund_path migration', () => {
           `GRANT EXECUTE ON FUNCTION public.${name}() TO service_role;`,
         );
       });
-
-      test('the canonical file carries the migration body', () => {
-        const canonical = withoutShipmentLink(read(join(QUERIES_DIR, file)))
-          .split('\n')
-          .filter((line) => !line.startsWith('--'))
-          .join('\n');
-        expect(collapse(canonical)).toBe(body);
-      });
     });
   }
 
@@ -160,19 +144,6 @@ describe('remove_non_connect_order_refund_path migration', () => {
     expect(body).toContain(
       "'shipment_id', v_dispute.shipment_id)); v_errors := v_errors + 1; END IF;",
     );
-  });
-
-  test('the canonical files of the dropped functions are gone', () => {
-    expect(
-      existsSync(
-        join(QUERIES_DIR, 'shipments', 'fn_complete_shipment_refund.sql'),
-      ),
-    ).toBe(false);
-    expect(
-      existsSync(
-        join(QUERIES_DIR, 'orders', 'fn_create_order_from_payment.sql'),
-      ),
-    ).toBe(false);
   });
 });
 

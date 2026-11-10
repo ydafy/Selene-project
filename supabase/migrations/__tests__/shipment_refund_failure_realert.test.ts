@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { withoutShipmentLink } from './shipmentNoticeLink';
 
 const root = join(import.meta.dir, '..', '..', '..');
 const read = (path: string) =>
@@ -19,9 +18,6 @@ const statements = (sql: string) =>
       (line) => !/^\s*(--|BEGIN;|COMMIT;)/.test(line) && line.trim() !== '',
     )
     .join('\n');
-const events = withoutShipmentLink(
-  read('supabase/queries/orders/shipment_cancellation_refund_events.sql'),
-);
 const fnStart =
   'CREATE OR REPLACE FUNCTION public.fn_apply_shipment_cancellation_refund_event(';
 const fromFunction = (sql: string) => sql.slice(sql.indexOf(fnStart));
@@ -39,8 +35,8 @@ describe('shipment refund failure re-alert migration (SQL text)', () => {
     expect(migrations[0] > (previous ?? '~')).toBe(true);
   });
 
-  it('contains the canonical function and its grants, and replaces only that function', () => {
-    expect(statements(migration)).toContain(statements(fromFunction(events)));
+  it('contains the function and its grants, and replaces only that function', () => {
+    expect(migration.indexOf(fnStart)).toBeGreaterThan(-1);
     expect(migration).not.toMatch(/DROP\s+(FUNCTION|TABLE)/i);
     expect(migration).not.toContain('notifications_event_kind_catalogue_chk');
     expect(migration).toMatch(
@@ -55,7 +51,7 @@ describe('shipment refund failure re-alert migration (SQL text)', () => {
   });
 
   it('reports a recorded failure again when a failure event is redelivered, not only when it changes', () => {
-    const body = statements(fromFunction(events));
+    const body = statements(fromFunction(migration));
     expect(body).toContain(
       "ELSIF v_operation.refund_status IN ('failed', 'canceled')\n" +
         "        AND ((v_recorded->>'changed')::BOOLEAN OR p_status IN ('failed', 'canceled')) THEN",
