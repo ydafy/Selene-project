@@ -67,6 +67,24 @@ describe('connect payment helpers', () => {
     expect(() => normalizeConnectPaymentResponse(legacy as never)).toThrow();
   });
 
+  it('rejects a single-secret response without transferGroup', () => {
+    const missingGroup = {
+      orderId: 'order-1',
+      customer: 'cus_123',
+      ephemeralKey: 'eph_123',
+      clientSecret: 'pi_secret',
+      amount: 85_100,
+    };
+
+    expect(() =>
+      normalizeConnectPaymentResponse(missingGroup as never),
+    ).toThrow(
+      expect.objectContaining({
+        issues: [expect.objectContaining({ path: ['transferGroup'] })],
+      }),
+    );
+  });
+
   it('calculates Seguro Selene as Stripe fee approximation', () => {
     expect(calculateSeguroSelene(1_000)).toBe(47.22);
   });
