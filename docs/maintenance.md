@@ -2,24 +2,30 @@
 
 The weekly and monthly review of the repository's state. An agent collects the data, reports what needs a decision with a recommendation, and the maintainer decides. Each area copies the dependency pattern: data that arrives on its own, a written procedure, and a fixed way to act.
 
-Start a session by telling an agent "Hoy es lunes, hagamos la rutina". The `selene-maintenance-routine` skill (`.agents/skills/selene-maintenance-routine/SKILL.md`) runs this page. Nothing changes the repository, the Supabase project, or GitHub until the maintainer decides.
+Start a session by telling an agent "Hoy es lunes, hagamos la rutina". The `selene-maintenance-routine` skill (`.agents/skills/selene-maintenance-routine/SKILL.md`) runs this page. Nothing changes the repository, the Supabase project, or GitHub until the maintainer decides, with two exceptions: the agent starts a missing dependency workflow run, and it opens Finding or Idea issues as `AGENTS.md`, "Findings outside the current work", allows.
 
 ## When to run it
 
 - **Weekly.** Every Monday, after the dependency workflows (08:17 and 08:47 Mexico City time). Run systems A to D. It takes about 45 minutes.
-- **Monthly.** On the 1st of the month, or together with the first Monday of the month. Run the weekly routine plus "Monthly checks".
+- **Monthly.** Once a month, in the first session on or after the 1st (usually the first Monday). Run the weekly routine plus "Monthly checks".
 
 ## Run a session
 
-1. Collect. Run every check below in order and change nothing.
-2. Report. Write the report in the format of "Report format".
-3. Decide. Walk the decisions with the maintainer, one at a time.
-4. Look at the topic of the week ("Pick the topic of the week").
-5. Record. Each deferred decision becomes a Finding or Idea issue, as `docs/findings.md` describes. A decision that changes a procedure on this page changes the page in the same session, on a branch.
+1. Collect. Run every check below in order, then look at the topic of the week ("Pick the topic of the week"). Change nothing.
+2. Report. Write the report in the format of "Report format", with the topic's observations in it.
+3. Decide. Walk every decision in the report with the maintainer, one at a time.
+4. Record. Each deferred decision becomes a Finding or Idea issue, as `docs/findings.md` describes. A decision about a vulnerability never goes into an issue: it stays in its draft Security Advisory (`docs/findings.md`, "Report a vulnerability"). A decision that changes a procedure on this page changes the page in the same session, on a branch.
 
 ## Weekly checks
 
-In the commands below, `<since>` is the date seven days ago (`date -d '7 days ago' +%F`) and `<stale>` is the date 60 days ago (`date -d '60 days ago' +%F`). Each system says where its data comes from, which commands to run, and when it needs a decision.
+Set two dates first. The commands below read them:
+
+```bash
+since=$(date -d '7 days ago' +%F)
+stale=$(date -d '60 days ago' +%F)
+```
+
+Each system says where its data comes from, which commands to run, and when it needs a decision.
 
 ### A. Dependencies
 
@@ -73,14 +79,14 @@ The procedure is `docs/findings.md`. `.github/workflows/issue-labels.yml` sets t
 
 ```bash
 # New issues of the week
-gh issue list --state open --search "created:>=<since>" --json number,title,labels
+gh issue list --state open --search "created:>=$since" --json number,title,labels
 # Open critical and high
 gh issue list --state open --label priority:critical
 gh issue list --state open --label priority:high
 # Findings with no priority label
 gh issue list --state open --label finding --limit 200 --json number,title,labels --jq '.[] | select([.labels[].name | startswith("priority:")] | any | not) | {number, title}'
 # Stale issues: no update in 60 days
-gh issue list --state open --search "updated:<<stale>"
+gh issue list --state open --search "updated:<$stale"
 # Open PRs
 gh pr list --state open --json number,title,createdAt,isDraft
 ```
@@ -103,7 +109,7 @@ This check stays light until go-live. There is no real traffic yet, so it lists 
 1. List the failed runs on `main`, then read the end of each failed log:
 
    ```bash
-   gh run list --branch main --status failure --created ">=<since>" --json databaseId,workflowName,displayTitle,createdAt
+   gh run list --branch main --status failure --created ">=$since" --json databaseId,workflowName,displayTitle,createdAt
    gh run view <id> --log-failed | tail -n 50
    ```
 
