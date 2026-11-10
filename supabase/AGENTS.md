@@ -4,12 +4,14 @@ Read the root `AGENTS.md` first; it wins over this file. This file holds the pro
 
 ## Layout
 
-- `migrations/`: deployable SQL deltas. `queries/`: canonical current SQL of functions, by domain. Keep both in sync.
+- `schemas/`: the declarative schema, the source of truth for tables, views, functions, triggers, policies, grants and comments (Declarative Schemas 2.0, pg-delta engine, `[experimental.pgdelta]` in `config.toml`). One file per object, by schema; our triggers on `auth.users` and policies on `storage.objects` live under `schemas/auth/` and `schemas/storage/`.
+- `migrations/`: deployable SQL deltas, generated from `schemas/` or hand-written. `supabase db reset` and `supabase db push` apply these; nothing applies `schemas/` directly.
+- `queries/`: being retired (#303). Do not update it.
 - `migrations/archive/`: pre-baseline history. Never edit or replay it.
 
 ## When a change touches Supabase
 
-1. Add a migration with `supabase migration new <name>` and update the matching canonical file in `supabase/queries/<domain>/`.
+1. Write the change as a migration (see "Declarative schema"): edit `supabase/schemas/`, then let the CLI generate the migration.
 2. Apply it locally with `supabase db reset` (see "Local stack"; run `supabase start` once per worktree first). Tests in `supabase/migrations/__tests__/` and `supabase/queries/**/__tests__/` only read SQL text; the local reset and `bun run test:db` (see "Database tests") are what prove the SQL runs in PostgreSQL. Then call the RPC or table per role (service role, buyer, anon) with a Bruno request (`verify-selene`, "Drive"). Report which you ran.
 3. Stop and report: SQL files in execution order, Edge Functions to deploy, and any secrets, cron jobs, webhooks, or Dashboard settings. The maintainer applies migrations with `supabase db push`, which records them in the remote history; a file run in the SQL Editor instead also needs `supabase migration repair --status applied <version>` (see "Schema drift check").
 4. After the maintainer confirms the SQL was applied, run `bun run db:types`, which regenerates the types from the remote project, and check that the expected changes appear. Then check that the remote history lists the new versions ("Schema drift check", step 1).
@@ -17,6 +19,23 @@ Read the root `AGENTS.md` first; it wins over this file. This file holds the pro
 6. `supabase/config.toml` mirrors the deployed `verify_jwt` flags. Keep it in sync when a function's auth changes.
 
 For Postgres design and performance, load the `supabase-postgres-best-practices` skill.
+
+## Declarative schema
+
+`supabase/schemas/` and `supabase/migrations/` must always describe the same database. `bun run db:schema:check` proves it (CI runs it in the `db-test` job).
+
+1. Edit the object's file in `supabase/schemas/` (a new object gets a new file next to its kind). For design, load `supabase-postgres-best-practices`.
+2. Run `supabase db schema declarative sync -f <name> --no-apply`. It builds a shadow database from `migrations/`, compares it with `schemas/` and writes `migrations/<timestamp>_<name>.sql`. `supabase db diff` does not read `schemas/`; never use it to write a migration.
+3. Review the generated migration line by line; pg-delta is pre-1.0. A rename comes out as drop plus add and loses data: rewrite it as `ALTER ... RENAME`. Check every `GRANT` and `REVOKE`, and that nothing outside your change appears.
+4. Run `supabase db reset`, `bun run db:schema:check` and the tests. Commit the schema files and the migration together.
+
+The schema files cannot hold some changes. Write those by hand with `supabase migration new <name>`:
+
+- Data: rows, backfills, configuration rows. Storage buckets are rows too.
+- Our own functions or indexes inside `auth` or `storage`.
+- Object kinds pg-delta does not manage (casts, operators, text search objects, parameter ACLs). Their SQL also goes in a `_custom` folder inside `schemas/`, which the CLI never overwrites.
+
+When a hand-written migration changes the schema, run `supabase db reset` and then `supabase db schema declarative generate --local --overwrite` so `schemas/` matches it, and run `bun run db:schema:check`.
 
 ## Local stack
 

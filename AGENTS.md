@@ -19,7 +19,7 @@ Each workspace's `package.json` is the source of truth for versions; read it ins
 | `apps/frontend/`      | Expo React Native app (user-facing); styled with Restyle, not NativeWind        | `apps/frontend/AGENTS.md`      |
 | `apps/admin-web/`     | React + Vite admin dashboard                                                    |                                |
 | `packages/types/`     | Shared types, including generated Supabase types                                |                                |
-| `supabase/`           | Migrations, canonical SQL (`supabase/queries/`), local stack, remote project    | `supabase/AGENTS.md`           |
+| `supabase/`           | Declarative schema (`supabase/schemas/`), migrations, local stack, remote proj. | `supabase/AGENTS.md`           |
 | `supabase/functions/` | Edge Functions (Deno), Sentry wrapper, Bruno and Stripe local loops             | `supabase/functions/AGENTS.md` |
 | `design/`             | Gentle Design mockups (HTML artboards) and the synced token catalog             | `DESIGN.md`                    |
 | `odd/tasks/`          | One document per feature; its `## Specs` and `## Log` say what the feature asks |                                |
