@@ -42,7 +42,7 @@ producer UUID v5 values.
 Execute exactly one SQL file in the Supabase Dashboard SQL Editor, after the
 producer deployment succeeds:
 
-1. `supabase/queries/maintenance/reset-prelaunch-order-test-data.sql`
+1. `supabase/snippets/reset-prelaunch-order-test-data.sql`
 
 That file is the complete SQL unit: it executes
 `TRUNCATE public.orders RESTART IDENTITY CASCADE` inside a transaction. Do not
@@ -83,7 +83,7 @@ from `selene_order_group:${idempotencyKey}` and shipments from
 
 1. Quiesce the disposable sandbox checkout.
 2. Redeploy the prior `create-connect-payment` function revision.
-3. Re-execute `supabase/queries/maintenance/reset-prelaunch-order-test-data.sql`
+3. Re-execute `supabase/snippets/reset-prelaunch-order-test-data.sql`
    in the Dashboard SQL Editor.
 4. Restart sandbox testing only with fresh idempotency keys.
 

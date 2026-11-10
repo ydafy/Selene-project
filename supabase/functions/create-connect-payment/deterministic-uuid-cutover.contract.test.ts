@@ -55,7 +55,7 @@ describe('deterministic checkout UUID cutover contract', () => {
     expect(runbook).toContain("maintainer's disposable sandbox only");
     expect(runbook).toContain('Do not run these steps in production.');
     expect(runbook).toContain(
-      'supabase/queries/maintenance/reset-prelaunch-order-test-data.sql',
+      'supabase/snippets/reset-prelaunch-order-test-data.sql',
     );
     expect(runbook).toContain('Do not retry any pre-cutover key.');
     expect(runbook).toContain(
