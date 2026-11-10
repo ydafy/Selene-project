@@ -48,6 +48,17 @@ function databaseUrl(): string {
 
 class Rollback extends Error {}
 
+// service_role has no privilege on shipment_cancellation_operations (only RPCs reach it), so
+// direct reads and writes run as the owner and then return to the caller's role.
+async function asOwnerFor<T>(tx: Tx, body: () => Promise<T>): Promise<T> {
+  const [{ role, session }] =
+    await tx`SELECT current_user::text AS role, session_user::text AS session`;
+  await tx`RESET ROLE`;
+  const result = await body();
+  if (role !== session) await tx.unsafe(`SET LOCAL ROLE ${role}`);
+  return result;
+}
+
 async function asService(tx: Tx) {
   await tx`SELECT set_config('request.jwt.claims', '{"role":"service_role"}', true)`;
   await tx`SET LOCAL ROLE service_role`;
@@ -111,11 +122,13 @@ async function outcomeRpc(
 }
 
 async function operation(tx: Tx, shipmentId = ids.shipment) {
-  const [row] =
-    await tx`SELECT carrier_cancellation_outcome, carrier_cancellation_recorded_at,
+  const [row] = await asOwnerFor(
+    tx,
+    () => tx`SELECT carrier_cancellation_outcome, carrier_cancellation_recorded_at,
       carrier_balance_returned, carrier_balance_returned_at, label_cost_loss_cents,
       cancellation_loss_cents, external_started_at, refund_request
-    FROM public.shipment_cancellation_operations WHERE shipment_id = ${shipmentId}`;
+    FROM public.shipment_cancellation_operations WHERE shipment_id = ${shipmentId}`,
+  );
   return row;
 }
 
@@ -209,7 +222,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         assert.equal(row.carrier_balance_returned, null);
         assert.equal(row.carrier_balance_returned_at, null);
         assert.equal(row.label_cost_loss_cents, null);
-        await tx`DELETE FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`;
+        await asOwnerFor(
+          tx,
+          () =>
+            tx`DELETE FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`,
+        );
       }
     },
   ],
@@ -300,7 +317,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     'an expired claim is rejected and the row is unchanged',
     async (tx) => {
       const token = await claim(tx);
-      await tx`UPDATE public.shipment_cancellation_operations SET claim_expires_at = '-infinity' WHERE shipment_id = ${ids.shipment}`;
+      await asOwnerFor(
+        tx,
+        () =>
+          tx`UPDATE public.shipment_cancellation_operations SET claim_expires_at = '-infinity' WHERE shipment_id = ${ids.shipment}`,
+      );
       const before = await operation(tx);
       await rejects(
         tx,
@@ -342,10 +363,13 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     async (tx) => {
       const token = await claim(tx);
       await outcomeRpc(tx, token, 'accepted', true, returnedAt);
-      await tx`UPDATE public.shipment_cancellation_operations SET carrier_cancellation_outcome = NULL,
+      await asOwnerFor(
+        tx,
+        () => tx`UPDATE public.shipment_cancellation_operations SET carrier_cancellation_outcome = NULL,
           carrier_cancellation_recorded_at = NULL, carrier_balance_returned = NULL,
           carrier_balance_returned_at = NULL, label_cost_loss_cents = NULL,
-          external_started_at = clock_timestamp() WHERE shipment_id = ${ids.shipment}`;
+          external_started_at = clock_timestamp() WHERE shipment_id = ${ids.shipment}`,
+      );
       const before = await operation(tx);
       assert.ok(before.external_started_at);
       await rejects(
@@ -461,7 +485,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         );
         assert.deepEqual(await operation(tx), before);
         assert.equal((await operation(tx)).external_started_at, null);
-        await tx`DELETE FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`;
+        await asOwnerFor(
+          tx,
+          () =>
+            tx`DELETE FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`,
+        );
       }
     },
   ],

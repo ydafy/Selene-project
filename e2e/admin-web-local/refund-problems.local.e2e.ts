@@ -10,7 +10,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { expect, test } from '@playwright/test';
-import { readLocalStack } from './local-stack';
+import { ownerExec, ownerQuery, readLocalStack, sqlText } from './local-stack';
 
 const stack = readLocalStack();
 const db = createClient(stack.apiUrl, stack.serviceRoleKey, {
@@ -54,12 +54,9 @@ async function cleanup() {
     db.from('admin_audit_logs').delete().in('target_id', shipmentIds),
     'admin_audit_logs',
   );
-  await ok(
-    db
-      .from('shipment_cancellation_operations')
-      .delete()
-      .in('shipment_id', shipmentIds),
-    'operations',
+  ownerExec(
+    stack,
+    `DELETE FROM public.shipment_cancellation_operations WHERE shipment_id IN (${shipmentIds.map(sqlText).join(', ')})`,
   );
   await ok(db.from('shipments').delete().in('id', shipmentIds), 'shipments');
   await ok(db.from('orders').delete().eq('id', orderId), 'orders');
@@ -209,16 +206,17 @@ test('admin lists both refund problems and resolves one against the local stack'
   await expect(cards).toHaveCount(1);
   await expect(cards).toContainText('Reembolso no encontrado');
 
-  const operation = await ok(
-    db
-      .from('shipment_cancellation_operations')
-      .select(
-        'refund_resolved_at, refund_resolved_by, refund_resolution_reference',
-      )
-      .eq('shipment_id', failed.shipment)
-      .single(),
-    'operation',
+  const operations = ownerQuery<{
+    refund_resolved_at: string | null;
+    refund_resolved_by: string | null;
+    refund_resolution_reference: string | null;
+  }>(
+    stack,
+    `SELECT refund_resolved_at, refund_resolved_by, refund_resolution_reference
+       FROM public.shipment_cancellation_operations WHERE shipment_id = ${sqlText(failed.shipment)}`,
   );
+  expect(operations).toHaveLength(1);
+  const [operation] = operations;
   expect(operation.refund_resolved_at).not.toBeNull();
   expect(operation.refund_resolved_by).toBe(adminId);
   expect(operation.refund_resolution_reference).toBe(reference);

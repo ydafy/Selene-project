@@ -4,15 +4,21 @@ meta {
   seq: 26
 }
 
-get {
-  url: {{baseUrl}}/rest/v1/shipment_cancellation_operations?shipment_id=eq.{{cancShipmentId}}&select=shipment_id
-  body: none
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_get_shipment_cancellation_summary
+  body: json
   auth: none
 }
 
 headers {
-  apikey: {{serviceRoleKey}}
-  Authorization: Bearer {{serviceRoleKey}}
+  apikey: {{anonKey}}
+  Authorization: Bearer {{cancBuyerToken}}
+}
+
+body:json {
+  {
+    "p_shipment_id": "{{cancShipmentId}}"
+  }
 }
 
 tests {
@@ -24,4 +30,5 @@ tests {
 
 docs {
   Neither refused call may write a cancellation identity.
+  The buyer of this order reads fn_get_shipment_cancellation_summary, which returns one row whenever an operation exists for a shipment of theirs (summary-F proves the row); service_role has no privilege on shipment_cancellation_operations.
 }

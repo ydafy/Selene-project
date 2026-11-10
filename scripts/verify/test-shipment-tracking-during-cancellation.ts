@@ -50,6 +50,17 @@ function databaseUrl(): string {
 
 class Rollback extends Error {}
 
+// service_role has no privilege on shipment_cancellation_operations (only RPCs reach it), so
+// direct reads and writes run as the owner and then return to the caller's role.
+async function asOwnerFor<T>(tx: Tx, body: () => Promise<T>): Promise<T> {
+  const [{ role, session }] =
+    await tx`SELECT current_user::text AS role, session_user::text AS session`;
+  await tx`RESET ROLE`;
+  const result = await body();
+  if (role !== session) await tx.unsafe(`SET LOCAL ROLE ${role}`);
+  return result;
+}
+
 async function fixture(tx: Tx) {
   await tx`INSERT INTO public.orders (id, buyer_id, total_amount, shipping_address, status, stripe_payment_intent_id)
     VALUES (${ids.order}, ${ids.buyer}, 180, '{}'::jsonb, 'paid', ${paymentIntent})`;
@@ -176,8 +187,11 @@ async function shipment(tx: Tx, shipmentId: string) {
 }
 
 async function operation(tx: Tx, shipmentId: string) {
-  const [row] =
-    await tx`SELECT source, external_started_at, refund_status, late_carrier_activity_at, late_carrier_activity_event_type FROM public.shipment_cancellation_operations WHERE shipment_id = ${shipmentId}`;
+  const [row] = await asOwnerFor(
+    tx,
+    () =>
+      tx`SELECT source, external_started_at, refund_status, late_carrier_activity_at, late_carrier_activity_event_type FROM public.shipment_cancellation_operations WHERE shipment_id = ${shipmentId}`,
+  );
   return row;
 }
 
@@ -201,10 +215,12 @@ async function acknowledge(
 
 // Everything on the operation except the three acknowledgement columns, as JSON.
 async function operationWithoutAcknowledgement(tx: Tx, shipmentId: string) {
-  const [row] =
-    await tx`SELECT to_jsonb(o) - 'late_carrier_activity_acknowledged_at'
+  const [row] = await asOwnerFor(
+    tx,
+    () => tx`SELECT to_jsonb(o) - 'late_carrier_activity_acknowledged_at'
       - 'late_carrier_activity_acknowledged_by' - 'late_carrier_activity_acknowledged_note' AS op
-    FROM public.shipment_cancellation_operations o WHERE shipment_id = ${shipmentId}`;
+    FROM public.shipment_cancellation_operations o WHERE shipment_id = ${shipmentId}`,
+  );
   return row.op;
 }
 
@@ -824,8 +840,11 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         (sp) => acknowledge(sp, ids.preparing, ids.admin, 'note'),
         'ADMIN_REQUIRED',
       );
-      const [{ n }] =
-        await tx`SELECT count(*)::int AS n FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.preparing} AND late_carrier_activity_acknowledged_at IS NOT NULL`;
+      const [{ n }] = await asOwnerFor(
+        tx,
+        () =>
+          tx`SELECT count(*)::int AS n FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.preparing} AND late_carrier_activity_acknowledged_at IS NOT NULL`,
+      );
       assert.equal(n, 0);
     },
   ],

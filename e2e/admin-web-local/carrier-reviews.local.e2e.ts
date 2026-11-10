@@ -10,7 +10,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { expect, test } from '@playwright/test';
-import { readLocalStack } from './local-stack';
+import { ownerExec, ownerQuery, readLocalStack, sqlText } from './local-stack';
 
 const stack = readLocalStack();
 const db = createClient(stack.apiUrl, stack.serviceRoleKey, {
@@ -47,12 +47,9 @@ async function cleanup() {
     db.from('admin_audit_logs').delete().eq('target_id', shipmentId),
     'admin_audit_logs',
   );
-  await ok(
-    db
-      .from('shipment_cancellation_operations')
-      .delete()
-      .eq('shipment_id', shipmentId),
-    'operations',
+  ownerExec(
+    stack,
+    `DELETE FROM public.shipment_cancellation_operations WHERE shipment_id = ${sqlText(shipmentId)}`,
   );
   await ok(db.from('shipments').delete().eq('id', shipmentId), 'shipments');
   await ok(db.from('orders').delete().eq('id', orderId), 'orders');
@@ -155,16 +152,18 @@ test('admin sees the pending carrier review and closes it without refund against
 
   await expect(row).toHaveCount(0, { timeout: 30_000 });
 
-  const operation = await ok(
-    db
-      .from('shipment_cancellation_operations')
-      .select(
-        'review_resolution, review_resolved_by, review_resolution_note, review_resolved_at',
-      )
-      .eq('shipment_id', shipmentId)
-      .single(),
-    'operation',
+  const operations = ownerQuery<{
+    review_resolution: string | null;
+    review_resolved_by: string | null;
+    review_resolution_note: string | null;
+    review_resolved_at: string | null;
+  }>(
+    stack,
+    `SELECT review_resolution, review_resolved_by, review_resolution_note, review_resolved_at
+       FROM public.shipment_cancellation_operations WHERE shipment_id = ${sqlText(shipmentId)}`,
   );
+  expect(operations).toHaveLength(1);
+  const [operation] = operations;
   expect(operation.review_resolution).toBe('closed_no_refund');
   expect(operation.review_resolved_by).toBe(adminId);
   expect(operation.review_resolution_note).toBe(note);

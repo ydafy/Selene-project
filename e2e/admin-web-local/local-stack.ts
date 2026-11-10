@@ -2,13 +2,19 @@
 // Each worktree has its own ports and keys, so they come from `supabase status --env`.
 // Refuses anything that is not a local URL: these specs write data.
 
-import { execSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 
 export interface LocalStack {
   apiUrl: string;
   anonKey: string;
   serviceRoleKey: string;
+  dbUrl: string;
 }
+
+const isLocalHost = (url: string) => {
+  const { hostname } = new URL(url);
+  return hostname === '127.0.0.1' || hostname === 'localhost';
+};
 
 export function parseLocalStack(statusEnv: string): LocalStack {
   const parsed = JSON.parse(statusEnv.trim()) as Record<string, unknown>;
@@ -17,13 +23,13 @@ export function parseLocalStack(statusEnv: string): LocalStack {
   const apiUrl = read('API_URL');
   const anonKey = read('ANON_KEY');
   const serviceRoleKey = read('SERVICE_ROLE_KEY');
-  if (!apiUrl || !anonKey || !serviceRoleKey)
+  const dbUrl = read('DB_URL');
+  if (!apiUrl || !anonKey || !serviceRoleKey || !dbUrl)
     throw new Error('LOCAL_STACK_NOT_RUNNING');
 
-  const { hostname } = new URL(apiUrl);
-  if (hostname !== '127.0.0.1' && hostname !== 'localhost')
-    throw new Error('LOCAL_API_URL_REQUIRED');
-  return { apiUrl, anonKey, serviceRoleKey };
+  if (!isLocalHost(apiUrl)) throw new Error('LOCAL_API_URL_REQUIRED');
+  if (!isLocalHost(dbUrl)) throw new Error('LOCAL_DB_URL_REQUIRED');
+  return { apiUrl, anonKey, serviceRoleKey, dbUrl };
 }
 
 export function readLocalStack(): LocalStack {
@@ -40,3 +46,26 @@ export function readLocalStack(): LocalStack {
   }
   return parseLocalStack(output);
 }
+
+// Runs one SQL statement as the database owner. service_role has no privilege on the
+// tables only RPCs may reach (shipment_cancellation_operations and the Connect event
+// tables), so fixture cleanup and assertions on them go through this connection.
+function runOwnerSql(stack: LocalStack, sql: string): string {
+  if (!isLocalHost(stack.dbUrl)) throw new Error('LOCAL_DB_URL_REQUIRED');
+  return execFileSync(
+    'supabase',
+    ['db', 'query', '--db-url', stack.dbUrl, '-o', 'json', sql],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+  );
+}
+
+export function ownerExec(stack: LocalStack, sql: string): void {
+  runOwnerSql(stack, sql);
+}
+
+export function ownerQuery<T>(stack: LocalStack, sql: string): T[] {
+  return (JSON.parse(runOwnerSql(stack, sql)) as { rows: T[] }).rows;
+}
+
+// Quotes a value for the SQL passed to ownerExec and ownerQuery.
+export const sqlText = (value: string) => `'${value.replaceAll("'", "''")}'`;

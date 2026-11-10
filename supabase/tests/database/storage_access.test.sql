@@ -7,7 +7,7 @@
 -- Assertions count only this file's objects (ids starting with f2000000-).
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(43);
+select plan(44);
 
 create function pg_temp.as_user(p_id uuid) returns void language sql as $$
   select set_config('request.jwt.claims',
@@ -54,6 +54,10 @@ values
   ('Avatars', 'f2000000-0000-4000-8000-000000000003/avatar.jpg', 'f2000000-0000-4000-8000-000000000003', 'f2000000-0000-4000-8000-000000000003');
 
 -- Bucket configuration.
+select is(
+  (select count(*) from storage.buckets where id = 'public-assets'),
+  0::bigint,
+  'the unused public-assets bucket does not exist');
 select is(
   (select row(public, file_size_limit, allowed_mime_types)::text from storage.buckets where id = 'evidence'),
   row(false, 52428800::bigint, array['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif',

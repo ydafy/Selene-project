@@ -53,6 +53,17 @@ async function asService(tx: Tx) {
   await tx`SET LOCAL ROLE service_role`;
 }
 
+// service_role has no privilege on shipment_cancellation_operations (only RPCs reach it), so
+// direct reads and writes run as the owner and then return to the caller's role.
+async function asOwnerFor<T>(tx: Tx, body: () => Promise<T>): Promise<T> {
+  const [{ role, session }] =
+    await tx`SELECT current_user::text AS role, session_user::text AS session`;
+  await tx`RESET ROLE`;
+  const result = await body();
+  if (role !== session) await tx.unsafe(`SET LOCAL ROLE ${role}`);
+  return result;
+}
+
 /** Same session state PostgREST sets for a signed-in user or the anon key. */
 async function as(tx: Tx, who: Who) {
   const claims =
@@ -86,8 +97,10 @@ async function claim(tx: Tx, source: Source = 'seller') {
 
 /** Direct row edits put the operation into each state the cancellation RPCs can leave it in. */
 async function set(tx: Tx, assignments: string) {
-  await tx.unsafe(
-    `UPDATE public.shipment_cancellation_operations SET ${assignments} WHERE shipment_id = '${ids.shipment}'`,
+  await asOwnerFor(tx, () =>
+    tx.unsafe(
+      `UPDATE public.shipment_cancellation_operations SET ${assignments} WHERE shipment_id = '${ids.shipment}'`,
+    ),
   );
 }
 
@@ -155,12 +168,20 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     'source is returned verbatim for each of the four sources',
     async (tx) => {
       for (const source of ['buyer', 'seller', 'paid_timeout'] as const) {
-        await tx`DELETE FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`;
+        await asOwnerFor(
+          tx,
+          () =>
+            tx`DELETE FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`,
+        );
         await claim(tx, source);
         const [row] = await summary(tx, 'buyer');
         assert.equal(row.source, source);
       }
-      await tx`DELETE FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`;
+      await asOwnerFor(
+        tx,
+        () =>
+          tx`DELETE FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`,
+      );
       await tx`UPDATE public.shipments SET status = 'preparing', label_generation_state = 'generated' WHERE id = ${ids.shipment}`;
       await claim(tx, 'preparing_timeout');
       assert.equal(
@@ -297,12 +318,16 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     'reading writes nothing: the operation row is unchanged',
     async (tx) => {
       await claim(tx);
-      const [before] =
-        await tx`SELECT * FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`;
+      const read = () =>
+        asOwnerFor(
+          tx,
+          () =>
+            tx`SELECT * FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`,
+        );
+      const [before] = await read();
       await summary(tx, 'buyer');
       await summary(tx, 'other');
-      const [after] =
-        await tx`SELECT * FROM public.shipment_cancellation_operations WHERE shipment_id = ${ids.shipment}`;
+      const [after] = await read();
       assert.deepEqual(after, before);
     },
   ],
