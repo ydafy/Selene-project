@@ -11,4 +11,4 @@ Screen a sketch (types, signatures, caller usage) against this list before imple
 - **Importable internals**: callers can reach helpers that should be private to the module. Narrow the exports.
 - **Hand-synced list**: two lists that must agree and are kept equal by hand. Keep one source, or make the build fail when they disagree. The i18n locale parity tests are the repo's model.
 
-Not a red flag: `supabase/migrations` (deployable deltas) and `supabase/queries` (canonical current SQL) are an intentional repo convention. Keep both in sync per AGENTS.md.
+Not a red flag: `supabase/migrations` (deployable deltas) and `supabase/schemas` (declarative schema, the current SQL) describe the same database on purpose. `bun run db:schema:check` keeps them in sync (`supabase/AGENTS.md`, "Declarative schema").

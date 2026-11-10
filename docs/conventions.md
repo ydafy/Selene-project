@@ -70,7 +70,7 @@ An import that leaves its top-level folder (the app folder, the shared folder, o
 - Playwright specs stay in `e2e/` (`e2e/admin-web/`, `e2e/admin-web-local/`).
 - A guard that scans all of `apps/frontend/src/` sits at the `apps/frontend/` root, so it does not scan its own text: `apps/frontend/frontend-import-boundaries.test.ts`, `apps/frontend/legacy-wallet-removal.test.ts`. A guard over the whole repository sits in `scripts/guards/` (`scripts/guards/test-only-guard.test.ts`).
 - Do not create new `__tests__` folders or a top-level `tests` folder; `scripts/guards/test-placement.test.ts` fails on one. The folders in its legacy list predate this rule; do not add to them.
-- `supabase/migrations/__tests__/` and `supabase/queries/__tests__/` keep their folders: a migration file name starts with a timestamp, so its test cannot sit next to it under a matching name. `supabase/functions/_shared/__tests__/` keeps only the guards that scan every Edge Function and the zod preload `bunfig.toml` loads.
+- `supabase/migrations/__tests__/` keeps its folder: a migration file name starts with a timestamp, so its test cannot sit next to it under a matching name. `supabase/functions/_shared/__tests__/` keeps only the guards that scan every Edge Function and the zod preload `bunfig.toml` loads.
 
 ## Source-text tests
 
