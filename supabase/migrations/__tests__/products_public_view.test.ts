@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const root = join(import.meta.dir, '..', '..', '..');
+const root = join(import.meta.dir, '..', '..');
 const migrationName = readdirSync(join(root, 'migrations')).find((f) =>
   f.endsWith('_products_public_view.sql'),
 );

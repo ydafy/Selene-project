@@ -8,7 +8,7 @@ import { join } from 'node:path';
  * own uploads for the dispute's order. `supabase db reset` and pgTAP prove the SQL runs.
  */
 
-const root = join(import.meta.dir, '..', '..', '..', '..');
+const root = join(import.meta.dir, '..', '..', '..');
 const read = (path: string) =>
   readFileSync(join(root, path), 'utf8').replace(/\r\n/g, '\n');
 const migrationName = readdirSync(join(root, 'supabase/migrations')).find(

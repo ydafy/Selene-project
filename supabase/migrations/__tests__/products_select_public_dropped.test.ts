@@ -8,7 +8,7 @@ import { join } from 'node:path';
  * prove that a non-owner reads no table row and the owner and admin still do.
  */
 
-const MIGRATIONS_DIR = join(import.meta.dir, '..', '..', '..', 'migrations');
+const MIGRATIONS_DIR = join(import.meta.dir, '..');
 
 const normalize = (sql: string): string =>
   sql
