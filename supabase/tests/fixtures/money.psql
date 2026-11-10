@@ -1,0 +1,127 @@
+-- Shared fixtures for the money pgTAP files (#275). Include it after
+-- `select plan(n);` with `\ir ../fixtures/money.psql`. Every helper lives in
+-- pg_temp, so it disappears with the session and the file's rollback.
+-- The extension is .psql on purpose: `supabase test db` runs every *.sql file
+-- under supabase/tests as a test.
+--
+-- Ids are deterministic: pg_temp.mu(n) is f0000000-0000-4000-8000-<n>, so a
+-- test names users, listings, orders, shipments and runs by small integers.
+-- Call the helpers as the table owner (before `set local role`).
+
+create function pg_temp.mu(n integer) returns uuid language sql as $$
+  select ('f0000000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid
+$$;
+
+-- An auth user; the auth triggers create its profile and profiles_private
+-- rows. p_role 'admin' makes it an admin in profiles_private.
+create function pg_temp.money_user(p_n integer, p_role text default 'user')
+returns uuid language plpgsql as $$
+begin
+  insert into auth.users (
+    instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+    raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+    confirmation_token, recovery_token, email_change_token_new, email_change
+  ) values (
+    '00000000-0000-0000-0000-000000000000', pg_temp.mu(p_n), 'authenticated', 'authenticated',
+    'money_' || p_n || '@test.local', '', now(), '{}'::jsonb,
+    jsonb_build_object('username', 'money_' || p_n), now(), now(), '', '', '', ''
+  );
+  if p_role = 'admin' then
+    update public.profiles_private set role = 'admin' where id = pg_temp.mu(p_n);
+  end if;
+  return pg_temp.mu(p_n);
+end $$;
+
+-- A sold listing of p_seller priced at p_price pesos, with the publication
+-- economics fields computed from system_settings like a real publication.
+create function pg_temp.money_product(p_n integer, p_seller integer, p_price numeric default 1000)
+returns uuid language sql as $$
+  insert into public.products (
+    id, name, description, price, category, condition, usage, images, status,
+    specifications, seller_id, shipping_cost, origin_zip, package_preset,
+    publication_shipping_reserve_cents, publication_commission_rate,
+    publication_insurance_rate
+  )
+  select pg_temp.mu(p_n), 'Test GPU', 'Test listing', p_price, 'GPU', 'used', 'gaming',
+    array['https://example.test/p.png'], 'SOLD'::public.product_status_enum,
+    '{}'::jsonb, pg_temp.mu(p_seller), 100, '06600', 'gpu_1',
+    round(100 * 100)::bigint + s.shipping_buffer_cents
+      + ceil(round(p_price * 100)::numeric * public.normalize_publication_rate(s.insurance_rate))::bigint,
+    public.normalize_publication_rate(s.service_fee_pct),
+    public.normalize_publication_rate(s.insurance_rate)
+  from public.system_settings s where s.id = 1
+  returning id
+$$;
+
+-- One paid Connect order (payment intent pi_test_<order>) with one shipment
+-- of p_seller holding one listing (p_shipment is also the listing number).
+-- p_delivered_ago sets delivered_at to now() minus it; NULL leaves it empty.
+-- p_payment_intent NULL makes a shipment with no Connect payment.
+create function pg_temp.money_shipment(
+  p_order integer, p_shipment integer, p_seller integer, p_buyer integer,
+  p_status public.order_status_enum default 'delivered',
+  p_delivered_ago interval default null,
+  p_net_payout numeric default 900,
+  p_payment_intent text default ''
+) returns uuid language plpgsql as $$
+declare
+  v_intent text := case when p_payment_intent = '' then 'pi_test_' || p_order else p_payment_intent end;
+begin
+  perform pg_temp.money_product(p_shipment, p_seller);
+  insert into public.orders (id, buyer_id, total_amount, shipping_address, status, stripe_payment_intent_id)
+  values (pg_temp.mu(p_order), pg_temp.mu(p_buyer), 1000, '{}'::jsonb, p_status, v_intent)
+  on conflict (id) do nothing;
+  insert into public.shipments (
+    id, order_id, seller_id, status, delivered_at, stripe_payment_intent_id
+  ) values (
+    pg_temp.mu(p_shipment), pg_temp.mu(p_order), pg_temp.mu(p_seller), p_status,
+    now() - p_delivered_ago, v_intent
+  );
+  insert into public.order_items (order_id, product_id, seller_id, price_at_purchase, net_payout, shipment_id)
+  values (pg_temp.mu(p_order), pg_temp.mu(p_shipment), pg_temp.mu(p_seller), 1000, p_net_payout, pg_temp.mu(p_shipment));
+  return pg_temp.mu(p_shipment);
+end $$;
+
+-- A dispute on p_shipment opened by its buyer, then moved to p_status. The
+-- opened-notice trigger accepts only service_role, so the insert runs with
+-- service_role claims and the caller's claims come back afterwards.
+create function pg_temp.money_dispute(p_n integer, p_shipment integer, p_status public.dispute_status default 'open')
+returns uuid language plpgsql as $$
+declare
+  v_claims text := current_setting('request.jwt.claims', true);
+begin
+  perform set_config('request.jwt.claims', '{"role": "service_role"}', true);
+  insert into public.disputes (id, order_id, buyer_id, seller_id, reason, description, status, shipment_id)
+  select pg_temp.mu(p_n), s.order_id, o.buyer_id, s.seller_id, 'not_working', 'Test dispute',
+    'open', s.id
+  from public.shipments s join public.orders o on o.id = s.order_id
+  where s.id = pg_temp.mu(p_shipment);
+  if p_status <> 'open' then
+    update public.disputes set status = p_status where id = pg_temp.mu(p_n);
+  end if;
+  perform set_config('request.jwt.claims', coalesce(v_claims, ''), true);
+  return pg_temp.mu(p_n);
+end $$;
+
+-- A payout run of p_seller started by admin p_actor over p_shipments, each
+-- mapped with its order_items net_payout in cents. amount is the sum.
+-- release-connect-payout maps release_amount_cents instead (the view's amount
+-- after the label deduction); pass a shipment whose net_payout already is the
+-- amount a test needs.
+create function pg_temp.money_payout_run(
+  p_run integer, p_seller integer, p_actor integer, p_shipments integer[],
+  p_status text default 'pending_reconciliation', p_stage text default 'ready'
+) returns uuid language plpgsql as $$
+begin
+  insert into public.connect_payout_runs (id, idempotency_key, seller_id, amount, status, actor_id, release_stage)
+  select pg_temp.mu(p_run), 'test-run-' || p_run, pg_temp.mu(p_seller),
+    coalesce(sum(round(oi.net_payout * 100)), 0)::integer, p_status, pg_temp.mu(p_actor), p_stage
+  from unnest(p_shipments) as n
+  left join public.order_items oi on oi.shipment_id = pg_temp.mu(n);
+  insert into public.connect_payout_run_shipments (run_id, shipment_id, net_payout, status)
+  select pg_temp.mu(p_run), pg_temp.mu(n), round(sum(oi.net_payout) * 100)::integer, p_status
+  from unnest(p_shipments) as n
+  join public.order_items oi on oi.shipment_id = pg_temp.mu(n)
+  group by n;
+  return pg_temp.mu(p_run);
+end $$;
