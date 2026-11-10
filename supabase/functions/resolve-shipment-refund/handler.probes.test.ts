@@ -5,7 +5,7 @@ import {
   type ResolveShipmentRefundDeps,
 } from './handler.ts';
 
-// Verifier probes (B2.3.1, S3/S8): order of checks, CORS on errors, and no body or RPC work for non-admins.
+// Verifier probes (B2.3.1, S3/S8): order of checks and no body or RPC work for non-admins.
 const SHIPMENT = '7b310000-0000-4000-8000-000000000011';
 const ADMIN = '00000000-0000-4000-8000-000000000001';
 
@@ -48,14 +48,13 @@ const post = (body: string, auth = 'Bearer jwt') =>
   });
 
 describe('resolve-shipment-refund verifier probes', () => {
-  it('a suspended or banned admin (isAdmin false) gets 403 ADMIN_ONLY with CORS headers and no RPC call', async () => {
+  it('a suspended or banned admin (isAdmin false) gets 403 ADMIN_ONLY and no RPC call', async () => {
     const { handler, calls } = deps({ isAdmin: async () => false });
     const response = await handler(
       post(JSON.stringify({ shipment_id: SHIPMENT, reference: 'R' })),
     );
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({ error: 'ADMIN_ONLY' });
-    expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
     expect(calls).toEqual(['getUserId']);
   });
 

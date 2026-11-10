@@ -1,6 +1,7 @@
 import { createClient } from '../_shared/supabase-js.ts';
 
 import type { Database } from '../../../packages/types/src/database.types.ts';
+import { serveAdminWeb } from '../_shared/cors.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import {
   createResolveShipmentRefundHandler,
@@ -66,4 +67,4 @@ const handler = createResolveShipmentRefundHandler({
   log,
 });
 
-Deno.serve(withSentry('resolve-shipment-refund', handler));
+serveAdminWeb(withSentry('resolve-shipment-refund', handler));

@@ -2,6 +2,7 @@ import { createClient } from '../_shared/supabase-js.ts';
 
 import type { Database } from '../../../packages/types/src/database.types.ts';
 import { isActiveAdmin } from '../_shared/auth/admin-auth.ts';
+import { serveAdminWeb } from '../_shared/cors.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import { createResolveShipmentLabelReconciliationHandler } from './handler.ts';
 
@@ -69,4 +70,4 @@ const handler = createResolveShipmentLabelReconciliationHandler({
   log,
 });
 
-Deno.serve(withSentry('resolve-shipment-label-reconciliation', handler));
+serveAdminWeb(withSentry('resolve-shipment-label-reconciliation', handler));

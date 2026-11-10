@@ -84,19 +84,6 @@ async function send(h: ReturnType<typeof harness>, request: Request) {
 }
 
 describe('resolve-shipment-refund handler', () => {
-  it('answers CORS preflight without authenticating', async () => {
-    const h = harness();
-    const response = await h.handler(
-      new Request('http://localhost/x', { method: 'OPTIONS' }),
-    );
-    expect(response.status).toBe(200);
-    expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
-    expect(response.headers.get('Access-Control-Allow-Headers')).toContain(
-      'authorization',
-    );
-    expect(h.tokens).toEqual([]);
-  });
-
   it('rejects anything but POST with 405 METHOD_NOT_ALLOWED before authenticating', async () => {
     const h = harness();
     const { response, body } = await send(
@@ -205,7 +192,6 @@ describe('resolve-shipment-refund handler', () => {
     );
     expect(response.status).toBe(200);
     expect(response.headers.get('Content-Type')).toBe('application/json');
-    expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
     expect(body).toEqual({
       resolved: true,
       shipment_cancelled: true,
@@ -334,7 +320,9 @@ describe('resolve-shipment-refund wiring (source contract)', () => {
   const index = readFileSync(join(import.meta.dir, 'index.ts'), 'utf8');
 
   it('is wrapped in withSentry under its folder name and serves the handler', () => {
-    expect(index).toContain("serve(withSentry('resolve-shipment-refund',");
+    expect(index).toContain(
+      "serveAdminWeb(withSentry('resolve-shipment-refund',",
+    );
     expect(index).toContain("from '../_shared/sentry.ts'");
   });
 

@@ -10,12 +10,7 @@
  * Raw database text only reaches the log.
  */
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
-};
-const JSON_HEADERS = { ...CORS_HEADERS, 'Content-Type': 'application/json' };
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
 const REASONS = [
   'tracking_unknown',
@@ -114,8 +109,6 @@ export function createListShipmentOperationReviewsHandler(
   deps: ListShipmentOperationReviewsDeps,
 ) {
   return async (req: Request): Promise<Response> => {
-    if (req.method === 'OPTIONS')
-      return new Response('ok', { headers: CORS_HEADERS });
     // POST is accepted because supabase-js `functions.invoke` sends POST by default.
     if (req.method !== 'GET' && req.method !== 'POST')
       return fail(405, 'METHOD_NOT_ALLOWED');
