@@ -189,7 +189,7 @@ The development project's cron jobs sent the anon JWT, or a service-role JWT for
 
 ## 11. Mobile app signing
 
-- Android: the keystore committed before 2026-10-20 (`apps/frontend/credentials/android/keystore.jks`) is public in Git history and must never sign a build. Let EAS generate and hold the upload keystore (`eas credentials` in `apps/frontend`, Android, build credentials), and enroll in Play App Signing on the first upload.
+- Android: the keystore committed before 2026-10-20 (`apps/frontend/credentials/android/keystore.jks`) is public in Git history and must never sign a build. Let EAS generate and hold the upload keystore (`bunx eas-cli credentials` in `apps/frontend`, Android, build credentials), and enroll in Play App Signing on the first upload.
 - Google Sign-In: register the SHA-1 of the EAS keystore (and of the Play App Signing key once it exists) on the Android OAuth client used by `@react-native-google-signin/google-signin` in `apps/frontend/app.json`.
 - Signing files stay out of the repository: `apps/frontend/credentials.json` and `apps/frontend/credentials/` are gitignored.
 
@@ -197,8 +197,8 @@ The development project's cron jobs sent the anon JWT, or a service-role JWT for
 
 - Android push goes through Firebase Cloud Messaging. The Firebase project is the Google Cloud project that holds the Google Sign-In OAuth clients, with the Android app `com.selene.marketplace`.
 - FCM V1 key: in Firebase, Project settings > Service accounts > Generate new private key; upload the JSON on expo.dev (project `selene` > Credentials > Android > `com.selene.marketplace` > FCM V1 service account key), then delete the downloaded file. Expo uses it to send to FCM; it never goes in the repository or in Supabase.
-- `apps/frontend/google-services.json` stays out of the repository (gitignored). EAS provides it as the file variable `GOOGLE_SERVICES_JSON`, which `apps/frontend/app.config.ts` reads: `eas env:set --name GOOGLE_SERVICES_JSON --type file --visibility sensitive --value ./google-services.json --environment development --environment preview --environment production`, run in `apps/frontend`. Local builds read `apps/frontend/google-services.json`. Without the file the Android prebuild fails, so a local `expo run:android` needs a copy of it in `apps/frontend/`; `bun run worktree:env` copies only the `.env` files, so a new worktree does not get it.
-- iOS needs the Apple Developer Program. Register the device and run `eas build --profile development --platform ios`, accepting the push key prompt. The first iOS build also moves Stripe to Swift Package Manager (the Stripe plugin in `apps/frontend/app.json` sets `"disableSPM": true` until then) and checks the other iOS-only items in #217.
+- `apps/frontend/google-services.json` stays out of the repository (gitignored). EAS provides it as the file variable `GOOGLE_SERVICES_JSON`, which `apps/frontend/app.config.ts` reads: `bunx eas-cli env:set --name GOOGLE_SERVICES_JSON --type file --visibility sensitive --value ./google-services.json --environment development --environment preview --environment production`, run in `apps/frontend`. Local builds read `apps/frontend/google-services.json`. Without the file the Android prebuild fails, so a local `expo run:android` needs a copy of it in `apps/frontend/`; `bun run worktree:env` copies only the `.env` files, so a new worktree does not get it.
+- iOS needs the Apple Developer Program. Register the device and run `bunx eas-cli build --profile development --platform ios`, accepting the push key prompt. The first iOS build also moves Stripe to Swift Package Manager (the Stripe plugin in `apps/frontend/app.json` sets `"disableSPM": true` until then) and checks the other iOS-only items in #217.
 - Check: a push sent by `dispatch-push` reaches a production build, and its ticket and receipt in `push_deliveries` are `ok`.
 
 ## 12. Verification
