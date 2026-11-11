@@ -1,15 +1,18 @@
 # Supabase project configuration tracked for deployment-critical function flags.
-# Each entry mirrors the deployed `verify_jwt` value of project acoiclkeymgtlwcxilun.
-# Functions not listed here keep the default (`verify_jwt = true`). A CLI deploy
-# without these entries would re-enable JWT verification and break the callers.
+# Every function has an entry with `verify_jwt = false` and authenticates its caller in
+# code (#399): the gateway check only understands the legacy JWT keys, so it must be off
+# before the project rotates to asymmetric JWT signing keys (#337). A function missing
+# here would deploy with the default `verify_jwt = true`.
+# `supabase/functions/_shared/__tests__/auth-in-code.test.ts` enforces both rules.
 
 # Public HTTPS redirect bridge used by Stripe Account Links. Stripe cannot send
-# Supabase JWT headers to return_url/refresh_url, so JWT verification must stay
-# disabled for this function only.
+# Supabase JWT headers to return_url/refresh_url; it only redirects to configured
+# deep links and reads no data, so it checks no caller.
 [functions.connect-onboarding-return]
 verify_jwt = false
 
-# Envia tracking webhook; Envia does not send Supabase JWTs.
+# Envia tracking webhook; Envia does not send Supabase JWTs. Authenticated by the
+# Envia webhook signature (`_shared/envia/envia-webhook-verify.ts`).
 [functions.envia-webhook]
 verify_jwt = false
 
@@ -41,7 +44,8 @@ verify_jwt = false
 [functions.auto-cancel-preparing]
 verify_jwt = false
 
-# Cron-invoked tracking poller. Deployed without JWT verification.
+# Cron-invoked tracking poller; authenticated by `Authorization: Bearer
+# <TRACK_SHIPMENTS_CRON_SECRET>`.
 [functions.track-shipments]
 verify_jwt = false
 
@@ -59,39 +63,102 @@ verify_jwt = false
 [functions.dispatch-push]
 verify_jwt = false
 
-# Self-service account closure: the caller JWT is verified at the gateway and again by
-# auth.getUser inside the function, which also requires a sign-in newer than 10 minutes.
+# Self-service account closure: auth.getUser verifies the caller's access token, and the
+# function also requires a sign-in newer than 10 minutes.
 [functions.delete-account]
-verify_jwt = true
+verify_jwt = false
 
-# Admin-invoked: the caller's Supabase JWT is verified at the gateway and the function
-# then checks profiles_private.role = 'admin'.
+# Admin-invoked: auth.getUser verifies the caller's access token, and the function then
+# checks profiles_private.role = 'admin'.
 [functions.resolve-shipment-refund]
-verify_jwt = true
+verify_jwt = false
 
 # Admin-invoked list of unresolved refund problems; same admin check as resolve-shipment-refund.
 [functions.list-shipment-refund-problems]
-verify_jwt = true
+verify_jwt = false
 
 # Admin "Envios" queue (preparing-timeout cancellations under carrier review): list and decision;
-# same admin check as the refund pair.
+# same admin check as the refund pair. The late carrier activity and label reconciliation
+# pairs below use the same check.
 [functions.list-shipment-operation-reviews]
-verify_jwt = true
+verify_jwt = false
 
 [functions.resolve-shipment-operation-review]
-verify_jwt = true
+verify_jwt = false
 
 [functions.list-shipment-late-carrier-activity]
-verify_jwt = true
+verify_jwt = false
 
 [functions.acknowledge-shipment-late-carrier-activity]
-verify_jwt = true
+verify_jwt = false
 
 [functions.list-shipment-label-reconciliations]
-verify_jwt = true
+verify_jwt = false
 
 [functions.resolve-shipment-label-reconciliation]
-verify_jwt = true
+verify_jwt = false
+
+# Admin-invoked; auth.getUser verifies the caller's access token, then the function checks
+# the admin role.
+[functions.get-connect-payout-release-queue]
+verify_jwt = false
+
+[functions.reconcile-connect-payments]
+verify_jwt = false
+
+[functions.release-connect-payout]
+verify_jwt = false
+
+[functions.resolve-dispute]
+verify_jwt = false
+
+# Signed-in user calls (from the app, and for some from the admin-web); auth.getUser verifies
+# the caller's access token, so a missing token or the anon key gets no user and the call is
+# rejected. Functions shared with the admin-web check the role in code.
+[functions.cancel-order]
+verify_jwt = false
+
+[functions.confirm-shipment-delivery]
+verify_jwt = false
+
+[functions.create-connect-account]
+verify_jwt = false
+
+[functions.create-connect-payment]
+verify_jwt = false
+
+[functions.create-dispute]
+verify_jwt = false
+
+[functions.create-return-intent]
+verify_jwt = false
+
+[functions.generate-return-label]
+verify_jwt = false
+
+[functions.generate-shipping-label]
+verify_jwt = false
+
+[functions.get-seller-onboarding]
+verify_jwt = false
+
+[functions.get-shipping-quote]
+verify_jwt = false
+
+[functions.manage-payment-methods]
+verify_jwt = false
+
+[functions.refresh-connect-account-status]
+verify_jwt = false
+
+[functions.resolve-dispute-refund]
+verify_jwt = false
+
+[functions.resolve-shipment-tracking-url]
+verify_jwt = false
+
+[functions.rollback-connect-payment]
+verify_jwt = false
 
 # Local Auth mirrors the deployed settings of project acoiclkeymgtlwcxilun so the
 # signup flow (confirmation code, password policy) behaves the same locally.

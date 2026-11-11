@@ -14,6 +14,7 @@ The monthly routine (`docs/maintenance.md`) runs step 1.
 
 1. `npx skills check` lists skills with upstream changes. It takes about 2 minutes because it fetches every source, so give it a timeout of at least 5 minutes.
 2. `npx skills update <name>` installs the new version.
+   The CLI can also create junction folders for other agents (a `skills` folder under `.claude`, `.hermes`, or `.qwen`) that link back to `.agents/skills/`. Remove each junction with `cmd /c rmdir <path>`, never a recursive delete: it can follow the link and delete the real skill. The CLI also writes CRLF line endings; Git stores LF again when you stage the files.
 3. Read the diff before committing, like any third-party code: scripts, network calls, and instructions that conflict with `AGENTS.md`.
 4. `gentle-ai skill-registry refresh`.
 

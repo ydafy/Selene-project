@@ -239,14 +239,4 @@ describe('list-shipment-label-reconciliations wiring', () => {
     expect(index).toContain("from '../_shared/auth/admin-auth.ts'");
     expect(index).toContain('fn_list_shipment_label_reconciliations');
   });
-
-  it('declares verify_jwt = true in config.toml', () => {
-    const config = readFileSync(
-      join(import.meta.dir, '../../config.toml'),
-      'utf8',
-    );
-    expect(config).toMatch(
-      /\[functions\.list-shipment-label-reconciliations\]\r?\nverify_jwt = true/,
-    );
-  });
 });

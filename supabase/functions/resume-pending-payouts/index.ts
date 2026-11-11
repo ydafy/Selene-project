@@ -27,7 +27,7 @@ import {
   type ReconciliationMappingClient,
 } from './reconciliation-adapter.ts';
 import type { ReleaseQueueRow } from '../release-connect-payout/release-connect-payout.ts';
-import { withSentry } from '../_shared/sentry.ts';
+import { reportMessage, withSentry } from '../_shared/sentry.ts';
 
 const getStripeErrorLogMeta = (error: unknown): Record<string, unknown> => {
   if (!error || typeof error !== 'object') {
@@ -84,10 +84,9 @@ const RECONCILE_LIST_LIMIT = 100;
 
 const serveHandler = async (req: Request): Promise<Response> => {
   try {
-    validateResumeRequest({
-      method: req.method,
-      suppliedCronSecret: req.headers.get('x-cron-secret'),
-      expectedCronSecret: Deno.env.get('CRON_SECRET') ?? null,
+    await validateResumeRequest(req, {
+      expectedCronSecret: Deno.env.get('CRON_SECRET'),
+      reportMessage,
     });
 
     const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY');

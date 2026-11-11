@@ -398,14 +398,4 @@ describe('resolve-shipment-label-reconciliation wiring', () => {
   it('only calls the resolve RPC: no refund, Stripe or HTTP call', () => {
     expect(index).not.toMatch(/stripe|refund|fetch\(/i);
   });
-
-  it('declares verify_jwt = true in config.toml', () => {
-    const config = readFileSync(
-      join(import.meta.dir, '../../config.toml'),
-      'utf8',
-    );
-    expect(config).toMatch(
-      /\[functions\.resolve-shipment-label-reconciliation\]\r?\nverify_jwt = true/,
-    );
-  });
 });
