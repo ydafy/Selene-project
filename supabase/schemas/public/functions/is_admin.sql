@@ -20,7 +20,7 @@ BEGIN
 END;
 $function$;
 
-GRANT EXECUTE ON FUNCTION "public"."is_admin"() TO PUBLIC, "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."is_admin"() TO "anon", "authenticated";
 
 GRANT EXECUTE ON FUNCTION "public"."is_admin"() TO "service_role";
 
@@ -28,4 +28,4 @@ REVOKE ALL ON FUNCTION "public"."is_admin"() FROM "postgres";
 
 GRANT EXECUTE ON FUNCTION "public"."is_admin"() TO "postgres";
 
-REVOKE ALL ON FUNCTION "public"."is_admin"() FROM "anon";
+REVOKE ALL ON FUNCTION "public"."is_admin"() FROM PUBLIC;

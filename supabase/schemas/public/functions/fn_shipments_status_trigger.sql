@@ -13,7 +13,7 @@ BEGIN
 END;
 $function$;
 
-GRANT EXECUTE ON FUNCTION "public"."fn_shipments_status_trigger"() TO PUBLIC;
+REVOKE ALL ON FUNCTION "public"."fn_shipments_status_trigger"() FROM PUBLIC;
 
 GRANT EXECUTE ON FUNCTION "public"."fn_shipments_status_trigger"() TO "service_role";
 

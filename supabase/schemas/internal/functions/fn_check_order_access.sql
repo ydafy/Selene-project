@@ -14,6 +14,10 @@ BEGIN
            OR internal.is_admin();
 END; $function$;
 
+GRANT EXECUTE ON FUNCTION "internal"."fn_check_order_access"(uuid) TO "service_role";
+
+REVOKE ALL ON FUNCTION "internal"."fn_check_order_access"(uuid) FROM PUBLIC;
+
 CREATE OR REPLACE FUNCTION internal.fn_check_order_access (
   p_order_id uuid,
   p_user_id  uuid

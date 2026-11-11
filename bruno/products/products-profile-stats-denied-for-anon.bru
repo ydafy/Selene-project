@@ -1,0 +1,31 @@
+meta {
+  name: products-profile-stats-denied-for-anon
+  type: http
+  seq: 70
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/get_profile_stats
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+  Content-Type: application/json
+}
+
+body:json {
+  { "target_user_id": "00000000-0000-4000-8000-000000000002" }
+}
+
+tests {
+  test("a guest cannot call get_profile_stats", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody().code).to.equal("42501");
+  });
+}
+
+docs {
+  No client calls get_profile_stats, so anon and authenticated hold no EXECUTE on it (#305; the contract is supabase/tests/database/function_grants.test.sql).
+}

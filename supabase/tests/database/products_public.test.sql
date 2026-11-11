@@ -156,27 +156,23 @@ select is(pg_temp.visible('public.products'),
 reset role;
 
 -- get_profile_stats counts SOLD listings through the view ------------------------
+-- No client calls it, so anon and authenticated cannot execute it (#305); the
+-- server still gets the counts.
 select set_config('request.jwt.claims', '{"role": "anon"}', true);
 set local role anon;
-select is(
-  public.get_profile_stats(pg_temp.mu(77001))::jsonb,
-  '{"sales_count": 1, "rating_average": 0, "reviews_count": 0}'::jsonb,
-  'for anon, get_profile_stats counts the one non-deleted SOLD listing');
-reset role;
-select pg_temp.as_user(77001);
-set local role authenticated;
-select is(
-  public.get_profile_stats(pg_temp.mu(77001))::jsonb,
-  '{"sales_count": 1, "rating_average": 0, "reviews_count": 0}'::jsonb,
-  'for the owner, get_profile_stats leaves out the soft-deleted SOLD listing');
+select throws_ok($$select public.get_profile_stats(pg_temp.mu(77001))$$, '42501', null,
+  'anon cannot execute get_profile_stats');
 reset role;
 select pg_temp.as_user(77002);
 set local role authenticated;
+select throws_ok($$select public.get_profile_stats(pg_temp.mu(77001))$$, '42501', null,
+  'authenticated cannot execute get_profile_stats');
+reset role;
+select set_config('request.jwt.claims', '{"role": "service_role"}', true);
 select is(
   public.get_profile_stats(pg_temp.mu(77001))::jsonb,
   '{"sales_count": 1, "rating_average": 0, "reviews_count": 0}'::jsonb,
-  'for a stranger, get_profile_stats counts the same sales');
-reset role;
+  'get_profile_stats counts the one non-deleted SOLD listing and leaves out the soft-deleted one');
 select is(
   public.get_profile_stats(pg_temp.mu(77002))::jsonb,
   '{"sales_count": 0, "rating_average": 0, "reviews_count": 0}'::jsonb,
