@@ -263,3 +263,15 @@ It is established as the standard procedure for structural inconsistencies.
 - The types are generated with the migration and committed with it, before the push to the remote. This replaces "then `bun run db:types`" after the push in the 2026-11-10 entry above.
 
 **Consequence:** The local generator is the `pgmeta` image pinned in `supabase/supabase.lock`, so a stack lock update can change the generated file; regenerate it in the same pull request. It is more precise than the remote one: generated columns are `never` on insert, NOT NULL JSON is `NonNullable<Json>`, and view columns take their nullability from the base tables.
+
+## 2026-11-11: Client Grants Are Explicit Per Role
+
+**Context:** The default privileges in `public` gave `anon` and `authenticated` every privilege on each new table and sequence, so only RLS protected 13 tables, and five functions kept EXECUTE for `PUBLIC` (#122, #305). The local database and the remote project had the same grants.
+
+**Decision:**
+
+- The `postgres` default privileges in `public` grant clients nothing on tables, sequences or functions; `service_role` keeps its defaults.
+- Each table, view, sequence and function grants each client role exactly what the code uses today: the app and admin-web calls, and what RLS and storage policies evaluated for that role read or call. Calls that were already denied stay denied (#66, #178).
+- `supabase/tests/database/client_grants.test.sql` and `supabase/tests/database/function_grants.test.sql` pin the exact lists, not upper bounds, so adding or removing a client grant is a deliberate change to the schema file and the test.
+
+**Consequence:** A new table is invisible to clients until its file grants something, which is also the Supabase default for new projects since 2026-10-30. Some anon grants exist only because guests can reach signed-in flows (#434); they go when those flows are guarded.

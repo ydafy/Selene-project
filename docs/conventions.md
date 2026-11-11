@@ -80,6 +80,10 @@ A test runs the code it tests. Call the function, call the Edge Function handler
 - `scripts/guards/source-text-tests.test.ts` counts, per area, the test files that read files (`readFileSync`, `Bun.file(`, `readFile(`) without that line. It fails when an area's count grows. When you convert or delete one of those tests, it fails until you lower the area's number in `scripts/guards/source-text-tests.ts`.
 - Roadmap #272 converts the older tests. When you touch a frontend or admin-web file whose test checks its wiring as text, mount the screen in that test instead.
 
+## Database grants
+
+- Every new table, view, sequence or function states in its schema file exactly what `anon` and `authenticated` get, and nothing by default. The procedure and the two tests that pin the lists are in `supabase/AGENTS.md`, "Declarative schema".
+
 ## File naming
 
 - Every file uses kebab-case: `apps/frontend/src/shared/ui/product/product-card.tsx` exports `ProductCard`, `apps/frontend/src/features/auth/hooks/use-auth.ts` exports `useAuth`, `apps/frontend/src/shared/utils/money/format-currency.ts` exports `formatCurrency`. Identifiers inside the file keep their usual case.
