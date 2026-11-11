@@ -3,6 +3,8 @@
 // project that may hold unmerged work or miss an unapplied migration. Run it after
 // `supabase db reset`; it only reads the database. The generator prints unformatted
 // TypeScript, so the output goes through the repository's Prettier before writing.
+// `bun run db:types:check` (`--check`, CI job `db-test`) compares instead of writing
+// and fails when the committed file differs.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,7 +22,18 @@ export const GENERATE_COMMAND = [
   'public',
 ];
 
-export type Mode = 'write';
+export type Mode = 'write' | 'check';
+
+const FIX_HINT =
+  'Run `supabase db reset` and `bun run db:types`, then commit the file with its migration.';
+
+function firstDifferentLine(a: string, b: string): number {
+  const left = a.split('\n');
+  const right = b.split('\n');
+  let line = 0;
+  while (line < left.length && left[line] === right[line]) line += 1;
+  return line + 1;
+}
 
 export interface GenerateResult {
   exitCode: number;
@@ -55,6 +68,20 @@ export async function runDatabaseTypes(
   }
 
   const formatted = await deps.format(generated.stdout);
+  if (mode === 'check') {
+    const committed = deps.readCommitted()?.replaceAll('\r\n', '\n');
+    if (committed === undefined) {
+      return { ok: false, message: `${TYPES_PATH} is missing.\n${FIX_HINT}` };
+    }
+    if (committed !== formatted) {
+      const line = firstDifferentLine(committed, formatted);
+      return {
+        ok: false,
+        message: `${TYPES_PATH} does not match the local database (first difference at line ${line}).\n${FIX_HINT}`,
+      };
+    }
+    return { ok: true, message: `${TYPES_PATH} matches the local database.` };
+  }
   deps.writeCommitted(formatted);
   return { ok: true, message: `Wrote ${TYPES_PATH}.` };
 }
@@ -62,7 +89,8 @@ export async function runDatabaseTypes(
 if (import.meta.main) {
   const root = fileURLToPath(new URL('../../', import.meta.url));
   const typesFile = join(root, TYPES_PATH);
-  const result = await runDatabaseTypes('write', {
+  const mode: Mode = process.argv.includes('--check') ? 'check' : 'write';
+  const result = await runDatabaseTypes(mode, {
     generate: () => {
       const run = Bun.spawnSync(GENERATE_COMMAND, {
         cwd: root,
