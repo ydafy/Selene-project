@@ -4,7 +4,7 @@
 -- explicit ACL entries instead.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(10);
+select plan(16);
 
 -- EXECUTE entries granted explicitly to p_role on p_function.
 create function pg_temp.execute_entries(p_function regprocedure, p_role text) returns bigint
@@ -54,6 +54,43 @@ select is(
     + pg_temp.execute_entries('public.privilege_parity_probe()', 'authenticated'),
   0::bigint,
   'a function postgres creates in public gets no anon or authenticated EXECUTE entry');
+
+-- Tables and sequences: clients get only the grants each object's schema file
+-- states (#305); the default privileges give them nothing.
+select is(
+  (select count(*)
+   from pg_default_acl d, aclexplode(d.defaclacl) a
+   where d.defaclrole = 'postgres'::regrole
+     and d.defaclnamespace = 'public'::regnamespace
+     and d.defaclobjtype in ('r', 'S')
+     and a.grantee in ('anon'::regrole, 'authenticated'::regrole)),
+  0::bigint,
+  'postgres default privileges in public grant nothing on tables or sequences to anon or authenticated');
+
+create table public.privilege_parity_probe_table (id bigint generated always as identity primary key);
+select ok(
+  not has_table_privilege('anon', 'public.privilege_parity_probe_table',
+    'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN'),
+  'a table postgres creates in public gives anon no privilege');
+select ok(
+  not has_table_privilege('authenticated', 'public.privilege_parity_probe_table',
+    'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN'),
+  'a table postgres creates in public gives authenticated no privilege');
+select ok(
+  not has_sequence_privilege('anon', 'public.privilege_parity_probe_table_id_seq', 'SELECT,UPDATE,USAGE')
+    and not has_sequence_privilege('authenticated', 'public.privilege_parity_probe_table_id_seq', 'SELECT,UPDATE,USAGE'),
+  'a sequence postgres creates in public gives anon and authenticated no privilege');
+
+-- The server keeps its defaults: Edge Functions use service_role.
+select ok(
+  has_table_privilege('service_role', 'public.privilege_parity_probe_table', 'SELECT')
+    and has_table_privilege('service_role', 'public.privilege_parity_probe_table', 'INSERT')
+    and has_table_privilege('service_role', 'public.privilege_parity_probe_table', 'UPDATE')
+    and has_table_privilege('service_role', 'public.privilege_parity_probe_table', 'DELETE'),
+  'a table postgres creates in public keeps service_role privileges');
+select ok(
+  has_sequence_privilege('service_role', 'public.privilege_parity_probe_table_id_seq', 'USAGE'),
+  'a sequence postgres creates in public keeps service_role USAGE');
 
 select ok(
   not has_table_privilege('service_role', 'public.connect_account_actionability', 'SELECT,INSERT,UPDATE,DELETE'),
