@@ -5,7 +5,7 @@
 -- parks. The legacy event-time projection (fn_apply_connect_account_actionability)
 -- is fenced. fn_block_payout_run_for_account_actionability parks one claimed
 -- run, only under its live claim. The refresh generation itself (acquire,
--- getter, evidence table) stays in connect_account_actionability.test.ts.
+-- getter, evidence table) is tested in connect_account_state.test.sql.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
 select plan(50);
