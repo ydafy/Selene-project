@@ -240,3 +240,14 @@ It is established as the standard procedure for structural inconsistencies.
 - The maintainer applies migrations with `supabase db push`, which records each version in the remote history. A file run in the SQL Editor also needs `supabase migration repair --status applied <version>`.
 - The remote is the reference when a database rebuilt from migrations differs from it; the repository gets a migration that matches it (`20261109083744_local_privilege_parity`), and local tooling follows the remote privileges.
 - `supabase/AGENTS.md`, "Schema drift check", is the check: the remote history must list every migration file, and `scripts/verify/schema-fingerprint.sql` must give the same rows locally and on the remote.
+
+## 2026-11-10: The Agent Applies Migrations After the Maintainer's Green Light
+
+**Context:** Since 2026-11-09 the maintainer ran `supabase db push` by hand after each merged migration. Each push was one more manual step for the maintainer, and the agent already had the commands, the dry run and the checks that follow. The root `AGENTS.md` already allowed applying a migration when the maintainer asks for that specific action.
+
+**Decision (maintainer, 2026-11-10):**
+
+- When a migration is merged, the agent asks for a green light naming each migration and what it changes, with the output of `supabase db push --dry-run --linked`.
+- With the green light, the agent runs `supabase db push --linked` from the linked main checkout, then `bun run db:types` and the remote history check. The green light covers only the migrations it names; anything else in the dry run or the push stops the agent.
+- First use: `20261111003504_checkout_recovery_reconciliation_state` (#383), applied 2026-11-10.
+- Procedure: `supabase/AGENTS.md`, "When a change touches Supabase", steps 3 and 4. The entry above still holds: migrations reach the remote only through `supabase db push`.
