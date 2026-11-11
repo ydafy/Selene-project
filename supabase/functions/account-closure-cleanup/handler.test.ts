@@ -627,11 +627,20 @@ describe('account-closure-cleanup wiring (source contract)', () => {
     );
   });
 
-  it('is documented in go-live with an hourly schedule the watchdog supports', () => {
-    const doc = readFileSync(join(root, 'docs/go-live.md'), 'utf8');
-    expect(doc).toContain('account-closure-cleanup');
-    expect(doc).toMatch(/account-closure-cleanup[^\n]*`0 \* \* \* \*`/);
-    expect(doc).toContain('account_closure_cleanup_cron_secret');
-    expect(doc).toContain("'0 * * * *'");
+  it('is scheduled hourly in the cron schema with its Vault cron secret', () => {
+    const schema = readFileSync(
+      join(root, 'supabase/schemas/_cluster/misc.sql'),
+      'utf8',
+    );
+    const job = schema
+      .split(/;\s*\n/)
+      .find((call) =>
+        call.includes(
+          "schedule_in_database('account-closure-cleanup', '0 * * * *'",
+        ),
+      );
+    expect(job).toBeDefined();
+    expect(job).toContain('/functions/v1/account-closure-cleanup');
+    expect(job).toContain("name = ''account_closure_cleanup_cron_secret''");
   });
 });
