@@ -18,10 +18,7 @@ export interface AutoCompletionCandidate {
   buyer_confirmed_at: string | null;
 }
 
-export interface AutoCompletionContext {
-  method: string;
-  suppliedCronSecret: string | null;
-  expectedCronSecret: string | null;
+export interface AutoCompletionContext extends CronRequestContext {
   now: number;
   candidates: readonly AutoCompletionCandidate[];
   // Shipments with a dispute that is not resolved or rejected: never auto-completed.
@@ -32,10 +29,12 @@ export interface AutoCompletionPlan {
   shipmentIds: string[];
 }
 
+// The secret comparison itself happens in the handler through `_shared/auth/cron-auth.ts`
+// (constant time); this context carries only its outcome.
 export interface CronRequestContext {
   method: string;
-  suppliedCronSecret: string | null;
-  expectedCronSecret: string | null;
+  cronSecretConfigured: boolean;
+  cronSecretAccepted: boolean;
 }
 
 export interface AutoCompletionRpcInput {
@@ -105,11 +104,11 @@ export function validateAutoCompletionRequest(
     throw new ApiError(400, 'INVALID_REQUEST');
   }
 
-  if (!context.expectedCronSecret) {
+  if (!context.cronSecretConfigured) {
     throw new ApiError(500, 'INTERNAL_ERROR');
   }
 
-  if (context.suppliedCronSecret !== context.expectedCronSecret) {
+  if (!context.cronSecretAccepted) {
     throw new ApiError(401, 'CRON_UNAUTHORIZED');
   }
 }

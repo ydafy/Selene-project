@@ -21,6 +21,26 @@ verify_jwt = false
 [functions.resume-pending-payouts]
 verify_jwt = false
 
+# Cron-invoked; authenticated by the `x-cron-secret` header.
+[functions.checkout-recovery-worker]
+verify_jwt = false
+
+# Cron-invoked; authenticated by the `x-cron-secret` header.
+[functions.reconcile-stripe-fees]
+verify_jwt = false
+
+# Cron-invoked; authenticated by the `x-cron-secret` header.
+[functions.complete-delivered-shipments]
+verify_jwt = false
+
+# Cron-invoked; authenticated by the `x-cron-secret` header.
+[functions.auto-cancel-orders]
+verify_jwt = false
+
+# Cron-invoked; authenticated by the `x-cron-secret` header.
+[functions.auto-cancel-preparing]
+verify_jwt = false
+
 # Cron-invoked tracking poller. Deployed without JWT verification.
 [functions.track-shipments]
 verify_jwt = false

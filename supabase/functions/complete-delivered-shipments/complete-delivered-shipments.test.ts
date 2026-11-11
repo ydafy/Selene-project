@@ -14,7 +14,6 @@ import {
 } from './complete-delivered-shipments';
 
 const now = Date.parse('2026-09-04T12:00:00.000Z');
-const cronSecret = 'scheduler-secret';
 
 const shipment = (id: string, deliveredAt: string | null) => ({
   id,
@@ -30,8 +29,8 @@ describe('resolveAutoCompletionPlan', () => {
     expect(() =>
       resolveAutoCompletionPlan({
         method: 'POST',
-        suppliedCronSecret: 'invalid-secret',
-        expectedCronSecret: cronSecret,
+        cronSecretConfigured: true,
+        cronSecretAccepted: false,
         now,
         candidates: [dueShipment],
       }),
@@ -42,8 +41,8 @@ describe('resolveAutoCompletionPlan', () => {
     expect(() =>
       resolveAutoCompletionPlan({
         method: 'GET',
-        suppliedCronSecret: cronSecret,
-        expectedCronSecret: cronSecret,
+        cronSecretConfigured: true,
+        cronSecretAccepted: true,
         now,
         candidates: [dueShipment],
       }),
@@ -52,8 +51,8 @@ describe('resolveAutoCompletionPlan', () => {
     expect(() =>
       resolveAutoCompletionPlan({
         method: 'POST',
-        suppliedCronSecret: cronSecret,
-        expectedCronSecret: '',
+        cronSecretConfigured: false,
+        cronSecretAccepted: false,
         now,
         candidates: [dueShipment],
       }),
@@ -69,8 +68,8 @@ describe('resolveAutoCompletionPlan', () => {
     expect(
       resolveAutoCompletionPlan({
         method: 'POST',
-        suppliedCronSecret: cronSecret,
-        expectedCronSecret: cronSecret,
+        cronSecretConfigured: true,
+        cronSecretAccepted: true,
         now,
         candidates,
       }).shipmentIds,
@@ -83,8 +82,8 @@ describe('resolveAutoCompletionPlan', () => {
     expect(
       resolveAutoCompletionPlan({
         method: 'POST',
-        suppliedCronSecret: cronSecret,
-        expectedCronSecret: cronSecret,
+        cronSecretConfigured: true,
+        cronSecretAccepted: true,
         now,
         candidates: [
           shipment(
@@ -113,8 +112,8 @@ describe('shipments with an active dispute', () => {
     const disputed = shipment('shipment-disputed', '2026-09-01T00:00:00.000Z');
     const plan = resolveAutoCompletionPlan({
       method: 'POST',
-      suppliedCronSecret: cronSecret,
-      expectedCronSecret: cronSecret,
+      cronSecretConfigured: true,
+      cronSecretAccepted: true,
       now,
       candidates: [disputed, dueShipment],
       activeDisputeShipmentIds: ['shipment-disputed'],
