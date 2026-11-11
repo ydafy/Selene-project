@@ -1,4 +1,5 @@
 import { createClient } from '../_shared/supabase-js.ts';
+import { readSupabaseSecretKey } from '../_shared/supabase-secret-key.ts';
 import Stripe from '../_shared/stripe/sdk.ts';
 import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 
@@ -560,7 +561,7 @@ Deno.serve(
 
       const supabaseAdmin = createClient<Database>(
         Deno.env.get('SUPABASE_URL') ?? '',
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+        readSupabaseSecretKey() ?? '',
       );
 
       if (event.type === 'payment_intent.succeeded') {
@@ -1067,7 +1068,7 @@ Deno.serve(
       try {
         const supabaseAdmin = createClient<Database>(
           Deno.env.get('SUPABASE_URL') ?? '',
-          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+          readSupabaseSecretKey() ?? '',
         );
 
         // webhook_dlq.payload is NOT NULL: a body of `null` keeps the empty object.

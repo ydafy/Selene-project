@@ -667,7 +667,7 @@ describe('delete-account wiring (source contract)', () => {
     expect(index).toContain('fn_close_account');
     expect(index).toContain('p_user_id');
     expect(index).toContain('createClient<Database>');
-    expect(index).toContain('SUPABASE_SERVICE_ROLE_KEY');
+    expect(index).toContain('readSupabaseSecretKey()');
   });
 
   it('shares the cleanup with the retry worker instead of carrying its own copy', () => {

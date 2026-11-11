@@ -140,7 +140,7 @@ describe('every Edge Function authenticates in code with verify_jwt = false', ()
         expect(PUBLIC_REASONS[name]).toBeTruthy();
         const source = sourceOf(name);
         expect(source).not.toMatch(
-          /createClient|SUPABASE_SERVICE_ROLE_KEY|STRIPE_SECRET_KEY|Authorization/,
+          /createClient|SUPABASE_SERVICE_ROLE_KEY|readSupabaseSecretKey|STRIPE_SECRET_KEY|Authorization/,
         );
       });
     } else if (mechanism) {

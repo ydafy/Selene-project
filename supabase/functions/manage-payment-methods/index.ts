@@ -1,4 +1,5 @@
 import { createClient } from '../_shared/supabase-js.ts';
+import { readSupabaseSecretKey } from '../_shared/supabase-secret-key.ts';
 import Stripe from '../_shared/stripe/sdk.ts';
 import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 
@@ -33,7 +34,7 @@ Deno.serve(
 
       const supabaseAdmin = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+        readSupabaseSecretKey() ?? '',
       );
 
       // 1. Validar Identidad

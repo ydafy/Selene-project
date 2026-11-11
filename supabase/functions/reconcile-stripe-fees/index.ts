@@ -5,6 +5,7 @@ import {
 } from '../_shared/auth/cron-auth.ts';
 import { reportMessage, withSentry } from '../_shared/sentry.ts';
 import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
+import { readSupabaseSecretKey } from '../_shared/supabase-secret-key.ts';
 
 const PRODUCTION_POLICY = {
   batchSize: 25,
@@ -406,17 +407,17 @@ if (denoRuntime) {
 
   const cronSecret = denoRuntime.env.get('CRON_SECRET');
   const supabaseUrl = denoRuntime.env.get('SUPABASE_URL')?.trim();
-  const serviceRoleKey = denoRuntime.env
-    .get('SUPABASE_SERVICE_ROLE_KEY')
-    ?.trim();
+  const supabaseSecretKey = readSupabaseSecretKey((name) =>
+    denoRuntime.env.get(name),
+  );
   const stripeSecret = denoRuntime.env.get('STRIPE_SECRET_KEY')?.trim();
 
   const productionHandler =
-    supabaseUrl && serviceRoleKey && stripeSecret
+    supabaseUrl && supabaseSecretKey && stripeSecret
       ? (() => {
           const supabase = createClient<FeeWorkerDatabase>(
             supabaseUrl,
-            serviceRoleKey,
+            supabaseSecretKey,
             {
               auth: { autoRefreshToken: false, persistSession: false },
             },

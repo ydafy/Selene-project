@@ -1,4 +1,5 @@
 import { createClient } from '../_shared/supabase-js.ts';
+import { readSupabaseSecretKey } from '../_shared/supabase-secret-key.ts';
 import Stripe from '../_shared/stripe/sdk.ts';
 import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 
@@ -9,13 +10,13 @@ Deno.serve(
   withSentry('reconcile-connect-payments', async (req) => {
     try {
       const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY');
-      const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      const supabaseSecretKey = readSupabaseSecretKey();
       const supabaseUrl = Deno.env.get('SUPABASE_URL');
-      if (!stripeSecret || !serviceRoleKey || !supabaseUrl) {
+      if (!stripeSecret || !supabaseSecretKey || !supabaseUrl) {
         throw new Error('MISSING_SERVER_CONFIG');
       }
 
-      const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+      const supabaseAdmin = createClient(supabaseUrl, supabaseSecretKey);
       const authHeader = req.headers.get('Authorization');
       if (!authHeader) throw new Error('AUTH_REQUIRED');
 

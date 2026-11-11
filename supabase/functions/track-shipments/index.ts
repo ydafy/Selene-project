@@ -1,4 +1,5 @@
 import { createClient } from '../_shared/supabase-js.ts';
+import { readSupabaseSecretKey } from '../_shared/supabase-secret-key.ts';
 
 import { extractEnviaPollingObservations } from '../_shared/envia/envia-tracking-ingestion.ts';
 import {
@@ -43,7 +44,7 @@ const createDependencies = (): TrackShipmentsDependencies => ({
   acquireLease: async (lane) => {
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      readSupabaseSecretKey() ?? '',
     );
     const { data, error } = await supabaseAdmin.rpc(
       'fn_acquire_track_shipments_lease',
@@ -61,7 +62,7 @@ const createDependencies = (): TrackShipmentsDependencies => ({
   releaseLease: async (lane, leaseId) => {
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      readSupabaseSecretKey() ?? '',
     );
     const { error } = await supabaseAdmin.rpc(
       'fn_release_track_shipments_lease',
@@ -76,7 +77,7 @@ const createDependencies = (): TrackShipmentsDependencies => ({
     ).toISOString();
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      readSupabaseSecretKey() ?? '',
     );
     const { data: shipments, error: fetchError } = await supabaseAdmin
       .from('shipments')
@@ -136,7 +137,7 @@ const createDependencies = (): TrackShipmentsDependencies => ({
   record: async (event, pollingRunId) => {
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      readSupabaseSecretKey() ?? '',
     );
     const { data, error } = await supabaseAdmin.rpc(
       'fn_record_tracking_event',
@@ -162,7 +163,7 @@ const createDependencies = (): TrackShipmentsDependencies => ({
   markTracked: async (targetIds, trackedAt) => {
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      readSupabaseSecretKey() ?? '',
     );
     const { error } = await supabaseAdmin
       .from('shipments')

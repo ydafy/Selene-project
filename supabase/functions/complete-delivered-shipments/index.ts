@@ -1,4 +1,5 @@
 import { createClient } from '../_shared/supabase-js.ts';
+import { readSupabaseSecretKey } from '../_shared/supabase-secret-key.ts';
 
 import { reportMessage, withSentry } from '../_shared/sentry.ts';
 import { createCompleteDeliveredShipmentsHandler } from './handler.ts';
@@ -9,7 +10,7 @@ const handler = createCompleteDeliveredShipmentsHandler({
   createSupabaseAdmin: () =>
     createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      readSupabaseSecretKey() ?? '',
     ),
 });
 

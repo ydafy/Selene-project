@@ -230,6 +230,7 @@ async function invoke(
     'withSentry',
     'createCancellationReporter',
     'STRIPE_API_VERSION',
+    'readSupabaseSecretKey',
     executable,
   )(
     () => supabase,
@@ -252,6 +253,7 @@ async function invoke(
         reports.push({ message, options: reportOptions });
       }),
     STRIPE_API_VERSION,
+    () => 'sb_secret_fake',
   );
   const response = await handler(
     new Request('https://test.invalid/cancel-order', {

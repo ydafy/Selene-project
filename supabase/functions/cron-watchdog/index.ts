@@ -7,6 +7,7 @@
  * or failed watchdog run alerts too. See odd/tasks/sentry-observability.md (L12).
  */
 import { createClient } from '../_shared/supabase-js.ts';
+import { readSupabaseSecretKey } from '../_shared/supabase-secret-key.ts';
 
 import { reportMessage, withMonitor, withSentry } from '../_shared/sentry.ts';
 import { createCronWatchdogHandler } from './handler.ts';
@@ -25,11 +26,11 @@ const handler = createCronWatchdogHandler({
   now: () => new Date(),
   fetchCronHealth: async () => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    if (!supabaseUrl || !serviceRoleKey) {
+    const supabaseSecretKey = readSupabaseSecretKey();
+    if (!supabaseUrl || !supabaseSecretKey) {
       return { data: null, error: { message: 'MISSING_SERVER_CONFIG' } };
     }
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+    const supabaseAdmin = createClient(supabaseUrl, supabaseSecretKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
     const { data, error } = await supabaseAdmin.rpc('fn_cron_health');
