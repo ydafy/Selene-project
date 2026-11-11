@@ -1,3 +1,5 @@
+import { ShipmentTrackingUrlRequestSchema } from './request-schema.ts';
+
 export interface TrackingUrlSubject {
   buyerId: string;
   sellerId: string;
@@ -23,7 +25,7 @@ const isShipmentId = (value: unknown): value is string =>
     value,
   );
 
-export function createResolveShipmentTrackingUrlHandler(
+function createTrackingUrlRequestHandler(
   dependencies: ResolveShipmentTrackingUrlDependencies,
 ) {
   return async (request: Request): Promise<Response> => {
@@ -54,5 +56,28 @@ export function createResolveShipmentTrackingUrlHandler(
         ? dependencies.resolveUrl(subject.trackingNumber)
         : null,
     });
+  };
+}
+
+export function createResolveShipmentTrackingUrlHandler(
+  dependencies: ResolveShipmentTrackingUrlDependencies,
+) {
+  const handler = createTrackingUrlRequestHandler(dependencies);
+
+  return async (request: Request): Promise<Response> => {
+    if (request.method === 'OPTIONS') return new Response('ok');
+
+    const body = await request
+      .clone()
+      .json()
+      .catch(() => null);
+    if (!ShipmentTrackingUrlRequestSchema.safeParse(body).success) {
+      return new Response(JSON.stringify({ error: 'INVALID_SHIPMENT_ID' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    return handler(request);
   };
 }

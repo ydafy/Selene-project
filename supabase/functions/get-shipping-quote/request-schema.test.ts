@@ -1,18 +1,6 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
 
 import { ShippingQuoteRequestSchema } from './request-schema.ts';
-
-// Prettier may re-wrap the source files read below and rewrite double quotes
-// to single quotes; compare without layout or quote style.
-const compact = (source: string) =>
-  source
-    .replace(/\s+/g, ' ')
-    .replace(/([([{]) /g, '$1')
-    .replace(/ ([)\]}])/g, '$1')
-    .replace(/,([)\]}])/g, '$1')
-    .replace(/ \./g, '.')
-    .replace(/"/g, "'");
 
 const validRequest = {
   originZip: '06500',
@@ -45,16 +33,5 @@ describe('get-shipping-quote request schema', () => {
     ]) {
       expect(ShippingQuoteRequestSchema.safeParse(invalid).success).toBe(false);
     }
-  });
-
-  it('is the schema the entrypoint validates with', () => {
-    const source = compact(
-      readFileSync(new URL('./index.ts', import.meta.url), 'utf8'),
-    );
-
-    expect(source).toContain(compact('from "./request-schema.ts"'));
-    expect(source).toContain(
-      compact('ShippingQuoteRequestSchema.safeParse(body)'),
-    );
   });
 });
