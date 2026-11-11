@@ -24,7 +24,7 @@ CREATE POLICY "shipment label events are append-only" ON "public"."shipment_labe
   USING (false)
   WITH CHECK (false);
 
-GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."shipment_label_events" TO "anon", "authenticated";
+REVOKE ALL ON TABLE "public"."shipment_label_events" FROM "anon", "authenticated";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."shipment_label_events" TO "service_role";
 

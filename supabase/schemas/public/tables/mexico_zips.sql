@@ -20,7 +20,11 @@ CREATE POLICY "mexico_zips_read" ON "public"."mexico_zips"
   TO PUBLIC
   USING (true);
 
-GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."mexico_zips" TO "anon", "authenticated";
+REVOKE ALL ON TABLE "public"."mexico_zips" FROM "anon", "authenticated";
+
+GRANT SELECT ON TABLE "public"."mexico_zips" TO "anon";
+
+GRANT SELECT ON TABLE "public"."mexico_zips" TO "authenticated";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."mexico_zips" TO "service_role";
 

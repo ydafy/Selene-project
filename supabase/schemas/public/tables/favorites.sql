@@ -24,7 +24,9 @@ CREATE POLICY "favorites_all" ON "public"."favorites"
   TO PUBLIC
   USING ((( SELECT auth.uid() AS uid) = user_id));
 
-GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."favorites" TO "anon", "authenticated";
+REVOKE ALL ON TABLE "public"."favorites" FROM "anon", "authenticated";
+
+GRANT DELETE, INSERT, SELECT ON TABLE "public"."favorites" TO "authenticated";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."favorites" TO "service_role";
 

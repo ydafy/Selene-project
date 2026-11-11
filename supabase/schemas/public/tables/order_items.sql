@@ -52,11 +52,9 @@ COMMENT ON COLUMN "public"."order_items"."shipping_amount" IS 'Monto descontado 
 
 REVOKE ALL ON TABLE "public"."order_items" FROM "anon";
 
-GRANT MAINTAIN, SELECT ON TABLE "public"."order_items" TO "anon";
-
 REVOKE ALL ON TABLE "public"."order_items" FROM "authenticated";
 
-GRANT MAINTAIN, SELECT ON TABLE "public"."order_items" TO "authenticated";
+GRANT SELECT ON TABLE "public"."order_items" TO "authenticated";
 
 REVOKE ALL ON TABLE "public"."order_items" FROM "postgres";
 

@@ -1,6 +1,7 @@
 -- Grants on profiles, profiles_private and the server-only tables (T9g, #88).
 -- Since T10f (#122) clients hold only SELECT on profiles_private, so a client
--- write raises 42501 before RLS is reached; the full matrix is in auth_grants.
+-- write raises 42501 before RLS is reached; the full client matrix is in
+-- client_grants (#305).
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
 select plan(63);

@@ -64,7 +64,11 @@ CREATE POLICY "system_settings_read" ON "public"."system_settings"
   TO PUBLIC
   USING (true);
 
-GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."system_settings" TO "anon", "authenticated";
+REVOKE ALL ON TABLE "public"."system_settings" FROM "anon", "authenticated";
+
+GRANT SELECT ON TABLE "public"."system_settings" TO "anon";
+
+GRANT SELECT ON TABLE "public"."system_settings" TO "authenticated";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."system_settings" TO "service_role";
 

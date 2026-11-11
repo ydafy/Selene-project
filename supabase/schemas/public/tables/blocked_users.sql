@@ -19,7 +19,9 @@ CREATE POLICY "blocked_users_all" ON "public"."blocked_users"
   TO PUBLIC
   USING ((( SELECT auth.uid() AS uid) = blocker_id));
 
-GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."blocked_users" TO "anon", "authenticated";
+REVOKE ALL ON TABLE "public"."blocked_users" FROM "anon", "authenticated";
+
+GRANT INSERT ON TABLE "public"."blocked_users" TO "authenticated";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."blocked_users" TO "service_role";
 

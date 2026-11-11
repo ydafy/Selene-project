@@ -51,7 +51,11 @@ CREATE POLICY "reviews_select" ON "public"."reviews"
   TO PUBLIC
   USING (true);
 
-GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."reviews" TO "anon", "authenticated";
+REVOKE ALL ON TABLE "public"."reviews" FROM "anon", "authenticated";
+
+GRANT SELECT ON TABLE "public"."reviews" TO "anon";
+
+GRANT INSERT, SELECT ON TABLE "public"."reviews" TO "authenticated";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."reviews" TO "service_role";
 

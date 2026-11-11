@@ -26,7 +26,7 @@ CREATE POLICY "dlq_admin_select" ON "public"."webhook_dlq"
   TO PUBLIC
   USING (( SELECT public.is_admin() AS is_admin));
 
-GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."webhook_dlq" TO "anon", "authenticated";
+REVOKE ALL ON TABLE "public"."webhook_dlq" FROM "anon", "authenticated";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."webhook_dlq" TO "service_role";
 
