@@ -65,7 +65,7 @@ describe('shipment cancel source guards', () => {
   it('uses the service-role RPC path after refund in cancel-order', () => {
     const indexTs = read('supabase/functions/cancel-order/index.ts');
 
-    expect(indexTs).toContain('SUPABASE_SERVICE_ROLE_KEY');
+    expect(indexTs).toContain('readSupabaseSecretKey()');
     expect(indexTs).not.toContain('SUPABASE_ANON_KEY');
     expect(indexTs).not.toContain('supabaseActor');
     expect(indexTs).toContain('fn_cancel_shipment');

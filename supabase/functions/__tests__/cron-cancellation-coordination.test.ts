@@ -811,6 +811,7 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
         'requestEnviaLabelCancellation',
         'confirmPreparingCarrier',
         'STRIPE_API_VERSION',
+        'readSupabaseSecretKey',
         executable,
       )(
         () => {
@@ -906,6 +907,7 @@ for (const name of ['auto-cancel-orders', 'auto-cancel-preparing']) {
             : { proceed: true };
         },
         STRIPE_API_VERSION,
+        () => 'sb_secret_fake',
       );
       // The stubbed Deno.env returns 'fake' for every key, including CRON_SECRET.
       const call = (

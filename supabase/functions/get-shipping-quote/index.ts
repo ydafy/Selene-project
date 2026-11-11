@@ -1,4 +1,5 @@
 import { createClient } from '../_shared/supabase-js.ts';
+import { readSupabaseSecretKey } from '../_shared/supabase-secret-key.ts';
 import { QuoteContractError, quoteListingShipment } from './quote-contract.ts';
 import { ShippingQuoteRequestSchema } from './request-schema.ts';
 import { resolveProductionQuoteRuntime } from './runtime.ts';
@@ -19,7 +20,7 @@ const log = (level: string, message: string, meta?: unknown) => {
 
 const supabaseAuth = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+  readSupabaseSecretKey() ?? '',
 );
 
 const quote = async (req: Request): Promise<Response> => {
@@ -39,16 +40,16 @@ const quote = async (req: Request): Promise<Response> => {
     const runtimeConfiguration = resolveProductionQuoteRuntime((name) =>
       Deno.env.get(name),
     );
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const supabaseSecretKey = readSupabaseSecretKey();
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    if (!runtimeConfiguration || !serviceRoleKey || !supabaseUrl) {
+    if (!runtimeConfiguration || !supabaseSecretKey || !supabaseUrl) {
       throw new Error('MISSING_SERVER_CONFIG');
     }
 
     const { originZip, packageId, price, destinationZip } = result.data;
     const destZip = destinationZip || '06500';
 
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+    const supabaseAdmin = createClient(supabaseUrl, supabaseSecretKey);
     let sys: { package_presets: unknown } | null = null;
     try {
       const { data, error: systemSettingsError } = await supabaseAdmin

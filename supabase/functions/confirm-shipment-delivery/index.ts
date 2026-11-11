@@ -1,4 +1,5 @@
 import { createClient } from '../_shared/supabase-js.ts';
+import { readSupabaseSecretKey } from '../_shared/supabase-secret-key.ts';
 
 import {
   ApiError,
@@ -46,7 +47,7 @@ Deno.serve(
 
       const supabaseAdmin = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+        readSupabaseSecretKey() ?? '',
       );
 
       const authHeader = req.headers.get('Authorization');

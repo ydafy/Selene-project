@@ -331,7 +331,7 @@ describe('resolve-shipment-refund wiring (source contract)', () => {
     expect(index).toContain('return isActiveAdmin(data);');
     expect(index).toContain('fn_resolve_shipment_cancellation_refund');
     expect(index).toContain('p_admin_id');
-    expect(index).toContain('SUPABASE_SERVICE_ROLE_KEY');
+    expect(index).toContain('readSupabaseSecretKey()');
     expect(index).toContain(
       "from '../../../packages/types/src/database.types.ts'",
     );
