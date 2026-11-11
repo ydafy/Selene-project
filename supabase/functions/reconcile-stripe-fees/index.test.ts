@@ -1,4 +1,7 @@
+// source-text: the Deno.serve wrapper runs only under Deno, so its cron-secret gate is only visible in its text
 import { describe, expect, it } from 'bun:test';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import * as reconciliationModule from './index.ts';
 import {
@@ -16,7 +19,7 @@ type ClaimedStripeFeeJob = {
 };
 
 type StripeFeeReconciliationAdapterDependencies = {
-  workerServiceRoleJwt: string | undefined;
+  cronSecret: string | undefined;
   now: () => string;
   policy: {
     batchSize: number;
@@ -321,16 +324,16 @@ describe('reconcile Stripe fees worker', () => {
 });
 
 describe('reconcile Stripe fees production adapter', () => {
-  const requestFor = (authorization: string | null) =>
+  const requestFor = (headers: Record<string, string> = {}) =>
     new Request('https://example.com/functions/v1/reconcile-stripe-fees', {
       method: 'POST',
-      headers: authorization ? { authorization } : undefined,
+      headers,
     });
 
   const dependencies = (
     overrides: Partial<StripeFeeReconciliationAdapterDependencies> = {},
   ): StripeFeeReconciliationAdapterDependencies => ({
-    workerServiceRoleJwt: 'fee-worker.jwt',
+    cronSecret: 'fee-cron-secret',
     now: () => NOW,
     policy: POLICY,
     claimDueJobsAtomically: async () => [],
@@ -347,22 +350,27 @@ describe('reconcile Stripe fees production adapter', () => {
     ...overrides,
   });
 
-  it('rejects missing, invalid, and unconfigured worker authorization before claiming jobs', async () => {
+  it('rejects a missing, wrong, empty, or unconfigured cron secret and a bearer token before claiming jobs', async () => {
     const createHandler = requireProductionAdapter();
     let claimed = false;
+    let ran = false;
     const runReconciliation: ReconciliationRunner = async () => {
+      ran = true;
       throw new Error('Unauthorized invocation must not reach reconciliation');
     };
 
-    for (const [authorization, workerServiceRoleJwt] of [
-      [null, 'fee-worker.jwt'],
-      ['Bearer wrong.jwt', 'fee-worker.jwt'],
-      ['Bearer ', ''],
-      ['Bearer anything', undefined],
+    for (const [headers, cronSecret] of [
+      [{}, 'fee-cron-secret'],
+      [{ 'x-cron-secret': 'wrong-secret' }, 'fee-cron-secret'],
+      [{ 'x-cron-secret': '' }, 'fee-cron-secret'],
+      [{ 'x-cron-secret': '' }, ''],
+      [{ 'x-cron-secret': 'anything' }, undefined],
+      [{ authorization: 'Bearer fee-cron-secret' }, 'fee-cron-secret'],
+      [{ authorization: 'Bearer old.worker.jwt' }, 'fee-cron-secret'],
     ] as const) {
       const handler = createHandler(
         dependencies({
-          workerServiceRoleJwt,
+          cronSecret,
           claimDueJobsAtomically: async () => {
             claimed = true;
             return [];
@@ -371,12 +379,37 @@ describe('reconcile Stripe fees production adapter', () => {
         runReconciliation,
       );
 
-      const response = await handler(requestFor(authorization));
+      const response = await handler(requestFor(headers));
 
       expect(response.status).toBe(401);
+      expect(await response.text()).toBe('Unauthorized');
     }
 
     expect(claimed).toBe(false);
+    expect(ran).toBe(false);
+  });
+
+  it('runs the reconciliation for the correct cron secret', async () => {
+    const createHandler = requireProductionAdapter();
+    let ran = false;
+    const handler = createHandler(dependencies(), async (policy, adapter) => {
+      ran = true;
+      return reconcileStripeFeeJobs(policy, adapter);
+    });
+
+    const response = await handler(
+      requestFor({ 'x-cron-secret': 'fee-cron-secret' }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      selected: 0,
+      succeeded: 0,
+      retryScheduled: 0,
+      failed: 0,
+      errors: 0,
+    });
+    expect(ran).toBe(true);
   });
 
   it('claims due jobs atomically, loads charge evidence from orders, delegates to the pure routine, and completes atomically', async () => {
@@ -428,7 +461,9 @@ describe('reconcile Stripe fees production adapter', () => {
       },
     );
 
-    const response = await handler(requestFor('Bearer fee-worker.jwt'));
+    const response = await handler(
+      requestFor({ 'x-cron-secret': 'fee-cron-secret' }),
+    );
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
@@ -462,6 +497,25 @@ describe('reconcile Stripe fees production adapter', () => {
   });
 });
 
+describe('reconcile Stripe fees Deno entry point', () => {
+  const source = readFileSync(
+    join(import.meta.dir, 'index.ts'),
+    'utf8',
+  ).replace(/\s+/g, ' ');
+
+  it('authorizes the served request with the shared cron secret, never a worker bearer', () => {
+    expect(source).not.toContain('STRIPE_FEE_RECONCILIATION_WORKER_SECRET');
+    expect(source).not.toContain('Bearer');
+    expect(source).toContain("denoRuntime.env.get('CRON_SECRET')");
+    expect(source).toContain(
+      'if (!isAuthorizedCronRequest(request, cronSecret)) {',
+    );
+    expect(source).toContain(
+      "await reportCronSecretMismatch( request, 'reconcile-stripe-fees', reportMessage, );",
+    );
+  });
+});
+
 // Intended future worker contract, not the deployed generated DB contract.
 // All IO below is mocked; these tests do not execute PostgreSQL.
 describe('fee worker crash recovery and per-job containment (mocked IO)', () => {
@@ -473,7 +527,7 @@ describe('fee worker crash recovery and per-job containment (mocked IO)', () => 
     orderId: 'second-order',
   };
   const adapter = (overrides: Record<string, unknown> = {}) => ({
-    workerServiceRoleJwt: 'fee-worker.jwt',
+    cronSecret: 'fee-cron-secret',
     now: () => NOW,
     policy: POLICY,
     claimDueJobsAtomically: async () => [leasedJob, secondJob],
@@ -498,7 +552,7 @@ describe('fee worker crash recovery and per-job containment (mocked IO)', () => 
     return handler(
       new Request('https://example.com/reconcile-stripe-fees', {
         method: 'POST',
-        headers: { authorization: 'Bearer fee-worker.jwt' },
+        headers: { 'x-cron-secret': 'fee-cron-secret' },
       }),
     );
   };

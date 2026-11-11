@@ -20,13 +20,13 @@ body:json {
 }
 
 tests {
-  test("a valid JWT that is not the worker secret is refused by the handler", function () {
+  test("a valid JWT without the cron secret is refused by the handler", function () {
     expect(res.getStatus()).to.equal(401);
     expect(res.getBody()).to.equal("Unauthorized");
   });
 }
 
 docs {
-  The anon key passes the gateway JWT check, so this reaches the handler's own comparison
-  with STRIPE_FEE_RECONCILIATION_WORKER_SECRET.
+  verify_jwt is false, so the anon key bearer reaches the handler, which accepts only the
+  `x-cron-secret` header (compared with CRON_SECRET) and ignores any Authorization header.
 }
