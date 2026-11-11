@@ -16,6 +16,33 @@ Start a session by telling an agent "Hoy es lunes, hagamos la rutina". The `sele
 3. Decide. Walk every decision in the report with the maintainer, one at a time.
 4. Record. Each deferred decision becomes a Finding or Idea issue, as `docs/findings.md` describes. A decision about a vulnerability never goes into an issue: it stays in its draft Security Advisory (`docs/findings.md`, "Report a vulnerability"). A decision that changes a procedure on this page changes the page in the same session, on a branch.
 
+## Check the open worktrees before you act
+
+The maintainer works in several parallel worktrees (`docs/worktrees.md`). Collecting data and deciding are read-only and always safe. Some actions touch resources that every worktree shares, so check the worktrees before you act on a decision.
+
+1. Run `git worktree list`. Ignore the entries whose path ends in `.git/gentle-ai/candidate-views/<id>`. The review tool creates them, and they are not the maintainer's work.
+2. For each other worktree, collect its branch and these three values:
+
+   ```bash
+   git -C <path> status --short | wc -l              # uncommitted files
+   git -C <path> rev-list --count origin/main..HEAD  # commits ahead of origin/main
+   git -C <path> log -1 --format=%cr                 # age of the last commit
+   ```
+
+   A worktree with uncommitted files, commits ahead of `origin/main`, or a commit in the last few days is active.
+
+Each worktree has its own folder, branch, `node_modules`, and local Supabase stack. All worktrees share the tools on the machine (Supabase CLI, Docker Desktop, Node, and Bun), the stack data in `~/.supabase/stacks`, and `main`.
+
+While any worktree is active, these actions wait, and the report says why:
+
+- A dependency update that changes `bun.lock` or a `package.json`. Every active branch would get lockfile conflicts when it merges `main`.
+- A Supabase CLI, Node, or Bun upgrade on the machine.
+- A Docker Desktop update. It restarts Docker and stops every local stack.
+
+The maintainer can still decide to do one of them. The report says what it would cost each active worktree.
+
+These actions are safe at any time: GitHub issue changes, read-only reviews, doc changes on their own branch, and deleting orphan stack data (stack data whose worktree folder no longer exists).
+
 ## Weekly checks
 
 Set two dates first. The commands below read them:
@@ -71,7 +98,7 @@ The procedure is `docs/findings.md`, "Report a vulnerability".
 
 3. Run the Supabase MCP tool `get_advisors` with `type: security` on the remote project. The tool is read-only.
 
-Needs a decision for any draft advisory (which one to fix next), any open alert, and any ERROR lint. Group WARN lints by lint name.
+Before you decide on a lint, compare it with "Accepted findings". Needs a decision for any draft advisory (which one to fix next), any open alert, and any ERROR lint that is not an accepted finding. Group WARN lints by lint name.
 
 ### C. Backlog
 
@@ -114,7 +141,7 @@ This check stays light until go-live. There is no real traffic yet, so it lists 
    ```
 
 2. Run the Sentry MCP tool `search_issues` with `is:unresolved firstSeen:-7d` in `selene-ze/selene-edge-functions`. For each new issue, read it with `get_sentry_resource`, then read the Supabase logs between its first and last event with the Supabase MCP tool `query_logs` (source `function_logs`, error lines). Search the issues for the error code the logs show: an open Finding may already cover it.
-3. Run the Supabase MCP tool `get_advisors` with `type: performance`, then with `type: health`.
+3. Run the Supabase MCP tool `get_advisors` with `type: performance`, then with `type: health`. Before you decide on a lint, compare it with "Accepted findings".
 
 Needs a decision for a failure that no later green run of the same workflow explains, a flaky test (it fails, then passes with no change), a new Sentry issue, and an ERROR advisor.
 
@@ -134,7 +161,15 @@ Also compare `supabase --version` with the `version:` of the setup-cli step in `
 
 ### Worktrees
 
-From the main checkout, `bun run worktree:clean` prints the plan and deletes nothing. Removing a worktree needs `--yes` and the maintainer's word (`docs/worktrees.md`).
+A worktree is a cleanup candidate only when it is not active ("Check the open worktrees before you act"). It has no uncommitted files, no commits ahead of `origin/main`, and no recent work, and its branch is merged: `git merge-base --is-ancestor <branch> origin/main` exits with 0. A merged branch alone is not enough, because a worktree can move on to a new branch. On 2026-11-10, `repo-hygiene` held a merged branch one day and 38 uncommitted files on a new branch the next.
+
+Run these from the main checkout:
+
+1. For each candidate, run `bun run worktree:clean <folder name>`. It prints the plan for that worktree and changes nothing. Without arguments the script prints its usage, not a plan.
+2. Run `bun run worktree:clean --orphans`. It lists stack data whose worktree folder no longer exists.
+3. If a plan warns about files in `verification-evidence/`, report them. The maintainer decides whether a PR still needs them.
+
+Add `--yes` only with the maintainer's word (`docs/worktrees.md`).
 
 ### Manual work that repeats
 
@@ -201,6 +236,24 @@ Follow these rules:
 - An OK section is one line.
 - Every item cites evidence (command output, an issue number, or a link) and gives a recommendation: do now, wait, or drop. Add its reason and its class: must-have, nice-to-have, or overengineering.
 - "Could not check" names the command and the exact blocker, such as a missing MCP server or `gh` not logged in. Never skip a check silently (`AGENTS.md`, "Verifying a change").
+
+## Accepted findings
+
+Without a record, the same known advisor lints come back every week as decisions. An item listed here is not a decision. The report counts the listed items in one line: "N accepted findings unchanged". An item becomes a decision again when its count grows, a new object appears under the same lint, or its tracking issue closes.
+
+Add an item only with the maintainer's decision, and write the reason. Remove it when the issue that fixes it merges. Never list a draft Security Advisory here: its details stay out of files.
+
+The Supabase MCP tool `get_advisors` confirmed these items on 2026-11-09:
+
+| Source      | Lint                                                                                                     | Objects                    | Why accepted                                                                                                                                                                                         | Tracked by                               |
+| ----------- | -------------------------------------------------------------------------------------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| security    | `security_definer_view` (ERROR)                                                                          | `public.products_public`   | Intended. It is the public allow-list view of products: it exposes only allowed columns, while RLS closes direct reads to non-owners (`supabase/migrations/20261024023415_products_public_view.sql`) | None. Revisit if the view gains a column |
+| security    | `rls_enabled_no_policy` (INFO)                                                                           | 14 server-only tables      | Server code reaches them through RPCs and the service role. No client policy is intended                                                                                                             | #306                                     |
+| security    | `anon_security_definer_function_executable`, `authenticated_security_definer_function_executable` (WARN) | 3 and 14 functions         | The roadmap item sets explicit grants per role and function                                                                                                                                          | #305                                     |
+| security    | `extension_in_public` (WARN)                                                                             | `pg_net`                   | Move it to the `extensions` schema                                                                                                                                                                   | #312                                     |
+| security    | `auth_leaked_password_protection` (WARN)                                                                 | Auth setting               | Needs the Pro plan. A manual Dashboard step before go-live                                                                                                                                           | #313                                     |
+| performance | `auth_rls_initplan`, `multiple_permissive_policies` (WARN)                                               | 5 and 14 policies          | RLS performance work                                                                                                                                                                                 | #310                                     |
+| performance | `unindexed_foreign_keys`, `unused_index` (INFO)                                                          | 8 foreign keys, 23 indexes | Unused indexes mean nothing on test data. Reviewed after real traffic                                                                                                                                | #310                                     |
 
 ## Planned automation
 

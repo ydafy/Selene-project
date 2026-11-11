@@ -5,19 +5,8 @@ import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 import { ReconcileConnectPaymentsRequestSchema } from './request-schema.ts';
 import { withSentry } from '../_shared/sentry.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-
 Deno.serve(
   withSentry('reconcile-connect-payments', async (req) => {
-    if (req.method === 'OPTIONS') {
-      return new Response('ok', { headers: corsHeaders });
-    }
-
     try {
       const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY');
       const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -78,7 +67,7 @@ Deno.serve(
         }),
         {
           status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json' },
         },
       );
     } catch (error: unknown) {
@@ -91,7 +80,7 @@ Deno.serve(
             : 400;
       return new Response(JSON.stringify({ success: false, error: message }), {
         status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
       });
     }
   }),

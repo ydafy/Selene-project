@@ -10,13 +10,6 @@ import {
 import { withSentry } from '../_shared/sentry.ts';
 import { RollbackConnectPaymentRequestSchema } from './request-schema.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-
 const log = (
   level: 'info' | 'warn' | 'error',
   msg: string,
@@ -35,10 +28,6 @@ const log = (
 
 Deno.serve(
   withSentry('rollback-connect-payment', async (req) => {
-    if (req.method === 'OPTIONS') {
-      return new Response('ok', { headers: corsHeaders });
-    }
-
     try {
       const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY');
       const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -156,7 +145,7 @@ Deno.serve(
 
       return new Response(JSON.stringify({ success: true, rolledBack }), {
         status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
@@ -164,7 +153,7 @@ Deno.serve(
         JSON.stringify({ success: false, rolledBack: 0, error: message }),
         {
           status: message === 'AUTH_REQUIRED' ? 401 : 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json' },
         },
       );
     }

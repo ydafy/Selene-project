@@ -5,13 +5,6 @@ import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 import { ManagePaymentMethodsRequestSchema } from './request-schema.ts';
 import { withSentry } from '../_shared/sentry.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type, idempotency-key',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-
 const APP_NAME = 'selene';
 
 const log = (
@@ -32,9 +25,6 @@ const log = (
 
 Deno.serve(
   withSentry('manage-payment-methods', async (req) => {
-    if (req.method === 'OPTIONS')
-      return new Response('ok', { headers: corsHeaders });
-
     try {
       const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
         apiVersion: STRIPE_API_VERSION,
@@ -118,7 +108,7 @@ Deno.serve(
               customer: customerId,
               publishableKey: Deno.env.get('STRIPE_PUBLISHABLE_KEY'),
             }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+            { headers: { 'Content-Type': 'application/json' } },
           );
         }
 
@@ -131,7 +121,7 @@ Deno.serve(
             .order('created_at', { ascending: false });
 
           return new Response(JSON.stringify({ methods: methods || [] }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json' },
           });
         }
 
@@ -150,7 +140,7 @@ Deno.serve(
             return new Response(
               JSON.stringify({ success: true, message: 'Already deleted' }),
               {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json' },
               },
             );
           }
@@ -176,7 +166,7 @@ Deno.serve(
           if (dbError) throw new Error(`DB_DELETE_FAILED: ${dbError.message}`);
 
           return new Response(JSON.stringify({ success: true }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json' },
           });
         }
 
@@ -188,7 +178,7 @@ Deno.serve(
       log('ERROR', 'Excepción en gestión de pagos', { error: error.message });
       return new Response(JSON.stringify({ error: error.message }), {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
       });
     }
   }),

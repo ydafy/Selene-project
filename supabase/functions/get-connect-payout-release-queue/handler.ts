@@ -15,16 +15,10 @@ export interface QueueDependencies {
   rpc(args: Args): Promise<unknown>;
 }
 const buckets = ['ready', 'processing', 'action-required', 'history'];
-export const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
 const json = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json' },
   });
 const object = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -177,8 +171,6 @@ function validate(
 /** Read-only handler; injected dependencies keep authorization and RPC tests offline. */
 export function createQueueHandler(deps: QueueDependencies) {
   return async (req: Request): Promise<Response> => {
-    if (req.method === 'OPTIONS')
-      return new Response('ok', { headers: corsHeaders });
     try {
       if (req.method !== 'POST') throw Error('METHOD_NOT_ALLOWED');
       const header = req.headers.get('Authorization');

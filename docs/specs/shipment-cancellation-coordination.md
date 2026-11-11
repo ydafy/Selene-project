@@ -63,7 +63,7 @@ Release the mobile app (B5.1 to B5.6) together with the B5.2 functions: the app 
 - B5.1: 39 mapping tests; full `bun test` 3832/0.
 - B5.2: 16 tests including the source scan `supabase/functions/_shared/__tests__/auth-required-contract.test.ts`; Bruno 255/255 at that point.
 - B5.5: SQL-text tests 4/4; harness `scripts/verify/test-shipment-cancellation-summary.ts` 11/11 (buyer, seller, other user, anon, service role, co-seller, each state); 25 Bruno requests.
-- B5.7: SQL-text test `supabase/migrations/__tests__/drop_fn_cancel_order.test.ts` 6 tests; Bruno 275/275 from a fresh reset.
+- B5.7: SQL-text test for dropping `fn_cancel_order`, 6 tests (replaced by `supabase/tests/database/refunds.test.sql` in #276); Bruno 275/275 from a fresh reset.
 - B5.8: harness `scripts/verify/test-shipment-tracking-during-cancellation.ts` 17/0; TLC on `docs/formal/shipment-transfer-cancellation/`: the faithful configuration finds no error (1,321,384 states, 505,816 distinct, depth 29) and the broken variant `G_ProgressOp=FALSE` violates `RefundStartedStaysOpen` and `RefundStartedOnlyCancels`. Bruno 282/282.
 - B5.8b: Edge tests 40/0 and 28/0; SQL-text 6/6; harness 27/0; admin-web 266/0; Bruno 292/292 after a fresh reset; `deno check` on four functions clean; `bun test` 3954/0; Playwright `test:e2e` 16/16 and `test:e2e:local` 3/3.
 - B5.6: mapping and wiring tests; `bun test` 3965/0.

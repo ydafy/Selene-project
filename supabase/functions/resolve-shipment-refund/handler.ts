@@ -9,12 +9,7 @@
 
 import { isActiveAdmin } from '../_shared/auth/admin-auth.ts';
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
-};
-const JSON_HEADERS = { ...CORS_HEADERS, 'Content-Type': 'application/json' };
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_REFERENCE_LENGTH = 200;
@@ -90,8 +85,6 @@ export function createResolveShipmentRefundHandler(
   deps: ResolveShipmentRefundDeps,
 ) {
   return async (req: Request): Promise<Response> => {
-    if (req.method === 'OPTIONS')
-      return new Response('ok', { headers: CORS_HEADERS });
     if (req.method !== 'POST') return fail(405, 'METHOD_NOT_ALLOWED');
 
     try {

@@ -70,12 +70,6 @@ const request = (token: string | null = 'jwt', method = 'GET') =>
   });
 
 describe('list-shipment-refund-problems handler', () => {
-  it('answers CORS preflight', async () => {
-    const res = await harness().handler(request(null, 'OPTIONS'));
-    expect(res.status).toBe(200);
-    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*');
-  });
-
   it('rejects other methods with 405 before any lookup', async () => {
     const h = harness();
     const res = await h.handler(request('jwt', 'POST'));
@@ -266,7 +260,7 @@ describe('list-shipment-refund-problems wiring', () => {
 
   it('wraps the handler with Sentry, checks role and status, and calls the service-only RPC', () => {
     expect(index).toContain(
-      "serve(withSentry('list-shipment-refund-problems', handler))",
+      "serveAdminWeb(withSentry('list-shipment-refund-problems', handler))",
     );
     expect(index).toContain(".select('role, status')");
     expect(index).toContain("from '../_shared/auth/admin-auth.ts'");

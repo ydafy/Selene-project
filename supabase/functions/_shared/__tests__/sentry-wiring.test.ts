@@ -44,8 +44,11 @@ describe('Sentry wiring', () => {
       });
 
       it('wraps the serve handler with its own folder name', () => {
-        expect(compact(source)).toContain(`serve(withSentry('${name}', `);
-        expect(source.match(/\bserve\(/g)).toHaveLength(1);
+        // `serveAdminWeb` (`_shared/cors.ts`) is `Deno.serve` for the functions the admin-web calls.
+        expect(compact(source)).toMatch(
+          new RegExp(`\\b(?:serve|serveAdminWeb)\\(withSentry\\('${name}', `),
+        );
+        expect(source.match(/\b(?:serve|serveAdminWeb)\(/g)).toHaveLength(1);
       });
     });
   }

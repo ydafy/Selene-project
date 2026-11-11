@@ -85,6 +85,8 @@ Two workers accept only the bearer their cron job sends, compared with a functio
 - `CHECKOUT_RECOVERY_SERVICE_ROLE_JWT`: a service-role JWT of the project. `checkout-recovery-worker` accepts only `Authorization: Bearer <this value>` and uses the same value as its database key. It must equal the Vault secret `checkout_recovery_worker_service_role_key`.
 - `STRIPE_FEE_RECONCILIATION_WORKER_SECRET`: `reconcile-stripe-fees` accepts only `Authorization: Bearer <this value>`. It must equal the Vault secret `stripe_fee_worker_service_role_jwt`. The function reads the database with the injected `SUPABASE_SERVICE_ROLE_KEY`, but the gateway still checks the bearer as a JWT (the function is not in `supabase/config.toml`, so `verify_jwt` is on). Use a service-role JWT of the project.
 
+`ADMIN_WEB_ORIGINS` (required by the functions the admin-web calls): the comma-separated exact origins of the deployed admin-web, with scheme and no trailing slash or path (`https://<admin-web host>`). Without it those functions send no CORS headers and every admin-web screen that calls them fails in the browser. Set it before deploying a function that uses `serveAdminWeb` (`supabase/functions/AGENTS.md`, "CORS"), and never add `localhost` origins in production.
+
 `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` are injected by Supabase.
 
 Production uses live Stripe keys and `ENVIA_MODE` set to production.

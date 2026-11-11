@@ -4,13 +4,6 @@ import { ShippingQuoteRequestSchema } from './request-schema.ts';
 import { resolveProductionQuoteRuntime } from './runtime.ts';
 import { withSentry } from '../_shared/sentry.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-
 const log = (level: string, message: string, meta?: unknown) => {
   console.log(
     JSON.stringify({
@@ -25,10 +18,6 @@ const log = (level: string, message: string, meta?: unknown) => {
 
 Deno.serve(
   withSentry('get-shipping-quote', async (req: Request) => {
-    if (req.method === 'OPTIONS') {
-      return new Response('ok', { headers: corsHeaders });
-    }
-
     try {
       let body: unknown;
       try {
@@ -89,7 +78,7 @@ Deno.serve(
 
       return new Response(JSON.stringify({ rates }), {
         status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
       });
     } catch (err: unknown) {
       const code =
@@ -116,7 +105,7 @@ Deno.serve(
       log('error', code);
       return new Response(JSON.stringify({ error: code }), {
         status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
       });
     }
   }),

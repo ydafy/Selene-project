@@ -14,12 +14,6 @@ export interface CreateDisputeDependencies {
   createSupabaseAdmin: () => SupabaseAdminClient;
 }
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
-};
-
 const log = (
   level: 'INFO' | 'WARN' | 'ERROR',
   msg: string,
@@ -40,9 +34,6 @@ export function createCreateDisputeHandler(
   dependencies: CreateDisputeDependencies,
 ) {
   return async (req: Request): Promise<Response> => {
-    if (req.method === 'OPTIONS')
-      return new Response('ok', { headers: corsHeaders });
-
     try {
       const body = await req.json().catch(() => ({}));
       const { orderId, shipmentId, reason, description, evidence } =
@@ -107,7 +98,7 @@ export function createCreateDisputeHandler(
       return new Response(
         JSON.stringify({ success: true, disputeId: dispute.id }),
         {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json' },
         },
       );
     } catch (error: unknown) {
@@ -116,7 +107,7 @@ export function createCreateDisputeHandler(
       log('ERROR', 'Fallo al crear disputa', { error: message });
       return new Response(JSON.stringify({ error: message }), {
         status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
       });
     }
   };
