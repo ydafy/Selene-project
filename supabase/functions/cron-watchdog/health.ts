@@ -51,6 +51,10 @@ const intervalMinutes = (schedule: string): number | null => {
   return null;
 };
 
+/** True when the watchdog can work out the interval of a pg_cron schedule. */
+export const isSupportedSchedule = (schedule: string): boolean =>
+  intervalMinutes(schedule) !== null;
+
 const classify = (
   row: CronHealthRow,
   now: Date,
