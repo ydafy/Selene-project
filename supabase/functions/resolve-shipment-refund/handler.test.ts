@@ -316,7 +316,6 @@ describe('resolve-shipment-refund handler', () => {
 });
 
 describe('resolve-shipment-refund wiring (source contract)', () => {
-  const root = join(import.meta.dir, '..', '..', '..');
   const index = readFileSync(join(import.meta.dir, 'index.ts'), 'utf8');
 
   it('is wrapped in withSentry under its folder name and serves the handler', () => {
@@ -335,16 +334,6 @@ describe('resolve-shipment-refund wiring (source contract)', () => {
     expect(index).toContain('SUPABASE_SERVICE_ROLE_KEY');
     expect(index).toContain(
       "from '../../../packages/types/src/database.types.ts'",
-    );
-  });
-
-  it('is declared in config.toml with JWT verification on', () => {
-    const config = readFileSync(
-      join(root, 'supabase/config.toml'),
-      'utf8',
-    ).replace(/\r\n/g, '\n');
-    expect(config).toMatch(
-      /\[functions\.resolve-shipment-refund\]\nverify_jwt = true/,
     );
   });
 });

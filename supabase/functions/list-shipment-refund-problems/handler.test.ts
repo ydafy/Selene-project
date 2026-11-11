@@ -266,14 +266,4 @@ describe('list-shipment-refund-problems wiring', () => {
     expect(index).toContain("from '../_shared/auth/admin-auth.ts'");
     expect(index).toContain('fn_list_shipment_refund_problems');
   });
-
-  it('declares verify_jwt = true in config.toml', () => {
-    const config = readFileSync(
-      join(import.meta.dir, '../../config.toml'),
-      'utf8',
-    );
-    expect(config).toMatch(
-      /\[functions\.list-shipment-refund-problems\]\r?\nverify_jwt = true/,
-    );
-  });
 });

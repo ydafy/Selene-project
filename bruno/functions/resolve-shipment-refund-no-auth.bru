@@ -18,16 +18,15 @@ body:json {
 }
 
 tests {
-  test("the gateway rejects a refund resolution without a JWT before the function runs", function () {
+  test("rejects a refund resolution without a user token", function () {
     expect(res.getStatus()).to.equal(401);
-    expect(res.getBody().code).to.equal("UNAUTHORIZED_NO_AUTH_HEADER");
+    expect(res.getBody()).to.deep.equal({ error: "AUTH_REQUIRED" });
   });
 }
 
 docs {
-  verify_jwt = true (deployed and in supabase/config.toml), so an anonymous call never
-  reaches the function; its own AUTH_REQUIRED branch only covers a missing header behind the gateway.
-  Needs the functions server (bun run functions:serve). Proves resolve-shipment-refund refuses
-  anonymous callers before any lookup or database call; resolve-shipment-refund-anon-key covers
-  the function's own check.
+  verify_jwt = false (supabase/config.toml), so the gateway checks nothing and the function's
+  own check answers a call without an Authorization header. Needs the functions server (bun run
+  functions:serve). Proves resolve-shipment-refund refuses anonymous callers before any lookup or
+  database call; resolve-shipment-refund-anon-key covers the anon key.
 }

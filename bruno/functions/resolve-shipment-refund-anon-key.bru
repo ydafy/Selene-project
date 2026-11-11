@@ -30,6 +30,6 @@ tests {
 }
 
 docs {
-  The anon key passes the gateway (verify_jwt = true) but is not a user session, so the
+  The anon key is not a user session (verify_jwt = false: the gateway checks nothing), so the
   function's own check must refuse it before any lookup or database call.
 }

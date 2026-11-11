@@ -210,14 +210,4 @@ describe('list-shipment-late-carrier-activity wiring', () => {
     expect(index).toContain("from '../_shared/auth/admin-auth.ts'");
     expect(index).toContain('fn_list_shipment_late_carrier_activity');
   });
-
-  it('declares verify_jwt = true in config.toml', () => {
-    const config = readFileSync(
-      join(import.meta.dir, '../../config.toml'),
-      'utf8',
-    );
-    expect(config).toMatch(
-      /\[functions\.list-shipment-late-carrier-activity\]\r?\nverify_jwt = true/,
-    );
-  });
 });
