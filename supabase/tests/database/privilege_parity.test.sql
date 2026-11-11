@@ -1,7 +1,6 @@
 -- Privileges a database rebuilt from migrations shares with the remote project
--- (odd/tasks/migration-history.md, L2). PUBLIC keeps EXECUTE on functions, so
--- has_function_privilege stays true for every role: these assertions read the
--- explicit ACL entries instead.
+-- (odd/tasks/migration-history.md, L2). These assertions read the explicit ACL
+-- entries; function_grants.test.sql holds the full client EXECUTE contract.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
 select plan(16);
@@ -38,10 +37,12 @@ select is(
     + pg_temp.execute_entries('public.prevent_shipment_origin_snapshot_mutation()', 'authenticated'),
   0::bigint,
   'prevent_shipment_origin_snapshot_mutation has no anon or authenticated EXECUTE entry');
+-- Storage and table policies TO public call it, so anon is granted explicitly
+-- now that PUBLIC no longer holds EXECUTE (#305).
 select is(
   pg_temp.execute_entries('public.is_admin()', 'anon'),
-  0::bigint,
-  'is_admin has no anon EXECUTE entry');
+  1::bigint,
+  'is_admin has an anon EXECUTE entry');
 select is(
   pg_temp.execute_entries('public.is_admin()', 'authenticated'),
   1::bigint,

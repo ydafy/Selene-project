@@ -22,7 +22,8 @@ select results_eq(
   $$select role_name collate "default", rel collate "default", privilege collate "default"
     from (values
       ('anon', 'category_configurations', 'SELECT'),
-      -- fn_get_location_by_zip is SECURITY INVOKER and reads mexico_zips.
+      -- fn_get_location_by_zip is SECURITY INVOKER and reads mexico_zips; a
+      -- guest reaches the address form from the home location picker.
       ('anon', 'mexico_zips', 'SELECT'),
       ('anon', 'products_public', 'SELECT'),
       ('anon', 'profiles', 'SELECT'),

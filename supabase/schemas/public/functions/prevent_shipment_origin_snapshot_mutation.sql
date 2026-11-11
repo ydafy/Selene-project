@@ -11,7 +11,7 @@ BEGIN
   RETURN NEW;
 END; $function$;
 
-GRANT EXECUTE ON FUNCTION "public"."prevent_shipment_origin_snapshot_mutation"() TO PUBLIC;
+REVOKE ALL ON FUNCTION "public"."prevent_shipment_origin_snapshot_mutation"() FROM PUBLIC;
 
 GRANT EXECUTE ON FUNCTION "public"."prevent_shipment_origin_snapshot_mutation"() TO "service_role";
 

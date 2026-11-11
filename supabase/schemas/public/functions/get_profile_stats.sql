@@ -29,8 +29,6 @@ begin
 end;
 $function$;
 
-GRANT EXECUTE ON FUNCTION "public"."get_profile_stats"(uuid) TO "anon", "authenticated";
-
 GRANT EXECUTE ON FUNCTION "public"."get_profile_stats"(uuid) TO "service_role";
 
 REVOKE ALL ON FUNCTION "public"."get_profile_stats"(uuid) FROM PUBLIC;
