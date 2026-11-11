@@ -3,9 +3,23 @@ import { describe, expect, test } from 'bun:test';
 import {
   type GenerateResult,
   type TypesDeps,
+  parseMode,
   runDatabaseTypes,
   TYPES_PATH,
 } from './database-types';
+
+describe('parseMode', () => {
+  test('writes without arguments and checks with --check', () => {
+    expect(parseMode([])).toBe('write');
+    expect(parseMode(['--check'])).toBe('check');
+  });
+
+  test('rejects any other argument instead of writing', () => {
+    expect(() => parseMode(['--chek'])).toThrow(
+      'Unknown argument: --chek. Usage: database-types.ts [--check]',
+    );
+  });
+});
 
 const GENERATED = 'export type Database = {"public":{Tables:{}}}\n';
 const FORMATTED = 'export type Database = { public: { Tables: {} } };\n';

@@ -27,6 +27,17 @@ export type Mode = 'write' | 'check';
 const FIX_HINT =
   'Run `supabase db reset` and `bun run db:types`, then commit the file with its migration.';
 
+// An unknown flag must not fall back to writing: in CI it would pass without checking.
+export function parseMode(args: string[]): Mode {
+  const unknown = args.find((arg) => arg !== '--check');
+  if (unknown !== undefined) {
+    throw new Error(
+      `Unknown argument: ${unknown}. Usage: database-types.ts [--check]`,
+    );
+  }
+  return args.includes('--check') ? 'check' : 'write';
+}
+
 function firstDifferentLine(a: string, b: string): number {
   const left = a.split('\n');
   const right = b.split('\n');
@@ -89,7 +100,7 @@ export async function runDatabaseTypes(
 if (import.meta.main) {
   const root = fileURLToPath(new URL('../../', import.meta.url));
   const typesFile = join(root, TYPES_PATH);
-  const mode: Mode = process.argv.includes('--check') ? 'check' : 'write';
+  const mode = parseMode(process.argv.slice(2));
   const result = await runDatabaseTypes(mode, {
     generate: () => {
       const run = Bun.spawnSync(GENERATE_COMMAND, {
