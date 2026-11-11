@@ -15,13 +15,13 @@ body:json {
 }
 
 tests {
-  test("rejects the fee worker without a bearer token", function () {
+  test("rejects the fee worker without the cron secret", function () {
     expect(res.getStatus()).to.equal(401);
-    expect(res.getBody().code).to.equal("UNAUTHORIZED_NO_AUTH_HEADER");
+    expect(res.getBody()).to.equal("Unauthorized");
   });
 }
 
 docs {
-  Needs the functions server. verify_jwt is true, so the gateway refuses the call before
-  the handler runs.
+  Needs the functions server. verify_jwt is false, so the handler's cron-secret check is the
+  only gate.
 }

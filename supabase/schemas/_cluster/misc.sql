@@ -2,8 +2,6 @@ SELECT cron.schedule_in_database('account-closure-cleanup', '0 * * * *', 'select
     url := (select decrypted_secret from vault.decrypted_secrets where name = ''project_url'') || ''/functions/v1/account-closure-cleanup'',
     headers := jsonb_build_object(
       ''Content-Type'', ''application/json'',
-      ''Authorization'', ''Bearer '' || (select decrypted_secret from vault.decrypted_secrets where name = ''project_anon_jwt''),
-      ''apikey'', (select decrypted_secret from vault.decrypted_secrets where name = ''project_anon_jwt''),
       ''x-cron-secret'', (select decrypted_secret from vault.decrypted_secrets where name = ''account_closure_cleanup_cron_secret'')
     ),
     body := ''{}''::jsonb
@@ -13,8 +11,6 @@ SELECT cron.schedule_in_database('auto-cancel-orders-job', '0 * * * *', 'select 
     url := (select decrypted_secret from vault.decrypted_secrets where name = ''project_url'') || ''/functions/v1/auto-cancel-orders'',
     headers := jsonb_build_object(
       ''Content-Type'', ''application/json'',
-      ''Authorization'', ''Bearer '' || (select decrypted_secret from vault.decrypted_secrets where name = ''project_anon_jwt''),
-      ''apikey'', (select decrypted_secret from vault.decrypted_secrets where name = ''project_anon_jwt''),
       ''x-cron-secret'', (select decrypted_secret from vault.decrypted_secrets where name = ''auto_cancel_orders_cron_secret'')
     ),
     body := ''{}''::jsonb
@@ -24,8 +20,6 @@ SELECT cron.schedule_in_database('auto-cancel-preparing-job', '30 * * * *', 'sel
     url := (select decrypted_secret from vault.decrypted_secrets where name = ''project_url'') || ''/functions/v1/auto-cancel-preparing'',
     headers := jsonb_build_object(
       ''Content-Type'', ''application/json'',
-      ''Authorization'', ''Bearer '' || (select decrypted_secret from vault.decrypted_secrets where name = ''project_anon_jwt''),
-      ''apikey'', (select decrypted_secret from vault.decrypted_secrets where name = ''project_anon_jwt''),
       ''x-cron-secret'', (select decrypted_secret from vault.decrypted_secrets where name = ''auto_cancel_orders_cron_secret'')
     ),
     body := ''{}''::jsonb,
@@ -33,11 +27,10 @@ SELECT cron.schedule_in_database('auto-cancel-preparing-job', '30 * * * *', 'sel
   )', 'postgres', NULL, true);
 
 SELECT cron.schedule_in_database('checkout-recovery-worker-every-5-minutes', '*/5 * * * *', 'select net.http_post(
-    url := trim((select decrypted_secret from vault.decrypted_secrets where name = ''checkout_recovery_worker_url'')) || ''/functions/v1/checkout-recovery-worker'',
+    url := (select decrypted_secret from vault.decrypted_secrets where name = ''project_url'') || ''/functions/v1/checkout-recovery-worker'',
     headers := jsonb_build_object(
       ''Content-Type'', ''application/json'',
-      ''Authorization'', ''Bearer '' || trim((select decrypted_secret from vault.decrypted_secrets where name = ''checkout_recovery_worker_service_role_key'')),
-      ''apikey'', trim((select decrypted_secret from vault.decrypted_secrets where name = ''checkout_recovery_worker_service_role_key''))
+      ''x-cron-secret'', (select decrypted_secret from vault.decrypted_secrets where name = ''checkout_recovery_worker_cron_secret'')
     ),
     body := ''{}''::jsonb
   )', 'postgres', NULL, true);
@@ -46,8 +39,6 @@ SELECT cron.schedule_in_database('complete-delivered-shipments', '*/5 * * * *', 
     url := (select decrypted_secret from vault.decrypted_secrets where name = ''project_url'') || ''/functions/v1/complete-delivered-shipments'',
     headers := jsonb_build_object(
       ''Content-Type'', ''application/json'',
-      ''Authorization'', ''Bearer '' || (select decrypted_secret from vault.decrypted_secrets where name = ''project_anon_jwt''),
-      ''apikey'', (select decrypted_secret from vault.decrypted_secrets where name = ''project_anon_jwt''),
       ''x-cron-secret'', (select decrypted_secret from vault.decrypted_secrets where name = ''complete_delivered_shipments_cron_secret'')
     ),
     body := ''{}''::jsonb
@@ -57,8 +48,6 @@ SELECT cron.schedule_in_database('cron-watchdog-every-15-minutes', '*/15 * * * *
     url := (select decrypted_secret from vault.decrypted_secrets where name = ''project_url'') || ''/functions/v1/cron-watchdog'',
     headers := jsonb_build_object(
       ''Content-Type'', ''application/json'',
-      ''Authorization'', ''Bearer '' || (select decrypted_secret from vault.decrypted_secrets where name = ''project_anon_jwt''),
-      ''apikey'', (select decrypted_secret from vault.decrypted_secrets where name = ''project_anon_jwt''),
       ''x-cron-secret'', (select decrypted_secret from vault.decrypted_secrets where name = ''cron_watchdog_cron_secret'')
     ),
     body := ''{}''::jsonb,
@@ -69,8 +58,6 @@ SELECT cron.schedule_in_database('dispatch-push-every-minute', '*/1 * * * *', 's
     url := (select decrypted_secret from vault.decrypted_secrets where name = ''project_url'') || ''/functions/v1/dispatch-push'',
     headers := jsonb_build_object(
       ''Content-Type'', ''application/json'',
-      ''Authorization'', ''Bearer '' || (select decrypted_secret from vault.decrypted_secrets where name = ''project_anon_jwt''),
-      ''apikey'', (select decrypted_secret from vault.decrypted_secrets where name = ''project_anon_jwt''),
       ''x-cron-secret'', (select decrypted_secret from vault.decrypted_secrets where name = ''dispatch_push_cron_secret'')
     ),
     body := ''{}''::jsonb,
@@ -91,11 +78,10 @@ SELECT
 SELECT cron.schedule_in_database('reconcile-connect-payments', '0 */6 * * *', 'select * from public.fn_reconcile_connect_payments()', 'postgres', NULL, true);
 
 SELECT cron.schedule_in_database('reconcile-stripe-fees-every-5-minutes', '*/5 * * * *', 'select net.http_post(
-    url := (select decrypted_secret from vault.decrypted_secrets where name = ''stripe_fee_worker_project_url'') || ''/functions/v1/reconcile-stripe-fees'',
+    url := (select decrypted_secret from vault.decrypted_secrets where name = ''project_url'') || ''/functions/v1/reconcile-stripe-fees'',
     headers := jsonb_build_object(
       ''Content-Type'', ''application/json'',
-      ''Authorization'', ''Bearer '' || (select decrypted_secret from vault.decrypted_secrets where name = ''stripe_fee_worker_service_role_jwt''),
-      ''apikey'', (select decrypted_secret from vault.decrypted_secrets where name = ''stripe_fee_worker_service_role_jwt'')
+      ''x-cron-secret'', (select decrypted_secret from vault.decrypted_secrets where name = ''reconcile_stripe_fees_cron_secret'')
     ),
     body := ''{}''::jsonb
   )', 'postgres', NULL, true);
@@ -104,8 +90,6 @@ SELECT cron.schedule_in_database('resume-pending-payouts', '*/5 * * * *', 'selec
     url := (select decrypted_secret from vault.decrypted_secrets where name = ''project_url'') || ''/functions/v1/resume-pending-payouts'',
     headers := jsonb_build_object(
       ''Content-Type'', ''application/json'',
-      ''Authorization'', ''Bearer '' || (select decrypted_secret from vault.decrypted_secrets where name = ''project_anon_jwt''),
-      ''apikey'', (select decrypted_secret from vault.decrypted_secrets where name = ''project_anon_jwt''),
       ''x-cron-secret'', (select decrypted_secret from vault.decrypted_secrets where name = ''resume_pending_payouts_cron_secret'')
     ),
     body := ''{}''::jsonb

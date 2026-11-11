@@ -11,7 +11,7 @@ post {
 }
 
 headers {
-  Authorization: Bearer {{process.env.STRIPE_FEE_RECONCILIATION_WORKER_SECRET}}
+  x-cron-secret: {{cronSecret}}
 }
 
 body:json {
@@ -19,7 +19,7 @@ body:json {
 }
 
 tests {
-  test("accepts the worker secret and finds no due job", function () {
+  test("accepts the cron secret and finds no due job", function () {
     expect(res.getStatus()).to.equal(200);
     expect(res.getBody()).to.deep.equal({
       selected: 0,
@@ -32,8 +32,7 @@ tests {
 }
 
 docs {
-  Needs the functions server and STRIPE_FEE_RECONCILIATION_WORKER_SECRET in
-  supabase/functions/.env (`bun run bruno:env` copies it to bruno/.env). verify_jwt is true,
-  so the secret must also be a JWT the local gateway accepts. Runs before the job setup
-  below; the seed has no fee reconciliation job.
+  Needs the functions server and CRON_SECRET in supabase/functions/.env (`bun run bruno:env`
+  copies it to bruno/.env). Runs before the job setup below; the seed has no fee
+  reconciliation job.
 }

@@ -3,7 +3,6 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   claimCheckoutRecoveryShells,
-  isAuthorizedCheckoutRecoveryWorker,
   processRecoveryClaimsSequentially,
 } from './recovery.ts';
 
@@ -30,44 +29,53 @@ const workerSource = () =>
   );
 
 describe('checkout recovery worker authorization', () => {
-  it('rejects an empty dedicated worker JWT instead of authorizing Bearer whitespace', () => {
-    expect(
-      isAuthorizedCheckoutRecoveryWorker({
-        authorization: 'Bearer ',
-        workerServiceRoleJwt: '',
-      }),
-    ).toBe(false);
-  });
-
-  it('reads the dedicated worker JWT once and reuses it for authorization and the admin client', () => {
+  it('authorizes only the shared cron secret and reports a mismatch before answering 401', () => {
     const source = workerSource();
 
-    expect(
-      source.match(/Deno\.env\.get\('CHECKOUT_RECOVERY_SERVICE_ROLE_JWT'/g),
-    ).toHaveLength(1);
     expect(source).toContain(
       compact(
-        'const workerServiceRoleJwt = Deno.env.get("CHECKOUT_RECOVERY_SERVICE_ROLE_JWT")?.trim();',
+        'import { isAuthorizedCronRequest, reportCronSecretMismatch, } from "../_shared/auth/cron-auth.ts";',
       ),
     );
     expect(source).toContain(
       compact(
-        'isAuthorizedCheckoutRecoveryWorker({ authorization: request.headers.get("authorization"), workerServiceRoleJwt, })',
-      ),
-    );
-    expect(source).toContain(
-      compact(
-        'createClient<Database>( Deno.env.get("SUPABASE_URL") || "", workerServiceRoleJwt, )',
+        'if (!isAuthorizedCronRequest(request, Deno.env.get("CRON_SECRET"))) { await reportCronSecretMismatch( request, "checkout-recovery-worker", reportMessage, ); return new Response("Unauthorized", { status: 401 }); }',
       ),
     );
   });
 
-  it('has no service-role or secret-key fallback', () => {
+  it('no longer accepts a dedicated worker JWT or any Authorization bearer', () => {
     const source = workerSource();
 
-    expect(source).not.toContain(
-      compact('Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")'),
+    expect(source).not.toContain('CHECKOUT_RECOVERY_SERVICE_ROLE_JWT');
+    expect(source).not.toContain('isAuthorizedCheckoutRecoveryWorker');
+    expect(source).not.toContain("headers.get('authorization')");
+    expect(source).not.toContain('Bearer');
+  });
+
+  it('builds its admin client from SUPABASE_SERVICE_ROLE_KEY and answers 500 when the config is missing, only after authorization', () => {
+    const source = workerSource();
+    const authorization = source.indexOf('isAuthorizedCronRequest(request');
+    const configCheck = source.indexOf(
+      compact(
+        'if (!supabaseUrl || !serviceRoleKey) { return new Response("Server configuration unavailable", { status: 500, }); }',
+      ),
     );
+    const client = source.indexOf(
+      compact('createClient<Database>(supabaseUrl, serviceRoleKey)'),
+    );
+
+    expect(source).toContain(
+      compact('const supabaseUrl = Deno.env.get("SUPABASE_URL")?.trim();'),
+    );
+    expect(source).toContain(
+      compact(
+        'const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim();',
+      ),
+    );
+    expect(authorization).toBeGreaterThan(-1);
+    expect(configCheck).toBeGreaterThan(authorization);
+    expect(client).toBeGreaterThan(configCheck);
     expect(source).not.toContain('SUPABASE_SECRET_KEYS');
   });
 });

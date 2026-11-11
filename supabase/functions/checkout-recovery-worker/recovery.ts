@@ -52,17 +52,6 @@ const SEMANTIC_FAILURE_CODES = new Set([
   'PRODUCT_NOT_RESERVED',
 ]);
 
-export function isAuthorizedCheckoutRecoveryWorker(input: {
-  authorization: string | null;
-  workerServiceRoleJwt: string | undefined;
-}): boolean {
-  return (
-    input.workerServiceRoleJwt !== undefined &&
-    input.workerServiceRoleJwt.length > 0 &&
-    input.authorization === `Bearer ${input.workerServiceRoleJwt}`
-  );
-}
-
 export function classifySettlementFailure(
   reason: string,
 ): RecoveryClassification {

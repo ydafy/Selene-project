@@ -1,4 +1,9 @@
 import type { SupabaseClient } from '../_shared/supabase-js.ts';
+import {
+  type CronMismatchReporter,
+  isAuthorizedCronRequest,
+  reportCronSecretMismatch,
+} from '../_shared/auth/cron-auth.ts';
 
 import {
   ApiError,
@@ -22,6 +27,8 @@ export interface CompleteDeliveredShipmentsDependencies {
   cronSecret: string | null;
   // Called only after the cron secret is valid.
   createSupabaseAdmin: () => SupabaseAdminClient;
+  // Sentry message reporter (`reportMessage` from `_shared/sentry.ts`); failures never reach the caller.
+  reportMessage: CronMismatchReporter;
   now?: () => number;
 }
 
@@ -47,12 +54,16 @@ export function createCompleteDeliveredShipmentsHandler(
   const currentTime = dependencies.now ?? Date.now;
 
   return async (req: Request): Promise<Response> => {
+    const cronRequest = {
+      method: req.method,
+      cronSecretConfigured: Boolean(dependencies.cronSecret),
+      cronSecretAccepted: isAuthorizedCronRequest(
+        req,
+        dependencies.cronSecret ?? undefined,
+      ),
+    };
     try {
-      validateAutoCompletionRequest({
-        method: req.method,
-        suppliedCronSecret: req.headers.get('x-cron-secret'),
-        expectedCronSecret: dependencies.cronSecret,
-      });
+      validateAutoCompletionRequest(cronRequest);
 
       const supabaseAdmin = dependencies.createSupabaseAdmin();
       const now = currentTime();
@@ -96,9 +107,7 @@ export function createCompleteDeliveredShipmentsHandler(
       }
 
       const { shipmentIds } = resolveAutoCompletionPlan({
-        method: req.method,
-        suppliedCronSecret: req.headers.get('x-cron-secret'),
-        expectedCronSecret: dependencies.cronSecret,
+        ...cronRequest,
         now,
         candidates,
         activeDisputeShipmentIds,
@@ -204,6 +213,13 @@ export function createCompleteDeliveredShipmentsHandler(
     } catch (error: unknown) {
       const apiError =
         error instanceof ApiError ? error : new ApiError(500, 'INTERNAL_ERROR');
+      if (apiError.code === 'CRON_UNAUTHORIZED') {
+        await reportCronSecretMismatch(
+          req,
+          'complete-delivered-shipments',
+          dependencies.reportMessage,
+        );
+      }
       log(
         'ERROR',
         'Delivered shipment completion request failed',

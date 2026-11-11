@@ -1,8 +1,11 @@
 import type { Database } from '../../../packages/types/src/database.types.ts';
-import { withSentry } from '../_shared/sentry.ts';
+import {
+  isAuthorizedCronRequest,
+  reportCronSecretMismatch,
+} from '../_shared/auth/cron-auth.ts';
+import { reportMessage, withSentry } from '../_shared/sentry.ts';
 import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 
-const WORKER_BEARER_SECRET_ENV = 'STRIPE_FEE_RECONCILIATION_WORKER_SECRET';
 const PRODUCTION_POLICY = {
   batchSize: 25,
   maxAttempts: 3,
@@ -142,7 +145,7 @@ type ReconciliationResult = {
 };
 
 type StripeFeeReconciliationAdapterDependencies = {
-  workerServiceRoleJwt: string | undefined;
+  cronSecret: string | undefined;
   now: () => string;
   policy: Omit<ReconciliationPolicy, 'now'>;
   claimDueJobsAtomically: (
@@ -305,12 +308,7 @@ export const createReconcileStripeFeesHandler =
     runReconciliation: ReconciliationRunner = reconcileStripeFeeJobs,
   ) =>
   async (request: Request): Promise<Response> => {
-    const workerServiceRoleJwt = dependencies.workerServiceRoleJwt;
-    if (
-      !workerServiceRoleJwt ||
-      workerServiceRoleJwt.trim().length === 0 ||
-      request.headers.get('authorization') !== `Bearer ${workerServiceRoleJwt}`
-    ) {
+    if (!isAuthorizedCronRequest(request, dependencies.cronSecret)) {
       return new Response('Unauthorized', { status: 401 });
     }
 
@@ -406,9 +404,7 @@ if (denoRuntime) {
     import('../_shared/stripe/sdk.ts'),
   ]);
 
-  const workerBearerSecret = denoRuntime.env
-    .get(WORKER_BEARER_SECRET_ENV)
-    ?.trim();
+  const cronSecret = denoRuntime.env.get('CRON_SECRET');
   const supabaseUrl = denoRuntime.env.get('SUPABASE_URL')?.trim();
   const serviceRoleKey = denoRuntime.env
     .get('SUPABASE_SERVICE_ROLE_KEY')
@@ -444,7 +440,7 @@ if (denoRuntime) {
           };
 
           return createReconcileStripeFeesHandler({
-            workerServiceRoleJwt: workerBearerSecret,
+            cronSecret,
             now: () => new Date().toISOString(),
             policy: PRODUCTION_POLICY,
             reportJobError: (error) =>
@@ -535,11 +531,13 @@ if (denoRuntime) {
       : null;
 
   denoRuntime.serve(
-    withSentry('reconcile-stripe-fees', (request: Request) => {
-      if (
-        !workerBearerSecret ||
-        request.headers.get('authorization') !== `Bearer ${workerBearerSecret}`
-      ) {
+    withSentry('reconcile-stripe-fees', async (request: Request) => {
+      if (!isAuthorizedCronRequest(request, cronSecret)) {
+        await reportCronSecretMismatch(
+          request,
+          'reconcile-stripe-fees',
+          reportMessage,
+        );
         return new Response('Unauthorized', { status: 401 });
       }
       if (!productionHandler) {

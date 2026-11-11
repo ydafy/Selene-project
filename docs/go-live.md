@@ -58,32 +58,24 @@ Bucket settings and policies on `storage.objects` come from migrations (`supabas
 
 The cron jobs in `supabase/schemas/_cluster/misc.sql` read these names on every run, so create all of them before `supabase db push` creates the jobs (section 8). A job whose secret is missing fails or gets 401 on every run. Create each one in the SQL Editor with `select vault.create_secret('<value>', '<name>');`. Values differ per project; never copy them from another environment.
 
-| Name                                        | Value                                                                                          |
-| ------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `project_url`                               | The project URL, `https://<project-ref>.supabase.co`, with no trailing slash                   |
-| `project_anon_jwt`                          | The project's anon JWT, sent as `Authorization` and `apikey` by the `x-cron-secret` jobs       |
-| `account_closure_cleanup_cron_secret`       | Same value as the `CRON_SECRET` function secret                                                |
-| `auto_cancel_orders_cron_secret`            | Same value as `CRON_SECRET` (sent by `auto-cancel-orders-job` and `auto-cancel-preparing-job`) |
-| `complete_delivered_shipments_cron_secret`  | Same value as `CRON_SECRET`                                                                    |
-| `cron_watchdog_cron_secret`                 | Same value as `CRON_SECRET`                                                                    |
-| `dispatch_push_cron_secret`                 | Same value as `CRON_SECRET`                                                                    |
-| `resume_pending_payouts_cron_secret`        | Same value as `CRON_SECRET`                                                                    |
-| `checkout_recovery_worker_url`              | The project URL, like `project_url`                                                            |
-| `checkout_recovery_worker_service_role_key` | Same value as the `CHECKOUT_RECOVERY_SERVICE_ROLE_JWT` function secret                         |
-| `stripe_fee_worker_project_url`             | The project URL, like `project_url`                                                            |
-| `stripe_fee_worker_service_role_jwt`        | Same value as the `STRIPE_FEE_RECONCILIATION_WORKER_SECRET` function secret                    |
-| `track_shipments_cron_secret`               | Same value as the `TRACK_SHIPMENTS_CRON_SECRET` function secret                                |
+| Name                                       | Value                                                                                          |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| `project_url`                              | The project URL, `https://<project-ref>.supabase.co`, with no trailing slash                   |
+| `account_closure_cleanup_cron_secret`      | Same value as the `CRON_SECRET` function secret                                                |
+| `auto_cancel_orders_cron_secret`           | Same value as `CRON_SECRET` (sent by `auto-cancel-orders-job` and `auto-cancel-preparing-job`) |
+| `complete_delivered_shipments_cron_secret` | Same value as `CRON_SECRET`                                                                    |
+| `cron_watchdog_cron_secret`                | Same value as `CRON_SECRET`                                                                    |
+| `dispatch_push_cron_secret`                | Same value as `CRON_SECRET`                                                                    |
+| `resume_pending_payouts_cron_secret`       | Same value as `CRON_SECRET`                                                                    |
+| `checkout_recovery_worker_cron_secret`     | Same value as `CRON_SECRET`                                                                    |
+| `reconcile_stripe_fees_cron_secret`        | Same value as `CRON_SECRET`                                                                    |
+| `track_shipments_cron_secret`              | Same value as the `TRACK_SHIPMENTS_CRON_SECRET` function secret                                |
 
-The development project's service-role JWT was once stored in `cron.job` (the retired `track-shipments-every-6-hours` job sent it), where anyone with database owner access could read it. It was replaced, not revoked. Revoking it is part of moving to Supabase's per-key API keys before go-live (section 1, step 4), which also replaces the service-role values in `checkout_recovery_worker_service_role_key` and `stripe_fee_worker_service_role_jwt`.
+The development project's service-role JWT was once stored in `cron.job` (the retired `track-shipments-every-6-hours` job sent it), where anyone with database owner access could read it. It was replaced, not revoked. Revoking it is part of moving to Supabase's per-key API keys before go-live (section 1, step 4). No cron job sends a Supabase API key or JWT, so Vault holds no anon or service-role value.
 
 ## 6. Edge Function secrets
 
 `CRON_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CONNECT_WEBHOOK_SECRET`, `ENVIA_MODE`, `ENVIA_API_KEY_PROD`, `ENVIA_API_URL_PROD`, `ENVIA_WEBHOOK_SECRET_PROD`, `ENVIA_API_KEY_SANDBOX`, `ENVIA_API_URL_SANDBOX`, `ENVIA_WEBHOOK_SECRET_SANDBOX`, `SENTRY_DSN` (required; without it Sentry reporting and the `cron-watchdog` monitor are silently off), `SENTRY_ENVIRONMENT` (optional, default `production`). `TRACK_SHIPMENTS_CRON_SECRET` and `TRACK_SHIPMENTS_POLLING_ENABLED` (`true` turns Envia polling on; see "8. Cron jobs"). `EXPO_ACCESS_TOKEN` (required by `dispatch-push`; see "7. Edge Functions").
-
-Two workers accept only the bearer their cron job sends, compared with a function secret:
-
-- `CHECKOUT_RECOVERY_SERVICE_ROLE_JWT`: a service-role JWT of the project. `checkout-recovery-worker` accepts only `Authorization: Bearer <this value>` and uses the same value as its database key. It must equal the Vault secret `checkout_recovery_worker_service_role_key`.
-- `STRIPE_FEE_RECONCILIATION_WORKER_SECRET`: `reconcile-stripe-fees` accepts only `Authorization: Bearer <this value>`. It must equal the Vault secret `stripe_fee_worker_service_role_jwt`. The function reads the database with the injected `SUPABASE_SERVICE_ROLE_KEY`, but the gateway still checks the bearer as a JWT (the function is not in `supabase/config.toml`, so `verify_jwt` is on). Use a service-role JWT of the project.
 
 `ADMIN_WEB_ORIGINS` (required by the functions the admin-web calls): the comma-separated exact origins of the deployed admin-web, with scheme and no trailing slash or path (`https://<admin-web host>`). Without it those functions send no CORS headers and every admin-web screen that calls them fails in the browser. Set it before deploying a function that uses `serveAdminWeb` (`supabase/functions/AGENTS.md`, "CORS"), and never add `localhost` origins in production.
 
@@ -127,7 +119,7 @@ Before the push that creates the jobs:
 2. Set the Edge Function secrets of section 6.
 3. Deploy the functions (section 7).
 
-To change a job, edit its call in `supabase/schemas/_cluster/misc.sql` and run `supabase db schema declarative sync`, as `supabase/AGENTS.md`, "Declarative schema", describes. `bun test scripts/guards/` runs `scripts/guards/cron-jobs.ts`. It fails when a job calls a function that has no directory in `supabase/functions/`, uses a schedule `cron-watchdog` cannot monitor, or repeats a name. `supabase/tests/database/cron_jobs.test.sql` fails when a job holds a literal secret instead of a Vault read.
+To change a job, edit its call in `supabase/schemas/_cluster/misc.sql` and run `supabase db schema declarative sync`, as `supabase/AGENTS.md`, "Declarative schema", describes. `bun test scripts/guards/` runs `scripts/guards/cron-jobs.ts`. It fails when a job calls a function that has no directory in `supabase/functions/`, uses a schedule `cron-watchdog` cannot monitor, or repeats a name. `supabase/tests/database/cron_jobs.test.sql` fails when a job holds a literal secret instead of a Vault read, or sends a Supabase API key or JWT.
 
 The schema file does not say these facts:
 
@@ -136,9 +128,19 @@ The schema file does not say these facts:
 - HTTP job results. An HTTP job records `succeeded` in `cron.job_run_details` once `pg_net` queues the request, whatever the function answers. `cron-watchdog` sees only jobs that end `failed`, so every function a job calls needs `withSentry` to surface its own 5xx.
 - `cron-watchdog`. It reads `fn_cron_health()` and reports failed, overdue, or unsupported-schedule jobs to Sentry. Sentry creates the `cron-watchdog` Cron Monitor on its first check-in (free plan: 1 monitor). Before deploying a change to the function, run `bun scripts/verify/test-cron-health.ts` against the local stack (6 cases; every case rolls back).
 - `track-shipments`. The two lanes (`track-shipments-preparing`, `track-shipments-shipped`) send `Authorization: Bearer <TRACK_SHIPMENTS_CRON_SECRET>`, with no JWT and no `x-cron-secret` (`verify_jwt = false`). Each lane has its own lease, so starting in the same minute is safe. Polling runs only when the function secret `TRACK_SHIPMENTS_POLLING_ENABLED` is `true`. Any other value answers `200 {"skipped": true, "reason": "disabled"}` without touching the database or Envia. Leave the flag unset at first, and check that the runs answer `200` with `"reason": "disabled"` (Edge Function logs for `track-shipments`). Then run `supabase secrets set TRACK_SHIPMENTS_POLLING_ENABLED=true`. The next runs report `processed` and `recorded` counts per lane. To roll back, unset the flag; the runs keep answering `disabled`.
-- `auto-cancel-orders` and `auto-cancel-preparing`. Both reject a caller without the `x-cron-secret` header (401 `UNAUTHORIZED`, compared against `CRON_SECRET`), even though the gateway accepts the anon JWT. Both jobs send the Vault secret `auto_cancel_orders_cron_secret`. `auto-cancel-preparing-job` runs at minute 30, so it never overlaps `auto-cancel-orders-job`. On every run `auto-cancel-orders` first calls `fn_notify_label_deadline_reminders`, which reminds the seller of each paid shipment without a label that the run would cancel within 12 hours. On a database without `supabase/migrations/20261101040000_shipment_label_deadline_notification.sql` that call fails and the run logs `Label deadline reminders failed` as an `ERROR` every hour. The cancellations still run.
+- `auto-cancel-orders` and `auto-cancel-preparing`. Both reject a caller without the `x-cron-secret` header (401 `UNAUTHORIZED`, compared against `CRON_SECRET`); with `verify_jwt = false` the gateway checks no JWT. Both jobs send the Vault secret `auto_cancel_orders_cron_secret`. `auto-cancel-preparing-job` runs at minute 30, so it never overlaps `auto-cancel-orders-job`. On every run `auto-cancel-orders` first calls `fn_notify_label_deadline_reminders`, which reminds the seller of each paid shipment without a label that the run would cancel within 12 hours. On a database without `supabase/migrations/20261101040000_shipment_label_deadline_notification.sql` that call fails and the run logs `Label deadline reminders failed` as an `ERROR` every hour. The cancellations still run.
 - `purge-cron-run-details`. pg_cron never trims `cron.job_run_details` (2026-10-26: 86,638 rows since February, about 2,000 more a day), so this job keeps 7 days. It deletes finished runs only. A run in progress has no `end_time`.
 - `purge-old-evidence`. It is retired. It deleted rows from `storage.objects` directly and failed every night. `supabase/migrations/20261110235701_cron_jobs.sql` unschedules it where it exists, and #29 recreates evidence cleanup through the Storage API.
+
+### Moving an existing project's cron jobs off API-key JWTs
+
+The development project's cron jobs sent the anon JWT, or a service-role JWT for `checkout-recovery-worker` and `reconcile-stripe-fees`, until `supabase/migrations/20261111005002_cron_jobs_cron_secret_only.sql` (#397). Move a project that still has those jobs in this order:
+
+1. Create the Vault secrets `checkout_recovery_worker_cron_secret` and `reconcile_stripe_fees_cron_secret`, each with the value of `CRON_SECRET` (section 5).
+2. From `main`, deploy the five functions whose `verify_jwt` changed to `false`: `checkout-recovery-worker`, `reconcile-stripe-fees`, `complete-delivered-shipments`, `auto-cancel-orders`, and `auto-cancel-preparing` (this includes both workers).
+3. Right after, run `supabase db push`. Between steps 2 and 3 the two worker jobs are rejected with 401, for at most one 5-minute run each. Both workers lease their work and are retry-safe, and the other jobs already send `x-cron-secret`.
+4. After the next runs, check that no job is rejected: `select status_code, count(*) from net._http_response where created > now() - interval '15 minutes' group by status_code;` shows no `401`. `cron.job_run_details` shows `succeeded` even for a 401 (see "HTTP job results").
+5. Delete the old Vault secrets with `delete from vault.secrets where name in ('project_anon_jwt', 'checkout_recovery_worker_service_role_key', 'stripe_fee_worker_service_role_jwt', 'checkout_recovery_worker_url', 'stripe_fee_worker_project_url');` and unset the old function secrets with `supabase secrets unset CHECKOUT_RECOVERY_SERVICE_ROLE_JWT STRIPE_FEE_RECONCILIATION_WORKER_SECRET`.
 
 ## 9. External webhooks
 
