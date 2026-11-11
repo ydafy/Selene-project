@@ -166,19 +166,33 @@ const cronRequest = (
     ...(method === 'POST' ? { body: '{}' } : {}),
   });
 
+type Report = {
+  message: string;
+  options: { fingerprint: string[]; tags: Record<string, string> };
+};
+let reports: Report[] = [];
+
 const handlerFor = (
   database: ReturnType<typeof fakeDatabase>,
   cronSecret: string | null = CRON_SECRET,
+  reportMessage: (
+    message: string,
+    options: Report['options'],
+  ) => void | Promise<void> = (message, options) => {
+    reports.push({ message, options });
+  },
 ) =>
   createCompleteDeliveredShipmentsHandler({
     cronSecret,
     createSupabaseAdmin: database.createSupabaseAdmin,
+    reportMessage,
     now: () => NOW,
   });
 
 let consoleLog: ReturnType<typeof spyOn>;
 beforeEach(() => {
   consoleLog = spyOn(console, 'log').mockImplementation(() => undefined);
+  reports = [];
 });
 afterEach(() => {
   consoleLog.mockRestore();
@@ -249,6 +263,58 @@ describe('complete-delivered-shipments handler: cron secret', () => {
       ]);
     });
   }
+});
+
+describe('complete-delivered-shipments handler: cron secret mismatch reports', () => {
+  it('reports a wrong cron secret once, without its value, and still answers 401', async () => {
+    const database = fakeDatabase({ shipments: [shipmentRow('due')] });
+
+    const response = await handlerFor(database)(
+      cronRequest({ 'x-cron-secret': 'not-the-secret' }),
+    );
+
+    expect(response.status).toBe(401);
+    expect(reports).toEqual([
+      {
+        message: 'complete-delivered-shipments cron secret mismatch',
+        options: {
+          fingerprint: ['cron-secret-mismatch', 'complete-delivered-shipments'],
+          tags: { edge_function: 'complete-delivered-shipments' },
+        },
+      },
+    ]);
+    expect(JSON.stringify(reports)).not.toContain('not-the-secret');
+    expect(database.clientsCreated()).toBe(0);
+  });
+
+  it('does not report a request without the header, a GET, or a server without CRON_SECRET', async () => {
+    for (const [request, cronSecret, status] of [
+      [cronRequest({}), CRON_SECRET, 401],
+      [cronRequest({ 'x-cron-secret': 'nope' }, 'GET'), CRON_SECRET, 400],
+      [cronRequest({ 'x-cron-secret': 'nope' }), null, 500],
+    ] as const) {
+      const database = fakeDatabase({ shipments: [shipmentRow('due')] });
+
+      const response = await handlerFor(database, cronSecret)(request);
+
+      expect(response.status).toBe(status);
+    }
+    expect(reports).toEqual([]);
+  });
+
+  it('keeps the 401 when the reporter throws', async () => {
+    const database = fakeDatabase({ shipments: [shipmentRow('due')] });
+
+    const response = await handlerFor(database, CRON_SECRET, () => {
+      throw new Error('sentry down');
+    })(cronRequest({ 'x-cron-secret': 'not-the-secret' }));
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({
+      success: false,
+      error: 'CRON_UNAUTHORIZED',
+    });
+  });
 });
 
 describe('complete-delivered-shipments handler: completion', () => {

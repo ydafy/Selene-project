@@ -7,7 +7,7 @@
 -- schedules. Runs against the local database only: `supabase start`, then
 -- `bun run test:db`.
 begin;
-select plan(8);
+select plan(12);
 
 create temporary table captured (
   jobname text not null,
@@ -106,9 +106,37 @@ select is_empty(
 select is_empty(
   $$ select jobname from captured
      where headers is null
-        or headers ->> 'Content-Type' is distinct from 'application/json'
-        or not headers ? 'Authorization' $$,
-  'every HTTP job sends JSON with an Authorization header'
+        or headers ->> 'Content-Type' is distinct from 'application/json' $$,
+  'every HTTP job sends JSON'
+);
+
+-- Cron jobs send no Supabase API key or JWT (#397): every cron-invoked
+-- function runs with verify_jwt = false and checks its own secret header.
+select is_empty(
+  $$ select jobname from captured where headers ? 'apikey' $$,
+  'no HTTP job sends an apikey header'
+);
+
+select is_empty(
+  $$ select distinct jobname, m[1]
+     from cron.job,
+       regexp_matches(command, 'name\s*=\s*''([^'']+)''', 'g') as m
+     where m[1] ~ '(jwt|anon|service_role)' $$,
+  'no cron job reads a Vault secret named like a JWT, anon key or service-role key'
+);
+
+select is_empty(
+  $$ select jobname from captured
+     where headers ? 'Authorization'
+       and url !~ '/functions/v1/track-shipments$' $$,
+  'only the track-shipments jobs send an Authorization header'
+);
+
+select is_empty(
+  $$ select jobname from captured
+     where url !~ '/functions/v1/track-shipments$'
+       and not headers ? 'x-cron-secret' $$,
+  'every HTTP job except track-shipments sends x-cron-secret'
 );
 
 select is_empty(
