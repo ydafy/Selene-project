@@ -21,6 +21,7 @@
     "stripe:listen": "bun scripts/dev/stripe-listen.ts",
     "worktree:env": "bun scripts/dev/worktree-env.ts",
     "worktree:clean": "bun scripts/dev/worktree-clean.ts",
+    "skills:usage": "bun scripts/dev/skill-usage.ts",
     "bruno:env": "bun scripts/dev/bruno-env.ts",
     "api:test": "cd bruno && bunx @usebruno/cli@4.2.1 run -r --env local",
     "test:db": "supabase test db",

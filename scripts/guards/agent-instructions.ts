@@ -17,6 +17,9 @@ export const NOT_IN_REPO: Record<string, string> = {
     'worktree parent on the maintainer machine',
   '~/.supabase/stacks': 'per-user Supabase CLI state',
   '~/.supabase/stacks/': 'per-user Supabase CLI state',
+  '~/.gentle-shell/agent/sessions/': 'per-user Gentle Shell session logs',
+  '~/.gentle-shell/agent/gentle-agents/sessions/':
+    'per-user Gentle Shell session logs',
   'mcp.json': 'user-level MCP configuration',
   'selene-ze/selene-edge-functions': 'Sentry organization and project slug',
   'ydafy/Selene-project': 'GitHub repository slug',
