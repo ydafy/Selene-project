@@ -5,7 +5,7 @@
 -- Reconciliation of stuck labels is in shipment_label_reconciliation.test.sql.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(80);
+select plan(82);
 \ir ../fixtures/money.psql
 
 -- Users: 11001 seller, 11002 buyer, 11003 another user.
@@ -238,9 +238,11 @@ select set_config('request.jwt.claims', format('{"sub": "%s", "role": "authentic
 set local role authenticated;
 select throws_ok($$insert into public.shipment_label_events (shipment_id, event_type) values (pg_temp.mu(11102), 'sent')$$,
   '42501', null, 'events: a client cannot insert an event');
-select is((select count(*) from public.shipment_label_events), 0::bigint, 'events: a client reads no event');
-update public.shipment_label_events set event_type = 'sent' where shipment_id = pg_temp.mu(11101);
-delete from public.shipment_label_events where shipment_id = pg_temp.mu(11101);
+select throws_ok($$select count(*) from public.shipment_label_events$$, '42501', null, 'events: a client cannot read events');
+select throws_ok($$update public.shipment_label_events set event_type = 'sent' where shipment_id = pg_temp.mu(11101)$$,
+  '42501', null, 'events: a client cannot update an event');
+select throws_ok($$delete from public.shipment_label_events where shipment_id = pg_temp.mu(11101)$$,
+  '42501', null, 'events: a client cannot delete an event');
 reset role;
 select set_config('request.jwt.claims', '{"role": "service_role"}', true);
 select is(pg_temp.events(11101), 'claimed,generated,sent', 'events: a client update or delete changes nothing');

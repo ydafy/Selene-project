@@ -48,7 +48,9 @@ CREATE POLICY "addresses_update_policy" ON "public"."addresses"
   USING ((auth.uid() = user_id))
   WITH CHECK ((auth.uid() = user_id));
 
-GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."addresses" TO "anon", "authenticated";
+REVOKE ALL ON TABLE "public"."addresses" FROM "anon", "authenticated";
+
+GRANT INSERT, SELECT, UPDATE ON TABLE "public"."addresses" TO "authenticated";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."addresses" TO "service_role";
 

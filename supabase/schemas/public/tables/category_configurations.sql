@@ -14,7 +14,11 @@ CREATE POLICY "category_config_select" ON "public"."category_configurations"
   TO PUBLIC
   USING (true);
 
-GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."category_configurations" TO "anon", "authenticated";
+REVOKE ALL ON TABLE "public"."category_configurations" FROM "anon", "authenticated";
+
+GRANT SELECT ON TABLE "public"."category_configurations" TO "anon";
+
+GRANT SELECT ON TABLE "public"."category_configurations" TO "authenticated";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."category_configurations" TO "service_role";
 

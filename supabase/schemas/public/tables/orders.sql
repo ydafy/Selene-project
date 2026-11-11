@@ -118,11 +118,9 @@ COMMENT ON COLUMN "public"."orders"."stripe_transfer_group" IS 'Stripe transfer_
 
 REVOKE ALL ON TABLE "public"."orders" FROM "anon";
 
-GRANT MAINTAIN, SELECT ON TABLE "public"."orders" TO "anon";
-
 REVOKE ALL ON TABLE "public"."orders" FROM "authenticated";
 
-GRANT MAINTAIN, SELECT ON TABLE "public"."orders" TO "authenticated";
+GRANT SELECT ON TABLE "public"."orders" TO "authenticated";
 
 REVOKE ALL ON TABLE "public"."orders" FROM "postgres";
 

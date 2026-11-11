@@ -29,7 +29,7 @@ CREATE POLICY "payment_methods_manage" ON "public"."payment_methods"
   TO PUBLIC
   USING ((( SELECT auth.uid() AS uid) = user_id));
 
-GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."payment_methods" TO "anon", "authenticated";
+REVOKE ALL ON TABLE "public"."payment_methods" FROM "anon", "authenticated";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."payment_methods" TO "service_role";
 

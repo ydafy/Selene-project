@@ -86,14 +86,8 @@ select is_empty(
 
 -- Client table privileges -------------------------------------------------------
 
--- These tables still carry the default TRUNCATE, REFERENCES and TRIGGER grants
--- (#122). #305 revokes them and empties this list; no table may join it.
-create temporary table default_grant_tables (name text primary key) on commit drop;
-insert into default_grant_tables values
-  ('addresses'), ('blocked_users'), ('category_configurations'), ('favorites'),
-  ('mexico_zips'), ('payment_methods'), ('products'), ('reports'), ('reviews'),
-  ('shipment_label_events'), ('system_logs'), ('system_settings'), ('webhook_dlq');
-
+-- #305 revoked the default grants (#122); client_grants.test.sql holds the
+-- exact client matrix.
 select is_empty(
   $$select r.rolname || ' ' || c.relname || ' ' || p.privilege
     from pg_class c
@@ -101,10 +95,9 @@ select is_empty(
     cross join (values ('TRUNCATE'), ('REFERENCES'), ('TRIGGER')) p(privilege)
     where c.relnamespace = 'public'::regnamespace
       and c.relkind in ('r', 'p', 'v', 'm', 'f')
-      and c.relname not in (select name from default_grant_tables)
       and has_table_privilege(r.rolname, c.oid, p.privilege)
     order by 1$$,
-  'anon and authenticated hold no TRUNCATE, REFERENCES or TRIGGER outside the #305 list');
+  'anon and authenticated hold no TRUNCATE, REFERENCES or TRIGGER on any public relation');
 
 -- Order links -------------------------------------------------------------------
 
