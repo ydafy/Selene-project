@@ -1,4 +1,5 @@
 import { createClient } from '../_shared/supabase-js.ts';
+import { readSupabaseSecretKey } from '../_shared/supabase-secret-key.ts';
 
 import { verifyEnviaWebhook } from '../_shared/envia/envia-webhook-verify.ts';
 import { createEnviaWebhookHandler } from './handler.ts';
@@ -16,7 +17,7 @@ const sha256 = async (value: string) => {
 
 const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+  readSupabaseSecretKey() ?? '',
 );
 
 const mode = Deno.env.get('ENVIA_MODE') ?? 'sandbox';

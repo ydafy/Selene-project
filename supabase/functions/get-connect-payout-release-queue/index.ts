@@ -1,4 +1,5 @@
 import { createClient } from '../_shared/supabase-js.ts';
+import { readSupabaseSecretKey } from '../_shared/supabase-secret-key.ts';
 
 import {
   escapeIlikePattern,
@@ -21,15 +22,15 @@ serveAdminWeb(
     try {
       if (req.method !== 'POST') throw new Error('METHOD_NOT_ALLOWED');
 
-      const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      const supabaseSecretKey = readSupabaseSecretKey();
       const supabaseUrl = Deno.env.get('SUPABASE_URL');
-      if (!serviceRoleKey || !supabaseUrl)
+      if (!supabaseSecretKey || !supabaseUrl)
         throw new Error('MISSING_SERVER_CONFIG');
 
       const authHeader = req.headers.get('Authorization');
       if (!authHeader?.startsWith('Bearer ')) throw new Error('AUTH_REQUIRED');
 
-      const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+      const supabaseAdmin = createClient(supabaseUrl, supabaseSecretKey, {
         auth: { autoRefreshToken: false, persistSession: false },
       });
       return await createQueueHandler({

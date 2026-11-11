@@ -79,7 +79,7 @@ The development project's service-role JWT was once stored in `cron.job` (the re
 
 `ADMIN_WEB_ORIGINS` (required by the functions the admin-web calls): the comma-separated exact origins of the deployed admin-web, with scheme and no trailing slash or path (`https://<admin-web host>`). Without it those functions send no CORS headers and every admin-web screen that calls them fails in the browser. Set it before deploying a function that uses `serveAdminWeb` (`supabase/functions/AGENTS.md`, "CORS"), and never add `localhost` origins in production.
 
-`SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` are injected by Supabase.
+`SUPABASE_URL` and `SUPABASE_SECRET_KEYS` are injected by Supabase. The functions build their privileged client with the `default` secret key from `SUPABASE_SECRET_KEYS` and never read the legacy `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_ANON_KEY`. Supabase injects `SUPABASE_SECRET_KEYS` only once the project has publishable and secret keys, so create them (step 1.4) before deploying the functions; without them every function that needs the database answers 500.
 
 Production uses live Stripe keys and `ENVIA_MODE` set to production.
 

@@ -14,6 +14,7 @@
  * scheduling is configured in the Supabase Dashboard (handoff only).
  */
 import { createClient } from '../_shared/supabase-js.ts';
+import { readSupabaseSecretKey } from '../_shared/supabase-secret-key.ts';
 import Stripe from '../_shared/stripe/sdk.ts';
 import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 
@@ -90,13 +91,13 @@ const serveHandler = async (req: Request): Promise<Response> => {
     });
 
     const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY');
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const supabaseSecretKey = readSupabaseSecretKey();
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    if (!stripeSecret || !serviceRoleKey || !supabaseUrl) {
+    if (!stripeSecret || !supabaseSecretKey || !supabaseUrl) {
       throw new ResumePayoutsError(500, 'MISSING_SERVER_CONFIG');
     }
 
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+    const supabaseAdmin = createClient(supabaseUrl, supabaseSecretKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
     const stripe = new Stripe(stripeSecret, {

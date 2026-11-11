@@ -1,4 +1,5 @@
 import { createClient } from '../_shared/supabase-js.ts';
+import { readSupabaseSecretKey } from '../_shared/supabase-secret-key.ts';
 
 import {
   GetSellerOnboardingError,
@@ -18,9 +19,9 @@ const jsonResponse = (body: SellerOnboardingResponse, status: number) =>
 serveAdminWeb(
   withSentry('get-seller-onboarding', async (req) => {
     try {
-      const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      const supabaseSecretKey = readSupabaseSecretKey();
       const supabaseUrl = Deno.env.get('SUPABASE_URL');
-      if (!serviceRoleKey || !supabaseUrl) {
+      if (!supabaseSecretKey || !supabaseUrl) {
         throw new Error('MISSING_SERVER_CONFIG');
       }
 
@@ -29,7 +30,7 @@ serveAdminWeb(
         throw new Error('AUTH_REQUIRED');
       }
 
-      const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+      const supabaseAdmin = createClient(supabaseUrl, supabaseSecretKey);
       const token = authHeader.slice('Bearer '.length);
       const {
         data: { user },

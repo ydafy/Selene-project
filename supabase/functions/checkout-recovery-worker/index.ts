@@ -1,4 +1,5 @@
 import { createClient } from '../_shared/supabase-js.ts';
+import { readSupabaseSecretKey } from '../_shared/supabase-secret-key.ts';
 import Stripe from '../_shared/stripe/sdk.ts';
 import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 
@@ -46,14 +47,14 @@ Deno.serve(
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim();
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim();
-    if (!supabaseUrl || !serviceRoleKey) {
+    const supabaseSecretKey = readSupabaseSecretKey();
+    if (!supabaseUrl || !supabaseSecretKey) {
       return new Response('Server configuration unavailable', {
         status: 500,
       });
     }
 
-    const supabase = createClient<Database>(supabaseUrl, serviceRoleKey);
+    const supabase = createClient<Database>(supabaseUrl, supabaseSecretKey);
     const leaseClient = {
       rpc: (fn: string, args: Record<string, unknown>) =>
         supabase.rpc(fn as never, args as never),
