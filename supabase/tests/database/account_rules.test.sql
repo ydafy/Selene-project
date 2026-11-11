@@ -1,11 +1,12 @@
 -- Block-1 account rules (S4, T10b): a suspended seller cannot publish, edit or
 -- receive reservations, but keeps their own purchases; lifting a suspension
 -- restores only the listings the account hold hid, each to its prior status;
--- banned is final; clients cannot write profiles_private.role or status.
--- Admin flows appear only as setup. Runs against the local database only:
+-- banned is final; clients cannot write profiles_private.role or status; the
+-- status RPC refuses self changes and NULL, audits each change and clears
+-- stale holds. Runs against the local database only:
 -- `supabase start`, then `bun run test:db`.
 begin;
-select plan(44);
+select plan(53);
 
 -- Snapshot values under the current settings (authenticated cannot read them).
 create function pg_temp.fresh_reserve() returns bigint language sql security definer as $$
@@ -328,6 +329,90 @@ select is(
   0::bigint, 'no status change was audited for the targets of the refused calls');
 select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000e1'), 'HIDDEN:-',
   'the client listing has no account hold');
+
+-- Status RPC guards, stale holds and the audit row (#277) -------------------------
+-- 09 a seller to suspend and lift with an admin edit in between, 10 a suspended
+-- admin. Listings: aa and ab of seller 09, both VERIFIED.
+insert into auth.users (
+  instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+  raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+  confirmation_token, recovery_token, email_change_token_new, email_change
+)
+select '00000000-0000-0000-0000-000000000000', u.id, 'authenticated', 'authenticated',
+  u.email, '', now(), '{}'::jsonb, jsonb_build_object('username', u.username), now(), now(), '', '', '', ''
+from (values
+  ('d0000000-0000-4000-8000-000000000009'::uuid, 'rules_stale@test.local', 'rules_stale'),
+  ('d0000000-0000-4000-8000-000000000010'::uuid, 'rules_admin2@test.local', 'rules_admin2')
+) as u(id, email, username);
+update public.profiles_private set role = 'admin', status = 'suspended'
+where id = 'd0000000-0000-4000-8000-000000000010';
+select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000aa', 'd0000000-0000-4000-8000-000000000009', 'VERIFIED');
+select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000ab', 'd0000000-0000-4000-8000-000000000009', 'VERIFIED');
+
+select pg_temp.as_user('d0000000-0000-4000-8000-000000000001');
+set local role authenticated;
+select throws_ok(
+  $$select public.fn_admin_update_user_status(
+    'd0000000-0000-4000-8000-000000000001', 'd0000000-0000-4000-8000-000000000001', 'suspended', 'self')$$,
+  'P0001', 'CANNOT_CHANGE_OWN_STATUS', 'an admin cannot change their own status');
+select throws_ok(
+  $$select public.fn_admin_update_user_status(
+    'd0000000-0000-4000-8000-000000000005', 'd0000000-0000-4000-8000-000000000001', null, 'null status')$$,
+  'P0001', 'INVALID_ACCOUNT_STATUS', 'a NULL status is refused');
+select is(
+  public.fn_admin_update_user_status(
+    'd0000000-0000-4000-8000-0000000000ff', 'd0000000-0000-4000-8000-000000000001', 'suspended', 'nobody'),
+  false, 'an unknown user returns false');
+reset role;
+select is(
+  (select string_agg(id::text || '=' || coalesce(status::text, 'null'), ',' order by id)
+   from public.profiles_private where id in (
+     'd0000000-0000-4000-8000-000000000001', 'd0000000-0000-4000-8000-000000000005')),
+  'd0000000-0000-4000-8000-000000000001=active,d0000000-0000-4000-8000-000000000005=active',
+  'the refused calls left the admin and the target active');
+select is(
+  (select count(*) from public.admin_audit_logs where target_id in (
+     'd0000000-0000-4000-8000-000000000001', 'd0000000-0000-4000-8000-000000000005',
+     'd0000000-0000-4000-8000-0000000000ff')),
+  0::bigint, 'the refused calls and the unknown user wrote no audit row');
+
+-- A suspended admin has no admin authority.
+select pg_temp.as_user('d0000000-0000-4000-8000-000000000010');
+set local role authenticated;
+select throws_ok(
+  $$select public.fn_admin_update_user_status(
+    'd0000000-0000-4000-8000-000000000009', 'd0000000-0000-4000-8000-000000000010', 'suspended', 'x')$$,
+  'P0001', 'UNAUTHORIZED_ADMIN_ONLY', 'a suspended admin cannot change a status');
+reset role;
+
+-- Suspend 09 naming another user as actor; the JWT admin is recorded instead.
+select pg_temp.as_user('d0000000-0000-4000-8000-000000000001');
+set local role authenticated;
+select public.fn_admin_update_user_status(
+  'd0000000-0000-4000-8000-000000000009', 'd0000000-0000-4000-8000-000000000005', 'suspended', 'hold');
+reset role;
+-- During the suspension an admin moves aa out of HIDDEN; its hold goes stale.
+update public.products set status = 'REJECTED' where id = 'd0000000-0000-4000-8000-0000000000aa';
+select pg_temp.as_user('d0000000-0000-4000-8000-000000000001');
+set local role authenticated;
+select public.fn_admin_update_user_status(
+  'd0000000-0000-4000-8000-000000000009', 'd0000000-0000-4000-8000-000000000005', 'active', 'lift');
+reset role;
+select is(
+  pg_temp.listing('d0000000-0000-4000-8000-0000000000aa') || ',' || pg_temp.listing('d0000000-0000-4000-8000-0000000000ab'),
+  'REJECTED:-,VERIFIED:-',
+  'the lift clears the stale hold of a listing an admin moved out of HIDDEN and restores the other');
+select is(
+  (select string_agg(right(admin_id::text, 2) || ':' || action_type || ':' || (details->>'previous_status')
+     || '>' || (details->>'new_status') || ':' || (details->>'reason'), ',' order by details->>'previous_status')
+   from public.admin_audit_logs where target_id = 'd0000000-0000-4000-8000-000000000009'),
+  '01:USER_STATUS_UPDATE:active>suspended:hold,01:USER_STATUS_UPDATE:suspended>active:lift',
+  'each change is audited with the JWT admin, previous status, new status and reason');
+select is(
+  (select status::text || ':' || status_reason || ':' || status_updated_by from public.profiles_private
+   where id = 'd0000000-0000-4000-8000-000000000009'),
+  'active:lift:d0000000-0000-4000-8000-000000000001',
+  'the account records the reason and the JWT admin, not the admin id passed in');
 
 select * from finish();
 rollback;
