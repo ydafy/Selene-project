@@ -113,6 +113,12 @@ The Edge Functions call Stripe through one SDK pin and send one API version. The
 
 The weekly report's **Stripe API version** section compares `STRIPE_API_VERSION` with the API version the installed `stripe` package ships and flags a mismatch. It fails when it cannot read either version, or when the installed SDK is not the pinned one.
 
+## Keep EAS CLI on one major
+
+The root scripts run EAS CLI through `bunx eas-cli` (for example `bun run dev:install`). It is not a dependency: EAS CLI warns when a project installs it, and Expo recommends running it with `npx`. `cli.version` in `apps/frontend/eas.json` limits it to one major (`^27.0.0`), so a new major stops EAS with a version error instead of changing behavior during a build.
+
+When that happens, read the EAS CLI changelog (https://github.com/expo/eas-cli/blob/main/CHANGELOG.md) for the breaking changes, then raise the range in `apps/frontend/eas.json` in its own commit.
+
 ## Move Expo-pinned packages only with Expo
 
 Each Expo SDK pins the versions of its native packages (`expo-*`, `react-native`, `react-native-reanimated`, and others, pinned in `apps/frontend/package.json`). Do not bump them with `bun update` or by editing `package.json`.
