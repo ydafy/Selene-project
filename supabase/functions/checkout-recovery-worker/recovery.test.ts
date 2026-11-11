@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'bun:test';
 
+import * as recoveryModule from './recovery.ts';
 import {
   buildRecoveryRefundParams,
   classifySettlementFailure,
   compensateRecoveryShell,
-  isAuthorizedCheckoutRecoveryWorker,
 } from './recovery.ts';
 
 describe('checkout recovery > classifySettlementFailure', () => {
@@ -143,53 +143,7 @@ describe('checkout recovery > buildRecoveryRefundParams', () => {
 });
 
 describe('checkout recovery worker authorization', () => {
-  it('fails closed when the dedicated worker JWT is missing or blank', () => {
-    expect(
-      isAuthorizedCheckoutRecoveryWorker({
-        authorization: 'Bearer ',
-        workerServiceRoleJwt: '',
-      }),
-    ).toBe(false);
-    expect(
-      isAuthorizedCheckoutRecoveryWorker({
-        authorization: 'Bearer anything',
-        workerServiceRoleJwt: undefined,
-      }),
-    ).toBe(false);
-  });
-
-  it('accepts only the exact configured dedicated worker JWT bearer token', () => {
-    expect(
-      isAuthorizedCheckoutRecoveryWorker({
-        authorization: 'Bearer abc.def.ghi',
-        workerServiceRoleJwt: 'abc.def.ghi',
-      }),
-    ).toBe(true);
-    expect(
-      isAuthorizedCheckoutRecoveryWorker({
-        authorization: 'Bearer wrong-secret',
-        workerServiceRoleJwt: 'abc.def.ghi',
-      }),
-    ).toBe(false);
-  });
-
-  it('rejects case-changed, whitespace-modified, missing, and malformed bearer headers', () => {
-    const workerServiceRoleJwt = 'abc.def.ghi';
-
-    for (const authorization of [
-      'Bearer ABC.DEF.GHI',
-      'Bearer abc.def.ghi ',
-      'Bearer  abc.def.ghi',
-      'Basic abc.def.ghi',
-      'abc.def.ghi',
-      null,
-    ]) {
-      expect(
-        isAuthorizedCheckoutRecoveryWorker({
-          authorization,
-          workerServiceRoleJwt,
-        }),
-      ).toBe(false);
-    }
+  it('has no dedicated worker-JWT check: the worker authorizes with the shared cron secret', () => {
+    expect('isAuthorizedCheckoutRecoveryWorker' in recoveryModule).toBe(false);
   });
 });
