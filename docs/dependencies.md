@@ -140,7 +140,7 @@ Answer these before running `bun add`. If an answer is bad, do not add the packa
    - `bun run typecheck`
    - `bun test`
    - `bun audit --audit-level=high` exactly as `.github/workflows/dependency-audit.yml` runs it, with its `--ignore` flags if it has any
-   - A device check when the package is native (see the Expo SDK rule above).
+   - A device check when the package is native (see the Expo SDK rule above), on a new development build from `bun run dev:install`.
 5. Commit only when every check passes.
 
 `bunfig.toml` sets `minimumReleaseAge = 259200` (3 days). Bun refuses to install a version published less than 3 days ago. If an install fails for that reason, pick the previous version. Never change the setting.
