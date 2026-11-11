@@ -1070,10 +1070,11 @@ Deno.serve(
           Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
         );
 
-        let payload: Json = {};
+        // webhook_dlq.payload is NOT NULL: a body of `null` keeps the empty object.
+        let payload: NonNullable<Json> = {};
         try {
           const parsed: unknown = JSON.parse(rawBody || '{}');
-          if (isJson(parsed)) payload = parsed;
+          if (isJson(parsed) && parsed !== null) payload = parsed;
         } catch {
           // Silencioso por seguridad: si falla el parseo, cae en el fallback de objeto vacío.
         }

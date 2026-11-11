@@ -251,3 +251,15 @@ It is established as the standard procedure for structural inconsistencies.
 - With the green light, the agent runs `supabase db push --linked` from the linked main checkout, then `bun run db:types` and the remote history check. The green light covers only the migrations it names; anything else in the dry run or the push stops the agent.
 - First use: `20261111003504_checkout_recovery_reconciliation_state` (#383), applied 2026-11-10.
 - Procedure: `supabase/AGENTS.md`, "When a change touches Supabase", steps 3 and 4. The entry above still holds: migrations reach the remote only through `supabase db push`.
+
+## 2026-11-10: Database Types Come From the Local Database
+
+**Context:** `bun run db:types` generated `packages/types/src/database.types.ts` from the remote project. The remote can hold work from an unmerged branch or miss an unapplied migration, so the committed types could disagree with `supabase/migrations/`, and nothing checked them (#304).
+
+**Decision:**
+
+- `bun run db:types` runs `scripts/dev/database-types.ts`: `supabase gen types typescript --local --schema public` after `supabase db reset`, formatted with the repository's Prettier and written only when generation succeeds. It does not reset the database itself, because a reset would delete local data and CI already catches stale types.
+- The CI job `db-test` runs `bun run db:types:check`, which fails when the committed file differs from what the migrations generate.
+- The types are generated with the migration and committed with it, before the push to the remote. This replaces "then `bun run db:types`" after the push in the 2026-11-10 entry above.
+
+**Consequence:** The local generator is the `pgmeta` image pinned in `supabase/supabase.lock`, so a stack lock update can change the generated file; regenerate it in the same pull request. It is more precise than the remote one: generated columns are `never` on insert, NOT NULL JSON is `NonNullable<Json>`, and view columns take their nullability from the base tables.

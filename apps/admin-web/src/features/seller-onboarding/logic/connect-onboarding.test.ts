@@ -5,6 +5,10 @@ import {
   summarizeSellerOnboarding,
 } from './connect-onboarding';
 
+// The view never returns a null id or created_at; the normalizer still skips a
+// row without an id, and the second fixture below proves it.
+const missing = null as unknown as string;
+
 describe('connect onboarding admin helpers', () => {
   it('summarizes onboarding rows by status', () => {
     expect(
@@ -30,13 +34,13 @@ describe('connect onboarding admin helpers', () => {
           created_at: '2026-06-14T00:00:00Z',
         },
         {
-          id: null,
+          id: missing,
           username: 'missing_id',
           email: null,
           stripe_account_id: null,
           stripe_onboarding_status: null,
           charges_enabled: null,
-          created_at: null,
+          created_at: missing,
         },
       ]
         .map(normalizeSellerOnboardingRow)

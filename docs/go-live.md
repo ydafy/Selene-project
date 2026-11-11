@@ -16,7 +16,7 @@ Open launch dependencies:
 
 1. Choose the plan before the first real payment. Recommended: Pro (about USD 25 a month). Free runs the app, but it has no downloadable backups, pauses a project after a week without activity, does not offer leaked password protection, and its database and Storage quotas are small for dispute videos (current limits: https://supabase.com/pricing). Launching on Free is acceptable only with a daily off-site database backup in place (`supabase db dump` on a schedule, stored outside Supabase; it does not cover Storage files) and someone watching the quotas. Upgrade to Pro at the first of: real payments flowing every week, the database or Storage near its quota, or any data incident. Point-in-time recovery (add-on, about USD 100 a month) can wait until there is real volume. Decided with the maintainer on 2026-11-08.
 2. Create the project in the target region and organization.
-3. Record the new project ref; update `db:types` in `package.json` and the Supabase MCP URL.
+3. Record the new project ref and update the Supabase MCP URL.
 4. Use the new API keys from day one: `sb_publishable_...` in the apps and `sb_secret_...` in server components, and keep the legacy `anon`/`service_role` JWT keys disabled. The legacy `service_role` key of the development project was exposed on 2026-10-19 (it was embedded in a Dashboard-created trigger); never reuse it or copy any key from that project.
 5. Decide whether migrations deploy through the Supabase GitHub integration (applies pending `supabase/migrations/` on every push to the production branch). It was connected to the development project on 2026-10-21 and disconnected the same day: its first run failed with `column "refund_id" ... already exists` because two migrations had been applied by hand and were missing from the remote history (nothing was applied). Enable it only on a project whose migration history matches the repository, and only once every branch that pushes to `main` is meant to reach production; then update the "The repository does not deploy itself" rule in `AGENTS.md`.
 
@@ -41,7 +41,7 @@ Install `pg_net` in the `extensions` schema, not `public` (security advisor `ext
 
 1. Link the new project. Before the first `supabase db push`, create the Vault secrets (section 5), set the Edge Function secrets (section 6), and deploy the functions (section 7): the push also creates the cron jobs (section 8), which read Vault by name and call the functions. Then run `supabase db push`. It applies the baseline and every later migration in version order and records them in the remote migration history.
 2. Run `get_advisors` (security and performance) and resolve new findings.
-3. Regenerate types and confirm they match `packages/types/src/database.types.ts`.
+3. Run the schema drift check (`supabase/AGENTS.md`, "Schema drift check"). The types need no step: `bun run db:types` generates them from the local database, and CI checks them against the migrations.
 
 ## 4. Storage buckets
 

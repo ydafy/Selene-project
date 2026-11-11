@@ -48,10 +48,14 @@ const row = (overrides: Partial<QueueRow>): QueueRow => ({
   ...overrides,
 });
 
+// The view starts from shipments, so it never returns a null shipment, order or
+// seller id; the mapper still guards against one, and these rows prove it.
+const missingId = null as unknown as string;
+
 const runRow = (overrides: Partial<QueueRow>): QueueRow =>
   row({
-    shipment_id: null,
-    order_id: null,
+    shipment_id: missingId,
+    order_id: missingId,
     payout_run_id: 'run-1',
     payout_run_amount_cents: 12_500,
     ...overrides,
@@ -418,7 +422,7 @@ describe('connect payout release queue bucket classification', () => {
     const queue = mapConnectPayoutReleaseQueue([
       runRow({
         payout_run_id: 'run-orphan',
-        seller_id: null,
+        seller_id: missingId,
         seller_name: null,
         payout_run_status: 'paid',
       }),
