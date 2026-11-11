@@ -296,14 +296,4 @@ describe('resolve-shipment-operation-review wiring', () => {
     expect(index).toContain("from '../_shared/auth/admin-auth.ts'");
     expect(index).toContain('fn_resolve_shipment_cancellation_review');
   });
-
-  it('declares verify_jwt = true in config.toml', () => {
-    const config = readFileSync(
-      join(import.meta.dir, '../../config.toml'),
-      'utf8',
-    );
-    expect(config).toMatch(
-      /\[functions\.resolve-shipment-operation-review\]\r?\nverify_jwt = true/,
-    );
-  });
 });

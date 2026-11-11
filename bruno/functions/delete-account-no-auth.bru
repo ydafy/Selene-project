@@ -17,10 +17,11 @@ headers {
 tests {
   test("rejects a call without a user token", function () {
     expect(res.getStatus()).to.equal(401);
+    expect(res.getBody()).to.deep.equal({ error: "AUTH_REQUIRED" });
   });
 }
 
 docs {
-  Needs the functions server (see stripe-webhooks-unsigned). With verify_jwt = true the
-  gateway answers first, so no body is asserted; nothing is read or changed.
+  Needs the functions server (see stripe-webhooks-unsigned). verify_jwt = false, so the
+  function's own check answers; nothing is read or changed.
 }
