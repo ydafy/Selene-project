@@ -15,8 +15,19 @@ Code that two or more functions use lives in `_shared/`, grouped by topic: `_sha
 ## Sentry
 
 - Wrap every handler: `Deno.serve(withSentry('<folder-name>', handler))` from `_shared/sentry.ts`. It reports thrown errors and 5xx responses only, never bodies, headers, URLs, or user data. Do not call the Sentry SDK directly.
-- `cron-watchdog` checks every pg_cron job through `fn_cron_health()` and reports failed or overdue jobs; it is the only Sentry Cron Monitor the plan allows. A new cron job needs a schedule `cron-watchdog/health.ts` supports.
+- `cron-watchdog` checks every pg_cron job through `fn_cron_health()` and reports failed or overdue jobs; it is the only Sentry Cron Monitor the plan allows. A cron job is declared in `supabase/schemas/_cluster/misc.sql` and needs a schedule `cron-watchdog/health.ts` supports; `scripts/guards/cron-jobs.ts` checks it.
 - `SENTRY_DSN` is a Supabase secret; locally it lives in `supabase/functions/.env` with `SENTRY_ENVIRONMENT=local`. Without a DSN the helper does nothing.
+
+## Deploy and drift check
+
+Deploy Edge Functions only from `main`, never from a worktree or an unmerged branch: the deployed code must match the repository. The maintainer deploys (root `AGENTS.md`, "Never").
+
+Check the remote against the repository through the Supabase MCP (read-only):
+
+1. `list_edge_functions`: the slugs must be exactly the directories in `supabase/functions/` except `_shared/` and `__tests__/`, and each `verify_jwt` must match `supabase/config.toml` (a function missing there has `verify_jwt = true`).
+2. `execute_sql` with `select jobname, schedule, active from cron.job order by jobname`: the names and schedules must match the jobs in `supabase/schemas/_cluster/misc.sql`, and every job is active.
+
+Classify a difference as `../AGENTS.md`, "Schema drift check", step 3, describes.
 
 ## Bruno collection
 
