@@ -13,7 +13,7 @@ CREATE TABLE "public"."checkout_recovery_shells" (
   "updated_at"                    timestamp with time zone NOT NULL DEFAULT now(),
   "stripe_charge_id"              text,
   CONSTRAINT "checkout_recovery_shells_compensation_state_check"
-    CHECK ((compensation_state = ANY (ARRAY['refund_pending'::text, 'refunding'::text, 'refund_failed_retry_queued'::text, 'refunded'::text]))),
+    CHECK ((compensation_state = ANY (ARRAY['refund_pending'::text, 'refunding'::text, 'refund_failed_retry_queued'::text, 'refunded'::text, 'reconciliation_needed'::text]))),
   CONSTRAINT "checkout_recovery_shells_pkey" PRIMARY KEY (stripe_payment_intent_id)
 );
 

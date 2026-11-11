@@ -3,14 +3,14 @@
 -- of the PaymentIntent, or keeps a standalone shell when there is no order;
 -- fn_set_checkout_recovery_charge_evidence keeps the first charge id;
 -- fn_mark_checkout_recovery_retry queues a retry five minutes out;
--- fn_mark_checkout_recovery_reconciliation_needed parks the target; the
+-- fn_mark_checkout_recovery_reconciliation_needed parks the target for a human; the
 -- standalone and replay paths of fn_finalize_checkout_recovery (the order
 -- refund path and its listings are in release_callers.test.sql). Each one
 -- leaves a refunded target alone. Claims and the worker lease are in
 -- checkout_recovery_claims.test.sql.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(47);
+select plan(48);
 \ir ../fixtures/money.psql
 
 select pg_temp.money_user(6001);
@@ -90,12 +90,12 @@ select col_is_pk('public', 'checkout_recovery_shells', 'stripe_payment_intent_id
   'shells: one shell per PaymentIntent');
 select is(
   (select pg_get_constraintdef(oid) from pg_constraint where conname = 'checkout_recovery_shells_compensation_state_check'),
-  'CHECK ((compensation_state = ANY (ARRAY[''refund_pending''::text, ''refunding''::text, ''refund_failed_retry_queued''::text, ''refunded''::text])))',
-  'shells: the compensation states are refund_pending, refunding, refund_failed_retry_queued and refunded');
+  'CHECK ((compensation_state = ANY (ARRAY[''refund_pending''::text, ''refunding''::text, ''refund_failed_retry_queued''::text, ''refunded''::text, ''reconciliation_needed''::text])))',
+  'shells: the compensation states are refund_pending, refunding, refund_failed_retry_queued, refunded and reconciliation_needed');
 select is(
   (select pg_get_constraintdef(oid) from pg_constraint where conname = 'orders_compensation_state_check'),
-  'CHECK (((compensation_state IS NULL) OR (compensation_state = ANY (ARRAY[''refund_pending''::text, ''refunding''::text, ''refund_failed_retry_queued''::text, ''refunded''::text]))))',
-  'orders: the order compensation states are the same four, or NULL');
+  'CHECK (((compensation_state IS NULL) OR (compensation_state = ANY (ARRAY[''refund_pending''::text, ''refunding''::text, ''refund_failed_retry_queued''::text, ''refunded''::text, ''reconciliation_needed''::text]))))',
+  'orders: the order compensation states are the same five, or NULL');
 
 -- 2. fn_upsert_checkout_recovery_shell ----------------------------------------------------
 select pg_temp.rec_order(6101, 'pi_cr_1');
@@ -178,12 +178,20 @@ select is(pg_temp.order_rec(6103) || ' / ' || pg_temp.shell_rec('pi_cr_3') || ' 
   'retry: a refunded order and refunded shells are left alone');
 
 -- 5. fn_mark_checkout_recovery_reconciliation_needed -------------------------------------------
--- Live behavior: 'reconciliation_needed' is not an allowed compensation state on
--- orders or shells, so marking an existing target fails the CHECK constraint.
-select throws_ok($$select public.fn_mark_checkout_recovery_reconciliation_needed('pi_cr_5', 'no charge')$$,
-  '23514', null, 'reconciliation: marking an order fails the compensation state CHECK');
-select throws_ok($$select public.fn_mark_checkout_recovery_reconciliation_needed('pi_cr_s4', 'no charge')$$,
-  '23514', null, 'reconciliation: marking a standalone shell fails the compensation state CHECK');
+-- A target without charge evidence is parked for a human (#383): the claim
+-- never picks it up again.
+reset role;
+select pg_temp.rec_shell('pi_cr_s5', 'refunding');
+set local role service_role;
+select public.fn_mark_checkout_recovery_reconciliation_needed('pi_cr_5', 'no charge');
+select is(pg_temp.order_rec(6105), 'pending|false|-|reconciliation_needed|0|-|-|-|-|no charge',
+  'reconciliation: the order is parked with the error, and its retry time and lease are cleared');
+select public.fn_mark_checkout_recovery_reconciliation_needed('pi_cr_s5', 'no charge');
+select is(pg_temp.shell_rec('pi_cr_s5'), 'seed|{}|1000|reconciliation_needed|0|-|-|-|-|no charge',
+  'reconciliation: the standalone shell is parked the same way');
+select is((select count(*)::integer from public.fn_claim_checkout_recovery_shells(10, 'pi_cr_5', 'order'))
+  + (select count(*)::integer from public.fn_claim_checkout_recovery_shells(10, 'pi_cr_s5', 'standalone')), 0,
+  'reconciliation: a parked order or shell is never claimed again');
 select lives_ok($$select public.fn_mark_checkout_recovery_reconciliation_needed('pi_cr_3', 'late')$$,
   'reconciliation: a refunded order with a refunded shell matches nothing and does not fail');
 select lives_ok($$select public.fn_mark_checkout_recovery_reconciliation_needed('pi_cr_none', 'x')$$,

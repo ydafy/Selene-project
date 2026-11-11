@@ -67,7 +67,7 @@ ALTER TABLE "public"."orders"
 
 ALTER TABLE "public"."orders"
   ADD CONSTRAINT "orders_compensation_state_check"
-    CHECK (((compensation_state IS NULL) OR (compensation_state = ANY (ARRAY['refund_pending'::text, 'refunding'::text, 'refund_failed_retry_queued'::text, 'refunded'::text]))));
+    CHECK (((compensation_state IS NULL) OR (compensation_state = ANY (ARRAY['refund_pending'::text, 'refunding'::text, 'refund_failed_retry_queued'::text, 'refunded'::text, 'reconciliation_needed'::text]))));
 
 CREATE INDEX idx_orders_delivered_at ON public.orders USING btree (delivered_at)
   WHERE (status = 'delivered'::public.order_status_enum);
