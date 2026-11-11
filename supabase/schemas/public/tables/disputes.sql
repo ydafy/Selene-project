@@ -123,11 +123,9 @@ GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON
 
 REVOKE ALL ON TABLE "public"."disputes" FROM "anon";
 
-GRANT MAINTAIN, SELECT ON TABLE "public"."disputes" TO "anon";
-
 REVOKE ALL ON TABLE "public"."disputes" FROM "authenticated";
 
-GRANT MAINTAIN, SELECT ON TABLE "public"."disputes" TO "authenticated";
+GRANT SELECT ON TABLE "public"."disputes" TO "authenticated";
 
 REVOKE ALL ON TABLE "public"."disputes" FROM "postgres";
 

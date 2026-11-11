@@ -134,7 +134,8 @@ select is(
 -- The products table: no public read ---------------------------------------------
 select set_config('request.jwt.claims', '{"role": "anon"}', true);
 set local role anon;
-select is(pg_temp.visible('public.products'), '', 'anon reads no products table row');
+select throws_ok($$select pg_temp.visible('public.products')$$, '42501', null,
+  'anon has no privilege on the products table (#305)');
 reset role;
 select pg_temp.as_user(77002);
 set local role authenticated;

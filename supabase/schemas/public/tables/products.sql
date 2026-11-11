@@ -168,7 +168,9 @@ CREATE POLICY "products_update_owner" ON "public"."products"
     'HIDDEN'::public.product_status_enum,
     'IN_REVIEW'::public.product_status_enum])) AND (status_before_account_hold IS NULL) AND ( SELECT public.fn_current_account_is_active() AS fn_current_account_is_active)));
 
-GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."products" TO "anon", "authenticated";
+REVOKE ALL ON TABLE "public"."products" FROM "anon", "authenticated";
+
+GRANT INSERT, SELECT, UPDATE ON TABLE "public"."products" TO "authenticated";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."products" TO "service_role";
 

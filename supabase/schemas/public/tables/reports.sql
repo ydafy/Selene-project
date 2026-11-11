@@ -20,7 +20,9 @@ CREATE POLICY "reports_insert" ON "public"."reports"
   TO PUBLIC
   WITH CHECK ((( SELECT auth.uid() AS uid) = reporter_id));
 
-GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."reports" TO "anon", "authenticated";
+REVOKE ALL ON TABLE "public"."reports" FROM "anon", "authenticated";
+
+GRANT INSERT, SELECT ON TABLE "public"."reports" TO "authenticated";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."reports" TO "service_role";
 

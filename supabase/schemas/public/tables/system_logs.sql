@@ -25,7 +25,9 @@ CREATE POLICY "system_logs_read" ON "public"."system_logs"
   TO PUBLIC
   USING (( SELECT public.is_admin() AS is_admin));
 
-GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."system_logs" TO "anon", "authenticated";
+REVOKE ALL ON TABLE "public"."system_logs" FROM "anon", "authenticated";
+
+GRANT INSERT ON TABLE "public"."system_logs" TO "authenticated";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."system_logs" TO "service_role";
 

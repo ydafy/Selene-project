@@ -15,12 +15,12 @@ headers {
 }
 
 tests {
-  test("a guest reads no row from the products table, even a VERIFIED one", function () {
-    expect(res.getStatus()).to.equal(200);
-    expect(res.getBody()).to.deep.equal([]);
+  test("a guest cannot read the products table, even a VERIFIED row", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody().code).to.equal("42501");
   });
 }
 
 docs {
-  products_select_public was dropped (T4d3): the table is closed to non-owners. Public reads go through products_public.
+  anon has no privilege on the products table (#305; the contract is supabase/tests/database/client_grants.test.sql). Public reads go through products_public.
 }
