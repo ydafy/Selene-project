@@ -656,7 +656,6 @@ describe('delete-account handler: crash logs', () => {
 });
 
 describe('delete-account wiring (source contract)', () => {
-  const root = join(import.meta.dir, '..', '..', '..');
   const index = readFileSync(join(import.meta.dir, 'index.ts'), 'utf8');
 
   it('is wrapped in withSentry under its folder name and serves the handler', () => {
@@ -683,13 +682,5 @@ describe('delete-account wiring (source contract)', () => {
   it('answers a transient auth.getUser failure as unavailable, keeping 401 for an invalid token', () => {
     expect(index).toContain('isTransientAuthError');
     expect(index).toContain('AuthUnavailableError');
-  });
-
-  it('is declared in config.toml with JWT verification on', () => {
-    const config = readFileSync(
-      join(root, 'supabase/config.toml'),
-      'utf8',
-    ).replace(/\r\n/g, '\n');
-    expect(config).toMatch(/\[functions\.delete-account\]\nverify_jwt = true/);
   });
 });

@@ -5,6 +5,7 @@ import type { ReleaseQueueRow } from '../release-connect-payout/release-connect-
 import {
   MAX_RESUME_RUNS_PER_TICK,
   RESUME_LEASE_SECONDS,
+  ResumePayoutsError,
   resumePendingPayoutRuns,
   validateResumeRequest,
   type ClaimedRun,
@@ -825,31 +826,115 @@ describe('resumePendingPayoutRuns', () => {
 });
 
 describe('validateResumeRequest', () => {
-  const base = {
-    method: 'POST',
-    suppliedCronSecret: 'secret-1',
-    expectedCronSecret: 'secret-1',
+  const request = (method: string, cronSecret?: string) =>
+    new Request('http://localhost/functions/v1/resume-pending-payouts', {
+      method,
+      headers: cronSecret ? { 'x-cron-secret': cronSecret } : {},
+    });
+
+  const harness = () => {
+    const reports: Array<{
+      message: string;
+      options: { fingerprint: string[]; tags: Record<string, string> };
+    }> = [];
+    return {
+      reports,
+      reportMessage: (
+        message: string,
+        options: { fingerprint: string[]; tags: Record<string, string> },
+      ) => {
+        reports.push({ message, options });
+      },
+    };
   };
 
-  test('rejects non-POST invocations', () => {
-    expect(() => validateResumeRequest({ ...base, method: 'GET' })).toThrow(
-      'INVALID_REQUEST',
+  const rejection = async (promise: Promise<void>) => {
+    const error = await promise.then(
+      () => null,
+      (caught: unknown) => caught,
     );
+    expect(error).toBeInstanceOf(ResumePayoutsError);
+    return error as ResumePayoutsError;
+  };
+
+  test('rejects non-POST invocations with 400', async () => {
+    const { reports, reportMessage } = harness();
+    const error = await rejection(
+      validateResumeRequest(request('GET', 'secret-1'), {
+        expectedCronSecret: 'secret-1',
+        reportMessage,
+      }),
+    );
+    expect(error.status).toBe(400);
+    expect(error.code).toBe('INVALID_REQUEST');
+    expect(reports).toEqual([]);
   });
 
-  test('fails closed when no cron secret is configured', () => {
-    expect(() =>
-      validateResumeRequest({ ...base, expectedCronSecret: null }),
-    ).toThrow('INTERNAL_ERROR');
+  test('fails closed with 500 when no cron secret is configured', async () => {
+    const { reports, reportMessage } = harness();
+    const error = await rejection(
+      validateResumeRequest(request('POST', 'secret-1'), {
+        expectedCronSecret: undefined,
+        reportMessage,
+      }),
+    );
+    expect(error.status).toBe(500);
+    expect(error.code).toBe('INTERNAL_ERROR');
+    expect(reports).toEqual([]);
   });
 
-  test('rejects a wrong cron secret', () => {
-    expect(() =>
-      validateResumeRequest({ ...base, suppliedCronSecret: 'wrong' }),
-    ).toThrow('CRON_UNAUTHORIZED');
+  test('rejects a wrong cron secret with 401 and reports the mismatch', async () => {
+    const { reports, reportMessage } = harness();
+    const error = await rejection(
+      validateResumeRequest(request('POST', 'wrong'), {
+        expectedCronSecret: 'secret-1',
+        reportMessage,
+      }),
+    );
+    expect(error.status).toBe(401);
+    expect(error.code).toBe('CRON_UNAUTHORIZED');
+    expect(reports).toEqual([
+      {
+        message: 'resume-pending-payouts cron secret mismatch',
+        options: {
+          fingerprint: ['cron-secret-mismatch', 'resume-pending-payouts'],
+          tags: { edge_function: 'resume-pending-payouts' },
+        },
+      },
+    ]);
   });
 
-  test('accepts a valid cron invocation', () => {
-    expect(() => validateResumeRequest(base)).not.toThrow();
+  test('rejects a secret that only shares a prefix with the expected one', async () => {
+    const { reportMessage } = harness();
+    const error = await rejection(
+      validateResumeRequest(request('POST', 'secret-1-extra'), {
+        expectedCronSecret: 'secret-1',
+        reportMessage,
+      }),
+    );
+    expect(error.status).toBe(401);
+    expect(error.code).toBe('CRON_UNAUTHORIZED');
+  });
+
+  test('rejects a missing cron secret with 401 without reporting it', async () => {
+    const { reports, reportMessage } = harness();
+    const error = await rejection(
+      validateResumeRequest(request('POST'), {
+        expectedCronSecret: 'secret-1',
+        reportMessage,
+      }),
+    );
+    expect(error.status).toBe(401);
+    expect(error.code).toBe('CRON_UNAUTHORIZED');
+    expect(reports).toEqual([]);
+  });
+
+  test('accepts a valid cron invocation', async () => {
+    const { reports, reportMessage } = harness();
+    await validateResumeRequest(request('POST', 'secret-1'), {
+      expectedCronSecret: 'secret-1',
+      reportMessage,
+    });
+    expect(reports).toEqual([]);
   });
 });
