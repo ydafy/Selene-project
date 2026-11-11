@@ -1,4 +1,5 @@
 import { createClient } from '../_shared/supabase-js.ts';
+import { readSupabaseSecretKey } from '../_shared/supabase-secret-key.ts';
 import Stripe from '../_shared/stripe/sdk.ts';
 import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 
@@ -30,9 +31,9 @@ serveAdminWeb(
   withSentry('refresh-connect-account-status', async (req: Request) => {
     try {
       const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY');
-      const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      const supabaseSecretKey = readSupabaseSecretKey();
       const supabaseUrl = Deno.env.get('SUPABASE_URL');
-      if (!stripeSecret || !serviceRoleKey || !supabaseUrl) {
+      if (!stripeSecret || !supabaseSecretKey || !supabaseUrl) {
         throw new RefreshConnectAccountError('MISSING_SERVER_CONFIG', 500);
       }
 
@@ -42,7 +43,7 @@ serveAdminWeb(
       }
 
       const token = authHeader.replace('Bearer ', '');
-      const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+      const supabaseAdmin = createClient(supabaseUrl, supabaseSecretKey, {
         auth: { autoRefreshToken: false, persistSession: false },
       });
       const {

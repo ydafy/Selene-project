@@ -1,6 +1,6 @@
 # Admin payout queue read endpoint
 
-Manual deployment of `get-connect-payout-release-queue` is required before new clients use pagination. The maintainer reported applying `20261015065416_paginate_admin_payout_queue.sql`; generated types now contain `fn_get_admin_payout_queue`. Repository changes alone do not deploy the Edge Function. No agent deployment was performed. Existing server configuration requires `SUPABASE_URL` and server-only `SUPABASE_SERVICE_ROLE_KEY`; never send the latter to clients. No new secrets, cron or webhook configuration is required.
+Manual deployment of `get-connect-payout-release-queue` is required before new clients use pagination. The maintainer reported applying `20261015065416_paginate_admin_payout_queue.sql`; generated types now contain `fn_get_admin_payout_queue`. Repository changes alone do not deploy the Edge Function. No agent deployment was performed. Existing server configuration requires `SUPABASE_URL` and the server-only secret key from `SUPABASE_SECRET_KEYS`; never send the latter to clients. No new secrets, cron or webhook configuration is required.
 
 ## Additive POST contract
 

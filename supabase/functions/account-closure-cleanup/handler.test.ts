@@ -614,7 +614,7 @@ describe('account-closure-cleanup wiring (source contract)', () => {
     expect(index).toContain('createSupabaseClosurePorts');
     expect(index).toContain("from '../_shared/account-closure-cleanup.ts'");
     expect(index).toContain('createClient<Database>');
-    expect(index).toContain('SUPABASE_SERVICE_ROLE_KEY');
+    expect(index).toContain('readSupabaseSecretKey()');
   });
 
   it('is declared in config.toml without JWT verification (cron secret instead)', () => {

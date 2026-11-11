@@ -53,29 +53,33 @@ describe('checkout recovery worker authorization', () => {
     expect(source).not.toContain('Bearer');
   });
 
-  it('builds its admin client from SUPABASE_SERVICE_ROLE_KEY and answers 500 when the config is missing, only after authorization', () => {
+  it('builds its admin client from the shared secret key reader and answers 500 when the config is missing, only after authorization', () => {
     const source = workerSource();
     const authorization = source.indexOf('isAuthorizedCronRequest(request');
     const configCheck = source.indexOf(
       compact(
-        'if (!supabaseUrl || !serviceRoleKey) { return new Response("Server configuration unavailable", { status: 500, }); }',
+        'if (!supabaseUrl || !supabaseSecretKey) { return new Response("Server configuration unavailable", { status: 500, }); }',
       ),
     );
     const client = source.indexOf(
-      compact('createClient<Database>(supabaseUrl, serviceRoleKey)'),
+      compact('createClient<Database>(supabaseUrl, supabaseSecretKey)'),
     );
 
     expect(source).toContain(
       compact('const supabaseUrl = Deno.env.get("SUPABASE_URL")?.trim();'),
     );
     expect(source).toContain(
+      compact('const supabaseSecretKey = readSupabaseSecretKey();'),
+    );
+    expect(source).toContain(
       compact(
-        'const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim();',
+        'import { readSupabaseSecretKey } from "../_shared/supabase-secret-key.ts";',
       ),
     );
     expect(authorization).toBeGreaterThan(-1);
     expect(configCheck).toBeGreaterThan(authorization);
     expect(client).toBeGreaterThan(configCheck);
+    expect(source).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
     expect(source).not.toContain('SUPABASE_SECRET_KEYS');
   });
 });

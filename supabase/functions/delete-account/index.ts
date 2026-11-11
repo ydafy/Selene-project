@@ -1,4 +1,5 @@
 import { createClient } from '../_shared/supabase-js.ts';
+import { readSupabaseSecretKey } from '../_shared/supabase-secret-key.ts';
 import Stripe from '../_shared/stripe/sdk.ts';
 import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 
@@ -30,9 +31,9 @@ const log = (
 // Lazy: a missing server config is a 500 for the request, not a crash at import time.
 const getAdminClient = () => {
   const url = Deno.env.get('SUPABASE_URL');
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  if (!url || !serviceRoleKey) throw new Error('MISSING_SERVER_CONFIG');
-  return createClient<Database>(url, serviceRoleKey, {
+  const supabaseSecretKey = readSupabaseSecretKey();
+  if (!url || !supabaseSecretKey) throw new Error('MISSING_SERVER_CONFIG');
+  return createClient<Database>(url, supabaseSecretKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 };

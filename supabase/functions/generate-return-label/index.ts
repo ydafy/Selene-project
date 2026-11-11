@@ -11,6 +11,7 @@
  */
 
 import { createClient } from '../_shared/supabase-js.ts';
+import { readSupabaseSecretKey } from '../_shared/supabase-secret-key.ts';
 
 import { ReturnLabelRequestSchema } from './request-schema.ts';
 import { withSentry } from '../_shared/sentry.ts';
@@ -54,7 +55,7 @@ Deno.serve(
 
       const supabaseAdmin = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+        readSupabaseSecretKey() ?? '',
       );
 
       // 1. Autenticación
