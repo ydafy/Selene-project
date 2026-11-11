@@ -4,12 +4,10 @@ import Stripe from '../_shared/stripe/sdk.ts';
 import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 
 import type { Database } from '../../../packages/types/src/database.types.ts';
-import { createSupabaseClosurePorts } from '../_shared/account-closure-cleanup.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import {
-  AuthUnavailableError,
   createDeleteAccountHandler,
-  isTransientAuthError,
+  createSupabaseDeleteAccountPorts,
 } from './handler.ts';
 
 const log = (
@@ -48,23 +46,8 @@ const getStripe = () => {
 };
 
 const handler = createDeleteAccountHandler({
-  getUserId: async (accessToken) => {
-    const {
-      data: { user },
-      error,
-    } = await getAdminClient().auth.getUser(accessToken);
-    // A 4xx is the auth server's verdict on the token; anything else is an outage to retry.
-    if (error && isTransientAuthError(error)) throw new AuthUnavailableError();
-    return error || !user ? null : user.id;
-  },
+  ...createSupabaseDeleteAccountPorts({ getAdmin: getAdminClient, getStripe }),
   now: () => Date.now(),
-  closeAccount: async (userId) => {
-    const { data, error } = await getAdminClient().rpc('fn_close_account', {
-      p_user_id: userId,
-    });
-    return { data: data as unknown, error };
-  },
-  ...createSupabaseClosurePorts({ getAdmin: getAdminClient, getStripe }),
   log,
 });
 
