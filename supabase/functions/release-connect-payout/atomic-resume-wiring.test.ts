@@ -16,10 +16,7 @@ const compact = (source: string) =>
     .replace(/ \./g, '.');
 test('manual adapters use only the specialized RPC with explicit response refusal', () => {
   const entrypoint = compact(
-    readFileSync(
-      join(import.meta.dir, '../../functions/release-connect-payout/index.ts'),
-      'utf8',
-    ),
+    readFileSync(join(import.meta.dir, './index.ts'), 'utf8'),
   );
   expect(entrypoint).toContain(compact("from './atomic-resume-adapter.ts'"));
   expect(entrypoint).toContain(
@@ -28,10 +25,7 @@ test('manual adapters use only the specialized RPC with explicit response refusa
     ),
   );
   const factory = readFileSync(
-    join(
-      import.meta.dir,
-      '../../functions/release-connect-payout/atomic-resume-adapter.ts',
-    ),
+    join(import.meta.dir, './atomic-resume-adapter.ts'),
     'utf8',
   );
   for (const name of ['markRunRetrying', 'markRunPendingReconciliation']) {
@@ -44,13 +38,7 @@ test('manual adapters use only the specialized RPC with explicit response refusa
     expect(adapter).not.toContain('.select(');
   }
   const orchestrator = compact(
-    readFileSync(
-      join(
-        import.meta.dir,
-        '../../functions/release-connect-payout/release-connect-payout.ts',
-      ),
-      'utf8',
-    ),
+    readFileSync(join(import.meta.dir, './release-connect-payout.ts'), 'utf8'),
   );
   expect(orchestrator.indexOf('const resumedIntent =')).toBeLessThan(
     orchestrator.indexOf(compact('await deps.retrieveStripePayout(')),
