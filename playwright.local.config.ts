@@ -29,7 +29,7 @@ export default defineConfig({
     reuseExistingServer: false,
     env: {
       VITE_SUPABASE_URL: stack.apiUrl,
-      VITE_SUPABASE_ANON_KEY: stack.anonKey,
+      VITE_SUPABASE_PUBLISHABLE_KEY: stack.publishableKey,
       // The local stack runs CAPTCHA with hCaptcha's public test secret, so the
       // login needs the matching public test site key (the widget loads from hCaptcha).
       VITE_HCAPTCHA_SITE_KEY: '10000000-ffff-ffff-ffff-000000000001',
