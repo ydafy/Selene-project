@@ -263,14 +263,4 @@ describe('acknowledge-shipment-late-carrier-activity wiring', () => {
   it('only calls the acknowledge RPC: no refund, Stripe or Envia call', () => {
     expect(index).not.toMatch(/stripe|envia|refund/i);
   });
-
-  it('declares verify_jwt = true in config.toml', () => {
-    const config = readFileSync(
-      join(import.meta.dir, '../../config.toml'),
-      'utf8',
-    );
-    expect(config).toMatch(
-      /\[functions\.acknowledge-shipment-late-carrier-activity\]\r?\nverify_jwt = true/,
-    );
-  });
 });

@@ -25,6 +25,11 @@
  *     multiple matches become action_required, not a new payout.
  */
 import type { ReleaseQueueRow } from '../release-connect-payout/release-connect-payout.ts';
+import {
+  isAuthorizedCronRequest,
+  reportCronSecretMismatch,
+  type CronMismatchReporter,
+} from '../_shared/auth/cron-auth.ts';
 import type {
   Database,
   ConnectPayoutRunShipment,
@@ -66,22 +71,34 @@ export const RECONCILE_GRACE_SECONDS = 600;
 export const MIN_DEFER_BACKOFF_SECONDS = 60;
 export const MAX_DEFER_BACKOFF_SECONDS = 3600;
 
-export interface ResumeRequestContext {
-  method: string;
-  suppliedCronSecret: string | null;
-  expectedCronSecret: string | null;
+export interface ResumeRequestAuth {
+  expectedCronSecret: string | undefined;
+  reportMessage: CronMismatchReporter;
 }
 
-export function validateResumeRequest(context: ResumeRequestContext): void {
-  if (context.method !== 'POST') {
+/**
+ * Accepts only a POST with the shared CRON_SECRET in `x-cron-secret`, compared in constant time
+ * (`_shared/auth/cron-auth.ts`). A wrong secret is reported before the 401, like the other cron
+ * functions.
+ */
+export async function validateResumeRequest(
+  req: Request,
+  auth: ResumeRequestAuth,
+): Promise<void> {
+  if (req.method !== 'POST') {
     throw new ResumePayoutsError(400, 'INVALID_REQUEST');
   }
 
-  if (!context.expectedCronSecret) {
+  if (!auth.expectedCronSecret) {
     throw new ResumePayoutsError(500, 'INTERNAL_ERROR');
   }
 
-  if (context.suppliedCronSecret !== context.expectedCronSecret) {
+  if (!isAuthorizedCronRequest(req, auth.expectedCronSecret)) {
+    await reportCronSecretMismatch(
+      req,
+      'resume-pending-payouts',
+      auth.reportMessage,
+    );
     throw new ResumePayoutsError(401, 'CRON_UNAUTHORIZED');
   }
 }

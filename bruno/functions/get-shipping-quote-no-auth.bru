@@ -1,0 +1,36 @@
+meta {
+  name: get-shipping-quote-no-auth
+  type: http
+  seq: 54
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/get-shipping-quote
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+body:json {
+  {
+    "originZip": "06500",
+    "packageId": "gpu-medium",
+    "price": 4500
+  }
+}
+
+tests {
+  test("a quote without a user token is refused with AUTH_REQUIRED", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody()).to.deep.equal({ error: "AUTH_REQUIRED" });
+  });
+}
+
+docs {
+  verify_jwt = false (supabase/config.toml), so the function's own check is the only gate: a
+  call without an Authorization header gets 401 before the body is read and before any
+  database or Envia call. Needs the functions server (bun run functions:serve).
+}
