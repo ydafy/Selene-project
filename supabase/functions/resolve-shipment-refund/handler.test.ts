@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 
 import {
   createResolveShipmentRefundHandler,
+  createSupabaseResolveShipmentRefundPorts,
   type ResolveShipmentRefundDeps,
 } from './handler.ts';
 
@@ -315,26 +314,115 @@ describe('resolve-shipment-refund handler', () => {
   );
 });
 
-describe('resolve-shipment-refund wiring (source contract)', () => {
-  const index = readFileSync(join(import.meta.dir, 'index.ts'), 'utf8');
+// The service-role client behind the real ports; it records every call in order.
+function fakeServiceClient(
+  options: {
+    user?: { id: string } | null;
+    authError?: { message: string };
+    profile?: { role: string; status: string | null } | null;
+    profileError?: { message: string };
+  } = {},
+) {
+  const calls: unknown[][] = [];
+  const query = {
+    select: (columns: string) => {
+      calls.push(['select', columns]);
+      return query;
+    },
+    eq: (column: string, value: string) => {
+      calls.push(['eq', column, value]);
+      return query;
+    },
+    maybeSingle: async () => {
+      calls.push(['maybeSingle']);
+      const profile =
+        options.profile === undefined
+          ? { role: 'admin', status: 'active' }
+          : options.profile;
+      return { data: profile, error: options.profileError ?? null };
+    },
+  };
+  const client = {
+    auth: {
+      getUser: async (token: string) => {
+        calls.push(['auth.getUser', token]);
+        const user = options.user === undefined ? { id: ADMIN } : options.user;
+        return { data: { user }, error: options.authError ?? null };
+      },
+    },
+    from: (table: string) => {
+      calls.push(['from', table]);
+      return query;
+    },
+    rpc: async (name: string, args?: unknown) => {
+      calls.push(['rpc', name, args]);
+      return {
+        data: {
+          resolved: true,
+          shipment_cancelled: true,
+          amount_owed_cents: 11000,
+          reference: REFERENCE,
+        },
+        error: null,
+      };
+    },
+  };
+  const handler = createResolveShipmentRefundHandler({
+    ...createSupabaseResolveShipmentRefundPorts(() => client as never),
+    log: () => {},
+  });
+  return { calls, handler };
+}
 
-  it('is wrapped in withSentry under its folder name and serves the handler', () => {
-    expect(index).toContain(
-      "serveAdminWeb(withSentry('resolve-shipment-refund',",
-    );
-    expect(index).toContain("from '../_shared/sentry.ts'");
+const ADMIN_LOOKUP = [
+  ['from', 'profiles_private'],
+  ['select', 'role, status'],
+  ['eq', 'id', ADMIN],
+  ['maybeSingle'],
+];
+
+const calledRpc = (calls: unknown[][]) =>
+  calls.some(([kind]) => kind === 'rpc');
+
+describe('resolve-shipment-refund Supabase ports', () => {
+  it('resolves the token, checks the profiles_private role and status, then calls fn_resolve_shipment_cancellation_refund', async () => {
+    const client = fakeServiceClient();
+    const res = await client.handler(post(valid));
+    expect(res.status).toBe(200);
+    expect(client.calls).toEqual([
+      ['auth.getUser', 'user-jwt'],
+      ...ADMIN_LOOKUP,
+      [
+        'rpc',
+        'fn_resolve_shipment_cancellation_refund',
+        {
+          p_shipment_id: SHIPMENT,
+          p_admin_id: ADMIN,
+          p_reference: REFERENCE,
+        },
+      ],
+    ]);
   });
 
-  it('checks an active admin in profiles_private and calls the service-only RPC with server credentials', () => {
-    expect(index).toContain(".from('profiles_private')");
-    expect(index).toContain(".select('role, status')");
-    expect(index).toContain('return isActiveAdmin(data);');
-    expect(index).toContain('fn_resolve_shipment_cancellation_refund');
-    expect(index).toContain('p_admin_id');
-    expect(index).toContain('readSupabaseSecretKey()');
-    expect(index).toContain(
-      "from '../../../packages/types/src/database.types.ts'",
-    );
+  it('answers 401 or 403 before the RPC for an unknown token or anyone but an active admin', async () => {
+    const cases: [Parameters<typeof fakeServiceClient>[0], number][] = [
+      [{ user: null }, 401],
+      [{ authError: { message: 'invalid JWT' } }, 401],
+      [{ profile: null }, 403],
+      [{ profile: { role: 'user', status: 'active' } }, 403],
+      [{ profile: { role: 'admin', status: 'suspended' } }, 403],
+    ];
+    for (const [options, status] of cases) {
+      const client = fakeServiceClient(options);
+      expect((await client.handler(post(valid))).status).toBe(status);
+      expect(calledRpc(client.calls)).toBe(false);
+    }
+  });
+
+  it('fails closed with 500 when the profiles_private lookup errors', async () => {
+    const client = fakeServiceClient({ profileError: { message: 'db down' } });
+    expect((await client.handler(post(valid))).status).toBe(500);
+    expect(calledRpc(client.calls)).toBe(false);
   });
 });
 

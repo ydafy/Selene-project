@@ -4,12 +4,16 @@
  * Admin acknowledgement of carrier activity recorded after a cancellation refund started (B5.8b).
  * The cancellation has already completed; this only records that an admin looked at the package
  * that moved, with a required note. It starts no refund, changes no shipment or order and calls
- * neither Stripe nor Envia. Pure decision logic: index.ts wires the Supabase auth, the
- * `profiles_private.role` lookup and the service-only RPC into these ports. The admin id is the
- * verified user, never the body. A repeat returns the stored acknowledgement. Raw database text
- * only reaches the log, and the note text is never logged.
+ * neither Stripe nor Envia. Pure decision logic: the factory at the end wires the Supabase auth,
+ * the `profiles_private.role` lookup and the service-only RPC into these ports. The admin id is
+ * the verified user, never the body. A repeat returns the stored acknowledgement. Raw database
+ * text only reaches the log, and the note text is never logged.
  */
 
+import type { SupabaseClient } from '../_shared/supabase-js.ts';
+
+import type { Database } from '../../../packages/types/src/database.types.ts';
+import { isActiveAdmin } from '../_shared/auth/admin-auth.ts';
 import { z } from '../_shared/zod-runtime.ts';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
@@ -169,5 +173,46 @@ export function createAcknowledgeShipmentLateCarrierActivityHandler(
       );
       return fail(500, 'INTERNAL_ERROR');
     }
+  };
+}
+
+/**
+ * The real ports, all through the service-role client: Supabase Auth resolves the token, the
+ * `profiles_private` role and status decide the admin (never JWT claims), and the service-only RPC
+ * does the work.
+ */
+export function createSupabaseAcknowledgeShipmentLateCarrierActivityPorts(
+  getAdmin: () => SupabaseClient<Database>,
+): Omit<AcknowledgeShipmentLateCarrierActivityDeps, 'log'> {
+  return {
+    getUserId: async (accessToken) => {
+      const {
+        data: { user },
+        error,
+      } = await getAdmin().auth.getUser(accessToken);
+      return error || !user ? null : user.id;
+    },
+    // Roles live in profiles_private.role, never in JWT claims.
+    isAdmin: async (userId) => {
+      const { data, error } = await getAdmin()
+        .from('profiles_private')
+        .select('role, status')
+        .eq('id', userId)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return isActiveAdmin(data);
+    },
+    acknowledge: async (input) => {
+      // The RPC is not in the generated types until `bun run db:types` runs after it is applied.
+      const { data, error } = await getAdmin().rpc(
+        'fn_acknowledge_shipment_late_carrier_activity' as never,
+        {
+          p_shipment_id: input.shipmentId,
+          p_admin_id: input.adminId,
+          p_note: input.note,
+        } as never,
+      );
+      return { data: data as unknown, error };
+    },
   };
 }

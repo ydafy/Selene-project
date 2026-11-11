@@ -6,7 +6,7 @@ import { serveAdminWeb } from '../_shared/cors.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import {
   createResolveShipmentRefundHandler,
-  isActiveAdmin,
+  createSupabaseResolveShipmentRefundPorts,
 } from './handler.ts';
 
 const log = (
@@ -36,35 +36,7 @@ const getAdminClient = () => {
 };
 
 const handler = createResolveShipmentRefundHandler({
-  getUserId: async (accessToken) => {
-    const {
-      data: { user },
-      error,
-    } = await getAdminClient().auth.getUser(accessToken);
-    return error || !user ? null : user.id;
-  },
-  // Roles live in profiles_private.role, never in JWT claims.
-  isAdmin: async (userId) => {
-    const { data, error } = await getAdminClient()
-      .from('profiles_private')
-      .select('role, status')
-      .eq('id', userId)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    return isActiveAdmin(data);
-  },
-  resolveRefund: async (input) => {
-    // The RPC is not in the generated types until `bun run db:types` runs after it is applied.
-    const { data, error } = await getAdminClient().rpc(
-      'fn_resolve_shipment_cancellation_refund' as never,
-      {
-        p_shipment_id: input.shipmentId,
-        p_admin_id: input.adminId,
-        p_reference: input.reference,
-      } as never,
-    );
-    return { data: data as unknown, error };
-  },
+  ...createSupabaseResolveShipmentRefundPorts(getAdminClient),
   log,
 });
 
