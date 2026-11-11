@@ -12,7 +12,7 @@ Code that two or more functions use lives in `_shared/`, grouped by topic: `_sha
 
 ## Cron functions
 
-A cron-invoked function runs with `verify_jwt = false` in `supabase/config.toml` and authenticates only the `x-cron-secret` header against `CRON_SECRET` through `_shared/auth/cron-auth.ts` (`isAuthorizedCronRequest`, plus `reportCronSecretMismatch` before the 401); `track-shipments` is the one exception, with its own Bearer secret. Its cron job sends no Supabase API key or JWT (`docs/go-live.md`, "8. Cron jobs"). `_shared/__tests__/cron-verify-jwt.test.ts` fails when a function that checks a cron secret lacks `verify_jwt = false`, or when a cron job in `docs/go-live.md` (other than the one `-- Transitional` block) sends an `apikey` header.
+A cron-invoked function runs with `verify_jwt = false` in `supabase/config.toml` and authenticates only the `x-cron-secret` header against `CRON_SECRET` through `_shared/auth/cron-auth.ts` (`isAuthorizedCronRequest`, plus `reportCronSecretMismatch` before the 401); `track-shipments` is the one exception, with its own Bearer secret. Its cron job sends no Supabase API key or JWT (`docs/go-live.md`, "8. Cron jobs"). `_shared/__tests__/cron-verify-jwt.test.ts` fails when a function that checks a cron secret lacks `verify_jwt = false`, and `supabase/tests/database/cron_jobs.test.sql` fails when a cron job sends a Supabase API key or JWT.
 
 ## Types and checks
 
