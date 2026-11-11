@@ -198,8 +198,9 @@ async function run() {
   const headers = {
     'Content-Type': 'application/json',
     'x-cron-secret': cronSecret(),
-    Authorization: `Bearer ${env.ANON_KEY}`,
-    apikey: env.ANON_KEY,
+    // The function authenticates only x-cron-secret. A publishable key is not a JWT,
+    // so it goes on apikey and never as Authorization: Bearer.
+    apikey: env.PUBLISHABLE_KEY,
   };
   const call = () => post(functionsUrl, headers);
   const cases: Array<[string, () => Promise<void>]> = [];

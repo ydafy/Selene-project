@@ -6,8 +6,8 @@ import { execFileSync, execSync } from 'node:child_process';
 
 export interface LocalStack {
   apiUrl: string;
-  anonKey: string;
-  serviceRoleKey: string;
+  publishableKey: string;
+  secretKey: string;
   dbUrl: string;
 }
 
@@ -21,15 +21,15 @@ export function parseLocalStack(statusEnv: string): LocalStack {
   const read = (key: string) =>
     typeof parsed[key] === 'string' ? (parsed[key] as string) : '';
   const apiUrl = read('API_URL');
-  const anonKey = read('ANON_KEY');
-  const serviceRoleKey = read('SERVICE_ROLE_KEY');
+  const publishableKey = read('PUBLISHABLE_KEY');
+  const secretKey = read('SECRET_KEY');
   const dbUrl = read('DB_URL');
-  if (!apiUrl || !anonKey || !serviceRoleKey || !dbUrl)
+  if (!apiUrl || !publishableKey || !secretKey || !dbUrl)
     throw new Error('LOCAL_STACK_NOT_RUNNING');
 
   if (!isLocalHost(apiUrl)) throw new Error('LOCAL_API_URL_REQUIRED');
   if (!isLocalHost(dbUrl)) throw new Error('LOCAL_DB_URL_REQUIRED');
-  return { apiUrl, anonKey, serviceRoleKey, dbUrl };
+  return { apiUrl, publishableKey, secretKey, dbUrl };
 }
 
 export function readLocalStack(): LocalStack {
