@@ -271,6 +271,19 @@ describe('Paquetexpress ground rate policy', () => {
     });
   });
 
+  it('matches carrier and service case-insensitively and keeps the provider casing', () => {
+    expect(
+      selectPaquetexpressGroundRate([
+        { ...exactRate, service: 'Ground', quoteId: 'ground-quote' },
+      ]),
+    ).toEqual({
+      carrier: 'Paquetexpress',
+      service: 'Ground',
+      quoteReference: 'ground-quote',
+      quotedCostCents: 16_875,
+    });
+  });
+
   it('fails closed for alternate carriers, services, duplicate matches, and invalid currency', () => {
     expect(
       selectPaquetexpressGroundRate([{ ...exactRate, carrier: 'Estafeta' }]),
