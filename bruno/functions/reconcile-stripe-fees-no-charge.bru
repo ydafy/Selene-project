@@ -11,7 +11,7 @@ post {
 }
 
 headers {
-  Authorization: Bearer {{process.env.STRIPE_FEE_RECONCILIATION_WORKER_SECRET}}
+  x-cron-secret: {{cronSecret}}
 }
 
 body:json {

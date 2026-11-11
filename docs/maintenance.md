@@ -35,9 +35,9 @@ Each worktree has its own folder, branch, `node_modules`, and local Supabase sta
 
 While any worktree is active, these actions wait, and the report says why:
 
-- A dependency update that changes `bun.lock` or a `package.json`. Every active branch would get lockfile conflicts when it merges `main`.
-- A Supabase CLI, Node, or Bun upgrade on the machine.
-- A Docker Desktop update. It restarts Docker and stops every local stack.
+- A dependency update, only when an active branch also changes `bun.lock` or a `package.json`. Check each worktree with `git -C <path> diff --name-only origin/main...HEAD` and `git -C <path> status --short`. If both sides change the lockfile, the merge conflicts. If no active branch touches them, do the update: each worktree runs `bun install` after it merges `main`.
+- A Supabase CLI, Node, or Bun upgrade on the machine. Every worktree switches to the new version at once, and a Supabase CLI major needs `supabase stop` in every worktree first.
+- A Docker Desktop update while a local stack runs (`docker ps`). It restarts Docker and stops every local stack.
 
 The maintainer can still decide to do one of them. The report says what it would cost each active worktree.
 

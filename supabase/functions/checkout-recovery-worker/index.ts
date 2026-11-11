@@ -12,10 +12,13 @@ import {
 import {
   claimCheckoutRecoveryShells,
   compensateRecoveryShell,
-  isAuthorizedCheckoutRecoveryWorker,
   processRecoveryClaimsSequentially,
 } from './recovery.ts';
-import { withSentry } from '../_shared/sentry.ts';
+import {
+  isAuthorizedCronRequest,
+  reportCronSecretMismatch,
+} from '../_shared/auth/cron-auth.ts';
+import { reportMessage, withSentry } from '../_shared/sentry.ts';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
   apiVersion: STRIPE_API_VERSION,
@@ -33,23 +36,24 @@ const warnLeaseNotReleased = (data: { leaseId: string; reason: string }) =>
 
 Deno.serve(
   withSentry('checkout-recovery-worker', async (request) => {
-    const workerServiceRoleJwt = Deno.env
-      .get('CHECKOUT_RECOVERY_SERVICE_ROLE_JWT')
-      ?.trim();
-    if (
-      !workerServiceRoleJwt ||
-      !isAuthorizedCheckoutRecoveryWorker({
-        authorization: request.headers.get('authorization'),
-        workerServiceRoleJwt,
-      })
-    ) {
+    if (!isAuthorizedCronRequest(request, Deno.env.get('CRON_SECRET'))) {
+      await reportCronSecretMismatch(
+        request,
+        'checkout-recovery-worker',
+        reportMessage,
+      );
       return new Response('Unauthorized', { status: 401 });
     }
 
-    const supabase = createClient<Database>(
-      Deno.env.get('SUPABASE_URL') || '',
-      workerServiceRoleJwt,
-    );
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim();
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim();
+    if (!supabaseUrl || !serviceRoleKey) {
+      return new Response('Server configuration unavailable', {
+        status: 500,
+      });
+    }
+
+    const supabase = createClient<Database>(supabaseUrl, serviceRoleKey);
     const leaseClient = {
       rpc: (fn: string, args: Record<string, unknown>) =>
         supabase.rpc(fn as never, args as never),

@@ -1,6 +1,6 @@
 // Writes bruno/.env for the Bruno collection from the local Supabase stack of
 // the current worktree (each worktree has its own ports and keys), plus the
-// optional worker secrets and Stripe sandbox settings of supabase/functions/.env
+// optional cron secret and Stripe sandbox settings of supabase/functions/.env
 // (FUNCTIONS_ENV_KEYS). The file is gitignored and never printed: the CLI only
 // reports which variable names were written. A Stripe key that is not a test
 // key stops the run, so the collection can never reach live mode.
@@ -18,11 +18,7 @@ const STATUS_KEYS = [
 const FUNCTIONS_ENV_KEYS = [
   [
     'CRON_SECRET',
-    'the cron-secret requests (cron-watchdog-with-secret, ...) will fail',
-  ],
-  [
-    'STRIPE_FEE_RECONCILIATION_WORKER_SECRET',
-    'the reconcile-stripe-fees requests will fail',
+    'the cron-secret requests (cron-watchdog-with-secret, reconcile-stripe-fees-empty, ...) will fail',
   ],
   ['STRIPE_SECRET_KEY', 'the stripe-sandbox requests will be skipped'],
   [
