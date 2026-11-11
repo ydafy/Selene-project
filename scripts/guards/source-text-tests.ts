@@ -10,7 +10,6 @@ export const SOURCE_TEXT_TEST_COUNTS: Record<string, number> = {
   'packages/types': 1,
   scripts: 15,
   'supabase/functions': 58,
-  'supabase/migrations': 3,
   'supabase/templates': 1,
 };
 
