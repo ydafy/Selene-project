@@ -113,6 +113,12 @@ The Edge Functions call Stripe through one SDK pin and send one API version. The
 
 The weekly report's **Stripe API version** section compares `STRIPE_API_VERSION` with the API version the installed `stripe` package ships and flags a mismatch. It fails when it cannot read either version, or when the installed SDK is not the pinned one.
 
+## Keep EAS CLI on one major
+
+The root scripts run EAS CLI through `bunx eas-cli` (for example `bun run dev:install`). It is not a dependency: EAS CLI warns when a project installs it, and Expo recommends running it with `npx`. `cli.version` in `apps/frontend/eas.json` limits it to one major (`^27.0.0`), so a new major stops EAS with a version error instead of changing behavior during a build.
+
+When that happens, read the EAS CLI changelog (https://github.com/expo/eas-cli/blob/main/CHANGELOG.md) for the breaking changes, then raise the range in `apps/frontend/eas.json` in its own commit.
+
 ## Move Expo-pinned packages only with Expo
 
 Each Expo SDK pins the versions of its native packages (`expo-*`, `react-native`, `react-native-reanimated`, and others, pinned in `apps/frontend/package.json`). Do not bump them with `bun update` or by editing `package.json`.
@@ -140,7 +146,7 @@ Answer these before running `bun add`. If an answer is bad, do not add the packa
    - `bun run typecheck`
    - `bun test`
    - `bun audit --audit-level=high` exactly as `.github/workflows/dependency-audit.yml` runs it, with its `--ignore` flags if it has any
-   - A device check when the package is native (see the Expo SDK rule above).
+   - A device check when the package is native (see the Expo SDK rule above), on a new development build from `bun run dev:install`.
 5. Commit only when every check passes.
 
 `bunfig.toml` sets `minimumReleaseAge = 259200` (3 days). Bun refuses to install a version published less than 3 days ago. If an install fails for that reason, pick the previous version. Never change the setting.
