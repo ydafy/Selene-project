@@ -307,10 +307,6 @@ export interface EdgeFunctionRegistry {
     };
     response: { rates: ShippingOption[] };
   };
-  'get-shipping-quote-seller': {
-    payload: { originZip: string; packageId: string };
-    response: { price: number };
-  };
 }
 
 export type ProductCategory = 'GPU' | 'CPU' | 'Motherboard' | 'RAM';

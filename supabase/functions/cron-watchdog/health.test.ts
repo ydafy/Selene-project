@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'bun:test';
 
-import { evaluateCronHealth, type CronHealthRow } from './health';
+import {
+  evaluateCronHealth,
+  isSupportedSchedule,
+  type CronHealthRow,
+} from './health';
 
 const NOW = new Date('2026-10-21T12:00:00.000Z');
 const minutesAgo = (minutes: number): string =>
@@ -124,5 +128,33 @@ describe('evaluateCronHealth', () => {
     const rows = [row({ jobname: 'b' }), row({ jobname: 'a' })];
     evaluateCronHealth(rows, NOW);
     expect(rows.map((r) => r.jobname)).toEqual(['b', 'a']);
+  });
+});
+
+describe('isSupportedSchedule', () => {
+  it('accepts every-N-minutes, hourly, every-N-hours and daily schedules', () => {
+    for (const schedule of [
+      '*/1 * * * *',
+      '*/15 * * * *',
+      '30 * * * *',
+      '0 */6 * * *',
+      '0 3 * * *',
+    ]) {
+      expect(isSupportedSchedule(schedule)).toBe(true);
+    }
+  });
+
+  it('rejects schedules the watchdog cannot interpret', () => {
+    for (const schedule of [
+      '0 9 * * 1',
+      '0 0 1 * *',
+      '*/0 * * * *',
+      '*/5 */2 * * *',
+      '60 * * * *',
+      '0 * * *',
+      '1 minute',
+    ]) {
+      expect(isSupportedSchedule(schedule)).toBe(false);
+    }
   });
 });

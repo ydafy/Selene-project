@@ -226,7 +226,8 @@
     "public/functions/update_updated_at_column.sql",
     "public/functions/validate_product_publication_economics.sql",
     "_cluster/publications.sql",
-    "public/default_privileges.sql"
+    "public/default_privileges.sql",
+    "_cluster/misc.sql"
   ],
   "profile": "supabase",
   "defaultOwner": "postgres",
@@ -237,6 +238,7 @@
     "_cluster/extensions/pg_net.sql",
     "_cluster/extensions/pgcrypto.sql",
     "_cluster/extensions/uuid-ossp.sql",
+    "_cluster/misc.sql",
     "_cluster/publications.sql",
     "auth/tables/users.sql",
     "internal/functions/fn_check_order_access.sql",
