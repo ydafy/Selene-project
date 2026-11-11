@@ -1,3 +1,4 @@
+// source-text: the general entry-point check (#278): every deployed index.ts serves its handler through withSentry under its folder name.
 import { describe, expect, it } from 'bun:test';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';

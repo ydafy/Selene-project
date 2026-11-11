@@ -1,3 +1,4 @@
+// source-text: no function may name the removed wallet tables or the cutover switch; the text is the contract.
 import { describe, expect, it } from 'bun:test';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
