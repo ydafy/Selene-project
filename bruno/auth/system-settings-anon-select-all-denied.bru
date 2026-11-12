@@ -1,0 +1,27 @@
+meta {
+  name: system-settings-anon-select-all-denied
+  type: http
+  seq: 81
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/system_settings?id=eq.1&select=*
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+tests {
+  test("a guest cannot select every system_settings column", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody().code).to.equal("42501");
+  });
+}
+
+docs {
+  Clients hold SELECT only on the columns the app reads; the cron leases and
+  listing_quote_reference_destination stay server-only (#305, #309).
+}
