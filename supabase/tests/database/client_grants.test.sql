@@ -6,7 +6,7 @@
 -- RLS stays the row control; these grants are the object control.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(2);
+select plan(8);
 
 select results_eq(
   $$select distinct r.rolname::text collate "default",
@@ -28,7 +28,6 @@ select results_eq(
       ('anon', 'products_public', 'SELECT'),
       ('anon', 'profiles', 'SELECT'),
       ('anon', 'reviews', 'SELECT'),
-      ('anon', 'system_settings', 'SELECT'),
       ('authenticated', 'addresses', 'INSERT'),
       ('authenticated', 'addresses', 'SELECT'),
       ('authenticated', 'addresses', 'UPDATE'),
@@ -61,8 +60,7 @@ select results_eq(
       ('authenticated', 'seller_trust_stats', 'SELECT'),
       ('authenticated', 'shipment_tracking_events', 'SELECT'),
       ('authenticated', 'shipments', 'SELECT'),
-      ('authenticated', 'system_logs', 'INSERT'),
-      ('authenticated', 'system_settings', 'SELECT')
+      ('authenticated', 'system_logs', 'INSERT')
     ) as m(role_name, rel, privilege)
     order by 1, 2, 3$$,
   'anon and authenticated hold exactly the client grant matrix on public relations and sequences');
@@ -82,14 +80,70 @@ select results_eq(
   $$select role_name collate "default", rel collate "default", col collate "default",
       privilege collate "default"
     from (values
+      -- system_settings: only the columns useSystemConfig and the publish flow
+      -- select (id is the filter). One cached query serves the guest guard and
+      -- signed-in screens, so anon gets the same list (#305, #309).
+      ('anon', 'system_settings', 'id', 'SELECT'),
+      ('anon', 'system_settings', 'insurance_rate', 'SELECT'),
+      ('anon', 'system_settings', 'is_maintenance', 'SELECT'),
+      ('anon', 'system_settings', 'min_version_android', 'SELECT'),
+      ('anon', 'system_settings', 'min_version_ios', 'SELECT'),
+      ('anon', 'system_settings', 'order_expiration_hours', 'SELECT'),
+      ('anon', 'system_settings', 'package_presets', 'SELECT'),
+      ('anon', 'system_settings', 'preparing_expiration_hours', 'SELECT'),
+      ('anon', 'system_settings', 'service_fee_pct', 'SELECT'),
+      ('anon', 'system_settings', 'shipping_buffer_cents', 'SELECT'),
       ('authenticated', 'notifications', 'deleted_at', 'UPDATE'),
       ('authenticated', 'notifications', 'read', 'UPDATE'),
       ('authenticated', 'profiles', 'avatar_url', 'UPDATE'),
       ('authenticated', 'profiles', 'updated_at', 'UPDATE'),
-      ('authenticated', 'profiles', 'username', 'UPDATE')
+      ('authenticated', 'profiles', 'username', 'UPDATE'),
+      ('authenticated', 'system_settings', 'id', 'SELECT'),
+      ('authenticated', 'system_settings', 'insurance_rate', 'SELECT'),
+      ('authenticated', 'system_settings', 'is_maintenance', 'SELECT'),
+      ('authenticated', 'system_settings', 'min_version_android', 'SELECT'),
+      ('authenticated', 'system_settings', 'min_version_ios', 'SELECT'),
+      ('authenticated', 'system_settings', 'order_expiration_hours', 'SELECT'),
+      ('authenticated', 'system_settings', 'package_presets', 'SELECT'),
+      ('authenticated', 'system_settings', 'preparing_expiration_hours', 'SELECT'),
+      ('authenticated', 'system_settings', 'service_fee_pct', 'SELECT'),
+      ('authenticated', 'system_settings', 'shipping_buffer_cents', 'SELECT')
     ) as m(role_name, rel, col, privilege)
     order by 1, 2, 3, 4$$,
   'anon and authenticated hold exactly the client column grants in public');
+
+-- Clients read only the system_settings columns above: not the Envia
+-- reference address nor the cron lease columns.
+set local role anon;
+select throws_ok(
+  $$select listing_quote_reference_destination from public.system_settings$$,
+  '42501', null, 'anon cannot read system_settings.listing_quote_reference_destination');
+select throws_ok(
+  $$select auto_cancel_orders_lease_id from public.system_settings$$,
+  '42501', null, 'anon cannot read system_settings.auto_cancel_orders_lease_id');
+select lives_ok(
+  $$select id, is_maintenance, min_version_android, min_version_ios, service_fee_pct,
+      insurance_rate, shipping_buffer_cents, package_presets, order_expiration_hours,
+      preparing_expiration_hours
+    from public.system_settings where id = 1$$,
+  'anon reads the system_settings columns the app selects');
+reset role;
+
+select set_config('request.jwt.claims', '{"sub": "00000000-0000-0000-0000-000000000305", "role": "authenticated"}', true);
+set local role authenticated;
+select throws_ok(
+  $$select listing_quote_reference_destination from public.system_settings$$,
+  '42501', null, 'authenticated cannot read system_settings.listing_quote_reference_destination');
+select throws_ok(
+  $$select checkout_recovery_lease_id from public.system_settings$$,
+  '42501', null, 'authenticated cannot read system_settings.checkout_recovery_lease_id');
+select lives_ok(
+  $$select id, is_maintenance, min_version_android, min_version_ios, service_fee_pct,
+      insurance_rate, shipping_buffer_cents, package_presets, order_expiration_hours,
+      preparing_expiration_hours
+    from public.system_settings where id = 1$$,
+  'authenticated reads the system_settings columns the app selects');
+reset role;
 
 select * from finish();
 rollback;
