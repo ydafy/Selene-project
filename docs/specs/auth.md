@@ -55,7 +55,7 @@ The admin UI is `apps/admin-web/src/shared/ui/user-safety-actions.tsx` with `app
 
 ## Who can do what
 
-Clients are `anon` and `authenticated` with the anon key. Everything else runs in a trusted path.
+Clients are `anon` and `authenticated` with the publishable key. Everything else runs in a trusted path.
 
 - Client privileges are the least-privilege matrix in `supabase/migrations/20261101120000_auth_grants_least_privilege.sql`. In short: `anon` reads `profiles` and nothing else in the auth tables. `authenticated` reads `profiles_private` (RLS limits it to the own row, or all rows for an admin), updates the three profile columns, and reads `admin_audit_logs` (RLS limits it to admins) plus `admin_user_directory_view`, `admin_disputes_monitor_view`, and `admin_product_queue_view`. The other admin views have no client privilege. Nobody but `service_role` writes `profiles_private`.
 - Row access is RLS. The policies that carry account rules are `products_insert` and `products_update_owner` (both call `fn_current_account_is_active()`), `profiles_update`, `profiles_private_access`, `admin_audit_logs_read`, and `admin_user_notes_all`.

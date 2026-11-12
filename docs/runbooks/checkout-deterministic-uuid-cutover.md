@@ -17,7 +17,7 @@ This change has no schema or generated-type changes.
    `create-connect-payment` retries or Stripe webhook retries to preserve.
 3. Verify the sandbox function already has these existing server-only secrets:
    - `SUPABASE_URL`
-   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `SUPABASE_SECRET_KEYS` (injected by Supabase once the project has secret keys)
    - `STRIPE_SECRET_KEY`
 4. Do not log, export, or rotate any secret. No new configuration is required.
 
