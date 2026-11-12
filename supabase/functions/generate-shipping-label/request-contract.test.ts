@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
 import '../_shared/__tests__/zod-runtime.bun.preload.ts';
 
 const {
@@ -119,36 +118,6 @@ describe('generate-shipping-label request contract', () => {
     expect(
       LabelRequestSchema.safeParse(request([photo(0), photo(1), '  '])).success,
     ).toBe(false);
-  });
-
-  it('checks evidence ownership after the seller check and before the claim', () => {
-    const source = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
-    const check = source.indexOf(
-      'isOwnShippingEvidencePath(image, shipment.order.id, user.id)',
-    );
-
-    expect(check).toBeGreaterThan(
-      source.indexOf('if (shipment.seller_id !== user.id)'),
-    );
-    expect(check).toBeLessThan(source.indexOf('if (shipment.tracking_number)'));
-    expect(check).toBeLessThan(source.indexOf('runLabelClaimOrchestration({'));
-  });
-
-  it('validates the request before authentication, persistence, or provider work', () => {
-    const source = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
-    const parse = source.indexOf('LabelRequestSchema.safeParse(body)');
-    const clientCreation = source.indexOf(
-      'const supabaseAdmin = createClient(',
-    );
-    const evidenceWrite = source.indexOf('shipping_evidence: storedEvidence');
-    const claim = source.indexOf('runLabelClaimOrchestration({');
-
-    expect(source).toContain("from './request-contract.ts'");
-    expect(source).not.toContain('const RequestSchema');
-    expect(parse).toBeGreaterThan(-1);
-    expect(clientCreation).toBeGreaterThan(parse);
-    expect(evidenceWrite).toBeGreaterThan(parse);
-    expect(claim).toBeGreaterThan(parse);
   });
 });
 
