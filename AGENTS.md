@@ -106,7 +106,7 @@ Run from the repository or worktree root. `package.json` is the source of truth.
 
 Before starting work on a module, read the open issues and the draft Security Advisories that mention it (`gh issue list --search <module>`, `gh api repos/ydafy/Selene-project/security-advisories`), and say which ones the work covers.
 
-When you find a bug, gap, or idea that is not part of the task, do not fix it: open a GitHub issue without asking first and continue. A vulnerability is the exception: while it is unfixed, never describe it in an issue, a PR, a commit message, or any repository file; tell the maintainer and draft a private Security Advisory. A PR that fixes an issue says `Closes #N`. The procedure is in `docs/findings.md`.
+When you find a bug, gap, or idea that is not part of the task, do not fix it: open a GitHub issue without asking first and continue. When the maintainer corrects a mistake that no check catches, record it as an `agent-mistake` issue, or comment on the open one when it repeats. A vulnerability is the exception: while it is unfixed, never describe it in an issue, a PR, a commit message, or any repository file; tell the maintainer and draft a private Security Advisory. A PR that fixes an issue says `Closes #N`. The procedure is in `docs/findings.md`.
 
 ## Money and security rules
 

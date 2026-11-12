@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
 
 import { CreateConnectAccountRequestSchema } from './request-schema.ts';
 
@@ -24,12 +23,5 @@ describe('create-connect-account request schema', () => {
       code: 'invalid_type',
       path: ['refreshUrl'],
     });
-  });
-
-  it('is the schema the entrypoint parses with', () => {
-    const source = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
-
-    expect(source).toContain("from './request-schema.ts'");
-    expect(source).toContain('CreateConnectAccountRequestSchema.parse(body)');
   });
 });

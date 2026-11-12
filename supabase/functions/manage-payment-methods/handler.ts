@@ -1,0 +1,218 @@
+import type { SupabaseClient } from '../_shared/supabase-js.ts';
+import type Stripe from '../_shared/stripe/sdk.ts';
+import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
+
+import { ManagePaymentMethodsRequestSchema } from './request-schema.ts';
+
+export type SupabaseAdminClient = SupabaseClient;
+
+// The Stripe calls this function makes; index.ts passes the real client.
+export interface PaymentMethodsStripe {
+  customers: {
+    create: (params: Stripe.CustomerCreateParams) => Promise<{ id: string }>;
+  };
+  ephemeralKeys: {
+    create: (
+      params: Stripe.EphemeralKeyCreateParams,
+      options: { apiVersion: string },
+    ) => Promise<{ secret?: string }>;
+  };
+  setupIntents: {
+    create: (
+      params: Stripe.SetupIntentCreateParams,
+      options: { idempotencyKey: string },
+    ) => Promise<{ client_secret: string | null }>;
+  };
+  paymentMethods: {
+    detach: (paymentMethodId: string) => Promise<unknown>;
+  };
+}
+
+export interface ManagePaymentMethodsDependencies {
+  getEnv: (name: string) => string | undefined;
+  readSupabaseSecretKey: () => string | undefined;
+  // Both are called once per request, before the Authorization header is read.
+  createStripe: (stripeSecret: string) => PaymentMethodsStripe;
+  createSupabaseAdmin: (
+    supabaseUrl: string,
+    supabaseSecretKey: string,
+  ) => SupabaseAdminClient;
+}
+
+const APP_NAME = 'selene';
+
+const log = (
+  level: 'INFO' | 'WARN' | 'ERROR',
+  msg: string,
+  data?: Record<string, unknown>,
+) => {
+  console.log(
+    JSON.stringify({
+      timestamp: new Date().toISOString(),
+      function: 'manage-payment-methods',
+      level,
+      msg,
+      ...data,
+    }),
+  );
+};
+
+export function createManagePaymentMethodsHandler(
+  deps: ManagePaymentMethodsDependencies,
+) {
+  return async (req: Request): Promise<Response> => {
+    try {
+      const stripe = deps.createStripe(deps.getEnv('STRIPE_SECRET_KEY') || '');
+
+      const supabaseAdmin = deps.createSupabaseAdmin(
+        deps.getEnv('SUPABASE_URL') ?? '',
+        deps.readSupabaseSecretKey() ?? '',
+      );
+
+      // 1. Validar Identidad
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader) throw new Error('MISSING_AUTH_HEADER');
+
+      const {
+        data: { user },
+        error: authError,
+      } = await supabaseAdmin.auth.getUser(authHeader.replace('Bearer ', ''));
+      if (authError || !user) throw new Error('AUTH_REQUIRED');
+
+      // 2. Validar Input
+      const body = await req.json().catch(() => ({}));
+      const { action, paymentMethodId } =
+        ManagePaymentMethodsRequestSchema.parse(body);
+
+      // 3. Asegurar Stripe Customer
+      const { data: profile } = await supabaseAdmin
+        .from('profiles_private')
+        .select('stripe_customer_id')
+        .eq('id', user.id)
+        .single();
+      let customerId = profile?.stripe_customer_id;
+
+      if (!customerId) {
+        log('INFO', 'Creando nuevo Stripe Customer', { userId: user.id });
+        const customer = await stripe.customers.create({
+          email: user.email,
+          metadata: { supabase_user_id: user.id },
+        });
+        customerId = customer.id;
+        await supabaseAdmin
+          .from('profiles_private')
+          .update({ stripe_customer_id: customerId })
+          .eq('id', user.id);
+      }
+
+      switch (action) {
+        case 'get_setup_config': {
+          // Solo contamos tarjetas activas
+          const { count } = await supabaseAdmin
+            .from('payment_methods')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .is('deleted_at', null);
+
+          if (count && count >= 3) throw new Error('PAYMENT_LIMIT_REACHED');
+
+          const [ephemeralKey, setupIntent] = await Promise.all([
+            stripe.ephemeralKeys.create(
+              { customer: customerId },
+              { apiVersion: STRIPE_API_VERSION },
+            ),
+            stripe.setupIntents.create(
+              {
+                customer: customerId,
+                allowed_payment_method_types: ['card'],
+                metadata: { user_id: user.id, app_name: APP_NAME },
+              },
+              {
+                idempotencyKey:
+                  req.headers.get('idempotency-key') || crypto.randomUUID(),
+              },
+            ),
+          ]);
+
+          return new Response(
+            JSON.stringify({
+              setupIntent: setupIntent.client_secret,
+              ephemeralKey: ephemeralKey.secret,
+              customer: customerId,
+              publishableKey: deps.getEnv('STRIPE_PUBLISHABLE_KEY'),
+            }),
+            { headers: { 'Content-Type': 'application/json' } },
+          );
+        }
+
+        case 'list_payment_methods': {
+          const { data: methods } = await supabaseAdmin
+            .from('payment_methods')
+            .select('*')
+            .eq('user_id', user.id)
+            .is('deleted_at', null) // Filtrar las borradas
+            .order('created_at', { ascending: false });
+
+          return new Response(JSON.stringify({ methods: methods || [] }), {
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+
+        case 'delete_payment_method': {
+          if (!paymentMethodId) throw new Error('PAYMENT_METHOD_ID_REQUIRED');
+
+          const { data: pm } = await supabaseAdmin
+            .from('payment_methods')
+            .select('stripe_payment_method_id')
+            .eq('id', paymentMethodId)
+            .eq('user_id', user.id)
+            .is('deleted_at', null)
+            .maybeSingle();
+
+          if (!pm) {
+            return new Response(
+              JSON.stringify({ success: true, message: 'Already deleted' }),
+              {
+                headers: { 'Content-Type': 'application/json' },
+              },
+            );
+          }
+
+          try {
+            await stripe.paymentMethods.detach(pm.stripe_payment_method_id);
+            log('INFO', 'Tarjeta desvinculada de Stripe', {
+              pmId: pm.stripe_payment_method_id,
+            });
+          } catch (caught) {
+            const stripeError = caught as Error;
+            log('WARN', 'Fallo al desvincular en Stripe (continuando con DB)', {
+              error: stripeError.message,
+            });
+          }
+
+          // SOFT DELETE: No usamos .delete(), usamos .update()
+          const { error: dbError } = await supabaseAdmin
+            .from('payment_methods')
+            .update({ deleted_at: new Date().toISOString() })
+            .eq('id', paymentMethodId);
+
+          if (dbError) throw new Error(`DB_DELETE_FAILED: ${dbError.message}`);
+
+          return new Response(JSON.stringify({ success: true }), {
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+
+        default:
+          throw new Error('INVALID_ACTION');
+      }
+    } catch (caught) {
+      const error = caught as Error;
+      log('ERROR', 'Excepción en gestión de pagos', { error: error.message });
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+  };
+}
