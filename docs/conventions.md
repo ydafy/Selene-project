@@ -83,6 +83,7 @@ A test runs the code it tests. Call the function, call the Edge Function handler
 ## Database grants
 
 - Every new table, view, sequence or function states in its schema file exactly what `anon` and `authenticated` get, and nothing by default. The procedure and the two tests that pin the lists are in `supabase/AGENTS.md`, "Declarative schema".
+- A server-only object goes in the `internal` schema or stays in `public` depending on who calls it. The rule is in `supabase/AGENTS.md`, "Declarative schema".
 
 ## File naming
 

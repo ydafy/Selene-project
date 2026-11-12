@@ -32,6 +32,13 @@ For Postgres design and performance, load the `supabase-postgres-best-practices`
 
 Grants are explicit per role. The default privileges in `schemas/public/default_privileges.sql` give `anon` and `authenticated` nothing on new tables, sequences or functions, and no function keeps EXECUTE for `PUBLIC`. A new table, view or function states in its own file exactly what each client role gets: what the app or admin-web calls, plus what an RLS or storage policy evaluated for that role reads or calls. Add the same rows to `tests/database/client_grants.test.sql` (tables, views, sequences, column grants) or `tests/database/function_grants.test.sql` (EXECUTE); both pin the exact lists, so a grant nobody listed fails CI. `service_role` keeps its defaults.
 
+Pick the schema of a new object by who calls it. PostgREST calls only functions in exposed schemas (`public`), and `anon` and `authenticated` have no USAGE on `internal`.
+
+- A table whose whole module is server-only machinery (an inbox, job queue, event log, cache or lock) goes in `internal` (`schemas/internal/`), with RLS on and no client grants. Server-owned domain records stay in `public`.
+- A function that an Edge Function calls with `.rpc()` stays in `public`, with EXECUTE for `service_role` only.
+- A function that only pg_cron or other SQL calls goes in `internal`. Callers name it with its schema (`internal.fn_derive_order_status(...)`).
+- A cron job that must not overlap itself takes a lease with `fn_acquire_cron_lease` and frees it with `fn_release_cron_lease` (table `internal.cron_leases`).
+
 `generate` writes every pg_cron job to `schemas/_cluster/misc.sql` as `cron.schedule_in_database(...)` and drops comments, so edit a job in that form. A schedule change makes `sync` write `cron.unschedule` plus `cron.schedule`: the job gets a new `jobid` and loses its run history. `scripts/guards/cron-jobs.ts` checks each job's target function, schedule shape and name.
 
 The schema files cannot hold some changes. Write those by hand with `supabase migration new <name>`:

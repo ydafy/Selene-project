@@ -80,7 +80,7 @@ update public.shipments set updated_at = now() - interval '5 hours' where id = p
 select pg_temp.set_state(12108, 'orphan_pending');
 
 -- 1. Stuck rule ------------------------------------------------------------------------
-select is((select string_agg(public.fn_shipment_label_is_stuck(st::public.order_status_enum, state, exp)::text, ',' order by i)
+select is((select string_agg(internal.fn_shipment_label_is_stuck(st::public.order_status_enum, state, exp)::text, ',' order by i)
   from (values (1, 'paid', 'orphan_pending', null::timestamptz), (2, 'paid', 'claimed', clock_timestamp() - interval '1 second'),
     (3, 'paid', 'generation_sent', clock_timestamp() - interval '1 second'), (4, 'paid', 'claimed', clock_timestamp() + interval '1 minute'),
     (5, 'paid', 'claimed', null), (6, 'preparing', 'orphan_pending', null), (7, 'paid', 'unclaimed', null),
