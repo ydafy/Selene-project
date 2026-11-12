@@ -1,5 +1,4 @@
 import { expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
 import { resolveManualShipmentCancelPlan } from './cancel-order.ts';
 import {
   runShipmentCancellation,
@@ -242,42 +241,6 @@ it('never completes after an uncertain refund or already-refunded error', async 
           ],
     );
   }
-});
-
-it('wires reservation before financial reconstruction and preserves preclaim guards', () => {
-  const source = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
-  expect(source).toContain('runShipmentCancellation({');
-  expect(source).toContain("'fn_claim_shipment_cancellation'");
-  expect(source).toContain("'fn_start_shipment_cancellation_refund'");
-  expect(source).toContain("'fn_record_shipment_cancellation_refund'");
-  expect(source).toContain("'fn_get_shipment_cancellation_recovery'");
-  expect(source).toMatch(/stripe\s*\.refunds\s*\.list\(\{/);
-  expect(source).toContain('payment_intent: paymentIntentId');
-  expect(source).toContain('stripe.refunds.retrieve(');
-  expect(source).toContain("withSentry('cancel-order'");
-  expect(source).toContain("createCancellationReporter('cancel-order', log)");
-  expect(source).toContain("'fn_escalate_shipment_cancellation'");
-  expect(source).toContain("'CANCELLATION_ESCALATION_FAILED'");
-  expect(source).toContain("'CANCELLATION_REFUND_RECORD_FAILED'");
-  expect(source).toContain("'CANCELLATION_RECOVERY_UNAVAILABLE'");
-  const prepare = source.indexOf('prepare: async (winner)');
-  expect(prepare).toBeGreaterThan(source.indexOf("'UNAUTHORIZED'"));
-  expect(prepare).toBeGreaterThan(
-    source.indexOf("'STRIPE_TRANSFER_ALREADY_RELEASED'"),
-  );
-  expect(source.indexOf('stripe.charges.retrieve')).toBeGreaterThan(prepare);
-  expect(source.indexOf('buildStripeFeeReconciliationPlan({')).toBeGreaterThan(
-    prepare,
-  );
-  expect(source).toContain('return stripe.refunds.create(request, options)');
-  expect(source).not.toContain("code === 'charge_already_refunded'");
-  expect(source).toContain(
-    'p_cancellation_loss_cents: frozen.cancellationLossCents',
-  );
-  expect(source).toContain('p_reason: winner.reason');
-  expect(source).toContain(
-    "throw new ApiError(409, 'CANCELLATION_' + result.status.toUpperCase())",
-  );
 });
 
 it('serializes fractional-price seguro share as integer cents and preserves allocation', () => {

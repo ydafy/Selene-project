@@ -10,11 +10,9 @@ const read = (relativePath: string) =>
 
 describe('shipment cancel source guards', () => {
   it('wires every caller through the shared claim/frozen-start orchestration', () => {
-    for (const handler of [
-      'cancel-order',
-      'auto-cancel-orders',
-      'auto-cancel-preparing',
-    ]) {
+    // cancel-order is covered by calling its handler
+    // (cancel-order/cancel-order-http-preservation.test.ts).
+    for (const handler of ['auto-cancel-orders', 'auto-cancel-preparing']) {
       const source = read(`supabase/functions/${handler}/index.ts`);
       expect(source).toContain('runShipmentCancellation(');
       expect(source).toContain('fn_claim_shipment_cancellation');
@@ -62,18 +60,6 @@ describe('shipment cancel source guards', () => {
       "recorded.refund_status !== 'succeeded'",
     );
   });
-  it('uses the service-role RPC path after refund in cancel-order', () => {
-    const indexTs = read('supabase/functions/cancel-order/index.ts');
-
-    expect(indexTs).toContain('readSupabaseSecretKey()');
-    expect(indexTs).not.toContain('SUPABASE_ANON_KEY');
-    expect(indexTs).not.toContain('supabaseActor');
-    expect(indexTs).toContain('fn_cancel_shipment');
-    expect(indexTs).toContain('actual_stripe_fee_cents');
-    expect(indexTs).toContain('stripe_fee_reconciled_at');
-    expect(indexTs).toContain('balance_transaction');
-  });
-
   it('does not enable reverse_transfer for platform-held auto-cancel refunds', () => {
     const autoCancelOrders = read(
       'supabase/functions/auto-cancel-orders/index.ts',
