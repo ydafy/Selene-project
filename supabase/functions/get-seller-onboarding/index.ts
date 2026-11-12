@@ -1,71 +1,15 @@
 import { createClient } from '../_shared/supabase-js.ts';
 import { readSupabaseSecretKey } from '../_shared/supabase-secret-key.ts';
 
-import {
-  GetSellerOnboardingError,
-  getSellerOnboardingErrorStatus,
-  resolveSellerOnboardingResponse,
-  type SellerOnboardingResponse,
-} from './get-seller-onboarding.ts';
 import { serveAdminWeb } from '../_shared/cors.ts';
 import { withSentry } from '../_shared/sentry.ts';
+import { createGetSellerOnboardingHandler } from './handler.ts';
 
-const jsonResponse = (body: SellerOnboardingResponse, status: number) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
+const handler = createGetSellerOnboardingHandler({
+  getEnv: (name) => Deno.env.get(name),
+  readSupabaseSecretKey: () => readSupabaseSecretKey(),
+  createSupabaseAdmin: (supabaseUrl, supabaseSecretKey) =>
+    createClient(supabaseUrl, supabaseSecretKey),
+});
 
-serveAdminWeb(
-  withSentry('get-seller-onboarding', async (req) => {
-    try {
-      const supabaseSecretKey = readSupabaseSecretKey();
-      const supabaseUrl = Deno.env.get('SUPABASE_URL');
-      if (!supabaseSecretKey || !supabaseUrl) {
-        throw new Error('MISSING_SERVER_CONFIG');
-      }
-
-      const authHeader = req.headers.get('Authorization');
-      if (!authHeader?.startsWith('Bearer ')) {
-        throw new Error('AUTH_REQUIRED');
-      }
-
-      const supabaseAdmin = createClient(supabaseUrl, supabaseSecretKey);
-      const token = authHeader.slice('Bearer '.length);
-      const {
-        data: { user },
-        error: authError,
-      } = await supabaseAdmin.auth.getUser(token);
-      if (authError || !user) throw new Error('AUTH_REQUIRED');
-
-      const { data: profile, error: profileError } = await supabaseAdmin
-        .from('profiles_private')
-        .select('role, stripe_account_id, stripe_onboarding_status')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      const response = await resolveSellerOnboardingResponse({
-        profile,
-        profileError,
-        loadAdminRows: async () => {
-          const { data, error } = await supabaseAdmin
-            .from('admin_seller_onboarding_view')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-          return { data, error };
-        },
-      });
-
-      return jsonResponse(response, 200);
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      const status =
-        error instanceof GetSellerOnboardingError
-          ? error.status
-          : getSellerOnboardingErrorStatus(message);
-
-      return jsonResponse({ success: false, error: message }, status);
-    }
-  }),
-);
+serveAdminWeb(withSentry('get-seller-onboarding', handler));
