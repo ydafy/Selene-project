@@ -1,0 +1,32 @@
+meta {
+  name: system-settings-anon-reads-app-columns
+  type: http
+  seq: 80
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/system_settings?id=eq.1&select=id,is_maintenance,min_version_android,min_version_ios,service_fee_pct,insurance_rate,shipping_buffer_cents,package_presets,order_expiration_hours,preparing_expiration_hours
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+tests {
+  test("a guest reads the system_settings columns the app selects", function () {
+    expect(res.getStatus()).to.equal(200);
+    const rows = res.getBody();
+    expect(rows).to.have.length(1);
+    expect(Object.keys(rows[0]).sort()).to.deep.equal(
+      "id,is_maintenance,min_version_android,min_version_ios,service_fee_pct,insurance_rate,shipping_buffer_cents,package_presets,order_expiration_hours,preparing_expiration_hours".split(",").sort(),
+    );
+  });
+}
+
+docs {
+  The same column list as useSystemConfig (apps/frontend/src/shared/hooks/use-system-config.ts);
+  SystemGuard runs it for guests too. The grant contract is
+  supabase/tests/database/client_grants.test.sql (#305).
+}
