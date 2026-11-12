@@ -11,8 +11,8 @@ post {
 }
 
 headers {
-  apikey: {{serviceRoleKey}}
-  Authorization: Bearer {{serviceRoleKey}}
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
 }
 
 script:pre-request {
@@ -40,7 +40,7 @@ script:pre-request {
       }
       return res.data;
     };
-    const key = bru.getEnvVar("serviceRoleKey");
+    const key = bru.getEnvVar("secretKey");
     const rest = async (path) => (await bru.sendRequest({
       method: "GET",
       url: bru.getEnvVar("baseUrl") + "/rest/v1/" + path,

@@ -6,6 +6,12 @@ import { buildBrunoEnv, brunoEnvVariableNames } from './bruno-env.ts';
 
 const keys = {
   API_URL: 'http://127.0.0.1:22319',
+  PUBLISHABLE_KEY: 'sb_publishable_value',
+  SECRET_KEY: 'sb_secret_value',
+};
+
+// `supabase status --env` still prints the legacy JWT keys next to the new ones.
+const legacyKeys = {
   ANON_KEY: 'anon.jwt.value',
   SERVICE_ROLE_KEY: 'service.jwt.value',
 };
@@ -13,22 +19,22 @@ const keys = {
 describe('buildBrunoEnv', () => {
   test('writes the local stack variables and the cron secret', () => {
     const output = buildBrunoEnv(
-      JSON.stringify({ env: keys, DB_URL: 'ignored' }),
+      JSON.stringify({ env: { ...keys, ...legacyKeys }, DB_URL: 'ignored' }),
       'SENTRY_DSN=x\nCRON_SECRET=cron-value\n',
     );
     expect(output).toBe(
       [
         'SUPABASE_URL=http://127.0.0.1:22319',
-        'SUPABASE_ANON_KEY=anon.jwt.value',
-        'SUPABASE_SERVICE_ROLE_KEY=service.jwt.value',
+        'SUPABASE_PUBLISHABLE_KEY=sb_publishable_value',
+        'SUPABASE_SECRET_KEY=sb_secret_value',
         'CRON_SECRET=cron-value',
         '',
       ].join('\n'),
     );
     expect(brunoEnvVariableNames(output)).toEqual([
       'SUPABASE_URL',
-      'SUPABASE_ANON_KEY',
-      'SUPABASE_SERVICE_ROLE_KEY',
+      'SUPABASE_PUBLISHABLE_KEY',
+      'SUPABASE_SECRET_KEY',
       'CRON_SECRET',
     ]);
   });
@@ -41,14 +47,14 @@ describe('buildBrunoEnv', () => {
         .join('\r\n'),
     );
     expect(lines).toBe(flat);
-    expect(flat).toContain('SUPABASE_ANON_KEY=anon.jwt.value\n');
+    expect(flat).toContain('SUPABASE_PUBLISHABLE_KEY=sb_publishable_value\n');
   });
 
   test('omits CRON_SECRET when the functions env file is absent or lacks it', () => {
     expect(brunoEnvVariableNames(buildBrunoEnv(JSON.stringify(keys)))).toEqual([
       'SUPABASE_URL',
-      'SUPABASE_ANON_KEY',
-      'SUPABASE_SERVICE_ROLE_KEY',
+      'SUPABASE_PUBLISHABLE_KEY',
+      'SUPABASE_SECRET_KEY',
     ]);
     expect(
       buildBrunoEnv(JSON.stringify(keys), '# CRON_SECRET=x\nOTHER=1\n'),
@@ -62,8 +68,8 @@ describe('buildBrunoEnv', () => {
     );
     expect(brunoEnvVariableNames(output)).toEqual([
       'SUPABASE_URL',
-      'SUPABASE_ANON_KEY',
-      'SUPABASE_SERVICE_ROLE_KEY',
+      'SUPABASE_PUBLISHABLE_KEY',
+      'SUPABASE_SECRET_KEY',
       'CRON_SECRET',
     ]);
     expect(output).not.toContain('STRIPE_FEE_RECONCILIATION_WORKER_SECRET');
@@ -85,8 +91,8 @@ describe('buildBrunoEnv', () => {
       );
       expect(brunoEnvVariableNames(output)).toEqual([
         'SUPABASE_URL',
-        'SUPABASE_ANON_KEY',
-        'SUPABASE_SERVICE_ROLE_KEY',
+        'SUPABASE_PUBLISHABLE_KEY',
+        'SUPABASE_SECRET_KEY',
         'CRON_SECRET',
         'STRIPE_SECRET_KEY',
         'BRUNO_STRIPE_TEST_ACCOUNT_ID',
@@ -128,7 +134,34 @@ describe('buildBrunoEnv', () => {
     expect(() => buildBrunoEnv('')).toThrow('LOCAL_STACK_NOT_RUNNING');
     expect(() =>
       buildBrunoEnv(JSON.stringify({ API_URL: keys.API_URL })),
-    ).toThrow('MISSING_STATUS_KEYS: ANON_KEY, SERVICE_ROLE_KEY');
+    ).toThrow('MISSING_STATUS_KEYS: PUBLISHABLE_KEY, SECRET_KEY');
+    expect(() =>
+      buildBrunoEnv(JSON.stringify({ API_URL: keys.API_URL, ...legacyKeys })),
+    ).toThrow('MISSING_STATUS_KEYS: PUBLISHABLE_KEY, SECRET_KEY');
+  });
+
+  test('never writes the legacy anon or service_role keys', () => {
+    const output = buildBrunoEnv(JSON.stringify({ ...keys, ...legacyKeys }));
+    expect(output).not.toContain('ANON_KEY');
+    expect(output).not.toContain('SERVICE_ROLE_KEY');
+    expect(output).not.toContain('jwt.value');
+  });
+
+  test('refuses keys that are not a publishable and a secret key, without echoing them', () => {
+    for (const status of [
+      { ...keys, PUBLISHABLE_KEY: 'anon.jwt.value' },
+      { ...keys, PUBLISHABLE_KEY: 'sb_secret_value' },
+      { ...keys, SECRET_KEY: 'service.jwt.value' },
+      { ...keys, SECRET_KEY: 'sb_publishable_value' },
+    ]) {
+      let message = '';
+      try {
+        buildBrunoEnv(JSON.stringify(status));
+      } catch (error) {
+        message = error instanceof Error ? error.message : String(error);
+      }
+      expect(message).toBe('SUPABASE_API_KEYS_REQUIRED');
+    }
   });
 });
 
