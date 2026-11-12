@@ -3,8 +3,10 @@ import { describe, expect, it } from 'bun:test';
 import * as recoveryModule from './recovery.ts';
 import {
   buildRecoveryRefundParams,
+  claimCheckoutRecoveryShells,
   classifySettlementFailure,
   compensateRecoveryShell,
+  processRecoveryClaimsSequentially,
 } from './recovery.ts';
 
 describe('checkout recovery > classifySettlementFailure', () => {
@@ -145,5 +147,71 @@ describe('checkout recovery > buildRecoveryRefundParams', () => {
 describe('checkout recovery worker authorization', () => {
   it('has no dedicated worker-JWT check: the worker authorizes with the shared cron secret', () => {
     expect('isAuthorizedCheckoutRecoveryWorker' in recoveryModule).toBe(false);
+  });
+});
+
+describe('checkout recovery > cron claims', () => {
+  it('does not start the next claim until the current claim completes', async () => {
+    const started: string[] = [];
+    let releaseFirst: (() => void) | undefined;
+    const firstCompleted = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+
+    const processing = processRecoveryClaimsSequentially(
+      ['pi_first', 'pi_second'],
+      async (paymentIntentId) => {
+        started.push(paymentIntentId);
+        if (paymentIntentId === 'pi_first') await firstCompleted;
+        return `${paymentIntentId}:complete`;
+      },
+    );
+
+    await Promise.resolve();
+    expect(started).toEqual(['pi_first']);
+
+    releaseFirst?.();
+    await expect(processing).resolves.toEqual([
+      'pi_first:complete',
+      'pi_second:complete',
+    ]);
+    expect(started).toEqual(['pi_first', 'pi_second']);
+  });
+
+  it('claims twelve order shells before thirteen standalone shells and preserves that order', async () => {
+    const calls: Array<{ limit: number; scope: 'order' | 'standalone' }> = [];
+
+    const claims = await claimCheckoutRecoveryShells(async (input) => {
+      calls.push(input);
+      return input.scope === 'order'
+        ? [{ stripe_payment_intent_id: 'pi_order' }]
+        : [{ stripe_payment_intent_id: 'pi_standalone' }];
+    });
+
+    expect(calls).toEqual([
+      { limit: 12, scope: 'order' },
+      { limit: 13, scope: 'standalone' },
+    ]);
+    expect(claims).toEqual([
+      { stripe_payment_intent_id: 'pi_order' },
+      { stripe_payment_intent_id: 'pi_standalone' },
+    ]);
+  });
+
+  it('propagates a standalone claim failure instead of processing partial cron claims', async () => {
+    const calls: Array<{ limit: number; scope: 'order' | 'standalone' }> = [];
+
+    await expect(
+      claimCheckoutRecoveryShells(async (input) => {
+        calls.push(input);
+        if (input.scope === 'standalone') throw new Error('claim failed');
+        return [{ stripe_payment_intent_id: 'pi_order' }];
+      }),
+    ).rejects.toThrow('claim failed');
+
+    expect(calls).toEqual([
+      { limit: 12, scope: 'order' },
+      { limit: 13, scope: 'standalone' },
+    ]);
   });
 });

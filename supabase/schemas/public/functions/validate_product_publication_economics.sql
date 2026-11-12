@@ -47,8 +47,8 @@ BEGIN
 
   SELECT
     shipping_buffer_cents,
-    normalize_publication_rate(service_fee_pct),
-    normalize_publication_rate(insurance_rate)
+    internal.normalize_publication_rate(service_fee_pct),
+    internal.normalize_publication_rate(insurance_rate)
   INTO v_shipping_buffer_cents, v_commission_rate, v_insurance_rate
   FROM public.system_settings
   WHERE id = 1;

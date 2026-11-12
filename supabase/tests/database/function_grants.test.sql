@@ -8,7 +8,7 @@
 -- schema.name(argument types).
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(5);
+select plan(6);
 
 create temporary view all_functions as
 select p.oid,
@@ -99,6 +99,14 @@ select ok(
   not has_schema_privilege('anon', 'internal', 'USAGE')
     and not has_schema_privilege('authenticated', 'internal', 'USAGE'),
   'anon and authenticated have no USAGE on schema internal');
+
+-- #435: dead functions nothing called; the (uuid, uuid) overload that the
+-- orders and order_items policies call stays.
+select is_empty(
+  $$select signature from all_functions
+    where signature in ('internal.is_admin()', 'internal.fn_check_order_access(uuid)')
+    order by 1$$,
+  'internal.is_admin() and internal.fn_check_order_access(uuid) do not exist');
 
 select * from finish();
 rollback;
