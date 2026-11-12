@@ -3,16 +3,6 @@ export interface ParsedProductIdsMetadata {
   malformed: boolean;
 }
 
-export interface ConnectRollbackRefundParams {
-  payment_intent: string;
-  reason: 'requested_by_customer';
-  reverse_transfer: true;
-  metadata: {
-    order_id: string;
-    rollback_reason: 'partial_connect_checkout_failure';
-  };
-}
-
 /**
  * Parse the legacy top-level `product_ids` metadata value (a JSON-string array
  * of product ids). Returns `malformed: true` (without throwing) when the value
@@ -175,22 +165,4 @@ export function mergeUniqueProductIds(
   nextProductIds: string[],
 ): string[] {
   return Array.from(new Set([...currentProductIds, ...nextProductIds]));
-}
-
-export function buildConnectRollbackRefundParams({
-  paymentIntentId,
-  orderId,
-}: {
-  paymentIntentId: string;
-  orderId: string;
-}): ConnectRollbackRefundParams {
-  return {
-    payment_intent: paymentIntentId,
-    reason: 'requested_by_customer',
-    reverse_transfer: true,
-    metadata: {
-      order_id: orderId,
-      rollback_reason: 'partial_connect_checkout_failure',
-    },
-  };
 }
