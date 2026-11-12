@@ -1,24 +1,4 @@
 CREATE OR REPLACE FUNCTION internal.fn_check_order_access (
-  p_order_id uuid
-)
-  RETURNS boolean
-  LANGUAGE plpgsql
-  SECURITY DEFINER
-  SET search_path TO 'public'
-  AS $function$
-DECLARE v_user_id UUID := auth.uid();
-BEGIN
-    IF v_user_id IS NULL THEN RETURN false; END IF;
-    RETURN EXISTS (SELECT 1 FROM public.orders WHERE id = p_order_id AND buyer_id = v_user_id) 
-           OR EXISTS (SELECT 1 FROM public.order_items WHERE order_id = p_order_id AND seller_id = v_user_id) 
-           OR internal.is_admin();
-END; $function$;
-
-GRANT EXECUTE ON FUNCTION "internal"."fn_check_order_access"(uuid) TO "service_role";
-
-REVOKE ALL ON FUNCTION "internal"."fn_check_order_access"(uuid) FROM PUBLIC;
-
-CREATE OR REPLACE FUNCTION internal.fn_check_order_access (
   p_order_id uuid,
   p_user_id  uuid
 )

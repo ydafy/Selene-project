@@ -16,9 +16,9 @@ returns void language sql as $$
     array['https://example.test/p.png'], 'RESERVED', '{}'::jsonb, p_seller, 100, '06600', 'gpu_1',
     now() - p_age,
     round(100 * 100)::bigint + s.shipping_buffer_cents
-      + ceil(round(1000 * 100)::numeric * public.normalize_publication_rate(s.insurance_rate))::bigint,
-    public.normalize_publication_rate(s.service_fee_pct),
-    public.normalize_publication_rate(s.insurance_rate)
+      + ceil(round(1000 * 100)::numeric * internal.normalize_publication_rate(s.insurance_rate))::bigint,
+    internal.normalize_publication_rate(s.service_fee_pct),
+    internal.normalize_publication_rate(s.insurance_rate)
   from public.system_settings s where s.id = 1
 $$;
 
@@ -73,29 +73,31 @@ set local role authenticated;
 select throws_ok(
   $$select * from public.fn_release_listings(array['d0000000-0000-4000-8000-0000000000a1']::uuid[], false, false)$$,
   '42501', null, 'authenticated cannot execute fn_release_listings');
-select throws_ok(
-  $$select * from public.fn_release_stale_reservations()$$,
-  '42501', null, 'authenticated cannot execute fn_release_stale_reservations');
 reset role;
+select hasnt_function('public', 'fn_release_stale_reservations',
+  'the dead fn_release_stale_reservations is dropped');
 
--- Stale cleanup holds the suspended seller's listing, releases the active one's -
+-- The expired-only release holds the suspended seller's listing, frees the active one's
 select set_config('request.jwt.claims', '{"role": "service_role"}', true);
 set local role service_role;
 select is(
-  (select count(*) from public.fn_release_stale_reservations()),
-  2::bigint, 'the stale cleanup releases the two expired reservations');
+  (select count(*) from public.fn_release_listings(array[
+    'd0000000-0000-4000-8000-0000000000a1', 'd0000000-0000-4000-8000-0000000000a2',
+    'd0000000-0000-4000-8000-0000000000b1', 'd0000000-0000-4000-8000-0000000000b2'
+  ]::uuid[], true, true)),
+  2::bigint, 'the expired-only release frees the two expired reservations');
 reset role;
 select is(
   (select status::text || ':' || coalesce(status_before_account_hold::text, '-') || ':' || (reserved_at is null)::text
    from public.products where id = 'd0000000-0000-4000-8000-0000000000a1'),
-  'HIDDEN:VERIFIED:true', 'stale cleanup holds the suspended seller listing');
+  'HIDDEN:VERIFIED:true', 'the expired-only release holds the suspended seller listing');
 select is(
   (select status::text || ':' || coalesce(status_before_account_hold::text, '-') || ':' || (reserved_at is null)::text
    from public.products where id = 'd0000000-0000-4000-8000-0000000000b1'),
-  'VERIFIED:-:true', 'stale cleanup returns the active seller listing to sale');
+  'VERIFIED:-:true', 'the expired-only release returns the active seller listing to sale');
 select is(
   (select status::text from public.products where id = 'd0000000-0000-4000-8000-0000000000a2'),
-  'RESERVED', 'a fresh reservation is not released by the stale cleanup');
+  'RESERVED', 'a fresh reservation is not released by the expired-only release');
 
 -- Explicit release (checkout ended) applies the same rule ----------------------
 set local role service_role;
@@ -118,8 +120,9 @@ select is(
 select pg_temp.make_reserved('d0000000-0000-4000-8000-0000000000c1', 'd0000000-0000-4000-8000-000000000003', interval '20 minutes');
 update public.profiles_private set status = 'banned' where id = 'd0000000-0000-4000-8000-000000000003';
 set local role service_role;
-select is((select count(*) from public.fn_release_stale_reservations()), 1::bigint,
-  'the stale cleanup releases the banned seller reservation');
+select is((select count(*) from public.fn_release_listings(
+    array['d0000000-0000-4000-8000-0000000000c1']::uuid[], true, true)), 1::bigint,
+  'the expired-only release frees the banned seller reservation');
 reset role;
 select is(
   (select status::text || ':' || coalesce(status_before_account_hold::text, '-')

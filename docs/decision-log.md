@@ -283,3 +283,13 @@ It is established as the standard procedure for structural inconsistencies.
 **Decision:** The apps read `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (Expo app) and `VITE_SUPABASE_PUBLISHABLE_KEY` (admin-web). No code reads the old names, and there is no fallback to them.
 
 **Consequence:** The name says which key a client holds. An environment that still sets only the old name fails at startup, as a missing key does, instead of running on the anon key until the legacy keys are disabled. Every local `.env`, EAS environment and admin-web build env must set the new name (`docs/go-live.md`, "Moving an existing project to the new API keys").
+
+## 2026-11-11: products_public Stays a SECURITY DEFINER View
+
+**Context:** The Supabase security advisor reports `security_definer_view` (ERROR) on `public.products_public`, the view that buyers and guests read listings through (`supabase/migrations/20261024023415_products_public_view.sql`). The usual fix is `security_invoker = true`, so the view runs with the caller's rights and RLS on `products` applies (#306, `odd/tasks/internal-schema.md`, S7).
+
+**Decision (maintainer, 2026-11-11):** `products_public` keeps running with its owner's rights. The advisor ERROR is an accepted finding in `docs/maintenance.md`.
+
+**Reason:** A `security_invoker` view needs a row policy on `products` that lets every caller read public listings. Column grants are per role, not per row, and `authenticated` needs table-level SELECT on `products` so owners can read their own listings. With that row policy, any signed-in user could read the hidden columns of a public listing (`origin_zip`, the `verification_data` paths, the `publication_*` economics) straight from `products`. The view keeps those columns out because it lists only the columns a buyer needs, and `security_barrier` stops a caller's filter from running before its row predicate.
+
+**Consequence:** A new `products` column stays hidden until someone adds it to the view. Revisit this entry if the view gains a column that only the owner should see.

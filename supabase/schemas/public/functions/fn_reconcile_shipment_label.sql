@@ -40,7 +40,7 @@ BEGIN
   SELECT status, label_generation_state, claim_expires_at
     INTO v_status, v_state, v_claim_expires_at
     FROM public.shipments WHERE id = p_shipment_id FOR UPDATE;
-  IF NOT FOUND OR NOT public.fn_shipment_label_is_stuck(v_status, v_state, v_claim_expires_at) THEN
+  IF NOT FOUND OR NOT internal.fn_shipment_label_is_stuck(v_status, v_state, v_claim_expires_at) THEN
     RETURN false;
   END IF;
 

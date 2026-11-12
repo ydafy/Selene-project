@@ -1,11 +1,11 @@
-CREATE OR REPLACE FUNCTION public.fn_derive_order_status (
+CREATE OR REPLACE FUNCTION internal.fn_derive_order_status (
   p_order_id uuid
 )
   RETURNS public.order_status_enum
   LANGUAGE plpgsql
   STABLE
   SECURITY DEFINER
-  SET search_path TO 'public', 'pg_temp'
+  SET search_path TO ''
   AS $function$
 DECLARE
   v_statuses public.order_status_enum[];
@@ -39,10 +39,10 @@ BEGIN
 END;
 $function$;
 
-GRANT EXECUTE ON FUNCTION "public"."fn_derive_order_status"(uuid) TO "service_role";
+GRANT EXECUTE ON FUNCTION "internal"."fn_derive_order_status"(uuid) TO "service_role";
 
-REVOKE ALL ON FUNCTION "public"."fn_derive_order_status"(uuid) FROM "postgres";
+REVOKE ALL ON FUNCTION "internal"."fn_derive_order_status"(uuid) FROM "postgres";
 
-GRANT EXECUTE ON FUNCTION "public"."fn_derive_order_status"(uuid) TO "postgres";
+GRANT EXECUTE ON FUNCTION "internal"."fn_derive_order_status"(uuid) TO "postgres";
 
-REVOKE ALL ON FUNCTION "public"."fn_derive_order_status"(uuid) FROM PUBLIC, "anon", "authenticated";
+REVOKE ALL ON FUNCTION "internal"."fn_derive_order_status"(uuid) FROM PUBLIC, "anon", "authenticated";
