@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 
 import {
   AuthUnavailableError,
   createDeleteAccountHandler,
+  createSupabaseDeleteAccountPorts,
   isTransientAuthError,
   latestSignInSeconds,
   type ClosureCleanupUpdate,
@@ -655,32 +654,102 @@ describe('delete-account handler: crash logs', () => {
   });
 });
 
-describe('delete-account wiring (source contract)', () => {
-  const index = readFileSync(join(import.meta.dir, 'index.ts'), 'utf8');
+// The service-role client and Stripe behind the real ports; both record every call in order.
+function fakeClients(
+  auth: { user?: { id: string } | null; error?: unknown } = {},
+) {
+  const calls: unknown[][] = [];
+  const admin = {
+    auth: {
+      getUser: async (token: string) => {
+        calls.push(['auth.getUser', token]);
+        const user = auth.user === undefined ? { id: USER } : auth.user;
+        return { data: { user }, error: auth.error ?? null };
+      },
+    },
+    rpc: async (name: string, args: unknown) => {
+      calls.push(['rpc', name, args]);
+      return { data: closedPayload(), error: null };
+    },
+  };
+  const stripe = {
+    customers: {
+      del: async (id: string) => {
+        calls.push(['stripe.customers.del', id]);
+      },
+    },
+    accounts: {
+      del: async (id: string) => {
+        calls.push(['stripe.accounts.del', id]);
+      },
+    },
+  };
+  const ports = createSupabaseDeleteAccountPorts({
+    getAdmin: () => admin as never,
+    getStripe: () => stripe,
+  });
+  return { calls, ports };
+}
 
-  it('is wrapped in withSentry under its folder name and serves the handler', () => {
-    expect(index).toContain("serve(withSentry('delete-account',");
-    expect(index).toContain("from '../_shared/sentry.ts'");
+describe('delete-account Supabase ports', () => {
+  it('resolves the token with Supabase Auth and closes the account through fn_close_account', async () => {
+    const { calls, ports } = fakeClients();
+    expect(await ports.getUserId('jwt')).toBe(USER);
+    expect(await ports.closeAccount(USER)).toEqual({
+      data: closedPayload(),
+      error: null,
+    });
+    expect(calls).toEqual([
+      ['auth.getUser', 'jwt'],
+      ['rpc', 'fn_close_account', { p_user_id: USER }],
+    ]);
   });
 
-  it('calls the service-only RPC with server credentials and a typed client', () => {
-    expect(index).toContain('fn_close_account');
-    expect(index).toContain('p_user_id');
-    expect(index).toContain('createClient<Database>');
-    expect(index).toContain('readSupabaseSecretKey()');
+  it('reads a 4xx auth error or a missing user as an invalid token (401), with no RPC', async () => {
+    for (const auth of [
+      { error: { status: 401, message: 'invalid JWT' } },
+      { error: { status: 403, message: 'session expired' } },
+      { user: null },
+    ]) {
+      const { calls, ports } = fakeClients(auth);
+      expect(await ports.getUserId('jwt')).toBeNull();
+      const handler = createDeleteAccountHandler({
+        ...ports,
+        now: () => NOW_MS,
+        log: () => {},
+      });
+      expect((await handler(post())).status).toBe(401);
+      expect(calls.some(([kind]) => kind === 'rpc')).toBe(false);
+    }
   });
 
-  it('shares the cleanup with the retry worker instead of carrying its own copy', () => {
-    expect(index).toContain("from '../_shared/account-closure-cleanup.ts'");
-    expect(index).toContain('createSupabaseClosurePorts');
-    expect(index).not.toContain('customers.del');
-    expect(readFileSync(join(import.meta.dir, 'handler.ts'), 'utf8')).toContain(
-      "from '../_shared/account-closure-cleanup.ts'",
-    );
+  it('answers 503 TEMPORARILY_UNAVAILABLE when the auth server fails (5xx, 429 or no status), with no RPC', async () => {
+    for (const error of [
+      { status: 500, message: 'auth down' },
+      { status: 429, message: 'rate limited' },
+      new Error('fetch failed'),
+    ]) {
+      const { calls, ports } = fakeClients({ error });
+      await expect(ports.getUserId('jwt')).rejects.toBeInstanceOf(
+        AuthUnavailableError,
+      );
+      const handler = createDeleteAccountHandler({
+        ...ports,
+        now: () => NOW_MS,
+        log: () => {},
+      });
+      expect((await handler(post())).status).toBe(503);
+      expect(calls.some(([kind]) => kind === 'rpc')).toBe(false);
+    }
   });
 
-  it('answers a transient auth.getUser failure as unavailable, keeping 401 for an invalid token', () => {
-    expect(index).toContain('isTransientAuthError');
-    expect(index).toContain('AuthUnavailableError');
+  it('deletes the Stripe customer and account through the cleanup shared with account-closure-cleanup', async () => {
+    const { calls, ports } = fakeClients();
+    await ports.deleteStripeCustomer(CUSTOMER);
+    await ports.deleteStripeAccount(ACCOUNT);
+    expect(calls).toEqual([
+      ['stripe.customers.del', CUSTOMER],
+      ['stripe.accounts.del', ACCOUNT],
+    ]);
   });
 });

@@ -2,8 +2,8 @@
  * @file supabase/functions/delete-account/handler.ts
  *
  * Self-service account closure (auth-hardening S8, "anonymize and close").
- * Pure decision logic: index.ts wires Supabase auth, the service-only RPC
- * `fn_close_account`, Stripe and Storage into these ports. Raw database, Stripe
+ * Pure decision logic: the factory at the end wires Supabase auth, the service-only
+ * RPC `fn_close_account`, Stripe and Storage into these ports. Raw database, Stripe
  * and Storage text never reaches the response or the log.
  *
  * Response codes (the app depends on them, keep them stable):
@@ -21,13 +21,18 @@
  *   503 { error: 'TEMPORARILY_UNAVAILABLE' }      the auth server could not check the token (5xx,
  *                                                 429 or network failure); nothing was changed, retry
  */
+import type { SupabaseClient } from '../_shared/supabase-js.ts';
+
+import type { Database } from '../../../packages/types/src/database.types.ts';
 import {
   asRecord,
+  createSupabaseClosurePorts,
   parseClosureCleanup,
   runClosureCleanup,
   safeErrorCode,
   type ClosureCleanupPorts,
   type ClosureCleanupUpdate,
+  type StripeCleanupClient,
 } from '../_shared/account-closure-cleanup.ts';
 
 export type { ClosureCleanupUpdate };
@@ -192,5 +197,34 @@ export function createDeleteAccountHandler(deps: DeleteAccountDeps) {
       });
       return fail(500, 'INTERNAL');
     }
+  };
+}
+
+/**
+ * The real ports: Supabase Auth and the service-only `fn_close_account` RPC through the
+ * service-role client, plus the Stripe and Storage cleanup shared with account-closure-cleanup.
+ */
+export function createSupabaseDeleteAccountPorts(deps: {
+  getAdmin: () => SupabaseClient<Database>;
+  getStripe: () => StripeCleanupClient;
+}): Omit<DeleteAccountDeps, 'now' | 'log'> {
+  return {
+    getUserId: async (accessToken) => {
+      const {
+        data: { user },
+        error,
+      } = await deps.getAdmin().auth.getUser(accessToken);
+      // A 4xx is the auth server's verdict on the token; anything else is an outage to retry.
+      if (error && isTransientAuthError(error))
+        throw new AuthUnavailableError();
+      return error || !user ? null : user.id;
+    },
+    closeAccount: async (userId) => {
+      const { data, error } = await deps.getAdmin().rpc('fn_close_account', {
+        p_user_id: userId,
+      });
+      return { data: data as unknown, error };
+    },
+    ...createSupabaseClosurePorts(deps),
   };
 }

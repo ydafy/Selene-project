@@ -16,12 +16,17 @@
  *   405 { error: 'METHOD_NOT_ALLOWED' }
  *   500 { error: 'INTERNAL_ERROR' }      the claim failed (reported to Sentry as a 5xx)
  */
+import type { SupabaseClient } from '../_shared/supabase-js.ts';
+
+import type { Database } from '../../../packages/types/src/database.types.ts';
 import {
   asRecord,
+  createSupabaseClosurePorts,
   parseClosureCleanup,
   runClosureCleanup,
   safeErrorCode,
   type ClosureCleanupPorts,
+  type StripeCleanupClient,
 } from '../_shared/account-closure-cleanup.ts';
 import {
   isAuthorizedCronRequest,
@@ -46,6 +51,12 @@ export const MAX_ATTEMPTS = 24;
 /** Capped rows listed per run, enough for an admin to act on. */
 const CAPPED_LIST_LIMIT = 50;
 const FUNCTION_NAME = 'account-closure-cleanup';
+
+const OPEN_STEP_FILTER = [
+  'stripe_customer_cleanup.in.(pending,failed)',
+  'stripe_account_cleanup.in.(pending,failed)',
+  'storage_cleanup.in.(pending,failed)',
+].join(',');
 
 type DbError = { code?: string; message: string } | null;
 
@@ -210,5 +221,35 @@ export function createAccountClosureCleanupHandler(
       });
       return json({ error: 'INTERNAL_ERROR' }, 500);
     }
+  };
+}
+
+/**
+ * The real ports: the atomic claim RPC and the capped lookup through the service-role client,
+ * plus the Stripe and Storage cleanup shared with delete-account.
+ */
+export function createSupabaseAccountClosureCleanupPorts(deps: {
+  getAdmin: () => SupabaseClient<Database>;
+  getStripe: () => StripeCleanupClient;
+}): Omit<AccountClosureCleanupDeps, 'getCronSecret' | 'log' | 'reportMessage'> {
+  return {
+    claimClosures: async (limit, minIdleSeconds, maxAttempts) => {
+      return await deps.getAdmin().rpc('fn_claim_account_closures', {
+        p_limit: limit,
+        p_min_idle: `${minIdleSeconds} seconds`,
+        p_max_attempts: maxAttempts,
+      });
+    },
+    listCappedClosures: async (maxAttempts, limit) => {
+      return await deps
+        .getAdmin()
+        .from('account_closures')
+        .select('user_id, attempts')
+        .or(OPEN_STEP_FILTER)
+        .gte('attempts', maxAttempts)
+        .order('updated_at')
+        .limit(limit);
+    },
+    ...createSupabaseClosurePorts(deps),
   };
 }
