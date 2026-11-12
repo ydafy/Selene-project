@@ -7,7 +7,7 @@ Adapted from pstack (backnotprop/pstack, MIT). Judgment only: AGENTS.md, ODD, TD
 For every state-mutating step ask: what if it runs twice? What if the previous run crashed at each point?
 
 - Derive the step from current state, compare with the goal, apply only the difference. Do not replay a recorded plan.
-- Leftovers (locks, claimed jobs, half-written rows) must be recognizable as stale by the next run. Prefer expiring leases over boolean locks (`fn_acquire_auto_cancel_lease` is the model; see BL13 for a boolean lock that can stick).
+- Leftovers (locks, claimed jobs, half-written rows) must be recognizable as stale by the next run. Prefer expiring leases over boolean locks (`fn_acquire_cron_lease` is the model; see BL13 for a boolean lock that can stick).
 - Selene hot spots: `stripe-webhooks` event handling (Stripe redelivers), pg_cron HTTP jobs (retries and overlapping ticks), refunds, payout release (full shipment amount or nothing), label purchase with Envia.
 - Test: run the step twice, then crash between steps and rerun. Assert the same end state and no duplicate money movement (one refund, one transfer, one label).
 
@@ -83,7 +83,7 @@ Deviations from the sketch are signal. Scrap the sketch when the same workaround
 
 When an agent repeats a mistake the maintainer already corrected, make the mistake impossible instead of adding another prompt rule. Nothing fails when an agent skips a rule in `AGENTS.md`.
 
-A mistake qualifies once it happened twice. Keep the evidence (the two commits, review comments, or corrections). Do not add guards for mistakes that have not happened.
+A mistake qualifies once it happened twice. Keep the evidence (the two commits, review comments, or corrections) in an `agent-mistake` issue (`docs/findings.md`, "Record a repeated agent mistake"). Do not add guards for mistakes that have not happened.
 
 Fix it at the highest level that works:
 

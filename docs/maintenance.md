@@ -153,6 +153,8 @@ Run `npx skills check`. It takes about 2 minutes because it fetches every source
 
 Needs a decision for each skill with an update, grouped by source. The update follows `docs/skills.md`, "Update".
 
+Also check the skills we adapted from pstack, following `docs/skills.md`, "Check adapted skills against pstack". Needs a decision for each upstream change to a path one of them adapts.
+
 Before you update any skill, run `bun run skills:usage`. Reviewing an update reads every updated skill, so a run after it counts that review as use. It reads the Gentle Shell session logs of the last 30 days (`~/.gentle-shell/agent/sessions/` and `~/.gentle-shell/agent/gentle-agents/sessions/`) and counts, per skill, the sessions that read its `.agents/skills/<name>/SKILL.md`. Report the top skills and the list under "Installed with zero reads". If the script prints "No session logs found", the harness keeps no logs: report "Could not check".
 
 Needs a decision for a skill with zero reads in three monthly runs in a row and no upcoming work that needs it. Name the issues or roadmap items you checked for that work. Propose removing the skill. Only the maintainer decides a removal; it follows `docs/skills.md`, "Remove".

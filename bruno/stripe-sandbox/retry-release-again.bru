@@ -11,7 +11,7 @@ post {
 }
 
 headers {
-  apikey: {{anonKey}}
+  apikey: {{publishableKey}}
   Authorization: Bearer {{adminToken}}
 }
 
@@ -30,7 +30,7 @@ body:json {
 }
 
 script:post-response {
-  const key = bru.getEnvVar("serviceRoleKey");
+  const key = bru.getEnvVar("secretKey");
   const children = await bru.sendRequest({
     method: "GET",
     url: bru.getEnvVar("baseUrl") + "/rest/v1/connect_payout_runs?retry_of_run_id=eq." + bru.getVar("failedRunId") + "&select=id",

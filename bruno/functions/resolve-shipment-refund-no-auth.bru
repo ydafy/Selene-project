@@ -28,5 +28,5 @@ docs {
   verify_jwt = false (supabase/config.toml), so the gateway checks nothing and the function's
   own check answers a call without an Authorization header. Needs the functions server (bun run
   functions:serve). Proves resolve-shipment-refund refuses anonymous callers before any lookup or
-  database call; resolve-shipment-refund-anon-key covers the anon key.
+  database call; resolve-shipment-refund-anon-key covers the publishable key.
 }

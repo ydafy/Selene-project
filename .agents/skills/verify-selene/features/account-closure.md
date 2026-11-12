@@ -4,7 +4,7 @@ A user closes their account. Users with open obligations are refused and left in
 
 ## Sub-features
 
-- `delete-account`: Edge Function closes a throwaway user (200 `{ success: true }`), refuses a user with a pending obligation, and rejects missing, anon-key, and stale tokens.
+- `delete-account`: Edge Function closes a throwaway user (200 `{ success: true }`), refuses a user with a pending obligation, and rejects missing, publishable-key, and stale tokens.
 - `fn_close_account`: the RPC is callable by service role only; anon and buyer get 403 (`42501`).
 - `cleanup-worker`: `account-closure-cleanup` needs the cron secret; processes pending rows and retries failed ones.
 

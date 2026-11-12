@@ -16,8 +16,6 @@ CREATE TABLE "public"."system_settings" (
   "order_expiration_hours"                     integer                  DEFAULT 48,
   "min_payout_amount_cents"                    integer                  DEFAULT 10000,
   "preparing_expiration_hours"                 integer                  DEFAULT 96,
-  "return_delivery_timeout_running"            boolean                  DEFAULT false,
-  "release_funds_running"                      boolean                  DEFAULT false,
   "isr_withholding_pct"                        numeric                  DEFAULT 0.01,
   "iva_withholding_pct"                        numeric                  DEFAULT 0.08,
   "novice_completed_threshold"                 integer                  DEFAULT 3,
@@ -29,16 +27,6 @@ CREATE TABLE "public"."system_settings" (
   "envia_print_size"                           text,
   "listing_quote_reference_destination"        jsonb,
   "checkout_recovery_enabled"                  boolean                  NOT NULL DEFAULT false,
-  "track_shipments_preparing_lease_id"         uuid,
-  "track_shipments_preparing_lease_expires_at" timestamp with time zone,
-  "track_shipments_shipped_lease_id"           uuid,
-  "track_shipments_shipped_lease_expires_at"   timestamp with time zone,
-  "auto_cancel_orders_lease_id"                uuid,
-  "auto_cancel_orders_lease_expires_at"        timestamp with time zone,
-  "auto_cancel_preparing_lease_id"             uuid,
-  "auto_cancel_preparing_lease_expires_at"     timestamp with time zone,
-  "checkout_recovery_lease_id"                 uuid,
-  "checkout_recovery_lease_expires_at"         timestamp with time zone,
   CONSTRAINT "system_settings_envia_tuple_check"
     CHECK
     ((((envia_carrier IS NULL) AND (envia_service IS NULL) AND (envia_print_format IS NULL) AND (envia_print_size IS NULL) AND (listing_quote_reference_destination IS NULL)) OR
@@ -66,9 +54,13 @@ CREATE POLICY "system_settings_read" ON "public"."system_settings"
 
 REVOKE ALL ON TABLE "public"."system_settings" FROM "anon", "authenticated";
 
-GRANT SELECT ON TABLE "public"."system_settings" TO "anon";
+-- Clients read only the columns the app selects (useSystemConfig and the
+-- publish flow; id is the filter). One cached query serves the guest guard and
+-- signed-in screens, so anon gets the same list. The Envia reference address
+-- stays server-only (#305, #309).
+GRANT SELECT ("id", "insurance_rate", "is_maintenance", "min_version_android", "min_version_ios", "order_expiration_hours", "package_presets", "preparing_expiration_hours", "service_fee_pct", "shipping_buffer_cents") ON TABLE "public"."system_settings" TO "anon";
 
-GRANT SELECT ON TABLE "public"."system_settings" TO "authenticated";
+GRANT SELECT ("id", "insurance_rate", "is_maintenance", "min_version_android", "min_version_ios", "order_expiration_hours", "package_presets", "preparing_expiration_hours", "service_fee_pct", "shipping_buffer_cents") ON TABLE "public"."system_settings" TO "authenticated";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."system_settings" TO "service_role";
 

@@ -5,18 +5,20 @@ meta {
 }
 
 post {
-  url: {{baseUrl}}/rest/v1/rpc/fn_acquire_checkout_recovery_lease
+  url: {{baseUrl}}/rest/v1/rpc/fn_acquire_cron_lease
   body: json
   auth: none
 }
 
 headers {
-  apikey: {{anonKey}}
-  Authorization: Bearer {{serviceRoleKey}}
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
 }
 
 body:json {
-  {}
+  {
+    "p_job": "checkout_recovery"
+  }
 }
 
 tests {

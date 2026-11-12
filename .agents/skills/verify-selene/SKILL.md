@@ -5,7 +5,7 @@ license: MIT
 metadata:
   author: "school-portal"
   version: "1.0"
-  source: "Adapted from pstack create-verification-skill (backnotprop/pstack, MIT); see LICENSE"
+  source: "Adapted from pstack create-verification-skill (backnotprop/pstack, MIT) at upstream cursor/plugins/pstack@0f77cd5; see LICENSE"
 ---
 
 ## Activation Contract
@@ -52,7 +52,7 @@ Pick the entry for your change from `features/README.md`.
 **Bruno** (from `bruno/`, always `--env local`; prefix `bunx @usebruno/cli@4.2.1`):
 - Everything: `bun run api:test`. One file or several, in order: `run auth/login-admin.bru functions/list-shipment-refund-problems-admin.bru --env local`. A folder after its logins: `run auth/login-buyer.bru auth/login-seller.bru auth/login-admin.bru products --env local`; a folder alone fails on missing tokens.
 - Requests share runtime vars (`buyerToken`, `adminToken`, `sellerToken`), so run the matching `auth/login-*.bru` (or `functions/login-admin.bru`) in the same invocation, first. A request run alone fails on a missing token.
-- Role per request: service role = `Authorization: Bearer {{serviceRoleKey}}`; buyer/seller/admin = their login token; anon = only `apikey: {{anonKey}}`. A new check covers each role that should be allowed and denied, and goes in the folder of its area.
+- Role per request: service role = `Authorization: Bearer {{secretKey}}`; buyer/seller/admin = their login token; anon = only `apikey: {{publishableKey}}`. A new check covers each role that should be allowed and denied, and goes in the folder of its area.
 - Seeded accounts (`password123`): `admin@`, `seller@`, `buyer@`, `fixture-seller@`, `fixture-buyer@selene.local`. Header of `supabase/seed.sql` is the source.
 
 **Playwright** (admin-web, real backend): `bun run test:e2e:local`. Specs live in `e2e/admin-web-local/*.local.e2e.ts`; stack URL and keys come from `e2e/admin-web-local/local-stack.ts`. Use `bun run test:e2e` (mocked, no stack) only for UI logic.

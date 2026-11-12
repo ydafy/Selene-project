@@ -20,7 +20,7 @@ describe('parseLocalApiUrl', () => {
 
   test('reads API_URL from `supabase status -o env` output', () => {
     const output = [
-      'ANON_KEY="placeholder"',
+      'PUBLISHABLE_KEY="sb_publishable_placeholder"',
       'API_URL="http://127.0.0.1:24321"',
       'DB_URL="postgresql://postgres:postgres@127.0.0.1:24322/postgres"',
     ].join('\n');

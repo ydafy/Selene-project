@@ -15,7 +15,7 @@ const help =
   "Runs against this worktree's local Supabase stack (`supabase start`) with the function served:\n" +
   '  bun run functions:serve (right before the run; it exits about 60 s after the last request)\n' +
   'Database URL: SELENE_LOCAL_DB_URL, else `supabase status --env`. Only 127.0.0.1/localhost is accepted.\n' +
-  'Fixtures, created operations, the setting and the lease columns are restored at the end, also on failure.';
+  'Fixtures, created operations, the setting and the orders cron lease are restored at the end, also on failure.';
 
 const HOURS = 5;
 const ids = {
@@ -151,9 +151,9 @@ async function reminders(sql: SQL) {
 }
 
 async function leaseFree(sql: SQL): Promise<boolean> {
-  const [row] =
-    await sql`SELECT auto_cancel_orders_lease_id IS NULL AS free FROM public.system_settings WHERE id = 1`;
-  return row.free as boolean;
+  const rows =
+    await sql`SELECT 1 FROM internal.cron_leases WHERE job = 'auto_cancel_orders'`;
+  return rows.length === 0;
 }
 
 async function setHours(sql: SQL, hours: number) {
@@ -209,13 +209,12 @@ async function run() {
   let failed = 0;
 
   const [prior] =
-    await sql`SELECT order_expiration_hours, auto_cancel_orders_lease_id, auto_cancel_orders_lease_expires_at,
-      auto_cancel_preparing_lease_id, auto_cancel_preparing_lease_expires_at
-    FROM public.system_settings WHERE id = 1`;
+    await sql`SELECT order_expiration_hours FROM public.system_settings WHERE id = 1`;
+  const leaseFreeBefore = await leaseFree(sql);
   try {
     assert.equal(
-      prior.auto_cancel_orders_lease_id,
-      null,
+      leaseFreeBefore,
+      true,
       'The local orders lease must be free before the harness runs.',
     );
     await cleanup(sql);
@@ -257,7 +256,7 @@ async function run() {
         const [held] = await sql.begin(async (tx) => {
           await tx`SELECT set_config('request.jwt.claims', '{"role":"service_role"}', true)`;
           await tx`SET LOCAL ROLE service_role`;
-          return tx`SELECT * FROM public.fn_acquire_auto_cancel_lease('orders')`;
+          return tx`SELECT * FROM public.fn_acquire_cron_lease('auto_cancel_orders')`;
         });
         assert.equal(held.acquired, true);
         try {
@@ -266,7 +265,7 @@ async function run() {
           assert.equal(reply.text, '{"message":"Already running"}');
           assert.equal(await operationCount(sql), 0);
           const [row] =
-            await sql`SELECT auto_cancel_orders_lease_id AS id FROM public.system_settings WHERE id = 1`;
+            await sql`SELECT lease_id AS id FROM internal.cron_leases WHERE job = 'auto_cancel_orders'`;
           assert.equal(
             row.id,
             held.lease_id,
@@ -276,7 +275,7 @@ async function run() {
           await sql.begin(async (tx) => {
             await tx`SELECT set_config('request.jwt.claims', '{"role":"service_role"}', true)`;
             await tx`SET LOCAL ROLE service_role`;
-            await tx`SELECT public.fn_release_auto_cancel_lease('orders', ${held.lease_id}::uuid)`;
+            await tx`SELECT public.fn_release_cron_lease('auto_cancel_orders', ${held.lease_id}::uuid)`;
           });
         }
         assert.equal(await leaseFree(sql), true);
@@ -420,16 +419,18 @@ async function run() {
       failed++;
       console.log(`FAIL cleanup\n  ${(error as Error).message}`);
     });
-    await sql`UPDATE public.system_settings SET
-        order_expiration_hours = ${prior.order_expiration_hours},
-        auto_cancel_orders_lease_id = ${prior.auto_cancel_orders_lease_id},
-        auto_cancel_orders_lease_expires_at = ${prior.auto_cancel_orders_lease_expires_at},
-        auto_cancel_preparing_lease_id = ${prior.auto_cancel_preparing_lease_id},
-        auto_cancel_preparing_lease_expires_at = ${prior.auto_cancel_preparing_lease_expires_at}
-      WHERE id = 1`.catch((error) => {
-      failed++;
-      console.log(`FAIL restore\n  ${(error as Error).message}`);
-    });
+    await sql
+      .begin(async (tx) => {
+        await tx`UPDATE public.system_settings
+          SET order_expiration_hours = ${prior.order_expiration_hours} WHERE id = 1`;
+        // The lease was free before the run; a failed run must not leave one behind.
+        if (leaseFreeBefore)
+          await tx`DELETE FROM internal.cron_leases WHERE job = 'auto_cancel_orders'`;
+      })
+      .catch((error) => {
+        failed++;
+        console.log(`FAIL restore\n  ${(error as Error).message}`);
+      });
     await sql.close();
   }
   if (failed) process.exit(1);
