@@ -8,6 +8,7 @@ import {
   isDefinitiveStripePayoutCreateFailure,
   parseReleaseRequestBody,
   getStripeBalanceInsufficientLogMeta,
+  parseParkPayoutRunFromFenceResult,
   releaseConnectPayout,
   sumAvailableBalanceForCurrency,
   type ConnectPayoutReleaseDependencies,
@@ -95,6 +96,7 @@ function createDeps(overrides: Partial<RetryReleaseDependencies> = {}) {
     fenceCompletions: [] as unknown[],
     fenceFailures: [] as unknown[],
     fenceAborts: [] as unknown[],
+    fenceParks: [] as unknown[],
     balanceRetrievals: [] as unknown[],
     actionabilityLookups: [] as unknown[],
     updates: [] as unknown[],
@@ -224,6 +226,10 @@ function createDeps(overrides: Partial<RetryReleaseDependencies> = {}) {
     abortPayoutCreateToActionRequired: async (input) => {
       calls.fenceAborts.push(input);
       return true;
+    },
+    parkPayoutRunFromFence: async (input) => {
+      calls.fenceParks.push(input);
+      return { outcome: 'parked', stageVersion: input.stageVersion + 1 };
     },
     markRunPendingReconciliation: async (input) => {
       calls.updates.push(input);
@@ -3055,35 +3061,193 @@ describe('releaseConnectPayout', () => {
     expect(deps.calls.sequence).toEqual([]);
     expect(deps.calls.balanceRetrievals).toEqual([]);
   });
+});
 
-  it('re-checks account actionability inside the fence and fails the run when the destination became non-actionable', async () => {
-    let actionabilityLookups = 0;
+// #352: the fence-time actionability re-check parks a single-modal run
+// (every shipment already transferred) instead of failing it, so an actionable
+// account refresh resumes it and the worker creates the payout.
+describe('fence-time account actionability park', () => {
+  const singleModalOrders = async () => [
+    {
+      id: 'order-1',
+      stripe_charge_id: 'ch_123',
+      stripe_transfer_group: 'selene_order_order-1',
+    },
+  ];
+  const driftAtFence = () => {
+    let lookups = 0;
+    return async () => {
+      lookups += 1;
+      return lookups === 1
+        ? { isActionable: true, blockedReason: null }
+        : { isActionable: false, blockedReason: 'account_refresh_pending' };
+    };
+  };
+  const release = (
+    deps: ReturnType<typeof createDeps>,
+    idempotencyKey = 'release-key-account-drift',
+  ) =>
+    releaseConnectPayout(
+      {
+        actorId: 'admin-1',
+        sellerId: 'seller-1',
+        shipmentIds: ['shipment-1'],
+        idempotencyKey,
+      },
+      deps,
+    );
+
+  it('re-checks account actionability inside the fence and parks a single-modal run without a payout', async () => {
+    const lookups: unknown[] = [];
+    const drift = driftAtFence();
     const deps = createDeps({
-      getConnectAccountActionability: async () => {
-        actionabilityLookups += 1;
-        return actionabilityLookups === 1
-          ? { isActionable: true, blockedReason: null }
-          : { isActionable: false, blockedReason: 'verification_failed' };
+      loadReleaseOrders: singleModalOrders,
+      getConnectAccountActionability: async (input) => {
+        lookups.push(input);
+        return drift();
+      },
+    });
+
+    await expect(release(deps)).resolves.toEqual({
+      success: true,
+      runId: 'run-1',
+      status: 'reconciliation_needed',
+      amount: 12_500,
+    });
+
+    // The second lookup is the re-check inside the open fence.
+    expect(lookups).toHaveLength(2);
+    expect(deps.calls.fenceBegins).toEqual([{ runId: 'run-1' }]);
+    expect(deps.calls.fenceParks).toEqual([
+      { runId: 'run-1', stageVersion: 2 },
+    ]);
+    expect(deps.calls.transfers).toHaveLength(1);
+    expect(deps.calls.payouts).toEqual([]);
+    expect(deps.calls.fenceFailures).toEqual([]);
+    expect(deps.calls.fenceCompletions).toEqual([]);
+    expect(deps.calls.fenceAborts).toEqual([]);
+  });
+
+  it('answers pending_reconciliation when the park requeues an account that became actionable', async () => {
+    const deps = createDeps({
+      loadReleaseOrders: singleModalOrders,
+      getConnectAccountActionability: driftAtFence(),
+      parkPayoutRunFromFence: async (input) => {
+        deps.calls.fenceParks.push(input);
+        return { outcome: 'requeued', stageVersion: input.stageVersion + 1 };
+      },
+    });
+
+    await expect(release(deps)).resolves.toEqual({
+      success: true,
+      runId: 'run-1',
+      status: 'pending_reconciliation',
+      amount: 12_500,
+    });
+    expect(deps.calls.fenceParks).toEqual([
+      { runId: 'run-1', stageVersion: 2 },
+    ]);
+    expect(deps.calls.payouts).toEqual([]);
+    expect(deps.calls.fenceFailures).toEqual([]);
+  });
+
+  it('parks a retry child at the fence and never creates a second child or payout for the parent', async () => {
+    let parkedChild: Awaited<
+      ReturnType<RetryReleaseDependencies['findRetryChildByParentRunId']>
+    > = null;
+    const deps = createDeps({
+      getConnectAccountActionability: driftAtFence(),
+      loadReleaseRows: async () => [
+        completedShipment({
+          is_eligible: false,
+          ineligible_reason: parkedChild
+            ? 'already_released'
+            : 'payout_failed_retry_required',
+          stripe_transfer_id: 'tr_existing',
+        }),
+      ],
+      loadReleaseOrders: singleModalOrders,
+      findActiveShipmentMappings: async () =>
+        parkedChild
+          ? [
+              {
+                shipmentId: 'shipment-1',
+                runId: 'run-retry-1',
+                status: 'pending_reconciliation' as const,
+              },
+            ]
+          : [],
+      findRetryChildByParentRunId: async (parentRunId) => {
+        deps.calls.retryChildLookups.push(parentRunId);
+        return parkedChild;
+      },
+      createRun: async (input) => {
+        deps.calls.createdRuns.push(input);
+        return {
+          id: 'run-retry-1',
+          status: 'pending_reconciliation',
+          release_stage: 'release_accepted',
+          release_stage_version: 1,
+        };
+      },
+      parkPayoutRunFromFence: async (input) => {
+        deps.calls.fenceParks.push(input);
+        parkedChild = failedParentRun({
+          id: 'run-retry-1',
+          status: 'reconciliation_needed',
+          stripe_payout_id: null,
+          retry_of_run_id: 'run-failed',
+          release_stage_version: input.stageVersion + 1,
+        });
+        return { outcome: 'parked', stageVersion: input.stageVersion + 1 };
       },
     });
 
     await expect(
-      releaseConnectPayout(
-        {
-          actorId: 'admin-1',
-          sellerId: 'seller-1',
-          shipmentIds: ['shipment-1'],
-          idempotencyKey: 'release-key-account-drift',
-        },
+      retryFailedConnectPayout(
+        { actorId: 'admin-1', retryRunId: 'run-failed' },
+        deps,
+      ),
+    ).resolves.toEqual({
+      success: true,
+      runId: 'run-retry-1',
+      status: 'reconciliation_needed',
+      amount: 12_500,
+    });
+    expect(deps.calls.fenceParks).toEqual([
+      { runId: 'run-retry-1', stageVersion: 2 },
+    ]);
+    expect(deps.calls.fenceFailures).toEqual([]);
+    expect(deps.calls.payouts).toEqual([]);
+
+    // A second retry of the same parent finds the parked child's active
+    // mapping: no second child, no payout, no second park.
+    await expect(
+      retryFailedConnectPayout(
+        { actorId: 'admin-1', retryRunId: 'run-failed' },
         deps,
       ),
     ).rejects.toEqual(
+      new ConnectPayoutReleaseError('PAYOUT_RELEASE_ALREADY_ACTIVE', 409),
+    );
+    expect(deps.calls.createdRuns).toHaveLength(1);
+    expect(deps.calls.fenceParks).toHaveLength(1);
+    expect(deps.calls.payouts).toEqual([]);
+  });
+
+  it('keeps the fail path for a legacy release without a transfer group', async () => {
+    const deps = createDeps({
+      getConnectAccountActionability: driftAtFence(),
+    });
+
+    await expect(release(deps)).rejects.toEqual(
       new ConnectPayoutReleaseError('CONNECT_ACCOUNT_NOT_ACTIONABLE', 409),
     );
 
     // Stripe was never called; the fence exits with definitive failed
     // semantics carrying the account-not-actionable reason.
     expect(deps.calls.payouts).toEqual([]);
+    expect(deps.calls.fenceParks).toEqual([]);
     expect(deps.calls.fenceFailures).toEqual([
       {
         runId: 'run-1',
@@ -3092,5 +3256,115 @@ describe('releaseConnectPayout', () => {
       },
     ]);
     expect(deps.calls.fenceCompletions).toEqual([]);
+  });
+
+  it('keeps the fail path for any other fence-time error of a single-modal run', async () => {
+    let rowsRead = 0;
+    const deps = createDeps({
+      loadReleaseOrders: singleModalOrders,
+      loadReleaseRows: async () => {
+        rowsRead += 1;
+        return [
+          completedShipment(
+            rowsRead === 1
+              ? {}
+              : { is_eligible: false, ineligible_reason: 'active_dispute' },
+          ),
+        ];
+      },
+    });
+
+    await expect(release(deps)).rejects.toEqual(
+      new ConnectPayoutReleaseError('active_dispute', 400),
+    );
+    expect(deps.calls.fenceParks).toEqual([]);
+    expect(deps.calls.fenceFailures).toEqual([
+      { runId: 'run-1', stageVersion: 2, failureReason: 'active_dispute' },
+    ]);
+    expect(deps.calls.payouts).toEqual([]);
+  });
+
+  it('keeps the fail path when the fence-time actionability lookup itself fails', async () => {
+    let lookups = 0;
+    const deps = createDeps({
+      loadReleaseOrders: singleModalOrders,
+      getConnectAccountActionability: async () => {
+        lookups += 1;
+        if (lookups === 1) return { isActionable: true, blockedReason: null };
+        throw new Error('ACTIONABILITY_LOOKUP_FAILED');
+      },
+    });
+
+    await expect(release(deps)).rejects.toThrow('ACTIONABILITY_LOOKUP_FAILED');
+    expect(deps.calls.fenceParks).toEqual([]);
+    expect(deps.calls.fenceFailures).toEqual([
+      {
+        runId: 'run-1',
+        stageVersion: 2,
+        failureReason: 'ACTIONABILITY_LOOKUP_FAILED',
+      },
+    ]);
+    expect(deps.calls.payouts).toEqual([]);
+  });
+
+  it('surfaces the not-actionable refusal when the park RPC raises, without failing the run or calling Stripe', async () => {
+    const deps = createDeps({
+      loadReleaseOrders: singleModalOrders,
+      getConnectAccountActionability: driftAtFence(),
+      parkPayoutRunFromFence: async (input) => {
+        deps.calls.fenceParks.push(input);
+        throw new Error('P0001 STAGE_VERSION_CONFLICT');
+      },
+    });
+
+    await expect(release(deps)).rejects.toEqual(
+      new ConnectPayoutReleaseError('CONNECT_ACCOUNT_NOT_ACTIONABLE', 409),
+    );
+    expect(deps.calls.fenceParks).toEqual([
+      { runId: 'run-1', stageVersion: 2 },
+    ]);
+    expect(deps.calls.fenceFailures).toEqual([]);
+    expect(deps.calls.payouts).toEqual([]);
+    expect(deps.calls.fenceCompletions).toEqual([]);
+  });
+
+  it('parses only a single parked or requeued row from the park RPC', () => {
+    expect(
+      parseParkPayoutRunFromFenceResult([
+        { outcome: 'parked', stage_version: 3 },
+      ]),
+    ).toEqual({ outcome: 'parked', stageVersion: 3 });
+    expect(
+      parseParkPayoutRunFromFenceResult([
+        { outcome: 'requeued', stage_version: 4 },
+      ]),
+    ).toEqual({ outcome: 'requeued', stageVersion: 4 });
+    for (const invalid of [
+      null,
+      [],
+      { outcome: 'parked', stage_version: 3 },
+      [{ outcome: 'failed', stage_version: 3 }],
+      [{ outcome: 'parked', stage_version: 0 }],
+      [{ outcome: 'parked', stage_version: '3' }],
+      [
+        { outcome: 'parked', stage_version: 3 },
+        { outcome: 'parked', stage_version: 3 },
+      ],
+    ]) {
+      expect(() => parseParkPayoutRunFromFenceResult(invalid)).toThrow(
+        new ConnectPayoutReleaseError('PAYOUT_FENCE_PARK_RESULT_INVALID', 409),
+      );
+    }
+  });
+
+  it('wires the park dependency to the fence-park RPC with the fenced version', () => {
+    const source = readFileSync(join(import.meta.dir, 'index.ts'), 'utf8');
+    const block = source.slice(source.indexOf('parkPayoutRunFromFence:'));
+    const adapter = block.slice(0, block.indexOf('\n          },') + 13);
+    expect(adapter).toContain("'fn_park_payout_run_from_fence'");
+    expect(adapter).toContain('p_run_id: input.runId');
+    expect(adapter).toContain('p_expected_stage_version: input.stageVersion');
+    expect(adapter).toContain('parseParkPayoutRunFromFenceResult(');
+    expect(adapter).not.toContain('.update(');
   });
 });

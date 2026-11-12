@@ -283,6 +283,42 @@ export interface ConnectPayoutReleaseDependencies {
     stageVersion: number;
     reason: string;
   }) => Promise<boolean>;
+  /**
+   * Fence exit through `fn_park_payout_run_from_fence` when the account is not
+   * actionable at payout-create time (single-modal runs only). `parked` leaves
+   * the run in action_required (account_not_actionable) for the account
+   * refresh commit to resume; `requeued` means the account became actionable
+   * under the lock and the run waits for resume-pending-payouts. Raises on a
+   * version, claim, or stage conflict.
+   */
+  parkPayoutRunFromFence: (input: {
+    runId: string;
+    stageVersion: number;
+  }) => Promise<ParkPayoutRunFromFenceResult>;
+}
+
+export interface ParkPayoutRunFromFenceResult {
+  outcome: 'parked' | 'requeued';
+  stageVersion: number;
+}
+
+/** Parses the `fn_park_payout_run_from_fence` rows into the domain result. */
+export function parseParkPayoutRunFromFenceResult(
+  data: unknown,
+): ParkPayoutRunFromFenceResult {
+  const row = Array.isArray(data) && data.length === 1 ? data[0] : null;
+  if (
+    !isRecord(row) ||
+    (row.outcome !== 'parked' && row.outcome !== 'requeued') ||
+    !Number.isSafeInteger(row.stage_version) ||
+    (row.stage_version as number) < 1
+  ) {
+    throw new ConnectPayoutReleaseError(
+      'PAYOUT_FENCE_PARK_RESULT_INVALID',
+      409,
+    );
+  }
+  return { outcome: row.outcome, stageVersion: row.stage_version as number };
 }
 
 export type ReleaseConnectPayoutResponse =
@@ -1143,6 +1179,36 @@ export async function releaseConnectPayout(
     // non-actionable after the first gate must never reach payouts.create.
     await assertAccountActionable(deps, currentRows[0].stripe_account_id);
   } catch (error) {
+    // #352: a single-modal run already holds its transfers, so a destination
+    // that is not actionable parks the run (or requeues it when the account
+    // turned actionable under the lock) for the refresh commit and the worker
+    // to finish, instead of failing it. Legacy runs without a transfer group
+    // are never claimed by the worker, so they keep the fail path. A park
+    // that raises keeps the durable fence untouched, like the other exits.
+    if (
+      hasSingleModalSettlement &&
+      error instanceof ConnectPayoutReleaseError &&
+      error.message === 'CONNECT_ACCOUNT_NOT_ACTIONABLE'
+    ) {
+      let parked: ParkPayoutRunFromFenceResult;
+      try {
+        parked = await deps.parkPayoutRunFromFence({
+          runId: run.id,
+          stageVersion: fencedVersion,
+        });
+      } catch {
+        throw error;
+      }
+      return {
+        success: true,
+        runId: run.id,
+        status:
+          parked.outcome === 'parked'
+            ? 'reconciliation_needed'
+            : 'pending_reconciliation',
+        amount,
+      };
+    }
     await deps
       .failPayoutCreateFromFence({
         runId: run.id,
