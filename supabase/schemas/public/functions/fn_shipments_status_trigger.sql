@@ -6,7 +6,7 @@ CREATE OR REPLACE FUNCTION public.fn_shipments_status_trigger()
 BEGIN
   -- Actualiza el estado de la orden global reactivamente tras cada cambio en shipments
   UPDATE public.orders
-  SET status = public.fn_derive_order_status(NEW.order_id),
+  SET status = internal.fn_derive_order_status(NEW.order_id),
       updated_at = now()
   WHERE id = NEW.order_id;
   RETURN NEW;

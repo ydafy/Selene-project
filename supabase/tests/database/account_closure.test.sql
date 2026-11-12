@@ -19,9 +19,9 @@ returns void language sql as $$
     array['https://example.test/p.png'], p_status, '{}'::jsonb, p_seller, 100, '06600', 'gpu_1',
     case when p_status = 'RESERVED' then now() end,
     round(100 * 100)::bigint + s.shipping_buffer_cents
-      + ceil(round(1000 * 100)::numeric * public.normalize_publication_rate(s.insurance_rate))::bigint,
-    public.normalize_publication_rate(s.service_fee_pct),
-    public.normalize_publication_rate(s.insurance_rate)
+      + ceil(round(1000 * 100)::numeric * internal.normalize_publication_rate(s.insurance_rate))::bigint,
+    internal.normalize_publication_rate(s.service_fee_pct),
+    internal.normalize_publication_rate(s.insurance_rate)
   from public.system_settings s where s.id = 1
 $$;
 
