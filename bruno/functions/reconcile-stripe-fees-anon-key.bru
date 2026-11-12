@@ -11,8 +11,8 @@ post {
 }
 
 headers {
-  apikey: {{anonKey}}
-  Authorization: Bearer {{anonKey}}
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{publishableKey}}
 }
 
 body:json {
@@ -27,6 +27,6 @@ tests {
 }
 
 docs {
-  verify_jwt is false, so the anon key bearer reaches the handler, which accepts only the
+  verify_jwt is false, so the publishable key bearer reaches the handler, which accepts only the
   `x-cron-secret` header (compared with CRON_SECRET) and ignores any Authorization header.
 }

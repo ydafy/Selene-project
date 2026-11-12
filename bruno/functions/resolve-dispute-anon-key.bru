@@ -11,8 +11,8 @@ post {
 }
 
 headers {
-  apikey: {{anonKey}}
-  Authorization: Bearer {{anonKey}}
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{publishableKey}}
 }
 
 body:json {
@@ -27,6 +27,6 @@ tests {
 }
 
 docs {
-  The anon key passes the gateway but is not a user session, so resolve-dispute must refuse it with
+  The publishable key passes the gateway but is not a user session, so resolve-dispute must refuse it with
   AUTH_REQUIRED before reading any row or calling Stripe or Envia.
 }

@@ -11,8 +11,8 @@ post {
 }
 
 headers {
-  apikey: {{anonKey}}
-  Authorization: Bearer {{anonKey}}
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{publishableKey}}
 }
 
 body:json {
@@ -31,7 +31,7 @@ tests {
 }
 
 docs {
-  The anon key is not a user session (verify_jwt = false: the gateway checks nothing), so
+  The publishable key is not a user session (verify_jwt = false: the gateway checks nothing), so
   cancel-order must refuse it before reading any order or calling Stripe. The error code is
   the function's contract (it used to be the Spanish text "No autorizado").
 }

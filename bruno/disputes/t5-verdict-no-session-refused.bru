@@ -11,8 +11,8 @@ post {
 }
 
 headers {
-  apikey: {{serviceRoleKey}}
-  Authorization: Bearer {{serviceRoleKey}}
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
 }
 
 body:json {
@@ -23,7 +23,7 @@ body:json {
 }
 
 tests {
-  test("the service role key has no user session, so the verdict is refused", function () {
+  test("the secret key has no user session, so the verdict is refused", function () {
     expect(res.getStatus()).to.equal(200);
     expect(res.getBody()).to.deep.equal([{ success: false, error_message: "INTERNAL_SERVER_ERROR" }]);
   });

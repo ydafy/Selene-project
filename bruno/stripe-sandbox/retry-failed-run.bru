@@ -11,8 +11,8 @@ get {
 }
 
 headers {
-  apikey: {{serviceRoleKey}}
-  Authorization: Bearer {{serviceRoleKey}}
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
 }
 
 script:pre-request {
@@ -23,7 +23,7 @@ script:pre-request {
   ) {
     bru.runner.skipRequest();
   } else {
-    const key = bru.getEnvVar("serviceRoleKey");
+    const key = bru.getEnvVar("secretKey");
     let status = null;
     for (let attempt = 0; attempt < 30 && status !== "failed"; attempt += 1) {
       if (attempt > 0) await bru.sleep(2000);

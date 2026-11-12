@@ -11,8 +11,8 @@ post {
 }
 
 headers {
-  apikey: {{anonKey}}
-  Authorization: Bearer {{anonKey}}
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{publishableKey}}
 }
 
 tests {
@@ -23,6 +23,6 @@ tests {
 }
 
 docs {
-  The anon key passes the gateway but auth.getUser finds no user behind it, so the
+  The publishable key passes the gateway but auth.getUser finds no user behind it, so the
   function stops before the sign-in check and before any RPC.
 }
