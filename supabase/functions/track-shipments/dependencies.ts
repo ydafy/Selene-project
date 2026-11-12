@@ -50,10 +50,9 @@ export const createTrackShipmentsDependencies = (
 ): TrackShipmentsDependencies => ({
   acquireLease: async (lane) => {
     const supabaseAdmin = options.createSupabaseAdmin();
-    const { data, error } = await supabaseAdmin.rpc(
-      'fn_acquire_track_shipments_lease',
-      { p_lane: lane },
-    );
+    const { data, error } = await supabaseAdmin.rpc('fn_acquire_cron_lease', {
+      p_job: `track_shipments_${lane}`,
+    });
     if (error) throw error;
 
     const lease = Array.isArray(data) ? data[0] : data;
@@ -65,10 +64,10 @@ export const createTrackShipmentsDependencies = (
   },
   releaseLease: async (lane, leaseId) => {
     const supabaseAdmin = options.createSupabaseAdmin();
-    const { error } = await supabaseAdmin.rpc(
-      'fn_release_track_shipments_lease',
-      { p_lane: lane, p_lease_id: leaseId },
-    );
+    const { error } = await supabaseAdmin.rpc('fn_release_cron_lease', {
+      p_job: `track_shipments_${lane}`,
+      p_lease_id: leaseId,
+    });
     if (error) throw error;
   },
   selectTargets: async (status, signal) => {

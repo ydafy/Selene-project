@@ -46,7 +46,7 @@ describe('acquireCheckoutRecoveryLease', () => {
       leaseId,
     });
     expect(calls).toEqual([
-      { fn: 'fn_acquire_checkout_recovery_lease', args: {} },
+      { fn: 'fn_acquire_cron_lease', args: { p_job: 'checkout_recovery' } },
     ]);
   });
 
@@ -92,8 +92,8 @@ describe('releaseCheckoutRecoveryLease', () => {
 
     expect(calls).toEqual([
       {
-        fn: 'fn_release_checkout_recovery_lease',
-        args: { p_lease_id: leaseId },
+        fn: 'fn_release_cron_lease',
+        args: { p_job: 'checkout_recovery', p_lease_id: leaseId },
       },
     ]);
     expect(warned).toEqual([]);
