@@ -1,17 +1,22 @@
 /**
  * @file supabase/functions/resolve-shipment-label-reconciliation/handler.ts
  *
- * Admin resolution of a shipment stuck in label generation (B6.1). The admin has checked the Envia panel
- * and records either label_found (the label exists: tracking number, label URL, Envia shipment id and
- * the provider cost in integer cents) or no_label (no label was created: the shipment returns to the
- * seller and can be cancelled and refunded). The RPC does the work under the shipment row lock; this
- * function starts no refund and calls neither Stripe nor Envia. Pure decision logic: index.ts wires the
- * Supabase auth, the `profiles_private.role` lookup and the service-only RPC into these ports. The actor
- * id is the verified user, never the body. A shipment that is no longer stuck answers 409
- * ALREADY_RESOLVED and nothing changes. Raw database text only reaches the log; the note, the label URL
- * and the tracking number are never logged.
+ * Admin resolution of a shipment stuck in label generation (B6.1). The admin has checked
+ * the Envia panel and records either label_found (the label exists: tracking number,
+ * label URL, Envia shipment id and the provider cost in integer cents) or no_label (no
+ * label was created: the shipment returns to the seller and can be cancelled and
+ * refunded). The RPC does the work under the shipment row lock; this function starts no
+ * refund and calls neither Stripe nor Envia. Pure decision logic: the factory at the end
+ * wires the Supabase auth, the `profiles_private.role` lookup and the service-only RPC
+ * into these ports. The actor id is the verified user, never the body. A shipment that is
+ * no longer stuck answers 409 ALREADY_RESOLVED and nothing changes. Raw database text
+ * only reaches the log; the note, the label URL and the tracking number are never logged.
  */
 
+import type { SupabaseClient } from '../_shared/supabase-js.ts';
+
+import type { Database } from '../../../packages/types/src/database.types.ts';
+import { isActiveAdmin } from '../_shared/auth/admin-auth.ts';
 import { z } from '../_shared/zod-runtime.ts';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
@@ -260,5 +265,51 @@ export function createResolveShipmentLabelReconciliationHandler(
       });
       return fail(500, 'INTERNAL_ERROR');
     }
+  };
+}
+
+/**
+ * The real ports, all through the service-role client: Supabase Auth resolves the token, the
+ * `profiles_private` role and status decide the admin (never JWT claims), and the service-only RPC
+ * does the work.
+ */
+export function createSupabaseResolveShipmentLabelReconciliationPorts(
+  getAdmin: () => SupabaseClient<Database>,
+): Omit<ResolveShipmentLabelReconciliationDeps, 'log'> {
+  return {
+    getUserId: async (accessToken) => {
+      const {
+        data: { user },
+        error,
+      } = await getAdmin().auth.getUser(accessToken);
+      return error || !user ? null : user.id;
+    },
+    // Roles live in profiles_private.role, never in JWT claims.
+    isAdmin: async (userId) => {
+      const { data, error } = await getAdmin()
+        .from('profiles_private')
+        .select('role, status')
+        .eq('id', userId)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return isActiveAdmin(data);
+    },
+    resolve: async (input) => {
+      // The RPC is not in the generated types until `bun run db:types` runs after it is applied.
+      const { data, error } = await getAdmin().rpc(
+        'fn_resolve_shipment_label_reconciliation' as never,
+        {
+          p_shipment_id: input.shipmentId,
+          p_actor_id: input.adminId,
+          p_resolution: input.resolution,
+          p_note: input.note,
+          p_envia_shipment_id: input.enviaShipmentId,
+          p_tracking_number: input.trackingNumber,
+          p_label_url: input.labelUrl,
+          p_provider_cost_cents: input.providerCostCents,
+        } as never,
+      );
+      return { data: data as unknown, error };
+    },
   };
 }

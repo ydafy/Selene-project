@@ -3,12 +3,16 @@
  *
  * Admin decision on a preparing-timeout cancellation whose carrier outcome needs review (B4.4c):
  * `refund_approved` lets the next cron run start the refund, `closed_no_refund` stops the
- * cancellation for good. The decision itself moves no money. Pure decision logic: index.ts wires
- * the Supabase auth, the `profiles_private.role` lookup and the service-only RPC into these ports.
- * The admin id is the verified user, never the body. Raw database text only reaches the log, and
- * the note text is never logged.
+ * cancellation for good. The decision itself moves no money. Pure decision logic: the factory at
+ * the end wires the Supabase auth, the `profiles_private.role` lookup and the service-only RPC
+ * into these ports. The admin id is the verified user, never the body. Raw database text only
+ * reaches the log, and the note text is never logged.
  */
 
+import type { SupabaseClient } from '../_shared/supabase-js.ts';
+
+import type { Database } from '../../../packages/types/src/database.types.ts';
+import { isActiveAdmin } from '../_shared/auth/admin-auth.ts';
 import { z } from '../_shared/zod-runtime.ts';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
@@ -195,5 +199,47 @@ export function createResolveShipmentOperationReviewHandler(
       });
       return fail(500, 'INTERNAL_ERROR');
     }
+  };
+}
+
+/**
+ * The real ports, all through the service-role client: Supabase Auth resolves the token, the
+ * `profiles_private` role and status decide the admin (never JWT claims), and the service-only RPC
+ * does the work.
+ */
+export function createSupabaseResolveShipmentOperationReviewPorts(
+  getAdmin: () => SupabaseClient<Database>,
+): Omit<ResolveShipmentOperationReviewDeps, 'log'> {
+  return {
+    getUserId: async (accessToken) => {
+      const {
+        data: { user },
+        error,
+      } = await getAdmin().auth.getUser(accessToken);
+      return error || !user ? null : user.id;
+    },
+    // Roles live in profiles_private.role, never in JWT claims.
+    isAdmin: async (userId) => {
+      const { data, error } = await getAdmin()
+        .from('profiles_private')
+        .select('role, status')
+        .eq('id', userId)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return isActiveAdmin(data);
+    },
+    resolveReview: async (input) => {
+      // The RPC is not in the generated types until `bun run db:types` runs after it is applied.
+      const { data, error } = await getAdmin().rpc(
+        'fn_resolve_shipment_cancellation_review' as never,
+        {
+          p_shipment_id: input.shipmentId,
+          p_admin_id: input.adminId,
+          p_resolution: input.resolution,
+          p_note: input.note,
+        } as never,
+      );
+      return { data: data as unknown, error };
+    },
   };
 }
