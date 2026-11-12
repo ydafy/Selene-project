@@ -112,7 +112,7 @@ Refresh acquisition MUST immediately fail closed as `account_refresh_pending`. R
 - GIVEN `resume-pending-payouts` read the account as not actionable without a lock
 - WHEN it calls `fn_block_payout_run_for_account_actionability` under its live claim
 - THEN the RPC locks the account row before the run and parks only while the account is still refresh-pending or blocked
-- AND otherwise it requeues the run to `awaiting_connected_balance` and returns false, so a refresh committed between the read and the park never strands the run
+- AND otherwise it returns false: a run in `awaiting_connected_balance` is requeued there with its claim cleared, so a refresh committed between the read and the park never strands it, and a run in `payout_create_in_progress` keeps its stage and claim, so its write-ahead fence is never undone
 
 ### Requirement: Outcome Reconciliation Including Late paid→failed Reversal
 
