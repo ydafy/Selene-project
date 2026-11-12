@@ -3,15 +3,22 @@
 // optional cron secret and Stripe sandbox settings of supabase/functions/.env
 // (FUNCTIONS_ENV_KEYS). The file is gitignored and never printed: the CLI only
 // reports which variable names were written. A Stripe key that is not a test
-// key stops the run, so the collection can never reach live mode.
+// key stops the run, so the collection can never reach live mode. Only the
+// publishable and secret API keys are copied, never the legacy anon and
+// service_role JWT keys that `supabase status` still prints.
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const STATUS_KEYS = [
   ['API_URL', 'SUPABASE_URL'],
-  ['ANON_KEY', 'SUPABASE_ANON_KEY'],
-  ['SERVICE_ROLE_KEY', 'SUPABASE_SERVICE_ROLE_KEY'],
+  ['PUBLISHABLE_KEY', 'SUPABASE_PUBLISHABLE_KEY'],
+  ['SECRET_KEY', 'SUPABASE_SECRET_KEY'],
+] as const;
+
+const SUPABASE_API_KEY_PREFIXES = [
+  ['PUBLISHABLE_KEY', 'sb_publishable_'],
+  ['SECRET_KEY', 'sb_secret_'],
 ] as const;
 
 // Each key is copied when present; the CLI says what happens without it.
@@ -80,6 +87,13 @@ export function buildBrunoEnv(
   if (missing.length > 0) {
     throw new Error(`MISSING_STATUS_KEYS: ${missing.join(', ')}`);
   }
+  if (
+    SUPABASE_API_KEY_PREFIXES.some(
+      ([key, prefix]) => !status[key].startsWith(prefix),
+    )
+  ) {
+    throw new Error('SUPABASE_API_KEYS_REQUIRED');
+  }
 
   const lines = STATUS_KEYS.map(
     ([key, name]) => `${name}=${formatValue(status[key])}`,
@@ -126,9 +140,11 @@ if (import.meta.main) {
         ? 'Refusing to write bruno/.env: the API URL is not local.'
         : code === 'STRIPE_TEST_KEY_REQUIRED'
           ? 'Refusing to write bruno/.env: STRIPE_SECRET_KEY in supabase/functions/.env is not a Stripe test key (sk_test_ or rk_test_).'
-          : code.startsWith('MISSING_STATUS_KEYS')
-            ? `Local stack output is incomplete (${code}).`
-            : 'Local Supabase stack is not running. Run `supabase start` first.',
+          : code === 'SUPABASE_API_KEYS_REQUIRED'
+            ? 'Refusing to write bruno/.env: PUBLISHABLE_KEY or SECRET_KEY from `supabase status` is not an sb_publishable_ or sb_secret_ key. Update the Supabase CLI.'
+            : code.startsWith('MISSING_STATUS_KEYS')
+              ? `Local stack output is incomplete (${code}).`
+              : 'Local Supabase stack is not running. Run `supabase start` first.',
     );
     process.exit(1);
   }
