@@ -5,7 +5,7 @@ license: MIT
 metadata:
   author: "school-portal"
   version: "1.0"
-  source: "Adapted from pstack create-verification-skill (backnotprop/pstack, MIT); see LICENSE"
+  source: "Adapted from pstack create-verification-skill (backnotprop/pstack, MIT) at upstream cursor/plugins/pstack@0f77cd5; see LICENSE"
 ---
 
 ## Activation Contract
