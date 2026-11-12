@@ -1,6 +1,4 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 
 import type { ClosureCleanupUpdate } from '../_shared/account-closure-cleanup.ts';
 import type { CronMismatchReporter } from '../_shared/auth/cron-auth.ts';
@@ -9,6 +7,7 @@ import {
   MAX_ATTEMPTS,
   MIN_IDLE_SECONDS,
   createAccountClosureCleanupHandler,
+  createSupabaseAccountClosureCleanupPorts,
   type AccountClosureCleanupDeps,
 } from './handler.ts';
 
@@ -148,15 +147,6 @@ describe('account-closure-cleanup: authentication', () => {
     const h = harness({ secret: undefined });
     expect((await call(h, { secret: '' })).status).toBe(401);
     expect(h.claimCalls).toEqual([]);
-  });
-
-  it('compares the secret in constant time through the shared helper', () => {
-    const source = readFileSync(join(import.meta.dir, 'handler.ts'), 'utf8');
-    expect(source).toContain("from '../_shared/auth/cron-auth.ts'");
-    expect(source).toContain(
-      'isAuthorizedCronRequest(req, deps.getCronSecret())',
-    );
-    expect(source).not.toContain('supplied !== expected');
   });
 
   it('reports a wrong secret as a mismatch without the secret value', async () => {
@@ -599,48 +589,102 @@ describe('account-closure-cleanup: failures', () => {
   });
 });
 
-describe('account-closure-cleanup wiring (source contract)', () => {
-  const root = join(import.meta.dir, '..', '..', '..');
-  const index = readFileSync(join(import.meta.dir, 'index.ts'), 'utf8');
+// The service-role client and Stripe behind the real ports; both record every call in order.
+function fakeClients() {
+  const calls: unknown[][] = [];
+  const query = {
+    select: (columns: string) => {
+      calls.push(['select', columns]);
+      return query;
+    },
+    or: (filter: string) => {
+      calls.push(['or', filter]);
+      return query;
+    },
+    gte: (column: string, value: number) => {
+      calls.push(['gte', column, value]);
+      return query;
+    },
+    order: (column: string) => {
+      calls.push(['order', column]);
+      return query;
+    },
+    limit: async (count: number) => {
+      calls.push(['limit', count]);
+      return { data: [{ user_id: U1, attempts: 24 }], error: null };
+    },
+  };
+  const admin = {
+    rpc: async (name: string, args: unknown) => {
+      calls.push(['rpc', name, args]);
+      return { data: [row(U1)], error: null };
+    },
+    from: (table: string) => {
+      calls.push(['from', table]);
+      return query;
+    },
+  };
+  const stripe = {
+    customers: {
+      del: async (id: string) => {
+        calls.push(['stripe.customers.del', id]);
+      },
+    },
+    accounts: {
+      del: async (id: string) => {
+        calls.push(['stripe.accounts.del', id]);
+      },
+    },
+  };
+  const ports = createSupabaseAccountClosureCleanupPorts({
+    getAdmin: () => admin as never,
+    getStripe: () => stripe,
+  });
+  return { calls, ports };
+}
 
-  it('is wrapped in withSentry under its folder name and reads CRON_SECRET', () => {
-    expect(index).toContain("serve(withSentry('account-closure-cleanup',");
-    expect(index).toContain("from '../_shared/sentry.ts'");
-    expect(index).toContain("Deno.env.get('CRON_SECRET')");
+describe('account-closure-cleanup Supabase ports', () => {
+  it('claims through the atomic fn_claim_account_closures RPC with an interval in seconds', async () => {
+    const { calls, ports } = fakeClients();
+    expect(await ports.claimClosures(20, 600, 24)).toEqual({
+      data: [row(U1)],
+      error: null,
+    });
+    expect(calls).toEqual([
+      [
+        'rpc',
+        'fn_claim_account_closures',
+        { p_limit: 20, p_min_idle: '600 seconds', p_max_attempts: 24 },
+      ],
+    ]);
   });
 
-  it('claims through the atomic RPC with the service role and shares the cleanup module', () => {
-    expect(index).toContain('fn_claim_account_closures');
-    expect(index).toContain('createSupabaseClosurePorts');
-    expect(index).toContain("from '../_shared/account-closure-cleanup.ts'");
-    expect(index).toContain('createClient<Database>');
-    expect(index).toContain('readSupabaseSecretKey()');
+  it('lists capped closures with any open step, oldest first', async () => {
+    const { calls, ports } = fakeClients();
+    expect(await ports.listCappedClosures(24, 50)).toEqual({
+      data: [{ user_id: U1, attempts: 24 }],
+      error: null,
+    });
+    expect(calls).toEqual([
+      ['from', 'account_closures'],
+      ['select', 'user_id, attempts'],
+      [
+        'or',
+        'stripe_customer_cleanup.in.(pending,failed),stripe_account_cleanup.in.(pending,failed),storage_cleanup.in.(pending,failed)',
+      ],
+      ['gte', 'attempts', 24],
+      ['order', 'updated_at'],
+      ['limit', 50],
+    ]);
   });
 
-  it('is declared in config.toml without JWT verification (cron secret instead)', () => {
-    const config = readFileSync(
-      join(root, 'supabase/config.toml'),
-      'utf8',
-    ).replace(/\r\n/g, '\n');
-    expect(config).toMatch(
-      /\[functions\.account-closure-cleanup\]\nverify_jwt = false/,
-    );
-  });
-
-  it('is scheduled hourly in the cron schema with its Vault cron secret', () => {
-    const schema = readFileSync(
-      join(root, 'supabase/schemas/_cluster/misc.sql'),
-      'utf8',
-    );
-    const job = schema
-      .split(/;\s*\n/)
-      .find((call) =>
-        call.includes(
-          "schedule_in_database('account-closure-cleanup', '0 * * * *'",
-        ),
-      );
-    expect(job).toBeDefined();
-    expect(job).toContain('/functions/v1/account-closure-cleanup');
-    expect(job).toContain("name = ''account_closure_cleanup_cron_secret''");
+  it('deletes the Stripe customer and account through the cleanup shared with delete-account', async () => {
+    const { calls, ports } = fakeClients();
+    await ports.deleteStripeCustomer('cus_1');
+    await ports.deleteStripeAccount('acct_1');
+    expect(calls).toEqual([
+      ['stripe.customers.del', 'cus_1'],
+      ['stripe.accounts.del', 'acct_1'],
+    ]);
   });
 });

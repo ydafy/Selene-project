@@ -10,15 +10,11 @@ import Stripe from '../_shared/stripe/sdk.ts';
 import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 
 import type { Database } from '../../../packages/types/src/database.types.ts';
-import { createSupabaseClosurePorts } from '../_shared/account-closure-cleanup.ts';
 import { reportMessage, withSentry } from '../_shared/sentry.ts';
-import { createAccountClosureCleanupHandler } from './handler.ts';
-
-const OPEN_STEP_FILTER = [
-  'stripe_customer_cleanup.in.(pending,failed)',
-  'stripe_account_cleanup.in.(pending,failed)',
-  'storage_cleanup.in.(pending,failed)',
-].join(',');
+import {
+  createAccountClosureCleanupHandler,
+  createSupabaseAccountClosureCleanupPorts,
+} from './handler.ts';
 
 const log = (
   level: 'INFO' | 'WARN' | 'ERROR',
@@ -57,23 +53,10 @@ const getStripe = () => {
 
 const handler = createAccountClosureCleanupHandler({
   getCronSecret: () => Deno.env.get('CRON_SECRET'),
-  claimClosures: async (limit, minIdleSeconds, maxAttempts) => {
-    return await getAdminClient().rpc('fn_claim_account_closures', {
-      p_limit: limit,
-      p_min_idle: `${minIdleSeconds} seconds`,
-      p_max_attempts: maxAttempts,
-    });
-  },
-  listCappedClosures: async (maxAttempts, limit) => {
-    return await getAdminClient()
-      .from('account_closures')
-      .select('user_id, attempts')
-      .or(OPEN_STEP_FILTER)
-      .gte('attempts', maxAttempts)
-      .order('updated_at')
-      .limit(limit);
-  },
-  ...createSupabaseClosurePorts({ getAdmin: getAdminClient, getStripe }),
+  ...createSupabaseAccountClosureCleanupPorts({
+    getAdmin: getAdminClient,
+    getStripe,
+  }),
   log,
   reportMessage,
 });
