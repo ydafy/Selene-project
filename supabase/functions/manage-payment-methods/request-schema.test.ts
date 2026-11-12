@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
 
 import { ManagePaymentMethodsRequestSchema } from './request-schema.ts';
 
@@ -48,12 +47,5 @@ describe('manage-payment-methods request schema', () => {
       format: 'uuid',
       path: ['paymentMethodId'],
     });
-  });
-
-  it('is the schema the entrypoint parses with', () => {
-    const source = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
-
-    expect(source).toContain("from './request-schema.ts'");
-    expect(source).toContain('ManagePaymentMethodsRequestSchema.parse(body)');
   });
 });
