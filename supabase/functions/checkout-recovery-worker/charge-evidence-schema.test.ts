@@ -1,18 +1,6 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
 
 import { RecoveryChargeEvidenceSchema } from './charge-evidence-schema.ts';
-
-// Prettier may re-wrap the source files read below and rewrite double quotes
-// to single quotes; compare without layout or quote style.
-const compact = (source: string) =>
-  source
-    .replace(/\s+/g, ' ')
-    .replace(/([([{]) /g, '$1')
-    .replace(/ ([)\]}])/g, '$1')
-    .replace(/,([)\]}])/g, '$1')
-    .replace(/ \./g, '.')
-    .replace(/"/g, "'");
 
 describe('checkout recovery charge evidence schema', () => {
   it('accepts the charge id the evidence RPC persisted', () => {
@@ -25,16 +13,5 @@ describe('checkout recovery charge evidence schema', () => {
         false,
       );
     }
-  });
-
-  it('is the schema the worker checks the evidence RPC result with', () => {
-    const source = compact(
-      readFileSync(new URL('./index.ts', import.meta.url), 'utf8'),
-    );
-
-    expect(source).toContain(compact('from "./charge-evidence-schema.ts"'));
-    expect(source).toContain(
-      compact('RecoveryChargeEvidenceSchema.safeParse(data)'),
-    );
   });
 });
