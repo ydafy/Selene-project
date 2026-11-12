@@ -24,7 +24,7 @@ describe('tracking ingestion source guards', () => {
   });
 
   it('keeps shipment polling lane-filtered, bounded, lease-protected, and RPC-only without direct status updates', () => {
-    const shipments = read('supabase/functions/track-shipments/index.ts');
+    const shipments = `${read('supabase/functions/track-shipments/dependencies.ts')} ${read('supabase/functions/track-shipments/index.ts')}`;
     const shipmentHandler = read(
       'supabase/functions/track-shipments/handler.ts',
     );
@@ -65,7 +65,7 @@ describe('tracking ingestion source guards', () => {
   it('keeps every tracking ingestion path on the privileged event RPC boundary', () => {
     const ingestionSources = [
       read('supabase/functions/envia-webhook/index.ts'),
-      read('supabase/functions/track-shipments/index.ts'),
+      read('supabase/functions/track-shipments/dependencies.ts'),
     ];
 
     for (const source of ingestionSources) {
