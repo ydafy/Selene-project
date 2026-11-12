@@ -9,7 +9,7 @@ select plan(24);
 create function pg_temp.fresh_reserve(p_price numeric, p_shipping numeric)
 returns bigint language sql security definer as $$
   select round(p_shipping * 100)::bigint + s.shipping_buffer_cents
-    + ceil(round(p_price * 100)::numeric * public.normalize_publication_rate(s.insurance_rate))::bigint
+    + ceil(round(p_price * 100)::numeric * internal.normalize_publication_rate(s.insurance_rate))::bigint
   from public.system_settings s where s.id = 1
 $$;
 
@@ -24,8 +24,8 @@ returns void language sql as $$
     array['https://example.test/p.png'], p_status::public.product_status_enum, '{}'::jsonb,
     p_seller, 100, '06600', 'gpu_1', p_reserved_at,
     pg_temp.fresh_reserve(1000, 100),
-    public.normalize_publication_rate(s.service_fee_pct),
-    public.normalize_publication_rate(s.insurance_rate)
+    internal.normalize_publication_rate(s.service_fee_pct),
+    internal.normalize_publication_rate(s.insurance_rate)
   from public.system_settings s where s.id = 1
 $$;
 
@@ -87,8 +87,9 @@ select lives_ok(
 select set_config('request.jwt.claims', '{"role": "service_role"}', true);
 set local role service_role;
 select is(
-  (select count(*) from public.fn_release_stale_reservations()),
-  1::bigint, 'the stale cleanup releases an expired stale reservation');
+  (select count(*) from public.fn_release_listings(
+    array['d0000000-0000-4000-8000-0000000000a5']::uuid[], true, true)),
+  1::bigint, 'the expired-only release frees an expired stale reservation');
 reset role;
 select is(
   (select status::text || ':' || (reserved_at is null)::text

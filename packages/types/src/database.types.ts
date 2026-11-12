@@ -3436,18 +3436,6 @@ export type Database = {
         };
         Returns: boolean;
       };
-      fn_apply_connect_account_actionability: {
-        Args: {
-          p_blocked_reason: string;
-          p_external_account_status?: string;
-          p_is_actionable: boolean;
-          p_payouts_enabled?: boolean;
-          p_source_event_id?: string;
-          p_stripe_account_id: string;
-          p_stripe_created: string;
-        };
-        Returns: number;
-      };
       fn_apply_shipment_cancellation_refund_event: {
         Args: {
           p_amount_cents: number;
@@ -3809,10 +3797,6 @@ export type Database = {
         };
         Returns: boolean;
       };
-      fn_derive_order_status: {
-        Args: { p_order_id: string };
-        Returns: Database['public']['Enums']['order_status_enum'];
-      };
       fn_escalate_shipment_cancellation: {
         Args: { p_reason: string; p_shipment_id: string };
         Returns: Json;
@@ -3847,10 +3831,6 @@ export type Database = {
           p_tracking_number: string;
         };
         Returns: boolean;
-      };
-      fn_generate_profile_username: {
-        Args: { p_raw: string };
-        Returns: string;
       };
       fn_get_admin_payout_queue: {
         Args: {
@@ -4114,14 +4094,6 @@ export type Database = {
         Returns: boolean;
       };
       fn_purge_push_deliveries: { Args: { p_limit: number }; Returns: number };
-      fn_reconcile_connect_payments: {
-        Args: Record<PropertyKey, never>;
-        Returns: {
-          action: string;
-          shipment_id: string;
-          status: string;
-        }[];
-      };
       fn_reconcile_shipment_label: {
         Args: {
           p_actor_id: string;
@@ -4204,10 +4176,6 @@ export type Database = {
         };
         Returns: Json;
       };
-      fn_refresh_seller_stats: {
-        Args: { p_seller_id: string };
-        Returns: undefined;
-      };
       fn_register_push_token: {
         Args: { p_platform: string; p_token: string };
         Returns: undefined;
@@ -4239,12 +4207,6 @@ export type Database = {
         Returns: {
           error_message: string;
           success: boolean;
-        }[];
-      };
-      fn_release_stale_reservations: {
-        Args: { p_product_ids?: string[] };
-        Returns: {
-          released_id: string;
         }[];
       };
       fn_reserve_products: {
@@ -4355,14 +4317,6 @@ export type Database = {
         };
         Returns: string;
       };
-      fn_shipment_label_is_stuck: {
-        Args: {
-          p_claim_expires_at: string;
-          p_state: string;
-          p_status: Database['public']['Enums']['order_status_enum'];
-        };
-        Returns: boolean;
-      };
       fn_start_shipment_cancellation: {
         Args: { p_claim_token: string; p_shipment_id: string };
         Returns: boolean;
@@ -4449,7 +4403,6 @@ export type Database = {
       };
       get_profile_stats: { Args: { target_user_id: string }; Returns: Json };
       is_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
-      normalize_publication_rate: { Args: { p_rate: number }; Returns: number };
     };
     Enums: {
       account_status: 'active' | 'suspended' | 'banned';

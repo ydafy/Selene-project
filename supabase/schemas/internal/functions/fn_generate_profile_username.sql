@@ -1,9 +1,9 @@
-CREATE OR REPLACE FUNCTION public.fn_generate_profile_username (
+CREATE OR REPLACE FUNCTION internal.fn_generate_profile_username (
   p_raw text
 )
   RETURNS text
   LANGUAGE plpgsql
-  SET search_path TO 'public', 'pg_temp'
+  SET search_path TO ''
   AS $function$
 DECLARE
   v_base text;
@@ -49,10 +49,10 @@ BEGIN
 END;
 $function$;
 
-GRANT EXECUTE ON FUNCTION "public"."fn_generate_profile_username"(text) TO "service_role";
+GRANT EXECUTE ON FUNCTION "internal"."fn_generate_profile_username"(text) TO "service_role";
 
-REVOKE ALL ON FUNCTION "public"."fn_generate_profile_username"(text) FROM "postgres";
+REVOKE ALL ON FUNCTION "internal"."fn_generate_profile_username"(text) FROM "postgres";
 
-GRANT EXECUTE ON FUNCTION "public"."fn_generate_profile_username"(text) TO "postgres";
+GRANT EXECUTE ON FUNCTION "internal"."fn_generate_profile_username"(text) TO "postgres";
 
-REVOKE ALL ON FUNCTION "public"."fn_generate_profile_username"(text) FROM PUBLIC, "anon", "authenticated";
+REVOKE ALL ON FUNCTION "internal"."fn_generate_profile_username"(text) FROM PUBLIC, "anon", "authenticated";

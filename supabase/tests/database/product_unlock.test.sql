@@ -3,7 +3,8 @@
 -- returns true; a fresh lock held by another admin, an unlocked listing or a
 -- missing one returns false and changes nothing. No session, a non-admin, and
 -- a suspended or banned admin are refused. Also the 10-minute reservation TTL
--- of fn_release_stale_reservations and its partial index. Runs against the
+-- of the expired-only fn_release_listings that fn_reserve_products runs, and
+-- the (status, reserved_at) partial index. Runs against the
 -- local database only: `supabase start`, then `bun run test:db`.
 begin;
 select plan(26);
@@ -41,9 +42,9 @@ create function pg_temp.listing(
     case when p_locked_by is null then null else now() - p_lock_age end,
     now() - p_reserved_age,
     round(100 * 100)::bigint + s.shipping_buffer_cents
-      + ceil(round(1000 * 100)::numeric * public.normalize_publication_rate(s.insurance_rate))::bigint,
-    public.normalize_publication_rate(s.service_fee_pct),
-    public.normalize_publication_rate(s.insurance_rate)
+      + ceil(round(1000 * 100)::numeric * internal.normalize_publication_rate(s.insurance_rate))::bigint,
+    internal.normalize_publication_rate(s.service_fee_pct),
+    internal.normalize_publication_rate(s.insurance_rate)
   from public.system_settings s where s.id = 1
   returning id
 $$;
@@ -151,7 +152,7 @@ reset role;
 select is((select count(*) from public.admin_audit_logs where target_id = pg_temp.mu(5299)), 0::bigint,
   'a missing listing gets no audit row');
 
--- fn_release_stale_reservations: the 10-minute reservation TTL -----------------
+-- fn_release_listings, expired only: the 10-minute reservation TTL ------------
 select pg_temp.listing(5241, 'RESERVED', null, null, interval '10 minutes');
 select pg_temp.listing(5242, 'RESERVED', null, null, interval '10 minutes 1 second');
 select pg_temp.listing(5243, 'RESERVED', null, null, interval '20 minutes');
@@ -161,10 +162,10 @@ select pg_temp.remember(array[5241, 5243]);
 select set_config('request.jwt.claims', '{"role": "service_role"}', true);
 set local role service_role;
 select is(
-  (select array_agg(released_id) from public.fn_release_stale_reservations(
-    array[pg_temp.mu(5241), pg_temp.mu(5242)])),
+  (select array_agg(r) from public.fn_release_listings(
+    array[pg_temp.mu(5241), pg_temp.mu(5242)], true, true) as r),
   array[pg_temp.mu(5242)],
-  'the scoped stale cleanup releases only the reservation older than 10 minutes');
+  'the expired-only release frees only the reservation older than 10 minutes');
 reset role;
 select is(
   (select status::text || '|' || coalesce(reserved_at::text, '-') from public.products where id = pg_temp.mu(5242)),
@@ -175,7 +176,7 @@ select ok(pg_temp.unchanged(5243), 'a stale reservation outside the requested id
 select set_config('request.jwt.claims', '{"role": "service_role"}', true);
 set local role service_role;
 select is(
-  (select count(*) from public.fn_release_stale_reservations(array[pg_temp.mu(5244)])),
+  (select count(*) from public.fn_release_listings(array[pg_temp.mu(5244)], true, true)),
   0::bigint, 'a VERIFIED listing with an old reserved_at is never released');
 reset role;
 
