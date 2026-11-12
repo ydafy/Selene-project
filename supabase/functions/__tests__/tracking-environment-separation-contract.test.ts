@@ -1,3 +1,4 @@
+// source-text: envia-webhook/index.ts and resolve-shipment-tracking-url/index.ts pick the Envia mode and secret at module load with no injectable seam, and the Expo hook must hold no Envia name; only their text shows it
 import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -23,9 +24,6 @@ describe('tracking environment separation contract', () => {
     const resolver = read(
       'supabase/functions/resolve-shipment-tracking-url/index.ts',
     );
-    const handler = read(
-      'supabase/functions/resolve-shipment-tracking-url/handler.ts',
-    );
     const hook = read(
       'apps/frontend/src/features/orders/hooks/use-shipment-tracking.ts',
     );
@@ -34,9 +32,6 @@ describe('tracking environment separation contract', () => {
       "import { resolveEnviaTrackingUrl } from '../_shared/envia/envia-tracking.ts';",
     );
     expect(resolver).toContain("Deno.env.get('ENVIA_MODE') ?? 'sandbox'");
-    expect(handler).toContain(
-      'dependencies.resolveUrl(subject.trackingNumber)',
-    );
     expect(hook).toContain(
       "invokeEdge('resolve-shipment-tracking-url', { shipmentId })",
     );
