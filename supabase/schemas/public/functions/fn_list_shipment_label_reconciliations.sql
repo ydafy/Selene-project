@@ -48,7 +48,7 @@ BEGIN
              max(le.created_at) AS last_at
       FROM public.shipment_label_events le WHERE le.shipment_id = s.id
     ) e ON true
-    WHERE public.fn_shipment_label_is_stuck(s.status, s.label_generation_state, s.claim_expires_at)
+    WHERE internal.fn_shipment_label_is_stuck(s.status, s.label_generation_state, s.claim_expires_at)
   ) stuck
   ORDER BY stuck.stuck_at ASC, stuck.id ASC;
 END;

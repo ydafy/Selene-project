@@ -308,7 +308,7 @@ BEGIN
         updated_at = now()
     WHERE id = v_existing_order_id;
 
-    PERFORM fn_derive_order_status(v_existing_order_id);
+    PERFORM internal.fn_derive_order_status(v_existing_order_id);
 
     -- Derivation alone is not proof of full allocation: check every persisted
     -- shipment and the expected row count before publishing the paid event.

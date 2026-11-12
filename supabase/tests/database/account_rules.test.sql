@@ -11,14 +11,14 @@ select plan(53);
 -- Snapshot values under the current settings (authenticated cannot read them).
 create function pg_temp.fresh_reserve() returns bigint language sql security definer as $$
   select round(100 * 100)::bigint + s.shipping_buffer_cents
-    + ceil(round(1000 * 100)::numeric * public.normalize_publication_rate(s.insurance_rate))::bigint
+    + ceil(round(1000 * 100)::numeric * internal.normalize_publication_rate(s.insurance_rate))::bigint
   from public.system_settings s where s.id = 1
 $$;
 create function pg_temp.commission_rate() returns numeric language sql security definer as $$
-  select public.normalize_publication_rate(service_fee_pct) from public.system_settings where id = 1
+  select internal.normalize_publication_rate(service_fee_pct) from public.system_settings where id = 1
 $$;
 create function pg_temp.insurance_rate() returns numeric language sql security definer as $$
-  select public.normalize_publication_rate(insurance_rate) from public.system_settings where id = 1
+  select internal.normalize_publication_rate(insurance_rate) from public.system_settings where id = 1
 $$;
 
 -- The insert a seller's app sends for a new listing, valid in every other respect.
