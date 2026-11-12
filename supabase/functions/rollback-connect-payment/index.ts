@@ -3,160 +3,19 @@ import { readSupabaseSecretKey } from '../_shared/supabase-secret-key.ts';
 import Stripe from '../_shared/stripe/sdk.ts';
 import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 
-import {
-  buildConnectRollbackRefundParams,
-  extractProductIdsFromIntentMetadata,
-  mergeUniqueProductIds,
-} from './rollback-connect-payment.ts';
 import { withSentry } from '../_shared/sentry.ts';
-import { RollbackConnectPaymentRequestSchema } from './request-schema.ts';
+import { createRollbackConnectPaymentHandler } from './handler.ts';
 
-const log = (
-  level: 'info' | 'warn' | 'error',
-  msg: string,
-  meta?: Record<string, unknown>,
-) => {
-  console.log(
-    JSON.stringify({
-      timestamp: new Date().toISOString(),
-      function: 'rollback-connect-payment',
-      level,
-      msg,
-      ...meta,
+const handler = createRollbackConnectPaymentHandler({
+  getEnv: (name) => Deno.env.get(name),
+  readSupabaseSecretKey: () => readSupabaseSecretKey(),
+  createSupabaseAdmin: (supabaseUrl, supabaseSecretKey) =>
+    createClient(supabaseUrl, supabaseSecretKey),
+  createStripe: (stripeSecret) =>
+    new Stripe(stripeSecret, {
+      apiVersion: STRIPE_API_VERSION,
+      httpClient: Stripe.createFetchHttpClient(),
     }),
-  );
-};
+});
 
-Deno.serve(
-  withSentry('rollback-connect-payment', async (req) => {
-    try {
-      const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY');
-      const supabaseSecretKey = readSupabaseSecretKey();
-      const supabaseUrl = Deno.env.get('SUPABASE_URL');
-      if (!stripeSecret || !supabaseSecretKey || !supabaseUrl) {
-        throw new Error('MISSING_SERVER_CONFIG');
-      }
-
-      const authHeader = req.headers.get('Authorization');
-      if (!authHeader) throw new Error('AUTH_REQUIRED');
-
-      const supabaseAdmin = createClient(supabaseUrl, supabaseSecretKey);
-      const {
-        data: { user },
-        error: authError,
-      } = await supabaseAdmin.auth.getUser(authHeader.replace('Bearer ', ''));
-      if (authError || !user) throw new Error('AUTH_REQUIRED');
-
-      const { orderId, paymentIntentIds } =
-        RollbackConnectPaymentRequestSchema.parse(
-          await req.json().catch(() => ({})),
-        );
-
-      const stripe = new Stripe(stripeSecret, {
-        apiVersion: STRIPE_API_VERSION,
-        httpClient: Stripe.createFetchHttpClient(),
-      });
-
-      const intents: Array<{
-        paymentIntentId: string;
-        intent: Stripe.PaymentIntent;
-        productIds: string[];
-      }> = [];
-
-      for (const paymentIntentId of paymentIntentIds) {
-        const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
-        if (intent.metadata?.buyer_id !== user.id) {
-          throw new Error('PAYMENT_INTENT_NOT_OWNED_BY_USER');
-        }
-
-        const parsedProductIds = extractProductIdsFromIntentMetadata(
-          intent.metadata,
-        );
-        if (parsedProductIds.malformed) {
-          log('warn', 'Malformed product metadata skipped', {
-            paymentIntentId,
-          });
-        }
-
-        intents.push({
-          paymentIntentId,
-          intent,
-          productIds: parsedProductIds.productIds,
-        });
-      }
-
-      let rolledBack = 0;
-      let productIdsToRelease: string[] = [];
-      for (const { paymentIntentId, intent, productIds } of intents) {
-        if (intent.status === 'succeeded') {
-          await stripe.refunds.create(
-            buildConnectRollbackRefundParams({ paymentIntentId, orderId }),
-            {
-              idempotencyKey: `checkout_rollback_${orderId}_${paymentIntentId}`,
-            },
-          );
-          rolledBack += 1;
-          productIdsToRelease = mergeUniqueProductIds(
-            productIdsToRelease,
-            productIds,
-          );
-        } else if (
-          [
-            'requires_payment_method',
-            'requires_confirmation',
-            'requires_action',
-          ].includes(intent.status)
-        ) {
-          await stripe.paymentIntents.cancel(paymentIntentId);
-          rolledBack += 1;
-          productIdsToRelease = mergeUniqueProductIds(
-            productIdsToRelease,
-            productIds,
-          );
-        }
-      }
-
-      if (productIdsToRelease.length > 0) {
-        const { data, error } = await supabaseAdmin.rpc('fn_release_products', {
-          p_product_ids: productIdsToRelease,
-        });
-
-        if (error) {
-          log('error', 'Product release failed after Stripe rollback', {
-            orderId,
-            productIds: productIdsToRelease,
-            error: error.message,
-          });
-        } else if (
-          Array.isArray(data) &&
-          data.some((row) => row && row.success === false)
-        ) {
-          log('error', 'Product release returned unsuccessful result', {
-            orderId,
-            productIds: productIdsToRelease,
-            data,
-          });
-        } else {
-          log('info', 'Reserved products released after Stripe rollback', {
-            orderId,
-            productIds: productIdsToRelease,
-          });
-        }
-      }
-
-      return new Response(JSON.stringify({ success: true, rolledBack }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      return new Response(
-        JSON.stringify({ success: false, rolledBack: 0, error: message }),
-        {
-          status: message === 'AUTH_REQUIRED' ? 401 : 400,
-          headers: { 'Content-Type': 'application/json' },
-        },
-      );
-    }
-  }),
-);
+Deno.serve(withSentry('rollback-connect-payment', handler));
