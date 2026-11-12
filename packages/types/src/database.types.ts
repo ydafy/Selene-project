@@ -4069,6 +4069,13 @@ export type Database = {
           error_code: string;
         }[];
       };
+      fn_park_payout_run_from_fence: {
+        Args: { p_expected_stage_version: number; p_run_id: string };
+        Returns: {
+          outcome: string;
+          stage_version: number;
+        }[];
+      };
       fn_persist_shipment_label_quote: {
         Args: {
           p_carrier: string;
