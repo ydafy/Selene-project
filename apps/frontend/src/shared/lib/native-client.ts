@@ -20,10 +20,10 @@ export type NativeClientDeps = {
  */
 export const createNativeSupabaseClient = <Database>(
   url: string,
-  anonKey: string,
+  publishableKey: string,
   { storage, appState, platformOS }: NativeClientDeps,
 ) => {
-  const client = createClient<Database>(url, anonKey, {
+  const client = createClient<Database>(url, publishableKey, {
     auth: createNativeAuthOptions(storage),
   });
 
