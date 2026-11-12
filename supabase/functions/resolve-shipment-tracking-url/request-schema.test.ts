@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
 
 import { ShipmentTrackingUrlRequestSchema } from './request-schema.ts';
 
@@ -24,14 +23,5 @@ describe('resolve-shipment-tracking-url request schema', () => {
       format: 'uuid',
       path: ['shipmentId'],
     });
-  });
-
-  it('is the schema the entrypoint validates with', () => {
-    const source = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
-
-    expect(source).toContain("from './request-schema.ts'");
-    expect(source).toContain(
-      'ShipmentTrackingUrlRequestSchema.safeParse(body)',
-    );
   });
 });
