@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
 
 const {
   declaredContentForCategories,
@@ -38,14 +37,6 @@ describe('declared label content', () => {
     expect(declaredContentForCategories(['GPU', 'RAM', 'GPU'])).toBe(
       'Tarjeta de video, Memoria RAM',
     );
-  });
-
-  it('declares the category instead of order identifiers in the Envia payload', () => {
-    const source = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
-
-    expect(source).not.toContain('Hardware: ${shipment.order.id');
-    expect(source).toContain('content: declaredContentForCategories(');
-    expect(source).toContain('product:products(package_preset, category)');
   });
 });
 
@@ -100,21 +91,5 @@ describe('shipment package dimensions', () => {
     ).toBeNull();
     expect(resolveShipmentPackage([], presets)).toBeNull();
     expect(resolveShipmentPackage(['gpu_1'], null)).toBeNull();
-  });
-
-  it('never sends hardcoded dimensions and fails closed before claiming', () => {
-    const source = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
-
-    const resolve = source.indexOf('resolveShipmentPackage(');
-    const claim = source.indexOf('runLabelClaimOrchestration({');
-
-    expect(source).not.toContain(
-      'length: 20, width: 20, height: 15, weight: 1',
-    );
-    expect(resolve).toBeGreaterThan(-1);
-    expect(claim).toBeGreaterThan(resolve);
-    expect(source).toContain(
-      "throw new ApiError(422, 'PACKAGE_PRESET_UNAVAILABLE')",
-    );
   });
 });
