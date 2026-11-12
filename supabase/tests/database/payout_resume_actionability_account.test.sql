@@ -2,13 +2,13 @@
 -- (fn_commit_connect_account_refresh) projects onto the seller's runs: a
 -- blocked account parks every pre-payout run in action_required with the
 -- account_not_actionable reason, and an actionable one resumes exactly those
--- parks. The legacy event-time projection (fn_apply_connect_account_actionability)
--- is fenced. fn_block_payout_run_for_account_actionability parks one claimed
+-- parks. The legacy event-time projection fn_apply_connect_account_actionability
+-- is dropped. fn_block_payout_run_for_account_actionability parks one claimed
 -- run, only under its live claim. The refresh generation itself (acquire,
 -- getter, evidence table) is tested in connect_account_state.test.sql.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(50);
+select plan(49);
 \ir ../fixtures/money.psql
 
 -- status:stage:version:reason:last_error:claim cleared:next_attempt_at cleared
@@ -115,7 +115,6 @@ select is(
 from (values
   ('public.fn_block_payout_run_for_account_actionability(uuid, text, integer, text)'),
   ('public.fn_commit_connect_account_refresh(text, bigint, text, boolean, text, boolean, text, text, text, boolean, integer)'),
-  ('public.fn_apply_connect_account_actionability(text, boolean, text, timestamptz, boolean, text, text)'),
   ('public.fn_record_connect_account_event(text, text, text, timestamptz, boolean, text, text)'),
   ('public.fn_get_connect_account_actionability(text)')
 ) as fns(f);
@@ -125,15 +124,14 @@ select ok(
   (select 'search_path=public' = any(proconfig) from pg_proc where proname = 'fn_block_payout_run_for_account_actionability'),
   'fn_block_payout_run_for_account_actionability pins search_path to public');
 
--- 2. Evidence is idempotent by Stripe event id; the legacy projection is fenced
+-- 2. Evidence is idempotent by Stripe event id; the legacy projection is gone
 select is(pg_temp.record('acct_t6sellerA', 'evt_t6a1'), true, 'the first delivery of an account event is recorded');
 select is(pg_temp.record('acct_t6sellerA', 'evt_t6a1'), false, 'a second delivery of the same event is a no-op');
 select pg_temp.record('acct_t6sellerA', 'evt_t6a2');
 select pg_temp.record('acct_t6sellerB', 'evt_t6b1');
 select pg_temp.remember('start');
-select throws_ok(
-  $$select public.fn_apply_connect_account_actionability('acct_t6sellerA', false, 'payouts_disabled', now())$$,
-  'P0001', 'ACCOUNT_REFRESH_REQUIRED', 'the legacy event-time projection is fenced');
+select hasnt_function('public', 'fn_apply_connect_account_actionability',
+  'the dead legacy event-time projection is dropped');
 
 -- 3. A blocked refresh parks the pre-payout runs of that account ---------------
 create table pg_temp.gen as select public.fn_acquire_connect_account_refresh('acct_t6sellerA', 'evt_t6a1') as g;

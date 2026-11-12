@@ -75,7 +75,7 @@ SELECT
   'update public.products set status = ''VERIFIED'', reserved_at = null, updated_at = now() where status = ''RESERVED'' and reserved_at < now() - interval ''30 minutes''',
   'postgres', NULL, true);
 
-SELECT cron.schedule_in_database('reconcile-connect-payments', '0 */6 * * *', 'select * from public.fn_reconcile_connect_payments()', 'postgres', NULL, true);
+SELECT cron.schedule_in_database('reconcile-connect-payments', '0 */6 * * *', 'select * from internal.fn_reconcile_connect_payments()', 'postgres', NULL, true);
 
 SELECT cron.schedule_in_database('reconcile-stripe-fees-every-5-minutes', '*/5 * * * *', 'select net.http_post(
     url := (select decrypted_secret from vault.decrypted_secrets where name = ''project_url'') || ''/functions/v1/reconcile-stripe-fees'',

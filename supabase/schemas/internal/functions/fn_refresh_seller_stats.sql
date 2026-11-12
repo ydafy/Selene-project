@@ -1,10 +1,10 @@
-CREATE OR REPLACE FUNCTION public.fn_refresh_seller_stats (
+CREATE OR REPLACE FUNCTION internal.fn_refresh_seller_stats (
   p_seller_id uuid
 )
   RETURNS void
   LANGUAGE plpgsql
   SECURITY DEFINER
-  SET search_path TO 'public'
+  SET search_path TO ''
   AS $function$
 DECLARE
     v_avg_rating NUMERIC;
@@ -43,10 +43,10 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $function$;
 
-GRANT EXECUTE ON FUNCTION "public"."fn_refresh_seller_stats"(uuid) TO "service_role";
+GRANT EXECUTE ON FUNCTION "internal"."fn_refresh_seller_stats"(uuid) TO "service_role";
 
-REVOKE ALL ON FUNCTION "public"."fn_refresh_seller_stats"(uuid) FROM "postgres";
+REVOKE ALL ON FUNCTION "internal"."fn_refresh_seller_stats"(uuid) FROM "postgres";
 
-GRANT EXECUTE ON FUNCTION "public"."fn_refresh_seller_stats"(uuid) TO "postgres";
+GRANT EXECUTE ON FUNCTION "internal"."fn_refresh_seller_stats"(uuid) TO "postgres";
 
-REVOKE ALL ON FUNCTION "public"."fn_refresh_seller_stats"(uuid) FROM PUBLIC, "anon", "authenticated";
+REVOKE ALL ON FUNCTION "internal"."fn_refresh_seller_stats"(uuid) FROM PUBLIC, "anon", "authenticated";

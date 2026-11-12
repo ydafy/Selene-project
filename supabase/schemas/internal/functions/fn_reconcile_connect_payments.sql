@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION public.fn_reconcile_connect_payments()
+CREATE OR REPLACE FUNCTION internal.fn_reconcile_connect_payments()
   RETURNS TABLE (
     shipment_id uuid,
     status      text,
@@ -25,10 +25,10 @@ BEGIN
 END;
 $function$;
 
-GRANT EXECUTE ON FUNCTION "public"."fn_reconcile_connect_payments"() TO "service_role";
+GRANT EXECUTE ON FUNCTION "internal"."fn_reconcile_connect_payments"() TO "service_role";
 
-REVOKE ALL ON FUNCTION "public"."fn_reconcile_connect_payments"() FROM "postgres";
+REVOKE ALL ON FUNCTION "internal"."fn_reconcile_connect_payments"() FROM "postgres";
 
-GRANT EXECUTE ON FUNCTION "public"."fn_reconcile_connect_payments"() TO "postgres";
+GRANT EXECUTE ON FUNCTION "internal"."fn_reconcile_connect_payments"() TO "postgres";
 
-REVOKE ALL ON FUNCTION "public"."fn_reconcile_connect_payments"() FROM PUBLIC, "anon", "authenticated";
+REVOKE ALL ON FUNCTION "internal"."fn_reconcile_connect_payments"() FROM PUBLIC, "anon", "authenticated";
