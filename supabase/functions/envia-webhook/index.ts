@@ -3,17 +3,8 @@ import { readSupabaseSecretKey } from '../_shared/supabase-secret-key.ts';
 
 import { verifyEnviaWebhook } from '../_shared/envia/envia-webhook-verify.ts';
 import { createEnviaWebhookHandler } from './handler.ts';
+import { createWebhookDeliveryPorts } from './delivery-ports.ts';
 import { withSentry } from '../_shared/sentry.ts';
-
-const sha256 = async (value: string) => {
-  const digest = await crypto.subtle.digest(
-    'SHA-256',
-    new TextEncoder().encode(value),
-  );
-  return Array.from(new Uint8Array(digest), (byte) =>
-    byte.toString(16).padStart(2, '0'),
-  ).join('');
-};
 
 const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
@@ -33,33 +24,7 @@ const handler = createEnviaWebhookHandler({
       rawBody,
       secret: webhookSecret ?? '',
     }),
-  claim: async ({ deliveryId, eventName, rawBody }) => {
-    const payloadSha256 = await sha256(rawBody);
-    const { data, error } = await supabaseAdmin
-      .from('webhook_deliveries')
-      .insert({
-        provider: 'envia',
-        delivery_id: deliveryId,
-        event_name: eventName,
-        payload_sha256: payloadSha256,
-      })
-      .select('id')
-      .single();
-    if (error?.code === '23505') {
-      const { data: existing, error: existingError } = await supabaseAdmin
-        .from('webhook_deliveries')
-        .select('payload_sha256')
-        .eq('provider', 'envia')
-        .eq('delivery_id', deliveryId)
-        .single();
-      if (existingError || !existing) throw new Error('DELIVERY_CLAIM_FAILED');
-      return existing.payload_sha256 === payloadSha256
-        ? { kind: 'duplicate' as const }
-        : { kind: 'collision' as const };
-    }
-    if (error || !data) throw new Error('DELIVERY_CLAIM_FAILED');
-    return { kind: 'new' as const, id: data.id };
-  },
+  ...createWebhookDeliveryPorts(supabaseAdmin),
   resolveSubject: async (trackingNumber) => {
     const [shipments, disputes] = await Promise.all([
       supabaseAdmin
@@ -102,18 +67,6 @@ const handler = createEnviaWebhookHandler({
       p_polling_run_id: null,
       p_transition: event.transition,
     });
-    if (error) throw error;
-  },
-  mark: async ({ deliveryId, state, errorCode }) => {
-    const { error } = await supabaseAdmin
-      .from('webhook_deliveries')
-      .update({
-        state,
-        ...(state === 'processed'
-          ? { processed_at: new Date().toISOString() }
-          : { error_code: errorCode }),
-      })
-      .eq('id', deliveryId);
     if (error) throw error;
   },
   schedule: async (work) => {

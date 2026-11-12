@@ -52,12 +52,6 @@ export const MAX_ATTEMPTS = 24;
 const CAPPED_LIST_LIMIT = 50;
 const FUNCTION_NAME = 'account-closure-cleanup';
 
-const OPEN_STEP_FILTER = [
-  'stripe_customer_cleanup.in.(pending,failed)',
-  'stripe_account_cleanup.in.(pending,failed)',
-  'storage_cleanup.in.(pending,failed)',
-].join(',');
-
 type DbError = { code?: string; message: string } | null;
 
 export type CappedClosure = { user_id: string; attempts: number };
@@ -225,8 +219,9 @@ export function createAccountClosureCleanupHandler(
 }
 
 /**
- * The real ports: the atomic claim RPC and the capped lookup through the service-role client,
- * plus the Stripe and Storage cleanup shared with delete-account.
+ * The real ports: the atomic claim RPC and the capped lookup RPC through the service-role
+ * client (`internal.account_closures` is not exposed through PostgREST), plus the Stripe
+ * and Storage cleanup shared with delete-account.
  */
 export function createSupabaseAccountClosureCleanupPorts(deps: {
   getAdmin: () => SupabaseClient<Database>;
@@ -241,14 +236,10 @@ export function createSupabaseAccountClosureCleanupPorts(deps: {
       });
     },
     listCappedClosures: async (maxAttempts, limit) => {
-      return await deps
-        .getAdmin()
-        .from('account_closures')
-        .select('user_id, attempts')
-        .or(OPEN_STEP_FILTER)
-        .gte('attempts', maxAttempts)
-        .order('updated_at')
-        .limit(limit);
+      return await deps.getAdmin().rpc('fn_list_capped_account_closures', {
+        p_max_attempts: maxAttempts,
+        p_limit: limit,
+      });
     },
     ...createSupabaseClosurePorts(deps),
   };
