@@ -16,6 +16,7 @@ import {
   createShipmentTransferAdapters,
   getConnectPayoutReleaseErrorStatus,
   getStripeBalanceInsufficientLogMeta,
+  parseParkPayoutRunFromFenceResult,
   parseReleaseRequestBody,
   releaseConnectPayout,
   type ConnectPayoutRunStatus,
@@ -533,6 +534,32 @@ serveAdminWeb(
               );
             }
             return aborted.data === true;
+          },
+          parkPayoutRunFromFence: async (input) => {
+            const parked = await supabaseAdmin.rpc(
+              'fn_park_payout_run_from_fence',
+              {
+                p_run_id: input.runId,
+                p_expected_stage_version: input.stageVersion,
+              },
+            );
+            if (parked.error) {
+              log('ERROR', 'Manual payout create fence park RPC failed', {
+                runId: input.runId,
+                ...getSupabaseErrorLogMeta(parked.error),
+              });
+              throw new Error(
+                `${parked.error.code ?? ''} ${parked.error.message}`.trim(),
+              );
+            }
+            try {
+              return parseParkPayoutRunFromFenceResult(parked.data);
+            } catch (error) {
+              log('ERROR', 'Manual payout create fence park result invalid', {
+                runId: input.runId,
+              });
+              throw error;
+            }
           },
           markRunPayoutSyncFailed: async (input) => {
             // Phase 2B final slice: the post-Stripe sync fallback is a guarded

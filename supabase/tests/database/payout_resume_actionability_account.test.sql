@@ -188,8 +188,10 @@ select ok(pg_temp.same('acquired', array[6613]), 'actionable: an awaiting_connec
 select ok(pg_temp.same('acquired', array[6621, 6622]), 'actionable: runs of another account are untouched');
 
 -- 5. The executor parks one claimed run, only under its live claim -------------
--- A claimed run is parked before any payout exists; #352 tracks the retry this
--- leaves without a release path.
+-- A claimed run is parked before any payout exists, while its account is not
+-- actionable: the executor calls the block only then, and the block re-checks
+-- the account under lock (#352; requeue cases in payout_block_account_recheck).
+select public.fn_acquire_connect_account_refresh('acct_t6sellerB', 'evt_t6b1');
 select pg_temp.run(6631, 6504, 'pending_reconciliation', 'awaiting_connected_balance',
   $$release_stage_version = 4, payout_claim_token = 'tok_6631', payout_claim_expires_at = now() + interval '1 hour'$$);
 select pg_temp.run(6632, 6504, 'pending_reconciliation', 'payout_create_in_progress',

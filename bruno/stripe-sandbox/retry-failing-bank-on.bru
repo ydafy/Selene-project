@@ -118,6 +118,6 @@ docs {
   fail with no_account) as the default of the sandbox account, after restoring the healthy
   default and deleting leftovers of an aborted run. Then waits up to 80 s until stripe-webhooks
   recorded every account event of the connected account since the run started and
-  connect_account_actionability is not refreshing, so the release below does not race a
-  pending refresh (fence-time CONNECT_ACCOUNT_NOT_ACTIONABLE). retry-failing-bank-off undoes it.
+  connect_account_actionability is not refreshing, so the release below creates its payout
+  instead of being parked at the fence by a pending refresh. retry-failing-bank-off undoes it.
 }
