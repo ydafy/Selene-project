@@ -1,0 +1,36 @@
+meta {
+  name: confirm-shipment-delivery-no-auth
+  type: http
+  seq: 151
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/confirm-shipment-delivery
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{anonKey}}
+}
+
+body:json {
+  {
+    "orderId": "00000000-0000-4000-8000-0000000000d1",
+    "shipmentId": "00000000-0000-4000-8000-0000000000c1",
+    "idempotencyKey": "confirm_shipment_00000000-0000-4000-8000-0000000000c1"
+  }
+}
+
+tests {
+  test("a valid confirmation without a user token is refused before any lookup", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody()).to.deep.equal({ success: false, error: "AUTH_REQUIRED" });
+  });
+}
+
+docs {
+  The function runs with verify_jwt = false and resolves the caller with auth.getUser before it
+  reads any table, so a body that passes validation but carries no Authorization header gets
+  401 and nothing is confirmed.
+}

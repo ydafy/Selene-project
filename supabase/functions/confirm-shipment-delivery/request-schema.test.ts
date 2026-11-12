@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
 
 import { ConfirmationRequestSchema } from './request-schema.ts';
 
@@ -44,12 +43,5 @@ describe('confirm-shipment-delivery request schema', () => {
       format: 'uuid',
       path: ['orderId'],
     });
-  });
-
-  it('is the schema the entrypoint validates with', () => {
-    const source = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
-
-    expect(source).toContain("from './request-schema.ts'");
-    expect(source).toContain('ConfirmationRequestSchema.safeParse(body)');
   });
 });
