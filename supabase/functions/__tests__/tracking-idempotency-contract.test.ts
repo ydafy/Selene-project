@@ -95,7 +95,7 @@ describe('tracking ingestion idempotency contract', () => {
       'supabase/migrations/archive/20260828030000_shipment_tracking_foundation.sql',
     );
     const webhook = read('supabase/functions/envia-webhook/index.ts');
-    const polling = read('supabase/functions/track-shipments/index.ts');
+    const polling = read('supabase/functions/track-shipments/dependencies.ts');
     const rpc = migration.match(
       /CREATE OR REPLACE FUNCTION public\.fn_record_tracking_event\([\s\S]*?\n\$\$;/,
     )?.[0];
