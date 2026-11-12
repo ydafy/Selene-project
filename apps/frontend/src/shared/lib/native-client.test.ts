@@ -35,7 +35,7 @@ describe('createNativeSupabaseClient', () => {
     const deps = createDeps('ios');
     const client = createNativeSupabaseClient(
       'http://127.0.0.1:54321',
-      'test-anon-key',
+      'sb_publishable_test',
       deps,
     );
     const auth = client.auth as unknown as AuthInternals;
@@ -49,7 +49,7 @@ describe('createNativeSupabaseClient', () => {
     const deps = createDeps('android');
     const client = createNativeSupabaseClient(
       'http://127.0.0.1:54321',
-      'test-anon-key',
+      'sb_publishable_test',
       deps,
     );
 
@@ -61,7 +61,7 @@ describe('createNativeSupabaseClient', () => {
     const deps = createDeps('web');
     const client = createNativeSupabaseClient(
       'http://127.0.0.1:54321',
-      'test-anon-key',
+      'sb_publishable_test',
       deps,
     );
 
