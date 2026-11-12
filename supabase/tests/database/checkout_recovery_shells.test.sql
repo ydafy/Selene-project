@@ -236,9 +236,8 @@ select is(
   (select string_agg(column_name || ':' || data_type || ':' || is_nullable || ':' || coalesce(column_default, '-'), ',' order by column_name)
    from information_schema.columns
    where table_schema = 'public' and table_name = 'system_settings' and column_name like 'checkout_recovery%'),
-  'checkout_recovery_enabled:boolean:NO:false,checkout_recovery_lease_expires_at:timestamp with time zone:YES:-,'
-    || 'checkout_recovery_lease_id:uuid:YES:-',
-  'settings: the worker is off by default and runs under an expiring lease; the old running flag is gone');
+  'checkout_recovery_enabled:boolean:NO:false',
+  'settings: the worker is off by default; its lease lives in internal.cron_leases and the old running flag is gone');
 
 select * from finish();
 rollback;
