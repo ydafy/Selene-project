@@ -40,7 +40,7 @@ BEGIN
   SELECT * INTO v_shipment FROM public.shipments WHERE id = p_shipment_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'SHIPMENT_NOT_FOUND'; END IF;
 
-  IF NOT public.fn_shipment_label_is_stuck(v_shipment.status, v_shipment.label_generation_state, v_shipment.claim_expires_at) THEN
+  IF NOT internal.fn_shipment_label_is_stuck(v_shipment.status, v_shipment.label_generation_state, v_shipment.claim_expires_at) THEN
     RETURN jsonb_build_object(
       'result', 'already_resolved',
       'shipment_id', v_shipment.id,

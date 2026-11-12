@@ -6,7 +6,7 @@ CREATE OR REPLACE FUNCTION public.fn_trigger_review_changes()
   AS $function$
 BEGIN
     -- Llamamos al trabajador que actualizamos en el Paso 1
-    PERFORM public.fn_refresh_seller_stats(COALESCE(NEW.seller_id, OLD.seller_id));
+    PERFORM internal.fn_refresh_seller_stats(COALESCE(NEW.seller_id, OLD.seller_id));
     
     RETURN NULL; -- Correcto para triggers AFTER
 

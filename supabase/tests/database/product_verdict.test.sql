@@ -38,9 +38,9 @@ create function pg_temp.listing(
     case when p_status = 'VERIFIED' then now() - interval '1 day' end,
     now() - interval '1 day',
     round(100 * 100)::bigint + s.shipping_buffer_cents
-      + ceil(round(1000 * 100)::numeric * public.normalize_publication_rate(s.insurance_rate))::bigint,
-    public.normalize_publication_rate(s.service_fee_pct),
-    public.normalize_publication_rate(s.insurance_rate)
+      + ceil(round(1000 * 100)::numeric * internal.normalize_publication_rate(s.insurance_rate))::bigint,
+    internal.normalize_publication_rate(s.service_fee_pct),
+    internal.normalize_publication_rate(s.insurance_rate)
   from public.system_settings s where s.id = 1
   returning id
 $$;
