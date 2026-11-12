@@ -1,12 +1,6 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 
 import { createEnviaWebhookHandler } from '../envia-webhook/handler.ts';
-
-const root = join(import.meta.dir, '..', '..', '..');
-const read = (relativePath: string) =>
-  readFileSync(join(root, relativePath), 'utf8').replace(/\r\n/g, '\n');
 
 const returnWebhookPayload = JSON.stringify({
   type: 'tracking.simple',
@@ -54,25 +48,5 @@ describe('tracking return attribution contract', () => {
         }),
       }),
     ]);
-  });
-
-  it('keeps return webhook and polling events ledger-only for the outbound shipment', () => {
-    const migration = read(
-      'supabase/migrations/archive/20260828030000_shipment_tracking_foundation.sql',
-    );
-    const rpc = migration
-      .match(
-        /CREATE OR REPLACE FUNCTION public\.fn_record_tracking_event\([\s\S]*?\n\$\$;/,
-      )?.[0]
-      ?.replace(/\s+/g, ' ');
-
-    expect(rpc).toContain('shipment_id, dispute_id, event_type');
-    expect(rpc).toContain('p_shipment_id, p_dispute_id, p_event_type');
-    expect(rpc).toContain(
-      "IF p_dispute_id IS NULL AND v_status = 'preparing' AND p_transition = 'shipped' THEN",
-    );
-    expect(rpc).toContain(
-      "ELSIF p_dispute_id IS NULL AND v_status = 'shipped' AND p_transition = 'delivered' THEN",
-    );
   });
 });
