@@ -66,9 +66,13 @@ CREATE POLICY "system_settings_read" ON "public"."system_settings"
 
 REVOKE ALL ON TABLE "public"."system_settings" FROM "anon", "authenticated";
 
-GRANT SELECT ON TABLE "public"."system_settings" TO "anon";
+-- Clients read only the columns the app selects (useSystemConfig and the
+-- publish flow; id is the filter). One cached query serves the guest guard and
+-- signed-in screens, so anon gets the same list. Leases and the Envia
+-- reference address stay server-only (#305, #309).
+GRANT SELECT ("id", "insurance_rate", "is_maintenance", "min_version_android", "min_version_ios", "order_expiration_hours", "package_presets", "preparing_expiration_hours", "service_fee_pct", "shipping_buffer_cents") ON TABLE "public"."system_settings" TO "anon";
 
-GRANT SELECT ON TABLE "public"."system_settings" TO "authenticated";
+GRANT SELECT ("id", "insurance_rate", "is_maintenance", "min_version_android", "min_version_ios", "order_expiration_hours", "package_presets", "preparing_expiration_hours", "service_fee_pct", "shipping_buffer_cents") ON TABLE "public"."system_settings" TO "authenticated";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."system_settings" TO "service_role";
 
