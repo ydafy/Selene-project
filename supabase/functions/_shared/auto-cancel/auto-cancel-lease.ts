@@ -1,12 +1,18 @@
 /**
  * Expiring run lease for the auto-cancel crons (B3.1, odd/tasks/shipment-cancellations-b3.md).
  * Replaces the global `*_running` booleans, which stayed true forever after a killed run.
+ * Each job holds the cron lease `auto_cancel_<job>` (`fn_acquire_cron_lease`, internal.cron_leases).
  * The lease expires in the database after 600 seconds; the run budget below stops starting
  * new shipments well before any Edge Function wall clock, so the run can release cleanly and
  * the remaining shipments wait for the next hourly run.
  */
 
 export type AutoCancelJob = 'orders' | 'preparing';
+
+const CRON_LEASE_JOB = {
+  orders: 'auto_cancel_orders',
+  preparing: 'auto_cancel_preparing',
+} as const satisfies Record<AutoCancelJob, string>;
 
 /** Time after which a run starts no new shipment cancellation. */
 export const AUTO_CANCEL_RUN_BUDGET_MS = 100_000;
@@ -49,8 +55,8 @@ export async function acquireAutoCancelLease(
   log: AutoCancelLeaseLog,
   now: () => number = Date.now,
 ): Promise<AutoCancelLease> {
-  const { data, error } = await client.rpc('fn_acquire_auto_cancel_lease', {
-    p_job: job,
+  const { data, error } = await client.rpc('fn_acquire_cron_lease', {
+    p_job: CRON_LEASE_JOB[job],
   });
   const row = (Array.isArray(data) ? data[0] : data) as
     { acquired?: unknown; lease_id?: unknown } | null | undefined;
@@ -97,8 +103,8 @@ export async function releaseAutoCancelLease(
   if (!leaseId) return;
   let reason: string | undefined;
   try {
-    const { data, error } = await client.rpc('fn_release_auto_cancel_lease', {
-      p_job: job,
+    const { data, error } = await client.rpc('fn_release_cron_lease', {
+      p_job: CRON_LEASE_JOB[job],
       p_lease_id: leaseId,
     });
     if (error)

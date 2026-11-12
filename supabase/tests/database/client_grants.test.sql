@@ -6,7 +6,7 @@
 -- RLS stays the row control; these grants are the object control.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(8);
+select plan(6);
 
 select results_eq(
   $$select distinct r.rolname::text collate "default",
@@ -113,14 +113,11 @@ select results_eq(
   'anon and authenticated hold exactly the client column grants in public');
 
 -- Clients read only the system_settings columns above: not the Envia
--- reference address nor the cron lease columns.
+-- reference address.
 set local role anon;
 select throws_ok(
   $$select listing_quote_reference_destination from public.system_settings$$,
   '42501', null, 'anon cannot read system_settings.listing_quote_reference_destination');
-select throws_ok(
-  $$select auto_cancel_orders_lease_id from public.system_settings$$,
-  '42501', null, 'anon cannot read system_settings.auto_cancel_orders_lease_id');
 select lives_ok(
   $$select id, is_maintenance, min_version_android, min_version_ios, service_fee_pct,
       insurance_rate, shipping_buffer_cents, package_presets, order_expiration_hours,
@@ -134,9 +131,6 @@ set local role authenticated;
 select throws_ok(
   $$select listing_quote_reference_destination from public.system_settings$$,
   '42501', null, 'authenticated cannot read system_settings.listing_quote_reference_destination');
-select throws_ok(
-  $$select checkout_recovery_lease_id from public.system_settings$$,
-  '42501', null, 'authenticated cannot read system_settings.checkout_recovery_lease_id');
 select lives_ok(
   $$select id, is_maintenance, min_version_android, min_version_ios, service_fee_pct,
       insurance_rate, shipping_buffer_cents, package_presets, order_expiration_hours,

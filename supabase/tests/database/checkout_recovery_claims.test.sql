@@ -4,13 +4,12 @@
 -- a refund_pending target is due at its retry time, or five minutes after it
 -- was created when it has none, or at once when named; a queued retry is due
 -- at its retry time; an expired refunding lease is reclaimed. A claim moves the
--- target to refunding with a five-minute lease and counts the attempt.
--- fn_acquire_checkout_recovery_lease and fn_release_checkout_recovery_lease
--- run one worker at a time under a 600-second lease, only when the worker is
--- enabled. The targets themselves are in checkout_recovery_shells.test.sql.
+-- target to refunding with a five-minute lease and counts the attempt. The
+-- worker lease is in cron_leases.test.sql. The targets themselves are in
+-- checkout_recovery_shells.test.sql.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(34);
+select plan(21);
 \ir ../fixtures/money.psql
 
 select pg_temp.money_user(7001);
@@ -63,27 +62,14 @@ create function pg_temp.grants(p_fn regprocedure) returns text language sql as $
     || has_function_privilege('service_role', p_fn, 'execute')::text
 $$;
 
--- enabled|lease id is set|lease seconds from now() of the worker settings.
-create function pg_temp.lease_row() returns text language sql as $$
-  select s.checkout_recovery_enabled::text || '|' || (s.checkout_recovery_lease_id is not null)::text || '|'
-    || coalesce(extract(epoch from s.checkout_recovery_lease_expires_at - now())::integer::text, '-')
-  from public.system_settings s where s.id = 1
-$$;
-
 -- 1. Grants, security mode and locking ---------------------------------------------------
 select is(pg_temp.grants('public.fn_claim_checkout_recovery_shells(integer, text, text)'), 'false:false:true',
   'grants: only service_role can execute fn_claim_checkout_recovery_shells');
-select is(pg_temp.grants('public.fn_acquire_checkout_recovery_lease()'), 'false:false:true',
-  'grants: only service_role can execute fn_acquire_checkout_recovery_lease');
-select is(pg_temp.grants('public.fn_release_checkout_recovery_lease(uuid)'), 'false:false:true',
-  'grants: only service_role can execute fn_release_checkout_recovery_lease');
 select is(
   (select string_agg(p.proname || ':' || p.prosecdef::text || ':' || array_to_string(p.proconfig, ','), ' ' order by p.proname)
-   from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname in ('fn_claim_checkout_recovery_shells',
-     'fn_acquire_checkout_recovery_lease', 'fn_release_checkout_recovery_lease')),
-  'fn_acquire_checkout_recovery_lease:true:search_path="" fn_claim_checkout_recovery_shells:true:search_path=public '
-    || 'fn_release_checkout_recovery_lease:true:search_path=""',
-  'security mode: claims and lease run as definer; the lease functions with an empty search_path');
+   from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = 'fn_claim_checkout_recovery_shells'),
+  'fn_claim_checkout_recovery_shells:true:search_path=public',
+  'security mode: claims run as definer');
 -- One session cannot show a second worker skipping a locked target, so this reads the definition.
 select is(
   (select count(*)::integer from regexp_matches(
@@ -198,51 +184,6 @@ set local role service_role;
 select is(
   (select count(*) from public.fn_claim_checkout_recovery_shells(1000, null, 'standalone')),
   100::bigint, 'claims: one call claims at most 100 targets');
-reset role;
-
--- 5. The worker lease ----------------------------------------------------------------------------------
-update public.system_settings set checkout_recovery_enabled = false, checkout_recovery_lease_id = null,
-  checkout_recovery_lease_expires_at = null where id = 1;
-select set_config('request.jwt.claims', '{"role": "authenticated"}', true);
-set local role service_role;
-select throws_ok($$select * from public.fn_acquire_checkout_recovery_lease()$$, 'P0001', 'UNAUTHORIZED',
-  'lease: acquiring needs the service_role claim, not just the database role');
-select throws_ok($$select public.fn_release_checkout_recovery_lease(gen_random_uuid())$$, 'P0001', 'UNAUTHORIZED',
-  'lease: releasing needs the service_role claim');
-select set_config('request.jwt.claims', '{"role": "service_role"}', true);
-select is((select acquired::text || ':' || coalesce(lease_id::text, '-') || ':' || coalesce(lease_expires_at::text, '-')
-   from public.fn_acquire_checkout_recovery_lease()),
-  'false:-:-', 'lease: a disabled worker gets no lease');
-reset role;
-update public.system_settings set checkout_recovery_enabled = true where id = 1;
-set local role service_role;
-create temp table t5_lease on commit drop as select * from public.fn_acquire_checkout_recovery_lease();
-reset role;
-select is(
-  (select l.acquired and l.lease_id = s.checkout_recovery_lease_id and l.lease_expires_at = s.checkout_recovery_lease_expires_at
-   from t5_lease l, public.system_settings s where s.id = 1),
-  true, 'lease: an enabled worker without a lease acquires one and the settings hold it');
-select ok(
-  (select lease_expires_at - now() >= interval '600 seconds' and lease_expires_at - now() < interval '601 seconds' from t5_lease),
-  'lease: the lease lasts 600 seconds');
-set local role service_role;
-select is((select acquired::text || ':' || coalesce(lease_id::text, '-') from public.fn_acquire_checkout_recovery_lease()),
-  'false:-', 'lease: a live lease is not acquired twice');
-select is(public.fn_release_checkout_recovery_lease(gen_random_uuid()), false, 'lease: another lease id releases nothing');
-reset role;
-select is((select checkout_recovery_lease_id from public.system_settings where id = 1), (select lease_id from t5_lease),
-  'lease: the live lease is still held after a wrong release and a second acquire');
-set local role service_role;
-select is(public.fn_release_checkout_recovery_lease((select lease_id from t5_lease)), true, 'lease: its own id releases the lease');
-select is(pg_temp.lease_row() || ':' || public.fn_release_checkout_recovery_lease((select lease_id from t5_lease))::text,
-  'true|false|-:false', 'lease: the release clears the lease, and a second release returns false');
-reset role;
-update public.system_settings set checkout_recovery_lease_id = (select lease_id from t5_lease),
-  checkout_recovery_lease_expires_at = now() - interval '1 second' where id = 1;
-set local role service_role;
-select is(
-  (select acquired and lease_id <> (select lease_id from t5_lease) from public.fn_acquire_checkout_recovery_lease()),
-  true, 'lease: an expired lease is taken over with a new lease id');
 reset role;
 
 select * from finish();
