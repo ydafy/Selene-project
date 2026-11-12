@@ -17,8 +17,24 @@ Open launch dependencies:
 1. Choose the plan before the first real payment. Recommended: Pro (about USD 25 a month). Free runs the app, but it has no downloadable backups, pauses a project after a week without activity, does not offer leaked password protection, and its database and Storage quotas are small for dispute videos (current limits: https://supabase.com/pricing). Launching on Free is acceptable only with a daily off-site database backup in place (`supabase db dump` on a schedule, stored outside Supabase; it does not cover Storage files) and someone watching the quotas. Upgrade to Pro at the first of: real payments flowing every week, the database or Storage near its quota, or any data incident. Point-in-time recovery (add-on, about USD 100 a month) can wait until there is real volume. Decided with the maintainer on 2026-11-08.
 2. Create the project in the target region and organization.
 3. Record the new project ref and update the Supabase MCP URL.
-4. Use the new API keys from day one: `sb_publishable_...` in the apps and `sb_secret_...` in server components, and keep the legacy `anon`/`service_role` JWT keys disabled. The legacy `service_role` key of the development project was exposed on 2026-10-19 (it was embedded in a Dashboard-created trigger); never reuse it or copy any key from that project.
+4. Use the new API keys from day one: `sb_publishable_...` in the apps (`EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in the EAS environments, `VITE_SUPABASE_PUBLISHABLE_KEY` in the admin-web build env) and `sb_secret_...` in server components, and keep the legacy `anon`/`service_role` JWT keys disabled. The legacy `service_role` key of the development project was exposed on 2026-10-19 (it was embedded in a Dashboard-created trigger); never reuse it or copy any key from that project.
 5. Decide whether migrations deploy through the Supabase GitHub integration (applies pending `supabase/migrations/` on every push to the production branch). It was connected to the development project on 2026-10-21 and disconnected the same day: its first run failed with `column "refund_id" ... already exists` because two migrations had been applied by hand and were missing from the remote history (nothing was applied). Enable it only on a project whose migration history matches the repository, and only once every branch that pushes to `main` is meant to reach production; then update the "The repository does not deploy itself" rule in `AGENTS.md`.
+
+### Moving an existing project to the new API keys
+
+The development project still has its legacy `anon` and `service_role` keys and the legacy JWT secret. Supabase retires them at the end of 2026. Move it in this order; steps 1 to 4 are done there:
+
+1. Create a publishable key and a secret key (Settings > API Keys). Done.
+2. Edge Functions on `SUPABASE_SECRET_KEYS`. Done (#398).
+3. Cron jobs without Supabase keys. Done (#397, section 8).
+4. `verify_jwt = false` for every function. Done (#399).
+5. Set `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and `VITE_SUPABASE_PUBLISHABLE_KEY` to the publishable key in the local `.env` files, the EAS environment variables, and the deployed admin-web's build env. The apps no longer read `EXPO_PUBLIC_SUPABASE_ANON_KEY` or `VITE_SUPABASE_ANON_KEY`, and fail at startup without the new name.
+6. Rebuild and install the app, and redeploy the admin-web. An installed development build still carries the anon key and stops working once step 8 disables it.
+7. In Settings > API Keys, check the "last used" time of the legacy keys: nothing should have used them since steps 5 and 6.
+8. Disable the legacy API keys (Settings > API Keys). It is reversible: re-enable them if a client breaks.
+9. JWT signing keys (Settings > JWT Keys): run "Migrate JWT secret", which imports the legacy secret and creates an ES256 standby key, then "Rotate keys".
+10. Wait at least the access-token expiry plus 15 minutes (1 h 15 min with the default 1 h expiry), so no valid token is signed with the legacy secret.
+11. Revoke the legacy JWT secret. It must come after step 8: revoking it while the legacy API keys are enabled breaks them (https://supabase.com/docs/guides/auth/signing-keys).
 
 ### Domain
 

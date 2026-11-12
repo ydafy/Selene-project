@@ -13,7 +13,7 @@ describe('shipment tracking frontend boundaries', () => {
     expect(hook).toContain("from('shipment_tracking_events')");
     expect(hook).toContain(".eq('shipment_id', shipmentId)");
     expect(hook).toContain(".order('event_at', { ascending: true })");
-    expect(hook).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
+    expect(hook).not.toMatch(/SERVICE_ROLE_KEY|SECRET_KEY/);
   });
 
   it('keeps Envia mode server-side and integrates the URL and timeline into order detail', () => {

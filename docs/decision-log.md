@@ -275,3 +275,11 @@ It is established as the standard procedure for structural inconsistencies.
 - `supabase/tests/database/client_grants.test.sql` and `supabase/tests/database/function_grants.test.sql` pin the exact lists, not upper bounds, so adding or removing a client grant is a deliberate change to the schema file and the test.
 
 **Consequence:** A new table is invisible to clients until its file grants something, which is also the Supabase default for new projects since 2026-10-30. Some anon grants exist only because guests can reach signed-in flows (#434); they go when those flows are guarded.
+
+## 2026-11-11: Client Supabase Key Variables Name the Publishable Key
+
+**Context:** Supabase retires the legacy `anon` and `service_role` keys at the end of 2026 (#337). The apps read their key from `EXPO_PUBLIC_SUPABASE_ANON_KEY` and `VITE_SUPABASE_ANON_KEY`, and supabase-js accepts the new `sb_publishable_...` key in the same place.
+
+**Decision:** The apps read `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (Expo app) and `VITE_SUPABASE_PUBLISHABLE_KEY` (admin-web). No code reads the old names, and there is no fallback to them.
+
+**Consequence:** The name says which key a client holds. An environment that still sets only the old name fails at startup, as a missing key does, instead of running on the anon key until the legacy keys are disabled. Every local `.env`, EAS environment and admin-web build env must set the new name (`docs/go-live.md`, "Moving an existing project to the new API keys").

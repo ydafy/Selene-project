@@ -135,7 +135,7 @@ type FetchSellerOnboardingDeps = {
 /**
  * Sign-out resets and refetches mounted queries while they still hold the
  * previous user id. Without a session for that user, supabase-js would call
- * the function with the anon key (a 401 and an auth log 403), so skip it.
+ * the function with the publishable key (a 401 and an auth log 403), so skip it.
  */
 export const fetchSellerOnboardingStatus = async ({
   userId,
