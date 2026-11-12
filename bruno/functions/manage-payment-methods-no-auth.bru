@@ -1,0 +1,33 @@
+meta {
+  name: manage-payment-methods-no-auth
+  type: http
+  seq: 154
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/manage-payment-methods
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+}
+
+body:json {
+  {
+    "action": "list_payment_methods"
+  }
+}
+
+tests {
+  test("a request without a user token is refused before any Stripe or table call", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody()).to.deep.equal({ error: "AUTH_REQUIRED" });
+  });
+}
+
+docs {
+  verify_jwt = false (supabase/config.toml), so the function's own check answers a call without
+  an Authorization header, before it reads profiles_private or calls Stripe.
+}

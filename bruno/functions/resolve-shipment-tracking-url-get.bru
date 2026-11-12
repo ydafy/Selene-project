@@ -1,0 +1,28 @@
+meta {
+  name: resolve-shipment-tracking-url-get
+  type: http
+  seq: 157
+}
+
+get {
+  url: {{baseUrl}}/functions/v1/resolve-shipment-tracking-url
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+}
+
+tests {
+  test("a method other than POST is refused before the body is read", function () {
+    expect(res.getStatus()).to.equal(405);
+    expect(res.getBody()).to.deep.equal({ error: "METHOD_NOT_ALLOWED" });
+  });
+}
+
+docs {
+  The method check runs first, so a GET answers 405 instead of 400 INVALID_SHIPMENT_ID (#462).
+  The function has no OPTIONS branch: the native app calls it through supabase.functions.invoke,
+  which sends no preflight, and the local gateway answers preflights itself (#377).
+}

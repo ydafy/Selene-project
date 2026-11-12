@@ -2,6 +2,11 @@
  * Testable core of the cron-watchdog Edge Function (dependencies injected).
  * See odd/tasks/sentry-observability.md (L12).
  */
+import {
+  type CronMismatchReporter,
+  isAuthorizedCronRequest,
+  reportCronSecretMismatch,
+} from '../_shared/auth/cron-auth.ts';
 import { evaluateCronHealth, type CronHealthRow } from './health.ts';
 
 export interface CronWatchdogDeps {
@@ -11,10 +16,8 @@ export interface CronWatchdogDeps {
     data: CronHealthRow[] | null;
     error: { message: string } | null;
   }>;
-  reportMessage: (
-    message: string,
-    options: { fingerprint: string[]; tags: Record<string, string> },
-  ) => Promise<void>;
+  // Sentry message reporter (`reportMessage` from `_shared/sentry.ts`).
+  reportMessage: CronMismatchReporter;
   /** Runs the authenticated check inside the Sentry Cron Monitor. */
   runMonitored: <T>(fn: () => Promise<T>) => Promise<T>;
   log: (message: string) => void;
@@ -45,9 +48,8 @@ export function createCronWatchdogHandler(deps: CronWatchdogDeps) {
   };
 
   return async (req: Request): Promise<Response> => {
-    const expected = deps.getCronSecret();
-    const supplied = req.headers.get('x-cron-secret');
-    if (!expected || supplied !== expected) {
+    if (!isAuthorizedCronRequest(req, deps.getCronSecret())) {
+      await reportCronSecretMismatch(req, 'cron-watchdog', deps.reportMessage);
       return json({ error: 'CRON_UNAUTHORIZED' }, 401);
     }
     if (req.method !== 'POST') {

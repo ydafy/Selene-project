@@ -15,7 +15,6 @@ const CONFIG = readFileSync(
 type Mechanism =
   | 'user-token'
   | 'cron-secret'
-  | 'cron-secret-own-check'
   | 'track-shipments-bearer'
   | 'stripe-signature'
   | 'envia-signature'
@@ -27,11 +26,6 @@ const MARKERS: Record<Exclude<Mechanism, 'public'>, RegExp[]> = {
   'user-token': [/\.auth\.(getUser|getClaims)\(/],
   // The shared constant-time x-cron-secret check (_shared/auth/cron-auth.ts).
   'cron-secret': [/isAuthorizedCronRequest\(/],
-  // cron-watchdog compares x-cron-secret against CRON_SECRET itself.
-  'cron-secret-own-check': [
-    /req\.headers\.get\('x-cron-secret'\)/,
-    /CRON_SECRET/,
-  ],
   // track-shipments: `Authorization: Bearer <TRACK_SHIPMENTS_CRON_SECRET>`, compared in constant time.
   'track-shipments-bearer': [
     /hasConstantTimeSecret\(/,
@@ -61,7 +55,7 @@ const EXPECTED: Record<string, Mechanism> = {
   'create-connect-payment': 'user-token',
   'create-dispute': 'user-token',
   'create-return-intent': 'user-token',
-  'cron-watchdog': 'cron-secret-own-check',
+  'cron-watchdog': 'cron-secret',
   'delete-account': 'user-token',
   'dispatch-push': 'cron-secret',
   'envia-webhook': 'envia-signature',

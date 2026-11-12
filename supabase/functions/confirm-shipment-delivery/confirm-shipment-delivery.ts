@@ -8,15 +8,6 @@ export class ApiError extends Error {
   }
 }
 
-const uuidPattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-export interface ConfirmationRequestBody {
-  orderId: string;
-  shipmentId: string;
-  idempotencyKey: string;
-}
-
 export interface BuyerConfirmationContext {
   isMaintenance: boolean;
   actorId: string | null;
@@ -71,34 +62,6 @@ const isConfirmationRpcResult = (
     typeof result.idempotent === 'boolean'
   );
 };
-
-export function parseConfirmationRequestBody(
-  body: unknown,
-): ConfirmationRequestBody {
-  if (!body || typeof body !== 'object' || Array.isArray(body)) {
-    throw new ApiError(400, 'INVALID_REQUEST');
-  }
-
-  const request = body as Record<string, unknown>;
-  const allowedKeys = new Set(['orderId', 'shipmentId', 'idempotencyKey']);
-  if (
-    Object.keys(request).some((key) => !allowedKeys.has(key)) ||
-    typeof request.orderId !== 'string' ||
-    typeof request.shipmentId !== 'string' ||
-    typeof request.idempotencyKey !== 'string' ||
-    !uuidPattern.test(request.orderId) ||
-    !uuidPattern.test(request.shipmentId) ||
-    request.idempotencyKey !== `confirm_shipment_${request.shipmentId}`
-  ) {
-    throw new ApiError(400, 'INVALID_REQUEST');
-  }
-
-  return {
-    orderId: request.orderId,
-    shipmentId: request.shipmentId,
-    idempotencyKey: request.idempotencyKey,
-  };
-}
 
 export function resolveBuyerConfirmationPlan(
   context: BuyerConfirmationContext,
