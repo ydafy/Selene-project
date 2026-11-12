@@ -8,16 +8,16 @@ import { Database } from '@selene/types';
 
 import { createNativeSupabaseClient } from './native-client';
 
-// Obtenemos la URL y la llave anónima de las variables de entorno.
+// Obtenemos la URL y la llave publicable (sb_publishable_...) de las variables de entorno.
 // El prefijo EXPO_PUBLIC_ es la forma en que Expo nos permite acceder a estas variables en la app.
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const supabasePublishableKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
 // Esta es una comprobación de seguridad. Si olvidamos definir las llaves en nuestro archivo .env,
 // la aplicación fallará al iniciar con un error claro, en lugar de fallar de forma misteriosa más tarde.
-if (!supabaseUrl || !supabaseAnonKey) {
+if (!supabaseUrl || !supabasePublishableKey) {
   throw new Error(
-    'Supabase URL and Anon Key must be provided in your .env file.',
+    'EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY must be provided in your .env file.',
   );
 }
 
@@ -25,6 +25,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
 // Esta es la única instancia que importaremos y usaremos en toda la aplicación.
 export const supabase = createNativeSupabaseClient<Database>(
   supabaseUrl,
-  supabaseAnonKey,
+  supabasePublishableKey,
   { storage: AsyncStorage, appState: AppState, platformOS: Platform.OS },
 );

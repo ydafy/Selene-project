@@ -1,3 +1,4 @@
+// source-text: import specifiers are the contract; a URL import bypasses the exact dependency pins.
 import { describe, expect, it } from 'bun:test';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';

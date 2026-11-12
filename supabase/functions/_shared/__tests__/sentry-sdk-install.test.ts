@@ -1,3 +1,4 @@
+// source-text: the SDK version pinned in sentry.ts must be the one installed for deno check.
 import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';

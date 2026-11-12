@@ -5,11 +5,17 @@
  * cancellation refund started and no admin has acknowledged it yet (B5.8b), the data behind a
  * bucket of the "Envios" section. The cancellation itself has already completed; the case only
  * waits for a person to look at the package. The response is keyed by bucket, like
- * list-shipment-operation-reviews, so later queues add keys without changing existing ones.
- * Pure decision logic: index.ts wires the Supabase auth, the `profiles_private.role` lookup and
- * the service-only RPC into these ports. Every row is validated; one unusable row fails the whole
- * request so partial data is never returned. Raw database text only reaches the log.
+ * list-shipment-operation-reviews, so later queues add keys without changing existing ones. Pure
+ * decision logic: the factory at the end wires the Supabase auth, the `profiles_private.role`
+ * lookup and the service-only RPC into these ports. Every row is validated; one unusable row
+ * fails the whole request so partial data is never returned. Raw database text only reaches the
+ * log.
  */
+
+import type { SupabaseClient } from '../_shared/supabase-js.ts';
+
+import type { Database } from '../../../packages/types/src/database.types.ts';
+import { isActiveAdmin } from '../_shared/auth/admin-auth.ts';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
@@ -183,5 +189,41 @@ export function createListShipmentLateCarrierActivityHandler(
       });
       return fail(500, 'INTERNAL_ERROR');
     }
+  };
+}
+
+/**
+ * The real ports, all through the service-role client: Supabase Auth resolves the token, the
+ * `profiles_private` role and status decide the admin (never JWT claims), and the service-only RPC
+ * does the work.
+ */
+export function createSupabaseListShipmentLateCarrierActivityPorts(
+  getAdmin: () => SupabaseClient<Database>,
+): Omit<ListShipmentLateCarrierActivityDeps, 'log'> {
+  return {
+    getUserId: async (accessToken) => {
+      const {
+        data: { user },
+        error,
+      } = await getAdmin().auth.getUser(accessToken);
+      return error || !user ? null : user.id;
+    },
+    // Roles live in profiles_private.role, never in JWT claims.
+    isAdmin: async (userId) => {
+      const { data, error } = await getAdmin()
+        .from('profiles_private')
+        .select('role, status')
+        .eq('id', userId)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return isActiveAdmin(data);
+    },
+    listLateCarrierActivity: async () => {
+      // The RPC is not in the generated types until `bun run db:types` runs after it is applied.
+      const { data, error } = await getAdmin().rpc(
+        'fn_list_shipment_late_carrier_activity' as never,
+      );
+      return { data: data as unknown, error };
+    },
   };
 }
