@@ -61,22 +61,64 @@ const post = (headers: Record<string, string> = {}) =>
   });
 
 describe('cron-watchdog handler', () => {
-  it('returns 401 without calling the RPC when the secret header is missing', async () => {
+  it('returns 401 without calling the RPC or reporting when the secret header is missing', async () => {
     const ctx = setup({ data: [], error: null });
     const response = await ctx.handler(post());
 
     expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: 'CRON_UNAUTHORIZED' });
     expect(ctx.rpcCalls()).toBe(0);
     expect(ctx.monitorRuns()).toBe(0);
     expect(ctx.messages).toHaveLength(0);
   });
 
-  it('returns 401 without calling the RPC when the secret is wrong', async () => {
+  it('returns 401 without calling the RPC and reports the mismatch when the secret is wrong', async () => {
     const ctx = setup({ data: [], error: null });
     const response = await ctx.handler(post({ 'x-cron-secret': 'nope' }));
 
     expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: 'CRON_UNAUTHORIZED' });
     expect(ctx.rpcCalls()).toBe(0);
+    expect(ctx.monitorRuns()).toBe(0);
+    expect(ctx.messages).toEqual([
+      {
+        message: 'cron-watchdog cron secret mismatch',
+        fingerprint: ['cron-secret-mismatch', 'cron-watchdog'],
+        tags: { edge_function: 'cron-watchdog' },
+      },
+    ]);
+  });
+
+  it('refuses a secret that only shares a prefix with CRON_SECRET', async () => {
+    const ctx = setup({ data: [], error: null });
+    const response = await ctx.handler(
+      post({ 'x-cron-secret': `${SECRET}-extra` }),
+    );
+
+    expect(response.status).toBe(401);
+    expect(ctx.rpcCalls()).toBe(0);
+  });
+
+  it('still returns 401 when the mismatch report fails', async () => {
+    let rpcCalls = 0;
+    const handler = createCronWatchdogHandler({
+      getCronSecret: () => SECRET,
+      now: () => NOW,
+      fetchCronHealth: async () => {
+        rpcCalls += 1;
+        return { data: [], error: null };
+      },
+      reportMessage: async () => {
+        throw new Error('Sentry down');
+      },
+      runMonitored: async (fn) => fn(),
+      log: () => undefined,
+    });
+    const response = await handler(post({ 'x-cron-secret': 'nope' }));
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: 'CRON_UNAUTHORIZED' });
+    expect(rpcCalls).toBe(0);
   });
 
   it('returns 401 when CRON_SECRET is not configured, even with an empty header', async () => {

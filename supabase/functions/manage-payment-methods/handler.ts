@@ -57,6 +57,13 @@ const log = (
   );
 };
 
+// A missing or rejected token: the shared 401 contract of the user-token functions.
+const authRequired = () =>
+  new Response(JSON.stringify({ error: 'AUTH_REQUIRED' }), {
+    status: 401,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
 export function createManagePaymentMethodsHandler(
   deps: ManagePaymentMethodsDependencies,
 ) {
@@ -71,13 +78,13 @@ export function createManagePaymentMethodsHandler(
 
       // 1. Validar Identidad
       const authHeader = req.headers.get('Authorization');
-      if (!authHeader) throw new Error('MISSING_AUTH_HEADER');
+      if (!authHeader) return authRequired();
 
       const {
         data: { user },
         error: authError,
       } = await supabaseAdmin.auth.getUser(authHeader.replace('Bearer ', ''));
-      if (authError || !user) throw new Error('AUTH_REQUIRED');
+      if (authError || !user) return authRequired();
 
       // 2. Validar Input
       const body = await req.json().catch(() => ({}));

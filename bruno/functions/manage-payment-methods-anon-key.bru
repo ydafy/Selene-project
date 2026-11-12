@@ -1,0 +1,34 @@
+meta {
+  name: manage-payment-methods-anon-key
+  type: http
+  seq: 155
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/manage-payment-methods
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{publishableKey}}
+}
+
+body:json {
+  {
+    "action": "list_payment_methods"
+  }
+}
+
+tests {
+  test("a token that is not a user session is refused before any Stripe or table call", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody()).to.deep.equal({ error: "AUTH_REQUIRED" });
+  });
+}
+
+docs {
+  The publishable key is not a user session, so auth.getUser rejects it and the function answers
+  401 before it reads profiles_private or calls Stripe.
+}
