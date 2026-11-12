@@ -11,8 +11,8 @@ post {
 }
 
 headers {
-  apikey: {{serviceRoleKey}}
-  Authorization: Bearer {{serviceRoleKey}}
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
 }
 
 script:pre-request {
@@ -20,7 +20,7 @@ script:pre-request {
   const uuid = (n) => "00000000-0000-4000-8a02-" + (base * 64 + n).toString(16).padStart(12, "0");
   const seller = "00000000-0000-4000-8000-000000000002";
   const product = "00000000-0000-4000-8000-0000000000b4";
-  const key = bru.getEnvVar("serviceRoleKey");
+  const key = bru.getEnvVar("secretKey");
   const reserve = await bru.sendRequest({
     method: "PATCH",
     url: bru.getEnvVar("baseUrl") + "/rest/v1/products?id=eq." + product + "&status=eq.VERIFIED",

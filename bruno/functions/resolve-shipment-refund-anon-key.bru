@@ -11,8 +11,8 @@ post {
 }
 
 headers {
-  apikey: {{anonKey}}
-  Authorization: Bearer {{anonKey}}
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{publishableKey}}
 }
 
 body:json {
@@ -30,6 +30,6 @@ tests {
 }
 
 docs {
-  The anon key is not a user session (verify_jwt = false: the gateway checks nothing), so the
+  The publishable key is not a user session (verify_jwt = false: the gateway checks nothing), so the
   function's own check must refuse it before any lookup or database call.
 }
