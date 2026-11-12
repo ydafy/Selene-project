@@ -9,8 +9,8 @@
 --                        own the auto-completion fixtures, so the accounts above keep
 --                        no orders or disputes (delete-account requests rely on that)
 --
--- Configuration rows mirror project acoiclkeymgtlwcxilun on 2026-10-20, with
--- every cron "running" flag reset to false.
+-- Configuration rows mirror project acoiclkeymgtlwcxilun on 2026-10-20. Cron
+-- leases (internal.cron_leases) start empty.
 
 -- System configuration --------------------------------------------------------
 
@@ -19,7 +19,6 @@ INSERT INTO public.system_settings (
   service_fee_pct, service_fee_fixed_cents, insurance_rate, payout_fee_fixed_cents,
   currency, shipping_buffer_cents, package_presets, return_label_fee_cents,
   order_expiration_hours, min_payout_amount_cents, preparing_expiration_hours,
-  return_delivery_timeout_running, release_funds_running,
   isr_withholding_pct, iva_withholding_pct,
   novice_completed_threshold, novice_active_limit, trusted_active_limit,
   envia_carrier, envia_service, envia_print_format, envia_print_size,
@@ -38,7 +37,6 @@ INSERT INTO public.system_settings (
   }'::jsonb,
   30000,
   48, 10000, 72,
-  false, false,
   0.00, 0.00,
   3, 3, 10,
   'paquetexpress', 'ground', 'PDF', 'STOCK_4X6',

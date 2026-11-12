@@ -54,8 +54,9 @@ describe('tracking ingestion source guards', () => {
     );
     expect(shipmentHandler).toContain("reason: 'busy'");
     expect(shipmentHandler).toContain('releaseLease');
-    expect(shipments).toContain("'fn_acquire_track_shipments_lease'");
-    expect(shipments).toContain("'fn_release_track_shipments_lease'");
+    expect(shipments).toContain("'fn_acquire_cron_lease'");
+    expect(shipments).toContain("'fn_release_cron_lease'");
+    expect(shipments).toContain('`track_shipments_${lane}`');
     expect(shipmentHandler).not.toContain('x-tracking-cron-secret');
     expect(shipments).toContain('last_tracked_at');
     expect(shipments).not.toContain(".update({ status: 'shipped'");

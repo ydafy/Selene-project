@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: {{baseUrl}}/rest/v1/rpc/fn_release_checkout_recovery_lease
+  url: {{baseUrl}}/rest/v1/rpc/fn_release_cron_lease
   body: json
   auth: none
 }
@@ -17,6 +17,7 @@ headers {
 
 body:json {
   {
+    "p_job": "checkout_recovery",
     "p_lease_id": "{{checkoutRecoveryLeaseId}}"
   }
 }
