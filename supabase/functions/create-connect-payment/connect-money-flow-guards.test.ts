@@ -65,17 +65,4 @@ describe('Connect money-flow guards', () => {
 
     expect(source).toContain('quantity: z.literal(1).default(1)');
   });
-
-  it('generate-shipping-label never overwrites the payout shipping_cost basis', () => {
-    const source = readSql(
-      'supabase/functions/generate-shipping-label/index.ts',
-    );
-    const shipmentUpdateStart = source.indexOf('const shipmentUpdate =');
-    const shipmentUpdateEnd = source.indexOf('const { error: updateError }');
-    const shipmentUpdate = source.slice(shipmentUpdateStart, shipmentUpdateEnd);
-
-    expect(source).toContain('buildSanitizedEnviaResponseMetadata');
-    expect(source).toContain('Extracted Envia label cost');
-    expect(shipmentUpdate).not.toContain('shipping_cost');
-  });
 });

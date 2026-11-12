@@ -1,6 +1,9 @@
+// source-text: envia-webhook/index.ts builds its database adapters inline at module load and track-shipments/index.ts reads its deploy-time secret names there; neither has a seam a test can call
 import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+
+import { createEnviaWebhookHandler } from '../envia-webhook/handler.ts';
 
 const read = (relativePath: string) =>
   readFileSync(
@@ -8,70 +11,74 @@ const read = (relativePath: string) =>
     'utf8',
   ).replace(/\s+/g, ' ');
 
+const webhookRequest = (headers: Record<string, string>) =>
+  new Request('https://example.com/functions/v1/envia-webhook', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      type: 'tracking.simple',
+      created_at: '2026-08-28T12:30:00.000Z',
+      data: { tracking_number: 'TRACK-1', status: 'Picked Up' },
+    }),
+  });
+
 describe('tracking ingestion source guards', () => {
-  it('accepts only signed tracking.simple deliveries and gives duplicate deliveries their exact acknowledgement', () => {
+  it.each([
+    [
+      'an event other than tracking.simple',
+      { 'X-Webhook-Event': 'tracking.complete', 'X-Webhook-Id': 'delivery-1' },
+    ],
+    ['a delivery without an id', { 'X-Webhook-Event': 'tracking.simple' }],
+  ])(
+    'rejects %s with 400 before claiming or recording it',
+    async (_case, headers) => {
+      const calls: string[] = [];
+      const handler = createEnviaWebhookHandler({
+        verify: async () => true,
+        claim: async () => {
+          calls.push('claim');
+          return { kind: 'new', id: 'db-delivery-1' };
+        },
+        resolveSubject: async () => {
+          calls.push('resolve');
+          return { shipmentId: 'shipment-1', disputeId: null };
+        },
+        record: async () => {
+          calls.push('record');
+        },
+        mark: async () => {
+          calls.push('mark');
+        },
+        schedule: async (work) => await work(),
+      });
+
+      const response = await handler(webhookRequest(headers));
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({
+        error: 'INVALID_WEBHOOK_EVENT',
+      });
+      expect(calls).toEqual([]);
+    },
+  );
+
+  it('claims webhook deliveries and records their events only through fn_record_tracking_event', () => {
     const webhook = read('supabase/functions/envia-webhook/index.ts');
-    const handler = read('supabase/functions/envia-webhook/handler.ts');
-    const config = read('supabase/config.toml');
 
-    expect(config).toContain('[functions.envia-webhook] verify_jwt = false');
     expect(webhook).toContain('verifyEnviaWebhook');
-    expect(handler).toContain("eventName !== 'tracking.simple'");
-    expect(handler).toContain('webhookReceipt(true)');
-    expect(handler).toContain('webhookReceipt(false)');
     expect(webhook).toContain(".from('webhook_deliveries')");
-    expect(webhook).toContain(".rpc('fn_record_tracking_event'");
+    expect(webhook).toMatch(/\.rpc\(\s*'fn_record_tracking_event'/);
+    expect(webhook).not.toContain(".from('shipment_tracking_events')");
   });
 
-  it('keeps shipment polling lane-filtered, bounded, lease-protected, and RPC-only without direct status updates', () => {
-    const shipments = `${read('supabase/functions/track-shipments/dependencies.ts')} ${read('supabase/functions/track-shipments/index.ts')}`;
-    const shipmentHandler = read(
-      'supabase/functions/track-shipments/handler.ts',
-    );
-    const config = read('supabase/config.toml');
+  it('reads the track-shipments cron secret and polling switch from their deployed secret names', () => {
+    const entrypoint = read('supabase/functions/track-shipments/index.ts');
 
-    expect(shipmentHandler).toContain('buildPollingTrackingEvents');
-    expect(shipments).toContain('fn_record_tracking_event');
-    expect(shipments).toContain('p_polling_run_id');
-    expect(config).toContain('[functions.track-shipments] verify_jwt = false');
-    expect(shipments).toContain(".eq('status', status)");
-    expect(shipments).toContain(
-      ".order('last_tracked_at', { ascending: true, nullsFirst: true })",
+    expect(entrypoint).toContain(
+      "secret: Deno.env.get('TRACK_SHIPMENTS_CRON_SECRET')",
     );
-    expect(shipments).toContain('.limit(BATCH_SIZE)');
-    expect(shipments).toContain('const BATCH_SIZE = 50');
-    expect(shipments).toContain('const TRACKING_DEADLINE_MS = 90_000');
-    expect(shipmentHandler).toContain("req.headers.get('Authorization')");
-    expect(shipments).toContain('TRACK_SHIPMENTS_CRON_SECRET');
-    expect(shipments).toContain('TRACK_SHIPMENTS_POLLING_ENABLED');
-    expect(shipments).toContain('isInvalidPollingResponse');
-    expect(shipments).toContain('ENVIA_TRACKING_INVALID_RESPONSE');
-    expect(shipments).toContain("!Object.hasOwn(observation, 'status')");
-    expect(
-      shipments.indexOf('data.some(isInvalidPollingResponse)'),
-    ).toBeLessThan(
-      shipments.indexOf('return data.flatMap(extractEnviaPollingObservations)'),
+    expect(entrypoint).toContain(
+      "pollingEnabled: Deno.env.get('TRACK_SHIPMENTS_POLLING_ENABLED')",
     );
-    expect(shipmentHandler).toContain("reason: 'busy'");
-    expect(shipmentHandler).toContain('releaseLease');
-    expect(shipments).toContain("'fn_acquire_cron_lease'");
-    expect(shipments).toContain("'fn_release_cron_lease'");
-    expect(shipments).toContain('`track_shipments_${lane}`');
-    expect(shipmentHandler).not.toContain('x-tracking-cron-secret');
-    expect(shipments).toContain('last_tracked_at');
-    expect(shipments).not.toContain(".update({ status: 'shipped'");
-    expect(shipments).not.toContain('fn_mark_shipment_delivered');
-  });
-
-  it('keeps every tracking ingestion path on the privileged event RPC boundary', () => {
-    const ingestionSources = [
-      read('supabase/functions/envia-webhook/index.ts'),
-      read('supabase/functions/track-shipments/dependencies.ts'),
-    ];
-
-    for (const source of ingestionSources) {
-      expect(source).toMatch(/\.rpc\(\s*'fn_record_tracking_event'/);
-      expect(source).not.toContain(".from('shipment_tracking_events')");
-    }
   });
 });

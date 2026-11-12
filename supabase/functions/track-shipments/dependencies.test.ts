@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it, spyOn } from 'bun:test';
 
 import type { PollingTrackingEvent } from '../_shared/envia/envia-tracking-ingestion.ts';
 import {
+  createDeadline,
   createTrackShipmentsDependencies,
   type SupabaseAdminClient,
 } from './dependencies.ts';
@@ -441,5 +442,36 @@ describe('track-shipments persistence', () => {
         args: { p_job: 'track_shipments_shipped', p_lease_id: 'lease-1' },
       },
     ]);
+  });
+});
+
+describe('track-shipments deadline', () => {
+  it('aborts the run 90 seconds after it starts and clears the timer when disposed', () => {
+    const timers: Array<{ callback: () => void; ms: number | undefined }> = [];
+    const setTimeoutSpy = spyOn(globalThis, 'setTimeout').mockImplementation(((
+      callback: () => void,
+      ms?: number,
+    ) => {
+      timers.push({ callback, ms });
+      return 41 as unknown as ReturnType<typeof setTimeout>;
+    }) as unknown as typeof setTimeout);
+    const clearTimeoutSpy = spyOn(
+      globalThis,
+      'clearTimeout',
+    ).mockImplementation((() => undefined) as typeof clearTimeout);
+    try {
+      const deadline = createDeadline();
+
+      expect(timers.map((timer) => timer.ms)).toEqual([90_000]);
+      expect(deadline.signal.aborted).toBe(false);
+      timers[0]?.callback();
+      expect(deadline.signal.aborted).toBe(true);
+
+      deadline.dispose();
+      expect(clearTimeoutSpy).toHaveBeenCalledWith(41);
+    } finally {
+      setTimeoutSpy.mockRestore();
+      clearTimeoutSpy.mockRestore();
+    }
   });
 });

@@ -13,6 +13,7 @@ const BUYER_ID = '00000000-0000-4000-8000-0000000000b1';
 const OTHER_BUYER_ID = '00000000-0000-4000-8000-0000000000b2';
 const TOKEN = 'buyer-access-token';
 const ORDER_ID = 'order_1';
+const OTHER_ORDER_ID = 'order_2';
 
 const ENV: Record<string, string> = {
   STRIPE_SECRET_KEY: 'sk_test_rollback',
@@ -29,6 +30,7 @@ const intent = (status: string, productIds: string[] = []): FakeIntent => ({
   status,
   metadata: {
     buyer_id: BUYER_ID,
+    order_id: ORDER_ID,
     ...(productIds.length ? { product_ids: JSON.stringify(productIds) } : {}),
   },
 });
@@ -42,7 +44,7 @@ function harness(
     authError?: string;
     intents?: Record<string, FakeIntent>;
     rpcResult?: { data: unknown; error: { message: string } | null };
-    refundError?: string;
+    cancelError?: string;
   } = {},
 ) {
   const env = input.env ?? ENV;
@@ -92,6 +94,7 @@ function harness(
       },
       cancel: async (id: string) => {
         calls.push(`stripe:cancel:${id}`);
+        if (input.cancelError) throw new Error(input.cancelError);
         cancels.push(id);
         return { id, status: 'canceled' };
       },
@@ -99,7 +102,6 @@ function harness(
     refunds: {
       create: async (params: Row, options: Row) => {
         calls.push(`stripe:refund:${String(params.payment_intent)}`);
-        if (input.refundError) throw new Error(input.refundError);
         refunds.push({ params, options });
         return { id: `re_${String(params.payment_intent)}` };
       },
@@ -297,7 +299,11 @@ describe('rollback-connect-payment handler', () => {
         pi_1: intent('succeeded', ['p1']),
         pi_2: {
           status: 'requires_payment_method',
-          metadata: { buyer_id: OTHER_BUYER_ID, product_ids: '["p2"]' },
+          metadata: {
+            buyer_id: OTHER_BUYER_ID,
+            order_id: ORDER_ID,
+            product_ids: '["p2"]',
+          },
         },
       },
     });
@@ -319,7 +325,48 @@ describe('rollback-connect-payment handler', () => {
     expect(h.calls.filter(isMutation)).toEqual([]);
   });
 
-  it('refunds a succeeded intent with reverse_transfer and a stable idempotency key, without an amount from the body', async () => {
+  it.each([
+    ['a different order', { order_id: OTHER_ORDER_ID }],
+    ['no order id', {}],
+  ])(
+    'refuses every intent when one carries %s in metadata, before any cancel or release',
+    async (_label, orderMetadata) => {
+      const h = harness({
+        intents: {
+          pi_1: intent('requires_payment_method', ['p1']),
+          pi_2: {
+            status: 'requires_payment_method',
+            metadata: {
+              buyer_id: BUYER_ID,
+              ...orderMetadata,
+              product_ids: '["p2"]',
+            },
+          },
+        },
+      });
+
+      const response = await failure(
+        await h.handler(
+          request({ orderId: ORDER_ID, paymentIntentIds: ['pi_1', 'pi_2'] }),
+        ),
+      );
+
+      expect(response).toEqual({
+        status: 400,
+        body: {
+          success: false,
+          rolledBack: 0,
+          error: 'PAYMENT_INTENT_ORDER_MISMATCH',
+        },
+      });
+      expect(h.calls.filter(isMutation)).toEqual([]);
+      expect(h.cancels).toEqual([]);
+      expect(h.refunds).toEqual([]);
+      expect(h.rpcCalls).toEqual([]);
+    },
+  );
+
+  it('leaves a succeeded intent to the server path: no refund, cancel or release', async () => {
     const h = harness({ intents: { pi_1: intent('succeeded', ['p1', 'p2']) } });
 
     const response = await h.handler(
@@ -332,24 +379,36 @@ describe('rollback-connect-payment handler', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ success: true, rolledBack: 1 });
-    expect(h.refunds).toEqual([
-      {
-        params: {
-          payment_intent: 'pi_1',
-          reason: 'requested_by_customer',
-          reverse_transfer: true,
-          metadata: {
-            order_id: ORDER_ID,
-            rollback_reason: 'partial_connect_checkout_failure',
-          },
-        },
-        options: { idempotencyKey: `checkout_rollback_${ORDER_ID}_pi_1` },
-      },
+    expect(await response.json()).toEqual({ success: true, rolledBack: 0 });
+    expect(h.calls).toEqual([
+      'client',
+      `auth:${TOKEN}`,
+      'stripe',
+      'stripe:retrieve:pi_1',
     ]);
+    expect(h.refunds).toEqual([]);
     expect(h.cancels).toEqual([]);
+    expect(h.rpcCalls).toEqual([]);
+  });
+
+  it('cancels only the open intent and releases only its products when the other one succeeded', async () => {
+    const h = harness({
+      intents: {
+        pi_paid: intent('succeeded', ['p1', 'p2']),
+        pi_open: intent('requires_payment_method', ['p2', 'p3']),
+      },
+    });
+
+    const response = await h.handler(
+      request({ orderId: ORDER_ID, paymentIntentIds: ['pi_paid', 'pi_open'] }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ success: true, rolledBack: 1 });
+    expect(h.refunds).toEqual([]);
+    expect(h.cancels).toEqual(['pi_open']);
     expect(h.rpcCalls).toEqual([
-      { name: 'fn_release_products', args: { p_product_ids: ['p1', 'p2'] } },
+      { name: 'fn_release_products', args: { p_product_ids: ['p2', 'p3'] } },
     ]);
   });
 
@@ -379,6 +438,7 @@ describe('rollback-connect-payment handler', () => {
         pi_open: intent('requires_action', ['p2', 'p3']),
         pi_processing: intent('processing', ['p4']),
         pi_canceled: intent('canceled', ['p5']),
+        pi_capture: intent('requires_capture', ['p6']),
       },
     });
 
@@ -390,11 +450,12 @@ describe('rollback-connect-payment handler', () => {
           'pi_open',
           'pi_processing',
           'pi_canceled',
+          'pi_capture',
         ],
       }),
     );
 
-    expect(await response.json()).toEqual({ success: true, rolledBack: 2 });
+    expect(await response.json()).toEqual({ success: true, rolledBack: 1 });
     expect(h.calls).toEqual([
       'client',
       `auth:${TOKEN}`,
@@ -403,14 +464,14 @@ describe('rollback-connect-payment handler', () => {
       'stripe:retrieve:pi_open',
       'stripe:retrieve:pi_processing',
       'stripe:retrieve:pi_canceled',
-      'stripe:refund:pi_paid',
+      'stripe:retrieve:pi_capture',
       'stripe:cancel:pi_open',
       'rpc:fn_release_products',
     ]);
     expect(h.rpcCalls).toEqual([
       {
         name: 'fn_release_products',
-        args: { p_product_ids: ['p1', 'p2', 'p3'] },
+        args: { p_product_ids: ['p2', 'p3'] },
       },
     ]);
   });
@@ -428,7 +489,7 @@ describe('rollback-connect-payment handler', () => {
 
   it('still answers success after Stripe rolled back when the product release fails, and logs it', async () => {
     const h = harness({
-      intents: { pi_1: intent('succeeded', ['p1']) },
+      intents: { pi_1: intent('requires_payment_method', ['p1']) },
       rpcResult: { data: null, error: { message: 'release failed' } },
     });
 
@@ -452,7 +513,7 @@ describe('rollback-connect-payment handler', () => {
 
   it('logs an unsuccessful release row', async () => {
     const h = harness({
-      intents: { pi_1: intent('succeeded', ['p1']) },
+      intents: { pi_1: intent('requires_payment_method', ['p1']) },
       rpcResult: { data: [{ success: false }], error: null },
     });
 
@@ -466,10 +527,10 @@ describe('rollback-connect-payment handler', () => {
     );
   });
 
-  it('answers 400 with the Stripe message when a refund fails, and releases nothing', async () => {
+  it('answers 400 with the Stripe message when a cancel fails, and releases nothing', async () => {
     const h = harness({
-      intents: { pi_1: intent('succeeded', ['p1']) },
-      refundError: 'charge already refunded',
+      intents: { pi_1: intent('requires_payment_method', ['p1']) },
+      cancelError: 'payment_intent_unexpected_state',
     });
 
     const response = await failure(
@@ -480,7 +541,11 @@ describe('rollback-connect-payment handler', () => {
 
     expect(response).toEqual({
       status: 400,
-      body: { success: false, rolledBack: 0, error: 'charge already refunded' },
+      body: {
+        success: false,
+        rolledBack: 0,
+        error: 'payment_intent_unexpected_state',
+      },
     });
     expect(h.rpcCalls).toEqual([]);
   });

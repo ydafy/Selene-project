@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
 
 import { ReturnLabelRequestSchema } from './request-schema.ts';
 
@@ -24,12 +23,5 @@ describe('generate-return-label request schema', () => {
       path: ['disputeId'],
       message: 'ID de disputa inválido',
     });
-  });
-
-  it('is the schema the entrypoint parses with', () => {
-    const source = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
-
-    expect(source).toContain("from './request-schema.ts'");
-    expect(source).toContain('ReturnLabelRequestSchema.parse(body)');
   });
 });
