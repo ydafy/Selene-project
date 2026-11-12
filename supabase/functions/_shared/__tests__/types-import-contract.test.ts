@@ -1,3 +1,4 @@
+// source-text: the import paths Deno can resolve are the contract.
 import { describe, expect, it } from 'bun:test';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
