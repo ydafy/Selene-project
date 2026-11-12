@@ -4,6 +4,10 @@ import {
   createConfirmShipmentDeliveryHandler,
   type SupabaseAdminClient,
 } from './handler.ts';
+import {
+  deriveOrderGroupId,
+  deriveShipmentId,
+} from '../create-connect-payment/single-payment-builder.ts';
 
 type Row = Record<string, unknown>;
 
@@ -209,6 +213,15 @@ describe('confirm-shipment-delivery handler', () => {
       'an order id with a non-RFC variant',
       { ...validBody, orderId: '11111111-2222-3333-4444-555555555555' },
     ],
+    ['an order id that is not a UUID', { ...validBody, orderId: 'order-1' }],
+    [
+      'a shipment id with version 9',
+      {
+        ...validBody,
+        shipmentId: '00000000-0000-9000-8000-0000000000c1',
+        idempotencyKey: 'confirm_shipment_00000000-0000-9000-8000-0000000000c1',
+      },
+    ],
     ['an unknown key', { ...validBody, amount: 1 }],
     [
       'an idempotency key for another shipment',
@@ -222,6 +235,69 @@ describe('confirm-shipment-delivery handler', () => {
 
       await expectError(await handler(request(body)), 400, 'INVALID_REQUEST');
       expect(clientsCreated()).toBe(0);
+    },
+  );
+
+  const producerOrderId = deriveOrderGroupId('confirmation-contract-key');
+  const producerShipmentId = deriveShipmentId(
+    'confirmation-contract-key',
+    'product_gpu',
+  );
+
+  it.each([
+    [
+      'v1',
+      '00000000-0000-1000-8000-0000000000d1',
+      '00000000-0000-1000-8000-0000000000c1',
+    ],
+    ['v4', ORDER_ID, SHIPMENT_ID],
+    ['v5 (create-connect-payment)', producerOrderId, producerShipmentId],
+    [
+      'v7',
+      '019a6f3e-8c1d-7b2a-9f3e-0000000000d1',
+      '019a6f3e-8c1d-7b2a-9f3e-0000000000c1',
+    ],
+    [
+      'v8',
+      '00000000-0000-8000-8000-0000000000d1',
+      '00000000-0000-8000-8000-0000000000c1',
+    ],
+  ])(
+    'accepts %s ids and confirms through fn_confirm_shipment_delivery',
+    async (_case, orderId, shipmentId) => {
+      const { handler, rpcCalls } = harness(
+        fakeDatabase({
+          orders: [{ id: orderId, buyer_id: BUYER_ID }],
+          shipments: [
+            { id: shipmentId, order_id: orderId, status: 'delivered' },
+          ],
+        }),
+      );
+
+      const response = await handler(
+        request({
+          orderId,
+          shipmentId,
+          idempotencyKey: `confirm_shipment_${shipmentId}`,
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({
+        success: true,
+        shipmentId,
+      });
+      expect(rpcCalls).toEqual([
+        {
+          name: 'fn_confirm_shipment_delivery',
+          args: {
+            p_shipment_id: shipmentId,
+            p_source: 'buyer',
+            p_actor_id: BUYER_ID,
+            p_idempotency_key: `confirm_shipment_${shipmentId}`,
+          },
+        },
+      ]);
     },
   );
 
