@@ -2,11 +2,14 @@
  * @file supabase/functions/resolve-shipment-refund/handler.ts
  *
  * Admin "mark resolved with reference" for a shipment refund that failed or was
- * canceled (B2.3.1). Pure decision logic: index.ts wires the Supabase auth, the
+ * canceled (B2.3.1). Pure decision logic: the factory at the end wires the Supabase auth, the
  * `profiles_private.role` lookup and the service-only RPC into these ports.
  * Raw database text only reaches the log, never the response.
  */
 
+import type { SupabaseClient } from '../_shared/supabase-js.ts';
+
+import type { Database } from '../../../packages/types/src/database.types.ts';
 import { isActiveAdmin } from '../_shared/auth/admin-auth.ts';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
@@ -149,5 +152,46 @@ export function createResolveShipmentRefundHandler(
       });
       return fail(500, 'INTERNAL_ERROR');
     }
+  };
+}
+
+/**
+ * The real ports, all through the service-role client: Supabase Auth resolves the token, the
+ * `profiles_private` role and status decide the admin (never JWT claims), and the service-only RPC
+ * does the work.
+ */
+export function createSupabaseResolveShipmentRefundPorts(
+  getAdmin: () => SupabaseClient<Database>,
+): Omit<ResolveShipmentRefundDeps, 'log'> {
+  return {
+    getUserId: async (accessToken) => {
+      const {
+        data: { user },
+        error,
+      } = await getAdmin().auth.getUser(accessToken);
+      return error || !user ? null : user.id;
+    },
+    // Roles live in profiles_private.role, never in JWT claims.
+    isAdmin: async (userId) => {
+      const { data, error } = await getAdmin()
+        .from('profiles_private')
+        .select('role, status')
+        .eq('id', userId)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return isActiveAdmin(data);
+    },
+    resolveRefund: async (input) => {
+      // The RPC is not in the generated types until `bun run db:types` runs after it is applied.
+      const { data, error } = await getAdmin().rpc(
+        'fn_resolve_shipment_cancellation_refund' as never,
+        {
+          p_shipment_id: input.shipmentId,
+          p_admin_id: input.adminId,
+          p_reference: input.reference,
+        } as never,
+      );
+      return { data: data as unknown, error };
+    },
   };
 }

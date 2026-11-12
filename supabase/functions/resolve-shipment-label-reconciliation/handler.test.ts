@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 
 import {
   createResolveShipmentLabelReconciliationHandler,
+  createSupabaseResolveShipmentLabelReconciliationPorts,
   type ResolveShipmentLabelReconciliationDeps,
   type ResolveShipmentLabelReconciliationInput,
 } from './handler.ts';
@@ -383,19 +382,132 @@ describe('resolve-shipment-label-reconciliation handler', () => {
   });
 });
 
-describe('resolve-shipment-label-reconciliation wiring', () => {
-  const index = readFileSync(join(import.meta.dir, 'index.ts'), 'utf8');
+// The service-role client behind the real ports; it records every call in order.
+function fakeServiceClient(
+  options: {
+    user?: { id: string } | null;
+    authError?: { message: string };
+    profile?: { role: string; status: string | null } | null;
+    profileError?: { message: string };
+  } = {},
+) {
+  const calls: unknown[][] = [];
+  const query = {
+    select: (columns: string) => {
+      calls.push(['select', columns]);
+      return query;
+    },
+    eq: (column: string, value: string) => {
+      calls.push(['eq', column, value]);
+      return query;
+    },
+    maybeSingle: async () => {
+      calls.push(['maybeSingle']);
+      const profile =
+        options.profile === undefined
+          ? { role: 'admin', status: 'active' }
+          : options.profile;
+      return { data: profile, error: options.profileError ?? null };
+    },
+  };
+  const client = {
+    auth: {
+      getUser: async (token: string) => {
+        calls.push(['auth.getUser', token]);
+        const user = options.user === undefined ? { id: ADMIN } : options.user;
+        return { data: { user }, error: options.authError ?? null };
+      },
+    },
+    from: (table: string) => {
+      calls.push(['from', table]);
+      return query;
+    },
+    rpc: async (name: string, args?: unknown) => {
+      calls.push(['rpc', name, args]);
+      return {
+        data: resolved({
+          resolution: 'label_found',
+          status: 'preparing',
+          label_generation_state: 'generated',
+        }),
+        error: null,
+      };
+    },
+  };
+  const handler = createResolveShipmentLabelReconciliationHandler({
+    ...createSupabaseResolveShipmentLabelReconciliationPorts(
+      () => client as never,
+    ),
+    log: () => {},
+  });
+  return { calls, handler };
+}
 
-  it('wraps the handler with Sentry, checks role and status, and calls the service-only RPC', () => {
-    expect(index).toContain(
-      "serveAdminWeb(withSentry('resolve-shipment-label-reconciliation', handler))",
-    );
-    expect(index).toContain(".select('role, status')");
-    expect(index).toContain("from '../_shared/auth/admin-auth.ts'");
-    expect(index).toContain('fn_resolve_shipment_label_reconciliation');
+const ADMIN_LOOKUP = [
+  ['from', 'profiles_private'],
+  ['select', 'role, status'],
+  ['eq', 'id', ADMIN],
+  ['maybeSingle'],
+];
+
+const calledRpc = (calls: unknown[][]) =>
+  calls.some(([kind]) => kind === 'rpc');
+
+describe('resolve-shipment-label-reconciliation Supabase ports', () => {
+  it('resolves the token, checks the profiles_private role and status, then calls fn_resolve_shipment_label_reconciliation', async () => {
+    // Any HTTP call (Stripe, Envia, a refund) would go through fetch; none may happen.
+    const fetches: unknown[] = [];
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async (input: unknown) => {
+      fetches.push(input);
+      return new Response('{}');
+    }) as typeof fetch;
+    try {
+      const client = fakeServiceClient();
+      const res = await client.handler(post(labelFound));
+      expect(res.status).toBe(200);
+      expect(client.calls).toEqual([
+        ['auth.getUser', 'user-jwt'],
+        ...ADMIN_LOOKUP,
+        [
+          'rpc',
+          'fn_resolve_shipment_label_reconciliation',
+          {
+            p_shipment_id: SHIPMENT,
+            p_actor_id: ADMIN,
+            p_resolution: 'label_found',
+            p_note: NOTE,
+            p_envia_shipment_id: '98765',
+            p_tracking_number: '1234567890',
+            p_label_url: LABEL_URL,
+            p_provider_cost_cents: 15050,
+          },
+        ],
+      ]);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+    expect(fetches).toEqual([]);
   });
 
-  it('only calls the resolve RPC: no refund, Stripe or HTTP call', () => {
-    expect(index).not.toMatch(/stripe|refund|fetch\(/i);
+  it('answers 401 or 403 before the RPC for an unknown token or anyone but an active admin', async () => {
+    const cases: [Parameters<typeof fakeServiceClient>[0], number][] = [
+      [{ user: null }, 401],
+      [{ authError: { message: 'invalid JWT' } }, 401],
+      [{ profile: null }, 403],
+      [{ profile: { role: 'user', status: 'active' } }, 403],
+      [{ profile: { role: 'admin', status: 'suspended' } }, 403],
+    ];
+    for (const [options, status] of cases) {
+      const client = fakeServiceClient(options);
+      expect((await client.handler(post(labelFound))).status).toBe(status);
+      expect(calledRpc(client.calls)).toBe(false);
+    }
+  });
+
+  it('fails closed with 500 when the profiles_private lookup errors', async () => {
+    const client = fakeServiceClient({ profileError: { message: 'db down' } });
+    expect((await client.handler(post(labelFound))).status).toBe(500);
+    expect(calledRpc(client.calls)).toBe(false);
   });
 });
