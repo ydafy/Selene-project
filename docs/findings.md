@@ -33,6 +33,17 @@ An idea is a feature, tool, or process worth doing later, in the short, medium, 
 
 Do not keep backlog lists in `odd/tasks/`.
 
+## Record a repeated agent mistake
+
+An agent mistake is something the maintainer corrected that no check, test, or type catches. Record it without asking first. The record is how `selene-engineering-principles` ("Encode repeated mistakes in structure") knows that a mistake happened twice. Record only mistakes the maintainer corrected, not what you noticed and fixed yourself.
+
+1. Search the open issues for the same mistake: `gh issue list --label agent-mistake --search <topic>`.
+2. If none matches, open an issue with the `agent-mistake` label. Write what the agent did, what the maintainer expected, and the evidence: a commit, a feature's `## Log` entry, or the session date.
+3. If one matches, the mistake happened twice. Comment on that issue with the new evidence. Then propose a fix to the maintainer at the highest level that works: architecture, types, a guard or lint, a behavior test, and a rule in `AGENTS.md` or a skill only last.
+4. The PR that adds the fix says `Closes #N`.
+
+The issue is the only record of the occurrences. Do not copy it to Engram. When the fix lands, Engram records the decision like any other decision.
+
 ## Report a vulnerability
 
 A vulnerability affects auth, permissions, secrets, money integrity, or data exposure. This repository is public, so while the vulnerability is unfixed, never describe it in an issue, a PR, a commit message, or any file in the repository.
