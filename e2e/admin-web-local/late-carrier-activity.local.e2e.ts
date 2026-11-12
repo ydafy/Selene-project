@@ -14,7 +14,7 @@ import { expect, test } from '@playwright/test';
 import { ownerExec, ownerQuery, readLocalStack, sqlText } from './local-stack';
 
 const stack = readLocalStack();
-const db = createClient(stack.apiUrl, stack.serviceRoleKey, {
+const db = createClient(stack.apiUrl, stack.secretKey, {
   auth: { persistSession: false },
 });
 
