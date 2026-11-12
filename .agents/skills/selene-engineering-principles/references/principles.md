@@ -83,7 +83,7 @@ Deviations from the sketch are signal. Scrap the sketch when the same workaround
 
 When an agent repeats a mistake the maintainer already corrected, make the mistake impossible instead of adding another prompt rule. Nothing fails when an agent skips a rule in `AGENTS.md`.
 
-A mistake qualifies once it happened twice. Keep the evidence (the two commits, review comments, or corrections). Do not add guards for mistakes that have not happened.
+A mistake qualifies once it happened twice. Keep the evidence (the two commits, review comments, or corrections) in an `agent-mistake` issue (`docs/findings.md`, "Record a repeated agent mistake"). Do not add guards for mistakes that have not happened.
 
 Fix it at the highest level that works:
 
