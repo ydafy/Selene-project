@@ -3848,6 +3848,15 @@ export type Database = {
           is_actionable: boolean;
         }[];
       };
+      fn_get_connect_account_sync_state: {
+        Args: { p_stripe_account_id: string; p_stripe_event_ids: string[] };
+        Returns: {
+          current_external_account_id: string;
+          is_actionable: boolean;
+          recorded_event_count: number;
+          refresh_pending: boolean;
+        }[];
+      };
       fn_get_location_by_zip: {
         Args: { p_zip: string };
         Returns: {

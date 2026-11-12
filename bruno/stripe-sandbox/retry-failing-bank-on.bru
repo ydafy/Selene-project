@@ -41,23 +41,34 @@ script:pre-request {
       return res.data;
     };
     const key = bru.getEnvVar("secretKey");
-    const rest = async (path) => (await bru.sendRequest({
-      method: "GET",
-      url: bru.getEnvVar("baseUrl") + "/rest/v1/" + path,
-      headers: { apikey: key, Authorization: "Bearer " + key },
-    })).data;
+    // The account tables are RPC-only (service_role has no privilege on them), so the
+    // wait reads them through fn_get_connect_account_sync_state.
+    const syncState = async (eventIds) => (await bru.sendRequest({
+      method: "POST",
+      url: bru.getEnvVar("baseUrl") + "/rest/v1/rpc/fn_get_connect_account_sync_state",
+      headers: { apikey: key, Authorization: "Bearer " + key, "Content-Type": "application/json" },
+      data: { p_stripe_account_id: account, p_stripe_event_ids: eventIds },
+    })).data[0];
+    // The account events stripe-webhooks records (the ones `bun run stripe:listen` forwards).
+    const recordedTypes = ["account.updated", "account.external_account.created", "account.external_account.updated", "account.external_account.deleted"];
     // Waits until stripe-webhooks recorded every account event Stripe emitted since the
     // cursor (including the one named by `required`) and the projection is not refreshing,
+    // on two polls in a row (a webhook records its event just before it opens the refresh),
     // so the release that follows does not race a pending account refresh.
     const waitForAccountEvents = async (cursor, required, bankId) => {
+      let settledPolls = 0;
       for (let attempt = 0; attempt < 40; attempt += 1) {
         if (attempt > 0) await bru.sleep(2000);
         const events = (await stripe("GET", "events?limit=100" + (cursor ? "&ending_before=" + cursor : ""), null, account)).data
-          .filter((event) => event.type.startsWith("account."));
-        if (!events.some((event) => event.type === required && event.data.object.id === bankId.required)) continue;
-        const recorded = await rest("connect_account_events?select=stripe_event_id&stripe_event_id=in.(" + events.map((event) => event.id).join(",") + ")");
-        const row = (await rest("connect_account_actionability?stripe_account_id=eq." + account + "&select=is_actionable,refresh_pending,current_external_account_id"))[0];
-        if (recorded.length === events.length && row && row.refresh_pending === false && row.is_actionable === true && row.current_external_account_id === bankId.current) return;
+          .filter((event) => recordedTypes.includes(event.type));
+        const settled = events.some((event) => event.type === required && event.data.object.id === bankId.required) &&
+          await (async () => {
+            const state = await syncState(events.map((event) => event.id));
+            return state.recorded_event_count === events.length && state.refresh_pending === false &&
+              state.is_actionable === true && state.current_external_account_id === bankId.current;
+          })();
+        settledPolls = settled ? settledPolls + 1 : 0;
+        if (settledPolls === 2) return;
       }
       throw new Error("the account webhooks did not settle in 80 s; is `bun run stripe:listen` running?");
     };
