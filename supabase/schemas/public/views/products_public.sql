@@ -1,3 +1,6 @@
+-- Runs with its owner's rights on purpose: security_invoker would need a row
+-- policy on products that exposes the hidden columns of public listings to
+-- every signed-in user (docs/decision-log.md, 2026-11-11).
 CREATE VIEW "public"."products_public" WITH (security_barrier=true) AS  SELECT id,
     seller_id,
     name,

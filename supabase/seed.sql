@@ -147,9 +147,9 @@ SELECT
   CASE WHEN p.status = 'VERIFIED' THEN now() END,
   round(p.shipping_cost * 100)::bigint
     + s.shipping_buffer_cents
-    + ceil(round(p.price * 100)::numeric * public.normalize_publication_rate(s.insurance_rate))::bigint,
-  public.normalize_publication_rate(s.service_fee_pct),
-  public.normalize_publication_rate(s.insurance_rate)
+    + ceil(round(p.price * 100)::numeric * internal.normalize_publication_rate(s.insurance_rate))::bigint,
+  internal.normalize_publication_rate(s.service_fee_pct),
+  internal.normalize_publication_rate(s.insurance_rate)
 FROM public.system_settings s
 CROSS JOIN (VALUES
   ('00000000-0000-4000-8000-0000000000b1'::uuid, 'NVIDIA RTX 3070', 'Tarjeta usada, sin minería, con caja original.', 7500::numeric,

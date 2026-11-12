@@ -25,7 +25,7 @@ BEGIN
       NULLIF(btrim(NEW.raw_user_meta_data->>'name'), ''),
       split_part(NEW.email, '@', 1)
     );
-    v_username := public.fn_generate_profile_username(v_source);
+    v_username := internal.fn_generate_profile_username(v_source);
   END IF;
 
   -- A. Public profile. A concurrent signup can take the chosen username
@@ -48,7 +48,7 @@ BEGIN
         RAISE EXCEPTION 'Username "%" is already taken', v_typed
           USING ERRCODE = 'unique_violation';
       END IF;
-      v_username := public.fn_generate_profile_username(v_source);
+      v_username := internal.fn_generate_profile_username(v_source);
     END;
   END LOOP;
 
