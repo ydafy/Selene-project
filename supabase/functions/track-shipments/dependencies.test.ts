@@ -419,11 +419,9 @@ describe('track-shipments persistence', () => {
     ]);
   });
 
-  it('acquires and releases the lane lease through their RPCs', async () => {
+  it('acquires and releases the lane lease through the cron lease RPCs', async () => {
     const database = fakeDatabase([], {
-      fn_acquire_track_shipments_lease: [
-        { acquired: true, lease_id: 'lease-1' },
-      ],
+      fn_acquire_cron_lease: [{ acquired: true, lease_id: 'lease-1' }],
     });
     const dependencies = adapters({ database });
 
@@ -435,12 +433,12 @@ describe('track-shipments persistence', () => {
 
     expect(database.calls).toEqual([
       {
-        name: 'rpc:fn_acquire_track_shipments_lease',
-        args: { p_lane: 'shipped' },
+        name: 'rpc:fn_acquire_cron_lease',
+        args: { p_job: 'track_shipments_shipped' },
       },
       {
-        name: 'rpc:fn_release_track_shipments_lease',
-        args: { p_lane: 'shipped', p_lease_id: 'lease-1' },
+        name: 'rpc:fn_release_cron_lease',
+        args: { p_job: 'track_shipments_shipped', p_lease_id: 'lease-1' },
       },
     ]);
   });

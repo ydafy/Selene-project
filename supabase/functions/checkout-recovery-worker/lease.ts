@@ -1,9 +1,12 @@
 /**
  * Expiring run lease for checkout-recovery-worker (BL13, odd/tasks/checkout-recovery-lease.md).
  * Replaces the global `checkout_recovery_running` boolean, which stayed true forever after a
- * killed run. The lease expires in the database after 600 seconds and is granted only while
+ * killed run. It is the cron lease `checkout_recovery` (`fn_acquire_cron_lease`,
+ * internal.cron_leases): it expires in the database after 600 seconds and is granted only while
  * `checkout_recovery_enabled` is true.
  */
+
+const CRON_LEASE_JOB = 'checkout_recovery';
 
 type RpcResult = { data: unknown; error: unknown };
 
@@ -30,10 +33,9 @@ const errorMessage = (error: unknown): string | undefined => {
 export async function acquireCheckoutRecoveryLease(
   client: CheckoutRecoveryLeaseClient,
 ): Promise<CheckoutRecoveryLease> {
-  const { data, error } = await client.rpc(
-    'fn_acquire_checkout_recovery_lease',
-    {},
-  );
+  const { data, error } = await client.rpc('fn_acquire_cron_lease', {
+    p_job: CRON_LEASE_JOB,
+  });
   if (error) {
     throw new Error(
       `CHECKOUT_RECOVERY_LOCK_ACQUIRE_FAILED: ${errorMessage(error) ?? 'UNKNOWN'}`,
@@ -61,10 +63,10 @@ export async function releaseCheckoutRecoveryLease(
 ): Promise<void> {
   let reason: string | undefined;
   try {
-    const { data, error } = await client.rpc(
-      'fn_release_checkout_recovery_lease',
-      { p_lease_id: leaseId },
-    );
+    const { data, error } = await client.rpc('fn_release_cron_lease', {
+      p_job: CRON_LEASE_JOB,
+      p_lease_id: leaseId,
+    });
     if (error) reason = errorMessage(error) ?? 'RELEASE_FAILED';
     else if (data !== true) reason = 'NOT_HOLDER';
   } catch (error) {

@@ -56,14 +56,14 @@ describe('acquireAutoCancelLease', () => {
     const lease = await acquireAutoCancelLease(client, 'orders', log);
 
     expect(calls).toEqual([
-      { fn: 'fn_acquire_auto_cancel_lease', args: { p_job: 'orders' } },
+      { fn: 'fn_acquire_cron_lease', args: { p_job: 'auto_cancel_orders' } },
     ]);
     expect(lease.acquired).toBe(true);
     if (lease.acquired) expect(lease.leaseId).toBe(leaseId);
   });
 
   it('answers 200 Already running without work when another run holds the lease', async () => {
-    const { client } = fakeClient({
+    const { client, calls } = fakeClient({
       data: [{ acquired: false, lease_id: null, lease_expires_at: null }],
       error: null,
     });
@@ -71,6 +71,9 @@ describe('acquireAutoCancelLease', () => {
 
     const lease = await acquireAutoCancelLease(client, 'preparing', log);
 
+    expect(calls).toEqual([
+      { fn: 'fn_acquire_cron_lease', args: { p_job: 'auto_cancel_preparing' } },
+    ]);
     expect(lease.acquired).toBe(false);
     if (lease.acquired) return;
     expect(lease.response.status).toBe(200);
@@ -148,11 +151,24 @@ describe('releaseAutoCancelLease', () => {
 
     expect(calls).toEqual([
       {
-        fn: 'fn_release_auto_cancel_lease',
-        args: { p_job: 'orders', p_lease_id: leaseId },
+        fn: 'fn_release_cron_lease',
+        args: { p_job: 'auto_cancel_orders', p_lease_id: leaseId },
       },
     ]);
     expect(logged).toEqual([]);
+  });
+
+  it('releases the preparing job under its own cron lease name', async () => {
+    const { client, calls } = fakeClient({ data: true, error: null });
+
+    await releaseAutoCancelLease(client, 'preparing', leaseId, fakeLog().log);
+
+    expect(calls).toEqual([
+      {
+        fn: 'fn_release_cron_lease',
+        args: { p_job: 'auto_cancel_preparing', p_lease_id: leaseId },
+      },
+    ]);
   });
 
   it('does nothing when no lease was acquired', async () => {

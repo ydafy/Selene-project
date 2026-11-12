@@ -1,14 +1,14 @@
 -- Shipment tracking (#277 T12): the webhook and tracking-event dedupe keys,
 -- fn_record_tracking_event moving a shipment only forward (preparing ->
 -- shipped -> delivered) and never a cancelled one, row-level security on
--- shipment_tracking_events, the two polling-lane leases, and the admin
+-- shipment_tracking_events, and the admin
 -- acknowledgement of late carrier activity. The behavior during a started
 -- cancellation and the late-activity list order are in
 -- shipment_cancellation_tracking.test.sql; grants are in function_grants and
 -- schema_invariants. Buyer milestone notices are in shipment_milestones.test.sql.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(50);
+select plan(36);
 \ir ../fixtures/money.psql
 
 -- Users: 12001 seller, 12002 buyer, 12003 admin, 12004 unrelated user,
@@ -181,89 +181,6 @@ select is(
     || ' policies:' || (select count(*) from pg_policies where schemaname = 'public' and tablename = 'webhook_deliveries'),
   'shipment_tracking_events:true webhook_deliveries:true policies:0',
   'rls: both ledgers have RLS on, and webhook_deliveries has no policy');
-
--- 4. Polling-lane leases -----------------------------------------------------------
-update public.system_settings
-set track_shipments_preparing_lease_id = null, track_shipments_preparing_lease_expires_at = null,
-    track_shipments_shipped_lease_id = null, track_shipments_shipped_lease_expires_at = null
-where id = 1;
-
-create function pg_temp.lane(p_lane text) returns text language sql as $$
-  select case p_lane
-    when 'preparing' then coalesce(track_shipments_preparing_lease_id::text, '-') || '|' || coalesce(track_shipments_preparing_lease_expires_at::text, '-')
-    else coalesce(track_shipments_shipped_lease_id::text, '-') || '|' || coalesce(track_shipments_shipped_lease_expires_at::text, '-') end
-  from public.system_settings where id = 1
-$$;
--- Sets the preparing lease to expire p_offset after this statement's time, then
--- acquires it: acquired|the old lease is still stored.
-create function pg_temp.acquire_at(p_offset interval) returns text language plpgsql as $$
-declare
-  v_old uuid := gen_random_uuid();
-  v_row record;
-begin
-  update public.system_settings
-  set track_shipments_preparing_lease_id = v_old,
-      track_shipments_preparing_lease_expires_at = statement_timestamp() + p_offset
-  where id = 1;
-  select * into v_row from public.fn_acquire_track_shipments_lease('preparing');
-  return v_row.acquired::text || '|' || (select (track_shipments_preparing_lease_id = v_old)::text
-    from public.system_settings where id = 1);
-end $$;
-
-select pg_temp.as_user(12002);
-select is(pg_temp.err($$select public.fn_acquire_track_shipments_lease('preparing')$$)
-    || ' ' || pg_temp.err($$select public.fn_release_track_shipments_lease('preparing', gen_random_uuid())$$),
-  'UNAUTHORIZED UNAUTHORIZED', 'lease: acquire and release refuse a caller without the service_role claim');
-select pg_temp.as_service();
-select throws_ok($$select public.fn_acquire_track_shipments_lease('delivered')$$, 'P0001', 'INVALID_TRACKING_LANE',
-  'lease: acquire refuses a lane other than preparing or shipped');
-select throws_ok($$select public.fn_release_track_shipments_lease('delivered', gen_random_uuid())$$, 'P0001', 'INVALID_TRACKING_LANE',
-  'lease: release refuses a lane other than preparing or shipped');
-
-create table pg_temp.lease_p as
-select a.*, statement_timestamp() as st from public.fn_acquire_track_shipments_lease('preparing') a;
-select is((select acquired::text || '|' || (lease_expires_at - st)::text from pg_temp.lease_p), 'true|00:05:00',
-  'lease: a missing lease is acquired for exactly 300 seconds from the statement time');
-select is(pg_temp.lane('preparing'), (select lease_id::text || '|' || lease_expires_at::text from pg_temp.lease_p),
-  'lease: the acquired id and expiry are stored on the lane');
-select is((select row(a.*)::text from public.fn_acquire_track_shipments_lease('preparing') a) || '|'
-    || (pg_temp.lane('preparing') = (select lease_id::text || '|' || lease_expires_at::text from pg_temp.lease_p))::text,
-  '(f,,)|true', 'lease: a live lease is not replaced');
-create table pg_temp.lease_s as select a.* from public.fn_acquire_track_shipments_lease('shipped') a;
-select is((select acquired from pg_temp.lease_s)::text || '|'
-    || (pg_temp.lane('preparing') = (select lease_id::text || '|' || lease_expires_at::text from pg_temp.lease_p))::text
-    || '|' || (pg_temp.lane('shipped') = (select lease_id::text || '|' || lease_expires_at::text from pg_temp.lease_s))::text,
-  'true|true|true', 'lease: the shipped lane is acquired while the preparing lane is held, and neither lane changes the other');
-
-select is(public.fn_release_track_shipments_lease('preparing', gen_random_uuid())::text || '|'
-    || (pg_temp.lane('preparing') = (select lease_id::text || '|' || lease_expires_at::text from pg_temp.lease_p))::text,
-  'false|true', 'release: another owner''s id releases nothing');
-select is(public.fn_release_track_shipments_lease('shipped', (select lease_id from pg_temp.lease_p))::text || '|'
-    || (pg_temp.lane('shipped') = (select lease_id::text || '|' || lease_expires_at::text from pg_temp.lease_s))::text,
-  'false|true', 'release: the owner id of one lane does not release the other lane');
-select is(public.fn_release_track_shipments_lease('preparing', (select lease_id from pg_temp.lease_p))::text || '|'
-    || pg_temp.lane('preparing') || '|'
-    || (pg_temp.lane('shipped') = (select lease_id::text || '|' || lease_expires_at::text from pg_temp.lease_s))::text,
-  'true|-|-|true', 'release: the owner clears its lane and the other lane stays held');
-select is(public.fn_release_track_shipments_lease('preparing', (select lease_id from pg_temp.lease_p)), false,
-  'release: a second release by the same owner releases nothing');
-
-select is(pg_temp.acquire_at(interval '1 microsecond'), 'false|true',
-  'lease: a lease that expires after the statement time is still live');
-select is(pg_temp.acquire_at(interval '0'), 'true|false',
-  'lease: a lease that expires exactly at the statement time is replaced with a new id');
-
--- Live behavior: a NULL lane passes the lane check (NULL NOT IN (...) is not true) and
--- acts on the shipped lane.
-create function pg_temp.try_release(p_lane text, p_lease uuid) returns text language plpgsql as $$
-begin
-  return public.fn_release_track_shipments_lease(p_lane, p_lease)::text;
-exception when others then
-  return sqlerrm;
-end $$;
-select is(pg_temp.try_release(null, (select lease_id from pg_temp.lease_s)) || '|'
-    || pg_temp.lane('shipped'),
-  'true|-|-', 'release: a NULL lane is not refused and releases the shipped lane');
 
 -- 5. Acknowledging late carrier activity ----------------------------------------------------
 -- 12111 started operation with late activity (2 h ago), 12114 the same (1 h ago),

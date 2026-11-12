@@ -2721,13 +2721,7 @@ export type Database = {
       };
       system_settings: {
         Row: {
-          auto_cancel_orders_lease_expires_at: string | null;
-          auto_cancel_orders_lease_id: string | null;
-          auto_cancel_preparing_lease_expires_at: string | null;
-          auto_cancel_preparing_lease_id: string | null;
           checkout_recovery_enabled: boolean;
-          checkout_recovery_lease_expires_at: string | null;
-          checkout_recovery_lease_id: string | null;
           currency: string | null;
           envia_carrier: string | null;
           envia_print_format: string | null;
@@ -2748,28 +2742,16 @@ export type Database = {
           package_presets: Json | null;
           payout_fee_fixed_cents: number | null;
           preparing_expiration_hours: number | null;
-          release_funds_running: boolean | null;
-          return_delivery_timeout_running: boolean | null;
           return_label_fee_cents: number | null;
           service_fee_fixed_cents: number | null;
           service_fee_pct: number | null;
           shipping_buffer_cents: number | null;
-          track_shipments_preparing_lease_expires_at: string | null;
-          track_shipments_preparing_lease_id: string | null;
-          track_shipments_shipped_lease_expires_at: string | null;
-          track_shipments_shipped_lease_id: string | null;
           trusted_active_limit: number | null;
           updated_at: string | null;
         };
         ComputedFields: never;
         Insert: {
-          auto_cancel_orders_lease_expires_at?: string | null;
-          auto_cancel_orders_lease_id?: string | null;
-          auto_cancel_preparing_lease_expires_at?: string | null;
-          auto_cancel_preparing_lease_id?: string | null;
           checkout_recovery_enabled?: boolean;
-          checkout_recovery_lease_expires_at?: string | null;
-          checkout_recovery_lease_id?: string | null;
           currency?: string | null;
           envia_carrier?: string | null;
           envia_print_format?: string | null;
@@ -2790,27 +2772,15 @@ export type Database = {
           package_presets?: Json | null;
           payout_fee_fixed_cents?: number | null;
           preparing_expiration_hours?: number | null;
-          release_funds_running?: boolean | null;
-          return_delivery_timeout_running?: boolean | null;
           return_label_fee_cents?: number | null;
           service_fee_fixed_cents?: number | null;
           service_fee_pct?: number | null;
           shipping_buffer_cents?: number | null;
-          track_shipments_preparing_lease_expires_at?: string | null;
-          track_shipments_preparing_lease_id?: string | null;
-          track_shipments_shipped_lease_expires_at?: string | null;
-          track_shipments_shipped_lease_id?: string | null;
           trusted_active_limit?: number | null;
           updated_at?: string | null;
         };
         Update: {
-          auto_cancel_orders_lease_expires_at?: string | null;
-          auto_cancel_orders_lease_id?: string | null;
-          auto_cancel_preparing_lease_expires_at?: string | null;
-          auto_cancel_preparing_lease_id?: string | null;
           checkout_recovery_enabled?: boolean;
-          checkout_recovery_lease_expires_at?: string | null;
-          checkout_recovery_lease_id?: string | null;
           currency?: string | null;
           envia_carrier?: string | null;
           envia_print_format?: string | null;
@@ -2831,16 +2801,10 @@ export type Database = {
           package_presets?: Json | null;
           payout_fee_fixed_cents?: number | null;
           preparing_expiration_hours?: number | null;
-          release_funds_running?: boolean | null;
-          return_delivery_timeout_running?: boolean | null;
           return_label_fee_cents?: number | null;
           service_fee_fixed_cents?: number | null;
           service_fee_pct?: number | null;
           shipping_buffer_cents?: number | null;
-          track_shipments_preparing_lease_expires_at?: string | null;
-          track_shipments_preparing_lease_id?: string | null;
-          track_shipments_shipped_lease_expires_at?: string | null;
-          track_shipments_shipped_lease_id?: string | null;
           trusted_active_limit?: number | null;
           updated_at?: string | null;
         };
@@ -3421,28 +3385,12 @@ export type Database = {
         Args: { p_admin_id: string; p_note: string; p_shipment_id: string };
         Returns: Json;
       };
-      fn_acquire_auto_cancel_lease: {
-        Args: { p_job: string };
-        Returns: {
-          acquired: boolean;
-          lease_expires_at: string;
-          lease_id: string;
-        }[];
-      };
-      fn_acquire_checkout_recovery_lease: {
-        Args: Record<PropertyKey, never>;
-        Returns: {
-          acquired: boolean;
-          lease_expires_at: string;
-          lease_id: string;
-        }[];
-      };
       fn_acquire_connect_account_refresh: {
         Args: { p_source_event_id: string; p_stripe_account_id: string };
         Returns: number;
       };
-      fn_acquire_track_shipments_lease: {
-        Args: { p_lane: string };
+      fn_acquire_cron_lease: {
+        Args: { p_job: string };
         Returns: {
           acquired: boolean;
           lease_expires_at: string;
@@ -4264,12 +4212,8 @@ export type Database = {
         Args: { p_platform: string; p_token: string };
         Returns: undefined;
       };
-      fn_release_auto_cancel_lease: {
+      fn_release_cron_lease: {
         Args: { p_job: string; p_lease_id: string };
-        Returns: boolean;
-      };
-      fn_release_checkout_recovery_lease: {
-        Args: { p_lease_id: string };
         Returns: boolean;
       };
       fn_release_listings: {
@@ -4302,10 +4246,6 @@ export type Database = {
         Returns: {
           released_id: string;
         }[];
-      };
-      fn_release_track_shipments_lease: {
-        Args: { p_lane: string; p_lease_id: string };
-        Returns: boolean;
       };
       fn_reserve_products: {
         Args: { p_buyer_id: string; p_product_ids: string[] };
