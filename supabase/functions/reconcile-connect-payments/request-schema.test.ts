@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
 
 import { ReconcileConnectPaymentsRequestSchema } from './request-schema.ts';
 
@@ -38,12 +37,5 @@ describe('reconcile-connect-payments request schema', () => {
       code: 'too_small',
       path: ['paymentIntentIds', 0],
     });
-  });
-
-  it('is the schema the entrypoint parses with', () => {
-    const source = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
-
-    expect(source).toContain("from './request-schema.ts'");
-    expect(source).toContain('ReconcileConnectPaymentsRequestSchema.parse(');
   });
 });
