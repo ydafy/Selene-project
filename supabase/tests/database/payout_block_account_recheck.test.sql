@@ -194,8 +194,8 @@ select is(pg_temp.blk(30, 'tok_30', 1, 'account_refresh_pending'),
   'false|awaiting_connected_balance:2:pending_reconciliation:-:-:-:-:unclaimed',
   'actionable account: the run is requeued, not parked, with its error, next attempt and claim cleared');
 select is(pg_temp.blk(31, 'tok_31', 1, 'account_refresh_pending'),
-  'false|awaiting_connected_balance:2:pending_reconciliation:-:-:-:-:unclaimed',
-  'actionable account: a claimed run in payout_create_in_progress is requeued');
+  'false|payout_create_in_progress:1:pending_reconciliation:-:-:-:-:claimed',
+  'actionable account: a run inside its payout-create fence keeps its stage and claim, never requeued to a create stage');
 select is(pg_temp.blk(40, 'tok_40', 1, 'payouts_disabled'),
   'false|awaiting_connected_balance:2:pending_reconciliation:-:-:-:-:unclaimed',
   'account without an actionability row: the run is requeued');
@@ -213,7 +213,7 @@ reset role;
 update public.connect_payout_runs set payout_claim_token = null, payout_claim_expires_at = null
 where id in (pg_temp.mu(61), pg_temp.mu(62), pg_temp.mu(63), pg_temp.mu(64));
 set local role service_role;
-select is(pg_temp.claim_all(), array[30, 31, 40, 61, 62],
+select is(pg_temp.claim_all(), array[30, 40, 61, 62],
   'the worker claims the requeued runs and never a parked one');
 
 select * from finish();

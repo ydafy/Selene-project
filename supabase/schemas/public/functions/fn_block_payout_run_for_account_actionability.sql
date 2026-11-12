@@ -87,7 +87,14 @@ BEGIN
   -- The account became actionable after the worker's read (a refresh committed
   -- in between): requeue as fn_park_payout_run_from_fence does, so the worker
   -- claims the run again instead of leaving it parked until the next account
-  -- event. Shipment mappings stay pending_reconciliation.
+  -- event. Shipment mappings stay pending_reconciliation. A run inside its
+  -- payout-create fence is never moved back to a create stage (that would undo
+  -- the write-ahead fence against a second payout): it keeps its stage and
+  -- claim, and the caller releases the claim.
+  IF v_stage = 'payout_create_in_progress' THEN
+    RETURN FALSE;
+  END IF;
+
   UPDATE public.connect_payout_runs
   SET release_stage = 'awaiting_connected_balance',
       release_stage_version = v_version + 1,
