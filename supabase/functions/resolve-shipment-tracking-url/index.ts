@@ -6,7 +6,6 @@ import {
   createResolveShipmentTrackingUrlHandler,
   type TrackingUrlSubject,
 } from './handler.ts';
-import { ShipmentTrackingUrlRequestSchema } from './request-schema.ts';
 import { withSentry } from '../_shared/sentry.ts';
 
 const supabaseAdmin = createClient(
@@ -56,21 +55,4 @@ const handler = createResolveShipmentTrackingUrlHandler({
     ),
 });
 
-Deno.serve(
-  withSentry('resolve-shipment-tracking-url', async (request) => {
-    if (request.method === 'OPTIONS') return new Response('ok');
-
-    const body = await request
-      .clone()
-      .json()
-      .catch(() => null);
-    if (!ShipmentTrackingUrlRequestSchema.safeParse(body).success) {
-      return new Response(JSON.stringify({ error: 'INVALID_SHIPMENT_ID' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-
-    return handler(request);
-  }),
-);
+Deno.serve(withSentry('resolve-shipment-tracking-url', handler));
