@@ -23,9 +23,10 @@ const SKIP_DIRS = new Set(['node_modules', '.git']);
 
 const TABLES = RPC_ONLY_TABLES.join('|');
 // Matched over the whole file (`\s*` spans newlines), so a `.from(` split across
-// lines is caught; the reported line is where the match starts.
+// lines is caught; the reported line is where the match starts. A quoted table
+// name followed by `?` is a REST path a script helper prefixes with `rest/v1/`.
 const ACCESS = new RegExp(
-  `rest/v1/(?:${TABLES})\\b|\\.from\\(\\s*['"\`](?:public\\.)?(?:${TABLES})['"\`]`,
+  `rest/v1/(?:${TABLES})\\b|\\.from\\(\\s*['"\`](?:public\\.)?(?:${TABLES})['"\`]|['"\`](?:${TABLES})\\?`,
   'g',
 );
 
@@ -69,6 +70,21 @@ describe('service_role table access guard (probes)', () => {
     expect(findTableAccess(files)).toEqual(
       RPC_ONLY_TABLES.map((table) => `e2e/${table}.ts:1`),
     );
+  });
+
+  it('reports a REST path a script helper builds from a quoted table name', () => {
+    expect(
+      findTableAccess([
+        {
+          path: 'bruno/h.bru',
+          text: [
+            'const rest = async (path) => get(baseUrl + "/rest/v1/" + path);',
+            'await rest("connect_account_events?select=stripe_event_id");',
+            "await rest('connect_account_actionability?stripe_account_id=eq.' + id);",
+          ].join('\n'),
+        },
+      ]),
+    ).toEqual(['bruno/h.bru:2', 'bruno/h.bru:3']);
   });
 
   it('reports a .from() call split across lines', () => {
