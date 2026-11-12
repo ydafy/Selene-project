@@ -38,7 +38,7 @@ ALTER TABLE "public"."shipment_tracking_events"
   ADD COLUMN "polling_run_id" uuid;
 
 ALTER TABLE "public"."shipment_tracking_events"
-  ADD CONSTRAINT "shipment_tracking_events_webhook_delivery_id_fkey" FOREIGN KEY (webhook_delivery_id) REFERENCES public.webhook_deliveries(id);
+  ADD CONSTRAINT "shipment_tracking_events_webhook_delivery_id_fkey" FOREIGN KEY (webhook_delivery_id) REFERENCES internal.webhook_deliveries(id);
 
 CREATE UNIQUE INDEX shipment_tracking_events_deduplication_key ON public.shipment_tracking_events USING btree (shipment_id, dispute_id, raw_status, event_at, location) NULLS
   NOT DISTINCT;

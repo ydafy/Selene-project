@@ -49,7 +49,7 @@ BEGIN
     v_stage_version
   FROM public.connect_payout_runs cpr
   LEFT JOIN public.profiles_private pp ON pp.id = cpr.seller_id
-  LEFT JOIN public.connect_account_actionability caa
+  LEFT JOIN internal.connect_account_actionability caa
     ON caa.stripe_account_id = pp.stripe_account_id
   WHERE cpr.status = 'pending_reconciliation'
     AND cpr.stripe_payout_id IS NULL

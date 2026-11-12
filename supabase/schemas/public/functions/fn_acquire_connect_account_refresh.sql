@@ -18,7 +18,7 @@ BEGIN
     RAISE EXCEPTION 'INVALID_SOURCE_EVENT_ID';
   END IF;
   SELECT cae.stripe_created INTO v_trigger_created
-  FROM public.connect_account_events cae
+  FROM internal.connect_account_events cae
   WHERE cae.stripe_event_id = p_source_event_id
     AND cae.stripe_account_id = p_stripe_account_id;
   IF v_trigger_created IS NULL THEN
@@ -27,7 +27,7 @@ BEGIN
 
   -- The PK upsert serializes even two first-ever acquisitions. Overflow raises
   -- rather than wrapping. No run lock and no network operation in acquisition.
-  INSERT INTO public.connect_account_actionability (
+  INSERT INTO internal.connect_account_actionability (
     stripe_account_id, is_actionable, blocked_reason, stripe_created,
     source_event_id, refresh_generation, refresh_pending
   ) VALUES (
@@ -35,7 +35,7 @@ BEGIN
     p_source_event_id, 1, TRUE
   )
   ON CONFLICT (stripe_account_id) DO UPDATE
-  SET refresh_generation = public.connect_account_actionability.refresh_generation + 1,
+  SET refresh_generation = internal.connect_account_actionability.refresh_generation + 1,
       refresh_pending = TRUE,
       is_actionable = FALSE,
       blocked_reason = 'account_refresh_pending',

@@ -88,7 +88,7 @@ select is(
   (select email from auth.users where id = 'd0000000-0000-4000-8000-000000000001'),
   'blocked@test.local', 'blocked: the auth email is kept');
 select is(
-  (select count(*) from public.account_closures where user_id = 'd0000000-0000-4000-8000-000000000001'),
+  (select count(*) from internal.account_closures where user_id = 'd0000000-0000-4000-8000-000000000001'),
   0::bigint, 'blocked: no closure is recorded');
 
 -- Closes and anonymizes otherwise ----------------------------------------------
@@ -122,7 +122,7 @@ select is(
   (select status::text || ':' || (deleted_at is not null)::text from public.products where id = 'd0000000-0000-4000-8000-0000000000a2'),
   'HIDDEN:true', 'closed: the listing is hidden and soft-deleted');
 select is(
-  (select count(*) from public.account_closures where user_id = 'd0000000-0000-4000-8000-000000000002'),
+  (select count(*) from internal.account_closures where user_id = 'd0000000-0000-4000-8000-000000000002'),
   1::bigint, 'closed: the closure is recorded');
 set local role service_role;
 select is(
@@ -231,7 +231,7 @@ select is(
 select is(
   (select concat_ws(',', stripe_customer_id, stripe_customer_cleanup, coalesce(stripe_account_id, 'null'),
      stripe_account_cleanup, storage_cleanup, attempts::text)
-   from public.account_closures where user_id = pg_temp.mu(41)),
+   from internal.account_closures where user_id = pg_temp.mu(41)),
   'cus_t4_41,pending,null,not_needed,pending,0',
   'purge: the closure row stores the same ids and cleanup states');
 select is(

@@ -37,7 +37,7 @@ BEGIN
     RAISE EXCEPTION 'UNSUPPORTED_OBSERVED_PAYOUT_STATUS';
   END IF;
 
-  INSERT INTO public.connect_payout_events (
+  INSERT INTO internal.connect_payout_events (
     stripe_event_id,
     event_type,
     stripe_payout_id,

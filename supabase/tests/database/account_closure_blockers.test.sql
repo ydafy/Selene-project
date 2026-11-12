@@ -53,7 +53,7 @@ end $$;
 create function pg_temp.snapshot(p_user uuid) returns text language sql as $$
   select (select deleted_at is null from public.profiles where id = p_user)::text
     || '|' || (select username from public.profiles where id = p_user)
-    || '|' || (select count(*) from public.account_closures where user_id = p_user)::text
+    || '|' || (select count(*) from internal.account_closures where user_id = p_user)::text
     || '|' || (select email from public.profiles_private where id = p_user)
     || '|' || (select email from auth.users where id = p_user)
     || '|' || (select count(*) from public.products where seller_id = p_user and deleted_at is null)::text

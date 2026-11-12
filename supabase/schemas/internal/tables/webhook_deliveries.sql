@@ -1,4 +1,4 @@
-CREATE TABLE "public"."webhook_deliveries" (
+CREATE TABLE "internal"."webhook_deliveries" (
   "id"             uuid                     NOT NULL DEFAULT gen_random_uuid(),
   "provider"       text                     NOT NULL,
   "delivery_id"    text                     NOT NULL,
@@ -13,13 +13,12 @@ CREATE TABLE "public"."webhook_deliveries" (
   CONSTRAINT "webhook_deliveries_state_check" CHECK ((state = ANY (ARRAY['received'::text, 'processed'::text, 'failed'::text])))
 );
 
-ALTER TABLE "public"."webhook_deliveries"
+ALTER TABLE "internal"."webhook_deliveries"
   ENABLE ROW LEVEL SECURITY;
 
-GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."webhook_deliveries" TO "service_role";
+COMMENT ON TABLE "internal"."webhook_deliveries" IS 'Inbox of provider webhook deliveries, one row per provider and delivery id. Only fn_claim_envia_webhook_delivery and fn_mark_webhook_delivery (SECURITY DEFINER) reach it.';
 
-REVOKE ALL ON TABLE "public"."webhook_deliveries" FROM "postgres";
-
-GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."webhook_deliveries" TO "postgres";
-
-REVOKE ALL ON TABLE "public"."webhook_deliveries" FROM "anon", "authenticated";
+-- Server-only machinery (odd/tasks/internal-schema.md S3): only SECURITY DEFINER
+-- functions owned by postgres read or write it, so no client role and not
+-- service_role hold a privilege on it.
+REVOKE ALL ON TABLE "internal"."webhook_deliveries" FROM PUBLIC, "anon", "authenticated", "service_role";

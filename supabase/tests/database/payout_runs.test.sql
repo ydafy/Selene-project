@@ -56,7 +56,7 @@ select results_eq(
 );
 select results_eq(
   $$select attname::text collate "default", format_type(atttypid, atttypmod), attnotnull from pg_attribute
-    where attrelid = 'public.connect_payout_events'::regclass and attnum > 0 and not attisdropped
+    where attrelid = 'internal.connect_payout_events'::regclass and attnum > 0 and not attisdropped
       and attname <> 'id'
     order by attnum$$,
   $$values ('stripe_event_id', 'text', true), ('event_type', 'text', true),
@@ -69,20 +69,20 @@ select results_eq(
 select has_index('public', 'connect_payout_runs', 'idx_connect_payout_runs_seller_id', array['seller_id'], 'runs are indexed by seller');
 select has_index('public', 'connect_payout_run_shipments', 'idx_connect_payout_run_shipments_run_id', array['run_id'], 'mappings are indexed by run');
 select has_index('public', 'connect_payout_run_shipments', 'idx_connect_payout_run_shipments_shipment_id', array['shipment_id'], 'mappings are indexed by shipment');
-select has_index('public', 'connect_payout_events', 'idx_connect_payout_events_stripe_payout_id', array['stripe_payout_id', 'stripe_created'], 'events are indexed by payout in occurrence order');
-select has_index('public', 'connect_payout_events', 'idx_connect_payout_events_run_id', array['connect_payout_run_id'], 'events are indexed by run');
-select has_index('public', 'connect_payout_events', 'idx_connect_payout_events_event_type', array['event_type'], 'events are indexed by type');
+select has_index('internal', 'connect_payout_events', 'idx_connect_payout_events_stripe_payout_id', array['stripe_payout_id', 'stripe_created'], 'events are indexed by payout in occurrence order');
+select has_index('internal', 'connect_payout_events', 'idx_connect_payout_events_run_id', array['connect_payout_run_id'], 'events are indexed by run');
+select has_index('internal', 'connect_payout_events', 'idx_connect_payout_events_event_type', array['event_type'], 'events are indexed by type');
 select results_eq(
   $$select relname::text collate "default" from pg_class
     where oid in ('public.connect_payout_runs'::regclass, 'public.connect_payout_run_shipments'::regclass,
-      'public.connect_payout_events'::regclass) and relrowsecurity order by relname$$,
+      'internal.connect_payout_events'::regclass) and relrowsecurity order by relname$$,
   $$values ('connect_payout_events'), ('connect_payout_run_shipments'), ('connect_payout_runs')$$,
   'RLS is on for the three payout ledger tables'
 );
 select ok(
-  obj_description('public.connect_payout_events'::regclass, 'pg_class') is not null
-    and col_description('public.connect_payout_events'::regclass, 2) is not null
-    and col_description('public.connect_payout_events'::regclass, 11) is not null,
+  obj_description('internal.connect_payout_events'::regclass, 'pg_class') is not null
+    and col_description('internal.connect_payout_events'::regclass, 2) is not null
+    and col_description('internal.connect_payout_events'::regclass, 11) is not null,
   'connect_payout_events documents the table, stripe_event_id and failure_balance_transaction'
 );
 
@@ -142,7 +142,7 @@ select is(pg_temp.append_event('evt_test_1'), true, 'the first delivery of a Str
 select is(pg_temp.append_event('evt_test_1'), false, 'a repeated delivery of the same Stripe event records nothing');
 select results_eq(
   $$select event_type, stripe_payout_id, connect_payout_run_id, observed_payout_status, received_at = now()
-    from public.connect_payout_events where stripe_event_id = 'evt_test_1'$$,
+    from internal.connect_payout_events where stripe_event_id = 'evt_test_1'$$,
   $$values ('payout.paid', 'po_test_301', pg_temp.mu(301), 'paid', true)$$,
   'the Stripe event is stored once, with the receipt time of the first delivery'
 );
@@ -153,7 +153,7 @@ select throws_ok($$select pg_temp.append_event('evt_test_2', 'payout.paid', 'rev
 
 create function pg_temp.event_row(p_event text, p_type text, p_status text, p_run integer default 301)
 returns void language sql as $$
-  insert into public.connect_payout_events (stripe_event_id, event_type, stripe_payout_id, connect_payout_run_id, stripe_created, observed_payout_status)
+  insert into internal.connect_payout_events (stripe_event_id, event_type, stripe_payout_id, connect_payout_run_id, stripe_created, observed_payout_status)
   values (p_event, p_type, 'po_test_301', pg_temp.mu(p_run), now(), p_status)
 $$;
 select throws_ok($$select pg_temp.event_row('evt_test_3', 'payout.reversed', 'paid')$$,
@@ -164,9 +164,9 @@ select throws_ok($$select pg_temp.event_row('evt_test_1', 'payout.paid', 'paid')
   '23505', null, 'the table keeps one row per Stripe event');
 select throws_ok($$select pg_temp.event_row('evt_test_3', 'payout.paid', 'paid', 999)$$,
   '23503', null, 'an event points to an existing run or none');
-select throws_ok($$update public.connect_payout_events set observed_payout_status = 'failed' where stripe_event_id = 'evt_test_1'$$,
+select throws_ok($$update internal.connect_payout_events set observed_payout_status = 'failed' where stripe_event_id = 'evt_test_1'$$,
   'P0001', 'connect_payout_events is append-only and immutable', 'an event cannot be updated');
-select throws_ok($$delete from public.connect_payout_events where stripe_event_id = 'evt_test_1'$$,
+select throws_ok($$delete from internal.connect_payout_events where stripe_event_id = 'evt_test_1'$$,
   'P0001', 'connect_payout_events is append-only and immutable', 'an event cannot be deleted');
 
 -- Grants. Clients reach none of the payout tables or RPCs; service_role
@@ -175,7 +175,7 @@ select set_config('request.jwt.claims', '{"role": "anon"}', true);
 set local role anon;
 select throws_ok('select 1 from public.connect_payout_runs', '42501', null, 'anon cannot read payout runs');
 select throws_ok('select 1 from public.connect_payout_run_shipments', '42501', null, 'anon cannot read payout run shipments');
-select throws_ok('select 1 from public.connect_payout_events', '42501', null, 'anon cannot read payout events');
+select throws_ok('select 1 from internal.connect_payout_events', '42501', null, 'anon cannot read payout events');
 select throws_ok($$select public.fn_append_connect_payout_event('evt_test_4', 'payout.paid', 'po', null, now(), 'paid')$$,
   '42501', null, 'anon cannot append payout events');
 reset role;
@@ -183,13 +183,13 @@ select set_config('request.jwt.claims', '{"sub": "' || pg_temp.mu(11) || '", "ro
 set local role authenticated;
 select throws_ok('select 1 from public.connect_payout_runs', '42501', null, 'a seller cannot read payout runs');
 select throws_ok('select 1 from public.connect_payout_run_shipments', '42501', null, 'a seller cannot read payout run shipments');
-select throws_ok('select 1 from public.connect_payout_events', '42501', null, 'a seller cannot read payout events');
+select throws_ok('select 1 from internal.connect_payout_events', '42501', null, 'a seller cannot read payout events');
 select throws_ok($$select public.fn_append_connect_payout_event('evt_test_4', 'payout.paid', 'po', null, now(), 'paid')$$,
   '42501', null, 'a seller cannot append payout events');
 reset role;
 select is(
   (select count(*)::integer from (values ('anon'), ('authenticated')) r(role)
-    cross join (values ('public.connect_payout_runs'), ('public.connect_payout_run_shipments'), ('public.connect_payout_events')) t(tbl)
+    cross join (values ('public.connect_payout_runs'), ('public.connect_payout_run_shipments'), ('internal.connect_payout_events')) t(tbl)
     cross join (values ('select'), ('insert'), ('update'), ('delete'), ('truncate'), ('references'), ('trigger')) p(priv)
     where has_table_privilege(r.role, t.tbl, p.priv)),
   0, 'anon and authenticated hold no privilege on the payout ledger tables'
@@ -204,7 +204,7 @@ select is(public.fn_append_connect_payout_event('evt_test_4', 'payout.paid', 'po
   true, 'service_role appends payout events through the RPC');
 -- Like the remote project, service_role has no table privilege on the events:
 -- it writes them only through the RPC (#367, fixed by the privilege parity of #365).
-select throws_ok($$update public.connect_payout_events set failure_code = 'x' where stripe_event_id = 'evt_test_4'$$,
+select throws_ok($$update internal.connect_payout_events set failure_code = 'x' where stripe_event_id = 'evt_test_4'$$,
   '42501', null, 'service_role has no table privilege on payout events');
 reset role;
 select is_definer('public', 'fn_append_connect_payout_event',

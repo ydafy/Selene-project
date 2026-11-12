@@ -68,13 +68,13 @@ create function pg_temp.events(p_ship integer) returns bigint language sql as $$
 $$;
 
 -- 1. Ledger keys ------------------------------------------------------------------
-insert into public.webhook_deliveries (provider, delivery_id, event_name, payload_sha256)
+insert into internal.webhook_deliveries (provider, delivery_id, event_name, payload_sha256)
 values ('envia', 'dlv-12001', 'tracking', 'sha');
 select throws_ok(
-  $$insert into public.webhook_deliveries (provider, delivery_id, event_name, payload_sha256)
+  $$insert into internal.webhook_deliveries (provider, delivery_id, event_name, payload_sha256)
     values ('envia', 'dlv-12001', 'tracking', 'sha2')$$,
   '23505', null, 'webhook_deliveries: a second delivery with the same provider and delivery id is refused');
-select is(pg_temp.err($$insert into public.webhook_deliveries (provider, delivery_id, event_name, payload_sha256)
+select is(pg_temp.err($$insert into internal.webhook_deliveries (provider, delivery_id, event_name, payload_sha256)
     values ('stripe', 'dlv-12001', 'tracking', 'sha')$$), 'ok',
   'webhook_deliveries: the same delivery id under another provider is accepted');
 
@@ -177,8 +177,8 @@ select results_eq(
   'rls: shipment_tracking_events has one policy, SELECT for authenticated, and no client write policy');
 select is(
   (select string_agg(c.relname || ':' || c.relrowsecurity, ' ' order by c.relname) from pg_class c
-   where c.oid in ('public.shipment_tracking_events'::regclass, 'public.webhook_deliveries'::regclass))
-    || ' policies:' || (select count(*) from pg_policies where schemaname = 'public' and tablename = 'webhook_deliveries'),
+   where c.oid in ('public.shipment_tracking_events'::regclass, 'internal.webhook_deliveries'::regclass))
+    || ' policies:' || (select count(*) from pg_policies where schemaname = 'internal' and tablename = 'webhook_deliveries'),
   'shipment_tracking_events:true webhook_deliveries:true policies:0',
   'rls: both ledgers have RLS on, and webhook_deliveries has no policy');
 

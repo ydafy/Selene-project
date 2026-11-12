@@ -10,7 +10,7 @@ DECLARE
   v_status public.account_status;
   v_customer_id text;
   v_account_id text;
-  v_closure public.account_closures%ROWTYPE;
+  v_closure internal.account_closures%ROWTYPE;
   v_closed_at timestamptz := now();
   v_username text;
   v_attempt integer := 0;
@@ -31,7 +31,7 @@ BEGIN
   END IF;
 
   -- Idempotent retry: report the stored cleanup state and change nothing.
-  SELECT * INTO v_closure FROM public.account_closures WHERE user_id = p_user_id;
+  SELECT * INTO v_closure FROM internal.account_closures WHERE user_id = p_user_id;
   IF FOUND THEN
     RETURN jsonb_build_object(
       'status', 'already_closed',
@@ -254,7 +254,7 @@ BEGIN
   DELETE FROM auth.webauthn_credentials WHERE user_id = p_user_id;
 
   -- F. Record the closure and hand the Stripe ids to the caller for cleanup.
-  INSERT INTO public.account_closures (
+  INSERT INTO internal.account_closures (
     user_id, closed_at, stripe_customer_id, stripe_account_id,
     stripe_customer_cleanup, stripe_account_cleanup, storage_cleanup
   ) VALUES (
