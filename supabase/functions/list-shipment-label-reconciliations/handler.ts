@@ -2,14 +2,20 @@
  * @file supabase/functions/list-shipment-label-reconciliations/handler.ts
  *
  * Admin list of paid shipments whose label outcome is unproven (B6.1): the seller asked Envia for a
- * label and the answer was lost (orphan_pending), or a claim expired without an outcome. It is the data
- * behind the third bucket of the "Envios" section; the admin checks the Envia panel and then resolves the
- * case with resolve-shipment-label-reconciliation. The response is keyed by bucket, like
- * list-shipment-late-carrier-activity, so later queues add keys without changing existing ones.
- * Pure decision logic: index.ts wires the Supabase auth, the `profiles_private.role` lookup and the
- * service-only RPC into these ports. Every row is validated; one unusable row fails the whole request so
- * partial data is never returned. Raw database text only reaches the log.
+ * label and the answer was lost (orphan_pending), or a claim expired without an outcome. It is the
+ * data behind the third bucket of the "Envios" section; the admin checks the Envia panel and then
+ * resolves the case with resolve-shipment-label-reconciliation. The response is keyed by bucket,
+ * like list-shipment-late-carrier-activity, so later queues add keys without changing existing
+ * ones. Pure decision logic: the factory at the end wires the Supabase auth, the
+ * `profiles_private.role` lookup and the service-only RPC into these ports. Every row is validated;
+ * one unusable row fails the whole request so partial data is never returned. Raw database text
+ * only reaches the log.
  */
+
+import type { SupabaseClient } from '../_shared/supabase-js.ts';
+
+import type { Database } from '../../../packages/types/src/database.types.ts';
+import { isActiveAdmin } from '../_shared/auth/admin-auth.ts';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
@@ -154,5 +160,41 @@ export function createListShipmentLabelReconciliationsHandler(
       });
       return fail(500, 'INTERNAL_ERROR');
     }
+  };
+}
+
+/**
+ * The real ports, all through the service-role client: Supabase Auth resolves the token, the
+ * `profiles_private` role and status decide the admin (never JWT claims), and the service-only RPC
+ * does the work.
+ */
+export function createSupabaseListShipmentLabelReconciliationsPorts(
+  getAdmin: () => SupabaseClient<Database>,
+): Omit<ListShipmentLabelReconciliationsDeps, 'log'> {
+  return {
+    getUserId: async (accessToken) => {
+      const {
+        data: { user },
+        error,
+      } = await getAdmin().auth.getUser(accessToken);
+      return error || !user ? null : user.id;
+    },
+    // Roles live in profiles_private.role, never in JWT claims.
+    isAdmin: async (userId) => {
+      const { data, error } = await getAdmin()
+        .from('profiles_private')
+        .select('role, status')
+        .eq('id', userId)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return isActiveAdmin(data);
+    },
+    listLabelReconciliations: async () => {
+      // The RPC is not in the generated types until `bun run db:types` runs after it is applied.
+      const { data, error } = await getAdmin().rpc(
+        'fn_list_shipment_label_reconciliations' as never,
+      );
+      return { data: data as unknown, error };
+    },
   };
 }

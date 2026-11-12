@@ -4,11 +4,16 @@
  * Admin list of shipment operations waiting for a human decision (B4.4c), the data behind the
  * "Envios" section. The response is keyed by bucket so later shipping queues add keys without
  * changing existing ones; the first bucket is `reviews` (preparing-timeout cancellations whose
- * carrier outcome needs an admin). Pure decision logic: index.ts wires the Supabase auth, the
- * `profiles_private.role` lookup and the service-only RPC into these ports. Every row is
- * validated; one unusable row fails the whole request so partial data is never returned.
- * Raw database text only reaches the log.
+ * carrier outcome needs an admin). Pure decision logic: the factory at the end wires the
+ * Supabase auth, the `profiles_private.role` lookup and the service-only RPC into these ports.
+ * Every row is validated; one unusable row fails the whole request so partial data is never
+ * returned. Raw database text only reaches the log.
  */
+
+import type { SupabaseClient } from '../_shared/supabase-js.ts';
+
+import type { Database } from '../../../packages/types/src/database.types.ts';
+import { isActiveAdmin } from '../_shared/auth/admin-auth.ts';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
@@ -154,5 +159,41 @@ export function createListShipmentOperationReviewsHandler(
       });
       return fail(500, 'INTERNAL_ERROR');
     }
+  };
+}
+
+/**
+ * The real ports, all through the service-role client: Supabase Auth resolves the token, the
+ * `profiles_private` role and status decide the admin (never JWT claims), and the service-only RPC
+ * does the work.
+ */
+export function createSupabaseListShipmentOperationReviewsPorts(
+  getAdmin: () => SupabaseClient<Database>,
+): Omit<ListShipmentOperationReviewsDeps, 'log'> {
+  return {
+    getUserId: async (accessToken) => {
+      const {
+        data: { user },
+        error,
+      } = await getAdmin().auth.getUser(accessToken);
+      return error || !user ? null : user.id;
+    },
+    // Roles live in profiles_private.role, never in JWT claims.
+    isAdmin: async (userId) => {
+      const { data, error } = await getAdmin()
+        .from('profiles_private')
+        .select('role, status')
+        .eq('id', userId)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return isActiveAdmin(data);
+    },
+    listReviews: async () => {
+      // The RPC is not in the generated types until `bun run db:types` runs after it is applied.
+      const { data, error } = await getAdmin().rpc(
+        'fn_list_shipment_cancellation_reviews' as never,
+      );
+      return { data: data as unknown, error };
+    },
   };
 }
