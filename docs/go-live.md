@@ -22,7 +22,7 @@ Open launch dependencies:
 
 ### Moving an existing project to the new API keys
 
-The development project still has its legacy `anon` and `service_role` keys and the legacy JWT secret. Supabase retires them at the end of 2026. Move it in this order; steps 1 to 4 are done there:
+Supabase retires the legacy `anon` and `service_role` keys and the legacy JWT secret at the end of 2026. Move a project in this order; the development project finished every step on 2026-11-12 (#337):
 
 1. Create a publishable key and a secret key (Settings > API Keys). Done.
 2. Edge Functions on `SUPABASE_SECRET_KEYS`. Done (#398).
