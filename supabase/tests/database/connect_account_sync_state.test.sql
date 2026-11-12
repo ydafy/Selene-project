@@ -5,7 +5,7 @@
 -- recorded for that account. Only service_role executes it.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(13);
+select plan(15);
 
 -- pending:is_actionable:current bank:recorded count, as the sandbox wait reads them.
 create function pg_temp.sync(p_acct text, p_events text[]) returns text language sql as $$
@@ -60,6 +60,18 @@ set local role service_role;
 select is(
   (select recorded_event_count from public.fn_get_connect_account_sync_state('acct_381main', array['evt_381a'])),
   1, 'sync state: service_role reads it without any table privilege');
+reset role;
+
+select set_config('request.jwt.claims', '{"role": "anon"}', true);
+set local role anon;
+select throws_ok($$select * from public.fn_get_connect_account_sync_state('acct_381main', array['evt_381a'])$$,
+  '42501', null, 'sync state: anon cannot call it');
+reset role;
+
+select set_config('request.jwt.claims', '{"sub": "00000000-0000-4000-8000-000000000381", "role": "authenticated"}', true);
+set local role authenticated;
+select throws_ok($$select * from public.fn_get_connect_account_sync_state('acct_381main', array['evt_381a'])$$,
+  '42501', null, 'sync state: a signed-in user cannot call it');
 reset role;
 
 select * from finish();

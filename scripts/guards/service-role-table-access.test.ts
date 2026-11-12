@@ -108,6 +108,8 @@ describe('service_role table access guard (probes)', () => {
             'url: {{baseUrl}}/rest/v1/rpc/fn_get_shipment_cancellation_summary',
             "admin.from('shipment_cancellation_operations_view')",
             'docs: service_role cannot read shipment_cancellation_operations',
+            'await rest("connect_account_events_archive?select=id");',
+            'await rest("/connect_account_events?select=id");',
           ].join('\n'),
         },
       ]),
