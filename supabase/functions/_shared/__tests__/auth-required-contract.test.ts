@@ -5,10 +5,10 @@ import { join } from 'node:path';
 const FUNCTIONS_DIR = join(import.meta.dir, '..', '..');
 
 // A valid token that is not a signed-in user (the anon key) must get the stable code, not Spanish text.
-// create-dispute and create-return-intent are covered by calling their handlers
-// (<function>/handler.test.ts).
+// cancel-order, create-dispute and create-return-intent are covered by calling their
+// handlers (cancel-order: cancel-order-http-preservation.test.ts; the others:
+// <function>/handler.test.ts).
 const FUNCTIONS = [
-  'cancel-order',
   'generate-return-label',
   'generate-shipping-label',
   'resolve-dispute',
